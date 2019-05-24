@@ -124,7 +124,6 @@ FR_NAME_NUMBER const fr_value_box_type_table[] = {
 	{ "float32",		FR_TYPE_FLOAT32 },
 	{ "float64",		FR_TYPE_FLOAT64 },
 
-	{ "timeval",		FR_TYPE_TIMEVAL },
 	{ "time_delta",		FR_TYPE_TIME_DELTA },
 	{ "date",		FR_TYPE_DATE },
 
@@ -233,7 +232,6 @@ size_t const fr_value_box_field_sizes[] = {
 
 	[FR_TYPE_DATE]				= SIZEOF_MEMBER(fr_value_box_t, vb_date),
 
-	[FR_TYPE_TIMEVAL]			= SIZEOF_MEMBER(fr_value_box_t, datum.timeval),
 	[FR_TYPE_TIME_DELTA]			= SIZEOF_MEMBER(fr_value_box_t, datum.time_delta),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
@@ -276,7 +274,6 @@ size_t const fr_value_box_offsets[] = {
 
 	[FR_TYPE_DATE]				= offsetof(fr_value_box_t, vb_date),
 
-	[FR_TYPE_TIMEVAL]			= offsetof(fr_value_box_t, vb_timeval),
 	[FR_TYPE_TIME_DELTA]			= offsetof(fr_value_box_t, vb_time_delta),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, vb_size),
 
@@ -439,10 +436,6 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 
 	case FR_TYPE_SIZE:
 		CHECK(size);
-		break;
-
-	case FR_TYPE_TIMEVAL:
-		compare = fr_timeval_cmp(&a->datum.timeval, &b->datum.timeval);
 		break;
 
 	case FR_TYPE_TIME_DELTA:
@@ -960,7 +953,6 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 		fr_value_box_copy(NULL, dst, src);
@@ -1014,7 +1006,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  *   format in memory.
  * - Dates are encoded as 32bit unsigned UNIX timestamps.
  *
- * #FR_TYPE_TIMEVAL, #FR_TYPE_TIME_DELTA and #FR_TYPE_SIZE are not encodable, as they're system specific.
+ * #FR_TYPE_TIME_DELTA and #FR_TYPE_SIZE are not encodable, as they're system specific.
  * #FR_TYPE_ABINARY is RADIUS specific and should be encoded by the RADIUS encoder.
  *
  * This function will not encode complex types (TLVs, VSAs etc...).  These are usually
@@ -1155,7 +1147,6 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
@@ -1293,7 +1284,6 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_SIZE:
-	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
@@ -2369,9 +2359,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_DATE:
-
 	case FR_TYPE_SIZE:
-	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 		break;
@@ -2448,41 +2436,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			return -1;
 		}
 		goto fixed_length;
-	}
-
-	if (dst_type == FR_TYPE_TIMEVAL) {
-		switch (src->type) {
-		case FR_TYPE_UINT8:
-			dst->datum.timeval.tv_sec = src->vb_uint8;
-			dst->datum.timeval.tv_usec = 0;
-			break;
-
-		case FR_TYPE_UINT16:
-			dst->datum.timeval.tv_sec = src->vb_uint16;
-			dst->datum.timeval.tv_usec = 0;
-			break;
-
-		case FR_TYPE_UINT32:
-			dst->datum.timeval.tv_sec = src->vb_uint32;
-			dst->datum.timeval.tv_usec = 0;
-			break;
-
-		case FR_TYPE_UINT64:
-			/*
-			 *	tv_sec is a time_t, which is variable in size
-			 *	depending on the system.
-			 *
-			 *	It should be >= 64bits on modern systems,
-			 *	but you never know...
-			 */
-			if (sizeof(uint64_t) > SIZEOF_MEMBER(struct timeval, tv_sec)) goto invalid_cast;
-			dst->datum.timeval.tv_sec = src->vb_uint64;
-			dst->datum.timeval.tv_usec = 0;
-			break;
-
-		default:
-			goto invalid_cast;
-		}
 	}
 
 	if (dst_type == FR_TYPE_TIME_DELTA) {
@@ -3849,10 +3802,6 @@ parse:
 		if (fr_size_from_str(&dst->datum.size, in) < 0) return -1;
 		break;
 
-	case FR_TYPE_TIMEVAL:
-		if (fr_timeval_from_str(&dst->datum.timeval, in) < 0) return -1;
-		break;
-
 	case FR_TYPE_TIME_DELTA:
 		if (dst_enumv) {
 			if (fr_time_delta_from_str(&dst->datum.time_delta, in, dst_enumv->flags.type_size) < 0) return -1;
@@ -4185,11 +4134,6 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 
 	case FR_TYPE_SIZE:
 		p = talloc_typed_asprintf(ctx, "%zu", data->datum.size);
-		break;
-
-	case FR_TYPE_TIMEVAL:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64 ".%06" PRIu64,
-					  (uint64_t)data->datum.timeval.tv_sec, (uint64_t)data->datum.timeval.tv_usec);
 		break;
 
 	case FR_TYPE_TIME_DELTA:
@@ -4699,12 +4643,6 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	case FR_TYPE_SIZE:
 		return snprintf(out, outlen, "%zu", data->datum.size);
-
-	case FR_TYPE_TIMEVAL:
-		len = snprintf(buf, sizeof(buf), "%" PRIu64 ".%06" PRIu64,
-			       (uint64_t)data->datum.timeval.tv_sec, (uint64_t)data->datum.timeval.tv_usec);
-		a = buf;
-		break;
 
 	case FR_TYPE_TIME_DELTA:
 	{

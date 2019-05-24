@@ -417,7 +417,6 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		value = PyLong_FromUnsignedLongLong((unsigned long long)vp->vp_size);
 		break;
 
-	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_DATE:

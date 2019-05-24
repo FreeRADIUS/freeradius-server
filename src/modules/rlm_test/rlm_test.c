@@ -91,9 +91,6 @@ typedef struct {
 	uint64_t	uint64;
 	uint64_t	*uint64_m;
 
-	_timeval_t	timeval;
-	_timeval_t	*timeval_m;
-
 	fr_time_delta_t	time_delta;
 	fr_time_delta_t	*time_delta_m;
 } rlm_test_t;
@@ -156,9 +153,6 @@ static const CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("uint64", FR_TYPE_UINT64, rlm_test_t, uint64) },
 	{ FR_CONF_OFFSET("uint64_m", FR_TYPE_UINT64 | FR_TYPE_MULTI, rlm_test_t, uint64_m) },
-
-	{ FR_CONF_OFFSET("timeval", FR_TYPE_TIMEVAL, rlm_test_t, timeval) },
-	{ FR_CONF_OFFSET("timeval_m", FR_TYPE_TIMEVAL | FR_TYPE_MULTI, rlm_test_t, timeval_m) },
 
 	{ FR_CONF_OFFSET("time_delta", FR_TYPE_TIME_DELTA, rlm_test_t, time_delta) },
 	{ FR_CONF_OFFSET("time_delta_t", FR_TYPE_TIME_DELTA | FR_TYPE_MULTI, rlm_test_t, time_delta_m) },

@@ -846,7 +846,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		break;
 
 	case FR_TYPE_INVALID:
-	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_COMBO_IP_PREFIX:

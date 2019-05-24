@@ -1495,7 +1495,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		break;
 
 	case FR_TYPE_NON_VALUES:
-	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_TIME_DELTA:
 		fr_pair_list_free(&vp);
 		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);

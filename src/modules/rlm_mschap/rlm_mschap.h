@@ -59,7 +59,7 @@ typedef struct {
 	bool			with_ntdomain_hack;	/* this should be in another module */
 
 	char const		*ntlm_auth;
-	uint32_t		ntlm_auth_timeout;
+	fr_time_delta_t		ntlm_auth_timeout;
 	char const		*ntlm_cpw;
 	char const		*ntlm_cpw_username;
 	char const		*ntlm_cpw_domain;

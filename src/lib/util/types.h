@@ -67,9 +67,7 @@ typedef enum {
 	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
 						//!< address on the local system.
 
-	FR_TYPE_TIMEVAL,			//!< Time value (struct timeval), only for config items.
-
-	FR_TYPE_TIME_DELTA,			//!< fr_time_delta_t
+	FR_TYPE_TIME_DELTA,			//!< A period of time measured in nanoseconds.
 
 	FR_TYPE_ABINARY,			//!< Ascend binary format a packed data structure.
 
@@ -109,7 +107,6 @@ typedef enum {
 	case FR_TYPE_COMBO_IP_ADDR: \
 	case FR_TYPE_COMBO_IP_PREFIX: \
 	case FR_TYPE_INT32: \
-	case FR_TYPE_TIMEVAL: \
 	case FR_TYPE_TIME_DELTA: \
 	case FR_TYPE_BOOL: \
 	case FR_TYPE_FLOAT64

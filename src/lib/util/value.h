@@ -220,9 +220,8 @@ struct value_box {
 #define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, .vb_date, _val)
 
 #define fr_box_size(_val)			_fr_box(FR_TYPE_SIZE, .vb_size, _val)
-#define fr_box_timeval(_val)			_fr_box(FR_TYPE_TIMEVAL, .vb_timeval, _val)
-#define fr_box_time_delta(_val)			_fr_box(FR_TYPE_TIME_DELTA, .vb_time_delta, _val)
 
+#define fr_box_time_delta(_val)			_fr_box(FR_TYPE_TIME_DELTA, .vb_time_delta, _val)
 /* @} **/
 
 /** @name Convenience functions

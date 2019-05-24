@@ -388,21 +388,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		}
 		break;
 
-	case FR_TYPE_TIMEVAL:
-	{
-		struct timeval tv;
-
-		if (fr_timeval_from_str(&tv, cp->value) < 0) {
-			cf_log_perr(cp, "Failed parsing config item");
-			rcode = -1;
-			goto error;
-		}
-		cf_log_debug(cs, "%.*s%s = %d.%06d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
-			    (int)tv.tv_sec, (int)tv.tv_usec);
-		memcpy(out, &tv, sizeof(tv));
-	}
-		break;
-
 	case FR_TYPE_TIME_DELTA:
 	{
 		fr_time_delta_t delta;
@@ -665,8 +650,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			array = (void **)talloc_zero_array(ctx, fr_ipaddr_t, count);
 			break;
 
-		case FR_TYPE_TIMEVAL:
-			array = (void **)talloc_zero_array(ctx, struct timeval, count);
+		case FR_TYPE_TIME_DELTA:
+			array = (void **)talloc_zero_array(ctx, fr_time_delta_t, count);
 			break;
 
 		case FR_TYPE_VOID:
@@ -806,7 +791,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  * | FR_TYPE_IPV6_PREFIX     | ``fr_ipaddr_t``    | No                     |
  * | FR_TYPE_COMBO_IP_ADDR   | ``fr_ipaddr_t``    | No                     |
  * | FR_TYPE_COMBO_IP_PREFIX | ``fr_ipaddr_t``    | No                     |
- * | FR_TYPE_TIMEVAL         | ``struct timeval`` | No                     |
+ * | FR_TYPE_TIME_DELTA      | ``fr_time_delta_t``| No                     |
  *
  * @param[in] ctx	To allocate arrays and values in.
  * @param[in] cs	to search for matching #CONF_PAIR in.
@@ -831,7 +816,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  *						  prefix 32/128).
  *	- ``data`` #FR_TYPE_COMBO_IP_PREFIX	- @copybrief FR_TYPE_COMBO_IP_PREFIX (IPv4/IPv6 address with
  *						  variable prefix).
- *	- ``data`` #FR_TYPE_TIMEVAL		- @copybrief FR_TYPE_TIMEVAL
+ *	- ``data`` #FR_TYPE_TIME_DELTA		- @copybrief FR_TYPE_TIME_DELTA
  *	- ``flag`` #FR_TYPE_DEPRECATED		- @copybrief FR_TYPE_DEPRECATED
  *	- ``flag`` #FR_TYPE_REQUIRED		- @copybrief FR_TYPE_REQUIRED
  *	- ``flag`` #FR_TYPE_ATTRIBUTE		- @copybrief FR_TYPE_ATTRIBUTE

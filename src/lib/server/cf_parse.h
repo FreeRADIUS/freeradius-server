@@ -184,10 +184,6 @@ _Generic((_ct), \
 			_p, (_mismatch_uint64) 0), \
 	uint64_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT64) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
-	_timeval_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && !((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_timeval) 0), \
-	_timeval_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && ((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_timeval_m) 0), \
 	void *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_void) 0), \
 	void **		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && ((_t) & FR_TYPE_MULTI), \

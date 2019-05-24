@@ -267,7 +267,6 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 		case FR_TYPE_IPV6_PREFIX:
 		case FR_TYPE_IFID:
 		case FR_TYPE_ETHERNET:
-		case FR_TYPE_TIMEVAL:
 		case FR_TYPE_ABINARY:
 			val = to_cast;		/* No conversions required */
 			break;
