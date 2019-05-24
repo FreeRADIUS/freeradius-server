@@ -1134,30 +1134,6 @@ int fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
 	return fr_event_timer_at(ctx, el, ev_p, now, callback, uctx);
 }
 
-/** Legacy timer function that uses timeval
- *
- * @note The talloc parent of the memory returned in ev_p must not be changed.
- *	 If the lifetime of the event needs to be bound to another context
- *	 this function should be called with the existing event pointed to by
- *	 ev_p.
- *
- * @param[in] ctx		to bind lifetime of the event to.
- * @param[in] el		to insert event into.
- * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
- *				in a temporal sense, not in a memory structure or dependency sense.
- * @param[in] when		In how many nanoseconds to wait before should we execute the event.
- * @param[in] callback		function to execute if the event fires.
- * @param[in] uctx		user data to pass to the event.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-			  struct timeval *when, fr_event_cb_t callback, void const *uctx)
-{
-	return fr_event_timer_at(ctx, el, ev_p, fr_time_from_timeval(when), callback, uctx);
-}
-
 /** Remove PID wait event from kevent if the fr_event_pid_t is freed
  *
  * @param[in] ev	to free.

@@ -108,7 +108,7 @@ typedef struct {
 /** Called when a timer event fires
  *
  * @param[in] now	The current time.
- * @param[in] uctx	User ctx passed to #fr_event_timer_insert.
+ * @param[in] uctx	User ctx passed to #fr_event_timer_in or #fr_event_timer_at.
  */
 typedef	void (*fr_event_cb_t)(fr_event_list_t *el, fr_time_t now, void *uctx);
 
@@ -220,8 +220,6 @@ int		fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t co
 				  fr_time_delta_t delta, fr_event_cb_t callback, void const *uctx);
 int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev);
 int		fr_event_timer_run(fr_event_list_t *el, fr_time_t *when);
-int		fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-				      struct timeval *when, fr_event_cb_t callback, void const *uctx);
 
 uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));
 int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));
