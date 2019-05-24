@@ -1458,11 +1458,13 @@ static xlat_action_t _xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
 	size_t		data_len, key_len;
 	fr_value_box_t	*vb, *vb_data, *vb_sep, *vb_key;
 
+	if (!in) return XLAT_ACTION_FAIL;
+
 	vb_data = fr_value_box_list_get(*in, 0);
 	vb_sep = fr_value_box_list_get(*in, 1);
 	vb_key = fr_value_box_list_get(*in, 2);
 
-	if (!in || !vb_data || !vb_sep || !vb_key ||
+	if (!vb_data || !vb_sep || !vb_key ||
             vb_sep->vb_length != 1 ||
             vb_sep->vb_strvalue[0] != ' ') {
 		REDEBUG("HMAC requires exactly two arguments (%%{data} %%{key})");
