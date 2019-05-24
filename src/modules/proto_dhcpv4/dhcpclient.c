@@ -50,8 +50,7 @@ RCSID("$Id$")
 #include <net/if.h>
 
 static int retries = 3;
-static float timeout = 5.0;
-static struct timeval tv_timeout;
+fr_time_delta_t	timeout;
 
 static int sockfd;
 #ifdef HAVE_LIBPCAP
@@ -309,7 +308,7 @@ static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 #endif
 					    RADIUS_PACKET *request_p)
 {
-	struct timeval	tval;
+	fr_time_delta_t	our_timeout;
 	RADIUS_PACKET	*reply_p = NULL;
 	RADIUS_PACKET	*cur_reply_p = NULL;
 	int		nb_reply = 0;
@@ -318,19 +317,21 @@ static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 	fd_set		read_fd;
 	int		retval;
 
-	memcpy(&tval, &tv_timeout, sizeof(struct timeval));
+	our_timeout = timeout;
 
 	/* Loop waiting for DHCP replies until timer expires */
-	while (fr_timeval_isset(&tval)) {
+	while (our_timeout) {
 		if ((!reply_p) || (cur_reply_p)) { // only debug at start and each time we get a valid DHCP reply on raw socket
 			DEBUG("Waiting for %s DHCP replies for: %d.%06d",
-			      (nb_reply>0)?" additional ":" ", (int)tval.tv_sec, (int)tval.tv_usec);
+			      (nb_reply > 0) ? " additional ":" ",
+			      (int)(our_timeout / NSEC),
+			      (int)(our_timeout % NSEC));
 		}
 
 		cur_reply_p = NULL;
 		FD_ZERO(&read_fd);
 		FD_SET(lsockfd, &read_fd);
-		retval = select(lsockfd + 1, &read_fd, NULL, NULL, &tval);
+		retval = select(lsockfd + 1, &read_fd, NULL, NULL, &fr_time_delta_to_timeval(our_timeout));
 		if (retval < 0) {
 			fr_strerror_printf("Select on DHCP socket failed: %s", fr_syserror(errno));
 			return NULL;
@@ -349,8 +350,7 @@ static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 #  endif
 #endif
 		} else {
-			// Not all implementations of select clear the timer
-			memset(&tval, 0, sizeof(tval));
+			our_timeout = 0;
 		}
 
 		if (cur_reply_p) {
@@ -440,7 +440,8 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 	 *	Set option 'receive timeout' on socket.
 	 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
 	 */
-	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout, sizeof(struct timeval)) == -1) {
+	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,
+		       &fr_time_delta_to_timeval(timeout), sizeof(struct timeval)) == -1) {
 		ERROR("Failed setting socket timeout: %s", fr_syserror(errno));
 		return -1;
 	}
@@ -644,8 +645,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 't':
-			if (!isdigit((int) *optarg)) usage();
-			timeout = atof(optarg);
+			if (fr_time_delta_from_str(&timeout, optarg, DATE_SECONDS) < 0) usage();
 			break;
 
 		case 'v':
@@ -664,10 +664,6 @@ int main(int argc, char **argv)
 	argv += (optind - 1);
 
 	if (argc < 2) usage();
-
-	/*	convert timeout to a struct timeval */
-	tv_timeout.tv_sec = timeout;
-	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 
 	if (fr_dict_global_init(autofree, dict_dir) < 0) {
 		fr_perror("dhcpclient");
