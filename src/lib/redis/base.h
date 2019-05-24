@@ -110,7 +110,7 @@ typedef struct {
 	uint32_t		max_retries;	//!< Maximum number of times we attempt a command
 						//!< when receiving successive -TRYAGAIN messages.
 	uint32_t		max_alt;	//!< Maximum alternative nodes to try.
-	struct timeval		retry_delay;	//!< How long to wait when we received a -TRYAGAIN
+	fr_time_delta_t		retry_delay;	//!< How long to wait when we received a -TRYAGAIN
 						//!< message.
 } fr_redis_conf_t;
 

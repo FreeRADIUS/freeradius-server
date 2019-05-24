@@ -1893,13 +1893,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		if (!*conn) *conn = fr_pool_connection_get(state->node->pool, request);
 
-		if (FR_TIMEVAL_TO_MS(&cluster->conf->retry_delay)) {
-			struct timespec ts;
-
-			ts.tv_sec = cluster->conf->retry_delay.tv_sec;
-			ts.tv_nsec = cluster->conf->retry_delay.tv_usec * 1000;
-			nanosleep(&ts, NULL);
-		}
+		if (cluster->conf->retry_delay) nanosleep(&fr_time_delta_to_timespec(cluster->conf->retry_delay), NULL);
 		goto try_again;
 
 	/*
