@@ -251,46 +251,6 @@ int clock_gettime(int clk_id, struct timespec *t)
 }
 #endif
 
-#define NTP_EPOCH_OFFSET	2208988800ULL
-
-/*
- *	Convert 'struct timeval' into NTP format (32-bit integer
- *	of seconds, 32-bit integer of fractional seconds)
- */
-void
-timeval2ntp(struct timeval const *tv, uint8_t *ntp)
-{
-	uint32_t sec, usec;
-
-	sec = tv->tv_sec + NTP_EPOCH_OFFSET;
-	usec = tv->tv_usec * 4295; /* close enough to 2^32 / USEC */
-	usec -= ((tv->tv_usec * 2143) >> 16); /*  */
-
-	sec = htonl(sec);
-	usec = htonl(usec);
-
-	memcpy(ntp, &sec, sizeof(sec));
-	memcpy(ntp + sizeof(sec), &usec, sizeof(usec));
-}
-
-/*
- *	Inverse of timeval2ntp
- */
-void
-ntp2timeval(struct timeval *tv, char const *ntp)
-{
-	uint32_t sec, usec;
-
-	memcpy(&sec, ntp, sizeof(sec));
-	memcpy(&usec, ntp + sizeof(sec), sizeof(usec));
-
-	sec = ntohl(sec);
-	usec = ntohl(usec);
-
-	tv->tv_sec = sec - NTP_EPOCH_OFFSET;
-	tv->tv_usec = usec / 4295; /* close enough */
-}
-
 #if !defined(HAVE_128BIT_INTEGERS) && !defined(WORDS_BIGENDIAN)
 /** Swap byte order of 128 bit integer
  *

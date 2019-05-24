@@ -421,9 +421,6 @@ int clock_gettime(int clk_id, struct timespec *t);
 #  define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
 
-void timeval2ntp(struct  timeval const *tv, uint8_t *ntp);
-void ntp2timeval(struct timeval *tv, char const *ntp);
-
 #ifndef SSIZE_MIN
 #  define SSIZE_MIN LONG_MIN
 #endif
