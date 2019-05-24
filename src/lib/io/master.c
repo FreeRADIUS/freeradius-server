@@ -2188,19 +2188,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			/*
 			 *	Remove the pending client from the trie.
 			 */
-			if (!connection) {
-				talloc_free(client);
-				return buffer_len;
-			}
-
-			/*
-			 *	Remove this connection from the parents list of connections.
-			 */
-			pthread_mutex_lock(&connection->parent->mutex);
-			(void) fr_hash_table_delete(connection->parent->ht, connection);
-			pthread_mutex_unlock(&connection->parent->mutex);
-
-			talloc_free(connection);
+			rad_assert(!connection);
+			talloc_free(client);
 			return buffer_len;
 		}
 	}
