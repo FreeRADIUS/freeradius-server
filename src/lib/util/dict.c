@@ -3165,8 +3165,6 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 		return 0;
 	}
 
-	if (err) *err = FR_DICT_ATTR_OK;
-
 	/*
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
@@ -3191,6 +3189,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	}
 
 	*out = da;
+	if (err) *err = FR_DICT_ATTR_OK;
 
 	return p - name;
 }
@@ -3244,8 +3243,6 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 	*out = NULL;
 
 	INTERNAL_IF_NULL(dict_def, -1);
-
-	if (err) *err = FR_DICT_ATTR_OK;
 
 	/*
 	 *	Figure out if we should use the default dictionary
@@ -3347,6 +3344,8 @@ again:
 		return 0;
 	}
 
+	if (err) *err = FR_DICT_ATTR_OK;
+
 	return p - name;
 }
 
@@ -3362,7 +3361,7 @@ fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr
 						  char const *attr, bool fallback)
 {
 	ssize_t			slen;
-	fr_dict_attr_err_t	err = FR_DICT_ATTR_OK;
+	fr_dict_attr_err_t	err = FR_DICT_ATTR_PARSE_ERROR;
 
 	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, attr, fallback);
 	if (slen <= 0) return err;
