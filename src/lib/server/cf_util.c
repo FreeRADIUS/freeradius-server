@@ -1799,7 +1799,7 @@ void _cf_vlog(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int lin
 
 		va_copy(aq, ap);
 		msg = fr_vasprintf(NULL, fmt, ap);
-		va_end(ap);
+		va_end(aq);
 
 		fr_log(LOG_DST, type, file, line, "%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
 		talloc_free(msg);
