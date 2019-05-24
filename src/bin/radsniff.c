@@ -1756,7 +1756,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	It's a linked response
 	 */
 	if (original && original->linked) {
-		fr_timeval_from_nsec(&latency, current->timestamp - original->packet->timestamp);
+		latency = fr_time_delta_to_timeval(current->timestamp - original->packet->timestamp);
 
 		/*
 		 *	Update stats for both the request and response types.
