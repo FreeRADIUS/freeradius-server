@@ -61,17 +61,17 @@ typedef struct {
 	fr_ipaddr_t			src_ipaddr;		//!< Our src interface.
 	uint16_t			src_port;		//!< Our src port.
 
-	fr_ldap_connection_t			*conn;			//!< Our connection to the LDAP directory.
+	fr_ldap_connection_t		*conn;			//!< Our connection to the LDAP directory.
 
 	RADCLIENT			*client;		//!< Fake client representing the connection.
 
 	/*
 	 *	Per instance config
 	 */
-	struct timeval			sync_retry_interval;	//!< How long to wait before trying to re-start
+	fr_time_delta_t			sync_retry_interval;	//!< How long to wait before trying to re-start
 								//!< a sync.
 
-	struct timeval			conn_retry_interval;	//!< How long to wait before trying to re-establish
+	fr_time_delta_t			conn_retry_interval;	//!< How long to wait before trying to re-establish
 								//!< a connection.
 
 	/*
@@ -181,8 +181,8 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET, proto_ldap_inst_t, handle_config.admin_password) },
 	{ FR_CONF_OFFSET("sasl", FR_TYPE_SUBSECTION, proto_ldap_inst_t, handle_config.admin_sasl), .subcs = (void const *) sasl_mech_static },
 
-	{ FR_CONF_OFFSET("sync_retry_interval", FR_TYPE_TIMEVAL, proto_ldap_inst_t, sync_retry_interval), .dflt = "5" },
-	{ FR_CONF_OFFSET("conn_retry_interval", FR_TYPE_TIMEVAL, proto_ldap_inst_t, conn_retry_interval), .dflt = "5" },
+	{ FR_CONF_OFFSET("sync_retry_interval", FR_TYPE_TIME_DELTA, proto_ldap_inst_t, sync_retry_interval), .dflt = "5" },
+	{ FR_CONF_OFFSET("conn_retry_interval", FR_TYPE_TIME_DELTA, proto_ldap_inst_t, conn_retry_interval), .dflt = "5" },
 
 	/*
 	 *	Areas of the DIT to listen on
@@ -576,13 +576,13 @@ static void proto_ldap_sync_reinit(fr_event_list_t *el, fr_time_t now, void *use
 	 */
 	if (sync_state_init(inst->conn, config, NULL, true) == 0) return;
 
-	PERROR("Failed reinitialising sync, will retry in %pT seconds", &inst->sync_retry_interval);
+	PERROR("Failed reinitialising sync, will retry in %pV seconds", fr_box_time_delta(inst->sync_retry_interval));
 
 	/*
 	 *	We want the time from when we were called
 	 */
 	if (fr_event_timer_at(inst, el, &inst->sync_retry_ev,
-			      now + fr_time_delta_from_timeval(&inst->sync_retry_interval),
+			      now + inst->sync_retry_interval,
 			      proto_ldap_sync_reinit, user_ctx) < 0) {
 		FATAL("Failed inserting event: %s", fr_strerror());
 	}
@@ -923,7 +923,7 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
 		return 1;
 
  	case -1:
-		PERROR("Sync failed - will retry in %pT seconds", &inst->sync_retry_interval);
+		PERROR("Sync failed - will retry in %pV seconds", fr_box_time_delta(inst->sync_retry_interval));
 
  		config = sync_state_config_get(inst->conn, sync_id);
 		sync_state_destroy(inst->conn, sync_id);	/* Destroy the old state */
@@ -933,21 +933,21 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
 		 */
 		memcpy(&ctx, &config, sizeof(ctx));
 		if (fr_event_timer_in(inst, inst->el, &inst->sync_retry_ev,
-				      fr_time_delta_from_timeval(&inst->sync_retry_interval),
+				      inst->sync_retry_interval,
 				      proto_ldap_sync_reinit, ctx) < 0) {
 			FATAL("Failed inserting event: %s", fr_strerror());
 		}
  		return 1;
 
  	case -2:
- 		PERROR("Connection failed - will retry in %pT seconds", &inst->conn_retry_interval);
+ 		PERROR("Connection failed - will retry in %pV seconds", fr_box_time_delta(inst->conn_retry_interval));
 
 		/*
 		 *	Schedule conn reinit, but don't perform it immediately
 		 */
  		memcpy(&ctx, &config, sizeof(ctx));
 		if (fr_event_timer_in(inst, inst->el, &inst->conn_retry_ev,
-				      fr_time_delta_from_timeval(&inst->conn_retry_interval),
+				      inst->conn_retry_interval,
 				      proto_ldap_connection_init, listen) < 0) {
 			FATAL("Failed inserting event: %s", fr_strerror());
 		}
@@ -1004,11 +1004,11 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 		error:
 			TALLOC_FREE(inst->conn);
 
-			PERROR("Failed (re)initialising connection, will retry in %pT seconds",
-			      &inst->conn_retry_interval);
+			PERROR("Failed (re)initialising connection, will retry in %pV seconds",
+			       fr_box_time_delta(inst->conn_retry_interval));
 
 			if (fr_event_timer_in(inst, inst->el, &inst->conn_retry_ev,
-					      fr_time_delta_from_timeval(&inst->conn_retry_interval),
+					      inst->conn_retry_interval,
 					      proto_ldap_connection_init, listen) < 0) {
 				FATAL("Failed inserting event: %s", fr_strerror());
 			}
@@ -1021,7 +1021,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 			      &inst->conn,
 			      inst->conn->config->admin_identity, inst->conn->config->admin_password,
 			      &(inst->conn->config->admin_sasl),
-			      NULL,
+			      0,
 			      NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) goto error;
 

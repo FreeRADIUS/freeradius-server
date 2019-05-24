@@ -379,7 +379,7 @@ static inline void fr_ldap_berval_to_value(fr_value_box_t *value, struct berval 
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */
 void		fr_ldap_timeout_debug(REQUEST *request, fr_ldap_connection_t const *conn,
-				      struct timeval const *timeout, char const *prefix);
+				      fr_time_delta_t timeout, char const *prefix);
 
 size_t		fr_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
 
@@ -395,7 +395,7 @@ fr_ldap_rcode_t	fr_ldap_bind(REQUEST *request,
 #else
 			     NDEBUG_UNUSED fr_ldap_sasl_t const *sasl,
 #endif
-			     struct timeval const *timeout,
+			     fr_time_delta_t timeout,
 			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 char const	*fr_ldap_error_str(fr_ldap_connection_t const *conn);
@@ -420,7 +420,7 @@ fr_ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t c
 fr_ldap_rcode_t	fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 			       fr_ldap_connection_t const *conn, int msgid, int all,
 			       char const *dn,
-			       struct timeval const *timeout);
+			       fr_time_delta_t timeout);
 
 int		fr_ldap_global_config(int debug_level, char const *tls_random_file);
 
@@ -481,7 +481,7 @@ fr_ldap_rcode_t	 fr_ldap_sasl_interactive(REQUEST *request,
 					  fr_ldap_connection_t *pconn, char const *dn,
 					  char const *password, fr_ldap_sasl_t const *sasl,
 					  LDAPControl **serverctrls, LDAPControl **clientctrls,
-					  struct timeval const *timeout);
+					  fr_time_delta_t timeout);
 #endif
 
 /*

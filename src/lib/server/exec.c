@@ -435,13 +435,13 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
  *	- -1 on failure.
  *	- Length of output.
  */
-int radius_readfrom_program(int fd, pid_t pid, int timeout,
+int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 			    char *answer, int left)
 {
 	int done = 0;
 #ifndef __MINGW32__
 	int status;
-	struct timeval start;
+	fr_time_t start;
 #ifdef O_NONBLOCK
 	bool nonblock = true;
 #endif
@@ -466,29 +466,28 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
 	} while (0);
 #endif
 
+	/*
+	 *	Minimum timeout period is one section
+	 */
+	if (timeout < NSEC) timeout = fr_time_delta_from_sec(1);
 
 	/*
 	 *	Read from the pipe until we doesn't get any more or
 	 *	until the message is full.
 	 */
-	fr_time_to_timeval(&start, fr_time());
+	start = fr_time();
 	while (1) {
-		int rcode;
-		fd_set fds;
-		struct timeval when, elapsed, wake;
+		int		rcode;
+		fd_set		fds;
+		fr_time_delta_t	elapsed;
 
 		FD_ZERO(&fds);
 		FD_SET(fd, &fds);
 
-		fr_time_to_timeval(&when, fr_time());
-		fr_timeval_subtract(&elapsed, &when, &start);
-		if (elapsed.tv_sec >= timeout) goto too_long;
+		elapsed = fr_time() - start;
+		if (elapsed >= timeout) goto too_long;
 
-		when.tv_sec = timeout;
-		when.tv_usec = 0;
-		fr_timeval_subtract(&wake, &when, &elapsed);
-
-		rcode = select(fd + 1, &fds, NULL, NULL, &wake);
+		rcode = select(fd + 1, &fds, NULL, NULL, &fr_time_delta_to_timeval(timeout - elapsed));
 		if (rcode == 0) {
 		too_long:
 			DEBUG("Child PID %u is taking too much time: forcing failure and killing child.", pid);
@@ -582,7 +581,7 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
  */
 int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
 			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
-			bool exec_wait, bool shell_escape, int timeout)
+			bool exec_wait, bool shell_escape, fr_time_delta_t timeout)
 
 {
 	pid_t pid;

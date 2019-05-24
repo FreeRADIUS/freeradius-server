@@ -342,14 +342,12 @@ do {\
 
 #define FR_INTEGER_BOUND_CHECK(_name, _var, _op, _bound) FR_INTEGER_COND_CHECK(_name, _var, (_var _op _bound), _bound)
 
-#define FR_TIMEVAL_BOUND_CHECK(_name, _var, _op, _bound_sec, _bound_usec)\
+#define FR_TIME_DELTA_COND_CHECK(_name, _var, _cond, _new)\
 do {\
-	struct timeval _bound = {_bound_sec, _bound_usec};\
-	if (!timercmp(_var, &_bound, _op)) {\
-		WARN("Ignoring \"" _name " = %d.%.06d\", forcing to \"" _name " = %d.%06d\"",\
-		     (int)(_var)->tv_sec, (int)(_var)->tv_usec,\
-		     (int)_bound.tv_sec, (int)_bound.tv_usec);\
-		*_var = _bound;\
+	if (!(_cond)) {\
+		WARN("Ignoring \"" _name " = %pV\", forcing to \"" _name " = %pV\"", \
+		     fr_box_time_delta(_var), fr_box_time_delta(_new));\
+		_var = _new;\
 	}\
 } while (0)
 

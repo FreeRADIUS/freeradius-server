@@ -122,12 +122,12 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 	fr_ldap_sasl_ctx_t	*sasl_ctx = talloc_get_type_abort(uctx, fr_ldap_sasl_ctx_t);
 	fr_ldap_connection_t	*c = sasl_ctx->c;
 	fr_ldap_rcode_t		status;
-	struct timeval		tv = { 0, 0 };		/* We're I/O driven, if there's no data someone lied to us */
+
 	/*
 	 *	If LDAP parse result indicates there was an error
 	 *	then we're done.
 	 */
-	status = fr_ldap_result(&sasl_ctx->result, NULL, c, sasl_ctx->msgid, LDAP_MSG_ALL, sasl_ctx->identity, &tv);
+	status = fr_ldap_result(&sasl_ctx->result, NULL, c, sasl_ctx->msgid, LDAP_MSG_ALL, sasl_ctx->identity, 0);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 	case LDAP_PROC_CONTINUE:

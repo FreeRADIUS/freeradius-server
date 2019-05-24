@@ -61,7 +61,7 @@ static int _mod_conn_free(rlm_cache_memcached_handle_t *mandle)
 /** Create a new memcached handle
  *
  */
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	rlm_cache_memcached_t		*driver = instance;
 	rlm_cache_memcached_handle_t	*mandle;
@@ -76,7 +76,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 		return NULL;
 	}
 
-	ret = memcached_behavior_set(sandle, MEMCACHED_BEHAVIOR_CONNECT_TIMEOUT, (uint64_t)FR_TIMEVAL_TO_MS(timeout));
+	ret = memcached_behavior_set(sandle, MEMCACHED_BEHAVIOR_CONNECT_TIMEOUT, fr_time_delta_to_msec(timeout));
 	if (ret != MEMCACHED_SUCCESS) {
 		ERROR("%s: %s", memcached_strerror(sandle, ret), memcached_last_error_message(sandle));
 	error:

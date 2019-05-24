@@ -762,7 +762,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 	result = radius_exec_program(ctx, answer, sizeof(answer),
 				     (map->lhs->type == TMPL_TYPE_LIST) ? &output_pairs : NULL,
 				     request, map->rhs->name, input_pairs ? *input_pairs : NULL,
-				     true, true, EXEC_TIMEOUT);
+				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
 	talloc_free(expanded);
 	if (result != 0) {
 		REDEBUG("Exec failed with code (%i)", result);

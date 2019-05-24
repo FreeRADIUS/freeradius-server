@@ -116,7 +116,7 @@ typedef struct {
 	uint32_t		spawn_max;			//!< The maximum number of connections that
 								//!< will be created concurrently.
 
-	struct timeval		spawn_retry_delay;		//!< Amount of time to wait before attempting
+	fr_time_delta_t		spawn_retry_delay;		//!< Amount of time to wait before attempting
 								//!< to reconnect.
 
 	bool			load_balance_round_robin;	//!< Enable round robin load balancing.
@@ -131,22 +131,22 @@ typedef struct {
 								//!< dc hosts are available and the consistency level
 								//!< is LOCAL_ONE or LOCAL_QUORUM.
 
-	struct timeval		lar_exclusion_threshold;	//!< How much worse the latency me be, compared to
+	fr_time_delta_t		lar_exclusion_threshold;	//!< How much worse the latency me be, compared to
 								//!< the average latency of the best performing node
 								//!< before it's penalized.
 								//!< This gets mangled to a double.
 
-	struct timeval		lar_scale;			//!< Weight given to older latencies when calculating
+	fr_time_delta_t		lar_scale;			//!< Weight given to older latencies when calculating
 								//!< the average latency of a node. A bigger scale will
 								//!< give more weight to older latency measurements.
 
-	struct timeval		lar_retry_period;		//!< The amount of time a node is penalized by the
+	fr_time_delta_t		lar_retry_period;		//!< The amount of time a node is penalized by the
 								//!< policy before being given a second chance when
 								//!< the current average latency exceeds the calculated
 								//!< threshold
 								//!< (exclusion_threshold * best_average_latency).
 
-	struct timeval		lar_update_rate;		//!< The rate at which the best average latency is
+	fr_time_delta_t		lar_update_rate;		//!< The rate at which the best average latency is
 								//!< recomputed.
 	uint64_t		lar_min_measured;		//!< The minimum number of measurements per-host
 								//!< required to be considered by the policy.
@@ -192,10 +192,10 @@ static CONF_PARSER load_balance_dc_aware_config[] = {
 };
 
 static CONF_PARSER latency_aware_routing_config[] = {
-	{ FR_CONF_OFFSET("exclusion_threshold", FR_TYPE_TIMEVAL, rlm_sql_cassandra_t, lar_exclusion_threshold), .dflt = "2.0" },
-	{ FR_CONF_OFFSET("scale", FR_TYPE_TIMEVAL, rlm_sql_cassandra_t, lar_scale), .dflt = "0.1" },
-	{ FR_CONF_OFFSET("retry_period", FR_TYPE_TIMEVAL, rlm_sql_cassandra_t, lar_retry_period), .dflt = "10" },
-	{ FR_CONF_OFFSET("update_rate", FR_TYPE_TIMEVAL, rlm_sql_cassandra_t, lar_update_rate), .dflt = "0.1" },
+	{ FR_CONF_OFFSET("exclusion_threshold", FR_TYPE_FLOAT64, rlm_sql_cassandra_t, lar_exclusion_threshold), .dflt = "2.0" },
+	{ FR_CONF_OFFSET("scale", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, lar_scale), .dflt = "0.1" },
+	{ FR_CONF_OFFSET("retry_period", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, lar_retry_period), .dflt = "10" },
+	{ FR_CONF_OFFSET("update_rate", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, lar_update_rate), .dflt = "0.1" },
 	{ FR_CONF_OFFSET("min_measured", FR_TYPE_UINT64, rlm_sql_cassandra_t, lar_min_measured), .dflt = "50" },
 	CONF_PARSER_TERMINATOR
 };
@@ -231,7 +231,7 @@ static const CONF_PARSER driver_config[] = {
 
 	{ FR_CONF_OFFSET("spawn_threshold", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_threshold) },
 	{ FR_CONF_OFFSET("spawn_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_max) },
-	{ FR_CONF_OFFSET("spawn_retry_delay", FR_TYPE_TIMEVAL, rlm_sql_cassandra_t, spawn_retry_delay) },
+	{ FR_CONF_OFFSET("spawn_retry_delay", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, spawn_retry_delay) },
 
 	{ FR_CONF_POINTER("load_balance_dc_aware", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) load_balance_dc_aware_config },
 	{ FR_CONF_OFFSET("load_balance_round_robin", FR_TYPE_BOOL, rlm_sql_cassandra_t, load_balance_round_robin), .dflt = "no" },
@@ -354,7 +354,7 @@ static int _sql_socket_destructor(rlm_sql_cassandra_conn_t *conn)
 	return 0;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, fr_time_delta_t timeout)
 {
 	rlm_sql_cassandra_conn_t	*conn;
 	rlm_sql_cassandra_t		*inst = config->driver;
@@ -377,7 +377,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 			 *	Easier to do this here instead of mod_instantiate
 			 *	as we don't have a pointer to the pool.
 			 */
-			cass_cluster_set_connect_timeout(inst->cluster, FR_TIMEVAL_TO_MS(timeout));
+			cass_cluster_set_connect_timeout(inst->cluster, fr_time_delta_to_msec(timeout));
 
 			DEBUG2("Connecting to Cassandra cluster");
 			future = cass_session_connect_keyspace(inst->session, inst->cluster, config->sql_db);
@@ -818,13 +818,7 @@ do {\
 			       cass_cluster_set_max_concurrent_creation(inst->cluster, inst->spawn_max));
 	}
 
-	{
-		uint32_t delay;
-
-		delay = (inst->spawn_retry_delay.tv_sec * (uint64_t)1000) +
-			(inst->spawn_retry_delay.tv_usec / 1000);
-		if (delay) cass_cluster_set_reconnect_wait_time(inst->cluster, delay);
-	}
+	if (delay) cass_cluster_set_reconnect_wait_time(inst->cluster, fr_time_delta_to_msec(inst->spawn_retry_delay));
 
 	if (inst->load_balance_round_robin) cass_cluster_set_load_balance_round_robin(inst->cluster);
 
@@ -839,27 +833,15 @@ do {\
 	}
 
 	if (do_latency_aware_routing) {
-		cass_double_t	exclusion_threshold;
-		uint64_t	scale_ms, retry_period_ms, update_rate_ms;
-
-		exclusion_threshold = inst->lar_exclusion_threshold.tv_sec +
-				      (inst->lar_exclusion_threshold.tv_usec / 1000000);
-
-		scale_ms = (inst->lar_scale.tv_sec * (uint64_t)1000) + (inst->lar_scale.tv_usec / 1000);
-		retry_period_ms = (inst->lar_retry_period.tv_sec * (uint64_t)1000) +
-				  (inst->lar_retry_period.tv_usec / 1000);
-		update_rate_ms = (inst->lar_update_rate.tv_sec * (uint64_t)1000) +
-				 (inst->lar_update_rate.tv_usec / 1000);
-
 		/* Can't fail */
 		cass_cluster_set_latency_aware_routing(inst->cluster, true);
 
 		/* Can't fail */
 		cass_cluster_set_latency_aware_routing_settings(inst->cluster,
-							        exclusion_threshold,
-							        scale_ms,
-							        retry_period_ms,
-							        update_rate_ms,
+							        (cass_double_t)inst->lar_exclusion_threshold,
+							        fr_time_delta_to_msec(inst->lar_scale),
+							        fr_time_delta_to_msec(inst->lar_retry_period),
+							        fr_time_delta_to_msec(inst->lar_update_rate),
 							        inst->lar_min_measured);
 	}
 

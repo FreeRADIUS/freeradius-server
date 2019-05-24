@@ -99,9 +99,11 @@ static void _ldap_start_tls_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, U
 	fr_ldap_connection_t	*c = tls_ctx->c;
 	int			ret;
 	fr_ldap_rcode_t		status;
-	struct timeval		tv = { 0, 0 };		/* We're I/O driven, if there's no data someone lied to us */
 
-	status = fr_ldap_result(NULL, NULL, c, tls_ctx->msgid, LDAP_MSG_ALL, NULL, &tv);
+	/*
+	 *	We're I/O driven, if there's no data someone lied to us
+	 */
+	status = fr_ldap_result(NULL, NULL, c, tls_ctx->msgid, LDAP_MSG_ALL, NULL, 0);
 	talloc_free(tls_ctx);				/* Free explicitly so we don't accumulate contexts */
 
 	switch (status) {

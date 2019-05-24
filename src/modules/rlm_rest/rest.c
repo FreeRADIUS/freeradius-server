@@ -273,7 +273,7 @@ static int _mod_conn_free(rlm_rest_handle_t *randle)
  * @see fr_pool_connection_create_t
  * @see connection.c
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
 	rlm_rest_t const	*inst = instance;
 
@@ -1818,7 +1818,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	rlm_rest_handle_t	*randle	= handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
 	CURL			*candle = randle->candle;
-	struct timeval		timeout;
+	fr_time_delta_t		timeout;
 
 	http_auth_type_t	auth = section->auth;
 
@@ -1874,10 +1874,10 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	}
 
 	timeout = fr_pool_timeout(t->pool);
-	RDEBUG3("Connect timeout is %" PRIu64", request timeout is %" PRIu64,
-	        FR_TIMEVAL_TO_MS(&timeout), FR_TIMEVAL_TO_MS(&section->timeout_tv));
-	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));
-	SET_OPTION(CURLOPT_TIMEOUT_MS, FR_TIMEVAL_TO_MS(&section->timeout_tv));
+	RDEBUG3("Connect timeout is %pVs, request timeout is %pVs",
+	        fr_box_time_delta(timeout), fr_box_time_delta(section->timeout));
+	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
+	SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
 
 #ifdef CURLOPT_PROTOCOLS
 	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));

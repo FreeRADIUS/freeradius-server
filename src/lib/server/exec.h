@@ -31,7 +31,7 @@ extern "C" {
 
 #include <unistd.h>
 
-#define EXEC_TIMEOUT		10	//!< Default wait time for exec calls.
+#define EXEC_TIMEOUT		10	//!< Default wait time for exec calls (in seconds).
 
 extern pid_t	(*rad_fork)(void);
 extern pid_t	(*rad_waitpid)(pid_t pid, int *status);
@@ -53,12 +53,12 @@ pid_t	radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			     int *input_fd, int *output_fd,
 			     VALUE_PAIR *input_pairs, bool shell_escape);
 
-int	radius_readfrom_program(int fd, pid_t pid, int timeout,
+int	radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 				char *answer, int left);
 
 int	radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
 			    REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
-			    bool exec_wait, bool shell_escape, int timeout) CC_HINT(nonnull (5, 6));
+			    bool exec_wait, bool shell_escape, fr_time_delta_t timeout) CC_HINT(nonnull (5, 6));
 
 #ifdef __cplusplus
 }

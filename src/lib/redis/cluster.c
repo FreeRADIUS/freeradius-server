@@ -1209,34 +1209,27 @@ static int _cluster_pool_walk(void *data, void *uctx)
  *	- 2-11000 the pool is likely to be good, with a higher number
  *	  indicating higher probability of liveness.
  */
-static int cluster_node_pool_health(struct timeval const *now, fr_pool_state_t const *state)
+static int cluster_node_pool_health(fr_time_t now, fr_pool_state_t const *state)
 {
-	struct timeval diff;
-	uint64_t diff_ms;
-
 	/*
 	 *	Failed spawn recently, probably bad
 	 */
-	if ((((time_t)now->tv_sec - state->last_failed) * 1000) < FAILED_PERIOD) return FAILED_WEIGHT;
+	if (fr_time_delta_to_msec(now - state->last_failed) < FAILED_PERIOD) return FAILED_WEIGHT;
 
 	/*
 	 *	Closed recently, probably bad
 	 */
-	fr_timeval_subtract(&diff, now, &state->last_closed);
-	diff_ms = FR_TIMEVAL_TO_MS(&diff);
-	if (diff_ms < CLOSED_PERIOD) return CLOSED_WEIGHT;
+	if (fr_time_delta_to_msec(now - state->last_closed) < CLOSED_PERIOD) return CLOSED_WEIGHT;
 
 	/*
 	 *	Released too long ago, don't know
 	 */
-	fr_timeval_subtract(&diff, now, &state->last_released);
-	diff_ms = FR_TIMEVAL_TO_MS(&diff);
-	if (diff_ms > RELEASED_PERIOD) return RELEASED_MIN_WEIGHT;
+	if (fr_time_delta_to_msec(now - state->last_released) > RELEASED_PERIOD) return RELEASED_MIN_WEIGHT;
 
 	/*
 	 *	Released not long ago, might be ok.
 	 */
-	return RELEASED_MIN_WEIGHT + (RELEASED_PERIOD - diff_ms);
+	return RELEASED_MIN_WEIGHT + (RELEASED_PERIOD - fr_time_delta_to_msec(now - state->last_released));
 }
 
 /** Issue a ping request against a cluster node
@@ -1324,7 +1317,7 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 	uint32_t		i;
 
 	cluster_nodes_live_t	*live;
-	struct timeval		now;
+	fr_time_t		now;
 
 	RDEBUG2("Searching for live cluster nodes");
 
@@ -1344,14 +1337,14 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 	rad_assert(live->next);			/* There should be at least one */
 	if (live->next == 1) goto no_alts;	/* Weird, but conceivable */
 
-	fr_time_to_timeval(&now, fr_time());
+	now = fr_time();
 
 	/*
 	 *	Weighted random selection
 	 */
 	for (i = 0; (i < cluster->conf->max_alt) && live->next; i++) {
 		fr_redis_conn_t 	*conn;
-		fr_redis_cluster_node_t		*node;
+		fr_redis_cluster_node_t	*node;
 		uint8_t			j;
 		int			first, last, pivot;	/* Must be signed for BS */
 		unsigned int		find, cumulative = 0;
@@ -1361,7 +1354,7 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 		for (j = 0; j < live->next; j++) {
 			int weight;
 
-			weight = cluster_node_pool_health(&now, live->node[j].pool_state);
+			weight = cluster_node_pool_health(now, live->node[j].pool_state);
 			RDEBUG3("Node %i weight: %i", live->node[j].id, weight);
 			live->node[j].cumulative = (cumulative += weight);
 		}
@@ -1466,7 +1459,7 @@ static int _cluster_conn_free(fr_redis_conn_t *conn)
  *	- New #fr_redis_conn_t on success.
  *	- NULL on failure.
  */
-void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
+void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	fr_redis_cluster_node_t		*node = instance;
 	fr_redis_conn_t		*conn = NULL;
@@ -1476,7 +1469,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 
 	DEBUG2("%s - [%i] Connecting to node %s:%i", log_prefix, node->id, node->name, node->addr.port);
 
-	handle = redisConnectWithTimeout(node->name, node->addr.port, *timeout);
+	handle = redisConnectWithTimeout(node->name, node->addr.port, fr_time_delta_to_timeval(timeout));
 	if ((handle != NULL) && handle->err) {
 		ERROR("%s - [%i] Connection failed: %s", log_prefix, node->id, handle->errstr);
 		redisFree(handle);

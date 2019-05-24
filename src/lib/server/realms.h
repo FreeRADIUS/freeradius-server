@@ -93,7 +93,7 @@ typedef struct {
 	fr_event_timer_t const	*ev;
 	struct timeval		when;
 
-	struct timeval		response_window;
+	fr_time_delta_t		response_window;
 	uint32_t		response_timeouts;
 	uint32_t		max_response_timeouts;
 	uint32_t		max_outstanding;	//!< Maximum outstanding requests.

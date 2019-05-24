@@ -106,8 +106,8 @@ typedef fr_connection_state_t (*fr_connection_failed_t)(int fd, fr_connection_st
 typedef void (*fr_connection_close_t)(int fd, void *uctx);
 
 fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					     struct timeval const *connection_timeout,
-					     struct timeval const *reconnection_delay,
+					     fr_time_delta_t connection_timeout,
+					     fr_time_delta_t reconnection_delay,
 					     fr_connection_init_t init, fr_connection_open_t open,
 					     fr_connection_close_t close,
 					     char const *log_prefix, void *uctx);

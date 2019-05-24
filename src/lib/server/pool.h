@@ -45,23 +45,23 @@ extern "C" {
 
 struct fr_pool_state_s {
 	uint32_t	pending;		//!< Number of pending open connections.
-	time_t		last_checked;		//!< Last time we pruned the connection pool.
-	time_t		last_spawned;		//!< Last time we spawned a connection.
-	time_t		last_failed;		//!< Last time we tried to spawn a connection but failed.
-	time_t		last_throttled;		//!< Last time we refused to spawn a connection because
+	fr_time_t	last_checked;		//!< Last time we pruned the connection pool.
+	fr_time_t	last_spawned;		//!< Last time we spawned a connection.
+	fr_time_t	last_failed;		//!< Last time we tried to spawn a connection but failed.
+	fr_time_t	last_throttled;		//!< Last time we refused to spawn a connection because
 						//!< the last connection failed, or we were already spawning
 						//!< a connection.
-	time_t		last_at_max;		//!< Last time we hit the maximum number of allowed
+	fr_time_t	last_at_max;		//!< Last time we hit the maximum number of allowed
 						//!< connections.
-	struct timeval	last_released;		//!< Last time a connection was released.
-	struct timeval	last_closed;		//!< Last time a connection was closed.
+	fr_time_t	last_released;		//!< Last time a connection was released.
+	fr_time_t	last_closed;		//!< Last time a connection was closed.
 
 #ifdef WITH_STATS
 	fr_stats_t	held_stats;		//!< How long connections were held for.
 #endif
 
-	time_t		last_held_min;		//!< Last time we warned about a low latency event.
-	time_t		last_held_max;		//!< Last time we warned about a high latency event.
+	fr_time_t	last_held_min;		//!< Last time we warned about a low latency event.
+	fr_time_t	last_held_max;		//!< Last time we warned about a high latency event.
 
 	uint32_t	next_delay;    	 	//!< The next delay time.  cleanup.  Initialized to
 						//!< cleanup_interval, and decays from there.
@@ -112,7 +112,7 @@ typedef void (*fr_pool_reconnect_t)(fr_pool_t *pool, void *opaque);
  *	- NULL on error.
  *	- A connection handle on success.
  */
-typedef void *(*fr_pool_connection_create_t)(TALLOC_CTX *ctx, void *opaque, struct timeval const *timeout);
+typedef void *(*fr_pool_connection_create_t)(TALLOC_CTX *ctx, void *opaque, fr_time_delta_t timeout);
 
 /** Check a connection handle is still viable
  *
@@ -149,7 +149,7 @@ fr_pool_t	*fr_pool_copy(TALLOC_CTX *ctx, fr_pool_t *pool, void *opaque);
 void	fr_pool_enable_triggers(fr_pool_t *pool,
 					   char const *trigger_prefix, VALUE_PAIR *vp);
 
-struct timeval fr_pool_timeout(fr_pool_t *pool);
+fr_time_delta_t fr_pool_timeout(fr_pool_t *pool);
 
 int fr_pool_start_num(fr_pool_t *pool);
 

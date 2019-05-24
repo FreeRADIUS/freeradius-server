@@ -147,7 +147,7 @@ typedef struct {
 	bool			tls_check_cert_cn;
 	bool			tls_extract_cert_attrs;
 
-	struct timeval		timeout_tv;	//!< Timeout timeval.
+	fr_time_delta_t		timeout;	//!< Timeout timeval.
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
 	size_t			max_body_in;	//!< Maximum size of incoming data.
 } rlm_rest_section_t;
@@ -307,7 +307,7 @@ typedef size_t (*rest_read_t)(void *ptr, size_t size, size_t nmemb,
 			      void *userdata);
 
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
 
 /*
  *	Request processing API

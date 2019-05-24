@@ -294,7 +294,7 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
  *
  * @return pointer to libwbclient context
  */
-static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED struct timeval const *timeout)
+static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_time_delta_t timeout)
 {
 	struct wbcContext **wb_ctx;
 

@@ -217,11 +217,11 @@ static int mod_load(void)
 	return 0;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, fr_time_delta_t timeout)
 {
 	rlm_sql_mysql_conn_t *conn;
 	rlm_sql_mysql_t *inst = config->driver;
-	unsigned int connect_timeout = timeout->tv_sec;
+	unsigned int connect_timeout = (unsigned int)fr_time_delta_to_sec(timeout);
 	unsigned long sql_flags;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_mysql_conn_t));

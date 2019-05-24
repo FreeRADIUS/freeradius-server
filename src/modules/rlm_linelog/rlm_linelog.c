@@ -194,7 +194,7 @@ static int _mod_conn_free(linelog_conn_t *conn)
 	return 0;
 }
 
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	linelog_instance_t const	*inst = instance;
 	linelog_conn_t			*conn;
@@ -241,7 +241,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 	}
 
 	if (errno == EINPROGRESS) {
-		if (FR_TIMEVAL_TO_MS(timeout)) {
+		if (timeout) {
 			DEBUG2("Waiting for connection to complete...");
 		} else {
 			DEBUG2("Blocking until connection complete...");
@@ -257,7 +257,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 	/*
 	 *	Set blocking operation as we have no timeout set
 	 */
-	if (!FR_TIMEVAL_TO_MS(timeout) && (fr_blocking(sockfd) < 0)) {
+	if (!timeout && (fr_blocking(sockfd) < 0)) {
 		ERROR("Failed setting nonblock flag on fd");
 		close(sockfd);
 		return NULL;

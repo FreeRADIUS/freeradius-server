@@ -191,4 +191,4 @@ fr_ldap_connection_t	*mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
 
 void		mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t *conn);
 
-void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
+void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);

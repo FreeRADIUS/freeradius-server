@@ -93,7 +93,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("require_strong", FR_TYPE_BOOL, rlm_mschap_t, require_strong), .dflt = "no" },
 	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
 	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_auth) },
-	{ FR_CONF_OFFSET("ntlm_auth_timeout", FR_TYPE_UINT32, rlm_mschap_t, ntlm_auth_timeout) },
+	{ FR_CONF_OFFSET("ntlm_auth_timeout", FR_TYPE_TIME_DELTA, rlm_mschap_t, ntlm_auth_timeout) },
 
 	{ FR_CONF_POINTER("passchange", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
 	{ FR_CONF_OFFSET("allow_retry", FR_TYPE_BOOL, rlm_mschap_t, allow_retry), .dflt = "yes" },
@@ -638,7 +638,7 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
 /*
  *	Create connection pool winbind context
  */
-static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED struct timeval const *timeout)
+static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_time_delta_t timeout)
 {
 	struct wbcContext **wb_ctx;
 
@@ -850,7 +850,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		/*
 		 *  Read from the child
 		 */
-		len = radius_readfrom_program(from_child, pid, 10, buf, sizeof(buf));
+		len = radius_readfrom_program(from_child, pid, fr_time_delta_from_sec(10), buf, sizeof(buf));
 		if (len < 0) {
 			/* radius_readfrom_program will have closed from_child for us */
 			REDEBUG("Failure reading from child");
@@ -2191,16 +2191,16 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Check ntlm_auth_timeout is sane
 	 */
 	if (!inst->ntlm_auth_timeout) {
-		inst->ntlm_auth_timeout = EXEC_TIMEOUT;
+		inst->ntlm_auth_timeout = fr_time_delta_from_sec(EXEC_TIMEOUT);
 	}
-	if (inst->ntlm_auth_timeout < 1) {
-		cf_log_err(conf, "ntml_auth_timeout '%d' is too small (minimum: 1)",
-			      inst->ntlm_auth_timeout);
+	if (inst->ntlm_auth_timeout < fr_time_delta_from_sec(1)) {
+		cf_log_err(conf, "ntml_auth_timeout '%pVs' is too small (minimum: 1s)",
+			   fr_box_time_delta(inst->ntlm_auth_timeout));
 		return -1;
 	}
-	if (inst->ntlm_auth_timeout > 10) {
-		cf_log_err(conf, "ntlm_auth_timeout '%d' is too large (maximum: 10)",
-			      inst->ntlm_auth_timeout);
+	if (inst->ntlm_auth_timeout > fr_time_delta_from_sec(10)) {
+		cf_log_err(conf, "ntlm_auth_timeout '%pVs' is too large (maximum: 10s)",
+			   fr_box_time_delta(inst->ntlm_auth_timeout));
 		return -1;
 	}
 

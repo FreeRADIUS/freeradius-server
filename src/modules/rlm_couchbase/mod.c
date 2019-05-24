@@ -155,7 +155,7 @@ int mod_build_api_opts(CONF_SECTION *conf, void *instance)
  *	- New connection handle.
  *	- NULL on error.
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	rlm_couchbase_t const *inst = instance;           /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     	  /* connection handle pointer */
@@ -166,7 +166,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 	/* create instance */
 	cb_error = couchbase_init_connection(&cb_inst, inst->server, inst->bucket, inst->username,
-					inst->password, FR_TIMEVAL_TO_MS(timeout) * 1000, opts);
+					     inst->password, fr_time_delta_to_sec(timeout), opts);
 
 	/* check couchbase instance */
 	if (cb_error != LCB_SUCCESS) {

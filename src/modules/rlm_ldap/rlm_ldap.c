@@ -788,7 +788,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 			      &conn,
 			      dn, request->password->vp_strvalue,
 			      inst->user_sasl.mech ? &sasl : NULL,
-			      NULL,
+			      0,
 			      NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
@@ -1029,7 +1029,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 			 *	Bind as the user
 			 */
 			conn->rebound = true;
-			status = fr_ldap_bind(request, &conn, dn, vp->vp_strvalue, NULL, NULL, NULL, NULL);
+			status = fr_ldap_bind(request, &conn, dn, vp->vp_strvalue, NULL, 0, NULL, NULL);
 			switch (status) {
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;

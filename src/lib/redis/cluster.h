@@ -78,7 +78,7 @@ fr_redis_cluster_rcode_t fr_redis_cluster_remap(REQUEST *request, fr_redis_clust
 /*
  *	Callback for the connection pool to create a new connection
  */
-void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
+void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_t timeout);
 
 /*
  *	Functions to resolve a key to a cluster node

@@ -73,7 +73,7 @@ typedef struct {
 	uint32_t		wait_num;	//!< How many slaves we want to acknowledge allocations
 						//!< or updates.
 
-	struct timeval		wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
+	fr_time_delta_t		wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
 
 	vp_tmpl_t		*device_id;	//!< Unique device identifier.  Could be mac-address
 						//!< or a combination of User-Name and something
@@ -115,7 +115,7 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("lease_time", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, lease_time) },
 
 	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, rlm_redis_ippool_t, wait_num) },
-	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIMEVAL, rlm_redis_ippool_t, wait_timeout) },
+	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIME_DELTA, rlm_redis_ippool_t, wait_timeout) },
 
 	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, requested_address), .dflt = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_DEPRECATED("ip_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
@@ -467,7 +467,7 @@ static void ippool_action_print(REQUEST *request, ippool_action_t action,
  */
 static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_redis_cluster_t *cluster,
 				      uint8_t const *key, size_t key_len,
-				      uint32_t wait_num, uint32_t wait_timeout,
+				      uint32_t wait_num, fr_time_delta_t wait_timeout,
 				      char const digest[], char const *script,
 				      char const *cmd, ...)
 {
@@ -500,7 +500,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 		va_end(copy);
 		pipelined = 1;
 		if (wait_num) {
-			redisAppendCommand(conn->handle, "WAIT %i %i", wait_num, wait_timeout);
+			redisAppendCommand(conn->handle, "WAIT %i %i", wait_num, fr_time_delta_to_msec(wait_timeout));
 			pipelined++;
 		}
 		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
@@ -626,7 +626,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 
 	status = ippool_script(&reply, request, inst->cluster,
 			       key_prefix, key_prefix_len,
-			       inst->wait_num, FR_TIMEVAL_TO_MS(&inst->wait_timeout),
+			       inst->wait_num, inst->wait_timeout,
 			       lua_alloc_digest, lua_alloc_cmd,
 	 		       "EVALSHA %s 1 %b %u %u %b %b",
 	 		       lua_alloc_digest,
@@ -837,7 +837,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
 		status = ippool_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
-				       inst->wait_num, FR_TIMEVAL_TO_MS(&inst->wait_timeout),
+				       inst->wait_num, inst->wait_timeout,
 				       lua_update_digest, lua_update_cmd,
 				       "EVALSHA %s 1 %b %u %u %u %b %b",
 				       lua_update_digest,
@@ -852,7 +852,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
 		status = ippool_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
-				       inst->wait_num, FR_TIMEVAL_TO_MS(&inst->wait_timeout),
+				       inst->wait_num, inst->wait_timeout,
 				       lua_update_digest, lua_update_cmd,
 				       "EVALSHA %s 1 %b %u %u %s %b %b",
 				       lua_update_digest,
@@ -975,7 +975,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
 		status = ippool_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
-				       inst->wait_num, FR_TIMEVAL_TO_MS(&inst->wait_timeout),
+				       inst->wait_num, inst->wait_timeout,
 				       lua_release_digest, lua_release_cmd,
 				       "EVALSHA %s 1 %b %u %u %b",
 				       lua_release_digest,
@@ -989,7 +989,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
 		status = ippool_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
-				       inst->wait_num, FR_TIMEVAL_TO_MS(&inst->wait_timeout),
+				       inst->wait_num, inst->wait_timeout,
 				       lua_release_digest, lua_release_cmd,
 				       "EVALSHA %s 1 %b %u %s %b",
 				       lua_release_digest,

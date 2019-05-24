@@ -2634,7 +2634,6 @@ static void conn_alloc(rlm_radius_udp_t *inst, fr_io_connection_thread_t *t)
 {
 	fr_io_connection_t	*c;
 	rlm_radius_udp_connection_t *radius;
-	struct timeval connection_timeout, reconnection_delay;
 
 	c = talloc_zero(t, fr_io_connection_t);
 	c->module_name = inst->parent->name;
@@ -2679,10 +2678,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, fr_io_connection_thread_t *t)
 	}
 	fr_dlist_init(&c->sent, fr_io_request_t, entry);
 
-	fr_timeval_from_nsec(&connection_timeout, t->connection_timeout);
-	fr_timeval_from_nsec(&reconnection_delay, t->reconnection_delay);
-
-	c->conn = fr_connection_alloc(c, t->el, &connection_timeout, &reconnection_delay,
+	c->conn = fr_connection_alloc(c, t->el, t->connection_timeout, t->reconnection_delay,
 				      _conn_init,
 				      _conn_open,
 				      _conn_close,

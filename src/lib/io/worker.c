@@ -115,7 +115,7 @@ struct fr_worker_t {
 	int                     message_set_size; //!< default start number of messages
 	int                     ring_buffer_size; //!< default start size for the ring buffers
 
-	int			max_request_time; //!< maximum time a request can be processed
+	fr_time_delta_t		max_request_time; //!< maximum time a request can be processed
 
 	size_t			talloc_pool_size; //!< for each REQUEST
 
@@ -643,7 +643,6 @@ static void worker_reset_timer(fr_worker_t *worker)
 	rad_assert(worker->num_active > 0);
 
 	cleanup = worker->max_request_time;
-	cleanup *= NSEC;
 	cleanup += request->async->recv_time;
 
 	/*
@@ -657,7 +656,8 @@ static void worker_reset_timer(fr_worker_t *worker)
 
 	worker->next_cleanup = cleanup;
 
-	DEBUG2("Resetting worker %i cleanup timer to +%ds", worker->max_request_time, fr_schedule_worker_id());
+	DEBUG2("Resetting worker %pV cleanup timer to +%ds",
+	       fr_box_time_delta(worker->max_request_time), fr_schedule_worker_id());
 	if (fr_event_timer_at(worker, worker->el, &worker->ev_cleanup,
 			      cleanup, fr_worker_max_request_time, worker) < 0) {
 		ERROR("Failed inserting max_request_time timer.");
@@ -677,8 +677,8 @@ static void worker_reset_timer(fr_worker_t *worker)
  */
 static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 {
-	fr_channel_data_t *cd;
-	fr_time_t waiting;
+	fr_channel_data_t	*cd;
+	fr_time_t		waiting;
 
 	/*
 	 *	Check the "localized" queue for old packets.
@@ -689,7 +689,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	while ((cd = fr_dlist_tail(&worker->localized.list)) != NULL) {
 		waiting = now - cd->m.when;
 
-		if (waiting < ((worker->max_request_time - 2) * (fr_time_t) NSEC)) break;
+		if (waiting < (worker->max_request_time - fr_time_delta_from_sec(2))) break;
 
 		/*
 		 *	Waiting too long, delete it.
@@ -1287,7 +1287,7 @@ nomem:
 	worker->talloc_pool_size = 4096; /* at least enough for a REQUEST */
 	worker->message_set_size = 1024;
 	worker->ring_buffer_size = (1 << 16);
-	worker->max_request_time = 30;
+	worker->max_request_time = fr_time_delta_from_sec(30);
 
 	if (fr_event_pre_insert(worker->el, fr_worker_pre_event, worker) < 0) {
 		fr_strerror_printf("Failed adding pre-check to event list");

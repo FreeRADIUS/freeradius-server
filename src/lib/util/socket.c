@@ -30,6 +30,7 @@
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/udpfromto.h>
+#include <freeradius-devel/util/value.h>
 
 #include <fcntl.h>
 #include <netdb.h>
@@ -607,10 +608,9 @@ int fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
  *	- -2 on timeout.
  *	- -3 on select error.
  */
-int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
+int fr_socket_wait_for_connect(int sockfd, fr_time_delta_t timeout)
 {
 	int	ret;
-	struct	timeval tv = *timeout;
 	fd_set	error_set;
 	fd_set	write_set;	/* POSIX says sockets are open when they become writable */
 
@@ -622,7 +622,7 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 
 	/* Don't let signals mess up the select */
 	do {
-		ret = select(sockfd + 1, NULL, &write_set, &error_set, &tv);
+		ret = select(sockfd + 1, NULL, &write_set, &error_set, &fr_time_delta_to_timeval(timeout));
 	} while ((ret == -1) && (errno == EINTR));
 
 	switch (ret) {
@@ -645,8 +645,7 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 
 	case 0: /* timeout */
 		if (!fr_cond_assert(timeout)) return -1;
-		fr_strerror_printf("Connection timed out after %" PRIu64"ms",
-				   (timeout->tv_sec * (uint64_t)1000) + (timeout->tv_usec / 1000));
+		fr_strerror_printf("Connection timed out after %pVs", fr_box_time_delta(timeout));
 		return -2;
 
 	case -1: /* select error */

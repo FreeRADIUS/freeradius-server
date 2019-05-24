@@ -1564,7 +1564,7 @@ ssize_t _tmpl_to_type(void *out,
 		}
 
 		if (radius_exec_program(request, (char *)buff, bufflen, NULL, request, vpt->name, NULL,
-					true, false, EXEC_TIMEOUT) != 0) return -1;
+					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) return -1;
 		value_to_cast.vb_strvalue = (char *)buff;
 		value_to_cast.datum.length = strlen((char *)buff);
 	}
@@ -1855,7 +1855,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		MEM(value.vb_strvalue = talloc_array(tmp_ctx, char, 1024));
 		if (radius_exec_program(request, (char *)value.datum.ptr, 1024, NULL, request, vpt->name, NULL,
-					true, false, EXEC_TIMEOUT) != 0) {
+					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
 		error:
 			talloc_free(tmp_ctx);
 			return slen;

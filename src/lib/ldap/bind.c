@@ -72,9 +72,11 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	fr_ldap_connection_t	*c = bind_ctx->c;
 
 	fr_ldap_rcode_t		status;
-	struct timeval		tv = { 0, 0 };	/* We're I/O driven, if there's no data someone lied to us */
 
-	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL, bind_ctx->bind_dn, &tv);
+	/*
+	 *	We're I/O driven, if there's no data someone lied to us
+	 */
+	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL, bind_ctx->bind_dn, 0);
 	talloc_free(bind_ctx);			/* Also removes fd events */
 
 	switch (status) {

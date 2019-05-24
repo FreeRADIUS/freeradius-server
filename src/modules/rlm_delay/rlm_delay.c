@@ -149,14 +149,14 @@ static void mod_delay_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST
 static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_delay_t const	*inst = instance;
-	struct timeval		delay;
+	fr_time_delta_t		delay;
 	fr_time_t		resume_at, *yielded_at;
-	struct timeval		resume_at_tv, yielded_at_tv;
 
 	if (inst->delay) {
-		if (tmpl_aexpand(request, &delay, request, inst->delay, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+		if (tmpl_aexpand_type(request, &delay, FR_TYPE_TIME_DELTA,
+				      request, inst->delay, NULL, NULL) < 0) return RLM_MODULE_FAIL;
 	} else {
-		memset(&delay, 0, sizeof(delay));
+		delay = 0;
 	}
 
 	/*
@@ -168,16 +168,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 	/*
 	 *	Setup the delay for this request
 	 */
-	if (delay_add(request, &resume_at, *yielded_at, fr_time_delta_from_timeval(&delay),
+	if (delay_add(request, &resume_at, *yielded_at, delay,
 		      inst->force_reschedule, inst->delay) != 0) {
 		return RLM_MODULE_NOOP;
 	}
 
-	fr_time_to_timeval(&resume_at_tv, resume_at);
-	fr_time_to_timeval(&yielded_at_tv, *yielded_at);
-
-	RDEBUG3("Current time %pV, resume time %pV",
-		fr_box_timeval(yielded_at_tv), fr_box_timeval(resume_at_tv));
+	/*
+	 *	FIXME - Should print wallclock time
+	 */
+	RDEBUG3("Current time %pVs, resume time %pVs",
+		fr_box_time_delta(*yielded_at), fr_box_time_delta(resume_at));
 
 	if (unlang_module_timeout_add(request, _delay_done, yielded_at, resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
@@ -188,24 +188,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 }
 
 static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       REQUEST *request,
+				REQUEST *request,
 				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       UNUSED fr_value_box_t **in, void *rctx)
 {
 	fr_time_t	*yielded_at = talloc_get_type_abort(rctx, fr_time_t);
 	fr_time_t	delayed;
-	struct timeval	delayed_tv;
 	fr_value_box_t	*vb;
 
 	delayed = fr_time() - *yielded_at;
 	talloc_free(yielded_at);
 
-	delayed_tv = fr_time_delta_to_timeval(delayed);
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+	vb->vb_time_delta = delayed;
 
-	RDEBUG3("Request delayed by %pVs", fr_box_time_delta(delayed));
-
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIMEVAL, NULL, false));
-	vb->vb_timeval = delayed_tv;
+	RDEBUG3("Request delayed by %pVs", vb);
 
 	fr_cursor_insert(out, vb);
 
@@ -230,7 +227,6 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	void			*instance;
 	struct timeval		delay_tv;
 	fr_time_t		resume_at, *yielded_at;
-	struct timeval		resume_at_tv, yielded_at_tv;
 
 	memcpy(&instance, xlat_inst, sizeof(instance));	/* Stupid const issues */
 
@@ -274,10 +270,10 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	}
 
 yield:
-	fr_time_to_timeval(&resume_at_tv, resume_at);
-	fr_time_to_timeval(&yielded_at_tv, *yielded_at);
-
-	RDEBUG3("Current time %pV, resume time %pV", fr_box_timeval(yielded_at_tv), fr_box_timeval(resume_at_tv));
+	/*
+	 *	FIXME - Should print wallclock time
+	 */
+	RDEBUG3("Current time %pVs, resume time %pVs", fr_box_time_delta(*yielded_at), fr_box_time_delta(resume_at));
 
 	if (unlang_xlat_event_timeout_add(request, _xlat_delay_done, yielded_at, resume_at) < 0) {
 		RPEDEBUG("Adding event failed");

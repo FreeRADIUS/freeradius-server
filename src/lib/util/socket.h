@@ -34,6 +34,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/time.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -46,7 +47,7 @@ int		fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr
 				     uint16_t dst_port, bool async);
 int		fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr,
 				     uint16_t dst_port, bool async);
-int		fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout);
+int		fr_socket_wait_for_connect(int sockfd, fr_time_delta_t timeout);
 
 int		fr_socket_server_udp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const *port_name, bool async);
 int		fr_socket_server_tcp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const *port_name, bool async);

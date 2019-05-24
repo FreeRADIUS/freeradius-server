@@ -544,7 +544,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 {
 	rlm_logtee_t		*inst = talloc_get_type_abort(instance, rlm_logtee_t);
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(thread, rlm_logtee_thread_t);
-	struct timeval		connection_timeout, reconnection_delay;
 
 	MEM(t->fring = fr_fring_alloc(t, inst->buffer_depth, false));
 
@@ -559,13 +558,10 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	MEM(t->type = fr_pair_afrom_da(t, attr_log_type));
 	MEM(t->lvl = fr_pair_afrom_da(t, attr_log_level));
 
-	fr_timeval_from_nsec(&connection_timeout, inst->connection_timeout);
-	fr_timeval_from_nsec(&reconnection_delay, inst->reconnection_delay);
-
 	/*
 	 *	This opens the outbound connection
 	 */
-	t->conn = fr_connection_alloc(t, el, &connection_timeout, &reconnection_delay,
+	t->conn = fr_connection_alloc(t, el, inst->connection_timeout, inst->reconnection_delay,
 				      _logtee_conn_init, _logtee_conn_open, _logtee_conn_close,
 				      inst->name, t);
 	if (t->conn == NULL) return -1;

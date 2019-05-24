@@ -387,7 +387,6 @@ typedef enum {
 		 uint16_t *: FR_TYPE_UINT16, \
 		 uint32_t *: FR_TYPE_UINT32, \
 		 uint64_t *: FR_TYPE_UINT64, \
-		 struct timeval *: FR_TYPE_TIMEVAL, \
 		 fr_value_box_t **: FR_TYPE_VALUE_BOX, \
 		 fr_value_box_t const **: FR_TYPE_VALUE_BOX)
 
@@ -410,6 +409,14 @@ typedef enum {
 #define	tmpl_aexpand(_ctx, _out, _request, _vpt, _escape, _escape_ctx) \
 	_tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, FR_TYPE_FROM_PTR(_out))
 
+/** Expand a tmpl to a C type, allocing a new buffer to hold the string
+ *
+ * Takes an explicit type which must match the ctype pointed to by out.
+ *
+ * @see _tmpl_to_atype
+ */
+#define tmpl_aexpand_type(_ctx, _out, _type, _request, _vpt, _escape, _escape_ctx) \
+			  _tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, _type)
 
 VALUE_PAIR		**radius_list(REQUEST *request, pair_list_t list);
 

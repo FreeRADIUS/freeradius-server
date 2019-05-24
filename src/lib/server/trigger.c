@@ -332,7 +332,8 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	 *	Don't fire triggers if we're just testing
 	 */
 	if (!check_config) ret = radius_exec_program(request, NULL, 0, NULL,
-						     request, value, vp, false, true, EXEC_TIMEOUT);
+						     request, value, vp, false, true,
+						     fr_time_delta_from_sec(EXEC_TIMEOUT));
 	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME);
 	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
 

@@ -68,9 +68,9 @@ struct fr_conn {
 	fr_event_timer_t const	*connection_timer;	//!< Timer to prevent connections going on indefinitely.
 	fr_event_timer_t const	*reconnection_timer;	//!< Timer to delay retries.
 
-	struct timeval		connection_timeout;	//!< How long to wait in the
+	fr_time_delta_t		connection_timeout;	//!< How long to wait in the
 							//!< #FR_CONNECTION_STATE_CONNECTING state.
-	struct timeval		reconnection_delay;	//!< How long to wait in the
+	fr_time_delta_t		reconnection_delay;	//!< How long to wait in the
 							//!< #FR_CONNECTION_STATE_FAILED state.
 
 	char const		*log_prefix;		//!< Prefix to add to log messages.
@@ -164,8 +164,7 @@ static void connection_state_failed(fr_connection_t *conn, fr_time_t now)
 	case FR_CONNECTION_STATE_CONNECTING:			/* Failed during connecting */
 		STATE_TRANSITION(FR_CONNECTION_STATE_FAILED);
 		fr_event_timer_at(conn, conn->el, &conn->reconnection_timer,
-				  now + fr_time_delta_from_timeval(&conn->reconnection_delay),
-				  _reconnect_delay_done, conn);
+				  now + conn->reconnection_delay, _reconnect_delay_done, conn);
 		break;
 
 	case FR_CONNECTION_STATE_TIMEOUT:			/* Failed during connecting */
@@ -189,7 +188,7 @@ static void _connection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, void 
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 
-	ERROR("Connection failed - timed out after %pVs", fr_box_timeval(conn->connection_timeout));
+	ERROR("Connection failed - timed out after %pVs", fr_box_time_delta(conn->connection_timeout));
 	STATE_TRANSITION(FR_CONNECTION_STATE_TIMEOUT);
 	connection_state_failed(conn, now);
 }
@@ -315,9 +314,9 @@ static void connection_state_init(fr_connection_t *conn, fr_time_t now)
 		 *	If there's a connection timeout,
 		 *	set, then add the timer.
 		 */
-		if (conn->connection_timeout.tv_sec || conn->connection_timeout.tv_usec) {
+		if (conn->connection_timeout) {
 			fr_event_timer_at(conn, conn->el, &conn->connection_timer,
-				      	  now + fr_time_delta_from_timeval(&conn->connection_timeout),
+				      	  now + conn->connection_timeout,
 				      	  _connection_timeout, conn);
 		}
 		break;
@@ -429,8 +428,8 @@ static int _connection_free(fr_connection_t *conn)
  *	- NULL on failure.
  */
 fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-				     struct timeval const *connection_timeout,
-				     struct timeval const *reconnection_delay,
+				     fr_time_delta_t connection_timeout,
+				     fr_time_delta_t reconnection_delay,
 				     fr_connection_init_t init, fr_connection_open_t open, fr_connection_close_t close,
 				     char const *log_prefix,
 				     void *uctx)
@@ -447,8 +446,8 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	conn->state = FR_CONNECTION_STATE_HALTED;
 	conn->el = el;
 	conn->fd = -1;
-	conn->reconnection_delay = *reconnection_delay;
-	conn->connection_timeout = *connection_timeout;
+	conn->reconnection_delay = reconnection_delay;
+	conn->connection_timeout = connection_timeout;
 	conn->init = init;
 	conn->open = open;
 	conn->close = close;

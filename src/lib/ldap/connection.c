@@ -131,7 +131,7 @@ static int fr_ldap_rebind(LDAP *handle, LDAP_CONST char *url,
 	}
 
 	status = fr_ldap_bind(NULL, &conn, admin_identity, admin_password,
-			      &conn->config->admin_sasl, NULL, NULL, NULL);
+			      &conn->config->admin_sasl, 0, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 
@@ -474,15 +474,11 @@ fr_ldap_connection_t *fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_l
 						     fr_ldap_config_t const *config, char *log_prefix)
 {
 	fr_ldap_connection_t	*c;
-	struct timeval connection_timeout, reconnection_delay;
-
-	fr_timeval_from_nsec(&connection_timeout, config->net_timeout);
-	fr_timeval_from_nsec(&reconnection_delay, config->reconnection_delay);
 
 	MEM(c = fr_ldap_connection_alloc(ctx));
 	c->config = config;
 	c->conn = fr_connection_alloc(c, el,
-				      &connection_timeout, &reconnection_delay,
+				      config->net_timeout, config->reconnection_delay,
 				      _ldap_connection_init,
 				      NULL,
 				      _ldap_connection_close,

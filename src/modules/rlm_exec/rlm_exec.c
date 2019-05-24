@@ -43,7 +43,7 @@ typedef struct {
 	pair_list_t	input_list;
 	pair_list_t	output_list;
 	bool		shell_escape;
-	uint32_t	timeout;
+	fr_time_delta_t	timeout;
 } rlm_exec_t;
 
 static const CONF_PARSER module_config[] = {
@@ -52,7 +52,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_STRING, rlm_exec_t, input) },
 	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_STRING, rlm_exec_t, output) },
 	{ FR_CONF_OFFSET("shell_escape", FR_TYPE_BOOL, rlm_exec_t, shell_escape), .dflt = "yes" },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_exec_t, timeout) },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_exec_t, timeout) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -233,10 +233,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Get the time to wait before killing the child
 	 */
 	if (!inst->timeout) {
-		inst->timeout = EXEC_TIMEOUT;
+		inst->timeout = fr_time_delta_from_sec(EXEC_TIMEOUT);
 	}
-	if (inst->timeout < 1) {
-		cf_log_err(conf, "Timeout '%d' is too small (minimum: 1)", inst->timeout);
+	if (inst->timeout < fr_time_delta_from_sec(1)) {
+		cf_log_err(conf, "Timeout '%pVs' is too small (minimum: 1s)", fr_box_time_delta(inst->timeout));
 		return -1;
 	}
 
@@ -244,8 +244,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Blocking a request longer than max_request_time isn't going to help anyone.
 	 */
 	if (inst->timeout > main_config->max_request_time) {
-		cf_log_err(conf, "Timeout '%d' is too large (maximum: %d)",
-			   inst->timeout, main_config->max_request_time);
+		cf_log_err(conf, "Timeout '%pVs' is too large (maximum: %pVs)",
+			   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->max_request_time));
 		return -1;
 	}
 

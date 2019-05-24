@@ -113,7 +113,7 @@ struct rad_client {
 #  endif
 #endif
 
-	struct timeval		response_window;	//!< How long the client has to respond.
+	fr_time_delta_t		response_window;	//!< How long the client has to respond.
 
 	int			proto;			//!< Protocol number.
 	fr_socket_limit_t	limit;			//!< Connections per client (TCP clients only).

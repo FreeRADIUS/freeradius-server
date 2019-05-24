@@ -33,7 +33,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t*);
 static const void *fake = "fake";
 
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
-				   UNUSED struct timeval const *timeout)
+				   UNUSED fr_time_delta_t timeout)
 {
 	memcpy(&handle->conn, &fake, sizeof(handle->conn));
 	return 0;

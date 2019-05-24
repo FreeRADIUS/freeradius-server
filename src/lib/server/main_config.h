@@ -58,7 +58,7 @@ struct main_config_s {
 	bool		spawn_workers;			//!< Should the server spawn threads.
 	char const      *pid_file;			//!< Path to write out PID file.
 
-	uint32_t	max_request_time;		//!< How long a request can be processed for before
+	fr_time_delta_t	max_request_time;		//!< How long a request can be processed for before
 							//!< timing out.
 
 	uint32_t	num_networks;			//!< number of network threads

@@ -445,7 +445,7 @@ static const CONF_PARSER client_config[] = {
 	{ FR_CONF_OFFSET("nas_type", FR_TYPE_STRING, RADCLIENT, nas_type) },
 
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, RADCLIENT, server) },
-	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIMEVAL, RADCLIENT, response_window) },
+	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIME_DELTA, RADCLIENT, response_window) },
 
 	{ FR_CONF_OFFSET("track_connections", FR_TYPE_BOOL, RADCLIENT, use_connected) },
 
@@ -860,11 +860,10 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	 *	A response_window of zero is OK, and means that it's
 	 *	ignored by the rest of the server timers.
 	 */
-	if (fr_timeval_isset(&c->response_window)) {
-		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, >=, 0, 1000);
-		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, 60, 0);
-		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=,
-				       main_config->max_request_time, 0);
+	if (c->response_window) {
+		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, >=, fr_time_delta_from_usec(1000));
+		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, <=, fr_time_delta_from_sec(60));
+		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, <=, main_config->max_request_time);
 	}
 
 #ifdef WITH_TLS

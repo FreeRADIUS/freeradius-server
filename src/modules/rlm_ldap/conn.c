@@ -109,12 +109,11 @@ void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connecti
  *
  * Create a new ldap connection and allocate memory for a new rlm_handle_t
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	fr_ldap_rcode_t		status;
 	fr_ldap_connection_t	*conn;
 	fr_ldap_config_t const	*handle_config = instance;	/* Not talloced */
-	fr_time_delta_t		delta;
 
 	conn = fr_ldap_connection_alloc(ctx);
 	if (!conn) return NULL;
@@ -124,9 +123,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 		return NULL;
 	}
 
-	delta = fr_time_delta_from_timeval(timeout);
-
-	fr_ldap_connection_timeout_set(conn, delta);
+	fr_ldap_connection_timeout_set(conn, timeout);
 	if (handle_config->start_tls) {
 		if (ldap_start_tls_s(conn->handle, NULL, NULL) != LDAP_SUCCESS) {
 			int ldap_errno;

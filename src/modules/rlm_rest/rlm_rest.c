@@ -90,7 +90,7 @@ static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), .dflt = "4.0" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_rest_section_t, timeout), .dflt = "4.0" },
 	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, rlm_rest_section_t, chunk), .dflt = "0" },
 	{ FR_CONF_OFFSET("max_body_in", FR_TYPE_SIZE, rlm_rest_section_t, max_body_in), .dflt = "16k" },
 
@@ -110,7 +110,7 @@ static const CONF_PARSER xlat_config[] = {
 	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), .dflt = "4.0" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_rest_section_t, timeout), .dflt = "4.0" },
 	{ FR_CONF_OFFSET("chunk", FR_TYPE_SIZE, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
@@ -119,7 +119,7 @@ static const CONF_PARSER xlat_config[] = {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIMEVAL, rlm_rest_t, connect_timeout) },
+	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIME_DELTA, rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy) },
 	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_VOID, rlm_rest_t, http_negotiation),
 	  .func = cf_table_parse_int, .uctx = http_negotiation_table, .dflt = "default" },

@@ -63,7 +63,7 @@ const FR_NAME_NUMBER sql_rcode_table[] = {
 	{ NULL, 0 }
 };
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	int rcode;
 	rlm_sql_t *inst = instance;
