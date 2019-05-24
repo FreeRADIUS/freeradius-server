@@ -211,7 +211,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 #else
-	inst->conn = mod_conn_create(inst, inst, NULL);
+	inst->conn = mod_conn_create(inst, inst, 0);
 	if (!inst->conn) return -1;
 #endif
 	return 0;
