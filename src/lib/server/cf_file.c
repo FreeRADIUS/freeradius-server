@@ -1876,6 +1876,8 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 {
 	CONF_ITEM	*ci;
 
+	if (!fp || !cs) return -1;
+
 	/*
 	 *	Print the section name1, etc.
 	 */
@@ -1914,14 +1916,10 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 	for (ci = cs->item.child; ci; ci = ci->next) {
 		switch (ci->type) {
 		case CONF_ITEM_SECTION:
-			if (!fp) continue;
-
 			cf_section_write(fp, cf_item_to_section(ci), depth + 1);
 			break;
 
 		case CONF_ITEM_PAIR:
-			if (!fp) continue;
-
 			/*
 			 *	Ignore internal things.
 			 */
