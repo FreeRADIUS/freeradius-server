@@ -1087,7 +1087,7 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 {
 	int rcode, argc = 0;
 	char *argv[2];
-	char name[256 + 5];
+	char name[FR_DICT_ATTR_MAX_NAME_LEN + 5];
 
 	/*
 	 *	Since read_token() mashes the input buffer, we have to save the tokens somewhere.
@@ -1136,7 +1136,7 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 *	@todo - nuke this extra step once we have dictionary.isc defined.
 		 */
 		memcpy(name, "DHCP-", 5);
-		strcpy(name + 5, argv[0]);
+		strlcpy(name + 5, argv[0], sizeof(name) - 5);
 
 		da = fr_dict_attr_by_name(dict_dhcpv4, name);
 		if (da) {
