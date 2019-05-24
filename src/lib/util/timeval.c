@@ -27,39 +27,6 @@
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/timeval.h>
 
-/** Convert a time specified in nanoseconds to a timeval
- *
- * @param[out] out	Where to write the result.
- * @param[in] nsec	To convert to a timeval struct.
- */
-void fr_timeval_from_nsec(struct timeval *out, int64_t nsec)
-{
-	out->tv_sec = nsec / NSEC;
-	out->tv_usec = (nsec % NSEC) / 1000;
-}
-
-/** Convert a time specified in microseconds to a timeval
- *
- * @param[out] out	Where to write the result.
- * @param[in] usec	To convert to a timeval struct.
- */
-void fr_timeval_from_usec(struct timeval *out, int64_t usec)
-{
-	out->tv_sec = usec / USEC;
-	out->tv_usec = usec % USEC;
-}
-
-/** Convert a time specified in milliseconds to a timeval
- *
- * @param[out] out	Where to write the result.
- * @param[in] ms	To convert to a timeval struct.
- */
-void fr_timeval_from_msec(struct timeval *out, int64_t ms)
-{
-	out->tv_sec = ms / 1000;
-	out->tv_usec = (ms % 1000) * 1000;
-}
-
 /** Subtract one timeval from another
  *
  * @param[out] out Where to write difference.
@@ -82,61 +49,6 @@ void fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct 
 		out->tv_usec -= USEC;
 		out->tv_sec++;
 	}
-}
-
-/** Add one timeval to another
- *
- * @param[out] out Where to write the sum of the two times.
- * @param[in] a first time to sum.
- * @param[in] b second time to sum.
- */
-void fr_timeval_add(struct timeval *out, struct timeval const *a, struct timeval const *b)
-{
-	uint64_t usec;
-
-	out->tv_sec = a->tv_sec + b->tv_sec;
-
-	usec = a->tv_usec + b->tv_usec;
-	if (usec >= USEC) {
-		out->tv_sec++;
-		usec -= USEC;
-	}
-	out->tv_usec = usec;
-}
-
-/** Divide a timeval by a divisor
- *
- * @param[out] out where to write the result of dividing in by the divisor.
- * @param[in] in Timeval to divide.
- * @param[in] divisor Integer to divide timeval by.
- */
-void fr_timeval_divide(struct timeval *out, struct timeval const *in, int divisor)
-{
-	uint64_t x;
-
-	x = (((uint64_t)in->tv_sec * USEC) + in->tv_usec) / divisor;
-
-	out->tv_sec = x / USEC;
-	out->tv_usec = x % USEC;
-}
-
-/** Compare two timevals
- *
- * @param[in] a First timeval.
- * @param[in] b Second timeval.
- * @return
- *	- +1 if a > b.
- *	- -1 if a < b.
- *	- 0 if a == b.
- */
-int fr_timeval_cmp(struct timeval const *a, struct timeval const *b)
-{
-	int ret;
-
-	ret = (a->tv_sec > b->tv_sec) - (a->tv_sec < b->tv_sec);
-	if (ret != 0) return ret;
-
-	return (a->tv_usec > b->tv_usec) - (a->tv_usec < b->tv_usec);
 }
 
 /** Create timeval from a string
@@ -191,10 +103,4 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 	}
 	*out = tv;
 	return 0;
-}
-
-bool fr_timeval_isset(struct timeval const *tv)
-{
-	if (tv->tv_sec || tv->tv_usec) return true;
-	return false;
 }
