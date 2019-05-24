@@ -41,10 +41,10 @@ USES_APPLE_DEPRECATED_API
  */
 int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
-	fr_ldap_result_t *self = uctx;
-	VALUE_PAIR *head = NULL, *vp;
-	fr_cursor_t cursor, to_append;
-	int i;
+	fr_ldap_result_t	*self = uctx;
+	VALUE_PAIR		*head = NULL, *vp;
+	fr_cursor_t		cursor, to_append;
+	int			i;
 
 	fr_cursor_init(&cursor, &head);
 
