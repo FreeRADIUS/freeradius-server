@@ -1043,6 +1043,8 @@ do { \
 				outlen = (sizeof(output) / 2) - 1;
 			}
 
+			if (outlen >= sizeof(data)) outlen = sizeof(data);
+
 			data_len = outlen;
 			for (i = 0; i < outlen; i++) {
 				if (sizeof(output) < (3*i)) break;
