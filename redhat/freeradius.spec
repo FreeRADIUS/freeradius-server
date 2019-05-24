@@ -691,6 +691,8 @@ fi
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/attr_filter
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/attr_filter/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/csv
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/csv/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/files
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/files/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/isc_dhcp
