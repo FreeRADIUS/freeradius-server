@@ -840,6 +840,7 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 		id = ntohl(id);
 
 		length = (attr[4] << 8) | attr[5];
+		if ((attr + length) > end) break;
 
 		fprintf(fp, "\t\t%08x  %04x  ", id, length);
 
