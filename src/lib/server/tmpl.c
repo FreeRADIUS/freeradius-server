@@ -1344,7 +1344,6 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 {
 	int		rcode;
 	VALUE_PAIR	*vp;
-	fr_value_box_t	data;
 	char		*p;
 
 	TMPL_VERIFY(vpt);
@@ -1368,15 +1367,14 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		fr_pair_list_free(&vp);
 		return rcode;
 	}
-	data.vb_strvalue = p;
 
 	/*
 	 *	New escapes: strings are in binary form.
 	 */
 	if (vp->vp_type == FR_TYPE_STRING) {
-		fr_pair_value_strcpy(vp, data.datum.ptr);
-	} else if (fr_pair_value_from_str(vp, data.vb_strvalue, rcode, '\0', false) < 0) {
-		fr_value_box_clear(&data);
+		fr_pair_value_strcpy(vp, p);
+	} else if (fr_pair_value_from_str(vp, p, rcode, '\0', false) < 0) {
+		talloc_free(p);
 		fr_pair_list_free(&vp);
 		return -1;
 	}
