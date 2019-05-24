@@ -165,6 +165,7 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 	char				string[1024];
 
 	hdr->length = ntohl(hdr->length);
+	if (hdr->length >= sizeof(string)) goto fail;
 
 	/*
 	 *	fr_command_run() expects a zero-terminated string...
