@@ -593,7 +593,7 @@ int main(int argc, char *argv[])
 	RADCLIENT		*client = NULL;
 	CONF_SECTION		*unlang;
 	char			*auth_type;
-	fr_dict_t		*dict;
+	fr_dict_t		*dict = NULL:
 	char const 		*receipt_file = NULL;
 
 	TALLOC_CTX		*autofree = talloc_autofree_context();
