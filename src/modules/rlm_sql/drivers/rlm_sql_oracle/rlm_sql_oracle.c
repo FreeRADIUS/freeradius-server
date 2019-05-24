@@ -56,7 +56,6 @@ typedef struct {
 	char		**row;
 	int		id;
 	int		col_count;	//!< Number of columns associated with the result set
-	struct timeval	tv;
 } rlm_sql_oracle_conn_t;
 
 #define	MAX_DATASTR_LEN	64
