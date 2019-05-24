@@ -645,7 +645,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 't':
-			if (fr_time_delta_from_str(&timeout, optarg, DATE_SECONDS) < 0) usage();
+			if (fr_time_delta_from_str(&timeout, optarg, FR_TIME_RES_SEC) < 0) usage();
 			break;
 
 		case 'v':

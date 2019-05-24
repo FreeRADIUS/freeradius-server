@@ -3806,7 +3806,7 @@ parse:
 		if (dst_enumv) {
 			if (fr_time_delta_from_str(&dst->datum.time_delta, in, dst_enumv->flags.type_size) < 0) return -1;
 		} else {
-			if (fr_time_delta_from_str(&dst->datum.time_delta, in, DATE_SECONDS) < 0) return -1;
+			if (fr_time_delta_from_str(&dst->datum.time_delta, in, FR_TIME_RES_SEC) < 0) return -1;
 		}
 		break;
 
@@ -4140,28 +4140,28 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	{
 		char *q;
 		uint64_t lhs, rhs;
-		int spec = DATE_SECONDS;
+		fr_time_res_t res = FR_TIME_RES_SEC;
 
-		if (data->enumv) spec = data->enumv->flags.type_size;
+		if (data->enumv) res = data->enumv->flags.type_size;
 
-		switch (spec) {
+		switch (res) {
 		default:
-		case DATE_SECONDS:
+		case FR_TIME_RES_SEC:
 			lhs = data->datum.time_delta / NSEC;
 			rhs = data->datum.time_delta % NSEC;
 			break;
 
-		case DATE_MILLISECONDS:
+		case FR_TIME_RES_MSEC:
 			lhs = data->datum.time_delta / 1000000;
 			rhs = data->datum.time_delta % 1000000;
 			break;
 
-		case DATE_MICROSECONDS:
+		case FR_TIME_RES_USEC:
 			lhs = data->datum.time_delta / 1000;
 			rhs = data->datum.time_delta % 1000;
 			break;
 
-		case DATE_NANOSECONDS:
+		case FR_TIME_RES_NSEC:
 			lhs = data->datum.time_delta;
 			rhs = 0;
 			break;
@@ -4646,30 +4646,30 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	case FR_TYPE_TIME_DELTA:
 	{
-		char *q;
-		uint64_t lhs, rhs;
-		int spec = DATE_SECONDS;
+		char		*q;
+		uint64_t	lhs, rhs;
+		fr_time_res_t	res = FR_TIME_RES_SEC;
 
-		if (data->enumv) spec = data->enumv->flags.type_size;
+		if (data->enumv) res = data->enumv->flags.type_size;
 
-		switch (spec) {
+		switch (res) {
 		default:
-		case DATE_SECONDS:
+		case FR_TIME_RES_SEC:
 			lhs = data->datum.time_delta / NSEC;
 			rhs = data->datum.time_delta % NSEC;
 			break;
 
-		case DATE_MILLISECONDS:
+		case FR_TIME_RES_MSEC:
 			lhs = data->datum.time_delta / 1000000;
 			rhs = data->datum.time_delta % 1000000;
 			break;
 
-		case DATE_MICROSECONDS:
+		case FR_TIME_RES_USEC:
 			lhs = data->datum.time_delta / 1000;
 			rhs = data->datum.time_delta % 1000;
 			break;
 
-		case DATE_NANOSECONDS:
+		case FR_TIME_RES_NSEC:
 			lhs = data->datum.time_delta;
 			rhs = 0;
 			break;

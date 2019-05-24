@@ -233,6 +233,199 @@ fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
 	return fr_time_delta_from_timespec(when_ts) - our_realtime;
 }
 
+/** Create fr_time_delta_t from a string
+ *
+ * @param[out] out	Where to write fr_time_delta_t
+ * @param[in] in	String to parse.
+ * @param[in] hint	scale for the parsing.  Default is "seconds"
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint)
+{
+	int	sec;
+	char	*p, *end;
+	fr_time_delta_t delta;
+
+	sec = strtoul(in, &end, 10);
+	if (in == end) {
+	failed:
+		fr_strerror_printf("Failed parsing \"%s\" as time_delta", in);
+		return -1;
+	}
+
+	/*
+	 *	Cast before multiplication to avoid integer overflow
+	 *	in 'int' seconds.
+	 */
+	delta = sec;
+	delta *= NSEC;
+
+	/*
+	 *	Allow "1ns", etc.
+	 */
+	if ((*end >= 'a') && (*end <= 'z')) {
+		p = end;
+		goto parse_precision;
+	}
+
+	/*
+	 *	Decimal number
+	 */
+	if (*end == '.') {
+		int len;
+
+		len = sec = 0;
+
+		end++;
+		p = end;
+
+		/*
+		 *	Parse the decimal portion of a number like "0.1".
+		 */
+		while ((*p >= '0') && (*p <= '9')) {
+			if (len > 9) {
+				fr_strerror_printf("Too much precision for time_delta");
+			}
+
+			sec *= 10;
+			sec += *p - '0';
+			p++;
+			len++;
+		}
+
+		/*
+		 *	We've just parsed "0.1" as "1".  We need to
+		 *	shift it left to convert it to nanoseconds.
+		 */
+		while (len < 9) {
+			sec *= 10;
+			len++;
+		}
+
+		delta += sec;
+
+	parse_precision:
+		/*
+		 *	Nothing else, it defaults to whatever scale the caller passed.
+		 */
+		if (!*p) goto do_scale;
+
+		if ((p[0] == 's') && !p[1]) goto done;
+
+		/*
+		 *	Everything else has "ms" or "us" or "ns".
+		 *
+		 *	"1.1ns" means "parse it as 1.1s, and then
+		 *	shift it right 9 orders of magnitude to
+		 *	convert it to nanoseconds.
+		 */
+		if ((p[1] == 's') && (p[2] == '\0')) {
+			if (p[0] == 'm') {
+				delta /= 1000;
+				goto done;
+			}
+
+			if (p[0] == 'u') {
+				delta /= 1000000;
+				goto done;
+			}
+
+			if (p[0] == 'n') {
+				delta /= NSEC;
+				goto done;
+			}
+
+		error:
+			fr_strerror_printf("Invalid time qualifier in \"%s\"", p);
+			return -1;
+		}
+
+		if ((p[0] == 'm') && !p[1]) {
+			delta *= 60;
+			goto done;
+		}
+
+		if ((p[0] == 'h') && !p[1]) {
+			delta *= 3600;
+			goto done;
+		}
+
+		if ((p[0] == 'd') && !p[1]) {
+			delta *= 86400;
+			goto done;
+		}
+
+		goto error;
+
+	} else if (*end == ':') {
+		/*
+		 *	00:01 is at least minutes, potentially hours
+		 */
+		int minutes = sec;
+
+		p = end + 1;
+		sec = strtoul(p, &end, 10);
+		if (p == end) goto failed;
+
+		if (*end) goto failed;
+
+		if (sec > 60) {
+			fr_strerror_printf("Too many seconds in \"%s\"", in);
+			return -1;
+		}
+
+		if (minutes > 60) {
+			fr_strerror_printf("Too many minutes in \"%s\"", in);
+			return -1;
+		}
+
+		/*
+		 *	@todo - do we want to allow decimals, as in
+		 *	"1:30.5"? Perhaps not for now.
+		 *
+		 *	@todo - support hours, maybe.  Even though
+		 *	pretty much nothing needs them right now.
+		 */
+		if (*end) goto failed;
+
+		delta = minutes * 60 + sec;
+		delta *= NSEC;
+
+	} else if (!*end) {
+	do_scale:
+		switch (hint) {
+		case FR_TIME_RES_SEC:
+			break;
+
+		case FR_TIME_RES_MSEC:
+			delta /= 1000;
+			break;
+
+		case FR_TIME_RES_USEC:
+			delta /= 1000000;
+			break;
+
+		case FR_TIME_RES_NSEC:
+			delta /= 1000000000;
+			break;
+
+		default:
+			fr_strerror_printf("Invalid hint %d for time delta", hint);
+			return -1;
+		}
+
+	} else {
+		goto failed;
+	}
+
+done:
+	*out = delta;
+
+	return 0;
+}
+
 /** Start time tracking for a request.
  *
  * @param[in] tt the time tracking structure.
@@ -412,197 +605,4 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
 		fprintf(fp, "%s.%s\t%.*s%" PRIu64 "\n",
 			prefix, names[i], tabs, tab_string, elapsed->array[i]);
 	}
-}
-
-/** Create fr_time_delta_t from a string
- *
- * @param[out] out Where to write fr_time_delta_t
- * @param[in] in String to parse.
- * @param[in] hint scale for the parsing.  Default is "seconds"
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, int hint)
-{
-	int	sec;
-	char	*p, *end;
-	fr_time_delta_t delta;
-
-	sec = strtoul(in, &end, 10);
-	if (in == end) {
-	failed:
-		fr_strerror_printf("Failed parsing \"%s\" as time_delta", in);
-		return -1;
-	}
-
-	/*
-	 *	Cast before multiplication to avoid integer overflow
-	 *	in 'int' seconds.
-	 */
-	delta = sec;
-	delta *= NSEC;
-
-	/*
-	 *	Allow "1ns", etc.
-	 */
-	if ((*end >= 'a') && (*end <= 'z')) {
-		p = end;
-		goto parse_precision;
-	}
-
-	/*
-	 *	Decimal number
-	 */
-	if (*end == '.') {
-		int len;
-
-		len = sec = 0;
-
-		end++;
-		p = end;
-
-		/*
-		 *	Parse the decimal portion of a number like "0.1".
-		 */
-		while ((*p >= '0') && (*p <= '9')) {
-			if (len > 9) {
-				fr_strerror_printf("Too much precision for time_delta");
-			}
-
-			sec *= 10;
-			sec += *p - '0';
-			p++;
-			len++;
-		}
-
-		/*
-		 *	We've just parsed "0.1" as "1".  We need to
-		 *	shift it left to convert it to nanoseconds.
-		 */
-		while (len < 9) {
-			sec *= 10;
-			len++;
-		}
-
-		delta += sec;
-
-	parse_precision:
-		/*
-		 *	Nothing else, it defaults to whatever scale the caller passed.
-		 */
-		if (!*p) goto do_scale;
-
-		if ((p[0] == 's') && !p[1]) goto done;
-
-		/*
-		 *	Everything else has "ms" or "us" or "ns".
-		 *
-		 *	"1.1ns" means "parse it as 1.1s, and then
-		 *	shift it right 9 orders of magnitude to
-		 *	convert it to nanoseconds.
-		 */
-		if ((p[1] == 's') && (p[2] == '\0')) {
-			if (p[0] == 'm') {
-				delta /= 1000;
-				goto done;
-			}
-
-			if (p[0] == 'u') {
-				delta /= 1000000;
-				goto done;
-			}
-
-			if (p[0] == 'n') {
-				delta /= NSEC;
-				goto done;
-			}
-
-		error:
-			fr_strerror_printf("Invalid time qualifier in \"%s\"", p);
-			return -1;
-		}
-
-		if ((p[0] == 'm') && !p[1]) {
-			delta *= 60;
-			goto done;
-		}
-
-		if ((p[0] == 'h') && !p[1]) {
-			delta *= 3600;
-			goto done;
-		}
-
-		if ((p[0] == 'd') && !p[1]) {
-			delta *= 86400;
-			goto done;
-		}
-
-		goto error;
-
-	} else if (*end == ':') {
-		/*
-		 *	00:01 is at least minutes, potentially hours
-		 */
-		int minutes = sec;
-
-		p = end + 1;
-		sec = strtoul(p, &end, 10);
-		if (p == end) goto failed;
-
-		if (*end) goto failed;
-
-		if (sec > 60) {
-			fr_strerror_printf("Too many seconds in \"%s\"", in);
-			return -1;
-		}
-
-		if (minutes > 60) {
-			fr_strerror_printf("Too many minutes in \"%s\"", in);
-			return -1;
-		}
-
-		/*
-		 *	@todo - do we want to allow decimals, as in
-		 *	"1:30.5"? Perhaps not for now.
-		 *
-		 *	@todo - support hours, maybe.  Even though
-		 *	pretty much nothing needs them right now.
-		 */
-		if (*end) goto failed;
-
-		delta = minutes * 60 + sec;
-		delta *= NSEC;
-
-	} else if (!*end) {
-	do_scale:
-		switch (hint) {
-		case DATE_SECONDS:
-			break;
-
-		case DATE_MILLISECONDS:
-			delta /= 1000;
-			break;
-
-		case DATE_MICROSECONDS:
-			delta /= 1000000;
-			break;
-
-		case DATE_NANOSECONDS:
-			delta /= 1000000000;
-			break;
-
-		default:
-			fr_strerror_printf("Invalid hint %d for time delta", hint);
-			return -1;
-		}
-
-	} else {
-		goto failed;
-	}
-
-
-done:
-	*out = delta;
-	return 0;
 }

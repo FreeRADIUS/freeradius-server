@@ -178,10 +178,10 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 };
 
 static FR_NAME_NUMBER const date_precision_table[] = {
-	{ "seconds",		DATE_SECONDS },
-	{ "milliseconds",	DATE_MILLISECONDS },
-	{ "microseconds",	DATE_MICROSECONDS },
-	{ "nanoseconds",	DATE_NANOSECONDS },
+	{ "seconds",		FR_TIME_RES_SEC },
+	{ "milliseconds",	FR_TIME_RES_MSEC },
+	{ "microseconds",	FR_TIME_RES_USEC },
+	{ "nanoseconds",	FR_TIME_RES_NSEC },
 
 	{ NULL,			0 }
 };
@@ -854,7 +854,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		return false;
 
 	case FR_TYPE_DATE:
-		if (flags->type_size > DATE_NANOSECONDS) {
+		if (flags->type_size > FR_TIME_RES_NSEC) {
 			fr_strerror_printf("Invalid precision '%d' for attribute of type 'date'",
 					   flags->type_size);
 			return false;

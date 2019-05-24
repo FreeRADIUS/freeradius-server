@@ -393,7 +393,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		fr_time_delta_t delta;
 		char *p;
 
-		if (fr_time_delta_from_str(&delta, cp->value, DATE_SECONDS) < 0) {
+		if (fr_time_delta_from_str(&delta, cp->value, FR_TIME_RES_SEC) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
 			rcode = -1;
 			goto error;

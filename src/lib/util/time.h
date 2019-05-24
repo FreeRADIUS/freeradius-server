@@ -53,6 +53,15 @@ typedef int64_t fr_time_t;
  */
 typedef int64_t fr_time_delta_t;
 
+/** The base resolution for print parse operations
+ */
+typedef enum {
+	FR_TIME_RES_SEC = 0,
+	FR_TIME_RES_MSEC,
+	FR_TIME_RES_USEC,
+	FR_TIME_RES_NSEC
+} fr_time_res_t;
+
 /** A structure to track the time spent processing a request.
  *
  * The same structure is used by threads to track when they are
@@ -156,6 +165,8 @@ int64_t		fr_time_to_sec(fr_time_t when);
 fr_time_t	fr_time_from_timeval(struct timeval const *when_tv) CC_HINT(nonnull);
 fr_time_t	fr_time_from_timespec(struct timespec const *when_tv) CC_HINT(nonnull);
 
+int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint) CC_HINT(nonnull);
+
 void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
@@ -164,7 +175,6 @@ void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp) CC_HINT(nonnull);
 void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end) CC_HINT(nonnull);
 void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs) CC_HINT(nonnull(1,2));
 
-int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, int hint) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
