@@ -896,6 +896,7 @@ do { \
 			talloc_free(tp_ctx);	/* Free testpoint first then the library */
 			unload_proto_library();	/* Cleanup */
 			fr_dict_free(&proto_dict);
+			if (fp != stdin) fclose(fp);
 
 			return -1;
 		}
