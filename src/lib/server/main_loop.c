@@ -176,7 +176,7 @@ void main_loop_set_sd_watchdog_interval(void)
 		 */
 		sd_watchdog_interval = ((interval_usec * 1000) / 2);
 
-		INFO("systemd watchdog interval is %pVs", fr_box_time_delta(interval));
+		INFO("systemd watchdog interval is %pVs", fr_box_time_delta(sd_watchdog_interval));
 	} else {
 		INFO("systemd watchdog is disabled");
 	}
