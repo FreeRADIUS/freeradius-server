@@ -353,13 +353,12 @@ do {\
 	}\
 } while (0)
 
-#define FR_TIME_DELTA_BOUND_CHECK(_name, _var, _op, _bound_sec, _bound_usec)\
+#define FR_TIME_DELTA_BOUND_CHECK(_name, _var, _op, _bound)\
 do {\
-	fr_time_delta_t _bound = ((fr_time_delta_t) _bound_sec) * NSEC + ((fr_time_delta_t) _bound_usec) * 1000;\
 	if (!(_var _op _bound)) { \
-		WARN("Ignoring \"" _name " = %d.%.06d\", forcing to \"" _name " = %d.%06d\"",\
-		     (int)(_var / NSEC), ((int)(_var % NSEC)) / 1000,\
-		     (int)_bound_sec, (int)_bound_usec);\
+		WARN("Ignoring \"" _name " = %pV\", forcing to \"" _name " = %pV\"",\
+		     fr_box_time_delta(_var),\
+		     fr_box_time_delta(_bound));\
 		_var = _bound;\
 	}\
 } while (0)

@@ -549,17 +549,17 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, >=, 1, 0);
-	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, <=, 30, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, <=, fr_time_delta_from_sec(30));
 
-	FR_TIME_DELTA_BOUND_CHECK("connection.reconnect_delay", inst->reconnection_delay, >=, 5, 0);
-	FR_TIME_DELTA_BOUND_CHECK("connection.reconnect_delay", inst->reconnection_delay, <=, 300, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.reconnect_delay", inst->reconnection_delay, >=, fr_time_delta_from_sec(5));
+	FR_TIME_DELTA_BOUND_CHECK("connection.reconnect_delay", inst->reconnection_delay, <=, fr_time_delta_from_sec(300));
 
-	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, >=, 5, 0);
-	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, <=, 600, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, >=, fr_time_delta_from_sec(5));
+	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, <=, fr_time_delta_from_sec(600));
 
-	FR_TIME_DELTA_BOUND_CHECK("connection.zombie_period", inst->zombie_period, >=, 1, 0);
-	FR_TIME_DELTA_BOUND_CHECK("connection.zombie_period", inst->zombie_period, <=, 120, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("connection.zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(120));
 
 	num_types = talloc_array_length(inst->types);
 	rad_assert(num_types > 0);
