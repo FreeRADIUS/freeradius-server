@@ -351,11 +351,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 
 #ifdef SO_TIMESTAMP
 		if (when && (cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == SO_TIMESTAMP)) {
-			struct timeval when_tv;
-
-			memcpy(&when_tv, CMSG_DATA(cmsg), sizeof(when_tv));
-
-			*when = fr_time_from_timeval(&when_tv);
+			*when = fr_time_from_timeval((struct timeval *)CMSG_DATA(cmsg));
 		}
 #endif
 	}
@@ -548,7 +544,7 @@ int main(int argc, char **argv)
 	uint16_t port = DEF_PORT;
 	int n, server_socket, client_socket, fl, tl, pid;
 	int if_index;
-	struct timeval when;
+	fr_time_t when;
 
 	if (argc > 1) destip = argv[1];
 	if (argc > 2) port = atoi(argv[2]);
