@@ -109,7 +109,6 @@ struct value_box {
 		 *	System specific - Used for runtime configuration only.
 		 */
 		size_t			size;			//!< System specific file/memory size.
-		struct timeval		timeval;		//!< A time value with usec precision.
 		fr_time_delta_t		time_delta;		//!< a delta time in nanoseconds
 	} datum;
 
