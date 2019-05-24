@@ -226,7 +226,7 @@ redo:
 	state->lineno++;
 	state->line = state->ptr;
 
-	if (!fgets(state->ptr, (state->buffer + state->bufsize) - state->ptr, state->fp)) {
+	if (!fgets(state->ptr, state->bufsize - (state->ptr - state->buffer), state->fp)) {
 		if (feof(state->fp)) {
 			state->eof = true;
 			return 0;
