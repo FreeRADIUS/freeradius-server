@@ -114,8 +114,6 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 	LDAPControl		*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl		*our_clientctrls[LDAP_MAX_CONTROLS];
 
-	struct timeval		tv = { 0, 0 };
-
 	int			ret;
 	struct berval		cred;
 
@@ -128,7 +126,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 	 *	Set timeout to be 0.0, which is the magic
 	 *	non-blocking value.
 	 */
-	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &tv);
+	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(0));
 
 	if (bind_ctx->password) {
 		memcpy(&cred.bv_val, &bind_ctx->password, sizeof(cred.bv_val));

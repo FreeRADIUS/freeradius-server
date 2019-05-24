@@ -151,7 +151,6 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	fr_ldap_start_tls_ctx_t	*tls_ctx = talloc_get_type_abort(uctx, fr_ldap_start_tls_ctx_t);
 	fr_ldap_connection_t	*c = tls_ctx->c;
 
-	struct timeval		tv = { 0, 0 };
 	int			ret;
 
 	LDAPControl		*our_serverctrls[LDAP_MAX_CONTROLS];
@@ -166,7 +165,7 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	 *	Set timeout to be 0.0, which is the magic
 	 *	non-blocking value.
 	 */
-	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &tv);
+	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(0));
 	ret = ldap_start_tls(c->handle, our_serverctrls, our_clientctrls, &tls_ctx->msgid);
 	/*
 	 *	If the handle was not connected, this operation

@@ -191,8 +191,6 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 
 	int				ret = 0;
 
-	struct timeval			tv = { 0, 0 };		/* We're I/O driven, if there's no data someone lied to us */
-
 	LDAPControl			*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
 
@@ -207,7 +205,7 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	 *	Set timeout to be 0.0, which is the magic
 	 *	non-blocking value.
 	 */
-	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &tv);
+	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(0));
 	ret = ldap_sasl_interactive_bind(c->handle, NULL, sasl_ctx->mechs,
 					 our_serverctrls, our_clientctrls,
 					 LDAP_SASL_AUTOMATIC,
