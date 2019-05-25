@@ -50,7 +50,7 @@ RCSID("$Id$")
 #include <net/if.h>
 
 static int retries = 3;
-fr_time_delta_t	timeout;
+static fr_time_delta_t	timeout;
 
 static int sockfd;
 #ifdef HAVE_LIBPCAP
