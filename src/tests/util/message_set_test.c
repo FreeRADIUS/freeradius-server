@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
 	if (debug_lvl) {
 		fr_time_t start_t, end_t;
 
-		start = fr_time();
+		start_t = fr_time();
 
 		/*
 		 *	Do another 10000 rounds of alloc / free.
