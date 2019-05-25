@@ -88,7 +88,7 @@ typedef struct {
 	uint16_t		server_port;		//!< Port to send requests to.
 
 	unsigned int		retries;		//!< Number of retries.
-	struct timeval		timeout;
+	fr_time_t		timeout;
 	char			*secret;		//!< Shared secret.
 } radsnmp_conf_t;
 
@@ -813,7 +813,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					return EXIT_FAILURE;
 				}
 
-				rcode = select(fd + 1, &set, NULL, NULL, &conf->timeout);
+				rcode = select(fd + 1, &set, NULL, NULL, &fr_time_delta_to_timeval(conf->timeout));
 				switch (rcode) {
 				case -1:
 					ERROR("Select failed: %s", fr_syserror(errno));
@@ -919,7 +919,7 @@ int main(int argc, char **argv)
 	conf->dict_dir = DICTDIR;
 	conf->raddb_dir = RADDBDIR;
 	conf->secret = talloc_strdup(conf, "testing123");
-	conf->timeout.tv_sec = 3;
+	conf->timeout = fr_time_delta_from_sec(3);
 	conf->retries = 5;
 
 #ifndef NDEBUG
@@ -1014,7 +1014,7 @@ int main(int argc, char **argv)
 		       break;
 
 		case 't':
-			if (fr_timeval_from_str(&conf->timeout, optarg) < 0) {
+			if (fr_time_delta_from_str(&conf->timeout, optarg, FR_TIME_RES_SEC) < 0) {
 				ERROR("Failed parsing timeout value %s", fr_strerror());
 				exit(EXIT_FAILURE);
 			}
