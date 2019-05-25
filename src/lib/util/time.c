@@ -163,20 +163,20 @@ fr_time_t fr_time(void)
 #endif
 }
 
-/** Convert a fr_time_t to a struct timeval.
+/** Convert a fr_time_t to a timeval.
  *
- * @param[out] tv the timeval to update
- * @param[in] when the fr_time_t
+ * @param[out] tv	The timeval to update
+ * @param[in] when	The fr_time_t to assign to a timeval.
  */
 void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
 {
 	*tv = fr_time_delta_to_timeval(when + our_realtime);
 }
 
-/** Convert a fr_time_t to a struct timeval.
+/** Convert a fr_time_t to a timespec.
  *
- * @param[out] ts the timeval to update
- * @param[in] when the fr_time_t
+ * @param[out] ts	he timespec to update
+ * @param[in] when	The fr_time_t to assign to a timeval.
  */
 void fr_time_to_timespec(struct timespec *ts, fr_time_t when)
 {
