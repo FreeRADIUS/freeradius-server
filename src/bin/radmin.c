@@ -414,7 +414,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 /** radmin functions, tables, and callbacks
  *
  */
-static struct timeval start_time;
+static fr_time_delta_t start_time;
 
 static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
@@ -452,14 +452,11 @@ static int cmd_terminate(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 
 static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	struct timeval now;
+	fr_time_delta_t uptime;
 
-	now = fr_time_to_timeval(fr_time());
-	fr_timeval_subtract(&now, &now, &start_time);
+	uptime = fr_time() - start_time;
 
-	fprintf(fp, "Uptime: %u.%06u seconds\n",
-		(unsigned int) now.tv_sec,
-		(unsigned int) now.tv_usec);
+	fr_fprintf(fp, "Uptime: %pVs seconds\n", fr_box_time_delta(uptime));
 
 	return 0;
 }
@@ -942,7 +939,7 @@ int fr_radmin_start(main_config_t *config, bool cli)
 	radmin_ctx = talloc_init("radmin");
 	if (!radmin_ctx) return -1;
 
-	start_time = fr_time_to_timeval(fr_time());
+	start_time = fr_time();
 
 #ifdef USE_READLINE
 	memcpy(&rl_readline_name, &config->name, sizeof(rl_readline_name)); /* const issues on OSX */

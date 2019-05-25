@@ -838,3 +838,37 @@ char *fr_asprintf(TALLOC_CTX *ctx, char const *fmt, ...)
 
 	return ret;
 }
+
+/** Special version of fprintf which implements custom format specifiers
+ *
+ * @copybrief fr_vasprintf
+ *
+ * @param[in] fp	to write the result of fmt string.
+ * @param[in] fmt	string.
+ * @param[in] ...	variadic argument list.
+ * @return
+ *   - On success, the number of bytes written is returned (zero indicates nothing was written).
+ *   - On error, -1 is returned, and errno is set appropriately
+ */
+ssize_t fr_fprintf(FILE *fp, char const *fmt, ...)
+{
+	va_list ap;
+	char *buf;
+	int ret, fd;
+
+	fd = fileno(fp);
+	if (fd < 0) {
+		fr_strerror_printf("Invalid 'fp'");
+		return -1;
+	}
+
+	va_start(ap, fmt);
+	buf = fr_vasprintf(NULL, fmt, ap);
+	va_end(ap);
+
+	ret = write(fd, buf, strlen(buf));
+
+	TALLOC_FREE(buf);
+
+	return ret;
+}
