@@ -2149,12 +2149,6 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 		return -1;
 	}
 
-
-	if (!head) {
-		fr_strerror_printf("No commands to run.");
-		return -1;
-	}
-
 	/*
 	 *	Must have something to check.
 	 */
