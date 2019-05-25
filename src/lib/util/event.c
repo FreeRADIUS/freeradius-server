@@ -1885,7 +1885,7 @@ static void print_time(void *ctx)
 {
 	struct timeval when;
 
-	fr_time_to_timeval(&when, ctx);
+	when = fr_time_to_timeval(ctx);
 
 	printf("%d.%06d\n", when->tv_sec, when->tv_usec);
 	fflush(stdout);

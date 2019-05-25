@@ -1701,7 +1701,7 @@ do { \
 
 			leases[i] = talloc_get_type_abort(leases[i], ippool_tool_lease_t);
 
-			fr_time_to_timeval(&now, fr_time());
+			now = fr_time_to_timeval(fr_time());
 			is_active = now.tv_sec <= leases[i]->next_event;
 			if (leases[i]->next_event) {
 				strftime(time_buff, sizeof(time_buff), "%b %e %Y %H:%M:%S %Z",

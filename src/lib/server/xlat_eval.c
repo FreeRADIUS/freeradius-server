@@ -251,7 +251,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	time_t		when_s;
 	fr_value_box_t	*value;
 
-	fr_time_to_timeval(&when_tv, request->packet->timestamp);
+	when_tv = fr_time_to_timeval(request->packet->timestamp);
 	when_s = when_tv.tv_sec;
 
 	switch (letter) {

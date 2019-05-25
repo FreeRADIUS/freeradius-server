@@ -163,24 +163,12 @@ fr_time_t fr_time(void)
 #endif
 }
 
-/** Convert a fr_time_t to a timeval.
+/** Nanoseconds since the Unix Epoch at the start of the Server Epoch
  *
- * @param[out] tv	The timeval to update
- * @param[in] when	The fr_time_t to assign to a timeval.
  */
-void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
+int64_t fr_time_wallclock_at_server_epoch(void)
 {
-	*tv = fr_time_delta_to_timeval(when + our_realtime);
-}
-
-/** Convert a fr_time_t to a timespec.
- *
- * @param[out] ts	he timespec to update
- * @param[in] when	The fr_time_t to assign to a timeval.
- */
-void fr_time_to_timespec(struct timespec *ts, fr_time_t when)
-{
-	*ts = fr_time_delta_to_timespec(when + our_realtime);
+	return our_realtime;
 }
 
 /** Convert an fr_time_t to number of usec since the unix epoch

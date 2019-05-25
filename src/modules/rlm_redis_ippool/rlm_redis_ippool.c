@@ -617,7 +617,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	rad_assert(key_prefix);
 	rad_assert(device_id);
 
-	fr_time_to_timeval(&now, fr_time());
+	now = fr_time_to_timeval(fr_time());
 
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers
@@ -826,7 +826,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	vp_tmpl_t		range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_value_type = FR_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
 	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
 
-	fr_time_to_timeval(&now, fr_time());
+	now = fr_time_to_timeval(fr_time());
 
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers
@@ -965,7 +965,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 	fr_redis_rcode_t	status;
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	fr_time_to_timeval(&now, fr_time());
+	now = fr_time_to_timeval(fr_time());
 
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers

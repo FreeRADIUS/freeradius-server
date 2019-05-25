@@ -194,7 +194,7 @@ static void rs_time_print(char *out, size_t len, struct timeval const *t)
 	uint32_t usec;
 
 	if (!t) {
-		fr_time_to_timeval(&now, fr_time());
+		now = fr_time_to_timeval(fr_time());
 		t = &now;
 	}
 
@@ -814,7 +814,7 @@ static void rs_stats_process(fr_event_list_t *el, fr_time_t now_t, void *ctx)
 	rs_stats_t	*stats = this->stats;
 	struct timeval	now;
 
-	fr_time_to_timeval(&now, now_t);
+	now = fr_time_to_timeval(now_t);
 
 	if (!this->done_header) {
 		if (this->head) this->head(this);
@@ -1776,7 +1776,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (conf->filter_response && RIDEBUG_ENABLED() && (conf->event_flags & RS_NORMAL)) {
 			struct timeval ts_tv;
 
-			fr_time_to_timeval(&ts_tv, original->packet->timestamp);
+			ts_tv = fr_time_to_timeval(original->packet->timestamp);
 
 			rs_time_print(timestr, sizeof(timestr), &ts_tv);
 			fr_timeval_subtract(&elapsed, &ts_tv, &start_pcap);
@@ -1905,7 +1905,7 @@ static int  _rs_event_status(UNUSED void *ctx, fr_time_t wake_t)
 {
 	struct timeval wake;
 
-	fr_time_to_timeval(&wake, wake_t);
+	wake = fr_time_to_timeval(wake_t);
 
 	if ((wake.tv_sec != 0) || (wake.tv_usec >= 100000)) {
 		DEBUG2("Waking up in %d.%01u seconds.", (int) wake.tv_sec, (unsigned int) wake.tv_usec / 100000);
@@ -2926,7 +2926,7 @@ int main(int argc, char *argv[])
 		 *  Insert our stats processor
 		 */
 		if (conf->stats.interval && conf->from_dev) {
-			fr_time_to_timeval(&now, fr_time());
+			now = fr_time_to_timeval(fr_time());
 			rs_install_stats_processor(stats, events, in, &now, false);
 		}
 	}

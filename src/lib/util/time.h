@@ -136,11 +136,31 @@ static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
 	return (delta / NSEC);
 }
 
+/** Convert a delta to a timeval
+ *
+ * @param[in] _delta	in nanoseconds.
+ */
 #define fr_time_delta_to_timeval(_delta) \
 	(struct timeval){ .tv_sec = (_delta) / NSEC, .tv_usec = ((_delta) % NSEC) / 1000 }
 
+/** Convert a delta to a timespec
+ *
+ * @param[in] _delta	in nanoseconds.
+ */
 #define fr_time_delta_to_timespec(_delta) \
 	(struct timespec){ .tv_sec = (_delta) / NSEC, .tv_nsec = ((_delta) % NSEC) }
+
+/** Convert server epoch time to unix epoch time
+ *
+ * @param[in] _when	The server epoch time to convert.
+ */
+#define fr_time_to_timeval(_when) fr_time_delta_to_timeval(fr_time_wallclock_at_server_epoch() + _when)
+
+/** Convert server epoch time to unix epoch time
+ *
+ * @param[in] _when	The server epoch time to convert.
+ */
+#define fr_time_to_timespec(_when) fr_time_delta_to_timespec(fr_time_wallclock_at_server_epoch() + _when)
 
 /** Compare two fr_time_t values
  *
@@ -156,15 +176,14 @@ static inline int fr_time_cmp(fr_time_t a, fr_time_t b)
 	return (a > b) - (a < b);
 }
 
-void		fr_time_to_timeval(struct timeval *tv, fr_time_t when) CC_HINT(nonnull);
-void		fr_time_to_timespec(struct timespec *ts, fr_time_t when) CC_HINT(nonnull);
 int64_t		fr_time_to_usec(fr_time_t when);
 int64_t		fr_time_to_msec(fr_time_t when);
 int64_t		fr_time_to_sec(fr_time_t when);
 
+int64_t		fr_time_wallclock_at_server_epoch(void);
+
 fr_time_t	fr_time_from_timeval(struct timeval const *when_tv) CC_HINT(nonnull);
 fr_time_t	fr_time_from_timespec(struct timespec const *when_tv) CC_HINT(nonnull);
-
 int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint) CC_HINT(nonnull);
 
 void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
