@@ -121,12 +121,10 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 		break;
 
 	case FR_TYPE_UINT8:
-		IN_RANGE_INTEGER_UNSIGNED(vp->vp_uint8);
 		lua_pushinteger(L, (lua_Integer)vp->vp_uint8);
 		break;
 
 	case FR_TYPE_UINT16:
-		IN_RANGE_INTEGER_UNSIGNED(vp->vp_uint16);
 		lua_pushinteger(L, (lua_Integer)vp->vp_uint16);
 		break;
 
