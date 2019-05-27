@@ -181,7 +181,7 @@ int sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 			entry->sql_state = talloc_strdup(entry, state);
 			entry->meaning = "USER DEFINED";
 			entry->rcode = rcode;
-			fr_trie_insert(states, state, len, entry);
+			(void) fr_trie_insert(states, state, len, entry);
 		} else {
 			entry->rcode = rcode;	/* Override previous sql rcode */
 		}
