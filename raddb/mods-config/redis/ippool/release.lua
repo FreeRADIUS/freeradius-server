@@ -1,49 +1,35 @@
 -- Lua script for releasing leases
 --
--- - KEYS[1] The pool name.
--- - ARGV[1] IP address to release.
--- - ARGV[2] (optional) Client identifier.
+-- - KEYS[1] pool name
+-- - ARGV[1] IP address/range to release
+-- - ARGV[2] prefix to add (0 = auto => 64 for IPv6, 32 for IPv4)
 --
--- Sets the expiry time to be NOW() - 1 to maximise time between
--- IP address allocations.
---
--- Returns @verbatim array { <rcode> } @endverbatim
--- - IPPOOL_RCODE_SUCCESS lease updated..
--- - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
--- - IPPOOL_RCODE_EXPIRED lease already expired
--- - IPPOOL_RCODE_DEVICE_MISMATCH lease was allocated to a different client..
+-- Returns @verbatim array { <rcode>[, <counter>] } @endverbatim
+-- - IPPOOL_RCODE_SUCCESS lease updated
+-- - IPPOOL_RCODE_FAIL
 
-local ret
-local found
-local time
+local range = iptool.parse(ARGV[1])
+local prefix = toprefix(ARGV[1], ARGV[2])
 
-local pool_key
+guard(range, prefix)
+
+local pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key_pool
 local address_key
-local device_key
 
--- Check that the device releasing was the one
--- the IP address is allocated to.
-address_key = "{" .. KEYS[1] .. "}:" .. ippool_key_address .. ":" .. ARGV[1]
-if ARGV[2] then
-  found = redis.call("HGET", address_key, "device")
+local time = redis.call("TIME")
 
-  if not found then
-    return { ippool_rcode_not_found }
-  else if found ~= ARGV[2] then
-    return { ippool_rcode_device_mismatch, found }
-  end
-end
+local counter = 0
+for addr in iptool.iter(range, prefix) do
+	-- we do not try to skip on broadcast/network IPv4 addresses as they are
+	-- usable in some configurations, and trivial to prune post-insertion
 
-time = redis.call("TIME")
+	address_key = "{" .. KEYS[1] .. "}:" .. ippool_key_address .. ":" .. addr
 
--- Set expiry time to now() - 1
-pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key_pool
-ret = redis.call("ZADD", pool_key, "XX", "CH", time[1] - 1, ARGV[1])
-
-if ret == 0 then
-  return { ippool_rcode_expired }
+	-- maximise time between allocations
+	redis.call("ZADD", pool_key, "XX", time[1] - 1, addr)
 end
 
 return {
-  ippool_rcode_success
+	ippool_rcode_success,
+	counter
 }

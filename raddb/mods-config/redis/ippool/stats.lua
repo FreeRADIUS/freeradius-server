@@ -1,9 +1,9 @@
 -- Get stats about leases
 --
--- - KEYS[1] The pool name.
+-- - KEYS[1] pool name
 --
 -- Returns @verbatim array { <rcode>, json{ total, free, exp1m, exp30m, exp1h, exp1d } } @endverbatim
--- - IPPOOL_RCODE_SUCCESS.
+-- - IPPOOL_RCODE_SUCCESS
 
 local pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key_pool
 
@@ -19,6 +19,6 @@ result.exp1h	= redis.call("ZCOUNT", pool_key, "-inf", time[1] + 60 * 60)		-- fre
 result.exp1d	= redis.call("ZCOUNT", pool_key, "-inf", time[1] + 60 * 60 * 24)	-- free in next  1d
 
 return {
-  ippool_rcode_success,
-  cjson.encode(result)
+	ippool_rcode_success,
+	cjson.encode(result)
 }

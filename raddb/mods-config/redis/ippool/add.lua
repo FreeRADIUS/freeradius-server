@@ -1,33 +1,42 @@
 -- Lua script for adding leases
 --
--- - KEYS[1] The pool name.
--- - ARGV[1] IP address to add.
--- - ARGV[2] (optional) Range ID
+-- - KEYS[1] pool name
+-- - ARGV[1] IP address/range to add
+-- - ARGV[2] prefix to add (0 = auto => 64 for IPv6, 32 for IPv4)
+-- - ARGV[3] (optional) range id
 --
 -- Returns @verbatim array { <rcode>[, <counter>] } @endverbatim
--- - IPPOOL_RCODE_SUCCESS lease updated..
+-- - IPPOOL_RCODE_SUCCESS lease added or updated
+-- - IPPOOL_RCODE_FAIL
 
-local ret
+local range = iptool.parse(ARGV[1])
+local prefix = toprefix(ARGV[1], ARGV[2])
 
-local pool_key
+guard(range, prefix)
+
+local pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key_pool
 local address_key
 
-pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key_pool
-ret = redis.call("ZADD", pool_key, "NX", "CH", 0, ARGV[1])
+local counter = 0
+for addr in iptool.iter(range, prefix) do
+	-- we do not try to skip on broadcast/network IPv4 addresses as they are
+	-- usable in some configurations, and trivial to prune post-insertion
 
-address_key = "{" .. KEYS[1] .. "}:" .. ippool_key_address .. ":" .. ARGV[1]
+	address_key = "{" .. KEYS[1] .. "}:" .. ippool_key_address .. ":" .. addr
 
-redis.call("HSETNX", address_key, "counter", 0)
+	counter = counter + redis.call("ZADD", pool_key, "NX", 0, addr)
 
--- Zero length ranges are allowed, and should be preserved
-if ARGV[2] then
-  redis.call("HSET", address_key, "range", ARGV[2])
-else
-  redis.call("HDEL", address_key, "range")
+	redis.call("HSETNX", address_key, "counter", 0)
+
+	-- Zero length ranges are allowed, and should be preserved
+	if ARGV[3] then
+		redis.call("HSET", address_key, "range", ARGV[3])
+	else
+		redis.call("HDEL", address_key, "range")
+	end
 end
 
 return {
-  ippool_rcode_success,
-  ret
+	ippool_rcode_success,
+	counter
 }
-
