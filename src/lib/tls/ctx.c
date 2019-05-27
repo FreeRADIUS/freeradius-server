@@ -384,7 +384,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	Do more sanity checking if we have a PSK identity.  We
 	 *	check the password, and convert it to it's final form.
 	 */
-	if (conf->psk_identity) {
+	if (conf->psk_identity && *conf->psk_identity) {
 		size_t psk_len, hex_len;
 		uint8_t buffer[PSK_MAX_PSK_LEN];
 
@@ -392,9 +392,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			SSL_CTX_set_psk_client_callback(ctx, tls_session_psk_client_cb);
 		}
 
-#ifdef __clang_analyzer__
 		if (!conf->psk_password) goto error; /* clang is too dumb to catch the above checks */
-#endif
 
 		psk_len = strlen(conf->psk_password);
 		if (strlen(conf->psk_password) > (2 * PSK_MAX_PSK_LEN)) {
