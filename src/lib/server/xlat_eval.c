@@ -507,11 +507,11 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	 *	various VP functions.
 	 */
 	} else if (vpt->tmpl_da == attr_packet_authentication_vector) {
-		value = fr_value_box_alloc_null(ctx);
+		MEM(value = fr_value_box_alloc_null(ctx));
 		fr_value_box_memcpy(ctx, value, vpt->tmpl_da, packet->vector, sizeof(packet->vector), true);
 	} else if (vpt->tmpl_da == attr_client_ip_address) {
 		if (request->client) {
-			value = fr_value_box_alloc_null(ctx);
+			MEM(value = fr_value_box_alloc_null(ctx));
 			fr_value_box_ipaddr(value, NULL, &request->client->ipaddr, false);	/* Enum might not match type */
 			goto done;
 		}
@@ -520,28 +520,28 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	src_ip_address:
 		if (packet->src_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
 
-		value = fr_value_box_alloc_null(ctx);
+		MEM(value = fr_value_box_alloc_null(ctx));
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
 	} else if (vpt->tmpl_da == attr_packet_dst_ip_address) {
 		if (packet->dst_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
 
-		value = fr_value_box_alloc_null(ctx);
+		MEM(value = fr_value_box_alloc_null(ctx));
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
 	} else if (vpt->tmpl_da == attr_packet_src_ipv6_address) {
 		if (packet->src_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
 
-		value = fr_value_box_alloc_null(ctx);
+		MEM(value = fr_value_box_alloc_null(ctx));
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
 	} else if (vpt->tmpl_da == attr_packet_dst_ipv6_address) {
 		if (packet->dst_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
 
-		value = fr_value_box_alloc_null(ctx);
+		MEM(value = fr_value_box_alloc_null(ctx));
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
 	} else if (vpt->tmpl_da == attr_packet_src_port) {
-		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true));
 		value->datum.uint16 = packet->src_port;
 	} else if (vpt->tmpl_da == attr_packet_dst_port) {
-		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true));
 		value->datum.uint16 = packet->dst_port;
 	} else {
 		RERROR("Attribute \"%s\" incorrectly marked as virtual", vpt->tmpl_da->name);
