@@ -371,7 +371,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 
 		if (!RATE_LIMIT_ENABLED || complain) {
 			ROPTIONAL(RERROR, ERROR, "Last connection attempt failed, waiting %pV seconds before retrying",
-				  fr_box_time_delta(pool->state.last_failed + pool->retry_delay) - now);
+				  fr_box_time_delta(pool->state.last_failed + pool->retry_delay - now));
 		}
 
 		return NULL;
