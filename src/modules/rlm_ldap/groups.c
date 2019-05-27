@@ -304,6 +304,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 
 	list = radius_list(request, PAIR_LIST_CONTROL);
 	list_ctx = radius_list_ctx(request, PAIR_LIST_CONTROL);
+	rad_assert(list != NULL);
+	rad_assert(list_ctx != NULL);
 
 	/*
 	 *	Simplifies freeing temporary values
