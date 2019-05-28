@@ -29,6 +29,7 @@ RCSID("$Id$")
 
 
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/radius/list.h>
 #include <freeradius-devel/radius/radius.h>
 #include <ctype.h>
@@ -49,7 +50,8 @@ typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
 #define pair_update_request(_attr, _da) fr_pair_update_by_da(request->packet, _attr, &request->packet->vps, _da)
 
 static int retries = 3;
-static float timeout = 5;
+static fr_time_delta_t timeout = (5 * USEC);
+static fr_time_delta_t sleep_time = -1;
 static char *secret = NULL;
 static bool do_output = true;
 
@@ -72,8 +74,6 @@ static int ipproto = IPPROTO_UDP;
 
 static rbtree_t *filename_tree = NULL;
 static fr_packet_list_t *packet_list = NULL;
-
-static int sleep_time = -1;
 
 static rc_request_t *request_head = NULL;
 static rc_request_t *rc_request_tail = NULL;
@@ -848,7 +848,7 @@ static int send_one_packet(rc_request_t *request)
 	 *	Remember when we have to wake up, to re-send the
 	 *	request, of we didn't receive a reply.
 	 */
-	if ((sleep_time == -1) || (sleep_time > (int) timeout)) sleep_time = (int) timeout;
+	if ((sleep_time == -1) || (sleep_time > timeout)) sleep_time = timeout;
 
 	/*
 	 *	Haven't sent the packet yet.  Initialize it.
@@ -935,7 +935,7 @@ static int send_one_packet(rc_request_t *request)
 		request->resend++;
 
 	} else {		/* request->packet->id >= 0 */
-		time_t now = time(NULL);
+		fr_time_delta_t now = fr_time();
 
 		/*
 		 *	FIXME: Accounting packets are never retried!
@@ -1013,10 +1013,10 @@ static int send_one_packet(rc_request_t *request)
 /*
  *	Receive one packet, maybe.
  */
-static int recv_one_packet(int wait_time)
+static int recv_one_packet(fr_time_t wait_time)
 {
 	fd_set		set;
-	struct timeval	tv;
+	fr_time_delta_t our_wait_time;
 	rc_request_t	*request;
 	RADIUS_PACKET	*reply, **packet_p;
 	volatile int	max_fd;
@@ -1027,13 +1027,12 @@ static int recv_one_packet(int wait_time)
 	max_fd = fr_packet_list_fd_set(packet_list, &set);
 	if (max_fd < 0) exit(1); /* no sockets to listen on! */
 
-	tv.tv_sec = (wait_time <= 0) ? 0 : wait_time;
-	tv.tv_usec = 0;
+	our_wait_time = (wait_time <= 0) ? 0 : wait_time;
 
 	/*
 	 *	No packet was received.
 	 */
-	if (select(max_fd, &set, NULL, NULL, &tv) <= 0) return 0;
+	if (select(max_fd, &set, NULL, NULL, &fr_time_delta_to_timeval(our_wait_time)) <= 0) return 0;
 
 	/*
 	 *	Look for the packet.
@@ -1337,9 +1336,10 @@ int main(int argc, char **argv)
 		       break;
 
 		case 't':
-			if (!isdigit((int) *optarg))
-				usage();
-			timeout = atof(optarg);
+			if (fr_time_delta_from_str(&timeout, optarg, FR_TIME_RES_SEC) < 0) {
+				ERROR("Failed parsing timeout value %s", fr_strerror());
+				exit(EXIT_FAILURE);
+			}
 			break;
 
 		case 'v':
@@ -1585,20 +1585,15 @@ int main(int argc, char **argv)
 				 *	the next packet, if told to.
 				 */
 				if (persec) {
-					struct timeval tv;
+					fr_time_delta_t psec;
+
+					psec = (persec == 1) ? fr_time_delta_from_sec(1) : (1000000 / persec);
 
 					/*
 					 *	Don't sleep elsewhere.
 					 */
 					sleep_time = 0;
 
-					if (persec == 1) {
-						tv.tv_sec = 1;
-						tv.tv_usec = 0;
-					} else {
-						tv.tv_sec = 0;
-						tv.tv_usec = 1000000/persec;
-					}
 
 					/*
 					 *	Sleep for milliseconds,
@@ -1608,7 +1603,7 @@ int main(int argc, char **argv)
 					 *	a signal, treat it like
 					 *	a normal timeout.
 					 */
-					select(0, NULL, NULL, NULL, &tv);
+					select(0, NULL, NULL, NULL, &fr_time_delta_to_timeval(psec));
 				}
 
 				/*
