@@ -323,6 +323,8 @@ int main(int argc, char *argv[])
 
 	if (debug_lvl) fr_message_set_debug(ms, stdout);
 
+#if 0
+
 	/*
 	 *	Double the number of the allocations again,
 	 *	leaving the allocation size alone.
@@ -362,6 +364,7 @@ int main(int argc, char *argv[])
 	MPRINT1("TEST 6 used %d\n", fr_message_set_messages_used(ms));
 
 	if (debug_lvl) fr_message_set_debug(ms, stdout);
+#endif
 
 	my_alloc_size = end - start;
 	free_blocks(ms, &seed, &start, &end);
