@@ -1,0 +1,34 @@
+= The &Attribute-Name Operator
+
+.Syntax
+[source,unlang]
+----
+&Attribute-Name
+----
+
+The `&Attribute-Name` operator returns a reference to the named attribute.
+
+When used as an existence check, the condition evaluates to `true` if
+the attribute exists.  Otherwise, the condition evaluates to `false`.
+
+Older versions of the server did not use the `&` character.  Version 3
+does not require it, but a warning will be printed in debugging mode if the
+`&` is omitted.
+
+The `&` character was added in version 3 in order to disambiguate the
+grammar of `unlang`.  Previously, older versions of the server could
+interpret a string such as `hello-there` either as a literal string
+"hello-there", or as a reference to an attribute named
+`hello-there`.  This ambiguity caused problems.
+
+Adding the leading `&` character means that attribute references are
+now easily distinguishable from literal strings.
+
+*Examples:*
+
+`&User-Name` +
+`&NAS-IP-Address`
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
+include::../img/footer.adoc[]

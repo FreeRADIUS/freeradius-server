@@ -1,0 +1,36 @@
+= The redundant-load-balance Statement
+
+[source,unlang]
+----
+redundant-load-balance {
+    [ statements ]
+}
+----
+
+The `redundant-load-balance` section operates as a combination of the
+link:redundant.adoc[redundant] and link:load-balance[load-balance]
+sections. When the section is entered, one module is chosen at random
+to process the request. If that module succeeds, then the server stops
+processing the section. If, however, the module fails, then the next
+module in the list is chosen (wrapping around to the top).  This
+process continues until either one module succeeds or all of the
+modules have failed.
+
+All of the modules in the list should be the same type (e.g., `ldap`
+or `sql`). All of the modules in the list should behave identically,
+otherwise different requests will be processed through different modules
+and will give different results.
+
+.Example
+[source,unlang]
+----
+redundant-load-balance {
+    sql1
+    sql2
+    sql3
+}
+----
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
+include::../img/footer.adoc[]

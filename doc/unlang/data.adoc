@@ -1,0 +1,8 @@
+= Data Types
+
+Unlang supports a number of data types. These data types can be used
+in conditional expressions or when assigning a value to an attribute.
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
+include::../img/footer.adoc[]

@@ -1,0 +1,43 @@
+= The update Statement
+
+.Syntax
+[source,unlang]
+----
+update [ <list> ] {
+        [ attributes ]
+}
+----
+
+The `update` statement adds attributes to or edits the attributes in
+the named _<list>_. The _<list>_ should be one of `request`, `reply`,
+`proxy-request`, `proxy-reply`, `coa`, `disconnect`, or `control`.  If
+_<list>_ is omitted, then each attribute in the `update` section
+*must* be prefixed with a list name.  For example, `request:User-Name
+...`
+
+For EAP methods with tunnelled authentication sessions (i.e., PEAP and
+EAP-TTLS), the inner tunnel session can refer to a list for the outer
+session by prefixing the list name with `outer.` For example,
+`outer.request`.
+
+The `update` statement can only be used with the `coa` and
+`disconnect` lists when the server receives an Access-Request or
+Accounting-Request. Updating the `coa` or `disconnect` list will cause
+the server to send a CoA-Request or a Disconnect-Request packet to the
+NAS.
+
+When the server receives a CoA-Request or a Disconnect-Request packet,
+the update sections should reference the request and reply lists, as the
+server has received a request and will be sending a reply.
+
+.Example
+[source,unlang]
+----
+update reply {
+   Reply-Message := "Hello!"
+}
+----
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
+include::../img/footer.adoc[]

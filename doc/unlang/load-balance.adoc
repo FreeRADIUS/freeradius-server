@@ -1,0 +1,30 @@
+= The load-balance Statement
+
+[source,unlang]
+----
+load-balance {
+    [ module-1 ]
+    [ module-2 ]
+}
+----
+
+The `load-balance` section is similar to the `redundant` section
+except that only one module in the subsection is ever called. The
+module is chosen randomly, in a "load balanced" manner.
+
+In general, the link:redundant-load-balance.adoc[redundant-load-balance]
+statement is more useful than this one.
+
+*Examples:*
+
+[source,unlang]
+----
+load-balance {
+    sql1
+    sql2
+}
+----
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
+include::../img/footer.adoc[]
