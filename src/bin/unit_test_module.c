@@ -739,7 +739,14 @@ int main(int argc, char *argv[])
 		goto cleanup;
 	}
 
-	dl_module_loader_init(autofree, config->lib_dir);
+	/*
+	 *	Initialize the DL infrastructure, which is used by the
+	 *	config file parser.
+	 */
+	if (!dl_module_loader_init(autofree, config->lib_dir)) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
 
 	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
 		fr_perror("%s", config->name);
