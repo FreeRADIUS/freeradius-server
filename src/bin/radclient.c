@@ -50,7 +50,7 @@ typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
 #define pair_update_request(_attr, _da) fr_pair_update_by_da(request->packet, _attr, &request->packet->vps, _da)
 
 static int retries = 3;
-static fr_time_delta_t timeout = (5 * USEC);
+static fr_time_delta_t timeout = 5 * NSEC;
 static fr_time_delta_t sleep_time = -1;
 static char *secret = NULL;
 static bool do_output = true;
