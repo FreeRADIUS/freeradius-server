@@ -193,6 +193,8 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		return CACHE_ERROR;
 	}
 	c->key = talloc_memdup(c, key, key_len);
+	c->key_len = key_len;
+
 	*out = c;
 
 	return CACHE_OK;
