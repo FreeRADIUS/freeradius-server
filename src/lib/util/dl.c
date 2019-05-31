@@ -575,6 +575,18 @@ char const *dl_search_path(dl_loader_t *dl_loader)
 	return search_path;
 }
 
+/** Set the current library path
+ *
+ */
+int dl_search_path_set(dl_loader_t *dl_loader, char const *lib_dir)
+{
+	if (dl_loader->lib_dir) return -1;
+
+	dl_loader->lib_dir = lib_dir;
+
+	return 0;
+}
+
 /** Retrieve the uctx from a dl_loader
  *
  */

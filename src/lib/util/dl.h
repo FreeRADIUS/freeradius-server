@@ -108,6 +108,8 @@ dl_t			*dl_by_name(dl_loader_t *dl_loader, char const *name,
 
 char const		*dl_search_path(dl_loader_t *dl_loader);
 
+int			dl_search_path_set(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);
+
 void			*dl_loader_uctx(dl_loader_t *dl_loader);
 
 dl_loader_t		*dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir,
