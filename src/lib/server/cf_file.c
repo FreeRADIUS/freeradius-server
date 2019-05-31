@@ -124,8 +124,8 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 			end = strchr(ptr, '}');
 			if (end == NULL) {
 				*p = '\0';
-				INFO("%s[%d]: Variable expansion missing }",
-				     cf, *lineno);
+				INFO("%s[%d]: Variable expansion '%s' missing '}'",
+				     cf, *lineno, input);
 				return NULL;
 			}
 
