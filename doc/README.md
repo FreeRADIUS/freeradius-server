@@ -1,18 +1,30 @@
 # FreeRADIUS Documentation
 
-This directory contains documentation for FreeRADIUS.  It is organized as follows:
+This directory contains documentation for FreeRADIUS.  The
+documentation is available under the Creative Commons Non-Commercial
+license, as given in the `LICENSE` file in this directory.
 
-* `doc/introduction` - Introduction to FreeRADIUS and RADIUS
+[Introduction](introduction/) - Introduction to FreeRADIUS and RADIUS
+in general.
 
-* `doc/upgrade/` - documentation on upgrading from Version 3 to Version 4.
+[Upgrading](upgrade/) - How to upgrade from version 3 to version 4.
 
-* `doc/raddb/` - documentation for the files in the `raddb` directory, including configuration files that have been converted to Asciidoc
+[How-To](howto/) - How-To guides for performing common tasks.
 
-* `doc/source` - API / developer documentation.  Most people can ignore this.
+[Unlang Reference](unlang/) - reference documentation for unlang.
+
+[Configuration Files](raddb/) - Documentation for the files in the
+`raddb` directory.  This documentation includes configuration files
+which have been converted to Asciidoc
+
+[Developer Documentation](source/) - API / developer documentation.  Most people can ignore this.
 
 ## Installation
 
 Please see the `INSTALL.md` file, in the parent directory.
+
+Pre-build packages for common Linux systems are available at
+http://packages.networkradius.com/
 
 ## Configuration Files
 
@@ -35,12 +47,6 @@ detailed and clear description of the problem, together with
 full debug output from FreeRADIUS, obtained by running
 
     # radiusd -X
-
-Developers only discussion is to be had on the developers list:
-
-http://lists.freeradius.org/mailman/listinfo/freeradius-devel
-
-Please do not raise general configuration issues there.
 
 ## Where to get it
 
