@@ -72,6 +72,7 @@ static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 
 static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int lib_dir_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -105,10 +106,21 @@ static const CONF_PARSER initial_log_subsection_config[] = {
 static const CONF_PARSER initial_logging_config[] = {
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) initial_log_subsection_config },
 
+	CONF_PARSER_TERMINATOR
+};
+
+/*
+ *	Basic configuration for the server.
+ */
+static const CONF_PARSER lib_dir_on_read_config[] = {
 	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, main_config_t, prefix), .dflt = "/usr/local" },
 
 	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, main_config_t, log_dates_utc) },
 	{ FR_CONF_OFFSET_IS_SET("timestamp", FR_TYPE_BOOL, main_config_t, log_timestamp) },
+
+	{ FR_CONF_OFFSET("libdir", FR_TYPE_STRING | FR_TYPE_ON_READ, main_config_t, lib_dir), .dflt = "${prefix}/lib",
+	  .func = lib_dir_parse },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -164,7 +176,6 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_OFFSET("sbin_dir", FR_TYPE_STRING, main_config_t, sbin_dir), .dflt = "${prefix}/sbin"},
 	{ FR_CONF_OFFSET("logdir", FR_TYPE_STRING, main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
 	{ FR_CONF_OFFSET("run_dir", FR_TYPE_STRING, main_config_t, run_dir), .dflt = "${local_state_dir}/run/${name}"},
-	{ FR_CONF_OFFSET("libdir", FR_TYPE_STRING, main_config_t, lib_dir), .dflt = "${prefix}/lib"},
 	{ FR_CONF_OFFSET("radacctdir", FR_TYPE_STRING, main_config_t, radacct_dir), .dflt = "${logdir}/radacct" },
 	{ FR_CONF_OFFSET("panic_action", FR_TYPE_STRING, main_config_t, panic_action) },
 	{ FR_CONF_OFFSET("reverse_lookups", FR_TYPE_BOOL, main_config_t, reverse_lookups), .dflt = "no", .func = reverse_lookups_parse },
@@ -366,6 +377,35 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <, 64);
 
 	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int lib_dir_parse(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	CONF_PAIR	*cp = cf_item_to_pair(ci);
+	char const	*value;
+
+	rad_assert(main_config != NULL);
+	value = cf_pair_value(cp);
+	if (value) {
+		main_config_t *config;
+
+		memcpy(&config, &main_config, sizeof(config)); /* const issues */
+
+		config->lib_dir = value;
+	}
+
+	/*
+	 *	Initialize the DL infrastructure, which is used by the
+	 *	config file parser.
+	 */
+	if (!dl_module_loader_init(ctx, main_config->lib_dir)) {
+		cf_log_err(ci, "Failed initializing 'lib_dir': %s",
+			   fr_strerror());
+		return -1;
+	}
 
 	return 0;
 }
@@ -958,6 +998,7 @@ do {\
 	 *	And then all of the modules have to be updated to use
 	 *	their local dict pointer, instead of NULL.
 	 */
+	if (cf_section_rules_push(cs, lib_dir_on_read_config) < 0) goto failure;
 	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) goto failure;
 
 	/* Read the configuration file */
