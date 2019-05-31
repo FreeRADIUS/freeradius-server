@@ -451,6 +451,16 @@ int main(int argc, char *argv[])
 	 */
 	if (config->daemonize) config->write_pid = true;
 
+        /*
+	 *      Initialize the DL infrastructure, which is used by the
+	 *      config file parser.  Note that we pass an empty path
+	 *      here, as we haven't yet read the configuration file.
+	 */
+	if (!dl_module_loader_init(global_ctx, NULL)) {
+		fr_perror("%s", program);
+		EXIT_WITH_FAILURE;
+	}
+
 	/*
 	 *	Initialise the top level dictionary hashes which hold
 	 *	the protocols.

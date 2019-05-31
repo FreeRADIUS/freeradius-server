@@ -584,7 +584,16 @@ dl_loader_t *dl_loader_from_module_loader(dl_module_loader_t *dl_module_l)
  */
 dl_module_loader_t *dl_module_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 {
-	if (dl_module_loader) return 0;
+	if (dl_module_loader) {		
+		/*
+		 *	Allow it to update the search path.
+		 */
+		if (dl_search_path_set(dl_module_loader->dl_loader, lib_dir) < 0) {
+			return NULL;
+		}
+
+		return dl_module_loader;
+	}
 
 	dl_module_loader = talloc_zero(ctx, dl_module_loader_t);
 	if (!dl_module_loader) {

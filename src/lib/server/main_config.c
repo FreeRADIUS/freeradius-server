@@ -381,7 +381,7 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	return 0;
 }
 
-static int lib_dir_parse(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+static int lib_dir_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
 			 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	CONF_PAIR	*cp = cf_item_to_pair(ci);
@@ -399,9 +399,9 @@ static int lib_dir_parse(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
 
 	/*
 	 *	Initialize the DL infrastructure, which is used by the
-	 *	config file parser.
+	 *	config file parser.  And also add in the search path.
 	 */
-	if (!dl_module_loader_init(ctx, main_config->lib_dir)) {
+	if (!dl_module_loader_init(NULL, main_config->lib_dir)) {
 		cf_log_err(ci, "Failed initializing 'lib_dir': %s",
 			   fr_strerror());
 		return -1;
