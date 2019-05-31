@@ -39,8 +39,9 @@ clean: clean.doc
 CONF_FILES := $(filter-out %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
 ADOC_FILES := $(patsubst raddb/%,doc/raddb/%.adoc,$(CONF_FILES))
 ADOC_FILES += $(patsubst raddb/%.md,doc/raddb/%.adoc,$(shell find raddb -name "*\.md" -print))
-PDF_FILES := $(patsubst doc/raddb/%.adoc,doc/raddb/%.pdf,$(ADOC_FILES))
-HTML_FILES := $(patsubst doc/raddb/%.adoc,doc/raddb/%.html,$(ADOC_FILES))
+ADOC_FILES += $(wildcard doc/unlang/*.adoc)
+PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
+HTML_FILES := $(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES))
 
 #
 #  Older documentastion, likely needs updating.
@@ -93,6 +94,7 @@ doc/raddb/%.adoc: raddb/%
 doc/%.html: doc/%.adoc
 	@echo HTML $^
 	@$(ASCIIDOCTOR) $< -b html5 -o $@ $<
+	@perl -p -i -e 's/\.adoc/\.html/' $@
 
 doc/%.pdf: doc/%.adoc
 	@echo PDF $^
