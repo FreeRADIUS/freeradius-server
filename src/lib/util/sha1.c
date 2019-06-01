@@ -4,7 +4,7 @@
  *
  * @file src/lib/util/sha1.c
  *
- * @author Steve Reid <steve@edmweb.com>
+ * @author Steve Reid (steve@edmweb.com)
  */
 RCSID("$Id$")
 

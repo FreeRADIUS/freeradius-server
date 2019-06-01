@@ -8,8 +8,8 @@
  *	in stupid ways, where the configure script will use the local ldap.h
  *	file, instead of the one from libldap.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2013 Network RADIUS SARL<info@networkradius.com>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */

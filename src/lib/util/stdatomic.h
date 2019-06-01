@@ -18,7 +18,7 @@
  */
 
 /*-
- * @copyright (c) 2011 Ed Schouten <ed@FreeBSD.org>
+ * @copyright (c) 2011 Ed Schouten (ed@FreeBSD.org)
  *                    David Chisnall <theraven@FreeBSD.org>
  * All rights reserved.
  *

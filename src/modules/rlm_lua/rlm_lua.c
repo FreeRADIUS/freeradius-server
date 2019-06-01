@@ -18,9 +18,9 @@
  * @file rlm_lua.c
  * @brief Translates requests between the server an a Lua interpreter.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

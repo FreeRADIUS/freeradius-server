@@ -20,7 +20,7 @@
  * @brief Register an xlat expansion to perform basic mathematical operations.
  *
  * @copyright 2001,2006 The FreeRADIUS server project
- * @copyright 2002 Alan DeKok <aland@freeradius.org>
+ * @copyright 2002 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API

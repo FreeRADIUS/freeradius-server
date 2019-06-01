@@ -20,9 +20,9 @@
  * @file eap_fast.h
  * @brief Function declarations and packet structures
  *
- * @author Alexander Clouter <alex@digriz.org.uk>
+ * @author Alexander Clouter (alex@digriz.org.uk)
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  * @copyright 2016 The FreeRADIUS server project
  */
 RCSIDH(eap_fast_h, "$Id$")

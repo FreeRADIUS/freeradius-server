@@ -18,7 +18,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * @copyright 2008 The FreeRADIUS server project
- * @copyright 2008 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  */
 
 RCSID("$Id$")

@@ -22,7 +22,7 @@
  * @brief API to manage pools of persistent connections to external resources.
  *
  * @copyright 2012 The FreeRADIUS server project
- * @copyright 2012 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2012 Alan DeKok (aland@deployingradius.com)
  */
 RCSIDH(pool_h, "$Id$")
 

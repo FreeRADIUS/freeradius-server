@@ -20,7 +20,7 @@
  * @brief Two-way thread-safe channels.
  * @file io/channel.c
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

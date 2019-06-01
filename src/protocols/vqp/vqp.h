@@ -22,7 +22,7 @@
  * @brief Structures and prototypes for Cisco's VLAN Query Protocol
  *
  * @copyright 2007 The FreeRADIUS server project
- * @copyright 2007 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2007 Alan DeKok (aland@deployingradius.com)
  */
 
 RCSIDH(vqp_h, "$Id$")

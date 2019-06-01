@@ -21,8 +21,8 @@
  *
  * @author Gabriel Blanchard
  *
- * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2011 TekSavvy Solutions <gabe@teksavvy.com>
+ * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2011 TekSavvy Solutions (gabe@teksavvy.com)
  * @copyright 2000,2006,2015 The FreeRADIUS server project
  */
 

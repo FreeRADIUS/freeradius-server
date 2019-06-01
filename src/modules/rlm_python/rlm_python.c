@@ -22,7 +22,7 @@
  * @note Rewritten by Paul P. Komkoff Jr <i@stingr.net>.
  *
  * @copyright 2000,2006,2015-2016 The FreeRADIUS server project
- * @copyright 2002 Miguel A.L. Paraz <mparaz@mparaz.com>
+ * @copyright 2002 Miguel A.L. Paraz (mparaz@mparaz.com)
  * @copyright 2002 Imperium Technology, Inc.
  */
 RCSID("$Id$")

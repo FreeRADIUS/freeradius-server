@@ -22,9 +22,9 @@
  * The development of the EAP/SIM support was funded by Internet Foundation
  * Austria (http://www.nic.at/ipa).
  *
- * @copyright 2003 Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * @copyright 2003 Michael Richardson (mcr@sandelman.ottawa.on.ca)
  * @copyright 2003-2016 The FreeRADIUS server project
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

@@ -21,7 +21,7 @@
  * @file lib/io/base.h
  * @brief Transport-specific functions.
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(io_h, "$Id$")
 

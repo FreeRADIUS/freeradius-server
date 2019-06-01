@@ -22,7 +22,7 @@
  * As described by http://ldapwiki.willeke.com/wiki/Determine%20LDAP%20Server%20Vendor
  *
  * @copyright 2016 The FreeRADIUS Server Project.
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

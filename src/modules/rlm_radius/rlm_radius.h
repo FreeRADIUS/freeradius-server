@@ -27,7 +27,7 @@
  * @file rlm_radius.h
  * @brief Structures for the RADIUS client packets
  *
- * @copyright 2017 Alan DeKok <aland@freeradius.org>
+ * @copyright 2017 Alan DeKok (aland@freeradius.org)
  */
 
 typedef struct rlm_radius_t rlm_radius_t;

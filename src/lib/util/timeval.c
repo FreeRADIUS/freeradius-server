@@ -20,7 +20,7 @@
  * @brief Platform independent time functions
  * @file util/timeval.c
  *
- * @copyright 2019 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 
 #include <freeradius-devel/util/strerror.h>

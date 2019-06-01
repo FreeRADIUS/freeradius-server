@@ -20,8 +20,8 @@
  * @file tls/base.c
  * @brief Initialise OpenSSL
  *
- * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
- * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2001 hereUare Communications, Inc. (raghud@hereuare.com)
+ * @copyright 2003 Alan DeKok (aland@freeradius.org)
  * @copyright 2006-2016 The FreeRADIUS server project
  */
 RCSID("$Id$")

@@ -21,7 +21,7 @@
  * @file src/lib/server/map_proc_priv.h
  * @brief Private map process structures and functions.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/server/cf_util.h> /* Need CONF_* definitions */
 #include <freeradius-devel/server/map_proc.h>

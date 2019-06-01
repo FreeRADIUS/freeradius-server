@@ -20,7 +20,7 @@
  * @brief Control-plane signaling
  * @file io/control.c
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

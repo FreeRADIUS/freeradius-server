@@ -21,7 +21,7 @@
  * @file io/atomic_queue.h
  * @brief Thread-safe queues.
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(atomic_queue_h, "$Id$")
 

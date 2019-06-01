@@ -16,7 +16,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * @copyright 2000,2006 The FreeRADIUS server project
- * @copyright 2000 David Kerry <davidk@snti.com>
+ * @copyright 2000 David Kerry (davidk@snti.com)
  */
 
 RCSID("$Id$")

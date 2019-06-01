@@ -1,5 +1,5 @@
 /*
- * @copyright (c) 2016, Network RADIUS SARL <license@networkradius.com>
+ * @copyright (c) 2016, Network RADIUS SARL (license@networkradius.com)
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without

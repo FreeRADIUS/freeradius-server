@@ -21,8 +21,8 @@
  * @brief Expose certificate OIDs as attributes, and call validation virtual
  *	server to check cert is valid.
  *
- * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
- * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2001 hereUare Communications, Inc. (raghud@hereuare.com)
+ * @copyright 2003 Alan DeKok (aland@freeradius.org)
  * @copyright 2006-2016 The FreeRADIUS server project
  */
 #ifdef WITH_TLS

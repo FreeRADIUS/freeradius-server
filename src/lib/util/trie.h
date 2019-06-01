@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/trie.h
  *
- * @copyright 2017 Alan DeKok <aland@freeradius.org>
+ * @copyright 2017 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(trie_h, "$Id$")
 

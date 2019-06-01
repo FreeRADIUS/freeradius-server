@@ -22,7 +22,7 @@
  * @brief Administration tools
  *
  * @copyright 2018 The FreeRADIUS server project
- * @copyright 2018 Alan DeKok <aland@freeradius.org>
+ * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(radmin_h, "$Id$")
 

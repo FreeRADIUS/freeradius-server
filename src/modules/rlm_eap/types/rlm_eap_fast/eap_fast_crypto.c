@@ -19,9 +19,9 @@
  * @file eap_fast_crypto.c
  * @brief Cryptographic functions for EAP-FAST.
  *
- * @author Alexander Clouter <alex@digriz.org.uk>
+ * @author Alexander Clouter (alex@digriz.org.uk)
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  * @copyright 2016 The FreeRADIUS server project
  */
 RCSID("$Id$")

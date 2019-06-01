@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/trie.c
  *
- * @copyright 2017 Alan DeKok <aland@freeradius.org>
+ * @copyright 2017 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

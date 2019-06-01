@@ -18,8 +18,8 @@
  * @file lua.c
  * @brief Library functions for the lua module.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @author Artur Malinowski <artur@wow.com>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @author Artur Malinowski (artur@wow.com)
  *
  * @copyright 2015 The FreeRADIUS Server Project.
  */

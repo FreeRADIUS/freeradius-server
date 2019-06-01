@@ -20,7 +20,7 @@
  * @brief Lockout user accounts based on control attributes.
  *
  * @copyright 2001,2006 The FreeRADIUS server project
- * @copyright 2004 Kostas Kalevras <kkalev@noc.ntua.gr>
+ * @copyright 2004 Kostas Kalevras (kkalev@noc.ntua.gr)
  */
 RCSID("$Id$")
 

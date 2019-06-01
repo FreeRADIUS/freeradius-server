@@ -24,9 +24,9 @@
  *
  * @file src/lib/util/hmac_sha1.c
  *
- * @author Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * @author Michael Richardson (mcr@sandelman.ottawa.on.ca)
  *
- * @copyright 2003 Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * @copyright 2003 Michael Richardson (mcr@sandelman.ottawa.on.ca)
  * @copyright 2000,2003,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")

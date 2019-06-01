@@ -19,8 +19,8 @@
  * @file lib/eap/crypto.c
  * @brief MPPE key calculation API
  *
- * @author Henrik Eriksson <henriken@axis.com>
- * @author Lars Viklund <larsv@axis.com>
+ * @author Henrik Eriksson (henriken@axis.com)
+ * @author Lars Viklund (larsv@axis.com)
  *
  * @copyright 2002 Axis Communications AB
  * @copyright 2006 The FreeRADIUS server project

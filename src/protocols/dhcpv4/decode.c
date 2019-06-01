@@ -21,8 +21,8 @@
  * @brief Functions to decode DHCP options.
  *
  * @copyright 2008,2017 The FreeRADIUS server project
- * @copyright 2008 Alan DeKok <aland@deployingradius.com>
- * @copyright 2015,2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2008 Alan DeKok (aland@deployingradius.com)
+ * @copyright 2015,2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <stdint.h>
 #include <stddef.h>

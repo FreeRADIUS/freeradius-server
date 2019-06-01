@@ -21,7 +21,7 @@
  * @file src/lib/soh/base.h
  * @brief Common libraries for parsing Microsoft SOH data
  *
- * @copyright 2010 Phil Mayers <p.mayers@imperial.ac.uk>
+ * @copyright 2010 Phil Mayers (p.mayers@imperial.ac.uk)
  */
 RCSIDH(soh_h, "$Id$")
 

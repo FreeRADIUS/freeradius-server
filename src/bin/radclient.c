@@ -21,8 +21,8 @@
  * @brief General radius client and debug tool.
  *
  * @copyright 2000,2006,2014 The FreeRADIUS server project
- * @copyright 2000 Miquel van Smoorenburg <miquels@cistron.nl>
- * @copyright 2000 Alan DeKok <aland@freeradius.org>
+ * @copyright 2000 Miquel van Smoorenburg (miquels@cistron.nl)
+ * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
 
 RCSID("$Id$")

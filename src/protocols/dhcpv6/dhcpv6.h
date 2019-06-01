@@ -21,10 +21,10 @@
  * @file protocols/dhcpv6/dhcpv6.h
  * @brief Implementation of the DHCPv6 protocol.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2018 The FreeRADIUS server project
- * @copyright 2018 NetworkRADIUS SARL <info@networkradius.com>
+ * @copyright 2018 NetworkRADIUS SARL (info@networkradius.com)
  */
 RCSIDH(dhcpv6_h, "$Id$")
 

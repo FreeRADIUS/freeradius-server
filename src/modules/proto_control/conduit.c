@@ -21,7 +21,7 @@
  * @brief Channels for communicating with radmin
  *
  * @copyright 2015 The FreeRADIUS server project
- * @copyright 2015 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2015 Alan DeKok (aland@deployingradius.com)
  */
 RCSID("$Id$")
 

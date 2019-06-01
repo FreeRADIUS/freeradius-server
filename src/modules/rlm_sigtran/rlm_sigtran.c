@@ -1,5 +1,5 @@
 /*
- * @copyright (c) 2016, Network RADIUS SARL <license@networkradius.com>
+ * @copyright (c) 2016, Network RADIUS SARL (license@networkradius.com)
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,7 @@
  * @file rlm_sigtran/rlm_sigtran.c
  * @brief Implement a SCTP/M3UA/SCCP/TCAP/MAP stack
  *
- * @copyright 2016 Network RADIUS SARL <license@networkradius.com>
+ * @copyright 2016 Network RADIUS SARL (license@networkradius.com)
  */
 RCSID("$Id$")
 

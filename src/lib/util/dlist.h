@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/dlist.h
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(dlist_h, "$Id$")
 

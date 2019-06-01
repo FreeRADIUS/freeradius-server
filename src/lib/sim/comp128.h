@@ -24,7 +24,7 @@
  *
  * @copyright 2013 The FreeRADIUS server project
  * @copyright 2013 Hacking projects [http://www.hackingprojects.net/]
- * @copyright 2009 Sylvain Munaut <tnt@246tNt.com>
+ * @copyright 2009 Sylvain Munaut (tnt@246tNt.com)
  */
 #include <string.h>
 #include <stdint.h>

@@ -19,7 +19,7 @@
  * @file rlm_cache_redis.c
  * @brief redis based cache.
  *
- * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #define LOG_PREFIX "rlm_cache_redis - "
 

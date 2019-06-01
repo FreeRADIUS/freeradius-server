@@ -20,7 +20,7 @@
  * @brief Function prototypes and datatypes for the REST (HTTP) transport.
  * @file rest.h
  *
- * @copyright 2012-2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2012-2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(other_h, "$Id$")
 

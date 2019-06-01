@@ -19,7 +19,7 @@
  * @file rlm_eap_ttls.c
  * @brief EAP-TTLS as defined by RFC 5281
  *
- * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2003 Alan DeKok (aland@freeradius.org)
  * @copyright 2006 The FreeRADIUS server project
  */
 

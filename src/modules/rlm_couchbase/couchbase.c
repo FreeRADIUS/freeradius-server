@@ -20,7 +20,7 @@
  * @brief Wrapper functions around the libcouchbase Couchbase client driver.
  * @file couchbase.c
  *
- * @author Aaron Hurt <ahurt@anbcs.com>
+ * @author Aaron Hurt (ahurt@anbcs.com)
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

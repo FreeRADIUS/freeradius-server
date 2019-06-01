@@ -22,7 +22,7 @@
  * @brief Legacy pairmove function
  *
  * @copyright 2007 The FreeRADIUS server project
- * @copyright 2007 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2007 Alan DeKok (aland@deployingradius.com)
  */
 RCSIDH(pairmove_h, "$Id$")
 

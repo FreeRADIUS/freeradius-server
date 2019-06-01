@@ -20,7 +20,7 @@
  * @brief Messages for inter-thread communication
  * @file io/message.c
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

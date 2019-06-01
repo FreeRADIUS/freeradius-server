@@ -3,9 +3,9 @@
  * @file rlm_yubikey/validate.c
  * @brief Authentication for yubikey OTP tokens using the ykclient library.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@networkradius.com>
+ * @author Arran Cudbard-Bell (a.cudbardb@networkradius.com)
  * @copyright 2013 The FreeRADIUS server project
- * @copyright 2013 Network RADIUS <info@networkradius.com>
+ * @copyright 2013 Network RADIUS (info@networkradius.com)
  */
 #define LOG_PREFIX "rlm_yubikey (%s) - "
 #define LOG_PREFIX_ARGS inst->name

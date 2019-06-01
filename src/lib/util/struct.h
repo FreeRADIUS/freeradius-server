@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/struct.h
  *
- * @copyright 2018 Alan DeKok <aland@freeradius.org>
+ * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(struct_h, "$Id$")
 

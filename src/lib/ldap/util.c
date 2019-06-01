@@ -19,8 +19,8 @@
  * @file lib/ldap/util.c
  * @brief Utility functions to escape and parse DNs
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2017 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

@@ -17,8 +17,8 @@
  *
  * @file src/lib/util/net.c
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2014-2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2014-2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include "net.h"
 

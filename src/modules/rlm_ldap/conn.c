@@ -19,7 +19,7 @@
  * @file rlm_ldap.c
  * @brief Connection wrappers
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2017 The FreeRADIUS Server Project.
  */

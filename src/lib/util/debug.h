@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/debug.h
  *
- * @copyright 2015-2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015-2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #ifdef __cplusplus
 extern "C" {

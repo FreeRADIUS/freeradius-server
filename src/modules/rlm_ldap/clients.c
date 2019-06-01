@@ -19,8 +19,8 @@
  * @file clients.c
  * @brief LDAP module dynamic clients.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2013,2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2013,2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

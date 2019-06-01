@@ -20,7 +20,7 @@
  * @brief Read ISC DHCP configuration files
  *
  * @copyright 2019 The FreeRADIUS server project
- * @copyright 2019 Alan DeKok <aland@freeradius.org>
+ * @copyright 2019 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

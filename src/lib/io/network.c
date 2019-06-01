@@ -20,7 +20,7 @@
  * @brief Receiver of socket data, which sends messages to the workers.
  * @file io/network.c
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

@@ -20,7 +20,7 @@
  * @brief Unpack binary data
  *
  * @copyright 2014 The FreeRADIUS server project
- * @copyright 2014 Alan DeKok <aland@freeradius.org>
+ * @copyright 2014 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

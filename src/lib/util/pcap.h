@@ -19,8 +19,8 @@
  *
  * @file src/lib/util/pcap.h
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2013 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(pcap_h, "$Id$")
 

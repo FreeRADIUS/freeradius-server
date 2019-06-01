@@ -21,7 +21,7 @@
  * @brief Alternative mechanism to send/recv DHCP packets using libpcap.
  *
  * @copyright 2008,2017 The FreeRADIUS server project
- * @copyright 2008 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  */
 
 #ifdef HAVE_LIBPCAP

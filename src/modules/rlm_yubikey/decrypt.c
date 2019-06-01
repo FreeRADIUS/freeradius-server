@@ -3,9 +3,9 @@
  * @file decrypt.c
  * @brief Authentication for yubikey OTP tokens using the yubikey library.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@networkradius.com>
+ * @author Arran Cudbard-Bell (a.cudbardb@networkradius.com)
  * @copyright 2013 The FreeRADIUS server project
- * @copyright 2013 Network RADIUS <info@networkradius.com>
+ * @copyright 2013 Network RADIUS (info@networkradius.com)
  */
 #include "rlm_yubikey.h"
 

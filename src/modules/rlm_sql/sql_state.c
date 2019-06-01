@@ -19,7 +19,7 @@
  * @file sql_state.c
  * @brief Implements sql_state matching and categorisation
  *
- * @copyright 2019 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2019 The FreeRADIUS server project
  */
 RCSID("$Id$")

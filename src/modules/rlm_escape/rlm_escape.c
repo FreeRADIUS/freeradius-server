@@ -19,7 +19,7 @@
  * @file rlm_escape.c
  * @brief Register escape/unescape xlat functions.
  *
- * @copyright 2018 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API

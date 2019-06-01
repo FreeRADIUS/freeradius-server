@@ -35,7 +35,7 @@
  * - @verbatim {<pool name>:<pool type>}:device:<client id> @endverbatim (string) contains last
  *	IP address bound by this client.
  *
- * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2015 The FreeRADIUS server project
  */
 

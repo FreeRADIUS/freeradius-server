@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/fring.h
  *
- * @copyright 2015-2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015-2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(fring_h, "$Id$")
 

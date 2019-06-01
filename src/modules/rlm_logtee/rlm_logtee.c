@@ -19,9 +19,9 @@
  * @file rlm_logtee.c
  * @brief Add an additional log destination for any given request.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
- * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

@@ -22,7 +22,7 @@
  * @brief Structures and prototypes for maps
  *
  * @copyright 2015 The FreeRADIUS server project
- * @copyright 2015 Arran Cudbard-bell <a.cudbardb@freeradius.org>
+ * @copyright 2015 Arran Cudbard-bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(map_h, "$Id$")
 

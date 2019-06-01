@@ -22,7 +22,7 @@
  * @brief Legacy paircomparison function
  *
  * @copyright 2000,2006 The FreeRADIUS server project
- * @copyright 2000 Alan DeKok <aland@freeradius.org>
+ * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(paircmp_h, "$Id$")
 

@@ -20,8 +20,8 @@
  * @note Do not modify collections of items pointed to by a cursor
  *	 with none fr_cursor_* functions over the lifetime of that cursor.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2013-2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2013-2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2013-2016 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

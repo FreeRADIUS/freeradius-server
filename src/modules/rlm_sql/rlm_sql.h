@@ -20,10 +20,10 @@
  * @file rlm_sql.h
  * @brief Prototypes and functions for the SQL module
  *
- * @copyright 2012-2014 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2012-2014 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2000,2006 The FreeRADIUS server project
- * @copyright 2000 Mike Machado <mike@innercite.com>
- * @copyright 2000 Alan DeKok <aland@freeradius.org>
+ * @copyright 2000 Mike Machado (mike@innercite.com)
+ * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(rlm_sql_h, "$Id$")
 

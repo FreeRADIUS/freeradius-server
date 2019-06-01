@@ -19,9 +19,9 @@
  * @file rlm_eap_sim/eap_sim.h
  * @brief Declarations for EAP-SIM
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 The FreeRADIUS server project
  */
 RCSIDH(rlm_eap_sim_eap_sim_h, "$Id$")

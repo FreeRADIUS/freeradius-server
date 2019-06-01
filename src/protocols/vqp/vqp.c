@@ -20,7 +20,7 @@
  * @file src/protocols/vqp/vqp.c
  * @brief Functions to send/receive VQP packets.
  *
- * @copyright 2007 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2007 Alan DeKok (aland@deployingradius.com)
  */
 
 RCSID("$Id$")

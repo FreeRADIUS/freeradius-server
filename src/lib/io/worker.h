@@ -21,7 +21,7 @@
  * @file io/worker.h
  * @brief Functions and data structures for worker threads.
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(worker_h, "$Id$")
 

@@ -21,7 +21,7 @@
  * @brief Functions to send/receive dhcp packets.
  *
  * @copyright 2008 The FreeRADIUS server project
- * @copyright 2008 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  */
 RCSID("$Id$")
 

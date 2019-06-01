@@ -21,7 +21,7 @@
  * @file io/control.h
  * @brief control-plane signaling
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(control_h, "$Id$")
 

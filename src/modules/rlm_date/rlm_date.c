@@ -18,9 +18,9 @@
  * @file rlm_date.c
  * @brief Translates timestrings between formats.
  *
- * @author Artur Malinowski <artur@wow.com>
+ * @author Artur Malinowski (artur@wow.com)
  *
- * @copyright 2013 Artur Malinowski <artur@wow.com>
+ * @copyright 2013 Artur Malinowski (artur@wow.com)
  * @copyright 1999-2018 The FreeRADIUS Server Project.
  */
 

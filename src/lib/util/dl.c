@@ -21,7 +21,7 @@
  * @brief Wrappers around dlopen to manage loading shared objects at runtime.
  *
  * @copyright 2016-2019 The FreeRADIUS server project
- * @copyright 2016-2019 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2016-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

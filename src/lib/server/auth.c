@@ -21,8 +21,8 @@
  * @brief The old authentication state machine.
  *
  * @copyright 2000,2006 The FreeRADIUS server project
- * @copyright 2000 Miquel van Smoorenburg <miquels@cistron.nl>
- * @copyright 2000 Jeff Carneal <jeff@apex.net>
+ * @copyright 2000 Miquel van Smoorenburg (miquels@cistron.nl)
+ * @copyright 2000 Jeff Carneal (jeff@apex.net)
  */
 RCSID("$Id$")
 

@@ -20,7 +20,7 @@
  * @file src/lib/server/snmp.c
  * @brief Implements an SNMP-like interface using FreeRADIUS attributes
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2016 The FreeRADIUS server project
  * @copyright 2016 Network RADIUS SARL

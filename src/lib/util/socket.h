@@ -20,8 +20,8 @@
  *
  * @file src/lib/util/socket.c
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @author Alan DeKok <aland@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @author Alan DeKok (aland@freeradius.org)
  *
  * @copyright 2015 The FreeRADIUS project
  */

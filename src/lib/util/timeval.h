@@ -21,7 +21,7 @@
  * @brief Functions for manipulating timeval structures
  * @file lib/util/timeval.h
  *
- * @copyright 2019 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(timeval_h, "$Id$")
 

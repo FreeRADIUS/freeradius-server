@@ -21,7 +21,7 @@
  * @file lib/server/client.h
  * @brief API to add client definitions to the server, both on startup and at runtime.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2015 The FreeRADIUS server project
  */
 RCSIDH(clients_h, "$Id$")

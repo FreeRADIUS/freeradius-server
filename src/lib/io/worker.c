@@ -57,7 +57,7 @@
  *  yeilded, it is placed onto the yielded list in the worker
  *  "tracking" data structure.
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

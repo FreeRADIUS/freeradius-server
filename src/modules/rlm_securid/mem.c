@@ -16,7 +16,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * @copyright 2012 The FreeRADIUS server project
- * @copyright 2012 Alan DeKok <aland@networkradius.com>
+ * @copyright 2012 Alan DeKok (aland@networkradius.com)
  */
 
 #define LOG_PREFIX "rlm_securid - "

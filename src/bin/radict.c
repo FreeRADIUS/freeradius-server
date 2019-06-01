@@ -21,7 +21,7 @@
  * @brief Utility to print attribute data in CSV format
  *
  * @copyright 2017 The FreeRADIUS server project
- * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

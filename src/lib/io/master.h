@@ -21,7 +21,7 @@
  * @file io/master.h
  * @brief Master IO handler
  *
- * @copyright 2018 Alan DeKok <aland@freeradius.org>
+ * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(master_h, "$Id$")
 

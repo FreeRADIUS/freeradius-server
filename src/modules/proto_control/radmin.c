@@ -21,8 +21,8 @@
  * @brief Control a running radiusd process.
  *
  * @copyright 2012-2016 The FreeRADIUS server project
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2012 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2012 Alan DeKok (aland@deployingradius.com)
  */
 RCSID("$Id$")
 

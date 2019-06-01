@@ -18,7 +18,7 @@
  * @file rlm_mruby.h
  * @brief Translates requests between the server an an mruby interpreter.
  *
- * @copyright 2016 Herwin Weststrate <freeradius@herwinw.nl>
+ * @copyright 2016 Herwin Weststrate (freeradius@herwinw.nl)
  * @copyright 2016 The FreeRADIUS server project
  */
 

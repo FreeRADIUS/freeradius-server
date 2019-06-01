@@ -19,9 +19,9 @@
  * @file rlm_sql.c
  * @brief Implements FreeTDS rlm_sql driver.
  *
- * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2013 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2000,2006 The FreeRADIUS server project
- * @copyright 2000 Mattias Sjostrom <mattias@nogui.se>
+ * @copyright 2000 Mattias Sjostrom (mattias@nogui.se)
  */
 
 RCSID("$Id$")

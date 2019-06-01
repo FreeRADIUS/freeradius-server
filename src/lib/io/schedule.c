@@ -20,7 +20,7 @@
  * @brief Network / worker thread scheduling
  * @file io/schedule.c
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

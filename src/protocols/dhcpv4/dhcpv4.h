@@ -22,7 +22,7 @@
  * @brief Implementation of the DHCPv4 protocol.
  *
  * @copyright 2008 The FreeRADIUS server project
- * @copyright 2008 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  */
 RCSIDH(dhcp_h, "$Id$")
 

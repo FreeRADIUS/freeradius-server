@@ -18,8 +18,8 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * @copyright 2000,2006 The FreeRADIUS server project
- * @copyright 2000 Miquel van Smoorenburg <miquels@cistron.nl>
- * @copyright 2010 Alan DeKok <aland@freeradius.org>
+ * @copyright 2000 Miquel van Smoorenburg (miquels@cistron.nl)
+ * @copyright 2010 Alan DeKok (aland@freeradius.org)
  */
 
 RCSID("$Id$")

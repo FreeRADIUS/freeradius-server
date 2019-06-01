@@ -20,9 +20,9 @@
  * @brief Authenticate users, retrieving their TGT from a Kerberos V5 TDC.
  *
  * @copyright 2000,2006,2012-2013 The FreeRADIUS server project
- * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2000 Nathan Neulinger <nneul@umr.edu>
- * @copyright 2000 Alan DeKok <aland@freeradius.org>
+ * @copyright 2013 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2000 Nathan Neulinger (nneul@umr.edu)
+ * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

@@ -19,8 +19,8 @@
  * @file src/lib/ldap/map.c
  * @brief Functions for mapping between LDAP and FreeRADIUS attributes.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2013 Network RADIUS SARL (info@networkradius.com)
  * @copyright 2013 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

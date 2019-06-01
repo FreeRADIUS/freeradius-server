@@ -4,10 +4,10 @@
  * @file lib/ldap/base.h
  * @brief Common utility functions for interacting with LDAP directories
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2017 The FreeRADIUS Server Project.
- * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/connection.h>

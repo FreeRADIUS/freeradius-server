@@ -20,7 +20,7 @@
  * @brief Thread-unsafe queues
  * @file io/queue.c
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

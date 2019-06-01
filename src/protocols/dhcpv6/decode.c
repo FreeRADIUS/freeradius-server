@@ -20,10 +20,10 @@
  * @file protocols/dhcpv6/decode.c
  * @brief Functions to decode DHCP options.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2018 The FreeRADIUS server project
- * @copyright 2018 NetworkRADIUS SARL <info@networkradius.com>
+ * @copyright 2018 NetworkRADIUS SARL (info@networkradius.com)
  */
 #include <stdint.h>
 #include <stddef.h>

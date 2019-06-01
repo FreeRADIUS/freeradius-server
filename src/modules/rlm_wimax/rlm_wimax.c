@@ -19,7 +19,7 @@
  * @file rlm_wimax.c
  * @brief Supports various WiMax functionality.
  *
- * @copyright 2008 Alan DeKok <aland@networkradius.com>
+ * @copyright 2008 Alan DeKok (aland@networkradius.com)
  */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */

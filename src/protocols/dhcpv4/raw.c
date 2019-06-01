@@ -21,7 +21,7 @@
  * @brief Send/recv DHCP packets using raw sockets.
  *
  * @copyright 2008,2017 The FreeRADIUS server project
- * @copyright 2008 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  */
 #include "attrs.h"
 #include "dhcpv4.h"

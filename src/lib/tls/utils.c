@@ -66,7 +66,7 @@ char const *tls_utils_x509_pkey_type(X509 *cert)
 
 /** Returns the OpenSSL keyblock size
  *
- * @copyright (c) 2002-2016, Jouni Malinen <j@w1.fi> and contributors
+ * @copyright (c) 2002-2016, Jouni Malinen (j@w1.fi) and contributors
  * All Rights Reserved.
  *
  * These programs are licensed under the BSD license (the one with

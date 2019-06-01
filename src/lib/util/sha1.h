@@ -5,7 +5,7 @@
  *
  * @file src/lib/util/sha1.h
  *
- * @author Steve Reid <steve@edmweb.com>
+ * @author Steve Reid (steve@edmweb.com)
  */
 RCSIDH(sha1_h, "$Id$")
 

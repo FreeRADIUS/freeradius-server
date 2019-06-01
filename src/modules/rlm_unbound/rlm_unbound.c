@@ -20,7 +20,7 @@
  * @brief DNS services via libunbound.
  *
  * @copyright 2013 The FreeRADIUS server project
- * @copyright 2013 Brian S. Julin <bjulin@clarku.edu>
+ * @copyright 2013 Brian S. Julin (bjulin@clarku.edu)
  */
 RCSID("$Id$")
 

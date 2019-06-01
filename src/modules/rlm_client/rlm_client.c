@@ -20,8 +20,8 @@
  * @brief Reads client definitions from flat files as required.
  *
  * @copyright 2008 The FreeRADIUS server project
- * @copyright 2008 Alan DeKok <aland@deployingradius.com>
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2008 Alan DeKok (aland@deployingradius.com)
+ * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

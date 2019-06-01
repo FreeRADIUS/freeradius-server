@@ -21,9 +21,9 @@
  * @file radsniff.h
  * @brief Structures and prototypes for the RADIUS sniffer.
  *
- * @copyright 2013 Arran Cudbard-Bell <arran.cudbardb@freeradius.org>
+ * @copyright 2013 Arran Cudbard-Bell (arran.cudbardb@freeradius.org)
  * @copyright 2006 The FreeRADIUS server project
- * @copyright 2006 Nicolas Baradakis <nicolas.baradakis@cegetel.net>
+ * @copyright 2006 Nicolas Baradakis (nicolas.baradakis@cegetel.net)
  */
 RCSIDH(radsniff_h, "$Id$")
 

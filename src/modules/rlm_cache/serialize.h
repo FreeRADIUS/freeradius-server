@@ -20,7 +20,7 @@
  * @brief Serialize and deserialise cache entries.
  *
  * @author Arran Cudbard-Bell
- * @copyright 2014 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2014 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2014 The FreeRADIUS server project
  */
 RCSIDH(serialize_h, "$Id$")

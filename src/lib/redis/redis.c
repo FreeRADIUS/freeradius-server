@@ -19,9 +19,9 @@
  * @file redis.c
  * @brief Common functions for interacting with Redis via hiredis
  *
- * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2000,2006,2015 The FreeRADIUS server project
- * @copyright 2011 TekSavvy Solutions <gabe@teksavvy.com>
+ * @copyright 2011 TekSavvy Solutions (gabe@teksavvy.com)
  */
 #include "base.h"
 #include <freeradius-devel/server/rad_assert.h>

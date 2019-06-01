@@ -19,7 +19,7 @@
  * @file src/lib/util/regex.c
  *
  * @copyright 2014 The FreeRADIUS server project
- * @copyright 2014 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2014 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

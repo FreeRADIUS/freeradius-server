@@ -21,8 +21,8 @@
  * @file lib/server/log.h
  * @brief Macros and function definitions to write log messages, and control the logging system.
  *
- * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2013 Alan DeKok <aland@freeradius.org>
+ * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2013 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(server_log_h, "$Id$")
 

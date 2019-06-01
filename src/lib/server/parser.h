@@ -21,7 +21,7 @@
  * @file lib/server/parser.h
  * @brief Condition parser API
  *
- * @copyright 2013 Alan DeKok <aland@freeradius.org>
+ * @copyright 2013 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(parser_h, "$Id$")
 

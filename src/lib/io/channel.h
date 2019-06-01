@@ -21,7 +21,7 @@
  * @file io/channel.h
  * @brief 2-way channels based on kqueue and atomic queues.
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(channel_h, "$Id$")
 

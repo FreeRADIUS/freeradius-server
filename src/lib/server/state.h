@@ -22,7 +22,7 @@
  * @brief Track overarching 'state' of the authentication session over multiple packets.
  *
  * @copyright 2014 The FreeRADIUS server project
- * @copyright 2014 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2014 Alan DeKok (aland@deployingradius.com)
  */
 RCSIDH(state_h, "$Id$")
 

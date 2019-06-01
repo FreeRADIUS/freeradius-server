@@ -21,7 +21,7 @@
  * @brief Function prototypes and datatypes used in the module.
  * @file mod.h
  *
- * @author Aaron Hurt <ahurt@anbcs.com>
+ * @author Aaron Hurt (ahurt@anbcs.com)
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 RCSIDH(mod_h, "$Id$")

@@ -40,7 +40,7 @@
  *   - #fr_value_box_from_str is used to convert from PRESENTATION to INTERNAL format.
  *
  * @copyright 2014-2017 The FreeRADIUS server project
- * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

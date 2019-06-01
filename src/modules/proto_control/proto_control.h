@@ -21,7 +21,7 @@
  * @file proto_control.h
  * @brief Structures for the CONTROL protocol
  *
- * @copyright 2018 Alan DeKok <aland@freeradius.org>
+ * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/server/radmin.h>

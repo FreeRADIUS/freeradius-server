@@ -19,9 +19,9 @@
  * @file groups.c
  * @brief LDAP module group functions.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
- * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
+ * @copyright 2013 Network RADIUS SARL (info@networkradius.com)
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

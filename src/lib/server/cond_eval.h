@@ -22,7 +22,7 @@
  * @brief Structures and prototypes for the condition evaluation code
  *
  * @copyright 2007 The FreeRADIUS server project
- * @copyright 2007 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2007 Alan DeKok (aland@deployingradius.com)
  */
 RCSIDH(cond_eval_h, "$Id$")
 

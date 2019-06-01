@@ -21,7 +21,7 @@
  * @file unlang/unlang_priv.h
  * @brief Private interpreter structures and functions
  *
- * @author Alan DeKok <aland@freeradius.org>
+ * @author Alan DeKok (aland@freeradius.org)
  *
  * @copyright 2016-2019 The FreeRADIUS server project
  */

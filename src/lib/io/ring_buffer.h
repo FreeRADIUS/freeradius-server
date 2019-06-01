@@ -22,7 +22,7 @@
  * @brief Ring buffers
  *
  * @copyright 2016 The FreeRADIUS Server Project
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(ring_buffer_h, "$Id$")
 

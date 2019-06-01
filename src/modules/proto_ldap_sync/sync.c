@@ -25,7 +25,7 @@
  *
  * @author Arran Cudbard-Bell
  *
- * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

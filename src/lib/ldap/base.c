@@ -19,9 +19,9 @@
  * @file lib/ldap/base.c
  * @brief LDAP module library functions.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2013-2015 Network RADIUS SARL <info@networkradius.com>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2013-2015 Network RADIUS SARL (info@networkradius.com)
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

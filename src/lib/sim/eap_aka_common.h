@@ -22,7 +22,7 @@
  *
  * @note These are needed for the quintuplet -> triplet conversion in EAP-SIM.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2016 The FreeRADIUS server project
  */

@@ -21,7 +21,7 @@
  * @file conduit.h
  * @brief API to provide distinct communication conduits for the radmin protocol.
  *
- * @copyright 2015 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2015 Alan DeKok (aland@deployingradius.com)
  */
 RCSIDH(conduit_h, "$Id$")
 

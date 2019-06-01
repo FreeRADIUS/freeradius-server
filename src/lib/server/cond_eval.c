@@ -21,7 +21,7 @@
  * @brief Evaluate complex conditions
  *
  * @copyright 2007 The FreeRADIUS server project
- * @copyright 2007 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2007 Alan DeKok (aland@deployingradius.com)
  */
 RCSID("$Id$")
 

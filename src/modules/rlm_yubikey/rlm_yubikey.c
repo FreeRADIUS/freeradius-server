@@ -19,9 +19,9 @@
  * @file rlm_yubikey.c
  * @brief Authentication for yubikey OTP tokens.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@networkradius.com>
+ * @author Arran Cudbard-Bell (a.cudbardb@networkradius.com)
  * @copyright 2013 The FreeRADIUS server project
- * @copyright 2013 Network RADIUS <info@networkradius.com>
+ * @copyright 2013 Network RADIUS (info@networkradius.com)
  */
 RCSID("$Id$")
 

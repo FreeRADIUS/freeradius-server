@@ -21,7 +21,7 @@
  * @file track.h
  * @brief RADIUS client packet tracking
  *
- * @copyright 2017 Alan DeKok <aland@freeradius.org>
+ * @copyright 2017 Alan DeKok (aland@freeradius.org)
  */
 
 #include "rlm_radius.h"

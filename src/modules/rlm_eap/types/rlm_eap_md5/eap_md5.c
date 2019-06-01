@@ -18,7 +18,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * @copyright 2000,2001,2006 The FreeRADIUS server project
- * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2001 hereUare Communications, Inc. (raghud@hereuare.com)
  */
 
 /*

@@ -21,7 +21,7 @@
  * @brief Internal commands for the server
  *
  * @copyright 2018 The FreeRADIUS server project
- * @copyright 2018 Alan DeKok <aland@freeradius.org>
+ * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

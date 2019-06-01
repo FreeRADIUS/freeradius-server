@@ -21,7 +21,7 @@
  * @file proto_radius.h
  * @brief Structures for the RADIUS protocol
  *
- * @copyright 2018 Alan DeKok <aland@freeradius.org>
+ * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/io/master.h>
 

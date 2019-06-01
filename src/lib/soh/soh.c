@@ -20,7 +20,7 @@
  * @file soh.c
  * @brief Implements the MS-SOH parsing code. This is called from rlm_eap_peap
  *
- * @copyright 2010 Phil Mayers <p.mayers@imperial.ac.uk>
+ * @copyright 2010 Phil Mayers (p.mayers@imperial.ac.uk)
  */
 
 RCSID("$Id$")

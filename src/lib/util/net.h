@@ -19,8 +19,8 @@
  *
  * @file src/lib/util/net.h
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2014 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2014 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(net_h, "$Id$")
 

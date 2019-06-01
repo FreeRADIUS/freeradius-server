@@ -20,7 +20,7 @@
  * @brief Simple ring buffers for packet contents
  * @file io/ring_buffer.c
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

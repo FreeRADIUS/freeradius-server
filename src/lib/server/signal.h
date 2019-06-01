@@ -22,7 +22,7 @@
  * @brief Signals that can be sent to a request.
  *
  * @copyright 2018 The FreeRADIUS server project
- * @copyright 2018 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(signal_h, "$Id$")
 

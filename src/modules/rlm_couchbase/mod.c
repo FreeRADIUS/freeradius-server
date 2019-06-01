@@ -20,7 +20,7 @@
  * @brief Utillity functions used in the module.
  * @file mod.c
  *
- * @author Aaron Hurt <ahurt@anbcs.com>
+ * @author Aaron Hurt (ahurt@anbcs.com)
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

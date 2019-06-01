@@ -22,7 +22,7 @@
  * Supports "next-token code" and "new-pin" modes.
  *
  * @copyright 2012 The FreeRADIUS server project
- * @copyright 2012 Alan DeKok <aland@networkradius.com>
+ * @copyright 2012 Alan DeKok (aland@networkradius.com)
  */
 #define "rlm_securid - "
 

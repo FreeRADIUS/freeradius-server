@@ -21,7 +21,7 @@
  * @file io/queue.h
  * @brief Thread-unsafe queues.
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(queue_h, "$Id$")
 

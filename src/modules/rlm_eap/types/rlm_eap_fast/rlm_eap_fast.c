@@ -19,9 +19,9 @@
  * @file rlm_eap_fast.c
  * @brief contains the interfaces that are called from eap
  *
- * @author Alexander Clouter <alex@digriz.org.uk>
+ * @author Alexander Clouter (alex@digriz.org.uk)
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  * @copyright 2016 The FreeRADIUS server project
  */
 RCSID("$Id$")

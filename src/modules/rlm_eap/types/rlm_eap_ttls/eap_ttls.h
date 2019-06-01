@@ -20,7 +20,7 @@
  * @file eap_ttls.h
  * @brief Declarations for EAP-TTLS as defined by RFC 5281
  *
- * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2003 Alan DeKok (aland@freeradius.org)
  * @copyright 2006 The FreeRADIUS server project
  */
 RCSIDH(eap_ttls_h, "$Id$")

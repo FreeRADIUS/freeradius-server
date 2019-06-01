@@ -21,7 +21,7 @@
  * @file lib/server/socket.h
  * @brief Socket structures.
  *
- * @copyright 2018 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(server_socket_h, "$Id$")
 

@@ -30,8 +30,8 @@
  * @file rlm_sql_cassandra.c
  * @brief Cassandra SQL driver
  *
- * @author Linnaea Von Lavia <le.concorde.4590@gmail.com>
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @author Linnaea Von Lavia (le.concorde.4590@gmail.com)
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #define LOG_PREFIX "rlm_sql_cassandra - "
 

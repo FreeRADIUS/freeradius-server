@@ -20,8 +20,8 @@
  * @brief Hashes plaintext passwords to compare against a prehashed reference.
  *
  * @copyright 2001-2012 The FreeRADIUS server project.
- * @copyright 2012 Matthew Newton <matthew@newtoncomputing.co.uk>
- * @copyright 2001 Kostas Kalevras <kkalev@noc.ntua.gr>
+ * @copyright 2012 Matthew Newton (matthew@newtoncomputing.co.uk)
+ * @copyright 2001 Kostas Kalevras (kkalev@noc.ntua.gr)
  */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API

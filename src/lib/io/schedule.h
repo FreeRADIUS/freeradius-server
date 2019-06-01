@@ -21,7 +21,7 @@
  * @file io/schedule.h
  * @brief Scheduler communication.
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(schedule_h, "$Id$")
 

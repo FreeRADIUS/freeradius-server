@@ -19,7 +19,7 @@
  * @file rlm_rest/io.c
  * @brief Implement asynchronous callbacks for curl
  *
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include "rest.h"
 #include <freeradius-devel/server/rad_assert.h>

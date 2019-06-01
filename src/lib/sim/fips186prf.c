@@ -44,7 +44,7 @@
  * This code was written from scratch by Michael Richardson, and is
  * dual licensed under both GPL and BSD.
  *
- * @copyright 2003 Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * @copyright 2003 Michael Richardson (mcr@sandelman.ottawa.on.ca)
  * @copyright 2003-2016 The FreeRADIUS server project
  */
 RCSID("$Id$")

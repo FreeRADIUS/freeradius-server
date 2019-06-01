@@ -20,7 +20,7 @@
  *
  * @file src/lib/util/udpfromto.c
  *
- * @copyright 2007 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2007 Alan DeKok (aland@deployingradius.com)
  * @copyright 2002 Miquel van Smoorenburg
  */
 RCSID("$Id$")

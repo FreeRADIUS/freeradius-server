@@ -19,7 +19,7 @@
  * @file rlm_soh.c
  * @brief Decodes Microsoft's Statement of Health sub-protocol.
  *
- * @copyright 2010 Phil Mayers <p.mayers@imperial.ac.uk>
+ * @copyright 2010 Phil Mayers (p.mayers@imperial.ac.uk)
  */
 RCSID("$Id$")
 

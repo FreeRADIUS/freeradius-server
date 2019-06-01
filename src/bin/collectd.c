@@ -19,7 +19,7 @@
  * @file collectd.c
  * @brief Helper functions to enabled radsniff to talk to collectd
  *
- * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2013 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <assert.h>
 #include <ctype.h>

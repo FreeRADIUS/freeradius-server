@@ -21,7 +21,7 @@
  * @brief Couchbase wrapper function prototypes and datatypes.
  * @file couchbase.h
  *
- * @author Aaron Hurt <ahurt@anbcs.com>
+ * @author Aaron Hurt (ahurt@anbcs.com)
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 RCSIDH(couchbase_h, "$Id$")

@@ -19,10 +19,10 @@
  * @file rlm_winbind.c
  * @brief Authenticates against Active Directory or Samba using winbind
  *
- * @author Matthew Newton <matthew@newtoncomputing.co.uk>
+ * @author Matthew Newton (matthew@newtoncomputing.co.uk)
  *
  * @copyright 2016 The FreeRADIUS server project
- * @copyright 2016 Matthew Newton <matthew@newtoncomputing.co.uk>
+ * @copyright 2016 Matthew Newton (matthew@newtoncomputing.co.uk)
  */
 
 RCSID("$Id$")

@@ -19,7 +19,7 @@
  * @file src/lib/util/struct.c
  *
  * @copyright 2018 The FreeRADIUS server project
- * @copyright 2018 Alan DeKok <aland@freeradius.org>
+ * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
 

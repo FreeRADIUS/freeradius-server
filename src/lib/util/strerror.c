@@ -19,7 +19,7 @@
  * @file src/lib/util/strerror.c
  *
  * @copyright 2017 The FreeRADIUS server project
- * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

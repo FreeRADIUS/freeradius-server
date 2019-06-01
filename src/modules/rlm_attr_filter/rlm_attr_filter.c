@@ -20,7 +20,7 @@
  * @brief Filter the contents of a list, allowing only certain attributes.
  *
  * @copyright (C) 2001,2006 The FreeRADIUS server project
- * @copyright (C) 2001 Chris Parker <cparker@starnetusa.net>
+ * @copyright (C) 2001 Chris Parker (cparker@starnetusa.net)
  */
 RCSID("$Id$")
 

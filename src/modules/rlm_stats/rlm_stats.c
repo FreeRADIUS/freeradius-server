@@ -19,7 +19,7 @@
  * @file rlm_stats.c
  * @brief Keep RADIUS statistics. Eventually, also non-RADIUS statistics
  *
- * @copyright 2017 Network RADIUS SARL <license@networkradius.com>
+ * @copyright 2017 Network RADIUS SARL (license@networkradius.com)
  */
 RCSID("$Id$")
 

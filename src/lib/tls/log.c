@@ -20,7 +20,7 @@
  * @file tls/log.c
  * @brief Retrieve errors and log messages from OpenSSL's overly complex log system.
  *
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 The FreeRADIUS server project
  */
 RCSID("$Id$")

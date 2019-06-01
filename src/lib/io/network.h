@@ -21,7 +21,7 @@
  * @file io/network.h
  * @brief Receive packets
  *
- * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 RCSIDH(network_h, "$Id$")
 
