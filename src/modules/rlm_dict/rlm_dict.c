@@ -19,7 +19,7 @@
  * @file rlm_dict.c
  * @brief Retrieve attributes from a dict.
  *
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

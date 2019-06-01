@@ -19,10 +19,10 @@
  * @file rlm_cipher.c
  * @brief Creates dynamic expansions for encrypting/decrypting data.
  *
- * @author Arran Cudbard-Bell \<a.cudbardb@freeradius.org\>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2018 The FreeRADIUS server project
- * @copyright 2018 Network RADIUS \<info@networkradius.com\>
+ * @copyright 2018 Network RADIUS (info@networkradius.com)
  *
  */
 RCSID("$Id$")
