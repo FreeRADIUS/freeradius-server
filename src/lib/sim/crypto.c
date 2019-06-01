@@ -23,10 +23,10 @@
  * by Michael Richardson <mcr@sandelman.ottawa.on.ca>, but these have since been
  * replaced.
  *
- * @author Arran Cudbard-Bell \<a.cudbardb@freeradius.org\>
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2003-2018 The FreeRADIUS server project
- * @copyright 2016-2018 Network RADIUS \<info@networkradius.com\>
+ * @copyright 2016-2018 Network RADIUS (info@networkradius.com)
  */
 RCSID("$Id$")
 
