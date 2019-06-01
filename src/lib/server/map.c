@@ -23,7 +23,7 @@
  * @ingroup AVP
  *
  * @copyright 2013 The FreeRADIUS server project
- * @copyright 2013  Alan DeKok <aland@freeradius.org>
+ * @copyright 2013 Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")

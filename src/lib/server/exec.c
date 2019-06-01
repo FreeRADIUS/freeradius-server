@@ -20,7 +20,7 @@
  * @file src/lib/server/exec.c
  * @brief Execute external programs.
  *
- * @copyright 2000-2004,2006  The FreeRADIUS server project
+ * @copyright 2000-2004,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

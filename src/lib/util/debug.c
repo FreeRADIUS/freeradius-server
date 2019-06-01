@@ -18,8 +18,8 @@
  *
  * @file src/lib/util/debug.c
  *
- * @copyright 2013  The FreeRADIUS server project
- * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2013 The FreeRADIUS server project
+ * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include "debug.h"
 

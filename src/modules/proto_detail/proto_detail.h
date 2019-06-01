@@ -21,7 +21,7 @@
  * @file proto_detail.h
  * @brief Detail master protocol handler.
  *
- * @copyright 2017  Alan DeKok <alan@freeradius.org>
+ * @copyright 2017 Alan DeKok <alan@freeradius.org>
  */
 RCSIDH(detail_h, "$Id$")
 

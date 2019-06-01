@@ -21,7 +21,7 @@
  * @file lib/server/regex.h
  * @brief Regular expression functions used by the server library.
  *
- * @copyright 2014  The FreeRADIUS server project
+ * @copyright 2014 The FreeRADIUS server project
  */
 RCSIDH(server_regex_h, "$Id$")
 

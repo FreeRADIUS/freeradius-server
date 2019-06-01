@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/misc.h
  *
- * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000,2006 The FreeRADIUS server project
  */
 RCSIDH(misc_h, "$Id$")
 

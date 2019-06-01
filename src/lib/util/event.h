@@ -19,8 +19,8 @@
  *
  * @file src/lib/util/event.h
  *
- * @copyright 2007  The FreeRADIUS server project
- * @copyright 2007  Alan DeKok <aland@deployingradius.com>
+ * @copyright 2007 The FreeRADIUS server project
+ * @copyright 2007 Alan DeKok <aland@deployingradius.com>
  */
 RCSIDH(event_h, "$Id$")
 

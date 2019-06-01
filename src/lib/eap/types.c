@@ -19,7 +19,7 @@
  * @file lib/eap/types.h
  * @brief EAP type resolution
  *
- * @copyright 2019  The FreeRADIUS server project
+ * @copyright 2019 The FreeRADIUS server project
  */
 #include "attrs.h"
 #include "types.h"

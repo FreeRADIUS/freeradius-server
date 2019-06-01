@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/dict.h
  *
- * @copyright 2015  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
  */
 
 #ifdef __cplusplus

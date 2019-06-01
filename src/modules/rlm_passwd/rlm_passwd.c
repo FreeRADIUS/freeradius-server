@@ -19,7 +19,7 @@
  * @file rlm_passwd.c
  * @brief Enables authentication against unix passwd files.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

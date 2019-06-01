@@ -20,8 +20,8 @@
  * @file unlang/xlat.c
  * @brief Integration between the unlang interpreter and xlats
  *
- * @copyright 2018  The FreeRADIUS server project
- * @copyright 2018  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2018 The FreeRADIUS server project
+ * @copyright 2018 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 

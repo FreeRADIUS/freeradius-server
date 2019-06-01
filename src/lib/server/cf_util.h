@@ -21,7 +21,7 @@
  * @file lib/server/cf_util.h
  * @brief API to create and manipulate internal format configurations.
  *
- * @copyright 2017  The FreeRADIUS server project
+ * @copyright 2017 The FreeRADIUS server project
  */
 RCSIDH(conf_file_h, "$Id$")
 

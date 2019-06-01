@@ -19,8 +19,8 @@
  * @file rlm_chap.c
  * @brief Process chap authentication requests.
  *
- * @copyright 2001,2006  The FreeRADIUS server project
- * @copyright 2001  Kostas Kalevras <kkalev@noc.ntua.gr>
+ * @copyright 2001,2006 The FreeRADIUS server project
+ * @copyright 2001 Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 RCSID("$Id$")
 

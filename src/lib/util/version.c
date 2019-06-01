@@ -18,8 +18,8 @@
  *
  * @file src/lib/util/version.c
  *
- * @copyright 2016  The FreeRADIUS server project
- * @copyright 2016  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2016 The FreeRADIUS server project
+ * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 

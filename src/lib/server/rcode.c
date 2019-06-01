@@ -25,7 +25,7 @@
  * but are also used in virtual servers and unlang to determine the
  * end result of processing unlang snippers.
  *
- * @copyright 2018  The FreeRADIUS server project
+ * @copyright 2018 The FreeRADIUS server project
  */
 
 RCSID("$Id$")

@@ -20,9 +20,9 @@
  * @file lib/eap/types.h
  * @brief Header file containing the interfaces for all EAP types
  *
- * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * @copyright 2003  Alan DeKok <aland@freeradius.org>
- * @copyright 2006  The FreeRADIUS server project
+ * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2006 The FreeRADIUS server project
  */
 
 RCSIDH(lib_eap_types, "$Id$")

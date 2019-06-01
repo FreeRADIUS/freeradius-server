@@ -21,7 +21,7 @@
  * @file radclient.h
  * @brief Structures for the radclient utility.
  *
- * @copyright 2014  The FreeRADIUS server project
+ * @copyright 2014 The FreeRADIUS server project
  */
 RCSIDH(radclient_h, "$Id$")
 

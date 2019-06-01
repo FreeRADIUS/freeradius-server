@@ -24,9 +24,9 @@
  *	That, in fact, was again based on the original stuff from
  *	Jeph Blaize <jblaize@kiva.net> done in May 1997.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
- * @copyright 1997  Jeph Blaize <jblaize@kiva.net>
- * @copyright 1999  miguel a.l. paraz <map@iphil.net>
+ * @copyright 2000,2006 The FreeRADIUS server project
+ * @copyright 1997 Jeph Blaize <jblaize@kiva.net>
+ * @copyright 1999 miguel a.l. paraz <map@iphil.net>
  */
 RCSID("$Id$")
 

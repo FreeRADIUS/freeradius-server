@@ -21,7 +21,7 @@
  * @file lib/server/cf_parse.h
  * @brief API to parse internal format configuration items into native C types.
  *
- * @copyright 2015  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
  */
 RCSIDH(cf_parse_h, "$Id$")
 

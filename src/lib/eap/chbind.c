@@ -19,8 +19,8 @@
  * @file lib/eap/chbind.c
  * @brief Channel binding
  *
- * @copyright 2014  Network RADIUS SARL
- * @copyright 2014  The FreeRADIUS server project
+ * @copyright 2014 Network RADIUS SARL
+ * @copyright 2014 The FreeRADIUS server project
  */
 
 RCSID("$Id$")

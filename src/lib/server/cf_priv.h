@@ -21,7 +21,7 @@
  * @file cf_priv.h
  * @brief Private data structures and types for cf_*.c
  *
- * @copyright 2017  The FreeRADIUS server project
+ * @copyright 2017 The FreeRADIUS server project
  */
 RCSIDH(cf_priv_h, "$Id$")
 

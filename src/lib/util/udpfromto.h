@@ -21,7 +21,7 @@
  *
  * @file src/lib/util/udpfromto.h
  *
- * @copyright 2015  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
  */
 RCSIDH(udpfromto_h, "$Id$")
 

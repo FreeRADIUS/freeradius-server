@@ -62,10 +62,10 @@
  * The TLS Message Length field is four octets and indicates the
  * complete reassembled length of the TLS record fragment.
  *
- * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * @copyright 2003  Alan DeKok <aland@freeradius.org>
- * @copyright 2006,2015  The FreeRADIUS server project
- * @copyright 2015  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2006,2015 The FreeRADIUS server project
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 
 RCSID("$Id$")

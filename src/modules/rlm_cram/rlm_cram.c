@@ -30,7 +30,7 @@
 	103 (Sandy-Mail-Response), contains client's response, 16 octets
 	for APOP/CRAM-MD5/CRAM-MD4, 20 octets for CRAM-SHA1
    @endverbatim
- * @copyright 2001,2006  The FreeRADIUS server project
+ * @copyright 2001,2006 The FreeRADIUS server project
  * @copyright 2002 SANDY (http://www.sandy.ru/) under GPLr
  */
 RCSID("$Id$")

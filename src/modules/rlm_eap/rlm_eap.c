@@ -19,9 +19,9 @@
  * @file rlm_eap.c
  * @brief Implements the EAP framework.
  *
- * @copyright 2000-2003,2006  The FreeRADIUS server project
- * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * @copyright 2003  Alan DeKok <aland@freeradius.org>
+ * @copyright 2000-2003,2006 The FreeRADIUS server project
+ * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 

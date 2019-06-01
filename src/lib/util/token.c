@@ -20,7 +20,7 @@
  *
  * @file src/lib/util/token.c
  *
- * @copyright 2001,2006  The FreeRADIUS server project
+ * @copyright 2001,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

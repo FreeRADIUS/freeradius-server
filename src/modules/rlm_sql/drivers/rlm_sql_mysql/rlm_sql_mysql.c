@@ -19,10 +19,10 @@
  * @file rlm_sql_mysql.c
  * @brief MySQL driver.
  *
- * @copyright 2014-2015  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2000-2007,2015  The FreeRADIUS server project
- * @copyright 2000  Mike Machado <mike@innercite.com>
- * @copyright 2000  Alan DeKok <aland@freeradius.org>
+ * @copyright 2014-2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2000-2007,2015 The FreeRADIUS server project
+ * @copyright 2000 Mike Machado <mike@innercite.com>
+ * @copyright 2000 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 

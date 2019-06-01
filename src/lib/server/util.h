@@ -21,7 +21,7 @@
  * @file lib/server/util.h
  * @brief Various utility functions
  *
- * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000,2006 The FreeRADIUS server project
  */
 RCSIDH(util_h, "$Id$")
 

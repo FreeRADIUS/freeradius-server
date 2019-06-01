@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/print.h
  *
- * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000,2006 The FreeRADIUS server project
  */
 RCSIDH(print_h, "$Id$")
 

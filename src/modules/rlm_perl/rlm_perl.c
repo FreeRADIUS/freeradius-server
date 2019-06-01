@@ -19,8 +19,8 @@
  * @file rlm_perl.c
  * @brief Translates requests between the server an a perl interpreter.
  *
- * @copyright 2002,2006  The FreeRADIUS server project
- * @copyright 2002  Boian Jordanov <bjordanov@orbitel.bg>
+ * @copyright 2002,2006 The FreeRADIUS server project
+ * @copyright 2002 Boian Jordanov <bjordanov@orbitel.bg>
  */
 RCSID("$Id$")
 

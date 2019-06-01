@@ -19,7 +19,7 @@
  * @file rlm_detail.c
  * @brief Write plaintext versions of packets to flatfiles.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

@@ -21,7 +21,7 @@
  * @file lib/server/pair.h
  * @brief Server pair manipulation macros
  *
- * @copyright 2018  The FreeRADIUS server project
+ * @copyright 2018 The FreeRADIUS server project
  */
 RCSIDH(server_pair_h, "$Id$")
 

@@ -19,9 +19,9 @@
  * @file src/lib/server/dependency.c
  * @brief Check version numbers of dependencies.
  *
- * @copyright 1999-2014  The FreeRADIUS server project
- * @copyright 2012  Alan DeKok <aland@freeradius.org>
- * @copyright 2000  Chris Parker <cparker@starnetusa.com>
+ * @copyright 1999-2014 The FreeRADIUS server project
+ * @copyright 2012 Alan DeKok <aland@freeradius.org>
+ * @copyright 2000 Chris Parker <cparker@starnetusa.com>
  */
 
 RCSID("$Id$")

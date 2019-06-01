@@ -21,7 +21,7 @@
  * @file lib/server/base.h
  * @brief Structures, prototypes and global variables for the FreeRADIUS server.
  *
- * @copyright 1999-2018  The FreeRADIUS server project
+ * @copyright 1999-2018 The FreeRADIUS server project
  */
 RCSIDH(base_h, "$Id$")
 

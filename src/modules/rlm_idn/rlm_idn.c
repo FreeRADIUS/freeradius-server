@@ -19,7 +19,7 @@
  * @file rlm_idn.c
  * @brief Internationalized Domain Name encoding for DNS aka IDNA aka RFC3490
  *
- * @copyright 2013  Brian S. Julin <bjulin@clarku.edu>
+ * @copyright 2013 Brian S. Julin <bjulin@clarku.edu>
  */
 RCSID("$Id$")
 

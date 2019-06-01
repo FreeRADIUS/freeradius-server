@@ -23,9 +23,9 @@
  * accounting:     Functions to write radwtmp file.
  * Also contains handler for "Group".
  *
- * @copyright 2000,2006  The FreeRADIUS server project
- * @copyright 2000  Jeff Carneal <jeff@apex.net>
- * @copyright 2000  Alan Curry <pacman@world.std.com>
+ * @copyright 2000,2006 The FreeRADIUS server project
+ * @copyright 2000 Jeff Carneal <jeff@apex.net>
+ * @copyright 2000 Alan Curry <pacman@world.std.com>
  */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API

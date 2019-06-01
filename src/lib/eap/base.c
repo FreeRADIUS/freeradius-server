@@ -19,10 +19,10 @@
  * @file lib/eap/base.c
  * @brief Code common to clients and to servers.
  *
- * @copyright 2000-2003,2006  The FreeRADIUS server project
- * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * @copyright 2003  Alan DeKok <aland@freeradius.org>
- * @copyright 2003  Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * @copyright 2000-2003,2006 The FreeRADIUS server project
+ * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2003 Michael Richardson <mcr@sandelman.ottawa.on.ca>
  */
 
 /*

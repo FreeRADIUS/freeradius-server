@@ -19,8 +19,8 @@
  * @file krb5.h
  * @brief Context management functions for rlm_krb5
  *
- * @copyright 2013  The FreeRADIUS server project
- * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2013 The FreeRADIUS server project
+ * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 

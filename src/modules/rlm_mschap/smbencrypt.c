@@ -16,8 +16,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * @copyright 2002  3APA3A for FreeRADIUS project
-   @copyright 2006  The FreeRADIUS server project
+ * @copyright 2002 3APA3A for FreeRADIUS project
+   @copyright 2006 The FreeRADIUS server project
  */
 
 RCSID("$Id$")

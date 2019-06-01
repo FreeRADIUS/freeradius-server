@@ -20,7 +20,7 @@
  * @file lib/eap/compose.h
  * @brief EAP packet composition.
  *
- * @copyright 2019  The FreeRADIUS server project
+ * @copyright 2019 The FreeRADIUS server project
  */
 
 #include <stdbool.h>

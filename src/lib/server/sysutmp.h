@@ -21,7 +21,7 @@
  * @file lib/server/sysutmp.h
  * @brief Compatibility stuff for the different UTMP systems.
  *
- * @copyright 2015  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
  */
 RCSIDH(sysutmp_h, "$Id$")
 

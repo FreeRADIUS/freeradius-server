@@ -20,9 +20,9 @@
  * @file lib/eap/tls.h
  * @brief Generic EAP over TLS API
  *
- * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * @copyright 2003  Alan DeKok <aland@freeradius.org>
- * @copyright 2006  The FreeRADIUS server project
+ * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2006 The FreeRADIUS server project
  */
 
 RCSIDH(lib_eap_tls_h, "$Id$")

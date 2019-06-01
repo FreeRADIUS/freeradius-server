@@ -21,7 +21,7 @@
  * @file lib/server/rad_assert.h
  * @brief Debug assertions, with logging.
  *
- * @copyright 2000,2001,2006  The FreeRADIUS server project
+ * @copyright 2000,2001,2006 The FreeRADIUS server project
  */
 RCSIDH(rad_assert_h, "$Id$")
 

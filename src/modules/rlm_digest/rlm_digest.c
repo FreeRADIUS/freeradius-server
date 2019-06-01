@@ -19,8 +19,8 @@
  * @file rlm_digest.c
  * @brief Handles SIP digest authentication requests from Cisco SIP servers.
  *
- * @copyright 2002,2006  The FreeRADIUS server project
- * @copyright 2002  Alan DeKok <aland@freeradius.org>
+ * @copyright 2002,2006 The FreeRADIUS server project
+ * @copyright 2002 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 

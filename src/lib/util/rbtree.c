@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/rbtree.c
  *
- * @copyright 2004,2006  The FreeRADIUS server project
+ * @copyright 2004,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

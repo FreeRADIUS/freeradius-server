@@ -28,7 +28,7 @@
  *
  * @file src/lib/util/hash.c
  *
- * @copyright 2005,2006  The FreeRADIUS server project
+ * @copyright 2005,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

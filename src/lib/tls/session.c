@@ -21,7 +21,7 @@
  * @brief Initialise OpenSSL sessions, and read/write data to/from them.
  *
  * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
- * @copyright 2003  Alan DeKok <aland@freeradius.org>
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
  * @copyright 2006-2016 The FreeRADIUS server project
  */
 

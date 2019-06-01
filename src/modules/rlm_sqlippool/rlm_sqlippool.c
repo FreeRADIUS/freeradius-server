@@ -19,9 +19,9 @@
  * @file rlm_sqlippool.c
  * @brief Allocates an IPv4 address from pools stored in SQL.
  *
- * @copyright 2002  Globe.Net Communications Limited
- * @copyright 2006  The FreeRADIUS server project
- * @copyright 2006  Suntel Communications
+ * @copyright 2002 Globe.Net Communications Limited
+ * @copyright 2006 The FreeRADIUS server project
+ * @copyright 2006 Suntel Communications
  */
 RCSID("$Id$")
 

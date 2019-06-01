@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/log.h
  *
- * @copyright 2016  The FreeRADIUS server project
+ * @copyright 2016 The FreeRADIUS server project
  */
 RCSIDH(util_log_h, "$Id$")
 

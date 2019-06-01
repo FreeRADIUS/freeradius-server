@@ -16,8 +16,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * @copyright 2006  The FreeRADIUS server project
- * @copyright 2006  Vitaly Bodzhgua <vitaly@eastera.net>
+ * @copyright 2006 The FreeRADIUS server project
+ * @copyright 2006 Vitaly Bodzhgua <vitaly@eastera.net>
  */
 RCSIDH(sql_fbapi_h, "$Id$")
 

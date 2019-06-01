@@ -19,8 +19,8 @@
  * @file rlm_sqlcounter.c
  * @brief Tracks data usage and other counters using SQL.
  *
- * @copyright 2001,2006  The FreeRADIUS server project
- * @copyright 2001  Alan DeKok <aland@freeradius.org>
+ * @copyright 2001,2006 The FreeRADIUS server project
+ * @copyright 2001 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 

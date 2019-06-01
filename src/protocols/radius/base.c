@@ -20,7 +20,7 @@
  * @file protocols/radius/base.c
  * @brief Functions to send/receive radius packets.
  *
- * @copyright 2000-2003,2006  The FreeRADIUS server project
+ * @copyright 2000-2003,2006 The FreeRADIUS server project
  */
 
 RCSID("$Id$")

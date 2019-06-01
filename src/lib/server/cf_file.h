@@ -21,7 +21,7 @@
  * @file lib/server/cf_file.h
  * @brief Parse on-disk text based config files into the FreeRADIUS internal format.
  *
- * @copyright 2017  The FreeRADIUS server project
+ * @copyright 2017 The FreeRADIUS server project
  */
 RCSIDH(cf_file_h, "$Id$")
 

@@ -21,7 +21,7 @@
  *
  * @file src/lib/util/token.h
  *
- * @copyright 2001,2006  The FreeRADIUS server project
+ * @copyright 2001,2006 The FreeRADIUS server project
  */
 RCSIDH(token_h, "$Id$")
 

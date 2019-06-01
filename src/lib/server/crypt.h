@@ -20,7 +20,7 @@
  * @file lib/server/crypt.h
  * @brief A thread safe crypt wrapper.
  *
- * @copyright 2000-2006,2016  The FreeRADIUS server project.
+ * @copyright 2000-2006,2016 The FreeRADIUS server project.
  */
 #ifdef __cplusplus
 extern "C" {

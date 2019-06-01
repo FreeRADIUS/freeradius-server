@@ -21,7 +21,7 @@
  * @file src/lib/server/virtual_servers.h
  * @brief Declarations for functions that parse and manipulate virtual server sections.
  *
- * @copyright 2019  The FreeRADIUS server project
+ * @copyright 2019 The FreeRADIUS server project
  */
 
 #ifdef __cplusplus

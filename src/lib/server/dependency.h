@@ -21,7 +21,7 @@
  * @file lib/server/dependency.h
  * @brief Version checking functions
  *
- * @copyright 2017  The FreeRADIUS server project
+ * @copyright 2017 The FreeRADIUS server project
  */
 RCSIDH(dependency_h, "$Id$")
 

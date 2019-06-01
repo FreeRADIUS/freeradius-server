@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/heap.c
  *
- * @copyright 2005,2006  The FreeRADIUS server project
+ * @copyright 2005,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

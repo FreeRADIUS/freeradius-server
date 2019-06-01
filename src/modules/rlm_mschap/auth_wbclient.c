@@ -19,7 +19,7 @@
  * @file auth_wbclient.c
  * @brief NTLM authentication against the wbclient library
  *
- * @copyright 2015  Matthew Newton
+ * @copyright 2015 Matthew Newton
  */
 
 RCSID("$Id$")

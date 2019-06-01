@@ -21,7 +21,7 @@
  * @file lib/server/components.h
  * @brief Module components.
  *
- * @copyright 2018  The FreeRADIUS server project
+ * @copyright 2018 The FreeRADIUS server project
  */
 RCSIDH(components_h, "$Id$")
 

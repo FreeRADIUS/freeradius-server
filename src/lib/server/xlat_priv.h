@@ -23,8 +23,8 @@
  *
  * Private structures for the xlat tokenizer and xlat eval code.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
- * @copyright 2000  Alan DeKok <aland@freeradius.org>
+ * @copyright 2000,2006 The FreeRADIUS server project
+ * @copyright 2000 Alan DeKok <aland@freeradius.org>
  */
 #ifdef __cplusplus
 extern "C" {

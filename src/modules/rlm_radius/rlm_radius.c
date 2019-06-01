@@ -19,8 +19,8 @@
  * @file rlm_radius.c
  * @brief A RADIUS client library.
  *
- * @copyright 2016  The FreeRADIUS server project
- * @copyright 2016  Network RADIUS SARL
+ * @copyright 2016 The FreeRADIUS server project
+ * @copyright 2016 Network RADIUS SARL
  */
 RCSID("$Id$")
 

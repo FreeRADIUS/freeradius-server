@@ -19,8 +19,8 @@
  * @file rlm_cache.h
  * @brief Cache values and merge them back into future requests.
  *
- * @copyright 2014  The FreeRADIUS server project
- * @copyright 2014  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2014 The FreeRADIUS server project
+ * @copyright 2014 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSIDH(cache_h, "$Id$")
 

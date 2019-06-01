@@ -20,7 +20,7 @@
  * @file src/lib/server/module.c
  * @brief Defines functions for module (re-)initialisation.
  *
- * @copyright 2003,2006,2016  The FreeRADIUS server project
+ * @copyright 2003,2006,2016 The FreeRADIUS server project
  * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2000 Alan DeKok <aland@freeradius.org>
  * @copyright 2000 Alan Curry <pacman@world.std.com>

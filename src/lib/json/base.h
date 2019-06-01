@@ -22,9 +22,9 @@
  *
  * @author Arran Cudbard-Bell
  *
- * @copyright 2015  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2015  Network RADIUS SARL <info@networkradius.com>
- * @copyright 2015  The FreeRADIUS Server Project
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015 Network RADIUS SARL <info@networkradius.com>
+ * @copyright 2015 The FreeRADIUS Server Project
  */
 RCSIDH(json_h, "$Id$")
 

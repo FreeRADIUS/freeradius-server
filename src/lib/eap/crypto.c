@@ -22,8 +22,8 @@
  * @author Henrik Eriksson <henriken@axis.com>
  * @author Lars Viklund <larsv@axis.com>
  *
- * @copyright 2002  Axis Communications AB
- * @copyright 2006  The FreeRADIUS server project
+ * @copyright 2002 Axis Communications AB
+ * @copyright 2006 The FreeRADIUS server project
  */
 
 RCSID("$Id$")

@@ -21,7 +21,7 @@
  *
  * @file src/lib/util/types.h
  *
- * @copyright 2017  The FreeRADIUS server project
+ * @copyright 2017 The FreeRADIUS server project
  */
 RCSIDH(types_h, "$Id$")
 

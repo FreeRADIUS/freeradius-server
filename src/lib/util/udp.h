@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/udp.h
  *
- * @copyright 2015  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
  */
 RCSIDH(udp_h, "$Id$")
 

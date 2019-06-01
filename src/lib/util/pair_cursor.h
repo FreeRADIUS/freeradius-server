@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/pair_cursor.h
  *
- * @copyright 2016  The FreeRADIUS server project
+ * @copyright 2016 The FreeRADIUS server project
  */
 RCSIDH(pair_cursor_h, "$Id$")
 

@@ -21,7 +21,7 @@
  * @file protocols/radius/defs.h
  * @brief Constants for the RADIUS protocol.
  *
- * @copyright 2015  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
  */
 RCSIDH(radius_h, "$Id$")
 

@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/hash.h
  *
- * @copyright 2005,2006  The FreeRADIUS server project
+ * @copyright 2005,2006 The FreeRADIUS server project
  */
 RCSIDH(hash_h, "$Id$")
 

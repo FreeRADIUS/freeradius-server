@@ -20,7 +20,7 @@
  * @file protocols/radius/packet.c
  * @brief Functions to deal with RADIUS_PACKET data structures.
  *
- * @copyright 2000-2017  The FreeRADIUS server project
+ * @copyright 2000-2017 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

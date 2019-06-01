@@ -19,8 +19,8 @@
  * @file rlm_files.c
  * @brief Process simple 'users' policy files.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
- * @copyright 2000  Jeff Carneal <jeff@apex.net>
+ * @copyright 2000,2006 The FreeRADIUS server project
+ * @copyright 2000 Jeff Carneal <jeff@apex.net>
  */
 RCSID("$Id$")
 

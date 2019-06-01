@@ -20,7 +20,7 @@
  * @file protocols/radius/encode.c
  * @brief Functions to encode RADIUS attributes
  *
- * @copyright 2000-2003,2006-2015  The FreeRADIUS server project
+ * @copyright 2000-2003,2006-2015 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

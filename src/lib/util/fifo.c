@@ -18,8 +18,8 @@
  *
  * @file src/lib/util/fifo.c
  *
- * @copyright 2005,2006  The FreeRADIUS server project
- * @copyright 2005  Alan DeKok <aland@freeradius.org>
+ * @copyright 2005,2006 The FreeRADIUS server project
+ * @copyright 2005 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 

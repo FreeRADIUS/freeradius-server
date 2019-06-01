@@ -20,8 +20,8 @@
  * @file src/lib/server/pairmove.c
  * @brief Old style mapping code
  *
- * @copyright 2007  The FreeRADIUS server project
- * @copyright 2007  Alan DeKok <aland@deployingradius.com>
+ * @copyright 2007 The FreeRADIUS server project
+ * @copyright 2007 Alan DeKok <aland@deployingradius.com>
  */
 RCSID("$Id$")
 

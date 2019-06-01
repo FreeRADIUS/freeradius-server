@@ -20,10 +20,10 @@
  * @brief Logging functions used by the server core.
  * @file src/lib/server/log.c
  *
- * @copyright 2000,2006  The FreeRADIUS server project
- * @copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
- * @copyright 2000  Alan DeKok <aland@freeradius.org>
- * @copyright 2001  Chad Miller <cmiller@surfsouth.com>
+ * @copyright 2000,2006 The FreeRADIUS server project
+ * @copyright 2000 Miquel van Smoorenburg <miquels@cistron.nl>
+ * @copyright 2000 Alan DeKok <aland@freeradius.org>
+ * @copyright 2001 Chad Miller <cmiller@surfsouth.com>
  */
 RCSID("$Id$")
 

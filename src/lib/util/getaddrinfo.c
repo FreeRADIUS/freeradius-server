@@ -25,7 +25,7 @@
  *
  * @file src/lib/util/getaddrinfo.c
  *
- * @copyright 2016  The FreeRADIUS server project
+ * @copyright 2016 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

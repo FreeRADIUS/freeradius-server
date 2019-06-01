@@ -19,9 +19,9 @@
  * @file unit_test_module.c
  * @brief Module test framework
  *
- * @copyright 2000-2018  The FreeRADIUS server project
- * @copyright 2013  Alan DeKok <aland@freeradius.org>
- * @copyright 2018  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2000-2018 The FreeRADIUS server project
+ * @copyright 2013 Alan DeKok <aland@freeradius.org>
+ * @copyright 2018 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 

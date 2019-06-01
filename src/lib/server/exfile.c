@@ -21,7 +21,7 @@
  * @brief Allow multiple threads to write to the same set of files.
  *
  * @author Alan DeKok <aland@freeradius.org>
- * @copyright 2014  The FreeRADIUS server project
+ * @copyright 2014 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>

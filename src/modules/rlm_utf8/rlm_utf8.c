@@ -19,7 +19,7 @@
  * @file rlm_utf8.c
  * @brief Enforce UTF8 encoding in strings.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")
 

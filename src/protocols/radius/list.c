@@ -20,7 +20,7 @@
  * @file protocols/radius/list.c
  * @brief Functions to deal with outgoing lists / sets of packets.
  *
- * @copyright 2000-2017  The FreeRADIUS server project
+ * @copyright 2000-2017 The FreeRADIUS server project
  */
 
 RCSID("$Id$")

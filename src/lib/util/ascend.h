@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/ascend.h
  *
- * @copyright 2003,2006  The FreeRADIUS server project
+ * @copyright 2003,2006 The FreeRADIUS server project
  */
 RCSIDH(ascend_h, "$Id$")
 

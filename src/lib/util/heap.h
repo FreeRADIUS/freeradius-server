@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/heap.h
  *
- * @copyright 2007  Alan DeKok
+ * @copyright 2007 Alan DeKok
  */
 RCSIDH(heap_h, "$Id$")
 

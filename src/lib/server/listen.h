@@ -21,7 +21,7 @@
  * @file lib/server/listen.h
  * @brief Listener API.  Binds sockets to protocol encoders/decoders.
  *
- * @copyright 2015  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
  */
 RCSIDH(listen_h, "$Id$")
 

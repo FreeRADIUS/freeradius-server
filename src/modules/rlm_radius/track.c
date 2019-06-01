@@ -19,7 +19,7 @@
  * @file rlm_radius/track.c
  * @brief Tracking RADUS client packets
  *
- * @copyright 2017  Network RADIUS SARL
+ * @copyright 2017 Network RADIUS SARL
  */
 RCSID("$Id$")
 

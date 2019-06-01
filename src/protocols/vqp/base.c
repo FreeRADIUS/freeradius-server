@@ -20,7 +20,7 @@
  * @file src/protocols/vqp/vqp.h
  * @brief Structures and prototypes for Cisco's VLAN Query Protocol
  *
- * @copyright 2018  The FreeRADIUS server project
+ * @copyright 2018 The FreeRADIUS server project
  */
 
 RCSID("$Id$")

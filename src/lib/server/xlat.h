@@ -21,7 +21,7 @@
  * @file lib/server/xlat.h
  * @brief xlat expansion parsing and evaluation API.
  *
- * @copyright 2015  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
  */
 RCSIDH(xlat_h, "$Id$")
 

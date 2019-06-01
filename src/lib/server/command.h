@@ -21,7 +21,7 @@
  * @file lib/server/command.h
  * @brief Structures and prototypes command functions
  *
- * @copyright 2007  Alan DeKok
+ * @copyright 2007 Alan DeKok
  */
 RCSIDH(command_h, "$Id$")
 

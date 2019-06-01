@@ -21,9 +21,9 @@
  * @file lib/server/users_file.h
  * @brief Support functions for users_file parsing.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
- * @copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
- * @copyright 2000  Alan DeKok <aland@freeradius.org>
+ * @copyright 2000,2006 The FreeRADIUS server project
+ * @copyright 2000 Miquel van Smoorenburg <miquels@cistron.nl>
+ * @copyright 2000 Alan DeKok <aland@freeradius.org>
  */
 RCSIDH(users_file_h, "$Id$")
 

@@ -21,8 +21,8 @@
  * @brief Creates a global event loop, and manages signalling between the forked child
  *	and its parent as the server starts.
  *
- * @copyright 2012  The FreeRADIUS server project
- * @copyright 2012  Alan DeKok <aland@deployingradius.com>
+ * @copyright 2012 The FreeRADIUS server project
+ * @copyright 2012 Alan DeKok <aland@deployingradius.com>
  */
 
 RCSID("$Id$")

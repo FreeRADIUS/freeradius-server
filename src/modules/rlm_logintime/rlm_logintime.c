@@ -19,8 +19,8 @@
  * @file rlm_logintime.c
  * @brief Allow login only during a given timeslot.
  *
- * @copyright 2001,2006  The FreeRADIUS server project
- * @copyright 2004  Kostas Kalevras <kkalev@noc.ntua.gr>
+ * @copyright 2001,2006 The FreeRADIUS server project
+ * @copyright 2004 Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 RCSID("$Id$")
 
