@@ -94,7 +94,7 @@ doc/raddb/%.adoc: raddb/%
 doc/%.html: doc/%.adoc
 	@echo HTML $^
 	@$(ASCIIDOCTOR) $< -b html5 -o $@ $<
-	@perl -p -i -e 's/\.adoc/\.html/' $@
+	@perl -p -i -e 's/\.adoc/\.html/g' $@
 
 doc/%.pdf: doc/%.adoc
 	@echo PDF $^
