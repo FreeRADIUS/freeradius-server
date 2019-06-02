@@ -17,10 +17,11 @@ switch <expansion> {
 ----
 
 A `switch` statement causes the server to evaluate _expansion_, which
-can be an link:cond_attr.adoc[&Attribute-Name] or link:cond_data[data].
-The result is compared against _match-1_ and _match-2_ to find a
-match. If no string matches, then the server looks for the default
-link:case.adoc[case] statement, which has no associated match.
+can be an link:cond_attr.adoc[&Attribute-Name] or
+link:cond_data.adoc[data].  The result is compared against _match-1_
+and _match-2_ to find a match. If no string matches, then the server
+looks for the default link:case.adoc[case] statement, which has no
+associated match.
 
 The matching is done via equality.  The `switch` statement is mostly
 syntactic sugar and is used to simplify the visual form of the

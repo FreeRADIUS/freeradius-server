@@ -1,4 +1,4 @@
-= The &Attribute-Name Operator
+= The &Attribute-Name Reference
 
 .Syntax
 [source,unlang]
@@ -6,28 +6,37 @@
 &Attribute-Name
 ----
 
-The `&Attribute-Name` operator returns a reference to the named attribute.
+The `&Attribute-Name` operator returns a reference to the named
+attribute.
 
-When used as an existence check, the condition evaluates to `true` if
-the attribute exists.  Otherwise, the condition evaluates to `false`.
+When used as an existence check in a condition, the condition
+evaluates to `true` if the attribute exists.  Otherwise, the condition
+evaluates to `false`.
 
-Older versions of the server did not use the `&` character.  Version 3
-does not require it, but a warning will be printed in debugging mode if the
-`&` is omitted.
+When used elsewhere, such as in link:switch.adoc[switch], it returns
+the value of the named attribute.
 
-The `&` character was added in version 3 in order to disambiguate the
-grammar of `unlang`.  Previously, older versions of the server could
-interpret a string such as `hello-there` either as a literal string
-"hello-there", or as a reference to an attribute named
-`hello-there`.  This ambiguity caused problems.
+Older versions of the server did not use the `&` character to
+distinguish attribute names from other strings.  Version 4 requires
+the user of the `&` before attribute names.
+
+Without the `&`, the server could interpret a string as `hello-there`
+either as a literal string "hello-there", or as a reference to an
+attribute named `hello-there`.  This ambiguity made it difficult to
+parse the configuration files correctly in all cases.
 
 Adding the leading `&` character means that attribute references are
 now easily distinguishable from literal strings.
 
+The attribute reference can also be qualified with a
+link:attr_list.adoc[list] reference.  When no list is given, the
+server looks in the input packet list for the named attribute.
+
 *Examples:*
 
 `&User-Name` +
-`&NAS-IP-Address`
+`&NAS-IP-Address` +
+`&reply:Reply-Message`
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
