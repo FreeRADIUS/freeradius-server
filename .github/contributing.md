@@ -51,7 +51,7 @@ Issues reported for these branches will be closed and locked.
 Contents of a defect report
 ---------------------------
 
-See [doc/bugs](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/bugs.md) for information
+See [doc/bugs](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/source/bugs.md) for information
 on what to include, and how to obtain it.
 
 When logging bug reports using the GitHub issue tracker, pay attention to formatting.  You should

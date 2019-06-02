@@ -14,7 +14,7 @@ about: Used to report a defect in server source code, default configuration file
 - Defect - Non compliance with a standards document, or incorrect API usage.
 - Defect - Unexpected behaviour (obvious or verified by project member).
 
-See [here](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/bugs.md) for debugging instructions and how to obtain backtraces.
+See [here](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/source/bugs.md) for debugging instructions and how to obtain backtraces.
 
 # Defect
 ## How to reproduce the issue

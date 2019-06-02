@@ -10,7 +10,7 @@
 - Defect - Unexpected behaviour (obvious or verified by project member).
 - Feature request.
 
-See [here](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/bugs.md) for debugging instructions and how to obtain backtraces.
+See [here](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/source/bugs.md) for debugging instructions and how to obtain backtraces.
 
 NOTE: PATCHES GO IN PULL REQUESTS.  IF YOU SUBMIT A DIFF HERE, THE DEVELOPMENT TEAM WILL HUNT YOU DOWN AND BEAT YOU OVER THE HEAD WITH YOUR OWN KEYBOARD. 
 
