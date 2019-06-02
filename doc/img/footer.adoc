@@ -1,0 +1,7 @@
+// ----------------------------------------------------------------------
+[grid="none",cols="<,^,>",valign=middle]
+|=======
+| Copyright (C) 2019 Network RADIUS SAS
+| image:../img/networkradius.png[link=http://networkradius.com]
+| Licenced under CC-by-NC 4.0.
+|=======
