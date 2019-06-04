@@ -20,7 +20,7 @@
  * @brief test module code.
  *
  * @copyright 2013 The FreeRADIUS server project
- * @copyright 2013 your name (your name@address)
+ * @copyright 2013 your name (email@example.org)
  */
 RCSID("$Id$")
 
