@@ -40,6 +40,10 @@ RCSID("$Id$")
 #  include <fcntl.h>
 #endif
 
+#ifdef HAVE_SYSTEMD
+#  include <systemd/sd-daemon.h>
+#endif
+
 main_config_t		main_config;				//!< Main server configuration.
 extern fr_cond_t	*debug_condition;
 fr_cond_t		*debug_condition = NULL;			//!< Condition used to mark packets up for checking.
@@ -1215,6 +1219,10 @@ void main_config_hup(void)
 	cs = cf_section_alloc(NULL, "main", NULL);
 	if (!cs) return;
 
+#ifdef HAVE_SYSTEMD
+	sd_notify(0, "RELOADING=1");
+#endif
+
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
 
@@ -1258,4 +1266,12 @@ void main_config_hup(void)
 	virtual_servers_load(cs);
 
 	virtual_servers_free(cc->created - (main_config.max_request_time * 4));
+
+#ifdef HAVE_SYSTEMD
+	/*
+	 * If RELOADING=1 event is sent then it needed also a "READY=1" notification
+	 * when it completed reloading its configuration.
+	 */
+	sd_notify(0, "READY=1");
+#endif
 }
