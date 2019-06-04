@@ -480,9 +480,13 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 			}
 
-#  ifdef HAVE_SYSTEMD
-			sd_notify(0, "READY=1");
-#  endif
+#ifdef HAVE_SYSTEMD
+			/*
+			 *	Update the systemd MAINPID to be our child,
+			 *	as the parent is about to exit.
+			 */
+			sd_notifyf(0, "MAINPID=%lu", (unsigned long)pid);
+#endif
 
 			exit(EXIT_SUCCESS);
 		}
@@ -620,6 +624,16 @@ int main(int argc, char *argv[])
 	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
 	 */
 	state = fr_state_init(NULL);
+
+#ifdef HAVE_SYSTEMD
+	{
+		int ret_notif;
+
+		ret_notif = sd_notify(0, "READY=1\nSTATUS=Processing requests");
+		if (ret_notif < 0)
+			WARN("Failed notifying systemd that process is READY: %s", fr_syserror(ret_notif));
+	}
+#endif
 
 	/*
 	 *  Process requests until HUP or exit.
