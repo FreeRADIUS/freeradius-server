@@ -192,7 +192,7 @@ int compute_password_element (pwd_session_t *session, uint16_t grp_num,
 	}
 	ctr = 0;
 	while (1) {
-		if (ctr > 10) {
+		if (ctr > 100) {
 			DEBUG("unable to find random point on curve for group %d, something's fishy", grp_num);
 			goto fail;
 		}
