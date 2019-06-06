@@ -7,7 +7,6 @@ Documentation=man:radiusd(8) man:radiusd.conf(5) http://wiki.freeradius.org/ htt
 Type=notify
 WatchdogSec=60
 NotifyAccess=all
-PIDFile=/var/run/radiusd/radiusd.pid
 EnvironmentFile=-/etc/sysconfig/radiusd
 
 # FreeRADIUS can do static evaluation of policy language rules based
@@ -27,7 +26,7 @@ RuntimeDirectory=radiusd
 RuntimeDirectoryMode=0775
 ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cx -lstdout
 ExecStartPre=/usr/bin/chown radiusd:radiusd /var/run/radiusd
-ExecStart=/usr/sbin/radiusd $FREERADIUS_OPTIONS
+ExecStart=/usr/sbin/radiusd -f $FREERADIUS_OPTIONS
 Restart=on-failure
 RestartSec=5
 
