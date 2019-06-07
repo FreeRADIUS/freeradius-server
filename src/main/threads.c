@@ -823,9 +823,9 @@ static void *request_handler_thread(void *arg)
 #endif
 #endif
 
-		self->request->process(self->request, FR_ACTION_RUN);
-		self->request = NULL;
+		if (self->request->process) self->request->process(self->request, FR_ACTION_RUN);
 
+		self->request = NULL;
 #ifdef HAVE_STDATOMIC_H
 		CAS_DECR(thread_pool.active_threads);
 #else
