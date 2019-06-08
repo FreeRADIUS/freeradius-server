@@ -17,7 +17,7 @@ $(DOCDIRS):
 $(DOCINSTALL): | $(DOCDIRS)
 
 #  Wildcard installation rule
-$(R)$(docdir)/%: doc/%
+$(R)$(docdir)/%: doc/% | $(dir $@)
 	@echo INSTALL $<
 	@$(INSTALL) -m 644 $< $@
 

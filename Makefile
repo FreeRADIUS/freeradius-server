@@ -124,9 +124,14 @@ $(R)$(dictdir)/%: share/%
 	@$(INSTALL) -m 644 $< $@
 
 MANFILES := $(wildcard man/man*/*.?)
+MANDIR   := $(wildcard man/man*)
 install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 
-$(R)$(mandir)/%: man/%
+$(MANDIR):
+	@echo INSTALL $(patsubst $(R)$(mandir)/%,man/%,$@)
+	@$(INSTALL) -d -m 755 $@
+
+$(R)$(mandir)/%: man/% | $(dir $@)
 	@echo INSTALL $(notdir $<)
 	@sed -e "s,/etc/raddb,$(raddbdir),g" \
 		-e "s,/usr/local/share,$(datarootdir),g" \
