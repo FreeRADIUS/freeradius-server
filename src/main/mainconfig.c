@@ -528,8 +528,8 @@ static int switch_users(CONF_SECTION *cs)
 	if (rad_debug_lvl && (getuid() != 0)) return 1;
 
 	if (cf_section_parse(cs, NULL, bootstrap_config) < 0) {
-		fprintf(stderr, "%s: Error: Failed to parse user/group information.\n",
-			main_config.name);
+		fr_strerror_printf("%s: Error: Failed to parse user/group information.\n",
+				   main_config.name);
 		return 0;
 	}
 
@@ -544,8 +544,8 @@ static int switch_users(CONF_SECTION *cs)
 
 		gr = getgrnam(gid_name);
 		if (!gr) {
-			fprintf(stderr, "%s: Cannot get ID for group %s: %s\n",
-				main_config.name, gid_name, fr_syserror(errno));
+			fr_strerror_printf("%s: Cannot get ID for group %s: %s\n",
+					   main_config.name, gid_name, fr_syserror(errno));
 			return 0;
 		}
 
@@ -565,8 +565,8 @@ static int switch_users(CONF_SECTION *cs)
 		struct passwd *user;
 
 		if (rad_getpwnam(cs, &user, uid_name) < 0) {
-			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
-				main_config.name, uid_name, fr_strerror());
+			fr_strerror_printf("%s: Cannot get passwd entry for user %s: %s\n",
+					   main_config.name, uid_name, fr_strerror());
 			return 0;
 		}
 
@@ -578,8 +578,8 @@ static int switch_users(CONF_SECTION *cs)
 			do_suid = true;
 #ifdef HAVE_INITGROUPS
 			if (initgroups(uid_name, server_gid) < 0) {
-				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
-					main_config.name, uid_name, fr_syserror(errno));
+				fr_strerror_printf("%s: Cannot initialize supplementary group list for user %s: %s\n",
+						   main_config.name, uid_name, fr_syserror(errno));
 				talloc_free(user);
 				return 0;
 			}
@@ -594,8 +594,8 @@ static int switch_users(CONF_SECTION *cs)
 	 */
 	if (chroot_dir) {
 		if (chroot(chroot_dir) < 0) {
-			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
-				main_config.name, chroot_dir, fr_syserror(errno));
+			fr_strerror_printf("%s: Failed to perform chroot %s: %s",
+					   main_config.name, chroot_dir, fr_syserror(errno));
 			return 0;
 		}
 
@@ -622,8 +622,8 @@ static int switch_users(CONF_SECTION *cs)
 	 */
 	if (do_sgid) {
 		if (setgid(server_gid) < 0){
-			fprintf(stderr, "%s: Failed setting group to %s: %s",
-				main_config.name, gid_name, fr_syserror(errno));
+			fr_strerror_printf("%s: Failed setting group to %s: %s",
+					   main_config.name, gid_name, fr_syserror(errno));
 			return 0;
 		}
 	}
@@ -670,8 +670,8 @@ static int switch_users(CONF_SECTION *cs)
 		default_log.fd = open(main_config.log_file,
 				      O_WRONLY | O_APPEND | O_CREAT, 0640);
 		if (default_log.fd < 0) {
-			fprintf(stderr, "%s: Failed to open log file %s: %s\n",
-				main_config.name, main_config.log_file, fr_syserror(errno));
+			fr_strerror_printf("%s: Failed to open log file %s: %s\n",
+					   main_config.name, main_config.log_file, fr_syserror(errno));
 			return 0;
 		}
 	}
@@ -687,8 +687,8 @@ static int switch_users(CONF_SECTION *cs)
 	if ((do_suid || do_sgid) &&
 	    (default_log.dst == L_DST_FILES)) {
 		if (fchown(default_log.fd, server_uid, server_gid) < 0) {
-			fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
-				main_config.name, main_config.log_file, fr_syserror(errno));
+			fr_strerror_printf("%s: Cannot change ownership of log file %s: %s\n",
+					   main_config.name, main_config.log_file, fr_syserror(errno));
 			return 0;
 		}
 	}
