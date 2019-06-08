@@ -3019,6 +3019,11 @@ int xlat_init(void)
 	xlat_async_register(NULL, "sha2_384", xlat_func_sha2_384);
 	xlat_async_register(NULL, "sha2_512", xlat_func_sha2_512);
 
+#  if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	xlat_async_register(NULL, "blake2s_256", xlat_func_blake2s_256);
+	xlat_async_register(NULL, "blake2b_512", xlat_func_blake2b_512);
+#  endif
+
 #  ifdef HAVE_EVP_SHA3_512
 	xlat_async_register(NULL, "sha3_224", xlat_func_sha3_224);
 	xlat_async_register(NULL, "sha3_256", xlat_func_sha3_256);
