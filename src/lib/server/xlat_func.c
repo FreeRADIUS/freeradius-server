@@ -1437,7 +1437,7 @@ EVP_MD_XLAT(blake2s_256, blake2s256)
 EVP_MD_XLAT(blake2b_512, blake2b512)
 #  endif
 
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#  ifdef HAVE_EVP_SHA3_512
 EVP_MD_XLAT(sha3_224, sha3_224)
 EVP_MD_XLAT(sha3_256, sha3_256)
 EVP_MD_XLAT(sha3_384, sha3_384)

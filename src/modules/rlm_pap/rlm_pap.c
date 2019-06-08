@@ -160,7 +160,7 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{ssha256}",		FR_SSHA2_256_PASSWORD },
 	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
 	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#  ifdef HAVE_EVP_SHA3_512
 	{ "{ssha3-224}",	FR_SSHA3_224_PASSWORD },
 	{ "{ssha3-256}",	FR_SSHA3_256_PASSWORD },
 	{ "{ssha3-384}",	FR_SSHA3_384_PASSWORD },
@@ -187,7 +187,7 @@ static const FR_NAME_NUMBER pbkdf2_crypt_names[] = {
 	{ "HMACSHA2+256",	FR_SSHA2_256_PASSWORD },
 	{ "HMACSHA2+384",	FR_SSHA2_384_PASSWORD },
 	{ "HMACSHA2+512",	FR_SSHA2_512_PASSWORD },
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#ifdef HAVE_EVP_SHA3_512
 	{ "HMACSHA3+224",	FR_SSHA3_224_PASSWORD },
 	{ "HMACSHA3+256",	FR_SSHA3_256_PASSWORD },
 	{ "HMACSHA3+384",	FR_SSHA3_384_PASSWORD },
@@ -552,7 +552,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			if (inst->normify) normify(request, vp, 64); /* ensure it's in the right format */
 			found_pw = true;
 		}
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#  ifdef HAVE_EVP_SHA3_512
 		else if (vp->da == attr_sha3_password) {
 			if (inst->normify) normify(request, vp, 28); /* ensure it's in the right format */
 			found_pw = true;
@@ -825,7 +825,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQU
 			return RLM_MODULE_INVALID;
 		}
 	}
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#  ifdef HAVE_EVP_SHA3_512
 	else if (vp->da == attr_sha3_password) {
 		RDEBUG2("Comparing with \"known-good\" SHA3-Password");
 		/*
@@ -913,7 +913,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha_evp(rlm_pap_t const *inst, REQ
 		min_len = SHA512_DIGEST_LENGTH;
 		md = EVP_sha512();
 	}
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#ifdef HAVE_EVP_SHA3_512
 	else if (vp->da == attr_ssha3_224_password) {
 		name = "SSHA3-224";
 		md = EVP_sha3_224();
@@ -1436,7 +1436,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		}
 #ifdef HAVE_OPENSSL_EVP_H
 		else if (vp->da == attr_sha2_password
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#  ifdef HAVE_EVP_SHA3_512
 			 || (vp->da == attr_sha3_password)
 #  endif
 			) {
@@ -1445,7 +1445,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		    (vp->da == attr_ssha2_256_password) ||
 		    (vp->da == attr_ssha2_384_password) ||
 		    (vp->da == attr_ssha2_512_password)
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#  ifdef HAVE_EVP_SHA3_512
 		    || (vp->da == attr_ssha3_224_password) ||
 		    (vp->da == attr_ssha3_256_password) ||
 		    (vp->da == attr_ssha3_384_password) ||
