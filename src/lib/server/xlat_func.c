@@ -3024,7 +3024,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "blake2b_512", xlat_func_blake2b_512);
 #  endif
 
-#  ifdef HAVE_EVP_SHA3_512
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	xlat_async_register(NULL, "sha3_224", xlat_func_sha3_224);
 	xlat_async_register(NULL, "sha3_256", xlat_func_sha3_256);
 	xlat_async_register(NULL, "sha3_384", xlat_func_sha3_384);

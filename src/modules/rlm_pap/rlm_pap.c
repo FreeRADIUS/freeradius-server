@@ -1052,7 +1052,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 		digest_len = SHA512_DIGEST_LENGTH;
 		break;
 
-#  ifdef HAVE_EVP_SHA3_512
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	case FR_SSHA3_224_PASSWORD:
 		evp_md = EVP_sha3_224();
 		digest_len = SHA224_DIGEST_LENGTH;

@@ -94,9 +94,6 @@
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
 
-/* Define to 1 if you have the `EVP_sha3_512' function. */
-#undef HAVE_EVP_SHA3_512
-
 /* define this if we have <execinfo.h> and symbols */
 #undef HAVE_EXECINFO
 
@@ -397,12 +394,6 @@
 
 /* Define to 1 if you have the `snprintf' function. */
 #undef HAVE_SNPRINTF
-
-/* Define to 1 if you have the `SSL_get_client_random' function. */
-#undef HAVE_SSL_GET_CLIENT_RANDOM
-
-/* Define to 1 if you have the `SSL_get_server_random' function. */
-#undef HAVE_SSL_GET_SERVER_RANDOM
 
 /* Define to 1 if you have the <stdatomic.h> header file. */
 #undef HAVE_STDATOMIC_H
