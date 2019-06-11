@@ -56,25 +56,7 @@ static int			self_pipe[2] = { -1, -1 };
 #include <systemd/sd-daemon.h>
 
 static fr_time_delta_t		sd_watchdog_interval;
-static fr_event_timer_t		const *sd_watchdog_ev;
 
-/** Reoccurring watchdog event to inform systemd we're still alive
- *
- * Note actually a very good indicator of aliveness as the main event
- * loop doesn't actually do any packet processing.
- */
-static void sd_watchdog_event(fr_event_list_t *our_el, UNUSED fr_time_t now, void *ctx)
-{
-	DEBUG("Emitting systemd watchdog notification");
-
-	sd_notify(0, "WATCHDOG=1");
-
-	if (fr_event_timer_in(NULL, our_el, &sd_watchdog_ev,
-			      sd_watchdog_interval,
-			      sd_watchdog_event, ctx) < 0) {
-		ERROR("Failed to insert watchdog event");
-	}
-}
 #endif
 
 static void handle_signal_self(int flag)
