@@ -823,6 +823,7 @@ module_t rlm_cache = {
 	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_cache_it,
+		[MOD_AUTHENTICATE]	= mod_cache_it,
 		[MOD_PREACCT]		= mod_cache_it,
 		[MOD_ACCOUNTING]	= mod_cache_it,
 		[MOD_PRE_PROXY]		= mod_cache_it,
