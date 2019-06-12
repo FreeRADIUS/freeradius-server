@@ -15,7 +15,7 @@
  */
 
 /**
- * @file src/lib/sim/sim_attrs.h
+ * @file src/lib/sim/attrs.h
  * @brief Attributes to EAP-SIM/AKA/AKA' clients and servers.
  *
  * @copyright 2003-2016 The FreeRADIUS server project
@@ -86,6 +86,7 @@ extern fr_dict_attr_t const *attr_eap_sim_rand;
 extern fr_dict_attr_t const *attr_eap_sim_sres;
 extern fr_dict_attr_t const *attr_eap_sim_subtype;
 
+extern fr_dict_attr_t const *attr_eap_type;
 extern fr_dict_attr_t const *attr_sim_algo_version;
 extern fr_dict_attr_t const *attr_sim_amf;
 extern fr_dict_attr_t const *attr_sim_identity_type;

@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/eap/types.h>
 #include "eap_sim_common.h"
 #include "base.h"
-#include "sim_attrs.h"
+#include "attrs.h"
 
 /*
  *  EAP-SIM/AKA/AKA' PACKET FORMAT

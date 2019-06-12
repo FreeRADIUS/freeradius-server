@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/eap/types.h>
 #include "eap_sim_common.h"
 #include "base.h"
-#include "sim_attrs.h"
+#include "attrs.h"
 
 #define SIM_MAX_ATTRIBUTE_VALUE_LEN	((255 * 4) - 2)		/* max length field value less Type + Length fields */
 

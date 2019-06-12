@@ -37,7 +37,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/eap/types.h>
 #include "base.h"
-#include "sim_attrs.h"
+#include "attrs.h"
 #include "milenage.h"
 
 #include <freeradius-devel/util/sha1.h>

@@ -23,7 +23,7 @@
 
 #include <freeradius-devel/server/base.h>
 #include "base.h"
-#include "sim_attrs.h"
+#include "attrs.h"
 
 static int sim_xlat_refs = 0;
 
