@@ -48,7 +48,6 @@ RCSID("$Id$")
 
 extern pid_t			radius_pid;
 static bool			just_started = true;
-time_t				fr_start_time = (time_t)-1;
 static fr_event_list_t		*event_list = NULL;
 static int			self_pipe[2] = { -1, -1 };
 
@@ -188,10 +187,23 @@ void main_loop_free(void)
 	TALLOC_FREE(event_list);
 }
 
-int main_loop_process(void)
+int main_loop_start(void)
 {
 	int ret;
+
 	if (!event_list) return 0;
+
+#ifdef HAVE_SYSTEMD_WATCHDOG
+	/*
+	 *	Tell systemd we're ready!
+	 */
+	sd_notify(0, "READY=1");
+
+	/*
+	 *	Start placating the watchdog (if told to do so).
+	 */
+	if (sd_watchdog_interval > 0) sd_watchdog_event(event_list, 0, NULL);
+#endif
 
 	ret = fr_event_loop(event_list);
 #ifdef HAVE_SYSTEMD_WATCHDOG
@@ -203,22 +215,44 @@ int main_loop_process(void)
 	return ret;
 }
 
-/** Start the main event loop and initialise the listeners
+static int _loop_status(UNUSED void *ctx, fr_time_t wake)
+{
+	if (!DEBUG_ENABLED) {
+		if (just_started) {
+			INFO("Ready to process requests");
+			just_started = false;
+		}
+		return 0;
+	}
+
+	if (!wake) {
+		if (main_config->drop_requests) return 0;
+		INFO("Ready to process requests");
+	} else if (wake > (NSEC / 10)) {
+		DEBUG("Waking up in %pV seconds.", fr_box_time_delta(wake));
+	}
+
+	return 0;
+}
+
+/** Initialise the main event loop, setting up signal handlers
+ *
+ *  This has to be done post-fork in case we're using kqueue, where the
+ *  queue isn't inherited by the child process.
  *
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int main_loop_start(void)
+int main_loop_init(void)
 {
-	if (fr_start_time != (time_t)-1) return 0;
+	event_list = fr_event_list_alloc(NULL, _loop_status, NULL);	/* Must not be allocated in mprotected ctx */
+	if (!event_list) return -1;
 
-	time(&fr_start_time);
-
-	if (check_config) {
-		DEBUG("%s: #### Skipping IP addresses and Ports ####", main_config->name);
-		return 0;
-	}
+	/*
+	 *	Not actually running the server, just exit.
+	 */
+	if (check_config) return 0;
 
 	/*
 	 *	Child threads need a pipe to signal us, as do the
@@ -249,44 +283,6 @@ int main_loop_start(void)
 		return -1;
 	}
 
-#ifdef HAVE_SYSTEMD_WATCHDOG
-	/*
-	 *	Tell systemd we're ready!
-	 */
-	sd_notify(0, "READY=1");
-#endif
-
 	return 0;
-}
-
-static int _loop_status(UNUSED void *ctx, fr_time_t wake)
-{
-	if (!DEBUG_ENABLED) {
-		if (just_started) {
-			INFO("Ready to process requests");
-			just_started = false;
-		}
-		return 0;
-	}
-
-	if (!wake) {
-		if (main_config->drop_requests) return 0;
-		INFO("Ready to process requests");
-	} else if (wake > (NSEC / 10)) {
-		DEBUG("Waking up in %pV seconds.", fr_box_time_delta(wake));
-	}
-
-	return 0;
-}
-
-/*
- *	Externally-visibly functions.
- */
-int main_loop_init(void)
-{
-	event_list = fr_event_list_alloc(NULL, _loop_status, NULL);	/* Must not be allocated in mprotected ctx */
-	if (!event_list) return 0;
-
-	return 1;
 }
 

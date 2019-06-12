@@ -41,8 +41,6 @@ typedef enum {
 	RADIUS_SIGNAL_SELF_MAX		= (1 << 5)
 } radius_signal_t;
 
-extern time_t fr_start_time;
-
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/listen.h>
 #include <freeradius-devel/server/signal.h>
@@ -56,8 +54,6 @@ void			main_loop_set_sd_watchdog_interval(void);
 #endif
 
 void			main_loop_free(void);
-
-int			main_loop_process(void);
 
 int			main_loop_start(void);
 

@@ -719,7 +719,7 @@ int main(int argc, char *argv[])
 
 	/*
 	 *  Initialize the global event loop which handles things like
-	 *  systemd, and single-server mode.
+	 *  systemd.
 	 *
 	 *  This has to be done post-fork in case we're using kqueue, where the
 	 *  queue isn't inherited by the child process.
@@ -886,7 +886,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Process requests until HUP or exit.
 	 */
-	while ((status = main_loop_process()) == 0x80) {
+	while ((status = main_loop_start()) == 0x80) {
 #ifdef WITH_STATS
 		radius_stats_init(1);
 #endif
