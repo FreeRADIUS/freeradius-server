@@ -724,7 +724,10 @@ int main(int argc, char *argv[])
 	 *  This has to be done post-fork in case we're using kqueue, where the
 	 *  queue isn't inherited by the child process.
 	 */
-	if (!main_loop_init()) EXIT_WITH_FAILURE;
+	if (main_loop_init() < 0) {
+		PERROR("Failed initialising main event loop");
+		EXIT_WITH_FAILURE;
+	}
 
 	/*
 	 *  Redirect stderr/stdout as appropriate.
@@ -778,14 +781,6 @@ int main(int argc, char *argv[])
 		}
 	}
 #endif
-
-	/*
-	 *  Start the main event loop.
-	 */
-	if (main_loop_start() < 0) {
-		ERROR("Failed starting event loop");
-		EXIT_WITH_FAILURE;
-	}
 
 	/*
 	 *	At this point, no one has any business *ever* going
