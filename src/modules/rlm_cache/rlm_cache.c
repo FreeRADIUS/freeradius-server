@@ -56,19 +56,11 @@ fr_dict_autoload_t rlm_cache_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_cache_merge_new;
-static fr_dict_attr_t const *attr_cache_status_only;
-static fr_dict_attr_t const *attr_cache_allow_merge;
-static fr_dict_attr_t const *attr_cache_allow_insert;
 static fr_dict_attr_t const *attr_cache_ttl;
 static fr_dict_attr_t const *attr_cache_entry_hits;
 
 extern fr_dict_attr_autoload_t rlm_cache_dict_attr[];
 fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
-	{ .out = &attr_cache_merge_new, .name = "Cache-Merge-New", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ .out = &attr_cache_status_only, .name = "Cache-Status-Only", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ .out = &attr_cache_allow_merge, .name = "Cache-Allow-Merge", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ .out = &attr_cache_allow_insert, .name = "Cache-Allow-Insert", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_cache_ttl, .name = "Cache-TTL", .type = FR_TYPE_INT32, .dict = &dict_freeradius },
 	{ .out = &attr_cache_entry_hits, .name = "Cache-Entry-Hits", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ NULL }
@@ -290,13 +282,12 @@ static rlm_rcode_t cache_expire(rlm_cache_t const *inst, REQUEST *request,
  *	- #RLM_MODULE_FAIL on failure.
  */
 static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_cache_handle_t **handle,
-				uint8_t const *key, size_t key_len, int ttl)
+				uint8_t const *key, size_t key_len, int ttl, bool merge)
 {
 	vp_map_t		const *map;
 	vp_map_t		**last, *c_map;
 
 	VALUE_PAIR		*vp;
-	bool			merge = false;
 	rlm_cache_entry_t	*c;
 	size_t			len;
 
@@ -442,9 +433,6 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_cache_merge_new, TAG_ANY);
-	if (vp && vp->vp_bool) merge = true;
-
 	if (merge) cache_merge(inst, request, c);
 
 	for (;;) {
@@ -536,263 +524,6 @@ static int cache_verify(vp_map_t *map, void *ctx)
 	}
 
 	return 0;
-}
-
-/** Do caching checks
- *
- * Since we can update ANY VP list, we do exactly the same thing for all sections
- * (autz / auth / etc.)
- *
- * If you want to cache something different in different sections, configure
- * another cache module.
- */
-static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	rlm_cache_entry_t	*c = NULL;
-	rlm_cache_t const	*inst = instance;
-
-	rlm_cache_handle_t	*handle;
-
-	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
-
-	bool			merge = true, insert = true, expire = false, set_ttl = false;
-	int			exists = -1;
-
-	uint8_t			buffer[1024];
-	uint8_t const		*key;
-	ssize_t			key_len;
-	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-
-	int			ttl = inst->config.ttl;
-
-	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			      request, inst->config.key, NULL, NULL);
-	if (key_len < 0) return RLM_MODULE_FAIL;
-
-	if (key_len == 0) {
-		REDEBUG("Zero length key string is invalid");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	If Cache-Status-Only == yes, only return whether we found a
-	 *	valid cache entry
-	 */
-	vp = fr_pair_find_by_da(request->control, attr_cache_status_only, TAG_ANY);
-	if (vp && vp->vp_bool) {
-		RINDENT();
-		RDEBUG3("status-only: yes");
-		REXDENT();
-
-		if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
-
-		rcode = cache_find(&c, inst, request, &handle, key, key_len);
-		if (rcode == RLM_MODULE_FAIL) goto finish;
-		rad_assert(!inst->driver->acquire || handle);
-
-		rcode = c ? RLM_MODULE_OK:
-			    RLM_MODULE_NOTFOUND;
-		goto finish;
-	}
-
-	/*
-	 *	Figure out what operation we're doing
-	 */
-	vp = fr_pair_find_by_da(request->control, attr_cache_allow_merge, TAG_ANY);
-	if (vp) merge = vp->vp_bool;
-
-	vp = fr_pair_find_by_da(request->control, attr_cache_allow_insert, TAG_ANY);
-	if (vp) insert = vp->vp_bool;
-
-	vp = fr_pair_find_by_da(request->control, attr_cache_ttl, TAG_ANY);
-	if (vp) {
-		if (vp->vp_int32 == 0) {
-			expire = true;
-		} else if (vp->vp_int32 < 0) {
-			expire = true;
-			ttl = -(vp->vp_int32);
-		/* Updating the TTL */
-		} else {
-			set_ttl = true;
-			ttl = vp->vp_int32;
-		}
-	}
-
-	RINDENT();
-	RDEBUG3("merge  : %s", merge ? "yes" : "no");
-	RDEBUG3("insert : %s", insert ? "yes" : "no");
-	RDEBUG3("expire : %s", expire ? "yes" : "no");
-	RDEBUG3("ttl    : %i", ttl);
-	REXDENT();
-	if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
-
-	/*
-	 *	Retrieve the cache entry and merge it with the current request
-	 *	recording whether the entry existed.
-	 */
-	if (merge) {
-		rcode = cache_find(&c, inst, request, &handle, key, key_len);
-		switch (rcode) {
-		case RLM_MODULE_FAIL:
-			goto finish;
-
-		case RLM_MODULE_OK:
-			rcode = cache_merge(inst, request, c);
-			exists = 1;
-			break;
-
-		case RLM_MODULE_NOTFOUND:
-			rcode = RLM_MODULE_NOTFOUND;
-			exists = 0;
-			break;
-
-		default:
-			rad_assert(0);
-		}
-		rad_assert(!inst->driver->acquire || handle);
-	}
-
-	/*
-	 *	Expire the entry if told to, and we either don't know whether
-	 *	it exists, or we know it does.
-	 *
-	 *	We only expire if we're not inserting, as driver insert methods
-	 *	should perform upserts.
-	 */
-	if (expire && ((exists == -1) || (exists == 1))) {
-		if (!insert) {
-			rad_assert(!set_ttl);
-			switch (cache_expire(inst, request, &handle, key, key_len)) {
-			case RLM_MODULE_FAIL:
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-
-			case RLM_MODULE_OK:
-				if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_OK;
-				break;
-
-			case RLM_MODULE_NOTFOUND:
-				if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_NOTFOUND;
-				break;
-
-			default:
-				rad_assert(0);
-				break;
-			}
-			/* If it previously existed, it doesn't now */
-		}
-		/* Otherwise use insert to overwrite */
-		exists = 0;
-	}
-
-	/*
-	 *	If we still don't know whether it exists or not
-	 *	and we need to do an insert or set_ttl operation
-	 *	determine that now.
-	 */
-	if ((exists < 0) && (insert || set_ttl)) {
-		switch (cache_find(&c, inst, request, &handle, key, key_len)) {
-		case RLM_MODULE_FAIL:
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-
-		case RLM_MODULE_OK:
-			exists = 1;
-			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
-			break;
-
-		case RLM_MODULE_NOTFOUND:
-			exists = 0;
-			break;
-
-		default:
-			rad_assert(0);
-		}
-		rad_assert(!inst->driver->acquire || handle);
-	}
-
-	/*
-	 *	We can only alter the TTL on an entry if it exists.
-	 */
-	if (set_ttl && (exists == 1)) {
-		rad_assert(c);
-
-		c->expires = fr_time_to_sec(request->packet->timestamp) + ttl;
-
-		switch (cache_set_ttl(inst, request, &handle, c)) {
-		case RLM_MODULE_FAIL:
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-
-		case RLM_MODULE_NOTFOUND:
-		case RLM_MODULE_OK:
-			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
-			goto finish;
-
-		default:
-			rad_assert(0);
-		}
-	}
-
-	/*
-	 *	Inserts are upserts, so we don't care about the
-	 *	entry state, just that we're not meant to be
-	 *	setting the TTL, which precludes performing an
-	 *	insert.
-	 */
-	if (insert && (exists == 0)) {
-		switch (cache_insert(inst, request, &handle, key, key_len, ttl)) {
-		case RLM_MODULE_FAIL:
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-
-		case RLM_MODULE_OK:
-			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
-			break;
-
-		case RLM_MODULE_UPDATED:
-			rcode = RLM_MODULE_UPDATED;
-			break;
-
-		default:
-			rad_assert(0);
-		}
-		rad_assert(!inst->driver->acquire || handle);
-		goto finish;
-	}
-
-
-finish:
-	cache_free(inst, &c);
-	cache_release(inst, request, &handle);
-
-	/*
-	 *	Clear control attributes
-	 */
-	for (vp = fr_cursor_init(&cursor, &request->control);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-	     again:
-		if (!fr_dict_attr_is_top_level(vp->da)) continue;
-
-		switch (vp->da->attr) {
-		case FR_CACHE_TTL:
-		case FR_CACHE_STATUS_ONLY:
-		case FR_CACHE_ALLOW_MERGE:
-		case FR_CACHE_ALLOW_INSERT:
-		case FR_CACHE_MERGE_NEW:
-			RDEBUG2("Removing &control:%s", vp->da->name);
-			vp = fr_cursor_remove(&cursor);
-			talloc_free(vp);
-			vp = fr_cursor_current(&cursor);
-			if (!vp) break;
-			goto again;
-		}
-	}
-
-	return rcode;
 }
 
 /** Allow single attribute values to be retrieved from the cache
@@ -1021,13 +752,5 @@ module_t rlm_cache = {
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_cache_it,
-		[MOD_PREACCT]		= mod_cache_it,
-		[MOD_ACCOUNTING]	= mod_cache_it,
-		[MOD_PRE_PROXY]		= mod_cache_it,
-		[MOD_POST_PROXY]	= mod_cache_it,
-		[MOD_POST_AUTH]		= mod_cache_it
-	},
+	.detach		= mod_detach
 };
