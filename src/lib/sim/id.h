@@ -26,6 +26,7 @@
 
 #define SIM_3GPP_PSEUDONYM_LEN			23	//!< Length of a base64 encoded 3gpp pseudonym.
 #define SIM_IMSI_MAX_LEN			15	//!< Length of an IMSI number in ASCII.
+#define SIM_IMSI_MIN_LEN			14	//!< Minimum length of an IMSI number in ASCII.
 
 /** SIM/AKA method hints
  *

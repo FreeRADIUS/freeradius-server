@@ -81,6 +81,7 @@ fr_dict_attr_t const *attr_eap_sim_rand;
 fr_dict_attr_t const *attr_eap_sim_sres;
 fr_dict_attr_t const *attr_eap_sim_subtype;
 
+fr_dict_attr_t const *attr_eap_type;
 fr_dict_attr_t const *attr_sim_algo_version;
 fr_dict_attr_t const *attr_sim_amf;
 fr_dict_attr_t const *attr_sim_identity_type;
@@ -118,6 +119,7 @@ fr_dict_attr_autoload_t libfreeradius_sim_dict_attr[] = {
 	{ .out = &attr_eap_sim_sres, .name = "EAP-SIM-SRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
 	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_eap_sim },
 
+	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_sim_algo_version, .name = "SIM-Algo-Version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_sim_amf, .name = "SIM-AMF", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_sim_identity_type, .name = "SIM-Identity-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },

@@ -321,6 +321,11 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 		fr_strerror_printf("Invalid tag value, expected value between 0-63, got %u", tag);
 		return -1;
 	}
+
+	/*
+	 *	Technically the IMSI number is between 14-15, but this
+	 *	encryption scheme only works for 15 char IMSIs.
+	 */
 	if (unlikely(imsi_len != SIM_IMSI_MAX_LEN)) {
 		fr_strerror_printf("Invalid ID len, expected length of 15, got %zu", imsi_len);
 		return -1;
