@@ -485,7 +485,7 @@ log {
 	auth_goodpass = no
 
 	#  Log additional text at the end of the "Login OK" messages.
-	#  for these to work, the "auth" and "auth_goopass" or "auth_badpass"
+	#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
 	#  configurations above have to be set to "yes".
 	#
 	#  The strings below are dynamically expanded, which means that
