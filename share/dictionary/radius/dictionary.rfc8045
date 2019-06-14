@@ -51,3 +51,7 @@ ATTRIBUTE	IP-Port-Map-Alloc			241.7.8	integer
 ATTRIBUTE	IP-Port-Map-Range-Start			241.7.9	integer
 ATTRIBUTE	IP-Port-Map-Range-End			241.7.10	integer
 ATTRIBUTE	IP-Port-Map-Local-Id			241.7.11	string
+
+VALUE IP-Port-Alloc  Reserved        0
+VALUE IP-Port-Alloc  Allocation      1
+VALUE IP-Port-Alloc  Deallocation    2
