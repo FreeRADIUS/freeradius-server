@@ -19,7 +19,7 @@ if (&Tmp-String-1 == "foo\000bar\000baz") {
 }
 
 # 1. Store the entry
-cache_bin_key_octets
+cache_bin_key_octets.add
 if (ok) {
 	test_pass
 }
@@ -34,7 +34,7 @@ update {
 }
 
 # 2. Should create a *new* entry and not update the existing one
-cache_bin_key_octets
+cache_bin_key_octets.add
 if (ok) {
 	test_pass
 }
@@ -52,7 +52,7 @@ update {
   	&Tmp-Octets-0 := 0xaa00bb00cc00dd00
 }
 
-cache_bin_key_octets
+cache_bin_key_octets.lookup
 if (updated) {
 	test_pass
 }
@@ -83,7 +83,7 @@ update {
   	&Tmp-Octets-0 := 0xaa00bb00cc00ee00
 }
 
-cache_bin_key_octets
+cache_bin_key_octets.lookup
 if (updated) {
 	test_pass
 }
@@ -119,7 +119,7 @@ update {
 	&Tmp-String-1 := "foo\000bar\000baz"
 }
 
-cache_bin_key_ipaddr
+cache_bin_key_ipaddr.add
 if (ok) {
 	test_pass
 }
@@ -134,7 +134,7 @@ update {
 	&Tmp-String-1 := "bar\000baz"
 }
 
-cache_bin_key_ipaddr
+cache_bin_key_ipaddr.add
 if (ok) {
 	test_pass
 }
@@ -151,7 +151,7 @@ update {
 	&Tmp-IP-Address-0 := 192.168.0.1
 }
 
-cache_bin_key_ipaddr
+cache_bin_key_ipaddr.lookup
 if (updated) {
 	test_pass
 }
@@ -182,7 +182,7 @@ update {
 	&Tmp-IP-Address-0 := 192.168.0.2
 }
 
-cache_bin_key_ipaddr
+cache_bin_key_ipaddr.lookup
 if (updated) {
 	test_pass
 }

@@ -25,7 +25,7 @@ update control {
 	&control:Tmp-String-1 := 'cache me'
 }
 
-cache_update
+cache_update.add
 if (!ok) {
 	test_fail
 }
@@ -34,7 +34,7 @@ else {
 }
 
 # Merge
-cache_update
+cache_update.merge
 if (updated) {
 	test_pass
 }
