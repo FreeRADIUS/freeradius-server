@@ -2,7 +2,7 @@
 #	Response caching to handle proxy failovers
 #
 Xeap.authorize {
-	cache_eap
+	cache_eap.lookup
 	if (ok) {
 		#
 		#	Expire previous cache entry
@@ -11,7 +11,7 @@ Xeap.authorize {
 			update control {
 				&Cache-TTL := 0
 			}
-			cache_eap
+			cache_eap.merge
 
 			update control {
 				&State !* ANY
@@ -33,12 +33,12 @@ Xeap.authenticate {
 		handled = 1
 	}
 	if (handled) {
-		cache_eap.authorize
+		cache_eap.add
 
 		handled
 	}
 
-	cache_eap.authorize
+	cache_eap.merge
 }
 
 #

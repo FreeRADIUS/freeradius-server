@@ -13,24 +13,133 @@
 #  information will then have the cached values added to the request.
 #
 #  The module can cache a fixed set of attributes per key.
-#  It can be listed in any `recv` or `send` section.
+#  It can be listed in any `recv {...}` or `send {...}` section.
 #
 #  NOTE: If you want to have different things cached for different
 #  sections, you will need to define multiple instances of the module,
 #  via `cache <nameN> { ... }`.
 #
-#  [options="header,autowidth"]
-#  |===
-#  | Option    | Description
-#  | `ok`      | if it found or created a cache entry.
-#  | `updated` | if it merged a cached entry.
-#  | `noop`    | if it did nothing.
-#  | `fail`    | on error.
-#  |===
 #
 
 #
-#  ## Default instance
+#  ## Default Instance
+#
+
+#
+#  ### Configuration
+#
+#  This module supports a number of runtime configuration parameter
+#  represented by attributes in the `&control:` list.
+#
+#  &control:Cache-TTL:: Sets the TTL of an entry to be created, or
+#   modifies the TTL of an existing entry.
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Condition            | Description
+#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value
+#                           (and reset the expiry timer).
+#  | `Cache-TTL` of < `0` | Expire the existing entry and create a new
+#                           one with TTL set to `Cache-TTL` * `-1`.
+#  | `Cache-TTL` of `0`   | Expire the existing entry and create a new one.
+#  |===
+#
+#  ### Methods
+#
+#  cache.status:: Verify the cache entry status.
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Return     | Description
+#  | `ok`       | if a cache entry was found.
+#  | `notfound` | if no cache entry was found.
+#  |===
+#
+#  cache.lookup:: Same as `cache.status`, But if the cache entry exists it will be loaded.
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Return     | Description
+#  | `updated`  | if a cache entry was found and loaded.
+#  | `notfound` | if no cache entry was found.
+#  |===
+#
+#  cache.add:: Create a new entry.
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Return     | Description
+#  | `ok`       | if we added cache entry.
+#  | `noop`     | if a cache entry ready exists.
+#  |===
+#
+#  cache.merge:: If entry exists (and is valid), it will be merged
+#  with the current request.
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Return     | Description
+#  | `updated`  | if a cache entry was found and loaded.
+#  | `notfound` | if no cache entry was found.
+#  | `noop`     | if a cache entry ready merged (nothing to do).
+#  |===
+#
+#  cache.merge.new:: Merge new cache entries into the current request. Useful if results of
+#  execs or expansions are stored directly in the cache.
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Return     | Description
+#  | `updated`  | if a cache entry was found and loaded.
+#  | `notfound` | if no cache entry was found.
+#  | `noop`     | if a cache entry ready merged (nothing to do).
+#  |===
+#
+#  ### Examples
+#
+#  ```
+#  # Add a cache entry
+#  update {
+#    &control:Cache-TTL := 3600 # 1h
+#  }
+#  cache.add
+#  if (ok) {
+#    ..added
+#  }
+#
+#  # Get the cache status
+#  cache.status
+#  if (ok) {
+#    ..Exist a cache entry
+#  }
+#
+#  # Load the cache entry
+#  cache.lookup
+#  if (updated) {
+#    ..loaded
+#  }
+#
+#  # Merge the entries
+#  update {
+#    &control:Cache-TTL := 1800 # 30m
+#  }
+#  cache.merge.new
+#  if (updated) {
+#    ..merged
+#  }
+#  ```
+#
+#  [NOTE]
+#  ====
+#  * This is evaluated before `Cache-TTL`, so entries being expired
+#  may first be merged.
+#  * All runtime configuration attributes will be removed from the
+#  `&control:` list after any cache method is called.
+#  ====
+#
+
+#
+#  ## Drivers
 #
 cache {
 	#
@@ -204,52 +313,4 @@ cache {
 		#  Add your own value for `Class`.
 		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
 	}
-
-	#
-	#  This module supports a number of runtime configuration parameters
-	#  represented by attributes in the `&control:` list.
-	#
-	#  &control:Cache-TTL:: Sets the TTL of an entry to be created, or
-	#   modifies the TTL of an existing entry.
-	#
-	#  [options="header,autowidth"]
-	#  |===
-	#  | Condition            | Description
-	#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value
-	#                           (and reset the expiry timer).
-	#  | `Cache-TTL` of < `0` | Expire the existing entry and create a new
-	#                           one with TTL set to `Cache-TTL` * `-1`.
-	#  | `Cache-TTL` of `0`   | Expire the existing entry and create a new one.
-	#  |===
-	#
-	#  &control:Cache-Status-Only:: If present and set to `yes` will
-	#  prevent a new entry from being created, and existing entries from
-	#  being merged. It will also alter the module's return codes.
-	#
-	#   * The module will return `ok` if a cache entry was found.
-	#   * The module will return `notfound` if no cache entry was found.
-	#
-	#  NOTE: If this is set to `yes`, no other cache control attributes will
-	#  be honoured, but they will still be cleared.
-	#
-	#  &control:Cache-Allow-Insert:: If present and set to `no` will
-	#  prevent a new entry from being created. If not present or set
-	#  to `yes`, and no entry exists, a new one will be created.
-	#  This is evaluated after `Cache-TTL`, so expired entries may be
-	#  recreated.
-	#
-	#  &control:Cache-Allow-Merge:: If present and set to `no` will
-	#  prevent existing entries from being merged. If not present or
-	#  set to `yes`, and an entry exists (and is valid), it will be
-	#  merged with the current request.
-	#  This is evaluated before `Cache-TTL`, so entries being expired
-	#  may first be merged.
-	#
-	#  &control:Cache-Merge-New:: If present and set to `yes` will merge new
-	#  cache entries into the current request. Useful if results of execs or
-	#  expansions are stored directly in the cache.
-	#
-	#  NOTE: All runtime configuration attributes will be removed from the
-	#  `&control:` list after the cache module is called.
-	#
 }

@@ -44,10 +44,7 @@ server tls-cache {
 	#  and will just cause the server to emit a warning.
 	#
 	load tls-session {
-		update control {
-			Cache-Allow-Insert := no
-		}
-		cache_tls_session
+		cache_tls_session.lookup
 	}
 
 	#
@@ -67,7 +64,7 @@ server tls-cache {
 		update control {
 			Cache-TTL := 0
 		}
-		cache_tls_session
+		cache_tls_session.add
 	}
 
 	#
@@ -82,9 +79,8 @@ server tls-cache {
 	clear tls-session {
 		update control {
 			Cache-TTL := 0
-			Cache-Allow-Insert := no
 		}
-		cache_tls_session
+		cache_tls_session.delete
 	}
 
 	#
@@ -98,10 +94,7 @@ server tls-cache {
 	#  To force OCSP validation failure, it should return 'reject'.
 	#
 	load ocsp-state {
-		update control {
-			Cache-Allow-Insert := no
-		}
-		cache_ocsp
+		cache_ocsp.lookup
 	}
 
 	#
@@ -118,8 +111,7 @@ server tls-cache {
 	store ocsp-state {
 		update control {
 			Cache-TTL := "%{expr:&reply:TLS-OCSP-Next-Update * -1}"
-			Cache-Allow-Merge := no
 		}
-		cache_ocsp
+		cache_ocsp.add
 	}
 }
