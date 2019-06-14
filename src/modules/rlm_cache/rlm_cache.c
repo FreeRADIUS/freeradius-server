@@ -147,7 +147,6 @@ static void cache_free(rlm_cache_t const *inst, rlm_cache_entry_t **c)
 static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_cache_entry_t *c) CC_HINT(nonnull);
 static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_cache_entry_t *c)
 {
-	VALUE_PAIR	*vp;
 	vp_map_t	*map;
 	int		merged = 0;
 
@@ -174,9 +173,11 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_ca
 	REXDENT();
 
 	if (inst->config.stats) {
+		VALUE_PAIR	*vp;
+
 		rad_assert(request->packet != NULL);
 		MEM(pair_update_request(&vp, attr_cache_entry_hits) >= 0);
-		vp->vp_uint32 = c->hits;
+		if (vp) vp->vp_uint32 = c->hits;
 	}
 
 	return merged > 0 ?
@@ -339,9 +340,6 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			 *	cache control attributes.
 			 */
 			if (map->rhs->type == TMPL_TYPE_LIST) switch (vp->da->attr) {
-			case FR_CACHE_TTL:
-			case FR_CACHE_STATUS_ONLY:
-			case FR_CACHE_MERGE_NEW:
 			case FR_CACHE_ENTRY_HITS:
 				RDEBUG2("Skipping %s", vp->da->name);
 				continue;
@@ -604,6 +602,97 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 	return ret;
 }
 
+/**
+ * It's helper used for load common fields needed by all cache.$methods
+ *
+ * The main idea is to poke the driver once instead as we made before poking
+ * several times and avoid to spread the same peace of code.
+ */
+static int cache_load_bucket(REQUEST *request, rlm_cache_t const *inst, rlm_cache_bucket_t *bkt)
+{
+	VALUE_PAIR	*vp;
+	rlm_rcode_t	rcode = RLM_MODULE_NOOP;
+
+	/* 1. Good to go? */
+	if (cache_acquire(&bkt->handle, inst, request) < 0) return RLM_MODULE_FAIL;
+
+	rad_assert(!inst->driver->acquire || bkt->handle);
+
+	/* 2. Expand the '${key}' */
+	bkt->key_len = tmpl_expand((char const **)&bkt->key, (char *)bkt->buffer, sizeof(bkt->buffer),
+			      request, inst->config.key, NULL, NULL);
+	if (bkt->key_len < 0) return RLM_MODULE_FAIL;
+
+	if (bkt->key_len == 0) {
+		REDEBUG("Zero length key string is invalid");
+		return RLM_MODULE_INVALID;
+	}
+
+	/* 3. Process the TTL */
+	bkt->ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
+	vp = fr_pair_find_by_da(request->control, attr_cache_ttl, TAG_ANY);
+	if (vp) {
+		if (vp->vp_int32 == 0) {
+			bkt->expire = true;
+		} else if (vp->vp_int32 < 0) {
+			bkt->expire = true;
+			bkt->ttl = -(vp->vp_int32);
+		/* Updating the TTL */
+		} else {
+			bkt->set_ttl = true;
+			bkt->ttl = vp->vp_int32;
+		}
+
+		DEBUG3("Overwriting the default TTL %d -> %d", inst->config.ttl, vp->vp_int32);
+	}
+
+	/* 4. There has some entry by the ${key}? */
+	rcode = cache_find(&bkt->entry, inst, request, &bkt->handle, bkt->key, bkt->key_len);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	rcode = (bkt->entry) ? RLM_MODULE_OK : RLM_MODULE_NOTFOUND;
+
+finish:
+
+	/* The things should be released by cache_unload_bucket() */
+
+	return rcode;
+}
+
+/** Release the allocated resources and cleanup the avps
+ */
+static void cache_unload_bucket(REQUEST *request, rlm_cache_t const *inst, rlm_cache_bucket_t *bkt)
+{
+	fr_cursor_t	cursor;
+	VALUE_PAIR	*vp;
+
+	/*
+	 *	Release the driver calls
+	 */
+	cache_free(inst, &bkt->entry);
+	cache_release(inst, request, &bkt->handle);
+
+	/*
+	 *	Clear control attributes
+	 */
+	for (vp = fr_cursor_init(&cursor, &request->control);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+	     again:
+		if (!fr_dict_attr_is_top_level(vp->da)) continue;
+
+		switch (vp->da->attr) {
+		case FR_CACHE_TTL:
+			RDEBUG2("Removing &control:%s", vp->da->name);
+			vp = fr_cursor_remove(&cursor);
+			TALLOC_FREE(vp);
+			vp = fr_cursor_current(&cursor);
+			if (!vp) break;
+			goto again;
+		}
+	}
+}
+
 /** Free any memory allocated under the instance
  *
  */
@@ -736,6 +825,224 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
+/**
+ *	Get the status by ${key}. e.g: cache.status
+ */
+static rlm_rcode_t mod_method_status(void *instance, UNUSED void *thread, REQUEST *request)
+{
+	rlm_cache_t const	*inst = instance;
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	rlm_cache_bucket_t	bkt = CACHE_BUCKET_INIT;
+
+	DEBUG3("Calling %s.status", inst->config.name);
+
+	rcode = cache_load_bucket(request, inst, &bkt);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	RINDENT();
+	RDEBUG3("ttl    : %i", bkt.ttl);
+	REXDENT();
+
+finish:
+	cache_unload_bucket(request, inst, &bkt);
+
+	return rcode;
+}
+
+/**
+ *	Lookup the avps by ${key}.
+ */
+static rlm_rcode_t mod_method_lookup(void *instance, UNUSED void *thread, REQUEST *request)
+{
+	rlm_cache_t const	*inst = instance;
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	rlm_cache_bucket_t	bkt = CACHE_BUCKET_INIT;
+
+	DEBUG3("Calling %s.lookup", inst->config.name);
+
+	rcode = cache_load_bucket(request, inst, &bkt);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (!bkt.entry) {
+		WARN("Entry not found to be merged like new");
+		rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
+
+	rcode = cache_merge(inst, request, bkt.entry);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+finish:
+	cache_unload_bucket(request, inst, &bkt);
+
+	return rcode;
+}
+
+/** Create and insert a cache entry
+ *
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_NOOP if ready exists the cache entry.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static rlm_rcode_t mod_method_add(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+{
+	rlm_cache_t const	*inst = instance;
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;	
+	rlm_cache_bucket_t	bkt = CACHE_BUCKET_INIT;
+
+	DEBUG3("Calling %s.add", inst->config.name);
+
+	rcode = cache_load_bucket(request, inst, &bkt);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (bkt.entry) {
+		WARN("Entry already exists, maybe should call '%s.merge' or '%s.merge.new'?",
+				inst->config.name, inst->config.name);
+		rcode = RLM_MODULE_NOOP;
+		goto finish;
+	}
+
+	/*
+	 *	Expire the entry if told to, and we either don't know whether
+	 *	it exists, or we know it does.
+	 *
+	 *	We only expire if we're not inserting, as driver insert methods
+	 *	should perform upserts.
+	 */
+	if (bkt.expire) {
+		DEBUG4("Set the cache expire");
+
+		rcode = cache_expire(inst, request, &bkt.handle, bkt.key, bkt.key_len);
+		if (rcode == RLM_MODULE_FAIL) goto finish;
+	}
+
+	/*
+	 *	Inserts are upserts, so we don't care about the
+	 *	entry state, just that we're not meant to be
+	 *	setting the TTL, which precludes performing an
+	 *	insert.
+	 */
+	rcode = cache_insert(inst, request, &bkt.handle, bkt.key, bkt.key_len, bkt.ttl, false);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+finish:
+	cache_unload_bucket(request, inst, &bkt);
+
+	return rcode;
+}
+
+/**
+ *	Delete the entries by ${key}
+ */
+static rlm_rcode_t mod_method_delete(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+{
+	rlm_cache_t const	*inst = instance;
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	rlm_cache_bucket_t	bkt = CACHE_BUCKET_INIT;
+
+	DEBUG3("Calling %s.delete", inst->config.name);
+
+	rcode = cache_load_bucket(request, inst, &bkt);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (!bkt.entry) {
+		WARN("Entry not found to be deleted");
+		rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
+
+	rcode = cache_expire(inst, request, &bkt.handle, bkt.key, bkt.key_len);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+finish:
+	cache_unload_bucket(request, inst, &bkt);
+
+	return rcode;
+}
+
+/**
+ *	Merge the entries by ${key}
+ */
+static rlm_rcode_t mod_method_merge(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+{
+	rlm_cache_t const	*inst = instance;
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	rlm_cache_bucket_t	bkt = CACHE_BUCKET_INIT;
+
+	DEBUG3("Calling %s.merge", inst->config.name);
+
+	rcode = cache_load_bucket(request, inst, &bkt);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (!bkt.entry) {
+		WARN("Entry not found to be merged");
+		rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
+
+	if (bkt.set_ttl) {
+		bkt.entry->expires = fr_time_to_sec(request->packet->timestamp) + bkt.ttl;
+
+		rcode = cache_set_ttl(inst, request, &bkt.handle, bkt.entry);
+		if (rcode == RLM_MODULE_FAIL) goto finish;
+	}
+
+	rcode = cache_merge(inst, request, bkt.entry);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+finish:
+	cache_unload_bucket(request, inst, &bkt);
+
+	return rcode;
+}
+
+/**
+ *	Merge the entries by ${key} (like new)
+ */
+static rlm_rcode_t mod_method_merge_new(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+{
+	rlm_cache_t const	*inst = instance;
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	rlm_cache_bucket_t	bkt = CACHE_BUCKET_INIT;
+
+	DEBUG3("Calling %s.merge.new", inst->config.name);
+
+	rcode = cache_load_bucket(request, inst, &bkt);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (!bkt.entry) {
+		WARN("Entry not found to be merged like new");
+		rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
+
+	if (bkt.set_ttl) {
+		bkt.entry->expires = fr_time_to_sec(request->packet->timestamp) + bkt.ttl;
+
+		rcode = cache_set_ttl(inst, request, &bkt.handle, bkt.entry);
+		if (rcode == RLM_MODULE_FAIL) goto finish;
+	}
+
+	rcode = cache_insert(inst, request, &bkt.handle, bkt.key, bkt.key_len, bkt.ttl, true);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+finish:
+	cache_unload_bucket(request, inst, &bkt);
+
+	return rcode;
+}
+
+static const module_method_names_t method_names[] = {
+	{ "status",	CF_IDENT_ANY,	mod_method_status    },
+	{ "lookup",	CF_IDENT_ANY,	mod_method_lookup    },
+	{ "add",	CF_IDENT_ANY,	mod_method_add       },
+	{ "delete",	CF_IDENT_ANY,	mod_method_delete    },
+	{ "merge",	"new",          mod_method_merge_new },
+	{ "merge",	CF_IDENT_ANY,	mod_method_merge     },
+	MODULE_NAME_TERMINATOR
+};
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -752,5 +1059,7 @@ module_t rlm_cache = {
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
-	.detach		= mod_detach
+	.detach		= mod_detach,
+	.method_names = method_names
 };
+

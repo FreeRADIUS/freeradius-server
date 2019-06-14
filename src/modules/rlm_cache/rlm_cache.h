@@ -84,6 +84,19 @@ typedef struct {
 	vp_map_t		*maps;			//!< Head of the maps list.
 } rlm_cache_entry_t;
 
+typedef struct {
+	uint8_t			buffer[1024];	//!< Buffer used to store the 'key'.
+	uint8_t const		*key;		//!< Key used to identify entry.
+	ssize_t			key_len;	//!< Length of key data.
+
+	uint32_t		ttl;		//!< the TTL of an entry.
+	bool 			set_ttl;	//!< If the 'Cache-TTL' was set.
+	bool 			expire;		//!< Free a cache entry.
+	rlm_cache_entry_t	*entry;		//!< The current 'entry' instance.
+	rlm_cache_handle_t	*handle;	//!< The current 'handle' instance.
+} rlm_cache_bucket_t;
+#define CACHE_BUCKET_INIT { { '\0', }, NULL, -1, -1, false, false, NULL, NULL }
+
 /** Allocate a new cache entry
  *
  */
