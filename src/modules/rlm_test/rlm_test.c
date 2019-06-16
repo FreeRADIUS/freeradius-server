@@ -331,17 +331,6 @@ static int mod_detach(UNUSED void *instance)
 	return 0;
 }
 
-static const module_method_names_t method_names[] = {
-	{ "recv",	"Access-Challenge", mod_return },
-	{ "recv",	CF_IDENT_ANY,	mod_return },
-	{ "name1_null",	NULL,		mod_return },
-	{ "send",	CF_IDENT_ANY,	mod_return },
-	{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_return },
-
-	MODULE_NAME_TERMINATOR
-};
-
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -371,6 +360,13 @@ module_t rlm_test = {
 		[MOD_ACCOUNTING]	= mod_accounting,
 #endif
 	},
+	.method_names = (module_method_names_t[]){
+		{ "recv",	"Access-Challenge", mod_return },
+		{ "recv",	CF_IDENT_ANY,	mod_return },
+		{ "name1_null",	NULL,		mod_return },
+		{ "send",	CF_IDENT_ANY,	mod_return },
+		{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_return },
 
-	.method_names = method_names,
+		MODULE_NAME_TERMINATOR
+	}
 };
