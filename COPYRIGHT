@@ -19,9 +19,12 @@ section 4.2 for more information.
 
 3.1 LICENSE
 
-The license for all other source code and documentation except the
-files in src/lib directory is the GNU GPL version 2, which is included
-with this program in the LICENSE file in this directory.
+The license for all source code is the GNU GPL version 2, which is
+included with this program in the LICENSE file in this directory.
+
+The license for the documentation the Creative Commons
+Attribution-NonCommercial 4.0 International (CC-by-NC 4.0).  It is
+found in the file doc/LICENSE.
 
 3.2 LIST OF COPYRIGHT HOLDERS
 
