@@ -1,23 +1,16 @@
 1. COPYRIGHT
 
-Unless otherwise mentioned, the copyrights described in section 4,
-below, apply to all files in this distribution.
-
-2. INDIVIDUAL DIRECTORIES
-
-2.1 doc/rfc/
+1.1 doc/rfc/
 
 Most of the files in this directory are copyrighted by the Internet
 Society, Inc.  See the contents of the files for details.
 
-3. ALL OTHER FILES
+1.2. All other files
 
-Copyright for files in this directory is held by the contributors.
-See the contents of the files for details.  Files without explicit
-copyright notices are copyright The FreeRADIUS Server Project.  See
-section 4.2 for more information.
+Copyright for other files is held by individual contributors.  See the
+contents of the files for details
 
-3.1 LICENSE
+2. LICENSE
 
 The license for all source code is the GNU GPL version 2, which is
 included with this program in the LICENSE file in this directory.
@@ -25,10 +18,3 @@ included with this program in the LICENSE file in this directory.
 The license for the documentation the Creative Commons
 Attribution-NonCommercial 4.0 International (CC-by-NC 4.0).  It is
 found in the file doc/LICENSE.
-
-3.2 LIST OF COPYRIGHT HOLDERS
-
-Portions of the source code and documentation included here are
-copyright by one or more of the following organizations and
-individuals.  Please see the individual files for explicit copyrights
-and authors.
