@@ -3610,7 +3610,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			return 0;
 		}
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) || defined(__clang_analyzer__)
 		/*
 		 *	Hacks for Coverity.  Editing the dictionary
 		 *	will break assumptions about CUI.  We know
