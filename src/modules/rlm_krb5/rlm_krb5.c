@@ -339,7 +339,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	memset(&client, 0, sizeof(client));
 
 	rcode = krb5_parse_user(&client, request, conn->context);
-	if (rcode != RLM_MODULE_OK) goto cleanup;
+	if (rcode != RLM_MODULE_OK) goto release;
 
 	/*
 	 *	Verify the user, using the options we set in instantiate
@@ -374,10 +374,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 cleanup:
-	if (client) {
-		krb5_free_principal(conn->context, client);
-	}
+	krb5_free_principal(conn->context, client);
 
+release:
 #  ifdef KRB5_IS_THREAD_SAFE
 	fr_connection_release(inst->pool, conn);
 #  endif
