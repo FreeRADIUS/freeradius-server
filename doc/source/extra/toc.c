@@ -25,21 +25,10 @@ of modules in each stage.
 
 @section main_branches GIT Branch
 
-@subsection branch_master Experimental Branch
-
-@code
-git clone git@github.com:FreeRADIUS/freeradius-server.git
-@endcode
-- Web: http://github.com/FreeRADIUS/freeradius-server/tree/master
-
 @subsection branch_master Master (v4) feature branch
 
-@note Submit pull requests for new features or modules against this branch.
-
 @code
 git clone git@github.com:FreeRADIUS/freeradius-server.git
-cd freeradius-server
-git checkout master
 @endcode
 - Web: http://github.com/FreeRADIUS/freeradius-server/tree/master
 
