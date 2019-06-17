@@ -3960,6 +3960,10 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	vp->vp_length = datalen;
 	vp->tag = tag;
 
+#ifdef __clang_analyzer__
+	if (!datalen && da->type != PW_TYPE_OCTETS) return -1;
+#endif
+
 	switch (da->type) {
 	case PW_TYPE_STRING:
 		p = talloc_array(vp, char, vp->vp_length + 1);
