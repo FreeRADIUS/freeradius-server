@@ -787,7 +787,7 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 	}
 
 	config->method = fr_str2int(http_method_table, config->method_str, HTTP_METHOD_CUSTOM);
-	config->timeout = ((config->timeout_tv.tv_usec * 1000) + (config->timeout_tv.tv_sec / 1000));
+	config->timeout = ((config->timeout_tv.tv_usec / 1000) + (config->timeout_tv.tv_sec * 1000));
 
 	/*
 	 *  We don't have any custom user data, so we need to select the right encoder based
@@ -933,8 +933,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	inst->connect_timeout = ((inst->connect_timeout_tv.tv_usec * 1000) +
-				 (inst->connect_timeout_tv.tv_sec / 1000));
+	inst->connect_timeout = ((inst->connect_timeout_tv.tv_usec / 1000) +
+				 (inst->connect_timeout_tv.tv_sec * 1000));
 	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, mod_conn_alive, NULL);
 	if (!inst->pool) return -1;
 
