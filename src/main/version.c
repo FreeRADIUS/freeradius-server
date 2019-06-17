@@ -43,6 +43,8 @@ static long ssl_built = OPENSSL_VERSION_NUMBER;
  *
  * Where status >= 0 && < 10 means beta, and status 10 means release.
  *
+ *	https://wiki.openssl.org/index.php/Versioning
+ *
  * Startup check for whether the linked version of OpenSSL matches the
  * version the server was built against.
  *
@@ -53,6 +55,24 @@ int ssl_check_consistency(void)
 	long ssl_linked;
 
 	ssl_linked = SSLeay();
+
+	/*
+	 *	Major and minor versions mismatch, that's bad.
+	 */
+	if ((ssl_linked & 0xfff00000) != (ssl_built & 0xfff00000)) goto mismatch;
+
+	/*
+	 *	1.1.0 and later export all of the APIs we need, so we
+	 *	don't care about mismatches in fix / patch / status
+	 *	fields.  If the major && minor fields match, that's
+	 *	good enough.
+	 */
+	if ((ssl_linked & 0xfff00000) >= 0x10100000) return 0;
+
+	/*
+	 *	Before 1.1.0, we need all kinds of stupid checks to
+	 *	see if it might work.
+	 */
 
 	/*
 	 *	Status mismatch always triggers error.
