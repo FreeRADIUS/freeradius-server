@@ -501,6 +501,8 @@ static int fr_dhcp_array_members(size_t *len, DICT_ATTR const *da)
 {
 	int num_entries = 1;
 
+	if (!len || !da) return -1;
+
 	/*
 	 *	Could be an array of bytes, integers, etc.
 	 */
