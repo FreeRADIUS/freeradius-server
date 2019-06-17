@@ -14,6 +14,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Try to fix file permissions if they get modified while
 	  the server is running.
 	* Fix slow memory leak with clients.
+	* Fix request and connection timeouts in rlm_rest.
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
