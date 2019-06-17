@@ -2949,6 +2949,11 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 							psk_client_callback);
 		}
 
+		if (!conf->psk_password || !*conf->psk_password) {
+			ERROR(LOG_PREFIX ": psk_hexphrase cannot be empty");
+			return NULL;
+		}
+
 		psk_len = strlen(conf->psk_password);
 		if (strlen(conf->psk_password) > (2 * PSK_MAX_PSK_LEN)) {
 			ERROR(LOG_PREFIX ": psk_hexphrase is too long (max %d)", PSK_MAX_PSK_LEN);
