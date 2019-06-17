@@ -3619,7 +3619,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		if (da->type != PW_TYPE_OCTETS) return -1;
 #endif
 
-		data = NULL;
+		data = buffer;
+		*buffer = '\0';
 		datalen = 0;
 		goto alloc_cui;	/* skip everything */
 	}
@@ -3962,6 +3963,9 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	switch (da->type) {
 	case PW_TYPE_STRING:
 		p = talloc_array(vp, char, vp->vp_length + 1);
+#ifdef __clang_analyzer__
+		if (!p) goto fail;
+#endif
 		memcpy(p, data, vp->vp_length);
 		p[vp->vp_length] = '\0';
 		vp->vp_strvalue = p;
@@ -4056,6 +4060,9 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;
 
+#ifdef __clang_analyzer__
+	fail:
+#endif
 	default:
 		fr_pair_list_free(&vp);
 		fr_strerror_printf("Internal sanity check %d", __LINE__);
