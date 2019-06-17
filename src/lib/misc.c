@@ -1440,6 +1440,10 @@ bool is_whitespace(char const *value)
  */
 bool is_integer(char const *value)
 {
+#ifdef __clang_analyzer__
+	if (!value) return false;
+#endif
+
 	do {
 		if (!isdigit(*value)) return false;
 		value++;
