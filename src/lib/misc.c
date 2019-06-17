@@ -1404,7 +1404,8 @@ bool is_whitespace(char const *value)
 {
 	do {
 		if (!isspace(*value)) return false;
-	} while (*++value);
+		value++;
+	} while (*value);
 
 	return true;
 }
@@ -1441,7 +1442,8 @@ bool is_integer(char const *value)
 {
 	do {
 		if (!isdigit(*value)) return false;
-	} while (*++value);
+		value++;
+	} while (*value);
 
 	return true;
 }
@@ -1454,7 +1456,8 @@ bool is_zero(char const *value)
 {
 	do {
 		if (*value != '0') return false;
-	} while (*++value);
+		value++;
+	} while (*value);
 
 	return true;
 }
