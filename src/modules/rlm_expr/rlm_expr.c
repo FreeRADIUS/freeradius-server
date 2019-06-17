@@ -264,8 +264,8 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 			}
 			if (value.integer64 > INT64_MAX) {
 			overflow:
-				REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
-					"(our internal arithmetic type)", (int)vpt.len, vpt.name, value.integer64);
+				REDEBUG("Value of &%.*s would overflow a signed 64bit integer "
+					"(our internal arithmetic type)", (int)vpt.len, vpt.name);
 				return false;
 			}
 			x = (int64_t)value.integer64;
