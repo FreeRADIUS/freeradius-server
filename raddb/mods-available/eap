@@ -403,7 +403,7 @@ eap {
 		#  these options, otherwise older clients will not be
 		#  able to connect.
 		#
-		#  Allowed values are "1.0", "1.1", and "1.2".
+		#  Allowed values are "1.0", "1.1", "1.2", and "1.3".
 		#
 		#  The values must be in quotes.
 		#
