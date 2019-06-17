@@ -567,6 +567,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		}
 		p += slen;
 
+
+#ifdef __clang_analyzer__
+		if (!lhs) return_P("Internal error");
+#endif
+
 		/*
 		 *	If the LHS is 0xabcdef... automatically cast it to octets
 		 */
@@ -745,6 +750,10 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				if (slen < 0) {
 					return_SLEN;
 				}
+
+#ifdef __clang_analyzer__
+				if (!cast_da) return_P("Internal error");
+#endif
 
 				if (!c->cast) {
 					return_P("Unexpected cast");
