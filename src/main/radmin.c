@@ -403,6 +403,10 @@ int main(int argc, char **argv)
 			usage(0);	/* never returns */
 
 		case 'i':
+#ifdef __clang_analyzer__
+			if (!optarg) exit(1);
+#endif
+
 			if (strcmp(optarg, "-") != 0) {
 				input_file = optarg;
 			}
