@@ -420,7 +420,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	into a principal.
 	 */
 	rcode = krb5_parse_user(&client, request, conn->context);
-	if (rcode != RLM_MODULE_OK) goto cleanup;
+	if (rcode != RLM_MODULE_OK) goto release;
 
 	/*
 	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
@@ -439,9 +439,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	if (ret) rcode = krb5_process_error(request, conn, ret);
 
 cleanup:
-	if (client) krb5_free_principal(conn->context, client);
+	krb5_free_principal(conn->context, client);
 	krb5_free_cred_contents(conn->context, &init_creds);
 
+release:
 #  ifdef KRB5_IS_THREAD_SAFE
 	fr_connection_release(inst->pool, conn);
 #  endif
