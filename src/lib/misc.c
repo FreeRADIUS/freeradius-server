@@ -1440,14 +1440,21 @@ bool is_whitespace(char const *value)
  */
 bool is_integer(char const *value)
 {
-#ifdef __clang_analyzer__
-	if (!value) return false;
-#endif
-
+#ifndef __clang_analyzer__
 	do {
 		if (!isdigit(*value)) return false;
 		value++;
 	} while (*value);
+
+	/*
+	 *	Clang analyzer complains about the above line: "Branch
+	 *	depends on a garbage value", even though that's
+	 *	clearly not true.  And, it doesn't complain about the
+	 *	other functions doing similar things.
+	 */
+#else
+	if (!isdigit(*value)) return false;
+#endif
 
 	return true;
 }
