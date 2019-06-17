@@ -560,7 +560,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		}
 		p += slen;
 
+#ifndef __clang_analyzer__
 		lhs_p = p;
+#endif
 		slen = condition_tokenize_word(c, p, &lhs, &lhs_type, error);
 		if (slen <= 0) {
 			return_SLEN;
