@@ -37,11 +37,6 @@ RCSIDH(cf_parse_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
-/*
- * Dumb hack for GCC which explodes with lots of errors masking the real
- * error cause, if we don't use typdefs for these structures.
- */
-typedef struct timeval _timeval_t;
 
 #ifdef HAVE_BUILTIN_CHOOSE_EXPR
 typedef void _mismatch_vp_tmpl;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
@@ -73,8 +68,6 @@ typedef void _mismatch_uint64;		//!< Dummy type used to indicate FR_TYPE_*/C typ
 typedef void _mismatch_uint64_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_size;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_size_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_timeval;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_timeval_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_time_delta;     	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_time_delta_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_void;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
