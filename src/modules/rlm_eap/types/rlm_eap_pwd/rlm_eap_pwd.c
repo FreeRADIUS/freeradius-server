@@ -443,7 +443,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		eap_add_reply(request, attr_ms_mppe_recv_key, msk, MPPE_KEY_LEN);
 		eap_add_reply(request, attr_ms_mppe_send_key, msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
 
-		rcode = RLM_MODULE_FAIL;
+		rcode = RLM_MODULE_OK;
 		break;
 
 	default:
