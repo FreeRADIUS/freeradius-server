@@ -217,7 +217,10 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		}
 
 		session->in_len = ntohs(in[0] * 256 | in[1]);
-		if (!session->in_len) return RLM_MODULE_FAIL;
+		if (!session->in_len) {
+			DEBUG("EAP-PWD malformed packet (input length)");
+			return RLM_MODULE_FAIL;
+		}
 
 		MEM(session->in = talloc_zero_array(session, uint8_t, session->in_len));
 
@@ -327,7 +330,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 					     vp->vp_strvalue, vp->vp_length,
 					     inst->server_id, strlen(inst->server_id),
 					     session->peer_id, strlen(session->peer_id),
-					     &session->token)) {
+					     &session->token, inst->bnctx)) {
 			REDEBUG("Failed to obtain password element");
 			return RLM_MODULE_FAIL;
 		}

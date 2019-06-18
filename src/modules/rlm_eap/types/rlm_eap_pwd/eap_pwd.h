@@ -104,7 +104,7 @@ int compute_password_element(REQUEST *request, pwd_session_t *sess, uint16_t grp
 			     char const *password, int password_len,
 			     char const *id_server, int id_server_len,
 			     char const *id_peer, int id_peer_len,
-			     uint32_t *token);
+			     uint32_t *token, BN_CTX *bnctx);
 int compute_scalar_element(REQUEST *request, pwd_session_t *sess, BN_CTX *bnctx);
 int process_peer_commit(REQUEST *request, pwd_session_t *sess, uint8_t *in, size_t in_len, BN_CTX *bnctx);
 int compute_server_confirm(REQUEST *request, pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);

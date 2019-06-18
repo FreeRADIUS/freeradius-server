@@ -40,6 +40,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/server/module.h>
 
 #include "eap_pwd.h"
+#include "const_time.h"
 
 static uint8_t allzero[SHA256_DIGEST_LENGTH] = { 0x00 };
 
@@ -94,16 +95,181 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 	HMAC_CTX_free(hmac_ctx);
 }
 
-int compute_password_element(REQUEST *request, pwd_session_t *session, uint16_t grp_num,
-			     char const *password, int password_len,
-			     char const *id_server, int id_server_len,
-			     char const *id_peer, int id_peer_len,
-			     uint32_t *token)
+static BIGNUM *
+consttime_BN (void)
 {
-	BIGNUM		*x_candidate = NULL, *rnd = NULL, *cofactor = NULL;
-	HMAC_CTX	*hmac_ctx = NULL;
-	uint8_t		pwe_digest[SHA256_DIGEST_LENGTH], *prf_buf = NULL, ctr;
-	int		nid, is_odd, prime_bit_len, prime_byte_len, ret = 0;
+    BIGNUM *bn;
+
+    bn = BN_new();
+    if (bn) {
+        BN_set_flags(bn, BN_FLG_CONSTTIME);
+    }
+    return bn;
+}
+
+/*
+ * compute the legendre symbol in constant time
+ */
+static int
+legendre (BIGNUM *a, BIGNUM *p, BN_CTX *bnctx)
+{
+    int symbol;
+    unsigned int mask;
+    BIGNUM *res, *pm1over2;
+
+    pm1over2 = consttime_BN();
+    res = consttime_BN();
+
+    if (!BN_sub(pm1over2, p, BN_value_one()) || !BN_rshift1(pm1over2, pm1over2) ||
+        !BN_mod_exp_mont_consttime(res, a, pm1over2, p, bnctx, NULL)) {
+        return -2;
+    }
+
+    symbol = -1;
+    mask = const_time_eq(BN_is_word(res, 1), 1);
+    symbol = const_time_select_int(mask, 1, symbol);
+    mask = const_time_eq(BN_is_zero(res), 1);
+    symbol = const_time_select_int(mask, -1, symbol);
+
+    BN_free(pm1over2);
+    BN_free(res);
+    return symbol;
+}
+
+static void
+do_equation (EC_GROUP *group, BIGNUM *y2, BIGNUM *x, BN_CTX *bnctx)
+{
+    BIGNUM *p, *a, *b, *tmp1, *pm1;
+
+    tmp1 = BN_new();
+    pm1 = BN_new();
+    p = BN_new();
+    a = BN_new();
+    b = BN_new();
+    EC_GROUP_get_curve_GFp(group, p, a, b, bnctx);
+
+    BN_sub(pm1, p, BN_value_one());
+
+    /*
+     * y2 = x^3 + ax + b
+     */
+    BN_mod_sqr(tmp1, x, p, bnctx);
+    BN_mod_mul(y2, tmp1, x, p, bnctx);
+    BN_mod_mul(tmp1, a, x, p, bnctx);
+    BN_mod_add_quick(y2, y2, tmp1, p);
+    BN_mod_add_quick(y2, y2, b, p);
+
+    BN_free(tmp1);
+    BN_free(pm1);
+    BN_free(p);
+    BN_free(a);
+    BN_free(b);
+
+    return;
+}
+
+static int
+is_quadratic_residue (BIGNUM *val, BIGNUM *p, BIGNUM *qr, BIGNUM *qnr, BN_CTX *bnctx)
+{
+    int offset, check, ret = 0;
+    BIGNUM *r = NULL, *pm1 = NULL, *res = NULL, *qr_or_qnr = NULL;
+    unsigned int mask;
+    unsigned char *qr_bin = NULL, *qnr_bin = NULL, *qr_or_qnr_bin = NULL;
+
+    if (((r = consttime_BN()) == NULL) ||
+        ((res = consttime_BN()) == NULL) ||
+        ((qr_or_qnr = consttime_BN()) == NULL) ||
+        ((pm1 = consttime_BN()) == NULL)) {
+        ret = -2;
+        goto fail;
+    }
+
+    if (((qr_bin = (unsigned char *)malloc(BN_num_bytes(p))) == NULL) ||
+        ((qnr_bin = (unsigned char *)malloc(BN_num_bytes(p))) == NULL) ||
+        ((qr_or_qnr_bin = (unsigned char *)malloc(BN_num_bytes(p))) == NULL)) {
+        ret = -2;
+        goto fail;
+    }
+    /*
+     * we select binary in constant time so make them binary
+     */
+    memset(qr_bin, 0, BN_num_bytes(p));
+    memset(qnr_bin, 0, BN_num_bytes(p));
+    memset(qr_or_qnr_bin, 0, BN_num_bytes(p));
+
+    offset = BN_num_bytes(p) - BN_num_bytes(qr);
+    BN_bn2bin(qr, qr_bin + offset);
+
+    offset = BN_num_bytes(p) - BN_num_bytes(qnr);
+    BN_bn2bin(qnr, qnr_bin + offset);
+
+    /*
+     * r = (random() mod p-1) + 1
+     */
+    BN_sub(pm1, p, BN_value_one());
+    BN_rand_range(r, pm1);
+    BN_add(r, r, BN_value_one());
+
+    BN_copy(res, val);
+
+    /*
+     * res = val * r * r which ensures res != val but has same quadratic residocity
+     */
+    BN_mod_mul(res, res, r, p, bnctx);
+    BN_mod_mul(res, res, r, p, bnctx);
+
+    /*
+     * if r is even (mask is -1) then multiply by qnr and our check is qnr
+     * otherwise multiply by qr and our check is qr
+     */
+    mask = const_time_is_zero(BN_is_odd(r));
+    const_time_select_bin(mask, qnr_bin, qr_bin, BN_num_bytes(p), qr_or_qnr_bin);
+    BN_bin2bn(qr_or_qnr_bin, BN_num_bytes(p), qr_or_qnr);
+    BN_mod_mul(res, res, qr_or_qnr, p, bnctx);
+    check = const_time_select_int(mask, -1, 1);
+
+    if ((ret = legendre(res, p, bnctx)) == -2) {
+        ret = -1;       /* just say no it's not */
+        goto fail;
+    }
+    mask = const_time_eq(ret, check);
+    ret = const_time_select_int(mask, 1, 0);
+
+fail:
+    if (qr_bin != NULL) {
+        free(qr_bin);
+    }
+    if (qnr_bin != NULL) {
+        free(qnr_bin);
+    }
+    if (qr_or_qnr_bin != NULL) {
+        free(qr_or_qnr_bin);
+    }
+    BN_free(r);
+    BN_free(res);
+    BN_free(qr_or_qnr);
+    BN_free(pm1);
+
+    return ret;
+}
+
+int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t grp_num,
+			      char const *password, int password_len,
+			      char const *id_server, int id_server_len,
+			      char const *id_peer, int id_peer_len,
+			      uint32_t *token, BN_CTX *bnctx)
+{
+	BIGNUM *x_candidate = NULL, *rnd = NULL, *y_sqrd = NULL, *qr = NULL, *qnr = NULL;
+	HMAC_CTX *ctx = NULL;
+	uint8_t pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, ctr;
+	int nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
+        int save, i, rbits, qr_or_qnr, save_is_odd = 0;
+
+	ctx = HMAC_CTX_new();
+	if (ctx == NULL) {
+		DEBUG("failed allocating HMAC context");
+		goto fail;
+	}
 
 	switch (grp_num) { /* from IANA registry for IKE D-H groups */
 	case 19:
@@ -127,54 +293,67 @@ int compute_password_element(REQUEST *request, pwd_session_t *session, uint16_t 
 		break;
 
 	default:
-		REDEBUG("Unknown group %d", grp_num);
-	error:
-		ret = -1;
-		goto finish;
+		DEBUG("unknown group %d", grp_num);
+		goto fail;
 	}
 
 	session->pwe = NULL;
 	session->order = NULL;
 	session->prime = NULL;
-	session->group = EC_GROUP_new_by_curve_name(nid);
-	if (!session->group) {
-		REDEBUG("Unable to create EC_GROUP");
-		goto error;
+
+	if ((session->group = EC_GROUP_new_by_curve_name(nid)) == NULL) {
+		DEBUG("unable to create EC_GROUP");
+		goto fail;
 	}
 
-	MEM(session->pwe = EC_POINT_new(session->group));
-	MEM(session->order = BN_new());
-	MEM(session->prime = BN_new());
-
-	MEM(rnd = BN_new());
-	MEM(cofactor = BN_new());
-	MEM(x_candidate = BN_new());
+	if (((rnd = consttime_BN()) == NULL) ||
+	    ((session->pwe = EC_POINT_new(session->group)) == NULL) ||
+	    ((session->order = consttime_BN()) == NULL) ||
+	    ((session->prime = consttime_BN()) == NULL) ||
+	    ((qr = consttime_BN()) == NULL) ||
+	    ((qnr = consttime_BN()) == NULL) ||
+	    ((x_candidate = consttime_BN()) == NULL) ||
+            ((y_sqrd = consttime_BN()) == NULL)) {
+		DEBUG("unable to create bignums");
+		goto fail;
+	}
 
 	if (!EC_GROUP_get_curve_GFp(session->group, session->prime, NULL, NULL, NULL)) {
-		REDEBUG("Unable to get prime for GFp curve");
-		goto error;
+		DEBUG("unable to get prime for GFp curve");
+		goto fail;
 	}
 
 	if (!EC_GROUP_get_order(session->group, session->order, NULL)) {
-		REDEBUG("Unable to get order for curve");
-		goto error;
+		DEBUG("unable to get order for curve");
+		goto fail;
 	}
 
-	if (!EC_GROUP_get_cofactor(session->group, cofactor, NULL)) {
-		REDEBUG("unable to get cofactor for curve");
-		goto error;
+	primebitlen = BN_num_bits(session->prime);
+	primebytelen = BN_num_bytes(session->prime);
+	if ((prfbuf = talloc_zero_array(session, uint8_t, primebytelen)) == NULL) {
+		DEBUG("unable to alloc space for prf buffer");
+		goto fail;
 	}
+        if ((xbuf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+		DEBUG("unable to alloc space for x buffer");
+		goto fail;
+        }
 
-	prime_bit_len = BN_num_bits(session->prime);
-	prime_byte_len = BN_num_bytes(session->prime);
-	MEM(prf_buf = talloc_zero_array(session, uint8_t, prime_byte_len));
-	MEM(hmac_ctx = HMAC_CTX_new());
+        /*
+         * derive random quadradic residue and quadratic non-residue
+         */
+        do {
+            BN_rand_range(qr, session->prime);
+        } while (legendre(qr, session->prime, bnctx) != 1);
+        do {
+            BN_rand_range(qnr, session->prime);
+        } while (legendre(qnr, session->prime, bnctx) != -1);
+
+        save_is_odd = 0;
+        found = 0;
+        memset(xbuf, 0, primebytelen);
 	ctr = 0;
-	for (;;) {
-		if (ctr > 10) {
-			REDEBUG("Unable to find random point on curve for group %d, something's fishy", grp_num);
-			goto error;
-		}
+	while (ctr < 40) {
 		ctr++;
 
 		/*
@@ -182,80 +361,97 @@ int compute_password_element(REQUEST *request, pwd_session_t *session, uint16_t 
 		 *    pwd-seed = H(token | peer-id | server-id | password |
 		 *		   counter)
 		 */
-		HMAC_Init_ex(hmac_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL);
-		HMAC_Update(hmac_ctx, (uint8_t *)token, sizeof(*token));
-		HMAC_Update(hmac_ctx, (uint8_t const *)id_peer, id_peer_len);
-		HMAC_Update(hmac_ctx, (uint8_t const *)id_server, id_server_len);
-		HMAC_Update(hmac_ctx, (uint8_t const *)password, password_len);
-		HMAC_Update(hmac_ctx, (uint8_t *)&ctr, sizeof(ctr));
-		pwd_hmac_final(hmac_ctx, pwe_digest);
+		HMAC_Init_ex(ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(),NULL);
+		HMAC_Update(ctx, (uint8_t *)token, sizeof(*token));
+		HMAC_Update(ctx, (uint8_t const *)id_peer, id_peer_len);
+		HMAC_Update(ctx, (uint8_t const *)id_server, id_server_len);
+		HMAC_Update(ctx, (uint8_t const *)password, password_len);
+		HMAC_Update(ctx, (uint8_t *)&ctr, sizeof(ctr));
+		pwd_hmac_final(ctx, pwe_digest);
 
 		BN_bin2bn(pwe_digest, SHA256_DIGEST_LENGTH, rnd);
 		eap_pwd_kdf(pwe_digest, SHA256_DIGEST_LENGTH, "EAP-pwd Hunting And Pecking",
-			    strlen("EAP-pwd Hunting And Pecking"), prf_buf, prime_bit_len);
+                            strlen("EAP-pwd Hunting And Pecking"), prfbuf, primebitlen);
 
-		BN_bin2bn(prf_buf, prime_byte_len, x_candidate);
 		/*
-		 * eap_pwd_kdf() returns a string of bits 0..prime_bit_len but
+		 * eap_pwd_kdf() returns a string of bits 0..primebitlen but
 		 * BN_bin2bn will treat that string of bits as a big endian
-		 * number. If the prime_bit_len is not an even multiple of 8
-		 * then excessive bits-- those _after_ prime_bit_len-- so now
+		 * number. If the primebitlen is not an even multiple of 8
+		 * then excessive bits-- those _after_ primebitlen-- so now
 		 * we have to shift right the amount we masked off.
 		 */
-		if (prime_bit_len % 8) BN_rshift(x_candidate, x_candidate, (8 - (prime_bit_len % 8)));
+		if (primebitlen % 8) {
+                    rbits = 8 - (primebitlen % 8);
+                    for (i = primebytelen - 1; i > 0; i--) {
+                        prfbuf[i] = (prfbuf[i - 1] << (8 - rbits)) | (prfbuf[i] >> rbits);
+                    }
+                    prfbuf[0] >>= rbits;
+                }
+		BN_bin2bn(prfbuf, primebytelen, x_candidate);
 		if (BN_ucmp(x_candidate, session->prime) >= 0) continue;
 
-		/*
-		 * need to unambiguously identify the solution, if there is
-		 * one...
-		 */
-		is_odd = BN_is_odd(rnd) ? 1 : 0;
+                /*
+                 * need to unambiguously identify the solution, if there is
+                 * one..
+                 */
+                is_odd = BN_is_odd(rnd) ? 1 : 0;
 
-		/*
-		 * solve the quadratic equation, if it's not solvable then we
-		 * don't have a point
-		 */
-		if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe, x_candidate, is_odd, NULL)) {
-			continue;
-		}
+                /*
+                 * check whether x^3 + a*x + b is a quadratic residue
+                 *
+                 * save the first quadratic residue we find in the loop but do
+                 * it in constant time.
+                 */
+                do_equation(session->group, y_sqrd, x_candidate, bnctx);
+                qr_or_qnr = is_quadratic_residue(y_sqrd, session->prime, qr, qnr, bnctx);
 
-		/*
-		 * If there's a solution to the equation then the point must be
-		 * on the curve so why check again explicitly? OpenSSL code
-		 * says this is required by X9.62. We're not X9.62 but it can't
-		 * hurt just to be sure.
-		 */
-		if (!EC_POINT_is_on_curve(session->group, session->pwe, NULL)) {
-			REDEBUG("Point is not on curve");
-			continue;
-		}
+                /*
+                 * if we haven't found PWE yet (found = 0) then mask will be true,
+                 * if we have found PWE then mask will be false
+                 */
+                mask = const_time_select(found, 0, -1);
 
-		if (BN_cmp(cofactor, BN_value_one())) {
-			/* make sure the point is not in a small sub-group */
-			if (!EC_POINT_mul(session->group, session->pwe, NULL, session->pwe,
-				cofactor, NULL)) {
-				RDEBUG("Cannot multiply generator by order");
-				continue;
-			}
+                /*
+                 * save will be 1 if we want to save this value-- i.e. we haven't
+                 * found PWE yet and this is a quadratic residue-- and 0 otherwise
+                 */
+                save = const_time_select(mask, qr_or_qnr, 0);
 
-			if (EC_POINT_is_at_infinity(session->group, session->pwe)) {
-				REDEBUG("Point is at infinity");
-				continue;
-			}
-		}
-		/* if we got here then we have a new generator. */
-		break;
+                /*
+                 * mask will be true (-1) if we want to save this and false (0)
+                 * otherwise
+                 */
+                mask = const_time_eq(save, 1);
+
+                const_time_select_bin(mask, prfbuf, xbuf, primebytelen, xbuf);
+                save_is_odd = const_time_select(mask, is_odd, save_is_odd);
+                found = const_time_select(mask, -1, found);
+
 	}
+        /*
+         * now we can savely construct PWE
+         */
+        BN_bin2bn(xbuf, primebytelen, x_candidate);
+        if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe,
+                                                     x_candidate, save_is_odd, NULL)) {
+            goto fail;
+        }
 
 	session->group_num = grp_num;
+	if (0) {
+		fail:		/* DON'T free session, it's in handler->opaque */
+		ret = -1;
+	}
 
-finish:
 	/* cleanliness and order.... */
-	HMAC_CTX_free(hmac_ctx);
-	BN_clear_free(cofactor);
 	BN_clear_free(x_candidate);
+        BN_clear_free(y_sqrd);
+        BN_clear_free(qr);
+        BN_clear_free(qnr);
 	BN_clear_free(rnd);
-	talloc_free(prf_buf);
+	talloc_free(prfbuf);
+        if (xbuf) talloc_free(xbuf);
+	HMAC_CTX_free(ctx);
 
 	return ret;
 }
