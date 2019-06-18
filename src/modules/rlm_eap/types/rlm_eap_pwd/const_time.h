@@ -24,7 +24,7 @@
 
 /**
  * const_time_fill_msb - Fill all bits with MSB value
- * @val: Input value
+ * @param	val Input value
  * @return	Value with all the bits set to the MSB of the input val
  */
 static inline unsigned int const_time_fill_msb(unsigned int val)
@@ -59,9 +59,9 @@ static inline unsigned char const_time_eq_u8(unsigned int a, unsigned int b)
 
 /**
  * const_time_eq_bin - Constant time memory comparison
- * @a: First buffer to compare
- * @b: Second buffer to compare
- * @len: Number of octets to compare
+ * @@param	a First buffer to compare
+ * @@param	b Second buffer to compare
+ * @param	len Number of octets to compare
  * @return	-1 if buffers are equal, 0 if not
  *
  * This function is meant for comparing passwords or hash values where
