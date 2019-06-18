@@ -25,7 +25,7 @@
 /**
  * const_time_fill_msb - Fill all bits with MSB value
  * @val: Input value
- * Returns: Value with all the bits set to the MSB of the input val
+ * @return	Value with all the bits set to the MSB of the input val
  */
 static inline unsigned int const_time_fill_msb(unsigned int val)
 {
@@ -34,7 +34,7 @@ static inline unsigned int const_time_fill_msb(unsigned int val)
 }
 
 
-/* Returns: -1 if val is zero; 0 if val is not zero */
+/* @return	-1 if val is zero; 0 if val is not zero */
 static inline unsigned int const_time_is_zero(unsigned int val)
 	NO_UBSAN_UINT_OVERFLOW
 {
@@ -43,14 +43,14 @@ static inline unsigned int const_time_is_zero(unsigned int val)
 }
 
 
-/* Returns: -1 if a == b; 0 if a != b */
+/* @return	-1 if a == b; 0 if a != b */
 static inline unsigned int const_time_eq(unsigned int a, unsigned int b)
 {
 	return const_time_is_zero(a ^ b);
 }
 
 
-/* Returns: -1 if a == b; 0 if a != b */
+/* @return	-1 if a == b; 0 if a != b */
 static inline unsigned char const_time_eq_u8(unsigned int a, unsigned int b)
 {
 	return (unsigned char) const_time_eq(a, b);
@@ -62,7 +62,7 @@ static inline unsigned char const_time_eq_u8(unsigned int a, unsigned int b)
  * @a: First buffer to compare
  * @b: Second buffer to compare
  * @len: Number of octets to compare
- * Returns: -1 if buffers are equal, 0 if not
+ * @return	-1 if buffers are equal, 0 if not
  *
  * This function is meant for comparing passwords or hash values where
  * difference in execution time or memory access pattern could provide external
@@ -90,10 +90,10 @@ static inline unsigned int const_time_eq_bin(const void *a, const void *b,
 
 /**
  * const_time_select - Constant time unsigned int selection
- * @mask: 0 (false) or -1 (true) to identify which value to select
- * @true_val: Value to select for the true case
- * @false_val: Value to select for the false case
- * Returns: true_val if mask == -1, false_val if mask == 0
+ * @param	mask 0 (false) or -1 (true) to identify which value to select
+ * @param	true_val Value to select for the true case
+ * @param	false_val Value to select for the false case
+ * @return	true_val if mask == -1, false_val if mask == 0
  */
 static inline unsigned int const_time_select(unsigned int mask,
 					     unsigned int true_val,
@@ -105,10 +105,10 @@ static inline unsigned int const_time_select(unsigned int mask,
 
 /**
  * const_time_select_int - Constant time int selection
- * @mask: 0 (false) or -1 (true) to identify which value to select
- * @true_val: Value to select for the true case
- * @false_val: Value to select for the false case
- * Returns: true_val if mask == -1, false_val if mask == 0
+ * @param	mask 0 (false) or -1 (true) to identify which value to select
+ * @param	true_val Value to select for the true case
+ * @param	false_val Value to select for the false case
+ * @return	true_val if mask == -1, false_val if mask == 0
  */
 static inline int const_time_select_int(unsigned int mask, int true_val,
 					int false_val)
@@ -120,10 +120,10 @@ static inline int const_time_select_int(unsigned int mask, int true_val,
 
 /**
  * const_time_select_u8 - Constant time u8 selection
- * @mask: 0 (false) or -1 (true) to identify which value to select
- * @true_val: Value to select for the true case
- * @false_val: Value to select for the false case
- * Returns: true_val if mask == -1, false_val if mask == 0
+ * @param	mask 0 (false) or -1 (true) to identify which value to select
+ * @param	true_val Value to select for the true case
+ * @param	false_val Value to select for the false case
+ * @return	true_val if mask == -1, false_val if mask == 0
  */
 static inline unsigned char const_time_select_u8(unsigned char mask, unsigned char true_val, unsigned char false_val)
 {
@@ -133,10 +133,10 @@ static inline unsigned char const_time_select_u8(unsigned char mask, unsigned ch
 
 /**
  * const_time_select_s8 - Constant time s8 selection
- * @mask: 0 (false) or -1 (true) to identify which value to select
- * @true_val: Value to select for the true case
- * @false_val: Value to select for the false case
- * Returns: true_val if mask == -1, false_val if mask == 0
+ * @param	mask 0 (false) or -1 (true) to identify which value to select
+ * @param	true_val Value to select for the true case
+ * @param	false_val Value to select for the false case
+ * @return	true_val if mask == -1, false_val if mask == 0
  */
 static inline char const_time_select_s8(char mask, char true_val, char false_val)
 {
@@ -147,11 +147,11 @@ static inline char const_time_select_s8(char mask, char true_val, char false_val
 
 /**
  * const_time_select_bin - Constant time binary buffer selection copy
- * @mask: 0 (false) or -1 (true) to identify which value to copy
- * @true_val: Buffer to copy for the true case
- * @false_val: Buffer to copy for the false case
- * @len: Number of octets to copy
- * @dst: Destination buffer for the copy
+ * @param	mask 0 (false) or -1 (true) to identify which value to copy
+ * @param	true_val Buffer to copy for the true case
+ * @param	false_val Buffer to copy for the false case
+ * @param	len Number of octets to copy
+ * @param	dst Destination buffer for the copy
  *
  * This function copies the specified buffer into the destination buffer using
  * operations with identical memory access pattern regardless of which buffer
