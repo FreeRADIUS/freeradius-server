@@ -68,7 +68,6 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/thread_local.h>
 #include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/timeval.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/util/types.h>

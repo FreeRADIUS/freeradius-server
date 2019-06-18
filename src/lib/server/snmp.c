@@ -32,6 +32,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/timeval.h>
 
 #include <freeradius-devel/protocol/snmp/freeradius.h>
 
