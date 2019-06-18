@@ -1882,11 +1882,13 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 
 static void print_time(void *ctx)
 {
-	struct timeval when;
+	fr_time_t when;
+	int64_t usec;
 
-	when = fr_time_to_timeval(ctx);
+	when = *(fr_time_t *) ctx;
+	usec = fr_time_to_usec(when);
 
-	printf("%d.%06d\n", when->tv_sec, when->tv_usec);
+	printf("%d.%06d\n", usec / USEC, usec % USEC);
 	fflush(stdout);
 }
 
