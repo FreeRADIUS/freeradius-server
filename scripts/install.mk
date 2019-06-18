@@ -113,6 +113,27 @@ define ADD_INSTALL_RULE.man
 
 endef
 
+# ADD_INSTALL_RULE.file - Parameterized "function" that adds a new rule
+#   and phony target for installing a file.
+#
+#   ${1} = file to install
+#   ${2} = destination where it is installed
+#
+#   USE WITH EVAL
+#
+define ADD_INSTALL_RULE.file
+    ALL_INSTALL += ${2}
+
+    # Global install depends on the installed file
+    install: ${2}
+
+    # Install the file
+    ${2}: ${1} | $(dir ${2})
+	@$(ECHO) INSTALL ${1}
+	$(Q)$${PROGRAM_INSTALL} -c -m 644 ${1} ${2}
+
+endef
+
 
 # ADD_INSTALL_RULE.h - Parameterized "function" that adds a new rule
 #   and phony target for installing a header file.
