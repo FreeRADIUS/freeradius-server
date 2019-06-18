@@ -171,12 +171,24 @@ endef
 # ADD_INSTALL_RULE.dir - Parameterized "function" that adds a new rule
 #   and phony target for installing a directory
 #
+#   We would like to have this directory have an order dependency on it's parent:
+#
+#	| $(dir $(patsubst %/,%,$(dir ${1})))
+#
+#  but ONLY to the root of the directory we're installing.  There's no simple way
+#  to get at that information right now, so we'll ignore it.  Until that's fixed,
+#  doing "make -j 14 install.doc" will get a series of complaints about
+#
+#	"mkdir: foo: File exists"
+#
+#  but ONLY once for each directory.
+#
 #   USE WITH EVAL
 #
 define ADD_INSTALL_RULE.dir
     # Install directory
     .PHONY: ${1}
-    ${1}: ${JLIBTOOL}
+    ${1}:
 	@$(ECHO) INSTALL -d -m 755 ${1}
 	$(Q)$${PROGRAM_INSTALL} -d -m 755 ${1}
 endef
