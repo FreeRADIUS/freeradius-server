@@ -37,7 +37,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/timeval.h>
 
 #include "cf_priv.h"
 

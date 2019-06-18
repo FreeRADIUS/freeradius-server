@@ -40,7 +40,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/token.h>
-#include <freeradius-devel/util/timeval.h>
 #include <freeradius-devel/util/time.h>
 #include <sys/stat.h>
 
