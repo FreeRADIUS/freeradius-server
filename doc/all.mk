@@ -44,31 +44,34 @@ PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
 HTML_FILES := $(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES))
 
 #
-#  Older documentastion, likely needs updating.
+#  There are a number of pre-built files in the doc/ directory.  Find those.
 #
-DOCDIRS		:= $(patsubst doc/%,$(R)$(docdir)/%,$(filter-out doc/source%,$(shell find doc -type d)))
-DOCFILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/source/%,$(shell find doc -type f))
-DOCINSTALL	:= $(patsubst doc/%,$(R)$(docdir)/%,$(DOCFILES))
+DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/source/%,$(shell find doc -type f))
 
-#  Create the directories
-$(DOCDIRS):
-	${Q}echo INSTALL $(patsubst $(R)$(docdir)/%,doc/%,$@)
-	${Q}$(INSTALL) -d -m 755 $@
+#
+#  We sort the list of files, because the "find" command above will
+#  output pre-build ADOC / HTML files that may be laying around.  We
+#  don't want duplicate rules.  We do want to build and install the
+#  ADOC / HTML files, even if they don't (or do ) already exist.
+#
+#  We remove the "doc/" prefix, because the documentation files are
+#  installed into $(docdir)/foo, and not $(docdir)/doc/.
+#
+ALL_DOC_FILES	:= $(patsubst doc/%,%,$(sort $(DOC_FILES) $(ADOC_FILES) $(HTML_FILES)))
 
-#  Files depend on directories (order only).
-#  We don't care if the directories change.
-$(DOCINSTALL): | $(DOCDIRS)
+#
+#  Install doc/FOO into $(R)/$(docdir)/FOO
+#
+$(foreach FILE,$(ALL_DOC_FILES),$(eval $(call ADD_INSTALL_RULE.file,doc/${FILE},$(R)/$(docdir)/${FILE})))
 
-#  Wildcard installation rule
-$(R)$(docdir)/%: doc/%
-	${Q}echo INSTALL $<
-	${Q}$(INSTALL) -m 644 $< $@
-
-install.doc: $(DOCINSTALL)
+#
+#  Have a "doc" install target for testing.
+#
+install.doc: $(addprefix $(R)/$(docdir)/,$(ALL_DOC_FILES))
 
 .PHONY: clean.doc
 clean.doc:
-	${Q}rm -f *~ rfc/*~ examples/*~ $(ADOC_FILES) $(HTML_FILES) $(PDF_FILES)
+	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(ADOC_FILES) $(HTML_FILES) $(PDF_FILES)
 
 #
 #  Markdown files get converted to asciidoc via pandoc.
