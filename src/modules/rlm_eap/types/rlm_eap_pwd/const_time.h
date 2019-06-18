@@ -59,8 +59,8 @@ static inline unsigned char const_time_eq_u8(unsigned int a, unsigned int b)
 
 /**
  * const_time_eq_bin - Constant time memory comparison
- * @@param	a First buffer to compare
- * @@param	b Second buffer to compare
+ * @param	a First buffer to compare
+ * @param	b Second buffer to compare
  * @param	len Number of octets to compare
  * @return	-1 if buffers are equal, 0 if not
  *
