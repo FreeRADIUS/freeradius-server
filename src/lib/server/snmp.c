@@ -32,7 +32,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/timeval.h>
 
 #include <freeradius-devel/protocol/snmp/freeradius.h>
 
@@ -97,8 +96,8 @@ struct fr_snmp_map {
 	fr_snmp_map_t		*child;			//!< Child map.
 };
 
-static struct timeval uptime;
-static struct timeval reset_time;
+static fr_time_t start_time;
+static fr_time_t reset_time;
 static int reset_state = FR_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RUNNING;
 
 static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
@@ -114,16 +113,18 @@ static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, fr_value_box_t *out, NDEBU
 static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				 UNUSED void *snmp_ctx)
 {
-	struct timeval now;
-	struct timeval diff;
+	fr_time_t now;
+	fr_time_delta_t delta;
 
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	now = fr_time_to_timeval(fr_time());
-	fr_timeval_subtract(&diff, &now, &uptime);
+	now = fr_time();
+	delta = now - start_time;
 
-	out->vb_uint32 = diff.tv_sec * 100;
-	out->vb_uint32 += diff.tv_usec / 10000;
+	/*
+	 *	ticks are in 1/100's of seconds.
+	 */
+	out->vb_uint32 += delta / 10000000;
 
 	return 0;
 }
@@ -131,16 +132,18 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				      UNUSED void *snmp_ctx)
 {
-	struct timeval now;
-	struct timeval diff;
+	fr_time_t now;
+	fr_time_delta_t delta;
 
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	now = fr_time_to_timeval(fr_time());
-	fr_timeval_subtract(&diff, &now, &reset_time);
+	now = fr_time();
+	delta = now - reset_time;
 
-	out->vb_uint32 = diff.tv_sec * 100;
-	out->vb_uint32 += diff.tv_usec / 10000;
+	/*
+	 *	ticks are in 1/100's of seconds.
+	 */
+	out->vb_uint32 += delta / 10000000;
 
 	return 0;
 }
@@ -162,7 +165,7 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 	switch (in->vb_uint32) {
 	case FR_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
 		main_loop_signal_self(RADIUS_SIGNAL_SELF_HUP);
-		reset_time = fr_time_to_timeval(fr_time());
+		reset_time = fr_time();
 		return 0;
 
 	default:
@@ -1111,8 +1114,8 @@ static int _fr_snmp_init(fr_snmp_map_t map[])
  */
 int fr_snmp_init(void)
 {
-	uptime = fr_time_to_timeval(fr_time());
-	reset_time = uptime;
+	start_time = fr_time();
+	reset_time = start_time;
 
 	if (fr_dict_autoload(snmp_dict) < 0) {
 		fr_perror("snmp_init");
