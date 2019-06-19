@@ -1,0 +1,93 @@
+= Pre-defined Expansions
+
+In addition to storing attribute references, the server has a number
+of pre-defined references, as follows:
+
+* `%{conf:...}` +
+
+ - Refers to a variable in the configuration file. See the documentation
+on configuration file references.
+
+* `%{client:...}` +
+
+ - Refers to a variable that was defined in the client section for the
+current client.
+
+* `%{integer:Attribute-Name}`
+
+Print the value of the attribute an integer. In normal operation,
+`integer` attributes are printed using the name given by a `VALUE`
+statement in a dictionary. Similarly, date attributes are printed as
+dates, i.e., "January 1 2010".
+
+This operator applies only to attributes which can be converted to an
+integer.  It has no effect on other attribute types and cannot be used
+with module references. It is most commonly used to perform
+calculations on dates, where the dates are treated as integers.
+
+For example, if a request contains `Service-Type = Login-User`, the
+expansion of `%{integer:Service-Type}` will yield `1`, which is the
+value associated with the `Login-User` name. Using
+`%{integer:Event-Timestamp}` will return the event timestamp as an
+unsigned 32-bit decimal number.
+
+*  `%{length:string}`
+
+ - The string length operator returns the number of characters in the
+given string as a decimal number. It can be used with attribute or
+module references. If the string has no value, then the length evaluates
+to zero.
+
+* `%{listen:...}` +
+
+ - Refers to a variable that was defined in the listen section that
+received the packet.
+
+* `%{md5:...}` +
+
+ - Dynamically expands the string and performs an MD5 hash on it. The
+result is 32 hex digits.
+
+* `%{tolower:...}` +
+
+ - Dynamically expands the string and returns the lowercase version of
+it. This definition is only available in version 2.1.10 and later.
+
+* `%{toupper:...}` +
+
+ - Dynamically expands the string and returns the uppercase version of
+it. This definition is only available in version 2.1.10 and later.
+
+== Miscellaneous Pre-defined Expansions
+
+* `%{0}` +
+
+ - Refers to the string that was last used to match a regular expression. The variables `%{1}` through `%{8}` refer to the matched substring in
+the regular expression.
+
+* `%{Packet-Type}` +
+
+ - The packet type (Access-Request, etc.)
+
+* `%{Packet-SRC-IP-Address} %{Packet-SRC-IPv6-Address}` +
+
+ - The source IPv4 or IPv6 address of the packet. See also the expansions
+`%{client:ipaddr}` and `%{client:ipv6addr}`. The two expansions
+should be identical, unless `%{client:ipaddr}` contains a DNS hostname.
+
+* `%{Packet-DST-IP-Address} %{Packet-DST-IPv6-Address}` +
+
+ - The destination IPv4 or IPv6 address of the packet. See also the
+expansions `%{listen:ipaddr}` and `%{listen:ipv6addr}`. If the socket
+is listening on a "wildcard" address, then these two expansions will be
+different, as follows: the `%{listen:ipaddr}` will be the wildcard
+address and `%{Packet-DST-IP-Address}` will be the unicast address to
+which the packet was sent.
+
+* `%{Packet-SRC-Port} %{Packet-DST-Port}` +
+
+ - The source/destination ports associated with the packet.
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
+include::../img/footer.adoc[]

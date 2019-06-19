@@ -1,0 +1,50 @@
+= Single Letter Expansions
+
+The following are single letter expansions.  These expansions do not
+use the typical `%{...}` format.  Instead, they are short-cuts for
+simple, common cases.
+
+* `%%` +
+
+ - Returns `%`.
+
+* `%d` +
+
+ - Two-digit day of the month when the request was received.
+
+* `%l` +
+
+ - The Unix timestamp of when the request was received. This is an
+unsigned decimal number. It should be used with time-based calculations.
+
+* `%m` +
+
+ - Two-digit month describing when the request was received.
+
+* `%t` +
+
+ - Timestamp in _ctime_ format.
+
+* `%D` +
+
+ - Request date (YYYYMMDD)
+
+* `%H` +
+
+ - Two digit hour of the day describing when the request was received.
+
+* `%S` +
+
+ - Request timestamp in SQL format, YYYY-mmm-ddd HH:MM:SS
+
+* `%T` +
+
+ - Request timestamp in database format, YYYY-mmm-ddd HH.MM.SS.000000
+
+* `%Y` +
+
+ - Four digit request year.
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
+include::../img/footer.adoc[]
