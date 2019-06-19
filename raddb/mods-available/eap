@@ -70,7 +70,7 @@ eap {
 	#  type:: Only EAP types listed below with a `type = <EAP-Type>` pair will be allowed.
 	#
 	type = md5
-#	type = pwd
+	type = pwd
 #	type = leap
 	type = gtc
 	type = tls
@@ -99,16 +99,16 @@ eap {
 	#  as is done by other modules. The change from v3 is that the `inner-tunnel` virtual server
 	#  is no not used.
 	#
-#	pwd {
-#		group = 19
+	pwd {
+		group = 19
 
-#		server_id = theserver@example.com
+		server_id = theserver@example.com
 
 		#
 		#  fragment_size:: This has the same meaning as for TLS.
 		#
-#		fragment_size = 1020
-#	}
+		fragment_size = 1020
+	}
 
 	#
 	#  ### Cisco LEAP

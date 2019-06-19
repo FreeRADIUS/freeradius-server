@@ -42,8 +42,8 @@ or to modules that will return a string value.
 == Character Escaping
 
 Some characters need to be escaped within a dynamically expanded
-string %{...}. The % character is used for variable expansion, so a
-literal % character can be created by using %%.
+string `%{...}`. The `%` character is used for variable expansion, so a
+literal `%` character can be created by using `%%`.
 
 Other than within a dynamically expanded string, very little
 character escaping is needed. The rules of the enclosing string context
