@@ -31,7 +31,7 @@ The `unlang` processing can be split into three distinct types:
   conditions evaluate to _true_ or _false_.  e.g. `if (a == b) { ... }`
 * link:update.adoc[update] statements are used to edit attributes and
   lists of attributes.
-* link:xlat.adoc[sting expansion] Using `%{...}` to perform dynamic
+* link:xlat.adoc[string expansion] Using `%{...}` to perform dynamic
   string expansions.
 
 The goal of `unlang` is to allow simple policies to be written with
