@@ -44,7 +44,6 @@ listen {
 	type = DHCP-Inform
 	type = DHCP-Release
 	type = DHCP-Decline
-	type = DHCP-Lease-Query
 
 	transport = udp
 

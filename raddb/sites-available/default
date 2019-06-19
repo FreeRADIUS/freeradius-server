@@ -733,13 +733,6 @@ server default {
 #
 recv Access-Request {
 	#
-
-	map csv "%{User-Name}" {
-	    &reply:Filter-Id := field3
-	    &reply:Reply-Message := field4
-	}
-
-	#
 	#  Take a `User-Name`, and perform some checks on it, for
 	#  spaces and other invalid characters. If the `User-Name`
 	#  is invalid, reject the request.
