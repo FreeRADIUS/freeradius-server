@@ -126,6 +126,21 @@ typedef enum tmpl_type_e {
 	TMPL_TYPE_NULL			//!< Has no value.
 } tmpl_type_t;
 
+/** Helpers to verify the type of #vp_tmpl_t
+ */
+#define tmpl_is_unknown(vpt) 		(vpt->type == TMPL_TYPE_UNKNOWN)
+#define tmpl_is_unparsed(vpt) 		(vpt->type == TMPL_TYPE_UNPARSED)
+#define tmpl_is_xlat(vpt) 		(vpt->type == TMPL_TYPE_XLAT)
+#define tmpl_is_attr(vpt) 		(vpt->type == TMPL_TYPE_ATTR)
+#define tmpl_is_attr_undefined(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNDEFINED)
+#define tmpl_is_list(vpt) 		(vpt->type == TMPL_TYPE_LIST)
+#define tmpl_is_regex(vpt) 		(vpt->type == TMPL_TYPE_REGEX)
+#define tmpl_is_exec(vpt) 		(vpt->type == TMPL_TYPE_EXEC)
+#define tmpl_is_data(vpt) 		(vpt->type == TMPL_TYPE_DATA)
+#define tmpl_is_xlat_struct(vpt) 	(vpt->type == TMPL_TYPE_XLAT_STRUCT)
+#define tmpl_is_regex_struct(vpt) 	(vpt->type == TMPL_TYPE_REGEX_STRUCT)
+#define tmpl_is_null(vpt) 		(vpt->type == TMPL_TYPE_NULL)
+
 extern const FR_NAME_NUMBER tmpl_type_table[];
 
 typedef struct vp_tmpl_s vp_tmpl_t;
