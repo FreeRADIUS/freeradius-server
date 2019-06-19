@@ -247,12 +247,10 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 
 	char		buffer[64];
 	struct tm	ts;
-	struct timeval	when_tv;
-	time_t		when_s;
+	time_t		now;
 	fr_value_box_t	*value;
 
-	when_tv = fr_time_to_timeval(request->packet->timestamp);
-	when_s = when_tv.tv_sec;
+	now = fr_time_to_sec(request->packet->timestamp);
 
 	switch (letter) {
 	case '%':
@@ -300,7 +298,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	 */
 
 	case 'd': /* Request day */
-		if (!localtime_r(&when_s, &ts)) {
+		if (!localtime_r(&now, &ts)) {
 		error:
 			REDEBUG("Failed converting packet timestamp to localtime: %s", fr_syserror(errno));
 			return XLAT_ACTION_FAIL;
@@ -311,7 +309,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		break;
 
 	case 'D': /* Request date */
-		if (!localtime_r(&when_s, &ts)) goto error;
+		if (!localtime_r(&now, &ts)) goto error;
 
 		strftime(buffer, sizeof(buffer), "%Y%m%d", &ts);
 
@@ -320,21 +318,21 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		break;
 
 	case 'e': /* Request second */
-		if (!localtime_r(&when_s, &ts)) goto error;
+		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
 		value->datum.uint8 = ts.tm_sec;
 		break;
 
 	case 'G': /* Request minute */
-		if (!localtime_r(&when_s, &ts)) goto error;
+		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
 		value->datum.uint8 = ts.tm_min;
 		break;
 
 	case 'H': /* Request hour */
-		if (!localtime_r(&when_s, &ts)) goto error;
+		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
 		value->datum.uint8 = ts.tm_hour;
@@ -342,11 +340,11 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 
 	case 'l': /* Request timestamp */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
-		value->datum.date = when_s;
+		value->datum.date = now;
 		break;
 
 	case 'm': /* Request month */
-		if (!localtime_r(&when_s, &ts)) goto error;
+		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
 		value->datum.uint8 = ts.tm_mon + 1;
@@ -354,11 +352,11 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 
 	case 'M': /* Request time microsecond component */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
-		value->datum.uint32 = when_tv.tv_usec;
+		value->datum.uint32 = fr_time_to_msec(request->packet->timestamp) % 1000;
 		break;
 
 	case 'S': /* Request timestamp in SQL format */
-		if (!localtime_r(&when_s, &ts)) goto error;
+		if (!localtime_r(&now, &ts)) goto error;
 
 		strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &ts);
 
@@ -370,7 +368,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	{
 		char *p;
 
-		CTIME_R(&when_s, buffer, sizeof(buffer));
+		CTIME_R(&now, buffer, sizeof(buffer));
 		p = strchr(buffer, '\n');
 		if (p) *p = '\0';
 
@@ -383,7 +381,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	{
 		int len = 0;
 
-		if (!gmtime_r(&when_s, &ts)) goto error;
+		if (!gmtime_r(&now, &ts)) goto error;
 
 		if (!(len = strftime(buffer, sizeof(buffer) - 1, "%Y-%m-%dT%H:%M:%S", &ts))) {
 			REDEBUG("Failed converting packet timestamp to gmtime: Buffer full");
@@ -391,7 +389,8 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		}
 		strcat(buffer, ".");
 		len++;
-		snprintf(buffer + len, sizeof(buffer) - len, "%03i", (int) when_tv.tv_usec / 1000);
+		snprintf(buffer + len, sizeof(buffer) - len, "%03i",
+			 (int) fr_time_to_msec(request->packet->timestamp) % 1000);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
@@ -399,7 +398,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		break;
 
 	case 'Y': /* Request year */
-		if (!localtime_r(&when_s, &ts)) goto error;
+		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL, false));
 
