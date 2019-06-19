@@ -354,7 +354,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 	 *	to a normal function but called without an argument
 	 *	list.
 	 */
-	if (vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+	if (tmpl_is_attr_undefined(vpt)) {
 		func = xlat_func_find(vpt->tmpl_unknown_name);
 		if (func) {
 			node = xlat_exp_alloc(ctx, XLAT_VIRTUAL,

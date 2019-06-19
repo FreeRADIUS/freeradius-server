@@ -393,7 +393,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 	vpt = *pvpt;
 
-	rad_assert(vpt->type == TMPL_TYPE_XLAT);
+	rad_assert(tmpl_is_xlat(vpt));
 
 	fmt = talloc_typed_strdup(vpt, vpt->name);
 	slen = xlat_tokenize(vpt, &head, fmt, rules);
@@ -473,7 +473,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 	ssize_t slen;
 	regex_t *preg;
 
-	rad_assert(vpt->type == TMPL_TYPE_REGEX);
+	rad_assert(tmpl_is_regex(vpt));
 
 	/*
 	 *	It's a dynamic expansion.  We can't expand the string,
@@ -518,7 +518,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 {
 	fr_dict_attr_t const *da;
 
-	rad_assert(vpt->type == TMPL_TYPE_ATTR_UNDEFINED);
+	rad_assert(tmpl_is_attr_undefined(vpt));
 
 	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, vpt->tmpl_unknown_name, true) != FR_DICT_ATTR_OK) {
 		ssize_t slen;
@@ -565,7 +565,7 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 {
 	vp_tmpl_t *vpt = *pvpt;
 
-	if (vpt->type == TMPL_TYPE_XLAT) {
+	if (tmpl_is_xlat(vpt)) {
 		return pass2_fixup_xlat(ci, pvpt, convert, NULL, rules);
 	}
 
@@ -573,14 +573,14 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 	 *	The existence check might have been &Foo-Bar,
 	 *	where Foo-Bar is defined by a module.
 	 */
-	if (vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+	if (tmpl_is_attr_undefined(vpt)) {
 		return pass2_fixup_undefined(ci, vpt, rules);
 	}
 
 	/*
 	 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
 	 */
-	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.virtual) {
+	if (tmpl_is_attr(vpt) && vpt->tmpl_da->flags.virtual) {
 		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
 		vpt->type = TMPL_TYPE_XLAT_STRUCT;
 	}
@@ -843,7 +843,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	 *	xlat code does.
 	 */
 	vpt = c->data.map->lhs;
-	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.virtual) {
+	if (tmpl_is_attr(vpt) && vpt->tmpl_da->flags.virtual) {
 		if (!c->cast) c->cast = vpt->tmpl_da;
 		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
 		vpt->type = TMPL_TYPE_XLAT_STRUCT;
@@ -2116,7 +2116,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return NULL;
 		}
 
-		if (vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+		if (tmpl_is_attr_undefined(vpt)) {
 			if (!pass2_fixup_undefined(cf_section_to_item(cs), vpt, unlang_ctx->rules)) {
 				talloc_free(vpt);
 				return NULL;
@@ -2135,8 +2135,8 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *	attribute.  Check that the
 		 *	values match.
 		 */
-		if ((vpt->type == TMPL_TYPE_UNPARSED) &&
-		    (f->vpt->type == TMPL_TYPE_ATTR)) {
+		if (tmpl_is_unparsed(vpt) &&
+		    tmpl_is_attr(f->vpt)) {
 			rad_assert(f->vpt->tmpl_da != NULL);
 
 			if (tmpl_cast_in_place(vpt, f->vpt->tmpl_da->type, f->vpt->tmpl_da) < 0) {
@@ -2151,10 +2151,10 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *	Compile and sanity check xlat
 		 *	expansions.
 		 */
-		if (vpt->type == TMPL_TYPE_XLAT) {
+		if (tmpl_is_xlat(vpt)) {
 			fr_dict_attr_t const *da = NULL;
 
-			if (f->vpt->type == TMPL_TYPE_ATTR) da = f->vpt->tmpl_da;
+			if (tmpl_is_attr(f->vpt)) da = f->vpt->tmpl_da;
 
 			/*
 			 *	Don't expand xlat's into an

@@ -60,7 +60,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 			 *	Integer data types let the admin
 			 *	select which frame is being used.
 			 */
-			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
+			if (tmpl_is_attr(g->vpt) &&
 			    ((g->vpt->tmpl_da->type == FR_TYPE_UINT8) ||
 			     (g->vpt->tmpl_da->type == FR_TYPE_UINT16) ||
 			     (g->vpt->tmpl_da->type == FR_TYPE_UINT32) ||

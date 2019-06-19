@@ -619,7 +619,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				return_P("Failed defining attribute");
 			}
 
-			if (c->data.vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+			if (tmpl_is_attr_undefined(c->data.vpt)) {
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 

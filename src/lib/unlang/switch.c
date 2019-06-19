@@ -60,7 +60,7 @@ static unlang_action_t unlang_switch(REQUEST *request,
 	 *	The attribute doesn't exist.  We can skip
 	 *	directly to the default 'case' statement.
 	 */
-	if ((g->vpt->type == TMPL_TYPE_ATTR) && (tmpl_find_vp(NULL, request, g->vpt) < 0)) {
+	if (tmpl_is_attr(g->vpt) && (tmpl_find_vp(NULL, request, g->vpt) < 0)) {
 	find_null_case:
 		for (this = g->children; this; this = this->next) {
 			rad_assert(this->type == UNLANG_TYPE_CASE);
@@ -80,9 +80,9 @@ static unlang_action_t unlang_switch(REQUEST *request,
 	 *	is evaluated once instead of for each 'case'
 	 *	statement.
 	 */
-	if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
-	    (g->vpt->type == TMPL_TYPE_XLAT) ||
-	    (g->vpt->type == TMPL_TYPE_EXEC)) {
+	if (tmpl_is_xlat_struct(g->vpt) ||
+	    tmpl_is_xlat(g->vpt) ||
+	    tmpl_is_exec(g->vpt)) {
 		char *p;
 		ssize_t len;
 
@@ -115,7 +115,7 @@ static unlang_action_t unlang_switch(REQUEST *request,
 		 *	the case statement, then cast the data
 		 *	to the type of the attribute.
 		 */
-		if ((g->vpt->type == TMPL_TYPE_ATTR) &&
+		if (tmpl_is_attr(g->vpt) &&
 		    (h->vpt->type != TMPL_TYPE_DATA)) {
 			map.rhs = g->vpt;
 			map.lhs = h->vpt;
@@ -124,7 +124,7 @@ static unlang_action_t unlang_switch(REQUEST *request,
 			/*
 			 *	Remove unnecessary casting.
 			 */
-			if ((h->vpt->type == TMPL_TYPE_ATTR) &&
+			if (tmpl_is_attr(h->vpt) &&
 			    (g->vpt->tmpl_da->type == h->vpt->tmpl_da->type)) {
 				cond.cast = NULL;
 			}
@@ -132,9 +132,9 @@ static unlang_action_t unlang_switch(REQUEST *request,
 			/*
 			 *	Use the pre-expanded string.
 			 */
-		} else if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
-			   (g->vpt->type == TMPL_TYPE_XLAT) ||
-			   (g->vpt->type == TMPL_TYPE_EXEC)) {
+		} else if (tmpl_is_xlat_struct(g->vpt) ||
+			   tmpl_is_xlat(g->vpt) ||
+			   tmpl_is_exec(g->vpt)) {
 			map.rhs = h->vpt;
 			map.lhs = &vpt;
 			cond.cast = NULL;

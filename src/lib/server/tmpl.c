@@ -968,7 +968,7 @@ finish:
 	 *	Copy over the attribute definition, now we're
 	 *	sure what we were passed is valid.
 	 */
-	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.is_unknown) vpt->tmpl_da = vpt->tmpl_unknown;
+	if (tmpl_is_attr(vpt) && vpt->tmpl_da->flags.is_unknown) vpt->tmpl_da = vpt->tmpl_unknown;
 
 	TMPL_VERIFY(vpt);	/* Because we want to ensure we produced something sane */
 
@@ -1254,7 +1254,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 	TMPL_VERIFY(vpt);
 
 	rad_assert(vpt != NULL);
-	rad_assert((vpt->type == TMPL_TYPE_UNPARSED) || (vpt->type == TMPL_TYPE_DATA));
+	rad_assert(tmpl_is_unparsed(vpt) || tmpl_is_data(vpt));
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
@@ -1311,7 +1311,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 {
 	rad_assert(vpt != NULL);
-	rad_assert(vpt->type == TMPL_TYPE_UNPARSED);
+	rad_assert(tmpl_is_unparsed(vpt));
 
 	vpt->tmpl_value.vb_strvalue = talloc_typed_strdup(vpt, vpt->name);
 	rad_assert(vpt->tmpl_value.vb_strvalue != NULL);
@@ -1353,7 +1353,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	vp = fr_pair_afrom_da(request, cast);
 	if (!vp) return -1;
 
-	if (vpt->type == TMPL_TYPE_DATA) {
+	if (tmpl_is_data(vpt)) {
 		VP_VERIFY(vp);
 		rad_assert(vp->vp_type == vpt->tmpl_value_type);
 
@@ -2384,7 +2384,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp
 
 	TMPL_VERIFY(vpt);
 
-	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
+	rad_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
 	if (err) *err = 0;
 
@@ -2410,7 +2410,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp
 	if (!vp) {
 		if (err) {
 			*err = -1;
-			if (vpt->type == TMPL_TYPE_LIST) {
+			if (tmpl_is_list(vpt)) {
 				fr_strerror_printf("List \"%s\" is empty", vpt->name);
 			} else {
 				fr_strerror_printf("No matching \"%s\" pairs found", vpt->tmpl_da->name);
@@ -2446,7 +2446,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
 
 	int err;
 
-	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
+	rad_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
 	*out = NULL;
 
@@ -2515,7 +2515,7 @@ int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt
 	int		err;
 
 	TMPL_VERIFY(vpt);
-	rad_assert(vpt->type == TMPL_TYPE_ATTR);
+	rad_assert(tmpl_is_attr(vpt));
 
 	*out = NULL;
 
@@ -2580,7 +2580,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 {
 	rad_assert(vpt);
 
-	if (vpt->type == TMPL_TYPE_UNKNOWN) {
+	if (tmpl_is_unknown(vpt)) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: vp_tmpl_t type was "
 			     "TMPL_TYPE_UNKNOWN (uninitialised)", file, line);
 		if (!fr_cond_assert(0)) fr_exit_now(1);

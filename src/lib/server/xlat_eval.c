@@ -573,7 +573,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 
 	fr_cursor_t	cursor;
 
-	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
+	rad_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
 	/*
 	 *	See if we're dealing with an attribute in the request
