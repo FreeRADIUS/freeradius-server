@@ -26,11 +26,13 @@ page concludes with one or more examples of using the keyword in
 The `unlang` processing can be split into three distinct types:
 
 * link:keywords.adoc[Keywords], which are the basic statements of the
-language, e.g., link:if.adoc[if], link:else.adoc[else], etc.
+  language, e.g., link:if.adoc[if], link:else.adoc[else], etc.
 * link:condition.adoc[Conditional expressions], which are used to check if
-conditions evaluate to _true_ or _false_.  e.g. `if (a == b) { ... }`
+  conditions evaluate to _true_ or _false_.  e.g. `if (a == b) { ... }`
 * link:update.adoc[update] statements are used to edit attributes and
-lists of attributes.
+  lists of attributes.
+* link:xlat.adoc[sting expansion] Using `%{...}` to perform dynamic
+  string expansions.
 
 The goal of `unlang` is to allow simple policies to be written with
 minimal effort. Conditional checks can be performed by the policies,
