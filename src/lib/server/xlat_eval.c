@@ -587,7 +587,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 	 *	virtual.
 	 */
 	if (!vp) {
-		if (vpt->tmpl_da->flags.virtual) return xlat_eval_pair_virtual(ctx, out, request, vpt);
+		if (tmpl_is_attr(vpt) && vpt->tmpl_da->flags.virtual) return xlat_eval_pair_virtual(ctx, out, request, vpt);
 
 		/*
 		 *	Zero count.
