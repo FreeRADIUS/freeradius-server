@@ -92,10 +92,6 @@ struct rad_listen {
 	rad_listen_t		*parent;
 	bool			nodup;
 
-#if 0
-	fr_tls_conf_t	*tls;
-#endif
-
 	rad_listen_recv_t	recv;
 	rad_listen_send_t	send;
 	rad_listen_error_t	error;
@@ -103,12 +99,6 @@ struct rad_listen {
 	rad_listen_decode_t	decode;
 	rad_listen_debug_t	debug;
 	rad_listen_print_t	print;
-
-	/*
-	 *	Events associated with this listener
-	 */
-	struct timeval		when;
-	fr_event_timer_t const	*ev;
 
 	CONF_SECTION const	*cs;
 	void			*data;
