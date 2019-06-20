@@ -601,6 +601,7 @@ int main(int argc, char *argv[])
 
 	char			*p;
 	main_config_t		*config;
+	dl_module_loader_t	*dl_modules = NULL;
 
 	config = main_config_alloc(autofree);
 	if (!config) {
@@ -743,7 +744,8 @@ int main(int argc, char *argv[])
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.
 	 */
-	if (!dl_module_loader_init(autofree, config->lib_dir)) {
+	dl_modules = dl_module_loader_init(config->lib_dir);
+	if (!dl_modules) {
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
@@ -1179,6 +1181,8 @@ cleanup:
 	 *	Free our explicitly loaded internal dictionary
 	 */
 	fr_dict_free(&dict);
+
+	if (dl_modules) talloc_free(dl_modules);
 
 	/*
 	 *  Now we're sure no more triggers can fire, free the

@@ -401,7 +401,7 @@ static int lib_dir_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.  And also add in the search path.
 	 */
-	if (!dl_module_loader_init(NULL, main_config->lib_dir)) {
+	if (!dl_module_loader_init(main_config->lib_dir)) {
 		cf_log_err(ci, "Failed initializing 'lib_dir': %s",
 			   fr_strerror());
 		return -1;

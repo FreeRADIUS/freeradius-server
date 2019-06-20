@@ -582,7 +582,7 @@ dl_loader_t *dl_loader_from_module_loader(dl_module_loader_t *dl_module_l)
 /** Initialise structures needed by the dynamic linker
  *
  */
-dl_module_loader_t *dl_module_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
+dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 {
 	if (dl_module_loader) {		
 		/*
@@ -595,7 +595,7 @@ dl_module_loader_t *dl_module_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 		return dl_module_loader;
 	}
 
-	dl_module_loader = talloc_zero(ctx, dl_module_loader_t);
+	dl_module_loader = talloc_zero(NULL, dl_module_loader_t);
 	if (!dl_module_loader) {
 		ERROR("Failed initialising uctx for dl_loader");
 		return NULL;

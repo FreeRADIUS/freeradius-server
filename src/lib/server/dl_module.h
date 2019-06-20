@@ -174,7 +174,7 @@ char const		*dl_module_search_path(void);
 
 dl_loader_t		*dl_loader_from_module_loader(dl_module_loader_t *dl_module_loader);
 
-dl_module_loader_t	*dl_module_loader_init(TALLOC_CTX *ctx, char const *lib_dir);
+dl_module_loader_t	*dl_module_loader_init(char const *lib_dir);
 
 #ifdef __cplusplus
 }

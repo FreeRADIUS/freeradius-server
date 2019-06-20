@@ -167,6 +167,7 @@ int main(int argc, char *argv[])
 	size_t		pool_size = 0;
 	void		*pool_page_start = NULL, *pool_page_end = NULL;
 	bool		do_mprotect;
+	dl_module_loader_t *dl_modules = NULL;
 
 	/*
 	 *	Setup talloc callbacks so we get useful errors
@@ -456,7 +457,8 @@ int main(int argc, char *argv[])
 	 *      config file parser.  Note that we pass an empty path
 	 *      here, as we haven't yet read the configuration file.
 	 */
-	if (!dl_module_loader_init(global_ctx, NULL)) {
+	dl_modules = dl_module_loader_init(NULL);
+	if (!dl_modules) {
 		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
@@ -1006,6 +1008,11 @@ cleanup:
 	 *  parsed configuration items.
 	 */
 	main_config_free(&config);
+
+	/*
+	 *	Free the modules that we loaded.
+	 */
+	if (dl_modules) talloc_free(dl_modules);
 
 	/*
 	 *  Cleanup everything else

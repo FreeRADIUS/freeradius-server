@@ -1450,6 +1450,7 @@ int main(int argc, char *argv[])
 	fr_dict_t		*dict = NULL;
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree = talloc_autofree_context();
+	dl_module_loader_t	*dl_modules = NULL;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -1524,7 +1525,8 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (!dl_module_loader_init(autofree, NULL)) {
+	dl_modules = dl_module_loader_init(NULL);
+	if (!dl_modules) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
@@ -1579,6 +1581,7 @@ int main(int argc, char *argv[])
 	 *	memory, so we get clean talloc reports.
 	 */
 cleanup:
+	if (dl_modules) talloc_free(dl_modules);
 	fr_dict_free(&dict);
 	xlat_free();
 	fr_strerror_free();
