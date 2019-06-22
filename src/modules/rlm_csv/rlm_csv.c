@@ -277,7 +277,7 @@ static int csv_map_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_in
 	for (map = maps;
 	     map != NULL;
 	     map = map->next) {
-		if (map->rhs->type != TMPL_TYPE_UNPARSED) continue;
+		if (!tmpl_is_unparsed(map->rhs)) continue;
 
 		if (fieldname2offset(inst, map->rhs->name) < 0) {
 			cf_log_err(map->ci, "Unknown field '%s'", map->rhs->name);
@@ -529,7 +529,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	/*
 	 *	FIXME: allow multiple entries.
 	 */
-	if (map->lhs->type == TMPL_TYPE_ATTR) {
+	if (tmpl_is_attr(map->lhs)) {
 		da = map->lhs->tmpl_da;
 
 	} else {
@@ -622,7 +622,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		/*
 		 *	Avoid memory allocations if possible.
 		 */
-		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
+		if (!tmpl_is_unparsed(map->rhs)) {
 			if (tmpl_aexpand(request, &field_name, request, map->rhs, NULL, NULL) < 0) {
 				REXDENT();
 				REDEBUG("Failed expanding RHS at %s", map->lhs->name);

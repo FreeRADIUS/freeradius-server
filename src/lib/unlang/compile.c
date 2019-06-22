@@ -621,12 +621,12 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 		/*
 		 *	Resolve the attribute references first
 		 */
-		if (map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
+		if (tmpl_is_attr_undefined(map->lhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
 			if (!cast) cast = map->lhs->tmpl_da;
 		}
 
-		if (map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
+		if (tmpl_is_attr_undefined(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
 			if (!cast) cast = map->rhs->tmpl_da;
 		}
@@ -634,7 +634,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 		/*
 		 *	Then fixup the other side if it was unparsed
 		 */
-		if (map->lhs->type == TMPL_TYPE_UNPARSED) {
+		if (tmpl_is_unparsed(map->lhs)) {
 			switch (cast->type) {
 			case FR_TYPE_IPV4_ADDR:
 				if (strchr(c->data.map->lhs->name, '/') != NULL) {
@@ -661,7 +661,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 
 				return false;
 			}
-		} else if (map->rhs->type == TMPL_TYPE_UNPARSED) {
+		} else if (tmpl_is_unparsed(map->rhs)) {
 			switch (cast->type) {
 			case FR_TYPE_IPV4_ADDR:
 				if (strchr(c->data.map->rhs->name, '/') != NULL) {
@@ -701,14 +701,14 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	/*
 	 *	Precompile xlat's
 	 */
-	if (map->lhs->type == TMPL_TYPE_XLAT) {
+	if (tmpl_is_xlat(map->lhs)) {
 		/*
 		 *	Compile the LHS to an attribute reference only
 		 *	if the RHS is a literal.
 		 *
 		 *	@todo v3.1: allow anything anywhere.
 		 */
-		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
+		if (!tmpl_is_unparsed(map->rhs)) {
 			if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL, rules)) {
 				return false;
 			}
@@ -729,7 +729,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 			 *	But now we've just converted "%{Attr}"
 			 *	to &Attr, so we've got to do it again.
 			 */
-			if (map->lhs->type == TMPL_TYPE_ATTR) {
+			if (tmpl_is_attr(map->lhs)) {
 				if ((map->rhs->len > 0) ||
 				    (map->op != T_OP_CMP_EQ) ||
 				    (map->lhs->tmpl_da->type == FR_TYPE_STRING) ||
@@ -770,7 +770,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 		}
 	}
 
-	if (map->rhs->type == TMPL_TYPE_XLAT) {
+	if (tmpl_is_xlat(map->rhs)) {
 		/*
 		 *	Convert the RHS to an attribute reference only
 		 *	if the LHS is an attribute reference, AND is
@@ -781,7 +781,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 		 *	on the RHS.  For now, the code in parser.c
 		 *	forbids this.
 		 */
-		if (map->lhs->type == TMPL_TYPE_ATTR) {
+		if (tmpl_is_attr(map->lhs)) {
 			fr_dict_attr_t const *da = c->cast;
 
 			if (!c->cast) da = map->lhs->tmpl_da;
@@ -800,7 +800,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	/*
 	 *	Convert bare refs to %{Foreach-Variable-N}
 	 */
-	if ((map->lhs->type == TMPL_TYPE_UNPARSED) &&
+	if (tmpl_is_unparsed(map->lhs) &&
 	    (strncmp(map->lhs->name, "Foreach-Variable-", 17) == 0)) {
 		char *fmt;
 		ssize_t slen;
@@ -828,12 +828,12 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	}
 
 #ifdef HAVE_REGEX
-	if (map->rhs->type == TMPL_TYPE_REGEX) {
+	if (tmpl_is_regex(map->rhs)) {
 		if (!pass2_fixup_regex(map->ci, map->rhs, rules)) {
 			return false;
 		}
 	}
-	rad_assert(map->lhs->type != TMPL_TYPE_REGEX);
+	rad_assert(!tmpl_is_regex(map->lhs));
 #endif
 
 	/*
@@ -858,7 +858,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	 *	they can only be with the current REQUEST, and only
 	 *	with the request pairs.
 	 */
-	if ((map->lhs->type != TMPL_TYPE_ATTR) ||
+	if (!tmpl_is_attr(map->lhs) ||
 	    (map->lhs->tmpl_request != REQUEST_CURRENT) ||
 	    (map->lhs->tmpl_list != PAIR_LIST_REQUEST)) {
 		return true;
@@ -866,7 +866,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 
 	if (!paircmp_find(map->lhs->tmpl_da)) return true;
 
-	if (map->rhs->type == TMPL_TYPE_REGEX) {
+	if (tmpl_is_regex(map->rhs)) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex", map->lhs->name);
 		return false;
 	}
@@ -912,7 +912,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 	 *	Fix up the template.
 	 */
 	case COND_TYPE_EXISTS:
-		rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
+		rad_assert(!tmpl_is_regex(c->data.vpt));
 		return pass2_fixup_tmpl(c->ci, &c->data.vpt, unlang_ctx->rules, true);
 
 	/*
@@ -939,7 +939,7 @@ static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 	vp_map_t *map;
 
 	for (map = g->map; map != NULL; map = map->next) {
-		if (map->lhs->type == TMPL_TYPE_XLAT) {
+		if (tmpl_is_xlat(map->lhs)) {
 			rad_assert(map->lhs->tmpl_xlat == NULL);
 
 			/*
@@ -950,7 +950,7 @@ static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 				return false;
 			}
 		}
-		if (map->rhs->type == TMPL_TYPE_XLAT) {
+		if (tmpl_is_xlat(map->rhs)) {
 			rad_assert(map->rhs->tmpl_xlat == NULL);
 
 			/*
@@ -962,16 +962,16 @@ static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 			}
 		}
 
-		rad_assert(map->rhs->type != TMPL_TYPE_REGEX);
+		rad_assert(!tmpl_is_regex(map->rhs));
 
 		/*
 		 *	Deal with undefined attributes now.
 		 */
-		if (map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
+		if (tmpl_is_attr_undefined(map->lhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
 		}
 
-		if (map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
+		if (tmpl_is_attr_undefined(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
 		}
 	}
@@ -1109,12 +1109,12 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	 *	Anal-retentive checks.
 	 */
 	if (DEBUG_ENABLED3) {
-		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
+		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
 				    map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
-		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
+		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
 				    fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
@@ -1173,12 +1173,12 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	 *	Anal-retentive checks.
 	 */
 	if (DEBUG_ENABLED3) {
-		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
+		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
 				    map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
-		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
+		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
 				    fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
@@ -1216,7 +1216,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	 *	We then free the template and alloc a NULL one instead.
 	 */
 	if (map->op == T_OP_CMP_FALSE) {
-		if ((map->rhs->type != TMPL_TYPE_UNPARSED) || (strcmp(map->rhs->name, "ANY") != 0)) {
+		if (!tmpl_is_unparsed(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
 			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
 			     cf_filename(cp), cf_lineno(cp));
 		}
@@ -1233,8 +1233,8 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	/*
 	 *	What exactly where you expecting to happen here?
 	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-	    (map->rhs->type == TMPL_TYPE_LIST)) {
+	if (tmpl_is_attr(map->lhs) &&
+	    tmpl_is_list(map->rhs)) {
 		cf_log_err(map->ci, "Can't copy list into an attribute");
 		return -1;
 	}
@@ -1242,14 +1242,14 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	/*
 	 *	Depending on the attribute type, some operators are disallowed.
 	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) && (!fr_assignment_op[map->op] && !fr_equality_op[map->op])) {
+	if (tmpl_is_attr(map->lhs) && (!fr_assignment_op[map->op] && !fr_equality_op[map->op])) {
 		cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
 			   "Only assignment or filter operators are allowed",
 			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		return -1;
 	}
 
-	if (map->lhs->type == TMPL_TYPE_LIST) {
+	if (tmpl_is_list(map->lhs)) {
 		/*
 		 *	Can't copy an xlat expansion or literal into a list,
 		 *	we don't know what type of attribute we'd need
@@ -1277,27 +1277,27 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 			break;
 
 		case T_OP_ADD:
-			if ((map->rhs->type != TMPL_TYPE_LIST) &&
-			    (map->rhs->type != TMPL_TYPE_EXEC)) {
+			if (!tmpl_is_list(map->rhs) &&
+			    !tmpl_is_exec(map->rhs)) {
 				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);
 				return -1;
 			}
 			break;
 
 		case T_OP_SET:
-			if (map->rhs->type == TMPL_TYPE_EXEC) {
+			if (tmpl_is_exec(map->rhs)) {
 				WARN("%s[%d]: Please change ':=' to '=' for list assignment",
 				     cf_filename(cp), cf_lineno(cp));
 			}
 
-			if (map->rhs->type != TMPL_TYPE_LIST) {
+			if (!tmpl_is_list(map->rhs)) {
 				cf_log_err(map->ci, "Invalid source for list assignment '%s := ...'", map->lhs->name);
 				return -1;
 			}
 			break;
 
 		case T_OP_EQ:
-			if (map->rhs->type != TMPL_TYPE_EXEC) {
+			if (!tmpl_is_exec(map->rhs)) {
 				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
 				return -1;
 			}
@@ -1323,7 +1323,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	 *	Unless it's a unary operator in which case we
 	 *	ignore map->rhs.
 	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_UNPARSED)) {
+	if (tmpl_is_attr(map->lhs) && tmpl_is_unparsed(map->rhs)) {
 		/*
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
@@ -2254,7 +2254,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	rad_assert(vpt);
 
-	if ((vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
+	if (!tmpl_is_attr(vpt) && !tmpl_is_list(vpt)) {
 		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
 			   fr_int2str(tmpl_type_table, vpt->type, "???"));
 		talloc_free(vpt);

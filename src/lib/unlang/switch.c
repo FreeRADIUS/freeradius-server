@@ -116,7 +116,7 @@ static unlang_action_t unlang_switch(REQUEST *request,
 		 *	to the type of the attribute.
 		 */
 		if (tmpl_is_attr(g->vpt) &&
-		    (h->vpt->type != TMPL_TYPE_DATA)) {
+		    !tmpl_is_data(h->vpt)) {
 			map.rhs = g->vpt;
 			map.lhs = h->vpt;
 			cond.cast = g->vpt->tmpl_da;

@@ -347,7 +347,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			 *	Prevent people from accidentally caching
 			 *	cache control attributes.
 			 */
-			if (map->rhs->type == TMPL_TYPE_LIST) switch (vp->da->attr) {
+			if (tmpl_is_list(map->rhs)) switch (vp->da->attr) {
 			case FR_CACHE_TTL:
 			case FR_CACHE_STATUS_ONLY:
 			case FR_CACHE_MERGE_NEW:
@@ -529,8 +529,8 @@ static int cache_verify(vp_map_t *map, void *ctx)
 {
 	if (unlang_fixup_update(map, ctx) < 0) return -1;
 
-	if ((map->lhs->type != TMPL_TYPE_ATTR) &&
-	    (map->lhs->type != TMPL_TYPE_LIST)) {
+	if (!tmpl_is_attr(map->lhs) &&
+	    !tmpl_is_list(map->lhs)) {
 		cf_log_err(map->ci, "Destination must be an attribute ref or a list");
 		return -1;
 	}

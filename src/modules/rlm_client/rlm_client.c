@@ -55,7 +55,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 	/*
 	 *	FIXME: allow multiple entries.
 	 */
-	if (map->lhs->type == TMPL_TYPE_ATTR) {
+	if (tmpl_is_attr(map->lhs)) {
 		da = map->lhs->tmpl_da;
 	} else {
 		char *attr;

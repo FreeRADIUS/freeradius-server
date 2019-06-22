@@ -612,7 +612,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				return_P(fr_strerror());
 			}
 
-			rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
+			rad_assert(!tmpl_is_regex(c->data.vpt));
 
 			if (tmpl_define_unknown_attr(c->data.vpt) < 0) {
 				p = lhs_p - tlen;
@@ -832,7 +832,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 					return_P("Empty octet string is invalid");
 				}
 
-				if ((map->lhs->type != TMPL_TYPE_ATTR) ||
+				if (!tmpl_is_attr(map->lhs) ||
 				    !((map->lhs->tmpl_da->type == FR_TYPE_OCTETS) ||
 				      (map->lhs->tmpl_da->type == FR_TYPE_UINT8) ||
 				      (map->lhs->tmpl_da->type == FR_TYPE_UINT16) ||
@@ -843,7 +843,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				}
 			}
 
-			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+			if (tmpl_is_attr(map->lhs) &&
 			    map->lhs->tmpl_da->flags.is_raw &&
 			    map_cast_from_hex(map, rhs_type, rhs)) {
 				/* do nothing */
@@ -864,13 +864,13 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			/*
 			 *	Unknown attributes get marked up for pass2.
 			 */
-			if ((c->data.map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) ||
-			    (c->data.map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED)) {
+			if (tmpl_is_attr_undefined(c->data.map->lhs) ||
+			    tmpl_is_attr_undefined(c->data.map->rhs)) {
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
 
 #ifdef HAVE_REGEX
-			if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
+			if (tmpl_is_regex(c->data.map->rhs)) {
 				c->data.map->rhs->tmpl_regex_flags = regex_flags;
 			}
 #endif
@@ -884,8 +884,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			 *	@todo: check LHS and RHS separately, to
 			 *	get better errors
 			 */
-			if ((c->data.map->rhs->type == TMPL_TYPE_LIST) ||
-			    (c->data.map->lhs->type == TMPL_TYPE_LIST)) {
+			if (tmpl_is_list(c->data.map->rhs) ||
+			    tmpl_is_list(c->data.map->lhs)) {
 				return_0("Cannot use list references in condition");
 			}
 
@@ -896,7 +896,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			 *	same type as the LHS.
 			 */
 			if (c->cast) {
-				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
+				if (tmpl_is_attr(c->data.map->rhs) &&
 				    (c->cast->type != c->data.map->rhs->tmpl_da->type)) {
 					if (cond_type_check(c, c->cast->type)) {
 						goto keep_going;
@@ -906,7 +906,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				}
 
 #ifdef HAVE_REGEX
-				if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
+				if (tmpl_is_regex(c->data.map->rhs)) {
 					return_0("Cannot use cast with regex comparison");
 				}
 #endif
@@ -915,7 +915,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *	The LHS is a literal which has been cast to a data type.
 				 *	Cast it to the appropriate data type.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_UNPARSED) &&
+				if (tmpl_is_unparsed(c->data.map->lhs) &&
 				    (tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast) < 0)) {
 					*error = "Failed to parse field";
 					if (lhs) talloc_free(lhs);
@@ -928,8 +928,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *	The RHS is a literal, and the LHS has been cast to a data
 				 *	type.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_DATA) &&
-				    (c->data.map->rhs->type == TMPL_TYPE_UNPARSED) &&
+				if ((tmpl_is_data(c->data.map->lhs)) &&
+				    (tmpl_is_unparsed(c->data.map->rhs)) &&
 				    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
 					return_rhs("Failed to parse field");
 				}
@@ -939,7 +939,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *	types.  We check this based on
 				 *	their size.
 				 */
-				if (c->data.map->lhs->type == TMPL_TYPE_ATTR) {
+				if (tmpl_is_attr(c->data.map->lhs)) {
 					/*
 					 *      dst.min == src.min
 					 *	dst.max == src.max
@@ -1007,7 +1007,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *	Do this LAST, as the rest of the code above assumes c->cast
 				 *	is not NULL.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
+				if (tmpl_is_attr(c->data.map->lhs) &&
 				    (c->cast->type == c->data.map->lhs->tmpl_da->type)) {
 					c->cast = NULL;
 				}
@@ -1018,8 +1018,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				/*
 				 *	Two attributes?  They must be of the same type
 				 */
-				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
+				if (tmpl_is_attr(c->data.map->rhs) &&
+				    tmpl_is_attr(c->data.map->lhs) &&
 				    (c->data.map->lhs->tmpl_da->type != c->data.map->rhs->tmpl_da->type)) {
 					if (cond_type_check(c, c->data.map->lhs->tmpl_da->type)) {
 						goto keep_going;
@@ -1042,8 +1042,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *	There's no real reason for
 				 *	this, other than consistency.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->rhs->type != TMPL_TYPE_ATTR) &&
+				if (tmpl_is_attr(c->data.map->lhs) &&
+				    !tmpl_is_attr(c->data.map->rhs) &&
 				    (c->data.map->lhs->tmpl_da->type == FR_TYPE_STRING) &&
 				    (c->data.map->op != T_OP_CMP_TRUE) &&
 				    (c->data.map->op != T_OP_CMP_FALSE) &&
@@ -1056,8 +1056,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *	attributes mean that it's
 				 *	either xlat, or an exec.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->rhs->type != TMPL_TYPE_ATTR) &&
+				if (tmpl_is_attr(c->data.map->lhs) &&
+				    !tmpl_is_attr(c->data.map->rhs) &&
 				    (c->data.map->lhs->tmpl_da->type != FR_TYPE_STRING) &&
 				    (c->data.map->lhs->tmpl_da->type != FR_TYPE_OCTETS) &&
 				    (c->data.map->lhs->tmpl_da->type != FR_TYPE_DATE) &&
@@ -1074,7 +1074,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *	The LHS has been cast to a data type, and the RHS is a
 				 *	literal.  Cast the RHS to the type of the cast.
 				 */
-				if (c->cast && (c->data.map->rhs->type == TMPL_TYPE_UNPARSED) &&
+				if (c->cast && tmpl_is_unparsed(c->data.map->rhs) &&
 				    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
 					return_rhs("Failed to parse field");
 				}
@@ -1088,9 +1088,9 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *
 				 *	This allows Framed-IP-Address < 192.168.0.0./24
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
-				    ((c->data.map->rhs->type == TMPL_TYPE_UNPARSED) ||
-				     (c->data.map->rhs->type == TMPL_TYPE_DATA))) {
+				if (tmpl_is_attr(c->data.map->lhs) &&
+				    (tmpl_is_unparsed(c->data.map->rhs) ||
+				     tmpl_is_data(c->data.map->rhs))) {
 					fr_type_t type = c->data.map->lhs->tmpl_da->type;
 
 					switch (c->data.map->lhs->tmpl_da->type) {
@@ -1160,10 +1160,10 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *	The RHS will turn into... something.  Allow for prefixes
 				 *	there, too.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
-				    ((c->data.map->rhs->type == TMPL_TYPE_XLAT) ||
-				     (c->data.map->rhs->type == TMPL_TYPE_XLAT_STRUCT) ||
-				     (c->data.map->rhs->type == TMPL_TYPE_EXEC))) {
+				if (tmpl_is_attr(c->data.map->lhs) &&
+				    (tmpl_is_xlat(c->data.map->rhs) ||
+				     tmpl_is_xlat_struct(c->data.map->rhs) ||
+				     tmpl_is_exec(c->data.map->rhs))) {
 					if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV4_ADDR) {
 						c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
 										    FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
@@ -1185,7 +1185,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 *	and do no parsing until after all of the modules
 				 *	are loaded.  But that has issues, too.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_UNPARSED) && (lhs_type == T_BARE_WORD)) {
+				if (tmpl_is_unparsed(c->data.map->lhs) && (lhs_type == T_BARE_WORD)) {
 					int hyphens = 0;
 					bool may_be_attr = true;
 					size_t i;
@@ -1422,8 +1422,8 @@ done:
 		 *	We can do the evaluation here, so that it
 		 *	doesn't need to be done at run time
 		 */
-		if ((c->data.map->lhs->type == TMPL_TYPE_DATA) &&
-		    (c->data.map->rhs->type == TMPL_TYPE_DATA)) {
+		if (tmpl_is_data(c->data.map->lhs) &&
+		    tmpl_is_data(c->data.map->rhs)) {
 			int rcode;
 
 			rad_assert(c->cast != NULL);
@@ -1448,8 +1448,8 @@ done:
 		 *	We can do the evaluation here, so that it
 		 *	doesn't need to be done at run time
 		 */
-		if ((c->data.map->rhs->type == TMPL_TYPE_UNPARSED) &&
-		    (c->data.map->lhs->type == TMPL_TYPE_UNPARSED) &&
+		if (tmpl_is_unparsed(c->data.map->rhs) &&
+		    tmpl_is_unparsed(c->data.map->lhs) &&
 		    !c->pass2_fixup) {
 			int rcode;
 
@@ -1479,9 +1479,9 @@ done:
 		 *	that the attribute reference is on the LHS.
 		 */
 		if (c->cast &&
-		    (c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
+		    tmpl_is_attr(c->data.map->rhs) &&
 		    (c->cast->type == c->data.map->rhs->tmpl_da->type) &&
-		    (c->data.map->lhs->type != TMPL_TYPE_ATTR)) {
+		    !tmpl_is_attr(c->data.map->lhs)) {
 			vp_tmpl_t *tmp;
 
 			tmp = c->data.map->rhs;
@@ -1518,7 +1518,7 @@ done:
 			/*
 			 *	This must have been parsed into TMPL_TYPE_DATA.
 			 */
-			rad_assert(c->data.map->rhs->type != TMPL_TYPE_UNPARSED);
+			rad_assert(!tmpl_is_unparsed(c->data.map->rhs));
 		}
 
 	} while (0);

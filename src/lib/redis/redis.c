@@ -359,8 +359,8 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	char		*key;
 	size_t		key_len;
 
-	rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
-	rad_assert(map->rhs->type == TMPL_TYPE_DATA);
+	rad_assert(tmpl_is_attr(map->lhs));
+	rad_assert(tmpl_is_data(map->rhs));
 
 	key_len = tmpl_snprint(key_buf, sizeof(key_buf), map->lhs);
 	if (is_truncated(key_len, sizeof(key_buf))) {
