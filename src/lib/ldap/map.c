@@ -102,7 +102,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 
 			talloc_free(attr_str);
 
-			if (attr->lhs->type == TMPL_TYPE_UNPARSED) {
+			if (tmpl_is_unparsed(attr->lhs)) {
 			    RWDEBUG("Failed parsing left side of \"%pV\", skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				talloc_free(attr);

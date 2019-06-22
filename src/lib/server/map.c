@@ -86,7 +86,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	rad_assert(map != NULL);
 
 	rad_assert(map->lhs != NULL);
-	rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+	rad_assert(tmpl_is_attr(map->lhs));
 
 	rad_assert(map->rhs == NULL);
 	rad_assert(rhs != NULL);
@@ -267,7 +267,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	type = cf_pair_value_quote(cp);
 
 	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1]) == 'x') &&
-	    (map->lhs->type == TMPL_TYPE_ATTR) &&
+	    tmpl_is_attr(map->lhs) &&
 	    map_cast_from_hex(map, type, value)) {
 		/* do nothing */
 	} else {
@@ -287,7 +287,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	 *	We cannot assign a count to an attribute.  That must
 	 *	be done in an xlat.
 	 */
-	if ((map->rhs->type == TMPL_TYPE_ATTR) &&
+	if (tmpl_is_attr(map->rhs) &&
 	    (map->rhs->tmpl_num == NUM_COUNT)) {
 		cf_log_err(cp, "Cannot assign from a count");
 		goto error;
@@ -445,7 +445,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
 
 	map->op = op;
 
-	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+	if (tmpl_is_attr(map->lhs) &&
 	    map->lhs->tmpl_da->flags.is_raw &&
 	    map_cast_from_hex(map, rhs_type, rhs)) {
 		return 0;
@@ -745,8 +745,8 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 	MAP_VERIFY(map);
 
 	rad_assert(map->rhs);		/* Quite clang scan */
-	rad_assert(map->rhs->type == TMPL_TYPE_EXEC);
-	rad_assert((map->lhs->type == TMPL_TYPE_ATTR) || (map->lhs->type == TMPL_TYPE_LIST));
+	rad_assert(tmpl_is_exec(map->rhs));
+	rad_assert(tmpl_is_attr(map->lhs) || tmpl_is_list(map->lhs));
 
 	/*
 	 *	We always put the request pairs into the environment
@@ -760,7 +760,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 	 *	call fr_pair_value_from_str on the output of the script.
 	 */
 	result = radius_exec_program(ctx, answer, sizeof(answer),
-				     (map->lhs->type == TMPL_TYPE_LIST) ? &output_pairs : NULL,
+				     tmpl_is_list(map->lhs) ? &output_pairs : NULL,
 				     request, map->rhs->name, input_pairs ? *input_pairs : NULL,
 				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
 	talloc_free(expanded);
@@ -1011,9 +1011,9 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	if (!fr_cond_assert(original->lhs != NULL)) return -1;
 	if (!fr_cond_assert(original->rhs != NULL)) return -1;
 
-	rad_assert((original->lhs->type == TMPL_TYPE_LIST) ||
-		   (original->lhs->type == TMPL_TYPE_ATTR) ||
-		   (original->lhs->type == TMPL_TYPE_XLAT_STRUCT));
+	rad_assert(tmpl_is_list(original->lhs) ||
+		   tmpl_is_attr(original->lhs) ||
+		   tmpl_is_xlat_struct(original->lhs));
 
 	*out = NULL;
 
@@ -1070,7 +1070,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			TALLOC_FREE(*lhs_result);
 			goto error;
 		}
-		rad_assert((mutated->lhs->type == TMPL_TYPE_ATTR) || (mutated->lhs->type == TMPL_TYPE_LIST));
+		rad_assert(tmpl_is_attr(mutated->lhs) || tmpl_is_list(mutated->lhs));
 	}
 		break;
 
@@ -1106,7 +1106,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			talloc_free(attr_str);
 			goto error;
 		}
-		rad_assert((mutated->lhs->type == TMPL_TYPE_ATTR) || (mutated->lhs->type == TMPL_TYPE_LIST));
+		rad_assert(tmpl_is_attr(mutated->lhs) || tmpl_is_list(mutated->lhs));
 	}
 		break;
 
@@ -1133,7 +1133,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	/*
 	 *	List to list copy.
 	 */
-	if ((mutated->lhs->type == TMPL_TYPE_LIST) && (mutated->rhs->type == TMPL_TYPE_LIST)) {
+	if (tmpl_is_list(mutated->lhs) && tmpl_is_list(mutated->rhs)) {
 		fr_cursor_t	to;
 		fr_cursor_t	from;
 		VALUE_PAIR	**list = NULL;
@@ -1210,10 +1210,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	Unparsed.  These are easy because they
 	 *	can only have a single value.
 	 */
-	if (mutated->rhs->type == TMPL_TYPE_UNPARSED) {
+	if (tmpl_is_unparsed(mutated->rhs)) {
 		fr_type_t type = mutated->lhs->tmpl_da->type;
 
-		rad_assert(mutated->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(tmpl_is_attr(mutated->lhs));
 		rad_assert(mutated->lhs->tmpl_da);	/* We need to know which attribute to create */
 
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
@@ -1247,7 +1247,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		fr_cursor_t	from;
 		fr_value_box_t	*vb, *n_vb;
 
-		rad_assert(mutated->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(tmpl_is_attr(mutated->lhs));
 		rad_assert(mutated->lhs->tmpl_da);		/* We need to know which attribute to create */
 
 		/*
@@ -1310,8 +1310,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		int		err;
 
 		rad_assert(!rhs_result || !*rhs_result);
-		rad_assert(((mutated->lhs->type == TMPL_TYPE_ATTR) && mutated->lhs->tmpl_da) ||
-			   ((mutated->lhs->type == TMPL_TYPE_LIST) && !mutated->lhs->tmpl_da));
+		rad_assert((tmpl_is_attr(mutated->lhs) && mutated->lhs->tmpl_da) ||
+			   (tmpl_is_list(mutated->lhs) && !mutated->lhs->tmpl_da));
 
 		/*
 		 *	Check source list
@@ -1379,7 +1379,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 		rad_assert(!rhs_result || !*rhs_result);
 		rad_assert(mutated->lhs->tmpl_da);
-		rad_assert(mutated->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(tmpl_is_attr(mutated->lhs));
 
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
@@ -1586,14 +1586,14 @@ static inline void map_list_mod_debug(REQUEST *request,
 	if (!fr_cond_assert(map->lhs != NULL)) return;
 	if (!fr_cond_assert(map->rhs != NULL)) return;
 
-	rad_assert(mod || (map->rhs->type == TMPL_TYPE_NULL));
+	rad_assert(mod || tmpl_is_null(map->rhs));
 
 	if (vb && (vb->type == FR_TYPE_STRING)) quote = "\"";
 
 	/*
 	 *	If it's an exec, ignore the list
 	 */
-	if (map->rhs->type == TMPL_TYPE_EXEC) {
+	if (tmpl_is_exec(map->rhs)) {
 		RDEBUG2("%s %s %s%pV%s", mod->lhs->name, fr_int2str(fr_tokens_table, mod->op, "<INVALID>"),
 		        quote, vb, quote);
 		return;
@@ -1682,9 +1682,9 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		rad_assert(mod->lhs != NULL);
 		rad_assert(mod->rhs != NULL);
 
-		rad_assert((mod->lhs->type == TMPL_TYPE_ATTR) || (mod->lhs->type == TMPL_TYPE_LIST));
-		rad_assert(((mod->op == T_OP_CMP_FALSE) && (mod->rhs->type == TMPL_TYPE_NULL)) ||
-			   (mod->rhs->type == TMPL_TYPE_DATA));
+		rad_assert(tmpl_is_attr(mod->lhs) || tmpl_is_list(mod->lhs));
+		rad_assert(((mod->op == T_OP_CMP_FALSE) && tmpl_is_null(mod->rhs)) ||
+			   tmpl_is_data(mod->rhs));
 
 		for (vb = &mod->rhs->tmpl_value;
 		     vb;
@@ -1707,7 +1707,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 	/*
 	 *	The destination is a list (which is a completely different set of operations)
 	 */
-	if (map->lhs->type == TMPL_TYPE_LIST) {
+	if (tmpl_is_list(map->lhs)) {
 		switch (mod->op) {
 		case T_OP_CMP_FALSE:
 			fr_pair_list_free(vp_list);				/* Clear the entire list */
@@ -2067,7 +2067,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 	if (!fr_cond_assert(map->lhs != NULL)) return -1;
 	if (!fr_cond_assert(map->rhs != NULL)) return -1;
 
-	rad_assert((map->lhs->type == TMPL_TYPE_LIST) || (map->lhs->type == TMPL_TYPE_ATTR));
+	rad_assert(tmpl_is_list(map->lhs) || tmpl_is_attr(map->lhs));
 
 	/*
 	 *	Special case for !*, we don't need to parse RHS as this is a unary operator.
@@ -2079,7 +2079,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 	 *	to allocate any attributes, just finding the current list, and change
 	 *	the op.
 	 */
-	if ((map->lhs->type == TMPL_TYPE_LIST) && (map->rhs->type == TMPL_TYPE_LIST)) {
+	if (tmpl_is_list(map->lhs) && tmpl_is_list(map->rhs)) {
 		VALUE_PAIR **from = NULL;
 
 		if (radius_request(&context, map->rhs->tmpl_request) == 0) {
@@ -2110,7 +2110,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 	 */
 	switch (map->rhs->type) {
 	case TMPL_TYPE_XLAT_STRUCT:
-		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(tmpl_is_attr(map->lhs));
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 		rad_assert(map->rhs->tmpl_xlat != NULL);
 
@@ -2148,7 +2148,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		break;
 
 	case TMPL_TYPE_XLAT:
-		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(tmpl_is_attr(map->lhs));
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
 		n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
@@ -2174,7 +2174,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		break;
 
 	case TMPL_TYPE_UNPARSED:
-		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(tmpl_is_attr(map->lhs));
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
 		n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
@@ -2194,8 +2194,8 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 	{
 		fr_cursor_t from;
 
-		rad_assert(((map->lhs->type == TMPL_TYPE_ATTR) && map->lhs->tmpl_da) ||
-			   ((map->lhs->type == TMPL_TYPE_LIST) && !map->lhs->tmpl_da));
+		rad_assert((tmpl_is_attr(map->lhs) && map->lhs->tmpl_da) ||
+			   (tmpl_is_list(map->lhs) && !map->lhs->tmpl_da));
 
 		/*
 		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
@@ -2208,7 +2208,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 *  Src/Dst attributes don't match, convert src attributes
 		 *  to match dst.
 		 */
-		if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+		if (tmpl_is_attr(map->lhs) &&
 		    (map->rhs->tmpl_da->type != map->lhs->tmpl_da->type)) {
 			fr_cursor_t to;
 
@@ -2252,7 +2252,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 	case TMPL_TYPE_DATA:
 		rad_assert(map->lhs->tmpl_da);
-		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
+		rad_assert(tmpl_is_attr(map->lhs));
 
 		n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!n) return -1;
@@ -2393,7 +2393,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			rcode = -1;
 			goto finish;
 		}
-		rad_assert((exp_lhs->type == TMPL_TYPE_ATTR) || (exp_lhs->type == TMPL_TYPE_LIST));
+		rad_assert(tmpl_is_attr(exp_lhs) || tmpl_is_list(exp_lhs));
 
 		memcpy(&exp_map, map, sizeof(exp_map));
 		exp_map.lhs = exp_lhs;
@@ -2411,8 +2411,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 *	Sanity check inputs.  We can have a list or attribute
 	 *	as a destination.
 	 */
-	if ((map->lhs->type != TMPL_TYPE_LIST) &&
-	    (map->lhs->type != TMPL_TYPE_ATTR)) {
+	if (!tmpl_is_list(map->lhs) &&
+	    !tmpl_is_attr(map->lhs)) {
 		REDEBUG("Left side \"%.*s\" of map should be an attr or list but is an %s",
 			(int)map->lhs->len, map->lhs->name,
 			fr_int2str(tmpl_type_table, map->lhs->type, "<INVALID>"));
@@ -2445,7 +2445,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 *	0 to signify success. It may return "success", but still have no
 	 *	VPs to work with.
 	 */
-	if (map->rhs->type != TMPL_TYPE_NULL) {
+	if (!tmpl_is_null(map->rhs)) {
 		rcode = func(parent, &head, request, map, ctx);
 		if (rcode < 0) {
 			rad_assert(!head);
@@ -2478,7 +2478,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	/*
 	 *	The destination is a list (which is a completely different set of operations)
 	 */
-	if (map->lhs->type == TMPL_TYPE_LIST) {
+	if (tmpl_is_list(map->lhs)) {
 		switch (map->op) {
 		case T_OP_CMP_FALSE:
 			/* We don't need the src VPs (should just be 'ANY') */
@@ -2494,7 +2494,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			goto finish;
 
 		case T_OP_SET:
-			if (map->rhs->type == TMPL_TYPE_LIST) {
+			if (tmpl_is_list(map->rhs)) {
 				fr_pair_list_free(list);
 				*list = head;
 				head = NULL;
@@ -2502,7 +2502,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				/* FALL-THROUGH */
 
 		case T_OP_EQ:
-				rad_assert(map->rhs->type == TMPL_TYPE_EXEC);
+				rad_assert(tmpl_is_exec(map->rhs));
 				/* FALL-THROUGH */
 
 		case T_OP_ADD:
@@ -2814,9 +2814,9 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 
 	if (!fr_cond_assert(map->rhs != NULL)) return -1;
 
-	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+	if (tmpl_is_attr(map->lhs) &&
 	    (map->lhs->tmpl_da->type == FR_TYPE_STRING) &&
-	    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
+	    tmpl_is_unparsed(map->rhs)) {
 		*(p++) = '\'';
 		len = tmpl_snprint(p, (end - p) - 1, map->rhs);	/* -1 for proceeding '\'' */
 		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
@@ -2842,7 +2842,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	if (!fr_cond_assert(map->lhs != NULL)) return;
 	if (!fr_cond_assert(map->rhs != NULL)) return;
 
-	rad_assert(vp || (map->rhs->type == TMPL_TYPE_NULL));
+	rad_assert(vp || tmpl_is_null(map->rhs));
 
 	switch (map->rhs->type) {
 	/*

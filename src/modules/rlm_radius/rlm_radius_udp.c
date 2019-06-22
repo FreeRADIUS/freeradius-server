@@ -2533,7 +2533,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 				/*
 				 *	Skip things which aren't attributes.
 				 */
-				if (map->lhs->type != TMPL_TYPE_ATTR) continue;
+				if (!tmpl_is_attr(map->lhs)) continue;
 
 				/*
 				 *	Disallow signalling attributes.

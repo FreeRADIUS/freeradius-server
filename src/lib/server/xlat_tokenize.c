@@ -71,7 +71,7 @@ vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 {
 	vp_tmpl_t *vpt;
 
-	if (node->next || (node->type != XLAT_ATTRIBUTE) || (node->attr->type != TMPL_TYPE_ATTR)) return NULL;
+	if (node->next || (node->type != XLAT_ATTRIBUTE) || !tmpl_is_attr(node->attr)) return NULL;
 
 	/*
 	 *   Concat means something completely different as an attribute reference
@@ -100,7 +100,7 @@ xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 {
 	xlat_exp_t *node;
 
-	if (vpt->type != TMPL_TYPE_ATTR) return NULL;
+	if (!tmpl_is_attr(vpt)) return NULL;
 
 	node = xlat_exp_alloc(ctx, XLAT_ATTRIBUTE, vpt->name, vpt->len);
 	node->attr = tmpl_alloc(node, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1, T_BARE_WORD);

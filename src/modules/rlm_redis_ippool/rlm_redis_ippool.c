@@ -1053,7 +1053,7 @@ static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size
 
 	slen = tmpl_expand(out, (char *)buff, bufflen, request, inst->pool_name, NULL, NULL);
 	if (slen < 0) {
-		if (inst->pool_name->type == TMPL_TYPE_ATTR) {
+		if (tmpl_is_attr(inst->pool_name)) {
 			RDEBUG2("Pool attribute not present in request.  Doing nothing");
 			return 0;
 		}
@@ -1367,7 +1367,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	rlm_redis_ippool_t		*inst = instance;
 
-	rad_assert(inst->allocated_address_attr->type == TMPL_TYPE_ATTR);
+	rad_assert(tmpl_is_attr(inst->allocated_address_attr));
 	rad_assert(subcs);
 
 	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, true, NULL, NULL, NULL);

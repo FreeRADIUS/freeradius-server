@@ -1400,7 +1400,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 	TMPL_VERIFY(vpt);
 
-	if (vpt->type != TMPL_TYPE_ATTR) return 1;
+	if (!tmpl_is_attr(vpt)) return 1;
 
 	if (!vpt->tmpl_da->flags.is_unknown) return 1;
 
@@ -1441,7 +1441,7 @@ int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
 
 	TMPL_VERIFY(vpt);
 
-	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
+	if (!tmpl_is_attr_undefined(vpt)) return 1;
 
 	if (fr_dict_attr_add(dict_def, fr_dict_root(fr_dict_internal), vpt->tmpl_unknown_name, -1, type, flags) < 0) {
 		return -1;
@@ -1540,7 +1540,7 @@ ssize_t _tmpl_to_type(void *out,
 
 	TMPL_VERIFY(vpt);
 
-	rad_assert(vpt->type != TMPL_TYPE_LIST);
+	rad_assert(!tmpl_is_list(vpt));
 	rad_assert(!buff || (bufflen >= 2));
 
 	memset(&value_to_cast, 0, sizeof(value_to_cast));
