@@ -296,12 +296,44 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 					      char const *query)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
+	struct timeval timeout = {config->query_timeout, 0};
+	int sockfd;
+	fd_set read_fd;
 	ExecStatusType status;
 	int numfields = 0;
+	PGresult *tmp_result;
 
 	if (!conn->db) {
 		ERROR("rlm_sql_postgresql: Socket not connected");
 		return RLM_SQL_RECONNECT;
+	}
+
+	sockfd = PQsocket(conn->db);
+	if (sockfd < 0) {
+		ERROR("rlm_sql_postgresql: Unable to obtain socket: %s", PQerrorMessage(conn->db));
+		return RLM_SQL_RECONNECT;
+	}
+
+	if (!PQsendQuery(conn->db, query)) {
+		ERROR("rlm_sql_postgresql: Failed to send query: %s", PQerrorMessage(conn->db));
+		return RLM_SQL_RECONNECT;
+	}
+
+	/*
+	 * We try to avoid blocking by waiting until the driver indicates that
+         * the result is ready or our timeout expires
+	 */
+	while (PQisBusy(conn->db)) {
+		FD_ZERO(&read_fd);
+		FD_SET(sockfd, &read_fd);
+		if (!select(sockfd + 1, &read_fd, NULL, NULL, config->query_timeout ? &timeout : NULL)) {
+			ERROR("rlm_sql_postgresql: Socket read timeout after %d seconds", config->query_timeout);
+			return RLM_SQL_RECONNECT;
+		}
+		if (!PQconsumeInput(conn->db)) {
+			ERROR("rlm_sql_postgresql: Failed reading input: %s", PQerrorMessage(conn->db));
+			return RLM_SQL_RECONNECT;
+		}
 	}
 
 	/*
@@ -312,7 +344,11 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	 *  returned, it should be treated like a PGRES_FATAL_ERROR
 	 *  result.
 	 */
-	conn->result = PQexec(conn->db, query);
+	conn->result = PQgetResult(conn->db);
+
+	/* Discard results for appended queries */
+	while ((tmp_result = PQgetResult(conn->db)) != NULL)
+		PQclear(tmp_result);
 
 	/*
 	 *  As this error COULD be a connection error OR an out-of-memory
