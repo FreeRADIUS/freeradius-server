@@ -6,6 +6,12 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Update dictionary.hp with new attributes for REST. #2690
 	* Update dictionary.aruba with new attributes for REST. #2696
 	* Update logrotate settings to rotate as non-root user. #2666
+	* Fix side-channel leak in EAP-PWD.  Patch from Mathy Vanhoef.
+	* Relax OpenSSL version checks, now that their API is both
+	  public, and stable.
+	* Note that tls_min_version/tls_max_version also support "1.3"
+	  Since there is not standard yet for EAP with TLS 1.3, it
+	  will not work.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host #2627
@@ -15,6 +21,8 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  the server is running.
 	* Fix slow memory leak with clients.
 	* Fix request and connection timeouts in rlm_rest.
+	* Fix systemd issues.  Patches from Daniele Rondina.
+	* Fixes from clang analyzer.
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
