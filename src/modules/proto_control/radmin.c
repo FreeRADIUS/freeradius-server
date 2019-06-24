@@ -562,6 +562,114 @@ static void add_history(UNUSED char *line)
 }
 #endif
 
+static const char *check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **file_p, char const **server_p)
+{
+	int		rcode;
+	char const	*value, *file;
+	CONF_SECTION	*cs;
+	CONF_PAIR	*cp;
+	char const	*uid_name;
+	char const	*gid_name;
+	char const 	*server;
+	struct passwd	*pwd;
+	struct group	*grp;
+
+	cp = cf_pair_find(subcs, "namespace");
+	if (!cp) return 0;
+
+	value = cf_pair_value(cp);
+	if (!value) return 0;
+
+	if (strcmp(value, "control") != 0) return 0;
+
+	server = cf_section_name2(subcs);
+	*server_p = server;	/* need this for error messages */
+
+	/*	listen {} */
+	cs = cf_section_find(subcs, "listen", NULL);
+	if (!cs) {
+		fprintf(stderr, "%s: Failed parsing 'listen{}' section in 'server %s {...}'\n", progname, server);
+		return -1;
+	}
+
+	/*	transport = <transport> */
+	cp = cf_pair_find(cs, "transport");
+	if (!cp) return 0;
+
+	value = cf_pair_value(cp);
+	if (!value) return 0;
+
+	/*	<transport> { ... } */
+	subcs = cf_section_find(cs, value, NULL);
+	if (!subcs) {
+		fprintf(stderr, "%s: Failed parsing the '%s {}' section in 'server %s {...}'\n",
+			progname, cf_section_name1(subcs), server);
+		return -1;
+	}
+
+	/*
+	 *	Now find the socket name (sigh)
+	 */
+	rcode = cf_pair_parse(NULL, subcs, "filename",
+			      FR_ITEM_POINTER(FR_TYPE_STRING, &file), NULL, T_DOUBLE_QUOTED_STRING);
+	if (rcode < 0) {
+		fprintf(stderr, "%s: Failed parsing listen section 'socket'\n", progname);
+		return -1;
+	}
+
+	if (!file) {
+		fprintf(stderr, "%s: No path given for socket\n", progname);
+		return -1;
+	}
+
+	*file_p = file;
+
+	/*
+	 *	If we're root, just use the first one we find
+	 */
+	if (uid == 0) return 1;
+
+	/*
+	 *	Check UID and GID.
+	 */
+	rcode = cf_pair_parse(NULL, subcs, "uid",
+			      FR_ITEM_POINTER(FR_TYPE_STRING, &uid_name), NULL, T_DOUBLE_QUOTED_STRING);
+	if (rcode < 0) {
+		fprintf(stderr, "%s: Failed parsing listen section 'uid'\n", progname);
+		return -1;
+	}
+
+	if (!uid_name) return 1;
+
+	pwd = getpwnam(uid_name);
+	if (!pwd) {
+		fprintf(stderr, "%s: Failed getting UID for user %s: %s\n", progname, uid_name,
+			fr_syserror(errno));
+		return -1;
+	}
+
+	if (uid != pwd->pw_uid) return 0;
+
+	rcode = cf_pair_parse(NULL, subcs, "gid",
+			      FR_ITEM_POINTER(FR_TYPE_STRING, &gid_name), NULL, T_DOUBLE_QUOTED_STRING);
+	if (rcode < 0) {
+		fprintf(stderr, "%s: Failed parsing listen section 'gid'\n", progname);
+		return -1;
+	}
+
+	if (!gid_name) return 1;
+
+	grp = getgrnam(gid_name);
+	if (!grp) {
+		fprintf(stderr, "%s: Failed resolving gid of group %s: %s\n",
+			progname, gid_name, fr_syserror(errno));
+		return -1;
+	}
+
+	if (gid != grp->gr_gid) return 0;
+
+	return 1;
+}
 
 #define MAX_COMMANDS (4)
 
@@ -695,15 +803,11 @@ int main(int argc, char **argv)
 
 	if (raddb_dir) {
 		int		rcode;
-		CONF_SECTION	*cs = NULL, *subcs = NULL;
-		CONF_PAIR 	*cp = NULL;
 		uid_t		uid;
 		gid_t		gid;
-		char const	*uid_name = NULL;
-		char const	*gid_name = NULL;
-		char const 	*server_name = NULL;
-		struct passwd	*pwd;
-		struct group	*grp;
+		CONF_SECTION	*cs, *subcs;
+		CONF_PAIR 	*cp;
+
 		file = NULL;	/* MUST read it from the conf_file now */
 
 		snprintf(io_buffer, sizeof(io_buffer), "%s/%s.conf", raddb_dir, name);
@@ -738,110 +842,18 @@ int main(int argc, char **argv)
 
 		uid = getuid();
 		gid = getgid();
-		subcs = NULL;
 
 		/**
 		 *	We are looking for: server whatever { namespace="control" ...	}
 		 */
 		while ((subcs = cf_section_find_next(cs, subcs, "server", CF_IDENT_ANY)) != NULL) {
-			char const *value;
-
-			cp = cf_pair_find(subcs, "namespace");
-			if (!cp) continue;
-
-			value = cf_pair_value(cp);
-			if (!value) continue;
-
-			if (strcmp(value, "control") != 0) continue;
-
-			server_name = cf_section_name2(subcs);
-
-			/*	listen {} */
-			cs = cf_section_find(subcs, "listen", NULL);
-			if (!cs) {
-				fprintf(stderr, "%s: Failed parsing 'listen{}' section in 'server %s {...}'\n", progname, server_name);
-				goto error;
-			}
-
-			/*	transport = <transport> */
-			cp = cf_pair_find(cs, "transport");
-			if (!cp) continue;
-
-			value = cf_pair_value(cp);
-			if (!value) continue;
-
-			/*	<transport> { ... } */
-			subcs = cf_section_find(cs, value, NULL);
-			if (!subcs) {
-				fprintf(stderr, "%s: Failed parsing the '%s {}' section in 'server %s {...}'\n",
-						progname, cf_section_name1(subcs), server_name);
-				goto error;
-			}
-
-			/*
-			 *	Now find the socket name (sigh)
-			 */
-			rcode = cf_pair_parse(NULL, subcs, "filename",
-					      FR_ITEM_POINTER(FR_TYPE_STRING, &file), NULL, T_DOUBLE_QUOTED_STRING);
-			if (rcode < 0) {
-				fprintf(stderr, "%s: Failed parsing listen section 'socket'\n", progname);
-				goto error;
-			}
-
-			if (!file) {
-				fprintf(stderr, "%s: No path given for socket\n", progname);
-				goto error;
-			}
-
-			/*
-			 *	If we're root, just use the first one we find
-			 */
-			if (uid == 0) break;
-
-			/*
-			 *	Check UID and GID.
-			 */
-			rcode = cf_pair_parse(NULL, subcs, "uid",
-					      FR_ITEM_POINTER(FR_TYPE_STRING, &uid_name), NULL, T_DOUBLE_QUOTED_STRING);
-			if (rcode < 0) {
-				fprintf(stderr, "%s: Failed parsing listen section 'uid'\n", progname);
-				goto error;
-			}
-
-			if (!uid_name) break;
-
-			pwd = getpwnam(uid_name);
-			if (!pwd) {
-				fprintf(stderr, "%s: Failed getting UID for user %s: %s\n", progname, uid_name,
-					fr_syserror(errno));
-				goto error;
-			}
-
-			if (uid != pwd->pw_uid) continue;
-
-			rcode = cf_pair_parse(NULL, subcs, "gid",
-					      FR_ITEM_POINTER(FR_TYPE_STRING, &gid_name), NULL, T_DOUBLE_QUOTED_STRING);
-			if (rcode < 0) {
-				fprintf(stderr, "%s: Failed parsing listen section 'gid'\n", progname);
-				goto error;
-			}
-
-			if (!gid_name) break;
-
-			grp = getgrnam(gid_name);
-			if (!grp) {
-				fprintf(stderr, "%s: Failed resolving gid of group %s: %s\n",
-					progname, gid_name, fr_syserror(errno));
-				goto error;
-			}
-
-			if (gid != grp->gr_gid) continue;
-
-			break;
+			rcode = check_server(subcs, uid, gid, &file, &server);
+			if (rcode < 0) goto error;
+			if (rcode == 1) break;
 		}
 
 		if (!file) {
-			fprintf(stderr, "%s: Could not find control socket in %s (server %s {})\n", progname, io_buffer, server_name);
+			fprintf(stderr, "%s: Could not find control socket in %s (server %s {})\n", progname, io_buffer, server);
 			goto error;
 		}
 
