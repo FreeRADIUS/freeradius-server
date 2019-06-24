@@ -695,14 +695,15 @@ int main(int argc, char **argv)
 
 	if (raddb_dir) {
 		int		rcode;
-		CONF_SECTION	*cs, *subcs;
+		CONF_SECTION	*cs = NULL, *subcs = NULL;
+		CONF_PAIR 	*cp = NULL;
 		uid_t		uid;
 		gid_t		gid;
 		char const	*uid_name = NULL;
 		char const	*gid_name = NULL;
+		char const 	*server_name = NULL;
 		struct passwd	*pwd;
 		struct group	*grp;
-
 		file = NULL;	/* MUST read it from the conf_file now */
 
 		snprintf(io_buffer, sizeof(io_buffer), "%s/%s.conf", raddb_dir, name);
@@ -716,7 +717,7 @@ int main(int argc, char **argv)
 			exit(64);
 		}
 
-		if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_FILE) < 0) {
+		if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 			fr_perror("radmin");
 			exit(64);
 		}
@@ -726,23 +727,26 @@ int main(int argc, char **argv)
 			exit(64);
 		}
 
-		cs = cf_section_alloc(NULL, NULL, "main", NULL);
+		cs = cf_section_alloc(autofree, NULL, "main", NULL);
 		if (!cs) exit(EXIT_FAILURE);
 
 		if ((cf_file_read(cs, io_buffer) < 0) || (cf_section_pass2(cs) < 0)) {
 			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, io_buffer);
-			talloc_free(cs);
-			usage(1);
+			error:
+			exit(EXIT_FAILURE);
 		}
 
 		uid = getuid();
 		gid = getgid();
-
 		subcs = NULL;
-		while ((subcs = cf_section_find_next(cs, subcs, "listen", NULL)) != NULL) {
-			char const *value;
-			CONF_PAIR *cp = cf_pair_find(subcs, "type");
 
+		/**
+		 *	We are looking for: server whatever { namespace="control" ...	}
+		 */
+		while ((subcs = cf_section_find_next(cs, subcs, "server", CF_IDENT_ANY)) != NULL) {
+			char const *value;
+
+			cp = cf_pair_find(subcs, "namespace");
 			if (!cp) continue;
 
 			value = cf_pair_value(cp);
@@ -750,19 +754,43 @@ int main(int argc, char **argv)
 
 			if (strcmp(value, "control") != 0) continue;
 
+			server_name = cf_section_name2(subcs);
+
+			/*	listen {} */
+			cs = cf_section_find(subcs, "listen", NULL);
+			if (!cs) {
+				fprintf(stderr, "%s: Failed parsing 'listen{}' section in 'server %s {...}'\n", progname, server_name);
+				goto error;
+			}
+
+			/*	transport = <transport> */
+			cp = cf_pair_find(cs, "transport");
+			if (!cp) continue;
+
+			value = cf_pair_value(cp);
+			if (!value) continue;
+
+			/*	<transport> { ... } */
+			subcs = cf_section_find(cs, value, NULL);
+			if (!subcs) {
+				fprintf(stderr, "%s: Failed parsing the '%s {}' section in 'server %s {...}'\n",
+						progname, cf_section_name1(subcs), server_name);
+				goto error;
+			}
+
 			/*
 			 *	Now find the socket name (sigh)
 			 */
-			rcode = cf_pair_parse(NULL, subcs, "socket",
+			rcode = cf_pair_parse(NULL, subcs, "filename",
 					      FR_ITEM_POINTER(FR_TYPE_STRING, &file), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'socket'\n", progname);
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 
 			if (!file) {
 				fprintf(stderr, "%s: No path given for socket\n", progname);
-				usage(1);
+				goto error;
 			}
 
 			/*
@@ -777,7 +805,7 @@ int main(int argc, char **argv)
 					      FR_ITEM_POINTER(FR_TYPE_STRING, &uid_name), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'uid'\n", progname);
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 
 			if (!uid_name) break;
@@ -786,7 +814,7 @@ int main(int argc, char **argv)
 			if (!pwd) {
 				fprintf(stderr, "%s: Failed getting UID for user %s: %s\n", progname, uid_name,
 					fr_syserror(errno));
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 
 			if (uid != pwd->pw_uid) continue;
@@ -795,7 +823,7 @@ int main(int argc, char **argv)
 					      FR_ITEM_POINTER(FR_TYPE_STRING, &gid_name), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'gid'\n", progname);
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 
 			if (!gid_name) break;
@@ -804,7 +832,7 @@ int main(int argc, char **argv)
 			if (!grp) {
 				fprintf(stderr, "%s: Failed resolving gid of group %s: %s\n",
 					progname, gid_name, fr_syserror(errno));
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 
 			if (gid != grp->gr_gid) continue;
@@ -813,8 +841,8 @@ int main(int argc, char **argv)
 		}
 
 		if (!file) {
-			fprintf(stderr, "%s: Could not find control socket in %s\n", progname, io_buffer);
-			exit(EXIT_FAILURE);
+			fprintf(stderr, "%s: Could not find control socket in %s (server %s {})\n", progname, io_buffer, server_name);
+			goto error;
 		}
 
 		/*
@@ -823,13 +851,13 @@ int main(int argc, char **argv)
 		if (!radmin_log.file) {
 			subcs = cf_section_find(cs, "log", NULL);
 			if (subcs) {
-				CONF_PAIR *cp = cf_pair_find(subcs, "radmin");
+				cp = cf_pair_find(subcs, "radmin");
 				if (cp) {
 					radmin_log.file = cf_pair_value(cp);
 
 					if (!radmin_log.file) {
 						fprintf(stderr, "%s: Invalid value for 'radmin' log destination", progname);
-						exit(EXIT_FAILURE);
+						goto error;
 					}
 				}
 			}
@@ -839,7 +867,7 @@ int main(int argc, char **argv)
 			radmin_log.fd = open(radmin_log.file, O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
 			if (radmin_log.fd < 0) {
 				fprintf(stderr, "%s: Failed opening %s: %s\n", progname, radmin_log.file, fr_syserror(errno));
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 
 			radmin_log.dst = L_DST_FILES;
@@ -850,14 +878,14 @@ int main(int argc, char **argv)
 		inputfp = fopen(input_file, "r");
 		if (!inputfp) {
 			fprintf(stderr, "%s: Failed opening %s: %s\n", progname, input_file, fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			goto error;
 		}
 	}
 
 	if (!file && !server) {
 		fprintf(stderr, "%s: Must use one of '-d' or '-f' or '-s'\n",
 			progname);
-		exit(EXIT_FAILURE);
+		goto error;
 	}
 
 	/*
@@ -893,19 +921,22 @@ int main(int argc, char **argv)
 			len = run_command(sockfd, commands[i], io_buffer, sizeof(io_buffer));
 			if (len < 0) exit(EXIT_FAILURE);
 
-			if (len == FR_CONDUIT_FAIL) exit_status = EXIT_FAILURE;
+			if (len == FR_CONDUIT_FAIL) {
+				exit_status = EXIT_FAILURE;
+				goto exit;
+			}
 		}
 
 		if (unbuffered) {
 			while (true) flush_conduits(sockfd, io_buffer, sizeof(io_buffer));
 		}
 
-		exit(exit_status);
+		goto error;
 	}
 
 	if (!quiet) {
 		printf("%s - FreeRADIUS Server administration tool.\n", radmin_version);
-		printf("Copyright 2008-2018 The FreeRADIUS server project and contributors.\n");
+		printf("Copyright 2008-2019 The FreeRADIUS server project and contributors.\n");
 		printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		printf("PARTICULAR PURPOSE.\n");
 		printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
@@ -1001,6 +1032,7 @@ int main(int argc, char **argv)
 		}
 	}
 
+exit:
 	if (inputfp != stdin) fclose(inputfp);
 
 	if (radmin_log.dst == L_DST_FILES) close(radmin_log.fd);
