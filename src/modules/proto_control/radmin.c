@@ -563,7 +563,7 @@ static void add_history(UNUSED char *line)
 }
 #endif
 
-static const char *check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **file_p, char const **server_p)
+static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **file_p, char const **server_p)
 {
 	int		rcode;
 	char const	*value, *file;
@@ -838,6 +838,7 @@ int main(int argc, char **argv)
 
 		uid = getuid();
 		gid = getgid();
+		subcs = NULL;
 
 		/*
 		 *	We are looking for: server whatever { namespace="control" ...	}
@@ -847,7 +848,6 @@ int main(int argc, char **argv)
 			if (subcs) {
 				fprintf(stderr, "%s: Could not find virtual server %s {}\n", progname, server);
 				goto error;
-
 			}
 
 			rcode = check_server(subcs, uid, gid, &file, &server);
