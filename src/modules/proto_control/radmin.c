@@ -563,7 +563,7 @@ static void add_history(UNUSED char *line)
 }
 #endif
 
-static const char *check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **file_p, char const **server_p)
+static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **file_p, char const **server_p)
 {
 	int		rcode;
 	char const	*value, *file;
