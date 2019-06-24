@@ -838,6 +838,7 @@ int main(int argc, char **argv)
 
 		uid = getuid();
 		gid = getgid();
+		subcs = NULL;
 
 		/*
 		 *	We are looking for: server whatever { namespace="control" ...	}
@@ -847,7 +848,6 @@ int main(int argc, char **argv)
 			if (subcs) {
 				fprintf(stderr, "%s: Could not find virtual server %s {}\n", progname, server);
 				goto error;
-
 			}
 
 			rcode = check_server(subcs, uid, gid, &file, &server);
