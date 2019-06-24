@@ -1,7 +1,12 @@
 #  -*- text -*-
-######################################################################
 #
-#	Control socket interface.
+#  :toc:
+#
+#  $Id$
+
+#######################################################################
+#
+#  = Control socket interface.
 #
 #	In the future, we will add username/password checking for
 #	connections to the control socket.  We will also add
@@ -12,26 +17,33 @@
 #	For now, anyone who has permission to connect to the socket
 #	has nearly complete control over the server.  Be warned!
 #
-#	This functionality is NOT enabled by default.
+#	NOTE: This functionality is NOT enabled by default.
 #
 #	See also the "radmin" program, which is used to communicate
 #	with the server over the control socket.
 #
-#	$Id$
-#
 ######################################################################
 server control {
+	#
+	#  namespace:: Determine the current scope as a control service.
+	#
 	namespace = control
 
+	#
+	#  All configuration related to the control interface.
+	#
 	listen {
-#		type = all
+		#
+		#  transport:: Define which comunication channel.
+		#
 		transport = unix
 
-		#  @todo - add "limit" section
-
+		#
+		#  UNIX socket-file as communication channel.
+		#
 		unix {
 			#
-			#  Socket location.
+			#  filename:: Socket location.
 			#
 			#  Most operating systems (other than Linux), do not respect
 			#  permissions set on socket files.
@@ -49,7 +61,7 @@ server control {
 			filename = ${run_dir}/control/${name}.sock
 
 			#
-			#  Peercred is enabled by default, and offers an additional layer
+			#  peercred:: It is enabled by default, and offers an additional layer
 			#  of security.  When enabled FreeRADIUS will check the euid and
 			#  egid of the process connecting to the control socket.
 			#
@@ -61,25 +73,25 @@ server control {
 			#  - gid is set (below), and the client processes' egid matches the
 			#    configured gid.
 			#
-			#  Note: With peercred enabled, auxiliary groups of the client process
+			#  NOTE: With peercred enabled, auxiliary groups of the client process
 			#  are not considered.  If you have multiple users and need to control
 			#  control socket authorization via group membership, you should set
-			#  'peercred = no', and rely on filesystem permissions for enforcement.
+			#  `peercred = no`, and rely on filesystem permissions for enforcement.
 			#
 #			peercred = no
 
 			#
-			#  Name of user who is allowed to connect to the control socket.
+			#  uid:: Name of user who is allowed to connect to the control socket.
 			#
 #			uid = radius
 
 			#
-			#  Name of group that is allowed to connect to the control socket.
+			#  gid:: Name of group that is allowed to connect to the control socket.
 			#
 #			gid = radius
 
 			#
-			#  Access mode.
+			#  mode:: Access mode.
 			#
 			#  This can be used to give *some* administrators access to
 			#  monitor the system, but not to change it.
@@ -89,17 +101,18 @@ server control {
 			#
 			mode = rw
 		}
+
+		#  @todo - add "limit" section
 	}
 
-#
-#  These don't do anything for now
-#
-recv {
-	ok
-}
+	#
+	#  These don't do anything for now
+	#
+	recv {
+		ok
+	}
 
-send {
-	ok
-}
-
+	send {
+		ok
+	}
 }
