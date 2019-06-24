@@ -160,6 +160,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -l <log_file>   Commands which are executed will be written to this file.\n");
 	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
 	fprintf(output, "  -q              Reduce output verbosity\n");
+	fprintf(output, "  -s <server>     Look in named server for name of control socket.\n");
 	fprintf(output, "  -x              Increase output verbosity\n");
 	exit(status);
 }
@@ -720,10 +721,6 @@ int main(int argc, char **argv)
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
 				exit(EXIT_FAILURE);
 			}
-			if (server) {
-				fprintf(stderr, "%s: -d and -s cannot be used together.\n", progname);
-				exit(EXIT_FAILURE);
-			}
 			raddb_dir = optarg;
 			break;
 
@@ -780,7 +777,6 @@ int main(int argc, char **argv)
 				fprintf(stderr, "%s: -s and -f cannot be used together.\n", progname);
 				usage(1);
 			}
-			raddb_dir = NULL;
 			server = optarg;
 			break;
 
@@ -843,13 +839,27 @@ int main(int argc, char **argv)
 		uid = getuid();
 		gid = getgid();
 
-		/**
+		/*
 		 *	We are looking for: server whatever { namespace="control" ...	}
 		 */
-		while ((subcs = cf_section_find_next(cs, subcs, "server", CF_IDENT_ANY)) != NULL) {
+		if (server) {
+			subcs = cf_section_find_next(cs, subcs, "server", server);
+			if (subcs) {
+				fprintf(stderr, "%s: Could not find virtual server %s {}\n", progname, server);
+				goto error;
+
+			}
+
 			rcode = check_server(subcs, uid, gid, &file, &server);
 			if (rcode < 0) goto error;
-			if (rcode == 1) break;
+			if (rcode == 0) file = NULL;
+
+		} else {
+			while ((subcs = cf_section_find_next(cs, subcs, "server", CF_IDENT_ANY)) != NULL) {
+				rcode = check_server(subcs, uid, gid, &file, &server);
+				if (rcode < 0) goto error;
+				if (rcode == 1) break;
+			}
 		}
 
 		if (!file) {
@@ -894,8 +904,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!file && !server) {
-		fprintf(stderr, "%s: Must use one of '-d' or '-f' or '-s'\n",
+	if (!file) {
+		fprintf(stderr, "%s: Failed to find socket file name\n",
 			progname);
 		goto error;
 	}
