@@ -844,7 +844,7 @@ int main(int argc, char **argv)
 		 *	We are looking for: server whatever { namespace="control" ...	}
 		 */
 		if (server) {
-			subcs = cf_section_find_next(cs, subcs, "server", server);
+			subcs = cf_section_find(cs, "server", server);
 			if (subcs) {
 				fprintf(stderr, "%s: Could not find virtual server %s {}\n", progname, server);
 				goto error;
