@@ -128,7 +128,7 @@ typedef struct {
 //static radmin_state_t state;
 
 static bool echo = false;
-static char const *secret = "testing123";
+static char const *secret = NULL;
 static bool unbuffered = false;
 static fr_log_t radmin_log = {
 	.dst = L_DST_NULL,
@@ -161,6 +161,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
 	fprintf(output, "  -q              Reduce output verbosity\n");
 	fprintf(output, "  -s <server>     Look in named server for name of control socket.\n");
+	fprintf(output, "  -S <secret>     Use argument as shared secret for authentication to the server.\n");
 	fprintf(output, "  -x              Increase output verbosity\n");
 	exit(status);
 }
@@ -408,7 +409,7 @@ static int do_connect(int *out, char const *file, char const *server)
 		return -1;
 	}
 
-	if (server && secret) {
+	if (secret) {
 		r = do_challenge(fd);
 		if (r <= 0) goto do_close;
 	}
@@ -566,11 +567,11 @@ static void add_history(UNUSED char *line)
 static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **file_p, char const **server_p)
 {
 	int		rcode;
-	char const	*value, *file;
+	char const	*value, *file = NULL;
 	CONF_SECTION	*cs;
 	CONF_PAIR	*cp;
-	char const	*uid_name;
-	char const	*gid_name;
+	char const	*uid_name = NULL;
+	char const	*gid_name = NULL;
 	char const 	*server;
 	struct passwd	*pwd;
 	struct group	*grp;
@@ -640,7 +641,7 @@ static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **
 		return -1;
 	}
 
-	if (!uid_name) return 1;
+	if (!uid_name || !*uid_name) return 1;
 
 	pwd = getpwnam(uid_name);
 	if (!pwd) {
@@ -658,7 +659,7 @@ static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **
 		return -1;
 	}
 
-	if (!gid_name) return 1;
+	if (!gid_name || !*gid_name) return 1;
 
 	grp = getgrnam(gid_name);
 	if (!grp) {
@@ -715,7 +716,7 @@ int main(int argc, char **argv)
 
 	rad_debug_lvl = L_DBG_LVL_1;
 
-	while ((c = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:Sx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:S:x")) != -1) switch (c) {
 		case 'd':
 			if (file) {
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
@@ -781,7 +782,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'S':
-			secret = NULL;
+			secret = optarg;
 			break;
 
 		case 'x':
@@ -855,7 +856,9 @@ int main(int argc, char **argv)
 			if (rcode == 0) file = NULL;
 
 		} else {
-			while ((subcs = cf_section_find_next(cs, subcs, "server", CF_IDENT_ANY)) != NULL) {
+			for (subcs = cf_section_find_next(cs, NULL, "server", CF_IDENT_ANY);
+			     subcs != NULL;
+			     subcs = cf_section_find_next(cs, subcs, "server", CF_IDENT_ANY)) {
 				rcode = check_server(subcs, uid, gid, &file, &server);
 				if (rcode < 0) goto error;
 				if (rcode == 1) break;
