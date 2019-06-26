@@ -261,9 +261,10 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 {
 	BIGNUM *x_candidate = NULL, *rnd = NULL, *y_sqrd = NULL, *qr = NULL, *qnr = NULL;
 	HMAC_CTX *ctx = NULL;
-	uint8_t pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, ctr;
+	uint8_t pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, *pm1buf = NULL, ctr;
 	int nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
-        int save, i, rbits, qr_or_qnr, save_is_odd = 0;
+        int save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
+        unsigned int skip;
 
 	ctx = HMAC_CTX_new();
 	if (ctx == NULL) {
@@ -338,6 +339,10 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		DEBUG("unable to alloc space for x buffer");
 		goto fail;
         }
+        if ((pm1buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+		DEBUG("unable to alloc space for pm1 buffer");
+		goto fail;
+        }
 
         /*
          * derive random quadradic residue and quadratic non-residue
@@ -348,6 +353,11 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
         do {
             BN_rand_range(qnr, session->prime);
         } while (legendre(qnr, session->prime, bnctx) != -1);
+
+        if (!BN_sub(rnd, session->prime, BN_value_one())) {
+            goto fail;
+        }
+        BN_bn2bin(rnd, pm1buf);
 
         save_is_odd = 0;
         found = 0;
@@ -388,8 +398,15 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
                     prfbuf[0] >>= rbits;
                 }
 		BN_bin2bn(prfbuf, primebytelen, x_candidate);
-		if (BN_ucmp(x_candidate, session->prime) >= 0) continue;
 
+                /*
+                 * it would've been better if the spec reduced the candidate
+                 * modulo the prime but it didn't. So if the candidate >= prime
+                 * we need to skip it but still run through the operations below
+                 */
+                cmp = const_time_memcmp(pm1buf, prfbuf, primebytelen);
+                skip = const_time_fill_msb((unsigned int)cmp);
+                
                 /*
                  * need to unambiguously identify the solution, if there is
                  * one..
@@ -404,6 +421,11 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
                  */
                 do_equation(session->group, y_sqrd, x_candidate, bnctx);
                 qr_or_qnr = is_quadratic_residue(y_sqrd, session->prime, qr, qnr, bnctx);
+
+                /*
+                 * if the candidate >= prime then we want to skip it
+                 */
+                qr_or_qnr = const_time_select(skip, 0, qr_or_qnr);
 
                 /*
                  * if we haven't found PWE yet (found = 0) then mask will be true,
@@ -449,8 +471,9 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
         BN_clear_free(qr);
         BN_clear_free(qnr);
 	BN_clear_free(rnd);
-	talloc_free(prfbuf);
+	if (prfbuf) talloc_free(prfbuf);
         if (xbuf) talloc_free(xbuf);
+        if (pm1buf) talloc_free(pm1buf);
 	HMAC_CTX_free(ctx);
 
 	return ret;
