@@ -8,6 +8,7 @@ if (condition) {
 }
 ----
 
+.Description
 The `if` statement evaluates a link:condition.adoc[condition].  When the
 _condition_ evaluates to `true`, the statements within the subsection
 are executed.  When the _condition_ evaluates to `false`, those
