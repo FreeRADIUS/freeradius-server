@@ -1156,7 +1156,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 							 *	by modules.c, so we can't enforce strictness here.
 							 */
 							c->pass2_fixup = PASS2_FIXUP_TYPE;
-
 						} else {
 							return_rhs("Failed to parse value for attribute");
 						}
@@ -1372,6 +1371,8 @@ done:
 	 *	run-time evaluation has fewer cases to check.
 	 */
 	if (c->type == COND_TYPE_MAP) do {
+		VERIFY_MAP(c->data.map);
+
 		/*
 		 *	!FOO !~ BAR --> FOO =~ BAR
 		 */
@@ -1553,6 +1554,8 @@ done:
 	 *	"foo" is NOT the same as 'foo' or a bare foo.
 	 */
 	if (c->type == COND_TYPE_EXISTS) {
+		VERIFY_TMPL(c->data.vpt);
+
 		switch (c->data.vpt->type) {
 		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_ATTR:
