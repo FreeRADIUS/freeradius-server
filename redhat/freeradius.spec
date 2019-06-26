@@ -528,7 +528,6 @@ for f in COPYRIGHT CREDITS INSTALL.md README.md; do
     cp $f $RPM_BUILD_ROOT/%{docdir}
 done
 cp LICENSE $RPM_BUILD_ROOT/%{docdir}/LICENSE.gpl
-cp src/lib/util/LICENSE $RPM_BUILD_ROOT/%{docdir}/LICENSE.lgpl
 cp src/LICENSE.openssl $RPM_BUILD_ROOT/%{docdir}/LICENSE.openssl
 
 # add Red Hat specific documentation
