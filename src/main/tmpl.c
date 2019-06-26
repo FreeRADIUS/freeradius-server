@@ -1099,7 +1099,10 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 		 */
 		ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type,
 					  enumv, vpt->name, vpt->len, '\0');
-		if (ret < 0) return -1;
+		if (ret < 0) {
+			VERIFY_TMPL(vpt);
+			return -1;
+		}
 
 		vpt->type = TMPL_TYPE_DATA;
 		vpt->tmpl_data_length = (size_t) ret;
