@@ -23,6 +23,10 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Fix request and connection timeouts in rlm_rest.
 	* Fix systemd issues.  Patches from Daniele Rondina.
 	* Fixes from clang analyzer.
+	* Fix missing include for the dictionaries: alcatel.esam,
+	  altiga,alvarion.wimax.v2_2,aptis,asn,audiocodes,avaya,bristol,
+	  columbia_university,freedhcp,garderos,infoblox,motorola.illegal,
+	  starent.vsa1, telkom, wimax.wichorus.
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
