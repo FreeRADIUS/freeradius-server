@@ -295,6 +295,7 @@ $INCLUDE dictionary.telkom
 $INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.travelping
+$INCLUDE dictionary.tripplite
 $INCLUDE dictionary.tropos
 $INCLUDE dictionary.ukerna
 $INCLUDE dictionary.unix
