@@ -260,7 +260,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	rlm_sql_postgres_conn_t	*conn = handle->conn;
 	rlm_sql_postgres_t	*inst = config->driver;
 	struct timeval		timeout = {config->query_timeout, 0};
-	int			sockfd;
+	int			sockfd, r;
 	fd_set			read_fd;
 	PGresult		*tmp_result;
 	int			numfields = 0;
@@ -289,8 +289,14 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	while (PQisBusy(conn->db)) {
 		FD_ZERO(&read_fd);
 		FD_SET(sockfd, &read_fd);
-		if (!select(sockfd + 1, &read_fd, NULL, NULL, config->query_timeout ? &timeout : NULL)) {
+		r = select(sockfd + 1, &read_fd, NULL, NULL, config->query_timeout ? &timeout : NULL);
+		if (r == 0) {
 			ERROR("Socket read timeout after %d seconds", config->query_timeout);
+			return RLM_SQL_RECONNECT;
+		}
+		if (r < 0) {
+			if (errno == EINTR) continue;
+			ERROR("Failed in select: %s", fr_syserror(errno));
 			return RLM_SQL_RECONNECT;
 		}
 		if (!PQconsumeInput(conn->db)) {
