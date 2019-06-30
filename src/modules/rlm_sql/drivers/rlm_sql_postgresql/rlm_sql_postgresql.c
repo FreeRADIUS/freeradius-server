@@ -566,6 +566,10 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 			db_string = talloc_asprintf_append(db_string, " password='%s'", config->sql_password);
 		}
 
+		if (config->query_timeout) {
+			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", config->query_timeout);
+		}
+
 		if (inst->send_application_name) {
 			db_string = talloc_asprintf_append(db_string, " application_name='%s'", application_name);
 		}
@@ -592,6 +596,10 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 
 		if ((config->sql_password[0] != '\0') && !strstr(db_string, "password=")) {
 			db_string = talloc_asprintf_append(db_string, " password='%s'", config->sql_password);
+		}
+
+		if ((config->query_timeout) && !strstr(db_string, "connect_timeout=")) {
+			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", config->query_timeout);
 		}
 
 		if (inst->send_application_name && !strstr(db_string, "application_name=")) {
