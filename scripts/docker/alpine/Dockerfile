@@ -69,7 +69,7 @@ RUN apk update \
     && apk add libcurl json-c libldap hiredis sqlite-dev \
 #RUN apk add libidn krb5
 #RUN apk add unbound-libs
-#RUN apk add ruby-libs perl python2
+#RUN apk add ruby-libs perl python2-dev
 #RUN apk add libmemcached gdbm libcouchbase
 #RUN apk add postgresql-dev mariadb-dev unixodbc-dev
     \
