@@ -153,6 +153,7 @@ static CONF_PARSER group_config[] = {
 	{ "cacheable_name", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, cacheable_group_name), "no" },
 	{ "cacheable_dn", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, cacheable_group_dn), "no" },
 	{ "cache_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, cache_attribute), NULL },
+	{ "allow_dangling_group_ref", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, allow_dangling_group_refs), "no" },
 	CONF_PARSER_TERMINATOR
 };
 

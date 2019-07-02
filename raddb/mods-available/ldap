@@ -331,6 +331,14 @@ ldap {
 		#  custom attribute.  This can help if multiple module instances
 		#  are used in fail-over.
 #		cache_attribute = 'LDAP-Cached-Membership'
+
+		#  If the group being checked is specified as a name, but
+		#  the user's groups are referenced by DN, and one of those
+		#  group DNs is invalid, the whole group check is treated as
+		#  invalid, and a negative result will be returned.
+		#  When set to 'yes', this option ignores invalid DN
+		#  references.
+#		allow_dangling_group_ref = 'no'
 	}
 
 	#

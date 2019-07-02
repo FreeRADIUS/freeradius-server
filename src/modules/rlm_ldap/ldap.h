@@ -206,6 +206,10 @@ typedef struct ldap_instance {
 	DICT_ATTR const	*group_da;			//!< The DA associated with this specific instance of the
 							//!< rlm_ldap module.
 
+	bool		allow_dangling_group_refs;	//!< Don't error if we fail to resolve a group DN referenced
+							///< from a user object.
+
+
 	/*
 	 *	Dynamic clients
 	 */
