@@ -224,7 +224,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(rlm_ldap_t const *inst, REQUEST *reque
 
 	case LDAP_PROC_NO_RESULT:
 		REDEBUG("Group DN \"%s\" did not resolve to an object", dn);
-		return RLM_MODULE_NOOP;
+		return inst->allow_dangling_group_refs ? RLM_MODULE_NOOP : RLM_MODULE_INVALID;
 
 	default:
 		return RLM_MODULE_FAIL;
