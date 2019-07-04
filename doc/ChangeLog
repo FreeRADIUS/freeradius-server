@@ -15,6 +15,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Added tripplite dictionary. #2760
 	* Switch to the async interface for rlm_sql_postgresql so that
 	  we can eforce query_timeout.
+	* Added new LDAP option 'allow_dangling_group_ref'.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host #2627
