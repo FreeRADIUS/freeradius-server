@@ -1953,8 +1953,8 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	 *	FIXME: We may also want to put the names into a
 	 *	rbtree, so that groups can reference each other...
 	 */
-	c->name = unlang_ops[c->type].name;
-	c->debug_name = c->name;
+	c->name = talloc_typed_strdup(c, unlang_ops[c->type].name);
+	c->debug_name = talloc_typed_strdup(c, c->name);
 
 	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
@@ -3437,17 +3437,44 @@ fail:
 	return NULL;
 }
 
+/** Set an unlang group name from a section
+ *
+ * This is to improve debug readability
+ *
+ * @param[in] group	to set name for.
+ * @param[in] cs	to derive name from.
+ */
+static inline void unlang_group_name_from_cs(unlang_group_t *group, CONF_SECTION *cs)
+{
+	char const *name1, *name2;
+
+	/*
+	 *	Clear out existing name values
+	 */
+	talloc_const_free(group->self.name);
+	talloc_const_free(group->self.debug_name);
+
+	name1 = cf_section_name1(cs);
+	name2 = cf_section_name2(cs);
+	group->self.name = name1;
+
+	if (!name2) {
+		MEM(group->self.debug_name = talloc_typed_strdup(group, name1));
+	} else {
+		MEM(group->self.debug_name = talloc_typed_asprintf(group, "%s %s", name1, name2));
+	}
+}
+
 int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules)
 {
-	char const		*name1, *name2;
 	unlang_t		*c;
-	unlang_compile_t	unlang_ctx;
 	vp_tmpl_rules_t		my_rules;
 
-	unlang_ctx.component = component;
-	unlang_ctx.section_name1 = cf_section_name1(cs);
-	unlang_ctx.section_name2 = cf_section_name2(cs);
-	unlang_ctx.actions = &defaultactions[component];
+	/*
+	 *	Don't compile it twice, and don't print out debug
+	 *	messages twice.
+	 */
+	if (cf_data_find(cs, unlang_group_t, NULL) != NULL) return 1;
 
 	/*
 	 *	Ensure that all compile functions get valid rules.
@@ -3456,24 +3483,20 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 		memset(&my_rules, 0, sizeof(my_rules));
 		rules = &my_rules;
 	}
-	unlang_ctx.rules = rules;
 
-	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
+	c = compile_group(NULL,
+			  &(unlang_compile_t){
+			  	.component = component,
+			  	.section_name1 = cf_section_name1(cs),
+			  	.section_name2 = cf_section_name2(cs),
+			  	.actions = &defaultactions[component],
+				.rules = rules
+			  },
+			  cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
 	if (!c) return -1;
 
-	/*
-	 *	The name / debug name are set to "group".  We want
-	 *	that to be a little more informative.
-	 */
-	name1 = cf_section_name1(cs);
-	name2 = cf_section_name2(cs);
-	c->name = name1;
+	unlang_group_name_from_cs(unlang_generic_to_group(c), cs);
 
-	if (!name2) {
-		c->debug_name = name1;
-	} else {
-		c->debug_name = talloc_typed_asprintf(c, "%s %s", name1, name2);
-	}
 
 	if (DEBUG_ENABLED4) unlang_dump(c, 2);
 
@@ -3488,26 +3511,19 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 
 /** Compile a named subsection
  *
- * @param server_cs the server CONF_SECTION
- * @param cs	the subsection to compile
- * @param component the component to compile
- * @param rules the rules to follow
+ * @param[in] cs		the subsection to compile
+ * @param[in] component 	The default method to call when compiling module calls.
+ * @param[in] rules		For resolving attribute references.
  * @return
  *	- <0 on error
  *	- 0 on section was not found
  *	- 1 on successfully compiled
  *
  */
-int unlang_compile_subsection(UNUSED CONF_SECTION *server_cs, CONF_SECTION *cs, rlm_components_t component,
+int unlang_compile_subsection(CONF_SECTION *cs, rlm_components_t component,
 			      vp_tmpl_rules_t const *rules)
 {
 	char const *name1, *name2;
-
-	/*
-	 *	Don't compile it twice, and don't print out debug
-	 *	messages twice.
-	 */
-	if (cf_data_find(cs, unlang_group_t, NULL) != NULL) return 1;
 
 	name1 = cf_section_name1(cs);
 	name2 = cf_section_name2(cs);
