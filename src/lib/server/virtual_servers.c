@@ -863,7 +863,7 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 
 	server_cs = virtual_server_find(virtual_server);
 	if (!server_cs) {
-		if (ci) cf_log_err(ci, "Can't find virtual server");
+		if (ci) cf_log_err(ci, "Can't find virtual server \"%s\"", virtual_server);
 		return -1;
 	}
 	dict = virtual_server_namespace(virtual_server);
@@ -871,15 +871,15 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 		/*
 		 *	Not sure this is even a valid state?
 		 */
-		if (ci) cf_log_err(ci, "No namespace found in virtual server");
+		if (ci) cf_log_err(ci, "No namespace found in virtual server \"%s\"", virtual_server);
 		return -2;
 	}
 
 	if (dict != namespace) {
 		if (ci) {
 			cf_log_err(ci,
-				   "Expected virtual server of namespace \"%s\", got namespace \"%s\"",
-				   fr_dict_root(namespace)->name, fr_dict_root(dict)->name);
+				   "Expected virtual server \"%s\" to be of namespace \"%s\", got namespace \"%s\"",
+				   virtual_server, fr_dict_root(namespace)->name, fr_dict_root(dict)->name);
 		}
 		return -2;
 	}
