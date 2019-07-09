@@ -655,7 +655,6 @@ ACLOCAL
 RUSERS
 SNMPWALK
 SNMPGET
-PERL
 modconfdir
 dictdir
 raddbdir
@@ -693,6 +692,7 @@ build_os
 build_vendor
 build_cpu
 build
+PERL
 PANDOC_ENGINE
 PANDOC
 ASCIIDOCTOR
@@ -2507,6 +2507,62 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 #
 
 
+# ===========================================================================
+#   https://www.gnu.org/software/autoconf-archive/ax_prog_perl_modules.html
+# ===========================================================================
+#
+# SYNOPSIS
+#
+#   AX_PROG_PERL_MODULES([MODULES], [ACTION-IF-TRUE], [ACTION-IF-FALSE])
+#
+# DESCRIPTION
+#
+#   Checks to see if the given perl modules are available. If true the shell
+#   commands in ACTION-IF-TRUE are executed. If not the shell commands in
+#   ACTION-IF-FALSE are run. Note if $PERL is not set (for example by
+#   calling AC_CHECK_PROG, or AC_PATH_PROG), AC_CHECK_PROG(PERL, perl, perl)
+#   will be run.
+#
+#   MODULES is a space separated list of module names. To check for a
+#   minimum version of a module, append the version number to the module
+#   name, separated by an equals sign.
+#
+#   Example:
+#
+#     AX_PROG_PERL_MODULES( Text::Wrap Net::LDAP=1.0.3, ,
+#                           AC_MSG_WARN(Need some Perl modules)
+#
+# LICENSE
+#
+#   Copyright (c) 2009 Dean Povey <povey@wedgetail.com>
+#
+#   Copying and distribution of this file, with or without modification, are
+#   permitted in any medium without royalty provided the copyright notice
+#   and this notice are preserved. This file is offered as-is, without any
+#   warranty.
+
+#serial 8
+
+# This is what autoupdate's m4 run will expand.  It fires
+# the warning (with _au_warn_XXX), outputs it into the
+# updated configure.ac (with AC_DIAGNOSE), and then outputs
+# the replacement expansion.
+
+
+# This is an auxiliary macro that is also run when
+# autoupdate runs m4.  It simply calls m4_warning, but
+# we need a wrapper so that each warning is emitted only
+# once.  We break the quoting in m4_warning's argument in
+# order to expand this macro's arguments, not AU_DEFUN's.
+
+
+# Finally, this is the expansion that is picked up by
+# autoconf.  It tells the user to run autoupdate, and
+# then outputs the replacement expansion.  We do not care
+# about autoupdate's warning because that contains
+# information on what to do *after* running autoupdate.
+
+
 
 
 RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
@@ -2626,7 +2682,7 @@ if test "x$ac_cv_path_ASCIIDOCTOR" = "x"; then
 $as_echo "$as_me: WARNING: asciidoctor not found - Please install if you want build the docs" >&2;}
 fi
 
- # Extract the first word of "pandoc", so it can be a program name with args.
+# Extract the first word of "pandoc", so it can be a program name with args.
 set dummy pandoc; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -2681,6 +2737,88 @@ else
 
 fi
 
+# pandoc and asciidoctor is defined? then check it.
+if test "x$ac_cv_path_PANDOC" != "x" && test "x$ac_cv_path_ASCIIDOCTOR" != "x"; then
+
+
+
+
+
+
+# Make sure we have perl
+if test -z "$PERL"; then
+# Extract the first word of "perl", so it can be a program name with args.
+set dummy perl; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_PERL+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$PERL"; then
+  ac_cv_prog_PERL="$PERL" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_PERL="perl"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+PERL=$ac_cv_prog_PERL
+if test -n "$PERL"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PERL" >&5
+$as_echo "$PERL" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+fi
+
+if test "x$PERL" != x; then
+  ax_perl_modules_failed=0
+  for ax_perl_module in 'JSON' ; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for perl module $ax_perl_module" >&5
+$as_echo_n "checking for perl module $ax_perl_module... " >&6; }
+
+    # Would be nice to log result here, but can't rely on autoconf internals
+    $PERL -e "use $ax_perl_module; exit" > /dev/null 2>&1
+    if test $? -ne 0; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; };
+      ax_perl_modules_failed=1
+   else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: ok" >&5
+$as_echo "ok" >&6; };
+    fi
+  done
+
+  # Run optional shell commands
+  if test "$ax_perl_modules_failed" = 0; then
+    :
+
+  else
+    :
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Perl JSON module not found - Please install if you want build the docs" >&5
+$as_echo "$as_me: WARNING: Perl JSON module not found - Please install if you want build the docs" >&2;}
+  fi
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: could not find perl" >&5
+$as_echo "$as_me: WARNING: could not find perl" >&2;}
+fi
+fi
+
 # Check whether --enable-developer was given.
 if test "${enable_developer+set}" = set; then :
   enableval=$enable_developer;  case "$enableval" in
@@ -2716,7 +2854,6 @@ $as_echo "$RADIUSD_VERSION_COMMIT" >&6; }
 $as_echo "$as_me: in git repository, enabling developer build implicitly, disable with --disable-developer" >&6;}
     developer="yes"
   fi
-
 fi
 
 if test "x$RADIUSD_VERSION_RELEASE" != "x"; then

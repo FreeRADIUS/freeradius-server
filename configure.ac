@@ -29,6 +29,7 @@ AC_CONFIG_HEADER([src/include/autoconf.h])
 m4_include([m4/ax_cc.m4])
 m4_include([m4/ax_with_lib_args.m4])
 m4_include([m4/ax_with_feature_args.m4])
+m4_include([m4/ax_prog_perl_modules.m4])
 
 dnl #############################################################
 dnl #
@@ -83,14 +84,14 @@ dnl #
 AC_CHECK_PROG(GIT, git, yes, no)
 
 dnl #
-dnl # check for ASCIIDOCTOR and pandoc
+dnl # check for JSON.pm, ASCIIDOCTOR and pandoc
 dnl #
 AC_PATH_PROG(ASCIIDOCTOR, asciidoctor)
 if test "x$ac_cv_path_ASCIIDOCTOR" = "x"; then
   AC_MSG_WARN([asciidoctor not found - Please install if you want build the docs])
 fi
 
- AC_PATH_PROG(PANDOC, pandoc)
+AC_PATH_PROG(PANDOC, pandoc)
 if test "x$ac_cv_path_PANDOC" = "x"; then
   AC_MSG_WARN([pandoc not found - Please install if you want build the docs])
 else
@@ -103,6 +104,11 @@ else
     PANDOC_ENGINE=pdf
   fi
   AC_SUBST(PANDOC_ENGINE)
+fi
+
+# pandoc and asciidoctor is defined? then check it.
+if test "x$ac_cv_path_PANDOC" != "x" && test "x$ac_cv_path_ASCIIDOCTOR" != "x"; then
+  AX_PROG_PERL_MODULES(JSON, , AC_MSG_WARN([Perl JSON module not found - Please install if you want build the docs]))
 fi
 
 dnl #
@@ -141,7 +147,6 @@ if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
     AC_MSG_NOTICE([in git repository, enabling developer build implicitly, disable with --disable-developer])
     developer="yes"
   fi
-
 fi
 
 if test "x$RADIUSD_VERSION_RELEASE" != "x"; then
