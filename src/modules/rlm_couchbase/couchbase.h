@@ -26,7 +26,12 @@
  */
 RCSIDH(couchbase_h, "$Id$")
 
+DIAG_OFF(error)
+DIAG_OFF(documentation)
 #include <libcouchbase/couchbase.h>
+DIAG_ON(error)
+DIAG_ON(documentation)
+
 #include <freeradius-devel/json/base.h>
 
 /** Information relating to the parsing of Couchbase document payloads

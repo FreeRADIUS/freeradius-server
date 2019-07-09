@@ -30,7 +30,12 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/log.h>
 #include <fcntl.h>
+
+DIAG_OFF(error)
+DIAG_OFF(documentation)
 #include <unbound.h>
+DIAG_ON(error)
+DIAG_ON(documentation)
 
 typedef struct {
 	struct ub_ctx	*ub;   /* This must come first.  Do not move */

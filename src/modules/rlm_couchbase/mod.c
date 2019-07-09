@@ -31,8 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map.h>
 
-#include <libcouchbase/couchbase.h>
-
 #include "mod.h"
 #include "couchbase.h"
 
