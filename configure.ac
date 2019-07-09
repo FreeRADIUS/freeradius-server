@@ -1625,7 +1625,7 @@ if test "x$developer" = "xyes"; then
   dnl #
   AX_CC_WEVERYTHING_FLAG
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devcflags="$devflags \
+    devcflags="$devcflags \
 	-W \
 	-Weverything \
 	-Wformat=2 \
@@ -1649,7 +1649,7 @@ if test "x$developer" = "xyes"; then
     	-Wno-format-pedantic"
   else
     if test "x$GCC" = "xyes"; then
-      devcflags="$devflags \
+      devcflags="$devcflags \
       	-Wshadow \
       	-Wpointer-arith \
       	-Wcast-qual \
