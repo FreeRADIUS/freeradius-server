@@ -1,33 +1,38 @@
 #
-#  Check if we can build the documentation.
-#
-#  We try to build it, but turn off the build unless
-#  all of the prerequisites have been found.
-#
-WITH_DOCS=yes
-
-ifeq "$(ASCIIDOCTOR)" ""
-WITH_DOCS=no
-endif
-
-ifeq "$(PANDOC)" ""
-WITH_DOCS=no
-endif
-
-ifeq "$(docdir)" "no"
-WITH_DOCS=no
-endif
-
-ifeq "$(WITH_DOCS)" "yes"
-
+#  Check if we should build the documentation.
 #
 #  Running "shell" is expensive on OSX.  Building the documentation
 #  requires running a bunch of shell commands, because we're too lazy
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
+WITH_DOC := $(strip $(foreach x,doc html pdf adoc install.doc clean,$(findstring $(x),$(MAKECMDGOALS))))
+ifneq "$(WITH_DOC)" ""
+
+#
+#  We're building a documentation target, but there's no "asciidoc".
+#
+ifeq "$(ASCIIDOCTOR)" ""
+$(error asciidoc is required to build the documentation)
+endif
+
+#
+#  We're building a documentation target, but there's no "pandoc".
+#
+ifeq "$(PANDOC)" ""
+$(error pandoc is required to build the documentation)
+endif
+
+#
+#  We're installing the documentation, but there's no "docdir".
+#
+ifeq "$(docdir)" "no"
+ifneq "$(findstring install,$(WITH_DOC))" ""
+$(error 'docdir' is required to do 'make install')
+endif
+endif
+
 BUILD_DOC := $(strip $(foreach x,doc html pdf adoc install.doc clean,$(findstring $(x),$(MAKECMDGOALS))))
-ifneq "$(BUILD_DOC)" ""
 
 install: install.doc
 
@@ -117,5 +122,4 @@ doc/%.pdf: doc/%.md
 asciidoc: $(ADOC_FILES)
 html: $(HTML_FILES)
 pdf: $(PDF_FILES)
-endif
 endif
