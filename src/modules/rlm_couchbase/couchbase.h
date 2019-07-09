@@ -26,11 +26,13 @@
  */
 RCSIDH(couchbase_h, "$Id$")
 
-DIAG_OFF(error)
+#ifdef HAVE_WDOCUMENTATION
 DIAG_OFF(documentation)
+#endif
 #include <libcouchbase/couchbase.h>
-DIAG_ON(error)
+#ifdef HAVE_WDOCUMENTATION
 DIAG_ON(documentation)
+#endif
 
 #include <freeradius-devel/json/base.h>
 
