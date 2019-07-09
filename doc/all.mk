@@ -42,9 +42,10 @@ clean: clean.doc
 #  Our "conf to asciidoc" stuff.
 #
 CONF_FILES := $(filter-out %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
-ADOC_FILES := $(patsubst raddb/%,doc/raddb/%.adoc,$(CONF_FILES))
-ADOC_FILES += $(patsubst raddb/%.md,doc/raddb/%.adoc,$(shell find raddb -name "*\.md" -print))
-ADOC_FILES += $(wildcard doc/unlang/*.adoc)
+BASE_ADOC_FILES := $(wildcard doc/unlang/*.adoc)
+AUTO_ADOC_FILES := $(patsubst raddb/%,doc/raddb/%.adoc,$(CONF_FILES))
+AUTO_ADOC_FILES += $(patsubst raddb/%.md,doc/raddb/%.adoc,$(shell find raddb -name "*\.md" -print))
+ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
 HTML_FILES := $(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES))
 
@@ -76,7 +77,7 @@ install.doc: $(addprefix $(R)/$(docdir)/,$(ALL_DOC_FILES))
 
 .PHONY: clean.doc
 clean.doc:
-	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(ADOC_FILES) $(HTML_FILES) $(PDF_FILES)
+	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(AUTO_ADOC_FILES) $(HTML_FILES) $(PDF_FILES)
 
 #
 #  Markdown files get converted to asciidoc via pandoc.
