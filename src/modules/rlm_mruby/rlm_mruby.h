@@ -22,8 +22,9 @@
  * @copyright 2016 The FreeRADIUS server project
  */
 
-DIAG_OFF(error)
+#ifdef HAVE_WDOCUMENTATION
 DIAG_OFF(documentation)
+#endif
 #include <mruby.h>
 #include <mruby/compile.h>
 #include <mruby/array.h>
@@ -31,7 +32,8 @@ DIAG_OFF(documentation)
 #include <mruby/numeric.h>
 #include <mruby/string.h>
 #include <mruby/variable.h>
-DIAG_ON(error)
+#ifdef HAVE_WDOCUMENTATION
 DIAG_ON(documentation)
+#endif
 
 struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent);

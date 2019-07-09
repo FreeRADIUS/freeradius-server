@@ -1617,6 +1617,7 @@ if test "x$developer" = "xyes"; then
   AX_CC_WDOCUMENTATION_FLAG
   if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
     devcflags="-Wdocumentation"
+    AC_DEFINE([HAVE_WDOCUMENTATION],1,[Define if the compiler supports -Wdocumentation])
   fi
 
   dnl #

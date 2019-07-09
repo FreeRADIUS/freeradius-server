@@ -31,11 +31,13 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <fcntl.h>
 
-DIAG_OFF(error)
+#ifdef HAVE_WDOCUMENTATION
 DIAG_OFF(documentation)
+#endif
 #include <unbound.h>
-DIAG_ON(error)
+#ifdef HAVE_WDOCUMENTATION
 DIAG_ON(documentation)
+#endif
 
 typedef struct {
 	struct ub_ctx	*ub;   /* This must come first.  Do not move */
