@@ -26,7 +26,7 @@ ifeq "$(WITH_DOCS)" "yes"
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
-BUILD_DOC := $(strip $(foreach x,doc html pdf adoc install clean,$(findstring $(x),$(MAKECMDGOALS))))
+BUILD_DOC := $(strip $(foreach x,doc html pdf adoc install.doc clean,$(findstring $(x),$(MAKECMDGOALS))))
 ifneq "$(BUILD_DOC)" ""
 
 install: install.doc
