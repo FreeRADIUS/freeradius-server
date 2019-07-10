@@ -541,7 +541,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	rlm_couchbase_handle_t *handle = NULL; /* connection pool handle */
 	char vpath[256], vid[MAX_KEY_SIZE], vkey[MAX_KEY_SIZE];  /* view path and fields */
 	char error[512];                                         /* view error return */
-	int idx = 0;                                             /* row array index counter */
+	size_t idx = 0;                                          /* row array index counter */
 	int retval = 0;                                          /* return value */
 	lcb_error_t cb_error = LCB_SUCCESS;                      /* couchbase error holder */
 	json_object *json, *jval;                                /* json object holders */
@@ -632,7 +632,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	}
 
 	/* loop across all row elements */
-	for (idx = 0; idx < json_object_array_length(jrows); idx++) {
+	for (idx = 0; idx < (size_t)json_object_array_length(jrows); idx++) {
 		/* fetch current index */
 		json = json_object_array_get_idx(jrows, idx);
 

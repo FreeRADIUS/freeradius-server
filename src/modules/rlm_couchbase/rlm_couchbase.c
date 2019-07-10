@@ -457,7 +457,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	char vpath[256], vkey[MAX_KEY_SIZE];   /* view path and query key */
 	char docid[MAX_KEY_SIZE];              /* document id returned from view */
 	char error[512];                       /* view error return */
-	int idx = 0;                           /* row array index counter */
+	size_t idx = 0;                        /* row array index counter */
 	char element[MAX_KEY_SIZE];            /* mapped radius attribute to element name */
 	lcb_error_t cb_error = LCB_SUCCESS;    /* couchbase error holder */
 	json_object *json, *jval;              /* json object holders */
@@ -615,7 +615,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	}
 
 	/* loop across all row elements */
-	for (idx = 0; idx < json_object_array_length(jrows); idx++) {
+	for (idx = 0; idx < (size_t)json_object_array_length(jrows); idx++) {
 		/* clear docid */
 		memset(docid, 0, sizeof(docid));
 
