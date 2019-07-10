@@ -301,7 +301,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	/* User name length + username */
 	uiLen = (uint32_t)(shortUserName ? strlen(shortUserName) : 0);
 
-	RDEBUG2("OD username_string = %s, OD shortUserName=%s (length = %lu)\n",
+	RDEBUG2("OD username_string = %s, OD shortUserName=%s (length = %d)\n",
 				username_string, shortUserName, uiLen);
 
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
