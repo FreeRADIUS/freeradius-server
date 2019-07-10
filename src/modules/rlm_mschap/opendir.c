@@ -298,10 +298,12 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	pAuthType = dsDataNodeAllocateString(dsRef, kDSStdAuthMSCHAP2);
 	uiCurr = 0;
 
-	RDEBUG2("OD username_string = %s, OD shortUserName=%s (length = %lu)\n", username_string, shortUserName, strlen(shortUserName));
-
 	/* User name length + username */
-	uiLen = (uint32_t)strlen(shortUserName);
+	uiLen = (uint32_t)(shortUserName ? strlen(shortUserName) : 0);
+
+	RDEBUG2("OD username_string = %s, OD shortUserName=%s (length = %lu)\n",
+				username_string, shortUserName, uiLen);
+
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
 	uiCurr += sizeof(uiLen);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), shortUserName, uiLen);
