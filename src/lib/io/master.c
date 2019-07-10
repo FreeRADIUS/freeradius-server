@@ -971,6 +971,21 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 
 
 /*
+ *	Order clients in the alive_clients heap, based on their IP
+ *	address.
+ *
+ *	This function is only used for the "main" socket.  Clients
+ *	from connections do not use it.
+ */
+static int alive_client_cmp(void const *one, void const *two)
+{
+	fr_io_client_t const *a = one;
+	fr_io_client_t const *b = two;
+
+	return fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
+}
+
+/*
  *	Remove a client from the list of "live" clients.
  *
  *	This function is only used for the "main" socket.  Clients
@@ -2753,7 +2768,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 *	Create the trie of clients for this socket.
 	 */
 	MEM(thread->trie = fr_trie_alloc(thread));
-	MEM(thread->alive_clients = fr_heap_create(thread, pending_client_cmp,
+	MEM(thread->alive_clients = fr_heap_create(thread, alive_client_cmp,
 						   fr_io_client_t, alive_id));
 
 	/*
