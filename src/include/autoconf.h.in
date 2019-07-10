@@ -561,6 +561,9 @@
 /* Define to 1 if you have the `vsnprintf' function. */
 #undef HAVE_VSNPRINTF
 
+/* Define if the compiler supports -Wdocumentation */
+#undef HAVE_WDOCUMENTATION
+
 /* Define to 1 if you have the <winsock.h> header file. */
 #undef HAVE_WINSOCK_H
 

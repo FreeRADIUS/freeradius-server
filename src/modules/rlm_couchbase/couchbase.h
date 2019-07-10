@@ -29,7 +29,13 @@
 
 RCSIDH(couchbase_h, "$Id$")
 
+#ifdef HAVE_WDOCUMENTATION
+DIAG_OFF(documentation)
+#endif
 #include <libcouchbase/couchbase.h>
+#ifdef HAVE_WDOCUMENTATION
+DIAG_ON(documentation)
+#endif
 
 #include "jsonc_missing.h"
 

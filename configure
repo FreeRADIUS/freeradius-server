@@ -11204,6 +11204,9 @@ $as_echo "$ax_cv_cc_wdocumentation_flag" >&6; }
 
   if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
     devflags="-Wdocumentation"
+
+$as_echo "#define HAVE_WDOCUMENTATION 1" >>confdefs.h
+
   fi
 
 
