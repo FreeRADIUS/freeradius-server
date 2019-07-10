@@ -28,7 +28,14 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/log.h>
 #include <fcntl.h>
+
+#ifdef HAVE_WDOCUMENTATION
+DIAG_OFF(documentation)
+#endif
 #include <unbound.h>
+#ifdef HAVE_WDOCUMENTATION
+DIAG_ON(documentation)
+#endif
 
 typedef struct rlm_unbound_t {
 	struct ub_ctx	*ub;   /* This must come first.  Do not move */
