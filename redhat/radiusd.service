@@ -34,7 +34,10 @@ RestartSec=5
 NoNewPrivileges=true
 
 # Allow binding to secure ports, broadcast addresses, and raw interfaces.
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW
+#
+# This list of capabilities may not be exhaustive, and needs
+# further testing. Please uncomment, test, and report any issues.
+#CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SETUID CAP_SETGID CAP_CHOWN CAP_DAC_OVERRIDE
 
 # Private /tmp that isn't shared by other processes
 PrivateTmp=true
