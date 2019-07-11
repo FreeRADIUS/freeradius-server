@@ -28,7 +28,9 @@ RCSIDH(jsonc_missing_h, "$Id$")
 #include "config.h"
 #ifdef HAVE_JSON
 #  if defined(HAVE_JSONMC_JSON_H)
+DIAG_OFF(documentation)
 #    include <json-c/json.h>
+DIAG_ON(documentation)
 #  elif defined(HAVE_JSON_JSON_H)
 #    include <json/json.h>
 #  else
