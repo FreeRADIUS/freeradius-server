@@ -54,8 +54,10 @@ typedef struct {
 	pcre2_general_context	*gcontext;	//!< General context.
 	pcre2_compile_context	*ccontext;	//!< Compile context.
 	pcre2_match_context	*mcontext;	//!< Match context.
+#ifdef PCRE2_CONFIG_JIT
 	pcre2_jit_stack		*jit_stack;	//!< Jit stack for executing jit'd patterns.
 	bool			do_jit;		//!< Whether we have runtime JIT support.
+#endif
 } fr_pcre2_tls_t;
 
 /** Thread local storage for pcre2
@@ -92,7 +94,9 @@ static int _pcre2_tls_free(fr_pcre2_tls_t *tls)
 	if (tls->gcontext) pcre2_general_context_free(tls->gcontext);
 	if (tls->ccontext) pcre2_compile_context_free(tls->ccontext);
 	if (tls->mcontext) pcre2_match_context_free(tls->mcontext);
+#ifdef PCRE2_CONFIG_JIT
 	if (tls->jit_stack) pcre2_jit_stack_free(tls->jit_stack);
+#endif
 
 	return 0;
 }
@@ -136,6 +140,7 @@ static int fr_pcre2_tls_init(void)
 		goto error;
 	}
 
+#ifdef PCRE2_CONFIG_JIT
 	pcre2_config(PCRE2_CONFIG_JIT, &tls->do_jit);
 	if (tls->do_jit) {
 		tls->jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, tls->gcontext);
@@ -145,6 +150,7 @@ static int fr_pcre2_tls_init(void)
 		}
 		pcre2_jit_stack_assign(tls->mcontext, NULL, tls->jit_stack);
 	}
+#endif
 
 	/*
 	 *	Free on thread exit
@@ -181,9 +187,9 @@ static int _regex_free(regex_t *preg)
  * @param[in] flags		controlling matching. May be NULL.
  * @param[in] subcaptures	Whether to compile the regular expression to store subcapture
  *				data.
- * @param[in] runtime		If false run the pattern through the PCRE JIT to convert it
- *				to machine code. This trades startup time (longer) for
- *				runtime performance (better).
+ * @param[in] runtime		If false run the pattern through the PCRE JIT (if available)
+ *				to convert it to machine code. This trades startup time (longer)
+ *				for runtime performance (better).
  * @return
  *	- >= 1 on success.
  *	- <= 0 on error. Negative value is offset of parse error.
@@ -243,6 +249,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	if (!runtime) {
 		preg->precompiled = true;
 
+#ifdef PCRE2_CONFIG_JIT
 		/*
 		 *	This is expensive, so only do it for
 		 *	expressions that are going to be
@@ -261,6 +268,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 			}
 			preg->jitd = true;
 		}
+#endif
 	}
 
 	*out = preg;
@@ -298,7 +306,9 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		 *	This is apparently only supported for pcre2_match
 		 *	NOT pcre2_jit_match.
 		 */
+#  ifdef PCRE2_CONFIG_JIT
 		if (!preg->jitd) {
+#  endif
 			dup_subject = false;
 
 			/*
@@ -314,7 +324,9 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 			 *	strdup only occurs if the subject matches.
 			 */
 			options |= PCRE2_COPY_MATCHED_SUBJECT;
+#  ifdef PCRE2_CONFIG_JIT
 		}
+#  endif
 #endif
 		if (dup_subject) {
 			/*
@@ -334,10 +346,13 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		}
 	}
 
+#ifdef PCRE2_CONFIG_JIT
 	if (preg->jitd) {
 		ret = pcre2_jit_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, options,
 				      regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext);
-	} else {
+	} else
+#endif
+	{
 		ret = pcre2_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, options,
 				  regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext);
 	}
