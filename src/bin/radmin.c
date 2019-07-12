@@ -496,7 +496,7 @@ static int cmd_set_debug_level(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ctx, 
 		return -1;
 	}
 
-	rad_debug_lvl = fr_debug_lvl = level;
+	rad_debug_lvl = req_debug_lvl = fr_debug_lvl = level;
 	return 0;
 }
 
