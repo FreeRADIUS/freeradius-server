@@ -1012,12 +1012,6 @@ int main(int argc, char **argv)
 			break;
 		}
 
-		if (server && !secret) {
-			fprintf(stderr, "ERROR: You must enter 'secret <SECRET>' before running any commands\n");
-			radmin_free(line);
-			continue;
-		}
-
 		retries = 0;
 
 		/*
