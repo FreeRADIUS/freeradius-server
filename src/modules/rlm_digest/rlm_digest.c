@@ -221,7 +221,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	int i;
 	size_t a1_len, a2_len, kd_len;
 	uint8_t a1[(FR_MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
 	uint8_t a2[(FR_MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
@@ -473,15 +472,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	}
 	fr_bin2hex((char *) kd, hash, sizeof(hash));
 
-#ifndef NRDEBUG
-	if (RDEBUG_ENABLED2) {
-		fr_printf_log("H(A1) = ");
-		for (i = 0; i < 16; i++) {
-			fr_printf_log("%02x", hash[i]);
-		}
-		fr_printf_log("\n");
-	}
-#endif
+	RHEXDUMP_INLINE(L_DBG_LVL_3, hash, sizeof(hash), "H(A1)");
+
 	kd_len = 32;
 
 	kd[kd_len] = ':';
@@ -542,15 +534,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 
 	fr_bin2hex((char *) kd + kd_len, hash, sizeof(hash));
 
-#ifndef NRDEBUG
-	if (RDEBUG_ENABLED2) {
-		fr_printf_log("H(A2) = ");
-		for (i = 0; i < 16; i++) {
-			fr_printf_log("%02x", hash[i]);
-		}
-		fr_printf_log("\n");
-	}
-#endif
+	RHEXDUMP_INLINE(L_DBG_LVL_3, hash, sizeof(hash), "H(A2)");
+
 	kd_len += 32;
 
 	kd[kd_len] = 0;

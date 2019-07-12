@@ -40,11 +40,6 @@
 #define RADIUS_VENDORPEC_LUCENT			4846
 #define RADIUS_VENDORPEC_STARENT		8164
 
-#ifdef _LIBRADIUS
-#  undef DEBUG
-#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
-#endif
-
 /*
  *	protocols/radius/base.c
  */

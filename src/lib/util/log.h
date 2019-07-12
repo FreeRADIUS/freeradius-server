@@ -41,7 +41,6 @@ extern FILE	*fr_log_fp;
 /*
  *	Error functions.
  */
-void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
 void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *fmt);
 
 extern int	fr_debug_lvl;	/* 0 = no debugging information */
