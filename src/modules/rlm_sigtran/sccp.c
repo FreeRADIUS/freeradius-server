@@ -278,6 +278,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 			return -1; \
 		} \
 		vec->_x = talloc_memdup(vec, p + 1, p[0]); \
+		talloc_set_type(vec->_x, uint8_t); \
 		p += p[0] + 1; \
 	} while (0)
 
