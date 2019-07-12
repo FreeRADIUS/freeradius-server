@@ -444,7 +444,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
 	packet->vps = NULL;
 
 #ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_packet_print_hex(packet);
+	if (fr_debug_lvl > 3) fr_radius_packet_log_hex(&default_log, packet);
 #endif
 
 	return packet;
@@ -490,7 +490,7 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	}
 
 #ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_packet_print_hex(packet);
+	if (fr_debug_lvl > 3) fr_radius_packet_log_hex(&default_log, packet);
 #endif
 
 	/*
@@ -517,31 +517,19 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			&packet->dst_ipaddr, packet->dst_port);
 }
 
-
-void fr_radius_packet_print_hex(RADIUS_PACKET const *packet)
+void _fr_radius_packet_log_hex(fr_log_t *log, RADIUS_PACKET const *packet, char const *file, int line)
 {
-	if (!packet->data || !fr_log_fp) return;
+	if (!packet->data) return;
 
-	fprintf(fr_log_fp, "  Socket:\t%d\n", packet->sockfd);
-	fprintf(fr_log_fp, "  Proto:\t%d\n", packet->proto);
+	fr_log(log, L_DBG, file, line, "  Socket   : %d", packet->sockfd);
+	fr_log(log, L_DBG, file, line, "  Proto    : %d", packet->proto);
 
 	if (packet->src_ipaddr.af == AF_INET) {
-		char buffer[INET6_ADDRSTRLEN];
-
-		fprintf(fr_log_fp, "  Src IP:\t%s\n",
-			inet_ntop(packet->src_ipaddr.af,
-				  &packet->src_ipaddr.addr,
-				  buffer, sizeof(buffer)));
-		fprintf(fr_log_fp, "    port:\t%u\n", packet->src_port);
-
-		fprintf(fr_log_fp, "  Dst IP:\t%s\n",
-			inet_ntop(packet->dst_ipaddr.af,
-				  &packet->dst_ipaddr.addr,
-				  buffer, sizeof(buffer)));
-		fprintf(fr_log_fp, "    port:\t%u\n", packet->dst_port);
+		fr_log(log, L_DBG, file, line, "  Src IP   : %pV", fr_box_ipaddr(packet->src_ipaddr));
+		fr_log(log, L_DBG, file, line, "  Src Port : %u", packet->src_port);
+		fr_log(log, L_DBG, file, line, "  Dst IP   : %pV", fr_box_ipaddr(packet->dst_ipaddr));
+		fr_log(log, L_DBG, file, line, "  Dst Port : %u", packet->dst_port);
 	}
 
-	fr_radius_print_hex(fr_log_fp, packet->data, packet->data_len);
-
-	fflush(fr_log_fp);
+	fr_log_hex(log, L_DBG, file, line, packet->data, packet->data_len);
 }

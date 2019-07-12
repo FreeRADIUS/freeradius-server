@@ -2513,18 +2513,18 @@ void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
 
 /** Print a list of attributes and enumv
  *
- * @param fp to output to.
- * @param const_vp to print.
+ * @param[in] log to output to.
+ * @param[in] vp to print.
  */
-void fr_pair_list_fprint(FILE *fp, VALUE_PAIR const *const_vp)
+void _fr_pair_list_log(fr_log_t *log, VALUE_PAIR const *vp, char const *file, int line)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR *our_vp;
 	fr_cursor_t cursor;
 
-	memcpy(&vp, &const_vp, sizeof(vp)); /* const work-arounds */
+	memcpy(&our_vp, &vp, sizeof(vp)); /* const work-arounds */
 
-	for (vp = fr_cursor_init(&cursor, &vp); vp; vp = fr_cursor_next(&cursor)) {
-		fr_pair_fprint(fp, vp);
+	for (vp = fr_cursor_init(&cursor, &our_vp); vp; vp = fr_cursor_next(&cursor)) {
+		fr_log(log, L_DBG, file, line, "%pV", vp);
 	}
 }
 

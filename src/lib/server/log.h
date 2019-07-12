@@ -117,10 +117,6 @@ void	log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 			char const *file, int line,
 			uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
-void	log_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl,
-		char const *file, int line,
-		uint8_t const *data, size_t data_len) CC_HINT(nonnull);
-
 void	log_fatal(fr_log_t const *log, char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(noreturn);
 
@@ -516,5 +512,5 @@ do {\
 #define HEXDUMP(_lvl, _data, _len, _fmt, ...) \
 	if (debug_enabled(L_DBG, _lvl)) do { \
 		_FR_LOG_PREFIX(L_DBG, _fmt, ## __VA_ARGS__); \
-		log_hex(LOG_DST, L_DBG, _lvl, __FILE__, __LINE__, _data, _len); \
+		fr_log_hex(LOG_DST, L_DBG, __FILE__, __LINE__, _data, _len); \
 	} while (0)

@@ -558,6 +558,21 @@ int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int
 	return ret;
 }
 
+void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int line, uint8_t const *data, size_t data_len)
+{
+	size_t i, j, len;
+	char *p;
+	char buffer[(0x10 * 3) + 1];
+
+	for (i = 0; i < data_len; i += 0x10) {
+		len = 0x10;
+		if ((i + len) > data_len) len = data_len - i;
+
+		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
+		fr_log(log, type, file, line, "%04x: %s", (int)i, buffer);
+	}
+}
+
 static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor
 static int stdout_fd = -1;		//!< The original unmolested stdout file descriptor
 static bool rate_limit = true;		//!< Whether repeated log entries should be rate limited

@@ -945,7 +945,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	out[1] += len;
 
 #ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) {
+	if (fr_debug_lvl > 3) {
 		int jump = 3 + tlv_stack[0]->flags.extra;
 
 		if (vsa_type == FR_TYPE_EVS) jump += 5;

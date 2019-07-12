@@ -1337,7 +1337,7 @@ check_active:
 
 	if (DEBUG_ENABLED3) {
 		DEBUG3("%s - Read packet", c->module_name);
-		fr_radius_print_hex(fr_log_fp, c->buffer, packet_len);
+		fr_log_hex(&default_log, L_DBG, __FILE__, __LINE__, c->buffer, packet_len);
 	}
 
 	rr = rr_track_find(radius->id, c->buffer[1], NULL);

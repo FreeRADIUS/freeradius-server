@@ -840,24 +840,6 @@ void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	}
 }
 
-void log_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl,
-	     char const *file, int line, uint8_t const *data, size_t data_len)
-{
-	size_t i, j, len;
-	char *p;
-	char buffer[(0x10 * 3) + 1];
-
-	if (!debug_enabled(L_DBG, lvl)) return;
-
-	for (i = 0; i < data_len; i += 0x10) {
-		len = 0x10;
-		if ((i + len) > data_len) len = data_len - i;
-
-		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
-		fr_log(log, type, file, line, "%04x: %s", (int)i, buffer);
-	}
-}
-
 /** Log a fatal error, then exit
  *
  */

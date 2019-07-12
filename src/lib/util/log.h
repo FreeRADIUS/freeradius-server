@@ -126,6 +126,10 @@ int	fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
 int	fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1));
 
+void	fr_log_hex(fr_log_t const *log, fr_log_type_t type,
+		   char const *file, int line,
+		   uint8_t const *data, size_t data_len) CC_HINT(nonnull);
+
 bool	fr_rate_limit_enabled(void);
 
 #ifdef __cplusplus
