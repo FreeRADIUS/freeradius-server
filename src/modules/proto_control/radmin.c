@@ -1055,5 +1055,7 @@ exit:
 
 	if (radmin_log.dst == L_DST_FILES) close(radmin_log.fd);
 
+	if (sockfd >= 0) close(sockfd);
+
 	return exit_status;
 }
