@@ -49,13 +49,13 @@ static void debug_pair_list(PAIR_LIST *pl)
 		printf("** Check:\n");
 		for(vp = pl->check; vp; vp = vp->next) {
 			printf("    ");
-			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pV", vp);
+			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
 			printf("\n");
 		}
 		printf("** Reply:\n");
 		for(vp = pl->reply; vp; vp = vp->next) {
 			printf("    ");
-			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pV", vp);
+			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
 			printf("\n");
 		}
 		pl = pl->next;

@@ -365,7 +365,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 				rad_assert(0);
 			}
 
-			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pV", vp);
+			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
 		}
 		fflush(fr_log_fp);
 	}
@@ -443,7 +443,7 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 			rad_assert(0);
 		}
 
-		fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pV", vp);
+		fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
 	}
 	fflush(fp);
 }
