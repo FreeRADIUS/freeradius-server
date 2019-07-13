@@ -854,6 +854,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	fr_type_t		attr_type;
 #ifndef NDEBUG
 	fr_type_t		vsa_type;
+	int			jump = 3;
 #endif
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
@@ -867,6 +868,9 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	attr_type = tlv_stack[0]->type;
 #ifndef NDEBUG
 	vsa_type = tlv_stack[1]->type;
+	if (fr_debug_lvl > 3) {
+		jump += tlv_stack[0]->flags.extra;
+	}
 #endif
 
 	/*
@@ -946,8 +950,6 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 
 #ifndef NDEBUG
 	if (fr_debug_lvl > 3) {
-		int jump = 3 + tlv_stack[0]->flags.extra;
-
 		if (vsa_type == FR_TYPE_EVS) jump += 5;
 
 		FR_PROTO_HEX_DUMP(out, jump, "header extended");
