@@ -4937,6 +4937,15 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 			ctx->dict = found;
 			ctx->parent = ctx->dict->root;
+
+			// check if there's a linked library for the
+			// protocol.  The values can be unknown (we
+			// try to load one), or non-existent, or
+			// known.  For the last two, we don't try to
+			// load anything.
+
+			//
+
 			continue;
 		}
 

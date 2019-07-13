@@ -2515,6 +2515,8 @@ void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
  *
  * @param[in] log to output to.
  * @param[in] vp to print.
+ * @param[in] file where the message originated
+ * @param[in] line where the message originated
  */
 void _fr_pair_list_log(fr_log_t *log, VALUE_PAIR const *vp, char const *file, int line)
 {
