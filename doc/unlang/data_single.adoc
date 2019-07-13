@@ -1,4 +1,6 @@
-= Single Quoted Strings
+include::../img/header.adoc[]
+
+== Single Quoted Strings
 
 'string'
 

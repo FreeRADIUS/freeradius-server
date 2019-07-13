@@ -1,4 +1,6 @@
-= Module References
+include::../img/header.adoc[]
+
+== Module References
 
 Individual modules may be referenced via the following syntax:
 

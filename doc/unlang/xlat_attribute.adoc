@@ -1,4 +1,6 @@
-= Attribute References
+include::../img/header.adoc[]
+
+== Attribute References
 
 Attributes in a list may be referenced via one of the following two
 syntaxes:

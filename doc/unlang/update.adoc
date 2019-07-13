@@ -1,4 +1,6 @@
-= The update Statement
+include::../img/header.adoc[]
+
+== The update Statement
 
 .Syntax
 [source,unlang]

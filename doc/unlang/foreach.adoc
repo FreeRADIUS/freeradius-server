@@ -1,4 +1,6 @@
-= The foreach Statement
+include::../img/header.adoc[]
+
+== The foreach Statement
 
 .Syntax
 [source,unlang]

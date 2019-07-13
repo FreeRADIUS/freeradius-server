@@ -1,4 +1,6 @@
-= Regular Expression Comparisons
+include::../img/header.adoc[]
+
+== Regular Expression Comparisons
 
 .Example
 [source,unlang]

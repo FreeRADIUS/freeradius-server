@@ -1,4 +1,6 @@
-= Simple Words
+include::../img/header.adoc[]
+
+== Simple Words
 
 *Examples:*
 

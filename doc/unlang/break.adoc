@@ -1,4 +1,6 @@
-= The break Statement
+include::../img/header.adoc[]
+
+== The break Statement
 
 .Syntax
 [source,unlang]

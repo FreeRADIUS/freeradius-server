@@ -1,20 +1,23 @@
-= Unlang Policy Language
+== Unlang Policy Language
+
+include::../img/header.adoc[]
+
 
 The server supports a simple processing language called "Unlang",
 which is short for "un-language". The original intention of using an
 "un-language" was to avoid creating yet another programming language.
-Instead, the `unlang` syntax allows for simple if / then / else
+Instead, the `unlang` syntax allows for simple _if / then / else_
 checks, and attribute editing.  It does not support recursion,
 subroutines, or more complex flow controls.
 
-Where more complicated funactionality is required, we recommend using
-the `perl` or `python` modules.  Those modules allow the insertion of
+Where more complicated functionality is required, we recommend using
+the `lua`, `perl` or `python` modules.  Those modules allow the insertion of
 full-featured scripts at any point in the packet processing.
 
-Note:: The documentation is this directory is _reference_
+NOTE: The documentation is this directory is _reference_
 documentation.  That is, it describes the syntax of `unlang` keywords.
 It does not, however, describe _how_ to use the keywords, or _when_ to
-use the keywords. Please see the "howto" directory for worked
+use the keywords. Please see the "link:../howto/index.adoc[howto]" directory for worked
 examples.
 
 The documentation is organized so that each keyword is on its own
@@ -31,8 +34,8 @@ The `unlang` processing can be split into three distinct types:
   conditions evaluate to _true_ or _false_.  e.g. `if (a == b) { ... }`
 * link:update.adoc[update] statements are used to edit attributes and
   lists of attributes.
-* link:xlat.adoc[string expansion] Using `%{...}` to perform dynamic
-  string expansions.
+* link:xlat.adoc[String expansion] Using `%{...}` to perform dynamic
+  string expansions. (also known as link:xlat.adoc[xlat])
 
 The goal of `unlang` is to allow simple policies to be written with
 minimal effort. Conditional checks can be performed by the policies,

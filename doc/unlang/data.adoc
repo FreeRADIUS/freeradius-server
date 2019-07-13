@@ -1,4 +1,6 @@
-= Data Types
+include::../img/header.adoc[]
+
+== Data Types
 
 Unlang supports a number of data types. These data types can be used
 in conditional expressions or when assigning a value to an attribute.

@@ -1,4 +1,6 @@
-= The data Operator
+include::../img/header.adoc[]
+
+== The data Operator
 
 .Syntax
 [source,unlang]
@@ -6,7 +8,7 @@
 string
 integer
 "double-quoted string"
-'single-quoted string`
+'single-quoted string'
 `back-quoted string`
 ----
 

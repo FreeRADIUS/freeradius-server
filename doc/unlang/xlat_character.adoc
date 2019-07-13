@@ -1,4 +1,6 @@
-= Single Letter Expansions
+include::../img/header.adoc[]
+
+== Single Letter Expansions
 
 The following are single letter expansions.  These expansions do not
 use the typical `%{...}` format.  Instead, they are short-cuts for

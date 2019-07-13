@@ -1,4 +1,6 @@
-= Numbers
+include::../img/header.adoc[]
+
+== Numbers
 
 *Examples:*
 

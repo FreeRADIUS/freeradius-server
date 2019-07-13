@@ -1,4 +1,6 @@
-= The case Statement
+include::../img/header.adoc[]
+
+== The case Statement
 
 .Syntax
 [source,unlang]
@@ -22,7 +24,7 @@ or it can be a link:../raddb/syntax/data_string.adoc[string].  If the match
 text is a dynamically expanded string, then the match is performed on
 the output of the string expansion.
 
-[NOTE]
+[WARNING]
 It is _strongly_ recommended to use static text for the `<match>` text.
 Matching dynamically expanded strings, host names, or external
 programs can degrade performance enormously.

@@ -1,4 +1,6 @@
-= The &Attribute-Name Reference
+include::../img/header.adoc[]
+
+== The &Attribute-Name Reference
 
 .Syntax
 [source,unlang]

@@ -1,4 +1,6 @@
-= Pre-defined Expansions
+include::../img/header.adoc[]
+
+== Pre-defined Expansions
 
 In addition to storing attribute references, the server has a number
 of pre-defined references, as follows:

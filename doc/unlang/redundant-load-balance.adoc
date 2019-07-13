@@ -1,4 +1,6 @@
-= The redundant-load-balance Statement
+include::../img/header.adoc[]
+
+== The redundant-load-balance Statement
 
 [source,unlang]
 ----
