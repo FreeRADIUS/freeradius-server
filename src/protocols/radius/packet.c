@@ -519,17 +519,68 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 void _fr_radius_packet_log_hex(fr_log_t *log, RADIUS_PACKET const *packet, char const *file, int line)
 {
+	uint8_t const *attr, *end;
+	char buffer[256];
+
 	if (!packet->data) return;
 
 	fr_log(log, L_DBG, file, line, "  Socket   : %d", packet->sockfd);
 	fr_log(log, L_DBG, file, line, "  Proto    : %d", packet->proto);
 
-	if (packet->src_ipaddr.af == AF_INET) {
+	if ((packet->src_ipaddr.af == AF_INET) || (packet->src_ipaddr.af == AF_INET6)) {
 		fr_log(log, L_DBG, file, line, "  Src IP   : %pV", fr_box_ipaddr(packet->src_ipaddr));
 		fr_log(log, L_DBG, file, line, "  Src Port : %u", packet->src_port);
 		fr_log(log, L_DBG, file, line, "  Dst IP   : %pV", fr_box_ipaddr(packet->dst_ipaddr));
 		fr_log(log, L_DBG, file, line, "  Dst Port : %u", packet->dst_port);
 	}
 
-	fr_log_hex(log, L_DBG, file, line, packet->data, packet->data_len);
+       if ((packet->data[0] > 0) && (packet->data[0] < FR_RADIUS_MAX_PACKET_CODE)) {
+               fr_log(log, L_DBG, file, line, "  Code     : %s\n", fr_packet_codes[packet->data[0]]);
+       } else {
+               fr_log(log, L_DBG, file, line, "  Code     : %u\n", packet->data[0]);
+       }
+
+       fr_log(log, L_DBG, file, line, "  Id       : %u\n", packet->data[1]);
+       fr_log(log, L_DBG, file, line, "  Length   : %u\n", ((packet->data[2] << 8) |
+							    (packet->data[3])));
+
+       strlcpy(buffer, "  Vector   : ", sizeof(buffer));
+       fr_bin2hex(buffer + 13, packet->data + 4, 16);
+
+       fr_log(log, L_DBG, file, line, "%s\n", buffer);
+
+       if (packet->data_len <= 20) return;
+
+       for (attr = packet->data + 20, end = packet->data + packet->data_len;
+            attr < end;
+            attr += attr[1]) {
+               int i, len, offset = 2;
+               unsigned int vendor = 0;
+	       char *p;
+
+#ifndef NDEBUG
+               if (attr[1] < 2) break; /* Coverity */
+#endif
+
+	       snprintf(buffer, sizeof(buffer), "%02x %02x  ", attr[0], attr[1]);
+               if ((attr[0] == FR_VENDOR_SPECIFIC) &&
+                   (attr[1] > 6)) {
+                       vendor = (attr[2] << 25) | (attr[3] << 16) | (attr[4] << 8) | attr[5];
+
+		       snprintf(buffer + 12, sizeof(buffer) - 12, "%02x%02x%02x%02x (%u)  ",
+				attr[2], attr[3], attr[4], attr[5], vendor);
+                       offset = 6;
+               }
+	       p = buffer + strlen(buffer);
+
+	       len = attr[1] - offset;
+	       if (len > 16) len = 16;
+
+	       for (i = 0; i < len; i++) {
+		       snprintf(p, buffer + sizeof(buffer) - p, "%02x ", attr[offset + i]);
+		       p += 3;
+	       }
+
+	       fr_log(log, L_DBG, file, line, "      %s\n", buffer);
+       }
 }
