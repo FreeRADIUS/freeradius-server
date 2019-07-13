@@ -833,7 +833,7 @@ int main(int argc, char **argv)
 
 		if ((cf_file_read(cs, io_buffer) < 0) || (cf_section_pass2(cs) < 0)) {
 			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, io_buffer);
-			error:
+		error:
 			exit(EXIT_FAILURE);
 		}
 
@@ -955,7 +955,10 @@ int main(int argc, char **argv)
 			while (true) flush_conduits(sockfd, io_buffer, sizeof(io_buffer));
 		}
 
-		goto error;
+		/*
+		 *	We're done all of the commands, exit now.
+		 */
+		goto exit;
 	}
 
 	if (!quiet) {
