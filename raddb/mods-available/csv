@@ -57,7 +57,8 @@ csv {
 	#
 	#  This configuration item is used only when `header = no`.
 	#  The content of the `fields` item must be the same as in RFC 4180.
-	#  That is, a comma-separated list of field names.
+	#  That is, a list of field names, separated by the `delimiter`
+	#  character.
 	#
 	#  [NOTE]
 	#  =====
@@ -67,21 +68,103 @@ csv {
 	#
 	#  e.g. *"foo,,bar"* defines 3 fields, where the second is unused.
 	#  =====
-	fields = "field1,,field3,field4"
+	fields = "apple,,orange,pear"
 
 	#
-	#  key_field:: The name of the key field, which is used to index the
+	#  index_field:: The name of the field which is used to index the
 	#  entries.
 	#
 	#  It can be any one of the field names defined above.
 	#
-	key_field = "field1"
+	#  The CSV rows are normally placed into a hash table, indexed
+	#  by this field.  A hash table allows for fast lookups, no
+	#  matter the size of the CSV file.
+	#
+	#  If the `data_type` of the index field is `ipaddr` or
+	#  `ipv6addr`, then the CSV rows are placed into a prefix
+	#  trie, indexed by this field.  The prefix trie allows for
+	#  faast prefix lookups.
+	#
+	#  When looking up entries in a hash table, the key must match
+	#  the `index_field` exactly.  When looking up entries in a
+	#  prefix trie, the closest enclosing prefix is matched.  This
+	#  prefix match allows you to place `192.0.2/24` as an index
+	#  field in the file, and then lookups of `192.0.2.1` will
+	#  return that row.
+	#
+	index_field = "apple"
 
 	#
-	#  key_type:: The data type of the key_field.
+	#  data_type:: The data type of the index_field.
 	#
 	#  This data type MUST be one of the data types known to FreeRADIUS.
 	#  e.g. "string", "ipaddr", etc.
 	#
-	key_type = string
+	data_type = string
+
+	#
+	#  key:: The key string used to look up entries via the `index_field`.
+	#
+	#  When the `csv` module is listed in a processing section,
+	#  the `key` is used to find the appropriate entry.  The `update`
+	#  section below is then applied.
+	#
+	key = &User-Name
+
+	#
+	#  ### Mapping of CSV fields to RADIUS dictionary attributes.
+	#
+	#  WARNING: Although this format is almost identical to the `unlang`
+	#  update section format, it does *NOT* mean that you can use other
+	#  `unlang` constructs in module configuration files.
+	#
+	#  Configuration items are in the format:
+	#
+	#    <fr attr> <op> <csv field>
+	#
+	#  Where:
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Parameter   | Description
+	#  | <fr attr>   | Is the destination RADIUS attribute
+	#                  with any valid list and request qualifiers.
+	#  | <op>        | Is any assignment attribute (=, :=, +=, -=).
+	#  | <csv field> | Is the name of a field from the CSV file, as taken
+	#                  from the `fields` configuration item.
+	#  |===
+	#
+	#  Request and list qualifiers may be placed after the `update`
+	#  section name to set default destination requests/lists
+	#  for `<fr attr>s` with no list qualifiers.
+	#
+	#  NOTE: CSV field names should be single quoted unless you want
+	#  the name to be derived from an xlat expansion, or an attribute ref.
+	#
+	#  update { ... }::
+	#
+	update reply {
+	       &Reply-Message := 'orange'
+	       &Filter-Id := 'pear'
+	}
+
+	#
+	#  The module also exports a `map` expansion, via the syntax:
+	#
+	#	map cvs key { ... }
+	#
+	#  Where `csv` is the name of the module, and `key` is an expansion
+	#  as given the the key` field above.  For example, the map could
+	#  look like this:
+	#
+	#	map csv &User-Name {
+	#		&reply:Reply-Message := 'three'
+	#		&reply:Filter-Id := 'four'
+	#	}
+	#
+	#  This map does the same operations as the key / update
+	#  fields given above.  The benefit here is that the key can
+	#  be dynamically changed, depending on the needs of the
+	#  current section.
+	#
 }

@@ -19,7 +19,7 @@
  * @file rlm_csv.c
  * @brief Read and map CSV files
  *
- * @copyright 2015 The FreeRADIUS server project
+ * @copyright 2019 The FreeRADIUS server project
  * @copyright 2019 Alan DeKok (aland@freeradius.org)
  */
 RCSID("$Id$")
@@ -45,21 +45,24 @@ typedef struct {
 	char const	*filename;
 	char const	*delimiter;
 	char const	*fields;
-	char const	*key;
-	char const	*key_type_str;
+	char const	*index_field_name;
+	char const	*data_type_name;
 
-	fr_type_t	key_type;
+	fr_type_t	data_type;
 
 	bool		header;
 
 	int		num_fields;
 	int		used_fields;
-	int		key_field;
+	int		index_field;
 
 	char const     	**field_names;
 	int		*field_offsets; /* field X from the file maps to array entry Y here */
 	rbtree_t	*tree;
 	fr_trie_t	*trie;
+
+	vp_tmpl_t	*key;
+	vp_map_t	*map;		//!< if there is an "update" section in the configuration.
 } rlm_csv_t;
 
 typedef struct {
@@ -76,8 +79,9 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, delimiter), .dflt = "," },
 	{ FR_CONF_OFFSET("fields", FR_TYPE_STRING , rlm_csv_t, fields) },
 	{ FR_CONF_OFFSET("header", FR_TYPE_BOOL, rlm_csv_t, header) },
-	{ FR_CONF_OFFSET("key_field", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, key) },
-	{ FR_CONF_OFFSET("key_type", FR_TYPE_STRING, rlm_csv_t, key_type_str) },
+	{ FR_CONF_OFFSET("index_field", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, index_field_name) },
+	{ FR_CONF_OFFSET("data_type", FR_TYPE_STRING, rlm_csv_t, data_type_name) },
+	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL, rlm_csv_t, key) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -189,8 +193,8 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		/*
 		 *	This is the key field.
 		 */
-		if (i == inst->key_field) {
-			fr_type_t type = inst->key_type;
+		if (i == inst->index_field) {
+			fr_type_t type = inst->data_type;
 
 			e->key = talloc_zero(e, fr_value_box_t);
 			if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
@@ -213,14 +217,14 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		return NULL;
 	}
 
-	if (inst->key_type == FR_TYPE_IPV4_PREFIX) {
+	if (inst->data_type == FR_TYPE_IPV4_PREFIX) {
 		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
 			return NULL;
 		}
 
-	} else if (inst->key_type == FR_TYPE_IPV6_PREFIX) {
+	} else if (inst->data_type == FR_TYPE_IPV6_PREFIX) {
 		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
@@ -259,14 +263,82 @@ static int fieldname2offset(rlm_csv_t *inst, char const *field_name)
 	return -1;
 }
 
+#define CSV_MAX_ATTRMAP (128)
+
+/*
+ *	Verify one map entry.
+ */
+static int csv_map_verify(vp_map_t *map, void *instance)
+{
+	rlm_csv_t *inst = instance;
+
+	/*
+	 *	Destinations where we can put the VALUE_PAIRs we
+	 *	create using CSV values.
+	 */
+	switch (map->lhs->type) {
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_ATTR:
+		break;
+
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		cf_log_err(map->ci, "Unknown attribute %s", map->lhs->tmpl_unknown_name);
+		return -1;
+
+	default:
+		cf_log_err(map->ci, "Left hand side of map must be an attribute or list, not a %s",
+			   fr_int2str(tmpl_type_table, map->lhs->type, "<INVALID>"));
+		return -1;
+	}
+
+	/*
+	 *	Sources we can use to get the name of the attribute
+	 *	we're retrieving from LDAP.
+	 */
+	switch (map->rhs->type) {
+	case TMPL_TYPE_UNPARSED:
+		if (fieldname2offset(inst, map->rhs->name) < 0) {
+			cf_log_err(map->ci, "Unknown field '%s'", map->rhs->name);
+			return -1;
+		}
+		break;
+
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		cf_log_err(map->ci, "Unknown attribute %s", map->rhs->tmpl_unknown_name);
+		return -1;
+
+	default:
+		cf_log_err(map->ci, "Right hand side of map must be a field name, not a %s",
+			   fr_int2str(tmpl_type_table, map->rhs->type, "<INVALID>"));
+		return -1;
+	}
+
+	/*
+	 *	Only =, :=, += and -= operators are supported for LDAP mappings.
+	 */
+	switch (map->op) {
+	case T_OP_SET:
+	case T_OP_EQ:
+	case T_OP_SUB:
+	case T_OP_ADD:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Operator \"%s\" not allowed for CSV mappings",
+			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+		return -1;
+	}
+
+	return 0;
+}
+
 /*
  *	Verify the result of the map.
  */
-static int csv_map_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_inst,
+static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_inst,
 			  vp_tmpl_t const *src, vp_map_t const *maps)
 {
-	rlm_csv_t	*inst = mod_inst;
-	vp_map_t const	*map;
+	vp_map_t const *map;
 
 	if (!src) {
 		cf_log_err(cs, "Missing key expansion");
@@ -277,12 +349,14 @@ static int csv_map_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_in
 	for (map = maps;
 	     map != NULL;
 	     map = map->next) {
-		if (!tmpl_is_unparsed(map->rhs)) continue;
+		vp_map_t *unconst_map;
 
-		if (fieldname2offset(inst, map->rhs->name) < 0) {
-			cf_log_err(map->ci, "Unknown field '%s'", map->rhs->name);
-			return -1;
-		}
+		memcpy(&unconst_map, &map, sizeof(map));
+
+		/*
+		 *	This function doesn't change the map, so it's OK.
+		 */
+		if (csv_map_verify(unconst_map, mod_inst) < 0) return -1;
 	}
 
 	return 0;
@@ -317,14 +391,26 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (!inst->key_type_str || !*inst->key_type_str) {
-		inst->key_type = FR_TYPE_STRING;
+	if (!inst->data_type_name || !*inst->data_type_name) {
+		inst->data_type = FR_TYPE_STRING;
 	} else {
-		inst->key_type = fr_str2int(fr_value_box_type_table, inst->key_type_str, FR_TYPE_INVALID);
-		if (!inst->key_type) {
-			cf_log_err(conf, "Invalid key_type '%s'", inst->key_type_str);
+		inst->data_type = fr_str2int(fr_value_box_type_table, inst->data_type_name, FR_TYPE_INVALID);
+		if (!inst->data_type) {
+			cf_log_err(conf, "Invalid data_type '%s'", inst->data_type_name);
 			return -1;
 		}
+	}
+
+	/*
+	 *	@todo - also define data types for each field.  And do
+	 *	type-specific comparisons.
+	 */
+	if ((inst->data_type == FR_TYPE_IPV4_PREFIX) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
+		inst->trie = fr_trie_alloc(inst);
+		if (!inst->trie) goto oom;
+	} else {
+		inst->tree = rbtree_talloc_create(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0);
+		if (!inst->tree) goto oom;
 	}
 
 	/*
@@ -362,6 +448,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		lineno++;
 	}
 
+	/*
+	 *	Parse the field names AFTER opening the file.  Because
+	 *	the field names might be taken from the header.
+	 */
 	for (p = inst->fields; p != NULL; p = strchr(p + 1, *inst->delimiter)) {
 		inst->num_fields++;
 	}
@@ -374,14 +464,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	inst->field_names = talloc_zero_array(inst, const char *, inst->num_fields);
 	if (!inst->field_names) {
-	oom:
+	oom2:
 		fclose(fp);
+	oom:
 		cf_log_err(conf, "Out of memory");
 		return -1;
 	}
 
 	inst->field_offsets = talloc_array(inst, int, inst->num_fields);
-	if (!inst->field_offsets) goto oom;
+	if (!inst->field_offsets) goto oom2;
 
 	for (i = 0; i < inst->num_fields; i++) {
 		inst->field_offsets[i] = -1; /* unused */
@@ -391,13 +482,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Get a writable copy of the fields definition
 	 */
 	fields = talloc_typed_strdup(inst, inst->fields);
-	if (!fields) goto oom;
+	if (!fields) goto oom2;
 
 	/*
 	 *	Mark up the field names.  Note that they can be empty,
 	 *	in which case they don't map to anything.
 	 */
-	inst->key_field = -1;
+	inst->index_field = -1;
 
 	/*
 	 *	Parse the field names
@@ -451,8 +542,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		 *	mapping betweeen CSV file fields, and fields
 		 *	in the map.
 		 */
-		if (strcmp(p, inst->key) == 0) {
-			inst->key_field = i;
+		if (strcmp(p, inst->index_field_name) == 0) {
+			inst->index_field = i;
 		} else {
 			inst->field_offsets[i] = inst->used_fields++;
 		}
@@ -469,23 +560,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		p = q;
 	}
 
-	if (inst->key_field < 0) {
+	if (inst->index_field < 0) {
 		fclose(fp);
-		cf_log_err(conf, "Key field '%s' does not appear in the list of field names",
-			   inst->key);
+		cf_log_err(conf, "index_field '%s' does not appear in the list of field names",
+			   inst->index_field_name);
 		return -1;
-	}
-
-	/*
-	 *	@todo - also define data types for each field.  And do
-	 *	type-specific comparisons.
-	 */
-	if ((inst->key_type == FR_TYPE_IPV4_PREFIX) || (inst->key_type == FR_TYPE_IPV6_PREFIX)) {
-		inst->trie = fr_trie_alloc(inst);
-		if (!inst->trie) goto oom;
-	} else {
-		inst->tree = rbtree_talloc_create(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0);
-		if (!inst->tree) goto oom;
 	}
 
 	/*
@@ -508,10 +587,52 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	And register the map function.
 	 */
-	map_proc_register(inst, inst->name, mod_map_proc, csv_map_verify, 0);
+	map_proc_register(inst, inst->name, mod_map_proc, csv_maps_verify, 0);
 
 	return 0;
 }
+
+
+/** Instantiate the module
+ *
+ * Creates a new instance of the module reading parameters from a configuration section.
+ *
+ * @param conf to parse.
+ * @param instance configuration data.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
+{
+	rlm_csv_t *inst = instance;
+	CONF_SECTION *cs;
+	vp_tmpl_rules_t	parse_rules = {
+		.allow_foreign = true	/* Because we don't know where we'll be called */
+	};
+
+	cs = cf_section_find(conf, "update", CF_IDENT_ANY);
+	if (!cs) {
+		if (inst->key) {
+			cf_log_warn(conf, "Ignoring 'key', as no 'update' section has been defined.");
+			return -1;
+		}
+	}
+
+	if (!inst->key) {
+		cf_log_err(conf, "There is no 'key' defined for the 'update' section");
+		return -1;
+	}
+
+	if (map_afrom_cs(inst, &inst->map, cs,
+			 &parse_rules, &parse_rules, csv_map_verify, inst,
+			 CSV_MAX_ATTRMAP) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
 
 /*
  *	Convert field X to a VP.
@@ -568,10 +689,10 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	return 0;
 }
 
+
 /** Perform a search and map the result of the search to server attributes
  *
- * @param[in] mod_inst	#rlm_csv_t.
- * @param[in] proc_inst	mapping map entries to field numbers.
+ * @param[in] inst	#rlm_csv_t.
  * @param[in,out]	request The current request.
  * @param[in] key	key to look for
  * @param[in] maps	Head of the map list.
@@ -580,32 +701,25 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
  *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
-static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				fr_value_box_t **key, vp_map_t const *maps)
+static rlm_rcode_t mod_map_apply(rlm_csv_t *inst, REQUEST *request,
+				fr_value_box_t const *key, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
-	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
 	rlm_csv_entry_t		*e;
 	vp_map_t const		*map;
 
-	if (!*key) {
-		REDEBUG("CSV key cannot be (null)");
-		return RLM_MODULE_FAIL;
-	}
+	if (inst->data_type == FR_TYPE_IPV4_PREFIX) {
+		e = fr_trie_lookup(inst->trie, &key->vb_ip.addr.v4.s_addr, key->vb_ip.prefix);
 
-	if (fr_value_box_list_concat(request, *key, key, inst->key_type, true) < 0) {
-		REDEBUG("Failed concatenating key elements");
-		return RLM_MODULE_FAIL;
-	}
-
-	if (inst->key_type == FR_TYPE_IPV4_PREFIX) {
-		e = fr_trie_lookup(inst->trie, &(*key)->vb_ip.addr.v4.s_addr, (*key)->vb_ip.prefix);
-
-	} else if (inst->key_type == FR_TYPE_IPV6_PREFIX) {
-		e = fr_trie_lookup(inst->trie, &(*key)->vb_ip.addr.v6.s6_addr, (*key)->vb_ip.prefix);
+	} else if (inst->data_type == FR_TYPE_IPV6_PREFIX) {
+		e = fr_trie_lookup(inst->trie, &key->vb_ip.addr.v6.s6_addr, key->vb_ip.prefix);
 
 	} else {
-		e = rbtree_finddata(inst->tree, &(rlm_csv_entry_t){ .key = (*key)});
+		rlm_csv_entry_t my_e;
+
+		memcpy(&my_e.key, &key, sizeof(key)); /* const issues */
+
+		e = rbtree_finddata(inst->tree, &my_e);
 	}
 	if (!e) {
 		rcode = RLM_MODULE_NOOP;
@@ -661,6 +775,85 @@ finish:
 	return rcode;
 }
 
+
+/** Perform a search and map the result of the search to server attributes
+ *
+ * @param[in] mod_inst	#rlm_csv_t.
+ * @param[in] proc_inst	mapping map entries to field numbers.
+ * @param[in,out]	request The current request.
+ * @param[in] key	key to look for
+ * @param[in] maps	Head of the map list.
+ * @return
+ *	- #RLM_MODULE_NOOP no rows were returned.
+ *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_FAIL if an error occurred.
+ */
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+				fr_value_box_t **key, vp_map_t const *maps)
+{
+	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
+
+	if (!*key) {
+		REDEBUG("CSV key cannot be (null)");
+		return RLM_MODULE_FAIL;
+	}
+
+	if (fr_value_box_list_concat(request, *key, key, inst->data_type, true) < 0) {
+		REDEBUG("Failed parsing key");
+		return RLM_MODULE_FAIL;
+	}
+
+	return mod_map_apply(inst, request, *key, maps);
+}
+
+
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+{
+	rlm_csv_t *inst = instance;
+	rlm_rcode_t rcode;
+	size_t slen;
+	fr_value_box_t *key;
+
+	if (!inst->map || !inst->key) return RLM_MODULE_NOOP;
+
+	/*
+	 *	Expand the key to whatever it is.  For attributes,
+	 *	this usually just means copying the value box.
+	 */
+	slen = tmpl_aexpand_type(request, &key, FR_TYPE_VALUE_BOX, request, inst->key, NULL, NULL);
+	if (slen < 0) {
+		DEBUG("Failed expanding key '%s'", inst->key->name);
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	If the output data was string and we wanted non-string
+	 *	data, convert it now.
+	 */
+	if (key->type != inst->data_type) {
+		fr_value_box_t tmp;
+
+		fr_value_box_copy(request, &tmp, key);
+
+		slen = fr_value_box_cast(request, key, inst->data_type, NULL, &tmp);
+		fr_value_box_clear(&tmp);
+		if (slen < 0) {
+			talloc_free(key);
+			DEBUG("Failed casting %pV to data type '%s'",
+			      &key, inst->data_type_name);
+			return RLM_MODULE_FAIL;
+		}
+	}
+
+	RDEBUG2("Processing CVS map with key %pV", key);
+	RINDENT();
+	rcode = mod_map_apply(inst, request, key, inst->map);
+	REXDENT();
+
+	talloc_free(key);
+	return rcode;
+}
+
 extern module_t rlm_csv;
 module_t rlm_csv = {
 	.magic		= RLM_MODULE_INIT,
@@ -669,4 +862,11 @@ module_t rlm_csv = {
 	.inst_size	= sizeof(rlm_csv_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
+
+	.method_names = (module_method_names_t[]){
+		{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_process },
+
+		MODULE_NAME_TERMINATOR
+	}
 };
