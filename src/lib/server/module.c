@@ -716,11 +716,19 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	rlm_components_t	i;
 	module_instance_t	*mi;
 	module_method_names_t const	*methods;
+	char const		*method_name1, *method_name2;
 
 	if (method) *method = NULL;
 
-	if (name1) *name1 = NULL;
-	if (name2) *name2 = NULL;
+	method_name1 = method_name2 = NULL;
+	if (name1) {
+		method_name1 = *name1;
+		*name1 = NULL;
+	}
+	if (name2) {
+		method_name2 = *name2;
+		*name2 = NULL;
+	}
 
 	/*
 	 *	Module names are allowed to contain '.'
@@ -748,7 +756,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		 *	We weren't asked to search for specific names,
 		 *	OR the module has no specific names, return.
 		 */
-		if (!name1 || !*name1 || !name2 || !mi->module->method_names) {
+		if (!method_name1 || !mi->module->method_names) {
 			return mi;
 		}
 
@@ -766,13 +774,15 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 			if (methods->name1 == CF_IDENT_ANY) {
 			found:
 				*method = methods->method;
+				if (name1) *name1 = method_name1;
+				if (name2) *name2 = method_name2;
 				return mi;
 			}
 
 			/*
 			 *	If name1 doesn't match, skip it.
 			 */
-			if (strcmp(methods->name1, *name1) != 0) continue;
+			if (strcmp(methods->name1, method_name1) != 0) continue;
 
 			/*
 			 *	The module can declare a
@@ -784,14 +794,14 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 			/*
 			 *	No name2 is also a match to no name2.
 			 */
-			if (!methods->name2 && !*name2) goto found;
+			if (!methods->name2 && !method_name2) goto found;
 
 			/*
 			 *	Don't do strcmp on NULLs
 			 */
-			if (!methods->name2 || !*name2) continue;
+			if (!methods->name2 || !method_name2) continue;
 
-			if (strcmp(methods->name2, *name2) == 0) goto found;
+			if (strcmp(methods->name2, method_name2) == 0) goto found;
 		}
 
 		/*
@@ -799,7 +809,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		 *	whatever else the section is.  Let's see if
 		 *	the section has a list of allowed methods.
 		 */
-		allowed_list = virtual_server_section_methods(*name1, *name2);
+		allowed_list = virtual_server_section_methods(method_name1, method_name2);
 		if (!allowed_list) return mi;
 
 		/*
@@ -904,7 +914,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	 *	We have a module, but the caller doesn't care about
 	 *	method or names, so just return the module.
 	 */
-	if (!name1 || !name2 || !method) {
+	if (!method || !method_name1 || !method_name2) {
 		talloc_free(inst_name);
 		return mi;
 	}
