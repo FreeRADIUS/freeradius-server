@@ -982,17 +982,13 @@ int main(int argc, char **argv)
 
 		if (!line) break;
 
-		if (!*line) {
-			radmin_free(line);
-			continue;
-		}
+		if (!*line) goto next;
 
 		if (!quiet) add_history(line);
 
 		if (strcmp(line, "reconnect") == 0) {
 			if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
-			radmin_free(line);
-			continue;
+			goto next;
 		}
 
 		if (strncmp(line, "secret ", 7) == 0) {
@@ -1000,8 +996,8 @@ int main(int argc, char **argv)
 				secret = line + 7;
 				do_challenge(sockfd);
 			}
-			radmin_free(line);
-			continue;
+
+			goto next;
 		}
 
 		/*
@@ -1036,18 +1032,16 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Failed to connect to server\n");
 			exit(EXIT_FAILURE);
 
-		} else if (len == FR_CONDUIT_SUCCESS) {
-			radmin_free(line);
-			continue;
-
-		} else if (len == FR_CONDUIT_PARTIAL) {
-			radmin_free(line);
-			continue;
-
 		} else if (len == FR_CONDUIT_FAIL) {
-			radmin_free(line);
+			fprintf(stderr, "Failed running command\n");
 			exit_status = EXIT_FAILURE;
 		}
+
+		/*
+		 *	SUCCESS and PARTIAL end up here too.
+		 */
+	next:
+		radmin_free(line);
 	}
 
 exit:
