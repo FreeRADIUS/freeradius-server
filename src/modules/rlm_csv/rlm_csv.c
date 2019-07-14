@@ -217,14 +217,14 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		return NULL;
 	}
 
-	if (inst->data_type == FR_TYPE_IPV4_PREFIX) {
+	if (inst->data_type == FR_TYPE_IPV4_ADDR) {
 		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
 			return NULL;
 		}
 
-	} else if (inst->data_type == FR_TYPE_IPV6_PREFIX) {
+	} else if (inst->data_type == FR_TYPE_IPV6_ADDR) {
 		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
@@ -399,13 +399,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			cf_log_err(conf, "Invalid data_type '%s'", inst->data_type_name);
 			return -1;
 		}
+
+		if ((inst->data_type == FR_TYPE_IPV4_PREFIX) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
+			cf_log_err(conf, "Cannot use data type '%s'.  Use 'ipaddr' or 'ipv6addr' instead.", inst->data_type_name);
+			return -1;
+		}
 	}
 
 	/*
 	 *	@todo - also define data types for each field.  And do
 	 *	type-specific comparisons.
 	 */
-	if ((inst->data_type == FR_TYPE_IPV4_PREFIX) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
+	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV6_ADDR)) {
 		inst->trie = fr_trie_alloc(inst);
 		if (!inst->trie) goto oom;
 	} else {
@@ -708,10 +713,10 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t *inst, REQUEST *request,
 	rlm_csv_entry_t		*e;
 	vp_map_t const		*map;
 
-	if (inst->data_type == FR_TYPE_IPV4_PREFIX) {
+	if (inst->data_type == FR_TYPE_IPV4_ADDR) {
 		e = fr_trie_lookup(inst->trie, &key->vb_ip.addr.v4.s_addr, key->vb_ip.prefix);
 
-	} else if (inst->data_type == FR_TYPE_IPV6_PREFIX) {
+	} else if (inst->data_type == FR_TYPE_IPV6_ADDR) {
 		e = fr_trie_lookup(inst->trie, &key->vb_ip.addr.v6.s6_addr, key->vb_ip.prefix);
 
 	} else {
