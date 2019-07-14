@@ -791,9 +791,11 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		return RLM_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat(request, *key, key, inst->data_type, true) < 0) {
-		REDEBUG("Failed parsing key");
-		return RLM_MODULE_FAIL;
+	if ((inst->data_type == FR_TYPE_OCTETS) || (inst->data_type == FR_TYPE_STRING)) {
+		if (fr_value_box_list_concat(request, *key, key, inst->data_type, true) < 0) {
+			REDEBUG("Failed parsing key");
+			return RLM_MODULE_FAIL;
+		}
 	}
 
 	return mod_map_apply(inst, request, *key, maps);
