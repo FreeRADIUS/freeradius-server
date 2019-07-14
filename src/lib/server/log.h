@@ -511,6 +511,5 @@ do {\
  */
 #define HEXDUMP(_lvl, _data, _len, _fmt, ...) \
 	if (debug_enabled(L_DBG, _lvl)) do { \
-		_FR_LOG_PREFIX(L_DBG, _fmt, ## __VA_ARGS__); \
-		fr_log_hex(LOG_DST, L_DBG, __FILE__, __LINE__, _data, _len); \
+		fr_log_hex(LOG_DST, L_DBG, __FILE__, __LINE__, _data, _len, _fmt, ## __VA_ARGS__); \
 	} while (0)

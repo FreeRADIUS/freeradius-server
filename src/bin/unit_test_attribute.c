@@ -1490,7 +1490,6 @@ int main(int argc, char *argv[])
 		case 'x':
 			fr_debug_lvl++;
 			rad_debug_lvl = fr_debug_lvl;
-			fr_log_fp = stdout;
 			default_log.dst = L_DST_STDOUT;
 			default_log.fd = STDOUT_FILENO;
 			break;

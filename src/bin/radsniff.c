@@ -473,11 +473,11 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		/*
 		 *	Print out verbose HEX output
 		 */
-		if (conf->print_packet && (fr_debug_lvl > 3)) {
+		if (conf->print_packet && (fr_debug_lvl >= L_DBG_LVL_4)) {
 			fr_radius_packet_log_hex(&default_log, packet);
 		}
 
-		if (conf->print_packet && (fr_debug_lvl > 1)) {
+		if (conf->print_packet && (fr_debug_lvl >= L_DBG_LVL_2)) {
 			char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1];
 
 			if (packet->vps) {

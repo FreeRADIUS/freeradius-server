@@ -367,7 +367,6 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 
 			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
 		}
-		fflush(fr_log_fp);
 	}
 
 	/*
@@ -640,7 +639,6 @@ int main(int argc, char *argv[])
 	/*
 	 *	We always log to stdout.
 	 */
-	fr_log_fp = stdout;
 	default_log.dst = L_DST_STDOUT;
 	default_log.fd = STDOUT_FILENO;
 

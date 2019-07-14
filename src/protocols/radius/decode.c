@@ -988,7 +988,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		return -1;
 	}
 
-	FR_PROTO_HEX_DUMP(data, attr_len, __FUNCTION__ );
+	FR_PROTO_HEX_DUMP(data, attr_len, "%s", __FUNCTION__ );
 
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
 

@@ -128,7 +128,8 @@ int	fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int
 
 void	fr_log_hex(fr_log_t const *log, fr_log_type_t type,
 		   char const *file, int line,
-		   uint8_t const *data, size_t data_len) CC_HINT(nonnull);
+		   uint8_t const *data, size_t data_len, char const *fmt, ...)
+		   CC_HINT(format (printf, 7, 8)) CC_HINT(nonnull (1,3,5));
 
 bool	fr_rate_limit_enabled(void);
 

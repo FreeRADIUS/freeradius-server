@@ -603,8 +603,6 @@ void test_encrypt_decypt_key0(void)
 	char		encrypted_id[SIM_3GPP_PSEUDONYM_LEN + 1];
 	char		decrypted_id[sizeof(id)];
 
-	fr_log_fp = stdout;
-
 	TEST_CHECK(fr_sim_id_3gpp_pseudonym_encrypt(encrypted_id, id, sizeof(id) - 1, 6, 0, (uint8_t const *)key) == 0);
 	while ((log = fr_strerror_pop())) printf("%s\n", log);
 
@@ -629,8 +627,6 @@ void test_encrypt_decypt_key1(void)
 
 	char		encrypted_id[SIM_3GPP_PSEUDONYM_LEN + 1];
 	char		decrypted_id[sizeof(id)];
-
-	fr_log_fp = stdout;
 
 	TEST_CHECK(fr_sim_id_3gpp_pseudonym_encrypt(encrypted_id, id, sizeof(id) - 1, 11, 1, (uint8_t const *)key) == 0);
 	while ((log = fr_strerror_pop())) printf("%s\n", log);
@@ -674,8 +670,6 @@ void test_encrypt_decypt_key16(void)
 
 	char		encrypted_id[SIM_3GPP_PSEUDONYM_LEN + 1];
 	char		decrypted_id[sizeof(id)];
-
-	fr_log_fp = stdout;
 
 	TEST_CHECK(fr_sim_id_3gpp_pseudonym_encrypt(encrypted_id, id, sizeof(id) - 1,
 						    9, 15, (uint8_t const *)keys[15]) == 0);

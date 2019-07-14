@@ -525,7 +525,6 @@ void test_set_1(void)
 	int ret = 0;
 
 /*
-	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
 */
 	ret = milenage_opc_generate(opc_out, op, ki);
@@ -604,7 +603,6 @@ void test_set_19(void)
 	int ret = 0;
 
 /*
-	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
 */
 

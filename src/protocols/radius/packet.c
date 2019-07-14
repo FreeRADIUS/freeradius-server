@@ -64,6 +64,10 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 	 */
 	uint8_t	data[MAX_PACKET_LEN];
 
+#ifndef NDEBUG
+	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, packet);
+#endif
+
 	if (original) {
 		original_data = original->data;
 	} else {
@@ -122,6 +126,10 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					.vector = packet->vector,
 					.tunnel_password_zeros = tunnel_password_zeros
 				};
+
+#ifndef NDEBUG
+	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, packet);
+#endif
 
 	switch (packet->code) {
 	case FR_CODE_ACCESS_REQUEST:
@@ -443,10 +451,6 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
 	 */
 	packet->vps = NULL;
 
-#ifndef NDEBUG
-	if (fr_debug_lvl > 3) fr_radius_packet_log_hex(&default_log, packet);
-#endif
-
 	return packet;
 }
 
@@ -488,10 +492,6 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	the VP list again only for debugging.
 		 */
 	}
-
-#ifndef NDEBUG
-	if (fr_debug_lvl > 3) fr_radius_packet_log_hex(&default_log, packet);
-#endif
 
 	/*
 	 *	If the socket is TCP, call write().  Calling sendto()
@@ -535,28 +535,23 @@ void _fr_radius_packet_log_hex(fr_log_t *log, RADIUS_PACKET const *packet, char 
 	}
 
        if ((packet->data[0] > 0) && (packet->data[0] < FR_RADIUS_MAX_PACKET_CODE)) {
-               fr_log(log, L_DBG, file, line, "  Code     : %s\n", fr_packet_codes[packet->data[0]]);
+               fr_log(log, L_DBG, file, line, "  Code     : %s", fr_packet_codes[packet->data[0]]);
        } else {
-               fr_log(log, L_DBG, file, line, "  Code     : %u\n", packet->data[0]);
+               fr_log(log, L_DBG, file, line, "  Code     : %u", packet->data[0]);
        }
 
-       fr_log(log, L_DBG, file, line, "  Id       : %u\n", packet->data[1]);
-       fr_log(log, L_DBG, file, line, "  Length   : %u\n", ((packet->data[2] << 8) |
-							    (packet->data[3])));
-
-       strlcpy(buffer, "  Vector   : ", sizeof(buffer));
-       fr_bin2hex(buffer + 13, packet->data + 4, 16);
-
-       fr_log(log, L_DBG, file, line, "%s\n", buffer);
+       fr_log(log, L_DBG, file, line, "  Id       : %u", packet->data[1]);
+       fr_log(log, L_DBG, file, line, "  Length   : %u", ((packet->data[2] << 8) | (packet->data[3])));
+       fr_log(log, L_DBG, file, line, "  Vector   : %pH", fr_box_octets(packet->data + 4, RADIUS_AUTH_VECTOR_LENGTH));
 
        if (packet->data_len <= 20) return;
 
        for (attr = packet->data + 20, end = packet->data + packet->data_len;
             attr < end;
             attr += attr[1]) {
-               int i, len, offset = 2;
-               unsigned int vendor = 0;
-	       char *p;
+               int		i, len, offset = 2;
+               unsigned int	vendor = 0;
+	       char		*p;
 
 #ifndef NDEBUG
                if (attr[1] < 2) break; /* Coverity */

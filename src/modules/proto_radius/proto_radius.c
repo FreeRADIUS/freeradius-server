@@ -282,11 +282,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
 
-	if (DEBUG_ENABLED3) {
-		RDEBUG("proto_radius decode packet");
-		if (DEBUG_ENABLED3) fr_log_hex(&default_log, L_DBG, __FILE__, __LINE__, data, data_len);
-	}
-
 	/*
 	 *	Set the request dictionary so that we can do
 	 *	generic->protocol attribute conversions as
@@ -516,7 +511,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 
 		if (DEBUG_ENABLED3) {
 			RDEBUG("proto_radius encoded packet");
-			if (DEBUG_ENABLED3) fr_log_hex(&default_log, L_DBG, __FILE__, __LINE__, buffer, data_len);
+			if (DEBUG_ENABLED3) fr_log_hex(&default_log, L_DBG, __FILE__, __LINE__, buffer, data_len, NULL);
 		}
 	}
 

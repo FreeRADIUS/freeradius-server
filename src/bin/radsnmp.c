@@ -46,11 +46,11 @@ static char const *radsnmp_version = RADIUSD_VERSION_STRING_BUILD("radsnmp");
 static bool stop;
 
 #undef DEBUG
-#define DEBUG(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 0)) fprintf(fr_log_fp, "radsnmp (debug): " fmt "\n", ## __VA_ARGS__)
+#define DEBUG(fmt, ...)		if (fr_debug_lvl >= L_DBG_LVL_1) fr_log(&default_log, L_DBG, __FILE__, __LINE__, "radsnmp (debug): " fmt, ## __VA_ARGS__)
 #undef DEBUG2
-#define DEBUG2(fmt, ...)	if (fr_log_fp && (fr_debug_lvl > 1)) fprintf(fr_log_fp, "radsnmp (debug): " fmt "\n", ## __VA_ARGS__)
+#define DEBUG2(fmt, ...)	if (fr_debug_lvl >= L_DBG_LVL_2) fr_log(&default_log, L_DBG, __FILE__, __LINE__, "radsnmp (debug): " fmt, ## __VA_ARGS__)
 
-#define ERROR(fmt, ...)		if (fr_log_fp) fprintf(fr_log_fp, "radsnmp (error): " fmt "\n", ## __VA_ARGS__)
+#define ERROR(fmt, ...)		fr_log(&default_log, L_DBG,  __FILE__, __LINE__, "radsnmp (error): " fmt, ## __VA_ARGS__)
 
 typedef enum {
 	RADSNMP_UNKNOWN = -1,				//!< Unknown command.
@@ -792,10 +792,10 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			/*
 			 *	Print the attributes we're about to send
 			 */
-			if (fr_log_fp) fr_packet_header_print(fr_log_fp, request, false);
-			if (fr_debug_lvl > 0) fr_pair_list_log(&default_log, request->vps);
+			fr_packet_header_log(&default_log, request, false);
+			if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(&default_log, request->vps);
 #ifndef NDEBUG
-			if (fr_debug_lvl > 3) fr_radius_packet_log_hex(&default_log, request);
+			if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, request);
 #endif
 
 			FD_ZERO(&set); /* clear the set */
@@ -855,10 +855,10 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			/*
 			 *	Print the attributes we received in response
 			 */
-			if (fr_log_fp) fr_packet_header_print(fr_log_fp, reply, true);
-			if (fr_debug_lvl > 0) fr_pair_list_log(&default_log, reply->vps);
+			fr_packet_header_log(&default_log, reply, true);
+			if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(&default_log, reply->vps);
 #ifndef NDEBUG
-			if (fr_debug_lvl > 3) fr_radius_packet_log_hex(&default_log, reply);
+			if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, reply);
 #endif
 
 			switch (command) {
@@ -912,8 +912,6 @@ int main(int argc, char **argv)
 	int		sockfd;
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
-	fr_log_fp = stderr;
-
 	conf = talloc_zero(autofree, radsnmp_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
@@ -929,6 +927,10 @@ int main(int argc, char **argv)
 	}
 #endif
 
+	/*
+	 *	Need to log to stderr because net-snmp will interpret stdout
+	 */
+	default_log.dst = L_DST_STDERR;
 	talloc_set_log_stderr();
 
 	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:l:n:p:P:qr:sS:t:vx")) != -1) switch (c) {
@@ -949,22 +951,18 @@ int main(int argc, char **argv)
 			break;
 
 		case 'l':
-		{
-			int log_fd;
-
-			if (strcmp(optarg, "stderr") == 0) {
-				fr_log_fp = stderr;	/* stdout goes to netsnmp */
+			if (strcmp(optarg, "stdout") == 0) {	/* stdout goes to net-snmp, so need to switch */
+				default_log.dst = L_DST_STDERR;
 				break;
 			}
 
-			log_fd = open(optarg, O_WRONLY | O_APPEND | O_CREAT, 0640);
-			if (log_fd < 0) {
+			default_log.dst = L_DST_FILES;
+			default_log.fd = open(optarg, O_WRONLY | O_APPEND | O_CREAT, 0640);
+			if (default_log.fd < 0) {
 				fprintf(stderr, "radsnmp: Failed to open log file %s: %s\n",
 					optarg, fr_syserror(errno));
 				exit(EXIT_FAILURE);
 			}
-			fr_log_fp = fdopen(log_fd, "a");
-		}
 			break;
 
 		case 'P':
@@ -1063,8 +1061,6 @@ int main(int argc, char **argv)
 	}
 	fr_strerror();	/* Clear the error buffer */
 
-	if (fr_log_fp) setvbuf(fr_log_fp, NULL, _IONBF, 0);
-
 	/*
 	 *	Get the request type
 	 */
@@ -1147,8 +1143,6 @@ int main(int argc, char **argv)
 	DEBUG("Read loop done");
 
 finish:
-	if (fr_log_fp) fflush(fr_log_fp);
-
 	/*
 	 *	Everything should be parented from conf
 	 */

@@ -308,7 +308,6 @@ int main(int argc, char *argv[])
 					config->name, config->log_file, fr_syserror(errno));
 				EXIT_WITH_FAILURE;
 			}
-			fr_log_fp = fdopen(default_log.fd, "a");
 			break;
 
 		case 'L':
@@ -369,7 +368,6 @@ int main(int argc, char *argv[])
 			config->daemonize = false;
 			rad_debug_lvl += 2;
 	do_stdout:
-			fr_log_fp = stdout;
 			default_log.dst = L_DST_STDOUT;
 			default_log.fd = STDOUT_FILENO;
 			break;
@@ -429,7 +427,6 @@ int main(int argc, char *argv[])
 	 */
 	if (display_version) {
 		if (rad_debug_lvl == 0) rad_debug_lvl = 1;
-		fr_log_fp = stdout;
 		default_log.dst = L_DST_STDOUT;
 		default_log.fd = STDOUT_FILENO;
 

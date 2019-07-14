@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/value.h>
 
 #include <fcntl.h>
 #ifdef HAVE_FEATURES_H
@@ -558,20 +559,36 @@ int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int
 	return ret;
 }
 
-void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int line, uint8_t const *data, size_t data_len)
+DIAG_OFF(format-nonliteral)
+void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		uint8_t const *data, size_t data_len, char const *fmt, ...)
 {
-	size_t i, j, len;
-	char *p;
-	char buffer[(0x10 * 3) + 1];
+	size_t	i, len;
+	char	*prefix = NULL;
+
+	if (fmt) {
+		va_list ap;
+
+		va_start(ap, fmt);
+		prefix = talloc_asprintf(NULL, fmt, ap);
+		va_end(ap);
+	}
 
 	for (i = 0; i < data_len; i += 0x10) {
 		len = 0x10;
 		if ((i + len) > data_len) len = data_len - i;
 
-		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
-		fr_log(log, type, file, line, "%04x: %s", (int)i, buffer);
+		if (fmt) {
+			fr_log(log, type, file, line, "%pV%04x: %pV",
+			       fr_box_strvalue_buffer(prefix), (int)i, fr_box_octets(data + i, len));
+		} else {
+			fr_log(log, type, file, line, "%04x: %pV", (int)i, fr_box_octets(data + i, len));
+		}
 	}
+
+	if (fmt) talloc_free(prefix);
 }
+DIAG_ON(format-nonliteral)
 
 static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor
 static int stdout_fd = -1;		//!< The original unmolested stdout file descriptor

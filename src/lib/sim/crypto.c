@@ -1274,7 +1274,6 @@ static void test_eap_sim_kdf_0_gsm(void)
 	int		ret;
 
 /*
-	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
 	printf("\n");
 */
@@ -1349,7 +1348,6 @@ static void test_eap_aka_kdf_0_umts(void)
 	int		ret;
 
 /*
-	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
 	printf("\n");
 */
@@ -1414,7 +1412,6 @@ static void test_eap_sim_kdf_0_reauth(void)
 	int		ret;
 
 /*
-	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
 	printf("\n");
 */
@@ -1502,7 +1499,6 @@ static void test_eap_aka_kdf_1_umts(void)
 	int		ret;
 
 /*
-	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
 	printf("\n");
 */
@@ -1528,10 +1524,8 @@ static void test_eap_aka_derive_ck_ik(void)
 
 	fr_sim_keys_t	keys;
 	int		ret;
-	fr_log_fp = stdout;
 
 /*
-	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
 	printf("\n");
 */
@@ -1606,7 +1600,6 @@ static void test_eap_aka_kdf_1_reauth(void)
 	int		ret;
 
 /*
-	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
 	printf("\n");
 */

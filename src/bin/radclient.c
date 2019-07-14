@@ -1004,8 +1004,8 @@ static int send_one_packet(rc_request_t *request)
 		return -1;
 	}
 
-	fr_packet_header_print(fr_log_fp, request->packet, false);
-	if (fr_debug_lvl > 0) fr_pair_list_log(&default_log, request->packet->vps);
+	fr_packet_header_log(&default_log, request->packet, false);
+	if (fr_debug_lvl > L_DBG_LVL_1) fr_pair_list_log(&default_log, request->packet->vps);
 
 	return 0;
 }
@@ -1108,8 +1108,8 @@ static int recv_one_packet(fr_time_t wait_time)
 		goto packet_done;
 	}
 
-	fr_packet_header_print(fr_log_fp, request->reply, true);
-	if (fr_debug_lvl > 0) fr_pair_list_log(&default_log, request->reply->vps);
+	fr_packet_header_log(&default_log, request->reply, true);
+	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(&default_log, request->reply->vps);
 
 	/*
 	 *	Increment counters...
@@ -1357,6 +1357,12 @@ int main(int argc, char **argv)
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);
+
+	/*
+	 *	Always log to stdout
+	 */
+	default_log.dst = L_DST_STDOUT;
+	default_log.fd = STDOUT_FILENO;
 
 	if ((argc < 3)  || ((secret == NULL) && (argc < 4))) {
 		ERROR("Insufficient arguments");

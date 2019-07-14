@@ -791,7 +791,7 @@ uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl)
 /*
  *	Debug the packet if requested.
  */
-void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
+void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool received)
 {
 	char src_ipaddr[FR_IPADDR_STRLEN];
 	char dst_ipaddr[FR_IPADDR_STRLEN];
@@ -799,7 +799,7 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 	char if_name[IFNAMSIZ];
 #endif
 
-	if (!fp) return;
+	if (!log) return;
 	if (!packet) return;
 
 	/*
@@ -809,7 +809,8 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		fprintf(fp, "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
+		fr_log(log, L_DBG, __FILE__, __LINE__,
+		       "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 		       "%s%s%s"
 #endif
@@ -832,7 +833,8 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 #endif
 			packet->data_len);
 	} else {
-		fprintf(fp, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
+		fr_log(log, L_DBG, __FILE__, __LINE__,
+		       "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 		       "%s%s%s"
 #endif

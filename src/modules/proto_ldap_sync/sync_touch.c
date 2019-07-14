@@ -50,8 +50,6 @@ int main(int argc, char **argv)
 	int			ret;
 	int			sockfd;
 
-	fr_log_fp = stderr;
-
 	conf = talloc_zero(NULL, sync_touch_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
@@ -151,10 +149,6 @@ int main(int argc, char **argv)
 	}
 	fr_strerror();	/* Clear the error buffer */
 
-	if (fr_log_fp) setvbuf(fr_log_fp, NULL, _IONBF, 0);
-
-
-
 	fr_set_signal(SIGPIPE, rs_signal_stop);
 	fr_set_signal(SIGINT, rs_signal_stop);
 	fr_set_signal(SIGTERM, rs_signal_stop);
@@ -167,8 +161,6 @@ int main(int argc, char **argv)
 	DEBUG("Read loop done");
 
 finish:
-	if (fr_log_fp) fflush(fr_log_fp);
-
 	/*
 	 *	Everything should be parented from conf
 	 */
