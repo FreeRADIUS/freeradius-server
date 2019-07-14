@@ -659,7 +659,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				 *	any pool associated with it.
 				 */
 				if (in) {
-					subst = fr_value_box_asprint(NULL, in, '"');
+					subst = fr_value_box_asprint(NULL, in, in->tainted ? '"' : '\0');
 					if (!subst) {
 						talloc_free(out);
 						va_end(ap_p);
