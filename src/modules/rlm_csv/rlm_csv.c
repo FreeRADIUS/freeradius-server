@@ -411,11 +411,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	type-specific comparisons.
 	 */
 	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV6_ADDR)) {
-		inst->trie = fr_trie_alloc(inst);
-		if (!inst->trie) goto oom;
+		MEM(inst->trie = fr_trie_alloc(inst));
 	} else {
-		inst->tree = rbtree_talloc_create(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0);
-		if (!inst->tree) goto oom;
+		MEM(inst->tree = rbtree_talloc_create(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0));
 	}
 
 	/*
@@ -467,17 +465,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	inst->field_names = talloc_zero_array(inst, const char *, inst->num_fields);
-	if (!inst->field_names) {
-	oom2:
-		fclose(fp);
-	oom:
-		cf_log_err(conf, "Out of memory");
-		return -1;
-	}
-
-	inst->field_offsets = talloc_array(inst, int, inst->num_fields);
-	if (!inst->field_offsets) goto oom2;
+	MEM(inst->field_names = talloc_zero_array(inst, const char *, inst->num_fields));
+	MEM(inst->field_offsets = talloc_array(inst, int, inst->num_fields));
 
 	for (i = 0; i < inst->num_fields; i++) {
 		inst->field_offsets[i] = -1; /* unused */
@@ -486,8 +475,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Get a writable copy of the fields definition
 	 */
-	fields = talloc_typed_strdup(inst, inst->fields);
-	if (!fields) goto oom2;
+	MEM(fields = talloc_typed_strdup(inst, inst->fields));
 
 	/*
 	 *	Mark up the field names.  Note that they can be empty,
