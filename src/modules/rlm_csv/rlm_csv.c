@@ -314,7 +314,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 	}
 
 	/*
-	 *	Only =, :=, += and -= operators are supported for LDAP mappings.
+	 *	Only some operators are allowed.
 	 */
 	switch (map->op) {
 	case T_OP_SET:
