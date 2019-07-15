@@ -806,7 +806,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 {
 	rlm_csv_t *inst = instance;
 	rlm_rcode_t rcode;
-	size_t slen;
+	ssize_t slen;
 	fr_value_box_t *key;
 
 	if (!inst->map || !inst->key) return RLM_MODULE_NOOP;
