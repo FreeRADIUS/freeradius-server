@@ -457,6 +457,8 @@ CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
  */
 CONF_ITEM *_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *prev)
 {
+	if (!ci) return NULL;
+
 	return prev ? prev->next : ci->child;
 }
 
