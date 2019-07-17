@@ -173,6 +173,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	if (tmpl) {
 		vp_tmpl_t *vpt;
 
+		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+
 		/*
 		 *	This is so we produce TMPL_TYPE_ATTR_UNDEFINED template that
 		 *	the bootstrap functions can use to create an attribute.
