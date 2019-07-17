@@ -587,21 +587,6 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 
 	RDEBUG2("Initiating new TLS session");
 
-	/*
-	 *	Manually flush the sessions every so often.  If HALF
-	 *	of the session lifetime has passed since we last
-	 *	flushed, then flush it again.
-	 *
-	 *	FIXME: Also do it every N sessions?
-	 */
-	if (conf->session_cache_enable &&
-	    ((conf->session_last_flushed + ((int)conf->session_timeout * 1800)) <= request->timestamp)){
-		RDEBUG2("Flushing SSL sessions (of #%ld)", SSL_CTX_sess_number(conf->ctx));
-
-		SSL_CTX_flush_sessions(conf->ctx, request->timestamp);
-		conf->session_last_flushed = request->timestamp;
-	}
-
 	new_tls = SSL_new(conf->ctx);
 	if (new_tls == NULL) {
 		tls_error_log(request, "Error creating new TLS session");
