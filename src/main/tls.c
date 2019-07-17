@@ -1732,7 +1732,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		fr_pair_list_mcopy_by_num(talloc_ctx, &vps, &pairlist->reply, 0, 0, TAG_ANY);
 
 		SSL_SESSION_set_ex_data(sess, fr_tls_ex_index_vps, vps);
-		RWDEBUG("Successfully restored session %s", buffer);
+		RDEBUG("Successfully restored session %s", buffer);
 		rdebug_pair_list(L_DBG_LVL_2, request, vps, "reply:");
 	}
 error:
