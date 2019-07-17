@@ -3406,6 +3406,8 @@ static int _tls_server_conf_free(fr_tls_server_conf_t *conf)
 {
 	if (conf->ctx) SSL_CTX_free(conf->ctx);
 
+	if (conf->cache_ht) fr_hash_table_free(conf->cache_ht);
+
 #ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp_store) X509_STORE_free(conf->ocsp_store);
 	conf->ocsp_store = NULL;
@@ -3430,6 +3432,20 @@ fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx)
 	talloc_set_destructor(conf, _tls_server_conf_free);
 
 	return conf;
+}
+
+static uint32_t store_hash(void const *data)
+{
+	DICT_ATTR const *da = data;
+	return fr_hash(&da, sizeof(da));
+}
+
+static int store_cmp(void const *a, void const *b)
+{
+	DICT_ATTR const *one = a;
+	DICT_ATTR const *two = b;
+
+	return one - two;
 }
 
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
@@ -3494,6 +3510,63 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	if (conf->ctx == NULL) {
 		goto error;
 	}
+
+	if (conf->session_cache_enable) {
+		CONF_SECTION	*subcs;
+		CONF_ITEM	*ci;
+
+		subcs = cf_section_sub_find(cs, "cache");
+		if (!subcs) goto skip_list;
+		subcs = cf_section_sub_find(subcs, "store");
+		if (!subcs) goto skip_list;
+
+		/*
+		 *	Largely taken from rlm_detail for laziness.
+		 */
+		conf->cache_ht = fr_hash_table_create(store_hash, store_cmp, NULL);
+
+		for (ci = cf_item_find_next(subcs, NULL);
+		     ci != NULL;
+		     ci = cf_item_find_next(subcs, ci)) {
+			char const	*attr;
+			DICT_ATTR const	*da;
+
+			if (!cf_item_is_pair(ci)) continue;
+
+			attr = cf_pair_attr(cf_item_to_pair(ci));
+			if (!attr) continue; /* pair-anoia */
+
+			da = dict_attrbyname(attr);
+			if (!da) {
+				ERROR(LOG_PREFIX ": TLS Server requires a certificate file");
+				goto error;
+			}
+
+			/*
+			 *	Be kind to minor mistakes.
+			 */
+			if (fr_hash_table_finddata(conf->cache_ht, da)) {
+				WARN(LOG_PREFIX ": Ignoring duplicate entry '%s'", attr);
+				continue;
+			}
+
+
+			if (!fr_hash_table_insert(conf->cache_ht, da)) {
+				ERROR(LOG_PREFIX ": Failed inserting '%s' into cache list", attr);
+				goto error;
+			}
+		}
+
+		/*
+		 *	If we didn't suppress anything, delete the hash table.
+		 */
+		if (fr_hash_table_num_elements(conf->cache_ht) == 0) {
+			fr_hash_table_free(conf->cache_ht);
+			conf->cache_ht = NULL;
+		}
+	}
+
+skip_list:
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	/*
@@ -3651,11 +3724,28 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
 		if (vp) fr_pair_add(&vps, vp);
 
-		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_certs);
+		if (conf->cache_ht) {
+			vp_cursor_t cursor;
+
+			/* Write each attribute/value to the log file */
+			for (vp = fr_cursor_init(&cursor, &request->reply->vps);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
+				VALUE_PAIR *copy;
+
+				if (!fr_hash_table_finddata(conf->cache_ht, vp->da)) {
+					continue;
+				}
+
+				copy = fr_pair_copy(talloc_ctx, vp);
+				if (copy) fr_pair_add(&vps, copy);
+			}
+		}
 
 		/*
 		 *	Hmm... the certs should probably be session data.
 		 */
+		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_certs);
 		if (certs) {
 			/*
 			 *	@todo: some go into reply, others into

@@ -426,6 +426,9 @@ eap {
 		#   Stripped-User-Name - from the Access-Request
 		#   Cached-Session-Policy - from the Access-Accept
 		#
+		#  See also the "store" subsection below for
+		#  additional attributes which can be cached.
+		#
 		#  The "Cached-Session-Policy" is the name of a
 		#  policy which should be applied to the cached
 		#  session.  This policy can be used to assign
@@ -440,6 +443,21 @@ eap {
 		#
 		#  You probably also want "use_tunneled_reply = yes"
 		#  when using fast session resumption.
+		#
+		#  You can check if a session has been resumed by
+		#  looking for the existence of the EAP-Session-Resumed
+		#  attribute.  Note that this attribute will *only*
+		#  exist in the "post-auth" section.
+		#
+		#  CAVEATS: The cache is stored and reloaded BEFORE
+		#  the "post-auth" section is run.  This limitation
+		#  makes caching more difficult than it should be.  In
+		#  practice, it means that the first authentication
+		#  session must set the reply attributes before the
+		#  post-auth section is run.
+		#
+		#  When the session is resumed, the attributes are
+		#  restored and placed into the session-state list.
 		#
 		cache {
 			#  Enable it.  The default is "no". Deleting the entire "cache"
@@ -495,6 +513,21 @@ eap {
 			#  This feature REQUIRES "name" option be set above.
 			#
 		#	persist_dir = "${logdir}/tlscache"
+
+			#
+			#  As of 3.0.20, it is possible to partially
+			#  control which attributes exist in the
+			#  session cache.  This subsection lists
+			#  attributes which are taken from the reply,
+			#  and saved to the on-disk cache.  When the
+			#  session is resumed, these attributes are
+			#  added to the "session-state" list.  The
+			#  default configuration will then take care
+			#  of copying them to the reply.
+			#
+			store {
+				Tunnel-Private-Group-Id
+			}
 		}
 
 		#  As of version 2.1.10, client certificates can be
