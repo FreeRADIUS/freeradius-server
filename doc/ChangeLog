@@ -16,6 +16,8 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Switch to the async interface for rlm_sql_postgresql so that
 	  we can eforce query_timeout.
 	* Added new LDAP option 'allow_dangling_group_ref'.
+	* Updated documentation and functionality for EAP session caching.
+	  See "cache" section of mods-available/eap.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host #2627
@@ -31,6 +33,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  altiga,alvarion.wimax.v2_2,aptis,asn,audiocodes,avaya,bristol,
 	  columbia_university,freedhcp,garderos,infoblox,motorola.illegal,
 	  starent.vsa1, telkom, wimax.wichorus.
+	* Fix internal sanity check when running with "-Xx"
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
