@@ -608,8 +608,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (!cs) {
 		if (inst->key) {
 			cf_log_warn(conf, "Ignoring 'key', as no 'update' section has been defined.");
-			return -1;
 		}
+
+		return 0;
 	}
 
 	if (!inst->key) {
