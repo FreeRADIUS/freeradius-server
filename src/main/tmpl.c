@@ -1092,18 +1092,17 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LITERAL:
-		vpt->tmpl_data_type = type;
-
 		/*
 		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 		 */
-		ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type,
+		ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &type,
 					  enumv, vpt->name, vpt->len, '\0');
 		if (ret < 0) {
 			VERIFY_TMPL(vpt);
 			return -1;
 		}
 
+		vpt->tmpl_data_type = type;
 		vpt->type = TMPL_TYPE_DATA;
 		vpt->tmpl_data_length = (size_t) ret;
 		break;
