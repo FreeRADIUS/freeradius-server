@@ -1734,6 +1734,11 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		SSL_SESSION_set_ex_data(sess, fr_tls_ex_index_vps, vps);
 		RDEBUG("Successfully restored session %s", buffer);
 		rdebug_pair_list(L_DBG_LVL_2, request, vps, "reply:");
+
+		/*
+		 *	The "restore VPs from OpenSSL cache" code is
+		 *	now in eaptls_process()
+		 */
 	}
 error:
 	if (sess_data) talloc_free(sess_data);
@@ -3769,7 +3774,6 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		 *	The "restore VPs from OpenSSL cache" code is
 		 *	now in eaptls_process()
 		 */
-
 		if (conf->session_cache_path) {
 			/* "touch" the cached session/vp file */
 			char filename[3 * MAX_SESSION_SIZE + 1];
@@ -3786,6 +3790,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		 *	Mark the request as resumed.
 		 */
 		pair_make_request("EAP-Session-Resumed", "1", T_OP_SET);
+		RDEBUG("  &request:EAP-Session-Resumed := 1");
 	}
 
 	return 0;
