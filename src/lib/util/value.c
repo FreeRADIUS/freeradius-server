@@ -3089,12 +3089,11 @@ int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, b
 
 	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
 
+	dst->tainted = tainted;
 	dst->datum.ptr = ptr;
 	dst->vb_length += len;
 
 	ptr[dst->vb_length] = '\0';
-
-	if (tainted) dst->tainted = true;
 
 	return 0;
 }
@@ -3236,10 +3235,9 @@ int fr_value_box_append_mem(fr_value_box_t *dst, uint8_t const *src, size_t len,
 
 	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
 
+	dst->tainted = tainted;
 	dst->datum.ptr = ptr;
 	dst->vb_length += len;
-
-	if (tainted) dst->tainted = true;
 
 	return 0;
 }
