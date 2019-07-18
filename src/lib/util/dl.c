@@ -449,23 +449,50 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 
 			path = talloc_typed_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
 			handle = dlopen(path, flags);
-			if (!handle) {
-				talloc_free(ctx);
-
-				fr_strerror_printf("%s", dlerror());
+			if (handle) {
+				talloc_free(path);
+				break;
+			}
 
 #ifdef AT_ACCESS
-				access_mode |= AT_ACCESS;
+			access_mode |= AT_ACCESS;
 #endif
 
-				if (access(path, access_mode) < 0) {
-					fr_strerror_printf_push("Access check failed - %s", fr_syserror(errno));
-				}
+			/*
+			 *	Check if the dlopen() failed
+			 *	because of access permissions.
+			 */
+			if (access(path, access_mode) < 0) {
+				/*
+				 *	It doesn't exist,
+				 *	continue with the next
+				 *	element of "path".
+				 */
+				if (errno == ENOENT) continue;
 
-				return NULL;
+				/*
+				 *	Stop looking for more
+				 *	libraries, and instead
+				 *	complain about access
+				 *	permissions.
+				 */
+				fr_strerror_printf("Access check failed for %s - %s", path, fr_syserror(errno));
+				talloc_free(path);
+				break;
 			}
+
 			talloc_free(path);
 		}
+
+		/*
+		 *	No element of "path" had the library.  Return
+		 *	the error from the last dlopen().
+		 */
+		if (!handle) {
+			fr_strerror_printf("%s", dlerror());
+			return NULL;
+		}
+
 		talloc_free(ctx);
 	} else {
 		char	buffer[2048];
