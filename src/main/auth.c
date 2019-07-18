@@ -827,6 +827,26 @@ int rad_virtual_server(REQUEST *request)
 
 	result = rad_authenticate(request);
 
+	/*
+	 *	Allow bare "accept" and "reject" policies in the inner
+	 *	tunnel.
+	 */
+	if (!request->reply->code &&
+	    (vp = fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY)) != NULL) {
+		switch (vp->vp_integer) {
+		case PW_AUTH_TYPE_ACCEPT:
+			request->reply->code = PW_CODE_ACCESS_ACCEPT;
+			break;
+
+		case PW_AUTH_TYPE_REJECT:
+				request->reply->code = PW_CODE_ACCESS_REJECT;
+				break;
+
+		default:
+			break;
+		}
+	}
+
 	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
 		fr_pair_delete_by_num(&request->config, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 		vp = pair_make_config("Post-Auth-Type", "Reject", T_OP_SET);
