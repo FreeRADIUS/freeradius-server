@@ -503,6 +503,8 @@ CONF_ITEM *_cf_parent(CONF_ITEM const *ci)
  */
 int _cf_lineno(CONF_ITEM const *ci)
 {
+	if (!ci) return -1;
+
 	return ci->lineno;
 }
 
@@ -515,6 +517,8 @@ int _cf_lineno(CONF_ITEM const *ci)
  */
 char const *_cf_filename(CONF_ITEM const *ci)
 {
+	if (!ci) return NULL;
+
 	return ci->filename;
 }
 
@@ -527,6 +531,8 @@ char const *_cf_filename(CONF_ITEM const *ci)
  */
 bool cf_item_is_section(CONF_ITEM const *ci)
 {
+	if (!ci) return false;
+
 	return ci->type == CONF_ITEM_SECTION;
 }
 
@@ -539,6 +545,8 @@ bool cf_item_is_section(CONF_ITEM const *ci)
  */
 bool cf_item_is_pair(CONF_ITEM const *ci)
 {
+	if (!ci) return false;
+
 	return ci->type == CONF_ITEM_PAIR;
 }
 
@@ -551,6 +559,8 @@ bool cf_item_is_pair(CONF_ITEM const *ci)
  */
 bool cf_item_is_data(CONF_ITEM const *ci)
 {
+	if (!ci) return false;
+
 	return ci->type == CONF_ITEM_DATA;
 }
 
