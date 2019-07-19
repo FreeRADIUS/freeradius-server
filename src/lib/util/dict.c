@@ -1692,12 +1692,14 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 
 	enumv = talloc_zero(dict->pool, fr_dict_enum_t);
 	if (!enumv) {
+	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
 		return -1;
 	}
 	enumv->alias = talloc_typed_strdup(enumv, alias);
 	enumv->alias_len = strlen(alias);
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL, false);
+	if (!enum_value) goto oom;
 
 	if (da->type != value->type) {
 		if (!coerce) {
