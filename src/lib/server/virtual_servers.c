@@ -238,13 +238,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
 			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	cf_section_rules_push(cf_item_to_section(ci), namespace_config);
-
-	/*
-	 *	Just a place-holder which does nothing.
-	 */
-
-	return 0;
+	return cf_section_rules_push(cf_item_to_section(ci), namespace_config);
 }
 
 /** dl_open a proto_* module
