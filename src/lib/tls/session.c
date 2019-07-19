@@ -694,18 +694,10 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session, uint8_
 	 *	Print out information about the record and print the
 	 *	data at higher debug levels.
 	 */
-	if (request) {
-		if (RDEBUG_ENABLED3) {
-			RHEXDUMP(L_DBG_LVL_3, data, data_len, "%s", tls_session->info.info_description);
-		} else {
-			RDEBUG2("%s", tls_session->info.info_description);
-		}
+	if (RDEBUG_ENABLED3) {
+		RHEXDUMP(L_DBG_LVL_3, data, data_len, "%s", tls_session->info.info_description);
 	} else {
-		if (DEBUG_ENABLED3) {
-			HEXDUMP(L_DBG_LVL_3, data, data_len, "%s", tls_session->info.info_description);
-		} else {
-			DEBUG2("%s", tls_session->info.info_description);
-		}
+		RDEBUG2("%s", tls_session->info.info_description);
 	}
 }
 
