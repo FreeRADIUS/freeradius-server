@@ -1060,6 +1060,8 @@ do {\
 					goto failure;
 				}
 			} else {
+				void *handle;
+
 				if (setenv(attr, value, 1) < 0) {
 					cf_log_err(ci, "Failed setting environment variable %s: %s",
 						   attr, fr_syserror(errno));
@@ -1069,11 +1071,15 @@ do {\
 				/*
 				 *	Hacks for LD_PRELOAD.
 				 */
-				if ((strcmp(attr, "LD_PRELOAD") == 0) &&
-				    (dlopen(value, RTLD_NOW | RTLD_GLOBAL) == NULL)) {
+				if (strcmp(attr, "LD_PRELOAD") != 0) continue;
+
+				handle = dlopen(value, RTLD_NOW | RTLD_GLOBAL);
+				if (!handle) {
 					cf_log_err(ci, "Failed loading library %s: %s", value, dlerror());
 					goto failure;
 				}
+
+				(void) cf_data_add(subcs, handle, value, dlclose);
 			}
 		} /* loop over pairs in ENV */
 	} /* there's an ENV subsection */
