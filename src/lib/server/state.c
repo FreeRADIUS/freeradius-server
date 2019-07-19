@@ -380,6 +380,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	if (too_many) {
 		RERROR("Failed inserting state entry - At maximum ongoing session limit (%u)",
 		       state->max_sessions);
+		PTHREAD_MUTEX_LOCK(&state->mutex);	/* Caller expects this to be locked */
 		return NULL;
 	}
 
