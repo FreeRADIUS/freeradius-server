@@ -218,6 +218,9 @@
 #endif
 
 
+#define XSTRINGIFY(x) #x
+#define STRINGIFY(x) XSTRINGIFY(x)
+
 /* We want to say we are libtool 1.4 for shlibtool compatibility. */
 #define VERSION "1.4"
 
@@ -2061,7 +2064,7 @@ static void link_fixup(command_t *cmd)
 #endif
 
 			{
-				char *tmp = lt_malloc(PATH_MAX);
+				char *tmp = lt_malloc(PATH_MAX + 30);
 
 #ifdef __APPLE__
 				strcpy(tmp, cmd->install_path);
@@ -2076,12 +2079,25 @@ static void link_fixup(command_t *cmd)
 				}
 
 				/*
-				 *	@todo - push the version for non-OSX systems
-				 *	As "libfoo.so.VERSION"
+				 *	Add the version as "libfoo.so.PROGRAM_VERSION"
 				 */
+#if defined(PROGRAM_VERSION) && !defined(__APPLE__)
+				strcat(tmp, "." STRINGIFY(PROGRAM_VERSION));
+#endif
 
 				push_count_chars(cmd->shared_opts.normal, tmp);
 			}
+
+#if defined(PROGRAM_VERSION) && defined(__APPLE__)
+			/*
+			 *	These are separate options on OSX.
+			 */
+			push_count_chars(cmd->shared_opts.normal,
+					 "-current_version " STRINGIFY(PROGRAM_VERSION));
+			push_count_chars(cmd->shared_opts.normal,
+					 "-compatibility_version " STRINGIFY(PROGRAM_VERSION));
+#endif
+
 #endif
 		}
 
