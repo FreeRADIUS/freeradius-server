@@ -95,7 +95,7 @@
 #  define SHARED_OPTS			"-shared"
 #  define MODULE_OPTS			"-shared"
 #  define LINKER_FLAG_PREFIX		"-Wl,"
-#  define DYNAMIC_INSTALL_NAME		"-Wl,-soname,"
+//#  define DYNAMIC_INSTALL_NAME		"-Wl,-soname,"
 #if !defined(__sun)
 #  define DYNAMIC_LINK_OPTS		LINKER_FLAG_PREFIX "-export-dynamic"
 #else
