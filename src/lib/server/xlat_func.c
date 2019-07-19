@@ -1709,7 +1709,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 		return -1;
 	}
 
-	if (*p == '\0') goto arg_error;
+	if (*p == '\0' || p[1]) goto arg_error;
 
 	delim = *p;
 
