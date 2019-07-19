@@ -2395,9 +2395,9 @@ void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
 
 	info->argc = 0;
 	info->max_argc = CMD_MAX_ARGV;
-	info->argv = talloc_zero_array(ctx, char const *, CMD_MAX_ARGV);
-	info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
-	info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV);
+	MEM(info->argv = talloc_zero_array(ctx, char const *, CMD_MAX_ARGV));
+	MEM(info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV));
+	MEM(info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV));
 }
 
 
