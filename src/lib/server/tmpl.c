@@ -2566,7 +2566,7 @@ static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
 
 	return NULL;
 }
-#define CHECK_ZEROED(_x) not_zeroed(((uint8_t const *)&vpt->data) + sizeof(_x), sizeof(vpt->data) - sizeof(_x))
+#define CHECK_ZEROED(_x) not_zeroed(((uint8_t const *)&(_x)->data) + sizeof(_x), sizeof((_x)->data) - sizeof(_x))
 
 /** Verify fields of a vp_tmpl_t make sense
  *
