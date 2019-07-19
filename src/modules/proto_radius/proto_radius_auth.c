@@ -549,7 +549,8 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 			 */
 			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
 				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
-				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv->alias);
+
+				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv ? dv->alias : "???" );
 
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
