@@ -2081,7 +2081,7 @@ static void link_fixup(command_t *cmd)
 				/*
 				 *	Add the version as "libfoo.so.PROGRAM_VERSION"
 				 */
-#if defined(PROGRAM_VERSION) && !defined(__APPLE__)
+#if 0 && defined(PROGRAM_VERSION) && !defined(__APPLE__)
 				strcat(tmp, "." STRINGIFY(PROGRAM_VERSION));
 #endif
 
