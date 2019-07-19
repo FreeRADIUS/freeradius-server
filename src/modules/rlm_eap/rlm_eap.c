@@ -102,7 +102,6 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 
@@ -680,7 +679,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	return RLM_MODULE_UPDATED;
 }
 
-#ifdef WITH_PROXY
+#if 0
 /*
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
@@ -1066,9 +1065,6 @@ module_t rlm_eap = {
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
-#ifdef WITH_PROXY
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };
