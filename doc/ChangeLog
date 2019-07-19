@@ -18,6 +18,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Added new LDAP option 'allow_dangling_group_ref'.
 	* Updated documentation and functionality for EAP session caching.
 	  See "cache" section of mods-available/eap.
+	* Tighten systemd unit file security. #2637
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host #2627
