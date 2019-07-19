@@ -88,7 +88,7 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 		skip = offset - 40;
 		offset -= skip;
 		value = talloc_strdup(ctx, fmt + skip);
-		memcpy(value, "...", 3);
+		memcpy(value, "...", 4);
 
 	} else {
 		value = talloc_strdup(ctx, fmt);
