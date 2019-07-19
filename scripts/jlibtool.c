@@ -95,6 +95,7 @@
 #  define SHARED_OPTS			"-shared"
 #  define MODULE_OPTS			"-shared"
 #  define LINKER_FLAG_PREFIX		"-Wl,"
+#  define DYNAMIC_INSTALL_NAME		"-Wl,-soname,"
 #if !defined(__sun)
 #  define DYNAMIC_LINK_OPTS		LINKER_FLAG_PREFIX "-export-dynamic"
 #else
@@ -2049,20 +2050,35 @@ static void link_fixup(command_t *cmd)
 #ifdef DYNAMIC_INSTALL_NAME
 			push_count_chars(cmd->shared_opts.normal, DYNAMIC_INSTALL_NAME);
 
+#ifdef __APPLE__
+			/*
+			 *	Install paths on OSX are absolute.
+			 */
 			if (!cmd->install_path) {
 				ERROR("Installation mode requires -rpath\n");
 				exit(1);
 			}
+#endif
 
 			{
 				char *tmp = lt_malloc(PATH_MAX);
+
+#ifdef __APPLE__
 				strcpy(tmp, cmd->install_path);
+#else
+				tmp[0] = '\0';
+#endif
 
 				if (cmd->shared_name.install) {
 					strcat(tmp, strrchr(cmd->shared_name.install, '/'));
 				} else {
 					strcat(tmp, strrchr(cmd->shared_name.normal, '/'));
 				}
+
+				/*
+				 *	@todo - push the version for non-OSX systems
+				 *	As "libfoo.so.VERSION"
+				 */
 
 				push_count_chars(cmd->shared_opts.normal, tmp);
 			}
