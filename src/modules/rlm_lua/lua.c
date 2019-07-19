@@ -129,7 +129,6 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 		break;
 
 	case FR_TYPE_UINT32:
-		IN_RANGE_INTEGER_UNSIGNED(vp->vp_uint32);
 		lua_pushinteger(L, (lua_Integer)vp->vp_uint32);
 		break;
 
@@ -139,17 +138,14 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 		break;
 
 	case FR_TYPE_INT8:
-		IN_RANGE_INTEGER_SIGNED(vp->vp_int8);
 		lua_pushinteger(L, (lua_Integer)vp->vp_int8);
 		break;
 
 	case FR_TYPE_INT16:
-		IN_RANGE_INTEGER_SIGNED(vp->vp_int16);
 		lua_pushinteger(L, (lua_Integer)vp->vp_int16);
 		break;
 
 	case FR_TYPE_INT32:
-		IN_RANGE_INTEGER_SIGNED(vp->vp_int32);
 		lua_pushinteger(L, (lua_Integer)vp->vp_int32);
 		break;
 
@@ -159,7 +155,6 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 		break;
 
 	case FR_TYPE_DATE:
-		IN_RANGE_INTEGER_UNSIGNED(vp->vp_date);
 		lua_pushinteger(L, (lua_Integer)vp->vp_date);
 		break;
 
