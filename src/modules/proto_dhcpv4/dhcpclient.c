@@ -688,7 +688,10 @@ int main(int argc, char **argv)
 	/*
 	 *	Initialise the DHCPv4 library
 	 */
-	fr_dhcpv4_global_init();
+	if (fr_dhcpv4_global_init() < 0) {
+		fr_perror("dhcpclient");
+		exit(EXIT_FAILURE);
+	}
 
 	/*
 	 *	Resolve hostname.
