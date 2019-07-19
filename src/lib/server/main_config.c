@@ -1079,7 +1079,7 @@ do {\
 					goto failure;
 				}
 
-				(void) cf_data_add(subcs, handle, value, dlclose);
+				(void) cf_data_add(subcs, handle, value, NULL);
 			}
 		} /* loop over pairs in ENV */
 	} /* there's an ENV subsection */
