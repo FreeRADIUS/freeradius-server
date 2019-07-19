@@ -317,7 +317,6 @@ static FR_CODE radclient_get_code(uint16_t port)
 		return FR_CODE_ACCOUNTING_REQUEST;
 	}
 	if (port == FR_COA_UDP_PORT) return FR_CODE_COA_REQUEST;
-	if (port == FR_POD_UDP_PORT) return FR_CODE_DISCONNECT_REQUEST;
 
 	return FR_CODE_UNDEFINED;
 }
