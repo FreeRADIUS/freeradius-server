@@ -341,7 +341,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
 	}
 
-	module_section_type_set(request, attr_auth_type, inst->auth_type);
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
 
 	return RLM_MODULE_OK;
 }
