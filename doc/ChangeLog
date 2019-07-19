@@ -14,7 +14,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  will not work.
 	* Added tripplite dictionary. #2760
 	* Switch to the async interface for rlm_sql_postgresql so that
-	  we can eforce query_timeout.
+	  we can enforce query_timeout.
 	* Added new LDAP option 'allow_dangling_group_ref'.
 	* Updated documentation and functionality for EAP session caching.
 	  See "cache" section of mods-available/eap.
@@ -35,6 +35,8 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  columbia_university,freedhcp,garderos,infoblox,motorola.illegal,
 	  starent.vsa1, telkom, wimax.wichorus.
 	* Fix internal sanity check when running with "-Xx"
+	* Allow "inner-tunnel" virtual servers to work better with
+	  "accept" and "reject" policies.
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
