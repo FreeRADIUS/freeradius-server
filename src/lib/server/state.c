@@ -804,7 +804,7 @@ void fr_state_detach(REQUEST *request, bool will_free)
 	MEM(new_state_ctx = talloc_init("session-state"));
 	request_data_ctx_change(new_state_ctx, request);
 
-	fr_pair_list_copy(new_state_ctx, &new_state, request->state);
+	(void) fr_pair_list_copy(new_state_ctx, &new_state, request->state);
 	fr_pair_list_free(&request->state);
 
 	request->state = new_state;
