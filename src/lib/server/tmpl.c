@@ -2566,7 +2566,8 @@ static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
 
 	return NULL;
 }
-#define CHECK_ZEROED(_vpt, _x) not_zeroed(((uint8_t const *)&(_vpt)->data) + sizeof(_x), sizeof((_vpt)->data) - sizeof(_x))
+
+#define CHECK_ZEROED(_vpt, _field) not_zeroed(((uint8_t const *)&(_vpt)->data) + sizeof((_vpt)->data._field), sizeof((_vpt)->data) - sizeof((_vpt)->data._field))
 
 /** Verify fields of a vp_tmpl_t make sense
  *
@@ -2645,7 +2646,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_XLAT_STRUCT:
-		if (CHECK_ZEROED(vpt, vpt->data.xlat)) {
+		if (CHECK_ZEROED(vpt, xlat)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT_STRUCT "
 				     "has non-zero bytes after the data.xlat pointer in the union", file, line);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
@@ -2666,7 +2667,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_ATTR:
-		if (CHECK_ZEROED(vpt, vpt->data.attribute)) {
+		if (CHECK_ZEROED(vpt, attribute)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 				     "has non-zero bytes after the data.attribute struct in the union",
 				     file, line);
@@ -2759,7 +2760,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_LIST:
-		if (CHECK_ZEROED(vpt, vpt->data.attribute)) {
+		if (CHECK_ZEROED(vpt, attribute)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST"
 				     "has non-zero bytes after the data.attribute struct in the union", file, line);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
@@ -2773,7 +2774,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_DATA:
-		if (CHECK_ZEROED(vpt, vpt->data.literal)) {
+		if (CHECK_ZEROED(vpt, literal)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA "
 				     "has non-zero bytes after the data.literal struct in the union",
 				     file, line);
