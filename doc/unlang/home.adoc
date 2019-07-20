@@ -1,7 +1,6 @@
+:toc: left
+
 == Unlang Policy Language
-
-include::../img/header.adoc[]
-
 
 The server supports a simple processing language called "Unlang",
 which is short for "un-language". The original intention of using an
@@ -15,10 +14,11 @@ the `lua`, `perl` or `python` modules.  Those modules allow the insertion of
 full-featured scripts at any point in the packet processing.
 
 NOTE: The documentation is this directory is _reference_
-documentation.  That is, it describes the syntax of `unlang` keywords.
-It does not, however, describe _how_ to use the keywords, or _when_ to
-use the keywords. Please see the "link:../howto/index.adoc[howto]" directory for worked
-examples.
+documentation.  That is, it describes the syntax of `unlang` keywords,
+using minimal examples.  The reference documentation does not,
+however, describe _when_ to use the keywords, or _how_ to create
+policies. Please see the link:../howto/index.adoc[howto] directory for
+more in-depth "how to" guides.
 
 The documentation is organized so that each keyword is on its own
 page.  The page beings with a description of the syntax for the
@@ -26,16 +26,29 @@ keyword, followed by some text explaining what the keyword does.  The
 page concludes with one or more examples of using the keyword in
 `unlang` policies.
 
-The `unlang` processing can be split into three distinct types:
+The `unlang` processing can be split into some high-level concepts.
 
-* link:keywords.adoc[Keywords], which are the basic statements of the
-  language, e.g., link:if.adoc[if], link:else.adoc[else], etc.
-* link:condition.adoc[Conditional expressions], which are used to check if
-  conditions evaluate to _true_ or _false_.  e.g. `if (a == b) { ... }`
-* link:update.adoc[update] statements are used to edit attributes and
-  lists of attributes.
-* link:xlat.adoc[String expansion] Using `%{...}` to perform dynamic
-  string expansions. (also known as link:xlat.adoc[xlat])
+=== Keywords
+
+link:keywords.adoc[Keywords], which are the basic statements of the
+language, e.g., link:if.adoc[if], link:else.adoc[else], etc.
+
+=== Conditional Expressions
+
+link:condition.adoc[Conditional expressions], which are used to check if
+conditions evaluate to _true_ or _false_.  e.g. `if (a == b) { ... }`
+
+=== Update Statements
+
+link:update.adoc[update] statements are used to edit attributes and
+lists of attributes.
+
+=== String Expansions
+
+link:xlat.adoc[String expansion] Using `%{...}` to perform dynamic
+string expansions. (also known as link:xlat.adoc[xlat])
+
+=== Design Goals of Unlang
 
 The goal of `unlang` is to allow simple policies to be written with
 minimal effort. Conditional checks can be performed by the policies,
