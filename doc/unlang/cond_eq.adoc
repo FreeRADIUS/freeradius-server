@@ -1,4 +1,6 @@
-= The == Operator
+include::../img/header.adoc[]
+
+== The == Operator
 
 `(data-1 == data-2)`
 

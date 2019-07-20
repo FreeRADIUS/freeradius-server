@@ -1,4 +1,6 @@
-= The Backtick Operator
+include::../img/header.adoc[]
+
+== The Backtick Operator
 
 `{backtick}string{backtick}`
 

@@ -1,4 +1,6 @@
-= IP Addresses
+include::../img/header.adoc[]
+
+== IP Addresses
 
 *Examples:*
 

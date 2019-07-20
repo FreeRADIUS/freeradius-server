@@ -1,7 +1,13 @@
 // ----------------------------------------------------------------------
+ifeval::["{docname}" != "home"]
+---
+
+[ link:home.adoc[Home] ]
+endif::[]
+
 [grid="none",cols="<,^,>",valign=middle]
 |=======
 | Copyright (C) 2019 Network RADIUS SAS
-| image:../img/networkradius.png[link=http://networkradius.com]
-| Licenced under CC-by-NC 4.0.
+| image:../img/networkradius.png[link=http://networkradius.com,window=_blank]
+| Licenced under link:https://creativecommons.org/licenses/by-nc/4.0/[CC-by-NC 4.0,window=_blank].
 |=======

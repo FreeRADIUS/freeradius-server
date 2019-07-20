@@ -1,4 +1,6 @@
-= The load-balance Statement
+include::../img/header.adoc[]
+
+== The load-balance Statement
 
 [source,unlang]
 ----

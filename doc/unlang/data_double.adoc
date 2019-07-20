@@ -1,4 +1,6 @@
-= Double-Quoted Strings
+include::../img/header.adoc[]
+
+== Double-Quoted Strings
 
 "string"
 

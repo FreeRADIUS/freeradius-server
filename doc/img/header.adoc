@@ -1,0 +1,7 @@
+:toc:
+
+ifeval::["{docname}" != "home"]
+[ link:home.adoc[Home] ]
+
+---
+endif::[]

@@ -1,4 +1,6 @@
-= Conditional Comparisons
+include::../img/header.adoc[]
+
+== Conditional Comparisons
 
 .Syntax
 [source,unlang]

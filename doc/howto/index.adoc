@@ -1,0 +1,29 @@
+= Howto
+
+List with some usual howtos for FreeRADIUS.
+
+* link:ascend[ascend]
+* link:bay[bay]
+* link:cisco.rst[cisco.rst]
+* modules
+** link:modules/RADIUS-LDAP-eDirectory[RADIUS-LDAP-eDirectory]
+** link:modules/eap[eap]
+** link:modules/expiration[expiration]
+** link:modules/krb5[krb5]
+** link:modules/ldap_howto.rst[ldap_howto.rst]
+** link:modules/mschap.rst[mschap.rst]
+** link:modules/pam[pam]
+** link:modules/passwd[passwd]
+** link:modules/python[python]
+** link:modules/soh[soh]
+** link:modules/sql[sql]
+** link:modules/sqlcounter[sqlcounter]
+** link:modules/sqlippool[sqlippool]
+* link:performance-testing[performance-testing]
+* link:proxim[proxim]
+* link:supervise-radiusd.rst[supervise-radiusd.rst]
+* link:tuning_guide[tuning_guide]
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
+include::../img/footer.adoc[]

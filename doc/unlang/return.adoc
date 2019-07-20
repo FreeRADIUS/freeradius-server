@@ -1,4 +1,6 @@
-= The return Statement
+include::../img/header.adoc[]
+
+== The return Statement
 
 .Syntax
 [source,unlang]
@@ -7,7 +9,7 @@ return
 ----
 
 The `return` statement is used to exit a processing section such as
-`authorize`.  It behaves similarly to the link:break.adoc[break] statement,
+`recv Access-Request`.  It behaves similarly to the link:break.adoc[break] statement,
 except that it is not limited to being used inside of a
 link:foreach.adoc[foreach] loop.
 

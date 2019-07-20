@@ -1,4 +1,6 @@
-= The && Operator
+include::../img/header.adoc[]
+
+== The && Operator
 
 .Syntax
 [source,unlang]

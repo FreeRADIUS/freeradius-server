@@ -1,4 +1,6 @@
-= The switch Statement
+include::../img/header.adoc[]
+
+== The switch Statement
 
 .Syntax
 [source,unlang]

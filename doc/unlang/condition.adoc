@@ -1,4 +1,6 @@
-= Conditional Expressions
+include::../img/header.adoc[]
+
+== Conditional Expressions
 
 Conditions are evaluated when parsing link:if.adoc[if] and
 link:elsif.adoc[elsif] statements.  These conditions allow the server to

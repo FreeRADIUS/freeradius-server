@@ -1,4 +1,6 @@
-= Character Escaping
+include::../img/header.adoc[]
+
+== Character Escaping
 
 The quotation characters in the above string data types can be
 escaped by using the backslash, or `\,` character. The backslash

@@ -1,4 +1,6 @@
-= The if Statement
+include::../img/header.adoc[]
+
+== The if Statement
 
 .Syntax
 [source,unlang]

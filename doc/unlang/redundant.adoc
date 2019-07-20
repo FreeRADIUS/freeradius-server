@@ -1,4 +1,6 @@
-= The redundant Statement
+include::../img/header.adoc[]
+
+== The redundant Statement
 
 [source,unlang]
 ----

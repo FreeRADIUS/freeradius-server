@@ -1,4 +1,6 @@
-= The module-code Operator
+include::../img/header.adoc[]
+
+== The module-code Operator
 
 .Syntax
 [source,unlang]
