@@ -1,10 +1,4 @@
 // ----------------------------------------------------------------------
-ifeval::["{docname}" != "home"]
----
-
-[ link:home.adoc[Home] ]
-endif::[]
-
 [grid="none",cols="<,^,>",valign=middle]
 |=======
 | Copyright (C) 2019 Network RADIUS SAS

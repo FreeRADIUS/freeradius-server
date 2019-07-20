@@ -1,7 +1,9 @@
-:toc:
+:toc: left
 
 ifeval::["{docname}" != "home"]
-[ link:home.adoc[Home] ]
+[.text-right]
+link:home.adoc[Home]
+[.text-left]
 
 ---
 endif::[]
