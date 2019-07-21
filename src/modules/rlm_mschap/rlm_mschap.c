@@ -129,7 +129,6 @@ fr_dict_autoload_t rlm_mschap_dict[] = {
 fr_dict_attr_t const *attr_auth_type;
 fr_dict_attr_t const *attr_cleartext_password;
 fr_dict_attr_t const *attr_nt_password;
-fr_dict_attr_t const *attr_lm_password;
 fr_dict_attr_t const *attr_ms_chap_use_ntlm_auth;
 
 fr_dict_attr_t const *attr_ms_chap_user_name;
@@ -161,7 +160,6 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_lm_password, .name = "LM-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_use_ntlm_auth, .name = "MS-CHAP-Use-NTLM-Auth", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_user_name, .name = "MS-CHAP-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
@@ -1562,75 +1560,6 @@ static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t const *inst
 
 
 /*
- *	find_lm_password() - try and find a correct LM-Password
- *	attribute.
- */
-static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t const *inst,
-							REQUEST *request,
-							VALUE_PAIR *password,
-							VALUE_PAIR *nt_password,
-							VALUE_PAIR **lmpw)
-{
-	VALUE_PAIR *lm_password;
-
-	*lmpw = NULL;	/* Init output pointer */
-
-	lm_password = fr_pair_find_by_da(request->control, attr_lm_password, TAG_ANY);
-	if (lm_password) {
-		VP_VERIFY(lm_password);
-
-		switch (lm_password->vp_length) {
-		case LM_DIGEST_LENGTH:
-			RDEBUG2("Found LM-Password");
-			break;
-
-		/* 0x */
-		case 34:
-		case 32:
-			RWDEBUG("LM-Password has not been normalized by the 'pap' module (likely still in hex format).  "
-				"Authentication may fail");
-			lm_password = NULL;
-			break;
-
-		default:
-			RWDEBUG("LM-Password found but incorrect length, expected " STRINGIFY(LM_DIGEST_LENGTH)
-				" bytes got %zu bytes.  Authentication may fail", lm_password->vp_length);
-			lm_password = NULL;
-			break;
-		}
-	}
-	/*
-	 *	If we can't find an LM-Password, try and create one from password
-	 */
-	if (!lm_password) {
-		uint8_t *p;
-
-		if (password) {
-			RDEBUG2("Found Cleartext-Password, hashing to create LM-Password");
-
-			MEM(pair_update_control(&lm_password, attr_lm_password) >= 0);
-			MEM(p = talloc_array(lm_password, uint8_t, LM_DIGEST_LENGTH));
-			fr_pair_value_memsteal(lm_password, p, false);
-			smbdes_lmpwdhash(password->vp_strvalue, p);
-
-		/*
-		 *	Only complain if we don't have NT-Password
-		 */
-		} else if ((inst->method == AUTH_INTERNAL) && !nt_password) {
-			RWDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password");
-			return false;
-		} else {
-			return false;
-		}
-	}
-
-	*lmpw = lm_password;
-
-	return true;
-}
-
-
-/*
  *	process_cpw_request() - do the work to handle an MS-CHAP password
  *	change request.
  */
@@ -1780,7 +1709,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	VALUE_PAIR		*response = NULL;
 	VALUE_PAIR		*cpw = NULL;
 	VALUE_PAIR		*password = NULL;
-	VALUE_PAIR		*lm_password, *nt_password, *smb_ctrl;
+	VALUE_PAIR		*nt_password, *smb_ctrl;
 	VALUE_PAIR		*username;
 	uint8_t			nthashhash[NT_DIGEST_LENGTH];
 	char			msch2resp[42];
@@ -1842,14 +1771,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	if (!find_nt_password(instance, request, password, &nt_password)) {
 		return RLM_MODULE_FAIL;
 	}
-
-	/*
-	 *	Look for or create an LM-Password
-	 */
-	if (!find_lm_password(instance, request, password, nt_password, &lm_password)) {
-		return RLM_MODULE_FAIL;
-	}
-
 
 	/*
 	 *	Check to see if this is a change password request, and process
@@ -1934,9 +1855,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 			password = nt_password;
 			offset = 26;
 		} else {
-			RDEBUG2("Client is using MS-CHAPv1 with LM-Password");
-			password = lm_password;
-			offset = 2;
+			REDEBUG2("Client is using MS-CHAPv1 with unsupported method LM-Password");
+			return RLM_MODULE_FAIL;
 		}
 
 		/*
@@ -2098,7 +2018,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		case 1:
 			RDEBUG2("Adding MS-CHAPv1 MPPE keys");
 			memset(mppe_sendkey, 0, 32);
-			if (lm_password) memcpy(mppe_sendkey, lm_password->vp_octets, 8);	//-V512
 
 			/*
 			 *	According to RFC 2548 we
