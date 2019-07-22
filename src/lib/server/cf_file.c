@@ -1376,6 +1376,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				css->argc++;
 			}
 
+			in_map = true;
 			goto add_section;
 		}
 
@@ -1635,8 +1636,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	should really be put into a parser
 			 *	struct, as with tmpls.
 			 */
-			if (!in_update) in_update = (strcmp(css->name1, "update") == 0);
-			if (!in_map) in_map = (strcmp(css->name1, "map") == 0);
+			if (!in_map && !in_update) in_update = (strcmp(css->name1, "update") == 0);
 			break;
 
 		case T_INVALID:
