@@ -780,6 +780,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	FR_TOKEN	t1 = T_INVALID, t2, t3;
 	bool		has_spaces = false;
 	bool		pass2;
+	bool		update_or_map = false;
 	char		*cbuff;
 	size_t		len;
 
@@ -1402,7 +1403,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_LT:
 		case T_OP_CMP_EQ:
 		case T_OP_CMP_FALSE:
-			if (!this || ((strcmp(this->name1, "update") != 0) && (strcmp(this->name1, "map") != 0))) {
+			if (!this || !update_or_map) {
 				ERROR("%s[%d]: Invalid operator in assignment",
 				      filename, *lineno);
 				goto error;
@@ -1620,6 +1621,15 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	The current section is now the child section.
 			 */
 			this = css;
+
+			/*
+			 *	Hack for better error messages in
+			 *	nested sections.  This information
+			 *	should really be put into a parser
+			 *	struct, as with tmpls.
+			 */
+			if (!update_or_map) update_or_map = (strcmp(css->name1, "update") == 0);
+			if (!update_or_map) update_or_map = (strcmp(css->name1, "map") == 0);
 			break;
 
 		case T_INVALID:
