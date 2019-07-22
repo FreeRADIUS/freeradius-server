@@ -459,6 +459,13 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 				goto error;
 			}
 
+			/*
+			 *	@todo - disallow list qualifiers in the
+			 *	LHS of the child templates.  The
+			 *	syntax requires that the child
+			 *	attributes go into the parent one.
+			 */
+
 			MAP_VERIFY(map);
 			goto next;
 		}
