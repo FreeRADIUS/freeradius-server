@@ -800,8 +800,14 @@ Should support at least:
 
 ### `OpenSSL >= 1.1.1`
 
-Also supports the `sha3` family of digest functions.
+Also supports the `sha3` and `blake` family of digest functions.
 
+  - `%{blake2s_256:<string>}`
+  - `%{blake2b_512:<string>}`
+  - `%{sha2_224:<string>}`
+  - `%{sha2_256:<string>}`
+  - `%{sha2_384:<string>}`
+  - `%{sha2_512:<string>}`
   - `%{sha3_224:<string>}`
   - `%{sha3_256:<string>}`
   - `%{sha3_384:<string>}`
