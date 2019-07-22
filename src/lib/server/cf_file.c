@@ -1421,17 +1421,31 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	word, well... too bad.
 			 */
 			switch (*ptr) {
-			case '{':
-				ERROR("%s[%d]: Syntax error: Unexpected '{'.",
-				      filename, *lineno);
-				goto error;
-
 			case '"':
 			case '\'':
 			case '`':
 			case '/':
 				t3 = getstring(&ptr, buff[3], talloc_array_length(buff[3]), false);
 				break;
+
+				/*
+				 *	As a special case, we allow sub-sections after '=', etc.
+				 *
+				 *	This syntax is only for inside
+				 *	of "update" sections, and for
+				 *	attributes of type "group".
+				 *	But the parser isn't (yet)
+				 *	smart enough to know about
+				 *	that context.  So we just
+				 *	silently allow it everywhere.
+				 */
+			case '{':
+				if (!fr_assignment_op[t2]) {
+					ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for group",
+					      filename, *lineno, buff[2]);
+					goto error;
+				}
+				goto alloc_section;
 
 			default:
 			{
