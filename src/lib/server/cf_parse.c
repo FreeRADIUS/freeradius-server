@@ -1408,6 +1408,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			case TMPL_TYPE_UNKNOWN:
 			case TMPL_TYPE_REGEX:
 			case TMPL_TYPE_REGEX_STRUCT:
+			case TMPL_TYPE_MAP:
 			case TMPL_TYPE_NULL:
 				rad_assert(0);
 			/* Don't add default */

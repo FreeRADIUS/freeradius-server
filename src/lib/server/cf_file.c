@@ -1445,6 +1445,13 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					      filename, *lineno, buff[2]);
 					goto error;
 				}
+
+				/*
+				 *	Now that we've peeked ahead to
+				 *	see the open brace, parse it
+				 *	for real.
+				 */
+				t3 = getstring(&ptr, buff[3], talloc_array_length(buff[3]), false);
 				goto alloc_section;
 
 			default:
