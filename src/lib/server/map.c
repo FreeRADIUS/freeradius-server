@@ -375,6 +375,94 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			return -1;
 		}
 
+		/*
+		 *	If we have a subsection, AND the name2 is an
+		 *	assignment operator, THEN we allow sub-maps.
+		 */
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *subcs;
+			FR_TOKEN token;
+			ssize_t slen;
+
+			subcs = cf_item_to_section(ci);
+			token = cf_section_name2_quote(subcs);
+
+			if (!fr_assignment_op[token]) {
+				cf_log_err(ci, "Invalid operator '%s'", fr_tokens[token]);
+				goto error;
+			}
+
+			MEM(map = map_alloc(parent));
+			map->op = token;
+			map->ci = ci;
+
+			/*
+			 *	The LHS MUST be an attribute name.
+			 *	map_afrom_cp() allows for dynamic
+			 *	names, but for simplicity we forbid
+			 *	them for now.  Once the functionality
+			 *	is tested and used, we can allow that.
+			 */
+			slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules);
+			if (slen <= 0) {
+				cf_log_err(ci, "Failed parsing attribute reference");
+				talloc_free(map);
+				goto error; /* re-do "goto marker" stuff to print out spaces ? */
+			}
+
+			/*
+			 *	The LHS MUST be an attribute reference
+			 *	for now.
+			 */
+			if (!tmpl_is_attr(map->lhs)) {
+				cf_log_err(ci, "Left side of group '%s' is NOT an attribute reference",
+					   map->lhs->name);
+				talloc_free(map);
+				goto error; /* re-do "goto marker" stuff to print out spaces ? */
+			}
+
+			if (map->lhs->tmpl_da->flags.is_unknown) {
+				cf_log_err(ci, "Unknown attribute '%s'",
+					   map->lhs->name);
+				talloc_free(map);
+				goto error; /* re-do "goto marker" stuff to print out spaces ? */
+			}
+
+			/*
+			 *	Only TLV and GROUP can be grouped.
+			 *
+			 *	@todo - maybe "tagged" too, for stupid
+			 *	RADIUS nonsense?
+			 */
+			if ((map->lhs->tmpl_da->type != FR_TYPE_TLV) &&
+			    (map->lhs->tmpl_da->type != FR_TYPE_GROUP)) {
+				cf_log_err(ci, "Attribute '%s' MUST be of type 'tlv' or 'group'",
+					   map->lhs->name);
+				talloc_free(map);
+				goto error; /* re-do "goto marker" stuff to print out spaces ? */
+			}
+
+			/*
+			 *	And create the empty RHS map.
+			 */
+			MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_MAP, "", 0, T_BARE_WORD));
+
+			/*
+			 *	This prints out any relevant error
+			 *	messages.  We MAY want to print out
+			 *	additional ones, but that might get
+			 *	complex and confusing.
+			 */
+			if (map_afrom_cs(map, &map->rhs->tmpl_map, cf_item_to_section(ci),
+					 &our_lhs_rules, rhs_rules, validate, uctx, max) < 0) {
+				talloc_free(map);
+				goto error;
+			}
+
+			MAP_VERIFY(map);
+			goto next;
+		}
+
 		if (!cf_item_is_pair(ci)) {
 			cf_log_err(ci, "Entry is not in \"attribute = value\" format");
 			goto error;
@@ -396,6 +484,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 		 */
 		if (validate && (validate(map, uctx) < 0)) goto error;
 
+	next:
 		parent = *tail = map;
 		tail = &(map->next);
 	}

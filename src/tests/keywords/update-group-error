@@ -1,0 +1,15 @@
+#
+#  PRE: update
+#
+update reply {
+       &Reply-Message := "foo"
+
+       #
+       #  This is a string, so it's NOT allowed.
+       #
+       &Filter-ID := {		# ERROR
+       		 &WiMAX-Release := "1.0"
+       }
+}
+
+success
