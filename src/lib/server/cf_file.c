@@ -780,7 +780,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	FR_TOKEN	t1 = T_INVALID, t2, t3;
 	bool		has_spaces = false;
 	bool		pass2;
-	bool		update_or_map = false;
+	bool		in_update = false;
+	bool		in_map = false;
 	char		*cbuff;
 	size_t		len;
 
@@ -1403,7 +1404,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_LT:
 		case T_OP_CMP_EQ:
 		case T_OP_CMP_FALSE:
-			if (!this || !update_or_map) {
+			if (!this || (!in_update && !in_map)) {
 				ERROR("%s[%d]: Invalid operator in assignment",
 				      filename, *lineno);
 				goto error;
@@ -1441,6 +1442,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				 *	silently allow it everywhere.
 				 */
 			case '{':
+				if (!in_update) {
+					ERROR("%s[%d]: Parse error: Invalid location for grouped attributr",
+					      filename, *lineno);
+					goto error;
+				}
+
 				if (!fr_assignment_op[t2]) {
 					ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for group",
 					      filename, *lineno, buff[2]);
@@ -1628,8 +1635,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	should really be put into a parser
 			 *	struct, as with tmpls.
 			 */
-			if (!update_or_map) update_or_map = (strcmp(css->name1, "update") == 0);
-			if (!update_or_map) update_or_map = (strcmp(css->name1, "map") == 0);
+			if (!in_update) in_update = (strcmp(css->name1, "update") == 0);
+			if (!in_map) in_map = (strcmp(css->name1, "map") == 0);
 			break;
 
 		case T_INVALID:
