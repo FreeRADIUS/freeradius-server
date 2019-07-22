@@ -31,22 +31,68 @@ The `unlang` processing can be split into some high-level concepts.
 === Keywords
 
 link:keywords.adoc[Keywords], which are the basic statements of the
-language, e.g., link:if.adoc[if], link:else.adoc[else], etc.
+language, e.g., link:load-balance.adoc[load-balance],
+link:if.adoc[if], link:else.adoc[else], etc.
+
+.Example
+[source,unlang]
+----
+load-balance {
+	sql1
+	sql2
+	sql3
+}
+----
 
 === Conditional Expressions
 
-link:condition.adoc[Conditional expressions], which are used to check if
-conditions evaluate to _true_ or _false_.  e.g. `if (a == b) { ... }`
+link:condition.adoc[Conditional expressions], which are used to check
+if conditions evaluate to _true_ or _false_.  Conditional expressions
+can be used to control the flow of processing.
+
+.Example
+[source,unlang]
+----
+if ((&User-Name == "bob") && (&Calling-Station-Id := "00:01:03:04:05")) {
+	...
+}
+----
 
 === Update Statements
 
 link:update.adoc[update] statements are used to edit attributes and
 lists of attributes.
 
+Most request packets will result in reply packets that contain
+additional information for the requestor.  The `update` section allows
+policies to add attributes to requests, replies, or to other places.
+
+.Example
+[source,unlang]
+----
+update reply {
+	&Session-Timeout := 3600
+	&Framed-IP-Address := 192.0.2.4
+}
+----
+
 === String Expansions
 
 link:xlat.adoc[String expansion] Using `%{...}` to perform dynamic
 string expansions. (also known as link:xlat.adoc[xlat])
+
+String expansions are usually performed in order to get additional
+information which is not immediately available to the policy.  This
+information can be taken from almost any source, including other
+attributes, databases, and scripts.
+
+.Example
+[source,unlang]
+----
+update reply {
+	&Framed-IP-Address := "%{sql:SELECT static_ip from table WHERE user = '%{User-Name}'}"
+}
+----
 
 === Design Goals of Unlang
 
