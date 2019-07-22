@@ -88,26 +88,26 @@ clean.doc:
 #
 doc/raddb/%.adoc: raddb/%.md
 	@echo PANDOC $^
-	@mkdir -p $(dir $@)
-	@$(PANDOC) --filter=scripts/asciidoc/pandoc-filter -w asciidoc -o $@ $^
+	${Q}mkdir -p $(dir $@)
+	${Q}$(PANDOC) --filter=scripts/asciidoc/pandoc-filter -w asciidoc -o $@ $^
 
 #
 #  Conf files get converted to Asciidoc via our own magic script.
 #
 doc/raddb/%.adoc: raddb/%
 	@echo ADOC $^
-	@mkdir -p $(dir $@)
-	@perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
-	@./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc -o $@ < $^
+	${Q}mkdir -p $(dir $@)
+	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
+	${Q}./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc -o $@ < $^
 
 doc/%.html: doc/%.adoc
 	@echo HTML $^
-	@$(ASCIIDOCTOR) $< -b html5 -o $@ $<
-	@perl -p -i -e 's/\.adoc/\.html/g' $@
+	${Q}$(ASCIIDOCTOR) $< -b html5 -o $@ $<
+	${Q}perl -p -i -e 's/\.adoc/\.html/g' $@
 
 doc/%.pdf: doc/%.adoc
 	@echo PDF $^
-	@$(ASCIIDOCTOR) $< -b docbook5 -o - | \
+	${Q}$(ASCIIDOCTOR) $< -b docbook5 -o - | \
 		$(PANDOC) -f docbook -t latex --${PANDOC_ENGINE}-engine=xelatex \
 			-V papersize=letter \
 			-V images=yes \
@@ -115,7 +115,7 @@ doc/%.pdf: doc/%.adoc
 
 doc/%.pdf: doc/%.md
 	@echo PDF $^
-	@$(PANDOC) -f markdown -t latex --${PANDOC_ENGINE}-engine=xelatex \
+	${Q}$(PANDOC) -f markdown -t latex --${PANDOC_ENGINE}-engine=xelatex \
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
