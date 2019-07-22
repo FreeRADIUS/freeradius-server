@@ -1451,7 +1451,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				 *	see the open brace, parse it
 				 *	for real.
 				 */
-				t3 = getstring(&ptr, buff[3], talloc_array_length(buff[3]), false);
+				ptr++;
 				goto alloc_section;
 
 			default:
