@@ -11,11 +11,11 @@
 #
 
 #
-#  # Example configuration
+#  ## Example configuration
 #
 
 #
-#  ## listen { ... }
+#  ### listen { ... }
 #
 listen {
 	ipaddr = *
@@ -68,7 +68,7 @@ listen {
 }
 
 #
-#  ## clients { ... }
+#  ### clients { ... }
 #
 #  This client stanza will match other RP proxies from other realms
 #  established via the trustrouter.  In general additional client
@@ -121,5 +121,4 @@ clients radsec-abfab {
   	#
 
 	}
-
 }

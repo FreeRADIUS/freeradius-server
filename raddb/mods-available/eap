@@ -20,7 +20,7 @@
 #
 
 #
-#  # Default instance
+#  ## Default instance
 #
 eap {
 	#
@@ -265,7 +265,7 @@ eap {
 			#  When multiple `ca_file` entries are used, the server will still present
 			#  only one `certificate_file` to the clients.  The main use for multiple
 			#  `ca_file` entries is to permit the use of EAP-TLS with client certificates
-			# from multiple Root CAs.
+			#  from multiple Root CAs.
 			#
 			ca_file = ${certdir}/rsa/ca.pem
 
@@ -445,11 +445,11 @@ eap {
 		#
 		#  Will check CRLs for all certificates in the certificate chain.
 		#
-		#  <1> Copy CA certificates and CRLs to same directory.
-		#  <2> Execute `c_rehash <CA certs&CRLs Directory>`. `c_rehash` is
+		#  1. Copy CA certificates and CRLs to same directory.
+		#  2. Execute `c_rehash <CA certs&CRLs Directory>`. `c_rehash` is
 		#     OpenSSL's command.
-		#  <3> uncomment the lines below.
-		#  <4> Restart radiusd.
+		#  3. uncomment the lines below.
+		#  4. Restart radiusd.
 		#
 #		check_crl = yes
 

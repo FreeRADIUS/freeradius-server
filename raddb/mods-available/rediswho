@@ -11,7 +11,7 @@
 #
 
 #
-#  # Default instance
+#  ## Default instance
 #
 rediswho {
 	#
@@ -22,8 +22,8 @@ rediswho {
 	#  in turn until one provides us with a valid map for the cluster.
 	#  Server strings may contain unique ports e.g.:
 	#
-	#    `server = '127.0.0.1:30001'`
-	#    `server = '[::1]:30002'`
+	#    server = '127.0.0.1:30001'
+	#    server = '[::1]:30002'
 	#
 	#  NOTE: Instantiation failure behaviour is controlled by
 	#  `pool.start` as with other modules. With clustering

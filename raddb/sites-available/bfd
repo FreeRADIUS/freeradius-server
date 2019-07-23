@@ -24,15 +24,15 @@
 #
 
 #
-#  # Example configuration
+#  ## Default instance
 #
 
 #
-#  ## server bfd  { ... }
+#  ### server bfd  { ... }
 #
 server bfd {
 	#
-	#  ### listen { ... }
+	#  #### listen { ... }
 	#
 	listen {
 		#
@@ -138,7 +138,7 @@ server bfd {
 	}
 
 	#
-	#  ### bfd { ... }
+	#  #### bfd { ... }
 	#
 	#  The virtual server used to handle BFD packets.
 	#
