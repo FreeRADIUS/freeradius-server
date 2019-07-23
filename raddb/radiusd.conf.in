@@ -699,6 +699,6 @@ policy {
 #
 #  For more documentation on virtual servers, see:
 #
-#  `raddb/sites-available/README`
+#  `raddb/sites-available/README.md`
 #
 $INCLUDE sites-enabled/
