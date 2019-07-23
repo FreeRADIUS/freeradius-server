@@ -145,11 +145,11 @@ ATTRIBUTE	Huawei-Acct-IPv6-Output-Gigawords	149	integer
 ATTRIBUTE	Huawei-DHCPv6-Option37			150	string
 ATTRIBUTE	Huawei-DHCPv6-Option38			151	string
 ATTRIBUTE	Huawei-User-Mac				153	string
-ATTRIBUTE	Huawei-DNS-Server-IPv6-address		154	ipv6prefix # manual says ipv6addr with length 18?!
+ATTRIBUTE	Huawei-DNS-Server-IPv6-address		154	ipv6addr
 ATTRIBUTE	Huawei-DHCPv4-Option121			155	string
 ATTRIBUTE	Huawei-DHCPv4-Option43			156	string
 ATTRIBUTE	Huawei-Framed-Pool-Group		157	string
-ATTRIBUTE	Huawei-Framed-IPv6-Address		158	ipv6prefix # manual says 18 byte string?
+ATTRIBUTE	Huawei-Framed-IPv6-Address		158	ipv6addr
 ATTRIBUTE	Huawei-Acct-Update-Address		159	integer
 ATTRIBUTE	Huawei-NAT-Policy-Name			160	string
 ATTRIBUTE	Huawei-NAT-Public-Address		161	string
