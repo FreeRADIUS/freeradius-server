@@ -886,6 +886,12 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 	return config;
 }
 
+static int _dlhandle_free(void **dl_handle)
+{
+	dlclose(*dl_handle);
+	return 0;
+}
+
 /*
  *	Read config files.
  *
@@ -1061,6 +1067,7 @@ do {\
 				}
 			} else {
 				void *handle;
+				void **handle_p;
 
 				if (setenv(attr, value, 1) < 0) {
 					cf_log_err(ci, "Failed setting environment variable %s: %s",
@@ -1079,7 +1086,13 @@ do {\
 					goto failure;
 				}
 
-				(void) cf_data_add(subcs, handle, value, dlclose);
+				/*
+				 *	Wrap the pointer, so we can set a destructor.
+				 */
+				MEM(handle_p = talloc(NULL, void *));
+				*handle_p = handle;
+				talloc_set_destructor(handle_p, _dlhandle_free);
+				(void) cf_data_add(subcs, handle, value, true);
 			}
 		} /* loop over pairs in ENV */
 	} /* there's an ENV subsection */
