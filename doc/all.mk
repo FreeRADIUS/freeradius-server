@@ -102,7 +102,7 @@ doc/raddb/%.adoc: raddb/%
 
 doc/%.html: doc/%.adoc
 	@echo HTML $^
-	${Q}$(ASCIIDOCTOR) $< -b html5 -o $@ $<
+	${Q}$(ASCIIDOCTOR) $< -a "toc=left" -b html5 -o $@ $<
 	${Q}perl -p -i -e 's/\.adoc/\.html/g' $@
 
 doc/%.pdf: doc/%.adoc
