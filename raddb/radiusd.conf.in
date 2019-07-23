@@ -578,7 +578,7 @@ modules {
 }
 
 #
-#  # Instantiation
+#  ## Instantiation
 #
 #  This section orders the loading of the modules.  Modules
 #  listed here will get loaded BEFORE the later sections like
