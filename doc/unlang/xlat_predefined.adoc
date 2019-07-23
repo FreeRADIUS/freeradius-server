@@ -1,11 +1,11 @@
 include::../img/header.adoc[]
 
-# Pre-defined Expansions
+== Pre-defined Expansions
 
 In addition to storing attribute references, the server has a number
 of pre-defined references, as follows:
 
-### - `%{base64:<string>}`
+## - `%{base64:<string>}`
 
 Encode a string using Base64.
 
@@ -30,7 +30,7 @@ update reply {
 The base64 of foo is Q2FpcGlyaW5oYQ==
 ```
 
-### - `%{base64decode:<string>}`
+## - `%{base64decode:<string>}`
 
 Decode a string previously encoded using Base64.
 
@@ -55,7 +55,7 @@ update reply {
 The base64decode of Q2FpcGlyaW5oYQ== is Caipirinha
 ```
 
-### - `%{bin:<string>}`
+## - `%{bin:<string>}`
 
 Convert string to binary.
 
@@ -80,7 +80,7 @@ update reply {
 The 10 in binary is \020
 ```
 
-### - `%{config:<key>}`
+## - `%{config:<key>}`
 
 Refers to a variable in the configuration file. See the documentation
 on configuration file references.
@@ -103,7 +103,7 @@ Server installed in /opt/freeradius
 Module rlm_exec.shell_escape = yes
 ```
 
-### - `%{client:<key>}`
+## - `%{client:<key>}`
 
 Refers to a variable that was defined in the client section for the
 current client. See the sections `client { ... }` in `clients.conf`.
@@ -124,7 +124,7 @@ Example
 The client ipaddr is 192.168.5.9
 ```
 
-### - `%{concat:<delim> <&ref:[idx]>}`
+## - `%{concat:<delim> <&ref:[idx]>}`
 
 Used to join two or more attributes.
 
@@ -154,7 +154,7 @@ aaa, bb, c
 aaa,bb,c
 ```
 
-### - `%{debug:<level>}`
+## - `%{debug:<level>}`
 
 Dynamically change the debug level to something high, recording the old level.
 
@@ -191,7 +191,7 @@ recv Access-Request {
 ...
 ```
 
-### - `%{debug_attr:<list:[index]>}`
+## - `%{debug_attr:<list:[index]>}`
 
 Print to debug output all instances of current attribute, or all attributes in a list.
 expands to a zero-length string.
@@ -228,7 +228,7 @@ recv Access-Request {
 ...
 ```
 
-### - `%{explode:<&ref> <delim>}`
+## - `%{explode:<&ref> <delim>}`
 
 Split an attribute into multiple new attributes based on a delimiter.
 
@@ -254,7 +254,7 @@ update reply {
 Welcome bob.toba
 ```
 
-### - `%{hex:<string>}`
+## - `%{hex:<string>}`
 
 Convert to hex.
 
@@ -279,7 +279,7 @@ update reply {
 The value of 12345 in hex is 3132333435
 ```
 
-### - `%{integer:<&ref>}`
+## - `%{integer:<&ref>}`
 
 Print the value of the attribute an integer. In normal operation,
 `integer` attributes are printed using the name given by a `VALUE`
@@ -318,7 +318,7 @@ update reply {
 The value of Framed-User is 1
 ```
 
-### - `%{length:<string>}`
+## - `%{length:<string>}`
 
 The string length operator returns the number of characters in the
 given string as a decimal number. It can be used with attribute or
@@ -346,7 +346,7 @@ update reply {
   The lenght of Caipirinha is 10
 ```
 
-### - `%{md5:<string>}` +
+## - `%{md5:<string>}` +
 
 Dynamically expands the string and performs an MD5 hash on it. The
 result is octal digits.
@@ -374,7 +374,7 @@ md5 of Caipirinha is octal=\024\204\013md||\230\243\3472\3703\330n\251
 md5 of Caipirinha is hex=14840b6d647c7c98a3e732f833d86ea9
 ```
 
-### - `%{nexttime:<time>}`
+## - `%{nexttime:<time>}`
 
 Calculate number of seconds until next n hour(`s`), day(`s`), week(`s`), year(`s`).
 
@@ -396,7 +396,7 @@ update reply {
 You should wait for 2520s
 ```
 
-### - `%{lpad:<&ref> <val> <char>}`
+## - `%{lpad:<&ref> <val> <char>}`
 
 Left-pad a string.
 
@@ -421,7 +421,7 @@ update reply {
 Maximum should be 00000000123
 ```
 
-### - `%{rpad:<&ref> <val> <char>}`
+## - `%{rpad:<&ref> <val> <char>}`
 
 Right-pad a string.
 
@@ -446,7 +446,7 @@ update reply {
 Maximum should be 12300000000
 ```
 
-### - `%{hmacmd5:<shared_key> <string>}`
+## - `%{hmacmd5:<shared_key> <string>}`
 
 Generate `HMAC-MD5` of string.
 
@@ -478,7 +478,7 @@ The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\37
 The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-### - `%{hmacsha1:<shared_key> <string>}`
+## - `%{hmacsha1:<shared_key> <string>}`
 
 Generate `HMAC-SHA1` of string.
 
@@ -510,7 +510,7 @@ The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\3
 The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-### - `%{pairs:<&list:[*]>}`
+## - `%{pairs:<&list:[*]>}`
 
 Serialize attributes as comma-delimited string.
 
@@ -537,7 +537,7 @@ update reply {
 Serialize output: Tmp-String-0 = \"This is a string\"Tmp-String-0 = \"This is another one\"
 ```
 
-### - `%{rand:<number>}`
+## - `%{rand:<number>}`
 
 Get random number from `0` to `n-1`.
 
@@ -559,7 +559,7 @@ update reply {
 The random number is 347
 ```
 
-### - `%{randstr:<character_classes>}`
+## - `%{randstr:<character_classes>}`
 
 Get random string built from character classes.
 
@@ -581,7 +581,7 @@ update reply {
 The random string output is 4Uq0gPyG
 ```
 
-### - `%{regex:<capture_group>}`
+## - `%{regex:<capture_group>}`
 
 Return named subcapture value from previous regex.
 
@@ -623,7 +623,7 @@ if (&control:Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
 The user@example.com { login=user, domain=example.com }
 ```
 
-### - `%{strlen:<string>}`
+## - `%{strlen:<string>}`
 
 Length of given string.
 
@@ -648,7 +648,7 @@ update reply {
 The lenght of Caipirinha is 21
 ```
 
-### - `%{tag:<attribute:<tag>>}`
+## - `%{tag:<attribute:<tag>>}`
 
 Tag of an attribute reference.
 
@@ -678,7 +678,7 @@ update reply {
 The tag 1 of Tunnel-Server-Endpoint is 192.0.5.2
 ```
 
-### - `%{tolower:<string>}`
+## - `%{tolower:<string>}`
 
 Dynamically expands the string and returns the lowercase version of
 it. This definition is only available in version 2.1.10 and later.
@@ -703,7 +703,7 @@ update reply {
 ```unlang
 tolower of CAIPIRINHA is caipirinha
 ```
-### - `%{toupper:<string>}`
+## - `%{toupper:<string>}`
 
 Dynamically expands the string and returns the uppercase version of
 it. This definition is only available in version 2.1.10 and later.
@@ -729,7 +729,7 @@ update reply {
 toupper of caipirinha is CAIPIRINHA
 ```
 
-### - `%{urlquote:<string>}`
+## - `%{urlquote:<string>}`
 
 Quote URL special characters.
 
@@ -754,7 +754,7 @@ update reply {
 The urlquote of http://example.org/ is http%3A%2F%2Fexample.org%2F
 ```
 
-### - `%{urlunquote:<string>}`
+## - `%{urlunquote:<string>}`
 
 Unquote URL special characters.
 
@@ -779,13 +779,9 @@ update reply {
 The urlunquote of http%3A%2F%2Fexample.org%2F is http://example.org/
 ```
 
-.Result: _string_.
+== Encryption functions
 
-Example
-
-# Encryption functions
-
-### `OpenSSL >= 1.0.0`
+## `OpenSSL >= 1.0.0`
 
 Should support at least:
 
@@ -798,7 +794,7 @@ Should support at least:
   - `%{sha384:<string>}`
   - `%{sha512:<string>}`
 
-### `OpenSSL >= 1.1.1`
+## `OpenSSL >= 1.1.1`
 
 Also supports the `sha3` and `blake` family of digest functions.
 
@@ -813,7 +809,7 @@ Also supports the `sha3` and `blake` family of digest functions.
   - `%{sha3_384:<string>}`
   - `%{sha3_512:<string>}`
 
-### Example
+## Example
 
 .Return: _octal_
 
@@ -836,23 +832,23 @@ The md5 of Caipirinha in octal is \024\204\013md||\230\243\3472\3703\330n\251
 The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
 ```
 
-# Miscellaneous
+== Miscellaneous
 
-### - `%{0}`
+## - `%{0}`
 
 Refers to the string that was last used to match a regular expression. The variables `%{1}` through `%{8}` refer to the matched substring in the regular expression.
 
-### - `%{Packet-Type}`
+## - `%{Packet-Type}`
 
 The packet type (`Access-Request`, etc.)
 
-### - `%{Packet-SRC-IP-Address}`, `%{Packet-SRC-IPv6-Address}`
+## - `%{Packet-SRC-IP-Address}`, `%{Packet-SRC-IPv6-Address}`
 
 The source IPv4 or IPv6 address of the packet. See also the expansions
 `%{client:ipaddr}` and `%{client:ipv6addr}`. The two expansions
 should be identical, unless `%{client:ipaddr}` contains a DNS hostname.
 
-### - `%{Packet-DST-IP-Address}`, `%{Packet-DST-IPv6-Address}`
+## - `%{Packet-DST-IP-Address}`, `%{Packet-DST-IPv6-Address}`
 
 The destination IPv4 or IPv6 address of the packet. See also the
 expansions `%{listen:ipaddr}` and `%{listen:ipv6addr}`. If the socket
@@ -861,7 +857,7 @@ different, as follows: the `%{listen:ipaddr}` will be the wildcard
 address and `%{Packet-DST-IP-Address}` will be the unicast address to
 which the packet was sent.
 
-### - `%{Packet-SRC-Port}`, `%{Packet-DST-Port}`
+## - `%{Packet-SRC-Port}`, `%{Packet-DST-Port}`
 
 The source/destination ports associated with the packet.
 
