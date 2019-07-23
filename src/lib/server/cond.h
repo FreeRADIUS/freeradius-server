@@ -18,12 +18,12 @@
 /**
  * $Id$
  *
- * @file lib/server/parser.h
+ * @file lib/server/cond.h
  * @brief Condition parser API
  *
  * @copyright 2013 Alan DeKok (aland@freeradius.org)
  */
-RCSIDH(parser_h, "$Id$")
+RCSIDH(cond_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {

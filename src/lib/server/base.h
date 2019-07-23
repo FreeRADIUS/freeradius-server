@@ -51,7 +51,7 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/parser.h>
+#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/regex.h>

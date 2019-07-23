@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/parser.h>
+#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/unlang/base.h>
 #include "unlang_priv.h"
 #include "module_priv.h"

@@ -29,7 +29,7 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/map.h>
 
-#include <freeradius-devel/server/parser.h>
+#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/xlat.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/autoconf.h>
