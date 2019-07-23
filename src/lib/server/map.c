@@ -444,11 +444,6 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			}
 
 			/*
-			 *	And create the empty RHS map.
-			 */
-			MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_MAP, "", 0, T_BARE_WORD));
-
-			/*
 			 *	Fisallow list qualifiers for the child
 			 *	templates.  The syntax requires that
 			 *	the child attributes go into the
@@ -462,7 +457,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			 *	additional ones, but that might get
 			 *	complex and confusing.
 			 */
-			if (map_afrom_cs(map, &map->rhs->tmpl_map, cf_item_to_section(ci),
+			if (map_afrom_cs(map, &map->child, cf_item_to_section(ci),
 					 &our_lhs_rules, rhs_rules, validate, uctx, max) < 0) {
 				talloc_free(map);
 				goto error;

@@ -930,26 +930,28 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 	}
 }
 
-
-/*
- *	Compile the RHS of update sections to xlat_exp_t
- */
-static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
+static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 {
-	vp_map_t *map;
+	if (tmpl_is_xlat(map->lhs)) {
+		rad_assert(map->lhs->tmpl_xlat == NULL);
 
-	for (map = g->map; map != NULL; map = map->next) {
-		if (tmpl_is_xlat(map->lhs)) {
-			rad_assert(map->lhs->tmpl_xlat == NULL);
-
-			/*
-			 *	FIXME: compile to attribute && handle
-			 *	the conversion in map_to_vp().
-			 */
-			if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL, rules)) {
-				return false;
-			}
+		/*
+		 *	FIXME: compile to attribute && handle
+		 *	the conversion in map_to_vp().
+		 */
+		if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL, rules)) {
+			return false;
 		}
+	}
+
+	/*
+	 *	Deal with undefined attributes now.
+	 */
+	if (tmpl_is_attr_undefined(map->lhs)) {
+		if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
+	}
+
+	if (map->rhs) {
 		if (tmpl_is_xlat(map->rhs)) {
 			rad_assert(map->rhs->tmpl_xlat == NULL);
 
@@ -964,16 +966,25 @@ static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 
 		rad_assert(!tmpl_is_regex(map->rhs));
 
-		/*
-		 *	Deal with undefined attributes now.
-		 */
-		if (tmpl_is_attr_undefined(map->lhs)) {
-			if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
-		}
-
 		if (tmpl_is_attr_undefined(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
 		}
+	}
+
+	if (map->child) return pass2_fixup_update_map(map->child, rules);
+
+	return true;
+}
+
+/*
+ *	Compile the RHS of update sections to xlat_exp_t
+ */
+static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
+{
+	vp_map_t *map;
+
+	for (map = g->map; map != NULL; map = map->next) {
+		if (!pass2_fixup_update_map(map, rules)) return false;
 	}
 
 	return true;

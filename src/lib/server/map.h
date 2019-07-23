@@ -65,6 +65,7 @@ struct vp_map_s {
 	CONF_ITEM		*ci;		//!< Config item that the map was created from. Mainly used for
 						//!< logging validation errors.
 
+	vp_map_t		*child;		//!< a child map.  If it exists, `rhs` MUST be NULL
 	vp_map_t		*next;		//!< The next valuepair map.
 };
 
