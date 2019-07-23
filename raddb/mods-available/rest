@@ -14,7 +14,7 @@
 #
 
 #
-#  # Default instance
+#  ## Default instance
 #
 #  If you want different instances of `rest`, just replicate the section
 #  and give a name.
@@ -29,9 +29,6 @@
 #  ----
 #
 
-#
-#  ## Sample
-#
 rest {
 	#
 	#  tls { ... }:: Configure the tls related items that control
@@ -133,7 +130,7 @@ rest {
 #	multiplex = yes
 
 	#
-	#  ### Sections
+	#  ## Sections
 	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
