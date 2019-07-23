@@ -45,6 +45,7 @@ CONF_FILES := $(filter-out %~,$(wildcard raddb/*conf raddb/mods-available/* radd
 BASE_ADOC_FILES := $(wildcard doc/*/*.adoc) $(wildcard doc/*/*/*.adoc)
 AUTO_ADOC_FILES := $(patsubst raddb/%,doc/raddb/%.adoc,$(CONF_FILES))
 AUTO_ADOC_FILES += $(patsubst raddb/%.md,doc/raddb/%.adoc,$(shell find raddb -name "*\.md" -print))
+AUTO_ADOC_FILES += $(patsubst doc/%.md,doc/%.adoc,$(wildcard doc/*/*/*.md))
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
 HTML_FILES := $(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES))
@@ -87,6 +88,11 @@ clean.doc:
 #  and feel" for the documents, so we make all of them asciidoc.
 #
 doc/raddb/%.adoc: raddb/%.md
+	@echo PANDOC $^
+	${Q}mkdir -p $(dir $@)
+	${Q}$(PANDOC) --filter=scripts/asciidoc/pandoc-filter -w asciidoc -o $@ $^
+
+doc/%.adoc: doc/%.md
 	@echo PANDOC $^
 	${Q}mkdir -p $(dir $@)
 	${Q}$(PANDOC) --filter=scripts/asciidoc/pandoc-filter -w asciidoc -o $@ $^

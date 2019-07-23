@@ -15,7 +15,7 @@ DEFAULT_MODULES :=	always attr_filter cache_eap chap client \
 
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
-INSTALL_CERT_FILES :=	Makefile README xpextensions \
+INSTALL_CERT_FILES :=	Makefile README.md xpextensions \
 			ca.cnf server.cnf ocsp.cnf inner-server.cnf \
 			client.cnf bootstrap
 
