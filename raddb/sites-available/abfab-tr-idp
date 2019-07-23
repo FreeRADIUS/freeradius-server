@@ -5,7 +5,7 @@
 
 #######################################################################
 #
-#  = ABFAB
+#  = ABFAB: Trust Router
 #
 #  This file represents a server that is implementing an identity provider
 #  for `GSS-EAP` (RFC 7055) using the trust router protocol for dynamic realm
@@ -16,7 +16,7 @@
 #
 
 #
-#  # Example configuration
+#  ## Default Instance
 #
 
 #
