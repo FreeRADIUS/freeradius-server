@@ -263,9 +263,10 @@ eap {
 			#  chain compilation.  Multiple "ca_file" config items may be used
 			#  to load multiple certificates.
 			#
-			#  When multiple `ca_file`s are used, the server will still present only one
-			#  `certificate_file` to the clients.  The main use of multiple `ca_file` is
-			#  to permit the use of EAP-TLS with client certificates from multiple Root CAs.
+			#  When multiple `ca_file` entries are used, the server will still present
+			#  only one `certificate_file` to the clients.  The main use for multiple
+			#  `ca_file` entries is to permit the use of EAP-TLS with client certificates
+			# from multiple Root CAs.
 			#
 			ca_file = ${certdir}/rsa/ca.pem
 
