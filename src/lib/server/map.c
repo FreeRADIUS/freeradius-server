@@ -383,6 +383,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			CONF_SECTION *subcs;
 			FR_TOKEN token;
 			ssize_t slen;
+			bool qualifiers = our_lhs_rules.disallow_qualifiers;
 
 			subcs = cf_item_to_section(ci);
 			token = cf_section_name2_quote(subcs);
@@ -448,6 +449,14 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_MAP, "", 0, T_BARE_WORD));
 
 			/*
+			 *	Fisallow list qualifiers for the child
+			 *	templates.  The syntax requires that
+			 *	the child attributes go into the
+			 *	parent one.
+			 */
+			our_lhs_rules.disallow_qualifiers = true;
+
+			/*
 			 *	This prints out any relevant error
 			 *	messages.  We MAY want to print out
 			 *	additional ones, but that might get
@@ -459,13 +468,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 				goto error;
 			}
 
-			/*
-			 *	@todo - disallow list qualifiers in the
-			 *	LHS of the child templates.  The
-			 *	syntax requires that the child
-			 *	attributes go into the parent one.
-			 */
-
+			our_lhs_rules.disallow_qualifiers = qualifiers;
 			MAP_VERIFY(map);
 			goto next;
 		}

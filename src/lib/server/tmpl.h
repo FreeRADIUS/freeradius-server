@@ -372,6 +372,8 @@ struct vp_tmpl_rules_s {
 
 	bool			disallow_internal;	//!< Allow/fallback to internal attributes.
 
+	bool			disallow_qualifiers;	//!< disallow request / list qualifiers
+
 	vp_attr_ref_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.
 };

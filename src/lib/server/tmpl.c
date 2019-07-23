@@ -632,7 +632,7 @@ static vp_tmpl_rules_t const default_rules = {
 ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			       vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
 {
-	char const	*p;
+	char const	*p, *q;
 	long		num;
 	ssize_t		slen;
 	vp_tmpl_t	*vpt;
@@ -686,7 +686,14 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *
 	 *	The next check for a list qualifier
 	 */
+	q = p;
 	p += radius_request_name(&vpt->tmpl_request, p, rules->request_def);
+
+	if (rules->disallow_qualifiers && (p != q)) {
+		fr_strerror_printf("It is not permitted to specify a request list here.");
+		goto invalid_list;
+	}
+
 	if (vpt->tmpl_request == REQUEST_UNKNOWN) vpt->tmpl_request = rules->request_def;
 
 	/*
@@ -698,7 +705,17 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	returns PAIR_LIST_UNKOWN that
 	 *	the input string is invalid.
 	 */
+	q = p;
 	p += radius_list_name(&vpt->tmpl_list, p, rules->list_def);
+
+	if (rules->disallow_qualifiers && (p != q)) {
+		fr_strerror_printf("It is not permitted to specify a pair list here.");
+	invalid_list:
+		if (err) *err = ATTR_REF_ERROR_INVALID_LIST_QUALIFIER;
+		slen = -(q - name);
+		goto error;
+	}
+
 	if (vpt->tmpl_list == PAIR_LIST_UNKNOWN) {
 		fr_strerror_printf("Invalid list qualifier");
 		if (err) *err = ATTR_REF_ERROR_INVALID_LIST_QUALIFIER;
@@ -736,8 +753,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	slen = fr_dict_attr_by_qualified_name_substr(NULL, &vpt->tmpl_da,
 						     rules->dict_def, p, !rules->disallow_internal);
 	if (slen <= 0) {
-		char const *q;
-
 		fr_strerror();	/* Clear out any existing errors */
 
 		/*
@@ -866,7 +881,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	messages.
 	 */
 	if (*p == ':') {
-		char *q;
+		char *end;
 
 		if (!vpt->tmpl_da->flags.has_tag) { /* Lists don't have a da */
 			fr_strerror_printf("Attribute '%s' cannot have a tag", vpt->tmpl_da->name);
@@ -883,7 +898,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			p += 2;
 
 		} else {
-			num = strtol(p + 1, &q, 10);
+			num = strtol(p + 1, &end, 10);
 			if (!TAG_VALID_ZERO(num)) {
 				fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
 				if (err) *err = ATTR_REF_ERROR_INVALID_TAG;
@@ -892,7 +907,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			}
 
 			vpt->tmpl_tag = num;
-			p = q;
+			p = end;
 		}
 
 	/*
@@ -929,10 +944,10 @@ do_num:
 
 		default:
 		{
-			char *q;
+			char *end;
 
-			num = strtol(p, &q, 10);
-			if (p == q) {
+			num = strtol(p, &end, 10);
+			if (p == end) {
 				fr_strerror_printf("Array index is not an integer");
 				if (err) *err = ATTR_REF_ERROR_INVALID_ARRAY_INDEX;
 				slen = -(p - name);
@@ -946,7 +961,7 @@ do_num:
 				goto error;
 			}
 			vpt->tmpl_num = num;
-			p = q;
+			p = end;
 		}
 			break;
 		}
