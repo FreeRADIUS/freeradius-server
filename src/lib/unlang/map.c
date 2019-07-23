@@ -174,11 +174,6 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 			/* FALL-THROUGH */
 
 		case UNLANG_UPDATE_MAP_EXPANDED_RHS:
-			/*
-			 *	Skip these until we know what to do with them.
-			 */
-			if (map->rhs->type == TMPL_TYPE_MAP) continue;
-
 			update_state->state = UNLANG_UPDATE_MAP_INIT;
 
 			/*
@@ -204,7 +199,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 			while (*update_state->vlm_next) update_state->vlm_next = &(*(update_state->vlm_next))->next;
 			break;
 		}
-	}
+	};
 
 	/*
 	 *	No modifications...

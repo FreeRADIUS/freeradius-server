@@ -123,7 +123,6 @@ typedef enum tmpl_type_e {
 	TMPL_TYPE_DATA,			//!< Value in native format.
 	TMPL_TYPE_XLAT_STRUCT,	      	//!< Pre-parsed XLAT expansion.
 	TMPL_TYPE_REGEX_STRUCT,	      	//!< Pre-parsed regular expression.
-	TMPL_TYPE_MAP,	 	     	//!< recursive map
 	TMPL_TYPE_NULL			//!< Has no value.
 } tmpl_type_t;
 
@@ -140,15 +139,12 @@ typedef enum tmpl_type_e {
 #define tmpl_is_data(vpt) 		(vpt->type == TMPL_TYPE_DATA)
 #define tmpl_is_xlat_struct(vpt) 	(vpt->type == TMPL_TYPE_XLAT_STRUCT)
 #define tmpl_is_regex_struct(vpt) 	(vpt->type == TMPL_TYPE_REGEX_STRUCT)
-#define tmpl_is_map(vpt) 		(vpt->type == TMPL_TYPE_MAP)
 #define tmpl_is_null(vpt) 		(vpt->type == TMPL_TYPE_NULL)
 
 extern const FR_NAME_NUMBER tmpl_type_table[];
 
 typedef struct vp_tmpl_s vp_tmpl_t;
 typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
-
-typedef struct vp_map_s vp_map_t;
 
 #include <freeradius-devel/server/xlat.h>
 #include <freeradius-devel/util/packet.h>
@@ -214,8 +210,6 @@ struct vp_tmpl_s {
 			fr_regex_flags_t	regex_flags;	//!< Flags for regular expressions.
 		};
 #endif
-
-		vp_map_t		       	*map;		//!< recursive map
 	} data;
 };
 
@@ -257,8 +251,6 @@ struct vp_tmpl_s {
 #  define tmpl_regex_flags			data.regex_flags
 #endif
 /* @} **/
-
-#define tmpl_map			data.map
 
 #ifndef WITH_VERIFY_PTR
 #  define TMPL_VERIFY(_x)

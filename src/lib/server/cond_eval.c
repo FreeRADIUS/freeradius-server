@@ -554,7 +554,6 @@ do {\
 	 *	Unsupported types (should have been parse errors)
 	 */
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_MAP:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_ATTR_UNDEFINED:
@@ -666,7 +665,6 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	 *	Unsupported types (should have been parse errors)
 	 */
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_MAP:
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_REGEX:		/* should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */

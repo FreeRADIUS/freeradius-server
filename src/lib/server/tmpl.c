@@ -46,7 +46,6 @@ FR_NAME_NUMBER const tmpl_type_table[] = {
 	{ "data",		TMPL_TYPE_DATA		},
 	{ "parsed xlat",	TMPL_TYPE_XLAT_STRUCT	},
 	{ "parsed regex",	TMPL_TYPE_REGEX_STRUCT	},
-	{ "map",		TMPL_TYPE_MAP		},
 	{ "null",		TMPL_TYPE_NULL		},
 	{ NULL, 0 }
 };
@@ -1659,7 +1658,6 @@ ssize_t _tmpl_to_type(void *out,
 	 */
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_MAP:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_ATTR_UNDEFINED:
@@ -1991,7 +1989,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 */
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_MAP:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_ATTR_UNDEFINED:
@@ -2264,9 +2261,6 @@ do_literal:
 
 	case TMPL_TYPE_DATA:
 		return fr_value_box_snprint(out, end - out_p, &vpt->tmpl_value, fr_token_quote[vpt->quote]);
-
-	case TMPL_TYPE_MAP:
-		return snprintf(out, outlen, "%s %s { ... }", vpt->tmpl_map->lhs->name, fr_tokens[vpt->tmpl_map->op]);
 
 	default:
 		goto empty;
@@ -2860,20 +2854,6 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 #else
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 #endif
-		break;
-
-	case TMPL_TYPE_MAP:
-		if (CHECK_ZEROED(vpt, map)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_MAP "
-				     "has non-zero bytes after the data.map struct in the union",
-				     file, line);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
-		}
-
-		/*
-		 *	@todo - recursively verify vpt->tmpl_map->rhs->map-> lhs / rhs
-		 */
-		tmpl_verify(file, line, vpt->tmpl_map->lhs);
 		break;
 
 	case TMPL_TYPE_UNKNOWN:
