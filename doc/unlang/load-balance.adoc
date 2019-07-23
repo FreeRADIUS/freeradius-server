@@ -4,9 +4,8 @@ include::../img/header.adoc[]
 
 [source,unlang]
 ----
-load-balance <key> {
-    [ module-1 ]
-    [ module-2 ]
+load-balance [ <key> ] {
+    [ statements ]
 }
 ----
 

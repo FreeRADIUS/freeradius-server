@@ -4,7 +4,7 @@ include::../img/header.adoc[]
 
 [source,unlang]
 ----
-redundant-load-balance <key> {
+redundant-load-balance [ <key> ] {
     [ statements ]
 }
 ----
