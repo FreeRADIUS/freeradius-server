@@ -1512,6 +1512,11 @@ check_reply:
 		log_request_pair_list(L_DBG_LVL_2, request, vp, NULL);
 
 		/*
+		 *	Delete Proxy-State attributes from the reply.
+		 */
+		fr_pair_delete_by_da(&vp, attr_proxy_state);
+
+		/*
 		 *	@todo - make this programmatic?  i.e. run a
 		 *	separate policy which updates the reply.
 		 *
