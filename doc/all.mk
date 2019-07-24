@@ -48,7 +48,7 @@ AUTO_ADOC_FILES += $(patsubst raddb/%.md,doc/raddb/%.adoc,$(shell find raddb -na
 AUTO_ADOC_FILES += $(patsubst doc/%.md,doc/%.adoc,$(wildcard doc/*.md doc/*/*.md doc/*/*/*.md doc/*/*/*/*.md))
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
-HTML_FILES := $(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES))
+HTML_FILES := $(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) $(subst %README.adoc,index.html,$(ADOC_FILES))
 
 #
 #  There are a number of pre-built files in the doc/ directory.  Find those.
@@ -106,10 +106,24 @@ doc/raddb/%.adoc: raddb/%
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
 	${Q}./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc -o $@ < $^
 
+#
+#	Converting *.adoc to *.html
+#
 doc/%.html: doc/%.adoc
 	@echo HTML $^
 	${Q}$(ASCIIDOCTOR) $< -a "toc=left" -b html5 -o $@ $<
-	${Q}perl -p -i -e 's/\.adoc/\.html/g' $@
+	${Q}perl -p -i -e 's,\.adoc,\.html,g; s,/.html",/",g; s/\.md\.html/\.html/g' $@
+
+html_build: $(HTML_FILES)
+
+#
+#	Create a soft-link between $path/README.html to $path/index.html
+#
+HTML_README_DIRS := $(foreach dr,$(filter %README.html,$(HTML_FILES)),$(dir $(dr)))
+
+html_index:
+	@echo "HTML-INDEX $(addsuffix index.html,$(HTML_README_DIRS))"
+	${Q}for _idx in $(HTML_README_DIRS); do (cd $$_idx && ln -fs README.html index.html); done
 
 doc/%.pdf: doc/%.adoc
 	@echo PDF $^
@@ -127,6 +141,6 @@ doc/%.pdf: doc/%.md
 
 .PHONY: asciidoc html pdf clean clean.doc
 asciidoc: $(ADOC_FILES)
-html: $(HTML_FILES)
+html: html_build html_index
 pdf: $(PDF_FILES)
 endif
