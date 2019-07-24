@@ -238,6 +238,7 @@ static fr_dict_attr_t const *attr_original_packet_code;
 static fr_dict_attr_t const *attr_proxy_state;
 static fr_dict_attr_t const *attr_response_length;
 static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[];
 fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
@@ -251,6 +252,7 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_response_length, .name = "Response-Length", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius},
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -1524,13 +1526,36 @@ check_reply:
 		/*
 		 *	Run hard-coded policies on Protocol-Error
 		 */
-		if (code == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(c, request);
+		if (code == FR_CODE_PROTOCOL_ERROR) {
+			protocol_error_reply(c, request);
 
-		/*
-		 *	Run hard-coded policies on packets *we* sent
-		 *	as status checks.
-		 */
-		if (u == radius->status_u) status_server_reply(c, u, request);
+		} else if (u == radius->status_u) {
+			/*
+			 *	Run hard-coded policies on packets *we* sent
+			 *	as status checks.
+			 */
+			status_server_reply(c, u, request);
+
+		} else if ((code == FR_CODE_ACCESS_CHALLENGE) && (request->dict == dict_radius) &&
+			   (request->packet->code == FR_CODE_ACCESS_REQUEST)) {
+			/*
+			 *	Mark up the parent request as being an
+			 *	Access-Challenge.
+			 *
+			 *	We don't do this for other packet
+			 *	types, because the ok/fail nature of
+			 *	the module return code will
+			 *	automatically result in it the parent
+			 *	request returning an ok/fail packet
+			 *	code.
+			 */
+			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
+			if (!vp) {
+				MEM(vp = fr_pair_afrom_da(request->reply, attr_packet_type));
+				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
+				fr_pair_add(&request->reply->vps, vp);
+			}
+		}
 	}
 } /* RADIUS END */
 
