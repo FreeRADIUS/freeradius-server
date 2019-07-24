@@ -22,6 +22,18 @@ looping, etc.
 | link:if.adoc[if]           | Check for a condition, and execute a sub-policy if it matches.
 | link:return.adoc[return]   | Immediately stop processing a section.
 | link:switch.adoc[switch]   | Check for multiple values.
+|=====
+
+=== Attribute Editing Keywords
+
+The _attribute editing_ keywords allow policies to add, delete, and
+modify attributes in any list or packet.
+
+.Attribute Editing
+[options="header"]
+|=====
+| Keyword | Description
+| link:map.adoc[map]         | Map database fields to server attributes.
 | link:update.adoc[update]   | Edit a list of attributes.
 |=====
 
