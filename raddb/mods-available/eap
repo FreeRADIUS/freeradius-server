@@ -521,15 +521,18 @@ eap {
 		#
 		#  [NOTE]
 		#  ====
-		#  * Work-arounds for OpenSSL nonsense OpenSSL 1.0.1f and 1.0.1g do
+		#  * Work-arounds for OpenSSL nonsense.  OpenSSL 1.0.1f and 1.0.1g do
 		#  not calculate the `EAP` keys correctly.  The fix is to upgrade
-		#  OpenSSL, or disable TLS 1.2 here.
+		#  OpenSSL, or to disable TLS 1.2 here.
 		#
 		#  * SSLv2 and SSLv3 are permanently disabled due to security
 		#  issues.
+		#
+		#  * We STRONGLY RECOMMEND that TLS 1.0 and TLS 1.2 be disabled.
+		#  They are insecure and SHOULD NOT BE USED.
 		#  ====
 		#
-#		tls_max_version = 1.1
+#		tls_max_version = 1.2
 
 		#
 		#  tls_min_version::
@@ -545,7 +548,7 @@ eap {
 		#  issues.
 		#  ====
 		#
-#		tls_min_version = 1.0
+#		tls_min_version = 1.2
 
 		#
 		#  ecdh_curve:: Elliptical cryptography configuration.

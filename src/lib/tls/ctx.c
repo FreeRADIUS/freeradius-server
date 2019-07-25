@@ -613,7 +613,7 @@ post_ca:
 	}
 
 	{
-		int min_version = TLS1_VERSION;
+		int min_version = TLS1_2_VERSION;
 
 		if (conf->tls_min_version < (float) 1.0) {
 			ERROR("tls_min_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
@@ -627,7 +627,6 @@ post_ca:
 #  endif
 		else if (conf->tls_min_version >= (float) 1.2) min_version = TLS1_2_VERSION;
 		else if (conf->tls_min_version >= (float) 1.1) min_version = TLS1_1_VERSION;
-		else min_version = TLS1_VERSION;
 
 		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
 			tls_log_error(NULL, "Failed setting TLS minimum version");
