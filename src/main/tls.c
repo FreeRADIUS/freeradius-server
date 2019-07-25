@@ -2786,6 +2786,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 #ifdef CHECK_FOR_PSK_CERTS
 	bool		psk_and_certs = false;
 #endif
+	bool		insecure_tls_version = false;
 
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
@@ -3152,7 +3153,25 @@ post_ca:
 			ERROR("Failed setting TLS minimum version");
 			return NULL;
 		}
-#endif	/* OpenSSL version >1.1.0 */
+
+		/*
+		 *	No one should be using TLS 1.0 or TLS 1.1 any more
+		 */
+		if (min_version < TLS1_2_VERSION) insecure_tls_version = true;
+#else  /* OpenSSL version < 1.1.0 */
+
+#ifdef SSL_OP_NO_TLSv1
+		insecure_tls_version |= (conf->disable_tlsv1 == false);
+#endif
+#ifdef SSL_OP_NO_TLSv1_1
+		insecure_tls_version |= (conf->disable_tlsv1_1 == false);
+#endif
+#endif	/* OpenSSL version ? 1.1.0 */
+
+		if (rad_debug_lvl && insecure_tls_version) {
+			WARN("The configuration allows TLS 1.0 and/or TLS 1.1.  We STRONGLY recommned using only TLS 1.2 for security");
+			WARN("Please set: min_tls_version = \"1.2\"");
+		}
 	}
 
 	/*
