@@ -32,7 +32,7 @@ field names are usually LDAP attributes.
 
 The right hand side of the assignment is a field name, which should
 generally be enclosed in single quotes.  The single quotes prevent any
-additional expansion of the `<field>` value.
+additional expansion of the _<field>_ value.
 
 When the right hand side is instead a double-quoted string, that
 string is expanded dynamically.  The resulting value is then taken as
@@ -41,7 +41,7 @@ the field name.
 If the `map` fails for any reason, then all of the results are
 discarded, and the `map` does not affect any server attributes.  For
 example, the database query can return no results, or a dynamically
-expanded `<field>` can refer to a non-existent field name.  In both
+expanded _<field>_ can refer to a non-existent field name.  In both
 cases, the `map` statement returns `fail`, and no server attributes
 are affected.
 

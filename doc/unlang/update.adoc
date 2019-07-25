@@ -6,37 +6,182 @@ include::../img/header.adoc[]
 [source,unlang]
 ----
 update [ <list> ] {
-        [ attributes ]
+	<server-attribute> <op> <value>
+	...
 }
 ----
 
-The `update` statement adds attributes to or edits the attributes in
-the named _<list>_. The _<list>_ should be one of `request`, `reply`,
-`proxy-request`, `proxy-reply`, `coa`, `disconnect`, or `control`.  If
-_<list>_ is omitted, then each attribute in the `update` section
-*must* be prefixed with a list name.  For example, `request:User-Name
-...`
+The `update` statement adds attributes to, or edits the attributes in,
+the named _<list>_.
 
-For EAP methods with tunnelled authentication sessions (i.e., PEAP and
-EAP-TTLS), the inner tunnel session can refer to a list for the outer
-session by prefixing the list name with `outer.` For example,
-`outer.request`.
+The `update` statement consists of a the following syntax elements:
 
-The `update` statement can only be used with the `coa` and
-`disconnect` lists when the server receives an Access-Request or
-Accounting-Request. Updating the `coa` or `disconnect` list will cause
-the server to send a CoA-Request or a Disconnect-Request packet to the
-NAS.
+<list>:: The attribute list which will be updated.  The list is
+usually `request`, `reply`, or `control`.
 
-When the server receives a CoA-Request or a Disconnect-Request packet,
-the update sections should reference the request and reply lists, as the
-server has received a request and will be sending a reply.
+If the _<list>_ qualifier is omitted, then each entry inside of the
+`update` section *must* be prefixed with a list name.  For example,
+`&request:User-Name ...`
+
+<server-attribute>:: The server attribute which is assigned the
+_<value>_.
+
+<op>:: The operator such as `=`, `:=`, etc.
+
+<value>:: The name of the field from the database.
+
+The update process is atomic, in that either all of the attributes are
+modified, or none of them are modified.  If the `update` fails for any
+reason, then all of the results are discarded, and the `update` does
+not affect any server attributes.
 
 .Example
 [source,unlang]
 ----
 update reply {
-   Reply-Message := "Hello!"
+   &Reply-Message := "Hello!"
+   &Framed-IP-Address := 192.0.2.4
+}
+----
+
+=== Lists
+
+The _<list>_ field setys the attribute list that will be updated.  If
+the _<list>_ qualifier is omitted, then each entry inside of the
+`update` section *must* be prefixed with a list name.  For example,
+`&request:User-Name ...`
+
+Allow values for the _<list>_ field are:
+
+`request`:: Attributes in the incoming request packet.
+
+`reply`:: Attributes in the outgoing reply packet.
+
+`control`:: Attributes in the internal "control" list that is
+associated with the request.
+
+The `control` attributes are used to manage how the request is
+processed.  These attributes are never sent in any packet.
+
+`session-state`:: Attributes which are maintained across multi-packet
+exchanges.
+
+There must be a semicolon `:` after the list name and before the
+attribute name.  This syntax helps the server to distinguish between
+list names and attribute names.
+
+NOTE: In version 3, there were additional lists such as `proxy`,
+`proxy-reply`, and `coa`.  These lists have been removed in version 4.
+See the link:subrequest.adoc[subrequest] statement for how to create
+child requests.
+
+With the exception of `session-state`, all of the above lists are
+ephemeral.  That is, they exist for one packet exchange, and only one
+packet exchange.  When a reply is sent for a request, the above lists
+and all attributes are deleted.  There is no way to reference an
+attribute from a previous packet.  We recommend using a database to
+track complex state.
+
+In some cases, requests are associated a multi-packet exchange.  For
+those situations, the `session-state` list is automatically saved when
+a reply is sent, and it is automatically restored when the next packet
+in sequence comes in.  Once the packet exchange has been finished, the
+`session-state` list is deleted.
+
+In some cases, there is a parent-child relationship between requests.
+In those situations, it is possible for the policy rules in the child
+to refer to attributes in the parent.  This reference can be made by
+prefixing the _<list>_ name with the `parent` qualifier.  The key word
+`outer` is also a synonym for `parent`.  If there are multiple
+parent-child relationships, the `parent` qualifier can be repeated.
+
+There is, however, no way for the parent to refer to the child.  When
+the child is running, the parent is suspended.  Once the child
+finishes, it is deleted, and is no longer accessible to the parent.
+
+.Examples
+* `&parent.request:User-Name`
+* `&parent.reply:Reply-Message`
+* `&parent.parent.session-state:Filter-Id`
+
+=== Server Attributes
+
+The _<server-attribute>_ field is usually an attribute name such as
+`&Reply-Message`.
+
+NOTE: In version 3, the leading `&` was optional.  In version 4, the
+leading `&` is required.
+
+=== Editing Operators
+
+The `<op>` field is used to define how the attribute is processed.
+Different operators allow attributes to be added, deleted, or
+replaced, as defined below.
+
+.Editing Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| =        | Add the attribute to the list, if and only if an attribute of
+the same name is not already present in that list.
+| :=       | Add the attribute to the list. If any attribute of the same
+name is already present in that list, its value is replaced with the
+value of the current attribute.
+| +=       | Add the attribute to the tail of the list, even if attributes
+of the same name are already present in the list.
+|=====
+
+.Example
+[source,unlang]
+----
+update reply {
+   &Filter-Id += "filter"
+}
+----
+
+=== Filtering Operators
+
+The following operators may also be used in addition to the ones
+listed above. These operators use the _<server-attribute>_ and
+_<value>_ fields to enforce limits on all attributes in the given
+_<list>_, and to edit attributes which have a matching
+_<server-attribute>_ name. All other attributes are ignored.
+
+.Filtering Operators
+[options="header]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| -=       | Remove all attributes from the list that match _<value>_.
+| ==       | Keep only the attributes in the list that match _<value>_
+| <        | Keep only the attributes in the list that have values less than _<value>_.
+| \<=      | Keep only the attributes in the list that have values less than or equal to _<value>_.
+| >        | Keep only the attributes in the list that have values greater than _<value>_.
+| >=       | Keep only the attributes in the list that have values greater than or equal to _<value>_.
+| !*       | Delete all occurances of the attribute, no matter what the value.
+|=====
+
+The `==` operator is very different from the `=` operator listed
+above. The `=` operator is used to add new attributes to the list,
+while the `==` operator removes all attributes that do not match the
+given value.
+
+For IP addresses, the operators `>`, `>=`, `<`, and `<=` check for
+membership in a network.  The _<value>_ field should then be a IP
+network, given in `address/mask` format.
+
+IMPORTANT: In version 3, some filtering attributes would _create_ the
+attribute if it did not exist in the destination list.  In version 4,
+this functionality has been removed.  Instead version 4 only performs
+_filtering_ of the attributes.  That is, the filtering operators will
+modify or delete attributes, but they will never create an attribute.
+
+.Example
+[source,unlang]
+----
+update reply {
+   &Session-Timeout <= 3600
 }
 ----
 

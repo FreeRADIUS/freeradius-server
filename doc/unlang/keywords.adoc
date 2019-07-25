@@ -62,6 +62,17 @@ attributes, and then proxy that packet to an external destination.
 This process must be specified manually, unlike in version 3, the
 child was created automatically when the `proxy` list was used.
 
+The benefit of these new keywords is that it is now possible to
+control when child requests are created.  It is also possible to
+control whether or not the parent waits for the child to finish, or
+operates independently of the child.  It is also finally possible to
+have multiple child requests via the `parallel` keyword.
+
+These new keywords can unfortunately make some simple configurations
+more complex than they would have been in version 3.  The trade-off is
+that many complex configurations now become trivial, where they were
+impossible to create before.
+
 .Parent-Child
 [options="header"]
 |=====
