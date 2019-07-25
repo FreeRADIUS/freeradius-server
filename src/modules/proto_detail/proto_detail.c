@@ -242,7 +242,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_cursor_t		cursor;
 	time_t			timestamp = 0;
 
-	RHEXDUMP(L_DBG_LVL_3, data, data_len, "proto_detail decode packet");
+	RHEXDUMP3(data, data_len, "proto_detail decode packet");
 
 	request->packet->code = inst->code;
 

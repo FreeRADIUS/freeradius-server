@@ -82,10 +82,10 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
 	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Inner Methods Compound Keys", msk, 32, imck, sizeof(imck));	//-V512
 
 	memcpy(t->s_imck, imck, EAP_FAST_SIMCK_LEN);
-	RHEXDUMP(L_DBG_LVL_MAX, t->s_imck, EAP_FAST_SIMCK_LEN, "S-IMCK[j]");
+	RHEXDUMP3(t->s_imck, EAP_FAST_SIMCK_LEN, "S-IMCK[j]");
 
 	memcpy(t->cmk, &imck[EAP_FAST_SIMCK_LEN], EAP_FAST_CMK_LEN);
-	RHEXDUMP(L_DBG_LVL_MAX, t->cmk, EAP_FAST_CMK_LEN, "CMK[j]");
+	RHEXDUMP3(t->cmk, EAP_FAST_CMK_LEN, "CMK[j]");
 
 	t->imck_count++;
 
@@ -96,11 +96,11 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
          */
 	t->msk = talloc_array(t, uint8_t, EAP_FAST_KEY_LEN);
 	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Session Key Generating Function", NULL, 0, t->msk, EAP_FAST_KEY_LEN);
-	RHEXDUMP(L_DBG_LVL_MAX, t->msk, EAP_FAST_KEY_LEN, "MSK");
+	RHEXDUMP3(t->msk, EAP_FAST_KEY_LEN, "MSK");
 
 	t->emsk = talloc_array(t, uint8_t, EAP_EMSK_LEN);
 	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Extended Session Key Generating Function", NULL, 0, t->emsk, EAP_EMSK_LEN);
-	RHEXDUMP(L_DBG_LVL_MAX, t->emsk, EAP_EMSK_LEN, "EMSK");
+	RHEXDUMP3(t->emsk, EAP_EMSK_LEN, "EMSK");
 }
 
 void eap_fast_tlv_append(tls_session_t *tls_session, fr_dict_attr_t const *tlv, bool mandatory, int length, void const *data)
@@ -196,7 +196,7 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_sessio
 	memcpy(&opaque_plaintext.lifetime, &pac.info.lifetime, sizeof(opaque_plaintext.lifetime));
 	memcpy(&opaque_plaintext.key, &pac.key, sizeof(opaque_plaintext.key));
 
-	RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *)&opaque_plaintext, sizeof(opaque_plaintext), "PAC-Opaque plaintext data section");
+	RHEXDUMP3((uint8_t const *)&opaque_plaintext, sizeof(opaque_plaintext), "PAC-Opaque plaintext data section");
 
 	rad_assert(PAC_A_ID_LENGTH <= EVP_GCM_TLS_TAG_LEN);
 	memcpy(pac.opaque.aad, t->a_id, PAC_A_ID_LENGTH);
@@ -207,7 +207,7 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_sessio
 
 	pac.opaque.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_opaque_tlv->attr);
 	pac.opaque.hdr.length = htons(sizeof(pac.opaque) - sizeof(pac.opaque.hdr) - sizeof(pac.opaque.data) + dlen);
-	RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *)&pac.opaque, sizeof(pac.opaque) - sizeof(pac.opaque.data) + dlen, "PAC-Opaque");
+	RHEXDUMP3((uint8_t const *)&pac.opaque, sizeof(pac.opaque) - sizeof(pac.opaque.data) + dlen, "PAC-Opaque");
 
 	eap_fast_tlv_append(tls_session, attr_eap_fast_pac_tlv, true, sizeof(pac) - sizeof(pac.opaque.data) + dlen, &pac);
 }
@@ -229,12 +229,12 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	rad_assert(sizeof(binding.nonce) % sizeof(uint32_t) == 0);
 	RANDFILL(binding.nonce);
 	binding.nonce[sizeof(binding.nonce) - 1] &= ~0x01; /* RFC 4851 section 4.2.8 */
-	RHEXDUMP(L_DBG_LVL_MAX, binding.nonce, sizeof(binding.nonce), "NONCE");
+	RHEXDUMP3(binding.nonce, sizeof(binding.nonce), "NONCE");
 
-	RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *) &binding, sizeof(binding), "Crypto-Binding TLV for Compound MAC calculation");
+	RHEXDUMP3((uint8_t const *) &binding, sizeof(binding), "Crypto-Binding TLV for Compound MAC calculation");
 
 	fr_hmac_sha1(binding.compound_mac, (uint8_t *)&binding, sizeof(binding), t->cmk, EAP_FAST_CMK_LEN);
-	RHEXDUMP(L_DBG_LVL_MAX, binding.compound_mac, sizeof(binding.compound_mac), "Compound MAC");
+	RHEXDUMP3(binding.compound_mac, sizeof(binding.compound_mac), "Compound MAC");
 
 	eap_fast_tlv_append(tls_session, attr_eap_fast_crypto_binding, true, len, &binding.reserved);
 }
@@ -533,8 +533,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 				break;
 			}
 		}
-		RHEXDUMP(L_DBG_LVL_MAX,
-			 (uint8_t *)&t->isk, 2 * RADIUS_CHAP_CHALLENGE_LENGTH, "ISK[j]"); /* FIXME (part of above) */
+		RHEXDUMP3((uint8_t *)&t->isk, 2 * RADIUS_CHAP_CHALLENGE_LENGTH, "ISK[j]"); /* FIXME (part of above) */
 		break;
 
 	case FR_CODE_ACCESS_REJECT:
@@ -663,12 +662,12 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge);
 			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
 			fr_pair_add(&fake->control, tvp);
-			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 auth_challenge");
+			RHEXDUMP3(t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 auth_challenge");
 
 			tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge);
 			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
 			fr_pair_add(&fake->control, tvp);
-			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 peer_challenge");
+			RHEXDUMP3(t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 peer_challenge");
 		}
 	}
 
@@ -794,13 +793,13 @@ static FR_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *e
 	memcpy(cmac, binding->compound_mac, sizeof(cmac));
 	memset(binding->compound_mac, 0, sizeof(binding->compound_mac));
 
-	RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *) binding, sizeof(*binding), "Crypto-Binding TLV for Compound MAC calculation");
-	RHEXDUMP(L_DBG_LVL_MAX, cmac, sizeof(cmac), "Received Compound MAC");
+	RHEXDUMP3((uint8_t const *) binding, sizeof(*binding), "Crypto-Binding TLV for Compound MAC calculation");
+	RHEXDUMP3(cmac, sizeof(cmac), "Received Compound MAC");
 
 	fr_hmac_sha1(binding->compound_mac, (uint8_t *)binding, sizeof(*binding), t->cmk, EAP_FAST_CMK_LEN);
 	if (memcmp(binding->compound_mac, cmac, sizeof(cmac))) {
 		RDEBUG2("Crypto-Binding TLV mis-match");
-		RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *) binding->compound_mac,
+		RHEXDUMP3((uint8_t const *) binding->compound_mac,
                 sizeof(binding->compound_mac), "Calculated Compound MAC");
 		return FR_CODE_ACCESS_REJECT;
 	}

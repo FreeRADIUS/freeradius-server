@@ -492,7 +492,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	/*
 	 *	Figure out the buffer we need
 	 */
-	RHEXDUMP(L_DBG_LVL_3, (uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
+	RHEXDUMP3((uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
 	if (EVP_PKEY_encrypt(xt->evp_encrypt_ctx, NULL, &ciphertext_len,
 			     (unsigned char const *)plaintext, plaintext_len) <= 0) {
 		tls_log_error(request, "Failed getting length of encrypted plaintext");
@@ -505,7 +505,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		tls_log_error(request, "Failed encrypting plaintext");
 		return XLAT_ACTION_FAIL;
 	}
-	RHEXDUMP(L_DBG_LVL_3, ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
+	RHEXDUMP3(ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
 
 	if (ciphertext_len != talloc_array_length(ciphertext)) {
 		uint8_t *n;
@@ -658,7 +658,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	/*
 	 *	Decrypt the ciphertext
 	 */
-	RHEXDUMP(L_DBG_LVL_3, ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
+	RHEXDUMP3(ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
 	if (EVP_PKEY_decrypt(xt->evp_decrypt_ctx, NULL, &plaintext_len, ciphertext, ciphertext_len) <= 0) {
 		tls_log_error(request, "Failed getting length of cleartext");
 		return XLAT_ACTION_FAIL;
@@ -670,7 +670,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		tls_log_error(request, "Failed decrypting ciphertext");
 		return XLAT_ACTION_FAIL;
 	}
-	RHEXDUMP(L_DBG_LVL_3, (uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
+	RHEXDUMP3((uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
 
 	/*
 	 *	Fixup the output buffer (and ensure it's \0 terminated)

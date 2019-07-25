@@ -2112,7 +2112,7 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 		REXDENT();
 	}
 
-	RHEXDUMP(L_DBG_LVL_3, c->buffer, packet_len, "Encoded packet");
+	RHEXDUMP3(c->buffer, packet_len, "Encoded packet");
 
 	request->module = module_name;
 

@@ -117,7 +117,7 @@ static int digest_fix(REQUEST *request)
 		size_t attr_len;
 		uint8_t const *p = i->vp_octets, *end = i->vp_octets + i->vp_length;
 
-		RHEXDUMP(L_DBG_LVL_3, p, i->vp_length, "Validating digest attribute");
+		RHEXDUMP3(p, i->vp_length, "Validating digest attribute");
 
 		/*
 		 *	Until this stupidly encoded attribute is exhausted.
@@ -150,7 +150,7 @@ static int digest_fix(REQUEST *request)
 			}
 
 
-			RHEXDUMP(L_DBG_LVL_3, p, attr_len, "Found valid sub TLV %u, length %zu", p[0], attr_len);
+			RHEXDUMP3(p, attr_len, "Found valid sub TLV %u, length %zu", p[0], attr_len);
 
 			p += attr_len;
 		} /* loop over this one attribute */
@@ -472,7 +472,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	}
 	fr_bin2hex((char *) kd, hash, sizeof(hash));
 
-	RHEXDUMP_INLINE(L_DBG_LVL_3, hash, sizeof(hash), "H(A1)");
+	RHEXDUMP_INLINE3(hash, sizeof(hash), "H(A1)");
 
 	kd_len = 32;
 
@@ -534,7 +534,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 
 	fr_bin2hex((char *) kd + kd_len, hash, sizeof(hash));
 
-	RHEXDUMP_INLINE(L_DBG_LVL_3, hash, sizeof(hash), "H(A2)");
+	RHEXDUMP_INLINE3(hash, sizeof(hash), "H(A2)");
 
 	kd_len += 32;
 

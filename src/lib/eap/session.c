@@ -332,7 +332,7 @@ eap_session_t *eap_session_continue(void *instance, eap_packet_raw_t **eap_packe
 			 *	Sometimes we need the hex stream to determine where
 			 *	random junk is coming from.
 			 */
-			RHEXDUMP(L_DBG_LVL_3, (uint8_t *const)eap_session->identity,
+			RHEXDUMP3((uint8_t *const)eap_session->identity,
 				 talloc_array_length(eap_session->identity) - 1,
 				 "EAP Identity Response - \"%pV\"",
 				 fr_box_strvalue_len(eap_session->identity,

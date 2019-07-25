@@ -1742,7 +1742,7 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 			q = q ? q + 1 : end;
 
 			if (RDEBUG_ENABLED4) {
-				RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)p, q - p,
+				RHEXDUMP4((uint8_t const *)p, q - p,
 					 "%s header: %pV",
 					 verb, fr_box_strvalue_len(p, q - p));
 			} else {
@@ -1758,23 +1758,23 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 		goto print_header;
 
 	case CURLINFO_DATA_IN:
-		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "received data[length %zu]", len);
+		RHEXDUMP4((uint8_t const *)data, len, "received data[length %zu]", len);
 		break;
 
 	case CURLINFO_DATA_OUT:
-		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "sending data[length %zu]", len);
+		RHEXDUMP4((uint8_t const *)data, len, "sending data[length %zu]", len);
 		break;
 
 	case CURLINFO_SSL_DATA_OUT:
-		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "sending ssl-data[length %zu]", len);
+		RHEXDUMP4((uint8_t const *)data, len, "sending ssl-data[length %zu]", len);
 		break;
 
 	case CURLINFO_SSL_DATA_IN:
-		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "received ssl-data[length %zu]", len);
+		RHEXDUMP4((uint8_t const *)data, len, "received ssl-data[length %zu]", len);
 		break;
 
 	default:
-		RHEXDUMP(L_DBG_LVL_3, (uint8_t const *)data, len, "libcurl - debug data (unknown type %i)", (int)type);
+		RHEXDUMP3((uint8_t const *)data, len, "libcurl - debug data (unknown type %i)", (int)type);
 		break;
 	}
 

@@ -840,8 +840,8 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		RDEBUG2("EAP-SIM-MAC matches calculated MAC");
 	} else {
 		REDEBUG("EAP-SIM-MAC does not match calculated MAC");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, mac->vp_octets, SIM_MAC_DIGEST_SIZE, "Received");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, calc_mac, SIM_MAC_DIGEST_SIZE, "Expected");
+		RHEXDUMP_INLINE2(mac->vp_octets, SIM_MAC_DIGEST_SIZE, "Received");
+		RHEXDUMP_INLINE2(calc_mac, SIM_MAC_DIGEST_SIZE, "Expected");
 		return -1;
 	}
 

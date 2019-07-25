@@ -258,7 +258,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 */
 	request->dict = dict_dhcpv4;
 
-	RHEXDUMP(L_DBG_LVL_3, data, data_len, "proto_dhcpv4 decode packet");
+	RHEXDUMP3(data, data_len, "proto_dhcpv4 decode packet");
 
 	client = address->radclient;
 
@@ -404,7 +404,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		return -1;
 	}
 
-	RHEXDUMP(L_DBG_LVL_3, buffer, data_len, "proto_dhcpv4 encode packet");
+	RHEXDUMP3(buffer, data_len, "proto_dhcpv4 encode packet");
 
 	request->reply->data_len = data_len;
 	return data_len;

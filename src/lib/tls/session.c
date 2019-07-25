@@ -695,7 +695,7 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session, uint8_
 	 *	data at higher debug levels.
 	 */
 	if (RDEBUG_ENABLED3) {
-		RHEXDUMP(L_DBG_LVL_3, data, data_len, "%s", tls_session->info.info_description);
+		RHEXDUMP3(data, data_len, "%s", tls_session->info.info_description);
 	} else {
 		RDEBUG2("%s", tls_session->info.info_description);
 	}
@@ -1187,7 +1187,7 @@ int tls_session_recv(REQUEST *request, tls_session_t *session)
 	ret = 0;
 
 	if (RDEBUG_ENABLED3) {
-		RHEXDUMP(L_DBG_LVL_3, session->clean_out.data, session->clean_out.used,
+		RHEXDUMP3(session->clean_out.data, session->clean_out.used,
 			 "Decrypted TLS application data (%zu bytes)", session->clean_out.used);
 	} else {
 		RDEBUG2("Decrypted TLS application data (%zu bytes)", session->clean_out.used);
@@ -1234,7 +1234,7 @@ int tls_session_send(REQUEST *request, tls_session_t *session)
 	 */
 	if (session->clean_in.used > 0) {
 		if (RDEBUG_ENABLED3) {
-			RHEXDUMP(L_DBG_LVL_3, session->clean_in.data, session->clean_in.used,
+			RHEXDUMP3(session->clean_in.data, session->clean_in.used,
 				 "TLS application data to encrypt (%zu bytes)", session->clean_in.used);
 		} else {
 			RDEBUG2("TLS application data to encrypt (%zu bytes)", session->clean_in.used);

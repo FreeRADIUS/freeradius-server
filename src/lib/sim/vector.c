@@ -378,13 +378,13 @@ int fr_sim_vector_gsm_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 		/*
 		 *	Don't change colon indent, matches other messages later...
 		 */
-		RHEXDUMP_INLINE(L_DBG_LVL_2,
+		RHEXDUMP_INLINE2(
 				keys->gsm.vector[idx].kc, SIM_VECTOR_GSM_KC_SIZE,
 				"KC           :");
-		RHEXDUMP_INLINE(L_DBG_LVL_2,
+		RHEXDUMP_INLINE2(
 				keys->gsm.vector[idx].rand, SIM_VECTOR_GSM_RAND_SIZE,
 				"RAND         :");
-		RHEXDUMP_INLINE(L_DBG_LVL_2,
+		RHEXDUMP_INLINE2(
 				keys->gsm.vector[idx].sres, SIM_VECTOR_GSM_SRES_SIZE,
 				"SRES         :");
 		REXDENT();
@@ -455,18 +455,14 @@ static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_sim_keys_t 
 		/*
 		 *	Don't change colon indent, matches other messages later...
 		 */
-		RHEXDUMP_INLINE(L_DBG_LVL_3,
-				ki_vp->vp_octets, MILENAGE_KI_SIZE,
-				"Ki           :");
-		RHEXDUMP_INLINE(L_DBG_LVL_3,
-				opc_p, MILENAGE_OPC_SIZE,
-				"OPc          :");
-		RHEXDUMP_INLINE(L_DBG_LVL_3,
-				sqn_buff, MILENAGE_SQN_SIZE,
-				"SQN          :");
-		RHEXDUMP_INLINE(L_DBG_LVL_3,
-				amf_buff, MILENAGE_AMF_SIZE,
-				"AMF          :");
+		RHEXDUMP_INLINE3(ki_vp->vp_octets, MILENAGE_KI_SIZE,
+				 "Ki           :");
+		RHEXDUMP_INLINE3(opc_p, MILENAGE_OPC_SIZE,
+				 "OPc          :");
+		RHEXDUMP_INLINE3(sqn_buff, MILENAGE_SQN_SIZE,
+				 "SQN          :");
+		RHEXDUMP_INLINE3(amf_buff, MILENAGE_AMF_SIZE,
+				 "AMF          :");
 		REXDENT();
 
 		if (milenage_umts_generate(keys->umts.vector.autn,
@@ -712,19 +708,19 @@ int fr_sim_vector_umts_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 		/*
 		 *	Don't change colon indent, matches other messages later...
 		 */
-		RHEXDUMP_INLINE(L_DBG_LVL_2,
+		RHEXDUMP_INLINE2(
 				keys->umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE,
 				"AUTN         :");
-		RHEXDUMP_INLINE(L_DBG_LVL_2,
+		RHEXDUMP_INLINE2(
 				keys->umts.vector.ck, SIM_VECTOR_UMTS_CK_SIZE,
 				"CK           :");
-		RHEXDUMP_INLINE(L_DBG_LVL_2,
+		RHEXDUMP_INLINE2(
 				keys->umts.vector.ik, SIM_VECTOR_UMTS_IK_SIZE,
 				"IK           :");
-		RHEXDUMP_INLINE(L_DBG_LVL_2,
+		RHEXDUMP_INLINE2(
 				keys->umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE,
 				"RAND         :");
-		RHEXDUMP_INLINE(L_DBG_LVL_2,
+		RHEXDUMP_INLINE2(
 				keys->umts.vector.xres, keys->umts.vector.xres_len,
 				"XRES         :");
 		REXDENT();

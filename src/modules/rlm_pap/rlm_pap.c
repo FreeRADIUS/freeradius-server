@@ -1162,7 +1162,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 		REDEBUG("PBKDF2-Password hash component length is incorrect for hash type, expected %zu, got %zd",
 			digest_len, slen);
 
-		RHEXDUMP(L_DBG_LVL_2, hash, slen, "hash component");
+		RHEXDUMP2(hash, slen, "hash component");
 
 		goto finish;
 	}

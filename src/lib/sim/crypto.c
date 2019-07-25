@@ -1114,57 +1114,57 @@ void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
 	RDEBUG3("Cryptographic inputs");
 
 	RINDENT();
-	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->identity, keys->identity_len,
+	RHEXDUMP_INLINE3(keys->identity, keys->identity_len,
 			"Identity     :");
 	switch (keys->vector_type) {
 	case SIM_VECTOR_GSM:
 	{
 		unsigned int i;
 
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.nonce_mt, sizeof(keys->gsm.nonce_mt),
+		RHEXDUMP_INLINE3(keys->gsm.nonce_mt, sizeof(keys->gsm.nonce_mt),
 				"nonce_mt     :");
 
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.version_list, keys->gsm.version_list_len,
+		RHEXDUMP_INLINE3(keys->gsm.version_list, keys->gsm.version_list_len,
 				"version_list :");
 
 		for (i = 0; i < keys->gsm.num_vectors; i++) {
-			RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.vector[i].rand, SIM_VECTOR_GSM_RAND_SIZE,
+			RHEXDUMP_INLINE3(keys->gsm.vector[i].rand, SIM_VECTOR_GSM_RAND_SIZE,
 					"[%i] RAND    :", i);
-			RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.vector[i].sres, SIM_VECTOR_GSM_SRES_SIZE,
+			RHEXDUMP_INLINE3(keys->gsm.vector[i].sres, SIM_VECTOR_GSM_SRES_SIZE,
 					"[%i] SRES    :", i);
-			RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.vector[i].kc, SIM_VECTOR_GSM_KC_SIZE,
+			RHEXDUMP_INLINE3(keys->gsm.vector[i].kc, SIM_VECTOR_GSM_KC_SIZE,
 					"[%i] KC      :", i);
 		}
 	}
 		break;
 
 	case SIM_VECTOR_UMTS:
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE,
+		RHEXDUMP_INLINE3(keys->umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE,
 				"AUTN         :");
 
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.ck, SIM_VECTOR_UMTS_CK_SIZE,
+		RHEXDUMP_INLINE3(keys->umts.vector.ck, SIM_VECTOR_UMTS_CK_SIZE,
 				"CK           :");
 
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.ik, SIM_VECTOR_UMTS_IK_SIZE,
+		RHEXDUMP_INLINE3(keys->umts.vector.ik, SIM_VECTOR_UMTS_IK_SIZE,
 				"IK           :");
 
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE,
+		RHEXDUMP_INLINE3(keys->umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE,
 				"RAND         :");
 
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.xres, keys->umts.vector.xres_len,
+		RHEXDUMP_INLINE3(keys->umts.vector.xres, keys->umts.vector.xres_len,
 				"XRES         :");
 
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->ck_prime, SIM_VECTOR_UMTS_CK_SIZE,
+		RHEXDUMP_INLINE3(keys->ck_prime, SIM_VECTOR_UMTS_CK_SIZE,
 				"CK'          :");
 
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->ik_prime, SIM_VECTOR_UMTS_IK_SIZE,
+		RHEXDUMP_INLINE3(keys->ik_prime, SIM_VECTOR_UMTS_IK_SIZE,
 				"IK'          :");
 		break;
 
 	case SIM_VECTOR_UMTS_REAUTH:
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->master_key, sizeof(keys->master_key), "mk           :");
+		RHEXDUMP_INLINE3(keys->master_key, sizeof(keys->master_key), "mk           :");
 		RDEBUG3("counter      : %u", keys->reauth.counter);
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s), "nonce_s      :");
+		RHEXDUMP_INLINE3(keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s), "nonce_s      :");
 		break;
 
 	case SIM_VECTOR_NONE:
@@ -1180,19 +1180,19 @@ void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
 		break;
 
 	default:
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->master_key, sizeof(keys->master_key),
+		RHEXDUMP_INLINE3(keys->master_key, sizeof(keys->master_key),
 				"mk           :");
 		break;
 	}
-	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->k_aut, keys->k_aut_len,
+	RHEXDUMP_INLINE3(keys->k_aut, keys->k_aut_len,
 			"k_aut        :");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->k_encr, sizeof(keys->k_encr),
+	RHEXDUMP_INLINE3(keys->k_encr, sizeof(keys->k_encr),
 			"k_encr       :");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->k_re, sizeof(keys->k_re),
+	RHEXDUMP_INLINE3(keys->k_re, sizeof(keys->k_re),
 			"k_re         :");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->msk, sizeof(keys->msk),
+	RHEXDUMP_INLINE3(keys->msk, sizeof(keys->msk),
 			"msk          :");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->emsk, sizeof(keys->emsk),
+	RHEXDUMP_INLINE3(keys->emsk, sizeof(keys->emsk),
 			"emsk         :");
 	REXDENT();
 }

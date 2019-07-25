@@ -482,10 +482,15 @@ do {\
  * @param[in] _fmt	Message to prefix hex output with.
  * @param[in] ...	Additional arguments to print.
  */
-#define RHEXDUMP_INLINE(_lvl, _data, _len, _fmt, ...) \
+#define _RHEXDUMP_INLINE(_lvl, _data, _len, _fmt, ...) \
 	if (log_debug_enabled(L_DBG, _lvl, request)) { \
 		log_request(L_DBG, _lvl, request, __FILE__, __LINE__, _fmt " 0x%pH", ## __VA_ARGS__, fr_box_octets(_data, _len)); \
 	}
+
+#define RHEXDUMP_INLINE1(_data, _len, _fmt, ...) _RHEXDUMP_INLINE(L_DBG_LVL_1, _data, _len, _fmt, ## __VA_ARGS__)
+#define RHEXDUMP_INLINE2(_data, _len, _fmt, ...) _RHEXDUMP_INLINE(L_DBG_LVL_2, _data, _len, _fmt, ## __VA_ARGS__)
+#define RHEXDUMP_INLINE3(_data, _len, _fmt, ...) _RHEXDUMP_INLINE(L_DBG_LVL_3, _data, _len, _fmt, ## __VA_ARGS__)
+#define RHEXDUMP_INLINE4(_data, _len, _fmt, ...) _RHEXDUMP_INLINE(L_DBG_LVL_4, _data, _len, _fmt, ## __VA_ARGS__)
 
 /** Pretty print binary data as hex, with output as a wrapped block with addresses
  *
@@ -495,11 +500,16 @@ do {\
  * @param[in] _fmt	Message to print as a header to the hex output.
  * @param[in] ...	Additional arguments to print.
  */
-#define RHEXDUMP(_lvl, _data, _len, _fmt, ...) \
+#define _RHEXDUMP(_lvl, _data, _len, _fmt, ...) \
 	if (log_debug_enabled(L_DBG,_lvl, request)) do { \
 		log_request(L_DBG, _lvl, request, __FILE__, __LINE__, _fmt, ## __VA_ARGS__); \
 		log_request_hex(L_DBG, _lvl, request, __FILE__, __LINE__, _data, _len); \
 	} while (0)
+
+#define RHEXDUMP1(_data, _len, _fmt, ...) _RHEXDUMP(L_DBG_LVL_1, _data, _len, _fmt, ## __VA_ARGS__)
+#define RHEXDUMP2(_data, _len, _fmt, ...) _RHEXDUMP(L_DBG_LVL_2, _data, _len, _fmt, ## __VA_ARGS__)
+#define RHEXDUMP3(_data, _len, _fmt, ...) _RHEXDUMP(L_DBG_LVL_3, _data, _len, _fmt, ## __VA_ARGS__)
+#define RHEXDUMP4(_data, _len, _fmt, ...) _RHEXDUMP(L_DBG_LVL_4, _data, _len, _fmt, ## __VA_ARGS__)
 
 /** Pretty print binary data as hex, with output as a wrapped block with addresses
  *

@@ -811,8 +811,8 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		RDEBUG2("EAP-AKA-MAC matches calculated MAC");
 	} else {
 		REDEBUG("EAP-AKA-MAC does not match calculated MAC");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, mac->vp_octets, SIM_MAC_DIGEST_SIZE, "Received");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, calc_mac, SIM_MAC_DIGEST_SIZE, "Expected");
+		RHEXDUMP_INLINE2(mac->vp_octets, SIM_MAC_DIGEST_SIZE, "Received");
+		RHEXDUMP_INLINE2(calc_mac, SIM_MAC_DIGEST_SIZE, "Expected");
 		return -1;
 	}
 
@@ -833,8 +833,8 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 			RDEBUG2("EAP-AKA-Checkcode matches calculated checkcode");
 		} else {
 			REDEBUG("EAP-AKA-Checkcode does not match calculated checkcode");
-			RHEXDUMP_INLINE(L_DBG_LVL_2, checkcode->vp_octets, checkcode->vp_length, "Received");
-			RHEXDUMP_INLINE(L_DBG_LVL_2, eap_aka_session->checkcode,
+			RHEXDUMP_INLINE2(checkcode->vp_octets, checkcode->vp_length, "Received");
+			RHEXDUMP_INLINE2(eap_aka_session->checkcode,
 					eap_aka_session->checkcode_len, "Expected");
 			return -1;
 		}
@@ -859,8 +859,8 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 
   	if (memcmp(vp->vp_octets, eap_aka_session->keys.umts.vector.xres, vp->vp_length)) {
     		REDEBUG("EAP-AKA-RES from client does match XRES");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, vp->vp_octets, vp->vp_length, "RES  :");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, eap_aka_session->keys.umts.vector.xres,
+		RHEXDUMP_INLINE2(vp->vp_octets, vp->vp_length, "RES  :");
+		RHEXDUMP_INLINE2(eap_aka_session->keys.umts.vector.xres,
 				eap_aka_session->keys.umts.vector.xres_len, "XRES :");
 		return -1;
 	}
