@@ -1481,7 +1481,7 @@ check_active:
 		 *	OK for an ACK, or FAIL for a NAK.
 		 */
 	} else {
-		VALUE_PAIR *vp;
+		VALUE_PAIR *reply, *vp;
 
 check_reply:
 		u->rcode = code2rcode[code];
@@ -1492,7 +1492,7 @@ check_reply:
 		}
 
 	decode_reply:
-		vp = NULL;
+		reply = NULL;
 
 		/*
 		 *	Decode the attributes, in the context of the
@@ -1500,21 +1500,36 @@ check_reply:
 		 *	malformed, or if we run out of memory.
 		 */
 		if (fr_radius_decode(request->reply, c->buffer, packet_len, original,
-				     c->inst->secret, talloc_array_length(c->inst->secret) - 1, &vp) < 0) {
+				     c->inst->secret, talloc_array_length(c->inst->secret) - 1, &reply) < 0) {
 			REDEBUG("Failed decoding attributes for packet");
-			fr_pair_list_free(&vp);
+			fr_pair_list_free(&reply);
 			u->rcode = RLM_MODULE_INVALID;
 			goto done;
 		}
 
 		RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
 		       fr_packet_codes[code], code, packet_len, c->name);
-		log_request_pair_list(L_DBG_LVL_2, request, vp, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, reply, NULL);
 
 		/*
 		 *	Delete Proxy-State attributes from the reply.
 		 */
-		fr_pair_delete_by_da(&vp, attr_proxy_state);
+		fr_pair_delete_by_da(&reply, attr_proxy_state);
+
+		/*
+		 *	If the reply has Message-Authenticator, delete
+		 *	it from the proxy reply so that it isn't
+		 *	copied over to our reply.  But also create a
+		 *	reply:Message-Authenticator attribute, so that
+		 *	it ends up in our reply.
+		 */
+		if (fr_pair_find_by_da(reply, attr_message_authenticator, TAG_ANY)) {
+			fr_pair_delete_by_da(&reply, attr_message_authenticator);
+
+			MEM(vp = fr_pair_afrom_da(request->reply, attr_message_authenticator));
+			(void) fr_pair_value_memcpy(vp, (uint8_t const *) "", 1, false);
+			fr_pair_add(&request->reply->vps, vp);
+		}
 
 		/*
 		 *	@todo - make this programmatic?  i.e. run a
@@ -1526,7 +1541,7 @@ check_reply:
 		 */
 
 		request->reply->code = code;
-		fr_pair_add(&request->reply->vps, vp);
+		fr_pair_add(&request->reply->vps, reply);
 
 		/*
 		 *	Run hard-coded policies on Protocol-Error
