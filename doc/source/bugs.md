@@ -1,3 +1,5 @@
+= Bugs
+
 # Introduction
 
 The FreeRADIUS web site is at https://www.freeradius.org, and

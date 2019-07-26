@@ -1,4 +1,4 @@
-# To Do before v4 is releases
+= To Do before v4 is releases
 
 ## Nested attributes
 
@@ -7,25 +7,24 @@ attributes are different from TLVs in that TLVs define a child
 namespace.  Nested attributes are instead a way to group any
 attributes from the parent namespace.
 
-We need to define a new data type "group".  It can contain any
+We need to define a new data type `group`.  It can contain any
 attribute.  We may also need to add a dictionary to the group, so that
 we can do DHCPv4 in RADIUS or vice versa.
 
 Unlang syntax for an attribute called `Grouped-Foo`
 
-```
+```unlang
 update request {
 	Grouped-Foo {
 		User-Name = bar
 		Foo = baz
 		...
 	}
-
 }
 ```
 
-We can also define a "short circuit" syntax for things like the
-"users" file or "sql" module, which don't natively allow for nested grouping.
+We can also define a `short circuit` syntax for things like the
+`users` file or `sql` module, which don't natively allow for nested grouping.
 
 
 ```
@@ -46,7 +45,7 @@ We may need a high-level wrapper / cursor around maps, too.
 We will also need an API (cursor, etc. ) to recurse into groups.
 Ideally without changing the existing APIs?  But that involves
 creating a stack of cursors, instead of one.  This likely means
-requiring that cursors are talloc'd, and that we can create "stacks"
+requiring that cursors are talloc'd, and that we can create `stacks`
 of cursors.  e.g.
 
 ```
@@ -130,7 +129,7 @@ _calling module methods is done_
 
 We could also do named subsections?  i.e.
 
-```
+```unlang
 recv Access-Request {
 	...
 	session start {
@@ -158,7 +157,7 @@ down that list:
     e.g. "recv Access-Request"
   * if that still isn't found, then look up the list of allowed
     methods for this processing section.  Then, walk over that list
-    and the module list in O(N*M), to see if there's a matching
+    and the module list in `O(N*M)`, to see if there's a matching
     method
 
 The last step is more rare, so it shouldn't affect speed much.
