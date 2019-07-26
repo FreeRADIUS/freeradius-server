@@ -1177,7 +1177,7 @@ static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr
  */
 static rlm_rcode_t code2rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 	[FR_CODE_ACCESS_ACCEPT]		= RLM_MODULE_OK,
-	[FR_CODE_ACCESS_CHALLENGE]	= RLM_MODULE_UPDATED,
+	[FR_CODE_ACCESS_CHALLENGE]	= RLM_MODULE_OK,
 	[FR_CODE_ACCESS_REJECT]		= RLM_MODULE_REJECT,
 
 	[FR_CODE_ACCOUNTING_RESPONSE]	= RLM_MODULE_OK,
@@ -1571,6 +1571,7 @@ check_reply:
 			 */
 			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 			if (!vp) {
+				RDEBUG("  &reply:Packet-Type := Access-Challenge");
 				MEM(vp = fr_pair_afrom_da(request->reply, attr_packet_type));
 				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
 				fr_pair_add(&request->reply->vps, vp);
