@@ -1,5 +1,6 @@
-Helpful coding methods
-======================
+= Coding Methods
+
+## Helpful coding methods
 
 The following is a short set of guidelines to follow while
 programming.  It does not address coding styles, function naming
@@ -32,15 +33,15 @@ by the programmer to write code.
 
    Avoid smurfs. Don't re-use struct names in field names, i. e.
 
-   .. code:: c
+```c
+struct smurf {
+  char *smurf_pappa_smurf;
+}
+```
 
-     struct smurf {
-         char *smurf_pappa_smurf;
-     }
 
    If your code reads as full English sentences, you're doing it
    right.
-
 
 3. **Check input parameters in the functions you write.**
 
@@ -49,7 +50,7 @@ by the programmer to write code.
 
    ``assert()`` (``rad_assert()``) is ugly.  Use it.
 
-   GIGO is wrong.  If your function gets garbage input, it
+   NOTE: GIGO is wrong.  If your function gets garbage input, it
    should complain loudly and with great descriptiveness.
 
 
@@ -70,11 +71,10 @@ by the programmer to write code.
 
    One of the most common mistakes is:
 
-   .. code:: c
-
-     fp = fopen(...);
-     fgetc(fp);       /* core dumps! */
-
+```c
+fp = fopen(...);
+fgetc(fp);       /* core dumps! */
+```
    If the programmer had bothered to check for a ``NULL`` fp (error
    condition), then they could have produced a descriptive error
    message instead of having the program core dump.
@@ -113,7 +113,7 @@ by the programmer to write code.
    ``sizeof()`` is your friend.
 
 
-9. **'const' is your friend.**
+9. **`const` is your friend.**
 
    If you don't mean to modify an input structure to your function,
    declare it ``const``.  Declare string constants ``const``.  It can't
@@ -177,10 +177,9 @@ by the programmer to write code.
     will be easily testable.  As a result, it will look better and be
     easier to debug.
 
-Hints, Tips, and Tricks
------------------------
+## Hints, Tips, and Tricks
 
-This section lists many of the common "rules" associated with code
+This section lists many of the common `rules` associated with code
 submitted to the project. There are always exceptions... but you must
 have a really good reason for doing so.
 
@@ -205,29 +204,28 @@ have a really good reason for doing so.
 
    Simple example, of poor code:
 
-   .. code:: c
-
-     #ifdef CONFIG_MY_FUNKINESS
-         init_my_stuff(foo);
-     #endif
-
+```c
+#ifdef CONFIG_MY_FUNKINESS
+  init_my_stuff(foo);
+#endif
+```
    Cleaned-up example:
 
    (in header):
 
-   .. code:: c
-
-     #ifndef CONFIG_MY_FUNKINESS
-         static inline void init_my_stuff(char *foo) {}
-     #endif
+```c
+#ifndef CONFIG_MY_FUNKINESS
+  static inline void init_my_stuff(char *foo) {}
+#endif
+```
 
    (in the code itself):
 
-   .. code:: c
+```c
+init_my_stuff(dev);
+```
 
-     init_my_stuff(dev);
-
-3. **'static inline' is better than a macro**
+3. **`static inline` is better than a macro**
 
    Static inline functions are greatly preferred over macros. They
    provide type safety, have no length limitations, no formatting
@@ -238,18 +236,18 @@ have a really good reason for doing so.
    paths], or where it is impossible to use a static inline
    function [such as string-izing].
 
-   ``static inline`` is preferred over ``static __inline__``, ``extern
-   inline``, and ``extern __inline__``.
+   `static inline` is preferred over `static __inline__`, `extern
+   inline`, and `extern __inline__`.
 
 4. **Don't over-design.**
 
    Don't try to anticipate nebulous future cases which may or may
-   not be useful: "Make it as simple as you can, and no simpler."
+   not be useful: _Make it as simple as you can, and no simpler._
 
    Split up functionality as much as possible.  If your code needs
    to do two unrelated things, write two functions.  Mashing two
    kinds of work into one function makes the server difficult to
    debug and maintain.
 
-   See the 'coding-methods.txt' document in this directory for
+   See the `coding-methods.txt` document in this directory for
    further description of coding methods.
