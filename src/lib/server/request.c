@@ -764,6 +764,8 @@ static void packet_verify(char const *file, int line, REQUEST const *request, RA
  */
 void request_verify(char const *file, int line, REQUEST const *request)
 {
+	request_data_t *rd = NULL;
+
 	if (!request) {
 		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
 		if (!fr_cond_assert(0)) fr_exit_now(1);
@@ -801,6 +803,16 @@ void request_verify(char const *file, int line, REQUEST const *request)
 		rad_assert(talloc_parent(request->async) == request);
 	}
 
+	while ((rd = fr_dlist_next(&request->data, rd))) {
+		(void) talloc_get_type_abort(rd, request_data_t);
+
+		if (rd->persist) {
+			rad_assert(request->state_ctx);
+			rad_assert(talloc_parent(rd) == request->state_ctx);
+		} else {
+			rad_assert(talloc_parent(rd) == request);
+		}
+	}
 }
 
 /** Verify all request data is parented by the specified context
