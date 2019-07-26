@@ -1,18 +1,20 @@
-# Upgrading from v3 to v4
+= Upgrading from v3 to v4
 
 The configuration for v4 is *somewhat* compatible with the v3
 configuration.  It should be possible to reuse most of a v3
-reconfiguration with minor tweaks.  This file describes the
-differences between v3 and v4.  It does not contain a step-by-step
-process for upgrading the server.
+reconfiguration with minor tweaks.
+
+NOTE: This file describes the differences between v3 and v4.
+It does not contain a step-by-step process for upgrading the server.
 
 In general, we have the following changes:
 
-* most module configuration is very close to v3
-* most of the `unlang` processing is very close to v3
-* each `server` section need a `namespace` parameter
-* Packet processing sections are now `recv Access-Request`, etc.  Not `authorize`, etc.
-* each `listen` section needs to be converted to the v4 format
+* most module configuration is very close to v3.
+* most of the `unlang` processing is very close to v3.
+* each `server` section need a `namespace` parameter.
+* Packet processing sections are now `recv Access-Request`, etc.
+  Not `authorize`, etc.
+* each `listen` section needs to be converted to the v4 format.
 
 ## Upgrading from older versions
 
@@ -39,23 +41,23 @@ the changes from v3 to v4.0
 The following configurations have been removed.  See the new `listen`
 sections for their replacements.
 
-`cleanup_delay` - replaced with `cleanup_delay` in a `listen` section
-
-`reject_delay` - see `mods-available/delay`.  You should list `delay`
-last in any `send Access-Reject section.
-
-`status_server` - see `type = Status-Server` in a new `listen` section.
+| v3              | v4
+| --------------- | -----------------------------------
+| `cleanup_delay` | replaced with `cleanup_delay` in a `listen` section
+| `reject_delay`  | see `mods-available/delay`.  You should list `delay` \
+                    last in any `send Access-Reject` section.
+| `status_server` | see `type = Status-Server` in a new `listen` section.
 
 The `log` section has been updated to remove many configuration items
 which are specific to RADIUS, and to Access-Request packets.  Please
 see `sites-available/default`, and look for the `Access-Request`
 subsection there.  See also [`templates.conf`](templates.conf) for
-a way to regain one global configuration for Access-Request
+a way to regain one global configuration for `Access-Request`
 packets.
 
 ## Virtual Servers
 
-There are some changes to the virtual servers in v4.  First, every
+There are some changes to the virtual servers in `v4`.  First, every
 virtual server has to begin with an entry:
 
     namespace = ...
@@ -78,24 +80,26 @@ a `namespace` parameter.
 The `listen` sections have changed.  There is now a `type` entry,
 which lists the packet types (e.g. `Access-Request`) instead of
 `auth`.  To accept multiple kinds of packets, just list `type`
-multiple times`:
+multiple times:
 
     type = Access-Request
     type = Accounting-Request
 
 Each `listen` section also has a `transport` entry.  This
-configuration can be left out for "headless" servers, such as
-"inner-tunnel".  For example, setting UDP transport is done v ia:
+configuration can be left out for `headless` servers, such as
+`inner-tunnel`.  For example, setting UDP transport is done v ia:
 
     transport = udp
 
 Each type of transport has its configuration stored in a subsection
 named for that transport:
 
-    transport = udp
-    udp {
-        ... udp transport configuration ...
-    }
+```
+transport = udp
+udp {
+    ... udp transport configuration ...
+}
+```
 
 For `udp`, the configuration entries are largley the same as for v3.
 e.g. `ipaddr`, `port`, etc.
@@ -105,14 +109,15 @@ Section](#processing-sections) based on the named packet types.  It
 has a `recv` section for receiving packets, and a `send` section for
 sending packets.  e.g.
 
-    recv Access-Request {
-       ... unlang ...
-    }
-    
-    send Access-Accept {
-        ... unlang ....
-    }
+```unlang
+recv Access-Request {
+   ... unlang ...
+}
 
+send Access-Accept {
+    ... unlang ....
+}
+```
 This configuration is different from v3.  The benefit is that it is
 much easier to understand.  Instead of using things like
 `Post-Auth-Type Reject`, we now have just `send Access-Reject`.
@@ -125,7 +130,7 @@ See also [Processing Sections](#processing-sections) for how the
 The server supports global clients in the `clients.conf` file, as with v3.
 
 Client can also be defined in a `client` subsection of a virtual
-server.  Unlike v3, there is no need to have a `clients` section that
+server.  Unlike `v3`, there is no need to have a `clients` section that
 contains a `client` definition.  See `sites-available/default` for examples.
 
 The server also supports dynamic clients.  See
@@ -150,22 +155,22 @@ supported by the server.  e.g. RADIUS, DHCP, VMPS, TACACS+, etc.
 All of the processing sections have been renamed.  Sorry, but this was
 required for the new features in v4.
 
-| Old Name			| New Name
-|-------------------------------|-----------------------
-| authorize			| recv Access-Request
-| authenticate			| authenticate <Auth-Type>
-| post-auth			| send Access-Accept
-|				| 
-| preacct			| recv Accounting-Request
-| accounting			| accounting %{Acct-Status-Type}
-| accounting			| send Accounting-Response
-|				| 
-| recv-coa			| recv CoA-Request
-| send-coa			| send CoA-ACK
-| send-coa			| send CoA-NAK
-|				| 
-| Post-Auth-Type Reject		| send Access-Reject
-| Post-Auth-Type Challenge	| send Access-Challenge
+| Old Name                  | New Name
+|---------------------------|-----------------------
+| `authorize`               | `recv Access-Request`
+| `authenticate`            | `authenticate <Auth-Type>`
+| `post-auth`               | `send Access-Accept`
+|                           |
+| `preacct`                 | `recv Accounting-Request`
+| `accounting`              | `accounting %{Acct-Status-Type}`
+| `accounting`              | `send Accounting-Response`
+|                           |
+| `recv-coa`                | `recv CoA-Request`
+| `send-coa`                | `send CoA-ACK`
+| `send-coa`                | `send CoA-NAK`
+|                           |
+| `Post-Auth-Type Reject`   | `send Access-Reject`
+| `Post-Auth-Type Challenge`| `send Access-Challenge`
 
 i.e. instead of the section names being (mostly) randomly named, the
 names are now consistent.  The `recv` sections receive packets from
@@ -173,7 +178,7 @@ the network.  The `send` sections send packets back to the network.
 The second name of the section is the *type* of the packet that is
 being received or sent.
 
-Note that for accounting, packets are also processed through an
+NOTE: For accounting, packets are also processed through an
 `accounting` section named after Acct-Status-Type.  This process is
 similar to `authenticate` for `Access-Request` packets.  The goal here
 is to allow a common pre-processing of accounting packets in the `recv
@@ -193,9 +198,11 @@ The `radius` module now handles basic proxying to home servers.  We
 recommend creating one instance of the `radius` module per home
 server.  e.g.
 
-    radius home_server_1 {
-       ... configuration for home server 1 ...
-    }
+```unlang
+radius home_server_1 {
+   ... configuration for home server 1 ...
+}
+```
 
 You can then use `home_server_1` in any processing section, and the
 request will be proxied when processing reaches the module.
@@ -208,9 +215,11 @@ section, though that section can have any name.  e.g. setting
 `Auth-Type := proxy` will call the `authenticate proxy` section, and
 is similar to the previous setting `Proxy-To-Realm`.
 
-    authenticate proxy {
-        home_server_1
-    }
+```unlang
+authenticate proxy {
+    home_server_1
+}
+```
 
 For more detailed examples, see the Wiki page:
 https://wiki.freeradius.org/upgrading/version4/proxy.  That page also
@@ -226,53 +235,62 @@ documentation.
 
 The `home_server_pool` configuration has been replaced with standard
 unlang configurations.  The various load-balancing options can be
-re-created using in-place 'unlang' configuration.
+re-created using in-place `unlang` configuration.
 
 The mappings for `type` are as follows:
 
-* `type = fail-over` - replaced with 'unlang'
+* `type = fail-over` - replaced with `unlang`
 
-    redundant {
-        home_server_1
-	home_server_2
-	home_server_3
-    }
+```unlang
+redundant {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+```
 
-Note, of course, you will have to use the names of the `radius`
+NOTE: Of course, you will have to use the names of the `radius`
 modules in your configuration, and not `home_server_1`, etc.
 
-* `type = load-balance` - replaced with 'unlang'
+* `type = load-balance` - replaced with `unlang`.
 
-    load-balance {
-        home_server_1
-	home_server_2
-	home_server_3
-    }
+```unlang
+load-balance {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+```
 
-* `type = client-balance` - replaced with 'unlang'
+* `type = client-balance` - replaced with `unlang`.
 
-    load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}" {
-        home_server_1
-	home_server_2
-	home_server_3
-    }
+```unlang
+load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}" {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+```
 
+* `type = client-port-balance` - replaced with `unlang`.
 
-* `type = client-port-balance` - replaced with 'unlang'
+```unlang
+load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}-%{Packet-Src-Port}" {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+```
 
-    load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}-%{Packet-Src-Port}" {
-        home_server_1
-	home_server_2
-	home_server_3
-    }
+* `type = keyed-balance` - replaced with `unlang`
 
-* `type = keyed-balance` - replaced with 'unlang'
-
-    load-balance "%{Load-Balance-Key}" {
-        home_server_1
-	home_server_2
-	home_server_3
-    }
+```unlang
+load-balance "%{Load-Balance-Key}" {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+```
 
 While the `Load-Balance-Key` was a special attribute in v3, it has no
 special meaning in v4.  You can use any attribute or string expansion
@@ -283,27 +301,31 @@ as part of the `load-balance` key.
 In v3, it was impossible to proxy the same request to multiple
 destinations.  This is now trivial.  In any processing section, just do:
 
-    ...
-    home_server_1
-    home_server_2
-    ...
+```unlang
+...
+home_server_1
+home_server_2
+...
+```
 
 When processing reaches that point, it will proxy the request to
-home_server_1, followed by home_server_2.
+`home_server_1`, followed by `home_server_2`.
 
-This functionality can be used to send Accounting-Request packets to
+This functionality can be used to `send Accounting-Request` packets to
 multiple destinations.
 
-You can also catch "failed" proxying, and do something else.  In the
-example below, try to proxy to home_server_1, if that fails, just
-"accept" the request.
+You can also catch _failed_ proxying, and do something else.  In the
+example below, try to proxy to `home_server_1`, if that fails, just
+`accept` the request.
 
-    ...
-    home_server_1
-    if (fail) {
-        accept
-    }
-    ...
+```unlang
+...
+home_server_1
+if (fail) {
+    accept
+}
+...
+```
 
 ### CoA and Originate-Coa
 
@@ -335,7 +357,7 @@ modifications will be required.
 Use of attributes in xlats e.g. `%{User-Name}` remains unchanged.
 There is no plan to require prefixes here.
 
-As of v33, the preferred format for "unknown" attributes is
+As of v3, the preferred format for `unknown` attributes is
 `&Attr-oid.oid.oid`, e.g. `&Attr-26.11344.255`.  However, v3 would
 still parse (but not generate) attributes of the form
 `Vendor-FreeRADIUS-Attr-255`.  The `Vendor-` syntax has been removed
@@ -365,12 +387,14 @@ like the v3 proxy behavior of load balancing across home server pools.
 The `load-balance` and `redundant-load-balance` sections now allow for
 a load-balance key:
 
-    load-balance "%{Calling-Station-Id}" {
-        module1
-	module2
-	module3
-	...
-    }
+```unlang
+load-balance "%{Calling-Station-Id}" {
+    module1
+    module2
+    module3
+    ...
+}
+```
 
 If the key exists, it is hashed, and used to pick one of the
 subsections.  This behavior allows for deterministic load-balancing,
@@ -383,8 +407,8 @@ timeouts were either confusingly named, or completely absent in
 the case of many contributed modules.
 
 In v4, connection timeouts can be configured universally for all
-modules with the `connect_timeout` config item of the module's `pool
-{}` section.
+modules with the `connect_timeout` config item of the module's
+`pool {}` section.
 
 The following modules will apply `connect_timeout`:
 
@@ -420,7 +444,7 @@ are similar to the `home_server` configuration, but not all.
 The module can send multiple packet types to one home server.
 e.g. Access-Request and Accounting-Request.
 
-This module also replaces the old 'coa' and 'originate-coa'
+This module also replaces the old `coa` and `originate-coa`
 configuration.  See also `fork` for creating child requests that are
 different from the parent requests.
 
@@ -495,7 +519,7 @@ to see if you want to execute the module.
 
 ### rlm_expr
 
-Allow `&Attr-Name[*]` to mean "sum".  Previously, it just referred to
+Allow `&Attr-Name[*]` to mean _sum_.  Previously, it just referred to
 the first attribute.
 
 Using `%{expr:0 + &Attr-Name[*]}` will cause it to return the sum of the values
@@ -515,7 +539,7 @@ subsection.  See `mods-available/mschap` for details.
 Attributes of type `octets` are now passed directly to Perl as binary
 data, instead of as hex strings.
 
-All data received from the network is marked "tainted" by default.
+All data received from the network is marked `tainted` by default.
 
 ### rlm_rest
 
@@ -546,27 +570,33 @@ Attribute references:
 
 The following config items must now be defined as attribute references::
 
-    key
-    count_attribute
-    counter_name
-    check_name
-    reply_name
+```
+key
+count_attribute
+counter_name
+check_name
+reply_name
+```
 
 For example where in v3 you would specify the attribute names as::
 
-    count_attribute	= Acct-Session-Time
-    counter_name	= Daily-Session-Time
-    check_name		= Max-Daily-Session
-    reply_name		= Session-Timeout
-    key			= User-Name
+```
+count_attribute = Acct-Session-Time
+counter_name    = Daily-Session-Time
+check_name      = Max-Daily-Session
+reply_name      = Session-Timeout
+key             = User-Name
+```
 
 In v4 they must now be specified as::
 
-    count_attribute	= &Acct-Session-Time
-    counter_name	= &Daily-Session-Time
-    check_name		= &control:Max-Daily-Session
-    reply_name		= &reply:Session-Timeout
-    key                 = &User-Name
+```
+count_attribute = &Acct-Session-Time
+counter_name    = &Daily-Session-Time
+check_name      = &control:Max-Daily-Session
+reply_name      = &reply:Session-Timeout
+key             = &User-Name
+```
 
 Just adding the `&` prefix to the attribute name is not sufficient.
 Attributes must be qualified with the list to search in, or add to.
@@ -578,12 +608,11 @@ packet which updates the `Session-Timeout` for the user.
 
 ### rlm_sqlippool
 
-The `ipv6` configuration item has been deleted.  It was deprecated in
+NOTE: The `ipv6` configuration item has been deleted.  It was deprecated in
 3.0.16.
 
 Instead, use `attribute-name`.  See `mods-available/sqlippool` for
 more information.
-
 
 ## Deleted Modules
 
@@ -604,4 +633,3 @@ Instead of using this, please use the `sql_ippool` module with sqlite.
 It is difficult to maintain multiple implementations of the same
 functionality.  As a result, we have simplified the server by removing
 duplicate functionality.
-
