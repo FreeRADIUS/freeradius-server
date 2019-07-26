@@ -48,7 +48,9 @@ AUTO_ADOC_FILES += $(patsubst raddb/%.md,doc/raddb/%.adoc,$(shell find raddb -na
 AUTO_ADOC_FILES += $(patsubst doc/%.md,doc/%.adoc,$(wildcard doc/*.md doc/*/*.md doc/*/*/*.md doc/*/*/*/*.md))
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
-HTML_FILES := $(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) $(subst %README.adoc,index.html,$(ADOC_FILES))
+HTML_FILES := $(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) \
+              $(subst %home.adoc,index.html,$(ADOC_FILES))    \
+              $(subst %README.adoc,index.html,$(ADOC_FILES))
 
 #
 #  There are a number of pre-built files in the doc/ directory.  Find those.
@@ -117,13 +119,18 @@ doc/%.html: doc/%.adoc
 html_build: $(HTML_FILES)
 
 #
-#	Create a soft-link between $path/README.html to $path/index.html
+#	Create a soft-link between $path/{home || README}.html to $path/index.html
 #
-HTML_README_DIRS := $(foreach dr,$(filter %README.html,$(HTML_FILES)),$(dir $(dr)))
+HTML_INDEXES := $(foreach dr,$(filter %home.html,$(HTML_FILES)),$(dr))
+HTML_INDEXES += $(foreach dr,$(filter %README.html,$(HTML_FILES)),$(dr))
 
 html_index:
-	@echo "HTML-INDEX $(addsuffix index.html,$(HTML_README_DIRS))"
-	${Q}for _idx in $(HTML_README_DIRS); do (cd $$_idx && ln -fs README.html index.html); done
+	@echo "HTML-INDEX $(HTML_INDEXES))"
+	${Q}for _idx in $(HTML_INDEXES); do \
+			if [ -f "$$_idx" ]; then \
+				(cd $$(dirname $$_idx) && ln -fs $$(basename $$_idx) index.html); \
+			fi; \
+	done
 
 doc/%.pdf: doc/%.adoc
 	@echo PDF $^
