@@ -2906,7 +2906,7 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 		return p - out;
 	}
 
-	if (!fr_cond_assert(map->rhs != NULL)) return -1;
+	if (!map->child && !fr_cond_assert(map->rhs != NULL)) return -1;
 
 	if (tmpl_is_attr(map->lhs) &&
 	    (map->lhs->tmpl_da->type == FR_TYPE_STRING) &&
