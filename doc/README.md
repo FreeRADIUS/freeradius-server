@@ -1,4 +1,4 @@
-# FreeRADIUS Documentation
+= FreeRADIUS Documentation
 
 This directory contains documentation for FreeRADIUS.  The
 documentation is available under the Creative Commons Non-Commercial
