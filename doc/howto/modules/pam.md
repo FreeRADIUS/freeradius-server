@@ -1,6 +1,5 @@
-
-		PAM Support for FreeRadius
-
+PAM Support for FreeRadius
+==========================
 
 0. INTRODUCTION
 
