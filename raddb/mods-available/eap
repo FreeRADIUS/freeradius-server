@@ -528,7 +528,7 @@ eap {
 		#  * SSLv2 and SSLv3 are permanently disabled due to security
 		#  issues.
 		#
-		#  * We STRONGLY RECOMMEND that TLS 1.0 and TLS 1.2 be disabled.
+		#  * We STRONGLY RECOMMEND that TLS 1.0 and TLS 1.1 be disabled.
 		#  They are insecure and SHOULD NOT BE USED.
 		#  ====
 		#
