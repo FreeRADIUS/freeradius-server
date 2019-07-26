@@ -1,4 +1,5 @@
-	SQL Module
+SQL Module
+==========
 
 0. Introduction
 

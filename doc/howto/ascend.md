@@ -1,7 +1,8 @@
-                          Ascend Radius Options
-                                  or
-              What happens when a big vendor ignores an RFC
+= Ascend Radius Options
 
+What happens when a big vendor ignores an RFC
+
+## Description
 
   FreeRADIUS uses Vendor-Specific attributes to send the Ascend attributes.
 By default, Ascend NASes send the Ascend specific attributes as NON VSA's,
@@ -53,5 +54,3 @@ o Enable OLD attributes in FreeRADIUS
   becomes the OLD Ascend attribute:
 
      X-Ascend-Data-Filter
-
-$Id$

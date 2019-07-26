@@ -1,3 +1,5 @@
+= Expiration
+
 Module to expire user accounts.
 
 This module can be used to expire user accounts. Expired users receive
@@ -5,7 +7,7 @@ an Access-Reject on every authentication attempt. Expiration is based
 on the Expiration attribute which should be present in the check item
 list for the user we wish to perform expiration checks.
 
-
+## Topics
 
 Expiration attribute format:
 
@@ -16,8 +18,8 @@ use  Expiration := "23 Sep 2004 12:00".
 The nas will receive a Session-Timeout attribute calculated to kick
 the user off when the Expiration time occurs.
 
-
-
 Example entry (users files):
 
+```
 user1	Expiration := "23 Sep 2004"
+``

@@ -1,6 +1,7 @@
-Welcome to the SQL Based IP Pool module.
+SQL Based IP Pool module.
+=========================
 
-**********************************************************************
+# Description
 As of September 2006 this module is still under some development and
 currently is only tested by the developers on PostgreSQL (Version 8.1)
                          Use it at your own risk!
@@ -8,8 +9,6 @@ If plan to attempt to use a DB other than PostgreSQL please expect to
 have to do extra work which is not for SQL newbies.
 Having said that it works great for us in production and should (with
 some work) function correctly with other SQL server types.
-**********************************************************************
-
 
 To use the sqlipool module you simply need to have an IP-Pool Attribute
 (Keep in mind that its a **CHECK** item, not reply) in the required
@@ -28,7 +27,7 @@ the same pool, and addresses do not need to be concurrent.
 
 We are currently using the variable definitions of the xlat module, so
 before editing the sqlippool.conf file, please go and read the
-variables.rst in the doc/configuration directory. It will help you alot!..
+variables.md in the doc/configuration directory. It will help you alot!..
 
 As you may noticed, there is a pool-key variable in the config file which
 allows you to select which attribute is unique according to your NAS setup.
