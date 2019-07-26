@@ -190,9 +190,9 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_tail(fr_dlist_head_t *lis
  *	- The HEAD item.
  *	- NULL if no items exist in the list.
  */
-static inline CC_HINT(nonnull) void *fr_dlist_head(fr_dlist_head_t *list_head)
+static inline CC_HINT(nonnull) void *fr_dlist_head(fr_dlist_head_t const *list_head)
 {
-	fr_dlist_t *head = &(list_head->entry);
+	fr_dlist_t const *head = &(list_head->entry);
 
 	if (head->next == head) return NULL;
 
@@ -205,9 +205,9 @@ static inline CC_HINT(nonnull) void *fr_dlist_head(fr_dlist_head_t *list_head)
  *	- True if it does not.
  *	- False if it does.
  */
-static inline CC_HINT(nonnull) bool fr_dlist_empty(fr_dlist_head_t *list_head)
+static inline CC_HINT(nonnull) bool fr_dlist_empty(fr_dlist_head_t const *list_head)
 {
-	fr_dlist_t *head = &(list_head->entry);
+	fr_dlist_t const *head = &(list_head->entry);
 
 	return (head->prev == head);
 }
@@ -219,9 +219,9 @@ static inline CC_HINT(nonnull) bool fr_dlist_empty(fr_dlist_head_t *list_head)
  *	- The TAIL item.
  *	- NULL if no items exist in the list.
  */
-static inline CC_HINT(nonnull) void *fr_dlist_tail(fr_dlist_head_t *list_head)
+static inline CC_HINT(nonnull) void *fr_dlist_tail(fr_dlist_head_t const *list_head)
 {
-	fr_dlist_t *head = &(list_head->entry);
+	fr_dlist_t const *head = &(list_head->entry);
 
 	if (head->prev == head) return NULL;
 
@@ -242,10 +242,10 @@ static inline CC_HINT(nonnull) void *fr_dlist_tail(fr_dlist_head_t *list_head)
  *	- The head of the list if ptr is NULL.
  *	- NULL if ptr is the tail of the list (no more items).
  */
-static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *list_head, void *ptr)
 {
 	fr_dlist_t *entry;
-	fr_dlist_t *head;
+	fr_dlist_t const *head;
 
 	if (!ptr) return fr_dlist_head(list_head);
 
