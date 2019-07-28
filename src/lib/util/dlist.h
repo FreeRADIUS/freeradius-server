@@ -394,6 +394,8 @@ static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_
 	if (!fr_cond_assert(dst->next != NULL)) return;
 	if (!fr_cond_assert(dst->prev != NULL)) return;
 
+	if (fr_dlist_empty(list_src)) return;
+
 	src->prev->next = dst;
 	src->next->prev = dst->prev;
 
