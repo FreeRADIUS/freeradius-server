@@ -37,3 +37,18 @@ data 0.000000001
 
 time_delta 1:30
 data 90
+
+uint8 256
+data ERROR parsing value: Value 256 is invalid for type uint8 (must be in range 0...255)
+
+uint8 -128
+data ERROR parsing value: Invalid negative value "-128" for unsigned integer
+
+int8 128
+data ERROR parsing value: Value 128 is invalid for type int8 (must be in range -128...127)
+
+int8 -128
+data -128
+
+int8 -130
+data ERROR parsing value: Value -130 is invalid for type int8 (must be in range -128...127)

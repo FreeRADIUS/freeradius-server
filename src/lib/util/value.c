@@ -3401,6 +3401,13 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
+		while (isspace((int) *in)) in++;
+
+		if (*in == '-') {
+			fr_strerror_printf("Invalid negative value \"%s\" for unsigned integer", in);
+			return -1;
+		}
+
 		/*
 		 *	fr_strtoull checks for overflows and calls
 		 *	fr_strerror_printf to set an error.
