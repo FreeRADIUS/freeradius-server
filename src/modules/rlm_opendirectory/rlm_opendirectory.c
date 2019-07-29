@@ -71,11 +71,13 @@ fr_dict_autoload_t rlm_opendirectory_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_opendirectory_dict_attr[];
 fr_dict_attr_autoload_t rlm_opendirectory_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
@@ -307,13 +309,15 @@ static long od_check_passwd(REQUEST *request, char const *uname, char const *pas
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	int		ret;
-	long odResult = eDSAuthFailed;
+	long		odResult = eDSAuthFailed;
+	VALUE_PAIR	*username;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	if (!request->username) {
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	if (!username) {
 		REDEBUG("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Name attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -326,7 +330,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_INVALID;
 	}
 
-	odResult = od_check_passwd(request, request->username->vp_strvalue,
+	odResult = od_check_passwd(request, username->vp_strvalue,
 				   request->password->vp_strvalue);
 	switch (odResult) {
 		case eDSNoErr:
@@ -351,7 +355,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	}
 
 	if (ret != RLM_MODULE_OK) {
-		RDEBUG2("Invalid password: %pV", &request->username->data);
+		RDEBUG2("Invalid password: %pV", &username->data);
 		return ret;
 	}
 
@@ -374,8 +378,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	int			err;
 	char			host_ipaddr[128] = {0};
 	gid_t			gid;
+	VALUE_PAIR		*username;
 
-	if (!request->username) {
+	/*
+	 *	We can only authenticate user requests which HAVE
+	 *	a User-Name attribute.
+	 */
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	if (!username) {
 		RDEBUG2("OpenDirectory requires a User-Name attribute");
 		return RLM_MODULE_NOOP;
 	}
@@ -440,7 +450,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	/* resolve user */
 	uuid_clear(uuid);
 
-	rad_getpwnam(request, &userdata, request->username->vp_strvalue);
+	rad_getpwnam(request, &userdata, username->vp_strvalue);
 	if (userdata != NULL) {
 		err = mbr_uid_to_uuid(userdata->pw_uid, uuid);
 		if (err != 0)
