@@ -77,7 +77,6 @@ typedef enum {
 	FR_TYPE_EXTENDED,			//!< Extended attribute space attribute.
 
 	FR_TYPE_VSA,				//!< Vendor-Specific, for RADIUS attribute 26.
-	FR_TYPE_EVS,				//!< Extended attribute, vendor specific.
 	FR_TYPE_VENDOR,				//!< Attribute that represents a vendor in the attribute tree.
 
 	FR_TYPE_GROUP,				//!< A grouping of other attributes
@@ -151,7 +150,6 @@ typedef enum {
  */
 #define FR_TYPE_STRUCTURAL_EXCEPT_VSA \
 	     FR_TYPE_EXTENDED: \
-	case FR_TYPE_EVS: \
 	case FR_TYPE_TLV: \
 	case FR_TYPE_STRUCT
 

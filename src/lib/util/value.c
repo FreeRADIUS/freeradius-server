@@ -136,7 +136,6 @@ FR_NAME_NUMBER const fr_value_box_type_table[] = {
 	{ "extended",      	FR_TYPE_EXTENDED },
 
 	{ "vsa",          	FR_TYPE_VSA },
-	{ "evs",           	FR_TYPE_EVS },
 	{ "vendor",        	FR_TYPE_VENDOR },
 	{ "group",        	FR_TYPE_GROUP },
 
@@ -4703,7 +4702,6 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_EXTENDED:
-	case FR_TYPE_EVS:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_STRUCT:

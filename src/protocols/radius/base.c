@@ -110,7 +110,6 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_EXTENDED]		= {2, ~0},
 
 	[FR_TYPE_VSA]			= {4, ~0},
-	[FR_TYPE_EVS]			= {6, ~0},
 
 	[FR_TYPE_MAX]			= {~0, 0}	//!< Ensure array covers all types.
 };

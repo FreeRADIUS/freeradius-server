@@ -139,7 +139,6 @@ size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_EXTENDED]	= {1, ~0},
 
 	[FR_TYPE_VSA]		= {4, ~0},
-	[FR_TYPE_EVS]		= {6, ~0},
 
 	[FR_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
 };
@@ -173,7 +172,6 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_STRUCT] = true,
 	[FR_TYPE_EXTENDED] = true,
 	[FR_TYPE_VSA] = true,
-	[FR_TYPE_EVS] = true,
 	[FR_TYPE_VENDOR] = true
 };
 
@@ -714,18 +712,12 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		 */
 		if ((flags->encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD) && !flags->internal && !parent->flags.internal) {
 			for (v = parent; v != NULL; v = v->parent) {
-				switch (v->type) {
-				case FR_TYPE_EXTENDED:
-				case FR_TYPE_EVS:
+				if (v->type == FR_TYPE_EXTENDED) {
 					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
 							   "of type '%s'", flags->encrypt,
 							   fr_int2str(fr_value_box_type_table, type, "<UNKNOWN>"));
 					return false;
-
-				default:
-					break;
 				}
-
 			}
 		}
 
@@ -757,7 +749,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	 *	These types may only be parented from the root of the dictionary
 	 */
 	case FR_TYPE_EXTENDED:
-//	case FR_TYPE_VSA:
 		if (!parent->flags.is_root) {
 			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
 					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
@@ -768,18 +759,25 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	/*
 	 *	EVS may only occur under extended and long extended.
 	 */
-	case FR_TYPE_EVS:
-		if (parent->type != FR_TYPE_EXTENDED) {
-			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', "
-					   "instead of '%s'", fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
+	case FR_TYPE_VSA:
+		if (parent->type == FR_TYPE_EXTENDED) {
+			if (*attr != 26) {
+				fr_strerror_printf("Attributes of type 'vsa' with parent of type 'extended' "
+						   "MUST have number 26, instead of '%d'", *attr);
+				return false;
+			}
+
+		} else if (!parent->flags.is_root) {
+			fr_strerror_printf("Attributes of type '%s' can only be used in the root of the dictionary",
+					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
 			return false;
 		}
 		break;
 
 	case FR_TYPE_VENDOR:
-		if ((parent->type != FR_TYPE_VSA) && (parent->type != FR_TYPE_EVS)) {
-			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' or "
-					   "'evs', instead of '%s'",
+		if (parent->type != FR_TYPE_VSA) {
+			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa'"
+					   "instead of '%s'",
 					   fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
 			return false;
 		}
@@ -912,15 +910,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 					   "RFC attributes with value >= 241.");
 			return false;
 		}
-		flags->length = 0;
-		break;
-
-	case FR_TYPE_EVS:
-		if (*attr != FR_VENDOR_SPECIFIC) {
-			fr_strerror_printf("Attributes of type 'evs' MUST have attribute code 26, got %i", *attr);
-			return false;
-		}
-
 		flags->length = 0;
 		break;
 
@@ -2033,7 +2022,7 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
 	*tmp = NULL;
 }
 
-/** Build an unknown vendor, parented by a VSA or EVS attribute
+/** Build an unknown vendor, parented by a VSA attribute
  *
  * This allows us to complete the path back to the dictionary root in the case
  * of unknown attributes with unknown vendors.
@@ -2044,7 +2033,7 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
  * @param[in] ctx to allocate the vendor attribute in.
  * @param[out] out		Where to write point to new unknown dict attr
  *				representing the unknown vendor.
- * @param[in] parent		of the vendor attribute, either an EVS or VSA attribute.
+ * @param[in] parent		of the VSA attribute.
  * @param[in] vendor		id.
  * @return
  *	- 0 on success.
@@ -2068,11 +2057,10 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	*out = NULL;
 
 	/*
-	 *	Vendor attributes can occur under VSA or EVS attributes.
+	 *	Vendor attributes can occur under VSA attribute.
 	 */
 	switch (parent->type) {
 	case FR_TYPE_VSA:
-	case FR_TYPE_EVS:
 		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
 
 		*out = dict_attr_alloc(ctx, parent, NULL, vendor, FR_TYPE_VENDOR, &flags);
@@ -2094,7 +2082,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 /** Allocates an unknown attribute
  *
  * @note If vendor != 0, an unknown vendor (may) also be created, parented by
- *	the correct EVS or VSA attribute. This is accessible via da->parent,
+ *	the correct VSA attribute. This is accessible via da->parent,
  *	and will be use the unknown da as its talloc parent.
  *
  * @param[in] ctx		to allocate DA in.
@@ -2121,7 +2109,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 
 	/*
 	 *	If there's a vendor specified, we check to see
-	 *	if the parent is a VSA or EVS, and if it is
+	 *	if the parent is a VSA, and if it is
 	 *	we either lookup the vendor to get the correct
 	 *	attribute, or bridge the gap in the tree, with an
 	 *	unknown vendor.
@@ -2130,7 +2118,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	 *	a TLV, in which case the vendor should be known
 	 *	and we don't need to modify the parent.
 	 */
-	if (vendor && ((parent->type == FR_TYPE_VSA) || (parent->type == FR_TYPE_EVS))) {
+	if (vendor && (parent->type == FR_TYPE_VSA)) {
 		da = fr_dict_attr_child_by_num(parent, vendor);
 		if (!da) {
 			if (fr_dict_unknown_vendor_afrom_num(ctx, &new_parent, parent, vendor) < 0) return NULL;
@@ -2224,7 +2212,7 @@ static int dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
  * @copybrief fr_dict_unknown_afrom_fields
  *
  * @note If vendor != 0, an unknown vendor (may) also be created, parented by
- *	the correct EVS or VSA attribute. This is accessible via vp->parent,
+ *	the correct VSA attribute. This is accessible via vp->parent,
  *	and will be use the unknown da as its talloc parent.
  *
  * @param[in] ctx		to alloc new attribute in.
@@ -2304,7 +2292,6 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 			da = fr_dict_attr_child_by_num(our_parent, num);
 			if (!da) {	/* Unknown component */
 				switch (our_parent->type) {
-				case FR_TYPE_EVS:
 				case FR_TYPE_VSA:
 					da = fr_dict_attr_child_by_num(our_parent, num);
 					if (!fr_cond_assert(!da || (da->type == FR_TYPE_VENDOR))) goto error;
@@ -2519,10 +2506,6 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 
 	case FR_TYPE_TLV:
 		name = "TLV";
-		break;
-
-	case FR_TYPE_EVS:
-		name = "EVS";
 		break;
 
 	case FR_TYPE_VENDOR:
@@ -3096,13 +3079,11 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
 
 	switch (vendor_root->type) {
 	case FR_TYPE_VSA:	/* Vendor specific attribute */
-	case FR_TYPE_EVS:	/* Extended vendor specific attribute */
 		break;
 
 	default:
-		fr_strerror_printf("Wrong type for vendor root, expected '%s' or '%s' got '%s'",
+		fr_strerror_printf("Wrong type for vendor root, expected '%s', got '%s'",
 				   fr_int2str(fr_value_box_type_table, FR_TYPE_VSA, "<INVALID>"),
-				   fr_int2str(fr_value_box_type_table, FR_TYPE_EVS, "<INVALID>"),
 				   fr_int2str(fr_value_box_type_table, vendor_root->type, "<INVALID>"));
 		return NULL;
 	}
@@ -5021,8 +5002,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 			common = fr_dict_parent_common(ctx->parent, da, true);
 			if (!common ||
-			    (common->type == FR_TYPE_VSA) ||
-			    (common->type == FR_TYPE_EVS)) {
+			    (common->type == FR_TYPE_VSA)) {
 				fr_strerror_printf_push("Attribute '%s' should be a child of '%s'",
 							argv[1], ctx->parent->name);
 				goto error;
@@ -5102,9 +5082,16 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 					goto error;
 				}
 
-				if (da->type != FR_TYPE_EVS) {
+				if (da->type != FR_TYPE_VSA) {
 					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR.  "
-								"Attribute '%s' should be 'evs' but is '%s'", p,
+								"Attribute '%s' should be 'vsa' but is '%s'", p,
+								fr_int2str(fr_value_box_type_table, da->type, "?Unknown?"));
+					goto error;
+				}
+
+				if (da->parent->type != FR_TYPE_EXTENDED) {
+					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR.  "
+								"Attribute '%s' should be parented from an attribute of type 'extended', but is '%s'", p,
 								fr_int2str(fr_value_box_type_table, da->type, "?Unknown?"));
 					goto error;
 				}
@@ -5140,13 +5127,20 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 			/*
 			 *	Create a VENDOR attribute on the fly, either in the context
-			 *	of the EVS attribute, or the VSA (26) attribute.
+			 *	of the VSA (26) attribute.
 			 */
 			vendor_da = fr_dict_attr_child_by_num(vsa_da, vendor->pen);
 			if (!vendor_da) {
 				memset(&flags, 0, sizeof(flags));
 
-				if (vsa_da->type == FR_TYPE_VSA) {
+				/*
+				 *	Default to 1,1
+				 */
+				flags.type_size = 1;
+				flags.length = 1;
+
+				if ((vsa_da->type == FR_TYPE_VSA) &&
+				    (vsa_da->parent->type != FR_TYPE_EXTENDED)) {
 					fr_dict_vendor_t const *dv;
 
 					dv = fr_dict_vendor_by_num(ctx->dict, vendor->pen);
@@ -5158,10 +5152,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 						flags.type_size = 1;
 						flags.length = 1;
 					}
-
-				} else { /* EVS are always "format=1,1" */
-					flags.type_size = 1;
-					flags.length = 1;
 				}
 
 				memcpy(&mutable, &vsa_da, sizeof(mutable));

@@ -686,7 +686,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_EXTENDED:
 	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
-	case FR_TYPE_EVS:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_TLV:
@@ -900,15 +899,15 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*
-	 *	Handle EVS
+	 *	Handle VSA as "VENDOR + attr"
 	 */
-	if (tlv_stack[depth]->type == FR_TYPE_EVS) {
+	if (tlv_stack[depth]->type == FR_TYPE_VSA) {
 		uint8_t *evs = out + out[1];
 		uint32_t lvalue;
 
 		if (outlen < (size_t) (out[1] + 5)) return 0;
 
-		depth++;	/* skip EVS */
+		depth++;
 
 		lvalue = htonl(tlv_stack[depth++]->attr);
 		memcpy(evs, &lvalue, 4);
@@ -950,7 +949,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 
 #ifndef NDEBUG
 	if (fr_debug_lvl > 3) {
-		if (vsa_type == FR_TYPE_EVS) jump += 5;
+		if (vsa_type == FR_TYPE_VENDOR) jump += 5;
 
 		FR_PROTO_HEX_DUMP(out, jump, "header extended");
 	}
@@ -1379,7 +1378,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 /** Encode a data structure into a RADIUS attribute
  *
  * This is the main entry point into the encoder.  It sets up the encoder array
- * we use for tracking our TLV/VSA/EVS nesting and then calls the appropriate
+ * we use for tracking our TLV/VSA nesting and then calls the appropriate
  * dispatch function.
  *
  * @param[out] out		Where to write encoded data.
@@ -1492,7 +1491,6 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_FLOAT64:
-	case FR_TYPE_EVS:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
 		return -1;

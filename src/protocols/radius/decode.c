@@ -1245,62 +1245,72 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		if (rcode < 0) return -1;
 		return attr_len;
 
-	case FR_TYPE_EVS:
-	{
-		fr_dict_attr_t const *vendor_child;
-
-		if (data_len < 6) goto raw; /* vid, vtype, value */
-
-		memcpy(&vendor, p, 4);
-		vendor = ntohl(vendor);
-
-		/*
-		 *	For simplicity in our attribute tree, vendors are
-		 *	represented as a subtlv(ish) of an EVS or VSA
-		 *	attribute.
-		 */
-		vendor_child = fr_dict_attr_child_by_num(parent, vendor);
-		if (!vendor_child) {
+	case FR_TYPE_VSA:
+		if (!parent->parent || (parent->parent->type != FR_TYPE_EXTENDED)) {
 			/*
-			 *	If there's no child, it means the vendor is unknown
-			 *	which means the child attribute is unknown too.
-			 *
-			 *	fr_dict_unknown_afrom_fields will do the right thing
-			 *	and create both an unknown vendor and an unknown
-			 *	attr.
-			 *
-			 *	This can be used later by the encoder to rebuild
-			 *	the attribute header.
+			 *	VSAs can be WiMAX, in which case they don't
+			 *	fit into one attribute.
 			 */
-			parent = fr_dict_unknown_afrom_fields(ctx, parent, vendor, p[4]);
-			p += 5;
-			data_len -= 5;
-			break;
-		}
+			rcode = decode_vsa(ctx, cursor, dict, parent, p, attr_len, packet_len, decoder_ctx);
+			if (rcode < 0) goto raw;
+			return rcode;
 
-		child = fr_dict_attr_child_by_num(vendor_child, p[4]);
-		if (!child) {
+		} else {
+			fr_dict_attr_t const *vendor_child;
+
+			if (data_len < 6) goto raw; /* vid, vtype, value */
+
+			memcpy(&vendor, p, 4);
+			vendor = ntohl(vendor);
+
 			/*
-			 *	Vendor exists but child didn't, again
-			 *	fr_dict_unknown_afrom_fields will do the right thing
-			 *	and only create the unknown attr.
+			 *	For simplicity in our attribute tree, vendors are
+			 *	represented as a subtlv(ish) of an EVS or VSA
+			 *	attribute.
 			 */
-			parent = fr_dict_unknown_afrom_fields(ctx, parent, vendor, p[4]);
-			p += 5;
-			data_len -= 5;
-			break;
-		}
+			vendor_child = fr_dict_attr_child_by_num(parent, vendor);
+			if (!vendor_child) {
+				/*
+				 *	If there's no child, it means the vendor is unknown
+				 *	which means the child attribute is unknown too.
+				 *
+				 *	fr_dict_unknown_afrom_fields will do the right thing
+				 *	and create both an unknown vendor and an unknown
+				 *	attr.
+				 *
+				 *	This can be used later by the encoder to rebuild
+				 *	the attribute header.
+				 */
+				parent = fr_dict_unknown_afrom_fields(ctx, parent, vendor, p[4]);
+				p += 5;
+				data_len -= 5;
+				break;
+			}
 
-		/*
-		 *	Everything was found in the dictionary, we can
-		 *	now recurse to decode the value.
-		 */
-		rcode = fr_radius_decode_pair_value(ctx, cursor, dict,
-						    child, p + 5, attr_len - 5, attr_len - 5,
-						    decoder_ctx);
-		if (rcode < 0) goto raw;
-		return attr_len;
-	}
+			child = fr_dict_attr_child_by_num(vendor_child, p[4]);
+			if (!child) {
+				/*
+				 *	Vendor exists but child didn't, again
+				 *	fr_dict_unknown_afrom_fields will do the right thing
+				 *	and only create the unknown attr.
+				 */
+				parent = fr_dict_unknown_afrom_fields(ctx, parent, vendor, p[4]);
+				p += 5;
+				data_len -= 5;
+				break;
+			}
+
+			/*
+			 *	Everything was found in the dictionary, we can
+			 *	now recurse to decode the value.
+			 */
+			fprintf(stderr, "SHIT %s %d\n", parent->name, __LINE__);
+			rcode = fr_radius_decode_pair_value(ctx, cursor, dict,
+							    child, p + 5, attr_len - 5, attr_len - 5,
+							    decoder_ctx);
+			if (rcode < 0) goto raw;
+			return attr_len;
+		}
 
 	case FR_TYPE_TLV:
 		/*
@@ -1343,15 +1353,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		}
 
 		return attr_len;
-
-	case FR_TYPE_VSA:
-		/*
-		 *	VSAs can be WiMAX, in which case they don't
-		 *	fit into one attribute.
-		 */
-		rcode = decode_vsa(ctx, cursor, dict, parent, p, attr_len, packet_len, decoder_ctx);
-		if (rcode < 0) goto raw;
-		return rcode;
 
 	default:
 	raw:

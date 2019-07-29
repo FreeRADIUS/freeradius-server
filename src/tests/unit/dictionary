@@ -30,8 +30,8 @@ ATTRIBUTE	Unit-Octets		253		octets
 ATTRIBUTE	Extended-Attribute-1			241	extended
 ATTRIBUTE	Extended-Attribute-2			242	extended
 ATTRIBUTE	Extended-Attribute-5			245	extended long
-ATTRIBUTE	Extended-Vendor-Specific-2		242.26	evs
-ATTRIBUTE	Extended-Vendor-Specific-5		245.26	evs
+ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa
+ATTRIBUTE	Extended-Vendor-Specific-5		245.26	vsa
 
 ATTRIBUTE	Unit-Ext-241-Integer	241.241		integer
 ATTRIBUTE	Unit-Ext-241-Octets	241.242		octets
