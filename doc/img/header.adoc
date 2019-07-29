@@ -1,8 +1,0 @@
-
-ifeval::["{docname}" != "home"]
-[.text-right]
-link:home.adoc[Home]
-[.text-left]
-
----
-endif::[]
