@@ -686,14 +686,17 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
  */
 static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	size_t		i;
-	size_t		len;
-	ssize_t		ret;
-	char		*p;
-	VALUE_PAIR	*vp;
-	eap_session_t	*eap_session;
-	fr_cursor_t	cursor;
-	rlm_eap_t const	*inst = instance;
+	size_t			i;
+	size_t			len;
+	ssize_t			ret;
+	char			*p;
+	VALUE_PAIR		*vp;
+	eap_session_t		*eap_session;
+	fr_cursor_t		cursor;
+	rlm_eap_t const		*inst = instance;
+	VALUE_PAIR		*username;
+
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 
 	/*
 	 *	If there was a eap_session associated with this request,
@@ -763,9 +766,9 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		 *	says that we MUST include a User-Name attribute in the
 		 *	Access-Accept.
 		 */
-		if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
+		if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && username) {
 			MEM(pair_update_reply(&vp, attr_user_name) >= 0);
-			fr_pair_value_bstrncpy(vp, request->username->vp_strvalue, request->username->vp_length);
+			fr_pair_value_bstrncpy(vp, username->vp_strvalue, username->vp_length);
 		}
 
 		eap_session_freeze(&eap_session);
@@ -868,19 +871,22 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	VALUE_PAIR		*vp;
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
+	VALUE_PAIR		*username;
+
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 
 	/*
 	 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
 	 *	says that we MUST include a User-Name attribute in the
 	 *	Access-Accept.
 	 */
-	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
+	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && username) {
 		/*
 		 *	Doesn't exist, add it in.
 		 */
 		vp = fr_pair_find_by_da(request->reply->vps, attr_user_name, TAG_ANY);
 		if (!vp) {
-			vp = fr_pair_copy(request->reply, request->username);
+			vp = fr_pair_copy(request->reply, username);
 			fr_pair_add(&request->reply->vps, vp);
 		}
 
