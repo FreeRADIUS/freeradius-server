@@ -48,9 +48,9 @@ AUTO_ADOC_FILES += $(patsubst raddb/%.md,doc/raddb/%.adoc,$(shell find raddb -na
 AUTO_ADOC_FILES += $(patsubst doc/%.md,doc/%.adoc,$(wildcard doc/*.md doc/*/*.md doc/*/*/*.md doc/*/*/*/*.md))
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
-HTML_FILES := $(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) \
+HTML_FILES := $(filter %html,$(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) \
               $(subst %home.adoc,index.html,$(ADOC_FILES))    \
-              $(subst %README.adoc,index.html,$(ADOC_FILES))
+              $(subst %README.adoc,index.html,$(ADOC_FILES)))
 
 #
 #  There are a number of pre-built files in the doc/ directory.  Find those.
