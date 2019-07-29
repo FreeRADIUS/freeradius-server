@@ -97,6 +97,8 @@ static fr_dict_attr_t const *attr_calling_station_id;
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_module_failure_message;
 static fr_dict_attr_t const *attr_module_success_message;
+static fr_dict_attr_t const *attr_stripped_user_name;
+
 static fr_dict_attr_t const *attr_nas_port;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_service_type;
@@ -109,6 +111,7 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_calling_station_id, .name = "Calling-Station-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -180,7 +183,8 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	if (!inst->log_stripped_names) {
 		username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	} else {
-		username = request->username;
+		username = fr_pair_find_by_da(request->packet->vps, attr_stripped_user_name, TAG_ANY);
+		if (!username) username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	}
 
 	/*
