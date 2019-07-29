@@ -1068,7 +1068,6 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(UNUSED rlm_pap_t const *inst, RE
 
 	RDEBUG2("Comparing with \"known-good\" NT-Password");
 
-	rad_assert(password != NULL);
 	rad_assert(password->da == attr_user_password);
 
 	if (known_good->vp_length != MD4_DIGEST_LENGTH) {
