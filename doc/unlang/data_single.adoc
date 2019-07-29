@@ -2,13 +2,12 @@ include::../img/header.adoc[]
 
 == Single Quoted Strings
 
-'string'
+`'string'`
 
-A single quoted string is interpreted without any dynamic string
-expansion. The quotes allow the string to contain spaces, which are not
-allowed in the `word` form described in the previous section. The single
-quote character can be placed in such a string by escaping it with a
-backslash.
+A single-quoted string is interpreted without any dynamic string
+expansion. The quotes allow the string to contain spaces, among other
+special characters. The single quote character can be placed in such a
+string by escaping it with a backslash.
 
 *Examples:*
 

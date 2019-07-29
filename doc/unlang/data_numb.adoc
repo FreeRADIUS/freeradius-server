@@ -8,20 +8,6 @@ include::../img/header.adoc[]
 `563`
 
 Numbers are unsigned integers that are composed of decimal digits.
-Signed numbers, floating point, hex, and octal numbers are not supported
-in Unlang.
-
-These limitations are largely a result of the limitations of the
-underlying protocol. There is no way to transport signed numbers or
-floating point numbers in RADIUS, so there is no need to perform signed
-or floating point calculations.
-
-The maximum value for a number is machine-dependent but is at least
-32 bits or 4,294,967,296. In some cases, it may be necessary to perform
-calculations on numbers larger than 32 bits, as when calculating total
-data traffic to or from a user. In those cases, the calculations should
-either be one carefully to avoid 32-bit overflow or be done using real
-programming language.
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

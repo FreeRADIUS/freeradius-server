@@ -106,8 +106,10 @@ finishes, it is deleted, and is no longer accessible to the parent.
 
 === Server Attributes
 
-The _<server-attribute>_ field is usually an attribute name such as
-`&Reply-Message`.
+The _<server-attribute>_ field is an attribute name, such as
+`&Reply-Message`.  The attribute name may also be prefixed with a
+_<list>_ qualifier, which over-rides the _<list>_ given at the start
+of the `update` section.
 
 NOTE: In version 3, the leading `&` was optional.  In version 4, the
 leading `&` is required.
@@ -171,11 +173,23 @@ For IP addresses, the operators `>`, `>=`, `<`, and `<=` check for
 membership in a network.  The _<value>_ field should then be a IP
 network, given in `address/mask` format.
 
-IMPORTANT: In version 3, some filtering attributes would _create_ the
+IMPORTANT: In version 3, some filtering operators would _create_ the
 attribute if it did not exist in the destination list.  In version 4,
-this functionality has been removed.  Instead version 4 only performs
+this functionality has been removed.  Instead, version 4 only performs
 _filtering_ of the attributes.  That is, the filtering operators will
 modify or delete attributes, but they will never create an attribute.
+
+=== Values
+
+The _<value>_ field is the value which is assigned to the
+_<server-attribute>_.  The interpretation of the _<value>_ field
+depends on the data type of the contents.  For example, if the string
+`"192.0.2.1"` is assigned to an attribute of the `string` data type,
+then the result is an ASCII string containing that value.  However, if
+the same string is assigned to an attribute of the `ipaddr` data type,
+then the result is a 32-bit IPv4 address, with binary value `0xc0000201`.
+
+Th
 
 .Example
 [source,unlang]
