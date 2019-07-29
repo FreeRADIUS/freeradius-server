@@ -51,6 +51,7 @@ only be used in the dictionaries.  These data types cannot be used in
 [options="header"]
 [cols="15%,85%"]
 |=====
+| Data Type     | Description
 | struct	| structure which contains fixed-width fields
 | tlv		| type-length-value which contains other attributes
 | vsa		| Encapsulation of vendor-specific attributes
