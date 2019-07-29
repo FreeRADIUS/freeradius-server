@@ -3442,7 +3442,7 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 	do { \
 		if (uinteger > _type ## _MAX) { \
 			fr_strerror_printf("Value %" PRIu64 " is invalid for type %s (must be in range " \
-				    	   "0-%" PRIu64 ")", \
+					   "0...%" PRIu64 ")",		\
 					   uinteger, fr_int2str(fr_value_box_type_table, dst_type, "<INVALID>"), \
 					   (uint64_t) _type ## _MAX); \
 			return -1; \
@@ -3452,8 +3452,8 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 #define IN_RANGE_SIGNED(_type) \
 	do { \
 		if ((sinteger > _type ## _MAX) || (sinteger < _type ## _MIN)) { \
-			fr_strerror_printf("Value %" PRIu64 " is invalid for type %s (must be in range " \
-					   "%" PRIu64 "-%" PRIu64 ")", \
+			fr_strerror_printf("Value %" PRId64 " is invalid for type %s (must be in range " \
+					   "%" PRId64 "...%" PRId64 ")", \
 					   sinteger, fr_int2str(fr_value_box_type_table, dst_type, "<INVALID>"), \
 					   (int64_t) _type ## _MIN, (int64_t) _type ## _MAX); \
 			return -1; \
