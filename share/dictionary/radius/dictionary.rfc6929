@@ -19,9 +19,9 @@ ATTRIBUTE	Extended-Attribute-4			244	extended
 ATTRIBUTE	Extended-Attribute-5			245	extended long
 ATTRIBUTE	Extended-Attribute-6			246	extended long
 
-ATTRIBUTE	Extended-Vendor-Specific-1		241.26	evs
-ATTRIBUTE	Extended-Vendor-Specific-2		242.26	evs
-ATTRIBUTE	Extended-Vendor-Specific-3		243.26	evs
-ATTRIBUTE	Extended-Vendor-Specific-4		244.26	evs
-ATTRIBUTE	Extended-Vendor-Specific-5		245.26	evs
-ATTRIBUTE	Extended-Vendor-Specific-6		246.26	evs
+ATTRIBUTE	Extended-Vendor-Specific-1		241.26	vsa
+ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa
+ATTRIBUTE	Extended-Vendor-Specific-3		243.26	vsa
+ATTRIBUTE	Extended-Vendor-Specific-4		244.26	vsa
+ATTRIBUTE	Extended-Vendor-Specific-5		245.26	vsa
+ATTRIBUTE	Extended-Vendor-Specific-6		246.26	vsa
