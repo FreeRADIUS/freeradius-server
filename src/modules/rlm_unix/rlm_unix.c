@@ -111,13 +111,15 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
 	struct group	*grp;
 	char		**member;
 	int		retval = -1;
+	VALUE_PAIR	*username;
 
 	/*
 	 *	No user name, can't compare.
 	 */
-	if (!request->username) return -1;
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	if (!username) return -1;
 
-	if (rad_getpwnam(request, &pwd, request->username->vp_strvalue) < 0) {
+	if (rad_getpwnam(request, &pwd, username->vp_strvalue) < 0) {
 		RPEDEBUG("Failed resolving user name");
 		return -1;
 	}
@@ -195,16 +197,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	char		*shell;
 #endif
 	VALUE_PAIR	*vp;
+	VALUE_PAIR	*username;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	if (!request->username) {
-		return RLM_MODULE_NOOP;
-	}
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	if (!username) return RLM_MODULE_NOOP;
 
-	name = request->username->vp_strvalue;
+	name = username->vp_strvalue;
 	encrypted_pass = NULL;
 
 	if ((pwd = getpwnam(name)) == NULL) {
