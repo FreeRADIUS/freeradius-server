@@ -15,7 +15,7 @@
  */
 
 /**
- * @file lib/servers/password.c
+ * @file src/lib/server/password.c
  * @brief Password normalisation functions
  *
  * @copyright 2019 The FreeRADIUS server project
@@ -95,6 +95,7 @@ static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
  *       start with 0x. That's why min_len (and decodability) are used as the
  *       only heuristics now.
  *
+ * @param[in] ctx		to allocate new pairs in.
  * @param[in] request		The current request.
  * @param[in] known_good	password to normify.
  * @param[in] min_len		we expect the decoded version to be.
@@ -148,7 +149,7 @@ VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const
  * @note The buffer for octets types\ attributes is extended by one byte
  *	and '\0' terminated, to allow it to be used as a char buff.
  *
- * @param[in] ctx		to allocate new attributes in.
+ * @param[in] ctx		to allocate new pairs in.
  * @param[in] request		Current request.
  * @param[in] known_good	Password-With-Header attribute to convert.
  * @param[in] func		to convert header strings to fr_dict_attr_t.
@@ -282,7 +283,6 @@ VALUE_PAIR *password_normify_with_header(TALLOC_CTX *ctx, REQUEST *request, VALU
 
 		break;
 	}
-
 
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("No {...} in &%pP, re-writing to %s", known_good, def->name);

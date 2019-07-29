@@ -16,7 +16,7 @@
  */
 
 /**
- * @file lib/servers/password.h
+ * @file src/lib/server/password.h
  * @brief Password normalisation functions
  *
  * @copyright 2019 The FreeRADIUS server project
