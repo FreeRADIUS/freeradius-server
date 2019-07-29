@@ -637,9 +637,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 		request->seq_start = entry->seq_start;
 		request->state_ctx = entry->ctx;
 		request->state = entry->vps;
-		REQUEST_VERIFY(request);
 		request_data_restore(request, &entry->data);
-		REQUEST_VERIFY(request);
 
 		entry->ctx = NULL;
 		entry->vps = NULL;
