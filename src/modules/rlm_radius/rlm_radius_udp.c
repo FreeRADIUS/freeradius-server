@@ -2048,7 +2048,7 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 			 *	warn if there are a large number of
 			 *	identical Proxy-State attributes.
 			 */
-			if (count > 4) RWARN("Potential proxy loop detected!  Please recheck your configuration.");
+			if (count >= 4) RWARN("Potential proxy loop detected!  Please recheck your configuration.");
 		}
 
 		attr[0] = (uint8_t)attr_proxy_state->attr;
