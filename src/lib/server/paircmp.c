@@ -124,12 +124,16 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 	char		rest[FR_MAX_STRING_LEN];
 	int		len, namelen;
 	int		ret = -1;
+	VALUE_PAIR	*username;
 
-	if (!request || !request->username) return -1;
+	if (!request) return -1;
+
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	if (!username) return -1;
 
 	VP_VERIFY(check);
 
-	name = request->username->vp_strvalue;
+	name = username->vp_strvalue;
 
 	RDEBUG3("Comparing name \"%s\" and check value \"%s\"", name, check->vp_strvalue);
 
@@ -166,7 +170,6 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 		 */
 		MEM(vp = fr_pair_afrom_da(request->packet, attr_stripped_user_name));
 		fr_pair_add(&req, vp);
-		request->username = vp;
 	}
 	fr_pair_value_strcpy(vp, rest);
 

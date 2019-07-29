@@ -52,6 +52,7 @@ static fr_dict_attr_t const *attr_password_with_header;
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_chap_challenge;
 static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_chap_dict_attr[];
 fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
@@ -64,6 +65,7 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 
 	{ .out = &attr_chap_password, .name = "Chap-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chap_challenge, .name = "Chap-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
@@ -163,11 +165,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	VALUE_PAIR *known_good, *chap;
-	uint8_t pass_str[FR_MAX_STRING_LEN];
+	VALUE_PAIR	*known_good, *chap, *username;
+	uint8_t		pass_str[FR_MAX_STRING_LEN];
 
-	if (!request->username) {
-		REDEBUG("&request:User-Name attribute is required for authentication");
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	if (!username) {
+		REDEBUG("&User-Name attribute is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -238,7 +241,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_REJECT;
 	}
 
-	RDEBUG2("CHAP user \"%pV\" authenticated successfully", &request->username->data);
+	RDEBUG2("CHAP user \"%pV\" authenticated successfully", &username->data);
 
 	return RLM_MODULE_OK;
 }
