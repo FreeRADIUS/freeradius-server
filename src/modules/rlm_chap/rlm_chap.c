@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module.h>
 
 typedef struct {
@@ -43,7 +44,10 @@ fr_dict_autoload_t rlm_chap_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_proxy_to_realm;
+static fr_dict_attr_t const *attr_realm;
 static fr_dict_attr_t const *attr_cleartext_password;
+static fr_dict_attr_t const *attr_password_with_header;
 
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_chap_challenge;
@@ -52,7 +56,11 @@ static fr_dict_attr_t const *attr_user_password;
 extern fr_dict_attr_autoload_t rlm_chap_dict_attr[];
 fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_realm, .name = "Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_password, .name = "Chap-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chap_challenge, .name = "Chap-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -60,12 +68,72 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ NULL }
 };
 
+static const FR_NAME_NUMBER header_names[] = {
+	{ "{clear}",		FR_CLEARTEXT_PASSWORD },
+	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
+	{ NULL, 0 }
+};
+
+static ssize_t chap_password_header(fr_dict_attr_t const **out, char const *header)
+{
+	switch (fr_str2int(header_names, header, 0)) {
+	case FR_CLEARTEXT_PASSWORD:
+		*out = attr_cleartext_password;
+		return strlen(header);
+
+	default:
+		*out = NULL;
+		return -1;
+	}
+}
+
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_chap_t	*inst = instance;
 	VALUE_PAIR	*vp;
+	VALUE_PAIR	*known_good;
 
+	/*
+	 *	This case means the warnings below won't be printed
+	 *	unless there's a CHAP-Password in the request.
+	 */
 	if (!fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY)) return RLM_MODULE_NOOP;
+
+	known_good = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
+	if (!known_good) {
+		VALUE_PAIR *new;
+
+		known_good = fr_pair_find_by_da(request->control, attr_password_with_header, TAG_ANY);
+		if (!known_good) {
+			/*
+			 *	Likely going to be proxied.  Avoid printing
+			 *	warning message.
+			 */
+			if (fr_pair_find_by_da(request->control, attr_realm, TAG_ANY) ||
+			    (fr_pair_find_by_da(request->control, attr_proxy_to_realm, TAG_ANY))) {
+				return RLM_MODULE_NOOP;
+			}
+
+			RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type");
+			RWDEBUG("Authentication will fail unless a \"known good\" password is available");
+
+			return RLM_MODULE_NOOP;
+		}
+
+		/*
+		 *	Normalise Password-With-Header
+		 */
+		MEM(new = password_normify_with_header(request, request, known_good,
+						       chap_password_header, attr_cleartext_password));
+		if (RDEBUG_ENABLED3) {
+			RDEBUG3("Noramlized &control:%pP -> &control:%pP", known_good, new);
+		} else {
+			RDEBUG2("Normalized &control:%s -> &control:%s", known_good->da->name, new->da->name);
+		}
+		RDEBUG2("Removing &control:%s", known_good->da->name);
+		fr_pair_delete_by_da(&request->control, attr_password_with_header);
+		fr_pair_add(&request->control, new);
+	}
 
 	/*
 	 *	Create the CHAP-Challenge if it wasn't already in the packet.
@@ -73,10 +141,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	This is so that the rest of the code does not need to
 	 *	understand CHAP.
 	 */
-
 	vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY);
 	if (!vp) {
-		RDEBUG2("Creating CHAP-Challenge from the request authenticator");
+		RDEBUG2("Creating &%s from request authenticator", attr_chap_challenge->name);
 
 		MEM(vp = fr_pair_afrom_da(request->packet, attr_chap_challenge));
 		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector), true);
@@ -88,7 +155,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	return RLM_MODULE_OK;
 }
 
-
 /*
  *	Find the named user in this modules database.  Create the set
  *	of attribute-value pairs to check and reply with for this user
@@ -97,7 +163,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	VALUE_PAIR *password, *chap;
+	VALUE_PAIR *known_good, *chap;
 	uint8_t pass_str[FR_MAX_STRING_LEN];
 
 	if (!request->username) {
@@ -122,8 +188,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_INVALID;
 	}
 
-	password = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
-	if (password == NULL) {
+	known_good = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
+	if (known_good == NULL) {
 		if (fr_pair_find_by_da(request->control, attr_user_password, TAG_ANY) != NULL){
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			REDEBUG("!!! Please update your configuration so that the \"known !!!");
@@ -138,15 +204,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_FAIL;
 	}
 
-	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0], password);
+	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0], known_good);
 
 	if (RDEBUG_ENABLED3) {
 		uint8_t	const	*p;
 		size_t		length;
 		VALUE_PAIR	*vp;
 
-		RDEBUG3("Comparing with \"known good\" &control:Cleartext-Password value \"%s\"",
-			password->vp_strvalue);
+		RDEBUG3("Comparing with \"known good\" &control:%pP", known_good);
 
 		vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY);
 		if (vp) {

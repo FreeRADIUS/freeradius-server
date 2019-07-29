@@ -23,6 +23,7 @@ SOURCES	:= \
 	module.c \
 	paircmp.c \
 	pairmove.c \
+	password.c \
 	pool.c \
 	rcode.c \
 	regex.c \
