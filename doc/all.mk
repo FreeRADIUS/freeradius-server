@@ -121,15 +121,18 @@ html_build: $(HTML_FILES)
 #
 #	Create a soft-link between $path/{home || README}.html to $path/index.html
 #
-HTML_INDEXES := $(foreach dr,$(filter %home.html,$(HTML_FILES)),$(dr))
-HTML_INDEXES += $(foreach dr,$(filter %README.html,$(HTML_FILES)),$(dr))
+#	We have to manually use a "for" loop because the source names are randomly
+#	"README" or "home".
+#
+HTML_INDEXES := $(filter %home.html,$(HTML_FILES))
+HTML_INDEXES += $(filter %README.html,$(HTML_FILES))
 
 html_index:
-	@echo "HTML-INDEX $(HTML_INDEXES))"
-	${Q}for _idx in $(HTML_INDEXES); do \
-			if [ -f "$$_idx" ]; then \
-				(cd $$(dirname $$_idx) && ln -fs $$(basename $$_idx) index.html); \
-			fi; \
+	${Q}for x in $(HTML_INDEXES); do \
+		if [ ! -L $$(dirname $$x)/index.html ] ; then \
+			echo HTML-INDEX $$x; \
+			(cd $$(dirname $$x) && ln -fs $$(basename $$x) index.html); \
+		fi; \
 	done
 
 doc/%.pdf: doc/%.adoc
