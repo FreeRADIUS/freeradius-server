@@ -1,6 +1,6 @@
 include::../img/header.adoc[]
 
-== The Backtick Operator
+== Backtick-quoted string
 
 `{backtick}string{backtick}`
 
@@ -17,24 +17,19 @@ multiple lines, any carriage returns and line feeds are "d by
 spaces.
 
 For safety reasons, the full path to the executed program should be
-given. In addition, the string is split into arguments prior to dynamic
-expansion in order to prevent the expanded strings from being
-erroneously interpreted as more command-line arguments.
+given. In addition, the string is split into arguments _before_ the
+substrings are dynamically expanded.  This step is done both to allow
+the substrings to contain spaces, and to prevent spaces in the
+expanded substrings from affecting the number of command-line
+arguments.
 
 For performance reasons, we recommend that the use of back-quoted
-strings be kept to a minimum. Executing external programs is relatively
-expensive, and executing a large number of programs for every request
-can quickly use all of the CPU time in a server. If many programs need
-to be executed, it is suggested that alternative ways to achieve the
-same result be found. In some cases, using a real language may be
-sufficient.
-
-This operator is permitted only in conditional expressions and when
-assigning values to an attribute. In versions 2.1.11 and later, using it
-in an invalid context will return a syntax error, and the server will
-refuse to start. In versions of the server prior to 2.1.11, the data was
-treated as a single quoted string, and no run-time expansion or program
-execution is performed.
+strings be kept to a minimum. Executing external programs is
+relatively expensive, and executing a large number of programs for
+every request can quickly use all of the CPU time in a server. If many
+programs need to be executed, it is suggested that alternative ways to
+achieve the same result be found. In some cases, using a real
+programming language such as `lua`, `perl` or `python` may be better.
 
 *Examples:*
 

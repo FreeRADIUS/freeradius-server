@@ -112,10 +112,12 @@ The single-quoted string form is most useful when the data type
 contains special characters that may otherwise confuse the parser.
 
 `"192.168.0.2"`:: link:data_double.adoc[Double-quoted string].
-
 The contents of the string are dynamically expanded as described
 above.  The resulting output is then interpreted as the given data
 type.
+
+`{backtick}/bin/echo 192.168.0.2{backtick}`:: link:data_back.adoc[backtick-quoted string].
+Run a script, and interpret the result as the data type.
 
 Similar processing rules are applied when parsing assignments and
 comparisons, for all attributes and data types.
