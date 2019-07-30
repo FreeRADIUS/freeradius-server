@@ -3869,7 +3869,7 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
 static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_attr_flags_t *flags)
 {
 	char *p;
-	int type;
+	fr_type_t type;
 
 	/*
 	 *	Some types can have fixed length
@@ -3880,8 +3880,8 @@ static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_
 	/*
 	 *	find the type of the attribute.
 	 */
-	type = fr_str2int(fr_value_box_type_table, name, -1);
-	if (type < 0) {
+	type = fr_str2int(fr_value_box_type_table, name, FR_TYPE_INVALID);
+	if (type == FR_TYPE_INVALID) {
 		fr_strerror_printf("Unknown data type '%s'", name);
 		return -1;
 	}
@@ -4008,8 +4008,8 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 			if (strncmp(key, "uint", 4) == 0) {
 				fr_type_t subtype;
 
-				subtype = fr_str2int(fr_value_box_type_table, name, -1);
-				if (subtype < 0) {
+				subtype = fr_str2int(fr_value_box_type_table, name, FR_TYPE_INVALID);
+				if (subtype == FR_TYPE_INVALID) {
 				unknown_type:
 					fr_strerror_printf("Unknown or unsupported date type '%s'", key);
 					return -1;
