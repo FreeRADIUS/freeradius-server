@@ -100,6 +100,7 @@ FR_NAME_NUMBER const fr_value_box_type_table[] = {
 	{ "octets",		FR_TYPE_OCTETS },
 
 	{ "ipaddr",		FR_TYPE_IPV4_ADDR },
+	{ "ipv4addr",		FR_TYPE_IPV4_ADDR },
 	{ "ipv4prefix",		FR_TYPE_IPV4_PREFIX },
 	{ "ipv6addr",		FR_TYPE_IPV6_ADDR },
 	{ "ipv6prefix",		FR_TYPE_IPV6_PREFIX },
