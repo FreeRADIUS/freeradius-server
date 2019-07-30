@@ -27,7 +27,6 @@ values which can be compared, or assigned to one attribute.
 | int16		| 16-bit signed integer
 | int32		| 32-bit signed integer
 | int64		| 64-bit signed integer
-| int64		| 64-bit signed integer
 | ipaddr        | IPv4 address
 | ipv6addr      | IPv6 address
 | octets        | raw binary, printed as hex strings
