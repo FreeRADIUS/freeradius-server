@@ -65,7 +65,7 @@ subdirectory.
 
 To create a patch for a single file, it is often sufficient to do::
 
-....
+```
 SRCTREE=/home/user/src/freeradiusd/
 MYFILE=src/modules/rlm_foo/foo.c
 
@@ -73,19 +73,19 @@ cd $SRCTREE
 cp $MYFILE $MYFILE.orig
 vi $MYFILE # make your change
 diff -u $MYFILE.orig $MYFILE > /tmp/patch
-....
+```
 
 To create a patch for multiple files, you should unpack a `+vanilla+`,
 or unmodified source tree, and generate a diff against your own source
 tree. For example:
 
-....
+```
 MYSRC=/home/user/src/freeradiusd-feature/
 
 gunzip freeradiusd-version.tar.gz
 tar xvf freeradiusd-version.tar
 diff -urN freeradiusd-version $MYSRC > ~/feature-version.patch
-....
+```
 
 === 2. Select e-mail destination
 
