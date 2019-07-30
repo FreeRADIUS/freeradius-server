@@ -55,7 +55,7 @@ HTML_FILES := $(filter %html,$(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) \
 #
 #  There are a number of pre-built files in the doc/ directory.  Find those.
 #
-DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/source/% doc/img/%,$(shell find doc -type f))
+DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/source/% doc/_assets/%,$(shell find doc -type f))
 
 #
 #  We sort the list of files, because the "find" command above will
@@ -113,10 +113,18 @@ doc/raddb/%.adoc: raddb/%
 #
 doc/%.html: doc/%.adoc
 	@echo HTML $^
-	${Q}$(ASCIIDOCTOR) $< -a "toc=left"                  \
-	                      -a "docinfodir=$(PWD)/doc/img" \
-	                      -a "imagesdir=$(PWD)/doc/img"  \
-	                      -a "docinfo=shared,private"    \
+
+#	The below mechanism is necessary to know where is the documents base directory.
+	$(eval _BASEDIR=$(shell cd $(dir $<) &&                                \
+	                    for _d in ./ ../ ../../ ../../../ ../../../../; do \
+	                        test -e $$_d/.basedir && break;                \
+	                    done;                                              \
+	                    echo $$_d))
+
+	${Q}$(ASCIIDOCTOR) $< -a "toc=left"                       \
+	                      -a "docinfodir=$(_BASEDIR)/_assets" \
+	                      -a "basedir=$(_BASEDIR)"            \
+	                      -a "docinfo=shared,private"         \
 	                      -b html5 -o $@ $<
 	${Q}perl -p -i -e 's,\.adoc,\.html,g; s,/.html",/",g; s/\.md\.html/\.html/g' $@
 
