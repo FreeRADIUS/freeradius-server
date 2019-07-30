@@ -550,7 +550,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			return false;
 		}
 
-		if (*attr <= (1 << (8 * parent->flags.type_size))) {
+		if (!flags->internal && (*attr <= (1 << (8 * parent->flags.type_size)))) {
 			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
 			return false;
 		}

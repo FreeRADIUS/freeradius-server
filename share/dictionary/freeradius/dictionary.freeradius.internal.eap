@@ -1,0 +1,217 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	EAP module attributes (4000-4099)
+#
+#	$Id$
+#
+
+#
+#	All of these attributes are internal.
+#
+FLAGS	internal
+
+#
+#	This is the EAP type of authentication, which is set
+#	by the EAP module, for informational purposes only.
+#
+ATTRIBUTE	EAP-Code				4000	integer
+
+#
+# 	These are the EAP-Code values.
+#
+VALUE	EAP-Code			Request			1
+VALUE	EAP-Code			Response		2
+VALUE	EAP-Code			Success			3
+VALUE	EAP-Code			Failure			4
+
+ATTRIBUTE	EAP-Type				4001	integer
+
+#
+#	EAP Sub-types, inside of Request and Response packets
+#
+#	http://www.iana.org/assignments/ppp-numbers
+#		"PPP EAP REQUEST/RESPONSE TYPES"
+#
+#
+#	See dictionary.microsoft, MS-Acct-EAP-Type for similar definitions
+#
+VALUE	EAP-Type			None			0
+VALUE	EAP-Type			Identity		1
+VALUE	EAP-Type			Notification		2
+VALUE	EAP-Type			NAK			3
+VALUE	EAP-Type			MD5-Challenge		4
+VALUE	EAP-Type			MD5			4
+VALUE	EAP-Type			One-Time-Password	5
+VALUE	EAP-Type			OTP			5
+VALUE	EAP-Type			Generic-Token-Card	6
+VALUE	EAP-Type			GTC			6
+VALUE	EAP-Type			RSA-Public-Key		9
+VALUE	EAP-Type			DSS-Unilateral		10
+VALUE	EAP-Type			KEA			11
+VALUE	EAP-Type			KEA-Validate		12
+VALUE	EAP-Type			TLS			13
+VALUE	EAP-Type			Defender-Token		14
+VALUE	EAP-Type			RSA-SecurID-EAP		15
+VALUE	EAP-Type			Arcot-Systems-EAP	16
+VALUE	EAP-Type			Cisco-LEAP		17
+VALUE	EAP-Type			LEAP			17
+VALUE	EAP-Type			Nokia-IP-Smart-Card	18
+VALUE	EAP-Type			SIM			18
+VALUE	EAP-Type			SRP-SHA1		19
+# 20 is unassigned
+VALUE	EAP-Type			TTLS			21
+VALUE	EAP-Type			Remote-Access-Service	22
+VALUE	EAP-Type			AKA			23
+VALUE	EAP-Type			3Com-Wireless		24
+VALUE	EAP-Type			PEAP			25
+VALUE	EAP-Type			Microsoft-MS-CHAPv2	26
+VALUE	EAP-Type			MAKE			27
+VALUE	EAP-Type			CRYPTOCard		28
+VALUE	EAP-Type			Cisco-MS-CHAPv2		29
+VALUE	EAP-Type			DynamID			30
+VALUE	EAP-Type			Rob-EAP			31
+VALUE	EAP-Type			SecurID-EAP		32
+VALUE	EAP-Type			MS-Authentication-TLV	33
+VALUE	EAP-Type			SentriNET		34
+VALUE	EAP-Type			Actiontec-Wireless	35
+VALUE	EAP-Type			Cogent-Biomentric-EAP	36
+VALUE	EAP-Type			AirFortress-EAP		37
+VALUE	EAP-Type			HTTP-Digest		38
+VALUE	EAP-Type			TNC			38
+VALUE	EAP-Type			SecuriSuite-EAP		39
+VALUE	EAP-Type			DeviceConnect-EAP	40
+VALUE	EAP-Type			SPEKE			41
+VALUE	EAP-Type			MOBAC			42
+VALUE	EAP-Type			FAST			43
+VALUE	EAP-Type			Zonelabs		44
+VALUE	EAP-Type			Link			45
+VALUE	EAP-Type			PAX			46
+VALUE	EAP-Type			PSK			47
+VALUE	EAP-Type			SAKE			48
+VALUE	EAP-Type			IKEv2			49
+VALUE	EAP-Type			AKA-Prime		50
+VALUE	EAP-Type			GPSK			51
+VALUE	EAP-Type			PWD			52
+VALUE	EAP-Type			EKEv1			53
+VALUE	EAP-Type			PT			54
+VALUE	EAP-Type			TEAP			55
+
+#
+#	And this is what most people mean by MS-CHAPv2
+#
+VALUE	EAP-Type			MSCHAPv2		26
+
+ATTRIBUTE	EAP-Id					4002	integer
+
+#
+#	Expose EAP keys in the reply.
+#
+ATTRIBUTE	EAP-MSK					4003	octets
+ATTRIBUTE	EAP-EMSK				4004	octets
+ATTRIBUTE	EAP-Session-Id				4005	octets
+
+# For session resumption
+ATTRIBUTE	Allow-Session-Resumption		4006	bool
+ATTRIBUTE	EAP-Session-Resumed			4007	bool
+ATTRIBUTE	Chbind-Response-Code			4008	integer
+
+VALUE	Chbind-Response-Code		success			2
+VALUE	Chbind-Response-Code		failure			3
+
+#
+#	EAP-MD5 (4)
+#
+ATTRIBUTE	EAP-MD5-Password			4040	string
+
+#
+#	EAP-OTP (5)
+#
+ATTRIBUTE	OTP-Challenge				4051	string
+
+#
+#	EAP-TLS (41)
+#
+ATTRIBUTE	EAP-TLS-Require-Client-Cert		4130	integer
+
+#
+#	This says TLS, but it's only valid for TTLS & PEAP.
+#	EAP-TLS *always* requires a client certificate.
+#
+VALUE	EAP-TLS-Require-Client-Cert	No			0
+VALUE	EAP-TLS-Require-Client-Cert	Yes			1
+
+#
+#	PEAP (25)
+#
+ATTRIBUTE	PEAP-Version				4250	integer
+
+#
+#	MS-CHAP (26)
+#
+ATTRIBUTE	MS-CHAP-Peer-Challenge			4260	octets
+
+#
+#	EAP-IKEv2 (49) is experimental.
+#
+ATTRIBUTE	EAP-IKEv2-IDType			4490	integer
+
+VALUE	EAP-IKEv2-IDType		IPV4_ADDR		1
+VALUE	EAP-IKEv2-IDType		FQDN			2
+VALUE	EAP-IKEv2-IDType		RFC822_ADDR		3
+VALUE	EAP-IKEv2-IDType		IPV6_ADDR		5
+VALUE	EAP-IKEv2-IDType		DER_ASN1_DN		9
+VALUE	EAP-IKEv2-IDType		DER_ASN1_GN		10
+VALUE	EAP-IKEv2-IDType		KEY_ID			11
+
+ATTRIBUTE	EAP-IKEv2-ID				4491	string
+ATTRIBUTE	EAP-IKEv2-Secret			4492	string
+ATTRIBUTE	EAP-IKEv2-AuthType			4493	integer
+
+VALUE	EAP-IKEv2-AuthType		none			0
+VALUE	EAP-IKEv2-AuthType		secret			1
+VALUE	EAP-IKEv2-AuthType		cert			2
+VALUE	EAP-IKEv2-AuthType		both			3
+
+ATTRIBUTE	EAP-FAST-TLV				4430	tlv
+ATTRIBUTE	EAP-FAST-Result				.3	short
+ATTRIBUTE	EAP-FAST-NAK				.4	octets
+ATTRIBUTE	EAP-FAST-Error				.5	integer
+ATTRIBUTE	EAP-FAST-Vendor-Specific		.7	octets
+ATTRIBUTE	EAP-FAST-EAP-Payload			.9	octets
+ATTRIBUTE	EAP-FAST-Intermediate-Result		.10	octets
+ATTRIBUTE	EAP-FAST-PAC-TLV			.11	tlv
+ATTRIBUTE	EAP-FAST-PAC-Key			.11.1	octets
+ATTRIBUTE	EAP-FAST-PAC-Opaque-TLV			.11.2	tlv
+ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Key		.11.2.1	octets
+ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Lifetime	.11.2.3	integer
+ATTRIBUTE	EAP-FAST-PAC-Opaque-I-ID		.11.2.5	octets
+ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Type		.11.2.10	short
+
+ATTRIBUTE	EAP-FAST-PAC-Lifetime			.11.3	integer
+ATTRIBUTE	EAP-FAST-PAC-A-ID			.11.4	octets
+ATTRIBUTE	EAP-FAST-PAC-I-ID			.11.5	octets
+ATTRIBUTE	EAP-FAST-PAC-A-ID-Info			.11.7	octets
+ATTRIBUTE	EAP-FAST-PAC-Acknowledge		.11.8	short
+ATTRIBUTE	EAP-FAST-PAC-Info-TLV			.11.9	tlv
+ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Lifetime		.11.9.3	integer
+ATTRIBUTE	EAP-FAST-PAC-Info-A-ID			.11.9.4	octets
+ATTRIBUTE	EAP-FAST-PAC-Info-I-ID			.11.9.5	octets
+ATTRIBUTE	EAP-FAST-PAC-Info-A-ID-Info		.11.9.7	octets
+ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Type		.11.9.10	short
+
+ATTRIBUTE	EAP-FAST-PAC-Type			.11.10	short
+
+ATTRIBUTE	EAP-FAST-Crypto-Binding			.12	octets
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Reserved	.12.1	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Version		.12.2	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Recv-Version	.12.3	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Sub-Type	.12.4	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Nonce		.12.5	octets[32]
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Compound-MAC	.12.6	octets[20]
+
+ATTRIBUTE	EAP-FAST-Trusted-Root			.18	octets
+ATTRIBUTE	EAP-FAST-Request-Action			.19	short
+ATTRIBUTE	EAP-FAST-PKCS				.20	octets

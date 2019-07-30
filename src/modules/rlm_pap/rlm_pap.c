@@ -36,6 +36,8 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/sha1.h>
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.password.h>
+
 #include <ctype.h>
 
 #ifdef HAVE_OPENSSL_EVP_H

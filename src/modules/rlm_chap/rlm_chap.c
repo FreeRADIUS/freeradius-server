@@ -28,6 +28,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module.h>
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.password.h>
+
 typedef struct {
 	char const		*name;		//!< Auth-Type value for this module instance.
 	fr_dict_enum_t		*auth_type;

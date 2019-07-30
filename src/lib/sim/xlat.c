@@ -22,6 +22,7 @@
  */
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.eap.h>
 #include "base.h"
 #include "attrs.h"
 

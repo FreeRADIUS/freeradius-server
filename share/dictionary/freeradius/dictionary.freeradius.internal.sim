@@ -1,0 +1,55 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Attributes used by sim code (5200-5299)
+#
+#	$Id$
+#
+
+#
+#	All of these attributes are internal.
+#
+FLAGS	internal
+
+# The Ki for a specific SIM card.
+ATTRIBUTE	SIM-Ki					5200	octets[16]
+ATTRIBUTE	SIM-OP					5201	octets[16]
+ATTRIBUTE	SIM-OPc					5202	octets[16]
+
+ATTRIBUTE	SIM-SQN					5203	integer64	# Only 48 bits, but we don't have one of those
+ATTRIBUTE	SIM-AMF					5204	octets[2]	# This is just a bit field not an integer
+
+# The IMSI number of a SIM.
+ATTRIBUTE	SIM-IMSI				5205	string
+
+# The algorithm the SIM card uses (Milenage for UMTS, COMP128 for others)
+
+ATTRIBUTE	SIM-Algo-Version			5206	integer
+VALUE	SIM-Algo-Version		Comp128v1		0
+VALUE	SIM-Algo-Version		Comp128v2		1
+VALUE	SIM-Algo-Version		Comp128v3		2
+VALUE	SIM-Algo-Version		Milenage		3
+
+ATTRIBUTE	SIM-Method-Hint				5207	integer
+
+VALUE	SIM-Method-Hint			Unknown			0
+VALUE	SIM-Method-Hint			SIM			1
+VALUE	SIM-Method-Hint			AKA			2
+VALUE	SIM-Method-Hint			AKA-Prime		3
+
+ATTRIBUTE	SIM-Identity-Type			5208	integer
+
+VALUE	SIM-Identity-Type		Unknown			0
+VALUE	SIM-Identity-Type		Permanent		1
+VALUE	SIM-Identity-Type		Pseudonym		2
+VALUE	SIM-Identity-Type		Fastauth		3
+
+#
+#	Range:	5230-1239
+#		Sigtran
+#
+ATTRIBUTE	Sigtran-MAP-Version			5230	integer
+ATTRIBUTE	Sigtran-Mobile-Network-Code		5231	integer
+ATTRIBUTE	Sigtran-Mobile-Country-Code		5232	integer

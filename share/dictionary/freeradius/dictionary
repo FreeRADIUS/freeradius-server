@@ -9,3 +9,15 @@
 #
 
 $INCLUDE dictionary.freeradius.internal
+
+# 4000-4999 EAP related attributes
+$INCLUDE dictionary.freeradius.internal.eap
+
+# 5000-5099 password (PAP, CHAP, MSCHAPv2) attributes
+$INCLUDE dictionary.freeradius.internal.password
+
+# 5100-5199 IP allocation attributes
+$INCLUDE dictionary.freeradius.internal.ippool
+
+# 5200-5299 SIM management attributes
+$INCLUDE dictionary.freeradius.internal.sim
