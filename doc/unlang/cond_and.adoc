@@ -1,4 +1,3 @@
-include::../img/header.adoc[]
 
 == The && Operator
 
@@ -19,4 +18,3 @@ returns `true` is _condition-2_ evaluated and its result returned.
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
-include::../img/footer.adoc[]

@@ -1,4 +1,3 @@
-include::../img/header.adoc[]
 
 == Built-in Modules
 
@@ -31,4 +30,3 @@ administrator determines that the failures are not catastrophic.
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
-include::../img/footer.adoc[]
