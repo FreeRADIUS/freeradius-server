@@ -1,5 +1,4 @@
-
-== Unlang Policy Language
+= Unlang Policy Language
 
 The server supports a simple processing language called "Unlang",
 which is short for "un-language". The original intention of using an
@@ -27,7 +26,7 @@ page concludes with one or more examples of using the keyword in
 
 The `unlang` processing can be split into some high-level concepts.
 
-=== Keywords
+== Keywords
 
 link:keywords.adoc[Keywords], which are the basic statements of the
 language, e.g., link:load-balance.adoc[load-balance],
@@ -43,7 +42,7 @@ load-balance {
 }
 ----
 
-=== Conditional Expressions
+== Conditional Expressions
 
 link:condition.adoc[Conditional expressions], which are used to check
 if conditions evaluate to _true_ or _false_.  Conditional expressions
@@ -57,7 +56,7 @@ if ((&User-Name == "bob") && (&Calling-Station-Id := "00:01:03:04:05")) {
 }
 ----
 
-=== Update Statements
+== Update Statements
 
 link:update.adoc[update] statements are used to edit attributes and
 lists of attributes.
@@ -75,7 +74,7 @@ update reply {
 }
 ----
 
-=== String Expansions
+== String Expansions
 
 link:xlat.adoc[String expansion] Using `%{...}` to perform dynamic
 string expansions. (also known as link:xlat.adoc[xlat])
@@ -93,7 +92,7 @@ update reply {
 }
 ----
 
-=== Data Types
+== Data Types
 
 Each attribute used by the server has an associated
 link:data.adoc[data type].  The `unlang` interpreter enforces
@@ -132,7 +131,7 @@ update reply {
 }
 ----
 
-=== Design Goals of Unlang
+== Design Goals of Unlang
 
 The goal of `unlang` is to allow simple policies to be written with
 minimal effort. Conditional checks can be performed by the policies,
