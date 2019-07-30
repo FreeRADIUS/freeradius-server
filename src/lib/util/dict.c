@@ -878,6 +878,9 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		break;
 
 	case FR_TYPE_DATE:
+		if (!flags->length) flags->length = 4;
+		break;
+
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_INT32:
@@ -3999,14 +4002,45 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 			*ref_p = ref;
 
 		} else if (type == FR_TYPE_DATE) {
-			int precision;
+			flags->length = 4;
+			flags->type_size = FR_TIME_RES_SEC;
 
-			precision = fr_str2int(date_precision_table, key, -1);
-			if (precision < 0) {
-				fr_strerror_printf("Unknown date precision '%s'", key);
-				return -1;
+			if (strncmp(key, "uint", 4) == 0) {
+				fr_type_t subtype;
+
+				subtype = fr_str2int(fr_value_box_type_table, name, -1);
+				if (subtype < 0) {
+				unknown_type:
+					fr_strerror_printf("Unknown or unsupported date type '%s'", key);
+					return -1;
+				}
+
+				switch (subtype) {
+					default:
+						goto unknown_type;
+
+				case FR_TYPE_UINT16:
+					flags->length = 2;
+					break;
+
+				case FR_TYPE_UINT32:
+					flags->length = 4;
+					break;
+
+				case FR_TYPE_UINT64:
+					flags->length = 8;
+					break;
+				}
+			} else {
+				int precision;
+
+				precision = fr_str2int(date_precision_table, key, -1);
+				if (precision < 0) {
+					fr_strerror_printf("Unknown date precision '%s'", key);
+					return -1;
+				}
+				flags->type_size = precision;
 			}
-			flags->type_size = precision;
 
 		} else {
 			fr_strerror_printf("Unknown option '%s'", key);
