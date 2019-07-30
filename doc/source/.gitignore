@@ -1,4 +1,1 @@
-html
-latex
-man
-*.tmp
+!*.adoc
