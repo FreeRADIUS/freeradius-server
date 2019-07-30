@@ -67,15 +67,15 @@ packets.
 There are some changes to the virtual servers in `+v4+`. First, every
 virtual server has to begin with an entry:
 
-....
+```
 namespace = ...
-....
+```
 
 For RADIUS, use:
 
-....
+```
 namespace = radius
-....
+```
 
 This tells the server what protocol is being used in that virtual
 server. This configuration was not necessary in v3, because each
@@ -93,28 +93,28 @@ which lists the packet types (e.g. `+Access-Request+`) instead of
 `+auth+`. To accept multiple kinds of packets, just list `+type+`
 multiple times:
 
-....
+```
 type = Access-Request
 type = Accounting-Request
-....
+```
 
 Each `+listen+` section also has a `+transport+` entry. This
 configuration can be left out for `+headless+` servers, such as
 `+inner-tunnel+`. For example, setting UDP transport is done v ia:
 
-....
+```
 transport = udp
-....
+```
 
 Each type of transport has its configuration stored in a subsection
 named for that transport:
 
-....
+```
 transport = udp
 udp {
     ... udp transport configuration ...
 }
-....
+```
 
 For `+udp+`, the configuration entries are largley the same as for v3.
 e.g. `+ipaddr+`, `+port+`, etc.
@@ -131,7 +131,7 @@ recv Access-Request {
 }
 
 send Access-Accept {
-    ... unlang ....
+    ... unlang ```
 }
 ----
 
@@ -511,9 +511,9 @@ list, immediately after they’re parsed from their ASN1 form.
 The certificates are no longer added to the `+&request:+` list. You are
 advised to update any references during the upgrade to 4.0:
 
-....
+```
 s/TLS-Cert-/session-state:TLS-Cert-/
-....
+```
 
 The `+rlm_eap_ikev2+` module was removed. It does not follow RFC 5106,
 and no one was maintaining it.
@@ -605,33 +605,33 @@ Attribute references:
 
 The following config items must now be defined as attribute references::
 
-....
+```
 key
 count_attribute
 counter_name
 check_name
 reply_name
-....
+```
 
 For example where in v3 you would specify the attribute names as::
 
-....
+```
 count_attribute = Acct-Session-Time
 counter_name    = Daily-Session-Time
 check_name      = Max-Daily-Session
 reply_name      = Session-Timeout
 key             = User-Name
-....
+```
 
 In v4 they must now be specified as::
 
-....
+```
 count_attribute = &Acct-Session-Time
 counter_name    = &Daily-Session-Time
 check_name      = &control:Max-Daily-Session
 reply_name      = &reply:Session-Timeout
 key             = &User-Name
-....
+```
 
 Just adding the `+&+` prefix to the attribute name is not sufficient.
 Attributes must be qualified with the list to search in, or add to.

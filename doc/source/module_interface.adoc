@@ -108,14 +108,14 @@ The administrator requests the creation of a module instance by adding
 it inside the modules\{} block in radiusd.conf. The instance definition
 looks like this::
 
-....
+```
 module_name [instance_name] {
   param1 = value1
   param2 = value2
   param3 = value3
   ...
 }
-....
+```
 
 The module_name is used to load the module. To see the names of the
 available modules, look for the rlm_*.so files in $installprefix/lib.

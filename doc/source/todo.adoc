@@ -28,10 +28,10 @@ We can also define a `+short circuit+` syntax for things like the
 `+users+` file or `+sql+` module, which don’t natively allow for nested
 grouping.
 
-....
+```
 Grouped-Foo.User-Name = bar
 .Foo = baz
-....
+```
 
 i.e. the inital `+.+` means "part of the previous group at the level of
 the last attribute.
@@ -48,9 +48,9 @@ without changing the existing APIs? But that involves creating a stack
 of cursors, instead of one. This likely means requiring that cursors are
 talloc’d, and that we can create `+stacks+` of cursors. e.g.
 
-....
+```
 vp_cursor_t *fr_pair_cursor_recurse_child(TALLOC_CTX *ctx, vp_cursor_t *cursor)
-....
+```
 
 Which will recurse into the current VP _if_ that VP is of
 `+FR_TYPE_GROUP+`, and allocate a new cursor. That new cursor can then

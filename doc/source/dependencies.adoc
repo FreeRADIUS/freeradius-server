@@ -20,10 +20,10 @@ https://talloc.samba.org/talloc/doc/html/index.html
 
 *RedHat*
 
-....
+```
 # subscription-manager repos --enable rhel-7-server-optional-rpms
 # yum install libtalloc-dev
-....
+```
 
 === kqueue
 
@@ -41,7 +41,7 @@ _nothing to do. kqueue is available._
 
 *RedHat*
 
-....
+```
 # subscription-manager repos --enable rhel-7-server-optional-rpms
 # yum install libkqueue-dev
-....
+```
