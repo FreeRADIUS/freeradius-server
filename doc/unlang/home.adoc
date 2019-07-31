@@ -51,7 +51,7 @@ can be used to control the flow of processing.
 .Example
 [source,unlang]
 ----
-if ((&User-Name == "bob") && (&Calling-Station-Id := "00:01:03:04:05")) {
+if ((&User-Name == "bob") && (&Calling-Station-Id == "00:01:03:04:05")) {
 	...
 }
 ----
