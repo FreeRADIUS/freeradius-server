@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 typedef struct rlm_files_t {
-	char const *key;
+	vp_tmpl_t *key;
 
 	char const *filename;
 	rbtree_t *common;
@@ -77,12 +77,10 @@ fr_dict_autoload_t rlm_files_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_fall_through;
-static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_files_dict_attr[];
 fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -108,7 +106,7 @@ static const CONF_PARSER module_config[] = {
 #endif
 	{ FR_CONF_OFFSET("auth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile) },
 	{ FR_CONF_OFFSET("postauth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile) },
-	{ FR_CONF_OFFSET("key", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_files_t, key) },
+	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_files_t, key), .dflt = "%{%{Stripped-User-Name}:-%{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -324,20 +322,9 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	PAIR_LIST	my_pl;
 	char		buffer[256];
 
-	if (!inst->key) {
-		VALUE_PAIR	*namepair;
-
-		namepair = request->username;
-		name = namepair ? namepair->vp_strvalue : "NONE";
-	} else {
-		int len;
-
-		len = xlat_eval(buffer, sizeof(buffer), request, inst->key, NULL, NULL);
-		if (len < 0) {
-			return RLM_MODULE_FAIL;
-		}
-
-		name = len ? buffer : "NONE";
+	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
+		REDEBUG("Failed expanding key %s", inst->key->name);
+		return RLM_MODULE_FAIL;
 	}
 
 	if (!tree) return RLM_MODULE_NOOP;
