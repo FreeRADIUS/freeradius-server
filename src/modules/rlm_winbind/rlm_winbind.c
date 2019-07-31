@@ -101,11 +101,13 @@ static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	char			*user_buff = NULL;
 	char const		*username;
 	char			*username_buff = NULL;
+	VALUE_PAIR		*vp_username;
 
 	ssize_t			slen;
 	size_t			backslash = 0;
 
-	if (!request->username) return -1;
+	vp_username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	if (!vp_username) return -1;
 
 	RINDENT();
 
@@ -151,7 +153,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 			RWDEBUG("Searching group with plain username, this will probably fail");
 			RWDEBUG("Ensure winbind_domain and group_search_username are both correctly set");
 		}
-		user = request->username->vp_strvalue;
+		user = vp_username->vp_strvalue;
 	}
 
 	if (domain) {
@@ -462,8 +464,10 @@ static int mod_detach(void *instance)
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_winbind_t const *inst = instance;
+	VALUE_PAIR *vp;
 
-	if (!request->password || (request->password->da != attr_user_password)) {
+	vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	if (!vp) {
 		REDEBUG2("No User-Password found in the request; not doing winbind authentication.");
 		return RLM_MODULE_NOOP;
 	}
@@ -485,21 +489,30 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_winbind_t const *inst = instance;
+	VALUE_PAIR *username, *password;
+
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
 	/*
-	 *	Check the admin hasn't been silly
+	 *	We can only authenticate user requests which HAVE
+	 *	a User-Name attribute.
 	 */
-	if (!request->password || !fr_dict_attr_is_top_level(request->password->da) ||
-	    (request->password->da != attr_user_password)) {
-		REDEBUG("You set 'Auth-Type = winbind' for a request that does not contain a User-Password attribute!");
+	if (!username) {
+		REDEBUG("Attribute \"User-Name\" is required for authentication");
+		return RLM_MODULE_INVALID;
+	}
+
+	if (!password) {
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
 	/*
 	 *	Make sure the supplied password isn't empty
 	 */
-	if (request->password->vp_length == 0) {
-		REDEBUG("Password must not be empty");
+	if (password->vp_length == 0) {
+		REDEBUG("User-Password must not be empty");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -507,8 +520,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		REDEBUG("Login attempt with password \"%s\" (%zd)", request->password->vp_strvalue,
-			request->password->vp_length);
+		REDEBUG("Login attempt with password \"%pV\"", &password->data);
 	} else {
 		REDEBUG2("Login attempt with password");
 	}
