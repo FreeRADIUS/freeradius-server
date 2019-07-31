@@ -706,20 +706,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
 	char			sasl_realm_buff[LDAP_MAX_DN_STR_LEN];
 	fr_ldap_sasl_t		sasl;
+	VALUE_PAIR *username, *password;
+
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
 	/*
-	 * Ensure that we're being passed a plain-text password, and not
-	 * anything else.
+	 *	We can only authenticate user requests which HAVE
+	 *	a User-Name attribute.
 	 */
-
-	if (!request->username) {
+	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-
 		return RLM_MODULE_INVALID;
 	}
 
-	if (!request->password ||
-	    (request->password->da != attr_user_password)) {
+	if (!password) {
 		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere");
 		RWDEBUG("without checking if User-Password is present");
 		RWDEBUG("*********************************************");
@@ -727,15 +728,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING");
 		RWDEBUG("*********************************************");
 
-		RPEDEBUG("Attribute \"User-Password\" is required for authentication");
-
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	if (request->password->vp_length == 0) {
-		REDEBUG("Empty password supplied");
-
+	/*
+	 *	Make sure the supplied password isn't empty
+	 */
+	if (password->vp_length == 0) {
+		REDEBUG("User-Password must not be empty");
 		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Log the password
+	 */
+	if (RDEBUG_ENABLED3) {
+		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+	} else {
+		REDEBUG2("Login attempt with password");
 	}
 
 	conn = mod_conn_get(inst, request);
@@ -773,7 +784,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		}
 	}
 
-	RDEBUG2("Login attempt by \"%pV\"", &request->username->data);
+	RDEBUG2("Login attempt by \"%pV\"", &username->data);
 
 	/*
 	 *	Get the DN by doing a search.
@@ -787,7 +798,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	conn->rebound = true;
 	status = fr_ldap_bind(request,
 			      &conn,
-			      dn, request->password->vp_strvalue,
+			      dn, password->vp_strvalue,
 			      inst->user_sasl.mech ? &sasl : NULL,
 			      0,
 			      NULL, NULL);
@@ -915,9 +926,9 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 #endif
 
 	/*
-	 *	Don't be tempted to add a check for request->username
-	 *	or request->password here. rlm_ldap.authorize can be used for
-	 *	many things besides searching for users.
+	 *	Don't be tempted to add a check for User-Name or
+	 *	User-Password here.  LDAP authorization can be used
+	 *	for many things besides searching for users.
 	 */
 
 	if (fr_ldap_map_expand(&expanded, request, inst->user_map) < 0) return RLM_MODULE_FAIL;
