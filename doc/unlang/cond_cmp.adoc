@@ -94,7 +94,7 @@ done in a type-safe manner, instead of performing a string comparison.
 <integer>`/bin/echo 00` == 0
 ----
 
-In this example, the output of the `echo` program is interpreted as an
+In this example, the string output of the `echo` program is interpreted as an
 integer.  It is then compared to the right side via integer
 comparisons.  Since the integer `00` is equivalent to the integer `0`,
 the comparison will match.  If the comparison had been performed via
