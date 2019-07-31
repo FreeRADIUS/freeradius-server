@@ -137,22 +137,28 @@ static const CONF_PARSER module_config[] = {
 };
 
 fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t rlm_rest_dict[];
 fr_dict_autoload_t rlm_rest_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
 fr_dict_attr_t const *attr_rest_http_body;
 fr_dict_attr_t const *attr_rest_http_header;
 fr_dict_attr_t const *attr_rest_http_status_code;
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_rest_dict_attr[];
 fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
 	{ .out = &attr_rest_http_body, .name = "REST-HTTP-Body", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_rest_http_header, .name = "REST-HTTP-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_rest_http_status_code, .name = "REST-HTTP-Status-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -637,18 +643,38 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
-	username = request->username;
-	if (!request->username) {
-		REDEBUG("Can't perform authentication, 'User-Name' attribute not found in the request");
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
+	/*
+	 *	We can only authenticate user requests which HAVE
+	 *	a User-Name attribute.
+	 */
+	if (!username) {
+		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	password = request->password;
-	if (!password ||
-	    (password->da->attr != FR_USER_PASSWORD)) {
-		REDEBUG("You set 'Auth-Type = REST' for a request that does not contain a User-Password attribute!");
+	if (!password) {
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Make sure the supplied password isn't empty
+	 */
+	if (password->vp_length == 0) {
+		REDEBUG("User-Password must not be empty");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Log the password
+	 */
+	if (RDEBUG_ENABLED3) {
+		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+	} else {
+		REDEBUG2("Login attempt with password");
 	}
 
 	handle = fr_pool_connection_get(t->pool, request);
