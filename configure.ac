@@ -155,6 +155,7 @@ fi
 
 if test "x$RADIUSD_VERSION_COMMIT" != "x"; then
   AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
+  AC_SUBST([RADIUSD_VERSION_COMMIT])
 fi
 
 dnl #

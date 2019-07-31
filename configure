@@ -692,6 +692,7 @@ build_os
 build_vendor
 build_cpu
 build
+RADIUSD_VERSION_COMMIT
 PERL
 PANDOC_ENGINE
 PANDOC
@@ -2869,6 +2870,7 @@ if test "x$RADIUSD_VERSION_COMMIT" != "x"; then
 cat >>confdefs.h <<_ACEOF
 #define RADIUSD_VERSION_COMMIT ${RADIUSD_VERSION_COMMIT}
 _ACEOF
+
 
 fi
 

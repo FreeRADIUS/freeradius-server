@@ -115,6 +115,12 @@ doc/raddb/%.adoc: raddb/%
 #	file:// links and http:// links.
 #
 DOC_BASEDIR = $(subst $() $(),,$(foreach x,$(subst /, ,$1),../))
+ifdef RADIUSD_VERSION_COMMIT
+	DOC_RADIUSD_VERSION = $(RADIUSD_VERSION_STRING)+git-$(RADIUSD_VERSION_COMMIT)
+else
+	DOC_RADIUSD_VERSION = $(RADIUSD_VERSION_STRING)
+endif
+DOC_UPDATE_LABEL := "FreeRADIUS-$(DOC_RADIUSD_VERSION) @ Last updated"
 
 doc/%.html: doc/%.adoc
 	@echo HTML $^
@@ -124,6 +130,7 @@ doc/%.html: doc/%.adoc
 	                      -a "docinfodir=$(if $(BASEDIR),$(BASEDIR),.)/templates" \
 	                      -a "basedir=$(BASEDIR)"                                 \
 	                      -a "docinfo=shared,private"                             \
+	                      -a last-update-label=$(DOC_UPDATE_LABEL)                \
 	                      -b html5 -o $@ $<
 	${Q}perl -p -i -e 's,\.adoc,\.html,g; s,/.html",/",g; s/\.md\.html/\.html/g' $@
 
