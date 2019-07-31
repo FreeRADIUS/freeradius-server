@@ -60,6 +60,7 @@ fr_dict_autoload_t mem_dict[] = {
 fr_dict_attr_t const *attr_prompt;
 fr_dict_attr_t const *attr_reply_message;
 fr_dict_attr_t const *attr_state;
+fr_dict_attr_t const *attr_user_name;
 fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t mem_dict_attr[];
@@ -67,6 +68,7 @@ fr_dict_attr_autoload_t mem_dict_attr[] = {
 	{ .out = &attr_prompt, .name = "Prompt", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
@@ -468,53 +470,41 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	int		rcode;
 	rlm_securid_t	const *inst = instance;
 	char		 buffer[FR_MAX_STRING_LEN]="";
-	char const	*username=NULL, *password=NULL;
+	VALUE_PAIR	*username, *password;
 	VALUE_PAIR	*vp;
+
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	if (!request->username) {
+	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	if (!request->password) {
-		REDEBUG("Attribute \"Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	Clear-text passwords are the only ones we support.
-	 */
-	if (request->password->da != attr_user_password) {
-		REDEBUG("Attribute \"User-Password\" is required for authentication. Cannot use \"%s\"",
-			request->password->da->name);
+	if (!password) {
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
 	/*
 	 *	The user MUST supply a non-zero-length password.
 	 */
-	if (request->password->vp_length == 0) {
+	if (password->vp_length == 0) {
 		REDEBUG("Password should not be empty");
 		return RLM_MODULE_INVALID;
 	}
 
-	/*
-	 *	shortcuts
-	 */
-	username = request->username->vp_strvalue;
-	password = request->password->vp_strvalue;
-
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Login attempt with password \"%s\"", password);
+		RDEBUG3("Login attempt with password \"%pV\"", &password->data);
 	} else {
 		RDEBUG2("Login attempt with password");
 	}
 
-	rcode = securidAuth(inst, request, username, password,
+	rcode = securidAuth(inst, request, username->vp_strvalue, password->vp_strvalue,
 			    buffer, sizeof(buffer));
 
 	switch (rcode) {
