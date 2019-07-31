@@ -1777,9 +1777,20 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 
 /* unlang_group_ts are grown by adding a unlang_t to the end */
-static void add_child(unlang_group_t *g, unlang_t *c)
+static bool add_child(unlang_group_t *g, unlang_t *c, CONF_ITEM *ci)
 {
-	if (!c) return;
+	if (!c) return true;
+
+	/*
+	 *	Check if the section is closed.  But the compiler
+	 *	closes the section BEFORE adding the child, so we have
+	 *	to double-check for the child here.
+	 */
+	if (g->self.closed && (g->self.closed != ci)) {
+		cf_log_err(ci, "Cannot add more items to section due to previous 'break' or 'return' at %s:%d",
+			cf_filename(g->self.closed), cf_lineno(g->self.closed));
+		return false;
+	}
 
 	(void) talloc_steal(g, c);
 
@@ -1793,6 +1804,8 @@ static void add_child(unlang_group_t *g, unlang_t *c)
 
 	g->num_children++;
 	c->parent = unlang_group_to_generic(g);
+
+	return true;
 }
 
 /*
@@ -1886,7 +1899,11 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 				talloc_free(c);
 				return NULL;
 			}
-			add_child(g, single);
+			if (!add_child(g, single, ci)) {
+				talloc_free(c);
+				return NULL;
+			}
+
 		} else if (cf_item_is_pair(ci)) {
 			char const *attr, *value;
 			CONF_PAIR *cp = cf_item_to_pair(ci);
@@ -1921,7 +1938,10 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 					talloc_free(c);
 					return NULL;
 				}
-				add_child(g, single);
+				if (!add_child(g, single, ci)) {
+					talloc_free(c);
+					return NULL;
+				}
 
 			} else if (!parent || (parent->type != UNLANG_TYPE_MODULE)) {
 				cf_log_err(cp, "Invalid location for action over-ride");
@@ -2305,6 +2325,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	unlang_t *foreach;
+	unlang_t *c;
 
 	for (foreach = parent; foreach != NULL; foreach = foreach->parent) {
 		if (foreach->type == UNLANG_TYPE_FOREACH) break;
@@ -2315,8 +2336,12 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		return NULL;
 	}
 
-	return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
-			     UNLANG_TYPE_BREAK, COND_TYPE_INVALID);
+	c = compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
+			  UNLANG_TYPE_BREAK, COND_TYPE_INVALID);
+	if (!c) return NULL;
+
+	parent->closed = ci;
+	return c;
 }
 
 static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
@@ -3270,7 +3295,11 @@ static unlang_t *compile_item(unlang_t *parent,
 	}
 
 	if (strcmp(modrefname, "return") == 0) {
-		return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_RETURN, COND_TYPE_INVALID);
+		c = compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_RETURN, COND_TYPE_INVALID);
+		if (!c) return NULL;
+
+		parent->closed = ci;
+		return c;
 	}
 #endif
 
