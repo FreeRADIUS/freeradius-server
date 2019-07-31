@@ -413,6 +413,11 @@ static int cache_verify(vp_map_t *map, void *ctx)
 				   fr_int2str(tmpl_names, map->rhs->type, "<INVALID>"));
 			return -1;
 		}
+
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		cf_log_err(map->ci, "Unknown attribute '%s'", map->rhs->name);
+		return -1;
+
 	default:
 		break;
 	}
