@@ -40,6 +40,24 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_krb5_dict[];
+fr_dict_autoload_t rlm_krb5_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t rlm_krb5_dict_attr[];
+fr_dict_attr_autoload_t rlm_krb5_dict_attr[] = {
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
 static int mod_detach(void *instance)
 {
 	rlm_krb5_t *inst = instance;
@@ -229,41 +247,20 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, rlm_krb5_t const *ins
 {
 	krb5_error_code ret;
 	char *princ_name;
+	VALUE_PAIR *username;
 
-	fr_cond_assert(inst);
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 
 	/*
-	 * 	We can only authenticate user requests which HAVE
-	 * 	a User-Name attribute.
+	 *	We can only authenticate user requests which HAVE
+	 *	a User-Name attribute.
 	 */
-	if (!request->username) {
+	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-
 		return RLM_MODULE_INVALID;
 	}
 
-	/*
-	 * 	We can only authenticate user requests which HAVE
-	 * 	a User-Password attribute.
-	 */
-	if (!request->password) {
-		REDEBUG("Attribute \"User-Password\" is required for authentication");
-
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 * 	Ensure that we're being passed a plain-text password,
-	 * 	and not anything else.
-	 */
-	if (request->password->da->attr != FR_USER_PASSWORD) {
-		REDEBUG("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".",
-			request->password->da->name);
-
-		return RLM_MODULE_INVALID;
-	}
-
-	ret = krb5_parse_name(context, request->username->vp_strvalue, client);
+	ret = krb5_parse_name(context, username->vp_strvalue, client);
 	if (ret) {
 		REDEBUG("Failed parsing username as principal: %s", rlm_krb5_error(inst, context, ret));
 
@@ -327,10 +324,33 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	rlm_krb5_t const	*inst = instance;
 	rlm_rcode_t		rcode;
 	krb5_error_code		ret;
-
 	rlm_krb5_handle_t	*conn;
-
 	krb5_principal		client = NULL;
+	VALUE_PAIR		*password;
+
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+
+	if (!password) {
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Make sure the supplied password isn't empty
+	 */
+	if (password->vp_length == 0) {
+		REDEBUG("User-Password must not be empty");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Log the password
+	 */
+	if (RDEBUG_ENABLED3) {
+		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+	} else {
+		REDEBUG2("Login attempt with password");
+	}
 
 #  ifdef KRB5_IS_THREAD_SAFE
 	conn = fr_pool_connection_get(inst->pool, request);
@@ -345,7 +365,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	/*
 	 *	Verify the user, using the options we set in instantiate
 	 */
-	ret = krb5_verify_user_opt(conn->context, client, request->password->vp_strvalue, &conn->options);
+	ret = krb5_verify_user_opt(conn->context, client, password->vp_strvalue, &conn->options);
 	if (ret) {
 		rcode = krb5_process_error(inst, request, conn, ret);
 		goto cleanup;
@@ -400,9 +420,32 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 	krb5_principal		client = NULL;	/* actually a pointer value */
 	krb5_creds		init_creds;
-	char *password;		/* compiler warnings */
+	char			*nonconst_password;		/* compiler warnings */
+	VALUE_PAIR		*password;
 
-	rad_assert(inst->context);
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+
+	if (!password) {
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Make sure the supplied password isn't empty
+	 */
+	if (password->vp_length == 0) {
+		REDEBUG("User-Password must not be empty");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Log the password
+	 */
+	if (RDEBUG_ENABLED3) {
+		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+	} else {
+		REDEBUG2("Login attempt with password");
+	}
 
 #  ifdef KRB5_IS_THREAD_SAFE
 	conn = fr_pool_connection_get(inst->pool, request);
@@ -426,9 +469,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	/*
 	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
 	 */
-	memcpy(&password, &request->password->vp_strvalue, sizeof(password));
+	memcpy(&nonconst_password, &password->vp_strvalue, sizeof(nonconst_password));
 	RDEBUG2("Retrieving and decrypting TGT");
-	ret = krb5_get_init_creds_password(conn->context, &init_creds, client, password,
+	ret = krb5_get_init_creds_password(conn->context, &init_creds, client, nonconst_password,
 					   NULL, NULL, 0, NULL, inst->gic_options);
 	if (ret) {
 		rcode = krb5_process_error(inst, request, conn, ret);
