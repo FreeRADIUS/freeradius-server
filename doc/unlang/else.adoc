@@ -22,7 +22,7 @@ and the statements within the `else` subsection are executed.
 if (&User-Name == "bob") {
     reject
 }
-elsif (&User-Name == "doug") {
+else {
     ok
 }
 ----
