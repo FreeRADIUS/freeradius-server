@@ -27,7 +27,8 @@ _<value>_.
 
 <op>:: The operator such as `=`, `:=`, etc.
 
-<value>:: The name of the field from the database.
+<value>:: The value is expanded and the result is interpretted and
+assigned.
 
 The update process is atomic, in that either all of the attributes are
 modified, or none of them are modified.  If the `update` fails for any
