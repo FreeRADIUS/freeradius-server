@@ -70,7 +70,6 @@ eap {
 	#
 	type = md5
 #	type = pwd
-#	type = leap
 	type = gtc
 	type = tls
 	type = ttls
@@ -107,24 +106,6 @@ eap {
 		#  fragment_size:: This has the same meaning as for TLS.
 		#
 #		fragment_size = 1020
-#	}
-
-	#
-	#  ### Cisco LEAP
-	#
-	#  [WARNING]
-	#  ====
-	#  We do not recommend using LEAP in new deployments.
-	#  See: http://www.securiteam.com/tools/5TP012ACKE.html
-	#  ====
-	#
-	#  Cisco LEAP uses the MS-CHAP algorithm (but not the MS-CHAP
-	#  attributes) to perform it's authentication.
-	#
-	#  As a result, LEAP *requires* access to the plain-text User-Password,
-	#  or the NT-Password attributes.
-	#
-#	leap {
 #	}
 
 	#

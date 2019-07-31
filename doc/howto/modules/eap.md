@@ -91,7 +91,6 @@ Path                         | Description
 `rlm_eap/types/rlm_eap_tls`  | EAP-TLS based authentication.
 `rlm_eap/types/rlm_eap_ttls` | TTLS based authentication.
 `rlm_eap/types/rlm_eap_peap` | Windows PEAP based authentication.
-`rlm_eap/types/rlm_eap_leap` | Cisco LEAP authentication.
 `rlm_eap/types/rlm_eap_sim`  | EAP-SIM (GSM) based authentication
 
 ## Configuration
@@ -209,12 +208,6 @@ In radiusd.conf
 
   # eap authentication takes place.
   process Access-Request {
-  	eap
-  }
-
-  # If you are proxying EAP-LEAP requests
-  # This is required to make LEAP work.
-        post-proxy {
   	eap
   }
 ```
@@ -336,7 +329,7 @@ MD5-Challenge.
 
 ## Installation
 
-EAP, EAP-MD5, and Cisco LEAP do not require any additional packages.
+EAP, EAP-MD5, and EAP-MSCHAPv2 do not require any additional packages.
 Freeradius contains all the required packages.
 
 For EAP-TLS, EAP-TTLS, and PEAP, OPENSSL, <http://www.openssl.org/>,

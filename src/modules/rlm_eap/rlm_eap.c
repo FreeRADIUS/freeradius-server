@@ -370,25 +370,10 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instan
 	rcode = eap_compose(eap_session);
 
 	/*
-	 *	Add to the list only if it is EAP-Request, OR if
-	 *	it's LEAP, and a response.
+	 *	Add to the list only if it is EAP-Request.
 	 */
-	if (((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
-	    (eap_session->this_round->request->type.num >= FR_EAP_METHOD_MD5)) ||
-
-		/*
-		 *	LEAP is a little different.  At Stage 4,
-		 *	it sends an EAP-Success message, but we still
-		 *	need to keep the State attribute & session
-		 *	data structure around for the AP Challenge.
-		 *
-		 *	At stage 6, LEAP sends an EAP-Response, which
-		 *	isn't put into the list.
-		 */
-	    ((eap_session->this_round->response->code == FR_EAP_CODE_RESPONSE) &&
-	     (eap_session->this_round->response->type.num == FR_EAP_METHOD_LEAP) &&
-	     (eap_session->this_round->request->code == FR_EAP_CODE_SUCCESS) &&
-	     (eap_session->this_round->request->type.num == 0))) {
+	if ((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
+	    (eap_session->this_round->request->type.num >= FR_EAP_METHOD_MD5)) {
 		talloc_free(eap_session->prev_round);
 		eap_session->prev_round = eap_session->this_round;
 		eap_session->this_round = NULL;
@@ -748,15 +733,14 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		eap_compose(eap_session);
 
 		/*
-		 *	Add to the list only if it is EAP-Request, OR if
-		 *	it's LEAP, and a response.
+		 *	Add to the list only if it is EAP-Request.
 		 */
 		if ((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
 		    (eap_session->this_round->request->type.num >= FR_EAP_METHOD_MD5)) {
 			talloc_free(eap_session->prev_round);
 			eap_session->prev_round = eap_session->this_round;
 			eap_session->this_round = NULL;
-		} else {	/* couldn't have been LEAP, there's no tunnel */
+		} else {
 			RDEBUG2("Freeing eap_session");
 			eap_session_destroy(&eap_session);
 		}
@@ -781,87 +765,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 	/*
 	 *	This is allowed.
 	 */
-	if (!request->proxy->reply) return RLM_MODULE_NOOP;
-
-	/*
-	 *	Hmm... there's got to be a better way to
-	 *	discover codes for vendor attributes.
-	 *
-	 *	This is vendor Cisco (9), Cisco-AVPair
-	 *	attribute (1)
-	 */
-	for (vp = fr_cursor_iter_by_da_init(&cursor, &request->proxy->reply->vps, attr_cisco_avpair);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		/*
-		 *	If it's "leap:session-key", then stop.
-		 *
-		 *	The format is VERY specific!
-		 */
-		if (strncasecmp(vp->vp_strvalue, "leap:session-key=", 17) == 0) break;
-	}
-
-	/*
-	 *	Got to the end without finding "leap:session-key="
-	 */
-	if (!vp) return RLM_MODULE_NOOP;
-
-	/*
-	 *	The format is very specific.
-	 *
-	 *	- 17 bytes are "leap:session-key="
-	 *	- 32 are the hex encoded session key.
-	 *	- 2 bytes are the salt.
-	 */
-	if (vp->vp_length != (17 + 34)) {
-		RDEBUG2("&Cisco-AVPair with leap:session-key has incorrect length. Got %zu, expected %d",
-		       vp->vp_length, 17 + 34);
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
-	 *	Decrypt the session key, using the proxy data.
-	 *
-	 *	Note that the session key is *binary*, and therefore
-	 *	may contain embedded zeros.  So we have to use memdup.
-	 *	However, Cisco-AVPair is a "string", so the rest of the
-	 *	code assumes that it's terminated by a trailing '\0'.
-	 *
-	 *	So... be sure to (a) use memdup, and (b) include the last
-	 *	zero byte.
-	 */
-	i = 34;
-	p = talloc_memdup(vp, vp->vp_strvalue, vp->vp_length + 1);
-	talloc_set_type(p, uint8_t);
-/*
-	ret = fr_radius_decode_tunnel_password((uint8_t *)p + 17, &i, request->proxy->home_server->secret,
-					       request->proxy->packet->vector, false);
-	if (ret < 0) {
-		REDEBUG("Decoding leap:session-key failed");
-		talloc_free(p);
-		return RLM_MODULE_FAIL;
-	}
-*/
-	len = i;
-	if (len != 16) {
-		REDEBUG("Decoded key length is incorrect, must be 16 bytes");
-		talloc_free(p);
-		return RLM_MODULE_FAIL;
-	}
-
-	/*
-	 *	Encrypt the session key again, using the request data.
-	 */
-	ret = fr_radius_encode_tunnel_password(p + 17, &len, request->client->secret, request->packet->vector);
-	if (ret < 0) {
-		REDEBUG("Encoding leap:session-key failed");
-		talloc_free(p);
-		return RLM_MODULE_FAIL;
-	}
-
-	fr_pair_value_strsteal(vp, p);
-
-	return RLM_MODULE_UPDATED;
+	return RLM_MODULE_NOOP;
 }
 #endif
 

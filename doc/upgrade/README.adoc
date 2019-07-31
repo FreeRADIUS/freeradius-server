@@ -544,6 +544,11 @@ preferable to having them hard-coded in C.
 The `+virtual_server+` configuration has been removed from EAP-PWD. The
 module now looks for &request.control:Cleartext-Password.
 
+=== rlm_eap_leap
+
+The LEAP protocol has been removed from the server.  It is insecure,
+non-standard, and should not be used.
+
 === rlm_exec
 
 Exec-Program and Exec-Program-Wait have been removed.
