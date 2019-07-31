@@ -37,8 +37,6 @@ foreach &request:Reply-Message {
 			&request:Filter-Id += "3"
 		}
 		break
-
-		test_fail
 	}
 }
 
@@ -63,7 +61,5 @@ foreach &request:Reply-Message {
 
 	if ("%{Foreach-Variable-0}" == "3") {
 		break
-
-		test_fail
 	}
 }

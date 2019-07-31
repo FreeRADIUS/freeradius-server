@@ -33,11 +33,6 @@ foreach &Filter-Id {
 		#  Stop processing "authorize", and go to the next section.
 		#
 		return
-
-		#
-		#  Shouldn't reach this
-		#
-		test_fail
 	}
 
 	if ("%{Foreach-Variable-0}" == "4") {
