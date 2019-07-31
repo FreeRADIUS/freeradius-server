@@ -8,9 +8,12 @@ ARG DEBIAN_FRONTEND=noninteractive
 #
 #  This is necessary for the jenkins server to talk to the docker instance
 #
-RUN echo deb http://ftp.debian.org/debian ${osname}-backports main >> /etc/apt/sources.list
-RUN apt-get update && apt-get -t ${osname}-backports install -y openjdk-8-jre-headless
-RUN apt-get install -y openssh-server sudo
+RUN echo "deb [check-valid-until=no] http://archive.debian.org/debian ${osname}-backports main" >> /etc/apt/sources.list
+RUN echo 'Acquire::Check-Valid-Until "false";' >> /etc/apt/apt.conf
+RUN apt-get update && \
+    apt-get -t ${osname}-backports install -y openjdk-8-jre-headless
+RUN apt-get install -y openssh-server \
+                       sudo
 
 RUN useradd -m jenkins
 RUN echo "jenkins:jenkins1" | chpasswd
