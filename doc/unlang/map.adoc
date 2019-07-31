@@ -22,20 +22,17 @@ database query which returns one or more fields.
 <server-attribute>:: The server attribute which is assigned the value
 taken from the database query.
 
-<op>:: The operator such as `=`, `:=`, etc.
+<op>:: The operator such as `=`, `:=`, etc. Any
+<<update.adoc#_editing_operators,editing operator>> defined for an
+link:update.adoc[update] statement is permissible.
 
-<field>:: The name of the field from the database.
-
-For SQL, the field names are usually column names.  For LDAP, the
-field names are usually LDAP attributes.
-
-The right hand side of the assignment is a field name, which should
-generally be enclosed in single quotes.  The single quotes prevent any
-additional expansion of the _<field>_ value.
-
-When the right hand side is instead a double-quoted string, that
-string is expanded dynamically.  The resulting value is then taken as
-the field name.
+<field>:: The name of the field from the database. For SQL, the field names are
+usually column names.  For LDAP, the field names are usually LDAP attributes.
++
+The _<field>_ value should generally be enclosed in single quotes which
+prevents any additional expansion of the value. When the right hand side is
+instead a double-quoted string, that string is expanded dynamically.  The
+resulting value is then taken as the field name.
 
 If the `map` fails for any reason, then all of the results are
 discarded, and the `map` does not affect any server attributes.  For
