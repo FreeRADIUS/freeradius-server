@@ -1920,8 +1920,6 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 	 */
 	case T_OP_SUB:
 	{
-		bool removed = false;
-
 		/* We didn't find any attributes earlier */
 		if (!found) goto finish;
 
@@ -1955,7 +1953,6 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		     	do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
 					fr_cursor_free_item(&list);
-					removed = true;
 					break;
 				}
 		     	} while ((vb = vb->next));
