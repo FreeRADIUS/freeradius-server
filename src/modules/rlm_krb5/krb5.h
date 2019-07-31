@@ -86,8 +86,10 @@ typedef struct {
 #    include <com_err.h>
 #  endif
 #  define rlm_krb5_error(_x, _y, _z) error_message(_z)
+#  define KRB5_UNUSED UNUSED
 #else
 char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_error_code code);
+# define KRB5_UNUSED
 #endif
 
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);

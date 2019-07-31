@@ -242,7 +242,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  * @param[in] request Current request.
  * @param[in] context Kerberos context.
  */
-static rlm_rcode_t krb5_parse_user(krb5_principal *client, rlm_krb5_t const *inst, REQUEST *request,
+static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_t const *inst, REQUEST *request,
 				   krb5_context context)
 {
 	krb5_error_code ret;
