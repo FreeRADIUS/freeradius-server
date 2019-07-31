@@ -66,9 +66,9 @@ processed.  These attributes are never sent in any packet.
 `session-state`:: Attributes which are maintained across multi-packet
 exchanges.
 
-There must be a semicolon `:` after the list name and before the
-attribute name.  This syntax helps the server to distinguish between
-list names and attribute names.
+There must be a colon `:` after the list name and before the attribute name.
+This syntax helps the server to distinguish between list names and attribute
+names.
 
 NOTE: In version 3, there were additional lists such as `proxy`,
 `proxy-reply`, and `coa`.  These lists have been removed in version 4.
@@ -108,7 +108,7 @@ finishes, it is deleted, and is no longer accessible to the parent.
 
 The _<server-attribute>_ field is an attribute name, such as
 `&Reply-Message`.  The attribute name may also be prefixed with a
-_<list>_ qualifier, which over-rides the _<list>_ given at the start
+_<list>_ qualifier, which overrides the _<list>_ given at the start
 of the `update` section.
 
 NOTE: In version 3, the leading `&` was optional.  In version 4, the
