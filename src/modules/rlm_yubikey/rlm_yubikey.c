@@ -246,7 +246,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 	char const	*passcode;
 	size_t		len;
-	VALUE_PAIR	*vp;
+	VALUE_PAIR	*vp, *password;
 	char const	*otp;
 	size_t		password_len;
 	int		ret;
@@ -254,7 +254,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	/*
 	 *	Can't do yubikey auth if there's no password.
 	 */
-	if (!request->password || (request->password->da != attr_user_password)) {
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	if (!password) {
 		/*
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
@@ -263,12 +264,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
 		}
 
-
 		return RLM_MODULE_NOOP;
 	}
 
-	passcode = request->password->vp_strvalue;
-	len = request->password->vp_length;
+	passcode = password->vp_strvalue;
+	len = password->vp_length;
 
 	/*
 	 *	Now see if the passcode is the correct length (in its raw
@@ -297,7 +297,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 	/* May be a concatenation, check the last 32 bytes are modhex */
 	if (inst->split) {
-		char *password;
+		char *remainder;
 
 		/*
 		 *	Insert a new request attribute just containing the OTP
@@ -310,14 +310,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	Replace the existing string buffer for the password
 		 *	attribute with one just containing the password portion.
 		 */
-		MEM(password = talloc_array(request->password, char, password_len + 1));
-		strlcpy(password, passcode, password_len + 1);
-		fr_pair_value_strsteal(request->password, password);
+		MEM(remainder = talloc_array(password, char, password_len + 1));
+		strlcpy(remainder, passcode, password_len + 1);
+		fr_pair_value_strsteal(password, remainder);
 
 		RINDENT();
 		if (RDEBUG_ENABLED3) {
 			RDEBUG3("&request:Yubikey-OTP := '%s'", vp->vp_strvalue);
-			RDEBUG3("&request:User-Password := '%s'", request->password->vp_strvalue);
+			RDEBUG3("&request:User-Password := '%s'", password->vp_strvalue);
 		} else {
 			RDEBUG2("&request:Yubikey-OTP := <<< secret >>>");
 			RDEBUG2("&request:User-Password := <<< secret >>>");
@@ -365,12 +365,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		/*
 		 *	Can't do yubikey auth if there's no password.
 		 */
-		if (!request->password || (request->password->da != attr_user_password)) {
+		vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+		if (!vp) {
 			REDEBUG("No User-Password in the request. Can't do Yubikey authentication");
 			return RLM_MODULE_INVALID;
 		}
-
-		vp = request->password;
 	}
 
 	passcode = vp->vp_strvalue;
