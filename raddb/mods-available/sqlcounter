@@ -73,7 +73,7 @@
 #  | `%%e`	   | unix time value of end of reset period.
 #  |===
 #
-#	key = &User-Name
+#	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 #
 #  counter_name:: Name of the `check` attribute to use to access the counter in
 #  the `users` file or SQL `radcheck` or `radcheckgroup` tables.
@@ -98,7 +98,7 @@ sqlcounter dailycounter {
 	counter_name = &Daily-Session-Time
 	check_name = &control:Max-Daily-Session
 	reply_name = &reply:Session-Timeout
-	key = &User-Name
+	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 	reset = daily
 

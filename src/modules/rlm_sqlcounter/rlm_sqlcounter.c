@@ -80,7 +80,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlcounter_t, query) },
 	{ FR_CONF_OFFSET("reset", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlcounter_t, reset) },
 
-	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, key_attr), .dflt = "&request:User-Name", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, key_attr), .dflt = "%{%{Stripped-User-Name}:-%{User-Name}}", .quote = T_BARE_WORD },
 
 	/* Just used to register a paircmp against */
 	{ FR_CONF_OFFSET("counter_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_sqlcounter_t, paircmp_attr) },
@@ -101,13 +101,11 @@ fr_dict_autoload_t rlm_sqlcounter_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_reply_message;
 static fr_dict_attr_t const *attr_session_timeout;
 
 extern fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[];
 fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[] = {
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
@@ -426,16 +424,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		find_next_reset(inst, fr_time_to_sec(request->packet->timestamp));
 	}
 
-	/*
-	 *      Look for the key.  User-Name is special.  It means
-	 *      The REAL username, after stripping.
-	 */
-	if ((inst->key_attr->tmpl_list == PAIR_LIST_REQUEST) &&
-	    (inst->key_attr->tmpl_da == attr_user_name)) {
-		key_vp = request->username;
-	} else {
-		tmpl_find_vp(&key_vp, request, inst->key_attr);
-	}
+	tmpl_find_vp(&key_vp, request, inst->key_attr);
 	if (!key_vp) {
 		RWDEBUG2("Couldn't find key attribute, %s, doing nothing...", inst->key_attr->tmpl_da->name);
 		return RLM_MODULE_NOOP;

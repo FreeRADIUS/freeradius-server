@@ -641,6 +641,15 @@ with newer features in the server such as CoA, where reply_name can now
 be `+&coa:Session-Timeout+`. That allows the server to send a CoA packet
 which updates the `+Session-Timeout+` for the user.
 
+In v4, when the `key` field was set to `User-Name`, the module would
+also look for `Stripped-User-Name` as the key.  In v4, this
+functionality has been moved to the configuration.  To get the same
+functionality, the key should now be specified as a dynamic expansion:
+
+```
+key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+```
+
 === rlm_sqlippool
 
 NOTE: The `+ipv6+` configuration item has been deleted. It was
