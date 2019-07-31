@@ -63,7 +63,7 @@ typedef struct {
 	vp_tmpl_t	*paircmp_attr;	//!< Daily-Session-Time.
 	vp_tmpl_t	*limit_attr;  	//!< Max-Daily-Session.
 	vp_tmpl_t	*reply_attr;  	//!< Session-Timeout.
-	vp_tmpl_t	*key_attr;  	//!< User-Name
+	vp_tmpl_t	*key;  		//!< User-Name
 
 	char const	*sqlmod_inst;	//!< Instance of SQL module to use, usually just 'sql'.
 	char const	*query;		//!< SQL query to retrieve current session time.
@@ -80,7 +80,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlcounter_t, query) },
 	{ FR_CONF_OFFSET("reset", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlcounter_t, reset) },
 
-	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, key_attr), .dflt = "&request:User-Name", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_sqlcounter_t, key), .dflt = "%{%{Stripped-User-Name}:-%{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
 
 	/* Just used to register a paircmp against */
 	{ FR_CONF_OFFSET("counter_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_sqlcounter_t, paircmp_attr) },
@@ -101,13 +101,11 @@ fr_dict_autoload_t rlm_sqlcounter_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_reply_message;
 static fr_dict_attr_t const *attr_session_timeout;
 
 extern fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[];
 fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[] = {
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
@@ -252,11 +250,10 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
  *
  *	%b	last_reset
  *	%e	reset_time
- *	%k	key_name
  *	%S	sqlmod_inst
  *
  */
-static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, REQUEST *request, char const *fmt)
+static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, UNUSED REQUEST *request, char const *fmt)
 {
 	int freespace;
 	char const *p;
@@ -317,20 +314,6 @@ static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				p++;
-				break;
-
-			case 'k': /* Key Name */
-			{
-				VALUE_PAIR *vp;
-
-				WARN("Please replace '%%k' with '%%{${key}}'");
-				tmpl_find_vp(&vp, request, inst->key_attr);
-				if (vp) {
-					fr_pair_value_snprint(q, freespace, vp, '"');
-					q += strlen(q);
-				}
-				p++;
-			}
 				break;
 
 				/*
@@ -404,7 +387,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 {
 	rlm_sqlcounter_t	*inst = instance;
 	uint64_t		counter, res;
-	VALUE_PAIR		*key_vp, *limit;
+	VALUE_PAIR		*limit;
 	VALUE_PAIR		*reply_item;
 	char			msg[128];
 	int			ret;
@@ -424,21 +407,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 */
 		inst->last_reset = inst->reset_time;
 		find_next_reset(inst, fr_time_to_sec(request->packet->timestamp));
-	}
-
-	/*
-	 *      Look for the key.  User-Name is special.  It means
-	 *      The REAL username, after stripping.
-	 */
-	if ((inst->key_attr->tmpl_list == PAIR_LIST_REQUEST) &&
-	    (inst->key_attr->tmpl_da == attr_user_name)) {
-		key_vp = request->username;
-	} else {
-		tmpl_find_vp(&key_vp, request, inst->key_attr);
-	}
-	if (!key_vp) {
-		RWDEBUG2("Couldn't find key attribute, %s, doing nothing...", inst->key_attr->tmpl_da->name);
-		return RLM_MODULE_NOOP;
 	}
 
 	if (tmpl_find_vp(&limit, request, inst->limit_attr) < 0) {
