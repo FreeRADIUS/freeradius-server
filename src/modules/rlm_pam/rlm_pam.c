@@ -74,11 +74,13 @@ fr_dict_autoload_t rlm_pam_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_pam_auth;
+static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_pam_dict_attr[];
 fr_dict_attr_autoload_t rlm_pam_dict_attr[] = {
 	{ .out = &attr_pam_auth, .name = "Pam-Auth", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
@@ -214,45 +216,51 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	int		ret;
 	VALUE_PAIR	*pair;
 	rlm_pam_t const	*data = instance;
-
 	char const *pam_auth_string = data->pam_auth_name;
+	VALUE_PAIR *username, *password;
+
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	if (!request->username) {
+	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	/*
-	 *	We can only authenticate user requests which HAVE
-	 *	a User-Password attribute.
-	 */
-	if (!request->password) {
+	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
 	/*
-	 *  Ensure that we're being passed a plain-text password,
-	 *  and not anything else.
+	 *	Make sure the supplied password isn't empty
 	 */
-	if (request->password->da != attr_user_password) {
-		REDEBUG("Attribute \"%s\" is required for authentication.  Cannot use \"%s\".",
-			attr_user_password->name, request->password->da->name);
+	if (password->vp_length == 0) {
+		REDEBUG("User-Password must not be empty");
 		return RLM_MODULE_INVALID;
 	}
 
 	/*
-	 *	Let the 'users' file over-ride the PAM auth name string,
+	 *	Log the password
+	 */
+	if (RDEBUG_ENABLED3) {
+		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+	} else {
+		REDEBUG2("Login attempt with password");
+	}
+
+	/*
+	 *	Let control list over-ride the PAM auth name string,
 	 *	for backwards compatibility.
 	 */
 	pair = fr_pair_find_by_da(request->control, attr_pam_auth, TAG_ANY);
 	if (pair) pam_auth_string = pair->vp_strvalue;
 
-	ret = do_pam(request, request->username->vp_strvalue, request->password->vp_strvalue, pam_auth_string);
+	ret = do_pam(request, username->vp_strvalue, password->vp_strvalue, pam_auth_string);
 	if (ret < 0) return RLM_MODULE_REJECT;
 
 	return RLM_MODULE_OK;
