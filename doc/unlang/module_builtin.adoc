@@ -12,21 +12,21 @@ policy.
 
 The names and behaviours of these modules are given below:
 
-* `fail`
- - Causes the request to be treated as if a database failure had
+`fail`::
+Causes the request to be treated as if a database failure had
 occurred.
 
-* `noop`
- - Do nothing. This also serves as an instruction to the
+`noop`::
+Do nothing. This also serves as an instruction to the
 configurable failover tracking that nothing was done in the current
 section.
 
-* `ok`
- - Instructs the server that the request was processed properly. This keyword can be used to over-ride earlier failures if the local
+`ok`::
+Instructs the server that the request was processed properly. This keyword can be used to over-ride earlier failures if the local
 administrator determines that the failures are not catastrophic.
 
-* `reject`
- - Causes the request to be immediately rejected.
+`reject`::
+Causes the request to be immediately rejected.
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
