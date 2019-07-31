@@ -13,11 +13,11 @@ update [ <list> ] {
 The `update` statement adds attributes to, or edits the attributes in,
 the named _<list>_.
 
-The `update` statement consists of a the following syntax elements:
+The `update` statement consists of the following syntax elements:
 
 <list>:: The attribute list which will be updated.  The list is
 usually `request`, `reply`, or `control`.
-
++
 If the _<list>_ qualifier is omitted, then each entry inside of the
 `update` section *must* be prefixed with a list name.  For example,
 `&request:User-Name ...`
@@ -46,7 +46,7 @@ update reply {
 
 === Lists
 
-The _<list>_ field setys the attribute list that will be updated.  If
+The _<list>_ field sets the attribute list that will be updated.  If
 the _<list>_ qualifier is omitted, then each entry inside of the
 `update` section *must* be prefixed with a list name.  For example,
 `&request:User-Name ...`
@@ -59,7 +59,7 @@ Allow values for the _<list>_ field are:
 
 `control`:: Attributes in the internal "control" list that is
 associated with the request.
-
++
 The `control` attributes are used to manage how the request is
 processed.  These attributes are never sent in any packet.
 
@@ -188,8 +188,6 @@ depends on the data type of the contents.  For example, if the string
 then the result is an ASCII string containing that value.  However, if
 the same string is assigned to an attribute of the `ipaddr` data type,
 then the result is a 32-bit IPv4 address, with binary value `0xc0000201`.
-
-Th
 
 .Example
 [source,unlang]
