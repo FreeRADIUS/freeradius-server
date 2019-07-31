@@ -37,11 +37,5 @@ authenticate eap {
 }
 
 post-proxy {
-	#
-	#  This is necessary for LEAP, or if you set:
-	#
-	#  proxy_tunneled_request_as_eap = no
-	#
-	eap
 }
 }
