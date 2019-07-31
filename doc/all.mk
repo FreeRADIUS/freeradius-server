@@ -114,9 +114,12 @@ doc/raddb/%.adoc: raddb/%
 #	Note that we need to make the BASEDIR relative, so that it works for both
 #	file:// links and http:// links.
 #
+DOC_BASEDIR = $(subst $() $(),,$(foreach x,$(subst /, ,$1),../))
+
 doc/%.html: doc/%.adoc
 	@echo HTML $^
-	$(eval BASEDIR := $(patsubst %/,../,$(subst ${top_srcdir}/doc/,,$(dir $@))))
+	$(eval BASEDIR := $(call DOC_BASEDIR,$(subst doc/,,$(dir $^))))
+
 	${Q}$(ASCIIDOCTOR) $< -a "toc=left"                       \
 	                      -a "docinfodir=$(BASEDIR)/templates" \
 	                      -a "basedir=$(BASEDIR)"            \
