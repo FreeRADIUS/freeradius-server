@@ -51,7 +51,6 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	VALUE_PAIR	*append, **append_tail;
 	VALUE_PAIR 	*to_copy = NULL;
 	bool		*edited = NULL;
-	REQUEST		*fixup = NULL;
 	TALLOC_CTX	*ctx;
 
 	/*
@@ -296,12 +295,6 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	fr_pair_list_free(to);
 	last = to;
 
-	if (to == &request->packet->vps) {
-		fixup = request;
-	} else if (request->parent && (to == &request->parent->packet->vps)) {
-		fixup = request->parent;
-	}
-
 	for (i = 0; i < tailto; i++) {
 		if (!to_list[i]) continue;
 
@@ -326,28 +319,6 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 *	the tail of the "to" list.
 	 */
 	*last = append;
-
-	/*
-	 *	Fix dumb cache issues
-	 */
-	if (fixup) {
-		fixup->username = NULL;
-		fixup->password = NULL;
-
-		for (vp = fixup->packet->vps; vp != NULL; vp = vp->next) {
-			if (!fr_dict_attr_is_top_level(vp->da)) continue;
-
-			if ((vp->da->attr == FR_USER_NAME) && !fixup->username) {
-				fixup->username = vp;
-
-			} else if (vp->da->attr == FR_STRIPPED_USER_NAME) {
-				fixup->username = vp;
-
-			} else if (vp->da->attr == FR_USER_PASSWORD) {
-				fixup->password = vp;
-			}
-		}
-	}
 
 	rad_assert(request->packet != NULL);
 

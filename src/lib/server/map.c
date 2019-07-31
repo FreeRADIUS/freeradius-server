@@ -1805,18 +1805,12 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		switch (mod->op) {
 		case T_OP_CMP_FALSE:
 			fr_pair_list_free(vp_list);				/* Clear the entire list */
-
-			if (map->lhs->tmpl_list == PAIR_LIST_REQUEST) {
-				context->username = NULL;
-				context->password = NULL;
-			}
 			goto finish;
 
 		case T_OP_SET:
 			fr_pair_list_free(vp_list);				/* Clear the existing list */
 			*vp_list = map_list_mod_to_vps(parent, vlm);		/* Replace with a new list */
-			if (!*vp_list) goto finish;
-			goto update;
+			goto finish;
 
 		/*
 		 *	Ugh... exponential... Fixme? Build a tree if number
@@ -1852,7 +1846,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 			fr_cursor_tail(&to);
 			fr_cursor_merge(&to, &to_insert);	/* Do this last so we don't expand the 'to' set */
 		}
-			goto update;
+			goto finish;
 
 		case T_OP_ADD:
 		{
@@ -1868,7 +1862,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 			fr_cursor_init(&from, &vp_from);
 			fr_cursor_merge(&to, &from);
 		}
-			goto update;
+			goto finish;
 
 		default:
 			rcode = -1;
@@ -1912,7 +1906,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	Check that the User-Name and User-Password
 		 *	caches point to the correct attribute.
 		 */
-		goto update;
+		goto finish;
 
 	/*
 	 *	-= - Delete attributes in the found list which match any of the
@@ -1943,7 +1937,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 			do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
 					fr_cursor_free_item(&list);
-					goto update;
+					goto finish;
 				}
 			} while ((vb = vb->next));
 			goto finish;	/* Wasn't found */
@@ -1966,8 +1960,6 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 				}
 		     	} while ((vb = vb->next));
 		} while ((found = fr_cursor_next(&list)));
-
-		if (removed) goto update;
 	}
 		goto finish;
 
@@ -1989,7 +1981,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		fr_cursor_init(&from, &vp_from);
 		fr_cursor_merge(&to, &from);
 	}
-		goto update;
+		goto finish;
 
 	/*
 	 *	= - Set only if not already set
@@ -2021,7 +2013,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 
 			fr_cursor_merge(&list, &from);	/* Merge first (insert after current attribute) */
 			fr_cursor_free_item(&list);	/* Then free the current attribute */
-			goto update;
+			goto finish;
 		}
 
 		/*
@@ -2040,8 +2032,6 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 	case T_OP_LE:
 	case T_OP_LT:
 	{
-		bool removed = false;
-
 		if (!found) goto finish;
 
 		/*
@@ -2055,10 +2045,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 				if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
 			} while ((vb = vb->next));
 
-			if (remove) {
-				fr_cursor_free_item(&list);
-				goto update;
-			}
+			if (remove) fr_cursor_free_item(&list);
 			goto finish;
 		}
 
@@ -2075,13 +2062,10 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 
 			if (remove) {
 				fr_cursor_free_item(&list);
-				removed = true;
 			} else {
 				fr_cursor_next(&list);
 			}
 		} while ((found = fr_cursor_current(&list)));
-
-		if (removed) goto update;
 	}
 		goto finish;
 
@@ -2089,46 +2073,6 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		rad_assert(0);	/* Should have been caught be the caller */
 		rcode = -1;
 		goto finish;
-	}
-
-update:
-	/*
-	 *	Update the cached username && password.  This is code
-	 *	we execute on EVERY update (sigh) so that SOME modules
-	 *	MIGHT NOT have to do the search themselves.
-	 *
-	 *	TBH, we should probably make each module just do the
-	 *	search themselves.
-	 */
-	if (map->lhs->tmpl_list == PAIR_LIST_REQUEST) {
-		VALUE_PAIR *vp;
-
-		context->username = NULL;
-		context->password = NULL;
-
-		for (vp = fr_cursor_init(&list, vp_list);
-		     vp;
-		     vp = fr_cursor_next(&list)) {
-
-			if (!fr_dict_attr_is_top_level(vp->da)) continue;
-			if (vp->da->flags.has_tag) continue;
-			if (vp->vp_type != FR_TYPE_STRING) continue;
-
-			if (!context->username && (vp->da->attr == FR_USER_NAME)) {
-				context->username = vp;
-				continue;
-			}
-
-			if (vp->da->attr == FR_STRIPPED_USER_NAME) {
-				context->username = vp;
-				continue;
-			}
-
-			if (vp->da->attr == FR_USER_PASSWORD) {
-				context->password = vp;
-				continue;
-			}
-		}
 	}
 
 finish:
@@ -2580,11 +2524,6 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 
 			/* Clear the entire dst list */
 			fr_pair_list_free(list);
-
-			if (map->lhs->tmpl_list == PAIR_LIST_REQUEST) {
-				context->username = NULL;
-				context->password = NULL;
-			}
 			goto finish;
 
 		case T_OP_SET:
@@ -2830,42 +2769,6 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 
 update:
 	rad_assert(!head);
-
-	/*
-	 *	Update the cached username && password.  This is code
-	 *	we execute on EVERY update (sigh) so that SOME modules
-	 *	MIGHT NOT have to do the search themselves.
-	 *
-	 *	TBH, we should probably make each module just do the
-	 *	search themselves.
-	 */
-	if (map->lhs->tmpl_list == PAIR_LIST_REQUEST) {
-		context->username = NULL;
-		context->password = NULL;
-
-		for (vp = fr_pair_cursor_init(&src_list, list);
-		     vp;
-		     vp = fr_pair_cursor_next(&src_list)) {
-			if (!fr_dict_attr_is_top_level(vp->da)) continue;
-			if (vp->da->flags.has_tag) continue;
-			if (vp->vp_type != FR_TYPE_STRING) continue;
-
-			if (!context->username && (vp->da->attr == FR_USER_NAME)) {
-				context->username = vp;
-				continue;
-			}
-
-			if (vp->da->attr == FR_STRIPPED_USER_NAME) {
-				context->username = vp;
-				continue;
-			}
-
-			if (vp->da->attr == FR_USER_PASSWORD) {
-				context->password = vp;
-				continue;
-			}
-		}
-	}
 
 finish:
 	talloc_free(tmp_ctx);

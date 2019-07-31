@@ -408,9 +408,6 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 
 	request->log.lvl = rad_debug_lvl;
 
-	request->username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-	request->password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
-
 	fr_request_async_bootstrap(request, el);
 
 	return request;

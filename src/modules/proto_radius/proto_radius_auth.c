@@ -171,6 +171,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	char		*p;
 	char		*msg;
 	VALUE_PAIR	*username = NULL;
+	VALUE_PAIR	*password = NULL;
 
 	/*
 	 *	No logs?  Then no logs.
@@ -191,7 +192,8 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	 *	Clean up the password
 	 */
 	if (inst->log_auth_badpass || inst->log_auth_goodpass) {
-		if (!request->password) {
+		password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+		if (!password) {
 			VALUE_PAIR *auth_type;
 
 			auth_type = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
@@ -234,7 +236,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	      msg,
 	      username ? &username->data : fr_box_strvalue("<no User-Name attribute>"),
 	      logit ? "/" : "",
-	      logit ? (password_str ? fr_box_strvalue(password_str) : &request->password->data) : fr_box_strvalue(""),
+	      logit ? (password_str ? fr_box_strvalue(password_str) : &password->data) : fr_box_strvalue(""),
 	      auth_name(buf, sizeof(buf), request),
 	      extra);
 
@@ -267,12 +269,6 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
-
-		/*
-		 *	Do various setups.
-		 */
-		request->username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-		request->password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
 		/*
 		 *	Grab the VPS and data associated with the State attribute.
@@ -446,13 +442,12 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 			/*
 			 *	Maybe the shared secret is wrong?
 			 */
-			if (request->password) {
-				VP_VERIFY(request->password);
-
-				if (RDEBUG_ENABLED2 && (request->password->da == attr_user_password)) {
+			vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+			if (vp) {
+				if (RDEBUG_ENABLED2) {
 					uint8_t const *p;
 
-					p = (uint8_t const *) request->password->vp_strvalue;
+					p = (uint8_t const *) vp->vp_strvalue;
 					while (*p) {
 						int size;
 

@@ -102,9 +102,6 @@ struct rad_request {
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
 	RADIUS_PACKET		*packet;	//!< Incoming request.
-	VALUE_PAIR		*username;	//!< Cached username #VALUE_PAIR from request #RADIUS_PACKET.
-	VALUE_PAIR		*password;	//!< Cached password #VALUE_PAIR from request #RADIUS_PACKET.
-
 	RADIUS_PACKET		*reply;		//!< Outgoing response.
 
 	VALUE_PAIR		*control;	//!< #VALUE_PAIR (s) used to set per request parameters

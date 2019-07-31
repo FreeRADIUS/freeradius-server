@@ -571,7 +571,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	REQUEST			*fake = NULL;
-	VALUE_PAIR		*vp = NULL;
+	VALUE_PAIR		*vp = NULL, *username;
 	fr_cursor_t		cursor;
 	ttls_tunnel_t		*t;
 	uint8_t			const *data;
@@ -642,15 +642,10 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	log_request_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
 	/*
-	 *	Update other items in the REQUEST data structure.
-	 */
-	fake->username = fr_pair_find_by_da(fake->packet->vps, attr_user_name, TAG_ANY);
-	fake->password = fr_pair_find_by_da(fake->packet->vps, attr_user_password, TAG_ANY);
-
-	/*
 	 *	No User-Name, try to create one from stored data.
 	 */
-	if (!fake->username) {
+	username = fr_pair_find_by_da(fake->packet->vps, attr_user_name, TAG_ANY);
+	if (!username) {
 		/*
 		 *	No User-Name in the stored data, look for
 		 *	an EAP-Identity, and pull it out of there.
@@ -685,7 +680,6 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		if (t->username) {
 			vp = fr_pair_copy(fake->packet, t->username);
 			fr_pair_add(&fake->packet->vps, vp);
-			fake->username = vp;
 		}
 	} /* else the request ALREADY had a User-Name */
 
@@ -699,8 +693,8 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 		RDEBUG2("received chbind request");
 		req->request = chbind;
-		if (fake->username) {
-			req->username = fake->username;
+		if (username) {
+			req->username = username;
 		} else {
 			req->username = NULL;
 		}

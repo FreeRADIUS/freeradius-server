@@ -47,34 +47,38 @@ RCSID("$Id$")
  */
 rlm_rcode_t rad_virtual_server(REQUEST *request)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *username, *parent_username = NULL;
 	fr_io_final_t final;
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
 	log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
 
-	if (!request->username) {
-		request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+	username = fr_pair_find_by_num(request->packet->vps, 0, FR_STRIPPED_USER_NAME, TAG_ANY);
+	if (!username) username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+
+	if (request->parent) {
+		parent_username = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_STRIPPED_USER_NAME, TAG_ANY);
+		if (!parent_username) parent_username = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 	}
 
 	/*
 	 *	Complain about possible issues related to tunnels.
 	 */
-	if (request->parent && request->parent->username && request->username) {
+	if (username && parent_username) {
 		/*
 		 *	Look at the full User-Name with realm.
 		 */
-		if (request->parent->username->da->attr == FR_STRIPPED_USER_NAME) {
+		if (parent_username->da->attr == FR_STRIPPED_USER_NAME) {
 			vp = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 			if (!vp) goto runit;
 		} else {
-			vp = request->parent->username;
+			vp = parent_username;
 		}
 
 		/*
 		 *	If the names aren't identical, we do some detailed checks.
 		 */
-		if (strcmp(vp->vp_strvalue, request->username->vp_strvalue) != 0) {
+		if (strcmp(vp->vp_strvalue, username->vp_strvalue) != 0) {
 			char const *outer, *inner;
 
 			outer = strchr(vp->vp_strvalue, '@');
@@ -102,7 +106,7 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 			/*
 			 *	Look for an inner realm, which may or may not exist.
 			 */
-			inner = strchr(request->username->vp_strvalue, '@');
+			inner = strchr(username->vp_strvalue, '@');
 			if (outer && inner) {
 				outer++;
 				inner++;
@@ -117,8 +121,8 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 					outer_len = vp->vp_length;
 					outer_len -= (outer - vp->vp_strvalue);
 
-					inner_len = request->username->vp_length;
-					inner_len -= (inner - request->username->vp_strvalue);
+					inner_len = username->vp_length;
+					inner_len -= (inner - username->vp_strvalue);
 
 					/*
 					 *	Inner: secure.example.org

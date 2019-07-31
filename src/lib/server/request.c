@@ -92,8 +92,6 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 #endif
 	request->reply = NULL;
 	request->control = NULL;
-	request->username = NULL;
-	request->password = NULL;
 
 	/*
 	 *	These may be changed later by request_pre_handler
@@ -783,9 +781,6 @@ void request_verify(char const *file, int line, REQUEST const *request)
 
 	fr_pair_list_verify(file, line, request, request->control);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);
-
-	if (request->username) VP_VERIFY(request->username);
-	if (request->password) VP_VERIFY(request->password);
 
 	rad_assert(request->server_cs != NULL);
 

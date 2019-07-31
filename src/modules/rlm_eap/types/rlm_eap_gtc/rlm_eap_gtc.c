@@ -166,12 +166,6 @@ static rlm_rcode_t mod_process(void *instance, void *thread, REQUEST *request)
 	fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
 	vp->vp_tainted = true;
 
-	/*
-	 *	Add the password to the request, and allow
-	 *	another module to do the work of authenticating it.
-	 */
-	request->password = vp;
-
 	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type->alias);
 	if (!unlang) {
 		/*

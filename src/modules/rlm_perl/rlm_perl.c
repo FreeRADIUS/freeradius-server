@@ -958,15 +958,6 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			fr_pair_list_free(&request->packet->vps);
 			request->packet->vps = vp;
 			vp = NULL;
-
-			/*
-			 *	Update cached copies
-			 */
-			request->username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-			request->password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
-			if (!request->password) request->password = fr_pair_find_by_da(request->packet->vps,
-										       attr_chap_password,
-										       TAG_ANY);
 		}
 
 		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) == 0) {

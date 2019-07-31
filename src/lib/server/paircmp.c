@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/request.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <ctype.h>
 
@@ -128,7 +129,8 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 
 	if (!request) return -1;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	username = fr_pair_find_by_da(request->packet->vps, attr_stripped_user_name, TAG_ANY);
+	if (!username) username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	if (!username) return -1;
 
 	VP_VERIFY(check);
