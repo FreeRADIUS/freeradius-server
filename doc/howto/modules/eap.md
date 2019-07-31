@@ -12,9 +12,10 @@ RADIUS attribute used for EAP is EAP-Message, 79(rfc2869). RADIUS
 communicates all EAP messages by embedding them in this attribute.
 
 General Terminology
-Supplicant/EAP Client - is the software on the end-user/client machine
-                        (machine with the wireless card).
 Authenticator/NAS/Access Point(AP) -  A network device providing users
+Supplicant/EAP Client - The software on the end-user/client machine
+                        (e.g. machine with the wireless card or connected
+                        to an 802.1X switch port).
                                   with a point of entry into the network.
 EAPOL - EAP over LAN as defined in 802.1X standard.
 EAPOW - EAP over Wireless as defined in the 802.11 standard.
