@@ -2,11 +2,11 @@
 
 ## Introduction
 
-Extensible Authentication Protocol(EAP), rfc2284, is a general protocol
-that allows network access points to support multiple authentication
-methods. Each EAP-Type indicates a specific authentication mechanism.
-802.1x standard authenticates wireless LAN users trying to access
-enterprise networks.
+Extensible Authentication Protocol(EAP), RFC 3748, is an authentication
+framework and data link layer protocol that allows network access points to
+support multiple authentication methods. Each EAP Type indicates a specific
+authentication mechanism. The 802.1X standard authenticates both wireless and
+wired LAN users/devices trying to access "Enterprise" networks.
 
 RADIUS attribute used for EAP is EAP-Message, 79(rfc2869). RADIUS
 communicates all EAP messages by embedding them in this attribute.
@@ -16,8 +16,8 @@ Supplicant/EAP Client - is the software on the end-user/client machine
                         (machine with the wireless card).
 Authenticator/NAS/Access Point(AP) -  A network device providing users
                                   with a point of entry into the network.
-EAPOL - EAP over LAN as defined in 802.1x standard.
 EAPOW - EAP over Wireless.
+EAPOL - EAP over LAN as defined in 802.1X standard.
 
 ```
    +----------+        +----------+        +----------+
@@ -383,7 +383,7 @@ the Access Point using Open authentication.  If this process isn't
 crystal clear you need to go away and gain understanding.
 
 Once the association is made the AP blocks all traffic that is not
-802.1x so although associated the connection only has value for EAP.
+802.1X so although associated the connection only has value for EAP.
 Any EAP traffic is passed to the radius server and any radius traffic
 is passed back to the client.
 
@@ -391,7 +391,7 @@ So, after the client has associated to the Access Point, the
 supplicant starts the process for using EAP over LAN by asking the
 user for their logon and password.
 
-Using 802.1x and EAP the supplicant sends the username and a one-way
+Using 802.1X and EAP the supplicant sends the username and a one-way
 hash of the password to the AP.
 
 The AP encapsulates the request and sends it to the RADIUS server.
