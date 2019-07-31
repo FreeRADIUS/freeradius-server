@@ -12,7 +12,7 @@ program with the associated arguments.
 
 The output of the program is recorded, and the resulting data is
 used in place of the input string value. Where the output is composed of
-multiple lines, any carriage returns and line feeds are "d by
+multiple lines, any carriage returns and line feeds are replaced by
 spaces.
 
 For safety reasons, the full path to the executed program should be
