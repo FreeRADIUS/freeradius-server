@@ -16,8 +16,8 @@ Supplicant/EAP Client - is the software on the end-user/client machine
                         (machine with the wireless card).
 Authenticator/NAS/Access Point(AP) -  A network device providing users
                                   with a point of entry into the network.
-EAPOW - EAP over Wireless.
 EAPOL - EAP over LAN as defined in 802.1X standard.
+EAPOW - EAP over Wireless as defined in the 802.11 standard.
 
 ```
    +----------+        +----------+        +----------+
