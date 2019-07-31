@@ -86,7 +86,8 @@ impossible to create before.
 The _module_ keywords refer pre-packaged libraries that implement
 specific functionality, such as connecting to SQL, LDAP, etc.  The
 name used here is not the literal string `module`.  Instead, it is the
-name of a pre-packaged module such as `sql`, or `ldap`, or `eap`.
+name of an instance of a pre-packaged module such as `sql`, or `ldap`, or
+`eap`.
 
 The documentation below describes how to reference modules.  That is,
 how to use `sql`, etc. in the policies.  Please see the
