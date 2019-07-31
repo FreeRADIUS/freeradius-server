@@ -310,28 +310,44 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 {
 	int		ret;
 	long		odResult = eDSAuthFailed;
-	VALUE_PAIR	*username;
+	VALUE_PAIR *username, *password;
+
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	if (!username) {
-		REDEBUG("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Name attribute!");
+		REDEBUG("Attribute \"User-Name\" is required for authentication");
+		return RLM_MODULE_INVALID;
+	}
+
+	if (!password) {
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
 	/*
-	 *	Can't do OpenDirectory if there's no password.
+	 *	Make sure the supplied password isn't empty
 	 */
-	if (!request->password || (request->password->da != attr_user_password)) {
-		REDEBUG("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
+	if (password->vp_length == 0) {
+		REDEBUG("User-Password must not be empty");
 		return RLM_MODULE_INVALID;
 	}
 
+	/*
+	 *	Log the password
+	 */
+	if (RDEBUG_ENABLED3) {
+		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+	} else {
+		REDEBUG2("Login attempt with password");
+	}
+
 	odResult = od_check_passwd(request, username->vp_strvalue,
-				   request->password->vp_strvalue);
+				   password->vp_strvalue);
 	switch (odResult) {
 		case eDSNoErr:
 			ret = RLM_MODULE_OK;
