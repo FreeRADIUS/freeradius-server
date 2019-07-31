@@ -4,40 +4,40 @@ What happens when a big vendor ignores an RFC
 
 ## Description
 
-  FreeRADIUS uses Vendor-Specific attributes to send the Ascend attributes.
+FreeRADIUS uses Vendor-Specific attributes to send the Ascend attributes.
 By default, Ascend NASes send the Ascend specific attributes as NON VSA's,
 which conflict with new RADIUS attributes assigned by the IETF.  This was
 a very bad screw-up by Ascend that still causes many headaches, but sometimes
 we have to live with it, so we try to cope the best we can.
 
-  If you see a large number of messages about invalid Message-Authenticator
+If you see a large number of messages about invalid Message-Authenticator
 attribute, you most likely are affected by this problem, and should implement
 the first option.
 
 You have two options:
 
-o Enable VSA's on the Ascend/Lucent MAX:
+### Option 1: Enable VSA's on the Ascend/Lucent MAX
 
-  This is by far the preferred method ( as it solves many other problems ).
+This is by far the preferred method (as it solves many other problems).
 
-  Max6000/4000 Series TAOS with Menued Interface:
+Max6000/4000 Series TAOS with Menued Interface:
 
-    Go to Ethernet->Mod Config->Auth.
-    At the bottom of the menu, change Auth-Compat from "OLD" to "VSA".
-    Save your changes, no reboot is needed.
+  1. Go to Ethernet->Mod Config->Auth.
+  2. At the bottom of the menu, change Auth-Compat from `OLD` to `VSA`.
+  3. Save your changes, no reboot is needed.
 
-    Go to Ethernet->Mod Config->Acct.
-    At the bottom of the menu, change Acct-Compat from "OLD" to "VSA".
-    Save your changes, no reboot is needed.
+  1. Go to Ethernet->Mod Config->Acct.
+  2. At the bottom of the menu, change Acct-Compat from `OLD` to `VSA`.
+  3. Save your changes, no reboot is needed.
 
-  Max TNT/Apex 8000 Series TAOS with CLI:
+Max TNT/Apex 8000 Series TAOS with CLI:
 
     nas> read external-auth
     nas> set rad-auth-client auth-radius-compat = vendor-specific
     nas> set rad-acct-client acct-radius-compat = vendor-specific
     nas> write
 
-o Enable OLD attributes in FreeRADIUS
+### Option 2: Enable OLD attributes in FreeRADIUS
 
   One note on this, Ciscos have an Ascend compatibility mode that
   accepts only the OLD style Ascend attributes, just to make life more
