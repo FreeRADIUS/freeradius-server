@@ -41,6 +41,9 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  "accept" and "reject" policies.
 	* Fix dictionary.huawei data types for Huawei-DNS-Server-IPv6-address
 	  and Huawei-Framed-IPv6-Address #2803
+	* Fix build error on armel, mips and mipsel. #2828
+	* Fix Framed-Interface-ID in postgresql/queries.conf. #2817
+
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
