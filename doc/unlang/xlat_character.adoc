@@ -5,46 +5,77 @@ The following are single letter expansions.  These expansions do not
 use the typical `%{...}` format.  Instead, they are short-cuts for
 simple, common cases.
 
-* `%%` +
+### Miscellaneous
 
- - Returns `%`.
+`%%`::
 
-* `%d` +
+Returns `%`.
 
- - Two-digit day of the month when the request was received.
 
-* `%l` +
+### Current Time
 
- - The Unix timestamp of when the request was received. This is an
-unsigned decimal number. It should be used with time-based calculations.
+`%c`::
 
-* `%m` +
+The current Unix epoch time in seconds. This is an unsigned decimal number.
+It should be used with time-based calculations.
 
- - Two-digit month describing when the request was received.
+`%C`::
 
-* `%t` +
+The microsecond component of the current epoch time. This is an unsigned
+decimal number. It should be used with time-based calculations.
 
- - Timestamp in _ctime_ format.
 
-* `%D` +
+### Request Time
 
- - Request date (YYYYMMDD)
+`%l`::
 
-* `%H` +
+The Unix timestamp of when the request was received. This is an unsigned
+decimal number. It should be used with time-based calculations.
 
- - Two digit hour of the day describing when the request was received.
+`%Y`::
 
-* `%S` +
+Four-digit year when the request was received.
 
- - Request timestamp in SQL format, YYYY-mmm-ddd HH:MM:SS
+`%m`::
 
-* `%T` +
+Numeric month when the request was received.
 
- - Request timestamp in database format, YYYY-mmm-ddd HH.MM.SS.000000
+`%d`::
 
-* `%Y` +
+Numeric day of the month when the request was received.
 
- - Four digit request year.
+`%H`::
+
+Hour of the day when the request was received.
+
+`%G`::
+
+Minute component of the time when the request was received.
+
+`%e`::
+
+Second component of the time when the request was received.
+
+`%M`::
+
+Microsecond component of the time when the request was received.
+
+`%D`::
+
+Request date in the format `YYYYMMDD`.
+
+`%S`::
+
+Request timestamp in SQL format, `YYYY-mmm-ddd HH:MM:SS`.
+
+`%t`::
+
+Request timestamp in _ctime_ format, `Www Mmm dd HH:MM:SS YYYY`.
+
+`%T`::
+
+Request timestamp in ISO format, `YYYY-mm-ddTHH:MM:SS.000`.
+
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
