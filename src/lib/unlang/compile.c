@@ -2321,7 +2321,6 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 }
 
 
-
 static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	unlang_t *foreach;
@@ -3298,7 +3297,20 @@ static unlang_t *compile_item(unlang_t *parent,
 		c = compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_RETURN, COND_TYPE_INVALID);
 		if (!c) return NULL;
 
-		parent->closed = ci;
+		/*
+		 *	These types are all parallel, and therefore can have a "return" in them.
+		 */
+		switch (parent->type) {
+		case UNLANG_TYPE_LOAD_BALANCE:
+		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+		case UNLANG_TYPE_PARALLEL:
+			break;
+
+		default:
+			parent->closed = ci;
+			break;
+		}
+
 		return c;
 	}
 #endif
