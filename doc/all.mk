@@ -115,15 +115,16 @@ doc/raddb/%.adoc: raddb/%
 #	file:// links and http:// links.
 #
 DOC_BASEDIR = $(subst $() $(),,$(foreach x,$(subst /, ,$1),../))
+DOC_UPDATED_LABEL = "FreeRADIUS ${RADIUSD_VERSION_STRING} - \#$(shell git rev-parse --short HEAD) - Last updated"
 
 doc/%.html: doc/%.adoc
 	@echo HTML $^
 	$(eval BASEDIR := $(call DOC_BASEDIR,$(subst doc/,,$(dir $^))))
-
 	${Q}$(ASCIIDOCTOR) $< -a "toc=left"                                           \
 	                      -a "docinfodir=$(if $(BASEDIR),$(BASEDIR),.)/templates" \
 	                      -a "basedir=$(BASEDIR)"                                 \
 	                      -a "docinfo=shared,private"                             \
+			      -a last-update-label=${DOC_UPDATED_LABEL}               \
 	                      -b html5 -o $@ $<
 	${Q}perl -p -i -e 's,\.adoc,\.html,g; s,/.html",/",g; s/\.md\.html/\.html/g' $@
 
