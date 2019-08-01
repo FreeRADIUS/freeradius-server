@@ -352,10 +352,19 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 	}
 
 	/*
+	 *	"break" means "break out of the enclosing foreach",
+	 *	but stop at the enclosing foreach.
+	 */
+	if ((frame->unwind == UNLANG_TYPE_BREAK) &&
+	    (instruction->type == UNLANG_TYPE_FOREACH)) {
+		frame->unwind = UNLANG_TYPE_NULL;
+	}
+
+	/*
 	 *	If we've been told to stop processing
 	 *	it, do so.
 	 */
-	if (frame->unwind != 0) {
+	if (frame->unwind != UNLANG_TYPE_NULL) {
 		RDEBUG4("** [%i] %s - unwinding current frame with (%s %d)",
 			stack->depth, __FUNCTION__,
 			fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
@@ -402,9 +411,13 @@ static inline void frame_pop(unlang_stack_t *stack)
 	next = frame + 1;
 
 	/*
-	 *	Unwind back up the stack
+	 *	Unwind back up the stack.  If we're unwinding, stop
+	 *	processing any loops.
 	 */
-	if (next->unwind != 0) frame->unwind = next->unwind;
+	if (next->unwind != UNLANG_TYPE_NULL) {
+		frame->unwind = next->unwind;
+		frame->repeat = false;
+	}
 }
 
 /** Evaluates all the unlang nodes in a section
@@ -497,16 +510,13 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		/*
 		 *	We're in a looping construct and need to stop
 		 *	execution of the current section.
-		 *
-		 *	@todo - ensure that a "break" is recursive,
-		 *	and that the interpreter keeps popping until
-		 *	it reaches an enclosing "foreach".
 		 */
 		case UNLANG_ACTION_BREAK:
 			if (*priority < 0) *priority = 0;
 			frame->result = *result;
 			frame->priority = *priority;
 			frame->next = NULL;
+			frame->unwind = UNLANG_TYPE_BREAK;
 			return UNLANG_FRAME_ACTION_POP;
 
 		/*
@@ -661,10 +671,6 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			 *	Resume a "foreach" loop, or a "load-balance" section
 			 *	or anything else that needs to be checked on the way
 			 *	back on up the stack.
-			 *
-			 *	@todo - if the child was "break", then
-			 *	keep popping until such time as we
-			 *	reach the encosing "foreach".
 			 */
 			if (frame->repeat) {
 				fa = UNLANG_FRAME_ACTION_NEXT;
@@ -696,6 +702,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			}
 
 			fa = result_calculate(request, frame, &stack->result, &priority);
+
 			/*
 			 *	If we're continuing after popping a frame
 			 *	then we advance the instruction else we
