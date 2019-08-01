@@ -2033,6 +2033,11 @@ if test "x$REGEX" = "x"; then
   fi
 fi
 
+#
+#  Some platforms require an explicit -latomic
+#
+AC_SEARCH_LIBS([__atomic_load_4], [atomic])
+
 if test "x$REGEX" = "xyes"; then
   AC_DEFINE(HAVE_REGEX, 1, [Define if we have any regular expression library])
 fi
