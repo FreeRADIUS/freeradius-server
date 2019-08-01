@@ -497,6 +497,10 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		/*
 		 *	We're in a looping construct and need to stop
 		 *	execution of the current section.
+		 *
+		 *	@todo - ensure that a "break" is recursive,
+		 *	and that the interpreter keeps popping until
+		 *	it reaches an enclosing "foreach".
 		 */
 		case UNLANG_ACTION_BREAK:
 			if (*priority < 0) *priority = 0;
@@ -657,6 +661,10 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			 *	Resume a "foreach" loop, or a "load-balance" section
 			 *	or anything else that needs to be checked on the way
 			 *	back on up the stack.
+			 *
+			 *	@todo - if the child was "break", then
+			 *	keep popping until such time as we
+			 *	reach the encosing "foreach".
 			 */
 			if (frame->repeat) {
 				fa = UNLANG_FRAME_ACTION_NEXT;
