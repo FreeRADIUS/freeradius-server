@@ -27,7 +27,9 @@ _<value>_.
 
 <op>:: The operator such as `=`, `:=`, etc.
 
-<value>::  The value which is assigned to the attribute.  If the field is a double-quoted string, it undergoes link:xlat.adoc[string expansion], and the resulting value is assigned to the attribute.
+<value>:: The value which is assigned to the attribute.  If the field
+is a double-quoted string, it undergoes link:xlat.adoc[string
+expansion], and the resulting value is assigned to the attribute.
 
 The update process is atomic, in that either all of the attributes are
 modified, or none of them are modified.  If the `update` fails for any
