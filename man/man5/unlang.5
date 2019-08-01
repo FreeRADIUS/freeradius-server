@@ -104,11 +104,7 @@ their meanings.
 Loops over values of an attribute, running the block for each value.
 The return value of the block is the return value of the last
 statement executed.  The loop can be exited early by using the "break"
-keyword.  Unlike other languages, "break" here means "exit the loop at
-the next iteration", not "exit the loop now".  The result is that any
-statements after the "break" keyword will still be executed.  We
-recommend using "break" only when it is the last statement in a
-"foreach" block.
+keyword.  No statements may appear after a "break".
 
 Inside of the "foreach" block, the attribute which is being looped
 over can be referenced as "Foreach-Variable-#".  Where "#" is the
