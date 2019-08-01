@@ -21,9 +21,4 @@ if (&User-Name == "bob") {
 	#  Stop processing "authorize", and go to the next section.
 	#
 	return
-
-	#
-	#  Shouldn't reach this
-	#
-	test_fail
 }
