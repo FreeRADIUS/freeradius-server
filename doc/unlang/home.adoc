@@ -18,11 +18,10 @@ however, describe _when_ to use the keywords, or _how_ to create
 policies. Please see the link:../howto/index.adoc[howto] directory for
 more in-depth "how to" guides.
 
-The documentation is organized so that each keyword is on its own
-page.  The page beings with a description of the syntax for the
-keyword, followed by some text explaining what the keyword does.  The
-page concludes with one or more examples of using the keyword in
-`unlang` policies.
+The documentation is organized so that each item is on its own page.
+The page beings with a description of the item, followed by some text
+explaining what the item does.  The page concludes with one or more
+examples of using the item in `unlang` policies.
 
 The `unlang` processing can be split into some high-level concepts.
 
