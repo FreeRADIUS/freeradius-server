@@ -112,6 +112,19 @@ if test "x$ac_cv_path_PANDOC" != "x" && test "x$ac_cv_path_ASCIIDOCTOR" != "x"; 
 fi
 
 dnl #
+dnl # check for doxygen
+dnl #
+AC_PATH_PROG(DOXYGEN, doxygen)
+if test "x$ac_cv_path_DOXYGEN" != "x"; then
+  AC_PATH_PROG(GRAPHVIZ_DOT, dot)
+  if test "x$ac_cv_path_GRAPHVIZ_DOT" = "x"; then
+    AC_MSG_WARN([dot not found - Please install the graphviz if you want to build the docs/source])
+  fi
+else
+  AC_MSG_WARN([doxygen not found - Please install if you want build the docs/source])
+fi
+
+dnl #
 dnl #  Enable developer features like debugging symbols.
 dnl #  These checks must be done before expanding the AC_PROG_CC
 dnl #  and AC_PROG_CXX macros.
