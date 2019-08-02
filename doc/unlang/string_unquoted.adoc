@@ -1,5 +1,5 @@
 
-== Unquoted Text
+== Unquoted Strings
 
 Where a series of characters cannot be parsed as a decimal number,
 they are interpreted as a simple string composed of one word. This
