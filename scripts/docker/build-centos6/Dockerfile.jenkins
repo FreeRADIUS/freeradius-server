@@ -7,7 +7,8 @@ FROM ${from}
 RUN yum install -y java-1.8.0-openjdk-headless \
                    createrepo \
                    openssh-server \
-                   sudo
+                   sudo && \
+    yum -y upgrade
 
 RUN adduser jenkins
 RUN printf jenkins1 | passwd --stdin jenkins

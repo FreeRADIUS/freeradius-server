@@ -14,7 +14,8 @@ RUN apt-add-repository ppa:openjdk-r/ppa
 RUN apt-get update && \
     apt-get install -y openjdk-8-jre-headless \
                        openssh-server \
-                       sudo
+                       sudo && \
+    apt-get -y upgrade
 
 RUN useradd -m jenkins
 RUN echo "jenkins:jenkins1" | chpasswd

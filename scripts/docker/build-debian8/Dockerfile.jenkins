@@ -14,7 +14,8 @@ RUN printf 'Package: *\nPin: release n=jessie-backports\nPin-Priority: 500\n' > 
 RUN apt-get update && \
     apt-get install -y openjdk-8-jre-headless \
                        openssh-server \
-                       sudo
+                       sudo && \
+    apt-get -y upgrade
 
 RUN useradd -m jenkins
 RUN echo "jenkins:jenkins1" | chpasswd
