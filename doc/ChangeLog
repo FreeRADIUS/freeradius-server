@@ -22,8 +22,8 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Disable TLS 1.0 and TLS 1.1 support in the default configuration.
 	  We STRONGLY recommend doing this for all installations.
 	* Add expansions for *outgoing* Radsec connections.
-	"%{listen:TLS-...}"  for TLS-Client-Cert-* and TLS-Cert-*
-	attributes. Fixes #2839.
+	  "%{listen:TLS-...}"  for TLS-Client-Cert-* and TLS-Cert-*
+	  attributes. Fixes #2839.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
