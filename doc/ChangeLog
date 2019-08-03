@@ -12,19 +12,22 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Note that tls_min_version/tls_max_version also support "1.3"
 	  Since there is no standard yet for EAP with TLS 1.3, it
 	  will not work.
-	* Added tripplite dictionary. #2760
+	* Added tripplite dictionary from #2760.
 	* Switch to the async interface for rlm_sql_postgresql so that
 	  we can enforce query_timeout.
 	* Added new LDAP option 'allow_dangling_group_ref'.
 	* Updated documentation and functionality for EAP session caching.
 	  See "cache" section of mods-available/eap.
-	* Tighten systemd unit file security. #2637
+	* Tighten systemd unit file security. Fixes #2637.
 	* Disable TLS 1.0 and TLS 1.1 support in the default configuration.
 	  We STRONGLY recommend doing this for all installations.
+	* Add expansions for *outgoing* Radsec connections.
+	"%{listen:TLS-...}"  for TLS-Client-Cert-* and TLS-Cert-*
+	attributes. Fixes #2839.
 
 	Bug fixes
-	* Allow listen.ipaddr to reference an IPv6-only host #2627
-	* ERX-Acct-Request-Reason is "integer".  Closes #2635
+	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
+	* ERX-Acct-Request-Reason is "integer".  Closes #2635.
 	* Fix a slow memory leak in the file management code.
 	* Try to fix file permissions if they get modified while
 	  the server is running.
@@ -40,10 +43,13 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Allow "inner-tunnel" virtual servers to work better with
 	  "accept" and "reject" policies.
 	* Fix dictionary.huawei data types for Huawei-DNS-Server-IPv6-address
-	  and Huawei-Framed-IPv6-Address #2803
-	* Fix build error on armel, mips and mipsel. #2828
-	* Fix Framed-Interface-ID in postgresql/queries.conf. #2817
-
+	  and Huawei-Framed-IPv6-Address.  Fixes #2803
+	* Framed-Interface-ID in postgresql/queries.conf is string, not inet
+	  Fixes #2817.
+	* Fix rlm_cache to complain on unknown attributes in the
+	  "update" section of its configuration.
+	* Add configure checks for -latomic.  This helps on armel, mips
+	  and mipsel.  Fixes #2828.
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
