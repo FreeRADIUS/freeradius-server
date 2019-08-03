@@ -1803,5 +1803,37 @@ int modules_bootstrap(CONF_SECTION *root)
 		return -1;
 	}
 
+	/*
+	 *	Check for duplicate policies.  They're treated as
+	 *	modules, so we might as well check them here.
+	 */
+	cs = cf_section_find(root, "policy", NULL);
+	if (cs) {
+		bool fail = false;
+
+		/*
+		 *  Loop over the items in the 'instantiate' section.
+		 */
+		while ((ci = cf_item_next(cs, ci))) {
+			CONF_SECTION *subcs, *problemcs;
+
+			/*
+			 *	Skip anything that isn't a section.
+			 */
+			if (!cf_item_is_section(ci)) continue;
+
+			subcs = cf_item_to_section(ci);
+			problemcs = cf_section_find_next(cs, subcs,
+							 cf_section_name1(subcs), CF_IDENT_ANY);
+			if (!problemcs) continue;
+
+			cf_log_err(problemcs, "Duplicate policy '%s' is forbidden.",
+				   cf_section_name1(subcs));
+			fail = true;
+		}
+
+		if (fail) return -1;
+	}
+
 	return 0;
 }
