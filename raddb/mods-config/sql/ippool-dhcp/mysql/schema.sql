@@ -10,7 +10,7 @@ CREATE TABLE radippool (
   callingstationid      VARCHAR(30) NOT NULL,
   expiry_time           DATETIME NULL default NULL,
   username              varchar(64) NOT NULL default '',
-  pool_key              varchar(30) NOT NULL,
+  pool_key              varchar(30) NOT NULL default '',
   PRIMARY KEY (id),
   KEY radippool_poolname_expire (pool_name, expiry_time),
   KEY callingstationid (callingstationid),
