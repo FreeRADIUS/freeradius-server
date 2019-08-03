@@ -164,9 +164,11 @@ int main(int argc, char *argv[])
 	main_config_t	*config = NULL;
 	bool		talloc_memory_report = false;
 
+	bool		raddb_dir_set = false;
+
 	size_t		pool_size = 0;
 	void		*pool_page_start = NULL, *pool_page_end = NULL;
-	bool		do_mprotect;
+	bool		do_mprotect;	
 	dl_module_loader_t *dl_modules = NULL;
 
 	/*
@@ -282,6 +284,7 @@ int main(int argc, char *argv[])
 
 		case 'd':
 			main_config_raddb_dir_set(config, optarg);
+			raddb_dir_set = true;
 			break;
 
 		case 'D':
@@ -379,6 +382,18 @@ int main(int argc, char *argv[])
 		default:
 			usage(config, EXIT_FAILURE);
 			break;
+	}
+
+	/*
+	 *	Allow the configuration directory to be set from an
+	 *	environment variable.  This allows tests to change the
+	 *	configuration directory without changing the scripts
+	 *	being executed.
+	 */
+	if (!raddb_dir_set) {
+		char const *raddb_dir = getenv("FREERADIUS_CONFIG_DIR");
+
+		if (raddb_dir) main_config_raddb_dir_set(config, raddb_dir);
 	}
 
 	fr_debug_lvl = req_debug_lvl = config->debug_level = rad_debug_lvl;
