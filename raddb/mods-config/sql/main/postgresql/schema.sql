@@ -13,7 +13,7 @@
  * Note: Column type bigserial does not exist prior to Postgres 7.2
  *       If you run an older version you need to change this to serial
  */
-CREATE TABLE radacct (
+CREATE TABLE IF NOT EXISTS radacct (
 	RadAcctId		bigserial PRIMARY KEY,
 	AcctSessionId		text NOT NULL,
 	AcctUniqueId		text NOT NULL UNIQUE,
@@ -88,7 +88,7 @@ CREATE INDEX radacct_start_user_idx ON radacct (AcctStartTime, UserName);
 /*
  * Table structure for table 'radcheck'
  */
-CREATE TABLE radcheck (
+CREATE TABLE IF NOT EXISTSradcheck (
 	id			serial PRIMARY KEY,
 	UserName		text NOT NULL DEFAULT '',
 	Attribute		text NOT NULL DEFAULT '',
@@ -104,7 +104,7 @@ create index radcheck_UserName on radcheck (UserName,Attribute);
 /*
  * Table structure for table 'radgroupcheck'
  */
-CREATE TABLE radgroupcheck (
+CREATE TABLE IF NOT EXISTSradgroupcheck (
 	id			serial PRIMARY KEY,
 	GroupName		text NOT NULL DEFAULT '',
 	Attribute		text NOT NULL DEFAULT '',
@@ -116,7 +116,7 @@ create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
 /*
  * Table structure for table 'radgroupreply'
  */
-CREATE TABLE radgroupreply (
+CREATE TABLE IF NOT EXISTSradgroupreply (
 	id			serial PRIMARY KEY,
 	GroupName		text NOT NULL DEFAULT '',
 	Attribute		text NOT NULL DEFAULT '',
@@ -128,7 +128,7 @@ create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
 /*
  * Table structure for table 'radreply'
  */
-CREATE TABLE radreply (
+CREATE TABLE IF NOT EXISTSradreply (
 	id			serial PRIMARY KEY,
 	UserName		text NOT NULL DEFAULT '',
 	Attribute		text NOT NULL DEFAULT '',
@@ -144,7 +144,7 @@ create index radreply_UserName on radreply (UserName,Attribute);
 /*
  * Table structure for table 'radusergroup'
  */
-CREATE TABLE radusergroup (
+CREATE TABLE IF NOT EXISTSradusergroup (
 	id			serial PRIMARY KEY,
 	UserName		text NOT NULL DEFAULT '',
 	GroupName		text NOT NULL DEFAULT '',
@@ -160,7 +160,7 @@ create index radusergroup_UserName on radusergroup (UserName);
 -- Table structure for table 'radpostauth'
 --
 
-CREATE TABLE radpostauth (
+CREATE TABLE IF NOT EXISTSradpostauth (
 	id			bigserial PRIMARY KEY,
 	username		text NOT NULL,
 	pass			text,
@@ -173,7 +173,7 @@ CREATE TABLE radpostauth (
 /*
  * Table structure for table 'nas'
  */
-CREATE TABLE nas (
+CREATE TABLE IF NOT EXISTSnas (
 	id			serial PRIMARY KEY,
 	nasname			text NOT NULL,
 	shortname		text NOT NULL,

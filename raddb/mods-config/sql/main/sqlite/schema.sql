@@ -10,7 +10,7 @@
 --
 -- Table structure for table 'radacct'
 --
-CREATE TABLE radacct (
+CREATE TABLE IF NOT EXISTS radacct (
 	radacctid INTEGER PRIMARY KEY AUTOINCREMENT,
 	acctsessionid varchar(64) NOT NULL default '',
 	acctuniqueid varchar(32) NOT NULL default '',
@@ -58,7 +58,7 @@ CREATE INDEX nasipaddress ON radacct(nasipaddress);
 --
 -- Table structure for table 'radcheck'
 --
-CREATE TABLE radcheck (
+CREATE TABLE IF NOT EXISTS radcheck (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	username varchar(64) NOT NULL default '',
 	attribute varchar(64)  NOT NULL default '',
@@ -70,7 +70,7 @@ CREATE INDEX check_username ON radcheck(username);
 --
 -- Table structure for table 'radgroupcheck'
 --
-CREATE TABLE radgroupcheck (
+CREATE TABLE IF NOT EXISTS radgroupcheck (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	groupname varchar(64) NOT NULL default '',
 	attribute varchar(64)  NOT NULL default '',
@@ -82,7 +82,7 @@ CREATE INDEX check_groupname ON radgroupcheck(groupname);
 --
 -- Table structure for table 'radgroupreply'
 --
-CREATE TABLE radgroupreply (
+CREATE TABLE IF NOT EXISTS radgroupreply (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	groupname varchar(64) NOT NULL default '',
 	attribute varchar(64)  NOT NULL default '',
@@ -94,7 +94,7 @@ CREATE INDEX reply_groupname ON radgroupreply(groupname);
 --
 -- Table structure for table 'radreply'
 --
-CREATE TABLE radreply (
+CREATE TABLE IF NOT EXISTS radreply (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	username varchar(64) NOT NULL default '',
 	attribute varchar(64) NOT NULL default '',
@@ -106,7 +106,7 @@ CREATE INDEX reply_username ON radreply(username);
 --
 -- Table structure for table 'radusergroup'
 --
-CREATE TABLE radusergroup (
+CREATE TABLE IF NOT EXISTS radusergroup (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	username varchar(64) NOT NULL default '',
 	groupname varchar(64) NOT NULL default '',
@@ -117,7 +117,7 @@ CREATE INDEX usergroup_username ON radusergroup(username);
 --
 -- Table structure for table 'radpostauth'
 --
-CREATE TABLE radpostauth (
+CREATE TABLE IF NOT EXISTS radpostauth (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	username varchar(64) NOT NULL default '',
 	pass varchar(64) NOT NULL default '',
@@ -128,7 +128,7 @@ CREATE TABLE radpostauth (
 --
 -- Table structure for table 'nas'
 --
-CREATE TABLE nas (
+CREATE TABLE IF NOT EXISTS nas (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	nasname varchar(128) NOT NULL,
 	shortname varchar(32),
