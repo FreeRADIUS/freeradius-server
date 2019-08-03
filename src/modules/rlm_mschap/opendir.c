@@ -122,8 +122,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 			goto error;
 		}
 
-		status = dsGetRecordEntry(nodeRef, tDataBuff, 1,
-					  &attrListRef, &pRecEntry);
+		status = dsGetRecordEntry(nodeRef, tDataBuff, 1, &attrListRef, &pRecEntry);
 		OPEN_DIR_ERROR("Failed getting record entry");
 
 		for (attrIndex = 1; (attrIndex <= pRecEntry->fRecordAttributeCount) && (status == eDSNoErr); attrIndex++) {
@@ -134,16 +133,16 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 				if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrMetaNodeLocation) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
 					if (status == eDSNoErr && pValueEntry != NULL) {
-						pUserLocation = talloc_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
-						memcpy(pUserLocation, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
-						pUserLocation[pValueEntry->fAttributeValueData.fBufferLength] = '\0';
+						pUserLocation = talloc_bstrndup(request,
+										pValueEntry->fAttributeValueData.fBufferData,
+										pValueEntry->fAttributeValueData.fBufferLength);
 					}
 				} else if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordName) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
 					if (status == eDSNoErr && pValueEntry != NULL) {
-						*outUserName = talloc_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
-						memcpy(*outUserName, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
-						*outUserName[pValueEntry->fAttributeValueData.fBufferLength] = '\0';
+						*outUserName = talloc_bstrndup(request,
+									       pValueEntry->fAttributeValueData.fBufferData,
+									       pValueEntry->fAttributeValueData.fBufferLength);
 					}
 				}
 
