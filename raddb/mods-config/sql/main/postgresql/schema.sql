@@ -88,7 +88,7 @@ CREATE INDEX radacct_start_user_idx ON radacct (AcctStartTime, UserName);
 /*
  * Table structure for table 'radcheck'
  */
-CREATE TABLE IF NOT EXISTSradcheck (
+CREATE TABLE IF NOT EXISTS radcheck (
 	id			serial PRIMARY KEY,
 	UserName		text NOT NULL DEFAULT '',
 	Attribute		text NOT NULL DEFAULT '',
@@ -104,7 +104,7 @@ create index radcheck_UserName on radcheck (UserName,Attribute);
 /*
  * Table structure for table 'radgroupcheck'
  */
-CREATE TABLE IF NOT EXISTSradgroupcheck (
+CREATE TABLE IF NOT EXISTS radgroupcheck (
 	id			serial PRIMARY KEY,
 	GroupName		text NOT NULL DEFAULT '',
 	Attribute		text NOT NULL DEFAULT '',
@@ -116,7 +116,7 @@ create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
 /*
  * Table structure for table 'radgroupreply'
  */
-CREATE TABLE IF NOT EXISTSradgroupreply (
+CREATE TABLE IF NOT EXISTS radgroupreply (
 	id			serial PRIMARY KEY,
 	GroupName		text NOT NULL DEFAULT '',
 	Attribute		text NOT NULL DEFAULT '',
@@ -128,7 +128,7 @@ create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
 /*
  * Table structure for table 'radreply'
  */
-CREATE TABLE IF NOT EXISTSradreply (
+CREATE TABLE IF NOT EXISTS radreply (
 	id			serial PRIMARY KEY,
 	UserName		text NOT NULL DEFAULT '',
 	Attribute		text NOT NULL DEFAULT '',
@@ -144,7 +144,7 @@ create index radreply_UserName on radreply (UserName,Attribute);
 /*
  * Table structure for table 'radusergroup'
  */
-CREATE TABLE IF NOT EXISTSradusergroup (
+CREATE TABLE IF NOT EXISTS radusergroup (
 	id			serial PRIMARY KEY,
 	UserName		text NOT NULL DEFAULT '',
 	GroupName		text NOT NULL DEFAULT '',
@@ -160,7 +160,7 @@ create index radusergroup_UserName on radusergroup (UserName);
 -- Table structure for table 'radpostauth'
 --
 
-CREATE TABLE IF NOT EXISTSradpostauth (
+CREATE TABLE IF NOT EXISTS radpostauth (
 	id			bigserial PRIMARY KEY,
 	username		text NOT NULL,
 	pass			text,
@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTSradpostauth (
 /*
  * Table structure for table 'nas'
  */
-CREATE TABLE IF NOT EXISTSnas (
+CREATE TABLE IF NOT EXISTS nas (
 	id			serial PRIMARY KEY,
 	nasname			text NOT NULL,
 	shortname		text NOT NULL,
