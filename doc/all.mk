@@ -144,6 +144,7 @@ doc/%.adoc: doc/%.md
 	@echo PANDOC $^
 	${Q}mkdir -p $(dir $@)
 	${Q}$(PANDOC) --filter=scripts/asciidoc/pandoc-filter -w asciidoc -o $@ $^
+	${Q}perl -p -i -e 's,/\.adoc,/,' $@
 
 #
 #  Conf files get converted to Asciidoc via our own magic script.
