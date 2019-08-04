@@ -23,7 +23,7 @@ Conditions are expressed using the following syntax:
 | link:cond_data.adoc[data] | Check value of data.
 | link:cond_cmp.adoc[lhs OP rhs] | Compare two kinds of data.
 | link:cond_para.adoc[( condition )] | Check sub-condition
-| link:cond_not.adoc[( ! condition )] | Negate a conditional check
+| link:cond_not.adoc[! condition] | Negate a conditional check
 | link:cond_and.adoc[( condition ) && ...] | Check a condition AND the next one
 | link:cond_or.adoc[( condition ) \|\| ...] | Check a condition OR the next one
 |=====
