@@ -171,6 +171,9 @@ doc/%.html: doc/%.adoc
 	                      -a "basedir=$(BASEDIR)"                                 \
 	                      -a "docinfo=shared,private"                             \
 			      -a last-update-label=${DOC_UPDATED_LABEL}               \
+			      -a "stylesdir=$(if $(BASEDIR),$(BASEDIR),.)/css"        \
+			      -a "stylesheet=freeradius.css"			      \
+			      -a linkcss                                              \
 	                      -b html5 -o $@ $<
 	${Q}perl -p -i -e 's,\.adoc,\.html,g; s,/.html",/",g; s/\.md\.html/\.html/g' $@
 
