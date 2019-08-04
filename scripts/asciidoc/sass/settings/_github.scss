@@ -1,0 +1,94 @@
+$base-font-size: 15px;
+@import "defaults";
+
+// Settings
+
+$em-base: $base-font-size;
+$primary-color: #4183C4;
+$global-radius: 3px;
+
+// Body
+
+$body-font-color: #333;
+$body-font-family: helvetica, arial, freesans, clean, sans-serif;
+
+// Headers
+
+$title-font-color: $body-font-color;
+$title-font-weight: 300;
+$header-font-family: $body-font-family;
+$header-font-color: $body-font-color;
+$header-font-weight: bold;
+$sect-divider-size: 0;
+$subheader-font-color: #777;
+
+$h1-font-size: emCalc(30px);
+$h2-font-size: emCalc(24px);
+$h3-font-size: emCalc(18px);
+$h4-font-size: 1em;
+$h5-font-size: 1em;
+$h6-font-size: 1em;
+
+// Footer
+
+$footer-bg: #f5f5f5;
+$footer-font-color: $body-font-color;
+
+// Block Quotes
+
+$blockquote-font-color: #666;
+$blockquote-border: none;
+$blockquote-padding: 0;
+
+// Sidebar (Helper)
+
+$sidebar-header-border-size: 0 0 1px 0;
+$sidebar-header-border-style: solid;
+$sidebar-header-border-color: #cacaca;
+
+// Lists
+
+$list-side-margin: emCalc(10.5px);
+$definition-list-header-margin-bottom: emCalc(5px);
+$definition-list-margin-bottom: emCalc(20px);
+
+// Links
+
+$anchor-font-color-hover: $primary-color;
+$anchor-text-decoration-hover: underline;
+
+// Inline Code
+
+$code-font-family: Monaco, 'DejaVu Sans Mono', 'Courier New', monospace;
+$code-font-size: emCalc(13px);
+$code-color: #444;
+$code-font-weight: normal;
+//$code-padding: 1px 5px 1px 5px;
+//$code-border-size: 1px;
+$code-bg-color: #f5f5f5;
+
+// Code Blocks
+
+$pre-bg: #f5f5f5;
+$pre-font-color: #444;
+$pre-font-size: emCalc(13px);
+$pre-border-color: #ddd;
+$pre-border-style: solid;
+$pre-border-size: 2px;
+$pre-padding: emCalc(10px);
+
+// Panels
+
+$panel-bg: #fff;
+$panel-border-color: #eaeaea;
+
+// Paragraphs
+
+$paragraph-font-family: $body-font-family;
+$paragraph-margin-bottom: emCalc(15px);
+$paragraph-line-height: 1.4;
+
+// Tables
+
+$table-line-height: 1.4;
+$table-row-font-size: emCalc(13px);

@@ -1,0 +1,93 @@
+// TODO:
+// - admonition blocks
+// - image border
+// - footer border, size, positioning
+@import "settings/github";
+@import "components/asciidoc";
+@import "components/awesome-icons";
+
+%lead {
+  font-size: $paragraph-font-size;
+  color: $blockquote-font-color;
+}
+
+h2 {
+  color: #4576b5;
+  border-bottom: 1px solid $hr-border-color;
+}
+
+h3 {
+  color: #4576b5;
+}
+
+#content #{headers()} {
+  > a.anchor {
+    color: $body-font-color;
+  }
+}
+
+#header, #content, #footnotes {
+  max-width: 660px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+#content ul {
+  list-style-type: none;
+  li {
+    background: image-url('github/li-chevron.png') 0 .4em no-repeat;
+    padding-left: .7em;
+  }
+}
+
+.olist.procedure > ol {
+  counter-reset: li;
+  list-style: none;
+  position: relative;
+  > li {
+    position: relative;
+    padding: 5px 0 5px 55px;
+    margin-bottom: 5px;
+    &:before {
+      content: counter(li);
+      counter-increment: li;
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 30px;
+      padding: 0 10px 0 0;
+      color: #999;
+      font-size: emCalc(13px);
+      font-weight: bold;
+      line-height: 1.6;
+      text-align: right;
+      border-right: 1px solid #ddd;
+    }
+  }
+}
+
+.quoteblock {
+  blockquote {
+    background: image-url('github/blockquote-arrow.png') 0 2px no-repeat;
+    padding-left: 1em;
+  }
+}
+
+.sidebarblock > .content > .title {
+  // FIXME kind of a hack
+  margin-top: -20px;
+  margin-right: -20px;
+  margin-left: -20px;
+  margin-bottom: 20px;
+  padding: 1em;
+  font-size: emCalc(12px);
+  background: #eaeaea;
+}
+
+.literalblock,
+.listingblock {
+  pre {
+    background: $pre-bg;
+  }
+}

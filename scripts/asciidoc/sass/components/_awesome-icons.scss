@@ -1,0 +1,111 @@
+//@import "../fonts/font-awesome";
+
+span.icon > .fa {
+  cursor: default;
+  a & {
+    cursor: inherit;
+  }
+}
+
+.admonitionblock td.icon {
+  [class^="fa icon-"] {
+    font-size: 2.5em;
+    text-shadow: $icon-text-shadow;
+    cursor: default;
+  }
+
+  .icon-note:before {
+    // @extend .fa-thumb-tack;
+    //content: "\f08d";
+    //color: scale-color(green, $lightness: $rainbow-lightness);
+
+    //@extend .fa-info-circle;
+    content: "\f05a";
+    //color: scale-color(mediumblue, $lightness: $rainbow-lightness);
+    //color: $primary-color;
+    color: scale-color($primary-color, $lightness: $rainbow-lightness);
+  }
+
+  .icon-tip:before {
+    // @extend .fa-info-circle;
+    //content: "\f05a";
+    //color: scale-color(mediumblue, $lightness: $rainbow-lightness);
+    // @extend .fa-lightbulb-o;
+    content: "\f0eb";
+    //color: scale-color(yellow, $lightness: $rainbow-lightness);
+    //color: scale-color(yellow, $saturation: -15%);
+    //color: $primary-color;
+    text-shadow: 1px 1px 2px rgba(155, 155, 0, .8);
+    color: #111;
+  }
+
+  .icon-warning:before {
+    // @extend .fa-exclamation-triangle;
+    content: "\f071";
+    color: scale-color(darkorange, $lightness: $rainbow-lightness);
+  }
+
+  .icon-caution:before {
+    // @extend .fa-fire;
+    content: "\f06d";
+    color: scale-color(orangered, $lightness: $rainbow-lightness);
+  }
+
+  .icon-important:before {
+    // @extend .icon-exclamation-circle;
+    content: "\f06a";
+    color: scale-color(red, $lightness: $rainbow-lightness);
+  }
+}
+
+// alternatively could use &#10122; through &#10131 to get the numbered circles,
+// then style them as appropriate; would need to output them in the text, though
+.conum[data-value] {
+  display: inline-block;
+  color: #fff !important;
+  background-color: $body-font-color;
+  @include radius(100px);
+  text-align: center;
+  font-size: 0.75em;
+  //width: 1.5em;
+  //height: 1.5em;
+  //line-height: 1.5em;
+  width: 1.67em;
+  height: 1.67em;
+  line-height: 1.67em;
+  // FIXME make this font a variable
+  font-family: "Open Sans", "DejaVu Sans", sans-serif;
+  font-style: normal;
+  // QUESTION should the callout numbers be regular weight?
+  font-weight: bold;
+  // text-indent only seems to be required for webkit
+  //text-indent: -1px;
+
+  * {
+    color: #fff !important;
+  }
+
+  + b {
+    display: none;
+  }
+
+  &:after {
+    content: attr(data-value);
+  }
+
+  pre & {
+    position: relative;
+    top: -0.125em;
+  }
+}
+
+// hack to disallow syntax highlighting from changing the color
+b.conum * {
+  color: inherit !important;
+}
+
+// hack for when highlight.js adds a bogus element into DOM
+// QUESTION should we solve this w/ javascript instead?
+.conum:not([data-value]):empty {
+  display: none;
+}
