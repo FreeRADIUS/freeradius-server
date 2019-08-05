@@ -53,6 +53,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  "update" section of its configuration.
 	* Add configure checks for -latomic.  This helps on armel, mips
 	  and mipsel.  Fixes #2828.
+	* Fix Oracle rlm_sql support.
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
