@@ -36,5 +36,7 @@ ATTRIBUTE	LCS-VPN-IPv6-Rule			23	string
 ATTRIBUTE	LCS-Routing-Tag				24	integer
 ATTRIBUTE	LCS-IKEv2-IPv4-Route			25	string
 ATTRIBUTE	LCS-IKEv2-IPv6-Route			26	string
+ATTRIBUTE	LCS-IKEv2-DNS-Domain			27	string
+ATTRIBUTE	LCS-Load-Balancer			28	string
 
 END-VENDOR   Lancom
