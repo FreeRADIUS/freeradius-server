@@ -24,6 +24,8 @@ addons:
     build_command: make
     branch_pattern: coverity_scan
   apt:
+    config:
+      retries: true
     sources:
       - couchbase-precise
     packages:
