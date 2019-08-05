@@ -460,20 +460,35 @@ static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char cons
 }
 
 /*
- *	Xlat for %{listen:foo}
+ *	Common xlat for listeners
  */
-static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_listen_common(REQUEST *request, rad_listen_t *listen,
+				  char const *fmt, char *out, size_t outlen)
 {
 	char const *value = NULL;
 	CONF_PAIR *cp;
 
 	if (!fmt || !out || (outlen < 1)) return 0;
 
-	if (!request->listener) {
+	if (!listen) {
 		RWDEBUG("No listener associated with this request");
 		*out = '\0';
 		return 0;
+	}
+
+	/*
+	 *	When TLS is configured, we *require* the use of TLS.
+	 */
+	if (strcmp(fmt, "tls") == 0) {
+#ifdef WITH_TLS
+		if (listen->tls) {
+			strlcpy(out, "yes", outlen);
+			return strlen(out);
+		}
+#endif
+
+		strlcpy(out, "no", outlen);
+		return strlen(out);
 	}
 
 #ifdef WITH_TLS
@@ -482,7 +497,7 @@ static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
 	 */
 	if (strncmp(fmt, "TLS-", 4) == 0) {
 		VALUE_PAIR *vp;
-		listen_socket_t *sock = request->listener->data;
+		listen_socket_t *sock = listen->data;
 
 		for (vp = sock->certs; vp != NULL; vp = vp->next) {
 			if (strcmp(fmt, vp->da->name) == 0) {
@@ -492,7 +507,7 @@ static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
 	}
 #endif
 
-	cp = cf_pair_find(request->listener->cs, fmt);
+	cp = cf_pair_find(listen->cs, fmt);
 	if (!cp || !(value = cf_pair_value(cp))) {
 		RDEBUG("Listener does not contain config item \"%s\"", fmt);
 		*out = '\0';
@@ -502,6 +517,30 @@ static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
 	strlcpy(out, value, outlen);
 
 	return strlen(out);
+}
+
+
+/*
+ *	Xlat for %{listen:foo}
+ */
+static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
+			   char const *fmt, char *out, size_t outlen)
+{
+	return xlat_listen_common(request, request->listener, fmt, out, outlen);
+}
+
+/*
+ *	Xlat for %{proxy_listen:foo}
+ */
+static ssize_t xlat_proxy_listen(UNUSED void *instance, REQUEST *request,
+				 char const *fmt, char *out, size_t outlen)
+{
+	if (!request->proxy_listener) {
+		*out = '\0';
+		return 0;
+	}
+
+	return xlat_listen_common(request, request->proxy_listener, fmt, out, outlen);
 }
 
 #ifdef HAVE_SETUID
@@ -1044,6 +1083,7 @@ do {\
 	xlat_register("client", xlat_client, NULL, NULL);
 	xlat_register("getclient", xlat_getclient, NULL, NULL);
 	xlat_register("listen", xlat_listen, NULL, NULL);
+	xlat_register("proxy_listen", xlat_proxy_listen, NULL, NULL);
 
 	/*
 	 *  Go update our behaviour, based on the configuration

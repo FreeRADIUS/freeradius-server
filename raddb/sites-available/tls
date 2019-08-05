@@ -17,6 +17,14 @@
 # (0)   TLS-Client-Cert-Subject-Alt-Name-Dns := "two.example.org"
 # ...
 #
+#  It is also possible to distinguish between connections which have
+#  TLS enables, and ones which do not.  The expansion:
+#
+#	%{listen:tls}
+#
+#  Will return "yes" if the connection has TLS enabled.  It will
+#  return "no" if TLS is not enabled for a particular listen section.
+#
 ######################################################################
 
 listen {
@@ -391,6 +399,20 @@ clients radsec {
 	}
 }
 
+#
+#  When a request is proxied to a TLS-enabled home server,
+#  the TLS parameters are available via the expansion:
+#
+#	%{proxy_listen: ... }
+#
+#  The contents of the expansion are the same as described
+#  above with the %{listen: ... } expansion, and have similar
+#  meanings.  "client" in this case is the proxy (this system)
+#  and "server" is the remote system (home server).
+#
+#  Note that the %{proxy_listen: ... } parameters are available
+#  only AFTER the connection has been made to the home server.
+#
 home_server tls {
 	ipaddr = 127.0.0.1
 	port = 2083
