@@ -1,25 +1,41 @@
 # Installation
-## Introduction
 
-Ignore the installation instructions in this file if you have a
-pre-installed binary package.  
+We recommend installing FreeRADIUS via the pre-built packages
+available from [Network RADIUS](http://packages.networkradius.com).
+Many Operating System distributions ship versions of FreeRADIUS which
+are years out of date.  That page contains recent FreeRADIUS packages
+for all common OS distributions.  For historical purposes, packages of
+older releases are also available from that site.
 
-When upgrading from older versions of FreeRADIUS, you should read
-ALL of this file, especially the section on [Upgrading](#upgrading)
-which gives information on how to update your configuration.
+The rest of this document describes how to install FreeRADIUS from
+source. i.e. a "tar.gz" file.
 
-**WARNING**  Failure to properly update your configurations may cause
-your previously working FreeRADIUS server to no longer authenticate
-your users.
+## Building from Source
 
-Whether you are installing from source or a pre-built binary
-package, you should read the section [Running The Server](#running-the-server).
+The [build dependencies](doc/source/dependencies.adoc) must be
+installed before FreeRADIUS can build.  These dependencies are
+libtalloc and libkqueue, which FreeRADIUS uses for memory management,
+and platform-independent event handling.
 
+Download the latest version of the FreeRADIUS source from the
+FreeRADIUS ftp site:
 
-## Simple build from Source
+```
+ftp://ftp.freeradius.org/pub/freeadius/
+```
 
-If you do not need to modify the default configuration, then take
-the following steps to build and install the server from source:
+The file wil be name something like: `freeradius-server-4.0.0.tar.gz`.
+Later version will be `4.0.1`, or `4.1.0`, etc.
+
+Un-tar the file, and change to the FreeRADIUS directory, where
+`VERSION` is the version of the server that you have downloaded.
+
+```bash
+tar -zxf freeradius-server-VERSION.tar.gz
+cd freeradius-server-VERSION
+```
+
+Take the following steps to build and install the server from source:
 
 ```bash
 ./configure
@@ -31,21 +47,7 @@ make install
 
 FreeRADIUS has GNU autoconf support. This means you have to run
 ``./configure``, and then run ``make``.  To see which configuration options
-are supported, run ``./configure --help``, and read it's output.  The
-following list is a selection from the available flags:
-
-```text
-  --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log] 
-  --with-radacctdir=PATH  Directory for detail files [LOGDIR/radacct] 
-  --with-raddbdir=DIR     Directory for config files [SYSCONFDIR/raddb] 
-  --with-threads          Use threads, if available.  (default=yes) 
-  --with-snmp             Compile in SNMP support. (default=yes)
-  --with-dhcp             Compile in DHCP support. (default=yes)
-  --with-experimental-modules  Use experimental and unstable modules.
-                               (default=no) 
-  --enable-developer      Turns on super-duper-extra-compile-warnings
-                          when using gcc, as well as experimental modules.
-```
+are supported, run ``./configure --help``, and read it's output.
 
 The ``make install`` stage will install the binaries, the 'man' pages,
 and MAY install the configuration files.  If you have not installed a
@@ -70,26 +72,29 @@ software.  These files will NOT be installed over your current
 configuration, so you MUST verify and install any problem files by
 hand, for example using ``diff(1)`` to check for changes.
 
-It is EXTREMELY helpful to read the output of ``./configure``,
-``make``, and ``make install``.  If a particular module you expected to be
-installed was not installed, then the output of the
-``./configure; make; make install`` sequence will tell you why that module
-was not installed.  Please do NOT post questions to the FreeRADIUS
-users list without first carefully reading the output of this process as it
-often contains the information needed to resolve a problem.
+When installing fro, source, it is EXTREMELY helpful to read the
+output of ``./configure``, ``make``, and ``make install``.  If a
+particular module you expected to be installed was not installed, then
+the output of the ``./configure; make; make install`` sequence will
+tell you why that module was not installed.  Please do NOT post
+questions to the FreeRADIUS users list without first carefully reading
+the output of this process as it often contains the information needed
+to resolve a problem.
 
-## Upgrading
+## Upgrading To A New Minor Release
 
 The installation process will not over-write your existing
 configuration files.  It will, however, warn you about the files it
 did not install. These will require manual integration with the existing files.
 
 It is generally not possible to re-use configurations between
-different major versions of the server. (For example - 2.x to 3.x)
+different major versions of the server. (For example - version 2 to
+version 3, or version 3 to version 4.
 
-For details on what has changed between the version, see ``raddb/README.md``.
+For details on what has changed between the version, see the
+[upgade](../upgrade/) guide.
 
-We STRONGLY recommend that new major versions be installed in a different 
+We STRONGLY recommend that new major versions be installed in a different
 location than any existing installations.  Any local policies can
 then be migrated gradually to the configuration format of the new major
 version.  The number of differences in the new configuration mean that is
@@ -99,13 +104,13 @@ and just get the old configuration to work.
 ## Running the server
 
 If the server builds and installs, but doesn't run correctly, then
-you should first use debugging mode (``radiusd -X``) to figure out the problem. 
+you should first use debugging mode (``radiusd -X``) to figure out the problem.
 
 This is your BEST HOPE for understanding the problem.  Read ALL of
 the messages which are printed to the screen, the answer to your
 problem will often be in a warning or error message.
 
-We really can't emphasize that last sentence enough.  Configuring a
+We really cannot emphasize that last sentence enough.  Configuring a
 RADIUS server for complex local authentication isn't a trivial task.
 Your BEST and ONLY method for debugging it is to read the debug messages, where
 the server will tell you exactly what it's doing, and why.  You should
@@ -166,7 +171,7 @@ environment. You should make the appropirate investment in order to properly sup
 critical resource such as your authentication servers.
 
 Configuring and running the server MAY be complicated.  Many modules
-have ``man`` pages.  See ``man rlm_pap``, or ``man rlm_*`` for 
+have ``man`` pages.  See ``man rlm_pap``, or ``man rlm_*`` for
 information.
 Please read the documentation in the doc/ directory.  The comments in
 the configuration files also contain a lot of documentation.
@@ -175,4 +180,3 @@ If you have any additional issues, the FAQ is also a good place to
 start.
 
   https://wiki.freeradius.org/guide/FAQ
-

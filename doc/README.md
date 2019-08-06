@@ -13,9 +13,9 @@ questions about functionality, configuration, etc.
 
 For more complex requirements, FreeRADIUS can be extremely difficult
 to configure.  The reason for this difficulty is that the server can
-do almost anything, which means that there are near-infinite ways to
-configure it.  The question for an administrator, then, is which piece
-of the configuration to change, and how to change it.
+do almost anything, which means that there are a near-infinite number
+of ways to configure it.  The question for an administrator, then, is
+what piece of the configuration to change, and how to change it.
 
 This documentation will answer those questions.  The FreeRADIUS team
 has put substantial effort into writing the documentation for this
@@ -43,19 +43,17 @@ helpful than having a smaller number of enormous pages.  This division
 ensures that (for example) the "how-to" guides are split into a series
 of small steps, each of which can be performed quickly.
 
-The documentation here is substantially more complete and in-depth
-than in any previous version of the server.  We hope that this level
-of detail will address any lingering concerns about the quality of the
-FreeRADIUS documentation.
+We hope that this extended documentation will address any lingering
+concerns about the quality of the FreeRADIUS documentation.
 
 ## Getting Started
 
-We recommend installing FreeRADIUS from the pre-built packages
-available at [Network RADIUS](http://packages.networkradius.com).
+We recommend installing FreeRADIUS via the pre-built packages
+available from [Network RADIUS](http://packages.networkradius.com).
 Many Operating System distributions ship versions of FreeRADIUS which
-are years out of date.  The page given above contains recent packages
+are years out of date.  That page contains recent FreeRADIUS packages
 for all common OS distributions.  For historical purposes, packages of
-older releases are also available.
+older releases are also available from that site.
 
 Administrators who are new to FreeRADIUS should read the
 [introduction](introduction/) documentation.  That section describes
@@ -64,11 +62,13 @@ understand these concepts, as the rest of the documentation assumes
 familiarity with them.
 
 Administrators who have version 3 and wish to upgrade to version 4
-should read the [upgrading](upgrade/) documentatin.  That section
+should read the [upgrading](upgrade/) documentation.  That section
 explains the differences between the two versions, and how an existing
-configuration can be reproduced in the latest release.
+configuration can be reproduced in the latest release.  We do _not_
+recommend using version 3 configuration files with version 4.  The
+server does not have compatible files across a major version upgrade.
 
-A detailed [Unlang Reference](unlang/) guide is also available.  This
+A detailed [unlang](unlang/) reference guide is also available.  This
 section describes the syntax and functionality of the keywords, data
 types, etc. used in the "unlang" processing language.
 
@@ -86,17 +86,16 @@ documents the APIs for developers.  Most people can ignore it.
 
 ## Debugging
 
-If you have ANY problems, concerns, or surprises when running
-the server, then run it in debugging mode, as root, from the
-command line:
+If you have ANY problems, concerns, or surprises when running the
+server, the the server should be run in debugging mode as root, from
+the command line:
 
     # radiusd -X
 
 It will produce a large number of messages.  The answers to many
 questions, and the solution to many problems, can usually be found in
-these messages.  When running in a terminal window, error messages
-will be shown in red text, and warning messages will be shown in
-yellow text.
+these messages.  When run in a terminal window, error messages will be
+shown in red text, and warning messages will be shown in yellow text.
 
 For other use-cases, please look for `ERROR` or `WARNING` in the debug
 output.  In many cases, those messages describe exactly what is going

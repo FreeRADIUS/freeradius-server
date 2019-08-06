@@ -3,6 +3,7 @@
 [![Travis CI build status][BuildStatus]][BuildStatusLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink]
 
 ## Introduction
+
 The FreeRADIUS Server Project is a high performance and highly
 configurable multi-protocol policy server, supporting RADIUS, DHCPv4
 and VMPS. It is available under the terms of the GNU GPLv2.
@@ -17,33 +18,21 @@ Directory, Apache Cassandra, Redis, OpenLDAP, and many more.  It is
 used daily to authenticate the Internet access for hundreds of millions
 of people, in sites ranging from 10 to 10 million+ users.
 
-## Upgrading
-Version 4.0.x of the server is largely compatible with version 3.0.x,
-but be sure to address any warnings when starting v3.0.x before
-attempting to use en existing configuration with v4.0.x.
+## Documentation
 
-For a list of changes in version 4.0, please see
-[doc/ChangeLog](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/ChangeLog)
+Please see the [documentation](doc/) directory, which has full
+documentation for version 4.
 
-See 
-[raddb/README.md](https://github.com/FreeRADIUS/freeradius-server/blob/master/raddb/README.md)
-for information on what to do to update your configuration.
-
-Administrators upgrading from a previous version should install this
-version in a different location from their existing systems.  Any
-existing configuration should be carefully migrated to the new
-version, in order to take advantage of the new features which can
-greatly simply configuration.
-
-Please see https://freeradius.org and https://wiki.freeradius.org for
-more information.
-
+Please also see https://freeradius.org and https://wiki.freeradius.org
+for additional documentation.
 
 ## Installation
-To install the server, please see the 
-[INSTALL.md](https://github.com/FreeRADIUS/freeradius-server/blob/master/INSTALL.md) file in this directory.
+
+To install the server, please see the [installation
+instrictions](doc/howto/INSTALL.md) document.
 
 ## Configuring the server
+
 We understand that the server may be difficult to configure,
 install, or administer.  It is, after all, a complex system with many
 different configuration possibilities.
@@ -93,15 +82,14 @@ the FreeRADIUS mailing lists.
 
 https://freeradius.org/support/
 
-
 ## Feedback, Defects, and Community Support
 
 If you have any comments, or are having difficulty getting FreeRADIUS
-to do what you want, please post to the 'freeradius-users' list
-(see the URL above). The FreeRADIUS mailing list is operated, and
+to do what you want, please post to the 'freeradius-users' list (see
+the URL above). The FreeRADIUS mailing list is operated, and
 contributed to, by the FreeRADIUS community. Users of the list will be
-more than happy to answer your questions, with the caveat that you've
-read documentation relevant to your issue first.
+more than happy to answer your questions, with the caveat that you
+have read the documentation relevant to your issue first.
 
 If you suspect a defect in the server, would like to request a feature,
 or submit a code patch, please use the GitHub issue tracker for the
@@ -128,29 +116,10 @@ documentation.  We recognize that the documentation isn't perfect, but
 it *does* exist, and reading it can solve most common questions.
 
 FreeRADIUS is the cumulative effort of many years of work by many
-people, and you've gotten it for free.  No one is getting paid to answer
-your questions.  This is free software, and the only way it gets better
-is if you make a contribution back to the project ($$, code, or
-documentation).
-
-We will note that the people who get most upset about any answers to
-their questions usually do not have any intention of contributing to
-the project.  We will repeat the comments above: no one is getting
-paid to answer your questions or to fix your bugs.  If you don't like
-the responses you are getting, then fix the bug yourself, or pay
-someone to address your concerns.  Either way, make sure that any fix
-is contributed back to the project so that no one else runs into the
-same issue.
-
-## Books on RADIUS
-
-See ``doc/README.md`` for more information about FreeRADIUS.
-
-There is an O'Reilly book available.  It serves as a good
-introduction for anyone new to RADIUS.  However, it is from 2002
-and is not much more than a basic introduction to the subject.
-
-https://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
+people, and you have gotten it for free.  No one is getting paid to
+answer your questions.  This is free software, and the only way it
+gets better is if you make a contribution back to the project ($$,
+code, or documentation).
 
 ## Commercial support
 
