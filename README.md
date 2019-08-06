@@ -1,4 +1,4 @@
-= The FreeRADIUS server
+# The FreeRADIUS server
 
 [![Travis CI build status][BuildStatus]][BuildStatusLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink]
 
