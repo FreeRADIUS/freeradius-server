@@ -244,7 +244,9 @@ typedef struct json_flags {
 	int is_json;		//!< If true value will be inserted as raw JSON
 				// (multiple values not supported).
 	FR_TOKEN op;		//!< The operator that determines how the new VP
-				// is processed. @see fr_tokens
+				// is processed. @see fr_tokens_table
+
+	int8_t tag;		//!< Tag to assign to VP.
 } json_flags_t;
 #endif
 
@@ -1226,8 +1228,6 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_r
 		return NULL;
 	}
 
-	vp->op = flags->op;
-
 	ret = fr_pair_value_from_str(vp, to_parse, -1);
 	talloc_free(expanded);
 	if (ret < 0) {
@@ -1236,6 +1236,9 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_r
 
 		return NULL;
 	}
+
+	vp->op = flags->op;
+	vp->tag = flags->tag;
 
 	return vp;
 }
@@ -1423,6 +1426,8 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			elements = 1;
 			element = value;
 		}
+
+		flags.tag = dst->tmpl_tag;
 
 		/*
 		 *  A JSON 'value' key, may have multiple elements, iterate
@@ -1741,7 +1746,7 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 
 	char const *p = ptr, *q;
 	char *tmp;
-	
+
 	size_t const t = (size * nmemb);
 	size_t needed;
 
