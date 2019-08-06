@@ -239,6 +239,8 @@ typedef struct {
 				// (multiple values not supported).
 	FR_TOKEN op;		//!< The operator that determines how the new VP
 				// is processed. @see fr_tokens_table
+
+	int8_t tag;		//!< Tag to assign to VP.
 } json_flags_t;
 #endif
 
@@ -947,6 +949,7 @@ static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSE
 	}
 
 	vp->op = flags->op;
+	vp->tag = flags->tag;
 
 	return vp;
 }
@@ -1054,6 +1057,8 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			RPWDEBUG("Failed parsing attribute (skipping)");
 			continue;
 		}
+
+		flags.tag = dst->tmpl_tag;
 
 		if (radius_request(&current, dst->tmpl_request) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
