@@ -44,7 +44,7 @@ following:
 
 1. Start off with the default configuration files.
 2. Save a copy of the default configuration: It WORKS.  Don't change it!
-3. Verify that the server starts - in debugging mode (``radiusd -X``).
+3. Verify that the server starts - in debugging mode (`radiusd -X`).
 4. Send it test packets using "radclient", or a NAS or AP.
 5. Verify that the server does what you expect
    - If it does not work, change the configuration, and go to step (3)
@@ -63,11 +63,15 @@ frustrating than quickly making forward progress!
 
 ## Debugging the Server
 
-Run the server in debugging mode, (``radiusd -X``) and READ the output.
+Run the server in debugging mode, (`radiusd -X`) and READ the output.
 We cannot emphasize this point strongly enough.  The vast majority of
 problems can be solved by carefully reading the debugging output,
 which includes WARNINGs about common issues, and suggestions for how
 they may be fixed.
+
+The debug output is explained in detail in the
+[radiusd-X](http://wiki.freeradius.org/radiusd-X) page on the
+[wiki](http://wiki.freeradius.org).
 
 Many questions are answered on the Wiki:
 
@@ -81,6 +85,11 @@ Search the mailing lists. For example, using Google, searching
 the FreeRADIUS mailing lists.
 
 https://freeradius.org/support/
+
+Instructions for what to post on the mailing list are [on the
+wiki](http://wiki.freeradius.org/list-help).  Please note that we DO
+recommend posting the output of `radiusd -X`.  We do NOT recommend
+posting the configuration files.
 
 ## Feedback, Defects, and Community Support
 
@@ -100,7 +109,7 @@ mailing lists first to determine whether it really is a defect or
 missing feature.
 
 Instructions for gathering data for defect reports can be found in
-``doc/source/bugs.md`` or on the [wiki](https://wiki.freeradius.org/project/bug-reports).
+`doc/source/bugs.md` or on the [wiki](https://wiki.freeradius.org/project/bug-reports).
 
 Under no circumstances should the issue tracker be used for support
 requests, those questions belong on the user's mailing list.  If you
