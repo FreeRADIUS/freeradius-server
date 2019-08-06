@@ -3,6 +3,8 @@ compiler:
 - clang
 - gcc
 sudo: true
+cache:
+  apt: true
 dist: xenial
 env:
   global:
