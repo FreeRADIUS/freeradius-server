@@ -1427,7 +1427,7 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			element = value;
 		}
 
-		flags.tag = dst->tmpl_tag;
+		flags.tag = dst.tmpl_tag;
 
 		/*
 		 *  A JSON 'value' key, may have multiple elements, iterate
