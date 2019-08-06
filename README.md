@@ -29,7 +29,7 @@ for additional documentation.
 ## Installation
 
 To install the server, please see the [installation
-instrictions](doc/howto/INSTALL.md) document.
+instructions](doc/howto/INSTALL.md) document.
 
 ## Configuring the server
 

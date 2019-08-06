@@ -12,7 +12,7 @@ source. i.e. a "tar.gz" file.
 
 ## Building from Source
 
-The [build dependencies](doc/source/dependencies.adoc) must be
+The [build dependencies](../source/dependencies.adoc) must be
 installed before FreeRADIUS can build.  These dependencies are
 libtalloc and libkqueue, which FreeRADIUS uses for memory management,
 and platform-independent event handling.
