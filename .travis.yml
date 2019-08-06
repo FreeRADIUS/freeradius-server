@@ -3,6 +3,8 @@ compiler:
   - clang
   - gcc
 sudo: false
+cache:
+  apt: true
 env:
   global:
     - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
