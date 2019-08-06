@@ -1,105 +1,88 @@
 = FreeRADIUS Documentation
 
-This directory contains documentation for FreeRADIUS.  The
+This is the documentation for FreeRADIUS, version 4.  The
 documentation is available under the Creative Commons Non-Commercial
 license, as given in the `LICENSE` file in this directory.
 
-[Introduction](introduction/) - Introduction to FreeRADIUS and RADIUS
-in general.
+FreeRADIUS is a complex piece of software with many configuration
+options.  However, we have taken great care to make the default
+configuration work in most circumstances.  The result is that for most
+simple systems, it is trivial to install and configure the server.
+For those situations, this documentation will serve to answer basic
+questions about functionality, configuration, etc.
 
-[Upgrading](upgrade/) - How to upgrade from version 3 to version 4.
+For more complex requirements, FreeRADIUS can be extremely difficult
+to configure.  The reason for this difficulty is that the server can
+do almost anything, which means that there are near-infinite ways to
+configure it.  The question for an administrator, then, is which piece
+of the configuration to change, and how to change it.
 
-[How-To](howto/) - How-To guides for performing common tasks.
+This documentation will answer those questions.  The FreeRADIUS team
+has put substantial effort into writing the documentation for this
+release.  Everything in the server is fully documented, and there are
+many "how-to" guides available.
 
-[Unlang Reference](unlang/) - reference documentation for unlang.
+The documentation is split into sections by subject area, oganized by
+desired outcome.  At a high level, the subject areas describe:
 
-[Configuration Files](raddb/) - Documentation for the files in the
-`raddb` directory.  This documentation includes configuration files
-which have been converted to Asciidoc
+* concepts and [introduction](introduction/) for newcomers,
+* the syntax of the [unlang](unlang/) processing language,
+* the [configuration files](raddb/),
+* various [how-to](howto/) guides,
+* [upgrading](upgrade/) from a previous version of FreeRADIUS,
+* and [developer documentation](source/)
 
-[Developer Documentation](source/) - API / developer documentation.  Most people can ignore this.
+ This organization means that for example, the `ldap` module will have
+ documention located in multiple places.  We feel that organizing the
+ documentation by desired "goal" is better than the alternatives.
 
-## Installation
+Within each section, the documentation is split into small pages,
+which are generally no more than a few screens worth of information.
+We feel that having multiple small pages with cross-links is more
+helpful than having a smaller number of enormous pages.  This division
+ensures that (for example) the "how-to" guides are split into a series
+of small steps, each of which can be performed quickly.
 
-Please see the `INSTALL.md` file, in the parent directory.
+The documentation here is substantially more complete and in-depth
+than in any previous version of the server.  We hope that this level
+of detail will address any lingering concerns about the quality of the
+FreeRADIUS documentation.
 
-Pre-build packages for common Linux systems are available at
-http://packages.networkradius.com/
+## Getting Started
 
-## Configuration Files
+We recommend installing FreeRADIUS from the pre-built packages
+available at [Network RADIUS](http://packages.networkradius.com).
+Many Operating System distributions ship versions of FreeRADIUS which
+are years out of date.  The page given above contains recent packages
+for all common OS distributions.  For historical purposes, packages of
+older releases are also available.
 
-Every configuration file contains documentation that explains in
-detail what it does, and what each configuration item does.
+Administrators who are new to FreeRADIUS should read the
+[introduction](introduction/) documentation.  That section describes
+the concepts behind FreeRADIUS.  It is vital for newcomers to
+understand these concepts, as the rest of the documentation assumes
+familiarity with them.
 
-Reading the configuration files is *required* to fully understand how
-to create complex configurations of the server.
+Administrators who have version 3 and wish to upgrade to version 4
+should read the [upgrading](upgrade/) documentatin.  That section
+explains the differences between the two versions, and how an existing
+configuration can be reproduced in the latest release.
 
-## Getting Help
+A detailed [Unlang Reference](unlang/) guide is also available.  This
+section describes the syntax and functionality of the keywords, data
+types, etc. used in the "unlang" processing language.
 
-There are two mailing lists for users and developers. General
-user, administrator and configuration issues should be discussed
-on the users list at:
+All of the [configuration files](raddb/) are available in hypertext
+format.  In can often be easier to read the configuration files in a
+nicely formatted version, instead of as a fixed-width font in a text
+editor.
 
-http://lists.freeradius.org/mailman/listinfo/freeradius-users
+For specific problem solving, we recommend the [how-to](howto/)
+guides.  These guides give instructions for reaching high-level goals,
+or for configuring and testing individual [modules](howto/modules/).
 
-When asking for help on the users list, be sure the include a
-detailed and clear description of the problem, together with
-full debug output from FreeRADIUS, obtained by running
-
-    # radiusd -X
-
-## Where to get it
-
-The latest version of FreeRADIUS is always available from
-the git repository hosted on GitHub at
-
-https://github.com/FreeRADIUS/freeradius-server
-
-## Directories
-
-There are a number of directories included here:
-
-### Documentation
-
-| Directory			| Description
-|---				|---
-| ``debian/`` 			| Files to build a "freeradius" Debian Linux package.
-| ``doc/``  			| Various snippets of documentation
-| ``doc/rfc/``			| Copies of the RFC's.  If you have Perl, do a 'make' in that directory, and look at the HTML output.
-| ``man/``			| Unix Manual pages for the server, configuration files, and associated utilities.
-
-### Utility
-
-| Directory			| Description
-|---				|---
-| ``mibs/``			| SNMP Mibs for the server.
-| ``scripts/``			| Sample scripts for startup and maintenance.
-
-### Configuration
-
-| Directory			| Description
-|---				|---
-| ``raddb/``			| Sample configuration files for the server.
-| ``raddb/mods-available``	| Module configuration files.
-| ``raddb/mods-enabled``	| Directory containing symlinks to raddb/mods-available. Controls which modules are enabled.
-| ``raddb/sites-available``	| Virtual servers.
-| ``raddb/sites-enabled``	| Directory containing symlinks to raddb/sites-available. Control which virtual servers are enabled.
-
-### Packaging
-| Directory			| Description
-|---				|---
-| ``redhat/``			| Additional files for a RedHat Linux system.
-| ``suse/``			| Additional files for a SuSE (UnitedLinux) system.
-
-### Source
-| Directory			| Description
-|---				|---
-| ``src/``			| Source code
-| ``src/bin/``			| Source code for the daemon and associated utilities.
-| ``src/lib/``			| Source code for various utility libraries.
-| ``src/include/``		| Header files.
-| ``src/protocols/``		| Dynamic frontend plug-in modules.
-| ``src/modules/``		| Dynamic backend plug-in modules.
+There is also [developer documentation](source/).  This section
+documents the APIs for developers.  Most people can ignore it.
 
 ## Debugging
 
@@ -111,8 +94,31 @@ command line:
 
 It will produce a large number of messages.  The answers to many
 questions, and the solution to many problems, can usually be found in
-these messages.
+these messages.  When running in a terminal window, error messages
+will be shown in red text, and warning messages will be shown in
+yellow text.
 
-For further details, see:
+For other use-cases, please look for `ERROR` or `WARNING` in the debug
+output.  In many cases, those messages describe exactly what is going
+wrong, and how to fix it.
 
-http://wiki.freeradius.org/radiusd-X
+For further details, about the debug output see the
+[radiusd-X](http://wiki.freeradius.org/radiusd-X) page on the
+[wiki](http://wiki.freeradius.org).
+
+## Getting Help
+
+We also recommend joining the [mailing
+list](http://lists.freeradius.org/mailman/listinfo/freeradius-users)
+in order to ask questions and receive ansswers.  The developers are
+not on Stack Overflow, IRC, or other web sites.  While the FreeRADIUS
+source is available on
+[GitHub](https://github.com/FreeRADIUS/freeradius-server/), questions
+posted there will not be answered.
+
+WARNING: Posting questions to the mailing list *without* including the
+debug output is generally not acceptable.  Doing so will usually cause
+the developers to reply, saying "post the debug output".
+
+We simply cannot emphasize enough the importance of running the server
+in debugging mode, and _reading_ the output.
