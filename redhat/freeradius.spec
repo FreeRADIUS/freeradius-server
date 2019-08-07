@@ -349,6 +349,7 @@ export LDFLAGS="-Wl,--build-id"
         --without-rlm_sql_iodbc \
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
+        --without-rlm_sql_mongo \
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
         --with-winbind-include-dir=/usr/include/samba-4.0 \
@@ -433,6 +434,8 @@ rm -rf $RPM_BUILD_ROOT/%{_includedir}
 # remove unsupported config files
 rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/experimental.conf
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/unbound
+rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/mongo
+rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/mongo
 
 # install doc files omitted by standard install
 for f in COPYRIGHT CREDITS INSTALL.rst README.rst; do
