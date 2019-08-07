@@ -441,6 +441,9 @@ static int dict_enum_value_cmp(void const *one, void const *two)
 }
 
 
+static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
+				  UNUSED char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags) CC_HINT(nonnull(1,2,6));
+
 /** Validate a set of flags
  *
  * @param[in] dict		of protocol context we're operating in.
@@ -818,16 +821,15 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 *	Set the length / type_size of vendor
 		 *	attributes from the vendor definition.
 		 */
-		{
+		flags->type_size = 1;
+		flags->length = 1;
+		if (attr) {
 			fr_dict_vendor_t const *dv;
 
 			dv = fr_dict_vendor_by_num(dict, *attr);
 			if (dv) {
 				flags->type_size = dv->type;
 				flags->length = dv->length;
-			} else {
-				flags->type_size = 1;
-				flags->length = 1;
 			}
 		}
 		break;
