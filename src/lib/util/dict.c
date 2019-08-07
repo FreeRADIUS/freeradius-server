@@ -928,7 +928,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			return false;
 		}
 
-		if (flags->internal || flags->has_tag || flags->array || flags->concat || flags->virtual) {
+		if (flags->internal || flags->has_tag || flags->array || flags->concat || flags->virtual || flags->extra) {
 			fr_strerror_printf("Invalid flag for attribute of type 'struct'");
 			return false;
 		}
@@ -958,6 +958,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		}
 
 		if (*attr > 1) {
+			int i;
 			fr_dict_attr_t const *sibling;
 
 			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
@@ -970,6 +971,44 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			if (dict_attr_sizes[sibling->type][1] == ~(size_t) 0) {
 				fr_strerror_printf("Only the last child of a 'struct' attribute can have variable length");
 				return false;
+			}
+
+			/*
+			 *	Check for bad key fields, or multiple key fields.
+			 */
+			if (flags->extra) {
+				/*
+				 *	There should really be a
+				 *	separate "validation"
+				 *	function, which is used both
+				 *	here, and by the flag parser.
+				 */
+				switch (type) {
+				case FR_TYPE_UINT8:
+				case FR_TYPE_UINT16:
+				case FR_TYPE_UINT32:
+				case FR_TYPE_UINT64:
+					break;
+
+				default:
+					fr_strerror_printf("'key' can only be used with unsigned integer data types");
+					return -1;
+				}
+
+				for (i = 1; i < *attr; i++) {
+					sibling = fr_dict_attr_child_by_num(parent, i);
+					if (!sibling) {
+						fr_strerror_printf("Child %d of 'struct' type attribute %s does not exist.",
+								   i, parent->name);
+						return false;
+					}
+
+					if (!sibling->flags.extra) continue;
+
+					fr_strerror_printf("Duplicate key attributes '%s' and '%s' in 'struct' type attribute %s are forbidden",
+							   name, sibling->name, parent->name);
+					return false;
+				}
 			}
 
 		} else {
@@ -2470,10 +2509,23 @@ do { \
 	}
 
 	if (flags->extra) {
-		if (type == FR_TYPE_EXTENDED) {
+		switch (type) {
+		case FR_TYPE_EXTENDED:
 			p += snprintf(p, end - p, "long,");
-			if (p >= end) return -1;
+			break;
+
+		case FR_TYPE_UINT8:
+		case FR_TYPE_UINT16:
+		case FR_TYPE_UINT32:
+		case FR_TYPE_UINT64:
+			p += snprintf(p, end - p, "key,");
+			break;
+
+		default:
+			break;
 		}
+
+		if (p >= end) return -1;
 	}
 
 	/*
@@ -4001,6 +4053,21 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 		} else if (strcmp(key, "long") == 0) {
 			if (type != FR_TYPE_EXTENDED) {
 				fr_strerror_printf("'long' can only be used with data type 'extended'");
+				return -1;
+			}
+
+			flags->extra = 1;
+
+		} else if (strcmp(key, "key") == 0) {
+			switch (type) {
+			case FR_TYPE_UINT8:
+			case FR_TYPE_UINT16:
+			case FR_TYPE_UINT32:
+			case FR_TYPE_UINT64:
+				break;
+
+			default:
+				fr_strerror_printf("'key' can only be used with unsigned integer data types");
 				return -1;
 			}
 
