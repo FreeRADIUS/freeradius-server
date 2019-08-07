@@ -2469,6 +2469,13 @@ do { \
 		if (p >= end) return -1;
 	}
 
+	if (flags->extra) {
+		if (type == FR_TYPE_EXTENDED) {
+			p += snprintf(p, end - p, "long,");
+			if (p >= end) return -1;
+		}
+	}
+
 	/*
 	 *	Print out the date precision.
 	 */
@@ -3992,6 +3999,11 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 			flags->virtual = 1;
 
 		} else if (strcmp(key, "long") == 0) {
+			if (type != FR_TYPE_EXTENDED) {
+				fr_strerror_printf("'long' can only be used with data type 'extended'");
+				return -1;
+			}
+
 			flags->extra = 1;
 
 		} else if (ref_p && (strcmp(key, "reference") == 0)) {
