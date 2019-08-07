@@ -459,7 +459,7 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 {
 	int bit;
 	uint32_t all_flags;
-	uint32_t shift_is_root, shift_is_unknown, shift_is_raw, shift_internal;
+	uint32_t shift_is_root, shift_internal;
 	uint32_t shift_has_tag, shift_array, shift_has_value, shift_concat;
 	uint32_t shift_virtual, shift_encrypt, shift_extra;
 	fr_dict_attr_t const *v;
@@ -473,8 +473,6 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 #define SET_FLAG(_flag) do { shift_ ## _flag = 1 << bit; if (flags->_flag) {all_flags |= (1 << bit); } bit++; } while (0)
 	SET_FLAG(is_root);
-	SET_FLAG(is_unknown);
-	SET_FLAG(is_raw);
 	SET_FLAG(internal);
 	SET_FLAG(has_tag);
 	SET_FLAG(array);
@@ -511,6 +509,16 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		FORBID_OTHER_FLAGS(is_root);
+	}
+
+	if (flags->is_unknown) {
+		fr_strerror_printf("The 'unknown' flag cannot be set for attributes in the dictionary.");
+		return -1;
+	}
+
+	if (flags->is_raw) {
+		fr_strerror_printf("The 'raw' flag cannot be set for attributes in the dictionary.");
+		return -1;
 	}
 
 	/*
