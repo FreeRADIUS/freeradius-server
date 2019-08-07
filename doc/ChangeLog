@@ -27,6 +27,8 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Add %{listen:tls} which returns "yes" or "no" for TLS or non-TLS
 	  connections.
 	* Update dictionary.lancom with new attributes. #2847
+	* Added rlm_sql_mongo.  See raddb/mods-available/sql
+	  Note that this module is experimental.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
