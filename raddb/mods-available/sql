@@ -28,6 +28,7 @@ sql {
 	#	oracle
 	#	postgresql
 	#	sqlite
+	#	mongo
 	#
 	dialect = "sqlite"
 
@@ -48,6 +49,7 @@ sql {
 	#	rlm_sql_freetds
 	#	rlm_sql_iodbc
 	#	rlm_sql_unixodbc
+	#	rlm_sql_mongo
 	#
 	driver = "rlm_sql_null"
 #	driver = "rlm_sql_${dialect}"
@@ -104,12 +106,53 @@ sql {
 		send_application_name = yes
 	}
 
+	#
+	#	Configuration for Mongo.
+	#
+	#	Note that the Mongo driver is experimental.  The FreeRADIUS developers
+	#	are unable to help with the syntax of the Mongo queries.  Please see
+	#	the Mongo documentation for that syntax.
+	#
+	#	The Mongo driver supports two methods:
+	#
+	#		findAndModify
+	#		aggregate
+	#
+	#	For examples, see the query files:
+	#
+	#		raddb/mods-config/sql/main/mongo/queries.conf
+	#		raddb/mods-config/sql/main/ippool/queries.conf
+	#
+	mongo {
+		#
+		#  The application name to use.
+		#
+		appname = "freeradius"
+
+		#
+		#  The TLS parameters here map directly to the Mongo TLS configuration
+		#
+		tls {
+			certificate_file = /path/to/file
+			certificate_password = "password"
+			ca_file = /path/to/file
+			ca_dir = /path/to/directory
+			crl_file = /path/to/file
+			weak_cert_validation = false
+			allow_invalid_hostname = false
+		}
+	}
+
 	# Connection info:
 	#
 #	server = "localhost"
 #	port = 3306
 #	login = "radius"
 #	password = "radpass"
+
+	# Connection info for Mongo
+	#
+#	server = "mongodb://USER:PASSWORD@192.16.0.2:PORT/?authSource=admin"
 
 	# Database table configuration for everything except Oracle
 	radius_db = "radius"
