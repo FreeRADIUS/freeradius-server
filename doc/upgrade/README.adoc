@@ -10,11 +10,11 @@ contain a step-by-step process for upgrading the server.
 In general, we have the following changes:
 
 * most module configuration is very close to v3.
-* most of the `+unlang+` processing is very close to v3.
-* each `+server+` section need a `+namespace+` parameter.
-* Packet processing sections are now `+recv Access-Request+`, etc. Not
-`+authorize+`, etc.
-* each `+listen+` section needs to be converted to the v4 format.
+* most of the `unlang` processing is very close to v3.
+* each `server` section need a `namespace` parameter.
+* Packet processing sections are now `recv Access-Request`, etc. Not
+  `authorize`, etc.
+* each `listen` section needs to be converted to the v4 format.
 
 == Upgrading from older versions
 
@@ -24,8 +24,8 @@ When upgrading, please start with the default configuration of v4. Then,
 move your v3 configuration over, one module at a time. Check this file
 for differences in module configuration, and update the module to use
 the new configuration. Start the server after every change via
-`+radiusd -XC+` to see if the configuration is OK. Then, convert the
-`+listen+` sections, followed by the `+server+` sections.
+`radiusd -XC` to see if the configuration is OK. Then, convert the
+`listen` sections, followed by the `server` sections.
 
 Take your time. It is better to make small incrementatal progress, than
 to make massive changes, and then to spend weeks debugging it.
