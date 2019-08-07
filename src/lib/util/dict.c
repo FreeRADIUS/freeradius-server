@@ -440,9 +440,8 @@ static int dict_enum_value_cmp(void const *one, void const *two)
 	return fr_value_box_cmp(a->value, b->value);
 }
 
-/** Validate a new attribute definition
- *
- * @todo we need to check length of none vendor attributes.
+
+/** Validate a set of flags
  *
  * @param[in] dict		of protocol context we're operating in.
  *				If NULL the internal dictionary will be used.
@@ -450,110 +449,68 @@ static int dict_enum_value_cmp(void const *one, void const *two)
  * @param[in] name		of the attribute.
  * @param[in] attr		number.
  * @param[in] type		of attribute.
- * @param[in] flags		to set in the attribute.
+ * @param[in] flags		to check in the attribute.
  * @return
  *	- true if attribute definition is valid.
  *	- false if attribute definition is not valid.
  */
-static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
-				   char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
+				  UNUSED char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
-	fr_dict_attr_t const	*v;
-
-	if (!fr_cond_assert(parent)) return false;
-
-	if (fr_dict_valid_name(name, -1) <= 0) return false;
-
-	/******************** sanity check attribute number ********************/
-
-	if (parent->flags.is_root) {
-		static unsigned int max_attr = UINT8_MAX + 1;
-
-		if (*attr == -1) {
-			if (fr_dict_attr_by_name(dict, name)) return false; /* exists, don't add it again */
-			*attr = ++max_attr;
-			flags->internal = 1;
-
-		} else if (*attr <= 0) {
-			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
-			return false;
-
-		} else if ((unsigned int) *attr > max_attr) {
-			max_attr = *attr;
-		}
-
-		/*
-		 *	Auto-set internal flags for raddb/dictionary.
-		 *	So that the end user doesn't have to know
-		 *	about internal implementation of the server.
-		 */
-		if ((parent->flags.type_size == 1) &&
-		    (*attr >= 3000) && (*attr < 4000)) {
-			flags->internal = true;
-		}
-	}
+	int bit;
+	uint32_t all_flags;
+	uint32_t shift_is_root, shift_is_unknown, shift_is_raw, shift_internal;
+	uint32_t shift_has_tag, shift_array, shift_has_value, shift_concat;
+	uint32_t shift_virtual, shift_encrypt, shift_extra;
+	fr_dict_attr_t const *v;
 
 	/*
-	 *	Any other negative attribute number is wrong.
+	 *	Convert the 1-bit fields into bits numbers, so that we
+	 *	can check them in parallel.
 	 */
-	if (*attr < 0) {
-		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
-		return false;
+	all_flags = 0;
+	bit = 0;
+
+#define SET_FLAG(_flag) do { shift_ ## _flag = 1 << bit; if (flags->_flag) {all_flags |= (1 << bit); } bit++; } while (0)
+	SET_FLAG(is_root);
+	SET_FLAG(is_unknown);
+	SET_FLAG(is_raw);
+	SET_FLAG(internal);
+	SET_FLAG(has_tag);
+	SET_FLAG(array);
+	SET_FLAG(has_value);
+	SET_FLAG(concat);
+	SET_FLAG(virtual);
+	SET_FLAG(extra);
+	shift_encrypt = (1 << bit);
+	if (flags->encrypt) {
+		all_flags |= (1 << bit);
 	}
 
-	/*
-	 *	type_size is used to limit the maximum attribute number, so it's checked first.
-	 */
-	if (flags->type_size) {
-		if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
-			return false;
+#define FORBID_OTHER_FLAGS(_flag) do { if (all_flags & ~shift_ ## _flag) { fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag"); return false; } } while (0)
+
+	// is_root
+	// is_unknown
+	// is_raw
+	// is_reference
+	// internal
+	// has_tag
+	// array
+	// has_value
+	// concat
+	// virtual
+	// extra
+	// encrypt
+	// length
+	// type_size
+
+	if (flags->is_root) {
+		if (parent) {
+			fr_strerror_printf("'root' flag must not be set for child attributes");
+			return -1;
 		}
 
-		if ((flags->type_size != 1) &&
-		    (flags->type_size != 2) &&
-		    (flags->type_size != 4)) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
-			return false;
-		}
-	}
-
-	/*
-	 *	If attributes have number greater than 255, do sanity checks.
-	 *
-	 *	We assume that the root attribute is of type TLV, with
-	 *	the appropriate flags set for attributes in this
-	 *	space.
-	 */
-	if ((*attr > UINT8_MAX) && !flags->internal) {
-		for (v = parent; v != NULL; v = v->parent) {
-			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
-				if ((v->flags.type_size < 4) &&
-				    (*attr >= (1 << (8 * v->flags.type_size)))) {
-					fr_strerror_printf("Attributes must have value between 1..%u",
-							   (1 << (8 * v->flags.type_size)) - 1);
-					return false;
-				}
-				break;
-			}
-		}
-	}
-
-	/******************** sanity check flags ********************/
-
-	/*
-	 *	virtual attributes are special.
-	 */
-	if (flags->virtual) {
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("The 'virtual' flag can only be used for normal attributes");
-			return false;
-		}
-
-		if (!flags->internal && (*attr <= (1 << (8 * parent->flags.type_size)))) {
-			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
-			return false;
-		}
+		FORBID_OTHER_FLAGS(is_root);
 	}
 
 	/*
@@ -573,67 +530,22 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			return false;
 		}
 
-		if (flags->array || flags->has_value || flags->concat || flags->virtual || flags->length) {
-			fr_strerror_printf("The 'has_tag' flag cannot be used with any other flag");
-			return false;
-		}
-
 		if (flags->encrypt && (flags->encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
 			fr_strerror_printf("The 'has_tag' flag can only be used with 'encrypt=2'");
 			return false;
 		}
+
+		/*
+		 *	"has_tag" can also be used with "encrypt", and "internal" (for testing)
+		 */
+		all_flags &= ~shift_encrypt;
+		all_flags &= ~shift_internal;
+
+		FORBID_OTHER_FLAGS(has_tag);
 	}
 
 	/*
-	 *	'concat' can only be used in a few limited situations.
-	 */
-	if (flags->concat) {
-		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
-			return false;
-		}
-
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
-			return false;
-		}
-
-		if (flags->array || flags->internal || flags->has_value || flags->virtual ||
-		    flags->encrypt || flags->length) {
-			fr_strerror_printf("The 'concat' flag cannot be used any other flag");
-			return false;
-		}
-	}
-
-	/*
-	 *	'octets[n]' can only be used in a few limited situations.
-	 */
-	if (flags->length) {
-		if (flags->has_value || flags->virtual) {
-			fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
-			return false;
-		}
-
-		if (flags->length > 253) {
-			fr_strerror_printf("Invalid length %d", flags->length);
-			return NULL;
-		}
-
-		if ((type == FR_TYPE_TLV) || (type == FR_TYPE_VENDOR)) {
-			if ((flags->length != 1) &&
-			    (flags->length != 2) &&
-			    (flags->length != 4)) {
-				fr_strerror_printf("The 'length' flag can only be used with attributes of TLV lengths of 1,2 or 4");
-				return false;
-			}
-		} else if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets' or 'struct'");
-			return false;
-		}
-	}
-
-	/*
-	 *	Allow arrays anywhere.
+	 *	Only some data types can be in arrays.
 	 */
 	if (flags->array) {
 		switch (type) {
@@ -653,10 +565,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			break;
 		}
 
-		if (flags->internal || flags->has_value || flags->encrypt || flags->virtual) {
-			fr_strerror_printf("The 'array' flag cannot be used any other flag");
-			return false;
-		}
+		FORBID_OTHER_FLAGS(array);
 	}
 
 	/*
@@ -670,10 +579,73 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			return false;
 		}
 
-		if (flags->encrypt || flags->virtual) {
-			fr_strerror_printf("The 'has_value' flag cannot be used with any other flag");
+		FORBID_OTHER_FLAGS(has_value);
+	}
+
+	/*
+	 *	'concat' can only be used in a few limited situations.
+	 */
+	if (flags->concat) {
+		if (type != FR_TYPE_OCTETS) {
+			fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
 			return false;
 		}
+
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
+			return false;
+		}
+
+		FORBID_OTHER_FLAGS(concat);
+	}
+
+	/*
+	 *	virtual attributes are special.
+	 */
+	if (flags->virtual) {
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("The 'virtual' flag can only be used for normal attributes");
+			return false;
+		}
+
+		if (attr && !flags->internal && (*attr <= (1 << (8 * parent->flags.type_size)))) {
+			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
+			return false;
+		}
+
+		all_flags &= ~shift_internal;
+		FORBID_OTHER_FLAGS(virtual);
+	}
+
+	/*
+	 *	The "extra" flag is a grab-bag of stuff, depending on
+	 *	the data type.
+	 */
+	if (flags->extra) {
+		switch (type) {
+		case FR_TYPE_EXTENDED:
+			if ((all_flags & ~shift_extra) != 0) {
+				fr_strerror_printf("The 'long' flag cannot be used with any other flags.");
+				return false;
+			}
+			break;
+
+		case FR_TYPE_UINT8:
+		case FR_TYPE_UINT16:
+		case FR_TYPE_UINT32:
+		case FR_TYPE_UINT64:
+			if ((all_flags & ~shift_extra) != 0) {
+				fr_strerror_printf("The 'key' flag cannot be used with any other flags.");
+				return false;
+			}
+			break;
+
+		default:
+			fr_strerror_printf("'key' can only be used with unsigned integer data types");
+			return -1;
+		}
+
+		FORBID_OTHER_FLAGS(extra);
 	}
 
 	if (flags->encrypt) {
@@ -739,6 +711,314 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		}
 	}
 
+	/*
+	 *	Force "length" for fixed-size data types.  Check / set
+	 *	"length" and "type_size" for other types.
+	 */
+	switch (type) {
+	case FR_TYPE_UINT8:
+	case FR_TYPE_BOOL:
+		flags->length = 1;
+		break;
+
+	case FR_TYPE_UINT16:
+		flags->length = 2;
+		break;
+
+	case FR_TYPE_DATE:
+		if (!flags->length) flags->length = 4;
+
+		if ((flags->length != 2) && (flags->length != 4) && (flags->length != 8)) {
+			fr_strerror_printf("Invalid length %u for attribute of type 'date'", flags->length);
+		}
+
+		if ((flags->type_size != FR_TIME_RES_SEC) &&
+		    (flags->type_size != FR_TIME_RES_MSEC) &&
+		    (flags->type_size != FR_TIME_RES_USEC) &&
+		    (flags->type_size != FR_TIME_RES_NSEC)) {
+			fr_strerror_printf("Invalid precision for attribute of type 'date'");
+		}
+		break;
+
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_INT32:
+		flags->length = 4;
+		break;
+
+	case FR_TYPE_UINT64:
+		flags->length = 8;
+		break;
+
+	case FR_TYPE_SIZE:
+		flags->length = sizeof(size_t);
+		break;
+
+	case FR_TYPE_ETHERNET:
+		flags->length = 6;
+		break;
+
+	case FR_TYPE_IFID:
+		flags->length = 8;
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+		flags->length = 16;
+		break;
+
+	case FR_TYPE_EXTENDED:
+		if (attr && parent && (!parent->flags.is_root || (*attr < 241))) {
+			fr_strerror_printf("Attributes of type 'extended' MUST be "
+					   "RFC attributes with value >= 241.");
+			return false;
+		}
+		break;
+
+		/*
+		 *	The length of a "struct" is calculated from
+		 *	the children.  It is not input in the flags.
+		 */
+	case FR_TYPE_STRUCT:
+		flags->length = 0;
+
+		if (all_flags) {
+			fr_strerror_printf("Invalid flag for attribute of type 'struct'");
+			return false;
+		}
+		break;
+
+	case FR_TYPE_VENDOR:
+		if (parent->type != FR_TYPE_VSA) {
+			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa'"
+					   "instead of '%s'",
+					   fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
+			return false;
+		}
+
+		if (flags->length) {
+			if ((flags->length != 1) &&
+			    (flags->length != 2) &&
+			    (flags->length != 4)) {
+				fr_strerror_printf("The 'length' flag can only be used for attributes of type 'vendor' with lengths of 1,2 or 4");
+				return false;
+			}
+
+			break;
+		}
+
+		/*
+		 *	Set the length / type_size of vendor
+		 *	attributes from the vendor definition.
+		 */
+		{
+			fr_dict_vendor_t const *dv;
+
+			dv = fr_dict_vendor_by_num(dict, *attr);
+			if (dv) {
+				flags->type_size = dv->type;
+				flags->length = dv->length;
+			} else {
+				flags->type_size = 1;
+				flags->length = 1;
+			}
+		}
+		break;
+
+	case FR_TYPE_TLV:
+		if (flags->length) {
+			if ((flags->length != 1) &&
+			    (flags->length != 2) &&
+			    (flags->length != 4)) {
+				fr_strerror_printf("The 'length' flag can only be used for attributes of type 'tlv' with lengths of 1,2 or 4");
+				return false;
+			}
+
+			break;
+		}
+
+		/*
+		 *	Length isn't set, set it and type_size from
+		 *	the parent.
+		 */
+		for (v = parent; v != NULL; v = v->parent) {
+			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
+				break;
+			}
+		}
+
+		/*
+		 *	root is always FR_TYPE_TLV, so we're OK.
+		 */
+		if (!v) {
+			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
+					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
+			return false;
+		}
+
+		/*
+		 *	Over-ride whatever was there before, so we
+		 *	don't have multiple formats of VSAs.
+		 */
+		flags->type_size = v->flags.type_size;
+		flags->length = v->flags.length;
+		break;
+
+		/*
+		 *	'octets[n]' can only be used in a few limited situations.
+		 */
+	case FR_TYPE_OCTETS:
+		if (flags->length) {
+			/*
+			 *	Internal attributes can use octets[n]
+			 *	MS-MPPE-Keys use octets[18],encrypt=1
+			 *	EAP-SIM-RAND uses array
+			 */
+			all_flags &= ~shift_internal;
+			all_flags &= ~shift_encrypt;
+			all_flags &= ~shift_array;
+
+			if (all_flags) {
+				fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
+				return false;
+			}
+
+			if (flags->length > 253) {
+				fr_strerror_printf("Invalid length %d", flags->length);
+				return NULL;
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	type_size is used to limit the maximum attribute number, so it's checked first.
+	 */
+	if (flags->type_size) {
+		if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
+			return false;
+		}
+
+		if ((flags->type_size != 1) &&
+		    (flags->type_size != 2) &&
+		    (flags->type_size != 4)) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
+			return false;
+		}
+	}
+
+	/*
+	 *	Check flags against the parent attribute.
+	 */
+	if (parent->type == FR_TYPE_STRUCT) {
+		if (flags->encrypt != FLAG_ENCRYPT_NONE) {
+			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT be encrypted.");
+			return false;
+		}
+
+		if (all_flags) {
+			fr_strerror_printf("Invalid flag for attribute inside of a 'struct'");
+			return false;
+		}
+
+		return true;
+	}
+
+
+	return true;
+}
+
+
+/** Validate a new attribute definition
+ *
+ * @todo we need to check length of none vendor attributes.
+ *
+ * @param[in] dict		of protocol context we're operating in.
+ *				If NULL the internal dictionary will be used.
+ * @param[in] parent		to add attribute under.
+ * @param[in] name		of the attribute.
+ * @param[in] attr		number.
+ * @param[in] type		of attribute.
+ * @param[in] flags		to set in the attribute.
+ * @return
+ *	- true if attribute definition is valid.
+ *	- false if attribute definition is not valid.
+ */
+static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
+				   char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+{
+	fr_dict_attr_t const	*v;
+
+	if (!fr_cond_assert(parent)) return false;
+
+	if (fr_dict_valid_name(name, -1) <= 0) return false;
+
+	/******************** sanity check attribute number ********************/
+
+	if (parent->flags.is_root) {
+		static unsigned int max_attr = UINT8_MAX + 1;
+
+		if (*attr == -1) {
+			if (fr_dict_attr_by_name(dict, name)) return false; /* exists, don't add it again */
+			*attr = ++max_attr;
+			flags->internal = 1;
+
+		} else if (*attr <= 0) {
+			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
+			return false;
+
+		} else if ((unsigned int) *attr > max_attr) {
+			max_attr = *attr;
+		}
+
+		/*
+		 *	Auto-set internal flags for raddb/dictionary.
+		 *	So that the end user doesn't have to know
+		 *	about internal implementation of the server.
+		 */
+		if ((parent->flags.type_size == 1) &&
+		    (*attr >= 3000) && (*attr < 4000)) {
+			flags->internal = true;
+		}
+	}
+
+	/*
+	 *	Any other negative attribute number is wrong.
+	 */
+	if (*attr < 0) {
+		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
+		return false;
+	}
+
+	/*
+	 *	Check the flags
+	 */
+	if (!dict_attr_flags_valid(dict, parent, name, attr, type, flags)) return false;
+
+	/*
+	 *	If attributes have number greater than 255, do sanity checks.
+	 *
+	 *	We assume that the root attribute is of type TLV, with
+	 *	the appropriate flags set for attributes in this
+	 *	space.
+	 */
+	if ((*attr > UINT8_MAX) && !flags->internal) {
+		for (v = parent; v != NULL; v = v->parent) {
+			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
+				if ((v->flags.type_size < 4) &&
+				    (*attr >= (1 << (8 * v->flags.type_size)))) {
+					fr_strerror_printf("Attributes must have value between 1..%u",
+							   (1 << (8 * v->flags.type_size)) - 1);
+					return false;
+				}
+				break;
+			}
+		}
+	}
+
 	/******************** sanity check data types and parents ********************/
 
 	/*
@@ -774,58 +1054,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		}
 		break;
 
-	case FR_TYPE_VENDOR:
-		if (parent->type != FR_TYPE_VSA) {
-			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa'"
-					   "instead of '%s'",
-					   fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
-			return false;
-		}
-
-		if (parent->type == FR_TYPE_VSA) {
-			fr_dict_vendor_t const *dv;
-
-			dv = fr_dict_vendor_by_num(dict, *attr);
-			if (dv) {
-				flags->type_size = dv->type;
-				flags->length = dv->length;
-			} else {
-				flags->type_size = 1;
-				flags->length = 1;
-			}
-		} else {
-			flags->type_size = 1;
-			flags->length = 1;
-		}
-		break;
-
-	case FR_TYPE_TLV:
-		/*
-		 *	Ensure that type_size and length are set.
-		 */
-		for (v = parent; v != NULL; v = v->parent) {
-			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
-				break;
-			}
-		}
-
-		/*
-		 *	root is always FR_TYPE_TLV, so we're OK.
-		 */
-		if (!v) {
-			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
-					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
-			return false;
-		}
-
-		/*
-		 *	Over-ride whatever was there before, so we
-		 *	don't have multiple formats of VSAs.
-		 */
-		flags->type_size = v->flags.type_size;
-		flags->length = v->flags.length;
-		break;
-
 	case FR_TYPE_COMBO_IP_ADDR:
 		/*
 		 *	RFC 6929 says that this is a terrible idea.
@@ -851,94 +1079,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 				   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
 		return false;
 
-	case FR_TYPE_DATE:
-		if (flags->type_size > FR_TIME_RES_NSEC) {
-			fr_strerror_printf("Invalid precision '%d' for attribute of type 'date'",
-					   flags->type_size);
-			return false;
-		}
-		break;
-
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Force "length" for data types of fixed length;
-	 */
-	switch (type) {
-	case FR_TYPE_UINT8:
-	case FR_TYPE_BOOL:
-		flags->length = 1;
-		break;
-
-	case FR_TYPE_UINT16:
-		flags->length = 2;
-		break;
-
-	case FR_TYPE_DATE:
-		if (!flags->length) flags->length = 4;
-		break;
-
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_INT32:
-		flags->length = 4;
-		break;
-
-	case FR_TYPE_UINT64:
-		flags->length = 8;
-		break;
-
-	case FR_TYPE_SIZE:
-		flags->length = sizeof(size_t);
-		break;
-
-	case FR_TYPE_ETHERNET:
-		flags->length = 6;
-		break;
-
-	case FR_TYPE_IFID:
-		flags->length = 8;
-		break;
-
-	case FR_TYPE_IPV6_ADDR:
-		flags->length = 16;
-		break;
-
-	case FR_TYPE_EXTENDED:
-		if (!parent->flags.is_root || (*attr < 241)) {
-			fr_strerror_printf("Attributes of type 'extended' MUST be "
-					   "RFC attributes with value >= 241.");
-			return false;
-		}
-		flags->length = 0;
-		break;
-
-		/*
-		 *	The length is calculated from the children, not
-		 *	input as the flags.
-		 */
-	case FR_TYPE_STRUCT:
-		flags->length = 0;
-
-		if (flags->encrypt != FLAG_ENCRYPT_NONE) {
-			fr_strerror_printf("Attributes of type 'struct' MUST NOT be encrypted.");
-			return false;
-		}
-
-		if (flags->internal || flags->has_tag || flags->array || flags->concat || flags->virtual || flags->extra) {
-			fr_strerror_printf("Invalid flag for attribute of type 'struct'");
-			return false;
-		}
-		break;
-
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_TLV:
-		break;
-
 	default:
 		break;
 	}
@@ -947,16 +1087,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	 *	Validate attribute based on parent.
 	 */
 	if (parent->type == FR_TYPE_STRUCT) {
-		if (flags->encrypt != FLAG_ENCRYPT_NONE) {
-			fr_strerror_printf("Attributes inside a 'struct' MUST NOT be encrypted.");
-			return false;
-		}
-
-		if (flags->internal || flags->has_tag || flags->array || flags->concat || flags->virtual) {
-			fr_strerror_printf("Invalid flag for attribute inside a 'struct'");
-			return false;
-		}
-
 		if (*attr > 1) {
 			int i;
 			fr_dict_attr_t const *sibling;
@@ -977,24 +1107,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			 *	Check for bad key fields, or multiple key fields.
 			 */
 			if (flags->extra) {
-				/*
-				 *	There should really be a
-				 *	separate "validation"
-				 *	function, which is used both
-				 *	here, and by the flag parser.
-				 */
-				switch (type) {
-				case FR_TYPE_UINT8:
-				case FR_TYPE_UINT16:
-				case FR_TYPE_UINT32:
-				case FR_TYPE_UINT64:
-					break;
-
-				default:
-					fr_strerror_printf("'key' can only be used with unsigned integer data types");
-					return -1;
-				}
-
 				for (i = 1; i < *attr; i++) {
 					sibling = fr_dict_attr_child_by_num(parent, i);
 					if (!sibling) {
@@ -4051,26 +4163,9 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 			flags->virtual = 1;
 
 		} else if (strcmp(key, "long") == 0) {
-			if (type != FR_TYPE_EXTENDED) {
-				fr_strerror_printf("'long' can only be used with data type 'extended'");
-				return -1;
-			}
-
 			flags->extra = 1;
 
 		} else if (strcmp(key, "key") == 0) {
-			switch (type) {
-			case FR_TYPE_UINT8:
-			case FR_TYPE_UINT16:
-			case FR_TYPE_UINT32:
-			case FR_TYPE_UINT64:
-				break;
-
-			default:
-				fr_strerror_printf("'key' can only be used with unsigned integer data types");
-				return -1;
-			}
-
 			flags->extra = 1;
 
 		} else if (ref_p && (strcmp(key, "reference") == 0)) {
@@ -4127,6 +4222,11 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 		}
 		p = q;
 	} while (*p++);
+
+	/*
+	 *	Check that the flags are valid.
+	 */
+	if (!dict_attr_flags_valid(ctx->dict, ctx->parent, name, NULL, type, flags)) return -1;
 
 	return 0;
 }
@@ -4475,7 +4575,7 @@ static int dict_read_parse_format(char const *format, unsigned int *pvalue, int 
 	}
 
 	if ((length != 0) && (length != 1) && (length != 2)) {
-		fr_strerror_printf("Ivalid length value %d for VENDOR", length);
+		fr_strerror_printf("Invalid length value %d for VENDOR", length);
 		return -1;
 	}
 
