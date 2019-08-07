@@ -1253,11 +1253,17 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	/*
 	 *	Depending on the attribute type, some operators are disallowed.
 	 */
-	if (tmpl_is_attr(map->lhs) && (!fr_assignment_op[map->op] && !fr_equality_op[map->op])) {
-		cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
-			   "Only assignment or filter operators are allowed",
-			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
-		return -1;
+	if (tmpl_is_attr(map->lhs)) {
+		if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
+			cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
+				   "Only assignment or filter operators are allowed",
+				   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+			return -1;
+		}
+
+		if (fr_equality_op[map->op]) {
+			cf_log_warn(cp, "Please use the 'filter' keyword for attribute filtering");
+		}
 	}
 
 	if (tmpl_is_list(map->lhs)) {
@@ -1319,6 +1325,136 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 				   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 			return -1;
 		}
+	}
+
+	/*
+	 *	If the map has a unary operator there's no further
+	 *	processing we need to, as RHS is unused.
+	 */
+	if (map->op == T_OP_CMP_FALSE) return 0;
+
+	/*
+	 *	If LHS is an attribute, and RHS is a literal, we can
+	 *	preparse the information into a TMPL_TYPE_DATA.
+	 *
+	 *	Unless it's a unary operator in which case we
+	 *	ignore map->rhs.
+	 */
+	if (tmpl_is_attr(map->lhs) && tmpl_is_unparsed(map->rhs)) {
+		/*
+		 *	It's a literal string, just copy it.
+		 *	Don't escape anything.
+		 */
+		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
+				    fr_int2str(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
+				    fr_int2str(fr_value_box_type_table, map->lhs->tmpl_da->type, "<INVALID>"));
+			return -1;
+		}
+
+		/*
+		 *	Fixup LHS da if it doesn't match the type
+		 *	of the RHS.
+		 */
+		if (map->lhs->tmpl_da->type != map->rhs->tmpl_value_type) {
+			fr_dict_attr_t const *da;
+
+			da = fr_dict_attr_by_type(map->lhs->tmpl_da, map->rhs->tmpl_value_type);
+			if (!da) {
+				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
+						   fr_int2str(fr_value_box_type_table, map->rhs->tmpl_value_type,
+						   "<INVALID>"), map->lhs->tmpl_da->name);
+				return -1;
+			}
+			map->lhs->tmpl_da = da;
+		}
+	} /* else we can't precompile the data */
+
+	return 0;
+}
+
+
+/** Validate and fixup a map that's part of a filter section.
+ *
+ * @param map to validate.
+ * @param ctx data to pass to fixup function (currently unused).
+ * @return
+ *	- 0 if valid.
+ *	- -1 not valid.
+ */
+static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
+{
+	CONF_PAIR *cp = cf_item_to_pair(map->ci);
+
+	/*
+	 *	Anal-retentive checks.
+	 */
+	if (DEBUG_ENABLED3) {
+		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
+			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
+				    map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+		}
+
+		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
+			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
+				    fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
+		}
+	}
+
+	/*
+	 *	We only allow attributes on the LHS.
+	 */
+	if (map->lhs->type != TMPL_TYPE_ATTR) {
+		cf_log_err(cp, "Filter sections can only operate on attributes");
+		return -1;
+	}
+
+	if (map->rhs->type == TMPL_TYPE_LIST) {
+		cf_log_err(map->ci, "Cannot filter an attribute using a list.");
+		return -1;
+	}
+
+	/*
+	 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
+	 */
+	if (map->lhs->tmpl_num == NUM_ANY) map->lhs->tmpl_num = NUM_ALL;
+
+	/*
+	 *	Fixup RHS attribute references to change NUM_ANY to NUM_ALL.
+	 */
+	if ((map->rhs->type == TMPL_TYPE_ATTR) &&
+	    (map->rhs->tmpl_num == NUM_ANY)) {
+		map->rhs->tmpl_num = NUM_ALL;
+	}
+
+	/*
+	 *	Values used by unary operators should be literal ANY
+	 *
+	 *	We then free the template and alloc a NULL one instead.
+	 */
+	if (map->op == T_OP_CMP_FALSE) {
+		if (!tmpl_is_unparsed(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
+			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
+			     cf_filename(cp), cf_lineno(cp));
+		}
+
+		TALLOC_FREE(map->rhs);
+
+		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0, T_INVALID);
+	}
+
+	/*
+	 *	Lots of sanity checks for insane people...
+	 */
+
+	/*
+	 *	Filtering only allows for filtering operators.
+	 */
+	if (tmpl_is_attr(map->lhs) && !fr_equality_op[map->op]) {
+		cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
+			   "Only assignment or filter operators are allowed",
+			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+		return -1;
 	}
 
 	/*
@@ -1639,6 +1775,67 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 //	cf_data_add(cs, CF_DATA_TYPE_UNLANG, "update", g->map, NULL); /* for output normalization */
 #endif
 
+	if (!pass2_fixup_update(g, unlang_ctx->rules)) {
+		talloc_free(g);
+		return NULL;
+	}
+
+	return c;
+}
+
+static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx,
+				CONF_SECTION *cs, unlang_group_type_t group_type,
+				UNUSED unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
+{
+	int			rcode;
+	unlang_group_t		*g;
+	unlang_t		*c;
+	char const		*name2 = cf_section_name2(cs);
+
+	vp_map_t		*head;
+
+	vp_tmpl_rules_t		parse_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
+
+	/*
+	 *	This looks at cs->name2 to determine which list to update
+	 */
+	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_filter, NULL, 128);
+	if (rcode < 0) return NULL; /* message already printed */
+	if (!head) {
+		cf_log_err(cs, "'update' sections cannot be empty");
+		return NULL;
+	}
+
+	g = group_allocate(parent, cs, group_type, UNLANG_TYPE_FILTER);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+
+	if (name2) {
+		c->name = name2;
+		c->debug_name = talloc_typed_asprintf(c, "filter %s", name2);
+	} else {
+		c->name = unlang_ops[c->type].name;
+		c->debug_name = unlang_ops[c->type].name;
+	}
+
+	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
+
+	g->map = talloc_steal(g, head);
+
+#ifdef WITH_CONF_WRITE
+//	cf_data_add(cs, CF_DATA_TYPE_FILTER, "filter", g->map, NULL); /* for output normalization */
+#endif
+
+	/*
+	 *	The fixups here occur whether or not it's UPDATE or FILTER
+	 */
 	if (!pass2_fixup_update(g, unlang_ctx->rules)) {
 		talloc_free(g);
 		return NULL;
@@ -2540,10 +2737,14 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 			CONF_SECTION *subcs = cf_item_to_section(ci);
 			char const *name1 = cf_section_name1(subcs);
 
+			/*
+			 *	@todo - put this into a list somewhere
+			 */
 			if ((strcmp(name1, "if") == 0) ||
 			    (strcmp(name1, "else") == 0) ||
 			    (strcmp(name1, "elsif") == 0) ||
 			    (strcmp(name1, "update") == 0) ||
+			    (strcmp(name1, "filter") == 0) ||
 			    (strcmp(name1, "switch") == 0) ||
 			    (strcmp(name1, "case") == 0)) {
 				cf_log_err(ci, "%s sections cannot contain a \"%s\" statement",
@@ -3149,6 +3350,7 @@ static modcall_compile_t compile_table[] = {
 	{ "if",			compile_if, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_IF, ALLOW_EMPTY_GROUP },
 	{ "elsif",		compile_elsif, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSIF, ALLOW_EMPTY_GROUP },
 	{ "else",		compile_else, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSE, REQUIRE_CHILDREN },
+	{ "filter",		compile_filter, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FILTER, REQUIRE_CHILDREN },
 	{ "update",		compile_update, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_UPDATE, REQUIRE_CHILDREN },
 	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP, REQUIRE_CHILDREN },
 	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH, REQUIRE_CHILDREN },

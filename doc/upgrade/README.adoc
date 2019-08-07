@@ -393,15 +393,24 @@ still parse (but not generate) attributes of the form
 in version 4. The server would never produce such names, and enabling
 them made attribute parsing significantly more complex.
 
-== Update sections and Filtering
+== Update sections
 
-The filtering operators in v4 have been modified. They no longer _set_
-the attribute to a value. Instead, they only _filter_ the attribute
-list, and delete any attributes which do not match. The filtering
-operators do not _create_ any attribute.
+The filtering operators `<`, `>`, `<=`, `>=`, etc. have been moved to
+the `filter` keyword.  These operators will still be accepted in an
+`update` section, but using them will generate a warning.
+
+== Filter Sections
+
+The `filter` section is now used to filter attributes.
+
+The filtering operators have been modified. They no longer _set_ the
+attribute to a value. Instead, they only _filter_ the attribute list,
+and delete any attributes which do not match. The filtering operators
+do not _create_ any attribute.
 
 In order to achieve the same functionality as v3, you will need to set
-the value of the attribute, in addition to filtering it.
+the value of the attribute via `=` in an `update` statement, and then
+filter it.
 
 == load-balance and redundant-load-balance sections
 

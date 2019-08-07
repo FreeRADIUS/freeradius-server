@@ -32,8 +32,9 @@ modify attributes in any list or packet.
 [options="header"]
 |=====
 | Keyword | Description
+| link:filter.adoc[filter]   | Filter attributes from a list
 | link:map.adoc[map]         | Map database fields to server attributes.
-| link:update.adoc[update]   | Edit a list of attributes.
+| link:update.adoc[update]   | Add attributes to a list
 |=====
 
 === Grouping Keywords
