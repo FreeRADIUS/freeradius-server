@@ -473,7 +473,11 @@ exit 0
 
 %post
 if [ $1 = 1 ]; then
+%if %{?_unitdir:1}%{!?_unitdir:0}
+  /bin/systemctl enable radiusd.service
+%else
   /sbin/chkconfig --add radiusd
+%endif
 fi
 
 %post config
@@ -487,7 +491,8 @@ fi
 %preun
 if [ $1 = 0 ]; then
 %if %{?_unitdir:1}%{!?_unitdir:0}
-  /bin/systemctl disable radiusd
+  /bin/systemctl stop radiusd.service || :
+  /bin/systemctl disable radiusd.service || :
 %else
   /sbin/chkconfig --del radiusd
 %endif
