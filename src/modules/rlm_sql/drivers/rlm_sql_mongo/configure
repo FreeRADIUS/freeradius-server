@@ -638,6 +638,8 @@ ac_user_opts='
 enable_option_checking
 with_mongoc_lib_dir
 with_mongoc_include_dir
+with_bson_lib_dir
+with_bson_include_dir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1256,6 +1258,8 @@ Optional Packages:
   --with-mongoc-lib-dir   Path of libmongoc libraries
   --with-mongoc-include-dir
                           Path of libmongoc includes
+  --with-bson-lib-dir     Path of libbson libraries
+  --with-bson-include-dir Path of libbson includes
 
 Some influential environment variables:
   CC          C compiler command
@@ -1839,13 +1843,29 @@ fi
 
 
 
-  CFLAGS_PRE="$CFLAGS"
-  if test x$mongoc_include_dir != x ; then
-    mongoc_cflags="-I${mongoc_include_dir}"
+# Check whether --with-bson_lib_dir was given.
+if test "${with_bson_lib_dir+set}" = set; then :
+  withval=$with_bson_lib_dir;  bson_lib_dir="$withval"
+else
+   bson_lib_dir=""
+fi
+
+
+# Check whether --with-bson_include_dir was given.
+if test "${with_bson_include_dir+set}" = set; then :
+  withval=$with_bson_include_dir;  bson_include_dir="$withval"
+else
+   bson_include_dir=""
+fi
+
+
+        CFLAGS_PRE="$CFLAGS"
+  if test x$bson_include_dir != x ; then
+    bson_cflags="-isystem ${bson_include_dir}"
   else
-    mongoc_cflags="-I/usr/include/libmongoc-1.0 -I/usr/include/libbson-1.0"
+    bson_cflags="-isystem /usr/include/libbson-1.0"
   fi
-  CFLAGS="$CFLAGS ${mongoc_cflags}"
+  CFLAGS="$CFLAGS ${bson_cflags}"
 
   ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -2637,7 +2657,89 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-ac_fn_c_check_header_compile "$LINENO" "mongoc.h" "ac_cv_header_mongoc_h" "#include <mongoc.h>
+ac_fn_c_check_header_compile "$LINENO" "bson/bson.h" "ac_cv_header_bson_bson_h" "#include <bson/bson.h>
+"
+if test "x$ac_cv_header_bson_bson_h" = xyes; then :
+
+fi
+
+
+  CFLAGS="$CFLAGS_PRE"
+
+  if test "x$ac_cv_header_bson_bson_h" != "xyes"; then
+    fail="$fail bson/bson.h"
+  fi
+
+
+  LDFLAGS_PRE="$LDFLAGS"
+  if test x$bson_lib_dir != x ; then
+    bson_ldflags="-L${bson_lib_dir} -lbson-1.0"
+  else
+    bson_ldflags="-L/usr/lib -lbson-1.0"
+  fi
+  LDFLAGS="$LDFLAGS ${bson_ldflags}"
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for  bson_iter_init_find  in -lbson-1.0" >&5
+$as_echo_n "checking for  bson_iter_init_find  in -lbson-1.0... " >&6; }
+if ${ac_cv_lib_bson_1_0__bson_iter_init_find_+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lbson-1.0  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char  bson_iter_init_find  ();
+int
+main ()
+{
+return  bson_iter_init_find  ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_bson_1_0__bson_iter_init_find_=yes
+else
+  ac_cv_lib_bson_1_0__bson_iter_init_find_=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_bson_1_0__bson_iter_init_find_" >&5
+$as_echo "$ac_cv_lib_bson_1_0__bson_iter_init_find_" >&6; }
+if test "x$ac_cv_lib_bson_1_0__bson_iter_init_find_" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBBSON_1_0 1
+_ACEOF
+
+  LIBS="-lbson-1.0 $LIBS"
+
+fi
+
+  LDFLAGS="$LDFLAGS_PRE"
+
+  if test "x$ac_cv_lib_bson_1_0__bson_iter_init_find_" != "xyes"; then
+    fail="$fail libbson"
+  fi
+
+
+  CFLAGS_PRE="$CFLAGS"
+  if test x$mongoc_include_dir != x ; then
+    mongoc_cflags="-isystem ${mongoc_include_dir} ${bson_cflags}"
+  else
+    mongoc_cflags="-isystem /usr/include/libmongoc-1.0 ${bson_cflags}"
+  fi
+  CFLAGS="$CFLAGS ${mongoc_cflags}"
+
+  ac_fn_c_check_header_compile "$LINENO" "mongoc.h" "ac_cv_header_mongoc_h" "#include <mongoc.h>
 "
 if test "x$ac_cv_header_mongoc_h" = xyes; then :
 
@@ -2653,9 +2755,9 @@ fi
 
   LDFLAGS_PRE="$LDFLAGS"
   if test x$mongoc_lib_dir != x ; then
-    mongoc_ldflags="-L${mongoc_lib_dir} -lmongoc-1.0 -lbson-1.0"
+    mongoc_ldflags="-L${mongoc_lib_dir} -lmongoc-1.0 ${bson_ldflags}"
   else
-    mongoc_ldflags="-L/usr/lib -lmongoc-1.0 -lbson-1.0"
+    mongoc_ldflags="-L/usr/lib -lmongoc-1.0 ${bson_ldflags}"
   fi
   LDFLAGS="$LDFLAGS ${mongoc_ldflags}"
 
@@ -2739,7 +2841,11 @@ fi
 
 
 
-ac_config_files="$ac_config_files all.mk"
+
+  unset ac_cv_env_LIBS_set
+  unset ac_cv_env_LIBS_value
+
+  ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -3895,4 +4001,5 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+
 
