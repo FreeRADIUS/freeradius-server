@@ -506,11 +506,6 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	// type_size
 
 	if (flags->is_root) {
-		if (parent) {
-			fr_strerror_printf("'root' flag must not be set for child attributes");
-			return -1;
-		}
-
 		FORBID_OTHER_FLAGS(is_root);
 	}
 
@@ -778,7 +773,7 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		break;
 
 	case FR_TYPE_EXTENDED:
-		if (attr && parent && (!parent->flags.is_root || (*attr < 241))) {
+		if (attr && (!parent->flags.is_root || (*attr < 241))) {
 			fr_strerror_printf("Attributes of type 'extended' MUST be "
 					   "RFC attributes with value >= 241.");
 			return false;
