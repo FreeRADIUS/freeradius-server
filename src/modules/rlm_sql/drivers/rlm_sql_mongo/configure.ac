@@ -27,10 +27,12 @@ if test x$with_[]modname != xno; then
   fi
   CFLAGS="$CFLAGS ${mongoc_cflags}"
 
-  AC_CHECK_HEADER([mongoc.h], [],
-                  [AC_MSG_ERROR([Libmongoc headers not found. Use --with-mongoc-include-dir=<path>.])],
-                  [#include <mongoc.h>])
+  AC_CHECK_HEADER([mongoc.h],[],[],[#include <mongoc.h>])
   CFLAGS="$CFLAGS_PRE"
+
+  if test "x$ac_cv_header_mongoc_h" != "xyes"; then
+    fail="$fail mongoc.h"
+  fi
 
   dnl ######################################################
   dnl # Check for libraries of MongoC
@@ -44,12 +46,12 @@ if test x$with_[]modname != xno; then
   fi
   LDFLAGS="$LDFLAGS ${mongoc_ldflags}"
 
-  AC_CHECK_LIB(mongoc-1.0, [ mongoc_init ], mongoc_present=1, mongoc_present=0)
-
-  if test $mongoc_present -eq 0 ; then
-    AC_MSG_ERROR([MongoC libraries not found. Use --with-mongoc-lib-dir=<path>.])
-  fi
+  AC_CHECK_LIB(mongoc-1.0, [ mongoc_init ], [], [])
   LDFLAGS="$LDFLAGS_PRE"
+
+  if test "x$ac_cv_lib_mongoc_1_0__mongoc_init_" != "xyes"; then
+    fail="$fail libmongoc-1.0"
+  fi
 
   targetname=modname
 else
@@ -57,15 +59,20 @@ else
   echo \*\*\* module modname is disabled.
 fi
 
-dnl Don't change this section.
-if test "x$fail" != x; then
-  if test "${enable_strict_dependencies}" = "yes"; then
-    AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-  else
-    AC_MSG_WARN([silently not building ]modname[.])
-    AC_MSG_WARN([FAILURE: ]modname[ requires:$fail.]);
-    targetname=
-  fi
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.])
+		if test x"$headersuggestion" != x; then
+			AC_MSG_WARN([$headersuggestion])
+		fi
+		if test x"$libsuggestion" != x; then
+			AC_MSG_WARN([$libsuggestion])
+		fi
+		targetname=""
+	fi
 fi
 
 AC_SUBST(mongoc_cflags)

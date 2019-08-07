@@ -2641,12 +2641,14 @@ ac_fn_c_check_header_compile "$LINENO" "mongoc.h" "ac_cv_header_mongoc_h" "#incl
 "
 if test "x$ac_cv_header_mongoc_h" = xyes; then :
 
-else
-  as_fn_error $? "Libmongoc headers not found. Use --with-mongoc-include-dir=<path>." "$LINENO" 5
 fi
 
 
   CFLAGS="$CFLAGS_PRE"
+
+  if test "x$ac_cv_header_mongoc_h" != "xyes"; then
+    fail="$fail mongoc.h"
+  fi
 
 
   LDFLAGS_PRE="$LDFLAGS"
@@ -2694,16 +2696,19 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_mongoc_1_0__mongoc_init_" >&5
 $as_echo "$ac_cv_lib_mongoc_1_0__mongoc_init_" >&6; }
 if test "x$ac_cv_lib_mongoc_1_0__mongoc_init_" = xyes; then :
-  mongoc_present=1
-else
-  mongoc_present=0
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBMONGOC_1_0 1
+_ACEOF
+
+  LIBS="-lmongoc-1.0 $LIBS"
+
 fi
 
-
-  if test $mongoc_present -eq 0 ; then
-    as_fn_error $? "MongoC libraries not found. Use --with-mongoc-lib-dir=<path>." "$LINENO" 5
-  fi
   LDFLAGS="$LDFLAGS_PRE"
+
+  if test "x$ac_cv_lib_mongoc_1_0__mongoc_init_" != "xyes"; then
+    fail="$fail libmongoc-1.0"
+  fi
 
   targetname=rlm_sql_mongo
 else
@@ -2711,26 +2716,30 @@ else
   echo \*\*\* module rlm_sql_mongo is disabled.
 fi
 
-if test "x$fail" != x; then
-  if test "${enable_strict_dependencies}" = "yes"; then
-    as_fn_error $? "set --without-rlm_sql_mongo to disable it explicitly." "$LINENO" 5
-  else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_sql_mongo." >&5
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		as_fn_error $? "set --without-rlm_sql_mongo to disable it explicitly." "$LINENO" 5
+	else
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_sql_mongo." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_sql_mongo." >&2;}
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_mongo requires:$fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_sql_mongo requires:$fail." >&2;};
-    targetname=
-  fi
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_mongo requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: rlm_sql_mongo requires: $fail." >&2;}
+		if test x"$headersuggestion" != x; then
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $headersuggestion" >&5
+$as_echo "$as_me: WARNING: $headersuggestion" >&2;}
+		fi
+		if test x"$libsuggestion" != x; then
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $libsuggestion" >&5
+$as_echo "$as_me: WARNING: $libsuggestion" >&2;}
+		fi
+		targetname=""
+	fi
 fi
 
 
 
 
-
-  unset ac_cv_env_LIBS_set
-  unset ac_cv_env_LIBS_value
-
-  ac_config_files="$ac_config_files all.mk"
+ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -3886,5 +3895,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
