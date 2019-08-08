@@ -489,6 +489,7 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 #define FORBID_OTHER_FLAGS(_flag) do { if (all_flags & ~shift_ ## _flag) { fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag"); return false; } } while (0)
+#define ALLOW_FLAG(_flag) do { all_flags &= ~shift_ ## _flag; } while (0)
 
 	// is_root
 	// is_unknown
@@ -544,9 +545,8 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		/*
 		 *	"has_tag" can also be used with "encrypt", and "internal" (for testing)
 		 */
-		all_flags &= ~shift_encrypt;
-		all_flags &= ~shift_internal;
-
+		ALLOW_FLAG(encrypt);
+		ALLOW_FLAG(internal);
 		FORBID_OTHER_FLAGS(has_tag);
 	}
 
@@ -619,7 +619,7 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
-		all_flags &= ~shift_internal;
+		ALLOW_FLAG(internal);
 		FORBID_OTHER_FLAGS(virtual);
 	}
 
@@ -878,9 +878,9 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			 *	MS-MPPE-Keys use octets[18],encrypt=1
 			 *	EAP-SIM-RAND uses array
 			 */
-			all_flags &= ~shift_internal;
-			all_flags &= ~shift_encrypt;
-			all_flags &= ~shift_array;
+			ALLOW_FLAG(internal);
+			ALLOW_FLAG(encrypt);
+			ALLOW_FLAG(array);
 
 			if (all_flags) {
 				fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
