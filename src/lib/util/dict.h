@@ -394,7 +394,7 @@ void			fr_dict_free(fr_dict_t **dict);
 void			fr_dict_dump(fr_dict_t *dict);
 
 int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
-					  fr_dict_attr_t const *parent, unsigned int vendor);
+					  fr_dict_attr_t const *parent);
 
 ssize_t			fr_dict_valid_name(char const *name, ssize_t len);
 

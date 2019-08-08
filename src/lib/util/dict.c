@@ -5941,7 +5941,7 @@ void fr_dict_dump(fr_dict_t *dict)
 /*
  *	External API for testing
  */
-int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, unsigned int vendor_pen)
+int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 {
 	int	argc;
 	char	*argv[MAX_ARGV];
@@ -5982,8 +5982,6 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 		if (!ctx.parent) ctx.parent = fr_dict_root(dict);
 
 		memset(&base_flags, 0, sizeof(base_flags));
-
-		if (vendor_pen) ctx.block_vendor = fr_dict_vendor_by_num(dict, vendor_pen);
 
 		ret = dict_read_process_attribute(&ctx,
 						  argv + 1, argc - 1, &base_flags);

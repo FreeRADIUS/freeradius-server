@@ -1152,7 +1152,7 @@ do { \
 		if (strcmp(test_type, "dictionary") == 0) {
 			p += 11;
 
-			if (fr_dict_parse_str(dict, p, fr_dict_root(dict), 0) < 0) {
+			if (fr_dict_parse_str(dict, p, fr_dict_root(dict)) < 0) {
 				strerror_concat(output, sizeof(output));
 				continue;
 			}
