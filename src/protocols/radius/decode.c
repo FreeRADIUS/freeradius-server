@@ -1304,7 +1304,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			 *	Everything was found in the dictionary, we can
 			 *	now recurse to decode the value.
 			 */
-			fprintf(stderr, "SHIT %s %d\n", parent->name, __LINE__);
 			rcode = fr_radius_decode_pair_value(ctx, cursor, dict,
 							    child, p + 5, attr_len - 5, attr_len - 5,
 							    decoder_ctx);
