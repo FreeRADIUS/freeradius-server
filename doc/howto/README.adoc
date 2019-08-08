@@ -2,29 +2,26 @@
 
 List with some usual howtos for FreeRADIUS.
 
-## Topics
+== Topics
 
-* [Ascend](ascend.md)
-* [Bay](bay.md)
-* [Cisco](cisco.md)
+* link:ascend.adoc[Ascend]
+* link:bay.adoc[Bay]
+* link:cisco.adoc[Cisco]
 * modules
-	* [RADIUS-LDAP-eDirectory](modules/RADIUS-LDAP-eDirectory.md)
-	* [EAP](modules/eap)
-	* [Expiration](modules/expiration.md)
-	* [Krb5](modules/krb5.md)
-	* [LDAP Howto](modules/ldap_howto.md)
-	* [MS-CHAP](modules/mschap.md)
-	* [PAM](modules/pam.md)
-	* [Passwd](modules/passwd.md)
-	* [Python](modules/python.md)
-	* [SoH](modules/soh.md)
-	* [SQL](modules/sql.md)
-	* [SQL-Counter](modules/sqlcounter.md)
-	* [SQL-IP-Pool](modules/sqlippool.md)
-* [Performance Testing](performance-testing.md)
-* [ProxIM](proxim.md)
-* [Supervise Radiusd](supervise-radiusd.md)
-* [Tuning Guide](tuning_guide.md)
-
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+** link:modules/RADIUS-LDAP-eDirectory.adoc[RADIUS-LDAP-eDirectory]
+** link:modules/eap.adoc[EAP]
+** link:modules/expiration.adoc[Expiration]
+** link:modules/krb5.adoc[Krb5]
+** link:modules/ldap_howto.adoc[LDAP Howto]
+** link:modules/mschap.adoc[MS-CHAP]
+** link:modules/pam.adoc[PAM]
+** link:modules/passwd.adoc[Passwd]
+** link:modules/python.adoc[Python]
+** link:modules/soh.adoc[SoH]
+** link:modules/sql.adoc[SQL]
+** link:modules/sqlcounter.adoc[SQL-Counter]
+** link:modules/sqlippool.adoc[SQL-IP-Pool]
+* link:performance-testing.adoc[Performance Testing]
+* link:proxim.adoc[ProxIM]
+* link:supervise-radiusd.adoc[Supervise Radiusd]
+* link:tuning_guide.adoc[Tuning Guide]
