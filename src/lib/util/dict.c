@@ -3829,13 +3829,14 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
  *
  * Allows vendor and TLV context to persist across $INCLUDEs
  */
+#define MAX_STACK (32)
 typedef struct {
 	fr_dict_t		*dict;			//!< Protocol dictionary we're inserting attributes into.
 	fr_dict_t		*old_dict;		//!< The dictionary before the current BEGIN-PROTOCOL block.
 
-	fr_dict_vendor_t const	*block_vendor;		//!< Vendor block we're inserting attributes into.
-							//!< Can be removed once we remove the vendor field from
-							//!< #fr_dict_attr_t.
+	fr_dict_attr_t const	*stack[MAX_STACK];     	//!< stack of attributes to track
+	int			stack_depth;		//!< points to the last used stack frame
+
 
 	fr_dict_attr_t const	*block_tlv[FR_DICT_TLV_NEST_MAX];	//!< Nested TLV block's we're
 									//!< inserting attributes into.
@@ -5491,7 +5492,13 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				vendor_da = new;
 			}
 			ctx->parent = vendor_da;
-			ctx->block_vendor = vendor;
+
+			if (ctx->stack_depth >= MAX_STACK) {
+				fr_strerror_printf_push("Attribute definitions are nested too deep.");
+				goto error;
+			}
+
+			ctx->stack[++ctx->stack_depth] = vendor_da;
 			continue;
 		} /* BEGIN-VENDOR */
 
@@ -5509,13 +5516,23 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
-			if (vendor != ctx->block_vendor) {
+			if (ctx->stack_depth == 0) {
+			no_matching_vendor:
+				fr_strerror_printf_push("END-VENDOR '%s' with no matching BEGIN-VENDOR",
+							argv[1]);
+				goto error;
+			}
+
+			da = ctx->stack[ctx->stack_depth];
+			if (da->type != FR_TYPE_VENDOR) goto no_matching_vendor;
+
+			if (vendor->pen != da->attr) {
 				fr_strerror_printf_push("END-VENDOR '%s' does not match any previous BEGIN-VENDOR",
-						   argv[1]);
+							argv[1]);
 				goto error;
 			}
 			ctx->parent = ctx->dict->root;
-			ctx->block_vendor = NULL;
+			ctx->stack_depth--;
 			continue;
 		} /* END-VENDOR */
 
@@ -5540,6 +5557,7 @@ static int dict_from_file(fr_dict_t *dict,
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
 	ctx.parent = dict->root;
+	ctx.stack[0] = dict->root;
 
 	rcode = _dict_from_file(&ctx,
 				dir_name, filename, src_file, src_line);
