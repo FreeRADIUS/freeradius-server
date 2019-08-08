@@ -316,4 +316,12 @@ $INCLUDE dictionary.zeus
 $INCLUDE dictionary.zte
 $INCLUDE dictionary.zyxel
 
+ATTRIBUTE	Test-Struct	255 struct
+MEMBER		Key-Field	uint8	key
+MEMBER		Filler		uint32
+
+STRUCT	Key-Field Sub-Struct 1
+MEMBER  Sub1 uint8
+MEMBER	Sub2 uint8
+
 END-PROTOCOL RADIUS
