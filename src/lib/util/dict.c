@@ -3837,13 +3837,6 @@ typedef struct {
 	fr_dict_attr_t const	*stack[MAX_STACK];     	//!< stack of attributes to track
 	int			stack_depth;		//!< points to the last used stack frame
 
-
-	fr_dict_attr_t const	*block_tlv[FR_DICT_TLV_NEST_MAX];	//!< Nested TLV block's we're
-									//!< inserting attributes into.
-	int			block_tlv_depth;	//!< Nested TLV block index we're inserting into.
-
-	fr_dict_attr_t const	*parent;		//!< Current parent attribute (root/vendor/tlv).
-
 	fr_dict_attr_t const	*value_attr;		//!< Cache of last attribute to speed up
 							///< value processing.
 	fr_dict_attr_t const	*previous_attr;		//!< for ".82" instead of "1.2.3.82".
@@ -4238,7 +4231,7 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 	/*
 	 *	Check that the flags are valid.
 	 */
-	if (!dict_attr_flags_valid(ctx->dict, ctx->parent, name, NULL, type, flags)) return -1;
+	if (!dict_attr_flags_valid(ctx->dict, ctx->stack[ctx->stack_depth], name, NULL, type, flags)) return -1;
 
 	return 0;
 }
@@ -4257,7 +4250,7 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
 	fr_dict_attr_t const	*ref = NULL;
-	fr_dict_attr_t const	*parent = ctx->parent;
+	fr_dict_attr_t const	*parent = ctx->stack[ctx->stack_depth];
 
 	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_printf("Invalid ATTRIBUTE syntax");
@@ -4960,7 +4953,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 	 */
 	fr_dict_attr_flags_t	base_flags;
 
-	if (!fr_cond_assert(!ctx->dict->root || ctx->parent)) return -1;
+	if (!fr_cond_assert(!ctx->dict->root || ctx->stack[ctx->stack_depth])) return -1;
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf_push("%s: Filename name too long", "Error reading dictionary");
@@ -5246,7 +5239,13 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			if (!ctx->fixup_pool) ctx->fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
 
 			ctx->dict = found;
-			ctx->parent = ctx->dict->root;
+
+			if (ctx->stack_depth >= MAX_STACK) {
+			stack_overflow:
+				fr_strerror_printf_push("Attribute definitions are nested too deep.");
+				goto error;
+			}
+			ctx->stack[++ctx->stack_depth] = ctx->dict->root;
 
 			// check if there's a linked library for the
 			// protocol.  The values can be unknown (we
@@ -5276,7 +5275,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
-			if (found != ctx->dict) {
+			if ((found != ctx->dict) || (ctx->stack_depth == 0)) {
 				fr_strerror_printf("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s",
 						   argv[1], found->root->name);
 				goto error;
@@ -5294,7 +5293,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			 *	@todo - just create a stack of contests, so we don't need "old_foo"
 			 */
 			ctx->dict = ctx->old_dict;
-			ctx->parent = ctx->dict->root;
+			ctx->stack_depth--;
 			continue;
 		}
 
@@ -5303,11 +5302,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "BEGIN-TLV") == 0) {
 			fr_dict_attr_t const *common;
-
-			if ((ctx->block_tlv_depth + 1) > FR_DICT_TLV_NEST_MAX) {
-				fr_strerror_printf_push("TLVs are nested too deep");
-				goto error;
-			}
 
 			if (argc != 2) {
 				fr_strerror_printf_push("Invalid BEGIN-TLV entry");
@@ -5327,17 +5321,16 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
-			common = fr_dict_parent_common(ctx->parent, da, true);
+			common = fr_dict_parent_common(ctx->stack[ctx->stack_depth], da, true);
 			if (!common ||
 			    (common->type == FR_TYPE_VSA)) {
 				fr_strerror_printf_push("Attribute '%s' should be a child of '%s'",
-							argv[1], ctx->parent->name);
+							argv[1], ctx->stack[ctx->stack_depth]->name);
 				goto error;
 			}
 
-			ctx->block_tlv[ctx->block_tlv_depth++] = ctx->parent;
-			ctx->parent = da;
-
+			if (ctx->stack_depth >= MAX_STACK) goto stack_overflow;
+			ctx->stack[++ctx->stack_depth] = da;
 			continue;
 		} /* BEGIN-TLV */
 
@@ -5345,11 +5338,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 *	Switches back to previous TLV parent
 		 */
 		if (strcasecmp(argv[0], "END-TLV") == 0) {
-			if (--ctx->block_tlv_depth < 0) {
-				fr_strerror_printf_push("Too many END-TLV entries.  Mismatch at END-TLV %s", argv[1]);
-				goto error;
-			}
-
 			if (argc != 2) {
 				fr_strerror_printf_push("Invalid END-TLV entry");
 				goto error;
@@ -5361,12 +5349,12 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
-			if (da != ctx->parent) {
+			if ((da != ctx->stack[ctx->stack_depth]) || (ctx->stack_depth == 0)) {
 				fr_strerror_printf_push("END-TLV %s does not match previous BEGIN-TLV %s", argv[1],
-						   ctx->parent->name);
+							ctx->stack[ctx->stack_depth]->name);
 				goto error;
 			}
-			ctx->parent = ctx->block_tlv[ctx->block_tlv_depth];
+			ctx->stack_depth--;
 			continue;
 		} /* END-VENDOR */
 
@@ -5432,18 +5420,18 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				 *	the RFC dictionaries we need to add it in the case
 				 *	it doesn't.
 				 */
-				vsa_da = fr_dict_attr_child_by_num(ctx->parent, FR_VENDOR_SPECIFIC);
+				vsa_da = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth], FR_VENDOR_SPECIFIC);
 				if (!vsa_da) {
 					memset(&flags, 0, sizeof(flags));
 
-					if (fr_dict_attr_add(ctx->dict, ctx->parent, "Vendor-Specific",
+					if (fr_dict_attr_add(ctx->dict, ctx->stack[ctx->stack_depth], "Vendor-Specific",
 							     FR_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags) < 0) {
 						fr_strerror_printf_push("Failed adding Vendor-Specific for Vendor %s",
 									vendor->name);
 						goto error;
 					}
 
-					vsa_da = fr_dict_attr_child_by_num(ctx->parent, FR_VENDOR_SPECIFIC);
+					vsa_da = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth], FR_VENDOR_SPECIFIC);
 					if (!vsa_da) {
 						fr_strerror_printf_push("Failed finding Vendor-Specific for Vendor %s",
 									vendor->name);
@@ -5482,7 +5470,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				}
 
 				memcpy(&mutable, &vsa_da, sizeof(mutable));
-				new = dict_attr_alloc(mutable, ctx->parent, argv[1],
+				new = dict_attr_alloc(mutable, ctx->stack[ctx->stack_depth], argv[1],
 						      vendor->pen, FR_TYPE_VENDOR, &flags);
 				if (dict_attr_child_add(mutable, new) < 0) {
 					talloc_free(new);
@@ -5491,13 +5479,8 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 				vendor_da = new;
 			}
-			ctx->parent = vendor_da;
 
-			if (ctx->stack_depth >= MAX_STACK) {
-				fr_strerror_printf_push("Attribute definitions are nested too deep.");
-				goto error;
-			}
-
+			if (ctx->stack_depth >= MAX_STACK) goto stack_overflow;
 			ctx->stack[++ctx->stack_depth] = vendor_da;
 			continue;
 		} /* BEGIN-VENDOR */
@@ -5531,7 +5514,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 							argv[1]);
 				goto error;
 			}
-			ctx->parent = ctx->dict->root;
 			ctx->stack_depth--;
 			continue;
 		} /* END-VENDOR */
@@ -5556,7 +5538,6 @@ static int dict_from_file(fr_dict_t *dict,
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
-	ctx.parent = dict->root;
 	ctx.stack[0] = dict->root;
 
 	rcode = _dict_from_file(&ctx,
@@ -5975,6 +5956,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
+	ctx.stack[0] = dict->root;
 
 	ctx.fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
 	if (!ctx.fixup_pool) return -1;
@@ -5996,8 +5978,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 		if (ret < 0) goto error;
 
 	} else if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-		ctx.parent = parent;
-		if (!ctx.parent) ctx.parent = fr_dict_root(dict);
+		if (parent && (parent != dict->root)) ctx.stack[++ctx.stack_depth] = parent;
 
 		memset(&base_flags, 0, sizeof(base_flags));
 
