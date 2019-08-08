@@ -2935,7 +2935,8 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsi
 
 		child = fr_dict_attr_child_by_num(*parent, num);
 		if (!child) {
-			fr_strerror_printf("Unknown attribute \"%i\" in OID string \"%s\"", num, oid);
+			fr_strerror_printf("Unknown attribute '%i' in OID string \"%s\" for parent %s",
+					   num, oid, (*parent)->name);
 			return 0;	/* We parsed nothing */
 		}
 
@@ -3839,7 +3840,8 @@ typedef struct {
 
 	fr_dict_attr_t const	*value_attr;		//!< Cache of last attribute to speed up
 							///< value processing.
-	fr_dict_attr_t const	*previous_attr;		//!< for ".82" instead of "1.2.3.82".
+	fr_dict_attr_t const	*relative_attr;		//!< for ".82" instead of "1.2.3.82".
+							///< only for parents of type "tlv"
 
 	int			member_num;		//!< for attributes of type 'struct'
 
@@ -4237,13 +4239,37 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 }
 
 
+static int dict_ctx_push(dict_from_file_ctx_t *ctx, fr_dict_attr_t const *da)
+{
+	if (ctx->stack_depth >= MAX_STACK) {
+		fr_strerror_printf_push("Attribute definitions are nested too deep.");
+		return -1;
+	}
+
+	ctx->stack[++ctx->stack_depth] = da;
+
+	return 0;
+}
+
+static fr_dict_attr_t const *dict_ctx_unwind(dict_from_file_ctx_t *ctx)
+{
+	while ((ctx->stack_depth > 0) &&
+	       !ctx->stack[ctx->stack_depth]->flags.is_root &&
+	       (ctx->stack[ctx->stack_depth]->type != FR_TYPE_VENDOR)) {
+		ctx->stack_depth--;
+	}
+
+
+	return ctx->stack[ctx->stack_depth];
+}
+
 /*
  *	Process the ATTRIBUTE command
  */
 static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, int argc,
 				       fr_dict_attr_flags_t *base_flags)
 {
-	bool			set_previous = true;
+	bool			set_relative_attr = true;
 
 	ssize_t			slen;
 	unsigned int		attr;
@@ -4268,17 +4294,19 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 
 	memcpy(&flags, base_flags, sizeof(flags));
 
+	if (dict_process_type_field(argv[2], &type, &flags) < 0) return -1;
+
 	/*
-	 *	A non-relative ATTRIBUTE definition means that we go
-	 *	back to the root of the dictionary for doing attribute
-	 *	lookups / additions.
+	 *	Relative OIDs apply ONLY to attributes of type 'tlv'.
+	 */
+	if (type != FR_TYPE_TLV) set_relative_attr = false;
+
+	/*
+	 *	A non-relative ATTRIBUTE definition means either that
+	 *	we're in a BEGIN-TLV block, OR we go up to dict->root
+	 *	in order to define this attribute.
 	 */
 	if (argv[1][0] != '.') {
-		while ((ctx->stack_depth > 0) && !ctx->stack[ctx->stack_depth]->flags.is_root &&
-		       (ctx->stack[ctx->stack_depth]->type == FR_TYPE_STRUCT)) {
-			ctx->stack_depth--;
-		}
-
 		parent = ctx->stack[ctx->stack_depth];
 
 		/*
@@ -4286,27 +4314,45 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 		 *	if there is no OID component.
 		 */
 		if (strchr(argv[1], '.') == 0) {
+			/*
+			 *	We MAY be in the middle of a BEGIN-TLV
+			 *	block.  If not, we jump back to the
+			 *	previous root, or the previous VENDOR
+			 *	definition.
+			 */
+			if (parent->type != FR_TYPE_TLV) {
+				parent = dict_ctx_unwind(ctx);
+			}
+
 			if (!dict_read_sscanf_i(&attr, argv[1])) {
 				fr_strerror_printf("Invalid ATTRIBUTE number");
 				return -1;
 			}
+
 		} else {
+			/*
+			 *	We have a full OID.  Jump back to the
+			 *	previous root, OR to the previous
+			 *	VENDOR definition.
+			 */
+			parent = dict_ctx_unwind(ctx);
+
 			slen = fr_dict_attr_by_oid(ctx->dict, &parent, &attr, argv[1]);
 			if (slen <= 0) return -1;
 		}
+
 	} else {
-		if (!ctx->previous_attr) {
+		if (!ctx->relative_attr) {
 			fr_strerror_printf("Unknown parent for partial OID");
 			return -1;
 		}
 
-		parent = ctx->previous_attr;
-		set_previous = false;
+		parent = ctx->relative_attr;
+		set_relative_attr = false;
 
 		slen = fr_dict_attr_by_oid(ctx->dict, &parent, &attr, argv[1]);
 		if (slen <= 0) return -1;
 	}
-
 
 	if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
 
@@ -4314,12 +4360,10 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
 	 */
 	if (parent->type == FR_TYPE_STRUCT) {
-		fr_strerror_printf("Member %s of ATTRIBUTE %s type 'struct' MUST use \"MEMBER\" keyword",
+		fr_strerror_printf("Member %s of ATTRIBUTE %s type 'struct' MUST use the \"MEMBER\" keyword",
 				   argv[0], parent->name);
 		return -1;
 	}
-
-	if (dict_process_type_field(argv[2], &type, &flags) < 0) return -1;
 
 	/*
 	 *	Parse options.
@@ -4360,15 +4404,21 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	 *	*canonical* previous attribute, and not any potential
 	 *	duplicate which was just added.
 	 */
-	if (set_previous || (type == FR_TYPE_STRUCT)) ctx->previous_attr = fr_dict_attr_child_by_num(parent, attr);
+	if (set_relative_attr) ctx->relative_attr = fr_dict_attr_child_by_num(parent, attr);
 
+	/*
+	 *	Adding an attribute of type 'struct' is an implicit
+	 *	BEGIN-STRUCT.
+	 */
 	if (type == FR_TYPE_STRUCT) {
-		if (ctx->stack_depth >= MAX_STACK) {
-			fr_strerror_printf_push("Attribute definitions are nested too deep.");
+		fr_dict_attr_t const *da = fr_dict_attr_child_by_num(parent, attr);
+
+		if (!da) {
+			fr_strerror_printf("Failed adding attribute %s", argv[0]);
 			return -1;
 		}
 
-		ctx->stack[++ctx->stack_depth] = ctx->previous_attr;
+		if (dict_ctx_push(ctx, da) < 0) return -1;
 	}
 
 	return 0;
@@ -4389,13 +4439,8 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 		return -1;
 	}
 
-	if (!ctx->previous_attr) {
-		fr_strerror_printf("MEMBER can only be used immediately after an ATTRIBUTE definition");
-		return -1;
-	}
-
-	if (ctx->previous_attr->type != FR_TYPE_STRUCT) {
-		fr_strerror_printf("MEMBER can only be used for ATTRIBUTEs of type 'struct', not %s", ctx->previous_attr->name);
+	if (ctx->stack[ctx->stack_depth]->type != FR_TYPE_STRUCT) {
+		fr_strerror_printf("MEMBER can only be used for ATTRIBUTEs of type 'struct'");
 		return -1;
 	}
 
@@ -4421,9 +4466,9 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 #endif
 
 	/*
-	 *	Add in a normal attribute, and DON'T set ctx->previous_attr.
+	 *	Add the MEMBER to the parent.
 	 */
-	if (fr_dict_attr_add(ctx->dict, ctx->previous_attr, argv[0], ++ctx->member_num, type, &flags) < 0) return -1;
+	if (fr_dict_attr_add(ctx->dict, ctx->stack[ctx->stack_depth], argv[0], ++ctx->member_num, type, &flags) < 0) return -1;
 
 	/*
 	 *	A 'struct' can have a MEMBER of type 'tlv', but ONLY
@@ -4433,7 +4478,10 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 	 *	partial OIDs, so we don't need to know the full path
 	 *	to them.
 	 */
-	if (type == FR_TYPE_TLV) ctx->previous_attr = fr_dict_attr_child_by_num(ctx->previous_attr, ctx->member_num);
+	if (type == FR_TYPE_TLV) {
+		ctx->relative_attr = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth], ctx->member_num);
+		ctx->stack[++ctx->stack_depth] = ctx->relative_attr;
+	}
 
 	return 0;
 }
@@ -4645,9 +4693,10 @@ static int dict_read_process_struct(dict_from_file_ctx_t *ctx, char **argv, int 
 	}
 
 	/*
-	 *	Set the previous attribute so that the parser can look for MEMBER things
+	 *	A STRUCT definition is an implicit BEGIN-STRUCT.
 	 */
-	ctx->previous_attr = da;
+	ctx->relative_attr = NULL;
+	if (dict_ctx_push(ctx, da) < 0) return -1;
 
 	return 0;
 }
@@ -4926,7 +4975,7 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 	fr_hash_table_walk(ctx->dict->values_by_alias, hash_null_callback, NULL);
 
 	ctx->value_attr = NULL;
-	ctx->previous_attr = NULL;
+	ctx->relative_attr = NULL;
 
 	return 0;
 }
@@ -5192,7 +5241,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 *	VENDOR or PROTOCOL or BEGIN/END-VENDOR, etc.
 		 */
 		ctx->value_attr = NULL;
-		ctx->previous_attr = NULL;
+		ctx->relative_attr = NULL;
 
 		/*
 		 *	Process VENDOR lines.
@@ -5252,12 +5301,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 			ctx->dict = found;
 
-			if (ctx->stack_depth >= MAX_STACK) {
-			stack_overflow:
-				fr_strerror_printf_push("Attribute definitions are nested too deep.");
-				goto error;
-			}
-			ctx->stack[++ctx->stack_depth] = ctx->dict->root;
+			if (dict_ctx_push(ctx, ctx->dict->root) < 0) goto error;
 
 			// check if there's a linked library for the
 			// protocol.  The values can be unknown (we
@@ -5341,8 +5385,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
-			if (ctx->stack_depth >= MAX_STACK) goto stack_overflow;
-			ctx->stack[++ctx->stack_depth] = da;
+			if (dict_ctx_push(ctx, da) < 0) goto error;
 			continue;
 		} /* BEGIN-TLV */
 
@@ -5492,8 +5535,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				vendor_da = new;
 			}
 
-			if (ctx->stack_depth >= MAX_STACK) goto stack_overflow;
-			ctx->stack[++ctx->stack_depth] = vendor_da;
+			if (dict_ctx_push(ctx, vendor_da) < 0) goto error;
 			continue;
 		} /* BEGIN-VENDOR */
 
