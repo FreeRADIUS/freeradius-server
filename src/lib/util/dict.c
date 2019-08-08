@@ -639,15 +639,20 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
-		case FR_TYPE_UINT64:
 			if ((all_flags & ~shift_extra) != 0) {
 				fr_strerror_printf("The 'key' flag cannot be used with any other flags.");
 				return false;
 			}
+
+			if (parent->type != FR_TYPE_STRUCT) {
+				fr_strerror_printf("The 'key' flag can only be used inside of a 'struct'.");
+				return false;
+			}
+
 			break;
 
 		default:
-			fr_strerror_printf("'key' can only be used with unsigned integer data types");
+			fr_strerror_printf("The 'key' flag can only be used with unsigned integer data types");
 			return -1;
 		}
 
@@ -924,6 +929,7 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
+		ALLOW_FLAG(extra);
 		if (all_flags) {
 			fr_strerror_printf("Invalid flag for attribute inside of a 'struct'");
 			return false;
@@ -931,7 +937,6 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 		return true;
 	}
-
 
 	return true;
 }
@@ -2634,7 +2639,6 @@ do { \
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
-		case FR_TYPE_UINT64:
 			p += snprintf(p, end - p, "key,");
 			break;
 
