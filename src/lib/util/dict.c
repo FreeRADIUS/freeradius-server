@@ -4245,12 +4245,13 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 {
 	bool			set_previous = true;
 
+	ssize_t			slen;
 	unsigned int		attr;
 
 	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
 	fr_dict_attr_t const	*ref = NULL;
-	fr_dict_attr_t const	*parent = ctx->stack[ctx->stack_depth];
+	fr_dict_attr_t const	*parent;
 
 	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_printf("Invalid ATTRIBUTE syntax");
@@ -4268,22 +4269,32 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	memcpy(&flags, base_flags, sizeof(flags));
 
 	/*
-	 *	Look for OIDs before doing anything else.
+	 *	A non-relative ATTRIBUTE definition means that we go
+	 *	back to the root of the dictionary for doing attribute
+	 *	lookups / additions.
 	 */
-	if (!strchr(argv[1], '.')) {
-		/*
-		 *	Parse out the attribute number
-		 */
-		if (!dict_read_sscanf_i(&attr, argv[1])) {
-			fr_strerror_printf("Invalid ATTRIBUTE number");
-			return -1;
+	if (argv[1][0] != '.') {
+		while ((ctx->stack_depth > 0) && !ctx->stack[ctx->stack_depth]->flags.is_root &&
+		       (ctx->stack[ctx->stack_depth]->type == FR_TYPE_STRUCT)) {
+			ctx->stack_depth--;
 		}
 
+		parent = ctx->stack[ctx->stack_depth];
+
 		/*
-		 *	Got a '.', which means "continue from the
-		 *	previously defined attribute, which then must exist.
+		 *	Allow '0xff00' as attribute numbers, but only
+		 *	if there is no OID component.
 		 */
-	} else if (argv[1][0] == '.') {
+		if (strchr(argv[1], '.') == 0) {
+			if (!dict_read_sscanf_i(&attr, argv[1])) {
+				fr_strerror_printf("Invalid ATTRIBUTE number");
+				return -1;
+			}
+		} else {
+			slen = fr_dict_attr_by_oid(ctx->dict, &parent, &attr, argv[1]);
+			if (slen <= 0) return -1;
+		}
+	} else {
 		if (!ctx->previous_attr) {
 			fr_strerror_printf("Unknown parent for partial OID");
 			return -1;
@@ -4291,21 +4302,13 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 
 		parent = ctx->previous_attr;
 		set_previous = false;
-		goto get_by_oid;
 
-		/*
-		 *	Got an OID string.  Every attribute should exist other
-		 *	than the leaf, which is the attribute we're defining.
-		 */
-	} else {
-		ssize_t slen;
-
-get_by_oid:
 		slen = fr_dict_attr_by_oid(ctx->dict, &parent, &attr, argv[1]);
 		if (slen <= 0) return -1;
-
-		if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
 	}
+
+
+	if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
 
 	/*
 	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
@@ -4358,6 +4361,15 @@ get_by_oid:
 	 *	duplicate which was just added.
 	 */
 	if (set_previous || (type == FR_TYPE_STRUCT)) ctx->previous_attr = fr_dict_attr_child_by_num(parent, attr);
+
+	if (type == FR_TYPE_STRUCT) {
+		if (ctx->stack_depth >= MAX_STACK) {
+			fr_strerror_printf_push("Attribute definitions are nested too deep.");
+			return -1;
+		}
+
+		ctx->stack[++ctx->stack_depth] = ctx->previous_attr;
+	}
 
 	return 0;
 }
