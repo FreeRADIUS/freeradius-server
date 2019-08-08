@@ -630,7 +630,8 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	if (flags->extra) {
 		switch (type) {
 		case FR_TYPE_EXTENDED:
-			if ((all_flags & ~shift_extra) != 0) {
+			ALLOW_FLAG(extra);
+			if (all_flags) {
 				fr_strerror_printf("The 'long' flag cannot be used with any other flags.");
 				return false;
 			}
@@ -639,7 +640,8 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
-			if ((all_flags & ~shift_extra) != 0) {
+			ALLOW_FLAG(extra);
+			if (all_flags) {
 				fr_strerror_printf("The 'key' flag cannot be used with any other flags.");
 				return false;
 			}
