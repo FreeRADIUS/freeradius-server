@@ -47,7 +47,7 @@ clean: clean.doc
 #  Our "conf to asciidoc" stuff.
 #
 CONF_FILES := $(filter-out %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
-BASE_ADOC_FILES := $(wildcard doc/*/*.adoc) $(wildcard doc/*/*/*.adoc)
+BASE_ADOC_FILES := $(wildcard doc/*/*.adoc doc/*/*/*.adoc)
 AUTO_ADOC_FILES := $(patsubst raddb/%,doc/raddb/%.adoc,$(CONF_FILES))
 AUTO_ADOC_FILES += $(patsubst raddb/%.md,doc/raddb/%.adoc,$(shell find raddb -name "*\.md" -print))
 AUTO_ADOC_FILES += $(patsubst doc/%.md,doc/%.adoc,$(wildcard doc/*.md doc/*/*.md doc/*/*/*.md doc/*/*/*/*.md))
