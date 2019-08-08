@@ -4551,6 +4551,100 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
 }
 
 
+/** Process a STRUCT
+ *
+ *  Which MUST be a sub-structure of another struct
+ */
+static int dict_read_process_struct(dict_from_file_ctx_t *ctx, char **argv, int argc)
+{
+	fr_dict_attr_t			*da, *mutable;
+	fr_dict_attr_t const		*parent;
+	fr_value_box_t			value;
+	fr_type_t			type;
+	unsigned int			attr;
+	fr_dict_attr_flags_t		flags;
+
+	if (argc != 3) {
+		fr_strerror_printf("Invalid STRUCT syntax");
+		return -1;
+	}
+
+	/*
+	 *	This SHOULD be the "key" field.
+	 */
+	parent = fr_dict_attr_by_name(ctx->dict, argv[0]);
+	if (!parent) {
+		fr_strerror_printf("Unknown attribute '%s'", argv[0]);
+		return -1;
+	}
+
+	if (!parent->flags.extra) {
+		fr_strerror_printf("Attribute '%s' is not a 'key' attribute", argv[0]);
+		return -1;
+	}
+
+	/*
+	 *	Rely on dict_attr_flags_valid() to ensure that
+	 *	da->type is an unsigned integer, AND that da->parent->type == struct
+	 */
+	if (!fr_cond_assert(parent->parent->type == FR_TYPE_STRUCT)) return -1;
+
+	/*
+	 *	A STRUCT also defines a VALUE
+	 */
+	if (dict_read_process_value(ctx, argv, argc) < 0) return -1;
+
+	/*
+	 *	Re-parse the value, because it's simpler than doing a lookup.
+	 */
+	type = parent->type;	/* because of combo-IP nonsense */
+	if (fr_value_box_from_str(NULL, &value, &type, NULL, argv[2], -1, '\0', false) < 0) {
+		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", argv[2]);
+		return -1;
+	}
+
+	switch (type) {
+	case FR_TYPE_UINT8:
+		attr = value.vb_uint8;
+		break;
+
+	case FR_TYPE_UINT16:
+		attr = value.vb_uint16;
+		break;
+
+	case FR_TYPE_UINT32:
+		attr = value.vb_uint32;
+		break;
+
+	default:
+		fr_strerror_printf("Invalid data type in attribure '%s'", argv[0]);
+		fr_value_box_clear(&value);
+		return -1;
+	}
+	fr_value_box_clear(&value);
+
+	memset(&flags, 0, sizeof(flags));
+	da = dict_attr_alloc(ctx->dict->pool, parent, argv[1], attr, FR_TYPE_STRUCT, &flags);
+	if (!da) {
+		fr_strerror_printf("Failed allocating memory for STRUCT");
+		return -1;
+	}
+
+	memcpy(&mutable, &parent, sizeof(parent)); /* const issues */
+	if (dict_attr_child_add(mutable, da) < 0) {
+		talloc_free(da);
+		return -1;
+	}
+
+	/*
+	 *	Set the previous attribute so that the parser can look for MEMBER things
+	 */
+	ctx->previous_attr = da;
+
+	return 0;
+}
+
+
 static int dict_read_parse_format(char const *format, unsigned int *pvalue, int *ptype, int *plength,
 				  bool *pcontinuation)
 {
@@ -5029,6 +5123,14 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			if (dict_read_process_member(ctx,
 						     argv + 1, argc - 1,
 						     &base_flags) == -1) goto error;
+			continue;
+		}
+
+		/*
+		 *	Process STRUCT lines.
+		 */
+		if (strcasecmp(argv[0], "STRUCT") == 0) {
+			if (dict_read_process_struct(ctx, argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
 
