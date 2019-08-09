@@ -2,7 +2,7 @@ AC_INIT(rlm_sql_oracle.c)
 AC_REVISION($Revision: 1.10 $)
 AC_DEFUN(modname,[rlm_sql_oracle])
 
-oracle_supported_versions="19 18 12 11 10 9"
+oracle_supported_versions="19 18 12 11"
 fail=
 mod_ldflags=
 mod_cflags=
