@@ -163,20 +163,24 @@ doc/raddb/%.adoc: raddb/%
 #
 DOC_BASEDIR = $(subst $() $(),,$(foreach x,$(subst /, ,$1),../))
 DOC_UPDATED_LABEL = "FreeRADIUS ${RADIUSD_VERSION_STRING} - \#$(shell git rev-parse --short HEAD) - Last updated"
+DOC_MENU = $(shell find doc/* -maxdepth 0 -type d | egrep -v "doc/(css|images|rfc|schemas|templates)" | sed 's|doc/\(.*\)|"\1",|g;' | tr -d "\n")
 
 doc/%.html: doc/%.adoc
 	@echo HTML $^
 	$(eval BASEDIR := $(call DOC_BASEDIR,$(subst doc/,,$(dir $^))))
-	$(eval BASEDIR := $(if $(BASEDIR),$(BASEDIR),.))
+	$(eval BASEDIR := $(if $(BASEDIR),$(BASEDIR),./))
+	$(eval DIRNAME := $(subst doc/,/,$(dir $^)))
 	${Q}$(ASCIIDOCTOR) $< -a toc="left"                              \
 	                      -a docinfodir="$(BASEDIR)/templates"       \
-	                      -a basedir="$(BASEDIR)/"                   \
+	                      -a basedir="$(BASEDIR)"                    \
 	                      -a docinfo="shared,private"                \
 	                      -a last-update-label=${DOC_UPDATED_LABEL}  \
 	                      -a stylesdir="$(BASEDIR)/css"              \
 	                      -a stylesheet="freeradius.css"             \
 	                      -a favicon="$(BASEDIR)/images/favicon.png" \
 	                      -a linkcss                                 \
+	                      -a dirname="$(DIRNAME)"                    \
+	                      -a docmenu='$(DOC_MENU)'                   \
 	                      -b html5 -o $@ $<
 	${Q}perl -p -i -e 's,\.adoc,\.html,g; s,/.html",/",g; s/\.md\.html/\.html/g' $@
 

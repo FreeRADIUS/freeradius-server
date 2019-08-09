@@ -1,7 +1,33 @@
+
+function ucfirst(str,force){
+    str=force ? str.toLowerCase() : str;
+    return str.replace(/(\b)([a-zA-Z])/,
+        function(firstLetter){
+            return firstLetter.toUpperCase();
+    });
+}
+
+$(document).ready(function() {
+    // Add a fixed topnav bar
+    var topbar;
+
+    topbar = "<div class=\"topnav\" id=\"main-topnav\">";
+    topbar += "<a href=\"" + basedir + "\">Home</a>";
+
+    docmenu.forEach(function(_entry) {
+        topbar += "<a href=\"" + basedir + _entry + "\">" + ucfirst(_entry) + "</a>";
+    });
+
+    topbar += "</div>";
+
+    $(topbar).prependTo('body');
+});
+
 $(function () {
     // Add a new container for the tocify toc into the existing toc so we can re-use its
     // styling
     $("#toc").append("<div id='generated-toc'></div>");
+
     $("#generated-toc").tocify({
         extendPage: true,
         context: "#content",

@@ -4,12 +4,19 @@
 -->
 
 <!-- Generate a nice TOC -->
+<script>
+  var docname = "{dirname}";
+  var docmenu = [ {docmenu} ];
+  var basedir = "{basedir}";
+</script>
+
 <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
 <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tocify/1.9.0/javascripts/jquery.tocify.min.js"></script>
 <script src="{basedir}css/toc_focus.js"></script>
 <!-- We do not need the tocify CSS because the asciidoc CSS already provides most of what we need -->
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <style>
 .tocify-header {
     font-style: normal;
@@ -22,7 +29,7 @@
 
 .tocify ul {
     margin: 0;
- }
+}
 
 .tocify-focus {
     color: #4576b5;
@@ -32,9 +39,43 @@
 .tocify-focus > a {
     color: #4576b5;
 }
-</style>
 
-<div align="right">
-    <a href="{basedir}index.html"><img src="{basedir}templates/home.png" border="0" width="30" height="30"></a>
-    &nbsp;
-</div>
+/* Add a black background color to the top navigation */
+.topnav {
+    background-color: #4576b5;
+    overflow: hidden;
+    box-shadow: 4px 5px black;
+    z-index: 1; /* Stay on top */
+    position: sticky;
+    right: 0;
+    top: 0;
+}
+
+/* Style the links inside the navigation bar */
+.topnav a {
+    float: left;
+    display: block;
+    color: #f2f2f2;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    font-size: 17px;
+}
+
+/* Change the color of links on hover */
+.topnav a:hover {
+    background-color: #ddd;
+    color: black;
+}
+
+/* Add an active class to highlight the current page */
+.topnav a.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+/* Hide the link that should open and close the topnav on small screens */
+.topnav .icon {
+    display: none;
+}
+</style>
