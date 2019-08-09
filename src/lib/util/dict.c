@@ -5631,6 +5631,14 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		fr_strerror_printf_push("Invalid keyword '%s'", argv[0]);
 		goto error;
 	}
+
+	/*
+	 *	Note that we do NOT walk back up the stack to check
+	 *	for missing END-FOO to match BEGIN-FOO.  The context
+	 *	was copied from the parent, so there are guaranteed to
+	 *	be missing things.
+	 */
+
 	fclose(fp);
 	return 0;
 }
