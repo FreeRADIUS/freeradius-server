@@ -130,8 +130,6 @@ authentication server is connected to the SQL database server, then
 FreeRADIUS can pull user names and passwords out of the database, and
 use that information to perform the authentication.
 
-[arabic, start=4]
-
 == Operators
 
 The list of operators is given below.
