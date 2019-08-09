@@ -48,12 +48,16 @@ concerns about the quality of the FreeRADIUS documentation.
 
 ## Getting Started
 
-We recommend installing FreeRADIUS via the pre-built packages
-available from [Network RADIUS](http://packages.networkradius.com).
-Many Operating System distributions ship versions of FreeRADIUS which
-are years out of date.  That page contains recent FreeRADIUS packages
-for all common OS distributions.  For historical purposes, packages of
-older releases are also available from that site.
+FreeRADIUS can be installed using the pre-built packages available
+from [Network RADIUS](http://packages.networkradius.com).  That page
+contains packages for all common OS distributions.  For historical
+purposes, packages of older releases are also available.
+
+WARNING: Many Operating System distributions ship versions of
+FreeRADIUS which are years out of date.  Those versions may contain
+bugs which have been fixed in newer releases.  We recommend using the
+[Network RADIUS](http://packages.networkradius.com) packages where
+possible.
 
 Administrators who are new to FreeRADIUS should read the
 [introduction](introduction/) documentation.  That section describes
@@ -109,15 +113,16 @@ For further details, about the debug output see the
 
 We also recommend joining the [mailing
 list](http://lists.freeradius.org/mailman/listinfo/freeradius-users)
-in order to ask questions and receive ansswers.  The developers are
+in order to ask questions and receive answers.  The developers are
 not on Stack Overflow, IRC, or other web sites.  While the FreeRADIUS
 source is available on
 [GitHub](https://github.com/FreeRADIUS/freeradius-server/), questions
 posted there will not be answered.
 
-WARNING: Posting questions to the mailing list *without* including the
-debug output is generally not acceptable.  Doing so will usually cause
-the developers to reply, saying "post the debug output".
+Before posting to the list, please read the [list
+help](http://wiki.freeradius.org/list-help) page.  That page explains
+how to run the server in debugging mode; how to understand the debug
+output; and what information to post to the list.
 
-We simply cannot emphasize enough the importance of running the server
-in debugging mode, and _reading_ the output.
+Commercial support for FreeRADIUS is available from [Network
+RADIUS](https://networkradius.com/freeradius-support/).
