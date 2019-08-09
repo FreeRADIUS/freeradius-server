@@ -3849,8 +3849,6 @@ typedef struct {
 	fr_dict_attr_t const	*relative_attr;		//!< for ".82" instead of "1.2.3.82".
 							///< only for parents of type "tlv"
 
-	int			member_num;		//!< for attributes of type 'struct'
-
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
 	dict_enum_fixup_t	*enum_fixup;
 } dict_from_file_ctx_t;
@@ -4476,7 +4474,7 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 	/*
 	 *	Add the MEMBER to the parent.
 	 */
-	if (fr_dict_attr_add(ctx->dict, ctx->stack[ctx->stack_depth].da, argv[0], ++ctx->member_num, type, &flags) < 0) return -1;
+	if (fr_dict_attr_add(ctx->dict, ctx->stack[ctx->stack_depth].da, argv[0], ++ctx->stack[ctx->stack_depth].member_num, type, &flags) < 0) return -1;
 
 	/*
 	 *	A 'struct' can have a MEMBER of type 'tlv', but ONLY
@@ -4487,8 +4485,8 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 	 *	to them.
 	 */
 	if (type == FR_TYPE_TLV) {
-		ctx->relative_attr = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->member_num);
-		ctx->stack[++ctx->stack_depth].da = ctx->relative_attr;
+		ctx->relative_attr = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->stack[ctx->stack_depth].member_num);
+		if (dict_ctx_push(ctx, ctx->relative_attr) < 0) return -1;
 	}
 
 	return 0;
@@ -5152,13 +5150,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			if (dict_read_process_attribute(ctx,
 							argv + 1, argc - 1,
 							&base_flags) == -1) goto error;
-
-			/*
-			 *	When we see a new ATTRIBUTE, it means
-			 *	that we're done the MEMBER definitions
-			 *	of a 'struct'.
-			 */
-			ctx->member_num = 0;
 			continue;
 		}
 
