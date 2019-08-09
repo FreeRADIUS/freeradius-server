@@ -1,0 +1,177 @@
+
+== The parallel Statement
+
+[source,unlang]
+----
+parallel [ empty ] {
+    [ statements ]
+}
+----
+
+The `parallel` section runs subsections in parallel.  Once all of the
+statements in the `parallel` section have finished execution, the
+parallel section exits.  The return code of the parallel section is
+the same as if each subsection was run sequentially.
+
+The `parallel` section is most useful for running modules which call
+external systems and wait for a reply.  When modules are run in
+series, the first module must run to completion, and only then can the
+second and subsequent modules be executed.  With parallel, the first
+module is run, and then as soon as that module yeilds in order to wait
+for an event, the second module can immediately run.
+
+Despite the "parallel" name, the section will only run one module at a
+time.  This limitation ensures that there are no issues with
+multi-threaded race conditions, locking, etc. The "parallel" name is
+used in order to highlight the fact that multiple events are being
+handled at the "same time" inside of a `parallel` section.  The name
+does not indicate that there are multiple threads of execution.
+
+There are no limits as to the number of subsections which can be
+placed inside of a `parallel` section.
+
+.Example
+
+The following section sends a RADIUS packet to `radius1`, and then
+immediately another RADIUS packet to `radius2`.  The parallel section
+returns only when both modules have returned.  i.e. Either via
+timeouts, or by receiving replies to the requests.
+
+Each module `radius` and `radius2` is handed a child request which is
+an identical copy of the parent request.
+
+[source,unlang]
+----
+parallel {
+    radius1
+    radius2
+}
+----
+
+=== Child Requests are Independent
+
+Each module or subsection runs as a new child request which is a
+identical copy of the parent request.  Policies in the child can
+update the original parent by using `update parent.request`, or
+`update parent.reply`.
+
+The child requests are required because each subsection is run
+independently, with independent events, timers, etc.
+
+.Example
+
+When using complex policies inside of a `parallel` section, each
+subsection should be enclosed in a link:group.adoc[group] keyword, as
+follows.
+
+[source,unlang]
+----
+parallel {
+    group {
+        radius1
+        if (fail) {
+           linelog1
+           update parent.reply {
+               &Reply-Message += "radius1 failed"
+           }
+        }
+    }
+    group {
+        radius2
+        if (fail) {
+           linelog2
+           update parent.reply {
+               &Reply-Message += "radius2 failed"
+           }
+        }
+    }
+}
+----
+
+=== Empty Child Requests
+
+It is possible to create child requests which are not clones of the
+parent, by using the `parallel empty { ... }` syntax.  When the
+`empty` syntax is used, child requests are still created, but they
+contain no attributes.
+
+The `empty` syntax is most useful when it is necessary to control
+which attributes go into a child request.
+
+.Example
+
+The contents of each child request can be manually controlled by using
+the `parallel empty` syntax.  In that case, the attributes in the
+child request must be added manually via an link:update.adoc[update]
+statement.
+
+In this example, the `radius1` module sees a `User-Name` which is
+modified from the parent `User-Name`, and a `User-Password` which is
+static.  The `radius1` module sees a `User-Name` which is modified in
+a different way from the parent `User-Name`, and it sees a
+`User-Password` which is a copy of the parents `User-Password`.
+
+[source,unlang]
+----
+parallel empty {
+    group {
+        update request {
+            &User-Name := "%{&parent.request:User-Name}@example.org"
+            &User-Password := "hello"
+        }
+        radius1
+    }
+    group {
+        update request {
+            &User-Name := "%{&parent.User-Name}@example.com"
+            &User-Password := &parent.request:User-Password
+        }
+        radius2
+    }
+}
+----
+
+=== Exiting Early from a Parallel Section
+
+In some situations, it may be useful to exit early from a parallel
+section.  For example, to proxy a packet to multiple destinations, and
+then return as soon as any one of the destinations returns a reply.
+
+The link:return.adoc[return] keyword in a child is used to return from
+the `parallel` section, and to stop the execution of all children.
+
+.Example
+
+[source,unlang]
+----
+parallel {
+    group {
+        radius1
+        if (ok) {
+            return
+        }
+    }
+    group {
+        radius2
+        if (ok) {
+            return
+        }
+    }
+    group {
+        radius3
+        if (ok) {
+            return
+        }
+    }
+    group {
+        radius4
+        if (ok) {
+            return
+        }
+    }
+}
+----
+
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
