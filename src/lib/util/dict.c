@@ -4252,7 +4252,9 @@ static int dict_ctx_push(dict_from_file_ctx_t *ctx, fr_dict_attr_t const *da)
 		return -1;
 	}
 
-	ctx->stack[++ctx->stack_depth].da = da;
+	ctx->stack_depth++;
+	memset(&ctx->stack[ctx->stack_depth], 0, sizeof(ctx->stack[ctx->stack_depth]));
+	ctx->stack[ctx->stack_depth].da = da;
 
 	return 0;
 }
