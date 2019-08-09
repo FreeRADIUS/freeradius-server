@@ -1787,7 +1787,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-oracle_supported_versions="19 18 12 11 10 9"
+oracle_supported_versions="19 18 12 11"
 fail=
 mod_ldflags=
 mod_cflags=
