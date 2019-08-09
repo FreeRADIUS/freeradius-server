@@ -4264,7 +4264,6 @@ static fr_dict_attr_t const *dict_ctx_unwind(dict_from_file_ctx_t *ctx)
 		ctx->stack_depth--;
 	}
 
-
 	return ctx->stack[ctx->stack_depth].da;
 }
 
@@ -4307,41 +4306,24 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	if (type != FR_TYPE_TLV) set_relative_attr = false;
 
 	/*
-	 *	A non-relative ATTRIBUTE definition means either that
-	 *	we're in a BEGIN-TLV block, OR we go up to dict->root
-	 *	in order to define this attribute.
+	 *	A non-relative ATTRIBUTE definition means that it is
+	 *	in the context of the previous BEGIN-FOO.  So we
+	 *	unwind the stack to match.
 	 */
 	if (argv[1][0] != '.') {
-		parent = ctx->stack[ctx->stack_depth].da;
+		parent = dict_ctx_unwind(ctx);
 
 		/*
 		 *	Allow '0xff00' as attribute numbers, but only
 		 *	if there is no OID component.
 		 */
 		if (strchr(argv[1], '.') == 0) {
-			/*
-			 *	We MAY be in the middle of a BEGIN-TLV
-			 *	block.  If not, we jump back to the
-			 *	previous root, or the previous VENDOR
-			 *	definition.
-			 */
-			if (parent->type != FR_TYPE_TLV) {
-				parent = dict_ctx_unwind(ctx);
-			}
-
 			if (!dict_read_sscanf_i(&attr, argv[1])) {
 				fr_strerror_printf("Invalid ATTRIBUTE number");
 				return -1;
 			}
 
 		} else {
-			/*
-			 *	We have a full OID.  Jump back to the
-			 *	previous root, OR to the previous
-			 *	VENDOR definition.
-			 */
-			parent = dict_ctx_unwind(ctx);
-
 			slen = fr_dict_attr_by_oid(ctx->dict, &parent, &attr, argv[1]);
 			if (slen <= 0) return -1;
 		}
