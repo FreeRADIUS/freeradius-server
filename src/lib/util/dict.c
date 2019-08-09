@@ -5176,7 +5176,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 */
 		if (strncasecmp(argv[0], "$INCLUDE", 8) == 0) {
 			int rcode;
-			dict_from_file_ctx_t nctx = *ctx;
+			int stack_depth = ctx->stack_depth;
 
 			/*
 			 *	Allow "$INCLUDE" or "$INCLUDE-", but
@@ -5195,7 +5195,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			 *	parent.
 			 */
 
-			rcode = _dict_from_file(&nctx, dir, argv[1], fn, line);
+			rcode = _dict_from_file(ctx, dir, argv[1], fn, line);
 			if ((rcode == -2) && (argv[0][8] == '-')) {
 				fr_strerror_printf(NULL); /* delete all errors */
 				rcode = 0;
@@ -5207,12 +5207,22 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				return -1;
 			}
 
-			/*
-			 *	Fixups are added to the head of the
-			 *	list, so copy the new head over to the
-			 *	parent.
-			 */
-			ctx->enum_fixup = nctx.enum_fixup;
+			if (ctx->stack_depth < stack_depth) {
+				fr_strerror_printf_push("unexpected END-??? in $INCLUDE at %s[%d]", fn, line);
+				fclose(fp);
+				return -1;
+			}
+
+			while (ctx->stack_depth > stack_depth) {
+				if (ctx->stack[ctx->stack_depth].nest == FR_TYPE_INVALID) {
+					ctx->stack_depth--;
+					continue;
+				}
+
+				fr_strerror_printf_push("BEGIN-??? without END-... in file $INCLUDEd from %s[%d]", fn, line);
+				fclose(fp);
+				return -1;
+			}
 			continue;
 		} /* $INCLUDE */
 
