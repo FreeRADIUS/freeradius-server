@@ -961,6 +961,19 @@ do {\
 	if (!cs) return -1;
 
 	/*
+	 *	Special-case things.  If the output is a TTY, AND
+	 *	we're debugging, colourise things.  This flag also
+	 *	removes the "Debug : " prefix from the log messages.
+	 */
+	p = getenv("TERM");
+	if (p && isatty(default_log.fd) && strstr(p, "xterm") && rad_debug_lvl) {
+		default_log.colourise = true;
+	} else {
+		default_log.colourise = false;
+	}
+	default_log.line_number = config->log_line_number;
+
+	/*
 	 *	Add a 'feature' subsection off the main config
 	 *	We check if it's defined first, as the user may
 	 *	have defined their own feature flags, or want
@@ -1178,16 +1191,9 @@ do {\
 	if (cf_section_parse(config, config, cs) < 0) goto failure;
 
 	/*
-	 *	We ignore colourization of output until after the
-	 *	configuration files have been parsed.
+	 *	Reset the colourisation state.
 	 */
-	p = getenv("TERM");
-	if (config->do_colourise && p && isatty(default_log.fd) && strstr(p, "xterm")) {
-		default_log.colourise = true;
-	} else {
-		default_log.colourise = false;
-	}
-	default_log.line_number = config->log_line_number;
+	default_log.colourise = config->do_colourise;
 
 	/*
 	 *	Starting the server, WITHOUT "-x" on the
