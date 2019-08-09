@@ -4260,8 +4260,7 @@ static int dict_ctx_push(dict_from_file_ctx_t *ctx, fr_dict_attr_t const *da)
 static fr_dict_attr_t const *dict_ctx_unwind(dict_from_file_ctx_t *ctx)
 {
 	while ((ctx->stack_depth > 0) &&
-	       !ctx->stack[ctx->stack_depth].da->flags.is_root &&
-	       (ctx->stack[ctx->stack_depth].da->type != FR_TYPE_VENDOR)) {
+	       (ctx->stack[ctx->stack_depth].nest == FR_TYPE_INVALID)) {
 		ctx->stack_depth--;
 	}
 
@@ -5298,9 +5297,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			 */
 			if (!ctx->fixup_pool) ctx->fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
 
-			ctx->dict = found;
-
-			if (dict_ctx_push(ctx, ctx->dict->root) < 0) goto error;
 
 			// check if there's a linked library for the
 			// protocol.  The values can be unknown (we
@@ -5308,8 +5304,10 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			// known.  For the last two, we don't try to
 			// load anything.
 
-			//
+			ctx->dict = found;
 
+			if (dict_ctx_push(ctx, ctx->dict->root) < 0) goto error;
+			ctx->stack[ctx->stack_depth].nest = FR_TYPE_MAX;
 			continue;
 		}
 
@@ -5330,11 +5328,42 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
-			if ((found != ctx->dict) || (ctx->stack_depth == 0)) {
+			if (found != ctx->dict) {
 				fr_strerror_printf("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s",
 						   argv[1], found->root->name);
 				goto error;
 			}
+
+			/*
+			 *	Pop the stack until we get to a PROTOCOL nesting.
+			 */
+			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != FR_TYPE_MAX)) {
+				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_INVALID) {
+					fr_strerror_printf_push("END-PROTOCOL %s with mismatched BEGIN-??? %s", argv[1],
+						ctx->stack[ctx->stack_depth].da->name);
+					goto error;
+				}
+
+				ctx->stack_depth--;
+			}
+
+			if (ctx->stack_depth == 0) {
+				fr_strerror_printf_push("END-PROTOCOL %s with no previous BEGIN-PROTOCOL", argv[1]);
+				goto error;
+			}
+
+			if (found->root != ctx->stack[ctx->stack_depth].da) {
+				fr_strerror_printf_push("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s", argv[1],
+							ctx->stack[ctx->stack_depth].da->name);
+				goto error;
+			}
+
+			/*
+			 *	Switch back to old values.
+			 *
+			 *	@todo - use the stack for dictionaries.
+			 */
+			ctx->dict = ctx->old_dict;
 
 			/*
 			 *	Applies fixups to any attributes added to
@@ -5342,12 +5371,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			 */
 			if (fr_dict_finalise(ctx) < 0) goto error;
 
-			/*
-			 *	Switch back to old values.
-			 *
-			 *	@todo - just create a stack of contests, so we don't need "old_foo"
-			 */
-			ctx->dict = ctx->old_dict;
 			ctx->stack_depth--;
 			continue;
 		}
@@ -5385,6 +5408,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			}
 
 			if (dict_ctx_push(ctx, da) < 0) goto error;
+			ctx->stack[ctx->stack_depth].nest = FR_TYPE_TLV;
 			continue;
 		} /* BEGIN-TLV */
 
@@ -5403,11 +5427,30 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
-			if ((da != ctx->stack[ctx->stack_depth].da) || (ctx->stack_depth == 0)) {
+			/*
+			 *	Pop the stack until we get to a TLV nesting.
+			 */
+			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != FR_TYPE_TLV)) {
+				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_INVALID) {
+					fr_strerror_printf_push("END-TLV %s with mismatched BEGIN-??? %s", argv[1],
+						ctx->stack[ctx->stack_depth].da->name);
+					goto error;
+				}
+
+				ctx->stack_depth--;
+			}
+
+			if (ctx->stack_depth == 0) {
+				fr_strerror_printf_push("END-TLV %s with no previous BEGIN-TLV", argv[1]);
+				goto error;
+			}
+
+			if (da != ctx->stack[ctx->stack_depth].da) {
 				fr_strerror_printf_push("END-TLV %s does not match previous BEGIN-TLV %s", argv[1],
 							ctx->stack[ctx->stack_depth].da->name);
 				goto error;
 			}
+
 			ctx->stack_depth--;
 			continue;
 		} /* END-VENDOR */
@@ -5535,6 +5578,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			}
 
 			if (dict_ctx_push(ctx, vendor_da) < 0) goto error;
+			ctx->stack[ctx->stack_depth].nest = FR_TYPE_VENDOR;
 			continue;
 		} /* BEGIN-VENDOR */
 
@@ -5552,21 +5596,30 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
+			/*
+			 *	Pop the stack until we get to a VENDOR nesting.
+			 */
+			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != FR_TYPE_VENDOR)) {
+				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_INVALID) {
+					fr_strerror_printf_push("END-VENDOR %s with mismatched BEGIN-??? %s", argv[1],
+						ctx->stack[ctx->stack_depth].da->name);
+					goto error;
+				}
+
+				ctx->stack_depth--;
+			}
+
 			if (ctx->stack_depth == 0) {
-			no_matching_vendor:
-				fr_strerror_printf_push("END-VENDOR '%s' with no matching BEGIN-VENDOR",
-							argv[1]);
+				fr_strerror_printf_push("END-VENDOR %s with no previous BEGIN-VENDOR", argv[1]);
 				goto error;
 			}
 
-			da = ctx->stack[ctx->stack_depth].da;
-			if (da->type != FR_TYPE_VENDOR) goto no_matching_vendor;
-
-			if (vendor->pen != da->attr) {
-				fr_strerror_printf_push("END-VENDOR '%s' does not match any previous BEGIN-VENDOR",
-							argv[1]);
+			if (vendor->pen != ctx->stack[ctx->stack_depth].da->attr) {
+				fr_strerror_printf_push("END-VENDOR %s does not match previous BEGIN-VENDOR %s", argv[1],
+							ctx->stack[ctx->stack_depth].da->name);
 				goto error;
 			}
+
 			ctx->stack_depth--;
 			continue;
 		} /* END-VENDOR */
@@ -5592,6 +5645,7 @@ static int dict_from_file(fr_dict_t *dict,
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
 	ctx.stack[0].da = dict->root;
+	ctx.stack[0].nest = FR_TYPE_MAX;
 
 	rcode = _dict_from_file(&ctx,
 				dir_name, filename, src_file, src_line);
@@ -6010,6 +6064,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
 	ctx.stack[0].da = dict->root;
+	ctx.stack[0].nest = FR_TYPE_MAX;
 
 	ctx.fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
 	if (!ctx.fixup_pool) return -1;
