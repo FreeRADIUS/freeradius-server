@@ -50,7 +50,7 @@ parallel {
 
 === Child Requests are Independent
 
-Each module or subsection runs as a new child request which is a
+Each module or subsection runs as a new child request which is an
 identical copy of the parent request.  Policies in the child can
 update the original parent by using `update parent.request`, or
 `update parent.reply`.
@@ -58,11 +58,14 @@ update the original parent by using `update parent.request`, or
 The child requests are required because each subsection is run
 independently, with independent events, timers, etc.
 
+Once the child requests are finished, they are freed.  Any information
+stored in them is discarded.  Information needed after the `parallel`
+section is run should be saved in the parent request.
+
 .Example
 
 When using complex policies inside of a `parallel` section, each
-subsection should be enclosed in a link:group.adoc[group] keyword, as
-follows.
+subsection should be enclosed in a link:group.adoc[group] keyword.
 
 [source,unlang]
 ----
