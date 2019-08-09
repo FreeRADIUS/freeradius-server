@@ -275,7 +275,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	if (OCISessionGet((dvoid *)inst->env, conn->error, &conn->ctx, NULL, 
 		     (OraText *)inst->pool_name, inst->pool_name_len, 
 		     NULL, 0, NULL, NULL, NULL,
-	         OCI_SESSGET_SPOOL | OCI_SESSGET_STMTCACHE) != OCI_SUCCESS) {
+		     OCI_SESSGET_SPOOL | OCI_SESSGET_STMTCACHE) != OCI_SUCCESS) {
 		ERROR("Oracle get sessin from pool[%s] failed: '%s'",
 		      inst->pool_name,
 		      (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) == 0) ? errbuff : "unknown");
