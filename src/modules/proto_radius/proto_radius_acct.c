@@ -69,7 +69,8 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 		unlang = cf_section_find(request->server_cs, "recv", "Accounting-Request");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv Accounting-Request' section");
-			return FR_IO_FAIL;
+			request->reply->code = FR_CODE_DO_NOT_RESPOND;
+			goto send_reply;
 		}
 
 		RDEBUG("Running 'recv Accounting-Request' from file %s", cf_filename(unlang));
@@ -108,7 +109,10 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			return FR_IO_FAIL;
+			RDEBUG("The 'recv Accounting-Request' section returned %s - not sending a response",
+			       fr_int2str(mod_rcode_table, rcode, "???"));
+			request->reply->code = FR_CODE_DO_NOT_RESPOND;
+			goto send_reply;
 		}
 
 		/*
@@ -161,7 +165,10 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			return FR_IO_FAIL;
+			RDEBUG("The 'accounting' section returned %s - not sending a response",
+			       fr_int2str(mod_rcode_table, rcode, "???"));
+			request->reply->code = FR_CODE_DO_NOT_RESPOND;
+			goto send_reply;
 		}
 
 	setup_send:
@@ -201,6 +208,8 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 			break;
 
 		default:
+			RDEBUG("The 'send Accounting-Response' section returned %s - not sending a response",
+			       fr_int2str(mod_rcode_table, rcode, "???"));
 			request->reply->code = FR_CODE_DO_NOT_RESPOND;
 			break;
 		}
