@@ -2542,8 +2542,16 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	if (parent->type != UNLANG_TYPE_SUBREQUEST) {
-		cf_log_err(ci, "'detach' can only be used in a 'subrequest' section.");
+	unlang_t *subrequest;
+
+	for (subrequest = parent;
+	     subrequest != NULL;
+	     subrequest = subrequest->parent) {
+		if (subrequest->type == UNLANG_TYPE_SUBREQUEST) break;
+	}
+
+	if (!subrequest) {
+		cf_log_err(ci, "'detach' can only be used inside of a 'subrequest' section.");
 		return NULL;
 	}
 
@@ -2551,8 +2559,8 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	This really overloads the functionality of
 	 *	cf_item_next().
 	 */
-	if (!cf_item_next(ci, ci)) {
-		cf_log_err(ci, "'detach' cannot be used as the last entry in a section");
+	if ((parent == subrequest) && !cf_item_next(ci, ci)) {
+		cf_log_err(ci, "'detach' cannot be used as the last entry in a section, as there is nothing more to do");
 		return NULL;
 	}
 
