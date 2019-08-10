@@ -91,7 +91,7 @@ redis_ippool {
 
 	#
 	#  copy_on_update:: If true - Copy the value of ip_address to the attribute specified by
-	#  `reply_attr` when performing an update/renew.
+	#  `allocated_address_attr` when performing an update/renew.
 	#
 	#  This behavior is needed for DHCP where we need to send back
 	#  `DHCP-Your-IP-Address` in ACKs.
