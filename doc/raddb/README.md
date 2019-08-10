@@ -28,7 +28,7 @@ in v3 and earlier releases, we had the following limitations:
 
 All of these limitations and more have been removed.  The downside of
 these changes is that the some of the configuration has been changed.
-Please see the [`UPGRADE.md`](UPGRADE.md) file for instructions on
+Please see the [upgrade](../upgrade/) file for instructions on
 how to migrate a v3 configuration to v4.
 
 ## Configuring the server
@@ -146,7 +146,7 @@ Note that unlike v3, there are no longer any `authorize`,
 been renamed.  This change was necessary in order to simplify the
 operation of the server, and to better support multiple protocols.
 
-Please see the [`UPGRADE.md`](UPGRADE.md) file for more
+Please see the [upgrade](../upgrade/) file for more
 information about these changes.
 
 The `sites-available/` directory contains many files.  Each file is a
