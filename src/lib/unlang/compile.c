@@ -2543,7 +2543,7 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	if (parent->type != UNLANG_TYPE_SUBREQUEST) {
-		cf_log_err(ci, "'detach' can only be used in a 'create' section");
+		cf_log_err(ci, "'detach' can only be used in a 'subrequest' section.");
 		return NULL;
 	}
 
