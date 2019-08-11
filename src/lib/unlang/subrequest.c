@@ -308,7 +308,6 @@ static unlang_action_t unlang_detach(REQUEST *request,
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 
-	rad_assert(instruction->parent->type == UNLANG_TYPE_SUBREQUEST);
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
 	rad_assert(request->parent != NULL);
