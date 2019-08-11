@@ -3,15 +3,16 @@
 
 [source,unlang]
 ----
-parallel [ empty ] {
+parallel [ empty | detach ] {
     [ statements ]
 }
 ----
 
-The `parallel` section runs subsections in parallel.  Once all of the
-statements in the `parallel` section have finished execution, the
-parallel section exits.  The return code of the parallel section is
-the same as if each subsection was run sequentially.
+The `parallel` section runs multiple child subsections in parallel.
+Once all of the statements in the `parallel` section have finished
+execution, the parallel section exits.  The return code of the
+parallel section is the same as if each subsection was run
+sequentially.
 
 The `parallel` section is most useful for running modules which call
 external systems and wait for a reply.  When modules are run in
@@ -19,6 +20,10 @@ series, the first module must run to completion, and only then can the
 second and subsequent modules be executed.  With parallel, the first
 module is run, and then as soon as that module yeilds in order to wait
 for an event, the second module can immediately run.
+
+Each child subsection is executed using a
+link:subrequest.adoc[subrequest].  Please see the next subsection for
+more information about subrequests.
 
 Despite the "parallel" name, the section will only run one module at a
 time.  This limitation ensures that there are no issues with
@@ -50,13 +55,18 @@ parallel {
 
 === Child Requests are Independent
 
-Each module or subsection runs as a new child request which is an
-identical copy of the parent request.  Policies in the child can
-update the original parent by using `update parent.request`, or
-`update parent.reply`.
+Each module or subsection runs as a new child request, i.e. a
+link:subrequest.adoc[subrequest].  Each child request is an identical
+copy of the parent request.  Policies in the child can update the
+original parent by using `update parent.request`, or `update
+parent.reply`.  Please see the link:list.adoc[list] syntax for a
+more complete description of how to refer to parent requests.
 
 The child requests are required because each subsection is run
-independently, with independent events, timers, etc.
+independently, with independent events, timers, etc.  That is, each
+child request has its own state, independent of any other request.
+This independence is required in order to fully implement the
+"parallel" nature of this keyword.
 
 Once the child requests are finished, they are freed.  Any information
 stored in them is discarded.  Information needed after the `parallel`
@@ -91,22 +101,30 @@ parallel {
 }
 ----
 
-=== Empty Child Requests
+=== Subrequests are Synchronous
 
-It is possible to create child requests which are not clones of the
-parent, by using the `parallel empty { ... }` syntax.  When the
-`empty` syntax is used, child requests are still created, but they
-contain no attributes.
+Execution of the parent request is paused while each child request is
+running.  The parent request continues execution once all of the the
+child requests have finished.
 
-The `empty` syntax is most useful when it is necessary to control
-which attributes go into a child request.
+Unlike the link:subrequest.adoc[subrequest] keyword, the child
+requests of a `parallel` section cannot be made asynchronous via the
+link:detach.adoc[detach] keyword.
+
+=== parallel empty
+
+The `parallel empty { ... }` syntax creates empty child requests.
+These requests contain no attributes.  Attributes in the child request
+must be added manually via an link:update.adoc[update] statement.
+
+The `empty` keyword is most useful when it is necessary to manually
+determine which attributes go into a child request.
+
+The `empty` keyword cannot be used with the `detach` keyword.  There
+is no purpose to creating independent child requests which contain
+nothing.
 
 .Example
-
-The contents of each child request can be manually controlled by using
-the `parallel empty` syntax.  In that case, the attributes in the
-child request must be added manually via an link:update.adoc[update]
-statement.
 
 In this example, the `radius1` module sees a `User-Name` which is
 modified from the parent `User-Name`, and a `User-Password` which is
@@ -131,6 +149,44 @@ parallel empty {
         }
         radius2
     }
+}
+----
+
+=== parallel detach
+
+The `parallel detach { ... }` syntax creates child requests which are
+immediately detached from the parent request.  Each child request
+contains copies of all attributes in the parent request.
+
+The parent request continues immediately, and independently of the
+child requests.
+
+The `detach` keyword cannot be used with the `empty` keyword.  There
+is no purpose to creating independent child requests which contain
+nothing.
+
+The return code from the `parallel detach { ... }` section is `noop`.
+Since all of the child requests are independent of the parent, they
+cannot convey any information back to the parent.  Therefore, the
+return code is always `noop`.
+
+The `detach` keyword is most useful when it is necessary to send
+packets to multiple destinations, but where there is no need to wait
+for an answer.
+
+.Example
+
+In this example, the `parallel detach { ... }` syntax is used to send
+packets to four different destinations at the same time, in a "fire
+and forget" manner.
+
+[source,unlang]
+----
+parallel detach {
+    radius1
+    radius2
+    radius3
+    radius4
 }
 ----
 

@@ -527,7 +527,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			*result = RLM_MODULE_YIELD;	/* Fixup rcode */
 		yield:
 			/*
-			 *	Detach is magic.  The parent "create" function
+			 *	Detach is magic.  The parent "subrequest" function
 			 *	takes care of bumping the instruction
 			 *	pointer...
 			 */

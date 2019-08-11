@@ -300,7 +300,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	return UNLANG_ACTION_YIELD;
 }
 
-static unlang_action_t unlang_detach(REQUEST *request,
+unlang_action_t unlang_detach(REQUEST *request,
 				     rlm_rcode_t *presult, int *priority)
 {
 	VALUE_PAIR		*vp;
@@ -308,7 +308,16 @@ static unlang_action_t unlang_detach(REQUEST *request,
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 
-	RDEBUG2("%s", unlang_ops[instruction->type].name);
+	/*
+	 *	The "parallel" command calls us in order to detach a
+	 *	child which hasn't done anything yet.
+	 *
+	 *	Therefore, we print out that "detach" is running ONLY
+	 *	when it's running with a parent stack frame.
+	 */
+	if (stack->depth > 1) {
+		RDEBUG2("%s", unlang_ops[instruction->type].name);
+	}
 
 	rad_assert(request->parent != NULL);
 

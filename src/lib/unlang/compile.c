@@ -2933,7 +2933,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	char const *name2;
 	unlang_group_t *g;
 	bool clone = true;
-
+	bool detach = false;
 
 	/*
 	 *	No children?  Die!
@@ -2951,12 +2951,17 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	 */
 	name2 = cf_section_name2(cs);
 	if (name2) {
-		if (strcmp(name2, "empty") != 0) {
+		if (strcmp(name2, "empty") == 0) {
+			clone = false;
+
+		} else if (strcmp(name2, "detach") == 0) {
+			detach = true;
+
+		} else {
 			cf_log_err(cs, "Invalid argument '%s'", name2);
 			return NULL;
 		}
 
-		clone = false;
 	}
 
 	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
@@ -2964,6 +2969,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 	g = unlang_generic_to_group(c);
 	g->clone = clone;
+	g->detach = detach;
 
 	c->name = c->debug_name = unlang_ops[c->type].name;
 

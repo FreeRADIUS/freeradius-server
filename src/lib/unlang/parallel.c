@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include "unlang_priv.h"
 #include "parallel_priv.h"
+#include "subrequest_priv.h"
 #include "module_priv.h"
 
 /** Run one or more sub-sections from the parallel section.
@@ -36,8 +37,18 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 	int			i, priority;
 	rlm_rcode_t		result;
 	unlang_parallel_child_state_t done = CHILD_DONE; /* hope that we're done */
+	REQUEST			*child;
 
 	// @todo - rdebug running the request.
+
+	/*
+	 *	The children are created all detached.  We just return
+	 *	"noop".
+	 */
+	if (state->g->detach) {
+		state->priority = 0;
+		state->result = RLM_MODULE_NOOP;
+	}
 
 	/*
 	 *	Loop over all the children.
@@ -48,57 +59,70 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 	for (i = 0; i < state->num_children; i++) {
 		switch (state->children[i].state) {
 			/*
-			 *	Not ready to run.
-			 */
-		case CHILD_YIELDED:
-			RDEBUG3("parallel child %d is already YIELDED", i + 1);
-			rad_assert(state->children[i].child != NULL);
-			rad_assert(state->children[i].instruction != NULL);
-			done = CHILD_YIELDED;
-			continue;
-
-			/*
-			 *	Don't need to call this any more.
-			 */
-		case CHILD_DONE:
-			RDEBUG3("parallel child %d is already DONE", i + 1);
-			rad_assert(state->children[i].child == NULL);
-			rad_assert(state->children[i].instruction == NULL);
-			continue;
-
-			/*
 			 *	Create the child and then run it.
 			 */
 		case CHILD_INIT:
 			RDEBUG3("parallel child %d is INIT", i + 1);
 			rad_assert(state->children[i].instruction != NULL);
-			state->children[i].child = unlang_io_subrequest_alloc(request,
-									      request->dict, UNLANG_NORMAL_CHILD);
-			state->children[i].state = CHILD_RUNNABLE;
-			state->children[i].child->packet->code = request->packet->code;
-
-			/*
-			 *	Push first instruction for child to execute
-			 */
-			unlang_interpret_push(state->children[i].child,
-					      state->children[i].instruction, RLM_MODULE_FAIL,
-					      UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
+			child = unlang_io_subrequest_alloc(request,
+							   request->dict, state->g->detach);
+			child->packet->code = request->packet->code;
 
 			if (state->g->clone) {
-				if ((fr_pair_list_copy(state->children[i].child->packet,
-						       &state->children[i].child->packet->vps,
+				/*
+				 *	Note that we do NOT copy the
+				 *	Session-State list!  That
+				 *	contains state information for
+				 *	the parent.
+				 */
+				if ((fr_pair_list_copy(child->packet,
+						       &child->packet->vps,
 						       request->packet->vps) < 0) ||
-				    (fr_pair_list_copy(state->children[i].child->reply,
-						       &state->children[i].child->reply->vps,
+				    (fr_pair_list_copy(child->reply,
+						       &child->reply->vps,
 						       request->reply->vps) < 0) ||
-				    (fr_pair_list_copy(state->children[i].child,
-						       &state->children[i].child->control,
+				    (fr_pair_list_copy(child,
+						       &child->control,
 						       request->control) < 0)) {
 					REDEBUG("failed copying lists to clone");
 					for (i = 0; i < state->num_children; i++) TALLOC_FREE(state->children[i].child);
 					return RLM_MODULE_FAIL;
 				}
 			}
+
+			/*
+			 *	Push first instruction for child to execute
+			 */
+			unlang_interpret_push(child,
+					      state->children[i].instruction, RLM_MODULE_FAIL,
+					      UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
+
+			/*
+			 *	It is often useful to create detached
+			 *	children in parallel.
+			 */
+			if (state->g->detach) {
+				state->children[i].state = CHILD_DONE;
+				state->children[i].instruction = NULL;
+
+				/*
+				 *	Detach the child, and insert
+				 *	it into the backlog.
+				 */
+				if (unlang_detach(child, &result, &priority) == UNLANG_ACTION_CALCULATE_RESULT) {
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
+
+				if (fr_heap_insert(child->backlog, child) < 0) {
+					RPERROR("Failed inserting child into backlog");
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
+
+				continue;
+			}
+
+			state->children[i].child = child;
+			state->children[i].state = CHILD_RUNNABLE;
 
 			/* FALL-THROUGH */
 
@@ -179,6 +203,26 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 
 			rad_assert(done == CHILD_DONE);
 			break;
+
+			/*
+			 *	Not ready to run.
+			 */
+		case CHILD_YIELDED:
+			RDEBUG3("parallel child %d is already YIELDED", i + 1);
+			rad_assert(state->children[i].child != NULL);
+			rad_assert(state->children[i].instruction != NULL);
+			done = CHILD_YIELDED;
+			continue;
+
+			/*
+			 *	Don't need to call this any more.
+			 */
+		case CHILD_DONE:
+			RDEBUG3("parallel child %d is already DONE", i + 1);
+			rad_assert(state->children[i].child == NULL);
+			rad_assert(state->children[i].instruction == NULL);
+			continue;
+
 		}
 	}
 

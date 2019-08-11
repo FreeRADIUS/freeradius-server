@@ -171,7 +171,10 @@ typedef struct {
 		};
 		fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
 
-		bool			clone;		//!< #UNLANG_TYPE_PARALLEL
+		struct {				//!< #UNLANG_TYPE_PARALLEL
+			bool			clone;
+			bool			detach;
+		};
 	};
 } unlang_group_t;
 
