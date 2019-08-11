@@ -10,9 +10,9 @@ subrequest <type> {
 
 The `subrequest` keyword creates a child request.  The child request
 is empty, and contains no attributes.  Attributes in the child can be
-copied from the parent via the link:update.adoc[update] keyword.  See
-the link:list.adoc[list] syntax for a description of how to refer to
-parent requests.
+copied from the parent via the link:update.adoc[update] keyword.
+Please see the link:list.adoc[list] syntax for a description of how to
+refer to parent requests.
 
 <type>:: The type of the child request being created.
 +

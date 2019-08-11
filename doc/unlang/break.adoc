@@ -8,8 +8,8 @@ break
 ----
 
 The `break` statement is used to exit an enclosing
-link:foreach.adoc[foreach] loop.  The `break` statement cannot be used
-outside of a link:foreach.adoc[foreach] loop.
+link:foreach.adoc[foreach] loop.  The `break` statement only be used
+inside of a link:foreach.adoc[foreach] loop.
 
 .Example
 [source,unlang]
