@@ -1,0 +1,36 @@
+
+== The detach Statement
+
+.Syntax
+[source,unlang]
+----
+detach
+----
+
+The `detach` statement is used to separare a child request from a
+parent request.  The `detach` statement can only be used inside of a
+link:subrequest.adoc[subrequest] section.
+
+Once a child request is detached from the parent, the parent can
+continue execution independently of the child.  However, once a child
+request is detached from the parent request, the child can no longer
+access any attributes in the parent.
+
+.Example
+[source,unlang]
+----
+subrequest Disconnect-Request {
+    update request {
+        &User-Name := &parent.request:User-Name
+        &NAS-IP-Address := &parent.request:NAS-IP-Address
+        &NAS-Port := &parent.request:NAS-Port
+        &Acct-Session-Id := &parent.request:Acct-Session-Id
+    }
+
+    detach
+    radius
+}
+----
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
