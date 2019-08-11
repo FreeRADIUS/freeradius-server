@@ -1,0 +1,14 @@
+#
+#  PRE: parallel
+#
+
+#
+#  For now, just check that it parses
+#
+parallel empty {
+	ok
+	ok
+	ok
+}
+
+success
