@@ -312,8 +312,8 @@ unlang_action_t unlang_detach(REQUEST *request,
 	 *	The "parallel" command calls us in order to detach a
 	 *	child which hasn't done anything yet.
 	 *
-	 *	Therefore, we print out that "detach" is running ONLY
-	 *	when it's running with a parent stack frame.
+	 *	Therefore, we print out the "detach" keyword ONLY when
+	 *	it's running with a parent stack frame.
 	 */
 	if (stack->depth > 1) {
 		RDEBUG2("%s", unlang_ops[instruction->type].name);
@@ -340,11 +340,11 @@ unlang_action_t unlang_detach(REQUEST *request,
 			when += fr_time_delta_from_sec(30); /* default to 30s if not set */
 
 		} else if (vp->vp_uint32 > 3600) {
-			RWARN("Request-Timeout can be no more than 3600 seconds");
+			RWDEBUG("Request-Timeout can be no more than 3600 seconds");
 			when += fr_time_delta_from_sec(3600);
 
 		} else if (vp->vp_uint32 < 5) {
-			RWARN("Request-Timeout can be no less than 5 seconds");
+			RWDEBUG("Request-Timeout can be no less than 5 seconds");
 			when += fr_time_delta_from_sec(5);
 
 		} else {
