@@ -90,7 +90,7 @@ if test x$with_[]modname != xno; then
     AC_MSG_WARN([Oracle version >= 12 needs -laio])
 
     for path in $lib_path "/usr/local/instaclient/lib" "" "/opt/lib"; do
-	for oracle_version in 19 18 12.1 12 11 10 9 ""; do
+	for oracle_version in 19 18 12 11 10 9 ""; do
 	    if test "$path" != ""; then
 		AC_MSG_CHECKING([for OCIInitialize in nnz${oracle_version} in $path])
 	    else
