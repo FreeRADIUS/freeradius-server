@@ -105,16 +105,20 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 				state->children[i].state = CHILD_DONE;
 				state->children[i].instruction = NULL;
 
+				rad_assert(request->backlog != NULL);
+
 				/*
 				 *	Detach the child, and insert
 				 *	it into the backlog.
 				 */
 				if (unlang_detach(child, &result, &priority) == UNLANG_ACTION_CALCULATE_RESULT) {
 					return UNLANG_ACTION_STOP_PROCESSING;
+					talloc_free(child);
 				}
 
 				if (fr_heap_insert(child->backlog, child) < 0) {
 					RPERROR("Failed inserting child into backlog");
+					talloc_free(child);
 					return UNLANG_ACTION_STOP_PROCESSING;
 				}
 
