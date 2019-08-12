@@ -867,7 +867,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	rlm_rcode_t	rcode;
 	char const	*caller;
 	REQUEST		*sub_request = NULL;
-	bool		wait_for_event;
+	bool		wait_for_events;
 
 	/*
 	 *	Don't talloc from the request
@@ -889,48 +889,66 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	request->backlog = backlog;
 
 	rcode = unlang_interpret(request, cs, action);
-	wait_for_event = (rcode == RLM_MODULE_YIELD);
+	wait_for_events = (rcode == RLM_MODULE_YIELD);
 
-	if ((rcode == RLM_MODULE_YIELD) ||
-	    (fr_heap_num_elements(backlog) > 0)) while (true) {
+	while (true) {
 		rlm_rcode_t sub_rcode;
+		int num_events;
 
 		/*
 		 *	Wait for a timer / IO event.  If there's a
 		 *	failure, all kinds of bad things happen.  Oh
 		 *	well.
 		 */
-		if (wait_for_event) {
-			if (fr_event_corral(el, true) < 0) {
-				RPERROR("Failed retrieving events");
-				rcode = RLM_MODULE_FAIL;
-				break;
-			}
-
-			fr_event_service(el);
+		num_events = fr_event_corral(el, wait_for_events);
+		if (num_events < 0) {
+			RPERROR("Failed retrieving events");
+			rcode = RLM_MODULE_FAIL;
+			break;
 		}
-		wait_for_event = false;
 
 		/*
-		 *	Finished running all requests?
+		 *	We were NOT waiting, AND there are no more
+		 *	events to run, AND there are no more requests
+		 *	to run.  We can exit the loop.
+		 */
+		if (!wait_for_events && (num_events == 0) &&
+		    (fr_heap_num_elements(backlog) == 0)) {
+			break;
+		}
+
+		wait_for_events = false;
+
+		/*
+		 *	This function ends up pushing a
+		 *	runnable request into the backlog, OR
+		 *	setting new timers.
+		 */
+		if (num_events > 0) fr_event_service(el);
+
+		/*
+		 *	If there are no runnable requests, then go
+		 *	back to wait for another timer event.
 		 */
 		sub_request = fr_heap_pop(backlog);
-		if (!sub_request) break;
+		if (!sub_request) continue;
 
 		/*
-		 *	Continue interpretation until there's nothing in the backlog.
+		 *	Continue interpretation until there's nothing
+		 *	in the backlog.  If this request YIELDs, then
+		 *	do another loop around.
 		 */
 		sub_rcode = unlang_interpret_resume(sub_request);
 		if (sub_rcode == RLM_MODULE_YIELD) {
-			wait_for_event = true;
+			wait_for_events = true;
+			continue;
+		}
+
+		if (sub_request == request) {
+			rcode = sub_rcode;
 
 		} else {
-			if (sub_request == request) {
-				rcode = sub_rcode;
-
-			} else {
-				talloc_free(sub_request);
-			}
+			talloc_free(sub_request);
 		}
 	}
 
