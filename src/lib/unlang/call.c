@@ -86,13 +86,6 @@ static unlang_action_t unlang_call(REQUEST *request,
 
 	process_inst = cf_data_value(cf_data_find(g->server_cs, void, packet));
 
-	/*
-	 *	@todo - We probably want to just remove the 'stack'
-	 *	parameter from the interpreter function arguments.
-	 *	It's not needed there.
-	 */
-	rad_assert(stack == request->stack);
-
 	indent = request->log.unlang_indent;
 	request->log.unlang_indent = 0; /* the process function expects this */
 
