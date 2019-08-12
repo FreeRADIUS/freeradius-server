@@ -435,7 +435,7 @@ ATTRIBUTE	Tmp-Ethernet-2				1872	ether
 ATTRIBUTE	Tmp-Ethernet-3				1873	ether
 ATTRIBUTE	Tmp-Ethernet-4				1874	ether
 
-# 1870 - 1890, unused
+ATTRIBUTE	Tmp-Float-0				1880	float32
 
 #
 #  Mostly for testing
