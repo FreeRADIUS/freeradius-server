@@ -29,6 +29,17 @@ CB_CPREFIX:=fr-crossbuild-
 CB_IPREFIX:=freeradius-build
 
 #
+#  This Makefile is included in-line, and not via the "boilermake"
+#  wrapper.  But it's still useful to use the same process for
+#  seeing commands that are run.
+#
+ifeq "${VERBOSE}" ""
+    Q=@
+else
+    Q=
+endif
+
+#
 #  Enter here: This builds everything
 #
 .PHONY: crossbuild crossbuild.common
