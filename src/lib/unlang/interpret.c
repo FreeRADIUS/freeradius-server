@@ -866,6 +866,8 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	fr_heap_t	*backlog, *old_backlog;
 	rlm_rcode_t	rcode;
 	char const	*caller;
+	REQUEST		*sub_request = NULL;
+	bool		wait_for_event;
 
 	/*
 	 *	Don't talloc from the request
@@ -887,24 +889,47 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	request->backlog = backlog;
 
 	rcode = unlang_interpret(request, cs, action);
-	while (rcode == RLM_MODULE_YIELD) {
-		REQUEST *sub_request = NULL;
+	wait_for_event = (rcode == RLM_MODULE_YIELD);
 
-		if (fr_event_corral(el, true) < 0) {			/* Wait for a timer/IO event */
-			RPERROR("Failed retrieving events");
-			rcode = RLM_MODULE_FAIL;
-			break;
-		}
+	if ((rcode == RLM_MODULE_YIELD) ||
+	    (fr_heap_num_elements(backlog) > 0)) while (true) {
+		rlm_rcode_t sub_rcode;
 
-		fr_event_service(el);
-
-		while ((sub_request = fr_heap_pop(backlog))) {
-			rlm_rcode_t srcode;
-
-			srcode = unlang_interpret_resume(sub_request);
-			if (sub_request == request) {
-				rcode = srcode;
+		/*
+		 *	Wait for a timer / IO event.  If there's a
+		 *	failure, all kinds of bad things happen.  Oh
+		 *	well.
+		 */
+		if (wait_for_event) {
+			if (fr_event_corral(el, true) < 0) {
+				RPERROR("Failed retrieving events");
+				rcode = RLM_MODULE_FAIL;
 				break;
+			}
+
+			fr_event_service(el);
+		}
+		wait_for_event = false;
+
+		/*
+		 *	Finished running all requests?
+		 */
+		sub_request = fr_heap_pop(backlog);
+		if (!sub_request) break;
+
+		/*
+		 *	Continue interpretation until there's nothing in the backlog.
+		 */
+		sub_rcode = unlang_interpret_resume(sub_request);
+		if (sub_rcode == RLM_MODULE_YIELD) {
+			wait_for_event = true;
+
+		} else {
+			if (sub_request == request) {
+				rcode = sub_rcode;
+
+			} else {
+				talloc_free(sub_request);
 			}
 		}
 	}
