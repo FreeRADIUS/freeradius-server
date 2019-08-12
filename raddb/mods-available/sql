@@ -143,6 +143,28 @@ sql {
 		}
 	}
 
+	#
+	#	Configuration for Oracle Session pool.
+	#
+	oracle {
+		spool {
+			# Specifies the minimum number of sessions in the session pool.
+			min = ${...pool.min}
+			
+			# Specifies the maximum number of sessions that can be opened in the session pool
+			max = ${...pool.max}
+			
+			# Specifies the increment for sessions to be started if the current number of sessions are less than max
+			inc = ${...pool.spare}
+			
+			# The sessions idle time (in seconds) (0 disable)
+			timeout = 0
+			
+			# Statement cache size for each of the sessions in a session pool
+			statement_cache_size = 64
+		}
+	}
+
 	# Connection info:
 	#
 #	server = "localhost"
