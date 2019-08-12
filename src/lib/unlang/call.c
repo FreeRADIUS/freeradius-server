@@ -128,7 +128,9 @@ static unlang_action_t unlang_call(REQUEST *request,
 	for (child = request;
 	     child != NULL;
 	     child = child->parent) {
-		if (child->server_cs == g->server_cs) {
+		if ((child->server_cs == g->server_cs) &&
+		    (child->async->process == request->async->process) &&
+		    (child->async->process_inst == request->async->process_inst)) {
 			REDEBUG("Suppressing 'call' loop with server %s",
 				server);
 			*presult = RLM_MODULE_FAIL;
