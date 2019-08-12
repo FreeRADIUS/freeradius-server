@@ -120,12 +120,27 @@ static unlang_action_t unlang_call(REQUEST *request,
 	g = unlang_generic_to_group(instruction);
 	rad_assert(g->children != NULL);
 
+	server = cf_section_name2(g->server_cs);
+
+	/*
+	 *	Check for loops.
+	 */
+	for (child = request;
+	     child != NULL;
+	     child = child->parent) {
+		if (child->server_cs == g->server_cs) {
+			REDEBUG("Suppressing 'call' loop with server %s",
+				server);
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+	}
+
 	/*
 	 *	Get the server, then the dictionary, then the packet
 	 *	type, then the name of the packet type, and then
 	 *	process function for that named packet.
 	 */
-	server = cf_section_name2(g->server_cs);
 	dict = virtual_server_namespace(server);
 	if (!dict) {
 		REDEBUG("No 'namespace' in server %s", server);
