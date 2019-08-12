@@ -40,7 +40,7 @@ crossbuild.common: crossbuild.info $(foreach IMG,${CB_COMMON},crossbuild.${IMG})
 #
 crossbuild.info:
 	@echo Images:
-	@for IMG in $(CB_IMAGES); do echo "    $$IMG"; done
+	@for IMG in $(sort $(CB_IMAGES)); do echo "    $$IMG"; done
 	@echo Common images: $(CB_COMMON)
 
 crossbuild.help: crossbuild.info
