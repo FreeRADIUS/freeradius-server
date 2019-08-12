@@ -530,7 +530,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	many debug outputs or errors as the auth function is
 	 *	chatty enough.
 	 */
-	if (do_auth_wbclient_pap(inst, request) == 0) {
+	if (do_auth_wbclient_pap(inst, request, password) == 0) {
 		REDEBUG2("User authenticated successfully using winbind");
 		return RLM_MODULE_OK;
 	}
