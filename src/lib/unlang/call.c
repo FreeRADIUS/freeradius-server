@@ -208,8 +208,6 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 */
 	fr_state_restore_to_child(child, instruction, 0);
 
-	RDEBUG("server %s {", server);
-
 	/*
 	 *	@todo - we can't change packet types
 	 *	(e.g. Access-Request -> Accounting-Request) unless
@@ -231,17 +229,12 @@ static unlang_action_t unlang_call(REQUEST *request,
 		return UNLANG_ACTION_YIELD;
 	}
 
-	rcode = child->rcode;
-
-	RDEBUG("} # server %s --> %s", server,
-	       fr_int2str(mod_rcode_table, rcode, "<invalid>"));
-
+	frame->result = child->rcode;
 	fr_state_store_in_parent(child, instruction, 0);
 	unlang_subrequest_free(&child);
 
 	RDEBUG("Continuing with contents of %s { ...", instruction->debug_name);
 
-	frame->result = rcode;
 
 	/*
 	 *	And then call the children to process the answer.
