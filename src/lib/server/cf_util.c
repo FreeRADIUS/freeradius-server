@@ -124,8 +124,12 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 		CONF_ITEM *ci;
 
 		for (ci = parent->child;
-		     ci && (cf_ident2_cmp(find, ci) != 0);
-		     ci = ci->next);
+		     ci != NULL;
+		     ci = ci->next) {
+			if (find->type != ci->type) continue;
+
+			if (cf_ident2_cmp(find, ci) == 0) break;
+		}
 
 		return ci;
 	}
