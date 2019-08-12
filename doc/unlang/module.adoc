@@ -4,12 +4,13 @@
 .Syntax
 [source,unlang]
 ----
-module
+<module>
 ----
 
-The `module` statement is a reference to the named module.  Common
-module names include `pap`, `chap`, `files`, `eap`, and `sql`.  The `modules` subsection of `radiusd.conf` contains all of the valid
-modules.
+The `<module>` statement is a reference to the named module.  Common
+module names include `pap`, `chap`, `files`, `eap`, and `sql`.  The
+`modules { ... }` subsection of `radiusd.conf` contains all of the
+valid modules.
 
 When processing reaches a named module, the pre-compiled module is
 called. The module may succeed or fail and will return a status code

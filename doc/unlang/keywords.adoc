@@ -77,6 +77,7 @@ impossible to create before.
 [options="header"]
 |=====
 | Keyword | Description
+| link:call.adoc[call]             | Call one virtual server from another
 | link:detach.adoc[detach]         | Detach a child from a parent
 | link:parallel.adoc[parallel]     | Create multiple parallel child requests
 | link:subrequest.adoc[subrequest] | Create a child request
@@ -100,9 +101,9 @@ configuring and using the modules.
 [options="header"]
 |=====
 | Keyword | Description
-| link:module.adoc[module]               | Execute a named module, e.g., `sql`.
-| link:module_method.adoc[module.method] | Execute a particular method of a named module, e.g., `pap.authorize`
-| link:module_builtin.adoc[reject]       | Built-in modules, e.g., `reject`, or `ok`, etc.
+| link:module.adoc[<module>]                 | Execute a named module, e.g., `sql`.
+| link:module_method.adoc[<module>.<method>] | Execute a particular method of a named module, e.g., `pap.authorize`
+| link:module_builtin.adoc[reject]           | Built-in modules, e.g., `reject`, or `ok`, etc.
 |=====
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
