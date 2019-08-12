@@ -87,17 +87,17 @@ define CROSSBUILD_IMAGE_RULE
 #  Build the docker image
 #
 $(DD)/stamp-image.${1}:
-	@echo "BUILD ${1} ($(CB_IPREFIX)/${1}) > $(DD)/build.${1}"
-	@docker build $(DT)/build-${1} -f $(DT)/build-${1}/Dockerfile.deps -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
-	@touch $(DD)/stamp-image.${1}
+	${Q}echo "BUILD ${1} ($(CB_IPREFIX)/${1}) > $(DD)/build.${1}"
+	${Q}docker build $(DT)/build-${1} -f $(DT)/build-${1}/Dockerfile.deps -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
+	${Q}touch $(DD)/stamp-image.${1}
 
 #
 #  Start up the docker container
 #
 .PHONY: $(DD)/docker.up.${1}
 $(DD)/docker.up.${1}: $(DD)/stamp-image.${1}
-	@echo "START ${1} ($(CB_CPREFIX)${1})"
-	@docker container inspect $(CB_CPREFIX)${1} >/dev/null 2>&1 || \
+	${Q}echo "START ${1} ($(CB_CPREFIX)${1})"
+	${Q}docker container inspect $(CB_CPREFIX)${1} >/dev/null 2>&1 || \
 		docker run -d --rm \
 		--privileged --cap-add=ALL \
 		--mount=type=bind,source="$(GITDIR)",destination=/srv/src,ro \
@@ -105,7 +105,7 @@ $(DD)/docker.up.${1}: $(DD)/stamp-image.${1}
 		/bin/sh -c 'while true; do sleep 60; done' >/dev/null
 
 $(DD)/stamp-up.${1}: $(DD)/docker.up.${1}
-	@touch $(DD)/stamp-up.${1}
+	${Q}touch $(DD)/stamp-up.${1}
 
 .PHONY: crossbuild.${1}.up
 crossbuild.${1}.up: $(DD)/stamp-up.${1}
@@ -115,16 +115,16 @@ crossbuild.${1}.up: $(DD)/stamp-up.${1}
 #
 .PHONY: $(DD)/docker.run.${1}
 $(DD)/docker.run.${1}: $(DD)/stamp-up.${1}
-	@echo "REFRESH ${1}"
-	@docker container exec $(CB_CPREFIX)${1} sh -c 'rsync -a /srv/src/ /srv/local-src/'
-	@docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config core.bare true'
-	@docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config --unset core.worktree || true'
-	@docker container exec $(CB_CPREFIX)${1} sh -c '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
-	@docker container exec $(CB_CPREFIX)${1} sh -c '(cd /srv/build && git pull --rebase)'
-	@docker container exec $(CB_CPREFIX)${1} sh -c '[ -e /srv/build/config.log ] || echo CONFIGURE ${1}'
-	@docker container exec $(CB_CPREFIX)${1} sh -c '[ -e /srv/build/config.log ] || (cd /srv/build && ./configure -C)' > $(DD)/configure.${1} 2>&1
-	@echo "TEST ${1} > $(DD)/log.${1}"
-	@docker container exec $(CB_CPREFIX)${1} sh -c '(cd /srv/build && make && make test)' > $(DD)/log.${1} 2>&1 || echo FAIL ${1}
+	${Q}echo "REFRESH ${1}"
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'rsync -a /srv/src/ /srv/local-src/'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config core.bare true'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config --unset core.worktree || true'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '(cd /srv/build && git pull --rebase)'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '[ -e /srv/build/config.log ] || echo CONFIGURE ${1}'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '[ -e /srv/build/config.log ] || (cd /srv/build && ./configure -C)' > $(DD)/configure.${1} 2>&1
+	${Q}echo "TEST ${1} > $(DD)/log.${1}"
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '(cd /srv/build && make && make test)' > $(DD)/log.${1} 2>&1 || echo FAIL ${1}
 
 #
 #  Stop the docker container
@@ -132,7 +132,7 @@ $(DD)/docker.run.${1}: $(DD)/stamp-up.${1}
 .PHONY: crossbuild.${1}.down
 crossbuild.${1}.down:
 	@echo STOP ${1}
-	@docker container kill $(CB_CPREFIX)${1} || true
+	${Q}docker container kill $(CB_CPREFIX)${1} || true
 	@rm -f $(DD)/stamp-up.${1}
 
 .PHONY: crossbuild.${1}.clean
@@ -146,7 +146,7 @@ crossbuild.${1}.clean: crossbuild.${1}.down crossbuild.${1}.reset
 #
 .PHONY: crossbuild.${1}.sh
 crossbuild.${1}.sh:
-	@docker exec -it $(CB_CPREFIX)${1} sh -c 'cd / ; cd /srv/build 2>/dev/null; bash' || true
+	${Q}docker exec -it $(CB_CPREFIX)${1} sh -c 'cd / ; cd /srv/build 2>/dev/null; bash' || true
 
 #
 #  Show last build logs. Try and use the most sensible pager.
@@ -166,9 +166,9 @@ crossbuild.${1}.log:
 #
 .PHONY: crossbuild.${1}.reset
 crossbuild.${1}.reset:
-	@echo RESET ${1}
-	@rm -f $(DD)/stamp-up.${1}
-	@rm -f $(DD)/stamp-image.${1}
+	${Q}echo RESET ${1}
+	${Q}rm -f $(DD)/stamp-up.${1}
+	${Q}rm -f $(DD)/stamp-image.${1}
 
 #
 #  Clean down images. Means on next run we'll rebuild the
@@ -176,9 +176,9 @@ crossbuild.${1}.reset:
 #
 .PHONY: crossbuild.${1}.wipe
 crossbuild.${1}.wipe:
-	@echo CLEAN ${1}
-	@docker image rm $(CB_IPREFIX)/${1} >/dev/null 2>&1 || true
-	@rm -f $(DD)/stamp-image.${1}
+	${Q}echo CLEAN ${1}
+	${Q}docker image rm $(CB_IPREFIX)/${1} >/dev/null 2>&1 || true
+	${Q}rm -f $(DD)/stamp-image.${1}
 
 #
 #  Run the build test
