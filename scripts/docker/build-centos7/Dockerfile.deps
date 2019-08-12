@@ -5,7 +5,7 @@ FROM centos:centos7
 #  repository for freetds and hiredis
 #
 RUN yum update -y
-RUN yum install -y rpmdevtools openssl epel-release git yum-utils
+RUN yum install -y rpmdevtools openssl epel-release git yum-utils rsync
 
 #
 #  Install GCC that has the requisite support for C11 keywords and atomics
