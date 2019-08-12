@@ -56,35 +56,42 @@ static unlang_action_t unlang_call_resume(REQUEST *request, rlm_rcode_t *presult
 	 *	Continue running the child.
 	 */
 	rcode = unlang_interpret_run(child);
-	if (rcode != RLM_MODULE_YIELD) {
+	if (rcode == RLM_MODULE_YIELD) {
+#ifndef NDEBUG
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
-		*presult = rcode;
+		mr = unlang_generic_to_resume(frame->instruction);
+		(void) talloc_get_type_abort(mr, unlang_resume_t);
 
-		frame->instruction->type = UNLANG_TYPE_SUBREQUEST; /* for debug purposes */
-
-		fr_state_store_in_parent(child, instruction, 0);
-		unlang_subrequest_free(&child);
-
-		*presult = rcode;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-#ifndef NDEBUG
-	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
-
-	mr = unlang_generic_to_resume(frame->instruction);
-	(void) talloc_get_type_abort(mr, unlang_resume_t);
-
-	rad_assert(mr->resume == NULL);
+		rad_assert(mr->resume == NULL);
 #endif
 
-	/*
-	 *	If the child yields, our current frame is still an
-	 *	unlang_resume_t.
-	 */
+		/*
+		 *	If the child yields, our current frame is still an
+		 *	unlang_resume_t.
+		 */
+		return UNLANG_ACTION_YIELD;
+	}
 
-	return UNLANG_ACTION_YIELD;
+	stack = child->stack;
+	if (stack->depth > 0) {
+		rcode = unlang_interpret_run(child);
+		if (rcode == RLM_MODULE_YIELD) {
+			return UNLANG_ACTION_YIELD;
+		}
+	}
+
+	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+
+	*presult = rcode;
+
+	frame->instruction->type = UNLANG_TYPE_SUBREQUEST; /* for debug purposes */
+
+	fr_state_store_in_parent(child, instruction, 0);
+	unlang_subrequest_free(&child);
+
+	*presult = rcode;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 static unlang_action_t unlang_call(REQUEST *request,
@@ -158,7 +165,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	process_inst = cf_data_value(cf_data_find(g->server_cs, void, type_enum->alias));
 	/* can be NULL */
 
-	child = unlang_io_subrequest_alloc(request, dict, UNLANG_DETACHABLE);
+	child = unlang_io_subrequest_alloc(request, dict, UNLANG_NORMAL_CHILD);
 	if (!child) {
 		rcode = RLM_MODULE_FAIL;
 		priority = instruction->actions[*presult];
@@ -209,12 +216,19 @@ static unlang_action_t unlang_call(REQUEST *request,
 	fr_state_restore_to_child(child, instruction, 0);
 
 	/*
+	 *	Push OUR subsection onto the childs stack frame.
+	 */
+	unlang_interpret_push(child, g->children, frame->result,
+			      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
+
+	/*
 	 *	@todo - we can't change packet types
 	 *	(e.g. Access-Request -> Accounting-Request) unless
 	 *	we're in a subrequest.
 	 */
 	final = child->async->process(child->async->process_inst, child);
 	if (final == FR_IO_YIELD) {
+	yield:
 		/*
 		 *	Create the "resume" stack frame, and have it replace our stack frame.
 		 */
@@ -229,18 +243,18 @@ static unlang_action_t unlang_call(REQUEST *request,
 		return UNLANG_ACTION_YIELD;
 	}
 
-	frame->result = child->rcode;
+	/*
+	 *	Run the *child* through the "call" section, as a way
+	 *	to get post-processing of the packet.
+	 */
+	rcode = unlang_interpret_run(child);
+	if (rcode == RLM_MODULE_YIELD) goto yield;
+
+	*presult = frame->result = rcode;
 	fr_state_store_in_parent(child, instruction, 0);
 	unlang_subrequest_free(&child);
 
-	RDEBUG("Continuing with contents of %s { ...", instruction->debug_name);
-
-
-	/*
-	 *	And then call the children to process the answer.
-	 */
-	unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 
