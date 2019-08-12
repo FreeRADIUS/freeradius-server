@@ -1,0 +1,58 @@
+
+== The call Statement
+
+[source,unlang]
+----
+call <server> {
+    [ statements ]
+}
+----
+
+The `call` statement will create a child request, as with the
+link:subrequest.adoc[subrequest] keyword.  The child request will be
+run through the virtual server given by _<server>_.  The called
+virtual server must have the same `namespace` value as the calling
+virtual server.  The child request will be an identical copy of the
+parent request, as with the link:parallel.adoc[parallel] keyword.
+
+The called virtual server will execute the subrequest as if it had
+been received from the network.  For example, if the packet is a
+RADIUS `Access-Request`, then the called virtual server will process
+the `recv Access-Request` section, followed by the `authenticate
+<type>` section, followed by the `send Access-Accept` section.
+
+Once the called virtual server has finished, the _[ statements]_ from
+inside of the `call` section will be executed.  These statements will
+be executed in the context of the child.
+
+Once the child requests are finished, they are freed.  Any information
+stored in them is discarded.  Information needed after the `call`
+section is run should be saved in the parent request.
+
+NOTE: The statements inside of a `call` section are executed in the
+context of the _child_ request, and not in the context of the _parent_
+request.
+
+The statements inside of the `call` section allow policies which copy
+attributes from the child to the parent.  For example, a reply
+`Packet-Type`, IP address assignment, or other results.
+
+The return code of the `call` statement is taken from the return code
+of the child request.
+
+*Examples:*
+
+This example calls the `inner-tunnel` virtual server, and then copies
+the resulting `Packet-Type` back to the parent request.
+
+[source,unlang]
+----
+call inner-tunnel {
+    update parent.reply {
+        &Packet-Type := "%{reply:Packet-Type}"
+    }
+}
+----
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
