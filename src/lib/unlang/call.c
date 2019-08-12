@@ -25,80 +25,188 @@
 RCSID("$Id$")
 
 #include "unlang_priv.h"
+#include "subrequest_priv.h"
+
+/** Send a signal from parent request to subrequest in another virtual server
+ *
+ */
+static void unlang_call_signal(UNUSED REQUEST *request, void *ctx, fr_state_signal_t action)
+{
+	REQUEST			*child = talloc_get_type_abort(ctx, REQUEST);
+
+	unlang_interpret_signal(child, action);
+}
+
+
+/** Resume a subrequest in another virtual server.
+ *
+ */
+static unlang_action_t unlang_call_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
+{
+	REQUEST				*child = talloc_get_type_abort(rctx, REQUEST);
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction->parent;
+	rlm_rcode_t			rcode;
+#ifndef NDEBUG
+	unlang_resume_t			*mr;
+#endif
+
+	/*
+	 *	Continue running the child.
+	 */
+	rcode = unlang_interpret_run(child);
+	if (rcode != RLM_MODULE_YIELD) {
+		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+
+		*presult = rcode;
+
+		frame->instruction->type = UNLANG_TYPE_SUBREQUEST; /* for debug purposes */
+
+		fr_state_store_in_parent(child, instruction, 0);
+		unlang_subrequest_free(&child);
+
+		*presult = rcode;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+#ifndef NDEBUG
+	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+
+	mr = unlang_generic_to_resume(frame->instruction);
+	(void) talloc_get_type_abort(mr, unlang_resume_t);
+
+	rad_assert(mr->resume == NULL);
+#endif
+
+	/*
+	 *	If the child yields, our current frame is still an
+	 *	unlang_resume_t.
+	 */
+
+	return UNLANG_ACTION_YIELD;
+}
 
 static unlang_action_t unlang_call(REQUEST *request,
-				   rlm_rcode_t *presult, UNUSED int *priority)
+				   rlm_rcode_t *presult, int *ppriority)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g;
-	int			indent;
-	fr_io_final_t		final;
-	unlang_stack_t		*current;
-	CONF_SECTION		*old_server_cs;
-	fr_io_process_t		*process_p, old_process;
-	void			*process_inst, *old_process_inst;
-	fr_dict_attr_t const	*da;
-	fr_dict_enum_t const	*type_enum;
-	char const		*server, *packet;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	REQUEST				*child;
+
+	rlm_rcode_t			rcode;
+	int				priority;
+	unlang_resume_t			*mr;
+
+	unlang_group_t			*g;
+
+	char const			*server;
+	fr_dict_t const			*dict;
+	fr_dict_attr_t const		*attr_packet_type;
+	fr_dict_enum_t const		*type_enum;
+
+	fr_io_process_t			*process_p;
+	void				*process_inst;
+	fr_io_final_t			final;
 
 	g = unlang_generic_to_group(instruction);
 	rad_assert(g->children != NULL);
 
 	/*
-	 *	@todo - allow for other process functions.  Mostly
-	 *	because we need to save and resume this function, and
-	 *	we haven't bothered to do that so far.
-	 *
-	 *	If we DO allow other functions, we need to replace
-	 *	request->async->listener, as we want to pretend this
-	 *	is a virtual request which didn't come in from the
-	 *	network.  i.e. the other virtual server shouldn't be
-	 *	able to access request->async->listener, and muck with
-	 *	it's statistics, see it's configuration, etc.
+	 *	Get the server, then the dictionary, then the packet
+	 *	type, then the name of the packet type, and then
+	 *	process function for that named packet.
 	 */
-	rad_assert(request->async->process == unlang_io_process_interpret);
-
 	server = cf_section_name2(g->server_cs);
-	da = fr_dict_attr_by_name(virtual_server_namespace(server), "Packet-Type");
-	if (!da) {
+	dict = virtual_server_namespace(server);
+	if (!dict) {
+		REDEBUG("No 'namespace' in server %s", server);
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	if (dict != request->dict) {
+		REDEBUG("Request namespace does not match virtual server %s namespace",
+			server);
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	attr_packet_type = fr_dict_attr_by_name(dict, "Packet-Type");
+	if (!attr_packet_type) {
 		REDEBUG("No such attribute 'Packet-Type' for server %s", server);
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	type_enum = fr_dict_enum_by_value(da, fr_box_uint32(request->packet->code));
+	type_enum = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!type_enum) {
 		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s", request->packet->code, server);
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
-	packet = type_enum->alias;
 
-	process_p = (fr_io_process_t *) cf_data_value(cf_data_find(g->server_cs, fr_io_process_t, packet));
+	process_p = (fr_io_process_t *) cf_data_value(cf_data_find(g->server_cs, fr_io_process_t, type_enum->alias));
 	if (!process_p) {
 		REDEBUG("No such packet type '%s' in server '%s'",
-			packet, cf_section_name2(g->server_cs));
+			type_enum->alias, cf_section_name2(g->server_cs));
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	process_inst = cf_data_value(cf_data_find(g->server_cs, void, packet));
+	process_inst = cf_data_value(cf_data_find(g->server_cs, void, type_enum->alias));
+	/* can be NULL */
 
-	indent = request->log.unlang_indent;
-	request->log.unlang_indent = 0; /* the process function expects this */
+	child = unlang_io_subrequest_alloc(request, dict, UNLANG_DETACHABLE);
+	if (!child) {
+		rcode = RLM_MODULE_FAIL;
+		priority = instruction->actions[*presult];
 
-	current = request->stack;
-	request->stack = talloc_zero(request, unlang_stack_t);
+	calculate_result:
+		*presult = rcode;
+		*ppriority = priority;
 
-	old_server_cs = request->server_cs;
-	old_process = request->async->process;
-	old_process_inst = request->async->process_inst;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
-	request->server_cs = g->server_cs;
-	request->async->process = *process_p;
-	request->async->process_inst = process_inst;
+	/*
+	 *	Tell the child how to run.
+	 */
+	child->server_cs = g->server_cs;
+	child->async->process = *process_p;
+	child->async->process_inst = process_inst;
+
+	/*
+	 *	Expected by the process functions
+	 */
+	child->log.unlang_indent = 0;
+
+	/*
+	 *	Note that we do NOT copy the Session-State list!  That
+	 *	contains state information for the parent.
+	 */
+	if ((fr_pair_list_copy(child->packet,
+			       &child->packet->vps,
+			       request->packet->vps) < 0) ||
+	    (fr_pair_list_copy(child->reply,
+			       &child->reply->vps,
+			       request->reply->vps) < 0) ||
+	    (fr_pair_list_copy(child,
+			       &child->control,
+			       request->control) < 0)) {
+		REDEBUG("failed copying lists to child");
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Restore state from the parent to the
+	 *	subrequest.
+	 *	This is necessary for stateful modules like
+	 *	EAP to work.
+	 */
+	fr_state_restore_to_child(child, instruction, 0);
 
 	RDEBUG("server %s {", server);
 
@@ -107,33 +215,33 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 *	(e.g. Access-Request -> Accounting-Request) unless
 	 *	we're in a subrequest.
 	 */
-	final = request->async->process(request->async->process_inst, request);
-
-	RDEBUG("} # server %s", server);
-
-	/*
-	 *	All other return codes are semantically equivalent for
-	 *	our purposes.  "DONE" means "stopped without reply",
-	 *	and REPLY means "finished successfully".  Neither of
-	 *	those map well into module rcodes.  Instead, we rely
-	 *	on the caller to look at request->reply->code.
-	 */
+	final = child->async->process(child->async->process_inst, child);
 	if (final == FR_IO_YIELD) {
-		RDEBUG2("No yield for you!");
+		/*
+		 *	Create the "resume" stack frame, and have it replace our stack frame.
+		 */
+		mr = unlang_interpret_resume_alloc(request, NULL, NULL, child);
+		if (!mr) {
+			rcode = RLM_MODULE_FAIL;
+			priority = instruction->actions[rcode];
+			goto calculate_result;
+		}
+
+		*presult = RLM_MODULE_YIELD;
+		return UNLANG_ACTION_YIELD;
 	}
 
-	/*
-	 *	@todo - save these in a resume state somewhere...
-	 */
-	request->log.unlang_indent = indent;
-	talloc_free(request->stack);
-	request->stack = current;
+	rcode = child->rcode;
 
-	request->server_cs = old_server_cs;
-	request->async->process = old_process;
-	request->async->process_inst = old_process_inst;
+	RDEBUG("} # server %s --> %s", server,
+	       fr_int2str(mod_rcode_table, rcode, "<invalid>"));
+
+	fr_state_store_in_parent(child, instruction, 0);
+	unlang_subrequest_free(&child);
 
 	RDEBUG("Continuing with contents of %s { ...", instruction->debug_name);
+
+	frame->result = rcode;
 
 	/*
 	 *	And then call the children to process the answer.
@@ -142,12 +250,16 @@ static unlang_action_t unlang_call(REQUEST *request,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+
+
 void unlang_call_init(void)
 {
 	unlang_register(UNLANG_TYPE_CALL,
 			   &(unlang_op_t){
 				.name = "call",
 				.func = unlang_call,
+				.signal = unlang_call_signal,
+				.resume = unlang_call_resume,
 				.debug_braces = true
 			   });
 }
