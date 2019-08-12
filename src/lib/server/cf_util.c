@@ -1470,6 +1470,8 @@ CONF_DATA const *_cf_data_find(CONF_ITEM const *ci, char const *type, char const
 	found = cf_find(ci, CONF_ITEM_DATA, type, name);
 	if (found) return cf_item_to_data(found);
 
+	if (!type) return NULL;
+
 	/*
 	 *	type "void" is special, which means "wildcard"
 	 */
