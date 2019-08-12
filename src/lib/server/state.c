@@ -779,7 +779,7 @@ void fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_in
  */
 void fr_state_detach(REQUEST *request, bool will_free)
 {
-	VALUE_PAIR	*new_state = NULL;
+	VALUE_PAIR	*vps = NULL;
 	TALLOC_CTX	*new_state_ctx;
 
 	if (unlikely(request->parent == NULL)) return;
@@ -805,10 +805,10 @@ void fr_state_detach(REQUEST *request, bool will_free)
 	MEM(new_state_ctx = talloc_init("session-state"));
 	request_data_ctx_change(new_state_ctx, request);
 
-	(void) fr_pair_list_copy(new_state_ctx, &new_state, request->state);
+	(void) fr_pair_list_copy(new_state_ctx, &vps, request->state);
 	fr_pair_list_free(&request->state);
 
-	request->state = new_state;
+	request->state = vps;
 
 	/*
 	 *	...again, should probably
@@ -816,7 +816,7 @@ void fr_state_detach(REQUEST *request, bool will_free)
 	 *	be an assert.
 	 */
 	if (request->state_ctx != request->parent->state_ctx) talloc_free(request->state_ctx);
-	request->state_ctx = new_state;
+	request->state_ctx = new_state_ctx;
 }
 
 /** Return number of entries created
