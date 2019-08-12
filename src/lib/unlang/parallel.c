@@ -114,6 +114,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 				if (unlang_detach(child, &result, &priority) == UNLANG_ACTION_CALCULATE_RESULT) {
 					talloc_free(child);
 					done = CHILD_DONE;
+					state->result = RLM_MODULE_FAIL;
 					break;
 				}
 
@@ -121,6 +122,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 					RPERROR("Failed inserting child into backlog");
 					talloc_free(child);
 					done = CHILD_DONE;
+					state->result = RLM_MODULE_FAIL;
 					break;
 				}
 
