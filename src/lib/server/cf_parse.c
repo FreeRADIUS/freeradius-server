@@ -283,7 +283,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		break;
 
 	case FR_TYPE_UINT64:
-		*(uint64_t *)out = strtoull(cp->value, NULL, 10);
+		*(uint64_t *)out = strtoull(cp->value, NULL, 0);
 		cf_log_debug(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
 		break;
 
