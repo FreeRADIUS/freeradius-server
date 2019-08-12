@@ -917,8 +917,6 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 			break;
 		}
 
-		wait_for_events = false;
-
 		/*
 		 *	This function ends up pushing a
 		 *	runnable request into the backlog, OR
@@ -928,10 +926,20 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 
 		/*
 		 *	If there are no runnable requests, then go
-		 *	back to wait for another timer event.
+		 *	back to check the timers again.  Note that we
+		 *	only wait if there are timer events left to
+		 *	service.
+		 *
+		 *	If there WAS a timer event, but servicing that
+		 *	timer event did not result in a runnable
+		 *	request, THEN we're guaranteed that there is
+		 *	still a timer event left.
 		 */
 		sub_request = fr_heap_pop(backlog);
-		if (!sub_request) continue;
+		if (!sub_request) {
+			wait_for_events = (num_events > 0);
+			continue;
+		}
 
 		/*
 		 *	Continue interpretation until there's nothing
@@ -944,6 +952,12 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 			continue;
 		}
 
+		/*
+		 *	This request is done.  Clean up, and do a
+		 *	non-blocking check for more events in the next
+		 *	loop.
+		 */
+		wait_for_events = false;
 		if (sub_request == request) {
 			rcode = sub_rcode;
 
