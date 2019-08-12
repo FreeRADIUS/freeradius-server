@@ -69,8 +69,8 @@ This independence is required in order to fully implement the
 "parallel" nature of this keyword.
 
 Once the child requests are finished, they are freed.  Any information
-stored in them is discarded.  Information needed after the `parallel`
-section is run should be saved in the parent request.
+stored in them is discarded.  Information that is needed after the
+`parallel` section is run should be saved in the parent request.
 
 .Example
 
