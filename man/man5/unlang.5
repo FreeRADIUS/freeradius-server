@@ -178,6 +178,11 @@ the same time, it would be impossible to separate the state of each
 subsection.
 
 Empty child requests can be created by using "parallel empty { ... }"
+Attributes must then be manually copied from the parent to the child.
+
+Detached child requests can be created by using "parallel detach
+{ ... }".  These child requests are identical copies of the parent.
+The child requests will run until they are finished.
 
 The return code of the parallel section is the same as if each
 subsection was run sequentially.
