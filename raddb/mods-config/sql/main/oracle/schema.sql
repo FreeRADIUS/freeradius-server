@@ -193,6 +193,7 @@ CREATE OR REPLACE TRIGGER radhuntgroup_serialnumber
 			SELECT radhuntgroup_seq.nextval into :new.id from dual;
 		end if;
 	END;
+/
 
 CREATE TABLE radpostauth (
 	  id            INT PRIMARY KEY,
