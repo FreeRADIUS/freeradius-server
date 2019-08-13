@@ -1110,7 +1110,9 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 				return false;
 			}
 
-			if (dict_attr_sizes[sibling->type][1] == ~(size_t) 0) {
+			if ((dict_attr_sizes[sibling->type][1] == ~(size_t) 0) &&
+			    !((sibling->type == FR_TYPE_OCTETS) &&
+			      (sibling->flags.length > 0))) {
 				fr_strerror_printf("Only the last child of a 'struct' attribute can have variable length");
 				return false;
 			}
