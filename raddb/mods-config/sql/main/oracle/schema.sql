@@ -4,7 +4,8 @@
  * Oracle schema for FreeRADIUS
  *
  *
- * NOTE: Which columns are NULLable??
+ * NOTE: Which columns are NULLable?
+ *       Oracle has a non-standard "feature" in that it treats an empty string a NULL!
  */
 
 /*
@@ -14,10 +15,10 @@ CREATE TABLE radacct (
 	radacctid		INT PRIMARY KEY,
 	acctsessionid		VARCHAR(96) NOT NULL,
 	acctuniqueid		VARCHAR(32),
-	username		VARCHAR(64) NOT NULL,
+	username		VARCHAR(64),
 	groupname		VARCHAR(32),
 	realm			VARCHAR(30),
-	nasipaddress		VARCHAR(15) NOT NULL,
+	nasipaddress		VARCHAR(15),
 	nasportid		VARCHAR(32),
 	nasporttype		VARCHAR(32),
 	acctstarttime		TIMESTAMP WITH TIME ZONE,
