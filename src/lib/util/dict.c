@@ -3622,17 +3622,6 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *par
 	if (!parent->children) return NULL;
 
 	/*
-	 *	Only some types can have children
-	 */
-	switch (parent->type) {
-	default:
-		return NULL;
-
-	case FR_TYPE_STRUCTURAL:
-		break;
-	}
-
-	/*
 	 *	Child arrays may be trimmed back to save memory.
 	 *	Check that so we don't SEGV.
 	 */
