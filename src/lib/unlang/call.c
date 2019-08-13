@@ -123,14 +123,18 @@ static unlang_action_t unlang_call(REQUEST *request,
 	server = cf_section_name2(g->server_cs);
 
 	/*
-	 *	Check for loops.
+	 *	Check for loops.  We do this by checking the source of
+	 *	the call statement.  If any parent is doing the same
+	 *	call as we are, then it's a loop.
 	 */
-	for (child = request;
+	for (child = request->parent;
 	     child != NULL;
 	     child = child->parent) {
-		if ((child->server_cs == g->server_cs) &&
-		    (child->async->process == request->async->process) &&
-		    (child->async->process_inst == request->async->process_inst)) {
+		unlang_stack_t		*child_stack = child->stack;
+		unlang_stack_frame_t	*child_frame = &child_stack->frame[child_stack->depth];
+		unlang_t		*child_instruction = child_frame->instruction;
+
+		if (child_instruction == instruction) {
 			REDEBUG("Suppressing 'call' loop with server %s",
 				server);
 			*presult = RLM_MODULE_FAIL;
