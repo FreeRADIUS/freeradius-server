@@ -55,7 +55,7 @@ however, very useful for the default examples that ship with the server.
 If you see this message::
 
 ```
-Ignoring module (see mods-available/README.md)
+Ignoring module (see mods-available/README.adoc)
 ```
 
 Then you are in the right place. Most of the time this message can be

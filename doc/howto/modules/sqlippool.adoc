@@ -1,4 +1,4 @@
-== SQL Based IP Pool module.
+= SQL Based IP Pool module.
 
 == Description
 
@@ -26,8 +26,7 @@ in the same pool, and addresses do not need to be concurrent.
 
 We are currently using the variable definitions of the xlat module, so
 before editing the sqlippool.conf file, please go and read the
-variables.md in the doc/configuration directory. It will help you
-alot!..
+`doc/unlang/xlat.adoc`. It will help you alot!..
 
 As you may noticed, there is a pool-key variable in the config file
 which allows you to select which attribute is unique according to your
