@@ -55,9 +55,9 @@ to make massive changes, and then to spend weeks debugging it.
 The files in this directory are organized into logical groups, as
 follows.
 
-* `mods-available/` - <<mods-available/README.md#,Available modules>>, with example configuration.
+* `mods-available/` - <<mods-available/README.adoc#,Available modules>>, with example configuration.
 * `mods-enabled/` - Enabled modules that are being used by FreeRADIUS.
-* `sites-available/` - <<sites-available/README.md#,Available virtual servers>>, with example configuration.
+* `sites-available/` - <<sites-available/README.adoc#,Available virtual servers>>, with example configuration.
 * `sites-enabled/` - Enabled virtual servers that are being used by FreeRADIUS.
 * `policy.d/` - example and live policies which implement standard rules and checks.
 * `certs/` - Certificiates for EAP and for RADIUS over TLS.
