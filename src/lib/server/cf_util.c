@@ -123,8 +123,6 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	if (IS_WILDCARD(ident1)) {
 		CONF_ITEM *ci;
 
-		fprintf(stderr, "WILDCARD LOOK FOR %s\n", ident2);
-
 		for (ci = parent->child;
 		     ci != NULL;
 		     ci = ci->next) {
