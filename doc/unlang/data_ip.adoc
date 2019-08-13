@@ -1,7 +1,7 @@
 
 == IP Addresses
 
-*Examples:*
+.Examples
 
 `192.0.2.16` +
 `::1` +

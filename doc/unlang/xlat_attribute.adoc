@@ -24,7 +24,7 @@ attribute of the given name. If found, the variable reference in the
 string is replaced with the value of that attribute. Otherwise, the
 reference is replacedd with an empty string.
 
-*Examples:*
+.Examples
 
 `%{User-Name}` +
 `%{request:User-Name} # same as above` +

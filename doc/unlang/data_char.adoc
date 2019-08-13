@@ -6,7 +6,7 @@ escaped by using the backslash, or `\,` character. The backslash
 character itself can be created by using `\\`. Carriage returns and
 line feeds can be created by using `\n` and `\r`.
 
-*Examples:*
+.Examples
 
 `"I say \"hello\" to you"` +
 `"This is split\nacross two lines"`

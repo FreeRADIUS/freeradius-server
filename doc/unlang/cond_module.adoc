@@ -33,7 +33,7 @@ The list of valid return codes is as follows:
 |handled |the module has handled the request itself
 |==================================================
 
-*Examples:*
+.Examples
 
 [source,unlang]
 ----

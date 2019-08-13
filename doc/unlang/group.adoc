@@ -22,7 +22,7 @@ enclosing section.  However, the `group` statement is included in the
 
 The contents of a `group` subsection can be any `unlang` statement.
 
-*Examples:*
+.Examples
 
 [source,unlang]
 ----

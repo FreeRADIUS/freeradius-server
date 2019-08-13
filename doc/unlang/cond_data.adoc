@@ -29,7 +29,7 @@ strings are `true`.
 
 All other data types are disallowed in existence checks.
 
-*Examples:*
+.Examples
 
 `"hello there"` +
 `5`

@@ -49,7 +49,7 @@ contain the substring matches, starting from the left-most parentheses.
 If there are more than eight parentheses, the additional results will be
 discarded and will not be placed into any variables.
 
-*Examples:*
+.Examples
 
 `if (User-Name =~ /@example\.com$$/) { ...`
 

@@ -28,7 +28,7 @@ represent in datastores, or the FreeRADIUS configuration files.
 | `\x<oct><oct><oct>` | A byte whose numerical value is given by `<oct><oct><oct>` interpreted as an octal number.
 |=====
 
-*Examples:*
+.Examples
 
 `"hello"` +
 `"foo bar"' +

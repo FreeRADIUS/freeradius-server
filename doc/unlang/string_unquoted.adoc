@@ -12,7 +12,7 @@ equivalent to placing the string in single quotes.
 The interpretation of the text depends on the context, which is
 usually defined by an attribute which has a link:data.adoc[data type].
 
-*Examples:*
+.Examples
 
 `Hello` +
 `192.168.0.1` +

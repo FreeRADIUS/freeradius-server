@@ -41,7 +41,7 @@ expanded _<field>_ can refer to a non-existent field name.  In both
 cases, the `map` statement returns `fail`, and no server attributes
 are affected.
 
-*Examples:*
+.Examples
 
 [source,unlang]
 ----

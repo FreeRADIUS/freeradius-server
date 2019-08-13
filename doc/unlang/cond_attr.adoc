@@ -33,7 +33,7 @@ The attribute reference can also be qualified with a
 link:attr_list.adoc[list] reference.  When no list is given, the
 server looks in the input packet list for the named attribute.
 
-*Examples:*
+.Examples
 
 `&User-Name` +
 `&NAS-IP-Address` +

@@ -30,7 +30,7 @@ programs need to be executed, it is suggested that alternative ways to
 achieve the same result be found. In some cases, using a real
 programming language such as `lua`, `perl` or `python` may be better.
 
-*Examples:*
+.Examples
 
 `{backtick}/bin/echo hello{backtick}`
 

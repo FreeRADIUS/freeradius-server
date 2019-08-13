@@ -16,7 +16,7 @@ dictionary. Similarly, if `data-1` refers to an attribute of type `date`, then `
 If the resulting data evaluates to be the same, then the operator
 returns `true`; otherwise, it returns `false`.
 
-*Examples:*
+.Examples
 
 `if (User-Name == "bob") { ...`
 

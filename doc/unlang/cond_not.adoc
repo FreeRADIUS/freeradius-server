@@ -11,7 +11,7 @@ The `!` operator negates the result of the following condition.  It
 returns `true` when _condition_ returns `false`.  It returns `false`
 when _condition_ returns `true`.
 
-*Examples:*
+.Examples
 
 `(! (foo == bar))` +
 `! &User-Name`

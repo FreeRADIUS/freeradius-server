@@ -1,7 +1,7 @@
 
 == Numbers
 
-*Examples:*
+.Examples
 
 `0` +
 `563`

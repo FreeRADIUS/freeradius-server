@@ -11,7 +11,7 @@ The `( )` operator returns the result of evaluating the given
 `condition`. It is used to clarify policies or to explicitly define
 conditional precedence.
 
-*Examples:*
+.Examples
 
 `(foo)` +
 `(bar || (baz && dub))`

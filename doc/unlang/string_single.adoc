@@ -8,7 +8,7 @@ expansion. The quotes allow the string to contain spaces, among other
 special characters. The single quote character can be placed in such a
 string by escaping it with a backslash.
 
-*Examples:*
+.Examples
 
 `'hello'` +
 `'foo bar`' +

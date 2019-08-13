@@ -29,7 +29,7 @@ used with the context of a known attribute.  That attribute has a
 link:data.adoc[data type], and the text will be interpreted as that
 data type.
 
-*Examples:*
+.Examples
 
 `"word"` +
 `"a string"` +

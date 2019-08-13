@@ -11,7 +11,7 @@ the module, as described earlier. The string portion is specific to each
 module and is not documented here. It is, however, usually dynamically
 expanded to allow for additional flexibility.
 
-*Examples:*
+.Examples
 
 `%{sql:SELECT name FROM mytable WHERE username = %{User-Name}}`
 
