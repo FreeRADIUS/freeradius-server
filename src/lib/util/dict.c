@@ -4624,6 +4624,21 @@ static int dict_read_process_struct(dict_from_file_ctx_t *ctx, char **argv, int 
 	if (!fr_cond_assert(parent->parent->type == FR_TYPE_STRUCT)) return -1;
 
 	/*
+	 *	The attribute in the current stack frame is NOT the
+	 *	enclosing "struct": unwind until we do find the parent.
+	 */
+	if (ctx->stack[ctx->stack_depth].da != parent->parent) {
+		int i;
+
+		for (i = ctx->stack_depth - 1; i > 0; i--) {
+			if (ctx->stack[i].da == parent->parent) {
+				ctx->stack_depth = i;
+				break;
+			}
+		}
+	}
+
+	/*
 	 *	The attribute in the current stack frame MUST be the
 	 *	enclosing "struct".
 	 */
