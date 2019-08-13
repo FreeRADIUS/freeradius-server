@@ -1321,7 +1321,11 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	switch (tlv_stack[depth]->type) {
-	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_EXTENDED:
+	case FR_TYPE_TLV:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+		/* FR_TYPE_STRUCT is actually allowed... */
 		fr_strerror_printf("%s: Expected leaf type got \"%s\"", __FUNCTION__,
 				   fr_int2str(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
