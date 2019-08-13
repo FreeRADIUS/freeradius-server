@@ -150,7 +150,6 @@ const FR_NAME_NUMBER fr_log_levels[] = {
 /** Maps log categories to VT100 style/colour escape sequences
  */
 static const FR_NAME_NUMBER colours[] = {
-	{ NULL,			L_DBG		},
 	{ VTC_BOLD,		L_INFO		},
 	{ VTC_RED,		L_ERR		},
 	{ VTC_BOLD VTC_YELLOW,	L_WARN		},
