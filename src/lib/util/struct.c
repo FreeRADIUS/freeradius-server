@@ -67,7 +67,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	fr_dict_attr_t const	*child;
 	VALUE_PAIR		*head = NULL;
 	fr_cursor_t		child_cursor;
-	VALUE_PAIR		*vp;
+	VALUE_PAIR		*vp, *key_vp;
 
 	if (data_len < 1) return -1; /* at least one byte of data */
 
@@ -76,8 +76,9 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	 */
 	fr_cursor_init(&child_cursor, &head);
 	*child_p = NULL;
-
 	child_num = 1;
+	key_vp = NULL;
+
 	while (p < end) {
 		size_t child_length;
 
@@ -143,6 +144,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		vp->vp_tainted = true;
 		fr_cursor_append(&child_cursor, vp);
 
+		if (vp->da->flags.extra) key_vp = vp;
+
 		/*
 		 *	Note that we're decoding fixed fields here.
 		 *	So we skip the input based on the *known*
@@ -155,6 +158,46 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	fr_cursor_head(&child_cursor);
 	fr_cursor_tail(cursor);
 	fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
+
+	/*
+	 *	Is there a substructure after this one?  If so, go
+	 *	decode it.
+	 */
+	if (key_vp) {
+		ssize_t sublen;
+
+		switch (key_vp->da->type) {
+		default:
+			return data_len;
+
+		case FR_TYPE_UINT8:
+			child_num = key_vp->vp_uint8;
+			break;
+
+		case FR_TYPE_UINT16:
+			child_num = key_vp->vp_uint16;
+			break;
+
+		case FR_TYPE_UINT32:
+			child_num = key_vp->vp_uint32;
+			break;
+		}
+
+		child = fr_dict_attr_child_by_num(key_vp->da, child_num);
+		if (!child || (child->type != FR_TYPE_STRUCT)) {
+			return data_len;
+		}
+
+		sublen = fr_struct_from_network(ctx, cursor, child, p, end - p, child_p);
+		if (sublen < 0) return -1;
+
+		/*
+		 *	Else return whatever we decoded.  Note that if
+		 *	the substruct ends in a TLV, we only decode
+		 *	the fixed-length portion of the structure.
+		 */
+		return (end -p) + sublen;
+	}
 
 	return data_len;
 }
