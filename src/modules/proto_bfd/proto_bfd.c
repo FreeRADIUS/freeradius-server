@@ -1624,16 +1624,15 @@ static int bfd_session_cmp(const void *one, const void *two)
 	return fr_ipaddr_cmp(&a->remote_ipaddr, &b->remote_ipaddr);
 }
 
-static const FR_NAME_NUMBER auth_types[] = {
-	{ "none", BFD_AUTH_RESERVED },
-	{ "simple", BFD_AUTH_SIMPLE },
-	{ "keyed-md5", BFD_AUTH_KEYED_MD5 },
-	{ "met-keyed-md5", BFD_AUTH_MET_KEYED_MD5 },
-	{ "keyed-sha1", BFD_AUTH_KEYED_SHA1 },
-	{ "met-keyed-sha1", BFD_AUTH_MET_KEYED_SHA1 },
-
-	{ NULL, 0 }
+static fr_table_t const auth_types[] = {
+	{ "keyed-md5",		BFD_AUTH_KEYED_MD5	},
+	{ "keyed-sha1",		BFD_AUTH_KEYED_SHA1	},
+	{ "met-keyed-md5",	BFD_AUTH_MET_KEYED_MD5	},
+	{ "met-keyed-sha1",	BFD_AUTH_MET_KEYED_SHA1 },
+	{ "none",		BFD_AUTH_RESERVED	},
+	{ "simple",		BFD_AUTH_SIMPLE		}
 };
+static size_t auth_types_len = NUM_ELEMENTS(auth_types);
 
 static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
@@ -1680,7 +1679,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (sock->max_timeouts == 0) sock->max_timeouts = 1;
 	if (sock->max_timeouts > 10) sock->max_timeouts = 10;
 
-	sock->auth_type = fr_str2int(auth_types, auth_type_str, BFD_AUTH_INVALID);
+	sock->auth_type = fr_table_num_by_str(auth_types, auth_type_str, BFD_AUTH_INVALID);
 	if (sock->auth_type == BFD_AUTH_INVALID) {
 		ERROR("Unknown auth_type '%s'", auth_type_str);
 		return -1;

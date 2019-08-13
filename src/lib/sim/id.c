@@ -28,19 +28,19 @@
 
 #define us(x) (uint8_t) x
 
-FR_NAME_NUMBER const sim_id_request_table[] = {
+fr_table_t const sim_id_request_table[] = {
 	{ "Any-Id-Req",		SIM_ANY_ID_REQ			},
-	{ "Permanent-Id-Req",	SIM_PERMANENT_ID_REQ		},
 	{ "FullAuth-Id-Req",	SIM_FULLAUTH_ID_REQ		},
-	{ NULL }
+	{ "Permanent-Id-Req",	SIM_PERMANENT_ID_REQ		}
 };
+size_t sim_id_request_table_len = NUM_ELEMENTS(sim_id_request_table);
 
-FR_NAME_NUMBER const sim_id_method_hint_table[] = {
-	{ "SIM",		SIM_METHOD_HINT_SIM		},
+fr_table_t const sim_id_method_hint_table[] = {
 	{ "AKA",		SIM_METHOD_HINT_AKA		},
 	{ "AKA'",		SIM_METHOD_HINT_AKA_PRIME	},
-	{ NULL }
+	{ "SIM",		SIM_METHOD_HINT_SIM		}
 };
+size_t sim_id_method_hint_table_len = NUM_ELEMENTS(sim_id_method_hint_table);
 
 /** Find where the identity ends
  *

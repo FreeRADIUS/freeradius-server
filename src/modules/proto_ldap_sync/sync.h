@@ -171,10 +171,14 @@ struct sync_config_s {
 	void				*user_ctx;		//!< User ctx to pass to the callbacks.
 };
 
-extern FR_NAME_NUMBER sync_state_table[];
-extern FR_NAME_NUMBER sync_phase_table[];
-extern FR_NAME_NUMBER sync_protocol_op_table[];
-extern FR_NAME_NUMBER sync_info_tag_table[];
+extern fr_table_t sync_state_table[];
+extern size_t sync_state_table_len;
+extern fr_table_t sync_phase_table[];
+extern size_t sync_phase_table_len;
+extern fr_table_t sync_protocol_op_table[];
+extern size_t sync_protocol_op_table_len;
+extern fr_table_t sync_info_tag_table[];
+extern size_t sync_info_tag_table_len;
 
 int			sync_demux(int *sync_id, fr_ldap_connection_t *conn);
 

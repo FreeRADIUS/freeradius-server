@@ -148,7 +148,8 @@ typedef struct {
 	size_t			record_in_recvd_len;	//!< How much of the record we've received so far.
 } eap_tls_session_t;
 
-extern FR_NAME_NUMBER const eap_tls_status_table[];
+extern fr_table_t const eap_tls_status_table[];
+extern size_t eap_tls_status_table_len;
 
 /*
  *	Externally exported TLS functions.

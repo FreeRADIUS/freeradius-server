@@ -28,7 +28,7 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -46,7 +46,8 @@ void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t
 extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern bool	log_dates_utc;
 
-extern const FR_NAME_NUMBER fr_log_levels[];
+extern fr_table_t const fr_log_levels[];
+extern size_t fr_log_levels_len;
 
 typedef enum {
 	L_INFO = 3,				//!< Informational message.

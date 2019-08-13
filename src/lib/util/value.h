@@ -42,6 +42,7 @@ typedef struct value_box fr_value_box_t;
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/time.h>
@@ -50,7 +51,8 @@ typedef struct value_box fr_value_box_t;
 extern "C" {
 #endif
 
-extern const FR_NAME_NUMBER fr_value_box_type_table[];
+extern fr_table_t const fr_value_box_type_table[];
+extern size_t fr_value_box_type_table_len;
 
 extern size_t const fr_value_box_field_sizes[];
 
@@ -429,8 +431,8 @@ static inline int fr_value_unbox_ethernet_addr(uint8_t dst[6], fr_value_box_t *s
 {
 	if (unlikely(src->type != FR_TYPE_ETHERNET)) { \
 		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s",
-				   fr_int2str(fr_value_box_type_table, FR_TYPE_ETHERNET, "?Unknown?"),
-				   fr_int2str(fr_value_box_type_table, src->type, "?Unknown?"));
+				   fr_table_str_by_num(fr_value_box_type_table, FR_TYPE_ETHERNET, "?Unknown?"),
+				   fr_table_str_by_num(fr_value_box_type_table, src->type, "?Unknown?"));
 		return -1; \
 	}
 	memcpy(dst, src->vb_ether, sizeof(src->vb_ether));	/* Must be src, dst is a pointer */
@@ -441,8 +443,8 @@ static inline int fr_value_unbox_ethernet_addr(uint8_t dst[6], fr_value_box_t *s
 static inline int fr_value_unbox_##_field(_ctype *var, fr_value_box_t const *src) { \
 	if (unlikely(src->type != _type)) { \
 		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s", \
-				   fr_int2str(fr_value_box_type_table, _type, "?Unknown?"), \
-				   fr_int2str(fr_value_box_type_table, src->type, "?Unknown?")); \
+				   fr_table_str_by_num(fr_value_box_type_table, _type, "?Unknown?"), \
+				   fr_table_str_by_num(fr_value_box_type_table, src->type, "?Unknown?")); \
 		return -1; \
 	} \
 	*var = src->vb_##_field; \

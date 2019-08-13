@@ -31,7 +31,7 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
-
+#include <freeradius-devel/util/table.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -71,27 +71,20 @@ typedef enum fr_token {
 #define T_EQSTART	T_OP_ADD
 #define	T_EQEND		(T_OP_CMP_EQ + 1)
 
-typedef struct {
-	char const	*name;
-	int32_t		number;
-} FR_NAME_NUMBER;
-
 /** Macro to use as dflt
  *
  */
-#define FR_NAME_NUMBER_NOT_FOUND	INT32_MIN
+#define FR_TABLE_NOT_FOUND	INT32_MIN
 
-extern const FR_NAME_NUMBER fr_tokens_table[];
-extern const FR_NAME_NUMBER fr_token_quotes_table[];
+extern fr_table_t const fr_tokens_table[];
+extern size_t fr_tokens_table_len;
+extern fr_table_t const fr_token_quotes_table[];
+extern size_t fr_token_quotes_table_len;
 extern const char *fr_tokens[];
 extern const char fr_token_quote[];
 extern const bool fr_assignment_op[];
 extern const bool fr_equality_op[];
 extern const bool fr_str_tok[];
-
-int fr_str2int(FR_NAME_NUMBER const *table, char const *name, int def);
-int fr_substr2int(FR_NAME_NUMBER const *table, char const *name, int def, int len);
-char const *fr_int2str(FR_NAME_NUMBER const *table, int number, char const *def);
 
 int		getword (char const **ptr, char *buf, int buflen, bool unescape);
 FR_TOKEN	gettoken(char const **ptr, char *buf, int buflen, bool unescape);

@@ -47,56 +47,52 @@ static fr_ldap_config_t ldap_global_handle_config = {
 	.name = "global"
 };
 
-FR_NAME_NUMBER const fr_ldap_connection_states[] = {
-	{ "init",	FR_LDAP_STATE_INIT	},
-	{ "start-tls",	FR_LDAP_STATE_START_TLS	},
+fr_table_t const fr_ldap_connection_states[] = {
 	{ "bind",	FR_LDAP_STATE_BIND	},
-	{ "run",	FR_LDAP_STATE_RUN	},
 	{ "error",	FR_LDAP_STATE_ERROR	},
-
-	{  NULL , -1 }
+	{ "init",	FR_LDAP_STATE_INIT	},
+	{ "run",	FR_LDAP_STATE_RUN	},
+	{ "start-tls",	FR_LDAP_STATE_START_TLS	}
 };
+size_t fr_ldap_connection_states_len = NUM_ELEMENTS(fr_ldap_connection_states);
 
-FR_NAME_NUMBER const fr_ldap_supported_extensions[] = {
+fr_table_t const fr_ldap_supported_extensions[] = {
 	{ "bindname",	LDAP_DEREF_NEVER	},
-	{ "x-bindpw",	LDAP_DEREF_SEARCHING	},
-
-	{  NULL , -1 }
+	{ "x-bindpw",	LDAP_DEREF_SEARCHING	}
 };
+size_t fr_ldap_supported_extensions_len = NUM_ELEMENTS(fr_ldap_supported_extensions);
 
 /*
  *	Scopes
  */
-FR_NAME_NUMBER const fr_ldap_scope[] = {
-	{ "sub",	LDAP_SCOPE_SUB	},
-	{ "one",	LDAP_SCOPE_ONE	},
+fr_table_t const fr_ldap_scope[] = {
 	{ "base",	LDAP_SCOPE_BASE },
 #ifdef LDAP_SCOPE_CHILDREN
 	{ "children",	LDAP_SCOPE_CHILDREN },
 #endif
-	{  NULL , -1 }
+	{ "one",	LDAP_SCOPE_ONE	},
+	{ "sub",	LDAP_SCOPE_SUB	}
 };
+size_t fr_ldap_scope_len = NUM_ELEMENTS(fr_ldap_scope);
 
 #ifdef LDAP_OPT_X_TLS_NEVER
-FR_NAME_NUMBER const fr_ldap_tls_require_cert[] = {
-	{ "never",	LDAP_OPT_X_TLS_NEVER	},
-	{ "demand",	LDAP_OPT_X_TLS_DEMAND	},
+fr_table_t const fr_ldap_tls_require_cert[] = {
 	{ "allow",	LDAP_OPT_X_TLS_ALLOW	},
-	{ "try",	LDAP_OPT_X_TLS_TRY	},
-	{ "hard",	LDAP_OPT_X_TLS_HARD	},	/* oh yes, just like that */
-
-	{  NULL , -1 }
+	{ "demand",	LDAP_OPT_X_TLS_DEMAND	},
+	{ "hard",	LDAP_OPT_X_TLS_HARD	},
+	{ "never",	LDAP_OPT_X_TLS_NEVER	},
+	{ "try",	LDAP_OPT_X_TLS_TRY	}
 };
+size_t fr_ldap_tls_require_cert_len = NUM_ELEMENTS(fr_ldap_tls_require_cert);
 #endif
 
-FR_NAME_NUMBER const fr_ldap_dereference[] = {
-	{ "never",	LDAP_DEREF_NEVER	},
-	{ "searching",	LDAP_DEREF_SEARCHING	},
-	{ "finding",	LDAP_DEREF_FINDING	},
+fr_table_t const fr_ldap_dereference[] = {
 	{ "always",	LDAP_DEREF_ALWAYS	},
-
-	{  NULL , -1 }
+	{ "finding",	LDAP_DEREF_FINDING	},
+	{ "never",	LDAP_DEREF_NEVER	},
+	{ "searching",	LDAP_DEREF_SEARCHING	}
 };
+size_t fr_ldap_dereference_len = NUM_ELEMENTS(fr_ldap_dereference);
 
 /** Prints information to the debug log on the current timeout settings
  *
@@ -622,10 +618,10 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 
 	if (filter) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
-			  fr_int2str(fr_ldap_scope, scope, "<INVALID>"));
+			  fr_table_str_by_num(fr_ldap_scope, scope, "<INVALID>"));
 	} else {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
-			  fr_int2str(fr_ldap_scope, scope, "<INVALID>"));
+			  fr_table_str_by_num(fr_ldap_scope, scope, "<INVALID>"));
 	}
 	/*
 	 *	If LDAP search produced an error it should also be logged
@@ -742,10 +738,10 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
 
 	if (filter) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
-			  fr_int2str(fr_ldap_scope, scope, "<INVALID>"));
+			  fr_table_str_by_num(fr_ldap_scope, scope, "<INVALID>"));
 	} else {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
-			  fr_int2str(fr_ldap_scope, scope, "<INVALID>"));
+			  fr_table_str_by_num(fr_ldap_scope, scope, "<INVALID>"));
 	}
 	/*
 	 *	If LDAP search produced an error it should also be logged

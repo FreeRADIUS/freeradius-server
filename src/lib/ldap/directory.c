@@ -33,21 +33,21 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
 
-static FR_NAME_NUMBER const fr_ldap_directory_type_table[] = {
-	{ "Unknown",			FR_LDAP_DIRECTORY_UNKNOWN	},
-	{ "Active Directory",		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY	},
-	{ "eDirectory",			FR_LDAP_DIRECTORY_EDIRECTORY },
-	{ "IBM",			FR_LDAP_DIRECTORY_IBM },
-	{ "NetScape",			FR_LDAP_DIRECTORY_NETSCAPE },
-	{ "OpenLDAP",			FR_LDAP_DIRECTORY_OPENLDAP	},
-	{ "Oracle Internet Directory",	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY },
-	{ "Oracle Unified Directory",	FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY },
-	{ "Oracle Virtual Directory",	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY },
-	{ "Sun One Directory",		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY },
-	{ "Siemens AG",			FR_LDAP_DIRECTORY_SIEMENS_AG },
-	{ "Unbound ID",			FR_LDAP_DIRECTORY_UNBOUND_ID },
-	{  NULL , -1 }
+static fr_table_t const fr_ldap_directory_type_table[] = {
+	{ "Active Directory",		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY		},
+	{ "IBM",			FR_LDAP_DIRECTORY_IBM				},
+	{ "NetScape",			FR_LDAP_DIRECTORY_NETSCAPE			},
+	{ "OpenLDAP",			FR_LDAP_DIRECTORY_OPENLDAP			},
+	{ "Oracle Internet Directory",	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY 	},
+	{ "Oracle Unified Directory",	FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY	},
+	{ "Oracle Virtual Directory",	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY	},
+	{ "Siemens AG",			FR_LDAP_DIRECTORY_SIEMENS_AG			},
+	{ "Sun One Directory",		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY		},
+	{ "Unbound ID",			FR_LDAP_DIRECTORY_UNBOUND_ID			},
+	{ "Unknown",			FR_LDAP_DIRECTORY_UNKNOWN			},
+	{ "eDirectory",			FR_LDAP_DIRECTORY_EDIRECTORY			}
 };
+static size_t fr_ldap_directory_type_table_len = NUM_ELEMENTS(fr_ldap_directory_type_table);
 
 /** Extract useful information from the rootDSE of the LDAP server
  *
@@ -216,7 +216,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_
 	}
 
 found:
-	INFO("Directory type: %s", fr_int2str(fr_ldap_directory_type_table, directory->type, "<INVALID>"));
+	INFO("Directory type: %s", fr_table_str_by_num(fr_ldap_directory_type_table, directory->type, "<INVALID>"));
 
 	switch (directory->type) {
 	case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:

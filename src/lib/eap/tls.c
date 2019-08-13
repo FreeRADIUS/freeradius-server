@@ -74,22 +74,21 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "tls.h"
 #include "attrs.h"
 
-FR_NAME_NUMBER const eap_tls_status_table[] = {
-	{ "invalid",			EAP_TLS_INVALID },
-	{ "established",		EAP_TLS_ESTABLISHED },
-	{ "fail",			EAP_TLS_FAIL },
-	{ "handled",			EAP_TLS_HANDLED },
+fr_table_ordered_t const eap_tls_status_table[] = {
+	{ "invalid",			EAP_TLS_INVALID			},
+	{ "established",		EAP_TLS_ESTABLISHED		},
+	{ "fail",			EAP_TLS_FAIL			},
+	{ "handled",			EAP_TLS_HANDLED			},
 
-	{ "start",			EAP_TLS_START_SEND },
-	{ "request",			EAP_TLS_RECORD_SEND },
-	{ "ack",			EAP_TLS_ACK_SEND },
+	{ "start",			EAP_TLS_START_SEND		},
+	{ "request",			EAP_TLS_RECORD_SEND		},
+	{ "ack",			EAP_TLS_ACK_SEND		},
 
-	{ "first",			EAP_TLS_RECORD_RECV_FIRST },
-	{ "more",			EAP_TLS_RECORD_RECV_MORE },
-	{ "complete",			EAP_TLS_RECORD_RECV_COMPLETE },
-
-	{  NULL , 			-1},
+	{ "first",			EAP_TLS_RECORD_RECV_FIRST	},
+	{ "more",			EAP_TLS_RECORD_RECV_MORE	},
+	{ "complete",			EAP_TLS_RECORD_RECV_COMPLETE	}
 };
+size_t eap_tls_status_table_len = NUM_ELEMENTS(eap_tls_status_table);
 
 /** Convert the EAP-TLS reply packet into an EAP packet
  *
@@ -906,11 +905,11 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	switch (status) {
 	case EAP_TLS_INVALID:
 	case EAP_TLS_FAIL:
-		REDEBUG("[eap-tls verify] = %s", fr_int2str(eap_tls_status_table, status, "<INVALID>"));
+		REDEBUG("[eap-tls verify] = %s", fr_table_str_by_num(eap_tls_status_table, status, "<INVALID>"));
 		break;
 
 	default:
-		RDEBUG2("[eap-tls verify] = %s", fr_int2str(eap_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls verify] = %s", fr_table_str_by_num(eap_tls_status_table, status, "<INVALID>"));
 		break;
 	}
 

@@ -230,34 +230,34 @@ typedef struct {
  *
  * ??? What the heck is wrong with getservbyname?
  */
-static const FR_NAME_NUMBER filterPortType[] = {
-	{ "ftp-data",   20 },
-	{ "ftp",	21 },
-	{ "telnet",	23 },
-	{ "smtp",	25 },
-	{ "nameserver", 42 },
+static fr_table_t const filterPortType[] = {
+	{ "cmd",	514 },
 	{ "domain",	53 },
-	{ "tftp",	69 },
-	{ "gopher",	70 },
+	{ "exec",	512 },
 	{ "finger",	79 },
-	{ "www",	80 },
-	{ "kerberos",	88 },
+	{ "ftp",	21 },
+	{ "ftp-data",   20 },
+	{ "gopher",	70 },
 	{ "hostname",	101 },
+	{ "kerberos",	88 },
+	{ "login",	513 },
+	{ "nameserver", 42 },
 	{ "nntp",	119 },
 	{ "ntp",	123 },
-	{ "exec",	512 },
-	{ "login",	513 },
-	{ "cmd",	514 },
+	{ "smtp",	25 },
 	{ "talk",	517 },
-	{  NULL ,	0},
+	{ "telnet",	23 },
+	{ "tftp",	69 },
+	{ "www",	80 }
 };
+static size_t filterPortType_len = NUM_ELEMENTS(filterPortType);
 
-static const FR_NAME_NUMBER filterType[] = {
+static fr_table_t const filterType[] = {
 	{ "generic",	RAD_FILTER_GENERIC},
 	{ "ip", 	RAD_FILTER_IP},
-	{ "ipx", 	RAD_FILTER_IPX},
-	{ NULL, 	0},
+	{ "ipx", 	RAD_FILTER_IPX}
 };
+static size_t filterType_len = NUM_ELEMENTS(filterType);
 
 typedef enum {
 	FILTER_GENERIC_TYPE,
@@ -288,30 +288,30 @@ typedef enum {
 } FilterTokens;
 
 
-static const FR_NAME_NUMBER filterKeywords[] = {
-	{ "ip", 	FILTER_IP_TYPE },
-	{ "generic",	FILTER_GENERIC_TYPE },
-	{ "in", 	FILTER_IN },
-	{ "out",	FILTER_OUT },
-	{ "forward",	FILTER_FORWARD },
-	{ "drop",	FILTER_DROP },
-	{ "dstip",  	FILTER_IP_DST },
-	{ "srcip",  	FILTER_IP_SRC },
-	{ "dstport",	FILTER_IP_DST_PORT },
-	{ "srcport",	FILTER_IP_SRC_PORT },
-	{ "est",	FILTER_EST },
-	{ "more",	FILTER_MORE },
+static fr_table_t const filterKeywords[] = {
 	{ "!=",		FILTER_GENERIC_COMPNEQ },
 	{ "==",		FILTER_GENERIC_COMPEQ  },
-	{ "ipx",	FILTER_IPX_TYPE  },
+	{ "drop",	FILTER_DROP },
+	{ "dstip",  	FILTER_IP_DST },
 	{ "dstipxnet",	FILTER_IPX_DST_IPXNET  },
 	{ "dstipxnode",	FILTER_IPX_DST_IPXNODE  },
 	{ "dstipxsock",	FILTER_IPX_DST_IPXSOCK  },
+	{ "dstport",	FILTER_IP_DST_PORT },
+	{ "est",	FILTER_EST },
+	{ "forward",	FILTER_FORWARD },
+	{ "generic",	FILTER_GENERIC_TYPE },
+	{ "in", 	FILTER_IN },
+	{ "ip", 	FILTER_IP_TYPE },
+	{ "ipx",	FILTER_IPX_TYPE  },
+	{ "more",	FILTER_MORE },
+	{ "out",	FILTER_OUT },
+	{ "srcip",  	FILTER_IP_SRC },
 	{ "srcipxnet",	FILTER_IPX_SRC_IPXNET  },
 	{ "srcipxnode",	FILTER_IPX_SRC_IPXNODE  },
 	{ "srcipxsock",	FILTER_IPX_SRC_IPXSOCK  },
-	{  NULL , 	-1},
+	{ "srcport",	FILTER_IP_SRC_PORT }
 };
+static size_t filterKeywords_len = NUM_ELEMENTS(filterKeywords);
 
 /*
  * FilterProtoName:
@@ -320,14 +320,14 @@ static const FR_NAME_NUMBER filterKeywords[] = {
  *
  *  ??? What the heck is wrong with getprotobyname?
  */
-static const FR_NAME_NUMBER filterProtoName[] = {
-	{ "tcp",  6 },
-	{ "udp",  17 },
-	{ "ospf", 89 },
-	{ "icmp", 1 },
+static fr_table_t const filterProtoName[] = {
 	{ "0",	  0 },
-	{  NULL , -1 },
+	{ "icmp", 1 },
+	{ "ospf", 89 },
+	{ "tcp",  6 },
+	{ "udp",  17 }
 };
+static size_t filterProtoName_len = NUM_ELEMENTS(filterProtoName);
 
 
 /*
@@ -343,13 +343,13 @@ typedef enum {
 	RAD_COMPARE_NOT_EQUAL
 } RadFilterComparison;
 
-static const FR_NAME_NUMBER filterCompare[] = {
-	{ "<",	RAD_COMPARE_LESS },
-	{ "=",	RAD_COMPARE_EQUAL },
-	{ ">",	RAD_COMPARE_GREATER },
-	{ "!=", RAD_COMPARE_NOT_EQUAL },
-	{ NULL, 0 },
+static fr_table_t const filterCompare[] = {
+	{ "!=", RAD_COMPARE_NOT_EQUAL	},
+	{ "<",	RAD_COMPARE_LESS	},
+	{ "=",	RAD_COMPARE_EQUAL	},
+	{ ">",	RAD_COMPARE_GREATER	}
 };
+static size_t filterCompare_len = NUM_ELEMENTS(filterCompare);
 
 
 /*
@@ -373,7 +373,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	/*
 	 *	Parse the node.
 	 */
-	token = fr_str2int(filterKeywords, argv[1], -1);
+	token = fr_table_num_by_str(filterKeywords, argv[1], -1);
 	switch (token) {
 	case FILTER_IPX_SRC_IPXNODE:
 	case FILTER_IPX_DST_IPXNODE:
@@ -409,7 +409,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	/*
 	 *	Parse the socket.
 	 */
-	token = fr_str2int(filterKeywords, argv[3], -1);
+	token = fr_table_num_by_str(filterKeywords, argv[3], -1);
 	switch (token) {
 	case FILTER_IPX_SRC_IPXSOCK:
 	case FILTER_IPX_DST_IPXSOCK:
@@ -422,7 +422,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	/*
 	 *	Parse the command "<", ">", "=" or "!="
 	 */
-	token = fr_str2int(filterCompare, argv[4], -1);
+	token = fr_table_num_by_str(filterCompare, argv[4], -1);
 	switch (token) {
 	case RAD_COMPARE_LESS:
 	case RAD_COMPARE_EQUAL:
@@ -506,7 +506,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 	if (argc < 4) return -1;
 
 	while ((argc > 0) && (flags != 0x03)) {
-		token = fr_str2int(filterKeywords, argv[0], -1);
+		token = fr_table_num_by_str(filterKeywords, argv[0], -1);
 		switch (token) {
 		case FILTER_IPX_SRC_IPXNET:
 			if (flags & 0x01) return -1;
@@ -661,13 +661,13 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 	/*
 	 *	There MUST be a comparison string.
 	 */
-	rcode = fr_str2int(filterCompare, compare, -1);
+	rcode = fr_table_num_by_str(filterCompare, compare, -1);
 	if (rcode < 0) return rcode;
 
 	if (strspn(str, "0123456789") == strlen(str)) {
 		token = atoi(str);
 	} else {
-		token = fr_str2int(filterPortType, str, -1);
+		token = fr_table_num_by_str(filterPortType, str, -1);
 	}
 
 	if ((token < 0) || (token > 65535)) return -1;
@@ -737,7 +737,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 	 */
 	flags = 0;
 	while ((argc > 0) && (flags != DONE_FLAGS)) {
-		token = fr_str2int(filterKeywords, argv[0], -1);
+		token = fr_table_num_by_str(filterKeywords, argv[0], -1);
 		switch (token) {
 		case FILTER_IP_SRC:
 			if (flags & IP_SRC_ADDR_FLAG) return -1;
@@ -806,7 +806,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			if (strspn(argv[0], "0123456789") == strlen(argv[0])) {
 				token = atoi(argv[0]);
 			} else {
-				token = fr_str2int(filterProtoName, argv[0], -1);
+				token = fr_table_num_by_str(filterProtoName, argv[0], -1);
 				if (token == -1) {
 					fr_strerror_printf("Unknown IP protocol \"%s\" in IP data filter",
 						   argv[0]);
@@ -910,7 +910,7 @@ static int ascend_parse_generic(int argc, char **argv,
 	flags = 0;
 
 	while (argc >= 1) {
-		token = fr_str2int(filterKeywords, argv[0], -1);
+		token = fr_table_num_by_str(filterKeywords, argv[0], -1);
 		switch (token) {
 		case FILTER_GENERIC_COMPNEQ:
 			if (flags & 0x01) return -1;
@@ -990,7 +990,7 @@ int ascend_parse_filter(fr_value_box_t *out, char const *value, size_t len)
 	/*
 	 *	Decide which filter type it is: ip, ipx, or generic
 	 */
-	type = fr_str2int(filterType, argv[0], -1);
+	type = fr_table_num_by_str(filterType, argv[0], -1);
 	memset(&filter, 0, sizeof(filter));
 
 	/*
@@ -1012,7 +1012,7 @@ int ascend_parse_filter(fr_value_box_t *out, char const *value, size_t len)
 	/*
 	 *	Parse direction
 	 */
-	token = fr_str2int(filterKeywords, argv[1], -1);
+	token = fr_table_num_by_str(filterKeywords, argv[1], -1);
 	switch (token) {
 	case FILTER_IN:
 		filter.direction = 1;
@@ -1031,7 +1031,7 @@ int ascend_parse_filter(fr_value_box_t *out, char const *value, size_t len)
 	/*
 	 *	Parse action
 	 */
-	token = fr_str2int(filterKeywords, argv[2], -1);
+	token = fr_table_num_by_str(filterKeywords, argv[2], -1);
 	switch (token) {
 	case FILTER_FORWARD:
 		filter.forward = 1;
@@ -1111,7 +1111,7 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 	}
 
 	filter = (ascend_filter_t const *) data;
-	i = snprintf(p, outlen, "%s %s %s", fr_int2str(filterType, filter->type, "??"),
+	i = snprintf(p, outlen, "%s %s %s", fr_table_str_by_num(filterType, filter->type, "??"),
 		     direction[filter->direction & 0x01], action[filter->forward & 0x01]);
 
 	p += i;
@@ -1144,13 +1144,13 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 			outlen -= i;
 		}
 
-		i = snprintf(p, outlen, " %s", fr_int2str(filterProtoName, filter->u.ip.proto, "??"));
+		i = snprintf(p, outlen, " %s", fr_table_str_by_num(filterProtoName, filter->u.ip.proto, "??"));
 		p += i;
 		outlen -= i;
 
 		if (filter->u.ip.srcPortComp > RAD_NO_COMPARE) {
 			i = snprintf(p, outlen, " srcport %s %d",
-				     fr_int2str(filterCompare, filter->u.ip.srcPortComp, "??"),
+				     fr_table_str_by_num(filterCompare, filter->u.ip.srcPortComp, "??"),
 				     ntohs(filter->u.ip.srcport));
 			p += i;
 			outlen -= i;
@@ -1158,7 +1158,7 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 
 		if (filter->u.ip.dstPortComp > RAD_NO_COMPARE) {
 			i = snprintf(p, outlen, " dstport %s %d",
-				     fr_int2str(filterCompare, filter->u.ip.dstPortComp, "??"),
+				     fr_table_str_by_num(filterCompare, filter->u.ip.dstPortComp, "??"),
 				     ntohs(filter->u.ip.dstport));
 			p += i;
 			outlen -= i;
@@ -1185,7 +1185,7 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 
 			if (filter->u.ipx.srcSocComp > RAD_NO_COMPARE) {
 				i = snprintf(p, outlen, " srcipxsock %s 0x%04x",
-					     fr_int2str(filterCompare, filter->u.ipx.srcSocComp, "??"),
+					     fr_table_str_by_num(filterCompare, filter->u.ipx.srcSocComp, "??"),
 					     ntohs(filter->u.ipx.src.socket));
 				p += i;
 				outlen -= i;
@@ -1204,7 +1204,7 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 
 			if (filter->u.ipx.dstSocComp > RAD_NO_COMPARE) {
 				i = snprintf(p, outlen, " dstipxsock %s 0x%04x",
-					     fr_int2str(filterCompare, filter->u.ipx.dstSocComp, "??"),
+					     fr_table_str_by_num(filterCompare, filter->u.ipx.dstSocComp, "??"),
 					     ntohs(filter->u.ipx.dst.socket));
 				p += i;
 			}

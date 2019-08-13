@@ -85,14 +85,13 @@ static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ NULL }
 };
 
-FR_NAME_NUMBER const xlat_action_table[] = {
-	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},
-	{ "yield",	XLAT_ACTION_YIELD	},
+fr_table_t const xlat_action_table[] = {
 	{ "done",	XLAT_ACTION_DONE	},
 	{ "fail",	XLAT_ACTION_FAIL	},
-
-	{  NULL , -1 }
+	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},
+	{ "yield",	XLAT_ACTION_YIELD	}
 };
+size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
 
 static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
 			   xlat_escape_t escape, void  const *escape_ctx);
@@ -1086,7 +1085,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 
 finish:
 	XLAT_DEBUG("** [%i] %s << %s", unlang_interpret_stack_depth(request),
-		   __FUNCTION__, fr_int2str(xlat_action_table, xa, "<INVALID>"));
+		   __FUNCTION__, fr_table_str_by_num(xlat_action_table, xa, "<INVALID>"));
 
 	return xa;
 }

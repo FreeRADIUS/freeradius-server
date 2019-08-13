@@ -77,12 +77,12 @@ typedef enum {
 	SERVER_WARNINGS_NO
 } rlm_sql_mysql_warnings;
 
-static const FR_NAME_NUMBER server_warnings_table[] = {
+static fr_table_t const server_warnings_table[] = {
 	{ "auto",	SERVER_WARNINGS_AUTO	},
-	{ "yes",	SERVER_WARNINGS_YES	},
 	{ "no",		SERVER_WARNINGS_NO	},
-	{ NULL, 0 }
+	{ "yes",	SERVER_WARNINGS_YES	}
 };
+static size_t server_warnings_table_len = NUM_ELEMENTS(server_warnings_table);
 
 typedef struct {
 	MYSQL		db;
@@ -172,7 +172,7 @@ static int mod_instantiate(UNUSED rlm_sql_config_t const *config, void *instance
 	rlm_sql_mysql_t		*inst = instance;
 	int			warnings;
 
-	warnings = fr_str2int(server_warnings_table, inst->warnings_str, -1);
+	warnings = fr_table_num_by_str(server_warnings_table, inst->warnings_str, -1);
 	if (warnings < 0) {
 		ERROR("Invalid warnings value \"%s\", must be yes, no, or auto", inst->warnings_str);
 		return -1;

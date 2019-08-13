@@ -129,7 +129,8 @@ typedef struct {
 #define PRIORITY_NORMAL (1 << 14)
 #define PRIORITY_LOW    (1 << 13)
 
-extern const FR_NAME_NUMBER channel_packet_priority[];
+extern fr_table_t const channel_packet_priority[];
+extern size_t channel_packet_priority_len;
 
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker, bool same) CC_HINT(nonnull);
 

@@ -45,6 +45,7 @@ SOURCES		:= \
 		   strlcpy.c \
 		   struct.c \
 		   syserror.c \
+		   table.c \
 		   talloc.c \
 		   token.c \
 		   time.c \

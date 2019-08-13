@@ -34,18 +34,18 @@ RCSID("$Id$")
 #include <ctype.h>
 
 
-static const FR_NAME_NUMBER allowed_return_codes[] = {
-	{ "reject",     1 },
+static fr_table_t const allowed_return_codes[] = {
 	{ "fail",       1 },
-	{ "ok",	 	1 },
 	{ "handled",    1 },
 	{ "invalid",    1 },
-	{ "userlock",   1 },
-	{ "notfound",   1 },
 	{ "noop",       1 },
+	{ "notfound",   1 },
+	{ "ok",	 	1 },
+	{ "reject",     1 },
 	{ "updated",    1 },
-	{ NULL, 0 }
+	{ "userlock",   1 }
 };
+static size_t allowed_return_codes_len = NUM_ELEMENTS(allowed_return_codes);
 
 /*
  *	This file shouldn't use any functions from the server core.
@@ -74,7 +74,7 @@ next:
 	case COND_TYPE_EXISTS:
 		rad_assert(c->data.vpt != NULL);
 		if (c->cast) {
-			len = snprintf(p, end - p, "<%s>", fr_int2str(fr_value_box_type_table,
+			len = snprintf(p, end - p, "<%s>", fr_table_str_by_num(fr_value_box_type_table,
 								      c->cast->type, "??"));
 			p += len;
 		}
@@ -89,7 +89,7 @@ next:
 		*(p++) = '[';	/* for extra-clear debugging */
 #endif
 		if (c->cast) {
-			len = snprintf(p, end - p, "<%s>", fr_int2str(fr_value_box_type_table, c->cast->type, "??"));
+			len = snprintf(p, end - p, "<%s>", fr_table_str_by_num(fr_value_box_type_table, c->cast->type, "??"));
 			RETURN_IF_TRUNCATED(p, len, end - p);
 		}
 
@@ -314,7 +314,7 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 	q = p;
 	while (*q && *q != '>') q++;
 
-	cast = fr_substr2int(fr_value_box_type_table, p, FR_TYPE_INVALID, q - p);
+	cast = fr_table_num_by_substr(fr_value_box_type_table, p, q - p, FR_TYPE_INVALID);
 	if (cast == FR_TYPE_INVALID) {
 		*error = "Invalid data type in cast";
 		*pda = NULL;
@@ -1461,7 +1461,7 @@ done:
 			} else {
 				DEBUG3("OPTIMIZING (%s %s %s) --> FALSE",
 				       c->data.map->lhs->name,
-				       fr_int2str(fr_tokens_table, c->data.map->op, "??"),
+				       fr_table_str_by_num(fr_tokens_table, c->data.map->op, "??"),
 				       c->data.map->rhs->name);
 				c->type = COND_TYPE_FALSE;
 			}
@@ -1617,7 +1617,7 @@ done:
 					break;
 				}
 
-				rcode = fr_str2int(allowed_return_codes,
+				rcode = fr_table_num_by_str(allowed_return_codes,
 						   c->data.vpt->name, 0);
 				if (!rcode) {
 					return_0("Expected a module return code");

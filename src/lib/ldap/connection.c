@@ -92,7 +92,7 @@ static int fr_ldap_rebind(LDAP *handle, LDAP_CONST char *url,
 			/*
 			 *	LDAP Parse URL unescapes the extensions for us
 			 */
-			switch (fr_substr2int(fr_ldap_supported_extensions, p, LDAP_EXT_UNSUPPORTED, -1)) {
+			switch (fr_table_num_by_substr(fr_ldap_supported_extensions, p, -1, LDAP_EXT_UNSUPPORTED)) {
 			case LDAP_EXT_BINDNAME:
 				p = strchr(p, '=');
 				if (!p) {

@@ -48,39 +48,39 @@ struct sync_state_s {
 	sync_phases_t			phase;
 };
 
-FR_NAME_NUMBER sync_state_table[] = {
-	{ "present",			SYNC_STATE_PRESENT },
-	{ "add",			SYNC_STATE_ADD },
-	{ "modify",			SYNC_STATE_MODIFY },
-	{ "delete",			SYNC_STATE_DELETE },
-	{ NULL, 0}
+fr_table_t sync_state_table[] = {
+	{ "present",			SYNC_STATE_PRESENT		},
+	{ "add",			SYNC_STATE_ADD			},
+	{ "modify",			SYNC_STATE_MODIFY		},
+	{ "delete",			SYNC_STATE_DELETE		}
 };
+size_t sync_state_table_len = NUM_ELEMENTS(sync_state_table);
 
-FR_NAME_NUMBER sync_phase_table[] = {
-	{ "init",			SYNC_PHASE_INIT },
-	{ "present",			SYNC_PHASE_PRESENT },
-	{ "delete",			SYNC_PHASE_DELETE },
-	{ "present-idset",		SYNC_PHASE_PRESENT_IDSET },
-	{ "delete-idset",		SYNC_PHASE_DELETE_IDSET },
-	{ "done",			SYNC_PHASE_DONE },
-	{ NULL, 0 }
+fr_table_t sync_phase_table[] = {
+	{ "delete",			SYNC_PHASE_DELETE		},
+	{ "delete-idset",		SYNC_PHASE_DELETE_IDSET		},
+	{ "done",			SYNC_PHASE_DONE			},
+	{ "init",			SYNC_PHASE_INIT			},
+	{ "present",			SYNC_PHASE_PRESENT		},
+	{ "present-idset",		SYNC_PHASE_PRESENT_IDSET	}
 };
+size_t sync_phase_table_len = NUM_ELEMENTS(sync_state_table);
 
-FR_NAME_NUMBER sync_protocol_op_table[] = {
-	{ "searchResEntry",		LDAP_RES_SEARCH_ENTRY },
-	{ "searchResReference",		LDAP_RES_SEARCH_REFERENCE },
-	{ "searchRes",			LDAP_RES_SEARCH_RESULT },
-	{ "intermediateResponse",	LDAP_RES_INTERMEDIATE },
-	{ NULL, 0 }
+fr_table_t sync_protocol_op_table[] = {
+	{ "intermediateResponse",	LDAP_RES_INTERMEDIATE		},
+	{ "searchRes",			LDAP_RES_SEARCH_RESULT		},
+	{ "searchResEntry",		LDAP_RES_SEARCH_ENTRY		},
+	{ "searchResReference",		LDAP_RES_SEARCH_REFERENCE	}
 };
+size_t sync_protocol_op_table_len = NUM_ELEMENTS(sync_state_table);
 
-FR_NAME_NUMBER sync_info_tag_table[] = {
- 	{ "newCookie",			LDAP_TAG_SYNC_NEW_COOKIE },
- 	{ "refreshDelete",		LDAP_TAG_SYNC_REFRESH_DELETE },
- 	{ "refreshPresent",		LDAP_TAG_SYNC_REFRESH_PRESENT },
-	{ "refreshIDSet",		LDAP_TAG_SYNC_ID_SET },
-	{ NULL, 0 }
+fr_table_t sync_info_tag_table[] = {
+ 	{ "newCookie",			LDAP_TAG_SYNC_NEW_COOKIE	},
+ 	{ "refreshDelete",		LDAP_TAG_SYNC_REFRESH_DELETE	},
+	{ "refreshIDSet",		LDAP_TAG_SYNC_ID_SET		},
+ 	{ "refreshPresent",		LDAP_TAG_SYNC_REFRESH_PRESENT	}
 };
+size_t sync_info_tag_table_len = NUM_ELEMENTS(sync_state_table);
 
 /** Process a cookie element
  *
@@ -247,8 +247,8 @@ static int sync_search_entry_or_reference(sync_state_t *sync, LDAPMessage *msg, 
 		default:
 		bad_phase:
 			ERROR("Entries with %s state are not allowed during refresh %s phase",
-			      fr_int2str(sync_state_table, state, "<unknown>"),
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"));
+			      fr_table_str_by_num(sync_state_table, state, "<unknown>"),
+			      fr_table_str_by_num(sync_phase_table, sync->phase, "<unknown>"));
 			goto error;
 		}
 		break;
@@ -289,8 +289,8 @@ static int sync_search_entry_or_reference(sync_state_t *sync, LDAPMessage *msg, 
 		fr_ldap_berval_to_value(&uuid_box, &entry_uuid);
 
 		DEBUG3("Processing %s (%s), dn \"%s\", entryUUID %pV",
-		       fr_int2str(sync_protocol_op_table, ldap_msgtype(msg), "<unknown>"),
-		       fr_int2str(sync_state_table, state, "<unknown>"),
+		       fr_table_str_by_num(sync_protocol_op_table, ldap_msgtype(msg), "<unknown>"),
+		       fr_table_str_by_num(sync_state_table, state, "<unknown>"),
 		       entry_dn ? entry_dn : "<unknown>",
 		       &uuid_box);
 
@@ -384,7 +384,7 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 	}
 
 	sync_info_tag = ber_peek_tag(ber, &len);
-	DEBUG3("Processing syncInfo (%s)", fr_int2str(sync_info_tag_table, sync_info_tag, "<unknown>"));
+	DEBUG3("Processing syncInfo (%s)", fr_table_str_by_num(sync_info_tag_table, sync_info_tag, "<unknown>"));
 
 	switch (sync_info_tag) {
 	case LDAP_TAG_SYNC_NEW_COOKIE:
@@ -412,8 +412,8 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 
 		default:
 			ERROR("Invalid refresh phase transition (%s->%s)",
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"),
-			      fr_int2str(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
+			      fr_table_str_by_num(sync_phase_table, sync->phase, "<unknown>"),
+			      fr_table_str_by_num(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
 			goto error;
 		}
 
@@ -461,8 +461,8 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 
 		default:
 			ERROR("Invalid refresh phase transition (%s->%s)",
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"),
-			      fr_int2str(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
+			      fr_table_str_by_num(sync_phase_table, sync->phase, "<unknown>"),
+			      fr_table_str_by_num(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
 
 			goto error;
 		}
@@ -520,8 +520,8 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 
 			default:
 				ERROR("Invalid refresh phase transition (%s->%s)",
-				      fr_int2str(sync_phase_table, sync->phase, "<unknown>"),
-				      fr_int2str(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
+				      fr_table_str_by_num(sync_phase_table, sync->phase, "<unknown>"),
+				      fr_table_str_by_num(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
 				goto error;
 			}
 		} else {
@@ -532,8 +532,8 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 
 			default:
 				ERROR("Invalid refresh phase transition (%s->%s)",
-				      fr_int2str(sync_phase_table, sync->phase, "<unknown>"),
-				      fr_int2str(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
+				      fr_table_str_by_num(sync_phase_table, sync->phase, "<unknown>"),
+				      fr_table_str_by_num(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
 				goto error;
 			}
 		}
@@ -674,7 +674,7 @@ static int sync_search_result(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 		default:
 			ERROR("syncDone control indicated end of refresh delete phase but "
 			      "We were in refresh %s phase",
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"));
+			      fr_table_str_by_num(sync_phase_table, sync->phase, "<unknown>"));
 			goto error;
 		}
 	} else {
@@ -686,7 +686,7 @@ static int sync_search_result(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 		default:
 			ERROR("syncDone control indicated end of refresh present phase but "
 			      "we were in refresh %s phase",
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"));
+			      fr_table_str_by_num(sync_phase_table, sync->phase, "<unknown>"));
 			goto error;
 		}
 	}
@@ -760,7 +760,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 
 		if (msgid == 0) {
 			WARN("Ignoring unsolicited %s message",
-			     fr_int2str(sync_protocol_op_table, type, "<invalid>"));
+			     fr_table_str_by_num(sync_protocol_op_table, type, "<invalid>"));
 			continue;
 		}
 
@@ -812,7 +812,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 		}
 
 		DEBUG3("Got %s message for sync (msgid %i)",
-		       fr_int2str(sync_protocol_op_table, type, "<invalid>"), sync->msgid);
+		       fr_table_str_by_num(sync_protocol_op_table, type, "<invalid>"), sync->msgid);
 
 		switch (type) {
 		case LDAP_RES_SEARCH_REFERENCE:

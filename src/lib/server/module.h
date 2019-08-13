@@ -52,7 +52,8 @@ typedef struct module_thread_instance_s  module_thread_instance_t;
 extern "C" {
 #endif
 
-extern const FR_NAME_NUMBER mod_rcode_table[];
+extern fr_table_t const mod_rcode_table[];
+extern size_t mod_rcode_table_len;
 
 /** Mappings between section names, and control attributes
  *

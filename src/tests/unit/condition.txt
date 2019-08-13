@@ -11,6 +11,9 @@
 #
 load-dictionary radius
 
+condition &request:User-Name == &reply:User-Name
+data &User-Name == &reply:User-Name
+
 # All IP address literals should be parsed as prefixes
 condition ("foo\
 data ERROR offset 6 End of string after escape
@@ -115,8 +118,6 @@ data ERROR offset 0 Cannot use list references in condition
 condition "hello" == &reply:
 data ERROR offset 0 Cannot use list references in condition
 
-condition &request:User-Name == &reply:User-Name
-data &User-Name == &reply:User-Name
 
 #
 #  Convert != to !(COND) for normal checks

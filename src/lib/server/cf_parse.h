@@ -30,7 +30,7 @@ RCSIDH(cf_parse_h, "$Id$")
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/server/cf_util.h>
 
@@ -444,6 +444,11 @@ struct CONF_PARSER {
 
 	FR_TOKEN	quote;			//!< Quoting around the default value.  Only used for templates.
 };
+
+typedef struct {
+	fr_table_t const	*table;
+	size_t			*len;
+} cf_table_parse_ctx_t;
 
 #define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }

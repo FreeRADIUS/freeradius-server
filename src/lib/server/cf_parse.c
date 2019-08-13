@@ -434,7 +434,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		rad_assert(type < FR_TYPE_MAX);
 
 		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",
-			   fr_int2str(fr_value_box_type_table, type, "?Unknown?"), type);
+			   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"), type);
 		rcode = -1;
 		goto error;
 	}
@@ -1383,7 +1383,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 			if (attribute && !tmpl_is_attr(vpt)) {
 				cf_log_err(cp, "Expected attr got %s",
-					   fr_int2str(tmpl_type_table, vpt->type, "???"));
+					   fr_table_str_by_num(tmpl_type_table, vpt->type, "???"));
 				return -1;
 			}
 
@@ -1555,9 +1555,10 @@ int _cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char cons
 int cf_table_parse_int(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		       CONF_ITEM *ci, CONF_PARSER const *rule)
 {
-	int num;
+	int				num;
+	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx;
 
-	if (cf_pair_in_table(&num, rule->uctx, cf_item_to_pair(ci)) < 0) return -1;
+	if (cf_pair_in_table(&num, parse_ctx->table, *parse_ctx->len, cf_item_to_pair(ci)) < 0) return -1;
 
 	*((int *)out) = num;
 
@@ -1570,9 +1571,10 @@ int cf_table_parse_int(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 int cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			 CONF_ITEM *ci, CONF_PARSER const *rule)
 {
-	int32_t num;
+	int32_t				num;
+	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx;
 
-	if (cf_pair_in_table(&num, rule->uctx, cf_item_to_pair(ci)) < 0) return -1;
+	if (cf_pair_in_table(&num, parse_ctx->table, *parse_ctx->len, cf_item_to_pair(ci)) < 0) return -1;
 
 	*((int32_t *)out) = num;
 
@@ -1585,9 +1587,10 @@ int cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 int cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			  CONF_ITEM *ci, CONF_PARSER const *rule)
 {
-	int32_t num;
+	int32_t				num;
+	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx;
 
-	if (cf_pair_in_table(&num, rule->uctx, cf_item_to_pair(ci)) < 0) return -1;
+	if (cf_pair_in_table(&num, parse_ctx->table, *parse_ctx->len, cf_item_to_pair(ci)) < 0) return -1;
 	if (num < 0) {
 		cf_log_err(ci, "Resolved value must be a positive integer, got %i", num);
 		return -1;

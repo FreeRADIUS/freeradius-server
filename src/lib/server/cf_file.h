@@ -32,7 +32,7 @@ RCSIDH(cf_file_h, "$Id$")
 
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/print.h>
 
 #ifdef __cplusplus

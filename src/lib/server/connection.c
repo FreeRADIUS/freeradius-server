@@ -40,16 +40,15 @@
 #endif
 #include <talloc.h>
 
-FR_NAME_NUMBER const fr_connection_states[] = {
-	{ "HALTED",		FR_CONNECTION_STATE_HALTED },
-	{ "INIT",		FR_CONNECTION_STATE_INIT },
-	{ "CONNECTING",		FR_CONNECTION_STATE_CONNECTING },
-	{ "TIMEOUT",		FR_CONNECTION_STATE_TIMEOUT },
-	{ "CONNECTED",		FR_CONNECTION_STATE_CONNECTED },
-	{ "FAILED",		FR_CONNECTION_STATE_FAILED },
-
-	{ NULL, 0 }
+fr_table_t const fr_connection_states[] = {
+	{ "CONNECTED",		FR_CONNECTION_STATE_CONNECTED	},
+	{ "CONNECTING",		FR_CONNECTION_STATE_CONNECTING	},
+	{ "FAILED",		FR_CONNECTION_STATE_FAILED	},
+	{ "HALTED",		FR_CONNECTION_STATE_HALTED	},
+	{ "INIT",		FR_CONNECTION_STATE_INIT	},
+	{ "TIMEOUT",		FR_CONNECTION_STATE_TIMEOUT	}
 };
+size_t fr_connection_states_len = NUM_ELEMENTS(fr_connection_states);
 
 static atomic_uint_fast64_t connection_counter = ATOMIC_VAR_INIT(1);
 
@@ -81,8 +80,8 @@ struct fr_conn {
 #define STATE_TRANSITION(_new) \
 do { \
 	DEBUG4("Changed state %s -> %s", \
-	       fr_int2str(fr_connection_states, conn->state, "<INVALID>"), \
-	       fr_int2str(fr_connection_states, _new, "<INVALID>")); \
+	       fr_table_str_by_num(fr_connection_states, conn->state, "<INVALID>"), \
+	       fr_table_str_by_num(fr_connection_states, _new, "<INVALID>")); \
 	conn->state = _new; \
 } while (0)
 
@@ -119,7 +118,7 @@ static void connection_state_failed(fr_connection_t *conn, fr_time_t now)
 	fr_connection_state_t prev;
 	rad_assert(conn->state != FR_CONNECTION_STATE_FAILED);
 
-	fr_event_fd_delete(conn->el, conn->fd, FR_EVENT_FILTER_IO);			/* Don't leave lingering events */
+	if (conn->fd >= 0) fr_event_fd_delete(conn->el, conn->fd, FR_EVENT_FILTER_IO);	/* Don't leave lingering events */
 	if (conn->close) conn->close(conn->fd, conn->uctx);
 	conn->fd = -1;
 
@@ -149,8 +148,8 @@ static void connection_state_failed(fr_connection_t *conn, fr_time_t now)
 
 		case FR_CONNECTION_STATE_HALTED:		/* Do nothing */
 			DEBUG4("Changed state %s -> %s",
-			       fr_int2str(fr_connection_states, prev, "<INVALID>"),
-			       fr_int2str(fr_connection_states, FR_CONNECTION_STATE_HALTED, "<INVALID>"));
+			       fr_table_str_by_num(fr_connection_states, prev, "<INVALID>"),
+			       fr_table_str_by_num(fr_connection_states, FR_CONNECTION_STATE_HALTED, "<INVALID>"));
 			return;
 
 		default:

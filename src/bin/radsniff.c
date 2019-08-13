@@ -77,15 +77,15 @@ static int rs_useful_codes[] = {
 	FR_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
-static const FR_NAME_NUMBER rs_events[] = {
-	{ "received",	RS_NORMAL	},
-	{ "norsp",	RS_LOST		},
-	{ "rtx",	RS_RTX		},
-	{ "noreq",	RS_UNLINKED	},
-	{ "reused",	RS_REUSED	},
+static fr_table_t const rs_events[] = {
 	{ "error",	RS_ERROR	},
-	{  NULL , -1 }
+	{ "noreq",	RS_UNLINKED	},
+	{ "norsp",	RS_LOST		},
+	{ "received",	RS_NORMAL	},
+	{ "reused",	RS_REUSED	},
+	{ "rtx",	RS_RTX		}
 };
+static size_t rs_events_len = NUM_ELEMENTS(rs_events);
 
 static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
@@ -318,7 +318,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr, src, sizeof(src));
 	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.addr, dst, sizeof(dst));
 
-	status_str = fr_int2str(rs_events, status, NULL);
+	status_str = fr_table_str_by_num(rs_events, status, NULL);
 	RS_ASSERT(status_str);
 
 	len = snprintf(p, s, "%s,%" PRIu64 ",%s,", status_str, count, timestr);
@@ -415,7 +415,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 	if (status != RS_NORMAL) {
 		char const *status_str;
 
-		status_str = fr_int2str(rs_events, status, NULL);
+		status_str = fr_table_str_by_num(rs_events, status, NULL);
 		RS_ASSERT(status_str);
 
 		len = snprintf(p, s, "** %s ** ", status_str);
@@ -2020,7 +2020,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	return 0;
 }
 
-static int rs_build_event_flags(int *flags, FR_NAME_NUMBER const *map, char *list)
+static int rs_build_event_flags(int *flags, fr_table_t const *map, size_t map_len, char *list)
 {
 	size_t i = 0;
 	char *p, *tok;
@@ -2033,7 +2033,7 @@ static int rs_build_event_flags(int *flags, FR_NAME_NUMBER const *map, char *lis
 			continue;
 		}
 
-		*flags |= flag = fr_str2int(map, tok, -1);
+		*flags |= flag = fr_table_num_by_str(map, tok, -1);
 		if (flag < 0) {
 			ERROR("Invalid flag \"%s\"", tok);
 			return -1;
@@ -2324,7 +2324,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'e':
-			if (rs_build_event_flags((int *) &conf->event_flags, rs_events, optarg) < 0) usage(64);
+			if (rs_build_event_flags((int *) &conf->event_flags,
+						 rs_events, rs_events_len, optarg) < 0) usage(64);
 			break;
 
 		case 'E':

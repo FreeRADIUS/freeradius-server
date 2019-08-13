@@ -143,13 +143,13 @@ struct fr_channel_s {
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 };
 
-const FR_NAME_NUMBER channel_packet_priority[] = {
-	{ "now",	PRIORITY_NOW },
-	{ "high",	PRIORITY_HIGH },
-	{ "normal",	PRIORITY_NORMAL },
-	{ "low",	PRIORITY_LOW },
-	{ NULL,		-1 }
+fr_table_t const channel_packet_priority[] = {
+	{ "high",	PRIORITY_HIGH		},
+	{ "low",	PRIORITY_LOW		},
+	{ "normal",	PRIORITY_NORMAL		},
+	{ "now",	PRIORITY_NOW		}
 };
+size_t channel_packet_priority_len = NUM_ELEMENTS(channel_packet_priority);
 
 
 /** Create a new channel

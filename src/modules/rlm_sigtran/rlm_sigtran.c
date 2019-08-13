@@ -64,12 +64,12 @@ static uint32_t	sigtran_instances = 0;
 
 unsigned int __hack_opc, __hack_dpc;
 
-static const FR_NAME_NUMBER m3ua_traffic_mode_table[] = {
-	{ "override",  1 },
-	{ "loadshare", 2 },
+static fr_table_t const m3ua_traffic_mode_table[] = {
 	{ "broadcast", 3 },
-	{  NULL, 0 }
+	{ "loadshare", 2 },
+	{ "override",  1 }
 };
+static size_t m3ua_traffic_mode_table_len = NUM_ELEMENTS(m3ua_traffic_mode_table);
 
 static const CONF_PARSER sctp_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, rlm_sigtran_t, conn_conf.sctp_dst_ipaddr) },
@@ -334,7 +334,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Translate traffic mode string to integer
 	 */
-	inst->conn_conf.m3ua_traffic_mode = fr_str2int(m3ua_traffic_mode_table,
+	inst->conn_conf.m3ua_traffic_mode = fr_table_num_by_str(m3ua_traffic_mode_table,
 						       inst->conn_conf.m3ua_traffic_mode_str, -1);
 	if (inst->conn_conf.m3ua_traffic_mode < 0) {
 		cf_log_err(conf, "Invalid 'm3ua_traffic_mode' value \"%s\", expected 'override', "

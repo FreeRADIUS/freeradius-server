@@ -53,8 +53,8 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/md4.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/packet.h>
-#include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
@@ -65,10 +65,11 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/thread_local.h>
 #include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/udp.h>

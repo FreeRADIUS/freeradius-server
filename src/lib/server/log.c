@@ -56,66 +56,84 @@ fr_thread_local_setup(TALLOC_CTX *, fr_vlog_request_pool)
  * @note Not all facilities are supported by every operating system.
  *       If a facility is unavailable it will not appear in the table.
  */
-const FR_NAME_NUMBER syslog_facility_table[] = {
-#ifdef LOG_KERN
-	{ "kern",		LOG_KERN	},
-#endif
-#ifdef LOG_USER
-	{ "user",		LOG_USER	},
-#endif
-#ifdef LOG_MAIL
-	{ "mail",		LOG_MAIL	},
-#endif
-#ifdef LOG_DAEMON
-	{ "daemon",		LOG_DAEMON	},
-#endif
+fr_table_t const syslog_facility_table[] = {
 #ifdef LOG_AUTH
 	{ "auth",		LOG_AUTH	},
 #endif
-#ifdef LOG_LPR
-	{ "lpr",		LOG_LPR		},
-#endif
-#ifdef LOG_NEWS
-	{ "news",		LOG_NEWS	},
-#endif
-#ifdef LOG_UUCP
-	{ "uucp",		LOG_UUCP	},
-#endif
-#ifdef LOG_CRON
-	{ "cron",		LOG_CRON	},
-#endif
+
 #ifdef LOG_AUTHPRIV
 	{ "authpriv",		LOG_AUTHPRIV	},
 #endif
+
+#ifdef LOG_CRON
+	{ "cron",		LOG_CRON	},
+#endif
+
+#ifdef LOG_DAEMON
+	{ "daemon",		LOG_DAEMON	},
+#endif
+
 #ifdef LOG_FTP
 	{ "ftp",		LOG_FTP		},
 #endif
+
+#ifdef LOG_KERN
+	{ "kern",		LOG_KERN	},
+#endif
+
 #ifdef LOG_LOCAL0
 	{ "local0",		LOG_LOCAL0	},
 #endif
+
 #ifdef LOG_LOCAL1
 	{ "local1",		LOG_LOCAL1	},
 #endif
+
 #ifdef LOG_LOCAL2
 	{ "local2",		LOG_LOCAL2	},
 #endif
+
 #ifdef LOG_LOCAL3
 	{ "local3",		LOG_LOCAL3	},
 #endif
+
 #ifdef LOG_LOCAL4
 	{ "local4",		LOG_LOCAL4	},
 #endif
+
 #ifdef LOG_LOCAL5
 	{ "local5",		LOG_LOCAL5	},
 #endif
+
 #ifdef LOG_LOCAL6
 	{ "local6",		LOG_LOCAL6	},
 #endif
+
 #ifdef LOG_LOCAL7
 	{ "local7",		LOG_LOCAL7	},
 #endif
-	{ NULL,			-1		}
+
+#ifdef LOG_LPR
+	{ "lpr",		LOG_LPR		},
+#endif
+
+#ifdef LOG_MAIL
+	{ "mail",		LOG_MAIL	},
+#endif
+
+#ifdef LOG_NEWS
+	{ "news",		LOG_NEWS	},
+#endif
+
+#ifdef LOG_USER
+	{ "user",		LOG_USER	},
+#endif
+
+#ifdef LOG_UUCP
+	{ "uucp",		LOG_UUCP	}
+#endif
 };
+size_t syslog_facility_table_len = NUM_ELEMENTS(syslog_facility_table);
 
 /** Syslog severity table
  *
@@ -123,42 +141,49 @@ const FR_NAME_NUMBER syslog_facility_table[] = {
  * in the system's syslog.h file.
  *
  */
-const FR_NAME_NUMBER syslog_severity_table[] = {
-#ifdef LOG_EMERG
-	{ "emergency",		LOG_EMERG	},
-#endif
+fr_table_t const syslog_severity_table[] = {
 #ifdef LOG_ALERT
 	{ "alert",		LOG_ALERT	},
 #endif
+
 #ifdef LOG_CRIT
 	{ "critical",		LOG_CRIT	},
 #endif
-#ifdef LOG_ERR
-	{ "error",		LOG_ERR		},
-#endif
-#ifdef LOG_WARNING
-	{ "warning",		LOG_WARNING	},
-#endif
-#ifdef LOG_NOTICE
-	{ "notice",		LOG_NOTICE	},
-#endif
-#ifdef LOG_INFO
-	{ "info",		LOG_INFO	},
-#endif
+
 #ifdef LOG_DEBUG
 	{ "debug",		LOG_DEBUG	},
 #endif
-	{ NULL,			-1		}
-};
 
-const FR_NAME_NUMBER log_str2dst[] = {
-	{ "null",		L_DST_NULL	},
-	{ "files",		L_DST_FILES	},
-	{ "syslog",		L_DST_SYSLOG	},
-	{ "stdout",		L_DST_STDOUT	},
-	{ "stderr",		L_DST_STDERR	},
-	{ NULL,			L_DST_NUM_DEST	}
+#ifdef LOG_EMERG
+	{ "emergency",		LOG_EMERG	},
+#endif
+
+#ifdef LOG_ERR
+	{ "error",		LOG_ERR		},
+#endif
+
+#ifdef LOG_INFO
+	{ "info",		LOG_INFO	},
+#endif
+
+#ifdef LOG_NOTICE
+	{ "notice",		LOG_NOTICE	},
+#endif
+
+#ifdef LOG_WARNING
+	{ "warning",		LOG_WARNING	},
+#endif
 };
+size_t syslog_severity_table_len = NUM_ELEMENTS(syslog_severity_table);
+
+fr_table_t const log_str2dst[] = {
+	{ "files",		L_DST_FILES	},
+	{ "null",		L_DST_NULL	},
+	{ "stderr",		L_DST_STDERR	},
+	{ "stdout",		L_DST_STDOUT	},
+	{ "syslog",		L_DST_SYSLOG	},
+};
+size_t log_str2dst_len = NUM_ELEMENTS(log_str2dst);
 
 static char const spaces[] = "                                                                                                                        ";
 
@@ -478,7 +503,7 @@ print_fmt:
 			fmt_location,
 			fmt_prefix,
 			time_buff,
-			fr_int2str(fr_log_levels, type, ""),
+			fr_table_str_by_num(fr_log_levels, type, ""),
 			unlang_indent, spaces,
 			fmt_module,
 			fmt_exp);

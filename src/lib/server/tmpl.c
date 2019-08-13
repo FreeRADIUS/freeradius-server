@@ -35,45 +35,45 @@ RCSID("$Id$")
 
 /** Map #tmpl_type_t values to descriptive strings
  */
-FR_NAME_NUMBER const tmpl_type_table[] = {
-	{ "literal",		TMPL_TYPE_UNPARSED 	},
-	{ "xlat",		TMPL_TYPE_XLAT		},
-	{ "attr",		TMPL_TYPE_ATTR		},
+fr_table_t const tmpl_type_table[] = {
+	{ "attr",		TMPL_TYPE_ATTR			},
+	{ "data",		TMPL_TYPE_DATA			},
+	{ "exec",		TMPL_TYPE_EXEC			},
+	{ "list",		TMPL_TYPE_LIST			},
+	{ "literal",		TMPL_TYPE_UNPARSED 		},
+	{ "null",		TMPL_TYPE_NULL			},
+	{ "parsed regex",	TMPL_TYPE_REGEX_STRUCT		},
+	{ "parsed xlat",	TMPL_TYPE_XLAT_STRUCT		},
+	{ "regex",		TMPL_TYPE_REGEX			},
 	{ "unknown attr",	TMPL_TYPE_ATTR_UNDEFINED	},
-	{ "list",		TMPL_TYPE_LIST		},
-	{ "regex",		TMPL_TYPE_REGEX		},
-	{ "exec",		TMPL_TYPE_EXEC		},
-	{ "data",		TMPL_TYPE_DATA		},
-	{ "parsed xlat",	TMPL_TYPE_XLAT_STRUCT	},
-	{ "parsed regex",	TMPL_TYPE_REGEX_STRUCT	},
-	{ "null",		TMPL_TYPE_NULL		},
-	{ NULL, 0 }
+	{ "xlat",		TMPL_TYPE_XLAT			}
 };
+size_t tmpl_type_table_len = NUM_ELEMENTS(tmpl_type_table);
 
 /** Map keywords to #pair_list_t values
  */
-const FR_NAME_NUMBER pair_list_table[] = {
-	{ "request",		PAIR_LIST_REQUEST },
-	{ "reply",		PAIR_LIST_REPLY },
-	{ "control",		PAIR_LIST_CONTROL },		/* New name should have priority */
-	{ "config",		PAIR_LIST_CONTROL },
-	{ "session-state",	PAIR_LIST_STATE },
+fr_table_ordered_t const pair_list_table[] = {
+	{ "request",		PAIR_LIST_REQUEST		},
+	{ "reply",		PAIR_LIST_REPLY			},
+	{ "control",		PAIR_LIST_CONTROL		},		/* New name should have priority */
+	{ "config",		PAIR_LIST_CONTROL		},
+	{ "session-state",	PAIR_LIST_STATE			},
 #ifdef WITH_PROXY
-	{ "proxy-request",	PAIR_LIST_PROXY_REQUEST },
-	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY },
+	{ "proxy-request",	PAIR_LIST_PROXY_REQUEST		},
+	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY		}
 #endif
-	{  NULL , -1 }
 };
+size_t pair_list_table_len = NUM_ELEMENTS(pair_list_table);
 
 /** Map keywords to #request_ref_t values
  */
-const FR_NAME_NUMBER request_ref_table[] = {
-	{ "outer",		REQUEST_OUTER },
-	{ "current",		REQUEST_CURRENT },
-	{ "parent",		REQUEST_PARENT },
-	{ "proxy",		REQUEST_PROXY },
-	{  NULL , -1 }
+fr_table_t const request_ref_table[] = {
+	{ "current",		REQUEST_CURRENT			},
+	{ "outer",		REQUEST_OUTER			},
+	{ "parent",		REQUEST_PARENT			},
+	{ "proxy",		REQUEST_PROXY			}
 };
+size_t request_ref_table_len = NUM_ELEMENTS(request_ref_table);
 
 /** @name Parse list and request qualifiers to #pair_list_t and #request_ref_t values
  *
@@ -135,7 +135,7 @@ size_t radius_list_name(pair_list_t *out, char const *name, pair_list_t def)
 	 *	anything.
 	 */
 	case '\0':
-		*out = fr_substr2int(pair_list_table, p, PAIR_LIST_UNKNOWN, (q - p));
+		*out = fr_table_num_by_substr(pair_list_table, p, (q - p), PAIR_LIST_UNKNOWN);
 		if (*out != PAIR_LIST_UNKNOWN) return q - p;
 		*out = def;
 		return 0;
@@ -164,7 +164,7 @@ size_t radius_list_name(pair_list_t *out, char const *name, pair_list_t def)
 			}
 		}
 
-		*out = fr_substr2int(pair_list_table, p, PAIR_LIST_UNKNOWN, (q - p));
+		*out = fr_table_num_by_substr(pair_list_table, p, (q - p), PAIR_LIST_UNKNOWN);
 		if (*out == PAIR_LIST_UNKNOWN) return 0;
 
 		return (q + 1) - name; /* Consume the list and delimiter */
@@ -224,7 +224,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_list_t list)
 	}
 
 	RWDEBUG2("List \"%s\" is not available",
-		fr_int2str(pair_list_table, list, "<INVALID>"));
+		fr_table_str_by_num(pair_list_table, list, "<INVALID>"));
 
 	return NULL;
 }
@@ -363,7 +363,7 @@ size_t radius_request_name(request_ref_t *out, char const *name, request_ref_t d
 		return 0;
 	}
 
-	*out = fr_substr2int(request_ref_table, name, REQUEST_UNKNOWN, q - p);
+	*out = fr_table_num_by_substr(request_ref_table, name, q - p, REQUEST_UNKNOWN);
 	if (*out == REQUEST_UNKNOWN) return 0;
 
 	return (q + 1) - p;
@@ -1013,7 +1013,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
 
 	if (slen != (ssize_t)strlen(name)) {
 		/* This looks wrong, but it produces meaningful errors for unknown attrs with tags */
-		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_type_table, (*out)->type, "<INVALID>"));
+		fr_strerror_printf("Unexpected text after %s", fr_table_str_by_num(tmpl_type_table, (*out)->type, "<INVALID>"));
 		return -slen;
 	}
 
@@ -1466,8 +1466,8 @@ int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
 
 	if (type != da->type) {
 		fr_strerror_printf("Attribute %s of type %s already defined with type %s",
-				   da->name, fr_int2str(fr_value_box_type_table, type, "<UNKNOWN>"),
-				   fr_int2str(fr_value_box_type_table, da->type, "<UNKNOWN>"));
+				   da->name, fr_table_str_by_num(fr_value_box_type_table, type, "<UNKNOWN>"),
+				   fr_table_str_by_num(fr_value_box_type_table, da->type, "<UNKNOWN>"));
 		return -1;
 	}
 
@@ -2086,13 +2086,13 @@ size_t tmpl_snprint_attr_str(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		 *	Don't add &current.
 		 */
 		if (vpt->tmpl_request == REQUEST_CURRENT) {
-			len = snprintf(out_p, end - out_p, "%s:", fr_int2str(pair_list_table, vpt->tmpl_list, ""));
+			len = snprintf(out_p, end - out_p, "%s:", fr_table_str_by_num(pair_list_table, vpt->tmpl_list, ""));
 			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 			goto inst_and_tag;
 		}
 
-		len = snprintf(out_p, end - out_p, "%s.%s:", fr_int2str(request_ref_table, vpt->tmpl_request, ""),
-			       fr_int2str(pair_list_table, vpt->tmpl_list, ""));
+		len = snprintf(out_p, end - out_p, "%s.%s:", fr_table_str_by_num(request_ref_table, vpt->tmpl_request, ""),
+			       fr_table_str_by_num(pair_list_table, vpt->tmpl_list, ""));
 		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 		goto inst_and_tag;
 
@@ -2118,14 +2118,14 @@ size_t tmpl_snprint_attr_str(char *out, size_t outlen, vp_tmpl_t const *vpt)
 			 *	Don't add &request:
 			 */
 			len = snprintf(out_p, end - out_p, "%s:%s",
-				       fr_int2str(pair_list_table, vpt->tmpl_list, ""), p);
+				       fr_table_str_by_num(pair_list_table, vpt->tmpl_list, ""), p);
 			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 			goto inst_and_tag;
 		}
 
 		len = snprintf(out_p, end - out_p, "%s.%s:%s",
-			       fr_int2str(request_ref_table, vpt->tmpl_request, ""),
-			       fr_int2str(pair_list_table, vpt->tmpl_list, ""), p);
+			       fr_table_str_by_num(request_ref_table, vpt->tmpl_request, ""),
+			       fr_table_str_by_num(pair_list_table, vpt->tmpl_list, ""), p);
 		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 
 	inst_and_tag:
@@ -2407,7 +2407,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp
 		if (err) {
 			*err = -3;
 			fr_strerror_printf("Request context \"%s\" not available",
-					   fr_int2str(request_ref_table, vpt->tmpl_request, "<INVALID>"));
+					   fr_table_str_by_num(request_ref_table, vpt->tmpl_request, "<INVALID>"));
 		}
 		return NULL;
 	}
@@ -2416,7 +2416,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp
 		if (err) {
 			*err = -2;
 			fr_strerror_printf("List \"%s\" not available in this context",
-					   fr_int2str(pair_list_table, vpt->tmpl_list, "<INVALID>"));
+					   fr_table_str_by_num(pair_list_table, vpt->tmpl_list, "<INVALID>"));
 		}
 		return NULL;
 	}
@@ -2729,7 +2729,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "attribute \"%s\" (%s) not rooted in a dictionary",
 					     file, line, vpt->tmpl_da->name,
-					     fr_int2str(fr_value_box_type_table, vpt->tmpl_da->type, "<INVALID>"));
+					     fr_table_str_by_num(fr_value_box_type_table, vpt->tmpl_da->type, "<INVALID>"));
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
 
@@ -2739,7 +2739,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" (%s) not found in dictionary (%s)",
 						     file, line, vpt->tmpl_da->name,
-						     fr_int2str(fr_value_box_type_table,
+						     fr_table_str_by_num(fr_value_box_type_table,
 						     		vpt->tmpl_da->type, "<INVALID>"),
 						     fr_dict_root(dict)->name);
 					if (!fr_cond_assert(0)) fr_exit_now(1);
@@ -2753,7 +2753,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" variant (%s) not found in dictionary (%s)",
 						     file, line, vpt->tmpl_da->name,
-						     fr_int2str(fr_value_box_type_table, vpt->tmpl_da->type,
+						     fr_table_str_by_num(fr_value_box_type_table, vpt->tmpl_da->type,
 						     		"<INVALID>"),
 						     fr_dict_root(dict)->name);
 					if (!fr_cond_assert(0)) fr_exit_now(1);
@@ -2766,9 +2766,16 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 					     "and global dictionary pointer %p \"%s\" (%s) differ",
 					     file, line,
 					     vpt->tmpl_da, vpt->tmpl_da->name,
-					     fr_int2str(fr_value_box_type_table, vpt->tmpl_da->type, "<INVALID>"),
+					     fr_table_str_by_num(fr_value_box_type_table, vpt->tmpl_da->type, "<INVALID>"),
 					     da, da->name,
-					     fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"));
+					     fr_table_str_by_num(fr_value_box_type_table, da->type, "<INVALID>"));
+				if (!fr_cond_assert(0)) fr_exit_now(1);
+			}
+
+			if (vpt->tmpl_list >= PAIR_LIST_UNKNOWN) {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+					     "attribute \"%s\" has invalid list (%i)",
+					     file, line, vpt->tmpl_da->name, vpt->tmpl_list);
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
 		}

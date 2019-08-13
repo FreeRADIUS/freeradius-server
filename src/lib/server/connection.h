@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 
 #include <talloc.h>
 
@@ -46,7 +46,8 @@ typedef enum {
 	FR_CONNECTION_STATE_FAILED		//!< Connection failed and is waiting to reconnect.
 } fr_connection_state_t;
 
-extern FR_NAME_NUMBER const fr_connection_states[];
+extern fr_table_t const fr_connection_states[];
+extern size_t fr_connection_states_len;
 
 /** Callback for the initialise state
  *

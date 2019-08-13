@@ -61,14 +61,14 @@ typedef enum {
 	RADSNMP_EXIT					//!< Terminate gracefully.
 } radsnmp_command_t;
 
-static FR_NAME_NUMBER const radsnmp_command_str[] = {
+static fr_table_t const radsnmp_command_str[] = {
+	{ "",		RADSNMP_EXIT },			//!< Terminate radsnmp.
 	{ "PING", 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
 	{ "get",	RADSNMP_GET },			//!< Get the value of an OID.
 	{ "getnext", 	RADSNMP_GETNEXT },		//!< Get the next OID in the tree.
 	{ "set",	RADSNMP_SET },			//!< Set the value of an OID.
-	{ "",		RADSNMP_EXIT },			//!< Terminate radsnmp.
-	{  NULL , 	-1}
 };
+static size_t radsnmp_command_str_len = NUM_ELEMENTS(radsnmp_command_str);
 
 typedef struct {
 	fr_dict_t		*dict;			//!< Radius protocol dictionary.
@@ -669,7 +669,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		/*
 		 *	Determine the type of SNMP operation
 		 */
-		command = fr_str2int(radsnmp_command_str, line, RADSNMP_UNKNOWN);
+		command = fr_table_num_by_str(radsnmp_command_str, line, RADSNMP_UNKNOWN);
 		switch (command) {
 		case RADSNMP_EXIT:
 			DEBUG("Empty command, exiting");
@@ -1067,7 +1067,7 @@ int main(int argc, char **argv)
 	if (!isdigit((int) argv[2][0])) {
 		int code;
 
-		code = fr_str2int(fr_request_types, argv[2], -1);
+		code = fr_table_num_by_str(fr_request_types, argv[2], -1);
 		if (code < 0) {
 			ERROR("Unrecognised request type \"%s\"", argv[2]);
 			usage();

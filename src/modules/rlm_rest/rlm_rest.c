@@ -28,14 +28,13 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 
 #include <ctype.h>
 #include "rest.h"
 
-static FR_NAME_NUMBER const http_negotiation_table[] = {
-	{ "default", 	CURL_HTTP_VERSION_NONE },		//!< We don't care about what version the library uses.
-								///< libcurl will use whatever it thinks fit.
+static fr_table_t const http_negotiation_table[] = {
+
 	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
 	{ "1.1",	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
 /*
@@ -55,8 +54,10 @@ static FR_NAME_NUMBER const http_negotiation_table[] = {
 								///< can't be negotiated with the HTTPS server.
 								///< For clear text HTTP servers, libcurl will use 1.1.
 #endif
-	{  NULL , 	-1}
+	{ "default", 	CURL_HTTP_VERSION_NONE }		//!< We don't care about what version the library uses.
+								///< libcurl will use whatever it thinks fit.
 };
+static size_t http_negotiation_table_len = NUM_ELEMENTS(http_negotiation_table);
 
 /*
  *	TLS Configuration
@@ -84,7 +85,7 @@ static const CONF_PARSER section_config[] = {
 
 	/* User authentication */
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, rlm_rest_section_t, auth),
-	  .func = cf_table_parse_int, .uctx = http_auth_table, .dflt = "none" },
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET | FR_TYPE_XLAT, rlm_rest_section_t, password) },
 	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
@@ -104,7 +105,7 @@ static const CONF_PARSER xlat_config[] = {
 
 	/* User authentication */
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, rlm_rest_section_t, auth),
-	  .func = cf_table_parse_int, .uctx = http_auth_table, .dflt = "none" },
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, password) },
 	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
@@ -122,7 +123,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIME_DELTA, rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy) },
 	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_VOID, rlm_rest_t, http_negotiation),
-	  .func = cf_table_parse_int, .uctx = http_negotiation_table, .dflt = "default" },
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_negotiation_table, .len = &http_negotiation_table_len }, .dflt = "default" },
 
 #ifdef CURLPIPE_MULTIPLEX
 	{ FR_CONF_OFFSET("multiplex", FR_TYPE_BOOL, rlm_rest_t, multiplex), .dflt = "yes" },
@@ -207,7 +208,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *threa
 	uri_len = rest_uri_build(&uri, instance, request, section->uri);
 	if (uri_len <= 0) return -1;
 
-	RDEBUG2("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section->method, NULL), uri);
+	RDEBUG2("Sending HTTP %s to \"%s\"", fr_table_str_by_num(http_method_table, section->method, NULL), uri);
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
@@ -347,7 +348,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	/*
 	 *  Extract the method from the start of the format string (if there is one)
 	 */
-	method = fr_substr2int(http_method_table, p, REST_HTTP_METHOD_UNKNOWN, -1);
+	method = fr_table_num_by_substr(http_method_table, p, -1, REST_HTTP_METHOD_UNKNOWN);
 	if (method != REST_HTTP_METHOD_UNKNOWN) {
 		section->method = method;
 		p += strlen(http_method_table[method].name);
@@ -403,7 +404,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 
 	RDEBUG2("Sending HTTP %s to \"%s\"",
 	       (section->method == REST_HTTP_METHOD_CUSTOM) ?
-	       	section->method_str : fr_int2str(http_method_table, section->method, NULL),
+	       	section->method_str : fr_table_str_by_num(http_method_table, section->method, NULL),
 	       uri);
 
 	/*
@@ -888,7 +889,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	if ((config->auth != REST_HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
 		cf_log_err(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
 			   "configuration, then recompile this module",
-			   fr_int2str(http_auth_table, config->auth, "<INVALID>"));
+			   fr_table_str_by_num(http_auth_table, config->auth, "<INVALID>"));
 
 		return -1;
 	}
@@ -900,7 +901,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 			     "was set");
 		config->auth = REST_HTTP_AUTH_BASIC;
 	}
-	config->method = fr_str2int(http_method_table, config->method_str, REST_HTTP_METHOD_CUSTOM);
+	config->method = fr_table_num_by_str(http_method_table, config->method_str, REST_HTTP_METHOD_CUSTOM);
 
 	/*
 	 *  We don't have any custom user data, so we need to select the right encoder based
@@ -910,9 +911,9 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	 *  and content_types.
 	 */
 	if (!config->data) {
-		config->body = fr_str2int(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+		config->body = fr_table_num_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		if (config->body == REST_HTTP_BODY_UNKNOWN) {
-			config->body = fr_str2int(http_content_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+			config->body = fr_table_num_by_str(http_content_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
 		if (config->body == REST_HTTP_BODY_UNKNOWN) {
@@ -949,16 +950,16 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 
 		config->body = REST_HTTP_BODY_CUSTOM_XLAT;
 
-		body = fr_str2int(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+		body = fr_table_num_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		if (body != REST_HTTP_BODY_UNKNOWN) {
-			config->body_str = fr_int2str(http_content_type_table, body, config->body_str);
+			config->body_str = fr_table_str_by_num(http_content_type_table, body, config->body_str);
 		}
 	}
 
 	if (config->force_to_str) {
-		config->force_to = fr_str2int(http_body_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
+		config->force_to = fr_table_num_by_str(http_body_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
 		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {
-			config->force_to = fr_str2int(http_content_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
+			config->force_to = fr_table_num_by_str(http_content_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
 		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {

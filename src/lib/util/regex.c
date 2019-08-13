@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/thread_local.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 
 /*
@@ -777,7 +777,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	return len;
 }
 
-static const FR_NAME_NUMBER regex_pcre_error_str[] = {
+static fr_table_ordered_t const regex_pcre_error_str[] = {
 	{ "PCRE_ERROR_NOMATCH",		PCRE_ERROR_NOMATCH },
 	{ "PCRE_ERROR_NULL",		PCRE_ERROR_NULL },
 	{ "PCRE_ERROR_BADOPTION",	PCRE_ERROR_BADOPTION },
@@ -803,6 +803,7 @@ static const FR_NAME_NUMBER regex_pcre_error_str[] = {
 	{ "PCRE_ERROR_BADNEWLINE",	PCRE_ERROR_BADNEWLINE },
 	{ NULL, 0 }
 };
+static size_t regex_pcre_error_str_len = NUM_ELEMENTS(regex_pcre_error_str);
 
 #ifdef HAVE_PCRE_JIT_EXEC
 /** Free a PCRE JIT stack on exit
@@ -873,7 +874,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		if (ret == PCRE_ERROR_NOMATCH) return 0;
 
 		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret,
-				   fr_int2str(regex_pcre_error_str, ret, "<INVALID>"));
+				   fr_table_str_by_num(regex_pcre_error_str, ret, "<INVALID>"));
 		return -1;
 	}
 

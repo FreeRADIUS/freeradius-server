@@ -1745,19 +1745,20 @@ static inline void truncate_filename(char const **e, char const **p, int *len, c
  *
  * @param[out] out	The result of parsing the pair value.
  * @param[in] table	to look for string values in.
+ * @param[in] table_len	Length of the table.
  * @param[in] cp	to parse.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int cf_pair_in_table(int32_t *out, FR_NAME_NUMBER const *table, CONF_PAIR *cp)
+int cf_pair_in_table(int32_t *out, fr_table_t const *table, size_t table_len, CONF_PAIR *cp)
 {
-	FR_NAME_NUMBER const	*t_p;
+	fr_table_t const	*t_p;
 	char			*list = NULL;
 	int32_t			res;
 
-	res = fr_str2int(table, cf_pair_value(cp), FR_NAME_NUMBER_NOT_FOUND);
-	if (res != FR_NAME_NUMBER_NOT_FOUND) {
+	res = fr_table_num_by_str(table, cf_pair_value(cp), FR_TABLE_NOT_FOUND);
+	if (res != FR_TABLE_NOT_FOUND) {
 		*out = res;
 		return 0;
 	}
@@ -1972,11 +1973,11 @@ void _cf_debug(CONF_ITEM const *ci)
 		DEBUG("SECTION - %p", cs);
 		DEBUG("  name1         : %s", cs->name1);
 		DEBUG("  name2         : %s", cs->name2 ? cs->name2 : "<none>");
-		DEBUG("  name2_quote   : %s", fr_int2str(fr_token_quotes_table, cs->name2_quote, "<INVALID>"));
+		DEBUG("  name2_quote   : %s", fr_table_str_by_num(fr_token_quotes_table, cs->name2_quote, "<INVALID>"));
 		DEBUG("  argc          : %u", cs->argc);
 
 		for (i = 0; i < cs->argc; i++) {
-			char const *quote = fr_int2str(fr_token_quotes_table, cs->argv_quote[i], "<INVALID>");
+			char const *quote = fr_table_str_by_num(fr_token_quotes_table, cs->argv_quote[i], "<INVALID>");
 			DEBUG("  argv[%i]      : %s%s%s", i, quote, cs->argv[i], quote);
 		}
 	}
@@ -1989,9 +1990,9 @@ void _cf_debug(CONF_ITEM const *ci)
 		DEBUG("PAIR - %p", cp);
 		DEBUG("  attr          : %s", cp->attr);
 		DEBUG("  value         : %s", cp->value);
-		DEBUG("  operator      : %s", fr_int2str(fr_tokens_table, cp->op, "<INVALID>"));
-		DEBUG("  lhs_quote     : %s", fr_int2str(fr_token_quotes_table, cp->lhs_quote, "<INVALID>"));
-		DEBUG("  rhs_quote     : %s", fr_int2str(fr_token_quotes_table, cp->rhs_quote, "<INVALID>"));
+		DEBUG("  operator      : %s", fr_table_str_by_num(fr_tokens_table, cp->op, "<INVALID>"));
+		DEBUG("  lhs_quote     : %s", fr_table_str_by_num(fr_token_quotes_table, cp->lhs_quote, "<INVALID>"));
+		DEBUG("  rhs_quote     : %s", fr_table_str_by_num(fr_token_quotes_table, cp->rhs_quote, "<INVALID>"));
 		DEBUG("  pass2         : %s", cp->pass2 ? "yes" : "no");
 		DEBUG("  parsed        : %s", cp->parsed ? "yes" : "no");
 	}
@@ -2051,12 +2052,12 @@ void _cf_debug(CONF_ITEM const *ci)
 		case CONF_ITEM_PAIR:
 		{
 			CONF_PAIR const	*cp = cf_item_to_pair(child);
-			char const	*lhs_quote = fr_int2str(fr_token_quotes_table, cp->lhs_quote, "<INVALID>");
-			char const	*rhs_quote = fr_int2str(fr_token_quotes_table, cp->rhs_quote, "<INVALID>");
+			char const	*lhs_quote = fr_table_str_by_num(fr_token_quotes_table, cp->lhs_quote, "<INVALID>");
+			char const	*rhs_quote = fr_table_str_by_num(fr_token_quotes_table, cp->rhs_quote, "<INVALID>");
 
 			DEBUG("  PAIR %p (%s%s%s %s %s%s%s) %s%s", child,
 			      lhs_quote, cp->attr, lhs_quote,
-			      fr_int2str(fr_tokens_table, cp->op, "<INVALID>"),
+			      fr_table_str_by_num(fr_tokens_table, cp->op, "<INVALID>"),
 			      rhs_quote, cp->value, rhs_quote,
 			      in_ident1, in_ident2);
 		}

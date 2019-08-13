@@ -27,6 +27,7 @@ RCSIDH(pair_h, "$Id$")
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/token.h>
 
 #ifdef __cplusplus
 extern "C" {

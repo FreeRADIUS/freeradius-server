@@ -39,7 +39,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/time.h>
 #include <sys/stat.h>
 
@@ -55,25 +55,24 @@ RCSID("$Id$")
 #  define EVENT_DEBUG(...)
 #endif
 
-static FR_NAME_NUMBER const kevent_filter_table[] = {
-	{ "EVFILT_READ",	EVFILT_READ },
-#ifdef EVFILT_EXCEPT
-	{ "EVFILT_EXCEPT",	EVFILT_EXCEPT },
-#endif
-	{ "EVFILT_WRITE",	EVFILT_WRITE },
+static fr_table_t const kevent_filter_table[] = {
 #ifdef EVFILT_AIO
 	{ "EVFILT_AIO",		EVFILT_AIO },
 #endif
-	{ "EVFILT_VNODE",	EVFILT_VNODE },
-	{ "EVFILT_PROC",	EVFILT_PROC },
-	{ "EVFILT_SIGNAL",	EVFILT_SIGNAL },
+#ifdef EVFILT_EXCEPT
+	{ "EVFILT_EXCEPT",	EVFILT_EXCEPT },
+#endif
 #ifdef EVFILT_MACHPORT
 	{ "EVFILT_MACHPORT",	EVFILT_MACHPORT },
 #endif
+	{ "EVFILT_PROC",	EVFILT_PROC },
+	{ "EVFILT_READ",	EVFILT_READ },
+	{ "EVFILT_SIGNAL",	EVFILT_SIGNAL },
 	{ "EVFILT_TIMER",	EVFILT_TIMER },
-
-	{  NULL , -1 }
+	{ "EVFILT_VNODE",	EVFILT_VNODE },
+	{ "EVFILT_WRITE",	EVFILT_WRITE }
 };
+static size_t kevent_filter_table_len = NUM_ELEMENTS(kevent_filter_table);
 
 /** A timer event
  *
@@ -217,13 +216,13 @@ static fr_event_func_map_t vnode_func_map[] = {
 	{ 0 }
 };
 
-static FR_NAME_NUMBER const fr_event_fd_type_table[] = {
-	{ "socket",		FR_EVENT_FD_SOCKET },
-	{ "file",		FR_EVENT_FD_FILE },
+static fr_table_t const fr_event_fd_type_table[] = {
 	{ "directory",		FR_EVENT_FD_DIRECTORY },
+	{ "file",		FR_EVENT_FD_FILE },
 	{ "pcap",		FR_EVENT_FD_PCAP },
-	{ NULL,			-1 },
+	{ "socket",		FR_EVENT_FD_SOCKET }
 };
+static size_t fr_event_fd_type_table_len = NUM_ELEMENTS(fr_event_fd_type_table);
 
 /** A file descriptor/filter event
  *
@@ -467,8 +466,8 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 				if (!(map->type & ef->type)) {
 					fr_strerror_printf("kevent %s (%s), can't be applied to fd of type %s",
 							   map->name,
-							   fr_int2str(kevent_filter_table, map->filter, "<INVALID>"),
-							   fr_int2str(fr_event_fd_type_table,
+							   fr_table_str_by_num(kevent_filter_table, map->filter, "<INVALID>"),
+							   fr_table_str_by_num(fr_event_fd_type_table,
 								      map->type, "<INVALID>"));
 					return -1;
 				}
@@ -506,7 +505,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		     		return -1;
 		     	}
 		     	EVENT_DEBUG("\tEV_SET EV_ADD filter %s (%i), flags %i, fflags %i",
-		     		    fr_int2str(kevent_filter_table, map->filter, "<INVALID>"),
+		     		    fr_table_str_by_num(kevent_filter_table, map->filter, "<INVALID>"),
 		     		    map->filter, map->flags, current_fflags);
 			EV_SET(add_p++, ef->fd, map->filter, map->flags, current_fflags, 0, ef);
 
@@ -515,7 +514,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		 */
 		} else if (!has_current_func && has_prev_func) {
 		     	EVENT_DEBUG("\tEV_SET EV_DELETE filter %s (%i), flags %i, fflags %i",
-		     		    fr_int2str(kevent_filter_table, map->filter, "<INVALID>"),
+		     		    fr_table_str_by_num(kevent_filter_table, map->filter, "<INVALID>"),
 		     		    map->filter, EV_DELETE, 0, 0);
 			EV_SET(out++, ef->fd, map->filter, EV_DELETE, 0, 0, 0);
 		}

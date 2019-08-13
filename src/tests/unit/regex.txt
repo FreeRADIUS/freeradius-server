@@ -1,5 +1,8 @@
 load-dictionary radius
 
+condition &User-Name !~ /^foo\nbar$/
+data !&User-Name =~ /^foo\nbar$/
+
 condition (ok =~ handled)
 data ERROR offset 7 Expected regular expression
 
@@ -49,8 +52,6 @@ data ERROR offset 13 Duplicate flag
 #  Escape the backslashes correctly
 #  And print them correctly
 #
-condition &User-Name !~ /^foo\nbar$/
-data !&User-Name =~ /^foo\nbar$/
 
 condition &User-Name =~ /@|\\/
 data &User-Name =~ /@|\\/

@@ -41,7 +41,7 @@ RCSID("$Id$")
 #  define EAP_TLS_MPPE_KEY_LEN     32
 #endif
 
-static FR_NAME_NUMBER const sim_state_table[] = {
+static fr_table_ordered_t const sim_state_table[] = {
 	{ "START",				EAP_SIM_SERVER_START				},
 	{ "CHALLENGE",				EAP_SIM_SERVER_CHALLENGE			},
 	{ "REAUTHENTICATE",			EAP_SIM_SERVER_REAUTHENTICATE			},
@@ -49,8 +49,8 @@ static FR_NAME_NUMBER const sim_state_table[] = {
 	{ "SUCCESS",				EAP_SIM_SERVER_SUCCESS				},
 	{ "FAILURE-NOTIFICATION",		EAP_SIM_SERVER_FAILURE_NOTIFICATION		},
 	{ "FAILURE",				EAP_SIM_SERVER_FAILURE				},
-	{ NULL }
 };
+static size_t sim_state_table_len = NUM_ELEMENTS(sim_state_table);
 
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_eap_sim_t, virtual_server) },
@@ -619,12 +619,12 @@ static void eap_sim_state_enter(eap_session_t *eap_session, eap_sim_server_state
 
 	if (new_state != eap_sim_session->state) {
 		RDEBUG2("Changed state %s -> %s",
-			fr_int2str(sim_state_table, eap_sim_session->state, "<unknown>"),
-			fr_int2str(sim_state_table, new_state, "<unknown>"));
+			fr_table_str_by_num(sim_state_table, eap_sim_session->state, "<unknown>"),
+			fr_table_str_by_num(sim_state_table, new_state, "<unknown>"));
 		eap_sim_session->state = new_state;
 	} else {
 		RDEBUG2("Reentering state %s",
-			fr_int2str(sim_state_table, eap_sim_session->state, "<unknown>"));
+			fr_table_str_by_num(sim_state_table, eap_sim_session->state, "<unknown>"));
 	}
 
 	switch (new_state) {
@@ -944,10 +944,10 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 			if (!vp) {
 				REDEBUG("EAP-SIM Peer rejected SIM-Start (%s) with client-error message but "
 					"has not supplied a client error code",
-					fr_int2str(sim_id_request_table, eap_sim_session->id_req, "<INVALID>"));
+					fr_table_str_by_num(sim_id_request_table, eap_sim_session->id_req, "<INVALID>"));
 			} else {
 				REDEBUG("Client rejected SIM-Start (%s) with error: %s (%i)",
-					fr_int2str(sim_id_request_table, eap_sim_session->id_req, "<INVALID>"),
+					fr_table_str_by_num(sim_id_request_table, eap_sim_session->id_req, "<INVALID>"),
 					fr_pair_value_enum(vp, buff), vp->vp_uint16);
 			}
 			eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE);
@@ -1112,7 +1112,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	switch (method) {
 	default:
 		RWDEBUG("EAP-Identity-Response hints that EAP-%s should be started, but we're attempting EAP-SIM",
-			fr_int2str(sim_id_method_hint_table, method, "<INVALID>"));
+			fr_table_str_by_num(sim_id_method_hint_table, method, "<INVALID>"));
 		break;
 
 	case SIM_METHOD_HINT_SIM:

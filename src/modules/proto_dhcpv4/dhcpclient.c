@@ -113,16 +113,16 @@ fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
 	{ NULL }
 };
 
-static const FR_NAME_NUMBER request_types[] = {
-	{ "discover", FR_DHCP_DISCOVER },
-	{ "request",  FR_DHCP_REQUEST },
-	{ "decline",  FR_DHCP_DECLINE },
-	{ "release",  FR_DHCP_RELEASE },
-	{ "inform",   FR_DHCP_INFORM },
-	{ "lease_query",  FR_DHCP_LEASE_QUERY },
-	{ "auto",     FR_CODE_UNDEFINED },
-	{ NULL, 0}
+static fr_table_t const request_types[] = {
+	{ "auto",     		FR_CODE_UNDEFINED	},
+	{ "decline",		FR_DHCP_DECLINE		},
+	{ "discover",		FR_DHCP_DISCOVER	},
+	{ "inform",		FR_DHCP_INFORM		},
+	{ "lease_query",	FR_DHCP_LEASE_QUERY	},
+	{ "release",		FR_DHCP_RELEASE		},
+	{ "request",		FR_DHCP_REQUEST		}
 };
+static size_t request_types_len = NUM_ELEMENTS(request_types);
 
 static void NEVER_RETURNS usage(void)
 {
@@ -711,7 +711,7 @@ int main(int argc, char **argv)
 	 */
 	if (argc >= 3) {
 		if (!isdigit((int) argv[2][0])) {
-			packet_code = fr_str2int(request_types, argv[2], -2);
+			packet_code = fr_table_num_by_str(request_types, argv[2], -2);
 			if (packet_code == -2) {
 				ERROR("Unknown packet type: %s", argv[2]);
 				usage();

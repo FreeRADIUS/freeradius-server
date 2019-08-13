@@ -110,13 +110,13 @@ static const CONF_PARSER unix_listen_config[] = {
 #define FR_READ  (1)
 #define FR_WRITE (2)
 
-static FR_NAME_NUMBER mode_names[] = {
-	{ "ro", FR_READ },
-	{ "read-only", FR_READ },
-	{ "read-write", FR_READ | FR_WRITE },
-	{ "rw", FR_READ | FR_WRITE },
-	{ NULL, 0 }
+static fr_table_t mode_names[] = {
+	{ "read-only",		FR_READ			},
+	{ "read-write",		FR_READ | FR_WRITE	},
+	{ "ro",			FR_READ			},
+	{ "rw",			FR_READ | FR_WRITE	}
 };
+static size_t mode_names_len = NUM_ELEMENTS(mode_names);
 
 
 #undef INT
@@ -1180,7 +1180,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	} else {
 		int mode;
 
-		mode = fr_str2int(mode_names, inst->mode_name, 0);
+		mode = fr_table_num_by_str(mode_names, inst->mode_name, 0);
 		if (!mode) {
 			ERROR("Invalid mode name \"%s\"",
 			      inst->mode_name);

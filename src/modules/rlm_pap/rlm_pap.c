@@ -146,45 +146,47 @@ fr_dict_attr_autoload_t rlm_pap_dict_attr[] = {
  *
  *	@note Header comparison is case insensitive.
  */
-static const FR_NAME_NUMBER header_names[] = {
-	{ "{clear}",		FR_CLEARTEXT_PASSWORD },
-	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
-	{ "{md5}",		FR_MD5_PASSWORD },
+static fr_table_t const header_names[] = {
+	{ "X- orclntv}",	FR_NT_PASSWORD },
 	{ "{base64_md5}",	FR_MD5_PASSWORD },
-	{ "{smd5}",		FR_SMD5_PASSWORD },
+	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
+	{ "{clear}",		FR_CLEARTEXT_PASSWORD },
 	{ "{crypt}",		FR_CRYPT_PASSWORD },
+	{ "{md4}",		FR_NT_PASSWORD },
+	{ "{md5}",		FR_MD5_PASSWORD },
+	{ "{ns-mta-md5}",	FR_NS_MTA_MD5_PASSWORD },
+	{ "{nthash}",		FR_NT_PASSWORD },
+	{ "{nt}",		FR_NT_PASSWORD },
 #ifdef HAVE_OPENSSL_EVP_H
-	{ "{sha2}",		FR_SHA2_PASSWORD },
 	{ "{sha224}",		FR_SHA2_PASSWORD },
 	{ "{sha256}",		FR_SHA2_PASSWORD },
+	{ "{sha2}",		FR_SHA2_PASSWORD },
 	{ "{sha384}",		FR_SHA2_PASSWORD },
 	{ "{sha512}",		FR_SHA2_PASSWORD },
+#endif
+	{ "{sha}",		FR_SHA_PASSWORD },
+	{ "{smd5}",		FR_SMD5_PASSWORD },
+#ifdef HAVE_OPENSSL_EVP_H
 	{ "{ssha224}",		FR_SSHA2_224_PASSWORD },
 	{ "{ssha256}",		FR_SSHA2_256_PASSWORD },
-	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
-	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	{ "{ssha3-224}",	FR_SSHA3_224_PASSWORD },
 	{ "{ssha3-256}",	FR_SSHA3_256_PASSWORD },
 	{ "{ssha3-384}",	FR_SSHA3_384_PASSWORD },
 	{ "{ssha3-512}",	FR_SSHA3_512_PASSWORD },
 #  endif
-	{ "{x-pbkdf2}",		FR_PBKDF2_PASSWORD },
+	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
+	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
 #endif
-	{ "{sha}",		FR_SHA_PASSWORD },
 	{ "{ssha}",		FR_SSHA_PASSWORD },
-	{ "{md4}",		FR_NT_PASSWORD },
-	{ "{nt}",		FR_NT_PASSWORD },
-	{ "{nthash}",		FR_NT_PASSWORD },
-	{ "{x-nthash}",		FR_NT_PASSWORD },
-	{ "{ns-mta-md5}",	FR_NS_MTA_MD5_PASSWORD },
 	{ "{x- orcllmv}",	FR_LM_PASSWORD },
-	{ "X- orclntv}",	FR_NT_PASSWORD },
-	{ NULL, 0 }
+	{ "{x-nthash}",		FR_NT_PASSWORD },
+	{ "{x-pbkdf2}",		FR_PBKDF2_PASSWORD },
 };
+static size_t header_names_len = NUM_ELEMENTS(header_names);
 
 #ifdef HAVE_OPENSSL_EVP_H
-static const FR_NAME_NUMBER pbkdf2_crypt_names[] = {
+static fr_table_t const pbkdf2_crypt_names[] = {
 	{ "HMACSHA1",		FR_SSHA_PASSWORD },
 	{ "HMACSHA2+224",	FR_SSHA2_224_PASSWORD },
 	{ "HMACSHA2+256",	FR_SSHA2_256_PASSWORD },
@@ -196,21 +198,20 @@ static const FR_NAME_NUMBER pbkdf2_crypt_names[] = {
 	{ "HMACSHA3+384",	FR_SSHA3_384_PASSWORD },
 	{ "HMACSHA3+512",	FR_SSHA3_512_PASSWORD },
 #  endif
-	{ NULL, 0 }
 };
+static size_t pbkdf2_crypt_names_len = NUM_ELEMENTS(pbkdf2_crypt_names);
 
-static const FR_NAME_NUMBER pbkdf2_passlib_names[] = {
+static fr_table_t const pbkdf2_passlib_names[] = {
 	{ "sha1",		FR_SSHA_PASSWORD },
 	{ "sha256",		FR_SSHA2_256_PASSWORD },
-	{ "sha512",		FR_SSHA2_512_PASSWORD },
-
-	{ NULL, 0 }
+	{ "sha512",		FR_SSHA2_512_PASSWORD }
 };
+static size_t pbkdf2_passlib_names_len = NUM_ELEMENTS(pbkdf2_passlib_names);
 #endif
 
 static ssize_t pap_password_header(fr_dict_attr_t const **out, char const *header)
 {
-	switch (fr_str2int(header_names, header, 0)) {
+	switch (fr_table_num_by_str(header_names, header, 0)) {
 	case FR_CLEARTEXT_PASSWORD:
 		*out = attr_cleartext_password;
 		break;
@@ -789,7 +790,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha_evp(UNUSED rlm_pap_t const *in
  *	- RLM_MODULE_OK
  */
 static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *request, const uint8_t *str, size_t len,
-								 FR_NAME_NUMBER const hash_names[],
+								 fr_table_t const hash_names[], size_t hash_names_len,
 								 char scheme_sep, char iter_sep, char salt_sep,
 								 bool iter_is_base64, VALUE_PAIR const *password)
 {
@@ -828,7 +829,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 		goto finish;
 	}
 
-	digest_type = fr_substr2int(hash_names, (char const *)p, -1, q - p);
+	digest_type = fr_table_num_by_substr(hash_names, (char const *)p, q - p, -1);
 	switch (digest_type) {
 	case FR_SSHA_PASSWORD:
 		evp_md = EVP_sha1();
@@ -971,7 +972,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 	}
 
 	RDEBUG2("PBKDF2 %s: Iterations %u, salt length %zu, hash length %zd",
-		fr_int2str(pbkdf2_crypt_names, digest_type, "<UNKNOWN>"),
+		fr_table_str_by_num(pbkdf2_crypt_names, digest_type, "<UNKNOWN>"),
 		iterations, salt_len, slen);
 
 	/*
@@ -1028,7 +1029,8 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(UNUSED rlm_pap_t cons
 			p = q + 1;
 		}
 		return pap_auth_pbkdf2_parse(request, p, end - p,
-					     pbkdf2_crypt_names, ':', ':', ':', true, password);
+					     pbkdf2_crypt_names, pbkdf2_crypt_names_len,
+					     ':', ':', ':', true, password);
 	}
 
 	/*
@@ -1039,7 +1041,8 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(UNUSED rlm_pap_t cons
 	if ((size_t)(end - p) >= sizeof("$PBKDF2$") && (memcmp(p, "$PBKDF2$", sizeof("$PBKDF2$") - 1) == 0)) {
 		p += sizeof("$PBKDF2$") - 1;
 		return pap_auth_pbkdf2_parse(request, p, end - p,
-					     pbkdf2_crypt_names, ':', ':', '$', false, password);
+					     pbkdf2_crypt_names, pbkdf2_crypt_names_len,
+					     ':', ':', '$', false, password);
 	}
 
 	/*
@@ -1052,7 +1055,8 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(UNUSED rlm_pap_t cons
 	if ((size_t)(end - p) >= sizeof("$pbkdf2-") && (memcmp(p, "$pbkdf2-", sizeof("$pbkdf2-") - 1) == 0)) {
 		p += sizeof("$pbkdf2-") - 1;
 		return pap_auth_pbkdf2_parse(request, p, end - p,
-					     pbkdf2_passlib_names, '$', '$', '$', false, password);
+					     pbkdf2_passlib_names, pbkdf2_passlib_names_len,
+					     '$', '$', '$', false, password);
 	}
 
 	REDEBUG("Can't determine format of PBKDF2-Password");

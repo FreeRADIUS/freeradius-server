@@ -46,20 +46,19 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /** Certificate formats
  *
  */
-static const FR_NAME_NUMBER certificate_format_table[] = {
-	{ "PEM",	SSL_FILETYPE_PEM	},
+static fr_table_t const certificate_format_table[] = {
 	{ "ASN1",	SSL_FILETYPE_ASN1	},
 	{ "DER",	SSL_FILETYPE_ASN1	},	/* Alternate name for ASN1 */
-
-	{ NULL,		0			},
+	{ "PEM",	SSL_FILETYPE_PEM	}
 };
+static size_t certificate_format_table_len = NUM_ELEMENTS(certificate_format_table);
 
-static const FR_NAME_NUMBER chain_verify_mode_table[] = {
+static fr_table_t const chain_verify_mode_table[] = {
 	{ "hard",	FR_TLS_CHAIN_VERIFY_HARD },
-	{ "soft",	FR_TLS_CHAIN_VERIFY_SOFT },
 	{ "none",	FR_TLS_CHAIN_VERIFY_NONE },
-	{ NULL,		0			 },
+	{ "soft",	FR_TLS_CHAIN_VERIFY_SOFT }
 };
+static size_t chain_verify_mode_table_len = NUM_ELEMENTS(chain_verify_mode_table);
 
 static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 				   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
@@ -227,7 +226,7 @@ static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
 	char const			*type_str;
 
 	type_str = cf_pair_value(cf_item_to_pair(ci));
-	type = fr_str2int(chain_verify_mode_table, type_str, 0);
+	type = fr_table_num_by_str(chain_verify_mode_table, type_str, 0);
 	if (type == 0) {
 		cf_log_err(ci, "Invalid mode \"%s\", expected 'hard', 'soft' or 'none'", type_str);
 		return -1;
@@ -255,7 +254,7 @@ static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUS
 	char const	*type_str;
 
 	type_str = cf_pair_value(cf_item_to_pair(ci));
-	type = fr_str2int(certificate_format_table, type_str, -1);
+	type = fr_table_num_by_str(certificate_format_table, type_str, -1);
 	if (type == -1) {
 		cf_log_err(ci, "Invalid format \"%s\", expected either 'PEM' or 'ASN1'", type_str);
 		return -1;

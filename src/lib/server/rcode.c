@@ -32,15 +32,15 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/rcode.h>
 
-FR_NAME_NUMBER const rcode_table[] = {
-	{ "reject",		RLM_MODULE_REJECT       },
+fr_table_t const rcode_table[] = {
 	{ "fail",		RLM_MODULE_FAIL	 	},
-	{ "ok",			RLM_MODULE_OK	   	},
 	{ "handled",		RLM_MODULE_HANDLED      },
 	{ "invalid",		RLM_MODULE_INVALID      },
-	{ "userlock",		RLM_MODULE_USERLOCK     },
-	{ "notfound", 		RLM_MODULE_NOTFOUND     },
 	{ "noop",		RLM_MODULE_NOOP	 	},
+	{ "notfound", 		RLM_MODULE_NOTFOUND     },
+	{ "ok",			RLM_MODULE_OK	   	},
+	{ "reject",		RLM_MODULE_REJECT       },
 	{ "updated",		RLM_MODULE_UPDATED      },
-	{ NULL, 0 }
+	{ "userlock",		RLM_MODULE_USERLOCK     }
 };
+size_t rcode_table_len = NUM_ELEMENTS(rcode_table);

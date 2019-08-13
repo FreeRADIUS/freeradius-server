@@ -100,13 +100,17 @@ extern const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIE
 
 extern const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES];
 
-extern const FR_NAME_NUMBER http_auth_table[];
+extern fr_table_t const http_auth_table[];
+extern size_t http_auth_table_len;
 
-extern const FR_NAME_NUMBER http_method_table[];
+extern fr_table_t const http_method_table[];
+extern size_t http_method_table_len;
 
-extern const FR_NAME_NUMBER http_body_type_table[];
+extern fr_table_t const http_body_type_table[];
+extern size_t http_body_type_table_len;
 
-extern const FR_NAME_NUMBER http_content_type_table[];
+extern fr_table_t const http_content_type_table[];
+extern size_t http_content_type_table_len;
 
 /*
  *	Structure for section configuration

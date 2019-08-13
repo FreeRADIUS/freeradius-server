@@ -41,9 +41,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 static const CONF_PARSER priority_config[] = {
 	{ FR_CONF_OFFSET("Join-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_PACKET_TYPE_VALUE_JOIN_REQUEST]),
-	   .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
+	   .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
 	{ FR_CONF_OFFSET("Reconfirm-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST]),
-	   .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
+	   .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
 
 	CONF_PARSER_TERMINATOR
 };

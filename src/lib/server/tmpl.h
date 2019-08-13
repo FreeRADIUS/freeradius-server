@@ -94,7 +94,8 @@ typedef enum pair_list_e {
 	PAIR_LIST_UNKNOWN		//!< Unknown list.
 } pair_list_t;
 
-extern const FR_NAME_NUMBER pair_list_table[];
+extern fr_table_t const pair_list_table[];
+extern size_t pair_list_table_len;
 
 typedef enum requests_ref_e {
 	REQUEST_CURRENT = 0,		//!< The current request (default).
@@ -107,7 +108,8 @@ typedef enum requests_ref_e {
 	REQUEST_UNKNOWN			//!< Unknown request.
 } request_ref_t;
 
-extern const FR_NAME_NUMBER request_ref_table[];
+extern fr_table_t const request_ref_table[];
+extern size_t request_ref_table_len;
 
 /** Types of #vp_tmpl_t
  */
@@ -141,7 +143,8 @@ typedef enum tmpl_type_e {
 #define tmpl_is_regex_struct(vpt) 	(vpt->type == TMPL_TYPE_REGEX_STRUCT)
 #define tmpl_is_null(vpt) 		(vpt->type == TMPL_TYPE_NULL)
 
-extern const FR_NAME_NUMBER tmpl_type_table[];
+extern fr_table_t const tmpl_type_table[];
+extern size_t tmpl_type_table_len;
 
 typedef struct vp_tmpl_s vp_tmpl_t;
 typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;

@@ -25,29 +25,29 @@
 /** Strings for L4 protocols
  *
  */
-FR_NAME_NUMBER const fr_net_ip_proto_table[] = {
-	{ "UDP",	IPPROTO_UDP },
+fr_table_t const fr_net_ip_proto_table[] = {
 	{ "TCP",	IPPROTO_TCP },
-	{ NULL, 0 }
+	{ "UDP",	IPPROTO_UDP }
 };
+size_t fr_net_ip_proto_table_len = NUM_ELEMENTS(fr_net_ip_proto_table);
 
 /** Strings for socket types
  *
  */
-FR_NAME_NUMBER const fr_net_sock_type_table[] = {
-	{ "UDP",	SOCK_DGRAM },
-	{ "TCP",	SOCK_STREAM },
-	{ NULL, 0 }
+fr_table_t const fr_net_sock_type_table[] = {
+	{ "TCP",	SOCK_STREAM	},
+	{ "UDP",	SOCK_DGRAM	}
 };
+size_t fr_net_sock_type_table_len = NUM_ELEMENTS(fr_net_sock_type_table);
 
 /** Strings for address families
  *
  */
-FR_NAME_NUMBER const fr_net_af_table[] = {
-	{ "IPv4",	AF_INET },
-	{ "IPv6",	AF_INET6 },
-	{ NULL, 0 }
+fr_table_t const fr_net_af_table[] = {
+	{ "IPv4",	AF_INET		},
+	{ "IPv6",	AF_INET6	}
 };
+size_t fr_net_af_table_len = NUM_ELEMENTS(fr_net_af_table);
 
 /** Check UDP header is valid
  *

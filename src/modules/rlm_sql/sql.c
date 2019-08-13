@@ -43,25 +43,25 @@ RCSID("$Id$")
  *	Translate rlm_sql rcodes to humanly
  *	readable reason strings.
  */
-const FR_NAME_NUMBER sql_rcode_description_table[] = {
-	{ "success",		RLM_SQL_OK		},
+fr_table_t const sql_rcode_description_table[] = {
 	{ "need alt query",	RLM_SQL_ALT_QUERY	},
-	{ "server error",	RLM_SQL_ERROR		},
-	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
 	{ "no connection",	RLM_SQL_RECONNECT	},
 	{ "no more rows",	RLM_SQL_NO_MORE_ROWS	},
-	{ NULL, 0 }
+	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
+	{ "server error",	RLM_SQL_ERROR		},
+	{ "success",		RLM_SQL_OK		}
 };
+size_t sql_rcode_description_table_len = NUM_ELEMENTS(sql_rcode_description_table);
 
-const FR_NAME_NUMBER sql_rcode_table[] = {
-	{ "ok",			RLM_SQL_OK		},
+fr_table_t const sql_rcode_table[] = {
 	{ "alternate",		RLM_SQL_ALT_QUERY	},
+	{ "empty",		RLM_SQL_NO_MORE_ROWS	},
 	{ "error",		RLM_SQL_ERROR		},
 	{ "invalid",		RLM_SQL_QUERY_INVALID	},
-	{ "reconnect",		RLM_SQL_RECONNECT	},
-	{ "empty",		RLM_SQL_NO_MORE_ROWS	},
-	{ NULL, 0 }
+	{ "ok",			RLM_SQL_OK		},
+	{ "reconnect",		RLM_SQL_RECONNECT	}
 };
+size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
 
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {

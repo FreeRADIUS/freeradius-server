@@ -32,14 +32,13 @@
 /** PKEY types (friendly names)
  *
  */
-static const FR_NAME_NUMBER pkey_types[] = {
-	{ "RSA",	EVP_PKEY_RSA		},
-	{ "DSA",	EVP_PKEY_DSA		},
+static fr_table_t const pkey_types[] = {
 	{ "DH",		EVP_PKEY_DH		},
+	{ "DSA",	EVP_PKEY_DSA		},
 	{ "EC",		EVP_PKEY_EC		},
-
-	{ NULL, 0				},
+	{ "RSA",	EVP_PKEY_RSA		}
 };
+static size_t pkey_types_len = NUM_ELEMENTS(pkey_types);
 
 /** Returns a friendly identifier for the public key type of a certificate
  *
@@ -58,7 +57,7 @@ char const *tls_utils_x509_pkey_type(X509 *cert)
 	if (!pkey) return NULL;
 
 	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
-	type_str = fr_int2str(pkey_types, pkey_type, OBJ_nid2sn(pkey_type));
+	type_str = fr_table_str_by_num(pkey_types, pkey_type, OBJ_nid2sn(pkey_type));
 	EVP_PKEY_free(pkey);
 
 	return type_str;

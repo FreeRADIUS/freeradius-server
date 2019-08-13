@@ -25,7 +25,7 @@
  */
 RCSIDH(rcode_h, "$Id$")
 
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,7 +51,8 @@ typedef enum {
 	RLM_MODULE_UNKNOWN,				//!< Error resolving rcode (should not be
 							//!< returned by modules).
 } rlm_rcode_t;
-extern const FR_NAME_NUMBER rcode_table[];
+extern fr_table_t const rcode_table[];
+extern size_t rcode_table_len;
 
 /** Rcodes that translate to a user configurable section failing overall
  *

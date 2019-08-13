@@ -58,15 +58,14 @@ typedef enum {
 	LINELOG_DST_TCP,				//!< Log via TCP.
 } linefr_log_dst_t;
 
-static FR_NAME_NUMBER const linefr_log_dst_table[] = {
+static fr_table_t const linefr_log_dst_table[] = {
 	{ "file",	LINELOG_DST_FILE	},
 	{ "syslog",	LINELOG_DST_SYSLOG	},
-	{ "unix",	LINELOG_DST_UNIX	},
-	{ "udp",	LINELOG_DST_UDP		},
 	{ "tcp",	LINELOG_DST_TCP		},
-
-	{  NULL , -1 }
+	{ "udp",	LINELOG_DST_UDP		},
+	{ "unix",	LINELOG_DST_UNIX	}
 };
+static size_t linefr_log_dst_table_len = NUM_ELEMENTS(linefr_log_dst_table);
 
 typedef struct {
 	fr_ipaddr_t		dst_ipaddr;		//!< Network server.
@@ -297,7 +296,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		inst->file.escape_func = rad_filename_make_safe;
 	}
 
-	inst->log_dst = fr_str2int(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
+	inst->log_dst = fr_table_num_by_str(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
 	if (inst->log_dst == LINELOG_DST_INVALID) {
 		cf_log_err(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
 		return -1;
@@ -354,7 +353,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 #else
 		if (inst->syslog.facility) {
-			num = fr_str2int(syslog_facility_table, inst->syslog.facility, -1);
+			num = fr_table_num_by_str(syslog_facility_table, inst->syslog.facility, -1);
 			if (num < 0) {
 				cf_log_err(conf, "Invalid syslog facility \"%s\"", inst->syslog.facility);
 				return -1;
@@ -362,7 +361,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			inst->syslog.priority |= num;
 		}
 
-		num = fr_str2int(syslog_severity_table, inst->syslog.severity, -1);
+		num = fr_table_num_by_str(syslog_severity_table, inst->syslog.severity, -1);
 		if (num < 0) {
 			cf_log_err(conf, "Invalid syslog severity \"%s\"", inst->syslog.severity);
 			return -1;

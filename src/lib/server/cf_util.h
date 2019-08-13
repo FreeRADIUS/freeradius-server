@@ -46,6 +46,7 @@ typedef struct cf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary da
 #include <sys/time.h>
 
 #include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/log.h>
 
@@ -201,7 +202,7 @@ int		_cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx);
 /*
  *	Validation
  */
-int		cf_pair_in_table(int32_t *out, FR_NAME_NUMBER const *table, CONF_PAIR *cp);
+int		cf_pair_in_table(int32_t *out, fr_table_t const *table, size_t table_len, CONF_PAIR *cp);
 
 /*
  *	Error logging

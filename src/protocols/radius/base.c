@@ -119,17 +119,16 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
  */
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
-FR_NAME_NUMBER const fr_request_types[] = {
-	{ "auth",	FR_CODE_ACCESS_REQUEST },
-	{ "challenge",	FR_CODE_ACCESS_CHALLENGE },
-	{ "acct",	FR_CODE_ACCOUNTING_REQUEST },
-	{ "status",	FR_CODE_STATUS_SERVER },
-	{ "disconnect",	FR_CODE_DISCONNECT_REQUEST },
-	{ "coa",	FR_CODE_COA_REQUEST },
-	{ "auto",	FR_CODE_UNDEFINED },
-
-	{ NULL, 0}
+fr_table_t const fr_request_types[] = {
+	{ "acct",	FR_CODE_ACCOUNTING_REQUEST	},
+	{ "auth",	FR_CODE_ACCESS_REQUEST		},
+	{ "auto",	FR_CODE_UNDEFINED		},
+	{ "challenge",	FR_CODE_ACCESS_CHALLENGE	},
+	{ "coa",	FR_CODE_COA_REQUEST		},
+	{ "disconnect",	FR_CODE_DISCONNECT_REQUEST	},
+	{ "status",	FR_CODE_STATUS_SERVER		}
 };
+size_t fr_request_types_len = NUM_ELEMENTS(fr_request_types);
 
 char const *fr_packet_codes[FR_RADIUS_MAX_PACKET_CODE] = {
 	"",					//!< 0

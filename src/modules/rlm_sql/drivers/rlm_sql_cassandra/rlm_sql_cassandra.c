@@ -164,25 +164,25 @@ typedef struct {
 								//!< server.
 } rlm_sql_cassandra_t;
 
-static const FR_NAME_NUMBER consistency_levels[] = {
-	{ "any",		CASS_CONSISTENCY_ANY },
-	{ "one",		CASS_CONSISTENCY_ONE },
-	{ "two",		CASS_CONSISTENCY_TWO },
-	{ "three",		CASS_CONSISTENCY_THREE },
-	{ "quorum",		CASS_CONSISTENCY_QUORUM	},
-	{ "all",		CASS_CONSISTENCY_ALL },
-	{ "each_quorum",	CASS_CONSISTENCY_EACH_QUORUM },
-	{ "local_quorum",	CASS_CONSISTENCY_LOCAL_QUORUM },
-	{ "local_one",		CASS_CONSISTENCY_LOCAL_ONE },
-	{ NULL, 0 }
+static fr_table_t const consistency_levels[] = {
+	{ "all",		CASS_CONSISTENCY_ALL		},
+	{ "any",		CASS_CONSISTENCY_ANY		},
+	{ "each_quorum",	CASS_CONSISTENCY_EACH_QUORUM	},
+	{ "local_one",		CASS_CONSISTENCY_LOCAL_ONE	},
+	{ "local_quorum",	CASS_CONSISTENCY_LOCAL_QUORUM	},
+	{ "one",		CASS_CONSISTENCY_ONE		},
+	{ "quorum",		CASS_CONSISTENCY_QUORUM		},
+	{ "three",		CASS_CONSISTENCY_THREE		},
+	{ "two",		CASS_CONSISTENCY_TWO		}
 };
+static size_t consistency_levels_len = NUM_ELEMENTS(consistency_levels);
 
-static const FR_NAME_NUMBER verify_cert_table[] = {
-	{ "no",			CASS_SSL_VERIFY_NONE },
-	{ "yes",		CASS_SSL_VERIFY_PEER_CERT },
-	{ "identity",		CASS_SSL_VERIFY_PEER_IDENTITY },
-	{ NULL, 0 }
+static fr_table_t const verify_cert_table[] = {
+	{ "identity",		CASS_SSL_VERIFY_PEER_IDENTITY	},
+	{ "no",			CASS_SSL_VERIFY_NONE		},
+	{ "yes",		CASS_SSL_VERIFY_PEER_CERT	}
 };
+static size_t verify_cert_table_len = NUM_ELEMENTS(verify_cert_table);
 
 static CONF_PARSER load_balance_dc_aware_config[] = {
 	{ FR_CONF_OFFSET("local_dc", FR_TYPE_STRING, rlm_sql_cassandra_t, lbdc_local_dc) },
@@ -738,7 +738,7 @@ do {\
 	if (inst->consistency_str) {
 		int consistency;
 
-		consistency = fr_str2int(consistency_levels, inst->consistency_str, -1);
+		consistency = fr_table_num_by_str(consistency_levels, inst->consistency_str, -1);
 		if (consistency < 0) {
 			ERROR("Invalid consistency level \"%s\"", inst->consistency_str);
 			return -1;
@@ -857,7 +857,7 @@ do {\
 		if (inst->tls_verify_cert_str) {
 			int	verify_cert;
 
-			verify_cert = fr_str2int(verify_cert_table, inst->tls_verify_cert_str, -1);
+			verify_cert = fr_table_num_by_str(verify_cert_table, inst->tls_verify_cert_str, -1);
 			if (verify_cert < 0) {
 				ERROR("Invalid certificate validation type \"%s\", "
 				      "must be one of 'yes', 'no', 'identity'", inst->tls_verify_cert_str);

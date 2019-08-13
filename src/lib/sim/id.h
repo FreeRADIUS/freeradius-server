@@ -22,7 +22,7 @@
  * @copyright 2017 The FreeRADIUS server project
  */
 #include <sys/types.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 
 #define SIM_3GPP_PSEUDONYM_LEN			23	//!< Length of a base64 encoded 3gpp pseudonym.
 #define SIM_IMSI_MAX_LEN			15	//!< Length of an IMSI number in ASCII.
@@ -75,8 +75,10 @@ typedef enum {
 	SIM_PERMANENT_ID_REQ,			//!< Request IMSI.
 } fr_sim_id_req_type_t;
 
-extern FR_NAME_NUMBER const sim_id_request_table[];
-extern FR_NAME_NUMBER const sim_id_method_hint_table[];
+extern fr_table_t const sim_id_request_table[];
+extern size_t sim_id_request_table_len;
+extern fr_table_t const sim_id_method_hint_table[];
+extern size_t sim_id_method_hint_table_len;
 
 #define SIM_ID_TAG_PSEUDONYM_SIM_B64		55
 #define SIM_ID_TAG_PSEUDONYM_AKA_B64		54
