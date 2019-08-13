@@ -4590,7 +4590,7 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
 static int dict_read_process_struct(dict_from_file_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t			*da, *mutable;
-	fr_dict_attr_t const		*parent;
+	fr_dict_attr_t const		*parent, *previous;
 	fr_value_box_t			value;
 	fr_type_t			type;
 	unsigned int			attr;
@@ -4620,6 +4620,32 @@ static int dict_read_process_struct(dict_from_file_ctx_t *ctx, char **argv, int 
 	 *	da->type is an unsigned integer, AND that da->parent->type == struct
 	 */
 	if (!fr_cond_assert(parent->parent->type == FR_TYPE_STRUCT)) return -1;
+
+	/*
+	 *	The attribute in the current stack frame MUST be the
+	 *	enclosing "struct".
+	 */
+	if (ctx->stack[ctx->stack_depth].da != parent->parent) {
+		fr_strerror_printf("Attribute '%s' is not a MEMBER of the current 'struct'", argv[0]);
+		return -1;
+	}
+
+	/*
+	 *	Check that the previous attribute exists, and is NOT a
+	 *	variable-length type.
+	 */
+	previous = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->stack[ctx->stack_depth].member_num);
+	if (!previous) return -1;	/* should never happen */
+
+	switch (previous->type) {
+	case FR_TYPE_FIXED_SIZE:
+		break;
+
+	default:
+		fr_strerror_printf("STRUCT attribute '%s' cannot follow a variable-sized previous MEMBER attribute '%s'",
+				   argv[0], previous->name);
+		return -1;
+	}
 
 	/*
 	 *	A STRUCT also defines a VALUE
