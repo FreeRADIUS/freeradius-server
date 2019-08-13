@@ -4663,6 +4663,7 @@ static int dict_read_process_struct(dict_from_file_ctx_t *ctx, char **argv, int 
 		 */
 	case FR_TYPE_OCTETS:
 		if (previous->flags.length != 0) break;
+		/* FALL-THROUGH */
 
 	default:
 		fr_strerror_printf("STRUCT attribute '%s' cannot follow a variable-sized previous MEMBER attribute '%s'",
