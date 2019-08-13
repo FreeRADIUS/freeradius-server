@@ -239,8 +239,9 @@ while (@ARGV) {
 	#
 	#  Values.
 	#
-	if (/^VALUE\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
-	    $attr=$1;
+	if (/^(VALUE|STRUCT)\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
+	    $cmd=$1;
+	    $attr=$2;
 	    $len = length $attr;
 
 
@@ -271,7 +272,7 @@ while (@ARGV) {
 		$lena = $len - 32;
 	    }
 
-	    $name = $2;
+	    $name = $3;
 	    $len = length $name;
 	    if ($len < 24) {
 		$lenx = 24 - $lena - $len;
@@ -286,7 +287,7 @@ while (@ARGV) {
 		$tabsn = " ";
 	    }
 
-	    push @output, "VALUE\t$attr$tabsa$name$tabsn$3$4\n";
+	    push @output, "$cmd\t$attr$tabsa$name$tabsn$4$5\n";
 	    next;
 	}
 
