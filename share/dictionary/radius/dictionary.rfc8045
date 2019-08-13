@@ -28,9 +28,9 @@ ATTRIBUTE	IP-Port-Range-Start			241.5.9	integer
 ATTRIBUTE	IP-Port-Range-End			241.5.10	integer
 ATTRIBUTE	IP-Port-Local-Id			241.5.11	string
 
-VALUE IP-Port-Alloc  Reserved        0
-VALUE IP-Port-Alloc  Allocation      1
-VALUE IP-Port-Alloc  Deallocation    2
+VALUE	IP-Port-Alloc			Reserved		0
+VALUE	IP-Port-Alloc			Allocation		1
+VALUE	IP-Port-Alloc			Deallocation		2
 
 ATTRIBUTE	IP-Port-Range-Type			241.6.1	integer
 ATTRIBUTE	IP-Port-Range-Limit			241.6.2	integer
@@ -44,9 +44,9 @@ ATTRIBUTE	IP-Port-Range-Range-Start		241.6.9	integer
 ATTRIBUTE	IP-Port-Range-Range-End			241.6.10	integer
 ATTRIBUTE	IP-Port-Range-Local-Id			241.6.11	string
 
-VALUE IP-Port-Range-Alloc  Reserved        0
-VALUE IP-Port-Range-Alloc  Allocation      1
-VALUE IP-Port-Range-Alloc  Deallocation    2
+VALUE	IP-Port-Range-Alloc		Reserved		0
+VALUE	IP-Port-Range-Alloc		Allocation		1
+VALUE	IP-Port-Range-Alloc		Deallocation		2
 
 ATTRIBUTE	IP-Port-Map-Type			241.7.1	integer
 ATTRIBUTE	IP-Port-Map-Limit			241.7.2	integer
@@ -60,6 +60,6 @@ ATTRIBUTE	IP-Port-Map-Range-Start			241.7.9	integer
 ATTRIBUTE	IP-Port-Map-Range-End			241.7.10	integer
 ATTRIBUTE	IP-Port-Map-Local-Id			241.7.11	string
 
-VALUE IP-Port-Map-Alloc  Reserved        0
-VALUE IP-Port-Map-Alloc  Allocation      1
-VALUE IP-Port-Map-Alloc  Deallocation    2
+VALUE	IP-Port-Map-Alloc		Reserved		0
+VALUE	IP-Port-Map-Alloc		Allocation		1
+VALUE	IP-Port-Map-Alloc		Deallocation		2
