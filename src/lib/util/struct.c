@@ -210,6 +210,8 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	unsigned int		child_num = 1;
 	uint8_t			*p = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_dict_attr_t const   	*key_da;
+	uint8_t			*key_data;
 
 	VP_VERIFY(fr_cursor_current(cursor));
 
@@ -224,6 +226,9 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		return -1;
 	}
 
+	key_da = NULL;
+	key_data = NULL;
+
 	while (outlen) {
 		fr_dict_attr_t const *child;
 
@@ -236,6 +241,11 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			child = fr_dict_attr_child_by_num(parent, child_num);
 
 			if (!child) break;
+
+			if (child->flags.extra) {
+				key_da = child;
+				key_data = p;
+			}
 
 			if (child->flags.length > outlen) {
 				len = outlen;
@@ -256,6 +266,11 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
 		if (len <= 0) return -1;
 
+		if (child->flags.extra) {
+			key_da = child;
+			key_data = p;
+		}
+
 		p += len;
 		outlen -= len;				/* Subtract from the buffer we have available */
 		child_num++;
@@ -270,6 +285,50 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 *	entries in this structure, stop.
 		 */
 		if (!vp || (vp->da->parent != parent)) break;
+	}
+
+	if (!vp || !outlen) return p - out;
+
+	/*
+	 *	Encode the key field based on the value of the next
+	 *	attribute.  Note that there isn't much point in
+	 *	converting key_da->attr into a value_box_t, and then
+	 *	calling fr_value_box_to_network() to do the work.  The
+	 *	code below isn't much larger in the source, but is
+	 *	rather substantially simpler over all.
+	 */
+	if (key_da && (vp->da->parent == key_da)) {
+		switch (key_da->type) {
+		case FR_TYPE_UINT8:
+			*key_data = key_da->attr;
+			break;
+
+		case FR_TYPE_UINT16:
+			if ((p - key_data) < 2) return p - out;
+
+			key_data[0] = (key_da->attr >> 8) & 0xff;
+			key_data[1] = key_da->attr & 0xff;
+			break;
+
+		case FR_TYPE_UINT32:
+			if ((p - key_data) < 4) return p - out;
+
+			key_data[0] = (key_da->attr >> 24) & 0xff;
+			key_data[1] = (key_da->attr >> 16) & 0xff;
+			key_data[2] = (key_da->attr >> 8) & 0xff;
+			key_data[3] = key_da->attr & 0xff;
+			break;
+
+		default:
+			return p - out;
+		}
+
+		/*
+		 *	We don't need to recurse.  the caller will see
+		 *	that the next attribute is of type 'struct',
+		 *	and will call this function again to encode
+		 *	it.
+		 */
 	}
 
 	return p - out;
