@@ -179,7 +179,11 @@ static unlang_action_t unlang_call(REQUEST *request,
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	process_inst = cf_data_value(cf_data_find(g->server_cs, void, type_enum->alias));
+	/*
+	 *	We MUST use _cd_data_find() so that we don't try to
+	 *	find the "value" with talloc type "CF_IDENT_ANY".
+	 */
+	process_inst = cf_data_value(_cf_data_find(cf_section_to_item(g->server_cs), CF_IDENT_ANY, type_enum->alias));
 	/* can be NULL */
 
 	child = unlang_io_subrequest_alloc(request, dict, UNLANG_NORMAL_CHILD);

@@ -123,6 +123,8 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	if (IS_WILDCARD(ident1)) {
 		CONF_ITEM *ci;
 
+		fprintf(stderr, "WILDCARD LOOK FOR %s\n", ident2);
+
 		for (ci = parent->child;
 		     ci != NULL;
 		     ci = ci->next) {
@@ -1465,23 +1467,7 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
  */
 CONF_DATA const *_cf_data_find(CONF_ITEM const *ci, char const *type, char const *name)
 {
-	CONF_ITEM *found;
-
-	found = cf_find(ci, CONF_ITEM_DATA, type, name);
-	if (found) return cf_item_to_data(found);
-
-	if (!type) return NULL;
-
-	/*
-	 *	type "void" is special, which means "wildcard"
-	 */
-	if ((type[0] == 'v') && (type[1] == 'o') && (type[2] == 'i') &&
-	    (type[3] == 'd') && !type[4]) {
-		found = cf_find(ci, CONF_ITEM_DATA, CF_IDENT_ANY, name);
-		if (found) return cf_item_to_data(found);
-	}
-
-	return NULL;
+	return cf_item_to_data(cf_find(ci, CONF_ITEM_DATA, type, name));
 }
 
 /** Return the next item of user data
