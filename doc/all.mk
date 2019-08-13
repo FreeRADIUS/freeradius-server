@@ -166,10 +166,10 @@ DOC_UPDATED_LABEL = "FreeRADIUS ${RADIUSD_VERSION_STRING} - \#$(shell git rev-pa
 doc/%.html: doc/%.adoc
 	@echo HTML $^
 	$(eval BASEDIR := $(call DOC_BASEDIR,$(subst doc/,,$(dir $^))))
-	$(eval BASEDIR := $(if $(BASEDIR),$(BASEDIR),.))
+	$(eval BASEDIR := $(if $(BASEDIR),$(BASEDIR),./))
 	${Q}$(ASCIIDOCTOR) $< -a toc="left"                              \
 	                      -a docinfodir="$(BASEDIR)/templates"       \
-	                      -a basedir="$(BASEDIR)/"                   \
+	                      -a basedir="$(BASEDIR)"                    \
 	                      -a docinfo="shared,private"                \
 	                      -a last-update-label=${DOC_UPDATED_LABEL}  \
 	                      -a stylesdir="$(BASEDIR)/css"              \
