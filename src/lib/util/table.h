@@ -80,7 +80,7 @@ _Generic((_table), \
 )(_table, _table ## _len, _name, _def)
 
 int		fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_len,
-					      char const *name, size_t name_len, int def);
+					      char const *name, ssize_t name_len, int def);
 
 int		fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table_len,
 				  	       char const *name, ssize_t name_len, int def);
