@@ -117,7 +117,8 @@ int fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_l
 		/*
 		 *	Match up to the length of the table entry if len is < 0.
 		 */
-		ret = strncasecmp(name, table[mid].name, (name_len < 0) ?  strlen(table[mid].name) : name_len);
+		ret = strncasecmp(name, table[mid].name,
+				  (name_len < 0) ?  strlen(table[mid].name) : (size_t)name_len);
 		if (ret == 0) return table[mid].number;
 
 		if (ret < 0) {
@@ -163,7 +164,8 @@ int fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table
 		/*
 		 *	Match up to the length of the table entry if len is < 0.
 		 */
-		if (strncasecmp(name, table[i].name, (name_len < 0) ? tlen : name_len) == 0) return table[i].number;
+		if (strncasecmp(name, table[i].name,
+				(name_len < 0) ? tlen : (size_t)name_len) == 0) return table[i].number;
 	}
 
 	return def;
@@ -297,9 +299,7 @@ char const *_fr_table_str_by_num(fr_table_ordered_t const *table, size_t table_l
 {
 	size_t i;
 
-	for (i = 0; i < table_len; i++) {
-		if (table[i].number == number) return table[i].name;
-	}
+	for (i = 0; i < table_len; i++) if (table[i].number == number) return table[i].name;
 
 	return def;
 }
