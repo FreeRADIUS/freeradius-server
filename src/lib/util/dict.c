@@ -4481,7 +4481,7 @@ static int dict_read_process_struct(dict_from_file_ctx_t *ctx, char **argv, int 
 		break;
 
 	default:
-		fr_strerror_printf("Invalid data type in attribure '%s'", argv[0]);
+		fr_strerror_printf("Invalid data type in attribute '%s'", argv[0]);
 		fr_value_box_clear(&value);
 		return -1;
 	}
@@ -4646,7 +4646,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 #endif
 
 		if (strcasecmp(dict->root->name, argv[0]) != 0) {
-			fr_strerror_printf("Conflicting names \"%s\" vs \"%s\" for PROTOCOL %u",
+			fr_strerror_printf("Conflicting names current \"%s\" vs new \"%s\" for PROTOCOL %u",
 					   dict->root->name, argv[0], dict->root->attr);
 			return -1;
 		}
@@ -4657,7 +4657,8 @@ static int dict_read_process_protocol(char **argv, int argc)
 	 */
 	if (dict) {
 		if (dict->root->flags.type_size != type_size) {
-			fr_strerror_printf("Conflicting flags for PROTOCOL \"%s\"", dict->root->name);
+			fr_strerror_printf("Conflicting flags for PROTOCOL \"%s\" (current %d versus new %d)",
+					   dict->root->name, dict->root->flags.type_size, type_size);
 			return -1;
 		}
 		return 0;
