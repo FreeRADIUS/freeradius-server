@@ -956,7 +956,7 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	default:
 		fr_strerror_printf("Attributes of type '%s' cannot have child attributes",
-				   fr_int2str(fr_value_box_type_table, type, "???"));
+				   fr_table_str_by_num(fr_value_box_type_table, type, "<UNKNOWN>"));
 		return false;
 	}
 
