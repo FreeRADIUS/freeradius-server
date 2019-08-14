@@ -51,7 +51,7 @@ typedef struct value_box fr_value_box_t;
 extern "C" {
 #endif
 
-extern fr_table_t const fr_value_box_type_table[];
+extern fr_table_ordered_t const fr_value_box_type_table[];
 extern size_t fr_value_box_type_table_len;
 
 extern size_t const fr_value_box_field_sizes[];

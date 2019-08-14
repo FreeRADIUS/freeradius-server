@@ -254,7 +254,7 @@ const bool fr_str_tok[] = {
  *	Returns 0 or special token value.
  */
 static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
-			 fr_table_t const *tokenlist, size_t tokenlist_len, bool unescape)
+			 fr_table_ordered_t const *tokenlist, size_t tokenlist_len, bool unescape)
 {
 	char			*s;
 	char const		*p;

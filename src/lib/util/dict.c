@@ -5615,8 +5615,8 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	 *	that function does too many checks.
 	 */
 	for (i = 0; i < fr_value_box_type_table_len; i++) {
-		fr_dict_attr_t		*n;
-		fr_table_t const	*p = &fr_value_box_type_table[i];
+		fr_dict_attr_t			*n;
+		fr_table_ordered_t const	*p = &fr_value_box_type_table[i];
 
 		type_name = talloc_typed_asprintf(NULL, "Tmp-Cast-%s", p->name);
 

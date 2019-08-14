@@ -465,8 +465,8 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		fr_dict_vendor_t const	*vendor;
-		fr_table_t const	*type;
+		fr_dict_vendor_t const		*vendor;
+		fr_table_ordered_t const	*type;
 
 		if (vp->da->flags.has_tag) {
 			RIDEBUG2("&%s:%s:%i %s %pV",

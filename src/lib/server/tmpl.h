@@ -94,7 +94,7 @@ typedef enum pair_list_e {
 	PAIR_LIST_UNKNOWN		//!< Unknown list.
 } pair_list_t;
 
-extern fr_table_t const pair_list_table[];
+extern fr_table_ordered_t const pair_list_table[];
 extern size_t pair_list_table_len;
 
 typedef enum requests_ref_e {
