@@ -13,22 +13,6 @@
 #  See RFC 2616 for more details about HTTP.
 #
 
-#
-#  ## Default instance
-#
-#  If you want different instances of `rest`, just replicate the section
-#  and give a name.
-#
-#  e.g:
-#
-#  [source,unlang]
-#  ----
-#  rest backend_check {
-#  ...
-#  }
-#  ----
-#
-
 rest {
 	#
 	#  tls { ... }:: Configure the tls related items that control
