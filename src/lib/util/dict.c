@@ -3950,6 +3950,12 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 		 *	attribute.
 		 */
 		if (strcmp(key, "has_tag") == 0) {
+			if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
+				fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
+						   "or 'string'");
+				return -1;
+			}
+
 			flags->has_tag = 1;
 
 			/*
@@ -3977,15 +3983,29 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 			flags->array = 1;
 
 		} else if (strcmp(key, "concat") == 0) {
+			if (type != FR_TYPE_OCTETS) {
+				fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
+				return -1;
+			}
+
 			flags->concat = 1;
 
 		} else if (strcmp(key, "virtual") == 0) {
 			flags->virtual = 1;
 
 		} else if (strcmp(key, "long") == 0) {
+			if (type != FR_TYPE_EXTENDED) {
+				fr_strerror_printf("The 'long' flag can only be used for attributes of type 'extended'");
+				return -1;
+			}
 			flags->extra = 1;
 
 		} else if (strcmp(key, "key") == 0) {
+			if ((type != FR_TYPE_UINT8) && (type != FR_TYPE_UINT16) && (type != FR_TYPE_UINT32)) {
+				fr_strerror_printf("The 'key' flag can only be used for attributes of type 'uint8', 'uint16', or 'uint32'");
+				return -1;
+			}
+
 			flags->extra = 1;
 
 		} else if (type == FR_TYPE_DATE) {
