@@ -54,5 +54,3 @@ Examples of using references inside of a string:
  - returns a comma-separated string containing all values for all
    named attributes.
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
