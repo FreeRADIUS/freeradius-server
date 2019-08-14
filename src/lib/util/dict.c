@@ -923,7 +923,8 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	/*
 	 *	Check flags against the parent attribute.
 	 */
-	if (parent->type == FR_TYPE_STRUCT) {
+	switch (parent->type) {
+	case FR_TYPE_STRUCT:
 		if (flags->encrypt != FLAG_ENCRYPT_NONE) {
 			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT be encrypted.");
 			return false;
@@ -934,8 +935,28 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			fr_strerror_printf("Invalid flag for attribute inside of a 'struct'");
 			return false;
 		}
+		break;
 
-		return true;
+	case FR_TYPE_TLV:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_EXTENDED:
+		break;
+
+		/*
+		 *	"key" fields inside of a STRUCT can have
+		 *	children, even if they are integer data type.
+		 */
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+		if (parent->flags.extra) break;
+		/* FALL-THROUGH */
+
+	default:
+		fr_strerror_printf("Attributes of type '%s' cannot have child attributes",
+				   fr_int2str(fr_value_box_type_table, type, "???"));
+		return false;
 	}
 
 	return true;
