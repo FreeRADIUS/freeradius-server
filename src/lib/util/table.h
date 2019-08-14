@@ -34,11 +34,17 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
+/** An element in a lexicographically sorted array of name to number mappings
+ *
+ */
 typedef struct {
 	char const	*name;
 	int32_t		number;
 } fr_table_sorted_t;
 
+/** An element in an arbitrarily ordered array of name to number mappings
+ *
+ */
 typedef struct {
 	char const	*name;
 	int32_t		number;
@@ -97,16 +103,29 @@ _Generic((_table), \
 	 fr_table_ordered_t *		:	fr_table_ordered_num_by_substr	\
 )(_table, _table ## _len, _name, _name_len, _def)
 
-int		_fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t table_len,
-						    char const *name, size_t name_len, int def);
+int	fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t table_len,
+					      char const *name, size_t name_len, int def);
 
-/** Find the longest string match in a lexicographically sorted fr_table_sorted_t table
+int	fr_table_ordered_num_by_longest_prefix(fr_table_ordered_t const *table, size_t table_len,
+					       char const *name, size_t name_len, int def);
+
+/** Find the longest string match using a sorted or ordered table
  *
- * @copybrief _fr_table_sorted_num_by_longest_prefix
+ * @param[in] _table	to search in.
+ * @param[in] _name	to resolve to a number.
+ * @param[in] _name_len	The amount of name to match.
+ * @param[in] _def	Default value if no entry matched.
+ * @return
+ *	- _def if name matched no entries in the table.
+ *	- the numeric value of the matching entry.
  */
-#define		fr_table_sorted_num_by_longest_prefix(_table, _name, _name_len, _def) \
-		_fr_table_sorted_num_by_longest_prefix(_table, , _name, _name_len, _def)
-
+#define fr_table_num_by_longest_prefix(_table, _name, _name_len, _def) \
+_Generic((_table), \
+	 fr_table_sorted_t const *	:	fr_table_sorted_num_by_longest_prefix,	\
+	 fr_table_ordered_t const *	:	fr_table_ordered_num_by_longest_prefix,	\
+	 fr_table_sorted_t *		:	fr_table_sorted_num_by_longest_prefix,	\
+	 fr_table_ordered_t *		:	fr_table_ordered_num_by_longest_prefix	\
+)(_table, _table ## _len, _name, _name_len, _def)
 
 char const	*_fr_table_str_by_num(fr_table_ordered_t const *table, size_t table_len,
 				      int number, char const *def);

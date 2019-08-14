@@ -165,7 +165,7 @@ int fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table
 	return def;
 }
 
-/** Find the longest string match in a lexicographically sorted fr_table_sorted_t table
+/** Find the longest string match using a lexicographically sorted table
  *
  * Performs a binary search in the specified table, returning the longest
  * element which is a prefix of name.
@@ -183,8 +183,8 @@ int fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table
  *	- num value of matching entry.
  *      - def if no matching entries.
  */
-int _fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t table_len,
-					   char const *name, size_t name_len, int def)
+int fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t table_len,
+					  char const *name, size_t name_len, int def)
 {
 	ssize_t	start = 0;
 	ssize_t	end = table_len - 1;
@@ -225,6 +225,53 @@ int _fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_
 			end = mid - 1;
 		} else {
 			start = mid + 1;
+		}
+	}
+
+	return num;
+}
+
+/** Find the longest string match using an arbitrarily ordered table
+ *
+ * i.e. given name of "food", and table of f, foo, of - foo would be returned.
+ *
+ * @param[in] table		to search in.
+ * @param[in] table_len		The number of elements in the table.
+ * @param[in] name		to locate.
+ * @param[in] name_len		the maximum amount of name that should be matched.
+ * @param[in] def		Value to return if there are no matches.
+ * @return
+ *	- num value of matching entry.
+ *      - def if no matching entries.
+ */
+int fr_table_ordered_num_by_longest_prefix(fr_table_ordered_t const *table, size_t table_len,
+					   char const *name, size_t name_len, int def)
+{
+	size_t		i;
+	size_t		found_len = 0;
+	int		num = def;
+
+	if (!name) return def;
+
+	for (i = 0; i < table_len; i++) {
+		size_t j;
+
+		for (j = 0; (j < name_len) && (name[j] == table[i].name[j]); j++) ;
+
+		/*
+		 *	Exact match
+		 */
+		if (j == name_len) return table[i].number;
+
+		/*
+		 *	Partial match.
+		 *	Name we're searching for is longer.
+		 *	This might be the longest prefix,
+		 *	so record it.
+		 */
+		if (j > found_len) {
+			found_len = j;
+			num = table[i].number;
 		}
 	}
 
