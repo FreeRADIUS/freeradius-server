@@ -66,6 +66,8 @@ typedef struct dict_enum_fixup_s dict_enum_fixup_t;
  *
  */
 struct dict_enum_fixup_s {
+	char			*filename;		//!< where the "enum" was defined
+	int			line;			//!< ditto
 	char			*attribute;		//!< we couldn't find (and will need to resolve later).
 	char			*alias;			//!< Raw enum name.
 	char			*value;			//!< Raw enum value.  We can't do anything with this until
@@ -3721,6 +3723,8 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
  */
 #define MAX_STACK (32)
 typedef struct dict_ctx_stack_frame_t {
+	char			*filename;	//!< name of the file we're reading
+	int			line;		//!< line number of this file
 	fr_dict_attr_t const	*da;		//!< the da we care about
 	fr_type_t		nest;		//!< for manual vs automatic begin / end things
 	int			member_num;	//!< structure member numbers
@@ -4074,7 +4078,10 @@ static int dict_ctx_push(dict_from_file_ctx_t *ctx, fr_dict_attr_t const *da)
 
 	ctx->stack_depth++;
 	memset(&ctx->stack[ctx->stack_depth], 0, sizeof(ctx->stack[ctx->stack_depth]));
+
 	ctx->stack[ctx->stack_depth].da = da;
+	ctx->stack[ctx->stack_depth].filename = ctx->stack[ctx->stack_depth - 1].filename;
+	ctx->stack[ctx->stack_depth].line = ctx->stack[ctx->stack_depth - 1].line;
 
 	return 0;
 }
@@ -4329,6 +4336,11 @@ static int dict_read_process_value(dict_from_file_ctx_t *ctx, char **argv, int a
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
+
+		fixup->filename = talloc_strdup(fixup, ctx->stack[ctx->stack_depth].filename);
+		if (!fixup->filename) goto oom;
+		fixup->line = ctx->stack[ctx->stack_depth].line;
+
 		fixup->attribute = talloc_strdup(fixup, argv[0]);
 		if (!fixup->attribute) goto oom;
 		fixup->alias = talloc_strdup(fixup, argv[1]);
@@ -4640,7 +4652,10 @@ static int dict_read_process_protocol(char **argv, int argc)
 		return -1;
 	}
 
-	if (value == 0) {
+	/*
+	 *	255 protocts FR_TYPE_GROUP type_size hack
+	 */
+	if ((value == 0) || (value > 255)) {
 		fr_strerror_printf("Invalid value '%u' following PROTOCOL", value);
 		return -1;
 	}
@@ -4790,8 +4805,8 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 			next = this->next;
 			da = fr_dict_attr_by_name(ctx->dict, this->attribute);
 			if (!da) {
-				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s'",
-						   this->attribute, this->alias);
+				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s' at %s[%d]",
+						   this->attribute, this->alias, this->filename, this->line);
 			error:
 				return -1;
 			}
@@ -4799,7 +4814,8 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 
 			if (fr_value_box_from_str(this, &value, &type, NULL,
 						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
-				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
+				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\" at %s[%d]",
+							da->name, this->filename, this->line);
 				goto error;
 			}
 
@@ -4916,6 +4932,8 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		}
 	}
 
+	ctx->stack[ctx->stack_depth].filename = fn;
+
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
 			fr_strerror_printf_push("Couldn't open dictionary %s: %s", fr_syserror(errno), fn);
@@ -4962,7 +4980,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 	memset(&base_flags, 0, sizeof(base_flags));
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
-		line++;
+		ctx->stack[ctx->stack_depth].line = line++;
 
 		switch (buf[0]) {
 		case '#':
@@ -5090,6 +5108,11 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				fclose(fp);
 				return -1;
 			}
+
+			/*
+			 *	Reset the filename.
+			 */
+			ctx->stack[ctx->stack_depth].filename = fn;
 			continue;
 		} /* $INCLUDE */
 
@@ -5225,10 +5248,17 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			ctx->dict = ctx->old_dict;
 
 			/*
-			 *	Applies fixups to any attributes added to
-			 *	the protocol dictionary.
+			 *	Applies fixups to any attributes added
+			 *	to the protocol dictionary.  Note that
+			 *	the finalise function prints out the
+			 *	original filename / line of the
+			 *	error. So we don't need to do that
+			 *	here.
 			 */
-			if (fr_dict_finalise(ctx) < 0) goto error;
+			if (fr_dict_finalise(ctx) < 0) {
+				fclose(fp);
+				return -1;
+			}
 
 			ctx->stack_depth--;
 			continue;
