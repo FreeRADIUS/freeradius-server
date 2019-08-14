@@ -4829,7 +4829,6 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 			ctx->enum_fixup = next;
 		}
 	}
-	TALLOC_FREE(ctx->fixup_pool);
 
 	/*
 	 *	Walk over all of the hash tables to ensure they're
@@ -5539,7 +5538,7 @@ static int dict_from_file(fr_dict_t *dict,
 	rcode = _dict_from_file(&ctx,
 				dir_name, filename, src_file, src_line);
 	if (rcode < 0) {
-		// free up the various fixups
+		TALLOC_FREE(ctx.fixup_pool);
 		return rcode;
 	}
 
@@ -5550,7 +5549,10 @@ static int dict_from_file(fr_dict_t *dict,
 	 *	Fixups should have been applied already to any protocol
 	 *	dictionaries.
 	 */
-	return fr_dict_finalise(&ctx);
+	rcode = fr_dict_finalise(&ctx);
+	if (rcode < 0) TALLOC_FREE(ctx.fixup_pool);
+
+	return rcode;
 }
 
 /** (Re-)Initialize the special internal dictionary
@@ -5992,6 +5994,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 	}
 
 	fr_dict_finalise(&ctx);
+	TALLOC_FREE(ctx.fixup_pool);
 
 	return 0;
 }
