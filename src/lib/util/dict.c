@@ -42,7 +42,6 @@ RCSID("$Id$")
 #define MAX_ARGV (16)
 
 #define DICT_POOL_SIZE		(1024 * 1024 * 2)
-#define DICT_FIXUP_POOL_SIZE	(1024 * 1024 * 1)
 
 static TALLOC_CTX	*dict_ctx;
 static fr_hash_table_t	*protocol_by_name = NULL;	//!< Hash containing names of all the registered protocols.
@@ -5172,14 +5171,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
-			/*
-			 *	Add a temporary fixup pool
-			 *
-			 *	@todo - make a nested ctx?
-			 */
-			if (!ctx->fixup_pool) ctx->fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
-
-
 			// check if there's a linked library for the
 			// protocol.  The values can be unknown (we
 			// try to load one), or non-existent, or
@@ -5543,6 +5534,7 @@ static int dict_from_file(fr_dict_t *dict,
 	ctx.dict = dict;
 	ctx.stack[0].da = dict->root;
 	ctx.stack[0].nest = FR_TYPE_MAX;
+	ctx.fixup_pool = talloc_init("fixup pool");
 
 	rcode = _dict_from_file(&ctx,
 				dir_name, filename, src_file, src_line);
@@ -5964,7 +5956,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 	ctx.stack[0].da = dict->root;
 	ctx.stack[0].nest = FR_TYPE_MAX;
 
-	ctx.fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
+	ctx.fixup_pool = talloc_init("fixup pool");
 	if (!ctx.fixup_pool) return -1;
 
 	if (strcasecmp(argv[0], "VALUE") == 0) {
