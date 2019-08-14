@@ -93,6 +93,8 @@ int fr_table_ordered_num_by_str(fr_table_ordered_t const *table, size_t table_le
  * @param[in] table_len		The number of elements in the table.
  * @param[in] name		to locate.
  * @param[in] name_len		the maximum amount of name that should be matched.
+ *				If < 0, the length of the name in the table element
+ *				will be used as the maximum match length.
  * @param[in] def		Value to return if there are no matches.
  * @return
  *	- num value of matching entry.
@@ -134,6 +136,8 @@ int fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_l
  * @param[in] table_len		The number of elements in the table.
  * @param[in] name		to locate.
  * @param[in] name_len		the maximum amount of name that should be matched.
+ *				If < 0, the length of the name in the table element
+ *				will be used as the maximum match length.
  * @param[in] def		Value to return if there are no matches.
  * @return
  *	- num value of matching entry.

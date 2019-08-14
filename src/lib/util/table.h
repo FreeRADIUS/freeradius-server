@@ -90,6 +90,8 @@ int		fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t tabl
  * @param[in] _table	to search in.
  * @param[in] _name	to resolve to a number.
  * @param[in] _name_len	The amount of name to match.
+ *			If < 0, the length of the name in the table element
+ *			will be used as the maximum match length.
  * @param[in] _def	Default value if no entry matched.
  * @return
  *	- _def if name matched no entries in the table.
