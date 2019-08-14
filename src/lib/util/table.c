@@ -25,7 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/table.h>
 
-#include <strings.h>
+#include <string.h>
 
 /** Convert a string to an integer
  *
