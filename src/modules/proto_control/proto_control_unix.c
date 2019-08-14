@@ -110,7 +110,7 @@ static const CONF_PARSER unix_listen_config[] = {
 #define FR_READ  (1)
 #define FR_WRITE (2)
 
-static fr_table_t mode_names[] = {
+static fr_table_sorted_t mode_names[] = {
 	{ "read-only",		FR_READ			},
 	{ "read-write",		FR_READ | FR_WRITE	},
 	{ "ro",			FR_READ			},

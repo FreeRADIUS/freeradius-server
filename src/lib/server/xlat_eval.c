@@ -85,7 +85,7 @@ static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ NULL }
 };
 
-fr_table_t const xlat_action_table[] = {
+fr_table_sorted_t const xlat_action_table[] = {
 	{ "done",	XLAT_ACTION_DONE	},
 	{ "fail",	XLAT_ACTION_FAIL	},
 	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},

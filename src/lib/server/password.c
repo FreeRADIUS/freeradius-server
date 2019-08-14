@@ -35,7 +35,7 @@ typedef enum {
 	NORMALISED_HEX
 } normalise_t;
 
-static fr_table_t const normalise_table[] = {
+static fr_table_sorted_t const normalise_table[] = {
 	{ "base64",	NORMALISED_B64		},
 	{ "hex",	NORMALISED_HEX		},
 	{ "nothing",	NORMALISED_NOTHING	}

@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 
-static fr_table_t const allowed_return_codes[] = {
+static fr_table_sorted_t const allowed_return_codes[] = {
 	{ "fail",       1 },
 	{ "handled",    1 },
 	{ "invalid",    1 },

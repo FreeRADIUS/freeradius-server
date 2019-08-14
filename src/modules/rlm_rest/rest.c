@@ -134,7 +134,7 @@ const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
  * @see fr_table_num_by_str
  * @see fr_table_str_by_num
  */
-fr_table_t const http_method_table[] = {
+fr_table_sorted_t const http_method_table[] = {
 	{ "DELETE",				REST_HTTP_METHOD_DELETE		},
 	{ "GET",				REST_HTTP_METHOD_GET		},
 	{ "PATCH",				REST_HTTP_METHOD_PATCH		},
@@ -153,7 +153,7 @@ size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
  * @see fr_table_num_by_str
  * @see fr_table_str_by_num
  */
-fr_table_t const http_body_type_table[] = {
+fr_table_sorted_t const http_body_type_table[] = {
 	{ "html",				REST_HTTP_BODY_HTML		},
 	{ "invalid",				REST_HTTP_BODY_INVALID		},
 	{ "json",				REST_HTTP_BODY_JSON		},
@@ -168,7 +168,7 @@ fr_table_t const http_body_type_table[] = {
 };
 size_t http_body_type_table_len = NUM_ELEMENTS(http_body_type_table);
 
-fr_table_t const http_auth_table[] = {
+fr_table_sorted_t const http_auth_table[] = {
 	{ "any",				REST_HTTP_AUTH_ANY		},
 	{ "basic",				REST_HTTP_AUTH_BASIC		},
 	{ "digest",				REST_HTTP_AUTH_DIGEST		},
@@ -196,7 +196,7 @@ size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
  * @see fr_table_num_by_str
  * @see fr_table_str_by_num
  */
-fr_table_t const http_content_type_table[] = {
+fr_table_sorted_t const http_content_type_table[] = {
 	{ "application/json",			REST_HTTP_BODY_JSON		},
 	{ "application/x-www-form-urlencoded",	REST_HTTP_BODY_POST		},
 	{ "application/x-yaml",			REST_HTTP_BODY_YAML		},

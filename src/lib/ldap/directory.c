@@ -33,7 +33,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
 
-static fr_table_t const fr_ldap_directory_type_table[] = {
+static fr_table_sorted_t const fr_ldap_directory_type_table[] = {
 	{ "Active Directory",		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY		},
 	{ "IBM",			FR_LDAP_DIRECTORY_IBM				},
 	{ "NetScape",			FR_LDAP_DIRECTORY_NETSCAPE			},

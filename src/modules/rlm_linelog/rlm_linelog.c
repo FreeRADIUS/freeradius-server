@@ -58,7 +58,7 @@ typedef enum {
 	LINELOG_DST_TCP,				//!< Log via TCP.
 } linefr_log_dst_t;
 
-static fr_table_t const linefr_log_dst_table[] = {
+static fr_table_sorted_t const linefr_log_dst_table[] = {
 	{ "file",	LINELOG_DST_FILE	},
 	{ "syslog",	LINELOG_DST_SYSLOG	},
 	{ "tcp",	LINELOG_DST_TCP		},

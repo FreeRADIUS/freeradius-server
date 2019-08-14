@@ -59,7 +59,7 @@ fr_table_ordered_t const fr_tokens_table[] = {
 };
 size_t fr_tokens_table_len = NUM_ELEMENTS(fr_tokens_table);
 
-fr_table_t const fr_token_quotes_table[] = {
+fr_table_sorted_t const fr_token_quotes_table[] = {
 	{ "",	T_BARE_WORD		},
 	{ "'",	T_SINGLE_QUOTED_STRING	},
 	{ "\"", T_DOUBLE_QUOTED_STRING	},

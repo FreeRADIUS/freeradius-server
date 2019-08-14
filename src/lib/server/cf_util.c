@@ -1751,9 +1751,9 @@ static inline void truncate_filename(char const **e, char const **p, int *len, c
  *	- 0 on success.
  *	- -1 on failure.
  */
-int cf_pair_in_table(int32_t *out, fr_table_t const *table, size_t table_len, CONF_PAIR *cp)
+int cf_pair_in_table(int32_t *out, fr_table_sorted_t const *table, size_t table_len, CONF_PAIR *cp)
 {
-	fr_table_t const	*t_p;
+	fr_table_sorted_t const	*t_p;
 	char			*list = NULL;
 	int32_t			res;
 

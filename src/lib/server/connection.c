@@ -40,7 +40,7 @@
 #endif
 #include <talloc.h>
 
-fr_table_t const fr_connection_states[] = {
+fr_table_sorted_t const fr_connection_states[] = {
 	{ "CONNECTED",		FR_CONNECTION_STATE_CONNECTED	},
 	{ "CONNECTING",		FR_CONNECTION_STATE_CONNECTING	},
 	{ "FAILED",		FR_CONNECTION_STATE_FAILED	},

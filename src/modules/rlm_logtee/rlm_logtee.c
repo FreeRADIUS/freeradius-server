@@ -59,7 +59,7 @@ typedef enum {
 	LOGTEE_DST_TCP,					//!< Log via TCP.
 } logtee_dst_t;
 
-static fr_table_t const logtee_dst_table[] = {
+static fr_table_sorted_t const logtee_dst_table[] = {
 	{ "file",		LOGTEE_DST_FILE	},
 	{ "tcp",		LOGTEE_DST_TCP	},
 	{ "udp",		LOGTEE_DST_UDP	},

@@ -48,7 +48,7 @@ struct sync_state_s {
 	sync_phases_t			phase;
 };
 
-fr_table_t sync_state_table[] = {
+fr_table_sorted_t sync_state_table[] = {
 	{ "present",			SYNC_STATE_PRESENT		},
 	{ "add",			SYNC_STATE_ADD			},
 	{ "modify",			SYNC_STATE_MODIFY		},
@@ -56,7 +56,7 @@ fr_table_t sync_state_table[] = {
 };
 size_t sync_state_table_len = NUM_ELEMENTS(sync_state_table);
 
-fr_table_t sync_phase_table[] = {
+fr_table_sorted_t sync_phase_table[] = {
 	{ "delete",			SYNC_PHASE_DELETE		},
 	{ "delete-idset",		SYNC_PHASE_DELETE_IDSET		},
 	{ "done",			SYNC_PHASE_DONE			},
@@ -66,7 +66,7 @@ fr_table_t sync_phase_table[] = {
 };
 size_t sync_phase_table_len = NUM_ELEMENTS(sync_state_table);
 
-fr_table_t sync_protocol_op_table[] = {
+fr_table_sorted_t sync_protocol_op_table[] = {
 	{ "intermediateResponse",	LDAP_RES_INTERMEDIATE		},
 	{ "searchRes",			LDAP_RES_SEARCH_RESULT		},
 	{ "searchResEntry",		LDAP_RES_SEARCH_ENTRY		},
@@ -74,7 +74,7 @@ fr_table_t sync_protocol_op_table[] = {
 };
 size_t sync_protocol_op_table_len = NUM_ELEMENTS(sync_state_table);
 
-fr_table_t sync_info_tag_table[] = {
+fr_table_sorted_t sync_info_tag_table[] = {
  	{ "newCookie",			LDAP_TAG_SYNC_NEW_COOKIE	},
  	{ "refreshDelete",		LDAP_TAG_SYNC_REFRESH_DELETE	},
 	{ "refreshIDSet",		LDAP_TAG_SYNC_ID_SET		},

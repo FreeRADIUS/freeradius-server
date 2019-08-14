@@ -77,7 +77,7 @@ static int rs_useful_codes[] = {
 	FR_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
-static fr_table_t const rs_events[] = {
+static fr_table_sorted_t const rs_events[] = {
 	{ "error",	RS_ERROR	},
 	{ "noreq",	RS_UNLINKED	},
 	{ "norsp",	RS_LOST		},
@@ -2020,7 +2020,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	return 0;
 }
 
-static int rs_build_event_flags(int *flags, fr_table_t const *map, size_t map_len, char *list)
+static int rs_build_event_flags(int *flags, fr_table_sorted_t const *map, size_t map_len, char *list)
 {
 	size_t i = 0;
 	char *p, *tok;

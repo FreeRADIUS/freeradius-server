@@ -55,7 +55,7 @@ RCSID("$Id$")
 #  define EVENT_DEBUG(...)
 #endif
 
-static fr_table_t const kevent_filter_table[] = {
+static fr_table_sorted_t const kevent_filter_table[] = {
 #ifdef EVFILT_AIO
 	{ "EVFILT_AIO",		EVFILT_AIO },
 #endif
@@ -216,7 +216,7 @@ static fr_event_func_map_t vnode_func_map[] = {
 	{ 0 }
 };
 
-static fr_table_t const fr_event_fd_type_table[] = {
+static fr_table_sorted_t const fr_event_fd_type_table[] = {
 	{ "directory",		FR_EVENT_FD_DIRECTORY },
 	{ "file",		FR_EVENT_FD_FILE },
 	{ "pcap",		FR_EVENT_FD_PCAP },

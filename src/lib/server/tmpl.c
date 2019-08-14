@@ -35,7 +35,7 @@ RCSID("$Id$")
 
 /** Map #tmpl_type_t values to descriptive strings
  */
-fr_table_t const tmpl_type_table[] = {
+fr_table_sorted_t const tmpl_type_table[] = {
 	{ "attr",		TMPL_TYPE_ATTR			},
 	{ "data",		TMPL_TYPE_DATA			},
 	{ "exec",		TMPL_TYPE_EXEC			},
@@ -67,7 +67,7 @@ size_t pair_list_table_len = NUM_ELEMENTS(pair_list_table);
 
 /** Map keywords to #request_ref_t values
  */
-fr_table_t const request_ref_table[] = {
+fr_table_sorted_t const request_ref_table[] = {
 	{ "current",		REQUEST_CURRENT			},
 	{ "outer",		REQUEST_OUTER			},
 	{ "parent",		REQUEST_PARENT			},

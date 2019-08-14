@@ -67,7 +67,7 @@ typedef enum conf_property {
 	CONF_PROPERTY_INSTANCE,
 } CONF_PROPERTY;
 
-static fr_table_t const conf_property_name[] = {
+static fr_table_sorted_t const conf_property_name[] = {
 	{ "instance",	CONF_PROPERTY_INSTANCE	},
 	{ "name",	CONF_PROPERTY_NAME	}
 };

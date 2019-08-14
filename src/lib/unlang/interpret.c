@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include "parallel_priv.h"
 #include "module_priv.h"
 
-static fr_table_t const unlang_action_table[] = {
+static fr_table_sorted_t const unlang_action_table[] = {
 	{ "break", 		UNLANG_ACTION_BREAK },
 	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
 	{ "next",		UNLANG_ACTION_EXECUTE_NEXT },

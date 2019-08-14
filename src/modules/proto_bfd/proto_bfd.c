@@ -1624,7 +1624,7 @@ static int bfd_session_cmp(const void *one, const void *two)
 	return fr_ipaddr_cmp(&a->remote_ipaddr, &b->remote_ipaddr);
 }
 
-static fr_table_t const auth_types[] = {
+static fr_table_sorted_t const auth_types[] = {
 	{ "keyed-md5",		BFD_AUTH_KEYED_MD5	},
 	{ "keyed-sha1",		BFD_AUTH_KEYED_SHA1	},
 	{ "met-keyed-md5",	BFD_AUTH_MET_KEYED_MD5	},

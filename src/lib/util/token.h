@@ -78,7 +78,7 @@ typedef enum fr_token {
 
 extern fr_table_ordered_t const fr_tokens_table[];
 extern size_t fr_tokens_table_len;
-extern fr_table_t const fr_token_quotes_table[];
+extern fr_table_sorted_t const fr_token_quotes_table[];
 extern size_t fr_token_quotes_table_len;
 extern const char *fr_tokens[];
 extern const char fr_token_quote[];

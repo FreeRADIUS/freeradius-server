@@ -72,7 +72,7 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ NULL }
 };
 
-static fr_table_t const header_names[] = {
+static fr_table_sorted_t const header_names[] = {
 	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
 	{ "{clear}",		FR_CLEARTEXT_PASSWORD }
 };

@@ -58,7 +58,7 @@ typedef enum {
 /** Public key types
  *
  */
-static fr_table_t const pkey_types[] = {
+static fr_table_sorted_t const pkey_types[] = {
 	{ "DH",		EVP_PKEY_DH		},
 	{ "DSA",	EVP_PKEY_DSA		},
 	{ "EC",		EVP_PKEY_EC		},
@@ -69,7 +69,7 @@ static size_t pkey_types_len = NUM_ELEMENTS(pkey_types);
 /** The type of padding used
  *
  */
-static fr_table_t const cipher_rsa_padding[] = {
+static fr_table_sorted_t const cipher_rsa_padding[] = {
 	{ "none",	RSA_NO_PADDING		},
 	{ "oaep",	RSA_PKCS1_OAEP_PADDING	},		/* PKCS OAEP padding */
 	{ "pkcs",	RSA_PKCS1_PADDING	},		/* PKCS 1.5 */
@@ -78,7 +78,7 @@ static fr_table_t const cipher_rsa_padding[] = {
 };
 static size_t cipher_rsa_padding_len = NUM_ELEMENTS(cipher_rsa_padding);
 
-static fr_table_t const cipher_type[] = {
+static fr_table_sorted_t const cipher_type[] = {
 	{ "rsa",	RLM_CIPHER_TYPE_RSA	}
 };
 static size_t cipher_type_len = NUM_ELEMENTS(cipher_type);

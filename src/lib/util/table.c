@@ -38,7 +38,7 @@ RCSID("$Id$")
  *	- num value of matching entry.
  *      - def if no matching entries.
  */
-int fr_table_sorted_num_by_str(fr_table_t const *table, size_t table_len,
+int fr_table_sorted_num_by_str(fr_table_sorted_t const *table, size_t table_len,
 			       char const *name, int def)
 {
 	ssize_t	start = 0;
@@ -98,7 +98,7 @@ int fr_table_ordered_num_by_str(fr_table_ordered_t const *table, size_t table_le
  *	- num value of matching entry.
  *      - def if no matching entries.
  */
-int fr_table_sorted_num_by_substr(fr_table_t const *table, size_t table_len,
+int fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_len,
 				  char const *name, size_t name_len, int def)
 {
 	ssize_t	start = 0;
@@ -165,7 +165,7 @@ int fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table
 	return def;
 }
 
-/** Find the longest string match in a lexicographically sorted fr_table_t table
+/** Find the longest string match in a lexicographically sorted fr_table_sorted_t table
  *
  * Performs a binary search in the specified table, returning the longest
  * element which is a prefix of name.
@@ -183,8 +183,8 @@ int fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table
  *	- num value of matching entry.
  *      - def if no matching entries.
  */
-int _fr_table_sorted_num_by_longest_prefix(fr_table_t const *table, size_t table_len,
-					char const *name, size_t name_len, int def)
+int _fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t table_len,
+					   char const *name, size_t name_len, int def)
 {
 	ssize_t	start = 0;
 	ssize_t	end = table_len - 1;

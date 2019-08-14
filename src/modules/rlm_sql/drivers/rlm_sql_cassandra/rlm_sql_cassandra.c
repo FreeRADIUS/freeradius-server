@@ -164,7 +164,7 @@ typedef struct {
 								//!< server.
 } rlm_sql_cassandra_t;
 
-static fr_table_t const consistency_levels[] = {
+static fr_table_sorted_t const consistency_levels[] = {
 	{ "all",		CASS_CONSISTENCY_ALL		},
 	{ "any",		CASS_CONSISTENCY_ANY		},
 	{ "each_quorum",	CASS_CONSISTENCY_EACH_QUORUM	},
@@ -177,7 +177,7 @@ static fr_table_t const consistency_levels[] = {
 };
 static size_t consistency_levels_len = NUM_ELEMENTS(consistency_levels);
 
-static fr_table_t const verify_cert_table[] = {
+static fr_table_sorted_t const verify_cert_table[] = {
 	{ "identity",		CASS_SSL_VERIFY_PEER_IDENTITY	},
 	{ "no",			CASS_SSL_VERIFY_NONE		},
 	{ "yes",		CASS_SSL_VERIFY_PEER_CERT	}

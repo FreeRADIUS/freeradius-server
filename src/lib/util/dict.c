@@ -176,7 +176,7 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_VENDOR] = true
 };
 
-static fr_table_t const date_precision_table[] = {
+static fr_table_sorted_t const date_precision_table[] = {
 	{ "microseconds",	FR_TIME_RES_USEC },
 	{ "milliseconds",	FR_TIME_RES_MSEC },
 	{ "nanoseconds",	FR_TIME_RES_NSEC },

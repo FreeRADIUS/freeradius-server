@@ -46,14 +46,14 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /** Certificate formats
  *
  */
-static fr_table_t const certificate_format_table[] = {
+static fr_table_sorted_t const certificate_format_table[] = {
 	{ "ASN1",	SSL_FILETYPE_ASN1	},
 	{ "DER",	SSL_FILETYPE_ASN1	},	/* Alternate name for ASN1 */
 	{ "PEM",	SSL_FILETYPE_PEM	}
 };
 static size_t certificate_format_table_len = NUM_ELEMENTS(certificate_format_table);
 
-static fr_table_t const chain_verify_mode_table[] = {
+static fr_table_sorted_t const chain_verify_mode_table[] = {
 	{ "hard",	FR_TLS_CHAIN_VERIFY_HARD },
 	{ "none",	FR_TLS_CHAIN_VERIFY_NONE },
 	{ "soft",	FR_TLS_CHAIN_VERIFY_SOFT }

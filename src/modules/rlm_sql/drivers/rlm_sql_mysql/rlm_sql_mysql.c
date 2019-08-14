@@ -77,7 +77,7 @@ typedef enum {
 	SERVER_WARNINGS_NO
 } rlm_sql_mysql_warnings;
 
-static fr_table_t const server_warnings_table[] = {
+static fr_table_sorted_t const server_warnings_table[] = {
 	{ "auto",	SERVER_WARNINGS_AUTO	},
 	{ "no",		SERVER_WARNINGS_NO	},
 	{ "yes",	SERVER_WARNINGS_YES	}

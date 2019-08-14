@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
-fr_table_t const mod_rcode_table[] = {
+fr_table_sorted_t const mod_rcode_table[] = {
 	{ "...",        RLM_MODULE_UNKNOWN      },
 	{ "fail",       RLM_MODULE_FAIL		},
 	{ "handled",    RLM_MODULE_HANDLED      },

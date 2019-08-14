@@ -92,7 +92,7 @@ typedef enum {
 	LDAP_SYNC_CODE_COOKIE_STORE
 } ldap_sync_packet_code_t;
 
-static fr_table_t const ldap_sync_code_table[] = {
+static fr_table_sorted_t const ldap_sync_code_table[] = {
 	{ "cookie-load",	LDAP_SYNC_CODE_COOKIE_LOAD	},
 	{ "cookie-store",	LDAP_SYNC_CODE_COOKIE_STORE	},
 	{ "entry-add",		LDAP_SYNC_CODE_ADD		},
@@ -235,7 +235,7 @@ static REQUEST *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *liste
 	return NULL;
 }
 
-/** Add dict enumv from a fr_table_t table
+/** Add dict enumv from a fr_table_sorted_t table
  *
  * @param[in] da	to add enumv to.
  * @param[in] table	to add values from.
@@ -243,9 +243,9 @@ static REQUEST *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *liste
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int fr_dict_enum_from_name_number(fr_dict_attr_t const *da, fr_table_t const *table)
+static int fr_dict_enum_from_name_number(fr_dict_attr_t const *da, fr_table_sorted_t const *table)
 {
-	fr_table_t const	*p;
+	fr_table_sorted_t const	*p;
 	fr_value_box_t		value = { .type = FR_TYPE_INT32 };
 
 	for (p = table; p->name; p++) {

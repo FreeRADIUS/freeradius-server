@@ -32,7 +32,7 @@
 /** PKEY types (friendly names)
  *
  */
-static fr_table_t const pkey_types[] = {
+static fr_table_sorted_t const pkey_types[] = {
 	{ "DH",		EVP_PKEY_DH		},
 	{ "DSA",	EVP_PKEY_DSA		},
 	{ "EC",		EVP_PKEY_EC		},

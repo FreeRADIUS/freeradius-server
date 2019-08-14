@@ -230,7 +230,7 @@ typedef struct {
  *
  * ??? What the heck is wrong with getservbyname?
  */
-static fr_table_t const filterPortType[] = {
+static fr_table_sorted_t const filterPortType[] = {
 	{ "cmd",	514 },
 	{ "domain",	53 },
 	{ "exec",	512 },
@@ -252,7 +252,7 @@ static fr_table_t const filterPortType[] = {
 };
 static size_t filterPortType_len = NUM_ELEMENTS(filterPortType);
 
-static fr_table_t const filterType[] = {
+static fr_table_sorted_t const filterType[] = {
 	{ "generic",	RAD_FILTER_GENERIC},
 	{ "ip", 	RAD_FILTER_IP},
 	{ "ipx", 	RAD_FILTER_IPX}
@@ -288,7 +288,7 @@ typedef enum {
 } FilterTokens;
 
 
-static fr_table_t const filterKeywords[] = {
+static fr_table_sorted_t const filterKeywords[] = {
 	{ "!=",		FILTER_GENERIC_COMPNEQ },
 	{ "==",		FILTER_GENERIC_COMPEQ  },
 	{ "drop",	FILTER_DROP },
@@ -320,7 +320,7 @@ static size_t filterKeywords_len = NUM_ELEMENTS(filterKeywords);
  *
  *  ??? What the heck is wrong with getprotobyname?
  */
-static fr_table_t const filterProtoName[] = {
+static fr_table_sorted_t const filterProtoName[] = {
 	{ "0",	  0 },
 	{ "icmp", 1 },
 	{ "ospf", 89 },
@@ -343,7 +343,7 @@ typedef enum {
 	RAD_COMPARE_NOT_EQUAL
 } RadFilterComparison;
 
-static fr_table_t const filterCompare[] = {
+static fr_table_sorted_t const filterCompare[] = {
 	{ "!=", RAD_COMPARE_NOT_EQUAL	},
 	{ "<",	RAD_COMPARE_LESS	},
 	{ "=",	RAD_COMPARE_EQUAL	},

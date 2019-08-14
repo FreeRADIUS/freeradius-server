@@ -64,7 +64,7 @@ static uint32_t	sigtran_instances = 0;
 
 unsigned int __hack_opc, __hack_dpc;
 
-static fr_table_t const m3ua_traffic_mode_table[] = {
+static fr_table_sorted_t const m3ua_traffic_mode_table[] = {
 	{ "broadcast", 3 },
 	{ "loadshare", 2 },
 	{ "override",  1 }

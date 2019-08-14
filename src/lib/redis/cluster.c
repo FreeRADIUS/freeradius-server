@@ -262,7 +262,7 @@ struct fr_redis_cluster {
 	pthread_mutex_t		mutex;			//!< Mutex to synchronise cluster operations.
 };
 
-fr_table_t const fr_redis_cluster_rcodes_table[] = {
+fr_table_sorted_t const fr_redis_cluster_rcodes_table[] = {
 	{ "bad-input",		FR_REDIS_CLUSTER_RCODE_BAD_INPUT	},
 	{ "failed",		FR_REDIS_CLUSTER_RCODE_FAILED		},
 	{ "ignored",		FR_REDIS_CLUSTER_RCODE_IGNORED		},

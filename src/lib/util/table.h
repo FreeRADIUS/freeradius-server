@@ -37,7 +37,7 @@ extern "C" {
 typedef struct {
 	char const	*name;
 	int32_t		number;
-} fr_table_t;
+} fr_table_sorted_t;
 
 typedef struct {
 	char const	*name;
@@ -50,7 +50,7 @@ typedef struct {
 #define NAME_NUMBER_NOT_FOUND	INT32_MIN
 
 
-int		fr_table_sorted_num_by_str(fr_table_t const *table, size_t table_len,
+int		fr_table_sorted_num_by_str(fr_table_sorted_t const *table, size_t table_len,
 					   char const *name, int def);
 
 int		fr_table_ordered_num_by_str(fr_table_ordered_t const *table, size_t table_len,
@@ -67,13 +67,13 @@ int		fr_table_ordered_num_by_str(fr_table_ordered_t const *table, size_t table_l
  */
 #define fr_table_num_by_str(_table, _name, _def) \
 _Generic((_table), \
-	 fr_table_t const *		:	fr_table_sorted_num_by_str,	\
+	 fr_table_sorted_t const *	:	fr_table_sorted_num_by_str,	\
 	 fr_table_ordered_t const *	:	fr_table_ordered_num_by_str,	\
-	 fr_table_t *			:	fr_table_sorted_num_by_str,	\
+	 fr_table_sorted_t *		:	fr_table_sorted_num_by_str,	\
 	 fr_table_ordered_t *		:	fr_table_ordered_num_by_str	\
 )(_table, _table ## _len, _name, _def)
 
-int		fr_table_sorted_num_by_substr(fr_table_t const *table, size_t table_len,
+int		fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_len,
 					      char const *name, size_t name_len, int def);
 
 int		fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table_len,
@@ -91,16 +91,16 @@ int		fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t tabl
  */
 #define fr_table_num_by_substr(_table, _name, _name_len, _def) \
 _Generic((_table), \
-	 fr_table_t const *		:	fr_table_sorted_num_by_substr,	\
+	 fr_table_sorted_t const *	:	fr_table_sorted_num_by_substr,	\
 	 fr_table_ordered_t const *	:	fr_table_ordered_num_by_substr,	\
-	 fr_table_t *			:	fr_table_sorted_num_by_substr,	\
+	 fr_table_sorted_t *		:	fr_table_sorted_num_by_substr,	\
 	 fr_table_ordered_t *		:	fr_table_ordered_num_by_substr	\
 )(_table, _table ## _len, _name, _name_len, _def)
 
-int		_fr_table_sorted_num_by_longest_prefix(fr_table_t const *table, size_t table_len,
+int		_fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t table_len,
 						    char const *name, size_t name_len, int def);
 
-/** Find the longest string match in a lexicographically sorted fr_table_t table
+/** Find the longest string match in a lexicographically sorted fr_table_sorted_t table
  *
  * @copybrief _fr_table_sorted_num_by_longest_prefix
  */
@@ -122,9 +122,9 @@ char const	*_fr_table_str_by_num(fr_table_ordered_t const *table, size_t table_l
  */
 #define fr_table_str_by_num(_table, _number, _def) \
 _Generic((_table), \
-	 fr_table_t const *		:	_fr_table_str_by_num,	\
+	 fr_table_sorted_t const *	:	_fr_table_str_by_num,	\
 	 fr_table_ordered_t const *	:	_fr_table_str_by_num,	\
-	 fr_table_t *			:	_fr_table_str_by_num,	\
+	 fr_table_sorted_t *		:	_fr_table_str_by_num,	\
 	 fr_table_ordered_t *		:	_fr_table_str_by_num	\
 )((fr_table_ordered_t const *)_table, _table ## _len, _number, _def)
 

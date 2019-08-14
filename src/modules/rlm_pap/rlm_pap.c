@@ -146,7 +146,7 @@ fr_dict_attr_autoload_t rlm_pap_dict_attr[] = {
  *
  *	@note Header comparison is case insensitive.
  */
-static fr_table_t const header_names[] = {
+static fr_table_sorted_t const header_names[] = {
 	{ "X- orclntv}",	FR_NT_PASSWORD },
 	{ "{base64_md5}",	FR_MD5_PASSWORD },
 	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
@@ -186,7 +186,7 @@ static fr_table_t const header_names[] = {
 static size_t header_names_len = NUM_ELEMENTS(header_names);
 
 #ifdef HAVE_OPENSSL_EVP_H
-static fr_table_t const pbkdf2_crypt_names[] = {
+static fr_table_sorted_t const pbkdf2_crypt_names[] = {
 	{ "HMACSHA1",		FR_SSHA_PASSWORD },
 	{ "HMACSHA2+224",	FR_SSHA2_224_PASSWORD },
 	{ "HMACSHA2+256",	FR_SSHA2_256_PASSWORD },
@@ -201,7 +201,7 @@ static fr_table_t const pbkdf2_crypt_names[] = {
 };
 static size_t pbkdf2_crypt_names_len = NUM_ELEMENTS(pbkdf2_crypt_names);
 
-static fr_table_t const pbkdf2_passlib_names[] = {
+static fr_table_sorted_t const pbkdf2_passlib_names[] = {
 	{ "sha1",		FR_SSHA_PASSWORD },
 	{ "sha256",		FR_SSHA2_256_PASSWORD },
 	{ "sha512",		FR_SSHA2_512_PASSWORD }
@@ -790,7 +790,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha_evp(UNUSED rlm_pap_t const *in
  *	- RLM_MODULE_OK
  */
 static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *request, const uint8_t *str, size_t len,
-								 fr_table_t const hash_names[], size_t hash_names_len,
+								 fr_table_sorted_t const hash_names[], size_t hash_names_len,
 								 char scheme_sep, char iter_sep, char salt_sep,
 								 bool iter_is_base64, VALUE_PAIR const *password)
 {

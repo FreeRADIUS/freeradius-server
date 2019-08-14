@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <ctype.h>
 #include "rest.h"
 
-static fr_table_t const http_negotiation_table[] = {
+static fr_table_sorted_t const http_negotiation_table[] = {
 
 	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
 	{ "1.1",	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.

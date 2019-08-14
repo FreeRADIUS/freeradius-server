@@ -26,7 +26,7 @@
 #include "base.h"
 #include <freeradius-devel/server/rad_assert.h>
 
-fr_table_t const redis_reply_types[] = {
+fr_table_sorted_t const redis_reply_types[] = {
 	{ "array",	REDIS_REPLY_ARRAY	},
 	{ "error",	REDIS_REPLY_ERROR	},
 	{ "integer",	REDIS_REPLY_INTEGER	},
@@ -36,7 +36,7 @@ fr_table_t const redis_reply_types[] = {
 };
 size_t redis_reply_types_len = NUM_ELEMENTS(redis_reply_types);
 
-fr_table_t const redis_rcodes[] = {
+fr_table_sorted_t const redis_rcodes[] = {
 	{ "ask",	REDIS_RCODE_ASK		},
 	{ "error",	REDIS_RCODE_ERROR	},
 	{ "move",	REDIS_RCODE_MOVE	},

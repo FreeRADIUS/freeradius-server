@@ -56,7 +56,7 @@ fr_thread_local_setup(TALLOC_CTX *, fr_vlog_request_pool)
  * @note Not all facilities are supported by every operating system.
  *       If a facility is unavailable it will not appear in the table.
  */
-fr_table_t const syslog_facility_table[] = {
+fr_table_sorted_t const syslog_facility_table[] = {
 #ifdef LOG_AUTH
 	{ "auth",		LOG_AUTH	},
 #endif
@@ -141,7 +141,7 @@ size_t syslog_facility_table_len = NUM_ELEMENTS(syslog_facility_table);
  * in the system's syslog.h file.
  *
  */
-fr_table_t const syslog_severity_table[] = {
+fr_table_sorted_t const syslog_severity_table[] = {
 #ifdef LOG_ALERT
 	{ "alert",		LOG_ALERT	},
 #endif
@@ -176,7 +176,7 @@ fr_table_t const syslog_severity_table[] = {
 };
 size_t syslog_severity_table_len = NUM_ELEMENTS(syslog_severity_table);
 
-fr_table_t const log_str2dst[] = {
+fr_table_sorted_t const log_str2dst[] = {
 	{ "files",		L_DST_FILES	},
 	{ "null",		L_DST_NULL	},
 	{ "stderr",		L_DST_STDERR	},
