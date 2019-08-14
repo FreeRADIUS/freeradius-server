@@ -9,7 +9,7 @@ $ ./bootstrap
 
 The `openssl` command will be run against the sample configuration
 files included here, and will make a self-signed certificate authority
-(i.e. root CA), and a server certificate. This ``root CA'' should be
+(i.e. root CA), and a server certificate. This `root CA` should be
 installed on any client machine needing to do EAP-TLS, PEAP, or
 EAP-TTLS.
 
@@ -104,7 +104,7 @@ is can be imported into Windows.
 
 The following steps will let you create a server certificate for use
 with TLS-based EAP methods, such as EAP-TLS, PEAP, and TTLS. Follow
-similar steps to create an ``inner-server.pem'' file, for use with
+similar steps to create an `inner-server.pem` file, for use with
 EAP-TLS that is tunneled inside of another TLS-based EAP method.
 
 ```
@@ -114,8 +114,8 @@ $ vi server.cnf
 Edit the `input_password` and `output_password` fields to be the
 password for the server certificate.
 
-Edit the [server] section to have the correct values for your country,
-state, etc. Be sure that the commonName field here is different from the
+Edit the `[server]` section to have the correct values for your country,
+state, etc. Be sure that the `commonName` field here is different from the
 commonName for the CA certificate.
 
 ```
@@ -125,7 +125,7 @@ $ make server.pem
 This step creates the server certificate.
 
 If you have an existing certificate authority, and wish to create a
-certificate signing request for the server certificate, edit server.cnf
+certificate signing request for the server certificate, edit `server.cnf`
 as above, and type the following command.
 
 ```
@@ -137,11 +137,11 @@ needed by Microsoft clients.
 
 == Client Certificate
 
-Client certificates are used by EAP-TLS, and optionally by EAP-TTLS and
+Client certificates are used by `EAP-TLS`, and optionally by `EAP-TTLS` and
 PEAP. The following steps outline how to create a client certificate
 that is signed by the server certificate created above. You will have to
-have the password for the server certificate in the ``input_password''
-and ``output_password'' fields of the server.cnf file.
+have the password for the server certificate in the `input_password`
+and `output_password` fields of the server.cnf file.
 
 ```
 $ vi client.cnf
@@ -151,8 +151,8 @@ Edit the `input_password` and `output_password` fields to be the
 password for the client certificate. You will have to give these
 passwords to the end user who will be using the certificates.
 
-Edit the [client] section to have the correct values for your country,
-state, etc. Be sure that the commonName field here is the User-Name that
+Edit the `[client]` section to have the correct values for your country,
+state, etc. Be sure that the `commonName` field here is the `User-Name` that
 will be used for logins!
 
 ```
