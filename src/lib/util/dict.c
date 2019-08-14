@@ -493,7 +493,6 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	// is_root
 	// is_unknown
 	// is_raw
-	// is_reference
 	// internal
 	// has_tag
 	// array
@@ -1276,45 +1275,6 @@ static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in
 	return n;
 }
 
-/** Allocate a special "reference" attribute
- *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
- * @param[in] parent		to add attribute under.
- * @param[in] name		of the attribute.
- * @param[in] attr		number.
- * @param[in] type		of attribute.
- * @param[in] flags		to set in the attribute.
- * @param[in] ref		This reference attribute is pointing to.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static fr_dict_attr_t *dict_attr_ref_alloc(fr_dict_t *dict, fr_dict_attr_t const *parent,
-					   char const *name, int attr, fr_type_t type,
-					   fr_dict_attr_flags_t const *flags, fr_dict_attr_t const *ref)
-{
-	fr_dict_attr_ref_t *ref_n;
-
-	if (!name) {
-		fr_strerror_printf("No attribute name provided");
-		return NULL;
-	}
-
-	ref_n = talloc_zero(dict->pool, fr_dict_attr_ref_t);
-	ref_n->tlv.name = talloc_typed_strdup(ref_n, name);
-	if (!ref_n->tlv.name) {
-		talloc_free(ref_n);
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
-
-	dict_attr_init(&ref_n->tlv, parent, attr, type, flags);
-	ref_n->dict = fr_dict_by_da(ref);	/* Cache the dictionary */
-	ref_n->to = ref;
-
-	return (fr_dict_attr_t *)ref_n;
-}
 
 /** Add a protocol to the global protocol table
  *
@@ -1629,87 +1589,6 @@ static int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 	return 0;
 }
 
-
-/** Add an reference to the dictionary
- *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
- * @param[in] parent		to add attribute under.
- * @param[in] name		of the attribute.
- * @param[in] attr		number.
- * @param[in] type		of attribute.
- * @param[in] flags		to set in the attribute.
- * @param[in] ref		The attribute we're referencing.  May be in a foreign
- *				dictionary.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int dict_attr_ref_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
-			     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t const *flags,
-			     fr_dict_attr_t const *ref)
-{
-	fr_dict_attr_t		*n;
-	fr_dict_attr_t		*mutable;
-	fr_dict_attr_flags_t	our_flags = *flags;
-
-	/*
-	 *	Check that the definition is valid.
-	 */
-	if (!dict_attr_fields_valid(dict, parent, name, &attr, type, &our_flags)) return -1;
-
-	/*
-	 *	Check we're not creating a direct loop
-	 */
-	if (ref->flags.is_reference) {
-		fr_dict_attr_ref_t const *to_ref = talloc_get_type_abort_const(ref, fr_dict_attr_ref_t);
-
-		if (to_ref->to == ref) {
-			fr_strerror_printf("Circular reference between \"%s\" and \"%s\"", name, ref->name);
-			return -1;
-		}
-	}
-
-	/*
-	 *	Check the referenced attribute is a root
-	 *	or a TLV attribute.
-	 */
-	if (!ref->flags.is_root && (ref->type != FR_TYPE_TLV)) {
-		fr_strerror_printf("Referenced attribute \"%s\" must be of type '%s' not a 'tlv'", ref->name,
-				   fr_table_str_by_num(fr_value_box_type_table, ref->type, "<INVALID>"));
-		return -1;
-	}
-
-	/*
-	 *	Reference must go from a TLV to a TLV
-	 */
-	if (type != FR_TYPE_TLV) {
-		fr_strerror_printf("Reference attribute must be of type 'tlv', not type '%s'",
-				   fr_table_str_by_num(fr_value_box_type_table, type, "<INVALID>"));
-		return -1;
-	}
-
-	n = dict_attr_ref_alloc(dict->pool, parent, name, attr, type, &our_flags, ref);
-	if (!n) return -1;
-
-	if (dict_attr_add_by_name(dict, n) < 0) {
-	error:
-		talloc_free(n);
-		return -1;
-	}
-
-	/*
-	 *	Setup parenting for the attribute
-	 */
-	memcpy(&mutable, &parent, sizeof(mutable));
-
-	/*
-	 *	Add in by number
-	 */
-	if (dict_attr_child_add(mutable, n) < 0) goto error;
-
-	return 0;
-}
 
 /** Add an attribute to the dictionary
  *
@@ -2615,7 +2494,6 @@ do { \
 	FLAG_SET(is_root);
 	FLAG_SET(is_unknown);
 	FLAG_SET(is_raw);
-	FLAG_SET(is_reference);
 	FLAG_SET(internal);
 	FLAG_SET(has_tag);
 	FLAG_SET(array);
@@ -3958,85 +3836,6 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	return dict;
 }
 
-/** Lookup a dictionary reference
- *
- * Format is @verbatim[<proto>].[<attr>]@endverbatim
- *
- * If protocol is omitted lookup is in the current dictionary.
- *
- * FIXME: Probably needs the dictionary equivalent of pass2, to fixup circular dependencies
- *	DHCPv4->RADIUS and RADIUS->DHCPv4 are both valid.
- *
- * @param[in] dict	The current dictionary we're parsing.
- * @param[in,out] ref	The reference string.  Pointer advanced to the end of the string.
- * @return
- *	- NULL if the reference is invalid.
- *	- A local or foreign attribute representing the target of the reference.
- */
-static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const *ref)
-{
-	char const		*p = ref, *q, *end = p + strlen(ref);
-	fr_dict_t		*proto_dict;
-	fr_dict_attr_t const	*da;
-	ssize_t			slen;
-
-	/*
-	 *	If the reference does not begin with .
-	 *	then it's a reference into a foreign
-	 *	protocol.
-	 */
-	if (*p != '.') {
-		char buffer[FR_DICT_PROTO_MAX_NAME_LEN + 1];
-
-		q = strchr(p, '.');
-		if (!q) q = end;
-
-		if ((size_t)(q - p) > sizeof(buffer)) {
-			fr_strerror_printf("Protocol name too long");
-			return NULL;
-		}
-
-		strlcpy(buffer, p, (q - p + 1));
-
-		dict = fr_dict_by_protocol_name(buffer);
-		if (!dict) {
-			fr_strerror_printf("Referenced protocol \"%s\" not found", buffer);
-			return NULL;
-		}
-
-		return NULL;
-	/*
-	 *	If the reference string begins with .
-	 *	then the reference is in the current
-	 *	dictionary.
-	 */
-	} else {
-		proto_dict = dict;
-	}
-
-	/*
-	 *	If there's a '.' after the dictionary, then
-	 *	the reference is to a specific attribute.
-	 */
-	if (*p == '.') {
-		p++;
-
-		slen = fr_dict_attr_by_name_substr(NULL, &da, proto_dict, p);
-		if (slen <= 0) {
-			fr_strerror_printf("Referenced attribute \"%s\" not found", p);
-			return NULL;
-		}
-	}
-
-	da = fr_dict_root(proto_dict);
-	if (!da) {
-		fr_strerror_printf("Dictionary missing attribute root");
-		return NULL;
-	}
-
-	return da;
-}
-
 
 static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_attr_flags_t *flags)
 {
@@ -4093,10 +3892,9 @@ static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_
 }
 
 
-static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_t const **ref_p, fr_dict_attr_flags_t *flags)
+static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
 	char *p, *q, *v;
-	fr_dict_attr_t const *ref = NULL;
 
 	p = name;
 	do {
@@ -4168,13 +3966,6 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 
 		} else if (strcmp(key, "key") == 0) {
 			flags->extra = 1;
-
-		} else if (ref_p && (strcmp(key, "reference") == 0)) {
-			ref = dict_resolve_reference(ctx->dict, value);
-			if (!ref) return -1;
-			flags->is_reference = 1;
-
-			*ref_p = ref;
 
 		} else if (type == FR_TYPE_DATE) {
 			flags->length = 4;
@@ -4270,7 +4061,6 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 
 	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
-	fr_dict_attr_t const	*ref = NULL;
 	fr_dict_attr_t const	*parent;
 
 	if ((argc < 3) || (argc > 4)) {
@@ -4345,7 +4135,7 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	/*
 	 *	Parse options.
 	 */
-	if ((argc >= 4) && (dict_process_flag_field(ctx, argv[3], type, &ref, &flags) < 0)) return -1;
+	if ((argc >= 4) && (dict_process_flag_field(ctx, argv[3], type, &flags) < 0)) return -1;
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
@@ -4364,16 +4154,9 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 #endif
 
 	/*
-	 *	Add in a normal attribute
+	 *	Add in an attribute
 	 */
-	if (!ref) {
-		if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
-	/*
-	 *	Add in a special reference attribute
-	 */
-	} else {
-		if (dict_attr_ref_add(ctx->dict, parent, argv[0], attr, type, &flags, ref) < 0) return -1;
-	}
+	if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
 
 	/*
 	 *	If we need to set the previous attribute, we have to
@@ -4436,7 +4219,7 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 	/*
 	 *	Parse options.
 	 */
-	if ((argc >= 3) && (dict_process_flag_field(ctx, argv[2], type, NULL, &flags) < 0)) return -1;
+	if ((argc >= 3) && (dict_process_flag_field(ctx, argv[2], type, &flags) < 0)) return -1;
 
 #ifdef __clang_analyzer__
 	if (!ctx->dict) return -1;

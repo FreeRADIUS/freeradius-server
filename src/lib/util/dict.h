@@ -56,8 +56,6 @@ typedef struct {
 	unsigned int		is_root : 1;			//!< Is root of a dictionary.
 	unsigned int 		is_unknown : 1;			//!< Attribute number or vendor is unknown.
 	unsigned int		is_raw : 1;			//!< raw attribute, unknown or malformed
-	unsigned int		is_reference : 1;		//!< Is reference to another point in the attribute
-								///< tree.
 	unsigned int		internal : 1;			//!< Internal attribute, should not be received
 								///< in protocol packets, should not be encoded.
 	unsigned int		has_tag : 1;			//!< Tagged attribute.
@@ -100,14 +98,6 @@ struct dict_attr {
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 	char const		*name;				//!< Attribute name.
 };
-
-/** Dictionary reference
- */
-typedef struct {
-	fr_dict_attr_t		tlv;				//!< Describes how to encode the local TLV.
-	fr_dict_t const		*dict;				//!< Cached dictionary pointer for "to".
-	fr_dict_attr_t const	*to;				//!< Pointed to attribute.
-} fr_dict_attr_ref_t;
 
 /** Value of an enumerated attribute
  *
