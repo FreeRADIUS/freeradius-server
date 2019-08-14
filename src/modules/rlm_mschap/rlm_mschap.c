@@ -1942,8 +1942,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *  No "known good" NT-Password attribute.  Try to do
 		 *  OpenDirectory authentication.
 		 *
-		 *  If OD determines the user is an AD user it will return noop, which
-		 *  indicates the auth process should continue directly to AD.
+		 *  If OD determines the user is an OD user it will return noop, which
+		 *  indicates the auth process should continue directly to OD.
 		 *  Otherwise OD will determine auth success/fail.
 		 */
 		if (!nt_password && inst->open_directory) {
