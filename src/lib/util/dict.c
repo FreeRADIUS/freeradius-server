@@ -4584,6 +4584,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 	unsigned int	value;
 	unsigned int	type_size = 1;
 	fr_dict_t	*dict;
+	fr_dict_attr_t	*mutable;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_printf("Missing arguments after PROTOCOL.  Expected PROTOCOL <num> <name>");
@@ -4668,6 +4669,9 @@ static int dict_read_process_protocol(char **argv, int argc)
 	 *	Set the root attribute with the protocol name
 	 */
 	dict_root_set(dict, argv[0], value);
+
+	memcpy(&mutable, &dict->root, sizeof(mutable));
+	mutable->flags.type_size = type_size;
 
 	if (dict_protocol_add(dict) < 0) return -1;
 
