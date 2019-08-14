@@ -115,7 +115,7 @@ int fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_l
 		/*
 		 *	Match up to the length of the table entry if len is < 0.
 		 */
-		ret = strncasecmp(name, table[mid].name, (name_len < 0) ?  strlen(table[mid].name) : name_len);
+		ret = strncasecmp(name, table[mid].name, (name_len < 1) ?  strlen(table[mid].name) : name_len);
 		if (ret == 0) return table[mid].number;
 
 		if (ret < 0) {
