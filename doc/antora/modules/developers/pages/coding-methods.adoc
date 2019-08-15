@@ -227,6 +227,4 @@ useful: _Make it as simple as you can, and no simpler._
 Split up functionality as much as possible. If your code needs to do two
 unrelated things, write two functions. Mashing two kinds of work into
 one function makes the server difficult to debug and maintain.
-+
-See the `+coding-methods.txt+` document in this directory for further
-description of coding methods.
+

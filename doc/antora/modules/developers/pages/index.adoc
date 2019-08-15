@@ -4,11 +4,10 @@ List with some usual howtos for FreeRADIUS.
 
 == Topics
 
-* <<html/#,Project Documentation>>
-* <<bugs.adoc#,Bugs>>
-* <<coding-methods.adoc#,Coding Methods>>
-* <<contributing.adoc#,Contributing>>
-* <<dependencies.adoc#,Dependencies>>
-* <<module_interface.adoc#,Module Interface>>
-* <<release-method.adoc#,Release Method>>
-* <<todo.adoc#,TODO>>
+* xref:bugs.adoc[Bugs]
+* xref:coding-methods.adoc[Coding Methods]
+* xref:contributing.adoc[Contributing]
+* xref:dependencies.adoc[Dependencies]
+* xref:module_interface.adoc[Module Interface]
+* xref:release-method.adoc[Release Method]
+* xref:todo.adoc[TODO]

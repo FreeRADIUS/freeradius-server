@@ -1,4 +1,4 @@
-= To Do before v4 is releases
+= To Do before v4 is released
 
 == Nested attributes
 
