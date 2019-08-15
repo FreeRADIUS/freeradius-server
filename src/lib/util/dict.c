@@ -3906,34 +3906,39 @@ static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_
 
 static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
-	char *p, *q, *v;
+	char *p, *next = NULL;
 
-	p = name;
-	do {
-		char key[64], value[256];
+	for (p = name; p && *p != '\0' ; p = next) {
+		char *key, *value;
 
-		q = strchr(p, ',');
-		if (!q) q = p + strlen(p);
+		key = p;
 
 		/*
-		 *	Nothing after the trailing comma
+		 *	Search for the first '=' or ','
 		 */
-		if (p == q) break;
-
-		if ((size_t)(q - p) > sizeof(key)) {
-			fr_strerror_printf("ATTRIBUTE option key too long");
-			return -1;
+		for (value = p + 1; *value && (*value != '=') && (*value != ','); value++) {
+			/* do nothing */
 		}
 
 		/*
-		 *	Copy key and value
+		 *	We have a value, zero out the '=' and point to the value.
 		 */
-		if (!(v = memchr(p, '=', q - p)) || (v == q)) {
-			value[0] = '\0';
-			strlcpy(key, p, (q - p) + 1);
-		} else {
-			strlcpy(key, p, (v - p) + 1);
-			strlcpy(value, v + 1, q - v);
+		if (*value == '=') {
+			*(value++) = '\0';
+			if (!*value || (*value == ',')) {
+				fr_strerror_printf("Missing value after '%s='", key);
+				return -1;
+			}
+		}
+
+		/*
+		 *	Skip any trailing text in the value.
+		 */
+		for (next = value; *next; next++) {
+			if (*next == ',') {
+				*(next++) = '\0';
+				break;
+			}
 		}
 
 		/*
@@ -4044,8 +4049,7 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 			fr_strerror_printf("Unknown option '%s'", key);
 			return -1;
 		}
-		p = q;
-	} while (*p++);
+	}
 
 	/*
 	 *	Check that the flags are valid.
