@@ -1,5 +1,6 @@
 = Double Quoted Strings
 
+.Syntax
 `"string"`
 
 A double-quoted string allows escape sequences and link:xlat.adoc[dynamic

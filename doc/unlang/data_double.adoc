@@ -1,5 +1,6 @@
 = Double-Quoted Strings
 
+.Syntax
 `"string"`
 
 A double-quoted string is interpreted via the usual rules in

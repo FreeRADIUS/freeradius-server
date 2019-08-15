@@ -48,5 +48,9 @@ Other than within a dynamically expanded string, very little
 character escaping is needed. The rules of the enclosing string context
 determine whether or not a space or " character needs to be escaped.
 
+.Example
+
+`Reply-Message := "%{User-Name} with a literal %%`
+
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

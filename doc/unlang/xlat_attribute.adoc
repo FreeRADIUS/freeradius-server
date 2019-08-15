@@ -7,8 +7,7 @@ syntaxes:
 `%{<list>:Attribute-Name}`
 
 The `<list>:` prefix is optional. If given, it must be a valid
-reference to an attribute list.  In normal use, this can be `request`,
-`reply`, `control`, or a parent list such as `parent.request`.
+reference to an link:list.adoc[attribute list].
 
 If the `<list>:` prefix is omitted, then the `request` list is
 assumed.
@@ -37,21 +36,19 @@ Examples of using references inside of a string:
 
 == Additional Variations
 
-* `%{Attribute-Name[#]}`
+`%{Attribute-Name[#]}`::
+Returns an integer containing the number of named attributes
 
- - returns an integer containing the number of named attributes
+`%{Attribute-Name[0]}`::
 
-* `%{Attribute-Name[0]}`
+When an attribute appears multiple times in a list, this syntax allows
+you to address the attributes as with array entries.  `[0]` refers to
+the first attributes, `[1]` refers to the second attribute, etc.
 
- - When an attribute appears multiple times in a list, this syntax
-   allows you to address the attributes as with array entries.  `[0]`
-   refers to the first attributes, `[1]` refers to the second
-   attribute, etc.
+`%{Attribute-Name[*]}`::
 
-* `%{Attribute-Name[*]}`
-
- - returns a comma-separated string containing all values for all
-   named attributes.
+Returns a comma-separated string containing all values for the named
+attributes.
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

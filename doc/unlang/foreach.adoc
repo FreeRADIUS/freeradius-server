@@ -12,6 +12,10 @@ The `foreach` statement loops over a list of attributes as given by
 `<attribute-reference>`.  The loop can be exited early by using the
 link:break.adoc[break] keyword.
 
+<attribute-reference>::
+
+The attribute which will will be looped over.
+
 Inside of the `foreach` block, the attribute that is being looped over
 can be referenced as `Foreach-Variable-0`, through
 `Foreach-Variable-9`.  The last digit is the depth of the loop,

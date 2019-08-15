@@ -16,5 +16,9 @@ Otherwise, it returns the expansion of `%{Bar}`.
 These conditional expansions can be nested to almost any depth, such
 as with `%{&#8203;%{One}:-%{&#8203;%{Two}:-%{Three}}}`.
 
+.Examples
+`%{%{Stripped-User-Name}:-%{User-Name}}` +
+`%{%{Framed-IP-Address}:-<none>}`
+
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

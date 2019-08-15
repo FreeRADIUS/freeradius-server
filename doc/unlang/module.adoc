@@ -44,10 +44,21 @@ the source, below:
 |updated |the module updated the request
 |==================================================
 
-These return codes can be used in a subsequent conditional
-expression (see the processing section for a more detailed description),
-thus allowing policies to perform different actions based on the
-behaviour of the modules.
+These return codes can be used in a subsequent
+link:cond.adoc[conditional expression]m thus allowing policies to
+perform different actions based on the behaviour of the modules.
+
+.Example
+[source,unlang]
+----
+sql
+if (notfound) {
+    update reply {
+        Reply-Message = "We don't know who you are"
+    }
+    reject
+}
+----
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

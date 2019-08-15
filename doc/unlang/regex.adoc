@@ -43,14 +43,19 @@ When the `=~` operator is used, then parentheses in the regular
 expression will define variables that contain the matching text.
 
 The special variable `%{0}` contains a copy of the result of
-evaluating the data field. The variables `%{1}` through `%{16}` will
-contain the substring matches, starting from the left-most parentheses.
-If there are more than eight parentheses, the additional results will be
-discarded and will not be placed into any variables.
+evaluating the data field.  The variables `%{1}` and following refer
+to the subsequent matched substring in the regular expression.
 
-.Examples
+Please see the link:xlat_predefined.adoc#_0[xlat documentation] for
+more information on regular expression matching.
 
-`if (User-Name =~ /@example\.com$$/) { ...`
+.Example
+[source,unlang]
+----
+if (User-Name =~ /@example\.com$$/) {
+    ...
+}
+----
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

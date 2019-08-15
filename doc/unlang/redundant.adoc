@@ -1,5 +1,6 @@
 = The redundant Statement
 
+.Syntax
 [source,unlang]
 ----
 redundant {

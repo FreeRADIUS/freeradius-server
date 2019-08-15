@@ -1,5 +1,6 @@
 = The group Statement
 
+.Syntax
 [source,unlang]
 ----
 group {

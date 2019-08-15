@@ -1,5 +1,6 @@
 = The load-balance Statement
 
+.Syntax
 [source,unlang]
 ----
 load-balance [ <key> ] {

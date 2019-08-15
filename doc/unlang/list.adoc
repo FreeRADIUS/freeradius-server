@@ -22,7 +22,7 @@ names.
 
 NOTE: In version 3, there were additional lists such as `proxy`,
 `proxy-reply`, and `coa`.  These lists have been removed in version 4.
-See the link:subrequest.adoc[subrequest] statement for how to create
+See the link:subrequest.adoc[subrequest] keyword for how to create
 child requests.
 
 With the exception of `session-state`, all of the above lists are
@@ -50,6 +50,6 @@ the child is running, the parent is suspended.  Once the child
 finishes, it is deleted, and is no longer accessible to the parent.
 
 .Examples
-* `&parent.request:User-Name`
-* `&parent.reply:Reply-Message`
-* `&parent.parent.session-state:Filter-Id`
+`&parent.request:User-Name` +
+`&parent.reply:Reply-Message` +
+`&parent.parent.session-state:Filter-Id`

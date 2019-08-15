@@ -1,5 +1,6 @@
 = The parallel Statement
 
+.Syntax
 [source,unlang]
 ----
 parallel [ empty | detach ] {

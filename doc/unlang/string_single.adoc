@@ -1,5 +1,6 @@
 = Single Quoted Strings
 
+.Syntax
 `'string'`
 
 A single-quoted string is interpreted without any dynamic string

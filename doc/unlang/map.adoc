@@ -1,5 +1,6 @@
 = The map Statement
 
+.Syntax
 [source,unlang]
 ----
 map <module-name> "string" {

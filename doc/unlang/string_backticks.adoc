@@ -1,5 +1,6 @@
 = Backtick-quoted string
 
+.Syntax
 `{backtick}string{backtick}`
 
 The backtick operator is used to perform a run-time expansion

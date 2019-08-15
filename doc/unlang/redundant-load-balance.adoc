@@ -1,5 +1,6 @@
 = The redundant-load-balance Statement
 
+.Syntax
 [source,unlang]
 ----
 redundant-load-balance [ <key> ] {
