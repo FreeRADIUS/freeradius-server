@@ -1,7 +1,7 @@
 * xref:index.adoc[Unlang Policy Language]
 
-** xref:list.adoc[Attribute lists]
-** xref:attr.adoc[Attribute references]
+** xref:list.adoc[Attribute Lists]
+** xref:attr.adoc[Attribute References]
 ** xref:regex.adoc[Regular Expressions]
 
 ** xref:keywords.adoc[Keywords]

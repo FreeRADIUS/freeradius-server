@@ -35,8 +35,10 @@ expression library available on the local system.
 FreeRADIUS currently supports:
 
 * link:https://www.pcre.org/original/doc/html/[libpcre] and
-link:https://www.pcre.org/current/doc/html/[libpcre2] libraries both of which
-provide Perl Compatible Regular expressions.
+link:https://www.pcre.org/current/doc/html/[libpcre2] both of which
+provide
+link:https://en.wikipedia.org/wiki/Perl_Compatible_Regular_Expressions[Perl
+Compatible Regular expressions].
 * link:http://en.wikipedia.org/wiki/Regular_expression#POSIX_basic_and_extended[
 Posix regular expressions].
 
