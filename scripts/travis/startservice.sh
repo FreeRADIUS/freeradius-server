@@ -6,7 +6,7 @@ function startservices() {
     chown -R mysql.mysql /var/run/mysqld /var/lib/mysql
     mysqld_safe &
     MYSQLD_PID=$!
-    if ! [ -e "/var/lib/postgresql/10/main/data/postgresql.conf" ] ; then 
+    if ! [ -e "/var/lib/postgresql/10/main/data/postgresql.conf" ] ; then
         su - postgres -c "/usr/lib/postgresql/10/bin/pg_ctl -D /var/lib/postgresql/10/main/data init"
     fi
     su - postgres -c "/usr/lib/postgresql/10/bin/pg_ctl -D /var/lib/postgresql/10/main/data start"
@@ -40,7 +40,7 @@ function run-tests() {
         export REDIS_IPPOOL_TEST_SERVER="127.0.0.1"
         export ANALYZE_C_DUMP="1"
         export FR_GLOBAL_POOL=2M
-        ## before_install 
+        ## before_install
         if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 && sudo update-alternatives --config gcc; fi
         if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 60 && sudo update-alternatives --config clang; fi
         if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-8 60 && sudo update-alternatives --config llvm-symbolizer; fi
@@ -51,7 +51,7 @@ function run-tests() {
         ## script
         pwd
         if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
-        if [ "${DO_BUILD}" = 'no' ]; then cd doc/source; doxygen 3>&1 1>&2 2>&3 | grep -iv '^warning:' | tee doxygen_stderr.log && [ ! -n "$(cat doxygen_stderr.log)" ]; fi
+        if [ "${DO_BUILD}" = 'no' ]; then cd doc/doxygen; doxygen 3>&1 1>&2 2>&3 | grep -iv '^warning:' | tee doxygen_stderr.log && [ ! -n "$(cat doxygen_stderr.log)" ]; fi
 }
 
 if ! test -e /tmp/initialized ; then

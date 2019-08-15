@@ -57,7 +57,7 @@ HTML_FILES := $(filter %html,$(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) \
 #
 #	Our "conf to Doxygen" stuff.
 #
-DOXYGEN_DIR = doc/source
+DOXYGEN_DIR = doc/doxygen
 DOXYGEN_HTML_DIR = $(DOXYGEN_DIR)/html/
 
 #
