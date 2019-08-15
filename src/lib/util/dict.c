@@ -76,6 +76,18 @@ struct dict_enum_fixup_s {
 	dict_enum_fixup_t	*next;			//!< Next in the linked list of fixups.
 };
 
+typedef struct dict_group_fixup_s dict_group_fixup_t;
+
+/** A temporary enum value, which we'll resolve later
+ *
+ */
+struct dict_group_fixup_s {
+	char			*filename;		//!< where the "group" was defined
+	int			line;			//!< ditto
+	fr_dict_attr_t		*da;			//!< the grouped attribute
+	dict_group_fixup_t	*next;			//!< Next in the linked list of fixups.
+};
+
 /** Vendors and attribute names
  *
  * It's very likely that the same vendors will operate in multiple
@@ -484,6 +496,7 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	SET_FLAG(concat);
 	SET_FLAG(virtual);
 	SET_FLAG(extra);
+
 	shift_encrypt = (1 << bit);
 	if (flags->encrypt) {
 		all_flags |= (1 << bit);
@@ -1422,6 +1435,29 @@ static inline int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *ch
 	child->depth = parent->depth + 1;
 
 	DA_VERIFY(child);
+
+	switch (parent->type) {
+	case FR_TYPE_TLV:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_VSA:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_EXTENDED:
+		break;
+
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+		/*
+		 *	Children are allowed here, but ONLY if this
+		 *	attribute is a key field.
+		 */
+		if (parent->parent && (parent->parent->type == FR_TYPE_STRUCT) && parent->flags.extra) break;
+
+	default:
+		fr_strerror_printf("Cannot add children to attribute '%s' of type %s",
+				   parent->name, fr_table_str_by_num(fr_value_box_type_table, parent->type, "?Unknown?"));
+		return false;
+	}
 
 	/*
 	 *	We only allocate the pointer array *if* the parent has children.
@@ -3511,6 +3547,14 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *par
 	if (!parent->children) return NULL;
 
 	/*
+	 *	We return the child of the referenced attribute, and
+	 *	not of the "group" attribute.
+	 */
+	if (parent->type == FR_TYPE_GROUP) {
+		parent = parent->ref;
+	}
+
+	/*
 	 *	Child arrays may be trimmed back to save memory.
 	 *	Check that so we don't SEGV.
 	 */
@@ -3730,7 +3774,9 @@ typedef struct {
 							///< only for parents of type "tlv"
 
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
+
 	dict_enum_fixup_t	*enum_fixup;
+	dict_group_fixup_t	*group_fixup;
 } dict_from_file_ctx_t;
 
 /** Set a new root dictionary attribute
@@ -3904,9 +3950,12 @@ static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_
 }
 
 
-static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_flags_t *flags)
+static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_flags_t *flags,
+				   char **ref)
 {
 	char *p, *next = NULL;
+
+	if (ref) *ref = NULL;
 
 	for (p = name; p && *p != '\0' ; p = next) {
 		char *key, *value;
@@ -4045,6 +4094,14 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 				flags->type_size = precision;
 			}
 
+		} else if (strcmp(key, "ref") == 0) {
+			if (!ref || (type != FR_TYPE_GROUP)) {
+				fr_strerror_printf("The 'ref' flag can only be used for attributes of type 'group'");
+				return -1;
+			}
+
+			*ref = talloc_strdup(ctx->dict->pool, value);
+
 		} else {
 			fr_strerror_printf("Unknown option '%s'", key);
 			return -1;
@@ -4101,6 +4158,7 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
 	fr_dict_attr_t const	*parent;
+	char			*ref = NULL;
 
 	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_printf("Invalid ATTRIBUTE syntax");
@@ -4174,7 +4232,7 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	/*
 	 *	Parse options.
 	 */
-	if ((argc >= 4) && (dict_process_flag_field(ctx, argv[3], type, &flags) < 0)) return -1;
+	if ((argc >= 4) && (dict_process_flag_field(ctx, argv[3], type, &flags, &ref) < 0)) return -1;
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
@@ -4196,6 +4254,86 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	 *	Add in an attribute
 	 */
 	if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
+
+	/*
+	 *	Hack up groups according to "ref"
+	 */
+	if (type == FR_TYPE_GROUP) {
+		fr_dict_attr_t const *da;
+		fr_dict_attr_t *self;
+		fr_dict_t const *dict;
+		char *p;
+
+		da = fr_dict_attr_child_by_num(parent, attr);
+		if (!da) {
+			fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
+			return -1;
+		}
+
+		memcpy(&self, &da, sizeof(self)); /* const issues */
+
+		/*
+		 *	No qualifiers, just point it to the root of the current dictionary.
+		 */
+		if (!ref) {
+			dict = ctx->dict;
+			da = ctx->dict->root;
+			goto check;
+		}
+
+		da = fr_dict_attr_by_name(ctx->dict, ref);
+		if (da) {
+			dict = ctx->dict;
+			goto check;
+		}
+
+		/*
+		 *	The attribute doesn't exist, and the reference
+		 *	isn't in a "PROTO.ATTR" format, die.
+		 */
+		p = strchr(ref, '.');
+		if (!p) {
+			fr_strerror_printf("Unknown attribute in reference '%s'", ref);
+			talloc_free(ref);
+			return -1;
+		}
+
+		/*
+		 *	Get / skip protocol name.
+		 */
+		slen = fr_dict_by_protocol_substr(&dict, ref, ctx->dict);
+		if (slen < 0) {
+			talloc_free(ref);
+			return -1;
+		}
+
+		if (slen == 0) {
+			fr_strerror_printf("protocol '%.*s' not yet loaded", (int) (p - ref), ref);
+			talloc_free(ref);
+			return -1;
+		}
+
+		/*
+		 *	Look up the attribute.
+		 */
+		da = fr_dict_attr_by_name(dict, ref + slen + 1);
+		if (!da) {
+			fr_strerror_printf("protocol loaded, but no attribute '%s'", ref + slen + 1);
+			talloc_free(ref);
+			return -1;
+		}
+
+	check:
+		if (da->type != FR_TYPE_TLV) {
+			fr_strerror_printf("References MUST be to attributes of type 'tlv'");
+			talloc_free(ref);
+			return -1;
+		}
+
+		talloc_free(ref);
+		self->dict = dict;
+		self->ref = da;
+	}
 
 	/*
 	 *	If we need to set the previous attribute, we have to
@@ -4258,7 +4396,7 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 	/*
 	 *	Parse options.
 	 */
-	if ((argc >= 3) && (dict_process_flag_field(ctx, argv[2], type, &flags) < 0)) return -1;
+	if ((argc >= 3) && (dict_process_flag_field(ctx, argv[2], type, &flags, NULL) < 0)) return -1;
 
 #ifdef __clang_analyzer__
 	if (!ctx->dict) return -1;
@@ -4644,7 +4782,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 	}
 
 	/*
-	 *	255 protocts FR_TYPE_GROUP type_size hack
+	 *	255 protocolss FR_TYPE_GROUP type_size hack
 	 */
 	if ((value == 0) || (value > 255)) {
 		fr_strerror_printf("Invalid value '%u' following PROTOCOL", value);
@@ -4821,6 +4959,15 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 			ctx->enum_fixup = next;
 		}
 	}
+
+	if (ctx->group_fixup) {
+		dict_group_fixup_t *this, *next;
+
+		for (this = ctx->group_fixup; this != NULL; this = next) {
+			next = NULL;
+		}
+	}
+
 	TALLOC_FREE(ctx->fixup_pool);
 
 	/*

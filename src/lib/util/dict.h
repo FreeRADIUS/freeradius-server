@@ -90,8 +90,18 @@ struct dict_attr {
 	fr_type_t		type;				//!< Value type.
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
-	fr_dict_attr_t const	**children;			//!< Children of this attribute.
-	fr_dict_attr_t const	*next;				//!< Next child in bin.
+
+	union {
+		struct {
+			fr_dict_attr_t const	**children;	//!< Children of this attribute.
+			fr_dict_attr_t const	*next;		//!< Next child in bin.
+		};
+		struct {
+			fr_dict_t const		*dict;		//!< child dictionary
+			fr_dict_attr_t const	*ref;		//!< reference
+		};
+	};
+
 
 	unsigned int		depth;				//!< Depth of nesting for this attribute.
 
