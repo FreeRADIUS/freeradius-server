@@ -1,4 +1,4 @@
-# FreeRADIUS Documentation
+= Introduction
 
 This is the documentation for FreeRADIUS, version 4. The documentation
 is available under the Creative Commons Non-Commercial license, as given
@@ -25,12 +25,12 @@ Everything in the server is fully documented, and there are many
 The documentation is split into sections by subject area, oganized by
 desired outcome. At a high level, the subject areas describe:
 
-* concepts and <<introduction/#,introduction>> for newcomers,
-* the syntax of the <<unlang/#,unlang>> processing language,
-* the <<raddb/#,configuration files>>,
-* various <<howto/#,how-to>> guides,
-* <<upgrade/#,upgrading>> from a previous version of FreeRADIUS,
-* and <<source/#,developer documentation>>
+* xref:concepts.adoc[Concepts] and introduction for newcomers.
+* The syntax of the xref:unlang:index.adoc[unlang] processing language.
+* The xref:raddb:index.adoc[configuration files].
+* Various xref:howto:index.adoc[how-to] guides.
+* xref:upgrade:index.adoc[Upgrading] from a previous version of FreeRADIUS.
+* xref:developers:index.adoc[Developer documentation].
 
 This organization means that for example, the `ldap` module will have
 documention located in multiple places. We feel that organizing the
@@ -49,8 +49,8 @@ concerns about the quality of the FreeRADIUS documentation.
 == Getting Started
 
 FreeRADIUS can be installed using the pre-built packages available from
-http://packages.networkradius.com[Network RADIUS, window="_blank"]. That page contains
-packages for all common OS distributions. For historical purposes,
+http://packages.networkradius.com[Network RADIUS, window="_blank"]. That page
+contains packages for all common OS distributions. For historical purposes,
 packages of older releases are also available.
 
 WARNING: Many Operating System distributions ship versions of FreeRADIUS
@@ -60,32 +60,31 @@ http://packages.networkradius.com[Network RADIUS, window="_blank"] packages wher
 possible.
 
 Administrators who are new to FreeRADIUS should read the
-<<introduction/#,introduction>> documentation. That section
-describes the concepts behind FreeRADIUS. It is vital for newcomers to
-understand these concepts, as the rest of the documentation assumes
-familiarity with them.
+xref:concepts.adoc[concepts section] as it describes the concepts behind
+FreeRADIUS. It is vital for newcomers to understand these concepts, as the rest
+of the documentation assumes familiarity with them.
 
 Administrators who have version 3 and wish to upgrade to version 4
-should read the <<upgrade/#,upgrading>> documentation. That section
+should read the xref:upgrade:index.adoc[upgrading] documentation. That section
 explains the differences between the two versions, and how an existing
 configuration can be reproduced in the latest release. We do _not_
 recommend using version 3 configuration files with version 4. The server
 does not have compatible files across a major version upgrade.
 
-A detailed <<unlang/#,unlang>> reference guide is also available.
+A detailed xref:unlang:index.adoc[unlang] reference guide is also available.
 This section describes the syntax and functionality of the keywords,
 data types, etc. used in the `unlang` processing language.
 
-All of the <<raddb/#,configuration files>> are available in
+All of the xref:raddb:index.adoc[configuration files] are available in
 hypertext format. In can often be easier to read the configuration files
 in a nicely formatted version, instead of as a fixed-width font in a
 text editor.
 
-For specific problem solving, we recommend the <<howto/#,how-to>>
+For specific problem solving, we recommend the xref:howto:index.adoc[how-to]
 guides. These guides give instructions for reaching high-level goals, or
-for configuring and testing individual <<howto/modules/#,modules>>.
+for configuring and testing individual xref:howto:modules/index.adoc[modules].
 
-There is also <<source/#,developer documentation>>. This section
+There is also xref:developers:index.adoc[developer documentation]. This section
 documents the APIs for developers. Most people can ignore it.
 
 == Debugging

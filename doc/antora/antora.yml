@@ -7,3 +7,6 @@ name: freeradius-server
 title: The FreeRADIUS Server
 version: 'latest'
 start_page: ROOT:index.adoc
+nav:
+- modules/ROOT/nav.adoc
+- modules/unlang/nav.adoc
