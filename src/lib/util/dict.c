@@ -1452,6 +1452,7 @@ static inline int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *ch
 		 *	attribute is a key field.
 		 */
 		if (parent->parent && (parent->parent->type == FR_TYPE_STRUCT) && parent->flags.extra) break;
+		/* FALL-THROUGH */
 
 	default:
 		fr_strerror_printf("Cannot add children to attribute '%s' of type %s",
