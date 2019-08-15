@@ -4,9 +4,9 @@ In addition to storing attribute references, the server has a number
 of pre-defined expansions.  These expansions act largely as functions
 which operate on inputs, and produce an output.
 
-## Attribute Manipulation
+== Attribute Manipulation
 
-### %{length: ... }
+=== %{length: ... }
 
 The `length` expansion returns the size of the input as an integer.
 When the input is a string, then the output is identical to the
@@ -39,7 +39,7 @@ update reply {
   The length of 192.168.0.2 is 4
 ```
 
-### %{integer:<&ref>}
+=== %{integer:<&ref>}
 
 Print the value of the attribute an integer.
 
@@ -78,7 +78,7 @@ update reply {
 The value of Service-Type is 1
 ```
 
-### %{rand:<number>}
+=== %{rand:<number>}
 
 Get random number from `0` to `n-1`.
 
@@ -99,7 +99,7 @@ update reply {
 The random number is 347
 ```
 
-### %{tag:<attribute:<tag>>}
+=== %{tag:<attribute:<tag>>}
 
 Find an attribute reference with the given tag, and return its value.
 
@@ -128,9 +128,9 @@ update reply {
 The value of Tunnel-Server-Endpoint with tag 1 is 192.0.5.2
 ```
 
-## Server Manipulation
+== Server Manipulation
 
-### %{config:<key>}
+=== %{config:<key>}
 
 Refers to a variable in the configuration file. See the documentation
 on configuration file references.
@@ -152,7 +152,7 @@ Server installed in /opt/freeradius
 Module rlm_exec.shell_escape = yes
 ```
 
-### %{client:<key>}
+=== %{client:<key>}
 
 Refers to a variable that was defined in the client section for the
 current client. See the sections `client { ... }` in `clients.conf`.
@@ -172,7 +172,7 @@ current client. See the sections `client { ... }` in `clients.conf`.
 The client ipaddr is 192.168.5.9
 ```
 
-### %{debug:<level>}
+=== %{debug:<level>}
 
 Dynamically change the debug level to something high, recording the old level.
 
@@ -208,7 +208,7 @@ recv Access-Request {
 ...
 ```
 
-### %{debug_attr:<list:[index]>}
+=== %{debug_attr:<list:[index]>}
 
 Print to debug output all instances of current attribute, or all attributes in a list.
 expands to a zero-length string.
@@ -244,9 +244,9 @@ recv Access-Request {
 ...
 ```
 
-## String manipulation
+== String manipulation
 
-### %{concat:<delim> <&ref:[idx]>}
+=== %{concat:<delim> <&ref:[idx]>}
 
 Used to join two or more attributes, separated by a delimiter.
 
@@ -275,7 +275,7 @@ aaa, bb, c
 aaa,bb,c
 ```
 
-### %{explode:<&ref> <delim>}
+=== %{explode:<&ref> <delim>}
 
 Split an attribute into multiple new attributes based on a delimiter.
 The original input attribute is removed, and is replaced with multiple
@@ -306,7 +306,7 @@ update reply {
 Welcome bob.toba
 ```
 
-### %{lpad:<&ref> <val> <char>}
+=== %{lpad:<&ref> <val> <char>}
 
 Left-pad a string.
 
@@ -330,7 +330,7 @@ update reply {
 Maximum should be 00000000123
 ```
 
-### %{rpad:<&ref> <val> <char>}
+=== %{rpad:<&ref> <val> <char>}
 
 Right-pad a string.
 
@@ -354,7 +354,7 @@ update reply {
 Maximum should be 12300000000
 ```
 
-### %{pairs:<&list:[*]>}
+=== %{pairs:<&list:[*]>}
 
 Serialize attributes as comma-delimited string.
 
@@ -380,7 +380,7 @@ update reply {
 Serialize output: Tmp-String-0 = \"This is a string\"Tmp-String-0 = \"This is another one\"
 ```
 
-### %{randstr: ...}
+=== %{randstr: ...}
 
 Get random string built from character classes.
 
@@ -401,7 +401,7 @@ update reply {
 The random string output is 4Uq0gPyG
 ```
 
-### %{strlen: ... }
+=== %{strlen: ... }
 
 Length of given string.
 
@@ -425,7 +425,7 @@ update reply {
 The length of Caipirinha is 21
 ```
 
-### %{tolower: ... }
+=== %{tolower: ... }
 
 Dynamically expands the string and returns the lowercase version of
 it. This definition is only available in version 2.1.10 and later.
@@ -450,7 +450,7 @@ update reply {
 tolower of CAIPIRINHA is caipirinha
 ```
 
-### %{toupper: ... }
+=== %{toupper: ... }
 
 Dynamically expands the string and returns the uppercase version of
 it. This definition is only available in version 2.1.10 and later.
@@ -475,9 +475,9 @@ update reply {
 toupper of caipirinha is CAIPIRINHA
 ```
 
-## String Conversion
+== String Conversion
 
-### %{base64: ... }
+=== %{base64: ... }
 
 Encode a string using Base64.
 
@@ -501,7 +501,7 @@ update reply {
 The base64 of foo is Q2FpcGlyaW5oYQ==
 ```
 
-### %{base64decode: ... }
+=== %{base64decode: ... }
 
 Decode a string previously encoded using Base64.
 
@@ -525,7 +525,7 @@ update reply {
 The base64decode of Q2FpcGlyaW5oYQ== is Caipirinha
 ```
 
-### %{bin: ... }
+=== %{bin: ... }
 
 Convert string to binary.
 
@@ -549,7 +549,7 @@ update reply {
 The 10 in binary is \020
 ```
 
-### %{hex: ... }
+=== %{hex: ... }
 
 Convert to hex.
 
@@ -573,7 +573,7 @@ update reply {
 The value of 12345 in hex is 3132333435
 ```
 
-### %{urlquote: ... }
+=== %{urlquote: ... }
 
 Quote URL special characters.
 
@@ -597,7 +597,7 @@ update reply {
 The urlquote of http://example.org/ is http%3A%2F%2Fexample.org%2F
 ```
 
-### %{urlunquote: ... }
+=== %{urlunquote: ... }
 
 Unquote URL special characters.
 
@@ -621,9 +621,9 @@ update reply {
 The urlunquote of http%3A%2F%2Fexample.org%2F is http://example.org/
 ```
 
-## Hashing and Encryption
+== Hashing and Encryption
 
-### %{hmacmd5:<shared_key> <string>}
+=== %{hmacmd5:<shared_key> <string>}
 
 Generate `HMAC-MD5` of string.
 
@@ -654,7 +654,7 @@ The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\37
 The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-### %{hmacsha1:<shared_key> <string>}
+=== %{hmacsha1:<shared_key> <string>}
 
 Generate `HMAC-SHA1` of string.
 
@@ -685,7 +685,7 @@ The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\3
 The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-### %{md5: ... }
+=== %{md5: ... }
 
 Dynamically expands the string and performs an MD5 hash on it. The
 result is binary data.
@@ -712,7 +712,7 @@ md5 of Caipirinha is octal=\024\204\013md||\230\243\3472\3703\330n\251
 md5 of Caipirinha is hex=14840b6d647c7c98a3e732f833d86ea9
 ```
 
-### Other Hashing Functions
+=== Other Hashing Functions
 
 The following hashes are supported for all versions of OpenSSL.
 
@@ -763,13 +763,13 @@ The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
 ```
 
 
-## Miscellaneous Expansions
+== Miscellaneous Expansions
 
-### %{0}
+=== %{0}
 
 Refers to the string that was last used to match a regular expression. The variables `%{1}` through `%{8}` refer to the matched substring in the regular expression.
 
-### %{nexttime:<time>}
+=== %{nexttime:<time>}
 
 Calculate number of seconds until next n hour(`s`), day(`s`), week(`s`), year(`s`).
 
@@ -793,17 +793,17 @@ update reply {
 You should wait for 2520s
 ```
 
-### %{Packet-Type}
+=== %{Packet-Type}
 
 The packet type (`Access-Request`, etc.)
 
-### %{Packet-SRC-IP-Address} and %{Packet-SRC-IPv6-Address}
+=== %{Packet-SRC-IP-Address} and %{Packet-SRC-IPv6-Address}
 
 The source IPv4 or IPv6 address of the packet. See also the expansions
 `%{client:ipaddr}` and `%{client:ipv6addr}`. The two expansions
 should be identical, unless `%{client:ipaddr}` contains a DNS hostname.
 
-### %{Packet-DST-IP-Address} and %{Packet-DST-IPv6-Address}
+=== %{Packet-DST-IP-Address} and %{Packet-DST-IPv6-Address}
 
 The destination IPv4 or IPv6 address of the packet. See also the
 expansions `%{listen:ipaddr}` and `%{listen:ipv6addr}`. If the socket
@@ -812,11 +812,11 @@ different, as follows: the `%{listen:ipaddr}` will be the wildcard
 address and `%{Packet-DST-IP-Address}` will be the unicast address to
 which the packet was sent.
 
-### %{Packet-SRC-Port} and %{Packet-DST-Port}
+=== %{Packet-SRC-Port} and %{Packet-DST-Port}
 
 The source/destination ports associated with the packet.
 
-### %{regex:<capture_group>}
+=== %{regex:<capture_group>}
 
 Return named subcapture value from previous regex.
 
