@@ -15,7 +15,7 @@ NOTE: The documentation is this directory is _reference_
 documentation.  That is, it describes the syntax of `unlang` keywords,
 using minimal examples.  The reference documentation does not,
 however, describe _when_ to use the keywords, or _how_ to create
-policies. Please see the xref:../howto/index.adoc[howto] directory for
+policies. Please see the xref:howto:index.adoc[howto] directory for
 more in-depth "how to" guides.
 
 The documentation is organized so that each item is on its own page.
@@ -29,7 +29,7 @@ The `unlang` processing can be split into some high-level concepts.
 
 xref:keywords.adoc[Keywords], which are the basic statements of the
 language, e.g., xref:load-balance.adoc[load-balance],
-xref:if.adoc[if], link:else.adoc[else], etc.
+xref:if.adoc[if], xref:else.adoc[else], etc.
 
 .Example
 [source,unlang]

@@ -7,8 +7,8 @@ lhs OP rhs
 ----
 
 The most common use-case for conditions is to perform comparisons.
-The `lhs` and `rhs` of a conditional compaarison can be
-xref:attr.adoc[&Attribute-Name] or link:cond_data[data].  The
+The `lhs` and `rhs` of a conditional comparison can be
+xref:attr.adoc[&Attribute-Name] or xref:type/index.adoc[data].  The
 the `OP` is an operator, commonly `==` or `\<=`.  It is used to
 control how the two other portions of the condition are compared.
 

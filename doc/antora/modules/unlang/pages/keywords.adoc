@@ -92,8 +92,8 @@ name of an instance of a pre-packaged module such as `sql`, or `ldap`, or
 
 The documentation below describes how to reference modules.  That is,
 how to use `sql`, etc. in the policies.  Please see the
-link:../raddb/mods-available/[module configuration] and the
-link:../howto/modules/[module howto] pages for information on
+xref:raddb:mods-available/index.adoc[module configuration] and the
+xref:howto:modules/index.adoc[module howto] pages for information on
 configuring and using the modules.
 
 .Modules

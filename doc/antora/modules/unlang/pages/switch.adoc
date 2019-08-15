@@ -48,13 +48,13 @@ xref:if.adoc[if] statement, the _expansion_ is evaluated again for every
 xref:if.adoc[if].
 
 If a matching xref:case.adoc[case] is found, the statements within that
-xref:case.adoc[case] are evaluated. If no matching link:case[case] is
+xref:case.adoc[case] are evaluated. If no matching xref:case.adoc[case] is
 found, the "default" xref:case.adoc[case] is evaluated. This default is the
 xref:case.adoc[case] with no _match_ text.  If there is no default
 xref:case.adoc[case], then the `switch` statement does nothing.
 
 The _match_ text for the xref:case.adoc[case] statement can be an
-xref:attr.adoc[&Attribute-Name] or link:cond_data[data].
+xref:attr.adoc[&Attribute-Name] or xref:type/index.adoc[data].
 
 No statement other than xref:case.adoc[case] can appear in a `switch`
 statement, and the xref:case.adoc[case] statement cannot appear outside of a
