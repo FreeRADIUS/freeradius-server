@@ -42,7 +42,7 @@ RCSID("$Id$")
 #define MAX_ARGV (16)
 
 #define DICT_POOL_SIZE		(1024 * 1024 * 2)
-#define DICT_FIXUP_POOL_SIZE	(1024 * 1024 * 1)
+#define DICT_FIXUP_POOL_SIZE	(1024)
 
 static TALLOC_CTX	*dict_ctx;
 static fr_hash_table_t	*protocol_by_name = NULL;	//!< Hash containing names of all the registered protocols.
@@ -3817,7 +3817,7 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	talloc_set_destructor(dict, _dict_free);
 
 	/*
-	 *	Pre-Allocate 6MB of pool memory for rapid startup
+	 *	Pre-Allocate pool memory for rapid startup
 	 *	As that's the working memory required during
 	 *	dictionary initialisation.
 	 */
