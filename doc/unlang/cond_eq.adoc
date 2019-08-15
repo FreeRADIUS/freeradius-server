@@ -1,5 +1,4 @@
-
-== The == Operator
+= The == Operator
 
 `(data-1 == data-2)`
 

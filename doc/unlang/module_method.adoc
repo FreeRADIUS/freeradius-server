@@ -1,5 +1,4 @@
-
-== The module.method Statement
+= The module.method Statement
 
 .Syntax
 [source,unlang]

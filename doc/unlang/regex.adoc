@@ -1,5 +1,4 @@
-
-== Regular Expression Comparisons
+= Regular Expression Comparisons
 
 .Example
 [source,unlang]

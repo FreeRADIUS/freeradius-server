@@ -1,5 +1,4 @@
-
-== The map Statement
+= The map Statement
 
 [source,unlang]
 ----

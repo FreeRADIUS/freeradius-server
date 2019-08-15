@@ -1,5 +1,4 @@
-
-== The subrequest Statement
+= The subrequest Statement
 
 [source,unlang]
 ----
@@ -52,7 +51,7 @@ subrequest Disconnect-Request {
 }
 ----
 
-=== Changing Protocols
+== Changing Protocols
 
 The `subrequest` keyword can also be used to change protocols.  For
 example, the server can receive a RADIUS `Access-Request`, and then
@@ -73,7 +72,7 @@ subrequest dhcpv4.DHCP-Discover {
 }
 ----
 
-=== Subrequests are Synchronous
+== Subrequests are Synchronous
 
 Execution of the parent request is paused while the child request is
 running.  The parent request continues execution once the child request

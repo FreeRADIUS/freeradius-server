@@ -1,5 +1,4 @@
-
-== The detach Statement
+= The detach Statement
 
 .Syntax
 [source,unlang]
@@ -32,7 +31,7 @@ subrequest Disconnect-Request {
 }
 ----
 
-=== Child Lifetime
+== Child Lifetime
 
 The lifetime of the child request is normally limited by the lifetime
 of the parent request.  The default configuration has

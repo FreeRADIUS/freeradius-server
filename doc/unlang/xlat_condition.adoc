@@ -1,5 +1,4 @@
-
-== Conditional Syntax
+= Conditional Syntax
 
 Conditional syntax similar to that used in Unix shells may also be
 used:

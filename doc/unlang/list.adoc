@@ -1,4 +1,4 @@
-== Attribute Lists
+= Attribute Lists
 
 An attribute list contains a set of attributes.  The allowed lists
 are:

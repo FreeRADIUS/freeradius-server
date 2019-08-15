@@ -1,5 +1,4 @@
-
-== The module Statement
+= The module Statement
 
 .Syntax
 [source,unlang]

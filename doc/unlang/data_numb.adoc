@@ -1,5 +1,4 @@
-
-== Numbers
+= Numbers
 
 .Examples
 

@@ -1,5 +1,4 @@
-
-== The switch Statement
+= The switch Statement
 
 .Syntax
 [source,unlang]

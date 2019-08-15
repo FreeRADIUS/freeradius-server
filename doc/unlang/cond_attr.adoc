@@ -1,5 +1,4 @@
-
-== The &Attribute-Name Reference
+= The &Attribute-Name Reference
 
 .Syntax
 [source,unlang]

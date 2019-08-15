@@ -1,4 +1,3 @@
-
 = Pre-defined Expansions
 
 In addition to storing attribute references, the server has a number

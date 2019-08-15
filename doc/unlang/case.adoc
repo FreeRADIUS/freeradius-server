@@ -1,5 +1,4 @@
-
-== The case Statement
+= The case Statement
 
 .Syntax
 [source,unlang]

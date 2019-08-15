@@ -1,4 +1,4 @@
-== The update Statement
+= The update Statement
 
 .Syntax
 [source,unlang]
@@ -44,7 +44,7 @@ update reply {
 }
 ----
 
-=== Lists
+== Lists
 
 The _<list>_ field sets the attribute list that will be updated.  If
 the _<list>_ qualifier is omitted, then each entry inside of the
@@ -53,7 +53,7 @@ the _<list>_ qualifier is omitted, then each entry inside of the
 
 Please see the link:list.adoc[list] page for valid list names.
 
-=== Server Attributes
+== Server Attributes
 
 The _<server-attribute>_ field is an attribute name, such as
 `&Reply-Message`.  The attribute name may also be prefixed with a
@@ -63,7 +63,7 @@ of the `update` section.
 NOTE: In version 3, the leading `&` was optional.  In version 4, the
 leading `&` is required.
 
-=== Editing Operators
+== Editing Operators
 
 The `<op>` field is used to define how the attribute is processed.
 Different operators allow attributes to be added, deleted, or
@@ -101,7 +101,7 @@ update reply {
 }
 ----
 
-=== Values
+== Values
 
 The _<value>_ field is the value which is assigned to the
 _<server-attribute>_.  The interpretation of the _<value>_ field

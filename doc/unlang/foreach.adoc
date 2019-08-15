@@ -1,5 +1,4 @@
-
-== The foreach Statement
+= The foreach Statement
 
 .Syntax
 [source,unlang]

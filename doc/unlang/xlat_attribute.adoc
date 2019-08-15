@@ -1,5 +1,4 @@
-
-== Attribute References
+= Attribute References
 
 Attributes in a list may be referenced via one of the following two
 syntaxes:

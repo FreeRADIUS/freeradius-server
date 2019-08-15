@@ -1,10 +1,9 @@
-
-== Keywords in Unlang
+= Keywords in Unlang
 
 The following tables list the keywords used in `Unlang`.  These keywords
 implement the "flow control" of the policies.
 
-=== Flow Control Keywords
+== Flow Control Keywords
 
 The _flow control_ keywords allow _if / then / else_ checks, simple
 looping, etc.
@@ -23,7 +22,7 @@ looping, etc.
 | link:switch.adoc[switch]   | Check for multiple values.
 |=====
 
-=== Attribute Editing Keywords
+== Attribute Editing Keywords
 
 The _attribute editing_ keywords allow policies to add, delete, and
 modify attributes in any list or packet.
@@ -37,7 +36,7 @@ modify attributes in any list or packet.
 | link:update.adoc[update]   | Add attributes to a list
 |=====
 
-=== Grouping Keywords
+== Grouping Keywords
 
 The _grouping_ keywords allow policies to be organized into groups,
 including load-balancing.
@@ -52,7 +51,7 @@ including load-balancing.
 | link:redundant-load-balance.adoc[redundant-load-balance] | Define a redundant group with fail-over and load balancing.
 |=====
 
-=== Parent-Child Keywords
+== Parent-Child Keywords
 
 The _parent-child_ keywords allow for creation of parent-child
 relationships between requests.
@@ -83,7 +82,7 @@ impossible to create before.
 | link:subrequest.adoc[subrequest] | Create a child request
 |=====
 
-=== Module Keywords
+== Module Keywords
 
 The _module_ keywords refer pre-packaged libraries that implement
 specific functionality, such as connecting to SQL, LDAP, etc.  The

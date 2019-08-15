@@ -1,5 +1,4 @@
-
-== Single Quoted Strings
+= Single Quoted Strings
 
 `'string'`
 

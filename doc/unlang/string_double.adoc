@@ -1,5 +1,4 @@
-
-== Double Quoted Strings
+= Double Quoted Strings
 
 `"string"`
 
@@ -10,7 +9,7 @@ within double quotes can include spaces.
 NOTE: Most values retrieved from external datastores will be treated implicitly
 as double-quoted strings.
 
-=== Escape sequences
+== Escape sequences
 
 Escape sequences allow the inclusion of characters that may be difficult to
 represent in datastores, or the FreeRADIUS configuration files.

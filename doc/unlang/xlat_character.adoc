@@ -1,18 +1,17 @@
-
-== Single Letter Expansions
+= Single Letter Expansions
 
 The following are single letter expansions.  These expansions do not
 use the typical `%{...}` format.  Instead, they are short-cuts for
 simple, common cases.
 
-### Miscellaneous
+== Miscellaneous
 
 `%%`::
 
 Returns `%`.
 
 
-### Current Time
+== Current Time
 
 `%c`::
 
@@ -25,7 +24,7 @@ The microsecond component of the current epoch time. This is an unsigned
 decimal number. It should be used with time-based calculations.
 
 
-### Request Time
+== Request Time
 
 `%l`::
 

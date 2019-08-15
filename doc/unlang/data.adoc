@@ -1,5 +1,4 @@
-
-== Data Types
+= Data Types
 
 Unlang supports a number of data types. These data types can be used
 in conditional expressions or when assigning a value to an attribute.
@@ -27,7 +26,7 @@ Run a script, and interpret the result as the data type.
 Similar processing rules are applied when parsing assignments and
 comparisons, for all attributes and data types.
 
-=== Basic Data Types
+== Basic Data Types
 
 The following data types are "basic" data types.  They are fixed-size,
 and encapsulate simple concepts such as "integer" or "IP address".
@@ -61,7 +60,7 @@ values which can be compared, or assigned to one attribute.
 | uint64	| 64-bit unsigned integer
 |=====
 
-=== Structural Data Types
+== Structural Data Types
 
 The following data types are "structural", in that they form
 parent-child relationships between attributes.  These data types can
@@ -78,7 +77,7 @@ only be used in the dictionaries.  These data types cannot be used in
 | vsa		| Encapsulation of vendor-specific attributes
 |=====
 
-=== Protocol-Specific Data Types
+== Protocol-Specific Data Types
 
 The following data types are used only in certain protocols.  These
 attributes can generally be used only in the dictionaries.  They

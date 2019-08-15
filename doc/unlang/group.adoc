@@ -1,5 +1,4 @@
-
-== The group Statement
+= The group Statement
 
 [source,unlang]
 ----

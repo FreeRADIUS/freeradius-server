@@ -1,5 +1,4 @@
-
-== Conditional Comparisons
+= Conditional Comparisons
 
 .Syntax
 [source,unlang]
@@ -35,7 +34,7 @@ only exceptions are the link:regex.adoc[regular expression] operators,
 which interpret the `lhs` as a printable string, and the `rhs` as a
 regular expression.
 
-=== IP Address Comparisons
+== IP Address Comparisons
 
 The type-specific comparisons operate as expected for most data types.
 The only exception is data types that are IP addresses or IP address
@@ -55,7 +54,7 @@ The syntax allows conditions such as `192.0.2.1 < 192.0.2/24`.  This
 condition will return `true`, as the IP address `192.0.2.1' is within
 the network `192.0.2/24`.
 
-=== Casting
+== Casting
 
 In some situations, it is useful to force the left side to be
 interpreted as a particular data type.
