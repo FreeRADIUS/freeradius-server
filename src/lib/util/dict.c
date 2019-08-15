@@ -3754,6 +3754,7 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
  */
 #define MAX_STACK (32)
 typedef struct dict_ctx_stack_frame_t {
+	fr_dict_t		*dict;		//!< The dictionary before the current BEGIN-PROTOCOL block.
 	char			*filename;	//!< name of the file we're reading
 	int			line;		//!< line number of this file
 	fr_dict_attr_t const	*da;		//!< the da we care about
@@ -3763,7 +3764,6 @@ typedef struct dict_ctx_stack_frame_t {
 
 typedef struct {
 	fr_dict_t		*dict;			//!< Protocol dictionary we're inserting attributes into.
-	fr_dict_t		*old_dict;		//!< The dictionary before the current BEGIN-PROTOCOL block.
 
 	dict_ctx_stack_frame_t	stack[MAX_STACK];     	//!< stack of attributes to track
 	int			stack_depth;		//!< points to the last used stack frame
@@ -4127,6 +4127,7 @@ static int dict_ctx_push(dict_from_file_ctx_t *ctx, fr_dict_attr_t const *da)
 	ctx->stack_depth++;
 	memset(&ctx->stack[ctx->stack_depth], 0, sizeof(ctx->stack[ctx->stack_depth]));
 
+	ctx->stack[ctx->stack_depth].dict = ctx->stack[ctx->stack_depth - 1].dict;
 	ctx->stack[ctx->stack_depth].da = da;
 	ctx->stack[ctx->stack_depth].filename = ctx->stack[ctx->stack_depth - 1].filename;
 	ctx->stack[ctx->stack_depth].line = ctx->stack[ctx->stack_depth - 1].line;
@@ -5287,8 +5288,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		if (strcasecmp(argv[0], "BEGIN-PROTOCOL") == 0) {
 			fr_dict_t *found;
 
-			ctx->old_dict = ctx->dict;
-
 			if (argc != 2) {
 				fr_strerror_printf_push("Invalid BEGIN-PROTOCOL entry");
 				goto error;
@@ -5379,13 +5378,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			}
 
 			/*
-			 *	Switch back to old values.
-			 *
-			 *	@todo - use the stack for dictionaries.
-			 */
-			ctx->dict = ctx->old_dict;
-
-			/*
 			 *	Applies fixups to any attributes added
 			 *	to the protocol dictionary.  Note that
 			 *	the finalise function prints out the
@@ -5399,6 +5391,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			}
 
 			ctx->stack_depth--;
+			ctx->dict = ctx->stack[ctx->stack_depth].dict;
 			continue;
 		}
 
@@ -5679,6 +5672,7 @@ static int dict_from_file(fr_dict_t *dict,
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
+	ctx.stack[0].dict = dict;
 	ctx.stack[0].da = dict->root;
 	ctx.stack[0].nest = FR_TYPE_MAX;
 
@@ -6099,6 +6093,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
+	ctx.stack[0].dict = dict;
 	ctx.stack[0].da = dict->root;
 	ctx.stack[0].nest = FR_TYPE_MAX;
 
