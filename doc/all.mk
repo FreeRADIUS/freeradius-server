@@ -63,7 +63,7 @@ DOXYGEN_HTML_DIR = $(DOXYGEN_DIR)/html/
 #
 #  There are a number of pre-built files in the doc/ directory.  Find those.
 #
-DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/source/% doc/templates/%,$(shell find doc -type f))
+DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/developers/%,$(shell find doc -type f))
 
 #
 #  We sort the list of files, because the "find" command above will

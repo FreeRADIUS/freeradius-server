@@ -10,7 +10,7 @@ The directories in the server source are laid out ad follows:
 | `doc/`              | Various snippets of documentation.
 | `doc/introduction/` | Concepts and introduction to FreeRADIUS.
 | `doc/raddb/`        | HTML versions of the configuration files.
-| `doc/source/`       | Developer documentation for internal APIs
+| `doc/developers/`   | Developer documentation for internal APIs
 | `doc/unlang/`       | The unlang processing language.
 | `doc/upgrade/`      | How to upgrade from version 3 to version 4.
 | `doc/rfc/`          | Copies of the RFC’s. If you have Perl, do a `make` in
@@ -38,7 +38,7 @@ The directories in the server source are laid out ad follows:
 | `raddb/mods-enabled`    | Directory containing symlinks to `raddb/mods-available`.
                             Controls which modules are enabled.
 | `raddb/sites-available` | Virtual servers.
-| `raddb/sites-enabled`   | Directory containing symlinks to `raddb/sites-available`. 
+| `raddb/sites-enabled`   | Directory containing symlinks to `raddb/sites-available`.
                             Control which virtual servers are enabled.
 |===
 
