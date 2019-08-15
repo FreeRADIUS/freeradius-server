@@ -69,14 +69,14 @@ update {
     &control:Service-Type := Login-User
 }
 update reply {
-    &Reply-Message := "The value of Framed-User is %{integer:&control:Service-Type}"
+    &Reply-Message := "The value of Service-Type is %{integer:&control:Service-Type}"
 }
 ----
 
 .Output
 
 ```
-The value of Framed-User is 1
+The value of Service-Type is 1
 ```
 
 ### %{rand:<number>}
@@ -184,12 +184,12 @@ Dynamically change the debug level to something high, recording the old level.
 [source,unlang]
 ----
 recv Access-Request {
-  if (&request:User-Name == "bob") {
-    "%{debug:4}"
-  } else {
-    "%{debug:0}"
-  }
-  ...
+    if (&request:User-Name == "bob") {
+        "%{debug:4}"
+    } else {
+        "%{debug:0}"
+    }
+    ...
 }
 ----
 
@@ -221,10 +221,10 @@ expands to a zero-length string.
 [source,unlang]
 ----
 recv Access-Request {
-  if (&request:User-Name == "bob") {
-    "%{debug_attr:request:[*]}"
-  }
-  ...
+    if (&request:User-Name == "bob") {
+        "%{debug_attr:request:[*]}"
+    }
+    ...
 }
 ----
 
@@ -489,10 +489,10 @@ Encode a string using Base64.
 [source,unlang]
 ----
 update control {
-      &Tmp-String-0 := "Caipirinha"
+    &Tmp-String-0 := "Caipirinha"
 }
 update reply {
-      &Reply-Message := "The base64 of %{control:Tmp-String-0} is %{base64:%{control:Tmp-String-0}}"
+    &Reply-Message := "The base64 of %{control:Tmp-String-0} is %{base64:%{control:Tmp-String-0}}"
 }
 ----
 
@@ -846,9 +846,9 @@ update control {
 }
 
 if (&control:Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
-  update reply {
-      &Reply-Message := "The %{control:Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
-  }
+    update reply {
+        &Reply-Message := "The %{control:Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
+    }
 }
 ----
 
