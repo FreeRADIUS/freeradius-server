@@ -7,7 +7,7 @@ syntaxes:
 `%{<list>:Attribute-Name}`
 
 The `<list>:` prefix is optional. If given, it must be a valid
-reference to an link:list.adoc[attribute list].
+reference to an xref:list.adoc[attribute list].
 
 If the `<list>:` prefix is omitted, then the `request` list is
 assumed.

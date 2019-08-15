@@ -28,7 +28,7 @@ _<value>_.
 <op>:: The operator such as `<`, `>=`, etc.
 
 <value>:: The value which is used to filter the attribute.  If the
-field is a double-quoted string, it undergoes link:xlat.adoc[string
+field is a double-quoted string, it undergoes xref:xlat/index.adoc[string
 expansion], and the resulting value is used to filter the attribute.
 
 The change process is atomic, in that either all of the attributes are
@@ -51,7 +51,7 @@ the _<list>_ qualifier is omitted, then each entry inside of the
 `filter` section *must* be prefixed with a list name.  For example,
 `&request:User-Name ...`
 
-Please see the link:list.adoc[list] page for valid list names.
+Please see the xref:list.adoc[list] page for valid list names.
 
 == Server Attributes
 

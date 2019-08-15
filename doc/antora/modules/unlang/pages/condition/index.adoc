@@ -1,7 +1,7 @@
 = Conditional Expressions
 
-Conditions are evaluated when parsing link:if.adoc[if] and
-link:elsif.adoc[elsif] statements.  These conditions allow the server to
+Conditions are evaluated when parsing xref:if.adoc[if] and
+xref:elsif.adoc[elsif] statements.  These conditions allow the server to
 make complex decisions based on one of a number of possible criteria.
 
 .Syntax
@@ -17,14 +17,14 @@ Conditions are expressed using the following syntax:
 [options="header"]
 |=====
 | Syntax | Description
-| link:cond_attr.adoc[&Attribute-Name] | Check for attribute existence.
-| link:cond_module.adoc[module-code] | Check return code of a previous module.
-| link:cond_data.adoc[data] | Check value of data.
-| link:cond_cmp.adoc[lhs OP rhs] | Compare two kinds of data.
-| link:cond_para.adoc[( condition )] | Check sub-condition
-| link:cond_not.adoc[! condition] | Negate a conditional check
-| link:cond_and.adoc[( condition ) && ...] | Check a condition AND the next one
-| link:cond_or.adoc[( condition ) \|\| ...] | Check a condition OR the next one
+| xref:attr.adoc[&Attribute-Name] | Check for attribute existence.
+| xref:condition/module.adoc[module-code] | Check return code of a previous module.
+| xref:condition/operands.adoc[data] | Check value of data.
+| xref:condition/cmp.adoc[lhs OP rhs] | Compare two kinds of data.
+| xref:condition/para.adoc[( condition )] | Check sub-condition
+| xref:condition/not.adoc[! condition] | Negate a conditional check
+| xref:condition/and.adoc[( condition ) && ...] | Check a condition AND the next one
+| xref:condition/or.adoc[( condition ) \|\| ...] | Check a condition OR the next one
 |=====
 
 

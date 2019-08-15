@@ -9,13 +9,13 @@ if (condition) {
 ----
 
 .Description
-The `if` statement evaluates a link:condition.adoc[condition].  When the
+The `if` statement evaluates a xref:condition/index.adoc[condition].  When the
 _condition_ evaluates to `true`, the statements within the subsection
 are executed.  When the _condition_ evaluates to `false`, those
 statements are skipped.
 
-An `if` statement can optionally be followed by an link:else.adoc[else] or
-an link:elsif.adoc[elsif] statement.
+An `if` statement can optionally be followed by an xref:else.adoc[else] or
+an xref:elsif.adoc[elsif] statement.
 
 .Example
 [source,unlang]

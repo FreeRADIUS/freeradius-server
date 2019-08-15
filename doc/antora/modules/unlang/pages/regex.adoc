@@ -1,4 +1,4 @@
-= Regular Expression Comparisons
+= Regular Expressions
 
 .Example
 [source,unlang]
@@ -12,7 +12,7 @@
 
 The regular expression operators perform regular expression matching
 on the data. The `data` field can be an attribute reference or data,
-as with the other link:cond_cmp.adoc[comparison] operators.  The `/regex/`
+as with the other xref:condition/cmp.adoc[comparison] operators.  The `/regex/`
 field must be a valid regular expression.
 
 The `=~` operator evaluates to `true` when `data` matches the
@@ -23,17 +23,22 @@ The `!~` operator evaluates to `true` when `data` does not match the
 
 The regular expression comparison is performed on the _string
 representation_ of the left side of the comparison.  That is, if the
-left side is an link:../raddb/syntax/data_integer.adoc[integer], the regular
+left side is an xref:type/numb.adoc[integer], the regular
 expression will behave is if the value `0` was the literal string
 `"0"`.  Similarly, if the left side is an
-link:cond_attr.adoc[&Attribute-Name], then the regular expression will
+xref:attr.adoc[&Attribute-Name], then the regular expression will
 behave is if the attribute was printed to a string, and the match was
 performed on the resulting string.
 
 The syntax of the regular expression is defined by the regular
-expression library used by the local system. These are usually
-link:http://en.wikipedia.org/wiki/Regular_expression.adoc#POSIX_basic_and_extended[Posix
-regular expressions].
+expression library available on the local system.
+FreeRADIUS currently supports:
+
+* link:https://www.pcre.org/original/doc/html/[libpcre] and
+link:https://www.pcre.org/current/doc/html/[libpcre2] libraries both of which
+provide Perl Compatible Regular expressions.
+* link:http://en.wikipedia.org/wiki/Regular_expression#POSIX_basic_and_extended[
+Posix regular expressions].
 
 The regular expression may be followed by a single `i` character.  The
 `i` indicates that the regular expression match should be done in a
@@ -46,7 +51,7 @@ The special variable `%{0}` contains a copy of the result of
 evaluating the data field.  The variables `%{1}` and following refer
 to the subsequent matched substring in the regular expression.
 
-Please see the link:xlat_predefined.adoc#_0[xlat documentation] for
+Please see the xref:xlat/predefined.adoc#_0[xlat documentation] for
 more information on regular expression matching.
 
 .Example

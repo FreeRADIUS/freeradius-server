@@ -1,4 +1,4 @@
-= The &Attribute-Name Reference
+= &Attribute References
 
 .Syntax
 [source,unlang]
@@ -13,7 +13,7 @@ When used as an existence check in a condition, the condition
 evaluates to `true` if the attribute exists.  Otherwise, the condition
 evaluates to `false`.
 
-When used elsewhere, such as in link:switch.adoc[switch], it returns
+When used elsewhere, such as in xref:switch.adoc[switch], it returns
 the value of the named attribute.
 
 Older versions of the server did not use the `&` character to
@@ -29,7 +29,7 @@ Adding the leading `&` character means that attribute references are
 now easily distinguishable from literal strings.
 
 The attribute reference can also be qualified with a
-link:attr_list.adoc[list] reference.  When no list is given, the
+xref:list.adoc[list] reference.  When no list is given, the
 server looks in the input packet list for the named attribute.
 
 .Examples

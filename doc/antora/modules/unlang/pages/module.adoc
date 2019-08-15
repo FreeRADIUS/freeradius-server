@@ -1,4 +1,4 @@
-= The module Statement
+= Modules
 
 .Syntax
 [source,unlang]
@@ -45,7 +45,7 @@ the source, below:
 |==================================================
 
 These return codes can be used in a subsequent
-link:cond.adoc[conditional expression]m thus allowing policies to
+xref:cond.adoc[conditional expression]m thus allowing policies to
 perform different actions based on the behaviour of the modules.
 
 .Example

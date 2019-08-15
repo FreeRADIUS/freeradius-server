@@ -9,7 +9,7 @@ This unquoted text is interpreted as simple strings and are generally
 equivalent to placing the string in single quotes.
 
 The interpretation of the text depends on the context, which is
-usually defined by an attribute which has a link:data.adoc[data type].
+usually defined by an attribute which has a xref:type/index.adoc[data type].
 
 .Examples
 

@@ -1,4 +1,4 @@
-= The break Statement
+=
 
 .Syntax
 [source,unlang]
@@ -7,8 +7,8 @@ break
 ----
 
 The `break` statement is used to exit an enclosing
-link:foreach.adoc[foreach] loop.  The `break` statement only be used
-inside of a link:foreach.adoc[foreach] loop.
+xref:foreach.adoc[foreach] loop.  The `break` statement only be used
+inside of a xref:foreach.adoc[foreach] loop.
 
 .Example
 [source,unlang]

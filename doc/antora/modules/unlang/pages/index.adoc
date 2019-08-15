@@ -15,7 +15,7 @@ NOTE: The documentation is this directory is _reference_
 documentation.  That is, it describes the syntax of `unlang` keywords,
 using minimal examples.  The reference documentation does not,
 however, describe _when_ to use the keywords, or _how_ to create
-policies. Please see the link:../howto/index.adoc[howto] directory for
+policies. Please see the xref:../howto/index.adoc[howto] directory for
 more in-depth "how to" guides.
 
 The documentation is organized so that each item is on its own page.
@@ -27,9 +27,9 @@ The `unlang` processing can be split into some high-level concepts.
 
 == Keywords
 
-link:keywords.adoc[Keywords], which are the basic statements of the
-language, e.g., link:load-balance.adoc[load-balance],
-link:if.adoc[if], link:else.adoc[else], etc.
+xref:keywords.adoc[Keywords], which are the basic statements of the
+language, e.g., xref:load-balance.adoc[load-balance],
+xref:if.adoc[if], link:else.adoc[else], etc.
 
 .Example
 [source,unlang]
@@ -43,7 +43,7 @@ load-balance {
 
 == Conditional Expressions
 
-link:condition.adoc[Conditional expressions], which are used to check
+xref:condition/index.adoc[Conditional expressions], which are used to check
 if conditions evaluate to _true_ or _false_.  Conditional expressions
 can be used to control the flow of processing.
 
@@ -57,7 +57,7 @@ if ((&User-Name == "bob") && (&Calling-Station-Id == "00:01:03:04:05")) {
 
 == Update Statements
 
-link:update.adoc[update] statements are used to edit attributes and
+xref:update.adoc[update] statements are used to edit attributes and
 lists of attributes.
 
 Most request packets will result in reply packets that contain
@@ -75,8 +75,8 @@ update reply {
 
 == String Expansions
 
-link:xlat.adoc[String expansion] Using `%{...}` to perform dynamic
-string expansions. (also known as link:xlat.adoc[xlat])
+xref:xlat/index.adoc[String expansion] Using `%{...}` to perform dynamic
+string expansions. (also known as xref:xlat/index.adoc[xlat])
 
 String expansions are usually performed in order to get additional
 information which is not immediately available to the policy.  This
@@ -94,7 +94,7 @@ update reply {
 == Data Types
 
 Each attribute used by the server has an associated
-link:data.adoc[data type].  The `unlang` interpreter enforces
+xref:data.adoc[data type].  The `unlang` interpreter enforces
 restrictions on assignments, so that only valid data types can be
 assigned to an attribute.  Invalid assignments result in a run-time
 error.
@@ -132,9 +132,9 @@ and values for those variables.  Those values do not change when the
 server is running.
 
 In contrast, `unlang` performs run-time processing of requests.
-Conditional statements such as link:if.adoc[if] are evaluated for every
+Conditional statements such as xref:if.adoc[if] are evaluated for every
 packet that is received.  Attribute editing statements such as
-link:update.adoc[update] can be used to edit attribute contents or lists
+xref:update.adoc[update] can be used to edit attribute contents or lists
 of attributes.
 
 .Example

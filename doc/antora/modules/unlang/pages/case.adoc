@@ -9,16 +9,16 @@ case [ <match> ] {
 ----
 
 The `case` statement is used to match data inside of a
-link:switch.adoc[switch] statement.  The `case` statement cannot be used
-outside of a link:switch.adoc[switch] statement.
+xref:switch.adoc[switch] statement.  The `case` statement cannot be used
+outside of a xref:switch.adoc[switch] statement.
 
 The `<match>` text can be omitted, which means that the `case`
 statement is the "default" and will match input that is not
 matched by another `case` statement inside of the same
-link:switch.adoc[switch].
+xref:switch.adoc[switch].
 
 The `<match>` text can be an attribute reference such as `&User-Name`,
-or it can be a link:../raddb/syntax/data_string.adoc[string].  If the match
+or it can be a xref:type/string/index.adoc[string].  If the match
 text is a dynamically expanded string, then the match is performed on
 the output of the string expansion.
 

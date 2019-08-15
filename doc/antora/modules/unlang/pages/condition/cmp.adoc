@@ -1,4 +1,4 @@
-= Conditional Comparisons
+= Comparisons
 
 .Syntax
 [source,unlang]
@@ -8,7 +8,7 @@ lhs OP rhs
 
 The most common use-case for conditions is to perform comparisons.
 The `lhs` and `rhs` of a conditional compaarison can be
-link:cond_attr.adoc[&Attribute-Name] or link:cond_data[data].  The
+xref:attr.adoc[&Attribute-Name] or link:cond_data[data].  The
 the `OP` is an operator, commonly `==` or `\<=`.  It is used to
 control how the two other portions of the condition are compared.
 
@@ -25,12 +25,12 @@ The comparison operators are given below.
 | != | not equals
 | >= | greater than or equals
 | >  | greater than
-| link:regex.adoc[=~] | regular expression matches
-| link:regex.adoc[!~] | regular expression does not match
+| xref:regex.adoc[=~] | regular expression matches
+| xref:regex.adoc[!~] | regular expression does not match
 |=====
 
 The comparison operators perform _type-specific_ comparisons.  The
-only exceptions are the link:regex.adoc[regular expression] operators,
+only exceptions are the xref:regex.adoc[regular expression] operators,
 which interpret the `lhs` as a printable string, and the `rhs` as a
 regular expression.
 
@@ -62,7 +62,7 @@ interpreted as a particular data type.
 [NOTE]
 The data types used by the cast *must* be a type taken from the RADIUS
 dictionaries, e.g., `ipaddr`, `integer`, etc.  These types are not the
-same as the link:../raddb/syntax/data.adoc[data types] used in the
+same as the xref:type/index.adoc[data types] used in the
 configuration files.
 
 .Syntax

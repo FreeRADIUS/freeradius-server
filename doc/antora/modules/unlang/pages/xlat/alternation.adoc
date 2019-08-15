@@ -1,6 +1,6 @@
-= Conditional Syntax
+= Alternation Syntax
 
-Conditional syntax similar to that used in Unix shells may also be
+Alternation syntax similar to that used in Unix shells may also be
 used:
 
 `%{&#8203;%{Foo}:-bar}`

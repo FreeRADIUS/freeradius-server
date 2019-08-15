@@ -16,11 +16,11 @@ expansion can be many things:
 [options="header"]
 |=====
 | Keyword                                           | Description
-| link:xlat_attribute.adoc[attributes]              | Expand the value of a named attribute.
-| link:xlat_character.adoc[single character]        | Single character expansions.
-| link:xlat_module.adoc[modules]                    | Pass a string to a module such as `sql`.
-| link:xlat_condition.adoc[condition]               | Conditionally expand a string.
-| link:xlat_predefined.adoc[pre-defined expansions] | Such as string length, lowercase strings, etc.
+| xref:xlat/attribute.adoc[attributes]              | Expand the value of a named attribute.
+| xref:xlat/character.adoc[single character]        | Single character expansions.
+| xref:xlat/module.adoc[modules]                    | Pass a string to a module such as `sql`.
+| xref:xlat/alternation.adoc[condition]               | Conditionally expand a string.
+| xref:xlat/predefined.adoc[pre-defined expansions] | Such as string length, lowercase strings, etc.
 |=====
 
 This feature is used to create policies which refer to concepts rather

@@ -9,9 +9,9 @@ call <server> {
 ----
 
 The `call` statement will create a child request, as with the
-link:subrequest.adoc[subrequest] keyword.  This child request will be
+xref:subrequest.adoc[subrequest] keyword.  This child request will be
 an identical copy of the parent request, as with the
-link:parallel.adoc[parallel] keyword.
+xref:parallel.adoc[parallel] keyword.
 
 <server>::  The virtual server which wil process the child request.
 +
