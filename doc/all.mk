@@ -52,8 +52,7 @@ AUTO_ADOC_FILES := $(patsubst raddb/%,doc/raddb/%.adoc,$(CONF_FILES))
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
 HTML_FILES := $(filter %html,$(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) \
-              $(subst %home.adoc,index.html,$(ADOC_FILES))    \
-              $(subst %README.adoc,index.html,$(ADOC_FILES)))
+              $(subst %home.adoc,index.html,$(ADOC_FILES)))
 
 #
 #	Our "conf to Doxygen" stuff.
@@ -178,25 +177,6 @@ doc/%.html: doc/%.adoc
 	                      -b html5 -o $@ $<
 	${Q}perl -p -i -e 's,\.adoc,\.html,g; s,/.html",/",g; s/\.md\.html/\.html/g' $@
 
-html_build: $(HTML_FILES)
-
-#
-#	Create a soft-link between $path/{home || README}.html to $path/index.html
-#
-#	We have to manually use a "for" loop because the source names are randomly
-#	"README" or "home".
-#
-HTML_INDEXES := $(filter %home.html,$(HTML_FILES))
-HTML_INDEXES += $(filter %README.html,$(HTML_FILES))
-
-html_index:
-	${Q}for x in $(HTML_INDEXES); do \
-		if [ ! -L $$(dirname $$x)/index.html ] ; then \
-			echo HTML-INDEX $$x; \
-			(cd $$(dirname $$x) && ln -fs $$(basename $$x) index.html); \
-		fi; \
-	done
-
 doc/%.pdf: doc/%.adoc
 	@echo PDF $^
 	${Q}$(ASCIIDOCTOR) $< -b docbook5 -o - | \
@@ -213,7 +193,7 @@ doc/%.pdf: doc/%.md
 
 .PHONY: asciidoc html pdf clean clean.doc
 asciidoc: $(ADOC_FILES)
-html: html_build html_index
+html: $(HTML_FILES)
 pdf: $(PDF_FILES)
 
 endif

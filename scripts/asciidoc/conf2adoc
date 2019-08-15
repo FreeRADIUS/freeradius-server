@@ -35,8 +35,8 @@ while (<FILE>) {
 }
 close FILE;
 
-$links{"sites-available/"} = "$opt_a/sites-available/README.adoc";
-$links{"mods-available/"} = "$opt_a/mods-available/README.adoc";
+$links{"sites-available/"} = "$opt_a/sites-available/index.adoc";
+$links{"mods-available/"} = "$opt_a/mods-available/index.adoc";
 
 sub process_file {
 	my $input = shift;

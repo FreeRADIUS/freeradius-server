@@ -142,7 +142,7 @@ eap {
 	#
 	#  ## Common TLS configuration for TLS-based EAP types
 	#
-	#  See `doc/raddb/certs/README.adoc` for additional comments on certificates.
+	#  See `doc/raddb/certs/index.adoc` for additional comments on certificates.
 	#
 	#  If OpenSSL was not found at the time the server was built, the `tls`,
 	#  `ttls`, and `peap` sections will be ignored.
