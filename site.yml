@@ -3,7 +3,7 @@ site:
   url: https://www.freeradius.org/docs
 content:
   sources:
-  - url: https://github.com/FreeRADIUS/freeradius-server.git
+  - url: .
     branches: master
     start_path: doc/antora
 ui:
