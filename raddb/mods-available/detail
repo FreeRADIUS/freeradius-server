@@ -26,7 +26,7 @@ detail {
 	#  rotation'.
 	#
 	#  If your detail files are large, you may also want to
-	#  add a `:%H` (see `doc/configuration/variables.rst`) to
+	#  add a `:%H` (see `doc/unlang/xlat_character.adoc`) to
 	#  the end of it, to create a new detail file every hour.
 	#
 	#  e.g.:
@@ -88,7 +88,7 @@ detail {
 	#  By default, we use the ctime format (see `man 3 ctime` for details).
 	#
 	#  The header can be customised by editing this string.
-	#  See `doc/configuration/variables.rst` for a description
+	#  See `doc/unlang/xlat.adoc` for a description
 	#  of what can be put here.
 	#
 	header = "%t"

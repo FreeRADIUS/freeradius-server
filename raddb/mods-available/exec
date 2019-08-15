@@ -21,7 +21,7 @@
 #
 #  The RADIUS attributes from the user request will be placed
 #  into environment variables of the executed program, as
-#  described in `man unlang` and in `doc/configuration/variables.rst`
+#  described in `man unlang` and in `doc/unlang/xlat.adoc`
 #
 #  The return value of the program run determines the result of the exec
 #  instance call as follows:

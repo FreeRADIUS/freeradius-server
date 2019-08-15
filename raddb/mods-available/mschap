@@ -267,7 +267,7 @@ mschap {
 		#  ntlm_auth_domain:: The domain name for ntlm_auth password change.
 		#
 		#  This module support `MS-CHAPv2` (not v1) password
-		#  change requests.  See `doc/modules/mschap.rst` for
+		#  change requests.  See `doc/howto/modules/mschap.adoc` for
 		#  some IMPORTANT information.
 		#
 		#  Samba/ntlm_auth - if you are using `ntlm_auth` to validate

@@ -1462,7 +1462,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 
 /** Replace %whatever in a string.
  *
- * See 'doc/configuration/variables.rst' for more information.
+ * See 'doc/unlang/xlat.adoc' for more information.
  *
  * @param[in] ctx		to allocate expansion buffers in.
  * @param[out] out		Where to write pointer to output buffer.
@@ -1512,7 +1512,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 
 /** Replace %whatever in a string.
  *
- * See 'doc/configuration/variables.rst' for more information.
+ * See 'doc/unlang/xlat.adoc' for more information.
  *
  * @param[in] ctx		to allocate expansion buffers in.
  * @param[out] out		Where to write pointer to output buffer.

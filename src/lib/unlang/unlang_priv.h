@@ -51,7 +51,7 @@ extern "C" {
 /** Types of unlang_t nodes
  *
  * Here are our basic types: unlang_t, unlang_group_t, and unlang_module_t. For an
- * explanation of what they are all about, see doc/configurable_failover.rst
+ * explanation of what they are all about, see doc/unlang/configurable_failover.adoc
  */
 typedef enum {
 	UNLANG_TYPE_NULL = 0,			//!< unlang type not set.
