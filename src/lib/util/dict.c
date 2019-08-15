@@ -459,7 +459,7 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
  *	- false if attribute definition is not valid.
  */
 static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
-				  UNUSED char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+				  char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
 	int bit;
 	uint32_t all_flags;
@@ -779,19 +779,6 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		flags->length = 16;
 		break;
 
-	case FR_TYPE_EXTENDED:
-		if (strcasecmp(parent->name, "RADIUS") != 0) {
-			fr_strerror_printf("The 'extended' type can only be used in the RADIUS dictionary.");
-			return false;
-		}
-
-		if (attr && (!parent->flags.is_root || (*attr < 241))) {
-			fr_strerror_printf("Attributes of type 'extended' MUST be "
-					   "RFC attributes with value >= 241.");
-			return false;
-		}
-		break;
-
 		/*
 		 *	The length of a "struct" is calculated from
 		 *	the children.  It is not input in the flags.
@@ -906,6 +893,57 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 		break;
 
+	case FR_TYPE_EXTENDED:
+		if (strcasecmp(dict->root->name, "RADIUS") != 0) {
+			fr_strerror_printf("The 'extended' type can only be used in the RADIUS dictionary.");
+			return false;
+		}
+
+		if (attr && (!parent->flags.is_root || (*attr < 241))) {
+			fr_strerror_printf("Attributes of type 'extended' MUST be "
+					   "RFC attributes with value >= 241.");
+			return false;
+		}
+		break;
+
+	case FR_TYPE_VSA:
+		if (parent->flags.is_root) break;
+
+		if (parent->type == FR_TYPE_EXTENDED) {
+			if (*attr != 26) {
+				fr_strerror_printf("Attributes of type 'vsa' with parent of type 'extended' "
+						   "MUST have number 26, instead of '%d'", *attr);
+				return false;
+			}
+
+			break;
+		}
+
+		fr_strerror_printf("Attributes of type '%s' can only be used in the root of the dictionary",
+				   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"));
+		return false;
+
+	case FR_TYPE_COMBO_IP_ADDR:
+		if (strcasecmp(dict->root->name, "RADIUS") != 0) {
+			fr_strerror_printf("The 'combo-ip' type can only be used in the RADIUS dictionary.");
+			return false;
+		}
+
+		/*
+		 *	RFC 6929 says that this is a terrible idea.
+		 */
+		for (v = parent; v != NULL; v = v->parent) {
+			if (v->type == FR_TYPE_VSA) {
+				break;
+			}
+		}
+
+		if (!v) {
+			fr_strerror_printf("Attributes of type 'combo-ip' can only be used in VSA dictionaries");
+			return false;
+		}
+		break;
+
 	case FR_TYPE_INVALID:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_FLOAT64:
@@ -949,6 +987,59 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (all_flags) {
 			fr_strerror_printf("Invalid flag for attribute inside of a 'struct'");
 			return false;
+		}
+
+		if (!attr) break;
+
+		if (*attr == 1) {
+			/*
+			 *	The first child can't be variable length, that's stupid.
+			 *
+			 *	STRUCTs will have their length filled in later.
+			 */
+			if ((type != FR_TYPE_STRUCT) && (flags->length == 0)) {
+				fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
+				return false;
+			}
+		} else {
+			int i;
+			fr_dict_attr_t const *sibling;
+
+			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
+			if (!sibling) {
+				fr_strerror_printf("Child %s of 'struct' type attribute %s MUST be numbered consecutively %u.",
+					name, parent->name, *attr);
+				return false;
+			}
+
+			if ((dict_attr_sizes[sibling->type][1] == ~(size_t) 0) &&
+			    !((sibling->type == FR_TYPE_OCTETS) &&
+			      (sibling->flags.length > 0))) {
+				fr_strerror_printf("Only the last child of a 'struct' attribute can have variable length");
+				return false;
+			}
+
+			/*
+			 *	Check for bad key fields, or multiple
+			 *	key fields.  Yes, this is O(N^2), but
+			 *	the structs are small.
+			 */
+			if (flags->extra) {
+				for (i = 1; i < *attr; i++) {
+					sibling = fr_dict_attr_child_by_num(parent, i);
+					if (!sibling) {
+						fr_strerror_printf("Child %d of 'struct' type attribute %s does not exist.",
+								   i, parent->name);
+						return false;
+					}
+
+					if (!sibling->flags.extra) continue;
+
+					fr_strerror_printf("Duplicate key attributes '%s' and '%s' in 'struct' type attribute %s are forbidden",
+							   name, sibling->name, parent->name);
+					return false;
+				}
+			}
 		}
 		break;
 
@@ -1040,12 +1131,14 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	}
 
 	/*
-	 *	Check the flags
+	 *	Check the flags, data types, and parent data types and flags.
 	 */
 	if (!dict_attr_flags_valid(dict, parent, name, attr, type, flags)) return false;
 
 	/*
-	 *	If attributes have number greater than 255, do sanity checks.
+	 *	If attributes have number greater than 255, do sanity
+	 *	checks on their values, to ensure that they fit within
+	 *	the parent type.
 	 *
 	 *	We assume that the root attribute is of type TLV, with
 	 *	the appropriate flags set for attributes in this
@@ -1061,106 +1154,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 					return false;
 				}
 				break;
-			}
-		}
-	}
-
-	/******************** sanity check data types and parents ********************/
-
-	/*
-	 *	Enforce restrictions on which data types can appear where.
-	 */
-	switch (type) {
-	/*
-	 *	EVS may only occur under extended and long extended.
-	 */
-	case FR_TYPE_VSA:
-		if (parent->type == FR_TYPE_EXTENDED) {
-			if (*attr != 26) {
-				fr_strerror_printf("Attributes of type 'vsa' with parent of type 'extended' "
-						   "MUST have number 26, instead of '%d'", *attr);
-				return false;
-			}
-
-		} else if (!parent->flags.is_root) {
-			fr_strerror_printf("Attributes of type '%s' can only be used in the root of the dictionary",
-					   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"));
-			return false;
-		}
-		break;
-
-	case FR_TYPE_COMBO_IP_ADDR:
-		/*
-		 *	RFC 6929 says that this is a terrible idea.
-		 */
-		for (v = parent; v != NULL; v = v->parent) {
-			if (v->type == FR_TYPE_VSA) {
-				break;
-			}
-		}
-
-		if (!v) {
-			fr_strerror_printf("Attributes of type '%s' can only be used in VSA dictionaries",
-					   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"));
-			return false;
-		}
-		break;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Validate attribute based on parent.
-	 */
-	if (parent->type == FR_TYPE_STRUCT) {
-		if (*attr > 1) {
-			int i;
-			fr_dict_attr_t const *sibling;
-
-			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
-			if (!sibling) {
-				fr_strerror_printf("Child %s of 'struct' type attribute %s MUST be numbered consecutively %u.",
-					name, parent->name, *attr);
-				return false;
-			}
-
-			if ((dict_attr_sizes[sibling->type][1] == ~(size_t) 0) &&
-			    !((sibling->type == FR_TYPE_OCTETS) &&
-			      (sibling->flags.length > 0))) {
-				fr_strerror_printf("Only the last child of a 'struct' attribute can have variable length");
-				return false;
-			}
-
-			/*
-			 *	Check for bad key fields, or multiple key fields.
-			 */
-			if (flags->extra) {
-				for (i = 1; i < *attr; i++) {
-					sibling = fr_dict_attr_child_by_num(parent, i);
-					if (!sibling) {
-						fr_strerror_printf("Child %d of 'struct' type attribute %s does not exist.",
-								   i, parent->name);
-						return false;
-					}
-
-					if (!sibling->flags.extra) continue;
-
-					fr_strerror_printf("Duplicate key attributes '%s' and '%s' in 'struct' type attribute %s are forbidden",
-							   name, sibling->name, parent->name);
-					return false;
-				}
-			}
-
-		} else {
-			/*
-			 *	The first child can't be variable length, that's stupid.
-			 *
-			 *	STRUCTs will have their length filled in later.
-			 */
-			if ((type != FR_TYPE_STRUCT) && (flags->length == 0)) {
-				fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
-				return false;
 			}
 		}
 	}
