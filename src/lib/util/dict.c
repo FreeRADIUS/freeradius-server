@@ -780,6 +780,11 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		break;
 
 	case FR_TYPE_EXTENDED:
+		if (strcasecmp(parent->name, "RADIUS") != 0) {
+			fr_strerror_printf("The 'extended' type can only be used in the RADIUS dictionary.");
+			return false;
+		}
+
 		if (attr && (!parent->flags.is_root || (*attr < 241))) {
 			fr_strerror_printf("Attributes of type 'extended' MUST be "
 					   "RFC attributes with value >= 241.");
@@ -900,6 +905,14 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			}
 		}
 		break;
+
+	case FR_TYPE_INVALID:
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_COMBO_IP_PREFIX:
+		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
+				   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"));
+		return false;
 
 	default:
 		break;
@@ -1059,17 +1072,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	 */
 	switch (type) {
 	/*
-	 *	These types may only be parented from the root of the dictionary
-	 */
-	case FR_TYPE_EXTENDED:
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
-					   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"));
-			return false;
-		}
-		break;
-
-	/*
 	 *	EVS may only occur under extended and long extended.
 	 */
 	case FR_TYPE_VSA:
@@ -1103,14 +1105,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			return false;
 		}
 		break;
-
-	case FR_TYPE_INVALID:
-	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_FLOAT64:
-	case FR_TYPE_COMBO_IP_PREFIX:
-		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
-				   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"));
-		return false;
 
 	default:
 		break;
