@@ -58,7 +58,7 @@ section.
 The `+log+` section has been updated to remove many configuration items
 which are specific to RADIUS, and to Access-Request packets. Please see
 `+sites-available/default+`, and look for the `+Access-Request+`
-subsection there. See also <<templates.conf.adoc#,`+templates.conf+`>>
+subsection there. See also xref:raddb/templates.conf.adoc[`templates.conf`]
 for a way to regain one global configuration for `+Access-Request+`
 packets.
 
@@ -120,7 +120,7 @@ For `+udp+`, the configuration entries are largley the same as for v3.
 e.g. `+ipaddr+`, `+port+`, etc.
 
 The `+listen+` section then compiles each
-link:#processing-sections[Processing Section] based on the named packet
+<<Processing Sections,Processing Section>> based on the named packet
 types. It has a `+recv+` section for receiving packets, and a `+send+`
 section for sending packets. e.g.
 
@@ -139,7 +139,7 @@ This configuration is different from v3. The benefit is that it is much
 easier to understand. Instead of using things like
 `+Post-Auth-Type Reject+`, we now have just `+send Access-Reject+`.
 
-See also link:#processing-sections[Processing Sections] for how the
+See also <<Processing Sections,Processing Sections>> for how the
 `+unlang+` statements are parsed.
 
 === Clients
