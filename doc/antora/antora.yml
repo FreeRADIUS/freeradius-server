@@ -1,0 +1,9 @@
+#
+#       Metadata for the freeradius-server component
+#       Examples of other components are the PAM module,
+#       apache module, and the client library.
+#
+name: freeradius-server
+title: The FreeRADIUS Server
+version: 'latest'
+start_page: ROOT:index.adoc
