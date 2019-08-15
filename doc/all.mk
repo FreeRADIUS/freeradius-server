@@ -52,8 +52,7 @@ AUTO_ADOC_FILES := $(patsubst raddb/%,doc/raddb/%.adoc,$(CONF_FILES))
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
 HTML_FILES := $(filter %html,$(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) \
-              $(subst %home.adoc,index.html,$(ADOC_FILES))    \
-              $(subst %README.adoc,index.html,$(ADOC_FILES)))
+              $(subst %home.adoc,index.html,$(ADOC_FILES)))
 
 #
 #	Our "conf to Doxygen" stuff.

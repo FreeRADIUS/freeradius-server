@@ -2125,7 +2125,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 					name = cf_pair_attr(cp);
 					if (name[0] == '-') {
 						cf_log_warn(cp, "Ignoring \"%s\" "
-							    "(see doc/raddb/mods-available/README.adoc)", name + 1);
+							    "(see doc/raddb/mods-available/index.adoc)", name + 1);
 						continue;
 					}
 
