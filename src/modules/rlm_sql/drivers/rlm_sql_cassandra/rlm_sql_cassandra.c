@@ -231,7 +231,7 @@ static const CONF_PARSER driver_config[] = {
 
 	{ FR_CONF_OFFSET("spawn_threshold", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_threshold) },
 	{ FR_CONF_OFFSET("spawn_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_max) },
-	{ FR_CONF_OFFSET("spawn_retry_delay", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, spawn_retry_delay) },
+	{ FR_CONF_OFFSET("spawn_retry_delay", FR_TYPE_TIME_DELTA | FR_TYPE_REQUIRED, rlm_sql_cassandra_t, spawn_retry_delay), .dflt = "2.0" },
 
 	{ FR_CONF_POINTER("load_balance_dc_aware", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) load_balance_dc_aware_config },
 	{ FR_CONF_OFFSET("load_balance_round_robin", FR_TYPE_BOOL, rlm_sql_cassandra_t, load_balance_round_robin), .dflt = "no" },
@@ -692,7 +692,6 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	bool				do_tls = false;
 	bool				do_latency_aware_routing = false;
 	rlm_sql_cassandra_t		*inst = instance;
-
 	CassCluster *cluster;
 
 #define DO_CASS_OPTION(_opt, _x) \
@@ -714,8 +713,8 @@ do {\
 	 *	This has to be done before we call cf_section_parse
 	 *	as it sets default values, and creates the section.
 	 */
-	if (cf_section_find(cs, "tls"), NULL) do_tls = true;
-	if (cf_section_find(cs, "latency_aware_routing"), NULL) do_latency_aware_routing = true;
+	if (cf_section_find(cs, "tls", NULL)) do_tls = true;
+	if (cf_section_find(cs, "latency_aware_routing", NULL)) do_latency_aware_routing = true;
 
 	DEBUG4("Configuring CassCluster structure");
 	cluster = inst->cluster = cass_cluster_new();
@@ -818,7 +817,7 @@ do {\
 			       cass_cluster_set_max_concurrent_creation(inst->cluster, inst->spawn_max));
 	}
 
-	if (delay) cass_cluster_set_reconnect_wait_time(inst->cluster, fr_time_delta_to_msec(inst->spawn_retry_delay));
+	cass_cluster_set_reconnect_wait_time(inst->cluster, fr_time_delta_to_msec(inst->spawn_retry_delay));
 
 	if (inst->load_balance_round_robin) cass_cluster_set_load_balance_round_robin(inst->cluster);
 
@@ -892,7 +891,12 @@ do {\
 
 static void mod_unload(void)
 {
-	 cass_log_cleanup();	/* must be last call to libcassandra */
+	/*
+	 *	The function cass_log_cleanup() was deprecated in 2.0.1
+	 */
+#if (CASS_VERSION_MAJOR <= 2 && CASS_VERSION_MINOR <= 0)
+	cass_log_cleanup();	/* must be last call to libcassandra */
+#endif
 }
 
 static int mod_load(void)
