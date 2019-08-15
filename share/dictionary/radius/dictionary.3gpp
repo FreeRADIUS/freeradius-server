@@ -44,7 +44,44 @@ ATTRIBUTE	3GPP-SGSN-MCC-MNC			18	string
 ATTRIBUTE	3GPP-Teardown-Indicator			19	byte
 ATTRIBUTE	3GPP-IMEISV				20	string
 ATTRIBUTE	3GPP-RAT-Type				21	byte
-ATTRIBUTE	3GPP-User-Location-Info			22	octets
+
+ATTRIBUTE	3GPP-User-Location-Info			22	struct
+MEMBER		3GPP-User-Location-Type			uint8	key
+
+#
+#  Encoded with nibbles broken up into bizarreness and confusion.
+#
+#  wire:    12 34 56
+#  Meaning: 214 653
+#
+MEMBER		3GPP-User-Location-PLMN-ID		octets[3]
+
+STRUCT	3GPP-User-Location-Type		3GPP-User-Location-CGI	0
+MEMBER		3GPP-User-Location-CGI-LAC		uint16
+MEMBER		3GPP-User-Location-CGI-CAI		uint16
+
+STRUCT	3GPP-User-Location-Type		3GPP-User-Location-SAI	1
+MEMBER		3GPP-User-Location-SAI-LAC		uint16
+MEMBER		3GPP-User-Location-SAI-SAC		uint16
+
+STRUCT	3GPP-User-Location-Type		3GPP-User-Location-RAI	2
+MEMBER		3GPP-User-Location-RAI-RAI		uint16
+MEMBER		3GPP-User-Location-RAI-RAC		uint16
+
+STRUCT	3GPP-User-Location-Type		3GPP-User-Location-LAI	32
+MEMBER		3GPP-User-Location-LAI-LAI		uint16
+
+STRUCT	3GPP-User-Location-Type		3GPP-User-Location-TAI	128
+MEMBER		3GPP-User-Location-TAI-TAC		uint16
+
+STRUCT	3GPP-User-Location-Type		3GPP-User-Location-ECGI	129
+MEMBER		3GPP-User-Location-ECGI-ECI		octets[4]
+
+STRUCT	3GPP-User-Location-Type		3GPP-User-Location-TAI-ECGI 130
+MEMBER		3GPP-User-Location-TAI-ECGI-TAC		uint16
+MEMBER		3GPP-User-Location-TAI-ECGI-PLMN-ID	octets[3]
+MEMBER		3GPP-User-Location-TAI-ECGI-ECI		octets[4]
+
 ATTRIBUTE	3GPP-MS-TimeZone			23	octets[2]
 ATTRIBUTE	3GPP-CAMEL-Charging-Info		24	octets
 ATTRIBUTE	3GPP-Packet-Filter			25	octets
