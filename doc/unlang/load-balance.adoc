@@ -11,16 +11,22 @@ load-balance [ <key> ] {
 The `load-balance` section is similar to the `redundant` section
 except that only one module in the subsection is ever called.
 
+In general, the
+link:redundant-load-balance.adoc[redundant-load-balance] statement is
+more useful than this one.
+
+<key>:: An attribute reference or expansion which will be hashed in
+order to select the statement to execute.
++
+The hash will be used to pick a particular statement within the
+`load-balance` section.  This "keyed" load-balance can be used to
+deterministically shard requests across multiple modules.
++
 When the `<key>` field is omitted, the module is chosen randomly, in a
 "load balanced" manner.
 
-When the `<key>` field is present, it is expanded (if necessary), and
-the resulting value is hashed.  The hash is then used to pick a
-particular module.  This "keyed" load-balance can be used to
-deterministically shard requests across multiple modules.
-
-In general, the link:redundant-load-balance.adoc[redundant-load-balance]
-statement is more useful than this one.
+[ statements ]:: One or more `unlang` commands.  Only one of the
+statements is executed.
 
 .Examples
 

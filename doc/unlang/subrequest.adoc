@@ -21,6 +21,8 @@ or a protocol name followed by a packet name, such as
 `dhcpv4.DHCP-Discover`.  Please see the protocol dictionaries for a
 complete list of packet types for each protocol.
 
+[ statements ]:: The `unlang` commands which will be executed.
+
 The child request executes the statements inside of the `subrequest`
 section.  When the child request has finished execution, it is freed.
 The return code of the `subrequest` section is the return code from
