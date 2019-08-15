@@ -1,5 +1,4 @@
-
-== The redundant-load-balance Statement
+= The redundant-load-balance Statement
 
 [source,unlang]
 ----

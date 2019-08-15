@@ -1,5 +1,4 @@
-
-== The if Statement
+= The if Statement
 
 .Syntax
 [source,unlang]

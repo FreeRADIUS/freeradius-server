@@ -1,5 +1,4 @@
-
-== The data Operator
+= The data Operator
 
 .Syntax
 [source,unlang]

@@ -1,5 +1,4 @@
-
-== String Expansion
+= String Expansion
 
 String expansion is a feature that allows strings to dynamically
 define their value at run time. For historical reasons, these string

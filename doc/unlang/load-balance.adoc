@@ -1,5 +1,4 @@
-
-== The load-balance Statement
+= The load-balance Statement
 
 [source,unlang]
 ----

@@ -1,5 +1,4 @@
-
-== The else Statement
+= The else Statement
 
 .Syntax
 [source,unlang]

@@ -1,5 +1,4 @@
-
-== The || Operator
+= The || Operator
 
 .Syntax
 [source,unlang]

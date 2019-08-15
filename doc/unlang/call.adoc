@@ -1,5 +1,4 @@
-
-== The call Statement
+= The call Statement
 
 [source,unlang]
 ----

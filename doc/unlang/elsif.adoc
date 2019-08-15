@@ -1,5 +1,4 @@
-
-== The elsif Statement
+= The elsif Statement
 
 .Syntax
 [source,unlang]

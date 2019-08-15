@@ -1,5 +1,4 @@
-
-== The module-code Operator
+= The module-code Operator
 
 .Syntax
 [source,unlang]

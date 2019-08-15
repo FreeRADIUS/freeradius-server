@@ -1,5 +1,4 @@
-
-== Double-Quoted Strings
+= Double-Quoted Strings
 
 `"string"`
 

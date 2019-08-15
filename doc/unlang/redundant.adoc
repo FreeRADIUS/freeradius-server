@@ -1,5 +1,4 @@
-
-== The redundant Statement
+= The redundant Statement
 
 [source,unlang]
 ----

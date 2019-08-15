@@ -1,5 +1,4 @@
-
-== The return Statement
+= The return Statement
 
 .Syntax
 [source,unlang]

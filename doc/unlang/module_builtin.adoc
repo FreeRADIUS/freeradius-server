@@ -1,5 +1,4 @@
-
-== Built-in Modules
+= Built-in Modules
 
 In some cases, it is useful to reject a request immediately or
 perform another action on it.  The built-in modules can be used to perform these actions.  These modules are named for the return codes given in the
