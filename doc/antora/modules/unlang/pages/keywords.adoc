@@ -10,6 +10,7 @@ looping, etc.
 
 .Flow Control
 [options="header"]
+[cols="30%,70%"]
 |=====
 | Keyword | Description
 | xref:break.adoc[break]     | Exit early from a `foreach` loop.
@@ -29,6 +30,7 @@ modify attributes in any list or packet.
 
 .Attribute Editing
 [options="header"]
+[cols="30%,70%"]
 |=====
 | Keyword | Description
 | xref:filter.adoc[filter]   | Filter attributes from a list
@@ -43,6 +45,7 @@ including load-balancing.
 
 .Grouping
 [options="header"]
+[cols="30%,70%"]
 |=====
 | Keyword | Description
 | xref:group.adoc[group]               | Group a series of statements.
@@ -74,6 +77,7 @@ impossible to create before.
 
 .Parent-Child
 [options="header"]
+[cols="30%,70%"]
 |=====
 | Keyword | Description
 | xref:call.adoc[call]             | Call one virtual server from another
@@ -98,6 +102,7 @@ configuring and using the modules.
 
 .Modules
 [options="header"]
+[cols="30%,70%"]
 |=====
 | Keyword | Description
 | xref:module.adoc[<module>]                 | Execute a named module, e.g., `sql`.
