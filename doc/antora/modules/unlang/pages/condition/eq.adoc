@@ -4,7 +4,7 @@
 `(data-1 == data-2)`
 
 The `==` operator compares the result of evaluating `data-1` and
-`data-2`. As discussed in xref:data.adoc[Data Types], the `data-1`
+`data-2`. As discussed in xref:types/index.adoc[Data Types], the `data-1`
 field may be interpreted as a reference to an attribute.
 
 The `data-2` field is interpreted in a type-specific manner. For
