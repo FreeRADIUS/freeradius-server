@@ -2,7 +2,7 @@
 
 == Introduction
 
-We all hope that our radius daemons won’t die in the middle of the nite
+We all hope that our radius daemons won’t die in the middle of the night
 stranding customer and beeping beepers. But, alas, it’s going to happen,
 and when you least expect it. That’s why you want a another process
 watching your radius daemon, restarting it if and when it dies.
