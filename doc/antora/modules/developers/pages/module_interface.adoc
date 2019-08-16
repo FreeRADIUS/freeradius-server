@@ -100,7 +100,7 @@ that should be included in any logs.
 |===
 
 A module declares which components it supports by putting function
-pointers in its `+module_dl_t rlm_*+` structure.
+pointers in its `module_dl_t rlm_*` structure.
 
 == Module configuration
 
@@ -131,27 +131,27 @@ to the module and generally point to the exact location of a database or
 enable optional features of the module. Each module should document what
 parameters it accepts and what they do.
 
-For each `+Access-Reques+` that comes to the server, the `+authorize{}+`
-block is called. Then one of the `+Auth-Type{}+` blocks from
-`+authenticate{}+` is called, depending on the `+Auth-Type+` attribute
-that was chosen by `+authorize{}+`.
+For each `Access-Reques` that comes to the server, the `authorize{}`
+block is called. Then one of the `Auth-Type{}` blocks from
+`authenticate{}` is called, depending on the `Auth-Type` attribute
+that was chosen by `authorize{}`.
 
-Finally, the `+post-auth{}+` block is called. If `+authorize{}+` set the
-`+Proxy-To-Realm+` attribute, then proxying takes over via
-`+pre-proxy{}+` and `+post-proxy{}+`, and the local `+authenticate{}+`
+Finally, the `post-auth{}` block is called. If `authorize{}` set the
+`Proxy-To-Realm` attribute, then proxying takes over via
+`pre-proxy{}` and `post-proxy{}`, and the local `authenticate{}`
 phase is skipped.
 
-For each `+Accounting-Request+` that comes to the server, the
-`+preacct{}+` block is called, followed by the `+accounting{}+` block.
-`+accounting{}+` is skipped if `+preacct{}+` sets `+Proxy-To-Realm+`.
+For each `Accounting-Request` that comes to the server, the
+`preacct{}` block is called, followed by the `accounting{}` block.
+`accounting{}` is skipped if `preacct{}` sets `Proxy-To-Realm`.
 
-For an explanation of what `+calling+` a config block means, see the
-`+configurable_failover+` file.
+For an explanation of what `calling` a config block means, see the
+`configurable_failover` file.
 
 == The lifetime of a module
 
 When the server is starting up, or reinitializing itself as a result of
-a SIGHUP, it reads the `+modules{}+` section. Each configured module
+a SIGHUP, it reads the `modules{}` section. Each configured module
 will be loaded and its init() method will be called::
 
 [source,c]
@@ -159,11 +159,11 @@ will be loaded and its init() method will be called::
 int init(void)
 ----
 
-The `+init()+` method should take care of any setup that is not tied to
+The `init()` method should take care of any setup that is not tied to
 a specific instance. It will only be called once, even if there are
 multiple instances configured.
 
-For each configured instance, after the `+init()+` method, the
+For each configured instance, after the `init()` method, the
 instantiate() method is called. It is given a handle to the
 configuration block holding its parameters, which it can access with
 cf_section_parse().
@@ -173,18 +173,18 @@ cf_section_parse().
 int instantiate(CONF_SECTION *cs, void **instance)
 ----
 
-The `+instantiate()+` function should look up options in the config
+The `instantiate()` function should look up options in the config
 section, and open whatever files or network connections are necessary
 for the module to do its job. It also should create a structure holding
 all of the persistent variables that are particular to this instance
 (open file descriptors, configured pathnames, etc.) and store a pointer
-to it in `+*instance+`. That `+void *+` becomes a handle (some would
-call it a `+cookie+`) representing this instance. The instance handle is
+to it in `*instance`. That `void *` becomes a handle (some would
+call it a `cookie`) representing this instance. The instance handle is
 passed as a parameter in all subsequent calls to the module’s methods,
 so they can determine which database they are supposed to act on.
 
-The `+authorize()+`, `+authenticate()+`, `+preaccounting()+`, and
-`+accounting()+` functions are all called the same way:
+The `authorize()`, `authenticate()`, `preaccounting()`, and
+`accounting()` functions are all called the same way:
 
 [source,c]
 ----
@@ -196,18 +196,18 @@ int accounting(void *instance, REQUEST *request)
 
 they each receive the instance handle and the request, and are expected
 to act on the request using the database pointed to by the instance
-handle (which was set by the `+instantiate()+` function).
+handle (which was set by the `instantiate()` function).
 
-When the server is being shut down (as the first part of `+SIGHUP+` for
-example) `+detach()+` is called for each module instance.
+When the server is being shut down (as the first part of `SIGHUP` for
+example) `detach()` is called for each module instance.
 
 [source,c]
 ----
 int detach(void *instance)
 ----
 
-The `+detach()+` method should release whatever resources were allocated
-by the `+instantiate()+` method.
+The `detach()` method should release whatever resources were allocated
+by the `instantiate()` method.
 
 After all instances are detached, the destroy() method is called.::
 
@@ -216,7 +216,7 @@ After all instances are detached, the destroy() method is called.::
 int destroy(void)
 ----
 
-It should release resources that were acquired by the `+init()+` method.
+It should release resources that were acquired by the `init()` method.
 
 Author: Alan Curry
 <<mailto:pacman@world.std.com.adoc#,pacman@world.std.com>>

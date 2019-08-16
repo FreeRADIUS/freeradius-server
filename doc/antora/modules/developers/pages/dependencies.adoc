@@ -12,11 +12,11 @@ https://talloc.samba.org/talloc/doc/html/index.html
 
 *OSX*
 
-`+# brew install talloc+`
+`# brew install talloc`
 
 *Debian / Ubuntu*
 
-`+# apt-get install libtalloc-dev+`
+`# apt-get install libtalloc-dev`
 
 *RedHat*
 
@@ -29,7 +29,7 @@ https://talloc.samba.org/talloc/doc/html/index.html
 
 Kqueue is an event / timer API originally written for BSD systems. It is
 _much_ simpler to use than third-party event libraries. On Linux, a
-`+libkqueue+` package is available.
+`libkqueue` package is available.
 
 *OSX*
 
@@ -37,7 +37,7 @@ _nothing to do. kqueue is available._
 
 *Debian / Ubuntu*
 
-`+# apt-get install libkqueue-dev+`
+`# apt-get install libkqueue-dev`
 
 *RedHat*
 

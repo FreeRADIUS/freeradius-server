@@ -25,14 +25,14 @@ reference is replacedd with an empty string.
 .Examples
 
 `%{User-Name}` +
-`+%{request:User-Name} # same as above+` +
+`%{request:User-Name} # same as above` +
 `%{reply:User-Name}` +
-`+%{outer.request:User-Name} # from inside of a TTLS/PEAP tunnel+`
+`%{outer.request:User-Name} # from inside of a TTLS/PEAP tunnel`
 
 Examples of using references inside of a string:
 
-`+"Hello %{User-Name}"+` +
-`+"You, %{User-Name} are not allowed to use %{NAS-IP-Address}"+`
+`"Hello %{User-Name}"` +
+`"You, %{User-Name} are not allowed to use %{NAS-IP-Address}"`
 
 == Additional Variations
 

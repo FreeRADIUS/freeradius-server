@@ -22,7 +22,7 @@ with the version number and any last updates.
 [arabic, start=3]
 . Make the files
 
-NOTE: It also does `+make dist-check+`, which checks the build rules for
+NOTE: It also does `make dist-check`, which checks the build rules for
 various packages.
 
 ```

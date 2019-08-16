@@ -10,7 +10,7 @@ group {
 
 The `group` statement collects a series of statements into a list.
 The default processing sections of the server (`recv Access-Request`,
-`+send Accounting-Response %{Acct-Status-Type}+`, etc.) are also `group`
+`send Accounting-Response %{Acct-Status-Type}`, etc.) are also `group`
 statements.  Those sections are given different name for management
 reasons, but they behave internally exactly like a `group`.
 
