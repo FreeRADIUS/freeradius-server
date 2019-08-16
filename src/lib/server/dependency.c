@@ -436,6 +436,12 @@ void dependency_features_init(CONF_SECTION *cs)
 	dependency_feature_add(cs, "regex-posix-extended", false);
 #endif
 
+#if defined(HAVE_REGNEXEC) || defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+	dependency_feature_add(cs, "regex-binsafe", true);
+#else
+	dependency_feature_add(cs, "regex-binsafe", false);
+#endif
+
 	dependency_feature_add(cs, "stats",
 #ifdef WITH_STATS
 				true
