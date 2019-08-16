@@ -32,8 +32,6 @@ $(error 'docdir' is required to do 'make install')
 endif
 endif
 
-BUILD_DOC := $(strip $(foreach x,doc html pdf adoc install.doc clean,$(findstring $(x),$(MAKECMDGOALS))))
-
 #
 #	TODO: The 'pdf' target is broken. we should enable here soon.
 #
