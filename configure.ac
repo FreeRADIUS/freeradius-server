@@ -125,6 +125,14 @@ else
 fi
 
 dnl #
+dnl # check for Antora
+dnl #
+AC_PATH_PROG(ANTORA, antora)
+if test "x$ac_cv_path_ANTORA" = "x"; then
+  AC_MSG_WARN([antora not found - Please install if you want build the site])
+fi
+
+dnl #
 dnl #  Enable developer features like debugging symbols.
 dnl #  These checks must be done before expanding the AC_PROG_CC
 dnl #  and AC_PROG_CXX macros.
