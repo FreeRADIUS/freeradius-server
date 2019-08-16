@@ -217,22 +217,42 @@ static const CONF_PARSER driver_config[] = {
 	{ FR_CONF_OFFSET("protocol_version", FR_TYPE_UINT32, rlm_sql_cassandra_t, protocol_version) },
 
 	{ FR_CONF_OFFSET("connections_per_host", FR_TYPE_UINT32, rlm_sql_cassandra_t, connections_per_host) },
-	{ FR_CONF_OFFSET("connections_per_host_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, connections_per_host_max) },
 
-	{ FR_CONF_OFFSET("io_threads", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_threads) },
-	{ FR_CONF_OFFSET("io_queue_size", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_queue_size) },
+/*
+ * The below functions was deprecated in 2.10
+ */
+#if (CASS_VERSION_MAJOR >= 2 && CASS_VERSION_MINOR >= 10)
+	{ FR_CONF_DEPRECATED("connections_per_host_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, connections_per_host_max) },
+	{ FR_CONF_DEPRECATED("io_flush_requests_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_flush_requests_max) },
+
+	{ FR_CONF_DEPRECATED("pending_requests_high", FR_TYPE_UINT32, rlm_sql_cassandra_t, pending_requests_high) },
+	{ FR_CONF_DEPRECATED("pending_requests_low", FR_TYPE_UINT32, rlm_sql_cassandra_t, pending_requests_low) },
+
+	{ FR_CONF_DEPRECATED("write_bytes_high", FR_TYPE_UINT32, rlm_sql_cassandra_t, write_bytes_high) },
+	{ FR_CONF_DEPRECATED("write_bytes_low", FR_TYPE_UINT32, rlm_sql_cassandra_t, write_bytes_low) },
+
+	{ FR_CONF_DEPRECATED("spawn_threshold", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_threshold) },
+	{ FR_CONF_DEPRECATED("spawn_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_max) },
+	{ FR_CONF_OFFSET_IS_SET("spawn_retry_delay", FR_TYPE_TIME_DELTA | FR_TYPE_DEPRECATED, rlm_sql_cassandra_t, spawn_retry_delay) },
+#else
+	{ FR_CONF_OFFSET("connections_per_host_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, connections_per_host_max) },
 	{ FR_CONF_OFFSET("io_flush_requests_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_flush_requests_max) },
 
 	{ FR_CONF_OFFSET("pending_requests_high", FR_TYPE_UINT32, rlm_sql_cassandra_t, pending_requests_high) },
 	{ FR_CONF_OFFSET("pending_requests_low", FR_TYPE_UINT32, rlm_sql_cassandra_t, pending_requests_low) },
+
 	{ FR_CONF_OFFSET("write_bytes_high", FR_TYPE_UINT32, rlm_sql_cassandra_t, write_bytes_high) },
 	{ FR_CONF_OFFSET("write_bytes_low", FR_TYPE_UINT32, rlm_sql_cassandra_t, write_bytes_low) },
-
-	{ FR_CONF_OFFSET("event_queue_size", FR_TYPE_UINT32, rlm_sql_cassandra_t, event_queue_size) },
 
 	{ FR_CONF_OFFSET("spawn_threshold", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_threshold) },
 	{ FR_CONF_OFFSET("spawn_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_max) },
 	{ FR_CONF_OFFSET_IS_SET("spawn_retry_delay", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, spawn_retry_delay) },
+#endif
+
+	{ FR_CONF_OFFSET("io_threads", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_threads) },
+	{ FR_CONF_OFFSET("io_queue_size", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_queue_size) },
+
+	{ FR_CONF_OFFSET("event_queue_size", FR_TYPE_UINT32, rlm_sql_cassandra_t, event_queue_size) },
 
 	{ FR_CONF_POINTER("load_balance_dc_aware", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) load_balance_dc_aware_config },
 	{ FR_CONF_OFFSET("load_balance_round_robin", FR_TYPE_BOOL, rlm_sql_cassandra_t, load_balance_round_robin), .dflt = "no" },
@@ -758,19 +778,14 @@ do {\
 			       						  inst->connections_per_host));
 	}
 
+	/*
+	 *	The below functions was deprecated in 2.10
+	 */
+#if (CASS_VERSION_MAJOR <= 2 && CASS_VERSION_MINOR < 10)
 	if (inst->connections_per_host_max) {
 		DO_CASS_OPTION("connections_per_host_max",
 				cass_cluster_set_max_connections_per_host(inst->cluster,
 									  inst->connections_per_host_max));
-	}
-
-	if (inst->io_threads) {
-		DO_CASS_OPTION("io_threads", cass_cluster_set_num_threads_io(inst->cluster, inst->io_threads));
-	}
-
-	if (inst->io_queue_size) {
-		DO_CASS_OPTION("io_queue_size",
-			       cass_cluster_set_num_threads_io(inst->cluster, inst->io_queue_size));
 	}
 
 	if (inst->io_flush_requests_max) {
@@ -803,11 +818,6 @@ do {\
 			       						   inst->write_bytes_low));
 	}
 
-	if (inst->event_queue_size) {
-		DO_CASS_OPTION("event_queue_size",
-			       cass_cluster_set_num_threads_io(inst->cluster, inst->event_queue_size));
-	}
-
 	if (inst->spawn_threshold) {
 		DO_CASS_OPTION("spawn_threshold",
 			       cass_cluster_set_max_concurrent_requests_threshold(inst->cluster,
@@ -821,6 +831,21 @@ do {\
 
 	if (inst->spawn_retry_delay_is_set) {
 		cass_cluster_set_reconnect_wait_time(inst->cluster, fr_time_delta_to_msec(inst->spawn_retry_delay));
+	}
+#endif
+
+	if (inst->event_queue_size) {
+		DO_CASS_OPTION("event_queue_size",
+			       cass_cluster_set_num_threads_io(inst->cluster, inst->event_queue_size));
+	}
+
+	if (inst->io_queue_size) {
+		DO_CASS_OPTION("io_queue_size",
+			       cass_cluster_set_num_threads_io(inst->cluster, inst->io_queue_size));
+	}
+
+	if (inst->io_threads) {
+		DO_CASS_OPTION("io_threads", cass_cluster_set_num_threads_io(inst->cluster, inst->io_threads));
 	}
 
 	if (inst->load_balance_round_robin) cass_cluster_set_load_balance_round_robin(inst->cluster);
