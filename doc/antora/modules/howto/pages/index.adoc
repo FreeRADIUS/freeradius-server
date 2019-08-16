@@ -1,27 +1,17 @@
 = FreeRADIUS Howto
 
-List with some usual howtos for FreeRADIUS.
+The documents in this section describe how to perform various common tasks with
+FreeRADIUS. They also provide worked examples on using the various modules in
+common deployment scenarions.
 
-== Topics
+If you have a topic you'd like to see included in the list of howtos, contact
+the developers on the
+link:http://lists.freeradius.org/mailman/listinfo/freeradius-users[User's
+mailing list].
 
-* link:ascend.adoc[Ascend]
-* link:bay.adoc[Bay]
-* link:cisco.adoc[Cisco]
-* modules
-** link:modules/RADIUS-LDAP-eDirectory.adoc[RADIUS-LDAP-eDirectory]
-** link:modules/eap.adoc[EAP]
-** link:modules/expiration.adoc[Expiration]
-** link:modules/krb5.adoc[Krb5]
-** link:modules/ldap_howto.adoc[LDAP Howto]
-** link:modules/mschap.adoc[MS-CHAP]
-** link:modules/pam.adoc[PAM]
-** link:modules/passwd.adoc[Passwd]
-** link:modules/python.adoc[Python]
-** link:modules/soh.adoc[SoH]
-** link:modules/sql.adoc[SQL]
-** link:modules/sqlcounter.adoc[SQL-Counter]
-** link:modules/sqlippool.adoc[SQL-IP-Pool]
-* link:performance-testing.adoc[Performance Testing]
-* link:proxim.adoc[ProxIM]
-* link:supervise-radiusd.adoc[Supervise Radiusd]
-* link:tuning_guide.adoc[Tuning Guide]
+Some of the documents here started life as pages on
+link:http://wiki.freeradius.org[wiki.freeradius.org].  If you've just been
+through a particularly arduous service configuration and deployment, and would
+like to help your fellow users, then please create a new how to on the wiki.
+If it's popular enough, we'll include it in the official documentation for the
+next release.
