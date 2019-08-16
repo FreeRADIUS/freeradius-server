@@ -41,9 +41,9 @@ mschap { ntlm_auth = `/path/to/bin …` }
 You need to be careful about setting this command line. There are
 several options for the arguments, in particular username and domain:
 
-* `–username=%{User-Name}` - this will fail if you’re using realms or
+* `+–username=%{User-Name}+` - this will fail if you’re using realms or
 host-based auth
-* `–username=%{mschap:User-Name}` - this will fail if using using suffix
+* `+–username=%{mschap:User-Name}+` - this will fail if using using suffix
 i.e. user@domain
 
 You’ll need to fit this to your local needs.

@@ -27,7 +27,7 @@ This feature is used to create policies which refer to concepts rather
 than to specific values. For example, a policy can be created that
 refers to the User-Name in a request, via:
 
-`%{User-Name}`
+`+%{User-Name}+`
 
 This string expansion is done only for double-quoted strings and for
 the back-tick operator.
@@ -50,7 +50,7 @@ determine whether or not a space or " character needs to be escaped.
 
 .Example
 
-`Reply-Message := "%{User-Name} with a literal %%`
+`+Reply-Message := "%{User-Name} with a literal %%+`
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

@@ -49,8 +49,8 @@ case-insensitive fashion.
 When the `=~` operator is used, then parentheses in the regular
 expression will define variables that contain the matching text.
 
-The special variable `%{0}` contains a copy of the result of
-evaluating the data field.  The variables `%{1}` and following refer
+The special variable `%\{0\}` contains a copy of the result of
+evaluating the data field.  The variables `%\{1\}` and following refer
 to the subsequent matched substring in the regular expression.
 
 Please see the xref:xlat/predefined.adoc#_0[xlat documentation] for

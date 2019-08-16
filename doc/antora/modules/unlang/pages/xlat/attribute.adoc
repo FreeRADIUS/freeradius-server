@@ -3,8 +3,8 @@
 Attributes in a list may be referenced via one of the following two
 syntaxes:
 
-`%{Attribute-Name}` +
-`%{<list>:Attribute-Name}`
+`+%{Attribute-Name}+` +
+`+%{<list>:Attribute-Name}+`
 
 The `<list>:` prefix is optional. If given, it must be a valid
 reference to an xref:list.adoc[attribute list].
@@ -24,15 +24,15 @@ reference is replacedd with an empty string.
 
 .Examples
 
-`%{User-Name}` +
-`%{request:User-Name} # same as above` +
-`%{reply:User-Name}` +
-`%{outer.request:User-Name} # from inside of a TTLS/PEAP tunnel`
+`+%{User-Name}+` +
+`+%{request:User-Name} # same as above+` +
+`+%{reply:User-Name}+` +
+`+%{outer.request:User-Name} # from inside of a TTLS/PEAP tunnel+`
 
 Examples of using references inside of a string:
 
-`"Hello %{User-Name}"` +
-`"You, %{User-Name} are not allowed to use %{NAS-IP-Address}"`
+`+"Hello %{User-Name}"+` +
+`+"You, %{User-Name} are not allowed to use %{NAS-IP-Address}"+`
 
 == Additional Variations
 

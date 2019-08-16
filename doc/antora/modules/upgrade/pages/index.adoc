@@ -181,7 +181,7 @@ required for the new features in v4.
 | `+post-auth+`                | `+send Access-Accept+`
 |                              |
 | `+preacct+`                  | `+recv Accounting-Request+`
-| `+accounting+`               | `+accounting %{Acct-Status-Type}+`
+| `+accounting+`               | `+accounting %\{Acct-Status-Type\}+`
 | `+accounting+`               | `+send Accounting-Response+`
 |                              |
 | `+recv-coa+`                 | `+recv CoA-Request+`

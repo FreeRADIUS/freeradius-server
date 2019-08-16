@@ -765,13 +765,13 @@ The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
 
 == Miscellaneous Expansions
 
-=== %{0}
+=== +%{0}+
 
 Refers to the string that was last used to match a regular expression.
-The variables `%{1}` and following refer to the subsequent matched
+The variables `+%{1}+` and following refer to the subsequent matched
 substring in the regular expression.
 
-=== %{nexttime:<time>}
+=== +%{nexttime:<time>}+
 
 Calculate number of seconds until next n hour(`s`), day(`s`), week(`s`), year(`s`).
 
@@ -795,35 +795,35 @@ update reply {
 You should wait for 2520s
 ```
 
-=== %{Packet-Type}
+=== +%{Packet-Type}+
 
 The packet type (`Access-Request`, etc.)
 
-=== %{Packet-SRC-IP-Address} and %{Packet-SRC-IPv6-Address}
+=== +%{Packet-SRC-IP-Address} and %{Packet-SRC-IPv6-Address}+
 
 The source IPv4 or IPv6 address of the packet. See also the expansions
 `%{client:ipaddr}` and `%{client:ipv6addr}`. The two expansions
 should be identical, unless `%{client:ipaddr}` contains a DNS hostname.
 
-=== %{Packet-DST-IP-Address} and %{Packet-DST-IPv6-Address}
+=== +%{Packet-DST-IP-Address} and %{Packet-DST-IPv6-Address}+
 
 The destination IPv4 or IPv6 address of the packet. See also the
 expansions `%{listen:ipaddr}` and `%{listen:ipv6addr}`. If the socket
 is listening on a "wildcard" address, then these two expansions will be
 different, as follows: the `%{listen:ipaddr}` will be the wildcard
-address and `%{Packet-DST-IP-Address}` will be the unicast address to
+address and `+%{Packet-DST-IP-Address}+` will be the unicast address to
 which the packet was sent.
 
-=== %{Packet-SRC-Port} and %{Packet-DST-Port}
+=== +%{Packet-SRC-Port} and %{Packet-DST-Port}+
 
 The source/destination ports associated with the packet.
 
-=== %{regex:<capture_group>}
+=== +%{regex:<capture_group>}+
 
 Return named subcapture value from previous regex.
 
 If a regular expression match has previously been performed, then the
-special variable `%{0}` will contain a copy of the matched portion of
+special variable `+%{0}+` will contain a copy of the matched portion of
 the input string.
 
 If the server is built with `libpcre` or `libpcre2`, the results of named
