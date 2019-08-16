@@ -6,7 +6,7 @@
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
-WITH_DOC := $(strip $(foreach x,doc html pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+WITH_DOC := $(strip $(foreach x,doc html docsite pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
 ifneq "$(WITH_DOC)" ""
 
 #
@@ -24,6 +24,13 @@ $(error pandoc is required to build the documentation)
 endif
 
 #
+#  We're building a documentation target, but there's no "antora".
+#
+ifeq "$(ANTORA)" ""
+$(error antora is required to build the documentation)
+endif
+
+#
 #  We're installing the documentation, but there's no "docdir".
 #
 ifeq "$(docdir)" "no"
@@ -32,12 +39,10 @@ $(error 'docdir' is required to do 'make install')
 endif
 endif
 
-BUILD_DOC := $(strip $(foreach x,doc html pdf adoc install.doc clean,$(findstring $(x),$(MAKECMDGOALS))))
-
 #
 #	TODO: The 'pdf' target is broken. we should enable here soon.
 #
-all.doc: html
+all.doc: html docsite
 
 install: install.doc
 
@@ -89,7 +94,7 @@ install.doc: $(addprefix $(R)/$(docdir)/,$(ALL_DOC_FILES))
 .PHONY: clean.doc
 clean.doc:
 	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(AUTO_ADOC_FILES) $(HTML_FILES) $(PDF_FILES)
-	${Q}rm -rf $(DOXYGEN_HTML_DIR)
+	${Q}rm -rf $(DOXYGEN_HTML_DIR) $(BUILD_DIR)/site
 
 .PHONY: tests.doc
 tests.doc:
@@ -124,6 +129,11 @@ doxygen:
 all.doc: doxygen
 endif
 endif
+
+.PHONY: docsite
+docsite:
+	@echo ANTORA site.yml
+	${Q}$(ANTORA) site.yml
 
 #
 #  Markdown files get converted to asciidoc via pandoc.
@@ -191,7 +201,7 @@ doc/%.pdf: doc/%.md
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
-.PHONY: asciidoc html pdf clean clean.doc
+.PHONY: asciidoc html docsite pdf clean clean.doc
 asciidoc: $(ADOC_FILES)
 html: $(HTML_FILES)
 pdf: $(PDF_FILES)
