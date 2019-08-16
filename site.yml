@@ -4,7 +4,7 @@ site:
 content:
   sources:
   - url: .
-    branches: master
+    branches: HEAD
     start_path: doc/antora
 ui:
   bundle:
