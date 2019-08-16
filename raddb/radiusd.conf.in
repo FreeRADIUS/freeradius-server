@@ -359,7 +359,7 @@ ENV {
 }
 
 #
-#  .SECURITY CONFIGURATION
+#  .Security Configuration
 #
 #  There may be multiple methods of attacking on the server.  This
 #  section holds the configuration items which minimize the impact
@@ -469,7 +469,7 @@ security {
 }
 
 #
-#  .CLIENTS CONFIGURATION
+#  .Clients Configuration
 #
 #  Client configuration is defined in `clients.conf`.
 #
@@ -487,7 +487,7 @@ security {
 $INCLUDE clients.conf
 
 #
-#  .THREAD POOL CONFIGURATION
+#  .Thread Pool Configuration
 #
 #  In v4, the thread pool does not change size dynamically.  Instead,
 #  there are a small number of threads which read from the network,
@@ -518,7 +518,7 @@ thread pool {
 #$INCLUDE trigger.conf
 
 #
-#  .MODULE CONFIGURATION
+#  .Module Configuration
 #
 #  The names and configuration of each module is located in this section.
 #
@@ -578,7 +578,7 @@ modules {
 }
 
 #
-#  ## Instantiation
+#  .Instantiation
 #
 #  This section orders the loading of the modules.  Modules
 #  listed here will get loaded BEFORE the later sections like
