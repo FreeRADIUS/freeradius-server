@@ -1,9 +1,9 @@
 # Documentation
 
 All of the documentation is now in "asciidoc" format.  Please see the
-[introduction](introduction/index.adoc] file for full details.
+[introduction](introduction/index.adoc) file for full details.
 
-We also suggest reading the [directory](introduction/directory.adoc]
+We also suggest reading the [directory](introduction/directory.adoc)
 file, which describes the layout of this directory.
 
 Please run the top-level `configure` script in order to create HTML
