@@ -42,7 +42,6 @@ CREATE TABLE [radacct] (
 	[FramedIPv6Prefix] [varchar] (45) NOT NULL ,
 	[FramedInterfaceId] [varchar] (44) NOT NULL ,
 	[DelegatedIPv6Prefix] [varchar] (45) NOT NULL ,
-	[XAscendSessionSvrKey] [varchar] (10) NULL ,
 	[AcctStartDelay] [int] NULL ,
 	[AcctStopDelay] [int] NULL
 ) ON [PRIMARY]
