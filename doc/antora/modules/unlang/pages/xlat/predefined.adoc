@@ -767,8 +767,8 @@ The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
 
 === +%{0}+..+%{32}+
 
-`+%{0}+` expands to the portion of the subject that matched the last regular
-expression evaluated. `+%{1}+`..`+%{32}+` expand to the contents of any capture
+`%{0}` expands to the portion of the subject that matched the last regular
+expression evaluated. `%{1}`..`%{32}` expand to the contents of any capture
 groups in the pattern.
 
 Every time a regular expression is evaluated, whether it matches or not,
@@ -841,7 +841,7 @@ The destination IPv4 or IPv6 address of the packet. See also the
 expansions `%{listen:ipaddr}` and `%{listen:ipv6addr}`. If the socket
 is listening on a "wildcard" address, then these two expansions will be
 different, as follows: the `%{listen:ipaddr}` will be the wildcard
-address and `+%{Packet-DST-IP-Address}+` will be the unicast address to
+address and `%{Packet-DST-IP-Address}` will be the unicast address to
 which the packet was sent.
 
 === +%{Packet-SRC-Port} and %{Packet-DST-Port}+

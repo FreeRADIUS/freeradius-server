@@ -383,7 +383,7 @@ The v3 server has warned about using non prefixed attribute references
 for some time. If users have paid attention to those warnings, few
 modifications will be required.
 
-Use of attributes in xlats e.g. `+%{User-Name}+` remains unchanged.
+Use of attributes in xlats e.g. `%{User-Name}` remains unchanged.
 There is no plan to require prefixes here.
 
 As of v3, the preferred format for `+unknown+` attributes is
@@ -570,10 +570,10 @@ checks to see if you want to execute the module.
 Allow `+&Attr-Name[*]+` to mean _sum_. Previously, it just referred to
 the first attribute.
 
-Using `+%{expr:0 + &Attr-Name[*]}+` will cause it to return the sum of
+Using `%{expr:0 + &Attr-Name[*]}` will cause it to return the sum of
 the values of all attributes with the given name.
 
-Note that `+%{expr:1 * &Attr-Name[*]}+` does _not_ mean repeated
+Note that `%{expr:1 * &Attr-Name[*]}` does _not_ mean repeated
 multiplication. Instead, the sum of the attributes is taken as before,
 and then the result is multiplied by one.
 

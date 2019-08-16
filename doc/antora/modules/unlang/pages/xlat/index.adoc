@@ -27,7 +27,7 @@ This feature is used to create policies which refer to concepts rather
 than to specific values. For example, a policy can be created that
 refers to the User-Name in a request, via:
 
-`+%{User-Name}+`
+`%{User-Name}`
 
 This string expansion is done only for double-quoted strings and for
 the back-tick operator.
