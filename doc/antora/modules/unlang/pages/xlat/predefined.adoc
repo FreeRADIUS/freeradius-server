@@ -790,8 +790,7 @@ the named capture group values will be cleared.
 This expansion is only available if the server is built with libpcre or libpcre2.
 Use the output of `radiusd -Xxv` to determine the regular expression library in use.
 
-[source,shell]
-----
+....
 ...
 Debug :   regex-pcre               : no
 Debug :   regex-pcre2              : yes
@@ -800,7 +799,7 @@ Debug :   regex-posix-extended     : no
 Debug :   regex-binsafe            : yes
 ...
 Debug :   pcre2                    : 10.33 (2019-04-16) - retrieved at build time
-----
+....
 ====
 
 === +%{nexttime:<time>}+
