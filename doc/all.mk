@@ -6,7 +6,7 @@
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
-WITH_DOC := $(strip $(foreach x,doc html docsite pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+WITH_DOC := $(strip $(foreach x,doc html pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
 ifneq "$(WITH_DOC)" ""
 
 #
@@ -25,9 +25,12 @@ endif
 
 #
 #  We're building a documentation target, but there's no "antora".
+#  Which we ONLY need for "docsite"
 #
 ifeq "$(ANTORA)" ""
+ifneq "$(findstring docsite,$(MAKECMDGOALS))" ""
 $(error antora is required to build the documentation)
+endif
 endif
 
 #
