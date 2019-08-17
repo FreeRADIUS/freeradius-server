@@ -342,14 +342,18 @@ server default {
 		#
 		tcp {
 			#
+			#  ipaddr:: The IP address where FreeRADIUS
+			#  accepts packets.
+			#
+			#  It has the same definition and meaning as
+			#  the UDP `ipaddr` configuration above.
+			#
+			ipaddr = *
+
+			#
 			#  NOTE: As with v3, `ipaddr`, `ipv4addr`, and `ipv6addr`
 			#  are all allowed.
 			#
-
-			#
-			#  ipaddr::
-			#
-			ipaddr = *
 
 			#
 			#  port:: the TCP where FreeRADIUS accepts
@@ -382,21 +386,26 @@ server default {
 			#
 			networks {
 				#
-				#  allow::
-				#  deny::
+				#  allow::  Allow packets from a network.
 				#
-				#  Allow packets from these networks
+				#  deny:: Deny packets from a network.
+				#
+				#  Allow or deny packets from these networks
 				#  to define dynamic clients.
 				#
 				#  Packets from all other sources will
-				#  be rejected.
+				#  be discarded.
 				#
 				#  Even if a packet is from an allowed
-				#  network, it still must be allowed
+				#  network, it still must be permitted
 				#  by the "new client" subsection.
 				#
 				#  There is no limit to the number of
 				#  networks which can be listed here.
+				#
+				#  The allow / deny checks are organised by
+				#  address.  The order of the items given here
+				#  does not matter.
 				#
 				allow = 127/8
 				allow = 192.0.2/24
