@@ -130,8 +130,7 @@ all.doc: doxygen
 endif
 endif
 
-.PHONY: docsite
-docsite:
+docsite: asciidoc
 	@echo ANTORA site.yml
 	${Q}$(ANTORA) site.yml
 
