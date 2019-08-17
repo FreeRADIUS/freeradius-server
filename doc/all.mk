@@ -130,8 +130,15 @@ all.doc: doxygen
 endif
 endif
 
-.PHONY: docsite
-docsite:
+#
+#  antora rebuilds the entire documentation site on each run
+#  so we need to pick a single file to compare dependency
+#  timestamps against.
+#
+#  we use sitemap.xml as it'll be regenerated on every antora
+#  run.
+#
+build/docsite/sitemap.xml: $(ADOC_FILES)
 	@echo ANTORA site.yml
 	${Q}$(ANTORA) site.yml
 
@@ -202,8 +209,9 @@ doc/%.pdf: doc/%.md
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
-.PHONY: asciidoc html docsite pdf clean clean.doc
+.PHONY: asciidoc html pdf clean clean.doc
 asciidoc: $(ADOC_FILES)
+docsite: build/docsite/sitemap.xml
 html: $(HTML_FILES)
 pdf: $(PDF_FILES)
 

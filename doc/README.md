@@ -28,7 +28,7 @@ create much more useful HTML output fix the following command:
 
 The output HTML is placed in the following location:
 
-    ./build/site/freeradius-server/latest/index.html
+    ./build/docsite/freeradius-server/latest/index.html
 
 If Antora is not intalled localled, it can usually be installed from
 `npm`:
