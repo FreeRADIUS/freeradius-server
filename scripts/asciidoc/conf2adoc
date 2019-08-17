@@ -12,11 +12,13 @@ use Getopt::Std;
 $was_raw = 0;
 $raw = 0;
 $blank = 0;
+$print_code = 0;
 
-getopts('a:o:');
+getopts('a:c:o:');
 
 $script_dir = dirname(__FILE__);
 $filename = "$script_dir/links.txt";
+$print_code = $opt_c;
 
 %links = {};
 
@@ -110,7 +112,7 @@ sub process_file {
 		}
 
 		if ($raw != $was_raw) {
-			print $output "```\n";
+			print $output "```\n" if ($print_code);
 			$was_raw = $raw;
 		}
 
@@ -195,6 +197,8 @@ sub process_file {
 			$line =~ s,RFC (\d+),https://tools.ietf.org/html/rfc${1}\[RFC $1\],g;
 		}
 
+		next if (!$print_code && $raw && $was_raw);
+
 		#
 		#  And print out the raw text.
 		#
@@ -204,7 +208,7 @@ sub process_file {
 	#
 	#  Terminate any trailing "raw" text.
 	#
-	print $output "```\n" if ($was_raw);
+	print $output "```\n" if ($print_code);
 }
 
 sub HELP_MESSAGE {
