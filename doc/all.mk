@@ -175,7 +175,8 @@ doc/%.html: doc/%.adoc
 	@echo HTML $^
 	$(eval BASEDIR := $(call DOC_BASEDIR,$(subst doc/,,$(dir $^))))
 	$(eval BASEDIR := $(if $(BASEDIR),$(BASEDIR),./))
-	${Q}$(ASCIIDOCTOR) $< -a toc="left"                              \
+	${Q}$(ASCIIDOCTOR) $< -w                                         \
+	                      -a toc="left"                              \
 	                      -a docinfodir="$(BASEDIR)/templates"       \
 	                      -a basedir="$(BASEDIR)"                    \
 	                      -a docinfo="shared,private"                \
