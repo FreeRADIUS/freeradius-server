@@ -128,7 +128,7 @@ define ADD_INSTALL_RULE.file
     install: ${2}
 
     # Install the file
-    ${2}: ${1} | $(dir ${2})
+    ${2}: ${1} | $(patsubst %/,%,$(dir ${2}))
 	@$(ECHO) INSTALL ${1}
 	$(Q)$${PROGRAM_INSTALL} -c -m 644 ${1} ${2}
 
