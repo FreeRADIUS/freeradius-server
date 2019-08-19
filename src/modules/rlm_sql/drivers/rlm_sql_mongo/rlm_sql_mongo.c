@@ -151,13 +151,6 @@ static void sql_conn_free(rlm_sql_mongo_conn_t *conn)
 		conn->result = NULL;
 	}
 
-	if (conn->row) {
-		int i;
-
-		for (i = 0; i < conn->num_fields; i++) {
-			if (conn->row[i]) TALLOC_FREE(conn->row[i]);
-		}
-	}
 	TALLOC_FREE(conn->row);
 	conn->num_fields = 0;
 }
