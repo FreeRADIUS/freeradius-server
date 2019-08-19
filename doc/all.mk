@@ -47,7 +47,7 @@ endif
 #
 all.doc: html docsite
 
-install: install.doc
+install: install.doc install.doc.man
 
 clean: clean.doc
 
@@ -94,9 +94,27 @@ $(foreach FILE,$(ALL_DOC_FILES),$(eval $(call ADD_INSTALL_RULE.file,doc/${FILE},
 #
 install.doc: $(addprefix $(R)/$(docdir)/,$(ALL_DOC_FILES))
 
+#
+#  For now, list each "man" page individually.  They are all generated from source
+#  "adoc" files.  And "make" isn't smart enough to figure that out.
+#
+#  We install doc/man/foo.? into $(R)/$(mandir)/man?/foo.?
+#
+#  Because GNU Make sucks at string substitution, we have stupid rules to do that.
+#
+#  Not all of the "man" files have been converted to asciidoc, so we have a "install.doc.man"
+#  rule here, instead of overloading the "install.man" rule.
+#
+MAN_FILES := doc/man/radiusd.8
+INSTALL_MAN_FILES := $(join $(patsubst .%,$(R)/$(mandir)/man%/,$(suffix $(MAN_FILES))),$(patsubst doc/man/%,%,$(MAN_FILES)))
+
+$(foreach FILE,$(MAN_FILES),$(eval $(call ADD_INSTALL_RULE.file,${FILE},$(R)/$(mandir)/$(join $(patsubst .%,man%/,$(suffix $(MAN_FILES))),$(patsubst doc/man/%,%,$(MAN_FILES))))))
+
+install.doc.man: $(INSTALL_MAN_FILES)
+
 .PHONY: clean.doc
 clean.doc:
-	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(AUTO_ADOC_FILES) $(HTML_FILES) $(PDF_FILES)
+	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(AUTO_ADOC_FILES) $(HTML_FILES) $(PDF_FILES) $(MAN_FILES)
 	${Q}rm -rf $(DOXYGEN_HTML_DIR) $(BUILD_DIR)/site
 
 .PHONY: tests.doc
