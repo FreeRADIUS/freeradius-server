@@ -132,10 +132,8 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	return 0;
 }
 
-static int _sql_socket_destructor(rlm_sql_mongo_conn_t *conn)
+static void sql_conn_free(rlm_sql_mongo_conn_t *conn)
 {
-	DEBUG2("rlm_sql_mongo: Socket destructor called, closing socket.");
-
 	if (conn->bson_row) {
 		int i;
 
@@ -144,18 +142,30 @@ static int _sql_socket_destructor(rlm_sql_mongo_conn_t *conn)
 		}
 
 		TALLOC_FREE(conn->bson_row);
-		conn->num_rows = 0;
-
 		conn->result = NULL; /* reference to conn->bson_row[0] */
 	}
+	conn->num_rows = 0;
 
 	if (conn->result) {
 		bson_destroy(conn->result);
 		conn->result = NULL;
 	}
 
-	conn->num_fields = 0;
+	if (conn->row) {
+		int i;
 
+		for (i = 0; i < conn->num_fields; i++) {
+			if (conn->row[i]) TALLOC_FREE(conn->row[i]);
+		}
+	}
+	TALLOC_FREE(conn->row);
+	conn->num_fields = 0;
+}
+
+static int _sql_socket_destructor(rlm_sql_mongo_conn_t *conn)
+{
+	DEBUG2("rlm_sql_mongo: Socket destructor called, closing socket.");
+	sql_conn_free(conn);
 	return 0;
 }
 
@@ -193,26 +203,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_con
 {
 	rlm_sql_mongo_conn_t *conn = handle->conn;
 
-	if (conn->bson_row) {
-		int i;
-
-		for (i = 0; i < conn->num_rows; i++) {
-			if (conn->bson_row[i]) bson_destroy(conn->bson_row[i]);
-		}
-
-		TALLOC_FREE(conn->bson_row);
-		conn->num_rows = 0;
-
-		conn->result = NULL; /* reference to conn->bson_row[0] */
-	}
-
-	if (conn->result) {
-		bson_destroy(conn->result);
-		conn->result = NULL;
-	}
-
-	TALLOC_FREE(conn->row);
-	conn->num_fields = 0;
+	sql_conn_free(conn);
 
 	return 0;
 }
@@ -738,7 +729,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 	 */
 	if (num_fields != conn->num_fields) return RLM_SQL_NO_MORE_ROWS;
 
-	if (!conn->row) conn->row = talloc_zero_array(conn, char *, conn->num_fields + 1);
+	conn->row = talloc_zero_array(conn, char *, conn->num_fields + 1);
 
 	if (!bson_iter_init(&iter, bson)) return RLM_SQL_NO_MORE_ROWS;
 
