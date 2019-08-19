@@ -78,6 +78,8 @@ static const CONF_PARSER driver_config[] = {
  */
 static int use_count = 0;
 
+#define BSON_DESTROY(_x) do { if (_x) { bson_destroy(_x); _x = NULL; }} while (0)
+
 static int _sql_destructor(rlm_sql_mongo_config_t *driver)
 {
 	if (driver->pool) {
@@ -138,7 +140,7 @@ static void sql_conn_free(rlm_sql_mongo_conn_t *conn)
 		int i;
 
 		for (i = 0; i < conn->num_rows; i++) {
-			if (conn->bson_row[i]) bson_destroy(conn->bson_row[i]);
+			BSON_DESTROY(conn->bson_row[i]);
 		}
 
 		TALLOC_FREE(conn->bson_row);
@@ -146,11 +148,7 @@ static void sql_conn_free(rlm_sql_mongo_conn_t *conn)
 	}
 	conn->num_rows = 0;
 
-	if (conn->result) {
-		bson_destroy(conn->result);
-		conn->result = NULL;
-	}
-
+	BSON_DESTROY(conn->result);
 	TALLOC_FREE(conn->row);
 	conn->num_fields = 0;
 }
@@ -232,10 +230,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	 *	whatever was left over from before.  Also, if the
 	 *	query / connection fails, that there is less to clean up.
 	 */
-	if (conn->result) {
-		bson_destroy(conn->result);
-		conn->result = NULL;
-	}
+	BSON_DESTROY(conn->result);
 
 	/*
 	 *	See what kind of query it is.  Aggregate queries
@@ -481,10 +476,10 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 							  remove, upsert,
 							  true, &bson_reply,
 							  &conn->error);
-		if (bson_query) bson_destroy(bson_query);
-		if (bson_update) bson_destroy(bson_update);
-		if (bson_sort) bson_destroy(bson_sort);
-		if (bson_fields) bson_destroy(bson_fields);
+		BSON_DESTROY(bson_query);
+		BSON_DESTROY(bson_update);
+		BSON_DESTROY(bson_sort);
+		BSON_DESTROY(bson_fields);
 
 		/*
 		 *	See just what the heck was returned.
@@ -634,7 +629,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 
 	if (!conn->result) {
 		DEBUG("rlm_sql_mongo: Query got no result");
-		if (bson) bson_destroy(bson);
+		BSON_DESTROY(bson);
 		(void) sql_free_result(handle, config);
 		return RLM_SQL_OK;		
 	}
@@ -646,11 +641,11 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	error:
 		if (client) mongoc_client_pool_push(conn->driver->pool, client);
 		if (collection) mongoc_collection_destroy(collection);
-		if (bson) bson_destroy(bson);
-		if (bson_query) bson_destroy(bson_query);
-		if (bson_update) bson_destroy(bson_update);
-		if (bson_sort) bson_destroy(bson_sort);
-		if (bson_fields) bson_destroy(bson_fields);
+		BSON_DESTROY(bson);
+		BSON_DESTROY(bson_query);
+		BSON_DESTROY(bson_update);
+		BSON_DESTROY(bson_sort);
+		BSON_DESTROY(bson_fields);
 		(void) sql_free_result(handle, config);
 		return RLM_SQL_ERROR;
 	}
@@ -658,7 +653,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	/*
 	 *	No more need for this.
 	 */
-	bson_destroy(bson);
+	BSON_DESTROY(bson);
 
 	/*
 	 *	Count the number of fields in the first row.  This is
