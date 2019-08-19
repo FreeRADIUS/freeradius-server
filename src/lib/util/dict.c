@@ -84,7 +84,8 @@ typedef struct dict_group_fixup_s dict_group_fixup_t;
 struct dict_group_fixup_s {
 	char			*filename;		//!< where the "group" was defined
 	int			line;			//!< ditto
-	fr_dict_attr_t		*da;			//!< the grouped attribute
+	fr_dict_attr_t		*da;			//!< FR_TYPE_GROUP to fix
+	char 			*ref;			//!< the reference name
 	dict_group_fixup_t	*next;			//!< Next in the linked list of fixups.
 };
 
@@ -118,6 +119,8 @@ struct fr_dict {
 
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce allocs.
 							///< in the dictionary.
+
+	fr_hash_table_t		*autoref;		//!< other dictionaries that we loaded via references
 };
 
 /** Map data types to min / max data sizes
@@ -3814,6 +3817,14 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 	return 0;
 }
 
+static int _dict_free_autoref(UNUSED void *ctx, void *data)
+{
+	fr_dict_t *dict = data;
+
+	talloc_decrease_ref_count(dict);
+	return 0;
+}
+
 static int _dict_free(fr_dict_t *dict)
 {
 	if (dict == fr_dict_internal) fr_dict_internal = NULL;
@@ -3824,6 +3835,11 @@ static int _dict_free(fr_dict_t *dict)
 	}
 	if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(protocol_by_num, dict))) {
 		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
+		return -1;
+	}
+
+	if (dict->autoref &&
+	    (fr_hash_table_walk(dict->autoref, _dict_free_autoref, NULL) < 0)) {
 		return -1;
 	}
 
@@ -4309,32 +4325,57 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 			return -1;
 		}
 
-		if (slen == 0) {
-			fr_strerror_printf("protocol '%.*s' not yet loaded", (int) (p - ref), ref);
-			talloc_free(ref);
-			return -1;
-		}
-
 		/*
-		 *	Look up the attribute.
+		 *	No known dictionary, so we're asked to just
+		 *	use the whole string.  Which we did above.  So
+		 *	either it's a bad ref, OR it's a ref to a
+		 *	dictionary which doesn't exist.
 		 */
-		da = fr_dict_attr_by_name(dict, ref + slen + 1);
-		if (!da) {
-			fr_strerror_printf("protocol loaded, but no attribute '%s'", ref + slen + 1);
-			talloc_free(ref);
-			return -1;
-		}
+		if (slen == 0) {
+			dict_group_fixup_t *fixup;
 
-	check:
-		if (da->type != FR_TYPE_TLV) {
-			fr_strerror_printf("References MUST be to attributes of type 'tlv'");
-			talloc_free(ref);
-			return -1;
-		}
+			fixup = talloc_zero(ctx->fixup_pool, dict_group_fixup_t);
+			if (!fixup) {
+			oom:
+				talloc_free(ref);
+				return -1;
+			}
 
-		talloc_free(ref);
-		self->dict = dict;
-		self->ref = da;
+			fixup->filename = talloc_strdup(fixup, ctx->stack[ctx->stack_depth].filename);
+			if (!fixup->filename) goto oom;
+			fixup->line = ctx->stack[ctx->stack_depth].line;
+
+			fixup->da = self;
+			fixup->ref = ref;
+
+			/*
+			 *	Insert to the head of the list.
+			 */
+			fixup->next = ctx->group_fixup;
+			ctx->group_fixup = fixup;
+
+		} else {
+			/*
+			 *	Look up the attribute.
+			 */
+			da = fr_dict_attr_by_name(dict, ref + slen);
+			if (!da) {
+				fr_strerror_printf("protocol loaded, but no attribute '%s'", ref + slen);
+				talloc_free(ref);
+				return -1;
+			}
+
+		check:
+			if (da->type != FR_TYPE_TLV) {
+				fr_strerror_printf("References MUST be to attributes of type 'tlv'");
+				talloc_free(ref);
+				return -1;
+			}
+
+			talloc_free(ref);
+			self->dict = dict;
+			self->ref = da;
+		}
 	}
 
 	/*
@@ -4938,7 +4979,6 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 			if (!da) {
 				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s' at %s[%d]",
 						   this->attribute, this->alias, this->filename, this->line);
-			error:
 				return -1;
 			}
 			type = da->type;
@@ -4947,13 +4987,13 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
 				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\" at %s[%d]",
 							da->name, this->filename, this->line);
-				goto error;
+				return -1;
 			}
 
 			ret = fr_dict_enum_add_alias(da, this->alias, &value, false, false);
 			fr_value_box_clear(&value);
 
-			if (ret < 0) goto error;
+			if (ret < 0) return -1;
 
 			/*
 			 *	Just so we don't lose track of things.
@@ -4963,10 +5003,140 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 	}
 
 	if (ctx->group_fixup) {
-		dict_group_fixup_t *this, *next;
+		dict_group_fixup_t *mine, *this, *next;
 
-		for (this = ctx->group_fixup; this != NULL; this = next) {
-			next = NULL;
+		mine = ctx->group_fixup;
+		ctx->group_fixup = NULL;
+
+		/*
+		 *	Keep track of which dictionaries we autoloaded
+		 *	via a reference.
+		 */
+		if (!ctx->dict->autoref) {
+			ctx->dict->autoref = fr_hash_table_create(ctx->dict, dict_protocol_name_hash,
+								  dict_protocol_name_cmp, NULL);
+			if (!ctx->dict->autoref) {
+				fr_strerror_printf("oom");
+				return -1;
+			}
+		}
+
+		/*
+		 *	Loop over references, adding the dictionaries
+		 *	and attributes to the da.
+		 *
+		 *	We avoid refcount loops by using the "autoref"
+		 *	table.  If a "group" attribute refers to a
+		 *	dictionary which does not exist, we load it,
+		 *	increment its reference count, and add it to
+		 *	the autoref table.
+		 *
+		 *	If a group attribute refers to a dictionary
+		 *	which does exist, we check that dictionaries
+		 *	"autoref" table.  If OUR dictionary is there,
+		 *	then we do nothing else.  That dictionary
+		 *	points to us via refcounts, so we can safely
+		 *	point to it.  The refcounts ensure that we
+		 *	won't be free'd before the other one is
+		 *	free'd.
+		 *
+		 *	If our dictionary is NOT in the other
+		 *	dictionaries autoref table, then it was loaded
+		 *	via some other method.  We increment its
+		 *	refcount, and add it to our autoref table.
+		 *
+		 *	Then when this dictionary is being free'd, we
+		 *	also free the dictionaries in our autoref
+		 *	table.
+		 */
+		for (this = mine; this != NULL; this = next) {
+			fr_dict_t const *dict;
+			fr_dict_attr_t const *da;
+			char *p;
+			ssize_t slen;
+
+			da = fr_dict_attr_by_name(ctx->dict, this->ref);
+			if (da) {
+				dict = ctx->dict;
+				goto check;
+			}
+
+			/*
+			 *	The attribute doesn't exist, and the reference
+			 *	isn't in a "PROTO.ATTR" format, die.
+			 */
+			p = strchr(this->ref, '.');
+			if (!p) {
+				fr_strerror_printf("Unknown attribute in reference '%s' at %s[%d]",
+						   this->ref, this->filename, this->line);
+
+			group_error:
+				/*
+				 *	Just so we don't lose track of things.
+				 */
+				// @todo - don't leak group_fixup stuff? things?
+				return -1;
+			}
+
+			/*
+			 *	Get / skip protocol name.
+			 */
+			slen = fr_dict_by_protocol_substr(&dict, this->ref, ctx->dict);
+			if ((slen <= 0) && p) {
+				fr_dict_t *other;
+
+				*p = '\0';
+
+				if (fr_dict_protocol_afrom_file(&other, this->ref, NULL) < 0) {
+					return -1;
+				}
+
+				*p = '.';
+
+				/*
+				 *	Grab the protocol name again
+				 */
+				dict = other;
+				slen = p - this->ref;
+			}
+
+			if (slen < 0) {
+			invalid_reference:
+				fr_strerror_printf("Invalid reference '%s' at %s[%d]",
+						 this->ref, this->filename, this->line);
+				goto group_error;
+			}
+
+			/*
+			 *	No known dictionary, so we're asked to just
+			 *	use the whole string.  Which we did above.  So
+			 *	either it's a bad ref, OR it's a ref to a
+			 *	dictionary which doesn't exist.
+			 */
+			if (slen == 0) goto invalid_reference;
+
+			/*
+			 *	Look up the attribute.
+			 */
+			da = fr_dict_attr_by_name(dict, this->ref + slen + 1);
+			if (!da) {
+				fr_strerror_printf("No such attribute '%s' in reference at %s[%d]",
+						   this->ref + slen + 1, this->filename, this->line);
+				goto group_error;
+			}
+
+		check:
+			if (da->type != FR_TYPE_TLV) {
+				fr_strerror_printf("References MUST be to attributes of type 'tlv' at %s[%d]",
+					this->filename, this->line);
+				goto group_error;
+			}
+
+			talloc_free(this->ref);
+			this->da->dict = dict;
+			this->da->ref = da;
+
+			next = this->next;;
 		}
 	}
 
