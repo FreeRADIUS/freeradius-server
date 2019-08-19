@@ -389,7 +389,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	collection = mongoc_client_get_collection(client, config->sql_db, name);
 
 	if (findandmodify) {
-		bson_t *bson_query, *bson_update, *bson_bool, *bson_sort, *bson_fields;
+		bson_t *bson_query, *bson_update, *bson_sort, *bson_fields;
 		bson_t bson_reply;
 		bson_value_t const *value;
 		bson_iter_t child;
@@ -397,7 +397,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		uint8_t const *document;
 		uint32_t document_len;
 
-		bson_query = bson_update = bson_bool = bson_sort = bson_fields = NULL;
+		bson_query = bson_update = bson_sort = bson_fields = NULL;
 		upsert = remove = update = false;
 
 		/*
