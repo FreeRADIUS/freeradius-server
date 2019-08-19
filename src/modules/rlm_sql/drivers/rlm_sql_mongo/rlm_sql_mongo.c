@@ -231,7 +231,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	bson_t *bson = NULL;
 	bool rcode;
 	bson_iter_t iter;
-	mongoc_collection_t *collection;
+	mongoc_collection_t *collection = NULL;
 	char name[256];
 	char command[256];
 
@@ -638,6 +638,8 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 
 	mongoc_client_pool_push(conn->driver->pool, client);
 	client = NULL;
+	mongoc_collection_destroy(collection);
+	collection = NULL;
 
 	if (!conn->result) {
 		DEBUG("rlm_sql_mongo: Query got no result");
@@ -652,6 +654,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 
 	error:
 		if (client) mongoc_client_pool_push(conn->driver->pool, client);
+		if (collection) mongoc_collection_destroy(collection);
 		if (bson) bson_destroy(bson);
 		(void) sql_free_result(handle, config);
 		return RLM_SQL_ERROR;
