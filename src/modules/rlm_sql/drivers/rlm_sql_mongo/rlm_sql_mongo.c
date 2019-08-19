@@ -227,16 +227,21 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	bool aggregate = false;
 	bool findandmodify = false;
 	char *ptr;
-	mongoc_client_t *client = NULL;
+	mongoc_client_t *client;
 	bson_t *bson = NULL;
 	bool rcode;
 	bson_iter_t iter;
-	mongoc_collection_t *collection = NULL;
+	mongoc_collection_t *collection;
+	bson_t *bson_query, *bson_update, *bson_sort, *bson_fields;
 	char name[256];
 	char command[256];
 
 	conn->affected_rows = 0;
 	conn->cur_row = 0;
+
+	client = NULL;
+	collection = NULL;
+	bson_query = bson_update = bson_sort = bson_fields = NULL;
 
 	/*
 	 *	Ensure that we use whatever results come back now not
@@ -389,7 +394,6 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	collection = mongoc_client_get_collection(client, config->sql_db, name);
 
 	if (findandmodify) {
-		bson_t *bson_query, *bson_update, *bson_sort, *bson_fields;
 		bson_t bson_reply;
 		bson_value_t const *value;
 		bson_iter_t child;
@@ -397,7 +401,6 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		uint8_t const *document;
 		uint32_t document_len;
 
-		bson_query = bson_update = bson_sort = bson_fields = NULL;
 		upsert = remove = update = false;
 
 		/*
@@ -656,6 +659,10 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		if (client) mongoc_client_pool_push(conn->driver->pool, client);
 		if (collection) mongoc_collection_destroy(collection);
 		if (bson) bson_destroy(bson);
+		if (bson_query) bson_destroy(bson_query);
+		if (bson_update) bson_destroy(bson_update);
+		if (bson_sort) bson_destroy(bson_sort);
+		if (bson_fields) bson_destroy(bson_fields);
 		(void) sql_free_result(handle, config);
 		return RLM_SQL_ERROR;
 	}
