@@ -491,8 +491,10 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		 */
 		if (rad_debug_lvl >= 3) {
 			str = bson_as_canonical_extended_json (&bson_reply, NULL);
-			DEBUG3("bson reply: %s\n", str);
-			bson_free (str);
+			if (str) {
+				DEBUG3("bson reply: %s\n", str);
+				bson_free(str);
+			}
 		}
 
 		/*
@@ -599,8 +601,10 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 
 			if (rad_debug_lvl >= 3) {
 				str = bson_as_canonical_extended_json (doc, NULL);
-				DEBUG3("rlm_sql_mongo got result into row %d: %s", conn->num_rows, str);
-				bson_free (str);
+				if (str) {
+					DEBUG3("rlm_sql_mongo got result into row %d: %s", conn->num_rows, str);
+					bson_free(str);
+				}
 			}
 
 			conn->num_rows++;
