@@ -212,6 +212,10 @@ doc/%.pdf: doc/%.md
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
+doc/man/%.8: doc/man/%.adoc
+	@echo MAN $^
+	@${Q}${ASCIIDCOCTOR} asciidoctor -b manpage $<
+
 .PHONY: asciidoc html pdf clean clean.doc
 asciidoc: $(ADOC_FILES)
 docsite: build/docsite/sitemap.xml
