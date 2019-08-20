@@ -1379,7 +1379,14 @@ do { \
 				continue;
 			}
 
-			fr_value_box_snprint(output, sizeof(output), box, '"');
+			/*
+			 *	Don't print dates with enclosing quotation marks.
+			 */
+			if (type != FR_TYPE_DATE) {
+				fr_value_box_snprint(output, sizeof(output), box, '"');
+			} else {
+				fr_value_box_snprint(output, sizeof(output), box, '\0');
+			}
 
 			/*
 			 *	Behind the scenes, parse the output
