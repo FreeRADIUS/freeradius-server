@@ -128,6 +128,30 @@ update reply {
 The value of Tunnel-Server-Endpoint with tag 1 is 192.0.5.2
 ```
 
+=== %{string:<data>}
+
+Convert data to a string if possible.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-Octets-0 := 0x7465737431
+}
+update reply {
+    &Reply-Message := "The content of %{control:Tmp-Octets-0} is %{string:%{control:Tmp-Octets-0}}"
+}
+----
+
+.Output
+
+```
+The content of 0x7465737431 is test1
+```
+
 == Server Manipulation
 
 === %{config:<key>}
@@ -242,6 +266,35 @@ recv Access-Request {
 (0)      EXPAND %{debug_attr:request:[*]}
 (0)    } # if (&request:User-Name == "bob") (...)
 ...
+```
+
+=== %{interpreter:<state>}
+
+Get information about the interpreter state.
+
+[options="header,autowidth"]
+|===
+| State      | Description
+| `name`     | Name of the instruction.
+| `type`     | Unlang type.
+| `depth`    | How deep the current stack is.
+| `line`     | Line number of the current section.
+| `filename` | Filename of the current section.
+|===
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+"Failure in test at line %{interpreter:...filename}:%{interpreter:...line}"
+----
+
+.Output
+
+```
+Failure in test at line /path/raddb/sites-enaled/default:231
 ```
 
 == String manipulation
@@ -762,7 +815,6 @@ The md5 of Caipirinha in octal is \024\204\013md||\230\243\3472\3703\330n\251
 The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
 ```
 
-
 == Miscellaneous Expansions
 
 === +%{0}+..+%{32}+
@@ -869,6 +921,30 @@ if (&control:Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
 
 ```
 The user@example.com { login=user, domain=example.com }
+```
+
+### %{sub:/<regex>/[flags] <replace> <subject>}
+
+Substitute text just as easily as it can match it, even using regex patterns.
+
+.Return: _string_.
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
+}
+update reply {
+    &Reply-Message := "%{sub:/ / , %{control:Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+Caipirinha,is,a,light,and,refreshing,drink!
 ```
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
