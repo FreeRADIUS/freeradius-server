@@ -105,10 +105,10 @@ install.doc: $(addprefix $(R)/$(docdir)/,$(ALL_DOC_FILES))
 #  Not all of the "man" files have been converted to asciidoc, so we have a "install.doc.man"
 #  rule here, instead of overloading the "install.man" rule.
 #
-MAN_FILES := doc/man/radiusd.8
+MAN_FILES := doc/man/radclient.1 doc/man/radiusd.8
 INSTALL_MAN_FILES := $(join $(patsubst .%,$(R)/$(mandir)/man%/,$(suffix $(MAN_FILES))),$(patsubst doc/man/%,%,$(MAN_FILES)))
 
-$(foreach FILE,$(MAN_FILES),$(eval $(call ADD_INSTALL_RULE.file,${FILE},$(R)/$(mandir)/$(join $(patsubst .%,man%/,$(suffix $(MAN_FILES))),$(patsubst doc/man/%,%,$(MAN_FILES))))))
+$(foreach FILE,$(MAN_FILES),$(eval $(call ADD_INSTALL_RULE.file,${FILE},$(R)/$(mandir)/$(join $(patsubst .%,man%/,$(suffix ${FILE})),$(patsubst doc/man/%,%,${FILE})))))
 
 install.doc.man: $(INSTALL_MAN_FILES)
 
@@ -231,6 +231,10 @@ doc/%.pdf: doc/%.md
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
 doc/man/%.8: doc/man/%.adoc
+	@echo MAN $^
+	@${Q}${ASCIIDCOCTOR} asciidoctor -b manpage $<
+
+doc/man/%.1: doc/man/%.adoc
 	@echo MAN $^
 	@${Q}${ASCIIDCOCTOR} asciidoctor -b manpage $<
 
