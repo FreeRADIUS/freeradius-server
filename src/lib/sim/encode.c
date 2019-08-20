@@ -570,7 +570,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
 	case FR_TYPE_INT32:
-		len = fr_value_box_to_network(NULL, out, outlen, &vp->data);
+		len = fr_value_box_to_network(NULL, out, outlen, &vp->data, vp->da);
 		if (len < 0) return len;
 		break;
 

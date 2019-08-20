@@ -396,7 +396,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
-		slen = fr_value_box_to_network(NULL, p, end - p, &vp->data);
+		slen = fr_value_box_to_network(NULL, p, end - p, &vp->data, vp->da);
 		if (slen < 0) return PAIR_ENCODE_ERROR;
 		p += slen;
 		break;

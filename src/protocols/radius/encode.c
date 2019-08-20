@@ -677,7 +677,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_INT32:
 	case FR_TYPE_INT64:
 	case FR_TYPE_DATE:
-		len = fr_value_box_to_network(NULL, buffer, sizeof(buffer), &vp->data);
+		len = fr_value_box_to_network(NULL, buffer, sizeof(buffer), &vp->data, vp->da);
 		if (len < 0) return -1;
 		data = buffer;
 		break;

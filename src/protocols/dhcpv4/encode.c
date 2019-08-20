@@ -118,7 +118,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		len = fr_value_box_to_network(&need, p, outlen, &vp->data);
+		len = fr_value_box_to_network(&need, p, outlen, &vp->data, vp->da);
 		if (len < 0) return -2;
 		if (need > 0) return -1;
 		p += len;

@@ -1018,6 +1018,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  * @param[in] dst_len	The length of the output buffer, or maximum value fragment
  *			size.
  * @param[in] value	to encode.
+ * @param[in] da	attribute definition for extra "flags" fields.
  * @return
  *	- 0 no bytes were written, see need value to determine if it was because
  *	  the fr_value_box_t was #FR_TYPE_OCTETS/#FR_TYPE_STRING and was
@@ -1025,7 +1026,8 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  *	- >0 the number of bytes written to out.
  *	- <0 on error.
  */
-ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_value_box_t const *value)
+ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_value_box_t const *value,
+				UNUSED fr_dict_attr_t const *da)
 {
 	size_t min, max;
 	uint8_t *p = dst;
