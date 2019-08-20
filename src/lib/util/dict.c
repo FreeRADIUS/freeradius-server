@@ -4307,14 +4307,11 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 
 		/*
 		 *	The attribute doesn't exist, and the reference
-		 *	isn't in a "PROTO.ATTR" format, die.
+		 *	is FOO, it might be just a ref to a
+		 *	dictionary.
 		 */
 		p = strchr(ref, '.');
-		if (!p) {
-			fr_strerror_printf("Unknown attribute in reference '%s'", ref);
-			talloc_free(ref);
-			return -1;
-		}
+		if (!p) goto save;
 
 		/*
 		 *	Get / skip protocol name.
@@ -4334,6 +4331,7 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 		if (slen == 0) {
 			dict_group_fixup_t *fixup;
 
+		save:
 			fixup = talloc_zero(ctx->fixup_pool, dict_group_fixup_t);
 			if (!fixup) {
 			oom:
@@ -4353,6 +4351,10 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 			 */
 			fixup->next = ctx->group_fixup;
 			ctx->group_fixup = fixup;
+
+		} else if (ref[slen] == '\0') {
+			da = dict->root;
+			goto check;
 
 		} else {
 			/*
@@ -5066,37 +5068,32 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 			 *	isn't in a "PROTO.ATTR" format, die.
 			 */
 			p = strchr(this->ref, '.');
-			if (!p) {
-				fr_strerror_printf("Unknown attribute in reference '%s' at %s[%d]",
-						   this->ref, this->filename, this->line);
-
-			group_error:
-				/*
-				 *	Just so we don't lose track of things.
-				 */
-				// @todo - don't leak group_fixup stuff? things?
-				return -1;
-			}
 
 			/*
 			 *	Get / skip protocol name.
 			 */
 			slen = fr_dict_by_protocol_substr(&dict, this->ref, ctx->dict);
-			if ((slen <= 0) && p) {
+			if (slen <= 0) {
 				fr_dict_t *other;
 
-				*p = '\0';
+				if (p) *p = '\0';
 
 				if (fr_dict_protocol_afrom_file(&other, this->ref, NULL) < 0) {
 					return -1;
 				}
 
-				*p = '.';
+				if (p) *p = '.';
 
 				/*
 				 *	Grab the protocol name again
 				 */
 				dict = other;
+				if (!p) {
+					dict = other;
+					da = other->root;
+					goto check;
+				}
+
 				slen = p - this->ref;
 			}
 
@@ -5104,7 +5101,12 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 			invalid_reference:
 				fr_strerror_printf("Invalid reference '%s' at %s[%d]",
 						 this->ref, this->filename, this->line);
-				goto group_error;
+			group_error:
+				/*
+				 *	Just so we don't lose track of things.
+				 */
+				// @todo - don't leak group_fixup stuff? things?
+				return -1;
 			}
 
 			/*
