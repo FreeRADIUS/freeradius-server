@@ -262,12 +262,13 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->vp_type) {
+	case FR_TYPE_DATE:
 	case FR_TYPE_STRING:
 	{
 		fr_value_box_t vb;
 
 		if (fr_value_box_cast(NULL, &vb, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
-			RPEDEBUG("Input string invalid");
+			RPEDEBUG("Invalid input for printing as an integer");
 			return -1;
 		}
 
@@ -300,9 +301,6 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 
 	case FR_TYPE_UINT32:
 		return snprintf(*out, outlen, "%u", vp->vp_uint32);
-
-	case FR_TYPE_DATE:
-		return snprintf(*out, outlen, "%" PRIi64, fr_time_to_sec(vp->vp_date));
 
 	case FR_TYPE_UINT8:
 		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint8);
