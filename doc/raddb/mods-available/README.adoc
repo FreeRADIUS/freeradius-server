@@ -1,0 +1,152 @@
+= Modules in Version 4
+
+As of Version 3, all of the modules have been places in the
+`mods-available/` directory. This practice follows that used by other
+servers such as Nginx, Apache, etc. The `modules` directory should not
+be used.
+
+Modules are enabled by creating a file in the mods-enabled/ directory.
+You can also create a soft-link from one directory to another:
+
+```
+$ cd mods-enabled/
+$ ln -s ../mods-available/foo
+```
+
+This will enable module `foo`. Be sure that you have configured the
+module correctly before enabling it, otherwise the server will not
+start. You can verify the server configuration by running
+`radiusd -XC`.
+
+A large number of modules are enabled by default. This allows the server
+to work with the largest number of authentication protocols. Please be
+careful when disabling modules. You will likely need to edit the
+`sites-enabled/` files to remove references to any disabled modules.
+
+== Conditional Modules
+
+FreeRADIUS allows modules to be conditionally loaded. This is useful
+when you want to have a virtual server which references a module, but
+does not require it. Instead of editing the virtual server file, you can
+just conditionally enable the module.
+
+Modules are conditionally enabled by adding a `-` before their name in
+a virtual server. For example, you can do:
+
+```
+server {
+  recv Access-Request {
+    ...
+    ldap
+    -sql
+    ...
+  }
+}
+```
+
+This says `require the LDAP module, but use the SQL module only if it
+is configured.`
+
+This feature is not very useful for production configurations. It is,
+however, very useful for the default examples that ship with the server.
+
+== Ignoring module
+
+If you see this message::
+
+```
+Ignoring module (see mods-available/README.adoc)
+```
+
+Then you are in the right place. Most of the time this message can be
+ignored. The message can be fixed by find the references to `-module`
+in the virtual server, and deleting them.
+
+Another way to fix it is to configure the module, as described above.
+
+== Simplification
+
+Allowing conditional modules simplifies the default virtual servers that
+are shipped with FreeRADIUS. This means that if you want to enable LDAP
+(for example), you no longer need to edit the files in
+`sites-available/` in order to enable it.
+
+Instead, you should edit the `mods-available/ldap` file to point to
+your local LDAP server. Then, enable the module via the soft-link method
+described above.
+
+Once the module is enabled, it will automatically be used in the default
+configuration.
+
+== List of available modules
+
+* <<abfab_psk_sql.adoc#,abfab_psk_sql>>
+* <<always.adoc#,always>>
+* <<attr_filter.adoc#,attr_filter>>
+* <<cache.adoc#,cache>>
+* <<cache_eap.adoc#,cache_eap>>
+* <<cache_tls.adoc#,cache_tls>>
+* <<chap.adoc#,chap>>
+* <<cipher.adoc#,cipher>>
+* <<client.adoc#,client>>
+* <<couchbase.adoc#,couchbase>>
+* <<csv.adoc#,csv>>
+* <<cui.adoc#,cui>>
+* <<date.adoc#,date>>
+* <<delay.adoc#,delay>>
+* <<detail.adoc#,detail>>
+* <<detail.example.com.adoc#,detail example com>>
+* <<detail.log.adoc#,detail log>>
+* <<dhcp_sqlippool.adoc#,dhcp_sqlippool>>
+* <<dhcpv4.adoc#,dhcpv4>>
+* <<digest.adoc#,digest>>
+* <<eap.adoc#,eap>>
+* <<eap_inner.adoc#,eap_inner>>
+* <<echo.adoc#,echo>>
+* <<escape.adoc#,escape>>
+* <<etc_group.adoc#,etc_group>>
+* <<exec.adoc#,exec>>
+* <<expiration.adoc#,expiration>>
+* <<expr.adoc#,expr>>
+* <<files.adoc#,files>>
+* <<idn.adoc#,idn>>
+* <<isc_dhcp.adoc#,isc_dhcp>>
+* <<json.adoc#,json>>
+* <<krb5.adoc#,krb5>>
+* <<ldap.adoc#,ldap>>
+* <<linelog.adoc#,linelog>>
+* <<logintime.adoc#,logintime>>
+* <<logtee.adoc#,logtee>>
+* <<lua.adoc#,lua>>
+* <<mac2ip.adoc#,mac2ip>>
+* <<mac2vlan.adoc#,mac2vlan>>
+* <<mruby.adoc#,mruby>>
+* <<mschap.adoc#,mschap>>
+* <<ntlm_auth.adoc#,ntlm_auth>>
+* <<opendirectory.adoc#,opendirectory>>
+* <<pam.adoc#,pam>>
+* <<pap.adoc#,pap>>
+* <<passwd.adoc#,passwd>>
+* <<perl.adoc#,perl>>
+* <<python.adoc#,python>>
+* <<radius.adoc#,radius>>
+* <<radutmp.adoc#,radutmp>>
+* <<redis.adoc#,redis>>
+* <<redis_ippool.adoc#,redis_ippool>>
+* <<rediswho.adoc#,rediswho>>
+* <<rest.adoc#,rest>>
+* <<smbpasswd.adoc#,smbpasswd>>
+* <<soh.adoc#,soh>>
+* <<sometimes.adoc#,sometimes>>
+* <<sql.adoc#,sql>>
+* <<sqlcounter.adoc#,sqlcounter>>
+* <<sqlippool.adoc#,sqlippool>>
+* <<sradutmp.adoc#,sradutmp>>
+* <<stats.adoc#,stats>>
+* <<unbound.adoc#,unbound>>
+* <<unix.adoc#,unix>>
+* <<unpack.adoc#,unpack>>
+* <<utf8.adoc#,utf8>>
+* <<wimax.adoc#,wimax>>
+* <<winbind.adoc#,winbind>>
+* <<yubikey.adoc#,yubikey>>
