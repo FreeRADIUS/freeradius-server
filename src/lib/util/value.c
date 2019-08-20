@@ -2242,7 +2242,48 @@ static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *d
 		break;
 
 	case FR_TYPE_DATE:
-		dst->vb_uint32 = fr_time_to_sec(src->vb_date);
+		if (!dst->enumv) {
+			goto seconds;
+
+		} else {
+			uint64_t cast;
+
+			switch (dst->enumv->flags.type_size) {
+
+			seconds:
+			default:
+			case FR_TIME_RES_SEC:
+				cast = fr_time_to_sec(src->vb_date);
+				if (cast >= ((uint64_t) 1) << 32) {
+				invalid_cast:
+					fr_strerror_printf("Invalid cast: result is too large to fit into 32 bits");
+					return -1;
+				}
+				dst->vb_uint32 = cast;
+				break;
+
+			case FR_TIME_RES_USEC:
+				cast = fr_time_to_usec(src->vb_date);
+				if (cast >= ((uint64_t) 1) << 32) goto invalid_cast;
+
+				dst->vb_uint32 = cast;
+				break;
+
+			case FR_TIME_RES_MSEC:
+				cast = fr_time_to_msec(src->vb_date);
+				if (cast >= ((uint64_t) 1) << 32) goto invalid_cast;
+
+				dst->vb_uint32 = cast;
+				break;
+
+			case FR_TIME_RES_NSEC:
+				cast = src->vb_date;
+				if (cast >= ((uint64_t) 1) << 32) goto invalid_cast;
+
+				dst->vb_uint32 = cast;
+				break;
+			}
+		}
 		break;
 
 	case FR_TYPE_STRING:
@@ -2332,7 +2373,28 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
 		break;
 
 	case FR_TYPE_DATE:
-		dst->vb_uint64 = fr_time_to_sec(src->vb_date);
+		if (!dst->enumv) {
+			goto seconds;
+
+		} else switch (dst->enumv->flags.type_size) {
+		seconds:
+		default:
+		case FR_TIME_RES_SEC:
+			dst->vb_uint64 = fr_time_to_sec(src->vb_date);
+			break;
+
+		case FR_TIME_RES_USEC:
+			dst->vb_uint64 = fr_time_to_sec(src->vb_date);
+			break;
+
+		case FR_TIME_RES_MSEC:
+			dst->vb_uint64 = fr_time_to_sec(src->vb_date);
+			break;
+
+		case FR_TIME_RES_NSEC:
+			dst->vb_uint64 = src->vb_date;
+			break;
+		}
 		break;
 
 	case FR_TYPE_STRING:
