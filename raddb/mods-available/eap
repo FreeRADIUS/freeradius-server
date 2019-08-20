@@ -1389,3 +1389,103 @@ eap {
 
 	}
 }
+
+#
+#  ## Expansions
+#
+#  The rlm_eap module provides the below functions to interact with the `3GPP` and `SIM` protocols.
+#
+#  ### %{3gpp_pseudonym_decrypt:...}
+#
+#  TODO
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  TODO
+#  ----
+#
+#  .Output
+#
+#  ```
+#  TODO
+#  ```
+#
+#  ### %{3gpp_pseudonym_encrypt:...}
+#
+#  TODO
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  TODO
+#  ----
+#
+#  .Output
+#
+#  ```
+#  TODO
+#  ```
+#
+#  ### %{3gpp_pseudonym_key_index:...}
+#
+#  TODO
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  TODO
+#  ----
+#
+#  .Output
+#
+#  ```
+#  TODO
+#  ```
+#
+#  ### %{sim_id_method:...}
+#
+#  TODO
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  TODO
+#  ----
+#
+#  .Output
+#
+#  ```
+#  TODO
+#  ```
+#
+#  ### %{sim_id_type:...}
+#
+#  TODO
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  TODO
+#  ----
+#
+#  .Output
+#
+#  ```
+#  TODO
+#  ```

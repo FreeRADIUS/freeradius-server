@@ -818,3 +818,57 @@ ldap {
 		#
 	}
 }
+
+#
+#  ## Expansions
+#
+#  The rlm_ldap provides the below xlat's functions.
+#
+#  ### %{ldap_escape:...}
+#
+#  Escape a string for use in an LDAP filter or DN.
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  update control {
+#      &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+#  }
+#  update reply {
+#      &Reply-Message := "The LDAP url is %{ldap_escape:%{control:Tmp-String-0}}"
+#  }
+#  ----
+#
+#  .Output
+#
+#  ```
+#  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
+#  ```
+#
+#  ### %{ldap_unescape:...}
+#
+#  Unescape a string for use in an LDAP filter or DN.
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  update control {
+#      &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
+#  }
+#  update reply {
+#      &Reply-Message := "The LDAP url is %{ldap_unescape:%{control:Tmp-String-0}}"
+#  }
+#  ----
+#
+#  .Output
+#
+#  ```
+#  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+#  ```
+#
