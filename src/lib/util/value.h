@@ -105,7 +105,7 @@ struct value_box {
 		float			float32;		//!< Single precision float.
 		double			float64;		//!< Double precision float.
 
-		uint32_t		date;			//!< Date (32bit Unix timestamp).
+		fr_time_t		date;			//!< Date internal format in nanoseconds
 
 		/*
 		 *	System specific - Used for runtime configuration only.
@@ -505,7 +505,7 @@ int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src);
 size_t		fr_value_box_network_length(fr_value_box_t *value);
 
 ssize_t		fr_value_box_to_network(size_t *need, uint8_t *out, size_t outlen, fr_value_box_t const *value,
-					fr_dict_attr_t const *da) CC_HINT(nonnull(1,2,4));
+					fr_dict_attr_t const *da) CC_HINT(nonnull(2,4));
 
 ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
 					  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,

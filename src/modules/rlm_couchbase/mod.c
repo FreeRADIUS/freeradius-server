@@ -629,7 +629,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	/* get current event timestamp */
 	if ((vp = fr_pair_find_by_da(vps, attr_event_timestamp, TAG_ANY)) != NULL) {
 		/* get seconds value from attribute */
-		ts = vp->vp_date;
+		ts = fr_time_to_sec(vp->vp_date);
 	} else {
 		/* debugging */
 		DEBUG("failed to find event timestamp in current request");

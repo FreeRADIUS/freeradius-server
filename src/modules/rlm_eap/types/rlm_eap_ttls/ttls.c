@@ -377,8 +377,13 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		}
 
 		switch (vp->vp_type) {
-		case FR_TYPE_UINT32:
 		case FR_TYPE_DATE:
+			attr = htonl(fr_time_to_sec(vp->vp_date)); /* stored in host order */
+			memcpy(p, &attr, sizeof(attr));
+			length = 4;
+			break;
+
+		case FR_TYPE_UINT32:
 			attr = htonl(vp->vp_uint32); /* stored in host order */
 			memcpy(p, &attr, sizeof(attr));
 			length = 4;

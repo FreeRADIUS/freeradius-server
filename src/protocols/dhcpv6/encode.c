@@ -413,16 +413,17 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_DATE:
 	{
 		uint32_t adj_date;
+		fr_time_t date = fr_time_to_sec(vp->vp_date);
 
 		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
 
-		if (vp->vp_date < 946080000) {	/* 30 years */
+		if (date < 946080000) {	/* 30 years */
 			memset(p, 0, sizeof(uint32_t));
 			p += sizeof(uint32_t);
 			break;
 		}
 
-		adj_date = htonl(vp->vp_date - 946080000);
+		adj_date = htonl(date - 946080000);
 		memcpy(p, &adj_date, sizeof(adj_date));
 		p += sizeof(adj_date);
 	}

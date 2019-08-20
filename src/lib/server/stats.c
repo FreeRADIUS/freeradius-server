@@ -552,9 +552,9 @@ void request_stats_reply(REQUEST *request)
 	 */
 	if ((flag->vp_uint32 & 0x10) != 0) {
 		vp = ADD_TO_REPLY(FR_FREERADIUS_STATS_START_TIME, VENDORPEC_FREERADIUS);
-		if (vp) vp->vp_date = fr_time_to_sec(start_time);
+		if (vp) vp->vp_date = start_time;
 		vp = ADD_TO_REPLY(FR_FREERADIUS_STATS_HUP_TIME, VENDORPEC_FREERADIUS);
-		if (vp) vp->vp_date = fr_time_to_sec(hup_time);
+		if (vp) vp->vp_date = hup_time;
 	}
 
 	/*
@@ -749,7 +749,7 @@ void request_stats_reply(REQUEST *request)
 		if ((home->state == HOME_STATE_ALIVE) &&
 		    (home->revive_time.tv_sec != 0)) {
 			vp = ADD_TO_REPLY(FR_FREERADIUS_STATS_SERVER_TIME_OF_LIFE, VENDORPEC_FREERADIUS);
-			if (vp) vp->vp_date = home->revive_time.tv_sec;
+			if (vp) vp->vp_date = fr_time_from_timeval(&home->revive_time);
 		}
 
 		if ((home->state == HOME_STATE_ALIVE) &&
@@ -765,7 +765,7 @@ void request_stats_reply(REQUEST *request)
 
 		if (home->state == HOME_STATE_IS_DEAD) {
 			vp = ADD_TO_REPLY(FR_FREERADIUS_STATS_SERVER_TIME_OF_DEATH, VENDORPEC_FREERADIUS);
-			if (vp) vp->vp_date = home->zombie_period_start.tv_sec + home->zombie_period;
+			if (vp) vp->vp_date = fr_time_from_timeval(&(struct timeval) {.tv_sec = home->zombie_period_start.tv_sec + home->zombie_period});
 		}
 
 		/*
@@ -774,10 +774,10 @@ void request_stats_reply(REQUEST *request)
 		 *	FIXME: do this for clients, too!
 		 */
 		vp = ADD_TO_REPLY(FR_FREERADIUS_STATS_LAST_PACKET_RECV, VENDORPEC_FREERADIUS);
-		if (vp) vp->vp_date = home->last_packet_recv;
+		if (vp) vp->vp_date = fr_time_from_timeval(&(struct timeval) {.tv_sec = home->last_packet_recv});
 
 		vp = ADD_TO_REPLY(FR_FREERADIUS_STATS_LAST_PACKET_SENT, VENDORPEC_FREERADIUS);
-		if (vp) vp->vp_date = home->last_packet_sent;
+		if (vp) vp->vp_date = fr_time_from_timeval(&(struct timeval) {.tv_sec = home->last_packet_sent});
 
 		if (((flag->vp_uint32 & 0x01) != 0) &&
 		    (home->type == HOME_TYPE_AUTH)) {

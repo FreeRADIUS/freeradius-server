@@ -321,7 +321,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 			vp = fr_pair_afrom_da(request->packet, attr_packet_original_timestamp);
 			if (vp) {
-				vp->vp_date = (uint32_t) timestamp;
+				vp->vp_date = ((fr_time_t) timestamp) * NSEC;
 				vp->type = VT_DATA;
 				fr_cursor_append(&cursor, vp);
 			}

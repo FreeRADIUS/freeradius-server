@@ -302,7 +302,7 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		return snprintf(*out, outlen, "%u", vp->vp_uint32);
 
 	case FR_TYPE_DATE:
-		return snprintf(*out, outlen, "%u", vp->vp_date);
+		return snprintf(*out, outlen, "%" PRIi64, fr_time_to_sec(vp->vp_date));
 
 	case FR_TYPE_UINT8:
 		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint8);
