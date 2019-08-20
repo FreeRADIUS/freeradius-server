@@ -72,40 +72,13 @@ be used by a module. Examples:
 * the MySQL database on bigserver.theisp.com.example
 
 A module can have multiple components which act on RADIUS requests at
-different stages. The components are:
-
-[width="100%",cols="35%,65%",options="header",]
-|===
-|Component |Description
-|authorization |Check that a user exists, decide on an authentication
-method or +
-proxy realm, and possibly apply some attributes to be returned +
-in the reply packet.
-
-|authentication |Verify that the password is correct.
-
-|preaccounting |Decide whether to proxy the request, and possibly add
-attributes +
-that should be included in any logs.
-
-|accounting |Record the request in the log.
-
-|checksimul |Count the number of active sessions for the user.
-
-|postauth |Process the response before it’s sent to the NAS.
-
-|preproxy |Process a request before it’s proxied.
-
-|postproxy |Filter attributes from a reply to a proxied request.
-|===
-
-A module declares which components it supports by putting function
-pointers in its `module_dl_t rlm_*` structure.
+different stages.  A module declares which components it supports by
+putting function pointers in its `module_dl_t rlm_*` structure.
 
 == Module configuration
 
 The administrator requests the creation of a module instance by adding
-it inside the modules\{} block in radiusd.conf. The instance definition
+it inside the `modules { ... }` block in radiusd.conf. The instance definition
 looks like this::
 
 ```
@@ -117,11 +90,12 @@ module_name [instance_name] {
 }
 ```
 
-The module_name is used to load the module. To see the names of the
-available modules, look for the rlm_*.so files in $installprefix/lib.
-The module_name is that, minus the rlm_ and the .so.
+module_name:: The name used to load the module. To see the names of the
+available modules, look for the `rlm_*.so` files in
+`$installprefix/lib`.  The module_name is that, minus the `rlm_`
+prefix and the `.so` suffix.
 
-instance_name is an identifier for distinguishing multiple instances of
+instance_name:: an identifier for distinguishing multiple instances of
 the same module. If you are only loading a module once, you can leave
 out the instance_name and it will be assumed to be the same as the
 module_name.
@@ -131,28 +105,24 @@ to the module and generally point to the exact location of a database or
 enable optional features of the module. Each module should document what
 parameters it accepts and what they do.
 
-For each `Access-Reques` that comes to the server, the `authorize{}`
-block is called. Then one of the `Auth-Type{}` blocks from
-`authenticate{}` is called, depending on the `Auth-Type` attribute
-that was chosen by `authorize{}`.
+For each `Access-Request` that comes to the server, the `recv
+Access-Request { ... }` section is called. Then one of the
+`authenticate <type> { ...  }` sections called, depending on the
+`Auth-Type` attribute that was chosen by the previous section.`.
 
-Finally, the `post-auth{}` block is called. If `authorize{}` set the
-`Proxy-To-Realm` attribute, then proxying takes over via
-`pre-proxy{}` and `post-proxy{}`, and the local `authenticate{}`
-phase is skipped.
+Finally, the `send Access-Accept { ... }` section is called, or
+another one, depending on the reply packet type.
 
-For each `Accounting-Request` that comes to the server, the
-`preacct{}` block is called, followed by the `accounting{}` block.
-`accounting{}` is skipped if `preacct{}` sets `Proxy-To-Realm`.
-
-For an explanation of what `calling` a config block means, see the
-`configurable_failover` file.
+For each `Accounting-Request` that comes to the server, the `recv
+Accounting-Request { ... } ` section is called, followed by the
+`accounting <Acct-Status-Type> { ... } ` section.  Finally, the `send
+Accounting-Response { ... }` section is called.
 
 == The lifetime of a module
 
 When the server is starting up, or reinitializing itself as a result of
 a SIGHUP, it reads the `modules{}` section. Each configured module
-will be loaded and its init() method will be called::
+will be loaded and its `init()` method will be called::
 
 [source,c]
 ----
@@ -217,6 +187,3 @@ int destroy(void)
 ----
 
 It should release resources that were acquired by the `init()` method.
-
-Author: Alan Curry
-<<mailto:pacman@world.std.com.adoc#,pacman@world.std.com>>
