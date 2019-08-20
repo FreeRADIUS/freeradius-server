@@ -56,6 +56,12 @@ $(OUTPUT):
 FILES.$(TEST) := $(addprefix $(OUTPUT),$(notdir $(FILES)))
 
 #
+#  We use GMT for the tests, so that local time zones don't affect
+#  the test outputs.
+#
+$(FILES.$(TEST)): export TZ = GMT
+
+#
 #  The output files also depend on the directory
 #  and on the previous test.
 #
