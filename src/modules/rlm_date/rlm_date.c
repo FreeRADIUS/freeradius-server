@@ -114,8 +114,11 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		return date_encode_strftime(out, outlen, inst, request, vp->vp_date);
 
 	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
 		return date_encode_strftime(out, outlen, inst, request, (time_t) vp->vp_uint32);
+
+
+	case FR_TYPE_UINT64:
+		return date_encode_strftime(out, outlen, inst, request, (time_t) vp->vp_uint64);
 
 	/*
 	 *	These are 'from' types, i.e. we'll convert the input string
