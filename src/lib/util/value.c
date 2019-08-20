@@ -2111,10 +2111,6 @@ static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *ds
 		dst->vb_uint8 = (src->vb_bool == true) ? 1 : 0;
 		break;
 
-	case FR_TYPE_DATE:
-		dst->vb_uint32 = fr_time_to_sec(src->vb_date);
-		break;
-
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
 				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
@@ -2243,6 +2239,10 @@ static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *d
 			return -1;
 		}
 		dst->vb_uint32 = (uint16_t)src->vb_int16;
+		break;
+
+	case FR_TYPE_DATE:
+		dst->vb_uint32 = fr_time_to_sec(src->vb_date);
 		break;
 
 	case FR_TYPE_STRING:
