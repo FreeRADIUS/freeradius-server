@@ -8,11 +8,11 @@ distributions. For historical purposes, packages of older releases are
 also available from that site.
 
 The rest of this document describes how to install FreeRADIUS from
-source. i.e. a ``tar.gz'' file.
+source. i.e. a "tar.gz" file.
 
 === Building from Source
 
-The <<../source/dependencies.adoc#,build dependencies>> must be
+The xref:developers:dependencies.adoc[build dependencies] must be
 installed before FreeRADIUS can build. These dependencies are libtalloc
 and libkqueue, which FreeRADIUS uses for memory management, and
 platform-independent event handling.
@@ -20,9 +20,9 @@ platform-independent event handling.
 Download the latest version of the FreeRADIUS source from the FreeRADIUS
 ftp site:
 
-....
+```
 ftp://ftp.freeradius.org/pub/freeadius/
-....
+```
 
 The file wil be name something like: `freeradius-server-4.0.0.tar.gz`.
 Later version will be `4.0.1`, or `4.1.0`, etc.
@@ -49,9 +49,9 @@ make install
 
 FreeRADIUS has GNU autoconf support. This means you have to run
 `./configure`, and then run `make`. To see which configuration
-options are supported, run `./configure --help`, and read it’s output.
+options are supported, run `./configure --help`, and read its output.
 
-The `make install` stage will install the binaries, the `man' pages,
+The `make install` stage will install the binaries, the "man" pages,
 and MAY install the configuration files. If you have not installed a
 RADIUS server before, then the configuration files for FreeRADIUS will
 be installed. If you already have a RADIUS server installed, then
@@ -68,14 +68,14 @@ behavior and failure to authenticate.
 
 The initial output from running in debugging mode (`radiusd -X`) will
 tell you which configuration files are being used. See
-link:#upgrading[Upgrading] for information about upgrading from older
+xref:upgrade:index.adoc[Upgrading] for information about upgrading from older
 versions. There MAY be changes in the dictionary files which are
 REQUIRED for a new version of the software. These files will NOT be
 installed over your current configuration, so you MUST verify and
 install any problem files by hand, for example using `diff(1)` to
 check for changes.
 
-When installing fro, source, it is EXTREMELY helpful to read the output
+When installing from source, it is EXTREMELY helpful to read the output
 of `./configure`, `make`, and `make install`. If a particular
 module you expected to be installed was not installed, then the output
 of the `./configure; make; make install` sequence will tell you why
@@ -95,7 +95,7 @@ major versions of the server. (For example - version 2 to version 3, or
 version 3 to version 4.
 
 For details on what has changed between the version, see the
-<<../upgrade/#,upgade>> guide.
+xref:upgrade:index.adoc[upgrade] guide.
 
 We STRONGLY recommend that new major versions be installed in a
 different location than any existing installations. Any local policies
@@ -121,11 +121,12 @@ messages, where the server will tell you exactly what it’s doing, and
 why. You should then compare its behaviour to what you intended, and
 edit the configuration files as appropriate.
 
-If you don’t use debugging mode, and ask questions on the mailing list,
-then the responses will all tell you to use debugging mode. The server
-prints out a lot of information in this mode, including suggestions for
-fixes to common problems. Look especially for ``WARNING'' in the output,
-and read the related messages.
+If you don’t use debugging mode, and ask questions on the mailing
+list, then the responses will all tell you to use debugging mode. The
+server prints out a lot of information in this mode, including
+suggestions for fixes to common problems. Look especially for
+`WARNING` and `ERROR` messages in the output, and read the related
+messages.
 
 Since the main developers of FreeRADIUS use debugging mode to track down
 their configuration problems with the server, it’s a good idea for you
@@ -144,7 +145,7 @@ you don’t, or if you see error messages, please read the FAQ:
 
 https://wiki.freeradius.org/guide/FAQ
 
-If the server says ``Ready to process requests.'', then it is running
+If the server says `Ready to process requests.`, then it is running
 properly. From another shell (or another window), type
 
 [source,bash]
@@ -153,7 +154,7 @@ radtest test test localhost 0 testing123
 ----
 
 You should see the server print out more messages as it receives the
-request, and responds to it. The `radtest' program should receive the
+request, and responds to it. The `radtest` program should receive the
 response within a few seconds. It doesn’t matter if the authentication
 request is accepted or rejected, what matters is that the server
 received the request, and responded to it.
