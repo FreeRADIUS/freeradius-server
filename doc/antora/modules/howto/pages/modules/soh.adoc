@@ -198,5 +198,5 @@ and I don’t currently have access to a windows NAP server to look at a
 working example. The clients I have access don’t seem to mind.
 
 Phil Mayers
-<<mailto:p.mayers@imperial.ac.uk.adoc#,p.mayers@imperial.ac.uk>>
+mailto:p.mayers@imperial.ac.uk[p.mayers@imperial.ac.uk]
 December 2009

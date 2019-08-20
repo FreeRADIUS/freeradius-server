@@ -55,14 +55,12 @@ Examples:
 
 [width="100%",cols="25%,75%",options="header",]
 |===
-|Module |Description
-|rlm_sql |Contains code for talking to MySQL or Postgres, and for
-mapping RADIUS +
-records onto SQL tables.
-
-|rlm_unix |Contains code for making radiusd fit in well on unix-like
-systems, +
-including getpw* authentication and utmp/wtmp-style logging.
+| Module   | Description
+| rlm_sql  | Contains code for talking to MySQL or Postgres, and for
+             mapping RADIUS records onto SQL tables.
+| rlm_unix | Contains code for making radiusd fit in well on unix-like
+             systems, including getpw* authentication and utmp/wtmp-style
+             logging.
 |===
 
 An instance specifies the actual location of a collection data that can

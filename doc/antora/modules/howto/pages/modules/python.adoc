@@ -1,7 +1,7 @@
 = rlm_python
 
 Python module for freeradius Copyright 2002 Miguel A Paraz
-<<mailto:mparaz@mparaz.com.adoc#,mparaz@mparaz.com>> Copyright 2002
+mailto:mparaz@mparaz.com[mparaz@mparaz.com] Copyright 2002
 Imperium Technology, Inc.
 
 == Topics

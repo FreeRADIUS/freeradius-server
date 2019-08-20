@@ -55,12 +55,12 @@ to make massive changes, and then to spend weeks debugging it.
 The files in this directory are organized into logical groups, as
 follows.
 
-* `mods-available/` - <<mods-available/README.adoc#,Available modules>>, with example configuration.
-* `mods-enabled/` - Enabled modules that are being used by FreeRADIUS.
-* `sites-available/` - <<sites-available/README.adoc#,Available virtual servers>>, with example configuration.
-* `sites-enabled/` - Enabled virtual servers that are being used by FreeRADIUS.
-* `policy.d/` - example and live policies which implement standard rules and checks.
-* `certs/` - Certificiates for EAP and for RADIUS over TLS.
+* `mods-available/`  - <<mods-available/README.adoc#,Available modules>>, with example configuration.
+* `mods-enabled/`    - Enabled modules that are being used by FreeRADIUS.
+* `sites-available/` - xref:raddb:sites-available/index.adoc[Available virtual servers], with example configuration.
+* `sites-enabled/`   - Enabled virtual servers that are being used by FreeRADIUS.
+* `policy.d/`        - example and live policies which implement standard rules and checks.
+* `certs/`           - Certificiates for EAP and for RADIUS over TLS.
 
 The directories are descrived in more detail below.
 
@@ -134,7 +134,7 @@ Note that unlike v3, there are no longer any `authorize`,
 been renamed. This change was necessary in order to simplify the
 operation of the server, and to better support multiple protocols.
 
-Please see the <<../upgrade/#,upgrade>> file for more information
+Please see the xref:upgrade:index.adoc[upgrade] file for more information
 about these changes.
 
 The `sites-available/` directory contains many files. Each file is a
@@ -162,12 +162,12 @@ This directory contains certificates and configuration for EAP and RADIUS over T
 
 == List of config files
 
-* <<clients.conf.adoc#,clients conf>>
-* <<debug.conf.adoc#,debug conf>>
-* <<dictionary.adoc#,dictionary>>
-* <<experimental.conf.adoc#,experimental conf>>
-* <<panic.gdb.adoc#,panic gdb>>
-* <<radiusd.conf.adoc#,radiusd conf>>
-* <<radrelay.conf.adoc#,radrelay conf>>
-* <<templates.conf.adoc#,templates conf>>
-* <<trigger.conf.adoc#,trigger conf>>
+* xref:raddb:clients.conf.adoc[clients.conf]
+* xref:raddb:debug.conf.adoc[debug.conf]
+* xref:raddb:dictionary.adoc[dictionary]
+* xref:raddb:experimental.conf.adoc[experimental.conf]
+* xref:raddb:panic.gdb.adoc[panic.gdb]
+* xref:raddb:radiusd.conf.adoc[radiusd.conf]
+* xref:raddb:radrelay.conf.adoc[radrelay.conf]
+* xref:raddb:templates.conf.adoc[templates.conf]
+* xref:raddb:trigger.conf.adoc[trigger.conf]

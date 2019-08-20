@@ -151,8 +151,8 @@ address.
 
 == Credits
 
-* Original - Alan DeKok <<mailto:aland@freeradius.org.adoc#,aland@freeradius.org>>
-* 12.x Info - Chris Parker <<mailto:cparker@starnetusa.net.adoc#,cparker@starnetusa.net>> 2000-10-12
+* Original - Alan DeKok mailto:aland@freeradius.org[aland@freeradius.org]
+* 12.x Info - Chris Parker mailto:cparker@starnetusa.net[cparker@starnetusa.net] 2000-10-12
 
 == More Information
 
