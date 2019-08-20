@@ -4,7 +4,7 @@
 
 For a person or company wishing to submit a change to the FreeRADIUS
 project the process can sometimes be daunting if you’re not familiar
-with ``the system.'' This text is a collection of suggestions which can
+with "the system." This text is a collection of suggestions which can
 greatly increase the chances of your change being accepted.
 
 Note: Only trivial patches will be accepted via email. Large patches, or
@@ -19,8 +19,8 @@ Describe the technical detail of the change(s) your patch or commit
 includes.
 
 Be as specific as possible. The WORST descriptions possible include
-things like ``update file X'', ``bug fix for file X'', or ``this patch
-includes updates for subsystem X. Please apply.''
+things like "update file X", "bug fix for file X", or "this patch
+includes updates for subsystem X. Please apply."
 
 If your description starts to get long, that’s a sign that you probably
 need to split up your commit. See #3, next.
@@ -38,7 +38,7 @@ those changes into a single commit. Thus a single LOGICAL change is
 contained within a single commit.
 
 If one commit depends on another commit in order for a change to be
-complete, that is OK. Simply note ``this commit depends on commit X'' in
+complete, that is OK. Simply note "this commit depends on commit X" in
 the extended commit description.
 
 If your commit includes significant whitespace changes these should also
