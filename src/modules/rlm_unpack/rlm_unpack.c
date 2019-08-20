@@ -187,7 +187,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		break;
 
 	case FR_TYPE_DATE:
-		cast->vp_date = fr_time_from_timeval(&(struct timeva) {.tv_sec = ntohl(cast->vp_uint32)});
+		cast->vp_date = fr_time_from_timeval(&(struct timeval) {.tv_sec = ntohl(cast->vp_uint32)});
 		break;
 
 	default:
