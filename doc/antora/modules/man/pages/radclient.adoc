@@ -173,3 +173,7 @@ Received Packet from host 192.0.2.42 code=2, id=140, length=54
 == SEE ALSO
 
 radiusd(8),
+
+== AUTHOR
+
+The FreeRADIUS Server Project (http://www.freeradius.org)
