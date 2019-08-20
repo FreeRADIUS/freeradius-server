@@ -51,3 +51,13 @@ data f5 0d 1a 00 00 00 2c 50 01 00 00 00 01 f5 0d 1a 00 00 00 2c 50 01 00 00 00 
 
 decode-pair -
 data Unit-EVS-5-Integer = 1, Unit-EVS-5-Integer = 2
+
+encode-pair Event-Timestamp := 864000
+data 37 06 00 0d 2f 00
+
+# Same as from "data_types.txt"
+decode-pair -
+data Event-Timestamp = "Jan 11 1970 00:00:00 GMT"
+
+encode-pair -
+data 37 06 00 0d 2f 00
