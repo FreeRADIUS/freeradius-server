@@ -50,7 +50,7 @@
 
 ** xref:xlat/index.adoc[String Expansion]
 *** xref:xlat/alternation.adoc[Alternation Syntax]
-*** xref:xlat/predefined.adoc[Pre-defined Expansions]
+*** xref:xlat/builtin.adoc[Built-in Expansions]
 *** xref:xlat/character.adoc[Single Letter Expansions]
 *** xref:xlat/attribute.adoc[Attribute References]
 *** xref:xlat/module.adoc[Module References]

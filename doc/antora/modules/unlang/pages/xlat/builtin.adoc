@@ -1,7 +1,7 @@
-= Pre-defined Expansions
+= Built-In Expansions
 
 In addition to storing attribute references, the server has a number
-of pre-defined expansions.  These expansions act largely as functions
+of built-in expansions.  These expansions act largely as functions
 which operate on inputs, and produce an output.
 
 == Attribute Manipulation
@@ -832,7 +832,7 @@ Return named subcapture value from the last regular expression evaluated.
 
 Results of named capture groups are available using the `%{regex:<named capture
 group>}` expansion. They will also be accessible using the numbered expansions
-described xref:predefined.adoc#_0_32[above].
+described xref:builtin.adoc#_0_32[above].
 
 Every time a regular expression is evaluated, whether it matches or not,
 the named capture group values will be cleared.
