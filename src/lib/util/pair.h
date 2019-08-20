@@ -152,9 +152,6 @@ typedef struct {
 #define vp_float64		data.vb_float64
 
 #define vp_date			data.vb_date
-#define vp_date_milliseconds	data.vb_date_milliseconds
-#define vp_date_microseconds	data.vb_date_microseconds
-#define vp_date_nanoseconds	data.vb_date_nanoseconds
 
 #define vp_group		data.datum.ptr
 
