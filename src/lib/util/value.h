@@ -161,9 +161,6 @@ struct value_box {
 #define vb_float64				datum.float64
 
 #define vb_date					datum.date
-#define vb_date_milliseconds			datum.date_milliseconds
-#define vb_date_microseconds			datum.date_microseconds
-#define vb_date_nanoseconds			datum.date_nanoseconds
 
 #define vb_size					datum.size
 #define vb_timeval				datum.timeval
