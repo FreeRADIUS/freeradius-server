@@ -231,7 +231,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		int check2 = 0;
 
 		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_session_time, TAG_ANY))
-		     == NULL || vp->vp_date == 0)
+		     == NULL || vp->vp_uint32 == 0)
 			check1 = 1;
 		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_session_id, TAG_ANY))
 		     != NULL && vp->vp_length == 8 &&
