@@ -37,5 +37,5 @@ A: set `ignore_empty` to `no` in module configuration.
 
 == Acknowlegements
 
-* ZARAZA, <<mailto:3APA3A@security.nnov.ru.adoc#,3APA3A@security.nnov.ru>>
-* Michael Chernyakhovsky <<mailto:mike@mgn.ru.adoc#,mike@mgn.ru>> 
+* ZARAZA, mailto:3APA3A@security.nnov.ru[3APA3A@security.nnov.ru]
+* Michael Chernyakhovsky mailto:mike@mgn.ru[mike@mgn.ru]

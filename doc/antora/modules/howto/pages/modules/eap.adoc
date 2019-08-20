@@ -383,7 +383,7 @@ contains the complete state information required.
 == How EAP works
 
 as posted to the list, by John Lindsay
-<<mailto:jlindsay@internode.com.au.adoc#,jlindsay@internode.com.au>>
+mailto:jlindsay@internode.com.au[jlindsay@internode.com.au]
 
 To make it clear for everyone, the supplicant is the software on the
 client (machine with the wireless card).
@@ -425,6 +425,6 @@ encrypted using the session WEP key.
 
 == Acknowledgements
 
-* Primary author - Raghu <<mailto:raghud@mail.com.adoc#,raghud@mail.com>>
-* EAP-SIM - Michael Richardson <<mailto:mcr@sandelman.ottawa.on.ca.adoc#,mcr@sandelman.ottawa.on.ca>>
+* Primary author - Raghu mailto:raghud@mail.com[raghud@mail.com]
+* EAP-SIM - Michael Richardson mailto:mcr@sandelman.ottawa.on.ca[mcr@sandelman.ottawa.on.ca]
 * The development of the EAP/SIM support was funded by Internet Foundation Austria (http://www.nic.at/ipa).

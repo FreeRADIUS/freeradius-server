@@ -90,10 +90,10 @@ diff -urN freeradiusd-version $MYSRC > ~/feature-version.patch
 === 2. Select e-mail destination
 
 If you are on the developers mailing list, send the patch there.
-<<mailto:freeradius-devel@lists.freeradius.org.adoc#,freeradius-devel@lists.freeradius.org>>
+mailto:freeradius-devel@lists.freeradius.org[freeradius-devel@lists.freeradius.org]
 
 Otherwise, send the patch to
-<<mailto:patches@freeradius.org.adoc#,patches@freeradius.org>>
+mailto:patches@freeradius.org[patches@freeradius.org]
 
 === 3. No MIME, no links, no compression, no attachments. Just plain text
 

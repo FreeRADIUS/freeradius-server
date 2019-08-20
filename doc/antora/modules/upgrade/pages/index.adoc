@@ -43,16 +43,11 @@ sections for their replacements.
 
 [width="100%",cols="30%,70%",options="header",]
 |===
-|v3 |v4
-|`cleanup_delay` |replaced with `cleanup_delay` in a `listen`
-section
-
-|`reject_delay` |see `mods-available/delay`. You should list
-`delay` +
-last in any `send Access-Reject` section.
-
-|`status_server` |see `type = Status-Server` in a new `listen`
-section.
+| v3              | v4
+| `cleanup_delay` | replaced with `cleanup_delay` in a `listen` section.
+| `reject_delay`  | see `mods-available/delay`. You should list `delay`
+                    last in any `send Access-Reject` section.
+| `status_server` | see `type = Status-Server` in a new `listen` section.
 |===
 
 The `log` section has been updated to remove many configuration items
@@ -120,7 +115,7 @@ For `udp`, the configuration entries are largley the same as for v3.
 e.g. `ipaddr`, `port`, etc.
 
 The `listen` section then compiles each
-<<Processing Sections,Processing Section>> based on the named packet
+xref:index.adoc#_processing_sections[Processing Section] based on the named packet
 types. It has a `recv` section for receiving packets, and a `send`
 section for sending packets. e.g.
 
@@ -131,7 +126,7 @@ recv Access-Request {
 }
 
 send Access-Accept {
-    ... unlang ```
+    ... unlang ...
 }
 ----
 
@@ -139,7 +134,7 @@ This configuration is different from v3. The benefit is that it is much
 easier to understand. Instead of using things like
 `Post-Auth-Type Reject`, we now have just `send Access-Reject`.
 
-See also <<Processing Sections,Processing Sections>> for how the
+See also xref:index.adoc#_processing_sections[Processing Section] for how the
 `unlang` statements are parsed.
 
 === Clients
@@ -175,19 +170,19 @@ required for the new features in v4.
 
 [cols=",",options="header",]
 |===
-| Old Name                     | New Name
+| Old Name                   | New Name
 | `authorize`.               | `recv Access-Request`
 | `authenticate`             | `authenticate <Auth-Type>`
 | `post-auth`                | `send Access-Accept`
-|                              |
+|                            |
 | `preacct`                  | `recv Accounting-Request`
 | `accounting`               | `accounting %\{Acct-Status-Type\}`
 | `accounting`               | `send Accounting-Response`
-|                              |
+|                            |
 | `recv-coa`                 | `recv CoA-Request`
 | `send-coa`                 | `send CoA-ACK`
 | `send-coa`                 | `send CoA-NAK`
-|                              |
+|                            |
 | `Post-Auth-Type Reject`    | `send Access-Reject`
 | `Post-Auth-Type Challenge` | `send Access-Challenge`
 |===

@@ -23,7 +23,7 @@ database query which returns one or more fields.
 taken from the database query.
 
 <op>:: The operator such as `=`, `:=`, etc. Any
-<<update.adoc#_editing_operators,editing operator>> defined for an
+xref:update.adoc#_editing_operators[editing operator] defined for an
 xref:update.adoc[update] statement is permissible.
 
 <field>:: The name of the field from the database. For SQL, the field names are

@@ -1,9 +1,9 @@
 = PAM Support for FreeRadius
 
 PAM support was done by Jeph Blaize. Miguel a.l. Paraz
-<<mailto:map@iphil.net.adoc#,map@iphil.net>> ported it to FreeRADIUS’
+mailto:map@iphil.net[map@iphil.net] ported it to FreeRADIUS’
 parent, Cistron-Radius. Chris Dent
-<<mailto:cdent@kiva.net.adoc#,cdent@kiva.net>> added the Pam-Auth
+mailto:cdent@kiva.net[cdent@kiva.net] added the Pam-Auth
 attribute.
 
 == Usage
@@ -61,7 +61,8 @@ pam will be unable to read the /etc/shadow file and will fail. I suggest
 a group called `shadow' or the like.
 
 ```
-$ chgrp /etc/shadow shadow $ chmod g+w /etc/shadow
+$ chgrp /etc/shadow shadow
+$ chmod g+w /etc/shadow
 ```
 
 And in the radiusd.conf file:
