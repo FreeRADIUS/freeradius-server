@@ -259,3 +259,28 @@ yubikey {
 		}
 	}
 }
+
+#
+#  ## Expansions
+#
+#  The rlm_yubikey provides the below xlat's functions.
+#
+#  ### %{modhextohex:...}
+#
+#  Convert Yubikey modhex to standard hex.
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  "%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
+#  ----
+#
+#  .Output
+#
+#  ```
+#  TODO
+#  ```
+#

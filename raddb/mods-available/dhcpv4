@@ -33,3 +33,69 @@
 #
 dhcpv4 {
 }
+
+#
+#  ## Expansions
+#
+#  The rlm_dhcpv4 provides the below xlat's functions to handle the DHCPV4 packets.
+#
+#  ### %{dhcpv4_decode:...}
+#
+#  Decode DHCP option declared in dictionary.rfc2131.
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  update request {
+#    &Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
+#  }
+#  if ("%{dhcpv4_decode:%{Tmp-Octets-0}}" != 2) {
+#    update reply {
+#      &Reply-Message := "Problems to decode the DHPCv4 fields."
+#    }
+#    reject
+#  }
+#  update reply {
+#    &Reply-Message := "The value of DHCP-Relay-Circuit-Id=%{DHCP-Relay-Circuit-Id}, DHCP-Relay-Remote-Id=%{DHCP-Relay-Remote-Id}"
+#  }
+#  ----
+#
+#  .Output
+#
+#  ```
+#  "The value of DHCP-Relay-Circuit-Id=0xabcdef, DHCP-Relay-Remote-Id=0x010203040506"
+#  ```
+#
+#  ### %{dhcpv4_encode:...}
+#
+#  Encode DHCP option declared in dictionary.rfc2131.
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  update request {
+#    &DHCP-Relay-Circuit-Id := 0xabcdef
+#    &DHCP-Relay-Remote-Id := 0x010203040506
+#  }
+#  update request {
+#    &Tmp-Octets-0 := "%{dhcpv4_encode:&request:[*]}"
+#  }
+#  if (&Tmp-Octets-0 != 0x520d0103abcdef0206010203040506) {
+#    update reply {
+#      &Reply-Message := "Invalid DHCP packets"
+#    }
+#    reject
+#  }
+#  ----
+#
+#  .Output
+#
+#  ```
+#
+#  ```
