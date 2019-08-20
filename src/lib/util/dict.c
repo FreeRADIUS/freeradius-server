@@ -4476,7 +4476,7 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 		 */
 		memcpy(&mutable, &ctx->stack[ctx->stack_depth].da, sizeof(mutable));
 		if ( ((int) mutable->flags.length + flags.length) >= 256) {
-			mutable->flags.length = 256;
+			mutable->flags.length = 255;
 		} else {
 			mutable->flags.length += flags.length;
 		}
