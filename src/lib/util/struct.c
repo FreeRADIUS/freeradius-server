@@ -263,7 +263,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
-		len = fr_value_box_to_network(NULL, p, outlen, &vp->data, vp->da);
+		len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
 		if (len <= 0) return -1;
 
 		if (child->flags.extra) {

@@ -1016,7 +1016,6 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  * @param[in] dst_len	The length of the output buffer, or maximum value fragment
  *			size.
  * @param[in] value	to encode.
- * @param[in] da	attribute definition for extra "flags" fields.
  * @return
  *	- 0 no bytes were written, see need value to determine if it was because
  *	  the fr_value_box_t was #FR_TYPE_OCTETS/#FR_TYPE_STRING and was
@@ -1024,8 +1023,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  *	- >0 the number of bytes written to out.
  *	- <0 on error.
  */
-ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_value_box_t const *value,
-				fr_dict_attr_t const *da)
+ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_value_box_t const *value)
 {
 	size_t min, max;
 	uint8_t *p = dst;
@@ -1056,8 +1054,8 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	}
 
 	case FR_TYPE_DATE:
-		if (da) {
-			min = max = da->flags.length;
+		if (value->enumv) {
+			min = max = value->enumv->flags.length;
 		} else {
 			min = max = 4;
 		}
@@ -1152,10 +1150,10 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	{
 		int64_t date = value->vb_date;
 
-		if (!da) {
+		if (!value->enumv) {
 			goto seconds;
 
-		} else switch (da->flags.type_size) {
+		} else switch (value->enumv->flags.type_size) {
 		seconds:
 		case FR_TIME_RES_SEC:
 			date = value->vb_date / 1000000000;
@@ -1176,10 +1174,10 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 			goto unsupported;
 		}
 
-		if (!da) {
+		if (!value->enumv) {
 			goto size4;
 
-		} else switch (da->flags.length) {
+		} else switch (value->enumv->flags.length) {
 		case 2:
 			if (date >= ((int64_t) 1) << 16) {
 				memset(dst, 0xff, 2);
@@ -1373,6 +1371,8 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		 *	the end.  Shifting it every time.
 		 */
 		dst->vb_date = 0;
+		dst->enumv = enumv;
+
 		i = 0;
 		do {
 			dst->vb_date <<= 8;
@@ -3971,6 +3971,7 @@ parse:
 		}
 
 		dst->vb_date = fr_time_from_timeval(&(struct timeval) {.tv_sec = date});
+		dst->enumv = dst_enumv;
 	}
 		break;
 
@@ -4709,13 +4710,50 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	case FR_TYPE_DATE:
 		t = fr_time_to_sec(data->vb_date);
+		if (!data->enumv || (data->enumv->flags.type_size == FR_TIME_RES_SEC)) {
+			if (quote > 0) {
+				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z%%", localtime_r(&t, &s_tm));
+			} else {
+				len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
+			}
+		} else {
+			int64_t subseconds;
+
+			/*
+			 *	Print this out first, as it's always the same
+			 */
+			if (quote > 0) {
+				len = strftime(buf, sizeof(buf) - 1, "%%%Y-%m-%dT%H:%M:%S", localtime_r(&t, &s_tm));
+			} else {
+				len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", localtime_r(&t, &s_tm));
+			}
+
+			subseconds = data->vb_date % NSEC;
+
+			switch (data->enumv->flags.type_size) {
+			default:
+				break;
+
+			case FR_TIME_RES_MSEC:
+				subseconds /= 1000000;
+				len += snprintf(buf + len, sizeof(buf) - len - 1, "%03" PRIi64, subseconds);
+				break;
+
+			case FR_TIME_RES_USEC:
+				subseconds /= 1000;
+				len += snprintf(buf + len, sizeof(buf) - len - 1, "%06" PRIi64, subseconds);
+				break;
+
+			case FR_TIME_RES_NSEC:
+				len += snprintf(buf + len, sizeof(buf) - len - 1, "%09" PRIi64, subseconds);
+				break;
+			}
+		}
+
 		if (quote > 0) {
-			len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z%%", localtime_r(&t, &s_tm));
 			buf[0] = (char) quote;
 			buf[len - 1] = (char) quote;
 			buf[len] = '\0';
-		} else {
-			len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
 		}
 		a = buf;
 		break;
