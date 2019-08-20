@@ -25,7 +25,7 @@ Perl, Python, etc. It also supports many authentication protocols such
 as PAP, CHAP, MS-CHAP(v2), HTTP Digest, and EAP (EAP-MD5, EAP-TLS, PEAP,
 EAP-TTLS, EAP-SIM, etc.).
 
-It also has fullsupport for Cisco's VLAN Query Protocol (VMPS) and DHCP.
+It also has full support for Cisco's VLAN Query Protocol (VMPS) and DHCP.
 
 Please read the DEBUGGING section below. It contains instructions for
 quickly configuring the server for your local system.
@@ -33,7 +33,6 @@ quickly configuring the server for your local system.
 == OPTIONS
 
 The following command-line options are accepted by the server.
-
 
 *-C*:: 
   Check the configuration and exit immediately. If there is a problem
