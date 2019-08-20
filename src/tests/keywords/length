@@ -9,7 +9,6 @@ abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'
 	&Tmp-String-2        := '9870'
 	&Tmp-Octets-0        := 0x39383731
 	&Tmp-IP-Address-0    := 57.56.55.50
-	&Tmp-Date-0          := 959985459
 	&Tmp-Integer-0       := 959985460
 	&Tmp-Cast-Abinary    := 'ip out forward srcip 57.56.55.53/32 udp dstport = 1812'
 	&Tmp-Cast-IfId       := '0000:0000:3938:3737'
@@ -34,7 +33,6 @@ update request {
 	&Tmp-Integer-0        := "%{length:%{Tmp-String-2}}"
 	&Tmp-Integer-1        := "%{length:%{Tmp-Octets-0}}"
 	&Tmp-Integer-2        := "%{length:%{Tmp-IP-Address-0}}"
-	&Tmp-Integer-3        := "%{length:%{Tmp-Date-0}}"
 	&Tmp-Integer-4        := "%{length:%{Tmp-Integer-0}}"
 	&Tmp-Integer-5        := "%{length:%{Tmp-Cast-Abinary}}"
 	&Tmp-Integer-6        := "%{length:%{Tmp-Cast-Ifid}}"
@@ -58,10 +56,6 @@ if (&Tmp-Integer-2 != 4) {
 	test_fail
 }
 
-# Date - bin 0x39383733
-if (&Tmp-Integer-3 != 4) {
-	test_fail
-}
 
 # Integer - bin 0x39383734
 if (&Tmp-Integer-4 != 4) {
