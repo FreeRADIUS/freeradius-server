@@ -61,3 +61,7 @@ data Event-Timestamp = "Jan 11 1970 00:00:00 GMT"
 
 encode-pair -
 data 37 06 00 0d 2f 00
+
+# Can we parse RFC 3339 dates correctly?
+attribute Unit-TLV-Milliseconds = "2019-08-21T07:40:31.123-04:00"
+data Unit-TLV-Milliseconds = "2019-08-21T03:40:31.123Z"

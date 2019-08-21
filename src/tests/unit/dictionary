@@ -24,6 +24,9 @@ ATTRIBUTE	Unit-Short		251		short
 ATTRIBUTE	Unit-Integer64		252		integer64
 ATTRIBUTE	Unit-Octets		253		octets
 
+ATTRIBUTE	Unit-TLV		254		tlv
+ATTRIBUTE	Unit-TLV-Milliseconds	254.1		date milliseconds
+
 #
 #  Copied here for simplicity
 #
