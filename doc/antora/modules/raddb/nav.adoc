@@ -1,6 +1,6 @@
-* xref:README.adoc[The raddb configuration directory]
+* xref:index.adoc[The raddb configuration directory]
 
-** xref:README.adoc[mods-available/]
+** xref:index.adoc[mods-available/]
 *** xref:mods-available/abfab_psk_sql.adoc[ADFAB PSK Module]
 *** xref:mods-available/always.adoc[Always Module]
 *** xref:mods-available/attr_filter.adoc[Attr_filter Module]
@@ -72,7 +72,7 @@
 *** xref:mods-available/winbind.adoc[WinModule]
 *** xref:mods-available/yubikey.adoc[Yubikey Module]
 
-** xref:README.adoc[sites-available/]
+** xref:index.adoc[sites-available/]
 *** xref:sites-available/abfab-tls.adoc[ABFAB: Listening on TLS]
 *** xref:sites-available/abfab-tr-idp.adoc[ABFAB: Trust Router]
 *** xref:sites-available/arp.adoc[ARP Virtual Server]
