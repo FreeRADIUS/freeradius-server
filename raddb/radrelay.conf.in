@@ -27,6 +27,39 @@
 #  See `radiusd.conf` for a complete description of the configuration
 #  parameters used here.
 #
+# ## Why radrelay is needed
+#
+#  Many sites run multiple radius servers; at least one primary and one
+#  backup server. When the primary goes down, most NASes will detect that
+#  and switch to the backup server.
+#
+#  That change will cause your accounting packets to go the the backup
+#  server - and some NASes will not switch back to the primary server
+#  when it comes back up.
+#
+#  The result is that accounting records are missed, and/or the
+#  administrator must jump through hoops in order to combine the
+#  different detail files from multiple servers. It also means that the
+#  accounting database gets out of sync.
+#
+#  `radrelay` solves this issue by "relaying" packets from one server to
+#  another, so they both have the same set of accounting data.
+#
+#  ## Overload
+#
+#  If the RADIUS server suddenly receives a many accounting packets,
+#  there may be insufficient CPU power to process them all in a timely
+#  manner.  This problem is especially noticeable when the accounting
+#  packets are going to a back-end database.
+#
+#  Similarly, you may have one database that tracks "live" sessions, and
+#  another that tracks historical accounting data.  In that case,
+#  accessing the first database is fast, as it is small.  Accessing the
+#  second database many be slower, as it may contain multiple gigabytes
+#  of data.  In addition, writing to the first database in a timely
+#  manner is important, while data may be written to the second database
+#  with a few minutes delay, without any harm being done.
+#
 
 #
 #  ## General definitions
@@ -155,9 +188,9 @@ instantiate {
 #
 #  ## Home server configuration
 #
-#  The relay functionality requires proxying to be enabled.
 #
-proxy_requests  = yes
+#  NOTE: Proxying has changed in v4.  This example is no longer correct.
+#
 
 #
 #  Define a `home server`, which is where packets should be
