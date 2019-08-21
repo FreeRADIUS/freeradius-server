@@ -161,7 +161,7 @@ int		fr_blocking(int fd);
 ssize_t		fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t timeout);
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
-int		fr_time_from_str(time_t *date, char const *date_str);
+int		fr_time_from_str(fr_time_t *date, char const *date_str);
 
 bool		fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs);
 int		fr_size_from_str(size_t *out, char const *str);

@@ -4021,18 +4021,11 @@ parse:
 
 	case FR_TYPE_DATE:
 	{
-		/*
-		 *	Admins use strings like "Jan 1 1970", but we use something
-		 *	rather stranger internally.
-		 */
-		time_t date;
-
-		if (fr_time_from_str(&date, in) < 0) {
+		if (fr_time_from_str(&dst->vb_date, in) < 0) {
 			fr_strerror_printf("failed to parse time string \"%s\"", in);
 			return -1;
 		}
 
-		dst->vb_date = fr_time_from_timeval(&(struct timeval) {.tv_sec = date});
 		dst->enumv = dst_enumv;
 	}
 		break;
