@@ -62,13 +62,16 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 
 		if (tmpl_aexpand(ctx, &attr, request, map->lhs, NULL, NULL) <= 0) {
 			RWDEBUG("Failed expanding string");
+		error:
+			fr_pair_list_free(&head);
 			return -1;
 		}
 
 		da = fr_dict_attr_by_name(request->dict, attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
-			return -1;
+			talloc_free(attr);
+			goto error;
 		}
 
 		talloc_free(attr);
@@ -83,9 +86,8 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 		if (fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, '\0', false) < 0) {
 			RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue(value),
 				map->lhs->tmpl_da->name, fr_strerror());
-			fr_pair_list_free(&head);
 			talloc_free(vp);
-			return -1;
+			goto error;
 		}
 
 		vp->op = map->op;
