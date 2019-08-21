@@ -4791,6 +4791,12 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 			subseconds = data->vb_date % NSEC;
 
+			/*
+			 *	Use RFC 3339 format, which is a
+			 *	profile of ISO8601.  The ISO standard
+			 *	allows a much more complex set of date
+			 *	formats.  The RFC is much stricter.
+			 */
 			switch (data->enumv->flags.type_size) {
 			default:
 				break;
