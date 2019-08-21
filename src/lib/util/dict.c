@@ -976,16 +976,27 @@ static bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	type_size is used to limit the maximum attribute number, so it's checked first.
 	 */
 	if (flags->type_size) {
-		if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
-			return false;
-		}
+		if (type == FR_TYPE_DATE) {
+			if ((flags->type_size != FR_TIME_RES_SEC) &&
+			    (flags->type_size != FR_TIME_RES_USEC) &&
+			    (flags->type_size != FR_TIME_RES_MSEC) &&
+			    (flags->type_size != FR_TIME_RES_NSEC)) {
+				fr_strerror_printf("Invalid precision specifier %d for attribute of type 'date'",
+					flags->type_size);
+				return false;
+			}
+		} else {
+			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
+				fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
+				return false;
+			}
 
-		if ((flags->type_size != 1) &&
-		    (flags->type_size != 2) &&
-		    (flags->type_size != 4)) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
-			return false;
+			if ((flags->type_size != 1) &&
+			    (flags->type_size != 2) &&
+			    (flags->type_size != 4)) {
+				fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
+				return false;
+			}
 		}
 	}
 
