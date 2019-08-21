@@ -4766,7 +4766,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		t = fr_time_to_sec(data->vb_date);
 		if (!data->enumv || (data->enumv->flags.type_size == FR_TIME_RES_SEC)) {
 			if (quote > 0) {
-				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z%%", localtime_r(&t, &s_tm));
+				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
 			} else {
 				len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
 			}
@@ -4796,16 +4796,16 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 			case FR_TIME_RES_MSEC:
 				subseconds /= 1000000;
-				len += snprintf(buf + len, sizeof(buf) - len - 1, "%03" PRIi64, subseconds);
+				len += snprintf(buf + len, sizeof(buf) - len - 1, ".%03" PRIi64, subseconds);
 				break;
 
 			case FR_TIME_RES_USEC:
 				subseconds /= 1000;
-				len += snprintf(buf + len, sizeof(buf) - len - 1, "%06" PRIi64, subseconds);
+				len += snprintf(buf + len, sizeof(buf) - len - 1, ".%06" PRIi64, subseconds);
 				break;
 
 			case FR_TIME_RES_NSEC:
-				len += snprintf(buf + len, sizeof(buf) - len - 1, "%09" PRIi64, subseconds);
+				len += snprintf(buf + len, sizeof(buf) - len - 1, ".%09" PRIi64, subseconds);
 				break;
 			}
 
@@ -4827,8 +4827,8 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 		if (quote > 0) {
 			buf[0] = (char) quote;
-			buf[len - 1] = (char) quote;
-			buf[len] = '\0';
+			buf[len] = (char) quote;
+			buf[len + 1] = '\0';
 		}
 		a = buf;
 		break;
