@@ -4809,6 +4809,21 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 				len += snprintf(buf + len, sizeof(buf) - len - 1, "%09" PRIi64, subseconds);
 				break;
 			}
+
+			/*
+			 *	And time zone.
+			 */
+			if (s_tm.tm_gmtoff != 0) {
+				int hours, minutes;
+
+				hours = s_tm.tm_gmtoff / 3600;
+				minutes = (s_tm.tm_gmtoff / 60) % 60;
+
+				len += snprintf(buf + len, sizeof(buf) - len - 1, "%+03d:%02u", hours, minutes);
+			} else {
+				buf[len] = 'Z';
+				len++;
+			}
 		}
 
 		if (quote > 0) {
