@@ -4306,14 +4306,13 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 
 	case FR_TYPE_DATE:
 	{
-		char buff[64];
-		time_t t;
-		struct tm s_tm;
+		char buff[128];
 
-		t = fr_time_to_sec(data->vb_date);
-		strftime(buff, 64, "%b %e %Y %H:%M:%S %Z",
-			 localtime_r(&t, &s_tm));
-
+		/*
+		 *	This is complex, so call another function to
+		 *	do the work.
+		 */
+		(void) fr_value_box_snprint(buff, sizeof(buff), data, quote);
 		p = talloc_typed_strdup(ctx, buff);
 		break;
 	}
