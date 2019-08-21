@@ -1,0 +1,127 @@
+= radsniff(8)
+Alan DeKok
+:doctype: manpage
+:release-version: 4.0.0
+:man manual: FreeRADIUS
+:man source: FreeRADIUS
+:page-layout: base
+
+== NAME
+
+radsniff - dump radius protocol
+
+== SYNOPSIS
+
+*radsniff _[ OPTIONS ]_
+
+== DESCRIPTION
+
+*radsniff  is a simple wrapper around libpcap. It can also print out the
+contents of RADIUS packets using the FreeRADIUS dictionaries.
+
+== OPTIONS
+
+*-a*::
+  List all interfaces which can be used to capture packets.
+
+*-c count*::
+  Number of packets to capture.  Exit after capturing *count* packets
+
+*-C checksum_type*::
+  Enable checksum validation.  Specify `udp` or `radius`.
+
+*-d config_dir*::
+  The directory that contains the user dictionary file. Defaults to
+  `/etc/raddb`.
+
+*-D dict_dir*::
+  The directory that contains the main dictionary file. Defaults to
+  `/usr/share/freeradius/dictionary`.
+
+*-e event[,event]*::
+  Only log requests with specific _event_ flags.
+ +
+  * *received* - a request or response
+  * *norsp* - no response was received to a request
+  * *rtx* - retransmission of a request which was already seen
+  * *noreq* - a response was seen with no matching request
+  * *reused* - RADIUS ID field was reused too soon
+  * *error* - error decoding the packet
+
+*-F*::
+  Filter PCAP file from stdin to stdout. Output file will contain RADIUS
+  packets.
+
+*-f filter*::
+  PCAP filter. (default is `udp port 1812 or 1813`)
+
+*-h*::
+  Print usage help information.
+
+*-i interface*::
+  Capture from the named _interface_.
+
+*-I filename*::
+  Read packets from _filename_.
+
+*-l attr[,attr]*::
+  Output packet signature and a list of named xattributes.
+
+*-L attr[,attr]*::
+  Use the named attributes tfor detecting retransmissions
+
+*-m*::
+  Print packet headers only, not contents.
+
+*-p port*::
+  Listen for packets on port.
+
+*-P filename*::
+  Daemonize, and write PID to _filename_x
+
+*-q*::
+  Print less debugging information.
+
+*-r filter*::
+  RADIUS attribute request filter.
+
+*-R filter*::
+  RADIUS attribute response filter.
+
+*-s secret*::
+  RADIUS secret.
+
+*-S*::
+  Sort attributes in the packet. Used to compare server results.
+
+*-w filename*::
+  Write output packets to _filename_.
+
+*-x*::
+  Print out debugging information.
+
+The following options are for statistics gathering.
+
+*-E*::
+  Print statistics in CSV format.
+
+*-N prefix*::
+  The instance name passed to the collectd plugin.
+
+*-O server*::
+  Write output statics to the named collectd server.
+
+*-T timeout*::
+  The timeout in milliseconds before the request is considered
+  to be lost.
+
+*-W interval*::
+  Write statistics every _interval_ seconds.
+
+== SEE ALSO
+
+radiusd(8),pcap(3)
+
+== AUTHOR
+
+The FreeRADIUS Server Project (http://www.freeradius.org)
