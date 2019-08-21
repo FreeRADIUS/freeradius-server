@@ -4764,12 +4764,15 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	case FR_TYPE_DATE:
 		t = fr_time_to_sec(data->vb_date);
+		(void) localtime_r(&t, &s_tm);
+
 		if (!data->enumv || (data->enumv->flags.type_size == FR_TIME_RES_SEC)) {
 			if (quote > 0) {
-				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
+				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z", &s_tm);
 			} else {
-				len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
+				len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z", &s_tm);
 			}
+
 		} else {
 			int64_t subseconds;
 
@@ -4777,9 +4780,9 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 			 *	Print this out first, as it's always the same
 			 */
 			if (quote > 0) {
-				len = strftime(buf, sizeof(buf) - 1, "%%%Y-%m-%dT%H:%M:%S", localtime_r(&t, &s_tm));
+				len = strftime(buf, sizeof(buf) - 1, "%%%Y-%m-%dT%H:%M:%S", &s_tm);
 			} else {
-				len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", localtime_r(&t, &s_tm));
+				len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &s_tm);
 			}
 
 			subseconds = data->vb_date % NSEC;
