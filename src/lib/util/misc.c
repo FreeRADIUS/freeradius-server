@@ -782,18 +782,48 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 		p = tail + 1;
 		s_tm.tm_year = t - 1900; /* 'struct tm' starts years in 1900 */
 
-		if (get_part(&p, &s_tm.tm_mon, 13, '-') < 0) return -1;
-		if (s_tm.tm_mon == 0) return -1;
+		if ((get_part(&p, &s_tm.tm_mon, 13, '-') < 0) ||
+		    (s_tm.tm_mon == 0)) {
+			fr_strerror_printf("Invalid month specifier");
+			return -1;
+		}
 		s_tm.tm_mon--;	/* ISO is 1..12, where 'struct tm' is 0..11 */
 
-		if (get_part(&p, &s_tm.tm_mday, 31, 'T') < 0) return -1;
-		if (get_part(&p, &s_tm.tm_hour, 23, ':') < 0) return -1;
-		if (get_part(&p, &s_tm.tm_min, 59, ':') < 0) return -1;
-		if (get_part(&p, &s_tm.tm_sec, 60, '\0') < 0) return -1; /* leap seconds */
+		if (get_part(&p, &s_tm.tm_mday, 31, 'T') < 0) {
+			fr_strerror_printf("Invalid dat specifier");
+			return -1;
+		}
+		if (get_part(&p, &s_tm.tm_hour, 23, ':') < 0) {
+			fr_strerror_printf("Invalid hour specifier");
+			return -1;
+		}
+		if (get_part(&p, &s_tm.tm_min, 59, ':') < 0) {
+			fr_strerror_printf("Invalid minute specifier");
+			return -1;
+		}
+		if (get_part(&p, &s_tm.tm_sec, 60, '\0') < 0) { /* leap seconds */
+			fr_strerror_printf("Invalid seconds specifier");
+			return -1;
+		}
 
 		if (*p == '.') {
+			p++;
 			subseconds = strtoul(p, &tail, 10);
-			if (subseconds > NSEC) return -1;
+			if (subseconds > NSEC) {
+				fr_strerror_printf("Invalid nanosecond specifier");
+				return -1;
+			}
+
+			/*
+			 *	Scale subseconds to nanoseconds by how
+			 *	many digits were parsed/
+			 */
+			if ((tail - p) < 9) {
+				for (i = 0; i < 9 - (tail -p); i++) {
+					subseconds *= 10;
+				}
+			}
+
 			p = tail;
 		} else {
 			subseconds = 0;
@@ -804,19 +834,34 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 		 *	alone.
 		 */
 		if (*p == 'Z') {
-			if (p[1] != '\0') return -1;
+			if (p[1] != '\0') {
+				fr_strerror_printf("Unexpected text after time zone");
+				return -1;
+			}
 			tz = 0;
 			goto done;
 		}
 
-		if ((*p != '+') && (*p != '-')) return -1;
+		if ((*p != '+') && (*p != '-')) {
+			fr_strerror_printf("Invalid time zone specifier '%c'", *p);
+			return -1;
+		}
 		tail = p;	/* remember sign for later */
 		p++;
 
-		if (get_part(&p, &tz_hour, 23, ':') < 0) return -1;
-		if (get_part(&p, &tz_min, 59, '\0') < 0) return -1;
+		if (get_part(&p, &tz_hour, 23, ':') < 0) {
+			fr_strerror_printf("Invalid hour in time zone");
+			return -1;
+		}
+		if (get_part(&p, &tz_min, 59, '\0') < 0) {
+			fr_strerror_printf("Invalid minute in time zone");
+			return -1;
+		}
 
-		if (*p != '\0') return -1;
+		if (*p != '\0') {
+			fr_strerror_printf("Unexpected text after time zone");
+			return -1;
+		}
 
 		/*
 		 *	We set this, but the timegm() function ignores
