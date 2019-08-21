@@ -48,7 +48,7 @@ encrypted before the packet is sent to the server.
   The directory that contains the main dictionary file. Defaults to
   `/usr/share/freeradius/dictionary`.
 
-*-f filenname[:filename]*::
+*-f filename[:filename]*::
   File to read the attribute/value pairs from. If this is not specified,
   they are read from stdin. This option can be specified multiple times,
   in which case packets are sent in order by file, and within each file,
