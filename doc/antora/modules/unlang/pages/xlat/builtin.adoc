@@ -15,10 +15,10 @@ When the input is a string, then the output is identical to the
 When the input is an attribute reference, the output is the size of
 the attributes data as encoded "on the wire".
 
-.Return: _integer_
+.Return: _size_
 
-.Example
-
+.Determining the length of fixed and variable length attributes
+====
 [source,unlang]
 ----
 update control {
@@ -33,11 +33,11 @@ update reply {
 ----
 
 .Output
-
-```
-  The length of Caipirinha is 10
-  The length of 192.168.0.2 is 4
-```
+....
+The length of Caipirinha is 10
+The length of 192.168.0.2 is 4
+....
+====
 
 === %{integer:<&ref>}
 
@@ -58,10 +58,10 @@ value associated with the `Login-User` name. Using
 `%{integer:&Event-Timestamp}` will return the event timestamp as an
 unsigned 32-bit number.
 
-.Return: _integer_
+.Return: _string_
 
-.Example
-
+.Determining the integer value of an enumerated attribute
+====
 [source,unlang]
 ----
 update {
@@ -77,15 +77,16 @@ update reply {
 ```
 The value of Service-Type is 1
 ```
+====
 
 === %{rand:<number>}
 
-Get random number from `0` to `n-1`.
+Generate random number from `0` to `<number>-1`.
 
-.Return: _string_
+.Return: _uint64_
 
-.Example
-
+.Generating a random number between 0 and 511
+====
 [source,unlang]
 ----
 update reply {
@@ -98,15 +99,18 @@ update reply {
 ```
 The random number is 347
 ```
+====
 
-=== %{tag:<attribute:<tag>>}
+=== %{tag:<attribute ref>}
 
-Find an attribute reference with the given tag, and return its value.
+CAUTION: This expansion is deprecated and will likely be removed.
 
-.Return: _string_
+Returns a list of tags for any attributes found using ``<attribute ref>``.
 
-.Example
+.Return: _int8_
 
+.Determining the tag value of the second instance of the `radius.Tunnel-Server-Endpoint` attribute
+====
 [source,unlang]
 ----
 update request {
@@ -118,38 +122,46 @@ update request {
 }
 
 update reply {
-    &Reply-Message := "The value of Tunnel-Server-Endpoint with tag 1 is %{request:Tunnel-Server-Endpoint:1[0]}"
+    &Reply-Message := "The tag value of the second instance of Tunnel-Server-Enpoint is %{request:Tunnel-Server-Endpoint[1]}"
 }
 ----
 
 .Output
 
 ```
-The value of Tunnel-Server-Endpoint with tag 1 is 192.0.5.2
+The tag value of the second instance of Tunnel-Server-Enpoint is 192.0.5.2
 ```
+====
 
 === %{string:<data>}
 
-Convert data to a string if possible.
+Convert input to a string if (possible).  For _octets_ type attributes, this
+means interpreting the data as a UTF8 string, and inserting octal escape
+sequences where appropriate.
+
+For other types, this means printing the value in its _presentation_ format,
+i.e. dotted quads for IPv4 addresses, link:https://en.wikipedia.org/wiki/ISO_8601[ISO 8601]
+time for date types, enumeration values for attributes such as `radius.Service-Type` etc.
 
 .Return: _string_
 
-.Example
-
+.String interpolation using the raw octets value of Tmp-Octets-0, and the stringified version
+====
 [source,unlang]
 ----
 update control {
     &Tmp-Octets-0 := 0x7465737431
 }
 update reply {
-    &Reply-Message := "The content of %{control:Tmp-Octets-0} is %{string:%{control:Tmp-Octets-0}}"
+    &Reply-Message := "The string value of %{control:Tmp-Octets-0} is %{string:%{control:Tmp-Octets-0}}"
 }
 ----
+====
 
 .Output
 
 ```
-The content of 0x7465737431 is test1
+The string value of 0x7465737431 is test1
 ```
 
 == Server Manipulation

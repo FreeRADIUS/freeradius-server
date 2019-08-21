@@ -36,8 +36,8 @@ SOURCES	:= \
 	users_file.c \
 	util.c \
 	virtual_servers.c \
+	xlat_builtin.c \
 	xlat_eval.c \
-	xlat_func.c \
 	xlat_inst.c \
 	xlat_tokenize.c
 

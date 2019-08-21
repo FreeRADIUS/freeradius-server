@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file xlat_func.c
+ * @file xlat_builtin.c
  * @brief String expansion ("translation").  Baked in expansions.
  *
  * @copyright 2000,2006 The FreeRADIUS server project
