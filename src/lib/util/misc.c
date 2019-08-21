@@ -712,13 +712,22 @@ static char *mystrtok(char **ptr, char const *sep)
  *	Helper function to get a 2-digit date. With a maximum value,
  *	and a terminating character.
  */
-static int get_part(char **str, int *date, int max, char term)
+static int get_part(char **str, int *date, int min, int max, char term, char const *name)
 {
 	char *p = *str;
 
 	if (!isdigit((int) *p) || !isdigit((int) p[1])) return -1;
 	*date = (p[0] - '0') * 10  + (p[1] - '0');
-	if (*date > max) return -1;
+
+	if (*date < min) {
+		fr_strerror_printf("Invalid %s (too small)", name);
+		return -1;
+	}
+
+	if (*date > max) {
+		fr_strerror_printf("Invalid %s (too large)", name);
+		return -1;
+	}
 
 	p += 2;
 	if (!term) {
@@ -726,7 +735,11 @@ static int get_part(char **str, int *date, int max, char term)
 		return 0;
 	}
 
-	if (*p != term) return -1;
+	if (*p != term) {
+		fr_strerror_printf("Expected '%c' after %s, got '%c'",
+				   term, name, *p);
+		return -1;
+	}
 	p++;
 
 	*str = p;
@@ -782,29 +795,13 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 		p = tail + 1;
 		s_tm.tm_year = t - 1900; /* 'struct tm' starts years in 1900 */
 
-		if ((get_part(&p, &s_tm.tm_mon, 13, '-') < 0) ||
-		    (s_tm.tm_mon == 0)) {
-			fr_strerror_printf("Invalid month specifier");
-			return -1;
-		}
+		if (get_part(&p, &s_tm.tm_mon, 1, 13, '-', "month") < 0) return -1;
 		s_tm.tm_mon--;	/* ISO is 1..12, where 'struct tm' is 0..11 */
 
-		if (get_part(&p, &s_tm.tm_mday, 31, 'T') < 0) {
-			fr_strerror_printf("Invalid dat specifier");
-			return -1;
-		}
-		if (get_part(&p, &s_tm.tm_hour, 23, ':') < 0) {
-			fr_strerror_printf("Invalid hour specifier");
-			return -1;
-		}
-		if (get_part(&p, &s_tm.tm_min, 59, ':') < 0) {
-			fr_strerror_printf("Invalid minute specifier");
-			return -1;
-		}
-		if (get_part(&p, &s_tm.tm_sec, 60, '\0') < 0) { /* leap seconds */
-			fr_strerror_printf("Invalid seconds specifier");
-			return -1;
-		}
+		if (get_part(&p, &s_tm.tm_mday, 1, 31, 'T', "day") < 0) return -1;
+		if (get_part(&p, &s_tm.tm_hour, 0, 23, ':', "hour") < 0) return -1;
+		if (get_part(&p, &s_tm.tm_min, 0, 59, ':', "minute") < 0) return -1;
+		if (get_part(&p, &s_tm.tm_sec, 0, 60, '\0', "seconds") < 0) return -1;
 
 		if (*p == '.') {
 			p++;
@@ -835,7 +832,7 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 		 */
 		if (*p == 'Z') {
 			if (p[1] != '\0') {
-				fr_strerror_printf("Unexpected text after time zone");
+				fr_strerror_printf("Unexpected text '%c' after time zone", p[1]);
 				return -1;
 			}
 			tz = 0;
@@ -849,17 +846,11 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 		tail = p;	/* remember sign for later */
 		p++;
 
-		if (get_part(&p, &tz_hour, 23, ':') < 0) {
-			fr_strerror_printf("Invalid hour in time zone");
-			return -1;
-		}
-		if (get_part(&p, &tz_min, 59, '\0') < 0) {
-			fr_strerror_printf("Invalid minute in time zone");
-			return -1;
-		}
+		if (get_part(&p, &tz_hour, 0, 23, ':', "hour in time zone") < 0) return -1;
+		if (get_part(&p, &tz_min, 0, 59, '\0', "minute in time zone") < 0) return -1;
 
 		if (*p != '\0') {
-			fr_strerror_printf("Unexpected text after time zone");
+			fr_strerror_printf("Unexpected text '%c' after time zone", *p);
 			return -1;
 		}
 
@@ -877,7 +868,11 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 
 	done:
 		t = timegm(tm);
-		if (t == (time_t) -1) return -1;
+		if (t == (time_t) -1) {
+			fr_strerror_printf("Failed calling system function to parse time - %s",
+					   fr_syserror(errno));
+			return -1;
+		}
 
 		/*
 		 *	Add in the time zone offset, which the posix
@@ -897,7 +892,10 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 	f[1] = mystrtok(&p, " \t");
 	f[2] = mystrtok(&p, " \t");
 	f[3] = mystrtok(&p, " \t"); /* may, or may not, be present */
-	if (!f[0] || !f[1] || !f[2]) return -1;
+	if (!f[0] || !f[1] || !f[2]) {
+		fr_strerror_printf("Too few fields");
+		return -1;
+	}
 
 	/*
 	 *	The time has a colon, where nothing else does.
@@ -939,7 +937,10 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 	}
 
 	/* month not found? */
-	if (tm->tm_mon == 12) return -1;
+	if (tm->tm_mon == 12) {
+		fr_strerror_printf("No month found");
+		return -1;
+	}
 
 	/*
 	 *  The year may be in f[1], or in f[2]
@@ -955,7 +956,10 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 		 *  We can't use 2-digit years any more, they make it
 		 *  impossible to tell what's the day, and what's the year.
 		 */
-		if (tm->tm_mday < 1900) return -1;
+		if (tm->tm_mday < 1900) {
+			fr_strerror_printf("Invalid year < 1900");
+			return -1;
+		}
 
 		/*
 		 *  Swap the year and the day.
@@ -969,6 +973,7 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 	 *  If the day is out of range, die.
 	 */
 	if ((tm->tm_mday < 1) || (tm->tm_mday > 31)) {
+		fr_strerror_printf("Invalid day of month");
 		return -1;
 	}
 
@@ -978,14 +983,17 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 	if (f[3]) {
 		f[0] = f[3];	/* HH */
 		f[1] = strchr(f[0], ':'); /* find : separator */
-		if (!f[1]) return -1;
+		if (!f[1]) {
+			fr_strerror_printf("No ':' after hour");
+			return -1;
+		}
 
 		*(f[1]++) = '\0'; /* nuke it, and point to MM:SS */
 
 		f[2] = strchr(f[1], ':'); /* find : separator */
 		if (f[2]) {
-		  *(f[2]++) = '\0';	/* nuke it, and point to SS */
-		  tm->tm_sec = atoi(f[2]);
+			*(f[2]++) = '\0';	/* nuke it, and point to SS */
+			tm->tm_sec = atoi(f[2]);
 		}			/* else leave it as zero */
 
 		tm->tm_hour = atoi(f[0]);
@@ -996,7 +1004,11 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 	 *  Returns -1 on failure.
 	 */
 	t = mktime(tm);
-	if (t == (time_t) -1) return -1;
+	if (t == (time_t) -1) {
+		fr_strerror_printf("Failed calling system function to parse time - %s",
+				   fr_syserror(errno));
+		return -1;
+	}
 
 	*date = fr_time_from_timeval(&(struct timeval) { .tv_sec = t });
 

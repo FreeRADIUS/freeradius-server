@@ -4021,10 +4021,7 @@ parse:
 
 	case FR_TYPE_DATE:
 	{
-		if (fr_time_from_str(&dst->vb_date, in) < 0) {
-			fr_strerror_printf("failed to parse time string \"%s\"", in);
-			return -1;
-		}
+		if (fr_time_from_str(&dst->vb_date, in) < 0) return -1;
 
 		dst->enumv = dst_enumv;
 	}
