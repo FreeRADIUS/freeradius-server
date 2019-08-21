@@ -73,3 +73,21 @@ data Sep 27 1972 00:00:00 GMT
 # 10,000 days
 date 864000000
 data May 19 1997 00:00:00 GMT
+
+#
+#  Input can be whatever.  But for the tests, output is GMT.
+#
+#  Note that this test is wrong, because the HH:MM are the
+#  same, even though they are in different time zones.
+#  Our parse function ignores time zones, which is bad.
+#
+date Aug 21 2019 07:43:03 EDT
+data Aug 21 2019 07:43:03 GMT
+
+#
+#  Can't yet test this as the parse / print / parse / cmp
+#  functions don't yet allow for choosing ISO8601 vs the
+#  traditional FreeRADIUS time.
+#
+#date 2019-08-21T07:40:31-04:00
+#data foo

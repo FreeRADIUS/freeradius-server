@@ -708,6 +708,31 @@ static char *mystrtok(char **ptr, char const *sep)
 	return res;
 }
 
+/*
+ *	Helper function to get a 2-digit date. With a maximum value,
+ *	and a terminating character.
+ */
+static int get_part(char **str, int *date, int max, char term)
+{
+	char *p = *str;
+
+	if (!isdigit((int) *p) || !isdigit((int) p[1])) return -1;
+	*date = (p[0] - '0') * 10  + (p[1] - '0');
+	if (*date > max) return -1;
+
+	p += 2;
+	if (!term) {
+		*str = p;
+		return 0;
+	}
+
+	if (*p != term) return -1;
+	p++;
+
+	*str = p;
+	return 0;
+}
+
 /** Convert string in various formats to a time_t
  *
  * @param date_str input date string.
@@ -739,6 +764,86 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 	tm = &s_tm;
 	memset(tm, 0, sizeof(*tm));
 	tm->tm_isdst = -1;	/* don't know, and don't care about DST */
+
+	/*
+	 *	Check for RFC 3339 dates.  Note that we only support
+	 *	dates in a ~1000 year period.  If the server is being
+	 *	used after 3000AD, someone can patch it then.
+	 *
+	 *	%Y-%m-%dT%H:%M:%S
+	 *	[.%d] sub-seconds
+	 *	Z | (+/-)%H:%M time zone offset
+	 *
+	 */
+	if ((t > 1900) && (t < 3000) && *tail == '-') {
+		unsigned long subseconds;
+		int tz, tz_hour, tz_min;
+
+		p = tail + 1;
+		s_tm.tm_year = t - 1900; /* 'struct tm' starts years in 1900 */
+
+		if (get_part(&p, &s_tm.tm_mon, 13, '-') < 0) return -1;
+		if (s_tm.tm_mon == 0) return -1;
+		s_tm.tm_mon--;	/* ISO is 1..12, where 'struct tm' is 0..11 */
+
+		if (get_part(&p, &s_tm.tm_mday, 31, 'T') < 0) return -1;
+		if (get_part(&p, &s_tm.tm_hour, 23, ':') < 0) return -1;
+		if (get_part(&p, &s_tm.tm_min, 59, ':') < 0) return -1;
+		if (get_part(&p, &s_tm.tm_sec, 60, '\0') < 0) return -1; /* leap seconds */
+
+		if (*p == '.') {
+			subseconds = strtoul(p, &tail, 10);
+			if (subseconds > NSEC) return -1;
+			p = tail;
+		} else {
+			subseconds = 0;
+		}
+
+		/*
+		 *	Time zone is GMT.  Leave well enough
+		 *	alone.
+		 */
+		if (*p == 'Z') {
+			if (p[1] != '\0') return -1;
+			tz = 0;
+			goto done;
+		}
+
+		if ((*p != '+') && (*p != '-')) return -1;
+		tail = p;	/* remember sign for later */
+		p++;
+
+		if (get_part(&p, &tz_hour, 23, ':') < 0) return -1;
+		if (get_part(&p, &tz_min, 59, '\0') < 0) return -1;
+
+		if (*p != '\0') return -1;
+
+		/*
+		 *	We set this, but the timegm() function ignores
+		 *	it.  Note also that mktime() ignores it too,
+		 *	and treats the time zone as local.
+		 *
+		 *	We can't store this value in s_tm.gtmoff,
+		 *	because the timegm() function helpfully zeros
+		 *	it out.
+		 */
+		tz = tz_hour * 3600 + tz_min;
+		if (*tail == '-') tz *= -1;
+
+	done:
+		t = timegm(tm);
+		if (t == (time_t) -1) return -1;
+
+		/*
+		 *	Add in the time zone offset, which the posix
+		 *	functions are too stupid to do.
+		 */
+		t += tz;
+
+		*date = fr_time_from_timeval(&(struct timeval) { .tv_sec = t });
+		*date += subseconds;
+		return 0;
+	}
 
 	strlcpy(buf, date_str, sizeof(buf));
 
