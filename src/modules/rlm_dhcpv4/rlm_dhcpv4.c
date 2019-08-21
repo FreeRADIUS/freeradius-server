@@ -90,6 +90,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 						      p, end - p, NULL);
 			if (len <= 0) {
 				RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
+				fr_pair_list_free(&head);
 				return XLAT_ACTION_FAIL;
 			}
 			p += len;
