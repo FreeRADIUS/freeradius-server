@@ -1168,17 +1168,35 @@ dnl Set by FR_SMART_CHECKLIB
 LIBS="${old_LIBS}"
 
 dnl #
+dnl #  extra argument: --with-libcap
+dnl #
+WITH_LIBCAP=yes
+AC_ARG_WITH(libcap,
+[  --with-libcap          use libcap for debugger checks. (default=yes)],
+[ case "$withval" in
+  no)
+    WITH_LIBCAP=no
+    ;;
+  *)
+    WITH_LIBCAP=yes
+    ;;
+  esac ]
+)
+
+dnl #
 dnl #  Check for cap (Linux capabilities)
 dnl #
-smart_try_dir="$cap_lib_dir"
-FR_SMART_CHECK_LIB(cap, cap_get_proc)
-if test "x$ac_cv_lib_cap_cap_get_proc" != "xyes"; then
-  AC_MSG_WARN([cap library not found, debugger checks will not be enabled. Use --with-cap-lib-dir=<path>.])
-else
-  AC_DEFINE(HAVE_LIBCAP, 1,
-    [Define to 1 if you have the `cap' library (-lcap).]
-  )
-  HAVE_LIBCAP=1
+if test "x$WITH_LIBCAP" = xyes; then
+  smart_try_dir="$cap_lib_dir"
+  FR_SMART_CHECK_LIB(cap, cap_get_proc)
+  if test "x$ac_cv_lib_cap_cap_get_proc" != "xyes"; then
+    AC_MSG_WARN([cap library not found, debugger checks will not be enabled. Use --with-cap-lib-dir=<path>.])
+  else
+    AC_DEFINE(HAVE_LIBCAP, 1,
+      [Define to 1 if you have the `cap' library (-lcap).]
+    )
+    HAVE_LIBCAP=1
+  fi
 fi
 
 dnl #
