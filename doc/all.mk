@@ -188,7 +188,7 @@ doc/raddb/%.adoc: raddb/%
 	@echo ADOC $^
 	${Q}mkdir -p $(dir $@)
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
-	${Q}./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc -o $@ < $^
+	${Q}./scripts/asciidoc/conf2adoc -t -a ${top_srcdir}/asciidoc -o $@ < $^
 
 README_MODULES := $(wildcard src/modules/rlm_*/README.md)
 doc/raddb/mods-available/all_modules.adoc: $(README_MODULES)

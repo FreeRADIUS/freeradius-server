@@ -14,10 +14,13 @@ $raw = 0;
 $blank = 0;
 $print_code = 0;
 
-getopts('a:c:o:');
+getopts('a:c:o:t');
 
 $script_dir = dirname(__FILE__);
 $filename = "$script_dir/links.txt";
+
+$opt_c = 0 if (defined $opt_t) ;
+
 $print_code = $opt_c;
 
 %links = {};
@@ -43,6 +46,7 @@ $links{"mods-available/"} = "$opt_a/mods-available/index.adoc";
 sub process_file {
 	my $input = shift;
 	my $output_file = shift;
+	my @code = ();
 
 	if (!defined $output_file) {
 	    $output = STDOUT;
@@ -197,7 +201,12 @@ sub process_file {
 			$line =~ s,RFC (\d+),https://tools.ietf.org/html/rfc${1}\[RFC $1\],g;
 		}
 
-		next if (!$print_code && $raw && $was_raw);
+		if (!$print_code) {
+		    if ($raw && $was_raw) {
+			push @code, $line if ($opt_t);
+			next;
+		    }
+		}
 
 		#
 		#  And print out the raw text.
@@ -209,6 +218,18 @@ sub process_file {
 	#  Terminate any trailing "raw" text.
 	#
 	print $output "```\n" if ($print_code);
+
+	if ($opt_t) {
+	    print $output "== Default Configuration\n\n";
+
+	    print $output "```\n";
+
+	    foreach $line (@code) {
+		print $output $line;
+	    }
+
+	    print $output "```\n";
+	}
 }
 
 sub HELP_MESSAGE {
