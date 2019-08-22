@@ -49,10 +49,9 @@ struct dict_enum_fixup_s {
 
 	dict_enum_fixup_t	*next;			//!< Next in the linked list of fixups.
 };
-
 typedef struct dict_group_fixup_s dict_group_fixup_t;
 
-/** A temporary enum value, which we'll resolve later
+/** A temporary group reference, which we'll resolve later
  *
  */
 struct dict_group_fixup_s {
@@ -75,12 +74,12 @@ typedef struct {
 	fr_dict_attr_t const	*da;			//!< the da we care about
 	fr_type_t		nest;			//!< for manual vs automatic begin / end things
 	int			member_num;		//!< structure member numbers
-} dict_ctx_stack_frame_t;
+} dict_tokenize_frame_t;
 
 typedef struct {
 	fr_dict_t		*dict;			//!< Protocol dictionary we're inserting attributes into.
 
-	dict_ctx_stack_frame_t	stack[MAX_STACK];     	//!< stack of attributes to track
+	dict_tokenize_frame_t	stack[MAX_STACK];     	//!< stack of attributes to track
 	int			stack_depth;		//!< points to the last used stack frame
 
 	fr_dict_attr_t const	*value_attr;		//!< Cache of last attribute to speed up
@@ -92,7 +91,7 @@ typedef struct {
 
 	dict_enum_fixup_t	*enum_fixup;
 	dict_group_fixup_t	*group_fixup;
-} dict_from_file_ctx_t;
+} dict_tokenize_ctx_t;
 
 /*
  *	String split routine.  Splits an input string IN PLACE
@@ -255,7 +254,7 @@ static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_
 }
 
 
-static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_flags_t *flags,
+static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_flags_t *flags,
 				   char **ref)
 {
 	char *p, *next = NULL;
@@ -422,7 +421,7 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_typ
 }
 
 
-static int dict_ctx_push(dict_from_file_ctx_t *ctx, fr_dict_attr_t const *da)
+static int dict_ctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
 {
 	if (ctx->stack_depth >= MAX_STACK) {
 		fr_strerror_printf_push("Attribute definitions are nested too deep.");
@@ -440,7 +439,7 @@ static int dict_ctx_push(dict_from_file_ctx_t *ctx, fr_dict_attr_t const *da)
 	return 0;
 }
 
-static fr_dict_attr_t const *dict_ctx_unwind(dict_from_file_ctx_t *ctx)
+static fr_dict_attr_t const *dict_ctx_unwind(dict_tokenize_ctx_t *ctx)
 {
 	while ((ctx->stack_depth > 0) &&
 	       (ctx->stack[ctx->stack_depth].nest == FR_TYPE_INVALID)) {
@@ -453,7 +452,7 @@ static fr_dict_attr_t const *dict_ctx_unwind(dict_from_file_ctx_t *ctx)
 /*
  *	Process the ATTRIBUTE command
  */
-static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, int argc,
+static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, int argc,
 				       fr_dict_attr_flags_t *base_flags)
 {
 	bool			set_relative_attr = true;
@@ -698,7 +697,7 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 /*
  *	Process the MEMBER command
  */
-static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int argc,
+static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int argc,
 				       fr_dict_attr_flags_t *base_flags)
 {
 	fr_type_t      		type;
@@ -777,7 +776,7 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 /** Process a value alias
  *
  */
-static int dict_read_process_value(dict_from_file_ctx_t *ctx, char **argv, int argc)
+static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t const		*da;
 	fr_value_box_t			value;
@@ -903,7 +902,7 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
  *
  *  Which MUST be a sub-structure of another struct
  */
-static int dict_read_process_struct(dict_from_file_ctx_t *ctx, char **argv, int argc)
+static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t			*da, *mutable;
 	fr_dict_attr_t const		*parent, *previous;
@@ -1274,7 +1273,7 @@ static int hash_null_callback(UNUSED void *ctx, UNUSED void *data)
 	return 0;
 }
 
-static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
+static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 {
 	/*
 	 *	Resolve any VALUE aliases (enums) that were defined
@@ -1476,7 +1475,7 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _dict_from_file(dict_from_file_ctx_t *ctx,
+static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			   char const *dir_name, char const *filename,
 			   char const *src_file, int src_line)
 {
@@ -2141,7 +2140,7 @@ static int dict_from_file(fr_dict_t *dict,
 			  char const *src_file, int src_line)
 {
 	int rcode;
-	dict_from_file_ctx_t ctx;
+	dict_tokenize_ctx_t ctx;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
@@ -2378,7 +2377,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 	char	*argv[MAX_ARGV];
 	int	ret;
 	fr_dict_attr_flags_t base_flags;
-	dict_from_file_ctx_t ctx;
+	dict_tokenize_ctx_t ctx;
 
 	INTERNAL_IF_NULL(dict, -1);
 
