@@ -17,8 +17,6 @@ authenticate.
 | xref:mods-available/pap.adoc[pap]	| Accepts a large number of formats for the "known good" (reference) password, such as crypt hashes, md5 hashes,
 and etc. The module takes the User-Password and performs the necessary transformations of the user submitted password
 to match the copy of the password the server has retrieved.
-| xref:mods-available/securid.adoc[securid]	| Supports authentication against an RSA SecurID ACE instance.
-| xref:mods-available/sigtran.adoc[sigtran]	| Supports authentication against a Sigtran interface.
 | xref:mods-available/soh.adoc[soh]	| Implements support for Microsoft's Statement of Health (SoH) protocol, which can run inside of PEAP or DHCP.
 | xref:mods-available/wimax.adoc[wimax]	| Implements WiMAX authentication over RADIUS.
 | xref:mods-available/winbind.adoc[winbind]	| The module also allows for direct connection to Samba winbindd (version 4.2.1 or above), which communicates with
@@ -38,7 +36,6 @@ of the module.
 | xref:mods-available/couchbase.adoc[couchbase]	| Allows attributes to be stored and retrieved from a couchbase server. Client definitions may also be bulk loaded from a
 couchbase server as FreeRADIUS starts.
 | xref:mods-available/csv.adoc[csv]	| Maps values in a CSV file to FreeRADIUS attributes and adds them to the request.
-| xref:mods-available/dict.adoc[dict]	| Registers xlats and maps to access dictionary data
 | xref:mods-available/passwd.adoc[passwd]	| Reads and caches line-oriented files that are in a format similar to ``/etc/passwd``.
 | xref:mods-available/radutmp.adoc[radutmp]	| Writes a utmp style file that lists the users who are logged in. The file is used mainly for Simultaneous-Use checking
 and by radwho to see who has current sessions.
@@ -118,7 +115,6 @@ including syslog, flat files, and raw UDP/TCP sockets.
 | xref:mods-available/delay.adoc[delay]	| Introduces an artificial non-blocking delay when processing a request.
 | xref:mods-available/escape.adoc[escape]	| Escapes and unescapes strings using the MIME escape format
 | xref:mods-available/example.adoc[example]	| An example module to use as a template when writing new modules.
-An example module to use as a template when writing new modules.
 | xref:mods-available/expiration.adoc[expiration]	| Determines whether a user account has expired, with the expiration time set by another module.
 | xref:mods-available/expr.adoc[expr]	| Registers a string expansion "%{expr:}" that allows basic arithmetic and binary operations.
 | xref:mods-available/idn.adoc[idn]	| Converts internationalized domain names to ASCII.
@@ -127,7 +123,6 @@ An example module to use as a template when writing new modules.
 | xref:mods-available/sometimes.adoc[sometimes]	| Is a hashing and distribution protocol, that will sometimes return one code or another depending on the input value
 configured.
 | xref:mods-available/sqlcounter.adoc[sqlcounter]	| Records statistics for users such as data transfer and session time, and prevent further logins when limits are reached.
-| xref:mods-available/test.adoc[test]	| Contains test stubs for CIT and the ``make test`` build target.
 | xref:mods-available/unpack.adoc[unpack]	| Unpacks binary data from octets type attributes into individual attributes.
 | xref:mods-available/utf8.adoc[utf8]	| Checks all attributes of type string in the current request, to ensure that they only contain valid UTF8 sequences.
 |=====

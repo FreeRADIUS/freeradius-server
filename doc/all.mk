@@ -190,7 +190,11 @@ doc/raddb/%.adoc: raddb/%
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
 	${Q}./scripts/asciidoc/conf2adoc -t -a ${top_srcdir}/asciidoc -o $@ < $^
 
-README_MODULES := $(wildcard src/modules/rlm_*/README.md)
+#
+#  Filter out test modules, and ones we don't care about.
+#
+IGNORE_MODULES := $(patsubst %,src/modules/%/README.md,rlm_dict rlm_example rlm_securid rlm_sigtran rlm_test)
+README_MODULES := $(filter-out $(IGNORE_MODULES), $(wildcard src/modules/rlm_*/README.md))
 doc/raddb/mods-available/all_modules.adoc: $(README_MODULES)
 	@echo ADOC mods-available/all_modules.adoc
 	${Q}./scripts/asciidoc/mod_readme2adoc $(README_MODULES) > $@
