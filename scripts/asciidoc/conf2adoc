@@ -220,6 +220,7 @@ sub process_file {
 	print $output "```\n" if ($print_code);
 
 	if ($opt_t) {
+	    print $output "\n";
 	    print $output "== Default Configuration\n\n";
 
 	    print $output "```\n";
