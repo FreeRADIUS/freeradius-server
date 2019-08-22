@@ -1,30 +1,7 @@
 = Welcome to Version 4.0 of FreeRADIUS
 
-WARNING: *PLEASE DO NOT USE VERSION 4. IT IS INTENDED ONLY FOR
-DEVELOPERS. THE CONFIGURATION MAY CHANGE. THE BEHAVIOR MAY CHANGE. THE
-DOCUMENTATION MAY CHANGE.*
-
-Version 4 is the result of years of effort by the FreeRADIUS developers.
-The goal of v4 was to expand it’s feature set. Many features could not
-be implemented because of limitations that have been in the server since
-the beginning of the project. For example, in v3 and earlier releases,
-we had the following limitations:
-
-* it was impossible to proxy one packet to multiple destinations
-* it was impossible to catch a `failed` proxy, and fall back to local
-  authentication
-* the server could not support multiple clients with different shared
-  secrets behind one NAT gateway
-* the DHCP and VMPS was implemented by making them pretend to be RADIUS,
-  which limited their functionality
-* the server did not support TACACS+
-* connections to databases were `synchronous`. If a database blocked,
-  it could eventually lock up the server
-
-All of these limitations and more have been removed. The downside of
-these changes is that the some of the configuration has been changed.
-Please see the <<../upgrade/#,upgrade>> file for instructions on
-how to migrate a v3 configuration to v4.
+This section documents the format and content of the configuration
+files.
 
 == Configuring the server
 

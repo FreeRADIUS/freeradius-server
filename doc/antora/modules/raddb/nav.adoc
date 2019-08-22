@@ -1,6 +1,7 @@
-* xref:index.adoc[The raddb configuration directory]
+* xref:index.adoc[Configuration]
+** xref:format.adoc[Format of the Configuration Files]
 
-** xref:index.adoc[mods-available/]
+** xref:index.adoc[Modules]
 *** xref:mods-available/abfab_psk_sql.adoc[ADFAB PSK Module]
 *** xref:mods-available/always.adoc[Always Module]
 *** xref:mods-available/attr_filter.adoc[Attr_filter Module]
@@ -72,7 +73,7 @@
 *** xref:mods-available/winbind.adoc[WinModule]
 *** xref:mods-available/yubikey.adoc[Yubikey Module]
 
-** xref:index.adoc[sites-available/]
+** xref:index.adoc[Virtual Servers]
 *** xref:sites-available/abfab-tls.adoc[ABFAB: Listening on TLS]
 *** xref:sites-available/abfab-tr-idp.adoc[ABFAB: Trust Router]
 *** xref:sites-available/arp.adoc[ARP Virtual Server]
@@ -104,10 +105,10 @@
 *** xref:sites-available/tls.adoc[TLS]
 *** xref:sites-available/virtual.example.com.adoc[virtual.example.com]
 *** xref:sites-available/vmps.adoc[VMPS]
+*** xref:experimental.conf.adoc[Experimental modules]
 
 ** xref:clients.conf.adoc[Client Definitions]
 ** xref:debug.conf.adoc[Debugging configuration]
-** xref:experimental.conf.adoc[Experimental modules]
 ** xref:dictionary.adoc[Local dictionary definitions]
 ** xref:radrelay.conf.adoc[Radrelay Configuration]
 ** xref:radiusd.conf.adoc[Server Configuration File]

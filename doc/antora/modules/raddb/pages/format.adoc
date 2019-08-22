@@ -1,0 +1,324 @@
+= Configuration File Format
+
+The server configuration files all share a standard format.  A common
+format ensures that it is simple to read, edit, and understand the
+configuration.
+
+When the server starts, it loads all of the configurations files.
+These files are usually kept separate on disk for organization and
+management purpose.  However, the files are all part of the global
+"server configuration".  That is, the organization of the _file names_
+is completely independent of the _file contents_.
+
+The configuration files also include the
+xref:unlang:index.adoc[unlang] policies.  While those policies have a
+similar format as described here, the formats ar not exactly the same.
+
+== Comments and Blank Lines
+
+The configuration files may contain comments and blank lines.
+Comments are text which has meaning to the administrator, but which is
+not used to configure the server.
+
+Comments begin with the `#` character, and can be placed anywhere on a
+line.  All text after the `#` character is ignored by the server.
+
+.Syntax
+----
+ # this is a comment
+----
+
+The server ignores all blank lines and comments.
+
+== Named Variables
+
+The configuration files can set _named variables_ which are given a
+_value_.  These variables are also referred to as _configuration items_.
+
+.Syntax
+----
+name = value
+----
+
+name:: The _name_ of the configuration variable.
++
+The _name_ is usually a descriptive English word.  It can be
+composed of letters (upper and lower case), numbers, and underscores.
++
+The allowed names change depending on the context of the variable.
+
+operator:: The `=` character is the only permitted operator for
+configuration variables.
+
+value:: The _value_ of the configuration variable.
++
+The _value_ of a variable is a value which is assigned to _name_.
+Types of values are unquoted text, single-quoted strings, and
+double-quoted strings.  Back-tick strings are not permitted.
+
+The interpretation of the _value_ depends on the meaning of _name_.
+The parser is generally forgiving, and will accept anything that can
+be interpreted as being in the correct format.  For example, when a
+configuration variable is documented as taking an IP address, all of
+the following examples result in the same configuration:
+
+.Examples
+----
+ipaddr = 192.0.2.2
+ipaddr = '192.0.2.2'
+ipaddr = "  192.0.2.2"
+----
+
+=== Unquoted Strings
+
+Unquoted strings delimited by spaces, or by other tokens.  This
+unquoted text is interpreted as a simple string and are generally
+equivalent to placing the string in single quotes.
+
+.Examples
+----
+ipaddr = 192.168.0.2
+delay = 1
+locking = yes
+filename = /path/
+----
+
+=== Single-Quoted Strings
+
+A single-quoted string allow it to contain spaces, among other
+special characters. The single quote character can be placed in such a
+string by escaping it with a backslash.
+
+.Examples
+----
+message = 'Hello there'
+filter = 'yes \` is allowed`
+----
+
+=== Double-Quoted Strings
+
+A double-quoted string allows escape sequences and variable
+references. As with single-quoted strings, text within double quotes
+can include spaces.
+
+The main difference between double quoted strings and other types is
+that the double quoted strings can expand variable references. Please
+see the <<Variable References>> section for more information.
+
+The contents of a double-quoted can be interpreted as a string, a
+number, or an IP address, depending on the configuration varible.
+
+=== Escape sequences
+
+Escape sequences in double-quoted strings allow characters which may
+be otherwise difficult to represent.
+
+.Escape sequences and their descriptions
+[options="header", cols="15%,85%"]
+|=====
+| Escape sequence     | Character represented
+| `\\`                | Literal backslash (0x5c)
+| `\r`                | Carriage return (0x0d)
+| `\n`                | Line feed (0x0a)
+| `\t`                | Horizontal tab (0x09)
+| `\"`                | Double quote (0x22)
+| `\x<hex><hex>`      | A byte whose numerical value is given by `<hex><hex>` interpreted as a hexadecimal number.
+| `\x<oct><oct><oct>` | A byte whose numerical value is given by `<oct><oct><oct>` interpreted as an octal number.
+|=====
+
+== Configuration Sections
+
+A _configuration section_ is allows named variables to be collected
+togther in a logical group.  Configuration sections can also contain
+other configuration sections, to any depth of nesting.
+
+A configuration section begins with a section name, followed on the
+same line by an open bracket `{`.  A section ends with a close bracket
+`}`.
+
+.Configuration Section
+====
+----
+group {
+    foo = bar
+    baz = hello
+    subgroup {
+        bug = gone
+    }
+}
+----
+====
+
+In some circumstances, configuration section can have a second name
+following the first one. The situations where this is permitted depend
+on the context.  Please see the configuration file contents for
+information on when and where these second names are allowed.
+
+We also use the word _instance_ or _instance names_ when referring to
+the second name of a section.
+
+.Configuration Section
+====
+----
+group mine {
+    yours = bob
+    theirs = no
+}
+----
+====
+
+== Additional Functionality
+
+The configuration file format has additional functionality which is
+described here.
+
+=== Long Lines
+
+Long lines can be broken up via continuations, using `\\` as the last
+character of the line.  When one line is continued to another, the
+result is treated as if all of the "continued" text was on one line.
+
+.Text Broken across multiple lines
+====
+----
+foo = "blah \
+blah \
+blah"
+----
+====
+
+This example will set the value of the variable `foo` to `blah blah
+blah`.  Any CR or LF is not turned into a space, but all other
+whitespace is preserved in the final value.
+
+=== Contents of the Configuration Files
+
+The configuration file parser is independent of the server
+configuration. This means that you can put almost anything into the
+configuration file. So long as it is properly formatted, the server
+will start.
+
+When the server parses the configuration file, it looks only for those
+configurations it understands. Extra configuration items are ignored.
+This "feature" can be (ab)used in certain interesting ways.
+
+For example, you can "annotate" a configuration section with
+additional variables which will be accepted, but ignored.  These
+variables can be used as a simple read-only key-value store.
+
+=== Variable References
+
+When the _value_ of a configuration variable is a double-quoted
+string, the parser looks in the input string for variable references.
+If a reference is found to another variable, then the reference is
+replaced with the value of that variable. The _value_ can also be just
+an unquoted variable reference.
+
+These references are evaluated when the configuration file is loaded,
+which means that there is no run-time cost associated with them. This
+feature is most useful for turning long, repeated pieces of text into
+short ones.
+
+Variables are referenced by `${variable_name}`, as in the following
+examples.
+
+.Simple Variable References
+====
+----
+foo = bar       # set variable 'foo' to value 'bar'
+
+who = ${foo}    # sets variable 'who' to value of variable 'foo'
+
+my = "${foo} a" # sets variable 'my' to "bar a"
+----
+====
+
+If the variable exists in a section or subsection, it can be
+referenced as `${section.subsection.variable}`.  Forward references
+are not allowed.
+
+Relative references are allowed, by prepending the name with one or
+more periods.
+
+.References in the Current Section
+----
+foo = bar
+blogs = ${.foo}  # set 'blogs' to 'bar'
+ergo = "${foo}"  # set 'ergo' to 'bar'
+----
+
+.Parent References
+----
+group {
+    foo = bar
+    subgroup {
+        blogs = ${..foo}
+    }
+}
+----
+
+Will set variable `blogs` to the value `bar`.  That value is taken
+from the variable `foo`, which is contained in the a parent section
+of the section containing `blogs`
+
+.References to Other Sections
+----
+blogs = ${modules.detail.filename}
+----
+
+Will set variable `blogs` to the value of variable `filename`, of the
+`detail` module, which is in the `modules` section of the
+configuration file.
+
+Properties of anonymous parent sections may also be referenced, by
+using a `:` after the section reference.  Currently `:name` and `:instance`
+are supported.
+
+.References to the Name of a Section
+----
+modules {
+    example foo {
+        file = ${.:name}
+    }
+}
+----
+
+Will set variable `file` to the name of the containing section, in
+this case, `example`.
+
+.References to the Instance of a Section
+----
+modules {
+    example foo {
+        file = ${.:instance}
+    }
+}
+----
+
+Will set variable `file` to the instance name of the containing
+section, in this case `foo`.
+
+.Combining References
+----
+modules {
+    example foo {
+        file = ${..:name}
+    }
+}
+----
+
+Will set variable `file` to the name of the parent of the containing
+section, in this case `modules`.
+
+A string can contain multiple references, which will all be
+expanded.
+
+.Multiple References
+----
+foo = bar
+baz = bug
+blogs = "this ${foo} is ${baz}"
+----
+
+Will set variable `blogs` to the string `this bar is bug`.
+x
