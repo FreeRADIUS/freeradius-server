@@ -1,4 +1,4 @@
-= Modules in Version 4
+= Modules
 
 The server includes a number of "plug-in" modules which perform a
 variety of actions.  A full and annotated
@@ -26,16 +26,16 @@ Modules which do not belong elsewhere.
 Policy xref:mods-available/all_modules.adoc#_policy_modules[list]::
 Modules which implement policies to filter or enforce packets.
 
-
 == Enabling a Module
 
-Modules are enabled by creating a file in the mods-enabled/ directory.
+Modules are enabled by creating a file in the `mods-enabled/` directory.
 You can also create a soft-link from one directory to another:
 
-```
+[source,shell]
+----
 $ cd mods-enabled/
 $ ln -s ../mods-available/foo
-```
+----
 
 This will enable module `foo`. Be sure that you have configured the
 module correctly before enabling it, otherwise the server will not
@@ -57,16 +57,18 @@ just conditionally enable the module.
 Modules are conditionally enabled by adding a `-` before their name in
 a virtual server. For example, you can do:
 
-```
+[source,unlang]
+----
 server {
-  recv Access-Request {
     ...
-    ldap
-    -sql
-    ...
-  }
+    recv Access-Request {
+        ...
+        ldap
+        -sql
+        ...
+    }
 }
-```
+----
 
 This configuration means that the server will _require the LDAP
 module, but use the SQL module only if it is configured._
@@ -75,17 +77,18 @@ This feature is not very useful for production configurations. It is,
 however, very useful for the default examples that ship with the
 server.
 
-== Ignoring module
+=== Ignoring A Module
 
-If you see this message::
+If you see this message:
 
----
-Ignoring module (see mods-available/README.adoc)
----
+----
+Ignoring "sql" as it is commented out.
+----
 
-Then you are in the right place. Most of the time this message can be
-ignored. The message can be fixed by find the references to `-module`
-in the virtual server, and deleting them.
+then it signifies that the module is commented out as desceribed
+above.  Most of the time this message can be ignored. The message can
+be fixed by find the references to `-module` in the virtual server,
+and deleting them.
 
 Another way to fix it is to configure the module, as described above.
 
@@ -103,3 +106,11 @@ described above.
 Once the module is enabled, it will automatically be used in the default
 configuration.
 
+== Module-Specific Configuration Files
+
+Some modules require the use of additional configuration files.  These
+additional files are located in the
+xref:mods-config/index.adoc[mods-config/] directory.  The meaning and
+interpretation of those files is documented there.  These files are
+often in a custom, module-specific format, instead of using the
+standard configuration file format.
