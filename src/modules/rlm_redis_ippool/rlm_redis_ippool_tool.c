@@ -936,7 +936,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 
 			if (reply->type != REDIS_REPLY_ARRAY) {
 				ERROR("Failed retrieving result, expected array got %s",
-				      fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+				      fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 
 				goto reply_error;
 			}
@@ -950,13 +950,13 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 
 			if (reply->element[0]->type != REDIS_REPLY_STRING) {
 				ERROR("Failed retrieving result, expected string got %s",
-				      fr_table_str_by_num(redis_reply_types, reply->element[0]->type, "<UNKNOWN>"));
+				      fr_table_str_by_value(redis_reply_types, reply->element[0]->type, "<UNKNOWN>"));
 				goto reply_error;
 			}
 
 			if (reply->element[1]->type != REDIS_REPLY_ARRAY) {
 				ERROR("Failed retrieving result, expected array got %s",
-				      fr_table_str_by_num(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
+				      fr_table_str_by_value(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
 				goto reply_error;
 			}
 
@@ -1112,7 +1112,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		ERROR("Failed retrieving pool stats: Expected array got %s",
-		      fr_table_str_by_num(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
+		      fr_table_str_by_value(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
 		goto error;
 	}
 

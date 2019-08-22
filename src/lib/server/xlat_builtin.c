@@ -337,7 +337,7 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		break;
 	}
 
-	REDEBUG("Type '%s' cannot be converted to integer", fr_table_str_by_num(fr_value_box_type_table, vp->vp_type, "???"));
+	REDEBUG("Type '%s' cannot be converted to integer", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "???"));
 
 	return -1;
 }
@@ -464,20 +464,20 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		fr_dict_vendor_t const		*vendor;
-		fr_table_ordered_t const	*type;
+		fr_table_num_ordered_t const	*type;
 
 		if (vp->da->flags.has_tag) {
 			RIDEBUG2("&%s:%s:%i %s %pV",
-				fr_table_str_by_num(pair_list_table, vpt->tmpl_list, "<INVALID>"),
+				fr_table_str_by_value(pair_list_table, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
-				fr_table_str_by_num(fr_tokens_table, vp->op, "<INVALID>"),
+				fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"),
 				&vp->data);
 		} else {
 			RIDEBUG2("&%s:%s %s %pV",
-				fr_table_str_by_num(pair_list_table, vpt->tmpl_list, "<INVALID>"),
+				fr_table_str_by_value(pair_list_table, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
-				fr_table_str_by_num(fr_tokens_table, vp->op, "<INVALID>"),
+				fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"),
 				&vp->data);
 		}
 
@@ -485,7 +485,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 
 		vendor = fr_dict_vendor_by_da(vp->da);
 		if (vendor) RIDEBUG2("Vendor : %i (%s)", vendor->pen, vendor->name);
-		RIDEBUG2("Type   : %s", fr_table_str_by_num(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
+		RIDEBUG2("Type   : %s", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
 
 		switch (vp->vp_type) {
 		case FR_TYPE_VARIABLE_SIZE:
@@ -504,9 +504,9 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 
 			fr_value_box_t *dst = NULL;
 
-			if ((fr_type_t) type->number == vp->vp_type) goto next_type;
+			if ((fr_type_t) type->value == vp->vp_type) goto next_type;
 
-			switch (type->number) {
+			switch (type->value) {
 			case FR_TYPE_NON_VALUES:	/* Skip everything that's not a value */
 				goto next_type;
 
@@ -516,7 +516,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 
 			dst = fr_value_box_alloc_null(vp);
 			/* We expect some to fail */
-			if (fr_value_box_cast(dst, dst, type->number, NULL, &vp->data) < 0) {
+			if (fr_value_box_cast(dst, dst, type->value, NULL, &vp->data) < 0) {
 				goto next_type;
 			}
 
@@ -570,7 +570,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	default:
 		REDEBUG("Unexpected type %s in left hand side of expression",
-			fr_table_str_by_num(tmpl_type_table, map->lhs->type, "<INVALID>"));
+			fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
 		return strlcpy(*out, "0", outlen);
 	}
 
@@ -586,7 +586,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	default:
 		REDEBUG("Unexpected type %s in right hand side of expression",
-			fr_table_str_by_num(tmpl_type_table, map->rhs->type, "<INVALID>"));
+			fr_table_str_by_value(tmpl_type_table, map->rhs->type, "<INVALID>"));
 		return strlcpy(*out, "0", outlen);
 	}
 

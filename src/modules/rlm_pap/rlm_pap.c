@@ -146,7 +146,7 @@ fr_dict_attr_autoload_t rlm_pap_dict_attr[] = {
  *
  *	@note Header comparison is case insensitive.
  */
-static fr_table_sorted_t const header_names[] = {
+static fr_table_num_sorted_t const header_names[] = {
 	{ "X- orclntv}",	FR_NT_PASSWORD },
 	{ "{base64_md5}",	FR_MD5_PASSWORD },
 	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
@@ -186,7 +186,7 @@ static fr_table_sorted_t const header_names[] = {
 static size_t header_names_len = NUM_ELEMENTS(header_names);
 
 #ifdef HAVE_OPENSSL_EVP_H
-static fr_table_sorted_t const pbkdf2_crypt_names[] = {
+static fr_table_num_sorted_t const pbkdf2_crypt_names[] = {
 	{ "HMACSHA1",		FR_SSHA_PASSWORD },
 	{ "HMACSHA2+224",	FR_SSHA2_224_PASSWORD },
 	{ "HMACSHA2+256",	FR_SSHA2_256_PASSWORD },
@@ -201,7 +201,7 @@ static fr_table_sorted_t const pbkdf2_crypt_names[] = {
 };
 static size_t pbkdf2_crypt_names_len = NUM_ELEMENTS(pbkdf2_crypt_names);
 
-static fr_table_sorted_t const pbkdf2_passlib_names[] = {
+static fr_table_num_sorted_t const pbkdf2_passlib_names[] = {
 	{ "sha1",		FR_SSHA_PASSWORD },
 	{ "sha256",		FR_SSHA2_256_PASSWORD },
 	{ "sha512",		FR_SSHA2_512_PASSWORD }
@@ -211,7 +211,7 @@ static size_t pbkdf2_passlib_names_len = NUM_ELEMENTS(pbkdf2_passlib_names);
 
 static ssize_t pap_password_header(fr_dict_attr_t const **out, char const *header)
 {
-	switch (fr_table_num_by_str(header_names, header, 0)) {
+	switch (fr_table_value_by_str(header_names, header, 0)) {
 	case FR_CLEARTEXT_PASSWORD:
 		*out = attr_cleartext_password;
 		break;
@@ -790,7 +790,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha_evp(UNUSED rlm_pap_t const *in
  *	- RLM_MODULE_OK
  */
 static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *request, const uint8_t *str, size_t len,
-								 fr_table_sorted_t const hash_names[], size_t hash_names_len,
+								 fr_table_num_sorted_t const hash_names[], size_t hash_names_len,
 								 char scheme_sep, char iter_sep, char salt_sep,
 								 bool iter_is_base64, VALUE_PAIR const *password)
 {
@@ -829,7 +829,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 		goto finish;
 	}
 
-	digest_type = fr_table_num_by_substr(hash_names, (char const *)p, q - p, -1);
+	digest_type = fr_table_value_by_substr(hash_names, (char const *)p, q - p, -1);
 	switch (digest_type) {
 	case FR_SSHA_PASSWORD:
 		evp_md = EVP_sha1();
@@ -972,7 +972,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 	}
 
 	RDEBUG2("PBKDF2 %s: Iterations %u, salt length %zu, hash length %zd",
-		fr_table_str_by_num(pbkdf2_crypt_names, digest_type, "<UNKNOWN>"),
+		fr_table_str_by_value(pbkdf2_crypt_names, digest_type, "<UNKNOWN>"),
 		iterations, salt_len, slen);
 
 	/*

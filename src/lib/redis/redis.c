@@ -26,7 +26,7 @@
 #include "base.h"
 #include <freeradius-devel/server/rad_assert.h>
 
-fr_table_sorted_t const redis_reply_types[] = {
+fr_table_num_sorted_t const redis_reply_types[] = {
 	{ "array",	REDIS_REPLY_ARRAY	},
 	{ "error",	REDIS_REPLY_ERROR	},
 	{ "integer",	REDIS_REPLY_INTEGER	},
@@ -36,7 +36,7 @@ fr_table_sorted_t const redis_reply_types[] = {
 };
 size_t redis_reply_types_len = NUM_ELEMENTS(redis_reply_types);
 
-fr_table_sorted_t const redis_rcodes[] = {
+fr_table_num_sorted_t const redis_rcodes[] = {
 	{ "ask",	REDIS_RCODE_ASK		},
 	{ "error",	REDIS_RCODE_ERROR	},
 	{ "move",	REDIS_RCODE_MOVE	},
@@ -272,7 +272,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 
 	if (key->type != REDIS_REPLY_STRING) {
 		REDEBUG("Bad key type, expected string, got %s",
-			fr_table_str_by_num(redis_reply_types, key->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, key->type, "<UNKNOWN>"));
 	error:
 		TALLOC_FREE(map);
 		return -1;
@@ -280,7 +280,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 
 	if (op->type != REDIS_REPLY_STRING) {
 		REDEBUG("Bad key type, expected string, got %s",
-			fr_table_str_by_num(redis_reply_types, op->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, op->type, "<UNKNOWN>"));
 		goto error;
 	}
 
@@ -295,7 +295,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 		goto error;
 	}
 
-	map->op = fr_table_num_by_str(fr_tokens_table, op->str, T_INVALID);
+	map->op = fr_table_value_by_str(fr_tokens_table, op->str, T_INVALID);
 	if (map->op == T_INVALID) {
 		REDEBUG("Invalid operator \"%s\"", op->str);
 		goto error;
@@ -321,7 +321,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 
 	default:
 		REDEBUG("Bad value type, expected string or integer, got %s",
-			fr_table_str_by_num(redis_reply_types, value->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, value->type, "<UNKNOWN>"));
 		goto error;
 
 	}
@@ -394,7 +394,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 
 	out[0] = key;
 	out_len[0] = key_len;
-	out[1] = fr_table_str_by_num(fr_tokens_table, map->op, NULL);
+	out[1] = fr_table_str_by_value(fr_tokens_table, map->op, NULL);
 	out_len[1] = strlen(out[1]);
 
 	return 0;
@@ -542,7 +542,7 @@ fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t
 
 	if (reply->type != REDIS_REPLY_STRING) {
 		fr_strerror_printf("Bad value type, expected string or integer, got %s",
-				   fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+				   fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 	error:
 		fr_redis_reply_free(&reply);
 		return REDIS_RCODE_ERROR;

@@ -72,8 +72,8 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		if (vb->type != FR_TYPE_OCTETS) {
 			RWDEBUG("Skipping value \"%pV\", expected value of type %s, got type %s",
 				vb,
-				fr_table_str_by_num(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
-				fr_table_str_by_num(fr_value_box_type_table, vb->type, "<INVALID>"));
+				fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
+				fr_table_str_by_value(fr_value_box_type_table, vb->type, "<INVALID>"));
 			continue;
 		}
 

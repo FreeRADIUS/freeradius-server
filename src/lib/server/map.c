@@ -45,8 +45,8 @@ RCSID("$Id$")
 static void map_dump(REQUEST *request, vp_map_t const *map)
 {
 	RDEBUG2(">>> MAP TYPES LHS: %s, RHS: %s",
-	        fr_table_str_by_num(tmpl_type_table, map->lhs->type, "???"),
-	        fr_table_str_by_num(tmpl_type_table, map->rhs->type, "???"));
+	        fr_table_str_by_value(tmpl_type_table, map->lhs->type, "???"),
+	        fr_table_str_by_value(tmpl_type_table, map->rhs->type, "???"));
 
 	if (map->rhs) {
 		RDEBUG2(">>> MAP NAMES %s %s", map->lhs->name, map->rhs->name);
@@ -358,7 +358,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			return -1;
 		}
 
-		our_lhs_rules.list_def = fr_table_num_by_str(pair_list_table, p, PAIR_LIST_UNKNOWN);
+		our_lhs_rules.list_def = fr_table_value_by_str(pair_list_table, p, PAIR_LIST_UNKNOWN);
 		if (our_lhs_rules.list_def == PAIR_LIST_UNKNOWN) {
 			cf_log_err(ci, "Default list \"%s\" specified in mapping section is invalid", p);
 			return -1;
@@ -1688,7 +1688,7 @@ static inline void map_list_mod_debug(REQUEST *request,
 	 *	If it's an exec, ignore the list
 	 */
 	if (tmpl_is_exec(map->rhs)) {
-		RDEBUG2("%s %s %s%pV%s", mod->lhs->name, fr_table_str_by_num(fr_tokens_table, mod->op, "<INVALID>"),
+		RDEBUG2("%s %s %s%pV%s", mod->lhs->name, fr_table_str_by_value(fr_tokens_table, mod->op, "<INVALID>"),
 		        quote, vb, quote);
 		return;
 	}
@@ -1731,7 +1731,7 @@ static inline void map_list_mod_debug(REQUEST *request,
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		RDEBUG2("%s %s %s", map->lhs->name, fr_table_str_by_num(fr_tokens_table, mod->op, "<INVALID>"), rhs);
+		RDEBUG2("%s %s %s", map->lhs->name, fr_table_str_by_value(fr_tokens_table, mod->op, "<INVALID>"), rhs);
 		break;
 
 	default:
@@ -2450,7 +2450,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	    !tmpl_is_attr(map->lhs)) {
 		REDEBUG("Left side \"%.*s\" of map should be an attr or list but is an %s",
 			(int)map->lhs->len, map->lhs->name,
-			fr_table_str_by_num(tmpl_type_table, map->lhs->type, "<INVALID>"));
+			fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
 		rcode = -2;
 		goto finish;
 	}
@@ -2920,14 +2920,14 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 */
 		if (vp) {
 			tmpl_snprint(buffer, sizeof(buffer), map->lhs);
-			RDEBUG2("%s%s %s %s", buffer, vp->da->name, fr_table_str_by_num(fr_tokens_table, vp->op, "<INVALID>"), rhs);
+			RDEBUG2("%s%s %s %s", buffer, vp->da->name, fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"), rhs);
 			break;
 		}
 		/* FALL-THROUGH */
 
 	case TMPL_TYPE_ATTR:
 		tmpl_snprint(buffer, sizeof(buffer), map->lhs);
-		RDEBUG2("%s %s %s", buffer, fr_table_str_by_num(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
+		RDEBUG2("%s %s %s", buffer, fr_table_str_by_value(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
 		break;
 
 	default:

@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include "parallel_priv.h"
 #include "module_priv.h"
 
-static fr_table_sorted_t const unlang_action_table[] = {
+static fr_table_num_sorted_t const unlang_action_table[] = {
 	{ "break", 		UNLANG_ACTION_BREAK },
 	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
 	{ "next",		UNLANG_ACTION_EXECUTE_NEXT },
@@ -72,7 +72,7 @@ static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 		RDEBUG2("next           <none>");
 	}
 	RDEBUG2("top_frame      %s", frame->top_frame ? "yes" : "no");
-	RDEBUG2("result         %s", fr_table_str_by_num(mod_rcode_table, frame->result, "<invalid>"));
+	RDEBUG2("result         %s", fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"));
 	RDEBUG2("priority       %d", frame->priority);
 	RDEBUG2("unwind         %d", frame->unwind);
 	RDEBUG2("repeat         %s", frame->repeat ? "yes" : "no");
@@ -283,9 +283,9 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 
 	RDEBUG4("** [%i] %s - have (%s %d) module returned (%s %d)",
 		stack->depth, __FUNCTION__,
-		fr_table_str_by_num(mod_rcode_table, frame->result, "<invalid>"),
+		fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
 		frame->priority,
-		fr_table_str_by_num(mod_rcode_table, *result, "<invalid>"),
+		fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"),
 		*priority);
 
 	/*
@@ -301,7 +301,7 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 
 		RDEBUG4("** [%i] %s - action says to return with (%s %d)",
 			stack->depth, __FUNCTION__,
-			fr_table_str_by_num(mod_rcode_table, *result, "<invalid>"),
+			fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"),
 			*priority);
 		frame->result = *result;
 		frame->priority = *priority;
@@ -317,7 +317,7 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 
 		RDEBUG4("** [%i] %s - action says to return with (%s %d)",
 			stack->depth, __FUNCTION__,
-			fr_table_str_by_num(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"),
+			fr_table_str_by_value(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"),
 			*priority);
 		frame->result = RLM_MODULE_REJECT;
 		frame->priority = *priority;
@@ -333,7 +333,7 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 
 		RDEBUG4("** [%i] %s - setting priority to (%s %d)",
 			stack->depth, __FUNCTION__,
-			fr_table_str_by_num(mod_rcode_table, *result, "<invalid>"),
+			fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"),
 			*priority);
 	}
 
@@ -347,7 +347,7 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 
 		RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
 			stack->depth, __FUNCTION__,
-			fr_table_str_by_num(mod_rcode_table, *result, "<invalid>"),
+			fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"),
 			*priority);
 	}
 
@@ -367,7 +367,7 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 	if (frame->unwind != UNLANG_TYPE_NULL) {
 		RDEBUG4("** [%i] %s - unwinding current frame with (%s %d)",
 			stack->depth, __FUNCTION__,
-			fr_table_str_by_num(mod_rcode_table, frame->result, "<invalid>"),
+			fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
 			frame->priority);
 		return UNLANG_FRAME_ACTION_POP;
 	}
@@ -484,7 +484,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		action = unlang_ops[instruction->type].func(request, result, priority);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
-			fr_table_str_by_num(unlang_action_table, action, "<INVALID>"), *priority);
+			fr_table_str_by_value(unlang_action_table, action, "<INVALID>"), *priority);
 
 		rad_assert(*priority >= -1);
 		rad_assert(*priority <= MOD_PRIORITY_MAX);
@@ -535,7 +535,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			case UNLANG_TYPE_DETACH:
 				RDEBUG4("** [%i] %s - detaching child with current (%s %d)",
 					stack->depth, __FUNCTION__,
-					fr_table_str_by_num(mod_rcode_table, frame->result, "<invalid>"),
+					fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
 				DUMP_STACK;
 
@@ -544,7 +544,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			case UNLANG_TYPE_RESUME:
 				frame->repeat = true;
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
-					fr_table_str_by_num(mod_rcode_table, frame->result, "<invalid>"),
+					fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
 				DUMP_STACK;
 				return UNLANG_FRAME_ACTION_YIELD;
@@ -574,10 +574,10 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 				 */
 				if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
 					RDEBUG("# %s (%s)", instruction->debug_name,
-					       fr_table_str_by_num(mod_rcode_table, *result, "<invalid>"));
+					       fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"));
 				} else {
 					RDEBUG2("} # %s (%s)", instruction->debug_name,
-						fr_table_str_by_num(mod_rcode_table, *result, "<invalid>"));
+						fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"));
 				}
 			}
 
@@ -602,7 +602,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 
 	RDEBUG4("** [%i] %s - done current subsection with (%s %d)",
 		stack->depth, __FUNCTION__,
-		fr_table_str_by_num(mod_rcode_table, frame->result, "<invalid>"),
+		fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
 		frame->priority);
 
 	return UNLANG_FRAME_ACTION_POP;
@@ -694,10 +694,10 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 				 */
 				if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
 					RDEBUG("# %s (%s)", frame->instruction->debug_name,
-					       fr_table_str_by_num(mod_rcode_table, stack->result, "<invalid>"));
+					       fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"));
 				} else {
 					RDEBUG2("} # %s (%s)", frame->instruction->debug_name,
-						fr_table_str_by_num(mod_rcode_table, stack->result, "<invalid>"));
+						fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"));
 				}
 			}
 
@@ -711,7 +711,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			if (fa == UNLANG_FRAME_ACTION_NEXT) {
 				RDEBUG4("** [%i] %s - continuing after subsection with (%s %d)",
 					stack->depth, __FUNCTION__,
-					fr_table_str_by_num(mod_rcode_table, stack->result, "<invalid>"),
+					fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"),
 					priority);
 				frame_next(frame);
 			/*
@@ -721,7 +721,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			} else {
 				RDEBUG4("** [%i] %s - done current subsection with (%s %d)",
 					stack->depth, __FUNCTION__,
-					fr_table_str_by_num(mod_rcode_table, frame->result, "<invalid>"),
+					fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
 			}
 			continue;
@@ -747,7 +747,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 
 		RDEBUG4("** [%i] %s - over-riding stack->result from higher priority to (%s %d)",
 			stack->depth, __FUNCTION__,
-			fr_table_str_by_num(mod_rcode_table, stack->result, "<invalid>"),
+			fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"),
 			priority);
 	}
 
@@ -756,7 +756,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 	 *	stack, and get rid of the top frame.
 	 */
 	RDEBUG4("** [%i] %s - interpreter exiting, returning %s", stack->depth, __FUNCTION__,
-		fr_table_str_by_num(mod_rcode_table, frame->result, "<invalid>"));
+		fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"));
 	stack->result = frame->result;
 	stack->depth--;
 	DUMP_STACK;

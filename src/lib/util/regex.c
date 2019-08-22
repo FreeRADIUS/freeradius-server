@@ -777,7 +777,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	return len;
 }
 
-static fr_table_ordered_t const regex_pcre_error_str[] = {
+static fr_table_num_ordered_t const regex_pcre_error_str[] = {
 	{ "PCRE_ERROR_NOMATCH",		PCRE_ERROR_NOMATCH },
 	{ "PCRE_ERROR_NULL",		PCRE_ERROR_NULL },
 	{ "PCRE_ERROR_BADOPTION",	PCRE_ERROR_BADOPTION },
@@ -874,7 +874,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		if (ret == PCRE_ERROR_NOMATCH) return 0;
 
 		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret,
-				   fr_table_str_by_num(regex_pcre_error_str, ret, "<INVALID>"));
+				   fr_table_str_by_value(regex_pcre_error_str, ret, "<INVALID>"));
 		return -1;
 	}
 

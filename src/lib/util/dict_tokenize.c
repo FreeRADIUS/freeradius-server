@@ -213,7 +213,7 @@ static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_
 	/*
 	 *	find the type of the attribute.
 	 */
-	type = fr_table_num_by_str(fr_value_box_type_table, name, FR_TYPE_INVALID);
+	type = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_INVALID);
 	if (type == FR_TYPE_INVALID) {
 		fr_strerror_printf("Unknown data type '%s'", name);
 		return -1;
@@ -364,7 +364,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			if (strncmp(key, "uint", 4) == 0) {
 				fr_type_t subtype;
 
-				subtype = fr_table_num_by_str(fr_value_box_type_table, name, FR_TYPE_INVALID);
+				subtype = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_INVALID);
 				if (subtype == FR_TYPE_INVALID) {
 				unknown_type:
 					fr_strerror_printf("Unknown or unsupported date type '%s'", key);
@@ -390,7 +390,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			} else {
 				int precision;
 
-				precision = fr_table_num_by_str(date_precision_table, key, -1);
+				precision = fr_table_value_by_str(date_precision_table, key, -1);
 				if (precision < 0) {
 					fr_strerror_printf("Unknown date precision '%s'", key);
 					return -1;
@@ -845,7 +845,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:
 		fr_strerror_printf_push("Cannot define VALUE for ATTRIBUTE \"%s\" of data type \"%s\"", da->name,
-					fr_table_str_by_num(fr_value_box_type_table, da->type, "<INVALID>"));
+					fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		return -1;
 
 	default:
@@ -1887,7 +1887,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf_push("Attribute '%s' should be a 'tlv', but is a '%s'",
 							argv[1],
-							fr_table_str_by_num(fr_value_box_type_table, da->type, "?Unknown?"));
+							fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 				goto error;
 			}
 
@@ -1989,14 +1989,14 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				if (da->type != FR_TYPE_VSA) {
 					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR.  "
 								"Attribute '%s' should be 'vsa' but is '%s'", p,
-								fr_table_str_by_num(fr_value_box_type_table, da->type, "?Unknown?"));
+								fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 					goto error;
 				}
 
 				if (da->parent->type != FR_TYPE_EXTENDED) {
 					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR.  "
 								"Attribute '%s' should be parented from an attribute of type 'extended', but is '%s'", p,
-								fr_table_str_by_num(fr_value_box_type_table, da->type, "?Unknown?"));
+								fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 					goto error;
 				}
 
@@ -2228,12 +2228,12 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	 */
 	for (i = 0; i < fr_value_box_type_table_len; i++) {
 		fr_dict_attr_t			*n;
-		fr_table_ordered_t const	*p = &fr_value_box_type_table[i];
+		fr_table_num_ordered_t const	*p = &fr_value_box_type_table[i];
 
 		type_name = talloc_typed_asprintf(NULL, "Tmp-Cast-%s", p->name);
 
 		n = dict_attr_alloc(dict->pool, dict->root, type_name,
-				    FR_CAST_BASE + p->number, p->number, &flags);
+				    FR_CAST_BASE + p->value, p->value, &flags);
 		if (!n) {
 			talloc_free(type_name);
 			goto error;

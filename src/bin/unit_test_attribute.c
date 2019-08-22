@@ -1364,7 +1364,7 @@ do { \
 		/*
 		 *	Parse data types
 		 */
-		type = fr_table_num_by_str(fr_value_box_type_table, test_type, FR_TYPE_INVALID);
+		type = fr_table_value_by_str(fr_value_box_type_table, test_type, FR_TYPE_INVALID);
 		if (type != FR_TYPE_INVALID) {
 			fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
 			fr_value_box_t *box2;

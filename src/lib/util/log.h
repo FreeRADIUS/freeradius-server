@@ -46,7 +46,7 @@ void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t
 extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern bool	log_dates_utc;
 
-extern fr_table_ordered_t const fr_log_levels[];
+extern fr_table_num_ordered_t const fr_log_levels[];
 extern size_t fr_log_levels_len;
 
 typedef enum {

@@ -143,7 +143,7 @@ struct fr_channel_s {
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 };
 
-fr_table_sorted_t const channel_packet_priority[] = {
+fr_table_num_sorted_t const channel_packet_priority[] = {
 	{ "high",	PRIORITY_HIGH		},
 	{ "low",	PRIORITY_LOW		},
 	{ "normal",	PRIORITY_NORMAL		},

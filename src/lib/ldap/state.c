@@ -30,8 +30,8 @@ USES_APPLE_DEPRECATED_API
 #define STATE_TRANSITION(_new) \
 do { \
 	DEBUG4("Changed state %s -> %s", \
-	       fr_table_str_by_num(fr_ldap_connection_states, c->state, "<INVALID>"), \
-	       fr_table_str_by_num(fr_ldap_connection_states, _new, "<INVALID>")); \
+	       fr_table_str_by_value(fr_ldap_connection_states, c->state, "<INVALID>"), \
+	       fr_table_str_by_value(fr_ldap_connection_states, _new, "<INVALID>")); \
 	c->state = _new; \
 } while (0)
 

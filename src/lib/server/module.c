@@ -155,7 +155,7 @@ static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUS
 		return 0;
 	}
 
-	fprintf(fp, "%s\n", fr_table_str_by_num(rcode_table, mi->code, "<invalid>"));
+	fprintf(fp, "%s\n", fr_table_str_by_value(rcode_table, mi->code, "<invalid>"));
 
 	return 0;
 }
@@ -170,7 +170,7 @@ static int cmd_set_module_status(UNUSED FILE *fp, UNUSED FILE *fp_err, void *ctx
 		return 0;
 	}
 
-	rcode = fr_table_num_by_str(rcode_table, info->argv[1], RLM_MODULE_UNKNOWN);
+	rcode = fr_table_value_by_str(rcode_table, info->argv[1], RLM_MODULE_UNKNOWN);
 	rad_assert(rcode != RLM_MODULE_UNKNOWN);
 
 	mi->code = rcode;

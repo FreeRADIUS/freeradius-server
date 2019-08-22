@@ -40,7 +40,7 @@
 #endif
 #include <talloc.h>
 
-fr_table_sorted_t const fr_connection_states[] = {
+fr_table_num_sorted_t const fr_connection_states[] = {
 	{ "CONNECTED",		FR_CONNECTION_STATE_CONNECTED	},
 	{ "CONNECTING",		FR_CONNECTION_STATE_CONNECTING	},
 	{ "FAILED",		FR_CONNECTION_STATE_FAILED	},
@@ -80,8 +80,8 @@ struct fr_conn {
 #define STATE_TRANSITION(_new) \
 do { \
 	DEBUG4("Changed state %s -> %s", \
-	       fr_table_str_by_num(fr_connection_states, conn->state, "<INVALID>"), \
-	       fr_table_str_by_num(fr_connection_states, _new, "<INVALID>")); \
+	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"), \
+	       fr_table_str_by_value(fr_connection_states, _new, "<INVALID>")); \
 	conn->state = _new; \
 } while (0)
 
@@ -148,8 +148,8 @@ static void connection_state_failed(fr_connection_t *conn, fr_time_t now)
 
 		case FR_CONNECTION_STATE_HALTED:		/* Do nothing */
 			DEBUG4("Changed state %s -> %s",
-			       fr_table_str_by_num(fr_connection_states, prev, "<INVALID>"),
-			       fr_table_str_by_num(fr_connection_states, FR_CONNECTION_STATE_HALTED, "<INVALID>"));
+			       fr_table_str_by_value(fr_connection_states, prev, "<INVALID>"),
+			       fr_table_str_by_value(fr_connection_states, FR_CONNECTION_STATE_HALTED, "<INVALID>"));
 			return;
 
 		default:

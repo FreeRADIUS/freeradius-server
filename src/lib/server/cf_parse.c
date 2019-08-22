@@ -448,7 +448,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		rad_assert(type < FR_TYPE_MAX);
 
 		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",
-			   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"), type);
+			   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"), type);
 		rcode = -1;
 		goto error;
 	}
@@ -1397,7 +1397,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 			if (attribute && !tmpl_is_attr(vpt)) {
 				cf_log_err(cp, "Expected attr got %s",
-					   fr_table_str_by_num(tmpl_type_table, vpt->type, "???"));
+					   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
 				return -1;
 			}
 

@@ -51,7 +51,7 @@ extern char const *fr_packet_codes[FR_RADIUS_MAX_PACKET_CODE];
 
 #define	FR_TUNNEL_FR_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
 extern size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2];
-extern fr_table_sorted_t const fr_request_types[];
+extern fr_table_num_sorted_t const fr_request_types[];
 extern size_t fr_request_types_len;
 extern bool const fr_request_packets[FR_RADIUS_MAX_PACKET_CODE + 1];
 

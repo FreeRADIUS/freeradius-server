@@ -74,7 +74,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "tls.h"
 #include "attrs.h"
 
-fr_table_ordered_t const eap_tls_status_table[] = {
+fr_table_num_ordered_t const eap_tls_status_table[] = {
 	{ "invalid",			EAP_TLS_INVALID			},
 	{ "established",		EAP_TLS_ESTABLISHED		},
 	{ "fail",			EAP_TLS_FAIL			},
@@ -905,11 +905,11 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	switch (status) {
 	case EAP_TLS_INVALID:
 	case EAP_TLS_FAIL:
-		REDEBUG("[eap-tls verify] = %s", fr_table_str_by_num(eap_tls_status_table, status, "<INVALID>"));
+		REDEBUG("[eap-tls verify] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
 		break;
 
 	default:
-		RDEBUG2("[eap-tls verify] = %s", fr_table_str_by_num(eap_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls verify] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
 		break;
 	}
 

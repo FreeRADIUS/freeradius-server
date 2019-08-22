@@ -197,7 +197,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 		rcode = rlm_sql_query(inst, request, &handle, fmt);
 		if (rcode != RLM_SQL_OK) {
 		query_error:
-			RERROR("SQL query failed: %s", fr_table_str_by_num(sql_rcode_description_table, rcode, "<INVALID>"));
+			RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table, rcode, "<INVALID>"));
 
 			ret = -1;
 			goto finish;
@@ -380,7 +380,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	ret = rlm_sql_select_query(inst, request, &handle, query_str);
 	if (ret != RLM_SQL_OK) {
-		RERROR("SQL query failed: %s", fr_table_str_by_num(sql_rcode_description_table, ret, "<INVALID>"));
+		RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table, ret, "<INVALID>"));
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
@@ -411,7 +411,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	 */
 	ret = (inst->driver->sql_fields)(&fields, handle, inst->config);
 	if (ret != RLM_SQL_OK) {
-		RERROR("Failed retrieving field names: %s", fr_table_str_by_num(sql_rcode_description_table, ret, "<INVALID>"));
+		RERROR("Failed retrieving field names: %s", fr_table_str_by_value(sql_rcode_description_table, ret, "<INVALID>"));
 		goto error;
 	}
 	rad_assert(fields);
@@ -1503,7 +1503,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 
 		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
 		TALLOC_FREE(expanded);
-		RDEBUG2("SQL query returned: %s", fr_table_str_by_num(sql_rcode_description_table, sql_ret, "<INVALID>"));
+		RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, sql_ret, "<INVALID>"));
 
 		switch (sql_ret) {
 		/*

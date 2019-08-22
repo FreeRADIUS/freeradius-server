@@ -119,7 +119,7 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 
 /** Maps log categories to message prefixes
  */
-fr_table_ordered_t const fr_log_levels[] = {
+fr_table_num_ordered_t const fr_log_levels[] = {
 	{ "Debug : ",		L_DBG		},
 	{ "Info  : ",		L_INFO		},
 	{ "Warn  : ",		L_WARN		},
@@ -149,7 +149,7 @@ size_t fr_log_levels_len = NUM_ELEMENTS(fr_log_levels);
 
 /** Maps log categories to VT100 style/colour escape sequences
  */
-static fr_table_ordered_t const colours[] = {
+static fr_table_num_ordered_t const colours[] = {
 	{ VTC_BOLD,		L_INFO		},
 	{ VTC_RED,		L_ERR		},
 	{ VTC_BOLD VTC_YELLOW,	L_WARN		},
@@ -230,7 +230,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 	 *	Set colourisation
 	 */
 	if (colourise) {
-		fmt_colour = fr_table_str_by_num(colours, type, NULL);
+		fmt_colour = fr_table_str_by_value(colours, type, NULL);
 		if (!fmt_colour) colourise = false;
 	}
 
@@ -308,7 +308,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		 *	Only print the 'facility' if we're not colourising the log messages
 		 *	and this isn't syslog.
 		 */
-		if (!log->colourise) fmt_facility = fr_table_str_by_num(fr_log_levels, type, ": ");
+		if (!log->colourise) fmt_facility = fr_table_str_by_value(fr_log_levels, type, ": ");
 
 		/*
 		 *	Add an additional prefix to highlight that this is a bad message
@@ -317,7 +317,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		switch (type) {
 		case L_DBG_WARN:
 		case L_DBG_ERR:
-			fmt_type = fr_table_str_by_num(fr_log_levels, type, NULL);
+			fmt_type = fr_table_str_by_value(fr_log_levels, type, NULL);
 			break;
 
 		default:

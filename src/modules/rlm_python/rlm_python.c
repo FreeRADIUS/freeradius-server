@@ -280,14 +280,14 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		if (pairsize == 3) {
 			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
 			if (PyString_CheckExact(pOp)) {
-				if (!(op = fr_table_num_by_str(fr_tokens_table, PyString_AsString(pOp), 0))) {
+				if (!(op = fr_table_value_by_str(fr_tokens_table, PyString_AsString(pOp), 0))) {
 					ERROR("%s - Invalid operator %s:%s %s %s, falling back to '='",
 					      funcname, list_name, s1, PyString_AsString(pOp), s2);
 					op = T_OP_EQ;
 				}
 			} else if (PyInt_Check(pOp)) {
 				op	= PyInt_AsLong(pOp);
-				if (!fr_table_str_by_num(fr_tokens_table, op, NULL)) {
+				if (!fr_table_str_by_value(fr_tokens_table, op, NULL)) {
 					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
 					op = T_OP_EQ;
@@ -325,10 +325,10 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		vp->op = op;
 		if (fr_pair_value_from_str(vp, s2, -1, '\0', false) < 0) {
 			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
-			      fr_table_str_by_num(fr_tokens_table, op, "="), s2);
+			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		} else {
 			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
-			      fr_table_str_by_num(fr_tokens_table, op, "="), s2);
+			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		}
 
 		radius_pairmove(current, vps, vp, false);

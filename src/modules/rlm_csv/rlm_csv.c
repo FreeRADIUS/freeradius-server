@@ -287,7 +287,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 
 	default:
 		cf_log_err(map->ci, "Left hand side of map must be an attribute or list, not a %s",
-			   fr_table_str_by_num(tmpl_type_table, map->lhs->type, "<INVALID>"));
+			   fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
 		return -1;
 	}
 
@@ -309,7 +309,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 
 	default:
 		cf_log_err(map->ci, "Right hand side of map must be a field name, not a %s",
-			   fr_table_str_by_num(tmpl_type_table, map->rhs->type, "<INVALID>"));
+			   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "<INVALID>"));
 		return -1;
 	}
 
@@ -329,7 +329,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 
 	default:
 		cf_log_err(map->ci, "Operator \"%s\" not allowed for CSV mappings",
-			   fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"));
+			   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 		return -1;
 	}
 
@@ -398,7 +398,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (!inst->data_type_name || !*inst->data_type_name) {
 		inst->data_type = FR_TYPE_STRING;
 	} else {
-		inst->data_type = fr_table_num_by_str(fr_value_box_type_table, inst->data_type_name, FR_TYPE_INVALID);
+		inst->data_type = fr_table_value_by_str(fr_value_box_type_table, inst->data_type_name, FR_TYPE_INVALID);
 		if (!inst->data_type) {
 			cf_log_err(conf, "Invalid data_type '%s'", inst->data_type_name);
 			return -1;

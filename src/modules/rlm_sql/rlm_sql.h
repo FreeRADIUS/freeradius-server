@@ -150,9 +150,9 @@ typedef struct {
 								//!< when log strings need to be copied.
 } rlm_sql_handle_t;
 
-extern fr_table_sorted_t const sql_rcode_description_table[];
+extern fr_table_num_sorted_t const sql_rcode_description_table[];
 extern size_t sql_rcode_description_table_len;
-extern fr_table_sorted_t const sql_rcode_table[];
+extern fr_table_num_sorted_t const sql_rcode_table[];
 extern size_t sql_rcode_table_len;
 
 /*

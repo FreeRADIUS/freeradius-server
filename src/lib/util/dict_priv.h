@@ -85,7 +85,7 @@ extern bool dict_initialised;
 extern char *dict_dir_default;
 extern TALLOC_CTX *dict_ctx;
 
-extern fr_table_ordered_t const date_precision_table[];
+extern fr_table_num_ordered_t const date_precision_table[];
 extern size_t date_precision_table_len;
 
 fr_dict_t		*dict_alloc(TALLOC_CTX *ctx);

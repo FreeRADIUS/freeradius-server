@@ -217,7 +217,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 
 	if (parent->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_num(fr_value_box_type_table, parent->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
 		return -1;
 	}
 

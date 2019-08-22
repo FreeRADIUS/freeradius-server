@@ -64,7 +64,7 @@ static uint32_t	sigtran_instances = 0;
 
 unsigned int __hack_opc, __hack_dpc;
 
-static fr_table_sorted_t const m3ua_traffic_mode_table[] = {
+static fr_table_num_sorted_t const m3ua_traffic_mode_table[] = {
 	{ "broadcast", 3 },
 	{ "loadshare", 2 },
 	{ "override",  1 }
@@ -334,7 +334,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Translate traffic mode string to integer
 	 */
-	inst->conn_conf.m3ua_traffic_mode = fr_table_num_by_str(m3ua_traffic_mode_table,
+	inst->conn_conf.m3ua_traffic_mode = fr_table_value_by_str(m3ua_traffic_mode_table,
 						       inst->conn_conf.m3ua_traffic_mode_str, -1);
 	if (inst->conn_conf.m3ua_traffic_mode < 0) {
 		cf_log_err(conf, "Invalid 'm3ua_traffic_mode' value \"%s\", expected 'override', "

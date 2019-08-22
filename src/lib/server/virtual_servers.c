@@ -927,7 +927,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	if (!cs) {
 		RDEBUG2("Empty 'authenticate' section in virtual server \"%s\".  Using default return value (%s)",
 			cf_section_name2(request->server_cs),
-			fr_table_str_by_num(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"));
+			fr_table_str_by_value(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"));
 		return RLM_MODULE_REJECT;
 	}
 

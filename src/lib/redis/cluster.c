@@ -262,7 +262,7 @@ struct fr_redis_cluster {
 	pthread_mutex_t		mutex;			//!< Mutex to synchronise cluster operations.
 };
 
-fr_table_sorted_t const fr_redis_cluster_rcodes_table[] = {
+fr_table_num_sorted_t const fr_redis_cluster_rcodes_table[] = {
 	{ "bad-input",		FR_REDIS_CLUSTER_RCODE_BAD_INPUT	},
 	{ "failed",		FR_REDIS_CLUSTER_RCODE_FAILED		},
 	{ "ignored",		FR_REDIS_CLUSTER_RCODE_IGNORED		},
@@ -774,7 +774,7 @@ static int cluster_map_node_validate(redisReply *node, int map_idx, int node_idx
 	if (node->type != REDIS_REPLY_ARRAY) {
 		fr_strerror_printf("Cluster map %i node %i is wrong type, expected array got %s",
 				   map_idx, node_idx,
-				   fr_table_str_by_num(redis_reply_types, node->element[1]->type, "<UNKNOWN>"));
+				   fr_table_str_by_value(redis_reply_types, node->element[1]->type, "<UNKNOWN>"));
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 
@@ -799,7 +799,7 @@ static int cluster_map_node_validate(redisReply *node, int map_idx, int node_idx
 	if (node->element[0]->type != REDIS_REPLY_STRING) {
 		fr_strerror_printf("Cluster map %i node %i ip address is wrong type, expected string got %s",
 				   map_idx, node_idx,
-				   fr_table_str_by_num(redis_reply_types, node->element[0]->type, "<UNKNOWN>"));
+				   fr_table_str_by_value(redis_reply_types, node->element[0]->type, "<UNKNOWN>"));
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 
@@ -810,7 +810,7 @@ static int cluster_map_node_validate(redisReply *node, int map_idx, int node_idx
 	if (node->element[1]->type != REDIS_REPLY_INTEGER) {
 		fr_strerror_printf("Cluster map %i node %i port is wrong type, expected integer got %s",
 				   map_idx, node_idx,
-				   fr_table_str_by_num(redis_reply_types, node->element[1]->type, "<UNKNOWN>"));
+				   fr_table_str_by_value(redis_reply_types, node->element[1]->type, "<UNKNOWN>"));
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 
@@ -875,7 +875,7 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		fr_strerror_printf("Bad response to \"cluster slots\" command, expected array got %s",
-				   fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+				   fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 
@@ -897,7 +897,7 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
 		map = reply->element[i];
 		if (map->type != REDIS_REPLY_ARRAY) {
 			fr_strerror_printf("Cluster map %zu is wrong type, expected array got %s",
-				   	   i, fr_table_str_by_num(redis_reply_types, map->type, "<UNKNOWN>"));
+				   	   i, fr_table_str_by_value(redis_reply_types, map->type, "<UNKNOWN>"));
 		error:
 			fr_redis_reply_free(&reply);
 			return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
@@ -914,7 +914,7 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
 		 */
 		if (map->element[0]->type != REDIS_REPLY_INTEGER) {
 			fr_strerror_printf("Cluster map %zu key slot start is wrong type, expected integer got %s",
-					   i, fr_table_str_by_num(redis_reply_types, map->element[0]->type, "<UNKNOWN>"));
+					   i, fr_table_str_by_value(redis_reply_types, map->element[0]->type, "<UNKNOWN>"));
 			goto error;
 		}
 
@@ -935,7 +935,7 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
 		 */
 		if (map->element[1]->type != REDIS_REPLY_INTEGER) {
 			fr_strerror_printf("Cluster map %zu key slot end is wrong type, expected integer got %s",
-					   i, fr_table_str_by_num(redis_reply_types, map->element[1]->type, "<UNKNOWN>"));
+					   i, fr_table_str_by_value(redis_reply_types, map->element[1]->type, "<UNKNOWN>"));
 			goto error;
 		}
 
@@ -1261,7 +1261,7 @@ static fr_redis_cluster_rcode_t cluster_node_ping(REQUEST *request, fr_redis_clu
 	if (reply->type != REDIS_REPLY_STATUS) {
 		RERROR("[%i] Bad PING response from %s:%i, expected status got %s",
 		       node->id, node->name, node->addr.port,
-		       fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+		       fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		fr_redis_reply_free(&reply);
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
@@ -1506,7 +1506,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 
 		default:
 			ERROR("%s - [%i] Unexpected reply of type %s to AUTH", log_prefix, node->id,
-			      fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			      fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 			goto error;
 		}
 	}
@@ -1537,7 +1537,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 
 		default:
 			ERROR("%s - [%i] Unexpected reply of type %s, to SELECT", log_prefix, node->id,
-			      fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			      fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 			goto error;
 		}
 	}
@@ -1830,7 +1830,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 	if (*reply) fr_redis_reply_print(L_DBG_LVL_3, *reply, request, 0);
 
- 	RDEBUG2("[%i] <<< Returned: %s", state->node->id, fr_table_str_by_num(redis_rcodes, status, "<UNKNOWN>"));
+ 	RDEBUG2("[%i] <<< Returned: %s", state->node->id, fr_table_str_by_value(redis_rcodes, status, "<UNKNOWN>"));
 
 	/*
 	 *	Caller indicated we should close the connection

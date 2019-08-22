@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 
-static fr_table_sorted_t const allowed_return_codes[] = {
+static fr_table_num_sorted_t const allowed_return_codes[] = {
 	{ "fail",       1 },
 	{ "handled",    1 },
 	{ "invalid",    1 },
@@ -74,7 +74,7 @@ next:
 	case COND_TYPE_EXISTS:
 		rad_assert(c->data.vpt != NULL);
 		if (c->cast) {
-			len = snprintf(p, end - p, "<%s>", fr_table_str_by_num(fr_value_box_type_table,
+			len = snprintf(p, end - p, "<%s>", fr_table_str_by_value(fr_value_box_type_table,
 								      c->cast->type, "??"));
 			p += len;
 		}
@@ -89,7 +89,7 @@ next:
 		*(p++) = '[';	/* for extra-clear debugging */
 #endif
 		if (c->cast) {
-			len = snprintf(p, end - p, "<%s>", fr_table_str_by_num(fr_value_box_type_table, c->cast->type, "??"));
+			len = snprintf(p, end - p, "<%s>", fr_table_str_by_value(fr_value_box_type_table, c->cast->type, "??"));
 			RETURN_IF_TRUNCATED(p, len, end - p);
 		}
 
@@ -314,7 +314,7 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 	q = p;
 	while (*q && *q != '>') q++;
 
-	cast = fr_table_num_by_substr(fr_value_box_type_table, p, q - p, FR_TYPE_INVALID);
+	cast = fr_table_value_by_substr(fr_value_box_type_table, p, q - p, FR_TYPE_INVALID);
 	if (cast == FR_TYPE_INVALID) {
 		*error = "Invalid data type in cast";
 		*pda = NULL;
@@ -1461,7 +1461,7 @@ done:
 			} else {
 				DEBUG3("OPTIMIZING (%s %s %s) --> FALSE",
 				       c->data.map->lhs->name,
-				       fr_table_str_by_num(fr_tokens_table, c->data.map->op, "??"),
+				       fr_table_str_by_value(fr_tokens_table, c->data.map->op, "??"),
 				       c->data.map->rhs->name);
 				c->type = COND_TYPE_FALSE;
 			}
@@ -1617,7 +1617,7 @@ done:
 					break;
 				}
 
-				rcode = fr_table_num_by_str(allowed_return_codes,
+				rcode = fr_table_value_by_str(allowed_return_codes,
 						   c->data.vpt->name, 0);
 				if (!rcode) {
 					return_0("Expected a module return code");

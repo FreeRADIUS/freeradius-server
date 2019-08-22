@@ -71,7 +71,7 @@ typedef enum {
 	FR_REDIS_CLUSTER_RCODE_BAD_INPUT	= -3	//!< Validation error.
 } fr_redis_cluster_rcode_t;
 
-extern fr_table_sorted_t const fr_redis_cluster_rcodes_table[];
+extern fr_table_num_sorted_t const fr_redis_cluster_rcodes_table[];
 extern size_t fr_redis_cluster_rcodes_table_len;
 
 fr_redis_cluster_rcode_t fr_redis_cluster_remap(REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn);

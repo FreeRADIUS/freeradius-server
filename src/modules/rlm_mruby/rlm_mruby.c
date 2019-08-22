@@ -353,13 +353,13 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 				REDEBUG("Invalid type for operator, expected string, falling back to =");
 			} else {
 				char const *cop = mrb_str_to_cstr(mrb, mrb_ary_entry(tuple, 1));
-				if (!(op = fr_table_num_by_str(fr_tokens_table, cop, 0))) {
+				if (!(op = fr_table_value_by_str(fr_tokens_table, cop, 0))) {
 					REDEBUG("Invalid operator: %s, falling back to =", cop);
 					op = T_OP_EQ;
 				}
 			}
 		}
-		DEBUG("%s: %s %s %s", function_name, ckey, fr_table_str_by_num(fr_tokens_table, op, "="), cval);
+		DEBUG("%s: %s %s %s", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, ckey,
 					&(vp_tmpl_rules_t){
@@ -386,9 +386,9 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 
 		vp->op = op;
 		if (fr_pair_value_from_str(vp, cval, -1, '\0', false) < 0) {
-			REDEBUG("%s: %s %s %s failed", function_name, ckey, fr_table_str_by_num(fr_tokens_table, op, "="), cval);
+			REDEBUG("%s: %s %s %s failed", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
 		} else {
-			DEBUG("%s: %s %s %s OK", function_name, ckey, fr_table_str_by_num(fr_tokens_table, op, "="), cval);
+			DEBUG("%s: %s %s %s OK", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
 		}
 
 		radius_pairmove(request, vps, vp, false);

@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <ctype.h>
 #include "rest.h"
 
-static fr_table_sorted_t const http_negotiation_table[] = {
+static fr_table_num_sorted_t const http_negotiation_table[] = {
 
 	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
 	{ "1.1",	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
@@ -208,7 +208,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *threa
 	uri_len = rest_uri_build(&uri, instance, request, section->uri);
 	if (uri_len <= 0) return -1;
 
-	RDEBUG2("Sending HTTP %s to \"%s\"", fr_table_str_by_num(http_method_table, section->method, NULL), uri);
+	RDEBUG2("Sending HTTP %s to \"%s\"", fr_table_str_by_value(http_method_table, section->method, NULL), uri);
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
@@ -348,7 +348,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	/*
 	 *  Extract the method from the start of the format string (if there is one)
 	 */
-	method = fr_table_num_by_substr(http_method_table, p, -1, REST_HTTP_METHOD_UNKNOWN);
+	method = fr_table_value_by_substr(http_method_table, p, -1, REST_HTTP_METHOD_UNKNOWN);
 	if (method != REST_HTTP_METHOD_UNKNOWN) {
 		section->method = method;
 		p += strlen(http_method_table[method].name);
@@ -404,7 +404,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 
 	RDEBUG2("Sending HTTP %s to \"%s\"",
 	       (section->method == REST_HTTP_METHOD_CUSTOM) ?
-	       	section->method_str : fr_table_str_by_num(http_method_table, section->method, NULL),
+	       	section->method_str : fr_table_str_by_value(http_method_table, section->method, NULL),
 	       uri);
 
 	/*
@@ -889,7 +889,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	if ((config->auth != REST_HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
 		cf_log_err(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
 			   "configuration, then recompile this module",
-			   fr_table_str_by_num(http_auth_table, config->auth, "<INVALID>"));
+			   fr_table_str_by_value(http_auth_table, config->auth, "<INVALID>"));
 
 		return -1;
 	}
@@ -901,7 +901,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 			     "was set");
 		config->auth = REST_HTTP_AUTH_BASIC;
 	}
-	config->method = fr_table_num_by_str(http_method_table, config->method_str, REST_HTTP_METHOD_CUSTOM);
+	config->method = fr_table_value_by_str(http_method_table, config->method_str, REST_HTTP_METHOD_CUSTOM);
 
 	/*
 	 *  We don't have any custom user data, so we need to select the right encoder based
@@ -911,9 +911,9 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	 *  and content_types.
 	 */
 	if (!config->data) {
-		config->body = fr_table_num_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+		config->body = fr_table_value_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		if (config->body == REST_HTTP_BODY_UNKNOWN) {
-			config->body = fr_table_num_by_str(http_content_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+			config->body = fr_table_value_by_str(http_content_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
 		if (config->body == REST_HTTP_BODY_UNKNOWN) {
@@ -950,16 +950,16 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 
 		config->body = REST_HTTP_BODY_CUSTOM_XLAT;
 
-		body = fr_table_num_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+		body = fr_table_value_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		if (body != REST_HTTP_BODY_UNKNOWN) {
-			config->body_str = fr_table_str_by_num(http_content_type_table, body, config->body_str);
+			config->body_str = fr_table_str_by_value(http_content_type_table, body, config->body_str);
 		}
 	}
 
 	if (config->force_to_str) {
-		config->force_to = fr_table_num_by_str(http_body_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
+		config->force_to = fr_table_value_by_str(http_body_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
 		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {
-			config->force_to = fr_table_num_by_str(http_content_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
+			config->force_to = fr_table_value_by_str(http_content_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
 		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {

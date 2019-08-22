@@ -202,7 +202,7 @@ int		_cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx);
 /*
  *	Validation
  */
-int		cf_pair_in_table(int32_t *out, fr_table_sorted_t const *table, size_t table_len, CONF_PAIR *cp);
+int		cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t table_len, CONF_PAIR *cp);
 
 /*
  *	Error logging

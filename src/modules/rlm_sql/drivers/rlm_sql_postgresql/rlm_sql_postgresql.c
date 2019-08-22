@@ -193,7 +193,7 @@ static sql_rcode_t sql_classify_error(rlm_sql_postgres_t *inst, ExecStatusType s
 	}
 
 	DEBUG2("sqlstate %s matched %s: %s (%s)", error_code,
-	       entry->sql_state, entry->meaning, fr_table_str_by_num(sql_rcode_table, entry->rcode, "<DEFAULT>"));
+	       entry->sql_state, entry->meaning, fr_table_str_by_value(sql_rcode_table, entry->rcode, "<DEFAULT>"));
 
 	/*
 	 *	WARNING error class.

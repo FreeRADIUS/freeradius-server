@@ -25,7 +25,7 @@
 /** Strings for L4 protocols
  *
  */
-fr_table_sorted_t const fr_net_ip_proto_table[] = {
+fr_table_num_sorted_t const fr_net_ip_proto_table[] = {
 	{ "TCP",	IPPROTO_TCP },
 	{ "UDP",	IPPROTO_UDP }
 };
@@ -34,7 +34,7 @@ size_t fr_net_ip_proto_table_len = NUM_ELEMENTS(fr_net_ip_proto_table);
 /** Strings for socket types
  *
  */
-fr_table_sorted_t const fr_net_sock_type_table[] = {
+fr_table_num_sorted_t const fr_net_sock_type_table[] = {
 	{ "TCP",	SOCK_STREAM	},
 	{ "UDP",	SOCK_DGRAM	}
 };
@@ -43,7 +43,7 @@ size_t fr_net_sock_type_table_len = NUM_ELEMENTS(fr_net_sock_type_table);
 /** Strings for address families
  *
  */
-fr_table_sorted_t const fr_net_af_table[] = {
+fr_table_num_sorted_t const fr_net_af_table[] = {
 	{ "IPv4",	AF_INET		},
 	{ "IPv6",	AF_INET6	}
 };

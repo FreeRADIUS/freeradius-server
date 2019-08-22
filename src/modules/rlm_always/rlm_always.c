@@ -62,7 +62,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Convert the rcode string to an int
 	 */
-	inst->rcode = fr_table_num_by_str(mod_rcode_table, inst->rcode_str, RLM_MODULE_UNKNOWN);
+	inst->rcode = fr_table_value_by_str(mod_rcode_table, inst->rcode_str, RLM_MODULE_UNKNOWN);
 	if (inst->rcode == RLM_MODULE_UNKNOWN) {
 		cf_log_err(conf, "rcode value \"%s\" is invalid", inst->rcode_str);
 		return -1;

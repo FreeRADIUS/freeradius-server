@@ -55,7 +55,7 @@ RCSID("$Id$")
 #  define EVENT_DEBUG(...)
 #endif
 
-static fr_table_sorted_t const kevent_filter_table[] = {
+static fr_table_num_sorted_t const kevent_filter_table[] = {
 #ifdef EVFILT_AIO
 	{ "EVFILT_AIO",		EVFILT_AIO },
 #endif
@@ -216,7 +216,7 @@ static fr_event_func_map_t vnode_func_map[] = {
 	{ 0 }
 };
 
-static fr_table_sorted_t const fr_event_fd_type_table[] = {
+static fr_table_num_sorted_t const fr_event_fd_type_table[] = {
 	{ "directory",		FR_EVENT_FD_DIRECTORY },
 	{ "file",		FR_EVENT_FD_FILE },
 	{ "pcap",		FR_EVENT_FD_PCAP },
@@ -466,8 +466,8 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 				if (!(map->type & ef->type)) {
 					fr_strerror_printf("kevent %s (%s), can't be applied to fd of type %s",
 							   map->name,
-							   fr_table_str_by_num(kevent_filter_table, map->filter, "<INVALID>"),
-							   fr_table_str_by_num(fr_event_fd_type_table,
+							   fr_table_str_by_value(kevent_filter_table, map->filter, "<INVALID>"),
+							   fr_table_str_by_value(fr_event_fd_type_table,
 								      map->type, "<INVALID>"));
 					return -1;
 				}
@@ -505,7 +505,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		     		return -1;
 		     	}
 		     	EVENT_DEBUG("\tEV_SET EV_ADD filter %s (%i), flags %i, fflags %i",
-		     		    fr_table_str_by_num(kevent_filter_table, map->filter, "<INVALID>"),
+		     		    fr_table_str_by_value(kevent_filter_table, map->filter, "<INVALID>"),
 		     		    map->filter, map->flags, current_fflags);
 			EV_SET(add_p++, ef->fd, map->filter, map->flags, current_fflags, 0, ef);
 
@@ -514,7 +514,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		 */
 		} else if (!has_current_func && has_prev_func) {
 		     	EVENT_DEBUG("\tEV_SET EV_DELETE filter %s (%i), flags %i, fflags %i",
-		     		    fr_table_str_by_num(kevent_filter_table, map->filter, "<INVALID>"),
+		     		    fr_table_str_by_value(kevent_filter_table, map->filter, "<INVALID>"),
 		     		    map->filter, EV_DELETE, 0, 0);
 			EV_SET(out++, ef->fd, map->filter, EV_DELETE, 0, 0, 0);
 		}

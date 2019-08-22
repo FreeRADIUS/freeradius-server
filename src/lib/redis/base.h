@@ -68,9 +68,9 @@ static inline void fr_redis_pipeline_free(redisReply *reply[], size_t num)
 	for (i = 0; i < num; i++) fr_redis_reply_free(&(reply[i]));
 }
 
-extern fr_table_sorted_t const redis_reply_types[];
+extern fr_table_num_sorted_t const redis_reply_types[];
 extern size_t redis_reply_types_len;
-extern fr_table_sorted_t const redis_rcodes[];
+extern fr_table_num_sorted_t const redis_rcodes[];
 extern size_t redis_rcodes_len;
 
 /** Codes are ordered inversely by priority

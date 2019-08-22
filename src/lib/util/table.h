@@ -34,21 +34,44 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
-/** An element in a lexicographically sorted array of name to number mappings
+/** An element in a table
  *
  */
 typedef struct {
-	char const	*name;
-	int32_t		number;
-} fr_table_sorted_t;
+	char const		*name;
+} fr_table_t;
 
-/** An element in an arbitrarily ordered array of name to number mappings
+/** An element in a lexicographically sorted array of name to num mappings
  *
  */
 typedef struct {
-	char const	*name;
-	int32_t		number;
-} fr_table_ordered_t;
+	char const		*name;
+	int			value;
+} fr_table_num_sorted_t;
+
+/** An element in an arbitrarily ordered array of name to num mappings
+ *
+ */
+typedef struct {
+	char const		*name;
+	int			value;
+} fr_table_num_ordered_t;
+
+/** An element in a lexicographically sorted array of name to ptr mappings
+ *
+ */
+typedef struct {
+	char const		*name;
+	void const		*value;
+} fr_table_ptr_sorted_t;
+
+/** An element in an arbitrarily ordered array of name to ptr mappings
+ *
+ */
+typedef struct {
+	char const		*name;
+	void const		*value;
+} fr_table_ptr_ordered_t;
 
 /** Macro to use as dflt
  *
@@ -56,13 +79,19 @@ typedef struct {
 #define NAME_NUMBER_NOT_FOUND	INT32_MIN
 
 
-int		fr_table_sorted_num_by_str(fr_table_sorted_t const *table, size_t table_len,
+int		fr_table_sorted_num_by_str(fr_table_num_sorted_t const *table, size_t table_len,
 					   char const *name, int def);
 
-int		fr_table_ordered_num_by_str(fr_table_ordered_t const *table, size_t table_len,
+int		fr_table_ordered_num_by_str(fr_table_num_ordered_t const *table, size_t table_len,
 				 	    char const *name, int def);
 
-/** Convert a string to an integer using a sorted or ordered table
+void 		*fr_table_sorted_ptr_by_str(fr_table_ptr_sorted_t const *table, size_t table_len,
+					    char const *name, void const *def);
+
+void		*fr_table_ordered_ptr_by_str(fr_table_ptr_ordered_t const *table, size_t table_len,
+				 	     char const *name, void const *def);
+
+/** Convert a string to a value using a sorted or ordered table
  *
  * @param[in] _table	to search in.
  * @param[in] _name	to resolve to a number.
@@ -71,21 +100,31 @@ int		fr_table_ordered_num_by_str(fr_table_ordered_t const *table, size_t table_l
  *	- _def if name matched no entries in the table.
  *	- the numeric value of the matching entry.
  */
-#define fr_table_num_by_str(_table, _name, _def) \
+#define fr_table_value_by_str(_table, _name, _def) \
 _Generic((_table), \
-	 fr_table_sorted_t const *	:	fr_table_sorted_num_by_str,	\
-	 fr_table_ordered_t const *	:	fr_table_ordered_num_by_str,	\
-	 fr_table_sorted_t *		:	fr_table_sorted_num_by_str,	\
-	 fr_table_ordered_t *		:	fr_table_ordered_num_by_str	\
+	 fr_table_num_sorted_t const *		:	fr_table_sorted_num_by_str,	\
+	 fr_table_num_ordered_t const *		:	fr_table_ordered_num_by_str,	\
+	 fr_table_num_sorted_t *		:	fr_table_sorted_num_by_str,	\
+	 fr_table_num_ordered_t *		:	fr_table_ordered_num_by_str,	\
+	 fr_table_ptr_sorted_t const *		:	fr_table_sorted_ptr_by_str,	\
+	 fr_table_ptr_ordered_t const *		:	fr_table_ordered_ptr_by_str,	\
+	 fr_table_ptr_sorted_t *		:	fr_table_sorted_ptr_by_str,	\
+	 fr_table_ptr_ordered_t *		:	fr_table_ordered_ptr_by_str	\
 )(_table, _table ## _len, _name, _def)
 
-int		fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_len,
+int		fr_table_sorted_num_by_substr(fr_table_num_sorted_t const *table, size_t table_len,
 					      char const *name, ssize_t name_len, int def);
 
-int		fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table_len,
+int		fr_table_ordered_num_by_substr(fr_table_num_ordered_t const *table, size_t table_len,
 				  	       char const *name, ssize_t name_len, int def);
 
-/** Convert a partial string to an integer using an ordered or sorted table
+void		*fr_table_sorted_ptr_by_substr(fr_table_ptr_sorted_t const *table, size_t table_len,
+					       char const *name, ssize_t name_len, void const *def);
+
+void		*fr_table_ordered_ptr_by_substr(fr_table_ptr_ordered_t const *table, size_t table_len,
+				  	        char const *name, ssize_t name_len, void const *def);
+
+/** Convert a partial string to a value using an ordered or sorted table
  *
  * @param[in] _table	to search in.
  * @param[in] _name	to resolve to a number.
@@ -97,19 +136,29 @@ int		fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t tabl
  *	- _def if name matched no entries in the table.
  *	- the numeric value of the matching entry.
  */
-#define fr_table_num_by_substr(_table, _name, _name_len, _def) \
+#define fr_table_value_by_substr(_table, _name, _name_len, _def) \
 _Generic((_table), \
-	 fr_table_sorted_t const *	:	fr_table_sorted_num_by_substr,	\
-	 fr_table_ordered_t const *	:	fr_table_ordered_num_by_substr,	\
-	 fr_table_sorted_t *		:	fr_table_sorted_num_by_substr,	\
-	 fr_table_ordered_t *		:	fr_table_ordered_num_by_substr	\
+	 fr_table_num_sorted_t const *		:	fr_table_sorted_num_by_substr,	\
+	 fr_table_num_ordered_t const *		:	fr_table_ordered_num_by_substr,	\
+	 fr_table_num_sorted_t *		:	fr_table_sorted_num_by_substr,	\
+	 fr_table_num_ordered_t *		:	fr_table_ordered_num_by_substr,	\
+	 fr_table_ptr_sorted_t const *		:	fr_table_sorted_ptr_by_substr,	\
+	 fr_table_ptr_ordered_t const *		:	fr_table_ordered_ptr_by_substr,	\
+	 fr_table_ptr_sorted_t *		:	fr_table_sorted_ptr_by_substr,	\
+	 fr_table_ptr_ordered_t *		:	fr_table_ordered_ptr_by_substr	\
 )(_table, _table ## _len, _name, _name_len, _def)
 
-int	fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t table_len,
-					      char const *name, size_t name_len, int def);
+int	fr_table_sorted_num_by_longest_prefix(fr_table_num_sorted_t const *table, size_t table_len,
+					      char const *name, ssize_t name_len, int def);
 
-int	fr_table_ordered_num_by_longest_prefix(fr_table_ordered_t const *table, size_t table_len,
-					       char const *name, size_t name_len, int def);
+int	fr_table_ordered_num_by_longest_prefix(fr_table_num_ordered_t const *table, size_t table_len,
+					       char const *name, ssize_t name_len, int def);
+
+void 	*fr_table_sorted_ptr_by_longest_prefix(fr_table_ptr_sorted_t const *table, size_t table_len,
+					       char const *name, ssize_t name_len, void const *def);
+
+void	*fr_table_ordered_ptr_by_longest_prefix(fr_table_ptr_ordered_t const *table, size_t table_len,
+						char const *name, ssize_t name_len, void const *def);
 
 /** Find the longest string match using a sorted or ordered table
  *
@@ -119,18 +168,28 @@ int	fr_table_ordered_num_by_longest_prefix(fr_table_ordered_t const *table, size
  * @param[in] _def	Default value if no entry matched.
  * @return
  *	- _def if name matched no entries in the table.
- *	- the numeric value of the matching entry.
+ *	- the value of the matching entry.
  */
 #define fr_table_num_by_longest_prefix(_table, _name, _name_len, _def) \
 _Generic((_table), \
-	 fr_table_sorted_t const *	:	fr_table_sorted_num_by_longest_prefix,	\
-	 fr_table_ordered_t const *	:	fr_table_ordered_num_by_longest_prefix,	\
-	 fr_table_sorted_t *		:	fr_table_sorted_num_by_longest_prefix,	\
-	 fr_table_ordered_t *		:	fr_table_ordered_num_by_longest_prefix	\
+	 fr_table_num_sorted_t const *		:	fr_table_sorted_num_by_longest_prefix,	\
+	 fr_table_num_ordered_t const *		:	fr_table_ordered_num_by_longest_prefix,	\
+	 fr_table_num_sorted_t *		:	fr_table_sorted_num_by_longest_prefix,	\
+	 fr_table_num_ordered_t *		:	fr_table_ordered_num_by_longest_prefix,	\
+	 fr_table_ptr_sorted_t const *		:	fr_table_sorted_ptr_by_longest_prefix,	\
+	 fr_table_ptr_ordered_t const *		:	fr_table_ordered_ptr_by_longest_prefix,	\
+	 fr_table_ptr_sorted_t *		:	fr_table_sorted_ptr_by_longest_prefix,	\
+	 fr_table_ptr_ordered_t *		:	fr_table_ordered_ptr_by_longest_prefix	\
 )(_table, _table ## _len, _name, _name_len, _def)
 
-char const	*_fr_table_str_by_num(fr_table_ordered_t const *table, size_t table_len,
-				      int number, char const *def);
+char const	*fr_table_ordered_str_by_num(fr_table_num_ordered_t const *table, size_t table_len,
+					     int number, char const *def);
+char const	*fr_table_sorted_str_by_num(fr_table_num_sorted_t const *table, size_t table_len,
+					    int number, char const *def);
+char const	*fr_table_ordered_str_by_ptr(fr_table_ptr_ordered_t const *table, size_t table_len,
+					     void const *ptr, char const *def);
+char const	*fr_table_sorted_str_by_ptr(fr_table_ptr_sorted_t const *table, size_t table_len,
+					    void const *ptr, char const *def);
 
 /** Convert an integer to a string
  *
@@ -141,13 +200,17 @@ char const	*_fr_table_str_by_num(fr_table_ordered_t const *table, size_t table_l
  *	- _def if _number name matched no entries in the table.
  *	- the string value of the matching entry.
  */
-#define fr_table_str_by_num(_table, _number, _def) \
+#define fr_table_str_by_value(_table, _number, _def) \
 _Generic((_table), \
-	 fr_table_sorted_t const *	:	_fr_table_str_by_num,	\
-	 fr_table_ordered_t const *	:	_fr_table_str_by_num,	\
-	 fr_table_sorted_t *		:	_fr_table_str_by_num,	\
-	 fr_table_ordered_t *		:	_fr_table_str_by_num	\
-)((fr_table_ordered_t const *)_table, _table ## _len, _number, _def)
+	 fr_table_num_sorted_t const *		:	fr_table_sorted_str_by_num,	\
+	 fr_table_num_ordered_t const *		:	fr_table_ordered_str_by_num,	\
+	 fr_table_num_sorted_t *		:	fr_table_sorted_str_by_num,	\
+	 fr_table_num_ordered_t *		:	fr_table_ordered_str_by_num,	\
+	 fr_table_ptr_sorted_t const *		:	fr_table_sorted_str_by_ptr,	\
+	 fr_table_ptr_ordered_t const *		:	fr_table_ordered_str_by_ptr,	\
+	 fr_table_ptr_sorted_t *		:	fr_table_sorted_str_by_ptr,	\
+	 fr_table_ptr_ordered_t *		:	fr_table_ordered_str_by_ptr	\
+)(_table, _table ## _len, _number, _def)
 
 #ifdef __cplusplus
 }

@@ -58,7 +58,7 @@ typedef enum {
 /** Public key types
  *
  */
-static fr_table_sorted_t const pkey_types[] = {
+static fr_table_num_sorted_t const pkey_types[] = {
 	{ "DH",		EVP_PKEY_DH		},
 	{ "DSA",	EVP_PKEY_DSA		},
 	{ "EC",		EVP_PKEY_EC		},
@@ -69,7 +69,7 @@ static size_t pkey_types_len = NUM_ELEMENTS(pkey_types);
 /** The type of padding used
  *
  */
-static fr_table_sorted_t const cipher_rsa_padding[] = {
+static fr_table_num_sorted_t const cipher_rsa_padding[] = {
 	{ "none",	RSA_NO_PADDING		},
 	{ "oaep",	RSA_PKCS1_OAEP_PADDING	},		/* PKCS OAEP padding */
 	{ "pkcs",	RSA_PKCS1_PADDING	},		/* PKCS 1.5 */
@@ -78,7 +78,7 @@ static fr_table_sorted_t const cipher_rsa_padding[] = {
 };
 static size_t cipher_rsa_padding_len = NUM_ELEMENTS(cipher_rsa_padding);
 
-static fr_table_sorted_t const cipher_type[] = {
+static fr_table_num_sorted_t const cipher_type[] = {
 	{ "rsa",	RLM_CIPHER_TYPE_RSA	}
 };
 static size_t cipher_type_len = NUM_ELEMENTS(cipher_type);
@@ -227,7 +227,7 @@ static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUS
 	char const	*type_str;
 
 	type_str = cf_pair_value(cf_item_to_pair(ci));
-	type = fr_table_num_by_str(cipher_rsa_padding, type_str, -1);
+	type = fr_table_value_by_str(cipher_rsa_padding, type_str, -1);
 	if (type == -1) {
 		cf_log_err(ci, "Invalid padding type \"%s\"", type_str);
 		return -1;
@@ -255,7 +255,7 @@ static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *par
 	char const	*type_str;
 
 	type_str = cf_pair_value(cf_item_to_pair(ci));
-	type = fr_table_num_by_str(cipher_type, type_str, RLM_CIPHER_TYPE_INVALID);
+	type = fr_table_value_by_str(cipher_type, type_str, RLM_CIPHER_TYPE_INVALID);
 	switch (type) {
 	case RLM_CIPHER_TYPE_RSA:
 		break;
@@ -362,8 +362,8 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
 	if (pkey_type != EVP_PKEY_RSA) {
 		cf_log_err(ci, "Expected certificate to contain %s private key, got %s private key",
-			   fr_table_str_by_num(pkey_types, EVP_PKEY_RSA, OBJ_nid2sn(pkey_type)),
-			   fr_table_str_by_num(pkey_types, pkey_type, OBJ_nid2sn(pkey_type)));
+			   fr_table_str_by_value(pkey_types, EVP_PKEY_RSA, OBJ_nid2sn(pkey_type)),
+			   fr_table_str_by_value(pkey_types, pkey_type, OBJ_nid2sn(pkey_type)));
 
 		EVP_PKEY_free(pkey);
 		return -1;
@@ -437,8 +437,8 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
 	if (pkey_type != EVP_PKEY_RSA) {
 		cf_log_err(ci, "Expected certificate to contain %s public key, got %s public key",
-			   fr_table_str_by_num(pkey_types, EVP_PKEY_RSA, "?Unknown?"),
-			   fr_table_str_by_num(pkey_types, pkey_type, "?Unknown?"));
+			   fr_table_str_by_value(pkey_types, EVP_PKEY_RSA, "?Unknown?"),
+			   fr_table_str_by_value(pkey_types, pkey_type, "?Unknown?"));
 
 		EVP_PKEY_free(pkey);
 		return -1;
@@ -739,8 +739,8 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if ((*in)->type != FR_TYPE_OCTETS) {
 		REDEBUG("Signature argument wrong type, expected %s, got %s.  "
 			"Use %%{base64_decode:<text>} or %%{hex_decode:<text>} if signature is armoured",
-			fr_table_str_by_num(fr_value_box_type_table, FR_TYPE_OCTETS, "?Unknown?"),
-			fr_table_str_by_num(fr_value_box_type_table, (*in)->type, "?Unknown?"));
+			fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "?Unknown?"),
+			fr_table_str_by_value(fr_value_box_type_table, (*in)->type, "?Unknown?"));
 		return XLAT_ACTION_FAIL;
 	}
 	sig = (*in)->vb_octets;

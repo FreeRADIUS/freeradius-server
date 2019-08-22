@@ -1319,7 +1319,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 #endif
 		default:
 			REDEBUG("Operator '%s' is not supported for LDAP modify operations",
-				fr_table_str_by_num(fr_tokens_table, op, "<INVALID>"));
+				fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"));
 
 			goto error;
 		}
@@ -1849,7 +1849,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Convert dereference strings to enumerated constants
 	 */
 	if (inst->handle_config.dereference_str) {
-		inst->handle_config.dereference = fr_table_num_by_str(fr_ldap_dereference,
+		inst->handle_config.dereference = fr_table_value_by_str(fr_ldap_dereference,
 							     inst->handle_config.dereference_str, -1);
 		if (inst->handle_config.dereference < 0) {
 			cf_log_err(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
@@ -1874,7 +1874,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Convert scope strings to enumerated constants
 	 */
-	inst->userobj_scope = fr_table_num_by_str(fr_ldap_scope, inst->userobj_scope_str, -1);
+	inst->userobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
 #ifdef LDAP_SCOPE_CHILDREN
 		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
@@ -1886,7 +1886,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		goto error;
 	}
 
-	inst->groupobj_scope = fr_table_num_by_str(fr_ldap_scope, inst->groupobj_scope_str, -1);
+	inst->groupobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
 #ifdef LDAP_SCOPE_CHILDREN
 		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
@@ -1935,7 +1935,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		/*
 		 *	Convert cert strictness to enumerated constants
 		 */
-		inst->handle_config.tls_require_cert = fr_table_num_by_str(fr_ldap_tls_require_cert,
+		inst->handle_config.tls_require_cert = fr_table_value_by_str(fr_ldap_tls_require_cert,
 							      inst->handle_config.tls_require_cert_str, -1);
 		if (inst->handle_config.tls_require_cert < 0) {
 			cf_log_err(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "

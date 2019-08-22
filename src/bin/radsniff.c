@@ -77,7 +77,7 @@ static int rs_useful_codes[] = {
 	FR_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
-static fr_table_sorted_t const rs_events[] = {
+static fr_table_num_sorted_t const rs_events[] = {
 	{ "error",	RS_ERROR	},
 	{ "noreq",	RS_UNLINKED	},
 	{ "norsp",	RS_LOST		},
@@ -318,7 +318,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr, src, sizeof(src));
 	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.addr, dst, sizeof(dst));
 
-	status_str = fr_table_str_by_num(rs_events, status, NULL);
+	status_str = fr_table_str_by_value(rs_events, status, NULL);
 	RS_ASSERT(status_str);
 
 	len = snprintf(p, s, "%s,%" PRIu64 ",%s,", status_str, count, timestr);
@@ -415,7 +415,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 	if (status != RS_NORMAL) {
 		char const *status_str;
 
-		status_str = fr_table_str_by_num(rs_events, status, NULL);
+		status_str = fr_table_str_by_value(rs_events, status, NULL);
 		RS_ASSERT(status_str);
 
 		len = snprintf(p, s, "** %s ** ", status_str);
@@ -2020,7 +2020,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	return 0;
 }
 
-static int rs_build_event_flags(int *flags, fr_table_sorted_t const *map, size_t map_len, char *list)
+static int rs_build_event_flags(int *flags, fr_table_num_sorted_t const *map, size_t map_len, char *list)
 {
 	size_t i = 0;
 	char *p, *tok;
@@ -2033,7 +2033,7 @@ static int rs_build_event_flags(int *flags, fr_table_sorted_t const *map, size_t
 			continue;
 		}
 
-		*flags |= flag = fr_table_num_by_str(map, tok, -1);
+		*flags |= flag = fr_table_value_by_str(map, tok, -1);
 		if (flag < 0) {
 			ERROR("Invalid flag \"%s\"", tok);
 			return -1;

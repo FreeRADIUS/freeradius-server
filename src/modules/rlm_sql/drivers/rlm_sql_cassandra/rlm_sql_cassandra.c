@@ -165,7 +165,7 @@ typedef struct {
 								//!< server.
 } rlm_sql_cassandra_t;
 
-static fr_table_sorted_t const consistency_levels[] = {
+static fr_table_num_sorted_t const consistency_levels[] = {
 	{ "all",		CASS_CONSISTENCY_ALL		},
 	{ "any",		CASS_CONSISTENCY_ANY		},
 	{ "each_quorum",	CASS_CONSISTENCY_EACH_QUORUM	},
@@ -178,7 +178,7 @@ static fr_table_sorted_t const consistency_levels[] = {
 };
 static size_t consistency_levels_len = NUM_ELEMENTS(consistency_levels);
 
-static fr_table_sorted_t const verify_cert_table[] = {
+static fr_table_num_sorted_t const verify_cert_table[] = {
 	{ "identity",		CASS_SSL_VERIFY_PEER_IDENTITY	},
 	{ "no",			CASS_SSL_VERIFY_NONE		},
 	{ "yes",		CASS_SSL_VERIFY_PEER_CERT	}
@@ -759,7 +759,7 @@ do {\
 	if (inst->consistency_str) {
 		int consistency;
 
-		consistency = fr_table_num_by_str(consistency_levels, inst->consistency_str, -1);
+		consistency = fr_table_value_by_str(consistency_levels, inst->consistency_str, -1);
 		if (consistency < 0) {
 			ERROR("Invalid consistency level \"%s\"", inst->consistency_str);
 			return -1;
@@ -885,7 +885,7 @@ do {\
 		if (inst->tls_verify_cert_str) {
 			int	verify_cert;
 
-			verify_cert = fr_table_num_by_str(verify_cert_table, inst->tls_verify_cert_str, -1);
+			verify_cert = fr_table_value_by_str(verify_cert_table, inst->tls_verify_cert_str, -1);
 			if (verify_cert < 0) {
 				ERROR("Invalid certificate validation type \"%s\", "
 				      "must be one of 'yes', 'no', 'identity'", inst->tls_verify_cert_str);

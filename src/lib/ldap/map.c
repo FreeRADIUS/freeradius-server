@@ -112,8 +112,8 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 			if (attr->lhs->tmpl_request != map->lhs->tmpl_request) {
 				RWDEBUG("valuepair \"%pV\" has conflicting request qualifier (%s vs %s), skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					fr_table_str_by_num(request_ref_table, attr->lhs->tmpl_request, "<INVALID>"),
-					fr_table_str_by_num(request_ref_table, map->lhs->tmpl_request, "<INVALID>"));
+					fr_table_str_by_value(request_ref_table, attr->lhs->tmpl_request, "<INVALID>"),
+					fr_table_str_by_value(request_ref_table, map->lhs->tmpl_request, "<INVALID>"));
 			next_pair:
 				talloc_free(attr);
 				continue;
@@ -122,8 +122,8 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 			if ((attr->lhs->tmpl_list != map->lhs->tmpl_list)) {
 				RWDEBUG("valuepair \"%pV\" has conflicting list qualifier (%s vs %s), skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					fr_table_str_by_num(pair_list_table, attr->lhs->tmpl_list, "<INVALID>"),
-					fr_table_str_by_num(pair_list_table, map->lhs->tmpl_list, "<INVALID>"));
+					fr_table_str_by_value(pair_list_table, attr->lhs->tmpl_list, "<INVALID>"),
+					fr_table_str_by_value(pair_list_table, map->lhs->tmpl_list, "<INVALID>"));
 				goto next_pair;
 			}
 
@@ -202,7 +202,7 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 
 	default:
 		cf_log_err(map->ci, "Left hand side of map must be an attribute or list, not a %s",
-			   fr_table_str_by_num(tmpl_type_table, map->lhs->type, "<INVALID>"));
+			   fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
 		return -1;
 	}
 
@@ -223,7 +223,7 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 
 	default:
 		cf_log_err(map->ci, "Right hand side of map must be an xlat, attribute, exec, or literal, not a %s",
-			   fr_table_str_by_num(tmpl_type_table, map->rhs->type, "<INVALID>"));
+			   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "<INVALID>"));
 		return -1;
 	}
 
@@ -239,7 +239,7 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 
 	default:
 		cf_log_err(map->ci, "Operator \"%s\" not allowed for LDAP mappings",
-			   fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"));
+			   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 		return -1;
 	}
 

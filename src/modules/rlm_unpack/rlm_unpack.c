@@ -138,7 +138,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto nothing;
 	}
 
-	type = fr_table_num_by_str(fr_value_box_type_table, data_type, FR_TYPE_INVALID);
+	type = fr_table_value_by_str(fr_value_box_type_table, data_type, FR_TYPE_INVALID);
 	if (type == FR_TYPE_INVALID) {
 		REDEBUG("Invalid data type '%s'", data_type);
 		goto nothing;

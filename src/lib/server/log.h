@@ -70,11 +70,11 @@ struct log_dst {
 	log_dst_t	*next;	//!< Next logging destination.
 };
 
-extern fr_table_sorted_t const syslog_facility_table[];
+extern fr_table_num_sorted_t const syslog_facility_table[];
 extern size_t syslog_facility_table_len;
-extern fr_table_sorted_t const syslog_severity_table[];
+extern fr_table_num_sorted_t const syslog_severity_table[];
 extern size_t syslog_severity_table_len;
-extern fr_table_sorted_t const log_str2dst[];
+extern fr_table_num_sorted_t const log_str2dst[];
 extern size_t log_str2dst_len;
 
 #define debug_enabled(_type, _lvl) ((_type & L_DBG) && (_lvl <= rad_debug_lvl))

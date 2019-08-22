@@ -72,7 +72,7 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ NULL }
 };
 
-static fr_table_sorted_t const header_names[] = {
+static fr_table_num_sorted_t const header_names[] = {
 	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
 	{ "{clear}",		FR_CLEARTEXT_PASSWORD }
 };
@@ -80,7 +80,7 @@ static size_t header_names_len = NUM_ELEMENTS(header_names);
 
 static ssize_t chap_password_header(fr_dict_attr_t const **out, char const *header)
 {
-	switch (fr_table_num_by_str(header_names, header, 0)) {
+	switch (fr_table_value_by_str(header_names, header, 0)) {
 	case FR_CLEARTEXT_PASSWORD:
 		*out = attr_cleartext_password;
 		return strlen(header);

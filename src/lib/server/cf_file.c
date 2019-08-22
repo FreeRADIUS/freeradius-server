@@ -67,7 +67,7 @@ typedef enum conf_property {
 	CONF_PROPERTY_INSTANCE,
 } CONF_PROPERTY;
 
-static fr_table_sorted_t const conf_property_name[] = {
+static fr_table_num_sorted_t const conf_property_name[] = {
 	{ "instance",	CONF_PROPERTY_INSTANCE	},
 	{ "name",	CONF_PROPERTY_NAME	}
 };
@@ -166,7 +166,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 					return NULL;
 				}
 
-				switch (fr_table_num_by_str(conf_property_name, q, CONF_PROPERTY_INVALID)) {
+				switch (fr_table_value_by_str(conf_property_name, q, CONF_PROPERTY_INVALID)) {
 				case CONF_PROPERTY_NAME:
 					strcpy(p, find->name1);
 					break;
@@ -1645,7 +1645,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		default:
 			ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
-			      filename, *lineno, buff[1], fr_table_str_by_num(fr_tokens_table, t2, "<INVALID>"));
+			      filename, *lineno, buff[1], fr_table_str_by_value(fr_tokens_table, t2, "<INVALID>"));
 
 			goto error;
 		}
@@ -1900,7 +1900,7 @@ static int cf_pair_write(FILE *fp, CONF_PAIR *cp)
 	}
 
 	cf_string_write(fp, cp->attr, strlen(cp->attr), cp->lhs_quote);
-	fprintf(fp, " %s ", fr_table_str_by_num(fr_tokens_table, cp->op, "<INVALID>"));
+	fprintf(fp, " %s ", fr_table_str_by_value(fr_tokens_table, cp->op, "<INVALID>"));
 	cf_string_write(fp, cp->value, strlen(cp->value), cp->rhs_quote);
 	fprintf(fp, "\n");
 

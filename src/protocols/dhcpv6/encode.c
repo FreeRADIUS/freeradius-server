@@ -145,7 +145,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 
 	if (tlv_stack[depth]->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_num(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
 		return PAIR_ENCODE_ERROR;
 	}
 
@@ -243,7 +243,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_table_str_by_num(fr_value_box_type_table, da->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 		return PAIR_ENCODE_ERROR;
 
 	default:
@@ -629,7 +629,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 
 	if (tlv_stack[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_num(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
 		return PAIR_ENCODE_ERROR;
 	}
 
@@ -834,7 +834,7 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 	 */
 	if (da->type != FR_TYPE_VSA) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_num(fr_value_box_type_table, da->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 		return PAIR_ENCODE_ERROR;
 	}
 
@@ -852,7 +852,7 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 
 	if (da->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_num(fr_value_box_type_table, da->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 		return PAIR_ENCODE_ERROR;
 	}
 

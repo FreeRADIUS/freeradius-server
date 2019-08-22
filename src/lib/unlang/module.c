@@ -669,7 +669,7 @@ done:
 	 *	Must be left at RDEBUG() level otherwise RDEBUG becomes pointless
 	 */
 	RDEBUG("%s (%s)", instruction->name ? instruction->name : "",
-	       fr_table_str_by_num(mod_rcode_table, rcode, "<invalid>"));
+	       fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
 
 	switch (rcode) {
 	case RLM_MODULE_YIELD:
@@ -763,7 +763,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	if (rcode != RLM_MODULE_YIELD) ms->thread->active_callers--;
 
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
-		fr_table_str_by_num(mod_rcode_table, rcode, "<invalid>"));
+		fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
 
 	switch (rcode) {
 	case RLM_MODULE_YIELD:

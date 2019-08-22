@@ -645,7 +645,7 @@ static ssize_t snmp_process_index_attr(fr_cursor_t *out, REQUEST *request,
 	if (tlv_stack[depth]->type != FR_TYPE_UINT32) {
 		fr_strerror_printf("Bad index attribute: Index attribute \"%s\" should be a integer, "
 				   "but is a %s", tlv_stack[depth]->name,
-				   fr_table_str_by_num(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
 		goto error;
 	}
 

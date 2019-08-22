@@ -560,7 +560,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 
 	default:
 		REDEBUG("Operator \"%s\" not allowed for LDAP group comparisons",
-			fr_table_str_by_num(fr_tokens_table, check->op, "<INVALID>"));
+			fr_table_str_by_value(fr_tokens_table, check->op, "<INVALID>"));
 		return 1;
 	}
 

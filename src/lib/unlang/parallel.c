@@ -147,7 +147,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			}
 
 			RDEBUG3("parallel child %d returns %s", i + 1,
-				fr_table_str_by_num(mod_rcode_table, result, "<invalid>"));
+				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"));
 
 			/*
 			 *	Remember this before we delete the
@@ -198,7 +198,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 
 				RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
 					stack->depth, __FUNCTION__,
-					fr_table_str_by_num(mod_rcode_table, result, "<invalid>"),
+					fr_table_str_by_value(mod_rcode_table, result, "<invalid>"),
 					priority);
 			}
 

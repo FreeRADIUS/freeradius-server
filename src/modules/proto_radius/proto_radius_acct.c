@@ -110,7 +110,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 		case RLM_MODULE_USERLOCK:
 		default:
 			RDEBUG("The 'recv Accounting-Request' section returned %s - not sending a response",
-			       fr_table_str_by_num(mod_rcode_table, rcode, "???"));
+			       fr_table_str_by_value(mod_rcode_table, rcode, "???"));
 			request->reply->code = FR_CODE_DO_NOT_RESPOND;
 			goto send_reply;
 		}
@@ -166,7 +166,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 		case RLM_MODULE_USERLOCK:
 		default:
 			RDEBUG("The 'accounting' section returned %s - not sending a response",
-			       fr_table_str_by_num(mod_rcode_table, rcode, "???"));
+			       fr_table_str_by_value(mod_rcode_table, rcode, "???"));
 			request->reply->code = FR_CODE_DO_NOT_RESPOND;
 			goto send_reply;
 		}
@@ -209,7 +209,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 
 		default:
 			RDEBUG("The 'send Accounting-Response' section returned %s - not sending a response",
-			       fr_table_str_by_num(mod_rcode_table, rcode, "???"));
+			       fr_table_str_by_value(mod_rcode_table, rcode, "???"));
 			request->reply->code = FR_CODE_DO_NOT_RESPOND;
 			break;
 		}

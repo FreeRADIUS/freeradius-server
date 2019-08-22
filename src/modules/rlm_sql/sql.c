@@ -43,7 +43,7 @@ RCSID("$Id$")
  *	Translate rlm_sql rcodes to humanly
  *	readable reason strings.
  */
-fr_table_sorted_t const sql_rcode_description_table[] = {
+fr_table_num_sorted_t const sql_rcode_description_table[] = {
 	{ "need alt query",	RLM_SQL_ALT_QUERY	},
 	{ "no connection",	RLM_SQL_RECONNECT	},
 	{ "no more rows",	RLM_SQL_NO_MORE_ROWS	},
@@ -53,7 +53,7 @@ fr_table_sorted_t const sql_rcode_description_table[] = {
 };
 size_t sql_rcode_description_table_len = NUM_ELEMENTS(sql_rcode_description_table);
 
-fr_table_sorted_t const sql_rcode_table[] = {
+fr_table_num_sorted_t const sql_rcode_table[] = {
 	{ "alternate",		RLM_SQL_ALT_QUERY	},
 	{ "empty",		RLM_SQL_NO_MORE_ROWS	},
 	{ "error",		RLM_SQL_ERROR		},

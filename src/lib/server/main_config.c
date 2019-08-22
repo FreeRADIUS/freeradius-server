@@ -1134,7 +1134,7 @@ do {\
 			goto failure;
 		}
 
-		default_log.dst = fr_table_num_by_str(log_str2dst, config->log_dest, L_DST_NUM_DEST);
+		default_log.dst = fr_table_value_by_str(log_str2dst, config->log_dest, L_DST_NUM_DEST);
 
 		switch (default_log.dst) {
 		case L_DST_NUM_DEST:

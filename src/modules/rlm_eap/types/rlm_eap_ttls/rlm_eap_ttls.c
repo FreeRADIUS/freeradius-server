@@ -150,9 +150,9 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 */
 	status = eap_tls_process(eap_session);
 	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
-		REDEBUG("[eap-tls process] = %s", fr_table_str_by_num(eap_tls_status_table, status, "<INVALID>"));
+		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eap-tls process] = %s", fr_table_str_by_num(eap_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
 	}
 
 	switch (status) {

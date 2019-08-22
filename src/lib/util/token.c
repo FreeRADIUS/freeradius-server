@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <stdio.h>
 #include <string.h>
 
-fr_table_ordered_t const fr_tokens_table[] = {
+fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ "=~", T_OP_REG_EQ	}, /* order is important! */
 	{ "!~", T_OP_REG_NE	},
 	{ "{",	T_LCBRACE	},
@@ -59,7 +59,7 @@ fr_table_ordered_t const fr_tokens_table[] = {
 };
 size_t fr_tokens_table_len = NUM_ELEMENTS(fr_tokens_table);
 
-fr_table_sorted_t const fr_token_quotes_table[] = {
+fr_table_num_sorted_t const fr_token_quotes_table[] = {
 	{ "",	T_BARE_WORD		},
 	{ "'",	T_SINGLE_QUOTED_STRING	},
 	{ "\"", T_DOUBLE_QUOTED_STRING	},
@@ -254,7 +254,7 @@ const bool fr_str_tok[] = {
  *	Returns 0 or special token value.
  */
 static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
-			 fr_table_ordered_t const *tokenlist, size_t tokenlist_len, bool unescape)
+			 fr_table_num_ordered_t const *tokenlist, size_t tokenlist_len, bool unescape)
 {
 	char			*s;
 	char const		*p;
@@ -284,7 +284,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 				strcpy(buf, tokenlist[i].name);
 				p += strlen(tokenlist[i].name);
 
-				rcode = tokenlist[i].number;
+				rcode = tokenlist[i].value;
 				goto done;
 			}
 		}
@@ -486,5 +486,5 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 
 char const *fr_token_name(int token)
 {
-	return fr_table_str_by_num(fr_tokens_table, token, "???");
+	return fr_table_str_by_value(fr_tokens_table, token, "???");
 }

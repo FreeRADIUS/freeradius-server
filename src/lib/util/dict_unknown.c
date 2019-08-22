@@ -245,7 +245,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 	default:
 		fr_strerror_printf("Unknown vendors can only be parented by 'vsa' or 'evs' "
-				   "attributes, not '%s'", fr_table_str_by_num(fr_value_box_type_table, parent->type, "?Unknown?"));
+				   "attributes, not '%s'", fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
 		return -1;
 	}
 }
@@ -493,7 +493,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 					fr_strerror_printf("Parent OID component (%s) in \"%.*s\" specified a "
 							   "non-structural type (%s)", our_parent->name,
 							   (int)(p - oid_str), oid_str,
-							   fr_table_str_by_num(fr_value_box_type_table,
+							   fr_table_str_by_value(fr_value_box_type_table,
 							   	      our_parent->type, "<INVALID>"));
 					goto error;
 				}

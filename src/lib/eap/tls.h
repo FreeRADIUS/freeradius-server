@@ -148,7 +148,7 @@ typedef struct {
 	size_t			record_in_recvd_len;	//!< How much of the record we've received so far.
 } eap_tls_session_t;
 
-extern fr_table_ordered_t const eap_tls_status_table[];
+extern fr_table_num_ordered_t const eap_tls_status_table[];
 extern size_t eap_tls_status_table_len;
 
 /*

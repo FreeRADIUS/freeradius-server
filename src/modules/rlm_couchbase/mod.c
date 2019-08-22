@@ -376,7 +376,7 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, json_object *json, pair_list_t list)
 {
 	json_object	*list_obj;
-	char const	*list_name = fr_table_str_by_num(pair_list_table, list, "<INVALID>");
+	char const	*list_name = fr_table_str_by_value(pair_list_table, list, "<INVALID>");
 
 	/*
 	 *	Check for a section matching the specified list
@@ -447,7 +447,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
 				goto error;
 			}
 
-			op = fr_table_num_by_str(fr_tokens_table, op_str, T_INVALID);
+			op = fr_table_value_by_str(fr_tokens_table, op_str, T_INVALID);
 			if (!fr_assignment_op[op] && !fr_equality_op[op]) goto bad_op;
 		} else {
 			op = T_OP_SET;	/* The default */

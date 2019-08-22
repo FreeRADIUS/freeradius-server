@@ -46,7 +46,7 @@ typedef enum {
 	FR_CONNECTION_STATE_FAILED		//!< Connection failed and is waiting to reconnect.
 } fr_connection_state_t;
 
-extern fr_table_sorted_t const fr_connection_states[];
+extern fr_table_num_sorted_t const fr_connection_states[];
 extern size_t fr_connection_states_len;
 
 /** Callback for the initialise state

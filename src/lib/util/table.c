@@ -26,20 +26,78 @@ RCSID("$Id$")
 #include <freeradius-devel/util/table.h>
 
 #include <string.h>
+#include <stdio.h>
+
+#define TABLE_IDX(_table, _idx, _element_size) (((uint8_t const *)(_table)) + ((_idx) * (_element_size)))
+#define ELEM_NAME(_offset) *((char const * const *)(_offset))
+
+/** Create type specific string to value functions
+ *
+ * @parma[in] _func		used for searching.
+ * @param[in] _our_table_type	that we'll be searching in.
+ * @param[in] _our_name		The function that we'll be creating.
+ * @param[in] _our_def_type	The type of the default value.
+ * @param[in] _our_return_type	What we return.
+ */
+#define TABLE_TYPE_STR_FUNC(_func, _our_table_type, _our_name, _our_def_type, _our_return_type) \
+_our_return_type _our_name(_our_table_type table, size_t table_len, char const *name, _our_def_type def) \
+{ \
+	_our_return_type ret; \
+	_our_table_type found; \
+	found = (_our_table_type)_func(table, table_len, sizeof(((_our_table_type)0)[0]), name); \
+	if (!found) { \
+		memcpy(&ret, &def, sizeof(ret)); \
+		return ret; \
+	} \
+	memcpy(&ret, &found->value, sizeof(ret)); \
+	return ret; \
+}
+
+/** Create type specific string to value functions with an input string length argument
+ *
+ * @parma[in] _func		used for searching.
+ * @param[in] _our_table_type	that we'll be searching in.
+ * @param[in] _our_name		The function that we'll be creating.
+ * @param[in] _our_def_type	The type of the default value.
+ * @param[in] _our_return_type	What we return.
+ */
+#define TABLE_TYPE_STR_LEN_FUNC(_func, _our_table_type, _our_name, _our_def_type, _our_return_type) \
+_our_return_type _our_name(_our_table_type table, size_t table_len, char const *name, ssize_t name_len, _our_def_type def) \
+{ \
+	_our_return_type ret; \
+	_our_table_type found; \
+	found = (_our_table_type)_func(table, table_len, sizeof(((_our_table_type)0)[0]), name, name_len); \
+	if (!found) { \
+		memcpy(&ret, &def, sizeof(ret)); \
+		return ret; \
+	} \
+	memcpy(&ret, &found->value, sizeof(ret)); \
+	return ret; \
+}
+
+#define TABLE_TYPE_VALUE_FUNC(_our_table_type, _our_name, _our_value_type) \
+char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
+{ \
+	size_t		i; \
+	for (i = 0; i < table_len; i++) { \
+		if (table[i].value == value) return table[i].name; \
+	} \
+	return def; \
+}
 
 
-/** Convert a string to an integer using a lexicographically sorted table
+/** Convert a string to a value using a lexicographically sorted table
  *
  * @param[in] table		to search in.
  * @param[in] table_len		The number of elements in the table.
- * @param[in] name		to resolve to a number.
- * @param[in] def		Default value if no entry matched.
+ * @param[in] element_size		Size of elements in the table.
+ * @param[in] name		to resolve to a value.
  * @return
- *	- num value of matching entry.
- *      - def if no matching entries.
+ *	- value of matching entry.
+ *      - NULL if no matching entries.
  */
-int fr_table_sorted_num_by_str(fr_table_sorted_t const *table, size_t table_len,
-			       char const *name, int def)
+static void const *table_sorted_value_by_str(void const *table, size_t table_len, size_t element_size,
+					     char const *name)
 {
 	ssize_t	start = 0;
 	ssize_t	end = table_len - 1;
@@ -47,14 +105,16 @@ int fr_table_sorted_num_by_str(fr_table_sorted_t const *table, size_t table_len,
 
 	int	ret;
 
-	if (!name) return def;
+	if (!name) return NULL;
 
 	while (start <= end) {
+		void const *offset;
+
 		mid = start + ((end - start) / 2);	/* Avoid overflow */
 
-		ret = strcasecmp(name, table[mid].name);
-		if (ret == 0) return table[mid].number;
-
+		offset = TABLE_IDX(table, mid, element_size);
+		ret = strcasecmp(name, ELEM_NAME(offset));
+		if (ret == 0) return offset;
 		if (ret < 0) {
 			end = mid - 1;
 		} else {
@@ -62,46 +122,59 @@ int fr_table_sorted_num_by_str(fr_table_sorted_t const *table, size_t table_len,
 		}
 	}
 
-	return def;
+	return NULL;
 }
 
-/** Convert a string to an integer using an arbitrarily ordered table
+TABLE_TYPE_STR_FUNC(table_sorted_value_by_str, fr_table_num_sorted_t const *,
+		    fr_table_sorted_num_by_str, int, int)
+TABLE_TYPE_STR_FUNC(table_sorted_value_by_str, fr_table_ptr_sorted_t const *,
+		    fr_table_sorted_ptr_by_str, void const *, void *)
+
+/** Convert a string to a value using an arbitrarily ordered table
  *
  * @param[in] table		to search in.
  * @param[in] table_len		The number of elements in the table.
+ * @param[in] element_size	Size of elements in the table.
  * @param[in] name		to resolve to a number.
- * @param[in] def		Default value if no entry matched.
  * @return
- *	- num value of matching entry.
- *      - def if no matching entries.
+ *	- value of matching entry.
+ *      - NULL if no matching entries.
  */
-int fr_table_ordered_num_by_str(fr_table_ordered_t const *table, size_t table_len,
-				char const *name, int def)
+static void const *table_ordered_value_by_str(void const *table, size_t table_len, size_t element_size,
+					      char const *name)
 {
 	size_t		i;
 
-	if (!name) return def;
+	if (!name) return NULL;
 
-	for (i = 0; i < table_len; i++) if (strcasecmp(name, table[i].name) == 0) return table[i].number;
+	for (i = 0; i < table_len; i++) {
+		void const *offset = TABLE_IDX(table, i, element_size);
+		if (strcasecmp(name, ELEM_NAME(offset)) == 0) return offset;
+	}
 
-	return def;
+	return NULL;
 }
+
+TABLE_TYPE_STR_FUNC(table_ordered_value_by_str, fr_table_num_ordered_t const *,
+		    fr_table_ordered_num_by_str, int, int)
+TABLE_TYPE_STR_FUNC(table_ordered_value_by_str, fr_table_ptr_ordered_t const *,
+		    fr_table_ordered_ptr_by_str, void const *, void *)
 
 /** Convert a string matching part of name to an integer using a lexicographically sorted table
  *
  * @param[in] table		to search in.
  * @param[in] table_len		The number of elements in the table.
+ * @param[in] element_size	Size of elements in the table.
  * @param[in] name		to locate.
  * @param[in] name_len		the maximum amount of name that should be matched.
- *				If < 0, the length of the name in the table element
+ *				If < 0, the length of the name in the table offsetent
  *				will be used as the maximum match length.
- * @param[in] def		Value to return if there are no matches.
  * @return
- *	- num value of matching entry.
- *      - def if no matching entries.
+ *	- value of matching entry.
+ *      - NULL if no matching entries.
  */
-int fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_len,
-				  char const *name, ssize_t name_len, int def)
+static void const *table_sorted_value_by_substr(void const *table, size_t table_len, size_t element_size,
+						char const *name, ssize_t name_len)
 {
 	ssize_t	start = 0;
 	ssize_t	end = table_len - 1;
@@ -109,17 +182,21 @@ int fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_l
 
 	int	ret;
 
-	if (!name) return def;
+	if (!name) return NULL;
 
 	while (start <= end) {
+		void const *offset;
+
 		mid = start + ((end - start) / 2);	/* Avoid overflow */
+
+		offset = TABLE_IDX(table, mid, element_size);
 
 		/*
 		 *	Match up to the length of the table entry if len is < 0.
 		 */
-		ret = strncasecmp(name, table[mid].name,
-				  (name_len < 0) ?  strlen(table[mid].name) : (size_t)name_len);
-		if (ret == 0) return table[mid].number;
+		ret = strncasecmp(name, ELEM_NAME(offset),
+				  (name_len < 0) ?  strlen(ELEM_NAME(offset)) : (size_t)name_len);
+		if (ret == 0) return offset;
 
 		if (ret < 0) {
 			end = mid - 1;
@@ -128,33 +205,41 @@ int fr_table_sorted_num_by_substr(fr_table_sorted_t const *table, size_t table_l
 		}
 	}
 
-	return def;
+	return NULL;
 }
+
+TABLE_TYPE_STR_LEN_FUNC(table_sorted_value_by_substr, fr_table_num_sorted_t const *,
+			fr_table_sorted_num_by_substr, int, int)
+TABLE_TYPE_STR_LEN_FUNC(table_sorted_value_by_substr, fr_table_ptr_sorted_t const *,
+			fr_table_sorted_ptr_by_substr, void const *, void *)
 
 /** Convert a string matching part of name to an integer using an arbitrarily ordered table
  *
  * @param[in] table		to search in.
  * @param[in] table_len		The number of elements in the table.
+ * @param[in] element_size	Size of elements in the table.
  * @param[in] name		to locate.
  * @param[in] name_len		the maximum amount of name that should be matched.
- *				If < 0, the length of the name in the table element
+ *				If < 0, the length of the name in the table offsetent
  *				will be used as the maximum match length.
- * @param[in] def		Value to return if there are no matches.
  * @return
- *	- num value of matching entry.
- *      - def if no matching entries.
+ *	- value of matching entry.
+ *      - NULL if no matching entries.
  */
-int fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table_len,
-				   char const *name, ssize_t name_len, int def)
+static void const *table_ordered_value_by_substr(void const *table, size_t table_len, size_t element_size,
+						       char const *name, ssize_t name_len)
 {
 	size_t		i;
 
-	if (!name) return def;
+	if (!name) return NULL;
 
 	for (i = 0; i < table_len; i++) {
-		size_t tlen;
+		void const	*offset;
+		size_t		tlen;
 
-		tlen = strlen(table[i].name);
+		offset = TABLE_IDX(table, i, element_size);
+
+		tlen = strlen(ELEM_NAME(offset));
 
 		/*
 		 *	Don't match "request" to user input "req".
@@ -164,17 +249,22 @@ int fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table
 		/*
 		 *	Match up to the length of the table entry if len is < 0.
 		 */
-		if (strncasecmp(name, table[i].name,
-				(name_len < 0) ? tlen : (size_t)name_len) == 0) return table[i].number;
+		if (strncasecmp(name, ELEM_NAME(offset),
+				(name_len < 0) ? tlen : (size_t)name_len) == 0) return offset;
 	}
 
-	return def;
+	return NULL;
 }
+
+TABLE_TYPE_STR_LEN_FUNC(table_ordered_value_by_substr, fr_table_num_ordered_t const *,
+			fr_table_ordered_num_by_substr, int, int)
+TABLE_TYPE_STR_LEN_FUNC(table_ordered_value_by_substr, fr_table_ptr_ordered_t const *,
+			fr_table_ordered_ptr_by_substr, void const *, void *)
 
 /** Find the longest string match using a lexicographically sorted table
  *
  * Performs a binary search in the specified table, returning the longest
- * element which is a prefix of name.
+ * offsetent which is a prefix of name.
  *
  * i.e. given name of "food", and table of f, foo, of - foo would be returned.
  *
@@ -182,38 +272,43 @@ int fr_table_ordered_num_by_substr(fr_table_ordered_t const *table, size_t table
  *
  * @param[in] table		to search in.
  * @param[in] table_len		The number of elements in the table.
+ * @param[in] element_size	Size of elements in the table.
  * @param[in] name		to locate.
  * @param[in] name_len		the maximum amount of name that should be matched.
- * @param[in] def		Value to return if there are no matches.
  * @return
  *	- num value of matching entry.
- *      - def if no matching entries.
+ *      - NULL if no matching entries.
  */
-int fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t table_len,
-					  char const *name, size_t name_len, int def)
+static void const *table_sorted_value_by_longest_prefix(void const *table, size_t table_len, size_t element_size,
+							char const *name, ssize_t name_len)
 {
-	ssize_t	start = 0;
-	ssize_t	end = table_len - 1;
-	ssize_t	mid;
+	ssize_t		start = 0;
+	ssize_t		end = table_len - 1;
+	ssize_t		mid;
 
-	int	ret;
-	int	num = def;
+	int		ret;
+	void const	*found = NULL;
 
-	if (!name) return def;
+	if (!name) return NULL;
+	if (name_len < 0) name_len = strlen(name);
 
 	while (start <= end) {
+		void const	*offset;
+
 		mid = start + ((end - start) / 2);	/* Avoid overflow */
 
-		ret = strncasecmp(name, table[mid].name, name_len);
+		offset = TABLE_IDX(table, mid, element_size);
+
+		ret = strncasecmp(name, ELEM_NAME(offset), name_len);
 		if (ret == 0) {
 			size_t tlen;
 
-			tlen = strlen(table[mid].name);
+			tlen = strlen(ELEM_NAME(offset));
 
 			/*
 			 *	Exact match
 			 */
-			if (tlen == name_len) return table[mid].number;
+			if (tlen == (size_t)name_len) return offset;
 
 			/*
 			 *	Partial match.
@@ -221,8 +316,8 @@ int fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t
 			 *	This might be the longest prefix,
 			 *	so record it.
 			 */
-			if (tlen < name_len) {
-				num = table[mid].number;
+			if (tlen < (size_t)name_len) {
+				found = offset;
 				ret = 1;
 			}
 		}
@@ -234,8 +329,13 @@ int fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t
 		}
 	}
 
-	return num;
+	return found;
 }
+
+TABLE_TYPE_STR_LEN_FUNC(table_sorted_value_by_longest_prefix, fr_table_num_sorted_t const *,
+			fr_table_sorted_num_by_longest_prefix, int, int)
+TABLE_TYPE_STR_LEN_FUNC(table_sorted_value_by_longest_prefix, fr_table_ptr_sorted_t const *,
+			fr_table_sorted_ptr_by_longest_prefix, void const *, void *)
 
 /** Find the longest string match using an arbitrarily ordered table
  *
@@ -243,31 +343,35 @@ int fr_table_sorted_num_by_longest_prefix(fr_table_sorted_t const *table, size_t
  *
  * @param[in] table		to search in.
  * @param[in] table_len		The number of elements in the table.
+ * @param[in] element_size	Size of elements in the table.
  * @param[in] name		to locate.
  * @param[in] name_len		the maximum amount of name that should be matched.
- * @param[in] def		Value to return if there are no matches.
  * @return
  *	- num value of matching entry.
  *      - def if no matching entries.
  */
-int fr_table_ordered_num_by_longest_prefix(fr_table_ordered_t const *table, size_t table_len,
-					   char const *name, size_t name_len, int def)
+static void const *table_ordered_value_by_longest_prefix(void const *table, size_t table_len, size_t element_size,
+							 char const *name, ssize_t name_len)
 {
 	size_t		i;
 	size_t		found_len = 0;
-	int		num = def;
+	void const 	*found = NULL;
 
-	if (!name) return def;
+	if (!name) return NULL;
+	if (name_len < 0) name_len = strlen(name);
 
 	for (i = 0; i < table_len; i++) {
-		size_t j;
+		void const	*offset;
+		size_t		j;
 
-		for (j = 0; (j < name_len) && (name[j] == table[i].name[j]); j++) ;
+		offset = TABLE_IDX(table, i, element_size);
+
+		for (j = 0; (j < (size_t)name_len) && (name[j] == (ELEM_NAME(offset))[j]); j++);
 
 		/*
 		 *	Exact match
 		 */
-		if (j == name_len) return table[i].number;
+		if (j == (size_t)name_len) return offset;
 
 		/*
 		 *	Partial match.
@@ -277,29 +381,22 @@ int fr_table_ordered_num_by_longest_prefix(fr_table_ordered_t const *table, size
 		 */
 		if (j > found_len) {
 			found_len = j;
-			num = table[i].number;
+			found = offset;
 		}
 	}
 
-	return num;
+	return found;
 }
 
-/** Convert an integer to a string
- *
- * @param[in] table		to search in.
- * @param[in] table_len		The number of elements in the table.
- * @param[in] number		to resolve to a string.
- * @param[in] def		Default string to return if there's no match.
- * @return
- *	- string value of matching entry.
- *      - def if no matching entries.
+TABLE_TYPE_STR_LEN_FUNC(table_ordered_value_by_longest_prefix, fr_table_num_ordered_t const *,
+			fr_table_ordered_num_by_longest_prefix, int, int)
+TABLE_TYPE_STR_LEN_FUNC(table_ordered_value_by_longest_prefix, fr_table_ptr_ordered_t const *,
+			fr_table_ordered_ptr_by_longest_prefix, void const *, void *)
+
+/*
+ *	Value to string conversion functions
  */
-char const *_fr_table_str_by_num(fr_table_ordered_t const *table, size_t table_len,
-				 int number, char const *def)
-{
-	size_t i;
-
-	for (i = 0; i < table_len; i++) if (table[i].number == number) return table[i].name;
-
-	return def;
-}
+TABLE_TYPE_VALUE_FUNC(fr_table_num_sorted_t const *, fr_table_sorted_str_by_num, int)
+TABLE_TYPE_VALUE_FUNC(fr_table_num_ordered_t const *, fr_table_ordered_str_by_num, int)
+TABLE_TYPE_VALUE_FUNC(fr_table_ptr_sorted_t const *, fr_table_sorted_str_by_ptr, void const *)
+TABLE_TYPE_VALUE_FUNC(fr_table_ptr_ordered_t const *, fr_table_ordered_str_by_ptr, void const *)

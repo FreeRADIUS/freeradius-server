@@ -33,7 +33,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
 
-static fr_table_sorted_t const fr_ldap_directory_type_table[] = {
+static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 	{ "Active Directory",		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY		},
 	{ "IBM",			FR_LDAP_DIRECTORY_IBM				},
 	{ "NetScape",			FR_LDAP_DIRECTORY_NETSCAPE			},
@@ -216,7 +216,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_
 	}
 
 found:
-	INFO("Directory type: %s", fr_table_str_by_num(fr_ldap_directory_type_table, directory->type, "<INVALID>"));
+	INFO("Directory type: %s", fr_table_str_by_value(fr_ldap_directory_type_table, directory->type, "<INVALID>"));
 
 	switch (directory->type) {
 	case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:

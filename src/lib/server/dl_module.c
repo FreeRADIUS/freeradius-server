@@ -54,7 +54,7 @@ static dl_module_loader_t	*dl_module_loader;
 
 /** Name prefixes matching the types of loadable module
  */
-static fr_table_sorted_t const dl_module_type_prefix[] = {
+static fr_table_num_sorted_t const dl_module_type_prefix[] = {
 	{ "",		DL_MODULE_TYPE_SUBMODULE	},
 	{ "proto",	DL_MODULE_TYPE_PROTO		},
 	{ "rlm",	DL_MODULE_TYPE_MODULE		}
@@ -311,11 +311,11 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 
 	if (parent) {
 		module_name = talloc_typed_asprintf(NULL, "%s_%s_%s",
-						    fr_table_str_by_num(dl_module_type_prefix, parent->type, "<INVALID>"),
+						    fr_table_str_by_value(dl_module_type_prefix, parent->type, "<INVALID>"),
 						    parent->common->name, name);
 	} else {
 		module_name = talloc_typed_asprintf(NULL, "%s_%s",
-						    fr_table_str_by_num(dl_module_type_prefix, type, "<INVALID>"),
+						    fr_table_str_by_value(dl_module_type_prefix, type, "<INVALID>"),
 						    name);
 	}
 

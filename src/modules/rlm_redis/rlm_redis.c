@@ -193,7 +193,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	fr_pool_connection_release(pool, request, conn);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_num(fr_redis_cluster_rcodes_table, rcode, "<INVALID>"), false);
+	fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(fr_redis_cluster_rcodes_table, rcode, "<INVALID>"), false);
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -463,7 +463,7 @@ reply_parse:
 
 	default:
 		REDEBUG("Server returned non-value type \"%s\"",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		ret = -1;
 		break;
 	}

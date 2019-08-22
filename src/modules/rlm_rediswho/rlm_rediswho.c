@@ -169,7 +169,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 	 */
 	default:
 		REDEBUG("Expected type \"integer\" got type \"%s\"",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		break;
 	}
 	fr_redis_reply_free(&reply);

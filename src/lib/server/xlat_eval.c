@@ -85,7 +85,7 @@ static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ NULL }
 };
 
-fr_table_sorted_t const xlat_action_table[] = {
+fr_table_num_sorted_t const xlat_action_table[] = {
 	{ "done",	XLAT_ACTION_DONE	},
 	{ "fail",	XLAT_ACTION_FAIL	},
 	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},
@@ -1085,7 +1085,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 
 finish:
 	XLAT_DEBUG("** [%i] %s << %s", unlang_interpret_stack_depth(request),
-		   __FUNCTION__, fr_table_str_by_num(xlat_action_table, xa, "<INVALID>"));
+		   __FUNCTION__, fr_table_str_by_value(xlat_action_table, xa, "<INVALID>"));
 
 	return xa;
 }

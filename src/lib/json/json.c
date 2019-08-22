@@ -397,7 +397,7 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 			MEM(vp_object = json_object_new_object());
 			json_object_object_add(obj, name_with_prefix, vp_object);
 
-			MEM(type_name = json_object_new_string(fr_table_str_by_num(fr_value_box_type_table, vp->vp_type, "<INVALID>")));
+			MEM(type_name = json_object_new_string(fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>")));
 			json_object_object_add(vp_object, "type", type_name);
 
 			MEM(values = json_object_new_array());

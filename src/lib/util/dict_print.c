@@ -84,7 +84,7 @@ do { \
 	 *	Print out the date precision.
 	 */
 	if (type == FR_TYPE_DATE) {
-		char const *precision = fr_table_str_by_num(date_precision_table, flags->type_size, "?");
+		char const *precision = fr_table_str_by_value(date_precision_table, flags->type_size, "?");
 
 		p += strlcpy(p, precision, end - p);
 		if (p >= end) return -1;
@@ -201,7 +201,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 	printf("%u%.*s%s \"%s\" vendor: %x (%u), num: %x (%u), type: %s, flags: %s\n", da->depth, depth,
 	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", name, da->name,
 	       fr_dict_vendor_num_by_da(da), fr_dict_vendor_num_by_da(da), da->attr, da->attr,
-	       fr_table_str_by_num(fr_value_box_type_table, da->type, "?Unknown?"), buff);
+	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"), buff);
 
 	if (da->children) for (i = 0; i < talloc_array_length(da->children); i++) {
 		if (da->children[i]) {

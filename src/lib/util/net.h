@@ -151,11 +151,11 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t		data[];
 } radius_packet_t;
 
-extern fr_table_sorted_t const fr_net_ip_proto_table[];
+extern fr_table_num_sorted_t const fr_net_ip_proto_table[];
 extern size_t fr_net_ip_proto_table_len;
-extern fr_table_sorted_t const fr_net_sock_type_table[];
+extern fr_table_num_sorted_t const fr_net_sock_type_table[];
 extern size_t fr_net_sock_type_table_len;
-extern fr_table_sorted_t const fr_net_af_table[];
+extern fr_table_num_sorted_t const fr_net_af_table[];
 extern size_t fr_net_af_table_len;
 
 uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,

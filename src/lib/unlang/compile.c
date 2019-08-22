@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
-fr_table_sorted_t const mod_rcode_table[] = {
+fr_table_num_sorted_t const mod_rcode_table[] = {
 	{ "...",        RLM_MODULE_UNKNOWN      },
 	{ "fail",       RLM_MODULE_FAIL		},
 	{ "handled",    RLM_MODULE_HANDLED      },
@@ -112,7 +112,7 @@ static void dump_mc(unlang_t *c, int indent)
 
 	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
 		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
-		      fr_table_str_by_num(mod_rcode_table, i, "<invalid>"),
+		      fr_table_str_by_value(mod_rcode_table, i, "<invalid>"),
 		      action2str(c->actions[i]));
 	}
 
@@ -656,7 +656,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 
 			if (tmpl_cast_in_place(c->data.map->lhs, cast->type, cast) < 0) {
 				cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-					   fr_table_str_by_num(fr_value_box_type_table, cast->type, "<UNKNOWN>"),
+					   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<UNKNOWN>"),
 					   fr_box_strvalue_len(map->lhs->name, map->lhs->len));
 
 				return false;
@@ -683,7 +683,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 
 			if (tmpl_cast_in_place(c->data.map->rhs, cast->type, cast) < 0) {
 				cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-					   fr_table_str_by_num(fr_value_box_type_table, cast->type, "<UNKNOWN>"),
+					   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<UNKNOWN>"),
 					   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
 				return false;
 			}
@@ -737,7 +737,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 
 					if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 						cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-							   fr_table_str_by_num(fr_value_box_type_table, map->lhs->tmpl_da->type, "<UNKNOWN>"),
+							   fr_table_str_by_value(fr_value_box_type_table, map->lhs->tmpl_da->type, "<UNKNOWN>"),
 							   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
 						return false;
 					} /* else the cast was successful */
@@ -1122,12 +1122,12 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	if (DEBUG_ENABLED3) {
 		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
-				    map->lhs->name, fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"));
+				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
 		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
-				    fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
+				    fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
 	}
 
@@ -1140,7 +1140,7 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	default:
 		cf_log_err(map->ci, "Left side of map must be an attribute "
 		           "or an xlat (that expands to an attribute), not a %s",
-		           fr_table_str_by_num(tmpl_type_table, map->lhs->type, "<INVALID>"));
+		           fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
 		return -1;
 	}
 
@@ -1160,7 +1160,7 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
 		cf_log_err(map->ci, "Invalid operator \"%s\" in map section.  "
 			   "Only assignment or filter operators are allowed",
-			   fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"));
+			   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 		return -1;
 	}
 
@@ -1186,12 +1186,12 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	if (DEBUG_ENABLED3) {
 		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
-				    map->lhs->name, fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"));
+				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
 		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
-				    fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
+				    fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
 	}
 
@@ -1257,7 +1257,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
 			cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
 				   "Only assignment or filter operators are allowed",
-				   fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"));
+				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 			return -1;
 		}
 
@@ -1322,7 +1322,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 
 		default:
 			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
-				   fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"));
+				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 			return -1;
 		}
 	}
@@ -1347,8 +1347,8 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 */
 		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
-				    fr_table_str_by_num(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				    fr_table_str_by_num(fr_value_box_type_table, map->lhs->tmpl_da->type, "<INVALID>"));
+				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
+				    fr_table_str_by_value(fr_value_box_type_table, map->lhs->tmpl_da->type, "<INVALID>"));
 			return -1;
 		}
 
@@ -1362,7 +1362,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 			da = fr_dict_attr_by_type(map->lhs->tmpl_da, map->rhs->tmpl_value_type);
 			if (!da) {
 				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-						   fr_table_str_by_num(fr_value_box_type_table, map->rhs->tmpl_value_type,
+						   fr_table_str_by_value(fr_value_box_type_table, map->rhs->tmpl_value_type,
 						   "<INVALID>"), map->lhs->tmpl_da->name);
 				return -1;
 			}
@@ -1392,12 +1392,12 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 	if (DEBUG_ENABLED3) {
 		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
-				    map->lhs->name, fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"));
+				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
 		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
-				    fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
+				    fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
 	}
 
@@ -1453,7 +1453,7 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 	if (tmpl_is_attr(map->lhs) && !fr_equality_op[map->op]) {
 		cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
 			   "Only assignment or filter operators are allowed",
-			   fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"));
+			   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 		return -1;
 	}
 
@@ -1477,8 +1477,8 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 		 */
 		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
-				    fr_table_str_by_num(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				    fr_table_str_by_num(fr_value_box_type_table, map->lhs->tmpl_da->type, "<INVALID>"));
+				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
+				    fr_table_str_by_value(fr_value_box_type_table, map->lhs->tmpl_da->type, "<INVALID>"));
 			return -1;
 		}
 
@@ -1492,7 +1492,7 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 			da = fr_dict_attr_by_type(map->lhs->tmpl_da, map->rhs->tmpl_value_type);
 			if (!da) {
 				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-						   fr_table_str_by_num(fr_value_box_type_table, map->rhs->tmpl_value_type,
+						   fr_table_str_by_value(fr_value_box_type_table, map->rhs->tmpl_value_type,
 						   "<INVALID>"), map->lhs->tmpl_da->name);
 				return -1;
 			}
@@ -1882,7 +1882,7 @@ static int compile_action_pair(unlang_t *c, CONF_PAIR *cp)
 	if (strcasecmp(attr, "default") != 0) {
 		int rcode;
 
-		rcode = fr_table_num_by_str(mod_rcode_table, attr, -1);
+		rcode = fr_table_value_by_str(mod_rcode_table, attr, -1);
 		if (rcode < 0) {
 			cf_log_err(cp,
 				   "Unknown module rcode '%s'.",
@@ -2484,7 +2484,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (!tmpl_is_attr(vpt) && !tmpl_is_list(vpt)) {
 		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
-			   fr_table_str_by_num(tmpl_type_table, vpt->type, "???"));
+			   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
 		talloc_free(vpt);
 		return NULL;
 	}

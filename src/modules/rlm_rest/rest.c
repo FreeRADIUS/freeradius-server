@@ -131,10 +131,10 @@ const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
  * @note must be kept in sync with http_method_t enum.
  *
  * @see http_method_t
- * @see fr_table_num_by_str
- * @see fr_table_str_by_num
+ * @see fr_table_value_by_str
+ * @see fr_table_str_by_value
  */
-fr_table_sorted_t const http_method_table[] = {
+fr_table_num_sorted_t const http_method_table[] = {
 	{ "DELETE",				REST_HTTP_METHOD_DELETE		},
 	{ "GET",				REST_HTTP_METHOD_GET		},
 	{ "PATCH",				REST_HTTP_METHOD_PATCH		},
@@ -150,10 +150,10 @@ size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
  * configuration parser.
  *
  * @see http_body_Type_t
- * @see fr_table_num_by_str
- * @see fr_table_str_by_num
+ * @see fr_table_value_by_str
+ * @see fr_table_str_by_value
  */
-fr_table_sorted_t const http_body_type_table[] = {
+fr_table_num_sorted_t const http_body_type_table[] = {
 	{ "html",				REST_HTTP_BODY_HTML		},
 	{ "invalid",				REST_HTTP_BODY_INVALID		},
 	{ "json",				REST_HTTP_BODY_JSON		},
@@ -168,7 +168,7 @@ fr_table_sorted_t const http_body_type_table[] = {
 };
 size_t http_body_type_table_len = NUM_ELEMENTS(http_body_type_table);
 
-fr_table_sorted_t const http_auth_table[] = {
+fr_table_num_sorted_t const http_auth_table[] = {
 	{ "any",				REST_HTTP_AUTH_ANY		},
 	{ "basic",				REST_HTTP_AUTH_BASIC		},
 	{ "digest",				REST_HTTP_AUTH_DIGEST		},
@@ -193,10 +193,10 @@ size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
  * so multiple types, are listed here.
  *
  * @see http_body_Type_t
- * @see fr_table_num_by_str
- * @see fr_table_str_by_num
+ * @see fr_table_value_by_str
+ * @see fr_table_str_by_value
  */
-fr_table_sorted_t const http_content_type_table[] = {
+fr_table_num_sorted_t const http_content_type_table[] = {
 	{ "application/json",			REST_HTTP_BODY_JSON		},
 	{ "application/x-www-form-urlencoded",	REST_HTTP_BODY_POST		},
 	{ "application/x-yaml",			REST_HTTP_BODY_YAML		},
@@ -786,7 +786,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		rad_assert(vps);
 
 		RINDENT();
-		RDEBUG3("Type  : %s", fr_table_str_by_num(fr_value_box_type_table, da->type, "<INVALID>"));
+		RDEBUG3("Type  : %s", fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 
 		q = strchr(p, '&');
 		len = (!q) ? (rawlen - (p - raw)) : (unsigned)(q - p);
@@ -1089,7 +1089,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			 *  Process operator if present.
 			 */
 			if (json_object_object_get_ex(value, "op", &tmp)) {
-				flags.op = fr_table_num_by_str(fr_tokens_table, json_object_get_string(tmp), 0);
+				flags.op = fr_table_value_by_str(fr_tokens_table, json_object_get_string(tmp), 0);
 				if (!flags.op) {
 					RWDEBUG("Invalid operator value \"%s\" (skipping)",
 						json_object_get_string(tmp));
@@ -1391,10 +1391,10 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			if (!q) q = memchr(p, '\r', (end - p));
 
 			len = (size_t)(!q ? (end - p) : (q - p));
-			type = fr_table_num_by_substr(http_content_type_table, p, len, REST_HTTP_BODY_UNKNOWN);
+			type = fr_table_value_by_substr(http_content_type_table, p, len, REST_HTTP_BODY_UNKNOWN);
 
 			RINDENT();
-			RDEBUG2("Type   : %s (%pV)", fr_table_str_by_num(http_body_type_table, type, "<INVALID>"),
+			RDEBUG2("Type   : %s (%pV)", fr_table_str_by_value(http_body_type_table, type, "<INVALID>"),
 				fr_box_strvalue_len(p, len));
 			REXDENT();
 
@@ -1404,7 +1404,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			if (ctx->force_to != REST_HTTP_BODY_UNKNOWN) {
 				if (ctx->force_to != ctx->type) {
 					RDEBUG3("Forcing body type to \"%s\"",
-						fr_table_str_by_num(http_body_type_table, ctx->force_to, "<INVALID>"));
+						fr_table_str_by_value(http_body_type_table, ctx->force_to, "<INVALID>"));
 					ctx->type = ctx->force_to;
 				}
 			/*
@@ -1415,22 +1415,22 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 				switch (ctx->type) {
 				case REST_HTTP_BODY_UNKNOWN:
 					RWDEBUG("Couldn't determine type, using the request's type \"%s\".",
-						fr_table_str_by_num(http_body_type_table, type, "<INVALID>"));
+						fr_table_str_by_value(http_body_type_table, type, "<INVALID>"));
 					break;
 
 				case REST_HTTP_BODY_UNSUPPORTED:
 					REDEBUG("Type \"%s\" is currently unsupported",
-						fr_table_str_by_num(http_body_type_table, type, "<INVALID>"));
+						fr_table_str_by_value(http_body_type_table, type, "<INVALID>"));
 					break;
 
 				case REST_HTTP_BODY_UNAVAILABLE:
 					REDEBUG("Type \"%s\" is unavailable, please rebuild this module with the required "
-						"library", fr_table_str_by_num(http_body_type_table, type, "<INVALID>"));
+						"library", fr_table_str_by_value(http_body_type_table, type, "<INVALID>"));
 					break;
 
 				case REST_HTTP_BODY_INVALID:
 					REDEBUG("Type \"%s\" is not a valid web API data markup format",
-						fr_table_str_by_num(http_body_type_table, type, "<INVALID>"));
+						fr_table_str_by_value(http_body_type_table, type, "<INVALID>"));
 					break;
 
 				/* supported type */
@@ -1864,7 +1864,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *	if we were provided with one explicitly.
 	 */
 	if (type != REST_HTTP_BODY_NONE) {
-		content_type = fr_table_str_by_num(http_content_type_table, type, section->body_str);
+		content_type = fr_table_str_by_value(http_content_type_table, type, section->body_str);
 		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
 		ctx->headers = curl_slist_append(ctx->headers, buffer);
 		if (!ctx->headers) {
@@ -2002,7 +2002,7 @@ do {\
 		}
 
 		RDEBUG3("Configuring HTTP auth type %s, user \"%pV\", password \"%pV\"",
-			fr_table_str_by_num(http_auth_table, auth, "<INVALID>"),
+			fr_table_str_by_value(http_auth_table, auth, "<INVALID>"),
 			fr_box_strvalue_buffer(username), fr_box_strvalue_buffer(password));
 
 		if ((auth >= REST_HTTP_AUTH_BASIC) &&
@@ -2069,7 +2069,7 @@ do {\
 		}
 
 		RDEBUG3("Request body content-type will be \"%s\"",
-			fr_table_str_by_num(http_content_type_table, type, section->body_str));
+			fr_table_str_by_value(http_content_type_table, type, section->body_str));
 		break;
 
 	default:

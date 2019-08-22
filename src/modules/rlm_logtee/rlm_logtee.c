@@ -59,7 +59,7 @@ typedef enum {
 	LOGTEE_DST_TCP,					//!< Log via TCP.
 } logtee_dst_t;
 
-static fr_table_sorted_t const logtee_dst_table[] = {
+static fr_table_num_sorted_t const logtee_dst_table[] = {
 	{ "file",		LOGTEE_DST_FILE	},
 	{ "tcp",		LOGTEE_DST_TCP	},
 	{ "udp",		LOGTEE_DST_UDP	},
@@ -587,7 +587,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		inst->file.escape_func = rad_filename_make_safe;
 	}
 
-	inst->log_dst = fr_table_num_by_str(logtee_dst_table, inst->log_dst_str, LOGTEE_DST_INVALID);
+	inst->log_dst = fr_table_value_by_str(logtee_dst_table, inst->log_dst_str, LOGTEE_DST_INVALID);
 	if (inst->log_dst == LOGTEE_DST_INVALID) {
 		cf_log_err(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
 		return -1;

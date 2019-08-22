@@ -77,7 +77,7 @@ typedef enum {
 	SERVER_WARNINGS_NO
 } rlm_sql_mysql_warnings;
 
-static fr_table_sorted_t const server_warnings_table[] = {
+static fr_table_num_sorted_t const server_warnings_table[] = {
 	{ "auto",	SERVER_WARNINGS_AUTO	},
 	{ "no",		SERVER_WARNINGS_NO	},
 	{ "yes",	SERVER_WARNINGS_YES	}
@@ -172,7 +172,7 @@ static int mod_instantiate(UNUSED rlm_sql_config_t const *config, void *instance
 	rlm_sql_mysql_t		*inst = instance;
 	int			warnings;
 
-	warnings = fr_table_num_by_str(server_warnings_table, inst->warnings_str, -1);
+	warnings = fr_table_value_by_str(server_warnings_table, inst->warnings_str, -1);
 	if (warnings < 0) {
 		ERROR("Invalid warnings value \"%s\", must be yes, no, or auto", inst->warnings_str);
 		return -1;

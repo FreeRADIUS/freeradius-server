@@ -1116,7 +1116,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	 *	Double-check the length after decrypting the
 	 *	attribute.
 	 */
-	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_table_str_by_num(fr_value_box_type_table, parent->type, "?Unknown?"), parent->type);
+	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"), parent->type);
 
 	min = fr_radius_attr_sizes[parent->type][0];
 	max = fr_radius_attr_sizes[parent->type][1];

@@ -371,8 +371,8 @@ static int fr_ethernet_set_option(void *proto_ctx, fr_proto_opt_group_t group, i
 		case PROTO_OPT_L2_PAYLOAD_LEN:
 			if (in->type != FR_TYPE_SIZE) {
 				fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s",
-						   fr_table_str_by_num(fr_value_box_type_table, FR_TYPE_SIZE, "?Unknown?"),
-						   fr_table_str_by_num(fr_value_box_type_table, in->type, "?Unknown?"));
+						   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_SIZE, "?Unknown?"),
+						   fr_table_str_by_value(fr_value_box_type_table, in->type, "?Unknown?"));
 				return -1;
 			}
 			ether_ctx->payload_len = in->vb_size;

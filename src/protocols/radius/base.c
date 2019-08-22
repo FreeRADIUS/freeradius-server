@@ -119,7 +119,7 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
  */
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
-fr_table_sorted_t const fr_request_types[] = {
+fr_table_num_sorted_t const fr_request_types[] = {
 	{ "acct",	FR_CODE_ACCOUNTING_REQUEST	},
 	{ "auth",	FR_CODE_ACCESS_REQUEST		},
 	{ "auto",	FR_CODE_UNDEFINED		},

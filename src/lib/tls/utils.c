@@ -32,7 +32,7 @@
 /** PKEY types (friendly names)
  *
  */
-static fr_table_sorted_t const pkey_types[] = {
+static fr_table_num_sorted_t const pkey_types[] = {
 	{ "DH",		EVP_PKEY_DH		},
 	{ "DSA",	EVP_PKEY_DSA		},
 	{ "EC",		EVP_PKEY_EC		},
@@ -57,7 +57,7 @@ char const *tls_utils_x509_pkey_type(X509 *cert)
 	if (!pkey) return NULL;
 
 	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
-	type_str = fr_table_str_by_num(pkey_types, pkey_type, OBJ_nid2sn(pkey_type));
+	type_str = fr_table_str_by_value(pkey_types, pkey_type, OBJ_nid2sn(pkey_type));
 	EVP_PKEY_free(pkey);
 
 	return type_str;

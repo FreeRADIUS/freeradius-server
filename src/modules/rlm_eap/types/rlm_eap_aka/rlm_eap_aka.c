@@ -41,7 +41,7 @@ RCSID("$Id$")
 #  define EAP_TLS_MPPE_KEY_LEN     32
 #endif
 
-static fr_table_ordered_t const aka_state_table[] = {
+static fr_table_num_ordered_t const aka_state_table[] = {
 	{ "IDENTITY",				EAP_AKA_SERVER_IDENTITY				},
 	{ "CHALLENGE",				EAP_AKA_SERVER_CHALLENGE			},
 	{ "SUCCESS-NOTIFICATION",		EAP_AKA_SERVER_SUCCESS_NOTIFICATION 		},
@@ -237,7 +237,7 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 	RADIUS_PACKET		*packet;
 	fr_cursor_t		cursor;
 
-	RDEBUG2("Sending AKA-Identity (%s)", fr_table_str_by_num(sim_id_request_table, eap_aka_session->id_req, "<INVALID>"));
+	RDEBUG2("Sending AKA-Identity (%s)", fr_table_str_by_value(sim_id_request_table, eap_aka_session->id_req, "<INVALID>"));
 	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
 	eap_aka_session->allow_encrypted = false;	/* In case this is after failed fast-resumption */
 
@@ -639,12 +639,12 @@ static void eap_aka_state_enter(eap_session_t *eap_session, eap_aka_server_state
 
 	if (new_state != eap_aka_session->state) {
 		RDEBUG2("Changed state %s -> %s",
-			fr_table_str_by_num(aka_state_table, eap_aka_session->state, "<unknown>"),
-			fr_table_str_by_num(aka_state_table, new_state, "<unknown>"));
+			fr_table_str_by_value(aka_state_table, eap_aka_session->state, "<unknown>"),
+			fr_table_str_by_value(aka_state_table, new_state, "<unknown>"));
 		eap_aka_session->state = new_state;
 	} else {
 		RDEBUG2("Reentering state %s",
-			fr_table_str_by_num(aka_state_table, eap_aka_session->state, "<unknown>"));
+			fr_table_str_by_value(aka_state_table, eap_aka_session->state, "<unknown>"));
 	}
 
 	switch (new_state) {
@@ -975,10 +975,10 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 			if (!vp) {
 				REDEBUG("EAP-AKA Peer rejected AKA-Identity (%s) with client-error message but "
 					"has not supplied a client error code",
-					fr_table_str_by_num(sim_id_request_table, eap_aka_session->id_req, "<INVALID>"));
+					fr_table_str_by_value(sim_id_request_table, eap_aka_session->id_req, "<INVALID>"));
 			} else {
 				REDEBUG("Client rejected AKA-Identity (%s) with error: %s (%i)",
-					fr_table_str_by_num(sim_id_request_table, eap_aka_session->id_req, "<INVALID>"),
+					fr_table_str_by_value(sim_id_request_table, eap_aka_session->id_req, "<INVALID>"),
 					fr_pair_value_enum(vp, buff), vp->vp_uint16);
 			}
 			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE);
@@ -1167,7 +1167,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 		switch (method) {
 		default:
 			RWDEBUG("EAP-Identity-Response hints that EAP-%s should be started, but we're "
-				"attempting EAP-AKA'", fr_table_str_by_num(sim_id_method_hint_table, method, "<INVALID>"));
+				"attempting EAP-AKA'", fr_table_str_by_value(sim_id_method_hint_table, method, "<INVALID>"));
 			break;
 
 		case SIM_METHOD_HINT_AKA_PRIME:
@@ -1185,7 +1185,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 		switch (method) {
 		default:
 			RWDEBUG("EAP-Identity-Response hints that EAP-%s should be started, but we're "
-				"attempting EAP-AKA", fr_table_str_by_num(sim_id_method_hint_table, method, "<INVALID>"));
+				"attempting EAP-AKA", fr_table_str_by_value(sim_id_method_hint_table, method, "<INVALID>"));
 			break;
 
 		case SIM_METHOD_HINT_AKA:

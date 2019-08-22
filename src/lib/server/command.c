@@ -242,7 +242,7 @@ static bool fr_command_valid_syntax(fr_cmd_argv_t *argv)
 	if (uppercase) {
 		fr_type_t type;
 
-		type = fr_table_num_by_str(fr_value_box_type_table, argv->name, FR_TYPE_INVALID);
+		type = fr_table_value_by_str(fr_value_box_type_table, argv->name, FR_TYPE_INVALID);
 		switch (type) {
 		case FR_TYPE_ABINARY:
 		case FR_TYPE_VALUE_BOX:

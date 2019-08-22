@@ -73,7 +73,7 @@ struct xlat_thread_inst {
 
 typedef struct xlat_s xlat_t;
 
-extern fr_table_sorted_t const xlat_action_table[];
+extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
 
 typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);

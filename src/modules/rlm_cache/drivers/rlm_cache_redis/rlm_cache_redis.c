@@ -167,7 +167,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Bad result type, expected array, got %s",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		goto error;
 	}
 
@@ -457,7 +457,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	}
 
 	REDEBUG("Bad result type, expected integer, got %s",
-		fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+		fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 	fr_redis_reply_free(&reply);
 
 	return CACHE_ERROR;

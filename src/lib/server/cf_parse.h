@@ -446,7 +446,7 @@ struct CONF_PARSER {
 };
 
 typedef struct {
-	fr_table_sorted_t const	*table;
+	fr_table_num_sorted_t const	*table;
 	size_t			*len;
 } cf_table_parse_ctx_t;
 

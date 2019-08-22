@@ -66,7 +66,7 @@ void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_d
 		fr_log(&default_log, L_DBG, file, line,
 		       "stk: %s [%i] %s: %s, vendor: 0x%x (%u), attr: 0x%x (%u)",
 		       (i == (int)depth) ? ">" : " ", i,
-		       fr_table_str_by_num(fr_value_box_type_table, tlv_stack[i]->type, "?Unknown?"),
+		       fr_table_str_by_value(fr_value_box_type_table, tlv_stack[i]->type, "?Unknown?"),
 		       tlv_stack[i]->name,
 		       fr_dict_vendor_num_by_da(tlv_stack[i]), fr_dict_vendor_num_by_da(tlv_stack[i]),
 		       tlv_stack[i]->attr, tlv_stack[i]->attr);

@@ -78,7 +78,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 		if (!value) goto error;
 
 		to_store = talloc_asprintf_append_buffer(to_store, "%s %s %s\n", attr,
-							 fr_table_str_by_num(fr_tokens_table, map->op, "<INVALID>"),
+							 fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"),
 							 value);
 		if (!to_store) goto error;
 	}
@@ -129,14 +129,14 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 		if (!tmpl_is_attr(map->lhs)) {
 			fr_strerror_printf("Pair left hand side \"%s\" parsed as %s, needed attribute.  "
 					   "Check local dictionaries", map->lhs->name,
-					   fr_table_str_by_num(tmpl_type_table, map->lhs->type, "<INVALID>"));
+					   fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
 			goto error;
 		}
 
 		if (!tmpl_is_unparsed(map->rhs)) {
 			fr_strerror_printf("Pair right hand side \"%s\" parsed as %s, needed literal.  "
 					   "Check serialized data quoting", map->rhs->name,
-					   fr_table_str_by_num(tmpl_type_table, map->rhs->type, "<INVALID>"));
+					   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "<INVALID>"));
 			goto error;
 		}
 

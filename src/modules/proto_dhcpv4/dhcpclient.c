@@ -113,7 +113,7 @@ fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
 	{ NULL }
 };
 
-static fr_table_sorted_t const request_types[] = {
+static fr_table_num_sorted_t const request_types[] = {
 	{ "auto",     		FR_CODE_UNDEFINED	},
 	{ "decline",		FR_DHCP_DECLINE		},
 	{ "discover",		FR_DHCP_DISCOVER	},
@@ -711,7 +711,7 @@ int main(int argc, char **argv)
 	 */
 	if (argc >= 3) {
 		if (!isdigit((int) argv[2][0])) {
-			packet_code = fr_table_num_by_str(request_types, argv[2], -2);
+			packet_code = fr_table_value_by_str(request_types, argv[2], -2);
 			if (packet_code == -2) {
 				ERROR("Unknown packet type: %s", argv[2]);
 				usage();

@@ -137,7 +137,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		switch (type) {
 		default:
 			fr_strerror_printf("The 'array' flag cannot be used with attributes of type '%s'",
-					   fr_table_str_by_num(fr_value_box_type_table, type, "<UNKNOWN>"));
+					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 			return false;
 
 		case FR_TYPE_IPV4_ADDR:
@@ -280,7 +280,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				if (v->type == FR_TYPE_EXTENDED) {
 					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
 							   "of type '%s'", flags->encrypt,
-							   fr_table_str_by_num(fr_value_box_type_table, type, "<UNKNOWN>"));
+							   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 					return false;
 				}
 			}
@@ -290,7 +290,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		default:
 		encrypt_fail:
 			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
-					   fr_table_str_by_num(fr_value_box_type_table, type, "<UNKNOWN>"));
+					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 			return false;
 
 		case FR_TYPE_TLV:
@@ -376,7 +376,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (parent->type != FR_TYPE_VSA) {
 			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa'"
 					   "instead of '%s'",
-					   fr_table_str_by_num(fr_value_box_type_table, parent->type, "?Unknown?"));
+					   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
 			return false;
 		}
 
@@ -435,7 +435,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 */
 		if (!v) {
 			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
-					   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"));
+					   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
 			return false;
 		}
 
@@ -500,7 +500,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		fr_strerror_printf("Attributes of type '%s' can only be used in the root of the dictionary",
-				   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
 		return false;
 
 	case FR_TYPE_COMBO_IP_ADDR:
@@ -529,7 +529,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_COMBO_IP_PREFIX:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
-				   fr_table_str_by_num(fr_value_box_type_table, type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
 		return false;
 
 	default:
@@ -652,7 +652,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	default:
 		fr_strerror_printf("Attributes of type '%s' cannot have child attributes",
-				   fr_table_str_by_num(fr_value_box_type_table, type, "<UNKNOWN>"));
+				   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 		return false;
 	}
 

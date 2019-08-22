@@ -353,16 +353,16 @@ typedef enum {
 /*
  *	Tables for resolving strings to LDAP constants
  */
-extern fr_table_sorted_t const fr_ldap_connection_states[];
+extern fr_table_num_sorted_t const fr_ldap_connection_states[];
 extern size_t fr_ldap_connection_states_len;
 
-extern fr_table_sorted_t const fr_ldap_supported_extensions[];
+extern fr_table_num_sorted_t const fr_ldap_supported_extensions[];
 extern size_t fr_ldap_supported_extensions_len;
-extern fr_table_sorted_t const fr_ldap_dereference[];
+extern fr_table_num_sorted_t const fr_ldap_dereference[];
 extern size_t fr_ldap_dereference_len;
-extern fr_table_sorted_t const fr_ldap_scope[];
+extern fr_table_num_sorted_t const fr_ldap_scope[];
 extern size_t fr_ldap_scope_len;
-extern fr_table_sorted_t const fr_ldap_tls_require_cert[];
+extern fr_table_num_sorted_t const fr_ldap_tls_require_cert[];
 extern size_t fr_ldap_tls_require_cert_len;
 
 /** Inline function to copy pointers from a berval to a valuebox

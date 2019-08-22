@@ -378,7 +378,7 @@ static inline int ippool_wait_check(REQUEST *request, uint32_t wait_num, redisRe
 
 	if (reply->type != REDIS_REPLY_INTEGER) {
 		REDEBUG("WAIT result is wrong type, expected integer got %s",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		return -1;
 	}
 	if (reply->integer < wait_num) {
@@ -541,7 +541,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 
 			if (replies[3]->type != REDIS_REPLY_ARRAY) {
 				REDEBUG("Bad response to EXEC, expected array got %s",
-					fr_table_str_by_num(redis_reply_types, replies[3]->type, "<UNKNOWN>"));
+					fr_table_str_by_value(redis_reply_types, replies[3]->type, "<UNKNOWN>"));
 			error:
 				fr_redis_pipeline_free(replies, reply_cnt);
 				status = REDIS_RCODE_ERROR;
@@ -554,7 +554,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 			}
 			if (replies[3]->element[0]->type != REDIS_REPLY_STRING) {
 				REDEBUG("Bad response to SCRIPT LOAD, expected string got %s",
-					fr_table_str_by_num(redis_reply_types, replies[3]->element[0]->type, "<UNKNOWN>"));
+					fr_table_str_by_value(redis_reply_types, replies[3]->element[0]->type, "<UNKNOWN>"));
 				goto error;
 			}
 			if (strcmp(replies[3]->element[0]->str, digest) != 0) {
@@ -642,7 +642,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	rad_assert(reply);
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		ret = IPPOOL_RCODE_FAIL;
 		goto finish;
 	}
@@ -658,7 +658,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	 */
 	if (reply->element[0]->type != REDIS_REPLY_INTEGER) {
 		REDEBUG("Server returned unexpected type \"%s\" for rcode element (result[0])",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		ret = IPPOOL_RCODE_FAIL;
 		goto finish;
 	}
@@ -723,7 +723,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 
 		default:
 			REDEBUG("Server returned unexpected type \"%s\" for IP element (result[1])",
-				fr_table_str_by_num(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
+				fr_table_str_by_value(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
 		}
@@ -766,7 +766,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 
 		default:
 			REDEBUG("Server returned unexpected type \"%s\" for range element (result[2])",
-				fr_table_str_by_num(redis_reply_types, reply->element[2]->type, "<UNKNOWN>"));
+				fr_table_str_by_value(redis_reply_types, reply->element[2]->type, "<UNKNOWN>"));
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
 		}
@@ -790,7 +790,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 
 		if (reply->element[3]->type != REDIS_REPLY_INTEGER) {
 			REDEBUG("Server returned unexpected type \"%s\" for expiry element (result[3])",
-				fr_table_str_by_num(redis_reply_types, reply->element[3]->type, "<UNKNOWN>"));
+				fr_table_str_by_value(redis_reply_types, reply->element[3]->type, "<UNKNOWN>"));
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
 		}
@@ -869,7 +869,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		ret = IPPOOL_RCODE_FAIL;
 		goto finish;
 	}
@@ -885,7 +885,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	 */
 	if (reply->element[0]->type != REDIS_REPLY_INTEGER) {
 		REDEBUG("Server returned unexpected type \"%s\" for rcode element (result[0])",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		ret = IPPOOL_RCODE_FAIL;
 		goto finish;
 	}
@@ -915,7 +915,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 
 		default:
 			REDEBUG("Server returned unexpected type \"%s\" for range element (result[1])",
-				fr_table_str_by_num(redis_reply_types, reply->element[0]->type, "<UNKNOWN>"));
+				fr_table_str_by_value(redis_reply_types, reply->element[0]->type, "<UNKNOWN>"));
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
 		}
@@ -1005,7 +1005,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		ret = IPPOOL_RCODE_FAIL;
 		goto finish;
 	}
@@ -1021,7 +1021,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 	 */
 	if (reply->element[0]->type != REDIS_REPLY_INTEGER) {
 		REDEBUG("Server returned unexpected type \"%s\" for rcode element (result[0])",
-			fr_table_str_by_num(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		ret = IPPOOL_RCODE_FAIL;
 		goto finish;
 	}

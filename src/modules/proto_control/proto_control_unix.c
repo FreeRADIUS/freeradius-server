@@ -110,7 +110,7 @@ static const CONF_PARSER unix_listen_config[] = {
 #define FR_READ  (1)
 #define FR_WRITE (2)
 
-static fr_table_sorted_t mode_names[] = {
+static fr_table_num_sorted_t mode_names[] = {
 	{ "read-only",		FR_READ			},
 	{ "read-write",		FR_READ | FR_WRITE	},
 	{ "ro",			FR_READ			},
@@ -1180,7 +1180,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	} else {
 		int mode;
 
-		mode = fr_table_num_by_str(mode_names, inst->mode_name, 0);
+		mode = fr_table_value_by_str(mode_names, inst->mode_name, 0);
 		if (!mode) {
 			ERROR("Invalid mode name \"%s\"",
 			      inst->mode_name);

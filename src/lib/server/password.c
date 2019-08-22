@@ -35,7 +35,7 @@ typedef enum {
 	NORMALISED_HEX
 } normalise_t;
 
-static fr_table_sorted_t const normalise_table[] = {
+static fr_table_num_sorted_t const normalise_table[] = {
 	{ "base64",	NORMALISED_B64		},
 	{ "hex",	NORMALISED_HEX		},
 	{ "nothing",	NORMALISED_NOTHING	}
@@ -129,7 +129,7 @@ VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const
 
 	if (normalised != NORMALISED_NOTHING) {
 		RDEBUG2("Normalizing %s %s encoding, %zu bytes -> %zu bytes",
-			known_good->da->name, fr_table_str_by_num(normalise_table, normalised, 0),
+			known_good->da->name, fr_table_str_by_value(normalise_table, normalised, 0),
 			known_good->vp_length, decoded);
 		MEM(out = fr_pair_afrom_da(ctx, known_good->da));
 		fr_pair_value_memcpy(out, buffer, decoded, known_good->vp_tainted);
@@ -235,7 +235,7 @@ VALUE_PAIR *password_normify_with_header(TALLOC_CTX *ctx, REQUEST *request, VALU
 			decoded = normify(&normalised, n1, sizeof(n1), p, end - p, 1);
 			if (decoded > 0) {
 				RDEBUG2("Normalizing %s %s encoding, %zu bytes -> %zu bytes",
-					da->name, fr_table_str_by_num(normalise_table, normalised, 0),
+					da->name, fr_table_str_by_value(normalise_table, normalised, 0),
 					(end - p), decoded);
 				p = (char const *)n1;
 				end = p + decoded;
@@ -266,7 +266,7 @@ VALUE_PAIR *password_normify_with_header(TALLOC_CTX *ctx, REQUEST *request, VALU
 		if (decoded > 0) {
 			if ((n1[0] == '{') && (memchr(n1, '}', decoded) != NULL)) {
 				RDEBUG2("Normalizing %s %s encoding, %zu bytes -> %zu bytes",
-					known_good->da->name, fr_table_str_by_num(normalise_table, normalised, 0),
+					known_good->da->name, fr_table_str_by_value(normalise_table, normalised, 0),
 					known_good->vp_length, decoded);
 
 				/*

@@ -75,9 +75,9 @@ typedef enum {
 	SIM_PERMANENT_ID_REQ,			//!< Request IMSI.
 } fr_sim_id_req_type_t;
 
-extern fr_table_sorted_t const sim_id_request_table[];
+extern fr_table_num_sorted_t const sim_id_request_table[];
 extern size_t sim_id_request_table_len;
-extern fr_table_sorted_t const sim_id_method_hint_table[];
+extern fr_table_num_sorted_t const sim_id_method_hint_table[];
 extern size_t sim_id_method_hint_table_len;
 
 #define SIM_ID_TAG_PSEUDONYM_SIM_B64		55
