@@ -1,4 +1,4 @@
-# rlm_dynamic_clients
+# rlm_client
 ## Metadata
 <dl>
   <dt>category</dt><dd>datastore</dd>
