@@ -19,7 +19,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  The Python API `threading.local()` may be used store thread
 #  specific data such as connection handles.

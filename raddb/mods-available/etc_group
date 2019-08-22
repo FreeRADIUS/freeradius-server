@@ -14,7 +14,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  The `passwd` module configuration, for the /etc/group file. Adds a
 #  `Etc-Group-Name` attribute for every group that the user is member

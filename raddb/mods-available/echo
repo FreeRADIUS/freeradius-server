@@ -39,7 +39,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 exec echo {
 	#

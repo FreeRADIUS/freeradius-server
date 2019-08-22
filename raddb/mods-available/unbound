@@ -12,7 +12,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 unbound dns {
 	#  filename = "${raddbdir}/mods-config/unbound/default.conf"

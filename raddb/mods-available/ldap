@@ -16,7 +16,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  ldap { ... }::
 #

@@ -15,7 +15,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  If `mruby` is called for a section which does not have a function defined,
 #  it will return `noop`.

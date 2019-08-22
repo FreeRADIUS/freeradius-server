@@ -53,7 +53,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 cache cache_eap {
 	#

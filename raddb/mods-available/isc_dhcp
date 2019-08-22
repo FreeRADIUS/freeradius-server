@@ -24,7 +24,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 isc_dhcp {
 	#

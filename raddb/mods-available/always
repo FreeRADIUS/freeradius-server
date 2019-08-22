@@ -60,7 +60,7 @@
 #}
 
 #
-#  ## Default Instance
+#  ## Configuration Settings
 #
 #  The following default instances allow the use of return codes like
 #  `reject` or `ok` in `unlang` policies.

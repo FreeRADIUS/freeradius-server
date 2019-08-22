@@ -29,7 +29,7 @@
 #  NOTE: All key lookups are done as string comparisons.  All data in
 #  the CSV files are treated as strings.
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 csv {
 	#

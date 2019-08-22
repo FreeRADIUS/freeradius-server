@@ -11,7 +11,7 @@
 #
 #  NOTE: This default config presumes you have the MIT Kerberos 5 distribution.
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  krb5 { ... }::
 #

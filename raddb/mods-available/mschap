@@ -19,7 +19,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  NOTE: If you are using `/etc/smbpasswd`, see the `passwd` module
 #  for an example of how to use `/etc/smbpasswd`

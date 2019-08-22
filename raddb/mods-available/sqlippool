@@ -11,7 +11,7 @@
 #
 #  NOTE: The database schemas are available at `raddb/sql/ippool/<DB>/schema.sql`.
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 sqlippool {
 	#

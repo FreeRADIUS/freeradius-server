@@ -74,7 +74,7 @@
 #  The two are not the  same, and should be treated very differently. That is, you should
 #  generally not use the `User-Password` attribute anywhere in the RADIUS configuration.
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 pap {
 	#

@@ -18,7 +18,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  Al configuration items at this level (below the `redis` block)
 #  are polymorphic, meaning `xlats`, attribute references, literal values

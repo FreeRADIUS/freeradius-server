@@ -16,7 +16,7 @@
 #  * See `raddb/sites-available/dhcp` for instructions on how to configure the DHCP server.
 #  ====
 #
-#  ## Default instance
+#  ## Configuration Settings
 sqlippool dhcp_sqlippool {
 	#
 	#  See the `sqlippool` module for common configuration explanation.
