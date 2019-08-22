@@ -62,12 +62,14 @@ be interpreted as being in the correct format.  For example, when a
 configuration variable is documented as taking an IP address, all of
 the following examples result in the same configuration:
 
-.Examples
+.Equivalent Configurations
+====
 ----
 ipaddr = 192.0.2.2
 ipaddr = '192.0.2.2'
 ipaddr = "  192.0.2.2"
 ----
+====
 
 === Unquoted Strings
 
@@ -75,13 +77,15 @@ Unquoted strings delimited by spaces, or by other tokens.  This
 unquoted text is interpreted as a simple string and are generally
 equivalent to placing the string in single quotes.
 
-.Examples
+.Unquoted Strings
+====
 ----
 ipaddr = 192.168.0.2
 delay = 1
 locking = yes
 filename = /path/
 ----
+====
 
 === Single-Quoted Strings
 
@@ -89,11 +93,13 @@ A single-quoted string allow it to contain spaces, among other
 special characters. The single quote character can be placed in such a
 string by escaping it with a backslash.
 
-.Examples
+.Single-Quoted Strings
+====
 ----
 message = 'Hello there'
 filter = 'yes \` is allowed`
 ----
+====
 
 === Double-Quoted Strings
 
@@ -107,6 +113,14 @@ see the <<Variable References>> section for more information.
 
 The contents of a double-quoted can be interpreted as a string, a
 number, or an IP address, depending on the configuration varible.
+
+.Double-Quoted Strings
+====
+----
+message = "Hello there"
+filter = "yes \" is allowed"
+----
+====
 
 === Escape sequences
 
@@ -135,6 +149,22 @@ other configuration sections, to any depth of nesting.
 A configuration section begins with a section name, followed on the
 same line by an open bracket `{`.  A section ends with a close bracket
 `}`.
+
+.Syntax
+----
+<name> [<instance>] {
+    [ statements ]
+}
+----
+
+<name>:: The name of this configuration section.  The set of allowed
+names depends on the context.
+
+<instance>:: An optional secton name.
+
+[ statements ]:: Zero or more statements, including comments, variable
+assignments, and other sections.
+
 
 .Configuration Section
 ====
@@ -191,7 +221,44 @@ This example will set the value of the variable `foo` to `blah blah
 blah`.  Any CR or LF is not turned into a space, but all other
 whitespace is preserved in the final value.
 
-=== Contents of the Configuration Files
+=== Including other files
+
+As noted above, the configuration is logically one global "server
+configuration", but is split up into multiple files on disk.  This
+splitting is done by the use of a `$INCLUDE` statement.
+
+.Syntax
+----
+$INCLUDE <filename>
+-$INCLUDE <filename>
+----
+
+$INCLUDE:: Key word to load the *<filename>*, and to fail if the file does
+not exist, or cannot be parsed
+
+-$INCLUDE:: Key word to load the *<filename>*, and to silently do
+nothing if the file does not exist.  If the file does exist, this
+keyword behaves exactly the same as `$INCLUDE`.
+
+<filename>:: The filename to include
++
+If *<filename>* begins with a `/` character, then it is
+assumed to be a full path to the file, starting at the "root"
+directory of the file system.
++
+If *<filename>* does not begin with a `/` character, then it is
+assumed to be a path relative to the current file being read.
+
+
+.Including other files
+====
+----
+foo = bar
+$INCLUDE other.conf
+----
+====
+
+=== Configuration as a Database
 
 The configuration file parser is independent of the server
 configuration. This means that you can put almost anything into the
@@ -226,9 +293,7 @@ examples.
 ====
 ----
 foo = bar       # set variable 'foo' to value 'bar'
-
 who = ${foo}    # sets variable 'who' to value of variable 'foo'
-
 my = "${foo} a" # sets variable 'my' to "bar a"
 ----
 ====
@@ -241,13 +306,16 @@ Relative references are allowed, by prepending the name with one or
 more periods.
 
 .References in the Current Section
+====
 ----
 foo = bar
 blogs = ${.foo}  # set 'blogs' to 'bar'
 ergo = "${foo}"  # set 'ergo' to 'bar'
 ----
+====
 
 .Parent References
+====
 ----
 group {
     foo = bar
@@ -256,15 +324,18 @@ group {
     }
 }
 ----
+====
 
 Will set variable `blogs` to the value `bar`.  That value is taken
 from the variable `foo`, which is contained in the a parent section
 of the section containing `blogs`
 
 .References to Other Sections
+====
 ----
 blogs = ${modules.detail.filename}
 ----
+====
 
 Will set variable `blogs` to the value of variable `filename`, of the
 `detail` module, which is in the `modules` section of the
@@ -275,6 +346,7 @@ using a `:` after the section reference.  Currently `:name` and `:instance`
 are supported.
 
 .References to the Name of a Section
+====
 ----
 modules {
     example foo {
@@ -282,11 +354,13 @@ modules {
     }
 }
 ----
+====
 
 Will set variable `file` to the name of the containing section, in
 this case, `example`.
 
 .References to the Instance of a Section
+====
 ----
 modules {
     example foo {
@@ -294,11 +368,13 @@ modules {
     }
 }
 ----
+====
 
 Will set variable `file` to the instance name of the containing
 section, in this case `foo`.
 
 .Combining References
+====
 ----
 modules {
     example foo {
@@ -306,6 +382,7 @@ modules {
     }
 }
 ----
+====
 
 Will set variable `file` to the name of the parent of the containing
 section, in this case `modules`.
@@ -314,11 +391,12 @@ A string can contain multiple references, which will all be
 expanded.
 
 .Multiple References
+====
 ----
 foo = bar
 baz = bug
 blogs = "this ${foo} is ${baz}"
 ----
+====
 
 Will set variable `blogs` to the string `this bar is bug`.
-x

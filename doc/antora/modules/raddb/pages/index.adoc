@@ -1,56 +1,39 @@
-= Welcome to Version 4.0 of FreeRADIUS
+= Configuration Files
 
 This section documents the format and content of the configuration
 files.
 
-== Configuring the server
+== Format and Layout
 
-When configuring the server, please start with the default
-configuration. It is intended to work in the widest possible
-circumstances, with minimal site-local changes. Most sites can just
-configure a few modules such as `ldap` and `sql`, and the server
-will do everything you need. More complex configurations require more
-effort, of course.
+The configuration files are in a simple text-based
+xref:format.adoc[format].  They are loaded once when the server
+starts, and then are static for the duration of the server.  Changes
+to the configuration file are picked up only when the server restarts.
 
-For more complex configurations, the best approach is to make a series
-of small changes. Start the server after every change via
-`radiusd -XC` to see if the configuration is OK. Use `radclient` to
-send the server test packets. Read the debug output (`radiusd -X`) to
-verify that the server is doing what you expect.
+The configuration files are organized into groups, generally by
+directory, as discussed below.
 
-For complex policies, it is best to write down what you want in plain
-English. Be specific. Write down what the server receives in a packet,
-which databases are used, and what the database should return. The more
-detailed these explanations, the easier it will be to create a working
-configuration.
+=== radiusd.conf
 
-Take your time. It is better to make small incrementatal progress, than
-to make massive changes, and then to spend weeks debugging it.
+The xref:radiusd.conf.adoc[radiusd.conf] file is the main server
+configuration file.  When the server starts, it reads this file.  This
+file then loads all of the other configuration files.
 
-== Organization
+=== dictionary
 
-The files in this directory are organized into logical groups, as
-follows.
-
-* `mods-available/`  - <<mods-available/README.adoc#,Available modules>>, with example configuration.
-* `mods-enabled/`    - Enabled modules that are being used by FreeRADIUS.
-* `sites-available/` - xref:raddb:sites-available/index.adoc[Available virtual servers], with example configuration.
-* `sites-enabled/`   - Enabled virtual servers that are being used by FreeRADIUS.
-* `policy.d/`        - example and live policies which implement standard rules and checks.
-* `certs/`           - Certificiates for EAP and for RADIUS over TLS.
-
-The directories are descrived in more detail below.
+Site-local dictionary entries are placed in the
+xref:dictionary.adoc[dictionary] file.
 
 === `mods-available/`
 
-The `mods-available/` directory contains configuration for all of the
-available modules. Each module configuration is different. Each file
-contains documentation that describes what the module is, and how it
-works.
+The xref:mods-available/index.adoc[mods-available/] directory contains
+configuration for all of the available modules. Each module
+configuration is different. Each file contains documentation that
+describes what the module is, and how it works.
 
-The directory contains almost 100 modules. Most configurations will only
-use a few modules. The rest exist in order to serve as documentation and
-worked examples.
+The directory contains almost 100 modules. Most configurations will
+only use a few modules. The remaining module configurations exist in
+order to serve as documentation and worked examples.
 
 === `mods-enabled/`
 
@@ -94,14 +77,18 @@ policies are loaded by the server, and unused ones are ignored.
 === `sites-available/`
 
 The `sites-available/` directory contains virtual servers which
-process packets. They are similar to the virtual servers used by Apache
-or Nginx.
+process packets. They are similar in concept to the virtual servers
+used by Apache and Nginx.
 
-Each virtual server will begin with a `server` declaration, along with it’s name. e.g. `server default { ...`. The declaration is then followed by a `namespace =` 
-parameter, which describes which application protocol is being used in that virtual server.
+Each virtual server will begin with a `server` declaration, along with
+it’s name. e.g. `server default { ...`. The declaration is then
+followed by a `namespace =` parameter, which describes which
+application protocol is being used in that virtual server.
 e.g. `namespace = radius`.
 
-The virtual server will then contain zero or more `listen` subsections. Each `listen` subsection defines a network socket which is used to receive packets.
+The virtual server will then contain zero or more `listen`
+subsections. Each `listen` subsection defines a network socket which
+is used to receive packets.
 
 The virtual server will then contain multiple `recv { ... }` and `send { ... }`
 subsections. These subsections are used to process packets.
@@ -135,16 +122,40 @@ The standard installation of FreeRADIUS enables only a few virtual servers.
 
 === `certs/`
 
-This directory contains certificates and configuration for EAP and RADIUS over TLS (i.e. RadSec).
+This directory contains certificates and configuration for EAP and
+RADIUS over TLS (i.e. RadSec).
 
-== List of config files
+== Additional Configuration Files
 
-* xref:raddb:clients.conf.adoc[clients.conf]
-* xref:raddb:debug.conf.adoc[debug.conf]
-* xref:raddb:dictionary.adoc[dictionary]
-* xref:raddb:experimental.conf.adoc[experimental.conf]
-* xref:raddb:panic.gdb.adoc[panic.gdb]
-* xref:raddb:radiusd.conf.adoc[radiusd.conf]
-* xref:raddb:radrelay.conf.adoc[radrelay.conf]
-* xref:raddb:templates.conf.adoc[templates.conf]
-* xref:raddb:trigger.conf.adoc[trigger.conf]
+* xref:clients.conf.adoc[clients.conf]
+* xref:debug.conf.adoc[debug.conf]
+* xref:experimental.conf.adoc[experimental.conf]
+* xref:panic.gdb.adoc[panic.gdb]
+* xref:radrelay.conf.adoc[radrelay.conf]
+* xref:templates.conf.adoc[templates.conf]
+* xref:trigger.conf.adoc[trigger.conf]
+
+== Changing the Configuration
+
+When configuring the server, please start with the default
+configuration. It is intended to work in the widest possible
+circumstances, with minimal site-local changes. Most sites can just
+configure a few modules such as `ldap` and `sql`, and the server
+will do everything you need. More complex configurations require more
+effort, of course.
+
+For more complex configurations, the best approach is to make a series
+of small changes. Start the server after every change via
+`radiusd -XC` to see if the configuration is OK. Use `radclient` to
+send the server test packets. Read the debug output (`radiusd -X`) to
+verify that the server is doing what you expect.
+
+For complex policies, it is best to write down what you want in plain
+English. Be specific. Write down what the server receives in a packet,
+which databases are used, and what the database should return. The more
+detailed these explanations, the easier it will be to create a working
+configuration.
+
+Take your time. It is better to make small incrementatal progress, than
+to make massive changes, and then to spend weeks debugging it.
+
