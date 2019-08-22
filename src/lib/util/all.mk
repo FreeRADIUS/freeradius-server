@@ -10,7 +10,11 @@ SOURCES		:= \
 		   base64.c \
 		   cursor.c \
 		   debug.c \
-		   dict.c \
+		   dict_print.c \
+		   dict_tokenize.c \
+		   dict_unknown.c \
+		   dict_util.c \
+		   dict_validate.c \
 		   dl.c \
 		   event.c \
 		   fifo.c \
