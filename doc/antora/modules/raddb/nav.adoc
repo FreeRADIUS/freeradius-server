@@ -1,7 +1,8 @@
 * xref:index.adoc[Configuration]
 ** xref:format.adoc[Format of the Configuration Files]
 
-** xref:index.adoc[Modules]
+** xref:mods-available/index.adoc[Modules]
+*** xref:mods-available/all_modules.adoc[Module List]
 *** xref:mods-available/abfab_psk_sql.adoc[ADFAB PSK Module]
 *** xref:mods-available/always.adoc[Always Module]
 *** xref:mods-available/attr_filter.adoc[Attr_filter Module]

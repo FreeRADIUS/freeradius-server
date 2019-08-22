@@ -55,7 +55,7 @@ clean: clean.doc
 #  Our "conf to asciidoc" stuff.
 #
 CONF_FILES := $(filter-out %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
-BASE_ADOC_FILES := $(wildcard doc/*.adoc doc/*/*.adoc doc/*/*/*.adoc)
+BASE_ADOC_FILES := $(wildcard doc/*.adoc doc/*/*.adoc doc/*/*/*.adoc) doc/raddb/mods-available/all_modules.adoc
 AUTO_ADOC_FILES := $(patsubst raddb/%,doc/raddb/%.adoc,$(CONF_FILES))
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
@@ -189,6 +189,11 @@ doc/raddb/%.adoc: raddb/%
 	${Q}mkdir -p $(dir $@)
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
 	${Q}./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc -o $@ < $^
+
+README_MODULES := $(wildcard src/modules/rlm_*/README.md)
+doc/raddb/mods-available/all_modules.adoc: $(README_MODULES)
+	@echo ADOC mods-available/all_modules.adoc
+	${Q}./scripts/asciidoc/mod_readme2adoc $(README_MODULES) > $@
 
 #
 #	Converting *.adoc to *.html

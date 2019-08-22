@@ -1,9 +1,33 @@
 = Modules in Version 4
 
-As of Version 3, all of the modules have been places in the
-`mods-available/` directory. This practice follows that used by other
-servers such as Nginx, Apache, etc. The `modules` directory should not
-be used.
+The server includes a number of "plug-in" modules which perform a
+variety of actions.  A full and annotated
+xref:mods-available/all_modules.adoc[module list] available on a
+separate page.
+
+Modules are divided up into a few categories:
+
+Authentication xref:mods-available/all_modules.adoc#_authentication_modules[list]::
+Modules which implement authentication protocols such as PAP, CHAP, MS-CHAP, EAP, etc.
+
+Datastore xref:mods-available/all_modules.adoc#_datastore_modules[list]::
+Modules which connect to external data stores such as SQL, LDAP, etc.
+
+IO xref:mods-available/all_modules.adoc#_io_modules[list]::
+Modules which write to disk, external log systems, etc.
+
+Language xref:mods-available/all_modules.adoc#_language_modules[list]::
+Modules which encapsulate a scripting language into the server such as
+Perl, Python, Lua, etc.
+
+Miscelleanous xref:mods-available/all_modules.adoc#_miscellaneous_modules[list]::
+Modules which do not belong elsewhere.
+
+Policy xref:mods-available/all_modules.adoc#_policy_modules[list]::
+Modules which implement policies to filter or enforce packets.
+
+
+== Enabling a Module
 
 Modules are enabled by creating a file in the mods-enabled/ directory.
 You can also create a soft-link from one directory to another:
@@ -44,19 +68,20 @@ server {
 }
 ```
 
-This says `require the LDAP module, but use the SQL module only if it
-is configured.`
+This configuration means that the server will _require the LDAP
+module, but use the SQL module only if it is configured._
 
 This feature is not very useful for production configurations. It is,
-however, very useful for the default examples that ship with the server.
+however, very useful for the default examples that ship with the
+server.
 
 == Ignoring module
 
 If you see this message::
 
-```
+---
 Ignoring module (see mods-available/README.adoc)
-```
+---
 
 Then you are in the right place. Most of the time this message can be
 ignored. The message can be fixed by find the references to `-module`
@@ -78,75 +103,3 @@ described above.
 Once the module is enabled, it will automatically be used in the default
 configuration.
 
-== List of available modules
-
-* <<abfab_psk_sql.adoc#,abfab_psk_sql>>
-* <<always.adoc#,always>>
-* <<attr_filter.adoc#,attr_filter>>
-* <<cache.adoc#,cache>>
-* <<cache_eap.adoc#,cache_eap>>
-* <<cache_tls.adoc#,cache_tls>>
-* <<chap.adoc#,chap>>
-* <<cipher.adoc#,cipher>>
-* <<client.adoc#,client>>
-* <<couchbase.adoc#,couchbase>>
-* <<csv.adoc#,csv>>
-* <<cui.adoc#,cui>>
-* <<date.adoc#,date>>
-* <<delay.adoc#,delay>>
-* <<detail.adoc#,detail>>
-* <<detail.example.com.adoc#,detail example com>>
-* <<detail.log.adoc#,detail log>>
-* <<dhcp_sqlippool.adoc#,dhcp_sqlippool>>
-* <<dhcpv4.adoc#,dhcpv4>>
-* <<digest.adoc#,digest>>
-* <<eap.adoc#,eap>>
-* <<eap_inner.adoc#,eap_inner>>
-* <<echo.adoc#,echo>>
-* <<escape.adoc#,escape>>
-* <<etc_group.adoc#,etc_group>>
-* <<exec.adoc#,exec>>
-* <<expiration.adoc#,expiration>>
-* <<expr.adoc#,expr>>
-* <<files.adoc#,files>>
-* <<idn.adoc#,idn>>
-* <<isc_dhcp.adoc#,isc_dhcp>>
-* <<json.adoc#,json>>
-* <<krb5.adoc#,krb5>>
-* <<ldap.adoc#,ldap>>
-* <<linelog.adoc#,linelog>>
-* <<logintime.adoc#,logintime>>
-* <<logtee.adoc#,logtee>>
-* <<lua.adoc#,lua>>
-* <<mac2ip.adoc#,mac2ip>>
-* <<mac2vlan.adoc#,mac2vlan>>
-* <<mruby.adoc#,mruby>>
-* <<mschap.adoc#,mschap>>
-* <<ntlm_auth.adoc#,ntlm_auth>>
-* <<opendirectory.adoc#,opendirectory>>
-* <<pam.adoc#,pam>>
-* <<pap.adoc#,pap>>
-* <<passwd.adoc#,passwd>>
-* <<perl.adoc#,perl>>
-* <<python.adoc#,python>>
-* <<radius.adoc#,radius>>
-* <<radutmp.adoc#,radutmp>>
-* <<redis.adoc#,redis>>
-* <<redis_ippool.adoc#,redis_ippool>>
-* <<rediswho.adoc#,rediswho>>
-* <<rest.adoc#,rest>>
-* <<smbpasswd.adoc#,smbpasswd>>
-* <<soh.adoc#,soh>>
-* <<sometimes.adoc#,sometimes>>
-* <<sql.adoc#,sql>>
-* <<sqlcounter.adoc#,sqlcounter>>
-* <<sqlippool.adoc#,sqlippool>>
-* <<sradutmp.adoc#,sradutmp>>
-* <<stats.adoc#,stats>>
-* <<unbound.adoc#,unbound>>
-* <<unix.adoc#,unix>>
-* <<unpack.adoc#,unpack>>
-* <<utf8.adoc#,utf8>>
-* <<wimax.adoc#,wimax>>
-* <<winbind.adoc#,winbind>>
-* <<yubikey.adoc#,yubikey>>
