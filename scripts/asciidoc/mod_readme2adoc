@@ -107,7 +107,7 @@ sub print_results
 EOF
 
 	foreach my $module (sort (keys %{$categories{$category}})) {
-	    print "| xref:mods-available/", $module, ".adoc[", $module, "]\t| ";
+	    print "| xref:raddb:mods-available/", $module, ".adoc[", $module, "]\t| ";
 
 	    print $modules{$module};
 	}
