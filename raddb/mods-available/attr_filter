@@ -1,30 +1,69 @@
 #  -*- text -*-
 #
-#
 #  $Id$
 
 #######################################################################
 #
 #  = Attr_filter Module
 #
-#  The `attr_filter` module defines a number of instances of the "attr_filter".
+#  The `attr_filter` module exists for filtering certain attributes and
+#  values in received (or transmitted) radius  packets. It gives the
+#  server a flexible framework to filter the attributes we send to or
+#  receive from home servers or NASes. This makes sense, for example,
+#  in an  out-sourced  dialup  situation to various policy decisions, such as
+#  restricting a client to certain ranges of `Idle-Timeout` or `Session-Time-out`.
 #
-
+#  Filter rules are normally defined and applied on a per-realm basis, Filter
+#  rules can optionally be applied using another attribute, by editing the key
+#  configuration for this module.
+#
+#  The rules for each entry are parsed to top to bottom, and an attribute
+#  must pass *all* the rules which affect it in order to make it past the filter.
+#  Order of the rules is important.
+#  The operators and their purpose in defining the rules are as follows:
+#
+#  [options="header", cols="10%,90%"]
+#  |===
+#  | Operator | Description
+#  | =        | THIS OPERATOR IS NOT ALLOWED. If used, and warning message is
+#               printed and it is treated as *==*.
+#  | :=       | Set, this attribute and value will always be placed in the
+#               output A/V Pairs. If the attribute exists, it is overwritten.
+#  | ==       | Equal, value must match exactly.
+#  | =*       | Always Equal, allow all values for the specified attribute.
+#  | !*       | Never Equal, disallow all values for the specified attribute.
+#               (This is redundant, as any A/V Pair not explicitly permitted
+#               will be dropped).
+#  | !=       | Not Equal, value must not match.
+#  | >=       | Greater Than or Equal.
+#  | <=       | Less Than or Equal.
+#  | >        | Greater Than.
+#  | <        | Less Than.
+#  |===
+#
+#  If regular expressions are enabled the following operators are also possible.
+#  (Regular Expressions are included by default unless your system doesn't support
+#  them, which should be rare). The value field uses standard regular expression syntax.
+#
+#  [options="header", cols="10%,90%"]
+#  |===
+#  | Operator | Description
+#  | =~       | Regular Expression Equal
+#  | !~       | Regular Expression Not Equal
+#  |===
 #
 #  ## Syntax
 #
+#  The configuration items are:
+#
 #attr_filter attr_filter.<section> {
 	#
-	#  key::
-	#
-	#  The `key` to use for filter the packets.
+	#  key:: The `key` to use for filter the packets.
 	#
 #	key = "<value>"
 
 	#
-	#  filename::
-	#
-	#  The `filename` with the attributes to filter.
+	#  filename:: The `filename` with the attributes to filter.
 	#
 #	filename = </path/><section>
 #}
