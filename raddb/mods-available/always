@@ -10,6 +10,10 @@
 #  The `always` module simply returns the same result, always, without
 #  doing anything else.  It is here for use in complex policies.
 #
+#  The main configuration item is `rcode`, which sets the return  code that
+#  this  instantiation  of  the  module  will return. The default, if none
+#  specified, is 'fail'.
+#
 
 #
 #  ## Syntax
