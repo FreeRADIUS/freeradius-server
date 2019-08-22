@@ -4,7 +4,7 @@
 `"string"`
 
 A double-quoted string allows escape sequences and xref:xlat/index.adoc[dynamic
-expansions]. As with xref:type/string/single.asoc[single-quoted strings], text
+expansions]. As with xref:type/string/single.adoc[single-quoted strings], text
 within double quotes can include spaces.
 
 The main difference between the single and double quoted strings is
