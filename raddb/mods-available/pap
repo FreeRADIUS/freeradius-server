@@ -15,7 +15,64 @@
 #  For instructions on creating the various types of passwords,
 #  see http://www.openldap.org/faq/data/cache/347.html
 #
-
+#  The module looks for the `Password-With-Header` control attribute to find
+#  the *"known good" password*. The attribute value comprises the header followed
+#  immediately by the password data. The header is given by the following table.
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Header       | Attribute           | Description
+#  | {clear}      | Cleartext-Password  | Clear-text passwords.
+#  | {cleartext}  | Cleartext-Password  | Clear-text passwords.
+#  | {crypt}      | Crypt-Password      | Unix-style "crypt"ed passwords.
+#  | {md5}        | MD5-Password        | MD5 hashed passwords.
+#  | {base64_md5} | MD5-Password        | MD5 hashed passwords.
+#  | {smd5}       | SMD5-Password       | MD5 hashed passwords, with a salt.
+#  | {sha}        | SHA-Password        | SHA1 hashed passwords.
+#  |              | SHA1-Password       | SHA1 hashed passwords.
+#  | {ssha}       | SSHA-Password       | SHA1 hashed passwords, with a salt.
+#  | {sha2}       | SHA2-Password       | SHA2 hashed passwords.
+#  | {sha224}     | SHA2-Password       | SHA2 hashed passwords.
+#  | {sha256}     | SHA2-Password       | SHA2 hashed passwords.
+#  | {sha384}     | SHA2-Password       | SHA2 hashed passwords.
+#  | {sha512}     | SHA2-Password       | SHA2 hashed passwords.
+#  | {ssha224}    | SSHA2-224-Password  | SHA2 hashed passwords, with a salt.
+#  | {ssha256}    | SSHA2-256-Password  | SHA2 hashed passwords, with a salt.
+#  | {ssha384}    | SSHA2-384-Password  | SHA2 hashed passwords, with a salt.
+#  | {ssha512}    | SSHA2-512-Password  | SHA2 hashed passwords, with a salt.
+#  | {ssha3}      | SHA3-Password       | SHA3 hashed passwords.
+#  | {ssha3-224}  | SHA3-224-Password   | SHA3 hashed passwords, with a salt.
+#  | {ssha3-256}  | SHA3-256-Password   | SHA3 hashed passwords, with a salt.
+#  | {ssha3-384}  | SHA3-384-Password   | SHA3 hashed passwords, with a salt.
+#  | {ssha3-512}  | SHA3-512-Password   | SHA3 hashed passwords, with a salt.
+#  | {nt}         | NT-Password         | Windows NT hashed passwords.
+#  | {nthash}     | NT-Password         | Windows NT hashed passwords.
+#  | {md4}        | NT-Password         | Windows NT hashed passwords.
+#  | {x-nthash}   | NT-Password         | Windows NT hashed passwords.
+#  | {ns-mta-md5} | NS-MTA-MD5-Password | Netscape MTA MD5 hashed passwords.
+#  | {x- orcllmv} | LM-Password         | Windows LANMAN hashed passwords.
+#  | {X- orclntv} | NT-Password         | Windows NT hashed passwords.
+#  |===
+#
+#  The module tries to be flexible when handling the various password for mats.
+#  It will automatically handle Base-64 encoded data, hex strings, and binary data,
+#  and convert them to a format that the server can  use.
+#
+#  If there is no `Password-With-Header` attribute, the module looks for one
+#  of the `Cleartext-Password`, `NT-Password`, `Crypt-Password`, etc. attributes
+#  as listed in the above table. These attributes should contain the relevant
+#  format password directly, without the header prefix.
+#
+#  Only one control attribute should be set, otherwise behaviour is undefined
+#  as to which one is used for authentication.
+#
+#  NOTE: It is important to understand the difference between the `User-Password`
+#  and `Cleartext-Password` attributes. The `Cleartext-Password` attribute is
+#  the  *"known  good"* password for the user. Simply supplying the Cleart-ext-Password
+#  to the server will result in most authentication  methods working. The `User-Password`
+#  attribute is the password as typed in by the user on their private machine.
+#  The two are not the  same, and should be treated very differently. That is, you should
+#  generally not use the `User-Password` attribute anywhere in the RADIUS configuration.
 #
 #  ## Default instance
 #
