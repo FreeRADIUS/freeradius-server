@@ -214,6 +214,7 @@ sub process_file {
 sub HELP_MESSAGE {
 	print "usage: conf2adoc [opts]\n";
 	print "    -a <directory>\tthe root directory for Asciidoc conversion.\n";
+	print "    -o <filename>\tthe output filename.\n";
 	exit 0;
 }
 
