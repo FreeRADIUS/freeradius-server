@@ -1,0 +1,15 @@
+WARNING: No references of src/modules/rlm_dict in raddb/mods-available/dict
+WARNING: No references of src/modules/rlm_securid in raddb/mods-available/securid
+WARNING: No references of src/modules/rlm_sigtran in raddb/mods-available/sigtran
+WARNING: The raddb/mods-available/files has no reference for:
+	postauth_usersfile
+	postproxy_usersfile
+	auth_usersfile
+WARNING: The raddb/mods-available/radius has no reference for:
+	ipv6addr
+	src_ipv4addr
+	src_ipv6addr
+	ipv4addr
+WARNING: The raddb/mods-available/rest has no reference for:
+	fail_header_decode
+	fail_body_decode
