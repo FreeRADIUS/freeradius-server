@@ -114,6 +114,11 @@ rest {
 #	multiplex = yes
 
 	#
+	#  chunk:: Max chunk-size.
+	#
+#	chunk = 0
+
+	#
 	#  ## Sections
 	#
 	#  The following config items can be used in each of the sections.
