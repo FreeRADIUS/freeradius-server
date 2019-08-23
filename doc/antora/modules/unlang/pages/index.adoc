@@ -94,7 +94,7 @@ update reply {
 == Data Types
 
 Each attribute used by the server has an associated
-xref:data.adoc[data type].  The `unlang` interpreter enforces
+xref:type/index.adoc[data type].  The `unlang` interpreter enforces
 restrictions on assignments, so that only valid data types can be
 assigned to an attribute.  Invalid assignments result in a run-time
 error.
