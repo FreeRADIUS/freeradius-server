@@ -10,8 +10,8 @@
 #  The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
 #
 #  This module validates a user with `MS-CHAP` or `MS-CHAPv2` authentication.
-#  If called in `recv Authorize`, it will look for `MS-CHAP` Challenge/Response
-#  attributes in the `recv Access-Request` and adds an `Auth-Type` attribute set to
+#  If called in `recv Access-Request`, it will look for `MS-CHAP` Challenge/Response
+#  attributes in the `request` list and adds an `Auth-Type` attribute set to
 #  `MS-CHAP` in the Config-Items list unless Auth-Type has already set.
 #
 #  The module can authenticate the `MS-CHAP` session via plain-text passwords
