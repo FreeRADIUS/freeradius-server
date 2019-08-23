@@ -9,13 +9,27 @@
 #
 #  The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
 #
-#  The module also enforces the `SMB-Account-Ctrl` attribute.
+#  This module validates a user with `MS-CHAP` or `MS-CHAPv2` authentication.
+#  If called in `recv Authorize`, it will look for `MS-CHAP` Challenge/Response
+#  attributes in the `recv Access-Request` and adds an `Auth-Type` attribute set to
+#  `MS-CHAP` in the Config-Items list unless Auth-Type has already set.
 #
+#  The module can authenticate the `MS-CHAP` session via plain-text passwords
+#  (`User-Password` attribute), or NT passwords (`NT-Password` attribute).
+#  The module cannot perform authentication against an NT domain.
+#
+#  The module also enforces the `SMB-Account-Ctrl` attribute. See the Samba
+#  documentation for the meaning of SMB account control. The module does
+#  not read Samba password files. Instead, the fIrlm_passwd module can be
+#  used to read a Samba password file, and supply an `NT-Password` attribute
+#  which this module can use.
+#
+#  [NOTE]
+#  ====
 #  For more documentation on integrating FreeRADIUS with Active Directory, please
 #  see the following web page:
-#
 #  http://deployingradius.com/documents/configuration/active_directory.html
-
+#  ====
 #
 
 #
