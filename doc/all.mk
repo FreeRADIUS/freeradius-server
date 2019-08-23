@@ -129,6 +129,14 @@ check.doc:
 		echo "FAILED: XLAT'S MISSING CHECKS: $$check_xlatA != $$check_xlatB"; \
 		exit 1;                                                               \
 	fi
+	${Q}echo "TEST-DOC RADDB CHECK";                                          \
+	check_xlatA="${top_srcdir}/scripts/checks/missing-raddb-mod-conf.txt";    \
+	check_xlatB="${BUILD_DIR}/tests/missing-raddb-mod-conf.txt";              \
+	./scripts/checks/missing-raddb-mod-conf.sh > $${check_xlatB};             \
+	if ! diff $${check_xlatA} $${check_xlatB}; then                           \
+		echo "FAILED: RADDB MISSING DOCUMENTATION: $$check_xlatA != $$check_xlatB"; \
+		exit 1;                                                               \
+	fi
 
 .PHONY: tests.doc
 tests.doc:
