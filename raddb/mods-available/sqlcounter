@@ -7,14 +7,19 @@
 #
 #  = SQL Counter Module
 #
-#  The `sqlcounter` module records statistics for users such as data transfer
-#  and session time, and prevent further logins when limits are reached.
+#  The `sqlcounter` module  provides a general framework to allow access
+#  based on accumulated usage of a resource, such as total time online in
+#  a given period, total data transferred in a given period, etc. This is
+#  very useful in a _Prepaid Service_ situation, where a user has paid for
+#  a finite amount of usage and should not be allowed to use more than
+#  that service. Collection, monitoring, and replenishment of prepaid
+#  services are beyond the scope of this module.
 #
 #  Rather than maintaining separate (`GDBM`) databases of accounting info
 #  for each counter, this module uses the data stored in the `raddacct` table
 #  by the `sql` modules.
 #
-#  NOTE: This module *NEVER* does any database INSERTs or UPDATEs.  It is totally
+#  NOTE: This module *NEVER* does any database INSERTs or UPDATEs. It is totally
 #  dependent on the SQL module to process `Accounting` packets.
 #
 
