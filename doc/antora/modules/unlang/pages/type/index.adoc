@@ -1,99 +1,117 @@
 = Data Types
 
-Unlang supports a number of data types. These data types can be used
-in conditional expressions or when assigning a value to an attribute.
+Unlang supports a number of data types. These data types are used in
+conditional expressions or when assigning a value to an attribute.
 
-The interpreter is flexible when parsing data types.  For example, a
-particular attribute may be of data type `ipaddr` for IPv4 address.
-The interpreter will accept the following strings as valid IPv4 addresses:
+== Using Data Types
+
+The server support a wide range of data types, as given in the
+xref:unlang/type/all_types.adoc[list of data types] page.  The choice
+of which data type applies is determined by the context in which that
+data type is used.  This context is usually taken from an attribute
+which is being assigned a value.
+
+The `unlang` interpreter uses pre-defined attributes which are defined
+in dictionaries.  The dictionaries define both a name, and a data type
+for the attributes.  In the interpreter, then, attributes can be
+assigned a value or compared to a value, without specifying the data
+type.  The interpreter knows how to parse the value by using the data
+type assigned to the attribute.
+
+The result is that in most cases, it is not necessary to know the name
+of the data types.  It is possible to write values in the format you
+expect, and he server will do "the right thing" when interpreting the
+values.
+
+.Attributes with Different Data Types
+[source,unlang]
+----
+Framed-IP-Address = 192.0.2.1
+Framed-IPv6-Address = 2001:db8::
+Reply-Message = "This is a reply"
+Port-Limit = 5
+Boolean = true
+Octets-Thing = 0xabcdef0102030405
+MAC-Address = 00:01:02:03:04:05
+----
+
+== Parsing Data Types
+
+The interpreter is flexible when parsing data types.  So long as the
+value can be parsed as the given data type without error, the value
+will be accepted.
+
+For example, a particular attribute may be of data type `ipaddr` in
+order to store IPv4 addresses.  The interpreter will then accept the
+following strings as valid IPv4 addresses:
 
 `192.168.0.2`:: xref:type/string/unquoted.adoc[Unquoted text], interpreted as the data type
 
-`'192.168.0.2'`:: xref:type/string/single.adoc[Single-quoted string], interpreted as the data type.
+`'192.168.0.2'`:: xref:type/string/single.adoc[Single-quoted string], the contents of the string are parsed as the data type.
 +
 The single-quoted string form is most useful when the data type
 contains special characters that may otherwise confuse the parser.
 
 `"192.168.0.2"`:: xref:type/string/double.adoc[Double-quoted string].
 +
-The contents of the string are dynamically expanded as described
-above.  The resulting output is then interpreted as the given data
-type.
+The contents of the string are dynamically expanded as described in
+the xref:unlang/xlat/index.adoc[dynamic expansion] page.  The
+resulting output is then interpreted as the given data type.
 
 `{backtick}/bin/echo 192.168.0.2{backtick}`:: xref:type/string/backticks.adoc[backtick-quoted string].
-Run a script, and interpret the result as the data type.
+Run a script, and parse the resulting string as the data type.
 
 Similar processing rules are applied when parsing assignments and
 comparisons, for all attributes and data types.
 
-== Basic Data Types
+=== Casting Data Types
 
-The following data types are "basic" data types.  They are fixed-size,
-and encapsulate simple concepts such as "integer" or "IP address".
+In some cases, it is necessary to parse values which do not refer to
+attributes.  This situation usually occurs when two values need to be
+compared, as in the following example:
 
-These data types can be used in `unlang`, as they contain simple
-values which can be compared, or assigned to one attribute.
+[source,unlang]
+----
+if ("%{sql:SELECT ipaddress FROM table WHERE user=%{User-Name}}" == 192.0.2.1) }
+    ....
+}
+----
 
-.Basic Data Types
-[options="header"]
-[cols="15%,85%"]
-|=====
-| Data Type     | Description
-| bool		| boolean
-| date		| calendar date
-| ethernet	| Ethernet address
-| float32	| 32-bit floating point number
-| float64	| 64-bit floating point number
-| ifid		| interface ID
-| int8		| 8-bit signed integer
-| int16		| 16-bit signed integer
-| int32		| 32-bit signed integer
-| int64		| 64-bit signed integer
-| ipaddr        | IPv4 address
-| ipv6addr      | IPv6 address
-| octets        | raw binary, printed as hex strings
-| string        | printable strings
-| time_delta	| difference between two calendar dates
-| uint8		| 8-bit unsigned integer
-| uint16	| 16-bit unsigned integer
-| uint32	| 32-bit unsigned integer
-| uint64	| 64-bit unsigned integer
-|=====
+Since there is no attribute on either side of the `==` operator, the
+interpreter has no way of knowing that the string `192.0.2.1` is an IP
+address.  There is unfortunately no way of automatically parsing
+strings in order to determine the data type to use.  Any such
+automatic parsing would work most of the time, but it would have
+error cases where the parsing was incorrect.
 
-== Structural Data Types
+The solution is to resolve these ambiguities by allowing the values to
+be cast to a particular type.  Casting a value to a type tells the
+interpreter how that value should be parsed.  Casting is done by
+prefixing a value with the type name, surrounded by angle brackets;
+`<...>`.
 
-The following data types are "structural", in that they form
-parent-child relationships between attributes.  These data types can
-only be used in the dictionaries.  These data types cannot be used in
-`unlang`.
+.Syntax
+----
+<...>value
+----
 
-.Structural Data Types
-[options="header"]
-[cols="15%,85%"]
-|=====
-| Data Type     | Description
-| struct	| structure which contains fixed-width fields
-| tlv		| type-length-value which contains other attributes
-| vsa		| Encapsulation of vendor-specific attributes
-|=====
+We can add a cast to the above example, as follows:
 
-== Protocol-Specific Data Types
+[source,unlang]
+----
+if ("%{sql:SELECT ipaddress FROM table WHERE user=%{User-Name}}" == <ipaddr>192.0.2.1) }
+    ....
+}
+----
 
-The following data types are used only in certain protocols.  These
-attributes can generally be used only in the dictionaries.  They
-cannot generally be used in `unlang`.
+In this example, we prefix the IP address with the string `<ipaddr>`.
+The interpreter then knows that the value `192.0.2.` should be
+interpreted as the data type `ipaddr`, and not as the literal string
+`"192.0.2."`.
 
-.Protocol Specific Data Types
-[options="header"]
-[cols="15%,15%,70%"]
-|=====
-| Data Type     | Protocol | Description
-| abinary       | RADIUS   | Ascend binary filters
-| extended      | RADIUS   | attributes which "extend" the number space
-| ipv4prefix    | RADIUS   | IPv4 network with address and prefix length
-| ipv6prefix    | RADIUS   | IPv6 network with address and prefix length
-|=====
-
+For a full list of data types which can be used in a cast, please see
+the xref:unlang/type/all_types.adoc[list of data types] page, and the
+"Basic Type Types" section.
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

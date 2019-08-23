@@ -30,6 +30,7 @@
 *** xref:module_builtin.adoc[Built-in Modules]
 
 ** xref:type/index.adoc[Data Types]
+*** xref:type/index.adoc[List of Data Types]
 *** xref:type/ip.adoc[IP Addresses]
 *** xref:type/numb.adoc[Numbers]
 *** xref:type/string/single.adoc[Single Quoted Strings]

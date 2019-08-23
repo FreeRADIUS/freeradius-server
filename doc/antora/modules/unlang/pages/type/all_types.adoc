@@ -1,0 +1,80 @@
+= List of Data Types
+
+The server support a wide range of data types, both in `unlang` and in
+the dictionaries.  This page outlines the names and functionality of
+those data types.
+
+== Basic Data Types
+
+There are a number of "basic" data types.  These data types are
+fixed-size, and encapsulate simple concepts such as "integer" or "IP
+address".
+
+Basic data types can be used in `unlang`, as they contain simple
+values which can be compared, or assigned to one attribute.  In most
+cases, it is not necessary to know the name of the data type.  It is
+possible to write values in the format you expect, The server will do
+"the right thing" when interpreting the values.
+
+.Basic Data Types
+[options="header"]
+[cols="15%,85%"]
+|=====
+| Data Type     | Description
+| bool		| boolean
+| date		| calendar date
+| ethernet	| Ethernet address
+| float32	| 32-bit floating point number
+| float64	| 64-bit floating point number
+| ifid		| interface ID
+| int8		| 8-bit signed integer
+| int16		| 16-bit signed integer
+| int32		| 32-bit signed integer
+| int64		| 64-bit signed integer
+| ipaddr        | IPv4 address
+| ipv6addr      | IPv6 address
+| octets        | raw binary, printed as hex strings
+| string        | printable strings
+| time_delta	| difference between two calendar dates
+| uint8		| 8-bit unsigned integer
+| uint16	| 16-bit unsigned integer
+| uint32	| 32-bit unsigned integer
+| uint64	| 64-bit unsigned integer
+|=====
+
+=== Structural Data Types
+
+The following data types are "structural", in that they form
+parent-child relationships between attributes.  These data types can
+only be used in the dictionaries.  They cannot be used in `unlang`
+statements.
+
+.Structural Data Types
+[options="header"]
+[cols="15%,85%"]
+|=====
+| Data Type     | Description
+| struct	| structure which contains fixed-width fields
+| tlv		| type-length-value which contains other attributes
+| vsa		| Encapsulation of vendor-specific attributes
+|=====
+
+=== Protocol-Specific Data Types
+
+The following data types are used only in certain protocols.  These
+data types can be used only in the dictionaries.  They cannot be used
+in `unlang` statements.
+
+.Protocol Specific Data Types
+[options="header"]
+[cols="15%,15%,70%"]
+|=====
+| Data Type     | Protocol | Description
+| abinary       | RADIUS   | Ascend binary filters
+| extended      | RADIUS   | attributes which "extend" the number space
+| ipv4prefix    | RADIUS   | IPv4 network with address and prefix length
+| ipv6prefix    | RADIUS   | IPv6 network with address and prefix length
+|=====
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS
