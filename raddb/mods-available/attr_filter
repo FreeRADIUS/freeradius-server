@@ -63,6 +63,12 @@
 #	key = "<value>"
 
 	#
+	#  relaxed:: Only move attribute if it passed all rules, or if the config says we
+	#  should copy unmatched attributes.
+	#
+#	relaxed = no
+
+	#
 	#  filename:: The `filename` with the attributes to filter.
 	#
 #	filename = </path/><section>

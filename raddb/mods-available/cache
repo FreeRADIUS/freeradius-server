@@ -175,6 +175,11 @@ cache {
 	add_stats = no
 
 	#
+	#  max_entries:: Maximum entries allowed.
+	#
+#	max_entries = 0
+
+	#
 	#  update { ... }:: The list of attributes to cache for a particular key.
 	#
 	#  Each key gets the same set of cached attributes. The attributes
