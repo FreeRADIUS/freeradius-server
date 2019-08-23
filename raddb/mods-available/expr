@@ -9,6 +9,9 @@
 #
 #  This module performs mathematical calculations:
 #
+#  NOTE: This module is not called directly in any section, it is
+#  invoked through the dynamic expansion of strings.
+#
 #  e.g:
 #
 #    Attribute-Name = "%{expr:2 + 3 + &NAS-Port}"

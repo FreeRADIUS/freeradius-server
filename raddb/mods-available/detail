@@ -9,9 +9,12 @@
 #
 #  Write a detailed log of all accounting records received.
 #
-#  NOTE: we do NOT use `NAS-IP-Address` here, as that
-#  attribute MAY BE from the originating NAS, and NOT from
-#  the proxy which actually sent us the request.
+#  It is primarily used for storing accounting information, but can be
+#  used in other sections to write packet details as well.
+#
+#  NOTE: we do NOT use `NAS-IP-Address` here, as that attribute MAY BE
+#  from the originating NAS, and NOT from the proxy which actually
+#  sent us the request.
 #
 #  ## Configuration Settings
 #
