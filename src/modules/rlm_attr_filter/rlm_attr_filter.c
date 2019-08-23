@@ -303,6 +303,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	 */
 	if (!found) {
 		rad_assert(!output);
+		fr_pair_list_free(&output);
 		return RLM_MODULE_NOOP;
 	}
 
