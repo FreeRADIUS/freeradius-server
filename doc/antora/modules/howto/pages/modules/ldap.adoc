@@ -1,0 +1,437 @@
+== LDAP
+
+FreeRADIUS can be configured to use LDAP for both authentication and authorization but not accounting.
+
+Notes:
+
+ * in an Microsoft Active Directory environment it is strongly recommended you use `rlm_winbind` for authentication but for group membership you use `rlm_ldap` as described below
+ * not covered here, RADIUS profiles (see `raddb/mods-available/ldap` and `src/tests/modules/ldap/example.com.ldif`) that can be used to store logic you would normally place in your `users` file in LDAP
+ * not covered here, dynamic clients (see `raddb/sites-available/dynamic-clients` and `src/tests/modules/ldap/example.com.ldif`) can also use and be stored in LDAP
+
+=== Pre-flight
+
+You will need the following before starting:
+
+ * an existing LDAP server(s) populated with users and optionally groups
++
+****
+If you want to experiment with a local LDAP server and you have https://docs.docker.com/install/[Docker] installed you can use a https://github.com/osixia/docker-openldap[fully functionally OpenLDAP container] by running in the top of the FreeRADIUS server codebase:
+
+[source,shell]
+----
+docker run -it --rm -p 389:389 --env LDAP_DOMAIN=example.com --env LDAP_READONLY_USER=true --volume $(pwd)/doc/schemas/ldap/openldap/freeradius.schema:/container/service/slapd/assets/config/bootstrap/schema/mmc/radius.schema:ro --volume $(pwd)/doc/schemas/ldap/openldap/freeradius-clients.schema:/container/service/slapd/assets/config/bootstrap/schema/mmc/freeradius-clients.schema:ro osixia/openldap:1.2.5 --copy-service
+----
+
+Once running, you should now have an LDAP server running on `localhost` which needs its database to be populated with some initial user data using the LDAP admin user and an http://www.zytrax.com/books/ldap/ch8/[LDIF file]:
+
+[source,shell]
+----
+sed -e '1,/^description:/ d' src/tests/modules/ldap/example.com.ldif \
+    | ldapadd -H ldap://localhost -x -D cn=admin,dc=example,dc=com -w admin
+----
+
+You should see no errors appear, and the console with the running LDAP server should show requests being handled, now we check that data is all in there with the LDAP read only user:
+
+[source,shell]
+----
+ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,dc=example,dc=com -w readonly -b dc=example,dc=com '(&(objectClass=radiusClient)(radiusClientShortname=client2))'
+----
+
+You should see a single result returned if everything worked okay.
+
+If you Ctrl-C your LDAP server, all its state (its database) is lost so to reuse this you will have to reimport the LDIF file as before.  If you wish the LDAP database to be persisent, https://github.com/osixia/docker-openldap[read the `osixia/openldap` instructions on how to].
+
+Lastly, remember your `localhost` testing server may or may not resemble your own production environment so any FreeRADIUS configuration your build is unlikely to be immediately usable for your production LDAP service without making changes.
+****
+ * credentials (username *and* password) for FreeRADIUS to use to connect to your LDAP server(s)
+ ** strongly recommended this is a dedicated account for use by FreeRADIUS
+ ** strongly recommended this is a non-administrator and read-only account
+ ** recommended you start by using 'simple authentication' (instead of https://en.wikipedia.org/wiki/Simple_Authentication_and_Security_Layer[SASL] unless you know what you are doing!)
+ * if you plan to store RADIUS user profiles (quotas, `Simultaneous-Use` flags, access time restrictions, etc) in LDAP you need to import the LDAP schema `doc/schemas/ldap/openldap/freeradius.schema` into your LDAP server(s)
+
+Before proceeding you must make sure the following works and returns a list of your users:
+
+[source,shell]
+----
+ldapsearch -H ldaps://ldap.example.com:686 -x -D cn=freeradius,dc=example,dc=com -w mypassword -b ou=people,dc=example,dc=com -z 10 '(objectClass=inetOrgPerson)' '*'
+----
+
+Where you replace the following as appropriately:
+
+ * *`ldaps://ldap.example.com:636`:* location of the LDAP server and how to connect
+ ** `ldaps` is LDAP over SSL and defaults to port `636/tcp`
+ ** `ldap` is non-SSLed LDAP and defaults to port `389/tcp`
+ *** add `-ZZ` as an argument if you use Start TLS
+ ** `ldapi` is for UNIX socket connections
+ * *`cn=freeradius,dc=example,dc=com`:* username FreeRADIUS is to use when connecting to your LDAP server(s)
+ * *`mypassword`:* password FreeRADIUS is to use when connecting to your LDAP server(s)
+ * *`ou=people,dc=example,dc=com`:* top branch ('base') of your LDAP tree where users are to be found
+ * *`(objectClass=inetOrgPerson)`:* http://www.zytrax.com/books/ldap/apa/search.html[search filter] that captures your users (this is the LDAP equivalent of the `WHERE` clause in SQL)
+
+*N.B.* the parameter `-z 10` limits the number of results returned to ten so not to swamp your console
+
+If this works you should see a list where each result returned looks similar to (may contain additional LDAP attributes):
+
+[source,ldif]
+----
+dn: uid=john,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: john
+userPassword: password
+----
+
+If no objects are returned then check your search filter is correct which is best done by removing the filter and use instead `''` (do not use this in production!).  If you now see results then review your original LDAP search filter to select the (usually) `objectClass` value your users are assigned.
+
+If you still see no users inspect:
+
+ * your credentials are correct
+ * 'base' value supplied is correct
+ ** try amending it to the absolute base for your site `dc=example,dc=com` (do not use this in production!)
+ * there are users in your LDAP server!
+ * credentials used have access to fetch and query those objects
+ * certificates verify:
+ ** *`ldaps`*: `echo -n | openssl s_client -connect ldap.example.com:636`
+ ** *`ldap` with Start TLS:* `echo -n | openssl s_client -connect ldap.example.com:389 -starttls ldap`
+ * there is no firewall blocking access, some techniques to check this which *may* work for you:
+ ** `sudo traceroute -Tn -p 636 ldap.example.com` will be successful (and not continue indefinitely) when there is *no* firewall blocking
+ ** `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is *no* firewall blocking
+
+If you still have trouble, unfortunately everything in this *entire* 'pre-flight' section is site specific (ie. depends on the LDAP vendor you use) and is non-RADIUS related so you are *unlikely* to receive any meaningful help from the FreeRADIUS mailing list.  Your LDAP administrator *is* the best point of contact to assist you here and once through this section you will find the mailing list able to help you if you have any further problems.
+
+==== Authentication
+
+There are several authentication flows you can use depending on your environment:
+
+ * user attempts to authenticate sending a plaintext password (ie. PAP or EAP-TTLS/PAP)
+ ** FreeRADIUS reads and uses the LDAP `userPassword` (or `ntPassword`) attributes to perform authentication against; `userPassword` may be hashed (recommended at https://openldap.org/doc/admin24/security.html#Password%20Storage[least using SSHA])
+ ** you can attempt to LDAP bind as that user; this is possibly slower than the `userPassword` method
+ * user attempts to authenticate sending a hashed password (ie. MSCHAPv2 or EAP-{PEAP,TTLS}/MSCHAPv2)
+ ** FreeRADIUS reads and uses the LDAP `userPassword` attribute which *must* contain a plaintext password
+ ** if MSCHAPv2 is being used, you need to store and make available an LDAP `ntPassword` attribute in the user object
+
+These are technical limitations not of FreeRADIUS but in the components required to be able to authenticate any user.
+
+Picking up from where we left off with the `ldapsearch` test above, if `userPassword` is returned:
+
+ * if the value is not prepended with `{...}`
+ ** your LDAP server stores plaintext passwords
+ ** provides the greatest flexibility to use MSCHAPv2 and other hashing authentication mechanisms in your RADIUS packets
+ * if the value is prepended with `{...}` (for example `{SSHA}`)
+ ** you *must* use PAP (or EAP-TTLS/PAP) in your RADIUS packets to authenticate your users
+
+*N.B.* LDAP attribute names (such as `userPassword`) may be appended with `::` (two colons rather than one) to indicate a binary value and the value will be the https://en.wikipedia.org/wiki/Base64[base64] representation of the actual value, which you can decode using `printf "%s" "VALUE" | base64 -d` to inspect
+
+If `userPassword` is not returned then permissions for the credentials used need to be adjusted so that it is accessible.  If this is not feasible and/or possible you *must* use PAP (or EAP-TTLS/PAP) in your RADIUS packets so that you can use an LDAP bind to authenticate your users.
+
+You may notice that by using PAP (or EAP-TTLS/PAP) in your RADIUS requests will work will all LDAP environments regardless of how passwords have been stored.
+
+You will need to balance the implications of sending RADIUS packets containing plaintext passwords (though EAP-TTLS/PAP makes the risk similar to HTTPS) over the wire with, or in addition to, storing plaintext passwords in LDAP.
+
+Ultimately the decision is yours though it may have already been decided by your LDAP administrator.  If the LDAP `userPassword` attribute is unavailable or does not contain a plaintext password you have no option but to use PAP (or EAP-TTLS/PAP) in your RADIUS requests.
+
+==== Authorization
+
+===== Group Membership
+
+Depending on the LDAP vendor you use, LDAP group membership is either handled using the LDAP attributes:
+
+ . *`member`:* LDAP object (for example with `objectClass` set to `groupOfNames`) that has LDAP `member` attributes listing the DNs of the user objects that are a member of the group
+ . *`memberOf`:* LDAP attribute (for example called `memberOf`) in the user object that lists all the groups the user is a member of
+
+Your LDAP server may utilise both, though you should check if it automatically keeps these two methods in sync server side.
+
+To check for the first method use:
+
+[source,shell]
+----
+ldapsearch -H ldaps://ldap.example.com:686 -x -D cn=freeradius,dc=example,dc=com -w mypassword -b ou=groups,dc=example,dc=com -z 10 '(objectClass=groupOfNames)' objectClass cn member
+----
+
+Where you replace the following as appropriately:
+
+ * *`ou=groups,dc=example,dc=com`:* top branch ('base') of your LDAP tree where users are to be found
+ * *`(objectClass=groupOfNames)`:* http://www.zytrax.com/books/ldap/apa/search.html[search filter] that captures your users (this is the LDAP equivalent of the `WHERE` clause in SQL)
+
+If you see no results, then it may be that your LDAP server utilises the second method, so you can alternatively re-inspect the output of the authentication user output `ldapsearch` you used initially for LDAP `memberOf` attributes.
+
+Once you have determined what you need to use, make a note of it for later.
+
+=== Configuration
+
+As with all FreeRADIUS configuration files, when starting off you should try to change at little as possible.  The (business logic) defaults are usually what you want, and all you need to do is amend where FreeRADIUS should look for data.
+
+ . start with the default `raddb` configuration
+ ** it is really difficult for the mailing list to provide assistance if you do not start with the defaults!
+ . edit the `ldap { ... }` section in `/usr/local/etc/raddb/mods-available/ldap` with your findings from the pre-flight section
+ ** *server:* use the URI form (for example `ldap://192.0.2.1`) to describe where your LDAP server is
+ ** *identity:* use the (preferably non-admin read only) account DN here (eg. `cn=readonly,dc=example,cn=com`)
+ ** *password:* use the password associated with the identity account
+ ** *base_dn:* provide the base of your LDAP database here (eg. `dc=example,dc=com`)
+ ** in the `user { ... }` section
+ *** check that `filter` can match your users when searched for
+ ** in the `group { ... }` section
+ *** check that `filter` can match your groups when searched for
+ **** for Active Directory you may need to use `(objectClass=group)` instead
+ *** referring to your notes above on how your LDAP server handles authorization, if it uses the LDAP attribute in:
+ **** *a dedicated group object (ie. `member`):* uncomment `membership_filter` and possibility amend the value
+ **** *the user object (ie. `memberOf`):* check `membership_attribute` is set apprioately
+ . enabled the LDAP module
++
+[source,shell]
+----
+cd /usr/local/etc/raddb/mods-enabled && ln -s ../mods-available/ldap
+----
+ . start FreeRADIUS, initially in debugging mode
++
+[source,shell]
+----
+radiusd -X
+----
+ ** if everything looks good, then FreeRADIUS should start up with the message `Ready to process requests`
+ ** if not, errors clearly describing why it terminated will be show and you *must* read these to gain insight into what the problem may be
+ *** For example `Can't contact LDAP server` means something is wrong with the connection details regarding your LDAP server
+
+=== Testing
+
+==== Authentication
+
+Now in another terminal window run on the FreeRADIUS server to test authentication:
+
+[source,shell]
+----
+cat <<'EOF' | radclient -x localhost auth testing123
+User-Name = john
+User-Password = password
+EOF
+----
+
+===== `Access-Accept`
+
+If this works you should see `radclient` report `Access-Accept` almostly immediately without delay:
+
+[source,shell]
+----
+Debug : Sent Access-Request Id 39 from 0.0.0.0:47493 to 127.0.0.1:1812 length 44
+Debug : Received Access-Accept Id 39 from 127.0.0.1:1812 to 0.0.0.0:47493 via lo length 26
+Debug : User-Name = "john"
+----
+
+On the FreeRADIUS debug terminal side, you should see something like:
+
+[source,log]
+----
+(0)    files (noop)
+(0)    ldap - Reserved connection (0)
+(0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
+(0)    ldap - --> (uid=john)
+(0)    ldap - Performing search in "dc=example,dc=com" with filter "(uid=john)", scope "sub"
+(0)    ldap - Waiting for search result...
+(0)    ldap - User object found at DN "uid=john,ou=people,dc=example,dc=com"
+(0)    ldap - Processing user attributes
+(0)    ldap -   &control:Password-With-Header += password
+(0)    ldap - Released connection (0)
+(0)    ldap (updated)
+(0)    expiration (noop)
+(0)    logintime (noop)
+(0)    pap - No {...} in &Password-With-Header, re-writing to Cleartext-Password
+(0)    pap - Normalized &control:Password-With-Header -> &control:Cleartext-Password
+(0)    pap - Removing &control:Password-With-Header
+(0)    pap - Setting &control:Auth-Type = pap
+(0)    pap (updated)
+(0)  } # recv Access-Request (updated)
+(0)  Running 'authenticate pap' from file /usr/local/etc/raddb/sites-enabled/default
+(0)  authenticate pap {
+(0)    pap - Login attempt with password
+(0)    pap - Comparing with "known-good" Cleartext-Password (8)
+(0)    pap - User authenticated successfully
+(0)    pap (ok)
+(0)  } # authenticate pap (ok)
+(0)  Running 'send Access-Accept' from file /usr/local/etc/raddb/sites-enabled/default
+----
+
+Here FreeRADIUS is describing what it did:
+
+ . used the `files` module but there was no effect (`noop`) in running the module
+ . used the `ldap` module
+ ** searched for `(uid=john)` in `dc=example,dc=com`
+ *** this is doing the same as the following that you could run on the CLI
++
+[source,shell]
+----
+ldapsearch -LL -H ldap://localhost -x -D cn=freeradius,dc=example,dc=com -w mypassword -b dc=example,dc=com '(uid=john)'
+----
+ ** found `uid=john,ou=people,dc=example,dc=com`
+ *** if for you no user is found, but you know the user is in your directory, recheck the `user { ... }` section in `raddb/mods-available/ldap` as you may have a filter or attribute configuration set incorrectly
+ ** found some useful attributes associated with that user
+ *** the password which it placed into `control:Password-With-Header`
+ *** as RADIUS attributes were changed, it returns `updated` as a result code to unlang
+ . the modules `expiration` and `logintime` were used, but both had no effect (`noop`)
+ . the module `pap` was used
+ ** it found a suitable password to use in `&Password-With-Header`
+ *** populates `&control:Cleartext-Password`
+ *** the module decides it has everything it needs to do authentication so sets `&control:Auth-Type = pap`
+ *** as RADIUS attributes were changed, it returns `updated` as a result code to unlang
+ . the authenticate section runs and hands off to `pap` as `&control:Auth-Type = pap` was set earlier
+ ** `&control:Cleartext-Password` is compared to `&request:User-Password`
+ ** matches so `ok` is returned
+ . we return `Access-Accept` as `ok` was returned to unlang
+
+This worked as the LDAP credentials used by FreeRADIUS to connect to the LDAP server is able to extract a the `userPassword` attribute; as could been seen from the example `ldapsearch` command provided earlier.
+
+===== `Access-Reject`
+
+If this fails, the response will be delayed by one second and `Access-Reject` will be returned:
+
+[source,shell]
+----
+Debug : Sent Access-Request Id 130 from 0.0.0.0:49353 to 127.0.0.1:1812 length 44
+Debug : Received Access-Reject Id 130 from 127.0.0.1:1812 to 0.0.0.0:49353 via lo length 20
+(0) -: Expected Access-Accept got Access-Reject
+----
+
+You should now look to the output of the debugging from the FreeRADIUS terminal window which may show something like:
+
+[source,log]
+----
+(0)    files (noop)
+(0)    ldap - Reserved connection (0)
+(0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
+(0)    ldap - --> (uid=john)
+(0)    ldap - Performing search in "dc=example,dc=com" with filter "(uid=john)", scope "sub"
+(0)    ldap - Waiting for search result...
+(0)    ldap - User object found at DN "uid=john,ou=people,dc=example,dc=com"
+(0)    ldap - Processing user attributes
+(0)    ldap - Released connection (0)
+(0)    ldap (ok)
+(0)    expiration (noop)
+(0)    logintime (noop)
+(0)    pap - WARNING: No "known good" password found for the user.  Not setting Auth-Type
+(0)    pap - WARNING: Authentication will fail unless a "known good" password is available
+(0)    pap (noop)
+(0)  } # recv Access-Request (ok)
+(0)  ERROR: No Auth-Type available: rejecting the user.
+(0)  Running 'send Access-Reject' from file /usr/local/etc/raddb/sites-enabled/default
+----
+
+Here FreeRADIUS describes it:
+
+ . used the `files` module but there was no effect (`noop`) in running the module
+ . used the `ldap` module
+ ** searched for `(uid=john)` in `dc=example,dc=com`
+ ** found `uid=john,ou=people,dc=example,dc=com`
+ ** did *not* find any useful attributes associated with that user
+ ** module was successful in operation, but changed no RADIUS attributes so returns `ok`
+ . the modules `expiration` and `logintime` were used, but both had no effect (`noop`)
+ . the module `pap` was used
+ ** it finds no suitable password RADIUS attributes to use
+ ** as it makes no changes, the module returns `noop`
+ . no `Auth-Type` is set, so FreeRADIUS rejects the request (no even attempting to authenticate)
+ . returns `Access-Reject`
+
+This occurs as the LDAP credentials used by FreeRADIUS to connect to the LDAP server is *unable* to extract a the `userPassword` attribute; as could been seen from the example `ldapsearch` command provided earlier.
+
+You have two options avaliable to you here (`Ctrl-C` the running FreeRADIUS server, make the change and restart):
+
+ . change the permissions of the LDAP credentials used so that FreeRADIUS can read the LDAP `userPassword` attribute
+ ** this is the recommended option
+ ** fixing this, means you should see `Access-Accept` as described above
+ . configure FreeRADIUS to attempt to 'bind' (LDAP language for 'login') as the user in the RADIUS request
+ ** do this by editing `/usr/local/etc/raddb/sites-available/default`
+ ** amend by adding after the call to `ldap` in `recv Access-Request { ... }` section, so that it looks like:
++
+[source,unlang]
+----
+-ldap
+if ((ok || updated) && &User-Password) {
+    update {
+        &control:Auth-Type := ldap
+    }
+}
+----
+ ** FreeRADIUS is now configured to attempt to LDAP bind if the `ldap` module finds a user and the RADIUS request contains a `User-Password` RADIUS attribute
+
+If you use LDAP bind'ing to perform user authentication, then when `radclient` receives `Accept-Accept', the FreeRADIUS debug terminal will look like:
+
+[source,log]
+----
+(0)    files (noop)
+(0)    ldap - Reserved connection (0)
+(0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
+(0)    ldap - --> (uid=john)
+(0)    ldap - Performing search in "dc=example,dc=com" with filter "(uid=john)", scope "sub"
+(0)    ldap - Waiting for search result...
+(0)    ldap - User object found at DN "uid=john,ou=people,dc=example,dc=com"
+(0)    ldap - Processing user attributes
+(0)    ldap - Released connection (0)
+(0)    ldap (ok)
+(0)    if ((ok || updated) && &User-Password) {
+(0)      update {
+(0)        &control:Auth-Type := ldap
+(0)      } # update (noop)
+(0)    } # if ((ok || updated) && &User-Password) (noop)
+(0)    expiration (noop)
+(0)    logintime (noop)
+(0)    pap - WARNING: No "known good" password found for the user.  Not setting Auth-Type
+(0)    pap - WARNING: Authentication will fail unless a "known good" password is available
+(0)    pap (noop)
+(0)  } # recv Access-Request (ok)
+(0)  Running 'authenticate ldap' from file /usr/local/etc/raddb/sites-enabled/default
+(0)  authenticate ldap {
+(0)    ldap - Login attempt with password
+(0)    ldap - Reserved connection (1)
+(0)    ldap - Login attempt by "john"
+(0)    ldap - Using user DN from request "uid=john,ou=people,dc=example,dc=com"
+(0)    ldap - Waiting for bind result...
+(0)    ldap - Bind successful
+(0)    ldap - Bind as user "uid=john,ou=people,dc=example,dc=com" was successful
+(0)    ldap - Released connection (1)
+(0)    ldap (ok)
+(0)  } # authenticate ldap (ok)
+(0)  Running 'send Access-Accept' from file /usr/local/etc/raddb/sites-enabled/default
+----
+
+Here FreeRADIUS is describes it:
+
+ . used the `files` module but there was no effect (`noop`) in running the module
+ . used the `ldap` module
+ ** searched for `(uid=john)` in `dc=example,dc=com`
+ ** found `uid=john,ou=people,dc=example,dc=com`
+ ** did *not* find any useful attributes associated with that user
+ ** module was successful in operation, but changed no RADIUS attributes so returns `ok`
+ . `&control:Auth-Type := ldap` was set as the `ldap` module was successful in finding a user
+ . the modules `expiration` and `logintime` were used, but both had no effect (`noop`)
+ . the module `pap` was used
+ ** it finds no suitable password RADIUS attributes to use
+ ** as it makes no changes, the module returns `noop`
+ . the authenticate section runs and hands off to `ldap` as `&control:Auth-Type = ldap` was set earlier
+ ** attemps to LDAP bind as `uid=john,ou=people,dc=example,dc=com`
+ ** successful so `ok` is returned
+ . we return `Access-Accept` as `ok` was returned to unlang
+
+==== Authorization
+
+If you wish to restrict the user so that they can only authenticate depending on an LDAP group membership, edit `/usr/local/etc/raddb/sites-available/default` so that under `recv Access-Request { ... }` the call out to the `ldap` module looks like:
+
+[source,unlang]
+----
+-ldap
+if (ok || updated) {
+    if (!(ldap-Group == 'foo')) {
+        update {
+            &Reply-Message := "Not a member of the foo LDAP group"
+        }
+        reject
+    }
+
+# uncomment if you use LDAP bind's for authentication
+#    if (&User-Password) {
+#        update {
+#            &control:Auth-Type := ldap
+#        }
+#    }
+}
+----
+
+This restricts only LDAP users that are members of the LDAP `foo` group to connect.
+
+If this fails to work recheck the `group { ... }` section in `raddb/mods-available/ldap` as you may have a filter or attribute configuration set incorrectly.
