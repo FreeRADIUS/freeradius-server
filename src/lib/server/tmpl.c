@@ -1107,7 +1107,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 
 			len = fr_hex2bin(vpt->tmpl_value.datum.ptr, binlen, in + 2, inlen - 2);
 			if (len != binlen) {
-				fr_strerror_printf("Hex string contains none hex char");
+				fr_strerror_printf("Hex string contains non-hex char");
 				talloc_free(vpt);
 				return -(len + 2);
 			}
@@ -2867,3 +2867,274 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 	}
 }
 #endif
+
+
+#define return_P(_x) *error = _x;goto return_p
+
+/** Preparse a string in preparation for passing it to tmpl_afrom_str()
+ *
+ *  Note that the input string is not modified, which means that the
+ *  tmpl_afrom_str() function MUST un-escape it.
+ *
+ *  The caller should pass 'out' and 'outlen' to tmpl_afrom_str()
+ *  as 'in' and 'inlen'.  The caller should also pass 'type'.
+ *  The caller should also pass do_unescape=true.
+ *
+ * @param[out] out	start of the string to parse
+ * @param[out] outlen	length of the string to parse
+ * @param      start	where we start looking for the string
+ * @param[out] type	token type of the string.
+ * @param[out] error	string describing the error
+ * @param[out] castda	NULL if casting is not allowed, otherwise the cast
+ * @param   allow_regex whether or not to allow regular expressions
+ * @return
+ *	- > 0, amount of parsed string to skip, to get to the next token
+ *	- <=0, -offset in 'start' where the parse error was located
+ */
+ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
+		      FR_TOKEN *type, char const **error,
+		      fr_dict_attr_t const **castda, bool allow_regex)
+{
+	char const *p = start;
+	char quote;
+
+	*type = T_INVALID;
+	if (castda) *castda = NULL;
+
+	fr_skip_spaces(p);
+
+	if (*p == '<') {
+		fr_type_t cast;
+		char const *q;
+
+		if (!castda) {
+			*error = "Unexpected cast";
+		return_p:
+			return -(p - start);
+		}
+
+		p++;
+		fr_skip_spaces(p);
+
+		for (q = p; *q && !isspace((int) *q) && (*q != '>'); q++) {
+			/* nothing */
+		}
+
+		cast = fr_table_value_by_substr(fr_value_box_type_table, p, q - p, FR_TYPE_INVALID);
+		if (cast == FR_TYPE_INVALID) {
+			return_P("Unknown data type");
+		}
+
+		/*
+		 *	We can only cast to basic data types.  Complex ones
+		 *	are forbidden.
+		 */
+		if (fr_dict_non_data_types[cast]) {
+			return_P("Forbidden data type in cast");
+		}
+
+		*castda = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + cast);
+		if (!*castda) {
+			return_P("Cannot cast to this data type");
+		}
+
+		p = q;
+		fr_skip_spaces(p);
+		if (*p != '>') {
+			return_P("Expected '>'");
+		}
+		p++;
+
+		fr_skip_spaces(p);
+	}
+
+	switch (*p) {
+	case '/':
+		if (!allow_regex) {
+			return_P("Unexpected regular expression");
+		}
+
+		if (castda && *castda) {
+			p++;
+			return_P("Invalid cast before regular expression");
+		}
+
+		quote = *(p++);
+		*type = T_OP_REG_EQ;
+		goto skip_string;
+
+	case '\'':
+		quote = *(p++);;
+		*type = T_SINGLE_QUOTED_STRING;
+		goto skip_string;
+
+	case '`':
+		quote = *(p++);;
+		*type = T_BACK_QUOTED_STRING;
+		goto skip_string;
+
+	case '"':
+		quote = *(p++);;
+		*type = T_DOUBLE_QUOTED_STRING;
+
+		/*
+		 *	We're not trying to do a *correct* parsing of
+		 *	every string here.  We're trying to do a
+		 *	simple parse that isn't wrong.  We therefore
+		 *	accept most anything that's vaguely well
+		 *	formed, and rely on the next stage to do a
+		 *	more rigourous check.
+		 */
+	skip_string:
+		*out = p;
+		while (*p) {
+			/*
+			 *	End of string.  Tell the caller the
+			 *	length of the data inside of the
+			 *	string, and return the number of
+			 *	characters to skip.
+			 */
+			if (*p == quote) {
+				*outlen = p - (*out);
+				p++;
+				return p - start;
+			}
+
+			if (*p == '\\') {
+				p++;
+				if (!p[1]) {
+					return_P("End of string after escape");
+				}
+			}
+			p++;
+		}
+
+		/*
+		 *	End of input without end of string.
+		 *	Point the error to the start of the string.
+		 */
+		p = *out;
+		return_P("Unterminated string");
+
+	case '&':
+		*out = p;	/* the output string starts with '&' */
+		p++;
+		quote = '[';
+		goto skip_word;
+
+	default:
+		*out = p;
+		quote = '\0';
+
+	skip_word:
+		*type = T_BARE_WORD;
+
+		/*
+		 *	Allow *most* things.  But stop on spaces and special characters.
+		 */
+		while (*p) {
+			if (isspace((int) *p)) {
+				break;
+			}
+
+			/*
+			 *	'-' is special.  We allow it for
+			 *	attribute names, BUT it's a
+			 *	terminating token if the NEXT
+			 *	character is '='.
+			 *
+			 *	We have the same criteria for IPv6
+			 *	addresses and tagged attributes.  ':'
+			 *	is allowed, but ':=' is a breaking
+			 *	token.
+			 */
+			if ((*p == '-') || (*p == ':')) {
+				if (p[1] == '=') break;
+				p++;
+				continue;
+			}
+
+			/*
+			 *	Allowed in attribute names, and/or
+			 *	host names and IP addresses.
+			 */
+			if ((*p == '.') || (*p == '/') || (*p == '_')) {
+				p++;
+				continue;
+			}
+
+			/*
+			 *	Allow letters and numbers
+			 */
+			if (((*p >= 'a') && (*p <= 'z')) ||
+			    ((*p >= 'A') && (*p <= 'Z')) ||
+			    ((*p >= '0') && (*p <= '9'))) {
+				p++;
+				continue;
+			}
+
+			/*
+			 *	Allow UTF-8 sequences.
+			 */
+			if (*(uint8_t const *)p > 0x80) {
+				p++;
+				continue;
+			}
+
+			/*
+			 *	If it's an attribute reference, allow
+			 *	a few more things inside of a "[...]"
+			 *	block.
+			 */
+			if (*p == quote) {
+				p++;
+
+				/*
+				 *	Allow [#], etc.  But stop
+				 *	immediately after the ']'.
+				 */
+				if ((*p == '#') || (*p == '*') || (*p == 'n')) {
+					p++;
+				} else {
+					/*
+					 *	Allow numbers as array indexes
+					 */
+					while ((*p >= '0') && (*p <= '9')) {
+						p++;
+					}
+
+					if (*p != ']') {
+						return_P("Array index is not an integer");
+					}
+				}
+
+				if (*p == ']') p++;
+			}
+
+			/*
+			 *	Everything else is a breaking token
+			 */
+			break;
+		}
+
+		/*
+		 *	Give some slightly better error messages.
+		 */
+		if (*p == '\\') {
+			return_P("Unexpected escape");
+		}
+
+		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
+			return_P("Unexpected start of string");
+		}
+
+		if (p == *out) {
+			return_P("Empty string is invalid");
+		}
+
+		*outlen = p - (*out);
+		break;
+	}
+
+	return p - start;
+}
