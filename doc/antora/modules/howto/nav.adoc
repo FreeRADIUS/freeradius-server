@@ -5,7 +5,7 @@
 *** xref:modules/eap.adoc[EAP]
 *** xref:modules/expiration.adoc[Expiration]
 *** xref:modules/krb5.adoc[Krb5]
-*** xref:modules/ldap_howto.adoc[LDAP]
+*** xref:modules/ldap.adoc[LDAP]
 *** xref:modules/mschap.adoc[MS-CHAP]
 *** xref:modules/pam.adoc[PAM]
 *** xref:modules/passwd.adoc[Passwd]
