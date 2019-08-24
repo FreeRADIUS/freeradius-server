@@ -187,7 +187,6 @@ size_t radius_list_name(pair_list_t *out, char const *name, pair_list_t def)
  * @return a pointer to the HEAD of a list in the #REQUEST.
  *
  * @see tmpl_cursor_init
- * @see fr_pair_cursor_init
  */
 VALUE_PAIR **radius_list(REQUEST *request, pair_list_t list)
 {

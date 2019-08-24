@@ -299,7 +299,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 
 /** Determine the correct context and list head
  *
- * Used in conjunction with the fr_pair_cursor functions to determine the correct list
+ * Used in conjunction with the fr_cursor functions to determine the correct list
  * and TALLOC_CTX for inserting VALUE_PAIRs.
  *
  * Example:
