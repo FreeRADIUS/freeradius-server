@@ -5,7 +5,7 @@ condition "bob" == 0x626f62
 data true
 
 condition 0x == '0x'
-data ERROR offset 2 Empty octet string is invalid
+data ERROR offset 0 Empty octet string is invalid
 
 condition 'foo' == 0x
 data ERROR offset 9 Empty octet string is invalid

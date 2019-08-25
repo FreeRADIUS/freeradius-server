@@ -22,6 +22,7 @@ condition ("foo
 data ERROR offset 2 Unterminated string
 
 condition ()
+
 data ERROR offset 1 Empty string is invalid
 
 condition (!)
@@ -138,13 +139,16 @@ condition <ipaddr>&Filter-Id == &Framed-IP-Address
 data <ipaddr>&Filter-Id == &Framed-IP-Address
 
 condition <ipaddr>&Filter-Id == <ipaddr>&Framed-IP-Address
-data ERROR offset 22 Unnecessary cast
+data ERROR offset 22 Unexpected cast
 
 condition <ipaddr>&Filter-Id == <integer>&Framed-IP-Address
-data ERROR offset 22 Cannot cast to a different data type
+data ERROR offset 22 Unexpected cast
 
 condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
-data ERROR offset 23 Invalid data type in cast
+data ERROR offset 22 Unexpected cast
+
+condition <blerg>&Filter-Id == "foo"
+data ERROR offset 1 Unknown data type
 
 #
 #  Normalize things
@@ -204,7 +208,7 @@ condition &Session-Timeout == 10
 data &Session-Timeout == 10
 
 condition &Session-Timeout == '10'
-data ERROR offset 20 Comparison value must be an unquoted string
+data ERROR offset 21 Comparison value must be an unquoted string
 
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
@@ -292,11 +296,8 @@ data true
 condition ('foo' == 'foo')
 data true
 
-#
-#  Double-quotes strings without expansions are literals
-#
 condition ("foo" == "%{sql: foo}")
-data foo == "%{sql: foo}"
+data "foo" == "%{sql: foo}"
 
 condition ("foo bar" == "%{sql: foo}")
 data "foo bar" == "%{sql: foo}"
@@ -332,7 +333,7 @@ condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 data true
 
 condition (/foo/)
-data ERROR offset 1 Conditional check cannot begin with a regular expression
+data ERROR offset 1 Unexpected regular expression
 
 #
 #  Tests for (FOO).
@@ -522,7 +523,7 @@ data ERROR offset 25 Array index is not an integer
 #  This one is still wrong.
 #
 condition User-Name[a] == 'bob'
-data false
+data ERROR offset 9 Invalid text. Expected comparison operator
 
 #
 #  Bounds checks...
@@ -531,7 +532,7 @@ condition &User-Name[1001] == 'bob'
 data ERROR offset 11 Invalid array reference '1001' (should be between 0-1000)
 
 condition &User-Name[-1] == 'bob'
-data ERROR offset 11 Invalid array reference '-1' (should be between 0-1000)
+data ERROR offset 11 Array index is not an integer
 
 #
 #  Tags
@@ -564,17 +565,17 @@ condition request:Foo == 'request:Foo'
 data true
 
 condition request:Foo+Bar == request:Foo+Bar
-data true
+data ERROR offset 11 Invalid text. Expected comparison operator
 
 condition &request:Foo+Bar == 'request:Foo+Bar'
-data ERROR offset 12 Unexpected text after unknown attr
+data ERROR offset 12 Invalid text. Expected comparison operator
 
 condition 'request:Foo+d' == &request:Foo+Bar
-data ERROR offset 31 Unexpected text after unknown attr
+data ERROR offset 31 Unexpected text after condition
 
 #  Attribute tags are not allowed for unknown attributes
 condition &request:FooBar:0 == &request:FooBar
-data ERROR offset 15 Unexpected text after unknown attr
+data ERROR offset 15 Unexpected text after attribute name
 
 condition &not-a-list:User-Name == &not-a-list:User-Name
 data ERROR offset 1 Invalid list qualifier
@@ -640,3 +641,9 @@ data <ipv4prefix>&NAS-IP-Address < "%{echo: 192.168/16}"
 
 condition &NAS-IP-Address < `/bin/echo 192.168/16`
 data <ipv4prefix>&NAS-IP-Address < `/bin/echo 192.168/16`
+
+#
+#  This is allowed and means "the list is not empty"
+#
+condition (&reply:)
+data &reply:

@@ -6,16 +6,12 @@ if (&session-state:[*]) {
 	test_fail
 }
 
-if (&session-state) {
+if (&session-state:) {
 	test_fail
 }
 
 update session-state {
 	&User-Name := 'foo'
-}
-
-if (!&session-state) {
-	test_fail
 }
 
 if (!&session-state:) {

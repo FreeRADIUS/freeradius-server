@@ -146,205 +146,6 @@ next:
 }
 
 
-static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out, char const **error, char const *start, FR_TOKEN *op)
-{
-	char const *p = start;
-	char *q;
-
-	switch (*p++) {
-	default:
-		return -1;
-
-	case '"':
-		*op = T_DOUBLE_QUOTED_STRING;
-		break;
-
-	case '\'':
-		*op = T_SINGLE_QUOTED_STRING;
-		break;
-
-	case '`':
-		*op = T_BACK_QUOTED_STRING;
-		break;
-
-	case '/':
-#ifdef HAVE_REGEX
-		*op = T_OP_REG_EQ; /* a bit of a hack. */
-		break;
-#else
-		p--;
-		*error = "Regular expressions are not supported";
-		return -(p - start);
-#endif
-
-	}
-
-	*out = talloc_array(ctx, char, strlen(start) - 1); /* + 2 - 1 */
-	if (!*out) return -1;
-
-	q = *out;
-
-	while (*p) {
-		if (*p == *start) {
-			/*
-			 *	Call the STANDARD parse function to figure out what the string is.
-			 */
-			fr_value_box_t data;
-			char quote = *start;
-			fr_type_t src_type = FR_TYPE_STRING;
-
-			/*
-			 *	Regex compilers can handle escapes.  So we don't do it.
-			 */
-			if (quote == '/') quote = '\0';
-
-			if (fr_value_box_from_str(ctx, &data, &src_type, NULL,
-						  start + 1, p - (start + 1), quote, false) < 0) {
-				*error = "error parsing string";
-				return -1;
-			}
-
-			talloc_free(*out);
-			*out = talloc_steal(ctx, data.datum.ptr);
-			data.vb_strvalue = NULL;
-
-			p++;
-			return (p - start);
-		}
-
-		if (*p == '\\') {
-			if (!p[1]) {
-				p++;
-				*error = "End of string after escape";
-				return -(p - start);
-			}
-
-			if (p[1] == start[0]) { /* Convert '\'' --> ' */
-				p++;
-			} else {
-				*(q++) = *(p++);
-			}
-		}
-		*(q++) = *(p++);
-	}
-	*error = "Unterminated string";
-
-	return -1;
-}
-
-static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out, FR_TOKEN *op, char const **error)
-{
-	size_t		len;
-
-	char const	*p = start;
-
-	if ((*p == '"') || (*p == '\'') || (*p == '`') || (*p == '/')) {
-		return cond_tokenize_string(ctx, out, error, start, op);
-	}
-
-	*op = T_BARE_WORD;
-	if (*p == '&') p++;	/* special-case &User-Name */
-
-	while (*p) {
-		/*
-		 *	The LHS should really be limited to only a few
-		 *	things.  For now, we allow pretty much anything.
-		 */
-		if (*p == '\\') {
-			*error = "Unexpected escape";
-		error:
-			*out = NULL;
-#ifdef __clang_analyzer__
-			return 0;	/* clang analyzer bug.  Determines p < start in same cases */
-#else
-			return -(p - start);
-#endif
-		}
-
-		/*
-		 *	("foo") is valid.
-		 */
-		if (*p == ')') {
-			break;
-		}
-
-		/*
-		 *	Spaces or special characters delineate the word
-		 */
-		if (isspace((int) *p) || (*p == '&') || (*p == '|') ||
-		    (*p == '!') || (*p == '=') || (*p == '<') || (*p == '>')) {
-			break;
-		}
-
-		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
-			*error = "Unexpected start of string";
-			goto error;
-		}
-
-		p++;
-	}
-
-	len = p - start;
-	if (!len) {
-		*error = "Empty string is invalid";
-		goto error;
-	}
-
-	MEM(*out = talloc_array(ctx, char, len + 1));
-	memcpy(*out, start, len);
-	(*out)[len] = '\0';
-
-	return len;
-}
-
-static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda, char const **error)
-{
-	char const	*p = start;
-	char const	*q;
-	fr_type_t	cast;
-
-	fr_skip_spaces(p); /* skip spaces before condition */
-
-	if (*p != '<') {
-		*pda = NULL;
-		return 0;
-	}
-	p++;
-
-	q = p;
-	while (*q && *q != '>') q++;
-
-	cast = fr_table_value_by_substr(fr_value_box_type_table, p, q - p, FR_TYPE_INVALID);
-	if (cast == FR_TYPE_INVALID) {
-		*error = "Invalid data type in cast";
-		*pda = NULL;
-		return -(p - start);
-	}
-
-	/*
-	 *	We can only cast to basic data types.  Complex ones
-	 *	are forbidden.
-	 */
-	if (fr_dict_non_data_types[cast]) {
-		*error = "Forbidden data type in cast";
-		*pda = NULL;
-		return -(p - start);
-	}
-
-	*pda = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + cast);
-	if (!*pda) {
-		*error = "Cannot cast to this data type";
-		*pda = NULL;
-		return -(p - start);
-	}
-
-	q++;
-
-	fr_skip_spaces(q); /* skip spaces after cast */
-
-	return q - start;
-}
-
 static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 {
 	/*
@@ -433,7 +234,6 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
  */
 #define return_P(_x) *error = _x;goto return_p
 #define return_0(_x) *error = _x;goto return_0
-#define return_lhs(_x) *error = _x;goto return_lhs
 #define return_rhs(_x) *error = _x;goto return_rhs
 #define return_SLEN goto return_slen
 
@@ -460,7 +260,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	char const		*p = start;
 	char const		*lhs_p, *rhs_p;
 	fr_cond_t		*c;
-	char			*lhs, *rhs;
+	size_t			lhs_len, rhs_len;
 	FR_TOKEN		op, lhs_type, rhs_type;
 
 	vp_tmpl_rules_t		parse_rules;
@@ -475,7 +275,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	c = talloc_zero(ctx, fr_cond_t);
 
 	rad_assert(c != NULL);
-	lhs = rhs = NULL;
 	lhs_type = rhs_type = T_INVALID;
 
 	fr_skip_spaces(p); /* skip spaces before condition */
@@ -521,715 +320,671 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 		p += slen;
 		fr_skip_spaces(p); /* skip spaces after (COND)*/
+		goto closing_brace;
+	}
 
-	} else { /* it's a bare FOO==BAR */
+	/*
+	 *	We didn't see anything special.  The condition must be one of
+	 *
+	 *	FOO
+	 *	FOO OP BAR
+	 */
+
+	/*
+	 *	Grab the LHS
+	 */
+	slen = tmpl_preparse(&lhs_p, &lhs_len, p, &lhs_type, error, &c->cast, false);
+	if (slen <= 0) return_SLEN;
+
+	/*
+	 *	We may (or not) have an operator
+	 */
+
+	/*
+	 *	If the LHS is 0xabcdef, then automatically case it to octets.
+	 */
+	if (!c->cast && (lhs_type == T_BARE_WORD) &&
+	    (lhs_p[0] == '0') && (lhs_p[1] == 'x') &&
+	    ((slen & 0x01) == 0)) {
+		if (slen == 2) {
+			return_P("Empty octet string is invalid");
+		}
+
+		c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+							    FR_CAST_BASE + FR_TYPE_OCTETS);
+	}
+
+	p += slen;
+	fr_skip_spaces(p);
+
+	/*
+	 *	(FOO)
+	 */
+	if (*p == ')') {
+		if (slen == 0) {
+			return_P("Empty string is invalid");
+		}
+
 		/*
-		 *	We didn't see anything special.  The condition must be one of
-		 *
+		 *	don't skip the brace.  We'll look for it later.
+		 */
+		goto exists;
+
+		/*
 		 *	FOO
-		 *	FOO OP BAR
 		 */
-
-		/*
-		 *	Grab the LHS
-		 */
-		if (*p == '/') {
-			return_P("Conditional check cannot begin with a regular expression");
+	} else if (!*p) {
+		if (brace) {
+			return_P("No closing brace at end of string");
 		}
 
+		goto exists;
+
 		/*
-		 *	Do casts if it exists.
+		 *	FOO && ...
 		 */
-		if (*p == '<') {
-			slen = cond_tokenize_cast(p, &c->cast, error);
-			if (slen <= 0) return_SLEN;
-			p += slen;
+	} else if (((p[0] == '&') && (p[1] == '&')) ||
+		   ((p[0] == '|') && (p[1] == '|'))) {
+
+	exists:
+		if (c->cast) {
+			return_0("Cannot do cast for existence check");
 		}
 
-		lhs_p = p;
-		slen = cond_tokenize_word(c, p, &lhs, &lhs_type, error);
+		c->type = COND_TYPE_EXISTS;
+		c->ci = ci;
+
+		tlen = tmpl_afrom_str(c, &c->data.vpt,
+				      lhs_p, lhs_len, lhs_type, &parse_rules, true);
+		if (tlen < 0) {
+			p = lhs_p - tlen;
+			return_P(fr_strerror());
+		}
+
+		rad_assert(!tmpl_is_regex(c->data.vpt));
+
+		if (tmpl_define_unknown_attr(c->data.vpt) < 0) {
+			p = lhs_p - tlen;
+			return_P("Failed defining attribute");
+		}
+
+		if (tmpl_is_attr_undefined(c->data.vpt)) {
+			c->pass2_fixup = PASS2_FIXUP_ATTR;
+		}
+
+	} else { /* it's an operator */
+#ifdef HAVE_REGEX
+		bool			regex = false;
+		fr_regex_flags_t	regex_flags;
+
+		memset(&regex_flags, 0, sizeof(regex_flags));
+#endif
+		vp_map_t *map;
+
+		/*
+		 *	The next thing should now be a comparison operator.
+		 */
+		c->type = COND_TYPE_MAP;
+		c->ci = ci;
+
+		switch (*p) {
+		default:
+			return_P("Invalid text. Expected comparison operator");
+
+		case '!':
+			if (p[1] == '=') {
+				op = T_OP_NE;
+				p += 2;
+
+#ifdef HAVE_REGEX
+			} else if (p[1] == '~') {
+				regex = true;
+
+				op = T_OP_REG_NE;
+				p += 2;
+#endif
+
+			} else if (p[1] == '*') {
+				if (lhs_type != T_BARE_WORD) {
+					return_P("Cannot use !* on a string");
+				}
+
+				op = T_OP_CMP_FALSE;
+				p += 2;
+
+			} else {
+				goto invalid_operator;
+			}
+			break;
+
+		case '=':
+			if (p[1] == '=') {
+				op = T_OP_CMP_EQ;
+				p += 2;
+
+#ifdef HAVE_REGEX
+			} else if (p[1] == '~') {
+				regex = true;
+
+				op = T_OP_REG_EQ;
+				p += 2;
+#endif
+
+			} else if (p[1] == '*') {
+				if (lhs_type != T_BARE_WORD) {
+					return_P("Cannot use =* on a string");
+				}
+
+				op = T_OP_CMP_TRUE;
+				p += 2;
+
+			} else {
+			invalid_operator:
+				return_P("Invalid operator");
+			}
+
+			break;
+
+		case '<':
+			if (p[1] == '=') {
+				op = T_OP_LE;
+				p += 2;
+
+			} else {
+				op = T_OP_LT;
+				p++;
+			}
+			break;
+
+		case '>':
+			if (p[1] == '=') {
+				op = T_OP_GE;
+				p += 2;
+
+			} else {
+				op = T_OP_GT;
+				p++;
+			}
+			break;
+		}
+
+		fr_skip_spaces(p); /* skip spaces after operator */
+
+		if (!*p) {
+			return_P("Expected text after operator");
+		}
+
+		slen = tmpl_preparse(&rhs_p, &rhs_len, p, &rhs_type, error, NULL, true);
 		if (slen <= 0) return_SLEN;
-		p += slen;
+
+#ifdef HAVE_REGEX
+		/*
+		 *	Sanity checks for regexes.
+		 */
+		if (regex) {
+			int	err;
+			ssize_t flen;
+
+			if (rhs_p[rhs_len]  != '/') {
+				return_P("Expected regular expression");
+			}
+
+			flen = regex_flags_parse(&err, &regex_flags, rhs_p + rhs_len + 1, strlen(rhs_p + rhs_len + 1), true);
+			switch (err) {
+				/*
+				 *	Got flags all the way to the end of the string
+				 */
+			case 0:
+				rad_assert(flen >= 0);
+				slen += (size_t)flen;
+				break;
+
+				/*
+				 *	Found non-flag, this is OK.
+				 */
+			case -1:
+				rad_assert(flen <= 0);
+				fr_strerror(); /* Clear out the error buffer */
+				slen += (size_t)(-flen);
+				break;
+
+			case -2:
+				rad_assert(flen <= 0);
+				p = rhs_p + rhs_len + 1;
+				p += (size_t)(-flen);
+				return_P("Duplicate flag");
+			}
+		} else if (!regex && (*p == '/')) {
+			return_P("Unexpected regular expression");
+		}
+
+#endif
 
 		/*
-		 *	If the LHS is 0xabcdef... automatically cast it to octets
+		 *	Duplicate map_from_fields here, as we
+		 *	want to separate parse errors in the
+		 *	LHS from ones in the RHS.
 		 */
-		if (!c->cast && (lhs_type == T_BARE_WORD) &&
-		    (lhs[0] == '0') && (lhs[1] == 'x') &&
+		c->data.map = map = talloc_zero(c, vp_map_t);
+
+		tlen = tmpl_afrom_str(map, &map->lhs, lhs_p, lhs_len,
+				      lhs_type, &parse_rules, true);
+		if (tlen < 0) {
+			p = lhs_p - tlen;
+			return_P(fr_strerror());
+		}
+
+		if (tmpl_define_unknown_attr(map->lhs) < 0) {
+			*error = "Failed defining attribute";
+			talloc_free(c);
+			return -(lhs_p - start);
+		}
+
+		map->op = op;
+
+		/*
+		 *	If the RHS is 0xabcdef... automatically cast it to octets
+		 *	unless the LHS is an attribute of type octets, or an
+		 *	integer type.
+		 */
+		if (!c->cast && (rhs_type == T_BARE_WORD) &&
+		    (rhs_p[0] == '0') && (rhs_p[1] == 'x') &&
 		    ((slen & 0x01) == 0)) {
 			if (slen == 2) {
 				return_P("Empty octet string is invalid");
 			}
 
-			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
-							    FR_CAST_BASE + FR_TYPE_OCTETS);
+			if ((map->lhs->type != TMPL_TYPE_ATTR) ||
+			    !((map->lhs->tmpl_da->type == FR_TYPE_OCTETS) ||
+			      (map->lhs->tmpl_da->type == FR_TYPE_UINT8) ||
+			      (map->lhs->tmpl_da->type == FR_TYPE_UINT16) ||
+			      (map->lhs->tmpl_da->type == FR_TYPE_UINT32) ||
+			      (map->lhs->tmpl_da->type == FR_TYPE_UINT64))) {
+				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+								    FR_CAST_BASE + FR_TYPE_OCTETS);
+			}
 		}
 
-		fr_skip_spaces(p); /* skip spaces after LHS */
+		if (tmpl_is_attr(map->lhs) &&
+		    map->lhs->tmpl_da->flags.is_raw &&
+		    map_cast_from_hex(map, rhs_type, rhs_p)) {
+			/* do nothing */
 
-		/*
-		 *	We may (or not) have an operator
-		 */
-
-
-		/*
-		 *	(FOO)
-		 */
-		if (*p == ')') {
-			/*
-			 *	don't skip the brace.  We'll look for it later.
-			 */
-			goto exists;
-
-			/*
-			 *	FOO
-			 */
-		} else if (!*p) {
-			if (brace) {
-				return_P("No closing brace at end of string");
-			}
-
-			goto exists;
-
-			/*
-			 *	FOO && ...
-			 */
-		} else if (((p[0] == '&') && (p[1] == '&')) ||
-			   ((p[0] == '|') && (p[1] == '|'))) {
-
-		exists:
-			if (c->cast) {
-				return_0("Cannot do cast for existence check");
-			}
-
-			c->type = COND_TYPE_EXISTS;
-			c->ci = ci;
-
-			tlen = tmpl_afrom_str(c, &c->data.vpt,
-					      lhs, talloc_array_length(lhs) - 1, lhs_type, &parse_rules, false);
+		} else {
+			tlen = tmpl_afrom_str(map, &map->rhs, rhs_p, rhs_len, rhs_type,
+					      &parse_rules, true);
 			if (tlen < 0) {
-				p = lhs_p - tlen;
+				p = rhs_p - tlen;
 				return_P(fr_strerror());
 			}
+		}
 
-			rad_assert(!tmpl_is_regex(c->data.vpt));
+		if (tmpl_define_unknown_attr(map->rhs) < 0) {
+			return_rhs("Failed defining attribute");
+		}
 
-			if (tmpl_define_unknown_attr(c->data.vpt) < 0) {
-				p = lhs_p - tlen;
-				return_P("Failed defining attribute");
-			}
-
-			if (tmpl_is_attr_undefined(c->data.vpt)) {
-				c->pass2_fixup = PASS2_FIXUP_ATTR;
-			}
-
-		} else { /* it's an operator */
-#ifdef HAVE_REGEX
-			bool			regex = false;
-			fr_regex_flags_t	regex_flags;
-
-			memset(&regex_flags, 0, sizeof(regex_flags));
-#endif
-			vp_map_t *map;
-
-			/*
-			 *	The next thing should now be a comparison operator.
-			 */
-			c->type = COND_TYPE_MAP;
-			c->ci = ci;
-
-			switch (*p) {
-			default:
-				return_P("Invalid text. Expected comparison operator");
-
-			case '!':
-				if (p[1] == '=') {
-					op = T_OP_NE;
-					p += 2;
+		/*
+		 *	Unknown attributes get marked up for pass2.
+		 */
+		if (tmpl_is_attr_undefined(c->data.map->lhs) ||
+		    tmpl_is_attr_undefined(c->data.map->rhs)) {
+			c->pass2_fixup = PASS2_FIXUP_ATTR;
+		}
 
 #ifdef HAVE_REGEX
-				} else if (p[1] == '~') {
-					regex = true;
-
-					op = T_OP_REG_NE;
-					p += 2;
+		if (tmpl_is_regex(c->data.map->rhs)) {
+			c->data.map->rhs->tmpl_regex_flags = regex_flags;
+		}
 #endif
 
-				} else if (p[1] == '*') {
-					if (lhs_type != T_BARE_WORD) {
-						return_P("Cannot use !* on a string");
-					}
+		/*
+		 *	Save the CONF_ITEM for later.
+		 */
+		c->data.map->ci = ci;
 
-					op = T_OP_CMP_FALSE;
-					p += 2;
+		/*
+		 *	@todo: check LHS and RHS separately, to
+		 *	get better errors
+		 */
+		if (tmpl_is_list(c->data.map->rhs) ||
+		    tmpl_is_list(c->data.map->lhs)) {
+			return_0("Cannot use list references in condition");
+		}
 
-				} else {
-					goto invalid_operator;
-				}
-				break;
-
-			case '=':
-				if (p[1] == '=') {
-					op = T_OP_CMP_EQ;
-					p += 2;
-
-#ifdef HAVE_REGEX
-				} else if (p[1] == '~') {
-					regex = true;
-
-					op = T_OP_REG_EQ;
-					p += 2;
-#endif
-
-				} else if (p[1] == '*') {
-					if (lhs_type != T_BARE_WORD) {
-						return_P("Cannot use =* on a string");
-					}
-
-					op = T_OP_CMP_TRUE;
-					p += 2;
-
-				} else {
-				invalid_operator:
-					return_P("Invalid operator");
+		/*
+		 *	Check cast type.  We can have the RHS
+		 *	a string if the LHS has a cast.  But
+		 *	if the RHS is an attr, it MUST be the
+		 *	same type as the LHS.
+		 */
+		if (c->cast) {
+			if (tmpl_is_attr(c->data.map->rhs) &&
+			    (c->cast->type != c->data.map->rhs->tmpl_da->type)) {
+				if (cond_type_check(c, c->cast->type)) {
+					goto keep_going;
 				}
 
-				break;
-
-			case '<':
-				if (p[1] == '=') {
-					op = T_OP_LE;
-					p += 2;
-
-				} else {
-					op = T_OP_LT;
-					p++;
-				}
-				break;
-
-			case '>':
-				if (p[1] == '=') {
-					op = T_OP_GE;
-					p += 2;
-
-				} else {
-					op = T_OP_GT;
-					p++;
-				}
-				break;
-			}
-
-			fr_skip_spaces(p); /* skip spaces after operator */
-
-			if (!*p) {
-				return_P("Expected text after operator");
-			}
-
-			/*
-			 *	Cannot have a cast on the RHS.
-			 *	But produce good errors, too.
-			 */
-			if (*p == '<') {
-				fr_dict_attr_t const *cast_da;
-
-				slen = cond_tokenize_cast(p, &cast_da, error);
-				if (slen <= 0) return_SLEN;
-
-				if (!c->cast) {
-					return_P("Unexpected cast");
-				}
-
-				if (c->cast != cast_da) {
-					return_P("Cannot cast to a different data type");
-				}
-
-				return_P("Unnecessary cast");
-			}
-
-			/*
-			 *	Grab the RHS
-			 */
-			rhs_p = p;
-			slen = cond_tokenize_word(c, p, &rhs, &rhs_type, error);
-			if (slen <= 0) return_SLEN;
-
-#ifdef HAVE_REGEX
-			/*
-			 *	Sanity checks for regexes.
-			 */
-			if (regex) {
-				int	err;
-				ssize_t flen;
-
-				if (*p != '/') {
-					return_P("Expected regular expression");
-			        }
-
-				flen = regex_flags_parse(&err, &regex_flags, p + slen, strlen(p + slen), true);
-				switch (err) {
-				/*
-				 *	Got flags all the way to the end of the string
-				 */
-				case 0:
-					rad_assert(flen >= 0);
-					slen += (size_t)flen;
-					break;
-
-				/*
-				 *	Found non-flag, this is OK.
-				 */
-				case -1:
-					rad_assert(flen <= 0);
-					fr_strerror(); /* Clear out the error buffer */
-					slen += (size_t)(-flen);
-					break;
-
-				case -2:
-					rad_assert(flen <= 0);
-					p += slen;
-					p += (size_t)(-flen);
-					return_P("Duplicate flag");
-				}
-			} else if (!regex && (*p == '/')) {
-				return_P("Unexpected regular expression");
-			}
-
-#endif
-			/*
-			 *	Duplicate map_from_fields here, as we
-			 *	want to separate parse errors in the
-			 *	LHS from ones in the RHS.
-			 */
-			c->data.map = map = talloc_zero(c, vp_map_t);
-
-			tlen = tmpl_afrom_str(map, &map->lhs, lhs, talloc_array_length(lhs) - 1,
-					      lhs_type, &parse_rules, false);
-			if (tlen < 0) {
-				p = lhs_p - tlen;
-				return_P(fr_strerror());
-			}
-
-			if (tmpl_define_unknown_attr(map->lhs) < 0) {
-				return_lhs("Failed defining attribute");
-			return_lhs:
-				if (lhs) talloc_free(lhs);
-				if (rhs) talloc_free(rhs);
-				talloc_free(c);
-				return -(lhs_p - start);
-			}
-
-			map->op = op;
-
-			/*
-			 *	If the RHS is 0xabcdef... automatically cast it to octets
-			 *	unless the LHS is an attribute of type octets, or an
-			 *	integer type.
-			 */
-			if (!c->cast && (rhs_type == T_BARE_WORD) &&
-			    (rhs[0] == '0') && (rhs[1] == 'x') &&
-			    ((slen & 0x01) == 0)) {
-				if (slen == 2) {
-					return_P("Empty octet string is invalid");
-				}
-
-				if (!tmpl_is_attr(map->lhs) ||
-				    !((map->lhs->tmpl_da->type == FR_TYPE_OCTETS) ||
-				      (map->lhs->tmpl_da->type == FR_TYPE_UINT8) ||
-				      (map->lhs->tmpl_da->type == FR_TYPE_UINT16) ||
-				      (map->lhs->tmpl_da->type == FR_TYPE_UINT32) ||
-				      (map->lhs->tmpl_da->type == FR_TYPE_UINT64))) {
-					c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
-									    FR_CAST_BASE + FR_TYPE_OCTETS);
-				}
-			}
-
-			if (tmpl_is_attr(map->lhs) &&
-			    map->lhs->tmpl_da->flags.is_raw &&
-			    map_cast_from_hex(map, rhs_type, rhs)) {
-				/* do nothing */
-
-			} else {
-				tlen = tmpl_afrom_str(map, &map->rhs, rhs, talloc_array_length(rhs) - 1, rhs_type,
-						      &parse_rules, false);
-				if (tlen < 0) {
-					p = rhs_p - tlen;
-					return_P(fr_strerror());
-				}
-
-				if (tmpl_define_unknown_attr(map->rhs) < 0) {
-					return_rhs("Failed defining attribute");
-				}
-			}
-
-			/*
-			 *	Unknown attributes get marked up for pass2.
-			 */
-			if (tmpl_is_attr_undefined(c->data.map->lhs) ||
-			    tmpl_is_attr_undefined(c->data.map->rhs)) {
-				c->pass2_fixup = PASS2_FIXUP_ATTR;
+				goto same_type;
 			}
 
 #ifdef HAVE_REGEX
 			if (tmpl_is_regex(c->data.map->rhs)) {
-				c->data.map->rhs->tmpl_regex_flags = regex_flags;
+				return_0("Cannot use cast with regex comparison");
 			}
 #endif
 
 			/*
-			 *	Save the CONF_ITEM for later.
+			 *	The LHS is a literal which has been cast to a data type.
+			 *	Cast it to the appropriate data type.
 			 */
-			c->data.map->ci = ci;
-
-			/*
-			 *	@todo: check LHS and RHS separately, to
-			 *	get better errors
-			 */
-			if (tmpl_is_list(c->data.map->rhs) ||
-			    tmpl_is_list(c->data.map->lhs)) {
-				return_0("Cannot use list references in condition");
+			if (tmpl_is_unparsed(c->data.map->lhs) &&
+			    (tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast) < 0)) {
+				*error = "Failed to parse field";
+				talloc_free(c);
+				return -(lhs_p - start);
 			}
 
 			/*
-			 *	Check cast type.  We can have the RHS
-			 *	a string if the LHS has a cast.  But
-			 *	if the RHS is an attr, it MUST be the
-			 *	same type as the LHS.
+			 *	The RHS is a literal, and the LHS has been cast to a data
+			 *	type.
 			 */
-			if (c->cast) {
-				if (tmpl_is_attr(c->data.map->rhs) &&
-				    (c->cast->type != c->data.map->rhs->tmpl_da->type)) {
-					if (cond_type_check(c, c->cast->type)) {
-						goto keep_going;
-					}
+			if ((tmpl_is_data(c->data.map->lhs)) &&
+			    (tmpl_is_unparsed(c->data.map->rhs)) &&
+			    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
+				return_rhs("Failed to parse field");
+			}
 
-					goto same_type;
-				}
-
-#ifdef HAVE_REGEX
-				if (tmpl_is_regex(c->data.map->rhs)) {
-					return_0("Cannot use cast with regex comparison");
-				}
-#endif
-
+			/*
+			 *	We may be casting incompatible
+			 *	types.  We check this based on
+			 *	their size.
+			 */
+			if (tmpl_is_attr(c->data.map->lhs)) {
 				/*
-				 *	The LHS is a literal which has been cast to a data type.
-				 *	Cast it to the appropriate data type.
+				 *      dst.min == src.min
+				 *	dst.max == src.max
 				 */
-				if (tmpl_is_unparsed(c->data.map->lhs) &&
-				    (tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast) < 0)) {
-					*error = "Failed to parse field";
-					if (lhs) talloc_free(lhs);
-					if (rhs) talloc_free(rhs);
-					talloc_free(c);
-					return -(lhs_p - start);
+				if ((dict_attr_sizes[c->cast->type][0] == dict_attr_sizes[c->data.map->lhs->tmpl_da->type][0]) &&
+				    (dict_attr_sizes[c->cast->type][1] == dict_attr_sizes[c->data.map->lhs->tmpl_da->type][1])) {
+					goto cast_ok;
 				}
 
 				/*
-				 *	The RHS is a literal, and the LHS has been cast to a data
-				 *	type.
+				 *	Run-time parsing of strings.
+				 *	Run-time copying of octets.
 				 */
-				if ((tmpl_is_data(c->data.map->lhs)) &&
-				    (tmpl_is_unparsed(c->data.map->rhs)) &&
-				    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
-					return_rhs("Failed to parse field");
+				if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_STRING) ||
+				    (c->data.map->lhs->tmpl_da->type == FR_TYPE_OCTETS)) {
+					goto cast_ok;
 				}
 
 				/*
-				 *	We may be casting incompatible
-				 *	types.  We check this based on
-				 *	their size.
+				 *	ifid to uint64 is OK
 				 */
-				if (tmpl_is_attr(c->data.map->lhs)) {
-					/*
-					 *      dst.min == src.min
-					 *	dst.max == src.max
-					 */
-					if ((dict_attr_sizes[c->cast->type][0] == dict_attr_sizes[c->data.map->lhs->tmpl_da->type][0]) &&
-					    (dict_attr_sizes[c->cast->type][1] == dict_attr_sizes[c->data.map->lhs->tmpl_da->type][1])) {
-						goto cast_ok;
-					}
-
-					/*
-					 *	Run-time parsing of strings.
-					 *	Run-time copying of octets.
-					 */
-					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_STRING) ||
-					    (c->data.map->lhs->tmpl_da->type == FR_TYPE_OCTETS)) {
-						goto cast_ok;
-					}
-
-					/*
-					 *	ifid to uint64 is OK
-					 */
-					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IFID) &&
-					    (c->cast->type == FR_TYPE_UINT64)) {
-						goto cast_ok;
-					}
-
-					/*
-					 *	ipaddr to ipv4prefix is OK
-					 */
-					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV4_ADDR) &&
-					    (c->cast->type == FR_TYPE_IPV4_PREFIX)) {
-						goto cast_ok;
-					}
-
-					/*
-					 *	ipv6addr to ipv6prefix is OK
-					 */
-					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV6_ADDR) &&
-					    (c->cast->type == FR_TYPE_IPV6_PREFIX)) {
-						goto cast_ok;
-					}
-
-					/*
-					 *	uint64 to ethernet is OK.
-					 */
-					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_UINT64) &&
-					    (c->cast->type == FR_TYPE_ETHERNET)) {
-						goto cast_ok;
-					}
-
-					/*
-					 *	dst.max < src.min
-					 *	dst.min > src.max
-					 */
-					if ((dict_attr_sizes[c->cast->type][1] < dict_attr_sizes[c->data.map->lhs->tmpl_da->type][0]) ||
-					    (dict_attr_sizes[c->cast->type][0] > dict_attr_sizes[c->data.map->lhs->tmpl_da->type][1])) {
-						return_0("Cannot cast to attribute of incompatible size");
-					}
-				}
-
-			cast_ok:
-				/*
-				 *	Casting to a redundant type means we don't need the cast.
-				 *
-				 *	Do this LAST, as the rest of the code above assumes c->cast
-				 *	is not NULL.
-				 */
-				if (tmpl_is_attr(c->data.map->lhs) &&
-				    (c->cast->type == c->data.map->lhs->tmpl_da->type)) {
-					c->cast = NULL;
-				}
-
-			} else {
-				vp_tmpl_t *vpt;
-
-				/*
-				 *	Two attributes?  They must be of the same type
-				 */
-				if (tmpl_is_attr(c->data.map->rhs) &&
-				    tmpl_is_attr(c->data.map->lhs) &&
-				    (c->data.map->lhs->tmpl_da->type != c->data.map->rhs->tmpl_da->type)) {
-					if (cond_type_check(c, c->data.map->lhs->tmpl_da->type)) {
-						goto keep_going;
-					}
-
-				same_type:
-					*error = "Attribute comparisons must be of the same data type";
-
-				return_0:
-					if (lhs) talloc_free(lhs);
-					if (rhs) talloc_free(rhs);
-					talloc_free(c);
-					return 0;
+				if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IFID) &&
+				    (c->cast->type == FR_TYPE_UINT64)) {
+					goto cast_ok;
 				}
 
 				/*
-				 *	Invalid: User-Name == bob
-				 *	Valid:   User-Name == "bob"
-				 *
-				 *	There's no real reason for
-				 *	this, other than consistency.
+				 *	ipaddr to ipv4prefix is OK
 				 */
-				if (tmpl_is_attr(c->data.map->lhs) &&
-				    !tmpl_is_attr(c->data.map->rhs) &&
-				    (c->data.map->lhs->tmpl_da->type == FR_TYPE_STRING) &&
-				    (c->data.map->op != T_OP_CMP_TRUE) &&
-				    (c->data.map->op != T_OP_CMP_FALSE) &&
-				    (map->rhs->quote == T_BARE_WORD)) {
-					return_rhs("Comparison value must be a quoted string");
+				if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV4_ADDR) &&
+				    (c->cast->type == FR_TYPE_IPV4_PREFIX)) {
+					goto cast_ok;
 				}
 
 				/*
-				 *	Quotes around non-string
-				 *	attributes mean that it's
-				 *	either xlat, or an exec.
+				 *	ipv6addr to ipv6prefix is OK
 				 */
-				if (tmpl_is_attr(c->data.map->lhs) &&
-				    !tmpl_is_attr(c->data.map->rhs) &&
-				    (c->data.map->lhs->tmpl_da->type != FR_TYPE_STRING) &&
-				    (c->data.map->lhs->tmpl_da->type != FR_TYPE_OCTETS) &&
-				    (c->data.map->lhs->tmpl_da->type != FR_TYPE_DATE) &&
-				    (rhs_type == T_SINGLE_QUOTED_STRING)) {
-					*error = "Comparison value must be an unquoted string";
-				return_rhs:
-					if (lhs) talloc_free(lhs);
-					if (rhs) talloc_free(rhs);
-					talloc_free(c);
-					return -(rhs_p - start);
+				if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV6_ADDR) &&
+				    (c->cast->type == FR_TYPE_IPV6_PREFIX)) {
+					goto cast_ok;
 				}
 
 				/*
-				 *	The LHS has been cast to a data type, and the RHS is a
-				 *	literal.  Cast the RHS to the type of the cast.
+				 *	uint64 to ethernet is OK.
 				 */
-				if (c->cast && tmpl_is_unparsed(c->data.map->rhs) &&
-				    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
-					return_rhs("Failed to parse field");
+				if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_UINT64) &&
+				    (c->cast->type == FR_TYPE_ETHERNET)) {
+					goto cast_ok;
 				}
 
 				/*
-				 *	The LHS is an attribute, and the RHS is a literal.  Cast the
-				 *	RHS to the data type of the LHS.
-				 *
-				 *	Note: There's a hack in here to always parse RHS as the
-				 *	equivalent prefix type if the LHS is an IP address.
-				 *
-				 *	This allows Framed-IP-Address < 192.168.0.0./24
+				 *	dst.max < src.min
+				 *	dst.min > src.max
 				 */
-				if (tmpl_is_attr(c->data.map->lhs) &&
-				    (tmpl_is_unparsed(c->data.map->rhs) ||
-				     tmpl_is_data(c->data.map->rhs))) {
-					fr_type_t type = c->data.map->lhs->tmpl_da->type;
+				if ((dict_attr_sizes[c->cast->type][1] < dict_attr_sizes[c->data.map->lhs->tmpl_da->type][0]) ||
+				    (dict_attr_sizes[c->cast->type][0] > dict_attr_sizes[c->data.map->lhs->tmpl_da->type][1])) {
+					return_0("Cannot cast to attribute of incompatible size");
+				}
+			}
 
-					switch (c->data.map->lhs->tmpl_da->type) {
-					case FR_TYPE_IPV4_ADDR:
-						if (strchr(c->data.map->rhs->name, '/') != NULL) {
-							type = FR_TYPE_IPV4_PREFIX;
-							c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + type);
-						}
-						break;
+		cast_ok:
+			/*
+			 *	Casting to a redundant type means we don't need the cast.
+			 *
+			 *	Do this LAST, as the rest of the code above assumes c->cast
+			 *	is not NULL.
+			 */
+			if (tmpl_is_attr(c->data.map->lhs) &&
+			    (c->cast->type == c->data.map->lhs->tmpl_da->type)) {
+				c->cast = NULL;
+			}
 
-					case FR_TYPE_IPV6_ADDR:
-						if (strchr(c->data.map->rhs->name, '/') != NULL) {
-							type = FR_TYPE_IPV6_PREFIX;
-							c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + type);
-						}
+		} else {
+			vp_tmpl_t *vpt;
+
+			/*
+			 *	Two attributes?  They must be of the same type
+			 */
+			if (tmpl_is_attr(c->data.map->rhs) &&
+			    tmpl_is_attr(c->data.map->lhs) &&
+			    (c->data.map->lhs->tmpl_da->type != c->data.map->rhs->tmpl_da->type)) {
+				if (cond_type_check(c, c->data.map->lhs->tmpl_da->type)) {
+					goto keep_going;
+				}
+
+			same_type:
+				*error = "Attribute comparisons must be of the same data type";
+
+			return_0:
+				talloc_free(c);
+				return 0;
+			}
+
+			/*
+			 *	Invalid: User-Name == bob
+			 *	Valid:   User-Name == "bob"
+			 *
+			 *	There's no real reason for
+			 *	this, other than consistency.
+			 */
+			if (tmpl_is_attr(c->data.map->lhs) &&
+			    !tmpl_is_attr(c->data.map->rhs) &&
+			    (c->data.map->lhs->tmpl_da->type == FR_TYPE_STRING) &&
+			    (c->data.map->op != T_OP_CMP_TRUE) &&
+			    (c->data.map->op != T_OP_CMP_FALSE) &&
+			    (map->rhs->quote == T_BARE_WORD)) {
+				return_rhs("Comparison value must be a quoted string");
+			}
+
+			/*
+			 *	Quotes around non-string
+			 *	attributes mean that it's
+			 *	either xlat, or an exec.
+			 */
+			if (tmpl_is_attr(c->data.map->lhs) &&
+			    !tmpl_is_attr(c->data.map->rhs) &&
+			    (c->data.map->lhs->tmpl_da->type != FR_TYPE_STRING) &&
+			    (c->data.map->lhs->tmpl_da->type != FR_TYPE_OCTETS) &&
+			    (c->data.map->lhs->tmpl_da->type != FR_TYPE_DATE) &&
+			    (rhs_type == T_SINGLE_QUOTED_STRING)) {
+				*error = "Comparison value must be an unquoted string";
+			return_rhs:
+				talloc_free(c);
+				return -(rhs_p - start);
+			}
+
+			/*
+			 *	The LHS has been cast to a data type, and the RHS is a
+			 *	literal.  Cast the RHS to the type of the cast.
+			 */
+			if (c->cast && tmpl_is_unparsed(c->data.map->rhs) &&
+			    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
+				return_rhs("Failed to parse field");
+			}
+
+			/*
+			 *	The LHS is an attribute, and the RHS is a literal.  Cast the
+			 *	RHS to the data type of the LHS.
+			 *
+			 *	Note: There's a hack in here to always parse RHS as the
+			 *	equivalent prefix type if the LHS is an IP address.
+			 *
+			 *	This allows Framed-IP-Address < 192.168.0.0./24
+			 */
+			if (tmpl_is_attr(c->data.map->lhs) &&
+			    (tmpl_is_unparsed(c->data.map->rhs) ||
+			     tmpl_is_data(c->data.map->rhs))) {
+				fr_type_t type = c->data.map->lhs->tmpl_da->type;
+
+				switch (c->data.map->lhs->tmpl_da->type) {
+				case FR_TYPE_IPV4_ADDR:
+					if (strchr(c->data.map->rhs->name, '/') != NULL) {
+						type = FR_TYPE_IPV4_PREFIX;
+						c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + type);
+					}
+					break;
+
+				case FR_TYPE_IPV6_ADDR:
+					if (strchr(c->data.map->rhs->name, '/') != NULL) {
+						type = FR_TYPE_IPV6_PREFIX;
+						c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + type);
+					}
+					break;
+
+				default:
+					break;
+				}
+
+				/*
+				 *	Do not pass LHS as enumv if we're casting
+				 *	as that means there's now a type mismatch between
+				 *	lhs and rhs, which means the enumerations
+				 *	can never match.
+				 */
+				if (tmpl_cast_in_place(c->data.map->rhs, type,
+						       c->cast ? NULL : c->data.map->lhs->tmpl_da) < 0) {
+					fr_dict_attr_t const *da = c->data.map->lhs->tmpl_da;
+
+					if (!fr_dict_attr_is_top_level(da)) goto bad_type;
+
+					switch (da->attr) {
+					case FR_AUTH_TYPE:
+						/*
+						 *	The types for these attributes are dynamically allocated
+						 *	by module.c, so we can't enforce strictness here.
+						 */
+						c->pass2_fixup = PASS2_FIXUP_TYPE;
 						break;
 
 					default:
+					bad_type:
+						return_rhs("Failed to parse value for attribute");
+					}
+				}
+
+				/*
+				 *	Stupid WiMAX shit.
+				 *	Cast the LHS to the
+				 *	type of the RHS.
+				 */
+				if (c->data.map->lhs->tmpl_da->type == FR_TYPE_COMBO_IP_ADDR) {
+					fr_dict_attr_t const *da;
+
+					da = fr_dict_attr_by_type(c->data.map->lhs->tmpl_da,
+								  c->data.map->rhs->tmpl_value_type);
+					if (!da) {
+						return_rhs("Cannot find type for attribute");
+					}
+					c->data.map->lhs->tmpl_da = da;
+				}
+			} /* attr to literal comparison */
+
+			/*
+			 *	The RHS will turn into... something.  Allow for prefixes
+			 *	there, too.
+			 */
+			if (tmpl_is_attr(c->data.map->lhs) &&
+			    (tmpl_is_xlat(c->data.map->rhs) ||
+			     tmpl_is_xlat_struct(c->data.map->rhs) ||
+			     tmpl_is_exec(c->data.map->rhs))) {
+				if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV4_ADDR) {
+					c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+									    FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
+				}
+
+				if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV6_ADDR) {
+					c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+									    FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
+				}
+			}
+
+			/*
+			 *	If the LHS is a bare word, AND it looks like
+			 *	an attribute, try to parse it as such.
+			 *
+			 *	This allows LDAP-Group and SQL-Group to work.
+			 *
+			 *	The real fix is to just read the config files,
+			 *	and do no parsing until after all of the modules
+			 *	are loaded.  But that has issues, too.
+			 */
+			if (tmpl_is_unparsed(c->data.map->lhs) && (lhs_type == T_BARE_WORD)) {
+				int hyphens = 0;
+				bool may_be_attr = true;
+				size_t i;
+				ssize_t attr_slen;
+
+				/*
+				 *	Backwards compatibility: Allow Foo-Bar,
+				 *	e.g. LDAP-Group and SQL-Group.
+				 */
+				for (i = 0; i < c->data.map->lhs->len; i++) {
+					if (!fr_dict_attr_allowed_chars[(uint8_t) c->data.map->lhs->name[i]]) {
+						may_be_attr = false;
 						break;
 					}
 
-					/*
-					 *	Do not pass LHS as enumv if we're casting
-					 *	as that means there's now a type mismatch between
-					 *	lhs and rhs, which means the enumerations
-					 *	can never match.
-					 */
-					if (tmpl_cast_in_place(c->data.map->rhs, type,
-							       c->cast ? NULL : c->data.map->lhs->tmpl_da) < 0) {
-						fr_dict_attr_t const *da = c->data.map->lhs->tmpl_da;
-
-						if (!fr_dict_attr_is_top_level(da)) goto bad_type;
-
-						switch (da->attr) {
-						case FR_AUTH_TYPE:
-							/*
-							 *	The types for these attributes are dynamically allocated
-							 *	by module.c, so we can't enforce strictness here.
-							 */
-							c->pass2_fixup = PASS2_FIXUP_TYPE;
-							break;
-
-						default:
-						bad_type:
-							return_rhs("Failed to parse value for attribute");
-						}
-					}
-
-					/*
-					 *	Stupid WiMAX shit.
-					 *	Cast the LHS to the
-					 *	type of the RHS.
-					 */
-					if (c->data.map->lhs->tmpl_da->type == FR_TYPE_COMBO_IP_ADDR) {
-						fr_dict_attr_t const *da;
-
-						da = fr_dict_attr_by_type(c->data.map->lhs->tmpl_da,
-									  c->data.map->rhs->tmpl_value_type);
-						if (!da) {
-							return_rhs("Cannot find type for attribute");
-						}
-						c->data.map->lhs->tmpl_da = da;
-					}
-				} /* attr to literal comparison */
-
-				/*
-				 *	The RHS will turn into... something.  Allow for prefixes
-				 *	there, too.
-				 */
-				if (tmpl_is_attr(c->data.map->lhs) &&
-				    (tmpl_is_xlat(c->data.map->rhs) ||
-				     tmpl_is_xlat_struct(c->data.map->rhs) ||
-				     tmpl_is_exec(c->data.map->rhs))) {
-					if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV4_ADDR) {
-						c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
-										    FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
-					}
-
-					if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV6_ADDR) {
-						c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
-										    FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
+					if (c->data.map->lhs->name[i] == '-') {
+						hyphens++;
 					}
 				}
 
-				/*
-				 *	If the LHS is a bare word, AND it looks like
-				 *	an attribute, try to parse it as such.
-				 *
-				 *	This allows LDAP-Group and SQL-Group to work.
-				 *
-				 *	The real fix is to just read the config files,
-				 *	and do no parsing until after all of the modules
-				 *	are loaded.  But that has issues, too.
-				 */
-				if (tmpl_is_unparsed(c->data.map->lhs) && (lhs_type == T_BARE_WORD)) {
-					int hyphens = 0;
-					bool may_be_attr = true;
-					size_t i;
-					ssize_t attr_slen;
+				if (!hyphens || (hyphens > 3)) may_be_attr = false;
 
-					/*
-					 *	Backwards compatibility: Allow Foo-Bar,
-					 *	e.g. LDAP-Group and SQL-Group.
-					 */
-					for (i = 0; i < c->data.map->lhs->len; i++) {
-						if (!fr_dict_attr_allowed_chars[(uint8_t) c->data.map->lhs->name[i]]) {
-							may_be_attr = false;
-							break;
-						}
-
-						if (c->data.map->lhs->name[i] == '-') {
-							hyphens++;
-						}
-					}
-
-					if (!hyphens || (hyphens > 3)) may_be_attr = false;
-
-					if (may_be_attr) {
-						attr_slen = tmpl_afrom_attr_str(c->data.map, NULL, &vpt, lhs,
-										&(vp_tmpl_rules_t){
-											.allow_unknown = true,
+				if (may_be_attr) {
+					attr_slen = tmpl_afrom_attr_str(c->data.map, NULL, &vpt, lhs_p,
+									&(vp_tmpl_rules_t){
+										.allow_unknown = true,
 											.allow_undefined = true
-										});
-						if ((attr_slen > 0) && (vpt->len == c->data.map->lhs->len)) {
-							talloc_free(c->data.map->lhs);
-							c->data.map->lhs = vpt;
-							c->pass2_fixup = PASS2_FIXUP_ATTR;
-						}
+											});
+					if ((attr_slen > 0) && (vpt->len == c->data.map->lhs->len)) {
+						talloc_free(c->data.map->lhs);
+						c->data.map->lhs = vpt;
+						c->pass2_fixup = PASS2_FIXUP_ATTR;
 					}
 				}
-			} /* we didn't have a cast */
+			}
+		} /* we didn't have a cast */
 
-		keep_going:
-			p += slen;
+	keep_going:
+		p += slen;
+		fr_skip_spaces(p); /* skip spaces after RHS */
+	} /* parse OP RHS */
 
-			fr_skip_spaces(p); /* skip spaces after RHS */
-		} /* parse OP RHS */
-	} /* parse a condition (COND) or FOO OP BAR*/
-
+closing_brace:
 	/*
 	 *	...COND)
 	 */
@@ -1258,8 +1013,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	      ((p[0] == '|') && (p[1] == '|')))) {
 		*error = "Unexpected text after condition";
 	return_p:
-		if (lhs) talloc_free(lhs);
-		if (rhs) talloc_free(rhs);
 		talloc_free(c);
 		return -(p - start);
 	}
@@ -1276,8 +1029,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	slen = cond_tokenize(c, &c->next, error, ci, p, brace,  flags, rules);
 	if (slen <= 0) {
 	return_slen:
-		if (lhs) talloc_free(lhs);
-		if (rhs) talloc_free(rhs);
 		talloc_free(c);
 		return slen - (p - start);
 	}
@@ -1322,7 +1073,6 @@ done:
 			child->negate = false;
 		}
 
-		lhs = rhs = NULL;
 		talloc_free(c);
 		c = child;
 	}
@@ -1340,7 +1090,6 @@ done:
 		child = talloc_steal(ctx, c->data.child);
 		c->data.child = NULL;
 
-		lhs = rhs = NULL;
 		talloc_free(c);
 		c = child;
 	}
@@ -1352,6 +1101,13 @@ done:
 	 *	run-time evaluation has fewer cases to check.
 	 */
 	if (c->type == COND_TYPE_MAP) do {
+#if 0
+			ifprintf(stderr, "LHS %s %d\n",
+				 c->data.map->lhs->name,
+				 c->datag
+#endif
+
+
 		/*
 		 *	!FOO !~ BAR --> FOO =~ BAR
 		 */
@@ -1669,7 +1425,6 @@ done:
 		next = talloc_steal(ctx, c->next);
 		c->next = NULL;
 
-		lhs = rhs = NULL;
 		talloc_free(c);
 		c = next;
 	}
@@ -1694,7 +1449,6 @@ done:
 		next = talloc_steal(ctx, c->next);
 		c->next = NULL;
 
-		lhs = rhs = NULL;
 		talloc_free(c);
 		c = next;
 	}
@@ -1708,9 +1462,6 @@ done:
 		c->next = NULL;
 		c->next_op = COND_NONE;
 	}
-
-	if (lhs) talloc_free(lhs);
-	if (rhs) talloc_free(rhs);
 
 	*pcond = c;
 	return p - start;

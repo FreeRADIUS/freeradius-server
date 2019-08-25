@@ -10,7 +10,7 @@ condition (ok == /foo/)
 data ERROR offset 7 Unexpected regular expression
 
 condition /foo/ =~ bar
-data ERROR offset 0 Conditional check cannot begin with a regular expression
+data ERROR offset 0 Unexpected regular expression
 
 #
 #  Convert !~ to !(COND) for regex
