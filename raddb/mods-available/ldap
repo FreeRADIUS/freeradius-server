@@ -223,9 +223,9 @@ ldap {
 	#  [source, unlang]
 	#  ----
 	#  ldap
-	#  if ((ok || updated) && User-Password) {
+	#  if ((ok || updated) && &User-Password) {
 	#  	update {
-	#  		control:Auth-Type := ldap
+	#  		&control:Auth-Type := ldap
 	#  	}
 	#  }
 	#  ----
