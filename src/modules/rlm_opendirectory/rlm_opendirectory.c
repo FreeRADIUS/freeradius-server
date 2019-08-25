@@ -341,9 +341,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+		RDEBUG("Login attempt with password \"%pV\"", &password->data);
 	} else {
-		REDEBUG2("Login attempt with password");
+		RDEBUG2("Login attempt with password");
 	}
 
 	odResult = od_check_passwd(request, username->vp_strvalue,

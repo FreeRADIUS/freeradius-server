@@ -347,9 +347,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+		RDEBUG("Login attempt with password \"%pV\"", &password->data);
 	} else {
-		REDEBUG2("Login attempt with password");
+		RDEBUG2("Login attempt with password");
 	}
 
 #  ifdef KRB5_IS_THREAD_SAFE
@@ -442,9 +442,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+		RDEBUG("Login attempt with password \"%pV\"", &password->data);
 	} else {
-		REDEBUG2("Login attempt with password");
+		RDEBUG2("Login attempt with password");
 	}
 
 #  ifdef KRB5_IS_THREAD_SAFE
