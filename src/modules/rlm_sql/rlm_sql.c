@@ -1201,7 +1201,10 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			goto error;
 		}
 
-		if (rows == 0) goto skipreply;	/* Don't need to free VPs we don't have */
+		if (rows == 0) {
+			RWDEBUG2("User not found in radcheck table.");
+			goto skipreply;	/* Don't need to free VPs we don't have */
+		}
 
 		/*
 		 *	Only do this if *some* check pairs were returned
@@ -1209,6 +1212,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
 		if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0) {
+			RWDEBUG2("check items do not match.");
 			fr_pair_list_free(&check_tmp);
 			check_tmp = NULL;
 			goto skipreply;
