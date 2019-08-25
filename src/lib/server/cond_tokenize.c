@@ -364,8 +364,8 @@ cast_ok:
  *	See if two attribute comparisons are OK.
  */
 static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
-			       char const *lhs, fr_type_t lhs_type,
-				char const *rhs, fr_type_t rhs_type,
+			       char const *lhs, FR_TOKEN lhs_type,
+				char const *rhs, FR_TOKEN rhs_type,
 				char const **error)
 {
 	vp_tmpl_t *vpt;
