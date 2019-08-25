@@ -67,3 +67,11 @@ data ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
 
 condition &User-Name == /foo/
 data ERROR offset 14 Unexpected regular expression
+
+#
+#  Allow a match operator.  Which the user will
+#  hopefully *not* use with a special character
+#  like '=' or '{' or '}.  If they do, too bad.
+#
+condition &User-Name =~ m,foo,
+data &User-Name =~ /foo/

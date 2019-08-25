@@ -2974,13 +2974,23 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 	}
 
 	if (require_regex) {
-		if (*p != '/') {
-			return_P("Expected regular expression");
-		}
-
 		if (castda && *castda) {
 			p++;
 			return_P("Invalid cast before regular expression");
+		}
+
+		/*
+		 *	Allow this which is sometimes clearer.
+		 */
+		if (*p == 'm') {
+			p++;
+			quote = *(p++);
+			*type = T_OP_REG_EQ;
+			goto skip_string;
+		}
+
+		if (*p != '/') {
+			return_P("Expected regular expression");
 		}
 
 	} else if (*p == '/') {
