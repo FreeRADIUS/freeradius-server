@@ -177,9 +177,12 @@ sub process_file($$)
         my ($dbinfo,$query) = @_;
         debug ">";
         until ($dbinfo->{handle}->do($query)) {
+	    # If an error occured and we're disconnected then try to recomnnect
+	    # and redo the query, otherwise give up so we don't become stuck.
             print $dbinfo->{handle}->errstr."\n";
             if ($dbinfo->{handle}->ping) {
 		sleep_for (1);
+		last;
             } else {
 		print "error: Lost connection to database\n";
 		$dbinfo->{handle}->disconnect;
