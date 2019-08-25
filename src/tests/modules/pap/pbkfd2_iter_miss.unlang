@@ -1,4 +1,4 @@
-if (${feature.tls} == 'no') {
+if ("${feature.tls}" == no) {
 	test_pass
 	return
 }
