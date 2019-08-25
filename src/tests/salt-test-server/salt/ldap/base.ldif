@@ -70,7 +70,7 @@ sn: Doe
 givenName: John
 cn: John Doe
 displayName: John Doe
-userPassword: {cleartext}password
+userPassword: password
 uidNumber: 100
 gidNumber: 100
 homeDirectory: /home/john
