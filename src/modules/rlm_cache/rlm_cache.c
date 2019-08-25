@@ -823,7 +823,7 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 			      request, inst->config.key, NULL, NULL);
 	if (key_len < 0) return -1;
 
-	slen = tmpl_afrom_attr_substr(ctx, NULL, &target, fmt,
+	slen = tmpl_afrom_attr_substr(ctx, NULL, &target, fmt, -1,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = VP_ATTR_REF_PREFIX_AUTO

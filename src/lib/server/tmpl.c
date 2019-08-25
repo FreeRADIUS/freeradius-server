@@ -593,6 +593,7 @@ static vp_tmpl_rules_t const default_rules = {
  * @param[in] name		of attribute including #request_ref_t and #pair_list_t qualifiers.
  *				If only #request_ref_t #pair_list_t qualifiers are found,
  *				a #TMPL_TYPE_LIST #vp_tmpl_t will be produced.
+ * @param[in] name_len		Length of name, or -1 to do strlen()
  * @param[in] rules		Rules which control parsing:
  *				- dict_def		The default dictionary to use if attributes
  *							are unqualified.
@@ -628,7 +629,7 @@ static vp_tmpl_rules_t const default_rules = {
  *	- > 0 on success (number of bytes parsed).
  */
 ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
-			       vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
+			       vp_tmpl_t **out, char const *name, ssize_t name_len, vp_tmpl_rules_t const *rules)
 {
 	char const	*p, *q;
 	long		num;
@@ -638,6 +639,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	if (!rules) rules = &default_rules;	/* Use the defaults */
 
 	if (err) *err = ATTR_REF_ERROR_NONE;
+
+	if (name_len < 0) name_len = strlen(name);
 
 	p = name;
 
@@ -728,6 +731,14 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	vpt->type = TMPL_TYPE_ATTR;
 
 	/*
+	 *	No more input after parsing the list ref, we're done.
+	 */
+	if (p == (name + name_len)) {
+		vpt->type = TMPL_TYPE_LIST;
+		goto finish;
+	}
+
+	/*
 	 *	This may be just a bare list, but it can still
 	 *	have instance selectors and tag selectors.
 	 */
@@ -800,7 +811,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		 *	Copy the name to a field for later resolution
 		 */
 		vpt->type = TMPL_TYPE_ATTR_UNDEFINED;
-		for (q = p; fr_dict_attr_allowed_chars[(uint8_t) *q]; q++);
+		for (q = p; (q < (name + name_len)) && fr_dict_attr_allowed_chars[(uint8_t) *q]; q++);
 		if (q == p) {
 			fr_strerror_printf("Invalid attribute name");
 			if (err) *err = ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME;
@@ -1001,16 +1012,17 @@ finish:
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			    vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
 {
-	ssize_t slen;
+	ssize_t slen, name_len;
 
 	if (!rules) rules = &default_rules;	/* Use the defaults */
 
-	slen = tmpl_afrom_attr_substr(ctx, err, out, name, rules);
+	name_len = strlen(name);
+	slen = tmpl_afrom_attr_substr(ctx, err, out, name, name_len, rules);
 	if (slen <= 0) return slen;
 
 	if (!fr_cond_assert(*out)) return -1;
 
-	if (slen != (ssize_t)strlen(name)) {
+	if (slen != name_len) {
 		/* This looks wrong, but it produces meaningful errors for unknown attrs with tags */
 		fr_strerror_printf("Unexpected text after %s", fr_table_str_by_value(tmpl_type_table, (*out)->type, "<INVALID>"));
 		return -slen;
@@ -1130,7 +1142,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 		 *	We can't define a template with garbage after
 		 *	the attribute name.
 		 */
-		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, in, &mrules);
+		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, in, inlen, &mrules);
 		if (mrules.allow_undefined && (slen <= 0)) return slen;
 		if (slen > 0) {
 			if ((size_t) slen < inlen) {

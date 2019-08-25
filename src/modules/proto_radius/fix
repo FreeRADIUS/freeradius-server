@@ -1,0 +1,15 @@
+#!/usr/bin/env perl
+
+@array = ( "max_connections", "max_clients", "max_pending_packets", "num_connections", "num_clients",
+		 "num_pending_packets", "cleanup_delay", "idle_timeout", "nak_lifetime", "check_interval",
+		 "dynamic_clients", "listen", "sc", "ipproto", "transport", "el", "nr", "trie",
+		 "networks", "pending_clients" );
+
+while (<>) {
+    for my $i (0 .. $#array) {
+	s/inst->$array[$i]/inst->io.$array[$i]/g;
+	s/proto_radius_t, $array[$i]/proto_radius_t, io.$array[$i]/g;
+    }
+
+    print;
+}

@@ -462,7 +462,7 @@ void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int nu
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data, bool steal);
 
 ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
-					       vp_tmpl_t **out, char const *name,
+					       vp_tmpl_t **out, char const *name, ssize_t name_len,
 					       vp_tmpl_rules_t const *rules);
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,

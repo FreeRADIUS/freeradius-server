@@ -1692,7 +1692,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	fr_skip_spaces(p);
 
-	slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
+	slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, p, -1, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
@@ -1923,7 +1923,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 		return 0;
 	}
 
-	slen = tmpl_afrom_attr_substr(request, NULL, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
+	slen = tmpl_afrom_attr_substr(request, NULL, &vpt, p, -1, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Failed parsing input string");
 		return slen;

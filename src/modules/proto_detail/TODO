@@ -1,0 +1,12 @@
+# TODO
+
+* add config file items for
+  recv_type = { accounting, preacct, etc.}
+  send_type
+
+* code
+  for packet processing request->packet->code
+
+# DONE
+
+* priority is now set manually
