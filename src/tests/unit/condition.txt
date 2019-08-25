@@ -117,7 +117,7 @@ condition &reply: == "hello"
 data ERROR offset 0 Cannot use list references in condition
 
 condition "hello" == &reply:
-data ERROR offset 0 Cannot use list references in condition
+data ERROR offset 11 Cannot use list references in condition
 
 
 #
