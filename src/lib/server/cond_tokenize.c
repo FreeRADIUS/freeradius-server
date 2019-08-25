@@ -748,11 +748,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		}
 
 	} else { /* it's an operator */
-#ifdef HAVE_REGEX
-		fr_regex_flags_t	regex_flags;
-
-		memset(&regex_flags, 0, sizeof(regex_flags));
-#endif
 		vp_map_t *map;
 
 		/*
@@ -851,49 +846,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		slen = tmpl_preparse(&rhs, &rhs_len, p, &rhs_type, error, NULL, regex);
 		if (slen <= 0) return_SLEN;
 
-#ifdef HAVE_REGEX
-		/*
-		 *	Sanity checks for regexes.
-		 */
-		if (regex) {
-			int	err;
-			ssize_t flen;
-
-			if (rhs[rhs_len]  != '/') {
-				return_P("Expected regular expression");
-			}
-
-			flen = regex_flags_parse(&err, &regex_flags, rhs + rhs_len + 1, strlen(rhs + rhs_len + 1), true);
-			switch (err) {
-				/*
-				 *	Got flags all the way to the end of the string
-				 */
-			case 0:
-				rad_assert(flen >= 0);
-				slen += (size_t)flen;
-				break;
-
-				/*
-				 *	Found non-flag, this is OK.
-				 */
-			case -1:
-				rad_assert(flen <= 0);
-				fr_strerror(); /* Clear out the error buffer */
-				slen += (size_t)(-flen);
-				break;
-
-			case -2:
-				rad_assert(flen <= 0);
-				p = rhs + rhs_len + 1;
-				p += (size_t)(-flen);
-				return_P("Duplicate flag");
-			}
-		} else if (!regex && (*p == '/')) {
-			return_P("Unexpected regular expression");
-		}
-
-#endif
-
 		/*
 		 *	Duplicate map_from_fields here, as we
 		 *	want to separate parse errors in the
@@ -974,7 +926,47 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		}
 
 #ifdef HAVE_REGEX
-		if (tmpl_is_regex(c->data.map->rhs)) {
+		/*
+		 *	Parse the regex flags
+		 */
+		if (regex) {
+			int	err;
+			ssize_t flen;
+			fr_regex_flags_t	regex_flags;
+
+			memset(&regex_flags, 0, sizeof(regex_flags));
+
+			if (!tmpl_is_regex(c->data.map->rhs)) {
+				*error = "Expected regex";
+				return -(rhs - start);
+			}
+
+			flen = regex_flags_parse(&err, &regex_flags, rhs + rhs_len + 1, strlen(rhs + rhs_len + 1), true);
+			switch (err) {
+				/*
+				 *	Got flags all the way to the end of the string
+				 */
+			case 0:
+				rad_assert(flen >= 0);
+				slen += (size_t)flen;
+				break;
+
+				/*
+				 *	Found non-flag, this is OK.
+				 */
+			case -1:
+				rad_assert(flen <= 0);
+				fr_strerror(); /* Clear out the error buffer */
+				slen += (size_t)(-flen);
+				break;
+
+			case -2:
+				rad_assert(flen <= 0);
+				p = rhs + rhs_len + 1;
+				p += (size_t)(-flen);
+				return_P("Duplicate flag");
+			}
+
 			c->data.map->rhs->tmpl_regex_flags = regex_flags;
 		}
 #endif
