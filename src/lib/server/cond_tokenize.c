@@ -238,7 +238,7 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 #define return_SLEN goto return_slen
 
 static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
-			       char const *lhs_p, char const *rhs_p, char const **error)
+			       char const *lhs, char const *rhs, char const **error)
 {
 	if (tmpl_is_attr(c->data.map->rhs) &&
 	    (c->cast->type != c->data.map->rhs->tmpl_da->type)) {
@@ -253,7 +253,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 #ifdef HAVE_REGEX
 	if (tmpl_is_regex(c->data.map->rhs)) {
 		*error = "Cannot use cast with regex comparison";
-		return -(rhs_p - start);
+		return -(rhs - start);
 	}
 #endif
 
@@ -264,7 +264,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	if (tmpl_is_unparsed(c->data.map->lhs) &&
 	    (tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast) < 0)) {
 		*error = "Failed to parse field";
-		return -(lhs_p - start);
+		return -(lhs - start);
 	}
 
 	/*
@@ -275,7 +275,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	    (tmpl_is_unparsed(c->data.map->rhs)) &&
 	    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
 		*error = "Failed to parse field";
-		return -(rhs_p - start);
+		return -(rhs - start);
 	}
 
 	/*
@@ -364,8 +364,8 @@ cast_ok:
  *	See if two attribute comparisons are OK.
  */
 static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
-			       char const *lhs_p, fr_type_t lhs_type,
-				char const *rhs_p, fr_type_t rhs_type,
+			       char const *lhs, fr_type_t lhs_type,
+				char const *rhs, fr_type_t rhs_type,
 				char const **error)
 {
 	vp_tmpl_t *vpt;
@@ -413,7 +413,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 	    (rhs_type == T_SINGLE_QUOTED_STRING)) {
 		*error = "Comparison value must be an unquoted string";
 	return_rhs:
-		return -(rhs_p - start);
+		return -(rhs - start);
 	}
 
 	/*
@@ -555,7 +555,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 		if (!hyphens || (hyphens > 3)) may_be_attr = false;
 
 		if (may_be_attr) {
-			attr_slen = tmpl_afrom_attr_str(c->data.map, NULL, &vpt, lhs_p,
+			attr_slen = tmpl_afrom_attr_str(c->data.map, NULL, &vpt, lhs,
 							&(vp_tmpl_rules_t){
 								.allow_unknown = true,
 									.allow_undefined = true
@@ -591,7 +591,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 {
 	ssize_t			slen, tlen;
 	char const		*p = start;
-	char const		*lhs_p, *rhs_p;
+	char const		*lhs, *rhs;
 	fr_cond_t		*c;
 	size_t			lhs_len, rhs_len;
 	FR_TOKEN		op, lhs_type, rhs_type;
@@ -666,7 +666,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	/*
 	 *	Grab the LHS
 	 */
-	slen = tmpl_preparse(&lhs_p, &lhs_len, p, &lhs_type, error, &c->cast, false);
+	slen = tmpl_preparse(&lhs, &lhs_len, p, &lhs_type, error, &c->cast, false);
 	if (slen <= 0) return_SLEN;
 
 	/*
@@ -677,7 +677,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	 *	If the LHS is 0xabcdef, then automatically case it to octets.
 	 */
 	if (!c->cast && (lhs_type == T_BARE_WORD) &&
-	    (lhs_p[0] == '0') && (lhs_p[1] == 'x') &&
+	    (lhs[0] == '0') && (lhs[1] == 'x') &&
 	    ((slen & 0x01) == 0)) {
 		if (slen == 2) {
 			return_P("Empty octet string is invalid");
@@ -730,16 +730,16 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		c->ci = ci;
 
 		tlen = tmpl_afrom_str(c, &c->data.vpt,
-				      lhs_p, lhs_len, lhs_type, &parse_rules, true);
+				      lhs, lhs_len, lhs_type, &parse_rules, true);
 		if (tlen < 0) {
-			p = lhs_p - tlen;
+			p = lhs - tlen;
 			return_P(fr_strerror());
 		}
 
 		rad_assert(!tmpl_is_regex(c->data.vpt));
 
 		if (tmpl_define_unknown_attr(c->data.vpt) < 0) {
-			p = lhs_p - tlen;
+			p = lhs - tlen;
 			return_P("Failed defining attribute");
 		}
 
@@ -849,7 +849,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			return_P("Expected text after operator");
 		}
 
-		slen = tmpl_preparse(&rhs_p, &rhs_len, p, &rhs_type, error, NULL, true);
+		slen = tmpl_preparse(&rhs, &rhs_len, p, &rhs_type, error, NULL, true);
 		if (slen <= 0) return_SLEN;
 
 #ifdef HAVE_REGEX
@@ -860,11 +860,11 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			int	err;
 			ssize_t flen;
 
-			if (rhs_p[rhs_len]  != '/') {
+			if (rhs[rhs_len]  != '/') {
 				return_P("Expected regular expression");
 			}
 
-			flen = regex_flags_parse(&err, &regex_flags, rhs_p + rhs_len + 1, strlen(rhs_p + rhs_len + 1), true);
+			flen = regex_flags_parse(&err, &regex_flags, rhs + rhs_len + 1, strlen(rhs + rhs_len + 1), true);
 			switch (err) {
 				/*
 				 *	Got flags all the way to the end of the string
@@ -885,7 +885,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 			case -2:
 				rad_assert(flen <= 0);
-				p = rhs_p + rhs_len + 1;
+				p = rhs + rhs_len + 1;
 				p += (size_t)(-flen);
 				return_P("Duplicate flag");
 			}
@@ -902,17 +902,17 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 */
 		c->data.map = map = talloc_zero(c, vp_map_t);
 
-		tlen = tmpl_afrom_str(map, &map->lhs, lhs_p, lhs_len,
+		tlen = tmpl_afrom_str(map, &map->lhs, lhs, lhs_len,
 				      lhs_type, &parse_rules, true);
 		if (tlen < 0) {
-			p = lhs_p - tlen;
+			p = lhs - tlen;
 			return_P(fr_strerror());
 		}
 
 		if (tmpl_define_unknown_attr(map->lhs) < 0) {
 			*error = "Failed defining attribute";
 			talloc_free(c);
-			return -(lhs_p - start);
+			return -(lhs - start);
 		}
 
 		map->op = op;
@@ -923,7 +923,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 *	integer type.
 		 */
 		if (!c->cast && (rhs_type == T_BARE_WORD) &&
-		    (rhs_p[0] == '0') && (rhs_p[1] == 'x') &&
+		    (rhs[0] == '0') && (rhs[1] == 'x') &&
 		    ((slen & 0x01) == 0)) {
 			if (slen == 2) {
 				return_P("Empty octet string is invalid");
@@ -949,21 +949,21 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 */
 		if (tmpl_is_attr(map->lhs) &&
 		    map->lhs->tmpl_da->flags.is_raw &&
-		    map_cast_from_hex(map, rhs_type, rhs_p)) {
+		    map_cast_from_hex(map, rhs_type, rhs)) {
 			/* do nothing */
 
 		} else {
-			tlen = tmpl_afrom_str(map, &map->rhs, rhs_p, rhs_len, rhs_type,
+			tlen = tmpl_afrom_str(map, &map->rhs, rhs, rhs_len, rhs_type,
 					      &parse_rules, true);
 			if (tlen < 0) {
-				p = rhs_p - tlen;
+				p = rhs - tlen;
 				return_P(fr_strerror());
 			}
 		}
 
 		if (tmpl_define_unknown_attr(map->rhs) < 0) {
 			*error = "Failed defining attribute";
-			return -(rhs_p - start);
+			return -(rhs - start);
 		}
 
 		/*
@@ -990,12 +990,12 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 */
 		if (tmpl_is_list(c->data.map->lhs)) {
 			*error = "Cannot use list references in condition";
-			return -(lhs_p - start);
+			return -(lhs - start);
 		}
 
 		if (tmpl_is_list(c->data.map->rhs)) {
 			*error = "Cannot use list references in condition";
-			return -(rhs_p - start);
+			return -(rhs - start);
 		}
 
 		/*
@@ -1005,9 +1005,9 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 *	same type as the LHS.
 		 */
 		if (c->cast) {
-			tlen = cond_check_cast(c, start, lhs_p, rhs_p, error);
+			tlen = cond_check_cast(c, start, lhs, rhs, error);
 		} else {
-			tlen = cond_check_attrs(c, start, lhs_p, lhs_type, rhs_p, rhs_type, error);
+			tlen = cond_check_attrs(c, start, lhs, lhs_type, rhs, rhs_type, error);
 		}
 		if (tlen <= 0) {
 			talloc_free(c);
