@@ -234,6 +234,7 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
  */
 #define return_P(_x) *error = _x;goto return_p
 #define return_0(_x) *error = _x;goto return_0
+#define return_lhs(_x) *error = _x;goto return_lhs
 #define return_rhs(_x) *error = _x;goto return_rhs
 #define return_SLEN goto return_slen
 
@@ -862,6 +863,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 		if (tmpl_define_unknown_attr(map->lhs) < 0) {
 			*error = "Failed defining attribute";
+		return_lhs:
 			talloc_free(c);
 			return -(lhs - start);
 		}
@@ -914,6 +916,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 		if (tmpl_define_unknown_attr(map->rhs) < 0) {
 			*error = "Failed defining attribute";
+		return_rhs:
+			talloc_free(c);
 			return -(rhs - start);
 		}
 
@@ -937,8 +941,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			memset(&regex_flags, 0, sizeof(regex_flags));
 
 			if (!tmpl_is_regex(c->data.map->rhs)) {
-				*error = "Expected regex";
-				return -(rhs - start);
+				talloc_free(c);
+				return_rhs("Expected regex");
 			}
 
 			flen = regex_flags_parse(&err, &regex_flags, rhs + rhs_len + 1, strlen(rhs + rhs_len + 1), true);
@@ -980,13 +984,11 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 *	We cannot compare lists to anything.
 		 */
 		if (tmpl_is_list(c->data.map->lhs)) {
-			*error = "Cannot use list references in condition";
-			return -(lhs - start);
+			return_lhs("Cannot use list references in condition");
 		}
 
 		if (tmpl_is_list(c->data.map->rhs)) {
-			*error = "Cannot use list references in condition";
-			return -(rhs - start);
+			return_rhs("Cannot use list references in condition");
 		}
 
 		/*
