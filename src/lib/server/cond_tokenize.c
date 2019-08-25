@@ -724,6 +724,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		if (c->cast) {
 			*error = "Cannot do cast for existence check";
 		return_0:
+			talloc_free(c);
 			return 0;
 		}
 
@@ -941,7 +942,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			memset(&regex_flags, 0, sizeof(regex_flags));
 
 			if (!tmpl_is_regex(c->data.map->rhs)) {
-				talloc_free(c);
 				return_rhs("Expected regex");
 			}
 
