@@ -595,7 +595,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	fr_cond_t		*c;
 	size_t			lhs_len, rhs_len;
 	FR_TOKEN		op, lhs_type, rhs_type;
-
+	bool			regex = false;
 	vp_tmpl_rules_t		parse_rules;
 
 	/*
@@ -749,7 +749,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 	} else { /* it's an operator */
 #ifdef HAVE_REGEX
-		bool			regex = false;
 		fr_regex_flags_t	regex_flags;
 
 		memset(&regex_flags, 0, sizeof(regex_flags));
@@ -849,7 +848,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			return_P("Expected text after operator");
 		}
 
-		slen = tmpl_preparse(&rhs, &rhs_len, p, &rhs_type, error, NULL, true);
+		slen = tmpl_preparse(&rhs, &rhs_len, p, &rhs_type, error, NULL, regex);
 		if (slen <= 0) return_SLEN;
 
 #ifdef HAVE_REGEX

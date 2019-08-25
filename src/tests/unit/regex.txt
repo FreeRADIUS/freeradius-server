@@ -65,3 +65,5 @@ data %{1}
 xlat %{33}
 data ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
 
+condition &User-Name == /foo/
+data ERROR offset 14 Unexpected regular expression

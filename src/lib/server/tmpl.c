@@ -2911,14 +2911,14 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
  * @param[out] type	token type of the string.
  * @param[out] error	string describing the error
  * @param[out] castda	NULL if casting is not allowed, otherwise the cast
- * @param   allow_regex whether or not to allow regular expressions
+ * @param   require_regex whether or not to require regular expressions
  * @return
  *	- > 0, amount of parsed string to skip, to get to the next token
  *	- <=0, -offset in 'start' where the parse error was located
  */
 ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		      FR_TOKEN *type, char const **error,
-		      fr_dict_attr_t const **castda, bool allow_regex)
+		      fr_dict_attr_t const **castda, bool require_regex)
 {
 	char const *p = start;
 	char quote;
@@ -2973,10 +2973,9 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		fr_skip_spaces(p);
 	}
 
-	switch (*p) {
-	case '/':
-		if (!allow_regex) {
-			return_P("Unexpected regular expression");
+	if (require_regex) {
+		if (*p != '/') {
+			return_P("Expected regular expression");
 		}
 
 		if (castda && *castda) {
@@ -2984,6 +2983,12 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 			return_P("Invalid cast before regular expression");
 		}
 
+	} else if (*p == '/') {
+		return_P("Unexpected regular expression");
+	}
+
+	switch (*p) {
+	case '/':
 		quote = *(p++);
 		*type = T_OP_REG_EQ;
 		goto skip_string;
