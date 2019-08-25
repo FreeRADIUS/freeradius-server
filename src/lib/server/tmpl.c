@@ -1123,9 +1123,22 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 
 		mrules.allow_undefined = (in[0] == '&');
 
-		slen = tmpl_afrom_attr_str(ctx, NULL, &vpt, in, &mrules);
+		/*
+		 *	This doesn't take a length, but it does return
+		 *	how many "good" bytes it parsed.  If we didn't
+		 *	parse the whole string, then it's an error.
+		 *	We can't define a template with garbage after
+		 *	the attribute name.
+		 */
+		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, in, &mrules);
 		if (mrules.allow_undefined && (slen <= 0)) return slen;
-		if (slen > 0) break;
+		if (slen > 0) {
+			if ((size_t) slen < inlen) {
+				fr_strerror_printf("Unexpected text after attribute name");
+				return -slen;
+			}
+			break;
+		}
 	}
 		goto parse;
 
