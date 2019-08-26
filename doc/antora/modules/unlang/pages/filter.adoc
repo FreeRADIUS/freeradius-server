@@ -98,7 +98,7 @@ above. The `=` operator is used to add new attributes to the list,
 while the `==` operator removes all attributes that do not match the
 given value.
 
-For IP addresses, the operators `>`, `>=`, `<`, and `<=` check for
+For IP addresses, the operators `>`, `>=`, `<`, and `\<=` check for
 membership in a network.  The _<value>_ field should then be a IP
 network, given in `address/mask` format.
 

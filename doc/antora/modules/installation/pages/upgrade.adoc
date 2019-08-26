@@ -34,7 +34,7 @@ to make massive changes, and then to spend weeks debugging it.
 
 If you’re upgrading from v2 you should read the v3 version of this file.
 It describes changed from v2 to v3. This file describes only the changes
-from v3 to v4.0
+from v3 to v4.
 
 == radiusd.conf
 
@@ -95,7 +95,7 @@ type = Accounting-Request
 
 Each `listen` section also has a `transport` entry. This
 configuration can be left out for `headless` servers, such as
-`inner-tunnel`. For example, setting UDP transport is done v ia:
+`inner-tunnel`. For example, setting UDP transport is done via:
 
 ```
 transport = udp
@@ -111,7 +111,7 @@ udp {
 }
 ```
 
-For `udp`, the configuration entries are largley the same as for v3.
+For `udp`, the configuration entries are largely the same as for v3.
 e.g. `ipaddr`, `port`, etc.
 
 The `listen` section then compiles each
@@ -390,7 +390,7 @@ them made attribute parsing significantly more complex.
 
 == Update sections
 
-The filtering operators `<`, `>`, `<=`, `>=`, etc. have been moved to
+The filtering operators `<`, `>`, `\<=`, `>=`, etc. have been moved to
 the `filter` keyword.  These operators will still be accepted in an
 `update` section, but using them will generate a warning.
 

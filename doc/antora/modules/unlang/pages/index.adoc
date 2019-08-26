@@ -103,7 +103,7 @@ error.
 [source,unlang]
 ----
 update reply {
-	&Framed-IP-Address := 192.0.2
+	&Framed-IP-Address := 192.0.2.4
 	&Session-Timeout := 5
 	&Reply-Message := "hello"
 }

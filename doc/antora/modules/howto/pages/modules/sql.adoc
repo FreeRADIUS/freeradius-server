@@ -222,9 +222,9 @@ attribute with a value less than the one given.
 Not allowed as a reply item.
 ```
 
-=== <=
+=== \<=
 
-e.g: `Attribute <= Value`
+e.g: `Attribute \<= Value`
 
 As a check item, it matches if the request contains an
 attribute with a value less than, or equal to the one given.
