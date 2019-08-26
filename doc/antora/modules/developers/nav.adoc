@@ -2,7 +2,6 @@
 ** xref:bugs.adoc[Bugs]
 ** xref:coding-methods.adoc[Coding Methods]
 ** xref:contributing.adoc[Contributing]
-** xref:dependencies.adoc[Dependencies]
 ** xref:module_interface.adoc[Module Interface]
 ** xref:release-method.adoc[Release Method]
 ** xref:todo.adoc[TODO]

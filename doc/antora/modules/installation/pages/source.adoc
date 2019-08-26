@@ -1,6 +1,6 @@
 == Building from Source
 
-The xref:developers:dependencies.adoc[build dependencies] must be
+The xref:installation:dependencies.adoc[build dependencies] must be
 installed before FreeRADIUS can build. These dependencies are libtalloc
 and libkqueue, which FreeRADIUS uses for memory management, and
 platform-independent event handling.
