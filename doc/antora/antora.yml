@@ -13,5 +13,4 @@ nav:
 - modules/howto/nav.adoc
 - modules/unlang/nav.adoc
 - modules/developers/nav.adoc
-- modules/upgrade/nav.adoc
 - modules/raddb/nav.adoc

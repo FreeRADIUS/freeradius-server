@@ -66,7 +66,7 @@ this may cause undesired behavior and failure to operate correctly.
 
 The initial output from running in debugging mode (`radiusd -X`)
 will tell you which configuration files are being used. See
-xref:upgrade:index.adoc[Upgrading] for information about
+xref:installation:upgrade.adoc[Upgrading] for information about
 upgrading from older versions. There _may_ be changes in the
 dictionary files which are required for a new version of the
 software. These files will not be installed over your current
@@ -95,7 +95,7 @@ major versions of the server. (For example - version 2 to version 3, or
 version 3 to version 4.
 
 For details on what has changed between the version, see the
-xref:upgrade:index.adoc[upgrade] guide.
+xref:installation:upgrade.adoc[upgrade] guide.
 
 We _strongly_ recommend that new major versions be installed in a
 different location than any existing installations. Any local policies

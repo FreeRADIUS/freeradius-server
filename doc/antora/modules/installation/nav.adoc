@@ -2,6 +2,7 @@
 ** xref:packages.adoc[Install from packages]
 ** xref:dependencies.adoc[Dependencies]
 ** xref:source.adoc[Build from source]
+** xref:upgrade.adoc[Upgrading from v3 to v4]
 ** Building Packages
 *** xref:build_deb.adoc[Debian and Ubuntu]
 *** xref:build_rpm.adoc[RedHat and CentOS]

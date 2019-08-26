@@ -1,1 +1,0 @@
-* xref:index.adoc[Upgrading from v3 to v4]

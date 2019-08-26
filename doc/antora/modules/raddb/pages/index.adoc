@@ -98,8 +98,8 @@ Note that unlike v3, there are no longer any `authorize`,
 been renamed. This change was necessary in order to simplify the
 operation of the server, and to better support multiple protocols.
 
-Please see the xref:upgrade:index.adoc[upgrade] file for more information
-about these changes.
+Please see the xref:installation:upgrade.adoc[upgrade] file for more
+information about these changes.
 
 The `sites-available/` directory contains many files. Each file is a
 worked example of how to achieve a particular goal using FreeRADIUS. We

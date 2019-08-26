@@ -33,7 +33,7 @@ desired outcome. At a high level, the subject areas describe:
 * The syntax of the xref:unlang:index.adoc[unlang] processing language.
 * The xref:raddb:index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
 * Various xref:howto:index.adoc[how-to] guides.
-* xref:upgrade:index.adoc[Upgrading] from a previous version of FreeRADIUS.
+* xref:installation:upgrade.adoc[Upgrading] from a previous version of FreeRADIUS.
 * xref:developers:index.adoc[Developer documentation].
 
 This organization means that for example, the `ldap` module will have
@@ -69,8 +69,8 @@ All of these limitations and more have been removed. The downside of
 these changes is that the some of the configuration has been changed.
 
 Administrators who have version 3 and wish to upgrade to version 4
-should read the xref:upgrade:index.adoc[upgrading] documentation. That
-documentation explains the differences between the two versions, and
+should read the xref:installation:upgrade.adoc[upgrading] documentation.
+That documentation explains the differences between the two versions, and
 how an existing configuration can be reproduced in the latest
 release. We do _not_ recommend using version 3 configuration files
 with version 4. The configuration files are _not_ compatible across a
