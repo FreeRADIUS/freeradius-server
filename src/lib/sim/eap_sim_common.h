@@ -35,7 +35,7 @@
 #define EAP_AKA_AUTH_SIZE		16
 #define EAP_AKA_PRIME_AUTH_SIZE		32
 
-typedef enum eap_sim_subtype {
+typedef enum {
 	EAP_SIM_START			= 10,	//!< Start packet used for version negotiation.
 	EAP_SIM_CHALLENGE		= 11,	//!< Challenge packet for distributing NONCE and RAND values.
 	EAP_SIM_NOTIFICATION		= 12,	//!< Notification packet.
