@@ -1,22 +1,31 @@
 == Building from Source
 
-The xref:installation:dependencies.adoc[build dependencies] must be
-installed before FreeRADIUS can build. These dependencies are libtalloc
-and libkqueue, which FreeRADIUS uses for memory management, and
-platform-independent event handling.
+We recommend xref:packages.adoc[installing from packages] if
+possible. Full instructions on building and installing from source
+code follow.
 
-Download the latest version of the FreeRADIUS source from the FreeRADIUS
-ftp site:
+The xref:installation:dependencies.adoc[build dependencies] must
+be installed before FreeRADIUS can build. These dependencies are
+`libtalloc` and `libkqueue`, which FreeRADIUS uses for memory
+management, and platform-independent event handling.
 
-```
-ftp://ftp.freeradius.org/pub/freeadius/
-```
+The FreeRADIUS source may be obtained from a number of locations:
+
+* Download the latest version of the FreeRADIUS source from
+  https://www.freeradius.org/releases/[the FreeRADIUS web site]; or
+* download directly from the
+  ftp://ftp.freeradius.org/pub/freeradius/[FreeRADIUS FTP site]; or
+* download from
+  https://github.com/FreeRADIUS/freeradius-server/[GitHub].
 
 The file wil be name something like: `freeradius-server-4.0.0.tar.gz`.
-Later version will be `4.0.1`, or `4.1.0`, etc.
+Later version will be `4.0.1`, or `4.1.0`, etc. PGP signatures are
+also provided for official releases from the FTP site; these are
+named e.g. `freeradius-server-4.0.0.tar.gz.sig`.
 
-Un-tar the file, and change to the FreeRADIUS directory, where
-`VERSION` is the version of the server that you have downloaded.
+Un-tar the file, and change to the FreeRADIUS directory (where
+`VERSION` below is the version of the server that you have
+downloaded).
 
 [source,bash]
 ----
@@ -30,7 +39,7 @@ Take the following steps to build and install the server from source:
 ----
 ./configure
 make
-make install
+sudo make install
 ----
 
 === Custom build
@@ -40,37 +49,40 @@ FreeRADIUS has GNU autoconf support. This means you have to run
 options are supported, run `./configure --help`, and read its output.
 
 The `make install` stage will install the binaries, the "man" pages,
-and MAY install the configuration files. If you have not installed a
+and _may_ install the configuration files. If you have not installed a
 RADIUS server before, then the configuration files for FreeRADIUS will
-be installed. If you already have a RADIUS server installed, then
+be installed.
 
-*FreeRADIUS WILL NOT over-write your current configuration.*
+If you already have a RADIUS server installed, then *FreeRADIUS
+WILL NOT over-write your current configuration.*
 
 The `make install` process will warn you about the files it could not
 install.
 
-If you see a warning message about files that could not be installed,
-then you MUST ensure that the new server is using the new configuration
-files, and not the old configuration files as this may cause undesired
-behavior and failure to authenticate.
+If you see a warning message about files that could not be
+installed, then you *must* ensure that the new server is using the
+new configuration files and not the old configuration files, as
+this may cause undesired behavior and failure to operate correctly.
 
-The initial output from running in debugging mode (`radiusd -X`) will
-tell you which configuration files are being used. See
-xref:upgrade:index.adoc[Upgrading] for information about upgrading from older
-versions. There MAY be changes in the dictionary files which are
-REQUIRED for a new version of the software. These files will NOT be
-installed over your current configuration, so you MUST verify and
-install any problem files by hand, for example using `diff(1)` to
-check for changes.
+The initial output from running in debugging mode (`radiusd -X`)
+will tell you which configuration files are being used. See
+xref:upgrade:index.adoc[Upgrading] for information about
+upgrading from older versions. There _may_ be changes in the
+dictionary files which are required for a new version of the
+software. These files will not be installed over your current
+configuration, so you *must* verify and install any problem files by
+hand, for example using `diff(1)` to check for changes.
 
-When installing from source, it is EXTREMELY helpful to read the output
-of `./configure`, `make`, and `make install`. If a particular
-module you expected to be installed was not installed, then the output
-of the `./configure; make; make install` sequence will tell you why
-that module was not installed. Please do NOT post questions to the
-FreeRADIUS users list without first carefully reading the output of this
-process as it often contains the information needed to resolve a
-problem.
+When installing from source, it is _extremely_ helpful to read the
+output of `./configure`, `make`, and `make install`. If a
+particular module you expected to be installed was not installed,
+then the output will tell you why that module was not installed.
+The most likely reason is that required libraries (including their
+development header files) are not available.
+
+Please do _not_ post questions to the FreeRADIUS users list
+without first carefully reading the output of this process as it
+often contains the information needed to resolve a problem.
 
 == Upgrading To A New Minor Release
 
@@ -85,7 +97,7 @@ version 3 to version 4.
 For details on what has changed between the version, see the
 xref:upgrade:index.adoc[upgrade] guide.
 
-We STRONGLY recommend that new major versions be installed in a
+We _strongly_ recommend that new major versions be installed in a
 different location than any existing installations. Any local policies
 can then be migrated gradually to the configuration format of the new
 major version. The number of differences in the new configuration mean
@@ -94,32 +106,33 @@ than to try and just get the old configuration to work.
 
 == Running the server
 
-If the server builds and installs, but doesn’t run correctly, then you
-should first use debugging mode (`radiusd -X`) to figure out the
-problem.
+If the server builds and installs, but doesn’t run correctly, then
+you should first use debugging mode (`radiusd -X`) to figure out
+the problem.
 
-This is your BEST HOPE for understanding the problem. Read ALL of the
-messages which are printed to the screen, the answer to your problem
-will often be in a warning or error message.
+This is your best hope for understanding the problem. Read _all_
+of the messages which are printed to the screen, the answer to
+your problem will often be in a warning or error message.
 
-We really cannot emphasize that last sentence enough. Configuring a
-RADIUS server for complex local authentication isn’t a trivial task.
-Your BEST and ONLY method for debugging it is to read the debug
-messages, where the server will tell you exactly what it’s doing, and
-why. You should then compare its behaviour to what you intended, and
-edit the configuration files as appropriate.
+We really cannot emphasize that last sentence enough. Configuring
+a RADIUS server for complex local authentication isn’t a trivial
+task. Your _best_ and _only_ method for debugging it is to read
+the debug messages, where the server will tell you exactly what
+it’s doing, and why. You should then compare its behaviour to what
+you intended, and edit the configuration files as appropriate.
 
 If you don’t use debugging mode, and ask questions on the mailing
-list, then the responses will all tell you to use debugging mode. The
-server prints out a lot of information in this mode, including
+list, then the responses will all tell you to use debugging mode.
+The server prints out a lot of information in this mode, including
 suggestions for fixes to common problems. Look especially for
 `WARNING` and `ERROR` messages in the output, and read the related
 messages.
 
-Since the main developers of FreeRADIUS use debugging mode to track down
-their configuration problems with the server, it’s a good idea for you
-to use it, too. If you don’t, there is little hope for you to solve ANY
-configuration problem related to the server.
+Since the main developers of FreeRADIUS use debugging mode to
+track down their configuration problems with the server, it’s a
+good idea for you to use it, too. If you don’t, there is little
+hope for you to solve any configuration problem related to the
+server.
 
 To start the server in debugging mode, do:
 
@@ -154,7 +167,7 @@ server, edit `raddb/clients.conf`. Please read the configuration files
 carefully, as many configuration options are only documented in comments
 in the file.
 
-Note that is is HIGHLY recommended that you use some sort of version
+Note that is is _highly_ recommended that you use some sort of version
 control system to manage your configuration, such as git or Subversion.
 You should then make small changes to the configuration, checking in and
 testing as you go. When a config change causes the server to stop

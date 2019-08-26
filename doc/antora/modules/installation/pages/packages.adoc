@@ -1,0 +1,22 @@
+== Install from packages
+
+Network RADIUS provide pre-built binary packages of FreeRADIUS for
+common Linux distributions. This is the recommended installation
+method when packages are available for your system.
+
+The official http://packages.networkradius.com[Network RADIUS
+packages] page contains recent FreeRADIUS packages and
+installation instructions.
+
+=== Distribution-supplied packages
+
+While many Operating System distributions ship FreeRADIUS
+packages, the versions they include are often years out of date.
+As well as missing out on the latest bug fixes and features, this
+also means that it is very hard to know if an issue encountered is
+still a problem or if it is fixed in the latest release.
+
+Therefore, whilst the distribution-supplied packages can often be
+the most convenient to install, we do not usually recommend using
+them.
+
