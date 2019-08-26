@@ -30,10 +30,10 @@ The documentation is split into sections by subject area, oganized by
 desired outcome. At a high level, the subject areas describe:
 
 * xref:concepts.adoc[Concepts] and introduction for newcomers.
+* xref:installation:index.adoc[Installing] and xref:installation:upgrade.adoc[upgrading] FreeRADIUS.
 * The syntax of the xref:unlang:index.adoc[unlang] processing language.
 * The xref:raddb:index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
 * Various xref:howto:index.adoc[how-to] guides.
-* xref:installation:upgrade.adoc[Upgrading] from a previous version of FreeRADIUS.
 * xref:developers:index.adoc[Developer documentation].
 
 This organization means that for example, the `ldap` module will have
