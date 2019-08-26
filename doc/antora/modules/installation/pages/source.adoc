@@ -4,10 +4,19 @@ We recommend xref:packages.adoc[installing from packages] if
 possible. Full instructions on building and installing from source
 code follow.
 
-The xref:installation:dependencies.adoc[build dependencies] must
-be installed before FreeRADIUS can build. These dependencies are
-`libtalloc` and `libkqueue`, which FreeRADIUS uses for memory
+The mandatory xref:installation:dependencies.adoc[dependencies]
+must be installed before FreeRADIUS can be built. These dependencies
+are `libtalloc` and `libkqueue`, which FreeRADIUS uses for memory
 management, and platform-independent event handling.
+
+Per-module dependencies that enable support for external services
+such as LDAP, SQL, etc, are optional. They must be installed for
+any modules that are to be used. The FreeRADIUS `./configure` step
+will automatically detect if each module has its dependencies met
+and automatically enable support for them. If the features you
+require are not enabled you should inspect the configure script
+output to figure out which additional development libraries need
+to be installed.
 
 The FreeRADIUS source may be obtained from a number of locations:
 
@@ -27,7 +36,7 @@ Un-tar the file, and change to the FreeRADIUS directory (where
 `VERSION` below is the version of the server that you have
 downloaded).
 
-[source,bash]
+[source,shell]
 ----
 tar -zxf freeradius-server-VERSION.tar.gz
 cd freeradius-server-VERSION
@@ -35,7 +44,7 @@ cd freeradius-server-VERSION
 
 Take the following steps to build and install the server from source:
 
-[source,bash]
+[source,shell]
 ----
 ./configure
 make
@@ -136,7 +145,7 @@ server.
 
 To start the server in debugging mode, do:
 
-[source,bash]
+[source,shell]
 ----
 radiusd -X
 ----
@@ -149,7 +158,7 @@ https://wiki.freeradius.org/guide/FAQ
 If the server says `Ready to process requests.`, then it is running
 properly. From another shell (or another window), type
 
-[source,bash]
+[source,shell]
 ----
 radtest test test localhost 0 testing123
 ----

@@ -12,3 +12,23 @@ RADIUS, where available.
 The documents in this section cover details of the above
 installation methods, as well as instructions on building
 packages locally.
+
+== Warning!
+
+*These instructions cover installing FreeRADIUS 4.x, which is still
+in heavy development. Other than exceptional circumstances, you
+should use https://freeradius.org/releases/[version 3].*
+
+FreeRADIUS 4 is actively used in multiple high profile client
+deployments (whom have
+https://networkradius.com/freeradius-support/[purchased a support
+contract] from Network RADIUS). It, however, otherwise demands a
+user that seeks danger and enjoys deploying a highly volatile
+evolving codebase in environments where traditionally stability is
+sought. If this describes you, then version 4 is for you! (But
+don't come complaining if it breaks.)
+
+Hopefully it is clear, *we recommend 99.9%+ of users use
+https://freeradius.org/releases/[FreeRADIUS 3.0.x]* and the
+https://packages.networkradius.com/[pre-built packages]
+available from https://networkradius.com/[Network RADIUS].
