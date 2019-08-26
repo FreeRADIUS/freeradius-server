@@ -377,13 +377,21 @@ static int _dl_free(dl_t *dl)
  * @param[in] dl_loader		Tree of dynamically loaded libraries, and callbacks.
  * @param[in] name		of library to load.  May be a relative path.
  * @param[in] uctx		Data to store within the dl_t.
- * @param[in] uctx_free		Free the uctx data if this dl_t is freed.
+ * @param[in] uctx_free		talloc_free the passed in uctx data if this
+ *				dl_t is freed.
+ * @param[in] sym_global	Set RTLD_GLOBAL to place all symbols from the module
+ *				in the global symbol table.
  * @return
  *	- A new dl_t on success, or a pointer to an existing
  *	  one with the reference count increased.
  *	- NULL on error.
  */
-dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx_free)
+dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx_free,
+#ifdef RTLD_GLOBAL
+		 bool sym_global)
+#else
+		 UNUSED bool sym_global)
+#endif
 {
 	int		flags = RTLD_NOW;
 	void		*handle = NULL;
@@ -401,7 +409,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	}
 
 #ifdef RTLD_GLOBAL
-	if (strcmp(name, "rlm_perl") == 0) {
+	if (sym_global) {
 		flags |= RTLD_GLOBAL;
 	} else
 #endif
