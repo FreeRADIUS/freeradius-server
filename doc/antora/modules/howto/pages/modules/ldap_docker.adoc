@@ -1,0 +1,47 @@
+= Using LDAP in Docket
+
+It is possible to experiment with a local LDAP server under
+https://docs.docker.com/install/[Docker].  There is a
+https://github.com/osixia/docker-openldap[fully functionally OpenLDAP
+container] available via the following commands:
+
+[source,shell]
+----
+docker run -it --rm -p 389:389 --env LDAP_DOMAIN=example.com --env LDAP_READONLY_USER=true --volume $(pwd)/doc/schemas/ldap/openldap/freeradius.schema:/container/service/slapd/assets/config/bootstrap/schema/mmc/radius.schema:ro --volume $(pwd)/doc/schemas/ldap/openldap/freeradius-clients.schema:/container/service/slapd/assets/config/bootstrap/schema/mmc/freeradius-clients.schema:ro osixia/openldap:1.2.5 --copy-service
+----
+
+Once docker is running, there should now be an LDAP server running on
+`localhost`.  This LDAP server needs to be populated with some initial
+user data using the LDAP admin user and an
+http://www.zytrax.com/books/ldap/ch8/[LDIF file]:
+
+[source,shell]
+----
+sed -e '1,/^description:/ d' src/tests/modules/ldap/example.com.ldif \
+    | ldapadd -H ldap://localhost -x -D cn=admin,dc=example,dc=com -w admin
+----
+
+There should be no errors, and the console with the running LDAP
+server should show requests being handled.  Next, check that data is
+there by using the LDAP read only user:
+
+[source,shell]
+----
+ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,dc=example,dc=com -w readonly -b dc=example,dc=com '(&(objectClass=radiusClient)(radiusClientShortname=client2))'
+----
+
+You should see a single result returned if everything worked
+correctly.
+
+If the LDAP server server is stopped, as with `CTRL-C`, then the
+databas will be lost.  All of the steps above will have to be re-done
+the next time the server is started.
+
+In order to make the LDAP database persiste, see the
+https://github.com/osixia/docker-openldap[osixia/openldap
+instructions].
+
+Lastly, remember that this testing server may or may not resemble the
+production environment.  Therefore, any FreeRADIUS configuration that
+works in a test environment will need updating and testing in order to
+work in production.
