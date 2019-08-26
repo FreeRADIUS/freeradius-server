@@ -1,7 +1,18 @@
 = FreeRADIUS Dependencies
 
-After 15 years of not requiring any external libraries, Version 4 has
-some mandatory external dependencies.
+Some external dependencies must be installed before building or
+running FreeRADIUS. The core depends on two mandatory libraries:
+`libtalloc` for memory management and `libkqueue` for event
+handling.
+
+Many of the modules also have optional dependencies. For example,
+the LDAP module requires LDAP client libraries to be installed
+and database modules need their respective database client
+libraries.
+
+If building from source code, the configure stage will check for
+the optional dependencies. Any missing libraries will cause that
+particular module to be skipped.
 
 == Libraries
 
@@ -14,11 +25,11 @@ https://talloc.samba.org/talloc/doc/html/index.html
 
 `# brew install talloc`
 
-*Debian / Ubuntu*
+*Debian, Ubuntu and `dpkg`-based systems*
 
 `# apt-get install libtalloc-dev`
 
-*RedHat*
+*RedHat or CentOS*
 
 ```
 # subscription-manager repos --enable rhel-7-server-optional-rpms
@@ -27,19 +38,19 @@ https://talloc.samba.org/talloc/doc/html/index.html
 
 === kqueue
 
-Kqueue is an event / timer API originally written for BSD systems. It is
-_much_ simpler to use than third-party event libraries. On Linux, a
-`libkqueue` package is available.
+Kqueue is an event / timer API originally written for BSD systems.
+It is _much_ simpler to use than third-party event libraries. A
+library, `libkqueue`, is available for Linux systems.
 
 *OSX*
 
-_nothing to do. kqueue is available._
+_kqueue is already available, there is nothing to install._
 
-*Debian / Ubuntu*
+*Debian, Ubuntu and `dpkg`-based systems*
 
 `# apt-get install libkqueue-dev`
 
-*RedHat*
+*RedHat or CentOS*
 
 ```
 # subscription-manager repos --enable rhel-7-server-optional-rpms
