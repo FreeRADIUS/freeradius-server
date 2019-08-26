@@ -1,5 +1,4 @@
 * xref:index.adoc[Howto Guides]
-** xref:INSTALL.adoc[Installation]
 ** xref:modules/index.adoc[Modules]
 *** xref:modules/RADIUS-LDAP-eDirectory.adoc[RADIUS-LDAP-eDirectory]
 *** xref:modules/eap.adoc[EAP]

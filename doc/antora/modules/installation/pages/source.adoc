@@ -1,16 +1,4 @@
-== Installation
-
-We recommend installing FreeRADIUS via the pre-built packages available
-from http://packages.networkradius.com[Network RADIUS]. Many Operating
-System distributions ship versions of FreeRADIUS which are years out of
-date. That page contains recent FreeRADIUS packages for all common OS
-distributions. For historical purposes, packages of older releases are
-also available from that site.
-
-The rest of this document describes how to install FreeRADIUS from
-source. i.e. a "tar.gz" file.
-
-=== Building from Source
+== Building from Source
 
 The xref:developers:dependencies.adoc[build dependencies] must be
 installed before FreeRADIUS can build. These dependencies are libtalloc
@@ -84,7 +72,7 @@ FreeRADIUS users list without first carefully reading the output of this
 process as it often contains the information needed to resolve a
 problem.
 
-=== Upgrading To A New Minor Release
+== Upgrading To A New Minor Release
 
 The installation process will not over-write your existing configuration
 files. It will, however, warn you about the files it did not install.
@@ -104,7 +92,7 @@ major version. The number of differences in the new configuration mean
 that is is both simpler and safer to migrate your configurations rather
 than to try and just get the old configuration to work.
 
-=== Running the server
+== Running the server
 
 If the server builds and installs, but doesn’t run correctly, then you
 should first use debugging mode (`radiusd -X`) to figure out the

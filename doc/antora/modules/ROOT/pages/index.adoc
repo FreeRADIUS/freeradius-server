@@ -86,7 +86,7 @@ has been released.  Packages for older releases are also available for
 historical purposes.
 
 FreeRADIUS can also be installed from the source code.  Please see the
-xref:howto:INSTALL.adoc[installation guide] for instructions.
+xref:installation:index.adoc[installation guide] for instructions.
 
 WARNING: Many Operating System distributions ship versions of FreeRADIUS
 which are years out of date. Those versions may contain bugs which have

@@ -1,0 +1,11 @@
+== Installation
+
+We recommend installing FreeRADIUS via the pre-built packages available
+from http://packages.networkradius.com[Network RADIUS]. Many Operating
+System distributions ship versions of FreeRADIUS which are years out of
+date. That page contains recent FreeRADIUS packages for all common OS
+distributions. For historical purposes, packages of older releases are
+also available from that site.
+
+The rest of this document describes how to install FreeRADIUS from
+source. i.e. a "tar.gz" file.

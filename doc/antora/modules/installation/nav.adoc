@@ -1,0 +1,6 @@
+* xref:index.adoc[Installing and upgrading]
+** xref:packages.adoc[Install from packages]
+** xref:source.adoc[Building from source]
+** Building Packages
+*** xref:build_deb.adoc[Debian and Ubuntu]
+*** xref:build_rpm.adoc[RedHat and CentOS]
