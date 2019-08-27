@@ -1233,6 +1233,15 @@ eap {
 	#
 	mschapv2 {
 		#
+		#  auth_type::
+		#
+		#  The plain-text response which comes back is put into a
+		#  `User-Password` attribute, and passed to another module for
+		#  authentication.
+		#
+#		auth_type = mschap
+
+		#
 		#  send_error::
 		#
 		#  Prior to version 2.1.11, the module never sent the
@@ -1257,6 +1266,14 @@ eap {
 		#  information to uniquely identify it.
 		#
 #		identity = "FreeRADIUS"
+
+		#
+		#  with_ntdomain_hack:: Windows clients send `User-Name` in the form of "DOMAIN\User",
+		#  but send the challenge/response based only on the User portion.
+		#
+		#  Default is `no`.
+		#
+#		with_ntdomain_hack = yes
 	}
 
 	#
@@ -1325,6 +1342,13 @@ eap {
 		#  virtual_server:: Same as for `TTLS`, `PEAP`, etc.
 		#
 		virtual_server = inner-tunnel
+
+		#
+		#  default_provisioning_eap_type:: Default provisioning EAP type.
+		#
+		#  Default is `mschapv2`
+		#
+#		default_provisioning_eap_type = mschapv2
 	}
 
 	#
@@ -1386,7 +1410,25 @@ eap {
 	#  This takes no configuration.
 	#
 	aka {
+		#
+		#  network_name:: Network ID as described by RFC 5448.
+		#
+#		network_name = ""
 
+		#
+		#  request_identity:: Always send an identity request before a challenge.
+		#
+#		request_identity = ""
+
+		#
+		#  protected_success:: Send protected success messages
+		#
+#		protected_success = no
+
+		#
+		#  virtual_server:: Same as for `TTLS`, `PEAP`, etc.
+		#
+#		virtual_server = ""
 	}
 }
 

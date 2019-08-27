@@ -70,6 +70,14 @@ mschap {
 #	require_strong = yes
 
 	#
+	#  with_ntdomain_hack:: Windows clients send `User-Name` in the form of "DOMAIN\User",
+	#  but send the challenge/response based only on the User portion.
+	#
+	#  Default is `yes`.
+	#
+#	with_ntdomain_hack = no
+
+	#
 	#  ntlm_auth:: Path and arguments to the `ntlm_auth` program.
 	#
 	#  The module can perform authentication itself, OR

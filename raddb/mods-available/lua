@@ -35,5 +35,6 @@ lua {
 #	func_accounting = accounting
 #	func_post_auth = post_auth
 #	func_xlat = xlat
+#	func_instantiate = instantiate
 #	func_detach = detach
 }

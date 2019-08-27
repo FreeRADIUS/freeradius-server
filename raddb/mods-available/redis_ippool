@@ -50,6 +50,22 @@ redis_ippool {
 	lease_time = 3600
 
 	#
+	#  wait_num:: How many slaves we want to acknowledge allocations or updates.
+	#
+#	wait_num = 10
+
+	#
+	#  wait_timeout:: How long we wait for slaves to acknowledge writing.
+	#
+#	wait_timeout = 2
+
+	#
+	#  gateway:: Gateway identifier, usually `NAS-Identifier` or the actual Option 82 gateway.
+	#  Used for bulk lease cleanups.
+	#
+#	gateway = &NAS-Identifier
+
+	#
 	#  device:: The device identifier.
 	#
 	#  This is usually the MAC address.  It could be a combination
@@ -63,6 +79,12 @@ redis_ippool {
 	#  requested_address:: The IP address being renewed or released.
 	#
 	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+
+	#
+	#  ipv4_integer:: Whether IPv4 addresses should be cast to integers, for renew operations.
+	#
+	#
+#	ipv4_integer = yes
 
 	#
 	#  allocated_address_attr:: List and attribute where the allocated address is written to.
