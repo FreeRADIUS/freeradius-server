@@ -20,7 +20,6 @@
  * @brief Process chap authentication requests.
  *
  * @copyright 2001,2006 The FreeRADIUS server project
- * @copyright 2001 Kostas Kalevras (kkalev@noc.ntua.gr)
  */
 RCSID("$Id$")
 
@@ -46,10 +45,7 @@ fr_dict_autoload_t rlm_chap_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_proxy_to_realm;
-static fr_dict_attr_t const *attr_realm;
 static fr_dict_attr_t const *attr_cleartext_password;
-static fr_dict_attr_t const *attr_password_with_header;
 
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_chap_challenge;
@@ -59,43 +55,18 @@ static fr_dict_attr_t const *attr_user_name;
 extern fr_dict_attr_autoload_t rlm_chap_dict_attr[];
 fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_realm, .name = "Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_password, .name = "Chap-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chap_challenge, .name = "Chap-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
-
-static fr_table_num_sorted_t const header_names[] = {
-	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
-	{ "{clear}",		FR_CLEARTEXT_PASSWORD }
-};
-static size_t header_names_len = NUM_ELEMENTS(header_names);
-
-static ssize_t chap_password_header(fr_dict_attr_t const **out, char const *header)
-{
-	switch (fr_table_value_by_str(header_names, header, 0)) {
-	case FR_CLEARTEXT_PASSWORD:
-		*out = attr_cleartext_password;
-		return strlen(header);
-
-	default:
-		*out = NULL;
-		return -1;
-	}
-}
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_chap_t	*inst = instance;
 	VALUE_PAIR	*vp;
-	VALUE_PAIR	*known_good;
 
 	/*
 	 *	This case means the warnings below won't be printed
@@ -103,44 +74,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 */
 	if (!fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY)) return RLM_MODULE_NOOP;
 
-	known_good = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
-	if (!known_good) {
-		VALUE_PAIR *new;
-
-		known_good = fr_pair_find_by_da(request->control, attr_password_with_header, TAG_ANY);
-		if (!known_good) {
-			/*
-			 *	Likely going to be proxied.  Avoid printing
-			 *	warning message.
-			 */
-			if (fr_pair_find_by_da(request->control, attr_realm, TAG_ANY) ||
-			    (fr_pair_find_by_da(request->control, attr_proxy_to_realm, TAG_ANY))) {
-				return RLM_MODULE_NOOP;
-			}
-
-			goto warn;
-		}
-
-		/*
-		 *	Normalise Password-With-Header
-		 */
-		MEM(new = password_normify_with_header(request, request, known_good,
-						       chap_password_header, attr_cleartext_password));
-		if (RDEBUG_ENABLED3) {
-			RDEBUG3("Noramlized &control:%pP -> &control:%pP", known_good, new);
-		} else {
-			RDEBUG2("Normalized &control:%s -> &control:%s", known_good->da->name, new->da->name);
-		}
-		RDEBUG2("Removing &control:%s", known_good->da->name);
-		fr_pair_delete_by_da(&request->control, attr_password_with_header);
-		fr_pair_add(&request->control, new);
-
-		known_good = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
-		if (!known_good) {
-		warn:
-			RWDEBUG("No \"known good\" password was found for the user.");
-			RWDEBUG("Authentication may fail unless a \"known good\" password is available");
-		}
+	if (fr_pair_find_by_da(request->packet->vps, attr_auth_type, TAG_ANY) != NULL) {
+		REDEBUG("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
