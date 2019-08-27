@@ -58,7 +58,6 @@ typedef struct {
 	const char	*func_preacct;		//!< Name of function to run on preacct.
 	const char	*func_accounting;	//!< Name of function to run on accounting.
 #endif
-	const char	*func_checksimul;	//!< Name of function to check for simultaneous use.
 	const char	*func_post_auth;	//!< Name of function to run after authentication.
 	const char	*func_xlat;		//!< Name of function to be called for string expansions.
 } rlm_lua_t;
