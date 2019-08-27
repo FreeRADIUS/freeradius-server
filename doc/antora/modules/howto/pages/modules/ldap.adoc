@@ -31,6 +31,16 @@ the command-line xref:modules/ldap_search.adoc[ldapsearch] tool.  If
 testing via `ldapsearch` fails, then that has to debugged before
 configuring FreeRADIUS.
 
+=== Configuring the LDAP module
+
+Once the xref:modules/ldap_search.adoc[ldapsearch] validation tests
+pass, the next step is to
+xref:modules/ldap_configuration.adoc[configure the LDAP module].
+
+The configuration step should be little more than copying the
+parameters used by xref:modules/ldap_search.adoc[ldapsearch] to the
+xref:raddb:mods-available/ldap.adoc[ldap module] configuration file.
+
 === Security Recommendations
 
 The credentials (username *and* password) for FreeRADIUS to use to
@@ -123,40 +133,6 @@ LDAP `memberOf` attributes.
 
 Once you have determined what you need to use, make a note of it for later.
 
-== Configuration
-
-As with all FreeRADIUS configuration files, when starting off you should try to change at little as possible.  The (business logic) defaults are usually what you want, and all you need to do is amend where FreeRADIUS should look for data.
-
- . start with the default `raddb` configuration
- ** it is really difficult for the mailing list to provide assistance if you do not start with the defaults!
- . edit the `ldap { ... }` section in `/usr/local/etc/raddb/mods-available/ldap` with your findings from the pre-flight section
- ** *server:* use the URI form (for example `ldap://192.0.2.1`) to describe where your LDAP server is
- ** *identity:* use the (preferably non-admin read only) account DN here (eg. `cn=readonly,dc=example,cn=com`)
- ** *password:* use the password associated with the identity account
- ** *base_dn:* provide the base of your LDAP database here (eg. `dc=example,dc=com`)
- ** in the `user { ... }` section
- *** check that `filter` can match your users when searched for
- ** in the `group { ... }` section
- *** check that `filter` can match your groups when searched for
- **** for Active Directory you may need to use `(objectClass=group)` instead
- *** referring to your notes above on how your LDAP server handles authorization, if it uses the LDAP attribute in:
- **** *a dedicated group object (ie. `member`):* uncomment `membership_filter` and possibility amend the value
- **** *the user object (ie. `memberOf`):* check `membership_attribute` is set apprioately
- . enabled the LDAP module
-+
-[source,shell]
-----
-cd /usr/local/etc/raddb/mods-enabled && ln -s ../mods-available/ldap
-----
- . start FreeRADIUS, initially in debugging mode
-+
-[source,shell]
-----
-radiusd -X
-----
- ** if everything looks good, then FreeRADIUS should start up with the message `Ready to process requests`
- ** if not, errors clearly describing why it terminated will be show and you *must* read these to gain insight into what the problem may be
- *** For example `Can't contact LDAP server` means something is wrong with the connection details regarding your LDAP server
 
 == Testing
 
@@ -167,8 +143,8 @@ Now in another terminal window run on the FreeRADIUS server to test authenticati
 [source,shell]
 ----
 cat <<'EOF' | radclient -x localhost auth testing123
-User-Name = john
-User-Password = password
+User-Name = "john"
+User-Password = "password"
 EOF
 ----
 
@@ -176,18 +152,19 @@ EOF
 
 If this works you should see `radclient` report `Access-Accept` almostly immediately without delay:
 
-[source,shell]
+[source,log]
 ----
-Debug : Sent Access-Request Id 39 from 0.0.0.0:47493 to 127.0.0.1:1812 length 44
-Debug : Received Access-Accept Id 39 from 127.0.0.1:1812 to 0.0.0.0:47493 via lo length 26
-Debug : User-Name = "john"
+Sent Access-Request Id 39 from 0.0.0.0:47493 to 127.0.0.1:1812 length 44
+  User-Name = john
+  User-Password = password
+Received Access-Accept Id 39 from 127.0.0.1:1812 to 0.0.0.0:47493 via lo length 26
+  User-Name = "john"
 ----
 
 On the FreeRADIUS debug terminal side, you should see something like:
 
 [source,log]
 ----
-(0)    files (noop)
 (0)    ldap - Reserved connection (0)
 (0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
 (0)    ldap - --> (uid=john)
@@ -218,7 +195,6 @@ On the FreeRADIUS debug terminal side, you should see something like:
 
 Here FreeRADIUS is describing what it did:
 
- . used the `files` module but there was no effect (`noop`) in running the module
  . used the `ldap` module
  ** searched for `(uid=john)` in `dc=example,dc=com`
  *** this is doing the same as the following that you could run on the CLI
@@ -260,7 +236,6 @@ You should now look to the output of the debugging from the FreeRADIUS terminal 
 
 [source,log]
 ----
-(0)    files (noop)
 (0)    ldap - Reserved connection (0)
 (0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
 (0)    ldap - --> (uid=john)
@@ -282,7 +257,6 @@ You should now look to the output of the debugging from the FreeRADIUS terminal 
 
 Here FreeRADIUS describes it:
 
- . used the `files` module but there was no effect (`noop`) in running the module
  . used the `ldap` module
  ** searched for `(uid=john)` in `dc=example,dc=com`
  ** found `uid=john,ou=people,dc=example,dc=com`
@@ -321,7 +295,6 @@ If you use LDAP bind'ing to perform user authentication, then when `radclient` r
 
 [source,log]
 ----
-(0)    files (noop)
 (0)    ldap - Reserved connection (0)
 (0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
 (0)    ldap - --> (uid=john)
@@ -359,7 +332,6 @@ If you use LDAP bind'ing to perform user authentication, then when `radclient` r
 
 Here FreeRADIUS is describes it:
 
- . used the `files` module but there was no effect (`noop`) in running the module
  . used the `ldap` module
  ** searched for `(uid=john)` in `dc=example,dc=com`
  ** found `uid=john,ou=people,dc=example,dc=com`

@@ -1,7 +1,11 @@
 = Testing via `ldapsearch`
 
 Prior to configuring the `ldap` module, the LDAP server must first be
-validated using the `ldapsearch` tool.
+validated using the `ldapsearch` tool.  We *strongly recommend*
+running these validation tests on the same machine that will be used
+to host the RADIUS server.  In many situations a firewall will prevent
+network access from the RADIUS server to LDAP.  Testing `ldapsearch`
+on a third machine will not show any firewall issues.
 
 [source,shell]
 ----
