@@ -102,7 +102,7 @@ debug output will contain error messages clearly describing what went
 wrong.  These error message *must* be read in order to gain insight as
 to the source of the problem.
 
-Otherwise, look for messages containing `ERROR` or `WARNING`, or for
+Otherwise, look for messages containing `ERROR` or `WARNING`, or
 the module name.  While the server can produce a large volume of
 messages, most of those can be ignored when debugging a particular
 problem.  Simply search for a few key strings based on the files you
