@@ -1,0 +1,175 @@
+= Configuring the CHAP module
+
+The xref:raddb:mods-available/chap.adoc[mods-available/chap]
+configuration file describes the configuration parameters accepted by
+the CHAP module, and what they do.  This document explains how to
+perform testing with the CHAP module
+
+The default server configuration should be tested via the following
+command:
+
+[source,shell]
+----
+radiusd -XC
+----
+
+If the configuration is correct, then the server will print the
+following message:
+
+[source,log]
+----
+Configuration appears to be OK
+----
+
+If that message does not appear, then it is necessary to correct any
+and all errors before proceeding to the next step.  It is a good idea
+to ensure that the current configuration works _before_ making changes
+to it.
+
+== Editing mods-available/chap
+
+The xref:raddb:mods-available/chap.adoc[mods-available/chap] module
+contains no configuration items, and does not need to be edited.
+
+== Enabling mods-available/chap
+
+The `chap` module is enabled by creating a soft link from the
+`mods-enabled/` directory to the `mods-available/` directory.
+
+[source,shell]
+----
+cd raddb/mods-enabled && ln -s ../mods-available/chap
+----
+
+The default installation will automatically enable the `chap` module.
+In most circumstances, no additional work is required.
+
+== Testing the Server
+
+The configuration of the server can be tested for syntactical
+correctness via the following command:
+
+[source,shell]
+----
+radiusd -XC
+----
+
+When the configuration is correct, then the server will print the
+following message:
+
+[source,log]
+----
+Configuration appears to be OK
+----
+
+Note that this test checks only that the configuration files can be
+parsed.  It does not check that the LDAP server can be reached.
+
+When the configuration is correct, FreeRADIUS can then be started in debugging mode:
+
+[source,shell]
+----
+radiusd -X
+----
+
+If the `ldap` module has been configured correctly, the final (or
+almost final) message will be
+
+[source,log]
+----
+Ready to process requests
+----
+
+This message should be in bold on the console.  Depending on which
+other modules are enabled, there may be a small number messages after
+this one.
+
+If the server starts, then the next step is then to perform
+authentication tests.
+
+=== Errors
+
+If the 'Ready to process requests` message does not appear, then the
+debug output will contain error messages clearly describing what went
+wrong.  These error message *must* be read in order to gain insight as
+to the source of the problem.
+
+Otherwise, look for messages containing `ERROR` or `WARNING`, or
+the module name.  While the server can produce a large volume of
+messages, most of those can be ignored when debugging a particular
+problem.  Simply search for a few key strings based on the files you
+changed, and the solution to the problem should be clear.
+
+We recommend running the `radiusd -XC` test was performed before
+making any module changes for other reasons.  If previous
+configuration worked, and the only change was to a particular module,
+then the source of the error is simple.  There is no need to go
+searching through other configuration files or third-party web sites.
+Instead, change and test the module configuration until the server
+works.
+
+== Testing CHAP Authentication
+
+Once the server is started in debugging mode, CHAP authentication can
+be performed via the following command:
+
+[source,shell]
+----
+cat <<'EOF' | radclient -x localhost auth testing123
+User-Name = "bob"
+CHAP-Password = "hello"
+EOF
+----
+
+The `radclient` program is smart enough to see that the
+`CHAP-Password` attribute is a cleartext password.  It then performs
+CHAP calculations in order to put the correct `CHAP-Password` value
+into the packet.
+
+NOTE: The server must be configured with a known user and a "known
+good" password before any CHAP tests are performed.  In this case, we
+assume that the server knows about a user `bob` with password `hello`.
+
+The output of `radclient` should look like the following.  Some of the
+numbers may be different, but the general format should be the same.
+
+[source,log]
+----
+Sent Access-Request Id 47 from 0.0.0.0:52132 to 127.0.0.1:1812 length 44
+	User-Name = "bob"
+	CHAP-Password = 0x70170db9ab2baad7ca45b3ef9cd844eccd
+	Cleartext-Password = "bob"
+Received Access-Accept Id 47 from 127.0.0.1:1812 to 127.0.0.1:52132 length 25
+	User-Name = "bob"
+----
+
+This output indicates that the authentication request was accepted.
+
+Next, read the server output.  The goal here is to look for messages
+containing `ERROR` or `WARNING`, or the `chap` module name.
+
+[source,log]
+----
+(0)  Received Access-Request ID 18 from 127.0.0.1:53623 to 127.0.0.1:1812 length 44 via socket proto_radius_udp server * port 1812
+(0)    User-Name = "bob"
+(0)    CHAP-Password = 0x3549a4e40fc76e876499badf736712c951
+...
+(0)    chap - Creating &CHAP-Challenge from request authenticator
+(0)    chap - Setting &control:Auth-Type = chap
+(0)    chap (ok)
+...
+(0)  Found "known good" password in &control:Cleartext-Password
+(0)  Running 'authenticate chap' from file ./raddb/sites-enabled/default
+(0)  authenticate chap {
+(0)    chap - Comparing with "known good" Cleartext-Password
+(0)    chap - CHAP user "bob" authenticated successfully
+(0)    chap (ok)
+(0)  } # authenticate chap (ok)
+...
+(0)  Sending Access-Accept ID 18 from 127.0.0.1:1812 to 127.0.0.1:53623 length 25 via socket proto_radius_udp server * port 1812
+(0)    User-Name = "bob"
+...
+----
+
+For the purposes of this test, the other debug messages can be
+ignored.

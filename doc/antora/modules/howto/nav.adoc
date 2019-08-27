@@ -1,6 +1,7 @@
 * xref:index.adoc[Howto Guides]
 ** xref:modules/index.adoc[Modules]
 *** xref:modules/configuring_modules.adoc[Configuring Modules]
+*** xref:modules/chap.adoc[CHAP]
 *** xref:modules/RADIUS-LDAP-eDirectory.adoc[RADIUS-LDAP-eDirectory]
 *** xref:modules/eap.adoc[EAP]
 *** xref:modules/expiration.adoc[Expiration]
