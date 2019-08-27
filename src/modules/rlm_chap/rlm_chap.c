@@ -49,7 +49,6 @@ static fr_dict_attr_t const *attr_cleartext_password;
 
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_chap_challenge;
-static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_chap_dict_attr[];
@@ -135,16 +134,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 
 	known_good = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
 	if (known_good == NULL) {
-		if (fr_pair_find_by_da(request->control, attr_user_password, TAG_ANY) != NULL){
-			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-			REDEBUG("!!! Please update your configuration so that the \"known !!!");
-			REDEBUG("!!! good\" cleartext password is in Cleartext-Password,  !!!");
-			REDEBUG("!!! and NOT in User-Password.                            !!!");
-			REDEBUG("!!!						          !!!");
-			REDEBUG("!!! Authentication will fail because of this.	          !!!");
-			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		}
-
 		REDEBUG("&control:Cleartext-Password is required for authentication");
 		return RLM_MODULE_FAIL;
 	}
