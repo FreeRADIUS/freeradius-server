@@ -33,7 +33,16 @@
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
+#include <freeradius-devel/server/password.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.password.h>
+
+#ifdef HAVE_OPENSSL_EVP_H
+#  include <openssl/evp.h>
+#endif
+
 typedef struct {
+	bool		normify;			//!< Normalize passwords
+
 	bool		log_stripped_names;
 	bool		log_auth;			//!< Log authentication attempts.
 	bool		log_auth_badpass;		//!< Log successful authentications.
@@ -79,6 +88,8 @@ static const CONF_PARSER proto_radius_auth_config[] = {
 
 	{ FR_CONF_POINTER("session", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) session_config },
 
+	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, proto_radius_auth_t, normify), .dflt = "yes" },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -99,6 +110,32 @@ static fr_dict_attr_t const *attr_module_failure_message;
 static fr_dict_attr_t const *attr_module_success_message;
 static fr_dict_attr_t const *attr_stripped_user_name;
 
+static fr_dict_attr_t const *attr_cleartext_password;
+static fr_dict_attr_t const *attr_password_with_header;
+
+static fr_dict_attr_t const *attr_md5_password;
+static fr_dict_attr_t const *attr_smd5_password;
+static fr_dict_attr_t const *attr_crypt_password;
+static fr_dict_attr_t const *attr_sha_password;
+static fr_dict_attr_t const *attr_ssha_password;
+
+static fr_dict_attr_t const *attr_sha2_password;
+static fr_dict_attr_t const *attr_ssha2_224_password;
+static fr_dict_attr_t const *attr_ssha2_256_password;
+static fr_dict_attr_t const *attr_ssha2_384_password;
+static fr_dict_attr_t const *attr_ssha2_512_password;
+
+static fr_dict_attr_t const *attr_sha3_password;
+static fr_dict_attr_t const *attr_ssha3_224_password;
+static fr_dict_attr_t const *attr_ssha3_256_password;
+static fr_dict_attr_t const *attr_ssha3_384_password;
+static fr_dict_attr_t const *attr_ssha3_512_password;
+
+static fr_dict_attr_t const *attr_pbkdf2_password;
+static fr_dict_attr_t const *attr_lm_password;
+static fr_dict_attr_t const *attr_nt_password;
+static fr_dict_attr_t const *attr_ns_mta_md5_password;
+
 static fr_dict_attr_t const *attr_nas_port;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_service_type;
@@ -113,6 +150,32 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
 	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_md5_password, .name = "MD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_smd5_password, .name = "SMD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_sha_password, .name = "SHA-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha_password, .name = "SSHA-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
+	{ .out = &attr_sha2_password, .name = "SHA2-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_224_password, .name = "SSHA2-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_256_password, .name = "SSHA2-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_384_password, .name = "SSHA2-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_512_password, .name = "SSHA2-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
+	{ .out = &attr_sha3_password, .name = "SHA3-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_224_password, .name = "SSHA3-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_256_password, .name = "SSHA3-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_384_password, .name = "SSHA3-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_512_password, .name = "SSHA3-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
+	{ .out = &attr_pbkdf2_password, .name = "PBKDF2-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_lm_password, .name = "LM-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ns_mta_md5_password, .name = "NS-MTA-MD5-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
 	{ .out = &attr_calling_station_id, .name = "Calling-Station-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_nas_port, .name = "NAS-Port", .type = FR_TYPE_UINT32, .dict = &dict_radius },
@@ -122,8 +185,295 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
+
 	{ NULL }
 };
+
+
+/*
+ *	For auto-header discovery.
+ *
+ *	@note Header comparison is case insensitive.
+ */
+static fr_table_num_sorted_t const header_names[] = {
+	{ "X- orclntv}",	FR_NT_PASSWORD },
+	{ "{base64_md5}",	FR_MD5_PASSWORD },
+	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
+	{ "{clear}",		FR_CLEARTEXT_PASSWORD },
+	{ "{crypt}",		FR_CRYPT_PASSWORD },
+	{ "{md4}",		FR_NT_PASSWORD },
+	{ "{md5}",		FR_MD5_PASSWORD },
+	{ "{ns-mta-md5}",	FR_NS_MTA_MD5_PASSWORD },
+	{ "{nthash}",		FR_NT_PASSWORD },
+	{ "{nt}",		FR_NT_PASSWORD },
+#ifdef HAVE_OPENSSL_EVP_H
+	{ "{sha224}",		FR_SHA2_PASSWORD },
+	{ "{sha256}",		FR_SHA2_PASSWORD },
+	{ "{sha2}",		FR_SHA2_PASSWORD },
+	{ "{sha384}",		FR_SHA2_PASSWORD },
+	{ "{sha512}",		FR_SHA2_PASSWORD },
+#endif
+	{ "{sha}",		FR_SHA_PASSWORD },
+	{ "{smd5}",		FR_SMD5_PASSWORD },
+#ifdef HAVE_OPENSSL_EVP_H
+	{ "{ssha224}",		FR_SSHA2_224_PASSWORD },
+	{ "{ssha256}",		FR_SSHA2_256_PASSWORD },
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	{ "{ssha3-224}",	FR_SSHA3_224_PASSWORD },
+	{ "{ssha3-256}",	FR_SSHA3_256_PASSWORD },
+	{ "{ssha3-384}",	FR_SSHA3_384_PASSWORD },
+	{ "{ssha3-512}",	FR_SSHA3_512_PASSWORD },
+#  endif
+	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
+	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
+#endif
+	{ "{ssha}",		FR_SSHA_PASSWORD },
+	{ "{x- orcllmv}",	FR_LM_PASSWORD },
+	{ "{x-nthash}",		FR_NT_PASSWORD },
+	{ "{x-pbkdf2}",		FR_PBKDF2_PASSWORD },
+};
+static size_t header_names_len = NUM_ELEMENTS(header_names);
+
+
+static ssize_t known_password_header(fr_dict_attr_t const **out, char const *header)
+{
+	switch (fr_table_value_by_str(header_names, header, 0)) {
+	case FR_CLEARTEXT_PASSWORD:
+		*out = attr_cleartext_password;
+		break;
+
+	case FR_MD5_PASSWORD:
+		*out = attr_md5_password;
+		break;
+
+	case FR_SMD5_PASSWORD:
+		*out = attr_smd5_password;
+		break;
+
+	case FR_CRYPT_PASSWORD:
+		*out = attr_crypt_password;
+		break;
+
+	case FR_SHA2_PASSWORD:
+		*out = attr_sha2_password;
+		break;
+
+	case FR_SSHA2_224_PASSWORD:
+		*out = attr_ssha2_224_password;
+		break;
+
+	case FR_SSHA2_256_PASSWORD:
+		*out = attr_ssha2_256_password;
+		break;
+
+	case FR_SSHA2_384_PASSWORD:
+		*out = attr_ssha2_384_password;
+		break;
+
+	case FR_SSHA2_512_PASSWORD:
+		*out = attr_ssha2_512_password;
+		break;
+
+	case FR_SSHA3_224_PASSWORD:
+		*out = attr_ssha3_224_password;
+		break;
+
+	case FR_SSHA3_256_PASSWORD:
+		*out = attr_ssha3_256_password;
+		break;
+
+	case FR_SSHA3_384_PASSWORD:
+		*out = attr_ssha3_384_password;
+		break;
+
+	case FR_SSHA3_512_PASSWORD:
+		*out = attr_ssha3_512_password;
+		break;
+
+	case FR_PBKDF2_PASSWORD:
+		*out = attr_pbkdf2_password;
+		break;
+
+	case FR_SHA_PASSWORD:
+		*out = attr_sha_password;
+		break;
+
+	case FR_SSHA_PASSWORD:
+		*out = attr_ssha_password;
+		break;
+
+	case FR_NS_MTA_MD5_PASSWORD:
+		*out = attr_ns_mta_md5_password;
+		break;
+
+	case FR_LM_PASSWORD:
+		*out = attr_lm_password;
+		break;
+
+	case FR_NT_PASSWORD:
+		*out = attr_nt_password;
+		break;
+
+	default:
+		*out = NULL;
+		return -1;
+	}
+
+	return strlen(header);
+}
+
+
+static void normalize_password(proto_radius_auth_t const *inst, REQUEST *request)
+{
+	VALUE_PAIR		*known_good, *found_pw = NULL;
+	size_t			normify_min_len = 0;
+	fr_cursor_t		cursor;
+
+	for (known_good = fr_cursor_init(&cursor, &request->control);
+	     known_good;
+	     known_good = fr_cursor_next(&cursor)) {
+		VP_VERIFY(known_good);
+	next:
+		if (known_good->da == attr_user_password) {
+			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RWDEBUG("!!! Ignoring control:User-Password.  Update your        !!!");
+			RWDEBUG("!!! configuration so that the \"known good\" clear text !!!");
+			RWDEBUG("!!! password is in Cleartext-Password and NOT in        !!!");
+			RWDEBUG("!!! User-Password.                                      !!!");
+			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+		} else if (known_good->da == attr_password_with_header) {
+			VALUE_PAIR *new;
+
+			/*
+			 *	Password already exists: use that instead of this one.
+			 */
+			if (fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY)) {
+				RWDEBUG("Config already contains a \"known good\" password "
+					"(&control:%s).  Ignoring &control:%s",
+					attr_cleartext_password->name, known_good->da->name);
+				break;
+			}
+
+			MEM(new = password_normify_with_header(request, request, known_good,
+							       known_password_header,
+							       attr_cleartext_password));
+			if (RDEBUG_ENABLED3) {
+				RDEBUG3("Normalized &control:%pP -> &control:%pP", known_good, new);
+			} else {
+				RDEBUG2("Normalized &control:%s -> &control:%s", known_good->da->name, new->da->name);
+			}
+
+			RDEBUG2("Removing &control:%s", known_good->da->name);
+			fr_cursor_free_item(&cursor);			/* advances the cursor for us */
+			fr_cursor_append(&cursor, new);			/* inserts at the end of the list */
+
+			found_pw = new;
+
+			known_good = fr_cursor_current(&cursor);
+			if (known_good) goto next;
+
+			/*
+			 *	@todo - move all of these attributes into a sequential list, so that
+			 *	we can check known values, and use table lookups for default lengths.
+			 */
+		} else if ((known_good->da == attr_cleartext_password) ||
+			   (known_good->da == attr_crypt_password) ||
+			   (known_good->da == attr_ns_mta_md5_password)) {
+			found_pw = known_good;
+
+		} else if ((known_good->da == attr_md5_password) ||
+			   (known_good->da == attr_smd5_password) ||
+			   (known_good->da == attr_nt_password) ||
+			   (known_good->da == attr_lm_password)) {
+			if (inst->normify) normify_min_len = 16;
+			found_pw = known_good;
+		}
+
+#ifdef HAVE_OPENSSL_EVP_H
+		else if (known_good->da == attr_sha2_password) {
+			if (inst->normify) normify_min_len = 28;
+			found_pw = known_good;
+
+		} else if (known_good->da == attr_ssha2_224_password) {
+			if (inst->normify) normify_min_len = 28;
+			found_pw = known_good;
+
+		} else if (known_good->da == attr_ssha2_256_password) {
+			if (inst->normify) normify_min_len = 32;
+			found_pw = known_good;
+
+		} else if (known_good->da == attr_ssha2_384_password) {
+			if (inst->normify) normify_min_len = 48;
+			found_pw = known_good;
+
+		} else if (known_good->da == attr_ssha2_512_password) {
+			if (inst->normify) normify_min_len = 64;
+			found_pw = known_good;
+		}
+
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+		else if (known_good->da == attr_sha3_password) {
+			if (inst->normify) normify_min_len = 28;
+			found_pw = known_good;
+
+		} else if (known_good->da == attr_ssha3_224_password) {
+			if (inst->normify) normify_min_len = 28;
+			found_pw = known_good;
+
+		} else if (known_good->da == attr_ssha3_256_password) {
+			if (inst->normify) normify_min_len = 32;
+			found_pw = known_good;
+
+		} else if (known_good->da == attr_ssha3_384_password) {
+			if (inst->normify) normify_min_len = 48;
+			found_pw = known_good;
+
+		} else if (known_good->da == attr_ssha3_512_password) {
+			if (inst->normify) normify_min_len = 64;
+			found_pw = known_good;
+		}
+#  endif
+		else if (known_good->da == attr_pbkdf2_password) {
+			found_pw = known_good; /* Already base64 standardized */
+		}
+#endif
+		else if ((known_good->da == attr_sha_password) ||
+			 (known_good->da == attr_ssha_password)) {
+			if (inst->normify) normify_min_len = 20;
+			found_pw = known_good;
+		}
+
+		if (normify_min_len > 0) {
+			VALUE_PAIR *new;
+
+			new = password_normify(request, request, known_good, normify_min_len);
+			if (new) {
+				fr_cursor_free_item(&cursor);		/* free the old pasword */
+				fr_cursor_append(&cursor, new);		/* inserts at the end of the list */
+
+				known_good = fr_cursor_current(&cursor);
+				if (known_good) goto next;
+			}
+		}
+	}
+
+	/*
+	 *	Print helpful warnings if there was no password.
+	 */
+	if (found_pw) {
+		if (RDEBUG_ENABLED3) {
+			RDEBUG("Found \"known good\" password in &control:%s = \"%pV\"", found_pw->da->name, &found_pw->data);
+		} else {
+			RDEBUG("Found \"known good\" password in &control:%s", found_pw->da->name);
+		}
+
+	} else {
+		RWDEBUG("No \"known good\" password found for the user.");
+		RWDEBUG("Authentication may fail unless a \"known good\" password is available");
+	}
+}
+
 
 /*
  *	Return a short string showing the terminal server, port
@@ -398,6 +748,8 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
+
+		normalize_password(inst, request);
 
 		RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
