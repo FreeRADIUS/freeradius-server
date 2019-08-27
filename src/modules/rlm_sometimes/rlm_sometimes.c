@@ -34,16 +34,14 @@ RCSID("$Id$")
 typedef struct {
 	char const	*rcode_str;
 	rlm_rcode_t	rcode;
-	uint32_t	start;
-	uint32_t	end;
+	float		percentage;
 	vp_tmpl_t	*key;
 } rlm_sometimes_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("rcode", FR_TYPE_STRING, rlm_sometimes_t, rcode_str), .dflt = "fail" },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sometimes_t, key), .dflt = "&User-Name", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, rlm_sometimes_t, start), .dflt = "0" },
-	{ FR_CONF_OFFSET("end", FR_TYPE_UINT32, rlm_sometimes_t, end), .dflt = "127" },
+	{ FR_CONF_OFFSET("percentage", FR_TYPE_FLOAT32, rlm_sometimes_t, percentage), .dflt = "0" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -60,6 +58,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
+	if ((inst->percentage < 0) || (inst->percentage > 100)) {
+		cf_log_err(conf, "Invalid value for 'percentage'.  It must be 0..100 inclusive");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -69,9 +72,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
 	uint32_t		hash;
-	uint32_t		value;
 	rlm_sometimes_t const	*inst = instance;
 	VALUE_PAIR		*vp;
+	float			value;
 
 	/*
 	 *	Set it to NOOP and the module will always do nothing
@@ -101,16 +104,13 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 		hash = fr_hash(&vp->data.datum, fr_value_box_field_sizes[vp->vp_type]);
 		break;
 	}
-	hash &= 0xff;		/* ensure it's 0..255 */
-	value = hash;
 
-	/*
-	 *	Ranges are INCLUSIVE.
-	 *	[start,end] returns "rcode"
-	 *	Everything else returns "noop"
-	 */
-	if (value < inst->start) return RLM_MODULE_NOOP;
-	if (value > inst->end) return RLM_MODULE_NOOP;
+	hash &= 0xffff;		/* all we need are 2^16 bits of precision */
+	value = hash;
+	value /= (1 << 16);
+	value *= 100;
+
+	if (value > inst->percentage) return RLM_MODULE_NOOP;
 
 	/*
 	 *	If we're returning "handled", then set the packet

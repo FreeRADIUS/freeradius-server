@@ -26,4 +26,11 @@ sometimes {
 	#  rcode:: Return code.
 	#
 	rcode = fail
+
+	#
+	#  percentage:: The percentage of times that the module will fail
+	#
+	#  Must be a number between 0 and 100.
+	#
+	percentage = 1
 }
