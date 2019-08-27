@@ -59,15 +59,7 @@ typedef struct {
 	const char	*func_accounting;	//!< Name of function to run on accounting.
 #endif
 	const char	*func_checksimul;	//!< Name of function to check for simultaneous use.
-#ifdef WITH_PROXY
-	const char	*func_pre_proxy;	//!< Name of function to run before proxying.
-	const char	*func_post_proxy;	//!< Name of function to run after proxying.
-#endif
 	const char	*func_post_auth;	//!< Name of function to run after authentication.
-#ifdef WITH_COA
-	const char	*func_recv_coa;		//!< Name of function to run when receiving a CoA request.
-	const char	*func_send_coa;		//!< Name of function to run when sending a CoA response.
-#endif
 	const char	*func_xlat;		//!< Name of function to be called for string expansions.
 } rlm_lua_t;
 
