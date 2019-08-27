@@ -1,56 +1,167 @@
 = Configuring the LDAP module
 
-As with all FreeRADIUS configuration files, when starting off you
-should try to change at little as possible.  The (business logic)
-defaults are usually what you want, and all you need to do is amend
-where FreeRADIUS should look for data.
+The xref:raddb:mods-available/ldap.adoc[ldap module] configuration
+file describes the configuration parameters accepted by the module,
+and what they do.  This document explains how to perform testing with
+the LDAP module.
 
-Before configuring the LDAP module, the LDAP queries should be
-validated via the xref:modules/ldap_search.adoc[`ldapsearch`]
+Before configuring the LDAP module, the LDAP parameters should first
+be validated via the xref:modules/ldap_search.adoc[`ldapsearch`]
 command-line tool.
 
-== Stuff
+The default server configuration should also be tested via the following command:
 
- . start with the default `raddb` configuration
- ** it is really difficult for the mailing list to provide assistance if you do not start with the defaults!
- . edit the `ldap { ... }` section in `/usr/local/etc/raddb/mods-available/ldap` with your findings from the pre-flight section
- ** *server:* use the URI form (for example `ldap://192.0.2.1`) to describe where your LDAP server is
- ** *identity:* use the (preferably non-admin read only) account DN here (eg. `cn=readonly,dc=example,cn=com`)
- ** *password:* use the password associated with the identity account
- ** *base_dn:* provide the base of your LDAP database here (eg. `dc=example,dc=com`)
- ** in the `user { ... }` section
- *** check that `filter` can match your users when searched for
- ** in the `group { ... }` section
- *** check that `filter` can match your groups when searched for
- **** for Active Directory you may need to use `(objectClass=group)` instead
- *** referring to your notes above on how your LDAP server handles authorization, if it uses the LDAP attribute in:
- **** *a dedicated group object (ie. `member`):* uncomment `membership_filter` and possibility amend the value
- **** *the user object (ie. `memberOf`):* check `membership_attribute` is set apprioately
- . enabled the LDAP module
+[source,shell]
+----
+radiusd -XC
+----
+
+If the configuration is correct, then the server will print the
+following message:
+
+[source,log]
+----
+Configuration appears to be OK
+----
+
+If that message does not appear, then it is necessary to correct any
+and all errors before proceeding to the next step.  It is a good idea
+to ensure that the current configuration works _before_ making changes
+to it.
+
+== Editing mods-available/ldap
+
+As with all FreeRADIUS configuration files, please change at little as
+possible in the default configuration.  The defaults are usually close
+to being correct.  All that is necessary is to make minor changes, and
+_test_ them.  FreeRADIUS should look for data.
+
+If the xref:modules/ldap_search.adoc[`ldapsearch`] tests above pass,
+then the LDAP module configuration can be copied directly from the
+command-line options to that tool:
+
+[source,shell]
+----
+ldapsearch -D ${identity} -w ${password} -h ${server} -b 'CN=user,${base_dn}' '${filter}' '*'
+----
+
+Where we have the following configuration paramters:
+
+`${identity}`::
+The information going into the `identity` configuration item of the LDAP module.
 +
+This identity should be a read-only, non-administrator account.
+
+`${password}`::
+The information going into the `password` configuration item of the LDAP module.
+
+`${server}`::
+The information going into the `server` configuration item of the LDAP module.
++
+This information could also be taken from the URI in the `-H`
+command-line option.  We generally recommend using the URI form
+instead of a bare hostname.
+
+`${base_dn}`::
+The information going into the `base_dn` configuration item of the LDAP module.
++
+This is ususally something like `dc=example,dc=com`
+
+`${filter}`::
+The information going into the `filter` configuration item of the LDAP module.
++
+The `filter` configuration item is located inside of the `user { ... }` section/
+
+We do _not_ recommend immediately configuring TLS.  The best approach
+is to test one piece in isolation, before proceeding on to the next
+piece.
+
+
+== Enabling mods-available/ldap
+
+The `ldap` module is enabled by creating a soft link from the
+`mods-enabled/` directory to the `mods-available/` directory.
+
 [source,shell]
 ----
 cd raddb/mods-enabled && ln -s ../mods-available/ldap
 ----
- . start FreeRADIUS, initially in debugging mode
-+
+
+It is also possible to copy the `mods-available/ldap` default
+configuration file to `mods-enabled/ldap`, and then edit that file.
+This process leaves the original `mods-available/ldap` configuration
+file in place, if there is a need to refer to it in the future.  The
+choice of which method to use is up to the local administrator.
+
+== Testing the Server
+
+The configuration of the server can be tested for syntactical
+correctness via the following command:
+
+[source,shell]
+----
+radiusd -XC
+----
+
+When the configuration is correct, then the server will print the
+following message:
+
+[source,log]
+----
+Configuration appears to be OK
+----
+
+Note that this test checks only that the configuration files can be
+parsed.  It does not check that the LDAP server can be reached.
+
+When the configuration is correct, FreeRADIUS can then be started in debugging mode:
+
 [source,shell]
 ----
 radiusd -X
 ----
 
-If the configurtion is correct, then FreeRADIUS will start up with the
-message `Ready to process requests`.  Further tests
-(e.g. authentication) should only be done if this message appears.
+If the `ldap` module has been configured correctly, the final (or
+almost final) message will be
+
+[source,log]
+----
+Ready to process requests
+----
+
+This message should be in bold on the console.  Depending on which
+other modules are enabled, there may be a small number messages after
+this one.
+
+If the server starts, then the next step is then to test LDAP module
+with the xref:modules/ldap_authentication.adoc[authentication]
+process.
+
+=== Errors
 
 If the 'Ready to process requests` message does not appear, then the
 debug output will contain error messages clearly describing what went
-wrong.  These error message *must* be read in order to gain insight
-about the problem.
+wrong.  These error message *must* be read in order to gain insight as
+to the source of the problem.
 
 For example, the message `Can't contact LDAP server` means that there
 is a connection issue between the RADIUS server and the LDAP
 database. or that the LDAP module configuration is incorrect.  The
-xref:modules/ldap_search.adoc[`ldapsearch`] validation tests should
-then be performed in order to verify both the connection, and the
+xref:modules/ldap_search.adoc[`ldapsearch`] validation tests must then
+be performed in order to verify both the connection, and the
 configuration parameters.
+
+Otherwise, look for messages containing `ERROR` or `WARNING` or
+`ldap`.  While the server can produce a large volume of messages, most
+of those can be ignored when debugging a particular problem.  Simply
+search for a few key strings based on the files you changed, and the
+solution to the problem should be clear.
+
+We recommend running the `radiusd -XC` test was performed before
+making any `ldap` module changes for other reasons.  If previous
+configuration worked, and the only change was to the `ldap` module,
+then the source of the error is simple.  There is no need to go
+searching through other configuration files or third-party web sites.
+Instead, change and test the module configuration until the server
+works.
+

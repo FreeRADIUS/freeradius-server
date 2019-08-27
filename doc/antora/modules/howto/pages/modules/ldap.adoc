@@ -165,6 +165,7 @@ On the FreeRADIUS debug terminal side, you should see something like:
 
 [source,log]
 ----
+...
 (0)    ldap - Reserved connection (0)
 (0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
 (0)    ldap - --> (uid=john)
@@ -175,8 +176,7 @@ On the FreeRADIUS debug terminal side, you should see something like:
 (0)    ldap -   &control:Password-With-Header += password
 (0)    ldap - Released connection (0)
 (0)    ldap (updated)
-(0)    expiration (noop)
-(0)    logintime (noop)
+...
 (0)    pap - No {...} in &Password-With-Header, re-writing to Cleartext-Password
 (0)    pap - Normalized &control:Password-With-Header -> &control:Cleartext-Password
 (0)    pap - Removing &control:Password-With-Header
@@ -191,6 +191,7 @@ On the FreeRADIUS debug terminal side, you should see something like:
 (0)    pap (ok)
 (0)  } # authenticate pap (ok)
 (0)  Running 'send Access-Accept' from file /usr/local/etc/raddb/sites-enabled/default
+...
 ----
 
 Here FreeRADIUS is describing what it did:

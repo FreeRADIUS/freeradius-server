@@ -9,7 +9,7 @@ on a third machine will not show any firewall issues.
 
 [source,shell]
 ----
-ldapsearch -H ldaps://ldap.example.com:686 -x -D cn=freeradius,dc=example,dc=com -w mypassword -b ou=people,dc=example,dc=com -z 10 '(objectClass=inetOrgPerson)' '*'
+ldapsearch -H ldaps://ldap.example.com:686 -x -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "ou=people,dc=example,dc=com" -z 10 '(objectClass=inetOrgPerson)' '*'
 ----
 
 Where you replace the following as appropriately:
