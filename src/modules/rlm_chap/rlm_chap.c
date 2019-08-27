@@ -118,10 +118,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 				return RLM_MODULE_NOOP;
 			}
 
-			RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type");
-			RWDEBUG("Authentication will fail unless a \"known good\" password is available");
-
-			return RLM_MODULE_NOOP;
+			goto warn;
 		}
 
 		/*
@@ -137,6 +134,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		RDEBUG2("Removing &control:%s", known_good->da->name);
 		fr_pair_delete_by_da(&request->control, attr_password_with_header);
 		fr_pair_add(&request->control, new);
+
+		known_good = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
+		if (!known_good) {
+		warn:
+			RWDEBUG("No \"known good\" password was found for the user.");
+			RWDEBUG("Authentication may fail unless a \"known good\" password is available");
+		}
 	}
 
 	/*
