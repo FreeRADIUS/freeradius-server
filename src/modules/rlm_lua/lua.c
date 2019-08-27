@@ -940,7 +940,6 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 	    || fr_lua_check_func(inst, L, inst->func_authenticate)
 	    || fr_lua_check_func(inst, L, inst->func_preacct)
 	    || fr_lua_check_func(inst, L, inst->func_accounting)
-	    || fr_lua_check_func(inst, L, inst->func_checksimul)
 	    || fr_lua_check_func(inst, L, inst->func_post_auth)
 	    || fr_lua_check_func(inst, L, inst->func_detach)
 	    || fr_lua_check_func(inst, L, inst->func_xlat)) {
