@@ -1,4 +1,4 @@
-= Using LDAP in Docket
+= Using LDAP in Docker
 
 It is possible to experiment with a local LDAP server under
 https://docs.docker.com/install/[Docker].  There is a
@@ -37,7 +37,7 @@ If the LDAP server server is stopped, as with `CTRL-C`, then the
 databas will be lost.  All of the steps above will have to be re-done
 the next time the server is started.
 
-In order to make the LDAP database persiste, see the
+In order to make the LDAP database persistent, see the
 https://github.com/osixia/docker-openldap[osixia/openldap
 instructions].
 

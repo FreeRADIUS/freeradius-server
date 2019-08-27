@@ -1,6 +1,6 @@
 = Testing via `ldapsearch`
 
-Prior to configuring the `ldap` module, the LDAP serve rmust first be
+Prior to configuring the `ldap` module, the LDAP server must first be
 validated using the `ldapsearch` tool.
 
 [source,shell]
@@ -10,7 +10,8 @@ ldapsearch -H ldaps://ldap.example.com:686 -x -D cn=freeradius,dc=example,dc=com
 
 Where you replace the following as appropriately:
 
-* *`ldaps://ldap.example.com:636`:* location of the LDAP server and how to connect
+* `ldaps://ldap.example.com:636`
+  * location of the LDAP server and how to connect
 
   * `ldaps` is LDAP over SSL and defaults to port `636/tcp`
 
@@ -19,13 +20,16 @@ Where you replace the following as appropriately:
 
   * `ldapi` is for UNIX socket connections
 
-* `cn=freeradius,dc=example,dc=com`:* username used by FreeRADIUS when connecting to LDAP
+* `cn=freeradius,dc=example,dc=com`
+  * username used by FreeRADIUS when connecting to LDAP
 
-* `mypassword`:* password used by FreeRADIUS is to use when connecting to LDAP
+* `mypassword`
+  * password used by FreeRADIUS is to use when connecting to LDAP
 
-* `ou=people,dc=example,dc=com`:* top branch ('base') of the LDAP tree where users are found
+* `ou=people,dc=example,dc=com`
+  * top branch ('base') of the LDAP tree where users are found
 
-* `(objectClass=inetOrgPerson)`:*
+* `(objectClass=inetOrgPerson)`
   http://www.zytrax.com/books/ldap/apa/search.html[search filter]
   which captures the users (this is the LDAP equivalent of the `WHERE`
   clause in SQL)
