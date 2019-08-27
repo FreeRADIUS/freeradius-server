@@ -27,6 +27,11 @@ function post_auth()
   return fr.ok
 end
 
+function instantiate()
+  print("example.lua/instantiate()")
+  return fr.ok
+end
+
 function detach()
   print("example.lua/detach()")
   return fr.ok

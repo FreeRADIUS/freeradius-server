@@ -745,7 +745,7 @@ int fr_lua_run(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request
 	fr_lua_util_set_inst(inst);
 	fr_lua_util_set_request(request);
 
-	RDEBUG2("Calling %s() in interpreter %p", funcname, L);
+	ROPTIONAL(RDEBUG2, DEBUG2, "Calling %s() in interpreter %p", funcname, L);
 
 	_lua_fr_request_register(L, request);
 
@@ -763,14 +763,14 @@ error:
 	if (!lua_isfunction(L, -1)) {
 		int type = lua_type(L, -1);
 
-		REDEBUG("'%s' is not a function, is a %s (%i)", funcname, lua_typename(L, type), type);
+		ROPTIONAL(RDEBUG2, DEBUG2, "'%s' is not a function, is a %s (%i)", funcname, lua_typename(L, type), type);
 		goto error;
 	}
 
 	if (lua_pcall(L, 0, 1, 0) != 0) {
 		char const *msg = lua_tostring(L, -1);
 
-		REDEBUG("Call to %s failed: %s", funcname, msg ? msg : "unknown error");
+		ROPTIONAL(RDEBUG2, DEBUG2, "Call to %s failed: %s", funcname, msg ? msg : "unknown error");
 		goto error;
 	}
 
@@ -794,7 +794,7 @@ error:
 			if (ret != -1) goto done;
 		}
 
-		REDEBUG("Lua function %s() returned invalid rcode \"%s\"", funcname, lua_tostring(L, -1));
+		ROPTIONAL(RDEBUG2, DEBUG2, "Lua function %s() returned invalid rcode \"%s\"", funcname, lua_tostring(L, -1));
 		goto error;
 	}
 
@@ -941,6 +941,7 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 	    || fr_lua_check_func(inst, L, inst->func_preacct)
 	    || fr_lua_check_func(inst, L, inst->func_accounting)
 	    || fr_lua_check_func(inst, L, inst->func_post_auth)
+	    || fr_lua_check_func(inst, L, inst->func_instantiate)
 	    || fr_lua_check_func(inst, L, inst->func_detach)
 	    || fr_lua_check_func(inst, L, inst->func_xlat)) {
 	 	goto error;
