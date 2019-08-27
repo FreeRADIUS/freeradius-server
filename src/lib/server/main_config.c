@@ -79,6 +79,8 @@ static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 
 static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
+static int syslog_facility_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+
 static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 #ifdef HAVE_SETUID
@@ -91,9 +93,7 @@ static int gid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM 
  */
 static const CONF_PARSER initial_log_subsection_config[] = {
 	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING, main_config_t, log_dest), .dflt = "files" },
-	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_INT32, main_config_t, syslog_facility), .dflt = "daemon",
-	  .func = cf_table_parse_uint32, .uctx = syslog_facility_table },
-
+	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_INT32, main_config_t, syslog_facility), .dflt = "daemon", .func = syslog_facility_parse, .uctx = syslog_facility_table },
 	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
 	{ FR_CONF_OFFSET("logdir", FR_TYPE_STRING, main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
 	{ FR_CONF_OFFSET("file", FR_TYPE_STRING, main_config_t, log_file), .dflt = "${logdir}/radius.log" },
@@ -345,6 +345,27 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	return 0;
 }
 
+static int syslog_facility_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	CONF_PAIR	*cp = cf_item_to_pair(ci);
+	char const	*value;
+	int num;
+
+	value = cf_pair_value(cp);
+	rad_assert(value != NULL);
+
+	num = fr_table_value_by_str(syslog_facility_table, value, -1);
+
+	if (num == -1) {
+		cf_log_err(ci, "Invalid parameter syslog_facility = %s", value);
+		return -1;
+	}
+
+	*(int32_t *)out = num;
+
+	return 0;
+}
 
 static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
 			      CONF_ITEM *ci, CONF_PARSER const *rule)
