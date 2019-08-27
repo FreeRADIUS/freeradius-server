@@ -58,7 +58,7 @@ function authorize()
 
   print("example.lua/authorize()")
   print("Request list contents:")
-  tprint(request, 2)
+  tprint(fr.request, 2)
 
   return fr.ok
 end
