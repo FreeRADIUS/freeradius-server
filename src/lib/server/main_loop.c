@@ -216,17 +216,26 @@ int main_loop_start(void)
 
 static int _loop_status(UNUSED void *ctx, fr_time_t wake)
 {
-	if (!DEBUG_ENABLED) {
-		if (just_started) {
-			INFO("Ready to process requests");
-			just_started = false;
-		}
+	/*
+	 *	Print this out right away.  If we're debugging, we
+	 *	don't really care about "Waking up..." messages when
+	 *	the server first starts up.
+	 */
+	if (just_started) {
+		INFO("Ready to process requests");
+		just_started = false;
 		return 0;
 	}
+
+	/*
+	 *	Only print out more information if we're debugging.
+	 */
+	if (!DEBUG_ENABLED) return 0;
 
 	if (!wake) {
 		if (main_config->drop_requests) return 0;
 		INFO("Ready to process requests");
+
 	} else if (wake > (NSEC / 10)) {
 		DEBUG("Waking up in %pV seconds.", fr_box_time_delta(wake));
 	}
