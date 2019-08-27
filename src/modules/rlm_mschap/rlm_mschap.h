@@ -34,7 +34,6 @@ extern fr_dict_attr_t const *attr_smb_account_ctrl;
 extern fr_dict_attr_t const *attr_smb_account_ctrl_text;
 
 extern fr_dict_attr_t const *attr_user_name;
-extern fr_dict_attr_t const *attr_user_password;
 extern fr_dict_attr_t const *attr_ms_chap_error;
 
 extern fr_dict_attr_t const *attr_ms_chap_challenge;

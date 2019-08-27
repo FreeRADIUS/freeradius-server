@@ -140,7 +140,6 @@ fr_dict_attr_t const *attr_smb_account_ctrl;
 fr_dict_attr_t const *attr_smb_account_ctrl_text;
 
 fr_dict_attr_t const *attr_user_name;
-fr_dict_attr_t const *attr_user_password;
 fr_dict_attr_t const *attr_ms_chap_error;
 
 fr_dict_attr_t const *attr_ms_chap_challenge;
@@ -169,7 +168,6 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ .out = &attr_smb_account_ctrl_text, .name = "SMB-Account-Ctrl-Text", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_error, .name = "MS-CHAP-Error", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_response, .name = "MS-CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
