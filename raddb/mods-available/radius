@@ -49,6 +49,13 @@ radius {
 	transport = udp
 
 	#
+	#  max_attributes:: Maximum number of attributes to decode in response.
+	#
+	#  Default is 255.
+	#
+#	max_attributes = 255
+
+	#
 	#  type:: List of allowed packet types.
 	#
 	#  There is currently no way to change the packet type in the
@@ -93,6 +100,11 @@ radius {
 	#  NOTE: The behavior in v3 is the same as `synchronous = yes`
 	#
 #	synchronous = no
+
+	#
+	#  no_connection_fail:: It enables fails immediately on failed connections.
+	#
+#	no_connection_fail = no
 
 	#
 	#  status_checks { ... }:: For "are you alive?" queries.
@@ -153,6 +165,35 @@ radius {
 		ipaddr = 127.0.0.1
 		port = 1812
 		secret = testing123
+
+		#
+		#  NOTE: Don't change anything if you are not sure.
+		#
+
+		#
+		#  interface:: Interface to bind to.
+		#
+#		interface = "eth0"
+
+		#
+		#  max_packet_size:: Our max packet size. may be different from the parent.
+		#
+#		max_packet_size = 4096
+
+		#
+		#  recv_buff:: How big the kernel's receive buffer should be.
+		#
+#		recv_buff = 4096
+
+		#
+		#  send_buff:: How big the kernel's send buffer should be.
+		#
+#		send_buff = 4096
+
+		#
+		#  src_ipaddr:: IP we open our socket on.
+		#
+#		src_ipaddr = ""
 	}
 
 	#

@@ -116,5 +116,10 @@ cipher {
 		#  NOTE: Defaults to *pkcs*.
 		#
 #		padding_type = pkcs
+
+		#
+		#  random_file:: Provides random number generator.
+		#
+#		random_file = /dev/urandom
 	}
 }

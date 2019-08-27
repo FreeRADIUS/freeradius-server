@@ -150,6 +150,23 @@ ldap {
 #	valuepair_attribute = 'radiusAttribute'
 
 	#
+	#  ### Global
+	#
+	global {
+		#
+		#  random_file:: Provides random number generator.
+		#
+#		random_file = /dev/urandom
+
+		#
+		#  ldap_debug:: Debug flags for libldap (see OpenLDAP documentation).
+		#
+		#  .Please see the option 'ldap_debug'
+		#
+#		ldap_debug = 0x0000
+	}
+
+	#
 	#  ### Mapping of LDAP directory attributes to RADIUS dictionary attributes.
 	#
 	#  WARNING: Although this format is almost identical to the `unlang`
