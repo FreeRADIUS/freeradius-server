@@ -73,8 +73,6 @@ fr_dict_autoload_t rlm_pap_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_proxy_to_realm;
-static fr_dict_attr_t const *attr_realm;
 
 static fr_dict_attr_t const *attr_cleartext_password;
 static fr_dict_attr_t const *attr_password_with_header;
@@ -107,8 +105,6 @@ static fr_dict_attr_t const *attr_user_password;
 extern fr_dict_attr_autoload_t rlm_pap_dict_attr[];
 fr_dict_attr_autoload_t rlm_pap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_realm, .name = "Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -310,12 +306,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	fr_cursor_t		cursor;
 	size_t			normify_min_len = 0;
 
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
-	if (!password) {
-		RDEBUG2("No %s attribute in the request.  Cannot do PAP", attr_user_password->name);
-		return RLM_MODULE_NOOP;
-	}
-
 	for (known_good = fr_cursor_init(&cursor, &request->control);
 	     known_good;
 	     known_good = fr_cursor_next(&cursor)) {
@@ -435,14 +425,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	Likely going to be proxied.  Avoid printing
 		 *	warning message.
 		 */
-		if (fr_pair_find_by_da(request->control, attr_realm, TAG_ANY) ||
-		    (fr_pair_find_by_da(request->control, attr_proxy_to_realm, TAG_ANY))) {
+		if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY)) {
 			return RLM_MODULE_NOOP;
 		}
 
 		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type");
 		RWDEBUG("Authentication will fail unless a \"known good\" password is available");
 
+		return RLM_MODULE_NOOP;
+	}
+
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	if (!password) {
+		RDEBUG2("No %s attribute in the request.  Cannot do PAP", attr_user_password->name);
 		return RLM_MODULE_NOOP;
 	}
 
