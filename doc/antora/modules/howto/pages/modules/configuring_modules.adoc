@@ -70,7 +70,7 @@ Configuration appears to be OK
 ----
 
 Note that this test checks only that the configuration files can be
-parsed.  It does not check that the LDAP server can be reached.
+parsed.  It does not check that the module will correctly process packets.
 
 When the configuration is correct, FreeRADIUS can then be started in debugging mode:
 
@@ -79,8 +79,8 @@ When the configuration is correct, FreeRADIUS can then be started in debugging m
 radiusd -X
 ----
 
-If the `ldap` module has been configured correctly, the final (or
-almost final) message will be
+If the module has been configured correctly, the final (or almost
+final) message will be
 
 [source,log]
 ----
