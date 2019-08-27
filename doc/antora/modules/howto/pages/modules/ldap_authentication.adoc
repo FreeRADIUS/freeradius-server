@@ -1,0 +1,104 @@
+= Authenticating Users with LDAP
+
+The LDAP module supports a few different kinds of authentication
+flows.
+
+PAP::
+The user supplies a `User-Password` (plaintext or EAP-TTLS/PAP)
++
+FreeRADIUS reads the "known good" password from LDAP, and compares
+that to what the user entered.
+
+Bind as user::
+The user supplies a `User-Password` (plaintext or EAP-TTLS/PAP)
++
+FreeRADIUS uses that password to "bind as the user" to LDAP, using the
+supplied `User-Name` and `User-Password.  If the bind is successfull,
+the user is authenticated.  Otherwise, authentication fails.
+
+CHAP::
+The user supplies a `CHAP` password attribute/
++
+FreeRADIUS reads the "known good" password from LDAP in cleartext, and
+compares that to what the user entered.
+
+MS-CHAP::
+The user supplies a `MS-CHAP` password attribute.
++
+FreeRADIUS reads the "known good" password from LDAP in cleartext, or
+as an NT hash, and compares that to what the user entered.
+
+== Caveats
+
+There are some major caveats with the above authentication flows.  The
+first is that we *strongly recommend* against using "bind as user".
+This process is slow, and causes unnecessary churn in the connections
+used to contact the LDAP server.  Further, the "bind as user" process
+works _only_ when a `User-Password attribute exists in the request.
+If any other authentication type is used in the request, then the
+"bind as user" _will not work_.  There is no amount of "fixing" things
+or configuration changes which will make it work.
+
+The second caveat is that the `CHAP` authentication type works _only_
+when a "clear text" password is stored in the LDAP database.  The
+`CHAP` calclulations are designed around having access to the "clear
+text" password.  It is impossible to use any "encrypted" or "hashed"
+passwords with `CHAP`.
+
+The third caveat is that the `MS-CHAP` authentication type works
+_only_ when a "clear text" password or "NT hashed" passwords which are
+stored in the LDAP database.  The `MS-CHAP` calclulations are designed
+around having access to "known good" passwords in those formats.  It
+is impossible to use any other kind of "encrypted" or "hashed"
+passwords with `MS-CHAP`.
+
+The final caveat is that when the LDAP database contains "encrypted"
+or "hashed" passwords, the _only_ authentication type which is
+compatible with those passwords is PAP.  i.e. when the `User-Password`
+is supplied to FreeRADIUS.
+
+For recommendations on password storage in LDAP, please see the LDAP
+https://openldap.org/doc/admin24/security.html#Password%20Storage[password
+storage] page.  Please note that the recommendations there are made
+for LDAP security, and pay no attention to the caveats described
+above.  When both RADIUS and LDAP are used together, then the
+requirements of _both_ systems must be met in order for them to work
+together.  In many cases, a naive approach to LDAP security will
+prevent RADIUS from working.  In those cases, the only solutions are
+to give up on using RADIUS, or to relax the security requirements on
+LDAP.
+
+Picking up from where we left off with the `ldapsearch` test above, if `userPassword` is returned:
+
+ * if the value is not prepended with `{...}`
+ ** your LDAP server stores plaintext passwords
+ ** provides the greatest flexibility to use MSCHAPv2 and other hashing authentication mechanisms in your RADIUS packets
+ * if the value is prepended with `{...}` (for example `{SSHA}`)
+ ** you *must* use PAP (or EAP-TTLS/PAP) in your RADIUS packets to authenticate your users
+
+*N.B.* LDAP attribute names (such as `userPassword`) may be appended
+with `::` (two colons rather than one) to indicate a binary value and
+the value will be the https://en.wikipedia.org/wiki/Base64[base64]
+representation of the actual value, which you can decode using
+`printf "%s" "VALUE" | base64 -d` to inspect
+
+If `userPassword` is not returned then permissions for the credentials
+used need to be adjusted so that it is accessible.  If this is not
+feasible and/or possible you *must* use PAP (or EAP-TTLS/PAP) in your
+RADIUS packets so that you can use an LDAP bind to authenticate your
+users.
+
+You may notice that by using PAP (or EAP-TTLS/PAP) in your RADIUS
+requests will work will all LDAP environments regardless of how
+passwords have been stored.
+
+You will need to balance the implications of sending RADIUS packets
+containing plaintext passwords (though EAP-TTLS/PAP makes the risk
+similar to HTTPS) over the wire with, or in addition to, storing
+plaintext passwords in LDAP.
+
+Ultimately the decision is yours though it may have already been
+decided by your LDAP administrator.  If the LDAP `userPassword`
+attribute is unavailable or does not contain a plaintext password you
+have no option but to use PAP (or EAP-TTLS/PAP) in your RADIUS
+requests.
