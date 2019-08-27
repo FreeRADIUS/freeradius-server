@@ -92,7 +92,8 @@ static int gid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM 
 static const CONF_PARSER initial_log_subsection_config[] = {
 	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING, main_config_t, log_dest), .dflt = "files" },
 	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_INT32, main_config_t, syslog_facility), .dflt = "daemon",
-	  .func = cf_table_parse_uint32, .uctx = syslog_facility_table },
+	  .func = cf_table_parse_int32,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = syslog_facility_table, .len = &syslog_facility_table_len } },
 
 	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
 	{ FR_CONF_OFFSET("logdir", FR_TYPE_STRING, main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
