@@ -210,7 +210,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 }
 
 /*
- *	Do any per-module initialization that is separate to each
+ *	Do any per-module bootstrapping that is separate to each
  *	configured instance of the module.  e.g. set up connections
  *	to external databases, read configuration files, set up
  *	dictionary entries, etc.
@@ -219,7 +219,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_test_t *inst = instance;
 
@@ -348,7 +348,7 @@ module_t rlm_test = {
 	.inst_size		= sizeof(rlm_test_t),
 	.thread_inst_size	= sizeof(rlm_test_thread_t),
 	.config			= module_config,
-	.instantiate		= mod_instantiate,
+	.bootstrap		= mod_bootstrap,
 	.thread_instantiate	= mod_thread_instantiate,
 	.thread_detach		= mod_thread_detach,
 	.detach			= mod_detach,
