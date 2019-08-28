@@ -951,12 +951,19 @@ post-proxy {
 	#  will read the detail file, and send the packets to the
 	#  home server.
 	#
+	#  See the "mods-available/detail.example.com" file for more
+	#  details on writing a detail file specifically for one
+	#  destination.
+	#
+	#  See the "sites-available/robust-proxy-accounting" virtual
+	#  server for more details on reading this "detail" file.
+	#
 	#  With this configuration, the server always responds to
 	#  Accounting-Requests from the NAS, but only writes
 	#  accounting packets to disk if the home server is down.
 	#
 #	Post-Proxy-Type Fail-Accounting {
-#			detail
+#			detail.example.com
 #	}
 }
 }
