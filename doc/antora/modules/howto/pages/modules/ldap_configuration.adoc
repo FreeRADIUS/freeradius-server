@@ -9,25 +9,7 @@ Before configuring the LDAP module, the LDAP parameters should first
 be validated via the xref:modules/ldap_search.adoc[`ldapsearch`]
 command-line tool.
 
-The default server configuration should also be tested via the following command:
-
-[source,shell]
-----
-radiusd -XC
-----
-
-If the configuration is correct, then the server will print the
-following message:
-
-[source,log]
-----
-Configuration appears to be OK
-----
-
-If that message does not appear, then it is necessary to correct any
-and all errors before proceeding to the next step.  It is a good idea
-to ensure that the current configuration works _before_ making changes
-to it.
+include::howto:partial$pre_test.adoc[]
 
 == Editing mods-available/ldap
 
@@ -95,73 +77,12 @@ choice of which method to use is up to the local administrator.
 
 == Testing the Server
 
-The configuration of the server can be tested for syntactical
-correctness via the following command:
-
-[source,shell]
-----
-radiusd -XC
-----
-
-When the configuration is correct, then the server will print the
-following message:
-
-[source,log]
-----
-Configuration appears to be OK
-----
-
-Note that this test checks only that the configuration files can be
-parsed.  It does not check that the LDAP server can be reached.
-
-When the configuration is correct, FreeRADIUS can then be started in debugging mode:
-
-[source,shell]
-----
-radiusd -X
-----
-
-If the `ldap` module has been configured correctly, the final (or
-almost final) message will be
-
-[source,log]
-----
-Ready to process requests
-----
-
-This message should be in bold on the console.  Depending on which
-other modules are enabled, there may be a small number messages after
-this one.
-
-If the server starts, then the next step is then to test LDAP module
-with the xref:modules/ldap_authentication.adoc[authentication]
-process.
-
-=== Errors
-
-If the 'Ready to process requests` message does not appear, then the
-debug output will contain error messages clearly describing what went
-wrong.  These error message *must* be read in order to gain insight as
-to the source of the problem.
-
-For example, the message `Can't contact LDAP server` means that there
-is a connection issue between the RADIUS server and the LDAP
-database. or that the LDAP module configuration is incorrect.  The
-xref:modules/ldap_search.adoc[`ldapsearch`] validation tests must then
-be performed in order to verify both the connection, and the
-configuration parameters.
-
-Otherwise, look for messages containing `ERROR` or `WARNING` or
-`ldap`.  While the server can produce a large volume of messages, most
-of those can be ignored when debugging a particular problem.  Simply
-search for a few key strings based on the files you changed, and the
-solution to the problem should be clear.
+include::howto:partial$post_test.adoc[]
 
 We recommend running the `radiusd -XC` test was performed before
-making any `ldap` module changes for other reasons.  If previous
+making any `ldap` module changes for a few reasons.  If previous
 configuration worked, and the only change was to the `ldap` module,
 then the source of the error is simple.  There is no need to go
 searching through other configuration files or third-party web sites.
 Instead, change and test the module configuration until the server
 works.
-

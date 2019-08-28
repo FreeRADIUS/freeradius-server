@@ -1,0 +1,20 @@
+The default server configuration should be tested via the following
+command:
+
+[source,shell]
+----
+radiusd -XC
+----
+
+If the configuration is correct, then the server will print the
+following message:
+
+[source,log]
+----
+Configuration appears to be OK
+----
+
+If that message does not appear, then it is necessary to correct any
+and all errors before proceeding to the next step.  It is a good idea
+to ensure that the current configuration works _before_ making changes
+to it.
