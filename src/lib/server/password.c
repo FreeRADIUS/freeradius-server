@@ -374,131 +374,60 @@ unknown_header:
  *	For auto-header discovery.
  *
  *	@note Header comparison is case insensitive.
+ *
+ *	We don't put the *value* of "attr_foo" here, as those
+ *	values are loaded at run time.  Instead, we point to
+ *	the attr_foo definition, which is then a static pointer
+ *	to a known variable.
  */
-static fr_table_num_sorted_t const header_names[] = {
-	{ "X- orclntv}",	FR_NT_PASSWORD },
-	{ "{base64_md5}",	FR_MD5_PASSWORD },
-	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
-	{ "{clear}",		FR_CLEARTEXT_PASSWORD },
-	{ "{crypt}",		FR_CRYPT_PASSWORD },
-	{ "{md4}",		FR_NT_PASSWORD },
-	{ "{md5}",		FR_MD5_PASSWORD },
-	{ "{ns-mta-md5}",	FR_NS_MTA_MD5_PASSWORD },
-	{ "{nthash}",		FR_NT_PASSWORD },
-	{ "{nt}",		FR_NT_PASSWORD },
+static fr_table_ptr_ordered_t const header_names[] = {
+	{ "X- orclntv}",	&attr_nt_password },
+	{ "{base64_md5}",	&attr_md5_password },
+	{ "{cleartext}",	&attr_cleartext_password },
+	{ "{clear}",		&attr_cleartext_password },
+	{ "{crypt}",		&attr_crypt_password },
+	{ "{md4}",		&attr_nt_password },
+	{ "{md5}",		&attr_md5_password },
+	{ "{ns-mta-md5}",	&attr_ns_mta_md5_password },
+	{ "{nthash}",		&attr_nt_password },
+	{ "{nt}",		&attr_nt_password },
 #ifdef HAVE_OPENSSL_EVP_H
-	{ "{sha224}",		FR_SHA2_PASSWORD },
-	{ "{sha256}",		FR_SHA2_PASSWORD },
-	{ "{sha2}",		FR_SHA2_PASSWORD },
-	{ "{sha384}",		FR_SHA2_PASSWORD },
-	{ "{sha512}",		FR_SHA2_PASSWORD },
+	{ "{sha224}",		&attr_sha2_password },
+	{ "{sha256}",		&attr_sha2_password },
+	{ "{sha2}",		&attr_sha2_password },
+	{ "{sha384}",		&attr_sha2_password },
+	{ "{sha512}",		&attr_sha2_password },
 #endif
-	{ "{sha}",		FR_SHA_PASSWORD },
-	{ "{smd5}",		FR_SMD5_PASSWORD },
+	{ "{sha}",		&attr_sha_password },
+	{ "{smd5}",		&attr_smd5_password },
 #ifdef HAVE_OPENSSL_EVP_H
-	{ "{ssha224}",		FR_SSHA2_224_PASSWORD },
-	{ "{ssha256}",		FR_SSHA2_256_PASSWORD },
+	{ "{ssha224}",		&attr_ssha2_224_password },
+	{ "{ssha256}",		&attr_ssha2_256_password },
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	{ "{ssha3-224}",	FR_SSHA3_224_PASSWORD },
-	{ "{ssha3-256}",	FR_SSHA3_256_PASSWORD },
-	{ "{ssha3-384}",	FR_SSHA3_384_PASSWORD },
-	{ "{ssha3-512}",	FR_SSHA3_512_PASSWORD },
+	{ "{ssha3-224}",	&attr_ssha3_224_password },
+	{ "{ssha3-256}",	&attr_ssha3_256_password },
+	{ "{ssha3-384}",	&attr_ssha3_384_password },
+	{ "{ssha3-512}",	&attr_ssha3_512_password },
 #  endif
-	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
-	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
+	{ "{ssha384}",		&attr_ssha2_384_password },
+	{ "{ssha512}",		&attr_ssha2_512_password },
 #endif
-	{ "{ssha}",		FR_SSHA_PASSWORD },
-	{ "{x- orcllmv}",	FR_LM_PASSWORD },
-	{ "{x-nthash}",		FR_NT_PASSWORD },
-	{ "{x-pbkdf2}",		FR_PBKDF2_PASSWORD },
+	{ "{ssha}",		&attr_ssha_password },
+	{ "{x- orcllmv}",	&attr_lm_password },
+	{ "{x-nthash}",		&attr_nt_password },
+	{ "{x-pbkdf2}",		&attr_pbkdf2_password },
 };
 static size_t header_names_len = NUM_ELEMENTS(header_names);
 
 
 static ssize_t known_password_header(fr_dict_attr_t const **out, char const *header)
 {
-	switch (fr_table_value_by_str(header_names, header, 0)) {
-	case FR_CLEARTEXT_PASSWORD:
-		*out = attr_cleartext_password;
-		break;
+	fr_dict_attr_t const **da;
 
-	case FR_MD5_PASSWORD:
-		*out = attr_md5_password;
-		break;
+	da = fr_table_value_by_str(header_names, header, NULL);
+	if (!da || !*da) return -1;
 
-	case FR_SMD5_PASSWORD:
-		*out = attr_smd5_password;
-		break;
-
-	case FR_CRYPT_PASSWORD:
-		*out = attr_crypt_password;
-		break;
-
-	case FR_SHA2_PASSWORD:
-		*out = attr_sha2_password;
-		break;
-
-	case FR_SSHA2_224_PASSWORD:
-		*out = attr_ssha2_224_password;
-		break;
-
-	case FR_SSHA2_256_PASSWORD:
-		*out = attr_ssha2_256_password;
-		break;
-
-	case FR_SSHA2_384_PASSWORD:
-		*out = attr_ssha2_384_password;
-		break;
-
-	case FR_SSHA2_512_PASSWORD:
-		*out = attr_ssha2_512_password;
-		break;
-
-	case FR_SSHA3_224_PASSWORD:
-		*out = attr_ssha3_224_password;
-		break;
-
-	case FR_SSHA3_256_PASSWORD:
-		*out = attr_ssha3_256_password;
-		break;
-
-	case FR_SSHA3_384_PASSWORD:
-		*out = attr_ssha3_384_password;
-		break;
-
-	case FR_SSHA3_512_PASSWORD:
-		*out = attr_ssha3_512_password;
-		break;
-
-	case FR_PBKDF2_PASSWORD:
-		*out = attr_pbkdf2_password;
-		break;
-
-	case FR_SHA_PASSWORD:
-		*out = attr_sha_password;
-		break;
-
-	case FR_SSHA_PASSWORD:
-		*out = attr_ssha_password;
-		break;
-
-	case FR_NS_MTA_MD5_PASSWORD:
-		*out = attr_ns_mta_md5_password;
-		break;
-
-	case FR_LM_PASSWORD:
-		*out = attr_lm_password;
-		break;
-
-	case FR_NT_PASSWORD:
-		*out = attr_nt_password;
-		break;
-
-	default:
-		*out = NULL;
-		return -1;
-	}
-
+	*out = *da;
 	return strlen(header);
 }
 
