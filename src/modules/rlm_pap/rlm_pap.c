@@ -137,50 +137,6 @@ fr_dict_attr_autoload_t rlm_pap_dict_attr[] = {
 	{ NULL }
 };
 
-/*
- *	For auto-header discovery.
- *
- *	@note Header comparison is case insensitive.
- */
-static fr_table_num_sorted_t const header_names[] = {
-	{ "X- orclntv}",	FR_NT_PASSWORD },
-	{ "{base64_md5}",	FR_MD5_PASSWORD },
-	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
-	{ "{clear}",		FR_CLEARTEXT_PASSWORD },
-	{ "{crypt}",		FR_CRYPT_PASSWORD },
-	{ "{md4}",		FR_NT_PASSWORD },
-	{ "{md5}",		FR_MD5_PASSWORD },
-	{ "{ns-mta-md5}",	FR_NS_MTA_MD5_PASSWORD },
-	{ "{nthash}",		FR_NT_PASSWORD },
-	{ "{nt}",		FR_NT_PASSWORD },
-#ifdef HAVE_OPENSSL_EVP_H
-	{ "{sha224}",		FR_SHA2_PASSWORD },
-	{ "{sha256}",		FR_SHA2_PASSWORD },
-	{ "{sha2}",		FR_SHA2_PASSWORD },
-	{ "{sha384}",		FR_SHA2_PASSWORD },
-	{ "{sha512}",		FR_SHA2_PASSWORD },
-#endif
-	{ "{sha}",		FR_SHA_PASSWORD },
-	{ "{smd5}",		FR_SMD5_PASSWORD },
-#ifdef HAVE_OPENSSL_EVP_H
-	{ "{ssha224}",		FR_SSHA2_224_PASSWORD },
-	{ "{ssha256}",		FR_SSHA2_256_PASSWORD },
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	{ "{ssha3-224}",	FR_SSHA3_224_PASSWORD },
-	{ "{ssha3-256}",	FR_SSHA3_256_PASSWORD },
-	{ "{ssha3-384}",	FR_SSHA3_384_PASSWORD },
-	{ "{ssha3-512}",	FR_SSHA3_512_PASSWORD },
-#  endif
-	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
-	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
-#endif
-	{ "{ssha}",		FR_SSHA_PASSWORD },
-	{ "{x- orcllmv}",	FR_LM_PASSWORD },
-	{ "{x-nthash}",		FR_NT_PASSWORD },
-	{ "{x-pbkdf2}",		FR_PBKDF2_PASSWORD },
-};
-static size_t header_names_len = NUM_ELEMENTS(header_names);
-
 #ifdef HAVE_OPENSSL_EVP_H
 static fr_table_num_sorted_t const pbkdf2_crypt_names[] = {
 	{ "HMACSHA1",		FR_SSHA_PASSWORD },
@@ -205,93 +161,6 @@ static fr_table_num_sorted_t const pbkdf2_passlib_names[] = {
 static size_t pbkdf2_passlib_names_len = NUM_ELEMENTS(pbkdf2_passlib_names);
 #endif
 
-static ssize_t pap_password_header(fr_dict_attr_t const **out, char const *header)
-{
-	switch (fr_table_value_by_str(header_names, header, 0)) {
-	case FR_CLEARTEXT_PASSWORD:
-		*out = attr_cleartext_password;
-		break;
-
-	case FR_MD5_PASSWORD:
-		*out = attr_md5_password;
-		break;
-
-	case FR_SMD5_PASSWORD:
-		*out = attr_smd5_password;
-		break;
-
-	case FR_CRYPT_PASSWORD:
-		*out = attr_crypt_password;
-		break;
-
-	case FR_SHA2_PASSWORD:
-		*out = attr_sha2_password;
-		break;
-
-	case FR_SSHA2_224_PASSWORD:
-		*out = attr_ssha2_224_password;
-		break;
-
-	case FR_SSHA2_256_PASSWORD:
-		*out = attr_ssha2_256_password;
-		break;
-
-	case FR_SSHA2_384_PASSWORD:
-		*out = attr_ssha2_384_password;
-		break;
-
-	case FR_SSHA2_512_PASSWORD:
-		*out = attr_ssha2_512_password;
-		break;
-
-	case FR_SSHA3_224_PASSWORD:
-		*out = attr_ssha3_224_password;
-		break;
-
-	case FR_SSHA3_256_PASSWORD:
-		*out = attr_ssha3_256_password;
-		break;
-
-	case FR_SSHA3_384_PASSWORD:
-		*out = attr_ssha3_384_password;
-		break;
-
-	case FR_SSHA3_512_PASSWORD:
-		*out = attr_ssha3_512_password;
-		break;
-
-	case FR_PBKDF2_PASSWORD:
-		*out = attr_pbkdf2_password;
-		break;
-
-	case FR_SHA_PASSWORD:
-		*out = attr_sha_password;
-		break;
-
-	case FR_SSHA_PASSWORD:
-		*out = attr_ssha_password;
-		break;
-
-	case FR_NS_MTA_MD5_PASSWORD:
-		*out = attr_ns_mta_md5_password;
-		break;
-
-	case FR_LM_PASSWORD:
-		*out = attr_lm_password;
-		break;
-
-	case FR_NT_PASSWORD:
-		*out = attr_nt_password;
-		break;
-
-	default:
-		*out = NULL;
-		return -1;
-	}
-
-	return strlen(header);
-}
-
 /*
  *	Authorize the user for PAP authentication.
  *
@@ -301,137 +170,10 @@ static ssize_t pap_password_header(fr_dict_attr_t const **out, char const *heade
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_pap_t const 	*inst = instance;
-	bool			found_pw = false;
-	VALUE_PAIR		*known_good, *password;
-	fr_cursor_t		cursor;
-	size_t			normify_min_len = 0;
+	VALUE_PAIR		*password;
 
-	for (known_good = fr_cursor_init(&cursor, &request->control);
-	     known_good;
-	     known_good = fr_cursor_next(&cursor)) {
-	     	VP_VERIFY(known_good);
-	next:
-		if (known_good->da == attr_user_password) {
-			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-			RWDEBUG("!!! Ignoring control:User-Password.  Update your        !!!");
-			RWDEBUG("!!! configuration so that the \"known good\" clear text !!!");
-			RWDEBUG("!!! password is in Cleartext-Password and NOT in        !!!");
-			RWDEBUG("!!! User-Password.                                      !!!");
-			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		} else if (known_good->da == attr_password_with_header) {
-			VALUE_PAIR *new;
-
-			/*
-			 *	Password already exists: use that instead of this one.
-			 */
-			if (fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY)) {
-				RWDEBUG("Config already contains a \"known good\" password "
-					"(&control:%s).  Ignoring &control:%s",
-					attr_cleartext_password->name, known_good->da->name);
-				break;
-			}
-
-			MEM(new = password_normify_with_header(request, request, known_good,
-							       pap_password_header,
-							       attr_cleartext_password));
-			if (RDEBUG_ENABLED3) {
-				RDEBUG3("Normalized &control:%pP -> &control:%pP", known_good, new);
-			} else {
-				RDEBUG2("Normalized &control:%s -> &control:%s", known_good->da->name, new->da->name);
-			}
-			RDEBUG2("Removing &control:%s", known_good->da->name);
-			fr_cursor_free_item(&cursor);			/* advances the cursor for us */
-			fr_cursor_append(&cursor, new);			/* inserts at the end of the list */
-
-			found_pw = true;
-
-			known_good = fr_cursor_current(&cursor);
-			if (known_good) goto next;
-		} else if ((known_good->da == attr_cleartext_password) ||
-			   (known_good->da == attr_crypt_password) ||
-			   (known_good->da == attr_ns_mta_md5_password)) {
-			found_pw = true;
-		} else if ((known_good->da == attr_md5_password) ||
-			   (known_good->da == attr_smd5_password) ||
-			   (known_good->da == attr_nt_password) ||
-			   (known_good->da == attr_lm_password)) {
-			if (inst->normify) normify_min_len = 16;
-			found_pw = true;
-		}
-#ifdef HAVE_OPENSSL_EVP_H
-		else if (known_good->da == attr_sha2_password) {
-			if (inst->normify) normify_min_len = 28;
-			found_pw = true;
-		} else if (known_good->da == attr_ssha2_224_password) {
-			if (inst->normify) normify_min_len = 28;
-			found_pw = true;
-		} else if (known_good->da == attr_ssha2_256_password) {
-			if (inst->normify) normify_min_len = 32;
-			found_pw = true;
-		} else if (known_good->da == attr_ssha2_384_password) {
-			if (inst->normify) normify_min_len = 48;
-			found_pw = true;
-		} else if (known_good->da == attr_ssha2_512_password) {
-			if (inst->normify) normify_min_len = 64;
-			found_pw = true;
-		}
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-		else if (known_good->da == attr_sha3_password) {
-			if (inst->normify) normify_min_len = 28;
-			found_pw = true;
-		} else if (known_good->da == attr_ssha3_224_password) {
-			if (inst->normify) normify_min_len = 28;
-			found_pw = true;
-		} else if (known_good->da == attr_ssha3_256_password) {
-			if (inst->normify) normify_min_len = 32;
-			found_pw = true;
-		} else if (known_good->da == attr_ssha3_384_password) {
-			if (inst->normify) normify_min_len = 48;
-			found_pw = true;
-		} else if (known_good->da == attr_ssha3_512_password) {
-			if (inst->normify) normify_min_len = 64;
-			found_pw = true;
-		}
-#  endif
-		else if (known_good->da == attr_pbkdf2_password) {
-			found_pw = true; /* Already base64 standardized */
-		}
-#endif
-		else if ((known_good->da == attr_sha_password) ||
-			 (known_good->da == attr_ssha_password)) {
-			if (inst->normify) normify_min_len = 20;
-			found_pw = true;
-		}
-
-		if (normify_min_len > 0) {
-			VALUE_PAIR *new;
-
-			new = password_normify(request, request, known_good, normify_min_len);
-			if (new) {
-				fr_cursor_free_item(&cursor);		/* free the old pasword */
-				fr_cursor_append(&cursor, new);		/* inserts at the end of the list */
-
-				known_good = fr_cursor_current(&cursor);
-				if (known_good) goto next;
-			}
-		}
-	}
-
-	/*
-	 *	Print helpful warnings if there was no password.
-	 */
-	if (!found_pw) {
-		/*
-		 *	Likely going to be proxied.  Avoid printing
-		 *	warning message.
-		 */
-		if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY)) {
-			return RLM_MODULE_NOOP;
-		}
-
-		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type");
-		RWDEBUG("Authentication will fail unless a \"known good\" password is available");
-
+	if (fr_pair_find_by_da(request->packet->vps, attr_auth_type, TAG_ANY) != NULL) {
+		REDEBUG("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		return RLM_MODULE_NOOP;
 	}
 
@@ -1223,15 +965,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	known_good = password_normalise(request, inst->normify);
 	if (!known_good) {
-	unknown:
-		REDEBUG("No \"known good\" password found for user");
-		return RLM_MODULE_FAIL;
+		REDEBUG("No \"known good\" password found for user.");
+		REDEBUG("Some other module must authenticate the user.");
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
 	 *	Auto-detect passwords, by attribute in the
 	 *	config items, to find out which authentication
 	 *	function to call.
+	 *
+	 *	@todo - put this into a table keyed by
+	 *		[known_good->da->attr - 5000]
+	 *	as with password_normalise()
 	 */
 	if (known_good->da == attr_cleartext_password) {
 		auth_func = &pap_auth_clear;
@@ -1278,7 +1024,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	} else if (known_good->da == attr_ns_mta_md5_password) {
 		auth_func = &pap_auth_ns_mta_md5;
 	} else {
-		goto unknown;
+		/*
+		 *	It's a known password, but we don't know what it is.
+		 */
+		REDEBUG("No \"known good\" password was found for user");
+		return RLM_MODULE_FAIL;
 	}
 
 	if (RDEBUG_ENABLED3) {
