@@ -923,6 +923,42 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *
 	return RLM_MODULE_OK;
 }
 
+typedef rlm_rcode_t (*pap_auth_func_t)(rlm_pap_t const *, REQUEST *, VALUE_PAIR *, VALUE_PAIR const *);
+
+static const pap_auth_func_t auth_func_table[] = {
+	[FR_CLEARTEXT_PASSWORD - 5000 ]	= pap_auth_clear,
+	[FR_LM_PASSWORD - 5000 ]	= pap_auth_lm,
+	[FR_MD5_PASSWORD - 5000 ]	= pap_auth_md5,
+	[FR_SMD5_PASSWORD - 5000 ]	= pap_auth_smd5,
+
+#ifdef HAVE_CRYPT
+	[FR_CRYPT_PASSWORD - 5000 ]	= pap_auth_crypt,
+#endif
+	[FR_NS_MTA_MD5_PASSWORD - 5000 ] = pap_auth_ns_mta_md5,
+	[FR_NT_PASSWORD - 5000 ]	= pap_auth_nt,
+	[FR_PBKDF2_PASSWORD - 5000 ]	= pap_auth_pbkdf2,
+	[FR_SHA_PASSWORD - 5000 ]	= pap_auth_sha,
+	[FR_SHA1_PASSWORD - 5000 ]	= pap_auth_sha,
+
+#ifdef HAVE_OPENSSL_EVP_H
+	[FR_SHA2_PASSWORD - 5000 ]	= pap_auth_sha_evp,
+	[FR_SSHA_PASSWORD - 5000 ]	= pap_auth_ssha,
+	[FR_SSHA1_PASSWORD - 5000 ]	= pap_auth_ssha,
+	[FR_SSHA2_224_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
+	[FR_SSHA2_256_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
+	[FR_SSHA2_384_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
+	[FR_SSHA2_512_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
+
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	[FR_SHA3_PASSWORD - 5000 ]	= pap_auth_sha_evp,
+	[FR_SSHA3_224_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
+	[FR_SSHA3_256_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
+	[FR_SSHA3_384_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
+	[FR_SSHA3_512_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
+#endif
+#endif	/* HAVE_OPENSSL_EVP_H */
+};
+#define MAX_KNOWN_PASSWORD (sizeof(auth_func_table) / sizeof(auth_func_table[0]))
 
 /*
  *	Authenticate the user via one of any well-known password.
@@ -932,7 +968,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	rlm_pap_t const *inst = instance;
 	VALUE_PAIR	*known_good, *password;
 	rlm_rcode_t	rcode = RLM_MODULE_INVALID;
-	rlm_rcode_t	(*auth_func)(rlm_pap_t const *, REQUEST *, VALUE_PAIR *, VALUE_PAIR const *) = NULL;
+	pap_auth_func_t auth_func;
 
 	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 	if (!password) {
@@ -970,66 +1006,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		return RLM_MODULE_NOOP;
 	}
 
-	/*
-	 *	Auto-detect passwords, by attribute in the
-	 *	config items, to find out which authentication
-	 *	function to call.
-	 *
-	 *	@todo - put this into a table keyed by
-	 *		[known_good->da->attr - 5000]
-	 *	as with password_normalise()
-	 */
-	if (known_good->da == attr_cleartext_password) {
-		auth_func = &pap_auth_clear;
-#ifdef HAVE_CRYPT
-	} else if (known_good->da == attr_crypt_password) {
-		auth_func = &pap_auth_crypt;
-#endif
-	} else if (known_good->da == attr_md5_password) {
-		auth_func = &pap_auth_md5;
-	} else if (known_good->da == attr_smd5_password) {
-		auth_func = &pap_auth_smd5;
-	}
-#ifdef HAVE_OPENSSL_EVP_H
-	else if (known_good->da == attr_sha2_password
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-		 || (known_good->da == attr_sha3_password)
-#  endif
-		) {
-		auth_func = &pap_auth_sha_evp;
-	} else if ((known_good->da == attr_ssha2_224_password) ||
-		   (known_good->da == attr_ssha2_256_password) ||
-		   (known_good->da == attr_ssha2_384_password) ||
-		   (known_good->da == attr_ssha2_512_password)
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-		   || (known_good->da == attr_ssha3_224_password) ||
-		   (known_good->da == attr_ssha3_256_password) ||
-		   (known_good->da == attr_ssha3_384_password) ||
-		   (known_good->da == attr_ssha3_512_password)
-#  endif
-		) {
-		auth_func = &pap_auth_ssha_evp;
-	} else if (known_good->da == attr_pbkdf2_password) {
-		auth_func = &pap_auth_pbkdf2;
-	}
-#endif
-	else if (known_good->da == attr_sha_password) {
-		auth_func = &pap_auth_sha;
-	} else if (known_good->da == attr_ssha_password) {
-		auth_func = &pap_auth_ssha;
-	} else if (known_good->da == attr_nt_password) {
-		auth_func = &pap_auth_nt;
-	} else if (known_good->da == attr_lm_password) {
-		auth_func = &pap_auth_lm;
-	} else if (known_good->da == attr_ns_mta_md5_password) {
-		auth_func = &pap_auth_ns_mta_md5;
-	} else {
+	if ((known_good->da->attr < 5000) || (known_good->da->attr >= (5000 + MAX_KNOWN_PASSWORD)) ||
+	    !auth_func_table[known_good->da->attr - 5000]) {
 		/*
 		 *	It's a known password, but we don't know what it is.
 		 */
 		REDEBUG("No \"known good\" password was found for user");
 		return RLM_MODULE_FAIL;
 	}
+
+	auth_func = auth_func_table[known_good->da->attr - 5000];
 
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Comparing with \"known good\" %pP (%zu)", known_good, known_good->vp_length);
