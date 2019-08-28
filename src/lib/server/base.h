@@ -70,3 +70,6 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/xlat.h>
 
 #include <freeradius-devel/util/base.h>
+
+int server_init(CONF_SECTION *cs);
+void server_free(void);

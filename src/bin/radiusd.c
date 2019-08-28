@@ -522,11 +522,6 @@ int main(int argc, char *argv[])
 	INFO("%s", fr_debug_state_to_msg(fr_debug_state));
 
 	/*
-	 *  Initialise trigger rate limiting
-	 */
-	trigger_exec_init(config->root_cs);
-
-	/*
 	 *  Call this again now we've loaded the configuration. Yes I know...
 	 */
 	if (talloc_config_set(config) < 0) {
@@ -671,49 +666,9 @@ int main(int argc, char *argv[])
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
-	if (unlang_init() < 0) EXIT_WITH_FAILURE;
+	if (unlang_init() < 0) return -1;
 
-	/*
-	 *	Initialize Auth-Type, etc. in the virtual servers
-	 *	before loading the modules.  Some modules need those
-	 *	to be defined.
-	 */
-	if (virtual_servers_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Bootstrap the modules.  This links to them, and runs
-	 *	their "bootstrap" routines.
-	 *
-	 *	After this step, all dynamic attributes, xlats, etc. are defined.
-	 */
-	if (modules_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	And then load the virtual servers.
-	 *
-	 *	This function also opens the listeners in each virtual
-	 *	server.  These listeners MUST be started before the
-	 *	modules.  If there is another server already running,
-	 *	we will discover it here and exit BEFORE opening
-	 *	connections to back-end DBs.
-	 */
-	if (virtual_servers_instantiate() < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Call the module's initialisation methods.  These create
-	 *	connection pools and open connections to external resources.
-	 */
-	if (modules_instantiate() < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Instantiate "permanent" xlats
-	 */
-	if (xlat_instantiate() < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Instantiate "permanent" paircmps
-	 */
-	if (paircmp_init() < 0) EXIT_WITH_FAILURE;
+	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Everything seems to have loaded OK, exit gracefully.
@@ -970,44 +925,12 @@ cleanup:
 	 */
 	log_global_free();
 
-	/*
-	 *  Free xlat instance data, and call any detach methods
-	 */
-	xlat_instances_free();
+	server_free();
 
 	/*
-	 *  Detach modules, connection pools, registered xlats
-	 *  paircmps / maps.
-	 */
-	modules_free();
-
-	/*
-	 *  The only paircmps remaining are the ones registered
-	 *  by the server core.
-	 */
-	paircmp_free();
-
-	/*
-	 *  The only xlats remaining are the ones registered by
-	 *  the server core.
-	 */
-	xlat_free();
-
-	/*
-	 *  The only maps remaining are the ones registered by
-	 *  the server core.
-	 */
-	map_proc_free();
-
-	/*
-	 *  Free any resources used by the unlang interpreter.
+	 *	Free any resources used by the unlang interpreter.
 	 */
 	unlang_free();
-
-	/*
-	 *	Free information associated with the virtual servers.
-	 */
-	virtual_servers_free();
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */

@@ -1,6 +1,7 @@
 TARGET		:= libfreeradius-server.a
 
 SOURCES	:= \
+	base.c \
 	auth.c \
 	cf_file.c \
 	cf_parse.c \

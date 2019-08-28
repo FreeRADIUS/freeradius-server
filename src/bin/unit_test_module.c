@@ -846,54 +846,11 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Initialise the trigger rate limiting tree
-	 */
-	if (trigger_exec_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
-
-	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
-	if (unlang_init() < 0) EXIT_WITH_FAILURE;
+	if (unlang_init() < 0) return -1;
 
-	/*
-	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
-	 */
-	if (xlat_init() < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Bootstrap the modules.  This links to them, and runs
-	 *	their "bootstrap" routines.
-	 *
-	 *	After this step, all dynamic attributes, xlats, etc. are defined.
-	 */
-	if (modules_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Initialize Auth-Type, etc. in the virtual servers
-	 *	before loading the modules.  Some modules need those
-	 *	to be defined.
-	 */
-	if (virtual_servers_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Instantiate the modules
-	 */
-	if (modules_instantiate() < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	And then load the virtual servers.
-	 */
-	if (virtual_servers_instantiate() < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Call xlat instantiation functions (after the xlats have been compiled)
-	 */
-	if (xlat_instantiate() < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Instantiate "permanent" paircmps
-	 */
-	if (paircmp_init() < 0) EXIT_WITH_FAILURE;
+	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	Create a dummy event list
@@ -1121,45 +1078,12 @@ cleanup:
 	 */
 	log_global_free();
 
-	/*
-	 *	Free xlat instance data, and call any detach methods
-	 */
-	xlat_instances_free();
-
-	/*
-	 *	Unregister poke *after* freeing instances that depend on it
-	 */
-	xlat_unregister("poke");
-
-	/*
-	 *	Detach modules, connection pools, registered xlats / paircmps / maps.
-	 */
-	modules_free();
-
-	/*
-	 *	The only paircmps remaining are the ones registered by the server core.
-	 */
-	paircmp_free();
-
-	/*
-	 *	The only xlats remaining are the ones registered by the server core.
-	 */
-	xlat_free();
-
-	/*
-	 *	The only maps remaining are the ones registered by the server core.
-	 */
-	map_proc_free();
+	server_free();
 
 	/*
 	 *	Free any resources used by the unlang interpreter.
 	 */
 	unlang_free();
-
-	/*
-	 *	Free information associated with the virtual servers.
-	 */
-	virtual_servers_free();
 
 	/*
 	 *	And now nothing should be left anywhere except the
