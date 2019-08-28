@@ -936,7 +936,6 @@ static const pap_auth_func_t auth_func_table[] = {
 #endif
 	[FR_NS_MTA_MD5_PASSWORD - 5000 ] = pap_auth_ns_mta_md5,
 	[FR_NT_PASSWORD - 5000 ]	= pap_auth_nt,
-	[FR_PBKDF2_PASSWORD - 5000 ]	= pap_auth_pbkdf2,
 	[FR_SHA_PASSWORD - 5000 ]	= pap_auth_sha,
 	[FR_SHA1_PASSWORD - 5000 ]	= pap_auth_sha,
 
@@ -948,6 +947,8 @@ static const pap_auth_func_t auth_func_table[] = {
 	[FR_SSHA2_256_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
 	[FR_SSHA2_384_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
 	[FR_SSHA2_512_PASSWORD - 5000 ]	= pap_auth_ssha_evp,
+
+	[FR_PBKDF2_PASSWORD - 5000 ]	= pap_auth_pbkdf2,
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	[FR_SHA3_PASSWORD - 5000 ]	= pap_auth_sha_evp,
