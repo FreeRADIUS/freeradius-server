@@ -49,6 +49,16 @@ int server_init(CONF_SECTION *cs)
 	if (xlat_init() < 0) return -1;
 
 	/*
+	 *	Instantiate "permanent" paircmps
+	 */
+	if (paircmp_init() < 0) return -1;
+
+	/*
+	 *	Set up dictionaries and attributes for password comparisons
+	 */
+	if (password_init() < 0) return -1;
+
+	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
 	 *	before loading the modules.  Some modules need those
 	 *	to be defined.
@@ -77,16 +87,6 @@ int server_init(CONF_SECTION *cs)
 	 *	Call xlat instantiation functions (after the xlats have been compiled)
 	 */
 	if (xlat_instantiate() < 0) return -1;
-
-	/*
-	 *	Instantiate "permanent" paircmps
-	 */
-	if (paircmp_init() < 0) return -1;
-
-	/*
-	 *	Set up dictionaries and attributes for password comparisons
-	 */
-	if (password_init() < 0) return -1;
 
 	return 0;
 }
