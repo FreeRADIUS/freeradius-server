@@ -36,6 +36,12 @@ VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const
 
 VALUE_PAIR *password_normify_with_header(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good,
 					 password_header_lookup_t func, fr_dict_attr_t const *def);
+
+VALUE_PAIR *password_normalise(REQUEST *request, bool normalise);
+
+int password_init(void);
+void password_free(void);
+
 #ifdef __cplusplus
 }
 #endif
