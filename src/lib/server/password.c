@@ -454,6 +454,7 @@ static const size_t fr_password_length[] = {
 	[FR_SSHA3_384_PASSWORD - 5000 ]	= 48,
 	[FR_SSHA3_512_PASSWORD - 5000 ]	= 64,
 };
+#define MAX_KNOWN_PASSWORD (sizeof(fr_password_length) / sizeof(fr_password_length[0]))
 
 
 /** Normalise passwords.
@@ -487,7 +488,7 @@ VALUE_PAIR *password_normalise(REQUEST *request, bool normalise)
 		 */
 		if (vp->da->parent != root) continue;
 
-		if ((vp->da->attr < 5000) || (vp->da->attr > 5099)) continue;
+		if ((vp->da->attr < 5000) || (vp->da->attr >= (5000 + MAX_KNOWN_PASSWORD))) continue;
 
 		/*
 		 *	Remove the header, and convert it to something sane.
