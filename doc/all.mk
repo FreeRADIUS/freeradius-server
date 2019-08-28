@@ -121,7 +121,14 @@ clean.doc:
 #	Sanity checks
 #
 check.doc:
-	${Q}./scripts/checks/missing-xlat-doc.sh
+	${Q}echo "TEST-DOC XLAT CHECK";                                           \
+	check_xlatA="${top_srcdir}/scripts/checks/missing-xlat-doc.txt";          \
+	check_xlatB="${BUILD_DIR}/tests/missing-xlat-doc.txt";                    \
+	./scripts/checks/missing-xlat-doc.sh > $${check_xlatB};                   \
+	if ! diff $${check_xlatA} $${check_xlatB}; then                           \
+		echo "FAILED: XLAT'S MISSING CHECKS: $$check_xlatA != $$check_xlatB"; \
+		exit 1;                                                               \
+	fi
 
 .PHONY: tests.doc
 tests.doc:
