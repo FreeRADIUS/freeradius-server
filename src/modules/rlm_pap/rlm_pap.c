@@ -298,6 +298,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(UNUSED rlm_pap_t const *inst, R
 	return RLM_MODULE_OK;
 }
 
+#ifdef HAVE_OPENSSL_EVP_H
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(UNUSED rlm_pap_t const *inst, REQUEST *request,
 						  VALUE_PAIR *known_good, VALUE_PAIR const *password)
 {
@@ -328,7 +329,6 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(UNUSED rlm_pap_t const *inst, 
 	return RLM_MODULE_OK;
 }
 
-#ifdef HAVE_OPENSSL_EVP_H
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(UNUSED rlm_pap_t const *inst, REQUEST *request,
 						     VALUE_PAIR *known_good, VALUE_PAIR const *password)
 {
