@@ -148,29 +148,30 @@ _Generic((_table), \
 	 fr_table_ptr_ordered_t *		:	fr_table_ordered_ptr_by_substr	\
 )(_table, _table ## _len, _name, _name_len, _def)
 
-int	fr_table_sorted_num_by_longest_prefix(fr_table_num_sorted_t const *table, size_t table_len,
+int	fr_table_sorted_num_by_longest_prefix(size_t *match_len, fr_table_num_sorted_t const *table, size_t table_len,
 					      char const *name, ssize_t name_len, int def);
 
-int	fr_table_ordered_num_by_longest_prefix(fr_table_num_ordered_t const *table, size_t table_len,
+int	fr_table_ordered_num_by_longest_prefix(size_t *match_len, fr_table_num_ordered_t const *table, size_t table_len,
 					       char const *name, ssize_t name_len, int def);
 
-void 	*fr_table_sorted_ptr_by_longest_prefix(fr_table_ptr_sorted_t const *table, size_t table_len,
+void 	*fr_table_sorted_ptr_by_longest_prefix(size_t *match_len, fr_table_ptr_sorted_t const *table, size_t table_len,
 					       char const *name, ssize_t name_len, void const *def);
 
-void	*fr_table_ordered_ptr_by_longest_prefix(fr_table_ptr_ordered_t const *table, size_t table_len,
+void	*fr_table_ordered_ptr_by_longest_prefix(size_t *match_len, fr_table_ptr_ordered_t const *table, size_t table_len,
 						char const *name, ssize_t name_len, void const *def);
 
 /** Find the longest string match using a sorted or ordered table
  *
- * @param[in] _table	to search in.
- * @param[in] _name	to resolve to a number.
- * @param[in] _name_len	The amount of name to match.
- * @param[in] _def	Default value if no entry matched.
+ * @param[out]_match_len	How much of the input string matched.
+ * @param[in] _table		to search in.
+ * @param[in] _name		to resolve to a number.
+ * @param[in] _name_len		The amount of name to match.
+ * @param[in] _def		Default value if no entry matched.
  * @return
  *	- _def if name matched no entries in the table.
  *	- the value of the matching entry.
  */
-#define fr_table_num_by_longest_prefix(_table, _name, _name_len, _def) \
+#define fr_table_value_by_longest_prefix(_match_len, _table, _name, _name_len, _def) \
 _Generic((_table), \
 	 fr_table_num_sorted_t const *		:	fr_table_sorted_num_by_longest_prefix,	\
 	 fr_table_num_ordered_t const *		:	fr_table_ordered_num_by_longest_prefix,	\
@@ -180,7 +181,7 @@ _Generic((_table), \
 	 fr_table_ptr_ordered_t const *		:	fr_table_ordered_ptr_by_longest_prefix,	\
 	 fr_table_ptr_sorted_t *		:	fr_table_sorted_ptr_by_longest_prefix,	\
 	 fr_table_ptr_ordered_t *		:	fr_table_ordered_ptr_by_longest_prefix	\
-)(_table, _table ## _len, _name, _name_len, _def)
+)(_match_len, _table, _table ## _len, _name, _name_len, _def)
 
 char const	*fr_table_ordered_str_by_num(fr_table_num_ordered_t const *table, size_t table_len,
 					     int number, char const *def);

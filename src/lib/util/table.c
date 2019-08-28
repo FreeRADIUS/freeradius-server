@@ -75,6 +75,21 @@ _our_return_type _our_name(_our_table_type table, size_t table_len, char const *
 	return ret; \
 }
 
+#define TABLE_TYPE_STR_MATCH_LEN_FUNC(_func, _our_table_type, _our_name, _our_def_type, _our_return_type) \
+_our_return_type _our_name(size_t *match_len, _our_table_type table, size_t table_len, char const *name, ssize_t name_len, _our_def_type def) \
+{ \
+	_our_return_type ret; \
+	_our_table_type found; \
+	found = (_our_table_type)_func(match_len, table, table_len, sizeof(((_our_table_type)0)[0]), name, name_len); \
+	if (!found) { \
+		memcpy(&ret, &def, sizeof(ret)); \
+		return ret; \
+	} \
+	memcpy(&ret, &found->value, sizeof(ret)); \
+	return ret; \
+}
+
+
 #define TABLE_TYPE_VALUE_FUNC(_our_table_type, _our_name, _our_value_type) \
 char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
 { \
@@ -270,6 +285,7 @@ TABLE_TYPE_STR_LEN_FUNC(table_ordered_value_by_substr, fr_table_ptr_ordered_t co
  *
  * @note The table *MUST* be sorted lexicographically, else the result may be incorrect.
  *
+ * @param[out] match_len	How much of the input string matched.
  * @param[in] table		to search in.
  * @param[in] table_len		The number of elements in the table.
  * @param[in] element_size	Size of elements in the table.
@@ -279,7 +295,8 @@ TABLE_TYPE_STR_LEN_FUNC(table_ordered_value_by_substr, fr_table_ptr_ordered_t co
  *	- num value of matching entry.
  *      - NULL if no matching entries.
  */
-static void const *table_sorted_value_by_longest_prefix(void const *table, size_t table_len, size_t element_size,
+static void const *table_sorted_value_by_longest_prefix(size_t *match_len,
+							void const *table, size_t table_len, size_t element_size,
 							char const *name, ssize_t name_len)
 {
 	ssize_t		start = 0;
@@ -308,7 +325,10 @@ static void const *table_sorted_value_by_longest_prefix(void const *table, size_
 			/*
 			 *	Exact match
 			 */
-			if (tlen == (size_t)name_len) return offset;
+			if (tlen == (size_t)name_len) {
+				if (match_len) *match_len = name_len;
+				return offset;
+			}
 
 			/*
 			 *	Partial match.
@@ -318,6 +338,7 @@ static void const *table_sorted_value_by_longest_prefix(void const *table, size_
 			 */
 			if (tlen < (size_t)name_len) {
 				found = offset;
+				if (match_len) *match_len = name_len;
 				ret = 1;
 			}
 		}
@@ -332,15 +353,16 @@ static void const *table_sorted_value_by_longest_prefix(void const *table, size_
 	return found;
 }
 
-TABLE_TYPE_STR_LEN_FUNC(table_sorted_value_by_longest_prefix, fr_table_num_sorted_t const *,
-			fr_table_sorted_num_by_longest_prefix, int, int)
-TABLE_TYPE_STR_LEN_FUNC(table_sorted_value_by_longest_prefix, fr_table_ptr_sorted_t const *,
-			fr_table_sorted_ptr_by_longest_prefix, void const *, void *)
+TABLE_TYPE_STR_MATCH_LEN_FUNC(table_sorted_value_by_longest_prefix, fr_table_num_sorted_t const *,
+			      fr_table_sorted_num_by_longest_prefix, int, int)
+TABLE_TYPE_STR_MATCH_LEN_FUNC(table_sorted_value_by_longest_prefix, fr_table_ptr_sorted_t const *,
+			      fr_table_sorted_ptr_by_longest_prefix, void const *, void *)
 
 /** Find the longest string match using an arbitrarily ordered table
  *
  * i.e. given name of "food", and table of f, foo, of - foo would be returned.
  *
+ * @param[out] match_len	How much of the input string matched.
  * @param[in] table		to search in.
  * @param[in] table_len		The number of elements in the table.
  * @param[in] element_size	Size of elements in the table.
@@ -350,7 +372,8 @@ TABLE_TYPE_STR_LEN_FUNC(table_sorted_value_by_longest_prefix, fr_table_ptr_sorte
  *	- num value of matching entry.
  *      - def if no matching entries.
  */
-static void const *table_ordered_value_by_longest_prefix(void const *table, size_t table_len, size_t element_size,
+static void const *table_ordered_value_by_longest_prefix(size_t *match_len,
+							 void const *table, size_t table_len, size_t element_size,
 							 char const *name, ssize_t name_len)
 {
 	size_t		i;
@@ -371,7 +394,10 @@ static void const *table_ordered_value_by_longest_prefix(void const *table, size
 		/*
 		 *	Exact match
 		 */
-		if (j == (size_t)name_len) return offset;
+		if (j == (size_t)name_len) {
+			if (match_len) *match_len = name_len;
+			return offset;
+		}
 
 		/*
 		 *	Partial match.
@@ -385,13 +411,15 @@ static void const *table_ordered_value_by_longest_prefix(void const *table, size
 		}
 	}
 
+	if (match_len) *match_len = found_len;
+
 	return found;
 }
 
-TABLE_TYPE_STR_LEN_FUNC(table_ordered_value_by_longest_prefix, fr_table_num_ordered_t const *,
-			fr_table_ordered_num_by_longest_prefix, int, int)
-TABLE_TYPE_STR_LEN_FUNC(table_ordered_value_by_longest_prefix, fr_table_ptr_ordered_t const *,
-			fr_table_ordered_ptr_by_longest_prefix, void const *, void *)
+TABLE_TYPE_STR_MATCH_LEN_FUNC(table_ordered_value_by_longest_prefix, fr_table_num_ordered_t const *,
+			      fr_table_ordered_num_by_longest_prefix, int, int)
+TABLE_TYPE_STR_MATCH_LEN_FUNC(table_ordered_value_by_longest_prefix, fr_table_ptr_ordered_t const *,
+			      fr_table_ordered_ptr_by_longest_prefix, void const *, void *)
 
 /*
  *	Value to string conversion functions
