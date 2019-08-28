@@ -180,7 +180,7 @@ VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const
 	uint8_t			buffer[256];
 	ssize_t			decoded;
 	VALUE_PAIR		*out;
-	normalise_t		normalised;
+	normalise_t		normalised = NORMALISED_NOTHING;
 
 	if (min_len >= sizeof(buffer)) return NULL; /* paranoia */
 
