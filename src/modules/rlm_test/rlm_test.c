@@ -181,7 +181,7 @@ static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PA
 {
 	rad_assert(check->vp_type == FR_TYPE_STRING);
 
-	RINFO("test-Paircmp called with \"%s\"", check->vp_strvalue);
+	RINFO("Test-Paircmp called with \"%s\"", check->vp_strvalue);
 
 	if (strcmp(check->vp_strvalue, "yes") == 0) return 0;
 	return 1;
@@ -223,9 +223,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_test_t *inst = instance;
 
-	if (paircmp_register_by_name("test-Paircmp", attr_user_name, false,
+	if (paircmp_register_by_name("Test-Paircmp", attr_user_name, false,
 					rlm_test_cmp, inst) < 0) {
-		PERROR("Failed registering \"test-Paircmp\"");
+		PERROR("Failed registering \"Test-Paircmp\"");
 		return -1;
 	}
 
