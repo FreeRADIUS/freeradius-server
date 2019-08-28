@@ -27,8 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module.h>
 
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.password.h>
-
 typedef struct {
 	char const		*name;		//!< Auth-Type value for this module instance.
 	fr_dict_enum_t		*auth_type;
@@ -132,8 +130,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_INVALID;
 	}
 
-	known_good = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
-	if (known_good == NULL) {
+	/*
+	 *	Normalise passwords, if it hasn't already been done.
+	 *
+	 *	This function returns the "known good" password, and
+	 *	prefers to return Cleartext-Password over everything
+	 *	else.
+	 */
+	known_good = password_normalise(request, true);
+	if (!known_good || (known_good->da != attr_cleartext_password)) {
 		REDEBUG("&control:Cleartext-Password is required for authentication");
 		return RLM_MODULE_FAIL;
 	}
