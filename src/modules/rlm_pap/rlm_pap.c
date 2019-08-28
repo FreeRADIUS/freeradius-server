@@ -1190,7 +1190,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	rlm_pap_t const *inst = instance;
 	VALUE_PAIR	*known_good, *password;
 	rlm_rcode_t	rcode = RLM_MODULE_INVALID;
-	fr_cursor_t	cursor;
 	rlm_rcode_t	(*auth_func)(rlm_pap_t const *, REQUEST *, VALUE_PAIR *, VALUE_PAIR const *) = NULL;
 
 	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
@@ -1216,70 +1215,70 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	}
 
 	/*
+	 *	Normalise passwords, if it hasn't already been done.
+	 *
+	 *	This function returns the "known good" password, and
+	 *	prefers to return Cleartext-Password over everything
+	 *	else.
+	 */
+	known_good = password_normalise(request, inst->normify);
+	if (!known_good) {
+	unknown:
+		REDEBUG("No \"known good\" password found for user");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
 	 *	Auto-detect passwords, by attribute in the
 	 *	config items, to find out which authentication
 	 *	function to call.
 	 */
-	for (known_good = fr_cursor_init(&cursor, &request->control);
-	     known_good;
-	     known_good = fr_cursor_next(&cursor)) {
-		if (!fr_dict_attr_is_top_level(known_good->da)) continue;
-
-		if (known_good->da == attr_cleartext_password) {
-			auth_func = &pap_auth_clear;
+	if (known_good->da == attr_cleartext_password) {
+		auth_func = &pap_auth_clear;
 #ifdef HAVE_CRYPT
-		} else if (known_good->da == attr_crypt_password) {
-			auth_func = &pap_auth_crypt;
+	} else if (known_good->da == attr_crypt_password) {
+		auth_func = &pap_auth_crypt;
 #endif
-		} else if (known_good->da == attr_md5_password) {
-			auth_func = &pap_auth_md5;
-		} else if (known_good->da == attr_smd5_password) {
-			auth_func = &pap_auth_smd5;
-		}
-#ifdef HAVE_OPENSSL_EVP_H
-		else if (known_good->da == attr_sha2_password
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-			 || (known_good->da == attr_sha3_password)
-#  endif
-			) {
-			auth_func = &pap_auth_sha_evp;
-		} else if ((known_good->da == attr_ssha2_224_password) ||
-		    (known_good->da == attr_ssha2_256_password) ||
-		    (known_good->da == attr_ssha2_384_password) ||
-		    (known_good->da == attr_ssha2_512_password)
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-		    || (known_good->da == attr_ssha3_224_password) ||
-		    (known_good->da == attr_ssha3_256_password) ||
-		    (known_good->da == attr_ssha3_384_password) ||
-		    (known_good->da == attr_ssha3_512_password)
-#  endif
-		    ) {
-			auth_func = &pap_auth_ssha_evp;
-		} else if (known_good->da == attr_pbkdf2_password) {
-			auth_func = &pap_auth_pbkdf2;
-		}
-#endif
-		else if (known_good->da == attr_sha_password) {
-			auth_func = &pap_auth_sha;
-		} else if (known_good->da == attr_ssha_password) {
-			auth_func = &pap_auth_ssha;
-		} else if (known_good->da == attr_nt_password) {
-			auth_func = &pap_auth_nt;
-		} else if (known_good->da == attr_lm_password) {
-			auth_func = &pap_auth_lm;
-		} else if (known_good->da == attr_ns_mta_md5_password) {
-			auth_func = &pap_auth_ns_mta_md5;
-		}
-
-		if (auth_func != NULL) break;
+	} else if (known_good->da == attr_md5_password) {
+		auth_func = &pap_auth_md5;
+	} else if (known_good->da == attr_smd5_password) {
+		auth_func = &pap_auth_smd5;
 	}
-
-	/*
-	 *	No attribute was found that looked like a password to match.
-	 */
-	if (!auth_func) {
-		REDEBUG("No \"known good\" password found for user");
-		return RLM_MODULE_FAIL;
+#ifdef HAVE_OPENSSL_EVP_H
+	else if (known_good->da == attr_sha2_password
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+		 || (known_good->da == attr_sha3_password)
+#  endif
+		) {
+		auth_func = &pap_auth_sha_evp;
+	} else if ((known_good->da == attr_ssha2_224_password) ||
+		   (known_good->da == attr_ssha2_256_password) ||
+		   (known_good->da == attr_ssha2_384_password) ||
+		   (known_good->da == attr_ssha2_512_password)
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+		   || (known_good->da == attr_ssha3_224_password) ||
+		   (known_good->da == attr_ssha3_256_password) ||
+		   (known_good->da == attr_ssha3_384_password) ||
+		   (known_good->da == attr_ssha3_512_password)
+#  endif
+		) {
+		auth_func = &pap_auth_ssha_evp;
+	} else if (known_good->da == attr_pbkdf2_password) {
+		auth_func = &pap_auth_pbkdf2;
+	}
+#endif
+	else if (known_good->da == attr_sha_password) {
+		auth_func = &pap_auth_sha;
+	} else if (known_good->da == attr_ssha_password) {
+		auth_func = &pap_auth_ssha;
+	} else if (known_good->da == attr_nt_password) {
+		auth_func = &pap_auth_nt;
+	} else if (known_good->da == attr_lm_password) {
+		auth_func = &pap_auth_lm;
+	} else if (known_good->da == attr_ns_mta_md5_password) {
+		auth_func = &pap_auth_ns_mta_md5;
+	} else {
+		goto unknown;
 	}
 
 	if (RDEBUG_ENABLED3) {
