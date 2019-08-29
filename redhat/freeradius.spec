@@ -499,8 +499,6 @@ rm -f $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
 rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.a
 rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.la
 %if %{?_with_rlm_idn:0}%{!?_with_rlm_idn:1}
-# Does not delete file. Why?
-rm -f $RPM_BUILD_ROOT/%{_mandir}/man5/rlm_idn.5.gz
 rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-available/idn
 %endif
 %if %{?_with_rlm_mruby:0}%{!?_with_rlm_mruby:1}
@@ -619,30 +617,11 @@ fi
 %doc %{_mandir}/man5/clients.conf.5.gz
 %doc %{_mandir}/man5/dictionary.5.gz
 %doc %{_mandir}/man5/radiusd.conf.5.gz
-%doc %{_mandir}/man5/radrelay.conf.5.gz
-%doc %{_mandir}/man5/rlm_always.5.gz
-%doc %{_mandir}/man5/rlm_attr_filter.5.gz
-%doc %{_mandir}/man5/rlm_chap.5.gz
-%doc %{_mandir}/man5/rlm_counter.5.gz
-%doc %{_mandir}/man5/rlm_detail.5.gz
-%doc %{_mandir}/man5/rlm_digest.5.gz
-%doc %{_mandir}/man5/rlm_expr.5.gz
-%doc %{_mandir}/man5/rlm_files.5.gz
-%doc %{_mandir}/man5/rlm_idn.5.gz
-#%{?_with_rlm_idn: %doc %{_mandir}/man5/rlm_idn.5.gz}
-%doc %{_mandir}/man5/rlm_mschap.5.gz
-%doc %{_mandir}/man5/rlm_pap.5.gz
-%doc %{_mandir}/man5/rlm_passwd.5.gz
-%doc %{_mandir}/man5/rlm_sql.5.gz
-%doc %{_mandir}/man5/rlm_unix.5.gz
 %doc %{_mandir}/man5/unlang.5.gz
 %doc %{_mandir}/man5/users.5.gz
 %doc %{_mandir}/man8/radcrypt.8.gz
 %doc %{_mandir}/man8/raddebug.8.gz
-%doc %{_mandir}/man8/radiusd.8.gz
 %doc %{_mandir}/man8/radmin.8.gz
-%doc %{_mandir}/man8/radrelay.8.gz
-%doc %{_mandir}/man8/radsniff.8.gz
 # dictionaries
 %dir %attr(755,root,root) /usr/share/freeradius
 /usr/share/freeradius/*
