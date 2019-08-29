@@ -9,7 +9,8 @@
 #
 #  This module authenticates requests containing a `CHAP-Password` attribute.
 #
-#  CHAP authentication requires access to the clear-text password for the user.
+#  CHAP authentication requires access to the Clearext-Password for the user.
+#
 #  Standard Unix system authentication or passwords encrypted via `crypt()`
 #  are not compatible with CHAP.
 #
