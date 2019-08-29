@@ -34,8 +34,6 @@
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 typedef struct {
-	bool		normify;			//!< Normalize passwords
-
 	bool		log_stripped_names;
 	bool		log_auth;			//!< Log authentication attempts.
 	bool		log_auth_badpass;		//!< Log successful authentications.
@@ -81,8 +79,6 @@ static const CONF_PARSER proto_radius_auth_config[] = {
 
 	{ FR_CONF_POINTER("session", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) session_config },
 
-	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, proto_radius_auth_t, normify), .dflt = "yes" },
-
 	CONF_PARSER_TERMINATOR
 };
 
@@ -126,10 +122,8 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
-
 	{ NULL }
 };
-
 
 /*
  *	Return a short string showing the terminal server, port
@@ -404,8 +398,6 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
-
-		password_normalise(request, inst->normify);
 
 		RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
