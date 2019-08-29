@@ -838,11 +838,11 @@ static const pap_auth_func_t auth_func_table[] = {
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_pap_t const 	*inst = instance;
-	VALUE_PAIR const	*known_good;
+	VALUE_PAIR		*known_good;
 	VALUE_PAIR		*password;
 	rlm_rcode_t		rcode = RLM_MODULE_INVALID;
 	pap_auth_func_t		auth_func;
-	TALLOC_CTX		*tmp_ctx;
+	bool			ephemeral;
 
 	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 	if (!password) {
@@ -865,22 +865,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	}
 
 	/*
-	 *	Holds any ephemeral attributes
-	 */
-	MEM(tmp_ctx = talloc_named_const(request, 0, "password_tmp_ctx"));
-
-	/*
 	 *	Retrieve the normalised version of
 	 *	the known_good password, without
 	 *	mangling the current password attributes
 	 *	in the request.
 	 */
-	known_good = password_find(tmp_ctx, request,
+	known_good = password_find(&ephemeral, request, request,
 				   pap_allowed_passwords, talloc_array_length(pap_allowed_passwords),
 				   inst->normify);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
-		talloc_free(tmp_ctx);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -899,6 +893,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	Authenticate, and return.
 	 */
 	rcode = auth_func(inst, request, known_good, password);
+	if (ephemeral) talloc_list_free(&known_good);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		REDEBUG("Password incorrect");
@@ -911,7 +906,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	default:
 		break;
 	}
-	talloc_free(tmp_ctx);
 
 	return rcode;
 }

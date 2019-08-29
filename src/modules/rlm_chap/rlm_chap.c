@@ -45,7 +45,6 @@ fr_dict_autoload_t rlm_chap_dict[] = {
 
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_cleartext_password;
-static fr_dict_attr_t const *attr_password_with_header;
 
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_chap_challenge;
@@ -55,7 +54,6 @@ extern fr_dict_attr_autoload_t rlm_chap_dict_attr[];
 fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_password, .name = "Chap-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chap_challenge, .name = "Chap-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -113,11 +111,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_chap_t		*inst = instance;
-	VALUE_PAIR const	*known_good;
+	VALUE_PAIR		*known_good;
 	VALUE_PAIR		*chap, *username;
 	uint8_t			pass_str[FR_MAX_STRING_LEN];
-	TALLOC_CTX		*tmp_ctx;
-	fr_dict_attr_t const	*allowed_passwords[] = { attr_password_with_header, attr_cleartext_password };
+
+	int			ret;
+
+	fr_dict_attr_t const	*allowed_passwords[] = { attr_cleartext_password };
+	bool			ephemeral;
 
 	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	if (!username) {
@@ -143,22 +144,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	}
 
 	/*
-	 *	Holds any ephemeral attributes
-	 */
-	MEM(tmp_ctx = talloc_named_const(request, 0, "password_tmp_ctx"));
-
-	/*
 	 *	Retrieve the normalised version of
 	 *	the known_good password, without
 	 *	mangling the current password attributes
 	 *	in the request.
 	 */
-	known_good = password_find(tmp_ctx, request,
+	known_good = password_find(&ephemeral, request, request,
 				   allowed_passwords, NUM_ELEMENTS(allowed_passwords),
 				   inst->normify);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
-		talloc_free(tmp_ctx);
 		return RLM_MODULE_FAIL;
 	}
 	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0], known_good);
@@ -190,15 +185,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
 
-	if (fr_digest_cmp(pass_str + 1, chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH) != 0) {
+	ret = fr_digest_cmp(pass_str + 1, chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH);
+	if (ephemeral) talloc_list_free(&known_good);
+	if (ret != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");
-		talloc_free(tmp_ctx);
+
 		return RLM_MODULE_REJECT;
 	}
 
 	RDEBUG2("CHAP user \"%pV\" authenticated successfully", &username->data);
-
-	talloc_free(tmp_ctx);
 
 	return RLM_MODULE_OK;
 }

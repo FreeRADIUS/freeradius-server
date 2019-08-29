@@ -32,7 +32,7 @@ extern "C" {
 
 int			password_normalise_and_replace(REQUEST *request, bool normify);
 
-VALUE_PAIR const	*password_find(TALLOC_CTX *ctx, REQUEST *request,
+VALUE_PAIR		*password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
 				       fr_dict_attr_t const *allowed_attrs[],
 				       size_t allowed_attrs_len, bool normify);
 

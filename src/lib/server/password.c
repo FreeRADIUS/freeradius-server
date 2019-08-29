@@ -66,6 +66,8 @@ typedef struct {
 						///< If 0, will be ignored.
 	bool			no_normify;	//!< Don't attempt to normalise the contents of this
 						///< attribute using the hex/base64 decoders.
+	bool			always_allow;	//!< Always allow processing of this attribute, irrespective
+						///< of what the caller says.
 } password_info_t;
 
 static fr_dict_t *dict_freeradius = NULL;
@@ -263,7 +265,8 @@ static password_info_t password_info[] = {
 	[FR_PASSWORD_WITH_HEADER]	= {
 						.type = PASSWORD_HASH_VARIABLE,
 						.da = &attr_password_with_header,
-						.func = password_process_header
+						.func = password_process_header,
+						.always_allow = true
 					},
 	[FR_PBKDF2_PASSWORD]		= {
 						.type = PASSWORD_HASH_VARIABLE,
@@ -872,6 +875,42 @@ int password_normalise_and_replace(REQUEST *request, bool normify)
 	return replaced;
 }
 
+static VALUE_PAIR *password_normalise_and_recheck(TALLOC_CTX *ctx, REQUEST *request,
+						  fr_dict_attr_t const *allowed_attrs[], size_t allowed_attrs_len,
+						  bool normify, VALUE_PAIR *const known_good)
+{
+	VALUE_PAIR	*new;
+	size_t		j;
+
+	if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
+
+	/*
+	 *	Apply preprocessing steps and normalisation.
+	 */
+	new = password_process(ctx, request, known_good, normify);
+	if (!new) return NULL;
+
+	/*
+	 *	If new != known_good, then we need
+	 *	to check what was produced is still
+	 *	acceptable.
+	 */
+	if (new->da != known_good->da) {
+		for (j = 0; j < allowed_attrs_len; j++) if (allowed_attrs[j] == new->da) return new;
+
+		/*
+		 *	New attribute not in our allowed list
+		 */
+		talloc_list_free(&new);		/* da didn't match, treat as ephemeral */
+		return NULL;			/* Process next input attribute */
+	}
+
+	/*
+	 *	Return attribute for processing
+	 */
+	return new;
+}
+
 /** Find a "known good" password in the control list of a request
  *
  * Searches for a "known good" password attribute, and applies any processing
@@ -881,6 +920,11 @@ int password_normalise_and_replace(REQUEST *request, bool normify)
  * VALUE_PAIR.  The returned pair *MUST NOT BE FREED*, it may be an attribute
  * in the request->control list.
  *
+ * @param[out] ephemeral	If true, the caller must use talloc_list_free
+ *				to free the return value of this function.
+ *				Alternatively 'ctx' can be freed, which is
+ *				simpler and cleaner, but some people have
+ *				religious objections to that.
  * @param[in] ctx		Ephemeral ctx to allocate new attributes in.
  * @param[in] request		The current request.
  * @param[in] allowed_attrs	Optional list of allowed attributes.
@@ -890,16 +934,19 @@ int password_normalise_and_replace(REQUEST *request, bool normify)
  *	- A VALUE_PAIR containing a "known good" password.
  *	- NULL on error, or if no usable password attributes were found.
  */
-VALUE_PAIR const *password_find(TALLOC_CTX *ctx, REQUEST *request,
-				fr_dict_attr_t const *allowed_attrs[], size_t allowed_attrs_len, bool normify)
+VALUE_PAIR *password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
+			  fr_dict_attr_t const *allowed_attrs[], size_t allowed_attrs_len, bool normify)
 {
 	fr_cursor_t	cursor;
-	size_t		i, j;
 	VALUE_PAIR	*known_good;
 
 	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control, attr_password_root);
 	     known_good;
 	     known_good = fr_cursor_next(&cursor)) {
+		password_info_t		*info;
+		VALUE_PAIR		*out;
+		size_t			i;
+
 		if (known_good->da == attr_user_password) {
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RWDEBUG("!!! Ignoring control:User-Password.  Update your        !!!");
@@ -910,38 +957,32 @@ VALUE_PAIR const *password_find(TALLOC_CTX *ctx, REQUEST *request,
 			continue;
 		}
 
-		for (i = 0; i < allowed_attrs_len; i++) {
-			VALUE_PAIR *new;
+		if (known_good->da->attr > NUM_ELEMENTS(password_info)) continue;
 
+		info = &password_info[known_good->da->attr];
+
+		/*
+		 *	Minor reduction in work for the caller
+		 *	for a moderate increase in code complexity.
+		 */
+		if (info->always_allow) {
+			out = password_normalise_and_recheck(ctx, request,
+						  	     allowed_attrs, allowed_attrs_len,
+						  	     normify, known_good);
+			if (!out) continue;
+		done:
+			if (ephemeral) *ephemeral = (known_good != out);
+			return out;
+		}
+
+		for (i = 0; i < allowed_attrs_len; i++) {
 			if (allowed_attrs[i] != known_good->da) continue;
 
-			if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
-
-			/*
-			 *	Apply preprocessing steps and normalisation.
-			 */
-			new = password_process(ctx, request, known_good, normify);
-			if (!new) break;		/* Process next input attribute */
-
-			/*
-			 *	If new != known_good, then we need
-			 *	to check what was produced is still
-			 *	acceptable.
-			 */
-			if (new->da != known_good->da) {
-				for (j = 0; j < allowed_attrs_len; j++) if (allowed_attrs[j] == new->da) return new;
-
-				/*
-				 *	New attribute not in our allowed list
-				 */
-				talloc_list_free(&new);	/* da didn't match, treat as ephemeral */
-				break;			/* Process next input attribute */
-			}
-
-			/*
-			 *	Return attribute for processing
-			 */
-			return new;
+			out = password_normalise_and_recheck(ctx, request,
+						  	     allowed_attrs, allowed_attrs_len,
+						  	     normify, known_good);
+			if (!out) continue;
+			goto done;
 		}
 	}
 
