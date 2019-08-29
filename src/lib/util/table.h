@@ -162,7 +162,7 @@ void	*fr_table_ordered_ptr_by_longest_prefix(size_t *match_len, fr_table_ptr_ord
 
 /** Find the longest string match using a sorted or ordered table
  *
- * @param[out]_match_len	How much of the input string matched.
+ * @param[out] _match_len	How much of the input string matched.
  * @param[in] _table		to search in.
  * @param[in] _name		to resolve to a number.
  * @param[in] _name_len		The amount of name to match.
