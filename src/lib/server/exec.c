@@ -201,7 +201,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	and will remain locked in the child.
 		 */
 		for (vp = fr_cursor_init(&cursor, &input_pairs);
-		     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
+		     vp && (envlen < ((NUM_ELEMENTS(envp)) - 1));
 		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
@@ -230,7 +230,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EXEC_EXPORT);
 			if (da) {
 				for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, da);
-				     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
+				     vp && (envlen < ((NUM_ELEMENTS(envp)) - 1));
 				     vp = fr_cursor_next(&cursor)) {
 					DEBUG3("export %pV", &vp->data);
 					memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));

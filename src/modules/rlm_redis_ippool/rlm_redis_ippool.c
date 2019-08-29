@@ -504,7 +504,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 			pipelined++;
 		}
 		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
-						     replies, sizeof(replies) / sizeof(*replies),
+						     replies, NUM_ELEMENTS(replies),
 						     conn);
 		if (status != REDIS_RCODE_NO_SCRIPT) continue;
 
@@ -532,7 +532,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 		}
 
 		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
-						     replies, sizeof(replies) / sizeof(*replies),
+						     replies, NUM_ELEMENTS(replies),
 						     conn);
 		if (status == REDIS_RCODE_SUCCESS) {
 			if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) {

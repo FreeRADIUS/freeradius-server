@@ -920,7 +920,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 				CAP_NET_BIND_SERVICE
 			};
 
-			if (cap_set_flag(caps, CAP_EFFECTIVE, sizeof(to_set) / sizeof(*to_set), to_set, CAP_SET) < 0) {
+			if (cap_set_flag(caps, CAP_EFFECTIVE, NUM_ELEMENTS(to_set), to_set, CAP_SET) < 0) {
 				fr_strerror_printf_push("Failed setting CAP_NET_BIND_SERVICE effective state: %s",
 							fr_syserror(errno));
 				goto skip_cap;

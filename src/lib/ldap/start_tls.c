@@ -157,8 +157,8 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	LDAPControl		*our_clientctrls[LDAP_MAX_CONTROLS];
 
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
 			      c, tls_ctx->serverctrls, tls_ctx->clientctrls);
 
 	/*

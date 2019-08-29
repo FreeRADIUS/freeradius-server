@@ -1143,7 +1143,7 @@ static int mod_load(void)
 	curl_version_info_data *curlversion;
 
 	/* developer sanity */
-	rad_assert((sizeof(http_body_type_supported) / sizeof(*http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
+	rad_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
 
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {

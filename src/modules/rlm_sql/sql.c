@@ -282,7 +282,7 @@ void rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle
 	sql_log_entry_t	log[20];
 	size_t		num, i;
 
-	num = (inst->driver->sql_error)(handle->log_ctx, log, (sizeof(log) / sizeof(*log)), handle, inst->config);
+	num = (inst->driver->sql_error)(handle->log_ctx, log, (NUM_ELEMENTS(log)), handle, inst->config);
 	if (num == 0) {
 		ROPTIONAL(RERROR, ERROR, "Unknown error");
 		return;

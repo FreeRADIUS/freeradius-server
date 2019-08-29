@@ -2114,7 +2114,7 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 		 */
 		if (*state->token == '}') break;
 
-		rcode = match_keyword(info, state, commands, sizeof(commands) / sizeof(commands[0]));
+		rcode = match_keyword(info, state, commands, NUM_ELEMENTS(commands));
 		if (rcode < 0) return rcode;
 		if (rcode == 0) break;
 
@@ -2187,7 +2187,7 @@ static int read_file(rlm_isc_dhcp_t *inst, rlm_isc_dhcp_info_t *parent, char con
 		 *	This will automatically re-fill the buffer,
 		 *	and find a matching token.
 		 */
-		rcode = match_keyword(parent, &state, commands, sizeof(commands) / sizeof(commands[0]));
+		rcode = match_keyword(parent, &state, commands, NUM_ELEMENTS(commands));
 		if (rcode < 0) goto fail;
 		if (rcode == 0) break;
 	}

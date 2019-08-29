@@ -1348,7 +1348,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 int main(int argc, char *argv[])
 {
 	static ippool_tool_operation_t	ops[128];
-	ippool_tool_operation_t		*p = ops, *end = ops + (sizeof(ops) / sizeof(*ops));
+	ippool_tool_operation_t		*p = ops, *end = ops + (NUM_ELEMENTS(ops));
 
 	int				c;
 

@@ -135,7 +135,7 @@ char const *dhcp_message_types[] = {
 	"DHCP-Lease-Query-Done"
 };
 
-#define DHCP_MAX_MESSAGE_TYPE (sizeof(dhcp_message_types) / sizeof(dhcp_message_types[0]))
+#define DHCP_MAX_MESSAGE_TYPE (NUM_ELEMENTS(dhcp_message_types))
 
 int dhcp_header_sizes[] = {
 	1,			/* op */

@@ -359,7 +359,7 @@ int tls_version_check(char const *acknowledged)
 	/* Check for bad versions */
 	v = (uint64_t) SSLeay();
 
-	for (i = 0; i < (sizeof(libssl_defects) / sizeof(*libssl_defects)); i++) {
+	for (i = 0; i < (NUM_ELEMENTS(libssl_defects)); i++) {
 		libssl_defect_t *defect = &libssl_defects[i];
 
 		if ((v >= defect->low) && (v <= defect->high)) {

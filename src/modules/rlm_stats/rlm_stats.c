@@ -154,7 +154,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 	rlm_stats_data_t mydata, *stats;
 	fr_cursor_t cursor;
 	char buffer[64];
-	uint64_t local_stats[sizeof(inst->stats) / sizeof(inst->stats[0])];
+	uint64_t local_stats[NUM_ELEMENTS(inst->stats)];
 
 	/*
 	 *	Increment counters only in "send foo" sections.

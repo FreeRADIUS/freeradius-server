@@ -43,7 +43,7 @@ static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get e
 					///< which cause a crash on exit if the logging buffer
 					///< has already been freed.
 
-#define HAVE_DEFINITION(_errno) ((_errno) < (int)(sizeof(fr_syserror_macro_names) / sizeof(*fr_syserror_macro_names)))
+#define HAVE_DEFINITION(_errno) ((_errno) < (int)(NUM_ELEMENTS(fr_syserror_macro_names)))
 
 /*
  *	Explicitly cleanup the memory allocated to the error buffer,

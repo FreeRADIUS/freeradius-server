@@ -551,7 +551,7 @@ static int radsnmp_get_response(int fd,
 		DEBUG2("said: %s", (char *)io_vector[2].iov_base);
 		DEBUG2("said: %s", (char *)io_vector[4].iov_base);
 
-		if (writev(fd, io_vector, sizeof(io_vector) / sizeof(*io_vector)) < 0) {
+		if (writev(fd, io_vector, NUM_ELEMENTS(io_vector)) < 0) {
 			fr_strerror_printf("Failed writing varbind result: %s", fr_syserror(errno));
 			return -1;
 		}
@@ -615,7 +615,7 @@ static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, VALUE_PAIR 
 
 	DEBUG2("said: %s", buffer);
 
-	if (writev(fd, io_vector, sizeof(io_vector) / sizeof(*io_vector)) < 0) {
+	if (writev(fd, io_vector, NUM_ELEMENTS(io_vector)) < 0) {
 		fr_strerror_printf("Failed writing set response: %s", fr_syserror(errno));
 		return -1;
 	}

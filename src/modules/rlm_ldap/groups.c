@@ -450,7 +450,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 	}
 
 	if (fr_ldap_xlat_filter(request,
-				 filters, sizeof(filters) / sizeof(*filters),
+				 filters, NUM_ELEMENTS(filters),
 				 filter, sizeof(filter)) < 0) {
 		return RLM_MODULE_INVALID;
 	}
@@ -571,7 +571,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 
 		RINDENT();
 		ret = fr_ldap_xlat_filter(request,
-					   filters, sizeof(filters) / sizeof(*filters),
+					   filters, NUM_ELEMENTS(filters),
 					   filter, sizeof(filter));
 		REXDENT();
 
@@ -592,7 +592,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 		snprintf(name_filter, sizeof(name_filter), "(%s=%s)", inst->groupobj_name_attr, check->vp_strvalue);
 		RINDENT();
 		ret = fr_ldap_xlat_filter(request,
-					   filters, sizeof(filters) / sizeof(*filters),
+					   filters, NUM_ELEMENTS(filters),
 					   filter, sizeof(filter));
 		REXDENT();
 		if (ret < 0) return RLM_MODULE_INVALID;

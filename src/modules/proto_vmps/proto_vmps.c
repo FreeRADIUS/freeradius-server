@@ -478,7 +478,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Instantiate the process modules
 	 */
 	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, inst->type_submodule_by_code,
-				       sizeof(inst->type_submodule_by_code) / sizeof(inst->type_submodule_by_code[0]),
+				       NUM_ELEMENTS(inst->type_submodule_by_code),
 				       conf) < 0) {
 		return -1;
 	}

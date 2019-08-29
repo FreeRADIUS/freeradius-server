@@ -118,8 +118,8 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 	struct berval		cred;
 
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
 			      c, bind_ctx->serverctrls, bind_ctx->clientctrls);
 
 	/*

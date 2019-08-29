@@ -89,7 +89,7 @@ USES_APPLE_DEPRECATED_API
  */
 int fr_ldap_control_add_server(fr_ldap_connection_t *conn, LDAPControl *ctrl, bool freeit)
 {
-	if ((size_t)conn->serverctrls_cnt >= ((sizeof(conn->serverctrls) / sizeof(conn->serverctrls[0])) - 1)) {
+	if ((size_t)conn->serverctrls_cnt >= ((NUM_ELEMENTS(conn->serverctrls)) - 1)) {
 		return -1;
 	}
 
@@ -113,7 +113,7 @@ int fr_ldap_control_add_server(fr_ldap_connection_t *conn, LDAPControl *ctrl, bo
  */
 int fr_ldap_control_add_client(fr_ldap_connection_t *conn, LDAPControl *ctrl, bool freeit)
 {
-	if ((size_t)conn->clientctrls_cnt >= ((sizeof(conn->clientctrls) / sizeof(conn->clientctrls[0])) - 1)) {
+	if ((size_t)conn->clientctrls_cnt >= ((NUM_ELEMENTS(conn->clientctrls)) - 1)) {
 		return -1;
 	}
 

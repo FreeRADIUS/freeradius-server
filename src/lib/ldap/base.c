@@ -584,8 +584,8 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
 
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
 			      *pconn, serverctrls, clientctrls);
 
 	rad_assert(*pconn && (*pconn)->handle);
@@ -706,8 +706,8 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
 
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
 			      *pconn, serverctrls, clientctrls);
 
 	rad_assert(*pconn && (*pconn)->handle);
@@ -787,8 +787,8 @@ fr_ldap_rcode_t fr_ldap_modify(REQUEST *request, fr_ldap_connection_t **pconn,
 	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
 			      *pconn, serverctrls, clientctrls);
 
 	rad_assert(*pconn && (*pconn)->handle);

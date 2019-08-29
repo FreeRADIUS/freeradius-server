@@ -163,8 +163,8 @@ static int fr_ldap_connection_reset(fr_ldap_connection_t *c)
 	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
 			      c, NULL, NULL);
 
 	DEBUG3("Closing libldap handle %p", c->handle);

@@ -477,7 +477,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 *	Copy specific fields from packet to reply, if they
 	 *	don't already exist
 	 */
-	for (i = 0; i < sizeof(attrnums) / sizeof(attrnums[0]); i++) {
+	for (i = 0; i < NUM_ELEMENTS(attrnums); i++) {
 		uint32_t attr = attrnums[i];
 
 		if (fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, attr, TAG_ANY)) continue;

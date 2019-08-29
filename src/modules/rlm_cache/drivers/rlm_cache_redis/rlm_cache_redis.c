@@ -399,7 +399,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		}
 
 		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
-						     replies, sizeof(replies) / sizeof(*replies),
+						     replies, NUM_ELEMENTS(replies),
 						     conn);
 		reply = replies[0];
 	}

@@ -127,8 +127,8 @@ fr_ldap_rcode_t  fr_ldap_sasl_interactive(REQUEST *request,
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
 
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
 			      conn, serverctrls, clientctrls);
 
 	sasl_ctx.request = request;

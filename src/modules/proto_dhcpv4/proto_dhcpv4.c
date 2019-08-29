@@ -151,7 +151,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	cf_data_add(ci, type_enum, NULL, false);
 
 	code = type_enum->value->vb_uint32;
-	if (!code || (code >= (sizeof(type_lib_table) / sizeof(*type_lib_table)))) {
+	if (!code || (code >= (NUM_ELEMENTS(type_lib_table)))) {
 		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
 		return -1;
 	}
@@ -510,7 +510,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Instantiate the process modules
 	 */
 	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, inst->type_submodule_by_code,
-				       sizeof(inst->type_submodule_by_code) / sizeof(inst->type_submodule_by_code[0]),
+				       NUM_ELEMENTS(inst->type_submodule_by_code),
 				       conf) < 0) {
 		return -1;
 	}

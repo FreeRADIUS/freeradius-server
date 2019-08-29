@@ -644,7 +644,7 @@ static void rs_stats_print_fancy(rs_update_t *this, rs_stats_t *stats, struct ti
 {
 	fr_pcap_t		*in_p;
 	size_t			i;
-	size_t			rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
+	size_t			rs_codes_len = (NUM_ELEMENTS(rs_useful_codes));
 
 	/*
 	 *	Clear and reset the screen
@@ -690,7 +690,7 @@ static void rs_stats_print_fancy(rs_update_t *this, rs_stats_t *stats, struct ti
 static void rs_stats_print_csv_header(rs_update_t *this)
 {
 	fr_pcap_t	*in_p;
-	size_t		rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
+	size_t		rs_codes_len = (NUM_ELEMENTS(rs_useful_codes));
 	size_t		i;
 	int		j;
 
@@ -765,7 +765,7 @@ static void rs_stats_print_csv(rs_update_t *this, rs_stats_t *stats, UNUSED stru
 	char buffer[2048], *p = buffer, *end = buffer + sizeof(buffer);
 	fr_pcap_t	*in_p;
 	size_t		i;
-	size_t		rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
+	size_t		rs_codes_len = (NUM_ELEMENTS(rs_useful_codes));
 
 	p += snprintf(buffer, sizeof(buffer) - (p - buffer), "%i", stats->intervals);
 	if (p >= end) {
@@ -808,7 +808,7 @@ static void rs_stats_print_csv(rs_update_t *this, rs_stats_t *stats, UNUSED stru
 static void rs_stats_process(fr_event_list_t *el, fr_time_t now_t, void *ctx)
 {
 	size_t		i;
-	size_t		rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
+	size_t		rs_codes_len = (NUM_ELEMENTS(rs_useful_codes));
 	fr_pcap_t	*in_p;
 	rs_update_t	*this = ctx;
 	rs_stats_t	*stats = this->stats;
@@ -1144,7 +1144,7 @@ static inline int rs_response_to_pcap(rs_event_t *event, rs_request_t *request, 
 			/* Reset the pointer to the start of the circular buffer */
 			if (request->capture_p++ >=
 					(request->capture +
-					 sizeof(request->capture) / sizeof(*request->capture))) {
+					 NUM_ELEMENTS(request->capture))) {
 				request->capture_p = request->capture;
 			}
 		} while (request->capture_p != start);
@@ -1184,7 +1184,7 @@ static inline int rs_request_to_pcap(rs_event_t *event, rs_request_t *request, s
 		/* Reset the pointer to the start of the circular buffer */
 		if (++request->capture_p >=
 				(request->capture +
-				 sizeof(request->capture) / sizeof(*request->capture))) {
+				 NUM_ELEMENTS(request->capture))) {
 			request->capture_p = request->capture;
 		}
 		return 0;
@@ -2587,7 +2587,7 @@ int main(int argc, char *argv[])
 	fr_strerror();	/* Clear out any non-fatal errors */
 
 	if (conf->list_attributes) {
-		conf->list_da_num = rs_build_dict_list(conf->list_da, sizeof(conf->list_da) / sizeof(*conf->list_da),
+		conf->list_da_num = rs_build_dict_list(conf->list_da, NUM_ELEMENTS(conf->list_da),
 						       conf->list_attributes);
 		if (conf->list_da_num < 0) {
 			usage(64);
@@ -2596,7 +2596,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (conf->link_attributes) {
-		conf->link_da_num = rs_build_dict_list(conf->link_da, sizeof(conf->link_da) / sizeof(*conf->link_da),
+		conf->link_da_num = rs_build_dict_list(conf->link_da, NUM_ELEMENTS(conf->link_da),
 						       conf->link_attributes);
 		if (conf->link_da_num < 0) {
 			usage(64);
@@ -2767,7 +2767,7 @@ int main(int argc, char *argv[])
 
 		next = &conf->stats.tmpl;
 
-		for (i = 0; i < (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes)); i++) {
+		for (i = 0; i < (NUM_ELEMENTS(rs_useful_codes)); i++) {
 			tmpl = rs_stats_collectd_init_latency(conf, next, conf, "exchanged",
 							      &(stats->exchange[rs_useful_codes[i]]),
 							      rs_useful_codes[i]);
