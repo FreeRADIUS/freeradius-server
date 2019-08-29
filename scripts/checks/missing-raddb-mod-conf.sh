@@ -5,7 +5,6 @@ ignored_mods="rlm_(test|example|sql)"
 
 # main()
 dir_modules="src/modules"
-mod_cache="/tmp/missing-raddb-cache-$$"
 
 # Only "rlm_*"
 for _mod in $(ls $dir_modules | grep "^rlm_" | grep -vE "${ignored_mods}"); do
@@ -17,33 +16,18 @@ for _mod in $(ls $dir_modules | grep "^rlm_" | grep -vE "${ignored_mods}"); do
 
 	# raddb?
 	if ! [ -f "${mod_conf}" ]; then
-		echo "WARNING: No references of ${mod_dir} in ${mod_conf}"
+		echo "WARNING: Module ${mod_dir} has no ${mod_conf}"
 		continue
 	fi
 
 	# Get all FR_CONF_*
-	grep "^[^ ]{[ ]FR_CONF_.*(" -r ${mod_dir} | sed '/_DEPRECATED/d; s/^.*{ FR_CONF_.*("//g; s/".*$//g' | \
+	grep -r FR_CONF_ ${mod_dir} | sed '/_DEPRECATED/d; /_SUBSECTION/d; s/^.*{ FR_CONF_.*("//g; s/".*$//g' | \
 		sort | uniq | \
 		while read fr_conf; do
 			if ! grep -q "${fr_conf}" "${mod_conf}"; then
-				echo "${mod_conf}:${fr_conf}" >> "${mod_cache}"
+				echo "WARNING: ${mod_conf} has no reference for: ${fr_conf}"
 			fi
 		done
 done
 
-if [ -s "${mod_cache}" ]; then
-	cat "${mod_cache}" | awk -F ':' '
-	{
-		mods[$1] = mods[$1]" "$2
-	}
-	END {
-		for (m in mods) {
-			printf("WARNING: The %s has no reference for:\n", m)
-			split(mods[m], keys, " ")
-			for (k in keys) printf("\t%s\n", keys[k])
-		}
-	}'
-fi
-
-rm -f $mod_cache
 exit 0
