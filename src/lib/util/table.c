@@ -55,7 +55,7 @@ _our_return_type _our_name(_our_table_type table, size_t table_len, char const *
 
 /** Create type specific string to value functions with an input string length argument
  *
- * @parma[in] _func		used for searching.
+ * @param[in] _func		used for searching.
  * @param[in] _our_table_type	that we'll be searching in.
  * @param[in] _our_name		The function that we'll be creating.
  * @param[in] _our_def_type	The type of the default value.
