@@ -1076,7 +1076,7 @@ int fr_ipaddr_from_ifname(UNUSED fr_ipaddr_t *out, UNUSED int af, char const *na
 /** Resolve if_index to interface name
  *
  * @param[out] out Buffer to use to store the name, must be at least IFNAMSIZ bytes.
- * @parma[in] if_index to resolve to name.
+ * @param[in] if_index to resolve to name.
  * @return
  *	- NULL on error.
  *	- a pointer to out on success.
