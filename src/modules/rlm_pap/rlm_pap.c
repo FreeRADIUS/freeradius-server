@@ -352,24 +352,24 @@ static rlm_rcode_t CC_HINT(nonnull) _new_func(rlm_pap_t const *inst, REQUEST *re
 	return _func(inst, request, known_good, password, _name, _md);					\
 }
 
-PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha2_224, "SHA2-224", EVP_sha224());
-PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha2_256, "SHA2-256", EVP_sha256());
-PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha2_384, "SHA2-384", EVP_sha384());
-PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha2_512, "SHA2-512", EVP_sha512());
-PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_224, "SSHA2-224", EVP_sha224());
-PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_256, "SSHA2-256", EVP_sha256());
-PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_384, "SSHA2-384", EVP_sha384());
-PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_512, "SSHA2-512", EVP_sha512());
+PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha2_224, "SHA2-224", EVP_sha224())
+PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha2_256, "SHA2-256", EVP_sha256())
+PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha2_384, "SHA2-384", EVP_sha384())
+PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha2_512, "SHA2-512", EVP_sha512())
+PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_224, "SSHA2-224", EVP_sha224())
+PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_256, "SSHA2-256", EVP_sha256())
+PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_384, "SSHA2-384", EVP_sha384())
+PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_512, "SSHA2-512", EVP_sha512())
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_224, "SHA3-224", EVP_sha3_224());
-PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_256, "SHA3-256", EVP_sha3_256());
-PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_384, "SHA3-384", EVP_sha3_384());
-PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_512, "SHA3-512", EVP_sha3_512());
-PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_224, "SSHA3-224", EVP_sha3_224());
-PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_256, "SSHA3-256", EVP_sha3_256());
-PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_384, "SSHA3-384", EVP_sha3_384());
-PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_512, "SSHA3-512", EVP_sha3_512());
+PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_224, "SHA3-224", EVP_sha3_224())
+PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_256, "SHA3-256", EVP_sha3_256())
+PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_384, "SHA3-384", EVP_sha3_384())
+PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_512, "SHA3-512", EVP_sha3_512())
+PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_224, "SSHA3-224", EVP_sha3_224())
+PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_256, "SSHA3-256", EVP_sha3_256())
+PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_384, "SSHA3-384", EVP_sha3_384())
+PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_512, "SSHA3-512", EVP_sha3_512())
 #  endif
 
 /** Validates Crypt::PBKDF2 LDAP format strings
