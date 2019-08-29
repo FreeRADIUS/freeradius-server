@@ -508,9 +508,9 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha_evp(UNUSED rlm_pap_t const *in
 		REDEBUG("%s digest does not match \"known good\" digest", name);
 		REDEBUG3("Password   : %pV", &password->data);
 		REDEBUG3("Salt       : %pH",
-			 fr_box_octets(known_good->vp_octets + min_len, known_good->vp_length - min_len));
+			 fr_box_octets(known_good->vp_octets + digest_len, known_good->vp_length - digest_len));
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
-		REDEBUG3("Expected   : %pH", &known_good->data);
+		REDEBUG3("Expected   : %pH", fr_box_octets(known_good->vp_octets, digest_len));
 		return RLM_MODULE_REJECT;
 	}
 
