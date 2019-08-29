@@ -30,17 +30,15 @@ extern "C" {
 
 #include <freeradius-devel/server/request.h>
 
-typedef ssize_t(*password_header_lookup_t)(fr_dict_attr_t const **out, char const *header);
+int			password_normalise_and_replace(REQUEST *request, bool normify);
 
-VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const *known_good, size_t min_len);
+VALUE_PAIR const	*password_find(TALLOC_CTX *ctx, REQUEST *request,
+				       fr_dict_attr_t const *allowed_attrs[],
+				       size_t allowed_attrs_len, bool normify);
 
-VALUE_PAIR *password_normify_with_header(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good,
-					 password_header_lookup_t func, fr_dict_attr_t const *def);
+int			password_init(void);
 
-VALUE_PAIR *password_normalise(REQUEST *request, bool normalise);
-
-int password_init(void);
-void password_free(void);
+void			password_free(void);
 
 #ifdef __cplusplus
 }

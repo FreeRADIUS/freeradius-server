@@ -25,34 +25,80 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/password.h>
 
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/base64.h>
+#include <freeradius-devel/util/md4.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/sha1.h>
+#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.password.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>
+#  include <openssl/sha.h>
 #endif
 
+typedef enum {
+	PASSWORD_CLEARTEXT = 0,			//!< Variable length.
+	PASSWORD_HASH,				//!< Fixed lenth.
+	PASSWORD_HASH_SALTED,			//!< Fixed length hash, variable length salt.
+	PASSWORD_HASH_VARIABLE			//!< Variable length everything.
+} password_type_t;
+
+/** Apply preprocessing logic to a password value
+ *
+ * @param[in] ctx	to allocate returned value in.
+ * @
+ */
+typedef VALUE_PAIR *(*password_preprocess_t)(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *in);
+
+/** Password information
+ *
+ */
+typedef struct {
+	password_type_t		type;		//!< What type of password value this is.
+	fr_dict_attr_t const	**da;		//!< Dictionary attribute representing this type of password.
+	password_preprocess_t	func;		//!< Preprocessing function.
+	size_t			min_hash_len;	//!< Minimum length of the decoded string if normifying.
+						///< If 0, will be ignored.
+	size_t			max_hash_len;	//!< Maximum length of the decoded string if normifying.
+						///< If 0, will be ignored.
+	bool			no_normify;	//!< Don't attempt to normalise the contents of this
+						///< attribute using the hex/base64 decoders.
+} password_info_t;
+
 static fr_dict_t *dict_freeradius = NULL;
+static fr_dict_t *dict_radius = NULL;
 
 static fr_dict_attr_t const *attr_cleartext_password;
 static fr_dict_attr_t const *attr_password_with_header;
+static fr_dict_attr_t const *attr_password_root;
 
 static fr_dict_attr_t const *attr_md5_password;
 static fr_dict_attr_t const *attr_smd5_password;
 static fr_dict_attr_t const *attr_crypt_password;
-static fr_dict_attr_t const *attr_sha_password;
-static fr_dict_attr_t const *attr_ssha_password;
+
+static fr_dict_attr_t const *attr_sha1_password;
+static fr_dict_attr_t const *attr_ssha1_password;
 
 static fr_dict_attr_t const *attr_sha2_password;
+static fr_dict_attr_t const *attr_sha2_224_password;
+static fr_dict_attr_t const *attr_sha2_256_password;
+static fr_dict_attr_t const *attr_sha2_384_password;
+static fr_dict_attr_t const *attr_sha2_512_password;
+
 static fr_dict_attr_t const *attr_ssha2_224_password;
 static fr_dict_attr_t const *attr_ssha2_256_password;
 static fr_dict_attr_t const *attr_ssha2_384_password;
 static fr_dict_attr_t const *attr_ssha2_512_password;
 
 static fr_dict_attr_t const *attr_sha3_password;
+static fr_dict_attr_t const *attr_sha3_224_password;
+static fr_dict_attr_t const *attr_sha3_256_password;
+static fr_dict_attr_t const *attr_sha3_384_password;
+static fr_dict_attr_t const *attr_sha3_512_password;
+
 static fr_dict_attr_t const *attr_ssha3_224_password;
 static fr_dict_attr_t const *attr_ssha3_256_password;
 static fr_dict_attr_t const *attr_ssha3_384_password;
@@ -63,9 +109,12 @@ static fr_dict_attr_t const *attr_lm_password;
 static fr_dict_attr_t const *attr_nt_password;
 static fr_dict_attr_t const *attr_ns_mta_md5_password;
 
+static fr_dict_attr_t const *attr_user_password;
+
 extern fr_dict_autoload_t password_dict[];
 fr_dict_autoload_t password_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
@@ -73,20 +122,31 @@ extern fr_dict_attr_autoload_t password_dict_attr[];
 fr_dict_attr_autoload_t password_dict_attr[] = {
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_password_root, .name = "Password-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
 	{ .out = &attr_md5_password, .name = "MD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_smd5_password, .name = "SMD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_sha_password, .name = "SHA-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha_password, .name = "SSHA-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha1_password, .name = "SHA1-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha1_password, .name = "SSHA1-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
 	{ .out = &attr_sha2_password, .name = "SHA2-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_224_password, .name = "SHA2-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_256_password, .name = "SHA2-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_384_password, .name = "SHA2-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_512_password, .name = "SHA2-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
 	{ .out = &attr_ssha2_224_password, .name = "SSHA2-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ssha2_256_password, .name = "SSHA2-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ssha2_384_password, .name = "SSHA2-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ssha2_512_password, .name = "SSHA2-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
 	{ .out = &attr_sha3_password, .name = "SHA3-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_224_password, .name = "SHA3-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_256_password, .name = "SHA3-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_384_password, .name = "SHA3-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_512_password, .name = "SHA3-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
 	{ .out = &attr_ssha3_224_password, .name = "SSHA3-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ssha3_256_password, .name = "SSHA3-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ssha3_384_password, .name = "SSHA3-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
@@ -97,9 +157,10 @@ fr_dict_attr_autoload_t password_dict_attr[] = {
 	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ns_mta_md5_password, .name = "NS-MTA-MD5-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
 	{ NULL }
 };
-
 
 typedef enum {
 	NORMALISED_NOTHING = 0,
@@ -114,9 +175,228 @@ static fr_table_num_sorted_t const normalise_table[] = {
 };
 static size_t normalise_table_len = NUM_ELEMENTS(normalise_table);
 
+/*
+ *	Headers for the Password-with-Header attribute
+ *
+ *	@note Header comparison is case insensitive.
+ */
+static fr_table_num_sorted_t const password_header_table[] = {
+	{ "{base64_md5}",	FR_MD5_PASSWORD },
+	{ "{clear}",		FR_CLEARTEXT_PASSWORD },
+	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
+	{ "{crypt}",		FR_CRYPT_PASSWORD },
+	{ "{md4}",		FR_NT_PASSWORD },
+	{ "{md5}",		FR_MD5_PASSWORD },
+	{ "{ns-mta-md5}",	FR_NS_MTA_MD5_PASSWORD },
+	{ "{nt}",		FR_NT_PASSWORD },
+	{ "{nthash}",		FR_NT_PASSWORD },
+
+#ifdef HAVE_OPENSSL_EVP_H
+	{ "{sha224}",		FR_SHA2_PASSWORD },
+	{ "{sha256}",		FR_SHA2_PASSWORD },
+	{ "{sha2}",		FR_SHA2_PASSWORD },
+	{ "{sha384}",		FR_SHA2_384_PASSWORD },
+	{ "{sha512}",		FR_SHA2_512_PASSWORD },
+#endif
+	{ "{sha}",		FR_SHA1_PASSWORD },
+	{ "{smd5}",		FR_SMD5_PASSWORD },
+#ifdef HAVE_OPENSSL_EVP_H
+	{ "{ssha224}",		FR_SSHA2_224_PASSWORD },
+	{ "{ssha256}",		FR_SSHA2_256_PASSWORD },
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	{ "{ssha3-224}",	FR_SSHA3_224_PASSWORD },
+	{ "{ssha3-256}",	FR_SSHA3_256_PASSWORD },
+	{ "{ssha3-384}",	FR_SSHA3_384_PASSWORD },
+	{ "{ssha3-512}",	FR_SSHA3_512_PASSWORD },
+#  endif
+	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
+	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
+#endif
+	{ "{ssha}",		FR_SSHA1_PASSWORD },
+	{ "{x- orcllmv}",	FR_LM_PASSWORD },
+	{ "{x- orclntv}",	FR_NT_PASSWORD },
+	{ "{x-nthash}",		FR_NT_PASSWORD },
+	{ "{x-pbkdf2}",		FR_PBKDF2_PASSWORD },
+};
+static size_t password_header_table_len = NUM_ELEMENTS(password_header_table);
+
+#ifdef HAVE_OPENSSL_EVP_H
+static VALUE_PAIR *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good);
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+static VALUE_PAIR *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good);
+#  endif
+#endif
+static VALUE_PAIR *password_process_header(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good);
+
+/** Metdata for various password attributes
+ *
+ */
+static password_info_t password_info[] = {
+	[FR_CLEARTEXT_PASSWORD]		= {
+						.type = PASSWORD_CLEARTEXT,
+						.da = &attr_cleartext_password,
+						.no_normify = true
+					},
+	[FR_CRYPT_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_crypt_password
+					},
+	[FR_LM_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_lm_password,
+						.min_hash_len = MD4_DIGEST_LENGTH
+					},
+	[FR_MD5_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_md5_password,
+						.min_hash_len = MD5_DIGEST_LENGTH
+					},
+	[FR_NS_MTA_MD5_PASSWORD]	= {
+						.type = PASSWORD_HASH,
+						.da = &attr_ns_mta_md5_password
+					},
+	[FR_NT_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_nt_password,
+						.min_hash_len = MD4_DIGEST_LENGTH
+					},
+	[FR_PASSWORD_WITH_HEADER]	= {
+						.type = PASSWORD_HASH_VARIABLE,
+						.da = &attr_password_with_header,
+						.func = password_process_header
+					},
+	[FR_PBKDF2_PASSWORD]		= {
+						.type = PASSWORD_HASH_VARIABLE,
+						.da = &attr_pbkdf2_password
+					},
+	[FR_SHA1_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_sha1_password,
+						.min_hash_len = SHA1_DIGEST_LENGTH
+					},
+#ifdef HAVE_OPENSSL_EVP_H
+	[FR_SHA2_PASSWORD]		= {
+						.type = PASSWORD_HASH_VARIABLE,
+						.da = &attr_sha2_password,
+						.func = password_process_sha2,
+						.min_hash_len = SHA224_DIGEST_LENGTH,
+						.max_hash_len = SHA512_DIGEST_LENGTH
+					},
+	[FR_SHA2_224_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_sha2_224_password,
+						.min_hash_len = SHA224_DIGEST_LENGTH,
+					},
+	[FR_SHA2_256_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_sha2_256_password,
+						.min_hash_len = SHA256_DIGEST_LENGTH,
+					},
+	[FR_SHA2_384_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_sha2_384_password,
+						.min_hash_len = SHA384_DIGEST_LENGTH,
+					},
+	[FR_SHA2_512_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_sha2_512_password,
+						.min_hash_len = SHA512_DIGEST_LENGTH,
+					},
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	[FR_SHA3_PASSWORD]		= {
+						.type = PASSWORD_HASH_VARIABLE,
+						.da = &attr_sha3_password,
+						.func = password_process_sha3,
+						.min_hash_len = SHA224_DIGEST_LENGTH,
+					},
+	[FR_SHA3_224_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_sha3_224_password,
+						.min_hash_len = SHA224_DIGEST_LENGTH,
+					},
+	[FR_SHA3_256_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_sha3_256_password,
+						.min_hash_len = SHA256_DIGEST_LENGTH,
+					},
+	[FR_SHA3_384_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_sha3_384_password,
+						.min_hash_len = SHA384_DIGEST_LENGTH,
+					},
+	[FR_SHA3_512_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_sha3_512_password,
+						.min_hash_len = SHA512_DIGEST_LENGTH
+					},
+#  endif
+#endif
+	[FR_SMD5_PASSWORD]		= {
+						.type = PASSWORD_HASH,
+						.da = &attr_smd5_password,
+						.min_hash_len = MD5_DIGEST_LENGTH
+					},
+	[FR_SSHA1_PASSWORD]		= {
+						.type = PASSWORD_HASH_SALTED,
+						.da = &attr_ssha1_password,
+						.min_hash_len = SHA1_DIGEST_LENGTH
+					},
+#ifdef HAVE_OPENSSL_EVP_H
+	[FR_SSHA2_224_PASSWORD]		= {
+						.type = PASSWORD_HASH_SALTED,
+						.da = &attr_ssha2_224_password,
+						.min_hash_len = SHA224_DIGEST_LENGTH
+					},
+	[FR_SSHA2_256_PASSWORD]		= {
+						.type = PASSWORD_HASH_SALTED,
+						.da = &attr_ssha2_256_password,
+						.min_hash_len = SHA256_DIGEST_LENGTH
+					},
+	[FR_SSHA2_384_PASSWORD]		= {
+						.type = PASSWORD_HASH_SALTED,
+						.da = &attr_ssha2_384_password,
+						.min_hash_len = SHA384_DIGEST_LENGTH
+					},
+	[FR_SSHA2_512_PASSWORD]		= {
+						.type = PASSWORD_HASH_SALTED,
+						.da = &attr_ssha2_512_password,
+						.min_hash_len = SHA512_DIGEST_LENGTH
+					},
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	[FR_SSHA3_224_PASSWORD]		= {
+						.type = PASSWORD_HASH_SALTED,
+						.da = &attr_ssha3_224_password,
+						.min_hash_len = SHA224_DIGEST_LENGTH,
+					},
+	[FR_SSHA3_256_PASSWORD]		= {
+						.type = PASSWORD_HASH_SALTED,
+						.da = &attr_ssha3_256_password,
+						.min_hash_len = SHA256_DIGEST_LENGTH
+					},
+	[FR_SSHA3_384_PASSWORD]		= {
+						.type = PASSWORD_HASH_SALTED,
+						.da = &attr_ssha3_384_password,
+						.min_hash_len = SHA384_DIGEST_LENGTH
+					},
+	[FR_SSHA3_512_PASSWORD]		= {
+						.type = PASSWORD_HASH_SALTED,
+						.da = &attr_ssha3_512_password,
+						.min_hash_len = SHA512_DIGEST_LENGTH
+					}
+#  endif
+#endif
+};
+
+#define MIN_LEN(_info) (info->type == PASSWORD_HASH_SALTED ? (info->min_hash_len + 1) : info->min_hash_len)
+
 static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
 		       char const *known_good, size_t len, size_t min_len)
 {
+	/*
+	 *	Else unknown encoding, or already binary.  Leave it.
+	 */
+	if (action) *action = NORMALISED_NOTHING;
+
 	if (min_len >= bufflen) return 0; /* paranoia */
 
 	/*
@@ -148,10 +428,6 @@ static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
 		}
 	}
 
-	/*
-	 *	Else unknown encoding, or already binary.  Leave it.
-	 */
-	if (action) *action = NORMALISED_NOTHING;
 	return 0;
 }
 
@@ -170,18 +446,23 @@ static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
  * @param[in] ctx		to allocate new pairs in.
  * @param[in] request		The current request.
  * @param[in] known_good	password to normify.
- * @param[in] min_len		we expect the decoded version to be.
  * @return
- *	- NULL if known_good was already normalised.
+ *	- NULL if known_good was already normalised, or couldn't be normalised.
  *	- A new normalised password pair.
  */
-VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const *known_good, size_t min_len)
+static VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const *known_good)
 {
 	uint8_t			buffer[256];
 	ssize_t			decoded;
 	VALUE_PAIR		*out;
-	normalise_t		normalised = NORMALISED_NOTHING;
+	normalise_t		normalised;
+	password_info_t		*info;
+	size_t			min_len;
 
+	if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
+
+	info = &password_info[known_good->da->attr];
+	min_len = MIN_LEN(info);
 	if (min_len >= sizeof(buffer)) return NULL; /* paranoia */
 
 	switch (known_good->da->type) {
@@ -205,6 +486,7 @@ VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const
 			known_good->vp_length, decoded);
 		MEM(out = fr_pair_afrom_da(ctx, known_good->da));
 		fr_pair_value_memcpy(out, buffer, decoded, known_good->vp_tainted);
+		return out;
 	}
 
 	/*
@@ -213,38 +495,127 @@ VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const
 	return NULL;
 }
 
+#ifdef HAVE_OPENSSL_EVP_H
+/** Split SHA2 hashes into separate attributes based on their length
+ *
+ * @param[in] ctx		to allocate attributes in.
+ * @param[in] request		The current request.
+ * @param[in] known_good	attribute to split.
+ * @return
+ *	- A SHA2 length specific attribute.
+ *	- NULL on error.
+ */
+static VALUE_PAIR *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good)
+{
+	VALUE_PAIR	*out, *normalised;
+
+	switch (known_good->vp_length) {
+	case SHA224_DIGEST_LENGTH:
+		out = fr_pair_afrom_da(ctx, attr_sha2_224_password);
+		fr_pair_value_copy(out, known_good);
+		return out;
+
+	case SHA256_DIGEST_LENGTH:
+		out = fr_pair_afrom_da(ctx, attr_sha2_256_password);
+		fr_pair_value_copy(out, known_good);
+		return out;
+
+	case SHA384_DIGEST_LENGTH:
+		out = fr_pair_afrom_da(ctx, attr_sha2_384_password);
+		fr_pair_value_copy(out, known_good);
+		return out;
+
+	case SHA512_DIGEST_LENGTH:
+		out = fr_pair_afrom_da(ctx, attr_sha2_512_password);
+		fr_pair_value_copy(out, known_good);
+		return out;
+
+	default:
+		out = password_normify(ctx, request, known_good);
+		if (!out) return NULL;
+
+		normalised = password_process_sha2(ctx, request, out);
+		talloc_list_free(&out);
+
+		return normalised;
+	}
+}
+
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+/** Split SHA3 hashes into separate attributes based on their length
+ *
+ * @param[in] ctx		to allocate attributes in.
+ * @param[in] request		The current request.
+ * @param[in] known_good	attribute to split.
+ * @return
+ *	- A SHA3 length specific attribute.
+ *	- NULL on error.
+ */
+static VALUE_PAIR *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good)
+{
+	VALUE_PAIR	*out, *normalised;
+
+	switch (known_good->vp_length) {
+	case SHA224_DIGEST_LENGTH:
+		out = fr_pair_afrom_da(ctx, attr_sha3_224_password);
+		fr_pair_value_copy(out, known_good);
+		return out;
+
+	case SHA256_DIGEST_LENGTH:
+		out = fr_pair_afrom_da(ctx, attr_sha3_256_password);
+		fr_pair_value_copy(out, known_good);
+		return out;
+
+	case SHA384_DIGEST_LENGTH:
+		out = fr_pair_afrom_da(ctx, attr_sha3_384_password);
+		fr_pair_value_copy(out, known_good);
+		return out;
+
+	case SHA512_DIGEST_LENGTH:
+		out = fr_pair_afrom_da(ctx, attr_sha3_512_password);
+		fr_pair_value_copy(out, known_good);
+		return out;
+
+	default:
+		out = password_normify(ctx, request, known_good);
+		if (!out) return NULL;
+
+		normalised = password_process_sha3(ctx, request, out);
+		talloc_list_free(out);
+
+		return normalised;
+	}
+}
+#  endif
+#endif
+
 /** Convert a Password-With-Header attribute to the correct type
  *
  * Attribute may be base64 encoded, in which case it will be decoded
  * first, then evaluated.
  *
- * @note The buffer for octets type attributes is extended by one byte
+ * @note The buffer for octets types\ attributes is extended by one byte
  *	and '\0' terminated, to allow it to be used as a char buff.
  *
  * @param[in] ctx		to allocate new pairs in.
  * @param[in] request		Current request.
  * @param[in] known_good	Password-With-Header attribute to convert.
- * @param[in] func		to convert header strings to fr_dict_attr_t.
- * @param[in] def		Default attribute to copy value to if we
- *				don't recognise the header.
  * @return
- *	- New #VALUE_PAIR on success.
+ *	- Buffer containing normified value on success.
  *	- NULL on error.
  */
-VALUE_PAIR *password_normify_with_header(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good,
-					 password_header_lookup_t func, fr_dict_attr_t const *def)
+static VALUE_PAIR *password_process_header(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good)
 {
-	char const		*p, *q, *end;
+	char const			*p, *q, *end;
 
-	uint8_t			n1[256], n2[256];
-	ssize_t			decoded;
+	uint8_t				n1[256], n2[256];
+	ssize_t				decoded;
 
-	char			header[128];
-	normalise_t		normalised;
+	char				header[128];
+	normalise_t			normalised;
 
-	int			i;
-
-	VALUE_PAIR		*new;
+	VALUE_PAIR			*new;
+	fr_dict_attr_t const		*def = attr_cleartext_password;
 
 	VP_VERIFY(known_good);
 
@@ -258,315 +629,323 @@ VALUE_PAIR *password_normify_with_header(TALLOC_CTX *ctx, REQUEST *request, VALU
 	end = p + known_good->vp_length;
 
 	/*
-	 *	Only allow one additional level of
-	 *	normification and header parsing.
+	 *	Has a header {...} prefix
 	 */
-	for (i = 0; i <= 1; i++) {
-		/*
-		 *	Has a header {...} prefix
-		 */
-		if ((*p == '{') && (q = memchr(p, '}', end - p))) {
-			size_t			hlen;
-			fr_dict_attr_t const	*da;
-			ssize_t			slen;
+do_header:
+	if ((*p == '{') && (q = memchr(p, '}', end - p))) {
+		size_t			hlen;
+		int			attr;
+		password_info_t		*info;
 
-			hlen = (q - p) + 1;
-			if (hlen >= sizeof(header)) {
-				REDEBUG("Password header too long.  Got %zu bytes must be less than %zu bytes",
-					hlen, sizeof(header));
-				return NULL;
+		hlen = (q - p) + 1;
+		if (hlen >= sizeof(header)) {
+			REDEBUG("Password header too long.  Got %zu bytes must be less than %zu bytes",
+				hlen, sizeof(header));
+			return NULL;
+		}
+
+		memcpy(header, p, hlen);
+		header[hlen] = '\0';
+
+		attr = fr_table_value_by_substr(password_header_table, header, hlen, -1);
+		if (attr < 0) {
+			/*
+			 *	header buffer retains { and }
+			 */
+			if (RDEBUG_ENABLED3) {
+				RDEBUG3("Unknown header %s in %pP, re-writing to %s",
+					header, known_good, def->name);
+			} else {
+				RDEBUG2("Unknown header %s in %s, re-writing to %s",
+					header, known_good->da->name, def->name);
 			}
-
-			memcpy(header, p, hlen);
-			header[hlen] = '\0';
-
-			slen = func(&da, header);
-			if (slen <= 0) {
-				/*
-				 *	header buffer retains { and }
-				 */
-				if (RDEBUG_ENABLED3) {
-					RDEBUG3("Unknown header %s in %pP, re-writing to %s",
-						header, known_good, def->name);
-				} else {
-					RDEBUG2("Unknown header %s in %s, re-writing to %s",
-						header, known_good->da->name, def->name);
-				}
-				goto unknown_header;
-			}
-
 			p = q + 1;
+			goto bad_header;
+		}
+
+		p = q + 1;
+
+		if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
+		info = &password_info[attr];
+
+		new = fr_pair_afrom_da(ctx, *(info->da));
+		switch ((*(info->da))->type) {
+		case FR_TYPE_OCTETS:
+			fr_pair_value_memcpy(new, (uint8_t const *)p, end - p, true);
+			break;
+
+		case FR_TYPE_STRING:
+			fr_pair_value_bstrncpy(new, (uint8_t const *)p, end - p);
+			break;
+
+		default:
+			if (!fr_cond_assert(0)) return NULL;
+		}
+		return new;
+	}
+
+	/*
+	 *	Doesn't have a header {...} prefix
+	 *
+	 *	See if it's base64 or hex, if it is, decode it and check again!
+	 *
+	 *	We ignore request not to normify, as curly braces aren't
+	 *	in either of the character sets for the encoding schemes
+	 *	we're normifying, so there's not the possibility for error
+	 *	as there is normifying other password hashes.
+	 */
+	decoded = normify(&normalised, n1, sizeof(n1), p, end - p, 4);	/* { + <char> + } + <char> */
+	if (decoded > 0) {
+		if ((n1[0] == '{') && (memchr(n1, '}', decoded) != NULL)) {
+			RDEBUG2("Normalizing %s %s encoding, %zu bytes -> %zu bytes",
+				known_good->da->name, fr_table_str_by_value(normalise_table, normalised, 0),
+				known_good->vp_length, decoded);
 
 			/*
-			 *	Try and base64 decode, and if we can
-			 *	use the decoded value.
-			 *
-			 *	FIXME: Should pass in min length for
-			 *	password hash da represents.
+			 *	Password-With-Header is a string attribute.
+			 *	Even though we're handling binary data, the header
+			 *	must be \0 terminated.
 			 */
-			decoded = normify(&normalised, n1, sizeof(n1), p, end - p, 1);
-			if (decoded > 0) {
-				RDEBUG2("Normalizing %s %s encoding, %zu bytes -> %zu bytes",
-					da->name, fr_table_str_by_value(normalise_table, normalised, 0),
-					(end - p), decoded);
-				p = (char const *)n1;
-				end = p + decoded;
-			}
-
-			new = fr_pair_afrom_da(ctx, da);
-			switch (da->type) {
-			case FR_TYPE_OCTETS:
-				fr_pair_value_memcpy(new, (uint8_t const *)p, end - p, true);
-				break;
-
-			case FR_TYPE_STRING:
-				fr_pair_value_bstrncpy(new, (uint8_t const *)p, end - p);
-				break;
-
-			default:
-				if (!fr_cond_assert(0)) return NULL;
-			}
-			return new;
+			memcpy(n2, n1, decoded);
+			p = (char const *)n2;
+			end = p + decoded;
+			goto do_header;
 		}
-
-		/*
-		 *	Doesn't have a header {...} prefix
-		 *
-		 *	See if it's base64 or hex, if it is, decode it and check again!
-		 */
-		decoded = normify(&normalised, n1, sizeof(n1), p, end - p, 1);
-		if (decoded > 0) {
-			if ((n1[0] == '{') && (memchr(n1, '}', decoded) != NULL)) {
-				RDEBUG2("Normalizing %s %s encoding, %zu bytes -> %zu bytes",
-					known_good->da->name, fr_table_str_by_value(normalise_table, normalised, 0),
-					known_good->vp_length, decoded);
-
-				/*
-				 *	Password-With-Header is a string attribute.
-				 *	Even though we're handling binary data, the header
-				 *	must be \0 terminated.
-				 */
-				memcpy(n2, n1, decoded);
-				p = (char const *)n2;
-				end = p + decoded;
-				continue;
-			}
-		}
-
-		break;
 	}
 
+	/*
+	 *	Rewrite to the default attribute type
+	 *	currently Cleartext-Password.
+	 *
+	 *	This is usually correct if there's no
+	 *	header to indicate hash type.
+	 */
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("No {...} in &%pP, re-writing to %s", known_good, def->name);
+		RDEBUG3("No {...} in &control:%pP, re-writing to %s", known_good, def->name);
 	} else {
-		RDEBUG2("No {...} in &%s, re-writing to %s", known_good->da->name, def->name);
+		RDEBUG2("No {...} in &control:%s, re-writing to %s", known_good->da->name, def->name);
 	}
 
-unknown_header:
+bad_header:
 	new = fr_pair_afrom_da(request, def);
 	fr_pair_value_bstrncpy(new, p, end - p);
 
 	return new;
 }
 
-
-/*
- *	For auto-header discovery.
- *
- *	@note Header comparison is case insensitive.
- *
- *	We don't put the *value* of "attr_foo" here, as those
- *	values are loaded at run time.  Instead, we point to
- *	the attr_foo definition, which is then a static pointer
- *	to a known variable.
- */
-static fr_table_ptr_ordered_t const header_names[] = {
-	{ "X- orclntv}",	&attr_nt_password },
-	{ "{base64_md5}",	&attr_md5_password },
-	{ "{cleartext}",	&attr_cleartext_password },
-	{ "{clear}",		&attr_cleartext_password },
-	{ "{crypt}",		&attr_crypt_password },
-	{ "{md4}",		&attr_nt_password },
-	{ "{md5}",		&attr_md5_password },
-	{ "{ns-mta-md5}",	&attr_ns_mta_md5_password },
-	{ "{nthash}",		&attr_nt_password },
-	{ "{nt}",		&attr_nt_password },
-#ifdef HAVE_OPENSSL_EVP_H
-	{ "{sha224}",		&attr_sha2_password },
-	{ "{sha256}",		&attr_sha2_password },
-	{ "{sha2}",		&attr_sha2_password },
-	{ "{sha384}",		&attr_sha2_password },
-	{ "{sha512}",		&attr_sha2_password },
-#endif
-	{ "{sha}",		&attr_sha_password },
-	{ "{smd5}",		&attr_smd5_password },
-#ifdef HAVE_OPENSSL_EVP_H
-	{ "{ssha224}",		&attr_ssha2_224_password },
-	{ "{ssha256}",		&attr_ssha2_256_password },
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	{ "{ssha3-224}",	&attr_ssha3_224_password },
-	{ "{ssha3-256}",	&attr_ssha3_256_password },
-	{ "{ssha3-384}",	&attr_ssha3_384_password },
-	{ "{ssha3-512}",	&attr_ssha3_512_password },
-#  endif
-	{ "{ssha384}",		&attr_ssha2_384_password },
-	{ "{ssha512}",		&attr_ssha2_512_password },
-#endif
-	{ "{ssha}",		&attr_ssha_password },
-	{ "{x- orcllmv}",	&attr_lm_password },
-	{ "{x-nthash}",		&attr_nt_password },
-	{ "{x-pbkdf2}",		&attr_pbkdf2_password },
-};
-static size_t header_names_len = NUM_ELEMENTS(header_names);
-
-
-static ssize_t known_password_header(fr_dict_attr_t const **out, char const *header)
-{
-	fr_dict_attr_t const **da;
-
-	da = fr_table_value_by_str(header_names, header, NULL);
-	if (!da || !*da) return -1;
-
-	*out = *da;
-	return strlen(header);
-}
-
-static const size_t fr_password_length[] = {
-	[FR_LM_PASSWORD - 5000 ]	= 16,
-	[FR_MD5_PASSWORD - 5000 ]	= 16,
-	[FR_MS_CHAP_PASSWORD - 5000 ]	= 0, /* used only by radclient */
-	[FR_NS_MTA_MD5_PASSWORD - 5000 ] = 0, /* not used at all by anyone/// */
-	[FR_NT_PASSWORD - 5000 ]	= 16,
-	[FR_PBKDF2_PASSWORD - 5000 ]	= 0, /* already normalized */
-	[FR_SHA_PASSWORD - 5000 ]	= 20,
-	[FR_SHA1_PASSWORD - 5000 ]	= 20,
-	[FR_SHA2_PASSWORD - 5000 ]	= 28,
-	[FR_SHA3_PASSWORD - 5000 ]	= 28,
-	[FR_SMD5_PASSWORD - 5000 ]	= 16,
-	[FR_SSHA_PASSWORD - 5000 ]	= 20,
-	[FR_SSHA1_PASSWORD - 5000 ]	= 20,
-	[FR_SSHA2_224_PASSWORD - 5000 ]	= 28,
-	[FR_SSHA2_256_PASSWORD - 5000 ]	= 32,
-	[FR_SSHA2_384_PASSWORD - 5000 ]	= 48,
-	[FR_SSHA2_512_PASSWORD - 5000 ]	= 64,
-	[FR_SSHA3_224_PASSWORD - 5000 ]	= 28,
-	[FR_SSHA3_256_PASSWORD - 5000 ]	= 32,
-	[FR_SSHA3_384_PASSWORD - 5000 ]	= 48,
-	[FR_SSHA3_512_PASSWORD - 5000 ]	= 64,
-};
-#define MAX_KNOWN_PASSWORD (sizeof(fr_password_length) / sizeof(fr_password_length[0]))
-
-
-/** Normalise passwords.
- *
- * @param request the request to process
- * @param normalise whether or not we normalise the passwords
+/** Apply any processing and normification
  *
  */
-VALUE_PAIR *password_normalise(REQUEST *request, bool normalise)
+static VALUE_PAIR *password_process(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good, bool normify)
 {
-	VALUE_PAIR		*vp, *found_pw = NULL;
-	fr_cursor_t		cursor;
-	fr_dict_attr_t const	*root;
+	password_info_t		*info;
+	VALUE_PAIR		*out;
 
-	root = fr_dict_root(dict_freeradius);
-	if (!root) return NULL;
-
-	for (vp = fr_cursor_init(&cursor, &request->control);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		VP_VERIFY(vp);
-		VALUE_PAIR *new;
-
-	next:
-		/*
-		 *	Look only for out attributes.  Note that we no
-		 *	longer complain about User-Password being in
-		 *	the control list.  That functionality has been
-		 *	deprecated for 10 years.  If the admins still
-		 *	do it, too bad.
-		 */
-		if (vp->da->parent != root) continue;
-
-		if ((vp->da->attr < 5000) || (vp->da->attr >= (5000 + MAX_KNOWN_PASSWORD))) continue;
+	info = &password_info[known_good->da->attr];
+	if (info->func) {
+		VALUE_PAIR	*from_func, *from_recurse;
 
 		/*
-		 *	Remove the header, and convert it to something sane.
+		 *	Pass our input attribute to a custom preprocessing
+		 *	function to manipulate it.
 		 */
-		if (vp->da->attr == FR_PASSWORD_WITH_HEADER) {
-			/*
-			 *	Password already exists: use that instead of this one.
-			 */
-			if (fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY)) {
-				RWDEBUG("Config already contains a \"known good\" password "
-					"(&control:%s).  Ignoring &control:%s",
-					attr_cleartext_password->name, vp->da->name);
-				break;
-			}
+		from_func = info->func(ctx, request, known_good);
+		if (!from_func) return NULL;
 
-			MEM(new = password_normify_with_header(request, request, vp,
-							       known_password_header,
-							       attr_cleartext_password));
-			if (RDEBUG_ENABLED3) {
-				RDEBUG3("Normalized &control:%pP -> &control:%pP", vp, new);
-			} else {
-				RDEBUG2("Normalized &control:%s -> &control:%s", vp->da->name, new->da->name);
-			}
+		/*
+		 *	Processing function may have produced a different
+		 *	password type, recurse to deal with it...
+		 */
+		from_recurse = password_process(ctx, request, from_func, normify);
 
-			RDEBUG2("Removing &control:%s", vp->da->name);
-			fr_cursor_free_item(&cursor);			/* advances the cursor for us */
-			fr_cursor_append(&cursor, new);			/* inserts at the end of the list */
-
-			found_pw = new;
-
-			vp = fr_cursor_current(&cursor);
-			if (vp) goto next;
-			break;
+		/*
+		 *	Cleanup any intermediary password attributes created
+		 *	from running the different normalisation and parsing
+		 *	operations.
+		 */
+		if (!from_recurse) {
+			if (from_func != known_good) talloc_list_free(&from_func);
+			return NULL;
 		}
+		if ((from_func != known_good) && (from_recurse != from_func)) talloc_list_free(&from_func);
 
-		found_pw = vp;
-
-		/*
-		 *	Don't normalise Cleartext Passwords
-		 */
-		if (vp->da->attr == FR_CLEARTEXT_PASSWORD) break;
-
-		if (!normalise) break;
-
-		if (!fr_password_length[vp->da->attr - 5000]) break;
-
-		new = password_normify(request, request, vp, fr_password_length[vp->da->attr - 5000]);
-		if (new) {
-			fr_cursor_free_item(&cursor);		/* free the old pasword */
-			fr_cursor_append(&cursor, new);		/* inserts at the end of the list */
-
-			vp = fr_cursor_current(&cursor);
-			if (vp) goto next;
-			break;
-		}
-
-		/*
-		 *	Can't normalise this one, but there might be
-		 *	another one that we can normalise.
-		 */
+		return from_recurse;
 	}
 
 	/*
-	 *	Print helpful warnings if there was no password.
+	 *	Only normify if we're told to, and we have more data
+	 *	than the minimum length.
 	 */
-	if (found_pw) {
-		if (RDEBUG_ENABLED3) {
-			RDEBUG("Found \"known good\" password in &control:%s = \"%pV\"", found_pw->da->name, &found_pw->data);
-		} else {
-			RDEBUG("Found \"known good\" password in &control:%s", found_pw->da->name);
-		}
+	if (normify && !info->no_normify && (known_good->vp_length > info->min_hash_len)) {
+		VALUE_PAIR *from_normify;
 
+		from_normify = password_normify(ctx, request, known_good);
+		out = from_normify ? from_normify : known_good;
 	} else {
-		RWDEBUG("No \"known good\" password found for the user.");
-		RWDEBUG("Authentication may fail unless a \"known good\" password is available");
+		out = known_good;
 	}
 
-	return found_pw;
+	/*
+	 *	Sanity checks - Too short
+	 */
+	if (info->min_hash_len && (out->vp_length < MIN_LEN(info))) {
+		if (RDEBUG_ENABLED3) {
+			RWDEBUG3("&control:%pP too short, expected %zu bytes, got %zu bytes",
+				 out, MIN_LEN(info), out->vp_length);
+		} else {
+			RWDEBUG2("&control:%s too short, expected %zu bytes, got %zu bytes",
+				 out->da->name, MIN_LEN(info), out->vp_length);
+		}
+	invalid:
+		if (out != known_good) talloc_list_free(&out);	/* Free attribute we won't be returning */
+		return NULL;
+	}
+
+	/*
+	 *	Sanity checks - Too long
+	 */
+	if (info->max_hash_len && (out->vp_length > info->max_hash_len)) {
+		if (RDEBUG_ENABLED3) {
+			RWDEBUG3("&control:%pP too long, expected %zu bytes, got %zu bytes",
+				 out, info->max_hash_len, out->vp_length);
+		} else {
+			RWDEBUG2("&control:%s too long, expected %zu bytes, got %zu bytes",
+				 out->da->name, info->max_hash_len, out->vp_length);
+		}
+		goto invalid;
+	}
+
+	/*
+	 *	Sanity checks - Hashes are a fixed length
+	 */
+	if ((info->type == PASSWORD_HASH) && (out->vp_length != info->min_hash_len)) {
+
+		if (RDEBUG_ENABLED3) {
+			RWDEBUG3("&control:%pP incorrect length, expected %zu bytes, got %zu bytes",
+				 out, info->min_hash_len, out->vp_length);
+		} else {
+			RWDEBUG2("&control:%s incorrect length, expected %zu bytes, got %zu bytes",
+				 out->da->name, info->min_hash_len, out->vp_length);
+		}
+		goto invalid;
+	}
+
+	return out;
+}
+
+/** Find all password attributes in the control list of a request and normalise them
+ *
+ * @param[in] request	The current request.
+ * @param[in] normify	Apply hex/base64 normalisation to attributes.
+ * @return the number of attributes normalised.
+ */
+int password_normalise_and_replace(REQUEST *request, bool normify)
+{
+	fr_cursor_t	cursor;
+	int		replaced = 0;
+	VALUE_PAIR	*known_good, *new;
+
+	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control, attr_password_root);
+	     known_good;
+	     known_good = fr_cursor_next(&cursor)) {
+		if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return -1;
+
+		/*
+		 *	Apply preprocessing steps and normalisation.
+		 */
+		new = password_process(request, request, known_good, normify);
+		if (!new) break;		/* Process next input attribute */
+
+		if (RDEBUG_ENABLED3) {
+			RDEBUG3("Replacing &control:%pP with &control:%pP",
+				known_good, new);
+
+		} else {
+			RDEBUG2("Replacing &control:%s with &control:%s",
+				known_good->da->name, new->da->name);
+		}
+		fr_cursor_free_item(&cursor);
+		fr_cursor_prepend(&cursor, new);
+		replaced++;
+	}
+
+	return replaced;
+}
+
+/** Find a "known good" password in the control list of a request
+ *
+ * Searches for a "known good" password attribute, and applies any processing
+ * and normification operations to it, returning a new mormalised VALUE_PAIR.
+ *
+ * The ctx passed in should be freed when the caller is done with the returned
+ * VALUE_PAIR.  The returned pair *MUST NOT BE FREED*, it may be an attribute
+ * in the request->control list.
+ *
+ * @param[in] ctx		Ephemeral ctx to allocate new attributes in.
+ * @param[in] request		The current request.
+ * @param[in] allowed_attrs	Optional list of allowed attributes.
+ * @param[in] allowed_attrs_len	Length of allowed attributes list.
+ * @param[in] normify		Apply hex/base64 normalisation to attributes.
+ * @return
+ *	- A VALUE_PAIR containing a "known good" password.
+ *	- NULL on error, or if no usable password attributes were found.
+ */
+VALUE_PAIR const *password_find(TALLOC_CTX *ctx, REQUEST *request,
+				fr_dict_attr_t const *allowed_attrs[], size_t allowed_attrs_len, bool normify)
+{
+	fr_cursor_t	cursor;
+	size_t		i, j;
+	VALUE_PAIR	*known_good;
+
+	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control, attr_password_root);
+	     known_good;
+	     known_good = fr_cursor_next(&cursor)) {
+		if (known_good->da == attr_user_password) {
+			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RWDEBUG("!!! Ignoring control:User-Password.  Update your        !!!");
+			RWDEBUG("!!! configuration so that the \"known good\" clear text !!!");
+			RWDEBUG("!!! password is in Cleartext-Password and NOT in        !!!");
+			RWDEBUG("!!! User-Password.                                      !!!");
+			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			continue;
+		}
+
+		for (i = 0; i < allowed_attrs_len; i++) {
+			VALUE_PAIR *new;
+
+			if (allowed_attrs[i] != known_good->da) continue;
+
+			if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
+
+			/*
+			 *	Apply preprocessing steps and normalisation.
+			 */
+			new = password_process(ctx, request, known_good, normify);
+			if (!new) break;		/* Process next input attribute */
+
+			/*
+			 *	If new != known_good, then we need
+			 *	to check what was produced is still
+			 *	acceptable.
+			 */
+			if (new->da != known_good->da) {
+				for (j = 0; j < allowed_attrs_len; j++) if (allowed_attrs[j] == new->da) return new;
+
+				/*
+				 *	New attribute not in our allowed list
+				 */
+				talloc_list_free(&new);	/* da didn't match, treat as ephemeral */
+				break;			/* Process next input attribute */
+			}
+
+			/*
+			 *	Return attribute for processing
+			 */
+			return new;
+		}
+	}
+
+	return NULL;
 }
 
 /** Load our dictionaries

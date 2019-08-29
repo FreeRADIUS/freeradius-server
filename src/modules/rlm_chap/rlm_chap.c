@@ -29,6 +29,7 @@ RCSID("$Id$")
 
 typedef struct {
 	char const		*name;		//!< Auth-Type value for this module instance.
+	bool			normify;
 	fr_dict_enum_t		*auth_type;
 } rlm_chap_t;
 
@@ -44,6 +45,7 @@ fr_dict_autoload_t rlm_chap_dict[] = {
 
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_cleartext_password;
+static fr_dict_attr_t const *attr_password_with_header;
 
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_chap_challenge;
@@ -53,11 +55,17 @@ extern fr_dict_attr_autoload_t rlm_chap_dict_attr[];
 fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_password, .name = "Chap-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chap_challenge, .name = "Chap-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
+};
+
+static const CONF_PARSER module_config[] = {
+	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, rlm_chap_t, normify), .dflt = "yes" },
+	CONF_PARSER_TERMINATOR
 };
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
@@ -104,8 +112,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	VALUE_PAIR	*known_good, *chap, *username;
-	uint8_t		pass_str[FR_MAX_STRING_LEN];
+	rlm_chap_t		*inst = instance;
+	VALUE_PAIR const	*known_good;
+	VALUE_PAIR		*chap, *username;
+	uint8_t			pass_str[FR_MAX_STRING_LEN];
+	TALLOC_CTX		*tmp_ctx;
+	fr_dict_attr_t const	*allowed_passwords[] = { attr_password_with_header, attr_cleartext_password };
 
 	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	if (!username) {
@@ -131,18 +143,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	}
 
 	/*
-	 *	Normalise passwords, if it hasn't already been done.
-	 *
-	 *	This function returns the "known good" password, and
-	 *	prefers to return Cleartext-Password over everything
-	 *	else.
+	 *	Holds any ephemeral attributes
 	 */
-	known_good = password_normalise(request, true);
-	if (!known_good || (known_good->da != attr_cleartext_password)) {
-		REDEBUG("&control:Cleartext-Password is required for authentication");
+	MEM(tmp_ctx = talloc_named_const(request, 0, "password_tmp_ctx"));
+
+	/*
+	 *	Retrieve the normalised version of
+	 *	the known_good password, without
+	 *	mangling the current password attributes
+	 *	in the request.
+	 */
+	known_good = password_find(tmp_ctx, request,
+				   allowed_passwords, NUM_ELEMENTS(allowed_passwords),
+				   inst->normify);
+	if (!known_good) {
+		REDEBUG("No \"known good\" password found for user");
+		talloc_free(tmp_ctx);
 		return RLM_MODULE_FAIL;
 	}
-
 	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0], known_good);
 
 	if (RDEBUG_ENABLED3) {
@@ -174,10 +192,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 
 	if (fr_digest_cmp(pass_str + 1, chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH) != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");
+		talloc_free(tmp_ctx);
 		return RLM_MODULE_REJECT;
 	}
 
 	RDEBUG2("CHAP user \"%pV\" authenticated successfully", &username->data);
+
+	talloc_free(tmp_ctx);
 
 	return RLM_MODULE_OK;
 }
@@ -213,6 +234,7 @@ module_t rlm_chap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "chap",
 	.inst_size	= sizeof(rlm_chap_t),
+	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.dict		= &dict_radius,
 	.methods = {

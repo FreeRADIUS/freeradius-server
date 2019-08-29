@@ -102,6 +102,68 @@ update {
 	&control: !* ANY
 }
 
+#
+#  Base64 of SHA2-384 password (in SHA2-Password)
+#
+update control {
+	&control:SHA2-Password := "%{hex:%{sha2_384:%{request:User-Password}}}"
+}
+
+pap.authorize
+pap.authenticate {
+	reject = 1
+}
+if (reject) {
+	test_fail
+}
+
+update {
+	&control: !* ANY
+}
+
+update control {
+	&Auth-Type := Accept
+}
+
+#
+#  Base64 of SHA2-256 password (in SHA2-256-Password)
+#
+update control {
+	&control:SHA2-256-Password := "%{hex:%{sha2_256:%{request:User-Password}}}"
+}
+
+pap.authorize
+pap.authenticate {
+	reject = 1
+}
+if (reject) {
+	test_fail
+}
+
+update {
+	&control: !* ANY
+}
+
+#
+#  Base64 of SHA2-224 password (in SHA2-224-Password - No hex armour)
+#
+update control {
+	&control:SHA2-224-Password := "%{sha2_224:%{request:User-Password}}"
+}
+
+pap.authorize
+pap.authenticate {
+	reject = 1
+}
+if (reject) {
+	test_fail
+}
+
+update {
+	&control: !* ANY
+}
+
+
 update control {
 	&Auth-Type := Accept
 }
