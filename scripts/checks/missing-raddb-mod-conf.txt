@@ -2,7 +2,6 @@ WARNING: Module src/modules/rlm_dict has no raddb/mods-available/dict
 WARNING: raddb/mods-available/files has no reference for: auth_usersfile
 WARNING: raddb/mods-available/files has no reference for: postauth_usersfile
 WARNING: raddb/mods-available/files has no reference for: postproxy_usersfile
-WARNING: raddb/mods-available/radius has no reference for: ignore_response
 WARNING: raddb/mods-available/radius has no reference for: ipv4addr
 WARNING: raddb/mods-available/radius has no reference for: ipv6addr
 WARNING: raddb/mods-available/radius has no reference for: src_ipv4addr
