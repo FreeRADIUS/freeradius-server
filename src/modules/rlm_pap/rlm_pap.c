@@ -804,6 +804,7 @@ static const pap_auth_func_t auth_func_table[] = {
 	[FR_NT_PASSWORD]	= pap_auth_nt,
 	[FR_PASSWORD_WITH_HEADER] = pap_auth_dummy,
 	[FR_SHA1_PASSWORD]	= pap_auth_sha1,
+	[FR_SSHA1_PASSWORD]	= pap_auth_ssha1,
 
 #ifdef HAVE_OPENSSL_EVP_H
 	[FR_PBKDF2_PASSWORD]	= pap_auth_pbkdf2,
@@ -812,7 +813,6 @@ static const pap_auth_func_t auth_func_table[] = {
 	[FR_SHA2_256_PASSWORD]	= pap_auth_sha2_256,
 	[FR_SHA2_384_PASSWORD]	= pap_auth_sha2_384,
 	[FR_SHA2_512_PASSWORD]	= pap_auth_sha2_512,
-	[FR_SSHA1_PASSWORD]	= pap_auth_ssha1,
 	[FR_SSHA2_224_PASSWORD]	= pap_auth_ssha2_224,
 	[FR_SSHA2_256_PASSWORD]	= pap_auth_ssha2_256,
 	[FR_SSHA2_384_PASSWORD]	= pap_auth_ssha2_384,
