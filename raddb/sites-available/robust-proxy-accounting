@@ -24,6 +24,16 @@
 #	This file is NOT meant to be used as-is.  It needs to be
 #	edited to match your local configuration.
 #
+#	Please see the sites-available/default file, in the
+#	"Post-Proxy-Type Fail-Accounting" section.  That should be
+#	configured to write packets to the "detail.example.com"
+#	file when proxying fails.  The "listen" section below will
+#	then read packets from that file, and proxy them.
+#
+#	See also mods-available/detail.example.com, which is the
+#	module that writes the "detail.example.com" file.
+#
+#
 #	$Id$
 #
 ######################################################################
