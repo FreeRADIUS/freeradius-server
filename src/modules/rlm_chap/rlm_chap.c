@@ -65,16 +65,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	rlm_chap_t	*inst = instance;
 	VALUE_PAIR	*vp;
 
+	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
+		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
+		return RLM_MODULE_NOOP;
+	}
+
 	/*
 	 *	This case means the warnings below won't be printed
 	 *	unless there's a CHAP-Password in the request.
 	 */
 	if (!fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY)) return RLM_MODULE_NOOP;
-
-	if (fr_pair_find_by_da(request->packet->vps, attr_auth_type, TAG_ANY) != NULL) {
-		REDEBUG("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
-		return RLM_MODULE_NOOP;
-	}
 
 	/*
 	 *	Create the CHAP-Challenge if it wasn't already in the packet.

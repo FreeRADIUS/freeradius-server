@@ -172,8 +172,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	rlm_pap_t const 	*inst = instance;
 	VALUE_PAIR		*password;
 
-	if (fr_pair_find_by_da(request->packet->vps, attr_auth_type, TAG_ANY) != NULL) {
-		REDEBUG("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
+	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
+		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		return RLM_MODULE_NOOP;
 	}
 
