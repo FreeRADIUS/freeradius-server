@@ -81,7 +81,7 @@ static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor)
  * we use vp->vp_length, and Ascend gear likes
  * to send an extra '\0' in the string!
  */
-int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int id, VALUE_PAIR *password)
+int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int id, VALUE_PAIR const *password)
 {
 	int		i;
 	uint8_t		*ptr;
