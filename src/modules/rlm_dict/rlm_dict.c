@@ -92,7 +92,7 @@ static ssize_t xlat_vendor(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	VALUE_PAIR *vp;
 	fr_dict_vendor_t const *vendor;
 
-	fr_skip_spaces(fmt);
+	fr_skip_whitespace(fmt);
 
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
@@ -112,7 +112,7 @@ static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 {
 	VALUE_PAIR *vp;
 
-	fr_skip_spaces(fmt);
+	fr_skip_whitespace(fmt);
 
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
@@ -129,7 +129,7 @@ static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, size_t outlen,
 {
 	VALUE_PAIR *vp;
 
-	fr_skip_spaces(fmt);
+	fr_skip_whitespace(fmt);
 
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 	strlcpy(*out, vp->da->name, outlen);
@@ -147,7 +147,7 @@ static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 {
 	VALUE_PAIR *vp;
 
-	fr_skip_spaces(fmt);
+	fr_skip_whitespace(fmt);
 
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 

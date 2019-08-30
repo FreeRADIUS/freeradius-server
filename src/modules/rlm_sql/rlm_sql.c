@@ -185,7 +185,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	/*
 	 *	Trim whitespace for the prefix check
 	 */
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	/*
 	 *	If the query starts with any of the following prefixes,

@@ -66,7 +66,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  *
  * @param[in,out] _p	string to skip over.
  */
-#define fr_skip_spaces(_p) while(isspace((int)*(_p))) _p++
+#define fr_skip_whitespace(_p) while(isspace((int)*(_p))) _p++
 
 /** Skip everything that's not whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
  *

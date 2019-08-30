@@ -560,7 +560,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		if ((*p == '\0') || (outlen <= 32))
 			return 0;
 
-		fr_skip_spaces(p);
+		fr_skip_whitespace(p);
 
 		if (mschap_nt_password_hash(buffer, p) < 0) {
 			REDEBUG("Failed generating NT-Password");
@@ -583,7 +583,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		if ((*p == '\0') || (outlen <= 32))
 			return 0;
 
-		fr_skip_spaces(p);
+		fr_skip_whitespace(p);
 
 		smbdes_lmpwdhash(p, buffer);
 		fr_bin2hex(*out, buffer, LM_DIGEST_LENGTH);

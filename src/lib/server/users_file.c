@@ -137,7 +137,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	ignore it.
 		 */
 		ptr = buffer;
-		fr_skip_spaces(ptr);
+		fr_skip_whitespace(ptr);
 
 		if (*ptr == '#' || *ptr == '\n' || !*ptr) continue;
 
@@ -165,7 +165,7 @@ parse_again:
 			 *	$INCLUDE filename
 			 */
 			if (strcasecmp(entry, "$INCLUDE") == 0) {
-				fr_skip_spaces(ptr);
+				fr_skip_whitespace(ptr);
 
 				/*
 				 *	If it's an absolute pathname,

@@ -239,7 +239,7 @@ redo:
 	 *	Skip leading spaces
 	 */
 	p = state->ptr;
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	/*
 	 *	The line is all spaces, OR we've hit a comment.  Go
@@ -260,7 +260,7 @@ static int skip_spaces(rlm_isc_dhcp_tokenizer_t *state, char *p)
 	state->ptr = p;
 	char *start = p;
 
-	fr_skip_spaces(state->ptr);
+	fr_skip_whitespace(state->ptr);
 
 	/*
 	 *	If we ran out of text on this line, re-fill the
@@ -539,7 +539,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	char const *next;
 	char type_name[64];
 
-	fr_skip_spaces(cmd);
+	fr_skip_whitespace(cmd);
 
 	if (!*cmd) return -1;	/* internal error */
 

@@ -47,7 +47,7 @@ static ssize_t sim_xlat_id_method(TALLOC_CTX *ctx, char **out, UNUSED size_t out
 	/*
 	 *  Trim whitespace
 	 */
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
 				      &(vp_tmpl_rules_t){
@@ -101,7 +101,7 @@ static ssize_t sim_xlat_id_type(TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	/*
 	 *  Trim whitespace
 	 */
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
 				      &(vp_tmpl_rules_t){
@@ -154,7 +154,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_key_index(TALLOC_CTX *ctx, char **out, UN
 	/*
 	 *  Trim whitespace
 	 */
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
 				      &(vp_tmpl_rules_t){
@@ -202,7 +202,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt(TALLOC_CTX *ctx, char **out, UNUS
 	/*
 	 *  Trim whitespace
 	 */
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p, -1,
 				      &(vp_tmpl_rules_t){
@@ -314,7 +314,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 	/*
 	 *  Trim whitespace
 	 */
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p, -1,
 				      &(vp_tmpl_rules_t){

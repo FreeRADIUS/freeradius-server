@@ -3290,7 +3290,7 @@ int main(int argc, char **argv)
 		 *	Skip leading whitespace.
 		 */
 		p = buffer;
-		fr_skip_spaces(p);
+		fr_skip_whitespace(p);
 
 		/*
 		 *	Skip (now) blank lines.

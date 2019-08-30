@@ -1283,7 +1283,7 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 	unlang_stack_frame_t	*frame;
 	unlang_t		*instruction;
 
-	fr_skip_spaces(fmt);
+	fr_skip_whitespace(fmt);
 
 	/*
 	 *	Find the correct stack frame.

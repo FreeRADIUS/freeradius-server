@@ -611,7 +611,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	rad_assert(c != NULL);
 	lhs_type = rhs_type = T_INVALID;
 
-	fr_skip_spaces(p); /* skip spaces before condition */
+	fr_skip_whitespace(p); /* skip spaces before condition */
 
 	if (!*p) {
 		return_P("Empty condition is invalid");
@@ -623,7 +623,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	if (*p == '!') {
 		p++;
 		c->negate = true;
-		fr_skip_spaces(p); /* skip spaces after negation */
+		fr_skip_whitespace(p); /* skip spaces after negation */
 
 		/*
 		 *  Just for stupidity
@@ -653,7 +653,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		}
 
 		p += slen;
-		fr_skip_spaces(p); /* skip spaces after (COND)*/
+		fr_skip_whitespace(p); /* skip spaces after (COND)*/
 		goto closing_brace;
 	}
 
@@ -689,7 +689,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	}
 
 	p += slen;
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	/*
 	 *	(FOO)
@@ -839,7 +839,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			break;
 		}
 
-		fr_skip_spaces(p); /* skip spaces after operator */
+		fr_skip_whitespace(p); /* skip spaces after operator */
 
 		if (!*p) {
 			return_P("Expected text after operator");
@@ -1008,7 +1008,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		}
 
 		p += slen;
-		fr_skip_spaces(p); /* skip spaces after RHS */
+		fr_skip_whitespace(p); /* skip spaces after RHS */
 	} /* parse OP RHS */
 
 closing_brace:
@@ -1021,7 +1021,7 @@ closing_brace:
 		}
 
 		p++;
-		fr_skip_spaces(p); /* skip spaces after closing brace */
+		fr_skip_whitespace(p); /* skip spaces after closing brace */
 		goto done;
 	}
 

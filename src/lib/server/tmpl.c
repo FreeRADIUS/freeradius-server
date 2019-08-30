@@ -2926,7 +2926,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 	*type = T_INVALID;
 	if (castda) *castda = NULL;
 
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	if (*p == '<') {
 		fr_type_t cast;
@@ -2939,7 +2939,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		}
 
 		p++;
-		fr_skip_spaces(p);
+		fr_skip_whitespace(p);
 
 		for (q = p; *q && !isspace((int) *q) && (*q != '>'); q++) {
 			/* nothing */
@@ -2964,13 +2964,13 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		}
 
 		p = q;
-		fr_skip_spaces(p);
+		fr_skip_whitespace(p);
 		if (*p != '>') {
 			return_P("Expected '>'");
 		}
 		p++;
 
-		fr_skip_spaces(p);
+		fr_skip_whitespace(p);
 	}
 
 	if (require_regex) {

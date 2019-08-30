@@ -817,7 +817,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		if (has_spaces) {
 			ptr = cbuff;
-			fr_skip_spaces(ptr);
+			fr_skip_whitespace(ptr);
 
 			if (ptr > cbuff) {
 				memmove(cbuff, ptr, len - (ptr - cbuff));
@@ -833,7 +833,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			if (at_eof) break;
 
 			ptr = buff[0];
-			fr_skip_spaces(ptr);
+			fr_skip_whitespace(ptr);
 
 #ifdef WITH_CONF_WRITE
 			/*
@@ -1413,7 +1413,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		case T_OP_EQ:
 		case T_OP_SET:
-			fr_skip_spaces(ptr);
+			fr_skip_whitespace(ptr);
 
 			/*
 			 *	New parser: non-quoted strings are
@@ -1558,7 +1558,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Require a comma, unless there's a comment.
 			 */
-			fr_skip_spaces(ptr);
+			fr_skip_whitespace(ptr);
 
 			if (*ptr == ',') {
 				ptr++;
@@ -1654,7 +1654,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		/*
 		 *	Done parsing one thing.  Skip to EOL if possible.
 		 */
-		fr_skip_spaces(ptr);
+		fr_skip_whitespace(ptr);
 
 		if (*ptr == '#') continue;
 

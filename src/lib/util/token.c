@@ -268,7 +268,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 	/* Skip whitespace */
 	p = *ptr;
 
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	if (!*p) {
 		*ptr = p;
@@ -421,7 +421,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 done:
 	/* Skip whitespace again. */
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	*ptr = p;
 
@@ -473,7 +473,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 
 	p = *ptr;
 
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	*ptr = p;
 

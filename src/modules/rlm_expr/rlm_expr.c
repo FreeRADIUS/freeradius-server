@@ -167,7 +167,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	/*
 	 *	Look for a number.
 	 */
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	/*
 	 *	~1 == 0xff...ffe
@@ -453,7 +453,7 @@ static bool get_expression(REQUEST *request, char const **string, int64_t *answe
 	if (!get_number(request, &p, &lhs)) return false;
 
 redo:
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	/*
 	 *	A number by itself is OK.

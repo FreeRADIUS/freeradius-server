@@ -73,7 +73,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	strlcpy(buffer, fmt, sizeof(buffer));
 
 	p = buffer;
-	fr_skip_spaces(p); /* skip leading spaces */
+	fr_skip_whitespace(p); /* skip leading spaces */
 
 	data_name = p;
 

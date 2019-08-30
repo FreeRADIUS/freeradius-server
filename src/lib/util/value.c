@@ -3583,7 +3583,7 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
-		fr_skip_spaces(in);
+		fr_skip_whitespace(in);
 
 		if (*in == '-') {
 			fr_strerror_printf("Invalid negative value \"%s\" for unsigned integer", in);
