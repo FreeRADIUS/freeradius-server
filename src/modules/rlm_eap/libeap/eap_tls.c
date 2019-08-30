@@ -133,7 +133,6 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
  * will derive the same keys separately.
  *
  * @param handler handler of eap session that completed successfully.
- * @param prf_label the prf label to use
  * @param peap_flag to indicate PEAP version
  * @return
  *      - 1 on success.
