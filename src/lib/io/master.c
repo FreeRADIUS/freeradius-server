@@ -2456,13 +2456,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 static char const *mod_name(fr_listen_t *li)
 {
-	fr_io_thread_t *thread = li->thread_instance;
+	fr_io_thread_t *thread;
+	fr_io_connection_t *connection;
+	fr_listen_t *child;
+	fr_io_instance_t const *inst;
 
-	if (!li->app_io->get_name) return li->app_io->name;
+	get_inst(li, &inst, &thread, &connection, &child);
 
-	if (!thread->child) return li->app_io->get_name(li);
-
-	return li->app_io->get_name(thread->child);
+	rad_assert(child != NULL);
+	return child->app_io->get_name(child);
 }
 
 
