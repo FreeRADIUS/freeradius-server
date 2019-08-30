@@ -854,10 +854,9 @@ ssize_t fr_fprintf(FILE *fp, char const *fmt, ...)
 {
 	va_list ap;
 	char *buf;
-	int ret, fd;
+	int ret;
 
-	fd = fileno(fp);
-	if (fd < 0) {
+	if (!fp) {
 		fr_strerror_printf("Invalid 'fp'");
 		return -1;
 	}
@@ -866,7 +865,7 @@ ssize_t fr_fprintf(FILE *fp, char const *fmt, ...)
 	buf = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
-	ret = write(fd, buf, strlen(buf));
+	ret = fputs(buf, fp);
 
 	TALLOC_FREE(buf);
 
