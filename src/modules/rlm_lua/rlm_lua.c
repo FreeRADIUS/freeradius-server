@@ -116,12 +116,16 @@ static int mod_detach(void *instance)
 	rlm_lua_t *inst = instance;
 	int ret = 0;
 
-	if (inst->func_detach) ret = fr_lua_run(inst, &(rlm_lua_thread_t){ .interpreter = inst->interpreter }, NULL, inst->func_detach);
-
 	/*
 	 *	May be NULL if fr_lua_init failed
 	 */
-	if (inst->interpreter) lua_close(inst->interpreter);
+	if (inst->interpreter) {
+		if (inst->func_detach) ret = fr_lua_run(inst,
+							&(rlm_lua_thread_t){ .interpreter = inst->interpreter },
+							NULL, inst->func_detach);
+
+		lua_close(inst->interpreter);
+	}
 
 	return ret;
 }
@@ -142,7 +146,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	DEBUG("Using %s interpreter", fr_lua_version(inst->interpreter));
 
-	if (inst->func_instantiate) return fr_lua_run(inst, &(rlm_lua_thread_t){ .interpreter = inst->interpreter }, NULL, inst->func_instantiate);
+	if (inst->func_instantiate) return fr_lua_run(inst,
+						      &(rlm_lua_thread_t){ .interpreter = inst->interpreter },
+						      NULL, inst->func_instantiate);
 
 	return 0;
 }
