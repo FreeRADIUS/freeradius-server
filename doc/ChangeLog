@@ -29,6 +29,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Update dictionary.lancom with new attributes. #2847
 	* Added rlm_sql_mongo.  See raddb/mods-available/sql
 	  Note that this module is experimental.
+	* Added more documentation in sites-available/robust-proxy-accounting
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
