@@ -279,7 +279,9 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	switch (session->state) {
 	case PWD_STATE_ID_REQ:
 	{
-		BIGNUM	*x = NULL, *y = NULL;
+		BIGNUM		*x = NULL, *y = NULL;
+		VALUE_PAIR	*known_good;
+		int		ret;
 
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_ID) {
 			REDEBUG("PWD exchange is incorrect, Not ID");
@@ -320,17 +322,20 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		memcpy(session->peer_id, packet->identity, session->peer_id_len);
 		session->peer_id[session->peer_id_len] = '\0';
 
-		vp = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
-		if (!vp) {
-			REDEBUG("Failed to find password for %s to do pwd authentication", session->peer_id);
-			return RLM_MODULE_REJECT;
+		knkown_good = password_find(&ephemeral, request, request,
+					    allowed_passwords, NUM_ELEMENTS(allowed_passwords), false);
+		if (!known_good) {
+			REDEBUG("No \"known good\" password found for user");
+			return RLM_MODULE_FAIL;
 		}
 
-		if (compute_password_element(request, session, session->group_num,
-					     vp->vp_strvalue, vp->vp_length,
-					     inst->server_id, strlen(inst->server_id),
-					     session->peer_id, strlen(session->peer_id),
-					     &session->token, inst->bnctx)) {
+		ret = compute_password_element(request, session, session->group_num,
+					       known_good->vp_strvalue, known_good->vp_length,
+					       inst->server_id, strlen(inst->server_id),
+					       session->peer_id, strlen(session->peer_id),
+					       &session->token, inst->bnctx);
+		if (ephemeral) talloc_list_free(&known_good);
+		if (ret < 0)
 			REDEBUG("Failed to obtain password element");
 			return RLM_MODULE_FAIL;
 		}
