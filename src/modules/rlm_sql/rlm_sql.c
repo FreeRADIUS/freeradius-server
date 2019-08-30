@@ -180,10 +180,12 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 
 	rlm_sql_query_log(inst, request, NULL, fmt);
 
+	p = fmt;
+
 	/*
 	 *	Trim whitespace for the prefix check
 	 */
-	for (p = fmt; isspace(*p); p++);
+	fr_skip_spaces(p);
 
 	/*
 	 *	If the query starts with any of the following prefixes,

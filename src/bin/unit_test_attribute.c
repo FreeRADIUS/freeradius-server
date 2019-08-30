@@ -1369,8 +1369,8 @@ do { \
 			fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
 			fr_value_box_t *box2;
 
-			while (!isspace((int) *p)) p++;
-			while (isspace((int) *p)) p++;
+			fr_skip_not_whitespace(p);
+			fr_skip_spaces(p);
 
 			if (fr_value_box_from_str(box, box, &type, NULL, p, -1, '"', false) < 0) {
 				snprintf(output, sizeof(output), "ERROR parsing value: %s",

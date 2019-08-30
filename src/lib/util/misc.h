@@ -62,11 +62,23 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  */
 #define ROUND_UP(_num, _mul)		(((((_num) + ((_mul) - 1))) / (_mul)) * (_mul))
 
-/** Strip whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ') from the beginning of a string
+/** Skip whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
  *
- * @param[in,out] _p	string to trim.
+ * @param[in,out] _p	string to skip over.
  */
 #define fr_skip_spaces(_p) while(isspace((int)*(_p))) _p++
+
+/** Skip everything that's not whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
+ *
+ * @param[in,out] _p	string to skip over.
+ */
+#define fr_skip_not_whitespace(_p) while(!isspace((int)*(_p))) _p++
+
+/** Zero out any whitespace with nul bytes
+ *
+ * @param[in,out] _p	string to process
+ */
+#define fr_zero_whitespace(_p) 	while (isspace((int) *_p)) *(_p++) = '\0'
 
 /** Check whether the string is all whitespace
  *

@@ -2093,7 +2093,7 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 			 *	Be gentle to the end user
 			 */
 			q = parent->cmd->name;
-			while (*q && !isspace((int) *q)) q++;
+			fr_skip_not_whitespace(q);
 
 			fr_strerror_printf("cannot nest '%.*s' statements",
 					   (int) (q - parent->cmd->name), parent->cmd->name);

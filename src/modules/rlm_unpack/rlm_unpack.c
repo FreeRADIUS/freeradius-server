@@ -77,7 +77,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	data_name = p;
 
-	while (*p && !isspace((int) *p)) p++;
+	fr_skip_not_whitespace(p);
 
 	if (!*p) {
 	error:
@@ -86,20 +86,20 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		return -1;
 	}
 
-	while (isspace((int) *p)) *(p++) = '\0';
+	fr_zero_whitespace(p);
 	if (!*p) GOTO_ERROR;
 
 	data_size = p;
 
-	while (*p && !isspace((int) *p)) p++;
+	fr_skip_not_whitespace(p);
 	if (!*p) GOTO_ERROR;
 
-	while (isspace((int) *p)) *(p++) = '\0';
+	fr_zero_whitespace(p);
 	if (!*p) GOTO_ERROR;
 
 	data_type = p;
 
-	while (*p && !isspace((int) *p)) p++;
+	fr_skip_not_whitespace(p);
 	if (*p) GOTO_ERROR;	/* anything after the type is an error */
 
 	/*
