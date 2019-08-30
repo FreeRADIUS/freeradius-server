@@ -2,7 +2,8 @@
 
 The LDAP module is compatible a few different kinds of authentication
 methods.  Note that we say _compatible_, and not _supports_.  LDAP
-servers are databases, and do not support authentication protocols.
+servers are databases, and do not support authentication protocols
+such as CHAP, MS-CHAP, or EAP.
 
 PAP::
 The user supplies a `User-Password` (plaintext or EAP-TTLS/PAP)
