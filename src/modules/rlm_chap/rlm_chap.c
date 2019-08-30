@@ -29,7 +29,6 @@ RCSID("$Id$")
 
 typedef struct {
 	char const		*name;		//!< Auth-Type value for this module instance.
-	bool			normify;
 	fr_dict_enum_t		*auth_type;
 } rlm_chap_t;
 
@@ -61,15 +60,10 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ NULL }
 };
 
-static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, rlm_chap_t, normify), .dflt = "yes" },
-	CONF_PARSER_TERMINATOR
-};
-
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_chap_t	*inst = instance;
 	VALUE_PAIR	*vp;
+	rlm_chap_t	*inst = instance;
 
 	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
@@ -108,9 +102,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_chap_t		*inst = instance;
 	VALUE_PAIR		*known_good;
 	VALUE_PAIR		*chap, *username;
 	uint8_t			pass_str[FR_MAX_STRING_LEN];
@@ -151,7 +144,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	known_good = password_find(&ephemeral, request, request,
 				   allowed_passwords, NUM_ELEMENTS(allowed_passwords),
-				   inst->normify);
+				   false);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
 		return RLM_MODULE_FAIL;
@@ -229,7 +222,6 @@ module_t rlm_chap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "chap",
 	.inst_size	= sizeof(rlm_chap_t),
-	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.dict		= &dict_radius,
 	.methods = {

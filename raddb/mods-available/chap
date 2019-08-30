@@ -19,14 +19,5 @@
 #  This module takes no configuration.
 #
 chap {
-	#
-	#  normalise::
-	#
-	#  By default the server will use heuristics to try and automatically
-	#  handle base64 or hex encoded passwords. This behaviour can be
-	#  stopped by setting the following to `no`.
-	#
-	#  The default is `yes`
-	#
-#	normalise = no
+
 }
