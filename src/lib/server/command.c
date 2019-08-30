@@ -1871,7 +1871,7 @@ static char const *skip_word(char const *text)
 	char const *word = text;
 
 	if ((*word != '"') && (*word != '\'')) {
-		fr_skip_spaces(word);
+		while (*word && !isspace((int) *word)) word++;
 		return word;
 	}
 
