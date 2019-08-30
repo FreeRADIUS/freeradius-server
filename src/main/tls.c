@@ -3940,12 +3940,12 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 		code = SSL_get_error(ssn->ssl, err);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
-			DEBUG("Error in fragmentation logic: SSL_WANT_READ");
+			RDEBUG("Error in fragmentation logic: SSL_WANT_READ");
 			return FR_TLS_MORE_FRAGMENTS;
 
 		case SSL_ERROR_WANT_WRITE:
-			DEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
-			break;
+			RDEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
+			return FR_TLS_FAIL;
 
 		case SSL_ERROR_NONE:
 			RDEBUG2("No application data received.  Assuming handshake is continuing...");
@@ -3956,9 +3956,8 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 			REDEBUG("Error in fragmentation logic");
 			tls_error_io_log(request, ssn, err,
 					 "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)");
-			break;
+			return FR_TLS_FAIL;
 		}
-		return FR_TLS_FAIL;
 	}
 
 	/*
