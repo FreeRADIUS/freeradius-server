@@ -33,6 +33,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* sqlippool now re-allocates unexpired leases, to prevent IP pool
 	  exhaustion when clients perform multiple reauthentication attempts.
 	  Patch from Terry Burton.
+	* Add support to radmin keep the history in ~/.radmin_history
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
