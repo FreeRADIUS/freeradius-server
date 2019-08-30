@@ -49,7 +49,7 @@ RCSID("$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-int mschap_ntpwdhash(uint8_t *out, char const *password)
+int mschap_nt_password_hash(uint8_t *out, char const *password)
 {
 	ssize_t len;
 	uint8_t ucs2_password[512];

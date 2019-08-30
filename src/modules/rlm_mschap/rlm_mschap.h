@@ -52,6 +52,8 @@ typedef struct {
 	char const		*name;
 	fr_dict_enum_t		*auth_type;
 
+	bool			normify;
+
 	bool			use_mppe;
 	bool			require_encryption;
 	bool			require_strong;

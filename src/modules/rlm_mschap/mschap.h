@@ -7,7 +7,7 @@ RCSIDH(mschap_h, "$Id$")
 #define NT_DIGEST_LENGTH 16
 #define LM_DIGEST_LENGTH 16
 
-int mschap_ntpwdhash(uint8_t *out, char const *password);
+int mschap_nt_password_hash(uint8_t *out, char const *password);
 void mschap_challenge_hash(uint8_t const *peer_challenge,
 			    uint8_t const *auth_challenge,
 			    char const *user_name, uint8_t *challenge );

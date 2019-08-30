@@ -248,7 +248,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 
 	p[1] = 0x01; /* NT hash */
 
-	if (mschap_ntpwdhash(nthash, password) < 0) return 0;
+	if (mschap_nt_password_hash(nthash, password) < 0) return 0;
 
 	smbdes_mschap(nthash, challenge->vp_octets, p + 26);
 	return 1;

@@ -40,6 +40,16 @@
 #  for an example of how to use `/etc/smbpasswd`
 #
 mschap {
+	#
+	#  normalise::
+	#
+	#  By default the server will use heuristics to try and automatically
+	#  handle base64 or hex encoded passwords or hashes.
+	#  This behaviour can be disabled by setting the following to `no`.
+	#
+	#  The default is `yes`
+	#
+#	normalise = no
 
 	#
 	#  use_mppe::
