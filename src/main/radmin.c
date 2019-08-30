@@ -38,6 +38,10 @@ RCSID("$Id$")
 #  include <sys/stat.h>
 #endif
 
+#ifndef READLINE_MAX_HISTORY_LINES
+#	define READLINE_MAX_HISTORY_LINES 1000
+#endif
+
 #ifdef HAVE_LIBREADLINE
 
 # include <stdio.h>
@@ -339,6 +343,7 @@ int main(int argc, char **argv)
 
 	char const	*radius_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
+	char 		history_file[PATH_MAX];
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
@@ -582,6 +587,10 @@ int main(int argc, char **argv)
 	if (!quiet) {
 #ifdef USE_READLINE_HISTORY
 		using_history();
+		stifle_history(READLINE_MAX_HISTORY_LINES);
+
+		snprintf(history_file, sizeof(history_file), "%s/%s", getenv("HOME"), ".radmin_history");
+		read_history(history_file);
 #endif
 		rl_bind_key('\t', rl_insert);
 	}
@@ -643,6 +652,7 @@ int main(int argc, char **argv)
 
 #ifdef USE_READLINE_HISTORY
 			add_history(line);
+			write_history(history_file);
 #endif
 		} else		/* quiet, or no readline */
 #endif
