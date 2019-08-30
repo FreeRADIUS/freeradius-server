@@ -1120,7 +1120,6 @@ redo:
 		socklen_t salen;
 
 		salen = sizeof(saremote);
-#
 
 		/*
 		 *	We're a TCP socket but are NOT connected.  We
