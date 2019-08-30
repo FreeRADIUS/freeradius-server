@@ -2460,6 +2460,8 @@ static char const *mod_name(fr_listen_t *li)
 
 	if (!li->app_io->get_name) return li->app_io->name;
 
+	if (!thread->child) return li->app_io->get_name(li);
+
 	return li->app_io->get_name(thread->child);
 }
 
