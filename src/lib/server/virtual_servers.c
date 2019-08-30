@@ -295,6 +295,7 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	}
 
 	server->server_cs = server_cs;
+	server->namespace = cf_pair_value(namespace);
 
 	/*
 	 *	Now parse the listeners
