@@ -1699,7 +1699,7 @@ static rlm_rcode_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_mschap_t cons
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,5,7,8)) mschap_process_response(int *mschap_version,
+static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_response(int *mschap_version,
 									   uint8_t nthashhash[static NT_DIGEST_LENGTH],
 									   rlm_mschap_t const *inst,
 									   REQUEST *request,
@@ -1753,7 +1753,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,5,7,8)) mschap_process_response(int *
 	return mschap_error(inst, request, *response->vp_octets, mschap_result, *mschap_version, smb_ctrl);
 }
 
-static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,5,7,8)) mschap_process_v2_response(int *mschap_version,
+static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int *mschap_version,
 									      uint8_t nthashhash[static NT_DIGEST_LENGTH],
 									      rlm_mschap_t const *inst,
 									      REQUEST *request,
