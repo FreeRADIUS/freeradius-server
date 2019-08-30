@@ -49,36 +49,39 @@ fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
  */
 static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	eap_session_t	*eap_session = eap_session_get(request);
-	MD5_PACKET	*packet;
-	MD5_PACKET	*reply;
-	VALUE_PAIR	*password;
+	eap_session_t		*eap_session = eap_session_get(request);
+	MD5_PACKET		*packet;
+	MD5_PACKET		*reply;
+	VALUE_PAIR		*known_good;
+	fr_dict_attr_t	const	*allowed_passwords[] = { attr_cleartext_password };
+	bool			ephemeral;
 
 	/*
 	 *	Get the Cleartext-Password for this user.
 	 */
 	rad_assert(eap_session->request != NULL);
 
-	password = fr_pair_find_by_da(eap_session->request->control, attr_cleartext_password, TAG_ANY);
-	if (!password) {
-		REDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
-		return RLM_MODULE_REJECT;
+	known_good = password_find(&ephemeral, request, request,
+				   allowed_passwords, NUM_ELEMENTS(allowed_passwords),
+				   false);
+	if (!known_good) {
+		REDEBUG("No \"known good\" password found for user");
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
 	 *	Extract the EAP-MD5 packet.
 	 */
 	packet = eap_md5_extract(eap_session->this_round);
-	if (!packet) return RLM_MODULE_INVALID;
+	if (!packet) {
+		if (ephemeral) talloc_list_free(&known_good);
+		return RLM_MODULE_INVALID;
+	}
 
 	/*
 	 *	Create a reply, and initialize it.
 	 */
-	reply = talloc(packet, MD5_PACKET);
-	if (!reply) {
-		talloc_free(packet);
-		return RLM_MODULE_FAIL;
-	}
+	MEM(reply = talloc(packet, MD5_PACKET));
 	reply->id = eap_session->this_round->request->id;
 	reply->length = 0;
 
@@ -86,7 +89,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	 *	Verify the received packet against the previous packet
 	 *	(i.e. challenge) which we sent out.
 	 */
-	if (eap_md5_verify(packet, password, eap_session->opaque)) {
+	if (eap_md5_verify(packet, known_good, eap_session->opaque)) {
 		reply->code = FR_MD5_SUCCESS;
 	} else {
 		reply->code = FR_MD5_FAILURE;
@@ -98,6 +101,8 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	 */
 	eap_md5_compose(eap_session->this_round, reply);
 	talloc_free(packet);
+
+	if (ephemeral) talloc_list_free(&known_good);
 
 	return RLM_MODULE_OK;
 }
