@@ -463,6 +463,11 @@ static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr
 
 static int cmd_stats_memory(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
+	if (!radmin_main_config->talloc_memory_report) {
+		fprintf(fp, "Statistics are only available when the server is started with '-M'.\n");
+		return -1;
+	}
+
 	if (strcmp(info->argv[0], "total") == 0) {
 		fprintf(fp, "%zd\n", talloc_total_size(NULL));
 		return 0;
@@ -505,7 +510,6 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 	fprintf(fp, "%d\n", rad_debug_lvl);
 	return 0;
 }
-
 
 static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions,
 				   bool want_section)
