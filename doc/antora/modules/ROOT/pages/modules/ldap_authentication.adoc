@@ -125,6 +125,7 @@ generally better to use a stronger authentication method than just
 PAP.
 
 In the end, there is no perfect solution to security requirements.
-The choices are often either to give up on using a particular
+The choice may be either to give up on using a particular
 authentication method, or to relax the security requirements on LDAP
-and on password storage.
+and on password storage.  The final decision as to which choice is
+best can only be made by a local administrator.

@@ -68,14 +68,14 @@ following recommendations for LDAP "best practices" security.
 
 == Authentication
 
-The LDAP module can be used by FreeRADIUS to read passwords order to
-xref:modules/ldap_authentication.adoc[authenticate] users.  Please be
-aware the FreeRADIUS is an _authentication server_, and LDAP is a
-_database_.  This separation of roles means that FreeRADIUS supports
-multiple kinds of authentication protocols such as `PAP`, `CHAP`,
-`MS-CHAP`, etc.  An LDAP database supports only one authentication
-method: "bind as user".  This authentication method is compatible only
-with PAP.
+The LDAP module can be used by FreeRADIUS to read passwords in order
+to xref:ROOT:modules/ldap_authentication.adoc[authenticate] users.
+Please be aware the FreeRADIUS is an _authentication server_, and LDAP
+is a _database_.  This separation of roles means that FreeRADIUS
+supports multiple kinds of authentication protocols such as `PAP`,
+`CHAP`, `MS-CHAP`, etc.  An LDAP database supports only one
+authentication method: "bind as user".  This authentication method is
+compatible only with PAP.
 
 Our recommendation is to use LDAP as a database.  FreeRADIUS should
 read the "known good" password from LDAP, and then use that
@@ -96,8 +96,9 @@ Use xref:raddb:mods-available/ntlm_auth.adoc[`ntlm`] or xref:raddb:mods-availabl
 Due to the limitations of Active Directory, There are unfortunately no
 other possible choices.
 
-Please see the xref:modules/ldap_authentication.adoc[LDAP
-authentication] page for more information on authenticating users with LDAP.
+Please see the xref:ROOT:modules/ldap_authentication.adoc[LDAP
+authentication] concepts page for more information on the limitations
+related to authenticating users with LDAP.
 
 === Authorization
 
