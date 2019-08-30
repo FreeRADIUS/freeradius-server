@@ -719,14 +719,14 @@ static int _network_socket_free(fr_network_socket_t *s)
 	return 0;
 }
 
-/** Handle a network control message callback for a new socket
+/** Handle a network control message callback for a new listener
  *
  * @param[in] ctx the network
  * @param[in] data the message
  * @param[in] data_size size of the data
  * @param[in] now the current time
  */
-static void fr_network_socket_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+static void fr_network_listen_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
 	fr_network_t		*nr = ctx;
 	fr_network_socket_t	*s;
@@ -1031,7 +1031,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_SOCKET, nr, fr_network_socket_callback) < 0) {
+	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_LISTEN, nr, fr_network_listen_callback) < 0) {
 		fr_strerror_printf_push("Failed adding socket callback");
 		goto fail2;
 	}
@@ -1377,7 +1377,7 @@ int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
 	rb = fr_network_rb_init();
 	if (!rb) return -1;
 
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_SOCKET, &li, sizeof(li));
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_LISTEN, &li, sizeof(li));
 }
 
 

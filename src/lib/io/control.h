@@ -54,7 +54,7 @@ typedef	void (*fr_control_callback_t)(void *ctx, void const *data, size_t data_s
  *	A list of pre-allocated IDs, so that the callers don't have to manage their own.
  */
 #define FR_CONTROL_ID_CHANNEL	(1)
-#define FR_CONTROL_ID_SOCKET	(2)
+#define FR_CONTROL_ID_LISTEN	(2)
 #define FR_CONTROL_ID_WORKER	(3)
 #define FR_CONTROL_ID_DIRECTORY (4)
 #define FR_CONTROL_ID_INJECT 	(5)
