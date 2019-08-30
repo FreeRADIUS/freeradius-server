@@ -78,6 +78,9 @@ DIAG_ON(strict-prototypes)
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/socket.h>
 
+#ifndef READLINE_MAX_HISTORY_LINES
+#	define READLINE_MAX_HISTORY_LINES 1000
+#endif
 
 #include "conduit.h"
 
@@ -559,9 +562,10 @@ radmin_completion(const char *text, int start, UNUSED int end)
 #endif
 
 #ifndef USE_READLINE_HISTORY
-static void add_history(UNUSED char *line)
-{
-}
+#	define add_history(line)
+#	define stifle_history(line)
+#	define read_history()
+#	define write_history(history_file)
 #endif
 
 static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **file_p, char const **server_p)
@@ -691,6 +695,7 @@ int main(int argc, char **argv)
 	char const	*raddb_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
 	char const	*prompt = "radmin> ";
+	char 		history_file[PATH_MAX];
 
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
@@ -920,6 +925,9 @@ int main(int argc, char **argv)
 	if (!quiet) {
 #ifdef USE_READLINE_HISTORY
 		using_history();
+		stifle_history(READLINE_MAX_HISTORY_LINES);
+		snprintf(history_file, sizeof(history_file), "%s/%s", getenv("HOME"), ".radmin_history");
+		read_history(history_file);
 #endif
 #ifdef USE_READLINE
 		rl_attempted_completion_function = radmin_completion;
@@ -987,7 +995,10 @@ int main(int argc, char **argv)
 
 		if (!*line) goto next;
 
-		if (!quiet) add_history(line);
+		if (!quiet) {
+			add_history(line);
+			write_history(history_file);
+		}
 
 		if (strcmp(line, "reconnect") == 0) {
 			if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
