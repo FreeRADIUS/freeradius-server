@@ -30,7 +30,7 @@ Please see the xref:modules/ldap_authentication.adoc[LDAP
 authentication] concepts page for more information on the limitations
 related to authenticating users with LDAP.
 
-=== LDAP Security Recommendations
+== LDAP Security Recommendations
 
 The credentials (username *and* password) for FreeRADIUS to use to
 connect to your LDAP server(s) should be secure.  We make the
