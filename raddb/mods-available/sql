@@ -15,6 +15,13 @@
 #
 #  Where "DB" is mysql, mssql, oracle, or postgresql.
 #
+#  The name used to query SQL is sql_user_name, which is set in the file
+#
+#     raddb/mods-config/sql/main/${dialect}/queries.conf
+#
+#  If you are using realms, that configuration should be changed to use
+#  the Stripped-User-Name attribute.  See the comments around sql_user_name
+#  for more information.
 #
 
 sql {
