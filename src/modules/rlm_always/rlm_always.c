@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_always (%s) - "
-#define LOG_PREFIX_ARGS inst->name
+#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -35,7 +35,6 @@ RCSID("$Id$")
  *	going to return.
  */
 typedef struct {
-	char const	*name;		//!< Name of this instance of the always module.
 	char const	*rcode_str;	//!< The base value.
 
 	rlm_rcode_t	rcode;		//!< The integer constant representing rcode_str.
@@ -57,8 +56,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_always_t *inst = instance;
 
-	inst->name = cf_section_name1(conf);
-	if (!inst->name) inst->name = cf_section_name2(conf);
 	/*
 	 *	Convert the rcode string to an int
 	 */

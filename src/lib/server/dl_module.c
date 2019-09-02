@@ -52,6 +52,16 @@ struct dl_module_loader_s {
 
 static dl_module_loader_t	*dl_module_loader;
 
+/** Make data to instance name resolution more efficient
+ *
+ */
+typedef struct {
+	void			*data;		//!< Module's data.
+	dl_module_inst_t	*inst;		//!< Instance wrapper struct.
+} dl_module_inst_cache_t;
+
+static _Thread_local dl_module_inst_cache_t	dl_inst_cache;
+
 /** Modules which need RTLD_GLOBAL set
  *
  */
@@ -190,7 +200,22 @@ dl_module_inst_t const *dl_module_instance_by_data(void const *data)
 
 	memcpy(&mutable, &data, sizeof(mutable));
 
+	if (dl_inst_cache.data == data) return dl_inst_cache.inst;
+
 	return rbtree_finddata(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = mutable });
+}
+
+/** Lookup instance name via instance data
+ *
+ */
+char const *dl_module_instance_name_by_data(void const *data)
+{
+	dl_module_inst_t const *inst;
+
+	inst = dl_module_instance_by_data(data);
+	if (!inst) return NULL;
+
+	return inst->name;
 }
 
 /** A convenience function for returning a parent's private data
@@ -319,7 +344,8 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 
 	if (parent) {
 		module_name = talloc_typed_asprintf(NULL, "%s_%s_%s",
-						    fr_table_str_by_value(dl_module_type_prefix, parent->type, "<INVALID>"),
+						    fr_table_str_by_value(dl_module_type_prefix,
+						    			  parent->type, "<INVALID>"),
 						    parent->common->name, name);
 	} else {
 		module_name = talloc_typed_asprintf(NULL, "%s_%s",
