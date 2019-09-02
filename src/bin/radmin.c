@@ -724,7 +724,7 @@ static int cmd_show_client(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 
 	client = client_find(NULL, &info->box[0]->vb_ip, proto);
 	if (!client) {
-		fprintf(fp_err, "No such client.");
+		fprintf(fp_err, "No such client.\n");
 		return -1;
 	}
 
