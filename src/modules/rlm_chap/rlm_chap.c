@@ -23,6 +23,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_chap (%s) - "
+#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
+
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module.h>

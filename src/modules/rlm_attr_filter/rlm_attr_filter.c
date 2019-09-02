@@ -24,6 +24,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_attr_filter (%s) - "
+#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
+
 #include	<freeradius-devel/server/base.h>
 #include	<freeradius-devel/server/module.h>
 #include	<freeradius-devel/server/rad_assert.h>
@@ -38,7 +41,7 @@ RCSID("$Id$")
  *	Define a structure with the module configuration, so it can
  *	be used as the instance handle.
  */
-typedef struct rlm_attr_filter {
+typedef struct {
 	char const	*filename;
 	vp_tmpl_t	*key;
 	bool		relaxed;
@@ -98,7 +101,7 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 	return;
 }
 
-static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list)
+static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char const *filename, PAIR_LIST **pair_list)
 {
 	fr_cursor_t cursor;
 	int rcode;
@@ -151,7 +154,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	rlm_attr_filter_t *inst = instance;
 	int rcode;
 
-	rcode = attr_filter_getfile(inst, inst->filename, &inst->attrs);
+	rcode = attr_filter_getfile(inst, inst, inst->filename, &inst->attrs);
 	if (rcode != 0) {
 		ERROR("Errors reading %s", inst->filename);
 
