@@ -169,7 +169,7 @@ Commercial support
 
 Technical support, managed systems support, custom deployments,
 sponsored feature development and many other commercial services
-are available from `Network RADIUS <http://www.networkradius.com>`_.
+are available from `Network RADIUS <https://networkradius.com>`_.
 
 
 .. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
