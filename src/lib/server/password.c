@@ -171,11 +171,19 @@ typedef enum {
 } normalise_t;
 
 static fr_table_num_sorted_t const normalise_table[] = {
-	{ "base64",	NORMALISED_B64		},
-	{ "hex",	NORMALISED_HEX		},
-	{ "nothing",	NORMALISED_NOTHING	}
+	{ "base64",			NORMALISED_B64		},
+	{ "hex",			NORMALISED_HEX		},
+	{ "nothing",			NORMALISED_NOTHING	}
 };
 static size_t normalise_table_len = NUM_ELEMENTS(normalise_table);
+
+static fr_table_num_sorted_t const password_type_table[] = {
+	{ "cleartext",			PASSWORD_CLEARTEXT	},
+	{ "hashed",			PASSWORD_HASH		},
+	{ "salted-hash",		PASSWORD_HASH_SALTED	},
+	{ "variable-length-hash",	PASSWORD_HASH_VARIABLE	}
+};
+static size_t password_type_table_len = NUM_ELEMENTS(password_type_table);
 
 /*
  *	Headers for the Password-with-Header attribute
@@ -183,42 +191,42 @@ static size_t normalise_table_len = NUM_ELEMENTS(normalise_table);
  *	@note Header comparison is case insensitive.
  */
 static fr_table_num_sorted_t const password_header_table[] = {
-	{ "{base64_md5}",	FR_MD5_PASSWORD },
-	{ "{clear}",		FR_CLEARTEXT_PASSWORD },
-	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
-	{ "{crypt}",		FR_CRYPT_PASSWORD },
-	{ "{md4}",		FR_NT_PASSWORD },
-	{ "{md5}",		FR_MD5_PASSWORD },
-	{ "{ns-mta-md5}",	FR_NS_MTA_MD5_PASSWORD },
-	{ "{nt}",		FR_NT_PASSWORD },
-	{ "{nthash}",		FR_NT_PASSWORD },
+	{ "{base64_md5}",		FR_MD5_PASSWORD		},
+	{ "{clear}",			FR_CLEARTEXT_PASSWORD	},
+	{ "{cleartext}",		FR_CLEARTEXT_PASSWORD	},
+	{ "{crypt}",			FR_CRYPT_PASSWORD	},
+	{ "{md4}",			FR_NT_PASSWORD		},
+	{ "{md5}",			FR_MD5_PASSWORD		},
+	{ "{ns-mta-md5}",		FR_NS_MTA_MD5_PASSWORD	},
+	{ "{nt}",			FR_NT_PASSWORD		},
+	{ "{nthash}",			FR_NT_PASSWORD		},
 
 #ifdef HAVE_OPENSSL_EVP_H
-	{ "{sha224}",		FR_SHA2_PASSWORD },
-	{ "{sha256}",		FR_SHA2_PASSWORD },
-	{ "{sha2}",		FR_SHA2_PASSWORD },
-	{ "{sha384}",		FR_SHA2_384_PASSWORD },
-	{ "{sha512}",		FR_SHA2_512_PASSWORD },
+	{ "{sha224}",			FR_SHA2_PASSWORD	},
+	{ "{sha256}",			FR_SHA2_PASSWORD	},
+	{ "{sha2}",			FR_SHA2_PASSWORD	},
+	{ "{sha384}",			FR_SHA2_384_PASSWORD	},
+	{ "{sha512}",			FR_SHA2_512_PASSWORD	},
 #endif
-	{ "{sha}",		FR_SHA1_PASSWORD },
-	{ "{smd5}",		FR_SMD5_PASSWORD },
+	{ "{sha}",			FR_SHA1_PASSWORD	},
+	{ "{smd5}",			FR_SMD5_PASSWORD	},
 #ifdef HAVE_OPENSSL_EVP_H
-	{ "{ssha224}",		FR_SSHA2_224_PASSWORD },
-	{ "{ssha256}",		FR_SSHA2_256_PASSWORD },
+	{ "{ssha224}",			FR_SSHA2_224_PASSWORD	},
+	{ "{ssha256}",			FR_SSHA2_256_PASSWORD	},
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	{ "{ssha3-224}",	FR_SSHA3_224_PASSWORD },
-	{ "{ssha3-256}",	FR_SSHA3_256_PASSWORD },
-	{ "{ssha3-384}",	FR_SSHA3_384_PASSWORD },
-	{ "{ssha3-512}",	FR_SSHA3_512_PASSWORD },
+	{ "{ssha3-224}",		FR_SSHA3_224_PASSWORD	},
+	{ "{ssha3-256}",		FR_SSHA3_256_PASSWORD	},
+	{ "{ssha3-384}",		FR_SSHA3_384_PASSWORD	},
+	{ "{ssha3-512}",		FR_SSHA3_512_PASSWORD	},
 #  endif
-	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
-	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
+	{ "{ssha384}",			FR_SSHA2_384_PASSWORD	},
+	{ "{ssha512}",			FR_SSHA2_512_PASSWORD	},
 #endif
-	{ "{ssha}",		FR_SSHA1_PASSWORD },
-	{ "{x- orcllmv}",	FR_LM_PASSWORD },
-	{ "{x- orclntv}",	FR_NT_PASSWORD },
-	{ "{x-nthash}",		FR_NT_PASSWORD },
-	{ "{x-pbkdf2}",		FR_PBKDF2_PASSWORD },
+	{ "{ssha}",			FR_SSHA1_PASSWORD	},
+	{ "{x- orcllmv}",		FR_LM_PASSWORD		},
+	{ "{x- orclntv}",		FR_NT_PASSWORD		},
+	{ "{x-nthash}",			FR_NT_PASSWORD		},
+	{ "{x-pbkdf2}",			FR_PBKDF2_PASSWORD	},
 };
 static size_t password_header_table_len = NUM_ELEMENTS(password_header_table);
 
@@ -917,8 +925,12 @@ static VALUE_PAIR *password_normalise_and_recheck(TALLOC_CTX *ctx, REQUEST *requ
  * and normification operations to it, returning a new mormalised VALUE_PAIR.
  *
  * The ctx passed in should be freed when the caller is done with the returned
- * VALUE_PAIR.  The returned pair *MUST NOT BE FREED*, it may be an attribute
- * in the request->control list.
+ * VALUE_PAIR, or alternatively, a persistent ctx may be used and the value
+ * of ephemeral checked.
+ * If ephemeral is false the returned pair *MUST NOT BE FREED*, it may be an
+ * attribute in the request->control list.  If ephemeral is true, the returned
+ * pair *MUST* be freed, or added to one of the pair lists appropriate to the
+ * ctx passed in.
  *
  * @param[out] ephemeral	If true, the caller must use talloc_list_free
  *				to free the return value of this function.
@@ -971,6 +983,17 @@ VALUE_PAIR *password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
 						  	     normify, known_good);
 			if (!out) continue;
 		done:
+			if (RDEBUG_ENABLED3) {
+				RDEBUG3("Using \"known good\" %s password %pP",
+					fr_table_str_by_value(password_type_table,
+							      password_info[out->da->attr].type,
+							      "<INVALID>"), out);
+			} else {
+				RDEBUG2("Using \"known good\" %s password %s",
+					fr_table_str_by_value(password_type_table,
+							      password_info[out->da->attr].type,
+							      "<INVALID>"), out->da->name);
+			}
 			if (ephemeral) *ephemeral = (known_good != out);
 			return out;
 		}
