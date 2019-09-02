@@ -23,8 +23,8 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_cache (%s) - "
-#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS inst->config.name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -901,13 +901,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rlm_cache_t 	*inst = instance;
 	CONF_SECTION	*driver_cs;
 	char const 	*name;
-	char const	*inst_name = dl_module_instance_name_by_data(inst);
 
 	inst->cs = conf;
 
-	name = strrchr(inst_name, '_');
+	inst->config.name = cf_section_name2(conf);
+	if (!inst->config.name) inst->config.name = cf_section_name1(conf);
+
+	name = strrchr(inst->config.driver_name, '_');
 	if (!name) {
-		name = inst_name;
+		name = inst->config.driver_name;
 	} else {
 		name++;
 	}
@@ -931,8 +933,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Sanity check for crazy people.
 	 */
-	if (strncmp(inst_name, "rlm_cache_", 8) != 0) {
-		cf_log_err(conf, "\"%s\" is NOT an Cache driver!", inst_name);
+	if (strncmp(inst->config.driver_name, "rlm_cache_", 8) != 0) {
+		cf_log_err(conf, "\"%s\" is NOT an Cache driver!", inst->config.driver_name);
 		return -1;
 	}
 
@@ -947,7 +949,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat_register(inst, dl_module_instance_name_by_data(inst), cache_xlat, NULL, NULL, 0, 0, true);
+	xlat_register(inst, inst->config.name, cache_xlat, NULL, NULL, 0, 0, true);
 
 	return 0;
 }
