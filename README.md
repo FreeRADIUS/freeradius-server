@@ -134,7 +134,7 @@ code, or documentation).
 
 Technical support, managed systems support, custom deployments,
 sponsored feature development and many other commercial services
-are available from [Network RADIUS](https://www.networkradius.com).
+are available from [Network RADIUS](https://networkradius.com).
 
 [CoverityStatus]: https://scan.coverity.com/projects/58/badge.svg?flat=1 "Coverity Status"
 [CoverityStatusLink]: https://scan.coverity.com/projects/58
