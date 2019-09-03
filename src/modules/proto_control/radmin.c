@@ -502,7 +502,7 @@ static int radmin_help(UNUSED int count, UNUSED int key)
 	len = strlcpy(stack[stack_depth], rl_line_buffer, cmd_buffer + sizeof(cmd_buffer) - stack[stack_depth]);
 	if (stack[stack_depth] + len >= cmd_buffer + sizeof(cmd_buffer)) {
 		fprintf(stderr, "Command too long\n");
-		return NULL;
+		return -1;
 	}
 	len += stack[stack_depth] - cmd_buffer;
 
