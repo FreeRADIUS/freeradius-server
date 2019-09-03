@@ -749,13 +749,13 @@ void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, c
 		 *	Recursively print grouped attributes.
 		 */
 		if (vp->da->type == FR_TYPE_GROUP) {
-			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "&", vp->da->name);
+			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "", vp->da->name);
 			log_request_pair_list(lvl, request, (VALUE_PAIR *) vp->vp_group, prefix);
 			RDEBUGX(lvl, "%s }", prefix ? prefix : "");
 			continue;
 		}
 
-		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "&", vp);
+		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
 	}
 	REXDENT();
 }
@@ -786,13 +786,13 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR 
 		 *	Recursively print grouped attributes.
 		 */
 		if (vp->da->type == FR_TYPE_GROUP) {
-			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "&", vp->da->name);
+			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "", vp->da->name);
 			log_request_proto_pair_list(lvl, request, (VALUE_PAIR *) vp->vp_group, prefix);
 			RDEBUGX(lvl, "%s }", prefix ? prefix : "");
 			continue;
 		}
 
-		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "&", vp);
+		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
 	}
 	REXDENT();
 }
