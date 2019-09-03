@@ -16,7 +16,7 @@ RCSID("$Id$")
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD5.
  */
-#include "md5.h"
+#include <freeradius-devel/util/md5.h>
 
 fr_thread_local_setup(fr_md5_ctx_t *, md5_ctx)
 

@@ -8,7 +8,7 @@
  */
 RCSID("$Id$")
 
-#include "sha1.h"
+#include <freeradius-devel/util/sha1.h>
 
 #include <arpa/inet.h>
 

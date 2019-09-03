@@ -33,13 +33,12 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/virtual_servers.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/unlang/base.h>
-
-#include "virtual_servers.h"
 
 typedef struct {
 	char const		*namespace;		//!< Namespace function is registered to.

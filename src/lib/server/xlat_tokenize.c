@@ -29,9 +29,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/regex.h>
+#include <freeradius-devel/server/xlat_priv.h>
 
 #include <ctype.h>
-#include "xlat_priv.h"
 
 #undef XLAT_DEBUG
 #ifdef DEBUG_XLAT

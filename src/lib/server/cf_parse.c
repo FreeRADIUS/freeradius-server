@@ -30,6 +30,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/cf_priv.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/tmpl.h>
@@ -37,10 +38,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/types.h>
-
-#include "cf_priv.h"
-
-
 
 static CONF_PARSER conf_term = CONF_PARSER_TERMINATOR;
 static char const parse_spaces[] = "                                                                                                                                                                                                                                              ";

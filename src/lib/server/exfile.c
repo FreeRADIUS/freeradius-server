@@ -29,8 +29,6 @@
 
 #include <freeradius-devel/util/misc.h>
 
-
-
 #include <sys/stat.h>
 #include <fcntl.h>
 
@@ -487,7 +485,7 @@ try_lock:
 		    (fchmod(ef->entries[i].fd, (st.st_mode & ~S_IFMT) | permissions) < 0)) {
 			rad_mode_to_oct(oct_need, (st.st_mode & ~S_IFMT) | permissions);
 			rad_mode_to_str(str_need, (st.st_mode & ~S_IFMT) | permissions);
-			
+
 			WARN("Failed resetting file %s permissions to %s (%s): %s",
 			     filename, oct_need, str_need, fr_syserror(errno));
 		}

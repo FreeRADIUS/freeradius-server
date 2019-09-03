@@ -22,8 +22,7 @@
  */
 RCSID("$Id$")
 
-#include "heap.h"
-
+#include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/strerror.h>
 
 /*

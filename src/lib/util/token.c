@@ -24,10 +24,9 @@
  */
 RCSID("$Id$")
 
-#include "token.h"
-
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/token.h>
 
 #include <ctype.h>
 #include <stdio.h>

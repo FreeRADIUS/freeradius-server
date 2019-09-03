@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#include "struct.h"
+#include <freeradius-devel/util/struct.h>
 
 VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {

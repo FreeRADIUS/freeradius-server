@@ -20,7 +20,7 @@
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2014-2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "net.h"
+#include <freeradius-devel/util/net.h>
 
 /** Strings for L4 protocols
  *

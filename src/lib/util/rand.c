@@ -22,8 +22,7 @@
  */
 RCSID("$Id$")
 
-#include "rand.h"
-
+#include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/hash.h>
 
 #include <errno.h>

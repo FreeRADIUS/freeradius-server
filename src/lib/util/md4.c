@@ -15,7 +15,7 @@ RCSID("$Id$")
  *  FORCE MD4 TO USE OUR MD4 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD4.
  */
-#include "md4.h"
+#include <freeradius-devel/util/md4.h>
 
 fr_thread_local_setup(fr_md4_ctx_t *, md4_ctx)
 

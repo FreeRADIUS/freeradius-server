@@ -27,8 +27,11 @@ RCSIDH(dlist_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+
+#include <talloc.h>
 
 typedef struct fr_dlist_s fr_dlist_t;
 

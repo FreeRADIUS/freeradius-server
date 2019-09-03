@@ -22,10 +22,9 @@
  */
 #ifdef HAVE_LIBPCAP
 
-#include "pcap.h"
-
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pcap.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>

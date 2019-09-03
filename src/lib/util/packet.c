@@ -22,9 +22,8 @@
  */
 RCSID("$Id$")
 
-#include "packet.h"
-
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/talloc.h>
 

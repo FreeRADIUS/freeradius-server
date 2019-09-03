@@ -21,13 +21,12 @@
  * @copyright 2013 The FreeRADIUS server project
  * @copyright 2013 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "debug.h"
-
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/hash.h>
 
 #include <assert.h>
 #include <limits.h>

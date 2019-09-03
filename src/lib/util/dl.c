@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <ctype.h>
@@ -48,7 +49,7 @@ RCSID("$Id$")
 #  define RTLD_LOCAL (0)
 #endif
 
-#include "dl.h"
+
 
 /** Symbol dependent initialisation callback
  *

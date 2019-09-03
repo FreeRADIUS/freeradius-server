@@ -29,10 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/rad_assert.h>
 
-
-
 #include <ctype.h>
-
 
 static fr_table_num_sorted_t const allowed_return_codes[] = {
 	{ "fail",       1 },

@@ -23,10 +23,9 @@
  */
 RCSID("$Id$")
 
-#include "syserror.h"
-
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/thread_local.h>
 
 #include <errno.h>

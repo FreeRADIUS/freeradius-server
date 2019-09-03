@@ -33,8 +33,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/util/misc.h>
 
-
-
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/stat.h>

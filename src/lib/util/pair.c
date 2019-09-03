@@ -22,19 +22,18 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair_cursor.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/print.h>
-#include <freeradius-devel/util/pair_cursor.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <ctype.h>
-
-#include "pair.h"
 
 #ifndef NDEBUG
 #  define FREE_MAGIC (0xF4EEF4EE)

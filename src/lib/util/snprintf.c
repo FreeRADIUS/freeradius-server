@@ -54,7 +54,7 @@
 
 RCSID("$Id$")
 
-#include "snprintf.h"
+#include <freeradius-devel/util/snprintf.h>
 
 #ifndef HAVE_VSNPRINTF
 

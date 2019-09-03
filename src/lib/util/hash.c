@@ -32,8 +32,7 @@
  */
 RCSID("$Id$")
 
-#include "hash.h"
-
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/talloc.h>
 
 /*

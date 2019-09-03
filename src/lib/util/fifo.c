@@ -26,7 +26,7 @@ RCSID("$Id$")
 #include <string.h>
 #include <talloc.h>
 
-#include "fifo.h"
+#include <freeradius-devel/util/fifo.h>
 
 struct fr_fifo_t {
 	unsigned int	num;		//!< How many elements exist in the fifo.

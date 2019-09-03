@@ -23,10 +23,10 @@
  *
  * @copyright 2015 The FreeRADIUS project
  */
-#include "socket.h"
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/udpfromto.h>

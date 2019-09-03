@@ -22,9 +22,8 @@
  */
 RCSID("$Id$")
 
-#include "log.h"
-
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>

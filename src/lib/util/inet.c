@@ -20,8 +20,7 @@
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "inet.h"
-
+#include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
