@@ -41,7 +41,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *
  * Adds the following attributes to the request:
  *
- *	- &request:TLS-Session-Id
+ *	- &request:Session-Id
  *
  * Session identity will contain the binary session key used to create, retrieve
  * and delete cache entries related to the SSL session.
@@ -284,7 +284,7 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 	 */
 	vp = fr_pair_afrom_da(request->state_ctx, attr_tls_session_data);
 	if (!vp) {
-		RPEDEBUG("Failed allocating &TLS-Session-Data");
+		RPEDEBUG("Failed allocating &Session-Data");
 		return -1;
 	}
 

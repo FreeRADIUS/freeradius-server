@@ -118,8 +118,8 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_ocsp_response, .name = "TLS-OCSP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_tls_psk_identity, .name = "TLS-PSK-Identity", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_cert_file, .name = "TLS-Session-Cert-File", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_session_data, .name = "TLS-Session-Data", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_tls_session_id, .name = "TLS-Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_tls_session_data, .name = "Session-Data", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_tls_session_id, .name = "Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
 	{ .out = &attr_framed_mtu, .name = "Framed-MTU", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }

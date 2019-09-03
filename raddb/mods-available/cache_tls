@@ -43,7 +43,7 @@ cache cache_tls_session {
 	#
 	#  key:: The `cache` key.
 	#
-	key = &TLS-Session-Id
+	key = &Session-Id
 
 	#
 	#  ttl:: TTL for `cache` entries.
@@ -54,7 +54,7 @@ cache cache_tls_session {
 	#  update <section> { ... }::
 	#
 	update {
-		&session-state:TLS-Session-Data := &session-state:TLS-Session-Data
+		&session-state:Session-Data := &session-state:Session-Data
 
 		#
 		#  NOTE: If you want to store authorization attributes too, consider
@@ -62,7 +62,7 @@ cache cache_tls_session {
 		#  storing the results in `&session-state`.
 		#
 		#  The complete list can then be restored along with the
-		#  `TLS-Session-Data` using the entry below.
+		#  `Session-Data` using the entry below.
 		#
 		#  Policies run in `post-auth` then have access to the same data
 		#  irrespective of whether the session is being resumed.

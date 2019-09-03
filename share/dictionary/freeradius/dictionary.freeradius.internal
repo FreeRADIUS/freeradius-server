@@ -484,9 +484,9 @@ ATTRIBUTE	TLS-Session-Cert-File			1934	string
 
 # 1936 - 1939: reserved for future cert attributes
 
-# 1940 - 1949: reserved for TLS session caching
-ATTRIBUTE	TLS-Session-Id				1940	octets
-ATTRIBUTE	TLS-Session-Data			1942	octets
+# 1940 - 1949: reserved for session caching
+ATTRIBUTE	Session-Id				1940	octets
+ATTRIBUTE	Session-Data				1942	octets
 
 # Set and retrieved by EAP-TLS code
 ATTRIBUTE	TLS-OCSP-Cert-Valid			1943	integer
