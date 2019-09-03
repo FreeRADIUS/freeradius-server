@@ -542,7 +542,7 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 			}
 #endif
 		} else {
-			RDEBUG2("Handshake state - %s%s", role, state);
+			RDEBUG2("Handshake state - %s%s (%i)", role, state, SSL_get_state(ssl));
 		}
 		return;
 	}
