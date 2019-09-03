@@ -1041,7 +1041,7 @@ int main(int argc, char **argv)
 
 	while (1) {
 		int retries;
-		size_t len;
+		ssize_t len;
 
 		line = readline(prompt);
 
