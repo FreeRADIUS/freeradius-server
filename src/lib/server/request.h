@@ -183,8 +183,6 @@ int		request_detach(REQUEST *fake, bool will_free);
 
 #ifdef WITH_VERIFY_PTR
 void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */
-
-bool		request_data_verify_parent(TALLOC_CTX *parent, fr_dlist_head_t *entry);
 #endif
 
 #ifdef __cplusplus

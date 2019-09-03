@@ -72,8 +72,6 @@ void		request_data_restore_to_child(REQUEST *request, void *unique_ptr, int uniq
 #ifdef WITH_VERIFY_PTR
 bool		request_data_persistable(request_data_t *rd);
 
-void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */
-
 bool		request_data_verify_parent(TALLOC_CTX *parent, fr_dlist_head_t *entry);
 #endif
 
