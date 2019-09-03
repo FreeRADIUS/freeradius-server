@@ -132,6 +132,10 @@ int strncasecmp(char *s1, char *s2, int n);
 int strcasecmp(char *s1, char *s2);
 #endif
 
+#ifndef HAVE_MEMRCHR
+void *memrchr(const void *s, int c, size_t n);
+#endif
+
 #ifndef HAVE_STRSEP
 char *strsep(char **stringp, char const *delim);
 #endif

@@ -12498,6 +12498,7 @@ for ac_func in \
   initgroups \
   localtime_r \
   mallopt \
+  memrchr \
   mkdirat \
   openat \
   pthread_sigmask \

@@ -75,6 +75,24 @@ int strcasecmp(char *s1, char *s2)
 }
 #endif
 
+
+#ifndef HAVE_MEMRCHR
+/** GNU libc extension on some platforms
+ *
+ */
+void *memrchr(void const *s, int c, size_t n)
+{
+	uint8_t *p;
+
+	if (n == 0) return NULL;
+
+	memcpy(&p, &s, sizeof(p));	/* defeat const */
+	for (p += (n - 1); p >= (uint8_t const *)s; p--) if (*p == (uint8_t)c) return (void *)p;
+
+	return NULL;
+}
+#endif
+
 #ifndef HAVE_INET_ATON
 int inet_aton(char const *cp, struct in_addr *inp)
 {
@@ -478,4 +496,3 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 	return NULL;		/* don't support IPv6 */
 }
 #endif
-

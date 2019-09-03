@@ -1515,6 +1515,7 @@ AC_CHECK_FUNCS( \
   initgroups \
   localtime_r \
   mallopt \
+  memrchr \
   mkdirat \
   openat \
   pthread_sigmask \
