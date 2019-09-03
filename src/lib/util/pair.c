@@ -1970,17 +1970,6 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 			found = fr_pair_find_by_da(*to, i->da, TAG_ANY);
 			if (!found) goto do_add;
 
-			/*
-			 *	Do NOT call fr_pair_delete_by_da() here,
-			 *	due to issues with re-writing
-			 *	"request->username".
-			 *
-			 *	Everybody calls fr_pair_move, and
-			 *	expects it to work.  We can't
-			 *	update request->username here,
-			 *	so instead we over-write the
-			 *	vp that it's pointing to.
-			 */
 			switch (found->vp_type) {
 			default:
 				j = found->next;
