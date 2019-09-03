@@ -501,6 +501,14 @@ static ssize_t cmd_copy(char const *cmd)
 
 	if (stack_depth > 0) *(p++) = ' ';
 
+	/*
+	 *	No input, allow a trailing space so that tab
+	 *	completion works.
+	 */
+	if (!*cmd) {
+		return p - cmd_buffer;
+	}
+
 	len = strlcpy(p, cmd, cmd_buffer + sizeof(cmd_buffer) - p);
 	if ((p + len) >= (cmd_buffer + sizeof(cmd_buffer))) {
 		fprintf(stderr, "Command too long\n");
@@ -578,15 +586,15 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 	radmin_num_expansions = 0;
 
-	start += stack[stack_depth] - cmd_buffer;
+	len = cmd_copy(rl_line_buffer);
+	if (len < 0) return NULL;
+
+	start += len;
 
 	if (start > 65535) return NULL;
 
 	io_buffer[0] = (start >> 8) & 0xff;
 	io_buffer[1] = start & 0xff;
-
-	len = cmd_copy(rl_line_buffer);
-	if (len < 0) return NULL;
 
 	/*
 	 *	Note that "text" is the PARTIAL thing we're trying to complete.
