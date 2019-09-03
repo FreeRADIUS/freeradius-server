@@ -246,9 +246,6 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 *	will proxy it, rather than returning an EAP packet.
 	 */
 	case FR_CODE_STATUS_CLIENT:
-#ifdef WITH_PROXY
-		rad_assert(eap_session->request->proxy != NULL);
-#endif
 		return RLM_MODULE_OK;
 
 	default:
