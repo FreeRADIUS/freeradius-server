@@ -59,7 +59,8 @@ PROTOCOLS    := \
 	arp \
 	dhcpv4 \
 	dhcpv6 \
-	eap/aka-sim \
+	eap/aka \
+	eap/sim \
 	ethernet \
 	freeradius \
 	radius \
