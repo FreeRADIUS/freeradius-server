@@ -386,7 +386,7 @@ static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_
 	/*
 	 *	Must be both talloced or both not
 	 */
-	if (!fr_cond_assert(list_dst->type == list_src->type)) return;
+	if (!fr_cond_assert((list_dst->type && list_src->type) || (!list_dst->type && !list_src->type))) return;
 
 	/*
 	 *	Must be of the same type
