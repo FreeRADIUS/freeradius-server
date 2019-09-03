@@ -621,6 +621,13 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 	 */
 	fr_state_restore_to_child(eap_session->subrequest, inst, 0);
 
+	if (method->submodule->clone_parent_lists) {
+		fr_pair_list_copy(eap_session->subrequest, &eap_session->subrequest->control, request->control);
+		fr_pair_list_copy(eap_session->subrequest->packet,
+				  &eap_session->subrequest->packet->vps,
+				  request->packet->vps);
+	}
+
 	/*
 	 *	Push the submodule into the child's stack
 	 */

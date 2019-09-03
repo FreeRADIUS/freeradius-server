@@ -243,5 +243,7 @@ rlm_eap_submodule_t rlm_eap_gtc = {
 	.config		= submodule_config,
 
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
-	.entry_point	= mod_process		/* Process next round of EAP method */
+	.entry_point	= mod_process,		/* Process next round of EAP method */
+
+	.clone_parent_lists = true		/* HACK */
 };

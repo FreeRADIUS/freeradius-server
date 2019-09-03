@@ -322,7 +322,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		memcpy(session->peer_id, packet->identity, session->peer_id_len);
 		session->peer_id[session->peer_id_len] = '\0';
 
-		known_good = password_find(&ephemeral, request, request,
+		known_good = password_find(&ephemeral, request, request->parent,
 					   allowed_passwords, NUM_ELEMENTS(allowed_passwords), false);
 		if (!known_good) {
 			REDEBUG("No \"known good\" password found for user");
@@ -448,8 +448,8 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		/*
 		 *	Return the MSK (in halves).
 		 */
-		eap_add_reply(request, attr_ms_mppe_recv_key, msk, MPPE_KEY_LEN);
-		eap_add_reply(request, attr_ms_mppe_send_key, msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
+		eap_add_reply(request->parent, attr_ms_mppe_recv_key, msk, MPPE_KEY_LEN);
+		eap_add_reply(request->parent, attr_ms_mppe_send_key, msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
 
 		rcode = RLM_MODULE_OK;
 		break;

@@ -43,6 +43,8 @@ typedef struct {
 							//!< #eap_session_t.
 
 	fr_dict_t		**namespace;		//!< Namespace children should be allocated in.
+
+	bool			clone_parent_lists;	//!< HACK until all eap methods run their own sections.
 } rlm_eap_submodule_t;
 
 /** Private structure to hold handles and interfaces for an EAP method
