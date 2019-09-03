@@ -41,9 +41,9 @@ radsqlrelay - relay SQL queries to a central database server
 to a database server. Used to replicate accounting records to one
 (central) database, even if the database has extended downtime.
 .PP
-The SQL logfile is created by the \fBrlm_sql_log\fP module. The module
-must be configured in the \fBradiusd\fP server before you can use
-\fBradsqlrelay\fP.
+The SQL logfile is created by the \fBrlm_sql\fP module with the
+rlm_sql_null driver logging to disk.. The module must be configured in
+the \fBradiusd\fP server before you can use \fBradsqlrelay\fP.
 
 .SH OPTIONS
 .IP "\-?"
@@ -85,9 +85,6 @@ db.domain.tld =
     )
   )
 .DE
-
-.SH SEE ALSO
-.BR rlm_sql_log (5)
 
 .SH AUTHOR
 Nicolas Baradakis <nicolas.baradakis@cegetel.net>
