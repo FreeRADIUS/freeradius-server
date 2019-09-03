@@ -571,18 +571,17 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
+FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
-	REQUEST			*fake = NULL;
-	VALUE_PAIR		*vp = NULL, *username;
+	VALUE_PAIR		*vp = NULL;
 	fr_cursor_t		cursor;
 	ttls_tunnel_t		*t;
 	uint8_t			const *data;
 	size_t			data_len;
-	REQUEST			*request = eap_session->request;
 	chbind_packet_t		*chbind;
+	VALUE_PAIR		*username;
 
 	/*
 	 *	Just look at the buffer directly, without doing
@@ -620,17 +619,10 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	}
 
 	/*
-	 *	Allocate a fake REQUEST structure.
+	 *	Add the tunneled attributes to the request request.
 	 */
-	fake = request_alloc_fake(request, NULL);
-
-	rad_assert(!fake->packet->vps);
-
-	/*
-	 *	Add the tunneled attributes to the fake request.
-	 */
-	fr_cursor_init(&cursor, &fake->packet->vps);
-	if (eap_ttls_decode_pair(fake->packet, &cursor, fr_dict_root(fr_dict_internal),
+	fr_cursor_init(&cursor, &request->packet->vps);
+	if (eap_ttls_decode_pair(request->packet, &cursor, fr_dict_root(fr_dict_internal),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
 		code = FR_CODE_ACCESS_REJECT;
@@ -644,14 +636,14 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	No User-Name, try to create one from stored data.
 	 */
-	username = fr_pair_find_by_da(fake->packet->vps, attr_user_name, TAG_ANY);
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	if (!username) {
 		/*
 		 *	No User-Name in the stored data, look for
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_da(fake->packet->vps, attr_eap_message, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_eap_message, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
@@ -678,18 +670,18 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		} /* else there WAS a t->username */
 
 		if (t->username) {
-			vp = fr_pair_copy(fake->packet, t->username);
-			fr_pair_add(&fake->packet->vps, vp);
+			vp = fr_pair_copy(request->packet, t->username);
+			fr_pair_add(&request->packet->vps, vp);
 		}
 	} /* else the request ALREADY had a User-Name */
 
 	/*
 	 *	Process channel binding.
 	 */
-	chbind = eap_chbind_vp2packet(fake, fake->packet->vps);
+	chbind = eap_chbind_vp2packet(request, request->packet->vps);
 	if (chbind) {
 		FR_CODE chbind_code;
-		CHBIND_REQ *req = talloc_zero(fake, CHBIND_REQ);
+		CHBIND_REQ *req = talloc_zero(request, CHBIND_REQ);
 
 		RDEBUG2("received chbind request");
 		req->request = chbind;
@@ -703,8 +695,8 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		/* encapsulate response here */
 		if (req->response) {
 			RDEBUG2("sending chbind response");
-			fr_pair_add(&fake->reply->vps,
-				    eap_chbind_packet2vp(fake->reply, req->response));
+			fr_pair_add(&request->reply->vps,
+				    eap_chbind_packet2vp(request->reply, req->response));
 		} else {
 			RDEBUG2("no chbind response");
 		}
@@ -722,12 +714,12 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	eap_virtual_server(request, fake, eap_session, t->virtual_server);
+	eap_virtual_server(request, eap_session, t->virtual_server);
 
 	/*
 	 *	Decide what to do with the reply.
 	 */
-	if (!fake->reply->code) {
+	if (!request->reply->code) {
 		RDEBUG2("No tunneled reply was found for request %" PRIu64 ", and the request was not "
 		       "proxied: rejecting the user", request->number);
 		code = FR_CODE_ACCESS_REJECT;
@@ -735,7 +727,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		/*
 		 *	Returns RLM_MODULE_FOO, and we want to return FR_FOO
 		 */
-		rcode = process_reply(eap_session, tls_session, request, fake->reply);
+		rcode = process_reply(eap_session, tls_session, request, request->reply);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
 			code = FR_CODE_ACCESS_REJECT;
@@ -756,7 +748,5 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	}
 
 finish:
-	talloc_free(fake);
-
 	return code;
 }

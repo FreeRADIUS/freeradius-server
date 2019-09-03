@@ -95,25 +95,29 @@ size_t eap_tls_status_table_len = NUM_ELEMENTS(eap_tls_status_table);
  * The EAP packet will be written to eap_round->request, with the original reply
  * being untouched.
  *
- * @param eap_session to continue.
- * @param status What type of packet we're sending.
- * @param flags to set.  This is checked to determine if we need to include a length field.
- * @param record The record buffer to read from.  This most only be set for EAP_TLS_RECORD_SEND packets.
- * @param record_len the length of the record we're sending.
- * @param frag_len the length of the fragment we're sending.
+ * @param[in] request		The current subrequest.
+ * @param[in] eap_session	to continue.
+ * @param[in] status		What type of packet we're sending.
+ * @param[in] flags		to set.  This is checked to determine if
+ *				we need to include a length field.
+ * @param[in] record 		The record buffer to read from.  This
+ *				most only be set for EAP_TLS_RECORD_SEND packets.
+ * @param[in] record_len 	the length of the record we're sending.
+ * @param[in] frag_len		the length of the fragment we're sending.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
+int eap_tls_compose(REQUEST *request, eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
 		    tls_record_t *record, size_t record_len, size_t frag_len)
 {
-	REQUEST			*request = eap_session->request;
 	eap_round_t		*eap_round = eap_session->this_round;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 	uint8_t			*p;
 	size_t			len = 1;	/* Flags */
+
+	rad_assert(request->parent);	/* must be a subrequest */
 
 	/*
 	 *	First output the flags (for debugging)
@@ -223,16 +227,19 @@ int eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8_t
  *
  * Fragment length is Framed-MTU - 4.
  *
- * @param eap_session to initiate.
+ * @param[in] request			The current subrequest.
+ * @param[in] eap_session		to initiate.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_start(eap_session_t *eap_session)
+int eap_tls_start(REQUEST *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
-	return eap_tls_compose(eap_session, EAP_TLS_START_SEND,
+	rad_assert(request->parent);	/* must be a subrequest */
+
+	return eap_tls_compose(request, eap_session, EAP_TLS_START_SEND,
 			       SET_START(eap_tls_session->base_flags), NULL, 0, 0);
 }
 
@@ -244,6 +251,7 @@ int eap_tls_start(eap_session_t *eap_session)
  * We add the MPPE keys here.  These are used by the NAS.  The supplicant
  * will derive the same keys separately.
  *
+ * @param[in] request			The current subrequest.
  * @param[in] eap_session		that completed successfully.
  * @param[in] keying_prf_label		PRF label to use for generating keying material.
  *					If NULL, no MPPE keys will be generated.
@@ -255,13 +263,14 @@ int eap_tls_start(eap_session_t *eap_session)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_success(eap_session_t *eap_session,
+int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
 		    char const *keying_prf_label, size_t keying_prf_label_len,
 		    char const *sessid_prf_label, size_t sessid_prf_label_len)
 {
-	REQUEST			*request = eap_session->request;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
+
+	rad_assert(request->parent);	/* must be a subrequest */
 
 	eap_session->finished = true;
 
@@ -292,13 +301,13 @@ int eap_tls_success(eap_session_t *eap_session,
 	/*
 	 *	Build the success packet
 	 */
-	if (eap_tls_compose(eap_session, EAP_TLS_ESTABLISHED,
+	if (eap_tls_compose(request, eap_session, EAP_TLS_ESTABLISHED,
 			    eap_tls_session->base_flags, NULL, 0, 0) < 0) return -1;
 
 	/*
 	 *	Automatically generate MPPE keying material.
 	 */
-	if (keying_prf_label) if (eap_crypto_mppe_keys(eap_session->request, tls_session->ssl,
+	if (keying_prf_label) if (eap_crypto_mppe_keys(request->parent, tls_session->ssl,
 						       keying_prf_label, keying_prf_label_len) < 0) return -1;
 
 	/*
@@ -308,7 +317,7 @@ int eap_tls_success(eap_session_t *eap_session,
 		uint8_t		*session_id;
 		VALUE_PAIR	*vp;
 
-		if (eap_crypto_tls_session_id(eap_session->request->reply, request, tls_session->ssl,
+		if (eap_crypto_tls_session_id(request->parent->reply, request, tls_session->ssl,
 					      &session_id, eap_session->type,
 					      sessid_prf_label, sessid_prf_label_len) < 0) return -1;
 
@@ -330,15 +339,18 @@ int eap_tls_success(eap_session_t *eap_session,
  *
  * In addition to sending the failure, will destroy any cached session data.
  *
- * @param eap_session that failed.
+ * @param[in] request		The current subrequest.
+ * @param[in] eap_session	that failed.
  * @return
  *	- 0 on success.
  *	- -1 on failure (to compose a valid packet).
  */
-int eap_tls_fail(eap_session_t *eap_session)
+int eap_tls_fail(REQUEST *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
+
+	rad_assert(request->parent);	/* must be a subrequest */
 
 	eap_session->finished = true;
 
@@ -347,7 +359,7 @@ int eap_tls_fail(eap_session_t *eap_session)
 	 */
 	tls_cache_deny(tls_session);
 
-	if (eap_tls_compose(eap_session, EAP_TLS_FAIL,
+	if (eap_tls_compose(request, eap_session, EAP_TLS_FAIL,
 			    eap_tls_session->base_flags, NULL, 0, 0) < 0) return -1;
 	return 0;
 }
@@ -382,9 +394,8 @@ int eap_tls_fail(eap_session_t *eap_session)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_request(eap_session_t *eap_session)
+int eap_tls_request(REQUEST *request, eap_session_t *eap_session)
 {
-	REQUEST			*request = eap_session->request;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 	uint8_t			flags = eap_tls_session->base_flags;
@@ -454,7 +465,7 @@ int eap_tls_request(eap_session_t *eap_session)
 	 */
 	if (length_included) flags = SET_LENGTH_INCLUDED(flags);
 
-	return eap_tls_compose(eap_session, EAP_TLS_RECORD_SEND, flags,
+	return eap_tls_compose(request, eap_session, EAP_TLS_RECORD_SEND, flags,
 			       &tls_session->dirty_out, eap_tls_session->record_out_total_len, frag_len);
 }
 
@@ -472,30 +483,33 @@ int eap_tls_request(eap_session_t *eap_session)
  * within an EAP-Request, and the peer MUST include this Identifier value in
  * the subsequent fragment contained within an EAP-Reponse.
  *
- * @param eap_session that we're acking the fragment for.
+ * @param[in] request		The current subrequest.
+ * @param[in] eap_session	that we're acking the fragment for.
  */
-static int eap_tls_ack(eap_session_t *eap_session)
+static int eap_tls_ack(REQUEST *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	REQUEST			*request = eap_session->request;
+
+	rad_assert(request->parent);	/* must be a subrequest */
 
 	RDEBUG2("ACKing Peer's TLS record fragment");
-	return eap_tls_compose(eap_session, EAP_TLS_ACK_SEND,
+	return eap_tls_compose(request, eap_session, EAP_TLS_ACK_SEND,
 			       eap_tls_session->base_flags, NULL, 0, 0);
 }
 
 /** Reduce session states down into an easy to use status
  *
+ * @param[in] request		The current subrequest.
+ * @param[in] eap_session	that we're acking the fragment for.
  * @return
  *	- EAP_TLS_ESTABLISHED - Handshake completed.
  *	- EAP_TLS_FAIL - Fatal alert from the client.
  *	- EAP_TLS_RECORD_SEND - Need more data, or previous fragment was acked.
  */
-static eap_tls_status_t eap_tls_session_status(eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_session_status(REQUEST *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
-	REQUEST			*request = eap_session->request;
 
 	if (tls_session == NULL){
 		REDEBUG("Unexpected ACK received:  No ongoing SSL tls_session");
@@ -552,7 +566,8 @@ static eap_tls_status_t eap_tls_session_status(eap_session_t *eap_session)
  * @note In the received packet, No data will be present incase of ACK or NAK
  *	in this case the packet->data pointer will be NULL.
  *
- * @param[in] eap_session the current EAP session state.
+ * @parma[in] request		the current subrequest.
+ * @param[in] eap_session	the current EAP session state.
  * @return
  *	- EAP_TLS_INVALID if the TLS record or progression is invalid.
  *	- EAP_TLS_FAIL handshake failed.
@@ -562,15 +577,16 @@ static eap_tls_status_t eap_tls_session_status(eap_session_t *eap_session)
  *	- EAP_TLS_RECORD_SEND send more data to peer.
  *	- EAP_TLS_ESTABLISHED handshake is complete, TLS session has been established.
  */
-static eap_tls_status_t eap_tls_verify(eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_verify(REQUEST *request, eap_session_t *eap_session)
 {
 	eap_round_t		*this_round = eap_session->this_round;
 	eap_round_t		*prev_round = eap_session->prev_round;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
 	eap_tls_data_t		*eap_tls_data;
-	REQUEST			*request = eap_session->request;
 	size_t			frag_len, header_len;
+
+	rad_assert(request->parent);	/* must be a subrequest */
 
 	/*
 	 *	All EAP-TLS packets must contain type and flags fields.
@@ -634,7 +650,7 @@ static eap_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 			REDEBUG("Received Invalid TLS ACK");
 			return EAP_TLS_INVALID;
 		}
-		return eap_tls_session_status(eap_session);
+		return eap_tls_session_status(request, eap_session);
 	}
 
 	/*
@@ -801,23 +817,23 @@ ignore_length:
 
 /** Continue with the handshake
  *
- * @param eap_session to continue.
+ * @parma[in] request		the current subrequest.
+ * @param[in] eap_session	to continue.
  * @return
  *	- EAP_TLS_FAIL if the message is invalid.
  *	- EAP_TLS_HANDLED if we need to send an additional request to the peer.
  *	- EAP_TLS_ESTABLISHED if the handshake completed successfully, and there's
  *	  no more data to send.
  */
-static eap_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_handshake(REQUEST *request, eap_session_t *eap_session)
 {
-	REQUEST			*request = eap_session->request;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	/*
 	 *	Continue the TLS handshake
 	 */
-	if (tls_session_handshake(eap_session->request, tls_session) < 0) {
+	if (tls_session_handshake(request, tls_session) < 0) {
 		REDEBUG("TLS receive handshake failed during operation");
 		tls_cache_deny(tls_session);
 		return EAP_TLS_FAIL;
@@ -829,7 +845,7 @@ static eap_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	 *	TLS proper can decide what to do, then.
 	 */
 	if (tls_session->dirty_out.used > 0) {
-		eap_tls_request(eap_session);
+		eap_tls_request(request, eap_session);
 		return EAP_TLS_HANDLED;
 	}
 
@@ -881,27 +897,26 @@ static eap_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
  *	- EAP_TLS_ESTABLISHED
  *	- EAP_TLS_HANDLED
  */
-eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
+eap_tls_status_t eap_tls_process(REQUEST *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	eap_round_t		*this_round = eap_session->this_round;
 	eap_tls_status_t	status;
-	REQUEST			*request = eap_session->request;
 
 	eap_tls_data_t		*eap_tls_data;
 	uint8_t			*data;
 	size_t			data_len;
 
-	if (!request) return EAP_TLS_FAIL;
+	rad_assert(request->parent);	/* must be a subrequest */
 
 	RDEBUG2("Continuing EAP-TLS");
 
 	/*
 	 *	Call eap_tls_verify to sanity check the incoming EAP data.
 	 */
-	status = eap_tls_verify(eap_session);
+	status = eap_tls_verify(request, eap_session);
 	switch (status) {
 	case EAP_TLS_INVALID:
 	case EAP_TLS_FAIL:
@@ -962,7 +977,7 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		 *	ACK fragments until we get a complete TLS record.
 		 */
 		if (status != EAP_TLS_RECORD_RECV_COMPLETE) {
-			eap_tls_ack(eap_session);
+			eap_tls_ack(request, eap_session);
 			status = EAP_TLS_HANDLED;
 			goto done;
 		}
@@ -992,7 +1007,7 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 				break;
 			}
 		} else {
-			status = eap_tls_handshake(eap_session);
+			status = eap_tls_handshake(request, eap_session);
 		}
 		break;
 	/*
@@ -1009,7 +1024,7 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 			return EAP_TLS_RECORD_RECV_COMPLETE;
 		}
 
-		eap_tls_request(eap_session);
+		eap_tls_request(request, eap_session);
 		status = EAP_TLS_HANDLED;
 		goto done;
 
@@ -1038,18 +1053,21 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
  * adding EAP specific opaque data to the SSL session created during tls_session_t
  * initialisation.
  *
- * @param eap_session to use as a context for the eap_tls_session_t
- * @param tls_conf to use to configure the tls_session_t.
- * @param client_cert Whether we require the peer to prevent a certificate.
+ * @param[in] request		The current subrequest.
+ * @param[in] eap_session	to use as a context for the eap_tls_session_t
+ * @param[in] tls_conf		to use to configure the tls_session_t.
+ * @param[in] client_cert	Whether we require the peer to prevent a certificate.
  * @return
  *	- A new eap_tls_session on success.
  *	- NULL on error.
  */
-eap_tls_session_t *eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert)
+eap_tls_session_t *eap_tls_session_init(REQUEST *request, eap_session_t *eap_session,
+					fr_tls_conf_t *tls_conf, bool client_cert)
 {
 	eap_tls_session_t	*eap_tls_session;
 	tls_session_t		*tls_session;
-	REQUEST			*request = eap_session->request;
+
+	rad_assert(request->parent);	/* must be a subrequest */
 
 	/*
 	 *	This EAP session is associated with a TLS session

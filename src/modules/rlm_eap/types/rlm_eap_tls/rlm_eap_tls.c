@@ -73,7 +73,7 @@ fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request);
 
-static rlm_rcode_t eap_tls_success_with_prf(eap_session_t *eap_session)
+static rlm_rcode_t eap_tls_success_with_prf(REQUEST *request, eap_session_t *eap_session)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -96,7 +96,7 @@ static rlm_rcode_t eap_tls_success_with_prf(eap_session_t *eap_session)
 	{
 		static char const keying_prf_label[] = "client EAP encryption";
 
-		if (eap_tls_success(eap_session,
+		if (eap_tls_success(request, eap_session,
 				    keying_prf_label, sizeof(keying_prf_label) - 1,
 				    NULL, 0) < 0) return RLM_MODULE_FAIL;
 	}
@@ -109,7 +109,7 @@ static rlm_rcode_t eap_tls_success_with_prf(eap_session_t *eap_session)
 		static char const keying_prf_label[] = "EXPORTER_EAP_TLS_Key_Material";
 		static char const sessid_prf_label[] = "EXPORTER_EAP_TLS_Method-Id";
 
-		if (eap_tls_success(eap_session,
+		if (eap_tls_success(request, eap_session,
 				    keying_prf_label, sizeof(keying_prf_label) - 1,
 				    sessid_prf_label, sizeof(sessid_prf_label) - 1) < 0) return RLM_MODULE_FAIL;
 	}
@@ -127,12 +127,12 @@ static unlang_action_t eap_tls_virtual_server_result(REQUEST *request, rlm_rcode
 	switch (*presult) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		*presult = eap_tls_success_with_prf(eap_session);
+		*presult = eap_tls_success_with_prf(request, eap_session);
 		break;
 
 	default:
 		REDEBUG2("Certificate rejected by the virtual server");
-		eap_tls_fail(eap_session);
+		eap_tls_fail(request, eap_session);
 		*presult = RLM_MODULE_REJECT;
 		break;
 	}
@@ -140,9 +140,8 @@ static unlang_action_t eap_tls_virtual_server_result(REQUEST *request, rlm_rcode
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, eap_session_t *eap_session)
+static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, REQUEST *request, eap_session_t *eap_session)
 {
-	REQUEST		*request = eap_session->request;
 	CONF_SECTION	*server_cs;
 	CONF_SECTION	*section;
 	VALUE_PAIR	*vp;
@@ -154,7 +153,7 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, eap_session_t *ea
 		if (!server_cs) {
 			REDEBUG2("Virtual server \"%s\" not found", vp->vp_strvalue);
 		error:
-			eap_tls_fail(eap_session);
+			eap_tls_fail(request, eap_session);
 			return RLM_MODULE_INVALID;
 		}
 	} else {
@@ -195,11 +194,11 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	eap_tls_status_t	status;
 
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
-	eap_session_t		*eap_session = eap_session_get(request);
+	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 
-	status = eap_tls_process(eap_session);
+	status = eap_tls_process(request, eap_session);
 	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
 		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
 	} else {
@@ -215,8 +214,8 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 *	it accepts the certificates, too.
 	 */
 	case EAP_TLS_ESTABLISHED:
-		if (inst->virtual_server) return eap_tls_virtual_server(inst, eap_session);
-		return eap_tls_success_with_prf(eap_session);
+		if (inst->virtual_server) return eap_tls_virtual_server(inst, request, eap_session);
+		return eap_tls_success_with_prf(request, eap_session);
 
 
 	/*
@@ -233,7 +232,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 */
 	case EAP_TLS_RECORD_RECV_COMPLETE:
 		REDEBUG("Received unexpected tunneled data after successful handshake");
-		eap_tls_fail(eap_session);
+		eap_tls_fail(request, eap_session);
 
 		return RLM_MODULE_INVALID;
 
@@ -256,7 +255,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
-	eap_session_t		*eap_session = eap_session_get(request);
+	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session;
 
 	VALUE_PAIR		*vp;
@@ -268,7 +267,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_tls_require_client_cert, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_eap_tls_require_client_cert, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {
@@ -278,7 +277,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	/*
 	 *	EAP-TLS always requires a client certificate.
 	 */
-	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
+	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
 	if (!eap_tls_session) return RLM_MODULE_FAIL;
 
 	eap_tls_session->include_length = inst->include_length;
@@ -287,7 +286,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	if (eap_tls_start(eap_session) < 0) {
+	if (eap_tls_start(request, eap_session) < 0) {
 		talloc_free(eap_tls_session);
 		return RLM_MODULE_FAIL;
 	}
@@ -318,7 +317,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-#define ACTION_SECTION(_out, _field, _verb, _name) \
+#define EAP_SECTION_COMPILE(_out, _field, _verb, _name) \
 do { \
 	CONF_SECTION *_tmp; \
 	_tmp = cf_section_find(server_cs, _verb, _name); \
@@ -338,7 +337,7 @@ static int mod_section_compile(eap_tls_actions_t *actions, CONF_SECTION *server_
 
 	if (!fr_cond_assert(server_cs)) return -1;
 
-	ACTION_SECTION(actions, recv_access_request, "recv", "Access-Request");
+	EAP_SECTION_COMPILE(actions, recv_access_request, "recv", "Access-Request");
 
 	/*
 	 *	Warn if we couldn't find any actions.

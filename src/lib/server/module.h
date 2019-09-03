@@ -127,6 +127,7 @@ typedef int (*module_thread_detach_t)(fr_event_list_t *el, void *thread);
 	struct { \
 		module_instantiate_t		bootstrap;		\
 		module_instantiate_t		instantiate;		\
+		int				type;	/* flags */	\
 	}
 
 /** Common fields for the interface struct modules export
@@ -174,8 +175,6 @@ struct rad_module_s {
 	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
 	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
 
-	int				type;			//!< Type flags that control calling conventions
-								//!< for modules.
 	module_method_t			methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
 	module_method_names_t const	*method_names;		//!< named methods
 	fr_dict_t			**dict;			//!< pointer to local fr_dict_t*

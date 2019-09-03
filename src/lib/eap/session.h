@@ -41,6 +41,9 @@ struct eap_session_s {
 
 	eap_session_t	*child;				//!< Session for tunneled EAP method.
 
+	REQUEST		*subrequest;			//!< Current subrequest being executed.
+	rlm_rcode_t	submodule_rcode;		//!< Result of last submodule call.
+
 	void const	*inst;				//!< Instance of the eap module this session was created by.
 	eap_type_t	type;				//!< EAP method number.
 
@@ -56,8 +59,6 @@ struct eap_session_s {
 							///< we're building.
 
 	void 		*opaque;			//!< Opaque data used by EAP methods.
-
-	rlm_rcode_t	submodule_rcode;		//!< Result of last submodule call.
 
 	module_method_t	process;			//!< Callback that should be used to process the next round.
 							///< Usually set to the process function of an EAP submodule.

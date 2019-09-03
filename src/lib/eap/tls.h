@@ -154,19 +154,20 @@ extern size_t eap_tls_status_table_len;
 /*
  *	Externally exported TLS functions.
  */
-eap_tls_status_t	eap_tls_process(eap_session_t *eap_session) CC_HINT(nonnull);
+eap_tls_status_t	eap_tls_process(REQUEST *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_start(eap_session_t *eap_session) CC_HINT(nonnull);
+int			eap_tls_start(REQUEST *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_success(eap_session_t *eap_session,
+int			eap_tls_success(REQUEST *request, eap_session_t *eap_session,
 					char const *keying_prf_label, size_t keying_prf_label_len,
 					char const *sessid_prf_label, size_t sessid_prf_label_len) CC_HINT(nonnull(1));
 
-int			eap_tls_fail(eap_session_t *eap_session) CC_HINT(nonnull);
+int			eap_tls_fail(REQUEST *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_request(eap_session_t *eap_session) CC_HINT(nonnull);
+int			eap_tls_request(REQUEST *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
+int			eap_tls_compose(REQUEST *request, eap_session_t *eap_session,
+					eap_tls_status_t status, uint8_t flags,
 		    			tls_record_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
@@ -177,7 +178,8 @@ int			eap_crypto_tls_session_id(TALLOC_CTX *ctx, REQUEST *request, SSL *ssl, uin
 						  uint8_t eap_type, char const *prf_label, size_t prf_label_len);
 
 /* EAP-TLS framework */
-eap_tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert) CC_HINT(nonnull);
+eap_tls_session_t	*eap_tls_session_init(REQUEST *request, eap_session_t *eap_session,
+					      fr_tls_conf_t *tls_conf, bool client_cert) CC_HINT(nonnull);
 
 
 fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs, char const *key) CC_HINT(nonnull);

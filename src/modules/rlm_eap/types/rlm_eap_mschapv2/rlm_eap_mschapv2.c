@@ -413,7 +413,7 @@ static rlm_rcode_t mod_process_auth_type(void *instance, UNUSED void *thread, RE
 {
 	rlm_rcode_t		rcode;
 	rlm_eap_mschapv2_t	*inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
-	eap_session_t		*eap_session = eap_session_get(request);
+	eap_session_t		*eap_session = eap_session_get(request->parent);
 
 	rcode = unlang_interpret_resume(request);
 
@@ -429,7 +429,7 @@ static rlm_rcode_t mod_process_auth_type(void *instance, UNUSED void *thread, RE
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_eap_mschapv2_t	*inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
-	eap_session_t		*eap_session = eap_session_get(request);
+	eap_session_t		*eap_session = eap_session_get(request->parent);
 	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t		*eap_round = eap_session->this_round;
 	VALUE_PAIR		*auth_challenge, *response, *name;
@@ -751,7 +751,7 @@ packet_ready:
  */
 static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	eap_session_t		*eap_session = eap_session_get(request);
+	eap_session_t		*eap_session = eap_session_get(request->parent);
 	VALUE_PAIR		*auth_challenge;
 	VALUE_PAIR		*peer_challenge;
 	mschapv2_opaque_t	*data;

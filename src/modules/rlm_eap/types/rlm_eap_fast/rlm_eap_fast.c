@@ -456,7 +456,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	eap_tls_status_t	status;
 
 	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
-	eap_session_t		*eap_session = eap_session_get(request);
+	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 
@@ -469,7 +469,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	/*
 	 *	Process TLS layer until done.
 	 */
-	status = eap_tls_process(eap_session);
+	status = eap_tls_process(request, eap_session);
 	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
 		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
 	} else {
@@ -520,9 +520,9 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	/*
 	 *	Process the FAST portion of the request.
 	 */
-	switch (eap_fast_process(eap_session, tls_session)) {
+	switch (eap_fast_process(request, eap_session, tls_session)) {
 	case FR_CODE_ACCESS_REJECT:
-		eap_tls_fail(eap_session);
+		eap_tls_fail(request, eap_session);
 		return RLM_MODULE_FAIL;
 
 		/*
@@ -530,14 +530,14 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		 */
 	case FR_CODE_ACCESS_CHALLENGE:
 		tls_session_send(request, tls_session);
-		eap_tls_request(eap_session);
+		eap_tls_request(request, eap_session);
 		return RLM_MODULE_HANDLED;
 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case FR_CODE_ACCESS_ACCEPT:
-		if (eap_tls_success(eap_session, NULL, 0, NULL, 0) < 0) return RLM_MODULE_FAIL;
+		if (eap_tls_success(request, eap_session, NULL, 0, NULL, 0) < 0) return RLM_MODULE_FAIL;
 		return RLM_MODULE_OK;
 
 		/*
@@ -556,7 +556,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	/*
 	 *	Something we don't understand: Reject it.
 	 */
-	eap_tls_fail(eap_session);
+	eap_tls_fail(request, eap_session);
 	return RLM_MODULE_FAIL;
 }
 
@@ -566,7 +566,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
-	eap_session_t		*eap_session = eap_session_get(request);
+	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t 	*eap_tls_session;
 	tls_session_t		*tls_session;
 
@@ -579,14 +579,14 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_tls_require_client_cert, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_eap_tls_require_client_cert, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {
 		client_cert = inst->req_client_cert;
 	}
 
-	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
+	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
 	if (!eap_tls_session) return RLM_MODULE_FAIL;
 
 	tls_session = eap_tls_session->tls_session;
@@ -620,7 +620,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	if (eap_tls_compose(eap_session, EAP_TLS_START_SEND,
+	if (eap_tls_compose(request, eap_session, EAP_TLS_START_SEND,
 			    SET_START(eap_tls_session->base_flags) | EAP_FAST_VERSION,
 			    &tls_session->clean_in, tls_session->clean_in.used,
 			    tls_session->clean_in.used) < 0) {

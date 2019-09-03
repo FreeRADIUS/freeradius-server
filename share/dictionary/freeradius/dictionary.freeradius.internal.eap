@@ -105,18 +105,19 @@ VALUE	EAP-Type			TEAP			55
 VALUE	EAP-Type			MSCHAPv2		26
 
 ATTRIBUTE	EAP-Id					4002	integer
+ATTRIBUTE	EAP-Identity				4003	string
 
 #
 #	Expose EAP keys in the reply.
 #
-ATTRIBUTE	EAP-MSK					4003	octets
-ATTRIBUTE	EAP-EMSK				4004	octets
-ATTRIBUTE	EAP-Session-Id				4005	octets
+ATTRIBUTE	EAP-MSK					4004	octets
+ATTRIBUTE	EAP-EMSK				4005	octets
+ATTRIBUTE	EAP-Session-Id				4006	octets
 
 # For session resumption
-ATTRIBUTE	Allow-Session-Resumption		4006	bool
-ATTRIBUTE	EAP-Session-Resumed			4007	bool
-ATTRIBUTE	Chbind-Response-Code			4008	integer
+ATTRIBUTE	Allow-Session-Resumption		4007	bool
+ATTRIBUTE	EAP-Session-Resumed			4008	bool
+ATTRIBUTE	Chbind-Response-Code			4009	integer
 
 VALUE	Chbind-Response-Code		success			2
 VALUE	Chbind-Response-Code		failure			3

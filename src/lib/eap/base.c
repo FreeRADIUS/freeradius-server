@@ -390,35 +390,33 @@ void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *va
 	REXDENT();
 }
 
-/** Send a fake request to a virtual server, managing the eap_session_t of the child
+/** Run a subrequest through a virtual server, managing the eap_session_t of the child
  *
- * If eap_session_t has a child, inject that into the fake request.
+ * If eap_session_t has a child, inject that into the request.
  *
  * If after the request has run, the child eap_session_t is no longer present,
  * we assume it has been freed, and fixup the parent eap_session_t.
  *
  * If the eap_session_t pointer changes, this is considered a fatal error.
  *
- * @param request the current (real) request.
- * @param eap_session representing the outer eap method.
- * @param fake request we're going to send.
- * @param virtual_server The default virtual server to send the request to.
+ * @param[in] request		the current (real) request.
+ * @param[in] eap_session	representing the outer eap method.
+ * @param[in] virtual_server	The default virtual server to send the request to.
  * @return the rcode of the last executed section in the virtual server.
  */
-rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
-			       eap_session_t *eap_session, char const *virtual_server)
+rlm_rcode_t eap_virtual_server(REQUEST *request, eap_session_t *eap_session, char const *virtual_server)
 {
 	eap_session_t	*eap_session_inner;
 	rlm_rcode_t	rcode;
 	VALUE_PAIR	*vp;
 
 	vp = fr_pair_find_by_da(request->control, attr_virtual_server, TAG_ANY);
-	fake->server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);
+	request->server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);
 
-	if (fake->server_cs) {
-		RDEBUG2("Proxying tunneled request to virtual server \"%s\"", cf_section_name2(fake->server_cs));
+	if (request->server_cs) {
+		RDEBUG2("Running request through virtual server \"%s\"", cf_section_name2(request->server_cs));
 	} else {
-		RDEBUG2("Proxying tunneled request");
+		RDEBUG2("Running request in virtual server");
 	}
 
 	/*
@@ -427,14 +425,14 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	 *	nesting, but this is probably limited somewhere.
 	 */
 	if (eap_session->child) {
-		RDEBUG4("Adding eap_session_t %p to fake request", eap_session->child);
-		request_data_talloc_add(fake, NULL, REQUEST_DATA_EAP_SESSION,
+		RDEBUG4("Adding eap_session_t %p to child request", eap_session->child);
+		request_data_talloc_add(request, NULL, REQUEST_DATA_EAP_SESSION,
 					eap_session_t, eap_session->child, false, false, false);
 	}
 
-	rcode = rad_virtual_server(fake);
+	rcode = rad_virtual_server(request);
 
-	eap_session_inner = request_data_get(fake, NULL, REQUEST_DATA_EAP_SESSION);
+	eap_session_inner = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
 	if (eap_session_inner) {
 		/*
 		 *	We assume if the inner eap session has changed

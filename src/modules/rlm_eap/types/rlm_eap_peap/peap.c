@@ -34,10 +34,9 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
  *
  *       Result-TLV = Failure
  */
-static int eap_peap_failure(eap_session_t *eap_session, tls_session_t *tls_session)
+static int eap_peap_failure(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
-	REQUEST *request = eap_session->request;
 
 	RDEBUG2("FAILURE");
 
@@ -69,10 +68,9 @@ static int eap_peap_failure(eap_session_t *eap_session, tls_session_t *tls_sessi
  *
  *       Result-TLV = Success
  */
-static int eap_peap_success(eap_session_t *eap_session, tls_session_t *tls_session)
+static int eap_peap_success(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
-	REQUEST *request = eap_session->request;
 
 	RDEBUG2("SUCCESS");
 
@@ -99,7 +97,7 @@ static int eap_peap_success(eap_session_t *eap_session, tls_session_t *tls_sessi
 }
 
 
-static int eap_peap_identity(eap_session_t *eap_session, tls_session_t *tls_session)
+static int eap_peap_identity(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	eap_packet_raw_t eap_packet;
 
@@ -110,7 +108,7 @@ static int eap_peap_identity(eap_session_t *eap_session, tls_session_t *tls_sess
 	eap_packet.data[0] = FR_EAP_METHOD_IDENTITY;
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, &eap_packet, sizeof(eap_packet));
-	tls_session_send(eap_session->request, tls_session);
+	tls_session_send(request, tls_session);
 	(tls_session->record_init)(&tls_session->clean_in);
 
 	return 1;
@@ -119,7 +117,7 @@ static int eap_peap_identity(eap_session_t *eap_session, tls_session_t *tls_sess
 /*
  * Send an MS SoH request
  */
-static int eap_peap_soh(eap_session_t *eap_session, tls_session_t *tls_session)
+static int eap_peap_soh(REQUEST *request,tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[20];
 
@@ -151,7 +149,7 @@ static int eap_peap_soh(eap_session_t *eap_session, tls_session_t *tls_session)
 	tlv_packet[19] = 0;
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 20);
-	tls_session_send(eap_session->request, tls_session);
+	tls_session_send(request, tls_session);
 	return 1;
 }
 
@@ -403,14 +401,14 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 	case FR_CODE_ACCESS_ACCEPT:
 		RDEBUG2("Tunneled authentication was successful");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-		eap_peap_success(eap_session, tls_session);
+		eap_peap_success(request, eap_session, tls_session);
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
 	case FR_CODE_ACCESS_REJECT:
 		RDEBUG2("Tunneled authentication was rejected");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
-		eap_peap_failure(eap_session, tls_session);
+		eap_peap_failure(request, eap_session, tls_session);
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
@@ -480,7 +478,7 @@ static char const *peap_state(peap_tunnel_t *t)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_session)
+rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	peap_tunnel_t	*t = tls_session->opaque;
 	REQUEST		*fake = NULL;
@@ -489,7 +487,6 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	uint8_t const	*data;
 	size_t		data_len;
 
-	REQUEST *request = eap_session->request;
 	eap_round_t *eap_round = eap_session->this_round;
 
 	/*
@@ -517,20 +514,20 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			if (t->soh) {
 				t->status = PEAP_STATUS_WAIT_FOR_SOH_RESPONSE;
 				RDEBUG2("Requesting SoH from client");
-				eap_peap_soh(eap_session, tls_session);
+				eap_peap_soh(request, tls_session);
 
 				rcode = RLM_MODULE_HANDLED;
 				goto finish;
 			}
 			/* we're good, send success TLV */
 			t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-			eap_peap_success(eap_session, tls_session);
+			eap_peap_success(request, eap_session, tls_session);
 
 		} else {
 			/* send an identity request */
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
 			t->status = PEAP_STATUS_INNER_IDENTITY_REQ_SENT;
-			eap_peap_identity(eap_session, tls_session);
+			eap_peap_identity(request, eap_session, tls_session);
 		}
 		rcode = RLM_MODULE_HANDLED;
 		goto finish;
@@ -556,7 +553,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		if (t->soh) {
 			t->status = PEAP_STATUS_WAIT_FOR_SOH_RESPONSE;
 			RDEBUG2("Requesting SoH from client");
-			eap_peap_soh(eap_session, tls_session);
+			eap_peap_soh(request, tls_session);
 			rcode = RLM_MODULE_HANDLED;
 			goto finish;
 		}
@@ -579,7 +576,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			RDEBUG2("SoH was rejected");
 			TALLOC_FREE(fake);
 			t->status = PEAP_STATUS_SENT_TLV_FAILURE;
-			eap_peap_failure(eap_session, tls_session);
+			eap_peap_failure(request, eap_session, tls_session);
 			rcode = RLM_MODULE_HANDLED;
 			goto finish;
 		}
@@ -593,7 +590,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		if (t->session_resumption_state == PEAP_RESUMPTION_YES) {
 			/* we're good, send success TLV */
 			t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-			eap_peap_success(eap_session, tls_session);
+			eap_peap_success(request, eap_session, tls_session);
 			rcode = RLM_MODULE_HANDLED;
 			goto finish;
 		}
@@ -629,7 +626,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			t->status = PEAP_STATUS_INNER_IDENTITY_REQ_SENT;
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
 
-			eap_peap_identity(eap_session, tls_session);
+			eap_peap_identity(request, eap_session, tls_session);
 			rcode = RLM_MODULE_HANDLED;
 			goto finish;
 		}
@@ -745,7 +742,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	eap_virtual_server(request, fake, eap_session, t->virtual_server);
+	eap_virtual_server(request, eap_session, t->virtual_server);
 
 	/*
 	 *	Decide what to do with the reply.
