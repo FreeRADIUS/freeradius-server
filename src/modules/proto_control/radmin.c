@@ -493,18 +493,43 @@ static char *readline(char const *prompt)
 #else
 #define radmin_free free
 
-static int radmin_help(UNUSED int count, UNUSED int key)
+
+static ssize_t cmd_copy(char const *cmd)
 {
 	size_t len;
+	char *p = stack[stack_depth];
 
-	printf("\n");
+	if (stack_depth > 0) *(p++) = ' ';
 
-	len = strlcpy(stack[stack_depth], rl_line_buffer, cmd_buffer + sizeof(cmd_buffer) - stack[stack_depth]);
-	if (stack[stack_depth] + len >= cmd_buffer + sizeof(cmd_buffer)) {
+	len = strlcpy(p, cmd, cmd_buffer + sizeof(cmd_buffer) - p);
+	if ((p + len) >= (cmd_buffer + sizeof(cmd_buffer))) {
 		fprintf(stderr, "Command too long\n");
 		return -1;
 	}
-	len += stack[stack_depth] - cmd_buffer;
+
+	/*
+	 *	Trash trailing spaces.
+	 */
+	for (p += len;
+	     p > cmd_buffer;
+	     p--) {
+		if (!isspace((int) p[-1])) break;
+		p[-1] = '\0';
+	}
+
+	return p - cmd_buffer;
+}
+
+static int radmin_help(UNUSED int count, UNUSED int key)
+{
+	ssize_t len;
+
+	printf("\n");
+
+	len = cmd_copy(rl_line_buffer);
+	if (len < 0) return 0;
+
+	fprintf(stderr, "HELP %zd %s\n", len, cmd_buffer);
 
 	if (*cmd_buffer) {
 		(void) fr_conduit_write(sockfd, FR_CONDUIT_HELP, cmd_buffer, len);
@@ -547,7 +572,7 @@ radmin_expansion_walk(UNUSED const char *text, int state)
 static char **
 radmin_completion(const char *text, int start, UNUSED int end)
 {
-	size_t len;
+	ssize_t len;
 
 	rl_attempted_completion_over = 1;
 
@@ -560,12 +585,8 @@ radmin_completion(const char *text, int start, UNUSED int end)
 	io_buffer[0] = (start >> 8) & 0xff;
 	io_buffer[1] = start & 0xff;
 
-	len = strlcpy(stack[stack_depth], rl_line_buffer, cmd_buffer + sizeof(cmd_buffer) - stack[stack_depth]);
-	if (stack[stack_depth] + len >= cmd_buffer + sizeof(cmd_buffer)) {
-		fprintf(stderr, "Command too long\n");
-		return NULL;
-	}
-	len += stack[stack_depth] - cmd_buffer;
+	len = cmd_copy(rl_line_buffer);
+	if (len < 0) return NULL;
 
 	/*
 	 *	Note that "text" is the PARTIAL thing we're trying to complete.
@@ -1069,9 +1090,8 @@ int main(int argc, char **argv)
 			fr_log(&radmin_log, L_INFO, __FILE__, __LINE__, "%s", line);
 		}
 
-		len = strlcpy(stack[stack_depth], line, cmd_buffer + sizeof(cmd_buffer) - stack[stack_depth]);
-		if (stack[stack_depth] + len >= cmd_buffer + sizeof(cmd_buffer)) {
-			fprintf(stderr, "Command too long\n");
+		len = cmd_copy(line);
+		if (len < 0) {
 			exit_status = EXIT_FAILURE;
 			break;
 		}
@@ -1108,11 +1128,9 @@ int main(int argc, char **argv)
 			/*
 			 *	Point the stack to the last entry.
 			 */
-			p += len;
-			if (stack_depth > 0) *(p++) = ' '; /* spaces between commands */
+			p += strlen(p);
 			stack_depth++;
 			stack[stack_depth] = p;
-			*p = '\0';
 
 			snprintf(prompt_buffer, sizeof(prompt_buffer), "... %s> ",
 				 stack[stack_depth - 1]);
