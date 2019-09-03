@@ -26,15 +26,14 @@ RCSIDH(rlm_sigtran_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t *dict_eap_sim;
-extern fr_dict_t *dict_eap_aka;
+extern fr_dict_t *dict_eap_aka_sim;
 
-extern fr_dict_attr_t const *attr_eap_aka_autn;
-extern fr_dict_attr_t const *attr_eap_aka_ck;
-extern fr_dict_attr_t const *attr_eap_aka_ik;
-extern fr_dict_attr_t const *attr_eap_aka_rand;
-extern fr_dict_attr_t const *attr_eap_aka_xres;
+extern fr_dict_attr_t const *attr_eap_aka_sim_autn;
+extern fr_dict_attr_t const *attr_eap_aka_sim_ck;
+extern fr_dict_attr_t const *attr_eap_aka_sim_ik;
+extern fr_dict_attr_t const *attr_eap_aka_sim_rand;
+extern fr_dict_attr_t const *attr_eap_aka_sim_xres;
 
-extern fr_dict_attr_t const *attr_eap_sim_kc;
-extern fr_dict_attr_t const *attr_eap_sim_sres;
-extern fr_dict_attr_t const *attr_eap_sim_rand;
+extern fr_dict_attr_t const *attr_eap_aka_sim_kc;
+extern fr_dict_attr_t const *attr_eap_aka_sim_sres;
+extern fr_dict_attr_t const *attr_eap_aka_sim_rand;

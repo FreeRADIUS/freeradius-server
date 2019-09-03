@@ -1,6 +1,6 @@
-type = aka
+type = aka_prime
 
-aka {
+aka_prime {
 	network_name = "testing123"
 	virtual_server = "eap-aka"
 }

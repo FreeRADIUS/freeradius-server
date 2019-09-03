@@ -1,6 +1,6 @@
 #pragma once
 /**
- * @file src/lib/sim/milenage.h
+ * @file src/lib/aka-sim/milenage.h
  * @brief 3GPP AKA - Milenage algorithm (3GPP TS 35.205, .206, .207, .208)
  *
  * This file implements an example authentication algorithm defined for 3GPP
@@ -45,45 +45,6 @@
  */
 #define MILENAGE_SRES_SIZE	4
 #define MILENAGE_KC_SIZE	8
-
-/** Copy a 48bit value from a 64bit integer into a uint8_t buff in big endian byte order
- *
- * There may be fast ways of doing this, but this is the *correct*
- * way, and does not make assumptions about how integers are laid
- * out in memory.
- *
- * @param[out] out	6 byte butter to store value.
- * @param[in] i		integer value.
- * @return pointer to out.
- */
-static inline uint8_t *uint48_to_buff(uint8_t out[static 6], uint64_t i)
-{
-	out[0] = (i & 0xff0000000000) >> 40;
-	out[1] = (i & 0x00ff00000000) >> 32;
-	out[2] = (i & 0x0000ff000000) >> 24;
-	out[3] = (i & 0x000000ff0000) >> 16;
-	out[4] = (i & 0x00000000ff00) >> 8;
-	out[5] = (i & 0x0000000000ff);
-
-	return out;
-}
-
-/** Convert a 48bit big endian value into a unsigned 64bit integer
- *
- */
-static inline uint64_t uint48_from_buff(uint8_t const in[6])
-{
-	uint64_t i = 0;
-
-	i |= ((uint64_t)in[0]) << 40;
-	i |= ((uint64_t)in[1]) << 32;
-	i |= ((uint32_t)in[2]) << 24;
-	i |= ((uint32_t)in[3]) << 16;
-	i |= ((uint16_t)in[4]) << 8;
-	i |= in[5];
-
-	return i;
-}
 
 int	milenage_opc_generate(uint8_t opc[MILENAGE_OPC_SIZE],
 			      uint8_t const op[MILENAGE_OP_SIZE],

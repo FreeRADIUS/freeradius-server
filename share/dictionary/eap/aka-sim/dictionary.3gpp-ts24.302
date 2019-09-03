@@ -1,0 +1,18 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	EAP-AKA attributes defined by 3gpp-ts24.302
+#
+
+#
+#  Skippable-Attributes
+#
+ATTRIBUTE	IPMS-Ind			137	octets
+ATTRIBUTE	IPMS-Res			138	octets
+ATTRIBUTE	Tust-Ind			139	octets
+ATTRIBUTE	Short-Name-For-Network		140	octets
+ATTRIBUTE	Full-Name-For-Network		141	octets
+
+ATTRIBUTE	Twan-Conn-Mode			144	octets

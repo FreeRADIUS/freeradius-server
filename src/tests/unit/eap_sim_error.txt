@@ -7,9 +7,9 @@
 # Only run the tests if we have TLS support
 need-feature tls
 
-# Load the EAP-SIM module
-load eap-sim
-load-dictionary eap-sim eap/sim
+# Load the EAP-AKA/SIM encoder/decoder
+load eap-aka-sim
+load-dictionary eap-aka-sim eap/aka-sim
 
 # Zero length attribute
 decode-pair.sim_tp_decode 0d 00

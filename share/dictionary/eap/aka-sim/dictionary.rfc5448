@@ -1,0 +1,13 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	EAP-AKA attributes defined by rfc5448
+#
+
+#
+#  Non-Skippable attributes
+#
+ATTRIBUTE	KDF-Input			23	string
+ATTRIBUTE	KDF				24	short

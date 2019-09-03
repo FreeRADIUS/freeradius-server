@@ -1,4 +1,4 @@
-TARGETNAME	:= rlm_eap_sim
+TARGETNAME	:= rlm_eap_aka_prime
 
 ifneq "$(OPENSSL_LIBS)" ""
 TARGET		:= $(TARGETNAME).a

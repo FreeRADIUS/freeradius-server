@@ -28,8 +28,8 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/protocol/eap/aka/dictionary.h>
-#include <freeradius-devel/protocol/eap/sim/dictionary.h>
+#include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
+#include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/module.h>
 
@@ -270,8 +270,8 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 	return 0;
 }
 
-static void sigtran_client_signal(UNUSED REQUEST *request, UNUSED void *instance,
-				  UNUSED void *thread, void *rctx, fr_state_signal_t action)
+static void sigtran_client_signal(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request,
+				  void *rctx, fr_state_signal_t action)
 {
 	sigtran_transaction_t	*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
 
@@ -284,7 +284,7 @@ static void sigtran_client_signal(UNUSED REQUEST *request, UNUSED void *instance
 	txn->ctx.request = NULL;	/* remove the link to the (now dead) request */
 }
 
-static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx)
+static rlm_rcode_t sigtran_client_map_resume(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
 {
 	sigtran_transaction_t			*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
 	rlm_rcode_t				rcode;
@@ -313,18 +313,18 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 
 				RDEBUG2("SIM auth vector %i", i);
 				RINDENT();
-				vp = fr_pair_afrom_da(request, attr_eap_sim_rand);
-				fr_pair_value_memsteal(vp, vec->sim.rand, false);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_sim_rand);
+				fr_pair_value_memsteal(vp, vec->sim.rand, true);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_sim_sres);
-				fr_pair_value_memsteal(vp, vec->sim.sres, false);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_sim_sres);
+				fr_pair_value_memsteal(vp, vec->sim.sres, true);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_sim_kc);
-				fr_pair_value_memsteal(vp, vec->sim.kc, false);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_sim_kc);
+				fr_pair_value_memsteal(vp, vec->sim.kc, true);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 				REXDENT();
@@ -341,28 +341,28 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 
 				RDEBUG2("UMTS auth vector %i", i);
 				RINDENT();
-				vp = fr_pair_afrom_da(request, attr_eap_aka_rand);
-				fr_pair_value_memsteal(vp, vec->umts.rand, false);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_sim_rand);
+				fr_pair_value_memsteal(vp, vec->umts.rand, true);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_aka_xres);
-				fr_pair_value_memsteal(vp, vec->umts.xres, false);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_sim_xres);
+				fr_pair_value_memsteal(vp, vec->umts.xres, true);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_aka_ck);
-				fr_pair_value_memsteal(vp, vec->umts.ck, false);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_sim_ck);
+				fr_pair_value_memsteal(vp, vec->umts.ck, true);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_aka_ik);
-				fr_pair_value_memsteal(vp, vec->umts.ik, false);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_sim_ik);
+				fr_pair_value_memsteal(vp, vec->umts.ik, true);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_aka_autn);
-				fr_pair_value_memsteal(vp, vec->umts.authn, false);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_sim_autn);
+				fr_pair_value_memsteal(vp, vec->umts.authn, true);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 				REXDENT();
@@ -435,7 +435,7 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST
 		break;
 
 	default:
-		ERROR("%i is not a valid version", req->version);
+		REDEBUG("%i is not a valid version", req->version);
 		goto error;
 	}
 
@@ -443,26 +443,33 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST
 	txn->ctx.request = request;
 
 	if (tmpl_aexpand(req, &imsi, request, inst->imsi, NULL, NULL) < 0) {
-		ERROR("Failed retrieving IMSI");
+		REDEBUG("Failed retrieving IMSI");
 		goto error;
 	}
 
 	len = talloc_array_length(imsi) - 1;
 	if ((len != 16) && (len != 15)) {
-		ERROR("IMSI must be 15 or 16 digits got %zu digits", len);
+		REDEBUG("IMSI must be 15 or 16 digits got %zu digits", len);
 		goto error;
 	}
 
 	if (sigtran_ascii_to_tbcd(req, &req->imsi, imsi) < 0) {
-		ERROR("Failed converting ASCII to BCD");
+		REDEBUG("Failed converting ASCII to BCD");
 		goto error;
+	}
+
+	if (RDEBUG_ENABLED2) {
+		RDEBUG2("Sending MAPv%u request with IMSI \"%pV\"", req->version, fr_box_strvalue_buffer(imsi));
+	} else if (RDEBUG_ENABLED3){
+		RDEBUG3("Sending MAPv%u request with IMSI \"%pV\" (TBCD %pV)",
+			req->version, fr_box_strvalue_buffer(imsi), fr_box_octets_buffer(req->imsi));
 	}
 
 	/*
 	 *	FIXME - We shouldn't assume the pipe is always writable
 	 */
 	if (write(fd, &txn, sizeof(txn)) < 0) {
-		ERROR("worker - ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
+		REDEBUG("worker - ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
 		goto error;
 	}
 

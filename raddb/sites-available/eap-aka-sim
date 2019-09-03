@@ -1,0 +1,714 @@
+#  -*- text -*-
+#
+#  :toc:
+#
+#  $Id$
+
+#######################################################################
+#
+#  = EAP-SIM/EAP-AKA/EAP-AKA-Prime policy server
+#
+#  This server is an example of applying custom, site-specific policies
+#  to eap-aka['] based authentication.
+#  As much control is given to the user to make decisions about which
+#  AT_* attributes will be returned to the supplicant. Wherever
+#  possible the internal state of the EAP-AKA module will be updated
+#  to reflect the attributes returned from sections.
+#
+
+######################################################################
+#
+#  ## Packet Processing sections
+#
+#  Sections in this server may behave slightly differently to sections
+#  in other virtual servers, as they're being called directly by the
+#  EAP-AKA module.
+#
+#  In general, the following rcodes signify a failure to the EAP-AKA
+#  state machine:
+#
+#  - `reject`
+#  - `fail`
+#  - `invalid`
+#  - `userlock`
+#
+#  Returning failure rcodes in the majority of sections will caused the
+#  authentication to fail.
+#
+#  In some instances however, we ignore the section rcode, as the standard
+#  does not allow for an orderly rejection of the supplicant.
+#
+#  Returning failure rcodes will be ignored in the following sections, and
+#  will instead generate a warning:
+#
+#  - `send EAP-Failure`			already rejecting the auth attempt.
+#  - `send Failure-Notification`	already rejecting the auth attempt.
+#  - `recv Failure-Notification`	already rejecting the auth attempt.
+#  - `recv Success-Notification`	sending failure after EAP-Response/
+#					Success Notification-ACK would
+#					violate the standard.
+#  - `recv Authentication-Reject`	already rejecting the auth attempt.
+#  - `recv Client-Error`		already rejecting the auth attempt.
+#  - `clear Pseudonym`			nothing more we can do...
+#  - `clear Session`			nothing more we can do...
+#
+#  For sections dealing with identity processing the `notfound` rcode
+#  will trigger identity negotiation. The EAP-AKA module will then request
+#  additional identity values from the supplicant.  See the `recv
+#  EAP-Identity-Response` and `recv AKA-Identity-Response` sections for more
+#  details.
+#
+#  NOTE: Setting the EAP-AKA subtype attribute is not supported, and any
+#  attempts to modify it will be ignored (you are not trusted to know how to
+#  run the EAP-AKA state machine better than the EAP-AKA module).
+#
+######################################################################
+
+server eap-aka-sim {
+	#
+	#  This is a unified configuration example for EAP-SIM, EAP-AKA
+	#  and EAP-AKA-Prime.  Many of the sections are identical between
+	#  the three EAP methods.
+	#
+	#  The main differences are between EAP-SIM and EAP-AKA['] where
+	#  additional identity processing sections are used.
+	#
+#	namespace = eap-sim
+	namespace = eap-aka
+#	namespace = eap-aka-prime
+
+	#
+	#  ### `recv Identity-Response { ... }` - Process an EAP-Identity-Response or AKA-Identity value
+	#
+	#  This is usually the first section called when starting a new EAP-AKA
+	#  session, and will be called for each round of identity negotiation.
+	#
+	#  The following request attributes are available:
+	#  - `Identity`			the identity value received in the
+	#  				EAP-Identity-Response.
+	#  - `Permanent-Identity`	If the hint byte at the start of the
+	#				identity string indicated it was
+	#				permanent.
+	#
+	#  - `Identity-Type`		The type of identity the 'hint' byte
+	#				at the start of the identity indicates.
+	#				- `Permanent`
+	#				- `Pseudonym`
+	#				- `Fastauath`
+	#
+	#  - `Method-Hint`		The EAP-Method the 'hint' byte
+	#				at the start of the identity indicates:
+	#				- `AKA-Prime`
+	#				- `AKA`
+	#				- `SIM`
+	#
+	#  At the end of this section the value of `&Identity-Type` will be
+	#  checked to see if any additional identity processing steps are
+	#  required.
+	#
+	#  The following actions are associated with the various
+	#  `Identity-Type` values:
+	#  - `Permanent`::	The current `&Identity` value will be copied to
+	#		  	`&session-state:Permanent-Identity`.  The hint byte
+	#		   	will be stripped if the hint matches the current
+	#			EAP-Method.  If the hint byte does not match
+	#			the current EAP-Method the complete value of
+	#			Identity will be copied.  In both cases the realm
+	#			will also be stripped.  You can override the
+	#			identity stored here in policy.
+	#  - `Pseudonym`::	`load pseudonym { ... }` will be called.
+	#  - `Fastauth`::	`load session { ... }` will be called.
+	#
+	#  #### Identity hints
+	#
+	#  In EAP-AKA['] and EAP-SIM, the first byte of the identity is used as
+	#  a hint about what type of identity has been provided by the
+	#  supplicant and which EAP method should be started.
+	#
+	#  `Identity-Type` and `Method-Hint` are added by the EAP-AKA module as
+	#  a convenience to help determine if additional identities should be
+	#  requested.
+	#
+	#  If for whatever reason the provided ID isn't not recognised or
+	#  cannot be processed, you should return `notfound` from this section
+	#  to request an additional identity from the supplicant.
+	#
+	#  Adding any of the following attributes to the reply list will also
+	#  cause an additional identity to bre request from the supplicant.
+	#
+	#  - `Permanent-Id-Req`		request the supplicants `Permanent` Id
+	#				usually its IMSI number.
+	#  - `Fullauth-Id-Req`		request either a `Permanent` or a
+	#				`Pseudonym` identity`.
+	#  - `Any-Id-Req`		request any identity
+	#				(`Fastauth`, `Pseudonym`, `Permanent``).
+	#
+	#  NOTE: We do not currently support handover between the EAP-AKA/SIM
+	#  modules.  Usually this is not an issue because EAP Negotiation
+	#  allows the supplicant and server to negotiate a mutually acceptable
+	#  EAP type. If, however, you want to avoid the additional roundtrips
+	#  involved in that negotiation, you can use
+	#  `%{aka_sim_id_method:User-Name}` in the top level virtual server,
+	#  which will return the EAP method hinted by the identity, and then
+	#  set `&control:EAP-Type` to an appropriate value before calling the
+	#  EAP module.
+	#
+	#  #### Pseudonyms
+	#
+	#  When receiving a `Identity-Type = Pseudonym` request, the pseudonym
+	#  should either be decrypted or resolved to a permanent identity.
+	#  Identity resolution can be done here, or in the `load pseudonym { ... }`
+	#  section.
+	#
+	#  If for whatever reason the identity cannot be validated, you should
+	#  return `notfound` to request an additional identity.
+	#
+	#  NOTE: Setting `&Method-Hint = Pseudonym` here will cause the server
+	#  to execute the `load pseudonym { ... }` section next.  This is
+	#  sometimes useful when dealing with non-standard pseudonym identities.
+	#
+	#  #### Reauthentication
+	#
+	#  When receiving a `Identity-Type = Fastauth` request, the fastauth
+	#  identity should be resolved in a datastore of valid fastauth
+	#  identities.
+	#  Session resolution can be done here, or in the `load session { ... }`
+	#  section.
+	#
+	#  If the identity cannot be resolved, you should return `notfound` to
+	#  request an additional identity.
+	#
+	#  NOTE: Setting `&Method-Hint = Fastauth` here will cause the server
+	#  to execute the `load session { ... }` section next.  This is
+	#  sometimes useful when dealing with non-standard fastauth identities.
+	#
+	recv Identity-Response {
+		ok
+	}
+
+	#
+	#  ### `send Identity-Request { ... }` - Allow user massaging of Identity-Request
+	#
+	#  This section is called when a new Start or AKA-Identity request is
+	#  sent to the supplicant, unless `send Start { ... }` or `send
+	#  AKA-Identity { ... }` sections are provided, in which case they will
+	#  be used instead.
+	#
+	send Identity-Request {
+		ok
+	}
+
+	#
+	#  ### `send Start-Request { ... }` - Allow specific policies to be applied to SIM start requests
+	#
+	#  This section is optional, and may be used to specify EAP-SIM only
+	#  logic for sending Start requests.
+	#
+	#  If this section is not provided, `send Identity-Request { ... }`
+	#  will be executed instead.
+	#
+	#  The Identity and Start messages perform a very similar role in
+	#  EAP-SIM/EAP-AKA, the main difference being, Start messages also
+	#  allow the version of EAP-SIM to be negotiated.
+	#
+#	send Start-Request {
+#		ok
+#	}
+
+	#
+	#  ### `send Start-Request { ... }` - Allow specific policies to be applied to SIM start responses
+	#
+	#  This section is optional, and may be used to specify EAP-SIM only
+	#  logic for sending Start requests.
+	#
+	#  If this section is not provided, `send Identity-Request { ... }`
+	#  will be executed instead.
+	#
+	#  The Identity and Start messages perform a very similar role in
+	#  EAP-SIM/EAP-AKA, the main difference being, Start messages also
+	#  allow the version of EAP-SIM to be negotiated.
+	#
+#	recv Start-Response {
+#		ok
+#	}
+
+	#
+	#  ### `send AKA-Identity-Request { ... }` - Allow specific policies to be applied to AKA identity requests
+	#
+	#  This section is optional, and may be used to specify
+	#  EAP-AKA/EAP-AKA['] only logic for sending AKA-Identity requests.
+	#
+	#  If this section is not provided, `send Identity-Request { ... }`
+	#  will be executed instead.
+	#
+	#  The Identity and Start messages perform a very similar role in
+	#  EAP-SIM/EAP-AKA, the main difference being, Start messages also
+	#  allow the version of EAP-SIM to be negotiated.
+	#
+#	send AKA-Identity-Request {
+#		ok
+#	}
+
+	#
+	#  ### `send Challenge-Request { ... }` - Acquire GSM triplets or UMTS quintuplets for the Challenge-Request
+	#
+	#  NOTE: It's recommended to perform identity resolution in `recv
+	#  EAP-Identity-Response` or `recv Identity-Response` and request or
+	#  generate UMTS quintuplets in this section.
+	#
+	#  The following attributes are added by the EAP-AKA module to the
+	#  control list:
+	#
+	#  - `SIM-AMF = 0x8000`	Only set when using EAP-AKA'.
+	#			This is a hint to any modules generating or
+	#			retrieving UMTS quintuplets that the AMF
+	#			separation bit should be high.
+	#
+	#  The following attributes are added by the EAP-AKA module to the reply
+	#  list, to be modified by policy:
+	#
+	#  - `KDF-Input`	Only set when using EAP-AKA'
+	#			Is initially set to the value of the
+	#			`network_name` configuration item.  But can
+	#			be set to anything.  If EAP is running over
+	#			RADIUS this should usually be the SSID
+	#			portion of Called-Station-ID.
+	#  - `Bidding`		Only set when using EAP-AKA and the
+	#			configuration item `prefer_aka_prime` is 'yes',
+	#			or no `prefer_aka_prime` value is provided and
+	#			EAP-AKA' is enabled in the same EAP module.
+	#  - `Result-Ind`	Set when the configuration item
+	#			`protected_success` is 'yes'.
+	#
+	#  Two sets of control attributes are used depending on how the
+	#  quintuplets are being acquired.
+	#
+	#  If generating triplets or quintuplets locally you should provide the
+	#  following control attributes:
+	#
+	#  - `SIM-Ki`::		Secret shared by the AuC and SIM card.
+	#  - `SIM-SQN`::	Sequence number.  Must be stored/incremented
+	#			for each set of quintuplets generated.  Used
+	#			for replay protection, should be a higher
+	#			value than the counterpart SQN on the SIM.
+	#  - `SIM-OP`/`SIM-OPc`::Operator Variant Algorithm Configuration Field.
+	#			Input to milenage.  Can provide SIM-OPc if you
+	#			already have access to it, else the OPc will
+	#			be derived from the OP. Must match the value
+	#			configured on the SIM card.
+	#
+	#  If retrieving triplets from the AuC, you should should provide
+	#  three sets of the following control attributes:
+	#
+	#  - `SIM-KC`::		Authentication value from the AuC.
+	#  - `SIM-RAND`::	User authentication challenge.
+	#  - `SIM-SRES`::	Signing response.
+	#
+	#  If retrieving quintuplets from a AuC, you should provide the
+	#  following control attributes:
+	#
+	#  - `SIM-AUTN`::	Authentication value from the AuC.
+	#  - `SIM-CK`::		Ciphering Key.
+	#  - `SIM-IK`::		Integrity Key.
+	#  - `SIM-RAND`::	User authentication challenge.
+	#  - `SIM-XRES`::	Signing response.
+	#  - `SIM-SQN`::	(optional)
+	#  - `SIM-AK`::  	(optional)
+	#
+	#  ### Pseudonyms
+	#
+	#  For identity privacy you may include a `&reply:Next-Pseudonym`
+	#  attribute. `&reply:Next-Pseudonym` must be a valid UTF8 string and
+	#  MUST NOT contain a realm.  The supplicant will decorate the identity
+	#  as appropriate to ensure correct routing.
+	#
+	#  The following facilitates may be useful when generating pseudonym
+	#  values:
+	#
+	#  - The encrypt expansions of the `rlm_cipher` module.
+	#  - The `%{3gpp_pseudonym_encrypt:}` expansion.
+	#  - The `%{rand:}` expansion.
+	#
+	#  NOTE: Add a `&reply:Next-Pseudonym-Id` attribute in this section to
+	#  avoid having the permanent Id of the SIM exposed during subsequent
+	#  authentication attempts.
+	#
+	#  ### Fast-Reauth
+	#
+	#  For identity privacy, to reduce load on the AuC, and to improve
+	#  authentication times/user experience, fast re-authentication may be
+	#  used.
+	#
+	#  Fast re-authentication is very similar to session-resumption in TLS
+	#  based EAP methods, where the original MK (Master Key) is stored and
+	#  then used to generate new MSKs (Master Session Keys) for subsequent
+	#  authentication attempts.
+	#
+	#  NOTE: Add a `&reply:Next-Reauth-Id` attribute in this section, to
+	#  allow session-resumption for subsequent authentication attempts.
+	#
+	#  ### Cryptographic identity overrides
+	#
+	#  The identity provided as the value of EAP-Response/Identity or in
+	#  the last processed EAP-Response/AKA-Identity or
+	#  EAP-Response/SIM-Start message is used as an input to generate the
+	#  MK (Master Key) in full authentication, and XKEY' in
+	#  re-authentication.
+	#
+	#  The identity used as inputs for these cryptographic values must be
+	#  identical on both the supplicant and the EAP server, otherwise
+	#  authentication will fail with the supplicant returning a
+	#  EAP-Response/(AKA|SIM)-Client-Error message with an
+	#  AT_CLIENT_ERROR_CODE of "unable to process packet".
+	#
+	#  Some handset manufacturers have implemented identity schemes which
+	#  require an identity not provided in the EAP-Response/Identity
+	#  message, or sent as an AT_IDENTITY value. One such identity privacy
+	#  scheme described by 3GPP S3-170116 "Privacy Protection for EAP-AKA",
+	#  where the cryptographic identity is the plaintext extracted from
+	#  the encrypted identity blob.
+	#
+	#  If you need to implement one of these identity privacy schemes, the
+	#  cryptographic identity can be specified with `&control:KDF-Identity`.
+	#
+	send Challenge-Request {
+		ok
+	}
+
+	#
+	#  ### `recv Challenge-Response { ... }` - Allow additional authorization checks and logging
+	#
+	#  The following rcodes have special meanings in this section:
+	#
+ 	#  - `reject`			Reject the authentication attempt, send
+ 	#				a Failure-Notification with an
+ 	#				AT_NOTIFICATION value of 1026
+ 	#				(User has been temporarily denied access).
+ 	#  - `userlock`			Reject the authentication attempt, send
+ 	#				a Failure-Notification with an
+ 	#				AT_NOTIFICATION value of 1026
+ 	#				(User has been temporarily denied access).
+ 	#  - `notfound`			Reject the authentication attempt, send
+ 	#				a Failure-Notification with an
+ 	#				AT_NOTIFICATION value of 1031
+ 	#				(User has not subscribed to the requested service).
+ 	#  - `invalid`			Reject the authentication attempt, send
+ 	#				a Failure-Notification with an
+ 	#				AT_NOTIFICATION value of 0
+ 	#				(General failure after authentication).
+ 	#  - `Fail`			Reject the authentication attempt, send
+ 	#				a Failure-Notification with an
+ 	#				AT_NOTIFICATION value of 0
+ 	#				(General failure after authentication).
+ 	#  - Anything else		Continue processing the request.
+	#
+	recv Challenge-Response {
+		ok
+	}
+
+	#
+	#  ### `recv Reauthentication-Request { ... }` - Allow user massaging of a reauthentication request
+	#
+	#  There's not much to do here as the majority of the work for
+	#  session resumption is done in `load session { ... }`.
+	#
+	#  Add a `&reply:Next-Pseudonym-Id` attribute in this section if you want
+	#  to allow avoid having the permanent Id of the SIM exposed during
+	#  subsequent authentication attempts.
+	#
+	#  Add a `&reply:Next-Reauth-Id` attribute in this section, to allow
+	#  session resumption for subsequent authentication attempts.
+	#
+	#  The following rcodes have special meanings in this section:
+	#
+ 	#  - `reject`			Reject the authentication attempt, send
+ 	#				a Failure-Notification with an
+ 	#				AT_NOTIFICATION value of 16384
+ 	#				(General Failure).
+ 	#  - `userlock`			Reject the authentication attempt, send
+ 	#				a Failure-Notification with an
+ 	#				AT_NOTIFICATION value of 16384
+ 	#				(General Failure).
+ 	#  - `ok`			Continue with reauthentication.
+ 	#  - `updated`			Continue with reauthentication.
+ 	#  - `noop`			Continue with reauthentication.
+ 	#  - Anything else		Fall back to full authentication.
+ 	#
+	#  NOTE: You should use fresh reauthentication ID values here, else the
+	#  supplicant may be tracked as they would if their permanent Id has been
+	#  used.
+	#
+	send Reauthentication-Request {
+		ok
+	}
+
+	#
+	#  ### `recv Reauthentication-Response { ... }` - Allow additional authorization checks and logging
+	#
+	#  Uses the same rcode mappings as `recv Challenge-Response { ... }`.
+	#
+	#  Will not allow a transition back to the challenge state, as it's
+	#  not clear that this is allowed by RFC4186/RFC4187.
+	#
+	recv Reauthentication-Response {
+		ok
+	}
+
+	#
+	#  ### `recv Client-Error { ... }` - Log the fact that the supplicant has terminated authentication
+	#
+	#  The reason for the error should be available in `&Client-Error-Code`
+	#
+	#  After this section is run authentication fails immediately with no
+	#  EAP-Response/AKA-Notification round.
+	#
+	recv Client-Error {
+		ok
+	}
+
+	#
+	#  ### `recv Authentication-Reject { ... }` - Log the fact that the supplicant failed to authenticate the AuC
+	#
+	#  NOTE: Only used for EAP-AKA and EAP-AKA'
+	#
+	#  The supplicant will respond with EAP-Response/AKA-Authentication-Reject
+	#  whenever it cannot validate the AUTN (authentication) value provided in the
+	#  EAP-Request/AKA-Challenge packet.
+	#
+	#  No additional attributes are provided by the supplicant that specify
+	#  the error.
+	#
+	#  After this section is run authentication fails immediately with no
+	#  EAP-Response/AKA-Notification round.
+	#
+	recv Authentication-Reject {
+		ok
+	}
+
+	#
+	#  ### `recv Synchronization-Failure { ... }` - Allow resynchronisation of sequence numbers
+	#
+	#  NOTE: Only used for EAP-AKA and EAP-AKA'
+	#
+	#  In some instances the SQN on the SIM card and the SQN in the AuC can
+	#  get out of sync.  When this happens the supplicant will send a
+	#  EAP-Response/Synchronization-Failure message with an AUTS attribute.
+	#
+	#  If the original UMTS quintuplets were calculated locally and you
+	#  provided Ki and OP/OPc in the Challenge-Request round, then the
+	#  EAP-AKA module will automatically calculate a new SQN for you and
+	#  place it in `&control:SIM-SQN`.  You should store this new SQN.
+	#
+	#  As a convenience, the EAP-AKA module will also repopulate
+	#  &control:SIM-Ki and &control:SIM-OPc so you do not need to retrieve
+	#  them again in the `send Challenge-Request { ... }` section.
+	#
+	#  If the UMTS quintuplets were provided by an AuC, you should submit
+	#  the AUTS value to the AuC to allow it to calculate a new SQN, then
+	#  retrieve a new UMTS quintuplet in the
+	#  `send Challenge-Request { ... }` section.
+	#
+	#  If the rcode returned from this section does not indicate failure
+	#  and a &control:SQN value is provided, we send a new challenge to
+	#  the supplicant and continue, otherwise, authentication fails.
+	#
+	#  NOTE: Only one Synchronisation attempt is permited per
+	#  authentication attempt.
+	#
+	recv Synchronization-Failure {
+		ok
+	}
+
+	#
+	#  ### `send Failure-Notification { ... }` - Allow massaging/logging of failure notifications
+	#
+	#  NOTE: The rcode returned from this section is ignored.
+	#
+	send Failure-Notification {
+		ok
+	}
+
+	#
+	#  ### `send Failure-Notification { ... }` - Allow logging of failure notification acknowledgements
+	#
+	#  NOTE: The rcode returned from this section is ignored.
+	#
+	recv Failure-Notification-ACK {
+		ok
+	}
+
+	#
+	#  ### `send Success-Notification { ... }` - Allow massaging/logging of success notifications
+	#
+	#  Uses the same rcode mappings as `recv Challenge-Response { ... }`.
+	#
+	#  NOTE: Only entered if protected result indications are used.
+	#
+	send Success-Notification {
+		ok
+	}
+
+	#
+	#  ### `send Success-Notification-Ack { ... }` - Allow logging of success notification acknowledgements
+	#
+	#  NOTE: The rcode returned from this section is ignored.
+	#
+	recv Success-Notification-ACK {
+		ok
+	}
+
+	#
+	#  ### `send EAP-Success { ... }` - Allow massaging/logging of success notifications
+	#
+	#  NOTE: The rcode returned from this section is ignored if we have already sent
+	#  a Success-Notification, otherwise the same rcode mappings as
+	#  `recv Challenge-Response { ... }` are used.
+	#
+	send EAP-Success {
+		ok
+	}
+
+	#
+	#  ### `send EAP-Failure { ... }` - Allow logging of failure notification acknowledgements
+	#
+	#  NOTE: The rcode returned from this section is ignored.
+	#
+	recv EAP-Failure {
+		ok
+	}
+
+	#
+	#  ### `store pseudonym { ... }`
+	#
+	#  If when sending a Challenge-Request Reauthentication-Request a
+	#  `&reply:Next-Pseudonym-Id` attribute is found, this section will be
+	#  called.
+	#
+	#  If `&reply:Next-Pseudonym-Id` is empty, it will be filled with a random
+	#  string of alphanumeric characters.
+	#
+	#  For consistency, &reply:Next-Pseudonym-Id will also be made available
+	#  temporarily in `&Next-Pseudonym-Id` for use as a key.
+	#
+	#  You should store the following attributes against the key
+ 	#  `&Next-Paeudonym-Id`:
+ 	#
+ 	#  - `&session-State:Permanent-Identity`::The permanent identity of the user.
+	#
+	#  If a failure rcode is returned authentication continues but the
+	#  Next-Pseudonym-Id will not be sent to the supplicant.
+	#
+	#  NOTE: The cache module is ideally suited for storing pseudonym
+	#  data.  If you're using multiple instances of FreeRADIUS in a
+	#  failover cluster, you may wish to use the redis or memcached drivers
+	#  to provide a unified pseudonym store.
+	#
+	#  NOTE: If you're using 3GPP style encrypted pseudonyms you do not
+	#  need populate this section.  You should however, provide a policy
+	#  for `load session { ... }`, and use that to decrypt the pseudonym.
+	#
+	store pseudonym {
+		ok
+	}
+
+	#
+	#  ### `load pseudonym { ... }`
+	#
+	#  This section will be called prior to entering the AKA-CHALLENGE state.
+	#
+	#  You should restore the contents of the following attributes using
+	#  `&Next-Pseudonym-Id` as a key:
+	#
+ 	#  - `&session-State:Permanent-Identity`::The permanent identity of the user.
+ 	#
+ 	#  NOTE: If you're using 3GPP style encrypted pseudonyms, you should
+ 	#  decrypt the pseudonym here, and store the decrypted value in
+ 	#  `&session-state:Permanent-Identity`.
+ 	#
+	load pseudonym {
+		ok
+	}
+
+	#
+	#  ### `clear pseudonym { ... }`
+	#
+	#  This section we be called if authentication or re-authentication fails.
+	#
+	#  You should remove any session information stored against
+	#  `&Next-Pseudonym-Id`.
+	#
+	clear pseudonym {
+		ok
+	}
+
+	#
+	#  ### `store session { ... }`
+	#
+	#  If when sending a Reauthentication-Request a `&reply:Next-Reauth-Id`
+	#  attribute is found, this section will be called.
+	#
+	#  You should restore the contents of the following attributes using
+	#  `&session-state:Session-ID` or `&reply:Next-Reauth-Id` as a key:
+	#
+ 	#  - `&session-state:Counter`::		How many times this session has
+ 	#					been resumed.
+ 	#  - `&session-state:Session-Data`::	The master session key.
+ 	#  - `&session-State:Permanent-Identity`::(optionally) the permanent
+ 	#					identity of the user.
+	#
+	#  If a failure rcode is returned, authentication continues but the
+	#  Next-Reauth-Id will not be sent to the supplicant.
+	#
+	#  NOTE: The cache module is ideally suited for storing session data.
+	#  If you're using multiple instances of FreeRADIUS in a failover
+	#  cluster, you may wish to use the redis or memcached drivers to
+	#  provide a unified session store.
+	#
+	store session {
+		ok
+	}
+
+	#
+	#  ### `load session { ... }`
+	#
+	#  This section will be called prior to attempting re-authentication.
+	#
+	#  You should restore the contents of the following attributes using
+	#  `&session-state:Session-ID` or `&reply:Next-Reauth-Id` as a key:
+	#
+ 	#  - `&session-state:Counter`::		How many times this session has
+ 	#					been resumed.
+ 	#  - `&session-state:Session-Data`::	The master session key.
+ 	#  - `&session-State:Permanent-Identity`::(optionally) the permanent
+ 	#					identity of the user.
+ 	#
+ 	#  The following rcodes have special meanings in this section:
+ 	#
+ 	#  - `reject`			Reject the authentication attempt, send
+ 	#				a Failure-Notification with an
+ 	#				AT_NOTIFICATION value of 16384
+ 	#				(General Failure).
+ 	#  - `userlock`			Reject the authentication attempt, send
+ 	#				a Failure-Notification with an
+ 	#				AT_NOTIFICATION value of 16384
+ 	#				(General Failure).
+ 	#  - `ok`			Continue with reauthentication.
+ 	#  - `updated`			Continue with reauthentication.
+ 	#  - Anything else		Fall back to full authentication.
+ 	#
+	load session {
+		ok
+	}
+
+	#
+	#  ### `clear session { ... }`
+	#
+	#  This section we be called if authentication or re-authentication fails.
+	#
+	#  You should remove any session information stored against
+	#  `&Next-Reauth-Id`.
+	#
+	clear session {
+		ok
+	}
+}

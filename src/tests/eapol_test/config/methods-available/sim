@@ -1,4 +1,5 @@
 type = sim
 
 sim {
+	virtual_server = "eap-sim"
 }

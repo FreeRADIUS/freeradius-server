@@ -1,5 +1,5 @@
 /**
- * @file src/lib/sim/milenage.c
+ * @file src/lib/aka-sim/milenage.c
  * @brief 3GPP AKA - Milenage algorithm (3GPP TS 35.205, .206, .207, .208)
  *
  * This file implements an example authentication algorithm defined for 3GPP
@@ -23,6 +23,7 @@
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/util/proto.h>
 #include <openssl/evp.h>
+#include "common.h"
 #include "milenage.h"
 
 #define MILENAGE_MAC_A_SIZE	8

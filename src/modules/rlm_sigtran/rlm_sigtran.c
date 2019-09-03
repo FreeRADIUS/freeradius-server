@@ -156,23 +156,30 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-fr_dict_t *dict_eap_sim;
-fr_dict_t *dict_eap_aka;
+fr_dict_t *dict_eap_aka_sim;
 
-fr_dict_attr_t const *attr_eap_aka_autn;
-fr_dict_attr_t const *attr_eap_aka_ck;
-fr_dict_attr_t const *attr_eap_aka_ik;
-fr_dict_attr_t const *attr_eap_aka_rand;
-fr_dict_attr_t const *attr_eap_aka_xres;
+/*
+ *	UMTS vector
+ */
+fr_dict_attr_t const *attr_eap_aka_sim_autn;
+fr_dict_attr_t const *attr_eap_aka_sim_ck;
+fr_dict_attr_t const *attr_eap_aka_sim_ik;
+fr_dict_attr_t const *attr_eap_aka_sim_xres;
 
-fr_dict_attr_t const *attr_eap_sim_kc;
-fr_dict_attr_t const *attr_eap_sim_sres;
-fr_dict_attr_t const *attr_eap_sim_rand;
+/*
+ *	GSM vector
+ */
+fr_dict_attr_t const *attr_eap_aka_sim_kc;
+fr_dict_attr_t const *attr_eap_aka_sim_sres;
+
+/*
+ *	Shared
+ */
+fr_dict_attr_t const *attr_eap_aka_sim_rand;
 
 extern fr_dict_autoload_t rlm_sigtran_dict[];
 fr_dict_autoload_t rlm_sigtran_dict[] = {
-	{ .out = &dict_eap_sim, .proto = "eap-sim" },
-	{ .out = &dict_eap_aka, .proto = "eap-aka" },
+	{ .out = &dict_eap_aka_sim, .base_dir = "eap/aka-sim", .proto = "eap-aka-sim" },
 	{ NULL }
 };
 
@@ -180,15 +187,13 @@ fr_dict_attr_t const *attr_auth_type;
 
 extern fr_dict_attr_autoload_t rlm_sigtran_dict_attr[];
 fr_dict_attr_autoload_t rlm_sigtran_dict_attr[] = {
-	{ .out = &attr_eap_aka_autn, .name = "EAP-AKA-AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-	{ .out = &attr_eap_aka_ck, .name = "EAP-AKA-CK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-	{ .out = &attr_eap_aka_ik, .name = "EAP-AKA-IK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-	{ .out = &attr_eap_aka_rand, .name = "EAP-AKA-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-	{ .out = &attr_eap_aka_xres, .name = "EAP-AKA-XRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-
-	{ .out = &attr_eap_sim_kc, .name = "EAP-SIM-KC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
-	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
-	{ .out = &attr_eap_sim_sres, .name = "EAP-SIM-SRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_aka_sim_autn, .name = "AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_ck, .name = "CK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_ik, .name = "IK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_kc, .name = "KC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_rand, .name = "RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_sres, .name = "SRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_xres, .name = "XRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 
 	{ NULL }
 };

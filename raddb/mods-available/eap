@@ -77,7 +77,7 @@ eap {
 	type = peap
 #	type = fast
 #	type = aka
-	type = sim
+#	type = sim
 
 	#
 	#  ### EAP-MD5
@@ -1379,7 +1379,7 @@ eap {
 	#  * `Comp128v1`
 	#  * `Comp128v2`
 	#  * `Comp128v3` (default if no &control:SIM-OPc)
-	#  * `Milenage` (default if &control:SIM-OPc is available)
+	#  * `Comp128v4` (default if &control:SIM-OPc is available)
 	#
 	#  NOTE: In general operators will not provide the Ki (subscriber
 	#  key) for their `SIM cards`, as the Ki is considered highly
@@ -1391,35 +1391,73 @@ eap {
 	#
 	sim {
 		#
-		#  send_result_ind:: Send a protected success message.
+		#  request_identity:: Send a SIM-Start message to Requests
+		#  an additional identity to the one from the EAP-Identity-Response.
+		#
+		#  If `yes` - We send a request with AT_SUBTYPE SIM-start
+		#  with an AT_ANY_ID_REQ attribute to prompt the supplicant
+		#  to send a new identity.
+		#
+		#  The type of identity requested can be controlled by adding
+		#  one of the following attributes from the
+		#  `recv Identity-Response { ... }` section of the specified
+		#  EAP-SIM virtual_server, to the reply list:
+		#
+		#  - &reply:Any-Id-Req
+		#  - &reply:Fullauth-Id-Req
+		#  - &reply:Permanent-Id-Req
+		#
+		#  Even if this configuration item is set to 'no', additional
+		#  identities can be requested by policy.
+		#  See sites-available/eap-aka-sim for details.
+		#
+#		request_identity = no
+
+		#
+		#  ephemeral_id_length:: The length of any pseudonyms or
+		#  fastauth identities we generate (not including hint byte).
+		#
+		#  See sites-available/eap-aka-sim for details on how to trigger
+		#  the generation of pseudonym or fastauth identities.
+		#
+#		ephemeral_id_length = 14
+
+		#
+		#  strip_permanent_identity_hint:: Strip the identity hint when
+		#  copying &EAP-Identity or &Identity to &Permanent-Identity.
+		#
+		#  The stripping is only performed if this config item is set
+		#  to yes, and the hint byte matches what we'd expect for the
+		#  EAP-Method being executed.
+		#
+#		strip_permanent_identity_hint = yes
+
+		#
+		#  protected_success:: Send a protected success message.
 		#
 		#  If `yes` - indicate to the peer that we'd like to send
 		#  a protected success message.  If the peer agrees and
 		#  authentication succeeds, send a `SIM-Notification` (Success)
 		#  packet protected with an `AT_MAC` attribute.
 		#
-		#  After the Notification is `ACKed` by the peer, we send
+		#  After the Notification is ACKed by the peer, we send
 		#  the final `EAP-Success` packet containing `MPPE` keys.
 		#
-#		send_result_ind = yes
+#		protected_success = yes
+
+		#
+		#  virtual_server:: EAP-SIM virtual server containing policy
+		#  sections.  This must be set, EAP-SIM will not function
+		#  without it, as certain operations like vector gathering
+		#  require user configuration.
+		#
+		virtual_server = eap-aka-sim
 	}
 
 	#
 	#  ### EAP-AKA
 	#
-	#  This takes no configuration.
-	#
 	aka {
-		#
-		#  network_name:: Network ID as described by RFC 5448.
-		#
-#		network_name = ""
-
-		#
-		#  request_identity:: Always send an identity request before a challenge.
-		#
-#		request_identity = ""
-
 		#
 		#  protected_success:: Send protected success messages
 		#
@@ -1429,6 +1467,168 @@ eap {
 		#  virtual_server:: Same as for `TTLS`, `PEAP`, etc.
 		#
 #		virtual_server = ""
+
+		#  request_identity:: Send a AKA-Identity message to request
+		#  an additional identity to the one from the EAP-Identity-Response.
+		#
+		#  If `yes` - We send a request with AT_SUBTYPE AKA-Identity
+		#  with an AT_ANY_ID_REQ attribute to prompt the supplicant
+		#  to send a new identity.
+		#
+		#  The type of identity requested can be controlled by adding
+		#  one of the following attributes from the
+		#  `recv Identity-Response { ... }` section of the specified
+		#  EAP-AKA virtual_server, to the reply list:
+		#
+		#  - &reply:Any-Id-Req
+		#  - &reply:Fullauth-Id-Req
+		#  - &reply:Permanent-Id-Req
+		#
+		#  Even if this configuration item is set to 'no', additional
+		#  identities can be requested by policy.
+		#  See sites-available/eap-aka-sim for details.
+		#
+#		request_identity = no
+
+		#
+		#  ephemeral_id_length:: The length of any pseudonyms or
+		#  fastauth identities we generate (not including hint byte).
+		#
+		#  See sites-available/eap-aka-sim for details on how to trigger
+		#  the generation of pseudonym or fastauth identities.
+		#
+#		ephemeral_id_length = 14
+
+		#
+		#  strip_permanent_identity_hint:: Strip the identity hint when
+		#  copying &EAP-Identity or &Identity to &Permanent-Identity.
+		#
+		#  The stripping is only performed if this config item is set
+		#  to yes, and the hint byte matches what we'd expect for the
+		#  EAP-Method being executed.
+		#
+#		strip_permanent_identity_hint = yes
+
+		#
+		#  protected_success:: Send a protected success message.
+		#
+		#  If `yes` - indicate to the peer that we'd like to send
+		#  a protected success message.  If the peer agrees and
+		#  authentication succeeds, send a `AKA-Notification` (Success)
+		#  packet protected with an `AT_MAC` attribute.
+		#
+		#  After the Notification is ACKed by the peer, we send
+		#  the final `EAP-Success` packet containing `MPPE` keys.
+		#
+#		protected_success = yes
+
+		#
+		#  prefer_aka_prime:: Send the AT_BIDDING attribute in
+		#  AKA-Challenge messages.
+		#
+		#  When AT_BIDDING is sent in a AKA-Challenge and the supplicant
+		#  supports EAP-AKA-Prime, RFC 5448 states the supplicant
+		#  should abort the authentication attempt as a bidding down
+		#  attack may have occurred.
+		#
+		#  If a value is not provided for this configuration item
+		#  it will be determined automatically by whether the
+		#  EAP-AKA-Prime EAP method is enabled.
+		#
+#		prefer_aka_prime = yes
+
+		#
+		#  virtual_server:: EAP-AKA virtual server containing policy
+		#  sections.  This must be set, EAP-AKA will not function
+		#  without it, as certain operations like vector gathering
+		#  require user configuration.
+		#
+		virtual_server = eap-aka-sim
+	}
+
+	#
+	#  ### EAP-AKA-Prime
+	#
+	aka-prime {
+		#
+		#  network_name:: The default value used for AT_KDF_INPUT
+		#
+		#  EAP-AKA-Prime mixes various keys with a network identifier
+		#  specifying the user's point of connection into the network
+		#  to prevent vectors being used where they were not intended
+		#  to be.
+		#
+		#  The value of the AT_KDF_INPUT can be overriden in the
+		#  eap-aka-prime virtual server with &reply:KDF-Input if
+		#  this value needs to be determined dynamically.
+		#
+		#  How this value should be created and formatted is specified
+		#  in 3GPP.24.302.
+		#
+#		network_name = ""
+
+		#
+		#  request_identity:: Send a AKA-Identity message to request
+		#  an additional identity to the one from the EAP-Identity-Response.
+		#
+		#  If `yes` - We send a request with AT_SUBTYPE AKA-Identity
+		#  with an AT_ANY_ID_REQ attribute to prompt the supplicant
+		#  to send a new identity.
+		#
+		#  The type of identity requested can be controlled by adding
+		#  one of the following attributes from the
+		#  `recv Identity-Response { ... }` section of the specified
+		#  EAP-AKA virtual_server, to the reply list:
+		#
+		#  - &reply:Any-Id-Req
+		#  - &reply:Fullauth-Id-Req
+		#  - &reply:Permanent-Id-Req
+		#
+		#  Even if this configuration item is set to 'no', additional
+		#  identities can be requested by policy.
+		#  See sites-available/eap-aka-sim for details.
+		#
+#		request_identity = no
+
+		#
+		#  ephemeral_id_length:: The length of any pseudonyms or
+		#  fastauth identities we generate (not including hint byte).
+		#
+		#  See sites-available/eap-aka-sim for details on how to trigger
+		#  the generation of pseudonym or fastauth identities.
+		#
+#		ephemeral_id_length = 14
+
+		#
+		#  strip_permanent_identity_hint:: Strip the identity hint when
+		#  copying &EAP-Identity or &Identity to &Permanent-Identity.
+		#
+		#  The stripping is only performed if this config item is set
+		#  to yes, and the hint byte matches what we'd expect for the
+		#  EAP-Method being executed.
+		#
+#		strip_permanent_identity_hint = yes
+
+		#
+		#  protected_success:: Send a protected success message.
+		#
+		#  If `yes` - indicate to the peer that we'd like to send
+		#  a protected success message.  If the peer agrees and
+		#  authentication succeeds, send a `AKA-Notification` (Success)
+		#  packet protected with an `AT_MAC` attribute.
+		#
+		#  After the Notification is ACKed by the peer, we send
+		#  the final `EAP-Success` packet containing `MPPE` keys.
+		#
+#		protected_success = yes
+
+		#
+		#  virtual_server:: EAP-AKA virtual server containing policy
+		#  sections.  This must be set, EAP-AKA-Prime will not function
+		#  without it, as certain operations like vector gathering
+		#  require user configuration.
+		#
+		virtual_server = eap-aka-sim
 	}
 }
 

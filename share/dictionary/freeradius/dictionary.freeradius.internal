@@ -244,14 +244,6 @@ ATTRIBUTE	LDAP-Sync-Entry-UUID			8	octets
 END-TLV		LDAP-Sync-TLV
 
 #
-#	Range:	1200-1210
-#
-#	SIM attributes.  These do not belong to either EAP-AKA or EAP-SIM
-#	they represent attributes of a SIM card.
-#
-
-
-#
 #  Server-side "listen type = foo"
 #
 ATTRIBUTE	Listen-Socket-Type			1250	integer

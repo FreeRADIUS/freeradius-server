@@ -7,17 +7,17 @@
 # Only run the tests if we have TLS support
 need-feature tls
 
-# Load the EAP-SIM module
-load eap-sim
-load-dictionary eap-aka eap/aka
+# Load the EAP-AKA/SIM encoder/decoder
+load eap-aka-sim
+load-dictionary eap-aka-sim eap/aka-sim
 
 # AKA_RES with invalid length (too small)
 decode-pair.aka_tp_decode 04 03 aa bb aa aa aa aa bb bb bb bb
-data sim_decode_pair_value: Failed parsing non-skippable attribute 'EAP-AKA-AUTS': sim_decode_pair_value: Attribute "EAP-AKA-AUTS" needs a value of exactly 14 bytes, but value was 10 bytes
+data sim_decode_pair_value: Failed parsing non-skippable attribute 'AUTS': sim_decode_pair_value: Attribute "AUTS" needs a value of exactly 14 bytes, but value was 10 bytes
 
 # AKA_RES with invalid length (too big)
 decode-pair.aka_tp_decode 04 05 aa bb aa aa aa aa bb bb bb bb cc cc cc cc dd dd dd dd
-data sim_decode_pair_value: Failed parsing non-skippable attribute 'EAP-AKA-AUTS': sim_decode_pair_value: Attribute "EAP-AKA-AUTS" needs a value of exactly 14 bytes, but value was 18 bytes
+data sim_decode_pair_value: Failed parsing non-skippable attribute 'AUTS': sim_decode_pair_value: Attribute "AUTS" needs a value of exactly 14 bytes, but value was 18 bytes
 
 # AKA_RES with invalid number of bits (too small)
 decode-pair.aka_tp_decode 03 02 00 18 aa bb cc dd
@@ -34,7 +34,3 @@ data sim_decode_pair_value: RES Length field value must be between 32-128 bits, 
 # AKA_RES with invalid number of bits (too big - exceed limit)
 decode-pair.aka_tp_decode 03 05 00 7f aa bb cc dd aa bb cc dd aa bb cc dd aa bb cc dd
 data sim_decode_pair_value: RES Length (127) is not a multiple of 8
-
-# AKA Rand only contains a single attribute
-decode-pair.aka_tp_decode 01 09 00 00 00 11 22 33 44 55 66 77 00 11 22 33 44 55 66 77 00 11 22 33 44 55 66 77 00 11 22 33 44 55 66 78
-data sim_decode_pair_value: Failed parsing non-skippable attribute 'EAP-AKA-RAND': sim_decode_pair_value: Attribute "EAP-AKA-RAND" needs a value of exactly 16 bytes, but value was 34 bytes

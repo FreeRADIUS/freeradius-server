@@ -1,0 +1,19 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Protocol dictionary for EAP-AKA, EAP-AKA', and EAP-SIM
+#
+#
+PROTOCOL	EAP-AKA-SIM	102
+BEGIN-PROTOCOL	EAP-AKA-SIM
+
+$INCLUDE dictionary.freeradius
+$INCLUDE dictionary.rfc4187
+$INCLUDE dictionary.rfc5448
+$INCLUDE dictionary.rfc7458
+$INCLUDE dictionary.3gpp-ts24.139
+$INCLUDE dictionary.3gpp-ts24.302
+
+END-PROTOCOL	EAP-AKA-SIM

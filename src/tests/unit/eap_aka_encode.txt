@@ -5,30 +5,30 @@
 # Only run the tests if we have TLS support
 need-feature tls
 
-# Load the EAP-SIM module
-load eap-sim
-load-dictionary eap-aka eap/aka
+# Load the EAP-AKA/SIM encoder/decoder
+load eap-aka-sim
+load-dictionary eap-aka-sim eap/aka-sim
 
 #
 # Encode some AKA attributes with special formats
 #
 
-# EAP-AKA-Res is an octets type attribute but with a length field containing the length
+# Res is an octets type attribute but with a length field containing the length
 # of the value in bits.  It may be between 32 - 128 bits in length.
-encode-pair.aka_tp_encode EAP-AKA-RES = 0x01020304
+encode-pair.aka_tp_encode RES = 0x01020304
 data 03 02 00 20 01 02 03 04
 
-encode-pair.aka_tp_encode EAP-AKA-RES = 0x01020304050607080102030405060708
+encode-pair.aka_tp_encode RES = 0x01020304050607080102030405060708
 data 03 05 00 80 01 02 03 04 05 06 07 08 01 02 03 04 05 06 07 08
 
-encode-pair.aka_tp_encode EAP-AKA-AUTS = 0x010203040506070809aabbccddee
+encode-pair.aka_tp_encode AUTS = 0x010203040506070809aabbccddee
 data 04 04 01 02 03 04 05 06 07 08 09 aa bb cc dd ee
 
-encode-pair.aka_tp_encode EAP-AKA-Checkcode = 0x
+encode-pair.aka_tp_encode Checkcode = 0x
 data 86 01 00 00
 
-encode-pair.aka_tp_encode EAP-AKA-Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0
+encode-pair.aka_tp_encode Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0
 data 86 06 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 a0 b0 c0 d0
 
-encode-pair.aka_tp_encode EAP-AKA-Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0a0b0c0d0a0b0c0d0a0b0c0d0
+encode-pair.aka_tp_encode Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0a0b0c0d0a0b0c0d0a0b0c0d0
 data 86 09 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 a0 b0 c0 d0 a0 b0 c0 d0 a0 b0 c0 d0 a0 b0 c0 d0
