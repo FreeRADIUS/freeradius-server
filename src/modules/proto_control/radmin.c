@@ -149,6 +149,13 @@ static int radmin_num_expansions = 0;
 static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
 #endif
 
+#define MAX_STACK (64)
+static int stack_depth;
+static char cmd_buffer[65536];
+static char *stack[MAX_STACK];
+static char const *prompt = "radmin> ";
+static char prompt_buffer[1024];
+
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
@@ -283,7 +290,6 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 			break;
 
 		case FR_CONDUIT_COMPLETE:
-			// @todo - deal with partial text?  For now, it's not really relevant...
 			str = buffer;
 
 			for (p = buffer; p < (buffer + r); p++) {
@@ -295,7 +301,6 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 					radmin_expansions[radmin_num_expansions] = malloc(len + 1);
 					memcpy(radmin_expansions[radmin_num_expansions], str, len);
 					radmin_expansions[radmin_num_expansions][len] = '\0';
-
 					radmin_num_expansions++;
 
 					str = p + 1;
@@ -490,10 +495,19 @@ static char *readline(char const *prompt)
 
 static int radmin_help(UNUSED int count, UNUSED int key)
 {
+	size_t len;
+
 	printf("\n");
 
-	if (*rl_line_buffer) {
-		(void) fr_conduit_write(sockfd, FR_CONDUIT_HELP, rl_line_buffer, strlen(rl_line_buffer));
+	len = strlcpy(stack[stack_depth], rl_line_buffer, cmd_buffer + sizeof(cmd_buffer) - stack[stack_depth]);
+	if (stack[stack_depth] + len >= cmd_buffer + sizeof(cmd_buffer)) {
+		fprintf(stderr, "Command too long\n");
+		return NULL;
+	}
+	len += stack[stack_depth] - cmd_buffer;
+
+	if (*cmd_buffer) {
+		(void) fr_conduit_write(sockfd, FR_CONDUIT_HELP, cmd_buffer, len);
 	} else {
 		/*
 		 *	Don't write zero bytes to the other side...
@@ -539,18 +553,26 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 	radmin_num_expansions = 0;
 
+	start += stack[stack_depth] - cmd_buffer;
+
 	if (start > 65535) return NULL;
 
 	io_buffer[0] = (start >> 8) & 0xff;
 	io_buffer[1] = start & 0xff;
-	len = strlen(rl_line_buffer);
+
+	len = strlcpy(stack[stack_depth], rl_line_buffer, cmd_buffer + sizeof(cmd_buffer) - stack[stack_depth]);
+	if (stack[stack_depth] + len >= cmd_buffer + sizeof(cmd_buffer)) {
+		fprintf(stderr, "Command too long\n");
+		return NULL;
+	}
+	len += stack[stack_depth] - cmd_buffer;
 
 	/*
 	 *	Note that "text" is the PARTIAL thing we're trying to complete.
 	 *	And "start" is the OFFSET from rl_line_buffer where we want to
 	 *	do the completion.  It's all rather idiotic.
 	 */
-	memcpy(io_buffer + 2, rl_line_buffer, len);
+	memcpy(io_buffer + 2, cmd_buffer, len);
 
 	(void) fr_conduit_write(sockfd, FR_CONDUIT_COMPLETE, io_buffer, len + 2);
 
@@ -684,7 +706,7 @@ int main(int argc, char **argv)
 	int		c;
 	bool		quiet = false;
 	char		*line = NULL;
-	ssize_t		len;
+	ssize_t		result;
 	char const	*file = NULL;
 	char const	*name = "radiusd";
 	char const	*input_file = NULL;
@@ -694,7 +716,6 @@ int main(int argc, char **argv)
 
 	char const	*raddb_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
-	char const	*prompt = "radmin> ";
 	char 		history_file[PATH_MAX];
 
 	TALLOC_CTX	*autofree = talloc_autofree_context();
@@ -950,10 +971,10 @@ int main(int argc, char **argv)
 		int i;
 
 		for (i = 0; i <= num_commands; i++) {
-			len = run_command(sockfd, commands[i], io_buffer, sizeof(io_buffer));
-			if (len < 0) exit(EXIT_FAILURE);
+			result = run_command(sockfd, commands[i], io_buffer, sizeof(io_buffer));
+			if (result < 0) exit(EXIT_FAILURE);
 
-			if (len == FR_CONDUIT_FAIL) {
+			if (result == FR_CONDUIT_FAIL) {
 				exit_status = EXIT_FAILURE;
 				goto exit;
 			}
@@ -986,8 +1007,12 @@ int main(int argc, char **argv)
 	(void) rl_bind_key('?', radmin_help);
 #endif
 
+	stack_depth = 0;
+	stack[0] = cmd_buffer;
+
 	while (1) {
 		int retries;
+		size_t len;
 
 		line = readline(prompt);
 
@@ -1010,11 +1035,29 @@ int main(int argc, char **argv)
 		}
 
 		/*
-		 *	Exit, done, etc.
+		 *	Quit the program
 		 */
-		if ((strcmp(line, "exit") == 0) ||
-		    (strcmp(line, "quit") == 0)) {
+		if (strcmp(line, "quit") == 0) {
 			break;
+		}
+
+		/*
+		 *	Exit the current context.
+		 */
+		if (strcmp(line, "exit") == 0) {
+			if (!stack_depth) break;
+
+			stack_depth--;
+
+			if (stack_depth == 0) {
+				prompt = "radmin> ";
+			} else {
+				snprintf(prompt_buffer, sizeof(prompt_buffer), "... %s> ",
+					 stack[stack_depth - 1]);
+				prompt = prompt_buffer;
+			}
+
+			goto next;
 		}
 
 		retries = 0;
@@ -1026,9 +1069,17 @@ int main(int argc, char **argv)
 			fr_log(&radmin_log, L_INFO, __FILE__, __LINE__, "%s", line);
 		}
 
+		len = strlcpy(stack[stack_depth], line, cmd_buffer + sizeof(cmd_buffer) - stack[stack_depth]);
+		if (stack[stack_depth] + len >= cmd_buffer + sizeof(cmd_buffer)) {
+			fprintf(stderr, "Command too long\n");
+			exit_status = EXIT_FAILURE;
+			break;
+		}
+
 	retry:
-		len = run_command(sockfd, line, io_buffer, sizeof(io_buffer));
-		if (len < 0) {
+
+		result = run_command(sockfd, cmd_buffer, io_buffer, sizeof(io_buffer));
+		if (result < 0) {
 			if (!quiet) fprintf(stderr, "... reconnecting ...\n");
 
 			if (do_connect(&sockfd, file, server) < 0) {
@@ -1041,12 +1092,31 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Failed to connect to server\n");
 			exit(EXIT_FAILURE);
 
-		} else if (len == FR_CONDUIT_FAIL) {
+		} else if (result == FR_CONDUIT_FAIL) {
 			fprintf(stderr, "Failed running command\n");
 			exit_status = EXIT_FAILURE;
 
-		} else if (len == FR_CONDUIT_PARTIAL) {
-			fprintf(stdout, "WARNING: Ignoring partial command.\n");
+		} else if (result == FR_CONDUIT_PARTIAL) {
+			char *p = stack[stack_depth];
+
+			if (stack_depth >= MAX_STACK) {
+				fprintf(stderr, "Too many sub-contexts running command\n");
+				exit_status = EXIT_FAILURE;
+				break;
+			}
+
+			/*
+			 *	Point the stack to the last entry.
+			 */
+			p += len;
+			if (stack_depth > 0) *(p++) = ' '; /* spaces between commands */
+			stack_depth++;
+			stack[stack_depth] = p;
+			*p = '\0';
+
+			snprintf(prompt_buffer, sizeof(prompt_buffer), "... %s> ",
+				 stack[stack_depth - 1]);
+			prompt = prompt_buffer;
 
 		} else {
 			/*
@@ -1055,7 +1125,7 @@ int main(int argc, char **argv)
 			 *	Don't add exit / quit / secret / etc.
 			 */
 			if (!quiet) {
-				add_history(line);
+				add_history(cmd_buffer);
 				write_history(history_file);
 			}
 		}
@@ -1073,6 +1143,8 @@ exit:
 	if (radmin_log.dst == L_DST_FILES) close(radmin_log.fd);
 
 	if (sockfd >= 0) close(sockfd);
+
+	if (!quiet) fprintf(stdout, "\n");
 
 	return exit_status;
 }
