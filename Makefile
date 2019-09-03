@@ -55,7 +55,17 @@ export PROJECT_NAME := freeradius
 #
 #  src/include/all.mk needs these, so define them before we include that file.
 #
-PROTOCOLS    := dhcpv4 eap/sim eap/aka freeradius snmp vmps dhcpv6 ethernet radius tacacs arp
+PROTOCOLS    := \
+	arp \
+	dhcpv4 \
+	dhcpv6 \
+	eap/aka-sim \
+	ethernet \
+	freeradius \
+	radius \
+	snmp \
+	tacacs \
+	vmps
 
 # And over-ride all of the other magic.
 ifneq "$(MAKECMDGOALS)" "deb"
