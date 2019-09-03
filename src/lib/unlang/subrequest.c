@@ -145,71 +145,107 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	unlang_resume_t			*mr;
 	VALUE_PAIR			*vp;
 
-	unlang_group_t		*g;
-
-	g = unlang_generic_to_group(instruction);
-	rad_assert(g->children != NULL);
-
-	frame->state = state = talloc_zero(stack, unlang_frame_state_subrequest_t);
-	child = state->child = unlang_io_subrequest_alloc(request, g->dict, UNLANG_DETACHABLE);
-	if (!child) {
-		rcode = RLM_MODULE_FAIL;
-		priority = instruction->actions[*presult];
-
-	calculate_result:
-		*presult = rcode;
-		*ppriority = priority;
-
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (frame->state) state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 
 	/*
-	 *	Probably not a great idea to set this
-	 *	to presult, as it could be a pointer
-	 *	to an rlm_rcode_t somewhere on the stack
-	 *      which could be invalidated between
-	 *	unlang_subrequest being called
-	 *	and unlang_subrequest_resume being called.
+	 *	When the subrequest is executed as part of an
+	 *	unlang section (i.e. the "subrequest" keyword was used)
+	 *	we won't have a frame->state.
+	 *	In this case we crib most of the necessary
+	 *	configuration for the subrequest from the parent.
 	 *
-	 *	...so we just set it to NULL and interpret
-	 *	that as use the presult that was passed
-	 *	in to the currently executing function.
+	 *	If this function is being called because
+	 *	unlang_interpret_push_subrequest was called, the frame->state
+	 *	should be filled out by unlang_interpret_push_subrequest.
 	 */
-	state->presult = NULL;
-	state->persist = false;
-	state->detachable = true;
+	if (!state) {
+		unlang_group_t		*g;
 
-	/*
-	 *	Set the packet type, which MUST always be "uint32"
-	 */
-	MEM(vp = fr_pair_afrom_da(child->packet, g->attr_packet_type));
-	child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
-	fr_pair_add(&child->packet->vps, vp);
+		g = unlang_generic_to_group(instruction);
+		rad_assert(g->children != NULL);
 
-	/*
-	 *	Push the first instruction the child's
-	 *	going to run.
-	 */
-	unlang_interpret_push(child, g->children, frame->result,
-			      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
+		frame->state = state = talloc(stack, unlang_frame_state_subrequest_t);
+		child = state->child = unlang_io_subrequest_alloc(request, g->dict, UNLANG_DETACHABLE);
+		if (!child) {
+			rcode = RLM_MODULE_FAIL;
+			priority = instruction->actions[*presult];
 
-	/*
-	 *	Restore state from the parent to the
-	 *	subrequest.
-	 *	This is necessary for stateful modules like
-	 *	EAP to work.
-	 */
-	fr_state_restore_to_child(child, instruction, 0);
+		calculate_result:
+			/*
+			 *	Pass the result back to the module
+			 *	that created the subrequest, or
+			 *	use it to modify the current section
+			 *	rcode.
+			 */
+			if (state->presult) {
+				*state->presult = rcode;
+				return UNLANG_ACTION_CALCULATE_RESULT;
+			}
+
+			*presult = rcode;
+			*ppriority = priority;
+
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
+		/*
+		 *	Set the packet type.
+		 *
+		 *	@todo - this doesn't strictly work for DHCP, which
+		 *	uses DHCP-Message-Type, *and* which has message type
+		 *	by a uint8.  We should likely have some other mapping
+		 *	in the dictionary so that we can find the real
+		 *	attribute.
+		 */
+		MEM(vp = fr_pair_afrom_da(child->packet, g->attr_packet_type));
+		child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
+		fr_pair_add(&child->packet->vps, vp);
+
+		/*
+		 *	Push the first instruction the child's
+		 *	going to run.
+		 */
+		unlang_interpret_push(child, g->children, frame->result,
+				      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
+
+		/*
+		 *	Probably not a great idea to set this
+		 *	to presult, as it could be a pointer
+		 *	to an rlm_rcode_t somewhere on the stack
+		 *      which could be invalidated between
+		 *	unlang_subrequest being called
+		 *	and unlang_subrequest_resume being called.
+		 *
+		 *	...so we just set it to NULL and interpret
+		 *	that as use the presult that was passed
+		 *	in to the currently executing function.
+		 */
+		state->presult = NULL;
+		state->persist = false;
+
+		/*
+		 *	Restore state from the parent to the
+		 *	subrequest.
+		 *	This is necessary for stateful modules like
+		 *	EAP to work.
+		 */
+		fr_state_restore_to_child(child, instruction, 0);
+	} else {
+		child = state->child;
+	}
 
 	RDEBUG2("Creating subrequest (%s)", child->name);
 	log_request_pair_list(L_DBG_LVL_1, request, child->packet->vps, NULL);
 
 	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
-		fr_state_store_in_parent(child, instruction, 0);
-		unlang_subrequest_free(&child);
+		if (!state->persist) {
+			fr_state_store_in_parent(child, instruction, 0);
+			unlang_subrequest_free(&child);
+		}
 
 		priority = instruction->actions[rcode];
+
 		goto calculate_result;
 	}
 
