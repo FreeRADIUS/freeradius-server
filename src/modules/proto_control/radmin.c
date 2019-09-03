@@ -995,11 +995,6 @@ int main(int argc, char **argv)
 
 		if (!*line) goto next;
 
-		if (!quiet) {
-			add_history(line);
-			write_history(history_file);
-		}
-
 		if (strcmp(line, "reconnect") == 0) {
 			if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
 			goto next;
@@ -1049,6 +1044,20 @@ int main(int argc, char **argv)
 		} else if (len == FR_CONDUIT_FAIL) {
 			fprintf(stderr, "Failed running command\n");
 			exit_status = EXIT_FAILURE;
+
+		} else if (len == FR_CONDUIT_PARTIAL) {
+			fprintf(stdout, "WARNING: Ignoring partial command.\n");
+
+		} else {
+			/*
+			 *	Add only successful commands to the history.
+			 *
+			 *	Don't add exit / quit / secret / etc.
+			 */
+			if (!quiet) {
+				add_history(line);
+				write_history(history_file);
+			}
 		}
 
 		/*
