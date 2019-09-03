@@ -1362,7 +1362,7 @@ static int mod_namespace_load(CONF_SECTION *server_cs)
 
 static int mod_load(void)
 {
-	if (virtual_server_namespace_register("eap-aka", mod_namespace_load) < 0) return -1;
+	if (virtual_namespace_register("eap-aka", "eap-aka", "eap/aka", mod_namespace_load) < 0) return -1;
 
 	if (fr_sim_init() < 0) return -1;
 

@@ -42,6 +42,9 @@ RCSID("$Id$")
 
 typedef struct {
 	char const		*namespace;		//!< Namespace function is registered to.
+	char const		*proto_dict;		//!< Dictionary name to load for this namespace.
+	char const		*proto_dir;		//!< Override proto_dict and specify a dictionary off of
+ 							//!< the dictionary root directory (may be NULL).
 	fr_virtual_server_compile_t	func;		//!< Function to call to compile sections.
 } fr_virtual_namespace_t;
 
@@ -177,9 +180,32 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 /** Decrement references on dictionaries as the config sections are freed
  *
  */
-static int namespace_dict_free(fr_dict_t **dict)
+static int _virtual_server_dict_free(fr_dict_t **dict)
 {
 	fr_dict_free(dict);
+	return 0;
+}
+
+/** Load a dictionary for a virtual server and
+ *
+ * @param[in] server_cs		to set the namespace for.
+ * @param[in] proto_dict	to load.
+ * @param[in] proto_dir		Path override for dictionary.
+ */
+static int virtual_server_namespace_set(CONF_SECTION *server_cs,
+					char const *proto_dict, char const *proto_dir)
+{
+	fr_dict_t	**dict_p;
+	fr_dict_t	*dict = NULL;
+
+	if (fr_dict_protocol_afrom_file(&dict, proto_dict, proto_dir) < 0) return -1;
+
+	dict_p = talloc_zero(NULL, fr_dict_t *);
+	*dict_p = dict;
+	talloc_set_destructor(dict_p, _virtual_server_dict_free);
+
+	cf_data_add(server_cs, dict_p, "dictionary", true);
+
 	return 0;
 }
 
@@ -194,31 +220,41 @@ static int namespace_dict_free(fr_dict_t **dict)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
 			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
+	rbtree_t		*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 	CONF_PAIR		*namespace_cp = cf_item_to_pair(ci);
-	char const		*namespace = cf_pair_value(namespace_cp);
+	char const		*namespace_str = cf_pair_value(namespace_cp);
+	char const		*proto_dict = namespace_str;
+	char const		*proto_dir = NULL;
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
-	fr_dict_t		*dict = NULL;
-	fr_dict_t		**dict_p;
 
-	if (DEBUG_ENABLED4) cf_log_debug(ci, "Initialising namespace \"%s\"", namespace);
+	if (DEBUG_ENABLED4) cf_log_debug(ci, "Initialising namespace \"%s\"", namespace_str);
 
-	if (fr_dict_protocol_afrom_file(&dict, namespace, NULL) < 0) {
+	/*
+	 *	Doesn't currently work, because namespace
+	 *	*REALLY REALLY* shouldn't be processed on_read,
+	 *	because it doesn't give modules a chance to
+	 *	run their bootstrap methods.
+	 */
+	if (vns_tree) {
+		fr_virtual_namespace_t	*found;
+
+		found = rbtree_finddata(vns_tree,
+					&(fr_virtual_namespace_t){ .namespace = cf_section_name2(server_cs) });
+		proto_dict = found->proto_dict;
+		proto_dir = found->proto_dir;
+	}
+
+	if (virtual_server_namespace_set(server_cs, proto_dict, proto_dir) < 0) {
 #if 1
 		return 0;
 #else
-		cf_log_perr("Failed initialising namespace \"%s\" - %s", namespace, fr_strerror());
+		cf_log_perr(ci, "Failed initialising namespace \"%s\" - %s", namespace_str, fr_strerror());
 		return -1;
 #endif
 	}
-
-	dict_p = talloc_zero(ctx, fr_dict_t *);
-	*dict_p = dict;
-	talloc_set_destructor(dict_p, namespace_dict_free);
-
-	cf_data_add(server_cs, dict_p, "dictionary", true);
 
 	return 0;
 }
@@ -522,11 +558,30 @@ int virtual_servers_instantiate(void)
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
 		if (vns_tree) {
-			fr_virtual_namespace_t	find = { .namespace = cf_section_name2(server_cs) };
 			fr_virtual_namespace_t	*found;
+			CONF_PAIR		*ns;
 
-			found = rbtree_finddata(vns_tree, &find);
-			if (found && (found->func(server_cs) < 0)) return -1;
+			ns = cf_pair_find(server_cs, "namespace");
+			if (!ns) {
+				cf_log_err(server_cs, "Missing \"namespace\" config item");
+				return -1;
+			}
+
+			found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
+			if (found) {
+				/*
+				 *	Stupid hack because of the on_read
+				 *	namespace stuff.
+				 */
+				if (virtual_server_namespace_set(server_cs,
+								 found->proto_dict,
+								 found-> proto_dir) < 0) {
+					cf_log_perr(ci, "Failed loading dictionary for virtual namespace \"%s\" - %s",
+						    cf_pair_value(ns), fr_strerror());
+					return -1;
+				}
+				if ((found->func(server_cs) < 0)) return -1;
+			}
 		}
 
 		/*
@@ -752,6 +807,25 @@ CONF_SECTION *virtual_server_by_child(CONF_SECTION *section)
 	return cf_section_find_in_parent(section, "server", CF_IDENT_ANY);
 }
 
+/** Wrapper for the config parser to allow pass1 resolution of virtual servers
+ *
+ */
+int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	CONF_SECTION	*server_cs;
+
+	server_cs = virtual_server_find(cf_pair_value(cf_item_to_pair(ci)));
+	if (!server_cs) {
+		cf_log_err(ci, "virtual-server \"%s\" not found", cf_pair_value(cf_item_to_pair(ci)));
+		return -1;
+	}
+
+	*((CONF_SECTION **)out) = server_cs;
+
+	return 0;
+}
+
 /** Free a virtual namespace callback
  *
  */
@@ -774,8 +848,18 @@ static int _virtual_namespace_cmp(void const *a, void const *b)
 /** Add a callback for a specific namespace
  *
  *  This allows modules to register unlang compilation functions for specific namespaces
+ *
+ * @param[in] namespace		to register.
+ * @param[in] proto_dict	Dictionary name to load for this namespace.
+ * @param[in] proto_dir		Override proto_dict and specify a dictionary off of
+ *				the dictionary root directory (may be NULL).
+ * @param[in] func		to call to compile sections in the virtual server.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int virtual_server_namespace_register(char const *namespace, fr_virtual_server_compile_t func)
+int virtual_namespace_register(char const *namespace,
+			       char const *proto_dict, char const *proto_dir, fr_virtual_server_compile_t func)
 {
 	rbtree_t		*vns_tree;
 	fr_virtual_namespace_t	*vns;
@@ -783,7 +867,9 @@ int virtual_server_namespace_register(char const *namespace, fr_virtual_server_c
 	rad_assert(virtual_server_root);	/* Virtual server bootstrap must be called first */
 
 	MEM(vns = talloc_zero(NULL, fr_virtual_namespace_t));
-	vns->namespace = namespace;
+	vns->namespace = talloc_strdup(vns, namespace);
+	vns->proto_dict = talloc_strdup(vns, proto_dict);
+	vns->proto_dir = talloc_strdup(vns, proto_dir);
 	vns->func = func;
 
 	vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));

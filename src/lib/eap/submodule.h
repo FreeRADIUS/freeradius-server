@@ -41,6 +41,8 @@ typedef struct {
 	module_method_t		session_init;		//!< Callback for creating a new #eap_session_t.
 	module_method_t		entry_point;		//!< Callback for processing the next #eap_round_t of an
 							//!< #eap_session_t.
+
+	fr_dict_t		**namespace;		//!< Namespace children should be allocated in.
 } rlm_eap_submodule_t;
 
 /** Private structure to hold handles and interfaces for an EAP method

@@ -69,7 +69,12 @@ CONF_SECTION	*virtual_server_find(char const *name);
 
 CONF_SECTION	*virtual_server_by_child(CONF_SECTION *section);
 
-int		virtual_server_namespace_register(char const *namespace, fr_virtual_server_compile_t func);
+int		virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+					CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+
+int		virtual_namespace_register(char const *namespace,
+					   char const *proto_dict, char const *proto_dir,
+					   fr_virtual_server_compile_t func);
 
 fr_dict_t	*virtual_server_namespace(char const *virtual_server);
 

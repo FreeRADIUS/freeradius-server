@@ -361,7 +361,7 @@ static int mod_namespace_load(CONF_SECTION *server_cs)
 
 static int mod_load(void)
 {
-	if (virtual_server_namespace_register("eap-tls", mod_namespace_load) < 0) return -1;
+	if (virtual_namespace_register("eap-tls", "eap-tls", NULL, mod_namespace_load) < 0) return -1;
 
 	return 0;
 }
