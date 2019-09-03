@@ -28,6 +28,7 @@ SOURCES	:= \
 	pool.c \
 	rcode.c \
 	regex.c \
+	request_data.c \
 	request.c \
 	snmp.c \
 	state.c \

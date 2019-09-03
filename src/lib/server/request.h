@@ -34,7 +34,6 @@ extern "C" {
 
 typedef struct fr_async_t fr_async_t;
 typedef struct rad_request REQUEST;
-typedef struct request_data_t request_data_t;
 
 typedef struct rad_listen rad_listen_t;
 typedef struct rad_client RADCLIENT;
@@ -181,39 +180,6 @@ REQUEST		*request_alloc_fake(REQUEST *parent, fr_dict_t const *namespace);
 REQUEST		*request_alloc_detachable(REQUEST *request, fr_dict_t const *namespace);
 
 int		request_detach(REQUEST *fake, bool will_free);
-
-void		request_data_list_init(fr_dlist_head_t *data);
-
-#define request_data_add(_request, _unique_ptr, _unique_int, _opaque, _free_on_replace, _free_on_parent, _persist) \
-		_request_data_add(_request, _unique_ptr, _unique_int, NULL, _opaque,  \
-				  _free_on_replace, _free_on_parent, _persist)
-
-#define request_data_talloc_add(_request, _unique_ptr, _unique_int, _type, _opaque, _free_on_replace, _free_on_parent, _persist) \
-		_request_data_add(_request, _unique_ptr, _unique_int, STRINGIFY(_type), _opaque, \
-				  _free_on_replace, _free_on_parent, _persist)
-
-int		_request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
-				  bool free_on_replace, bool free_on_parent, bool persist);
-
-void		*request_data_get(REQUEST *request, void const *unique_ptr, int unique_int);
-
-void		*request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int);
-
-int		request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool persist);
-
-int		request_data_by_persistance_count(REQUEST *request, bool persist);
-
-void		request_data_restore(REQUEST *request, fr_dlist_head_t *in);
-
-void		request_data_ctx_change(TALLOC_CTX *state_ctx, REQUEST *request);
-
-void		request_data_persistable_free(REQUEST *request);
-
-void		request_data_dump(REQUEST *request);
-
-void		request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int);
-
-void		request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int);
 
 #ifdef WITH_VERIFY_PTR
 void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */

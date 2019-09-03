@@ -729,15 +729,42 @@ void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int
 {
 	if (unlikely(request->parent == NULL)) return;
 
-	RDEBUG3("Subrequest state - saved to %s", request->parent->name);
+	RDEBUG3("Subrequest state - saved to request %s", request->parent->name);
 
 	/*
 	 *	Shove this into the child to make
 	 *	it easier to store/restore the
 	 *	whole lot...
 	 */
-	request_data_add(request, (void *)fr_state_store_in_parent, 0, request->state, true, false, true);
-	request->state = NULL;
+	if (request->state) {
+		VALUE_PAIR *head;
+
+		/*
+		 *	If parent and child share a state_ctx
+		 *	which they usually should do, then just
+		 *	add the state list into request_data_t
+		 *	and don't bother copying.
+		 */
+		if (request->parent->state_ctx == request->state_ctx) {
+			request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, VALUE_PAIR,
+						request->state, true, false, true);
+			request->state = NULL;
+
+		/*
+		 *	If request_data_restore_to_child has been
+		 *	called then this won't be necessary as
+		 *	parent and child will share a state_ctx
+		 *	but we can't always guarantee that'll have
+		 *	happened, and it seems quite fragile to rely
+		 *	on that.
+		 */
+		} else {
+			MEM(fr_pair_list_copy(request->parent->state_ctx, &head, request->state) >= 0);
+			request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, VALUE_PAIR,
+						request->state, true, false, true);
+			fr_pair_list_free(&request->state);
+		}
+	}
 
 	request_data_store_in_parent(request, unique_ptr, unique_int);
 }
@@ -754,7 +781,7 @@ void fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_in
 {
 	if (unlikely(request->parent == NULL)) return;
 
-	RDEBUG3("Subrequest state - restored from %s", request->parent->name);
+	RDEBUG3("Subrequest state - restored from request %s", request->parent->name);
 
 	request_data_restore_to_child(request, unique_ptr, unique_int);
 
@@ -803,7 +830,8 @@ void fr_state_detach(REQUEST *request, bool will_free)
 	}
 
 	MEM(new_state_ctx = talloc_init("session-state"));
-	request_data_ctx_change(new_state_ctx, request);
+	request_data_by_persistance_reparent(new_state_ctx, NULL, request, true);
+	request_data_by_persistance_reparent(new_state_ctx, NULL, request, false);
 
 	(void) fr_pair_list_copy(new_state_ctx, &vps, request->state);
 	fr_pair_list_free(&request->state);
