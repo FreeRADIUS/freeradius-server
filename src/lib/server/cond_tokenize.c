@@ -575,13 +575,53 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 static ssize_t cond_preparse(char const **out, size_t *outlen, char const *start,
 			     FR_TOKEN *type, char const **error,
 			     fr_dict_attr_t const **castda, bool require_regex,
-			     UNUSED CONF_SECTION *parent, UNUSED char const *filename, UNUSED int lineno)
+			     CONF_SECTION *parent, char const *filename, int lineno)
 {
-	/*
-	 *	@todo - If it's a bare word, expand that.
-	 */
+	ssize_t slen, my_slen;
+	char *p, *expanded;
+	char buffer[8192];
 
-	return tmpl_preparse(out, outlen, start, type, error, castda, require_regex);
+	slen = tmpl_preparse(out, outlen, start, type, error, castda, require_regex);
+	if (slen <= 0) return slen;
+
+	p = strchr(start, '$');
+	if (!p || (p[1] != '{')) return slen;
+
+	/*
+	 *	cf_expand_variables() doesn't take a length.  Oh well...
+	 */
+	expanded = talloc_strndup(parent, start, slen);
+	if (!expanded) {
+	oom:
+		*error = "Failed allocating memory";
+		return -1;
+	}
+
+	if (!cf_expand_variables(filename, &lineno, parent, buffer, sizeof(buffer), expanded, NULL)) {
+		*error = "Failed expanding configuration variable";
+		return -1;
+	}
+	talloc_free(expanded);
+
+	/*
+	 *	We need to tell the caller how many *input* bytes to
+	 *	skip.  Which means that we need to keep treat this
+	 *	length as different.
+	 */
+	my_slen = tmpl_preparse(out, outlen, buffer, type, error, castda, require_regex);
+	if (my_slen <= 0) return my_slen;
+
+	if (!*out || *outlen == 0) return 0; /* for sanity checks */
+
+	/*
+	 *	'out' now points to 'buffer', which we don't want.  So
+	 *	we need to return a string which the caller can keep track of.
+	 */
+	expanded = talloc_strndup(parent, *out, *outlen);
+	if (!expanded) goto oom;
+
+	*out = expanded;
+	return slen;		/* NOT my_slen */
 }
 
 
