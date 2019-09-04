@@ -2998,6 +2998,37 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 	}
 
 	switch (*p) {
+		/*
+		 *	Magic handling for variable expansions in the
+		 *	configuration files.
+		 *
+		 *	@todo - make this configurable
+		 */
+	case '$':
+		if (p[1] != '{') {
+			return_P("Unexpected '$'");
+		}
+
+		*out = p;
+		*type = T_BARE_WORD;
+
+		p += 2;
+		while (*p && (*p != '}')) {
+			if (isspace((int) *p)) {
+				return_P("Unexpected space in variable expansion");
+			}
+
+			p++;
+		}
+
+		if (!*p) {
+			return_P("Unexpected end of variable expansion");
+		}
+		p++;
+		*outlen = p - (*out);
+		break;
+
+
 	case '/':
 		quote = *(p++);
 		*type = T_OP_REG_EQ;
