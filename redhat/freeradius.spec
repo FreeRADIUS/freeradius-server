@@ -651,7 +651,6 @@ fi
 %attr(644,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/dictionary
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/clients.conf
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/panic.gdb
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/README.md
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/radiusd.conf
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/trigger.conf
 #%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sql
@@ -758,7 +757,6 @@ fi
 %defattr(-,root,root)
 /usr/bin/*
 # man-pages
-%doc %{_mandir}/man1/radclient.1.gz
 %doc %{_mandir}/man1/radlast.1.gz
 %doc %{_mandir}/man1/radtest.1.gz
 %doc %{_mandir}/man1/radwho.1.gz
