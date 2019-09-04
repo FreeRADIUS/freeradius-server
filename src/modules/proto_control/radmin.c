@@ -537,9 +537,7 @@ static int radmin_help(UNUSED int count, UNUSED int key)
 	len = cmd_copy(rl_line_buffer);
 	if (len < 0) return 0;
 
-	fprintf(stderr, "HELP %zd %s\n", len, cmd_buffer);
-
-	if (*cmd_buffer) {
+	if (len > 0) {
 		(void) fr_conduit_write(sockfd, FR_CONDUIT_HELP, cmd_buffer, len);
 	} else {
 		/*
