@@ -1064,7 +1064,14 @@ closing_brace:
 	/*
 	 *	We've parsed all of the condition, stop.
 	 */
-	if (brace == 0) goto done;
+	if (brace == 0) {
+		if (isspace((int) *p)) goto done;
+
+		/*
+		 *	Open a section, it's OK to be done.
+		 */
+		if (*p == '{') goto done;
+	}
 
 	/*
 	 *	Allow ((a == b) && (b == c))
