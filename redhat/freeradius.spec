@@ -67,7 +67,9 @@ BuildRequires: gdbm-devel
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
 BuildRequires: freeradius-openssl, freeradius-openssl-devel
 %else
-BuildRequires: openssl, openssl-devel
+# Need openssl-perl for c_rehash, which is used in tests. We don't currently
+# run a test step, but other tooling obtains build requirements from here.
+BuildRequires: openssl, openssl-devel, openssl-perl
 %endif
 
 BuildRequires: libcurl-devel
