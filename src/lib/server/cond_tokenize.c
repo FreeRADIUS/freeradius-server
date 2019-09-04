@@ -723,7 +723,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	 */
 	slen = cond_preparse(&lhs, &lhs_len, p, &lhs_type, error, &c->cast, false, parent, filename, lineno);
 	if (slen <= 0) {
-		fprintf(stderr, "FAILED %d %s\n", __LINE__, start);
 		return_SLEN;
 	}
 
@@ -904,7 +903,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 		slen = cond_preparse(&rhs, &rhs_len, p, &rhs_type, error, NULL, regex, parent, filename, lineno);
 		if (slen <= 0) {
-			fprintf(stderr, "FAILED %d %s\n", __LINE__, start);
 			return_SLEN;
 		}
 
