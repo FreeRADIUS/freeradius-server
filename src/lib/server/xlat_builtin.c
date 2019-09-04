@@ -465,6 +465,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 	     vp = fr_cursor_next(&cursor)) {
 		fr_dict_vendor_t const		*vendor;
 		fr_table_num_ordered_t const	*type;
+		size_t				i;
 
 		if (vp->da->flags.has_tag) {
 			RIDEBUG2("&%s:%s:%i %s %pV",
@@ -498,11 +499,12 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 
 		if (!RDEBUG_ENABLED4) continue;
 
-		type = fr_value_box_type_table;
-		while (type->name) {
+		for (i = 0; i < fr_value_box_type_table_len; i++) {
 			int pad;
 
 			fr_value_box_t *dst = NULL;
+
+			type = &fr_value_box_type_table[i];
 
 			if ((fr_type_t) type->value == vp->vp_type) goto next_type;
 
@@ -528,7 +530,6 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 
 		next_type:
 			talloc_free(dst);
-			type++;
 		}
 	}
 	REXDENT();
