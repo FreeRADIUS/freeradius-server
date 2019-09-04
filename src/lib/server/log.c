@@ -238,7 +238,7 @@ inline bool log_rdebug_enabled(fr_log_lvl_t lvl, REQUEST *request)
 {
 	if (!request->log.dst) return false;
 
-	if (lvl <= request->log.lvl) return false;
+	if (lvl <= request->log.lvl) return true;
 
 	return false;
 }
