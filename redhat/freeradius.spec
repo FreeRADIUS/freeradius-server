@@ -755,7 +755,6 @@ fi
 %defattr(-,root,root)
 /usr/bin/*
 # man-pages
-%doc %{_mandir}/man1/radclient.1.gz
 %doc %{_mandir}/man1/radlast.1.gz
 %doc %{_mandir}/man1/radtest.1.gz
 %doc %{_mandir}/man1/radwho.1.gz
