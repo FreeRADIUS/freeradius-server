@@ -1075,6 +1075,7 @@ int main(int argc, char **argv)
 			if (!stack_depth) break;
 
 			stack_depth--;
+			*stack[stack_depth] = '\0';
 
 			if (stack_depth == 0) {
 				prompt = "radmin> ";
