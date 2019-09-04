@@ -728,10 +728,13 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 						    &parent->item.lineno,
 						    parent,
 						    buffer, sizeof(buffer), name2, NULL);
+
 			if (!name2) {
 				ERROR("Failed expanding section name");
 				return NULL;
 			}
+
+			fprintf(stderr, "EXPAND to %s\n", name2);
 		}
 	}
 

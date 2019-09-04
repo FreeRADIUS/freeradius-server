@@ -1157,7 +1157,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Skip (...) to find the {
 			 */
 			slen = fr_cond_tokenize(this, &cond, &error,
-						dict, cf_section_to_item(this), ptr, FR_COND_TWO_PASS);
+						dict, cf_section_to_item(this), ptr);
 			memcpy(&p, &ptr, sizeof(p));
 
 			if (slen < 0) {
@@ -1216,7 +1216,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			css->item.lineno = *lineno;
 
 			slen = fr_cond_tokenize(css, &cond, &error,
-						dict, cf_section_to_item(css), ptr, FR_COND_TWO_PASS);
+						dict, cf_section_to_item(css), ptr);
 			*p = '{'; /* put it back */
 
 		cond_error:

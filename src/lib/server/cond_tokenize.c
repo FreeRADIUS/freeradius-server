@@ -577,7 +577,6 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
  *  @param[in] ci for CONF_ITEM
  *  @param[in] start the start of the string to process.  Should be "(..."
  *  @param[in] brace look for a closing brace
- *  @param[in] flags do one/two pass
  *  @param[in] rules for attribute parsing
  *  @return
  *	- Length of the string skipped.
@@ -585,7 +584,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
  */
 static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **error,
 			     CONF_ITEM *ci, char const *start, bool brace,
-			     int flags, vp_tmpl_rules_t const *rules)
+			     vp_tmpl_rules_t const *rules)
 {
 	ssize_t			slen, tlen;
 	char const		*p = start;
@@ -642,7 +641,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 */
 		c->type = COND_TYPE_CHILD;
 		c->ci = ci;
-		slen = cond_tokenize(c, &c->data.child, error, ci, p, true, flags, rules);
+		slen = cond_tokenize(c, &c->data.child, error, ci, p, true, rules);
 		if (slen <= 0) return_SLEN;
 
 		if (!c->data.child) {
@@ -665,7 +664,10 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	 *	Grab the LHS
 	 */
 	slen = tmpl_preparse(&lhs, &lhs_len, p, &lhs_type, error, &c->cast, false);
-	if (slen <= 0) return_SLEN;
+	if (slen <= 0) {
+		fprintf(stderr, "FAILED %d %s\n", __LINE__, start);
+		return_SLEN;
+	}
 
 	/*
 	 *	We may (or not) have an operator
@@ -843,7 +845,10 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		}
 
 		slen = tmpl_preparse(&rhs, &rhs_len, p, &rhs_type, error, NULL, regex);
-		if (slen <= 0) return_SLEN;
+		if (slen <= 0) {
+			fprintf(stderr, "FAILED %d %s\n", __LINE__, start);
+			return_SLEN;
+		}
 
 		/*
 		 *	Duplicate map_from_fields here, as we
@@ -1050,7 +1055,7 @@ closing_brace:
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = cond_tokenize(c, &c->next, error, ci, p, brace,  flags, rules);
+	slen = cond_tokenize(c, &c->next, error, ci, p, brace, rules);
 	if (slen <= 0) {
 	return_slen:
 		talloc_free(c);
@@ -1499,7 +1504,6 @@ done:
  * @param[in] dict	dictionary to resolve attributes in.
  * @param[in] ci	for CONF_ITEM
  * @param[in] start	the start of the string to process.  Should be "(..."
- * @param[in] flags	do one/two pass
  * @return
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
@@ -1507,9 +1511,9 @@ done:
 ssize_t fr_cond_tokenize(TALLOC_CTX *ctx,
 			 fr_cond_t **head, char const **error,
 			 fr_dict_t const *dict,
-			 CONF_ITEM *ci, char const *start, int flags)
+			 CONF_ITEM *ci, char const *start)
 {
-	return cond_tokenize(ctx, head, error, ci, start, false, flags, &(vp_tmpl_rules_t){ .dict_def = dict });
+	return cond_tokenize(ctx, head, error, ci, start, false, &(vp_tmpl_rules_t){ .dict_def = dict });
 }
 
 /*

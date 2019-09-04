@@ -539,7 +539,7 @@ static void parse_condition(fr_dict_t const *dict, char const *input, char *outp
 	char const *error = NULL;
 	fr_cond_t *cond;
 
-	dec_len = fr_cond_tokenize(NULL, &cond, &error, dict, NULL, input, FR_COND_ONE_PASS);
+	dec_len = fr_cond_tokenize(NULL, &cond, &error, dict, NULL, input);
 	if (dec_len <= 0) {
 		snprintf(output, outlen, "ERROR offset %d %s", (int) -dec_len, error);
 		return;
