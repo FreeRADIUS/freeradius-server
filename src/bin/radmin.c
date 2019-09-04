@@ -497,7 +497,7 @@ static int cmd_set_debug_level(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ctx, 
 	int level = atoi(info->argv[0]);
 
 	if ((level < 0) || level > 5) {
-		fprintf(fp_err, "Invalid debug level '%s'", info->argv[0]);
+		fprintf(fp_err, "Invalid debug level '%s'\n", info->argv[0]);
 		return -1;
 	}
 
