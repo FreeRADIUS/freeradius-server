@@ -522,7 +522,7 @@ rm -rf $RPM_BUILD_ROOT/%{_includedir}
 rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/experimental.conf
 
 # install doc files omitted by standard install
-for f in COPYRIGHT CREDITS README.md; do
+for f in COPYRIGHT CREDITS; do
     cp $f $RPM_BUILD_ROOT/%{docdir}
 done
 cp LICENSE $RPM_BUILD_ROOT/%{docdir}/LICENSE.gpl
@@ -649,7 +649,6 @@ fi
 %attr(644,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/dictionary
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/clients.conf
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/panic.gdb
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/README.md
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/radiusd.conf
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/trigger.conf
 #%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sql
