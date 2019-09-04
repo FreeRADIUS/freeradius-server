@@ -583,7 +583,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
  *	- < 0 (the offset to the offending error) on error.
  */
 static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **error,
-			     CONF_ITEM *ci, char const *start, bool brace,
+			     CONF_ITEM *ci, char const *start, int brace,
 			     vp_tmpl_rules_t const *rules)
 {
 	ssize_t			slen, tlen;
@@ -641,7 +641,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 */
 		c->type = COND_TYPE_CHILD;
 		c->ci = ci;
-		slen = cond_tokenize(c, &c->data.child, error, ci, p, true, rules);
+		slen = cond_tokenize(c, &c->data.child, error, ci, p, brace + 1, rules);
 		if (slen <= 0) return_SLEN;
 
 		if (!c->data.child) {
@@ -1028,7 +1028,8 @@ closing_brace:
 	}
 
 	/*
-	 *	End of string is now allowed.
+	 *	End of string is allowed, unless we're still looking
+	 *	for closing braces.
 	 */
 	if (!*p) {
 		if (brace) {
@@ -1038,6 +1039,14 @@ closing_brace:
 		goto done;
 	}
 
+	/*
+	 *	We've parsed all of the condition, stop.
+	 */
+	if (brace == 0) goto done;
+
+	/*
+	 *	Allow ((a == b) && (b == c))
+	 */
 	if (!(((p[0] == '&') && (p[1] == '&')) ||
 	      ((p[0] == '|') && (p[1] == '|')))) {
 		*error = "Unexpected text after condition";
@@ -1513,7 +1522,7 @@ ssize_t fr_cond_tokenize(TALLOC_CTX *ctx,
 			 fr_dict_t const *dict,
 			 CONF_ITEM *ci, char const *start)
 {
-	return cond_tokenize(ctx, head, error, ci, start, false, &(vp_tmpl_rules_t){ .dict_def = dict });
+	return cond_tokenize(ctx, head, error, ci, start, 0, &(vp_tmpl_rules_t){ .dict_def = dict });
 }
 
 /*

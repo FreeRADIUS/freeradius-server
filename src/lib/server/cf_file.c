@@ -1143,7 +1143,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if ((strcmp(buff[1], "if") == 0) || (strcmp(buff[1], "elsif") == 0)) {
 			ssize_t slen = 0;
 			char const *error = NULL;
-			char *p = NULL;
 			fr_cond_t *cond = NULL;
 			CONF_DATA const *cd;
 			fr_dict_t const *dict = NULL;
@@ -1158,68 +1157,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 */
 			slen = fr_cond_tokenize(this, &cond, &error,
 						dict, cf_section_to_item(this), ptr);
-			memcpy(&p, &ptr, sizeof(p));
-
-			if (slen < 0) {
-				if (p[-slen] != '{') goto cond_error;
-				slen = -slen;
-			}
-			TALLOC_FREE(cond);
-
-			/*
-			 *	This hack is so that the NEXT stage
-			 *	doesn't go "too far" in expanding the
-			 *	variable.  We can parse the conditions
-			 *	without expanding the ${...} stuff.
-			 *	BUT we don't want to expand all of the
-			 *	stuff AFTER the condition.  So we do
-			 *	two passes.
-			 *
-			 *	The first pass is to discover the end
-			 *	of the condition.  We then expand THAT
-			 *	string, and do a second pass parsing
-			 *	the expanded condition.
-			 */
-			p += slen;
-			*p = '\0';
-
-			/*
-			 *	Nuke trailing spaces.  This hack
-			 *	really belongs in the parser.
-			 */
-			while ((p > ptr) && (isspace((int) p[-1]))) {
-				p--;
-				*p = '\0';
-			}
-
-			/*
-			 *	If there's a ${...}.  If so, expand it.
-			 */
-			if (strchr(ptr, '$') != NULL) {
-				ptr = cf_expand_variables(filename, lineno,
-							  this,
-							  buff[3], talloc_array_length(buff[3]),
-							  ptr, NULL);
-				if (!ptr) {
-					ERROR("%s[%d]: Parse error expanding ${...} in condition",
-					      filename, *lineno);
-					goto error;
-				}
-			} /* else leave it alone */
-
-			css = cf_section_alloc(this, this, buff[1], ptr);
-			if (!css) {
-				ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
-				goto error;
-			}
-			css->item.filename = filename;
-			css->item.lineno = *lineno;
-
-			slen = fr_cond_tokenize(css, &cond, &error,
-						dict, cf_section_to_item(css), ptr);
-			*p = '{'; /* put it back */
-
-		cond_error:
 			if (slen < 0) {
 				char *spaces, *text;
 
@@ -1233,11 +1170,17 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				talloc_free(spaces);
 				talloc_free(text);
 				talloc_free(css);
+				talloc_free(cond);
 				goto error;
 			}
 
+			/*
+			 *	The input file buffer may be larger
+			 *	than the buffer we put the condition
+			 *	into.
+			 */
 			if ((size_t) slen >= (talloc_array_length(buff[2]) - 1)) {
-				talloc_free(css);
+				talloc_free(cond);
 				ERROR("%s[%d]: Condition is too large after \"%s\"", filename, *lineno, buff[1]);
 				goto error;
 			}
@@ -1246,28 +1189,25 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Copy the expanded and parsed condition
 			 *	into buff[2].  Then, parse the text after
 			 *	the condition, which now MUST be a '{.
-			 *
-			 *	If it wasn't '{' it would have been
-			 *	caught in the first pass of
-			 *	conditional parsing, above.
 			 */
 			memcpy(buff[2], ptr, slen);
 			buff[2][slen] = '\0';
-			ptr = p;
+			ptr += slen;
 
 			if ((t3 = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true)) != T_LCBRACE) {
-				talloc_free(css);
 				ERROR("%s[%d]: Expected '{' %d", filename, *lineno, t3);
+				talloc_free(cond);
 				goto error;
 			}
 
-			/*
-			 *	Swap the condition with trailing stuff for
-			 *	the final condition.
-			 */
-			memcpy(&p, &css->name2, sizeof(css->name2));
-			talloc_free(p);
-			css->name2 = talloc_typed_strdup(css, buff[2]);
+			css = cf_section_alloc(this, this, buff[1], buff[2]);
+			if (!css) {
+				ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
+				talloc_free(cond);
+				goto error;
+			}
+			css->item.filename = filename;
+			css->item.lineno = *lineno;
 
 			cf_data_add(css, cond, NULL, false);
 
