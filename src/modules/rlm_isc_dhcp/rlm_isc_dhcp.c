@@ -1274,7 +1274,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 *	We don't need to spam the main log file every
 		 *	time the server starts.
 		 */
-		if (rad_debug_lvl) {
+		if (DEBUG_ENABLED) {
 			if (tokens[half].type == ISC_NOOP) {
 				WARN("Command '%.*s' is not yet implemented.",
 				     state->token_len, state->token);

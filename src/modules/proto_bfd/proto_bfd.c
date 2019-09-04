@@ -1351,12 +1351,12 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		 *	FIXME: add my state, remote state as VPs?
 		 */
 
-		if (rad_debug_lvl) {
+		if (fr_debug_lvl) {
 			request->log.dst = talloc_zero(request, log_dst_t);
 			request->log.dst->func = vlog_request;
 			request->log.dst->uctx = &default_log;
 
-			request->log.lvl = RAD_REQUEST_LVL_DEBUG2;
+			request->log.lvl = fr_debug_lvl;
 		}
 		request->component = NULL;
 		request->module = NULL;

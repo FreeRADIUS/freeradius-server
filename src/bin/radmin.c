@@ -501,13 +501,13 @@ static int cmd_set_debug_level(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ctx, 
 		return -1;
 	}
 
-	rad_debug_lvl = req_debug_lvl = fr_debug_lvl = level;
+	fr_debug_lvl = level;
 	return 0;
 }
 
 static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	fprintf(fp, "%d\n", rad_debug_lvl);
+	fprintf(fp, "%d\n", fr_debug_lvl);
 	return 0;
 }
 

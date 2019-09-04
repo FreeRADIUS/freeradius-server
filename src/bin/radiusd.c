@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 
 	size_t		pool_size = 0;
 	void		*pool_page_start = NULL, *pool_page_end = NULL;
-	bool		do_mprotect;	
+	bool		do_mprotect;
 	dl_module_loader_t *dl_modules = NULL;
 
 	/*
@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	rad_debug_lvl = 0;
+	fr_debug_lvl = 0;
 	fr_time_start();
 
 	/*
@@ -369,14 +369,14 @@ int main(int argc, char *argv[])
 		case 'X':
 			config->spawn_workers = false;
 			config->daemonize = false;
-			rad_debug_lvl += 2;
+			fr_debug_lvl += 2;
 	do_stdout:
 			default_log.dst = L_DST_STDOUT;
 			default_log.fd = STDOUT_FILENO;
 			break;
 
 		case 'x':
-			rad_debug_lvl++;
+			fr_debug_lvl++;
 			break;
 
 		default:
@@ -396,7 +396,7 @@ int main(int argc, char *argv[])
 		if (raddb_dir) main_config_raddb_dir_set(config, raddb_dir);
 	}
 
-	fr_debug_lvl = req_debug_lvl = config->debug_level = rad_debug_lvl;
+	config->debug_level = fr_debug_lvl;
 
 	/*
 	 *  Mismatch between the binary and the libraries it depends on.
@@ -441,7 +441,7 @@ int main(int argc, char *argv[])
 	 *  Better here, so it doesn't matter whether we get passed -xv or -vx.
 	 */
 	if (display_version) {
-		if (rad_debug_lvl == 0) rad_debug_lvl = 1;
+		if (fr_debug_lvl == 0) fr_debug_lvl = 1;
 		default_log.dst = L_DST_STDOUT;
 		default_log.fd = STDOUT_FILENO;
 
@@ -450,7 +450,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_SUCCESS;
 	}
 
-	if (rad_debug_lvl) dependency_version_print();
+	if (fr_debug_lvl) dependency_version_print();
 
 	/*
 	 *  Under linux CAP_SYS_PTRACE is usually only available before setuid/setguid,
@@ -722,7 +722,7 @@ int main(int argc, char *argv[])
 			el = main_loop_event_list();
 		}
 
-		sc = fr_schedule_create(NULL, el, &default_log, rad_debug_lvl,
+		sc = fr_schedule_create(NULL, el, &default_log, fr_debug_lvl,
 					networks, workers,
 					thread_instantiate,
 					config->root_cs);

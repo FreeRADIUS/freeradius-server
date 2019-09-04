@@ -307,7 +307,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		/*
 		 *	Hide secrets when using "radiusd -X".
 		 */
-		if (secret && (rad_debug_lvl < L_DBG_LVL_3)) {
+		if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
 			cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp));
 		} else {
 			cf_log_debug(cs, "%.*s%s = \"%pV\"", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),

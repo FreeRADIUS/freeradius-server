@@ -351,7 +351,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 		}
 	} /* loop over the VP's we read in */
 
-	if (rad_debug_lvl) {
+	if (fr_debug_lvl) {
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -405,8 +405,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	request->log.dst = talloc_zero(request, log_dst_t);
 	request->log.dst->func = vlog_request;
 	request->log.dst->uctx = &default_log;
-
-	request->log.lvl = rad_debug_lvl;
+	request->log.lvl = fr_debug_lvl;
 
 	fr_request_async_bootstrap(request, el);
 
@@ -466,7 +465,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 	request->log.dst->func = vlog_request;
 	request->log.dst->uctx = &default_log;
 
-	request->log.lvl = rad_debug_lvl;
+	request->log.lvl = fr_debug_lvl;
 	output[0] = '\0';
 
 	while (fgets(input, sizeof(input), fp) != NULL) {
@@ -625,7 +624,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	rad_debug_lvl = 0;
+	fr_debug_lvl = 0;
 	fr_time_start();
 
 	/*
@@ -688,11 +687,11 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'X':
-				rad_debug_lvl += 2;
+				fr_debug_lvl += 2;
 				break;
 
 			case 'x':
-				rad_debug_lvl++;
+				fr_debug_lvl++;
 				break;
 
 			default:
@@ -723,8 +722,7 @@ int main(int argc, char *argv[])
 	if (tls_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
-	if (rad_debug_lvl) dependency_version_print();
-	fr_debug_lvl = rad_debug_lvl;
+	if (fr_debug_lvl) dependency_version_print();
 
 	/*
 	 *	Mismatch between the binary and the libraries it depends on

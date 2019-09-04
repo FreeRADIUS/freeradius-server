@@ -745,7 +745,7 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 		return;
 	}
 
-	if (rad_debug_lvl) command_print();
+	if (fr_debug_lvl) command_print();
 
 	snprintf(output, outlen, "ok");
 	fflush(stdout);
@@ -1496,7 +1496,6 @@ int main(int argc, char *argv[])
 
 		case 'x':
 			fr_debug_lvl++;
-			rad_debug_lvl = fr_debug_lvl;
 			default_log.dst = L_DST_STDOUT;
 			default_log.fd = STDOUT_FILENO;
 			break;

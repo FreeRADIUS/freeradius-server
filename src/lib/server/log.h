@@ -42,9 +42,6 @@ typedef struct log_dst log_dst_t;
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/pair.h>
 
-extern fr_log_lvl_t	rad_debug_lvl;		//!< Global debug level.
-extern fr_log_lvl_t	req_debug_lvl;		//!< Request specific debug level.
-
 /** Logging callback to write log messages to a destination
  *
  * This allows the logging destination to be customised on a per request basis.
@@ -77,10 +74,9 @@ extern size_t syslog_severity_table_len;
 extern fr_table_num_sorted_t const log_str2dst[];
 extern size_t log_str2dst_len;
 
-#define debug_enabled(_type, _lvl) ((_type & L_DBG) && (_lvl <= rad_debug_lvl))
+#define debug_enabled(_type, _lvl) ((_type & L_DBG) && (_lvl <= fr_debug_lvl))
 
-bool	log_debug_enabled(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request)
-	CC_HINT(nonnull);
+bool	log_rdebug_enabled(fr_log_lvl_t lvl, REQUEST *request) CC_HINT(nonnull);
 
 void	vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 		     char const *file, int line,
@@ -211,7 +207,7 @@ void	log_global_free(void);
 #define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_4)			//!< True if global debug level 1-3 messages are enabled
 #define DEBUG_ENABLED5		debug_enabled(L_DBG, L_DBG_LVL_MAX)			//!< True if global debug level 1-5 messages are enabled
 
-#define _DEBUG_LOG(_type, _lvl, _fmt, ...)	if (rad_debug_lvl >= _lvl) _FR_LOG_PREFIX(_type, _fmt, ## __VA_ARGS__)
+#define _DEBUG_LOG(_type, _lvl, _fmt, ...)	if (fr_debug_lvl >= _lvl) _FR_LOG_PREFIX(_type, _fmt, ## __VA_ARGS__)
 #define DEBUG(_fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_1, _fmt, ## __VA_ARGS__)
 #define DEBUG2(_fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_2, _fmt, ## __VA_ARGS__)
 #define DEBUG3(_fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
@@ -271,32 +267,32 @@ void	log_global_free(void);
  *
  * @{
  */
-#define RDEBUG_ENABLED		log_debug_enabled(L_DBG, L_DBG_LVL_1, request)		//!< True if request debug level 1 messages are enabled
-#define RDEBUG_ENABLED2		log_debug_enabled(L_DBG, L_DBG_LVL_2, request)		//!< True if request debug level 1-2 messages are enabled
-#define RDEBUG_ENABLED3		log_debug_enabled(L_DBG, L_DBG_LVL_3, request)		//!< True if request debug level 1-3 messages are enabled
-#define RDEBUG_ENABLED4		log_debug_enabled(L_DBG, L_DBG_LVL_4, request)		//!< True if request debug level 1-4 messages are enabled
-#define RDEBUG_ENABLED5		log_debug_enabled(L_DBG, L_DBG_LVL_MAX, request)	//!< True if request debug level 1-5 messages are enabled
+#define RDEBUG_ENABLED		log_rdebug_enabled(L_DBG_LVL_1, request)		//!< True if request debug level 1 messages are enabled
+#define RDEBUG_ENABLED2		log_rdebug_enabled(L_DBG_LVL_2, request)		//!< True if request debug level 1-2 messages are enabled
+#define RDEBUG_ENABLED3		log_rdebug_enabled(L_DBG_LVL_3, request)		//!< True if request debug level 1-3 messages are enabled
+#define RDEBUG_ENABLED4		log_rdebug_enabled(L_DBG_LVL_4, request)		//!< True if request debug level 1-4 messages are enabled
+#define RDEBUG_ENABLED5		log_rdebug_enabled(L_DBG_LVL_MAX, request)	//!< True if request debug level 1-5 messages are enabled
 
-#define RDEBUGX(_l, fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG, _l, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RDEBUG(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RDEBUG2(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RDEBUG3(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RDEBUG4(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RDEBUGX(_l, fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, _l, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RDEBUG(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 
-#define RIDEBUG(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RIDEBUG2(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RIDEBUG3(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RIDEBUG4(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RIDEBUG(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RIDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RIDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RIDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 
-#define RWDEBUG(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RWDEBUG2(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RWDEBUG3(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RWDEBUG4(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RWDEBUG(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RWDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RWDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RWDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 
-#define RPWDEBUG(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request_perror(L_DBG_WARN, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RPWDEBUG2(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request_perror(L_DBG_WARN, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RPWDEBUG3(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request_perror(L_DBG_WARN, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
-#define RPWDEBUG4(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) log_request_perror(L_DBG_WARN, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPWDEBUG(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_WARN, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPWDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_WARN, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPWDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_WARN, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPWDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_WARN, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 
 #define REDEBUG(fmt, ...)	log_request_error(L_DBG_ERR, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define REDEBUG2(fmt, ...)	log_request_error(L_DBG_ERR, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
@@ -486,7 +482,7 @@ do {\
  * @param[in] ...	Additional arguments to print.
  */
 #define _RHEXDUMP_INLINE(_lvl, _data, _len, _fmt, ...) \
-	if (log_debug_enabled(L_DBG, _lvl, request)) { \
+	if (log_rdebug_enabled(_lvl, request)) { \
 		log_request(L_DBG, _lvl, request, __FILE__, __LINE__, _fmt " 0x%pH", ## __VA_ARGS__, fr_box_octets(_data, _len)); \
 	}
 
@@ -504,7 +500,7 @@ do {\
  * @param[in] ...	Additional arguments to print.
  */
 #define _RHEXDUMP(_lvl, _data, _len, _fmt, ...) \
-	if (log_debug_enabled(L_DBG,_lvl, request)) do { \
+	if (log_rdebug_enabled(_lvl, request)) do { \
 		log_request(L_DBG, _lvl, request, __FILE__, __LINE__, _fmt, ## __VA_ARGS__); \
 		log_request_hex(L_DBG, _lvl, request, __FILE__, __LINE__, _data, _len); \
 	} while (0)

@@ -43,9 +43,6 @@ RCSID("$Id$")
 #include <sys/file.h>
 #include <pthread.h>
 
-fr_log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
-fr_log_lvl_t	req_debug_lvl = 0;		//!< Request debugging level
-
 fr_thread_local_setup(TALLOC_CTX *, fr_vlog_request_pool)
 
 /** Syslog facility table
@@ -229,35 +226,19 @@ static int log_always(fr_log_t const *log, fr_log_type_t type,
 	return r;
 }
 
-
 /** Whether a request specific debug message should be logged
  *
- * @param type of message.
  * @param lvl of debugging this message should be logged at.
  * @param request The current request.
  * @return
  *	- true if message should be logged.
  *	- false if message shouldn't be logged.
  */
-inline bool log_debug_enabled(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request)
+inline bool log_rdebug_enabled(fr_log_lvl_t lvl, REQUEST *request)
 {
 	if (!request->log.dst) return false;
 
-	/*
-	 *	It's a debug class message, note this doesn't mean it's a debug type message.
-	 *
-	 *	For example it could be a RIDEBUG message, which would be an informational message,
-	 *	instead of an RDEBUG message which would be a debug debug message.
-	 *
-	 *	There is log function, but the request debug level isn't high enough.
-	 *	OR, we're in debug mode, and the global debug level isn't high enough,
-	 *	then don't log the message.
-	 */
-	if ((type & L_DBG) &&
-	    ((lvl <= request->log.lvl) ||
-	     ((rad_debug_lvl != 0) && (lvl <= rad_debug_lvl)))) {
-		return true;
-	}
+	if (lvl <= request->log.lvl) return false;
 
 	return false;
 }
@@ -322,12 +303,12 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 
 	filename = log_dst->file;
 
+	if (!log_rdebug_enabled(lvl, request)) return;
+
 	/*
 	 *	Debug messages get treated specially.
 	 */
 	if ((type & L_DBG) != 0) {
-		if (!log_debug_enabled(type, lvl, request)) return;
-
 		/*
 		 *	If we're debugging to a file, then use that.
 		 *
@@ -737,7 +718,7 @@ void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, c
 
 	if (!vp || !request || !request->log.dst) return;
 
-	if (!log_debug_enabled(L_DBG, lvl, request)) return;
+	if (!log_rdebug_enabled(lvl, request)) return;
 
 	RINDENT();
 	for (vp = fr_cursor_init(&cursor, &vp);
@@ -773,7 +754,7 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR 
 
 	if (!vp || !request || !request->log.dst) return;
 
-	if (!log_debug_enabled(L_DBG, lvl, request)) return;
+	if (!log_rdebug_enabled(lvl, request)) return;
 
 	RINDENT();
 	for (vp = fr_cursor_init(&cursor, &vp);

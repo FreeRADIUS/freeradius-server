@@ -1364,7 +1364,6 @@ int main(int argc, char *argv[])
 	ippool_tool_t			*conf;
 
 	fr_debug_lvl = 0;
-	rad_debug_lvl = 0;
 	name = argv[0];
 
 	conf = talloc_zero(NULL, ippool_tool_t);
@@ -1446,7 +1445,6 @@ do { \
 
 		case 'x':
 			fr_debug_lvl++;
-			rad_debug_lvl++;
 			break;
 
 		case 'o':

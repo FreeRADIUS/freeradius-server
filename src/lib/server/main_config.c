@@ -967,7 +967,7 @@ do {\
 	 *	removes the "Debug : " prefix from the log messages.
 	 */
 	p = getenv("TERM");
-	if (p && isatty(default_log.fd) && strstr(p, "xterm") && rad_debug_lvl) {
+	if (p && isatty(default_log.fd) && strstr(p, "xterm") && fr_debug_lvl) {
 		default_log.colourise = true;
 	} else {
 		default_log.colourise = false;
@@ -1201,13 +1201,7 @@ do {\
 	 *	command-line: use whatever is in the config
 	 *	file.
 	 */
-	if (rad_debug_lvl == 0) rad_debug_lvl = config->debug_level;
-
-	/*
-	 *	Set the same debug level for the global log
-	 *	for requests, and for libfreeradius, and for requests.
-	 */
-	fr_debug_lvl = req_debug_lvl = rad_debug_lvl;
+	if (fr_debug_lvl == 0) fr_debug_lvl = config->debug_level;
 
 	INFO("Switching to configured log settings");
 

@@ -767,7 +767,7 @@ int main(int argc, char **argv)
 		progname++;
 	}
 
-	rad_debug_lvl = L_DBG_LVL_1;
+	fr_debug_lvl = L_DBG_LVL_1;
 
 	while ((c = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:S:x")) != -1) switch (c) {
 		case 'd':
@@ -823,7 +823,7 @@ int main(int argc, char **argv)
 
 		case 'q':
 			quiet = true;
-			if (rad_debug_lvl > 0) rad_debug_lvl--;
+			if (fr_debug_lvl > 0) fr_debug_lvl--;
 			break;
 
 		case 's':
@@ -839,7 +839,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'x':
-			rad_debug_lvl++;
+			fr_debug_lvl++;
 			break;
 	}
 
