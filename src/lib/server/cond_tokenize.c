@@ -965,7 +965,11 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				return_rhs("Expected regex");
 			}
 
-			flen = regex_flags_parse(&err, &regex_flags, rhs + rhs_len + 1, strlen(rhs + rhs_len + 1), true);
+			/*
+			 *	Parse the flags after the *input* string, as "rhs" may have been
+			 *	dynamically expanded.
+			 */
+			flen = regex_flags_parse(&err, &regex_flags, p + slen, strlen(p + slen), true);
 			switch (err) {
 				/*
 				 *	Got flags all the way to the end of the string
