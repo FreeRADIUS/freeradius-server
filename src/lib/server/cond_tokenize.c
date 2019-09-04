@@ -569,22 +569,40 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 	return 1;
 }
 
+/*
+ *	Like tmpl_preparse(), but expands variables.
+ */
+static ssize_t cond_preparse(char const **out, size_t *outlen, char const *start,
+			     FR_TOKEN *type, char const **error,
+			     fr_dict_attr_t const **castda, bool require_regex,
+			     UNUSED CONF_SECTION *parent, UNUSED char const *filename, UNUSED int lineno)
+{
+	/*
+	 *	@todo - If it's a bare word, expand that.
+	 */
+
+	return tmpl_preparse(out, outlen, start, type, error, castda, require_regex);
+}
+
+
 /** Tokenize a conditional check
  *
- *  @param[in] ctx for talloc
- *  @param[out] pcond pointer to the returned condition structure
- *  @param[out] error the parse error (if any)
- *  @param[in] ci for CONF_ITEM
- *  @param[in] start the start of the string to process.  Should be "(..."
- *  @param[in] brace look for a closing brace
- *  @param[in] rules for attribute parsing
+ *  @param[in] ctx	for talloc
+ *  @param[out] pcond	pointer to the returned condition structure
+ *  @param[out] error	the parse error (if any)
+ *  @param[in] parent	the parent CONF_SECTION
+ *  @param[in] start	the start of the string to process.  Should be "(..."
+ *  @param[in] brace	look for a closing brace (how many deep we are)
+ *  @param[in] rules	for attribute parsing
+ * @param[in] filename	filename we read the condition from
+ * @param[in] lineno	line where we read the condition from
  *  @return
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
 static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **error,
-			     CONF_ITEM *ci, char const *start, int brace,
-			     vp_tmpl_rules_t const *rules)
+			     CONF_SECTION *parent, char const *start, int brace,
+			     vp_tmpl_rules_t const *rules, char const *filename, int lineno)
 {
 	ssize_t			slen, tlen;
 	char const		*p = start;
@@ -640,8 +658,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 *	brackets.  Go recurse to get more.
 		 */
 		c->type = COND_TYPE_CHILD;
-		c->ci = ci;
-		slen = cond_tokenize(c, &c->data.child, error, ci, p, brace + 1, rules);
+		c->ci = cf_section_to_item(parent);
+		slen = cond_tokenize(c, &c->data.child, error, parent, p, brace + 1, rules, filename, lineno);
 		if (slen <= 0) return_SLEN;
 
 		if (!c->data.child) {
@@ -663,7 +681,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	/*
 	 *	Grab the LHS
 	 */
-	slen = tmpl_preparse(&lhs, &lhs_len, p, &lhs_type, error, &c->cast, false);
+	slen = cond_preparse(&lhs, &lhs_len, p, &lhs_type, error, &c->cast, false, parent, filename, lineno);
 	if (slen <= 0) {
 		fprintf(stderr, "FAILED %d %s\n", __LINE__, start);
 		return_SLEN;
@@ -728,7 +746,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		}
 
 		c->type = COND_TYPE_EXISTS;
-		c->ci = ci;
+		c->ci = cf_section_to_item(parent);
 
 		tlen = tmpl_afrom_str(c, &c->data.vpt,
 				      lhs, lhs_len, lhs_type, &parse_rules, true);
@@ -755,7 +773,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		 *	The next thing should now be a comparison operator.
 		 */
 		c->type = COND_TYPE_MAP;
-		c->ci = ci;
+		c->ci = cf_section_to_item(parent);
 
 		switch (*p) {
 		default:
@@ -844,7 +862,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			return_P("Expected text after operator");
 		}
 
-		slen = tmpl_preparse(&rhs, &rhs_len, p, &rhs_type, error, NULL, regex);
+		slen = cond_preparse(&rhs, &rhs_len, p, &rhs_type, error, NULL, regex, parent, filename, lineno);
 		if (slen <= 0) {
 			fprintf(stderr, "FAILED %d %s\n", __LINE__, start);
 			return_SLEN;
@@ -978,9 +996,9 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 #endif
 
 		/*
-		 *	Save the CONF_ITEM for later.
+		 *	Save the parent for later.
 		 */
-		c->data.map->ci = ci;
+		c->data.map->ci = cf_section_to_item(parent);
 
 		/*
 		 *	We cannot compare lists to anything.
@@ -1064,7 +1082,7 @@ closing_brace:
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = cond_tokenize(c, &c->next, error, ci, p, brace, rules);
+	slen = cond_tokenize(c, &c->next, error, parent, p, brace, rules, filename, lineno);
 	if (slen <= 0) {
 	return_slen:
 		talloc_free(c);
@@ -1511,8 +1529,10 @@ done:
  * @param[out] head	the parsed condition structure
  * @param[out] error	the parse error (if any)
  * @param[in] dict	dictionary to resolve attributes in.
- * @param[in] ci	for CONF_ITEM
+ * @param[in] parent	the parent CONF_SECTION
  * @param[in] start	the start of the string to process.  Should be "(..."
+ * @param[in] filename	filename we read the condition from
+ * @param[in] lineno	line where we read the condition from
  * @return
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
@@ -1520,9 +1540,11 @@ done:
 ssize_t fr_cond_tokenize(TALLOC_CTX *ctx,
 			 fr_cond_t **head, char const **error,
 			 fr_dict_t const *dict,
-			 CONF_ITEM *ci, char const *start)
+			 CONF_SECTION *parent, char const *start,
+			 char const *filename, int lineno)
 {
-	return cond_tokenize(ctx, head, error, ci, start, 0, &(vp_tmpl_rules_t){ .dict_def = dict });
+	return cond_tokenize(ctx, head, error, parent, start, 0, &(vp_tmpl_rules_t){ .dict_def = dict },
+			     filename, lineno);
 }
 
 /*

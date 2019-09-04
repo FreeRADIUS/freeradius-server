@@ -1155,8 +1155,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Skip (...) to find the {
 			 */
-			slen = fr_cond_tokenize(this, &cond, &error,
-						dict, cf_section_to_item(this), ptr);
+			slen = fr_cond_tokenize(this, &cond, &error, dict,
+						this, ptr, filename, *lineno);
 			if (slen < 0) {
 				char *spaces, *text;
 
