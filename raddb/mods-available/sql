@@ -158,8 +158,16 @@ sql {
 #	password = "radpass"
 
 	# Connection info for Mongo
-	#
-#	server = "mongodb://USER:PASSWORD@192.16.0.2:PORT/?authSource=admin"
+	# Authentication Without SSL
+	#	server = "mongodb://USER:PASSWORD@192.16.0.2:PORT/DATABASE?authSource=admin&ssl=false"
+
+	# Authentication With SSL
+	#	server = "mongodb://USER:PASSWORD@192.16.0.2:PORT/DATABASE?authSource=admin&ssl=true"
+
+	# Authentication with Certificate
+	# Use this command for retrieve Derived username:
+	# openssl x509 -in mycert.pem -inform PEM -subject -nameopt RFC2253
+	# server = mongodb://<DERIVED USERNAME>@192.168.0.2:PORT/DATABASE?authSource=$external&ssl=true&authMechanism=MONGODB-X509
 
 	# Database table configuration for everything except Oracle
 	radius_db = "radius"
