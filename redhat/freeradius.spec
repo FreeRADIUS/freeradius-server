@@ -469,6 +469,9 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 
 make %{?_smp_mflags}
 
+%check
+make test
+
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/var/run/radiusd
