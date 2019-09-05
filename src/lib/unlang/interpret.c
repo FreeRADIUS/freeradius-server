@@ -76,6 +76,8 @@ static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 	RDEBUG2("priority       %d", frame->priority);
 	RDEBUG2("unwind         %d", frame->unwind);
 	RDEBUG2("repeat         %s", frame->repeat ? "yes" : "no");
+	RDEBUG2("break_point    %s", frame->break_point ? "yes" : "no");
+	RDEBUG2("return_point   %s", frame->return_point ? "yes" : "no");
 	REXDENT();
 }
 
@@ -256,7 +258,21 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 		frame->next = NULL;
 	}
 
+	/*
+	 *	Set flags which tell us when to stop.  Note that a top
+	 *	frame *also* stops "break" and "return".
+	 *
+	 *	There's no real reason to have a top-frame stop
+	 *	"break".  The compiler should already have caught it,
+	 *	and complained about using "break" without an
+	 *	enclosing "foreach".  But it's a useful check to have.
+	 */
 	frame->top_frame = top_frame;
+	frame->return_point = top_frame;
+	frame->break_point = top_frame;
+
+	frame->break_point |= (instruction && (instruction->type == UNLANG_TYPE_FOREACH));
+
 	frame->instruction = instruction;
 	frame->result = default_rcode;
 	frame->priority = -1;
@@ -353,18 +369,30 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 
 	/*
 	 *	"break" means "break out of the enclosing foreach",
-	 *	but stop at the enclosing foreach.
+	 *	but stop at the enclosing foreach / break ppint.
 	 */
 	if ((frame->unwind == UNLANG_TYPE_BREAK) &&
-	    (instruction->type == UNLANG_TYPE_FOREACH)) {
+	    frame->break_point) {
+		rad_assert(instruction->type == UNLANG_TYPE_FOREACH);
 		frame->unwind = UNLANG_TYPE_NULL;
 	}
 
 	/*
-	 *	If we've been told to stop processing
-	 *	it, do so.
+	 *	If we are unwinding the stack due to a break / return,
+	 *	then handle it now.
 	 */
 	if (frame->unwind != UNLANG_TYPE_NULL) {
+		/*
+		 *	Stop unwinding the return at a return point.
+		 *
+		 *	This should match mainly for policies which
+		 *	have intermediate return points.
+		 */
+		if ((frame->unwind == UNLANG_TYPE_RETURN) &&
+		    frame->return_point) {
+			frame->unwind = UNLANG_TYPE_NULL;
+		}
+
 		RDEBUG4("** [%i] %s - unwinding current frame with (%s %d)",
 			stack->depth, __FUNCTION__,
 			fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
@@ -400,22 +428,22 @@ static inline void frame_next(unlang_stack_frame_t *frame)
  */
 static inline void frame_pop(unlang_stack_t *stack)
 {
-	unlang_stack_frame_t *frame, *next;
+	unlang_stack_frame_t *frame, *old;
 
 	rad_assert(stack->depth > 1);
 
 	frame = &stack->frame[stack->depth];
 	frame_cleanup(frame);
+	old = frame;
 
 	frame = &stack->frame[--stack->depth];
-	next = frame + 1;
 
 	/*
 	 *	Unwind back up the stack.  If we're unwinding, stop
 	 *	processing any loops.
 	 */
-	if (next->unwind != UNLANG_TYPE_NULL) {
-		frame->unwind = next->unwind;
+	if (old->unwind != UNLANG_TYPE_NULL) {
+		frame->unwind = old->unwind;
 		frame->repeat = false;
 	}
 }
@@ -647,8 +675,16 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			 *	indicated we should pop it, but we're now at
 			 *	a top_frame, so we need to break out of the loop
 			 *	and calculate the final result for this substack.
+			 *
+			 *	Note that we only stop on a top frame.
+			 *	If there's a return point such as in a
+			 *	policy, then the "return" causes a
+			 *	"pop" until the return point.  BUT we
+			 *	then continue execution with the next
+			 *	instruction.  And we don't return all
+			 *	of the way up the stack.
 			 */
-			if ((fa == UNLANG_FRAME_ACTION_POP) && frame->top_frame) break;	/* return */
+			if ((fa == UNLANG_FRAME_ACTION_POP) && frame->top_frame) break;	/* stop */
 			continue;
 
 		case UNLANG_FRAME_ACTION_POP:		/* Pop this frame and check the one beneath it */
@@ -680,7 +716,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			/*
 			 *	If we're done, merge the last stack->result / priority in.
 			 */
-			if (frame->top_frame) break;	/* return */
+			if (frame->top_frame) break;	/* stop */
 
 			/*
 			 *	Close out the section we entered earlier
@@ -1048,7 +1084,7 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 		stack->depth = i;			/* We could also pass in the frame to the signal function */
 		frame = &stack->frame[stack->depth];
 
-		if (frame->top_frame) continue;		/* Skip top frames */
+		if (frame->top_frame) continue;		/* Skip top frames as they have no instruction */
 
 		/*
 		 *	Be gracious in errors.

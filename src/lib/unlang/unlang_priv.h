@@ -277,6 +277,8 @@ typedef struct {
 								///< If true, causes the interpreter to stop
 								///< interpreting and return, control then passes
 								///< to whatever called the interpreter.
+	bool			break_point : 1;       		//!< 'break' stops here
+	bool			return_point : 1;      		//!< 'return' stops here
 } unlang_stack_frame_t;
 
 /** An unlang stack associated with a request
