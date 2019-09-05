@@ -3203,14 +3203,18 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
  * @param[in] virtual_name	Virtual module name e.g. foo.
  * @param[in] method_name	Method override (may be NULL) or the method
  *				name e.g. authorize.
+ * @param[out] policy		whether or not this thing was a policy
  * @return the CONF_SECTION specifying the virtual module.
  */
 static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_components_t *pcomponent,
-					    char const *real_name, char const *virtual_name, char const *method_name)
+					    char const *real_name, char const *virtual_name, char const *method_name,
+					    bool *policy)
 {
 	CONF_SECTION *cs, *subcs;
 	rlm_components_t method = *pcomponent;
 	char buffer[256];
+
+	*policy = false;
 
 	/*
 	 *	Turn the method name into a method enum.
@@ -3256,6 +3260,8 @@ static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_compone
 	 */
 	cs = cf_section_find(conf_root, "policy", NULL);
 	if (!cs) return NULL;
+
+	*policy = true;
 
 	/*
 	 *	"foo.authorize" means "load policy "foo" as method "authorize".
@@ -3406,6 +3412,7 @@ static unlang_t *compile_item(unlang_t *parent,
 	rlm_components_t	component = unlang_ctx->component;
 	unlang_compile_t	unlang_ctx2;
 	module_method_t		method;
+	bool			policy;
 
 	if (cf_item_is_section(ci)) {
 		int i;
@@ -3575,7 +3582,7 @@ static unlang_t *compile_item(unlang_t *parent,
 	subcs = NULL;
 	p = strrchr(modrefname, '.');
 	if (!p) {
-		subcs = virtual_module_find_cs(cf_root(ci), &component, modrefname, modrefname, NULL);
+		subcs = virtual_module_find_cs(cf_root(ci), &component, modrefname, modrefname, NULL, &policy);
 	} else {
 		char buffer[256];
 
@@ -3583,7 +3590,7 @@ static unlang_t *compile_item(unlang_t *parent,
 		buffer[p - modrefname] = '\0';
 
 		subcs = virtual_module_find_cs(cf_root(ci), &component, modrefname,
-					       buffer, buffer + (p - modrefname) + 1);
+					       buffer, buffer + (p - modrefname) + 1, &policy);
 	}
 
 	/*
@@ -3621,6 +3628,11 @@ static unlang_t *compile_item(unlang_t *parent,
 		if (cf_section_name2(subcs)) {
 			UPDATE_CTX2;
 
+			if (policy) {
+				cf_log_err(subcs, "Unexpected second name in policy");
+				return NULL;
+			}
+
 			c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), parent_group_type, modname);
 			if (!c) return NULL;
 
@@ -3636,7 +3648,8 @@ static unlang_t *compile_item(unlang_t *parent,
 			 *
 			 *	group foo { ...
 			 */
-			c = compile_group(parent, &unlang_ctx2, subcs, UNLANG_GROUP_TYPE_SIMPLE, parent_group_type, UNLANG_TYPE_GROUP);
+			c = compile_group(parent, &unlang_ctx2, subcs, UNLANG_GROUP_TYPE_SIMPLE, parent_group_type,
+					  policy ? UNLANG_TYPE_POLICY : UNLANG_TYPE_GROUP);
 			if (!c) return NULL;
 
 			c->name = cf_section_name1(subcs);
