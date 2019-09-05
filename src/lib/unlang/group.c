@@ -66,5 +66,6 @@ void unlang_group_init(void)
 			   &(unlang_op_t){
 				.name = "policy",
 				.func = unlang_policy,
+				.debug_braces = true
 			   });
 }
