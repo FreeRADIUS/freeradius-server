@@ -118,6 +118,7 @@ services:
 - postgresql
 - redis-server
 before_install:
+- python -c "import fcntl; fcntl.fcntl(1, fcntl.F_SETFL, 0)"
 - npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0
 - sudo ./scripts/travis/cassandra-install.sh
 - rvm --install --default --binary use 2.4
