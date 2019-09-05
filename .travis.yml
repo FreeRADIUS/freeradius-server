@@ -118,7 +118,7 @@ services:
 - postgresql
 - redis-server
 before_install:
-- python -c "import fcntl; fcntl.fcntl(1, fcntl.F_SETFL, 0)"
+- python -c 'import os,sys,fcntl; flags = fcntl.fcntl(sys.stdout, fcntl.F_GETFL); print(flags&os.O_NONBLOCK); fcntl.fcntl(1, fcntl.F_SETFL, 0)'
 - npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0
 - sudo ./scripts/travis/cassandra-install.sh
 - rvm --install --default --binary use 2.4
@@ -133,7 +133,9 @@ before_install:
 - pandoc --version
 - doxygen --version
 before_script:
+- python -c 'import os,sys,fcntl; flags = fcntl.fcntl(sys.stdout, fcntl.F_GETFL); print(flags&os.O_NONBLOCK); fcntl.fcntl(1, fcntl.F_SETFL, 0)'
 - ./scripts/travis/build.sh
 script:
+- python -c 'import os,sys,fcntl; flags = fcntl.fcntl(sys.stdout, fcntl.F_GETFL); print(flags&os.O_NONBLOCK); fcntl.fcntl(1, fcntl.F_SETFL, 0)'
 - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
 - if [ "${DO_BUILD}" = 'no' ]; then make tests.doc; fi
