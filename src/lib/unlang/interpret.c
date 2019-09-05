@@ -544,7 +544,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			frame->result = *result;
 			frame->priority = *priority;
 			frame->next = NULL;
-			frame->unwind = UNLANG_TYPE_BREAK;
+			rad_assert(frame->unwind == instruction->type);
 			return UNLANG_FRAME_ACTION_POP;
 
 		/*
