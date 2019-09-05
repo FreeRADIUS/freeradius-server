@@ -2527,10 +2527,19 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	unlang_t *c;
 
 	for (foreach = parent; foreach != NULL; foreach = foreach->parent) {
+		/*
+		 *	A "break" inside of a "policy" is an error.
+		 *	We CANNOT allow "break" inside of a policy to
+		 *	affect a "foreach" loop outside of that
+		 *	policy.
+		 */
+		if (foreach->type == UNLANG_TYPE_POLICY) goto fail;
+
 		if (foreach->type == UNLANG_TYPE_FOREACH) break;
 	}
 
 	if (!foreach) {
+	fail:
 		cf_log_err(ci, "'break' can only be used in a 'foreach' section");
 		return NULL;
 	}
