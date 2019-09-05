@@ -1,0 +1,23 @@
+subrequest Access-Request {
+	update parent.request {
+		&Tmp-String-0 := "testing1234"
+	}
+
+	#
+	#  Defeat return check
+	#
+	group {
+		return
+
+	}
+	update parent.request {
+		&Tmp-String-1 := "testing1234"
+	}
+}
+
+if ((&request:Tmp-String-0 == "testing1234") && !&reply:Tmp-String-1) {
+	success
+}
+else {
+	test_fail
+}
