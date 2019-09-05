@@ -617,7 +617,7 @@ static ssize_t cond_preparse(char const **out, size_t *outlen, char const *start
 	my_slen = tmpl_preparse(out, outlen, buffer, type, error, castda, require_regex);
 	if (my_slen <= 0) return my_slen;
 
-	if (!*out || *outlen == 0) return 0; /* for sanity checks */
+	if (!*out) return 0; /* for sanity checks, *outlen can be 0 for empty strings */
 
 	/*
 	 *	'out' now points to 'buffer', which we don't want.  So

@@ -647,3 +647,10 @@ data <ipv4prefix>&NAS-IP-Address < `/bin/echo 192.168/16`
 #
 condition (&reply:)
 data &reply:
+
+#
+#  Expansions of environment variables
+#  and empty strings
+#
+condition ("$ENV{SOMETHING_OR_OTHER}" == '')
+data true
