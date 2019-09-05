@@ -272,6 +272,7 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 	frame->break_point = top_frame;
 
 	frame->break_point |= (instruction && (instruction->type == UNLANG_TYPE_FOREACH));
+	frame->return_point |= (instruction && (instruction->type == UNLANG_TYPE_POLICY));
 
 	frame->instruction = instruction;
 	frame->result = default_rcode;
@@ -437,6 +438,22 @@ static inline void frame_pop(unlang_stack_t *stack)
 	old = frame;
 
 	frame = &stack->frame[--stack->depth];
+
+	/*
+	 *	The child was break / return, AND the current frame is
+	 *	a break / return point.  Stop unwinding the stack.
+	 */
+	if ((old->unwind == UNLANG_TYPE_BREAK) &&
+	    frame->break_point) {
+		frame->repeat = false;
+		return;
+	}
+
+	if ((old->unwind == UNLANG_TYPE_RETURN) &&
+	    frame->return_point) {
+		frame->repeat = false; /* not really necessary, but for paranoia */
+		return;
+	}
 
 	/*
 	 *	Unwind back up the stack.  If we're unwinding, stop
