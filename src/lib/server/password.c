@@ -592,7 +592,7 @@ static VALUE_PAIR *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, VALU
 		if (!out) return NULL;
 
 		normalised = password_process_sha3(ctx, request, out);
-		talloc_list_free(out);
+		talloc_list_free(&out);
 
 		return normalised;
 	}
