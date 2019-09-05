@@ -123,6 +123,9 @@ build: build-arch build-indep
 build-arch: patch build-arch-stamp
 build-arch-stamp: config.status
 	$(MAKE)
+ifeq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
+	$(MAKE) test
+endif
 	touch $@
 
 build-indep: patch build-indep-stamp
