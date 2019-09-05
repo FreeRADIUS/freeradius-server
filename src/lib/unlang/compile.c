@@ -1074,7 +1074,6 @@ static void unlang_dump(unlang_t *mc, int depth)
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case UNLANG_TYPE_POLICY:
 		case UNLANG_TYPE_FOREACH:
 			g = unlang_generic_to_group(inst);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces, unlang_ops[inst->type].name, inst->name);
@@ -1086,6 +1085,10 @@ static void unlang_dump(unlang_t *mc, int depth)
 			DEBUG("%.*sbreak", depth, modcall_spaces);
 			break;
 
+			/*
+			 *	Policies are just groups with a different way of handling them.
+			 */
+		case UNLANG_TYPE_POLICY:
 #endif
 		case UNLANG_TYPE_GROUP:
 			g = unlang_generic_to_group(inst);
