@@ -3005,14 +3005,23 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		 *	@todo - make this configurable
 		 */
 	case '$':
-		if (p[1] != '{') {
+		if (p[1] == '{') {
+			*out = p;
+			*type = T_BARE_WORD;
+
+			p += 2;
+
+		} else if ((p[1] == 'E') && (p[2] == 'N') && (p[3] == 'V') &&
+			   (p[4] == '{')) {
+			*out = p;
+			*type = T_BARE_WORD;
+
+			p += 2;
+
+		} else {
 			return_P("Unexpected '$'");
 		}
 
-		*out = p;
-		*type = T_BARE_WORD;
-
-		p += 2;
 		while (*p && (*p != '}')) {
 			if (isspace((int) *p)) {
 				return_P("Unexpected space in variable expansion");

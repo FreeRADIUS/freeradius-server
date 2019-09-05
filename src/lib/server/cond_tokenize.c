@@ -585,7 +585,13 @@ static ssize_t cond_preparse(char const **out, size_t *outlen, char const *start
 	if (slen <= 0) return slen;
 
 	p = strchr(start, '$');
-	if (!p || (p[1] != '{')) return slen;
+	if (!p) return slen;
+
+	if (!((p[1] == '{') ||
+	      ((p[1] == 'E') && (p[2] == 'N') && (p[3] == 'V') &&
+	       (p[4] == '{')))) {
+		return slen;
+	}
 
 	/*
 	 *	cf_expand_variables() doesn't take a length.  Oh well...
@@ -600,7 +606,7 @@ static ssize_t cond_preparse(char const **out, size_t *outlen, char const *start
 	if (!cf_expand_variables(filename, &lineno, parent, buffer, sizeof(buffer), expanded, NULL)) {
 		*error = "Failed expanding configuration variable";
 		return -1;
-	}
+	}	
 	talloc_free(expanded);
 
 	/*
