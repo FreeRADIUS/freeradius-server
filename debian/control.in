@@ -31,7 +31,9 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  python-dev,
  samba-dev,
  dh-systemd,
- unixodbc-dev
+ unixodbc-dev,
+ asciidoctor,
+ pandoc
 Section: net
 Priority: optional
 Maintainer: Josip Rodin <joy-packages@debian.org>

@@ -164,6 +164,7 @@ install-arch: build-arch-stamp
 	test -d $(freeradius_dir)/usr/lib/freeradius || mkdir -p $(freeradius_dir)/usr/lib/freeradius
 	ln -fs rlm_sql.so $(freeradius_dir)/usr/lib/freeradius/librlm_sql.so
 	$(MAKE) install R=$(freeradius_dir) PACKAGE='debian'
+	$(MAKE) install.doc.man R=$(freeradius_dir) PACKAGE='debian'
 
 	# rename radius binary to play nicely with others
 	mv $(freeradius_dir)/usr/sbin/radiusd $(freeradius_dir)/usr/sbin/$(package)
