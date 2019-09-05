@@ -572,7 +572,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 /*
  *	Like tmpl_preparse(), but expands variables.
  */
-static ssize_t cond_preparse(char const **out, size_t *outlen, char const *start,
+static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, char const *start,
 			     FR_TOKEN *type, char const **error,
 			     fr_dict_attr_t const **castda, bool require_regex,
 			     CONF_SECTION *parent, char const *filename, int lineno)
@@ -596,7 +596,7 @@ static ssize_t cond_preparse(char const **out, size_t *outlen, char const *start
 	/*
 	 *	cf_expand_variables() doesn't take a length.  Oh well...
 	 */
-	expanded = talloc_strndup(parent, start, slen);
+	expanded = talloc_strndup(ctx, start, slen);
 	if (!expanded) {
 	oom:
 		*error = "Failed allocating memory";
@@ -623,7 +623,7 @@ static ssize_t cond_preparse(char const **out, size_t *outlen, char const *start
 	 *	'out' now points to 'buffer', which we don't want.  So
 	 *	we need to return a string which the caller can keep track of.
 	 */
-	expanded = talloc_strndup(parent, *out, *outlen);
+	expanded = talloc_strndup(ctx, *out, *outlen);
 	if (!expanded) goto oom;
 
 	*out = expanded;
@@ -727,7 +727,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	/*
 	 *	Grab the LHS
 	 */
-	slen = cond_preparse(&lhs, &lhs_len, p, &lhs_type, error, &c->cast, false, parent, filename, lineno);
+	slen = cond_preparse(c, &lhs, &lhs_len, p, &lhs_type, error, &c->cast, false, parent, filename, lineno);
 	if (slen <= 0) {
 		return_SLEN;
 	}
@@ -907,7 +907,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			return_P("Expected text after operator");
 		}
 
-		slen = cond_preparse(&rhs, &rhs_len, p, &rhs_type, error, NULL, regex, parent, filename, lineno);
+		slen = cond_preparse(c, &rhs, &rhs_len, p, &rhs_type, error, NULL, regex, parent, filename, lineno);
 		if (slen <= 0) {
 			return_SLEN;
 		}
