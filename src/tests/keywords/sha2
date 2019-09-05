@@ -1,8 +1,6 @@
 #
 # PRE: update if
 #
-if ("$ENV{OPENSSL_LIBS}" != "") {
-
 update {
 	&control:Cleartext-Password := 'hello'
 	&request:Tmp-String-0 := "This is a string\n"
@@ -67,12 +65,6 @@ if (&request:Tmp-Octets-2 != 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf
 
 if (&request:Tmp-Octets-3 != 0xde80271eb5e03a1c24dd0cd823a22305a743ee3a54f1de5bf97adbf56984561154bfb6928b1da4ccc3f5dde9f4032ad461937b60b9ace4ad3898cf45c90596d7) {
 	test_fail
-}
-
-}
-
-else {	# no OPENSSL.  Force the test to pass
-	success
 }
 
 success

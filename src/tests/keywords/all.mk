@@ -19,7 +19,7 @@ FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildc
 #  Don't run SSHA tests if there's no SSL
 #
 ifeq "$(OPENSSL_LIBS)" ""
-FILES := $(filter-out pap-ssha2,$(FILES))
+FILES := $(filter-out pap-ssha2 sha2,$(FILES))
 endif
 
 OUTPUT := $(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
