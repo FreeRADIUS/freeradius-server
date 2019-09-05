@@ -37,6 +37,10 @@ unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult, int *prior
 
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
+	/*
+	 *	Allow "return" in the middle of a "foreach".  Which is
+	 *	also a "break".
+	 */
 	for (i = 8; i >= 0; i--) {
 		copy_p = request_data_get(request, (void *)xlat_fmt_get_vp, i);
 		if (copy_p) {
