@@ -58,13 +58,13 @@ Index: freeradius-server/raddb/sites-available/control-socket
 +++ freeradius-server/raddb/sites-available/control-socket
 @@ -72,12 +72,12 @@ server control {
  			#
- 			#  Name of user who is allowed to connect to the control socket.
+ 			#  uid:: Name of user who is allowed to connect to the control socket.
  			#
 -#			uid = radius
 +#			uid = freerad
  
  			#
- 			#  Name of group that is allowed to connect to the control socket.
+ 			#  gid:: Name of group that is allowed to connect to the control socket.
  			#
 -#			gid = radius
 +#			gid = freerad
