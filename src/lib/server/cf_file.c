@@ -775,7 +775,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char const	*orig_value = NULL;
 #endif
 
-	FR_TOKEN	t1 = T_INVALID, t2, t3;
+	FR_TOKEN	name1_token = T_INVALID, name2_token, value_token;
 	bool		has_spaces = false;
 	bool		pass2;
 	bool		in_update = false;
@@ -908,8 +908,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			ptr += slen;
 
-			t2 = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), true);
-			switch (t2) {
+			name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), true);
+			switch (name2_token) {
 			case T_HASH:
 			case T_EOL:
 				goto do_bare_word;
@@ -919,7 +919,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				goto error;
 			}
 		} else {
-			t1 = gettoken(&ptr, buff[1], talloc_array_length(buff[1]), true);
+			name1_token = gettoken(&ptr, buff[1], talloc_array_length(buff[1]), true);
 		}
 
 		/*
@@ -928,7 +928,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	receive a closing brace, then it must mean the
 		 *	end of the section.
 		 */
-		if (t1 == T_RCBRACE) {
+		if (name1_token == T_RCBRACE) {
 			if (this == current) {
 				ERROR("%s[%d]: Too many closing braces", filename, *lineno);
 				goto error;
@@ -946,7 +946,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			goto check_for_more;
 		}
 
-		if (t1 != T_BARE_WORD) goto skip_keywords;
+		if (name1_token != T_BARE_WORD) goto skip_keywords;
 
 		/*
 		 *	Allow for $INCLUDE files
@@ -958,8 +958,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		    (strcasecmp(buff[1], "$-INCLUDE") == 0)) {
 			bool relative = true;
 
-			t2 = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
-			if (t2 != T_EOL) {
+			name2_token = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
+			if (name2_token != T_EOL) {
 				ERROR("%s[%d]: Unexpected text after $INCLUDE", filename, *lineno);
 				goto error;
 			}
@@ -1093,9 +1093,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if (strcasecmp(buff[1], "$template") == 0) {
 			CONF_ITEM *ci;
 			CONF_SECTION *parent_cs, *templatecs;
-			t2 = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
+			name2_token = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
 
-			if (t2 != T_EOL) {
+			if (name2_token != T_EOL) {
 				ERROR("%s[%d]: Unexpected text after $TEMPLATE", filename, *lineno);
 				goto error;
 			}
@@ -1194,8 +1194,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			buff[2][slen] = '\0';
 			ptr += slen;
 
-			if ((t3 = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true)) != T_LCBRACE) {
-				ERROR("%s[%d]: Expected '{' %d", filename, *lineno, t3);
+			if ((value_token = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true)) != T_LCBRACE) {
+				ERROR("%s[%d]: Expected '{' %d", filename, *lineno, value_token);
 				talloc_free(cond);
 				goto error;
 			}
@@ -1232,10 +1232,10 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			char const *exp = NULL;
 			char const *p;
 
-			t2 = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
+			name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
 
 			if (invalid_location(this, buff[1], filename, *lineno)) {
-				if (t2 != T_LCBRACE) {
+				if (name2_token != T_LCBRACE) {
 					ERROR("%s[%d]: Invalid syntax for 'map'", filename, *lineno);
 					goto error;
 				}
@@ -1243,7 +1243,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				goto alloc_section;
 			}
 
-			if (t2 != T_BARE_WORD) {
+			if (name2_token != T_BARE_WORD) {
 				ERROR("%s[%d]: Expected module name after 'map'", filename, *lineno);
 				goto error;
 			}
@@ -1259,8 +1259,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			p = ptr;
-			t3 = gettoken(&p, buff[4], talloc_array_length(buff[4]), false);
-			if (fr_str_tok[t3]) {
+			value_token = gettoken(&p, buff[4], talloc_array_length(buff[4]), false);
+			if (fr_str_tok[value_token]) {
 				ptr = p;
 
 				exp = cf_expand_variables(filename, lineno,
@@ -1280,7 +1280,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					goto map_error;
 				}
 
-			} else if (t3 != T_LCBRACE) {
+			} else if (value_token != T_LCBRACE) {
 			map_error:
 				ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
 				      filename, *lineno);
@@ -1310,7 +1310,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				css->argv = talloc_array(css, char const *, 1);
 				css->argv[0] = talloc_typed_strdup(css->argv, exp);
 				css->argv_quote = talloc_array(css, FR_TOKEN, 1);
-				css->argv_quote[0] = t3;
+				css->argv_quote[0] = value_token;
 				css->argc++;
 			}
 
@@ -1322,14 +1322,14 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		/*
 		 *	Grab the next token.
 		 */
-		t2 = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
-		switch (t2) {
+		name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
+		switch (name2_token) {
 		case T_HASH:
 		case T_EOL:
 		case T_COMMA:
 		do_bare_word:
-			t3 = t2;
-			t2 = T_OP_EQ;
+			value_token = name2_token;
+			name2_token = T_OP_EQ;
 			value = NULL;
 			goto do_set;
 
@@ -1366,7 +1366,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			case '\'':
 			case '`':
 			case '/':
-				t3 = getstring(&ptr, buff[3], talloc_array_length(buff[3]), false);
+				value_token = getstring(&ptr, buff[3], talloc_array_length(buff[3]), false);
 				break;
 
 				/*
@@ -1387,7 +1387,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					goto error;
 				}
 
-				if (!fr_assignment_op[t2]) {
+				if (!fr_assignment_op[name2_token]) {
 					ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for group",
 					      filename, *lineno, buff[2]);
 					goto error;
@@ -1405,7 +1405,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			{
 				const char *q = ptr;
 
-				t3 = T_BARE_WORD;
+				value_token = T_BARE_WORD;
 				while (*q && (*q >= ' ') && (*q != ',') &&
 				       !isspace(*q)) q++;
 
@@ -1420,7 +1420,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 			}
 
-			if (t3 == T_INVALID) {
+			if (value_token == T_INVALID) {
 				PERROR("%s[%d]: Parse error", filename, *lineno);
 				goto error;
 			}
@@ -1428,7 +1428,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Allow "foo" by itself, or "foo = bar"
 			 */
-			switch (t3) {
+			switch (value_token) {
 				bool soft_fail;
 
 			case T_BARE_WORD:
@@ -1466,7 +1466,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Add this CONF_PAIR to our CONF_SECTION
 			 */
 		do_set:
-			cpn = cf_pair_alloc(this, buff[1], value, t2, t1, t3);
+			cpn = cf_pair_alloc(this, buff[1], value, name2_token, name1_token, value_token);
 			if (!cpn) goto error;
 			cpn->item.filename = filename;
 			cpn->item.lineno = *lineno;
@@ -1510,19 +1510,19 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 */
 #ifdef WITH_CONF_WRITE
 			if (*ptr == '#') {
-				t3 = T_HASH;
+				value_token = T_HASH;
 				ptr++;
 			}
 
 			/*
 			 *	Allocate a CONF_COMMENT, and add it to the list of children.
 			 */
-			if ((t3 == T_HASH) && (*ptr >= ' ')) {
+			if ((value_token == T_HASH) && (*ptr >= ' ')) {
 				cf_comment_add(this, *lineno, ptr);
 			}
 #endif
 
-			if ((t3 == T_HASH) || (t3 == T_COMMA) || (t3 == T_EOL) || (*ptr == '#')) continue;
+			if ((value_token == T_HASH) || (value_token == T_COMMA) || (value_token == T_EOL) || (*ptr == '#')) continue;
 
 			if (!*ptr || (*ptr == '}')) break;
 
@@ -1536,8 +1536,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_BARE_WORD:
 		case T_DOUBLE_QUOTED_STRING:
 		case T_SINGLE_QUOTED_STRING:
-			t3 = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true);
-			if (t3 != T_LCBRACE) {
+			value_token = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true);
+			if (value_token != T_LCBRACE) {
 				ERROR("%s[%d]: Expecting section start brace '{' after \"%s %s\"",
 				      filename, *lineno, buff[1], buff[2]);
 				goto error;
@@ -1547,7 +1547,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		alloc_section:
 		case T_LCBRACE:
 			css = cf_section_alloc(this, this, buff[1],
-					       t2 == T_LCBRACE ? NULL : buff[2]);
+					       name2_token == T_LCBRACE ? NULL : buff[2]);
 			if (!css) {
 				ERROR("%s[%d]: Failed allocating memory for section",
 				      filename, *lineno);
@@ -1561,7 +1561,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	There may not be a name2
 			 */
-			css->name2_quote = (t2 == T_LCBRACE) ? T_INVALID : t2;
+			css->name2_quote = (name2_token == T_LCBRACE) ? T_INVALID : name2_token;
 
 			/*
 			 *	The current section is now the child section.
@@ -1584,7 +1584,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		default:
 			ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
-			      filename, *lineno, buff[1], fr_table_str_by_value(fr_tokens_table, t2, "<INVALID>"));
+			      filename, *lineno, buff[1], fr_table_str_by_value(fr_tokens_table, name2_token, "<INVALID>"));
 
 			goto error;
 		}
