@@ -1194,8 +1194,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			buff[2][slen] = '\0';
 			ptr += slen;
 
-			if ((value_token = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true)) != T_LCBRACE) {
-				ERROR("%s[%d]: Expected '{' %d", filename, *lineno, value_token);
+			if ((op_token = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true)) != T_LCBRACE) {
+				ERROR("%s[%d]: Expected '{' %d", filename, *lineno, op_token);
 				talloc_free(cond);
 				goto error;
 			}
@@ -1354,6 +1354,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_SET:
 			fr_skip_whitespace(ptr);
 			op_token = name2_token;
+			value_token = T_INVALID;
 
 			/*
 			 *	New parser: non-quoted strings are
@@ -1363,6 +1364,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	word, well... too bad.
 			 */
 			switch (*ptr) {
+			case '#':
+			case '\0':
+				ERROR("%s[%d]: Syntax error: Expected to see a value after the operator '%s': %s",
+				      filename, *lineno, buff[2], ptr);
+				goto error;
+
 			case '"':
 			case '\'':
 			case '`':
@@ -1406,7 +1413,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			{
 				const char *q = ptr;
 
-				value_token = T_BARE_WORD;
 				while (*q && (*q >= ' ') && (*q != ',') &&
 				       !isspace(*q)) q++;
 
@@ -1418,28 +1424,24 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				memcpy(buff[3], ptr, (q - ptr));
 				buff[3][q - ptr] = '\0';
 				ptr = q;
-			}
-			}
 
-			if (value_token == T_INVALID) {
-				PERROR("%s[%d]: Parse error", filename, *lineno);
-				goto error;
+				value_token = T_BARE_WORD;
+			}
 			}
 
 			/*
-			 *	Allow "foo" by itself, or "foo = bar"
+			 *	Now that we have the value, expand any
+			 *	configuration variables in it.
 			 */
-			switch (value_token) {
-				bool soft_fail;
+			{
+				bool		soft_fail;
+				char const	*expanded;
 
-			case T_BARE_WORD:
-			case T_DOUBLE_QUOTED_STRING:
-			case T_BACK_QUOTED_STRING:
 #ifdef WITH_CONF_WRITE
-				orig_value = buff[3];
+				orig_value = value;
 #endif
-				value = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]), buff[3], &soft_fail);
-				if (!value) {
+				expanded = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]), buff[3], &soft_fail);
+				if (!expanded) {
 					if (!soft_fail) goto error;
 
 					/*
@@ -1447,20 +1449,14 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					 *	or which is already marked up as being
 					 *	expanded in pass2.  Wait for pass2 to
 					 *	do the expansions.
+					 *
+					 *	Leave the input value alone.
 					 */
 					pass2 = true;
 					value = buff[3];
+				} else {
+					value = expanded;
 				}
-				break;
-
-			case T_HASH:
-			case T_EOL:
-				value = NULL;
-				break;
-
-			default:
-				value = buff[3];
-				break;
 			}
 
 			/*
