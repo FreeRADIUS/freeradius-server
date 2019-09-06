@@ -287,7 +287,9 @@ int		xlat_register(void *mod_inst, char const *name,
 			      xlat_instantiate_t instantiate, size_t inst_size,
 			      size_t buf_len, bool async_safe);
 
-xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_async_t func);
+xlat_t const	*xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_async_t func);
+
+int		xlat_internal(char const *name);
 
 #define	xlat_async_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
 	_xlat_async_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)

@@ -96,5 +96,6 @@ int unlang_init(void)
 
 void unlang_free(void)
 {
+	unlang_foreach_free();
 	unlang_subrequest_op_free();
 }

@@ -380,6 +380,8 @@ void		unlang_condition_init(void);
 
 void		unlang_foreach_init(void);
 
+void		unlang_foreach_free(void);
+
 void		unlang_function_init(void);
 
 void		unlang_group_init(void);

@@ -27,12 +27,24 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "return_priv.h"
 
-#define unlang_break unlang_return
+static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
+						  "Foreach-Variable-1",
+						  "Foreach-Variable-2",
+						  "Foreach-Variable-3",
+						  "Foreach-Variable-4",
+						  "Foreach-Variable-5",
+						  "Foreach-Variable-6",
+						  "Foreach-Variable-7",
+						  "Foreach-Variable-8",
+						  "Foreach-Variable-9"};
+
+static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
 /** State of a foreach loop
  *
  */
 typedef struct {
+	REQUEST			*request;			//!< The current request.
 	fr_cursor_t		cursor;				//!< Used to track our place in the list
 								///< we're iterating over.
 	VALUE_PAIR 		*vps;				//!< List containing the attribute(s) we're
@@ -43,6 +55,22 @@ typedef struct {
 	int			indent;				//!< for catching indentation issues
 #endif
 } unlang_frame_state_foreach_t;
+
+static ssize_t unlang_foreach_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
+				   void const *mod_inst, UNUSED void const *xlat_inst,
+				   REQUEST *request, UNUSED char const *fmt);
+
+#define FOREACH_REQUEST_DATA (void *)unlang_foreach_xlat
+
+/** Ensure request data is pulled out of the request if the frame is popped
+ *
+ */
+static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
+{
+	request_data_get(state->request, FOREACH_REQUEST_DATA, state->depth);
+
+	return 0;
+}
 
 static unlang_action_t unlang_foreach(REQUEST *request,
 				      rlm_rcode_t *presult, int *priority)
@@ -57,7 +85,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	g = unlang_generic_to_group(instruction);
 
 	if (!frame->repeat) {
-		int i, foreach_depth = -1;
+		int i, foreach_depth = 0;
 		VALUE_PAIR *vps;
 
 		if (stack->depth >= UNLANG_STACK_MAX) {
@@ -65,20 +93,17 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 			fr_exit(EXIT_FAILURE);
 		}
 
-		/*
-		 *	Figure out how deep we are in nesting by looking at request_data
-		 *	stored previously.
+		/** Figure out foreach depth by walking back up the stack
 		 *
-		 *	FIXME: figure this out by walking up the modcall stack instead.
 		 */
-		for (i = 0; i < 8; i++) {
-			if (!request_data_reference(request, (void *)xlat_fmt_get_vp, i)) {
-				foreach_depth = i;
-				break;
-			}
+		if (stack->depth > 0) for (i = (stack->depth - 1); i >= 0; i--) {
+			unlang_t *our_instruction;
+			our_instruction = stack->frame[i].instruction;
+			if (!our_instruction || (our_instruction->type != UNLANG_TYPE_FOREACH)) continue;
+			foreach_depth++;
 		}
 
-		if (foreach_depth < 0) {
+		if (foreach_depth >= (int)NUM_ELEMENTS(xlat_foreach_names)) {
 			REDEBUG("foreach Nesting too deep!");
 			*presult = RLM_MODULE_FAIL;
 			*priority = 0;
@@ -100,12 +125,14 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 
 		rad_assert(vps != NULL);
 
+		foreach->request = request;
 		foreach->depth = foreach_depth;
 		foreach->vps = vps;
 		fr_cursor_talloc_init(&foreach->cursor, &foreach->vps, VALUE_PAIR);
 #ifndef NDEBUG
 		foreach->indent = request->log.unlang_indent;
 #endif
+		talloc_set_destructor(foreach, _free_unlang_frame_state_foreach);
 
 		vp = fr_cursor_head(&foreach->cursor);
 	} else {
@@ -137,7 +164,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 			 *	the xlat outside of a foreach loop and trigger a segv.
 			 */
 			fr_pair_list_free(&foreach->vps);
-			request_data_get(request, (void *)xlat_fmt_get_vp, foreach->depth);
+			request_data_get(request, FOREACH_REQUEST_DATA, foreach->depth);
 
 			*presult = frame->result;
 			if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
@@ -149,7 +176,6 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	}
 
 #ifndef NDEBUG
-	RDEBUG2("");
 	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", foreach->depth, &vp->data);
 #endif
 
@@ -160,7 +186,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	 *	xlat.c, xlat_foreach() can find it.
 	 */
 	foreach->variable = vp;
-	request_data_add(request, (void *)xlat_fmt_get_vp, foreach->depth, &foreach->variable,
+	request_data_add(request, FOREACH_REQUEST_DATA, foreach->depth, &foreach->variable,
 			 false, false, false);
 
 	/*
@@ -172,8 +198,47 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult, int *priority)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_t		*instruction = frame->instruction;
+
+	RDEBUG2("%s", unlang_ops[instruction->type].name);
+
+	stack->unwind = instruction->type;
+
+	*presult = frame->result;
+	*priority = frame->priority;
+
+	return UNLANG_ACTION_BREAK;
+}
+
+/** Implements the Foreach-Variable-X
+ *
+ */
+static ssize_t unlang_foreach_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
+				   void const *mod_inst, UNUSED void const *xlat_inst,
+				   REQUEST *request, UNUSED char const *fmt)
+{
+	VALUE_PAIR	**pvp;
+
+	pvp = (VALUE_PAIR **) request_data_reference(request, FOREACH_REQUEST_DATA, *(int const *) mod_inst);
+	if (!pvp || !*pvp) return 0;
+
+	*out = fr_pair_value_asprint(ctx, *pvp, '\0');
+	return 	talloc_array_length(*out) - 1;
+}
+
 void unlang_foreach_init(void)
 {
+	size_t	i;
+
+	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
+		xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], unlang_foreach_xlat, NULL, NULL, 0, 0, true);
+		xlat_internal(xlat_foreach_names[i]);
+	}
+
 	unlang_register(UNLANG_TYPE_FOREACH,
 			   &(unlang_op_t){
 				.name = "foreach",
@@ -186,4 +251,13 @@ void unlang_foreach_init(void)
 				.name = "break",
 				.func = unlang_break,
 			   });
+}
+
+void unlang_foreach_free(void)
+{
+	size_t	i;
+
+	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
+		xlat_unregister(xlat_foreach_names[i]);
+	}
 }

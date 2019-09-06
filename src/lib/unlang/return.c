@@ -29,27 +29,11 @@ RCSID("$Id$")
 
 unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult, int *priority)
 {
-	int			i;
-	VALUE_PAIR		**copy_p;
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
-
-	/*
-	 *	Allow "return" in the middle of a "foreach".  Which is
-	 *	also a "break".
-	 */
-	for (i = 8; i >= 0; i--) {
-		copy_p = request_data_get(request, (void *)xlat_fmt_get_vp, i);
-		if (copy_p) {
-			if (instruction->type == UNLANG_TYPE_BREAK) {
-				RDEBUG2("# break Foreach-Variable-%d", i);
-				break;
-			}
-		}
-	}
 
 	stack->unwind = instruction->type;
 

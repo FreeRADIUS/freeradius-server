@@ -52,22 +52,10 @@ RCSID("$Id$")
 static rbtree_t *xlat_root = NULL;
 
 #ifdef WITH_UNLANG
-static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
-						  "Foreach-Variable-1",
-						  "Foreach-Variable-2",
-						  "Foreach-Variable-3",
-						  "Foreach-Variable-4",
-						  "Foreach-Variable-5",
-						  "Foreach-Variable-6",
-						  "Foreach-Variable-7",
-						  "Foreach-Variable-8",
-						  "Foreach-Variable-9",
-						  NULL};
+
 #endif
 
 static char const hextab[] = "0123456789abcdef";
-
-static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
 /** Return a VP from the specified request.
  *
@@ -624,28 +612,6 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
-
-#ifdef WITH_UNLANG
-/** Implements the Foreach-Variable-X
- *
- * @see modcall()
- */
-static ssize_t xlat_foreach(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			    void const *mod_inst, UNUSED void const *xlat_inst,
-			    REQUEST *request, UNUSED char const *fmt)
-{
-	VALUE_PAIR	**pvp;
-
-	/*
-	 *	See modcall, "FOREACH" for how this works.
-	 */
-	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)xlat_fmt_get_vp, *(int const *) mod_inst);
-	if (!pvp || !*pvp) return 0;
-
-	*out = fr_pair_value_asprint(ctx, *pvp, '\0');
-	return 	talloc_array_length(*out) - 1;
-}
-#endif
 
 /** Print data as string, if possible.
  *
@@ -2263,6 +2229,25 @@ xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_a
 	return c;
 }
 
+/** Mark an xlat function as internal
+ *
+ * @param[in] name of function to find.
+ * @return
+ *	- -1 on failure (function doesn't exist).
+ *	- 0 on success.
+ */
+int xlat_internal(char const *name)
+{
+	xlat_t *c;
+
+	c = xlat_func_find(name);
+	if (!c) return -1;
+
+	c->internal = true;
+
+	return 0;
+}
+
 /** Set global instantiation/detach callbacks
  *
  * All functions registered must be async_safe.
@@ -2937,11 +2922,6 @@ int xlat_register_redundant(CONF_SECTION *cs)
  */
 int xlat_init(void)
 {
-	xlat_t	*c;
-
-#ifdef WITH_UNLANG
-	int i;
-#endif
 	if (xlat_root) return 0;
 
 	/*
@@ -2963,19 +2943,8 @@ int xlat_init(void)
 		return -1;
 	}
 
-#ifdef WITH_UNLANG
-	for (i = 0; xlat_foreach_names[i] != NULL; i++) {
-		xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, 0, true);
-		c = xlat_func_find(xlat_foreach_names[i]);
-		rad_assert(c != NULL);
-		c->internal = true;
-	}
-#endif
-
 #define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true); \
-	c = xlat_func_find(STRINGIFY(_x)); \
-	rad_assert(c != NULL); \
-	c->internal = true
+	xlat_internal(STRINGIFY(_x));
 
 	XLAT_REGISTER(integer);
 	XLAT_REGISTER(xlat);
@@ -2989,10 +2958,8 @@ int xlat_init(void)
 	xlat_register(NULL, "rpad", xlat_func_rpad, NULL, NULL, 0, 0, true);
 	xlat_register(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0, false);	/* On behalf of trigger.c */
 
-	xlat_register(&xlat_foreach_inst[0], "debug", xlat_func_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	c = xlat_func_find("debug");
-	rad_assert(c != NULL);
-	c->internal = true;
+	xlat_register(NULL, "debug", xlat_func_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_internal("debug");
 
 	xlat_async_register(NULL, "base64", xlat_func_base64_encode);
 	xlat_async_register(NULL, "base64decode", xlat_func_base64_decode);

@@ -29,17 +29,18 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/map.h>
 
-#include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/server/xlat.h>
-#include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
+#include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_util.h>
-#include <freeradius-devel/server/dl_module.h>
-#include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/command.h>
-#include <freeradius-devel/io/test_point.h>
+#include <freeradius-devel/server/cond.h>
+#include <freeradius-devel/server/dependency.h>
+#include <freeradius-devel/server/dl_module.h>
+#include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/conf.h>
 
 #ifdef WITH_TACACS
 #  include <freeradius-devel/tacacs/tacacs.h>
@@ -1560,6 +1561,12 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	/*
+	 *	Initialise the interpreter, registering operations.
+	 *	Needed because some keywords also register xlats.
+	 */
+	if (unlang_init() < 0) return -1;
+
 	if (xlat_register(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
 		fprintf(stderr, "Failed registering xlat");
 		EXIT_WITH_FAILURE;
@@ -1588,6 +1595,7 @@ int main(int argc, char *argv[])
 cleanup:
 	if (dl_modules) talloc_free(dl_modules);
 	fr_dict_free(&dict);
+	unlang_free();
 	xlat_free();
 	fr_strerror_free();
 
