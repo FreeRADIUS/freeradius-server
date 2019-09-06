@@ -1025,6 +1025,96 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	return css;
 }
 
+static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *buff[static 7], char const *filename, int *lineno)
+{
+	char const *mod;
+	char const *exp = NULL;
+	char const *ptr = *ptr_p;
+	CONF_SECTION *css;
+	FR_TOKEN token;
+
+	if (invalid_location(this, buff[1], filename, *lineno)) {
+		ERROR("%s[%d]: Invalid syntax for 'map'", filename, *lineno);
+		return NULL;
+	}
+
+	token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
+	if (token != T_BARE_WORD) {
+		ERROR("%s[%d]: Expected module name after 'map'", filename, *lineno);
+		return NULL;
+	}
+
+	/*
+	 *	Allow module names to be expanded at load time.
+	 */
+	mod = cf_expand_variables(filename, lineno,
+				  this,
+				  buff[3], talloc_array_length(buff[3]),
+				  buff[2], NULL);
+	if (!mod) {
+		ERROR("%s[%d]: Failed expanding ${...} in map module name",
+		      filename, *lineno);
+		return NULL;
+	}
+
+	/*
+	 *	Parse the map expansion, which SHOULD be a string.
+	 *
+	 *	Maps without an expansion string are allowed, tho I don't know why.
+	 */
+	token = gettoken(&ptr, buff[4], talloc_array_length(buff[4]), false);
+	if (token == T_LCBRACE) goto alloc_section;
+
+	if (!fr_str_tok[token]) {
+		ERROR("%s[%d]: Expecting string expansions in 'map' definition",
+		      filename, *lineno);
+		return NULL;
+	}
+
+	fr_skip_whitespace(ptr);
+	if (*ptr != '{') {
+		ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
+		      filename, *lineno);
+		return NULL;
+	}
+	ptr++;
+
+	exp = cf_expand_variables(filename, lineno,
+				  this,
+				  buff[5], talloc_array_length(buff[5]),
+				  buff[4], NULL);
+	if (!exp) {
+		ERROR("%s[%d]: Failed expanding ${...} in map expansion string",
+		      filename, *lineno);
+		return NULL;
+	}
+
+alloc_section:
+	/*
+	 *	Allocate the section
+	 */
+	css = cf_section_alloc(this, this, buff[1], mod);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
+		return NULL;
+	}
+	css->item.filename = filename;
+	css->item.lineno = *lineno;
+	css->name2_quote = T_BARE_WORD;
+
+	css->argc = 0;
+	if (exp) {
+		css->argv = talloc_array(css, char const *, 1);
+		css->argv[0] = talloc_typed_strdup(css->argv, exp);
+		css->argv_quote = talloc_array(css, FR_TOKEN, 1);
+		css->argv_quote[0] = token;
+		css->argc++;
+	}
+	*ptr_p = ptr;
+
+	return css;
+}
+
 
 /*
  *	Read a part of the config file.
@@ -1248,91 +1338,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	map NAME ARGUMENT { ... }
 		 */
 		if (strcmp(buff[1], "map") == 0) {
-			char const *mod;
-			char const *exp = NULL;
-			char const *p;
-
-			name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
-
-			if (invalid_location(this, buff[1], filename, *lineno)) {
-				if (name2_token != T_LCBRACE) {
-					ERROR("%s[%d]: Invalid syntax for 'map'", filename, *lineno);
-					goto error;
-				}
-
-				goto alloc_section;
-			}
-
-			if (name2_token != T_BARE_WORD) {
-				ERROR("%s[%d]: Expected module name after 'map'", filename, *lineno);
-				goto error;
-			}
-
-			mod = cf_expand_variables(filename, lineno,
-						  this,
-						  buff[3], talloc_array_length(buff[3]),
-						  buff[2], NULL);
-			if (!mod) {
-				ERROR("%s[%d]: Parse error expanding ${...} in map module name",
-				      filename, *lineno);
-				goto error;
-			}
-
-			p = ptr;
-			value_token = gettoken(&p, buff[4], talloc_array_length(buff[4]), false);
-			if (fr_str_tok[value_token]) {
-				ptr = p;
-
-				exp = cf_expand_variables(filename, lineno,
-							  this,
-							  buff[5], talloc_array_length(buff[5]),
-							  buff[4], NULL);
-				if (!exp) {
-					ERROR("%s[%d]: Parse error expanding ${...} in map module name",
-					      filename, *lineno);
-					goto error;
-				}
-
-				/*
-				 *	After the map expansion, we open a section.
-				 */
-				if (gettoken(&ptr, buff[6], talloc_array_length(buff[6]), false) != T_LCBRACE) {
-					goto map_error;
-				}
-
-			} else if (value_token != T_LCBRACE) {
-			map_error:
-				ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
-				      filename, *lineno);
-				goto error;
-
-			} else {
-				/*
-				 *	Skip the parsed "{" token.
-				 */
-				ptr = p;
-			}
-
-			/*
-			 *	Allocate the section
-			 */
-			css = cf_section_alloc(this, this, buff[1], mod);
-			if (!css) {
-				ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
-				goto error;
-			}
-			css->item.filename = filename;
-			css->item.lineno = *lineno;
-			css->name2_quote = T_BARE_WORD;
-
-			css->argc = 0;
-			if (exp) {
-				css->argv = talloc_array(css, char const *, 1);
-				css->argv[0] = talloc_typed_strdup(css->argv, exp);
-				css->argv_quote = talloc_array(css, FR_TOKEN, 1);
-				css->argv_quote[0] = value_token;
-				css->argc++;
-			}
+			css = process_map(this, &ptr, buff, filename, lineno);
+			if (!css) goto error;
 
 			in_map = true;
 
