@@ -1106,6 +1106,7 @@ do { \
 				len = encode_hex(p + 14, data, sizeof(data));
 				if (len == 0) {
 					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
+					talloc_free(packet);
 					goto error;
 				}
 			}
