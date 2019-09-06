@@ -14,7 +14,7 @@ def buildClosures(arg) {
                         sh "cat /etc/os-release || cat /etc/redhat-release"
                         dir("${platform}/build") {
                             if (platform.contains("centos")) {
-                                sh 'QA_RPATHS=0x0003 RADIUSD_VERSION_STRING=$(cat VERSION) make rpm'
+                                sh 'RADIUSD_VERSION_STRING=$(cat VERSION) make rpm'
                                 sh "mv rpmbuild/RPMS/x86_64/*.rpm .."
                             } else {
                                 sh "apt-get install -y unixodbc-dev"
