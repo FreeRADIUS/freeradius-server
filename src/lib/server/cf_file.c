@@ -760,6 +760,153 @@ static void cf_include_add(CONF_SECTION *cs, char const *filename, CONF_INCLUDE_
 }
 #endif
 
+static int process_include(CONF_SECTION *this, char const *ptr, char *buff[static 7], char const *filename, int *lineno)
+{
+	bool relative = true;
+	FR_TOKEN token;
+	char const *value;
+
+	token = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
+	if (token != T_EOL) {
+		ERROR("%s[%d]: Unexpected text after $INCLUDE", filename, *lineno);
+		return -1;
+	}
+
+	if (buff[2][0] == '$') relative = false;
+
+	value = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]),
+				    buff[2], NULL);
+	if (!value) return -1;
+
+	if (!FR_DIR_IS_RELATIVE(value)) relative = false;
+
+	if (relative) {
+		value = cf_local_file(filename, value, buff[3], talloc_array_length(buff[3]));
+		if (!value) {
+			ERROR("%s[%d]: Directories too deep", filename, *lineno);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Allow $-INCLUDE for directories, too.
+	 */
+	if (buff[1][1] == '-') {
+		struct stat statbuf;
+
+		if (stat(value, &statbuf) < 0) {
+			WARN("Not including file %s: %s", value, fr_syserror(errno));
+			return 0;
+		}
+	}
+
+	/*
+	 *	Include a file.
+	 */
+	if (value[strlen(value) - 1] != '/') {
+		return cf_file_include(this, value, CONF_INCLUDE_FILE, buff, false);
+	}
+
+#ifdef HAVE_DIRENT_H
+	/*
+	 *	$INCLUDE foo/
+	 *
+	 *	Include ALL non-"dot" files in the directory.
+	 *	careful!
+	 */
+	{
+		DIR		*dir;
+		struct dirent	*dp;
+		struct stat stat_buf;
+		char *my_directory;
+
+		my_directory = talloc_strdup(this, value);
+
+		cf_log_debug(this, "Including files in directory \"%s\"", my_directory);
+
+#ifdef WITH_CONF_WRITE
+		/*
+		 *	We print this out, but don't
+		 *	actually open a file based on
+		 *	it.
+		 */
+		cf_include_add(this, my_directory, CONF_INCLUDE_DIR);
+#endif
+
+#ifdef S_IWOTH
+		/*
+		 *	Security checks.
+		 */
+		if (stat(my_directory, &stat_buf) < 0) {
+			ERROR("%s[%d]: Failed reading directory %s: %s", filename, *lineno,
+			      my_directory, fr_syserror(errno));
+			talloc_free(my_directory);
+			return -1;
+		}
+
+		if ((stat_buf.st_mode & S_IWOTH) != 0) {
+			ERROR("%s[%d]: Directory %s is globally writable.  Refusing to start due to "
+			      "insecure configuration", filename, *lineno, my_directory);
+			talloc_free(my_directory);
+			return -1;
+		}
+#endif
+		dir = opendir(my_directory);
+		if (!dir) {
+			ERROR("%s[%d]: Error reading directory %s: %s",
+			      filename, *lineno, value,
+			      fr_syserror(errno));
+			talloc_free(my_directory);
+			return -1;
+		}
+
+		/*
+		 *	Read the directory, ignoring "." files.
+		 */
+		while ((dp = readdir(dir)) != NULL) {
+			char const *p;
+
+			if (dp->d_name[0] == '.') continue;
+
+			/*
+			 *	Check for valid characters
+			 */
+			for (p = dp->d_name; *p != '\0'; p++) {
+				if (isalpha((int)*p) ||
+				    isdigit((int)*p) ||
+				    (*p == '-') ||
+				    (*p == '_') ||
+				    (*p == '.')) continue;
+				break;
+			}
+			if (*p != '\0') continue;
+
+
+			snprintf(buff[2], talloc_array_length(buff[2]), "%s%s",
+				 my_directory, dp->d_name);
+			if ((stat(buff[2], &stat_buf) != 0) ||
+			    S_ISDIR(stat_buf.st_mode)) continue;
+
+			/*
+			 *	Read the file into the current
+			 *	configuration section.
+			 */
+			if (cf_file_include(this, buff[2], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
+				closedir(dir);
+				return -1;
+			}
+		}
+		closedir(dir);
+		talloc_free(my_directory);
+		return 0;
+	}
+#else
+	ERROR("%s[%d]: Error including %s: No support for directories!",
+	      filename, *lineno, value);
+	return -1;
+#endif
+}
+
 /*
  *	Read a part of the config file.
  */
@@ -956,137 +1103,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 		if ((strcasecmp(buff[1], "$INCLUDE") == 0) ||
 		    (strcasecmp(buff[1], "$-INCLUDE") == 0)) {
-			bool relative = true;
-
-			name2_token = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
-			if (name2_token != T_EOL) {
-				ERROR("%s[%d]: Unexpected text after $INCLUDE", filename, *lineno);
-				goto error;
-			}
-
-			if (buff[2][0] == '$') relative = false;
-
-			value = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]),
-						    buff[2], NULL);
-			if (!value) goto error;
-
-			if (!FR_DIR_IS_RELATIVE(value)) relative = false;
-
-			if (relative) {
-				value = cf_local_file(filename, value, buff[3], talloc_array_length(buff[3]));
-				if (!value) {
-					ERROR("%s[%d]: Directories too deep", filename, *lineno);
-					goto error;
-				}
-			}
-
-
-#ifdef HAVE_DIRENT_H
-			/*
-			 *	$INCLUDE foo/
-			 *
-			 *	Include ALL non-"dot" files in the directory.
-			 *	careful!
-			 */
-			if (value[strlen(value) - 1] == '/') {
-				DIR		*dir;
-				struct dirent	*dp;
-				struct stat stat_buf;
-				char *my_directory;
-
-				my_directory = talloc_strdup(this, value);
-
-				cf_log_debug(current, "Including files in directory \"%s\"", my_directory);
-
-#ifdef WITH_CONF_WRITE
-				/*
-				 *	We print this out, but don't
-				 *	actually open a file based on
-				 *	it.
-				 */
-				cf_include_add(this, my_directory, CONF_INCLUDE_DIR);
-#endif
-
-#ifdef S_IWOTH
-				/*
-				 *	Security checks.
-				 */
-				if (stat(my_directory, &stat_buf) < 0) {
-					ERROR("%s[%d]: Failed reading directory %s: %s", filename, *lineno,
-					      my_directory, fr_syserror(errno));
-					talloc_free(my_directory);
-					goto error;
-				}
-
-				if ((stat_buf.st_mode & S_IWOTH) != 0) {
-					ERROR("%s[%d]: Directory %s is globally writable.  Refusing to start due to "
-					      "insecure configuration", filename, *lineno, my_directory);
-					talloc_free(my_directory);
-					goto error;
-				}
-#endif
-				dir = opendir(my_directory);
-				if (!dir) {
-					ERROR("%s[%d]: Error reading directory %s: %s",
-					      filename, *lineno, value,
-					      fr_syserror(errno));
-					talloc_free(my_directory);
-					goto error;
-				}
-
-				/*
-				 *	Read the directory, ignoring "." files.
-				 */
-				while ((dp = readdir(dir)) != NULL) {
-					char const *p;
-
-					if (dp->d_name[0] == '.') continue;
-
-					/*
-					 *	Check for valid characters
-					 */
-					for (p = dp->d_name; *p != '\0'; p++) {
-						if (isalpha((int)*p) ||
-						    isdigit((int)*p) ||
-						    (*p == '-') ||
-						    (*p == '_') ||
-						    (*p == '.')) continue;
-						break;
-					}
-					if (*p != '\0') continue;
-
-
-					snprintf(buff[2], talloc_array_length(buff[2]), "%s%s",
-						 my_directory, dp->d_name);
-					if ((stat(buff[2], &stat_buf) != 0) ||
-					    S_ISDIR(stat_buf.st_mode)) continue;
-
-					/*
-					 *	Read the file into the current
-					 *	configuration section.
-					 */
-					if (cf_file_include(this, buff[2], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
-						closedir(dir);
-						goto error;
-					}
-				}
-				closedir(dir);
-				talloc_free(my_directory);
-
-			}  else
-#endif
-			{ /* it was a normal file */
-				if (buff[1][1] == '-') {
-					struct stat statbuf;
-
-					if (stat(value, &statbuf) < 0) {
-						WARN("Not including file %s: %s", value, fr_syserror(errno));
-						continue;
-					}
-				}
-
-				if (cf_file_include(this, value, CONF_INCLUDE_FILE, buff, false) < 0) goto error;
-			}
+			if (process_include(this, ptr, buff, filename, lineno) < 0) goto error;
 			continue;
 		} /* we were in an include */
 
