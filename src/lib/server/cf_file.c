@@ -907,6 +907,47 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 #endif
 }
 
+
+static int process_template(CONF_SECTION *this, char const *ptr, char *buff[static 7], char const *filename, int *lineno)
+{
+	CONF_ITEM *ci;
+	CONF_SECTION *parent_cs, *templatecs;
+	FR_TOKEN token;
+
+	token = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
+	if (token != T_EOL) {
+		ERROR("%s[%d]: Unexpected text after $TEMPLATE", filename, *lineno);
+		return -1;
+	}
+
+	parent_cs = cf_root(this);
+
+	templatecs = cf_section_find(parent_cs, "templates", NULL);
+	if (!templatecs) {
+		ERROR("%s[%d]: No \"templates\" section for reference \"%s\"", filename, *lineno, buff[2]);
+		return -1;
+	}
+
+	ci = cf_reference_item(parent_cs, templatecs, buff[2]);
+	if (!ci || (ci->type != CONF_ITEM_SECTION)) {
+		ERROR("%s[%d]: Reference \"%s\" not found", filename, *lineno, buff[2]);
+		return -1;
+	}
+
+	if (!this) {
+		ERROR("%s[%d]: Internal sanity check error in template reference", filename, *lineno);
+		return -1;
+	}
+
+	if (this->template) {
+		ERROR("%s[%d]: Section already has a template", filename, *lineno);
+		return -1;
+	}
+
+	this->template = cf_item_to_section(ci);
+	return 0;
+}
+
 /*
  *	Read a part of the config file.
  */
@@ -1107,51 +1148,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			continue;
 		} /* we were in an include */
 
-		if (strcasecmp(buff[1], "$template") == 0) {
-			CONF_ITEM *ci;
-			CONF_SECTION *parent_cs, *templatecs;
-			name2_token = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
-
-			if (name2_token != T_EOL) {
-				ERROR("%s[%d]: Unexpected text after $TEMPLATE", filename, *lineno);
-				goto error;
-			}
-
-			parent_cs = cf_root(current);
-
-			templatecs = cf_section_find(parent_cs, "templates", NULL);
-			if (!templatecs) {
-				ERROR("%s[%d]: No \"templates\" section for reference \"%s\"", filename, *lineno, buff[2]);
-				goto error;
-			}
-
-			ci = cf_reference_item(parent_cs, templatecs, buff[2]);
-			if (!ci || (ci->type != CONF_ITEM_SECTION)) {
-				ERROR("%s[%d]: Reference \"%s\" not found", filename, *lineno, buff[2]);
-				goto error;
-			}
-
-			if (!this) {
-				ERROR("%s[%d]: Internal sanity check error in template reference", filename, *lineno);
-				goto error;
-			}
-
-			if (this->template) {
-				ERROR("%s[%d]: Section already has a template", filename, *lineno);
-				goto error;
-			}
-
-			this->template = cf_item_to_section(ci);
+		if (strcasecmp(buff[1], "$TEMPLATE") == 0) {
+			if (process_template(this, ptr, buff, filename, lineno) < 0) goto error;
 			continue;
-		}
-
-		/*
-		 *	Ensure that the user can't add CONF_PAIRs
-		 *	with 'internal' names;
-		 */
-		if (buff[1][0] == '_') {
-			ERROR("%s[%d]: Illegal configuration pair name \"%s\"", filename, *lineno, buff[1]);
-			goto error;
 		}
 
 		/*
