@@ -775,7 +775,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char const	*orig_value = NULL;
 #endif
 
-	FR_TOKEN	name1_token = T_INVALID, name2_token, value_token;
+	FR_TOKEN	name1_token = T_INVALID, name2_token, value_token, op_token;
 	bool		has_spaces = false;
 	bool		pass2;
 	bool		in_update = false;
@@ -1329,7 +1329,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_COMMA:
 		do_bare_word:
 			value_token = name2_token;
-			name2_token = T_OP_EQ;
+			op_token = T_OP_EQ;
 			value = NULL;
 			goto do_set;
 
@@ -1353,6 +1353,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_EQ:
 		case T_OP_SET:
 			fr_skip_whitespace(ptr);
+			op_token = name2_token;
 
 			/*
 			 *	New parser: non-quoted strings are
@@ -1382,7 +1383,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				 */
 			case '{':
 				if (!in_update) {
-					ERROR("%s[%d]: Parse error: Invalid location for grouped attributr",
+					ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
 					      filename, *lineno);
 					goto error;
 				}
@@ -1466,7 +1467,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Add this CONF_PAIR to our CONF_SECTION
 			 */
 		do_set:
-			cpn = cf_pair_alloc(this, buff[1], value, name2_token, name1_token, value_token);
+			cpn = cf_pair_alloc(this, buff[1], value, op_token, name1_token, value_token);
 			if (!cpn) goto error;
 			cpn->item.filename = filename;
 			cpn->item.lineno = *lineno;
