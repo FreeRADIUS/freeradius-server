@@ -454,7 +454,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	/*
 	 *	Push the xlat function
 	 */
-	unlang_xlat_push(ctx, out, request, exp, true);
+	unlang_xlat_push(ctx, out, request, exp, false);
 
 	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
 }

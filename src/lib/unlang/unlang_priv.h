@@ -234,6 +234,32 @@ typedef struct {
 	unlang_t		*found;
 } unlang_frame_state_redundant_t;
 
+typedef enum {
+	FRAME_FLAG_REPEAT	= 0x01,				//!< Repeat the frame on the way up the stack.
+	FRAME_FLAG_TOP_FRAME	= 0x02,				//!< are we the top frame of the stack?
+								///< If true, causes the interpreter to stop
+								///< interpreting and return, control then passes
+								///< to whatever called the interpreter.
+	FRAME_FLAG_BREAK_POINT	= 0x04,				//!< 'break' stops here.
+	FRAME_FLAG_RETURN_POINT	= 0x08      			//!< 'return' stops here.
+} unlang_frame_flags_t;
+
+#define repeatable_set(_frame)		((_frame)->flags |= FRAME_FLAG_REPEAT)
+#define top_frame_set(_frame)		((_frame)->flags |= FRAME_FLAG_TOP_FRAME)
+#define break_point_set(_frame)		((_frame)->flags |= FRAME_FLAG_BREAK_POINT)
+#define return_point_set(_frame) 	((_frame)->flags |= FRAME_FLAG_RETURN_POINT)
+
+#define repeatable_clear(_frame)	((_frame)->flags &= ~FRAME_FLAG_REPEAT)
+#define top_frame_clear(_frame)		((_frame)->flags &= ~FRAME_FLAG_TOP_FRAME)
+#define break_point_clear(_frame)	((_frame)->flags &= ~FRAME_FLAG_BREAK_POINT)
+#define return_point_clear(_frame) 	((_frame)->flags &= ~FRAME_FLAG_RETURN_POINT)
+
+#define is_repeatable(_frame)		((_frame)->flags & FRAME_FLAG_REPEAT)
+#define is_top_frame(_frame)		((_frame)->flags & FRAME_FLAG_TOP_FRAME)
+#define is_break_point(_frame)		((_frame)->flags & FRAME_FLAG_BREAK_POINT)
+#define is_return_point(_frame) 	((_frame)->flags & FRAME_FLAG_RETURN_POINT)
+
+
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and
@@ -267,14 +293,7 @@ typedef struct {
 								///< frame lower in the stack to determine if the
 								///< result stored in the lower stack frame should
 								///< be replaced.
-	bool			repeat : 1;			//!< Call the action callback again on our way
-								//!< back up the stack.
-	bool			top_frame : 1;			//!< are we the top frame of the stack?
-								///< If true, causes the interpreter to stop
-								///< interpreting and return, control then passes
-								///< to whatever called the interpreter.
-	bool			break_point : 1;       		//!< 'break' stops here
-	bool			return_point : 1;      		//!< 'return' stops here
+	unlang_frame_flags_t	flags;				//!< Frame markers.
 } unlang_stack_frame_t;
 
 /** An unlang stack associated with a request

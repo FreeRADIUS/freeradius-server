@@ -241,7 +241,7 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 	xlat_exp_t const		*child = NULL;
 	xlat_action_t			xa;
 
-	if (frame->repeat) {
+	if (is_repeatable(frame)) {
 		xa = xlat_frame_eval_repeat(xs->ctx, &xs->values, &child,
 					    &xs->alternate, request, &xs->exp, &xs->rhead);
 	} else {
@@ -252,7 +252,7 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 	case XLAT_ACTION_PUSH_CHILD:
 		rad_assert(child);
 
-		frame->repeat = true;
+		repeatable_set(frame);
 
 		/*
 		 *	Clear out the results of any previous expansions

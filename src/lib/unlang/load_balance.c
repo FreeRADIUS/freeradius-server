@@ -45,7 +45,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 	 *	No frame?  This is the first time we've been called.
 	 *	Go find one.
 	 */
-	if (!frame->repeat) {
+	if (!is_repeatable(frame)) {
 		RDEBUG4("%s setting up", frame->instruction->debug_name);
 
 		frame->state = redundant = talloc_zero(stack, unlang_frame_state_redundant_t);
@@ -240,7 +240,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 	 *	Push the child, and yield for a later return.
 	 */
 	unlang_interpret_push(request, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
-	frame->repeat = true;
+	repeatable_set(frame);
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

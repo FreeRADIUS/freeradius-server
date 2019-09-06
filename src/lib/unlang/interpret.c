@@ -73,13 +73,13 @@ static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 	} else {
 		RDEBUG2("next           <none>");
 	}
-	RDEBUG2("top_frame      %s", frame->top_frame ? "yes" : "no");
+	RDEBUG2("top_frame      %s", is_top_frame(frame) ? "yes" : "no");
 	RDEBUG2("result         %s", fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"));
 	RDEBUG2("priority       %d", frame->priority);
 	RDEBUG2("unwind         %d", stack->unwind);
-	RDEBUG2("repeat         %s", frame->repeat ? "yes" : "no");
-	RDEBUG2("break_point    %s", frame->break_point ? "yes" : "no");
-	RDEBUG2("return_point   %s", frame->return_point ? "yes" : "no");
+	RDEBUG2("repeat         %s", is_repeatable(frame) ? "yes" : "no");
+	RDEBUG2("break_point    %s", is_break_point(frame) ? "yes" : "no");
+	RDEBUG2("return_point   %s", is_return_point(frame) ? "yes" : "no");
 	REXDENT();
 }
 
@@ -161,7 +161,7 @@ unlang_resume_t *unlang_interpret_resume_alloc(REQUEST *request, void *resume, v
 	 *	Replaces the current stack frame with a RESUME frame.
 	 */
 	frame->instruction = unlang_resume_to_generic(mr);
-	frame->repeat = true;
+	repeatable_set(frame);
 
 	return mr;
 }
@@ -260,6 +260,8 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 		frame->next = NULL;
 	}
 
+	frame->flags = 0;
+
 	/*
 	 *	Set flags which tell us when to stop.  Note that a top
 	 *	frame *also* stops "break" and "return".
@@ -269,17 +271,15 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 	 *	and complained about using "break" without an
 	 *	enclosing "foreach".  But it's a useful check to have.
 	 */
-	frame->top_frame = top_frame;
-	frame->return_point = top_frame;
-	frame->break_point = top_frame;
-
-	frame->break_point |= (instruction && (instruction->type == UNLANG_TYPE_FOREACH));
-	frame->return_point |= (instruction && (instruction->type == UNLANG_TYPE_POLICY));
+	if (top_frame) {
+		top_frame_set(frame);
+		return_point_set(frame);
+		break_point_set(frame);
+	}
 
 	frame->instruction = instruction;
 	frame->result = default_rcode;
 	frame->priority = -1;
-	frame->repeat = false;
 	frame->state = NULL;
 }
 
@@ -374,7 +374,7 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 	 *	but stop at the enclosing foreach / break ppint.
 	 */
 	if ((stack->unwind == UNLANG_TYPE_BREAK) &&
-	    frame->break_point) {
+	    is_break_point(frame)) {
 		rad_assert(instruction->type == UNLANG_TYPE_FOREACH);
 		stack->unwind = UNLANG_TYPE_NULL;
 	}
@@ -391,7 +391,7 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 		 *	have intermediate return points.
 		 */
 		if ((stack->unwind == UNLANG_TYPE_RETURN) &&
-		    frame->return_point) {
+		    is_return_point(frame)) {
 			stack->unwind = UNLANG_TYPE_NULL;
 		}
 
@@ -410,7 +410,7 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
  */
 static inline void frame_cleanup(unlang_stack_frame_t *frame)
 {
-	frame->repeat = false;
+	repeatable_clear(frame);
 	if (frame->state) TALLOC_FREE(frame->state);
 }
 
@@ -444,14 +444,14 @@ static inline void frame_pop(unlang_stack_t *stack)
 	 *	a break / return point.  Stop unwinding the stack.
 	 */
 	if ((stack->unwind == UNLANG_TYPE_BREAK) &&
-	    frame->break_point) {
-		frame->repeat = false;
+	    is_break_point(frame)) {
+		repeatable_clear(frame);
 		return;
 	}
 
 	if ((stack->unwind == UNLANG_TYPE_RETURN) &&
-	    frame->return_point) {
-		frame->repeat = false; /* not really necessary, but for paranoia */
+	    is_return_point(frame)) {
+		repeatable_clear(frame); /* not really necessary, but for paranoia */
 		return;
 	}
 
@@ -460,7 +460,7 @@ static inline void frame_pop(unlang_stack_t *stack)
 	 *	processing any loops.
 	 */
 	if (stack->unwind != UNLANG_TYPE_NULL) {
-		frame->repeat = false;
+		repeatable_clear(frame);
 	}
 }
 
@@ -514,7 +514,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			break;
 		}
 
-		if (!frame->repeat && (unlang_ops[instruction->type].debug_braces)) {
+		if (!is_repeatable(frame) && (unlang_ops[instruction->type].debug_braces)) {
 			RDEBUG2("%s {", instruction->debug_name);
 			RINDENT();
 		}
@@ -586,7 +586,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 				return UNLANG_FRAME_ACTION_YIELD;
 
 			case UNLANG_TYPE_RESUME:
-				frame->repeat = true;
+				repeatable_set(frame);
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
 					fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
@@ -607,7 +607,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			/* Temporary fixup - ops should return the correct code */
 			if (*result == RLM_MODULE_YIELD) goto yield;
 
-			frame->repeat = false;
+			repeatable_clear(frame);
 
 			if (unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
@@ -700,7 +700,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			 *	instruction.  And we don't return all
 			 *	of the way up the stack.
 			 */
-			if ((fa == UNLANG_FRAME_ACTION_POP) && frame->top_frame) break;	/* stop */
+			if ((fa == UNLANG_FRAME_ACTION_POP) && is_top_frame(frame)) break;	/* stop */
 			continue;
 
 		case UNLANG_FRAME_ACTION_POP:		/* Pop this frame and check the one beneath it */
@@ -724,7 +724,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			 *	or anything else that needs to be checked on the way
 			 *	back on up the stack.
 			 */
-			if (frame->repeat) {
+			if (is_repeatable(frame)) {
 				fa = UNLANG_FRAME_ACTION_NEXT;
 				continue;
 			}
@@ -732,7 +732,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 			/*
 			 *	If we're done, merge the last stack->result / priority in.
 			 */
-			if (frame->top_frame) break;	/* stop */
+			if (is_top_frame(frame)) break;	/* stop */
 
 			/*
 			 *	Close out the section we entered earlier
@@ -1100,7 +1100,7 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 		stack->depth = i;			/* We could also pass in the frame to the signal function */
 		frame = &stack->frame[stack->depth];
 
-		if (frame->top_frame) continue;		/* Skip top frames as they have no instruction */
+		if (is_top_frame(frame)) continue;		/* Skip top frames as they have no instruction */
 
 		/*
 		 *	Be gracious in errors.

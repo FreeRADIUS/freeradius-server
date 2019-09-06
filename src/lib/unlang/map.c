@@ -87,7 +87,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 	/*
 	 *	Initialise the frame state
 	 */
-	if (!frame->repeat) {
+	if (!is_repeatable(frame)) {
 #ifdef HAVE_TALLOC_POOLED_OBJECT
 		int cnt = 0;
 		for (map = g->map; map; map = map->next) cnt++;
@@ -103,7 +103,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 
 		fr_cursor_init(&update_state->maps, &g->map);
 		update_state->vlm_next = &update_state->vlm_head;
-		frame->repeat = true;
+		repeatable_set(frame);
 	}
 
 	/*
@@ -249,9 +249,9 @@ static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, int *p
 	/*
 	 *	Initialise the frame state
 	 */
-	if (!frame->repeat) {
+	if (!is_repeatable(frame)) {
 		MEM(frame->state = map_proc_state = talloc_zero(stack, unlang_frame_state_map_proc_t));
-		frame->repeat = true;
+		repeatable_set(frame);
 
 		/*
 		 *	Expand the map source

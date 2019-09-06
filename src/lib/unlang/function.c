@@ -77,7 +77,7 @@ static unlang_action_t unlang_function_call(REQUEST *request,
 	 */
 	caller = request->module;
 	request->module = NULL;
-	if (!frame->repeat) {
+	if (!is_repeatable(frame)) {
 		ua = state->func(request, presult, priority, state->uctx);
 	} else {
 		ua = state->repeat(request, presult, priority, state->uctx);
@@ -114,7 +114,7 @@ void unlang_interpret_push_function(REQUEST *request, unlang_function_t func, un
 	 *	Tell the interpreter to call unlang_function_call
 	 *	again when going back up the stack.
 	 */
-	if (repeat) frame->repeat = true;
+	if (repeat) repeatable_set(frame);
 
 	/*
 	 *	Allocate state

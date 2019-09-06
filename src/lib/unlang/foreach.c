@@ -84,17 +84,22 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 
 	g = unlang_generic_to_group(instruction);
 
-	if (!frame->repeat) {
+	if (!is_repeatable(frame)) {
 		int i, foreach_depth = 0;
 		VALUE_PAIR *vps;
+
+		/*
+		 *	Ensure any breaks terminate here...
+		 */
+		break_point_set(frame);
 
 		if (stack->depth >= UNLANG_STACK_MAX) {
 			ERROR("Internal sanity check failed: module stack is too deep");
 			fr_exit(EXIT_FAILURE);
 		}
 
-		/** Figure out foreach depth by walking back up the stack
-		 *
+		/*
+		 *	Figure out foreach depth by walking back up the stack
 		 */
 		if (stack->depth > 0) for (i = (stack->depth - 1); i >= 0; i--) {
 			unlang_t *our_instruction;
@@ -193,7 +198,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	 *	Push the child, and yield for a later return.
 	 */
 	unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
-	frame->repeat = true;
+	repeatable_set(frame);
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
