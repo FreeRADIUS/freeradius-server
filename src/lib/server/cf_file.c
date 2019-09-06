@@ -948,6 +948,84 @@ static int process_template(CONF_SECTION *this, char const *ptr, char *buff[stat
 	return 0;
 }
 
+
+static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *buff[static 7], char const *filename, int *lineno)
+{
+	ssize_t slen = 0;
+	char const *error = NULL;
+	fr_cond_t *cond = NULL;
+	CONF_DATA const *cd;
+	fr_dict_t const *dict = NULL;
+	CONF_SECTION *css;
+	char const *ptr = *ptr_p;
+
+	if (invalid_location(this, buff[1], filename, *lineno)) return NULL;
+
+	cd = cf_data_find_in_parent(this, fr_dict_t **, "dictionary");
+	if (cd) dict = *((fr_dict_t **)cf_data_value(cd));
+
+	/*
+	 *	Skip (...) to find the {
+	 */
+	slen = fr_cond_tokenize(this, &cond, &error, dict,
+				this, ptr, filename, *lineno);
+	if (slen < 0) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(this, &spaces, &text, slen, ptr);
+
+		ERROR("%s[%d]: Parse error in condition",
+		      filename, *lineno);
+		ERROR("%s[%d]: %s", filename, *lineno, text);
+		ERROR("%s[%d]: %s^ %s", filename, *lineno, spaces, error);
+
+		talloc_free(spaces);
+		talloc_free(text);
+		talloc_free(cond);
+		return NULL;
+	}
+
+	/*
+	 *	The input file buffer may be larger
+	 *	than the buffer we put the condition
+	 *	into.
+	 */
+	if ((size_t) slen >= (talloc_array_length(buff[2]) - 1)) {
+		talloc_free(cond);
+		ERROR("%s[%d]: Condition is too large after \"%s\"", filename, *lineno, buff[1]);
+		return NULL;
+	}
+
+	/*
+	 *	Copy the expanded and parsed condition
+	 *	into buff[2].  Then, parse the text after
+	 *	the condition, which now MUST be a '{.
+	 */
+	memcpy(buff[2], ptr, slen);
+	buff[2][slen] = '\0';
+	ptr += slen;
+
+	if (gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true) != T_LCBRACE) {
+		ERROR("%s[%d]: Expected '{' instead of %s", filename, *lineno, ptr);
+		talloc_free(cond);
+		return NULL;
+	}
+
+	css = cf_section_alloc(this, this, buff[1], buff[2]);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
+		talloc_free(cond);
+		return NULL;
+	}
+	css->item.filename = filename;
+	css->item.lineno = *lineno;
+
+	cf_data_add(css, cond, NULL, false);
+	*ptr_p = ptr;
+	return css;
+}
+
+
 /*
  *	Read a part of the config file.
  */
@@ -1138,95 +1216,29 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		/*
 		 *	Allow for $INCLUDE files
-		 *
-		 *      This *SHOULD* work for any level include.
-		 *      I really really really hate this file.  -cparker
 		 */
 		if ((strcasecmp(buff[1], "$INCLUDE") == 0) ||
 		    (strcasecmp(buff[1], "$-INCLUDE") == 0)) {
 			if (process_include(this, ptr, buff, filename, lineno) < 0) goto error;
 			continue;
-		} /* we were in an include */
+		}
 
+		/*
+		 *	Allow for $TEMPLATE things
+		 */
 		if (strcasecmp(buff[1], "$TEMPLATE") == 0) {
 			if (process_template(this, ptr, buff, filename, lineno) < 0) goto error;
 			continue;
 		}
 
 		/*
-		 *	Handle if/elsif specially.
+		 *	Handle if/elsif specially.  This function will
+		 *	update "ptr" to be the next thing that we
+		 *	need.
 		 */
 		if ((strcmp(buff[1], "if") == 0) || (strcmp(buff[1], "elsif") == 0)) {
-			ssize_t slen = 0;
-			char const *error = NULL;
-			fr_cond_t *cond = NULL;
-			CONF_DATA const *cd;
-			fr_dict_t const *dict = NULL;
-
-			if (invalid_location(this, buff[1], filename, *lineno)) goto error;
-
-			cd = cf_data_find_in_parent(this, fr_dict_t **, "dictionary");
-			if (cd) dict = *((fr_dict_t **)cf_data_value(cd));
-
-			/*
-			 *	Skip (...) to find the {
-			 */
-			slen = fr_cond_tokenize(this, &cond, &error, dict,
-						this, ptr, filename, *lineno);
-			if (slen < 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(this, &spaces, &text, slen, ptr);
-
-				ERROR("%s[%d]: Parse error in condition",
-				      filename, *lineno);
-				ERROR("%s[%d]: %s", filename, *lineno, text);
-				ERROR("%s[%d]: %s^ %s", filename, *lineno, spaces, error);
-
-				talloc_free(spaces);
-				talloc_free(text);
-				talloc_free(css);
-				talloc_free(cond);
-				goto error;
-			}
-
-			/*
-			 *	The input file buffer may be larger
-			 *	than the buffer we put the condition
-			 *	into.
-			 */
-			if ((size_t) slen >= (talloc_array_length(buff[2]) - 1)) {
-				talloc_free(cond);
-				ERROR("%s[%d]: Condition is too large after \"%s\"", filename, *lineno, buff[1]);
-				goto error;
-			}
-
-			/*
-			 *	Copy the expanded and parsed condition
-			 *	into buff[2].  Then, parse the text after
-			 *	the condition, which now MUST be a '{.
-			 */
-			memcpy(buff[2], ptr, slen);
-			buff[2][slen] = '\0';
-			ptr += slen;
-
-			if ((op_token = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true)) != T_LCBRACE) {
-				ERROR("%s[%d]: Expected '{' %d", filename, *lineno, op_token);
-				talloc_free(cond);
-				goto error;
-			}
-
-			css = cf_section_alloc(this, this, buff[1], buff[2]);
-			if (!css) {
-				ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
-				talloc_free(cond);
-				goto error;
-			}
-			css->item.filename = filename;
-			css->item.lineno = *lineno;
-
-			cf_data_add(css, cond, NULL, false);
-
+			css = process_if(this, &ptr, buff, filename, lineno);
+			if (!css) goto error;
 			goto add_section;
 		}
 
