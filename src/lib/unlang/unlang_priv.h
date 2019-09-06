@@ -267,10 +267,6 @@ typedef struct {
 								///< frame lower in the stack to determine if the
 								///< result stored in the lower stack frame should
 								///< be replaced.
-
-	unlang_type_t		unwind;				//!< Unwind to this frame if it exists.
-								///< This is used for break and return.
-
 	bool			repeat : 1;			//!< Call the action callback again on our way
 								//!< back up the stack.
 	bool			top_frame : 1;			//!< are we the top frame of the stack?
@@ -287,6 +283,8 @@ typedef struct {
 typedef struct {
 	rlm_rcode_t		result;				//!< The current stack rcode.
 	int			depth;				//!< Current depth we're executing at.
+	unlang_type_t		unwind;				//!< Unwind to this frame if it exists.
+								///< This is used for break and return.
 	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;
 

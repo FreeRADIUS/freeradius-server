@@ -118,15 +118,15 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 		 *	enclosing "foreach".  We're here, so
 		 *	we can stop unwinding.
 		 */
-		if (frame->unwind == UNLANG_TYPE_BREAK) {
-			frame->unwind = UNLANG_TYPE_NULL;
+		if (stack->unwind == UNLANG_TYPE_BREAK) {
+			stack->unwind = UNLANG_TYPE_NULL;
 			vp = NULL;
 		}
 
 		/*
 		 *	Unwind all the way.
 		 */
-		if (frame->unwind == UNLANG_TYPE_RETURN) {
+		if (stack->unwind == UNLANG_TYPE_RETURN) {
 			vp = NULL;
 		}
 

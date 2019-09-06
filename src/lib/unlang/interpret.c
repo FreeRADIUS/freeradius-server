@@ -61,6 +61,8 @@ static void instruction_dump(REQUEST *request, unlang_t *instruction)
 
 static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 {
+	unlang_stack_t *stack = request->stack;
+
 	instruction_dump(request, frame->instruction);
 
 	RINDENT();
@@ -74,7 +76,7 @@ static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 	RDEBUG2("top_frame      %s", frame->top_frame ? "yes" : "no");
 	RDEBUG2("result         %s", fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"));
 	RDEBUG2("priority       %d", frame->priority);
-	RDEBUG2("unwind         %d", frame->unwind);
+	RDEBUG2("unwind         %d", stack->unwind);
 	RDEBUG2("repeat         %s", frame->repeat ? "yes" : "no");
 	RDEBUG2("break_point    %s", frame->break_point ? "yes" : "no");
 	RDEBUG2("return_point   %s", frame->return_point ? "yes" : "no");
@@ -277,7 +279,6 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 	frame->instruction = instruction;
 	frame->result = default_rcode;
 	frame->priority = -1;
-	frame->unwind = UNLANG_TYPE_NULL;
 	frame->repeat = false;
 	frame->state = NULL;
 }
@@ -372,26 +373,26 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 	 *	"break" means "break out of the enclosing foreach",
 	 *	but stop at the enclosing foreach / break ppint.
 	 */
-	if ((frame->unwind == UNLANG_TYPE_BREAK) &&
+	if ((stack->unwind == UNLANG_TYPE_BREAK) &&
 	    frame->break_point) {
 		rad_assert(instruction->type == UNLANG_TYPE_FOREACH);
-		frame->unwind = UNLANG_TYPE_NULL;
+		stack->unwind = UNLANG_TYPE_NULL;
 	}
 
 	/*
 	 *	If we are unwinding the stack due to a break / return,
 	 *	then handle it now.
 	 */
-	if (frame->unwind != UNLANG_TYPE_NULL) {
+	if (stack->unwind != UNLANG_TYPE_NULL) {
 		/*
 		 *	Stop unwinding the return at a return point.
 		 *
 		 *	This should match mainly for policies which
 		 *	have intermediate return points.
 		 */
-		if ((frame->unwind == UNLANG_TYPE_RETURN) &&
+		if ((stack->unwind == UNLANG_TYPE_RETURN) &&
 		    frame->return_point) {
-			frame->unwind = UNLANG_TYPE_NULL;
+			stack->unwind = UNLANG_TYPE_NULL;
 		}
 
 		RDEBUG4("** [%i] %s - unwinding current frame with (%s %d)",
@@ -429,13 +430,12 @@ static inline void frame_next(unlang_stack_frame_t *frame)
  */
 static inline void frame_pop(unlang_stack_t *stack)
 {
-	unlang_stack_frame_t *frame, *old;
+	unlang_stack_frame_t *frame;
 
 	rad_assert(stack->depth > 1);
 
 	frame = &stack->frame[stack->depth];
 	frame_cleanup(frame);
-	old = frame;
 
 	frame = &stack->frame[--stack->depth];
 
@@ -443,13 +443,13 @@ static inline void frame_pop(unlang_stack_t *stack)
 	 *	The child was break / return, AND the current frame is
 	 *	a break / return point.  Stop unwinding the stack.
 	 */
-	if ((old->unwind == UNLANG_TYPE_BREAK) &&
+	if ((stack->unwind == UNLANG_TYPE_BREAK) &&
 	    frame->break_point) {
 		frame->repeat = false;
 		return;
 	}
 
-	if ((old->unwind == UNLANG_TYPE_RETURN) &&
+	if ((stack->unwind == UNLANG_TYPE_RETURN) &&
 	    frame->return_point) {
 		frame->repeat = false; /* not really necessary, but for paranoia */
 		return;
@@ -459,8 +459,7 @@ static inline void frame_pop(unlang_stack_t *stack)
 	 *	Unwind back up the stack.  If we're unwinding, stop
 	 *	processing any loops.
 	 */
-	if (old->unwind != UNLANG_TYPE_NULL) {
-		frame->unwind = old->unwind;
+	if (stack->unwind != UNLANG_TYPE_NULL) {
 		frame->repeat = false;
 	}
 }
@@ -511,7 +510,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		do_stop:
 			frame->result = RLM_MODULE_FAIL;
 			frame->priority = 9999;
-			frame->unwind = UNLANG_TYPE_RETURN;
+			stack->unwind = UNLANG_TYPE_RETURN;
 			break;
 		}
 
@@ -561,7 +560,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			frame->result = *result;
 			frame->priority = *priority;
 			frame->next = NULL;
-			rad_assert(frame->unwind == instruction->type);
+			rad_assert(stack->unwind == instruction->type);
 			return UNLANG_FRAME_ACTION_POP;
 
 		/*

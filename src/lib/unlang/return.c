@@ -51,7 +51,7 @@ unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult, int *prior
 		}
 	}
 
-	frame->unwind = instruction->type;
+	stack->unwind = instruction->type;
 
 	*presult = frame->result;
 	*priority = frame->priority;
