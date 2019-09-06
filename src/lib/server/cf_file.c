@@ -1227,15 +1227,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			cf_data_add(css, cond, NULL, false);
 
-		add_section:
-			cf_item_add(this, &(css->item));
-
-			/*
-			 *	The current section is now the child section.
-			 */
-			this = css;
-			css = NULL;
-			goto check_for_more;
+			goto add_section;
 		}
 
 		/*
@@ -1331,7 +1323,16 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			in_map = true;
-			goto add_section;
+
+		add_section:
+			cf_item_add(this, &(css->item));
+
+			/*
+			 *	The current section is now the child section.
+			 */
+			this = css;
+			css = NULL;
+			goto check_for_more;
 		}
 
 	skip_keywords:
