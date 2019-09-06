@@ -1354,7 +1354,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_SET:
 			fr_skip_whitespace(ptr);
 			op_token = name2_token;
-			value_token = T_INVALID;
 
 			/*
 			 *	New parser: non-quoted strings are
