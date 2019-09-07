@@ -370,6 +370,11 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 	}
 
 	/*
+	 *	Not allowed in frame uflags...
+	 */
+	rad_assert(!(frame->uflags & UNWIND_FLAG_NO_CLEAR));
+
+	/*
 	 *	If we are unwinding the stack due to a break / return,
 	 *	then handle it now.
 	 */

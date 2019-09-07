@@ -1,0 +1,30 @@
+update control {
+	&Tmp-Integer-0 += 0
+	&Tmp-Integer-0 += 1
+	&Tmp-Integer-0 += 2
+	&Tmp-Integer-0 += 3
+}
+
+foreach &control:Tmp-Integer-0 {
+	policy_return
+
+	# Should continue executing
+	if ("%{Foreach-Variable-0}" == '2') {
+		break
+	}
+
+	update control {
+		&Tmp-Integer-0 -= "%{Foreach-Variable-0}"
+	}
+}
+
+# Everything should have been removed except
+# the last incidence of &Tmp-Integer-0
+if (!&control:Tmp-Integer-0) {
+	test_fail
+}
+if (&control:Tmp-Integer-0[0] != 2) {
+	test_fail
+}
+
+success
