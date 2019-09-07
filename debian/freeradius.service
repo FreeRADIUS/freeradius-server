@@ -7,7 +7,6 @@ Documentation=man:radiusd(8) man:radiusd.conf(5) http://wiki.freeradius.org/ htt
 Type=notify
 WatchdogSec=60
 NotifyAccess=all
-PIDFile=/run/freeradius/freeradius.pid
 EnvironmentFile=-/etc/default/freeradius
 
 # FreeRADIUS can do static evaluation of policy language rules based
@@ -23,12 +22,47 @@ Environment=HOSTNAME=%H
 # a leak somewhere.
 MemoryLimit=2G
 
+# Ensure the daemon can still write its pidfile after it drops
+# privileges. Combination of options that work on a variety of
+# systems. Test very carefully if you alter these lines.
 RuntimeDirectory=freeradius
 RuntimeDirectoryMode=0775
+# This does not work on Debian Jessie:
+Group=freerad
+# This does not work on Ubuntu Bionic:
+ExecStartPre=/bin/chown freerad:freerad /var/run/freeradius
+
 ExecStartPre=/usr/sbin/freeradius $FREERADIUS_OPTIONS -Cx -lstdout
-ExecStart=/usr/sbin/freeradius $FREERADIUS_OPTIONS
+ExecStart=/usr/sbin/freeradius -f $FREERADIUS_OPTIONS
 Restart=on-failure
 RestartSec=5
+
+#  Don't elevate privileges after starting
+NoNewPrivileges=true
+
+# Allow binding to secure ports, broadcast addresses, and raw interfaces.
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SETUID CAP_SETGID CAP_CHOWN CAP_DAC_OVERRIDE
+
+# Private /tmp that isn't shared by other processes
+PrivateTmp=true
+
+# cgroups are readable only by radiusd, and child processes
+ProtectControlGroups=true
+
+# don't load new kernel modules
+ProtectKernelModules=true
+
+# don't tune kernel parameters
+ProtectKernelTunables=true
+
+# Only allow native system calls
+SystemCallArchitectures=native
+
+# We shouldn't be writing to the configuration directory
+ReadOnlyDirectories=/etc/freeradius/
+
+# We can read and write to the log directory.
+ReadWriteDirectories=/var/log/freeradius/
 
 [Install]
 WantedBy=multi-user.target
