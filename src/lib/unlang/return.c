@@ -35,12 +35,16 @@ unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult, int *prior
 
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
-	stack->unwind = instruction->type;
+	/*
+	 *	Stop at the next return point, or if we hit
+	 *	the a top frame.
+	 */
+	stack->unwind = UNWIND_FLAG_RETURN_POINT | UNWIND_FLAG_TOP_FRAME;
 
 	*presult = frame->result;
 	*priority = frame->priority;
 
-	return UNLANG_ACTION_BREAK;
+	return UNLANG_ACTION_UNWIND;
 }
 
 void unlang_return_init(void)

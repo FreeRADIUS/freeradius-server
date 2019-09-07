@@ -98,7 +98,7 @@ typedef enum {
 
 typedef enum {
 	UNLANG_GROUP_TYPE_SIMPLE = 0,		//!< Execute each of the children sequentially, until we execute
-						//!< all of the children, or one returns #UNLANG_ACTION_BREAK.
+						//!< all of the children, or one returns #UNLANG_ACTION_UNWIND.
 	UNLANG_GROUP_TYPE_REDUNDANT,		//!< Execute each of the children until one returns a 'good'
 						//!< result i.e. ok, updated, noop, then break out of the group.
 	UNLANG_GROUP_TYPE_MAX			//!< Number of group types.
@@ -235,30 +235,36 @@ typedef struct {
 } unlang_frame_state_redundant_t;
 
 typedef enum {
-	FRAME_FLAG_REPEAT	= 0x01,				//!< Repeat the frame on the way up the stack.
-	FRAME_FLAG_TOP_FRAME	= 0x02,				//!< are we the top frame of the stack?
+	UNWIND_FLAG_NONE		= 0x00,			//!< No flags.
+	UNWIND_FLAG_REPEAT		= 0x01,			//!< Repeat the frame on the way up the stack.
+	UNWIND_FLAG_TOP_FRAME		= 0x02,			//!< are we the top frame of the stack?
 								///< If true, causes the interpreter to stop
 								///< interpreting and return, control then passes
 								///< to whatever called the interpreter.
-	FRAME_FLAG_BREAK_POINT	= 0x04,				//!< 'break' stops here.
-	FRAME_FLAG_RETURN_POINT	= 0x08      			//!< 'return' stops here.
-} unlang_frame_flags_t;
+	UNWIND_FLAG_BREAK_POINT		= 0x04,			//!< 'break' stops here.
+	UNWIND_FLAG_RETURN_POINT	= 0x08,      		//!< 'return' stops here.
+	UNWIND_FLAG_NO_CLEAR		= 0x10			//!< Keep unwinding, don't clear the unwind flag.
+} unlang_unwind_flags_t;
 
-#define repeatable_set(_frame)		((_frame)->flags |= FRAME_FLAG_REPEAT)
-#define top_frame_set(_frame)		((_frame)->flags |= FRAME_FLAG_TOP_FRAME)
-#define break_point_set(_frame)		((_frame)->flags |= FRAME_FLAG_BREAK_POINT)
-#define return_point_set(_frame) 	((_frame)->flags |= FRAME_FLAG_RETURN_POINT)
+#define repeatable_set(_frame)		((_frame)->uflags |= UNWIND_FLAG_REPEAT)
+#define top_frame_set(_frame)		((_frame)->uflags |= UNWIND_FLAG_TOP_FRAME)
+#define break_point_set(_frame)		((_frame)->uflags |= UNWIND_FLAG_BREAK_POINT)
+#define return_point_set(_frame) 	((_frame)->uflags |= UNWIND_FLAG_RETURN_POINT)
 
-#define repeatable_clear(_frame)	((_frame)->flags &= ~FRAME_FLAG_REPEAT)
-#define top_frame_clear(_frame)		((_frame)->flags &= ~FRAME_FLAG_TOP_FRAME)
-#define break_point_clear(_frame)	((_frame)->flags &= ~FRAME_FLAG_BREAK_POINT)
-#define return_point_clear(_frame) 	((_frame)->flags &= ~FRAME_FLAG_RETURN_POINT)
+/*
+ *	clang doesn't like the fact that the masks
+ *	are outside the range of values the enum
+ *	can represent *sigh*
+ */
+#define repeatable_clear(_frame)	((_frame)->uflags) -= (((_frame)->uflags) & UNWIND_FLAG_REPEAT)
+#define top_frame_clear(_frame)		((_frame)->uflags) -= (((_frame)->uflags) & UNWIND_FLAG_TOP_FRAME)
+#define break_point_clear(_frame)	((_frame)->uflags) -= (((_frame)->uflags) & UNWIND_FLAG_BREAK_POINT)
+#define return_point_clear(_frame) 	((_frame)->uflags) -= (((_frame)->uflags) & UNWIND_FLAG_RETURN_POINT)
 
-#define is_repeatable(_frame)		((_frame)->flags & FRAME_FLAG_REPEAT)
-#define is_top_frame(_frame)		((_frame)->flags & FRAME_FLAG_TOP_FRAME)
-#define is_break_point(_frame)		((_frame)->flags & FRAME_FLAG_BREAK_POINT)
-#define is_return_point(_frame) 	((_frame)->flags & FRAME_FLAG_RETURN_POINT)
-
+#define is_repeatable(_frame)		((_frame)->uflags & UNWIND_FLAG_REPEAT)
+#define is_top_frame(_frame)		((_frame)->uflags & UNWIND_FLAG_TOP_FRAME)
+#define is_break_point(_frame)		((_frame)->uflags & UNWIND_FLAG_BREAK_POINT)
+#define is_return_point(_frame) 	((_frame)->uflags & UNWIND_FLAG_RETURN_POINT)
 
 /** Our interpreter stack, as distinct from the C stack
  *
@@ -293,7 +299,7 @@ typedef struct {
 								///< frame lower in the stack to determine if the
 								///< result stored in the lower stack frame should
 								///< be replaced.
-	unlang_frame_flags_t	flags;				//!< Frame markers.
+	unlang_unwind_flags_t	uflags;				//!< Unwind markers
 } unlang_stack_frame_t;
 
 /** An unlang stack associated with a request
@@ -302,7 +308,7 @@ typedef struct {
 typedef struct {
 	rlm_rcode_t		result;				//!< The current stack rcode.
 	int			depth;				//!< Current depth we're executing at.
-	unlang_type_t		unwind;				//!< Unwind to this frame if it exists.
+	unlang_unwind_flags_t	unwind;				//!< Unwind to this frame if it exists.
 								///< This is used for break and return.
 	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;

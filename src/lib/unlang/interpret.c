@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include "module_priv.h"
 
 static fr_table_num_sorted_t const unlang_action_table[] = {
-	{ "break", 		UNLANG_ACTION_BREAK },
+	{ "break", 		UNLANG_ACTION_UNWIND },
 	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
 	{ "next",		UNLANG_ACTION_EXECUTE_NEXT },
 	{ "pushed-child",	UNLANG_ACTION_PUSHED_CHILD },
@@ -260,7 +260,7 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 		frame->next = NULL;
 	}
 
-	frame->flags = 0;
+	frame->uflags = UNWIND_FLAG_NONE;
 
 	/*
 	 *	Set flags which tell us when to stop.  Note that a top
@@ -370,29 +370,18 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 	}
 
 	/*
-	 *	"break" means "break out of the enclosing foreach",
-	 *	but stop at the enclosing foreach / break ppint.
-	 */
-	if ((stack->unwind == UNLANG_TYPE_BREAK) &&
-	    is_break_point(frame)) {
-		rad_assert(instruction->type == UNLANG_TYPE_FOREACH);
-		stack->unwind = UNLANG_TYPE_NULL;
-	}
-
-	/*
 	 *	If we are unwinding the stack due to a break / return,
 	 *	then handle it now.
 	 */
-	if (stack->unwind != UNLANG_TYPE_NULL) {
+	if (stack->unwind & frame->uflags) {
 		/*
-		 *	Stop unwinding the return at a return point.
-		 *
-		 *	This should match mainly for policies which
-		 *	have intermediate return points.
+		 *	If we've been told to unwind, and we've hit
+		 *	the frame we should be unwinding to,
+		 *	and the "NO_CLEAR" flag hasn't been set, then
+		 *	clear the unwind field so we stop unwinding.
 		 */
-		if ((stack->unwind == UNLANG_TYPE_RETURN) &&
-		    is_return_point(frame)) {
-			stack->unwind = UNLANG_TYPE_NULL;
+		if (!(stack->unwind & UNWIND_FLAG_NO_CLEAR) && (stack->unwind & frame->uflags)) {
+			stack->unwind = UNWIND_FLAG_NONE;
 		}
 
 		RDEBUG4("** [%i] %s - unwinding current frame with (%s %d)",
@@ -443,24 +432,9 @@ static inline void frame_pop(unlang_stack_t *stack)
 	 *	The child was break / return, AND the current frame is
 	 *	a break / return point.  Stop unwinding the stack.
 	 */
-	if ((stack->unwind == UNLANG_TYPE_BREAK) &&
-	    is_break_point(frame)) {
+	if (stack->unwind && frame->uflags) {
 		repeatable_clear(frame);
 		return;
-	}
-
-	if ((stack->unwind == UNLANG_TYPE_RETURN) &&
-	    is_return_point(frame)) {
-		repeatable_clear(frame); /* not really necessary, but for paranoia */
-		return;
-	}
-
-	/*
-	 *	Unwind back up the stack.  If we're unwinding, stop
-	 *	processing any loops.
-	 */
-	if (stack->unwind != UNLANG_TYPE_NULL) {
-		repeatable_clear(frame);
 	}
 }
 
@@ -487,7 +461,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 	while (frame->instruction) {
 		REQUEST			*parent;
 		unlang_t		*instruction = frame->instruction;
-		unlang_action_t		action = UNLANG_ACTION_BREAK;
+		unlang_action_t		action = UNLANG_ACTION_UNWIND;
 
 		DUMP_STACK;
 
@@ -510,7 +484,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		do_stop:
 			frame->result = RLM_MODULE_FAIL;
 			frame->priority = 9999;
-			stack->unwind = UNLANG_TYPE_RETURN;
+			stack->unwind = UNWIND_FLAG_TOP_FRAME | UNWIND_FLAG_NO_CLEAR;
 			break;
 		}
 
@@ -555,12 +529,12 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		 *	We're in a looping construct and need to stop
 		 *	execution of the current section.
 		 */
-		case UNLANG_ACTION_BREAK:
+		case UNLANG_ACTION_UNWIND:
 			if (*priority < 0) *priority = 0;
 			frame->result = *result;
 			frame->priority = *priority;
 			frame->next = NULL;
-			rad_assert(stack->unwind == instruction->type);
+			rad_assert(stack->unwind != UNWIND_FLAG_NONE);
 			return UNLANG_FRAME_ACTION_POP;
 
 		/*

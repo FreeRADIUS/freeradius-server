@@ -144,33 +144,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 		foreach = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 
 		vp = fr_cursor_next(&foreach->cursor);
-
-		/*
-		 *	We've been asked to unwind to the
-		 *	enclosing "foreach".  We're here, so
-		 *	we can stop unwinding.
-		 */
-		if (stack->unwind == UNLANG_TYPE_BREAK) {
-			stack->unwind = UNLANG_TYPE_NULL;
-			vp = NULL;
-		}
-
-		/*
-		 *	Unwind all the way.
-		 */
-		if (stack->unwind == UNLANG_TYPE_RETURN) {
-			vp = NULL;
-		}
-
 		if (!vp) {
-			/*
-			 *	Free the copied vps and the request data
-			 *	If we don't remove the request data, something could call
-			 *	the xlat outside of a foreach loop and trigger a segv.
-			 */
-			fr_pair_list_free(&foreach->vps);
-			request_data_get(request, FOREACH_REQUEST_DATA, foreach->depth);
-
 			*presult = frame->result;
 			if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
 #ifndef NDEBUG
@@ -211,12 +185,16 @@ static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult, int 
 
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
-	stack->unwind = instruction->type;
+	/*
+	 *	Stop at the next break point, or if we hit
+	 *	the a top frame.
+	 */
+	stack->unwind = UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME;
 
 	*presult = frame->result;
 	*priority = frame->priority;
 
-	return UNLANG_ACTION_BREAK;
+	return UNLANG_ACTION_UNWIND;
 }
 
 /** Implements the Foreach-Variable-X
