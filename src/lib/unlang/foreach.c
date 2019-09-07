@@ -115,18 +115,18 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
+		MEM(frame->state = foreach = talloc_zero(stack, unlang_frame_state_foreach_t));
+
 		/*
 		 *	Copy the VPs from the original request, this ensures deterministic
 		 *	behaviour if someone decides to add or remove VPs in the set we're
 		 *	iterating over.
 		 */
-		if (tmpl_copy_vps(stack, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
+		if (tmpl_copy_vps(frame->state, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
 			*presult = RLM_MODULE_NOOP;
 			*priority = instruction->actions[RLM_MODULE_NOOP];
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
-
-		MEM(frame->state = foreach = talloc_zero(stack, unlang_frame_state_foreach_t));
 
 		rad_assert(vps != NULL);
 
