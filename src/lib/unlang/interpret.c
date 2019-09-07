@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include "module_priv.h"
 
 static fr_table_num_sorted_t const unlang_action_table[] = {
-	{ "break", 		UNLANG_ACTION_UNWIND },
+	{ "unwind", 		UNLANG_ACTION_UNWIND },
 	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
 	{ "next",		UNLANG_ACTION_EXECUTE_NEXT },
 	{ "pushed-child",	UNLANG_ACTION_PUSHED_CHILD },
@@ -373,22 +373,31 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 	 *	If we are unwinding the stack due to a break / return,
 	 *	then handle it now.
 	 */
-	if (stack->unwind & frame->uflags) {
+	if (stack->unwind) {
+		/*
+		 *	Continue unwinding...
+		 */
+		if (!(stack->unwind & frame->uflags) || (stack->unwind & UNWIND_FLAG_NO_CLEAR)) {
+			RDEBUG4("** [%i] %s - unwinding current frame with (%s %d) - flags - stack (%i), frame (%i)",
+				stack->depth, __FUNCTION__,
+				fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
+				frame->priority, stack->unwind, frame->uflags);
+
+			return UNLANG_FRAME_ACTION_POP;
+		}
+
 		/*
 		 *	If we've been told to unwind, and we've hit
 		 *	the frame we should be unwinding to,
 		 *	and the "NO_CLEAR" flag hasn't been set, then
 		 *	clear the unwind field so we stop unwinding.
 		 */
-		if (!(stack->unwind & UNWIND_FLAG_NO_CLEAR) && (stack->unwind & frame->uflags)) {
-			stack->unwind = UNWIND_FLAG_NONE;
-		}
+		stack->unwind = UNWIND_FLAG_NONE;
 
-		RDEBUG4("** [%i] %s - unwinding current frame with (%s %d)",
+		RDEBUG4("** [%i] %s - unwind stop (%s %d) - flags - stack (%i), frame (%i)",
 			stack->depth, __FUNCTION__,
 			fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
-			frame->priority);
-		return UNLANG_FRAME_ACTION_POP;
+			frame->priority, stack->unwind, frame->uflags);
 	}
 
 	return frame->next ? UNLANG_FRAME_ACTION_NEXT : UNLANG_FRAME_ACTION_POP;

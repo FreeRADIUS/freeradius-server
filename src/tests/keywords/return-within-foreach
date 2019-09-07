@@ -1,0 +1,17 @@
+update control {
+	&Tmp-Integer-0 += 0
+	&Tmp-Integer-0 += 1
+	&Tmp-Integer-0 += 2
+	&Tmp-Integer-0 += 3
+}
+
+group {
+	foreach &control:Tmp-Integer-0 {
+		if ("%{Foreach-Variable-0}" == '2') {
+			success
+			return
+		}
+	}
+	test_fail
+}
+test_fail

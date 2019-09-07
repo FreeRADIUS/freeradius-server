@@ -1,0 +1,9 @@
+if (&User-Name == 'bob') {
+	success
+	return
+}
+
+# Should not execute this condition
+if (&User-Name == 'bob') {
+	reject
+}

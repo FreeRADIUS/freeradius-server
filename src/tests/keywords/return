@@ -22,3 +22,6 @@ if (&User-Name == "bob") {
 	#
 	return
 }
+
+# Shouldn't get here
+test_fail
