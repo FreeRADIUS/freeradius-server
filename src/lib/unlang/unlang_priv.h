@@ -243,7 +243,8 @@ typedef enum {
 								///< to whatever called the interpreter.
 	UNWIND_FLAG_BREAK_POINT		= 0x04,			//!< 'break' stops here.
 	UNWIND_FLAG_RETURN_POINT	= 0x08,      		//!< 'return' stops here.
-	UNWIND_FLAG_NO_CLEAR		= 0x10			//!< Keep unwinding, don't clear the unwind flag.
+	UNWIND_FLAG_NO_CLEAR		= 0x10,			//!< Keep unwinding, don't clear the unwind flag.
+	UNWIND_FLAG_MAX			= 0xff
 } unlang_unwind_flags_t;
 
 #define repeatable_set(_frame)		((_frame)->uflags |= UNWIND_FLAG_REPEAT)

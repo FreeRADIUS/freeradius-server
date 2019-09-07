@@ -52,7 +52,7 @@ unlang_action_t unlang_group(REQUEST *request,
 }
 
 static unlang_action_t unlang_policy(REQUEST *request,
-				     UNUSED rlm_rcode_t *result, UNUSED int *priority)
+				     rlm_rcode_t *result, int *priority)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
