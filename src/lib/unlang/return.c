@@ -42,7 +42,7 @@ unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult, int *prior
 	 *	Stop at the next return point, or if we hit
 	 *	the a top frame.
 	 */
-	UNWIND_TO_RETURN(stack);
+	unwind_to_return(stack);
 	return UNLANG_ACTION_UNWIND;
 }
 

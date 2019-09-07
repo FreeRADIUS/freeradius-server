@@ -260,9 +260,9 @@ typedef struct {
 #define is_break_point(_frame)		((_frame)->uflags & UNWIND_FLAG_BREAK_POINT)
 #define is_return_point(_frame) 	((_frame)->uflags & UNWIND_FLAG_RETURN_POINT)
 
-#define UNWIND_TO_BREAK(_stack)		((_stack)->unwind = (UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME))
-#define UNWIND_TO_RETURN(_stack)	((_stack)->unwind = (UNWIND_FLAG_RETURN_POINT | UNWIND_FLAG_TOP_FRAME))
-#define UNWIND_ALL(_stack)		((_stack)->unwind = (UNWIND_FLAG_TOP_FRAME | UNWIND_FLAG_NO_CLEAR))
+#define unwind_to_break(_stack)		((_stack)->unwind = (UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME))
+#define unwind_to_return(_stack)	((_stack)->unwind = (UNWIND_FLAG_RETURN_POINT | UNWIND_FLAG_TOP_FRAME))
+#define unwind_all(_stack)		((_stack)->unwind = (UNWIND_FLAG_TOP_FRAME | UNWIND_FLAG_NO_CLEAR))
 
 /** Our interpreter stack, as distinct from the C stack
  *

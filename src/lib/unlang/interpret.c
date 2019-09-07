@@ -484,7 +484,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		do_stop:
 			frame->result = RLM_MODULE_FAIL;
 			frame->priority = 9999;
-			UNWIND_ALL(stack);
+			unwind_all(stack);
 			break;
 		}
 

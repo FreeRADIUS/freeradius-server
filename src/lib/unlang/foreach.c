@@ -192,7 +192,7 @@ static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult, int 
 	 *	Stop at the next break point, or if we hit
 	 *	the a top frame.
 	 */
-	UNWIND_TO_BREAK(stack);
+	unwind_to_break(stack);
 	return UNLANG_ACTION_UNWIND;
 }
 
