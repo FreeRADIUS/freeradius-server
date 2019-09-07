@@ -185,15 +185,14 @@ static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult, int 
 
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
+	*presult = frame->result;
+	*priority = frame->priority;
+
 	/*
 	 *	Stop at the next break point, or if we hit
 	 *	the a top frame.
 	 */
-	stack->unwind = UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME;
-
-	*presult = frame->result;
-	*priority = frame->priority;
-
+	UNWIND_TO_BREAK(stack);
 	return UNLANG_ACTION_UNWIND;
 }
 
