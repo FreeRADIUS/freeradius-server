@@ -234,36 +234,6 @@ typedef struct {
 	unlang_t		*found;
 } unlang_frame_state_redundant_t;
 
-#define UNWIND_FLAG_NONE		0x00			//!< No flags.
-#define UNWIND_FLAG_REPEAT		0x01			//!< Repeat the frame on the way up the stack.
-#define UNWIND_FLAG_TOP_FRAME		0x02			//!< are we the top frame of the stack?
-								///< If true, causes the interpreter to stop
-								///< interpreting and return, control then passes
-								///< to whatever called the interpreter.
-#define UNWIND_FLAG_BREAK_POINT		0x04			//!< 'break' stops here.
-#define UNWIND_FLAG_RETURN_POINT	0x08      		//!< 'return' stops here.
-#define UNWIND_FLAG_NO_CLEAR		0x10			//!< Keep unwinding, don't clear the unwind flag.
-
-
-#define repeatable_set(_frame)		((_frame)->uflags |= UNWIND_FLAG_REPEAT)
-#define top_frame_set(_frame)		((_frame)->uflags |= UNWIND_FLAG_TOP_FRAME)
-#define break_point_set(_frame)		((_frame)->uflags |= UNWIND_FLAG_BREAK_POINT)
-#define return_point_set(_frame) 	((_frame)->uflags |= UNWIND_FLAG_RETURN_POINT)
-
-#define repeatable_clear(_frame)	((_frame)->uflags) &= ~UNWIND_FLAG_REPEAT
-#define top_frame_clear(_frame)		((_frame)->uflags) &= ~UNWIND_FLAG_TOP_FRAME
-#define break_point_clear(_frame)	((_frame)->uflags) &= ~UNWIND_FLAG_BREAK_POINT
-#define return_point_clear(_frame) 	((_frame)->uflags) &= ~UNWIND_FLAG_RETURN_POINT
-
-#define is_repeatable(_frame)		((_frame)->uflags & UNWIND_FLAG_REPEAT)
-#define is_top_frame(_frame)		((_frame)->uflags & UNWIND_FLAG_TOP_FRAME)
-#define is_break_point(_frame)		((_frame)->uflags & UNWIND_FLAG_BREAK_POINT)
-#define is_return_point(_frame) 	((_frame)->uflags & UNWIND_FLAG_RETURN_POINT)
-
-#define unwind_to_break(_stack)		((_stack)->unwind = (UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME))
-#define unwind_to_return(_stack)	((_stack)->unwind = (UNWIND_FLAG_RETURN_POINT | UNWIND_FLAG_TOP_FRAME))
-#define unwind_all(_stack)		((_stack)->unwind = (UNWIND_FLAG_TOP_FRAME | UNWIND_FLAG_NO_CLEAR))
-
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and
@@ -310,6 +280,47 @@ typedef struct {
 								///< This is used for break and return.
 	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;
+
+#define UNWIND_FLAG_NONE		0x00			//!< No flags.
+#define UNWIND_FLAG_REPEAT		0x01			//!< Repeat the frame on the way up the stack.
+#define UNWIND_FLAG_TOP_FRAME		0x02			//!< are we the top frame of the stack?
+								///< If true, causes the interpreter to stop
+								///< interpreting and return, control then passes
+								///< to whatever called the interpreter.
+#define UNWIND_FLAG_BREAK_POINT		0x04			//!< 'break' stops here.
+#define UNWIND_FLAG_RETURN_POINT	0x08      		//!< 'return' stops here.
+#define UNWIND_FLAG_NO_CLEAR		0x10			//!< Keep unwinding, don't clear the unwind flag.
+
+static inline void repeatable_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_REPEAT; }
+static inline void top_frame_set(unlang_stack_frame_t *frame) 		{ frame->uflags |= UNWIND_FLAG_TOP_FRAME; }
+static inline void break_point_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_BREAK_POINT; }
+static inline void return_point_set(unlang_stack_frame_t *frame)	{ frame->uflags |= UNWIND_FLAG_RETURN_POINT; }
+
+static inline void repeatable_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FLAG_REPEAT; }
+static inline void top_frame_clear(unlang_stack_frame_t *frame)		{ frame->uflags &= ~UNWIND_FLAG_TOP_FRAME; }
+static inline void break_point_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FLAG_BREAK_POINT; }
+static inline void return_point_clear(unlang_stack_frame_t *frame) 	{ frame->uflags &= ~UNWIND_FLAG_RETURN_POINT; }
+
+static inline bool is_repeatable(unlang_stack_frame_t *frame)		{ return frame->uflags & UNWIND_FLAG_REPEAT; }
+static inline bool is_top_frame(unlang_stack_frame_t *frame)		{ return frame->uflags & UNWIND_FLAG_TOP_FRAME; }
+static inline bool is_break_point(unlang_stack_frame_t *frame)		{ return frame->uflags & UNWIND_FLAG_BREAK_POINT; }
+static inline bool is_return_point(unlang_stack_frame_t *frame) 	{ return frame->uflags & UNWIND_FLAG_RETURN_POINT; }
+
+static inline unlang_action_t unwind_to_break(unlang_stack_t *stack)
+{
+	stack->unwind = UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME;
+	return UNLANG_ACTION_UNWIND;
+}
+static inline unlang_action_t unwind_to_return(unlang_stack_t *stack)
+{
+	stack->unwind = UNWIND_FLAG_RETURN_POINT | UNWIND_FLAG_TOP_FRAME;
+	return UNLANG_ACTION_UNWIND;
+}
+static inline unlang_action_t unwind_all(unlang_stack_t *stack)
+{
+	stack->unwind = UNWIND_FLAG_TOP_FRAME | UNWIND_FLAG_NO_CLEAR;
+	return UNLANG_ACTION_UNWIND;
+}
 
 /** Different operations the interpreter can execute
  */

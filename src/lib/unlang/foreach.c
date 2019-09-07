@@ -192,8 +192,7 @@ static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult, int 
 	 *	Stop at the next break point, or if we hit
 	 *	the a top frame.
 	 */
-	unwind_to_break(stack);
-	return UNLANG_ACTION_UNWIND;
+	return unwind_to_break(stack);
 }
 
 /** Implements the Foreach-Variable-X
