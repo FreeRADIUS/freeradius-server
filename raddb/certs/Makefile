@@ -78,7 +78,7 @@ ca.der: ca.pem
 
 ca.crl: ca.pem
 	$(OPENSSL) ca -gencrl -keyfile ca.key -cert ca.pem -config ./ca.cnf -out ca-crl.pem -key $(PASSWORD_CA)
-	$(OPENSSL) crl -in ca-crl.prm -outform der -out ca.crl
+	$(OPENSSL) crl -in ca-crl.pem -outform der -out ca.crl
 	rm ca-crl.pem
 
 ######################################################################
