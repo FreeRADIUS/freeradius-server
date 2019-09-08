@@ -34,7 +34,7 @@ all: index.txt serial dh server ca client
 client: client.pem
 
 .PHONY: ca
-ca: ca.der
+ca: ca.der ca.crl
 
 .PHONY: server
 server: server.pem server.vrfy
@@ -75,6 +75,11 @@ ca.key ca.pem: ca.cnf
 
 ca.der: ca.pem
 	$(OPENSSL) x509 -inform PEM -outform DER -in ca.pem -out ca.der
+
+ca.crl: ca.pem
+	$(OPENSSL) ca -gencrl -keyfile ca.key -cert ca.pem -config ./ca.cnf -out ca-crl.pem -key $(PASSWORD_CA)
+	$(OPENSSL) crl -in ca-crl.prm -outform der -out ca.crl
+	rm ca-crl.pem
 
 ######################################################################
 #
@@ -175,5 +180,5 @@ clean:
 #	Make a target that people won't run too often.
 #
 destroycerts:
-	rm -f *~ dh *.csr *.crt *.p12 *.der *.pem *.key index.txt* \
+	rm -f *~ dh *.csr *.crt *.p12 *.der *.pem *.key ca-crl.pem ca.crl index.txt* \
 			serial*  *\.0 *\.1
