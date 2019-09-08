@@ -87,7 +87,8 @@ dh:
 rsa/ca.key rsa/ca.pem: ca.cnf | $(OUTPUT_DIRS)
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
-	openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
+	openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS) \
+	-passin pass:$(PASSWORD_CA) -passout pass:$(PASSWORD_CA)
 
 rsa/ca.der: rsa/ca.pem
 	openssl x509 -inform PEM -outform DER -in rsa/ca.pem -out rsa/ca.der
