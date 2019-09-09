@@ -69,9 +69,6 @@ struct main_config_s {
 	char const	*log_dir;
 	char const	*local_state_dir;
 	char const	*chroot_dir;
-#ifdef WITH_CONF_WRITE
-	char const	*write_dir;			//!< where the normalized config is written
-#endif
 
 	bool		reverse_lookups;
 	bool		hostname_lookups;

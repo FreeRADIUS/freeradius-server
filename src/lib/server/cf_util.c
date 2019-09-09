@@ -897,10 +897,6 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 			break;
 
 		case CONF_ITEM_DATA: /* Skip data */
-#ifdef WITH_CONF_WRITE
-		case CONF_ITEM_COMMENT:
-		case CONF_ITEM_INCLUDE:
-#endif
 			break;
 
 		case CONF_ITEM_INVALID:
@@ -1140,9 +1136,6 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	}
 
 	if (value) {
-#ifdef WITH_CONF_WRITE
-		cp->orig_value = talloc_typed_strdup(cp, value);
-#endif
 		cp->value = talloc_typed_strdup(cp, value);
 		if (!cp->value) goto error;
 	}

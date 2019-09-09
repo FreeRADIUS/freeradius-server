@@ -728,37 +728,6 @@ static bool invalid_location(CONF_SECTION *this, char const *name, char const *f
 	return false;
 }
 
-#ifdef WITH_CONF_WRITE
-static void cf_comment_add(CONF_SECTION *cs, int lineno, char const *ptr)
-{
-	CONF_COMMENT *cc;
-
-	cc = talloc_zero(cs, CONF_COMMENT);
-	cc->item.type = CONF_ITEM_COMMENT;
-	cc->item.parent = cs;
-	cc->item.filename = cs->item.filename;
-	cc->item.lineno = lineno;
-	cc->comment = talloc_typed_strdup(cc, ptr);
-
-
-	cf_item_add(cs, &(cc->item));
-}
-
-static void cf_include_add(CONF_SECTION *cs, char const *filename, CONF_INCLUDE_TYPE file_type)
-{
-	CONF_INCLUDE *cc;
-
-	cc = talloc_zero(cs, CONF_INCLUDE);
-	cc->item.type = CONF_ITEM_INCLUDE;
-	cc->item.parent = cs;
-	cc->item.filename = cs->item.filename;
-	cc->item.lineno = 0;
-	cc->filename = talloc_typed_strdup(cc, filename);
-	cc->file_type = file_type;
-
-	cf_item_add(cs, &(cc->item));
-}
-#endif
 
 static int process_include(CONF_SECTION *this, char const *ptr, char *buff[static 7], char const *filename, int *lineno)
 {
@@ -823,15 +792,6 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 		my_directory = talloc_strdup(this, value);
 
 		cf_log_debug(this, "Including files in directory \"%s\"", my_directory);
-
-#ifdef WITH_CONF_WRITE
-		/*
-		 *	We print this out, but don't
-		 *	actually open a file based on
-		 *	it.
-		 */
-		cf_include_add(this, my_directory, CONF_INCLUDE_DIR);
-#endif
 
 #ifdef S_IWOTH
 		/*
@@ -1127,9 +1087,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	CONF_PAIR	*cpn;
 	char const	*ptr;
 	char const	*value;
-#ifdef WITH_CONF_WRITE
-	char const	*orig_value = NULL;
-#endif
 
 	FR_TOKEN	name1_token = T_INVALID, name2_token, value_token, op_token;
 	bool		has_spaces = false;
@@ -1189,15 +1146,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			ptr = buff[0];
 			fr_skip_whitespace(ptr);
-
-#ifdef WITH_CONF_WRITE
-			/*
-			 *	This is where all of the comments are handled
-			 */
-			if (*ptr == '#') {
-				cf_comment_add(this, *lineno, ptr + 1);
-			}
-#endif
 
 			if (!*ptr || (*ptr == '#')) continue;
 
@@ -1472,9 +1420,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				bool		soft_fail;
 				char const	*expanded;
 
-#ifdef WITH_CONF_WRITE
-				orig_value = value;
-#endif
 				expanded = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]), buff[3], &soft_fail);
 				if (!expanded) {
 					if (!soft_fail) goto error;
@@ -1520,12 +1465,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 				if (rule->func(this, NULL, NULL, cf_pair_to_item(cpn), rule) < 0) goto error;
 			}
-		skip_on_read:
 
-#ifdef WITH_CONF_WRITE
-			if (orig_value) cpn->orig_value = talloc_typed_strdup(cpn, orig_value);
-			orig_value = NULL;
-#endif
+		skip_on_read:
 			/*
 			 *	Require a comma, unless there's a comment.
 			 */
@@ -1535,24 +1476,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				ptr++;
 				break;
 			}
-
-			/*
-			 *	module # stuff!
-			 *	foo = bar # other stuff
-			 */
-#ifdef WITH_CONF_WRITE
-			if (*ptr == '#') {
-				value_token = T_HASH;
-				ptr++;
-			}
-
-			/*
-			 *	Allocate a CONF_COMMENT, and add it to the list of children.
-			 */
-			if ((value_token == T_HASH) && (*ptr >= ' ')) {
-				cf_comment_add(this, *lineno, ptr);
-			}
-#endif
 
 			if ((value_token == T_HASH) || (value_token == T_COMMA) || (value_token == T_EOL) || (*ptr == '#')) continue;
 
@@ -1651,10 +1574,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
  *	Include one config file in another.
  */
 static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
-#ifndef WITH_CONF_WRITE
-			   UNUSED
-#endif
-			   CONF_INCLUDE_TYPE file_type, char *buff[7], bool from_dir)
+			   UNUSED CONF_INCLUDE_TYPE file_type, char *buff[7], bool from_dir)
 {
 	FILE		*fp = NULL;
 	int		lineno = 0;
@@ -1669,14 +1589,6 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
 
 	if (!cs->item.filename) cs->item.filename = filename;
 
-#ifdef WITH_CONF_WRITE
-	/*
-	 *	Instruct the parser that we've started to include a
-	 *	file at this point.
-	 */
-	cf_include_add(cs, filename, file_type);
-#endif
-
 	/*
 	 *	Read the section.  It's OK to have EOF without a
 	 *	matching close brace.
@@ -1686,14 +1598,6 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
 		fclose(fp);
 		return -1;
 	}
-
-#ifdef WITH_CONF_WRITE
-	/*
-	 *	Instruct the parser that we've finished including a
-	 *	file at this point.
-	 */
-	cf_include_add(cs, NULL, file_type);
-#endif
 
 	fclose(fp);
 	return 0;
@@ -1790,43 +1694,6 @@ int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 	return cb.rcode;
 }
 
-#ifdef WITH_CONF_WRITE
-static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
-{
-	FILE	*fp;
-	char	*p;
-	char	const *q;
-	char	buffer[8192];
-
-	q = filename;
-	if ((q[0] == '.') && (q[1] == '/')) q += 2;
-
-	snprintf(buffer, sizeof(buffer), "%s/%s", main_config->write_dir, q);
-
-	p = strrchr(buffer, '/');
-	*p = '\0';
-	if ((rad_mkdir(buffer, 0700, -1, -1) < 0) &&
-	    (errno != EEXIST)) {
-		cf_log_err(cs, "Failed creating directory %s: %s",
-			   buffer, fr_syserror(errno));
-		return NULL;
-	}
-
-	/*
-	 *	And again, because rad_mkdir() butchers the buffer.
-	 */
-	snprintf(buffer, sizeof(buffer), "%s/%s", main_config->write_dir, q);
-
-	fp = fopen(buffer, "a");
-	if (!fp) {
-		cf_log_err(cs, "Failed creating file %s: %s",
-			   buffer, fr_syserror(errno));
-		return NULL;
-	}
-
-	return fp;
-}
-#endif	/* WITH_CONF_WRITE */
 
 static char const parse_tabs[] = "																																																																																																																																																																																																								";
 
@@ -1946,7 +1813,6 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 
 	return 1;
 }
-
 
 
 CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,

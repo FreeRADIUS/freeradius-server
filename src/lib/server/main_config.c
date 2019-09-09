@@ -136,9 +136,6 @@ static const CONF_PARSER log_config[] = {
 	{ FR_CONF_OFFSET("line_number", FR_TYPE_BOOL, main_config_t, log_line_number) },
 	{ FR_CONF_OFFSET("timestamp", FR_TYPE_BOOL, main_config_t, log_timestamp) },
 	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, main_config_t, log_dates_utc) },
-#ifdef WITH_CONF_WRITE
-	{ FR_CONF_OFFSET("write_dir", FR_TYPE_STRING, main_config_t, write_dir), .dflt = NULL },
-#endif
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1231,12 +1228,6 @@ do {\
 			goto failure;
 		}
 	}
-
-#ifdef WITH_CONF_WRITE
-	if (config->write_dir) {
-		cf_section_write(NULL, cs, -1);
-	}
-#endif
 
 	config->root_cs = cs;	/* Do this last to avoid dangling pointers on error */
 

@@ -37,10 +37,6 @@ typedef enum conf_type {
 	CONF_ITEM_PAIR,
 	CONF_ITEM_SECTION,
 	CONF_ITEM_DATA,
-#ifdef WITH_CONF_WRITE
-	CONF_ITEM_COMMENT,
-	CONF_ITEM_INCLUDE
-#endif
 } CONF_ITEM_TYPE;
 
 /** Common header for all CONF_* types
@@ -70,9 +66,6 @@ struct cf_pair {
 	CONF_ITEM		item;		//!< Common set of fields.
 
 	char const		*attr;		//!< Attribute name
-#ifdef WITH_CONF_WRITE
-	char const		*orig_value;	/* original value */
-#endif
 	char const		*value;		//!< Attribute value
 
 	FR_TOKEN		op;		//!< Operator e.g. =, :=
@@ -124,19 +117,6 @@ typedef enum cf_include_type {
 	CONF_INCLUDE_DIR,
 	CONF_INCLUDE_FROMDIR,
 } CONF_INCLUDE_TYPE;
-
-#ifdef WITH_CONF_WRITE
-typedef struct {
-	CONF_ITEM		item;
-	char const		*comment;
-} CONF_COMMENT;
-
-typedef struct {
-	CONF_ITEM		item;
-	char const		*filename;
-	CONF_INCLUDE_TYPE	file_type;
-} CONF_INCLUDE;
-#endif
 
 typedef struct {
 	char const		*filename;

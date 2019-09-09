@@ -1774,10 +1774,6 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	g->map = talloc_steal(g, head);
 
-#ifdef WITH_CONF_WRITE
-//	cf_data_add(cs, CF_DATA_TYPE_UNLANG, "update", g->map, NULL); /* for output normalization */
-#endif
-
 	if (!pass2_fixup_update(g, unlang_ctx->rules)) {
 		talloc_free(g);
 		return NULL;
@@ -1831,10 +1827,6 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
 
 	g->map = talloc_steal(g, head);
-
-#ifdef WITH_CONF_WRITE
-//	cf_data_add(cs, CF_DATA_TYPE_FILTER, "filter", g->map, NULL); /* for output normalization */
-#endif
 
 	/*
 	 *	The fixups here occur whether or not it's UPDATE or FILTER
