@@ -581,7 +581,10 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 	char *p, *expanded;
 	char buffer[8192];
 
-	slen = tmpl_preparse(out, outlen, start, type, error, castda, require_regex);
+	/*
+	 *	Allow dynamic xlat expansion everywhere.
+	 */
+	slen = tmpl_preparse(out, outlen, start, type, error, castda, require_regex, true);
 	if (slen <= 0) return slen;
 
 	p = strchr(start, '$');
@@ -614,7 +617,7 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 	 *	skip.  Which means that we need to keep treat this
 	 *	length as different.
 	 */
-	my_slen = tmpl_preparse(out, outlen, buffer, type, error, castda, require_regex);
+	my_slen = tmpl_preparse(out, outlen, buffer, type, error, castda, require_regex, true);
 	if (my_slen <= 0) return my_slen;
 
 	if (!*out) return 0; /* for sanity checks, *outlen can be 0 for empty strings */

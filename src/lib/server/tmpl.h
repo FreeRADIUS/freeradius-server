@@ -515,7 +515,8 @@ int			tmpl_define_undefined_attr(fr_dict_t *dict, vp_tmpl_t *vpt,
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *start,
 				      FR_TOKEN *type, char const **error,
-				      fr_dict_attr_t const **castda, bool require_regex) CC_HINT(nonnull(1,2,3,4,5));
+				      fr_dict_attr_t const **castda, bool require_regex,
+				      bool allow_xlat) CC_HINT(nonnull(1,2,3,4,5));
 
 #ifdef __cplusplus
 }

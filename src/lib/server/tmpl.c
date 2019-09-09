@@ -2912,16 +2912,18 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
  * @param[out] error	string describing the error
  * @param[out] castda	NULL if casting is not allowed, otherwise the cast
  * @param   require_regex whether or not to require regular expressions
+ * @param   allow_xlat  whether or not "bare" xlat's are allowed
  * @return
  *	- > 0, amount of parsed string to skip, to get to the next token
  *	- <=0, -offset in 'start' where the parse error was located
  */
 ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		      FR_TOKEN *type, char const **error,
-		      fr_dict_attr_t const **castda, bool require_regex)
+		      fr_dict_attr_t const **castda, bool require_regex, bool allow_xlat)
 {
 	char const *p = start;
 	char quote;
+	int depth;
 
 	*type = T_INVALID;
 	if (castda) *castda = NULL;
@@ -3037,6 +3039,76 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		*outlen = p - (*out);
 		break;
 
+	case '%':
+		if (!allow_xlat) {
+			return_P("Unexpected expansion");
+		}
+
+		if (p[1] != '{') {
+			p++;
+			return_P("Invalid character after '%'");
+		}
+
+		/*
+		 *	For now, %{...} is treated as a double-quoted
+		 *	string.  Once we clean other things up, the
+		 *	xlats will be treated as strongly typed values
+		 *	/ lists on their own.
+		 */
+		*type = T_DOUBLE_QUOTED_STRING;
+		depth = 1;
+
+		/*
+		 *	Xlat's are quoted by %{...} nesting, not by
+		 *	escapes, so we need to do special escaping.
+		 */
+		*out = p;
+		while (*p) {
+			/*
+			 *	End of expansion.  Return the entire
+			 *	expansion, including the enclosing %{}
+			 *	characters.
+			 */
+			if (*p == '}') {
+				p++;
+				if (depth == 0) {
+					*outlen = p - (*out);
+					return p - start;
+				}
+
+				depth--;
+				continue;
+			}
+
+			if (*p == '\\') {
+				p++;
+				if (!p[1]) {
+					return_P("End of string after escape");
+				}
+
+				p++;
+				continue;
+			}
+
+			if ((*p == '%') && (*p == '{')) {
+				if (!p[2]) {
+					return_P("End of string after expansion");
+				}
+
+				p += 2;
+				depth++;
+				continue;
+			}
+
+			p++;
+		}
+
+		/*
+		 *	End of input without end of string.
+		 *	Point the error to the start of the string.
+		 */
+		p = *out;
+		return_P("Unterminated expansion");
 
 	case '/':
 		quote = *(p++);
