@@ -1318,6 +1318,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	Get the next word.
 		 */
 		name1_token = gettoken(&ptr, buff[1], talloc_array_length(buff[1]), true);
+		fr_skip_whitespace(ptr);
 
 		if (name1_token != T_BARE_WORD) goto skip_keywords;
 
@@ -1364,9 +1365,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 	skip_keywords:
 		/*
-		 *	Hash and EOL are special.
+		 *	Check for end of line, comment, or word delimiter.
 		 */
-		if (!*ptr || (*ptr == '#')) {
+		if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';')) {
 			value_token = T_INVALID;
 			op_token = T_OP_EQ;
 			value = NULL;
