@@ -456,7 +456,7 @@ char *rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c)
 /*
  *	Copy a quoted string.
  */
-int rad_copy_string(char *to, char const *from)
+static int rad_copy_string(char *to, char const *from)
 {
 	int length = 0;
 	char quote = *from;
@@ -484,7 +484,7 @@ int rad_copy_string(char *to, char const *from)
  *	returned is the number of chars written; the number of
  *	characters consumed is 2 more than this.
  */
-int rad_copy_string_bare(char *to, char const *from)
+static int rad_copy_string_bare(char *to, char const *from)
 {
 	int length = 0;
 	char quote = *from;
@@ -510,7 +510,7 @@ int rad_copy_string_bare(char *to, char const *from)
 /*
  *	Copy a %{} string.
  */
-int rad_copy_variable(char *to, char const *from)
+static int rad_copy_variable(char *to, char const *from)
 {
 	int length = 0;
 	int sublen;

@@ -42,9 +42,6 @@ size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
 ssize_t		rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen);
 char		*rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c);
 
-int		rad_copy_string(char *dst, char const *src);
-int		rad_copy_string_bare(char *dst, char const *src);
-int		rad_copy_variable(char *dst, char const *from);
 uint32_t	rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval *now);
 int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				int max_argc, char const *argv[], bool can_fail,
