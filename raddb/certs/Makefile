@@ -33,7 +33,7 @@ all: index.txt serial dh server ca client ocsp
 client: rsa/client.pem ecc/client.pem
 
 .PHONY: ca
-ca: rsa/ca.der ecc/ca.der
+ca: rsa/ca.der ecc/ca.der rsa/ca.crl
 
 .PHONY: server
 server: rsa/server.pem rsa/server.vrfy ecc/server.pem ecc/server.vrfy
@@ -92,6 +92,11 @@ rsa/ca.key rsa/ca.pem: ca.cnf | $(OUTPUT_DIRS)
 
 rsa/ca.der: rsa/ca.pem
 	openssl x509 -inform PEM -outform DER -in rsa/ca.pem -out rsa/ca.der
+
+rsa/ca.crl: rsa/ca.pem
+	openssl ca -gencrl -keyfile rsa/ca.key -cert rsa/ca.pem -config ./ca.cnf -out rsa/ca-crl.pem -key $(PASSWORD_CA)
+	openssl crl -in rsa/ca-crl.pem -outform der -out rsa/ca.crl
+	@rm -f rsa/ca-crl.pem
 
 rsa/ca.csr: ca.cnf
 	openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.csr -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
