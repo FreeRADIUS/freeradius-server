@@ -729,7 +729,7 @@ static bool invalid_location(CONF_SECTION *this, char const *name, char const *f
 }
 
 
-static int process_include(CONF_SECTION *this, char const *ptr, char *buff[static 7], char const *filename, int *lineno)
+static int process_include(CONF_SECTION *this, char const *ptr, char *buff[static 7], char const *filename, int *lineno, bool required)
 {
 	bool relative = true;
 	FR_TOKEN token;
@@ -760,7 +760,7 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 	/*
 	 *	Allow $-INCLUDE for directories, too.
 	 */
-	if (buff[1][1] == '-') {
+	if (!required) {
 		struct stat statbuf;
 
 		if (stat(value, &statbuf) < 0) {
@@ -1246,50 +1246,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		fr_skip_whitespace(ptr);
 
 		/*
-		 *	All parsing starts off with a keyword.
-		 */
-		if (((ptr[0] == '%') && (ptr[1] == '{')) ||
-		    (ptr[0] == '`')) {
-			ssize_t slen = 0;
-
-			if (ptr[0] == '%') {
-				slen = rad_copy_variable(buff[1], ptr);
-			} else {
-				slen = rad_copy_string(buff[1], ptr);
-			}
-			if (slen <= 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(current, &spaces, &text, slen, ptr);
-
-				ERROR("%s[%d]: %s", filename, *lineno, text);
-				ERROR("%s[%d]: %s^ Invalid expansion", filename, *lineno, spaces);
-
-				talloc_free(spaces);
-				talloc_free(text);
-
-				goto error;
-			}
-
-			ptr += slen;
-			fr_skip_whitespace(ptr);
-
-			/*
-			 *	Bare expansions can't have anything
-			 *	else after them except EOL and comments.
-			 */
-			if (!*ptr || (*ptr == '#')) {
-				value_token = T_INVALID;
-				op_token = T_OP_EQ;
-				value = NULL;
-				goto do_set;
-			}
-
-			ERROR("%s[%d]: Invalid expansion: %s", filename, *lineno, ptr);
-			goto error;
-		}
-
-		/*
 		 *	The caller eats "name1 name2 {", and calls us
 		 *	for the data inside of the section.  So if we
 		 *	receive a closing brace, then it must mean the
@@ -1315,28 +1271,100 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		}
 
 		/*
-		 *	Get the next word.
-		 */
-		name1_token = gettoken(&ptr, buff[1], talloc_array_length(buff[1]), true);
-		fr_skip_whitespace(ptr);
-
-		if (name1_token != T_BARE_WORD) goto skip_keywords;
-
-		/*
 		 *	Allow for $INCLUDE files
 		 */
-		if ((strcasecmp(buff[1], "$INCLUDE") == 0) ||
-		    (strcasecmp(buff[1], "$-INCLUDE") == 0)) {
-			if (process_include(this, ptr, buff, filename, lineno) < 0) goto error;
+		if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
+			ptr += 8;
+			fr_skip_whitespace(ptr);
+
+			if (process_include(this, ptr, buff, filename, lineno, true) < 0) goto error;
+			continue;
+		}
+
+		if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
+			ptr += 9;
+			fr_skip_whitespace(ptr);
+
+			if (process_include(this, ptr, buff, filename, lineno, false) < 0) goto error;
 			continue;
 		}
 
 		/*
 		 *	Allow for $TEMPLATE things
 		 */
-		if (strcasecmp(buff[1], "$TEMPLATE") == 0) {
+		if (strncasecmp(buff[1], "$TEMPLATE", 9) == 0) {
+			ptr += 9;
+			fr_skip_whitespace(ptr);
+
 			if (process_template(this, ptr, buff, filename, lineno) < 0) goto error;
 			continue;
+		}
+
+		/*
+		 *	Nothing to get excited over, we MUST have a key word.
+		 */
+		{
+			char const *out;
+			size_t outlen;
+			ssize_t slen;
+			char const *error_str;
+			char quote;
+
+			quote = *ptr;
+			slen = tmpl_preparse(&out, &outlen, ptr, &name1_token, &error_str, NULL, false, true);
+			if (slen <= 0) {
+				char *spaces, *text;
+
+				fr_canonicalize_error(current, &spaces, &text, slen, ptr);
+
+				ERROR("%s[%d]: %s", filename, *lineno, text);
+				ERROR("%s[%d]: %s^ - %s", filename, *lineno, spaces, error_str);
+
+				talloc_free(spaces);
+				talloc_free(text);
+				goto error;
+			}
+
+			if ((size_t) slen >= talloc_array_length(buff[1])) {
+				ERROR("%s[%d]: Name is too long", filename, *lineno);
+				goto error;
+			}
+
+			/*
+			 *	Note that we copy the entire string
+			 *	WITHOUT the quotation marks.  Unless
+			 *	it's a variable expansion.
+			 *
+			 *	Also the string is copied *verbatim*.
+			 *	Nothing is unescaped.  This blind copy
+			 *	only works because the config file
+			 *	parser doesn't expect
+			 *
+			 *	@todo - unescape this buffer based on
+			 *	the quotation character.
+			 */
+			memcpy(buff[1], out, outlen);
+			buff[1][outlen] = '\0';
+
+			/*
+			 *	Manually unescape things.
+			 */
+			if ((quote == '`') || (quote == '\'') || (quote == '"')) {
+				(void) fr_value_str_unescape((uint8_t *) buff[1], buff[1], outlen, quote);
+			}
+
+			ptr += slen;
+			fr_skip_whitespace(ptr);
+		}
+
+		/*
+		 *	This single word is done.  Create a CONF_PAIR.
+		 */
+		if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
+			value_token = T_INVALID;
+			op_token = T_OP_EQ;
+			value = NULL;
+			goto do_set;
 		}
 
 		/*
@@ -1363,19 +1391,18 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			goto add_section;
 		}
 
-	skip_keywords:
 		/*
-		 *	Check for end of line, comment, or word delimiter.
+		 *	A common pattern is: name { ...}
+		 *	Check for it and skip ahead.
 		 */
-		if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';')) {
-			value_token = T_INVALID;
-			op_token = T_OP_EQ;
-			value = NULL;
-			goto do_set;
+		if (*ptr == '{') {
+			ptr++;
+			name2_token = T_LCBRACE;
+			goto alloc_section;
 		}
 
 		/*
-		 *	Grab the next token.
+		 *	The next token could be one of many things.
 		 */
 		name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
 		switch (name2_token) {
@@ -1578,13 +1605,16 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 		fr_skip_whitespace(ptr);
 
-		if (*ptr == '#') continue;
-
 		/*
 		 *	There's more text at the end of the thing we
 		 *	just parsed.  Try to grab some more.
 		 */
-		if (*ptr) goto parse_line;
+		if (*ptr && (*ptr != '#')) goto parse_line;
+
+		/*
+		 *	Otherwise read another line of text from tbe
+		 *	file.
+		 */
 	}
 
 	/*
