@@ -1355,7 +1355,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *
 		 *	map NAME ARGUMENT { ... }
 		 */
-		if (strcmp(buff[1], "map") == 0) {
+		if ((strcmp(buff[1], "map") == 0) && (*ptr != '{')) {
 			css = process_map(this, &ptr, buff, filename, lineno);
 			if (!css) goto error;
 
