@@ -653,13 +653,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	while (*from) {
 		int length;
 
-		/*
-		 *	Skip spaces.
-		 */
-		if ((*from == ' ') || (*from == '\t')) {
-			from++;
-			continue;
-		}
+		fr_skip_whitespace(from);
 
 		argv[argc] = to;
 		argc++;
