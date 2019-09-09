@@ -1181,6 +1181,10 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			return -1;
 		}
 
+		/*
+		 *	Suppress leading whitespace after a
+		 *	continuation line.
+		 */
 		if (has_spaces) {
 			ptr = cbuff;
 			fr_skip_whitespace(ptr);
@@ -1192,8 +1196,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		}
 
 		/*
-		 *	Not doing continuations: check for edge
-		 *	conditions.
+		 *	Skip blank lines when we're at the start of
+		 *	the read buffer.
 		 */
 		if (cbuff == buff[0]) {
 			if (at_eof) break;
@@ -1233,7 +1237,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		ptr = cbuff = buff[0];
 		has_spaces = false;
 
-	get_more:
+		/*
+		 *	We now have one full line of text in the input
+		 *	buffer, without continuations.
+		 */
+
+	parse_line:
 		fr_skip_whitespace(ptr);
 
 		/*
@@ -1480,54 +1489,47 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		do_set:
 			if (add_pair(this, buff[1], value, name1_token, op_token, value_token, buff, filename, lineno) < 0) goto error;
 
-			/*
-			 *	After a CONF_PAIR, we require a comma,
-			 *	unless there's a comment.
-			 */
 			fr_skip_whitespace(ptr);
 
 			/*
-			 *	Skip comma if we see it after a token.
+			 *	Skip semicolon if we see it after a
+			 *	CONF_PAIR.  Also allow comma for
+			 *	backwards compatablity with secret
+			 *	things in v3.
 			 */
-			if (*ptr == ',') {
+			if ((*ptr == ';') || (*ptr == ',')) {
 				ptr++;
 				goto check_for_more;
 			}
 
 			/*
-			 *	End of line is still magic.  Also if
-			 *	we see a closing brace, we hand it
-			 *	back the the parent function which
-			 *	called us.
+			 *	Only a few things are allowed after a
+			 *	CONF_PAIR definition.  EOL, comment,
+			 *	or closing brace.
 			 */
-			if (!*ptr || (*ptr == '}')) goto check_for_more;
-
-			/*
-			 *	There was nothing after the pair name
-			 *	(comment, EOL, etc.).
-			 */
-			if (value_token == T_INVALID) continue;
+			if (!*ptr || (*ptr == '#') || (*ptr == '}')) goto check_for_more;
 
 			/*
 			 *	Any other character after the pair
 			 *	name / value is an error.
 			 */
-			ERROR("%s[%d]: Syntax error: Expected comma after '%s': %s",
-			      filename, *lineno, value, ptr);
+			ERROR("%s[%d]: Syntax error: Unexpected text: %s",
+			      filename, *lineno, ptr);
 			goto error;
 
 			/*
-			 *	No '=', must be a section or sub-section.
+			 *	No operator, must be a section or sub-section.
 			 */
 		case T_BARE_WORD:
 		case T_DOUBLE_QUOTED_STRING:
 		case T_SINGLE_QUOTED_STRING:
-			value_token = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true);
-			if (value_token != T_LCBRACE) {
+			fr_skip_whitespace(ptr);
+			if (*ptr != '{') {
 				ERROR("%s[%d]: Expecting section start brace '{' after \"%s %s\"",
 				      filename, *lineno, buff[1], buff[2]);
 				goto error;
 			}
+			ptr++;
 			/* FALL-THROUGH */
 
 		alloc_section:
@@ -1583,10 +1585,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		if (*ptr == '#') continue;
 
-		if (*ptr) {
-			goto get_more;
-		}
-
+		/*
+		 *	There's more text at the end of the thing we
+		 *	just parsed.  Try to grab some more.
+		 */
+		if (*ptr) goto parse_line;
 	}
 
 	/*
