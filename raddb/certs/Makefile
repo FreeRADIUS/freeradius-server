@@ -70,7 +70,8 @@ ca.key ca.pem: ca.cnf
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
 	$(OPENSSL) req -new -x509 -keyout ca.key -out ca.pem \
-		-days $(CA_DEFAULT_DAYS) -config ./ca.cnf
+		-days $(CA_DEFAULT_DAYS) -config ./ca.cnf \
+		-passin pass:$(PASSWORD_CA) -passout pass:$(PASSWORD_CA)
 	chmod g+r ca.key
 
 ca.der: ca.pem
