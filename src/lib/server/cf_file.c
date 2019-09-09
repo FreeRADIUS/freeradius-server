@@ -1359,16 +1359,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			if (!css) goto error;
 
 			in_map = true;
-
-		add_section:
-			cf_item_add(this, &(css->item));
-
-			/*
-			 *	The current section is now the child section.
-			 */
-			this = css;
-			css = NULL;
-			goto check_for_more;
+			goto add_section;
 		}
 
 	skip_keywords:
@@ -1544,17 +1535,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			css->item.filename = filename;
 			css->item.lineno = *lineno;
-			cf_item_add(this, &(css->item));
 
 			/*
 			 *	There may not be a name2
 			 */
 			css->name2_quote = (name2_token == T_LCBRACE) ? T_INVALID : name2_token;
-
-			/*
-			 *	The current section is now the child section.
-			 */
-			this = css;
 
 			/*
 			 *	Hack for better error messages in
@@ -1563,6 +1548,15 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	struct, as with tmpls.
 			 */
 			if (!in_map && !in_update) in_update = (strcmp(css->name1, "update") == 0);
+
+		add_section:
+			cf_item_add(this, &(css->item));
+
+			/*
+			 *	The current section is now the child section.
+			 */
+			this = css;
+			css = NULL;
 			break;
 
 		case T_INVALID:
