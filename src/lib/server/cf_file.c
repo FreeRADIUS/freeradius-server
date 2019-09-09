@@ -853,6 +853,7 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 			 */
 			if (cf_file_include(this, buff[2], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
 				closedir(dir);
+				talloc_free(my_directory);
 				return -1;
 			}
 		}
