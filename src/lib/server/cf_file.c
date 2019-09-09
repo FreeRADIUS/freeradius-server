@@ -1078,11 +1078,40 @@ alloc_section:
 
 static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
 		    FR_TOKEN name1_token, FR_TOKEN op_token, FR_TOKEN value_token,
-		    char const *filename, int *lineno, bool pass2)
+		    char *buff[static 7], char const *filename, int *lineno)
 {
 	CONF_DATA const *cd;
 	CONF_PARSER *rule;
 	CONF_PAIR *cp;
+	bool pass2 = false;
+
+	/*
+	 *	If we have the value, expand any configuration
+	 *	variables in it.
+	 */
+	if (value && *value) {
+		bool		soft_fail;
+		char const	*expanded;
+
+		expanded = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]), value, &soft_fail);
+		if (expanded) {
+			value = expanded;
+
+		} else if (!soft_fail) {
+			return -1;
+
+		} else {
+			/*
+			 *	References an item which doesn't exist,
+			 *	or which is already marked up as being
+			 *	expanded in pass2.  Wait for pass2 to
+			 *	do the expansions.
+			 *
+			 *	Leave the input value alone.
+			 */
+			pass2 = true;
+		}
+	}
 
 	cp = cf_pair_alloc(this, attr, value, op_token, name1_token, value_token);
 	if (!cp) return -1;
@@ -1116,7 +1145,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 	FR_TOKEN	name1_token = T_INVALID, name2_token, value_token, op_token;
 	bool		has_spaces = false;
-	bool		pass2;
 	bool		in_update = false;
 	bool		in_map = false;
 	char		*cbuff;
@@ -1206,8 +1234,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		has_spaces = false;
 
 	get_more:
-		pass2 = false;
-
 		fr_skip_whitespace(ptr);
 
 		/*
@@ -1338,18 +1364,20 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 	skip_keywords:
 		/*
-		 *	Grab the next token.
+		 *	Hash and EOL are special.
 		 */
-		name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
-		switch (name2_token) {
-		case T_HASH:
-		case T_EOL:
-		case T_COMMA:
+		if (!*ptr || (*ptr == '#')) {
 			value_token = T_INVALID;
 			op_token = T_OP_EQ;
 			value = NULL;
 			goto do_set;
+		}
 
+		/*
+		 *	Grab the next token.
+		 */
+		name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
+		switch (name2_token) {
 		case T_OP_INCRM:
 		case T_OP_ADD:
 		case T_OP_SUB:
@@ -1373,11 +1401,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			op_token = name2_token;
 
 			/*
-			 *	New parser: non-quoted strings are
-			 *	bare words, and we parse everything
-			 *	until the next newline, or the next
-			 *	comma.  If they have { or } in a bare
-			 *	word, well... too bad.
+			 *	Non-quoted strings are bare words, and
+			 *	we parse everything until the next
+			 *	newline, or the next comma.  If they
+			 *	have { or } in a bare word,
+			 *	well... too bad.
 			 */
 			switch (*ptr) {
 			case '#':
@@ -1444,39 +1472,13 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				value_token = T_BARE_WORD;
 			}
 			}
-
-			/*
-			 *	Now that we have the value, expand any
-			 *	configuration variables in it.
-			 */
-			{
-				bool		soft_fail;
-				char const	*expanded;
-
-				expanded = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]), buff[3], &soft_fail);
-				if (!expanded) {
-					if (!soft_fail) goto error;
-
-					/*
-					 *	References an item which doesn't exist,
-					 *	or which is already marked up as being
-					 *	expanded in pass2.  Wait for pass2 to
-					 *	do the expansions.
-					 *
-					 *	Leave the input value alone.
-					 */
-					pass2 = true;
-					value = buff[3];
-				} else {
-					value = expanded;
-				}
-			}
+			value = buff[3];
 
 			/*
 			 *	Add this CONF_PAIR to our CONF_SECTION
 			 */
 		do_set:
-			if (add_pair(this, buff[1], value, name1_token, op_token, value_token, filename, lineno, pass2) < 0) goto error;
+			if (add_pair(this, buff[1], value, name1_token, op_token, value_token, buff, filename, lineno) < 0) goto error;
 
 			/*
 			 *	After a CONF_PAIR, we require a comma,
