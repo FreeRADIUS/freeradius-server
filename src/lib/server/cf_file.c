@@ -1076,6 +1076,33 @@ alloc_section:
 }
 
 
+static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
+		    FR_TOKEN name1_token, FR_TOKEN op_token, FR_TOKEN value_token,
+		    char const *filename, int *lineno, bool pass2)
+{
+	CONF_DATA const *cd;
+	CONF_PARSER *rule;
+	CONF_PAIR *cp;
+
+	cp = cf_pair_alloc(this, attr, value, op_token, name1_token, value_token);
+	if (!cp) return -1;
+	cp->item.filename = filename;
+	cp->item.lineno = *lineno;
+	cp->pass2 = pass2;
+	cf_item_add(this, &(cp->item));
+
+	cd = cf_data_find(CF_TO_ITEM(this), CONF_PARSER, attr);
+	if (!cd) return 0;
+
+	rule = cf_data_value(cd);
+	if ((rule->type & FR_TYPE_ON_READ) == 0) {
+		return 0;
+	}
+
+	return rule->func(this, NULL, NULL, cf_pair_to_item(cp), rule);
+}
+
+
 /*
  *	Read a part of the config file.
  */
@@ -1084,7 +1111,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 {
 	CONF_SECTION	*this, *css;
-	CONF_PAIR	*cpn;
 	char const	*ptr;
 	char const	*value;
 
@@ -1182,11 +1208,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	get_more:
 		pass2 = false;
 
-		/*
-		 *	The parser is getting to be evil.
-		 */
-		while ((*ptr == ' ') || (*ptr == '\t')) ptr++;
+		fr_skip_whitespace(ptr);
 
+		/*
+		 *	All parsing starts off with a keyword.
+		 */
 		if (((ptr[0] == '%') && (ptr[1] == '{')) ||
 		    (ptr[0] == '`')) {
 			ssize_t slen = 0;
@@ -1211,19 +1237,21 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			ptr += slen;
+			fr_skip_whitespace(ptr);
 
-			name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), true);
-			switch (name2_token) {
-			case T_HASH:
-			case T_EOL:
-				goto do_bare_word;
-
-			default:
-				ERROR("%s[%d]: Invalid expansion: %s", filename, *lineno, ptr);
-				goto error;
+			/*
+			 *	Bare expansions can't have anything
+			 *	else after them except EOL and comments.
+			 */
+			if (!*ptr || (*ptr == '#')) {
+				value_token = T_INVALID;
+				op_token = T_OP_EQ;
+				value = NULL;
+				goto do_set;
 			}
-		} else {
-			name1_token = gettoken(&ptr, buff[1], talloc_array_length(buff[1]), true);
+
+			ERROR("%s[%d]: Invalid expansion: %s", filename, *lineno, ptr);
+			goto error;
 		}
 
 		/*
@@ -1232,7 +1260,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	receive a closing brace, then it must mean the
 		 *	end of the section.
 		 */
-		if (name1_token == T_RCBRACE) {
+		if (*ptr == '}') {
 			if (this == current) {
 				ERROR("%s[%d]: Too many closing braces", filename, *lineno);
 				goto error;
@@ -1247,8 +1275,14 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			if (!cf_template_merge(this, this->template)) goto error;
 
 			this = cf_item_to_section(this->item.parent);
+			ptr++;
 			goto check_for_more;
 		}
+
+		/*
+		 *	Get the next word.
+		 */
+		name1_token = gettoken(&ptr, buff[1], talloc_array_length(buff[1]), true);
 
 		if (name1_token != T_BARE_WORD) goto skip_keywords;
 
@@ -1311,8 +1345,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_HASH:
 		case T_EOL:
 		case T_COMMA:
-		do_bare_word:
-			value_token = name2_token;
+			value_token = T_INVALID;
 			op_token = T_OP_EQ;
 			value = NULL;
 			goto do_set;
@@ -1443,44 +1476,40 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Add this CONF_PAIR to our CONF_SECTION
 			 */
 		do_set:
-			cpn = cf_pair_alloc(this, buff[1], value, op_token, name1_token, value_token);
-			if (!cpn) goto error;
-			cpn->item.filename = filename;
-			cpn->item.lineno = *lineno;
-			cpn->pass2 = pass2;
-			cf_item_add(this, &(cpn->item));
+			if (add_pair(this, buff[1], value, name1_token, op_token, value_token, filename, lineno, pass2) < 0) goto error;
 
-			{
-				CONF_DATA const *cd;
-				CONF_PARSER *rule;
-
-
-				cd = cf_data_find(CF_TO_ITEM(this), CONF_PARSER, buff[1]);
-				if (!cd) goto skip_on_read;
-
-				rule = cf_data_value(cd);
-				if ((rule->type & FR_TYPE_ON_READ) == 0) {
-					goto skip_on_read;
-				}
-
-				if (rule->func(this, NULL, NULL, cf_pair_to_item(cpn), rule) < 0) goto error;
-			}
-
-		skip_on_read:
 			/*
-			 *	Require a comma, unless there's a comment.
+			 *	After a CONF_PAIR, we require a comma,
+			 *	unless there's a comment.
 			 */
 			fr_skip_whitespace(ptr);
 
+			/*
+			 *	Skip comma if we see it after a token.
+			 */
 			if (*ptr == ',') {
 				ptr++;
-				break;
+				goto check_for_more;
 			}
 
-			if ((value_token == T_HASH) || (value_token == T_COMMA) || (value_token == T_EOL) || (*ptr == '#')) continue;
+			/*
+			 *	End of line is still magic.  Also if
+			 *	we see a closing brace, we hand it
+			 *	back the the parent function which
+			 *	called us.
+			 */
+			if (!*ptr || (*ptr == '}')) goto check_for_more;
 
-			if (!*ptr || (*ptr == '}')) break;
+			/*
+			 *	There was nothing after the pair name
+			 *	(comment, EOL, etc.).
+			 */
+			if (value_token == T_INVALID) continue;
 
+			/*
+			 *	Any other character after the pair
+			 *	name / value is an error.
+			 */
 			ERROR("%s[%d]: Syntax error: Expected comma after '%s': %s",
 			      filename, *lineno, value, ptr);
 			goto error;
