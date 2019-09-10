@@ -428,15 +428,6 @@ static inline void frame_pop(unlang_stack_t *stack)
 	frame_cleanup(frame);
 
 	frame = &stack->frame[--stack->depth];
-
-	/*
-	 *	The child was break / return, AND the current frame is
-	 *	a break / return point.  Stop unwinding the stack.
-	 */
-	if (stack->unwind && frame->uflags) {
-		repeatable_clear(frame);
-		return;
-	}
 }
 
 /** Evaluates all the unlang nodes in a section
