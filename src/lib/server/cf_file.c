@@ -1062,7 +1062,7 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	 */
 	css = cf_section_alloc(this, this, buff[1], buff[2]);
 	if (!css) {
-		ERROR("%s[%d]: Failed allocating memory for section", filename, lineno);
+		cf_log_err(this, "Failed allocating memory for section");
 		return NULL;
 	}
 	css->item.filename = filename;
@@ -1075,12 +1075,11 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	if (slen < 0) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(this, &spaces, &text, slen, ptr);
+		fr_canonicalize_error(css, &spaces, &text, slen, ptr);
 
-		ERROR("%s[%d]: Parse error in condition",
-		      filename, lineno);
-		ERROR("%s[%d]: %s", filename, lineno, text);
-		ERROR("%s[%d]: %s^ %s", filename, lineno, spaces, error);
+		cf_log_err(css, "Parse error in condition");
+		cf_log_err(css, "%s", text);
+		cf_log_err(css, "%s^ %s", spaces, error);
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -1094,8 +1093,8 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	 *	into.
 	 */
 	if ((size_t) slen >= (talloc_array_length(buff[2]) - 1)) {
+		cf_log_err(css, "Condition is too large after \"%s\"", buff[1]);
 		talloc_free(css);
-		ERROR("%s[%d]: Condition is too large after \"%s\"", filename, lineno, buff[1]);
 		return NULL;
 	}
 
@@ -1111,7 +1110,7 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	fr_skip_whitespace(ptr);
 
 	if (*ptr != '{') {
-		ERROR("%s[%d]: Expected '{' instead of %s", filename, lineno, ptr);
+		cf_log_err(css, "Expected '{' instead of %s", ptr);
 		talloc_free(css);
 		return NULL;
 	}
