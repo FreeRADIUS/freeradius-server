@@ -431,7 +431,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_SIZE:
-		value = PyLong_FromSsize_t(vp->vp_size);
+		value = PyLong_FromSize_t(vp->vp_size);
 		break;
 
 	case FR_TYPE_TIME_DELTA:
