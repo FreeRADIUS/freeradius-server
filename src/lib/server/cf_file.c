@@ -84,10 +84,10 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLU
 char const *cf_expand_variables(char const *cf, int *lineno,
 				CONF_SECTION *outer_cs,
 				char *output, size_t outsize,
-				char const *input, bool *soft_fail)
+				char const *input, ssize_t inlen, bool *soft_fail)
 {
 	char *p;
-	char const *end, *ptr;
+	char const *end, *next, *ptr;
 	CONF_SECTION const *parent_cs;
 	char name[8192];
 
@@ -102,7 +102,19 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 
 	p = output;
 	ptr = input;
-	while (*ptr) {
+
+	if (inlen < 0) {
+		end = NULL;
+	} else {
+		end = input + inlen;
+	}
+
+	/*
+	 *	Note that this CAN go over "end" if the input string
+	 *	is malformed.  e.g. pass "${foo.bar}", and pass
+	 *	"inlen=5".  Well, too bad.
+	 */
+	while (*ptr && (!end || (ptr < end))) {
 		/*
 		 *	Ignore anything other than "${"
 		 */
@@ -121,8 +133,8 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 			 *	warning for anything that doesn't match,
 			 *	and exit with a fatal error.
 			 */
-			end = strchr(ptr, '}');
-			if (end == NULL) {
+			next = strchr(ptr, '}');
+			if (next == NULL) {
 				*p = '\0';
 				INFO("%s[%d]: Variable expansion '%s' missing '}'",
 				     cf, *lineno, input);
@@ -135,14 +147,14 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 			 *	Can't really happen because input lines are
 			 *	capped at 8k, which is sizeof(name)
 			 */
-			if ((size_t) (end - ptr) >= sizeof(name)) {
+			if ((size_t) (next - ptr) >= sizeof(name)) {
 				ERROR("%s[%d]: Reference string is too large",
 				      cf, *lineno);
 				return NULL;
 			}
 
-			memcpy(name, ptr, end - ptr);
-			name[end - ptr] = '\0';
+			memcpy(name, ptr, next - ptr);
+			name[next - ptr] = '\0';
 
 			q = strchr(name, ':');
 			if (q) {
@@ -182,7 +194,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 					return NULL;
 				}
 				p += strlen(p);
-				ptr = end + 1;
+				ptr = next + 1;
 
 			} else if (ci->type == CONF_ITEM_PAIR) {
 				/*
@@ -218,7 +230,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 
 				strcpy(p, cp->value);
 				p += strlen(p);
-				ptr = end + 1;
+				ptr = next + 1;
 
 			} else if (ci->type == CONF_ITEM_SECTION) {
 				CONF_SECTION *subcs;
@@ -250,7 +262,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 				subcs->item.lineno = ci->lineno;
 				cf_item_add(outer_cs, &(subcs->item));
 
-				ptr = end + 1;
+				ptr = next + 1;
 
 			} else {
 				ERROR("%s[%d]: Reference \"%s\" type is invalid", cf, *lineno, input);
@@ -266,8 +278,8 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 			 *	warning for anything that doesn't match,
 			 *	and exit with a fatal error.
 			 */
-			end = strchr(ptr, '}');
-			if (end == NULL) {
+			next = strchr(ptr, '}');
+			if (next == NULL) {
 				*p = '\0';
 				INFO("%s[%d]: Environment variable expansion missing }",
 				     cf, *lineno);
@@ -278,14 +290,14 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 			 *	Can't really happen because input lines are
 			 *	capped at 8k, which is sizeof(name)
 			 */
-			if ((size_t) (end - ptr) >= sizeof(name)) {
+			if ((size_t) (next - ptr) >= sizeof(name)) {
 				ERROR("%s[%d]: Environment variable name is too large",
 				      cf, *lineno);
 				return NULL;
 			}
 
-			memcpy(name, ptr, end - ptr);
-			name[end - ptr] = '\0';
+			memcpy(name, ptr, next - ptr);
+			name[next - ptr] = '\0';
 
 			/*
 			 *	Get the environment variable.
@@ -305,7 +317,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 
 			strcpy(p, env);
 			p += strlen(p);
-			ptr = end + 1;
+			ptr = next + 1;
 
 		} else {
 			/*
@@ -661,7 +673,7 @@ int cf_section_pass2(CONF_SECTION *cs)
 			   (cp->rhs_quote == T_DOUBLE_QUOTED_STRING) ||
 			   (cp->rhs_quote == T_BACK_QUOTED_STRING));
 
-		value = cf_expand_variables(ci->filename, &ci->lineno, cs, buffer, sizeof(buffer), cp->value, NULL);
+		value = cf_expand_variables(ci->filename, &ci->lineno, cs, buffer, sizeof(buffer), cp->value, -1, NULL);
 		if (!value) return -1;
 
 		talloc_const_free(cp->value);
@@ -821,7 +833,7 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 	if (buff[2][0] == '$') relative = false;
 
 	value = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]),
-				    buff[2], NULL);
+				    buff[2], -1, NULL);
 	if (!value) return -1;
 
 	if (!FR_DIR_IS_RELATIVE(value)) relative = false;
@@ -1091,7 +1103,7 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 	mod = cf_expand_variables(filename, lineno,
 				  this,
 				  buff[3], talloc_array_length(buff[3]),
-				  buff[2], NULL);
+				  buff[2], -1, NULL);
 	if (!mod) {
 		ERROR("%s[%d]: Failed expanding ${...} in map module name",
 		      filename, *lineno);
@@ -1123,7 +1135,7 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 	exp = cf_expand_variables(filename, lineno,
 				  this,
 				  buff[5], talloc_array_length(buff[5]),
-				  buff[4], NULL);
+				  buff[4], -1, NULL);
 	if (!exp) {
 		ERROR("%s[%d]: Failed expanding ${...} in map expansion string",
 		      filename, *lineno);
@@ -1174,7 +1186,7 @@ static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
 		bool		soft_fail;
 		char const	*expanded;
 
-		expanded = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]), value, &soft_fail);
+		expanded = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]), value, -1, &soft_fail);
 		if (expanded) {
 			value = expanded;
 

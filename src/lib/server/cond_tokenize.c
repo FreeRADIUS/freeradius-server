@@ -596,21 +596,10 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 		return slen;
 	}
 
-	/*
-	 *	cf_expand_variables() doesn't take a length.  Oh well...
-	 */
-	expanded = talloc_strndup(ctx, start, slen);
-	if (!expanded) {
-	oom:
-		*error = "Failed allocating memory";
-		return -1;
-	}
-
-	if (!cf_expand_variables(filename, &lineno, parent, buffer, sizeof(buffer), expanded, NULL)) {
+	if (!cf_expand_variables(filename, &lineno, parent, buffer, sizeof(buffer), start, slen, NULL)) {
 		*error = "Failed expanding configuration variable";
 		return -1;
 	}	
-	talloc_free(expanded);
 
 	/*
 	 *	We need to tell the caller how many *input* bytes to
@@ -627,7 +616,10 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 	 *	we need to return a string which the caller can keep track of.
 	 */
 	expanded = talloc_strndup(ctx, *out, *outlen);
-	if (!expanded) goto oom;
+	if (!expanded) {
+		*error = "Failed allocating memory";
+		return -1;
+	}
 
 	*out = expanded;
 	return slen;		/* NOT my_slen */
