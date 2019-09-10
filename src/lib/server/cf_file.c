@@ -1354,7 +1354,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	double quoted string, even if it isn't
 			 *	enclosed in double quotes.
 			 */
-			if (name1_token == T_DOUBLE_QUOTE_STRING) quote = '"';
+			if (name1_token == T_DOUBLE_QUOTED_STRING) quote = '"';
 
 			if ((quote == '`') || (quote == '\'') || (quote == '"')) {
 				(void) fr_value_str_unescape((uint8_t *) buff[1], buff[1], outlen, quote);
