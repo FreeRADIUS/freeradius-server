@@ -90,7 +90,7 @@ struct fr_cond_t {
 };
 
 ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, char const **error,
-			 fr_dict_t const *dict, char const *start) CC_HINT(nonnull);
+			 fr_dict_t const *dict, char const *start);
 size_t cond_snprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 
 bool fr_cond_walk(fr_cond_t *head, bool (*callback)(fr_cond_t *cond, void *uctx), void *uctx);
