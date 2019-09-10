@@ -787,17 +787,6 @@ static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token,
 	}
 
 	/*
-	 *	Note that we copy the entire string
-	 *	WITHOUT the quotation marks.  Unless
-	 *	it's a variable expansion.
-	 *
-	 *	Also the string is copied *verbatim*.
-	 *	Nothing is unescaped.
-	 */
-	memcpy(buffer, out, outlen);
-	buffer[outlen] = '\0';
-
-	/*
 	 *	Manually unescape things.
 	 *
 	 *	Note that a bare %{...} counts as a
@@ -806,9 +795,16 @@ static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token,
 	 */
 	if (*token == T_DOUBLE_QUOTED_STRING) quote = '"';
 
+	/*
+	 *	Unescape it or copy it verbatim as necessary.
+	 */
 	if ((quote == '`') || (quote == '\'') || (quote == '"')) {
-		(void) fr_value_str_unescape((uint8_t *) buffer, buffer, outlen, quote);
+		outlen = fr_value_str_unescape((uint8_t *) buffer, out, outlen, quote);
+
+	} else {
+		memcpy(buffer, out, outlen);
 	}
+	buffer[outlen] = '\0';
 
 	ptr += slen;
 	fr_skip_whitespace(ptr);
