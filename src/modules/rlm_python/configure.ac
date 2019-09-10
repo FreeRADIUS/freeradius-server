@@ -41,6 +41,7 @@ if test x$with_[]modname != xno; then
 	dnl # -D_FORTIFY_SOURCE needs -O.
 	dnl # Strip debug symbol flags (-g[0-9]?). We decide on debugging symbols, not python
 	dnl # Strip -Werror
+	dnl # Strip -Wall, we decide what warnings are important
 	dnl # Strip -DNDEBUG
 	mod_cflags=`echo $python_cflags | sed -e '\
 		s/-I/-isystem/g;\
@@ -48,8 +49,9 @@ if test x$with_[]modname != xno; then
 		s/-O[[[:digit:]]][[[:blank:]]]*//g;\
 		s/-Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]//g;\
 		s/-g[[[:digit:]]][[[:space:]]]*//g;\
-		s/-g[[[:space:]]]//g;\
+		s/-g[[[:space:]]]*//g;\
 		s/-Werror\([[ =]]\{0,1\}[[^ ]]*\)\{0,1\}//g;\
+		s/-Wall[[[:space:]]]//g;\
 		s/-DNDEBUG[[[:blank:]]]*//g
 		'`
 	AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
@@ -83,8 +85,6 @@ if test x"$fail" != x""; then
 		targetname=""
 	fi
 fi
-
-
 
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)

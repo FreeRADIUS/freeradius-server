@@ -110,7 +110,7 @@ static inline bool is_whitespace(char const *value)
  static inline bool is_printable(void const *value, size_t len)
  {
  	uint8_t	const *p = value;
- 	int	clen;
+ 	size_t	clen;
  	size_t	i;
 
  	for (i = 0; i < len; i++) {

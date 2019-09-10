@@ -243,7 +243,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			char const *funcname, char const *list_name)
 {
 	int	     	i;
-	int	     	tuplesize;
+	Py_ssize_t	tuplesize;
 	vp_tmpl_t       *dst;
 	VALUE_PAIR      *vp;
 	REQUEST	*current = request;
@@ -265,7 +265,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		PyObject 	*pStr1;
 		PyObject 	*pStr2;
 		PyObject 	*pOp;
-		int		pairsize;
+		Py_ssize_t	pairsize;
 		char const	*s1;
 		char const	*s2;
 		FR_TOKEN	op = T_OP_EQ;
@@ -278,7 +278,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 
 		pairsize = PyTuple_GET_SIZE(pTupleElement);
 		if ((pairsize < 2) || (pairsize > 3)) {
-			ERROR("%s - Tuple element %d of %s is a tuple of size %d. Must be 2 or 3",
+			ERROR("%s - Tuple element %d of %s is a tuple of size %zu. Must be 2 or 3",
 			      funcname, i, list_name, pairsize);
 			continue;
 		}
@@ -303,7 +303,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 					op = T_OP_EQ;
 				}
 			} else if (PyNumber_Check(pOp)) {
-				op = PyLong_AsLong(pOp);
+				op = (FR_TOKEN)PyLong_AsLong(pOp);
 				if (!fr_table_str_by_value(fr_tokens_table, op, NULL)) {
 					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
@@ -471,7 +471,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	PyObject	*pRet = NULL;
 	PyObject	*pArgs = NULL;
 	int		tuplelen;
-	int		ret;
+	long		ret;
 
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
