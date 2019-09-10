@@ -15,23 +15,23 @@ ldapsearch -H ldaps://ldap.example.com:686 -x -D "cn=freeradius,dc=example,dc=co
 Where you replace the following as appropriately:
 
 * `ldaps://ldap.example.com:636`
-  * location of the LDAP server and how to connect
+** location of the LDAP server and how to connect
 
-  * `ldaps` is LDAP over SSL and defaults to port `636/tcp`
+** `ldaps` is LDAP over SSL and defaults to port `636/tcp`
 
-  * `ldap` is non-SSLed LDAP and defaults to port `389/tcp`
-    * add `-ZZ` as an argument if you use Start TLS
+** `ldap` is non-SSLed LDAP and defaults to port `389/tcp`
+**** add `-ZZ` as an argument if you use Start TLS
 
-  * `ldapi` is for UNIX socket connections
+** `ldapi` is for UNIX socket connections
 
 * `cn=freeradius,dc=example,dc=com`
-  * username used by FreeRADIUS when connecting to LDAP
+** username used by FreeRADIUS when connecting to LDAP
 
 * `mypassword`
-  * password used by FreeRADIUS is to use when connecting to LDAP
+** password used by FreeRADIUS is to use when connecting to LDAP
 
 * `ou=people,dc=example,dc=com`
-  * top branch ('base') of the LDAP tree where users are found
+** top branch ('base') of the LDAP tree where users are found
 
 * `(objectClass=inetOrgPerson)`
   http://www.zytrax.com/books/ldap/apa/search.html[search filter]
