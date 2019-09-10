@@ -788,6 +788,7 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 		struct dirent	*dp;
 		struct stat stat_buf;
 		char *my_directory;
+		int rcode = -1;
 
 		my_directory = talloc_strdup(this, value);
 
@@ -800,15 +801,13 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 		if (stat(my_directory, &stat_buf) < 0) {
 			ERROR("%s[%d]: Failed reading directory %s: %s", filename, *lineno,
 			      my_directory, fr_syserror(errno));
-			talloc_free(my_directory);
-			return -1;
+			goto done;
 		}
 
 		if ((stat_buf.st_mode & S_IWOTH) != 0) {
 			ERROR("%s[%d]: Directory %s is globally writable.  Refusing to start due to "
 			      "insecure configuration", filename, *lineno, my_directory);
-			talloc_free(my_directory);
-			return -1;
+			goto done;
 		}
 #endif
 		dir = opendir(my_directory);
@@ -816,8 +815,7 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 			ERROR("%s[%d]: Error reading directory %s: %s",
 			      filename, *lineno, value,
 			      fr_syserror(errno));
-			talloc_free(my_directory);
-			return -1;
+			goto done;
 		}
 
 		/*
@@ -853,13 +851,15 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 			 */
 			if (cf_file_include(this, buff[2], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
 				closedir(dir);
-				talloc_free(my_directory);
-				return -1;
+				goto done;
 			}
 		}
+		rcode = 0;
 		closedir(dir);
+
+done:
 		talloc_free(my_directory);
-		return 0;
+		return rcode;
 	}
 #else
 	ERROR("%s[%d]: Error including %s: No support for directories!",
