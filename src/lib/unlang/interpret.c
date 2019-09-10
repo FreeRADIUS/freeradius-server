@@ -395,7 +395,12 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
  */
 static inline void frame_cleanup(unlang_stack_frame_t *frame)
 {
+	/*
+	 *	Don't clear top_frame flag, bad things happen...
+	 */
 	repeatable_clear(frame);
+	break_point_clear(frame);
+	return_point_clear(frame);
 	if (frame->state) TALLOC_FREE(frame->state);
 }
 
