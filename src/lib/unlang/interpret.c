@@ -428,6 +428,22 @@ static inline void frame_pop(unlang_stack_t *stack)
 	frame_cleanup(frame);
 
 	frame = &stack->frame[--stack->depth];
+
+	/*
+	 *	The child was break / return, AND the current frame is
+	 *	a break / return point.  Stop unwinding the stack.
+	 *
+	 *	NOTE: This is the frame further UP the stack, not the
+	 *	one we just popped.  So we *MUST* clear repeat,
+	 *	otherwise the interpreter will just keep repeating
+	 *	this frame instead of continuing to unwind the stack.
+	 *
+	 *	An alternative way of doing this would be to rearrange
+	 *	the code so repeat unwinding had precedence, but it's
+	 *	probably more robust to have the interpreter not be
+	 *	dependent on flag evaluation order.
+	 */
+	if (stack->unwind && is_repeatable(frame)) repeatable_clear(frame);
 }
 
 /** Evaluates all the unlang nodes in a section
