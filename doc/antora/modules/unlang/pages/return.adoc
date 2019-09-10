@@ -16,11 +16,11 @@ to simplify the layout of `unlang` policies.  If the `return`
 statement did not exist, then every xref:if.adoc[if] statement might need
 to have a matching xref:else.adoc[else] statement.
 
-The `return` statement will also exit a policy named in the `policy {
-... } ` subsection.  This behavior allows policies to be treated as a
-function call.  Any `return` inside of the policy section will only
-return from that policy.  It will _not_ return from the enclosing
-processing section which called the policy.
+The `return` statement will also exit a policy which is defined in the
+`policy { ... } ` subsection.  This behavior allows policies to be
+treated as a function call.  Any `return` inside of the policy section
+will only return from that policy.  The `return` will _not_ return
+from the enclosing processing section which called the policy.
 
 .Example
 [source,unlang]
