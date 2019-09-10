@@ -46,7 +46,7 @@ if test x$with_[]modname != xno; then
 		s/-isysroot[[ =]]\{0,1\}[[^-]]*//g;\
 		s/-O[[[:digit:]]][[[:blank:]]]*//g;\
 		s/-g[[[:digit:]]]*[[[:blank:]]]*//g;\
-		s/-Werror\([[ =]]\{0,1\}[[^-]]*\)\{0,1\}//g;\
+		s/-Werror\([[ =]]\{0,1\}[[^ ]]*\)\{0,1\}//g;\
 		s/-DNDEBUG[[[:blank:]]]*//g'`
 	AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
