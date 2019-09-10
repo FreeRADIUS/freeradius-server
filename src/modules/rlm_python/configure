@@ -2778,13 +2778,12 @@ test -n "$PYTHON_CONFIG_BIN" || PYTHON_CONFIG_BIN="not-found"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&6;}
 
-
-		mod_cflags=`echo $python_cflags | sed -e '\
+							mod_cflags=`echo $python_cflags | sed -e '\
 		s/-I/-isystem/g;\
 		s/-isysroot[ =]\{0,1\}[^-]*//g;\
 		s/-O[[:digit:]][[:blank:]]*//g;\
 		s/-g[[:digit:]]*[[:blank:]]*//g;\
-		s/-Werror[[:blank:]]*//g;\
+		s/-Werror\([ =]\{0,1\}[^-]*\)\{0,1\}//g;\
 		s/-DNDEBUG[[:blank:]]*//g'`
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized cflags were \"${mod_cflags}\"" >&6;}
@@ -2819,10 +2818,6 @@ fi
 
 
 
-
-
-unset ac_cv_env_LIBS_set
-unset ac_cv_env_LIBS_value
 
 ac_config_files="$ac_config_files all.mk"
 
@@ -3980,5 +3975,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
