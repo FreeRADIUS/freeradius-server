@@ -65,20 +65,24 @@ If no users are returned, then verify:
 
 * that the credentials have read permissions to fetch and query those objects
 
-* 'base' value supplied is correct
-  * try amending the base to be the absolute base for the site,
-    e.g. `dc=example,dc=com` (do not use this in production!)
+* 'base' value supplied is correct.
+
+* try amending the base to be the absolute base for the site, 
+  e.g. `dc=example,dc=com` (do not use this in production!)
 
 * that there are users in the LDAP server.
 
 * that the certificates (if used) pass OpenSSL verification verify:
-  *`ldaps`*: `echo -n | openssl s_client -connect ldap.example.com:636`
-  *`ldap` with Start TLS: `echo -n | openssl s_client -connect ldap.example.com:389 -starttls ldap`
 
-* that there is no firewall blocking access, some techniques to check this which _may_ work for you:
-  * `sudo traceroute -Tn -p 636 ldap.example.com`
-     will be successful (and not continue indefinitely) when there is _no firewall blocking
-  * `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is no firewall blocking access
+** _ldaps*_: `echo -n | openssl s_client -connect ldap.example.com:636`
+
+** _ldap with Start TLS_: `echo -n | openssl s_client -connect ldap.example.com:389 -starttls ldap`
+
+* that there is no firewall blocking access, some techniques to check this which _may_ work for you: `sudo traceroute -Tn -p 636 ldap.example.com`
+
+* will be successful (and not continue indefinitely) when there is _no firewall blocking_.
+
+* `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is no firewall blocking access
 
 If the `ldapsearch` program fails to return anything useful, then the
 previous steps should be performed until that program succeeds.
@@ -90,7 +94,7 @@ It is always simpler to debug LDAP issues using an LDAP-specific tool
 such as `ldapsearch`.  Adding a RADIUS server to the mix will just
 make it more difficult to debug LDAP issues.
 
-Similarly, it is not productive to ask questions about `ldapsearch`
+NOTE: Similarly, it is not productive to ask questions about `ldapsearch`
 and LDAP on the FreeRADIUS mailing list.  The list members can help
 with configuring FreeRADIUS to talk to LDAP, but they are unable to
 help with debugging `ldapsearch`.  Where possible, the local LDAP
