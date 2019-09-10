@@ -29,7 +29,7 @@ much more with daemontools than I describe here.
 
 Next, we’ll need a directory for the radius `service` to use with
 daemontools. I usually create a dir `/var/svc` to hold all my daemontool
-supervised services. i.e.::
+supervised services. i.e.:
 
 ```
 $ mkdir /var/svc
@@ -46,7 +46,7 @@ started:
 exec /usr/local/sbin/radiusd -s -f
 ```
 
-Of course you’ll want to make that `run` file executable::
+Of course you’ll want to make that `run` file executable:
 
 `$ chmod +x /var/svc/radiusd/run`
 
@@ -56,7 +56,7 @@ option, the daemontools will always think that radiusd has just died and
 will (try to) restart it. Not good.
 
 Now the only left to do is to start the `supervise` command that came
-with daemontools. Do that like so::
+with daemontools. Do that like so:
 
 `$ supervise /var/svc/radiusd`
 
@@ -79,12 +79,12 @@ This is really pretty easy, but it is system dependent. I strongly
 suggest you read the man pages for your `init` before playing with this.
 You can seriously hose your system if you screw up your inittab.
 
-Add this line (or something similar to it) to your inittab::
+Add this line (or something similar to it) to your inittab:
 
 `fr:23:respawn:/usr/local/sbin/radiusd -f -s &> /dev/null`
 
 Now all that’s left is to have the system reread the inittab. Usually
-that’s done with one of the following::
+that’s done with one of the following:
 
 `$ telinit Q`
 
@@ -131,7 +131,7 @@ $ chmod +t+s /etc/radiusd /etc/radiusd/log
 $ chown log.log /etc/radiusd/log/main
 ```
 
-Here are the contents of run files from `/etc/radiusd` and `/etc/radiusd/log`::
+Here are the contents of run files from `/etc/radiusd` and `/etc/radiusd/log`:
 
 ```
 $ cd /etc/radiusd
@@ -145,25 +145,25 @@ $ cat run
 exec setuidgid log multilog t ./main
 ```
 
-To make service wake-up do::
+To make service wake-up do:
 
 ```
 $ ln -sf /etc/radiusd /service
 ```
 
-Hang-up (to reload config) it using::
+Hang-up (to reload config) it using:
 
 ```
 $ svc -h /service/radiusd
 ```
 
-Disable (down) it using::
+Disable (down) it using:
 
 ```
 $ svc -d /service/radiusd
 ```
 
-Reenable (up) it using::
+Reenable (up) it using:
 
 ```
 $ svc -u /service/radiusd
