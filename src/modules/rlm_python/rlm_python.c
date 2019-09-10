@@ -44,8 +44,25 @@ static void		*python_dlhandle;
 static PyThreadState	*main_interpreter;	//!< Main interpreter (cext safe)
 static PyObject		*main_module;		//!< Pthon configuration dictionary.
 
-#if PY_VERSION_HEX > 0x03050000
+#if PY_VERSION_HEX >= 0x03050000
 static wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
+#endif
+
+
+#if PY_VERSION_HEX < 0x03000000
+/*
+ *	Python 2.7 has its own versions of these which
+ *	operate on UCS2 encoding *sigh*
+ */
+#undef PyUnicode_AsUTF8
+#undef PyUnicode_FromString
+#undef PyUnicode_CheckExact
+#undef PyUnicode_FromFormat
+
+#define PyUnicode_AsUTF8 PyString_AsString
+#define PyUnicode_FromString PyString_FromString
+#define PyUnicode_CheckExact PyString_CheckExact
+#define PyUnicode_FromFormat PyString_FromFormat
 #endif
 
 /** Specifies the module.function to load for processing a section
@@ -67,7 +84,7 @@ typedef struct {
 	PyThreadState	*sub_interpreter;	//!< The main interpreter/thread used for this instance.
 	char const	*python_path;		//!< Path to search for python files in.
 
-#if PY_VERSION_HEX > 0x03050000
+#if PY_VERSION_HEX >= 0x03050000
 	wchar_t		*wide_path;		//!< Special wide char encoding of radiusd path.
 						//!< FreeRADIUS functions.
 #endif
@@ -212,7 +229,7 @@ static void python_error_log(void)
 	    ((pStr2 = PyObject_Str(pValue)) == NULL))
 		goto failed;
 
-	ERROR("%s (%s)", PyString_AsString(pStr1), PyString_AsString(pStr2));
+	ERROR("%s (%s)", PyUnicode_AsUTF8(pStr1), PyUnicode_AsUTF8(pStr2));
 
 failed:
 	Py_XDECREF(pStr1);
@@ -269,20 +286,20 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
 		pStr2 = PyTuple_GET_ITEM(pTupleElement, pairsize-1);
 
-		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
+		if ((!PyUnicode_CheckExact(pStr1)) || (!PyUnicode_CheckExact(pStr2))) {
 			ERROR("%s - Tuple element %d of %s must be as (str, str)",
 			      funcname, i, list_name);
 			continue;
 		}
-		s1 = PyString_AsString(pStr1);
-		s2 = PyString_AsString(pStr2);
+		s1 = PyUnicode_AsUTF8(pStr1);
+		s2 = PyUnicode_AsUTF8(pStr2);
 
 		if (pairsize == 3) {
 			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
-			if (PyString_CheckExact(pOp)) {
-				if (!(op = fr_table_value_by_str(fr_tokens_table, PyString_AsString(pOp), 0))) {
+			if (PyUnicode_CheckExact(pOp)) {
+				if (!(op = fr_table_value_by_str(fr_tokens_table, PyUnicode_AsUTF8(pOp), 0))) {
 					ERROR("%s - Invalid operator %s:%s %s %s, falling back to '='",
-					      funcname, list_name, s1, PyString_AsString(pOp), s2);
+					      funcname, list_name, s1, PyUnicode_AsUTF8(pOp), s2);
 					op = T_OP_EQ;
 				}
 			} else if (PyInt_Check(pOp)) {
@@ -351,9 +368,9 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	/* Look at the fr_pair_fprint_name? */
 
 	if (vp->da->flags.has_tag) {
-		attribute = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
+		attribute = PyUnicode_FromFormat("%s:%d", vp->da->name, vp->tag);
 	} else {
-		attribute = PyString_FromString(vp->da->name);
+		attribute = PyUnicode_FromString(vp->da->name);
 	}
 
 	if (!attribute) return -1;
@@ -366,7 +383,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_OCTETS:
-		value = PyString_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
+		value = PyUnicode_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
 	case FR_TYPE_BOOL:
@@ -431,7 +448,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		char buffer[256];
 
 		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-		value = PyString_FromStringAndSize(buffer, len);
+		value = PyUnicode_FromStringAndSize(buffer, len);
 	}
 		break;
 
@@ -580,10 +597,15 @@ finish:
 
 static void python_interpreter_free(PyThreadState *interp)
 {
+#if PY_VERSION_HEX >= 0x03000000
+	PyEval_AcquireThread(interp);
+	Py_EndInterpreter(interp);
+#else
 	PyEval_AcquireLock();
 	PyThreadState_Swap(interp);
 	Py_EndInterpreter(interp);
 	PyEval_ReleaseLock();
+#endif
 }
 
 /** Thread safe call to a python function
@@ -705,7 +727,7 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 
 			if (!key) continue;
 
-			pKey = PyString_FromString(key);
+			pKey = PyUnicode_FromString(key);
 			if (!pKey) continue;
 
 			if (PyDict_Contains(dict, pKey)) {
@@ -728,8 +750,8 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 
 			if (!key || !value) continue;
 
-			pKey = PyString_FromString(key);
-			pValue = PyString_FromString(value);
+			pKey = PyUnicode_FromString(key);
+			pValue = PyUnicode_FromString(value);
 			if (!pKey || !pValue) continue;
 
 			/*
@@ -789,9 +811,9 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 *	the lifetime of the module.
 		 */
 		if (inst->python_path) {
-#if PY_VERSION_HEX > 0x03050000
+#if PY_VERSION_HEX >= 0x03050000
 			{
-				inst->wide_path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
+				inst->wide_path = Py_DecodeLocale(inst->python_path, NULL);
 				PySys_SetPath(inst->wide_path);
 			}
 #else
@@ -807,7 +829,25 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		/*
 		 *	Initialise a new module, with our default methods
 		 */
+#if PY_VERSION_HEX >= 0x03000000
+	        {
+			static struct PyModuleDef py_module_def = {
+				PyModuleDef_HEAD_INIT,
+				"radiusd",			/* m_name */
+				"FreeRADIUS python module",	/* m_doc */
+				-1,				/* m_size */
+				module_methods,			/* m_methods */
+				NULL,				/* m_reload */
+				NULL,				/* m_traverse */
+				NULL,				/* m_clear */
+				NULL,				/* m_free */
+			};
+
+			inst->module = PyModule_Create(&py_module_def);
+		}
+#else
 		inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
+#endif
 		if (!inst->module) {
 		error:
 			python_error_log();
@@ -968,7 +1008,7 @@ static int mod_detach(void *instance)
 	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
 
 	if ((--python_instances) == 0) {
-#if PY_VERSION_HEX > 0x03050000
+#if PY_VERSION_HEX >= 0x03050000
 		if (inst->wide_path) PyMem_RawFree(inst->wide_path);
 #endif
 	}
@@ -1029,9 +1069,9 @@ static int mod_load(void)
 	/*
 	 *	Set program name (i.e. the software calling the interpreter)
 	 */
-#if PY_VERSION_HEX > 0x03050000
+#if PY_VERSION_HEX >= 0x03050000
 	{
-		wide_name = Py_DecodeLocale(main_config->name, strlen(main_config->name));
+		wide_name = Py_DecodeLocale(main_config->name, NULL);
 		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
 	}
 #else
@@ -1055,7 +1095,7 @@ static void mod_unload(void)
 	Py_Finalize();
 	dlclose(python_dlhandle);
 
-#if PY_VERSION_HEX > 0x03050000
+#if PY_VERSION_HEX >= 0x03050000
 	if (wide_name) PyMem_RawFree(wide_name);
 #endif
 }
