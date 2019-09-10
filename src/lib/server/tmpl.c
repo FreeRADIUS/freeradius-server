@@ -3056,7 +3056,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		 *	/ lists on their own.
 		 */
 		*type = T_DOUBLE_QUOTED_STRING;
-		depth = 1;
+		depth = 0;
 
 		/*
 		 *	Xlat's are quoted by %{...} nesting, not by
@@ -3090,7 +3090,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 				continue;
 			}
 
-			if ((*p == '%') && (*p == '{')) {
+			if ((p[0] == '%') && (p[1] == '{')) {
 				if (!p[2]) {
 					return_P("End of string after expansion");
 				}

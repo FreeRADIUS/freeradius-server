@@ -242,6 +242,9 @@ data <ipaddr>127.0.0.1 == "%{sql: 127.0.0.1}"
 condition <ipaddr>127.0.0.1 == %{sql:127.0.0.1}
 data <ipaddr>127.0.0.1 == "%{sql:127.0.0.1}"
 
+condition <ipaddr>127.0.0.1 == %{sql: SELECT user FROM table WHERE user='%{User-Name}'}
+data <ipaddr>127.0.0.1 == "%{sql: SELECT user FROM table WHERE user='%{User-Name}'}"
+
 condition <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
 data true
 
