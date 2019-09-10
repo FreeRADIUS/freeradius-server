@@ -539,8 +539,16 @@ static void parse_condition(fr_dict_t const *dict, char const *input, char *outp
 	ssize_t dec_len;
 	char const *error = NULL;
 	fr_cond_t *cond;
+	CONF_SECTION *this;
 
-	dec_len = fr_cond_tokenize(NULL, &cond, &error, dict, NULL, input, NULL, 0);
+	this = cf_section_alloc(NULL, NULL, "if", "condition");
+	if (!this) {
+		snprintf(output, outlen, "ERROR out of memory");
+		return;
+	}
+
+	dec_len = fr_cond_tokenize(NULL, &cond, &error, dict, this, input, NULL, 0);
+	talloc_free(this);
 	if (dec_len <= 0) {
 		snprintf(output, outlen, "ERROR offset %d %s", (int) -dec_len, error);
 		return;
