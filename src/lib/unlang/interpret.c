@@ -258,22 +258,7 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 	}
 
 	frame->uflags = UNWIND_FLAG_NONE;
-
-	/*
-	 *	Set flags which tell us when to stop.  Note that a top
-	 *	frame *also* stops "break" and "return".
-	 *
-	 *	There's no real reason to have a top-frame stop
-	 *	"break".  The compiler should already have caught it,
-	 *	and complained about using "break" without an
-	 *	enclosing "foreach".  But it's a useful check to have.
-	 */
-	if (top_frame) {
-		top_frame_set(frame);
-		return_point_set(frame);
-		break_point_set(frame);
-	}
-
+	if (top_frame) top_frame_set(frame);
 	frame->instruction = instruction;
 	frame->result = default_rcode;
 	frame->priority = -1;
