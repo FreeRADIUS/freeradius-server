@@ -1,3 +1,6 @@
+#
+#  PRE: update if return foreach
+#
 update control {
 	&Tmp-Integer-0 += 0
 	&Tmp-Integer-0 += 1

@@ -1,5 +1,5 @@
 #
-#  PRE: update if
+#  PRE: update if return
 #
 update control {
 	&Cleartext-Password := 'hello'

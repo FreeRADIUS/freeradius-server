@@ -1,3 +1,6 @@
+#
+#  PRE: update if
+#
 if (&User-Name == 'bob') {
 	success
 	return

@@ -1,3 +1,6 @@
+#
+#  PRE: update if return
+#
 if ("no" == no) {
 	success
 	return

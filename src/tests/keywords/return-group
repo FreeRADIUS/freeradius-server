@@ -1,4 +1,5 @@
-# PRE: return
+#
+#  PRE: update if return
 #
 update {
 	&control:Auth-Type = 'Accept'

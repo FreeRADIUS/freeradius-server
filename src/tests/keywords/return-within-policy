@@ -1,3 +1,6 @@
+#
+#  PRE: update if return
+#
 group {
 	# Return must stop after the policy, otherwise we don't setup the test for success
 	policy_return
