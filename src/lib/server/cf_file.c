@@ -287,7 +287,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 			next = strchr(ptr, '}');
 			if (next == NULL) {
 				*p = '\0';
-				INFO("%s[%d]: Environment variable expansion missing }",
+				ERROR("%s[%d]: Environment variable expansion missing }",
 				     cf, lineno);
 				return NULL;
 			}
