@@ -3071,12 +3071,12 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 			 */
 			if (*p == '}') {
 				p++;
+				depth--;
+
 				if (depth == 0) {
 					*outlen = p - (*out);
 					return p - start;
 				}
-
-				depth--;
 				continue;
 			}
 
