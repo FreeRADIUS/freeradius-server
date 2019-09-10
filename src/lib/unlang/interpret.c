@@ -61,8 +61,6 @@ static void instruction_dump(REQUEST *request, unlang_t *instruction)
 
 static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t *stack = request->stack;
-
 	instruction_dump(request, frame->instruction);
 
 	RINDENT();
@@ -73,10 +71,9 @@ static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 	} else {
 		RDEBUG2("next           <none>");
 	}
-	RDEBUG2("top_frame      %s", is_top_frame(frame) ? "yes" : "no");
 	RDEBUG2("result         %s", fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"));
 	RDEBUG2("priority       %d", frame->priority);
-	RDEBUG2("unwind         %d", stack->unwind);
+	RDEBUG2("top_frame      %s", is_top_frame(frame) ? "yes" : "no");
 	RDEBUG2("repeat         %s", is_repeatable(frame) ? "yes" : "no");
 	RDEBUG2("break_point    %s", is_break_point(frame) ? "yes" : "no");
 	RDEBUG2("return_point   %s", is_return_point(frame) ? "yes" : "no");
@@ -88,7 +85,7 @@ static void stack_dump(REQUEST *request)
 	int i;
 	unlang_stack_t *stack = request->stack;
 
-	RDEBUG2("----- Begin stack debug [depth %i] -----", stack->depth);
+	RDEBUG2("----- Begin stack debug [depth %i, unwind %i] -----", stack->depth, stack->unwind);
 	for (i = stack->depth; i >= 0; i--) {
 		unlang_stack_frame_t *frame = &stack->frame[i];
 
@@ -96,7 +93,7 @@ static void stack_dump(REQUEST *request)
 		frame_dump(request, frame);
 	}
 
-	RDEBUG2("----- End stack debug [depth %i] -------", stack->depth);
+	RDEBUG2("----- End stack debug [depth %i, unwind %i] -------", stack->depth, stack->unwind);
 }
 #define DUMP_STACK if (DEBUG_ENABLED5) stack_dump(request)
 #else
