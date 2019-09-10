@@ -485,7 +485,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 	/*
 	 *	Defaults may need their values expanding
 	 */
-	expanded = cf_expand_variables("<internal>", &lineno, cs, buffer, sizeof(buffer), dflt, -1, NULL);
+	expanded = cf_expand_variables("<internal>", lineno, cs, buffer, sizeof(buffer), dflt, -1, NULL);
 	if (!expanded) {
 		cf_log_err(cs, "Failed expanding variable %s", name);
 		return -1;
