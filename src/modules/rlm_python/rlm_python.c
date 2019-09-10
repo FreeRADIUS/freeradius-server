@@ -302,8 +302,8 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 					      funcname, list_name, s1, PyUnicode_AsUTF8(pOp), s2);
 					op = T_OP_EQ;
 				}
-			} else if (PyInt_Check(pOp)) {
-				op	= PyInt_AsLong(pOp);
+			} else if (PyNumber_Check(pOp)) {
+				op = PyLong_AsLong(pOp);
 				if (!fr_table_str_by_value(fr_tokens_table, op, NULL)) {
 					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
@@ -532,7 +532,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 
 	if (!request) {
 		// check return code at module instantiation time
-		if (PyInt_CheckExact(pRet)) ret = PyInt_AsLong(pRet);
+		if (PyNumber_Check(pRet)) ret = PyLong_AsLong(pRet);
 		goto finish;
 	}
 
@@ -559,13 +559,13 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		}
 
 		pTupleInt = PyTuple_GET_ITEM(pRet, 0);
-		if (!PyInt_CheckExact(pTupleInt)) {
+		if (!PyNumber_Check(pTupleInt)) {
 			ERROR("%s - First tuple element not an integer", funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
 		/* Now have the return value */
-		ret = PyInt_AsLong(pTupleInt);
+		ret = PyLong_AsLong(pTupleInt);
 		/* Reply item tuple */
 		mod_vptuple(request->reply, request, &request->reply->vps,
 			    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
@@ -573,9 +573,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		mod_vptuple(request, request, &request->control,
 			    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
 
-	} else if (PyInt_CheckExact(pRet)) {
+	} else if (PyNumber_Check(pRet)) {
 		/* Just an integer */
-		ret = PyInt_AsLong(pRet);
+		ret = PyLong_AsLong(pRet);
 
 	} else if (pRet == Py_None) {
 		/* returned 'None', return value defaults to "OK, continue." */
