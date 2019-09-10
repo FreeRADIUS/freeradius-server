@@ -829,25 +829,42 @@ static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token,
 static int process_include(CONF_SECTION *this, char const *ptr, char *buff[static 7], char const *filename, int *lineno, bool required)
 {
 	bool relative = true;
-	FR_TOKEN token;
 	char const *value;
 
-	token = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
-	if (token != T_EOL) {
+	fr_skip_whitespace(ptr);
+
+	/*
+	 *	Grab all of the non-whitespace text.
+	 */
+	value = ptr;
+	while (*ptr && !isspace((int) *ptr)) ptr++;
+
+	/*
+	 *	We're OK with whitespace after the filename.
+	 */
+	fr_skip_whitespace(ptr);
+
+	/*
+	 *	But anything else after the filename is wrong.
+	 */
+	if (*ptr) {
 		ERROR("%s[%d]: Unexpected text after $INCLUDE", filename, *lineno);
 		return -1;
 	}
 
-	if (buff[2][0] == '$') relative = false;
+	/*
+	 *	Hack for ${confdir}/foo
+	 */
+	if (*value == '$') relative = false;
 
-	value = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]),
-				    buff[2], -1, NULL);
+	value = cf_expand_variables(filename, lineno, this, buff[1], talloc_array_length(buff[1]),
+				    value, ptr - value, NULL);
 	if (!value) return -1;
 
 	if (!FR_DIR_IS_RELATIVE(value)) relative = false;
 
 	if (relative) {
-		value = cf_local_file(filename, value, buff[3], talloc_array_length(buff[3]));
+		value = cf_local_file(filename, value, buff[2], talloc_array_length(buff[2]));
 		if (!value) {
 			ERROR("%s[%d]: Directories too deep", filename, *lineno);
 			return -1;
@@ -867,7 +884,7 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 	}
 
 	/*
-	 *	Include a file.
+	 *	The filename doesn't end in '/', so it must be a file.
 	 */
 	if (value[strlen(value) - 1] != '/') {
 		return cf_file_include(this, value, CONF_INCLUDE_FILE, buff, false);
@@ -887,6 +904,10 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 		char *my_directory;
 		int rcode = -1;
 
+		/*
+		 *	We need to keep a copy of this while the
+		 *	included files mangle our buff[] array.
+		 */
 		my_directory = talloc_strdup(this, value);
 
 		cf_log_debug(this, "Including files in directory \"%s\"", my_directory);
@@ -937,16 +958,16 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 			if (*p != '\0') continue;
 
 
-			snprintf(buff[2], talloc_array_length(buff[2]), "%s%s",
+			snprintf(buff[1], talloc_array_length(buff[1]), "%s%s",
 				 my_directory, dp->d_name);
-			if ((stat(buff[2], &stat_buf) != 0) ||
+			if ((stat(buff[1], &stat_buf) != 0) ||
 			    S_ISDIR(stat_buf.st_mode)) continue;
 
 			/*
 			 *	Read the file into the current
 			 *	configuration section.
 			 */
-			if (cf_file_include(this, buff[2], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
+			if (cf_file_include(this, buff[1], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
 				closedir(dir);
 				goto done;
 			}
@@ -1376,7 +1397,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 		if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
 			ptr += 8;
-			fr_skip_whitespace(ptr);
 
 			if (process_include(this, ptr, buff, filename, lineno, true) < 0) goto error;
 			continue;
@@ -1384,7 +1404,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
 			ptr += 9;
-			fr_skip_whitespace(ptr);
 
 			if (process_include(this, ptr, buff, filename, lineno, false) < 0) goto error;
 			continue;
