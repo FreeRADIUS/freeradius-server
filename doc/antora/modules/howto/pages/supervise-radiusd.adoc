@@ -79,7 +79,7 @@ This is really pretty easy, but it is system dependent. I strongly
 suggest you read the man pages for your `init` before playing with this.
 You can seriously hose your system if you screw up your inittab.
 
-Add this line (or something similar to it) to your inittab::
+Add this line (or something similar to it) to your inittab:
 
 `fr:23:respawn:/usr/local/sbin/radiusd -f -s &> /dev/null`
 

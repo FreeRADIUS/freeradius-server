@@ -42,7 +42,7 @@ run-time tests.
 
 === Errors
 
-If the 'Ready to process requests` message does not appear, then the
+If the '*Ready to process requests*' message does not appear, then the
 debug output will contain error messages clearly describing what went
 wrong.  These error message *must* be read in order to gain insight as
 to the source of the problem.
