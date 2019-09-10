@@ -78,11 +78,3 @@ choice of which method to use is up to the local administrator.
 == Testing the Server
 
 include::howto:partial$post_test.adoc[]
-
-We recommend running the `radiusd -XC` test was performed before
-making any `ldap` module changes for a few reasons.  If previous
-configuration worked, and the only change was to the `ldap` module,
-then the source of the error is simple.  There is no need to go
-searching through other configuration files or third-party web sites.
-Instead, change and test the module configuration until the server
-works.
