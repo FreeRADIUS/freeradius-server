@@ -1088,7 +1088,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			end = strchr(ptr, '}');
 			if (end == NULL) {
 				*p = '\0';
-				INFO("%s[%d]: Variable expansion missing }",
+				ERROR("%s[%d]: Variable expansion missing }",
 				       cf, *lineno);
 				return NULL;
 			}
@@ -1233,7 +1233,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			end = strchr(ptr, '}');
 			if (end == NULL) {
 				*p = '\0';
-				INFO("%s[%d]: Environment variable expansion missing }",
+				ERROR("%s[%d]: Environment variable expansion missing }",
 				       cf, *lineno);
 				return NULL;
 			}
