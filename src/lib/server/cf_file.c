@@ -805,6 +805,14 @@ static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token,
 					 buff2, outlen, NULL)) {
 			return -1;
 		}
+
+	} else if ((out[0] == '$') && (out[1] == '{')) {
+		if (!cf_expand_variables(filename, lineno, this, buffer, buflen,
+					 out, outlen, NULL)) {
+			return -1;
+		}
+
+
 	} else {
 		memcpy(buffer, out, outlen);
 		buffer[outlen] = '\0';
