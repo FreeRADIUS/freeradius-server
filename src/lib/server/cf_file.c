@@ -1050,7 +1050,12 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	if (invalid_location(this, buff[1], filename, lineno)) return NULL;
 
 	cd = cf_data_find_in_parent(this, fr_dict_t **, "dictionary");
-	if (cd) dict = *((fr_dict_t **)cf_data_value(cd));
+	if (!cd) {
+		cf_log_err(cf_section_find_in_parent(this, "server", CF_IDENT_ANY),
+			   "No dictionary data found in virtual server");
+		return NULL;
+	}
+	dict = *((fr_dict_t **)cf_data_value(cd));
 
 	/*
 	 *	fr_cond_tokenize needs the current section, so we create it first.
