@@ -1,0 +1,14 @@
+#
+#  PRE: update if return
+#
+
+# Defeats return check...
+if ('true' == 'true') {
+	success
+	if(&User-Name == 'bob') {
+		"%{debug:%{debug:0}}"	# Noop
+		return
+	}
+	test_fail
+	return
+}
