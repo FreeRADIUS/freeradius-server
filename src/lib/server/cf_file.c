@@ -1139,9 +1139,6 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 		return NULL;
 	}
 
-	/*
-	 *
-	 */
 	if (cf_get_token(this, &ptr, &token, buff[1], talloc_array_length(buff[1]),
 			 buff[2], filename, lineno) < 0) {
 		return NULL;
