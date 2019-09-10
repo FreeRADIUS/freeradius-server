@@ -2794,6 +2794,7 @@ $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&6;
 
 	mod_ldflags=`echo $python_ldflags | sed -e '\
 		s/-Wl,-O[[:digit:]][[:blank:]]*//g;\
+		s/-Wl,-Bsymbolic-functions[[:blank:]]*//g;\
 		'`
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldflags were \"${mod_ldflags}\"" >&5
 $as_echo "$as_me: Sanitized ldflags were \"${mod_ldflags}\"" >&6;}
