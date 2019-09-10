@@ -326,7 +326,6 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 			*(p++) = *(ptr++);
 		}
 
-
 		if (p >= (output + outsize)) {
 			ERROR("%s[%d]: Reference \"%s\" is too long",
 			      cf, *lineno, input);
@@ -749,7 +748,7 @@ static bool invalid_location(CONF_SECTION *this, char const *name, char const *f
  *	host of reasons.
  */
 static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token, char *buffer, size_t buflen,
-			char const *filename, int *lineno)
+			char *buff2, char const *filename, int *lineno)
 {
 	char quote;
 	char const *ptr = *ptr_p;
@@ -799,12 +798,17 @@ static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token,
 	 *	Unescape it or copy it verbatim as necessary.
 	 */
 	if ((quote == '`') || (quote == '\'') || (quote == '"')) {
-		outlen = fr_value_str_unescape((uint8_t *) buffer, out, outlen, quote);
+		outlen = fr_value_str_unescape((uint8_t *) buff2, out, outlen, quote);
+		buffer[outlen] = '\0';
 
+		if (!cf_expand_variables(filename, lineno, this, buffer, buflen,
+					 buff2, outlen, NULL)) {
+			return -1;
+		}
 	} else {
 		memcpy(buffer, out, outlen);
+		buffer[outlen] = '\0';
 	}
-	buffer[outlen] = '\0';
 
 	ptr += slen;
 	fr_skip_whitespace(ptr);
@@ -1394,7 +1398,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	a key word.
 		 */
 		if (cf_get_token(current, &ptr, &name1_token, buff[1], talloc_array_length(buff[1]),
-				 filename, lineno) < 0) {
+				 buff[2], filename, lineno) < 0) {
 			goto error;
 		}
 
