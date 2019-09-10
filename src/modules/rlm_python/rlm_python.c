@@ -303,7 +303,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 					op = T_OP_EQ;
 				}
 			} else if (PyNumber_Check(pOp)) {
-				op = (FR_TOKEN)PyLong_AsLong(pOp);
+				op = (FR_TOKEN)(unsigned)PyLong_AsLong(pOp);
 				if (!fr_table_str_by_value(fr_tokens_table, op, NULL)) {
 					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
@@ -592,7 +592,7 @@ finish:
 	Py_XDECREF(pArgs);
 	Py_XDECREF(pRet);
 
-	return ret;
+	return (rlm_rcode_t)ret;
 }
 
 static void python_interpreter_free(PyThreadState *interp)
