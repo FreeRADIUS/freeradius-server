@@ -725,7 +725,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 
 		if (p) {
 			name2 = cf_expand_variables(parent->item.filename,
-						    &parent->item.lineno,
+						    parent->item.lineno,
 						    parent,
 						    buffer, sizeof(buffer), name2, -1, NULL);
 

@@ -64,7 +64,7 @@ int		cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
  *	Misc
  */
 CONF_ITEM	*cf_reference_item(CONF_SECTION const *parentcs, CONF_SECTION const *outercs, char const *ptr);
-char const	*cf_expand_variables(char const *cf, int *lineno,
+char const	*cf_expand_variables(char const *cf, int lineno,
 				     CONF_SECTION *outer_cs,
 				     char *output, size_t outsize,
 				     char const *input, ssize_t inlen, bool *soft_fail);

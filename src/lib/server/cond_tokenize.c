@@ -579,7 +579,6 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 {
 	ssize_t slen, my_slen;
 	char *p, *expanded;
-	int lineno;
 	char buffer[8192];
 
 	/*
@@ -597,8 +596,7 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 		return slen;
 	}
 
-	lineno = cf_lineno(cs);
-	if (!cf_expand_variables(cf_filename(cs), &lineno, cf_item_to_section(cf_parent(cs)),
+	if (!cf_expand_variables(cf_filename(cs), cf_lineno(cs), cf_item_to_section(cf_parent(cs)),
 				 buffer, sizeof(buffer), start, slen, NULL)) {
 		*error = "Failed expanding configuration variable";
 		return -1;
