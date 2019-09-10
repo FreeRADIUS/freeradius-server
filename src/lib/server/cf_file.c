@@ -77,6 +77,9 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLU
 
 /*
  *	Expand the variables in an input string.
+ *
+ *	Input and output should be two different buffers, as the
+ *	output may be longer than the input.
  */
 char const *cf_expand_variables(char const *cf, int *lineno,
 				CONF_SECTION *outer_cs,
@@ -729,6 +732,80 @@ static bool invalid_location(CONF_SECTION *this, char const *name, char const *f
 }
 
 
+/*
+ *	Like gettoken(), but uses the new API which seems better for a
+ *	host of reasons.
+ */
+static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token, char *buffer, size_t buflen,
+			char const *filename, int *lineno)
+{
+	char quote;
+	char const *ptr = *ptr_p;
+	ssize_t slen;
+	char const *error;
+	char const *out;
+	size_t outlen;
+
+	quote = *ptr;
+
+	/*
+	 *	Discover the string content, returning what kind of
+	 *	string it is.
+	 *
+	 *	Don't allow casts or refgexes.  But do allow bar
+	 *	%{...} expansions.
+	 */
+	slen = tmpl_preparse(&out, &outlen, ptr, token, &error, NULL, false, true);
+	if (slen <= 0) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(this, &spaces, &text, slen, ptr);
+
+		ERROR("%s[%d]: %s", filename, *lineno, text);
+		ERROR("%s[%d]: %s^ - %s", filename, *lineno, spaces, error);
+
+		talloc_free(spaces);
+		talloc_free(text);
+		return -1;
+	}
+
+	if ((size_t) slen >= buflen) {
+		ERROR("%s[%d]: Name is too long", filename, *lineno);
+		return -1;
+	}
+
+	/*
+	 *	Note that we copy the entire string
+	 *	WITHOUT the quotation marks.  Unless
+	 *	it's a variable expansion.
+	 *
+	 *	Also the string is copied *verbatim*.
+	 *	Nothing is unescaped.
+	 */
+	memcpy(buffer, out, outlen);
+	buffer[outlen] = '\0';
+
+	/*
+	 *	Manually unescape things.
+	 *
+	 *	Note that a bare %{...} counts as a
+	 *	double quoted string, even if it isn't
+	 *	enclosed in double quotes.
+	 */
+	if (*token == T_DOUBLE_QUOTED_STRING) quote = '"';
+
+	if ((quote == '`') || (quote == '\'') || (quote == '"')) {
+		(void) fr_value_str_unescape((uint8_t *) buffer, buffer, outlen, quote);
+	}
+
+	ptr += slen;
+	fr_skip_whitespace(ptr);
+
+	*ptr_p = ptr;
+	return 0;
+}
+
+
 static int process_include(CONF_SECTION *this, char const *ptr, char *buff[static 7], char const *filename, int *lineno, bool required)
 {
 	bool relative = true;
@@ -966,11 +1043,14 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	buff[2][slen] = '\0';
 	ptr += slen;
 
-	if (gettoken(&ptr, buff[3], talloc_array_length(buff[3]), true) != T_LCBRACE) {
+	fr_skip_whitespace(ptr);
+
+	if (*ptr != '{') {
 		ERROR("%s[%d]: Expected '{' instead of %s", filename, *lineno, ptr);
 		talloc_free(cond);
 		return NULL;
 	}
+	ptr++;
 
 	css = cf_section_alloc(this, this, buff[1], buff[2]);
 	if (!css) {
@@ -1302,66 +1382,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		}
 
 		/*
-		 *	Nothing to get excited over, we MUST have a key word.
+		 *	Found nothing to get excited over.  It MUST be
+		 *	a key word.
 		 */
-		{
-			char const *out;
-			size_t outlen;
-			ssize_t slen;
-			char const *error_str;
-			char quote;
-
-			quote = *ptr;
-			slen = tmpl_preparse(&out, &outlen, ptr, &name1_token, &error_str, NULL, false, true);
-			if (slen <= 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(current, &spaces, &text, slen, ptr);
-
-				ERROR("%s[%d]: %s", filename, *lineno, text);
-				ERROR("%s[%d]: %s^ - %s", filename, *lineno, spaces, error_str);
-
-				talloc_free(spaces);
-				talloc_free(text);
-				goto error;
-			}
-
-			if ((size_t) slen >= talloc_array_length(buff[1])) {
-				ERROR("%s[%d]: Name is too long", filename, *lineno);
-				goto error;
-			}
-
-			/*
-			 *	Note that we copy the entire string
-			 *	WITHOUT the quotation marks.  Unless
-			 *	it's a variable expansion.
-			 *
-			 *	Also the string is copied *verbatim*.
-			 *	Nothing is unescaped.  This blind copy
-			 *	only works because the config file
-			 *	parser doesn't expect
-			 *
-			 *	@todo - unescape this buffer based on
-			 *	the quotation character.
-			 */
-			memcpy(buff[1], out, outlen);
-			buff[1][outlen] = '\0';
-
-			/*
-			 *	Manually unescape things.
-			 *
-			 *	Note that a bare %{...} counts as a
-			 *	double quoted string, even if it isn't
-			 *	enclosed in double quotes.
-			 */
-			if (name1_token == T_DOUBLE_QUOTED_STRING) quote = '"';
-
-			if ((quote == '`') || (quote == '\'') || (quote == '"')) {
-				(void) fr_value_str_unescape((uint8_t *) buff[1], buff[1], outlen, quote);
-			}
-
-			ptr += slen;
-			fr_skip_whitespace(ptr);
+		if (cf_get_token(current, &ptr, &name1_token, buff[1], talloc_array_length(buff[1]),
+				 filename, lineno) < 0) {
+			goto error;
 		}
 
 		/*
