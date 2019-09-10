@@ -1053,10 +1053,20 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	if (cd) dict = *((fr_dict_t **)cf_data_value(cd));
 
 	/*
+	 *	fr_cond_tokenize needs the current section, so we create it first.
+	 */
+	css = cf_section_alloc(this, this, buff[1], buff[2]);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
+		return NULL;
+	}
+	css->item.filename = filename;
+	css->item.lineno = *lineno;
+
+	/*
 	 *	Skip (...) to find the {
 	 */
-	slen = fr_cond_tokenize(this, &cond, &error, dict,
-				this, ptr, filename, *lineno);
+	slen = fr_cond_tokenize(css, &cond, &error, dict, ptr);
 	if (slen < 0) {
 		char *spaces, *text;
 
@@ -1069,7 +1079,7 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 
 		talloc_free(spaces);
 		talloc_free(text);
-		talloc_free(cond);
+		talloc_free(css);
 		return NULL;
 	}
 
@@ -1079,7 +1089,7 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	 *	into.
 	 */
 	if ((size_t) slen >= (talloc_array_length(buff[2]) - 1)) {
-		talloc_free(cond);
+		talloc_free(css);
 		ERROR("%s[%d]: Condition is too large after \"%s\"", filename, *lineno, buff[1]);
 		return NULL;
 	}
@@ -1097,20 +1107,15 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 
 	if (*ptr != '{') {
 		ERROR("%s[%d]: Expected '{' instead of %s", filename, *lineno, ptr);
-		talloc_free(cond);
+		talloc_free(css);
 		return NULL;
 	}
 	ptr++;
 
-	css = cf_section_alloc(this, this, buff[1], buff[2]);
-	if (!css) {
-		ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
-		talloc_free(cond);
-		return NULL;
-	}
-	css->item.filename = filename;
-	css->item.lineno = *lineno;
-
+	/*
+	 *	Now that the CONF_SECTION and condition are OK, add
+	 *	the condition to the CONF_SECTION.
+	 */
 	cf_data_add(css, cond, NULL, false);
 	*ptr_p = ptr;
 	return css;

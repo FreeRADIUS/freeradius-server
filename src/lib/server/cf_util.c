@@ -742,6 +742,8 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 	cs->item.type = CONF_ITEM_SECTION;
 	cs->item.parent = cf_section_to_item(parent);
 	fr_cursor_init(&cs->item.cursor, &cs->item.child);
+	if (filename) cf_filename_set(cs, filename);
+	if (lineno) cf_lineno_set(cs, lineno);
 
 	MEM(cs->name1 = talloc_typed_strdup(cs, name1));
 	if (name2) {
@@ -749,9 +751,6 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 		cs->name2_quote = T_BARE_WORD;
 	}
 	talloc_set_destructor(cs, _cf_section_free);
-
-	if (filename) cf_filename_set(cs, filename);
-	if (lineno) cf_lineno_set(cs, lineno);
 
 	if (parent) {
 		CONF_DATA const *cd;

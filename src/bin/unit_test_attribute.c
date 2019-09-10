@@ -73,6 +73,8 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 static char proto_name_prev[128];
 static dl_t		*dl;
 static dl_loader_t	*dl_loader;
+static const char	*process_filename;
+static int		process_lineno;
 
 /** Concatenate error stack
  */
@@ -539,31 +541,33 @@ static void parse_condition(fr_dict_t const *dict, char const *input, char *outp
 	ssize_t dec_len;
 	char const *error = NULL;
 	fr_cond_t *cond;
-	CONF_SECTION *this;
+	CONF_SECTION *cs;
 
-	this = cf_section_alloc(NULL, NULL, "if", "condition");
-	if (!this) {
+	cs = cf_section_alloc(NULL, NULL, "if", "condition");
+	if (!cs) {
 		snprintf(output, outlen, "ERROR out of memory");
 		return;
 	}
+	cf_filename_set(cs, process_filename);
+	cf_lineno_set(cs, process_lineno);
 
-	dec_len = fr_cond_tokenize(NULL, &cond, &error, dict, this, input, NULL, 0);
-	talloc_free(this);
+	dec_len = fr_cond_tokenize(cs, &cond, &error, dict, input);
 	if (dec_len <= 0) {
+		talloc_free(cs);
 		snprintf(output, outlen, "ERROR offset %d %s", (int) -dec_len, error);
 		return;
 	}
 
 	input += dec_len;
 	if (*input != '\0') {
-		talloc_free(cond);
+		talloc_free(cs);
 		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) dec_len);
 		return;
 	}
 
 	cond_snprint(output, outlen, cond);
 
-	talloc_free(cond);
+	talloc_free(cs);
 }
 
 static void parse_xlat(fr_dict_t const *dict, char const *input, char *output, size_t outlen)
@@ -864,6 +868,7 @@ do { \
 	lineno = 0;
 	*output = '\0';
 	data_len = 0;
+	process_filename = filename;
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		char			*p = strchr(buffer, '\n'), *q;
@@ -894,6 +899,7 @@ do { \
 		fr_skip_whitespace(p);
 		if (!*p) continue;
 
+		process_lineno = lineno;
 		DEBUG2("%s[%d]: %s\n", filename, lineno, buffer);
 
 		strlcpy(input, p, sizeof(input));
