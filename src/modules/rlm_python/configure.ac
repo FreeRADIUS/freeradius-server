@@ -50,10 +50,13 @@ if test x$with_[]modname != xno; then
 		s/-DNDEBUG[[[:blank:]]]*//g'`
 	AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
+	dnl # Strip -Wl,-O1... Is -O even a valid linker flag??
 	python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags`
 	AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"])
 
-	mod_ldflags=$python_ldflags
+	mod_ldflags=`echo $python_ldflags | sed -e '\
+		s/-Wl,-O[[[:digit:]]][[[:blank:]]]*//g;\
+		'`
 	AC_MSG_NOTICE([Sanitized ldflags were \"${mod_ldflags}\"])
 
 	targetname="rlm_python"

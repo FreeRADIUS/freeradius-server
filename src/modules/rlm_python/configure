@@ -2788,11 +2788,13 @@ $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&6;}
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized cflags were \"${mod_cflags}\"" >&6;}
 
-	python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags`
+		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags`
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&6;}
 
-	mod_ldflags=$python_ldflags
+	mod_ldflags=`echo $python_ldflags | sed -e '\
+		s/-Wl,-O[[:digit:]][[:blank:]]*//g;\
+		'`
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldflags were \"${mod_ldflags}\"" >&5
 $as_echo "$as_me: Sanitized ldflags were \"${mod_ldflags}\"" >&6;}
 
