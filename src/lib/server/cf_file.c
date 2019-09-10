@@ -72,8 +72,14 @@ static fr_table_num_sorted_t const conf_property_name[] = {
 };
 static size_t conf_property_name_len = NUM_ELEMENTS(conf_property_name);
 
+/*
+ *	buff[0] is the data we read from the file
+ *	buff[1] is name
+ *	buff[2] is name2 OR value for pair
+ *	buff[3] is a temporary buffer
+ */
 static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLUDE_TYPE file_type,
-			   char *buff[static 7], bool from_dir);
+			   char *buff[static 4], bool from_dir);
 
 /*
  *	Expand the variables in an input string.
@@ -826,7 +832,7 @@ static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token,
 }
 
 
-static int process_include(CONF_SECTION *this, char const *ptr, char *buff[static 7], char const *filename, int *lineno, bool required)
+static int process_include(CONF_SECTION *this, char const *ptr, char *buff[static 4], char const *filename, int *lineno, bool required)
 {
 	bool relative = true;
 	char const *value;
@@ -987,7 +993,7 @@ done:
 }
 
 
-static int process_template(CONF_SECTION *this, char const *ptr, char *buff[static 7], char const *filename, int *lineno)
+static int process_template(CONF_SECTION *this, char const *ptr, char *buff[static 4], char const *filename, int *lineno)
 {
 	CONF_ITEM *ci;
 	CONF_SECTION *parent_cs, *templatecs;
@@ -1028,7 +1034,7 @@ static int process_template(CONF_SECTION *this, char const *ptr, char *buff[stat
 }
 
 
-static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *buff[static 7], char const *filename, int *lineno)
+static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *buff[static 4], char const *filename, int *lineno)
 {
 	ssize_t slen = 0;
 	char const *error = NULL;
@@ -1038,6 +1044,9 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	CONF_SECTION *css;
 	char const *ptr = *ptr_p;
 
+	/*
+	 *	if / elsif
+	 */
 	if (invalid_location(this, buff[1], filename, *lineno)) return NULL;
 
 	cd = cf_data_find_in_parent(this, fr_dict_t **, "dictionary");
@@ -1107,7 +1116,7 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	return css;
 }
 
-static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *buff[static 7], char const *filename, int *lineno)
+static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *buff[static 4], char const *filename, int *lineno)
 {
 	char const *mod;
 	char const *exp = NULL;
@@ -1115,11 +1124,14 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 	CONF_SECTION *css;
 	FR_TOKEN token;
 
-	if (invalid_location(this, buff[1], filename, *lineno)) {
+	if (invalid_location(this, "map", filename, *lineno)) {
 		ERROR("%s[%d]: Invalid syntax for 'map'", filename, *lineno);
 		return NULL;
 	}
 
+	/*
+	 *	@fixme: call cf_get_token() which does all of this
+	 */
 	token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
 	if (token != T_BARE_WORD) {
 		ERROR("%s[%d]: Expected module name after 'map'", filename, *lineno);
@@ -1131,7 +1143,7 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 	 */
 	mod = cf_expand_variables(filename, lineno,
 				  this,
-				  buff[3], talloc_array_length(buff[3]),
+				  buff[1], talloc_array_length(buff[1]),
 				  buff[2], -1, NULL);
 	if (!mod) {
 		ERROR("%s[%d]: Failed expanding ${...} in map module name",
@@ -1140,13 +1152,19 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 	}
 
 	/*
-	 *	Parse the map expansion, which SHOULD be a string.
-	 *
-	 *	Maps without an expansion string are allowed, tho I don't know why.
+	 *	Maps without an expansion string are allowed, tho I
+	 *	don't know why.
 	 */
-	token = gettoken(&ptr, buff[4], talloc_array_length(buff[4]), false);
-	if (token == T_LCBRACE) goto alloc_section;
+	fr_skip_whitespace(ptr);
+	if (*ptr == '{') {
+		ptr++;
+		goto alloc_section;
+	}
 
+	/*
+	 *	Parse the map expansion, which now SHOULD be a string.
+	 */
+	token = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), false);
 	if (!fr_str_tok[token]) {
 		ERROR("%s[%d]: Expecting string expansions in 'map' definition",
 		      filename, *lineno);
@@ -1163,8 +1181,8 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 
 	exp = cf_expand_variables(filename, lineno,
 				  this,
-				  buff[5], talloc_array_length(buff[5]),
-				  buff[4], -1, NULL);
+				  buff[2], talloc_array_length(buff[2]),
+				  buff[3], -1, NULL);
 	if (!exp) {
 		ERROR("%s[%d]: Failed expanding ${...} in map expansion string",
 		      filename, *lineno);
@@ -1175,7 +1193,7 @@ alloc_section:
 	/*
 	 *	Allocate the section
 	 */
-	css = cf_section_alloc(this, this, buff[1], mod);
+	css = cf_section_alloc(this, this, "map", mod);
 	if (!css) {
 		ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
 		return NULL;
@@ -1200,7 +1218,7 @@ alloc_section:
 
 static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
 		    FR_TOKEN name1_token, FR_TOKEN op_token, FR_TOKEN value_token,
-		    char *buff[static 7], char const *filename, int *lineno)
+		    char *buff[static 4], char const *filename, int *lineno)
 {
 	CONF_DATA const *cd;
 	CONF_PARSER *rule;
@@ -1215,7 +1233,7 @@ static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
 		bool		soft_fail;
 		char const	*expanded;
 
-		expanded = cf_expand_variables(filename, lineno, this, buff[4], talloc_array_length(buff[4]), value, -1, &soft_fail);
+		expanded = cf_expand_variables(filename, lineno, this, buff[3], talloc_array_length(buff[3]), value, -1, &soft_fail);
 		if (expanded) {
 			value = expanded;
 
@@ -1258,7 +1276,7 @@ static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
  *	Read a part of the config file.
  */
 static int cf_section_read(char const *filename, int *lineno, FILE *fp,
-			   CONF_SECTION *current, char *buff[7])
+			   CONF_SECTION *current, char *buff[static 4])
 
 {
 	CONF_SECTION	*this, *css;
@@ -1518,7 +1536,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			case '\'':
 			case '`':
 			case '/':
-				value_token = getstring(&ptr, buff[3], talloc_array_length(buff[3]), false);
+				value_token = getstring(&ptr, buff[2], talloc_array_length(buff[2]), false);
 				break;
 
 				/*
@@ -1560,19 +1578,19 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				while (*q && (*q >= ' ') && (*q != ',') &&
 				       !isspace(*q)) q++;
 
-				if ((size_t) (q - ptr) >= talloc_array_length(buff[3])) {
+				if ((size_t) (q - ptr) >= talloc_array_length(buff[2])) {
 					ERROR("%s[%d]: Parse error: value too long", filename, *lineno);
 					goto error;
 				}
 
-				memcpy(buff[3], ptr, (q - ptr));
-				buff[3][q - ptr] = '\0';
+				memcpy(buff[2], ptr, (q - ptr));
+				buff[2][q - ptr] = '\0';
 				ptr = q;
 
 				value_token = T_BARE_WORD;
 			}
 			}
-			value = buff[3];
+			value = buff[2];
 
 			/*
 			 *	Add this CONF_PAIR to our CONF_SECTION
@@ -1705,7 +1723,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
  *	Include one config file in another.
  */
 static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
-			   UNUSED CONF_INCLUDE_TYPE file_type, char *buff[7], bool from_dir)
+			   UNUSED CONF_INCLUDE_TYPE file_type, char *buff[static 4], bool from_dir)
 {
 	FILE		*fp = NULL;
 	int		lineno = 0;
@@ -1760,8 +1778,8 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	/*
 	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
 	 */
-	buff = talloc_array(cs, char *, 7);
-	for (i = 0; i < 7; i++) MEM(buff[i] = talloc_array(buff, char, 8192));
+	buff = talloc_array(cs, char *, 4);
+	for (i = 0; i < 4; i++) MEM(buff[i] = talloc_array(buff, char, 8192));
 
 	if (cf_file_include(cs, filename, CONF_INCLUDE_FILE, buff, false) < 0) {
 		talloc_free(buff);
