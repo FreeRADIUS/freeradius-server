@@ -1397,7 +1397,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	Found nothing to get excited over.  It MUST be
 		 *	a key word.
 		 */
-		if (cf_get_token(current, &ptr, &name1_token, buff[1], talloc_array_length(buff[1]),
+		if (cf_get_token(this, &ptr, &name1_token, buff[1], talloc_array_length(buff[1]),
 				 buff[2], filename, lineno) < 0) {
 			goto error;
 		}
