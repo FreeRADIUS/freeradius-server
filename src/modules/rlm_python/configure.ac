@@ -37,27 +37,34 @@ if test x$with_[]modname != xno; then
 
 	dnl # Convert -I to -isystem to get rid of warnings about issues in Python headers
 	dnl # Strip -systemroot
-	dnl # Strip optimisation flags (-O[0-9]?)
-	dnl # Strip debug symbol flags (-g[0-9]?)
+	dnl # Strip optimisation flags (-O[0-9]?). We decide our optimisation level, not python.
+	dnl # -D_FORTIFY_SOURCE needs -O.
+	dnl # Strip debug symbol flags (-g[0-9]?). We decide on debugging symbols, not python
 	dnl # Strip -Werror
 	dnl # Strip -DNDEBUG
 	mod_cflags=`echo $python_cflags | sed -e '\
 		s/-I/-isystem/g;\
 		s/-isysroot[[ =]]\{0,1\}[[^-]]*//g;\
 		s/-O[[[:digit:]]][[[:blank:]]]*//g;\
-		s/-g[[[:digit:]]]*[[[:blank:]]]*//g;\
+		s/-Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]//g;\
+		s/-g[[[:digit:]]][[[:space:]]]*//g;\
+		s/-g[[[:space:]]]//g;\
 		s/-Werror\([[ =]]\{0,1\}[[^ ]]*\)\{0,1\}//g;\
-		s/-DNDEBUG[[[:blank:]]]*//g'`
+		s/-DNDEBUG[[[:blank:]]]*//g
+		'`
 	AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
-	dnl # Strip -Wl,-O1... Is -O even a valid linker flag??
-	dnl # Strip -Wl,-Bsymbolic-functions as thats not always supported or required
 	python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags`
 	AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"])
 
+	dnl # Strip -Wl,-O1... Is -O even a valid linker flag??
+	dnl # Strip -Wl,-Bsymbolic-functions as thats not always supported or required
+	dnl # Strip -Xlinker -export-dynamic as it causes weird linking issues on Linux
+	dnl #   See: https://bugs.python.org/issue36508
 	mod_ldflags=`echo $python_ldflags | sed -e '\
 		s/-Wl,-O[[[:digit:]]][[[:blank:]]]*//g;\
 		s/-Wl,-Bsymbolic-functions[[[:blank:]]]*//g;\
+		s/-Xlinker -export-dynamic//g;\
 		'`
 	AC_MSG_NOTICE([Sanitized ldflags were \"${mod_ldflags}\"])
 
