@@ -1119,7 +1119,7 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *buff[static 4], char const *filename, int *lineno)
 {
 	char const *mod;
-	char const *exp = NULL;
+	char const *value = NULL;
 	char const *ptr = *ptr_p;
 	CONF_SECTION *css;
 	FR_TOKEN token;
@@ -1130,64 +1130,48 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 	}
 
 	/*
-	 *	@fixme: call cf_get_token() which does all of this
+	 *
 	 */
-	token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
-	if (token != T_BARE_WORD) {
-		ERROR("%s[%d]: Expected module name after 'map'", filename, *lineno);
+	if (cf_get_token(this, &ptr, &token, buff[1], talloc_array_length(buff[1]),
+			 buff[2], filename, lineno) < 0) {
 		return NULL;
 	}
 
-	/*
-	 *	Allow module names to be expanded at load time.
-	 */
-	mod = cf_expand_variables(filename, lineno,
-				  this,
-				  buff[1], talloc_array_length(buff[1]),
-				  buff[2], -1, NULL);
-	if (!mod) {
-		ERROR("%s[%d]: Failed expanding ${...} in map module name",
-		      filename, *lineno);
+	if (token != T_BARE_WORD) {
+		ERROR("%s[%d]: Invalid syntax for 'map' - module name must not be a quoted string", filename, *lineno);
 		return NULL;
 	}
+	mod = buff[1];
 
 	/*
 	 *	Maps without an expansion string are allowed, tho I
 	 *	don't know why.
 	 */
-	fr_skip_whitespace(ptr);
 	if (*ptr == '{') {
 		ptr++;
 		goto alloc_section;
 	}
 
 	/*
-	 *	Parse the map expansion, which now SHOULD be a string.
+	 *	Now get the expansion string.
 	 */
-	token = gettoken(&ptr, buff[3], talloc_array_length(buff[3]), false);
+	if (cf_get_token(this, &ptr, &token, buff[2], talloc_array_length(buff[2]),
+			 buff[3], filename, lineno) < 0) {
+		return NULL;
+	}
 	if (!fr_str_tok[token]) {
 		ERROR("%s[%d]: Expecting string expansions in 'map' definition",
 		      filename, *lineno);
 		return NULL;
 	}
 
-	fr_skip_whitespace(ptr);
 	if (*ptr != '{') {
 		ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
 		      filename, *lineno);
 		return NULL;
 	}
 	ptr++;
-
-	exp = cf_expand_variables(filename, lineno,
-				  this,
-				  buff[2], talloc_array_length(buff[2]),
-				  buff[3], -1, NULL);
-	if (!exp) {
-		ERROR("%s[%d]: Failed expanding ${...} in map expansion string",
-		      filename, *lineno);
-		return NULL;
-	}
+	value = buff[2];
 
 alloc_section:
 	/*
@@ -1203,9 +1187,9 @@ alloc_section:
 	css->name2_quote = T_BARE_WORD;
 
 	css->argc = 0;
-	if (exp) {
+	if (value) {
 		css->argv = talloc_array(css, char const *, 1);
-		css->argv[0] = talloc_typed_strdup(css->argv, exp);
+		css->argv[0] = talloc_typed_strdup(css->argv, value);
 		css->argv_quote = talloc_array(css, FR_TOKEN, 1);
 		css->argv_quote[0] = token;
 		css->argc++;
