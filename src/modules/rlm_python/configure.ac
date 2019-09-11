@@ -73,6 +73,8 @@ if test x$with_[]modname != xno; then
 		'`
 	AC_MSG_NOTICE([Sanitized ldflags were \"${mod_ldflags}\"])
 
+	CFLAGS=$old_CFLAGS
+
 	targetname="rlm_python"
 else
 	targetname=
@@ -88,8 +90,6 @@ if test x"$fail" != x""; then
 		targetname=""
 	fi
 fi
-
-export CFLAGS="$old_CFLAGS"
 
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
