@@ -303,12 +303,15 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 					op = T_OP_EQ;
 				}
 			} else if (PyNumber_Check(pOp)) {
-				op = (FR_TOKEN)PyLong_AsLong(pOp);
-				if (!fr_table_str_by_value(fr_tokens_table, op, NULL)) {
+				long py_op;
+
+				py_op = PyLong_AsLong(pOp);
+				if (!fr_table_str_by_value(fr_tokens_table, py_op, NULL)) {
 					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
 					op = T_OP_EQ;
 				}
+				op = (FR_TOKEN)py_op;
 			} else {
 				ERROR("%s - Invalid operator type for %s:%s ? %s, using default '='",
 				      funcname, list_name, s1, s2);
@@ -471,7 +474,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	PyObject	*pRet = NULL;
 	PyObject	*pArgs = NULL;
 	int		tuplelen;
-	long		ret;
+	rlm_rcode_t	ret;
 
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
