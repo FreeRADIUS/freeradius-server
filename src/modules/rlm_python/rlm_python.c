@@ -946,7 +946,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	return 0;
 }
 
-static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
+static void python_interpreter_free(UNUSED rlm_python_t *inst, PyThreadState *interp)
 {
 	PyEval_RestoreThread(interp);	/* Switches thread state and locks GIL */
 	Py_EndInterpreter(interp);	/* Destroys interpreter (GIL still locked) - sets thread state to NULL */
