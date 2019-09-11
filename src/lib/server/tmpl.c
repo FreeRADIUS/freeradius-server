@@ -2998,44 +2998,8 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 
 	switch (*p) {
 		/*
-		 *	Magic handling for variable expansions in the
-		 *	configuration files.
-		 *
-		 *	@todo - make this configurable
+		 *	Allow bare xlat's
 		 */
-	case '$':
-		if (p[1] == '{') {
-			*out = p;
-			*type = T_BARE_WORD;
-
-			p += 2;
-
-		} else if ((p[1] == 'E') && (p[2] == 'N') && (p[3] == 'V') &&
-			   (p[4] == '{')) {
-			*out = p;
-			*type = T_BARE_WORD;
-
-			p += 2;
-
-		} else {
-			return_P("Unexpected '$'");
-		}
-
-		while (*p && (*p != '}')) {
-			if (isspace((int) *p)) {
-				return_P("Unexpected space in variable expansion");
-			}
-
-			p++;
-		}
-
-		if (!*p) {
-			return_P("Unexpected end of variable expansion");
-		}
-		p++;
-		*outlen = p - (*out);
-		break;
-
 	case '%':
 		if (!allow_xlat) {
 			return_P("Unexpected expansion");
@@ -3177,6 +3141,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 
 	skip_word:
 		*type = T_BARE_WORD;
+		depth = 0;
 
 		/*
 		 *	Allow *most* things.  But stop on spaces and special characters.
@@ -3184,6 +3149,42 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		while (*p) {
 			if (isspace((int) *p)) {
 				break;
+			}
+
+			if (*p == '$') {
+				if (p[1] == '{') {
+					p += 2;
+					depth++;
+
+				} else if ((p[1] == 'E') &&
+					   (p[2] == 'N') &&
+					   (p[3] == 'V') &&
+					   (p[4] == '{')) {
+					p += 5;
+					depth++;
+
+				} else {
+					/*
+					 *	Bare '$' is wrong...
+					 */
+					break;
+				}
+			}
+
+			/*
+			 *	If we're inside of a ${...} expansion,
+			 *	then allow everything until the
+			 *	closing '}'.  This means that we can
+			 *	do ${foo[bar].baz}, among other
+			 *	thingds.
+			 */
+			if (depth > 0) {
+				if (*p == '}') {
+					depth--;
+				}
+
+				p++;
+				continue;
 			}
 
 			/*
