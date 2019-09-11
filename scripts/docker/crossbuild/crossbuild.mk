@@ -156,7 +156,7 @@ crossbuild.${1}.clean: crossbuild.${1}.down crossbuild.${1}.reset
 #  /usr/local, which would be confusing)
 #
 .PHONY: crossbuild.${1}.sh
-crossbuild.${1}.sh:
+crossbuild.${1}.sh: crossbuild.${1}.up
 	${Q}docker exec -it $(CB_CPREFIX)${1} sh -c 'cd / ; cd /srv/build 2>/dev/null; bash' || true
 
 #
