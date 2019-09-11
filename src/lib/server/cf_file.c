@@ -754,7 +754,7 @@ static bool invalid_location(CONF_SECTION *parent, char const *name, char const 
  *	host of reasons.
  */
 static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *token, char *buffer, size_t buflen,
-			char *buff2, char const *filename, int lineno)
+			char *buff2, char const *filename, int lineno, bool unescape)
 {
 	char quote;
 	char const *ptr = *ptr_p;
@@ -769,7 +769,7 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *toke
 	 *	Discover the string content, returning what kind of
 	 *	string it is.
 	 *
-	 *	Don't allow casts or refgexes.  But do allow bar
+	 *	Don't allow casts or regexes.  But do allow bare
 	 *	%{...} expansions.
 	 */
 	slen = tmpl_preparse(&out, &outlen, ptr, token, &error, NULL, false, true);
@@ -804,12 +804,19 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *toke
 	 *	Unescape it or copy it verbatim as necessary.
 	 */
 	if ((quote == '`') || (quote == '\'') || (quote == '"')) {
-		outlen = fr_value_str_unescape((uint8_t *) buff2, out, outlen, quote);
-		buffer[outlen] = '\0';
+		if (unescape) {
+			outlen = fr_value_str_unescape((uint8_t *) buff2, out, outlen, quote);
+			buffer[outlen] = '\0';
+			if (!cf_expand_variables(filename, lineno, parent, buffer, buflen,
+						 buff2, outlen, NULL)) {
+				return -1;
+			}
 
-		if (!cf_expand_variables(filename, lineno, parent, buffer, buflen,
-					 buff2, outlen, NULL)) {
-			return -1;
+		} else {
+			if (!cf_expand_variables(filename, lineno, parent, buffer, buflen,
+						 out, outlen, NULL)) {
+				return -1;
+			}
 		}
 
 	} else if ((out[0] == '$') && (out[1] == '{')) {
@@ -1137,7 +1144,7 @@ static CONF_SECTION *process_map(CONF_SECTION *parent, char const **ptr_p, char 
 	}
 
 	if (cf_get_token(parent, &ptr, &token, buff[1], talloc_array_length(buff[1]),
-			 buff[2], filename, lineno) < 0) {
+			 buff[2], filename, lineno, true) < 0) {
 		return NULL;
 	}
 
@@ -1157,10 +1164,11 @@ static CONF_SECTION *process_map(CONF_SECTION *parent, char const **ptr_p, char 
 	}
 
 	/*
-	 *	Now get the expansion string.
+	 *	Now get the expansion string.  Note that we do NOT
+	 *	unescape it.  We need the raw string for later parsing.
 	 */
 	if (cf_get_token(parent, &ptr, &token, buff[2], talloc_array_length(buff[2]),
-			 buff[3], filename, lineno) < 0) {
+			 buff[3], filename, lineno, false) < 0) {
 		return NULL;
 	}
 	if (!fr_str_tok[token]) {
@@ -1431,7 +1439,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	a key word.
 		 */
 		if (cf_get_token(parent, &ptr, &name1_token, buff[1], talloc_array_length(buff[1]),
-				 buff[2], filename, *lineno) < 0) {
+				 buff[2], filename, *lineno, true) < 0) {
 			goto error;
 		}
 
@@ -1496,7 +1504,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || (*ptr == '&') ||
 		    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr)) {
 			if (cf_get_token(parent, &ptr, &name2_token, buff[2], talloc_array_length(buff[2]),
-					 buff[3], filename, *lineno) < 0) {
+					 buff[3], filename, *lineno, true) < 0) {
 				goto error;
 			}
 
