@@ -1029,15 +1029,15 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
 {
 	/*
-	 *	Only destroy if it's a subinterpreter
-	 */
-	if (inst->single_interpreter_mode) return;
-
-	/*
 	 *	We incremented the reference count earlier
 	 *      during module initialisation.
 	 */
 	Py_DecRef(inst->module);
+
+	/*
+	 *	Only destroy if it's a subinterpreter
+	 */
+	if (inst->single_interpreter_mode) return;
 
 	PyEval_AcquireLock();
 	PyThreadState_Swap(interp);
