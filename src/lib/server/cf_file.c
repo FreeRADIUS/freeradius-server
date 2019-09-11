@@ -720,14 +720,14 @@ static char const *cf_local_file(char const *base, char const *filename,
 	return buffer;
 }
 
-static bool invalid_location(CONF_SECTION *this, char const *name, char const *filename, int lineno)
+static bool invalid_location(CONF_SECTION *parent, char const *name, char const *filename, int lineno)
 {
 	/*
 	 *	if / elsif MUST be inside of a
 	 *	processing section, which MUST in turn
 	 *	be inside of a "server" directive.
 	 */
-	if (!this || !this->item.parent) {
+	if (!parent || !parent->item.parent) {
 	invalid_location:
 		ERROR("%s[%d]: Invalid location for '%s'",
 		      filename, lineno, name);
@@ -737,12 +737,12 @@ static bool invalid_location(CONF_SECTION *this, char const *name, char const *f
 	/*
 	 *	Can only have "if" in 3 named sections.
 	 */
-	this = cf_item_to_section(this->item.parent);
-	while ((strcmp(this->name1, "server") != 0) &&
-	       (strcmp(this->name1, "policy") != 0) &&
-	       (strcmp(this->name1, "instantiate") != 0)) {
-		this = cf_item_to_section(this->item.parent);
-		if (!this) goto invalid_location;
+	parent = cf_item_to_section(parent->item.parent);
+	while ((strcmp(parent->name1, "server") != 0) &&
+	       (strcmp(parent->name1, "policy") != 0) &&
+	       (strcmp(parent->name1, "instantiate") != 0)) {
+		parent = cf_item_to_section(parent->item.parent);
+		if (!parent) goto invalid_location;
 	}
 
 	return false;
@@ -753,7 +753,7 @@ static bool invalid_location(CONF_SECTION *this, char const *name, char const *f
  *	Like gettoken(), but uses the new API which seems better for a
  *	host of reasons.
  */
-static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token, char *buffer, size_t buflen,
+static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *token, char *buffer, size_t buflen,
 			char *buff2, char const *filename, int lineno)
 {
 	char quote;
@@ -776,7 +776,7 @@ static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token,
 	if (slen <= 0) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(this, &spaces, &text, slen, ptr);
+		fr_canonicalize_error(parent, &spaces, &text, slen, ptr);
 
 		ERROR("%s[%d]: %s", filename, lineno, text);
 		ERROR("%s[%d]: %s^ - %s", filename, lineno, spaces, error);
@@ -807,13 +807,13 @@ static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token,
 		outlen = fr_value_str_unescape((uint8_t *) buff2, out, outlen, quote);
 		buffer[outlen] = '\0';
 
-		if (!cf_expand_variables(filename, lineno, this, buffer, buflen,
+		if (!cf_expand_variables(filename, lineno, parent, buffer, buflen,
 					 buff2, outlen, NULL)) {
 			return -1;
 		}
 
 	} else if ((out[0] == '$') && (out[1] == '{')) {
-		if (!cf_expand_variables(filename, lineno, this, buffer, buflen,
+		if (!cf_expand_variables(filename, lineno, parent, buffer, buflen,
 					 out, outlen, NULL)) {
 			return -1;
 		}
@@ -832,7 +832,7 @@ static int cf_get_token(CONF_SECTION *this, char const **ptr_p, FR_TOKEN *token,
 }
 
 
-static int process_include(CONF_SECTION *this, char const *ptr, char *buff[static 4], char const *filename, int lineno, bool required)
+static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[static 4], char const *filename, int lineno, bool required)
 {
 	bool relative = true;
 	char const *value;
@@ -863,7 +863,7 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 	 */
 	if (*value == '$') relative = false;
 
-	value = cf_expand_variables(filename, lineno, this, buff[1], talloc_array_length(buff[1]),
+	value = cf_expand_variables(filename, lineno, parent, buff[1], talloc_array_length(buff[1]),
 				    value, ptr - value, NULL);
 	if (!value) return -1;
 
@@ -893,7 +893,7 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 	 *	The filename doesn't end in '/', so it must be a file.
 	 */
 	if (value[strlen(value) - 1] != '/') {
-		return cf_file_include(this, value, CONF_INCLUDE_FILE, buff, false);
+		return cf_file_include(parent, value, CONF_INCLUDE_FILE, buff, false);
 	}
 
 #ifdef HAVE_DIRENT_H
@@ -911,12 +911,12 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 		int rcode = -1;
 
 		/*
-		 *	We need to keep a copy of this while the
+		 *	We need to keep a copy of parent while the
 		 *	included files mangle our buff[] array.
 		 */
-		my_directory = talloc_strdup(this, value);
+		my_directory = talloc_strdup(parent, value);
 
-		cf_log_debug(this, "Including files in directory \"%s\"", my_directory);
+		cf_log_debug(parent, "Including files in directory \"%s\"", my_directory);
 
 #ifdef S_IWOTH
 		/*
@@ -973,7 +973,7 @@ static int process_include(CONF_SECTION *this, char const *ptr, char *buff[stati
 			 *	Read the file into the current
 			 *	configuration section.
 			 */
-			if (cf_file_include(this, buff[1], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
+			if (cf_file_include(parent, buff[1], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
 				closedir(dir);
 				goto done;
 			}
@@ -993,7 +993,7 @@ done:
 }
 
 
-static int process_template(CONF_SECTION *this, char const *ptr, char *buff[static 4], char const *filename, int lineno)
+static int process_template(CONF_SECTION *parent, char const *ptr, char *buff[static 4], char const *filename, int lineno)
 {
 	CONF_ITEM *ci;
 	CONF_SECTION *parent_cs, *templatecs;
@@ -1005,7 +1005,7 @@ static int process_template(CONF_SECTION *this, char const *ptr, char *buff[stat
 		return -1;
 	}
 
-	parent_cs = cf_root(this);
+	parent_cs = cf_root(parent);
 
 	templatecs = cf_section_find(parent_cs, "templates", NULL);
 	if (!templatecs) {
@@ -1019,22 +1019,22 @@ static int process_template(CONF_SECTION *this, char const *ptr, char *buff[stat
 		return -1;
 	}
 
-	if (!this) {
+	if (!parent) {
 		ERROR("%s[%d]: Internal sanity check error in template reference", filename, lineno);
 		return -1;
 	}
 
-	if (this->template) {
+	if (parent->template) {
 		ERROR("%s[%d]: Section already has a template", filename, lineno);
 		return -1;
 	}
 
-	this->template = cf_item_to_section(ci);
+	parent->template = cf_item_to_section(ci);
 	return 0;
 }
 
 
-static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *buff[static 4], char const *filename, int lineno)
+static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *buff[static 4], char const *filename, int lineno)
 {
 	ssize_t slen = 0;
 	char const *error = NULL;
@@ -1047,11 +1047,11 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	/*
 	 *	if / elsif
 	 */
-	if (invalid_location(this, buff[1], filename, lineno)) return NULL;
+	if (invalid_location(parent, buff[1], filename, lineno)) return NULL;
 
-	cd = cf_data_find_in_parent(this, fr_dict_t **, "dictionary");
+	cd = cf_data_find_in_parent(parent, fr_dict_t **, "dictionary");
 	if (!cd) {
-		cf_log_err(cf_section_find_in_parent(this, "server", CF_IDENT_ANY),
+		cf_log_err(cf_section_find_in_parent(parent, "server", CF_IDENT_ANY),
 			   "No dictionary data found in virtual server");
 		return NULL;
 	}
@@ -1060,9 +1060,9 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	/*
 	 *	fr_cond_tokenize needs the current section, so we create it first.
 	 */
-	css = cf_section_alloc(this, this, buff[1], buff[2]);
+	css = cf_section_alloc(parent, parent, buff[1], buff[2]);
 	if (!css) {
-		cf_log_err(this, "Failed allocating memory for section");
+		cf_log_err(parent, "Failed allocating memory for section");
 		return NULL;
 	}
 	css->item.filename = filename;
@@ -1125,7 +1125,7 @@ static CONF_SECTION *process_if(CONF_SECTION *this, char const **ptr_p, char *bu
 	return css;
 }
 
-static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *buff[static 4], char const *filename, int lineno)
+static CONF_SECTION *process_map(CONF_SECTION *parent, char const **ptr_p, char *buff[static 4], char const *filename, int lineno)
 {
 	char const *mod;
 	char const *value = NULL;
@@ -1133,12 +1133,12 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 	CONF_SECTION *css;
 	FR_TOKEN token;
 
-	if (invalid_location(this, "map", filename, lineno)) {
+	if (invalid_location(parent, "map", filename, lineno)) {
 		ERROR("%s[%d]: Invalid syntax for 'map'", filename, lineno);
 		return NULL;
 	}
 
-	if (cf_get_token(this, &ptr, &token, buff[1], talloc_array_length(buff[1]),
+	if (cf_get_token(parent, &ptr, &token, buff[1], talloc_array_length(buff[1]),
 			 buff[2], filename, lineno) < 0) {
 		return NULL;
 	}
@@ -1161,7 +1161,7 @@ static CONF_SECTION *process_map(CONF_SECTION *this, char const **ptr_p, char *b
 	/*
 	 *	Now get the expansion string.
 	 */
-	if (cf_get_token(this, &ptr, &token, buff[2], talloc_array_length(buff[2]),
+	if (cf_get_token(parent, &ptr, &token, buff[2], talloc_array_length(buff[2]),
 			 buff[3], filename, lineno) < 0) {
 		return NULL;
 	}
@@ -1183,7 +1183,7 @@ alloc_section:
 	/*
 	 *	Allocate the section
 	 */
-	css = cf_section_alloc(this, this, "map", mod);
+	css = cf_section_alloc(parent, parent, "map", mod);
 	if (!css) {
 		ERROR("%s[%d]: Failed allocating memory for section", filename, lineno);
 		return NULL;
@@ -1206,7 +1206,7 @@ alloc_section:
 }
 
 
-static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
+static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		    FR_TOKEN name1_token, FR_TOKEN op_token, FR_TOKEN value_token,
 		    char *buff[static 4], char const *filename, int lineno)
 {
@@ -1223,7 +1223,7 @@ static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
 		bool		soft_fail;
 		char const	*expanded;
 
-		expanded = cf_expand_variables(filename, lineno, this, buff[3], talloc_array_length(buff[3]), value, -1, &soft_fail);
+		expanded = cf_expand_variables(filename, lineno, parent, buff[3], talloc_array_length(buff[3]), value, -1, &soft_fail);
 		if (expanded) {
 			value = expanded;
 
@@ -1243,14 +1243,14 @@ static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
 		}
 	}
 
-	cp = cf_pair_alloc(this, attr, value, op_token, name1_token, value_token);
+	cp = cf_pair_alloc(parent, attr, value, op_token, name1_token, value_token);
 	if (!cp) return -1;
 	cp->item.filename = filename;
 	cp->item.lineno = lineno;
 	cp->pass2 = pass2;
-	cf_item_add(this, &(cp->item));
+	cf_item_add(parent, &(cp->item));
 
-	cd = cf_data_find(CF_TO_ITEM(this), CONF_PARSER, attr);
+	cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, attr);
 	if (!cd) return 0;
 
 	rule = cf_data_value(cd);
@@ -1258,7 +1258,7 @@ static int add_pair(CONF_SECTION *this, char const *attr, char const *value,
 		return 0;
 	}
 
-	return rule->func(this, NULL, NULL, cf_pair_to_item(cp), rule);
+	return rule->func(parent, NULL, NULL, cf_pair_to_item(cp), rule);
 }
 
 
@@ -1269,7 +1269,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			   CONF_SECTION *current, char *buff[static 4])
 
 {
-	CONF_SECTION	*this, *css;
+	CONF_SECTION	*parent, *css;
 	char const	*ptr;
 	char const	*value;
 
@@ -1280,7 +1280,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char		*cbuff;
 	size_t		len;
 
-	this = current;		/* add items here */
+	parent = current;		/* add items here */
 
 	cbuff = buff[0];
 
@@ -1382,20 +1382,20 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	end of the section.
 		 */
 		if (*ptr == '}') {
-			if (this == current) {
+			if (parent == current) {
 				ERROR("%s[%d]: Too many closing braces", filename, *lineno);
 				goto error;
 			}
 
 			/*
 			 *	Merge the template into the existing
-			 *	section.  This uses more memory, but
+			 *	section.  parent uses more memory, but
 			 *	means that templates now work with
 			 *	sub-sections, etc.
 			 */
-			if (!cf_template_merge(this, this->template)) goto error;
+			if (!cf_template_merge(parent, parent->template)) goto error;
 
-			this = cf_item_to_section(this->item.parent);
+			parent = cf_item_to_section(parent->item.parent);
 			ptr++;
 			goto check_for_more;
 		}
@@ -1406,14 +1406,14 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
 			ptr += 8;
 
-			if (process_include(this, ptr, buff, filename, *lineno, true) < 0) goto error;
+			if (process_include(parent, ptr, buff, filename, *lineno, true) < 0) goto error;
 			continue;
 		}
 
 		if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
 			ptr += 9;
 
-			if (process_include(this, ptr, buff, filename, *lineno, false) < 0) goto error;
+			if (process_include(parent, ptr, buff, filename, *lineno, false) < 0) goto error;
 			continue;
 		}
 
@@ -1424,7 +1424,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			ptr += 9;
 			fr_skip_whitespace(ptr);
 
-			if (process_template(this, ptr, buff, filename, *lineno) < 0) goto error;
+			if (process_template(parent, ptr, buff, filename, *lineno) < 0) goto error;
 			continue;
 		}
 
@@ -1432,13 +1432,13 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	Found nothing to get excited over.  It MUST be
 		 *	a key word.
 		 */
-		if (cf_get_token(this, &ptr, &name1_token, buff[1], talloc_array_length(buff[1]),
+		if (cf_get_token(parent, &ptr, &name1_token, buff[1], talloc_array_length(buff[1]),
 				 buff[2], filename, *lineno) < 0) {
 			goto error;
 		}
 
 		/*
-		 *	This single word is done.  Create a CONF_PAIR.
+		 *	parent single word is done.  Create a CONF_PAIR.
 		 */
 		if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
 			value_token = T_INVALID;
@@ -1448,12 +1448,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		}
 
 		/*
-		 *	Handle if/elsif specially.  This function will
+		 *	Handle if/elsif specially.  parent function will
 		 *	update "ptr" to be the next thing that we
 		 *	need.
 		 */
 		if ((strcmp(buff[1], "if") == 0) || (strcmp(buff[1], "elsif") == 0)) {
-			css = process_if(this, &ptr, buff, filename, *lineno);
+			css = process_if(parent, &ptr, buff, filename, *lineno);
 			if (!css) goto error;
 			goto add_section;
 		}
@@ -1464,7 +1464,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	map NAME ARGUMENT { ... }
 		 */
 		if ((strcmp(buff[1], "map") == 0) && (*ptr != '{')) {
-			css = process_map(this, &ptr, buff, filename, *lineno);
+			css = process_map(parent, &ptr, buff, filename, *lineno);
 			if (!css) goto error;
 
 			in_map = true;
@@ -1496,7 +1496,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_LT:
 		case T_OP_CMP_EQ:
 		case T_OP_CMP_FALSE:
-			if (!this || (!in_update && !in_map)) {
+			if (!parent || (!in_update && !in_map)) {
 				ERROR("%s[%d]: Invalid operator in assignment",
 				      filename, *lineno);
 				goto error;
@@ -1583,10 +1583,10 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			value = buff[2];
 
 			/*
-			 *	Add this CONF_PAIR to our CONF_SECTION
+			 *	Add parent CONF_PAIR to our CONF_SECTION
 			 */
 		do_set:
-			if (add_pair(this, buff[1], value, name1_token, op_token, value_token, buff, filename, *lineno) < 0) goto error;
+			if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff, filename, *lineno) < 0) goto error;
 
 			fr_skip_whitespace(ptr);
 
@@ -1633,7 +1633,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		alloc_section:
 		case T_LCBRACE:
-			css = cf_section_alloc(this, this, buff[1],
+			css = cf_section_alloc(parent, parent, buff[1],
 					       name2_token == T_LCBRACE ? NULL : buff[2]);
 			if (!css) {
 				ERROR("%s[%d]: Failed allocating memory for section",
@@ -1651,19 +1651,19 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			/*
 			 *	Hack for better error messages in
-			 *	nested sections.  This information
+			 *	nested sections.  parent information
 			 *	should really be put into a parser
 			 *	struct, as with tmpls.
 			 */
 			if (!in_map && !in_update) in_update = (strcmp(css->name1, "update") == 0);
 
 		add_section:
-			cf_item_add(this, &(css->item));
+			cf_item_add(parent, &(css->item));
 
 			/*
 			 *	The current section is now the child section.
 			 */
-			this = css;
+			parent = css;
 			css = NULL;
 			break;
 
@@ -1700,9 +1700,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	/*
 	 *	See if EOF was unexpected ..
 	 */
-	if (feof(fp) && (this != current)) {
+	if (feof(fp) && (parent != current)) {
 		ERROR("%s[%d]: EOF reached without closing brace for section %s starting at line %d",
-		      filename, *lineno, cf_section_name1(this), cf_lineno(this));
+		      filename, *lineno, cf_section_name1(parent), cf_lineno(parent));
 		goto error;
 	}
 
