@@ -1214,7 +1214,7 @@ alloc_section:
 
 static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		    FR_TOKEN name1_token, FR_TOKEN op_token, FR_TOKEN value_token,
-		    char *buff[static 4], char const *filename, int lineno)
+		    char *buff, char const *filename, int lineno)
 {
 	CONF_DATA const *cd;
 	CONF_PARSER *rule;
@@ -1229,7 +1229,7 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		bool		soft_fail;
 		char const	*expanded;
 
-		expanded = cf_expand_variables(filename, lineno, parent, buff[3], talloc_array_length(buff[3]), value, -1, &soft_fail);
+		expanded = cf_expand_variables(filename, lineno, parent, buff, talloc_array_length(buff), value, -1, &soft_fail);
 		if (expanded) {
 			value = expanded;
 
@@ -1585,132 +1585,105 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_SET:
 			fr_skip_whitespace(ptr);
 			op_token = name2_token;
-
-			/*
-			 *	Non-quoted strings are bare words, and
-			 *	we parse everything until the next
-			 *	newline, or the next comma.  If they
-			 *	have { or } in a bare word,
-			 *	well... too bad.
-			 */
-			switch (*ptr) {
-			case '#':
-			case '\0':
-				ERROR("%s[%d]: Syntax error: Expected to see a value after the operator '%s': %s",
-				      filename, *lineno, buff[2], ptr);
-				goto error;
-
-			case '"':
-			case '\'':
-			case '`':
-			case '/':
-				value_token = getstring(&ptr, buff[2], talloc_array_length(buff[2]), false);
-				break;
-
-				/*
-				 *	As a special case, we allow sub-sections after '=', etc.
-				 *
-				 *	This syntax is only for inside
-				 *	of "update" sections, and for
-				 *	attributes of type "group".
-				 *	But the parser isn't (yet)
-				 *	smart enough to know about
-				 *	that context.  So we just
-				 *	silently allow it everywhere.
-				 */
-			case '{':
-				if (!in_update) {
-					ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
-					      filename, *lineno);
-					goto error;
-				}
-
-				if (!fr_assignment_op[name2_token]) {
-					ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for group",
-					      filename, *lineno, buff[2]);
-					goto error;
-				}
-
-				/*
-				 *	Now that we've peeked ahead to
-				 *	see the open brace, parse it
-				 *	for real.
-				 */
-				ptr++;
-
-				/*
-				 *	Leave name2_token as the
-				 *	operator (as a hack).  But
-				 *	note that there's no actual
-				 *	name2.  We'll deal with that
-				 *	situation later.
-				 */
-				value = NULL;
-				goto alloc_section;
-
-			default:
-			{
-				const char *q = ptr;
-
-				while (*q && (*q >= ' ') && (*q != ',') &&
-				       !isspace(*q)) q++;
-
-				if ((size_t) (q - ptr) >= talloc_array_length(buff[2])) {
-					ERROR("%s[%d]: Parse error: value too long", filename, *lineno);
-					goto error;
-				}
-
-				memcpy(buff[2], ptr, (q - ptr));
-				buff[2][q - ptr] = '\0';
-				ptr = q;
-
-				value_token = T_BARE_WORD;
-			}
-			}
-			value = buff[2];
-
-			/*
-			 *	Add parent CONF_PAIR to our CONF_SECTION
-			 */
-		do_set:
-			if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff, filename, *lineno) < 0) goto error;
-
-			fr_skip_whitespace(ptr);
-
-			/*
-			 *	Skip semicolon if we see it after a
-			 *	CONF_PAIR.  Also allow comma for
-			 *	backwards compatablity with secret
-			 *	things in v3.
-			 */
-			if ((*ptr == ';') || (*ptr == ',')) {
-				ptr++;
-				goto check_for_more;
-			}
-
-			/*
-			 *	Only a few things are allowed after a
-			 *	CONF_PAIR definition.  EOL, comment,
-			 *	or closing brace.
-			 */
-			if (!*ptr || (*ptr == '#') || (*ptr == '}')) goto check_for_more;
-
-			/*
-			 *	Any other character after the pair
-			 *	name / value is an error.
-			 */
-			ERROR("%s[%d]: Syntax error: Unexpected text: %s",
-			      filename, *lineno, ptr);
-			goto error;
-
-		case T_INVALID:
-			PERROR("%s[%d]: Syntax error in '%s'", filename, *lineno, ptr);
-			goto error;
+			break;
 
 		default:
 			ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
 			      filename, *lineno, buff[1], fr_table_str_by_value(fr_tokens_table, name2_token, "<INVALID>"));
 
+			goto error;
+		}
+
+		/*
+		 *	MUST have something after the operator.
+		 */
+		if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';')) {
+			ERROR("%s[%d]: Syntax error: Expected to see a value after the operator '%s': %s",
+			      filename, *lineno, buff[2], ptr);
+			goto error;
+		}
+
+		/*
+		 *	foo = { ... } for nested groups.
+		 *
+		 *	As a special case, we allow sub-sections after '=', etc.
+		 *
+		 *	This syntax is only for inside of "update"
+		 *	sections, and for attributes of type "group".
+		 *	But the parser isn't (yet) smart enough to
+		 *	know about that context.  So we just silently
+		 *	allow it everywhere.
+		 */
+		if (*ptr == '{') {
+			if (!in_update) {
+				ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
+				      filename, *lineno);
+				goto error;
+			}
+
+			if (*buff[1] != '&') {
+				ERROR("%s[%d]: Parse error: Expected '&' before attribute name",
+				      filename, *lineno);
+				goto error;
+			}
+
+			if (!fr_assignment_op[name2_token]) {
+				ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for group",
+				      filename, *lineno, buff[2]);
+				goto error;
+			}
+
+			/*
+			 *	Now that we've peeked ahead to
+			 *	see the open brace, parse it
+			 *	for real.
+			 */
+			ptr++;
+
+			/*
+			 *	Leave name2_token as the
+			 *	operator (as a hack).  But
+			 *	note that there's no actual
+			 *	name2.  We'll deal with that
+			 *	situation later.
+			 */
+			value = NULL;
+			goto alloc_section;
+		}
+
+		if (cf_get_token(parent, &ptr, &value_token, buff[2], talloc_array_length(buff[2]),
+				 buff[3], filename, *lineno, false) < 0) {
+			goto error;
+		}
+		value = buff[2];
+
+		/*
+		 *	Add parent CONF_PAIR to our CONF_SECTION
+		 */
+		do_set:
+		if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], filename, *lineno) < 0) goto error;
+
+		fr_skip_whitespace(ptr);
+
+		/*
+		 *	Skip semicolon if we see it after a
+		 *	CONF_PAIR.  Also allow comma for
+		 *	backwards compatablity with secret
+		 *	things in v3.
+		 */
+		if ((*ptr == ';') || (*ptr == ',')) {
+			ptr++;
+			goto check_for_more;
+		}
+
+		/*
+		 *	Only a few things are allowed after a
+		 *	CONF_PAIR definition.  EOL, comment,
+		 *	or closing brace.
+		 */
+		if (!(!*ptr || (*ptr == '#') || (*ptr == '}'))) {
+			ERROR("%s[%d]: Syntax error: Unexpected text: %s",
+			      filename, *lineno, ptr);
 			goto error;
 		}
 
