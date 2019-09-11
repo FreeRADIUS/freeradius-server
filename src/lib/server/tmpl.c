@@ -2994,10 +2994,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		if (*p != '/') {
 			return_P("Expected regular expression");
 		}
-
-	} else if (*p == '/') {
-		return_P("Unexpected regular expression");
-	}
+	} /* else treat '/' as any other character */
 
 	switch (*p) {
 		/*

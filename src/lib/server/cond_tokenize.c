@@ -581,6 +581,18 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 	char *p, *expanded;
 	char buffer[8192];
 
+        /*
+	 *      When 'request_regex == false', tmpl_preparse() treats
+	 *      '/' as a bare word.  This is so that the configuration
+	 *      file parser can parse filenames, which may begin with
+	 *      '/'.  We therefore check for leading '/' here, as
+	 *      conditions don't use filenames.
+	 */
+	if (!require_regex && (*start == '/')) {
+		*error = "Unexpected regular expression";
+		return 0;
+	}
+
 	/*
 	 *	Allow dynamic xlat expansion everywhere.
 	 */
