@@ -51,6 +51,13 @@ python {
 	#  is whether your script locks up or crashes when calling a
 	#  python C extension.
 	#
+	#  [NOTE]
+	#  ====
+	#  This functionality is only available when building with Python 2.7
+	#  or below.  For Python 3 you should buil against Python 3.8 which
+	#  has a proper fix for this issue (per interpreter GILs)
+	#  ====
+	#
 #	cext_compat = false
 
 	#
@@ -61,6 +68,21 @@ python {
 	#
 #	python_path = ${modconfdir}/${.:name}
 
+	#
+	#  python_path_include_conf_dir::
+	#
+	#  If "yes", include the directory containing this file in Python's
+	#  module search path.
+	#
+#	python_path_include_conf_dir = "yes"
+
+	#
+	#  python_path_include_default::
+	#
+	#  If "yes", retain the default search path.  Any additional search
+	#  path components will be prepended to the the default search path.
+	#
+#	python_path_include_default = "yes"
 	#
 	#  [NOTE]
 	#  ====

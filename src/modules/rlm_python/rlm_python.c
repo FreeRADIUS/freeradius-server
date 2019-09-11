@@ -27,7 +27,8 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_python - "
+#define LOG_PREFIX "rlm_python (%s) - "
+#define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -36,34 +37,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/lsan.h>
 
 #include <Python.h>
+#include <libgen.h>
 #include <dlfcn.h>
-
-static uint32_t		python_instances = 0;
-static void		*python_dlhandle;
-
-static PyThreadState	*main_interpreter;	//!< Main interpreter (cext safe)
-static PyObject		*main_module;		//!< Pthon configuration dictionary.
-
-#if PY_VERSION_HEX >= 0x03050000
-static wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
-#endif
-
-
-#if PY_VERSION_HEX < 0x03000000
-/*
- *	Python 2.7 has its own versions of these which
- *	operate on UCS2 encoding *sigh*
- */
-#undef PyUnicode_AsUTF8
-#undef PyUnicode_FromString
-#undef PyUnicode_CheckExact
-#undef PyUnicode_FromFormat
-
-#define PyUnicode_AsUTF8 PyString_AsString
-#define PyUnicode_FromString PyString_FromString
-#define PyUnicode_CheckExact PyString_CheckExact
-#define PyUnicode_FromFormat PyString_FromFormat
-#endif
 
 /** Specifies the module.function to load for processing a section
  *
@@ -81,17 +56,24 @@ typedef struct {
  */
 typedef struct {
 	char const	*name;			//!< Name of the module instance
-	PyThreadState	*sub_interpreter;	//!< The main interpreter/thread used for this instance.
+	PyThreadState	*interpreter;		//!< The interpreter used for this instance of rlm_python.
 	char const	*python_path;		//!< Path to search for python files in.
+	bool		python_path_include_conf_dir;	//!< Include the directory of the current
+							///< rlm_python module config in the python path.
+	bool		python_path_include_default;	//!< Include the default python path
+							///< in the python path.
 
-#if PY_VERSION_HEX >= 0x03050000
+#if PY_MAJOR_VERSION == 3
 	wchar_t		*wide_path;		//!< Special wide char encoding of radiusd path.
 						//!< FreeRADIUS functions.
 #endif
 
-	PyObject	*module;		//!< Local, interpreter specific module, containing
-	bool		cext_compat;		//!< Whether or not to create sub-interpreters per module
+	PyObject	*module;		//!< Local, interpreter specific module.
+
+#if PY_MAJOR_VERSION == 2
+	bool		single_interpreter_mode;//!< Whether or not to create interpreters per module
 						//!< instance.
+#endif
 
 	python_func_def_t
 	instantiate,
@@ -121,6 +103,52 @@ typedef struct {
 	PyThreadState	*state;			//!< Module instance/thread specific state.
 } rlm_python_thread_t;
 
+static void		*python_dlhandle;
+static PyThreadState	*global_interpreter;	//!< Our first interpreter.
+
+#if PY_MAJOR_VERSION == 3
+static rlm_python_t	*current_inst;		//!< Used for communication with inittab functions.
+static CONF_SECTION	*current_conf;		//!< Used for communication with inittab functions.
+static wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
+#endif
+
+static char		*default_path;		//!< The default python path.
+
+/*
+ *	As of Python 3.8 the GIL will be per-interpreter
+ *	If there are still issues with CEXTs,
+ *	multiple interpreters and the GIL at that point
+ *	users can build rlm_python against Python 3.8
+ *	and the horrible hack of using a single interpreter
+ *	for all instances of rlm_python will no longer be
+ *	required.
+ *
+ *	As Python 3.x module initialisation is significantly
+ *	different than Python 2.x initialisation,
+ *	it'd be a pain to retain the cext_compat for
+ *	Python 3 and as Python 3 users have the option of
+ *	using as version of Python which fixes the underlying
+ *	issue, we only support using a global interpreter
+ *      for Python 2.7 and below.
+ */
+#if PY_MAJOR_VERSION == 2
+static PyObject		*global_module;		//!< Global radiusd Python module.
+
+/*
+ *	Python 2.7 has its own versions of these which
+ *	operate on UCS2 encoding *sigh*
+ */
+#  undef PyUnicode_AsUTF8
+#  undef PyUnicode_FromString
+#  undef PyUnicode_CheckExact
+#  undef PyUnicode_FromFormat
+
+#  define PyUnicode_AsUTF8 PyString_AsString
+#  define PyUnicode_FromString PyString_FromString
+#  define PyUnicode_CheckExact PyString_CheckExact
+#  define PyUnicode_FromFormat PyString_FromFormat
+#endif
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
@@ -146,7 +174,12 @@ static CONF_PARSER module_config[] = {
 #undef A
 
 	{ FR_CONF_OFFSET("python_path", FR_TYPE_STRING, rlm_python_t, python_path) },
-	{ FR_CONF_OFFSET("cext_compat", FR_TYPE_BOOL, rlm_python_t, cext_compat), .dflt = false },
+	{ FR_CONF_OFFSET("python_path_include_conf_dir", FR_TYPE_BOOL, rlm_python_t, python_path_include_conf_dir), .dflt = "yes" },
+	{ FR_CONF_OFFSET("python_path_include_default", FR_TYPE_BOOL, rlm_python_t, python_path_include_default), .dflt = "yes" },
+
+#if PY_MAJOR_VERSION == 2
+	{ FR_CONF_OFFSET("cext_compat", FR_TYPE_BOOL, rlm_python_t, single_interpreter_mode), .dflt = "no" },
+#endif
 
 	CONF_PARSER_TERMINATOR
 };
@@ -218,7 +251,7 @@ static PyMethodDef module_methods[] = {
  *
  * Must be called with a valid thread state set
  */
-static void python_error_log(void)
+static void python_error_log(rlm_python_t *inst)
 {
 	PyObject *pType = NULL, *pValue = NULL, *pTraceback = NULL, *pStr1 = NULL, *pStr2 = NULL;
 
@@ -239,14 +272,14 @@ failed:
 	Py_XDECREF(pTraceback);
 }
 
-static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
+static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
 			char const *funcname, char const *list_name)
 {
 	int	     	i;
 	Py_ssize_t	tuplesize;
 	vp_tmpl_t       *dst;
 	VALUE_PAIR      *vp;
-	REQUEST	*current = request;
+	REQUEST		*current = request;
 
 	/*
 	 *	If the Python function gave us None for the tuple,
@@ -468,7 +501,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	return 0;
 }
 
-static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname)
+static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, PyObject *pFunc, char const *funcname)
 {
 	fr_cursor_t	cursor;
 	VALUE_PAIR      *vp;
@@ -571,10 +604,10 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		/* Now have the return value */
 		ret = PyLong_AsLong(pTupleInt);
 		/* Reply item tuple */
-		mod_vptuple(request->reply, request, &request->reply->vps,
+		mod_vptuple(request->reply, inst, request, &request->reply->vps,
 			    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
 		/* Config item tuple */
-		mod_vptuple(request, request, &request->control,
+		mod_vptuple(request, inst, request, &request->control,
 			    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
 
 	} else if (PyNumber_Check(pRet)) {
@@ -599,19 +632,6 @@ finish:
 	return ret;
 }
 
-static void python_interpreter_free(PyThreadState *interp)
-{
-#if PY_VERSION_HEX >= 0x03000000
-	PyEval_AcquireThread(interp);
-	Py_EndInterpreter(interp);
-#else
-	PyEval_AcquireLock();
-	PyThreadState_Swap(interp);
-	Py_EndInterpreter(interp);
-	PyEval_ReleaseLock();
-#endif
-}
-
 /** Thread safe call to a python function
  *
  * Will swap in thread state specific to module/thread.
@@ -629,7 +649,7 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this
 	RDEBUG3("Using thread state %p/%p", inst, this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
-	ret = do_python_single(request, pFunc, funcname);
+	ret = do_python_single(inst, request, pFunc, funcname);
 	PyEval_SaveThread();
 
 	return ret;
@@ -669,19 +689,18 @@ static void python_function_destroy(python_func_def_t *def)
 /** Import a user module and load a function from it
  *
  */
-static int python_function_load(python_func_def_t *def)
+static int python_function_load(rlm_python_t *inst, python_func_def_t *def)
 {
 	char const *funcname = "python_function_load";
 
 	if (def->module_name == NULL || def->function_name == NULL) return 0;
 
-	LSAN_DISABLE(def->module = PyImport_ImportModuleNoBlock(def->module_name));
+	LSAN_DISABLE(def->module = PyImport_ImportModule(def->module_name));
 	if (!def->module) {
-		ERROR("%s - Module '%s' not found", funcname, def->module_name);
+		ERROR("%s - Module '%s' load failed", funcname, def->module_name);
 
 	error:
-		python_error_log();
-		ERROR("%s - Failed importing python function '%s.%s'", funcname, def->module_name, def->function_name);
+		python_error_log(inst);
 		Py_XDECREF(def->function);
 		def->function = NULL;
 		Py_XDECREF(def->module);
@@ -708,7 +727,7 @@ static int python_function_load(python_func_def_t *def)
  *	Parse a configuration section, and populate a dict.
  *	This function is recursively called (allows to have nested dicts.)
  */
-static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
+static void python_parse_config(rlm_python_t *inst, CONF_SECTION *cs, int lvl, PyObject *dict)
 {
 	int		indent_section = (lvl + 1) * 4;
 	int		indent_item = (lvl + 2) * 4;
@@ -735,17 +754,17 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 			if (!pKey) continue;
 
 			if (PyDict_Contains(dict, pKey)) {
-				WARN("rlm_python: Ignoring duplicate config section '%s'", key);
+				WARN("Ignoring duplicate config section '%s'", key);
 				continue;
 			}
 
 			if (!(sub_dict = PyDict_New())) {
-				WARN("rlm_python: Unable to create subdict for config section '%s'", key);
+				WARN("Unable to create subdict for config section '%s'", key);
 			}
 
 			(void)PyDict_SetItem(dict, pKey, sub_dict);
 
-			python_parse_config(sub_cs, lvl + 1, sub_dict);
+			python_parse_config(inst, sub_cs, lvl + 1, sub_dict);
 		} else if (cf_item_is_pair(ci)) {
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 			char const  *key = cf_pair_attr(cp); /* dict key */
@@ -763,7 +782,7 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 			 *  Store item attr / value in current dict.
 			 */
 			if (PyDict_Contains(dict, pKey)) {
-				WARN("rlm_python: Ignoring duplicate config item '%s'", key);
+				WARN("Ignoring duplicate config item '%s'", key);
 				continue;
 			}
 
@@ -776,85 +795,205 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 	DEBUG("%*s}", indent_section, " ");
 }
 
-/** Initialises a separate python interpreter for this module instance
+/** Make the current instance's config available within the module we're initialising
  *
  */
-static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
+static int python_module_import_config(rlm_python_t *inst, CONF_SECTION *conf, PyObject *module)
 {
-	int i;
+	CONF_SECTION *cs;
 
 	/*
-	 *	Increment the reference counter
+	 *	Convert a FreeRADIUS config structure into a python
+	 *	dictionary.
 	 */
-	python_instances++;
+	inst->pythonconf_dict = PyDict_New();
+	if (!inst->pythonconf_dict) {
+		ERROR("Unable to create python dict for config");
+	error:
+		if (inst->pythonconf_dict) {
+			Py_DecRef(inst->pythonconf_dict);
+			inst->pythonconf_dict = NULL;
+		}
+		python_error_log(inst);
+		return -1;
+	}
+
+	cs = cf_section_find(conf, "config", NULL);
+	if (cs) python_parse_config(inst, cs, 0, inst->pythonconf_dict);
+
+	/*
+	 *	Add module configuration as a dict
+	 */
+	if (PyModule_AddObject(module, "config", inst->pythonconf_dict) < 0) goto error;
+
+	return 0;
+}
+
+/** Import integer constants into the module we're initialising
+ *
+ */
+static int python_module_import_constants(rlm_python_t *inst, PyObject *module)
+{
+	size_t i;
+
+	for (i = 0; radiusd_constants[i].name; i++) {
+		if ((PyModule_AddIntConstant(module, radiusd_constants[i].name, radiusd_constants[i].value)) < 0) {
+			ERROR("Failed adding constant to module");
+			python_error_log(inst);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static char *python_path_build(TALLOC_CTX *ctx, rlm_python_t *inst, CONF_SECTION *conf)
+{
+	char *path;
+
+	MEM(path = talloc_strdup(ctx, ""));
+	if (inst->python_path) {
+		MEM(path = talloc_asprintf_append_buffer(path, "%s:", inst->python_path));
+	}
+	if (inst->python_path_include_conf_dir) {
+		char const *imutable;
+		char *mutable;
+
+		imutable = cf_filename(conf);
+		memcpy(&mutable, &imutable, sizeof(mutable));
+
+		MEM(path = talloc_asprintf_append_buffer(path, "%s:", dirname(mutable)));
+	}
+	if (inst->python_path_include_default) {
+		MEM(path = talloc_asprintf_append_buffer(path, "%s:", default_path));
+	}
+	if (path[talloc_array_length(path) - 1] == ':') {
+		MEM(path = talloc_bstr_realloc(ctx, path, talloc_array_length(path) - 2));
+	}
+
+	return path;
+}
+
+/*
+ *	Python 3 interpreter initialisation and destruction
+ */
+#if PY_MAJOR_VERSION == 3
+static PyObject *python_module_init(void)
+{
+	rlm_python_t	*inst = current_inst;
+	CONF_SECTION	*conf = current_conf;
+	PyObject	*module;
+
+	static struct PyModuleDef py_module_def = {
+		PyModuleDef_HEAD_INIT,
+		"radiusd",			/* m_name */
+		"FreeRADIUS python module",	/* m_doc */
+		-1,				/* m_size */
+		module_methods,			/* m_methods */
+		NULL,				/* m_reload */
+		NULL,				/* m_traverse */
+		NULL,				/* m_clear */
+		NULL,				/* m_free */
+	};
+
+	module = PyModule_Create(&py_module_def);
+	if (!module) {
+		python_error_log(inst);
+		return NULL;
+	}
+
+	if ((python_module_import_config(inst, conf, module) < 0) ||
+	    (python_module_import_constants(inst, module) < 0)) {
+		Py_DecRef(module);
+		return NULL;
+	}
+
+	return inst->module = module;
+}
+
+static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
+{
+	char	*path;
+
+	/*
+	 *	python_module_init takes no args, so we need
+	 *	to set these globals so that when it's
+	 *      called during interpreter initialisation
+	 *	it can get at the current instance config.
+	 */
+	current_inst = inst;
+	current_conf = conf;
+
+	PyEval_RestoreThread(global_interpreter);
+	LSAN_DISABLE(inst->interpreter = Py_NewInterpreter());
+	if (!inst->interpreter) {
+		ERROR("Failed creating new interpreter");
+		return -1;
+	}
+	DEBUG3("Created new interpreter %p", inst->interpreter);
+	PyEval_SaveThread();		/* Unlock GIL */
+
+	PyEval_RestoreThread(inst->interpreter);
+
+	path = python_path_build(inst, inst, conf);
+	DEBUG3("Setting python path to \"%s\"", path);
+	inst->wide_path = Py_DecodeLocale(path, NULL);
+	talloc_free(path);
+	PySys_SetPath(inst->wide_path);
+
+	PyEval_SaveThread();
+
+	return 0;
+}
+
+static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
+{
+	PyEval_RestoreThread(interp);	/* Switches thread state and locks GIL */
+	Py_EndInterpreter(interp);	/* Destroys interpreter (GIL still locked) - sets thread state to NULL */
+	PyThreadState_Swap(global_interpreter);	/* Get a none-null thread state */
+	PyEval_SaveThread();		/* Unlock GIL */
+}
+/*
+ *	Python 2 interpreter initialisation and destruction
+ */
+#else
+static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
+{
+	char *path;
 
 	/*
 	 *	This sets up a separate environment for each python module instance
 	 *	These will be destroyed on Py_Finalize().
 	 */
-	if (!inst->cext_compat) {
-		LSAN_DISABLE(inst->sub_interpreter = Py_NewInterpreter());
+	if (!inst->single_interpreter_mode) {
+		PyEval_RestoreThread(global_interpreter);
+		LSAN_DISABLE(inst->interpreter = Py_NewInterpreter());
+		if (!inst->interpreter) {
+			ERROR("Failed creating new interpreter");
+			return -1;
+		}
+		PyEval_SaveThread();		/* Unlock GIL */
+		DEBUG3("Created new interpreter %p", inst->interpreter);
 	} else {
-		inst->sub_interpreter = main_interpreter;
+		inst->interpreter = global_interpreter;
+		DEBUG3("Reusing global interpreter %p", inst->interpreter);
 	}
 
-	PyThreadState_Swap(inst->sub_interpreter);
+	PyEval_RestoreThread(inst->interpreter);
 
 	/*
 	 *	Due to limitations in Python, sub-interpreters don't work well
 	 *	with Python C extensions if they use GIL lock functions.
 	 */
-	if (!inst->cext_compat || !main_module) {
-		CONF_SECTION *cs;
-
+	if (!inst->single_interpreter_mode || !global_module) {
 		/*
-		 *	Set the python search path
-		 *
-		 *	The path buffer does not appear to be dup'd
-		 *	so its lifetime should really be bound to
-		 *	the lifetime of the module.
+		 *	Initialise a new Python 2.7 module, with our default methods
 		 */
-		if (inst->python_path) {
-#if PY_VERSION_HEX >= 0x03050000
-			{
-				inst->wide_path = Py_DecodeLocale(inst->python_path, NULL);
-				PySys_SetPath(inst->wide_path);
-			}
-#else
-			{
-				char *path;
-
-				memcpy(&path, &inst->python_path, sizeof(path));
-				PySys_SetPath(path);
-			}
-#endif
-		}
-
-		/*
-		 *	Initialise a new module, with our default methods
-		 */
-#if PY_VERSION_HEX >= 0x03000000
-	        {
-			static struct PyModuleDef py_module_def = {
-				PyModuleDef_HEAD_INIT,
-				"radiusd",			/* m_name */
-				"FreeRADIUS python module",	/* m_doc */
-				-1,				/* m_size */
-				module_methods,			/* m_methods */
-				NULL,				/* m_reload */
-				NULL,				/* m_traverse */
-				NULL,				/* m_clear */
-				NULL,				/* m_free */
-			};
-
-			inst->module = PyModule_Create(&py_module_def);
-		}
-#else
 		inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
-#endif
 		if (!inst->module) {
+			ERROR("Failed creating module");
+			python_error_log(inst);
 		error:
-			python_error_log();
 			PyEval_SaveThread();
 			return -1;
 		}
@@ -866,43 +1005,46 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 */
 		Py_IncRef(inst->module);
 
-		if (inst->cext_compat) main_module = inst->module;
+		if ((python_module_import_config(inst, conf, inst->module) < 0) ||
+		    (python_module_import_constants(inst, inst->module) < 0)) goto error;
 
-		for (i = 0; radiusd_constants[i].name; i++) {
-			if ((PyModule_AddIntConstant(inst->module, radiusd_constants[i].name,
-						     radiusd_constants[i].value)) < 0)
-				goto error;
-		}
-
-		/*
-		 *	Convert a FreeRADIUS config structure into a python
-		 *	dictionary.
-		 */
-		inst->pythonconf_dict = PyDict_New();
-		if (!inst->pythonconf_dict) {
-			ERROR("Unable to create python dict for config");
-			python_error_log();
-			return -1;
-		}
-
-		/*
-		 *	Add module configuration as a dict
-		 */
-		if (PyModule_AddObject(inst->module, "config", inst->pythonconf_dict) < 0) goto error;
-
-		cs = cf_section_find(conf, "config", NULL);
-		if (cs) python_parse_config(cs, 0, inst->pythonconf_dict);
+		if (inst->single_interpreter_mode) global_module = inst->module;
 	} else {
-		inst->module = main_module;
+		inst->module = global_module;
 		Py_IncRef(inst->module);
 		inst->pythonconf_dict = PyObject_GetAttrString(inst->module, "config");
 		Py_IncRef(inst->pythonconf_dict);
 	}
 
+	path = python_path_build(inst, inst, conf);
+	DEBUG3("Setting python path to \"%s\"", path);
+	PySys_SetPath(path);
+	talloc_free(path);
+
 	PyEval_SaveThread();
 
 	return 0;
 }
+
+static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
+{
+	/*
+	 *	Only destroy if it's a subinterpreter
+	 */
+	if (inst->single_interpreter_mode) return;
+
+	/*
+	 *	We incremented the reference count earlier
+	 *      during module initialisation.
+	 */
+	Py_DecRef(inst->module);
+
+	PyEval_AcquireLock();
+	PyThreadState_Swap(interp);
+	Py_EndInterpreter(interp);
+	PyEval_ReleaseLock();
+}
+#endif
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -923,20 +1065,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	/*
-	 *	Load the python code required for this module instance
-	 */
 	if (python_interpreter_init(inst, conf) < 0) return -1;
 
 	/*
-	 *	Switch to our module specific main thread
+	 *	Switch to our module specific interpreter
 	 */
-	PyEval_RestoreThread(inst->sub_interpreter);
+	PyEval_RestoreThread(inst->interpreter);
 
 	/*
 	 *	Process the various sections
 	 */
-#define PYTHON_FUNC_LOAD(_x) if (python_function_load(&inst->_x) < 0) goto error
+#define PYTHON_FUNC_LOAD(_x) if (python_function_load(inst, &inst->_x) < 0) goto error
 	PYTHON_FUNC_LOAD(instantiate);
 	PYTHON_FUNC_LOAD(authenticate);
 	PYTHON_FUNC_LOAD(authorize);
@@ -954,14 +1093,18 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Call the instantiate function.
 	 */
-	code = do_python_single(NULL, inst->instantiate.function, "instantiate");
+	code = do_python_single(inst, NULL, inst->instantiate.function, "instantiate");
 	if (code < 0) {
 	error:
-		python_error_log();	/* Needs valid thread with GIL */
-		PyEval_SaveThread();
+		python_error_log(inst);	/* Needs valid thread with GIL */
+		fr_cond_assert(PyEval_SaveThread() == inst->interpreter);
 		return -1;
 	}
-	PyEval_SaveThread();
+
+	/*
+	 *	Switch back to the global interpreter
+	 */
+	if (!fr_cond_assert(PyEval_SaveThread() == inst->interpreter)) goto error;
 
 	return 0;
 }
@@ -972,19 +1115,19 @@ static int mod_detach(void *instance)
 	int	     ret = 0;
 
 	/*
-	 *      If we don't have a sub_interpreter
+	 *      If we don't have a interpreter
 	 *      we didn't get far enough into
 	 *      instantiation to generate things
 	 *      we need to clean up...
 	 */
-	if (!inst->sub_interpreter) return 0;
+	if (!inst->interpreter) return 0;
 
 	/*
 	 *	Call module destructor
 	 */
-	PyEval_RestoreThread(inst->sub_interpreter);
+	PyEval_RestoreThread(inst->interpreter);
 
-	if (inst->detach.function) ret = do_python_single(NULL, inst->detach.function, "detach");
+	if (inst->detach.function) ret = do_python_single(inst, NULL, inst->detach.function, "detach");
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
@@ -1002,20 +1145,16 @@ static int mod_detach(void *instance)
 	PYTHON_FUNC_DESTROY(detach);
 
 	Py_DecRef(inst->pythonconf_dict);
-	Py_DecRef(inst->module);
-
 	PyEval_SaveThread();
 
 	/*
-	 *	Only destroy if it's a subinterpreter
+	 *	Free the module specific interpreter
 	 */
-	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
+	python_interpreter_free(inst, inst->interpreter);
 
-	if ((--python_instances) == 0) {
-#if PY_VERSION_HEX >= 0x03050000
-		if (inst->wide_path) PyMem_RawFree(inst->wide_path);
+#if PY_MAJOR_VERSION == 3
+	if (inst->wide_path) PyMem_RawFree(inst->wide_path);
 #endif
-	}
 
 	return ret;
 }
@@ -1027,7 +1166,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	rlm_python_t		*inst = instance;
 	rlm_python_thread_t	*this_thread = thread;
 
-	state = PyThreadState_New(inst->sub_interpreter->interp);
+	state = PyThreadState_New(inst->interpreter->interp);
 	if (!state) {
 		ERROR("Failed initialising local PyThreadState");
 		return -1;
@@ -1056,24 +1195,54 @@ static int mod_load(void)
 {
 	rad_assert(!Py_IsInitialized());
 
-	INFO("Python version: %s", Py_GetVersion());
+	fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "Python version: %s", Py_GetVersion());
 
 	/*
 	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
 	 */
 	python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
 				 RTLD_NOW | RTLD_GLOBAL);
-	if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
+	if (!python_dlhandle) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__,
+				     "Failed loading libpython symbols into global symbol table: %s",
+				     dlerror());
+
+#if PY_MAJOR_VERSION == 3
+	/*
+	 *	Python 3 introduces the concept of a
+	 *	"inittab", i.e. a list of modules which
+	 *	are automatically created when new
+	 *	interpreters are spawned.
+	 *
+	 *      This is what we use to create the radiusd
+	 *	interface module in every interpreter
+	 *	instance.
+	 */
+	PyImport_AppendInittab("radiusd", python_module_init);
+#endif
 
 	LSAN_DISABLE(Py_InitializeEx(0));	/* Don't override signal handlers - noop on subs calls */
+
+	/*
+	 *	Get the default search path so we can append to it.
+	 */
+#if PY_MAJOR_VERSION == 3
+	default_path = Py_EncodeLocale(Py_GetPath(), NULL);
+#else
+	default_path = Py_GetPath();
+#endif
+
+	/*
+	 *	As of 3.7 this is called by Py_Initialize
+	 */
+#if PY_VERSION_HEX < 0x03070000
 	PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
+#endif
 	rad_assert(PyEval_ThreadsInitialized());
-	main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
 
 	/*
 	 *	Set program name (i.e. the software calling the interpreter)
 	 */
-#if PY_VERSION_HEX >= 0x03050000
+#if PY_MAJOR_VERSION == 3
 	{
 		wide_name = Py_DecodeLocale(main_config->name, NULL);
 		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
@@ -1089,17 +1258,20 @@ static int mod_load(void)
 		Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
 	}
 #endif
+	global_interpreter = PyEval_SaveThread();	/* Store reference to the main interpreter and release the GIL */
 
 	return 0;
 }
 
 static void mod_unload(void)
 {
-	PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
+	PyThreadState_Swap(global_interpreter); /* Swap to the main thread */
+
 	Py_Finalize();
 	dlclose(python_dlhandle);
 
-#if PY_VERSION_HEX >= 0x03050000
+#if PY_MAJOR_VERSION == 3
+	if (default_path) PyMem_RawFree(default_path);
 	if (wide_name) PyMem_RawFree(wide_name);
 #endif
 }
