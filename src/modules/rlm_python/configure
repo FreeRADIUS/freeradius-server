@@ -2774,6 +2774,9 @@ test -n "$PYTHON_CONFIG_BIN" || PYTHON_CONFIG_BIN="not-found"
 		fail="python-config"
 	fi
 
+				old_CFLAGS="$CFLAGS"
+	unset CFLAGS
+
 	python_cflags=`${PYTHON_CONFIG_BIN} --cflags`
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&6;}
@@ -2821,6 +2824,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_python requires: $fail." >&2;};
 		targetname=""
 	fi
 fi
+
+export CFLAGS="$old_CFLAGS"
 
 
 

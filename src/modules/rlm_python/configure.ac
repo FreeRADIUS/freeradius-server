@@ -32,6 +32,12 @@ if test x$with_[]modname != xno; then
 		fail="python-config"
 	fi
 
+	dnl #
+	dnl # It is necessary due to a weird behavior with 'python-config'
+	dnl #
+	old_CFLAGS="$CFLAGS"
+	unset CFLAGS
+
 	python_cflags=`${PYTHON_CONFIG_BIN} --cflags`
 	AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"])
 
@@ -85,6 +91,8 @@ if test x"$fail" != x""; then
 		targetname=""
 	fi
 fi
+
+export CFLAGS="$old_CFLAGS"
 
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
