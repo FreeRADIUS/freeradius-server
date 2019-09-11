@@ -11,7 +11,7 @@ if test x$with_[]modname != xno; then
 	dnl extra argument: --with-rlm-python-config-bin
 	PYHTON_BIN=
 	AC_ARG_WITH(rlm-python-config-bin,
-	[  --with-rlm-python-config-bin=PATH   Path to python-config binary []],
+	[  --with-rlm-python-bin=PATH   Path to python binary []],
 	[ case "$withval" in
 	    no)
 		AC_MSG_ERROR(Need rlm-python-config-bin)
@@ -40,9 +40,8 @@ if test x$with_[]modname != xno; then
 	dnl # Strip optimisation flags (-O[0-9]?). We decide our optimisation level, not python.
 	dnl # -D_FORTIFY_SOURCE needs -O.
 	dnl # Strip debug symbol flags (-g[0-9]?). We decide on debugging symbols, not python
-	dnl # Strip -Werror
-	dnl # Strip -Wall, we decide what warnings are important
 	dnl # Strip -DNDEBUG
+	dnl # Strip -W*, we decide what warnings are important
 	mod_cflags=`echo $python_cflags | sed -e '\
 		s/-I/-isystem/g;\
 		s/-isysroot[[ =]]\{0,1\}[[^-]]*//g;\
@@ -50,8 +49,7 @@ if test x$with_[]modname != xno; then
 		s/-Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]//g;\
 		s/-g[[[:digit:]]][[[:space:]]]*//g;\
 		s/-g[[[:space:]]]*//g;\
-		s/-Werror\([[ =]]\{0,1\}[[^ ]]*\)\{0,1\}//g;\
-		s/-Wall[[[:space:]]]//g;\
+		s/-W[[^ ]]*//g;\
 		s/-DNDEBUG[[[:blank:]]]*//g
 		'`
 	AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
