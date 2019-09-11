@@ -1255,7 +1255,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm-python-config-bin=PATH   Path to python binary
+  --with-rlm-python-config-bin=PATH   Path to python-config binary
 
 Some influential environment variables:
   CC          C compiler command
@@ -2778,16 +2778,14 @@ test -n "$PYTHON_CONFIG_BIN" || PYTHON_CONFIG_BIN="not-found"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&6;}
 
-									mod_cflags=`echo $python_cflags | sed -e '\
+								mod_cflags=`echo $python_cflags | sed -e '\
 		s/-I/-isystem/g;\
 		s/-isysroot[ =]\{0,1\}[^-]*//g;\
-		s/-O[[:digit:]][[:blank:]]*//g;\
+		s/-O[^[[:blank:]]]*//g;\
 		s/-Wp,-D_FORTIFY_SOURCE=[[:digit:]]//g;\
-		s/-g[[:digit:]][[:space:]]*//g;\
-		s/-g[[:space:]]*//g;\
-		s/-Werror\([ =]\{0,1\}[^ ]*\)\{0,1\}//g;\
-		s/-Wall[[:space:]]//g;\
-		s/-DNDEBUG[[:blank:]]*//g
+		s/-g[^ ]*//g;\
+		s/-W[^ ]*//g;\
+		s/-DNDEBUG[[:blank:]]*//g;
 		'`
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized cflags were \"${mod_cflags}\"" >&6;}
