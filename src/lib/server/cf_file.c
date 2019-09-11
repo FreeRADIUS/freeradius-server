@@ -1051,12 +1051,10 @@ static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *
 
 	cd = cf_data_find_in_parent(parent, fr_dict_t **, "dictionary");
 	if (!cd) {
-		cf_log_err(cf_section_find_in_parent(parent, "server", CF_IDENT_ANY),
-			   "No dictionary data found in virtual server");
-		return NULL;
+		dict = fr_dict_internal;	/* HACK - To fix policy sections */
+	} else {
+		dict = *((fr_dict_t **)cf_data_value(cd));
 	}
-	dict = *((fr_dict_t **)cf_data_value(cd));
-
 	/*
 	 *	fr_cond_tokenize needs the current section, so we create it first.
 	 */
