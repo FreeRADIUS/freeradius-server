@@ -6,7 +6,7 @@
 #
 #  Test name
 #
-TEST := tests.xlat
+TEST := test.xlat
 
 #
 #  The test files are files without extensions.
@@ -33,7 +33,7 @@ FILES.$(TEST) := $(addprefix $(OUTPUT),$(notdir $(FILES)))
 #  The output files also depend on the directory
 #  and on the previous test.
 #
-$(FILES.$(TEST)): $(BUILD_DIR)/tests/tests.unit | $(OUTPUT)
+$(FILES.$(TEST)): $(BUILD_DIR)/tests/test.unit | $(OUTPUT)
 
 #
 #  We have a real file that's created if all of the tests pass.
@@ -55,7 +55,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/tests/xlat $(BUILD_DIR)/tests/tests.xlat
+	${Q}rm -rf $(BUILD_DIR)/tests/xlat $(BUILD_DIR)/tests/test.xlat
 
 clean.test: clean.$(TEST)
 
@@ -67,6 +67,6 @@ $(BUILD_DIR)/tests/xlat/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | build.raddb
 	${Q}if ! $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r "$@" -i "$<" -xx -O xlat_only > "$@.log" 2>&1 || ! test -f "$@"; then \
 		cat $@.log; \
 		echo "./$(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r \"$@\" -i \"$<\" -xx -O xlat_only"; \
-		rm -f $(BUILD_DIR)/tests/tests.xlat; \
+		rm -f $(BUILD_DIR)/tests/test.xlat; \
 		exit 1; \
 	fi

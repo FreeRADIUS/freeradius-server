@@ -2,20 +2,20 @@
 #  Add the module tests to the overall dependencies
 #
 
-TESTS.MODULES_FILES :=
+TEST.MODULES_FILES :=
 
 # If module requires test server, make sure TEST_SERVER of <MODULE>_TEST_SERVER variables are defined
 # If TEST_SERVER is defined, define <MODULE>_TEST_SERVER for all modules that have CHECK_MODULE_TEST_CAN_BE_RUN
 define CHECK_MODULE_TEST_CAN_BE_RUN
   ifndef ${1}_require_test_server
-    tests.modules: ${1}.test
+    test.modules: ${1}.test
   else
     ifdef TEST_SERVER
-      tests.modules: ${1}.test
+      test.modules: ${1}.test
       export $(shell echo ${1} | tr a-z A-Z)_TEST_SERVER := $(TEST_SERVER)
     endif
     ifdef $(shell echo ${1} | tr a-z A-Z)_TEST_SERVER
-      tests.modules: ${1}.test
+      test.modules: ${1}.test
     endif
   endif
 endef
@@ -87,7 +87,7 @@ MODULE_CONF_NEEDS	:= $(filter-out $(MODULE_CONF_EXISTS),$(MODULE_CONF_REQUIRES))
 #
 #  The complete list of tests which are to be run
 #
-MODULE_TESTS		:= $(patsubst src/tests/modules/%/all.mk,%,$(wildcard src/tests/modules/*/all.mk))
+MODULE_TEST		:= $(patsubst src/tests/modules/%/all.mk,%,$(wildcard src/tests/modules/*/all.mk))
 
 
 #
@@ -126,7 +126,7 @@ endef
 define MODULE_TEST_TARGET
 ${1}.test: $(patsubst %.unlang,%,$(subst src,$(BUILD_DIR),$(filter src/tests/modules/${1}/%,$(MODULE_UNLANG))))
 
-TESTS.MODULES_FILES += $(patsubst %.unlang,%,$(subst src,$(BUILD_DIR),$(filter src/tests/modules/${1}/%,$(MODULE_UNLANG))))
+TEST.MODULES_FILES += $(patsubst %.unlang,%,$(subst src,$(BUILD_DIR),$(filter src/tests/modules/${1}/%,$(MODULE_UNLANG))))
 endef
 
 #
@@ -139,12 +139,12 @@ $(foreach x,$(MODULE_ATTRS_NEEDS),$(eval $(call MODULE_COPY_ATTR,$(subst src/,,$
 # FIXME: copy src/tests/modules/*/module.conf to the right place, too
 
 $(foreach x,$(MODULE_UNLANG),$(eval $(call MODULE_FILE_TARGET,$(patsubst %.unlang,%,$(subst src/,,$x)))))
-$(foreach x,$(MODULE_TESTS),$(eval $(call MODULE_TEST_TARGET,$x)))
+$(foreach x,$(MODULE_TEST),$(eval $(call MODULE_TEST_TARGET,$x)))
 
-$(TESTS.MODULES_FILES): $(TESTS.AUTH_FILES)
+$(TEST.MODULES_FILES): $(TEST.AUTH_FILES)
 
-.PHONY: clean.tests.modules
-clean.tests.modules:
+.PHONY: clean.test.modules
+clean.test.modules:
 	${Q}rm -rf $(BUILD_DIR)/tests/modules/
 
 #

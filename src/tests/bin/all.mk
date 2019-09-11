@@ -39,17 +39,17 @@ $(BUILD_DIR)/tests/bin/%: $(DIR)/% $(TESTBINDIR)/% | $(BUILD_DIR)/tests/bin
 #
 #  Get all of the bin test output files
 #
-TESTS.BIN_FILES := $(addprefix $(BUILD_DIR)/tests/bin/,$(FILES))
+TEST.BIN_FILES := $(addprefix $(BUILD_DIR)/tests/bin/,$(FILES))
 
-$(TESTS.BIN_FILES): $(TESTS.DICT_FILES)
+$(TEST.BIN_FILES): $(TEST.DICT_FILES)
 
 #
 #  Depend on the output files, and create the directory first.
 #
-tests.bin: $(TESTS.BIN_FILES)
+test.bin: $(TEST.BIN_FILES)
 
-.PHONY: clean.tests.bin
-clean.tests.bin:
+.PHONY: clean.test.bin
+clean.test.bin:
 	${Q}rm -rf $(BUILD_DIR)/tests/bin/
 
-clean.test: clean.tests.bin
+clean.test: clean.test.bin

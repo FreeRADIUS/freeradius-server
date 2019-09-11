@@ -77,13 +77,13 @@ test.radiusd.kill: | $(OUTPUT_DIR)
 		exit $$ret; \
 	fi
 
-.PHONY: clean.tests.eap
-clean.tests.eap:
+.PHONY: clean.test.eap
+clean.test.eap:
 	${Q}rm -f $(OUTPUT_DIR)/*.ok $(OUTPUT_DIR)/*.log $(OUTPUT_DIR)/eapol_test.skip
 	${Q}rm -f "$(CONFIG_PATH)/test.conf"
 	${Q}rm -rf "$(CONFIG_PATH)/methods-enabled"
 
-clean.test: clean.tests.eap
+clean.test: clean.test.eap
 
 ifneq "$(EAPOL_TEST)" ""
 $(CONFIG_PATH)/dictionary:
@@ -161,21 +161,21 @@ $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | test.radiusd.kill $(CONFIG_PATH)/radiusd.pid
 		exit 1;\
 	fi
 
-tests.eap: $(EAPOL_OK_FILES)
+test.eap: $(EAPOL_OK_FILES)
 	${Q}$(MAKE) test.radiusd.kill
 else
 #
 #  Build rules and the make file get evaluated at different times
 #  if we don't touch the test skipped file immediately, users can
 #  cntrl-c out of the build process, and the skip file never gets
-#  created as the tests.eap target is evaluated much later in the
+#  created as the test.eap target is evaluated much later in the
 #  build process.2
 #
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
 $(shell touch "$(OUTPUT_DIR)/eapol_test.skip")
 endif
 
-tests.eap: $(OUTPUT_DIR)
+test.eap: $(OUTPUT_DIR)
 	${Q}echo "Skipping EAP tests due to previous build error"
 	${Q}echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
 endif

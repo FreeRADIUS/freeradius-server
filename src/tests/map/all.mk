@@ -5,11 +5,11 @@
 #
 #  Test name
 #
-TEST := tests.map
+TEST := test.map
 
 #
 #  The files are put here in order.  Later tests need
-#  functionality from earlier tests.
+#  functionality from earlier test.
 #
 FILES  := \
 	base \
@@ -56,7 +56,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/tests/unit $(BUILD_DIR)/tests/tests.unit
+	${Q}rm -rf $(BUILD_DIR)/tests/unit $(BUILD_DIR)/tests/test.unit
 
 clean.test: clean.$(TEST)
 

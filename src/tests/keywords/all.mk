@@ -6,7 +6,7 @@
 #
 #  Test name
 #
-TEST := tests.keywords
+TEST := test.keywords
 
 #
 #  The test files are files without extensions.
@@ -62,7 +62,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/tests/keywords $(BUILD_DIR)/tests/tests.keywords
+	${Q}rm -rf $(BUILD_DIR)/tests/keywords $(BUILD_DIR)/tests/test.keywords
 
 clean.test: clean.$(TEST)
 
@@ -145,7 +145,7 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWO
 			cat $@.log; \
 			echo "# $@.log"; \
 			echo "KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
-			rm -f $(BUILD_DIR)/tests/tests.keywords; \
+			rm -f $(BUILD_DIR)/tests/test.keywords; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep -E '^(Error : )?$<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
@@ -154,7 +154,7 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWO
 			cat $@.log; \
 			echo "# $@.log"; \
 			echo "KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
-			rm -f $(BUILD_DIR)/tests/tests.keywords; \
+			rm -f $(BUILD_DIR)/tests/test.keywords; \
 			exit 1; \
 		else \
 			touch "$@"; \

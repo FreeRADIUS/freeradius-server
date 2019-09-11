@@ -21,18 +21,18 @@ $(BUILD_DIR)/tests/trie/nopc-%: $(DIR)/% $(TESTBINDIR)/nopc | $(BUILD_DIR)/tests
 #
 #  Get all of the unit test output files
 #
-TESTS.TRIE_FILES := $(addprefix $(BUILD_DIR)/tests/trie/trie-,$(TRIE_FILES))
-#TESTS.TRIE_FILES += $(addprefix $(BUILD_DIR)/tests/trie/nopc-,$(TRIE_FILES))
+TEST.TRIE_FILES := $(addprefix $(BUILD_DIR)/tests/trie/trie-,$(TRIE_FILES))
+#TEST.TRIE_FILES += $(addprefix $(BUILD_DIR)/tests/trie/nopc-,$(TRIE_FILES))
 
 #
 #  Depend on the output files, and create the directory first.
 #
-tests.trie: $(TESTS.TRIE_FILES)
+test.trie: $(TEST.TRIE_FILES)
 
-$(TESTS.TRIE_FILES): $(TESTS.UNIT_FILES)
+$(TEST.TRIE_FILES): $(TEST.UNIT_FILES)
 
-.PHONY: clean.tests.trie
-clean.tests.trie:
+.PHONY: clean.test.trie
+clean.test.trie:
 	${Q}rm -rf $(BUILD_DIR)/tests/trie/
 
-clean.test: clean.tests.trie
+clean.test: clean.test.trie

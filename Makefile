@@ -103,11 +103,11 @@ $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERAT
 	@echo "ok"
 	@touch $@
 
-test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.bin tests.trie tests.unit tests.xlat tests.map tests.keywords tests.auth tests.modules $(BUILD_DIR)/tests/radiusd-c tests.eap | build.raddb
+test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient test.bin test.trie test.unit test.xlat test.map test.keywords test.auth test.modules $(BUILD_DIR)/tests/radiusd-c test.eap | build.raddb
 	@$(MAKE) -C src/tests tests
 
 .PHONY: clean.test
-clean.test: clean.tests.modules
+clean.test: clean.test.modules
 	@$(MAKE) -C src/tests clean
 
 #  Tests specifically for Travis. We do a LOT more than just

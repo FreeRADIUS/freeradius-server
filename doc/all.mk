@@ -143,8 +143,8 @@ check.doc:
 		exit 1;                                                               \
 	fi
 
-.PHONY: tests.doc
-tests.doc:
+.PHONY: test.doc
+test.doc:
 	${Q}echo TEST-DOC ALL
 	${Q}${MAKE} all.doc 3>&1 2>&1 > ${BUILD_DIR}/doc_stderr.log
 	${Q}if egrep -qi "(asciidoctor|pandoc).*(error|failed)" ${BUILD_DIR}/doc_stderr.log; then \

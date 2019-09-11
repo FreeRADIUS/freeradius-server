@@ -1,7 +1,7 @@
 #
 #  Test name
 #
-TEST := tests.dict
+TEST := test.dict
 
 #
 #  Input files.
@@ -48,7 +48,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/tests/dict $(BUILD_DIR)/tests/tests.dict
+	${Q}rm -rf $(BUILD_DIR)/tests/dict $(BUILD_DIR)/tests/test.dict
 
 clean.test: clean.$(TEST)
 
@@ -64,6 +64,6 @@ $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
 	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d "$@_dir" -r "$@" -xxx "$(dir $<)/empty.txt" > "$@.log" 2>&1 || ! test -f "$@"; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d \"$@_dir\" -r \"$@\" \"$(dir $<)/empty.txt\""; \
 		cat "$@.log"; \
-		rm -f $(BUILD_DIR)/tests/tests.dict; \
+		rm -f $(BUILD_DIR)/tests/test.dict; \
 		exit 1; \
 	fi

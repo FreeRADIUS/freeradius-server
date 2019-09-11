@@ -18,7 +18,7 @@ export FR_LIBRARY_PATH
 
 RADDB_PATH := $(top_srcdir)/raddb
 
-TESTS = mschapv1 digest-01/digest* test.example.com
+TEST = mschapv1 digest-01/digest* test.example.com
 
 PORT := 12340
 
@@ -94,7 +94,7 @@ radiusd.kill:
 # kill the server
 # remove the changes to raddb/
 tests: test.conf | radiusd.kill radiusd.pid
-	@chmod a+x runtests.sh
-	@echo BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
-	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" TOP_BUILDDIR="${top_builddir}" ./runtests.sh $(TESTS)
+	@chmod a+x runtest.sh
+	@echo BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtest.sh $(TEST)
+	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" TOP_BUILDDIR="${top_builddir}" ./runtest.sh $(TEST)
 	@$(MAKE) radiusd.kill

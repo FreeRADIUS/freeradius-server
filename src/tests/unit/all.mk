@@ -5,11 +5,11 @@
 #
 #  Test name
 #
-TEST := tests.unit
+TEST := test.unit
 
 #
 #  The files are put here in order.  Later tests need
-#  functionality from earlier tests.
+#  functionality from earlier test.
 #
 FILES  := \
 	data_types.txt \
@@ -87,7 +87,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/tests/unit $(BUILD_DIR)/tests/tests.unit
+	${Q}rm -rf $(BUILD_DIR)/tests/unit $(BUILD_DIR)/tests/test.unit
 
 clean.test: clean.$(TEST)
 
@@ -98,6 +98,6 @@ $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
 	${Q}echo UNIT-TEST $(notdir $@)
 	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r "$@" $<; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r \"$@\" $<"; \
-		rm -f $(BUILD_DIR)/tests/tests.unit; \
+		rm -f $(BUILD_DIR)/tests/test.unit; \
 		exit 1; \
 	fi
