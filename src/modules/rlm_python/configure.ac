@@ -11,7 +11,7 @@ if test x$with_[]modname != xno; then
 	dnl extra argument: --with-rlm-python-config-bin
 	PYHTON_BIN=
 	AC_ARG_WITH(rlm-python-config-bin,
-	[  --with-rlm-python-bin=PATH   Path to python binary []],
+	[  --with-rlm-python-config-bin=PATH   Path to python-config binary []],
 	[ case "$withval" in
 	    no)
 		AC_MSG_ERROR(Need rlm-python-config-bin)
