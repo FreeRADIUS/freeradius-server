@@ -1,5 +1,13 @@
 platforms = ["centos7", "debian9", "ubuntu16", "ubuntu18"]
 
+/*
+*  The buildClosures function is the core function of the script and uses 
+*  function currying to be able to pass multiple dynamically generated 
+*  jenkins build commands into a jenkins parallel block.
+*  This function ensures that the docker image is built and builds 
+*  FreeRADIUS packages inside the docker image
+*/
+
 def buildClosures(arg) {
     println arg.inspect()
     def platforms = arg
