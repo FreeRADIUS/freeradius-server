@@ -2049,6 +2049,15 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 		if (cf_item_is_data(ci)) continue;
 
 		/*
+		 *	Be generous and skip things which won't be used.
+		 */
+		if (g->self.closed) {
+			cf_log_warn(ci, "Skipping remaining instructions due to previous '%s'",
+				    g->tail->name);
+			break;
+		}
+
+		/*
 		 *	Sections are references to other groups, or
 		 *	to modules with updated return codes.
 		 */

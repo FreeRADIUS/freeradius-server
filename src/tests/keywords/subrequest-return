@@ -3,13 +3,11 @@ subrequest Access-Request {
 		&Tmp-String-0 := "testing1234"
 	}
 
-	#
-	#  Defeat return check
-	#
-	group {
-		return
+	return
 
-	}
+	#
+	#  Should be ignored
+	#
 	update parent.request {
 		&Tmp-String-1 := "testing1234"
 	}
