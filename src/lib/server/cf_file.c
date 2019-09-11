@@ -1475,16 +1475,88 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 		if (*ptr == '{') {
 			ptr++;
-			name2_token = T_LCBRACE;
+			name2_token = T_INVALID;
+			value = NULL;
 			goto alloc_section;
 		}
 
 		/*
-		 *	The next token could be one of many things.
+		 *	We allow certain kinds of strings, attribute
+		 *	references (i.e. foreach) and bare names that
+		 *	start with a letter.  We also allow UTF-8
+		 *	characters.
+		 *
+		 *	Once we fix the parser to be less generic, we
+		 *	can tighten these rules.  Right now, it's
+		 *	*technically* possible to define a module with
+		 *	&foo or "with spaces" as the second name.
+		 *	Which seems bad.  But the old parser allowed
+		 *	it, so oh well.
+		 */
+		if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || (*ptr == '&') ||
+		    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr)) {
+			if (cf_get_token(parent, &ptr, &name2_token, buff[2], talloc_array_length(buff[2]),
+					 buff[3], filename, *lineno) < 0) {
+				goto error;
+			}
+
+			if (*ptr != '{') {
+				ERROR("%s[%d]: Parse error: expected '{', got text \"%s\"",
+				      filename, *lineno, ptr);
+				goto error;
+			}
+			ptr++;
+			value = buff[2];
+
+		alloc_section:
+			css = cf_section_alloc(parent, parent, buff[1], value);
+			if (!css) {
+				ERROR("%s[%d]: Failed allocating memory for section",
+				      filename, *lineno);
+				goto error;
+			}
+
+			css->item.filename = filename;
+			css->item.lineno = *lineno;
+			css->name2_quote = name2_token;
+
+			/*
+			 *	Hack for better error messages in
+			 *	nested sections.  parent information
+			 *	should really be put into a parser
+			 *	struct, as with tmpls.
+			 */
+			if (!in_map && !in_update) in_update = (strcmp(css->name1, "update") == 0);
+
+		add_section:
+			cf_item_add(parent, &(css->item));
+
+			/*
+			 *	The current section is now the child section.
+			 */
+			parent = css;
+			css = NULL;
+			goto check_for_more;
+		}
+
+		/*
+		 *	The next thing MUST be an operator.  All
+		 *	operators start with one of these characters,
+		 *	so we check for them first.
+		 */
+		if (!((*ptr == '=') || (*ptr == '!') || (*ptr == '>') || (*ptr == '<') ||
+		      (*ptr == '-') || (*ptr == '+') || (*ptr == ':'))) {
+			ERROR("%s[%d]: Parse error at unexpected text: %s",
+			      filename, *lineno, ptr);
+			goto error;
+		}
+
+		/*
+		 *	If we're not parsing a section, then the next
+		 *	token MUST be an operator.
 		 */
 		name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
 		switch (name2_token) {
-		case T_OP_INCRM:
 		case T_OP_ADD:
 		case T_OP_SUB:
 		case T_OP_NE:
@@ -1557,6 +1629,15 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				 *	for real.
 				 */
 				ptr++;
+
+				/*
+				 *	Leave name2_token as the
+				 *	operator (as a hack).  But
+				 *	note that there's no actual
+				 *	name2.  We'll deal with that
+				 *	situation later.
+				 */
+				value = NULL;
 				goto alloc_section;
 
 			default:
@@ -1614,60 +1695,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			      filename, *lineno, ptr);
 			goto error;
 
-			/*
-			 *	No operator, must be a section or sub-section.
-			 */
-		case T_BARE_WORD:
-		case T_DOUBLE_QUOTED_STRING:
-		case T_SINGLE_QUOTED_STRING:
-			fr_skip_whitespace(ptr);
-			if (*ptr != '{') {
-				ERROR("%s[%d]: Expecting section start brace '{' after \"%s %s\"",
-				      filename, *lineno, buff[1], buff[2]);
-				goto error;
-			}
-			ptr++;
-			/* FALL-THROUGH */
-
-		alloc_section:
-		case T_LCBRACE:
-			css = cf_section_alloc(parent, parent, buff[1],
-					       name2_token == T_LCBRACE ? NULL : buff[2]);
-			if (!css) {
-				ERROR("%s[%d]: Failed allocating memory for section",
-				      filename, *lineno);
-				goto error;
-			}
-
-			css->item.filename = filename;
-			css->item.lineno = *lineno;
-
-			/*
-			 *	There may not be a name2
-			 */
-			css->name2_quote = (name2_token == T_LCBRACE) ? T_INVALID : name2_token;
-
-			/*
-			 *	Hack for better error messages in
-			 *	nested sections.  parent information
-			 *	should really be put into a parser
-			 *	struct, as with tmpls.
-			 */
-			if (!in_map && !in_update) in_update = (strcmp(css->name1, "update") == 0);
-
-		add_section:
-			cf_item_add(parent, &(css->item));
-
-			/*
-			 *	The current section is now the child section.
-			 */
-			parent = css;
-			css = NULL;
-			break;
-
 		case T_INVALID:
 			PERROR("%s[%d]: Syntax error in '%s'", filename, *lineno, ptr);
-
 			goto error;
 
 		default:
