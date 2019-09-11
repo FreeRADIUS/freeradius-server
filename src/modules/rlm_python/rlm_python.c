@@ -310,8 +310,9 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
 					op = T_OP_EQ;
+				} else {
+					op = (FR_TOKEN)py_op;
 				}
-				op = (FR_TOKEN)py_op;
 			} else {
 				ERROR("%s - Invalid operator type for %s:%s ? %s, using default '='",
 				      funcname, list_name, s1, s2);
