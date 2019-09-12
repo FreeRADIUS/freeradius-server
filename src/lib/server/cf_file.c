@@ -1969,7 +1969,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 		 *	"foo.bar.baz" means "from the root"
 		 */
 	} else if (strchr(p, '.') != NULL) {
-		if (!parent_cs) goto no_such_item;
+		if (!parent_cs) return NULL;
 		cs = parent_cs;
 	}
 
@@ -1994,7 +1994,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 			 *	Points to foo[bar]xx: parse error,
 			 *	it should be foo[bar] or foo[bar].baz
 			 */
-			if (q[1] && q[1] != '.') goto no_such_item;
+			if (q[1] && q[1] != '.') return NULL;
 
 			*r = '\0';
 			*q = '\0';
@@ -2006,7 +2006,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 			 *	Points to a named instance of a section.
 			 */
 			if (!q[1]) {
-				if (!next) goto no_such_item;
+				if (!next) return NULL;
 				return &(next->item);
 			}
 
@@ -2024,7 +2024,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 		p = q + 1;
 	}
 
-	if (!*p) goto no_such_item;
+	if (!*p) return NULL;
 
 retry:
 	/*
@@ -2048,6 +2048,5 @@ retry:
 		goto retry;
 	}
 
-no_such_item:
 	return NULL;
 }
