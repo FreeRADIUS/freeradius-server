@@ -37,6 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/lsan.h>
 
 #include <Python.h>
+#include <frameobject.h> /* Python header not pulled in by default. */
 #include <libgen.h>
 #include <dlfcn.h>
 
@@ -253,21 +254,38 @@ static PyMethodDef module_methods[] = {
  */
 static void python_error_log(const rlm_python_t *inst, REQUEST *request)
 {
-	PyObject *pType = NULL, *p_value = NULL, *pTraceback = NULL, *p_str_1 = NULL, *p_str_2 = NULL;
+	PyObject *p_type = NULL, *p_value = NULL, *p_traceback = NULL, *p_str_1 = NULL, *p_str_2 = NULL;
 
-	PyErr_Fetch(&pType, &p_value, &pTraceback);
-	if (!pType || !p_value) goto failed;
+	PyErr_Fetch(&p_type, &p_value, &p_traceback);
+	PyErr_NormalizeException(&p_type, &p_value, &p_traceback);
+	if (!p_type || !p_value) goto failed;
 
-	if (((p_str_1 = PyObject_Str(pType)) == NULL) || ((p_str_2 = PyObject_Str(p_value)) == NULL)) goto failed;
+	if (((p_str_1 = PyObject_Str(p_type)) == NULL) || ((p_str_2 = PyObject_Str(p_value)) == NULL)) goto failed;
 
 	ROPTIONAL(RERROR, ERROR, "%s (%s)", PyUnicode_AsUTF8(p_str_1), PyUnicode_AsUTF8(p_str_2));
+
+	if (p_traceback != Py_None) {
+		PyTracebackObject *ptb = (PyTracebackObject*)p_traceback;
+		size_t fnum = 0;
+
+		for(; ptb != NULL; ptb = ptb->tb_next, fnum++) {
+			PyFrameObject *cur_frame = ptb->tb_frame;
+
+			ROPTIONAL(RERROR, ERROR, "[%ld] %s:%d at %s()",
+				fnum,
+				PyUnicode_AsUTF8(cur_frame->f_code->co_filename),
+				PyFrame_GetLineNumber(cur_frame),
+				PyUnicode_AsUTF8(cur_frame->f_code->co_name)
+			);
+		}
+	}
 
 failed:
 	Py_XDECREF(p_str_1);
 	Py_XDECREF(p_str_2);
-	Py_XDECREF(pType);
+	Py_XDECREF(p_type);
 	Py_XDECREF(p_value);
-	Py_XDECREF(pTraceback);
+	Py_XDECREF(p_traceback);
 }
 
 static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *request,
