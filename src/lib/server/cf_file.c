@@ -1936,8 +1936,6 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 	char			name[8192];
 	char			*p;
 
-	if (!cs) goto no_such_item;
-
 	strlcpy(name, ptr, sizeof(name));
 
 	p = name;
