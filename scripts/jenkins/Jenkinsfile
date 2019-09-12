@@ -1,5 +1,33 @@
 platforms = ["centos7", "debian9", "ubuntu16", "ubuntu18"]
 
+/*  The detectChanges function looks at the last git commit and searches for changes to
+*   "redhat/freeradius.spec" or anything in the "debian" directory.  If it 
+*   finds any changes to those files it returns the string " --no-cache " 
+*   which can be fed to a docker build command to tell docker to rebuild 
+*   the image from scratch so that it can pick up any new dependencies 
+*   specified in those package manifest files
+*/
+
+def detectChanges() {
+    def string = ""
+    def changeLogSets = currentBuild.changeSets
+    for (int i = 0; i < changeLogSets.size(); i++) {
+        def entries = changeLogSets[i].items
+        for (int j = 0; j < entries.length; j++) {
+            def entry = entries[j]
+            def files = new ArrayList(entry.affectedFiles)
+            for (int k = 0; k < files.size(); k++) {
+                def file = files[k]
+                if (file.path =~ /(^debian\/.*)|(redhat\/freeradius.spec)/) {
+                    echo "changes in file ${file.path}, passing --no-cache flag to docker build"
+                    string = " --no-cache "
+                    return string
+                }
+            }
+        }
+    }
+}
+
 /*
 *  The buildClosures function is the core function of the script and uses 
 *  function currying to be able to pass multiple dynamically generated 
@@ -17,7 +45,8 @@ def buildClosures(arg) {
 
         closures[value] = {platform ->
                 stage("build-${platform}") {
-                    docker.build("${platform}-master-test","-f ./scripts/docker/build-${platform}/Dockerfile.deps ./scripts/docker/build-${platform}").inside {
+                    rebuild = detectChanges()
+                    docker.build("${platform}-master-test","${rebuild} -f ./scripts/docker/build-${platform}/Dockerfile.deps ./scripts/docker/build-${platform}").inside {
                         checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanBeforeCheckout'],[$class: 'RelativeTargetDirectory', relativeTargetDir: "${platform}/build"]], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/freeradius/freeradius-server']]])
                         sh "cat /etc/os-release || cat /etc/redhat-release"
                         dir("${platform}/build") {
