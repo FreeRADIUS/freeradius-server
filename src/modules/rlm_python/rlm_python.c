@@ -251,7 +251,7 @@ static PyMethodDef module_methods[] = {
  *
  * Must be called with a valid thread state set
  */
-static void python_error_log(const rlm_python_t *inst)
+static void python_error_log(const rlm_python_t *inst, REQUEST *request)
 {
 	PyObject *pType = NULL, *pValue = NULL, *pTraceback = NULL, *pStr1 = NULL, *pStr2 = NULL;
 
@@ -262,7 +262,7 @@ static void python_error_log(const rlm_python_t *inst)
 	    ((pStr2 = PyObject_Str(pValue)) == NULL))
 		goto failed;
 
-	ERROR("%s (%s)", PyUnicode_AsUTF8(pStr1), PyUnicode_AsUTF8(pStr2));
+	ROPTIONAL(RERROR, ERROR, "%s (%s)", PyUnicode_AsUTF8(pStr1), PyUnicode_AsUTF8(pStr2));
 
 failed:
 	Py_XDECREF(pStr1);
@@ -563,6 +563,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 	/* Call Python function. */
 	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
 	if (!pRet) {
+		python_error_log(inst, request); /* Needs valid thread with GIL */
 		ret = RLM_MODULE_FAIL;
 		goto finish;
 	}
@@ -624,8 +625,20 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 		goto finish;
 	}
 
-
 finish:
+
+	switch (ret) {
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_REJECT:
+	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_YIELD:
+		python_error_log(inst, request);
+		break;
+
+	default:
+		rad_assert(1);
+	}
+
 	Py_XDECREF(pArgs);
 	Py_XDECREF(pRet);
 
@@ -700,7 +713,7 @@ static int python_function_load(rlm_python_t *inst, python_func_def_t *def)
 		ERROR("%s - Module '%s' load failed", funcname, def->module_name);
 
 	error:
-		python_error_log(inst);
+		python_error_log(inst, NULL);
 		Py_XDECREF(def->function);
 		def->function = NULL;
 		Py_XDECREF(def->module);
@@ -814,7 +827,7 @@ static int python_module_import_config(rlm_python_t *inst, CONF_SECTION *conf, P
 			Py_DecRef(inst->pythonconf_dict);
 			inst->pythonconf_dict = NULL;
 		}
-		python_error_log(inst);
+		python_error_log(inst, NULL);
 		return -1;
 	}
 
@@ -839,7 +852,7 @@ static int python_module_import_constants(rlm_python_t *inst, PyObject *module)
 	for (i = 0; radiusd_constants[i].name; i++) {
 		if ((PyModule_AddIntConstant(module, radiusd_constants[i].name, radiusd_constants[i].value)) < 0) {
 			ERROR("Failed adding constant to module");
-			python_error_log(inst);
+			python_error_log(inst, NULL);
 			return -1;
 		}
 	}
@@ -898,7 +911,7 @@ static PyObject *python_module_init(void)
 
 	module = PyModule_Create(&py_module_def);
 	if (!module) {
-		python_error_log(inst);
+		python_error_log(inst, NULL);
 		return NULL;
 	}
 
@@ -992,7 +1005,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
 		if (!inst->module) {
 			ERROR("Failed creating module");
-			python_error_log(inst);
+			python_error_log(inst, NULL);
 		error:
 			PyEval_SaveThread();
 			return -1;
@@ -1060,7 +1073,7 @@ static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_python_t	*inst = instance;
-	rlm_rcode_t	rcode = 0;
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -1097,7 +1110,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		rcode = do_python_single(inst, NULL, inst->instantiate.function, "instantiate");
 		if (rcode == RLM_MODULE_FAIL) {
 		error:
-			python_error_log(inst);	/* Needs valid thread with GIL */
 			fr_cond_assert(PyEval_SaveThread() == inst->interpreter);
 			return -1;
 		}
@@ -1108,7 +1120,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	if (!fr_cond_assert(PyEval_SaveThread() == inst->interpreter)) goto error;
 
-	return 0;
+	return rcode;
 }
 
 static int mod_detach(void *instance)
