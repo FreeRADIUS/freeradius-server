@@ -73,29 +73,64 @@ static uint32_t location_indent = 30;
  */
 void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen, char const *fmt)
 {
-	size_t offset, skip = 0;
-	char *spbuf, *p;
+	size_t offset, prefix, suffix;
+	char *spaces, *p;
+	char const *start;
 	char *value;
+	size_t inlen;
 
 	offset = -slen;
 
-	/*
-	 *	Ensure that the error isn't indented
-	 *	too far.
-	 */
-	if (offset > 45) {
-		skip = offset - 40;
-		offset -= skip;
-		value = talloc_strdup(ctx, fmt + skip);
-		memcpy(value, "...", 4);
+	inlen = strlen(fmt);
+	start = fmt;
+	prefix = suffix = 0;
 
-	} else {
-		value = talloc_strdup(ctx, fmt);
+#ifndef NDEBUG
+	/*
+	 *	Shut up the compiler
+	 */
+	if (offset >= inlen) {
+		*sp = NULL;
+		*text = NULL;
+		return;
+	}
+#endif
+
+	/*
+	 *	Too many characters before the inflection point.  Skip
+	 *	leading text until we have only 45 characters before it.
+	 */
+	if (offset > 30) {
+		size_t skip = offset - 30;
+
+		start += skip;
+		inlen -= skip;
+		offset -= skip;
+		prefix = 4;
 	}
 
-	spbuf = talloc_array(ctx, char, offset + 1);
-	memset(spbuf, ' ', offset);
-	spbuf[offset] = '\0';
+	/*
+	 *	Too many characters after the inflection point,
+	 *	truncate it to 30 characters after the inflection
+	 *	point.
+	 */
+	if (inlen > (offset + 30)) {
+		inlen = offset + 30;
+		suffix = 4;
+	}
+
+	/*
+	 *	Allocate an array to hold just the text we need.
+	 */
+	value = talloc_array(ctx, char, prefix + inlen + 1 + suffix);
+	if (prefix) {
+		memcpy(value, "... ", 4);
+	}
+	memcpy(value + prefix, start, inlen);
+	if (suffix) {
+		memcpy(value + prefix + inlen, "...", 3);
+	}
+	value[prefix + inlen + suffix] = '\0';
 
 	/*
 	 *	Smash tabs to spaces for the input string.
@@ -104,15 +139,14 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 		if (*p == '\t') *p = ' ';
 	}
 
-
 	/*
-	 *	Ensure that there isn't too much text after the error.
+	 *	Allocate the spaces array
 	 */
-	if (strlen(value) > 100) {
-		memcpy(value + 95, "... ", 5);
-	}
+	spaces = talloc_array(ctx, char, prefix + offset + 1);
+	memset(spaces, ' ', prefix + offset);
+	spaces[prefix + offset] = '\0';
 
-	*sp = spbuf;
+	*sp = spaces;
 	*text = value;
 }
 
