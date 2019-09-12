@@ -251,7 +251,7 @@ static PyMethodDef module_methods[] = {
  *
  * Must be called with a valid thread state set
  */
-static void python_error_log(rlm_python_t *inst)
+static void python_error_log(const rlm_python_t *inst)
 {
 	PyObject *pType = NULL, *pValue = NULL, *pTraceback = NULL, *pStr1 = NULL, *pStr2 = NULL;
 
@@ -639,7 +639,7 @@ finish:
 static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this_thread,
 			     REQUEST *request, PyObject *pFunc, char const *funcname)
 {
-	int			ret;
+	rlm_rcode_t		rcode;
 
 	/*
 	 *	It's a NOOP if the function wasn't defined
@@ -649,10 +649,10 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this
 	RDEBUG3("Using thread state %p/%p", inst, this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
-	ret = do_python_single(inst, request, pFunc, funcname);
+	rcode = do_python_single(inst, request, pFunc, funcname);
 	PyEval_SaveThread();
 
-	return ret;
+	return rcode;
 }
 
 #define MOD_FUNC(x) \
@@ -1060,7 +1060,7 @@ static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_python_t	*inst = instance;
-	int		code = 0;
+	rlm_rcode_t	rcode = 0;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -1094,8 +1094,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Call the instantiate function.
 	 */
 	if (inst->instantiate.function) {
-		code = do_python_single(inst, NULL, inst->instantiate.function, "instantiate");
-		if (code == RLM_MODULE_FAIL) {
+		rcode = do_python_single(inst, NULL, inst->instantiate.function, "instantiate");
+		if (rcode == RLM_MODULE_FAIL) {
 		error:
 			python_error_log(inst);	/* Needs valid thread with GIL */
 			fr_cond_assert(PyEval_SaveThread() == inst->interpreter);
@@ -1114,7 +1114,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static int mod_detach(void *instance)
 {
 	rlm_python_t *inst = instance;
-	int	     ret = 0;
+	rlm_rcode_t  rcode = RLM_MODULE_OK;
 
 	/*
 	 *      If we don't have a interpreter
@@ -1129,7 +1129,7 @@ static int mod_detach(void *instance)
 	 */
 	PyEval_RestoreThread(inst->interpreter);
 
-	if (inst->detach.function) ret = do_python_single(inst, NULL, inst->detach.function, "detach");
+	if (inst->detach.function) rcode = do_python_single(inst, NULL, inst->detach.function, "detach");
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
@@ -1158,7 +1158,7 @@ static int mod_detach(void *instance)
 	if (inst->wide_path) PyMem_RawFree(inst->wide_path);
 #endif
 
-	return ret;
+	return rcode;
 }
 
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance,
