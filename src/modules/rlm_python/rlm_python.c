@@ -1073,7 +1073,6 @@ static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_python_t	*inst = instance;
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -1107,11 +1106,19 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Call the instantiate function.
 	 */
 	if (inst->instantiate.function) {
+		rlm_rcode_t rcode;
+
 		rcode = do_python_single(inst, NULL, inst->instantiate.function, "instantiate");
-		if (rcode == RLM_MODULE_FAIL) {
+		switch (rcode) {
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_YIELD:	/* Yield not valid in instantiate */
 		error:
 			fr_cond_assert(PyEval_SaveThread() == inst->interpreter);
 			return -1;
+
+		default:
+			break;
 		}
 	}
 
@@ -1120,7 +1127,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	if (!fr_cond_assert(PyEval_SaveThread() == inst->interpreter)) goto error;
 
-	return rcode;
+	return 0;
 }
 
 static int mod_detach(void *instance)
