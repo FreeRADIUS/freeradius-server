@@ -1125,8 +1125,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 static int mod_detach(void *instance)
 {
-	rlm_python_t *inst = instance;
-	rlm_rcode_t  rcode = RLM_MODULE_OK;
+	rlm_python_t	*inst = instance;
 
 	/*
 	 *      If we don't have a interpreter
@@ -1141,7 +1140,10 @@ static int mod_detach(void *instance)
 	 */
 	PyEval_RestoreThread(inst->interpreter);
 
-	if (inst->detach.function) rcode = do_python_single(inst, NULL, inst->detach.function, "detach");
+	/*
+	 *	We don't care if this fails.
+	 */
+	if (inst->detach.function) (void)do_python_single(inst, NULL, inst->detach.function, "detach");
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
@@ -1170,7 +1172,7 @@ static int mod_detach(void *instance)
 	if (inst->wide_path) PyMem_RawFree(inst->wide_path);
 #endif
 
-	return rcode;
+	return 0;
 }
 
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance,
