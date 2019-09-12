@@ -1200,7 +1200,7 @@ static int mod_load(void)
 	/*
 	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
 	 */
-	python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
+	python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) DL_EXTENSION,
 				 RTLD_NOW | RTLD_GLOBAL);
 	if (!python_dlhandle) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__,
 				     "Failed loading libpython symbols into global symbol table: %s",
