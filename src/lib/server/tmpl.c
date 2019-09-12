@@ -3225,7 +3225,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 			 *	host names and IP addresses, and IPv6 addresses.
 			 */
 			if ((*p == '.') || (*p == '/') || (*p == '_') || (*p == '*') ||
-			    (*p == ']')) {
+			    (*p == ']') || (*p == '@')) {
 				p++;
 				continue;
 			}
