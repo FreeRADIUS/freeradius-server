@@ -129,7 +129,7 @@ static char		*default_path;		//!< The default python path.
  *	Python 3 and as Python 3 users have the option of
  *	using as version of Python which fixes the underlying
  *	issue, we only support using a global interpreter
- *      for Python 2.7 and below.
+ *	for Python 2.7 and below.
  */
 #if PY_MAJOR_VERSION == 2
 static PyObject		*global_module;		//!< Global radiusd Python module.
@@ -256,11 +256,9 @@ static void python_error_log(const rlm_python_t *inst, REQUEST *request)
 	PyObject *pType = NULL, *p_value = NULL, *pTraceback = NULL, *p_str_1 = NULL, *p_str_2 = NULL;
 
 	PyErr_Fetch(&pType, &p_value, &pTraceback);
-	if (!pType || !p_value)
-		goto failed;
-	if (((p_str_1 = PyObject_Str(pType)) == NULL) ||
-	    ((p_str_2 = PyObject_Str(p_value)) == NULL))
-		goto failed;
+	if (!pType || !p_value) goto failed;
+
+	if (((p_str_1 = PyObject_Str(pType)) == NULL) || ((p_str_2 = PyObject_Str(p_value)) == NULL)) goto failed;
 
 	ROPTIONAL(RERROR, ERROR, "%s (%s)", PyUnicode_AsUTF8(p_str_1), PyUnicode_AsUTF8(p_str_2));
 
@@ -272,13 +270,13 @@ failed:
 	Py_XDECREF(pTraceback);
 }
 
-static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *request, VALUE_PAIR **vps, PyObject *p_value,
-			char const *funcname, char const *list_name)
+static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *request,
+			VALUE_PAIR **vps, PyObject *p_value, char const *funcname, char const *list_name)
 {
-	int	     	i;
+	int		i;
 	Py_ssize_t	tuple_len;
-	vp_tmpl_t       *dst;
-	VALUE_PAIR      *vp;
+	vp_tmpl_t	*dst;
+	VALUE_PAIR	*vp;
 	REQUEST		*current = request;
 
 	/*
@@ -504,7 +502,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, PyObject *p_func, char const *funcname)
 {
 	fr_cursor_t	cursor;
-	VALUE_PAIR      *vp;
+	VALUE_PAIR	*vp;
 	PyObject	*p_ret = NULL;
 	PyObject	*p_arg = NULL;
 	int		tuple_len;
@@ -916,7 +914,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	/*
 	 *	python_module_init takes no args, so we need
 	 *	to set these globals so that when it's
-	 *      called during interpreter initialisation
+	 *	called during interpreter initialisation
 	 *	it can get at the current instance config.
 	 */
 	current_inst = inst;
@@ -1004,7 +1002,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		Py_IncRef(inst->module);
 
 		if ((python_module_import_config(inst, conf, inst->module) < 0) ||
-		    (python_module_import_constants(inst, inst->module) < 0)) goto error;
+			(python_module_import_constants(inst, inst->module) < 0)) goto error;
 
 		if (inst->single_interpreter_mode) global_module = inst->module;
 	} else {
@@ -1028,7 +1026,7 @@ static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
 {
 	/*
 	 *	We incremented the reference count earlier
-	 *      during module initialisation.
+	 *	during module initialisation.
 	 */
 	Py_DecRef(inst->module);
 
@@ -1120,10 +1118,10 @@ static int mod_detach(void *instance)
 	rlm_python_t	*inst = instance;
 
 	/*
-	 *      If we don't have a interpreter
-	 *      we didn't get far enough into
-	 *      instantiation to generate things
-	 *      we need to clean up...
+	 *	If we don't have a interpreter
+	 *	we didn't get far enough into
+	 *	instantiation to generate things
+	 *	we need to clean up...
 	 */
 	if (!inst->interpreter) return 0;
 
@@ -1221,7 +1219,7 @@ static int mod_load(void)
 	 *	are automatically created when new
 	 *	interpreters are spawned.
 	 *
-	 *      This is what we use to create the radiusd
+	 *	This is what we use to create the radiusd
 	 *	interface module in every interpreter
 	 *	instance.
 	 */
