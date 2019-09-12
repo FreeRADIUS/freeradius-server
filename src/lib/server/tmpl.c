@@ -3072,6 +3072,8 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		return_P("Unterminated expansion");
 
 	case '/':
+		if (!require_regex) goto bare_word;
+
 		quote = *(p++);
 		*type = T_OP_REG_EQ;
 		goto skip_string;
@@ -3136,6 +3138,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		goto skip_word;
 
 	default:
+	bare_word:
 		*out = p;
 		quote = '\0';
 
@@ -3155,6 +3158,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 				if (p[1] == '{') {
 					p += 2;
 					depth++;
+					continue;
 
 				} else if ((p[1] == 'E') &&
 					   (p[2] == 'N') &&
@@ -3162,6 +3166,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 					   (p[4] == '{')) {
 					p += 5;
 					depth++;
+					continue;
 
 				} else {
 					/*
@@ -3169,6 +3174,17 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 					 */
 					break;
 				}
+			}
+
+			if (*p == '%') {
+				if (p[1] == '{') {
+					p += 2;
+					depth++;
+					continue;
+				}
+
+				p++;
+				continue;
 			}
 
 			/*
@@ -3206,9 +3222,18 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 
 			/*
 			 *	Allowed in attribute names, and/or
-			 *	host names and IP addresses.
+			 *	host names and IP addresses, and IPv6 addresses.
 			 */
-			if ((*p == '.') || (*p == '/') || (*p == '_')) {
+			if ((*p == '.') || (*p == '/') || (*p == '_') || (*p == '*') ||
+			    (*p == ']')) {
+				p++;
+				continue;
+			}
+
+			/*
+			 *	[...] is an IPv6 address.
+			 */
+			if ((p == start) && (*p == '[')) {
 				p++;
 				continue;
 			}
@@ -3245,6 +3270,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 				 */
 				if ((*p == '#') || (*p == '*') || (*p == 'n')) {
 					p++;
+
 				} else {
 					/*
 					 *	Allow numbers as array indexes
