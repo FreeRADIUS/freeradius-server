@@ -985,6 +985,10 @@ static int process_template(CONF_SECTION *parent, char const *ptr, char *buff[st
 		return -1;
 	}
 
+#ifdef __clang_analyzer__
+	if (!ptr) return NULL;
+#endif
+
 	ci = cf_reference_item(parent_cs, templatecs, buff[2]);
 	if (!ci || (ci->type != CONF_ITEM_SECTION)) {
 		ERROR("%s[%d]: Reference \"%s\" not found", filename, lineno, buff[2]);
