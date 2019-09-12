@@ -253,30 +253,30 @@ static PyMethodDef module_methods[] = {
  */
 static void python_error_log(const rlm_python_t *inst, REQUEST *request)
 {
-	PyObject *pType = NULL, *pValue = NULL, *pTraceback = NULL, *pStr1 = NULL, *pStr2 = NULL;
+	PyObject *pType = NULL, *p_value = NULL, *pTraceback = NULL, *p_str_1 = NULL, *p_str_2 = NULL;
 
-	PyErr_Fetch(&pType, &pValue, &pTraceback);
-	if (!pType || !pValue)
+	PyErr_Fetch(&pType, &p_value, &pTraceback);
+	if (!pType || !p_value)
 		goto failed;
-	if (((pStr1 = PyObject_Str(pType)) == NULL) ||
-	    ((pStr2 = PyObject_Str(pValue)) == NULL))
+	if (((p_str_1 = PyObject_Str(pType)) == NULL) ||
+	    ((p_str_2 = PyObject_Str(p_value)) == NULL))
 		goto failed;
 
-	ROPTIONAL(RERROR, ERROR, "%s (%s)", PyUnicode_AsUTF8(pStr1), PyUnicode_AsUTF8(pStr2));
+	ROPTIONAL(RERROR, ERROR, "%s (%s)", PyUnicode_AsUTF8(p_str_1), PyUnicode_AsUTF8(p_str_2));
 
 failed:
-	Py_XDECREF(pStr1);
-	Py_XDECREF(pStr2);
+	Py_XDECREF(p_str_1);
+	Py_XDECREF(p_str_2);
 	Py_XDECREF(pType);
-	Py_XDECREF(pValue);
+	Py_XDECREF(p_value);
 	Py_XDECREF(pTraceback);
 }
 
-static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
+static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *request, VALUE_PAIR **vps, PyObject *p_value,
 			char const *funcname, char const *list_name)
 {
 	int	     	i;
-	Py_ssize_t	tuplesize;
+	Py_ssize_t	tuple_len;
 	vp_tmpl_t       *dst;
 	VALUE_PAIR      *vp;
 	REQUEST		*current = request;
@@ -285,60 +285,60 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 	 *	If the Python function gave us None for the tuple,
 	 *	then just return.
 	 */
-	if (pValue == Py_None) return;
+	if (p_value == Py_None) return;
 
-	if (!PyTuple_CheckExact(pValue)) {
+	if (!PyTuple_CheckExact(p_value)) {
 		ERROR("%s - non-tuple passed to %s", funcname, list_name);
 		return;
 	}
-	/* Get the tuple tuplesize. */
-	tuplesize = PyTuple_GET_SIZE(pValue);
-	for (i = 0; i < tuplesize; i++) {
-		PyObject 	*pTupleElement = PyTuple_GET_ITEM(pValue, i);
-		PyObject 	*pStr1;
-		PyObject 	*pStr2;
-		PyObject 	*pOp;
-		Py_ssize_t	pairsize;
+	/* Get the tuple tuple_len. */
+	tuple_len = PyTuple_GET_SIZE(p_value);
+	for (i = 0; i < tuple_len; i++) {
+		PyObject 	*p_tuple_element = PyTuple_GET_ITEM(p_value, i);
+		PyObject 	*p_str_1;
+		PyObject 	*p_str_2;
+		PyObject 	*p_op;
+		Py_ssize_t	pair_len;
 		char const	*s1;
 		char const	*s2;
 		FR_TOKEN	op = T_OP_EQ;
 
-		if (!PyTuple_CheckExact(pTupleElement)) {
+		if (!PyTuple_CheckExact(p_tuple_element)) {
 			ERROR("%s - Tuple element %d of %s is not a tuple", funcname, i, list_name);
 			continue;
 		}
 		/* Check if it's a pair */
 
-		pairsize = PyTuple_GET_SIZE(pTupleElement);
-		if ((pairsize < 2) || (pairsize > 3)) {
+		pair_len = PyTuple_GET_SIZE(p_tuple_element);
+		if ((pair_len < 2) || (pair_len > 3)) {
 			ERROR("%s - Tuple element %d of %s is a tuple of size %zu. Must be 2 or 3",
-			      funcname, i, list_name, pairsize);
+			      funcname, i, list_name, pair_len);
 			continue;
 		}
 
-		pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
-		pStr2 = PyTuple_GET_ITEM(pTupleElement, pairsize-1);
+		p_str_1 = PyTuple_GET_ITEM(p_tuple_element, 0);
+		p_str_2 = PyTuple_GET_ITEM(p_tuple_element, pair_len - 1);
 
-		if ((!PyUnicode_CheckExact(pStr1)) || (!PyUnicode_CheckExact(pStr2))) {
+		if ((!PyUnicode_CheckExact(p_str_1)) || (!PyUnicode_CheckExact(p_str_2))) {
 			ERROR("%s - Tuple element %d of %s must be as (str, str)",
 			      funcname, i, list_name);
 			continue;
 		}
-		s1 = PyUnicode_AsUTF8(pStr1);
-		s2 = PyUnicode_AsUTF8(pStr2);
+		s1 = PyUnicode_AsUTF8(p_str_1);
+		s2 = PyUnicode_AsUTF8(p_str_2);
 
-		if (pairsize == 3) {
-			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
-			if (PyUnicode_CheckExact(pOp)) {
-				if (!(op = fr_table_value_by_str(fr_tokens_table, PyUnicode_AsUTF8(pOp), 0))) {
+		if (pair_len == 3) {
+			p_op = PyTuple_GET_ITEM(p_tuple_element, 1);
+			if (PyUnicode_CheckExact(p_op)) {
+				if (!(op = fr_table_value_by_str(fr_tokens_table, PyUnicode_AsUTF8(p_op), 0))) {
 					ERROR("%s - Invalid operator %s:%s %s %s, falling back to '='",
-					      funcname, list_name, s1, PyUnicode_AsUTF8(pOp), s2);
+					      funcname, list_name, s1, PyUnicode_AsUTF8(p_op), s2);
 					op = T_OP_EQ;
 				}
-			} else if (PyNumber_Check(pOp)) {
+			} else if (PyNumber_Check(p_op)) {
 				long py_op;
 
-				py_op = PyLong_AsLong(pOp);
+				py_op = PyLong_AsLong(p_op);
 				if (!fr_table_str_by_value(fr_tokens_table, py_op, NULL)) {
 					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
@@ -501,17 +501,14 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	return 0;
 }
 
-static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, PyObject *pFunc, char const *funcname)
+static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, PyObject *p_func, char const *funcname)
 {
 	fr_cursor_t	cursor;
 	VALUE_PAIR      *vp;
-	PyObject	*pRet = NULL;
-	PyObject	*pArgs = NULL;
-	int		tuplelen;
-	rlm_rcode_t	ret;
-
-	/* Default return value is "OK, continue" */
-	ret = RLM_MODULE_OK;
+	PyObject	*p_ret = NULL;
+	PyObject	*p_arg = NULL;
+	int		tuple_len;
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
 
 	/*
 	 *	We will pass a tuple containing (name, value) tuples
@@ -521,20 +518,20 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 	 *	Determine the size of our tuple by walking through the packet.
 	 *	If request is NULL, pass None.
 	 */
-	tuplelen = 0;
+	tuple_len = 0;
 	if (request != NULL) {
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) tuplelen++;
+		     vp = fr_cursor_next(&cursor)) tuple_len++;
 	}
 
-	if (tuplelen == 0) {
+	if (tuple_len == 0) {
 		Py_INCREF(Py_None);
-		pArgs = Py_None;
+		p_arg = Py_None;
 	} else {
 		int i = 0;
-		if ((pArgs = PyTuple_New(tuplelen)) == NULL) {
-			ret = RLM_MODULE_FAIL;
+		if ((p_arg = PyTuple_New(tuple_len)) == NULL) {
+			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
 
@@ -545,32 +542,32 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 
 			/* The inside tuple has two only: */
 			if ((pp = PyTuple_New(2)) == NULL) {
-				ret = RLM_MODULE_FAIL;
+				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
 
 			if (mod_populate_vptuple(pp, vp) == 0) {
 				/* Put the tuple inside the container */
-				PyTuple_SET_ITEM(pArgs, i, pp);
+				PyTuple_SET_ITEM(p_arg, i, pp);
 			} else {
 				Py_INCREF(Py_None);
-				PyTuple_SET_ITEM(pArgs, i, Py_None);
+				PyTuple_SET_ITEM(p_arg, i, Py_None);
 				Py_DECREF(pp);
 			}
 		}
 	}
 
 	/* Call Python function. */
-	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
-	if (!pRet) {
+	p_ret = PyObject_CallFunctionObjArgs(p_func, p_arg, NULL);
+	if (!p_ret) {
 		python_error_log(inst, request); /* Needs valid thread with GIL */
-		ret = RLM_MODULE_FAIL;
+		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
 
 	if (!request) {
 		// check return code at module instantiation time
-		if (PyNumber_Check(pRet)) ret = PyLong_AsLong(pRet);
+		if (PyNumber_Check(p_ret)) rcode = PyLong_AsLong(p_ret);
 		goto finish;
 	}
 
@@ -587,62 +584,50 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 	 *
 	 * xxx This code is messy!
 	 */
-	if (PyTuple_CheckExact(pRet)) {
-		PyObject *pTupleInt;
+	if (PyTuple_CheckExact(p_ret)) {
+		PyObject *p_tuple_int;
 
-		if (PyTuple_GET_SIZE(pRet) != 3) {
-			ERROR("%s - Tuple must be (return, replyTuple, configTuple)", funcname);
-			ret = RLM_MODULE_FAIL;
+		if (PyTuple_GET_SIZE(p_ret) != 3) {
+			ERROR("%s - Tuple must be (rcodeurn, replyTuple, configTuple)", funcname);
+			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
 
-		pTupleInt = PyTuple_GET_ITEM(pRet, 0);
-		if (!PyNumber_Check(pTupleInt)) {
+		p_tuple_int = PyTuple_GET_ITEM(p_ret, 0);
+		if (!PyNumber_Check(p_tuple_int)) {
 			ERROR("%s - First tuple element not an integer", funcname);
-			ret = RLM_MODULE_FAIL;
+			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
-		/* Now have the return value */
-		ret = PyLong_AsLong(pTupleInt);
+		/* Now have the rcodeurn value */
+		rcode = PyLong_AsLong(p_tuple_int);
 		/* Reply item tuple */
 		mod_vptuple(request->reply, inst, request, &request->reply->vps,
-			    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
+			    PyTuple_GET_ITEM(p_ret, 1), funcname, "reply");
 		/* Config item tuple */
 		mod_vptuple(request, inst, request, &request->control,
-			    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
+			    PyTuple_GET_ITEM(p_ret, 2), funcname, "config");
 
-	} else if (PyNumber_Check(pRet)) {
+	} else if (PyNumber_Check(p_ret)) {
 		/* Just an integer */
-		ret = PyLong_AsLong(pRet);
+		rcode = PyLong_AsLong(p_ret);
 
-	} else if (pRet == Py_None) {
-		/* returned 'None', return value defaults to "OK, continue." */
-		ret = RLM_MODULE_OK;
+	} else if (p_ret == Py_None) {
+		/* rcodeurned 'None', rcodeurn value defaults to "OK, continue." */
+		rcode = RLM_MODULE_OK;
 	} else {
 		/* Not tuple or None */
-		ERROR("%s - Function did not return a tuple or None", funcname);
-		ret = RLM_MODULE_FAIL;
+		ERROR("%s - Function did not rcodeurn a tuple or None", funcname);
+		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
 
 finish:
+	if (rcode == RLM_MODULE_FAIL) python_error_log(inst, request);
+	Py_XDECREF(p_arg);
+	Py_XDECREF(p_ret);
 
-	switch (ret) {
-	case RLM_MODULE_FAIL:
-	case RLM_MODULE_REJECT:
-	case RLM_MODULE_USERLOCK:
-	case RLM_MODULE_YIELD:
-		python_error_log(inst, request);
-		break;
-
-	default:
-		rad_assert(1);
-	}
-
-	Py_XDECREF(pArgs);
-	Py_XDECREF(pRet);
-
-	return ret;
+	return rcode;
 }
 
 /** Thread safe call to a python function
@@ -650,19 +635,19 @@ finish:
  * Will swap in thread state specific to module/thread.
  */
 static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this_thread,
-			     REQUEST *request, PyObject *pFunc, char const *funcname)
+			     REQUEST *request, PyObject *p_func, char const *funcname)
 {
 	rlm_rcode_t		rcode;
 
 	/*
 	 *	It's a NOOP if the function wasn't defined
 	 */
-	if (!pFunc) return RLM_MODULE_NOOP;
+	if (!p_func) return RLM_MODULE_NOOP;
 
 	RDEBUG3("Using thread state %p/%p", inst, this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
-	rcode = do_python_single(inst, request, pFunc, funcname);
+	rcode = do_python_single(inst, request, p_func, funcname);
 	PyEval_SaveThread();
 
 	return rcode;
@@ -757,16 +742,16 @@ static void python_parse_config(rlm_python_t *inst, CONF_SECTION *cs, int lvl, P
 		 *  Then recursively call python_parse_config with this section and the new dict.
 		 */
 		if (cf_item_is_section(ci)) {
-			CONF_SECTION *sub_cs = cf_item_to_section(ci);
-			char const *key = cf_section_name1(sub_cs); /* dict key */
-			PyObject *sub_dict, *pKey;
+			CONF_SECTION	*sub_cs = cf_item_to_section(ci);
+			char const	*key = cf_section_name1(sub_cs); /* dict key */
+			PyObject	*sub_dict, *p_key;
 
 			if (!key) continue;
 
-			pKey = PyUnicode_FromString(key);
-			if (!pKey) continue;
+			p_key = PyUnicode_FromString(key);
+			if (!p_key) continue;
 
-			if (PyDict_Contains(dict, pKey)) {
+			if (PyDict_Contains(dict, p_key)) {
 				WARN("Ignoring duplicate config section '%s'", key);
 				continue;
 			}
@@ -775,31 +760,31 @@ static void python_parse_config(rlm_python_t *inst, CONF_SECTION *cs, int lvl, P
 				WARN("Unable to create subdict for config section '%s'", key);
 			}
 
-			(void)PyDict_SetItem(dict, pKey, sub_dict);
+			(void)PyDict_SetItem(dict, p_key, sub_dict);
 
 			python_parse_config(inst, sub_cs, lvl + 1, sub_dict);
 		} else if (cf_item_is_pair(ci)) {
-			CONF_PAIR *cp = cf_item_to_pair(ci);
-			char const  *key = cf_pair_attr(cp); /* dict key */
-			char const  *value = cf_pair_value(cp); /* dict value */
-			PyObject *pKey, *pValue;
+			CONF_PAIR	*cp = cf_item_to_pair(ci);
+			char const	*key = cf_pair_attr(cp); /* dict key */
+			char const	*value = cf_pair_value(cp); /* dict value */
+			PyObject	*p_key, *p_value;
 
 			if (!key || !value) continue;
 
-			pKey = PyUnicode_FromString(key);
-			pValue = PyUnicode_FromString(value);
-			if (!pKey || !pValue) continue;
+			p_key = PyUnicode_FromString(key);
+			p_value = PyUnicode_FromString(value);
+			if (!p_key || !p_value) continue;
 
 			/*
 			 *  This is an item.
 			 *  Store item attr / value in current dict.
 			 */
-			if (PyDict_Contains(dict, pKey)) {
+			if (PyDict_Contains(dict, p_key)) {
 				WARN("Ignoring duplicate config item '%s'", key);
 				continue;
 			}
 
-			(void)PyDict_SetItem(dict, pKey, pValue);
+			(void)PyDict_SetItem(dict, p_key, p_value);
 
 			DEBUG("%*s%s = %s", indent_item, " ", key, value);
 		}
