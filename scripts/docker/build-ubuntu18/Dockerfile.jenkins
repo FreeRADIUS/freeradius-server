@@ -1,7 +1,7 @@
 ARG from=freeradius/ubuntu18-deps
 FROM ${from}
 
-ARG osname=xenial
+ARG osname=bionic
 
 ARG DEBIAN_FRONTEND=noninteractive
 
