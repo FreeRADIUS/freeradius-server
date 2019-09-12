@@ -1093,12 +1093,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Call the instantiate function.
 	 */
-	code = do_python_single(inst, NULL, inst->instantiate.function, "instantiate");
-	if (code == RLM_MODULE_FAIL) {
-	error:
-		python_error_log(inst);	/* Needs valid thread with GIL */
-		fr_cond_assert(PyEval_SaveThread() == inst->interpreter);
-		return -1;
+	if (inst->instantiate.function) {
+		code = do_python_single(inst, NULL, inst->instantiate.function, "instantiate");
+		if (code == RLM_MODULE_FAIL) {
+		error:
+			python_error_log(inst);	/* Needs valid thread with GIL */
+			fr_cond_assert(PyEval_SaveThread() == inst->interpreter);
+			return -1;
+		}
 	}
 
 	/*
