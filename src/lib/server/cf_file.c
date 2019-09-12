@@ -756,14 +756,11 @@ static bool invalid_location(CONF_SECTION *parent, char const *name, char const 
 static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *token, char *buffer, size_t buflen,
 			char const *filename, int lineno)
 {
-	char quote;
 	char const *ptr = *ptr_p;
 	ssize_t slen;
 	char const *error;
 	char const *out;
 	size_t outlen;
-
-	quote = *ptr;
 
 	/*
 	 *	Discover the string content, returning what kind of
