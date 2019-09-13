@@ -5,6 +5,7 @@
 *.p12
 *.old
 *.attr
+*.crl
 dh
 index.txt
 random
