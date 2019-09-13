@@ -15,7 +15,7 @@ def instantiate(p):
 def authorize(p):
   print("*** authorize ***")
   print("")
-  radiusd.radlog(radiusd.L_INFO, '*** radlog call in authorize ***')
+  radiusd.log(radiusd.L_INFO, '*** log call in authorize ***')
   print("")
   print(p)
   print("")
@@ -30,7 +30,7 @@ def preacct(p):
 
 def accounting(p):
   print("*** accounting ***")
-  radiusd.radlog(radiusd.L_INFO, '*** radlog call in accounting (0) ***')
+  radiusd.log(radiusd.L_INFO, '*** log call in accounting (0) ***')
   print("")
   print(p)
   return radiusd.RLM_MODULE_OK
