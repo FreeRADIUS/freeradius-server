@@ -448,6 +448,10 @@ int		tls_log_error(REQUEST *request, char const *msg, ...) CC_HINT(format (print
 int		tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
 				 CC_HINT(format (printf, 4, 5));
 
+#define		tls_log_certificate_chain(_request, _chain, _cert) \
+		_tls_log_certificate_chain( __FILE__, __LINE__, _request, _chain, _cert)
+void		_tls_log_certificate_chain(char const *file, int line,
+					   REQUEST *request, STACK_OF(X509) *chain, X509 *cert);
 /*
  *	tls/ocsp.c
  */

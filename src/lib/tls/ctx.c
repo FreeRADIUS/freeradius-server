@@ -257,16 +257,6 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 	return 0;
 }
 
-static void _tls_ctx_print_cert_line(int index, X509 *cert)
-{
-	char		subject[1024];
-
-	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
-	subject[sizeof(subject) - 1] = '\0';
-
-	DEBUG3("[%i] %s %s", index, tls_utils_x509_pkey_type(cert), subject);
-}
-
 /** Create SSL context
  *
  * - Load the trusted CAs
@@ -530,7 +520,6 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			     ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_NEXT)) {
 			     	STACK_OF(X509)	*our_chain;
 				X509		*our_cert;
-				int		i;
 
 				our_cert = SSL_CTX_get0_certificate(ctx);
 
@@ -545,10 +534,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 					goto error;
 				}
 
-				for (i = sk_X509_num(our_chain); i > 0 ; i--) {
-					_tls_ctx_print_cert_line(i, sk_X509_value(our_chain, i - 1));
-				}
-				_tls_ctx_print_cert_line(i, our_cert);
+				if (DEBUG_ENABLED3) tls_log_certificate_chain(NULL, our_chain, our_cert);
 			}
 			(void)SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);	/* Reset */
 		}

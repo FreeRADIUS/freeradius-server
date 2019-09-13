@@ -220,10 +220,60 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		goto error;
 	}
 
-	if ((X509_STORE_CTX_get1_issuer(&issuer_cert, server_store_ctx, cert) != 1) || !issuer_cert) {
-		tls_log_error(request, "Can't get server certificate's issuer");
+	/*
+	 *	Print out the current chain in the certificate store
+	 *	to help with debugging issues where we can't find the
+	 *	server cert.
+	 */
+	if (RDEBUG_ENABLED3) {
+		STACK_OF(X509)	*chain;
+
+		RDEBUG3("Current SSL session cert store contents");
+		chain = X509_STORE_CTX_get_chain(server_store_ctx);
+		RINDENT();
+		tls_log_certificate_chain(request, chain, cert);
+		REXDENT();
+	}
+
+	ret = X509_STORE_CTX_get1_issuer(&issuer_cert, server_store_ctx, cert);
+	if (ret != 1) {
+		X509_NAME	*subject;
+		X509_NAME	*issuer = X509_get_issuer_name(cert);
+		char		*subject_str;
+		char		*issuer_str;
+
+ 		subject = X509_get_subject_name(cert);
+		if (!subject) {
+			tls_log_error(request, "Couldn't retrieve subject name of SSL session cert");
+			goto error;
+		}
+		MEM(subject_str = X509_NAME_oneline(subject, NULL, 0));
+
+		issuer = X509_get_issuer_name(cert);
+		if (!issuer) {
+			tls_log_error(request, "Couldn't retrieve issuer name of SSL session cert");
+			OPENSSL_free(subject_str);
+			goto error;
+		}
+		MEM(issuer_str = X509_NAME_oneline(issuer, NULL, 0));
+
+		switch (ret) {
+		case 0:
+			tls_log_error(request, "Issuer \"%s\" of \"%s\" not found in certificate store",
+				      issuer_str, subject_str);
+			break;
+		default:
+			tls_log_error(request, "Error retrieving issuer \"%s\" of \"%s\" from certificate store",
+				      issuer_str, subject_str);
+			break;
+		}
+
+		OPENSSL_free(subject_str);
+		OPENSSL_free(issuer_str);
 		goto error;
 	}
+
+	rad_assert(issuer_cert);
 
 	ret = tls_ocsp_check(request, ssl, server_store, issuer_cert, cert, conf, true);
 	switch (ret) {

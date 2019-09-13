@@ -237,6 +237,43 @@ int tls_strerror_printf(char const *msg, ...)
 	return ret;
 }
 
+static void _tls_ctx_print_cert_line(char const *file, int line,
+				     REQUEST *request, int index, X509 *cert)
+{
+	char		subject[1024];
+
+	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
+	subject[sizeof(subject) - 1] = '\0';
+
+	if (request) {
+		log_request(L_DBG, fr_debug_lvl, request, file, line,
+			    "[%i] %s %s", index, tls_utils_x509_pkey_type(cert), subject);
+	} else {
+		fr_log(LOG_DST, fr_debug_lvl, file, line,
+		       "[%i] %s %s", index, tls_utils_x509_pkey_type(cert), subject);
+	}
+}
+
+/** Print out the current stack of certs
+ *
+ * @param[in] file	File where this function is being called.
+ * @param[in] line	Line where this function is being called.
+ * @param[in] request	Current request, may be NULL.
+ * @param[in] chain	The certificate chain.
+ * @param[in] cert	The leaf certificate.
+ */
+void _tls_log_certificate_chain(char const *file, int line,
+				REQUEST *request, STACK_OF(X509) *chain, X509 *cert)
+{
+	int i;
+
+	for (i = sk_X509_num(chain); i > 0 ; i--) {
+		_tls_ctx_print_cert_line(file, line, request, i, sk_X509_value(chain, i - 1));
+	}
+	_tls_ctx_print_cert_line(file, line, request, i, cert);
+}
+
+
 /** Print errors raised by OpenSSL I/O functions
  *
  * Drains the thread local OpenSSL error queue, and prints out errors
