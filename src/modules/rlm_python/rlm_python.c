@@ -664,7 +664,7 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
 	rcode = do_python_single(inst, request, p_func, funcname);
-	PyEval_SaveThread();
+	(void)fr_cond_assert(PyEval_SaveThread() == this_thread->state);
 
 	return rcode;
 }
