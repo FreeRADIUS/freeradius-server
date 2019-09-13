@@ -238,7 +238,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	ret = X509_STORE_CTX_get1_issuer(&issuer_cert, server_store_ctx, cert);
 	if (ret != 1) {
 		X509_NAME	*subject;
-		X509_NAME	*issuer = X509_get_issuer_name(cert);
+		X509_NAME	*issuer;
 		char		*subject_str;
 		char		*issuer_str;
 
