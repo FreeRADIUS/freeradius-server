@@ -824,10 +824,8 @@ static int python_module_import_config(rlm_python_t *inst, CONF_SECTION *conf, P
 	if (!inst->pythonconf_dict) {
 		ERROR("Unable to create python dict for config");
 	error:
-		if (inst->pythonconf_dict) {
-			Py_DecRef(inst->pythonconf_dict);
-			inst->pythonconf_dict = NULL;
-		}
+		Py_XDECREF(inst->pythonconf_dict);
+		inst->pythonconf_dict = NULL;
 		python_error_log(inst, NULL);
 		return -1;
 	}
@@ -918,7 +916,7 @@ static PyObject *python_module_init(void)
 
 	if ((python_module_import_config(inst, conf, module) < 0) ||
 	    (python_module_import_constants(inst, module) < 0)) {
-		Py_DecRef(module);
+		Py_DECREF(module);
 		return NULL;
 	}
 
@@ -1000,14 +998,17 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 *	with Python C extensions if they use GIL lock functions.
 	 */
 	if (!inst->single_interpreter_mode || !global_module) {
+		PyObject	*module;
+
 		/*
 		 *	Initialise a new Python 2.7 module, with our default methods
 		 */
-		inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
-		if (!inst->module) {
+		module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
+		if (!module) {
 			ERROR("Failed creating module");
 			python_error_log(inst, NULL);
 		error:
+			Py_XDECREF(module);
 			PyEval_SaveThread();
 			return -1;
 		}
@@ -1017,17 +1018,19 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 *	module is owned by sys.modules, so we also need
 		 *	to own the module to prevent it being freed early.
 		 */
-		Py_IncRef(inst->module);
+		Py_INCREF(module);
 
-		if ((python_module_import_config(inst, conf, inst->module) < 0) ||
-			(python_module_import_constants(inst, inst->module) < 0)) goto error;
+		if ((python_module_import_config(inst, conf, module) < 0) ||
+		    (python_module_import_constants(inst, module) < 0)) goto error;
 
-		if (inst->single_interpreter_mode) global_module = inst->module;
+		if (inst->single_interpreter_mode) global_module = module;
+
+		inst->module = module;
 	} else {
 		inst->module = global_module;
-		Py_IncRef(inst->module);
+		Py_INCREF(inst->module);
 		inst->pythonconf_dict = PyObject_GetAttrString(inst->module, "config");
-		Py_IncRef(inst->pythonconf_dict);
+		Py_INCREF(inst->pythonconf_dict);
 	}
 
 	path = python_path_build(inst, inst, conf);
@@ -1046,7 +1049,7 @@ static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
 	 *	We incremented the reference count earlier
 	 *	during module initialisation.
 	 */
-	Py_DecRef(inst->module);
+	Py_XDECREF(inst->module);
 
 	/*
 	 *	Only destroy if it's a subinterpreter
@@ -1168,7 +1171,7 @@ static int mod_detach(void *instance)
 #endif
 	PYTHON_FUNC_DESTROY(detach);
 
-	Py_DecRef(inst->pythonconf_dict);
+	Py_XDECREF(inst->pythonconf_dict);
 	PyEval_SaveThread();
 
 	/*
