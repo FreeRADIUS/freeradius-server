@@ -1004,10 +1004,18 @@ finish:
 
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
+ * @param[in,out] ctx		to allocate #vp_tmpl_t in.
+ * @param[out] err		May be NULL.  Provides the exact error that the parser hit
+ *				when processing the attribute ref.
+ * @param[out] out		Where to write pointer to new #vp_tmpl_t.
+ * @param[in] name		of attribute including #request_ref_t and #pair_list_t qualifiers.
+ *				If only #request_ref_t #pair_list_t qualifiers are found,
+ *				a #TMPL_TYPE_LIST #vp_tmpl_t will be produced.
+ * @param[in] name_len		Length of name, or -1 to do strlen()
+ * @param[in] rules		Rules which control parsing.  See tmpl_afrom_attr_substr() for details.
+ *
  * @note Unlike #tmpl_afrom_attr_substr this function will error out if the entire
  *	name string isn't parsed.
- *
- * @copydetails tmpl_afrom_attr_substr
  */
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			    vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
