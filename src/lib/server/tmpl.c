@@ -1011,7 +1011,6 @@ finish:
  * @param[in] name		of attribute including #request_ref_t and #pair_list_t qualifiers.
  *				If only #request_ref_t #pair_list_t qualifiers are found,
  *				a #TMPL_TYPE_LIST #vp_tmpl_t will be produced.
- * @param[in] name_len		Length of name, or -1 to do strlen()
  * @param[in] rules		Rules which control parsing.  See tmpl_afrom_attr_substr() for details.
  *
  * @note Unlike #tmpl_afrom_attr_substr this function will error out if the entire
