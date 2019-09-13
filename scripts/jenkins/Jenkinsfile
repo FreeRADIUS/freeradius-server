@@ -52,13 +52,16 @@ def buildClosures(arg) {
                         sh "cat /etc/os-release || cat /etc/redhat-release"
                         dir("${platform}/build") {
                             if (platform.contains("centos")) {
+                                sh 'export COMMIT_NUM=$(git describe --tags --long --match "release_*" --match "branch_*" | sed -e \'s/^.*-\\([0-9]*\\)-g[0-9a-f]*/\\1/\')  ; sed -i -e "s/^Release: .*$/Release: $COMMIT_NUM/" redhat/freeradius.spec'
+                                sh 'QA_RPATHS=0x0003 RADIUSD_VERSION_STRING=$(cat VERSION) make rpm'
                                 sh 'RADIUSD_VERSION_STRING=$(cat VERSION) make rpm'
                                 sh "mv rpmbuild/RPMS/x86_64/*.rpm .."
                             } else {
                                 sh "apt-get install -y unixodbc-dev"
                                 sh label: '', script: '''version=$(dpkg-parsechangelog | grep "^Version: " | awk \'{print $2}\')
+                                commit_num=$(git describe --tags --long --match "release_*"  --match "branch_*" | sed -e \'s/^.*-\\([0-9]*\\)-g[0-9a-f]*/\\1/\')
                                 commit_msg="$(git log --oneline -1 $GIT_COMMIT)"
-                                dch -b -v ${version}-${BUILD_NUMBER} "$commit_msg"'''
+                                dch -b -v ${version}-${commit_num} "$commit_msg"'''
                                 sh "make deb"
                             }
                         }
