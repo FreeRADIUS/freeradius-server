@@ -230,13 +230,12 @@ static PyObject *mod_log(UNUSED PyObject *module, PyObject *args)
 	char *msg;
 
 	if (!PyArg_ParseTuple(args, "is", &status, &msg)) {
-		return NULL;
+		Py_RETURN_NONE;
 	}
 
 	fr_log(&default_log, status, __FILE__, __LINE__, "%s", msg);
-	Py_INCREF(Py_None);
 
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 static PyMethodDef module_methods[] = {
@@ -712,7 +711,6 @@ static int python_function_load(rlm_python_t *inst, python_func_def_t *def)
 	LSAN_DISABLE(def->module = PyImport_ImportModule(def->module_name));
 	if (!def->module) {
 		ERROR("%s - Module '%s' load failed", funcname, def->module_name);
-
 	error:
 		python_error_log(inst, NULL);
 		Py_XDECREF(def->function);
@@ -911,13 +909,13 @@ static PyObject *python_module_init(void)
 	module = PyModule_Create(&py_module_def);
 	if (!module) {
 		python_error_log(inst, NULL);
-		return NULL;
+		Py_RETURN_NONE;
 	}
 
 	if ((python_module_import_config(inst, conf, module) < 0) ||
 	    (python_module_import_constants(inst, module) < 0)) {
 		Py_DECREF(module);
-		return NULL;
+		Py_RETURN_NONE;
 	}
 
 	return inst->module = module;
