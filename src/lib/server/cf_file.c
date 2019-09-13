@@ -1936,6 +1936,8 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 	char			name[8192];
 	char			*p;
 
+	if (!ptr || (!parent_cs && !outer_cs)) return NULL;
+
 	strlcpy(name, ptr, sizeof(name));
 
 	p = name;
