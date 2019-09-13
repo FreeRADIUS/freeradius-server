@@ -604,7 +604,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 		PyObject *p_tuple_int;
 
 		if (PyTuple_GET_SIZE(p_ret) != 3) {
-			ERROR("%s - Tuple must be (rcodeurn, replyTuple, configTuple)", funcname);
+			ERROR("%s - Tuple must be (return, replyTuple, configTuple)", funcname);
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -615,7 +615,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
-		/* Now have the rcodeurn value */
+		/* Now have the return value */
 		rcode = PyLong_AsLong(p_tuple_int);
 		/* Reply item tuple */
 		mod_vptuple(request->reply, inst, request, &request->reply->vps,
@@ -629,11 +629,11 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 		rcode = PyLong_AsLong(p_ret);
 
 	} else if (p_ret == Py_None) {
-		/* rcodeurned 'None', rcodeurn value defaults to "OK, continue." */
+		/* returned 'None', return value defaults to "OK, continue." */
 		rcode = RLM_MODULE_OK;
 	} else {
 		/* Not tuple or None */
-		ERROR("%s - Function did not rcodeurn a tuple or None", funcname);
+		ERROR("%s - Function did not return a tuple or None", funcname);
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
