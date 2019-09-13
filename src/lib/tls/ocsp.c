@@ -223,7 +223,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	/*
 	 *	Print out the current chain in the certificate store
 	 *	to help with debugging issues where we can't find the
-	 *	server cert.
+	 *	server cert's issuer.
 	 */
 	if (RDEBUG_ENABLED3) {
 		STACK_OF(X509)	*chain;
