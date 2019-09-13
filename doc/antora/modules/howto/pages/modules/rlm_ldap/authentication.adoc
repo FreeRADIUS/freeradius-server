@@ -1,96 +1,24 @@
-= LDAP
+= Integrating Novell eDirectory with FreeRADIUS
 
-FreeRADIUS can be configured to use LDAP for both authentication and
-authorization but not accounting.  Background concepts can be found in
-the xref:ROOT:modules/ldap.adoc[LDAP concepts] page.  We suggest
-beginning there, as the "howto" guides here assume that the reader is
-familiar with LDAP concepts.  That is, how LDAP servers work, how
-FreeRADIUS interacts with LDAP, what limitations exist, and why those
-limitations exist.
+== Overview
 
-Notes:
+You can integrate Novell eDirectoryTM 8.7.1 or later with FreeRADIUS
+1.0.2 onwards to allow wireless authentication for eDirectory users. By
+integrating eDirectory with FreeRADIUS, you can do the following:
 
- * in an Microsoft Active Directory environment you should use
-   `rlm_winbind` for authentication, and `rlm_ldap` for group
-   membership as described below.  The WinBind protocol cannot do the
-   full range of group checks that is possible with LDAP.
+* Use universal password for RADIUS authentication. Universal password
+provides single login and authentication for eDirectory users.
+Therefore, the users need not have a separate password for RADIUS and
+eDirectory authentication.
+* Enforce eDirectory account policies for users. The existing eDirectory
+policies on the user accounts can still be applied even after
+integrating with RADIUS. Also, you can make use of the intruder lockout
+facility of eDirectory by logging the failed logins into eDirectory.
 
- * not covered here, RADIUS profiles (see `raddb/mods-available/ldap`
-   and `src/tests/modules/ldap/example.com.ldif`) that can be used to
-   store logic you would normally place in your `users` file in LDAP
-
- * not covered here, dynamic clients (see
-   `raddb/sites-available/dynamic-clients` and
-   `src/tests/modules/ldap/example.com.ldif`) can also use and be
-   stored in LDAP
-
-== Preparation
-
-In order to use LDAP, there must be an existing LDAP server populated
-with users, and possibly groups.  If there is not a local LDAP server,
-then it is possible to install one via a
-xref:modules/ldap_docker.adoc[docker] image.
-
-Once an LDAP server is available, it is critical that it is tested via
-the command-line xref:modules/ldap_search.adoc[ldapsearch] tool.  If
-testing via `ldapsearch` fails, then that has to debugged before
-configuring FreeRADIUS.
-
-=== Configuring the LDAP module
-
-Once the xref:modules/ldap_search.adoc[ldapsearch] validation tests
-pass, the next step is to
-xref:modules/ldap_configuration.adoc[configure the LDAP module].  The
-xref:raddb:modules/ldap.adoc[mods-available/ldap] page describes the
-configuration items for the module.
-
-The configuration step should be little more than copying the
-parameters used by xref:modules/ldap_search.adoc[ldapsearch] to the
-xref:raddb:mods-available/ldap.adoc[ldap module] configuration file.
-
-== Authentication
-
-Please see the xref:ROOT:modules/ldap_authentication.adoc[LDAP
-authentication] concepts page for a full list of the limitations
-when using LDAP for user authentication.
-
-=== Authorization
-
-==== Group Membership
-
-Depending on the LDAP vendor you use, LDAP group membership is either
-handled using the LDAP attributes:
-
- . *`member`:* LDAP object (for example with `objectClass` set to `groupOfNames`) that has LDAP `member` attributes listing the DNs of the user objects that are a member of the group
- . *`memberOf`:* LDAP attribute (for example called `memberOf`) in the user object that lists all the groups the user is a member of
-
-Your LDAP server may utilise both, though you should check if it automatically keeps these two methods in sync server side.
-
-To check for the first method use:
-
-[source,shell]
-----
-ldapsearch -H ldaps://ldap.example.com:686 -x -D cn=freeradius,dc=example,dc=com -w mypassword -b ou=groups,dc=example,dc=com -z 10 '(objectClass=groupOfNames)' objectClass cn member
-----
-
-Where you replace the following as appropriately:
-
- * *`ou=groups,dc=example,dc=com`:* top branch ('base') of your LDAP tree where users are to be found
- * *`(objectClass=groupOfNames)`:*
-    http://www.zytrax.com/books/ldap/apa/search.html[search filter]
-    that captures your users (this is the LDAP equivalent of the
-    `WHERE` clause in SQL)
-
-If you see no results, then it may be that your LDAP server utilises
-the second method, so you can alternatively re-inspect the output of
-the authentication user output `ldapsearch` you used initially for
-LDAP `memberOf` attributes.
-
-Once you have determined what you need to use, make a note of it for later.
-
+For configuration information please refer to the Novell documentation
+https://www.netiq.com/documentation/edir_radius/
 
 == Testing
-
 === Authentication
 
 Now in another terminal window run on the FreeRADIUS server to test authentication:
@@ -103,7 +31,7 @@ User-Password = "password"
 EOF
 ----
 
-==== `Access-Accept`
+==== Access-Accept
 
 If this works you should see `radclient` report `Access-Accept` almostly immediately without delay:
 
@@ -302,31 +230,3 @@ Here FreeRADIUS is describes it:
  ** attemps to LDAP bind as `uid=john,ou=people,dc=example,dc=com`
  ** successful so `ok` is returned
  . we return `Access-Accept` as `ok` was returned to unlang
-
-=== Authorization
-
-If you wish to restrict the user so that they can only authenticate depending on an LDAP group membership, edit `/usr/local/etc/raddb/sites-available/default` so that under `recv Access-Request { ... }` the call out to the `ldap` module looks like:
-
-[source,unlang]
-----
--ldap
-if (ok || updated) {
-    if (!(ldap-Group == 'foo')) {
-        update {
-            &Reply-Message := "Not a member of the foo LDAP group"
-        }
-        reject
-    }
-
-# uncomment if you use LDAP bind's for authentication
-#    if (&User-Password) {
-#        update {
-#            &control:Auth-Type := ldap
-#        }
-#    }
-}
-----
-
-This restricts only LDAP users that are members of the LDAP `foo` group to connect.
-
-If this fails to work recheck the `group { ... }` section in `raddb/mods-available/ldap` as you may have a filter or attribute configuration set incorrectly.

@@ -1,4 +1,4 @@
 * xref:index.adoc[Introduction]
 ** xref:aaa.adoc[AAA]
-** xref:modules/ldap.adoc[LDAP]
+** xref:modules/rlm_ldap/index.adoc[LDAP]
 *** xref:modules/ldap_authentication.adoc[LDAP]

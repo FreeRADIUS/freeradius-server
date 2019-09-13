@@ -1,0 +1,65 @@
+= rlm_ldap - Authorization
+=== Group Membership
+
+Depending on the LDAP vendor you use, LDAP group membership is either handled
+using the LDAP attributes:
+
+ . *`member`:* LDAP object (for example with `objectClass` set to
+ `groupOfNames`) that has LDAP `member` attributes listing the DNs of the user
+ objects that are a member of the group . *`memberOf`:* LDAP attribute (for
+ example called `memberOf`) in the user object that lists all the groups the
+ user is a member of
+
+Your LDAP server may utilise both, though you should check if it automatically
+keeps these two methods in sync server side.
+
+To check for the first method use:
+
+[source,shell]
+----
+ldapsearch -H ldaps://ldap.example.com:686 -x -D cn=freeradius,dc=example,dc=com -w mypassword -b ou=groups,dc=example,dc=com -z 10 '(objectClass=groupOfNames)' objectClass cn member
+----
+
+Where you replace the following as appropriately:
+
+ * *`ou=groups,dc=example,dc=com`:* top branch ('base') of your LDAP tree where users are to be found
+ * *`(objectClass=groupOfNames)`:*
+    http://www.zytrax.com/books/ldap/apa/search.html[search filter]
+    that captures your users (this is the LDAP equivalent of the
+    `WHERE` clause in SQL)
+
+If you see no results, then it may be that your LDAP server utilises
+the second method, so you can alternatively re-inspect the output of
+the authentication user output `ldapsearch` you used initially for
+LDAP `memberOf` attributes.
+
+Once you have determined what you need to use, make a note of it for later.
+
+== Testing
+=== Authorization
+
+If you wish to restrict the user so that they can only authenticate depending on an LDAP group membership, edit `/usr/local/etc/raddb/sites-available/default` so that under `recv Access-Request { ... }` the call out to the `ldap` module looks like:
+
+[source,unlang]
+----
+-ldap
+if (ok || updated) {
+    if (!(ldap-Group == 'foo')) {
+        update {
+            &Reply-Message := "Not a member of the foo LDAP group"
+        }
+        reject
+    }
+
+# uncomment if you use LDAP bind's for authentication
+#    if (&User-Password) {
+#        update {
+#            &control:Auth-Type := ldap
+#        }
+#    }
+}
+----
+
+This restricts only LDAP users that are members of the LDAP `foo` group to connect.
+
+If this fails to work recheck the `group { ... }` section in `raddb/mods-available/ldap` as you may have a filter or attribute configuration set incorrectly.
