@@ -1,13 +1,12 @@
 platforms = ["centos7", "debian9", "ubuntu16", "ubuntu18"]
 
 /*  The detectChanges function looks at the last git commit and searches for changes to
-*   "redhat/freeradius.spec" or anything in the "debian" directory.  If it 
-*   finds any changes to those files it returns the string " --no-cache " 
-*   which can be fed to a docker build command to tell docker to rebuild 
-*   the image from scratch so that it can pick up any new dependencies 
-*   specified in those package manifest files
-*/
-
+ *   "redhat/freeradius.spec" or anything in the "debian" directory.  If it
+ *   finds any changes to those files it returns the string " --no-cache "
+ *   which can be fed to a docker build command to tell docker to rebuild
+ *   the image from scratch so that it can pick up any new dependencies
+ *   specified in those package manifest files
+ */
 def detectChanges() {
     def string = ""
     def changeLogSets = currentBuild.changeSets
@@ -30,13 +29,12 @@ def detectChanges() {
 }
 
 /*
-*  The buildClosures function is the core function of the script and uses 
-*  function currying to be able to pass multiple dynamically generated 
-*  jenkins build commands into a jenkins parallel block.
-*  This function ensures that the docker image is built and builds 
-*  FreeRADIUS packages inside the docker image
-*/
-
+ *  The buildClosures function is the core function of the script and uses
+ *  function currying to be able to pass multiple dynamically generated
+ *  jenkins build commands into a jenkins parallel block.
+ *  This function ensures that the docker image is built and builds
+ *  FreeRADIUS packages inside the docker image
+ */
 def buildClosures(arg) {
     println arg.inspect()
     def platforms = arg
