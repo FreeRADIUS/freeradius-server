@@ -32,6 +32,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 static uint64_t	libmagic = RADIUSD_MAGIC_NUMBER;
 char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
 
+static CONF_SECTION *default_feature_cs;		//!< Default configuration section to add features to.
+static CONF_SECTION *default_version_cs;		//!< Default configuration section to add features to.
+
 #ifdef HAVE_OPENSSL_CRYPTO_H
 #  include <openssl/crypto.h>
 #  include <openssl/opensslv.h>
@@ -42,8 +45,6 @@ char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
 #endif
 
 static long ssl_built = OPENSSL_VERSION_NUMBER;
-static CONF_SECTION *default_feature_cs;		//!< Default configuration section to add features to.
-static CONF_SECTION *default_version_cs;		//!< Default configuration section to add features to.
 
 /** Check built and linked versions of OpenSSL match
  *
