@@ -408,9 +408,6 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 /*
  *	This is the core Python function that the others wrap around.
  *	Pass the value-pair print strings in a tuple.
- *
- *	FIXME: We're not checking the errors. If we have errors, what
- *	do we do?
  */
 static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyObject *pp, VALUE_PAIR *vp)
 {
@@ -418,7 +415,6 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 	PyObject *value = NULL;
 
 	/* Look at the fr_pair_fprint_name? */
-
 	if (vp->da->flags.has_tag) {
 		attribute = PyUnicode_FromFormat("%s:%d", vp->da->name, vp->tag);
 	} else {
@@ -510,6 +506,7 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 	if (value == NULL) {
 		ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
 		python_error_log(inst, request);
+		Py_XDECREF(attribute);
 		return -1;
 	}
 
