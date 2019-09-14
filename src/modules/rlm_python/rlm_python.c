@@ -427,8 +427,6 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 
 	if (!attribute) return -1;
 
-	PyTuple_SET_ITEM(pp, 0, attribute);
-
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
 		value = PyUnicode_FromStringAndSize(vp->vp_strvalue, vp->vp_length);
@@ -514,6 +512,8 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 		python_error_log(inst, request);
 		return -1;
 	}
+
+	PyTuple_SET_ITEM(pp, 0, attribute);
 	PyTuple_SET_ITEM(pp, 1, value);
 
 	return 0;
