@@ -404,7 +404,6 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 	}
 }
 
-
 /*
  *	This is the core Python function that the others wrap around.
  *	Pass the value-pair print strings in a tuple.
@@ -412,7 +411,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
  *	FIXME: We're not checking the errors. If we have errors, what
  *	do we do?
  */
-static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
+static int mod_populate_vptuple(rlm_python_t const *inst, PyObject *pp, VALUE_PAIR *vp)
 {
 	PyObject *attribute = NULL;
 	PyObject *value = NULL;
@@ -427,7 +426,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 
 	if (!attribute) return -1;
 
-	PyTuple_SET_ITEM(pp, 0, attribute);
+	PyTuple_SetItem(pp, 0, attribute);
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
@@ -509,9 +508,12 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		return -1;
 	}
 
-	if (value == NULL) return -1;
+	if (value == NULL) {
+		ERROR("Problems to decode %s", vp->da->name);
+		return -1;
+	}
 
-	PyTuple_SET_ITEM(pp, 1, value);
+	PyTuple_SetItem(pp, 1, value);
 
 	return 0;
 }
@@ -561,7 +563,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 				goto finish;
 			}
 
-			if (mod_populate_vptuple(pp, vp) == 0) {
+			if (mod_populate_vptuple(inst, pp, vp) == 0) {
 				/* Put the tuple inside the container */
 				PyTuple_SET_ITEM(p_arg, i, pp);
 			} else {
