@@ -1,0 +1,15 @@
+# Should return noop (no shared variable set)
+pmod_shared_storage
+if (noop) {
+	test_pass
+} else {
+	test_fail
+}
+
+# Should return ok (shared variable set)
+pmod_shared_storage
+if (ok) {
+	test_fail
+} else {
+	test_pass
+}
