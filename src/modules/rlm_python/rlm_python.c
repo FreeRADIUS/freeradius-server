@@ -739,13 +739,14 @@ static int python_function_load(rlm_python_t *inst, python_func_def_t *def)
  *	Parse a configuration section, and populate a dict.
  *	This function is recursively called (allows to have nested dicts.)
  */
-static void python_parse_config(rlm_python_t *inst, CONF_SECTION *cs, int lvl, PyObject *dict)
+static int python_parse_config(rlm_python_t *inst, CONF_SECTION *cs, int lvl, PyObject *dict)
 {
-	int		indent_section = (lvl + 1) * 4;
-	int		indent_item = (lvl + 2) * 4;
+	int		indent_section = (lvl * 4);
+	int		indent_item = (lvl + 1) * 4;
+	int		ret = 0;
 	CONF_ITEM	*ci = NULL;
 
-	if (!cs || !dict) return;
+	if (!cs || !dict) return -1;
 
 	DEBUG("%*s%s {", indent_section, " ", cf_section_name1(cs));
 
@@ -760,34 +761,43 @@ static void python_parse_config(rlm_python_t *inst, CONF_SECTION *cs, int lvl, P
 			char const	*key = cf_section_name1(sub_cs); /* dict key */
 			PyObject	*sub_dict, *p_key;
 
-			if (!key) continue;
-
 			p_key = PyUnicode_FromString(key);
-			if (!p_key) continue;
+			if (!p_key) {
+				ERROR("Failed converting config key \"%s\" to python string", key);
+				return -1;
+			}
 
 			if (PyDict_Contains(dict, p_key)) {
 				WARN("Ignoring duplicate config section '%s'", key);
 				continue;
 			}
 
-			if (!(sub_dict = PyDict_New())) {
-				WARN("Unable to create subdict for config section '%s'", key);
-			}
-
+			MEM(sub_dict = PyDict_New());
 			(void)PyDict_SetItem(dict, p_key, sub_dict);
 
-			python_parse_config(inst, sub_cs, lvl + 1, sub_dict);
+			ret = python_parse_config(inst, sub_cs, lvl + 1, sub_dict);
+			if (ret < 0) break;
 		} else if (cf_item_is_pair(ci)) {
 			CONF_PAIR	*cp = cf_item_to_pair(ci);
 			char const	*key = cf_pair_attr(cp); /* dict key */
 			char const	*value = cf_pair_value(cp); /* dict value */
 			PyObject	*p_key, *p_value;
 
-			if (!key || !value) continue;
+			if (!value) {
+				WARN("Skipping \"%s\" as it has no value", key);
+				continue;
+			}
 
 			p_key = PyUnicode_FromString(key);
 			p_value = PyUnicode_FromString(value);
-			if (!p_key || !p_value) continue;
+			if (!p_key) {
+				ERROR("Failed converting config key \"%s\" to python string", key);
+				return -1;
+			}
+			if (!p_value) {
+				ERROR("Failed converting config value \"%s\" to python string", value);
+				return -1;
+			}
 
 			/*
 			 *  This is an item.
@@ -800,11 +810,13 @@ static void python_parse_config(rlm_python_t *inst, CONF_SECTION *cs, int lvl, P
 
 			(void)PyDict_SetItem(dict, p_key, p_value);
 
-			DEBUG("%*s%s = %s", indent_item, " ", key, value);
+			DEBUG("%*s%s = \"%s\"", indent_item, " ", key, value);
 		}
 	}
 
 	DEBUG("%*s}", indent_section, " ");
+
+	return ret;
 }
 
 /** Make the current instance's config available within the module we're initialising
@@ -829,7 +841,10 @@ static int python_module_import_config(rlm_python_t *inst, CONF_SECTION *conf, P
 	}
 
 	cs = cf_section_find(conf, "config", NULL);
-	if (cs) python_parse_config(inst, cs, 0, inst->pythonconf_dict);
+	if (cs) {
+		DEBUG("Inserting \"config\" section into python environment as radiusd.config");
+		if (python_parse_config(inst, cs, 0, inst->pythonconf_dict) < 0) goto error;
+	}
 
 	/*
 	 *	Add module configuration as a dict
@@ -906,24 +921,21 @@ static PyObject *python_module_init(void)
 		NULL,				/* m_free */
 	};
 
+	rad_assert(inst && conf);
+
 	module = PyModule_Create(&py_module_def);
 	if (!module) {
 		python_error_log(inst, NULL);
 		Py_RETURN_NONE;
 	}
 
-	if ((python_module_import_config(inst, conf, module) < 0) ||
-	    (python_module_import_constants(inst, module) < 0)) {
-		Py_DECREF(module);
-		Py_RETURN_NONE;
-	}
-
-	return inst->module = module;
+	return module;
 }
 
 static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 {
-	char	*path;
+	char		*path;
+	PyObject	*module;
 
 	/*
 	 *	python_module_init takes no args, so we need
@@ -951,6 +963,23 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	talloc_free(path);
 	PySys_SetPath(inst->wide_path);
 
+	/*
+	 *	Import the radiusd module into this python
+	 *	environment.  Each interpreter gets its
+	 *	own copy which it can mutate as much as
+	 *      it wants.
+	 */
+ 	module = PyImport_ImportModule("radiusd");
+ 	if (!module) {
+ 		ERROR("Failed importing \"radiusd\" module into interpreter %p", inst->interpreter);
+ 		return -1;
+ 	}
+	if ((python_module_import_config(inst, conf, module) < 0) ||
+	    (python_module_import_constants(inst, module) < 0)) {
+		Py_DECREF(module);
+		return -1;
+	}
+	inst->module = module;
 	PyEval_SaveThread();
 
 	return 0;
