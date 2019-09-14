@@ -1,3 +1,8 @@
+if ("%{config:version.python}" =~ /^3/) {
+	test_pass
+	return
+}
+
 # This module is cext_compat and should work
 pmod4_cextcompat
 if (!noop) {
