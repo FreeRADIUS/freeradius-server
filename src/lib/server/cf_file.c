@@ -1013,8 +1013,9 @@ static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *
 	fr_cond_t *cond = NULL;
 	CONF_DATA const *cd;
 	fr_dict_t const *dict = NULL;
-	CONF_SECTION *css;
+	CONF_SECTION *cs;
 	char const *ptr = *ptr_p;
+	char *p;
 
 	/*
 	 *	if / elsif
@@ -1027,33 +1028,36 @@ static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *
 	} else {
 		dict = *((fr_dict_t **)cf_data_value(cd));
 	}
+
 	/*
-	 *	fr_cond_tokenize needs the current section, so we create it first.
+	 *	fr_cond_tokenize needs the current section, so we
+	 *	create it first.  We don't pass a name2, as it hasn't
+	 *	yet been parsed.
 	 */
-	css = cf_section_alloc(parent, parent, buff[1], buff[2]);
-	if (!css) {
+	cs = cf_section_alloc(parent, parent, buff[1], NULL);
+	if (!cs) {
 		cf_log_err(parent, "Failed allocating memory for section");
 		return NULL;
 	}
-	css->item.filename = filename;
-	css->item.lineno = lineno;
+	cs->item.filename = filename;
+	cs->item.lineno = lineno;
 
 	/*
 	 *	Skip (...) to find the {
 	 */
-	slen = fr_cond_tokenize(css, &cond, &error, dict, ptr);
+	slen = fr_cond_tokenize(cs, &cond, &error, dict, ptr);
 	if (slen < 0) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(css, &spaces, &text, slen, ptr);
+		fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
 
-		cf_log_err(css, "Parse error in condition");
-		cf_log_err(css, "%s", text);
-		cf_log_err(css, "%s^ %s", spaces, error);
+		cf_log_err(cs, "Parse error in condition");
+		cf_log_err(cs, "%s", text);
+		cf_log_err(cs, "%s^ %s", spaces, error);
 
 		talloc_free(spaces);
 		talloc_free(text);
-		talloc_free(css);
+		talloc_free(cs);
 		return NULL;
 	}
 
@@ -1063,25 +1067,32 @@ static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *
 	 *	into.
 	 */
 	if ((size_t) slen >= (talloc_array_length(buff[2]) - 1)) {
-		cf_log_err(css, "Condition is too large after \"%s\"", buff[1]);
-		talloc_free(css);
+		cf_log_err(cs, "Condition is too large after \"%s\"", buff[1]);
+		talloc_free(cs);
 		return NULL;
 	}
 
 	/*
-	 *	Copy the expanded and parsed condition
-	 *	into buff[2].  Then, parse the text after
-	 *	the condition, which now MUST be a '{.
+	 *	Copy the expanded and parsed condition into buff[2].
+	 *	Then suppress any trailing whitespace.
 	 */
 	memcpy(buff[2], ptr, slen);
 	buff[2][slen] = '\0';
-	ptr += slen;
+	p = buff[2] + slen - 1;
+	while ((p > buff[2]) && isspace((int) *p)) {
+		*p = '\0';
+		p--;
+	}
 
+	MEM(cs->name2 = talloc_typed_strdup(cs, buff[2]));
+	cs->name2_quote = T_BARE_WORD;
+
+	ptr += slen;
 	fr_skip_whitespace(ptr);
 
 	if (*ptr != '{') {
-		cf_log_err(css, "Expected '{' instead of %s", ptr);
-		talloc_free(css);
+		cf_log_err(cs, "Expected '{' instead of %s", ptr);
+		talloc_free(cs);
 		return NULL;
 	}
 	ptr++;
@@ -1090,9 +1101,9 @@ static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *
 	 *	Now that the CONF_SECTION and condition are OK, add
 	 *	the condition to the CONF_SECTION.
 	 */
-	cf_data_add(css, cond, NULL, false);
+	cf_data_add(cs, cond, NULL, false);
 	*ptr_p = ptr;
-	return css;
+	return cs;
 }
 
 static CONF_SECTION *process_map(CONF_SECTION *parent, char const **ptr_p, char *buff[static 4], char const *filename, int lineno)
