@@ -42,6 +42,8 @@ char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
 #endif
 
 static long ssl_built = OPENSSL_VERSION_NUMBER;
+static CONF_SECTION *default_feature_cs;		//!< Default configuration section to add features to.
+static CONF_SECTION *default_version_cs;		//!< Default configuration section to add features to.
 
 /** Check built and linked versions of OpenSSL match
  *
@@ -265,16 +267,21 @@ int rad_check_lib_magic(uint64_t magic)
  * This allows the user to create configurations that work with
  * across multiple environments.
  *
- * @param cs to add feature pair to.
- * @param name of feature.
- * @param enabled Whether the feature is present/enabled.
+ * @param[in] cs		to add feature pair to. May be NULL
+ *				in which case the cs passed to
+ *				dependency_feature_init() is used.
+ * @param[in] name		of feature.
+ * @param[in] enabled		Whether the feature is present/enabled.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int dependency_feature_add(CONF_SECTION *cs, char const *name, bool enabled)
 {
-	if (!cs) return -1;
+	if (!cs) cs = default_feature_cs;
+	if (!fr_cond_assert_msg(cs, "dependency_features_init() must be called before calling %s", __FUNCTION__)) {
+		return -1;
+	}
 
 	if (!cf_pair_find(cs, name)) {
 		CONF_PAIR *cp;
@@ -300,9 +307,11 @@ int dependency_feature_add(CONF_SECTION *cs, char const *name, bool enabled)
  * The version pairs are there primarily to work around defects
  * in libraries or the server.
  *
- * @param cs to add feature pair to.
- * @param name of library or feature.
- * @param version Humanly readable version text.
+ * @param[in] cs		to add feature pair to. May be NULL
+ *				in which case the cs passed to
+ *				dependency_feature_init() is used.
+ * @param[in] name		of library or feature.
+ * @param[in] version Humanly	readable version text.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -311,7 +320,10 @@ int dependency_version_number_add(CONF_SECTION *cs, char const *name, char const
 {
 	CONF_PAIR *old;
 
-	if (!cs) return -1;
+	if (!cs) cs = default_version_cs;
+	if (!fr_cond_assert_msg(cs, "dependency_version_numbers_init() must be called before calling %s", __FUNCTION__)) {
+		return -1;
+	}
 
 	old = cf_pair_find(cs, name);
 	if (!old) {
@@ -338,6 +350,8 @@ int dependency_version_number_add(CONF_SECTION *cs, char const *name, char const
  */
 void dependency_features_init(CONF_SECTION *cs)
 {
+	default_feature_cs = cs;
+
 	dependency_feature_add(cs, "accounting",
 #ifdef WITH_ACCOUNTING
 				true
@@ -555,6 +569,8 @@ void dependency_features_init(CONF_SECTION *cs)
 void dependency_version_numbers_init(CONF_SECTION *cs)
 {
 	char buffer[128];
+
+	default_version_cs = cs;
 
 	dependency_version_number_add(cs, "freeradius-server", radiusd_version_short);
 

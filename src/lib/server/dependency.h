@@ -44,7 +44,7 @@ char const	*ssl_version_range(uint32_t low, uint32_t high);
 char const	*ssl_version(void);
 int		dependency_feature_add(CONF_SECTION *cs, char const *name, bool enabled);
 int		dependency_version_number_add(CONF_SECTION *cs, char const *name, char const *version);
-void		dependency_features_init(CONF_SECTION *cs);
+void		dependency_features_init(CONF_SECTION *cs) CC_HINT(nonnull);
 void		dependency_version_numbers_init(CONF_SECTION *cs);
 void		dependency_version_print(void);
 
