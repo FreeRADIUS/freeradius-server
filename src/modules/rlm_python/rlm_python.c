@@ -1223,6 +1223,7 @@ static int mod_load(void)
 	rad_assert(!Py_IsInitialized());
 
 	fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "Python version: %s", Py_GetVersion());
+	dependency_version_number_add(NULL, "python", Py_GetVersion());
 
 	/*
 	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
