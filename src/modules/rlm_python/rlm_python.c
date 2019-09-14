@@ -412,7 +412,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
  *	FIXME: We're not checking the errors. If we have errors, what
  *	do we do?
  */
-static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
+static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyObject *pp, VALUE_PAIR *vp)
 {
 	PyObject *attribute = NULL;
 	PyObject *value = NULL;
@@ -509,8 +509,11 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		return -1;
 	}
 
-	if (value == NULL) return -1;
-
+	if (value == NULL) {
+		ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
+		python_error_log(inst, request);
+		return -1;
+	}
 	PyTuple_SET_ITEM(pp, 1, value);
 
 	return 0;
@@ -561,7 +564,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 				goto finish;
 			}
 
-			if (mod_populate_vptuple(pp, vp) == 0) {
+			if (mod_populate_vptuple(inst, request, pp, vp) == 0) {
 				/* Put the tuple inside the container */
 				PyTuple_SET_ITEM(p_arg, i, pp);
 			} else {
