@@ -435,7 +435,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_OCTETS:
-		value = PyUnicode_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
+		value = PyBytes_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
 	case FR_TYPE_BOOL:
