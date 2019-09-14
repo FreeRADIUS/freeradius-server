@@ -9,7 +9,7 @@ if (noop) {
 # Should return ok (shared variable set)
 pmod_shared_storage
 if (ok) {
-	test_fail
-} else {
 	test_pass
+} else {
+	test_fail
 }
