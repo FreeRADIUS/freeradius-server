@@ -149,6 +149,8 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			RDEBUG3("parallel child %d returns %s", i + 1,
 				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"));
 
+			rad_assert(result < NUM_ELEMENTS(state->children[i].instruction->actions));
+
 			/*
 			 *	Remember this before we delete the
 			 *	reference to 'instruction'.
