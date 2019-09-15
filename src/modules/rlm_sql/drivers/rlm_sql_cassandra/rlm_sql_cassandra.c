@@ -493,7 +493,9 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 		size_t	   col_name_len;
 
 		/* Writes out a pointer to a buffer in the result */
-		cass_result_column_name(conn->result, i, &col_name, &col_name_len);
+		if (cass_result_column_name(conn->result, i, &col_name, &col_name_len) != CASS_OK) {
+			col_name = "<INVALID>";
+		}
 		names[i] = col_name;
 	}
 
