@@ -890,11 +890,18 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 
 		cf_log_debug(parent, "Including files in directory \"%s\"", my_directory);
 
+		dir = opendir(my_directory);
+		if (!dir) {
+			ERROR("%s[%d]: Error reading directory %s: %s",
+			      filename, lineno, value,
+			      fr_syserror(errno));
+			goto done;
+		}
 #ifdef S_IWOTH
 		/*
 		 *	Security checks.
 		 */
-		if (stat(my_directory, &stat_buf) < 0) {
+		if (fstat(dirfd(dir), &stat_buf) < 0) {
 			ERROR("%s[%d]: Failed reading directory %s: %s", filename, lineno,
 			      my_directory, fr_syserror(errno));
 			goto done;
@@ -906,13 +913,6 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 			goto done;
 		}
 #endif
-		dir = opendir(my_directory);
-		if (!dir) {
-			ERROR("%s[%d]: Error reading directory %s: %s",
-			      filename, lineno, value,
-			      fr_syserror(errno));
-			goto done;
-		}
 
 		/*
 		 *	Read the directory, ignoring "." files.
