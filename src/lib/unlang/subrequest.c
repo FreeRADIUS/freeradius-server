@@ -244,7 +244,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 			unlang_subrequest_free(&child);
 		}
 
-		rad_assert(rcode < NUM_ELEMENTS(instruction->actions[rcode]));
+		rad_assert(rcode < NUM_ELEMENTS(instruction->actions));
 
 		priority = instruction->actions[rcode];
 
