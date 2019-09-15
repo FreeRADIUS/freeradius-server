@@ -810,6 +810,8 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 
 		if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) goto skip;
 
+		rad_assert(expanded);
+
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) {
 			REDEBUG("Failed creating valuepair");
