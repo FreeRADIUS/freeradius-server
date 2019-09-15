@@ -162,8 +162,11 @@ static void connection_state_failed(fr_connection_t *conn, fr_time_t now)
 	case FR_CONNECTION_STATE_CONNECTED:			/* Failed after connecting */
 	case FR_CONNECTION_STATE_CONNECTING:			/* Failed during connecting */
 		STATE_TRANSITION(FR_CONNECTION_STATE_FAILED);
-		fr_event_timer_at(conn, conn->el, &conn->reconnection_timer,
-				  now + conn->reconnection_delay, _reconnect_delay_done, conn);
+		if (fr_event_timer_at(conn, conn->el, &conn->reconnection_timer,
+				      now + conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
+			PERROR("Failed inserting delay timer event");
+			rad_assert(0);
+		}
 		break;
 
 	case FR_CONNECTION_STATE_TIMEOUT:			/* Failed during connecting */
@@ -314,9 +317,12 @@ static void connection_state_init(fr_connection_t *conn, fr_time_t now)
 		 *	set, then add the timer.
 		 */
 		if (conn->connection_timeout) {
-			fr_event_timer_at(conn, conn->el, &conn->connection_timer,
-				      	  now + conn->connection_timeout,
-				      	  _connection_timeout, conn);
+			if (fr_event_timer_at(conn, conn->el, &conn->connection_timer,
+					      now + conn->connection_timeout,
+					      _connection_timeout, conn) < 0) {
+				PERROR("Failed inserting connection timeout event");
+				rad_assert(0);
+			}
 		}
 		break;
 
