@@ -969,7 +969,7 @@ VALUE_PAIR *password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
 			continue;
 		}
 
-		if (known_good->da->attr > NUM_ELEMENTS(password_info)) continue;
+		if (known_good->da->attr >= NUM_ELEMENTS(password_info)) continue;
 
 		info = &password_info[known_good->da->attr];
 
