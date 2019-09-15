@@ -1204,7 +1204,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 			dst[2] = (date >> 40) & 0xff;
 			dst[3] = (date >> 32) & 0xff;
 			dst[4] = (date >> 24) & 0xff;
-			dst[4] = (date >> 16) & 0xff;
+			dst[5] = (date >> 16) & 0xff;
 			dst[6] = (date >> 8) & 0xff;
 			dst[7] = date & 0xff;
 			break;
