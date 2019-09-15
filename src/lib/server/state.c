@@ -737,7 +737,7 @@ void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int
 	 *	whole lot...
 	 */
 	if (request->state) {
-		VALUE_PAIR *head;
+		VALUE_PAIR *head = NULL;
 
 		/*
 		 *	If parent and child share a state_ctx
