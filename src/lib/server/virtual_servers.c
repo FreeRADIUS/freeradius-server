@@ -248,12 +248,8 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 	}
 
 	if (virtual_server_namespace_set(server_cs, proto_dict, proto_dir) < 0) {
-#if 1
-		return 0;
-#else
 		cf_log_perr(ci, "Failed initialising namespace \"%s\" - %s", namespace_str, fr_strerror());
 		return -1;
-#endif
 	}
 
 	return 0;
