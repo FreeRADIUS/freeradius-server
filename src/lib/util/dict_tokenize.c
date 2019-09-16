@@ -423,13 +423,12 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 static int dict_ctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
 {
-	ctx->stack_depth++;
-
-	if (ctx->stack_depth >= MAX_STACK) {
+	if ((ctx->stack_depth + 1) >= MAX_STACK) {
 		fr_strerror_printf_push("Attribute definitions are nested too deep.");
 		return -1;
 	}
 
+	ctx->stack_depth++;
 	memset(&ctx->stack[ctx->stack_depth], 0, sizeof(ctx->stack[ctx->stack_depth]));
 
 	ctx->stack[ctx->stack_depth].dict = ctx->stack[ctx->stack_depth - 1].dict;
