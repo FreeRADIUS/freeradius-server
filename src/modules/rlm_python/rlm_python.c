@@ -41,7 +41,7 @@ RCSID("$Id$")
 #endif
 
 #define LIBPYTHON_LINKER_NAME \
-	"libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so"
+	"libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) LT_SHREXT
 
 static uint32_t		python_instances = 0;
 static void		*python_dlhandle;

@@ -31,6 +31,14 @@ RCSIDH(modules_h, "$Id$")
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/features.h>
 
+#ifdef __APPLE__
+#  define LT_SHREXT ".dylib"
+#elif defined (WIN32)
+#  define LT_SHREXT ".dll"
+#else
+#  define LT_SHREXT ".so"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
