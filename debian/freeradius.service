@@ -28,6 +28,7 @@ MemoryLimit=2G
 RuntimeDirectory=freeradius
 RuntimeDirectoryMode=0775
 # This does not work on Debian Jessie:
+User=freerad
 Group=freerad
 # This does not work on Ubuntu Bionic:
 ExecStartPre=/bin/chown freerad:freerad /var/run/freeradius
