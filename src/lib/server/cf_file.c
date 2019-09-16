@@ -1283,8 +1283,7 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 /*
  *	Read a part of the config file.
  */
-static int cf_section_read(cf_stack_t *stack)
-
+static int cf_file_include(cf_stack_t *stack)
 {
 	CONF_SECTION	*parent, *css;
 	char const	*ptr;
@@ -1306,6 +1305,11 @@ static int cf_section_read(cf_stack_t *stack)
 	cbuff = buff[0];
 
 	parent = frame->cs; /* add items here */
+
+	/*
+	 *	We get called with a new filename each time.  So open the FP.
+	 */
+	if (cf_file_open(frame->cs, frame->filename, frame->from_dir, &frame->fp) < 0) return -1;
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
@@ -1331,6 +1335,8 @@ static int cf_section_read(cf_stack_t *stack)
 		if ((cbuff + len + 1) >= (buff[0] + talloc_array_length(buff[0]))) {
 			ERROR("%s[%d]: Line too long", frame->filename, frame->lineno);
 		error:
+			fclose(frame->fp);
+			frame->fp = NULL;
 			return -1;
 		}
 
@@ -1731,34 +1737,11 @@ static int cf_section_read(cf_stack_t *stack)
 		goto error;
 	}
 
-	return 0;
-}
-
-/*
- *	Include one config file in another.
- */
-static int cf_file_include(cf_stack_t *stack)
-{
-	cf_stack_frame_t	*frame = &stack->frame[stack->depth];
-	CONF_SECTION *cs = frame->cs;
-
-	if (cf_file_open(cs, frame->filename, frame->from_dir, &frame->fp) < 0) return -1;
-
-	/*
-	 *	Read the section.  It's OK to have EOF without a
-	 *	matching close brace.
-	 */
-	if (cf_section_read(stack) < 0) {
-		ERROR("Failed parsing configuration file \"%s\"", frame->filename);
-		fclose(frame->fp);
-		frame->fp = NULL;
-		return -1;
-	}
-
 	fclose(frame->fp);
 	frame->fp = NULL;
 	return 0;
 }
+
 
 /*
  *	Bootstrap a config file.
