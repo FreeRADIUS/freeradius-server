@@ -72,14 +72,29 @@ static fr_table_num_sorted_t const conf_property_name[] = {
 };
 static size_t conf_property_name_len = NUM_ELEMENTS(conf_property_name);
 
+#define MAX_STACK (32)
+typedef struct {
+	FILE		*fp;
+	char const     	*filename;
+	int		lineno;
+	CONF_SECTION	*cs;
+	bool		from_dir;
+} cf_stack_frame_t;
+
 /*
  *	buff[0] is the data we read from the file
  *	buff[1] is name
  *	buff[2] is name2 OR value for pair
  *	buff[3] is a temporary buffer
  */
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
-			   char *buff[static 4], bool from_dir);
+typedef struct {
+	char		**buff;
+	size_t		bufsize;
+	int		depth;
+	cf_stack_frame_t frame[MAX_STACK];
+} cf_stack_t;
+
+static int cf_file_include(cf_stack_t *stack);
 
 /*
  *	Expand the variables in an input string.
@@ -804,10 +819,11 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *toke
 }
 
 
-static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[static 4], char const *filename, int lineno, bool required)
+static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *ptr, bool required)
 {
 	bool relative = true;
 	char const *value;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 
 	fr_skip_whitespace(ptr);
 
@@ -826,7 +842,7 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 	 *	But anything else after the filename is wrong.
 	 */
 	if (*ptr) {
-		ERROR("%s[%d]: Unexpected text after $INCLUDE", filename, lineno);
+		ERROR("%s[%d]: Unexpected text after $INCLUDE", frame->filename, frame->lineno);
 		return -1;
 	}
 
@@ -835,16 +851,16 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 	 */
 	if (*value == '$') relative = false;
 
-	value = cf_expand_variables(filename, lineno, parent, buff[1], talloc_array_length(buff[1]),
+	value = cf_expand_variables(frame->filename, frame->lineno, parent, stack->buff[1], stack->bufsize,
 				    value, ptr - value, NULL);
 	if (!value) return -1;
 
 	if (!FR_DIR_IS_RELATIVE(value)) relative = false;
 
 	if (relative) {
-		value = cf_local_file(filename, value, buff[2], talloc_array_length(buff[2]));
+		value = cf_local_file(frame->filename, value, stack->buff[2], stack->bufsize);
 		if (!value) {
-			ERROR("%s[%d]: Directories too deep", filename, lineno);
+			ERROR("%s[%d]: Directories too deep", frame->filename, frame->lineno);
 			return -1;
 		}
 	}
@@ -865,7 +881,19 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 	 *	The filename doesn't end in '/', so it must be a file.
 	 */
 	if (value[strlen(value) - 1] != '/') {
-		return cf_file_include(parent, value, buff, false);
+		int rcode;
+
+		stack->depth++;
+
+		frame = &stack->frame[stack->depth];
+		memset(frame, 0, sizeof(*frame));
+		frame->fp = NULL;
+		frame->filename = value;
+		frame->cs = parent;
+
+		rcode = cf_file_include(stack);
+		stack->depth--;
+		return rcode;
 	}
 
 #ifdef HAVE_DIRENT_H
@@ -893,7 +921,7 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 		dir = opendir(my_directory);
 		if (!dir) {
 			ERROR("%s[%d]: Error reading directory %s: %s",
-			      filename, lineno, value,
+			      frame->filename, frame->lineno, value,
 			      fr_syserror(errno));
 			goto done;
 		}
@@ -902,17 +930,20 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 		 *	Security checks.
 		 */
 		if (fstat(dirfd(dir), &stat_buf) < 0) {
-			ERROR("%s[%d]: Failed reading directory %s: %s", filename, lineno,
+			ERROR("%s[%d]: Failed reading directory %s: %s", frame->filename, frame->lineno,
 			      my_directory, fr_syserror(errno));
 			goto done;
 		}
 
 		if ((stat_buf.st_mode & S_IWOTH) != 0) {
 			ERROR("%s[%d]: Directory %s is globally writable.  Refusing to start due to "
-			      "insecure configuration", filename, lineno, my_directory);
+			      "insecure configuration", frame->filename, frame->lineno, my_directory);
 			goto done;
 		}
 #endif
+
+		stack->depth++;
+		frame = &stack->frame[stack->depth];
 
 		/*
 		 *	Read the directory, ignoring "." files.
@@ -935,21 +966,28 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 			}
 			if (*p != '\0') continue;
 
-
-			snprintf(buff[1], talloc_array_length(buff[1]), "%s%s",
+			snprintf(stack->buff[1], stack->bufsize, "%s%s",
 				 my_directory, dp->d_name);
-			if ((stat(buff[1], &stat_buf) != 0) ||
+			if ((stat(stack->buff[1], &stat_buf) != 0) ||
 			    S_ISDIR(stat_buf.st_mode)) continue;
+
+			memset(frame, 0, sizeof(*frame));
+			frame->fp = NULL;
+			frame->filename = stack->buff[1];
+			frame->cs = parent;
+			frame->from_dir = true;
 
 			/*
 			 *	Read the file into the current
 			 *	configuration section.
 			 */
-			if (cf_file_include(parent, buff[1], buff, true) < 0) {
+			if (cf_file_include(stack) < 0) {
+				stack->depth--;
 				closedir(dir);
 				goto done;
 			}
 		}
+		stack->depth--;
 		rcode = 0;
 		closedir(dir);
 
@@ -959,7 +997,7 @@ done:
 	}
 #else
 	ERROR("%s[%d]: Error including %s: No support for directories!",
-	      filename, lineno, value);
+	      frame->filename, frame->lineno, value);
 	return -1;
 #endif
 }
@@ -1242,12 +1280,10 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	return rule->func(parent, NULL, NULL, cf_pair_to_item(cp), rule);
 }
 
-
 /*
  *	Read a part of the config file.
  */
-static int cf_section_read(char const *filename, int *lineno, FILE *fp,
-			   CONF_SECTION *current, char *buff[static 4])
+static int cf_section_read(cf_stack_t *stack)
 
 {
 	CONF_SECTION	*parent, *css;
@@ -1260,10 +1296,16 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	bool		in_map = false;
 	char		*cbuff;
 	size_t		len;
+	char		*buff[4];
+	cf_stack_frame_t	*frame = &stack->frame[stack->depth];
 
-	parent = current;		/* add items here */
-
+	buff[0] = stack->buff[0];
+	buff[1] = stack->buff[1];
+	buff[2] = stack->buff[2];
+	buff[3] = stack->buff[3];
 	cbuff = buff[0];
+
+	parent = frame->cs; /* add items here */
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
@@ -1275,8 +1317,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		/*
 		 *	Get data, and remember if we are at EOF.
 		 */
-		at_eof = (fgets(cbuff, talloc_array_length(buff[0]) - (cbuff - buff[0]), fp) == NULL);
-		(*lineno)++;
+		at_eof = (fgets(cbuff, talloc_array_length(buff[0]) - (cbuff - buff[0]), frame->fp) == NULL);
+		frame->lineno++;
 
 		/*
 		 *	We read the entire 8k worth of data: complain.
@@ -1287,7 +1329,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 		len = strlen(cbuff);
 		if ((cbuff + len + 1) >= (buff[0] + talloc_array_length(buff[0]))) {
-			ERROR("%s[%d]: Line too long", filename, *lineno);
+			ERROR("%s[%d]: Line too long", frame->filename, frame->lineno);
 		error:
 			return -1;
 		}
@@ -1319,7 +1361,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			if (!*ptr || (*ptr == '#')) continue;
 
 		} else if (at_eof || (len == 0)) {
-			ERROR("%s[%d]: Continuation at EOF is illegal", filename, *lineno);
+			ERROR("%s[%d]: Continuation at EOF is illegal", frame->filename, frame->lineno);
 			goto error;
 		}
 
@@ -1363,8 +1405,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	end of the section.
 		 */
 		if (*ptr == '}') {
-			if (parent == current) {
-				ERROR("%s[%d]: Too many closing braces", filename, *lineno);
+			if (parent == frame->cs) {
+				ERROR("%s[%d]: Too many closing braces", frame->filename, frame->lineno);
 				goto error;
 			}
 
@@ -1387,14 +1429,14 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
 			ptr += 8;
 
-			if (process_include(parent, ptr, buff, filename, *lineno, true) < 0) goto error;
+			if (process_include(stack, parent, ptr, true) < 0) goto error;
 			continue;
 		}
 
 		if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
 			ptr += 9;
 
-			if (process_include(parent, ptr, buff, filename, *lineno, false) < 0) goto error;
+			if (process_include(stack, parent, ptr, false) < 0) goto error;
 			continue;
 		}
 
@@ -1405,7 +1447,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			ptr += 9;
 			fr_skip_whitespace(ptr);
 
-			if (process_template(parent, ptr, buff, filename, *lineno) < 0) goto error;
+			if (process_template(parent, ptr, buff, frame->filename, frame->lineno) < 0) goto error;
 			continue;
 		}
 
@@ -1414,7 +1456,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	a key word.
 		 */
 		if (cf_get_token(parent, &ptr, &name1_token, buff[1], talloc_array_length(buff[1]),
-				 filename, *lineno) < 0) {
+				 frame->filename, frame->lineno) < 0) {
 			goto error;
 		}
 
@@ -1434,7 +1476,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	need.
 		 */
 		if ((strcmp(buff[1], "if") == 0) || (strcmp(buff[1], "elsif") == 0)) {
-			css = process_if(parent, &ptr, buff, filename, *lineno);
+			css = process_if(parent, &ptr, buff, frame->filename, frame->lineno);
 			if (!css) goto error;
 			goto add_section;
 		}
@@ -1445,7 +1487,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	map NAME ARGUMENT { ... }
 		 */
 		if ((strcmp(buff[1], "map") == 0) && (*ptr != '{')) {
-			css = process_map(parent, &ptr, buff, filename, *lineno);
+			css = process_map(parent, &ptr, buff, frame->filename, frame->lineno);
 			if (!css) goto error;
 
 			in_map = true;
@@ -1479,13 +1521,13 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || (*ptr == '&') ||
 		    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr)) {
 			if (cf_get_token(parent, &ptr, &name2_token, buff[2], talloc_array_length(buff[2]),
-					 filename, *lineno) < 0) {
+					 frame->filename, frame->lineno) < 0) {
 				goto error;
 			}
 
 			if (*ptr != '{') {
 				ERROR("%s[%d]: Parse error: expected '{', got text \"%s\"",
-				      filename, *lineno, ptr);
+				      frame->filename, frame->lineno, ptr);
 				goto error;
 			}
 			ptr++;
@@ -1495,12 +1537,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			css = cf_section_alloc(parent, parent, buff[1], value);
 			if (!css) {
 				ERROR("%s[%d]: Failed allocating memory for section",
-				      filename, *lineno);
+				      frame->filename, frame->lineno);
 				goto error;
 			}
 
-			css->item.filename = filename;
-			css->item.lineno = *lineno;
+			css->item.filename = frame->filename;
+			css->item.lineno = frame->lineno;
 			css->name2_quote = name2_token;
 
 			/*
@@ -1530,7 +1572,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if (!((*ptr == '=') || (*ptr == '!') || (*ptr == '>') || (*ptr == '<') ||
 		      (*ptr == '-') || (*ptr == '+') || (*ptr == ':'))) {
 			ERROR("%s[%d]: Parse error at unexpected text: %s",
-			      filename, *lineno, ptr);
+			      frame->filename, frame->lineno, ptr);
 			goto error;
 		}
 
@@ -1551,7 +1593,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_CMP_FALSE:
 			if (!parent || (!in_update && !in_map)) {
 				ERROR("%s[%d]: Invalid operator in assignment",
-				      filename, *lineno);
+				      frame->filename, frame->lineno);
 				goto error;
 			}
 			/* FALL-THROUGH */
@@ -1564,7 +1606,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		default:
 			ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
-			      filename, *lineno, buff[1], fr_table_str_by_value(fr_tokens_table, name2_token, "<INVALID>"));
+			      frame->filename, frame->lineno, buff[1], fr_table_str_by_value(fr_tokens_table, name2_token, "<INVALID>"));
 
 			goto error;
 		}
@@ -1574,7 +1616,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 		if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';')) {
 			ERROR("%s[%d]: Syntax error: Expected to see a value after the operator '%s': %s",
-			      filename, *lineno, buff[2], ptr);
+			      frame->filename, frame->lineno, buff[2], ptr);
 			goto error;
 		}
 
@@ -1592,19 +1634,19 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if (*ptr == '{') {
 			if (!in_update) {
 				ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
-				      filename, *lineno);
+				      frame->filename, frame->lineno);
 				goto error;
 			}
 
 			if (*buff[1] != '&') {
 				ERROR("%s[%d]: Parse error: Expected '&' before attribute name",
-				      filename, *lineno);
+				      frame->filename, frame->lineno);
 				goto error;
 			}
 
 			if (!fr_assignment_op[name2_token]) {
 				ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for group",
-				      filename, *lineno, buff[2]);
+				      frame->filename, frame->lineno, buff[2]);
 				goto error;
 			}
 
@@ -1627,7 +1669,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		}
 
 		if (cf_get_token(parent, &ptr, &value_token, buff[2], talloc_array_length(buff[2]),
-				 filename, *lineno) < 0) {
+				 frame->filename, frame->lineno) < 0) {
 			goto error;
 		}
 		value = buff[2];
@@ -1636,7 +1678,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	Add parent CONF_PAIR to our CONF_SECTION
 		 */
 		do_set:
-		if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], filename, *lineno) < 0) goto error;
+		if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], frame->filename, frame->lineno) < 0) goto error;
 
 		fr_skip_whitespace(ptr);
 
@@ -1658,7 +1700,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 		if (!(!*ptr || (*ptr == '#') || (*ptr == '}'))) {
 			ERROR("%s[%d]: Syntax error: Unexpected text: %s",
-			      filename, *lineno, ptr);
+			      frame->filename, frame->lineno, ptr);
 			goto error;
 		}
 
@@ -1683,9 +1725,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	/*
 	 *	See if EOF was unexpected ..
 	 */
-	if (feof(fp) && (parent != current)) {
+	if (feof(frame->fp) && (parent != frame->cs)) {
 		ERROR("%s[%d]: EOF reached without closing brace for section %s starting at line %d",
-		      filename, *lineno, cf_section_name1(parent), cf_lineno(parent));
+		      frame->filename, frame->lineno, cf_section_name1(parent), cf_lineno(parent));
 		goto error;
 	}
 
@@ -1695,19 +1737,21 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 /*
  *	Include one config file in another.
  */
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
-			   char *buff[static 4], bool from_dir)
+static int cf_file_include(cf_stack_t *stack)
 {
-	FILE		*fp = NULL;
-	int		lineno = 0;
 	char const	*filename;
+	cf_stack_frame_t	*frame = &stack->frame[stack->depth];
+	CONF_SECTION *cs = frame->cs;
 
 	/*
-	 *	So we only need to do this once.
+	 *	The caller passes us a buffer on their C stack.  We
+	 *	need to have a version of the filename which is tied
+	 *	to the parent CONF_SECTION, and which is permanent.
 	 */
-	filename = talloc_strdup(cs, filename_in);
+	filename = talloc_strdup(cs, frame->filename);
+	frame->filename = filename;
 
-	if (cf_file_open(cs, filename, from_dir, &fp) < 0) return -1;
+	if (cf_file_open(cs, filename, frame->from_dir, &frame->fp) < 0) return -1;
 
 	if (!cs->item.filename) cs->item.filename = filename;
 
@@ -1715,13 +1759,15 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
 	 *	Read the section.  It's OK to have EOF without a
 	 *	matching close brace.
 	 */
-	if (cf_section_read(filename, &lineno, fp, cs, buff) < 0) {
+	if (cf_section_read(stack) < 0) {
 		ERROR("Failed parsing configuration file \"%s\"", filename);
-		fclose(fp);
+		fclose(frame->fp);
+		frame->fp = NULL;
 		return -1;
 	}
 
-	fclose(fp);
+	fclose(frame->fp);
+	frame->fp = NULL;
 	return 0;
 }
 
@@ -1734,7 +1780,8 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	char		*p;
 	CONF_PAIR	*cp;
 	rbtree_t	*tree;
-	char		**buff;
+	cf_stack_t	stack;
+	cf_stack_frame_t	*frame;
 
 	cp = cf_pair_alloc(cs, "confdir", filename, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 	if (!cp) return -1;
@@ -1751,15 +1798,23 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	/*
 	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
 	 */
-	buff = talloc_array(cs, char *, 4);
-	for (i = 0; i < 4; i++) MEM(buff[i] = talloc_array(buff, char, 8192));
+	stack.buff = talloc_array(cs, char *, 4);
+	for (i = 0; i < 4; i++) MEM(stack.buff[i] = talloc_array(stack.buff, char, 8192));
 
-	if (cf_file_include(cs, filename, buff, false) < 0) {
-		talloc_free(buff);
+	stack.depth = 0;
+	stack.bufsize = 8192;
+	frame = &stack.frame[stack.depth];
+
+	memset(frame, 0, sizeof(*frame));
+	frame->cs = cs;
+	frame->filename = filename;
+
+	if (cf_file_include(&stack) < 0) {
+		talloc_free(stack.buff);
 		return -1;
 	}
 
-	talloc_free(buff);
+	talloc_free(stack.buff);
 
 	/*
 	 *	Now that we've read the file, go back through it and
