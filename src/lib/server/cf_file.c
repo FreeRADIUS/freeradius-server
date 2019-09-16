@@ -835,6 +835,11 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	value = ptr;
 	while (*ptr && !isspace((int) *ptr)) ptr++;
 
+	if ((stack->depth + 1) >= MAX_STACK) {
+		ERROR("%s[%d]: Directories too deep", frame->filename, frame->lineno);
+		return -1;
+	}
+
 	/*
 	 *	We're OK with whitespace after the filename.
 	 */
