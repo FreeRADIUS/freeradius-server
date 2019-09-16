@@ -1311,6 +1311,7 @@ static int cf_file_include(cf_stack_t *stack)
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
 	buff[3] = stack->buff[3];
+
 	cbuff = buff[0];
 
 	parent = frame->cs; /* add items here */
@@ -1330,7 +1331,7 @@ static int cf_file_include(cf_stack_t *stack)
 		/*
 		 *	Get data, and remember if we are at EOF.
 		 */
-		at_eof = (fgets(cbuff, talloc_array_length(buff[0]) - (cbuff - buff[0]), frame->fp) == NULL);
+		at_eof = (fgets(cbuff, stack->bufsize - (cbuff - buff[0]), frame->fp) == NULL);
 		frame->lineno++;
 
 		/*
@@ -1341,7 +1342,7 @@ static int cf_file_include(cf_stack_t *stack)
 		 *	should be plenty.
 		 */
 		len = strlen(cbuff);
-		if ((cbuff + len + 1) >= (buff[0] + talloc_array_length(buff[0]))) {
+		if ((cbuff + len + 1) >= (buff[0] + stack->bufsize)) {
 			ERROR("%s[%d]: Line too long", frame->filename, frame->lineno);
 		error:
 			fclose(frame->fp);
@@ -1470,7 +1471,7 @@ static int cf_file_include(cf_stack_t *stack)
 		 *	Found nothing to get excited over.  It MUST be
 		 *	a key word.
 		 */
-		if (cf_get_token(parent, &ptr, &name1_token, buff[1], talloc_array_length(buff[1]),
+		if (cf_get_token(parent, &ptr, &name1_token, buff[1], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			goto error;
 		}
@@ -1535,7 +1536,7 @@ static int cf_file_include(cf_stack_t *stack)
 		 */
 		if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || (*ptr == '&') ||
 		    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr)) {
-			if (cf_get_token(parent, &ptr, &name2_token, buff[2], talloc_array_length(buff[2]),
+			if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
 					 frame->filename, frame->lineno) < 0) {
 				goto error;
 			}
@@ -1595,7 +1596,7 @@ static int cf_file_include(cf_stack_t *stack)
 		 *	If we're not parsing a section, then the next
 		 *	token MUST be an operator.
 		 */
-		name2_token = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
+		name2_token = gettoken(&ptr, buff[2], stack->bufsize, false);
 		switch (name2_token) {
 		case T_OP_ADD:
 		case T_OP_SUB:
@@ -1683,7 +1684,7 @@ static int cf_file_include(cf_stack_t *stack)
 			goto alloc_section;
 		}
 
-		if (cf_get_token(parent, &ptr, &value_token, buff[2], talloc_array_length(buff[2]),
+		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			goto error;
 		}
