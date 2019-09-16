@@ -888,8 +888,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame = &stack->frame[stack->depth];
 		memset(frame, 0, sizeof(*frame));
 		frame->fp = NULL;
-		frame->filename = value;
 		frame->cs = parent;
+		frame->filename = talloc_strdup(frame->cs, value);
 
 		rcode = cf_file_include(stack);
 		stack->depth--;
@@ -973,8 +973,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 
 			memset(frame, 0, sizeof(*frame));
 			frame->fp = NULL;
-			frame->filename = stack->buff[1];
 			frame->cs = parent;
+			frame->filename = talloc_strdup(frame->cs, stack->buff[1]);
 			frame->from_dir = true;
 
 			/*
@@ -1739,28 +1739,17 @@ static int cf_section_read(cf_stack_t *stack)
  */
 static int cf_file_include(cf_stack_t *stack)
 {
-	char const	*filename;
 	cf_stack_frame_t	*frame = &stack->frame[stack->depth];
 	CONF_SECTION *cs = frame->cs;
 
-	/*
-	 *	The caller passes us a buffer on their C stack.  We
-	 *	need to have a version of the filename which is tied
-	 *	to the parent CONF_SECTION, and which is permanent.
-	 */
-	filename = talloc_strdup(cs, frame->filename);
-	frame->filename = filename;
-
-	if (cf_file_open(cs, filename, frame->from_dir, &frame->fp) < 0) return -1;
-
-	if (!cs->item.filename) cs->item.filename = filename;
+	if (cf_file_open(cs, frame->filename, frame->from_dir, &frame->fp) < 0) return -1;
 
 	/*
 	 *	Read the section.  It's OK to have EOF without a
 	 *	matching close brace.
 	 */
 	if (cf_section_read(stack) < 0) {
-		ERROR("Failed parsing configuration file \"%s\"", filename);
+		ERROR("Failed parsing configuration file \"%s\"", frame->filename);
 		fclose(frame->fp);
 		frame->fp = NULL;
 		return -1;
@@ -1807,7 +1796,8 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	memset(frame, 0, sizeof(*frame));
 	frame->cs = cs;
-	frame->filename = filename;
+	frame->filename = talloc_strdup(frame->cs, filename);
+	cs->item.filename = frame->filename;
 
 	if (cf_file_include(&stack) < 0) {
 		talloc_free(stack.buff);
