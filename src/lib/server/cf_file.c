@@ -79,6 +79,8 @@ typedef struct {
 	int		lineno;
 	CONF_SECTION	*cs;
 	bool		from_dir;
+	bool		in_update;
+	bool		in_map;
 } cf_stack_frame_t;
 
 /*
@@ -890,6 +892,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame->fp = NULL;
 		frame->cs = parent;
 		frame->filename = talloc_strdup(frame->cs, value);
+		frame->in_update = (frame - 1)->in_update;
+		frame->in_map = (frame - 1)->in_map;
 
 		rcode = cf_file_include(stack);
 		stack->depth--;
@@ -976,6 +980,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			frame->cs = parent;
 			frame->filename = talloc_strdup(frame->cs, stack->buff[1]);
 			frame->from_dir = true;
+			frame->in_update = (frame - 1)->in_update;
+			frame->in_map = (frame - 1)->in_map;
 
 			/*
 			 *	Read the file into the current
@@ -1291,8 +1297,6 @@ static int cf_file_include(cf_stack_t *stack)
 
 	FR_TOKEN	name1_token = T_INVALID, name2_token, value_token, op_token;
 	bool		has_spaces = false;
-	bool		in_update = false;
-	bool		in_map = false;
 	char		*cbuff;
 	size_t		len;
 	char		*buff[4];
@@ -1496,7 +1500,7 @@ static int cf_file_include(cf_stack_t *stack)
 			css = process_map(parent, &ptr, buff, frame->filename, frame->lineno);
 			if (!css) goto error;
 
-			in_map = true;
+			frame->in_map = true;
 			goto add_section;
 		}
 
@@ -1557,7 +1561,7 @@ static int cf_file_include(cf_stack_t *stack)
 			 *	should really be put into a parser
 			 *	struct, as with tmpls.
 			 */
-			if (!in_map && !in_update) in_update = (strcmp(css->name1, "update") == 0);
+			if (!frame->in_map && !frame->in_update) frame->in_update = (strcmp(css->name1, "update") == 0);
 
 		add_section:
 			cf_item_add(parent, &(css->item));
@@ -1597,7 +1601,7 @@ static int cf_file_include(cf_stack_t *stack)
 		case T_OP_LT:
 		case T_OP_CMP_EQ:
 		case T_OP_CMP_FALSE:
-			if (!parent || (!in_update && !in_map)) {
+			if (!parent || (!frame->in_update && !frame->in_map)) {
 				ERROR("%s[%d]: Invalid operator in assignment",
 				      frame->filename, frame->lineno);
 				goto error;
@@ -1638,7 +1642,7 @@ static int cf_file_include(cf_stack_t *stack)
 		 *	allow it everywhere.
 		 */
 		if (*ptr == '{') {
-			if (!in_update) {
+			if (!frame->in_update) {
 				ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
 				      frame->filename, frame->lineno);
 				goto error;
