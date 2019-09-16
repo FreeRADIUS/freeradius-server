@@ -761,7 +761,7 @@ void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int
 		} else {
 			MEM(fr_pair_list_copy(request->parent->state_ctx, &head, request->state) >= 0);
 			request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, VALUE_PAIR,
-						request->state, true, false, true);
+						head, true, false, true);
 			fr_pair_list_free(&request->state);
 		}
 	}
