@@ -1436,7 +1436,7 @@ static int cf_file_include(cf_stack_t *stack)
 
 			parent = cf_item_to_section(parent->item.parent);
 			ptr++;
-			goto check_for_more;
+			goto next_start_token;
 		}
 
 		/*
@@ -1577,7 +1577,7 @@ static int cf_file_include(cf_stack_t *stack)
 			 */
 			parent = css;
 			css = NULL;
-			goto check_for_more;
+			goto next_start_token;
 		}
 
 		/*
@@ -1706,7 +1706,7 @@ static int cf_file_include(cf_stack_t *stack)
 		 */
 		if ((*ptr == ';') || (*ptr == ',')) {
 			ptr++;
-			goto check_for_more;
+			goto next_start_token;
 		}
 
 		/*
@@ -1720,7 +1720,7 @@ static int cf_file_include(cf_stack_t *stack)
 			goto error;
 		}
 
-	check_for_more:
+	next_start_token:
 		/*
 		 *	Done parsing one thing.  Skip to EOL if possible.
 		 */
