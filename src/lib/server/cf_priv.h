@@ -112,12 +112,6 @@ struct cf_data {
 	bool			free;		//!< If true, free data with talloc if parent node is freed.
 };
 
-typedef enum cf_include_type {
-	CONF_INCLUDE_FILE,
-	CONF_INCLUDE_DIR,
-	CONF_INCLUDE_FROMDIR,
-} CONF_INCLUDE_TYPE;
-
 typedef struct {
 	char const		*filename;
 	CONF_SECTION		*cs;

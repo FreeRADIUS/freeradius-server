@@ -78,7 +78,7 @@ static size_t conf_property_name_len = NUM_ELEMENTS(conf_property_name);
  *	buff[2] is name2 OR value for pair
  *	buff[3] is a temporary buffer
  */
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLUDE_TYPE file_type,
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
 			   char *buff[static 4], bool from_dir);
 
 /*
@@ -865,7 +865,7 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 	 *	The filename doesn't end in '/', so it must be a file.
 	 */
 	if (value[strlen(value) - 1] != '/') {
-		return cf_file_include(parent, value, CONF_INCLUDE_FILE, buff, false);
+		return cf_file_include(parent, value, buff, false);
 	}
 
 #ifdef HAVE_DIRENT_H
@@ -945,7 +945,7 @@ static int process_include(CONF_SECTION *parent, char const *ptr, char *buff[sta
 			 *	Read the file into the current
 			 *	configuration section.
 			 */
-			if (cf_file_include(parent, buff[1], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
+			if (cf_file_include(parent, buff[1], buff, true) < 0) {
 				closedir(dir);
 				goto done;
 			}
@@ -1696,7 +1696,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
  *	Include one config file in another.
  */
 static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
-			   UNUSED CONF_INCLUDE_TYPE file_type, char *buff[static 4], bool from_dir)
+			   char *buff[static 4], bool from_dir)
 {
 	FILE		*fp = NULL;
 	int		lineno = 0;
@@ -1754,7 +1754,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	buff = talloc_array(cs, char *, 4);
 	for (i = 0; i < 4; i++) MEM(buff[i] = talloc_array(buff, char, 8192));
 
-	if (cf_file_include(cs, filename, CONF_INCLUDE_FILE, buff, false) < 0) {
+	if (cf_file_include(cs, filename, buff, false) < 0) {
 		talloc_free(buff);
 		return -1;
 	}
