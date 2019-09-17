@@ -110,7 +110,6 @@ static PyThreadState	*global_interpreter;	//!< Our first interpreter.
 #if PY_MAJOR_VERSION == 3
 static rlm_python_t	*current_inst;		//!< Used for communication with inittab functions.
 static CONF_SECTION	*current_conf;		//!< Used for communication with inittab functions.
-static wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
 #endif
 
 static char		*default_path;		//!< The default python path.
@@ -936,6 +935,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 {
 	char		*path;
 	PyObject	*module;
+	wchar_t	        *wide_path;
 
 	/*
 	 *	python_module_init takes no args, so we need
@@ -959,9 +959,10 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 	path = python_path_build(inst, inst, conf);
 	DEBUG3("Setting python path to \"%s\"", path);
-	inst->wide_path = Py_DecodeLocale(path, NULL);
+	wide_path = Py_DecodeLocale(path, NULL);
 	talloc_free(path);
 	PySys_SetPath(inst->wide_path);
+	PyMem_RawFree(inst->wide_path);
 
 	/*
 	 *	Import the radiusd module into this python
@@ -1206,10 +1207,6 @@ static int mod_detach(void *instance)
 	 */
 	python_interpreter_free(inst, inst->interpreter);
 
-#if PY_MAJOR_VERSION == 3
-	if (inst->wide_path) PyMem_RawFree(inst->wide_path);
-#endif
-
 	return 0;
 }
 
@@ -1299,8 +1296,10 @@ static int mod_load(void)
 	 */
 #if PY_MAJOR_VERSION == 3
 	{
+		wchar_t *wide_name;
 		wide_name = Py_DecodeLocale(main_config->name, NULL);
 		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
+		PyMem_RawFree(wide_name);
 	}
 #else
 	{
@@ -1327,7 +1326,6 @@ static void mod_unload(void)
 
 #if PY_MAJOR_VERSION == 3
 	if (default_path) PyMem_RawFree(default_path);
-	if (wide_name) PyMem_RawFree(wide_name);
 #endif
 }
 
