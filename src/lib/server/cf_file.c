@@ -1332,10 +1332,17 @@ do_frame:
 			snprintf(stack->buff[1], stack->bufsize, "%s%s",
 				 frame->directory, dp->d_name);
 
-			if (S_ISDIR(stat_buf.st_mode)) {
-				WARN("%s[%d]: Ignoring directory %s/%s",
+			if (stat(stack->buff[1], &stat_buf) != 0) {
+				ERROR("%s[%d]: Failed checking file %s: %s",
 				     (frame - 1)->filename, (frame - 1)->lineno,
-				     frame->directory, dp->d_name);
+				     stack->buff[1], fr_syserror(errno));
+				continue;
+			}
+
+			if (S_ISDIR(stat_buf.st_mode)) {
+				WARN("%s[%d]: Ignoring directory %s",
+				     (frame - 1)->filename, (frame - 1)->lineno,
+				     stack->buff[1]);
 				continue;
 			}
 
