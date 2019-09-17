@@ -1238,6 +1238,8 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 
 static int mod_load(void)
 {
+	char const *libpython_file = PYTHON_LIB_PATH "/" "lib" PYTHON_LIB_FILE "" DL_EXTENSION;
+
 	rad_assert(!Py_IsInitialized());
 
 	fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "Python version: %s", Py_GetVersion());
@@ -1246,11 +1248,11 @@ static int mod_load(void)
 	/*
 	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
 	 */
-	python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) DL_EXTENSION,
-				 RTLD_NOW | RTLD_GLOBAL);
+	python_dlhandle = dlopen(libpython_file, RTLD_NOW | RTLD_GLOBAL);
 	if (!python_dlhandle) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__,
-				     "Failed loading libpython symbols into global symbol table: %s",
-				     dlerror());
+				     "Failed loading libpython symbols from \"%s\" into global symbol table: %s",
+				     libpython_file, dlerror());
+
 
 #if PY_MAJOR_VERSION == 3
 	/*
