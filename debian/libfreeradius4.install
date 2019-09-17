@@ -3,6 +3,7 @@ usr/lib/freeradius/libfreeradius-eap-sim.so
 usr/lib/freeradius/libfreeradius-radius.so
 usr/lib/freeradius/libfreeradius-server.so
 usr/lib/freeradius/libfreeradius-unlang.so
+usr/lib/freeradius/libfreeradius-json.so
 usr/lib/freeradius/libfreeradius-tls.so
 usr/lib/freeradius/libfreeradius-util.so
 usr/lib/freeradius/libfreeradius-io.so
