@@ -83,11 +83,10 @@ typedef struct {
 
 	CONF_SECTION	*parent;		//!< which started this file
 	CONF_SECTION	*current;		//!< sub-section we're reaeding
+	CONF_SECTION	*special;		//!< map / update section
 
 	int		braces;
 	bool		from_dir;		//!< this file was read from $include foo/
-	bool		in_update;		//!< hack - will move to parsing state
-	bool		in_map;			//!< hack - will move to parsing state
 } cf_stack_frame_t;
 
 /*
@@ -835,7 +834,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	/*
 	 *	Can't do this inside of update / map.
 	 */
-	if (frame->in_update || frame->in_map) {
+	if (frame->special) {
 		ERROR("%s[%d]: Parse error: Invalid location for $INCLUDE",
 		      frame->filename, frame->lineno);
 		return -1;
@@ -909,8 +908,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame->parent = parent;
 		frame->current = parent;
 		frame->filename = talloc_strdup(frame->parent, value);
-		frame->in_update = (frame - 1)->in_update;
-		frame->in_map = (frame - 1)->in_map;
+		frame->special = NULL;
 		return 1;
 	}
 
@@ -981,8 +979,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		/*
 		 *	No "$INCLUDE dir/" inside of update / map.  That's dumb.
 		 */
-		frame->in_update = false;
-		frame->in_map = false;
+		frame->special = NULL;
 		return 1;
 	}
 #else
@@ -1357,8 +1354,7 @@ do_frame:
 			frame->current = parent;
 			frame->filename = talloc_strdup(frame->parent, stack->buff[1]);
 			frame->from_dir = true;
-			frame->in_update = false; /* can't do includes inside of update / map */
-			frame->in_map = false;
+			frame->special = NULL; /* can't do includes inside of update / map */
 			break;
 		}
 
@@ -1530,6 +1526,8 @@ do_frame:
 			 */
 			if (!cf_template_merge(parent, parent->template)) goto error;
 
+			if (parent == frame->special) frame->special = NULL;
+
 			frame->current = parent = cf_item_to_section(parent->item.parent);
 			ptr++;
 			goto next_start_token;
@@ -1606,7 +1604,7 @@ do_frame:
 			css = process_map(parent, &ptr, buff, frame->filename, frame->lineno);
 			if (!css) goto error;
 
-			frame->in_map = true;
+			frame->special = css;
 			goto add_section;
 		}
 
@@ -1667,7 +1665,9 @@ do_frame:
 			 *	should really be put into a parser
 			 *	struct, as with tmpls.
 			 */
-			if (!frame->in_map && !frame->in_update) frame->in_update = (strcmp(css->name1, "update") == 0);
+			if (!frame->special && (strcmp(css->name1, "update") == 0)) {
+				frame->special = css;
+			}
 
 		add_section:
 			cf_item_add(parent, &(css->item));
@@ -1708,7 +1708,7 @@ do_frame:
 		case T_OP_LT:
 		case T_OP_CMP_EQ:
 		case T_OP_CMP_FALSE:
-			if (!parent || (!frame->in_update && !frame->in_map)) {
+			if (!parent || !frame->special) {
 				ERROR("%s[%d]: Invalid operator in assignment",
 				      frame->filename, frame->lineno);
 				goto error;
@@ -1749,7 +1749,7 @@ do_frame:
 		 *	allow it everywhere.
 		 */
 		if (*ptr == '{') {
-			if (!frame->in_update) {
+			if (!frame->special) {
 				ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
 				      frame->filename, frame->lineno);
 				goto error;
