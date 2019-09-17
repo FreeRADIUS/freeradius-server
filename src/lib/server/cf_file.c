@@ -74,13 +74,20 @@ static size_t conf_property_name_len = NUM_ELEMENTS(conf_property_name);
 
 #define MAX_STACK (32)
 typedef struct {
-	FILE		*fp;
-	char const     	*filename;
-	int		lineno;
-	CONF_SECTION	*cs;
-	bool		from_dir;
-	bool		in_update;
-	bool		in_map;
+	FILE		*fp;			//!< FP we're reading
+	char const     	*filename;		//!< filename we're reading
+	int		lineno;			//!< line in that filename
+
+	DIR		*dir;			//!< Or we're reading a directory
+	char		*directory;		//!< directory name we're reading
+
+	CONF_SECTION	*parent;		//!< which started this file
+	CONF_SECTION	*current;		//!< sub-section we're reaeding
+
+	int		braces;
+	bool		from_dir;		//!< this file was read from $include foo/
+	bool		in_update;		//!< hack - will move to parsing state
+	bool		in_map;			//!< hack - will move to parsing state
 } cf_stack_frame_t;
 
 /*
@@ -90,13 +97,11 @@ typedef struct {
  *	buff[3] is a temporary buffer
  */
 typedef struct {
-	char		**buff;
-	size_t		bufsize;
-	int		depth;
-	cf_stack_frame_t frame[MAX_STACK];
+	char		**buff;			//!< buffers for reading / parsing
+	size_t		bufsize;		//!< size of the buffers
+	int		depth;			//!< stack depth
+	cf_stack_frame_t frame[MAX_STACK];	//!< stack frames
 } cf_stack_t;
-
-static int cf_file_include(cf_stack_t *stack);
 
 /*
  *	Expand the variables in an input string.
@@ -827,6 +832,15 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	char const *value;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 
+	/*
+	 *	Can't do this inside of update / map.
+	 */
+	if (frame->in_update || frame->in_map) {
+		ERROR("%s[%d]: Parse error: Invalid location for $INCLUDE",
+		      frame->filename, frame->lineno);
+		return -1;
+	}
+
 	fr_skip_whitespace(ptr);
 
 	/*
@@ -879,30 +893,25 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		}
 	}
 
-	if ((stack->depth + 1) >= MAX_STACK) {
-		ERROR("%s[%d]: Directories too deep", frame->filename, frame->lineno);
-		return -1;
-	}
-
 	/*
 	 *	The filename doesn't end in '/', so it must be a file.
 	 */
 	if (value[strlen(value) - 1] != '/') {
-		int rcode;
+		if ((stack->depth + 1) >= MAX_STACK) {
+			ERROR("%s[%d]: Directories too deep", frame->filename, frame->lineno);
+			return -1;
+		}
 
 		stack->depth++;
-
 		frame = &stack->frame[stack->depth];
 		memset(frame, 0, sizeof(*frame));
 		frame->fp = NULL;
-		frame->cs = parent;
-		frame->filename = talloc_strdup(frame->cs, value);
+		frame->parent = parent;
+		frame->current = parent;
+		frame->filename = talloc_strdup(frame->parent, value);
 		frame->in_update = (frame - 1)->in_update;
 		frame->in_map = (frame - 1)->in_map;
-
-		rcode = cf_file_include(stack);
-		stack->depth--;
-		return rcode;
+		return 1;
 	}
 
 #ifdef HAVE_DIRENT_H
@@ -914,25 +923,25 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	 */
 	{
 		DIR		*dir;
-		struct dirent	*dp;
 		struct stat stat_buf;
-		char *my_directory;
-		int rcode = -1;
+		char *directory;
 
 		/*
 		 *	We need to keep a copy of parent while the
 		 *	included files mangle our buff[] array.
 		 */
-		my_directory = talloc_strdup(parent, value);
+		directory = talloc_strdup(parent, value);
 
-		cf_log_debug(parent, "Including files in directory \"%s\"", my_directory);
+		cf_log_debug(parent, "Including files in directory \"%s\"", directory);
 
-		dir = opendir(my_directory);
+		dir = opendir(directory);
 		if (!dir) {
 			ERROR("%s[%d]: Error reading directory %s: %s",
 			      frame->filename, frame->lineno, value,
 			      fr_syserror(errno));
-			goto done;
+		error:
+			talloc_free(directory);
+			return -1;
 		}
 #ifdef S_IWOTH
 		/*
@@ -940,71 +949,41 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		 */
 		if (fstat(dirfd(dir), &stat_buf) < 0) {
 			ERROR("%s[%d]: Failed reading directory %s: %s", frame->filename, frame->lineno,
-			      my_directory, fr_syserror(errno));
-			goto done;
+			      directory, fr_syserror(errno));
+			goto error;
 		}
 
 		if ((stat_buf.st_mode & S_IWOTH) != 0) {
 			ERROR("%s[%d]: Directory %s is globally writable.  Refusing to start due to "
-			      "insecure configuration", frame->filename, frame->lineno, my_directory);
-			goto done;
+			      "insecure configuration", frame->filename, frame->lineno, directory);
+			goto error;
 		}
 #endif
+
+		/*
+		 *	Directory plus next filename.
+		 */
+		if ((stack->depth + 2) >= MAX_STACK) {
+			ERROR("%s[%d]: Directories too deep", frame->filename, frame->lineno);
+			goto error;
+		}
 
 		stack->depth++;
 		frame = &stack->frame[stack->depth];
 
+		memset(frame, 0, sizeof(*frame));
+		frame->dir = dir;
+		frame->directory = directory;
+		frame->parent = parent;
+		frame->current = parent;
+		frame->from_dir = true;
+
 		/*
-		 *	Read the directory, ignoring "." files.
+		 *	No "$INCLUDE dir/" inside of update / map.  That's dumb.
 		 */
-		while ((dp = readdir(dir)) != NULL) {
-			char const *p;
-
-			if (dp->d_name[0] == '.') continue;
-
-			/*
-			 *	Check for valid characters
-			 */
-			for (p = dp->d_name; *p != '\0'; p++) {
-				if (isalpha((int)*p) ||
-				    isdigit((int)*p) ||
-				    (*p == '-') ||
-				    (*p == '_') ||
-				    (*p == '.')) continue;
-				break;
-			}
-			if (*p != '\0') continue;
-
-			snprintf(stack->buff[1], stack->bufsize, "%s%s",
-				 my_directory, dp->d_name);
-			if ((stat(stack->buff[1], &stat_buf) != 0) ||
-			    S_ISDIR(stat_buf.st_mode)) continue;
-
-			memset(frame, 0, sizeof(*frame));
-			frame->fp = NULL;
-			frame->cs = parent;
-			frame->filename = talloc_strdup(frame->cs, stack->buff[1]);
-			frame->from_dir = true;
-			frame->in_update = (frame - 1)->in_update;
-			frame->in_map = (frame - 1)->in_map;
-
-			/*
-			 *	Read the file into the current
-			 *	configuration section.
-			 */
-			if (cf_file_include(stack) < 0) {
-				stack->depth--;
-				closedir(dir);
-				goto done;
-			}
-		}
-		stack->depth--;
-		rcode = 0;
-		closedir(dir);
-
-done:
-		talloc_free(my_directory);
-		return rcode;
+		frame->in_update = false;
+		frame->in_map = false;
+		return 1;
 	}
 #else
 	ERROR("%s[%d]: Error including %s: No support for directories!",
@@ -1292,7 +1271,7 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 }
 
 /*
- *	Read a part of the config file.
+ *	Read a configuration file or files.
  */
 static int cf_file_include(cf_stack_t *stack)
 {
@@ -1300,13 +1279,16 @@ static int cf_file_include(cf_stack_t *stack)
 	char const	*ptr;
 	char const	*value;
 
-	FR_TOKEN	name1_token = T_INVALID, name2_token, value_token, op_token;
-	bool		has_spaces = false;
+	FR_TOKEN	name1_token, name2_token, value_token, op_token;
+	bool		has_spaces;
 	char		*cbuff;
 	size_t		len;
 	char		*buff[4];
-	cf_stack_frame_t	*frame = &stack->frame[stack->depth];
+	cf_stack_frame_t	*frame;
 
+	/*
+	 *	Short names are nicer.
+	 */
 	buff[0] = stack->buff[0];
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
@@ -1314,12 +1296,112 @@ static int cf_file_include(cf_stack_t *stack)
 
 	cbuff = buff[0];
 
-	parent = frame->cs; /* add items here */
+do_frame:
+	frame = &stack->frame[stack->depth];
+	parent = frame->current; /* add items here */
+	has_spaces = false;
+	name1_token = T_INVALID;
 
 	/*
-	 *	We get called with a new filename each time.  So open the FP.
+	 *	First try reading from the frame as a directory.  If
+	 *	so, we push a filename onto the stack and then load
+	 *	the filename.
 	 */
-	if (cf_file_open(frame->cs, frame->filename, frame->from_dir, &frame->fp) < 0) return -1;
+	if (frame->dir) {
+		struct dirent	*dp;
+		struct stat stat_buf;
+
+		while ((dp = readdir(frame->dir)) != NULL) {
+			char const *p;
+
+			if (dp->d_name[0] == '.') continue;
+
+			/*
+			 *	Check for valid characters
+			 */
+			for (p = dp->d_name; *p != '\0'; p++) {
+				if (isalpha((int)*p) ||
+				    isdigit((int)*p) ||
+				    (*p == '-') ||
+				    (*p == '_') ||
+				    (*p == '.')) continue;
+				break;
+			}
+			if (*p != '\0') continue;
+
+			snprintf(stack->buff[1], stack->bufsize, "%s%s",
+				 frame->directory, dp->d_name);
+
+			if (S_ISDIR(stat_buf.st_mode)) {
+				WARN("%s[%d]: Ignoring directory %s/%s",
+				     (frame - 1)->filename, (frame - 1)->lineno,
+				     frame->directory, dp->d_name);
+				continue;
+			}
+
+			/*
+			 *	Push the next filename onto the stack.
+			 */
+			stack->depth++;
+			frame = &stack->frame[stack->depth];
+			memset(frame, 0, sizeof(*frame));
+			frame->fp = NULL;
+			frame->parent = parent;
+			frame->current = parent;
+			frame->filename = talloc_strdup(frame->parent, stack->buff[1]);
+			frame->from_dir = true;
+			frame->in_update = false; /* can't do includes inside of update / map */
+			frame->in_map = false;
+			break;
+		}
+
+		/*
+		 *	Done reading the directory entry.  Close it,
+		 *	and go back up a stack frame.
+		 */
+		if (!dp) {
+			closedir(frame->dir);
+			frame->dir = NULL;
+			talloc_free(frame->directory);
+			stack->depth--;
+			goto do_frame;
+		}
+
+		/*
+		 *	Else we have a filename pushed onto the stack.  Process it.
+		 */
+	}
+
+	/*
+	 *	If we haven't opened a file, do that now.
+	 */
+	if (!frame->fp) {
+		rad_assert(frame->filename != NULL);
+		frame->lineno = 0;
+
+		/*
+		 *	We get called with a new filename each time.  So open the FP.
+		 */
+		if (cf_file_open(frame->parent, frame->filename, frame->from_dir, &frame->fp) < 0) {
+		error:
+			while (stack->depth >= 0) {
+				if (frame->fp) {
+					fclose(frame->fp);
+					frame->fp = NULL;
+				}
+				if (frame->dir) {
+					closedir(frame->dir);
+					frame->dir = NULL;
+					talloc_free(frame->directory);
+				}
+
+				frame--;
+				stack->depth--;
+			}
+
+			return -1;
+		}
+	} /* else we're continuing a previously opened file */
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
@@ -1344,10 +1426,7 @@ static int cf_file_include(cf_stack_t *stack)
 		len = strlen(cbuff);
 		if ((cbuff + len + 1) >= (buff[0] + stack->bufsize)) {
 			ERROR("%s[%d]: Line too long", frame->filename, frame->lineno);
-		error:
-			fclose(frame->fp);
-			frame->fp = NULL;
-			return -1;
+			goto error;
 		}
 
 		/*
@@ -1415,16 +1494,26 @@ static int cf_file_include(cf_stack_t *stack)
 		fr_skip_whitespace(ptr);
 
 		/*
-		 *	The caller eats "name1 name2 {", and calls us
-		 *	for the data inside of the section.  So if we
-		 *	receive a closing brace, then it must mean the
-		 *	end of the section.
+		 *	Catch end of a subsection.
 		 */
 		if (*ptr == '}') {
-			if (parent == frame->cs) {
+			/*
+			 *	We're already at the parent section
+			 *	which loaded this file.  We cannot go
+			 *	back up another level.
+			 *
+			 *	This limitation means that we cannot
+			 *	put half of a CONF_SECTION in one
+			 *	file, and then the second half in
+			 *	another file.  That's fine.
+			 */
+			if (parent == frame->parent) {
 				ERROR("%s[%d]: Too many closing braces", frame->filename, frame->lineno);
 				goto error;
 			}
+
+			rad_assert(frame->braces > 0);
+			frame->braces--;
 
 			/*
 			 *	Merge the template into the existing
@@ -1434,7 +1523,7 @@ static int cf_file_include(cf_stack_t *stack)
 			 */
 			if (!cf_template_merge(parent, parent->template)) goto error;
 
-			parent = cf_item_to_section(parent->item.parent);
+			frame->current = parent = cf_item_to_section(parent->item.parent);
 			ptr++;
 			goto next_start_token;
 		}
@@ -1446,14 +1535,18 @@ static int cf_file_include(cf_stack_t *stack)
 			ptr += 8;
 
 			if (process_include(stack, parent, ptr, true) < 0) goto error;
-			continue;
+			goto do_frame;
 		}
 
 		if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
+			int rcode;
+
 			ptr += 9;
 
-			if (process_include(stack, parent, ptr, false) < 0) goto error;
-			continue;
+			rcode = process_include(stack, parent, ptr, false);
+			if (rcode < 0) goto error;
+			if (rcode == 0) continue;
+			goto do_frame;
 		}
 
 		/*
@@ -1575,7 +1668,8 @@ static int cf_file_include(cf_stack_t *stack)
 			/*
 			 *	The current section is now the child section.
 			 */
-			parent = css;
+			frame->current = parent = css;
+			frame->braces++;
 			css = NULL;
 			goto next_start_token;
 		}
@@ -1739,16 +1833,26 @@ static int cf_file_include(cf_stack_t *stack)
 	}
 
 	/*
-	 *	See if EOF was unexpected ..
+	 *	See if EOF was unexpected.
 	 */
-	if (feof(frame->fp) && (parent != frame->cs)) {
+	if (feof(frame->fp) && (parent != frame->parent)) {
 		ERROR("%s[%d]: EOF reached without closing brace for section %s starting at line %d",
 		      frame->filename, frame->lineno, cf_section_name1(parent), cf_lineno(parent));
 		goto error;
 	}
 
+	rad_assert(frame->fp != NULL);
 	fclose(frame->fp);
 	frame->fp = NULL;
+
+	/*
+	 *	More things to read, go read them.
+	 */
+	if (stack->depth > 0) {
+		stack->depth--;
+		goto do_frame;
+	}
+
 	return 0;
 }
 
@@ -1777,6 +1881,10 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	cf_data_add(cs, tree, "filename", false);
 
+#ifndef NDEBUG
+	memset(&stack, 0, sizeof(stack));
+#endif
+
 	/*
 	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
 	 */
@@ -1788,8 +1896,8 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	frame = &stack.frame[stack.depth];
 
 	memset(frame, 0, sizeof(*frame));
-	frame->cs = cs;
-	frame->filename = talloc_strdup(frame->cs, filename);
+	frame->parent = frame->current = cs;
+	frame->filename = talloc_strdup(frame->parent, filename);
 	cs->item.filename = frame->filename;
 
 	if (cf_file_include(&stack) < 0) {
