@@ -1493,13 +1493,20 @@ do_frame:
 		 *	buffer, without continuations.
 		 */
 
-	parse_line:
+	next_start_token:
 		fr_skip_whitespace(ptr);
+
+		/*
+		 *	Nothing left, or just a comment.  Go read
+		 *	another line of text.
+		 */
+		if (!*ptr || (*ptr == '#')) continue;
 
 		/*
 		 *	Catch end of a subsection.
 		 */
 		if (*ptr == '}') {
+	closing_brace:
 			/*
 			 *	We're already at the parent section
 			 *	which loaded this file.  We cannot go
@@ -1786,6 +1793,9 @@ do_frame:
 			goto alloc_section;
 		}
 
+		/*
+		 *	Parse the value for a CONF_PAIR.
+		 */
 		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			goto error;
@@ -1795,7 +1805,7 @@ do_frame:
 		/*
 		 *	Add parent CONF_PAIR to our CONF_SECTION
 		 */
-		do_set:
+	do_set:
 		if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], frame->filename, frame->lineno) < 0) goto error;
 
 		fr_skip_whitespace(ptr);
@@ -1812,31 +1822,24 @@ do_frame:
 		}
 
 		/*
-		 *	Only a few things are allowed after a
-		 *	CONF_PAIR definition.  EOL, comment,
-		 *	or closing brace.
+		 *	Closing brace is allowed after a CONF_PAIR
+		 *	definition.
 		 */
-		if (!(!*ptr || (*ptr == '#') || (*ptr == '}'))) {
+		if (*ptr == '}') goto closing_brace;
+
+		/*
+		 *	Anything OTHER than EOL or comment is a syntax
+		 *	error.
+		 */
+		if (*ptr && (*ptr != '#')) {
 			ERROR("%s[%d]: Syntax error: Unexpected text: %s",
 			      frame->filename, frame->lineno, ptr);
 			goto error;
 		}
 
-	next_start_token:
 		/*
-		 *	Done parsing one thing.  Skip to EOL if possible.
-		 */
-		fr_skip_whitespace(ptr);
-
-		/*
-		 *	There's more text at the end of the thing we
-		 *	just parsed.  Try to grab some more.
-		 */
-		if (*ptr && (*ptr != '#')) goto parse_line;
-
-		/*
-		 *	Otherwise read another line of text from tbe
-		 *	file.
+		 *	Since we're at EOL or comment, just drop the
+		 *	text, and go read another line of text.
 		 */
 	}
 
