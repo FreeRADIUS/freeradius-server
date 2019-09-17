@@ -1665,7 +1665,8 @@ do_frame:
 			 *	should really be put into a parser
 			 *	struct, as with tmpls.
 			 */
-			if (!frame->special && (strcmp(css->name1, "update") == 0)) {
+			if (!frame->special && ((strcmp(css->name1, "update") == 0) ||
+						(strcmp(css->name1, "filter") == 0))) {
 				frame->special = css;
 			}
 
