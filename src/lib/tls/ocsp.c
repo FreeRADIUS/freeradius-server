@@ -183,6 +183,8 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	X509_STORE		*server_store;
 	X509_STORE_CTX		*server_store_ctx = NULL;
 
+	STACK_OF(X509)		*our_chain;
+
 	int			ret;
 
 	cert = SSL_get_certificate(ssl);
@@ -193,19 +195,11 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		return conf->softfail ? SSL_TLSEXT_ERR_NOACK : SSL_TLSEXT_ERR_ALERT_FATAL;
 	}
 
-	/*
-	 *	OpenSSL people appear to have removed SSL_get_cert_store.
-	 *
-	 *	So if we dynamically set the server cert at runtime, we
-	 *	don't have access to the chain.
-	 */
 	server_store = SSL_CTX_get_cert_store(SSL_get_SSL_CTX(ssl));
 	if (!server_store) {
 		tls_log_error(request, "Failed retrieving SSL session cert store");
 		goto error;
 	}
-
-	MEM(server_store_ctx = X509_STORE_CTX_new());	/* Die if OOM */
 
 	/*
 	 *	This is what OpenSSL uses to construct SSL chains
@@ -215,7 +209,14 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	 *	This isn't what we pass to tls_ocsp_check.  That store
 	 *	is used to validate the OCSP server's response.
 	 */
-	if (X509_STORE_CTX_init(server_store_ctx, server_store, NULL, NULL) == 0) {
+	if (SSL_get0_chain_certs(ssl, &our_chain) == 0) {
+		tls_log_error(request, "Failed retrieving chain certificates from current SSL session");
+		goto error;
+	}
+
+	MEM(server_store = X509_STORE_new());
+	MEM(server_store_ctx = X509_STORE_CTX_new());
+	if (X509_STORE_CTX_init(server_store_ctx, server_store, cert, our_chain) == 0) {
 		tls_log_error(request, "Failed initialising SSL session cert store ctx");
 		goto error;
 	}
@@ -226,12 +227,9 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	 *	server cert's issuer.
 	 */
 	if (RDEBUG_ENABLED3) {
-		STACK_OF(X509)	*chain;
-
 		RDEBUG3("Current SSL session cert store contents");
-		chain = X509_STORE_CTX_get_chain(server_store_ctx);
 		RINDENT();
-		tls_log_certificate_chain(request, chain, cert);
+		tls_log_certificate_chain(request, our_chain, cert);
 		REXDENT();
 	}
 
@@ -293,6 +291,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 	X509_free(issuer_cert);	/* Decrement reference count on issuer cert */
 	X509_STORE_CTX_free(server_store_ctx);
+	X509_STORE_free(server_store);
 
 	return ret;
 }
