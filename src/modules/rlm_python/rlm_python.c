@@ -63,12 +63,6 @@ typedef struct {
 							///< rlm_python module config in the python path.
 	bool		python_path_include_default;	//!< Include the default python path
 							///< in the python path.
-
-#if PY_MAJOR_VERSION == 3
-	wchar_t		*wide_path;		//!< Special wide char encoding of radiusd path.
-						//!< FreeRADIUS functions.
-#endif
-
 	PyObject	*module;		//!< Local, interpreter specific module.
 
 #if PY_MAJOR_VERSION == 2
@@ -961,8 +955,8 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	DEBUG3("Setting python path to \"%s\"", path);
 	wide_path = Py_DecodeLocale(path, NULL);
 	talloc_free(path);
-	PySys_SetPath(inst->wide_path);
-	PyMem_RawFree(inst->wide_path);
+	PySys_SetPath(wide_path);
+	PyMem_RawFree(wide_path);
 
 	/*
 	 *	Import the radiusd module into this python
