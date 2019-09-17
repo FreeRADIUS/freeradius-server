@@ -31,6 +31,7 @@ else
 esac
 fi
 
+
 as_nl='
 '
 export as_nl
@@ -2723,7 +2724,7 @@ fi
 
 
 	if test "x$PYTHON_CONFIG_BIN" = x; then
-		for ac_prog in  python2.7-config python-config
+		for ac_prog in  python-config python3-config python2.7-config
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
 set dummy $ac_prog; ac_word=$2
@@ -2826,6 +2827,10 @@ fi
 
 
 
+
+
+unset ac_cv_env_LIBS_set
+unset ac_cv_env_LIBS_value
 
 ac_config_files="$ac_config_files all.mk"
 
@@ -3983,4 +3988,5 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+
 
