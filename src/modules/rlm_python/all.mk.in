@@ -6,8 +6,12 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
+
+PYTHON_LIB_PATH := $(shell echo $(TGT_LDLIBS) | sed 's/[ ].*$$//g; s/^-L//g')
+PYTHON_LIB_FILE := $(shell echo $(TGT_LDLIBS) | sed 's/^.*-l\(python.*[^ ]\)/\1/g; s/[ ].*$$//g')
+
+SRC_CFLAGS	:= -DPYTHON_LIB_PATH=\"$(PYTHON_LIB_PATH)\" -DPYTHON_LIB_FILE=\"$(PYTHON_LIB_FILE)\" @mod_cflags@
 
 ifneq "$(TARGETNAME)" ""
 install: $(R)$(modconfdir)/python/example.py
