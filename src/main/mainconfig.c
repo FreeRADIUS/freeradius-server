@@ -787,6 +787,12 @@ char const *get_radius_dir(void)
 	return radius_dir;
 }
 
+static int _dlhandle_free(void **dl_handle)
+{
+	dlclose(*dl_handle);
+	return 0;
+}
+
 /*
  *	Read config files.
  *
@@ -918,9 +924,74 @@ do {\
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
 	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Errors reading or parsing %s", buffer);
+	failure:
 		talloc_free(cs);
 		return -1;
 	}
+
+	/*
+	 *	Parse environment variables first.
+	 */
+	subcs = cf_section_sub_find(cs, "ENV");
+	if (subcs) {
+		char const *attr, *value;
+		CONF_PAIR *cp;
+		CONF_ITEM *ci;
+
+		for (ci = cf_item_find_next(subcs, NULL);
+		     ci != NULL;
+		     ci = cf_item_find_next(subcs, ci)) {
+			if (!cf_item_is_pair(ci)) {
+				cf_log_err(ci, "Unexpected item in ENV section");
+				goto failure;
+			}
+
+			cp = cf_item_to_pair(ci);
+			if (cf_pair_operator(cp) != T_OP_EQ) {
+				cf_log_err(ci, "Invalid operator for item in ENV section");
+				goto failure;
+			}
+
+			attr = cf_pair_attr(cp);
+			value = cf_pair_value(cp);
+			if (!value) {
+				if (unsetenv(attr) < 0) {
+					cf_log_err(ci, "Failed deleting environment variable %s: %s",
+						   attr, fr_syserror(errno));
+					goto failure;
+				}
+			} else {
+				void *handle;
+				void **handle_p;
+
+				if (setenv(attr, value, 1) < 0) {
+					cf_log_err(ci, "Failed setting environment variable %s: %s",
+						   attr, fr_syserror(errno));
+					goto failure;
+				}
+
+				/*
+				 *	Hacks for LD_PRELOAD.
+				 */
+				if (strcmp(attr, "LD_PRELOAD") != 0) continue;
+
+				handle = dlopen(value, RTLD_NOW | RTLD_GLOBAL);
+				if (!handle) {
+					cf_log_err(ci, "Failed loading library %s: %s", value, dlerror());
+					goto failure;
+				}
+
+				/*
+				 *	Wrap the pointer, so we can set a destructor.
+				 */
+				MEM(handle_p = talloc(NULL, void *));
+				*handle_p = handle;
+				talloc_set_destructor(handle_p, _dlhandle_free);
+
+				(void) cf_data_add(subcs, value, handle, NULL);
+			}
+		} /* loop over pairs in ENV */
+	} /* there's an ENV subsection */
 
 	/*
 	 *	If there was no log destination set on the command line,

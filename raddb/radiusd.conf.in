@@ -382,6 +382,60 @@ log {
 #  The program to execute to do concurrency checks.
 checkrad = ${sbindir}/checkrad
 
+#
+#  ENVIRONMENT VARIABLES
+#
+#  You can reference environment variables using an expansion like
+#  `$ENV{PATH}`.  However it is sometimes useful to be able to also set
+#  environment variables.  This section lets you do that.
+#
+#  The main purpose of this section is to allow administrators to keep
+#  RADIUS-specific configuration in the RADIUS configuration files.
+#  For example, if you need to set an environment variable which is
+#  used by a module.  You could put that variable into a shell script,
+#  but that's awkward.  Instead, just list it here.
+#
+#  Note that these environment variables are set AFTER the
+#  configuration file is loaded.  So you cannot set FOO here, and
+#  expect to reference it via `$ENV{FOO}` in another configuration file.
+#  You should instead just use a normal configuration variable for
+#  that.
+#
+ENV {
+	#
+	#  Set environment varable `FOO` to value '/bar/baz'.
+	#
+	#  NOTE: Note that you MUST use '='.  You CANNOT use '+=' to append
+	#  values.
+	#
+#	FOO = '/bar/baz'
+
+	#
+	#  Delete environment variable `BAR`.
+	#
+#	BAR
+
+	#
+	#  `LD_PRELOAD` is special.  It is normally set before the
+	#  application runs, and is interpreted by the dynamic linker.
+	#  Which means you cannot set it inside of an application, and
+	#  expect it to load libraries.
+	#
+	#  Since this functionality is useful, we extend it here.
+	#
+	#  You can set
+	#
+	#  LD_PRELOAD = /path/to/library.so
+	#
+	#  and the server will load the named libraries.  Multiple
+	#  libraries can be loaded by specificing multiple individual
+	#  `LD_PRELOAD` entries.
+	#
+	#
+#	LD_PRELOAD = /path/to/library1.so
+#	LD_PRELOAD = /path/to/library2.so
+}
+
 # SECURITY CONFIGURATION
 #
 #  There may be multiple methods of attacking on the server.  This
