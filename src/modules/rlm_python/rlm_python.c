@@ -1254,7 +1254,7 @@ static int mod_load(void)
 	 *	Resolve the test symbol in our own
 	 *	symbol space.
 	 */
-	sym = dlsym(RTLD_SELF, PYTHON_TEST_SYMBOL);
+	sym = dlsym(RTLD_DEFAULT, PYTHON_TEST_SYMBOL);
 	if (!sym) {
 		LOAD_WARN("Can't find %s in symbol table, skipping loading python into global symbol table",
 			  PYTHON_TEST_SYMBOL);
