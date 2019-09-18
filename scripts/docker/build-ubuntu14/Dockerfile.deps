@@ -30,6 +30,26 @@ RUN apt-get update && \
 #  eapol_test dependencies
     apt-get install -y libnl-3-dev libnl-genl-3-dev
 
+#
+#  documentation build
+#
+
+#  - doxygen & JSON.pm
+RUN apt-get install -y doxygen graphviz libjson-perl
+#  - antora (npm needed)
+RUN curl -sL https://deb.nodesource.com/setup_8.x | bash -
+RUN apt-get install -y nodejs
+RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
+#  - pandoc
+WORKDIR /tmp
+RUN curl -OL $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*deb" | cut -d '"' -f 4)
+RUN dpkg -i ./pandoc-*.deb
+RUN apt-get install -fy
+#  - asciidoctor
+RUN apt-get install -y ruby-dev
+RUN gem install asciidoctor
+
+# set default things
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${gccver} 50 \
                         --slave /usr/bin/g++ g++ /usr/bin/g++-${gccver} && \
     update-alternatives --config gcc
