@@ -621,7 +621,7 @@ static ssize_t load_proto_library(char const *proto_name)
 		snprintf(dl_name, sizeof(dl_name), "libfreeradius-%s", proto_name);
 		if (dl) TALLOC_FREE(dl);
 
-		dl = dl_by_name(dl_loader, dl_name, NULL, false, false);
+		dl = dl_by_name(dl_loader, dl_name, NULL, false);
 		if (!dl) {
 			fprintf(stderr, "Failed to link to library \"%s\": %s\n", dl_name, fr_strerror());
 			unload_proto_library();

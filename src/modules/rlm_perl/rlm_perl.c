@@ -85,6 +85,9 @@ typedef struct {
 	HV		*rad_perlconf_hv;	//!< holds "config" items (perl %RAD_PERLCONF hash).
 
 } rlm_perl_t;
+
+static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
@@ -1116,6 +1119,28 @@ static int mod_detach(void *instance)
 }
 DIAG_ON(nested-externs)
 
+
+static int mod_load(void)
+{
+#define LOAD_WARN(_fmt, ...) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_perl - " _fmt,  ## __VA_ARGS__)
+
+	/*
+	 *	Load python using RTLD_GLOBAL and dlopen
+	 *	This fixes issues where Perl C extensions
+	 *	can't find the symbols they need.
+	 */
+	perl_dlhandle = dl_open_by_sym("perl_construct", RTLD_NOW | RTLD_GLOBAL);
+	if (!perl_dlhandle) LOAD_WARN("Failed loading libperl symbols into global symbol table: %s", fr_strerror());
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	if (perl_dlhandle) dlclose(perl_dlhandle);
+}
+
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -1136,6 +1161,8 @@ module_t rlm_perl = {
 #endif
 	.inst_size	= sizeof(rlm_perl_t),
 	.config		= module_config,
+	.onload		= mod_load,
+	.unload		= mod_unload,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,

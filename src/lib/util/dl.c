@@ -424,19 +424,12 @@ static int _dl_free(dl_t *dl)
  * @param[in] uctx		Data to store within the dl_t.
  * @param[in] uctx_free		talloc_free the passed in uctx data if this
  *				dl_t is freed.
- * @param[in] sym_global	Set RTLD_GLOBAL to place all symbols from the module
- *				in the global symbol table.
  * @return
  *	- A new dl_t on success, or a pointer to an existing
  *	  one with the reference count increased.
  *	- NULL on error.
  */
-dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx_free,
-#ifdef RTLD_GLOBAL
-		 bool sym_global)
-#else
-		 UNUSED bool sym_global)
-#endif
+dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx_free)
 {
 	int		flags = RTLD_NOW;
 	void		*handle = NULL;
@@ -453,11 +446,6 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		return dl;
 	}
 
-#ifdef RTLD_GLOBAL
-	if (sym_global) {
-		flags |= RTLD_GLOBAL;
-	} else
-#endif
 	flags |= RTLD_LOCAL;
 
 	/*

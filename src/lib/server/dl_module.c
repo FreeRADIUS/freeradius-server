@@ -60,14 +60,6 @@ typedef struct {
 
 static _Thread_local dl_module_inst_cache_t	dl_inst_cache;
 
-/** Modules which need RTLD_GLOBAL set
- *
- */
-static fr_table_num_sorted_t const dl_module_sym_global[] = {
-	{ "rlm_perl",	true }
-};
-static size_t dl_module_sym_global_len = NUM_ELEMENTS(dl_module_sym_global);
-
 /** Name prefixes matching the types of loadable module
  */
 static fr_table_num_sorted_t const dl_module_type_prefix[] = {
@@ -373,8 +365,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	 *	Pass in dl_module as the uctx so that
 	 *	we can get at it in any callbacks.
 	 */
-	dl = dl_by_name(dl_module_loader->dl_loader, module_name, dl_module, false,
-			fr_table_value_by_str(dl_module_sym_global, module_name, false));
+	dl = dl_by_name(dl_module_loader->dl_loader, module_name, dl_module, false);
 	if (!dl) {
 		cf_log_perr(conf, "Failed to link to module \"%s\"", module_name);
 		cf_log_err(conf, "Make sure it (and all its dependent libraries!) are in the search path"
