@@ -1334,11 +1334,15 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 			break;
 
 		default:
-			return -1;
+			break;
 		}
+		return -1;
+
 	default:
-		return 0;
+		break;
 	}
+
+	return 0;
 }
 
 /** Parses a #CONF_PAIR into a C data type, with a default value.
