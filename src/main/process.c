@@ -300,7 +300,7 @@ static bool we_are_master(void)
 #define FINAL_STATE(_x) NO_CHILD_THREAD; request->component = "<" #_x ">"; request->module = ""; request->child_state = _x
 
 
-static int event_new_fd(rad_listen_t *this);
+static void event_new_fd(rad_listen_t *this);
 
 /*
  *	We need mutexes around the event FD list *only* in certain
@@ -5002,13 +5002,13 @@ static int proxy_eol_cb(void *ctx, void *data)
 #endif	/* WITH_PROXY */
 #endif	/* WITH_TCP */
 
-static int event_new_fd(rad_listen_t *this)
+static void event_new_fd(rad_listen_t *this)
 {
 	char buffer[1024];
 
 	ASSERT_MASTER;
 
-	if (this->status == RAD_LISTEN_STATUS_KNOWN) return 1;
+	if (this->status == RAD_LISTEN_STATUS_KNOWN) return;
 
 	this->print(this, buffer, sizeof(buffer));
 
@@ -5051,7 +5051,7 @@ static int event_new_fd(rad_listen_t *this)
 			 *	Set up the first poll interval.
 			 */
 			event_poll_detail(this);
-			return 1;
+			return;
 #else
 			break;	/* add the FD to the list */
 #endif
@@ -5120,7 +5120,7 @@ static int event_new_fd(rad_listen_t *this)
 		if (fr_event_fd_insert(el, 0, this->fd,
 				       event_socket_handler, this)) {
 			this->status = RAD_LISTEN_STATUS_KNOWN;
-			return 1;
+			return;
 		}
 
 		ERROR("Failed adding event handler for socket: %s", fr_strerror());
@@ -5154,7 +5154,7 @@ static int event_new_fd(rad_listen_t *this)
 				rad_panic("Failed to insert event");
 			}
 
-			return 1;
+			return;
 		}
 
 		fr_event_fd_delete(el, 0, this->fd);
@@ -5211,7 +5211,7 @@ static int event_new_fd(rad_listen_t *this)
 				rad_panic("Failed to insert event");
 			}
 
-			return 1;
+			return;
 		}
 
 		/*
@@ -5307,7 +5307,7 @@ static int event_new_fd(rad_listen_t *this)
 			ASSERT_MASTER;
 			if (sock->ev) fr_event_delete(el, &sock->ev);
 			listen_free(&this);
-			return 1;
+			return;
 		}
 
 		/*
@@ -5324,7 +5324,7 @@ static int event_new_fd(rad_listen_t *this)
 #endif	/* WITH_TCP */
 	}
 
-	return 1;
+	return;
 }
 
 /***********************************************************************
