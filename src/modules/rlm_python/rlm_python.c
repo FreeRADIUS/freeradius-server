@@ -1238,32 +1238,57 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 
 static int mod_load(void)
 {
-	char const *libpython_file = PYTHON_LIB_PATH "/" "lib" PYTHON_LIB_FILE "" DL_EXTENSION;
+	Dl_info		info;
+	void		*sym;
+
+#define PYTHON_TEST_SYMBOL "Py_IsInitialized"
+#define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
+#define LOAD_WARN(_fmt, ...) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
 
 	rad_assert(!Py_IsInitialized());
 
-	fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "Python version: %s", Py_GetVersion());
+	LOAD_INFO("Python version: %s", Py_GetVersion());
 	dependency_version_number_add(NULL, "python", Py_GetVersion());
+
+	/*
+	 *	Resolve the test symbol in our own
+	 *	symbol space.
+	 */
+	sym = dlsym(RTLD_SELF, PYTHON_TEST_SYMBOL);
+	if (!sym) {
+		LOAD_WARN("Can't find %s in symbol table, skipping loading python into global symbol table",
+			  PYTHON_TEST_SYMBOL);
+		goto skip_dlopen;
+	}
+
+	/*
+	 *	It's unclear whether passing function
+	 *	pointers will always "just work",
+	 *	which is why we resolve the symbol
+	 *	at runtime then call dladdr.
+	 */
+	if (dladdr(sym, &info) == 0) {
+		LOAD_WARN("Failed resolving symbol %s (%p) to library path: %s "
+			  ", skipping loading python into global symbol table", PYTHON_TEST_SYMBOL, sym, dlerror());
+		goto skip_dlopen;
+	}
 
 	/*
 	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
 	 */
-	python_dlhandle = dlopen(libpython_file, RTLD_NOW | RTLD_GLOBAL);
+	python_dlhandle = dlopen(info.dli_fname, RTLD_NOW | RTLD_GLOBAL);
 	if (!python_dlhandle) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__,
 				     "Failed loading libpython symbols from \"%s\" into global symbol table: %s",
-				     libpython_file, dlerror());
+				     info.dli_fname, dlerror());
 
+skip_dlopen:
 
 #if PY_MAJOR_VERSION == 3
 	/*
 	 *	Python 3 introduces the concept of a
 	 *	"inittab", i.e. a list of modules which
-	 *	are automatically created when new
-	 *	interpreters are spawned.
-	 *
-	 *	This is what we use to create the radiusd
-	 *	interface module in every interpreter
-	 *	instance.
+	 *	are automatically created when the first
+	 *	interpreter is spawned.
 	 */
 	PyImport_AppendInittab("radiusd", python_module_init);
 #endif
