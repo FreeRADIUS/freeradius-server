@@ -1125,7 +1125,7 @@ static int mod_load(void)
 #define LOAD_WARN(_fmt, ...) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_perl - " _fmt,  ## __VA_ARGS__)
 
 	/*
-	 *	Load python using RTLD_GLOBAL and dlopen
+	 *	Load perl using RTLD_GLOBAL and dlopen.
 	 *	This fixes issues where Perl C extensions
 	 *	can't find the symbols they need.
 	 */

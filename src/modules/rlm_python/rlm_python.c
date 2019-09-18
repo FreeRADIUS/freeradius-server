@@ -1247,7 +1247,7 @@ static int mod_load(void)
 	dependency_version_number_add(NULL, "python", Py_GetVersion());
 
 	/*
-	 *	Load python using RTLD_GLOBAL and dlopen
+	 *	Load python using RTLD_GLOBAL and dlopen.
 	 *	This fixes issues where python C extensions
 	 *	can't find the symbols they need.
 	 */
