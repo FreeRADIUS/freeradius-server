@@ -106,9 +106,11 @@ $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERAT
 test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient test.bin test.trie test.unit test.xlat test.map test.keywords test.auth test.modules $(BUILD_DIR)/tests/radiusd-c test.eap | build.raddb
 	@$(MAKE) -C src/tests tests
 
+clean: clean.test
 .PHONY: clean.test
 clean.test: clean.test.modules
 	@$(MAKE) -C src/tests clean
+	@rm ${BUILD_DIR}/tests.ok
 
 #  Tests specifically for Travis. We do a LOT more than just
 #  the above tests
@@ -400,4 +402,11 @@ whitespace:
 #
 ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 include scripts/docker/crossbuild/crossbuild.mk
+endif
+
+#
+#  The "coverage" target
+#
+ifneq "$(findstring coverage,$(MAKECMDGOALS))" ""
+include scripts/build/coverage.mk
 endif
