@@ -1013,10 +1013,10 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 				return RLM_MODULE_OK;
 
 			case -1:
+			default:
 				eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 				return RLM_MODULE_HANDLED;			/* We need to process more packets */
 			}
-			if (!fr_cond_assert(0)) return RLM_MODULE_FAIL;		/* Quiet the stupid compiler */
 
 		case EAP_SIM_CLIENT_ERROR:
 		{
