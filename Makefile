@@ -110,7 +110,6 @@ clean: clean.test
 .PHONY: clean.test
 clean.test: clean.test.modules
 	@$(MAKE) -C src/tests clean
-	@rm ${BUILD_DIR}/tests.ok
 
 #  Tests specifically for Travis. We do a LOT more than just
 #  the above tests
