@@ -1318,7 +1318,7 @@ static void mod_unload(void)
 	PyThreadState_Swap(global_interpreter); /* Swap to the main thread */
 
 	Py_Finalize();
-	dlclose(python_dlhandle);
+	if (python_dlhandle) dlclose(python_dlhandle);	/* dlclose will SEGV on null handle */
 
 #if PY_MAJOR_VERSION == 3
 	if (default_path) PyMem_RawFree(default_path);
