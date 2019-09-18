@@ -15,7 +15,7 @@ Index: freeradius-server/raddb/radiusd.conf.in
 ===================================================================
 --- freeradius-server.orig/raddb/radiusd.conf.in
 +++ freeradius-server/raddb/radiusd.conf.in
-@@ -68,7 +68,7 @@ radacctdir = @radacctdir@
+@@ -67,7 +67,7 @@ radacctdir = @radacctdir@
  #
  #  See also the `-n` command-line option.
  #
@@ -56,7 +56,7 @@ Index: freeradius-server/raddb/sites-available/control-socket
 ===================================================================
 --- freeradius-server.orig/raddb/sites-available/control-socket
 +++ freeradius-server/raddb/sites-available/control-socket
-@@ -72,12 +72,12 @@ server control {
+@@ -82,12 +82,12 @@ server control {
  			#
  			#  uid:: Name of user who is allowed to connect to the control socket.
  			#
@@ -75,7 +75,7 @@ Index: freeradius-server/src/bin/radiusd.c
 ===================================================================
 --- freeradius-server.orig/src/bin/radiusd.c
 +++ freeradius-server/src/bin/radiusd.c
-@@ -227,14 +227,11 @@ int main(int argc, char *argv[])
+@@ -230,14 +230,11 @@ int main(int argc, char *argv[])
  	}
  
  	/*
