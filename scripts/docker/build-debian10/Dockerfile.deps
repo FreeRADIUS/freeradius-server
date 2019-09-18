@@ -29,7 +29,7 @@ RUN apt-get update && \
     apt-get install -y cmake
 
 #
-#  documentation build
+#  Documentation build dependecies
 #
 
 #  - doxygen & JSON.pm

@@ -22,7 +22,7 @@ RUN rm /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
 RUN rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
 
 #
-#  documentation build
+#  Documentation build dependecies
 #
 
 #  - doxygen & JSON.pm
