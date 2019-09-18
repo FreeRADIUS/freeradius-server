@@ -55,14 +55,18 @@ crossbuild.info:
 	@echo Common images: $(CB_COMMON)
 
 crossbuild.help: crossbuild.info
-	@echo Make targets:
+	@echo ""
+	@echo "Make targets:"
 	@echo "    crossbuild               - build and test all images"
 	@echo "    crossbuild.common        - build and test common images"
+	@echo "    crossbuild.info          - list images"
 	@echo "    crossbuild.down          - stop all containers"
 	@echo "    crossbuild.reset         - remove cache of docker state"
 	@echo "    crossbuild.clean         - down and reset all targets"
 	@echo "    crossbuild.wipe          - destroy all crossbuild Docker images"
-	@echo "    crossbuild.IMAGE         - build and test IMAGE"
+	@echo ""
+	@echo "Per-image targets:"
+	@echo "    crossbuild.IMAGE         - build and test image <IMAGE>"
 	@echo "    crossbuild.IMAGE.log     - show latest build log"
 	@echo "    crossbuild.IMAGE.up      - start container"
 	@echo "    crossbuild.IMAGE.down    - stop container"
