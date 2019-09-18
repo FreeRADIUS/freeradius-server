@@ -24,15 +24,15 @@ Index: freeradius-server/raddb/radiusd.conf.in
  
  #
  #  Location of config and logfiles.
-@@ -430,8 +430,8 @@ security {
+@@ -429,8 +429,8 @@ security {
  	#  member.  This can allow for some finer-grained access
  	#  controls.
  	#
- 
 -#	user = radius
 -#	group = radius
 +	user = freerad
 +	group = freerad
+ 
  	#
  	#  allow_core_dumps:: Core dumps are a bad thing.
 Index: freeradius-server/scripts/monit/freeradius.monitrc
