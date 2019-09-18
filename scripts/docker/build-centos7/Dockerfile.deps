@@ -19,6 +19,8 @@ ENV CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
 #  See: https://bugs.centos.org/view.php?id=14773
 #
 RUN rm /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
+RUN rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
+
 
 #
 #  Setup a src dir in /usr/local
