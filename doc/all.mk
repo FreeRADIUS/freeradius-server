@@ -122,22 +122,22 @@ clean.doc:
 #
 update-check.doc:
 	${Q}echo "TEST-DOC UPDATE XLAT & RADDB DATABASE"
-	${Q}./scripts/checks/missing-xlat-doc.sh > ${top_srcdir}/scripts/checks/missing-xlat-doc.txt
-	${Q}./scripts/checks/missing-raddb-mod-conf.sh > ${top_srcdir}/scripts/checks/missing-raddb-mod-conf.txt
+	${Q}./scripts/build/missing-xlat-doc.sh > ${top_srcdir}/scripts/build/missing-xlat-doc.txt
+	${Q}./scripts/build/missing-raddb-mod-conf.sh > ${top_srcdir}/scripts/build/missing-raddb-mod-conf.txt
 
 check.doc:
 	${Q}echo "TEST-DOC XLAT CHECK";                                           \
-	check_xlatA="${top_srcdir}/scripts/checks/missing-xlat-doc.txt";          \
+	check_xlatA="${top_srcdir}/scripts/build/missing-xlat-doc.txt";          \
 	check_xlatB="${BUILD_DIR}/tests/missing-xlat-doc.txt";                    \
-	./scripts/checks/missing-xlat-doc.sh > $${check_xlatB};                   \
+	./scripts/build/missing-xlat-doc.sh > $${check_xlatB};                   \
 	if ! diff $${check_xlatA} $${check_xlatB}; then                           \
 		echo "FAILED: XLAT'S MISSING CHECKS: $$check_xlatA != $$check_xlatB"; \
 		exit 1;                                                               \
 	fi
 	${Q}echo "TEST-DOC RADDB CHECK";                                          \
-	check_xlatA="${top_srcdir}/scripts/checks/missing-raddb-mod-conf.txt";    \
+	check_xlatA="${top_srcdir}/scripts/build/missing-raddb-mod-conf.txt";    \
 	check_xlatB="${BUILD_DIR}/tests/missing-raddb-mod-conf.txt";              \
-	./scripts/checks/missing-raddb-mod-conf.sh > $${check_xlatB};             \
+	./scripts/build/missing-raddb-mod-conf.sh > $${check_xlatB};             \
 	if ! diff $${check_xlatA} $${check_xlatB}; then                           \
 		echo "FAILED: RADDB MISSING DOCUMENTATION: $$check_xlatA != $$check_xlatB"; \
 		exit 1;                                                               \
