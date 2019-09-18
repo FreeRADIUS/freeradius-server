@@ -160,6 +160,50 @@ static int dl_handle_cmp(void const *one, void const *two)
 	return strcmp(((dl_t const *)one)->name, ((dl_t const *)two)->name);
 }
 
+/** Utility function to dlopen the library containing a particular symbol
+ *
+ * @note Not really part of our 'dl' API, just a convenience function.
+ *
+ * @param[in] sym_name	to resolve.
+ * @param[in] flags	to pass to dlopen.
+ * @return
+ *	- NULL on error.
+ *      - A new handle on success.
+ */
+void *dl_open_by_sym(char const *sym_name, int flags)
+{
+	Dl_info		info;
+	void		*sym;
+	void		*handle;
+
+	/*
+	 *	Resolve the test symbol in our own symbol space by
+	 *	iterating through all the libraries.
+	 *	This might be slow.  Don't do this at runtime!
+	 */
+	sym = dlsym(RTLD_DEFAULT, sym_name);
+	if (!sym) {
+		fr_strerror_printf("Can't resolve symbol %s", sym_name);
+		return NULL;
+	}
+
+	/*
+	 *	Lookup the library the symbol belongs to
+	 */
+	if (dladdr(sym, &info) == 0) {
+		fr_strerror_printf("Failed retrieving info for \"%s\" (%p)", sym_name, sym);
+		return NULL;
+	}
+
+	handle = dlopen(info.dli_fname, flags);
+	if (!handle) {
+		fr_strerror_printf("Failed loading \"%s\": %s", info.dli_fname, dlerror());
+		return NULL;
+	}
+
+	return handle;
+}
+
 /** Walk over the registered init callbacks, searching for the symbols they depend on
  *
  * Allows code outside of the dl API to register initialisation functions that get

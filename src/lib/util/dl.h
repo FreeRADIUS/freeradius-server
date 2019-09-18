@@ -86,6 +86,7 @@ typedef void (*dl_unload_t)(dl_t const *module, void *symbol, void *user_ctx);
 /*
  *	Functions
  */
+void			*dl_open_by_sym(char const *sym_name, int flags);
 
 int			dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl);
 

@@ -1238,10 +1238,6 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 
 static int mod_load(void)
 {
-	Dl_info		info;
-	void		*sym;
-
-#define PYTHON_TEST_SYMBOL "Py_IsInitialized"
 #define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
 #define LOAD_WARN(_fmt, ...) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
 
@@ -1251,37 +1247,12 @@ static int mod_load(void)
 	dependency_version_number_add(NULL, "python", Py_GetVersion());
 
 	/*
-	 *	Resolve the test symbol in our own
-	 *	symbol space.
+	 *	Load python using RTLD_GLOBAL and dlopen
+	 *	This fixes issues where python C extensions
+	 *	can't find the symbols they need.
 	 */
-	sym = dlsym(RTLD_DEFAULT, PYTHON_TEST_SYMBOL);
-	if (!sym) {
-		LOAD_WARN("Can't find %s in symbol table, skipping loading python into global symbol table",
-			  PYTHON_TEST_SYMBOL);
-		goto skip_dlopen;
-	}
-
-	/*
-	 *	It's unclear whether passing function
-	 *	pointers will always "just work",
-	 *	which is why we resolve the symbol
-	 *	at runtime then call dladdr.
-	 */
-	if (dladdr(sym, &info) == 0) {
-		LOAD_WARN("Failed resolving symbol %s (%p) to library path: %s "
-			  ", skipping loading python into global symbol table", PYTHON_TEST_SYMBOL, sym, dlerror());
-		goto skip_dlopen;
-	}
-
-	/*
-	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
-	 */
-	python_dlhandle = dlopen(info.dli_fname, RTLD_NOW | RTLD_GLOBAL);
-	if (!python_dlhandle) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__,
-				     "Failed loading libpython symbols from \"%s\" into global symbol table: %s",
-				     info.dli_fname, dlerror());
-
-skip_dlopen:
+	python_dlhandle = dl_open_by_sym("Py_IsInitialized", RTLD_NOW | RTLD_GLOBAL);
+	if (!python_dlhandle) LOAD_WARN("Failed loading libpython symbols into global symbol table: %s", fr_strerror());
 
 #if PY_MAJOR_VERSION == 3
 	/*
