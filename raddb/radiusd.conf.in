@@ -284,7 +284,7 @@ log {
 	#
 	#  NOTE: Is overridden by the `-T` command line option.
 	#
-#  timestamp = no
+#	timestamp = no
 
 	#
 	#  file:: The logging messages for the server are appended to the
@@ -330,12 +330,12 @@ ENV {
 	#  NOTE: Note that you MUST use '='.  You CANNOT use '+=' to append
 	#  values.
 	#
-#  FOO = '/bar/baz'
+#	FOO = '/bar/baz'
 
 	#
 	#  Delete environment variable `BAR`.
 	#
-#  BAR
+#	BAR
 
 	#
 	#  `LD_PRELOAD` is special.  It is normally set before the
@@ -354,8 +354,8 @@ ENV {
 	#  `LD_PRELOAD` entries.
 	#
 	#
-#  LD_PRELOAD = /path/to/library1.so
-#  LD_PRELOAD = /path/to/library2.so
+#	LD_PRELOAD = /path/to/library1.so
+#	LD_PRELOAD = /path/to/library2.so
 }
 
 #
@@ -395,7 +395,7 @@ security {
 	#  then the `raddb` directory has to be inside of the `chroot`
 	#  directory, too.
 	#
-#  chroot = /path/to/chroot/directory
+#	chroot = /path/to/chroot/directory
 
 	#
 	#  user::
@@ -429,8 +429,8 @@ security {
 	#  member.  This can allow for some finer-grained access
 	#  controls.
 	#
-#  user = radius
-#  group = radius
+#	user = radius
+#	group = radius
 
 	#
 	#  allow_core_dumps:: Core dumps are a bad thing.
@@ -465,7 +465,7 @@ security {
 	#
 	#  This disables non-FIPS compliant digests and algorithms
 	#
-#  openssl_fips_mode = no
+#	openssl_fips_mode = no
 }
 
 #
@@ -565,7 +565,7 @@ modules {
 	#  Then, when the directory is read, those modules will be
 	#  skipped and not read twice.
 	#
-#  $INCLUDE mods-enabled/sql
+#	$INCLUDE mods-enabled/sql
 
 	#
 	#  Modules are in mods-enabled/.  Files matching
@@ -605,7 +605,7 @@ instantiate {
 	#  the check_name attribute before any module which sets
 	#  it.
 	#
-#  daily
+#	daily
 
 	#
 	#  subsections here can be thought of as `virtual` modules.
@@ -647,10 +647,10 @@ instantiate {
 	#  to open a connection to every `down` database, causing
 	#  problems.
 	#
-#  redundant redundant_sql {
-#  	sql1
-#  	sql2
-#  }
+#	redundant redundant_sql {
+#  		sql1
+#  		sql2
+#	}
 }
 
 ######################################################################
