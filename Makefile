@@ -409,3 +409,11 @@ endif
 ifneq "$(findstring coverage,$(MAKECMDGOALS))" ""
 include scripts/build/coverage.mk
 endif
+
+#
+#  Clean gcov files, too.
+#
+clean: clean.coverage
+.PHONY: clean.coverage
+clean.coverage:
+	@rm -f ${BUILD_DIR}/radiusd.info $(find ${BUILD_DIR} -name "*.gcda" -print)

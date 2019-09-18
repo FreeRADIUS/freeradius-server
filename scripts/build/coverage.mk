@@ -18,11 +18,12 @@ LDFLAGS += -fprofile-instr-generate
 #  Before doing `make coverage`, you should do a
 #  `make clean`.
 #
-coverage: coverage.test ${BUILD_DIR}/coverage/index.html
-
-.PHONY: coverage.test
-coverage.test:
-	@$(MAKE) test
+#  Order is important here.  And the dependencies in the rest of the
+#  makefiles aren't *quite* there to allow for these to be targets.
+#  So we just run them manually one after the other.x
+#
+coverage: all
+	${Q}$(MAKE) test
 
 #
 #  lcov doesn't understand llvm-gcov's extra arguments.  So we need a wrapper script
@@ -33,8 +34,8 @@ endif
 
 .PHONY: ${BUILD_DIR}/radiusd.info
 ${BUILD_DIR}/radiusd.info:
-	@lcov --directory . --base-directory . $(GCOV_TOOL) --capture -o $@ > ${BUILD_DIR}/lcov.log
+	${Q}lcov --directory . --base-directory . $(GCOV_TOOL) --capture -o $@ > ${BUILD_DIR}/lcov.log
 
 ${BUILD_DIR}/coverage/index.html: ${BUILD_DIR}/radiusd.info
-	@genhtml $< -o $(dir $@) > ${BUILD_DIR}/genhtml.log
-	@echo Please see $@
+	${Q}genhtml $< -o $(dir $@) > ${BUILD_DIR}/genhtml.log
+	${Q}echo Please see $@
