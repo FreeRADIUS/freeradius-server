@@ -28,11 +28,11 @@ Index: freeradius-server/raddb/radiusd.conf.in
  	#  member.  This can allow for some finer-grained access
  	#  controls.
  	#
--#  user = radius
--#  group = radius
-+  user = freerad
-+  group = freerad
  
+-#	user = radius
+-#	group = radius
++	user = freerad
++	group = freerad
  	#
  	#  allow_core_dumps:: Core dumps are a bad thing.
 Index: freeradius-server/scripts/monit/freeradius.monitrc
