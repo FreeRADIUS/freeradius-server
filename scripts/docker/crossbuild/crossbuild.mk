@@ -11,7 +11,7 @@ else
 #
 #  Short list of common builds
 #
-CB_COMMON:=centos7 debian9 ubuntu18
+CB_COMMON:=centos7 debian10 ubuntu18
 
 # Where the docker "build-" directories are
 DT:=scripts/docker
