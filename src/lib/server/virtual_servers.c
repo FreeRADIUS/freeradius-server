@@ -973,14 +973,16 @@ int virtual_servers_init(CONF_SECTION *config)
 {
 	virtual_server_root = config;
 
-	MEM(listen_addr_root = rbtree_create(config, listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
-	MEM(server_section_name_tree = rbtree_create(config, server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(listen_addr_root = rbtree_create(NULL, listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(server_section_name_tree = rbtree_create(NULL, server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
 
 	return 0;
 }
 
 int virtual_servers_free(void)
 {
+	talloc_free(listen_addr_cmp);
+	talloc_free(server_section_name_tree);
 	return 0;
 }
 
