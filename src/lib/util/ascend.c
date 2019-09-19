@@ -1122,7 +1122,6 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 		       direction[filter->direction & 0x01], action[filter->forward & 0x01]);
 	RETURN_IF_TRUNCATED(need, len, p, out, end);
 
-
 	switch ((ascend_filter_type_t)filter->type) {
 	/*
 	 *	Handle IP filters
