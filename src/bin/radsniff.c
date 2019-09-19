@@ -192,13 +192,14 @@ static void rs_time_print(char *out, size_t len, struct timeval const *t)
 	size_t ret;
 	struct timeval now;
 	uint32_t usec;
+	struct tm result;
 
 	if (!t) {
 		now = fr_time_to_timeval(fr_time());
 		t = &now;
 	}
 
-	ret = strftime(out, len, "%Y-%m-%d %H:%M:%S", localtime(&t->tv_sec));
+	ret = strftime(out, len, "%Y-%m-%d %H:%M:%S", localtime_r(&t->tv_sec, &result));
 	if (ret >= len) {
 		return;
 	}
