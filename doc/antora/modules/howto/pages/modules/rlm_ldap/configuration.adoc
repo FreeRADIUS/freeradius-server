@@ -1,13 +1,14 @@
 = Basic configuration for rlm_ldap
+The configuration step should be little more than copying the parameters used by
+xref:modules/rlm_ldap/ldapsearch.adoc[ldapsearch] to the
+xref:raddb:mods-available/ldap.adoc[ldap module] configuration file.
 
-The xref:raddb:mods-available/ldap.adoc[ldap module] configuration
-file describes the configuration parameters accepted by the module,
-and what they do.  This document explains how to perform testing with
-the LDAP module.
+The xref:raddb:mods-available/ldap.adoc[ldap module] configuration file
+describes the configuration parameters accepted by the module, and what they do.
+ This document explains how to perform testing with the LDAP module.
 
-Before configuring the LDAP module, the LDAP parameters should first
-be validated via the xref:modules/rlm_ldap/search[`ldapsearch`]
-command-line tool.
+Before configuring the LDAP module, the LDAP parameters should first be
+validated via the xref:modules/rlm_ldap/search[`ldapsearch`] command-line tool.
 
 include::howto:partial$pre_test.adoc[]
 
