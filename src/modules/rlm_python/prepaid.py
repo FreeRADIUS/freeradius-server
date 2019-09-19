@@ -42,8 +42,6 @@ def instantiate(p):
   p is a dummy variable here."""
   global dbHandle
 
-  p = p
-
   try:
     dbHandle = MySQLdb.connect(db=configDb, host=configHost,
 			       user=configUser, passwd=configPasswd)
@@ -102,8 +100,6 @@ def authorize(authData):
     log(radiusd.L_INFO, 'user not found: ' + userName)
     dbCursor.close()
     return radiusd.RLM_MODULE_NOTFOUND
-
-
 
   # Compare passwords
   # Ignore the quotes around userPasswd.
@@ -171,12 +167,10 @@ def authorize(authData):
   #        )
 
 def authenticate(p):
-  p = p
   return radiusd.RLM_MODULE_OK
 
 
 def preacct(p):
-  p = p
   return radiusd.RLM_MODULE_OK
 
 
@@ -196,7 +190,6 @@ def accounting(acctData):
       acctSessionTime = t[1]
     elif t[0] == 'Acct-Status-Type':
       acctStatusType = t[1]
-
 
   # We will not deal with Start for now.
   # We may later, for simultaneous checks and the like.
