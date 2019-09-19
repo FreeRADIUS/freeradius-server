@@ -219,6 +219,7 @@ size_t fr_radius_attr_len(VALUE_PAIR const *vp)
 
 	case FR_TYPE_STRUCTURAL:
 		if (!fr_cond_assert(0)) return 0;
+		return 0;
 	}
 }
 
