@@ -35,9 +35,11 @@ RCSID("$Id$")
  * are:
  */
 
-#define RAD_FILTER_GENERIC	0
-#define RAD_FILTER_IP		1
-#define RAD_FILTER_IPX		2
+typedef enum {
+	ASCEND_FILTER_GENERIC = 0,
+	ASCEND_FILTER_IP = 1,
+	ASCEND_FILTER_IPX = 2
+} ascend_filter_type_t;
 
 /*
  * Generic filters mask and match up to RAD_MAX_FILTER_LEN bytes
@@ -187,7 +189,7 @@ typedef struct {
  *
  *	All fields are stored in network byte order.
  *
- *	type:		Either RAD_FILTER_GENERIC or RAD_FILTER_IP.
+ *	type:		Either ASCEND_FILTER_GENERIC or ASCEND_FILTER_IP.
  *
  *	forward:	true if we should forward packets that match this
  *			filter, false if we should drop packets that match
@@ -253,9 +255,9 @@ static fr_table_num_sorted_t const filterPortType[] = {
 static size_t filterPortType_len = NUM_ELEMENTS(filterPortType);
 
 static fr_table_num_sorted_t const filterType[] = {
-	{ "generic",	RAD_FILTER_GENERIC},
-	{ "ip", 	RAD_FILTER_IP},
-	{ "ipx", 	RAD_FILTER_IPX}
+	{ "generic",	ASCEND_FILTER_GENERIC},
+	{ "ip", 	ASCEND_FILTER_IP},
+	{ "ipx", 	ASCEND_FILTER_IPX}
 };
 static size_t filterType_len = NUM_ELEMENTS(filterType);
 
@@ -997,9 +999,9 @@ int ascend_parse_filter(fr_value_box_t *out, char const *value, size_t len)
 	 *	Validate the filter type.
 	 */
 	switch (type) {
-	case RAD_FILTER_GENERIC:
-	case RAD_FILTER_IP:
-	case RAD_FILTER_IPX:
+	case ASCEND_FILTER_GENERIC:
+	case ASCEND_FILTER_IP:
+	case ASCEND_FILTER_IPX:
 		filter.type = type;
 		break;
 
@@ -1049,15 +1051,15 @@ int ascend_parse_filter(fr_value_box_t *out, char const *value, size_t len)
 
 
 	switch (type) {
-	case RAD_FILTER_GENERIC:
+	case ASCEND_FILTER_GENERIC:
 		rcode = ascend_parse_generic(argc - 3, &argv[3], &filter.u.generic);
 		break;
 
-	case RAD_FILTER_IP:
+	case ASCEND_FILTER_IP:
 		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter.u.ip);
 		break;
 
-	case RAD_FILTER_IPX:
+	case ASCEND_FILTER_IPX:
 		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter.u.ipx);
 		break;
 	}
@@ -1117,13 +1119,15 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 
 	filter = (ascend_filter_t const *) in;
 	len = snprintf(p, end - p, "%s %s %s", fr_table_str_by_value(filterType, filter->type, "??"),
-		     direction[filter->direction & 0x01], action[filter->forward & 0x01]);
+		       direction[filter->direction & 0x01], action[filter->forward & 0x01]);
 	RETURN_IF_TRUNCATED(need, len, p, out, end);
 
+
+	switch ((ascend_filter_type_t)filter->type) {
 	/*
-	*	Handle IP filters
-	*/
-	if (filter->type == RAD_FILTER_IP) {
+	 *	Handle IP filters
+	 */
+	case ASCEND_FILTER_IP:
 		if (filter->u.ip.srcip) {
 			len = snprintf(p, end - p, " srcip %d.%d.%d.%d/%d",
 				       ((uint8_t const *) &filter->u.ip.srcip)[0],
@@ -1165,11 +1169,11 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 			len = snprintf(p, end - p, " est");
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
-
-		/*
-		 *	Handle IPX filters
-		 */
-	} else if (filter->type == RAD_FILTER_IPX) {
+		break;
+	/*
+	 *	Handle IPX filters
+	 */
+	case ASCEND_FILTER_IPX:
 		/* print for source */
 		if (filter->u.ipx.src.net) {
 			len = snprintf(p, end - p, " srcipxnet 0x%04x srcipxnode 0x%02x%02x%02x%02x%02x%02x",
@@ -1203,7 +1207,10 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 				RETURN_IF_TRUNCATED(need, len, p, out, end);
 			}
 		}
-	} else if (filter->type == RAD_FILTER_GENERIC) {
+		break;
+
+	case ASCEND_FILTER_GENERIC:
+	{
 		int count;
 
 		len = snprintf(p, end - p, " %u ", (unsigned int) ntohs(filter->u.generic.offset));
@@ -1230,6 +1237,11 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 			len = snprintf(p, end - p, " more");
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
+	}
+		break;
+
+	default:
+		break;
 	}
 
 	if (quote > 0) {
