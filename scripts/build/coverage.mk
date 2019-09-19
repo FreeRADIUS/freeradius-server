@@ -24,6 +24,9 @@ LDFLAGS += -fprofile-instr-generate
 #
 coverage: all
 	${Q}$(MAKE) test
+	${Q}lcov --directory . --base-directory . $(GCOV_TOOL) --capture -o ${BUILD_DIR}/radiusd.info > ${BUILD_DIR}/lcov.log
+	${Q}genhtml ${BUILD_DIR}/radiusd.info -o ${BUILD_DIR}/coverage > ${BUILD_DIR}/genhtml.log
+	${Q}echo Please see ${BUILD_DIR}/coverage/index.html
 
 #
 #  lcov doesn't understand llvm-gcov's extra arguments.  So we need a wrapper script
