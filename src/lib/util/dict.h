@@ -257,7 +257,7 @@ fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_att
 
 int			fr_dict_oid_component(unsigned int *out, char const **oid);
 
-size_t			fr_dict_print_attr_oid(char *buffer, size_t outlen,
+size_t			fr_dict_print_attr_oid(size_t *need, char *buffer, size_t outlen,
 					       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da);
 
 ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,

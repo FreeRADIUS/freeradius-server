@@ -699,7 +699,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, vp_tmpl_rules_
 	map->lhs->tmpl_num = NUM_ANY;
 	map->lhs->tmpl_tag = vp->tag;
 
-	tmpl_snprint(buffer, sizeof(buffer), map->lhs);
+	tmpl_snprint(NULL, buffer, sizeof(buffer), map->lhs);
 	map->lhs->name = talloc_typed_strdup(map->lhs, buffer);
 	map->lhs->len = talloc_array_length(map->lhs->name) - 1;
 	map->lhs->quote = T_BARE_WORD;
@@ -1714,7 +1714,7 @@ static inline void map_list_mod_debug(REQUEST *request,
 	{
 		char buffer[256];
 
-		tmpl_snprint(buffer, sizeof(buffer), map->rhs);
+		tmpl_snprint(NULL, buffer, sizeof(buffer), map->rhs);
 		rhs = fr_asprintf(request, "%s -> %s%pV%s", buffer, quote, vb, quote);
 	}
 		break;
@@ -2774,27 +2774,39 @@ finish:
 
 /**  Print a map to a string
  *
- * @param[out] out Buffer to write string to.
- * @param[in] outlen Size of the output buffer.
- * @param[in] map to print.
+ * @param[out] need	The buffer space we would have needed to
+ *			print more of the string.
+ * @param[out] out	Buffer to write string to.
+ * @param[in] outlen	Size of the output buffer.
+ * @param[in] map	to print.
  * @return
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
+size_t map_snprint(size_t *need, char *out, size_t outlen, vp_map_t const *map)
 {
 	size_t		len;
 	char		*p = out;
 	char		*end = out + outlen;
+	size_t		our_need;
+
+	if (!need) need = &our_need;
+
+	RETURN_IF_NO_SPACE_INIT(need, 1, p, out, end);
 
 	MAP_VERIFY(map);
 
-	len = tmpl_snprint(out, (end - p) - 1, map->lhs);		/* -1 for proceeding ' ' */
-	RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
+	len = tmpl_snprint(need, out, end - p, map->lhs);
+	if (*need) return len;
+	p += len;
 
+	RETURN_IF_NO_SPACE(need, 1, p, out, end);
 	*(p++) = ' ';
-	len = strlcpy(p, fr_token_name(map->op), (end - p) - 1);	/* -1 for proceeding ' ' */
-	RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
+
+	len = strlcpy(p, fr_token_name(map->op), end - p);
+	RETURN_IF_TRUNCATED(need, len, p, out, end);
+
+	RETURN_IF_NO_SPACE(need, 1, p, out, end);
 	*(p++) = ' ';
 
 	/*
@@ -2802,7 +2814,7 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 	 */
 	if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
 		len = strlcpy(p, "ANY", (end - p));
-		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
+		RETURN_IF_TRUNCATED(need, len, p, out, end - 1);
 		return p - out;
 	}
 
@@ -2811,13 +2823,19 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 	if (tmpl_is_attr(map->lhs) &&
 	    (map->lhs->tmpl_da->type == FR_TYPE_STRING) &&
 	    tmpl_is_unparsed(map->rhs)) {
+	    	RETURN_IF_NO_SPACE(need, 1, p, out, end);
 		*(p++) = '\'';
-		len = tmpl_snprint(p, (end - p) - 1, map->rhs);	/* -1 for proceeding '\'' */
-		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
+
+		len = tmpl_snprint(need, p, end - p, map->rhs);
+		if (*need) return len;
+		p += len;
+
+		RETURN_IF_NO_SPACE(need, 1, p, out, end);
 		*(p++) = '\'';
 	} else {
-		len = tmpl_snprint(p, end - p, map->rhs);
-		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
+		len = tmpl_snprint(need, p, end - p, map->rhs);
+		if (*need) return len;
+		p += len;
 	}
 
 	*p = '\0';
@@ -2884,7 +2902,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 *	the quoting based on the data type.
 		 */
 		value = fr_pair_value_asprint(request, vp, quote[0]);
-		tmpl_snprint(buffer, sizeof(buffer), &vpt);
+		tmpl_snprint(NULL, buffer, sizeof(buffer), &vpt);
 		rhs = talloc_typed_asprintf(request, "%s -> %s%s%s", buffer, quote, value, quote);
 	}
 		break;
@@ -2901,7 +2919,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 *	the quoting based on the data type.
 		 */
 		value = fr_pair_value_asprint(request, vp, quote[0]);
-		tmpl_snprint(buffer, sizeof(buffer), map->rhs);
+		tmpl_snprint(NULL, buffer, sizeof(buffer), map->rhs);
 		rhs = talloc_typed_asprintf(request, "%s -> %s%s%s", buffer, quote, value, quote);
 	}
 		break;
@@ -2919,14 +2937,14 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 *	map name.
 		 */
 		if (vp) {
-			tmpl_snprint(buffer, sizeof(buffer), map->lhs);
+			tmpl_snprint(NULL, buffer, sizeof(buffer), map->lhs);
 			RDEBUG2("%s%s %s %s", buffer, vp->da->name, fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"), rhs);
 			break;
 		}
 		/* FALL-THROUGH */
 
 	case TMPL_TYPE_ATTR:
-		tmpl_snprint(buffer, sizeof(buffer), map->lhs);
+		tmpl_snprint(NULL, buffer, sizeof(buffer), map->lhs);
 		RDEBUG2("%s %s %s", buffer, fr_table_str_by_value(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
 		break;
 

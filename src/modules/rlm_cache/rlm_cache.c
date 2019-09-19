@@ -171,7 +171,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_ca
 		if (map_to_request(request, map, map_to_vp, NULL) < 0) {
 			char buffer[1024];
 
-			map_snprint(buffer, sizeof(buffer), map);
+			map_snprint(NULL, buffer, sizeof(buffer), map);
 			REXDENT();
 			RDEBUG2("Skipping %s", buffer);
 			RINDENT();
@@ -400,6 +400,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			case TMPL_TYPE_LIST:
 			{
 				char attr[256];
+				size_t need;
 
 				MEM(c_map->lhs = tmpl_init(talloc(c_map, vp_tmpl_t),
 							   TMPL_TYPE_ATTR, map->lhs->name, map->lhs->len, T_BARE_WORD));
@@ -418,8 +419,8 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 				 *	We need to rebuild the attribute name, to be the
 				 *	one we copied from the source list.
 				 */
-				len = tmpl_snprint(attr, sizeof(attr), c_map->lhs);
-				if (is_truncated(len, sizeof(attr))) {
+				len = tmpl_snprint(&need, attr, sizeof(attr), c_map->lhs);
+				if (need) {
 					REDEBUG("Serialized attribute too long.  Must be < "
 						STRINGIFY(sizeof(attr)) " bytes, got %zu bytes", len);
 					goto error;

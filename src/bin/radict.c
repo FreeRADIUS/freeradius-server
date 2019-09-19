@@ -137,7 +137,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	char oid_str[512];
 	char flags[256];
 
-	(void)fr_dict_print_attr_oid(oid_str, sizeof(oid_str), NULL, da);
+	(void)fr_dict_print_attr_oid(NULL, oid_str, sizeof(oid_str), NULL, da);
 
 	fr_dict_snprint_flags(flags, sizeof(flags), da->type, &da->flags);
 

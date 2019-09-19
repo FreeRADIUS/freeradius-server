@@ -697,7 +697,7 @@ int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
 #ifdef WITH_EVAL_DEBUG
 	char buffer[1024];
 
-	cond_snprint(buffer, sizeof(buffer), c);
+	cond_snprint(NULL, buffer, sizeof(buffer), c);
 	EVAL_DEBUG("%s", buffer);
 #endif
 

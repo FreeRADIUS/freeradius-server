@@ -1042,7 +1042,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 		print_map:
 			for (map = g->map; map != NULL; map = map->next) {
-				map_snprint(buffer, sizeof(buffer), map);
+				map_snprint(NULL, buffer, sizeof(buffer), map);
 				DEBUG("%.*s%s", depth + 1, modcall_spaces, buffer);
 			}
 
@@ -1059,7 +1059,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 		case UNLANG_TYPE_IF:
 		case UNLANG_TYPE_ELSIF:
 			g = unlang_generic_to_group(inst);
-			cond_snprint(buffer, sizeof(buffer), g->cond);
+			cond_snprint(NULL, buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces, unlang_ops[inst->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
@@ -1068,7 +1068,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 		case UNLANG_TYPE_SWITCH:
 		case UNLANG_TYPE_CASE:
 			g = unlang_generic_to_group(inst);
-			tmpl_snprint(buffer, sizeof(buffer), g->vpt);
+			tmpl_snprint(NULL, buffer, sizeof(buffer), g->vpt);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces, unlang_ops[inst->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);

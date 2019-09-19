@@ -2089,6 +2089,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
  *
  * @note Does not print preceding '&'.
  *
+ * @param[out] need	The number of bytes we'd need to write out the next part
+ *			of the template string.
  * @param[out] out	Where to write the presentation format #vp_tmpl_t string.
  * @param[in] outlen	Size of output buffer.
  * @param[in] vpt	to print.
@@ -2096,20 +2098,20 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t tmpl_snprint_attr_str(char *out, size_t outlen, vp_tmpl_t const *vpt)
+size_t tmpl_snprint_attr_str(size_t *need, char *out, size_t outlen, vp_tmpl_t const *vpt)
 {
 	char const	*p;
 	char		*out_p = out, *end = out_p + outlen;
 	size_t		len;
 
-	TMPL_VERIFY(vpt);
+	RETURN_IF_NO_SPACE_INIT(need, 1, out_p, out, end);
 
-	if (!vpt || (outlen < 3)) {
+	if (unlikely(!vpt)) {
 		*out = '\0';
 		return 0;
 	}
 
-	out[outlen - 1] = '\0';	/* Always terminate for safety */
+	TMPL_VERIFY(vpt);
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LIST:
@@ -2118,13 +2120,13 @@ size_t tmpl_snprint_attr_str(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		 */
 		if (vpt->tmpl_request == REQUEST_CURRENT) {
 			len = snprintf(out_p, end - out_p, "%s:", fr_table_str_by_value(pair_list_table, vpt->tmpl_list, ""));
-			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+			RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 			goto inst_and_tag;
 		}
 
 		len = snprintf(out_p, end - out_p, "%s.%s:", fr_table_str_by_value(request_ref_table, vpt->tmpl_request, ""),
 			       fr_table_str_by_value(pair_list_table, vpt->tmpl_list, ""));
-		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+		RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 		goto inst_and_tag;
 
 	case TMPL_TYPE_ATTR_UNDEFINED:
@@ -2141,7 +2143,7 @@ size_t tmpl_snprint_attr_str(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		if (vpt->tmpl_request == REQUEST_CURRENT) {
 			if (vpt->tmpl_list == PAIR_LIST_REQUEST) {
 				len = strlcpy(out_p, p, end - out_p);
-				RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+				RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 				goto inst_and_tag;
 			}
 
@@ -2150,19 +2152,19 @@ size_t tmpl_snprint_attr_str(char *out, size_t outlen, vp_tmpl_t const *vpt)
 			 */
 			len = snprintf(out_p, end - out_p, "%s:%s",
 				       fr_table_str_by_value(pair_list_table, vpt->tmpl_list, ""), p);
-			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+			RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 			goto inst_and_tag;
 		}
 
 		len = snprintf(out_p, end - out_p, "%s.%s:%s",
 			       fr_table_str_by_value(request_ref_table, vpt->tmpl_request, ""),
 			       fr_table_str_by_value(pair_list_table, vpt->tmpl_list, ""), p);
-		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+		RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 
 	inst_and_tag:
 		if (TAG_VALID(vpt->tmpl_tag)) {
 			len = snprintf(out_p, end - out_p, ":%d", vpt->tmpl_tag);
-			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+			RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 		}
 
 		switch (vpt->tmpl_num) {
@@ -2186,7 +2188,7 @@ size_t tmpl_snprint_attr_str(char *out, size_t outlen, vp_tmpl_t const *vpt)
 			len = snprintf(out_p, end - out_p, "[%i]", vpt->tmpl_num);
 			break;
 		}
-		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+		RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 		break;
 
 	default:
@@ -2199,21 +2201,23 @@ size_t tmpl_snprint_attr_str(char *out, size_t outlen, vp_tmpl_t const *vpt)
 
 /** Print a #vp_tmpl_t to a string
  *
+ * @param[out] need	The number of bytes we'd need to write out the next part
+ *			of the template string.
  * @param[out] out	Where to write the presentation format #vp_tmpl_t string.
  * @param[in] outlen	Size of output buffer.
  * @param[in] vpt	to print.
  * @return
- *	- The number of bytes written to the out buffer.
- *	- A number >= outlen if truncation has occurred.
+ *	- The number of bytes written to the out buffer. If truncation has
+ *	ocurred. *need will be > 0.
  */
-size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
+size_t tmpl_snprint(size_t *need, char *out, size_t outlen, vp_tmpl_t const *vpt)
 {
 	size_t		len;
 	char const	*p;
 	char		c;
 	char		*out_p = out, *end = out_p + outlen;
 
-	if (outlen == 0) return 1;
+	RETURN_IF_NO_SPACE_INIT(need, 1, out_p, out, end);
 
 	if (!vpt) {
 empty:
@@ -2222,14 +2226,12 @@ empty:
 	}
 	TMPL_VERIFY(vpt);
 
-	*(end - 1) = '\0';	/* Always terminate for safety */
-
 	switch (vpt->type) {
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_ATTR:
 		*out_p++ = '&';
-		return tmpl_snprint_attr_str(out_p, end - out_p, vpt) + 1;
+		return tmpl_snprint_attr_str(need, out_p, end - out_p, vpt) + 1;
 
 	/*
 	 *	Regexes have their own set of escaping rules
@@ -2245,13 +2247,13 @@ empty:
 
 		*out_p++ = '/';
 		len = fr_snprint(out_p, end - out_p, vpt->name, vpt->len, '\0');
-		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+		RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 
 		if ((end - out_p) <= 1) goto no_space;
 		*out_p++ = '/';
 
 		len = regex_flags_snprint(out_p, end - out_p, &vpt->tmpl_regex_flags);
-		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+		RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 
 		goto finish;
 
@@ -2284,7 +2286,7 @@ do_literal:
 		if ((end - out_p) <= 3) goto no_space;	/* / + <c> + / + \0 */
 		if (c != '\0') *out_p++ = c;
 		len = fr_snprint(out_p, (end - out_p) - ((c == '\0') ? 0 : 1), vpt->name, vpt->len, c);
-		RETURN_IF_TRUNCATED(out_p, len, (end - out_p) - ((c == '\0') ? 0 : 1));
+		RETURN_IF_TRUNCATED(need, len, out_p, out, end - ((c == '\0') ? 0 : 1));
 
 		if ((end - out_p) <= 1) goto no_space;
 		if (c != '\0') *out_p++ = c;

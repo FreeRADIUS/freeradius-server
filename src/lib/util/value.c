@@ -1026,6 +1026,9 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 {
 	size_t min, max;
 	uint8_t *p = dst;
+	uint8_t *end = p + dst_len;
+
+	RETURN_IF_NO_SPACE_INIT(need, 1, p, dst, end);
 
 	/*
 	 *	Variable length types
@@ -4370,7 +4373,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 #ifdef WITH_ASCEND_BINARY
 		p = talloc_array(ctx, char, 128);
 		if (!p) return NULL;
-		print_abinary(p, 128, (uint8_t const *) &data->datum.filter, data->datum.length, 0);
+		print_abinary(NULL, p, 128, (uint8_t const *) &data->datum.filter, data->datum.length, 0);
 		break;
 #else
 		  /* FALL THROUGH */
@@ -4834,9 +4837,9 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	case FR_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		print_abinary(buf, sizeof(buf), (uint8_t const *) data->datum.filter, data->datum.length, quote);
+		len = print_abinary(NULL, buf, sizeof(buf),
+				    (uint8_t const *) data->datum.filter, data->datum.length, quote);
 		a = buf;
-		len = strlen(buf);
 		break;
 #else
 	/* FALL THROUGH */

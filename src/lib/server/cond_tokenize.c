@@ -48,14 +48,17 @@ static size_t allowed_return_codes_len = NUM_ELEMENTS(allowed_return_codes);
  *	This file shouldn't use any functions from the server core.
  */
 
-size_t cond_snprint(char *out, size_t outlen, fr_cond_t const *in)
+size_t cond_snprint(size_t *need, char *out, size_t outlen, fr_cond_t const *in)
 {
 	size_t		len;
 	char		*p = out;
 	char		*end = out + outlen - 1;
 	fr_cond_t const	*c = in;
+	size_t		our_need;
 
-	rad_assert(outlen > 0);
+	if (!need) need = &our_need;
+
+	RETURN_IF_NO_SPACE_INIT(need, 1, p, out, end);
 
 next:
 	if (!c) {
@@ -72,12 +75,13 @@ next:
 		rad_assert(c->data.vpt != NULL);
 		if (c->cast) {
 			len = snprintf(p, end - p, "<%s>", fr_table_str_by_value(fr_value_box_type_table,
-								      c->cast->type, "??"));
-			p += len;
+				       c->cast->type, "??"));
+			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
-		len = tmpl_snprint(p, end - p, c->data.vpt);
-		RETURN_IF_TRUNCATED(p, len, end - p);
+		len = tmpl_snprint(need, p, end - p, c->data.vpt);
+		if (*need) return len;
+		p += len;
 		break;
 
 	case COND_TYPE_MAP:
@@ -87,11 +91,12 @@ next:
 #endif
 		if (c->cast) {
 			len = snprintf(p, end - p, "<%s>", fr_table_str_by_value(fr_value_box_type_table, c->cast->type, "??"));
-			RETURN_IF_TRUNCATED(p, len, end - p);
+			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
-		len = map_snprint(p, end - p, c->data.map);
-		RETURN_IF_TRUNCATED(p, len, end - p);
+		len = map_snprint(need, p, end - p, c->data.map);
+		if (*need) return len;
+		p += len;
 #if 0
 		*(p++) = ']';
 #endif
@@ -100,19 +105,21 @@ next:
 	case COND_TYPE_CHILD:
 		rad_assert(c->data.child != NULL);
 		*(p++) = '(';
-		len = cond_snprint(p, (end - p) - 1, c->data.child);	/* -1 for proceeding ')' */
-		RETURN_IF_TRUNCATED(p, len, end - p);
+		len = cond_snprint(need, p, (end - p) - 1, c->data.child);	/* -1 for proceeding ')' */
+		if (*need) return len;
+		if (len >= (outlen - 1)) return len;
+		p += len;
 		*(p++) = ')';
 		break;
 
 	case COND_TYPE_TRUE:
 		len = strlcpy(out, "true", outlen);
-		RETURN_IF_TRUNCATED(p, len, end - p);
+		RETURN_IF_TRUNCATED(need, len, p, out, end);
 		return p - out;
 
 	case COND_TYPE_FALSE:
 		len = strlcpy(out, "false", outlen);
-		RETURN_IF_TRUNCATED(p, len, end - p);
+		RETURN_IF_TRUNCATED(need, len, p, out, end);
 		return p - out;
 
 	default:
@@ -128,11 +135,11 @@ next:
 
 	if (c->next_op == COND_AND) {
 		len = strlcpy(p, " && ", end - p);
-		RETURN_IF_TRUNCATED(p, len, end - p);
+		RETURN_IF_TRUNCATED(need, len, p, out, end);
 
 	} else if (c->next_op == COND_OR) {
 		len = strlcpy(p, " || ", end - p);
-		RETURN_IF_TRUNCATED(p, len, end - p);
+		RETURN_IF_TRUNCATED(need, len, p, out, end);
 
 	} else {
 		rad_assert(0 == 1);
@@ -612,7 +619,7 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 				 buffer, sizeof(buffer), start, slen, NULL)) {
 		*error = "Failed expanding configuration variable";
 		return -1;
-	}	
+	}
 
 	/*
 	 *	We need to tell the caller how many *input* bytes to

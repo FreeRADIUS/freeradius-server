@@ -51,20 +51,72 @@ ssize_t 	fr_fprintf(FILE *stream, char const *fmt, ...) CC_HINT(format (printf, 
  *
  * If truncation has occurred, advance _p as far as possible without
  * overrunning the output buffer, and \0 terminate.  Then return the length
- * of the buffer we would have needed to write the full value.
+ * of the buffer and set need to the number of additional bytes we would
+ * have needed.
  *
  * If truncation has not occurred, advance _p by whatever the copy or print
  * function returned.
+ *
+ * @param[out] _need	A pointer to a size_t.  If truncation has occurred
+ *			will be set to the number of bytes needed.
+ * @param[in] _ret	What the snprintf style function returned.
+ * @param[in] _p	The current position in the output buffer.
+ * @param[in] _start	of the output buffer.
+ * @param[in] _end	of the output buffer.
  */
-#define RETURN_IF_TRUNCATED(_p, _ret, _max) \
+#define RETURN_IF_TRUNCATED(_need, _ret, _p, _start, _end) \
 do { \
-	if (is_truncated(_ret, _max)) { \
+	if (is_truncated(_ret, _end - _p)) { \
 		size_t _r = (_p - out) + _ret; \
-		_p += truncate_len(_ret, _max); \
+		_p += truncate_len(_ret, _end - _p); \
 		*_p = '\0'; \
-		return _r; \
+		if (need) *need = _r; \
+		return (_p) - (_start); \
 	} \
 	_p += _ret; \
+} while (0)
+
+/** Boilerplate for checking for sufficient freespace
+ *
+ * If we don't have sufficient space, set _need to the amount of space needed,
+ * '\0' terminate the buffer, and return the amount of data we've written.
+ *
+ * @param[out] _need	A pointer to a size_t.  If truncation has occurred
+ *			will be set to the number of bytes needed.
+ * @param[in] _len	How much data we need.
+ * @param[in] _p	The current position in the output buffer.
+ * @param[in] _start	of the output buffer.
+ * @param[in] _end	of the output buffer.
+ */
+#define RETURN_IF_NO_SPACE(_need, _len, _p, _start, _end) \
+do { \
+	if ((_len) >= ((_end) - (_p))) { \
+		*(_p) = '\0'; \
+		if (need) *need = ((_p) - (_start)) + (_len); \
+		return (_p) - (_start); \
+	} \
+} while (0)
+
+/** Boilerplate for checking for sufficient freespace
+ *
+ * If we don't have sufficient space, set _need to the amount of space needed,
+ * '\0' terminate the buffer, and return the amount of data we've written.
+ *
+ * This should be called at the start of functions that work with a fixed length
+ * output buffer, in order to initialise _need.
+ *
+ * @param[out] _need	A pointer to a size_t.  If truncation has occurred
+ *			will be set to the number of bytes needed.
+ * @param[in] _len	How much data we need.
+ * @param[in] _p	The current position in the output buffer.
+ * @param[in] _start	of the output buffer.
+ * @param[in] _end	of the output buffer.
+ */
+#define RETURN_IF_NO_SPACE_INIT(_need, _len, _p, _start, _end) \
+do { \
+	RETURN_IF_NO_SPACE(_need, _len, _p, _start, _end); \
+	if (_need) *(_need) = 0; \
+	*((_end) - 1) = '\0'; \
 } while (0)
 
 #ifdef __cplusplus

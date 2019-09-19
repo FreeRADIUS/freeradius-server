@@ -23,6 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dict_priv.h>
+#include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
 #include <ctype.h>
 
@@ -103,14 +104,18 @@ do { \
 
 /** Build the tlv_stack for the specified DA and encode the path in OID form
  *
+ * @param[out] need		How many bytes we would need to print the
+ *				next part of the string.
  * @param[out] out		Where to write the OID.
  * @param[in] outlen		Length of the output buffer.
  * @param[in] ancestor		If not NULL, only print OID portion between
  *				ancestor and da.
  * @param[in] da		to print OID string for.
- * @return the number of bytes written to the buffer.
+ * @return
+ *	- The number of bytes written to the buffer.  If truncation has occurred
+ *	  *need will be > 0.
  */
-size_t fr_dict_print_attr_oid(char *out, size_t outlen,
+size_t fr_dict_print_attr_oid(size_t *need, char *out, size_t outlen,
 			      fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da)
 {
 	size_t			len;
@@ -119,7 +124,7 @@ size_t fr_dict_print_attr_oid(char *out, size_t outlen,
 	int			depth = 0;
 	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 
-	if (!outlen) return 0;
+	RETURN_IF_NO_SPACE_INIT(need, 1, p, out, end);
 
 	/*
 	 *	If the ancestor and the DA match, there's
@@ -145,14 +150,11 @@ size_t fr_dict_print_attr_oid(char *out, size_t outlen,
 	 *	between it and the da.
 	 */
 	len = snprintf(p, end - p, "%u", tlv_stack[depth]->attr);
-	if ((p + len) >= end) return p - out;
-	p += len;
-
+	RETURN_IF_TRUNCATED(need, len, p, out, end);
 
 	for (i = depth + 1; i < (int)da->depth; i++) {
 		len = snprintf(p, end - p, ".%u", tlv_stack[i]->attr);
-		if ((p + len) >= end) return p - out;
-		p += len;
+		RETURN_IF_TRUNCATED(need, len, p, out, end);
 	}
 
 	return p - out;

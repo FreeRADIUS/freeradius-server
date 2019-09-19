@@ -2052,7 +2052,7 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 		if (c) {
 			char buffer[1024];
 
-			cond_snprint(buffer, sizeof(buffer), c);
+			cond_snprint(NULL, buffer, sizeof(buffer), c);
 			fprintf(fp, "(%s)", buffer);
 
 		} else {	/* dump the string as-is */

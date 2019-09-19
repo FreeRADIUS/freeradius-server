@@ -981,8 +981,8 @@ int virtual_servers_init(CONF_SECTION *config)
 
 int virtual_servers_free(void)
 {
-	talloc_free(listen_addr_cmp);
-	talloc_free(server_section_name_tree);
+	TALLOC_FREE(listen_addr_root);
+	TALLOC_FREE(server_section_name_tree);
 	return 0;
 }
 

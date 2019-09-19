@@ -565,7 +565,7 @@ static void parse_condition(fr_dict_t const *dict, char const *input, char *outp
 		return;
 	}
 
-	cond_snprint(output, outlen, cond);
+	cond_snprint(NULL, output, outlen, cond);
 
 	talloc_free(cs);
 }

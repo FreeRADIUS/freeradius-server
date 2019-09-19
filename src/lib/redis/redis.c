@@ -358,12 +358,13 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	char		key_buf[256];
 	char		*key;
 	size_t		key_len;
+	size_t		need;
 
 	rad_assert(tmpl_is_attr(map->lhs));
 	rad_assert(tmpl_is_data(map->rhs));
 
-	key_len = tmpl_snprint(key_buf, sizeof(key_buf), map->lhs);
-	if (is_truncated(key_len, sizeof(key_buf))) {
+	key_len = tmpl_snprint(&need, key_buf, sizeof(key_buf), map->lhs);
+	if (need) {
 		fr_strerror_printf("Key too long.  Must be < " STRINGIFY(sizeof(key_buf)) " "
 				   "bytes, got %zu bytes", key_len);
 		return -1;

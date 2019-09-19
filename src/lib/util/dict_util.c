@@ -430,6 +430,7 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 		char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 		char		*p = buffer;
 		size_t		len;
+		size_t		need;
 		fr_dict_attr_t	tmp;
 
 		memset(&tmp, 0, sizeof(tmp));
@@ -438,8 +439,8 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 		len = snprintf(p, sizeof(buffer), "Attr-");
 		p += len;
 
-		len = fr_dict_print_attr_oid(p, sizeof(buffer) - (p - buffer), NULL, &tmp);
-		if (is_truncated(len, sizeof(buffer) - (p - buffer))) {
+		fr_dict_print_attr_oid(&need, p, sizeof(buffer) - (p - buffer), NULL, &tmp);
+		if (need > 0) {
 			fr_strerror_printf("OID string too long for unknown attribute");
 			return NULL;
 		}

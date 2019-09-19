@@ -810,8 +810,12 @@ size_t xlat_snprint(char *out, size_t outlen, xlat_exp_t const *node)
 
 		switch (node->type) {
 		case XLAT_ATTRIBUTE:
-			p += tmpl_snprint_attr_str(p, end - p, node->attr);
-			CHECK_SPACE(p, end);
+		{
+			size_t need;
+
+			p += tmpl_snprint_attr_str(&need, p, end - p, node->attr);
+			if (need > 0) goto oob;
+		}
 			break;
 #ifdef HAVE_REGEX
 		case XLAT_REGEX:
