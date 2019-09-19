@@ -2192,7 +2192,8 @@ size_t tmpl_snprint_attr_str(size_t *need, char *out, size_t outlen, vp_tmpl_t c
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return 0;
+		fr_assert_fail(NULL);
+		return 0;
 	}
 
 	*out_p = '\0';

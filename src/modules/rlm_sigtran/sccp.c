@@ -172,7 +172,8 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return -1;
+		fr_assert_fail(NULL);
+		return -1;
 	}
 
 	/*

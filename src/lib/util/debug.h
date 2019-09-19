@@ -96,6 +96,13 @@ bool		fr_cond_assert_fail(char const *file, int line, char const *expr, char con
  */
 #define		fr_cond_assert(_x) likely((bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x, NULL) && false)))
 
+/** Calls panic_action ifndef NDEBUG, else logs error
+ *
+ * @param[in] _msg	to log.
+ * @param[in] ...	args.
+ */
+#define		fr_assert_fail(_msg, ...) fr_cond_assert_fail(__FILE__, __LINE__, "false", _msg,  ## __VA_ARGS__)
+
 /** Calls panic_action ifndef NDEBUG, else logs error and evaluates to value of _x
  *
  * Should be wrapped in a condition, and if false, should cause function to return

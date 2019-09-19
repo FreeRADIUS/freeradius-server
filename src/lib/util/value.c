@@ -297,7 +297,8 @@ inline void fr_value_box_clear(fr_value_box_t *data)
 		break;
 
 	case FR_TYPE_STRUCTURAL:
-		if (!fr_cond_assert(0)) return;
+		fr_assert_fail(NULL);
+		return;
 
 	case FR_TYPE_INVALID:
 		return;
@@ -955,7 +956,8 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 	case FR_TYPE_NON_VALUES:
-		if (!fr_cond_assert(0)) return -1; /* shouldn't happen */
+		fr_assert_fail(NULL);
+		return -1; /* shouldn't happen */
 	}
 
 	if (dst != src) fr_value_box_copy_meta(dst, src);
@@ -2554,7 +2556,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_GROUP:
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:
-		if (!fr_cond_assert(0)) return -1;
+		fr_assert_fail(NULL);
+		return -1;
 	}
 
 	/*
@@ -3626,7 +3629,8 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return -1;
+		fr_assert_fail(NULL);
+		return -1;
 	}
 
 #define IN_RANGE_UNSIGNED(_type) \
@@ -3693,7 +3697,8 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return -1;
+		fr_assert_fail(NULL);
+		return -1;
 	}
 
 	return 0;

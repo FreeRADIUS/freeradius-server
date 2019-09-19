@@ -86,7 +86,7 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 		return fr_dhcpv6_attr_sizes[vp->vp_type][0];
 
 	case FR_TYPE_STRUCTURAL:
-		if (!fr_cond_assert(0)) return 0;
+		fr_assert_fail(NULL);
 		return 0;
 	}
 }

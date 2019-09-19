@@ -690,7 +690,8 @@ do_header:
 			break;
 
 		default:
-			if (!fr_cond_assert(0)) return NULL;
+			fr_assert_fail(NULL);
+			return NULL;
 		}
 		return new;
 	}

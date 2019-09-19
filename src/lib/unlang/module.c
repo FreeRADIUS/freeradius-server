@@ -496,7 +496,8 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 		}
 
 		default:
-			if (!fr_cond_assert(0)) return RLM_MODULE_FAIL;
+			fr_assert_fail(NULL);
+			return RLM_MODULE_FAIL;
 		}
 	}
 

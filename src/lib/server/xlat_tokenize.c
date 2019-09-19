@@ -855,7 +855,8 @@ size_t xlat_snprint(char *out, size_t outlen, xlat_exp_t const *node)
 			break;
 
 		default:
-			if (!fr_cond_assert(0)) break;
+			fr_assert_fail(NULL);
+			break;
 		}
 
 		*(p++) = '}';
