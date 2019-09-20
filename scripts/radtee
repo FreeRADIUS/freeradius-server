@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from __future__ import with_statement 
+from __future__ import with_statement
 
 # RADIUS comparison tee v1.0
 # Sniffs local RADIUS traffic, replays incoming requests to a test
@@ -70,16 +70,16 @@ TEST_SECRET = 'examplesecret'
 #
 # import re
 # import sys
-# 
+#
 # def combine(file):
 #     for line in open(file):
 #         matches = re.search(r'^\$INCLUDE\s+(.*)$', line)
 #         if not matches:
 #             sys.stdout.write(line)
 #             continue
-# 
+#
 #         combine(matches.group(1))
-# 
+#
 # combine('/etc/freeradius/dictionary')
 DICTIONARY = '/etc/freeradius/dictionary'
 
@@ -498,8 +498,6 @@ def usage():
 	print '    -h, --help  display this help and exit'
 
 if __name__ == '__main__':
-	global PID_FILE
-
 	progname = os.path.basename(sys.argv[0])
 
 	try:
@@ -531,7 +529,7 @@ if __name__ == '__main__':
 
 	# This is Linux-specific, and there's no tenable way to make
 	# it portable.
-	# 
+	#
 	# Unfortunately, we need the interface's IP address to filter out
 	# only RADIUS traffic destined for this host (avoiding traffic sent
 	# *by* this host, such as proxied requests or our own traffic) to
