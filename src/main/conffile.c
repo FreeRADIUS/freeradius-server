@@ -1331,7 +1331,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 
 
 		default:
-			cf_log_err(&(cs->item), "Unknown address family passed for parsing IP address.", ipaddr->af);
+			cf_log_err(&(cs->item), "Unknown address (%d) family passed for parsing IP address.", ipaddr->af);
 			break;
 		}
 
