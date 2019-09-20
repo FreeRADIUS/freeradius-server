@@ -1,6 +1,6 @@
 # The FreeRADIUS server
 
-[![Travis CI build status][BuildStatus]][BuildStatusLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink]
+[![Travis CI build status][BuildStatus]][BuildStatusLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink] [![LGTM Status][LGTMStatus]][LGTMStatusLink]
 
 ## Introduction
 
@@ -140,3 +140,5 @@ are available from [Network RADIUS](https://networkradius.com).
 [CoverityStatusLink]: https://scan.coverity.com/projects/58
 [BuildStatus]: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=master "Travis CI status"
 [BuildStatusLink]: https://travis-ci.org/FreeRADIUS/freeradius-server
+[LGTMStatus]: https://img.shields.io/lgtm/alerts/g/FreeRADIUS/freeradius-server.svg?logo=lgtm&logoWidth=18
+[LGTMStatusLink]: https://lgtm.com/projects/g/FreeRADIUS/freeradius-server/alerts/
