@@ -107,7 +107,13 @@ static char const *proto(int id, int porttype)
  */
 static char *dotime(time_t t)
 {
-	char *s = ctime(&t);
+	/*
+	 *	man 3 ctime
+	 *	The caller must provide the output buffer buf
+	 *	(which must be at least 26 characters long)
+	 */
+	char buff[26];
+	char *s = ctime_r(&t, buff);
 
 	if (showname) {
 		strlcpy(s + 4, s + 11, 6);
