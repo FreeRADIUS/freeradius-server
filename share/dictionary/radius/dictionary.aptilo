@@ -4,11 +4,9 @@
 # Version $Id$
 #
 ##############################################################################
-# Aptilo Access Controllers - http://www.aptilo.com/aptilo-access-controller
+# Aptilo Access Controllers - https://www.aptilo.com/aptilo-access-controller
 #
-# Version:      $Id$
-#
-#               Jorge Pereira <jpereiran@gmail.com>
+# Version:      2.0
 #
 ##############################################################################
 
@@ -81,7 +79,20 @@ ATTRIBUTE	Aptilo-Octets-Request			70	octets
 ATTRIBUTE	Aptilo-Resource-Request			71	integer
 ATTRIBUTE	Aptilo-Duration-Request			72	integer
 ATTRIBUTE	Aptilo-QoS-Indicator			73	string
+ATTRIBUTE	Aptilo-Circuit-ID			74	octets
+ATTRIBUTE	Aptilo-Remote-ID			75	octets
+ATTRIBUTE	Aptilo-Location-Name			76	string
 
+ATTRIBUTE	Aptilo-Key-IPv6-1			231	ipv6addr
+ATTRIBUTE	Aptilo-Key-IPv6-2			232	ipv6addr
+ATTRIBUTE	Aptilo-Key-IPv6-3			233	ipv6addr
+ATTRIBUTE	Aptilo-Key-IPv6-4			234	ipv6addr
+ATTRIBUTE	Aptilo-Key-IPv6-5			235	ipv6addr
+ATTRIBUTE	Aptilo-Key-Octets-1			236	octets
+ATTRIBUTE	Aptilo-Key-Octets-2			237	octets
+ATTRIBUTE	Aptilo-Key-Octets-3			238	octets
+ATTRIBUTE	Aptilo-Key-Octets-4			239	octets
+ATTRIBUTE	Aptilo-Key-Octets-5			240	octets
 ATTRIBUTE	Aptilo-Key-String-1			241	string
 ATTRIBUTE	Aptilo-Key-String-2			242	string
 ATTRIBUTE	Aptilo-Key-String-3			243	string
@@ -136,6 +147,9 @@ VALUE	Aptilo-Denied-Cause		Ruleset-Failed		24
 VALUE	Aptilo-Auth-Type		User			0
 VALUE	Aptilo-Auth-Type		Auto			1
 VALUE	Aptilo-Auth-Type		IP-Request		2
+
+VALUE	Aptilo-NAS-Capabilities		CoA-Login		1
+
 VALUE	Aptilo-Debug-Option		Simulate-EAP-TLS	1
 
 END-VENDOR 	Aptilo
