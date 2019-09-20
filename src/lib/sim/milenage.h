@@ -1,3 +1,4 @@
+#pragma once
 /**
  * @file src/lib/sim/milenage.h
  * @brief 3GPP AKA - Milenage algorithm (3GPP TS 35.205, .206, .207, .208)

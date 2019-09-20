@@ -1,3 +1,4 @@
+#pragma once
 /*
  * @copyright 2001-2010 Georges Menie (www.menie.org)
  * @copyright 2010 Salvatore Sanfilippo (adapted to Redis coding style)

@@ -93,11 +93,23 @@ If you have no prior information about the LDAP server follow the examples below
 adding progressively more connection parameters until ldapsearch returns one or more
 results.
 
+When a search completes successfully, the output will look resemble following,
+exit code of ldap search will be 0. The text will not be identical, as names and
+domains will be from the local LDAP server.
+
+[source,ldif]
+----
+dn: uid=john,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: john
+userPassword: password
+----
 ---
 === Search without bind (anonymous)
 At a minimum, unless you have defaults set in your local `ldap.conf` file,
 you will need to provide the following arguments:
 
+- `-z 1` - Limit the number of results to 1.
 - `-x` - Use simple authentication instead of SASL (correct for the majority of servers).
 - `-H <ldap uri>` - The LDAP server to connect to.
 - `-b <dn>` - A point in the LDAP tree to start the search from.
@@ -105,7 +117,7 @@ you will need to provide the following arguments:
 .Performing an anonymous search
 ====
 ```
-ldapsearch -x -H ldap://ldap.example.com:389 -D "cn=freeradius,dc=example,dc=com"
+ldapsearch -z 1 -x -H ldap://ldap.example.com:389 -b "cn=freeradius,dc=example,dc=com"
 ```
 ====
 
@@ -125,13 +137,13 @@ performed before attempting any operations on the LDAP server.
 The following arguments should be added to identify the LDAP client to the LDAP
 server:
 
-- `-D` - The bind DN.  A unique identifier for the user being bound.
-- `-w` - The bind password.
+- `-D <dn>` - The bind DN.  A unique identifier for the user being bound.
+- `-w <password>` - The bind password.
 
 .Performing a search with a bound user
 ====
 ```
-ldapsearch -x -H ldap://ldap.example.com:389 -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "ou=people,dc=example,dc=com"
+ldapsearch -z 1 -x -H ldap://ldap.example.com:389 -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "ou=people,dc=example,dc=com"
 ```
 ====
 ---
@@ -187,65 +199,38 @@ StartTLS usually runs on the same port as unencrypted LDAP.
 - `-ZZ` - Transition to encrypted communication using the StartTLS extension,
 and fail if we can't.
 
-.Performing a search with a bound user over TLS
+.Performing a search with a bound user with StartTLS
 ====
 ```
-ldapsearch -x -H ldap://ldap.example.com:389 -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "ou=people,dc=example,dc=com"
+LDAPTLS_CACERT=cert_bundle.pem LDAPTLS_REQCERT=hard ldapsearch -z 1 -x -H ldap://ldap.example.com:389 -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "ou=people,dc=example,dc=com" -ZZ
 ```
 ====
 
-The following changes to your `ldapsearch` command should be made to enable.
-Note that the arguments are different dependent on the type of TLS connection
-in use.
+== Translating ldapsearch arguments to rlm_ldap configuration items
 
+[width="100%",cols="30%,70%",options="header",]
+|===
+| ldapsearch              | rlm_ldap
+| `-z`                    | Not supported.
+| `-x`                    | Set by default.
+| `-H <uri>`              | `ldap { server = '<uri>' }`
+| `-b <dn>`               | `ldap { base_dn = '<dn>' }`
+| `-D <dn>`               | `ldap { identity = '<dn>' }`
+| `-w <password>`         | `ldap { password = '<password>' }`
 
+If the `ldapsearch` program fails to return anything useful, then the
+previous steps should be performed until that program succeeds.
+Unfortunately, every piece of advice in this section is site-specific,
+and is independent of RADIUS.  Therefore you should not configure
+FreeRADIUS to use LDAP until such time as `ldapsearch` succeeds.
 
-
-
-==== Start TLS
-
-
-
-Where you replace the following as appropriately:
-
-* `ldaps://ldap.example.com:636`
-** location of the LDAP server and how to connect
-
-** `ldaps` is LDAP over SSL and defaults to port `636/tcp`
-
-** `ldap` is non-SSLed LDAP and defaults to port `389/tcp`
-**** add `-ZZ` as an argument if you use Start TLS
-
-** `ldapi` is for UNIX socket connections
-
-* `cn=freeradius,dc=example,dc=com`
-** username used by FreeRADIUS when connecting to LDAP
-
-* `mypassword`
-** password used by FreeRADIUS is to use when connecting to LDAP
-
-* `ou=people,dc=example,dc=com`
-** top branch ('base') of the LDAP tree where users are found
 
 * `(objectClass=inetOrgPerson)`
   http://www.zytrax.com/books/ldap/apa/search.html[search filter]
   which captures the users (this is the LDAP equivalent of the `WHERE`
   clause in SQL)
 
-* the parameter `-z 10` limits the number of results returned to ten,
-  which should be informative, but not overwhelming.
 
-If this test works, there should be text returned where each result
-returned looks something like the following.  The text will of course
-not be identical, as names and domains will be from the local system.
-
-[source,ldif]
-----
-dn: uid=john,ou=people,dc=example,dc=com
-objectClass: inetOrgPerson
-uid: john
-userPassword: password
-----
 
 If no objects are returned, then check that the search filter is
 correct.  This checl is best done by removing the filter and use
@@ -274,11 +259,7 @@ If no users are returned, then verify:
      will be successful (and not continue indefinitely) when there is _no firewall blocking
   * `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is no firewall blocking access
 
-If the `ldapsearch` program fails to return anything useful, then the
-previous steps should be performed until that program succeeds.
-Unfortunately, every piece of advice in this section is site-specific,
-and is independent of RADIUS.  Therefore you should not configure
-FreeRADIUS to use LDAP until such time as `ldapsearch` succeeds.
+
 
 It is always simpler to debug LDAP issues using an LDAP-specific tool
 such as `ldapsearch`.  Adding a RADIUS server to the mix will just
