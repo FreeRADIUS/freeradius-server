@@ -183,7 +183,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	X509_STORE		*server_store;
 	X509_STORE_CTX		*server_store_ctx = NULL;
 
-	STACK_OF(X509)		*our_chain;
+	STACK_OF(X509)		*our_chain = NULL;
 
 	int			ret;
 
@@ -209,7 +209,18 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	 *	This isn't what we pass to tls_ocsp_check.  That store
 	 *	is used to validate the OCSP server's response.
 	 */
+#if OPENSSL_VERSION_NUMBER > 0x10101000L
 	if (SSL_get0_chain_certs(ssl, &our_chain) == 0) {
+#else
+	/*
+	 *	Ignore the return code for older versions of
+	 *	OpenSSL.
+	 *
+	 *	https://github.com/openssl/openssl/pull/9395
+	 */
+	(void)SSL_get0_chain_certs(ssl, &our_chain);
+	if (!our_chain) {
+#endif
 		tls_log_error(request, "Failed retrieving chain certificates from current SSL session");
 		goto error;
 	}
