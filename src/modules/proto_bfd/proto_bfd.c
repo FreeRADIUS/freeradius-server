@@ -480,7 +480,6 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 {
 	int rcode;
 	bool flag;
-	uint32_t number;
 	bfd_state_t *session;
 
 	session = talloc_zero(sock, bfd_state_t);
@@ -515,28 +514,46 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 		session->demand_mode = flag;
 	}
 
-	rcode = cf_pair_parse(NULL, cs, "min_transmit_interval", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
-	if (rcode == 0) {
-		if (number < 100) number = 100;
-		if (number > 10000) number = 10000;
+	/*
+	 *	Number is moved out of scope to shut up lgtm
+	 *      static analysis, but really these should be
+	 *	moved into conf_parser callback functions.
+	 */
+	{
+		uint32_t number;
 
-		session->desired_min_tx_interval = number * 1000;
-	}
-	rcode = cf_pair_parse(NULL, cs, "min_receive_interval", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
-	if (rcode == 0) {
-		if (number < 100) number = 100;
-		if (number > 10000) number = 10000;
+		rcode = cf_pair_parse(NULL, cs, "min_transmit_interval", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
+		if (rcode == 0) {
+			if (number < 100) number = 100;
+			if (number > 10000) number = 10000;
 
-		session->required_min_rx_interval = number * 1000;
-	}
-	rcode = cf_pair_parse(NULL, cs, "max_timeouts", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
-	if (rcode == 0) {
-		if (number == 0) number = 1;
-		if (number > 10) number = 10;
-
-		session->detect_multi = number;
+			session->desired_min_tx_interval = number * 1000;
+		}
 	}
 
+	{
+		uint32_t number;
+
+		rcode = cf_pair_parse(NULL, cs, "min_receive_interval", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
+		if (rcode == 0) {
+			if (number < 100) number = 100;
+			if (number > 10000) number = 10000;
+
+			session->required_min_rx_interval = number * 1000;
+		}
+	}
+
+	{
+		uint32_t number;
+
+		rcode = cf_pair_parse(NULL, cs, "max_timeouts", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
+		if (rcode == 0) {
+			if (number == 0) number = 1;
+			if (number > 10) number = 10;
+
+			session->detect_multi = number;
+		}
+	}
 	session->auth_type = sock->auth_type;
 
 	/*
