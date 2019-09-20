@@ -26,6 +26,7 @@
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pcap.h>
+#include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 
@@ -429,32 +430,36 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 {
 	fr_pcap_t *pcap_p;
-	char *buff, *p;
-	size_t len = 0, left = 0, wrote;
+	char *buff, *p, *end;
+	size_t len = 0;
 
 	if (!pcap) {
-		goto null;
-	}
-
-	for (pcap_p = pcap;
-	     pcap_p;
-	     pcap_p = pcap_p->next) {
-		len += talloc_array_length(pcap_p->name);	// Talloc array length includes the \0
-	}
-
-	if (!len) {
 	null:
 		return talloc_zero_array(ctx, char, 1);
 	}
 
-	left = len + 1;
-	buff = p = talloc_zero_array(ctx, char, left);
 	for (pcap_p = pcap;
 	     pcap_p;
 	     pcap_p = pcap_p->next) {
-		wrote = snprintf(p, left, "%s%c", pcap_p->name, c);
-		left -= wrote;
-		p += wrote;
+	     	/*
+	     	 *	talloc_array_length includes \0 which accounts for c
+	     	 */
+		len += talloc_array_length(pcap_p->name);
+	}
+
+	if (!len) goto null;
+
+	buff = p = talloc_zero_array(ctx, char, len + 1);
+	end = p + len;
+
+	for (pcap_p = pcap;
+	     pcap_p;
+	     pcap_p = pcap_p->next) {
+	     	size_t ret;
+
+		ret = snprintf(p, end - p, "%s%c", pcap_p->name, c);
+		rad_assert(!is_truncated(ret, end - p));		/* Static analysis */
+		p += ret;
 	}
 	buff[len - 1] = '\0';
 
