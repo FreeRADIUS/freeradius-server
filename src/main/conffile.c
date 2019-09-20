@@ -1316,26 +1316,25 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 	case PW_TYPE_COMBO_IP_ADDR:
 		switch (ipaddr->af) {
 		case AF_INET:
-		if (ipaddr->prefix != 32) {
-			ERROR("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted for non-prefix types",
-			      ipaddr->prefix);
+			if (ipaddr->prefix == 32) return 0;
 
-			return -1;
-		}
+			cf_log_err(&(cs->item), "Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted for non-prefix types",
+				   ipaddr->prefix);
 			break;
 
 		case AF_INET6:
-		if (ipaddr->prefix != 128) {
-			ERROR("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted for non-prefix types",
-			      ipaddr->prefix);
+			if (ipaddr->prefix == 128) return 0;
 
-			return -1;
-		}
+			cf_log_err(&(cs->item), "Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted for non-prefix types",
+				   ipaddr->prefix);
 			break;
+
 
 		default:
+			cf_log_err(&(cs->item), "Unknown address family passed for parsing IP address.", ipaddr->af);
 			break;
 		}
+
 		return -1;
 
 	default:
@@ -1420,7 +1419,10 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	char buffer[8192];
 	CONF_ITEM *c_item;
 
-	if (!cs) return -1;
+	if (!cs) {
+		cf_log_err(&(cs->item), "No enclosing section for configuration item \"%s\"", name);
+		return -1;
+	}
 
 	c_item = &cs->item;
 
@@ -1679,10 +1681,12 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		 *	server startup.
 		 */
 		if (*q && file_input && !cf_file_check(cs, *q, true)) {
+			cf_log_err(&(cs->item), "Failed parsing configuration item \"%s\"", name);
 			return -1;
 		}
 
 		if (*q && file_exists && !cf_file_check(cs, *q, false)) {
+			cf_log_err(&(cs->item), "Failed parsing configuration item \"%s\"", name);
 			return -1;
 		}
 		break;
@@ -1692,7 +1696,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		ipaddr = data;
 
 		if (fr_pton4(ipaddr, value, -1, true, false) < 0) {
-			ERROR("%s", fr_strerror());
+		failed:
+			cf_log_err(&(cs->item), "Failed parsing configuration item \"%s\" - %s", name, fr_strerror());
 			return -1;
 		}
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
@@ -1702,10 +1707,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	case PW_TYPE_IPV6_PREFIX:
 		ipaddr = data;
 
-		if (fr_pton6(ipaddr, value, -1, true, false) < 0) {
-			ERROR("%s", fr_strerror());
-			return -1;
-		}
+		if (fr_pton6(ipaddr, value, -1, true, false) < 0) goto failed;
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
 		break;
 
@@ -1713,10 +1715,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	case PW_TYPE_COMBO_IP_PREFIX:
 		ipaddr = data;
 
-		if (fr_pton(ipaddr, value, -1, AF_UNSPEC, true) < 0) {
-			ERROR("%s", fr_strerror());
-			return -1;
-		}
+		if (fr_pton(ipaddr, value, -1, AF_UNSPEC, true) < 0) goto failed;
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
 		break;
 
@@ -1734,7 +1733,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 			len = strlen(end + 1);
 
 			if (len > 6) {
-				ERROR("Too much precision for timeval");
+				cf_log_err(&(cs->item), "Too much precision for timeval");
 				return -1;
 			}
 
@@ -1765,7 +1764,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		rad_assert(type > PW_TYPE_INVALID);
 		rad_assert(type < PW_TYPE_MAX);
 
-		ERROR("type '%s' is not supported in the configuration files",
+		cf_log_err(&(cs->item), "type '%s' is not supported in the configuration files",
 		       fr_int2str(dict_attr_types, type, "?Unknown?"));
 		return -1;
 	} /* switch over variable type */
