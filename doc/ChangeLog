@@ -36,6 +36,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Add support to radmin keep the history in ~/.radmin_history
 	* Add support for ENV and LD_PRELOAD in radiusd.conf.  See the new
 	  ENV sub-section of radiusd.conf.
+	* Update dictionary.aptilo. #3002
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
