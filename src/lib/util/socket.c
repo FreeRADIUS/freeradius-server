@@ -54,7 +54,7 @@
  *	- > 0 the port port_name resolves to.
  *	- < 0 on error.
  */
-static uint16_t socket_port_from_service(int proto, char const *port_name)
+static int socket_port_from_service(int proto, char const *port_name)
 {
 	struct servent	*service;
 	char const	*proto_name;
