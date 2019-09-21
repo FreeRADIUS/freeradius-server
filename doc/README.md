@@ -32,6 +32,6 @@ The output HTML is placed in the following location:
     ./build/docsite/freeradius-server/latest/index.html
 
 If Antora is not installed locally, it can usually be installed from
-`npm` (a command available once you install [Node.js](https://nodejs.org/):
+`npm` (a command available once you install [Node.js](https://nodejs.org/)):
 
     $ npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0
