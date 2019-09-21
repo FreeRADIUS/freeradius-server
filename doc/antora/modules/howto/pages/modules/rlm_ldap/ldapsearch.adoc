@@ -11,7 +11,7 @@ used to host the RADIUS server.  A common cause of connectivity issues is that a
 firewall is preventing network access from the RADIUS server to the LDAP server.
 Running `ldapsearch` on a third machine may not reveal these firewall issues.
 
-== Before you start
+== Before starting
 
 Try to determine answers to the following questions:
 
@@ -35,34 +35,34 @@ certificates need to be available to the LDAP client.
 The `openssl` invocation is different depending on whether StartTLS or LDAPS
 is used.
 
-.LDAPS - Retrieving the certificate chain of the fictitious ldap.internal.freeradius.org server
+.LDAPS - Retrieving the certificate chain of the fictitious ldap.example.com server
 ====
 ```
-openssl s_client -host ldap.internal.freeradius.org -port 636 -prexit -showcerts
+echo -n | openssl s_client -host ldap.example.com -port 636 -prexit -showcerts
 CONNECTED(00000003)
-depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = freeradius.org, emailAddress = support@freeradius.org
+depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = example.com, emailAddress = support@example.com
 verify return:0
 ---
 Certificate chain
- 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.internal.freeradius.org/emailAddress=support@freeradius.org
-   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=freeradius.org/emailAddress=support@freeradius.org
+ 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.example.com/emailAddress=support@example.com
+   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=example.com/emailAddress=support@example.com
 -----BEGIN CERTIFICATE-----
 MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
 ...
 ```
 ====
 
-.StartTLS - Retrieving the certificate chain of the fictitious ldap.internal.freeradius.org server
+.StartTLS - Retrieving the certificate chain of the fictitious ldap.example.com server
 ====
 ```
-openssl s_client -host ldap.internal.freeradius.org -port 389 -prexit -showcerts -starttls ldap
+echo -n | openssl s_client -host ldap.example.com -port 389 -prexit -showcerts -starttls ldap
 CONNECTED(00000003)
-depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = freeradius.org, emailAddress = support@freeradius.org
+depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = example.com, emailAddress = support@example.com
 verify return:0
 ---
 Certificate chain
- 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.internal.freeradius.org/emailAddress=support@freeradius.org
-   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=freeradius.org/emailAddress=support@freeradius.org
+ 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.example.com/emailAddress=support@example.com
+   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=example.com/emailAddress=support@example.com
 -----BEGIN CERTIFICATE-----
 MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
 ...
@@ -90,12 +90,12 @@ complex commands to be sent to the LDAP server.
 
 It will likely take a number of attempts to find the correct `ldapsearch` invocation.
 If you have no prior information about the LDAP server follow the examples below,
-adding progressively more connection parameters until ldapsearch returns one or more
+adding progressively more connection parameters until `ldapsearch` returns one or more
 results.
 
-When a search completes successfully, the output will look resemble following,
-exit code of ldap search will be 0. The text will not be identical, as names and
-domains will be from the local LDAP server.
+When a search completes successfully, the output will look resemble the text
+below, and the exit code of `ldapsearch` will be 0. The text will not be
+identical, as names and domains will be from the local LDAP server.
 
 [source,ldif]
 ----
@@ -104,6 +104,13 @@ objectClass: inetOrgPerson
 uid: john
 userPassword: password
 ----
+
+If the `ldapsearch` program fails to return anything useful, then additional
+arguments should be added until the search succeeds. Unfortunately, every piece
+of advice in this section is site-specific, and is independent of RADIUS.
+Therefore you should not configure FreeRADIUS to use LDAP until such time as
+`ldapsearch` returns a positive result.
+
 ---
 === Search without bind (anonymous)
 At a minimum, unless you have defaults set in your local `ldap.conf` file,
@@ -120,9 +127,23 @@ you will need to provide the following arguments:
 ldapsearch -z 1 -x -H ldap://ldap.example.com:389 -b "cn=freeradius,dc=example,dc=com"
 ```
 ====
+---
+.Bad FQDN/IP or attempt blocked by firewall
+```
+ldap_sasl_bind(SIMPLE): Can't contact LDAP server (-1)
+```
+
+* Verify (using `dig` or similar) that the FQDN of the LDAP
+server can be resolved.
+* Verify that there is no firewall blocking access.  Some techniques to check this
+which _may_ work.
+** `sudo traceroute -Tn -p 636 ldap.example.com` will be successful (and not
+continue indefinitely) when there is _no_ firewall blocking.
+** `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is no
+firewall blocking access.
 
 ---
-=== Search with bind
+.Bind required
 ```
 ldap_bind: Server is unwilling to perform (53)
 	additional info: unauthenticated bind (DN with no password) disallowed
@@ -131,8 +152,8 @@ ldap_bind: Server is unwilling to perform (53)
 The majority of LDAP servers will also require the LDAP client to identify itself,
 this is done with a bind operation.
 
-If you see a message similar to the one above, it means a bind operation must be
-performed before attempting any operations on the LDAP server.
+If a message similar to the one above is returned, it means a bind operation
+must be performed before attempting any operations on the LDAP server.
 
 The following arguments should be added to identify the LDAP client to the LDAP
 server:
@@ -143,22 +164,20 @@ server:
 .Performing a search with a bound user
 ====
 ```
-ldapsearch -z 1 -x -H ldap://ldap.example.com:389 -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "ou=people,dc=example,dc=com"
+ldapsearch -z 1 -x -H ldap://ldap.example.com:389 -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "dc=example,dc=com"
 ```
 ====
 ---
 
-=== Search with bind over TLS
+=== Encrypting connections with TLS
+
+If a message similar to the one below is returned by `ldapsearch`.  TLS must
+be enabled on the connection.
+
 ```
 ldap_bind: Confidentiality required (13)
         additional info: TLS confidentiality required
 ```
-
-Unless the LDAP server is on a secure local network, it will likely have been
-configured to require TLS before allowing sensitive credentials to be submitted.
-
-If you see a message similar to the one above, it means that TLS must be used
-when connecting to the LDAP server.
 
 ==== Common arguments
 
@@ -192,9 +211,17 @@ to
 -H ldaps://<fqdn>:636
 ```
 
+.Performing a search with a bound user with LDAPS
+====
+```
+LDAPTLS_CACERT=cert_bundle.pem LDAPTLS_REQCERT=hard ldapsearch -z 1 -x -H ldaps://ldap.example.com:636 -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "dc=example,dc=com"
+```
+====
+
 ==== StartTLS
 
-StartTLS usually runs on the same port as unencrypted LDAP.
+StartTLS connections runs on the same port as unencrypted LDAP.  StartTLS
+is an LDAP
 
 - `-ZZ` - Transition to encrypted communication using the StartTLS extension,
 and fail if we can't.
@@ -202,64 +229,266 @@ and fail if we can't.
 .Performing a search with a bound user with StartTLS
 ====
 ```
-LDAPTLS_CACERT=cert_bundle.pem LDAPTLS_REQCERT=hard ldapsearch -z 1 -x -H ldap://ldap.example.com:389 -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "ou=people,dc=example,dc=com" -ZZ
+LDAPTLS_CACERT=cert_bundle.pem LDAPTLS_REQCERT=hard ldapsearch -z 1 -x -H ldap://ldap.example.com:389 -D "cn=freeradius,dc=example,dc=com" -w mypassword -b "dc=example,dc=com" -ZZ
 ```
 ====
 
+== Locating Objects within LDAP
+
+In additional to the arguments specifying how to connect to the LDAP server and
+where to search, `ldapsearch` accepts two positional arguments. Both positional
+arguments are optional.
+
+The first argument specifies the filter to apply to the search, the second is a
+comma delimited list of attributes to retrieve.
+
+=== Users
+Users are represented by a fairly limited subset of ObjectClasses.  The
+following filters are usually sufficient to identify users in different
+directory types.
+
+- OpenLDAP - `(|(ObjectClass=organizationalPerson)(ObjectClass=posixAccount)(ObjectClass=Person))`
+- ActiveDirectory - `(|(ObjectClass=User)(ObjectClass=posixAccount))`
+- Novell eDir - `(ObjectClass=User)`
+
+.Performing a search with a user object filter
+====
+```
+ldapsearch -z 10 -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(|(ObjectClass=organizationalPerson)(ObjectClass=PosixAccount)(ObjectClass=Person))"
+
+# extended LDIF
+#
+# LDAPv3
+# base <dc=example,dc=com> with scope subtree
+# filter: (|(ObjectClass=organizationalPerson)(ObjectClass=PosixAccount)(ObjectClass=Person))
+# requesting: ALL
+#
+
+...
+
+# doctopus, octopuses, example.com
+dn: uid=doctopus,ou=octopuses,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Doctopus McTentacles
+sn: McTentacles
+uid: dpus
+givenName: Doctopus
+userPassword:: MGN0MHB1NTNzUnVsMw==
+
+# search result
+search: 3
+result: 0 Success
+
+# numResponses: 18
+# numEntries: 17
+```
+====
+
+There's a lot of useful information in this result:
+
+- We know where the user objects are likely to be located, as it's fairly
+obvious from the DN (`...,ou=octopuses,dc=example,dc=com`). _Note: In the
+majority of non-FreeRADIUS themed LDAP directories the user object container
+will be `ou=people`_.
+- The result shows a `uid` attribute.  This will almost always be the correct
+attribute for identifying a user.
+- The result shows a base64 encoded `userPassword` attribute.  This
+means users can be authenticated without rebinding the connection (more
+efficient).
+- There's no `memberOf` attributes. This means user to group mappings
+are likely stored in group objects instead of the user objects themselves.
+
+****
+The above result represents an ideal scenario.  In reality, LDAP directories
+often accumulate a lot of detritus, and users objects might be located in
+multiple places within the directory.
+
+The `-z` argument limiting the number of results should be removed,
+and the output of `ldapsearch` piped through a command chain _such as_:
+`grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c`.
+
+The command chain will return a list of objects which _contain_ user objects,
+and how many user objects they contain.
+
+.Determining which objects contain users
+====
+```
+ldapsearch -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(|(ObjectClass=organizationalPerson)(ObjectClass=PosixAccount)(ObjectClass=Person))" | grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c`
+2 ou=octopuses,dc=example,dc=com
+10 ou=people,dc=example,dc=com
+1 ou=people,dc=created-by-someone-who-didnt-know-what-dc-meant,dc=example,dc=com
+2 ou=people,ou=remnant-of-an-ancient-edir-instance,dc=example,dc=com
+2 ou=giraffes,dc=example,dc=com
+```
+====
+
+The DN used to root user object searches must be higher in the object tree
+than the objects containing users.  In the above example that DN would be
+`dc=example,dc=com`.
+
+If an error message is returned similar to `Size limit exceeded (4)`, it means
+the maximum number of search result entries was exceeded.
+If the LDAP directory supports result paging, adding a paging request such as
+`-E 'pr=100'` may negate the per-search result limit.
+
+For large result sets you should also specify a list of attributes to retrieve
+after the search filter.  Limiting the attributes returned reduces load on the
+LDAP server, and generally results in a quicker response.
+
+```
+ldapsearch ... -E 'pr=100' "(|(ObjectClass=...))" "dn" | ...
+```
+****
+
+==== What to record
+
+- The DN higher in the tree than relevant users objects (the user base DN).
+- The attribute used to identify the user (usually `uid`, but can vary
+considerably between instances).
+- The name of the password attribute (if present).
+- Any attributes used to indicate whether an account is disabled -
+  repeat the search with a filter for a user account known to be
+  disabled e.g. `(uid=a-disabled-user)`.
+- Any attributes used to indicate whether an account is enabled.
+
+=== Groups
+
+Groups are represented by a fairly limited subset of ObjectClasses.  The
+following filters are usually sufficient to identify groups in different
+directory types.
+
+- OpenLDAP - `(objectClass=groupOfNames)`
+- ActiveDirectory - `(objectClass=group)`
+- Novell eDir - `(objectClass=group)`
+
+.Performing a search with a group object filter
+====
+```
+ldapsearch -z 10 -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(objectClass=posixGroup)"
+
+# extended LDIF
+#
+# LDAPv3
+# base <ou=people,dc=example,dc=com> with scope subtree
+# filter: (ObjectClass=posixGroup)
+# requesting: ALL
+#
+
+...
+
+dn: cn=mariner-alert,ou=groups,dc=example,dc=com
+cn: mariner-alert
+description: Heads up to all delicious denizens of the directory
+member: uid=doctopus,ou=octopuses,dc=example,dc=com
+member: uid=rocktopus,ou=octopuses,dc=example,dc=com
+objectClass: groupOfNames
+objectClass: fdGroupMail
+mail: mariner-alert@example.com
+
+# search result
+search: 3
+result: 0 Success
+
+# numResponses: 10
+# numEntries: 9
+```
+====
+
+****
+As with users, groups may be located in multiple areas of the directory.
+
+.Determining which objects contain groups
+====
+```
+ldapsearch -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" -E 'pr=100' "(ObjectClass=posixGroup)" dn | grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c`
+3 ou=groups,dc=example,dc=com
+1 ou=groups,o=long-defunct-org-that-was-merged-with-example-com,dc=example,dc=com
+3 ou=groups,ou=interns-summer-project,dc=example,dc=com
+2 ou=groups,ou=backup-restored-in-the-wrong-place,dc=example,dc=com
+```
+====
+****
+
+==== Group membership scheme variants
+Groups memberships can be represented in multiple ways.  There are four main
+variants:
+
+1. User objects which contain DN references to groups - usually with multiple
+instances of the `memberOf` attribute.
+2. User objects which contain references to the names of groups - again usually
+with multiple instances of the `memberOf` attribute.
+3. Group objects which contain DN references to users - usually with multiple
+instances of the `member` attribute.
+4. Group objects which contain the identities of users - usually with
+multiple instances of the `memberUid` attribute.
+
+In order to perform efficient group lookups, which group membership scheme the
+LDAP server uses must be determined.
+
+Repeat the search for user objects using a filter that matches a user known
+to be members of one or more groups e.g.
+`(&(objectClass=posixUser)(uid=doctopus))`.
+
+- If the result shows a attribute containing the DN of known group, the LDAP
+server implements _variant 1_.
+
+- If the result shows a attribute containing the name of known group, the LDAP
+server implements _variant 2_.
+
+Repeat the the search for group objects user a filter that matches a group
+the user is known to be a member of e.g. `(&(objectClass=groupOfNames)(cn=mariner-alert))`.
+
+- If the result shows an attribute containing the DN of a user, the ldap server
+implements _variant 3_.
+
+- If the result shows an attribute containing the name of a user, the ldap server
+implements _variant 4_.
+
+==== If the variant can't be determined
+
+- There's a typographical error in the search filter or `ldapsearch` arguments.
+- The bound user doesn't have sufficient permission to view user or group
+objects. Contact your LDAP administrator.
+- The LDAP directory uses a special scheme to represent groups which requires
+querying a special OID, or providing additional search controls (outside of the
+scope of this howto).
+- Group memberships are represented with 'operational' attributes.  Repeat the
+user object search with '+' set as the second positional argument.
+
+.Searching for a user object and returning operational attributes
+```
+ldapsearch -z 10 -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(ObjectClass=posixUser)" +
+```
+
+==== What to record
+
+- The DN higher in the tree than all relevant group objects (the group base DN).
+- The attribute used to identify the group (usually `cn`).
+- The membership scheme variant (_vairant 1_, _variant 2_, _variant 3_, _variant 4_).
+
 == Translating ldapsearch arguments to rlm_ldap configuration items
 
-[width="100%",cols="30%,70%",options="header",]
+[width="100%",cols="40%,20%,40%",options="header",]
 |===
-| ldapsearch              | rlm_ldap
-| `-z`                    | Not supported.
-| `-x`                    | Set by default.
-| `-H <uri>`              | `ldap { server = '<uri>' }`
-| `-b <dn>`               | `ldap { base_dn = '<dn>' }`
-| `-D <dn>`               | `ldap { identity = '<dn>' }`
-| `-w <password>`         | `ldap { password = '<password>' }`
+| Purpose                            | ldapsearch argument     | rlm_ldap config item
+| Limit number of search results     | `-z`                    | Not supported.
+| Use basic authentication           | `-x`                    | Set by default.
+| LDAP Host URI                      | `-H <uri>`              | `ldap { server = '<uri>' }`
+| Base DN                            | `-b <dn>`               | `ldap { base_dn = '<dn>' }`
+| Bind DN                            | `-D <dn>`               | `ldap { identity = '<dn>' }`
+| Bind Password                      | `-w <password>`         | `ldap { password = '<password>' }`
+| Enable LDAPS                       | `-H ldaps://<uri>`      | `ldap { server = 'ldaps://<uri>', port = 636 }`
+| Enable StartTLS                    | `-ZZ`                   | `ldap { tls { start_tls = yes } }`
+| Specify RootCA and intermediaries  | `LDAPTLS_CACERT=<ca_cert_and_intermediaries.pem>` | `ldap { tls { ca_file = '<ca_cert_and_intermediaries.pem>' } }`
+| Require cert validation to succeed | `LDAPTLS_REQCERT=hard`  | `require_cert = 'demand'`
+|===
 
-If the `ldapsearch` program fails to return anything useful, then the
-previous steps should be performed until that program succeeds.
-Unfortunately, every piece of advice in this section is site-specific,
-and is independent of RADIUS.  Therefore you should not configure
-FreeRADIUS to use LDAP until such time as `ldapsearch` succeeds.
-
-
-* `(objectClass=inetOrgPerson)`
-  http://www.zytrax.com/books/ldap/apa/search.html[search filter]
-  which captures the users (this is the LDAP equivalent of the `WHERE`
-  clause in SQL)
+== Translating ldapsearch results to rlm_ldap configuration items
 
 
-
-If no objects are returned, then check that the search filter is
-correct.  This checl is best done by removing the filter and use
-instead `''` (do not use this in production!).  If it returns results,
-then review the original LDAP search filter to select the (usually)
-`objectClass` value where the users are stored.
-
-If no users are returned, then verify:
-
-* the user name and password credentials are correct
-
-* that the credentials have read permissions to fetch and query those objects
-
-* 'base' value supplied is correct
-  * try amending the base to be the absolute base for the site,
-    e.g. `dc=example,dc=com` (do not use this in production!)
-
-* that there are users in the LDAP server.
-
-* that the certificates (if used) pass OpenSSL verification verify:
-  *`ldaps`*: `echo -n | openssl s_client -connect ldap.example.com:636`
-  *`ldap` with Start TLS: `echo -n | openssl s_client -connect ldap.example.com:389 -starttls ldap`
-
-* that there is no firewall blocking access, some techniques to check this which _may_ work for you:
-  * `sudo traceroute -Tn -p 636 ldap.example.com`
-     will be successful (and not continue indefinitely) when there is _no firewall blocking
-  * `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is no firewall blocking access
-
-
+== Closing comments
 
 It is always simpler to debug LDAP issues using an LDAP-specific tool
 such as `ldapsearch`.  Adding a RADIUS server to the mix will just
