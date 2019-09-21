@@ -203,7 +203,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		goto error;
 	}
 
-#if OPENSSL_VERSION_NUMBER > 0x10102000L
+#if OPENSSL_VERSION_NUMBER >= 0x10102000L
 	if (SSL_get0_chain_certs(ssl, &our_chain) == 0) {
 #else
 	/*
@@ -255,8 +255,6 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	 *	This is what OpenSSL uses to construct SSL chains
 	 *	for validation.  We just need to use it to find
 	 *	who issued our server certificate.
-	 *
-	 *	This isn't what we pass to tls_ocsp_check.
 	 */
 	MEM(server_store_ctx = X509_STORE_CTX_new());
 	if (X509_STORE_CTX_init(server_store_ctx, server_store, NULL, NULL) == 0) {
