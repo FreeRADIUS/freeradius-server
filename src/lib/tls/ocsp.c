@@ -180,7 +180,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 	X509			*cert;
 	X509			*issuer_cert;
-	X509_STORE		*server_store;
+	X509_STORE		*server_store = NULL;
 	X509_STORE_CTX		*server_store_ctx = NULL;
 
 	STACK_OF(X509)		*our_chain = NULL;
@@ -192,6 +192,8 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		tls_log_error(request, "No server certificate found in SSL session");
 	error:
 		X509_STORE_CTX_free(server_store_ctx);
+		X509_STORE_free(server_store);
+
 		return conf->softfail ? SSL_TLSEXT_ERR_NOACK : SSL_TLSEXT_ERR_ALERT_FATAL;
 	}
 
@@ -201,15 +203,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		goto error;
 	}
 
-	/*
-	 *	This is what OpenSSL uses to construct SSL chains
-	 *	for validation.  We just need to use it to find
-	 *	who issued our server certificate.
-	 *
-	 *	This isn't what we pass to tls_ocsp_check.  That store
-	 *	is used to validate the OCSP server's response.
-	 */
-#if OPENSSL_VERSION_NUMBER > 0x10101000L
+#if OPENSSL_VERSION_NUMBER > 0x10102000L
 	if (SSL_get0_chain_certs(ssl, &our_chain) == 0) {
 #else
 	/*
@@ -225,13 +219,6 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		goto error;
 	}
 
-	MEM(server_store = X509_STORE_new());
-	MEM(server_store_ctx = X509_STORE_CTX_new());
-	if (X509_STORE_CTX_init(server_store_ctx, server_store, cert, our_chain) == 0) {
-		tls_log_error(request, "Failed initialising SSL session cert store ctx");
-		goto error;
-	}
-
 	/*
 	 *	Print out the current chain in the certificate store
 	 *	to help with debugging issues where we can't find the
@@ -242,6 +229,39 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		RINDENT();
 		tls_log_certificate_chain(request, our_chain, cert);
 		REXDENT();
+	}
+
+	MEM(server_store = X509_STORE_new());
+	X509_STORE_set_trust(server_store, 1);	/* All certs are trusted */
+
+	/*
+	 *	Add the chain certificates from the current SSL*
+	 *	to the trusted store so that we can determine
+	 *	the issuer cert of the certificate we presented.
+	 */
+	{
+		int num = sk_X509_num(our_chain);
+		int i;
+
+		for (i = 0; i < num; i++) {
+			if (X509_STORE_add_cert(server_store, sk_X509_value(our_chain, i)) != 1) {
+				tls_log_error(request, "Failed adding certificate to trusted store");
+				goto error;
+			}
+		}
+	}
+
+	/*
+	 *	This is what OpenSSL uses to construct SSL chains
+	 *	for validation.  We just need to use it to find
+	 *	who issued our server certificate.
+	 *
+	 *	This isn't what we pass to tls_ocsp_check.
+	 */
+	MEM(server_store_ctx = X509_STORE_CTX_new());
+	if (X509_STORE_CTX_init(server_store_ctx, server_store, NULL, NULL) == 0) {
+		tls_log_error(request, "Failed initialising SSL session cert store ctx");
+		goto error;
 	}
 
 	ret = X509_STORE_CTX_get1_issuer(&issuer_cert, server_store_ctx, cert);
