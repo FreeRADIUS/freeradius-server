@@ -39,12 +39,8 @@ complex commands to be sent to the LDAP server.
 
 It will likely take a number of attempts to find the correct `ldapsearch` invocation.
 If you have no prior information about the LDAP server follow the examples below,
-adding progressively more connection parameters until `ldapsearch` returns one or more
-results.
-
-When a search completes successfully, the output will look resemble the text
-below, and the exit code of `ldapsearch` will be 0. The text will not be
-identical, as names and domains will be from the local LDAP server.
+adding progressively more connection parameters until `ldapsearch` returns a positive
+result (`$? == 0` and one or more entries written to stdout).
 
 [source,ldif]
 ----
@@ -57,7 +53,9 @@ userPassword: password
 If the `ldapsearch` program fails to return anything useful, then additional
 arguments should be added until the search succeeds. Unfortunately, every piece
 of advice in this section is site-specific, and is independent of RADIUS.
+
 ---
+
 === Search without bind (anonymous)
 At a minimum, unless you have defaults set in your local `ldap.conf` file,
 you will need to provide the following arguments:
@@ -301,14 +299,14 @@ are likely stored in group objects instead of the user objects themselves.
 .Finding users in older LDAP directories
 ****
 The above result represents an ideal scenario.  In reality, LDAP directories
-often accumulate a lot of detritus.  Users objects might be located in
-multiple places within the directory.
+often accumulate a lot of cruft.  Users objects may be located in
+multiple container objects, and at multiple levels within a directory.
 
-If you believe this is the case, remove the `-z` argument limiting the number of
-result, and pipe the output of `ldapsearch` through a command chain _such as_:
-`grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c`.
+If you believe this to be the case with your directory, remove the `-z` argument
+limiting the number of result, and pipe the output of `ldapsearch` through a
+command chain _such as_: `grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c`.
 
-The command chain will return a list of objects which _contain_ user objects,
+This operation will return a list of objects which _contain_ user objects,
 and how many user objects they contain.
 
 .Determining which objects contain users
@@ -323,14 +321,14 @@ ldapsearch -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(|(ObjectCl
 ```
 ====
 
-The DN used to root user object searches must be higher in the object tree
-than the objects containing users.  In the above example that DN would be
-`dc=example,dc=com`.
+The user object base DN selected for your rlm_ldap configuration must be higher
+in the object tree than the objects containing users.  In the above example the
+user object base DN would be `dc=example,dc=com`.
 
 If an error message is returned similar to `Size limit exceeded (4)`, it means
-the maximum number of search result entries was exceeded.
-If the LDAP directory supports result paging, adding a paging request such as
-`-E 'pr=100'` may negate the per-search result limit.
+that the LDAP server is refusing to provide the complete set of results. If the
+LDAP directory supports result paging, adding a paging request such as `-E
+'pr=100'` may negate the per-search result limit.
 
 For large result sets you should also specify a list of attributes to retrieve
 after the search filter.  Limiting the attributes returned reduces load on the
@@ -421,16 +419,16 @@ ldapsearch -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" -E 'pr=100' 
 Groups memberships can be represented in multiple ways.  There are four main
 variants:
 
-1. User objects which contain DN references to groups - usually with multiple
+1. User objects which reference groups by DN, _usually_ with multiple
 instances of the `memberOf` attribute.
-2. User objects which contain references to the names of groups - again usually
+2. User objects which reference groups by name, again, _usually_
 with multiple instances of the `memberOf` attribute.
-3. Group objects which contain DN references to users - usually with multiple
+3. Group objects which reference their members by DN, _usually_ with multiple
 instances of the `member` attribute.
-4. Group objects which contain the identities of users - usually with
+4. Group objects which reference their members by name, _usually_ with
 multiple instances of the `memberUid` attribute.
 
-In order to perform efficient group lookups, which group membership scheme the
+In order to perform efficient group lookups which group membership scheme the
 LDAP server uses must be determined.
 
 Repeat the search for user objects using a filter that matches a user known
@@ -443,7 +441,7 @@ server implements _variant 1_.
 - If the result shows a attribute containing the name of known group, the LDAP
 server implements _variant 2_.
 
-Repeat the the search for group objects user a filter that matches a group
+Repeat the the search for group objects using a filter that matches a group
 the user is known to be a member of e.g. `(&(objectClass=groupOfNames)(cn=mariner-alert))`.
 
 - If the result shows an attribute containing the DN of a user, the ldap server
@@ -487,7 +485,7 @@ membership information.
 
 == Translating ldapsearch arguments to rlm_ldap configuration items
 
-[width="100%",cols="40%,20%,40%",options="header",]
+[width="100%",cols="30%,20%,50%",options="header",]
 |===
 | Purpose                                     | ldapsearch argument         | `ldap { ... }` config item
 | Limit number of search results              | ```-z```                    | Not supported.
