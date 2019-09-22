@@ -25,57 +25,6 @@ encrypted communication, or is communication encrypted from the start (LDAPS)?
 needed to validate the identity of the LDAP server?
 * What port is used to connect to the LDAP server?  Usually this will be `389`
 (unencrypted or StartTLS) or `636` (LDAPS).
-
-****
-If using LDAP over TLS `openssl s_client` can display information about the
-certificates presented by the LDAP server. The information returned
-(particularly the certificate issuer(s)) in useful to determine what
-certificates need to be available to the LDAP client.
-
-The `openssl` invocation is different depending on whether StartTLS or LDAPS
-is used.
-
-.LDAPS - Retrieving the certificate chain of the fictitious ldap.example.com server
-====
-```
-echo -n | openssl s_client -host ldap.example.com -port 636 -prexit -showcerts
-CONNECTED(00000003)
-depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = example.com, emailAddress = support@example.com
-verify return:0
----
-Certificate chain
- 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.example.com/emailAddress=support@example.com
-   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=example.com/emailAddress=support@example.com
------BEGIN CERTIFICATE-----
-MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
-...
-```
-====
-
-.StartTLS - Retrieving the certificate chain of the fictitious ldap.example.com server
-====
-```
-echo -n | openssl s_client -host ldap.example.com -port 389 -prexit -showcerts -starttls ldap
-CONNECTED(00000003)
-depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = example.com, emailAddress = support@example.com
-verify return:0
----
-Certificate chain
- 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.example.com/emailAddress=support@example.com
-   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=example.com/emailAddress=support@example.com
------BEGIN CERTIFICATE-----
-MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
-...
-```
-[NOTE]
-.Availability of `-starttls ldap`
-Not all builds of `openssl s_client` support `-starttls ldap`.  As of OpenSSL
-1.1.1 this feature is still only available in the OpenSSL master branch. See
-this GitHub Pull Request for details:
-https://github.com/openssl/openssl/pull/2293.
-====
-****
-
 * Do connections need to be bound to perform searches on the LDAP directory?
 ** If yes:
 *** Determine what credentials are needed for binding, and whether a client
@@ -108,9 +57,6 @@ userPassword: password
 If the `ldapsearch` program fails to return anything useful, then additional
 arguments should be added until the search succeeds. Unfortunately, every piece
 of advice in this section is site-specific, and is independent of RADIUS.
-Therefore you should not configure FreeRADIUS to use LDAP until such time as
-`ldapsearch` returns a positive result.
-
 ---
 === Search without bind (anonymous)
 At a minimum, unless you have defaults set in your local `ldap.conf` file,
@@ -188,6 +134,58 @@ provided in order to validate the LDAP server's certificate.
 
 - `LDAPTLS_REQCERT=hard` - An environmental variable requiring the LDAP server
 provide a certificate.
+
+
+.Retrieving certificate chains from the server
+****
+If using LDAP over TLS `openssl s_client` can display information about the
+certificates presented by the LDAP server. The information returned
+(particularly the certificate issuer(s)) in useful to determine what
+certificates need to be available to the LDAP client.
+
+The `openssl` invocation is different depending on whether StartTLS or LDAPS
+is used.
+
+.LDAPS - Retrieving the certificate chain of the fictitious ldap.example.com server
+====
+```
+echo -n | openssl s_client -host ldap.example.com -port 636 -prexit -showcerts
+CONNECTED(00000003)
+depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = example.com, emailAddress = support@example.com
+verify return:0
+---
+Certificate chain
+ 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.example.com/emailAddress=support@example.com
+   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=example.com/emailAddress=support@example.com
+-----BEGIN CERTIFICATE-----
+MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
+...
+```
+====
+
+.StartTLS - Retrieving the certificate chain of the fictitious ldap.example.com server
+====
+```
+echo -n | openssl s_client -host ldap.example.com -port 389 -prexit -showcerts -starttls ldap
+CONNECTED(00000003)
+depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = example.com, emailAddress = support@example.com
+verify return:0
+---
+Certificate chain
+ 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.example.com/emailAddress=support@example.com
+   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=example.com/emailAddress=support@example.com
+-----BEGIN CERTIFICATE-----
+MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
+...
+```
+[NOTE]
+.Availability of `-starttls ldap`
+Not all builds of `openssl s_client` support `-starttls ldap`.  As of OpenSSL
+1.1.1 this feature is still only available in the OpenSSL master branch. See
+this GitHub Pull Request for details:
+https://github.com/openssl/openssl/pull/2293.
+====
+****
 
 ==== LDAPS
 
@@ -300,13 +298,14 @@ efficient).
 - There's no `memberOf` attributes. This means user to group mappings
 are likely stored in group objects instead of the user objects themselves.
 
+.Finding users in older LDAP directories
 ****
 The above result represents an ideal scenario.  In reality, LDAP directories
-often accumulate a lot of detritus, and users objects might be located in
+often accumulate a lot of detritus.  Users objects might be located in
 multiple places within the directory.
 
-The `-z` argument limiting the number of results should be removed,
-and the output of `ldapsearch` piped through a command chain _such as_:
+If you believe this is the case, remove the `-z` argument limiting the number of
+result, and pipe the output of `ldapsearch` through a command chain _such as_:
 `grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c`.
 
 The command chain will return a list of objects which _contain_ user objects,
@@ -344,14 +343,20 @@ ldapsearch ... -E 'pr=100' "(|(ObjectClass=...))" "dn" | ...
 
 ==== What to record
 
-- The DN higher in the tree than relevant users objects (the user base DN).
-- The attribute used to identify the user (usually `uid`, but can vary
-considerably between instances).
-- The name of the password attribute (if present).
-- Any attributes used to indicate whether an account is disabled -
-  repeat the search with a filter for a user account known to be
-  disabled e.g. `(uid=a-disabled-user)`.
-- Any attributes used to indicate whether an account is enabled.
+- `user_object_base_dn`        - The DN higher in the tree than relevant users
+objects.
+- `user_object_class_filter`   - The filter which matches the objectClass(es) of
+user objects.
+- `uid_attribute`              - The attribute used to identify the user
+(usually `uid`, but can vary considerably between instances).
+- `user_password_attribute`    - The attribute used to hold password data (if
+present).
+- `account_disabled_attribute` - Any attributes used to indicate whether an
+account is disabled. To determine if this attribute exists, repeat the user
+search (above) with a filter for a user account known to be disabled e.g.
+`(uid=a-disabled-user)`.
+- `account_enabled_attribute`  - Any attributes used to indicate whether an
+account is enabled.  Should be present in the search results already obtained.
 
 === Groups
 
@@ -396,6 +401,7 @@ result: 0 Success
 ```
 ====
 
+.Finding groups in older directories
 ****
 As with users, groups may be located in multiple areas of the directory.
 
@@ -464,38 +470,139 @@ ldapsearch -z 10 -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(Obje
 
 ==== What to record
 
-- The DN higher in the tree than all relevant group objects (the group base DN).
-- The attribute used to identify the group (usually `cn`).
-- The membership scheme variant (_vairant 1_, _variant 2_, _variant 3_, _variant 4_).
+* `group_object_base_dn`             - The DN higher in the tree than all
+relevant group objects.
+* `group_name_attribute`             - The attribute used to identify the group
+(usually `cn`).
+* _variant 1_
+** `membership_attribute`            - User object attribute containing group
+membership information.
+* _variant 2_
+** `membership_attribute`            - User object attribute containing group
+membership information.
+* _variant 3_
+** `membership_user_dn_filter`       - A filter matching users by DN.
+* _vairant 4_
+** `membership_user_name_filter`     - A filter matching users by user name.
 
 == Translating ldapsearch arguments to rlm_ldap configuration items
 
 [width="100%",cols="40%,20%,40%",options="header",]
 |===
-| Purpose                            | ldapsearch argument     | rlm_ldap config item
-| Limit number of search results     | `-z`                    | Not supported.
-| Use basic authentication           | `-x`                    | Set by default.
-| LDAP Host URI                      | `-H <uri>`              | `ldap { server = '<uri>' }`
-| Base DN                            | `-b <dn>`               | `ldap { base_dn = '<dn>' }`
-| Bind DN                            | `-D <dn>`               | `ldap { identity = '<dn>' }`
-| Bind Password                      | `-w <password>`         | `ldap { password = '<password>' }`
-| Enable LDAPS                       | `-H ldaps://<uri>`      | `ldap { server = 'ldaps://<uri>', port = 636 }`
-| Enable StartTLS                    | `-ZZ`                   | `ldap { tls { start_tls = yes } }`
-| Specify RootCA and intermediaries  | `LDAPTLS_CACERT=<ca_cert_and_intermediaries.pem>` | `ldap { tls { ca_file = '<ca_cert_and_intermediaries.pem>' } }`
-| Require cert validation to succeed | `LDAPTLS_REQCERT=hard`  | `require_cert = 'demand'`
+| Purpose                                     | ldapsearch argument         | `ldap { ... }` config item
+| Limit number of search results              | ```-z```                    | Not supported.
+| Use basic authentication                    | ```-x```                    | Set by default.
+| LDAP Host URI                               | ```-H <uri>```              | ```server = '<uri>'``` +
+                                                                              ```port = (389\|<custom port>)```
+| Base DN                                     | ```-b <dn>```               | ```base_dn = '<dn>'```
+| Bind DN                                     | ```-D <dn>```               | ```identity = '<dn>'```
+| Bind Password                               | ```-w <password>```         | ```password = '<password>'```
+| Enable LDAPS                                | ```-H ldaps://<uri>```      | ```server = 'ldaps://<uri>'``` +
+                                                                              ```port = (636\|<custom port>)```
+| Enable StartTLS                             | ```-ZZ```                   | ```tls { start_tls = yes }```
+| Specify RootCA and intermediaries           | ```LDAPTLS_CACERT=<ca_cert_and_intermediaries.pem>``` | ```tls { ca_file = '<ca_cert_and_intermediaries.pem>' }```
+| Require cert validation to succeed          | ```LDAPTLS_REQCERT=hard```  | ```tls { require_cert = 'demand' }```
 |===
 
 == Translating ldapsearch results to rlm_ldap configuration items
 
+=== Users
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { user { ... } }` config item
+| Specify where to search for users           | ```base_dn = '<user_object_base_dn>'```
+| Specify how to find a user                  | ```filter = "(&(<user_object_class_filter>)(<uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})"```
+| Retrieve a "known good" password            | ```update { &control:Password-With-Header = <user_password_attribute>```
+| Allow accounts to be explicitly disabled    | ```access_attribute = '<account_disabled_attribute>'``` +
+                                                ```access_positive = 'no'```
+| Require accounts to be explicitly enabled   | ```access_attribute = '<account_enabled_attribute>'``` +
+                                                ```access_positive = 'yes'```
+|===
+
+=== Groups - Common
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify where to search for group           | ```base_dn = '<group_object_base_dn>'```
+| Specify which objects are groups            | ```filter = '<group_object_class_filter>'```
+| Specify which attribute in a group object
+  identifies the group                        | ```name_attribute = '<group_name_attribute>'```
+|===
+
+=== Groups - variant 1
+
+User objects reference groups using DNs.
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify how to find group objects by DN, when referenced by a user object. | ```membership_attribute = '<group_object_base_dn>'```
+|===
+
+=== Groups - variant 2
+
+User objects reference groups using group names.
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify how to find group objects by name, when referenced by a user object. | ```membership_attribute = '<group_object_base_dn>'```
+|===
+
+=== Groups - variant 3
+
+Group objects reference users using DNs.
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify how to find group objects referencing a user by DN. | ```membership_filter = "(<membership_user_dn_filter>=%{control:Ldap-UserDn})"```
+|===
+
+=== Groups - variant 4
+
+Group objects reference users using user names.
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify how to find group objects referencing a user by name. | ```membership_filter = "(<membership_user_name_filter>=%{%{Stripped-User-Name}:-%{User-Name}})"```
+|===
+
+.Mixing and matching group membership schemes
+****
+Although rare, it is possible to have all four group membership scheme variants
+in a single directory. FreeRADIUS supports this configuration.
+
+For _variant 1_ and _variant 2_ FreeRADIUS will automatically determine if the
+user object attribute contained a DN or group name.
+
+For _variant 3_ and _variant 4_ it's possible to construct a filter which matches
+both on user DN and user name e.g.
+
+[source,config]
+----
+membership_filter = "(|(<membership_user_dn_filter>=%{control:Ldap-UserDn})(<membership_user_name_filter>=%{%{Stripped-User-Name}:-%{User-Name}}))"
+----
+****
 
 == Closing comments
 
 It is always simpler to debug LDAP issues using an LDAP-specific tool
 such as `ldapsearch`.  Adding a RADIUS server to the mix will just
 make it more difficult to debug LDAP issues.
+Therefore you should not configure FreeRADIUS to use LDAP until such time as
+`ldapsearch` returns a positive result.
 
 Similarly, it is not productive to ask questions about `ldapsearch`
 and LDAP on the FreeRADIUS mailing list.  The list members can help
 with configuring FreeRADIUS to talk to LDAP, but they are unable to
 help with debugging `ldapsearch`.  Where possible, the local LDAP
 administrator should be contacted for assistance.
+
+We have not yet discovered an LDAP implementation that is truly incompatible
+with FreeRADIUS. With sufficient diligence and perseverance you will be able to
+successfully integrate FreeRADIUS and an LDAP server.  You may find it
+heartening to know that the maintainers of FreeRADIUS also consider `rlm_ldap`
+one of the more complex modules bundled with FreeRADIUS.
