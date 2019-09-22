@@ -587,17 +587,16 @@ membership_filter = "(|(<membership_user_dn_filter>=%{control:Ldap-UserDn})(<mem
 
 == Closing comments
 
-It is always simpler to debug LDAP issues using an LDAP-specific tool
-such as `ldapsearch`.  Adding a RADIUS server to the mix will just
-make it more difficult to debug LDAP issues.
-Therefore you should not configure FreeRADIUS to use LDAP until such time as
-`ldapsearch` returns a positive result.
+It is always simpler to debug LDAP issues using an LDAP-specific tool such as
+`ldapsearch`.  Adding a RADIUS server to the mix will just make it more
+difficult to debug LDAP issues. Therefore you should not configure FreeRADIUS to
+use LDAP until such time as `ldapsearch` returns a positive result.
 
-Similarly, it is not productive to ask questions about `ldapsearch`
-and LDAP on the FreeRADIUS mailing list.  The list members can help
-with configuring FreeRADIUS to talk to LDAP, but they are unable to
-help with debugging `ldapsearch`.  Where possible, the local LDAP
-administrator should be contacted for assistance.
+Similarly, it is not productive to ask questions about `ldapsearch` and LDAP on
+the FreeRADIUS mailing list.  The list members can help with configuring
+FreeRADIUS to talk to LDAP, but they are unable to help with debugging
+`ldapsearch`.  Where possible, the local LDAP administrator should be contacted
+for assistance.
 
 We have not yet discovered an LDAP implementation that is truly incompatible
 with FreeRADIUS. With sufficient diligence and perseverance you will be able to

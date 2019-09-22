@@ -590,8 +590,8 @@ ldap {
 		#  session_tracking:: If `yes`, then include `draft-wahl-ldap-session` tracking
 		#  controls.
 		#
-		#  These encode the `NAS-IP-Address`, `NAS-IPv6-Address`, `User-Name`, `Acct-Session-Id`,
-		#  `Acct-Multi-Session-Id` as session tracking controls, in applicable LDAP operations.
+		#  If yes, encodes `NAS-IP-Address`, `NAS-IPv6-Address`, `User-Name`, `Acct-Session-Id`,
+		#  `Acct-Multi-Session-Id` as session tracking controls in applicable LDAP operations.
 		#
 		#  Default `no`
 		#

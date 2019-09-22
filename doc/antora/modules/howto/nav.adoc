@@ -19,11 +19,10 @@
 *** xref:modules/sqlcounter.adoc[SQL-Counter]
 *** xref:modules/sqlippool.adoc[SQL-IP-Pool]
 ** Vendors
-*** xref:ascend.adoc[Ascend]
-*** xref:bay.adoc[Bay]
-*** xref:cisco.adoc[Cisco]
-*** xref:proxim.adoc[ProxIM]
+*** xref:vendors/ascend.adoc[Ascend]
+*** xref:vendors/bay.adoc[Bay]
+*** xref:vendors/cisco.adoc[Cisco]
+*** xref:vendors/proxim.adoc[ProxIM]
 ** Tuning
-*** xref:performance-testing.adoc[Performance Testing]
-*** xref:tuning_guide.adoc[Tuning Guide]
-** xref:supervise-radiusd.adoc[Supervise Radiusd]
+*** xref:tuning/performance-testing.adoc[Performance Testing]
+*** xref:tuning/tuning_guide.adoc[Tuning Guide]
