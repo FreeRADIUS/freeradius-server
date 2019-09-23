@@ -13,7 +13,7 @@ concepts], as these concepts will not be covered in FreeRADIUS documentation.
 ====
 In an Microsoft Active Directory environment you should use `rlm_winbind` for
 authentication, and `rlm_ldap` for group membership checks as described in
-xref:modules/rlm/ldap/authorization.adoc[authorization] section of this tuorial.
+xref:modules/ldap/authorization.adoc[authorization] section of this tuorial.
 The WinBind protocol does not support the full range of group checks that is
 possible with LDAP.
 ====
@@ -30,7 +30,7 @@ users, groups, and possibly clients.  We highly recommend using
 https://www.openldap.org/[OpenLDAP] for both its flexibility and performance.
 
 If there is not an existing local LDAP server, then it is possible to provision
-one using a xref:modules/rlm/ldap/docker.adoc[docker] image, or alternatively,
+one using a xref:modules/ldap/docker.adoc[docker] image, or alternatively,
 if you're using a Debian or RHEL based distribution, using the OpenLDAP LTB
 https://ltb-project.org/documentation/openldap-rpm[RPMs] or
 https://ltb-project.org/documentation/openldap-deb[DEBs].
@@ -45,15 +45,15 @@ where a high level of redundancy is required.
 === 2. Testing
 
 Once an LDAP server is available, it should be tested via the command-line
-xref:modules/rlm/ldap/ldapsearch.adoc[ldapsearch] tool.  This is to ensure that
+xref:modules/ldap/ldapsearch.adoc[ldapsearch] tool.  This is to ensure that
 the LDAP server has been configured correctly.  If testing via `ldapsearch`
 fails, then that *MUST* those issues must be resolved before configuring
 FreeRADIUS.
 
 === 3. Configuring the LDAP module
 
-Once the xref:modules/rlm/ldap/ldapsearch.adoc[ldapsearch] validation tests pass, the
-next step is to xref:modules/rlm/ldap/configuration.adoc[configure the LDAP module].
+Once the xref:modules/ldap/ldapsearch.adoc[ldapsearch] validation tests pass, the
+next step is to xref:modules/ldap/configuration.adoc[configure the LDAP module].
 
 OpenLDAP configuration examples detailing how to install appropriate schemas and
 populate the server with test data will be provided a the beginning of each
@@ -67,30 +67,30 @@ reference for all the configuration items available for the rlm_ldap module.
 
 === Authentication
 
-xref:modules/rlm/ldap/authentication.adoc[LDAP authentication] provides
+xref:modules/ldap/authentication.adoc[LDAP authentication] provides
 examples of configuring different methods of LDAP based authentication
 (search, bind, edir).
 
 === Authorization
 
-xref:modules/rlm/ldap/authorization.adoc[LDAP authorization] covers
+xref:modules/ldap/authorization.adoc[LDAP authorization] covers
 authorization by group, enabling/disabling accounts using attributes, LDAP
 attribute to FreeRADIUS attribute mappings, and LDAP profiles.
 
 === Accounting
 
-xref:modules/rlm/ldap/authorization.adoc[LDAP accounting] shows examples of updating
+xref:modules/ldap/authorization.adoc[LDAP accounting] shows examples of updating
 objects in LDAP after authentication completes, or when accounting data is received.
 
 === Dynamic client definitions
 
-xref:modules/rlm/ldap/authorization.adoc[LDAP dynamic clients] demonstrates how
+xref:modules/ldap/authorization.adoc[LDAP dynamic clients] demonstrates how
 client defintions can be created on the fly as packets are received from an
 unknown source.
 
 === Expansion and map functions
 
-xref:modules/rlm/ldap/expansions_and_maps.adoc[LDAP expansions and maps]
+xref:modules/ldap/expansions_and_maps.adoc[LDAP expansions and maps]
 provides examples of implementing unlang policies using LDAP `map` and string
 expansions.
 

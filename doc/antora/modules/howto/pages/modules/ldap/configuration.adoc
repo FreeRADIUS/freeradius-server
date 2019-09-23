@@ -1,6 +1,6 @@
 = Basic configuration for rlm_ldap
 The configuration step should be little more than copying the parameters used by
-xref:modules/rlm/ldap/ldapsearch.adoc[ldapsearch] to the
+xref:modules/ldap/ldapsearch.adoc[ldapsearch] to the
 xref:raddb:mods-available/ldap.adoc[ldap module] configuration file.
 
 The xref:raddb:mods-available/ldap.adoc[ldap module] configuration file
@@ -8,7 +8,7 @@ describes the configuration parameters accepted by the module, and what they do.
  This document explains how to perform testing with the LDAP module.
 
 Before configuring the LDAP module, the LDAP parameters should first be
-validated via the xref:modules/rlm/ldap/search[`ldapsearch`] command-line tool.
+validated via the xref:modules/ldap/search[`ldapsearch`] command-line tool.
 
 include::howto:partial$pre_test.adoc[]
 
@@ -19,7 +19,7 @@ possible in the default configuration.  The defaults are usually close
 to being correct.  All that is necessary is to make minor changes, and
 _test_ them.  FreeRADIUS should look for data.
 
-If the xref:modules/rlm/ldap/search[`ldapsearch`] tests above pass,
+If the xref:modules/ldap/search[`ldapsearch`] tests above pass,
 then the LDAP module configuration can be copied directly from the
 command-line options to that tool:
 
