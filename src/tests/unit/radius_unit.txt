@@ -65,3 +65,24 @@ data 37 06 00 0d 2f 00
 # Can we parse RFC 3339 dates correctly?
 attribute Unit-TLV-Milliseconds = "2019-08-21T07:40:31.123-04:00"
 data Unit-TLV-Milliseconds = "2019-08-21T03:40:31.123Z"
+
+#
+#  Time delta in milliseconds.
+#
+attribute Unit-TLV-Delta-MSec = 5
+data Unit-TLV-Delta-MSec = 5
+
+encode-pair -
+data fe 08 02 06 00 00 00 05
+
+decode-pair -
+data Unit-TLV-Delta-MSec = 5
+
+attribute Unit-TLV-Delta-Sec = 10
+data Unit-TLV-Delta-Sec = 10
+
+encode-pair -
+data fe 08 03 06 00 00 00 0a
+
+decode-pair -
+data Unit-TLV-Delta-Sec = 10
