@@ -90,8 +90,10 @@ static inline int fr_time_sync(void)
 		if (clock_gettime(CLOCK_REALTIME, &ts_realtime) < 0) return -1;
 		if (clock_gettime(CLOCK_MONOTONIC, &ts_monotime) < 0) return -1;
 
-		our_realtime = fr_time_delta_from_timespec(&ts_realtime) -
-			       (fr_time_delta_from_timespec(&ts_monotime) - our_epoch);
+		atomic_store_explicit(&our_realtime,
+				      fr_time_delta_from_timespec(&ts_realtime) -
+				      (fr_time_delta_from_timespec(&ts_monotime) - our_epoch),
+				      memory_order_release);
 		return 0;
 	}
 #else
@@ -105,8 +107,10 @@ static inline int fr_time_sync(void)
 		(void) gettimeofday(&tv_realtime, NULL);
 		monotime = mach_absolute_time();
 
-		our_realtime = fr_time_delta_from_timeval(&tv_realtime) -
-			       (monotime - our_mach_epoch) * (timebase.numer / timebase.denom);
+		atomic_store_explicit(&our_realtime,
+				      fr_time_delta_from_timeval(&tv_realtime) -
+				      (monotime - our_mach_epoch) * (timebase.numer / timebase.denom,
+				      memory_order_release);
 		return 0;
 	}
 #endif
@@ -168,7 +172,7 @@ fr_time_t fr_time(void)
  */
 int64_t fr_time_wallclock_at_server_epoch(void)
 {
-	return our_realtime;
+	return atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
 /** Convert an fr_time_t to number of usec since the unix epoch
@@ -176,7 +180,7 @@ int64_t fr_time_wallclock_at_server_epoch(void)
  */
 int64_t fr_time_to_usec(fr_time_t when)
 {
-	return ((when + our_realtime) / 1000);
+	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000);
 }
 
 /** Convert an fr_time_t to number of msec since the unix epoch
@@ -184,7 +188,7 @@ int64_t fr_time_to_usec(fr_time_t when)
  */
 int64_t fr_time_to_msec(fr_time_t when)
 {
-	return ((when + our_realtime) / 1000000);
+	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000000);
 }
 
 /** Convert an fr_time_t to number of sec since the unix epoch
@@ -192,7 +196,7 @@ int64_t fr_time_to_msec(fr_time_t when)
  */
 int64_t fr_time_to_sec(fr_time_t when)
 {
-	return ((when + our_realtime) / NSEC);
+	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / NSEC);
 }
 
 /** Convert a timeval to a fr_time_t
@@ -205,7 +209,7 @@ int64_t fr_time_to_sec(fr_time_t when)
  */
 fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
 {
-	return fr_time_delta_from_timeval(when_tv) - our_realtime;
+	return fr_time_delta_from_timeval(when_tv) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
 /** Convert a timespec to a fr_time_t
@@ -218,7 +222,7 @@ fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
  */
 fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
 {
-	return fr_time_delta_from_timespec(when_ts) - our_realtime;
+	return fr_time_delta_from_timespec(when_ts) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
 /** Create fr_time_delta_t from a string
