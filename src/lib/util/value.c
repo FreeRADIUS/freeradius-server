@@ -190,6 +190,7 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_FLOAT64]			= {8, 8},
 
 	[FR_TYPE_DATE]				= {2, 8},  //!< 2, 4, or 8 only
+	[FR_TYPE_TIME_DELTA]   			= {2, 8},  //!< 2, 4, or 8 only
 
 	[FR_TYPE_ABINARY]			= {32, ~0},
 	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
@@ -973,6 +974,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
 	switch (value->type) {
 	case FR_TYPE_VARIABLE_SIZE:
 	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
 		return value->datum.length;
 
 	default:
@@ -1058,6 +1060,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	}
 
 	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
 		if (value->enumv) {
 			min = max = value->enumv->flags.length;
 		} else {
@@ -1151,6 +1154,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 		break;
 
 	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA: /* assumes vb_date and vb_time_delta are identical types */
 	{
 		int64_t date = value->vb_date;
 
@@ -1225,7 +1229,6 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
 		goto unsupported;
@@ -1361,6 +1364,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA: /* assumes vb_date and vb_time_delta are identical types */
 	{
 		int i, length = 4;
 		int precision = FR_TIME_RES_SEC;
@@ -1406,7 +1410,6 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_SIZE:
-	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
 		fr_strerror_printf("Cannot decode type \"%s\" - Is not a value",
@@ -2246,6 +2249,7 @@ static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *d
 		break;
 
 	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA: /* assumes vb_date and vb_time_delta are identical types */
 		if (!dst->enumv) {
 			goto seconds;
 
@@ -2377,6 +2381,7 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
 		break;
 
 	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA: /* assumes vb_date and vb_time_delta are identical types */
 		if (!dst->enumv) {
 			goto seconds;
 
@@ -2708,6 +2713,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if ((src->type == FR_TYPE_IPV4_ADDR) &&
 		   ((dst_type == FR_TYPE_UINT32) ||
 		    (dst_type == FR_TYPE_DATE) ||
+		    (dst_type == FR_TYPE_TIME_DELTA) ||
 		    (dst_type == FR_TYPE_INT32))) {
 		dst->vb_uint32 = htonl(src->vb_ip.addr.v4.s_addr);
 
