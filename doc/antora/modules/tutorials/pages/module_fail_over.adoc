@@ -17,7 +17,7 @@ Module Fail-Over
 When the server uses an external database to find user authentication
 information or to log accounting requests, that database may sometimes
 fail temporarily. This situation is similar to the situation seen in the exercise
-in xref:exercises/proxy_failover.adoc[Proxy Failover], where proxied
+in xref:proxy_failover.adoc[Proxy Failover], where proxied
 requests "fail-over" to a backup RADIUS server when the primary
 RADIUS server does not respond.
 
@@ -112,3 +112,5 @@ Questions
 1.  Could the configuration for the "group" section containing the
 "detail1" and "detail2" modules be simplified? If so, how?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

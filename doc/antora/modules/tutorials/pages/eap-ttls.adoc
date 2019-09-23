@@ -48,3 +48,5 @@ tunnel for EAP-TTLS?
 3.  Would you use EAP-TTLS in a large deployment? If so, why? If not,
 why not?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

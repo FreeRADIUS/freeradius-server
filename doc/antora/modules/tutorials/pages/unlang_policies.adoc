@@ -77,3 +77,5 @@ Questions
     languages?
 3.  What is the advantage of using `return` to exit the section early?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

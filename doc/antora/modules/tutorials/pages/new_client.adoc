@@ -62,3 +62,5 @@ file is edited?
 4.  What are the other fields in a client entry, and what are they used
 for?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

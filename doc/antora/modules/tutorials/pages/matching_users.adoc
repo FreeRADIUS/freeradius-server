@@ -64,3 +64,5 @@ meets the requirements, but do the requirements fit the needs of the
 network?
 4.  How does this kind of simple configuration scale to many users?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

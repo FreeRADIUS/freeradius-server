@@ -31,7 +31,7 @@ the realm name from the incoming request.
 
 The two group for "realm2" should also configure their
 `clients.conf` file to permit user 1’s RADIUS server to act as a client,
-as given in the exercise in xref:exercises/new_client.adoc[New Clients].
+as given in the exercise in xref:new_client.adoc[New Clients].
 Each user operating "realm2" should pick a different shared
 secret to use with user 1.
 
@@ -42,7 +42,7 @@ observe user 1 sending the following requests to their server:
 
 The group should verify that the expected authentication requests
 sent to the server for "realm1" are handled locally, as in the
-exercise in xref:exercises/proxy.adoc[Proxy].
+exercise in xref:proxy.adoc[Proxy].
 
 The group should then verify that the expected requests sent to
 the server for "realm1" are proxied to a server for "realm2". The
@@ -67,3 +67,5 @@ the "realm2" server that has been stopped? If so, when? If not,
 why not?
 3.  What would happen if both servers for "realm2" failed?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

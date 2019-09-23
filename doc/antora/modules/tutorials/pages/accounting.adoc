@@ -23,7 +23,7 @@ the server does with those requests. This process simulates the actions taken by
 an NAS when a user logs in.
 
 Use the entry in the file from the exercise in
-xref:exercises/new_user.adoc[New User] for user "bob".
+xref:new_user.adoc[New User] for user "bob".
 
 [NOTE]
 ========================================================================
@@ -134,3 +134,5 @@ authentication request? Why?
 9.  What error message is produced on the second accounting stop, and
 why is it produced?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

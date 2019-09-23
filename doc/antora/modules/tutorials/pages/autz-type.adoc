@@ -13,7 +13,7 @@ Using the Autz-Type attribute
 - `etc/raddb/users`
 
 This exercise is a follow-up to the previous one in
-xref:exercises/multiple_modules.adoc[Multiple Modules], and it uses the `byname` and `bydate` modules
+xref:multiple_modules.adoc[Multiple Modules], and it uses the `byname` and `bydate` modules
 configured there.
 
 Start off by deleting the old log files:
@@ -63,6 +63,7 @@ $ ls /var/log/radius/radacct/bydate/
 Questions
 ~~~~~~~~~
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
 1.  Why is it useful to _not_ call certain modules for a request?
 2.  Why is it useful to control which modules get called for a request?
-

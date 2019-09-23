@@ -95,3 +95,5 @@ bad idea?
 3.  How would you create an entry in the users file that matched users when
 their `Class` was the same as their `NAS-Port`?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

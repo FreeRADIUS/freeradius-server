@@ -18,7 +18,7 @@ image::eap-md5.svg[Fig. EAP-MD5]
 *Programs*: radtest
 
 For this exercise, your are assumed to have previously worked
-through and be familiar with the exercise in xref:exercises/new_user.aodc[New User] for
+through and be familiar with the exercise in xref:new_user.aodc[New User] for
 user "bob".
 
 While RADIUS is an authentication protocol in its own right, other
@@ -66,3 +66,5 @@ image::eap_md5.svg[Fig. EAP-MD5]
 7.  What security issues exist with EAP-MD5?
 8.  Why is EAP-MD5 disabled in newer operating systems?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

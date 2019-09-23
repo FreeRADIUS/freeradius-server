@@ -11,6 +11,7 @@ nav:
 - modules/ROOT/nav.adoc
 - modules/installation/nav.adoc
 - modules/howto/nav.adoc
+- modules/tutorials/nav.adoc
 - modules/unlang/nav.adoc
 - modules/developers/nav.adoc
 - modules/raddb/nav.adoc

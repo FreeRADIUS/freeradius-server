@@ -112,3 +112,5 @@ not?
 4.  What is the purpose of the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key`
 attributes in the final `Access-Accept` packet?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

@@ -16,7 +16,7 @@ information from an SQL database. In this exercise, you will
 configure the server to communicate with an SQL database. you
 will configure the schema for the SQL server, and will populate that
 schema with a sample entry similar to that for the exercise in
-xref:exercises/new_user.adoc[New User].
+xref:new_user.adoc[New User].
 
 There are a number of reasons why user information may be stored in an
 SQL database, rather than the file. While the file is adequate for a
@@ -174,3 +174,5 @@ testing the ability to obtain user configuration from an SQL database?
 3.  What additional benefits, not mentioned here, do SQL databases have
 over the files module?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

@@ -35,9 +35,9 @@ realm1 gets proxied to the server running as "realm1".
 realm2 is local
 
 The users should also configure each other's server as a RADIUS
-client, as given in the exercise in xref:exercises/new_client.adoc[New Clients].
+client, as given in the exercise in xref:new_client.adoc[New Clients].
 
-The entry from the exercise in xref:exercises/new_user.adoc[New User] for user "bob" in
+The entry from the exercise in xref:new_user.adoc[New User] for user "bob" in
 the file, will be used in this exercise.
 
 The example packets `bob.sh`, `bob@realm1.sh`, and `bob@realm2.sh` may
@@ -76,3 +76,5 @@ server in the "raddb/clients.conf" file?
 3.  What would happen if each user did not configure the realms to
 "strip" the realm from the proxied requests?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

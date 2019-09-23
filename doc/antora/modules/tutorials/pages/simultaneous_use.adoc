@@ -15,8 +15,8 @@ time.
 
 For this exercise, you are assumed to have previously worked
 through, and be familiar with, the accounting exercise from
-xref:exercises/accounting.adoc[Accounting], and to have an entry in the file, as given the
-exercise in xref:exercises/new_user.adoc[New User], for user "bob".
+xref:accounting.adoc[Accounting], and to have an entry in the file, as given the
+exercise in xref:new_user.adoc[New User], for user "bob".
 
 In this exercise, youwill work through an example of a user
 logging into the server, and then attempting a simultaneous login for a
@@ -62,3 +62,5 @@ lines, like MPP, or ISDN?
 5.  What would happen if the user tried to log in a second time, before
 the accounting start packet was received?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

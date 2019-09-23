@@ -13,7 +13,7 @@ to send test packets as that user, and to receive a reply.
 - `etc/raddb/mods-config/sql/main/*`
 
 Now that we have verified in the previous exercise,
-xref:exercises/sql.adoc[SQL] that the server can communicate with
+xref:sql.adoc[SQL] that the server can communicate with
 an SQL server, we proceed to adding user configuration entries into the
 SQL database.
 
@@ -43,7 +43,7 @@ These commands mirror the "check" and "reply" entries listed in the
 file for the user "bob". Use the SQL client to verify that the entries
 are now in the database.
 
-As the previous exercise in xref:exercises/sql.adoc[SQL]
+As the previous exercise in xref:sql.adoc[SQL]
 did not tell the server to query the database, but only to connect to it,
 we must now configure FreeRADIUS to query the database. This may be done
 by editing `etc/raddb/sites-available/default`, and listing the `sql`
@@ -93,3 +93,5 @@ and how? If not, why not?
 5.  What other configuration entries in `etc/raddb/sites-available/default`
     exist for the `sql` module, and why?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

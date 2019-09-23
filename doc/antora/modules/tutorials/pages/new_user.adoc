@@ -90,3 +90,5 @@ Questions
 3.  Why does the server need access to a clear-text password to perform
 CHAP authentication?
 
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
