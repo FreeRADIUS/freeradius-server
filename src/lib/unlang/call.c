@@ -115,7 +115,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 
 	fr_io_process_t			*process_p;
 	void				*process_inst;
-	fr_io_final_t			final;
+	rlm_rcode_t			final;
 
 	g = unlang_generic_to_group(instruction);
 	rad_assert(g->children != NULL);
@@ -252,7 +252,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 *	we're in a subrequest.
 	 */
 	final = child->async->process(child->async->process_inst, child);
-	if (final == FR_IO_YIELD) {
+	if (final == RLM_MODULE_YIELD) {
 	yield:
 		/*
 		 *	Create the "resume" stack frame, and have it replace our stack frame.

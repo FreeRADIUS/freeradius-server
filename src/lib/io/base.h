@@ -45,16 +45,6 @@ typedef struct {
 	uint64_t	dropped;
 } fr_io_stats_t;
 
-/**
- *  Answer from an async process function if the worker should yield,
- *  reply, or drop the request.
- */
-typedef enum {
-	FR_IO_YIELD,		//!< yielded, request can continue processing
-	FR_IO_REPLY,		//!< please send a reply
-	FR_IO_FAIL,		//!< processing failed somehow, cannot send a reply
-	FR_IO_DONE,		//!< succeeded without a reply
-} fr_io_final_t;
 
 typedef struct fr_channel_s fr_channel_t;
 
@@ -329,7 +319,7 @@ typedef int (*fr_io_close_t)(fr_listen_t *li);
  *				for the #fr_app_worker_t that gave us the
  *				entry point.
  */
-typedef	fr_io_final_t (*fr_io_process_t)(void const *instance, REQUEST *request);
+typedef	rlm_rcode_t (*fr_io_process_t)(void const *instance, REQUEST *request);
 
 /*
  *	Structures and definitions for the master IO handler.

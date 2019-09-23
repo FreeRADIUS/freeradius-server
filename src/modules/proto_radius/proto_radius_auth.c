@@ -243,7 +243,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	talloc_free(msg);
 }
 
-static fr_io_final_t mod_process(void const *instance, REQUEST *request)
+static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 {
 	proto_radius_auth_t const	*inst = instance;
 	VALUE_PAIR			*vp, *auth_type;
@@ -287,9 +287,9 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 	case REQUEST_RECV:
 		rcode = unlang_interpret_resume(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
 		rad_assert(request->log.unlang_indent == 0);
 
@@ -408,9 +408,9 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 	case REQUEST_PROCESS:
 		rcode = unlang_interpret_resume(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
 		rad_assert(request->log.unlang_indent == 0);
 
@@ -530,9 +530,9 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 	case REQUEST_SEND:
 		rcode = unlang_interpret_resume(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
 		rad_assert(request->log.unlang_indent == 0);
 
@@ -591,7 +591,7 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 				 */
 				if (fr_request_to_state(inst->state_tree, request) < 0) {
 					request->reply->code = FR_CODE_DO_NOT_RESPOND;
-					return FR_IO_REPLY;
+					return RLM_MODULE_OK;
 				}
 			} else {
 				fr_state_discard(inst->state_tree, request);
@@ -613,10 +613,10 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 		break;
 
 	default:
-		return FR_IO_FAIL;
+		return RLM_MODULE_FAIL;
 	}
 
-	return FR_IO_REPLY;
+	return RLM_MODULE_OK;
 }
 
 static virtual_server_compile_t compile_list[] = {

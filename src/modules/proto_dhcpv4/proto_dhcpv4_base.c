@@ -120,7 +120,7 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 	}
 }
 
-static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
+static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -141,7 +141,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 		dv = fr_dict_enum_by_value(attr_message_type, fr_box_uint8(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:DHCP-Message-Type");
-			return FR_IO_FAIL;
+			return RLM_MODULE_FAIL;
 		}
 
 		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
@@ -160,9 +160,9 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 	case REQUEST_RECV:
 		rcode = unlang_interpret_resume(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
 		rad_assert(request->log.unlang_indent == 0);
 
@@ -195,7 +195,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 		 *	DHCP-Release / Decline doesn't send a reply, and doesn't run "send DHCP-Do-Not-Respond"
 		 */
 		if (!request->reply->code) {
-			return FR_IO_DONE;
+			return RLM_MODULE_HANDLED;
 		}
 
 		/*
@@ -225,9 +225,9 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 	case REQUEST_SEND:
 		rcode = unlang_interpret_resume(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
 		rad_assert(request->log.unlang_indent == 0);
 
@@ -268,17 +268,17 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 		 */
 		if (request->reply->code == FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client");
-			return FR_IO_DONE;
+			return RLM_MODULE_HANDLED;
 		}
 
 		if (RDEBUG_ENABLED) dhcpv4_packet_debug(request, request->reply, false);
 		break;
 
 	default:
-		return FR_IO_FAIL;
+		return RLM_MODULE_FAIL;
 	}
 
-	return FR_IO_REPLY;
+	return RLM_MODULE_OK;
 }
 
 

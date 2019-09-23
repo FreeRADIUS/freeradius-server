@@ -52,8 +52,8 @@
  *  "time_order" heap, and ages out requests which have been active
  *  for "too long".
  *
- *  A request may return one of FR_IO_YIELD,
- *  FR_IO_REPLY, or FR_IO_DONE.  If a request is
+ *  A request may return one of RLM_MODULE_YIELD,
+ *  RLM_MODULE_OK, or RLM_MODULE_HANDLED.  If a request is
  *  yeilded, it is placed onto the yielded list in the worker
  *  "tracking" data structure.
  *
@@ -976,7 +976,7 @@ nak:
 static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 {
 	ssize_t size = 0;
-	fr_io_final_t final;
+	rlm_rcode_t final;
 
 	WORKER_VERIFY;
 
@@ -998,30 +998,31 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 
 	} else {
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-		final = FR_IO_DONE;
+		final = RLM_MODULE_HANDLED;
 	}
 
 	/*
 	 *	Figure out what to do next.
 	 */
 	switch (final) {
-	case FR_IO_DONE:
+	case RLM_MODULE_HANDLED:
 		/*
 		 *	Done: don't send a reply.
 		 */
 		break;
 
-	case FR_IO_FAIL:
+	case RLM_MODULE_FAIL:
+	default:
 		/*
 		 *	Something went wrong.  It's done, but we don't send a reply.
 		 */
 		break;
 
-	case FR_IO_YIELD:
+	case RLM_MODULE_YIELD:
 		fr_time_tracking_yield(&request->async->tracking, fr_time(), &worker->tracking);
 		return;
 
-	case FR_IO_REPLY:
+	case RLM_MODULE_OK:
 		/*
 		 *	Don't reply to internally generated request.
 		 */

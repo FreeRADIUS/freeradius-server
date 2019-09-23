@@ -48,7 +48,7 @@ RCSID("$Id$")
 rlm_rcode_t rad_virtual_server(REQUEST *request)
 {
 	VALUE_PAIR *vp, *username, *parent_username = NULL;
-	fr_io_final_t final;
+	rlm_rcode_t final;
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
 	log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
@@ -166,7 +166,7 @@ runit:
 	final = request->async->process(request->async->process_inst, request);
 	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
-	fr_cond_assert(final == FR_IO_REPLY);
+	fr_cond_assert(final == RLM_MODULE_OK);
 
 	if (!request->reply->code ||
 	    (request->reply->code == FR_CODE_ACCESS_REJECT)) {

@@ -47,7 +47,7 @@ fr_dict_attr_autoload_t proto_detail_process_dict_attr[] = {
 	{ NULL }
 };
 
-static fr_io_final_t mod_process(void const *instance, REQUEST *request)
+static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 {
 	VALUE_PAIR			*vp;
 	rlm_rcode_t			rcode;
@@ -68,7 +68,7 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 		unlang = cf_section_find(request->server_cs, "recv", NULL);
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
-			return FR_IO_FAIL;
+			return RLM_MODULE_FAIL;
 		}
 
 		RDEBUG("Running 'recv' from file %s", cf_filename(unlang));
@@ -80,9 +80,9 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 	case REQUEST_RECV:
 		rcode = unlang_interpret_resume(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
 		rad_assert(request->log.unlang_indent == 0);
 
@@ -152,9 +152,9 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 	case REQUEST_SEND:
 		rcode = unlang_interpret_resume(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
 		rad_assert(request->log.unlang_indent == 0);
 
@@ -188,10 +188,10 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 		break;
 
 	default:
-		return FR_IO_FAIL;
+		return RLM_MODULE_FAIL;
 	}
 
-	return FR_IO_REPLY;
+	return RLM_MODULE_OK;
 }
 
 
