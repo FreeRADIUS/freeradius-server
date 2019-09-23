@@ -1,0 +1,480 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Mon Aug 11 20:51:55 2014 -->
+<!-- Magnification: 1.000 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="6.2in" height="2.7in"
+	viewBox="396 315 7440 3222">
+<g style="stroke-width:.025in; fill:none">
+<!-- Line -->
+<polyline points="5700,75
+6075,75
+" style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 5700 75 - 6075 75-->
+<polygon points="-2147483648 -2147483648
+-2147483648 -2147483648
+-2147483648 -2147483648
+-2147483648 -2147483648
+
+" style="stroke:#000000;stroke-width:0;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line: box -->
+<rect x="6075" y="2925" width="975" height="600" rx="0" 
+style="stroke:#0000d1;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="3525" y="2925" width="975" height="600" rx="0" 
+style="stroke:#0000d1;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="4800" y="2925" width="975" height="600" rx="0" 
+style="stroke:#0000d1;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="5400,2475
+5399,2475
+5397,2476
+5393,2478
+5387,2480
+5379,2483
+5368,2487
+5354,2492
+5338,2497
+5319,2503
+5298,2509
+5275,2516
+5250,2522
+5224,2528
+5196,2534
+5168,2538
+5139,2542
+5110,2544
+5081,2544
+5052,2543
+5022,2539
+4993,2533
+4964,2524
+4936,2511
+4907,2495
+4879,2475
+4851,2451
+4824,2422
+4797,2387
+4772,2347
+4747,2301
+4725,2250
+4708,2203
+4693,2154
+4680,2104
+4669,2053
+4659,2003
+4650,1954
+4643,1907
+4637,1862
+4632,1819
+4628,1778
+4625,1739
+4623,1702
+4621,1667
+4620,1633
+4619,1601
+4618,1570
+4618,1540
+4618,1510
+4619,1481
+4619,1452
+4620,1423
+4622,1393
+4623,1362
+4625,1331
+4627,1298
+4630,1263
+4633,1227
+4636,1190
+4640,1150
+4645,1108
+4651,1065
+4658,1021
+4666,975
+4675,928
+4685,881
+4697,836
+4710,791
+4725,750
+4745,706
+4766,668
+4789,637
+4813,611
+4837,591
+4862,576
+4887,565
+4912,559
+4938,556
+4964,557
+4989,560
+5015,566
+5041,574
+5067,585
+5093,596
+5119,609
+5144,623
+5168,638
+5192,653
+5214,667
+5234,682
+5253,695
+5270,707
+5284,718
+5296,727
+5306,735
+5314,741
+5139,598
+" style="stroke:#000000;stroke-width:15;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 5314 741 - 5348 768-->
+<polygon points="5097 645
+5323 748
+5172 551
+5097 645
+
+" style="stroke:#000000;stroke-width:15;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="1200,2475
+1199,2475
+1197,2476
+1193,2478
+1187,2480
+1179,2483
+1168,2487
+1154,2492
+1138,2497
+1119,2503
+1098,2509
+1075,2516
+1050,2522
+1024,2528
+996,2534
+968,2538
+939,2542
+910,2544
+881,2544
+852,2543
+822,2539
+793,2533
+764,2524
+736,2511
+707,2495
+679,2475
+651,2451
+624,2422
+597,2387
+572,2347
+547,2301
+525,2250
+508,2203
+493,2154
+480,2104
+469,2053
+459,2003
+450,1954
+443,1907
+437,1862
+432,1819
+428,1778
+425,1739
+423,1702
+421,1667
+420,1633
+419,1601
+418,1570
+418,1540
+418,1510
+419,1481
+419,1452
+420,1423
+422,1393
+423,1362
+425,1331
+427,1298
+430,1263
+433,1227
+436,1190
+440,1150
+445,1108
+451,1065
+458,1021
+466,975
+475,928
+485,881
+497,836
+510,791
+525,750
+545,706
+566,668
+589,637
+613,611
+637,591
+662,576
+687,565
+712,559
+738,556
+764,557
+789,560
+815,566
+841,574
+867,585
+893,596
+919,609
+944,623
+968,638
+992,653
+1014,667
+1034,682
+1053,695
+1070,707
+1084,718
+1096,727
+1106,735
+1114,741
+939,598
+" style="stroke:#000000;stroke-width:15;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1114 741 - 1148 768-->
+<polygon points="897 645
+1123 748
+972 551
+897 645
+
+" style="stroke:#000000;stroke-width:15;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="7314,3245
+7315,3244
+7318,3243
+7323,3240
+7330,3236
+7340,3230
+7353,3223
+7369,3214
+7387,3202
+7407,3190
+7429,3175
+7452,3159
+7476,3142
+7500,3123
+7525,3103
+7549,3081
+7574,3057
+7598,3032
+7621,3004
+7645,2973
+7667,2940
+7689,2903
+7710,2863
+7730,2819
+7748,2771
+7764,2720
+7776,2671
+7786,2623
+7793,2577
+7799,2534
+7804,2495
+7807,2459
+7810,2428
+7812,2400
+7813,2376
+7814,2355
+7814,2336
+7814,2319
+7814,2304
+7814,2289
+7813,2274
+7812,2259
+7810,2242
+7807,2224
+7804,2204
+7799,2181
+7793,2155
+7785,2126
+7775,2093
+7763,2058
+7749,2019
+7732,1978
+7712,1936
+7689,1895
+7662,1853
+7632,1816
+7602,1782
+7571,1753
+7539,1728
+7508,1706
+7476,1687
+7445,1671
+7413,1658
+7382,1646
+7350,1636
+7319,1628
+7288,1621
+7258,1615
+7230,1610
+7203,1606
+7178,1603
+7156,1600
+7136,1599
+7121,1597
+7108,1596
+7328,1607
+" style="stroke:#0000ff;stroke-width:15;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 7108 1596 - 7059 1593-->
+<polygon points="7334 1549
+7091 1595
+7326 1669
+7334 1549
+
+" style="stroke:#0000ff;stroke-width:15;stroke-miterlimit:8;
+fill:#0000ff;"/>
+<!-- Line -->
+<polyline points="3360,1620
+3361,1621
+3364,1622
+3370,1624
+3378,1628
+3389,1633
+3404,1640
+3421,1648
+3442,1658
+3464,1670
+3489,1683
+3514,1697
+3540,1712
+3567,1729
+3592,1746
+3617,1765
+3640,1784
+3662,1805
+3681,1826
+3697,1849
+3710,1874
+3720,1900
+3726,1928
+3727,1958
+3723,1991
+3714,2025
+3698,2062
+3675,2100
+3651,2132
+3624,2163
+3593,2193
+3561,2221
+3527,2247
+3492,2271
+3457,2292
+3421,2310
+3386,2327
+3352,2340
+3317,2352
+3284,2362
+3250,2371
+3217,2378
+3185,2385
+3152,2391
+3120,2396
+3088,2402
+3056,2408
+3024,2414
+2991,2422
+2959,2430
+2926,2441
+2894,2453
+2861,2467
+2829,2483
+2797,2502
+2765,2524
+2735,2548
+2707,2575
+2681,2604
+2658,2635
+2639,2667
+2625,2700
+2616,2737
+2615,2773
+2619,2808
+2630,2840
+2645,2871
+2665,2900
+2689,2927
+2716,2953
+2746,2977
+2779,3000
+2814,3022
+2851,3043
+2889,3063
+2929,3082
+2970,3101
+3010,3118
+3050,3135
+3089,3150
+3126,3164
+3161,3177
+3192,3188
+3220,3198
+3243,3206
+3262,3213
+3277,3218
+3070,3155
+" style="stroke:#0000ff;stroke-width:15;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 3277 3218 - 3328 3233-->
+<polygon points="3049 3213
+3297 3224
+3083 3098
+3049 3213
+
+" style="stroke:#0000ff;stroke-width:15;stroke-miterlimit:8;
+fill:#0000ff;"/>
+<!-- Text -->
+<text xml:space="preserve" x="6150" y="3300" fill="#0000d1"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="3600" y="3300" fill="#0000d1"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="4875" y="3300" fill="#0000d1"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="5100" y="1365" fill="#008f8f"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">lock request queue</text>
+<!-- Text -->
+<text xml:space="preserve" x="5100" y="1680" fill="#0000ff"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">pop a request</text>
+<!-- Text -->
+<text xml:space="preserve" x="5100" y="1995" fill="#008f8f"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">unlock request queue</text>
+<!-- Text -->
+<text xml:space="preserve" x="5100" y="2310" fill="#0000ff"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">process request</text>
+<!-- Text -->
+<text xml:space="preserve" x="5100" y="1050" fill="#00d100"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Wait for semaphore</text>
+<!-- Text -->
+<text xml:space="preserve" x="5325" y="525" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="240" text-anchor="start">Thread</text>
+<!-- Text -->
+<text xml:space="preserve" x="900" y="2310" fill="#00d100"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">signal semaphore</text>
+<!-- Text -->
+<text xml:space="preserve" x="900" y="1050" fill="#0000ff"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Receive a request</text>
+<!-- Text -->
+<text xml:space="preserve" x="900" y="1680" fill="#0000ff"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">push request onto queue</text>
+<!-- Text -->
+<text xml:space="preserve" x="900" y="1350" fill="#008f8f"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">lock request queue</text>
+<!-- Text -->
+<text xml:space="preserve" x="900" y="2025" fill="#008f8f"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">unlock request queue</text>
+<!-- Text -->
+<text xml:space="preserve" x="1200" y="525" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="240" text-anchor="start">Server core</text>
+</g>
+</svg>

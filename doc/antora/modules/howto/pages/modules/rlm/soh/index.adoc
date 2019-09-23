@@ -5,7 +5,8 @@
 This release adds support for Microsoft Statement-of-Health (SoH), which
 is a form of network access protection.
 
-Client support is present in Windows XP SP3, Vista and 7.
+	Client support is present in Windows XP SP3, Vista, Windows 7 and
+Windows 8 but was removed in Windows 10.
 
 SoH data can come in from several places:
 
@@ -15,7 +16,7 @@ and terminal services gateways can act as the radius client
 * inside a DHCP request, in vendor-specific options
 
 FreeRadius supports all three types. The SoH statement is decoded into
-radius-style attributes, and you can write a policy in ``unlang'' to act
+radius-style attributes, and you can write a policy in "unlang" to act
 on them, and permit, restrict or deny network access.
 
 == PEAP support

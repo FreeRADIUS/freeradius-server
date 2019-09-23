@@ -1,0 +1,79 @@
+[[unlang-policies]]
+Unlang Policies
+---------------
+
+*Goal:* Create and use policies for abstracting business logic
+
+*Time:* 10-20 minutes
+
+*File:*
+
+- `etc/raddb/policy.d/*`
+
+*`man` page:* unlang
+
+Look through the existing files in `etc/raddb/policy.d/*` and `man unlang`
+to get a feel for the unlang syntax and the tasks that policies can
+be used for.
+
+The basic structure of a policy is the policy name then a set of curly
+braces containing the body of the policy
+
+------------------------------------------------
+a_policy {
+	if (&User-Name =~ /@([\w.+])/) {
+		update reply {
+			Reply-Message := "Hello remote %{User-Name}"
+		}
+	}
+}
+------------------------------------------------
+
+Policies defined within `etc/raddb/policy.d/*` can be called from
+anywhere in the server where modules can be called.
+
+------------------------------------------------
+authorize {
+	...
+	a_policy
+	...
+}
+------------------------------------------------
+
+Create a policy `proxy_to_realm` that forwards the incoming request
+to to a remote realm if the `User-Name` attribute ends in `@<remote realm>`,
+then use the `return` keyword to exit the authorize section.
+If the `User-Name` attribute does not end in `@<remote realm>` the policy
+should return `noop`, so the caller knows that it did nothing.
+
+Call this policy at the start of the `authorize {}` section of the
+`etc/raddb/sites-available/default` virtual server.
+
+All the information you need to create this policy is contained within
+`man unlang` pages and the examples in this exercise.
+
+[TIP]
+========================================================================
+Attributes in the `&control` list can control the behaviour of the server.
+Commonly used control attributes are:
+
+- `&control:Proxy-To-Realm` controls the realm that the incoming request
+is forwarded to.
+- `&control:Response-Packet-Type` overrides the RADIUS packet code
+FreeRADIUS responds with.
+- `&control:Autz-Type` specifies the `autz-type {}` section to run in the
+`authorize {}` section.
+- `&control:Auth-Type` specifies the `auth-type {}` section to run in the
+`authenticate {}` section.
+========================================================================
+
+[[unlang-policies-questions]]
+Questions
+~~~~~~~~~
+
+1.  What are the advantages of using the policy language over interpreted
+    language modules?
+2.  What's the main difference between a policy and a function in other
+    languages?
+3.  What is the advantage of using `return` to exit the section early?
+

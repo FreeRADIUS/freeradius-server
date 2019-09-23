@@ -1,0 +1,109 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Mon Aug 11 20:51:55 2014 -->
+<!-- Magnification: 1.000 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="4.0in" height="4.3in"
+	viewBox="285 224 4846 5188">
+<g style="stroke-width:.025in; fill:none">
+<!-- Line -->
+<polyline points="1800,3300
+2586,3562
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1800 3300 - 2714 3604-->
+<polygon points="2575 3589
+2699 3599
+2594 3532
+2575 3589
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="1800,1200
+2586,1462
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1800 1200 - 2714 1504-->
+<polygon points="2575 1489
+2699 1499
+2594 1432
+2575 1489
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="2700,2700
+1913,2962
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 2700 2700 - 1785 3004-->
+<polygon points="1904 2932
+1800 2999
+1923 2989
+1904 2932
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="5100,225
+5100,300
+" style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 5100 225 - 5100 300-->
+<polygon points="5070 296
+5100 296
+5130 296
+5070 296
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="2700,5100
+1913,5362
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 2700 5100 - 1785 5404-->
+<polygon points="1904 5332
+1800 5399
+1923 5389
+1904 5332
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Text -->
+<text xml:space="preserve" x="300" y="3225" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Access-Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="300" y="1125" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Access-Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="2850" y="2625" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Access-Challenge</text>
+<!-- Text -->
+<text xml:space="preserve" x="450" y="3525" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">State = 0x01</text>
+<!-- Text -->
+<text xml:space="preserve" x="3000" y="2925" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">State = 0x01</text>
+<!-- Text -->
+<text xml:space="preserve" x="2850" y="5025" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Access-Accept</text>
+<!-- Text -->
+<text xml:space="preserve" x="2850" y="1725" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">authorize</text>
+<!-- Text -->
+<text xml:space="preserve" x="2850" y="2025" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">authenticate</text>
+<!-- Text -->
+<text xml:space="preserve" x="2850" y="3825" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">authorize</text>
+<!-- Text -->
+<text xml:space="preserve" x="2850" y="4110" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">authenticate</text>
+<!-- Text -->
+<text xml:space="preserve" x="2850" y="4395" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">post-auth</text>
+<!-- Text -->
+<text xml:space="preserve" x="3000" y="600" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="240" text-anchor="start">Server</text>
+<!-- Text -->
+<text xml:space="preserve" x="600" y="600" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="240" text-anchor="start">NAS</text>
+</g>
+</svg>

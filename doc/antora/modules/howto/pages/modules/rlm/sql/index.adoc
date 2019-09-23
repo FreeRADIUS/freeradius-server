@@ -106,20 +106,20 @@ the reply? Maybe you wanted to compare the operator to one in the
 request? The server simply doesn’t know.
 
 So put a value in the field. The value is the string form of the
-operator: ``='', ``>='', etc. See Section 4, below, for more details.
+operator: "=", ">=", etc. See Section 4, below, for more details.
 
 [arabic, start=3]
 . Authentication versus Authorization
 
-Many people ask if they can ``authenticate'' users to their SQL
-database. The answer to this question is ``You’re asking the wrong
-question.''
+Many people ask if they can "authenticate" users to their SQL
+database. The answer to this question is "You’re asking the wrong
+question."
 
 An SQL database stores information. An SQL database is NOT an
 authentication server. The ONLY users who should be able to authenticate
 themselves to the database are the people who administer it. Most
 administrators do NOT want every user to be able to access the database,
-which means that most users will not be able to ``authenticate''
+which means that most users will not be able to "authenticate"
 themselves to the database.
 
 Instead, the users will have their authorization information (name,

@@ -1,4 +1,4 @@
-= Testing with ldapsearch
+= Directory mapping and testing with ldapsearch
 
 Prior to configuring the `ldap` module, the connectivity and connection
 parameters should be verified using the `ldapsearch` utility.

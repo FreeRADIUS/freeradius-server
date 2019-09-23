@@ -1,0 +1,157 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Mon Aug 11 20:51:55 2014 -->
+<!-- Magnification: 1.000 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="5.7in" height="4.1in"
+	viewBox="735 224 6841 4883">
+<g style="stroke-width:.025in; fill:none">
+<!-- Line -->
+<polyline points="3075,1200
+4757,1480
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 3075 1200 - 4889 1502-->
+<polygon points="4749 1508
+4873 1499
+4759 1449
+4749 1508
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="4881,1761
+3198,2041
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 4881 1761 - 3066 2063-->
+<polygon points="3195 2010
+3082 2060
+3205 2069
+3195 2010
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="4883,2974
+3200,3254
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 4883 2974 - 3068 3276-->
+<polygon points="3197 3223
+3084 3273
+3207 3282
+3197 3223
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="3073,2412
+4755,2692
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 3073 2412 - 4887 2714-->
+<polygon points="4747 2720
+4871 2711
+4757 2661
+4747 2720
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="4883,4174
+3200,4454
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 4883 4174 - 3068 4476-->
+<polygon points="3197 4423
+3084 4473
+3207 4482
+3197 4423
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="3073,3612
+4755,3892
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 3073 3612 - 4887 3914-->
+<polygon points="4747 3920
+4871 3911
+4757 3861
+4747 3920
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line: box -->
+<rect x="3825" y="675" width="150" height="4125" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+stroke-dasharray:40 40;"/>
+<!-- Line -->
+<polyline points="3975,4950
+4155,4950
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 3975 4950 - 4290 4950-->
+<polygon points="4154 4980
+4274 4950
+4154 4920
+4154 4980
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="3825,4950
+3644,4950
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 3825 4950 - 3510 4950-->
+<polygon points="3646 4920
+3526 4950
+3646 4980
+3646 4920
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line: box -->
+<rect x="7500" y="225" width="75" height="150" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Text -->
+<text xml:space="preserve" x="4950" y="4125" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">EAP-Success</text>
+<!-- Text -->
+<text xml:space="preserve" x="4950" y="2925" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">EAP-MD5 challenge</text>
+<!-- Text -->
+<text xml:space="preserve" x="4950" y="1725" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">EAP-Identity request</text>
+<!-- Text -->
+<text xml:space="preserve" x="825" y="2325" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">EAP-Identity "bob"</text>
+<!-- Text -->
+<text xml:space="preserve" x="1725" y="1275" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">EAP-Start</text>
+<!-- Text -->
+<text xml:space="preserve" x="750" y="3525" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">EAP-MD5 response</text>
+<!-- Text -->
+<text xml:space="preserve" x="2925" y="5025" fill="#000000"  font-family="Times" font-style="italic" font-weight="bold" font-size="192" text-anchor="start">EAP</text>
+<!-- Text -->
+<text xml:space="preserve" x="4350" y="5025" fill="#000000"  font-family="Times" font-style="italic" font-weight="bold" font-size="192" text-anchor="start">RADIUS + EAP-Message</text>
+<!-- Text -->
+<text xml:space="preserve" x="1050" y="600" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="240" text-anchor="start">EAP client</text>
+<!-- Text -->
+<text xml:space="preserve" x="5025" y="600" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="240" text-anchor="start">RADIUS server</text>
+<!-- Text -->
+<text xml:space="preserve" x="3750" y="600" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="240" text-anchor="start">AP</text>
+</g>
+</svg>

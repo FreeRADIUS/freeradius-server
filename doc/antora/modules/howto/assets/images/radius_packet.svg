@@ -1,0 +1,438 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Mon Aug 11 20:51:55 2014 -->
+<!-- Magnification: 1.000 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="5.3in" height="4.1in"
+	viewBox="288 149 6313 4963">
+<g style="stroke-width:.025in; fill:none">
+<!-- Line -->
+<polyline points="3300,1500
+3300,1501
+3300,1506
+3301,1518
+3301,1538
+3303,1564
+3304,1593
+3306,1622
+3309,1649
+3312,1674
+3316,1695
+3320,1712
+3325,1727
+3331,1739
+3338,1750
+3347,1761
+3358,1769
+3372,1776
+3389,1782
+3410,1787
+3433,1791
+3459,1795
+3484,1797
+3505,1799
+3518,1800
+3524,1800
+3525,1800
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3525,1800
+3524,1800
+3518,1800
+3505,1801
+3484,1803
+3459,1805
+3433,1809
+3410,1813
+3389,1818
+3372,1824
+3358,1831
+3347,1839
+3338,1850
+3331,1861
+3325,1873
+3320,1888
+3316,1905
+3312,1926
+3309,1951
+3306,1978
+3304,2007
+3303,2036
+3301,2062
+3301,2082
+3300,2094
+3300,2099
+3300,2100
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3300,3900
+3300,3901
+3300,3906
+3301,3918
+3301,3938
+3303,3964
+3304,3993
+3306,4022
+3309,4049
+3312,4074
+3316,4095
+3320,4112
+3325,4127
+3331,4139
+3338,4150
+3347,4161
+3358,4169
+3372,4176
+3389,4182
+3410,4187
+3433,4191
+3459,4195
+3484,4197
+3505,4199
+3518,4200
+3524,4200
+3525,4200
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3525,4200
+3524,4200
+3518,4200
+3505,4201
+3484,4203
+3459,4205
+3433,4209
+3410,4213
+3389,4218
+3372,4224
+3358,4231
+3347,4239
+3338,4250
+3331,4261
+3325,4273
+3320,4288
+3316,4305
+3312,4326
+3309,4351
+3306,4378
+3304,4407
+3303,4436
+3301,4462
+3301,4482
+3300,4494
+3300,4499
+3300,4500
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="1500,300
+1500,900
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="900,300
+900,900
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="300,900
+2700,900
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="300,1500
+2700,1500
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+stroke-dasharray:40 40;"/>
+<!-- Line -->
+<polyline points="300,2100
+2700,2100
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+stroke-dasharray:40 40;"/>
+<!-- Line -->
+<polyline points="300,2700
+2700,2700
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+stroke-dasharray:40 40;"/>
+<!-- Line -->
+<polyline points="900,3300
+900,3900
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="1500,3300
+1500,3900
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="300,3900
+1500,3900
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="1500,3900
+1500,4500
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="2100,3900
+2100,4500
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="1500,1950
+1500,2880
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1500 1950 - 1500 3015-->
+<polygon points="1470 2879
+1500 2999
+1530 2879
+1470 2879
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="1500,3900
+2700,3900
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="300,4500
+300,5100
+2100,5100
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="2100,5100
+2700,5100
+2700,4500
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+stroke-dasharray:40 40;"/>
+<!-- Line: box -->
+<rect x="300" y="300" width="2400" height="4200" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3300,600
+3300,1500
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3300,2100
+3300,3000
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3300,3600
+3300,3900
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3300,4500
+3300,4800
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="300,3300
+2700,3300
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="6600,150
+6600,225
+" style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3000,300
+3001,300
+3006,300
+3018,301
+3038,302
+3064,303
+3093,306
+3122,309
+3149,312
+3174,316
+3195,321
+3212,326
+3227,333
+3239,341
+3250,350
+3259,361
+3267,373
+3274,388
+3279,405
+3284,426
+3288,451
+3291,478
+3294,507
+3297,536
+3298,562
+3299,582
+3300,594
+3300,599
+3300,600
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3000,3300
+3001,3300
+3006,3300
+3018,3301
+3038,3302
+3064,3303
+3093,3306
+3122,3309
+3149,3312
+3174,3316
+3195,3321
+3212,3326
+3227,3333
+3239,3341
+3250,3350
+3259,3361
+3267,3373
+3274,3388
+3279,3405
+3284,3426
+3288,3451
+3291,3478
+3294,3507
+3297,3536
+3298,3562
+3299,3582
+3300,3594
+3300,3599
+3300,3600
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3300,3000
+3300,3001
+3300,3006
+3299,3018
+3298,3038
+3297,3064
+3294,3093
+3291,3122
+3288,3149
+3284,3174
+3279,3195
+3274,3212
+3267,3227
+3259,3239
+3250,3250
+3239,3259
+3227,3267
+3212,3274
+3195,3279
+3174,3284
+3149,3288
+3122,3291
+3093,3294
+3064,3297
+3038,3298
+3018,3299
+3006,3300
+3001,3300
+3000,3300
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="3300,4800
+3300,4801
+3300,4806
+3299,4818
+3298,4838
+3297,4864
+3294,4893
+3291,4922
+3288,4949
+3284,4974
+3279,4995
+3274,5012
+3267,5027
+3259,5039
+3250,5050
+3239,5059
+3227,5067
+3212,5074
+3195,5079
+3174,5084
+3149,5088
+3122,5091
+3093,5094
+3064,5097
+3038,5098
+3018,5099
+3006,5100
+3001,5100
+3000,5100
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Text -->
+<text xml:space="preserve" x="525" y="3675" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">attr</text>
+<!-- Text -->
+<text xml:space="preserve" x="450" y="675" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">Code</text>
+<!-- Text -->
+<text xml:space="preserve" x="1200" y="675" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">Id</text>
+<!-- Text -->
+<text xml:space="preserve" x="1875" y="675" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">Length</text>
+<!-- Text -->
+<text xml:space="preserve" x="975" y="1275" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">authentication</text>
+<!-- Text -->
+<text xml:space="preserve" x="1200" y="1875" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">vector</text>
+<!-- Text -->
+<text xml:space="preserve" x="1875" y="3675" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">data...</text>
+<!-- Text -->
+<text xml:space="preserve" x="1125" y="3675" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">len</text>
+<!-- Text -->
+<text xml:space="preserve" x="525" y="4275" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">more data...</text>
+<!-- Text -->
+<text xml:space="preserve" x="1650" y="4275" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">attr</text>
+<!-- Text -->
+<text xml:space="preserve" x="2325" y="4275" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">len</text>
+<!-- Text -->
+<text xml:space="preserve" x="1050" y="4875" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">data...</text>
+<!-- Text -->
+<text xml:space="preserve" x="3675" y="1875" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">RADIUS packet header</text>
+<!-- Text -->
+<text xml:space="preserve" x="3675" y="4275" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">List of attributes</text>
+</g>
+</svg>

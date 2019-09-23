@@ -30,9 +30,9 @@ before editing the sqlippool.conf file, please go and read the
 
 As you may noticed, there is a pool-key variable in the config file
 which allows you to select which attribute is unique according to your
-NAS setup. On a standard dialup NAS this is going to be ``NAS-Port'' but
+NAS setup. On a standard dialup NAS this is going to be "NAS-Port" but
 on an ethernet or wireless network it will probably be
-``Calling-Station-Id''. Other more exotic options like ``3GPP-IMSI'' may
+"Calling-Station-Id". Other more exotic options like "3GPP-IMSI" may
 also exist depending on your NAS. The only requirement is that the
 pool-key must be unique and must be received in both Access-Request and
 Accounting packages so that we know to clear the lease on the ip when
