@@ -1404,6 +1404,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_IFID:
 	case FR_TYPE_SIZE:
@@ -1495,7 +1496,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		break;
 
 	case FR_TYPE_NON_VALUES:
-	case FR_TYPE_TIME_DELTA:
 		fr_pair_list_free(&vp);
 		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 		return -1;
