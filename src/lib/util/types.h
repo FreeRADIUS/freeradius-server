@@ -126,6 +126,7 @@ typedef enum {
 	case FR_TYPE_FLOAT32: \
 	case FR_TYPE_FLOAT64: \
 	case FR_TYPE_DATE: \
+	case FR_TYPE_TIME_DELTA: \
 	case FR_TYPE_SIZE
 
 /** Match all variable length types in case statements
