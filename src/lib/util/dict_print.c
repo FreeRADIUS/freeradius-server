@@ -84,7 +84,7 @@ do { \
 	/*
 	 *	Print out the date precision.
 	 */
-	if (type == FR_TYPE_DATE) {
+	if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 		char const *precision = fr_table_str_by_value(date_precision_table, flags->type_size, "?");
 
 		p += strlcpy(p, precision, end - p);

@@ -357,7 +357,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 			flags->extra = 1;
 
-		} else if (type == FR_TYPE_DATE) {
+		} else if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 			flags->length = 4;
 			flags->type_size = FR_TIME_RES_SEC;
 
@@ -367,7 +367,9 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				subtype = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_INVALID);
 				if (subtype == FR_TYPE_INVALID) {
 				unknown_type:
-					fr_strerror_printf("Unknown or unsupported date type '%s'", key);
+					fr_strerror_printf("Unknown or unsupported %s type '%s'",
+							   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"),
+							   key);
 					return -1;
 				}
 
@@ -392,7 +394,9 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 				precision = fr_table_value_by_str(date_precision_table, key, -1);
 				if (precision < 0) {
-					fr_strerror_printf("Unknown date precision '%s'", key);
+					fr_strerror_printf("Unknown %s precision '%s'",
+							   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"),
+							   key);
 					return -1;
 				}
 				flags->type_size = precision;

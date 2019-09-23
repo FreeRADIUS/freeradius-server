@@ -146,6 +146,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
 		case FR_TYPE_DATE:
+		case FR_TYPE_TIME_DELTA:
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
 			break;
@@ -319,17 +320,20 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		break;
 
 	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
 		if (!flags->length) flags->length = 4;
 
 		if ((flags->length != 2) && (flags->length != 4) && (flags->length != 8)) {
-			fr_strerror_printf("Invalid length %u for attribute of type 'date'", flags->length);
+			fr_strerror_printf("Invalid length %u for attribute of type '%s'",
+					   flags->length, fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 		}
 
 		if ((flags->type_size != FR_TIME_RES_SEC) &&
 		    (flags->type_size != FR_TIME_RES_MSEC) &&
 		    (flags->type_size != FR_TIME_RES_USEC) &&
 		    (flags->type_size != FR_TIME_RES_NSEC)) {
-			fr_strerror_printf("Invalid precision for attribute of type 'date'");
+			fr_strerror_printf("Invalid precision for attribute of type '%s'",
+					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 		}
 		break;
 
@@ -525,7 +529,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		break;
 
 	case FR_TYPE_INVALID:
-	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_COMBO_IP_PREFIX:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
@@ -540,7 +543,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	type_size is used to limit the maximum attribute number, so it's checked first.
 	 */
 	if (flags->type_size) {
-		if (type == FR_TYPE_DATE) {
+		if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 			if ((flags->type_size != FR_TIME_RES_SEC) &&
 			    (flags->type_size != FR_TIME_RES_USEC) &&
 			    (flags->type_size != FR_TIME_RES_MSEC) &&
