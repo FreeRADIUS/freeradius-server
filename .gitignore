@@ -46,7 +46,8 @@ icon.png
 freeradius-server-*tar*
 
 # Autoconf and libtool output
-./build
+build/*
+
 config.status
 *confdefs.h
 *conftest*
