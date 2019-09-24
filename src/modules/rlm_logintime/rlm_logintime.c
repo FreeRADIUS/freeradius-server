@@ -70,7 +70,7 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
 	{ .out = &attr_login_time, .name = "Login-Time", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_time_of_day, .name = "Time-Of-Day", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
-	{ .out = &attr_session_timeout, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ NULL }
 };
