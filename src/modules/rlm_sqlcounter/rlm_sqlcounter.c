@@ -69,8 +69,8 @@ typedef struct {
 	char const	*query;		//!< SQL query to retrieve current session time.
 	char const	*reset;  	//!< Daily, weekly, monthly, never or user defined.
 
-	time_t		reset_time;
-	time_t		last_reset;
+	fr_time_t	reset_time;
+	fr_time_t	last_reset;
 } rlm_sqlcounter_t;
 
 static const CONF_PARSER module_config[] = {
@@ -119,6 +119,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	char		last = '\0';
 	struct tm	*tm, s_tm;
 	char		sCurrentTime[40], sNextTime[40];
+	time_t		date;
 
 	tm = localtime_r(&timeval, &s_tm);
 	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
@@ -142,36 +143,38 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		 *  Round up to the next nearest hour.
 		 */
 		tm->tm_hour += num;
-		inst->reset_time = mktime(tm);
+		date = mktime(tm);
 	} else if (strcmp(inst->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round up to the next nearest day.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday += num;
-		inst->reset_time = mktime(tm);
+		date = mktime(tm);
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round up to the next nearest week.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday += (7 - tm->tm_wday) +(7*(num-1));
-		inst->reset_time = mktime(tm);
+		date = mktime(tm);
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
 		tm->tm_mon += num;
-		inst->reset_time = mktime(tm);
+		date = mktime(tm);
 	} else if (strcmp(inst->reset, "never") == 0) {
-		inst->reset_time = 0;
+		date = 0;
 	} else {
 		return -1;
 	}
 
+	inst->reset_time = fr_time_from_sec(date);
+
 	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
 	if (len == 0) *sNextTime = '\0';
 	DEBUG2("Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
-	       (int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
+	       (int64_t) timeval, sCurrentTime, (int64_t) date, sNextTime);
 
 	return ret;
 }

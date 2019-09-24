@@ -43,8 +43,24 @@ extern "C" {
 
 /** "server local" time.  This is the time in nanoseconds since the application started.
  *
+ *  This time is our *private* view of time.  It should only be used
+ *  for internal timers, events, etc.  It can skew randomly as NTP
+ *  plays with the local clock.
  */
 typedef int64_t fr_time_t;
+
+/** "Unix" time.  This is the time in nanoseconds since midnight January 1, 1970
+ *
+ *  Note that it is *unsigned*, as we don't use dates before 1970.  Having it
+ *  unsigned also allows the compiler to catch issues where people confuse the
+ *  two types of time.
+ *
+ *  The unix times are *public* times.  i.e. times that we get from
+ *  the network, or send to the network.  We have no idea if the other
+ *  parties idea of time is correct (or if ours is wrong), so we don't
+ *  mangle unix time based on clock skew.
+ */
+typedef uint64_t fr_unix_time_t;
 
 /** A time delta, a difference in time measured in nanoseconds.
  *
@@ -95,6 +111,21 @@ typedef struct {
 
 int fr_time_start(void);
 fr_time_t fr_time(void);
+
+#define fr_unix_time_from_nsec(_x) _x
+#define fr_unix_time_from_usec fr_time_delta_from_usec
+#define fr_unix_time_from_msec fr_time_delta_from_msec
+#define fr_unix_time_from_sec  fr_time_delta_from_sec
+
+#define fr_unix_time_to_nsec(_x) _x
+#define fr_unix_time_to_usec fr_time_delta_to_usec
+#define fr_unix_time_to_msec fr_time_delta_to_msec
+#define fr_unix_time_to_sec  fr_time_delta_to_sec
+
+static inline fr_unix_time_t fr_unix_time_from_timeval(struct timeval const *tv)
+{
+	return (((fr_unix_time_t) tv->tv_sec) * NSEC) + (((fr_unix_time_t) tv->tv_usec) * 1000);
+}
 
 static inline fr_time_delta_t fr_time_delta_from_usec(uint64_t usec)
 {
@@ -180,8 +211,11 @@ int64_t		fr_time_to_usec(fr_time_t when);
 int64_t		fr_time_to_msec(fr_time_t when);
 int64_t		fr_time_to_sec(fr_time_t when);
 
+fr_unix_time_t fr_time_to_unix_time(fr_time_t when);
+
 int64_t		fr_time_wallclock_at_server_epoch(void);
 
+fr_time_t	fr_time_from_sec(time_t when) CC_HINT(nonnull);
 fr_time_t	fr_time_from_timeval(struct timeval const *when_tv) CC_HINT(nonnull);
 fr_time_t	fr_time_from_timespec(struct timespec const *when_tv) CC_HINT(nonnull);
 int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint) CC_HINT(nonnull);

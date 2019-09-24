@@ -70,7 +70,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		*      and add our own Reply-Message, saying
 		*      why they're being rejected.
 		*/
-		if (check_item->vp_date <= request->packet->timestamp) {
+		if (check_item->vp_date <= fr_time_to_unix_time(request->packet->timestamp)) {
 			REDEBUG("Account expired at '%pV'", &check_item->data);
 
 			return RLM_MODULE_USERLOCK;

@@ -745,7 +745,7 @@ static int get_part(char **str, int *date, int min, int max, char term, char con
 	return 0;
 }
 
-/** Convert string in various formats to a time_t
+/** Convert string in various formats to a fr_unix_time_t
  *
  * @param date_str input date string.
  * @param date time_t to write result to.
@@ -753,7 +753,7 @@ static int get_part(char **str, int *date, int min, int max, char term, char con
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_time_from_str(fr_time_t *date, char const *date_str)
+int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 {
 	int		i;
 	time_t		t;
@@ -769,7 +769,7 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 	 */
 	t = strtoul(date_str, &tail, 10);
 	if (*tail == '\0') {
-		*date = fr_time_from_timeval(&(struct timeval) { .tv_sec = t });
+		*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
 		return 0;
 	}
 
@@ -1009,7 +1009,7 @@ int fr_time_from_str(fr_time_t *date, char const *date_str)
 		return -1;
 	}
 
-	*date = fr_time_from_timeval(&(struct timeval) { .tv_sec = t });
+	*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
 
 	return 0;
 }

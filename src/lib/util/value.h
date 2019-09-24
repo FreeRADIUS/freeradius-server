@@ -105,7 +105,7 @@ struct value_box {
 		float			float32;		//!< Single precision float.
 		double			float64;		//!< Double precision float.
 
-		fr_time_t		date;			//!< Date internal format in nanoseconds
+		fr_unix_time_t		date;			//!< Date internal format in nanoseconds
 
 		/*
 		 *	System specific - Used for runtime configuration only.

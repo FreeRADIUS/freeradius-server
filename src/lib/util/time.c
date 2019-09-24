@@ -175,6 +175,15 @@ int64_t fr_time_wallclock_at_server_epoch(void)
 	return atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
+/** Convert an fr_time_t to our version of unix time (nsec since epoch)
+ *
+ */
+fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
+{
+	return when + atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+
 /** Convert an fr_time_t to number of usec since the unix epoch
  *
  */
@@ -210,6 +219,19 @@ int64_t fr_time_to_sec(fr_time_t when)
 fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
 {
 	return fr_time_delta_from_timeval(when_tv) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert a time_t to a fr_time_t
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+fr_time_t fr_time_from_sec(time_t when)
+{
+	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
 /** Convert a timespec to a fr_time_t
