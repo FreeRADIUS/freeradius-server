@@ -7,6 +7,7 @@ FROM ${from} as build
 RUN yum groupinstall -y "Development Tools"
 RUN yum install -y rpmdevtools
 RUN yum install -y openssl
+RUN yum install -y rsync
 
 #
 #  Create build directory

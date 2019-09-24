@@ -5,7 +5,7 @@ FROM ${from} as build
 #  Install build tools
 #
 RUN apt-get update
-RUN apt-get install -y devscripts equivs git quilt gcc
+RUN apt-get install -y devscripts equivs git quilt gcc rsync
 
 #
 #  Create build directory

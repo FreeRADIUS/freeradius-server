@@ -5,7 +5,7 @@ FROM ${from} as build
 #  Install build tools
 #
 RUN apk update
-RUN apk add git gcc make
+RUN apk add git gcc make rsync
 
 #
 #  Create build directory

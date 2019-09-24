@@ -34,9 +34,11 @@ endif
 ifneq "$(MAKECMDGOALS)" "deb"
 ifneq "$(MAKECMDGOALS)" "rpm"
 ifeq "$(findstring docker,$(MAKECMDGOALS))" ""
+ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
+endif
 endif
 endif
 endif
@@ -55,7 +57,9 @@ export DESTDIR := $(R)
 ifneq "$(MAKECMDGOALS)" "deb"
 ifneq "$(MAKECMDGOALS)" "rpm"
 ifeq "$(findstring docker,$(MAKECMDGOALS))" ""
+ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 include scripts/boiler.mk
+endif
 endif
 endif
 endif
@@ -367,3 +371,10 @@ warnings:
 whitespace:
 	@for x in $$(git ls-files raddb/ src/); do unexpand $$x > $$x.bak; cp $$x.bak $$x; rm -f $$x.bak;done
 	@perl -p -i -e 'trim' $$(git ls-files src/)
+
+#
+#  Include the crossbuild make file only if we're cross building
+#
+ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+include scripts/docker/crossbuild/crossbuild.mk
+endif

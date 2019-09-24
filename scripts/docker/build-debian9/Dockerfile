@@ -7,7 +7,7 @@ ARG gccver=6
 #  Install build tools
 #
 RUN apt-get update
-RUN apt-get install -y devscripts equivs git quilt g++-${gccver}
+RUN apt-get install -y devscripts equivs git quilt g++-${gccver} rsync
 
 #
 #  Create build directory
