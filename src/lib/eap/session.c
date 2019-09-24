@@ -47,7 +47,7 @@ static int _eap_session_free(eap_session_t *eap_session)
 	 *	retransmit which nukes our ID, and therefore our state.
 	 */
 	if (((request && RDEBUG_ENABLED) || (!request && DEBUG_ENABLED)) &&
-	    (eap_session->tls && !eap_session->finished && (time(NULL) > (eap_session->updated + 3)))) {
+	    (eap_session->tls && !eap_session->finished && ((fr_time() - eap_session->updated) > (((fr_time_t) 3) * NSEC)))) {
 		ROPTIONAL(RWDEBUG, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		ROPTIONAL(RWDEBUG, WARN, "!! EAP session %016" PRIxPTR " did not finish!                   !!",
 			  (uintptr_t)eap_session);
@@ -83,7 +83,7 @@ static eap_session_t *eap_session_alloc(REQUEST *request)
 		return NULL;
 	}
 	eap_session->request = request;
-	eap_session->updated = fr_time_to_sec(request->packet->timestamp);
+	eap_session->updated = request->packet->timestamp;
 
 	talloc_set_destructor(eap_session, _eap_session_free);
 
@@ -190,7 +190,7 @@ eap_session_t *eap_session_thaw(REQUEST *request)
 
 	rad_assert(!eap_session->request);	/* If triggered, something didn't freeze the session */
 	eap_session->request = request;
-	eap_session->updated = fr_time_to_sec(request->packet->timestamp);
+	eap_session->updated = request->packet->timestamp;
 
 	return eap_session;
 }
