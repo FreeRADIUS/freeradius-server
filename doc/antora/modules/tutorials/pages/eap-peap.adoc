@@ -1,6 +1,4 @@
-[[eap-peap]]
-EAP-PEAP: Tunneled authentication
----------------------------------
+= EAP-PEAP: Tunneled authentication
 
 *Goal:* To configure the server to use the EAP-PEAP authentication
 protocol and to send and receive test packets.
@@ -54,9 +52,7 @@ contain the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` attributes.
 Verify that the authentication succeeded by using the `ping` command to
 see if the wireless client now has network access.
 
-[[eap-peap-further-considerations]]
-Further Considerations
-~~~~~~~~~~~~~~~~~~~~~~
+== Further Considerations
 
 Different wireless clients may implement different tunneled
 authentication protocols inside of EAP-PEAP. These clients may not be
@@ -74,9 +70,7 @@ HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Tracing\RASTLS\EnableTracing
 Set the above key to value ``1''. A file `RASTLS.LOG` will be created
 and will contain the requested tracing information.
 
-[[eap-peap-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  How does EAP-PEAP compare with EAP-TTLS?
 2.  What authentication protocols may be carried inside of the TLS

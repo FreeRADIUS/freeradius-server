@@ -1,6 +1,4 @@
-[[prepaid]]
-A simple pre-paid example
--------------------------
+= A simple pre-paid example
 
 *Goal:* To implement a simple "prepaid" functionality in the server.
 
@@ -34,9 +32,7 @@ server another login request (`bob.sh`), and observe that the
 should be near 3600. This value depends on the length of time passed
 between when the server is started and when the `bob-acct-stop.sh` script is run.
 
-[[prepaid-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  How would you configure the server to obtain the daily access limits
 from an SQL database?

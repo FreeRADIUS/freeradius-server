@@ -1,6 +1,4 @@
-[[eap-ttls]]
-EAP-TTLS: Tunneled authentication
----------------------------------
+= EAP-TTLS: Tunneled authentication
 
 *Goal:* To configure the server to use the EAP-TTLS authentication
 protocol and to send and receive test packets.
@@ -38,9 +36,7 @@ contain the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` attributes.
 Verify that the authentication succeeded by using the `ping` command to
 see if the wireless client now has network access.
 
-[[eap-ttls-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  How is EAP-TTLS easier to use than EAP-TLS?
 2.  What authentication protocols may be carried inside of the TLS

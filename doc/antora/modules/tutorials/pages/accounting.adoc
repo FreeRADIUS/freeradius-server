@@ -1,6 +1,4 @@
-[[accounting]]
-Accounting Requests
--------------------
+= Accounting Requests
 
 *Goal*: To send the server accounting requests and to have the server
 log the accounting requests.
@@ -116,9 +114,7 @@ the `radwho` command.
 The "detail" module simply logs every accounting request to a file in a simple
 textual format.
 
-[[accounting-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Why do accounting messages require less configuration of the server
 than authentication methods?

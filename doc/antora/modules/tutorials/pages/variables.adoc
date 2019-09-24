@@ -1,6 +1,4 @@
-[[variables]]
-Using configuration and run-time variables
-------------------------------------------
+= Using configuration and run-time variables
 
 *Goal:* To use run-time variable expansion.
 
@@ -84,9 +82,7 @@ Start the server, and run the `bob-login-one.sh` script. Verify that the
 `Reply-Message` attributes contain the user name, NAS port, time, and a
 copy of the `Class` attribute from the reply.
 
-[[variables-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Why are run-time variables useful?
 2.  How would you configure that entry in the file to reply with the

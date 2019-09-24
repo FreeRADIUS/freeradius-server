@@ -25,12 +25,12 @@ The comparison operators are given below.
 | != | not equals
 | >= | greater than or equals
 | >  | greater than
-| xref:regex.adoc[=~] | regular expression matches
-| xref:regex.adoc[!~] | regular expression does not match
+| xref:condition/regex.adoc[=~] | regular expression matches
+| xref:condition/regex.adoc[!~] | regular expression does not match
 |=====
 
 The comparison operators perform _type-specific_ comparisons.  The
-only exceptions are the xref:regex.adoc[regular expression] operators,
+only exceptions are the xref:condition/regex.adoc[regular expression] operators,
 which interpret the `lhs` as a printable string, and the `rhs` as a
 regular expression.
 

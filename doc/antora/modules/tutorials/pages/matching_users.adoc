@@ -1,6 +1,4 @@
-[[matching-users]]
-Matching entries in the users file
-----------------------------------
+= Matching entries in the users file
 
 *Goal:* To configure multiple entries for a user in the "users" file
 and to validate the server's configuration by sending test packets to
@@ -52,9 +50,7 @@ that will match:
 
 Save copies of the packets.
 
-[[matching-users-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  What is the difference between the Framed-Route and Framed-Routing
 Attributes?

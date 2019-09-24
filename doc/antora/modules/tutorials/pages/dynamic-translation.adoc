@@ -1,6 +1,4 @@
-[[dynamic-translation]]
-Further dynamic translation
----------------------------
+= Further dynamic translation
 
 *Goal:* To use dynamic translation of strings to perform inter-module
 references.
@@ -103,9 +101,7 @@ bob	Cleartext-Password := "hello"
 In this case, the user "bob" is given one minute of access time,
 multiplied by the value of the "UID" of the RADIUS server.
 
-[[further-considerations]]
-Further considerations
-~~~~~~~~~~~~~~~~~~~~~~
+== Further considerations
 
 Run-time variables allow inter-module calling. The administator may perform LDAP
 queries and SQL queries to use database information in other modules.
@@ -121,9 +117,7 @@ Another limitation is that the query string can be only approximately 250
 characters long in the current version of the server. This limitation may be
 removed in a later version.
 
-[[dynamic-translation-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  How would you perform an SQL query in a run-time variable, instead of
 executing a program?

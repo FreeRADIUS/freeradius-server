@@ -1,6 +1,4 @@
-[[sql]]
-Communicating with an SQL database
-----------------------------------
+= Communicating with an SQL database
 
 *Goal:* To configure the server to communicate with an SQL database.
 
@@ -164,9 +162,7 @@ client which may be used to perform this test.
 Now stop the server. The next exercise will be to add the schema to the
 database, and to populate it with a test entry.
 
-[[sql-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Why is it important to test SQL connectivity, independently of
 testing the ability to obtain user configuration from an SQL database?

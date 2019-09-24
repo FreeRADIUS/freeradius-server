@@ -1,6 +1,4 @@
-[[sql-user]]
-Configuring a user in an SQL database
--------------------------------------
+= Configuring a user in an SQL database
 
 *Goal:* To configure the server to have a new user in an SQL database,
 to send test packets as that user, and to receive a reply.
@@ -81,9 +79,7 @@ perform those queries by hand, using an SQL test client. Once you have
 verified that the SQL test client returns the correct information for
 the queries, then send the access request again.
 
-[[sql-user-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Why do we not use an SQL database to "authenticate" users?
 2.  How do we have a DEFAULT entry in an SQL database?

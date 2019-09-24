@@ -1,6 +1,4 @@
-[[proxy-fail-over]]
-Proxy Fail-over
----------------
+= Proxy Fail-over
 
 *Goal:* To configure a "backup" home server that is used when the
 "primary" home server fails.
@@ -57,9 +55,7 @@ group should observe the resulting behavior of the server for "realm1".
 If time permits, the group may switch roles, so that users have the
 opportunity to set up a proxy and a home server.
 
-[[proxy-fail-over-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Which server for "realm2" is picked by "realm1"? Why?
 2.  Would the server for "realm1" ever again try to send packets to

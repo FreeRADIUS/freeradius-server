@@ -1,6 +1,4 @@
-[[configuring_a_server_to_send_and_receive_proxy_requests]]
-Configuring a server to send and receive proxy requests
--------------------------------------------------------
+= Configuring a server to send and receive proxy requests
 
 *Goal:* To configure the server to proxy packets to a remote (home)
 RADIUS server and to receive packets from another proxy server.
@@ -66,9 +64,7 @@ be proxied. Both users should examine the debug logs of User 1’s
 RADIUS client and server in order to observe what the server's resulting behavior
 will be.
 
-[[proxy-receive-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Why is it necessary for each server to mark some realms as local?
 2.  What would happen if each user did not configure the other RADIUS

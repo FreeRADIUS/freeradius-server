@@ -1,6 +1,4 @@
-[[new-clients]]
-Adding a new client to the server
----------------------------------
+= Adding a new client to the server
 
 *Goal:* To permit an additional RADIUS client to communicate with the
 server.
@@ -49,9 +47,7 @@ invalid response.
 If the server responds to the packet and the client accepts the
 response, then the test was successful, and the server may be halted.
 
-[[new-client-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  What happens when the server receives a packet from a machine not
 listed in "clients.conf"?

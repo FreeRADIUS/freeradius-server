@@ -1,6 +1,4 @@
-[[radmin]]
-The Administration CLI
-----------------------
+= The Administration CLI
 
 *Goal:* To understand how to use the `radmin` command.
 
@@ -21,9 +19,7 @@ debugging mode. Connect to the control socket via `radmin`. Type `help`,
 and read the output. Use `radtest` to send the server packets, and see
 how the statistics change.
 
-[[radmin-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  How can you modify the `control-socket` file so that you can change
 the server configuration?

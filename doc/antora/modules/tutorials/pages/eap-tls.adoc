@@ -1,6 +1,4 @@
-[[eap-tls]]
-EAP-TLS: Certificate-based authentication
------------------------------------------
+= EAP-TLS: Certificate-based authentication
 
 *Goal:* To configure the server to use the EAP-TLS authentication
 protocol and to send and receive test packets.
@@ -76,9 +74,7 @@ should contain the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` attributes.
 Verify that the authentication succeeded by using the `ping` command to
 see if the wireless client now has network access.
 
-[[eap-tls-further-considerations]]
-Further considerations
-~~~~~~~~~~~~~~~~~~~~~~
+== Further considerations
 
 EAP-TLS is an authentication protocol and nothing more. As such, the
 wireless client will still need to obtain an IP address. This address
@@ -101,9 +97,7 @@ computer) to perform EAP-TLS may be difficult. Windows (since Windows XP)
 ships with an EAP-PEAP client, which may influence any decision about
 which wireless authentication protocol to use.
 
-[[eap-tls-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  What other benefits does EAP-TLS have over EAP-MD5?
 2.  What happens to the user's password when they use EAP-TLS?

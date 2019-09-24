@@ -1,6 +1,4 @@
-[[new-user]]
-Adding a new user to the server
--------------------------------
+= Adding a new user to the server
 
 *Goal:* To configure the server with a new user, to send test packets as
 that new user, and to receive a reply.
@@ -81,9 +79,7 @@ from the previous test with a PAP password and incorrect shared secret.
 
 Stop the server.
 
-[[new-user-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  What happens when using a PAP password with an incorrect shared secret, and why do we get this result?
 2.  What is different when using a CHAP password with an incorrect shared secret?

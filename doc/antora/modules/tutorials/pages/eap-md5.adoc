@@ -1,6 +1,4 @@
-[[eap-md5]]
-Other protocols within RADIUS: EAP-MD5
---------------------------------------
+= Other protocols within RADIUS: EAP-MD5
 
 *Goal:* To configure the server to use the EAP-MD5 authentication
 protocol and to send and receive test packets.
@@ -49,9 +47,7 @@ schematic diagram
 
 image::eap-md5.svg[Fig. EAP-MD5]
 
-[[eap-md5-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  In which of the following sections is the `eap` module used?
 authorize, authenticate, and accounting.

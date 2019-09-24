@@ -1,6 +1,5 @@
 [[simultaneous-use]]
-Configuring users for limited simultaneous access
--------------------------------------------------
+= Configuring users for limited simultaneous access
 
 *Goal:* To prevent a user from having more than one login session at a
 time.
@@ -48,9 +47,7 @@ After running the `bob-acct-stop.sh` script, you should run the
 `bob-login-two.sh` script again, to verify that the other login attempt
 is now permitted to succed.
 
-[[simultaneous-use-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Why is it useful to prevent a user from having more than one
 simultaneous login session?

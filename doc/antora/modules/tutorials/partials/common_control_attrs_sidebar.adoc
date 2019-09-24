@@ -1,0 +1,14 @@
+.Common control attributes
+****
+Attributes in the `&control` list can control the behaviour of the server.
+Commonly used control attributes are:
+
+- `&control:Proxy-To-Realm` controls the realm that the incoming request
+is forwarded to.
+- `&control:Response-Packet-Type` overrides the RADIUS packet code
+FreeRADIUS responds with.
+- `&control:Autz-Type` specifies the `autz-type {}` section to run in the
+`authorize {}` section.
+- `&control:Auth-Type` specifies the `auth-type {}` section to run in the
+`authenticate {}` section.
+****

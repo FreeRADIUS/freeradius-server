@@ -1,0 +1,6 @@
+[TIP]
+====
+For this tutorial you should start with an empty authorization section
+(`recv Access-Request { ... }` or in ≤ v3.0.x `authorize { ... }`)
+in the virtual server you're using to process requests.
+====

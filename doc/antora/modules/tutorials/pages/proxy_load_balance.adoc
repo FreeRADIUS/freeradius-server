@@ -1,6 +1,4 @@
-[[proxy-load-balance]]
-Proxy Load Balancing
---------------------
+= Proxy Load Balancing
 
 *Goal:* To configure a server to load-balanceproxied requests across
 multiple home servers.
@@ -23,9 +21,7 @@ User 1 will edit his `proxy.conf` file, so that the entries for
 requests to the server for "realm1", and observe how the proxied
 requests are distributed among the servers for "realm2".
 
-[[proxy-load-balance-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Why is load balancing useful?
 2.  How is load balancing different than fail-over?

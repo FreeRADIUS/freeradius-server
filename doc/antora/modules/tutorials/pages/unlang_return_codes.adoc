@@ -1,0 +1,13 @@
+= Module return codes
+
+*Goal:* Create and use policies for abstracting business logic
+
+*Time:* 10-20 minutes
+
+*File:*
+
+- `etc/raddb/policy.d/*`
+
+*`man` page:* unlang
+
+include::partial$unlang_start.adoc[]

@@ -1,6 +1,4 @@
-[[autz-type]]
-Using the Autz-Type attribute
------------------------------
+= Using the Autz-Type attribute
 
 *Goal:* To control which authorization modules are executed for an
 `Access-Request`
@@ -60,8 +58,7 @@ $ ls /var/log/radius/radacct/bydate/
 --------------------------------------------------
 
 [[autz-type-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

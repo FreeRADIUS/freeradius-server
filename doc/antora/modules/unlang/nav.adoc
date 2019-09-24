@@ -2,7 +2,6 @@
 
 ** xref:list.adoc[Attribute Lists]
 ** xref:attr.adoc[Attribute References]
-** xref:regex.adoc[Regular Expressions]
 
 ** xref:keywords.adoc[Keywords]
 *** xref:break.adoc[break]
@@ -47,6 +46,7 @@
 *** xref:condition/or.adoc[The '||' Operator]
 *** xref:condition/not.adoc[The '!' Operator]
 *** xref:condition/para.adoc[The '( )' Operator]
+*** xref:condition/regex.adoc[Regular Expressions]
 
 
 ** xref:xlat/index.adoc[String Expansion]

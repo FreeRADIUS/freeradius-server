@@ -1,6 +1,4 @@
-[[module-fail-over]]
-Module Fail-Over
-----------------
+= Module Fail-Over
 
 *Goal:* To configure the server to use a "backup" module if a
 "primary" module fails.
@@ -105,9 +103,7 @@ request:
 $ more /var/log/radius/radacct/detail2
 -----------------------------------------------
 
-[[module-fail-over-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Could the configuration for the "group" section containing the
 "detail1" and "detail2" modules be simplified? If so, how?

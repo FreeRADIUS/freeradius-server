@@ -1,6 +1,4 @@
-[[proxy]]
-Configuring a server to proxy requests
---------------------------------------
+= Configuring a server to proxy requests
 
 *Goal:* To configure the server to proxy packets to a remote (home)
 RADIUS server and to perform test authentications against both the
@@ -48,9 +46,7 @@ re-attempt the `bob@realm1.sh` authentication request to their server.
 They should then observe the resulting behavior of their server, as it
 attempts to proxy to a home server that does not respond.
 
-[[proxy-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  How would you configure "proxy.conf" so that "realm1" was not
 proxied, but was instead handled by the local RADIUS server?

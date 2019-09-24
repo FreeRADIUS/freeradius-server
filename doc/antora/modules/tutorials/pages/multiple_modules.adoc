@@ -1,6 +1,4 @@
-[[multiple-modules]]
-Multiple instances of a module
-------------------------------
+= Multiple instances of a module
 
 *Goal:* To configure the server to have multiple instances of a module.
 
@@ -63,9 +61,7 @@ $ more /var/log/radius/radacct/bydate/*
 Once you have verified that the files exist and that the correct
 information is logged in them, you may stop the server.
 
-[[multiple-modules-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  Why is it useful to have multiple versions of a module?
 

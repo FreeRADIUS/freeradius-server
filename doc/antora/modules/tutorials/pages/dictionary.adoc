@@ -1,6 +1,4 @@
-[[custom-dictionaries-and-attributes]]
-Custom Dictionaries and Attributes
-----------------------------------
+= Custom Dictionaries and Attributes
 
 *Goal:* To understand how the dictionaries affect the server and to create
 a new vendor-specific dictionary with a number of custom attributes; also, to test those attributes in the server.
@@ -60,8 +58,7 @@ authentication request for user "bob", and verify that the access accept
 contains the expected attributes.
 
 [[dictionary-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  What happens when the same attribute has multiple names, i.e.,
 multiple names for one number?

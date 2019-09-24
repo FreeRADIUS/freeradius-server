@@ -1,13 +1,13 @@
 = Built-in Modules
 
-In some cases, it is useful to reject a request immediately or
-perform another action on it.  The built-in modules can be used to perform these actions.  These modules are named for the return codes given in the
-xref:module.adoc[module] section.
+In some cases, it is useful to reject a request immediately or perform another
+action on it.  The built-in modules can be used to perform these actions.  These
+modules are named for the return codes given in the xref:module.adoc[module]
+section.
 
 In practice, these modules are implemented by the
-xref:../raddb/mods-available/always.adoc[always] module and exist so that a
-success or failure can be forced during the processing of a
-policy.
+xref:raddb:mods-available/always.adoc[always] module and exist so that a
+success or failure can be forced during the processing of a policy.
 
 The names and behaviours of these modules are given below:
 

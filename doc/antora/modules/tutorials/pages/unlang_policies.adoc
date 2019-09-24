@@ -1,6 +1,4 @@
-[[unlang-policies]]
-Unlang Policies
----------------
+= Unlang Policies
 
 *Goal:* Create and use policies for abstracting business logic
 
@@ -11,6 +9,8 @@ Unlang Policies
 - `etc/raddb/policy.d/*`
 
 *`man` page:* unlang
+
+include::partial$unlang_start.adoc[]
 
 Look through the existing files in `etc/raddb/policy.d/*` and `man unlang`
 to get a feel for the unlang syntax and the tasks that policies can
@@ -41,10 +41,11 @@ authorize {
 ------------------------------------------------
 
 Create a policy `proxy_to_realm` that forwards the incoming request
-to to a remote realm if the `User-Name` attribute ends in `@<remote realm>`,
-then use the `return` keyword to exit the authorize section.
-If the `User-Name` attribute does not end in `@<remote realm>` the policy
-should return `noop`, so the caller knows that it did nothing.
+to to a remote realm if the `User-Name` attribute ends in `@<remote realm>`.
+
+The contents of this policy should be identical to the the 'unlang'
+code written for the xref:unlang_splitting_strings.adoc[Splitting Strings]
+tutorial.
 
 Call this policy at the start of the `authorize {}` section of the
 `etc/raddb/sites-available/default` virtual server.
@@ -52,30 +53,12 @@ Call this policy at the start of the `authorize {}` section of the
 All the information you need to create this policy is contained within
 `man unlang` pages and the examples in this exercise.
 
-[TIP]
-========================================================================
-Attributes in the `&control` list can control the behaviour of the server.
-Commonly used control attributes are:
-
-- `&control:Proxy-To-Realm` controls the realm that the incoming request
-is forwarded to.
-- `&control:Response-Packet-Type` overrides the RADIUS packet code
-FreeRADIUS responds with.
-- `&control:Autz-Type` specifies the `autz-type {}` section to run in the
-`authorize {}` section.
-- `&control:Auth-Type` specifies the `auth-type {}` section to run in the
-`authenticate {}` section.
-========================================================================
-
-[[unlang-policies-questions]]
-Questions
-~~~~~~~~~
+== Questions
 
 1.  What are the advantages of using the policy language over interpreted
     language modules?
-2.  What's the main difference between a policy and a function in other
+2.  What are the main differences between a policy and a function in other
     languages?
-3.  What is the advantage of using `return` to exit the section early?
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
