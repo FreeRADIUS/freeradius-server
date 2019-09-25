@@ -135,7 +135,7 @@ static void tacacs_status(REQUEST * const request, rlm_rcode_t rcode)
 
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 			MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
 			fr_pair_value_from_str(vp, "Fail", -1, '\0', false);
 			break;
@@ -164,7 +164,7 @@ noop:
 
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 			MEM(pair_update_reply(&vp, attr_tacacs_authorization_status) >= 0);
 			fr_pair_value_from_str(vp, "Fail", -1, '\0', false);
 			break;
@@ -188,7 +188,7 @@ noop:
 
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		case RLM_MODULE_INVALID:
 			MEM(pair_update_reply(&vp, attr_tacacs_accounting_status) >= 0);
 			fr_pair_value_from_str(vp, "Error", -1, '\0', false);
@@ -304,7 +304,7 @@ stop_processing:
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			tacacs_status(request, rcode);
 			goto setup_send;
@@ -396,7 +396,7 @@ stop_processing:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			RDEBUG2("Failed to authenticate the user");
 			tacacs_status(request, RLM_MODULE_FAIL);

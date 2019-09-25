@@ -107,7 +107,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			RDEBUG("The 'recv Accounting-Request' section returned %s - not sending a response",
 			       fr_table_str_by_value(mod_rcode_table, rcode, "???"));
@@ -163,7 +163,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			RDEBUG("The 'accounting' section returned %s - not sending a response",
 			       fr_table_str_by_value(mod_rcode_table, rcode, "???"));

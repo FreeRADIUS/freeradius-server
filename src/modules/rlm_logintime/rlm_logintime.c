@@ -169,7 +169,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
 	left = timestr_match(ends->vp_strvalue, fr_time_to_sec(request->packet->timestamp));
-	if (left < 0) return RLM_MODULE_USERLOCK; /* outside of the allowed time */
+	if (left < 0) return RLM_MODULE_DISALLOW; /* outside of the allowed time */
 
 	/*
 	 *      Do nothing, login time is not controlled (unendsed).
@@ -186,7 +186,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
 			ends->vp_strvalue, inst->min_time);
 
-		return RLM_MODULE_USERLOCK;
+		return RLM_MODULE_DISALLOW;
 	}
 
 	/* else left > inst->min_time */

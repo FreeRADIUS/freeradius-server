@@ -40,7 +40,7 @@ static fr_table_num_sorted_t const allowed_return_codes[] = {
 	{ "ok",	 	1 },
 	{ "reject",     1 },
 	{ "updated",    1 },
-	{ "userlock",   1 }
+	{ "disallow",   1 }
 };
 static size_t allowed_return_codes_len = NUM_ELEMENTS(allowed_return_codes);
 

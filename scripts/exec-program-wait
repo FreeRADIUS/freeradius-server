@@ -50,7 +50,7 @@
 #  = 3 : ok        the module succeeded
 #  = 4 : handled   the module has done everything to handle the request
 #  = 5 : invalid   the user's configuration entry was invalid
-#  = 6 : userlock  the user was locked out
+#  = 6 : disallow  the user was locked out
 #  = 7 : notfound  the user was not found
 #  = 8 : noop      the module did nothing
 #  = 9 : updated   the module updated information in the request

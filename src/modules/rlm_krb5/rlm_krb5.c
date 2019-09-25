@@ -302,7 +302,7 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, REQUEST *request, 
 	case KRB5KDC_ERR_CLIENT_REVOKED:
 	case KRB5KDC_ERR_SERVICE_REVOKED:
 		REDEBUG("Account has been locked out (%i): %s", ret, rlm_krb5_error(inst, conn->context, ret));
-		return RLM_MODULE_USERLOCK;
+		return RLM_MODULE_DISALLOW;
 
 	case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
 		RDEBUG2("User not found (%i): %s", ret, rlm_krb5_error(inst, conn->context, ret));

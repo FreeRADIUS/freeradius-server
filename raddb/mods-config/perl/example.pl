@@ -68,7 +68,7 @@ use constant {
 	RLM_MODULE_OK       => 2, # the module is OK, continue
 	RLM_MODULE_HANDLED  => 3, # the module handled the request, so stop
 	RLM_MODULE_INVALID  => 4, # the module considers the request invalid
-	RLM_MODULE_USERLOCK => 5, # reject the request (user is locked out)
+	RLM_MODULE_DISALLOW => 5, # reject the request (user is locked out)
 	RLM_MODULE_NOTFOUND => 6, # user not found
 	RLM_MODULE_NOOP     => 7, # module succeeded without doing anything
 	RLM_MODULE_UPDATED  => 8, # OK (pairs modified)

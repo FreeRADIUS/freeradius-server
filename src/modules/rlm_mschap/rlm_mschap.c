@@ -1452,7 +1452,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsi
 		error = 647;
 		retry = 0;
 		message = "Account locked out";
-		rcode = RLM_MODULE_USERLOCK;
+		rcode = RLM_MODULE_DISALLOW;
 
 	} else if (mschap_result < 0) {
 		REDEBUG("MS-CHAP2-Response is incorrect");

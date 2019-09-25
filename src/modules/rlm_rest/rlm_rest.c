@@ -456,7 +456,7 @@ static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *r
 		break;
 
 	case 403:
-		rcode = RLM_MODULE_USERLOCK;
+		rcode = RLM_MODULE_DISALLOW;
 		break;
 
 	case 401:
@@ -496,7 +496,7 @@ static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *r
 	switch (rcode) {
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_FAIL:
-	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_DISALLOW:
 		rest_response_error(request, handle);
 		break;
 
@@ -570,7 +570,7 @@ static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST
 		break;
 
 	case 403:
-		rcode = RLM_MODULE_USERLOCK;
+		rcode = RLM_MODULE_DISALLOW;
 		break;
 
 	case 401:
@@ -610,7 +610,7 @@ static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST
 	switch (rcode) {
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_FAIL:
-	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_DISALLOW:
 		rest_response_error(request, handle);
 		break;
 

@@ -124,7 +124,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			request->reply->code = 0;
 			unlang = cf_section_find(request->server_cs, "send", "fail");

@@ -362,7 +362,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		case eDSAuthAccountInactive:
 		case eDSAuthInvalidLogonHours:
 		case eDSAuthInvalidComputer:
-			ret = RLM_MODULE_USERLOCK;
+			ret = RLM_MODULE_DISALLOW;
 			break;
 
 		default:
@@ -488,7 +488,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 		if (ismember == 0) {
 			REDEBUG("User is not authorized");
-			return RLM_MODULE_USERLOCK;
+			return RLM_MODULE_DISALLOW;
 		}
 	}
 
@@ -501,7 +501,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 		if (ismember == 0) {
 			REDEBUG("User is not authorized");
-			return RLM_MODULE_USERLOCK;
+			return RLM_MODULE_DISALLOW;
 		}
 	}
 

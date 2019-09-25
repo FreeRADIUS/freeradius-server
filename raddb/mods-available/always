@@ -33,7 +33,7 @@
 	#  | `handled`  | Indicate that the request has been handled,
 	#                 stop processing, and send response if set.
 	#  | `invalid`  | Indicate that the request is invalid.
-	#  | `userlock` | Indicate that the user account has been
+	#  | `disallow` | Indicate that the user account has been
 	#                 locked out.
 	#  | `notfound` | Indicate that a user account can't be found.
 	#  | `noop`     | Simulate a no-op.
@@ -80,8 +80,8 @@ always handled {
 always invalid {
 	rcode = invalid
 }
-always userlock {
-	rcode = userlock
+always disallow {
+	rcode = disallow
 }
 always notfound {
 	rcode = notfound

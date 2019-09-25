@@ -42,7 +42,7 @@ typedef enum {
 	RLM_MODULE_OK,					//!< The module is OK, continue.
 	RLM_MODULE_HANDLED,				//!< The module handled the request, so stop.
 	RLM_MODULE_INVALID,				//!< The module considers the request invalid.
-	RLM_MODULE_USERLOCK,				//!< Reject the request (user is locked out).
+	RLM_MODULE_DISALLOW,				//!< Reject the request (user is locked out).
 	RLM_MODULE_NOTFOUND,				//!< User not found.
 	RLM_MODULE_NOOP,				//!< Module succeeded without doing anything.
 	RLM_MODULE_UPDATED,				//!< OK (pairs modified).
@@ -61,7 +61,7 @@ extern size_t rcode_table_len;
 	RLM_MODULE_REJECT:		\
 	case RLM_MODULE_FAIL:		\
 	case RLM_MODULE_INVALID:	\
-	case RLM_MODULE_USERLOCK
+	case RLM_MODULE_DISALLOW
 
 #ifdef __cplusplus
 }

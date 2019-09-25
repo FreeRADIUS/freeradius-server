@@ -43,7 +43,7 @@ fr_table_num_sorted_t const mod_rcode_table[] = {
 	{ "ok",	 	RLM_MODULE_OK		},
 	{ "reject",     RLM_MODULE_REJECT       },
 	{ "updated",    RLM_MODULE_UPDATED      },
-	{ "userlock",   RLM_MODULE_USERLOCK     },
+	{ "disallow",   RLM_MODULE_DISALLOW     },
 	{ "yield",      RLM_MODULE_YIELD	}
 };
 size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);
@@ -143,7 +143,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			4,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			1,			/* notfound */
 			2,			/* noop     */
 			3			/* updated  */
@@ -155,7 +155,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
@@ -170,7 +170,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			3,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			1,			/* notfound */
 			2,			/* noop     */
 			4			/* updated  */
@@ -182,7 +182,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
@@ -197,7 +197,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			2,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			1,			/* noop     */
 			3			/* updated  */
@@ -209,7 +209,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
@@ -224,7 +224,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			2,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			1,			/* noop     */
 			3			/* updated  */
@@ -236,7 +236,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			1,			/* invalid  */
-			1,			/* userlock */
+			1,			/* disallow */
 			1,			/* notfound */
 			2,			/* noop     */
 			4			/* updated  */
@@ -251,7 +251,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			3,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			1,			/* notfound */
 			2,			/* noop     */
 			4			/* updated  */
@@ -263,7 +263,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
@@ -278,7 +278,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			3,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			1,			/* notfound */
 			2,			/* noop     */
 			4			/* updated  */
@@ -290,7 +290,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
@@ -305,7 +305,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			3,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			1,			/* notfound */
 			2,			/* noop     */
 			4			/* updated  */
@@ -317,7 +317,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
@@ -334,7 +334,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			3,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			1,			/* notfound */
 			2,			/* noop     */
 			4			/* updated  */
@@ -346,7 +346,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
@@ -361,7 +361,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			3,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			1,			/* notfound */
 			2,			/* noop     */
 			4			/* updated  */
@@ -373,7 +373,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* disallow */
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */

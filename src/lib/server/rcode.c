@@ -41,6 +41,6 @@ fr_table_num_sorted_t const rcode_table[] = {
 	{ "ok",			RLM_MODULE_OK	   	},
 	{ "reject",		RLM_MODULE_REJECT       },
 	{ "updated",		RLM_MODULE_UPDATED      },
-	{ "userlock",		RLM_MODULE_USERLOCK     }
+	{ "disallow",		RLM_MODULE_DISALLOW     }
 };
 size_t rcode_table_len = NUM_ELEMENTS(rcode_table);

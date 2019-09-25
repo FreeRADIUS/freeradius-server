@@ -218,7 +218,7 @@ finish:
  * @param[in] conn used to retrieve access attributes.
  * @param[in] entry retrieved by rlm_ldap_find_user or fr_ldap_search.
  * @return
- *	- #RLM_MODULE_USERLOCK if the user was denied access.
+ *	- #RLM_MODULE_DISALLOW if the user was denied access.
  *	- #RLM_MODULE_OK otherwise.
  */
 rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
@@ -233,17 +233,17 @@ rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
 			if ((values[0]->bv_len >= 5) && (strncasecmp(values[0]->bv_val, "false", 5) == 0)) {
 				REDEBUG("\"%s\" attribute exists but is set to 'false' - user locked out",
 				        inst->userobj_access_attr);
-				rcode = RLM_MODULE_USERLOCK;
+				rcode = RLM_MODULE_DISALLOW;
 			}
 			/* RLM_MODULE_OK set above... */
 		} else if ((values[0]->bv_len < 5) || (strncasecmp(values[0]->bv_val, "false", 5) != 0)) {
 			REDEBUG("\"%s\" attribute exists - user locked out", inst->userobj_access_attr);
-			rcode = RLM_MODULE_USERLOCK;
+			rcode = RLM_MODULE_DISALLOW;
 		}
 		ldap_value_free_len(values);
 	} else if (inst->access_positive) {
 		REDEBUG("No \"%s\" attribute - user locked out", inst->userobj_access_attr);
-		rcode = RLM_MODULE_USERLOCK;
+		rcode = RLM_MODULE_DISALLOW;
 	}
 
 	return rcode;

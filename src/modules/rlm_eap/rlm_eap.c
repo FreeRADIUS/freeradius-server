@@ -347,7 +347,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instan
 	 *	Inconsistent result from submodule...
 	 */
 	case RLM_MODULE_REJECT:
-	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_DISALLOW:
 		rad_assert(eap_session->this_round->request->code == FR_EAP_CODE_FAILURE);
 		eap_session->this_round->request->code = FR_EAP_CODE_FAILURE;
 		break;

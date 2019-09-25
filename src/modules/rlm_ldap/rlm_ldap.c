@@ -809,7 +809,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		break;
 
 	case LDAP_PROC_NOT_PERMITTED:
-		rcode = RLM_MODULE_USERLOCK;
+		rcode = RLM_MODULE_DISALLOW;
 		break;
 
 	case LDAP_PROC_REJECT:
@@ -1049,7 +1049,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 				break;
 
 			case LDAP_PROC_NOT_PERMITTED:
-				rcode = RLM_MODULE_USERLOCK;
+				rcode = RLM_MODULE_DISALLOW;
 				goto finish;
 
 			case LDAP_PROC_REJECT:

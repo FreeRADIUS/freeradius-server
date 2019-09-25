@@ -255,7 +255,7 @@ rest {
 	#  | Code | Meaning      | Process body? | Module code
 	#  | 404  | not found    | no            | notfound
 	#  | 410  | gone         | no            | notfound
-	#  | 403  | forbidden    | no            | userlock
+	#  | 403  | forbidden    | no            | disallow
 	#  | 401  | unauthorized | yes           | reject
 	#  | 204  | no content   | no            | ok
 	#  | 2xx  | successful   | yes           | ok/updated

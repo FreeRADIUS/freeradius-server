@@ -69,7 +69,7 @@ VALUE	Module-Return-Code		fail			1
 VALUE	Module-Return-Code		ok			2
 VALUE	Module-Return-Code		handled			3
 VALUE	Module-Return-Code		invalid			4
-VALUE	Module-Return-Code		userlock		5
+VALUE	Module-Return-Code		disallow		5
 VALUE	Module-Return-Code		notfound		6
 VALUE	Module-Return-Code		noop			7
 VALUE	Module-Return-Code		updated			8

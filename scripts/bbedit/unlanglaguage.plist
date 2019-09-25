@@ -43,7 +43,7 @@
 		<string>ok</string>
 		<string>updated</string>
 		<string>fail</string>
-		<string>userlock</string>
+		<string>disallow</string>
 		<string>invalid</string>
 		<string>handled</string>
 		<string>return</string>

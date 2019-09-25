@@ -73,7 +73,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		if (check_item->vp_date <= fr_time_to_unix_time(request->packet->timestamp)) {
 			REDEBUG("Account expired at '%pV'", &check_item->data);
 
-			return RLM_MODULE_USERLOCK;
+			return RLM_MODULE_DISALLOW;
 		}
 		RDEBUG2("Account will expire at '%pV'", &check_item->data);
 

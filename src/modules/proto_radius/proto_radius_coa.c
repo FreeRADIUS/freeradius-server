@@ -125,7 +125,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			request->reply->code = request->packet->code + 2; /* NAK */
 			break;
@@ -177,7 +177,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			/*
 			 *	If we over-ride an ACK with a NAK, run

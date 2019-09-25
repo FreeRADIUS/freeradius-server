@@ -306,7 +306,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			if ((vp = fr_pair_find_by_da(request->packet->vps,
 						     attr_module_failure_message, TAG_ANY)) != NULL) {
@@ -427,7 +427,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			RDEBUG2("Failed to authenticate the user");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -540,7 +540,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
+		case RLM_MODULE_DISALLOW:
 		default:
 			/*
 			 *	If we over-ride an ACK with a NAK, run

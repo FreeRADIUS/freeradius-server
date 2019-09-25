@@ -348,7 +348,7 @@ void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
 			[RLM_MODULE_OK]		= 0,
 			[RLM_MODULE_HANDLED]	= 0,
 			[RLM_MODULE_INVALID]	= 0,
-			[RLM_MODULE_USERLOCK]	= 0,
+			[RLM_MODULE_DISALLOW]	= 0,
 			[RLM_MODULE_NOTFOUND]	= 0,
 			[RLM_MODULE_NOOP]	= 0,
 			[RLM_MODULE_UPDATED]	= 0
