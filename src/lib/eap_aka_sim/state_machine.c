@@ -129,7 +129,7 @@ static inline void section_rcode_ignored(REQUEST *request)
 	if (after_authentication(_eap_aka_sim_session)) { \
 		switch ((_request)->rcode) { \
 		case RLM_MODULE_REJECT:	 \
-		case RLM_MODULE_USERLOCK: \
+		case RLM_MODULE_DISALLOW: \
 			eap_aka_sim_session->failure_type = FR_NOTIFICATION_VALUE_TEMPORARILY_DENIED; \
 			return common_failure_notification_enter(_inst, _request, _eap_session); \
 		case RLM_MODULE_NOTFOUND: \
@@ -2032,7 +2032,7 @@ static rlm_rcode_t common_reauthentication_send_resume(void *instance, UNUSED vo
 	 *	Policy rejected the user
 	 */
 	case RLM_MODULE_REJECT:
-	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_DISALLOW:
 		goto failure;
 
 	/*
@@ -2098,7 +2098,7 @@ static rlm_rcode_t session_load_resume(void *instance, UNUSED void *thread,
 	 *	Policy rejected the user
 	 */
 	case RLM_MODULE_REJECT:
-	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_DISALLOW:
 		return common_failure_notification_enter(inst, request, eap_session);
 
 	/*
@@ -2165,7 +2165,7 @@ static rlm_rcode_t pseudonym_load_resume(void *instance, UNUSED void *thread,
 	 *	Policy rejected the user
 	 */
 	case RLM_MODULE_REJECT:
-	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_DISALLOW:
 		goto failure;
 
 	/*
