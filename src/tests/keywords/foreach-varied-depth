@@ -1,3 +1,6 @@
+#
+#  PRE: foreach
+#
 update {
 	&control:Tmp-String-0 := "ssid=ABCDEF"
 	&control:Tmp-String-0 += "ssid=GHIJKL"
