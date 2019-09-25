@@ -16,17 +16,15 @@
 - xref:unlang:update.adoc[The Update Statement]
 
 include::partial$unlang_start.adoc[]
+include::partial$common_control_attrs_sidebar.adoc[]
 
 Unlang `update` blocks are used to update one or attributes in one
-of the server's xref:unlang:list.adoc[attribute lists].s
-
-One common use of `update` blocks is to alter how a server processes
-requests.
+of the server's xref:unlang:list.adoc[attribute lists].
 
 In previous tutorials we've used the `files` modules, and the authorize
 methods of authentication modules such as `pap` and `chap` to alter how
-the server processes requests.  Here, we will emulate that behaviour
-using the policy language.
+the server processes requests by setting a `Auth-Type` value.
+Here, we will emulate that behaviour using the policy language.
 
 * Create a condition (_condition 1_) to execute policy code if
 the `&User-Name` in the request is 'bob'.
