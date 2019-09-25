@@ -2,6 +2,7 @@
 
 ** xref:list.adoc[Attribute Lists]
 ** xref:attr.adoc[Attribute References]
+** xref:return_codes.adoc[Return Codes]
 
 ** xref:keywords.adoc[Keywords]
 *** xref:break.adoc[break]
@@ -40,14 +41,13 @@
 ** xref:condition/index.adoc[Conditional Expressions]
 *** xref:condition/cmp.adoc[Comparisons]
 *** xref:condition/operands.adoc[Operands]
-*** xref:condition/module.adoc[The module-code Operator]
+*** xref:condition/return_code.adoc[The Return Code Operator]
 *** xref:condition/eq.adoc[The '==' Operator]
 *** xref:condition/and.adoc[The '&&' Operator]
 *** xref:condition/or.adoc[The '||' Operator]
 *** xref:condition/not.adoc[The '!' Operator]
 *** xref:condition/para.adoc[The '( )' Operator]
 *** xref:condition/regex.adoc[Regular Expressions]
-
 
 ** xref:xlat/index.adoc[String Expansion]
 *** xref:xlat/alternation.adoc[Alternation Syntax]

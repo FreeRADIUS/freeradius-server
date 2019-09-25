@@ -30,19 +30,11 @@ the source, below:
 
 .Module Return Codes
 
-[options="header"]
-|==================================================
-|Name |Meaning
-|reject |the module rejected the request
-|fail |the module failed
-|ok |the module succeeded
-|handled |the module has handled the request itself
-|invalid |the configuration was invalid
-|userlock |the user was locked out
-|notfound |information was not found
-|noop |the module did nothing
-|updated |the module updated the request
-|==================================================
+The below table describes the purpose of the rcodes that may be returned
+by a module call.  In this case the 'operation' referenced in the table is
+the current module call.
+
+include::partial$rcode_table.adoc[]
 
 These return codes can be used in a subsequent
 xref:condition/index.adoc[conditional expression] thus allowing policies to
@@ -59,6 +51,36 @@ if (notfound) {
     reject
 }
 ----
+
+== Module Return Code priority overrides
+
+In the case of modules, rcodes can be modified on a per-call basis.
+
+Module priority overrides are specified in a block inline with the module call.
+The format of an override is `<rcode> = (0+|<rcode>|return)` - That is,
+a number greater than or equal to 0, the priority of another rcode, or the special
+priority `return` which causes the current section to immediately exit.
+
+[source, unlang]
+----
+ldap { <1>
+	fail = 1        <2>
+	ok = handled    <3>
+	reject = return <4>
+}
+----
+
+<1> Call to the `ldap` module.
+<2> Sets the priority of the `fail` rcode to be `1`. If the priority
+    of the rcode for the request is `0`, then the request request rcode
+    will be set to `fail` if the module returns `fail`.
+<3> Sets the priority of the `ok` rcode to be whatever the default is for
+    `handled` in this section.  As the default for `handled` is usually
+    `return`.  If `ok` is returned, the current section will immediately
+    exit.
+<4> Sets the priority of `reject` to be `return`.  If the module returns
+    `reject`, the current section will immediately exit.
+
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

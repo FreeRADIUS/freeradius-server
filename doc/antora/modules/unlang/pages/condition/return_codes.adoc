@@ -1,0 +1,35 @@
+= The return code Operator
+
+.Syntax
+[source,unlang]
+----
+rcode
+----
+
+The Unlang interpreter tracks the return code of any module, string expansion
+or keyword that has been called.
+
+This return code can be checked in any condition. If the saved return code
+matches the `code` given here, then the condition evaluates to `true`.
+Otherwise, it evaluates to `false`.
+
+rcodes cannot be set in a condition.  rcodes cannot be compared with anything else.
+
+The list of valid return codes is as follows:
+
+.Return Codes
+
+include::partial$rcode_table.adoc[]
+
+.Examples
+
+[source,unlang]
+----
+sql
+if (notfound) {
+    ...
+}
+----
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

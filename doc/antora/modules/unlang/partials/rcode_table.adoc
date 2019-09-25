@@ -1,0 +1,39 @@
+[options="header"]
+[cols="15%,85%"]
+|=====
+| Return code   | Description
+| `fail`	| The operation failed.  Usually as a result of an
+                  external dependency like a database being unavailable
+                  or an internal error.
+| `handled`     | The request has been "handled", no further policies
+                  in the current section should be called, and the section
+                  should immediately exit.
+| `invalid`	| The request, or operation, was invalid.  In the case of
+                  requests this usually indicates absent or malformed
+                  attribute values.
+| `noop`        | The operation did nothing.
+| `notfound`    | A 'lookup' operation returned no results.
+| `ok`          | Operation completed successfully but did not change any
+                  attributes in the request.
+| `reject`      | The operation indicates the current request should be
+                  'rejected'.  What this actually means is different from
+                  protocol to protocol.  It usually means that access to
+                  the requested resource should be denied, or that the
+                  current request should be NAKd.  Usually returned when
+                  provided credentials were invalid.
+| `updated`     | The operation completed successfully and updated one
+                  or more attributes in the request.
+| `disallow`    | Access to a particular resource is
+                  denied. This is similar to `reject` but is the result
+                  of an authorizational check failing, as opposed to
+                  credentials being incorrect.
+| `yield`       | Returned by an operation when execution of a request should
+                  be suspended.
+|=====
+
+[NOTE]
+====
+In versions ≤ v3.0.x the `disallow` rcode was called `userlock`. `disallow` and
+`userlock` have an identical meaning. `disallow` will be returned in any
+instance where `userlock` was returned in v3.0.x
+====

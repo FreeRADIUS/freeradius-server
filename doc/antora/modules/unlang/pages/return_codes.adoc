@@ -1,0 +1,17 @@
+= Return codes
+
+Many operations in the server produce a return code (rcode).
+The different rcodes give a course indication of whether a particular operation
+(a module call, string expansion, or keyword) was successful.
+
+Unlike return values in other languages, FreeRADIUS' rcodes are are always taken
+from a fixed compiled-in set.
+
+include::partial$rcode_table.adoc[]
+
+Return codes propagate through nested unlang sections based on their priority.
+If a rcode returned by an operation has a higher priority than the current rcode
+associated with the request, then the request rcode is overwritten.
+
+Return code priorities are assigned by the section the module call, expansion or
+keyword was used in.
