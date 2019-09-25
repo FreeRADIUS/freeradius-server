@@ -852,7 +852,7 @@ the named capture group values will be cleared.
 [NOTE]
 ====
 This expansion is only available if the server is built with libpcre or libpcre2.
-Use the output of `radiusd -Xxv` to determine the regular expression library in use.
+Use the output of `radiusd -Xxv` to determine which regular expression library in use.
 
 ....
 ...
