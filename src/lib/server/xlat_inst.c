@@ -118,17 +118,13 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, xlat_inst_t *
 
 	(void)talloc_get_type_abort(inst, xlat_inst_t);
 
-#ifdef HAVE_TALLOC_POOLED_OBJECT
 	if (inst->node->xlat->thread_inst_size) {
-		MEM(thread_inst = talloc_pooled_object(ctx, xlat_thread_inst_t,
-						       1, inst->node->xlat->thread_inst_size));
-		memset(thread_inst, 0, sizeof(*thread_inst));
-	} else
-#endif
+		MEM(thread_inst = talloc_zero_pooled_object(ctx, xlat_thread_inst_t,
+							    1, inst->node->xlat->thread_inst_size));
+	} else {
 		MEM(thread_inst = talloc_zero(ctx, xlat_thread_inst_t));
-#ifdef HAVE_TALLOC_POOLED_OBJECT
 	}
-#endif
+
 	thread_inst->node = inst->node;
 
 	rad_assert(inst->node->type == XLAT_FUNC);
@@ -201,16 +197,11 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 	rad_assert(node->type == XLAT_FUNC);
 	rad_assert(!node->inst);
 
-#ifdef HAVE_TALLOC_POOLED_OBJECT
 	if (node->xlat->inst_size) {
-		MEM(inst = talloc_pooled_object(node, xlat_inst_t, 1, node->xlat->inst_size));
-		memset(inst, 0, sizeof(*inst));
-	} else
-#endif
+		MEM(inst = talloc_zero_pooled_object(node, xlat_inst_t, 1, node->xlat->inst_size));
+	} else {
 		MEM(inst = talloc_zero(node, xlat_inst_t));
-#ifdef HAVE_TALLOC_POOLED_OBJECT
 	}
-#endif
 
 	inst->node = node;
 

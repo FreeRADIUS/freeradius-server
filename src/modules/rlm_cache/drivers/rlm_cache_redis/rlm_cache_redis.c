@@ -139,7 +139,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	int				s_ret;
 
 	vp_map_t			*head = NULL, **last = &head;
-#ifdef HAVE_TALLOC_POOLED_OBJECT
+#ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
 	size_t				pool_size = 0;
 #endif
 	rlm_cache_entry_t		*c;
@@ -185,7 +185,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		goto error;
 	}
 
-#ifdef HAVE_TALLOC_POOLED_OBJECT
+#ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
 	/*
 	 *	We can get a pretty good idea of the required size of the pool
 	 */
@@ -199,8 +199,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	are three chunks per map
 	 */
 
-	c = talloc_pooled_object(NULL, rlm_cache_entry_t, reply->elements, pool_size);
-	memset(&pool, 0, sizeof(rlm_cache_entry_t));
+	c = talloc_zero_pooled_object(NULL, rlm_cache_entry_t, reply->elements, pool_size);
 #else
 	c = talloc_zero(NULL, rlm_cache_entry_t);
 #endif

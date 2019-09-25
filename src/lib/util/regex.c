@@ -1151,15 +1151,11 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 {
 	fr_regmatch_t *regmatch;
 
-#    ifdef HAVE_TALLOC_POOLED_OBJECT
 	/*
 	 *	Pre-allocate space for the match structure
 	 *	and for a 128b subject string.
 	 */
-	regmatch = talloc_pooled_object(ctx, fr_regmatch_t, 2, (sizeof(regmatch_t) * count) + 128);
-#    else
-	regmatch = talloc(ctx, fr_regmatch_t);
-#    endif
+	regmatch = talloc_zero_pooled_object(ctx, fr_regmatch_t, 2, (sizeof(regmatch_t) * count) + 128);
 	if (unlikely(!regmatch)) {
 	error:
 		fr_strerror_printf("Out of memory");

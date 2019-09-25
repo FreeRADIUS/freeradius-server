@@ -42,6 +42,29 @@ int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 
 TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size);
 
+#ifdef HAVE__TALLOC_POOLED_OBJECT
+#define HAVE_TALLOC_ZERO_POOLED_OBJECT 1
+#define		talloc_zero_pooled_object(_ctx, _type, _num_subobjects, _total_subobjects_size) \
+		(_type *)_talloc_zero_pooled_object((_ctx), sizeof(_type), #_type, \
+						    (_num_subobjects), (_total_subobjects_size))
+
+static inline TALLOC_CTX *_talloc_zero_pooled_object(const void *ctx,
+						     size_t type_size,
+						     const char *type_name,
+						     unsigned num_subobjects,
+						     size_t total_subobjects_size)
+{
+	TALLOC_CTX *new;
+	new = _talloc_pooled_object(ctx, type_size, type_name, num_subobjects, total_subobjects_size);
+	if (unlikely(!new)) return NULL;
+	memset(new, 0, type_size);
+	return new;
+}
+#else
+#define		talloc_zero_pooled_object(_ctx, _type, _num_subobjects, _total_subobjects_size) \
+					  talloc_zero(_ctx, _type)
+#endif
+
 char		*talloc_typed_strdup(TALLOC_CTX *ctx, char const *p);
 
 char		*talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...) CC_HINT(format (printf, 2, 3));

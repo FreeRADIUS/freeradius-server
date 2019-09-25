@@ -911,6 +911,16 @@ if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
   AC_MSG_ERROR([FreeRADIUS requires libtalloc.  Please read doc/developers/dependencies.adoc for further instructions.])
 fi
 
+dnl #
+dnl # Check for talloc_set_memlimit
+dnl # This was only included in version 2.0.8
+dnl # Needs to be done here with the talloc linker flags set
+dnl #
+AC_CHECK_FUNCS(
+  talloc_set_memlimit \
+  _talloc_pooled_object
+)
+
 TALLOC_LIBS="${smart_lib}"
 TALLOC_LDFLAGS="${smart_ldflags}"
 AC_SUBST(TALLOC_LIBS)
@@ -1799,15 +1809,6 @@ dnl #
 dnl #  7. Checks for library functions
 dnl #
 dnl #############################################################
-
-dnl #
-dnl # Check for talloc_set_memlimit
-dnl # This was only included in version 2.0.8
-dnl #
-AC_CHECK_FUNCS(
-  talloc_set_memlimit \
-  talloc_pooled_object
-)
 
 dnl #
 dnl # Check for libcrypt

@@ -752,9 +752,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	fr_channel_data_t	*cd;
 	REQUEST			*request;
 	fr_listen_t const	*listen;
-#ifndef HAVE_TALLOC_POOLED_OBJECT
 	TALLOC_CTX		*ctx;
-#endif
 
 	/*
 	 *	Grab a runnable request, and resume it.

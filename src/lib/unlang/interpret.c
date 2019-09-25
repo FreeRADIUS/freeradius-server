@@ -1037,7 +1037,6 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 {
 	unlang_stack_t *stack;
 
-#ifdef HAVE_TALLOC_POOLED_OBJECT
 	/*
 	 *	If we have talloc_pooled_object allocate the
 	 *	stack as a combined chunk/pool, with memory
@@ -1051,11 +1050,7 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	 *	This number is pretty arbitrary, but it seems
 	 *	like too low level to make into a tuneable.
 	 */
-	stack = talloc_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX / 4, sizeof(unlang_frame_state_t));
-#else
-	stack = talloc_zero(ctx, unlang_stack_t);
-#endif
-
+	stack = talloc_zero_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX, 128);	/* 128 bytes per state */
 	stack->result = RLM_MODULE_UNKNOWN;
 
 	return stack;

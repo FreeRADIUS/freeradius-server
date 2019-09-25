@@ -8157,6 +8157,21 @@ $as_echo "$as_me: WARNING: talloc library not found. Use --with-talloc-lib-dir=<
   as_fn_error $? "FreeRADIUS requires libtalloc.  Please read doc/developers/dependencies.adoc for further instructions." "$LINENO" 5
 fi
 
+for ac_func in talloc_set_memlimit \
+  _talloc_pooled_object
+
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+
 TALLOC_LIBS="${smart_lib}"
 TALLOC_LDFLAGS="${smart_ldflags}"
 
@@ -13482,21 +13497,6 @@ fi
 if test "x$ax_cv_cc_c11_generic" != "xyes"; then
   as_fn_error $? "FreeRADIUS requires support for the C11 _Generic keyword" "$LINENO" 5
 fi
-
-
-for ac_func in talloc_set_memlimit \
-  talloc_pooled_object
-
-do :
-  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
-ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
-if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
-  cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
-_ACEOF
-
-fi
-done
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for crypt in -lcrypt" >&5

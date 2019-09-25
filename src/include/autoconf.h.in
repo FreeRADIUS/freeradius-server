@@ -512,9 +512,6 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
-/* Define to 1 if you have the `talloc_pooled_object' function. */
-#undef HAVE_TALLOC_POOLED_OBJECT
-
 /* Define to 1 if you have the `talloc_set_memlimit' function. */
 #undef HAVE_TALLOC_SET_MEMLIMIT
 
@@ -550,6 +547,9 @@
 
 /* Define to 1 if you have the <winsock.h> header file. */
 #undef HAVE_WINSOCK_H
+
+/* Define to 1 if you have the `_talloc_pooled_object' function. */
+#undef HAVE__TALLOC_POOLED_OBJECT
 
 /* compiler specific 128 bit unsigned integer */
 #undef HAVE___UINT128_T
