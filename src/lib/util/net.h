@@ -171,14 +171,14 @@ static inline void fr_put_be16(uint8_t a[static sizeof(uint16_t)], uint16_t val)
 
 static inline void fr_put_be32(uint8_t a[static sizeof(uint32_t)], uint32_t val)
 {
-	fr_put_be16(a, (uint16_t) ((val >> 16) & 0xffff));
-	fr_put_be16(a + sizeof(uint16_t), (uint16_t) (val & 0xffff));
+	fr_put_be16(a, (uint16_t) (val >> 16));
+	fr_put_be16(a + sizeof(uint16_t), (uint16_t) val);
 }
 
 static inline void fr_put_be64(uint8_t a[static sizeof(uint64_t)], uint64_t val)
 {
-	fr_put_be32(a, (uint32_t) ((val >> 32) & 0xffffffff));
-	fr_put_be32(a + sizeof(uint32_t), (uint32_t) (val & 0xffffffff));
+	fr_put_be32(a, (uint32_t) (val >> 32));
+	fr_put_be32(a + sizeof(uint32_t), (uint32_t) val);
 }
 
 static inline uint16_t fr_get_be16(uint8_t const a[static sizeof(uint16_t)])
