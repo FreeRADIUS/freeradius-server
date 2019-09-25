@@ -158,6 +158,8 @@ unlang_resume_t *unlang_interpret_resume_alloc(REQUEST *request, void *resume, v
 	 *	Replaces the current stack frame with a RESUME frame.
 	 */
 	frame->instruction = unlang_resume_to_generic(mr);
+	frame->process = unlang_ops[frame->instruction->type].func;
+	frame->signal = unlang_ops[frame->instruction->type].signal;
 	repeatable_set(frame);
 
 	return mr;
@@ -260,6 +262,15 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 	frame->uflags = UNWIND_FLAG_NONE;
 	if (top_frame) top_frame_set(frame);
 	frame->instruction = instruction;
+
+	/*
+	 *	There's no instruction for the top frame.
+	 */
+	if (instruction) {
+		frame->process = unlang_ops[instruction->type].func;
+		frame->signal = unlang_ops[instruction->type].signal;
+	}
+
 	frame->result = default_rcode;
 	frame->priority = -1;
 	frame->state = NULL;
@@ -411,7 +422,11 @@ static inline void frame_next(unlang_stack_frame_t *frame)
 {
 	frame_cleanup(frame);
 	frame->instruction = frame->next;
-	if (frame->instruction) frame->next = frame->instruction->next;
+	if (frame->instruction) {
+		frame->process = unlang_ops[frame->instruction->type].func;
+		frame->signal = unlang_ops[frame->instruction->type].signal;
+		frame->next = frame->instruction->next;
+	}
 }
 
 /** Pop a stack frame, removing any associated dynamically allocated state
@@ -507,7 +522,8 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
 			unlang_ops[instruction->type].name);
 
-		action = unlang_ops[instruction->type].func(request, result, priority);
+		rad_assert(frame->process != NULL);
+		action = frame->process(request, result, priority);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_action_table, action, "<INVALID>"), *priority);

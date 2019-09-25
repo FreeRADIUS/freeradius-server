@@ -250,6 +250,9 @@ typedef struct {
 	unlang_t		*instruction;			//!< The unlang node we're evaluating.
 	unlang_t		*next;				//!< The next unlang node we will evaluate
 
+	unlang_op_call_t	process;			//!< function to call for processing this stack frame
+	unlang_op_signal_t	signal;				//!< function to call when signalling this stack frame
+
 	/** Stack frame specialisations
 	 *
 	 * These store extra (mutable) state data, for the immutable (#unlang_t)
