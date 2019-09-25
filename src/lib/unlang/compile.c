@@ -35,6 +35,7 @@ RCSID("$Id$")
  * actions */
 fr_table_num_sorted_t const mod_rcode_table[] = {
 	{ "...",        RLM_MODULE_UNKNOWN      },
+	{ "disallow",   RLM_MODULE_DISALLOW     },
 	{ "fail",       RLM_MODULE_FAIL		},
 	{ "handled",    RLM_MODULE_HANDLED      },
 	{ "invalid",    RLM_MODULE_INVALID      },
@@ -43,7 +44,6 @@ fr_table_num_sorted_t const mod_rcode_table[] = {
 	{ "ok",	 	RLM_MODULE_OK		},
 	{ "reject",     RLM_MODULE_REJECT       },
 	{ "updated",    RLM_MODULE_UPDATED      },
-	{ "disallow",   RLM_MODULE_DISALLOW     },
 	{ "yield",      RLM_MODULE_YIELD	}
 };
 size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);
