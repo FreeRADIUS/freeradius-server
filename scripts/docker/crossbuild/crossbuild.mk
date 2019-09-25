@@ -57,23 +57,24 @@ crossbuild.info:
 crossbuild.help: crossbuild.info
 	@echo ""
 	@echo "Make targets:"
-	@echo "    crossbuild               - build and test all images"
-	@echo "    crossbuild.common        - build and test common images"
-	@echo "    crossbuild.info          - list images"
-	@echo "    crossbuild.down          - stop all containers"
-	@echo "    crossbuild.reset         - remove cache of docker state"
-	@echo "    crossbuild.clean         - down and reset all targets"
-	@echo "    crossbuild.wipe          - destroy all crossbuild Docker images"
+	@echo "    crossbuild                    - build and test all images"
+	@echo "    crossbuild.common             - build and test common images"
+	@echo "    crossbuild.info               - list images"
+	@echo "    crossbuild.down               - stop all containers"
+	@echo "    crossbuild.reset              - remove cache of docker state"
+	@echo "    crossbuild.clean              - down and reset all targets"
+	@echo "    crossbuild.wipe               - destroy all crossbuild Docker images"
 	@echo ""
 	@echo "Per-image targets:"
-	@echo "    crossbuild.IMAGE         - build and test image <IMAGE>"
-	@echo "    crossbuild.IMAGE.log     - show latest build log"
-	@echo "    crossbuild.IMAGE.up      - start container"
-	@echo "    crossbuild.IMAGE.down    - stop container"
-	@echo "    crossbuild.IMAGE.sh      - shell in container"
-	@echo "    crossbuild.IMAGE.refresh - push latest commits into container"
-	@echo "    crossbuild.IMAGE.clean   - stop container and tidy up"
-	@echo "    crossbuild.IMAGE.wipe    - remove Docker image"
+	@echo "    crossbuild.IMAGE              - build and test image <IMAGE>"
+	@echo "    crossbuild.IMAGE.log          - show latest build log"
+	@echo "    crossbuild.IMAGE.up           - start container"
+	@echo "    crossbuild.IMAGE.down         - stop container"
+	@echo "    crossbuild.IMAGE.sh           - shell in container"
+	@echo "    crossbuild.IMAGE.refresh      - push latest commits into container"
+	@echo "    crossbuild.IMAGE.clean        - stop container and tidy up"
+	@echo "    crossbuild.IMAGE.wipe         - remove Docker image"
+	@echo "    crossbuild.IMAGE.test-systemd - Perform some tests using systemd"
 
 #
 #  Remove stamp files, so that we try and create images again
@@ -210,6 +211,74 @@ crossbuild.${1}.refresh: $(DD)/docker.refresh.${1}
 #
 .PHONY: crossbuild.${1}
 crossbuild.${1}: $(DD)/docker.run.${1}
+
+#########################################################
+#                Systemd Statements
+#########################################################
+
+#
+#  Build the docker image for systemd test
+#
+$(DD)/stamp-image.${1}.test-systemd:
+	${Q}if [ ! -f $(DT)/build-${1}/Dockerfile.systemd ]; then \
+			echo "ERROR: Not found $(DT)/build-${1}/Dockerfile.systemd";\
+			exit 1;\
+		fi
+	${Q}echo "BUILD SYSTEMD ${1} ($(CB_IPREFIX)/${1}.test-systemd) > $(DD)/build.${1}.test-systemd"
+	${Q}docker build $(DT)/build-${1} -f $(DT)/build-${1}/Dockerfile.systemd -t $(CB_IPREFIX)/${1}-test-systemd >$(DD)/build.${1}.test-systemd 2>&1
+	${Q}touch $(DD)/stamp-image.${1}.test-systemd
+
+#
+#  Start up the docker container for systemd test
+#
+.PHONY: $(DD)/docker.up.${1}.test-systemd
+$(DD)/docker.up.${1}.test-systemd: $(DD)/stamp-image.${1}.test-systemd
+	${Q}echo "START ${1} ($(CB_CPREFIX)${1}-test-systemd)"
+	${Q}docker container inspect $(CB_CPREFIX)${1}-test-systemd >/dev/null 2>&1 || \
+		docker run -d \
+		--privileged --cap-add=ALL \
+		-v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+		--mount=type=bind,source="$(GITDIR)",destination=/srv/src,ro \
+		--name $(CB_CPREFIX)${1}-test-systemd $(CB_IPREFIX)/${1}-test-systemd
+	${Q}sleep 2
+
+$(DD)/stamp-up.${1}.test-systemd: $(DD)/docker.up.${1}.test-systemd
+	${Q}touch $(DD)/stamp-up.${1}.test-systemd
+
+.PHONY: crossbuild.${1}.up.test-systemd
+crossbuild.${1}.up.test-systemd: $(DD)/stamp-up.${1}.test-systemd
+
+#
+#  Wipe the docker container for systemd test
+#
+.PHONY: crossbuild.${1}.test-systemd.wipe
+crossbuild.${1}.test-systemd.wipe:
+	${Q}echo "WIPE $(CB_CPREFIX)${1}-test-systemd"
+	${Q}docker container kill $(CB_CPREFIX)${1}-test-systemd 1> /dev/null 2>&1 || true
+	${Q}docker container rm -f $(CB_CPREFIX)${1}-test-systemd 1> /dev/null 2>&1 || true
+	@rm -f $(DD)/stamp-up.${1}.test-systemd
+
+#
+#  Run tests in the container
+#
+.PHONY: $(DD)/docker.test-systemd.${1}
+$(DD)/docker.test-systemd.${1}: $(DD)/stamp-up.${1}.test-systemd
+# Get the commands by OS
+# Refresh the local files
+	${Q}echo "REFRESHING $(CB_CPREFIX)${1}-test-systemd"
+	${Q}docker container exec $(CB_CPREFIX)${1}-test-systemd sh -c 'rsync -a /srv/src/ /srv/local-src/'
+	${Q}docker container exec $(CB_CPREFIX)${1}-test-systemd sh -c 'git config -f /srv/local-src/config core.bare true'
+	${Q}docker container exec $(CB_CPREFIX)${1}-test-systemd sh -c 'git config -f /srv/local-src/config --unset core.worktree || true'
+	${Q}docker container exec $(CB_CPREFIX)${1}-test-systemd sh -c 'rm -rf /srv/build; git clone /srv/local-src /srv/build'
+	${Q}docker container exec $(CB_CPREFIX)${1}-test-systemd sh -c '(cd /srv/build && git clean -fdx .)' 1> /dev/null 2>&1
+	${Q}echo "CALLING TEST SCRIPT: /srv/build/scripts/docker/crossbuild/test-systemd.sh $(CB_CPREFIX)${1}-test-systemd"
+	${Q}docker container exec $(CB_CPREFIX)${1}-test-systemd sh -c '/srv/build/scripts/docker/crossbuild/test-systemd.sh /srv/build'
+
+#
+#  Run basic tests over systemd
+#
+.PHONY: crossbuild.${1}.test-systemd
+crossbuild.${1}.test-systemd: $(DD)/docker.test-systemd.${1} crossbuild.${1}.test-systemd.wipe
 endef
 
 #
