@@ -183,7 +183,7 @@ static inline void fr_put_be64(uint8_t a[static sizeof(uint64_t)], uint64_t val)
 
 static inline uint16_t fr_get_be16(uint8_t const a[static sizeof(uint16_t)])
 {
-	return (a[0] << 8) | a[1];
+	return (((uint16_t) a[0]) << 8) | a[1];
 }
 
 static inline uint32_t fr_get_be32(uint8_t const a[static sizeof(uint32_t)])
