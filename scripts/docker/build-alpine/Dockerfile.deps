@@ -1,0 +1,40 @@
+ARG from=alpine:latest
+FROM ${from}
+
+#
+#  Install build tools
+#
+RUN apk update
+RUN apk add git gcc make rsync
+
+#
+#  Create build directory
+#
+RUN mkdir -p /usr/local/src/repositories
+WORKDIR /usr/local/src/repositories
+
+#
+#  Shallow clone the FreeRADIUS source
+#
+ARG source=https://github.com/FreeRADIUS/freeradius-server.git
+ARG release=v3.0.x
+
+RUN git clone --depth 1 --single-branch --branch ${release} ${source}
+WORKDIR freeradius-server
+
+#
+#  Install build dependencies
+#
+# essential
+RUN apk add libc-dev talloc-dev
+RUN apk add openssl openssl-dev
+RUN apk add linux-headers
+# general
+RUN apk add pcre-dev libidn-dev krb5-dev samba-dev curl-dev json-c-dev
+RUN apk add openldap-dev unbound-dev
+# languages
+RUN apk add ruby-dev perl-dev python2-dev
+# databases
+RUN apk add hiredis-dev libmemcached-dev gdbm-dev libcouchbase-dev
+# sql
+RUN apk add postgresql-dev mariadb-dev unixodbc-dev sqlite-dev
