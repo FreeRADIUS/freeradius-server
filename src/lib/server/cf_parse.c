@@ -153,12 +153,18 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		return -1;
 	}
 
-	rad_assert(cp->value);
+	/*
+	 *	Catch crazy errors.
+	 */
+	if (!cp->value) {
+		cf_log_err(cp, "Configuration pair \"%s\" must have a value", cf_pair_attr(cp));
+		return -1;
+	}
 
 	/*
 	 *	Check for zero length strings
 	 */
-	if (((!cp->value || cp->value[0] == '\0')) && cant_be_empty) {
+	if ((cp->value[0] == '\0') && cant_be_empty) {
 		cf_log_err(cp, "Configuration pair \"%s\" must not be empty (zero length)", cf_pair_attr(cp));
 		if (!required) cf_log_err(cp, "Comment item to silence this message");
 		rcode = -1;
