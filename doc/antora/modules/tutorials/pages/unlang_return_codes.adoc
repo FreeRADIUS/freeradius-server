@@ -1,8 +1,8 @@
 = Module return codes
 
-*Goal:* Create and use policies for abstracting business logic
+*Goal:* Explore uses of return codes and return code overrides
 
-*Time:* 10-20 minutes
+*Time:* 10-15 minutes
 
 *File:*
 
@@ -10,4 +10,59 @@
 
 *`man` page:* unlang
 
+- xref:unlang:condition/index.adoc[Conditional Expressions]
+- xref:unlang:return_codes[Return Codes]
+- xref:unlang:condition/return_code.adoc[The Return Code Operator]
+- xref:raddb:mods-available/always.adoc[The Always Module]
+- xref:raddb:mods-available/sometimes.adoc[The Sometimes Module]
+
 include::partial$unlang_start.adoc[]
+
+The server includes a number of instances of the
+xref:raddb:mods-available/always.adoc[always] module.  These are used to set
+return codes during policy evaluation.
+
+For example, if the `ok` always module instance is called, the `ok` return code
+will be returned, and subject too priority comparisons, will be set as the
+return code for the request.
+
+One of the most common reasons for overriding return codes is to implement
+special behaviour on failure.
+
+To minimise external dependencies, for this exercise we will use the
+xref:raddb:mods-available/sometimes.adoc[sometimes] module to simulate an
+unreliable external database.
+
+This module will return a specified xref:unlang:return_codes[return code] 50%
+of the time.
+
+Create an instance of the sometimes module called `bad_ldap`.
+
+Add unlang statements such that if the module returns `noop`, then a
+`&control:Cleartext-Password = 'hello'` attribute pair is added to the request,
+and the return code is set to `updated`.
+
+Run three test requests using `bob.sh`, you should see that at least one request
+fails (though it may not as sometimes is truly random).
+
+Now add a policy to handle the `fail` return code of the sometimes module by
+executing the `files` module to provide an alternative source of credentials.
+
+[TIP]
+====
+You may need to modify the return code priorities of the
+xref:raddb:mods-available/sometimes.adoc[somtimes] module.
+====
+
+If the policies are correct you will see that FreeRADIUS returns an
+`Access-Accept` 100% of the time.
+
+1.  Why might you need to override the return code priorities of the
+    sometimes module?
+2.  Looking through the unlang keyword list, do you see any of keywords
+    that might produce similar fail-over behaviour as the behaviour
+    configured above xref:unlang:keywords.adoc[Keywords].
+
+
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
