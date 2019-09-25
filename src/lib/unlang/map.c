@@ -63,48 +63,56 @@ typedef struct {
 	fr_value_box_t		*src_result;			//!< Result of expanding the map source.
 } unlang_frame_state_map_proc_t;
 
-/** Execute an update block
- *
- * Update blocks execute in two phases, first there's an evaluation phase where
- * each input map is evaluated, outputting one or more modification maps. The modification
- * maps detail a change that should be made to a list in the current request.
- * The request is not modified during this phase.
- *
- * The second phase applies those modification maps to the current request.
- * This re-enables the atomic functionality of update blocks provided in v2.x.x.
- * If one map fails in the evaluation phase, no more maps are processed, and the current
- * result is discarded.
- */
-static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_update_apply(REQUEST *request, rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
-	unlang_group_t			*g = unlang_generic_to_group(instruction);
 	unlang_frame_state_update_t	*update_state = frame->state;
-	vp_map_t			*map;
+	vp_list_mod_t const		*vlm;
 
 	/*
-	 *	Initialise the frame state
+	 *	No modifications...
 	 */
-	if (!is_repeatable(frame)) {
-#ifdef HAVE_TALLOC_POOLED_OBJECT
-		int cnt = 0;
-		for (map = g->map; map; map = map->next) cnt++;
-
-		MEM(frame->state = update_state = talloc_pooled_object(stack, unlang_frame_state_update_t,
-								       (sizeof(vp_map_t) +
-								       (sizeof(vp_tmpl_t) * 2) + 128),
-								       cnt));	/* 128 is for string buffers */
-
-#else
-		MEM(frame->state = update_state = talloc_zero(stack, unlang_frame_state_update_t));
-#endif
-
-		fr_cursor_init(&update_state->maps, &g->map);
-		update_state->vlm_next = &update_state->vlm_head;
-		repeatable_set(frame);
+	if (!update_state->vlm_head) {
+		RDEBUG2("Nothing to update");
+		goto done;
 	}
+
+	/*
+	 *	Apply the list of modifications.  This should not fail
+	 *	except on memory allocation error.
+	 */
+	for (vlm = update_state->vlm_head;
+	     vlm;
+	     vlm = vlm->next) {
+		int ret;
+
+		ret = map_list_mod_apply(request, vlm);
+		if (!fr_cond_assert(ret == 0)) {
+			TALLOC_FREE(frame->state);
+
+			*presult = RLM_MODULE_FAIL;
+			*priority = instruction->actions[*presult];
+
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+	}
+
+done:
+	*presult = RLM_MODULE_NOOP;
+	*priority = instruction->actions[*presult];
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presult, int *priority)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_frame_state_update_t	*update_state = frame->state;
+	vp_map_t			*map;
 
 	/*
 	 *	Iterate over the maps producing a set of modifications to apply.
@@ -133,8 +141,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 			case TMPL_TYPE_XLAT:
 				rad_assert(0);
 			error:
-				talloc_list_free(&update_state->lhs_result);
-				talloc_list_free(&update_state->rhs_result);
+				TALLOC_FREE(frame->state);
 
 				*presult = RLM_MODULE_FAIL;
 				*priority = instruction->actions[*presult];
@@ -205,36 +212,53 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 		}
 	};
 
-	/*
-	 *	No modifications...
-	 */
-	if (!update_state->vlm_head) {
-		RDEBUG2("Nothing to update");
-		goto done;
-	}
+	frame->process = unlang_update_apply;
+	return unlang_update_apply(request, presult, priority);
+}
+
+
+/** Execute an update block
+ *
+ * Update blocks execute in two phases, first there's an evaluation phase where
+ * each input map is evaluated, outputting one or more modification maps. The modification
+ * maps detail a change that should be made to a list in the current request.
+ * The request is not modified during this phase.
+ *
+ * The second phase applies those modification maps to the current request.
+ * This re-enables the atomic functionality of update blocks provided in v2.x.x.
+ * If one map fails in the evaluation phase, no more maps are processed, and the current
+ * result is discarded.
+ */
+static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int *priority)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_group_t			*g = unlang_generic_to_group(instruction);
+	unlang_frame_state_update_t	*update_state = frame->state;
 
 	/*
-	 *	Apply the list of modifications.  This should not fail
-	 *	except on memory allocation error.
+	 *	Initialise the frame state
 	 */
-	{
-		vp_list_mod_t const *vlm;
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	int cnt = 0;
+	for (map = g->map; map; map = map->next) cnt++;
 
-		for (vlm = update_state->vlm_head;
-		     vlm;
-		     vlm = vlm->next) {
-			int ret;
+	MEM(frame->state = update_state = talloc_pooled_object(stack, unlang_frame_state_update_t,
+							       (sizeof(vp_map_t) +
+								(sizeof(vp_tmpl_t) * 2) + 128),
+							       cnt));	/* 128 is for string buffers */
 
-			ret = map_list_mod_apply(request, vlm);
-			if (!fr_cond_assert(ret == 0)) goto error;
-		}
+#else
+	MEM(frame->state = update_state = talloc_zero(stack, unlang_frame_state_update_t));
+#endif
 
-	}
-done:
-	*presult = RLM_MODULE_NOOP;
-	*priority = instruction->actions[*presult];
+	fr_cursor_init(&update_state->maps, &g->map);
+	update_state->vlm_next = &update_state->vlm_head;
+	repeatable_set(frame);
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	frame->process = unlang_update_create;
+	return unlang_update_create(request, presult, priority);
 }
 
 static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, int *priority)
