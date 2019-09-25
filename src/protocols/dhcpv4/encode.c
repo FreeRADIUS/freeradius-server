@@ -114,7 +114,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
@@ -122,6 +122,24 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		if (len < 0) return -2;
 		if (need > 0) return -1;
 		p += len;
+		break;
+
+	case FR_TYPE_IPV6_PREFIX:
+		if (outlen < (1 + sizeof(vp->vp_ipv6addr))) {
+			return -1;
+		}
+		*(p++) = vp->vp_ip.prefix;
+		memcpy(p, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		p += sizeof(vp->vp_ipv6addr);
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+		if (outlen < sizeof(vp->vp_ipv6addr)) {
+			return -1;
+		}
+
+		memcpy(p, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		p += sizeof(vp->vp_ipv6addr);
 		break;
 
 	default:
