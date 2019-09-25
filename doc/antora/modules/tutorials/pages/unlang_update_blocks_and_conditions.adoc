@@ -71,5 +71,5 @@ you may use those, otherwise continue until you have packets that will match:
     to a task than unlang?
 3.  Can you think of any efficiencies the users module might have over
     multiple conditions, where policies are being assigned to many different
-    users.
+    users?
 
