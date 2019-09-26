@@ -130,8 +130,8 @@ void unlang_function_init(void)
 				.name = "function",
 				.func = unlang_function_call,
 				.debug_braces = false,
-			        .frame_inst_size = sizeof(unlang_frame_state_func_t),
-				.frame_inst_name = "unlang_frame_state_func_t",
+			        .frame_state_size = sizeof(unlang_frame_state_func_t),
+				.frame_state_name = "unlang_frame_state_func_t",
 			   });
 
 }

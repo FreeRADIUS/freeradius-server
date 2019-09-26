@@ -228,9 +228,9 @@ static inline void frame_setup(unlang_stack_t *stack, unlang_stack_frame_t *fram
 	/*
 	 *	The frame needs to track state.  Do so here.
 	 */
-	if (op->frame_inst_size) {
-		MEM(frame->state = talloc_zero_array(stack, uint8_t, op->frame_inst_size));
-		talloc_set_name_const(frame->state, op->frame_inst_name);
+	if (op->frame_state_size) {
+		MEM(frame->state = talloc_zero_array(stack, uint8_t, op->frame_state_size));
+		talloc_set_name_const(frame->state, op->frame_state_name);
 	}
 }
 

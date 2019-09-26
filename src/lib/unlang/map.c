@@ -370,7 +370,7 @@ void unlang_map_init(void)
 			   &(unlang_op_t){
 				.name = "map",
 				.func = unlang_map_state_init,
-				.frame_inst_size = sizeof(unlang_frame_state_map_proc_t),
-				.frame_inst_name = "unlang_frame_state_map_proc_t",
+				.frame_state_size = sizeof(unlang_frame_state_map_proc_t),
+				.frame_state_name = "unlang_frame_state_map_proc_t",
 			   });
 }

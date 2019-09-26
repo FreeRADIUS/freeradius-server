@@ -292,8 +292,8 @@ void unlang_load_balance_init(void)
 				.name = "load-balance group",
 				.func = unlang_load_balance,
 				.debug_braces = true,
-			        .frame_inst_size = sizeof(unlang_frame_state_redundant_t),
-				.frame_inst_name = "unlang_frame_state_redundant_t",
+			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
+				.frame_state_name = "unlang_frame_state_redundant_t",
 			   });
 
 	unlang_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
@@ -301,7 +301,7 @@ void unlang_load_balance_init(void)
 				.name = "redundant-load-balance group",
 				.func = unlang_redundant_load_balance,
 				.debug_braces = true,
-			        .frame_inst_size = sizeof(unlang_frame_state_redundant_t),
-				.frame_inst_name = "unlang_frame_state_redundant_t",
+			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
+				.frame_state_name = "unlang_frame_state_redundant_t",
 			   });
 }
