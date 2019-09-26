@@ -398,11 +398,6 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 	}
 
 	/*
-	 *	Reset this...
-	 */
-	instruction = frame->instruction;
-
-	/*
 	 *	Run the various children.  On the off chance they're
 	 *	all done, free things, and return.
 	 */
