@@ -259,17 +259,16 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 		frame->next = NULL;
 	}
 
-	frame->instruction = instruction;
 	frame->uflags = UNWIND_FLAG_NONE;
+	if (top_frame) top_frame_set(frame);
+	frame->instruction = instruction;
 
 	/*
 	 *	There's no instruction for the top frame.
 	 */
-	if (!top_frame) {
+	if (instruction) {
 		frame->process = unlang_ops[instruction->type].func;
 		frame->signal = unlang_ops[instruction->type].signal;
-	} else {
-		top_frame_set(frame);
 	}
 
 	frame->result = default_rcode;
@@ -423,11 +422,12 @@ static inline void frame_next(unlang_stack_frame_t *frame)
 {
 	frame_cleanup(frame);
 	frame->instruction = frame->next;
-	if (frame->instruction) {
-		frame->process = unlang_ops[frame->instruction->type].func;
-		frame->signal = unlang_ops[frame->instruction->type].signal;
-		frame->next = frame->instruction->next;
-	}
+
+	if (!frame->instruction) return;
+
+	frame->process = unlang_ops[frame->instruction->type].func;
+	frame->signal = unlang_ops[frame->instruction->type].signal;
+	frame->next = frame->instruction->next;
 }
 
 /** Pop a stack frame, removing any associated dynamically allocated state
