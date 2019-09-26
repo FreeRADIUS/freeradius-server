@@ -39,6 +39,12 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 
 	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 
+#ifdef __clang_analyzer__
+	if (!redundant->found) {
+		*presult = RLM_MODULE_FAIL:
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+#endif
 	/*
 	 *	Set up the first round versus subsequent ones.
 	 */
@@ -90,7 +96,6 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 	 *	modules in the unlang_frame_state_redundant_t
 	 *	structure.
 	 */
-	rad_assert(redundant->child != NULL);
 	redundant->child = redundant->child->next;
 	if (!redundant->child) redundant->child = g->children;
 
