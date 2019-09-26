@@ -63,7 +63,16 @@ typedef struct {
 	fr_value_box_t		*src_result;			//!< Result of expanding the map source.
 } unlang_frame_state_map_proc_t;
 
-static unlang_action_t unlang_update_apply(REQUEST *request, rlm_rcode_t *presult)
+/** Apply a list of modifications on one or more VALUE_PAIR lists.
+ *
+ * @param[in] request	The current request.
+ * @param[out] presult	The rcode indicating what the result
+ *      		of the operation was.
+ * @return
+ *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
+ *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
+ */
+static unlang_action_t list_mod_apply(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -101,7 +110,16 @@ done:
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presult)
+/** Create a list of modifications to apply to one or more VALUE_PAIR lists
+ *
+ * @param[in] request	The current request.
+ * @param[out] presult	The rcode indicating what the result
+ *      		of the operation was.
+ * @return
+ *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
+ *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
+ */
+static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -205,8 +223,7 @@ static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presu
 		}
 	};
 
-	frame->process = unlang_update_apply;
-	return unlang_update_apply(request, presult);
+	return list_mod_apply(request, presult);
 }
 
 
@@ -222,13 +239,13 @@ static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presu
  * If one map fails in the evaluation phase, no more maps are processed, and the current
  * result is discarded.
  */
-static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_update_state_init(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
-	unlang_frame_state_update_t	*update_state = frame->state;
+	unlang_frame_state_update_t	*update_state;
 
 	/*
 	 *	Initialise the frame state
@@ -253,11 +270,14 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult)
 	update_state->vlm_next = &update_state->vlm_head;
 	repeatable_set(frame);
 
-	frame->process = unlang_update_create;
-	return unlang_update_create(request, presult);
+	/*
+	 *	Call list_mod_create
+	 */
+	frame->process = list_mod_create;
+	return list_mod_create(request, presult);
 }
 
-static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -326,20 +346,20 @@ void unlang_map_init(void)
 	unlang_register(UNLANG_TYPE_FILTER,
 			   &(unlang_op_t){
 				.name = "filter",
-				.func = unlang_update,
+				.func = unlang_update_state_init,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_UPDATE,
 			   &(unlang_op_t){
 				.name = "update",
-				.func = unlang_update,
+				.func = unlang_update_state_init,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_MAP,
 			   &(unlang_op_t){
 				.name = "map",
-				.func = unlang_map,
+				.func = unlang_map_state_init,
 			   });
 }
