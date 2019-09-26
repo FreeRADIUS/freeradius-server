@@ -93,9 +93,13 @@ typedef struct {
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.
 
-	size_t			frame_state_size;       		//!< size of instance data in the stack frame
+	size_t			frame_state_size;       	//!< size of instance data in the stack frame
 
 	char const		*frame_state_name;		//!< talloc name of the frame instance data
+
+	size_t			frame_state_pool_objects;	//!< How many sub-allocations we expect.
+
+	size_t			frame_state_pool_size;		//!< The total size of the pool to alloc.
 } unlang_op_t;
 
 void		unlang_interpret_push_function(REQUEST *request,

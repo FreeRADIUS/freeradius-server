@@ -215,10 +215,10 @@ uint64_t unlang_interpret_active_callers(unlang_t *instruction)
 	return active_callers;
 }
 
-static inline void frame_setup(unlang_stack_t *stack, unlang_stack_frame_t *frame)
+static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t *frame)
 {
-	unlang_t *instruction = frame->instruction;
-	unlang_op_t *op;
+	unlang_t	*instruction = frame->instruction;
+	unlang_op_t	*op;
 
 	op = &unlang_ops[instruction->type];
 
@@ -229,8 +229,19 @@ static inline void frame_setup(unlang_stack_t *stack, unlang_stack_frame_t *fram
 	 *	The frame needs to track state.  Do so here.
 	 */
 	if (op->frame_state_size) {
-		MEM(frame->state = talloc_zero_array(stack, uint8_t, op->frame_state_size));
-		talloc_set_name_const(frame->state, op->frame_state_name);
+		char const *name = op->frame_state_name ? op->frame_state_name : __location__;
+
+#ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
+		if (op->frame_state_pool_size) {
+			MEM(frame->state = _talloc_zero_pooled_object(stack,
+								      op->frame_state_size, name,
+								      op->frame_state_pool_objects,
+								      op->frame_state_pool_size));
+		}
+#endif
+		else {
+			MEM(frame->state = _talloc_zero(stack, op->frame_state_size, name));
+		}
 	}
 }
 
@@ -288,7 +299,7 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 
 	if (!instruction) return;
 
-	frame_setup(stack, frame);
+	frame_state_init(stack, frame);
 }
 
 /** Update the current result after each instruction, and after popping each stack frame
@@ -442,7 +453,7 @@ static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame
 
 	frame->next = frame->instruction->next;
 
-	frame_setup(stack, frame);
+	frame_state_init(stack, frame);
 }
 
 /** Pop a stack frame, removing any associated dynamically allocated state
