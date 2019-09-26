@@ -42,9 +42,14 @@ int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 
 TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size);
 
+/*
+ *	Add variant that zeroes out newly allocated memory
+ */
 #ifdef HAVE__TALLOC_POOLED_OBJECT
-#define HAVE_TALLOC_ZERO_POOLED_OBJECT 1
-#define		talloc_zero_pooled_object(_ctx, _type, _num_subobjects, _total_subobjects_size) \
+#  define HAVE_TALLOC_ZERO_POOLED_OBJECT	1
+#  define HAVE_TALLOC_POOLED_OBJECT		1
+
+#  define	talloc_zero_pooled_object(_ctx, _type, _num_subobjects, _total_subobjects_size) \
 		(_type *)_talloc_zero_pooled_object((_ctx), sizeof(_type), #_type, \
 						    (_num_subobjects), (_total_subobjects_size))
 
@@ -60,9 +65,14 @@ static inline TALLOC_CTX *_talloc_zero_pooled_object(const void *ctx,
 	memset(new, 0, type_size);
 	return new;
 }
+/*
+ *	Fall back to non-pooled variants
+ */
 #else
-#define		talloc_zero_pooled_object(_ctx, _type, _num_subobjects, _total_subobjects_size) \
-					  talloc_zero(_ctx, _type)
+#  define	talloc_zero_pooled_object(_ctx, _type, _num_subobjects, _total_subobjects_size) \
+		talloc_zero(_ctx, _type)
+#  define	talloc_pooled_object(_ctx, _type, _num_subobjects, _total_subobjects_size) \
+		talloc(_ctx, _type)
 #endif
 
 char		*talloc_typed_strdup(TALLOC_CTX *ctx, char const *p);
