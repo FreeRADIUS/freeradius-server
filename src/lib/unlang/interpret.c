@@ -423,12 +423,11 @@ static inline void frame_next(unlang_stack_frame_t *frame)
 {
 	frame_cleanup(frame);
 	frame->instruction = frame->next;
-
-	if (!frame->instruction) return;
-
-	frame->process = unlang_ops[frame->instruction->type].func;
-	frame->signal = unlang_ops[frame->instruction->type].signal;
-	frame->next = frame->instruction->next;
+	if (frame->instruction) {
+		frame->process = unlang_ops[frame->instruction->type].func;
+		frame->signal = unlang_ops[frame->instruction->type].signal;
+		frame->next = frame->instruction->next;
+	}
 }
 
 /** Pop a stack frame, removing any associated dynamically allocated state
