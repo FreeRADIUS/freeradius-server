@@ -95,7 +95,7 @@ static unlang_action_t unlang_call_resume(REQUEST *request, rlm_rcode_t *presult
 }
 
 static unlang_action_t unlang_call(REQUEST *request,
-				   rlm_rcode_t *presult, int *ppriority)
+				   rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -103,7 +103,6 @@ static unlang_action_t unlang_call(REQUEST *request,
 	REQUEST				*child;
 
 	rlm_rcode_t			rcode;
-	int				priority;
 	unlang_resume_t			*mr;
 
 	unlang_group_t			*g;
@@ -193,11 +192,9 @@ static unlang_action_t unlang_call(REQUEST *request,
 	child = unlang_io_subrequest_alloc(request, dict, UNLANG_NORMAL_CHILD);
 	if (!child) {
 		rcode = RLM_MODULE_FAIL;
-		priority = instruction->actions[*presult];
 
 	calculate_result:
 		*presult = rcode;
-		*ppriority = priority;
 
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -260,7 +257,6 @@ static unlang_action_t unlang_call(REQUEST *request,
 		mr = unlang_interpret_resume_alloc(request, NULL, NULL, child);
 		if (!mr) {
 			rcode = RLM_MODULE_FAIL;
-			priority = instruction->actions[rcode];
 			goto calculate_result;
 		}
 

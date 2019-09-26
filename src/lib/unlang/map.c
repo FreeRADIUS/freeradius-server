@@ -63,11 +63,10 @@ typedef struct {
 	fr_value_box_t		*src_result;			//!< Result of expanding the map source.
 } unlang_frame_state_map_proc_t;
 
-static unlang_action_t unlang_update_apply(REQUEST *request, rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_update_apply(REQUEST *request, rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_update_t	*update_state = frame->state;
 	vp_list_mod_t const		*vlm;
 
@@ -93,16 +92,12 @@ static unlang_action_t unlang_update_apply(REQUEST *request, rlm_rcode_t *presul
 			TALLOC_FREE(frame->state);
 
 			*presult = RLM_MODULE_FAIL;
-			*priority = instruction->actions[*presult];
-
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
 
 done:
 	*presult = RLM_MODULE_NOOP;
-	*priority = instruction->actions[*presult];
-
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -110,7 +105,6 @@ static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presu
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_update_t	*update_state = frame->state;
 	vp_map_t			*map;
 
@@ -144,7 +138,6 @@ static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presu
 				TALLOC_FREE(frame->state);
 
 				*presult = RLM_MODULE_FAIL;
-				*priority = instruction->actions[*presult];
 
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
@@ -264,7 +257,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 	return unlang_update_create(request, presult, priority);
 }
 
-static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -290,8 +283,6 @@ static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, int *p
 				REDEBUG("Failed expanding map src");
 			error:
 				*presult = RLM_MODULE_FAIL;
-				*priority = instruction->actions[*presult];
-
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
 			break;

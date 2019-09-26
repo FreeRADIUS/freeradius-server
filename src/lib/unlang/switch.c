@@ -183,7 +183,6 @@ static unlang_action_t unlang_case(REQUEST *request,
 
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
-		*priority = 0;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 

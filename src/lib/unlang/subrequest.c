@@ -132,7 +132,7 @@ static unlang_action_t unlang_subrequest_resume(REQUEST *request, rlm_rcode_t *p
 }
 
 static unlang_action_t unlang_subrequest(REQUEST *request,
-					 rlm_rcode_t *presult, int *ppriority)
+					 rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -141,7 +141,6 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	REQUEST				*child;
 
 	rlm_rcode_t			rcode;
-	int				priority;
 	unlang_resume_t			*mr;
 	VALUE_PAIR			*vp;
 
@@ -168,7 +167,6 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 		child = state->child = unlang_io_subrequest_alloc(request, g->dict, UNLANG_DETACHABLE);
 		if (!child) {
 			rcode = RLM_MODULE_FAIL;
-			priority = instruction->actions[*presult];
 
 		calculate_result:
 			/*
@@ -183,7 +181,6 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 			}
 
 			*presult = rcode;
-			*ppriority = priority;
 
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
@@ -245,9 +242,6 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 		}
 
 		rad_assert(rcode < NUM_ELEMENTS(instruction->actions));
-
-		priority = instruction->actions[rcode];
-
 		goto calculate_result;
 	}
 
@@ -282,8 +276,6 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 			if (child_frame->instruction) child_frame->next = child_frame->instruction->next;
 
 			rcode = RLM_MODULE_NOOP;
-			priority = 0;
-
 			goto calculate_result;
 		} /* else the child yielded, so we have to yield */
 	}
@@ -294,7 +286,6 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	mr = unlang_interpret_resume_alloc(request, NULL, NULL, child);
 	if (!mr) {
 		rcode = RLM_MODULE_FAIL;
-		priority = instruction->actions[rcode];
 		goto calculate_result;
 	}
 
@@ -303,7 +294,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 }
 
 unlang_action_t unlang_detach(REQUEST *request,
-				     rlm_rcode_t *presult, int *priority)
+				     rlm_rcode_t *presult, UNUSED int *priority)
 {
 	VALUE_PAIR		*vp;
 	unlang_stack_t		*stack = request->stack;
@@ -326,7 +317,6 @@ unlang_action_t unlang_detach(REQUEST *request,
 	if (request_detach(request, false) < 0) {
 		ERROR("Failed detaching child");
 		*presult = RLM_MODULE_FAIL;
-		*priority = 0;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 

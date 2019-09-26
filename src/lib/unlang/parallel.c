@@ -357,7 +357,7 @@ static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *pre
 }
 
 static unlang_action_t unlang_parallel(REQUEST *request,
-				       rlm_rcode_t *presult, int *priority)
+				       rlm_rcode_t *presult, UNUSED int *priority)
 {
 	int			i;
 	rlm_rcode_t		rcode;
@@ -372,7 +372,6 @@ static unlang_action_t unlang_parallel(REQUEST *request,
 
 	if (!g->num_children) {
 		*presult = RLM_MODULE_NOOP;
-		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -382,7 +381,6 @@ static unlang_action_t unlang_parallel(REQUEST *request,
 	state = talloc_zero_size(request, sizeof(unlang_parallel_t) + sizeof(state->children[0]) * g->num_children);
 	if (!state) {
 		*presult = RLM_MODULE_FAIL;
-		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	};
 
@@ -413,7 +411,6 @@ static unlang_action_t unlang_parallel(REQUEST *request,
 	if (rcode != RLM_MODULE_YIELD) {
 		talloc_free(state);
 		*presult = rcode;
-		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -423,7 +420,6 @@ static unlang_action_t unlang_parallel(REQUEST *request,
 	mr = unlang_interpret_resume_alloc(request, NULL, NULL, state);
 	if (!mr) {
 		*presult = RLM_MODULE_FAIL;
-		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 

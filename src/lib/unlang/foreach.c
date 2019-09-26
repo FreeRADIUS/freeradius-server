@@ -73,7 +73,7 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 }
 
 static unlang_action_t unlang_foreach_next(REQUEST *request,
-					   rlm_rcode_t *presult, int *priority)
+					   rlm_rcode_t *presult, UNUSED int *priority)
 {
 	VALUE_PAIR			*vp;
 	unlang_stack_t			*stack = request->stack;
@@ -89,7 +89,6 @@ static unlang_action_t unlang_foreach_next(REQUEST *request,
 	vp = fr_cursor_current(&foreach->cursor);
 	if (!vp) {
 		*presult = frame->result;
-		if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
 #ifndef NDEBUG
 		rad_assert(foreach->indent == request->log.unlang_indent);
 #endif
@@ -157,7 +156,6 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	if (foreach_depth >= (int)NUM_ELEMENTS(xlat_foreach_names)) {
 		REDEBUG("foreach Nesting too deep!");
 		*presult = RLM_MODULE_FAIL;
-		*priority = 0;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -170,7 +168,6 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	 */
 	if (tmpl_copy_vps(frame->state, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
 		*presult = RLM_MODULE_NOOP;
-		*priority = instruction->actions[RLM_MODULE_NOOP];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -189,7 +186,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	return unlang_foreach_next(request, presult, priority);
 }
 
-static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -198,7 +195,6 @@ static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult, int 
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
 	*presult = frame->result;
-	*priority = frame->priority;
 
 	/*
 	 *	Stop at the next break point, or if we hit

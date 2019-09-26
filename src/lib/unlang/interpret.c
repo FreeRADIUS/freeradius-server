@@ -604,8 +604,9 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		 *	the section rcode and priority.
 		 */
 		case UNLANG_ACTION_CALCULATE_RESULT:
-			/* Temporary fixup - ops should return the correct code */
 			if (*result == RLM_MODULE_YIELD) goto yield;
+
+			rad_assert(*result != RLM_MODULE_UNKNOWN);
 
 			repeatable_clear(frame);
 
@@ -624,6 +625,8 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 						fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"));
 				}
 			}
+
+			*priority = instruction->actions[*result];
 
 			if (result_calculate(request, frame, result, priority) == UNLANG_FRAME_ACTION_POP) {
 				return UNLANG_FRAME_ACTION_POP;
