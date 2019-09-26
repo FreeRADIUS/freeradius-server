@@ -252,15 +252,10 @@ static unlang_action_t unlang_update_state_init(REQUEST *request, rlm_rcode_t *p
 	 */
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
 	{
-		int		cnt = 0;
-		vp_map_t	*map;
-
-		for (map = g->map; map; map = map->next) cnt++;
-
 		MEM(frame->state = update_state = talloc_zero_pooled_object(stack, unlang_frame_state_update_t,
 									    (sizeof(vp_map_t) +
 									    (sizeof(vp_tmpl_t) * 2) + 128),
-									    cnt));	/* 128 is for string buffers */
+									    g->num_children));	/* 128 is for string buffers */
 	}
 #else
 	MEM(frame->state = update_state = talloc_zero(stack, unlang_frame_state_update_t));
