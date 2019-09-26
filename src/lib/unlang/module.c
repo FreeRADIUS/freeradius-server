@@ -645,11 +645,9 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult)
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		RWARN("Module %s became unblocked", sp->module_instance->module->name);
-		if (ms->presult) {
-			*ms->presult = rcode;
-		} else {
-			*presult = rcode;
-		}
+		if (ms->presult) *ms->presult = rcode;
+
+		*presult = rcode;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -684,13 +682,9 @@ done:
 	}
 
 	request->rcode = rcode;
-	if (ms->presult) {
-		*ms->presult = rcode;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (ms->presult) *ms->presult = rcode;
 
 	*presult = rcode;
-
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -777,13 +771,9 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	}
 
 	request->rcode = rcode;
-	if (ms->presult) {
-		*ms->presult = rcode;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (ms->presult) *ms->presult = rcode;
 
 	*presult = rcode;
-
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 

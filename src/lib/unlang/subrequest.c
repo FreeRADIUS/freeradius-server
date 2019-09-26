@@ -105,12 +105,9 @@ static unlang_action_t unlang_subrequest_resume(REQUEST *request, rlm_rcode_t *p
 		 *	use it to modify the current section
 		 *	rcode.
 		 */
-		if (state->presult) {
-			*state->presult = rcode;
-		} else {
-			*presult = rcode;
-		}
+		if (state->presult) *state->presult = rcode;
 
+		*presult = rcode;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -174,13 +171,9 @@ static unlang_action_t unlang_subrequest(REQUEST *request, rlm_rcode_t *presult)
 			 *	use it to modify the current section
 			 *	rcode.
 			 */
-			if (state->presult) {
-				*state->presult = rcode;
-				return UNLANG_ACTION_CALCULATE_RESULT;
-			}
+			if (state->presult) *state->presult = rcode;
 
 			*presult = rcode;
-
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
