@@ -71,7 +71,6 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 		if (redundant->child->actions[*presult] == MOD_ACTION_RETURN) {
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
-
 	}
 
 	/*
@@ -89,6 +88,7 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 	 *	modules in the unlang_frame_state_redundant_t
 	 *	structure.
 	 */
+	rad_assert(redundant->child != NULL);
 	redundant->child = redundant->child->next;
 	if (!redundant->child) redundant->child = g->children;
 
