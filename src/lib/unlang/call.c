@@ -194,7 +194,6 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 
 	calculate_result:
 		*presult = rcode;
-
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -224,6 +223,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 			       &child->control,
 			       request->control) < 0)) {
 		REDEBUG("failed copying lists to child");
+
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -270,13 +270,12 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	rcode = unlang_interpret_run(child);
 	if (rcode == RLM_MODULE_YIELD) goto yield;
 
-	*presult = frame->result = rcode;
 	fr_state_store_in_parent(child, instruction, 0);
 	unlang_subrequest_free(&child);
 
+	*presult = rcode;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
-
 
 
 void unlang_call_init(void)
