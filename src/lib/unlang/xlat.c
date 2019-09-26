@@ -275,6 +275,7 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 	}
 
 	rad_assert(0);
+	*presult = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -403,6 +404,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 
 	rad_assert(0);		/* Garbage xlat action */
 
+	*presult = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
