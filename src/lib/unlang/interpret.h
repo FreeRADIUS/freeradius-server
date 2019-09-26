@@ -92,6 +92,9 @@ typedef struct {
 
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.
+
+	size_t			frame_inst_size;       		//!< size of instance data in the stack frame
+	char const		*frame_inst_name;		//!< talloc name of the frame instance data
 } unlang_op_t;
 
 void		unlang_interpret_push_function(REQUEST *request,

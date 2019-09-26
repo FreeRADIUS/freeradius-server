@@ -285,7 +285,7 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 	 *	Initialise the frame state
 	 */
 	if (!is_repeatable(frame)) {
-		MEM(frame->state = map_proc_state = talloc_zero(stack, unlang_frame_state_map_proc_t));
+		map_proc_state = frame->state;
 		repeatable_set(frame);
 
 		/*
@@ -356,5 +356,7 @@ void unlang_map_init(void)
 			   &(unlang_op_t){
 				.name = "map",
 				.func = unlang_map_state_init,
+				.frame_inst_size = sizeof(unlang_frame_state_map_proc_t),
+				.frame_inst_name = "unlang_frame_state_map_proc_t",
 			   });
 }

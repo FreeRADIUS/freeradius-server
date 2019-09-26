@@ -215,6 +215,25 @@ uint64_t unlang_interpret_active_callers(unlang_t *instruction)
 	return active_callers;
 }
 
+static inline void frame_setup(unlang_stack_t *stack, unlang_stack_frame_t *frame)
+{
+	unlang_t *instruction = frame->instruction;
+	unlang_op_t *op;
+
+	op = &unlang_ops[instruction->type];
+
+	frame->process = op->func;
+	frame->signal = op->signal;
+
+	/*
+	 *	The frame needs to track state.  Do so here.
+	 */
+	if (op->frame_inst_size) {
+		MEM(frame->state = talloc_zero_array(stack, uint8_t, op->frame_inst_size));
+		talloc_set_name_const(frame->state, op->frame_inst_name);
+	}
+}
+
 /** Push a new frame onto the stack
  *
  * @param[in] request		to push the frame onto.
@@ -251,29 +270,25 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 	 *	Initialize the next stack frame.
 	 */
 	frame = &stack->frame[stack->depth];
+	memset(frame, 0, sizeof(*frame));
+
+	frame->instruction = instruction;
 
 	if (do_next_sibling) {
 		rad_assert(instruction != NULL);
 		frame->next = instruction->next;
-	} else {
-		frame->next = NULL;
 	}
+	/* else frame->next MUST be NULL */
 
 	frame->uflags = UNWIND_FLAG_NONE;
 	if (top_frame) top_frame_set(frame);
-	frame->instruction = instruction;
-
-	/*
-	 *	There's no instruction for the top frame.
-	 */
-	if (instruction) {
-		frame->process = unlang_ops[instruction->type].func;
-		frame->signal = unlang_ops[instruction->type].signal;
-	}
 
 	frame->result = default_rcode;
 	frame->priority = -1;
-	frame->state = NULL;
+
+	if (!instruction) return;
+
+	frame_setup(stack, frame);
 }
 
 /** Update the current result after each instruction, and after popping each stack frame
@@ -418,16 +433,16 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 /** Advance to the next sibling instruction
  *
  */
-static inline void frame_next(unlang_stack_frame_t *frame)
+static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame)
 {
 	frame_cleanup(frame);
 	frame->instruction = frame->next;
 
 	if (!frame->instruction) return;
 
-	frame->process = unlang_ops[frame->instruction->type].func;
-	frame->signal = unlang_ops[frame->instruction->type].signal;
 	frame->next = frame->instruction->next;
+
+	frame_setup(stack, frame);
 }
 
 /** Pop a stack frame, removing any associated dynamically allocated state
@@ -643,7 +658,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			break;
 		} /* switch over return code from the interpreter function */
 
-		frame_next(frame);
+		frame_next(stack, frame);
 	}
 
 	RDEBUG4("** [%i] %s - done current subsection with (%s %d)",
@@ -767,7 +782,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 					stack->depth, __FUNCTION__,
 					fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"),
 					priority);
-				frame_next(frame);
+				frame_next(stack, frame);
 			/*
 			 *	Else if we're really done with this frame
 			 *	print some helpful debug...

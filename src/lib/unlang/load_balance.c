@@ -119,7 +119,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 
 	RDEBUG4("%s setting up", frame->instruction->debug_name);
 
-	frame->state = redundant = talloc_zero(stack, unlang_frame_state_redundant_t);
+	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 
 	if (g->vpt) {
 		uint32_t hash, start;
@@ -291,13 +291,17 @@ void unlang_load_balance_init(void)
 			   &(unlang_op_t){
 				.name = "load-balance group",
 				.func = unlang_load_balance,
-				.debug_braces = true
+				.debug_braces = true,
+			        .frame_inst_size = sizeof(unlang_frame_state_redundant_t),
+				.frame_inst_name = "unlang_frame_state_redundant_t",
 			   });
 
 	unlang_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
 			   &(unlang_op_t){
 				.name = "redundant-load-balance group",
 				.func = unlang_redundant_load_balance,
-				.debug_braces = true
+				.debug_braces = true,
+			        .frame_inst_size = sizeof(unlang_frame_state_redundant_t),
+				.frame_inst_name = "unlang_frame_state_redundant_t",
 			   });
 }
