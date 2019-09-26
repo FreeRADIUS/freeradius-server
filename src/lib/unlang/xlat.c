@@ -267,6 +267,7 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
+		*presult = RLM_MODULE_OK;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
