@@ -51,6 +51,7 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 		 *	back to the found one, then we're done.
 		 */
 		if (redundant->child == redundant->found) {
+			/* DON'T change presult, as it is taken from the child */
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
@@ -69,6 +70,7 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 		 *	so.
 		 */
 		if (redundant->child->actions[*presult] == MOD_ACTION_RETURN) {
+			/* DON'T change presult, as it is taken from the child */
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
