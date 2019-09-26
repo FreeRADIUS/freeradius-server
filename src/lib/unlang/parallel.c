@@ -335,7 +335,6 @@ static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *pre
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 		frame->instruction->type = UNLANG_TYPE_PARALLEL; /* for debug purposes */
-		talloc_free(state);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -377,7 +376,7 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 	/*
 	 *	Allocate an array for the children.
 	 */
-	state = talloc_zero_size(request, sizeof(unlang_parallel_t) + sizeof(state->children[0]) * g->num_children);
+	frame->state = state = talloc_zero_size(request, sizeof(unlang_parallel_t) + sizeof(state->children[0]) * g->num_children);
 	if (!state) {
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -403,7 +402,6 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 	 */
 	rcode = unlang_parallel_run(request, state);
 	if (rcode != RLM_MODULE_YIELD) {
-		talloc_free(state);
 		*presult = rcode;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
