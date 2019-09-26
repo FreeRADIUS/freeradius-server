@@ -105,7 +105,7 @@ void unlang_interpret_push_function(REQUEST *request, unlang_function_t func, un
 	/*
 	 *	Push module's function
 	 */
-	unlang_interpret_push(request, &function_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false);
+	unlang_interpret_push(request, &function_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -115,10 +115,9 @@ void unlang_interpret_push_function(REQUEST *request, unlang_function_t func, un
 	if (repeat) repeatable_set(frame);
 
 	/*
-	 *	Allocate state
+	 *	Initialize state
 	 */
-	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_func_t));
-
+	state = frame->state;
 	state->func = func;
 	state->repeat = repeat;
 	state->uctx = uctx;
@@ -130,7 +129,9 @@ void unlang_function_init(void)
 			   &(unlang_op_t){
 				.name = "function",
 				.func = unlang_function_call,
-				.debug_braces = false
+				.debug_braces = false,
+			        .frame_inst_size = sizeof(unlang_frame_state_func_t),
+				.frame_inst_name = "unlang_frame_state_func_t",
 			   });
 
 }
