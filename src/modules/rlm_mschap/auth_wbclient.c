@@ -160,7 +160,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 		VALUE_PAIR	*vp_chap_user_name;
 		char		*normalised_username = NULL;
 
-		normalised_username = wbclient_normalise_username(request, wb_ctx, authparams.domain_name,
+		normalised_username = wbclient_normalise_username(authparams, wb_ctx, authparams.domain_name,
 								  authparams.account_name);
 		if (!normalised_username) goto release;
 
