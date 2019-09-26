@@ -143,13 +143,7 @@ static void mod_delay_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST
 
 	RDEBUG2("Cancelling delay");
 
-	/*
-	 *	One or the other, or both will be set.  But we don't
-	 *	know which ones.  So just delete both of them.
-	 */
 	(void) unlang_module_timeout_delete(request, rctx);
-
-	(void) unlang_xlat_event_timeout_delete(request, rctx);
 }
 
 static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)
@@ -222,7 +216,8 @@ static void xlat_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED vo
 
 	RDEBUG2("Cancelling delay");
 
-	if (!fr_cond_assert(unlang_module_timeout_delete(request, rctx) == 0)) return;
+
+	if (!fr_cond_assert(unlang_xlat_event_timeout_delete(request, rctx) == 0)) return;
 }
 
 static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
