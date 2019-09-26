@@ -37,10 +37,9 @@ extern "C" {
  *
  * @param[in] request		The current request.
  * @param[in,out] presult	Pointer to the current rcode, may be modified by the function.
- * @param[in,out] priority	Pointer to the current priority, may be modified by the function.
  * @return an action for the interpreter to perform.
  */
-typedef unlang_action_t (*unlang_op_call_t)(REQUEST *request, rlm_rcode_t *presult, int *priority);
+typedef unlang_action_t (*unlang_op_call_t)(REQUEST *request, rlm_rcode_t *presult);
 
 /** Function to call if the initial function yielded and the request was signalled
  *

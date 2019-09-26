@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "return_priv.h"
 
-unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult, UNUSED int *priority)
+unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];

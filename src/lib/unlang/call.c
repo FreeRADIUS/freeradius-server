@@ -94,8 +94,7 @@ static unlang_action_t unlang_call_resume(REQUEST *request, rlm_rcode_t *presult
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_call(REQUEST *request,
-				   rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

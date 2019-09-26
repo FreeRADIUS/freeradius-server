@@ -27,8 +27,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "group_priv.h"
 
-static unlang_action_t unlang_if(REQUEST *request,
-				 rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_if(REQUEST *request, rlm_rcode_t *presult)
 {
 	int			condition;
 	unlang_stack_t		*stack = request->stack;
@@ -60,9 +59,6 @@ static unlang_action_t unlang_if(REQUEST *request,
 	 */
 	if (!condition) {
 		RDEBUG2("...");
-
-		if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
-
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
@@ -79,7 +75,7 @@ static unlang_action_t unlang_if(REQUEST *request,
 	/*
 	 *	We took the "if".  Go recurse into its' children.
 	 */
-	return unlang_group(request, presult, priority);
+	return unlang_group(request, presult);
 }
 
 void unlang_condition_init(void)

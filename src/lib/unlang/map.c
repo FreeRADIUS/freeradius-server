@@ -63,7 +63,7 @@ typedef struct {
 	fr_value_box_t		*src_result;			//!< Result of expanding the map source.
 } unlang_frame_state_map_proc_t;
 
-static unlang_action_t unlang_update_apply(REQUEST *request, rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_update_apply(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -101,7 +101,7 @@ done:
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -206,7 +206,7 @@ static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presu
 	};
 
 	frame->process = unlang_update_apply;
-	return unlang_update_apply(request, presult, priority);
+	return unlang_update_apply(request, presult);
 }
 
 
@@ -222,7 +222,7 @@ static unlang_action_t unlang_update_create(REQUEST *request, rlm_rcode_t *presu
  * If one map fails in the evaluation phase, no more maps are processed, and the current
  * result is discarded.
  */
-static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -254,10 +254,10 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 	repeatable_set(frame);
 
 	frame->process = unlang_update_create;
-	return unlang_update_create(request, presult, priority);
+	return unlang_update_create(request, presult);
 }
 
-static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

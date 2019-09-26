@@ -72,8 +72,7 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 	return 0;
 }
 
-static unlang_action_t unlang_foreach_next(REQUEST *request,
-					   rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_foreach_next(REQUEST *request, rlm_rcode_t *presult)
 {
 	VALUE_PAIR			*vp;
 	unlang_stack_t			*stack = request->stack;
@@ -120,8 +119,7 @@ static unlang_action_t unlang_foreach_next(REQUEST *request,
 }
 
 
-static unlang_action_t unlang_foreach(REQUEST *request,
-				      rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -183,10 +181,10 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	talloc_set_destructor(foreach, _free_unlang_frame_state_foreach);
 
 	frame->process = unlang_foreach_next;
-	return unlang_foreach_next(request, presult, priority);
+	return unlang_foreach_next(request, presult);
 }
 
-static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];

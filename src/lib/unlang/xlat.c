@@ -232,8 +232,7 @@ void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(REQUEST *request,
-				   rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -410,8 +409,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 /** Evaluates "naked" xlats in the config
  *
  */
-static unlang_action_t unlang_xlat_inline(REQUEST *request,
-					  UNUSED rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_xlat_inline(REQUEST *request, UNUSED rlm_rcode_t *presult)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];

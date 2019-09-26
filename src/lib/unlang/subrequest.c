@@ -131,8 +131,7 @@ static unlang_action_t unlang_subrequest_resume(REQUEST *request, rlm_rcode_t *p
 	return UNLANG_ACTION_YIELD;
 }
 
-static unlang_action_t unlang_subrequest(REQUEST *request,
-					 rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_subrequest(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -293,8 +292,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	return UNLANG_ACTION_YIELD;
 }
 
-unlang_action_t unlang_detach(REQUEST *request,
-				     rlm_rcode_t *presult, UNUSED int *priority)
+unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult)
 {
 	VALUE_PAIR		*vp;
 	unlang_stack_t		*stack = request->stack;

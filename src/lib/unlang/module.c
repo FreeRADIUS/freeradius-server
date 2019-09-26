@@ -581,7 +581,7 @@ static inline void safe_unlock(module_instance_t *instance)
 	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
 
-static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_module_t			*sp;
 	unlang_stack_t			*stack = request->stack;

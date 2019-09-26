@@ -41,8 +41,7 @@ void	unlang_subrequest_free(REQUEST **child);
 
 void	unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame);
 
-unlang_action_t unlang_detach(REQUEST *request,
-			      rlm_rcode_t *presult, int *priority);
+unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult);
 
 #ifdef __cplusplus
 }

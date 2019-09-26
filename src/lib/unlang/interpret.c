@@ -525,7 +525,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			unlang_ops[instruction->type].name);
 
 		rad_assert(frame->process != NULL);
-		action = frame->process(request, result, priority);
+		action = frame->process(request, result);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_action_table, action, "<INVALID>"), *priority);
@@ -1276,9 +1276,8 @@ void unlang_interpret_resumable(REQUEST *request)
  *
  * @param[in] request	to be resumed.
  * @param[out] presult	the rcode returned by the resume function.
- * @param[out] priority associated with the rcode.
  */
-static unlang_action_t unlang_interpret_resume_dispatch(REQUEST *request, rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_interpret_resume_dispatch(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -1315,7 +1314,6 @@ static unlang_action_t unlang_interpret_resume_dispatch(REQUEST *request, rlm_rc
 	if (*presult != RLM_MODULE_YIELD) {
 		rad_assert(*presult >= RLM_MODULE_REJECT);
 		rad_assert(*presult < RLM_MODULE_NUMCODES);
-		*priority = instruction->actions[*presult];
 	}
 
 	return action;

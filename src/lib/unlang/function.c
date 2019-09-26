@@ -60,10 +60,8 @@ static unlang_t function_instruction = {
  *
  * @param[in] request	The current request.
  * @param[out] presult	The frame result.  Always set to RLM_MODULE_OK (fixme?).
- * @param[out] priority of the result.
  */
-static unlang_action_t unlang_function_call(REQUEST *request,
-					    rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_function_call(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -78,9 +76,9 @@ static unlang_action_t unlang_function_call(REQUEST *request,
 	caller = request->module;
 	request->module = NULL;
 	if (!is_repeatable(frame)) {
-		ua = state->func(request, presult, priority, state->uctx);
+		ua = state->func(request, presult, NULL, state->uctx);
 	} else {
-		ua = state->repeat(request, presult, priority, state->uctx);
+		ua = state->repeat(request, presult, NULL, state->uctx);
 	}
 	request->module = caller;
 
