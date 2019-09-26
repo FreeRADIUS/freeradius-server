@@ -272,50 +272,15 @@ static unlang_action_t unlang_update_state_init(REQUEST *request, rlm_rcode_t *p
 	return list_mod_create(request, presult);
 }
 
-static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *presult)
+
+static unlang_action_t map_proc_apply(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
 	map_proc_inst_t			*inst = g->proc_inst;
-	unlang_frame_state_map_proc_t	*map_proc_state;
-
-	/*
-	 *	Initialise the frame state
-	 */
-	if (!is_repeatable(frame)) {
-		map_proc_state = frame->state;
-		repeatable_set(frame);
-
-		/*
-		 *	Expand the map source
-		 */
-		if (inst->src) switch (inst->src->type) {
-		default:
-			if (tmpl_aexpand(frame->state, &map_proc_state->src_result,
-					 request, inst->src, NULL, NULL) < 0) {
-				REDEBUG("Failed expanding map src");
-			error:
-				*presult = RLM_MODULE_FAIL;
-				return UNLANG_ACTION_CALCULATE_RESULT;
-			}
-			break;
-
-		case TMPL_TYPE_XLAT_STRUCT:
-			unlang_xlat_push(map_proc_state, &map_proc_state->src_result,
-					 request, inst->src->tmpl_xlat, false);
-			return UNLANG_ACTION_PUSHED_CHILD;
-
-		case TMPL_TYPE_REGEX:
-		case TMPL_TYPE_REGEX_STRUCT:
-		case TMPL_TYPE_XLAT:
-			rad_assert(0);
-			goto error;
-		}
-	} else {
-		map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
-	}
+	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
 
 	RDEBUG2("MAP %s \"%pM\"", inst->proc->name, map_proc_state->src_result);
 
@@ -331,6 +296,55 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 #endif
 
 	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *presult)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_group_t			*g = unlang_generic_to_group(instruction);
+	map_proc_inst_t			*inst = g->proc_inst;
+	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
+
+	/*
+	 *	Initialise the frame state
+	 */
+	repeatable_set(frame);
+
+	/*
+	 *	Set this BEFORE doing anything else, as we will be
+	 *	called again after unlang_xlat_push() returns.
+	 */
+	frame->process = map_proc_apply;
+
+	/*
+	 *	Expand the map source
+	 */
+	if (inst->src) switch (inst->src->type) {
+	default:
+		if (tmpl_aexpand(frame->state, &map_proc_state->src_result,
+				 request, inst->src, NULL, NULL) < 0) {
+			REDEBUG("Failed expanding map src");
+		error:
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+		break;
+
+	case TMPL_TYPE_XLAT_STRUCT:
+		unlang_xlat_push(map_proc_state, &map_proc_state->src_result,
+				 request, inst->src->tmpl_xlat, false);
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_REGEX_STRUCT:
+	case TMPL_TYPE_XLAT:
+		rad_assert(0);
+		goto error;
+	}
+
+	return map_proc_apply(request, presult);
 }
 
 void unlang_map_init(void)
