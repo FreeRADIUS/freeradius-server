@@ -646,6 +646,7 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
 static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_time_delta_t timeout)
 {
 	struct wbcContext **wb_ctx;
+	rlm_mschap_t const	*inst = instance;
 
 	wb_ctx = talloc_zero(ctx, struct wbcContext *);
 	*wb_ctx = wbcCtxCreate();
@@ -1863,7 +1864,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
 			if (response_name) {
 				if (strcmp(username_str, response_name->vp_strvalue)) {
 					RDEBUG2("Normalising username %pV -> %pV",
-						fr_box_strvalue_len(username_str, username_len)
+						fr_box_strvalue_len(username_str, username_len),
 						&response_name->data);
 					username_str = response_name->vp_strvalue;
 				}
