@@ -135,4 +135,4 @@ before_script:
 - ./scripts/travis/build.sh
 script:
 - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
-- if [ "${DO_BUILD}" = 'no' ]; then make test.doc; fi
+- if [ "${DO_BUILD}" = 'no' ]; then make doxygen; fi
