@@ -1,5 +1,5 @@
 ifneq "$(OPENSSL_LIBS)" ""
-TARGET := ibfreeradius-eap-aka-sim.a
+TARGET := libfreeradius-eap-aka-sim.a
 endif
 
 SOURCES	:= \
