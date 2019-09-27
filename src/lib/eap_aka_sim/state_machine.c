@@ -2371,8 +2371,11 @@ static rlm_rcode_t common_challenge_enter(eap_aka_sim_common_conf_t *inst,
 		return aka_challenge_enter(inst, request, eap_session);
 
 	default:
-		rad_assert(0);
+		break;
 	}
+
+	rad_assert(0);
+	return RLM_MODULE_FAIL;
 }
 
 /** Resume after 'send Identity-Request { ... }'
@@ -2463,8 +2466,11 @@ static rlm_rcode_t common_identity_enter(eap_aka_sim_common_conf_t *inst,
 		return aka_identity_enter(inst, request, eap_session);
 
 	default:
-		rad_assert(0);
+		break;
 	}
+
+	rad_assert(0);
+	return RLM_MODULE_FAIL;
 }
 
 /** Process a EAP-Response/(AKA|SIM)-Reauthentication message - The response to our EAP-Request/(AKA|SIM)-Reauthentication message
@@ -3992,6 +3998,7 @@ static rlm_rcode_t common_eap_identity_resume(void *instance, UNUSED void *threa
 
 	default:
 		rad_assert(0);
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
