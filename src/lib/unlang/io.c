@@ -41,9 +41,21 @@ rlm_rcode_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *re
 
 	rcode = unlang_interpret_resume(request);
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+	/*
+	 *	We've yielded, and can keep running.  Do so.
+	 */
+	if ((rcode == RLM_MODULE_YIELD) &&
+	    (request->master_state != REQUEST_STOP_PROCESSING)) {
+		return RLM_MODULE_YIELD;
+	}
 
-	if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+	/*
+	 *	Either we're done naturally, or we're forcibly done.  Stop.
+	 *
+	 *	If we have a parent, then we're running synchronously
+	 *	with it.  Allow the parent to resume.
+	 */
+	if (request->parent) unlang_interpret_resumable(request->parent);
 
 	/*
 	 *	Don't bother setting request->reply->code.
