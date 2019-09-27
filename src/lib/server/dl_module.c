@@ -286,11 +286,16 @@ static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t
  */
 static int _dl_module_free(dl_module_t *dl_module)
 {
-	if (DEBUG_ENABLED4) {
-		DEBUG4("%s unloaded.  Handle address %p, symbol address %p", dl_module->dl->name,
-		       dl_module->dl->handle, dl_module->common);
-	} else {
-		DEBUG3("%s unloaded", dl_module->dl->name);
+	/*
+	 *	dl is empty if we tried to load it and failed.
+	 */
+	if (dl_module->dl) {
+		if (DEBUG_ENABLED4) {
+			DEBUG4("%s unloaded.  Handle address %p, symbol address %p", dl_module->dl->name,
+			       dl_module->dl->handle, dl_module->common);
+		} else {
+			DEBUG3("%s unloaded", dl_module->dl->name);
+		}
 	}
 
 	if (dl_module->in_tree) {
