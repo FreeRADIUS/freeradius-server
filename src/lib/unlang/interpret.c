@@ -77,6 +77,7 @@ static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 	RDEBUG2("repeat         %s", is_repeatable(frame) ? "yes" : "no");
 	RDEBUG2("break_point    %s", is_break_point(frame) ? "yes" : "no");
 	RDEBUG2("return_point   %s", is_return_point(frame) ? "yes" : "no");
+	RDEBUG2("resumable      %s", is_resumable(frame) ? "yes" : "no");
 	REXDENT();
 }
 
@@ -438,6 +439,7 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 	repeatable_clear(frame);
 	break_point_clear(frame);
 	return_point_clear(frame);
+	resumable_clear(frame);
 	if (frame->state) TALLOC_FREE(frame->state);
 }
 
@@ -610,8 +612,10 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 
 				return UNLANG_FRAME_ACTION_YIELD;
 
+			case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
 			case UNLANG_TYPE_RESUME:
 				repeatable_set(frame);
+				resumable_set(frame);
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
 					fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
@@ -1128,16 +1132,30 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 		/*
 		 *	Be gracious in errors.
 		 */
-		if (frame->instruction->type != UNLANG_TYPE_RESUME) continue;
+		if (!is_resumable(frame)) continue;
 
-		mr = unlang_generic_to_resume(frame->instruction);
+		switch (frame->instruction->type) {
+		case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
+			if (!frame->signal) continue;
 
-		/*
-		 *	No signal handler for this frame type
-		 */
-		if (!unlang_ops[mr->parent->type].signal) continue;
+			frame->signal(request, NULL, action);
+			break;
 
-		unlang_ops[mr->parent->type].signal(request, mr->rctx, action);
+		case UNLANG_TYPE_RESUME:
+			mr = unlang_generic_to_resume(frame->instruction);
+
+			/*
+			 *	No signal handler for this frame type
+			 */
+			if (!unlang_ops[mr->parent->type].signal) continue;
+
+			unlang_ops[mr->parent->type].signal(request, mr->rctx, action);
+			break;
+
+		default:
+			rad_assert(0);
+			break;
+		}
 	}
 	stack->depth = depth;				/* Reset */
 }
@@ -1199,26 +1217,39 @@ void unlang_interpret_resumable(REQUEST *request)
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 
 	/*
+	 *	The request hasn't yield, OR it's already been marked
+	 *	as runnable.  Don't do anything.
+	 *
 	 *	The IO code, or children have no idea where they're
-	 *	being called from.  They just mark the parent
+	 *	being called from.  They just ask to mark the parent
 	 *	resumable when they're done.  So we have to check here
-	 *	for a RESUME frame.  If the parent called the child
-	 *	directly, then there's no RESUME frame.  When the
-	 *	child is done, the parent will automatically continue
-	 *	running.  We threfore don't need to insert the parent
-	 *	into the backlog.
+	 *	if this request is resumable.
+	 *
+	 *	If the parent called the child directly, then the
+	 *	parent hasn't yielded, so it isn't resumable.  When
+	 *	the child is done, the parent will automatically
+	 *	continue running.  We therefore don't need to insert
+	 *	the parent into the backlog.
+	 *
+	 *	Multiple child request may also mark a parent request
+	 *	runnable, before the parent request starts running.
 	 */
-	if (frame->instruction->type != UNLANG_TYPE_RESUME) {
+	if (!is_resumable(frame) || (request->runnable_id >= 0)) return;
+
+	/*
+	 */
+	switch (frame->instruction->type) {
+	case UNLANG_TYPE_MODULE:
+	case UNLANG_TYPE_RESUME:
+		break;
+
+	default:
 		return;
 	}
 
 	rad_assert(request->backlog != NULL);
 
-	/*
-	 *	Multiple child request may mark a request runnable,
-	 *	before it is enabled for running.
-	 */
-	if (request->runnable_id < 0) fr_heap_insert(request->backlog, request);
+	fr_heap_insert(request->backlog, request);
 }
 
 /** Callback for handling resumption frames

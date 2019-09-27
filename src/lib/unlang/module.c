@@ -336,7 +336,7 @@ void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
 	unlang_frame_state_module_t	*ms;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
-	unlang_module_t			*mi;
+	unlang_module_t			*sp;
 
 	static unlang_t module_instruction = {
 		.type = UNLANG_TYPE_MODULE,
@@ -363,17 +363,17 @@ void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
 	ms->thread = module_thread(module_instance);
 	rad_assert(ms->thread != NULL);
 
-	MEM(mi = talloc_zero(ms, unlang_module_t));	/* Free at the same time as the state */
-	mi->self = module_instruction;
-	mi->self.name = module_instance->name;
-	mi->self.debug_name = mi->self.name;
-	mi->module_instance = module_instance;
-	mi->method = method;
+	MEM(sp = talloc_zero(ms, unlang_module_t));	/* Free at the same time as the state */
+	sp->self = module_instruction;
+	sp->self.name = module_instance->name;
+	sp->self.debug_name = sp->self.name;
+	sp->module_instance = module_instance;
+	sp->method = method;
 
 	/*
 	 *	Push a new module frame onto the stack
 	 */
-	unlang_interpret_push(request, unlang_module_to_generic(mi), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	unlang_interpret_push(request, unlang_module_to_generic(sp), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
 	frame = &stack->frame[stack->depth];
 	frame->state = ms;
 }
@@ -507,6 +507,17 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 	return RLM_MODULE_YIELD;
 }
 
+/*
+ *	@todo - hacks until we get rid of UNLANG_TYPE_RESUME
+ */
+static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *rctx);
+
+static unlang_action_t unlang_module_process_resume(REQUEST *request, rlm_rcode_t *presult)
+{
+	return unlang_module_resume(request, presult, NULL);
+}
+
+
 /** Yield a request back to the interpreter from within a module
  *
  * This passes control of the request back to the unlang interpreter, setting
@@ -531,38 +542,18 @@ rlm_rcode_t unlang_module_yield(REQUEST *request,
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_resume_t			*mr;
-
-	rad_assert(stack->depth > 0);
+	unlang_frame_state_module_t	*ms = talloc_get_type_abort(frame->state,
+								    unlang_frame_state_module_t);
 
 	REQUEST_VERIFY(request);	/* Check the yielded request is sane */
 
-	switch (frame->instruction->type) {
-	case UNLANG_TYPE_MODULE:
-		mr = unlang_interpret_resume_alloc(request, (void *)resume, (void *)signal, rctx);
-		if (!fr_cond_assert(mr)) {
-			return RLM_MODULE_FAIL;
-		}
-		return RLM_MODULE_YIELD;
+	ms->rctx = rctx;
+	ms->resume = resume;
+	ms->signal = signal;
 
-	case UNLANG_TYPE_RESUME:
-		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
-		rad_assert(mr->parent->type == UNLANG_TYPE_MODULE);
+	frame->process = unlang_module_process_resume;
 
-		/*
-		 *	Re-use the current RESUME frame, but over-ride
-		 *	the callbacks and context.
-		 */
-		mr->resume = (void *)resume;
-		mr->signal = (void *)signal;
-		mr->rctx = rctx;
-
-		return RLM_MODULE_YIELD;
-
-	default:
-		rad_assert(0);
-		return RLM_MODULE_FAIL;
-	}
+	return RLM_MODULE_YIELD;
 }
 
 /*
@@ -699,30 +690,20 @@ done:
  * @param[in] rctx		createed by #unlang_module.
  * @param[in] action		to signal.
  */
-static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t action)
+static void unlang_module_signal(REQUEST *request, UNUSED void *rctx, fr_state_signal_t action)
 {
-	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
-	unlang_resume_t			*mr;
-	unlang_module_t		*mc;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_module_t	*ms = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+	unlang_module_t			*sp = unlang_generic_to_module(frame->instruction);
 	char const 			*caller;
 
-	unlang_frame_state_module_t	*ms = NULL;
-
-	rad_assert(stack->depth > 0);
-
-	frame = &stack->frame[stack->depth];
-
-	mr = unlang_generic_to_resume(frame->instruction);
-	if (!mr->signal) return;
-
-	mc = unlang_generic_to_module(mr->parent);
-	ms = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+	if (!ms->signal) return;
 
 	caller = request->module;
-	request->module = mc->module_instance->name;
-	((fr_unlang_module_signal_t)mr->signal)(mc->module_instance->dl_inst->data, ms->thread->data, request,
-						rctx, action);
+	request->module = sp->module_instance->name;
+	ms->signal(sp->module_instance->dl_inst->data, ms->thread->data, request,
+		   ms->rctx, action);
 	request->module = caller;
 }
 
@@ -730,33 +711,28 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_module_t			*mc = unlang_generic_to_module(mr->parent);
-	int				stack_depth = stack->depth;
-	char const			*caller;
+	unlang_frame_state_module_t	*ms = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+	unlang_module_t			*sp = unlang_generic_to_module(frame->instruction);
+	char const 			*caller;
 	rlm_rcode_t			rcode;
+	int				stack_depth = stack->depth;
 
-	unlang_frame_state_module_t	*ms = NULL;
-
-	rad_assert(mr->parent->type == UNLANG_TYPE_MODULE);
-
-	ms = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+	rad_assert(ms->resume != NULL);
 
 	/*
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	caller = request->module;
-	request->module = mc->module_instance->name;
-	safe_lock(mc->module_instance);
-	rcode = request->rcode = ((fr_unlang_module_resume_t)mr->resume)(mc->module_instance->dl_inst->data,
-									 ms->thread->data, request, mr->rctx);
-	safe_unlock(mc->module_instance);
+	request->module = sp->module_instance->name;
+	safe_lock(sp->module_instance);
+	rcode = request->rcode = ms->resume(sp->module_instance->dl_inst->data,
+					    ms->thread->data, request, ms->rctx);
+	safe_unlock(sp->module_instance);
 	request->module = caller;
 
 	if (rcode != RLM_MODULE_YIELD) ms->thread->active_callers--;
 
-	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
+	RDEBUG2("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
 		fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
 
 	switch (rcode) {

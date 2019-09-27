@@ -293,21 +293,25 @@ typedef struct {
 #define UNWIND_FLAG_BREAK_POINT		0x04			//!< 'break' stops here.
 #define UNWIND_FLAG_RETURN_POINT	0x08      		//!< 'return' stops here.
 #define UNWIND_FLAG_NO_CLEAR		0x10			//!< Keep unwinding, don't clear the unwind flag.
+#define UNWIND_FLAG_RESUMABLE		0x20			//!< Resume point, temporary until we get rid of UNLANG_TYPE_RESUME
 
 static inline void repeatable_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_REPEAT; }
 static inline void top_frame_set(unlang_stack_frame_t *frame) 		{ frame->uflags |= UNWIND_FLAG_TOP_FRAME; }
 static inline void break_point_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_BREAK_POINT; }
 static inline void return_point_set(unlang_stack_frame_t *frame)	{ frame->uflags |= UNWIND_FLAG_RETURN_POINT; }
+static inline void resumable_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_RESUMABLE; }
 
 static inline void repeatable_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FLAG_REPEAT; }
 static inline void top_frame_clear(unlang_stack_frame_t *frame)		{ frame->uflags &= ~UNWIND_FLAG_TOP_FRAME; }
 static inline void break_point_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FLAG_BREAK_POINT; }
 static inline void return_point_clear(unlang_stack_frame_t *frame) 	{ frame->uflags &= ~UNWIND_FLAG_RETURN_POINT; }
+static inline void resumable_clear(unlang_stack_frame_t *frame) 	{ frame->uflags &= ~UNWIND_FLAG_RESUMABLE; }
 
 static inline bool is_repeatable(unlang_stack_frame_t *frame)		{ return frame->uflags & UNWIND_FLAG_REPEAT; }
 static inline bool is_top_frame(unlang_stack_frame_t *frame)		{ return frame->uflags & UNWIND_FLAG_TOP_FRAME; }
 static inline bool is_break_point(unlang_stack_frame_t *frame)		{ return frame->uflags & UNWIND_FLAG_BREAK_POINT; }
 static inline bool is_return_point(unlang_stack_frame_t *frame) 	{ return frame->uflags & UNWIND_FLAG_RETURN_POINT; }
+static inline bool is_resumable(unlang_stack_frame_t *frame) 		{ return frame->uflags & UNWIND_FLAG_RESUMABLE; }
 
 static inline unlang_action_t unwind_to_break(unlang_stack_t *stack)
 {

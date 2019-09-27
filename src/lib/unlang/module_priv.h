@@ -45,6 +45,9 @@ typedef struct {
 typedef struct {
 	rlm_rcode_t			*presult;		//!< Where to store the result.
 	module_thread_instance_t 	*thread;		//!< thread-local data for this module
+	void				*rctx;			//!< for resume / signal
+	fr_unlang_module_resume_t	resume;			//!< resumption handler
+	fr_unlang_module_signal_t	signal;			//!< for signal handlers
 } unlang_frame_state_module_t;
 
 static inline unlang_module_t *unlang_generic_to_module(unlang_t *p)
