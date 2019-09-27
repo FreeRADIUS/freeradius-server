@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file src/lib/aka-sim/vector.c
+ * @file src/lib/eap_aka_sim/vector.c
  * @brief Retrieve or derive vectors for EAP-SIM.
  *
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)

@@ -15,7 +15,7 @@
  */
 
 /**
- * @file src/lib/aka-sim/xlat.c
+ * @file src/lib/eap_aka_sim/xlat.c
  * @brief EAP-SIM/EAP-AKA identity detection, creation, and decyption.
  *
  * @copyright 2017 The FreeRADIUS server project

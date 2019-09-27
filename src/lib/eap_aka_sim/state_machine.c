@@ -625,6 +625,7 @@ done:
  *
  * @param[in] inst		of rlm_eap_aka.
  * @param[in] request		the current request.
+ * @param[in] eap_session	the EAP session
  * @param[in] state_enter	state entry function for the
  *				state to transition to *after* the current
  *				state.
@@ -754,6 +755,7 @@ static rlm_rcode_t pseudonym_clear_resume(void *instance, UNUSED void *thread, R
  *
  * @param[in] inst		of rlm_eap_aka.
  * @param[in] request		the current request.
+ * @param[in] eap_session	the current EAP session
  * @param[in] state_enter	state entry function for the
  *				state to transition to *after* the current
  *				state.
@@ -1604,6 +1606,7 @@ static rlm_rcode_t sim_challenge_request_compose(eap_aka_sim_common_conf_t *inst
  * or can't perform fast resumption, we need to request the full identity from
  * the supplicant.
  *
+ * @param[in] inst		of rlm_eap_aka.
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	to continue.
  * @return
@@ -1684,6 +1687,7 @@ static rlm_rcode_t aka_identity_request_send(eap_aka_sim_common_conf_t *inst,
  * or can't perform fast resumption, we need to request the full identity from
  * the supplicant.
  *
+ * @param[in] inst		of rlm_eap_aka.
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	to continue.
  * @return

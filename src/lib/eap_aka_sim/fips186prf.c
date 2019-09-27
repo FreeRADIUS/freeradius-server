@@ -35,7 +35,7 @@
 
 /**
  * $Id$
- * @file src/lib/aka-sim/fips186prf.c
+ * @file src/lib/eap_aka_sim/fips186prf.c
  * @brief EAP sim protocol encoders and decoders.
  *
  * The development of the EAP/SIM support was funded by Internet Foundation

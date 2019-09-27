@@ -17,7 +17,7 @@
 
 /**
  * $Id$
- * @file src/lib/aka-sim/base.h
+ * @file src/lib/eap_aka_sim/base.h
  * @brief Functions common to SIM protocols (EAP-SIM/EAP-AKA/EAP-AKA')
  *
  * The development of the EAP/SIM support was funded by Internet Foundation

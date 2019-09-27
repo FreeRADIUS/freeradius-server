@@ -16,7 +16,7 @@
  */
 
 /**
- * @file src/lib/aka-sim/id.h
+ * @file src/lib/eap_aka_sim/id.h
  * @brief EAP-SIM/EAP-AKA identity detection, creation, and decyption.
  *
  * @copyright 2017 The FreeRADIUS server project

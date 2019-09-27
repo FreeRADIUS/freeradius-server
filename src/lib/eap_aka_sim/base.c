@@ -15,7 +15,7 @@
  */
 
 /**
- * @file src/lib/aka-sim/base.c
+ * @file  src/lib/eap_aka_sim/base.c
  * @brief Code common to EAP-SIM/AKA/AKA' clients and servers.
  *
  * The development of the EAP-SIM support was funded by Internet Foundation

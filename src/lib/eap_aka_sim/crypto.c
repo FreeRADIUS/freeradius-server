@@ -15,7 +15,7 @@
  */
 
 /**
- * @file src/lib/aka-sim/crypto.c
+ * @file src/lib/eap_aka_sim/crypto.c
  * @brief Calculate keys from GSM vectors.
  *
  * The development of the original EAP/SIM support was funded by Internet Foundation
@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
+#include <freeradius-devel/protocol/eap/eap_aka_sim/dictionary.h>
 
 #include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/sim/common.h>
@@ -920,7 +920,7 @@ void fr_aka_sim_crypto_keys_init_umts_kdf_1_reauth(fr_aka_sim_keys_t *keys,
  *
  * Derives new MSK, EMSK, k_aut, k_encr
  *
- * Use #fr_aka_sim_crypto_keys_init_reauth to populate the #fr_aka_sim_keys_t structure.
+ * Use #fr_aka_sim_crypto_keys_init_kdf_0_reauth to populate the #fr_aka_sim_keys_t structure.
  *
  * @note expects keys to contain a populated mk, none_s and counter values.
  *

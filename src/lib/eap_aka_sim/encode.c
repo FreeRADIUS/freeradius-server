@@ -15,7 +15,7 @@
  */
 
 /**
- * @file src/lib/aka-sim/encode.c
+ * @file src/lib/eap_aka_sim/encode.c
  * @brief Code common to EAP-SIM/AKA/AKA' clients and servers.
  *
  * @copyright 2017 FreeRADIUS server project

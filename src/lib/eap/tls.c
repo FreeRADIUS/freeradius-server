@@ -389,7 +389,8 @@ int eap_tls_fail(REQUEST *request, eap_session_t *eap_session)
  * field **ONLY** in First packet of a fragment series. We do not use it anywhere
  * else.
  *
- * @param eap_session that's continuing.
+ * @param request	the request
+ * @param eap_session	that's continuing.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -566,7 +567,7 @@ static eap_tls_status_t eap_tls_session_status(REQUEST *request, eap_session_t *
  * @note In the received packet, No data will be present incase of ACK or NAK
  *	in this case the packet->data pointer will be NULL.
  *
- * @parma[in] request		the current subrequest.
+ * @param[in] request		the current subrequest.
  * @param[in] eap_session	the current EAP session state.
  * @return
  *	- EAP_TLS_INVALID if the TLS record or progression is invalid.
@@ -817,7 +818,7 @@ ignore_length:
 
 /** Continue with the handshake
  *
- * @parma[in] request		the current subrequest.
+ * @param[in] request		the current subrequest.
  * @param[in] eap_session	to continue.
  * @return
  *	- EAP_TLS_FAIL if the message is invalid.
@@ -892,7 +893,8 @@ static eap_tls_status_t eap_tls_handshake(REQUEST *request, eap_session_t *eap_s
  * session object SHOULD be maintained even after the session is completed, for session
  * resumption.
  *
- * @param eap_session to continue.
+ * @param request	the request
+ * @param eap_session	to continue.
  * @return
  *	- EAP_TLS_ESTABLISHED
  *	- EAP_TLS_HANDLED

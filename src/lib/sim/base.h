@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file src/lib/base.h
+ * @file src/lib/sim/base.h
  * @brief Master include file for all lib/sim functions.
  *
  * @copyright 2019 The FreeRADIUS server project
