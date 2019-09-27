@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <freeradius-devel/protocol/eap/eap_aka_sim/dictionary.h>
+#include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
 
 #include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/sim/common.h>
