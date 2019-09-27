@@ -102,7 +102,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 	 */
 	rad_assert(inst->wb_username);
 
-	MEM(authparams = talloc_zero_pooled_object(NULL, wbcAuthUserParams, 2, 1024));
+	MEM(authparams = talloc_zero_pooled_object(NULL, struct wbcAuthUserParams, 2, 1024));
 	/*
 	 *	Domain first so we don't leave holes in the pool
 	 */
@@ -170,7 +170,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 
 		if (talloc_memcmp_bstr(authparams->account_name, normalised_username) == 0) goto release;
 
-		TALLOC_FREE(authparams->account_name);
+		talloc_const_free(authparams->account_name);
 		authparams->account_name = normalised_username;
 
 		/* Set MS-CHAP-USER-NAME */
@@ -178,7 +178,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 		fr_pair_value_bstrncpy(vp_chap_user_name,
 				       normalised_username, talloc_array_length(normalised_username) - 1);
 
-		RDEBUG2("Retrying authentication request user \"%pV\" domain \"%s\"",
+		RDEBUG2("Retrying authentication request user \"%pV\" domain \"%pV\"",
 			fr_box_strvalue_buffer(authparams->account_name),
 			fr_box_strvalue_buffer(normalised_username));
 
@@ -198,7 +198,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 		mschap_challenge_hash(authparams->password.response.challenge,
 				      vp_response->vp_octets + 2,
 				      vp_challenge->vp_octets,
-				      vp_chap_user_name->vp_strvalue, vp_chap_user_name->vp_length, talloc);
+				      vp_chap_user_name->vp_strvalue, vp_chap_user_name->vp_length);
 
 		err = wbcCtxAuthenticateUserEx(wb_ctx, authparams, &info, &error);
 release:
