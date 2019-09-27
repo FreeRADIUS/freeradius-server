@@ -1,5 +1,6 @@
-TARGET := libfreeradius-eap-aka-sim.a
-
+ifneq "$(OPENSSL_LIBS)" ""
+TARGET := ibfreeradius-eap-aka-sim.a
+endif
 
 SOURCES	:= \
 	base.c \
