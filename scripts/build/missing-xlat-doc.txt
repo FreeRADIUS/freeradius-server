@@ -1,3 +1,5 @@
+%{aka_sim_id_method:...}
+%{aka_sim_id_type:...}
 %{attr:...}
 %{attr_by_num:...}
 %{attr_by_oid:...}
