@@ -48,12 +48,20 @@ done
 #  Files should be identical.  If not, panic.
 #
 if ! diff $OUTPUT $CORRECT 2>/dev/null ; then
+        echo "FAILED: $@"
+	echo
 	echo "ERROR: Some registered xlats are not documented."
 	echo "Please compare the following two files:"
 	echo "    expected - $CORRECT"
         echo "    found    - $OUTPUT"
 	echo
-	echo "If the found output is correct, then just copy that file to the expected output".
+	echo "If the found output is correct, then just copy 'found' to 'expected'".
+	echo
+	echo "If the xlat is built-in, please document it in"
+	echo "    doc/antora/modules/unlang/pages/xlat/builtin.adoc"
+	echo
+	echo "If the xlat is in a module, please document it in"
+	echo "    raddb/mods-available/NAME"
 	exit 1
 fi
 
