@@ -22,11 +22,9 @@
  */
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/protocol/eap/eap_aka_sim/dictionary.h>
-#include <freeradius-devel/protocol/eap/eap_aka_sim/rfc4187.h>
-#include <freeradius-devel/protocol/eap/eap_aka_sim/dictionary.h>
-#include <freeradius-devel/protocol/eap/eap_aka_sim/rfc4187.h>
-#include <freeradius-devel/protocol/eap/eap_aka_sim/freeradius.h>
+#include <freeradius-devel/protocol/eap/eap_sim/dictionary.h>
+#include <freeradius-devel/protocol/eap/eap-sim/rfc4187.h>
+#include <freeradius-devel/protocol/eap/eap-sim/freeradius.h>
 
 extern fr_dict_t *dict_freeradius;
 extern fr_dict_t *dict_radius;
