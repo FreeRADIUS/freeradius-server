@@ -44,6 +44,10 @@ static unlang_action_t unlang_parallel_child_done(REQUEST *request, UNUSED rlm_r
 	 *	Otherwise we're a detached child, and we don't tell
 	 *	the parent anything.  Because we have that kind of
 	 *	relationship.
+	 *
+	 *	Note that we call unlang_interpret_resumable() here
+	 *	because unlang_parallel_run() calls
+	 *	unlang_interpret_run(), and NOT child->async->process.
 	 */
 	if (request->parent) {
 		child->state = CHILD_EXITED;
@@ -174,6 +178,14 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 		case CHILD_RUNNABLE:
 		runnable:
 			RDEBUG2("parallel - running entry %d/%d", i + 1, state->num_children);
+
+			/*
+			 *	Note that we do NOT call child->async-process()
+			 *
+			 *	Doing that will end up calling
+			 *	unlang_parallel_child_done(), and all
+			 *	kinds of things happen..
+			 */
 			result = unlang_interpret_run(state->children[i].child);
 			if (result == RLM_MODULE_YIELD) {
 				state->children[i].state = CHILD_YIELDED;
