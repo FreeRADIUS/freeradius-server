@@ -39,6 +39,7 @@ typedef enum {
 	CHILD_INIT = 0,					//!< Initial state.
 	CHILD_RUNNABLE,					//!< Child can continue running.
 	CHILD_YIELDED,					//!< Child is yielded waiting on an event.
+	CHILD_EXITED,					//!< Child has exited
 	CHILD_DONE					//!< The child has completed.
 } unlang_parallel_child_state_t;
 

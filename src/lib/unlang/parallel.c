@@ -29,6 +29,35 @@ RCSID("$Id$")
 #include "subrequest_priv.h"
 #include "module_priv.h"
 
+/** When the chld is done, tell the parent that we've exited.
+ *
+ */
+static unlang_action_t unlang_parallel_child_done(REQUEST *request, UNUSED rlm_rcode_t *presult, UNUSED int *priority, void *uctx)
+{
+	unlang_parallel_child_t *child = uctx;
+
+	/*
+	 *	If we have a parent, then we're running synchronously
+	 *	with it.  Tell the parent that we've exited, and it
+	 *	can continue.
+	 *
+	 *	Otherwise we're a detached child, and we don't tell
+	 *	the parent anything.  Because we have that kind of
+	 *	relationship.
+	 */
+	if (request->parent) {
+		child->state = CHILD_EXITED;
+		unlang_interpret_resumable(request->parent);
+	}
+
+	/*
+	 *	Don't change frame->result, it's the result of the child.
+	 */
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+
 /** Run one or more sub-sections from the parallel section.
  *
  */
@@ -38,8 +67,6 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 	rlm_rcode_t		result;
 	unlang_parallel_child_state_t done = CHILD_DONE; /* hope that we're done */
 	REQUEST			*child;
-
-	// @todo - rdebug running the request.
 
 	/*
 	 *	The children are created all detached.  We just return
@@ -91,11 +118,18 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			}
 
 			/*
-			 *	Push first instruction for child to execute
+			 *	Push a top frame, followed by a frame
+			 *	which signals us that the child is
+			 *	done, followed by the instruction to
+			 *	run in the child.
 			 */
+			unlang_interpret_push(child, NULL, RLM_MODULE_NOOP,
+					      UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
+			unlang_interpret_push_function(child, NULL, unlang_parallel_child_done,
+						       &state->children[i]);
 			unlang_interpret_push(child,
 					      state->children[i].instruction, RLM_MODULE_FAIL,
-					      UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
+					      UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 
 			/*
 			 *	It is often useful to create detached
@@ -138,6 +172,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Run this entry.
 			 */
 		case CHILD_RUNNABLE:
+		runnable:
 			RDEBUG2("parallel - running entry %d/%d", i + 1, state->num_children);
 			result = unlang_interpret_run(state->children[i].child);
 			if (result == RLM_MODULE_YIELD) {
@@ -218,11 +253,24 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Not ready to run.
 			 */
 		case CHILD_YIELDED:
+			if (state->children[i].child->runnable_id >= 0) {
+				(void) fr_heap_extract(state->children[i].child->backlog,
+						       state->children[i].child);
+				goto runnable;
+			}
+
 			RDEBUG3("parallel child %d is already YIELDED", i + 1);
 			rad_assert(state->children[i].child != NULL);
 			rad_assert(state->children[i].instruction != NULL);
 			done = CHILD_YIELDED;
 			continue;
+
+		case CHILD_EXITED:
+			RDEBUG3("parallel child %d has already EXITED", i + 1);
+			state->children[i].state = CHILD_DONE;
+			state->children[i].child = NULL;		// someone else freed this somewhere
+			state->children[i].instruction = NULL;
+			/* FALL-THROUGH */
 
 			/*
 			 *	Don't need to call this any more.
@@ -304,6 +352,7 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, void *rctx, fr_state
 	for (i = 0; i < state->num_children; i++) {
 		switch (state->children[i].state) {
 		case CHILD_INIT:
+		case CHILD_EXITED:
 		case CHILD_DONE:
 			break;
 

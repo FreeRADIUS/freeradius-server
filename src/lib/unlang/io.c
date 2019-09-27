@@ -86,6 +86,7 @@ REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace,
 	child->number = parent->number;
 	child->el = parent->el;
 	child->server_cs = parent->server_cs;
+	child->backlog = parent->backlog;
 
 	/*
 	 *	Initialize all of the async fields.

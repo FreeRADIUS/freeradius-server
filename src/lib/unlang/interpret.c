@@ -1195,91 +1195,22 @@ rlm_rcode_t unlang_interpret_stack_result(REQUEST *request)
  */
 void unlang_interpret_resumable(REQUEST *request)
 {
-	REQUEST				*parent = request->parent;
-	unlang_stack_t			*stack;
-	unlang_stack_frame_t		*frame;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 
-	while (parent) {
-		int i;
-		unlang_resume_t		*mr;
-		unlang_parallel_t	*state;
-#ifndef NDEBUG
-		bool			found = false;
-#endif
-
-		/*
-		 *	Child requests CANNOT be runnable.  Only the
-		 *	parent request can be runnable.  When it runs
-		 *	(eventually), the interpreter will walk back
-		 *	down the stack, resuming anything that needs resuming.
-		 */
-		rad_assert(request->backlog == NULL);
-		rad_assert(request->runnable_id < 0);
-
-#ifndef NDEBUG
-		/*
-		 *	Look at the current stack.
-		 */
-		stack = request->stack;
-		frame = &stack->frame[stack->depth];
-
-		/*
-		 *	The current request MUST have been yielded in
-		 *	order for someone to mark it resumable.
-		 */
-		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
-#endif
-
-		/*
-		 *	Now look at the parents stack.  It also must
-		 *	have been yielded in order for someone to mark
-		 *	the child as resumable.
-		 */
-		stack = parent->stack;
-		frame = &stack->frame[stack->depth];
-		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
-
-		mr = unlang_generic_to_resume(frame->instruction);
-		(void) talloc_get_type_abort(mr, unlang_resume_t);
-
-		if (mr->parent->type != UNLANG_TYPE_PARALLEL) goto next;
-
-		state = mr->rctx;
-
-		/*
-		 *	Find the child and mark it resumable
-		 */
-		for (i = 0; i < state->num_children; i++) {
-			if (state->children[i].state != CHILD_YIELDED) continue;
-			if (state->children[i].child != request) continue;
-
-			state->children[i].state = CHILD_RUNNABLE;
-#ifndef NDEBUG
-			found = true;
-#endif
-			break;
-		}
-
-		/*
-		 *	We MUST have found the child here.
-		 */
-		rad_assert(found == true);
-
-	next:
-		request = parent;
-		parent = parent->parent;
-	}
-
-
-#ifndef NDEBUG
 	/*
-	 *	The current request MUST have been yielded in
-	 *	order for someone to mark it resumable.
+	 *	The IO code, or children have no idea where they're
+	 *	being called from.  They just mark the parent
+	 *	resumable when they're done.  So we have to check here
+	 *	for a RESUME frame.  If the parent called the child
+	 *	directly, then there's no RESUME frame.  When the
+	 *	child is done, the parent will automatically continue
+	 *	running.  We threfore don't need to insert the parent
+	 *	into the backlog.
 	 */
-	stack = request->stack;
-	frame = &stack->frame[stack->depth];
-	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
-#endif
+	if (frame->instruction->type != UNLANG_TYPE_RESUME) {
+		return;
+	}
 
 	rad_assert(request->backlog != NULL);
 
