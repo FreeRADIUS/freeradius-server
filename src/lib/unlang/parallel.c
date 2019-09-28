@@ -353,10 +353,12 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 /** Send a signal from parent request to all of it's children
  *
  */
-static void unlang_parallel_signal(UNUSED REQUEST *request, void *rctx, fr_state_signal_t action)
+static void unlang_parallel_signal(REQUEST *request, UNUSED void *rctx, fr_state_signal_t action)
 {
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_parallel_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_t);
 	int			i;
-	unlang_parallel_t	*state = talloc_get_type_abort(rctx, unlang_parallel_t);
 
 	/*
 	 *	Signal all of the children, if they exist.
@@ -378,43 +380,26 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, void *rctx, fr_state
 }
 
 
-static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
+static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *rctx)
 {
-	unlang_parallel_t	*state = talloc_get_type_abort(rctx, unlang_parallel_t);
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-
-#ifndef NDEBUG
-	unlang_resume_t		*mr;
-#endif
+	unlang_parallel_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_t);
 
 	/*
 	 *	Continue running the child.
 	 */
 	*presult = unlang_parallel_run(request, state);
-	if (*presult != RLM_MODULE_YIELD) {
-		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+	if (*presult == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
-		frame->instruction->type = UNLANG_TYPE_PARALLEL; /* for debug purposes */
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-#ifndef NDEBUG
-	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
-
-	mr = unlang_generic_to_resume(frame->instruction);
-	(void) talloc_get_type_abort(mr, unlang_resume_t);
-
-	rad_assert(mr->resume == NULL);
-	rad_assert(mr->rctx == state);
-#endif
-
-	/*
-	 *	If the child yields, our current frame is still an
-	 *	unlang_resume_t.
-	 */
-	return UNLANG_ACTION_YIELD;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
+
+static unlang_action_t unlang_parallel_process_resume(REQUEST *request, rlm_rcode_t *presult)
+{
+	return  unlang_parallel_resume(request, presult, NULL);
+}
+
 
 static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 {
@@ -425,7 +410,6 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
 	unlang_parallel_t	*state;
-	unlang_resume_t		*mr;
 
 	g = unlang_generic_to_group(instruction);
 
@@ -467,14 +451,7 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	/*
-	 *	Create the "resume" stack frame, and have it replace our stack frame.
-	 */
-	mr = unlang_interpret_resume_alloc(request, NULL, NULL, state);
-	if (!mr) {
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	frame->process = unlang_parallel_process_resume;
 
 	*presult = RLM_MODULE_YIELD;
 	return UNLANG_ACTION_YIELD;
