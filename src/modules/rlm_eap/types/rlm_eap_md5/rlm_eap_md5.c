@@ -116,6 +116,8 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, UNUSED void *thread, 
 	MD5_PACKET	*reply;
 	int		i;
 
+	rad_assert(eap_session != NULL);
+
 	/*
 	 *	Allocate an EAP-MD5 packet.
 	 */
