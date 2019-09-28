@@ -58,10 +58,11 @@ typedef struct {
 
 	int			num_children;		//!< How many children are executing.
 
-	unlang_group_t		*g;
+	bool			detach;			//!< are we creating the child detached
+	bool			clone;			//!< are the children cloned
 
 	unlang_parallel_child_t children[];		//!< Array of children.
-} unlang_parallel_t;
+} unlang_parallel_state_t;
 
 #ifdef __cplusplus
 }

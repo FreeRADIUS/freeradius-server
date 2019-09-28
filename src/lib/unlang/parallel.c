@@ -46,7 +46,7 @@ static unlang_action_t unlang_parallel_child_done(REQUEST *request, UNUSED rlm_r
 	 *	relationship.
 	 *
 	 *	Note that we call unlang_interpret_resumable() here
-	 *	because unlang_parallel_run() calls
+	 *	because unlang_parallel_process() calls
 	 *	unlang_interpret_run(), and NOT child->async->process.
 	 */
 	if (request->parent) {
@@ -65,18 +65,23 @@ static unlang_action_t unlang_parallel_child_done(REQUEST *request, UNUSED rlm_r
 /** Run one or more sub-sections from the parallel section.
  *
  */
-static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *state)
+static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *presult)
 {
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_parallel_state_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
+
 	int			i, priority;
 	rlm_rcode_t		result;
-	unlang_parallel_child_state_t done = CHILD_DONE; /* hope that we're done */
+	unlang_parallel_child_state_t child_state = CHILD_DONE; /* hope that we're done */
 	REQUEST			*child;
 
 	/*
-	 *	The children are created all detached.  We just return
-	 *	"noop".
+	 *	If the children should be created detached, we return
+	 *	"noop".  This function then creates the children,
+	 *	detaches them, and returns.
 	 */
-	if (state->g->detach) {
+	if (state->detach) {
 		state->priority = 0;
 		state->result = RLM_MODULE_NOOP;
 	}
@@ -96,10 +101,10 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			RDEBUG3("parallel child %d is INIT", i + 1);
 			rad_assert(state->children[i].instruction != NULL);
 			child = unlang_io_subrequest_alloc(request,
-							   request->dict, state->g->detach);
+							   request->dict, state->detach);
 			child->packet->code = request->packet->code;
 
-			if (state->g->clone) {
+			if (state->clone) {
 				/*
 				 *	Note that we do NOT copy the
 				 *	Session-State list!  That
@@ -117,7 +122,9 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 						       request->control) < 0)) {
 					REDEBUG("failed copying lists to clone");
 					for (i = 0; i < state->num_children; i++) TALLOC_FREE(state->children[i].child);
-					return RLM_MODULE_FAIL;
+
+					*presult = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_CALCULATE_RESULT;
 				}
 			}
 
@@ -139,7 +146,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	It is often useful to create detached
 			 *	children in parallel.
 			 */
-			if (state->g->detach) {
+			if (state->detach) {
 				state->children[i].state = CHILD_DONE;
 				state->children[i].instruction = NULL;
 
@@ -151,7 +158,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 				 */
 				if (unlang_detach(child, &result) == UNLANG_ACTION_CALCULATE_RESULT) {
 					talloc_free(child);
-					done = CHILD_DONE;
+					child_state = CHILD_DONE;
 					state->result = RLM_MODULE_FAIL;
 					break;
 				}
@@ -159,7 +166,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 				if (fr_heap_insert(child->backlog, child) < 0) {
 					RPERROR("Failed inserting child into backlog");
 					talloc_free(child);
-					done = CHILD_DONE;
+					child_state = CHILD_DONE;
 					state->result = RLM_MODULE_FAIL;
 					break;
 				}
@@ -184,12 +191,13 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *
 			 *	Doing that will end up calling
 			 *	unlang_parallel_child_done(), and all
-			 *	kinds of things happen..
+			 *	kinds of bad things happen.  We may
+			 *	want to fix that in the future.
 			 */
 			result = unlang_interpret_run(state->children[i].child);
 			if (result == RLM_MODULE_YIELD) {
 				state->children[i].state = CHILD_YIELDED;
-				done = CHILD_YIELDED;
+				child_state = CHILD_YIELDED;
 				continue;
 			}
 
@@ -197,6 +205,12 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"));
 
 			rad_assert(result < NUM_ELEMENTS(state->children[i].instruction->actions));
+
+			/*
+			 *	Re-run all of the logic from interpret.c
+			 *
+			 *	@todo - Make this a common function?
+			 */
 
 			/*
 			 *	Remember this before we delete the
@@ -225,7 +239,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 				 */
 				i = state->num_children;
 				priority = 0;
-				done = CHILD_DONE;
+				child_state = CHILD_DONE;
 			}
 
 			/*
@@ -240,8 +254,6 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Do priority over-ride.
 			 */
 			if (priority > state->priority) {
-				unlang_stack_t *stack = request->stack;
-
 				state->result = result;
 				state->priority = priority;
 
@@ -256,9 +268,9 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	remember the yield instead of the fact
 			 *	that we're done.
 			 */
-			if (done == CHILD_YIELDED) continue;
+			if (child_state == CHILD_YIELDED) continue;
 
-			rad_assert(done == CHILD_DONE);
+			rad_assert(child_state == CHILD_DONE);
 			break;
 
 			/*
@@ -274,7 +286,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			RDEBUG3("parallel child %d is already YIELDED", i + 1);
 			rad_assert(state->children[i].child != NULL);
 			rad_assert(state->children[i].instruction != NULL);
-			done = CHILD_YIELDED;
+			child_state = CHILD_YIELDED;
 			continue;
 
 		case CHILD_EXITED:
@@ -299,11 +311,11 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 	/*
 	 *	Yield if necessary.
 	 */
-	if (done == CHILD_YIELDED) {
-		return RLM_MODULE_YIELD;
+	if (child_state == CHILD_YIELDED) {
+		return UNLANG_ACTION_YIELD;
 	}
 
-	rad_assert(done == CHILD_DONE);
+	rad_assert(child_state == CHILD_DONE);
 
 	/*
 	 *	Clean up all of the child requests, because once we
@@ -342,11 +354,8 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 		}
 	}
 
-	/*
-	 *	Return the final result.  The caller will take care of
-	 *	free'ing "state".
-	 */
-	return state->result;
+	*presult = state->result;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 
@@ -357,7 +366,7 @@ static void unlang_parallel_signal(REQUEST *request, UNUSED void *rctx, fr_state
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_parallel_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_t);
+	unlang_parallel_state_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
 	int			i;
 
 	/*
@@ -380,36 +389,14 @@ static void unlang_parallel_signal(REQUEST *request, UNUSED void *rctx, fr_state
 }
 
 
-static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *rctx)
-{
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_parallel_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_t);
-
-	/*
-	 *	Continue running the child.
-	 */
-	*presult = unlang_parallel_run(request, state);
-	if (*presult == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
-
-static unlang_action_t unlang_parallel_process_resume(REQUEST *request, rlm_rcode_t *presult)
-{
-	return  unlang_parallel_resume(request, presult, NULL);
-}
-
-
 static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 {
-	int			i;
-	rlm_rcode_t		rcode;
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
-	unlang_parallel_t	*state;
+	unlang_parallel_state_t	*state;
+	int			i;
 
 	g = unlang_generic_to_group(instruction);
 
@@ -421,16 +408,17 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 	/*
 	 *	Allocate an array for the children.
 	 */
-	frame->state = state = talloc_zero_size(request, sizeof(unlang_parallel_t) + sizeof(state->children[0]) * g->num_children);
+	frame->state = state = talloc_zero_size(request, sizeof(unlang_parallel_state_t) + sizeof(state->children[0]) * g->num_children);
 	if (!state) {
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	};
 
-	(void) talloc_set_type(state, unlang_parallel_t);
+	(void) talloc_set_type(state, unlang_parallel_state_t);
 	state->result = RLM_MODULE_FAIL;
 	state->priority = -1;				/* as-yet unset */
-	state->g = g;
+	state->detach = g->detach;
+	state->clone = g->clone;
 	state->num_children = g->num_children;
 
 	/*
@@ -441,20 +429,8 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 		state->children[i].instruction = instruction;
 	}
 
-	/*
-	 *	Run the various children.  On the off chance they're
-	 *	all done, free things, and return.
-	 */
-	rcode = unlang_parallel_run(request, state);
-	if (rcode != RLM_MODULE_YIELD) {
-		*presult = rcode;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	frame->process = unlang_parallel_process_resume;
-
-	*presult = RLM_MODULE_YIELD;
-	return UNLANG_ACTION_YIELD;
+	frame->process = unlang_parallel_process;
+	return unlang_parallel_process(request, presult);
 }
 
 void unlang_parallel_init(void)
@@ -464,7 +440,6 @@ void unlang_parallel_init(void)
 				.name = "parallel",
 				.func = unlang_parallel,
 				.signal = unlang_parallel_signal,
-				.resume = unlang_parallel_resume,
 				.debug_braces = true
 			   });
 }
