@@ -56,6 +56,9 @@ typedef struct {
 								///< expansion.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.
+	xlat_func_resume_t	resume;				//!< called on resume
+	xlat_func_signal_t	signal;				//!< called on signal
+	void			*rctx;				//!< for resume / signal
 } unlang_frame_state_xlat_t;
 
 /** Wrap an #fr_event_timer_t providing data needed for unlang events
@@ -145,7 +148,7 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_xlat_event_t		*ev;
-	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
+	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
 	rad_assert(stack->depth > 0);
 	rad_assert(frame->instruction->type == UNLANG_TYPE_XLAT);
@@ -156,8 +159,8 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 	ev->request = request;
 	ev->fd = -1;
 	ev->timeout = callback;
-	ev->inst = xs->exp->inst;
-	ev->thread = xlat_thread_instance_find(xs->exp);
+	ev->inst = state->exp->inst;
+	ev->thread = xlat_thread_instance_find(state->exp);
 	ev->ctx = ctx;
 
 	if (fr_event_timer_at(request, request->el, &ev->ev, when, unlang_xlat_event_timeout_handler, ev) < 0) {
@@ -236,15 +239,15 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
+	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_exp_t const		*child = NULL;
 	xlat_action_t			xa;
 
 	if (is_repeatable(frame)) {
-		xa = xlat_frame_eval_repeat(xs->ctx, &xs->values, &child,
-					    &xs->alternate, request, &xs->exp, &xs->rhead);
+		xa = xlat_frame_eval_repeat(state->ctx, &state->values, &child,
+					    &state->alternate, request, &state->exp, &state->rhead);
 	} else {
-		xa = xlat_frame_eval(xs->ctx, &xs->values, &child, request, &xs->exp);
+		xa = xlat_frame_eval(state->ctx, &state->values, &child, request, &state->exp);
 	}
 
 	switch (xa) {
@@ -258,11 +261,15 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 		 *	at this level.  A frame may be used to evaluate
 		 *	multiple sibling nodes.
 		 */
-		talloc_list_free(&xs->rhead);
-		unlang_xlat_push(xs->ctx, &xs->rhead, request, child, false);
+		talloc_list_free(&state->rhead);
+		unlang_xlat_push(state->ctx, &state->rhead, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_YIELD:
+		if (!state->resume) {
+			RWDEBUG("Missing call to unlang_xlat_yield()");
+			goto fail;
+		}
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
@@ -270,11 +277,82 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
+		fail:
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	rad_assert(0);
+	*presult = RLM_MODULE_FAIL;
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Send a signal (usually stop) to a request that's running an xlat expansions
+ *
+ * This is typically called via an "async" action, i.e. an action
+ * outside of the normal processing of the request.
+ *
+ * If there is no #xlat_func_signal_t callback defined, the action is ignored.
+ *
+ * @param[in] request		The current request.
+ * @param[in] rctx		created by #unlang_module.
+ * @param[in] action		What the request should do (the type of signal).
+ */
+static void unlang_xlat_signal(REQUEST *request, UNUSED void *rctx, fr_state_signal_t action)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
+
+	if (!state->signal) return;
+
+	xlat_signal(state->signal, state->exp, request, state->rctx, action);
+}
+
+/** Called when we're ready to resume processing the request
+ *
+ * @param[in] request	to resume processing.
+ * @param[in] presult	the result of the xlat function.
+ *			  - RLM_MODULE_OK on success.
+ *			  - RLM_MODULE_FAIL on failure.
+ *			  - RLM_MODULE_YIELD if additional asynchronous
+ *			    operations need to be performed.
+ * @return
+ *	- UNLANG_ACTION_YIELD	if yielding.
+ *	- UNLANG_ACTION_CALCULATE_RESULT if done.
+ */
+static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
+	xlat_action_t			xa;
+
+	rad_assert(state->resume != NULL);
+
+	xa = xlat_frame_eval_resume(state->ctx, &state->values,
+				    state->resume, state->exp,
+				    request, &state->rhead, state->rctx);
+	switch (xa) {
+	case XLAT_ACTION_YIELD:
+		return UNLANG_ACTION_YIELD;
+
+	case XLAT_ACTION_DONE:
+		*presult = RLM_MODULE_OK;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+
+	case XLAT_ACTION_PUSH_CHILD:
+		rad_assert(0);
+		/* FALL-THROUGH */
+
+	case XLAT_ACTION_FAIL:
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	/* DON'T SET DEFAULT */
+	}
+
+	rad_assert(0);		/* Garbage xlat action */
+
 	*presult = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -301,111 +379,18 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_resume_t			*mr;
+	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
-	rad_assert(stack->depth > 0);
+	frame->process = unlang_xlat_resume;
 
-	switch (frame->instruction->type) {
-	case UNLANG_TYPE_XLAT:
-	{
-		mr = unlang_interpret_resume_alloc(request, (void *)resume, (void *)signal, rctx);
-		if (!fr_cond_assert(mr)) {
-			return XLAT_ACTION_FAIL;
-		}
-	}
-		return XLAT_ACTION_YIELD;
+	/*
+	 *	Over-ride whatever functions were there before.
+	 */
+	state->resume = resume;
+	state->signal =signal;
+	state->rctx = rctx;
 
-	case UNLANG_TYPE_RESUME:
-		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
-		rad_assert(mr->parent->type == UNLANG_TYPE_XLAT);
-
-		/*
-		 *	Re-use the current RESUME frame, but override
-		 *	the callbacks and context.
-		 */
-		mr->resume = (void *)resume;
-		mr->signal = (void *)signal;
-		mr->rctx = rctx;
-		return XLAT_ACTION_YIELD;
-
-	default:
-		rad_assert(0);
-		return XLAT_ACTION_FAIL;
-	}
-}
-
-/** Send a signal (usually stop) to a request that's running an xlat expansions
- *
- * This is typically called via an "async" action, i.e. an action
- * outside of the normal processing of the request.
- *
- * If there is no #xlat_func_signal_t callback defined, the action is ignored.
- *
- * @param[in] request		The current request.
- * @param[in] rctx		created by #unlang_module.
- * @param[in] action		What the request should do (the type of signal).
- */
-static void unlang_xlat_signal(REQUEST *request, void *rctx, fr_state_signal_t action)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_resume_t			*mr = unlang_generic_to_resume(frame->instruction);
-	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
-
-	rad_assert(stack->depth > 0);
-
-	if (!mr->signal) return;
-
-	xlat_signal((xlat_func_signal_t)mr->signal, xs->exp, request, rctx, action);
-}
-
-/** Called when we're ready to resume processing the request
- *
- * @param[in] request	to resume processing.
- * @param[in] presult	the result of the xlat function.
- *			  - RLM_MODULE_OK on success.
- *			  - RLM_MODULE_FAIL on failure.
- *			  - RLM_MODULE_YIELD if additional asynchronous
- *			    operations need to be performed.
- * @param[in] rctx	provided by xlat function.
- * @return
- *	- UNLANG_ACTION_YIELD	if yielding.
- *	- UNLANG_ACTION_CALCULATE_RESULT if done.
- */
-static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_resume_t			*mr = unlang_generic_to_resume(frame->instruction);
-	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
-	xlat_action_t			xa;
-
-	xa = xlat_frame_eval_resume(xs->ctx, &xs->values,
-				    (xlat_func_resume_t)mr->resume, xs->exp,
-				    request, &xs->rhead, rctx);
-	switch (xa) {
-	case XLAT_ACTION_YIELD:
-		*presult = RLM_MODULE_YIELD;
-		return UNLANG_ACTION_YIELD;
-
-	case XLAT_ACTION_DONE:
-		*presult = RLM_MODULE_OK;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-
-	case XLAT_ACTION_PUSH_CHILD:
-		rad_assert(0);
-		/* FALL-THROUGH */
-
-	case XLAT_ACTION_FAIL:
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	/* DON'T SET DEFAULT */
-	}
-
-	rad_assert(0);		/* Garbage xlat action */
-
-	*presult = RLM_MODULE_FAIL;
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return XLAT_ACTION_YIELD;
 }
 
 /** Evaluates "naked" xlats in the config
@@ -444,9 +429,10 @@ void unlang_xlat_init(void)
 			   &(unlang_op_t){
 				.name = "xlat_eval",
 				.func = unlang_xlat,
-				.resume = unlang_xlat_resume,
 				.signal = unlang_xlat_signal,
-				.debug_braces = false
+				.debug_braces = false,
+				.frame_state_size = sizeof(unlang_frame_state_xlat_t),
+				.frame_state_name = "unlang_frame_state_xlat_t",
 			   });
 
 

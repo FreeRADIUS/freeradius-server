@@ -624,6 +624,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
 			case UNLANG_TYPE_PARALLEL: /* until we get rid of UNLANG_TYPE_RESUME */
 			case UNLANG_TYPE_SUBREQUEST: /* until we get rid of UNLANG_TYPE_RESUME */
+			case UNLANG_TYPE_XLAT: /* until we get rid of UNLANG_TYPE_RESUME */
 			case UNLANG_TYPE_RESUME:
 				repeatable_set(frame);
 				yielded_set(frame);
@@ -644,6 +645,11 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		 *	the section rcode and priority.
 		 */
 		case UNLANG_ACTION_CALCULATE_RESULT:
+			/*
+			 *	If a module returns yield, then do
+			 *	yield.  Only keywords will return
+			 *	UNLANG_ACTION_YIELD.
+			 */
 			if (*result == RLM_MODULE_YIELD) goto yield;
 
 			rad_assert(*result != RLM_MODULE_UNKNOWN);
@@ -1149,6 +1155,7 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 		case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
 		case UNLANG_TYPE_PARALLEL: /* until we get rid of UNLANG_TYPE_RESUME */
 		case UNLANG_TYPE_SUBREQUEST: /* until we get rid of UNLANG_TYPE_RESUME */
+		case UNLANG_TYPE_XLAT: /* until we get rid of UNLANG_TYPE_RESUME */
 			if (!frame->signal) continue;
 
 			frame->signal(request, NULL, action);
@@ -1255,6 +1262,7 @@ void unlang_interpret_resumable(REQUEST *request)
 	case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
 	case UNLANG_TYPE_PARALLEL: /* until we get rid of UNLANG_TYPE_RESUME */
 	case UNLANG_TYPE_SUBREQUEST: /* until we get rid of UNLANG_TYPE_RESUME */
+	case UNLANG_TYPE_XLAT: /* until we get rid of UNLANG_TYPE_RESUME */
 	case UNLANG_TYPE_RESUME:
 		break;
 
