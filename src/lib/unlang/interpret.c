@@ -623,6 +623,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 
 			case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
 			case UNLANG_TYPE_PARALLEL: /* until we get rid of UNLANG_TYPE_RESUME */
+			case UNLANG_TYPE_SUBREQUEST: /* until we get rid of UNLANG_TYPE_RESUME */
 			case UNLANG_TYPE_RESUME:
 				repeatable_set(frame);
 				yielded_set(frame);
@@ -1147,6 +1148,7 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 		switch (frame->instruction->type) {
 		case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
 		case UNLANG_TYPE_PARALLEL: /* until we get rid of UNLANG_TYPE_RESUME */
+		case UNLANG_TYPE_SUBREQUEST: /* until we get rid of UNLANG_TYPE_RESUME */
 			if (!frame->signal) continue;
 
 			frame->signal(request, NULL, action);
@@ -1250,8 +1252,9 @@ void unlang_interpret_resumable(REQUEST *request)
 	/*
 	 */
 	switch (frame->instruction->type) {
-	case UNLANG_TYPE_MODULE:
-	case UNLANG_TYPE_PARALLEL:
+	case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
+	case UNLANG_TYPE_PARALLEL: /* until we get rid of UNLANG_TYPE_RESUME */
+	case UNLANG_TYPE_SUBREQUEST: /* until we get rid of UNLANG_TYPE_RESUME */
 	case UNLANG_TYPE_RESUME:
 		break;
 
