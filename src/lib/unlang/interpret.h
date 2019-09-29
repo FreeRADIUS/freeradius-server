@@ -54,16 +54,6 @@ typedef unlang_action_t (*unlang_op_call_t)(REQUEST *request, rlm_rcode_t *presu
  */
 typedef void (*unlang_op_signal_t)(REQUEST *request, void *rctx, fr_state_signal_t action);
 
-/** Function to call if the initial function yielded and the request is resumable
- *
- * @param[in] request		The current request.
- * @param[in,out] presult	Pointer to the current rcode, may be modified by the function.
- * @param[in] rctx		A structure allocated by the initial #unlang_op_call_t to store
- *				the result of the async execution.
- * @return an action for the interpreter to perform.
- */
-typedef unlang_action_t (*unlang_op_resume_t)(REQUEST *request, rlm_rcode_t *presult, void *rctx);
-
 /** A generic function pushed by a module or xlat to functions deeper in the C call stack to create resumption points
  *
  * @param[in] request		The current request.
@@ -86,9 +76,6 @@ typedef struct {
 
 	unlang_op_signal_t	signal;				//!< Called if the request is to be destroyed
 								///< and we need to cleanup any residual state.
-
-	unlang_op_resume_t	resume;				//!< Called if we're continuing processing
-								///< a request.
 
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.

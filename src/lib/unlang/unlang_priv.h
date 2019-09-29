@@ -81,7 +81,6 @@ typedef enum {
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
-	UNLANG_TYPE_RESUME,			//!< where to resume processing
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
@@ -177,43 +176,6 @@ typedef struct {
 		};
 	};
 } unlang_group_t;
-
-/** Pushed onto the interpreter stack by a yielding module, xlat, or keyword to indicate a resumption point
- *
- * Unlike normal coroutines in other languages, we represent resumption points as states in a state
- * machine made up of function pointers.
- *
- * When a module, xlat or keyword yields, it specifies the function to call when whatever
- * condition is required for resumption is satisfied, it also specifies the ctx for that function,
- * which represents the internal state of the module at the time of yielding.
- *
- * Because we occasionally want to cancel requests that are waiting on a resumption condition
- * a signal function may also be specified.  This is provided so that whatever yielded can cancel
- * any pending I/O operations, and cleanup any memory that was temporarily allocated.
- *
- * If you want normal coroutine behaviour... rctx is arbitrary and could include a state enum,
- * in which case the function pointer could be the same as the function that yielded, and something
- * like Duff's device could be used to jump back to the yield point.
- *
- * Yield/resume are left as flexible as possible.  Writing async code this way is difficult enough
- * without being straightjacketed.
- */
-typedef struct {
-	unlang_t		self;
-
-	unlang_t		*parent;			//!< The original instruction.
-
-	void    		*resume;			//!< Function the yielding code indicated should
-								//!< be called when the request could be resumed.
-
-	void			*signal;			//!< Function the yielding code indicated should
-								///< be called if the request is destroyed in
-								///< the middle of an async operation.
-
-	void			*rctx;   			//!< Context data for the resume and signal functions.
-								///< Usually represents the internal state at the
-								///< time of yielding.
-} unlang_resume_t;
 
 /** A naked xlat
  *
@@ -368,17 +330,6 @@ static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
 {
 	return (unlang_t *)p;
 }
-
-static inline unlang_resume_t *unlang_generic_to_resume(unlang_t *p)
-{
-	rad_assert(p->type == UNLANG_TYPE_RESUME);
-	return talloc_get_type_abort(p, unlang_resume_t);
-}
-
-static inline unlang_t *unlang_resume_to_generic(unlang_resume_t *p)
-{
-	return (unlang_t *)p;
-}
 /* @} **/
 
 /** @name Internal interpreter functions needed by ops
@@ -386,8 +337,6 @@ static inline unlang_t *unlang_resume_to_generic(unlang_resume_t *p)
  * @{
  */
 uint64_t	unlang_interpret_active_callers(unlang_t *instruction);
-
-unlang_resume_t *unlang_interpret_resume_alloc(REQUEST *request, void *callback, void *signal, void *rctx);
 
 void		unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame);

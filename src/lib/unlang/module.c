@@ -137,8 +137,7 @@ int unlang_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callb
 								    unlang_frame_state_module_t);
 
 	rad_assert(stack->depth > 0);
-	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE) ||
-		   (frame->instruction->type == UNLANG_TYPE_RESUME));
+	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
 	sp = unlang_generic_to_module(frame->instruction);
 
 	ev = talloc_zero(request, unlang_module_event_t);
@@ -268,8 +267,7 @@ int unlang_module_fd_add(REQUEST *request,
 
 	rad_assert(stack->depth > 0);
 
-	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE) ||
-		   (frame->instruction->type == UNLANG_TYPE_RESUME));
+	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
 	sp = unlang_generic_to_module(frame->instruction);
 
 	ev = talloc_zero(request, unlang_module_event_t);

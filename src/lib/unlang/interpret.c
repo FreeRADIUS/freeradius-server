@@ -105,66 +105,6 @@ static void stack_dump(REQUEST *request)
  */
 unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
 
-/** Allocates and initializes an unlang_resume_t
- *
- * This is a generic resumption frame used by all OPs that may need to yield.
- * Each OP will register its own static resume and signal functions, which
- * will be called when a request needs to be resumed or signalled.
- *
- * The resume and signal functions provided by the OP, will cast the resume
- * and signal functions passed to this function, to the specific function
- * prototype that OP uses for resumption or signalling.
- *
- * @param[in] request		The current request.
- * @param[in] resume		Called on unlang_interpret_resumable().
- * @param[in] signal		Called on unlang_action().
- * @param[in] rctx		to pass to the callbacks.
- * @return
- *	unlang_resume_t on success
- *	NULL on error
- */
-unlang_resume_t *unlang_interpret_resume_alloc(REQUEST *request, void *resume, void *signal, void *rctx)
-{
-	unlang_resume_t 		*mr;
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-
-	mr = talloc_zero(request, unlang_resume_t);
-	if (!mr) return NULL;
-
-	/*
-	 *	Remember the parent.
-	 */
-	mr->parent = frame->instruction;
-
-	/*
-	 *	Initialize parent ptr, next ptr, name, debug_name,
-	 *	type, actions, etc.
-	 */
-	memcpy(&mr->self, frame->instruction, sizeof(mr->self));
-
-	/*
-	 *	But note that we're of type RESUME
-	 */
-	mr->self.type = UNLANG_TYPE_RESUME;
-
-	/*
-	 *	Fill in the signal handlers and resumption ctx
-	 */
-	mr->resume = resume;
-	mr->signal = signal;
-	mr->rctx = rctx;
-
-	/*
-	 *	Replaces the current stack frame with a RESUME frame.
-	 */
-	frame->instruction = unlang_resume_to_generic(mr);
-	frame->process = unlang_ops[frame->instruction->type].func;
-	frame->signal = unlang_ops[frame->instruction->type].signal;
-	repeatable_set(frame);
-
-	return mr;
-}
 
 /** Recursively collect active callers.  Slow, but correct
  *
@@ -621,11 +561,15 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 
 				return UNLANG_FRAME_ACTION_YIELD;
 
-			case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
-			case UNLANG_TYPE_PARALLEL: /* until we get rid of UNLANG_TYPE_RESUME */
-			case UNLANG_TYPE_SUBREQUEST: /* until we get rid of UNLANG_TYPE_RESUME */
-			case UNLANG_TYPE_XLAT: /* until we get rid of UNLANG_TYPE_RESUME */
-			case UNLANG_TYPE_RESUME:
+				/*
+				 *	For sanity, we ensure that
+				 *	only known keywords can yield.
+				 */
+			case UNLANG_TYPE_MODULE:
+			case UNLANG_TYPE_PARALLEL:
+			case UNLANG_TYPE_SUBREQUEST:
+			case UNLANG_TYPE_XLAT:
+			case UNLANG_TYPE_CALL:
 				repeatable_set(frame);
 				yielded_set(frame);
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
@@ -921,6 +865,8 @@ void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode
 
 /** Resume interpreting after a previous push or yield.
  *
+ *  @todo - either move to using unlang_interpret_run(), or add sanity
+ *  checks here that the frame was actually yielded.
  */
 rlm_rcode_t unlang_interpret_resume(REQUEST *request)
 {
@@ -1124,7 +1070,6 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 {
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
-	unlang_resume_t		*mr;
 	int			i, depth = stack->depth;
 
 	(void)talloc_get_type_abort(request, REQUEST);	/* Check the request hasn't already been freed */
@@ -1151,31 +1096,9 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 		 */
 		if (!is_yielded(frame)) continue;
 
-		switch (frame->instruction->type) {
-		case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
-		case UNLANG_TYPE_PARALLEL: /* until we get rid of UNLANG_TYPE_RESUME */
-		case UNLANG_TYPE_SUBREQUEST: /* until we get rid of UNLANG_TYPE_RESUME */
-		case UNLANG_TYPE_XLAT: /* until we get rid of UNLANG_TYPE_RESUME */
-			if (!frame->signal) continue;
+		if (!frame->signal) continue;
 
-			frame->signal(request, NULL, action);
-			break;
-
-		case UNLANG_TYPE_RESUME:
-			mr = unlang_generic_to_resume(frame->instruction);
-
-			/*
-			 *	No signal handler for this frame type
-			 */
-			if (!unlang_ops[mr->parent->type].signal) continue;
-
-			unlang_ops[mr->parent->type].signal(request, mr->rctx, action);
-			break;
-
-		default:
-			rad_assert(0);
-			break;
-		}
+		frame->signal(request, NULL, action);
 	}
 	stack->depth = depth;				/* Reset */
 }
@@ -1256,79 +1179,11 @@ void unlang_interpret_resumable(REQUEST *request)
 	 */
 	if (!is_yielded(frame) || is_scheduled(request)) return;
 
-	/*
-	 */
-	switch (frame->instruction->type) {
-	case UNLANG_TYPE_MODULE: /* until we get rid of UNLANG_TYPE_RESUME */
-	case UNLANG_TYPE_PARALLEL: /* until we get rid of UNLANG_TYPE_RESUME */
-	case UNLANG_TYPE_SUBREQUEST: /* until we get rid of UNLANG_TYPE_RESUME */
-	case UNLANG_TYPE_XLAT: /* until we get rid of UNLANG_TYPE_RESUME */
-	case UNLANG_TYPE_RESUME:
-		break;
-
-	default:
-		rad_assert(0);
-		return;
-	}
-
 	rad_assert(request->backlog != NULL);
 
 	fr_heap_insert(request->backlog, request);
 }
 
-/** Callback for handling resumption frames
- *
- * Resumption frames are added to track when a module, or other construct
- * has yielded control back to the interpreter.
- *
- * This function is called when the request has been marked as resumable
- * and a resumption frame was previously placed on the stack, i.e. when
- * the work that caused the request to be yielded initially has completed.
- *
- * @param[in] request	to be resumed.
- * @param[out] presult	the rcode returned by the resume function.
- */
-static unlang_action_t unlang_interpret_resume_dispatch(REQUEST *request, rlm_rcode_t *presult)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_action_t			action;
-
-	RDEBUG2("%s - Resuming execution", mr->self.debug_name);
-
-	if (!unlang_ops[mr->parent->type].resume) {
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	/*
-	 *	Run the resume callback associated with
-	 *	the original frame which was used to
-	 *	create this resumption frame.
-	 */
-	action = unlang_ops[mr->parent->type].resume(request, presult, mr->rctx);
-
-	/*
-	 *	Leave mr alone, it will be freed when the request is done.
-	 */
-
-	/*
-	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
-	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		RWARN("Module %s became unblocked", mr->self.debug_name);
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	if (*presult != RLM_MODULE_YIELD) {
-		rad_assert(*presult >= RLM_MODULE_REJECT);
-		rad_assert(*presult < RLM_MODULE_NUMCODES);
-	}
-
-	return action;
-}
 
 /** Get information about the interpreter state
  *
@@ -1429,6 +1284,5 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 
 void unlang_interpret_init(void)
 {
-	unlang_register(UNLANG_TYPE_RESUME, &(unlang_op_t){ .name = "resume", .func = unlang_interpret_resume_dispatch });
 	(void) xlat_register(NULL, "interpreter", unlang_interpret_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 }
