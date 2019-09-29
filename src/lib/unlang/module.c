@@ -536,6 +536,16 @@ static void unlang_module_signal(REQUEST *request, fr_state_signal_t action)
 	state->signal(sp->module_instance->dl_inst->data, state->thread->data, request,
 		   state->rctx, action);
 	request->module = caller;
+
+	/*
+	 *	One fewer caller for this module.  Since this module
+	 *	has been cancelled, decrement the active callers and
+	 *	ignore any future signals.
+	 */
+	if (action == FR_SIGNAL_CANCEL) {
+		state->thread->active_callers--;
+		state->signal = NULL;
+	}
 }
 
 static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presult)
@@ -563,14 +573,17 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 
 	/*
 	 *	It is now marked as "stop" when it wasn't before, we
-	 *	must have been blocked.
+	 *	must have been blocked.  We do NOT decrement
+	 *	"active_callers" if it's already been cancelled in a
+	 *	signal.
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		RWARN("Module %s became unblocked", sp->module_instance->module->name);
 		if (state->presult) *state->presult = rcode;
 
+		if (state->signal) state->thread->active_callers--;
+
 		*presult = rcode;
-		state->thread->active_callers--;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 

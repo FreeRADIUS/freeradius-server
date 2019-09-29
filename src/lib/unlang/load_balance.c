@@ -191,75 +191,29 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 		}
 
 	} else {
-		int num;
-		uint64_t lowest_active_callers;
-
 	randomly_choose:
-		lowest_active_callers = ~(uint64_t ) 0;
+		count = 0;
 
 		/*
 		 *	Choose a child at random.
 		 *
 		 *	@todo - leverage the "power of 2", as per
-		 *	lib/io/network.c.  This is good enough for
-		 *	most purposes.  And, it avoids many calls to
-		 *	active_callers(), which is recursive and slow.
+		 *      lib/io/network.c.  This is good enough for
+		 *      most purposes.  However, in order to do this,
+		 *      we need to track active callers across
+		 *      *either* multiple modules in one thread, *or*
+		 *      across multiple threads.
+		 *
+		 *	We don't have thread-specific instance data
+		 *	for this load-balance section.  So for now,
+		 *	just pick a random child.
 		 */
-		for (redundant->child = redundant->found = g->children, num = 0;
+		for (redundant->child = redundant->found = g->children;
 		     redundant->child != NULL;
-		     redundant->child = redundant->child->next, num++) {
-			uint64_t active_callers;
-			unlang_t *child = redundant->child;
-
-			if (child->type != UNLANG_TYPE_MODULE) {
-				active_callers = unlang_interpret_active_callers(child);
-				RDEBUG3("load-balance child %d sub-section has %" PRIu64 " active", num, active_callers);
-
-			} else {
-				module_thread_instance_t *thread;
-				unlang_module_t *sp;
-
-				sp = unlang_generic_to_module(child);
-				rad_assert(sp != NULL);
-
-				thread = module_thread(sp->module_instance);
-				rad_assert(thread != NULL);
-
-				active_callers = thread->active_callers;
-				RDEBUG3("load-balance child %d sub-module has %" PRIu64 " active", num, active_callers);
-			}
-
-
-			/*
-			 *	Reset the found, and the count
-			 *	of children with this level of
-			 *	activity.
-			 */
-			if (active_callers < lowest_active_callers) {
-				RDEBUG3("load-balance choosing child %d as active %" PRIu64 " < %" PRIu64 "",
-					num, active_callers, lowest_active_callers);
-
-				count = 1;
-				lowest_active_callers = active_callers;
-				redundant->found = redundant->child;
-				continue;
-			}
-
-			/*
-			 *	Skip callers who are busier
-			 *	than the one we found.
-			 */
-			if (active_callers > lowest_active_callers) {
-				RDEBUG3("load-balance skipping child %d, as active %" PRIu64 " > %" PRIu64 "",
-					num, active_callers, lowest_active_callers);
-				continue;
-			}
-
+		     redundant->child = redundant->child->next) {
 			count++;
-			RDEBUG3("load-balance found %d children with %" PRIu64 " active", count, active_callers);
 
-			if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
-				RDEBUG3("load-balance choosing random child %d", num);
+			if ((count * (fr_rand() & 0xffffff)) < (uint32_t) 0x1000000) {
 				redundant->found = redundant->child;
 			}
 		}

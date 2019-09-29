@@ -106,56 +106,6 @@ static void stack_dump(REQUEST *request)
 unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
 
 
-/** Recursively collect active callers.  Slow, but correct
- *
- */
-uint64_t unlang_interpret_active_callers(unlang_t *instruction)
-{
-	uint64_t active_callers;
-	unlang_t *child;
-	unlang_group_t *g;
-
-	switch (instruction->type) {
-	default:
-		return 0;
-
-	case UNLANG_TYPE_MODULE:
-	{
-		module_thread_instance_t *thread;
-		unlang_module_t *sp;
-
-		sp = unlang_generic_to_module(instruction);
-		rad_assert(sp != NULL);
-
-		thread = module_thread(sp->module_instance);
-		rad_assert(thread != NULL);
-
-		return thread->active_callers;
-	}
-
-	case UNLANG_TYPE_GROUP:
-	case UNLANG_TYPE_LOAD_BALANCE:
-	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
-	case UNLANG_TYPE_IF:
-	case UNLANG_TYPE_ELSE:
-	case UNLANG_TYPE_ELSIF:
-	case UNLANG_TYPE_FOREACH:
-	case UNLANG_TYPE_SWITCH:
-	case UNLANG_TYPE_CASE:
-		g = unlang_generic_to_group(instruction);
-
-		active_callers = 0;
-		for (child = g->children;
-		     child != NULL;
-		     child = child->next) {
-			active_callers += unlang_interpret_active_callers(child);
-		}
-		break;
-	}
-
-	return active_callers;
-}
-
 static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t *frame)
 {
 	unlang_t	*instruction = frame->instruction;
