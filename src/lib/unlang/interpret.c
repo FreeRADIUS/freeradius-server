@@ -409,6 +409,7 @@ static inline void frame_pop(unlang_stack_t *stack)
 	rad_assert(stack->depth > 1);
 
 	frame = &stack->frame[stack->depth];
+
 	frame_cleanup(frame);
 
 	frame = &stack->frame[--stack->depth];
@@ -1098,7 +1099,7 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 
 		if (!frame->signal) continue;
 
-		frame->signal(request, NULL, action);
+		frame->signal(request, action);
 	}
 	stack->depth = depth;				/* Reset */
 }

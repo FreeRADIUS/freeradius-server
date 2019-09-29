@@ -48,11 +48,9 @@ typedef unlang_action_t (*unlang_op_call_t)(REQUEST *request, rlm_rcode_t *presu
  * or just cleanup the state of the original #unlang_op_call_t.
  *
  * @param[in] request		The current request.
- * @param[in] rctx	A structure allocated by the initial #unlang_op_call_t to store
- *				the result of the async execution.
  * @param[in] action		We're being signalled with.
  */
-typedef void (*unlang_op_signal_t)(REQUEST *request, void *rctx, fr_state_signal_t action);
+typedef void (*unlang_op_signal_t)(REQUEST *request, fr_state_signal_t action);
 
 /** A generic function pushed by a module or xlat to functions deeper in the C call stack to create resumption points
  *

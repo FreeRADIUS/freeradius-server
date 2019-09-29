@@ -362,7 +362,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 /** Send a signal from parent request to all of it's children
  *
  */
-static void unlang_parallel_signal(REQUEST *request, UNUSED void *rctx, fr_state_signal_t action)
+static void unlang_parallel_signal(REQUEST *request, fr_state_signal_t action)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];

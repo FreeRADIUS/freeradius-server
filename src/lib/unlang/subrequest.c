@@ -64,7 +64,7 @@ static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 /** Send a signal from parent request to subrequest
  *
  */
-static void unlang_subrequest_signal(REQUEST *request, UNUSED void *rctx, fr_state_signal_t action)
+static void unlang_subrequest_signal(REQUEST *request, fr_state_signal_t action)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

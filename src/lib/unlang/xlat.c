@@ -295,10 +295,9 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
  * If there is no #xlat_func_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
- * @param[in] rctx		created by #unlang_module.
  * @param[in] action		What the request should do (the type of signal).
  */
-static void unlang_xlat_signal(REQUEST *request, UNUSED void *rctx, fr_state_signal_t action)
+static void unlang_xlat_signal(REQUEST *request, fr_state_signal_t action)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

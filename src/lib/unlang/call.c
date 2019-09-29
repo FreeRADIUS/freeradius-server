@@ -30,9 +30,11 @@ RCSID("$Id$")
 /** Send a signal from parent request to subrequest in another virtual server
  *
  */
-static void unlang_call_signal(UNUSED REQUEST *request, void *ctx, fr_state_signal_t action)
+static void unlang_call_signal(REQUEST *request, fr_state_signal_t action)
 {
-	REQUEST			*child = talloc_get_type_abort(ctx, REQUEST);
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	REQUEST				*child = frame->state;
 
 	unlang_interpret_signal(child, action);
 }

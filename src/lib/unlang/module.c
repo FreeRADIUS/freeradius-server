@@ -519,10 +519,9 @@ static inline void safe_unlock(module_instance_t *instance)
  * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
- * @param[in] rctx		createed by #unlang_module.
  * @param[in] action		to signal.
  */
-static void unlang_module_signal(REQUEST *request, UNUSED void *rctx, fr_state_signal_t action)
+static void unlang_module_signal(REQUEST *request, fr_state_signal_t action)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
