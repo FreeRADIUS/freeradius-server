@@ -553,15 +553,6 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			 *	pointer...
 			 */
 			switch (frame->instruction->type) {
-			case UNLANG_TYPE_DETACH:
-				RDEBUG4("** [%i] %s - detaching child with current (%s %d)",
-					stack->depth, __FUNCTION__,
-					fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
-					frame->priority);
-				DUMP_STACK;
-
-				return UNLANG_FRAME_ACTION_YIELD;
-
 				/*
 				 *	For sanity, we ensure that
 				 *	only known keywords can yield.
@@ -571,6 +562,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			case UNLANG_TYPE_SUBREQUEST:
 			case UNLANG_TYPE_XLAT:
 			case UNLANG_TYPE_CALL:
+			case UNLANG_TYPE_DETACH:
 				repeatable_set(frame);
 				yielded_set(frame);
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,

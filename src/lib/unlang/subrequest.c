@@ -43,6 +43,10 @@ fr_dict_attr_autoload_t subrequest_dict_attr[] = {
 	{ NULL }
 };
 
+typedef struct {
+	rlm_rcode_t	rcode;		//!< frame->result from before detach was called
+} unlang_frame_state_detach_t;
+
 static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	REQUEST *request = talloc_get_type_abort(uctx, REQUEST);
@@ -87,6 +91,8 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 	REQUEST				*child = talloc_get_type_abort(state->child, REQUEST);
 	rlm_rcode_t			rcode;
 
+	rad_assert(child != NULL);
+
 	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
 		if (!state->persist) {
@@ -112,53 +118,14 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 	}
 
 	/*
-	 *	If the child instruction is "detach", it will ALSO
-	 *	return YIELD.  We then detach the child, insert the
-	 *	child into the runnable queue, and keep going with the
-	 *	parent.
-	 *
-	 *	The unlang_detach() interpreter function takes care of
-	 *	calling request_detach() for the child.
+	 *	The child has yielded, BUT has also detached itself.
+	 *	We know this because it has reached into our state,
+	 *	and removed itself as a child.  We therefore just keep
+	 *	running, and don't return yield.
 	 */
-	{
-		unlang_stack_t		*child_stack = child->stack;
-		unlang_stack_frame_t	*child_frame = &child_stack->frame[child_stack->depth];
-		unlang_t		*child_instruction = child_frame->instruction;
-
-		if (child_instruction->type == UNLANG_TYPE_DETACH) {
-			rad_assert(child->backlog != NULL);
-
-			if (fr_heap_insert(child->backlog, child) < 0) {
-				RPERROR("Failed inserting child into backlog");
-				return UNLANG_ACTION_STOP_PROCESSING;
-			}
-
-			RDEBUG2("Detaching child request (%s)", child->name);
-
-			/*
-			 *	Tell the interpreter to skip the "detach"
-			 *	stack frame when it continues.
-			 */
-			child_frame->instruction = child_frame->next;
-			if (child_frame->instruction) child_frame->next = child_frame->instruction->next;
-
-			/*
-			 *	This frame no longer has a child, and
-			 *	we therefore can't signal it.
-			 */
-			state->child = NULL;
-			frame->signal = NULL;
-
-			/*
-			 *	This frame no longer has a child, and
-			 *	we therefore can't signal it.
-			 */
-			state->child = NULL;
-			frame->signal = NULL;
-
-			rcode = RLM_MODULE_NOOP;
-			goto calculate_result;
-		}
+	if (!state->child) {
+		rcode = RLM_MODULE_NOOP;
+		goto calculate_result;
 	}
 
 	/*
@@ -251,30 +218,18 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	return unlang_subrequest_process(request, presult);
 }
 
-unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult)
+/** Initialize a detached child
+ *
+ *  Detach it from the parent, set up it's lifetime, and mark it as
+ *  runnable.
+ */
+int unlang_detached_child_init(REQUEST *request)
 {
 	VALUE_PAIR		*vp;
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-
-	/*
-	 *	The "parallel" command calls us in order to detach a
-	 *	child which hasn't done anything yet.
-	 *
-	 *	Therefore, we print out the "detach" keyword ONLY when
-	 *	it's running with a parent stack frame.
-	 */
-	if (stack->depth > 1) {
-		RDEBUG2("%s", unlang_ops[instruction->type].name);
-	}
-
-	rad_assert(request->parent != NULL);
 
 	if (request_detach(request, false) < 0) {
 		ERROR("Failed detaching child");
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return -1;
 	}
 
 	/*
@@ -307,11 +262,74 @@ unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult)
 	}
 
 	/*
-	 *	request_detach() sets the backlog
+	 *	Mark the child as runnable.
 	 */
-	rad_assert(request->backlog != NULL);
+	if (fr_heap_insert(request->backlog, request) < 0) {
+		RPERROR("Failed inserting ourself into the backlog.");
+		return -1;
+	}
 
-	*presult = RLM_MODULE_YIELD;
+	return 0;
+}
+
+static unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_detach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_detach_t);
+
+	unlang_frame_state_subrequest_t	*parent_state;
+
+	/*
+	 *	We've detached, yielded, and now are continuing
+	 *	processing.  There's nothing more to do, so just
+	 *	continue.
+	 */
+	if (!request->parent) {
+		*presult = state->rcode;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	First time through, detach from the parent.
+	 */
+	RDEBUG2("detach");
+
+	rad_assert(request->parent != NULL);
+
+	/*
+	 *	Get the PARENT's stack.
+	 */
+	stack = request->parent->stack;
+	frame = &stack->frame[stack->depth];
+	parent_state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
+
+	/*
+	 *	If we can't detach the child OR we can't insert it
+	 *	into the backlog, stop processing it.
+	 */
+	if (unlang_detached_child_init(request) < 0) {
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
+	/*
+	 *	The parent frame no longer has a child, and therefore
+	 *	can't be signaled.
+	 */
+	rad_assert(parent_state->child == request);
+	parent_state->child = NULL;
+	frame->signal = NULL;
+
+	/*
+	 *	Pass through whatever the previous instruction had as
+	 *	the result.
+	 */
+	state->rcode = *presult;
+
+	/*
+	 *	Yield to the parent, who will discover that there's no
+	 *	child, and return.
+	 */
 	return UNLANG_ACTION_YIELD;
 }
 
@@ -407,6 +425,8 @@ int unlang_subrequest_op_init(void)
 			   &(unlang_op_t){
 				.name = "detach",
 				.func = unlang_detach,
+				.frame_state_size = sizeof(unlang_frame_state_detach_t),
+				.frame_state_name = "unlang_frame_state_detach_t",
 			   });
 
 	return 0;

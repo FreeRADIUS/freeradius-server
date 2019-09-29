@@ -156,21 +156,12 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 				 *	Detach the child, and insert
 				 *	it into the backlog.
 				 */
-				if (unlang_detach(child, &result) == UNLANG_ACTION_CALCULATE_RESULT) {
+				if (unlang_detached_child_init(child) < 0) {
 					talloc_free(child);
 					child_state = CHILD_DONE;
 					state->result = RLM_MODULE_FAIL;
 					break;
 				}
-
-				if (fr_heap_insert(child->backlog, child) < 0) {
-					RPERROR("Failed inserting child into backlog");
-					talloc_free(child);
-					child_state = CHILD_DONE;
-					state->result = RLM_MODULE_FAIL;
-					break;
-				}
-
 				continue;
 			}
 
