@@ -1041,6 +1041,8 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	packet[2] = (total_length >> 8) & 0xff;
 	packet[3] = total_length & 0xff;
 
+	FR_PROTO_HEX_DUMP(packet, total_length, "%s encoded packet", __FUNCTION__);
+
 	return total_length;
 }
 

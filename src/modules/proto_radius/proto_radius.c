@@ -508,11 +508,6 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		       request->async->listen->name);
 
 		log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-
-		if (DEBUG_ENABLED3) {
-			RDEBUG("proto_radius encoded packet");
-			if (DEBUG_ENABLED3) fr_log_hex(&default_log, L_DBG, __FILE__, __LINE__, buffer, data_len, NULL);
-		}
 	}
 
 	return data_len;
