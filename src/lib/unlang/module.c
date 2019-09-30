@@ -411,7 +411,8 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
 					      fr_unlang_module_signal_t signal, void *rctx)
 {
 	/*
-	 *	Push the resumption point
+	 *	Push the resumption point BEFORE adding the subrequest
+	 *	to the parents stack.
 	 */
 	(void) unlang_module_yield(child->parent, resume, signal, rctx);
 
@@ -451,7 +452,8 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					fr_unlang_module_signal_t signal, void *rctx)
 {
 	/*
-	 *	Push the resumption point
+	 *	Push the resumption point BEFORE pushing the xlat onto
+	 *	the parents stack.
 	 */
 	(void) unlang_module_yield(request, resume, signal, rctx);
 
@@ -488,6 +490,10 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 			      module_thread(sp->module_instance)->data, request, rctx);
 	}
 
+	/*
+	 *	Push the resumption point BEFORE adding the subsection
+	 *	to the parents stack.
+	 */
 	unlang_module_yield(request, resume, signal, rctx);
 	unlang_interpret_push_section(request, subcs, default_rcode, false);
 
