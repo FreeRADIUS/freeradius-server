@@ -1,0 +1,19 @@
+cache eap_sim_cache {
+	#
+	#  key:: Cache key.
+	#
+	key = "%{Session-ID}"
+
+	#
+	#  ttl:: TTL for cache entries.
+	#
+	ttl = 15
+
+	#
+	#  update <section> { ... }::
+	#
+	update {
+		&session-state:Session-Data	:= &session-state:Session-Data
+		&session-state:Counter		:= &session-state:Counter
+	}
+}

@@ -1,0 +1,42 @@
+server inner-tunnel {
+	namespace = radius
+	listen {
+	       type = Access-Request
+	}
+
+	recv Access-Request {
+		update request {
+			&User-Name := &outer.User-Name
+		}
+		files
+		pap
+		chap
+		mschap
+		eap
+	}
+
+	authenticate pap {
+		pap
+	}
+
+	authenticate chap {
+		chap
+	}
+
+	authenticate mschap {
+		mschap
+	}
+
+	authenticate eap {
+		eap
+	}
+
+	send Access-Accept {
+	}
+
+	send Access-Reject {
+	}
+
+	send Access-Challenge {
+	}
+}

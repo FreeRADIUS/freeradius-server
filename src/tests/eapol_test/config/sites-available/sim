@@ -1,0 +1,53 @@
+server eap-sim {
+	namespace = eap-sim
+
+	recv Identity-Response {
+		"%{debug_attr:&session-state:}"
+		if (!&session-state:Tmp-String-0) {
+			update reply {
+				&Any-ID-Req := yes
+			}
+			update session-state {
+				&Tmp-String-0 := yes
+			}
+		}
+		ok
+	}
+
+	send Identity-Request {
+		ok
+	}
+
+	send Challenge-Request {
+                update control {
+                        &Sim-Ki  := 0x465b5ce8b199b49faa5f0a2ee238a6bc
+                        &Sim-Opc := 0xcd63cb71954a9f4e48a5994e37a02baf
+                        &Sim-SQN := 3
+                }
+		update reply {
+			&Next-Reauth-Id := ""
+			&Next-Pseudonym := ""
+		}
+		ok
+	}
+
+	send Reauthentication-Request {
+		update reply {
+			&Next-Reauth-Id := ""
+			&Next-Pseudonym := ""
+		}
+		ok
+	}
+
+	store session {
+		eap_sim_cache
+	}
+
+	load session {
+		eap_sim_cache
+	}
+
+	clear session {
+		eap_sim_cache
+	}
+}
