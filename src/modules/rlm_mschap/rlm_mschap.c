@@ -1793,7 +1793,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
 		 *	We also require a User-Name
 		 */
 		user_name = mschap_identity_find(request);
-		if (!user_name) return -1;
+		if (!user_name) return RLM_MODULE_FAIL;
 
 		/*
 		 *      Check for MS-CHAP-User-Name and if found, use it
