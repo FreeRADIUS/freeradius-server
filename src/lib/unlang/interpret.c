@@ -776,7 +776,6 @@ void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode
 				MOD_ACTION_RETURN
 			},
 		},
-		.group_type = UNLANG_GROUP_TYPE_SIMPLE,
 	};
 
 	/*

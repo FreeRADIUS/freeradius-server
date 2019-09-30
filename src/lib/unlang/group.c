@@ -73,6 +73,13 @@ void unlang_group_init(void)
 				.debug_braces = true
 			   });
 
+	unlang_register(UNLANG_TYPE_REDUNDANT,
+			   &(unlang_op_t){
+				.name = "redundant",
+				.interpret = unlang_group,
+				.debug_braces = true
+			   });
+
 	unlang_register(UNLANG_TYPE_POLICY,
 			   &(unlang_op_t){
 				.name = "policy",

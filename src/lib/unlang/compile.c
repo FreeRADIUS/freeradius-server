@@ -65,7 +65,7 @@ char const * const comp2str[] = {
 #endif
 };
 
-typedef int const unlang_action_table_t[UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES];
+typedef int const unlang_action_table_t[RLM_MODULE_NUMCODES];
 
 typedef struct {
 	rlm_components_t	component;
@@ -127,258 +127,119 @@ static void dump_tree(unlang_t *c, char const *name)
 #else
 #define dump_tree(a, b)
 #endif
-
-/* These are the default actions. For each section , the group{} block
- * behaves like the code from the old module_*() function. redundant{}
- * are based on my guesses of what they will be used for. --Pac. */
 static const int
-defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
+defaultactions[MOD_COUNT][RLM_MODULE_NUMCODES] =
 {
 	/* authenticate */
 	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			4,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		4,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* disallow */
+		1,			/* notfound */
+		2,			/* noop     */
 			3			/* updated  */
-		},
-		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		}
 	},
 	/* authorize */
 	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			3,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			4			/* updated  */
-		},
-		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		}
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		3,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* disallow */
+		1,			/* notfound */
+		2,			/* noop     */
+		4			/* updated  */
 	},
 	/* preacct */
 	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			2,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			1,			/* noop     */
-			3			/* updated  */
-		},
-		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		}
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		2,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* disallow */
+		MOD_ACTION_RETURN,	/* notfound */
+		1,			/* noop     */
+		3			/* updated  */
 	},
 	/* accounting */
 	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			2,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			1,			/* noop     */
-			3			/* updated  */
-		},
-		/* redundant */
-		{
-			1,			/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			1,			/* invalid  */
-			1,			/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			4			/* updated  */
-		}
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		2,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* disallow */
+		MOD_ACTION_RETURN,	/* notfound */
+		1,			/* noop     */
+		3			/* updated  */
 	},
 	/* pre-proxy */
 	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			3,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			4			/* updated  */
-		},
-		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		}
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		3,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* disallow */
+		1,			/* notfound */
+		2,			/* noop     */
+		4			/* updated  */
 	},
 	/* post-proxy */
 	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			3,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			4			/* updated  */
-		},
-		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		}
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		3,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* disallow */
+		1,			/* notfound */
+		2,			/* noop     */
+		4			/* updated  */
 	},
 	/* post-auth */
 	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			3,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			4			/* updated  */
-		},
-		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		}
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		3,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* disallow */
+		1,			/* notfound */
+		2,			/* noop     */
+		4			/* updated  */
 	}
 #ifdef WITH_COA
 	,
 	/* recv-coa */
 	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			3,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			4			/* updated  */
-		},
-		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		}
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		3,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* disallow */
+		1,			/* notfound */
+		2,			/* noop     */
+		4			/* updated  */
 	},
 	/* send-coa */
 	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			3,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			4			/* updated  */
-		},
-		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		}
-	}
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		3,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* disallow */
+		1,			/* notfound */
+		2,			/* noop     */
+		4			/* updated  */
+	},
 #endif
 };
 
@@ -1507,8 +1368,7 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 }
 
 
-static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs,
-				      unlang_group_type_t group_type, unlang_type_t mod_type)
+static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang_type_t mod_type)
 {
 	unlang_group_t *g;
 	unlang_t *c;
@@ -1520,7 +1380,6 @@ static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs,
 	g = talloc_zero(ctx, unlang_group_t);
 	if (!g) return NULL;
 
-	g->group_type = group_type;
 	g->children = NULL;
 	g->cs = cs;
 
@@ -1534,9 +1393,32 @@ static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs,
 }
 
 
-static unlang_t *compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx, unlang_group_type_t parentgroup_type)
+static unlang_t *compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 {
 	int i;
+
+	/*
+	 *	Children of "redundant" and "redundant-load-balance"
+	 *	have RETURN for all actions except fail.  But THEIR children are normal.
+	 */
+	if (c->parent &&
+	    ((c->parent->type == UNLANG_TYPE_REDUNDANT) || (c->parent->type == UNLANG_TYPE_REDUNDANT_LOAD_BALANCE))) {
+		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+			if (i == RLM_MODULE_FAIL) {
+				if (!c->actions[i]) {
+					c->actions[i] = 1;
+				}
+
+				continue;
+			}
+
+			if (!c->actions[i]) {
+				c->actions[i] = MOD_ACTION_RETURN;
+			}
+		}
+
+		return c;
+	}
 
 	/*
 	 *	Set the default actions, if they haven't already been
@@ -1544,7 +1426,7 @@ static unlang_t *compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_c
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions[i]) {
-			c->actions[i] = unlang_ctx->actions[0][parentgroup_type][i];
+			c->actions[i] = unlang_ctx->actions[0][i];
 		}
 	}
 
@@ -1602,8 +1484,7 @@ static int compile_map_name(unlang_group_t *g)
 }
 
 static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
-			     CONF_SECTION *cs, UNUSED unlang_group_type_t group_type,
-			     unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
+			     CONF_SECTION *cs, UNUSED unlang_type_t mod_type)
 {
 	int			rcode;
 	unlang_group_t		*g;
@@ -1689,7 +1570,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP);
+	g = group_allocate(parent, cs, UNLANG_TYPE_MAP);
 	if (!g) return NULL;
 
 	/*
@@ -1704,7 +1585,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	}
 	c = unlang_group_to_generic(g);
 
-	(void) compile_action_defaults(c, unlang_ctx, parentgroup_type);
+	(void) compile_action_defaults(c, unlang_ctx);
 
 	g->map = talloc_steal(g, head);
 	if (vpt) g->vpt = talloc_steal(g, vpt);
@@ -1729,8 +1610,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 }
 
 static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
-				CONF_SECTION *cs, unlang_group_type_t group_type,
-				UNUSED unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
+				CONF_SECTION *cs, UNUSED unlang_type_t mod_type)
 {
 	int			rcode;
 	unlang_group_t		*g;
@@ -1757,7 +1637,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, group_type, UNLANG_TYPE_UPDATE);
+	g = group_allocate(parent, cs, UNLANG_TYPE_UPDATE);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -1770,7 +1650,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		c->debug_name = unlang_ops[c->type].name;
 	}
 
-	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
+	(void) compile_action_defaults(c, unlang_ctx);
 
 	g->map = talloc_steal(g, head);
 
@@ -1783,8 +1663,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 }
 
 static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx,
-				CONF_SECTION *cs, unlang_group_type_t group_type,
-				UNUSED unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
+				CONF_SECTION *cs, UNUSED unlang_type_t mod_type)
 {
 	int			rcode;
 	unlang_group_t		*g;
@@ -1811,7 +1690,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, group_type, UNLANG_TYPE_FILTER);
+	g = group_allocate(parent, cs, UNLANG_TYPE_FILTER);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -1824,7 +1703,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		c->debug_name = unlang_ops[c->type].name;
 	}
 
-	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
+	(void) compile_action_defaults(c, unlang_ctx);
 
 	g->map = talloc_steal(g, head);
 
@@ -1928,13 +1807,12 @@ static bool compile_action_section(unlang_t *c, CONF_ITEM *ci)
 }
 
 static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type,
-				  fr_cond_type_t cond_type)
+			       unlang_type_t mod_type, fr_cond_type_t cond_type)
 {
 	unlang_group_t *g;
 	unlang_t *c;
 
-	g = group_allocate(parent, cs, group_type, mod_type);
+	g = group_allocate(parent, cs, mod_type);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -1960,12 +1838,12 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		g->cond->type = cond_type;
 	}
 
-	return compile_action_defaults(c, unlang_ctx, parentgroup_type);
+	return compile_action_defaults(c, unlang_ctx);
 }
 
 
 static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-			      unlang_group_type_t parent_group_type, char const **modname);
+			      char const **modname);
 
 
 /* unlang_group_ts are grown by adding a unlang_t to the end */
@@ -2034,8 +1912,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 }
 
 
-static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_compile_t *unlang_ctx,
-				  unlang_group_type_t group_type, unlang_group_type_t parentgroup_type)
+static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_compile_t *unlang_ctx)
 {
 	CONF_ITEM *ci = NULL;
 	unlang_t *c;
@@ -2094,7 +1971,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 			/*
 			 *	Otherwise it's a real keyword.
 			 */
-			single = compile_item(c, unlang_ctx, ci, group_type, &name1);
+			single = compile_item(c, unlang_ctx, ci, &name1);
 			if (!single) {
 				cf_log_err(ci, "Failed to parse \"%s\" subsection", cf_section_name1(subcs));
 				talloc_free(c);
@@ -2121,7 +1998,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 				unlang_t *single;
 				char const *name = NULL;
 
-				single = compile_item(c, unlang_ctx, ci, group_type, &name);
+				single = compile_item(c, unlang_ctx, ci, &name);
 				if (!single) {
 					/*
 					 *	Skip optional modules, which start with '-'
@@ -2160,7 +2037,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 		}
 	}
 
-	return compile_action_defaults(c, unlang_ctx, parentgroup_type);
+	return compile_action_defaults(c, unlang_ctx);
 }
 
 
@@ -2168,13 +2045,12 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
  *	Generic "compile a section with more unlang inside of it".
  */
 static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       unlang_group_type_t group_type,
-			       unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+			       unlang_type_t mod_type)
 {
 	unlang_group_t *g;
 	unlang_t *c;
 
-	g = group_allocate(parent, cs, group_type, mod_type);
+	g = group_allocate(parent, cs, mod_type);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -2188,12 +2064,11 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	c->name = talloc_typed_strdup(c, unlang_ops[c->type].name);
 	c->debug_name = talloc_typed_strdup(c, c->name);
 
-	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
+	return compile_children(g, parent, unlang_ctx);
 }
 
 static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				unlang_group_type_t group_type,
-				unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+				unlang_type_t mod_type)
 {
 	CONF_ITEM *ci;
 	FR_TOKEN type;
@@ -2217,7 +2092,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, group_type, mod_type);
+	g = group_allocate(parent, cs, mod_type);
 	if (!g) return NULL;
 
 	/*
@@ -2296,11 +2171,11 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
+	return compile_children(g, parent, unlang_ctx);
 }
 
 static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				 unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+			      unlang_type_t mod_type)
 {
 	int			i;
 	char const		*name2;
@@ -2399,7 +2274,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 	} /* else it's a default 'case' statement */
 
-	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, mod_type);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
@@ -2433,7 +2308,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 }
 
 static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+				 unlang_type_t mod_type)
 {
 	FR_TOKEN		type;
 	char const		*name2;
@@ -2506,7 +2381,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	vpt->tmpl_num = NUM_ALL;
 
-	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, mod_type);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
@@ -2545,7 +2420,7 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		return NULL;
 	}
 
-	c = compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
+	c = compile_empty(parent, unlang_ctx, NULL,
 			  UNLANG_TYPE_BREAK, COND_TYPE_INVALID);
 	if (!c) return NULL;
 
@@ -2577,7 +2452,7 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
+	return compile_empty(parent, unlang_ctx, NULL,
 			     UNLANG_TYPE_DETACH, COND_TYPE_INVALID);
 }
 #endif
@@ -2597,7 +2472,7 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 	c->debug_name = c->name;
 	c->type = UNLANG_TYPE_XLAT_INLINE;
 
-	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
+	(void) compile_action_defaults(c, unlang_ctx);
 
 	mx->xlat_name = talloc_typed_strdup(mx, cf_pair_attr(cp));
 	if (mx->xlat_name[0] == '%') {
@@ -2622,7 +2497,7 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 }
 
 static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+			    unlang_type_t mod_type)
 {
 	unlang_t *c;
 	unlang_group_t *g;
@@ -2639,7 +2514,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	if (cond->type == COND_TYPE_FALSE) {
 		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
 				    unlang_ops[mod_type].name);
-		return compile_empty(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type, COND_TYPE_FALSE);
+		return compile_empty(parent, unlang_ctx, cs, mod_type, COND_TYPE_FALSE);
 	}
 
 	/*
@@ -2650,7 +2525,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	 */
 	if (!fr_cond_walk(cond, pass2_cond_callback, unlang_ctx)) return NULL;
 
-	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, mod_type);
 	if (!c) return NULL;
 
 	c->name = unlang_ops[c->type].name;
@@ -2688,7 +2563,7 @@ static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_typ
 }
 
 static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+			       unlang_type_t mod_type)
 {
 	int rcode;
 
@@ -2703,14 +2578,13 @@ static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	rcode = previous_if(cs, parent, mod_type);
 	if (rcode < 0) return NULL;
 
-	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type, COND_TYPE_TRUE);
+	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, mod_type, COND_TYPE_TRUE);
 
-	return compile_if(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+	return compile_if(parent, unlang_ctx, cs, mod_type);
 }
 
-static unlang_t *compile_else(unlang_t *parent,
-			       unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+static unlang_t *compile_else(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+			      unlang_type_t mod_type)
 {
 	int rcode;
 	unlang_t *c;
@@ -2724,9 +2598,9 @@ static unlang_t *compile_else(unlang_t *parent,
 	if (rcode < 0) return NULL;
 
 	if (rcode == 0) {
-		c = compile_empty(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type, COND_TYPE_TRUE);
+		c = compile_empty(parent, unlang_ctx, cs, mod_type, COND_TYPE_TRUE);
 	} else {
-		c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+		c = compile_group(parent, unlang_ctx, cs, mod_type);
 	}
 
 	if (!c) return c;
@@ -2790,7 +2664,7 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 
 
 static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+				   unlang_type_t mod_type)
 {
 	char const *name2;
 	unlang_t *c;
@@ -2807,7 +2681,7 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 		return NULL;
 	}
 
-	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, mod_type);
 	if (!c) return NULL;
 
 	/*
@@ -2835,7 +2709,7 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 }
 
 static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+				      unlang_type_t mod_type)
 {
 	char const	*name2;
 	unlang_t	*c;
@@ -2861,7 +2735,7 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 		return NULL;
 	}
 
-	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, mod_type);
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
@@ -2940,7 +2814,7 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 }
 
 static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+				  unlang_type_t mod_type)
 {
 	unlang_t *c;
 	char const *name2;
@@ -2977,7 +2851,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 	}
 
-	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, mod_type);
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
@@ -2991,7 +2865,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 
 static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+				    unlang_type_t mod_type)
 {
 	char const		*name2;
 	unlang_t		*c;
@@ -3006,7 +2880,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	char			buffer2[64];
 	char			buffer3[64];
 
-	g = group_allocate(parent, cs, group_type, mod_type);
+	g = group_allocate(parent, cs, mod_type);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -3135,7 +3009,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	 *	of the dictionary && namespace that was given by the
 	 *	subrequest.
 	 */
-	c = compile_children(g, parent, &unlang_ctx2, group_type, parentgroup_type);
+	c = compile_children(g, parent, &unlang_ctx2);
 	if (!c) return NULL;
 
 	g->dict = dict;
@@ -3147,7 +3021,6 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 
 static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type,
 			      unlang_type_t mod_type)
 {
 	unlang_group_t		*g;
@@ -3169,7 +3042,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, group_type, mod_type);
+	g = group_allocate(parent, cs, mod_type);
 	if (!g) return NULL;
 
 	server_cs = virtual_server_find(server);
@@ -3197,7 +3070,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	c->name = unlang_ops[c->type].name;
 	c->debug_name = talloc_typed_asprintf(c, "%s %s", c->name, server);
 
-	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
+	return compile_children(g, parent, unlang_ctx);
 }
 
 
@@ -3301,7 +3174,7 @@ static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_compone
 
 static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
-				unlang_group_type_t parentgroup_type, char const *realname)
+				char const *realname)
 {
 	unlang_t *c;
 	unlang_module_t *single;
@@ -3345,7 +3218,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	c->parent = parent;
 	c->next = NULL;
 
-	(void) compile_action_defaults(c, unlang_ctx, parentgroup_type);
+	(void) compile_action_defaults(c, unlang_ctx);
 
 	c->name = realname;
 	c->debug_name = realname;
@@ -3360,11 +3233,10 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 }
 
 typedef unlang_t *(*modcall_compile_function_t)(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-					 unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type);
+						unlang_type_t mod_type);
 typedef struct {
 	char const			*name;
 	modcall_compile_function_t	compile;
-	unlang_group_type_t	        group_type;
 	unlang_type_t			mod_type;
 	bool				require_children;
 } modcall_compile_t;
@@ -3373,25 +3245,25 @@ typedef struct {
 #define REQUIRE_CHILDREN	(true)
 
 static modcall_compile_t compile_table[] = {
-	{ "group",		compile_group, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP, REQUIRE_CHILDREN },
-	{ "redundant",		compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_GROUP, REQUIRE_CHILDREN },
-	{ "load-balance",	compile_load_balance, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_LOAD_BALANCE, REQUIRE_CHILDREN },
-	{ "redundant-load-balance", compile_load_balance, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE, REQUIRE_CHILDREN },
+	{ "group",		compile_group, UNLANG_TYPE_GROUP, REQUIRE_CHILDREN },
+	{ "redundant",		compile_redundant, UNLANG_TYPE_REDUNDANT, REQUIRE_CHILDREN },
+	{ "load-balance",	compile_load_balance, UNLANG_TYPE_LOAD_BALANCE, REQUIRE_CHILDREN },
+	{ "redundant-load-balance", compile_load_balance, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE, REQUIRE_CHILDREN },
 
-	{ "case",		compile_case, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_CASE, ALLOW_EMPTY_GROUP },
-	{ "foreach",		compile_foreach, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FOREACH, REQUIRE_CHILDREN },
-	{ "if",			compile_if, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_IF, ALLOW_EMPTY_GROUP },
-	{ "elsif",		compile_elsif, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSIF, ALLOW_EMPTY_GROUP },
-	{ "else",		compile_else, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSE, REQUIRE_CHILDREN },
-	{ "filter",		compile_filter, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FILTER, REQUIRE_CHILDREN },
-	{ "update",		compile_update, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_UPDATE, REQUIRE_CHILDREN },
-	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP, REQUIRE_CHILDREN },
-	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH, REQUIRE_CHILDREN },
-	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_PARALLEL, REQUIRE_CHILDREN },
-	{ "subrequest",		compile_subrequest, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SUBREQUEST, REQUIRE_CHILDREN },
-	{ "call",		compile_call, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_CALL, ALLOW_EMPTY_GROUP },
+	{ "case",		compile_case, UNLANG_TYPE_CASE, ALLOW_EMPTY_GROUP },
+	{ "foreach",		compile_foreach, UNLANG_TYPE_FOREACH, REQUIRE_CHILDREN },
+	{ "if",			compile_if, UNLANG_TYPE_IF, ALLOW_EMPTY_GROUP },
+	{ "elsif",		compile_elsif, UNLANG_TYPE_ELSIF, ALLOW_EMPTY_GROUP },
+	{ "else",		compile_else, UNLANG_TYPE_ELSE, REQUIRE_CHILDREN },
+	{ "filter",		compile_filter, UNLANG_TYPE_FILTER, REQUIRE_CHILDREN },
+	{ "update",		compile_update, UNLANG_TYPE_UPDATE, REQUIRE_CHILDREN },
+	{ "map",		compile_map, UNLANG_TYPE_MAP, REQUIRE_CHILDREN },
+	{ "switch",		compile_switch, UNLANG_TYPE_SWITCH, REQUIRE_CHILDREN },
+	{ "parallel",		compile_parallel, UNLANG_TYPE_PARALLEL, REQUIRE_CHILDREN },
+	{ "subrequest",		compile_subrequest, UNLANG_TYPE_SUBREQUEST, REQUIRE_CHILDREN },
+	{ "call",		compile_call, UNLANG_TYPE_CALL, ALLOW_EMPTY_GROUP },
 
-	{ NULL, NULL, 0, UNLANG_TYPE_NULL }
+	{ NULL, NULL, UNLANG_TYPE_NULL, false }
 };
 
 
@@ -3409,9 +3281,8 @@ static modcall_compile_t compile_table[] = {
 /*
  *	Compile one entry of a module call.
  */
-static unlang_t *compile_item(unlang_t *parent,
-			      unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-			      unlang_group_type_t parent_group_type, char const **modname)
+static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
+			      char const **modname)
 {
 	char const		*modrefname, *p;
 	unlang_t		*c;
@@ -3451,7 +3322,6 @@ static unlang_t *compile_item(unlang_t *parent,
 				}
 
 				return compile_table[i].compile(parent, unlang_ctx, cs,
-								compile_table[i].group_type, parent_group_type,
 								compile_table[i].mod_type);
 			}
 		}
@@ -3462,7 +3332,7 @@ static unlang_t *compile_item(unlang_t *parent,
 		if (name2 && (virtual_server_section_component(&component, modrefname, name2) == 0)) {
 			UPDATE_CTX2;
 
-			c = compile_group(parent, &unlang_ctx2, cs, UNLANG_GROUP_TYPE_SIMPLE, parent_group_type, UNLANG_TYPE_GROUP);
+			c = compile_group(parent, &unlang_ctx2, cs, UNLANG_TYPE_GROUP);
 			if (!c) return NULL;
 
 			c->name = modrefname;
@@ -3530,7 +3400,7 @@ static unlang_t *compile_item(unlang_t *parent,
 	}
 
 	if (strcmp(modrefname, "return") == 0) {
-		c = compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_RETURN, COND_TYPE_INVALID);
+		c = compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN, COND_TYPE_INVALID);
 		if (!c) return NULL;
 
 		/*
@@ -3643,7 +3513,7 @@ static unlang_t *compile_item(unlang_t *parent,
 				return NULL;
 			}
 
-			c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), parent_group_type, modname);
+			c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), modname);
 			if (!c) return NULL;
 
 		} else {
@@ -3658,7 +3528,7 @@ static unlang_t *compile_item(unlang_t *parent,
 			 *
 			 *	group foo { ...
 			 */
-			c = compile_group(parent, &unlang_ctx2, subcs, UNLANG_GROUP_TYPE_SIMPLE, parent_group_type,
+			c = compile_group(parent, &unlang_ctx2, subcs,
 					  policy ? UNLANG_TYPE_POLICY : UNLANG_TYPE_GROUP);
 			if (!c) return NULL;
 
@@ -3709,7 +3579,7 @@ static unlang_t *compile_item(unlang_t *parent,
 					 realname);
 	if (inst) {
 		*modname = inst->module->name;
-		return compile_module(parent, &unlang_ctx2, ci, inst, method, parent_group_type, realname);
+		return compile_module(parent, &unlang_ctx2, ci, inst, method, realname);
 	}
 
 	/*
@@ -3786,7 +3656,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 			  	.actions = &defaultactions[component],
 				.rules = rules
 			  },
-			  cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
+			  cs, UNLANG_TYPE_GROUP);
 	if (!c) return -1;
 
 	unlang_group_name_from_cs(unlang_generic_to_group(c), cs);

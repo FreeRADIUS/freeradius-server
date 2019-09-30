@@ -58,6 +58,7 @@ typedef enum {
 	UNLANG_TYPE_MODULE = 1,			//!< Module method.
 	UNLANG_TYPE_FUNCTION,			//!< Internal call to a function or submodule.
 	UNLANG_TYPE_GROUP,			//!< Grouping section.
+	UNLANG_TYPE_REDUNDANT,			//!< exactly like group, but with different default return codes
 	UNLANG_TYPE_LOAD_BALANCE,		//!< Load balance section.
 	UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,	//!< Redundant load balance section.
 	UNLANG_TYPE_PARALLEL,			//!< execute statements in parallel
@@ -95,14 +96,6 @@ typedef enum {
 						///< stack.
 } unlang_frame_action_t;
 
-typedef enum {
-	UNLANG_GROUP_TYPE_SIMPLE = 0,		//!< Execute each of the children sequentially, until we execute
-						//!< all of the children, or one returns #UNLANG_ACTION_UNWIND.
-	UNLANG_GROUP_TYPE_REDUNDANT,		//!< Execute each of the children until one returns a 'good'
-						//!< result i.e. ok, updated, noop, then break out of the group.
-	UNLANG_GROUP_TYPE_MAX			//!< Number of group types.
-} unlang_group_type_t;
-
 #define UNLANG_NEXT_STOP	(false)
 #define UNLANG_NEXT_SIBLING	(true)
 
@@ -138,7 +131,6 @@ struct unlang_s {
  */
 typedef struct {
 	unlang_t		self;
-	unlang_group_type_t	group_type;
 	unlang_t		*children;	//!< Children beneath this group.  The body of an if
 						//!< section for example.
 	unlang_t		*tail;		//!< of the children list.
