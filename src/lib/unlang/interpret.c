@@ -415,7 +415,10 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		/*
 		 *	We're running this frame, so it can't possibly be yielded.
 		 */
-		yielded_clear(frame);
+		if (is_yielded(frame)) {
+			RDEBUG("%s - Resuming execution", instruction->debug_name);
+			yielded_clear(frame);
+		}
 
 		/*
 		 *	Child requests are scheduled, so they may be
