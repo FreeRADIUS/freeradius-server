@@ -179,7 +179,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	snprintf(buffer, sizeof(buffer), "%d", worker_id);
+	snprintf(buffer, sizeof(buffer), "%d", sw->id);
 	sw->worker = fr_worker_create(ctx, buffer, sw->el, sc->log, sc->lvl);
 	if (!sw->worker) {
 		ERROR("Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
