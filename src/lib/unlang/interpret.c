@@ -831,11 +831,6 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *subcs, rlm_rcode_t 
 	return unlang_interpret_run(request);
 }
 
-static int _unlang_request_ptr_cmp(void const *a, void const *b)
-{
-	return (a > b) - (a < b);
-}
-
 /** Execute an unlang section synchronously
  *
  * Create a temporary event loop and swap it out for the one in the request.
@@ -870,7 +865,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		return RLM_MODULE_FAIL;
 	}
 
-	MEM(backlog = fr_heap_talloc_create(el, _unlang_request_ptr_cmp, REQUEST, runnable_id));
+	MEM(backlog = fr_heap_talloc_create(el, fr_pointer_cmp, REQUEST, runnable_id));
 	old_el = request->el;
 	old_backlog = request->backlog;
 	caller = request->module;
