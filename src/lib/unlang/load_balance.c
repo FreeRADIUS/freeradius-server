@@ -41,7 +41,7 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 
 #ifdef __clang_analyzer__
 	if (!redundant->found) {
-		*presult = RLM_MODULE_FAIL:
+		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 #endif

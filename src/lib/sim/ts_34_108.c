@@ -83,9 +83,9 @@ int ts_34_108_umts_generate(uint8_t autn[TS_34_108_AUTN_SIZE],
 	 *	IK[bits0,1, ...126,127] = f4(XDOUT) = XDOUT[bits16,17, ...126,127,0,1, ...14,15]
 	 */
 	p = ik;
-	memcpy(ik, xdout + 2, TS_34_108_CK_SIZE - 2);
-	ik[TS_34_108_CK_SIZE - 2] = xdout[0];
-	ik[TS_34_108_CK_SIZE - 1] = xdout[1];
+	memcpy(p, xdout + 2, TS_34_108_CK_SIZE - 2);
+	p[TS_34_108_CK_SIZE - 2] = xdout[0];
+	p[TS_34_108_CK_SIZE - 1] = xdout[1];
 
 	/*
 	 *	AK[bits0,1, ...46,47] = f5(XDOUT) = XDOUT[bits24,25, ...70,71]
