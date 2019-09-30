@@ -70,19 +70,27 @@ int mschap_nt_password_hash(uint8_t *out, char const *password)
  *	generates 64 bit challenge
  */
 void mschap_challenge_hash(uint8_t challenge[static MSCHAP_CHALLENGE_LENGTH],
-			   uint8_t const *peer_challenge,
-			   uint8_t const *auth_challenge,
+			   uint8_t const peer_challenge[static MSCHAP_PEER_CHALLENGE_LENGTH],
+			   uint8_t const auth_challenge[static MSCHAP_PEER_AUTHENTICATOR_CHALLENGE_LENGTH],
 			   char const *user_name, size_t user_name_len)
 {
 	fr_sha1_ctx Context;
-	uint8_t hash[20];
+	uint8_t hash[SHA1_DIGEST_LENGTH];
+
+	FR_PROTO_TRACE("RFC2759 ChallengeHash");
+	FR_PROTO_HEX_DUMP(peer_challenge, MSCHAP_PEER_CHALLENGE_LENGTH, "PeerChallenge");
+	FR_PROTO_HEX_DUMP(auth_challenge, MSCHAP_PEER_AUTHENTICATOR_CHALLENGE_LENGTH, "AuthenticatorChallenge");
+	FR_PROTO_HEX_DUMP((uint8_t const *)user_name, user_name_len, "UserName");
 
 	fr_sha1_init(&Context);
-	fr_sha1_update(&Context, peer_challenge, 16);
-	fr_sha1_update(&Context, auth_challenge, 16);
+	fr_sha1_update(&Context, peer_challenge, MSCHAP_PEER_CHALLENGE_LENGTH);
+	fr_sha1_update(&Context, auth_challenge, MSCHAP_PEER_AUTHENTICATOR_CHALLENGE_LENGTH);
 	fr_sha1_update(&Context, (uint8_t const *) user_name, user_name_len);
 	fr_sha1_final(hash, &Context);
-	memcpy(challenge, hash, 8);			//-V512
+
+	memcpy(challenge, hash, MSCHAP_CHALLENGE_LENGTH);		//-V512
+
+	FR_PROTO_HEX_DUMP(challenge, MSCHAP_CHALLENGE_LENGTH, "Challenge");
 }
 
 /*

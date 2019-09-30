@@ -4,16 +4,18 @@
 
 RCSIDH(mschap_h, "$Id$")
 
-#define NT_DIGEST_LENGTH 16
-#define LM_DIGEST_LENGTH 16
-#define MSCHAP_CHALLENGE_LENGTH 8
+#define NT_DIGEST_LENGTH				16
+#define LM_DIGEST_LENGTH				16
+#define MSCHAP_CHALLENGE_LENGTH				8
+#define MSCHAP_PEER_CHALLENGE_LENGTH			16
+#define MSCHAP_PEER_AUTHENTICATOR_CHALLENGE_LENGTH	16
 
 int	mschap_nt_password_hash(uint8_t out[static NT_DIGEST_LENGTH], char const *password);
 
 
 void	mschap_challenge_hash(uint8_t challenge[static MSCHAP_CHALLENGE_LENGTH],
-			      uint8_t const *peer_challenge,
-			      uint8_t const *auth_challenge,
+			      uint8_t const peer_challenge[static MSCHAP_PEER_CHALLENGE_LENGTH],
+			      uint8_t const auth_challenge[static MSCHAP_PEER_AUTHENTICATOR_CHALLENGE_LENGTH],
 			      char const *user_name, size_t user_name_len);
 
 void	mschap_auth_response(char const *use_rname, size_t user_name_len,
