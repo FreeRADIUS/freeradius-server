@@ -38,7 +38,7 @@ extern "C" {
  *  Return negative numbers to put 'a' at the top of the heap.
  *  Return positive numbers to put 'b' at the top of the heap.
  */
-typedef int (*fr_heap_cmp_t)(void const *a, void const *b);
+typedef int8_t (*fr_heap_cmp_t)(void const *a, void const *b);
 
 typedef struct fr_heap_t fr_heap_t;
 

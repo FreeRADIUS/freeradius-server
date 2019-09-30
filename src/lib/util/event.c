@@ -327,7 +327,7 @@ struct fr_event_list {
  *	- -1 if a should occur earlier than b.
  *	- 0 if both events occur at the same time.
  */
-static int fr_event_timer_cmp(void const *a, void const *b)
+static int8_t fr_event_timer_cmp(void const *a, void const *b)
 {
 	fr_event_timer_t const	*ev_a = a, *ev_b = b;
 

@@ -168,7 +168,7 @@ static const CONF_PARSER pool_config[] = {
 
 /** Order connections by reserved most recently
  */
-static int last_reserved_cmp(void const *one, void const *two)
+static int8_t last_reserved_cmp(void const *one, void const *two)
 {
 	fr_pool_connection_t const *a = one, *b = two;
 
@@ -177,7 +177,7 @@ static int last_reserved_cmp(void const *one, void const *two)
 
 /** Order connections by released longest ago
  */
-static int last_released_cmp(void const *one, void const *two)
+static int8_t last_released_cmp(void const *one, void const *two)
 {
 	fr_pool_connection_t const *a = one, *b = two;
 

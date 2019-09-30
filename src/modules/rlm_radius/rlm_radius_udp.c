@@ -267,7 +267,7 @@ static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t stat
 static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr_io_connection_t *c);
 static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx);
 
-static int conn_cmp(void const *one, void const *two)
+static int8_t conn_cmp(void const *one, void const *two)
 {
 	fr_io_connection_t const *a = talloc_get_type_abort_const(one, fr_io_connection_t);
 	fr_io_connection_t const *b = talloc_get_type_abort_const(two, fr_io_connection_t);
@@ -287,7 +287,7 @@ static int conn_cmp(void const *one, void const *two)
  *  Status-Server packets are always sorted before other packets, by
  *  virtue of request->async->recv_time always being zero.
  */
-static int queue_cmp(void const *one, void const *two)
+static int8_t queue_cmp(void const *one, void const *two)
 {
 	fr_io_request_t const *a = one;
 	fr_io_request_t const *b = two;

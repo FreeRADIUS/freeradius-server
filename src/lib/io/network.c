@@ -131,7 +131,7 @@ struct fr_network_t {
 static void fr_network_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 static int fr_network_pre_event(void *ctx, fr_time_t wake);
 
-static int reply_cmp(void const *one, void const *two)
+static int8_t reply_cmp(void const *one, void const *two)
 {
 	fr_channel_data_t const *a = one, *b = two;
 	int ret;
@@ -142,7 +142,7 @@ static int reply_cmp(void const *one, void const *two)
 	return (a->m.when > b->m.when) - (a->m.when < b->m.when);
 }
 
-static int waiting_cmp(void const *one, void const *two)
+static int8_t waiting_cmp(void const *one, void const *two)
 {
 	fr_channel_data_t const *a = one, *b = two;
 	int ret;

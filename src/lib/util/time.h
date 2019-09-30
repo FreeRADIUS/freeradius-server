@@ -202,7 +202,7 @@ static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
  *	- 0 if a == b
  *      - -1 if a < b
  */
-static inline int fr_time_cmp(fr_time_t a, fr_time_t b)
+static inline int8_t fr_time_cmp(fr_time_t a, fr_time_t b)
 {
 	return (a > b) - (a < b);
 }

@@ -150,7 +150,7 @@ static fr_event_update_t resume_read[] = {
  *  Return negative numbers to put 'one' at the top of the heap.
  *  Return positive numbers to put 'two' at the top of the heap.
  */
-static int pending_packet_cmp(void const *one, void const *two)
+static int8_t pending_packet_cmp(void const *one, void const *two)
 {
 	fr_io_pending_packet_t const *a = one;
 	fr_io_pending_packet_t const *b = two;
@@ -181,7 +181,7 @@ static int pending_packet_cmp(void const *one, void const *two)
  *	Order clients in the pending_clients heap, based on the
  *	packets that they contain.
  */
-static int pending_client_cmp(void const *one, void const *two)
+static int8_t pending_client_cmp(void const *one, void const *two)
 {
 	fr_io_pending_packet_t const *a;
 	fr_io_pending_packet_t const *b;
@@ -199,7 +199,7 @@ static int pending_client_cmp(void const *one, void const *two)
 }
 
 
-static int address_cmp(void const *one, void const *two)
+static int8_t address_cmp(void const *one, void const *two)
 {
 	int rcode;
 	fr_io_address_t const *a = one;
@@ -977,7 +977,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
  *	This function is only used for the "main" socket.  Clients
  *	from connections do not use it.
  */
-static int alive_client_cmp(void const *one, void const *two)
+static int8_t alive_client_cmp(void const *one, void const *two)
 {
 	fr_io_client_t const *a = one;
 	fr_io_client_t const *b = two;

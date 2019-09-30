@@ -1127,7 +1127,7 @@ static int fr_worker_pre_event(void *ctx, fr_time_t wake)
 /**
  *  Track a channel in the "to_decode" or "localized" heap.
  */
-static int worker_message_cmp(void const *one, void const *two)
+static int8_t worker_message_cmp(void const *one, void const *two)
 {
 	fr_channel_data_t const *a = one, *b = two;
 	int ret;
@@ -1141,7 +1141,7 @@ static int worker_message_cmp(void const *one, void const *two)
 /**
  *  Track a REQUEST in the "runnable" heap.
  */
-static int worker_runnable_cmp(void const *one, void const *two)
+static int8_t worker_runnable_cmp(void const *one, void const *two)
 {
 	REQUEST const *a = one, *b = two;
 	int ret;
@@ -1155,7 +1155,7 @@ static int worker_runnable_cmp(void const *one, void const *two)
 /**
  *  Track a REQUEST in the "time_order" heap.
  */
-static int worker_time_order_cmp(void const *one, void const *two)
+static int8_t worker_time_order_cmp(void const *one, void const *two)
 {
 	REQUEST const *a = one, *b = two;
 

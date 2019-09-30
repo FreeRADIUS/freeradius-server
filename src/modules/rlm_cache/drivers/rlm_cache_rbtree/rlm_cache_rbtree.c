@@ -57,7 +57,7 @@ static int cache_entry_cmp(void const *one, void const *two)
  *
  * There may be multiple entries with the same expiry time.
  */
-static int cache_heap_cmp(void const *one, void const *two)
+static int8_t cache_heap_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
 
