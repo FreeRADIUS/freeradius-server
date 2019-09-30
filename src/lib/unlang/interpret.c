@@ -113,7 +113,7 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 
 	op = &unlang_ops[instruction->type];
 
-	frame->process = op->func;
+	frame->interpret = op->interpret;
 	frame->signal = op->signal;
 
 	/*
@@ -451,8 +451,8 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
 			unlang_ops[instruction->type].name);
 
-		rad_assert(frame->process != NULL);
-		action = frame->process(request, result);
+		rad_assert(frame->interpret != NULL);
+		action = frame->interpret(request, result);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_action_table, action, "<INVALID>"), *priority);

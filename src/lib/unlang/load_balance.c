@@ -235,7 +235,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 	 */
 	redundant->child = NULL;
 
-	frame->process = unlang_load_balance_next;
+	frame->interpret = unlang_load_balance_next;
 	return unlang_load_balance_next(request, presult);
 }
 
@@ -244,7 +244,7 @@ void unlang_load_balance_init(void)
 	unlang_register(UNLANG_TYPE_LOAD_BALANCE,
 			   &(unlang_op_t){
 				.name = "load-balance group",
-				.func = unlang_load_balance,
+				.interpret = unlang_load_balance,
 				.debug_braces = true,
 			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
 				.frame_state_name = "unlang_frame_state_redundant_t",
@@ -253,7 +253,7 @@ void unlang_load_balance_init(void)
 	unlang_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
 			   &(unlang_op_t){
 				.name = "redundant-load-balance group",
-				.func = unlang_redundant_load_balance,
+				.interpret = unlang_redundant_load_balance,
 				.debug_braces = true,
 			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
 				.frame_state_name = "unlang_frame_state_redundant_t",

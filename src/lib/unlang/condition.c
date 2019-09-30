@@ -83,21 +83,21 @@ void unlang_condition_init(void)
 	unlang_register(UNLANG_TYPE_IF,
 			   &(unlang_op_t){
 				.name = "if",
-				.func = unlang_if,
+				.interpret = unlang_if,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_ELSE,
 			   &(unlang_op_t){
 				.name = "else",
-				.func = unlang_group,
+				.interpret = unlang_group,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_ELSIF,
 			   &(unlang_op_t){
 				.name = "elseif",
-				.func = unlang_if,
+				.interpret = unlang_if,
 				.debug_braces = true
 			   });
 }

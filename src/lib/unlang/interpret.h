@@ -33,19 +33,19 @@ extern "C" {
 #define UNLANG_TOP_FRAME (true)
 #define UNLANG_SUB_FRAME (false)
 
-/** Function to call when first evaluating a frame
+/** Function to call when interpreting a frame
  *
  * @param[in] request		The current request.
  * @param[in,out] presult	Pointer to the current rcode, may be modified by the function.
  * @return an action for the interpreter to perform.
  */
-typedef unlang_action_t (*unlang_op_call_t)(REQUEST *request, rlm_rcode_t *presult);
+typedef unlang_action_t (*unlang_op_interpret_t)(REQUEST *request, rlm_rcode_t *presult);
 
 /** Function to call if the initial function yielded and the request was signalled
  *
  * This is the operation specific cancellation function.  This function will usually
  * either call a more specialised cancellation function set when something like a module yielded,
- * or just cleanup the state of the original #unlang_op_call_t.
+ * or just cleanup the state of the original #unlang_op_interpret_t.
  *
  * @param[in] request		The current request.
  * @param[in] action		We're being signalled with.
@@ -70,10 +70,9 @@ typedef unlang_action_t (*unlang_function_t)(REQUEST *request, rlm_rcode_t *pres
 typedef struct {
 	char const		*name;				//!< Name of the operation.
 
-	unlang_op_call_t	func;				//!< Called when we start the operation.
+	unlang_op_interpret_t	interpret;     			//!< Function to interpret the keyword
 
-	unlang_op_signal_t	signal;				//!< Called if the request is to be destroyed
-								///< and we need to cleanup any residual state.
+	unlang_op_signal_t	signal;				//!< Function to signal stop / dup / whatever
 
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.

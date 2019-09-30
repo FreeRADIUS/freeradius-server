@@ -214,7 +214,7 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	RDEBUG2("Creating subrequest (%s)", child->name);
 	log_request_pair_list(L_DBG_LVL_1, request, child->packet->vps, NULL);
 
-	frame->process = unlang_subrequest_process;
+	frame->interpret = unlang_subrequest_process;
 	return unlang_subrequest_process(request, presult);
 }
 
@@ -397,7 +397,7 @@ void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 	state->persist = true;
 	state->child = child;
 
-	frame->process = unlang_subrequest_process;
+	frame->interpret = unlang_subrequest_process;
 }
 
 int unlang_subrequest_op_init(void)
@@ -414,7 +414,7 @@ int unlang_subrequest_op_init(void)
 	unlang_register(UNLANG_TYPE_SUBREQUEST,
 			   &(unlang_op_t){
 				.name = "subrequest",
-				.func = unlang_subrequest_state_init,
+				.interpret = unlang_subrequest_state_init,
 				.signal = unlang_subrequest_signal,
 				.debug_braces = true,
 				.frame_state_size = sizeof(unlang_frame_state_subrequest_t),
@@ -424,7 +424,7 @@ int unlang_subrequest_op_init(void)
 	unlang_register(UNLANG_TYPE_DETACH,
 			   &(unlang_op_t){
 				.name = "detach",
-				.func = unlang_detach,
+				.interpret = unlang_detach,
 				.frame_state_size = sizeof(unlang_frame_state_detach_t),
 				.frame_state_name = "unlang_frame_state_detach_t",
 			   });

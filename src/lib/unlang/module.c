@@ -638,7 +638,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request,
 	state->resume = resume;
 	state->signal = signal;
 
-	frame->process = unlang_module_resume;
+	frame->interpret = unlang_module_resume;
 	return RLM_MODULE_YIELD;
 }
 
@@ -718,7 +718,7 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult)
 		if (stack_depth < stack->depth) return UNLANG_ACTION_PUSHED_CHILD;
 		rad_assert(stack_depth == stack->depth);
 		*presult = rcode;
-		frame->process = unlang_module_resume;
+		frame->interpret = unlang_module_resume;
 		return UNLANG_ACTION_YIELD;
 	}
 
@@ -739,7 +739,7 @@ void unlang_module_init(void)
 	unlang_register(UNLANG_TYPE_MODULE,
 			   &(unlang_op_t){
 				.name = "module",
-				.func = unlang_module,
+				.interpret = unlang_module,
 				.signal = unlang_module_signal,
 				.frame_state_size = sizeof(unlang_frame_state_module_t),
 				.frame_state_name = "unlang_frame_state_module_t",

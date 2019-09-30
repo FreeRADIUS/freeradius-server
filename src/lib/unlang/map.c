@@ -262,7 +262,7 @@ static unlang_action_t unlang_update_state_init(REQUEST *request, rlm_rcode_t *p
 	/*
 	 *	Call list_mod_create
 	 */
-	frame->process = list_mod_create;
+	frame->interpret = list_mod_create;
 	return list_mod_create(request, presult);
 }
 
@@ -310,7 +310,7 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 	 *	Set this BEFORE doing anything else, as we will be
 	 *	called again after unlang_xlat_push() returns.
 	 */
-	frame->process = map_proc_apply;
+	frame->interpret = map_proc_apply;
 
 	/*
 	 *	Expand the map source
@@ -349,21 +349,21 @@ void unlang_map_init(void)
 	unlang_register(UNLANG_TYPE_FILTER,
 			   &(unlang_op_t){
 				.name = "filter",
-				.func = unlang_update_state_init,
+				.interpret = unlang_update_state_init,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_UPDATE,
 			   &(unlang_op_t){
 				.name = "update",
-				.func = unlang_update_state_init,
+				.interpret = unlang_update_state_init,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_MAP,
 			   &(unlang_op_t){
 				.name = "map",
-				.func = unlang_map_state_init,
+				.interpret = unlang_map_state_init,
 				.frame_state_size = sizeof(unlang_frame_state_map_proc_t),
 				.frame_state_name = "unlang_frame_state_map_proc_t",
 			   });

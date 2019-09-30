@@ -128,7 +128,7 @@ void unlang_function_init(void)
 	unlang_register(UNLANG_TYPE_FUNCTION,
 			   &(unlang_op_t){
 				.name = "function",
-				.func = unlang_function_call,
+				.interpret = unlang_function_call,
 				.debug_braces = false,
 			        .frame_state_size = sizeof(unlang_frame_state_func_t),
 				.frame_state_name = "unlang_frame_state_func_t",

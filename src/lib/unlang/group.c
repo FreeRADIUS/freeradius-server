@@ -69,14 +69,14 @@ void unlang_group_init(void)
 	unlang_register(UNLANG_TYPE_GROUP,
 			   &(unlang_op_t){
 				.name = "group",
-				.func = unlang_group,
+				.interpret = unlang_group,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_POLICY,
 			   &(unlang_op_t){
 				.name = "policy",
-				.func = unlang_policy,
+				.interpret = unlang_policy,
 				.debug_braces = true
 			   });
 }

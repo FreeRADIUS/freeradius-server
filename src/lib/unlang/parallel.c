@@ -420,7 +420,7 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 		state->children[i].instruction = instruction;
 	}
 
-	frame->process = unlang_parallel_process;
+	frame->interpret = unlang_parallel_process;
 	return unlang_parallel_process(request, presult);
 }
 
@@ -429,7 +429,7 @@ void unlang_parallel_init(void)
 	unlang_register(UNLANG_TYPE_PARALLEL,
 			   &(unlang_op_t){
 				.name = "parallel",
-				.func = unlang_parallel,
+				.interpret = unlang_parallel,
 				.signal = unlang_parallel_signal,
 				.debug_braces = true
 			   });

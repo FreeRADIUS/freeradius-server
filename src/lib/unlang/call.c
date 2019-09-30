@@ -40,7 +40,7 @@ static void unlang_call_signal(REQUEST *request, fr_state_signal_t action)
 }
 
 
-static unlang_action_t unlang_call_run(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_call_child(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -78,8 +78,8 @@ static unlang_action_t unlang_call_process(REQUEST *request, rlm_rcode_t *presul
 		return UNLANG_ACTION_YIELD;
 	}
 
-	frame->process = unlang_call_run;
-	return unlang_call_run(request, presult);
+	frame->interpret = unlang_call_child;
+	return unlang_call_child(request, presult);
 }
 
 static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
@@ -222,7 +222,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	 */
 	unlang_interpret_push(child, g->children, frame->result,
 			      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
-	frame->process = unlang_call_process;
+	frame->interpret = unlang_call_process;
 	frame->state = child;
 	return unlang_call_process(request, presult);
 }
@@ -233,7 +233,7 @@ void unlang_call_init(void)
 	unlang_register(UNLANG_TYPE_CALL,
 			   &(unlang_op_t){
 				.name = "call",
-				.func = unlang_call,
+				.interpret = unlang_call,
 				.signal = unlang_call_signal,
 				.debug_braces = true
 			   });

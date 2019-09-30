@@ -37,12 +37,7 @@ RCSID("$Id$")
  */
 bool unlang_section(CONF_SECTION *cs)
 {
-	unlang_t	*instruction = NULL;
-
-	instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
-	if (instruction) return true;
-
-	return false;
+	return (cf_data_find(cs, unlang_group_t, NULL) != NULL);
 }
 
 /** Register an operation with the interpreter

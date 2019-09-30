@@ -49,6 +49,6 @@ void unlang_return_init(void)
 	unlang_register(UNLANG_TYPE_RETURN,
 			   &(unlang_op_t){
 				.name = "return",
-				.func = unlang_return,
+				.interpret = unlang_return,
 			   });
 }

@@ -380,7 +380,7 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
-	frame->process = unlang_xlat_resume;
+	frame->interpret = unlang_xlat_resume;
 
 	/*
 	 *	Over-ride whatever functions were there before.
@@ -427,7 +427,7 @@ void unlang_xlat_init(void)
 	unlang_register(UNLANG_TYPE_XLAT,
 			   &(unlang_op_t){
 				.name = "xlat_eval",
-				.func = unlang_xlat,
+				.interpret = unlang_xlat,
 				.signal = unlang_xlat_signal,
 				.debug_braces = false,
 				.frame_state_size = sizeof(unlang_frame_state_xlat_t),
@@ -438,7 +438,7 @@ void unlang_xlat_init(void)
 	unlang_register(UNLANG_TYPE_XLAT_INLINE,
 			   &(unlang_op_t){
 				.name = "xlat_inline",
-				.func = unlang_xlat_inline,
+				.interpret = unlang_xlat_inline,
 				.debug_braces = false
 			   });
 }

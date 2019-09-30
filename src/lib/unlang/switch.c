@@ -192,14 +192,14 @@ void unlang_switch_init(void)
 	unlang_register(UNLANG_TYPE_SWITCH,
 			   &(unlang_op_t){
 				.name = "switch",
-				.func = unlang_switch,
+				.interpret = unlang_switch,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_CASE,
 			   &(unlang_op_t){
 				.name = "case",
-				.func = unlang_case,
+				.interpret = unlang_case,
 				.debug_braces = true
 			   });
 }
