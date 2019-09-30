@@ -595,7 +595,10 @@ DIAG_OFF(format-nonliteral)
 void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		uint8_t const *data, size_t data_len, char const *fmt, ...)
 {
-	size_t	i, len;
+	size_t	i, j, len;
+	char	*p;
+	char	buffer[(0x10 * 3) + 1];
+
 	char	*prefix = NULL;
 
 	if (fmt) {
@@ -610,11 +613,13 @@ void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int l
 		len = 0x10;
 		if ((i + len) > data_len) len = data_len - i;
 
+		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
+
 		if (fmt) {
-			fr_log(log, type, file, line, "%pV%04x: %pV",
-			       fr_box_strvalue_buffer(prefix), (int)i, fr_box_octets(data + i, len));
+			fr_log(log, type, file, line, "%pV%04x: %s",
+			       fr_box_strvalue_buffer(prefix), (int)i, buffer);
 		} else {
-			fr_log(log, type, file, line, "%04x: %pV", (int)i, fr_box_octets(data + i, len));
+			fr_log(log, type, file, line, "%04x: %s", (int)i, buffer);
 		}
 	}
 
