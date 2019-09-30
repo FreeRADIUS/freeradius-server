@@ -1992,7 +1992,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		uint8_t		*p;
 
 		rcode = mschap_process_cpw_request(instance, request, cpw, nt_password);
-		if (rcode != RLM_MODULE_OK) return rcode;
+		if (rcode != RLM_MODULE_OK) goto finish;
 
 		/*
 		 *	Clear any expiry bit so the user can now login;
