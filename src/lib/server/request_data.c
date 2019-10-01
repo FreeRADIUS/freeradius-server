@@ -546,6 +546,14 @@ void request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique
 	 */
 	if (request->state_ctx == request->parent->state_ctx) {
 		request_data_by_persistance(child_list, request, true);
+
+		/*
+		 *	Ensure request_data_restore_to_child
+		 *      can be called again if it's actually
+		 *	needed, by giving the child it's own
+		 *      unique state_ctx again.
+		 */
+		MEM(request->state_ctx = talloc_init("session-state"));
 	/*
 	 *	This will only happen where
 	 *	request_data_restore_to_child hasn't
