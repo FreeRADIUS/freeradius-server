@@ -594,8 +594,19 @@ void request_data_restore_to_child(REQUEST *request, void *unique_ptr, int uniqu
 	 *	off it already, so we can just free it.
 	 */
 	rad_assert(talloc_get_size(request->state_ctx) == 0);
-	TALLOC_FREE(request->state_ctx);
-	request->state_ctx = request->parent->state_ctx;	/* Use top level state ctx */
+
+	/*
+	 *	Allow request_data_restore_to_child to
+	 *	be called multiple times during the lifetime
+	 *	of a subrequest.
+	 *
+	 *	This shouldn't usually happen but it can't
+	 *	hurt anything...
+	 */
+	if (request->state_ctx != request->parent->state_ctx) {
+		TALLOC_FREE(request->state_ctx);
+		request->state_ctx = request->parent->state_ctx;	/* Use top level state ctx */
+	}
 
 	head = request_data_get(request->parent, unique_ptr, unique_int);
 	if (!head) return;
