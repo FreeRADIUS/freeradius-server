@@ -1751,6 +1751,7 @@ static inline void truncate_filename(char const **e, char const **p, int *len, c
 int cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t table_len, CONF_PAIR *cp)
 {
 	fr_table_num_sorted_t const	*t_p;
+	size_t			t_n = 0;
 	char			*list = NULL;
 	int32_t			res;
 
@@ -1760,7 +1761,7 @@ int cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t ta
 		return 0;
 	}
 
-	for (t_p = table; t_p->name != NULL; t_p++) {
+	for (t_p = table; t_n <= table_len; t_p = (table + t_n++)) {
 		MEM(list = talloc_asprintf_append_buffer(list, "'%s', ", t_p->name));
 	}
 
