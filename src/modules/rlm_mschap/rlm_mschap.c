@@ -1537,10 +1537,11 @@ found_password:
 		fr_pair_value_memsteal(nt_password, p, false);
 
 		ret = mschap_nt_password_hash(p, password->vp_strvalue);
-		if (*ephemeral) talloc_list_free(&password);
+
 		if (ret < 0) {
 			RERROR("Failed generating NT-Password");
 			talloc_free(nt_password);
+			if (*ephemeral) talloc_list_free(&password);
 			return -1;
 		}
 
@@ -1550,6 +1551,8 @@ found_password:
 		} else {
 			RDEBUG2("Hashed &control:%s to create %s", attr_nt_password->name, password->da->name);
 		}
+
+		if (*ephemeral) talloc_list_free(&password);
 
 		*ephemeral = true;	/* We generated a temporary password */
 		*out = nt_password;
