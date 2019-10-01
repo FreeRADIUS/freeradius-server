@@ -382,7 +382,6 @@ static unlang_t subrequest_instruction = {
  * @param[in] child		to push.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
- * @return rlm_rcode_t
  */
 void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 {
