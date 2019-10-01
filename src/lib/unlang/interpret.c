@@ -1100,6 +1100,12 @@ void unlang_interpret_resumable(REQUEST *request)
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 
 	/*
+	 *	Child requests aren't runnable, only parent requests
+	 *	are.
+	 */
+	while (request->parent) request = request->parent;
+
+	/*
 	 *	The request hasn't yielded, OR it's already been
 	 *	marked as runnable.  Don't do anything.
 	 *

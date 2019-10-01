@@ -264,6 +264,7 @@ int unlang_detached_child_init(REQUEST *request)
 	/*
 	 *	Mark the child as runnable.
 	 */
+	rad_assert(request->parent == NULL);
 	if (fr_heap_insert(request->backlog, request) < 0) {
 		RPERROR("Failed inserting ourself into the backlog.");
 		return -1;
