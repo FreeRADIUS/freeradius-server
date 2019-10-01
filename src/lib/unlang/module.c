@@ -465,7 +465,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	 */
 	unlang_xlat_push(ctx, out, request, exp, false);
 
-	return UNLANG_ACTION_YIELD;
+	return RLM_MODULE_YIELD;
 }
 
 rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs,
@@ -501,7 +501,7 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 
 	unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_SUB_FRAME);
 
-	return UNLANG_ACTION_YIELD;
+	return RLM_MODULE_YIELD;
 }
 
 
