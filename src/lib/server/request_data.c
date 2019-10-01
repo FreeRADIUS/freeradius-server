@@ -529,59 +529,52 @@ static int _free_child_data(fr_dlist_head_t *head)
  *				by different modules.  This identifies the module
  *      			or other facility that spawned the subrequest.
  * @param[in] unique_int	Further identification.
+ * @return
+ *	- 0 on success.
+ *	- <0 on failure.
  */
-void request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
+int request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
 {
 	fr_dlist_head_t	*child_list;
 
-	if (request_data_by_persistance_count(request, true) == 0) return;
-
-	MEM(child_list = talloc_zero(request->parent->state_ctx, fr_dlist_head_t));
-	fr_dlist_talloc_init(child_list, request_data_t, list);
-	talloc_set_destructor(child_list, _free_child_data);
+	if (!fr_cond_assert_msg((request->state_ctx == request->parent->state_ctx),
+	    "Child's state_ctx (%p), differs from parent's (%p). "
+	    "request_data_restore_to_child must be called before calling request_data_store_in_parent "
+	    "so that parent and child perform state allocations in the same talloc ctx",
+	    request->state_ctx, request->parent->state_ctx)) return -1;
 
 	/*
-	 *	Pull everything out of the child,
-	 *	add it to our temporary list head...
+	 *	Move child request data back into its
+	 *	parent.
 	 */
-	if (request->state_ctx == request->parent->state_ctx) {
+	if (request_data_by_persistance_count(request, true) > 0) {
+		MEM(child_list = talloc_zero(request->parent->state_ctx, fr_dlist_head_t));
+		fr_dlist_talloc_init(child_list, request_data_t, list);
+		talloc_set_destructor(child_list, _free_child_data);
+
+		/*
+		 *	Pull everything out of the child,
+		 *	add it to our temporary list head...
+		 */
 		request_data_by_persistance(child_list, request, true);
 
 		/*
-		 *	Ensure request_data_restore_to_child
-		 *      can be called again if it's actually
-		 *	needed, by giving the child it's own
-		 *      unique state_ctx again.
+		 *	...and add the request_data from
+		 *	the child back into the parent.
 		 */
-		MEM(request->state_ctx = talloc_init("session-state"));
-	/*
-	 *	This will only happen where
-	 *	request_data_restore_to_child hasn't
-	 *	been called on the request first.
-	 *
-	 *      Which in most cases will have been
-	 *	the case because request_data_store_in_parent
-	 *	and request_data_restore_to_child
-	 *	are called in pairs.
-	 *
-	 *	...but I can imagine someone trying
-	 *	to be clever and avoid calling
-	 *	request_data_restore_to_child if they
-	 *	think there's no possibility of request
-	 *	data being available, so this deals
-	 *	with that *sigh*
-	 */
-	} else {
-		request_data_by_persistance_reparent(request->parent->state_ctx,
-						     child_list, request, true);
+		request_data_talloc_add(request->parent, unique_ptr, unique_int,
+					fr_dlist_head_t, child_list, true, false, true);
 	}
 
 	/*
-	 *	...add that to the parent request under
-	 *	the specified unique identifiers.
+	 *	Ensure request_data_restore_to_child
+	 *      can be called again if it's actually
+	 *	needed, by giving the child it's own
+	 *      unique state_ctx again.
 	 */
-	request_data_talloc_add(request->parent, unique_ptr, unique_int,
-				fr_dlist_head_t, child_list, true, false, true);
+	MEM(request->state_ctx = talloc_init("session-state"));
+
+	return 0;
 }
 
 /** Restore subrequest data from a parent request
@@ -591,8 +584,11 @@ void request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique
  *				by different modules.  This identifies the module
  *      			or other facility that spawned the subrequest.
  * @param[in] unique_int	Further identification.
+ * @return
+ *	- 0 on success.
+ *	- <0 on failure.
  */
-void request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
+int request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
 {
 	fr_dlist_head_t *head;
 
@@ -601,26 +597,35 @@ void request_data_restore_to_child(REQUEST *request, void *unique_ptr, int uniqu
 	 *	In this case, nothing should be parented
 	 *	off it already, so we can just free it.
 	 */
-	rad_assert(talloc_get_size(request->state_ctx) == 0);
+	if (!fr_cond_assert_msg((talloc_get_size(request->state_ctx) == 0),
+				"Child's state_ctx must contain no "
+				"allocations when restoring data from a parent")) return -1;
 
 	/*
-	 *	Allow request_data_restore_to_child to
-	 *	be called multiple times during the lifetime
-	 *	of a subrequest.
-	 *
-	 *	This shouldn't usually happen but it can't
-	 *	hurt anything...
+	 *	If the parent and child state_ctxs are the
+	 *	same, then it means this function has been
+	 *	called before, without request_data_store_in_parent
+	 *	being called afterwards.
 	 */
-	if (request->state_ctx != request->parent->state_ctx) {
-		TALLOC_FREE(request->state_ctx);
-		request->state_ctx = request->parent->state_ctx;	/* Use top level state ctx */
-	}
+	if (!fr_cond_assert_msg((request->state_ctx != request->parent->state_ctx),
+				"Child's state_ctx must not be equal to its parent's state_ctx.  "
+				"If this is not the case it indicates unbalanced"
+				"request_data_restore_to_child / request_data_store_in_parent calls")) return -1;
+
+	/*
+	 *	Destroy the child's state_ctx and have it
+	 *	use its parent's.
+	 */
+	TALLOC_FREE(request->state_ctx);
+	request->state_ctx = request->parent->state_ctx;	/* Use top level state ctx */
 
 	head = request_data_get(request->parent, unique_ptr, unique_int);
-	if (!head) return;
+	if (!head) return 0;
 
 	request_data_restore(request, head);
 	talloc_free(head);
+
+	return 0;
 }
 
 #ifdef WITH_VERIFY_PTR

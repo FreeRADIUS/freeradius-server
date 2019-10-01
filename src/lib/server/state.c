@@ -727,9 +727,10 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
  */
 void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
 {
-	if (unlikely(request->parent == NULL)) return;
+	if (!fr_cond_assert_msg(request->parent,
+				"Child request must have request->parent set when storing state")) return;
 
-	RDEBUG3("Subrequest state - saved to request %s", request->parent->name);
+	RDEBUG3("Storing subrequest state in request %s", request->parent->name);
 
 	/*
 	 *	Shove this into the child to make
@@ -737,36 +738,26 @@ void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int
 	 *	whole lot...
 	 */
 	if (request->state) {
-		VALUE_PAIR *head = NULL;
-
 		/*
 		 *	If parent and child share a state_ctx
 		 *	which they usually should do, then just
 		 *	add the state list into request_data_t
 		 *	and don't bother copying.
 		 */
-		if (request->parent->state_ctx == request->state_ctx) {
-			request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, VALUE_PAIR,
-						request->state, true, false, true);
-			request->state = NULL;
-
-		/*
-		 *	If request_data_restore_to_child has been
-		 *	called then this won't be necessary as
-		 *	parent and child will share a state_ctx
-		 *	but we can't always guarantee that'll have
-		 *	happened, and it seems quite fragile to rely
-		 *	on that.
-		 */
-		} else {
-			MEM(fr_pair_list_copy(request->parent->state_ctx, &head, request->state) >= 0);
-			request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, VALUE_PAIR,
-						head, true, false, true);
-			fr_pair_list_free(&request->state);
-		}
+		request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, VALUE_PAIR,
+					request->state, true, false, true);
+		request->state = NULL;
 	}
 
-	request_data_store_in_parent(request, unique_ptr, unique_int);
+	/*
+	 *	Contains asserts to protect against
+	 *	Unbalanced or out of order calls to
+	 *	fr_state_store_in_parent and fr_state_restore_to_child.
+	 */
+	if (request_data_store_in_parent(request, unique_ptr, unique_int) < 0) {
+		request->state = request_data_get(request, (void *)fr_state_store_in_parent, 0);
+		return;
+	}
 }
 
 /** Restore subrequest data from a parent request
@@ -779,11 +770,17 @@ void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int
  */
 void fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
 {
-	if (unlikely(request->parent == NULL)) return;
+	if (!fr_cond_assert_msg(request->parent,
+				"Child request must have request->parent set when restoring state")) return;
 
-	RDEBUG3("Subrequest state - restored from request %s", request->parent->name);
+	RDEBUG3("Restoring subrequest state from request %s", request->parent->name);
 
-	request_data_restore_to_child(request, unique_ptr, unique_int);
+	/*
+	 *	Contains asserts to protect against
+	 *	Unbalanced or out of order calls to
+	 *	fr_state_store_in_parent and fr_state_restore_to_child.
+	 */
+	if (request_data_restore_to_child(request, unique_ptr, unique_int) < 0) return;
 
 	/*
 	 *	Get the state vps back
