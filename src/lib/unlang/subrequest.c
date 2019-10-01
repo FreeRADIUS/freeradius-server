@@ -137,6 +137,31 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 	return UNLANG_ACTION_YIELD;
 }
 
+
+static unlang_action_t unlang_subrequest_start(REQUEST *request, rlm_rcode_t *presult)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
+	REQUEST				*child = state->child;
+
+	/*
+	 *	Restore state from the parent to the
+	 *	subrequest.
+	 *	This is necessary for stateful modules like
+	 *	EAP to work.
+	 */
+	fr_state_restore_to_child(child, instruction, 0);
+
+	RDEBUG2("Creating subrequest (%s)", child->name);
+	log_request_pair_list(L_DBG_LVL_1, request, child->packet->vps, NULL);
+
+	frame->interpret = unlang_subrequest_process;
+	return unlang_subrequest_process(request, presult);
+}
+
+
 static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -206,17 +231,8 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	state->free_child = true;
 	state->detachable = true;
 
-	/*
-	 *	Restore state from the parent to the
-	 *	subrequest.
-	 */
-	fr_state_restore_to_child(child, instruction, 0);
-
-	RDEBUG2("Creating subrequest (%s)", child->name);
-	log_request_pair_list(L_DBG_LVL_1, request, child->packet->vps, NULL);
-
-	frame->interpret = unlang_subrequest_process;
-	return unlang_subrequest_process(request, presult);
+	frame->interpret = unlang_subrequest_start;
+	return unlang_subrequest_start(request, presult);
 }
 
 /** Initialize a detached child
@@ -405,13 +421,7 @@ void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 	state->free_child = false;
 	state->detachable = false;
 
-	/*
-	 *	Restore state from the parent to the
-	 *	subrequest.
-	 */
-	fr_state_restore_to_child(child, frame->instruction, 0);
-
-	frame->interpret = unlang_subrequest_process;
+	frame->interpret = unlang_subrequest_start;
 }
 
 int unlang_subrequest_op_init(void)
