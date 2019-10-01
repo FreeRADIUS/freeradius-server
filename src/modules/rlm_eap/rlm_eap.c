@@ -374,7 +374,7 @@ static void mod_authenticate_cancel(UNUSED void *instance, UNUSED void *thread, 
  *	- RLM_MODULE_HANDLED	if we're done with this round.
  *	- RLM_MODULE_REJECT	if the user should be rejected.
  */
-static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, UNUSED void *thread,
+static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instance, UNUSED void *thread,
 					   eap_session_t *eap_session, rlm_rcode_t result)
 {
 	rlm_rcode_t	rcode;
