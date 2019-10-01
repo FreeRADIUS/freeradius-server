@@ -419,7 +419,9 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
 	/*
 	 *	Push the subrequest and immediately run it.
 	 */
-	return unlang_subrequest_push(out, child, UNLANG_SUB_FRAME);
+	unlang_subrequest_push(out, child, UNLANG_SUB_FRAME);
+
+	return unlang_interpret_fixup(child->parent);
 }
 
 /** Push a pre-compiled xlat and resumption state onto the stack for evaluation
@@ -463,7 +465,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	 */
 	unlang_xlat_push(ctx, out, request, exp, false);
 
-	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
+	return unlang_interpret_fixup(request);
 }
 
 rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs,
@@ -495,10 +497,11 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 	 *	Push the resumption point BEFORE adding the subsection
 	 *	to the parents stack.
 	 */
-	unlang_module_yield(request, resume, signal, rctx);
-	unlang_interpret_push_section(request, subcs, default_rcode, false);
+	(void) unlang_module_yield(request, resume, signal, rctx);
 
-	return RLM_MODULE_YIELD;
+	unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_SUB_FRAME);
+
+	return unlang_interpret_fixup(request);
 }
 
 

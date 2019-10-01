@@ -384,7 +384,7 @@ static unlang_t subrequest_instruction = {
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  * @return rlm_rcode_t
  */
-rlm_rcode_t unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
+void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 {
 	unlang_stack_t			*stack = child->parent->stack;
 	unlang_stack_frame_t		*frame;
@@ -408,9 +408,6 @@ rlm_rcode_t unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_fr
 	state->detachable = false;
 
 	frame->interpret = unlang_subrequest_process;
-	if (unlang_subrequest_process(child->parent, out) == UNLANG_ACTION_YIELD) return RLM_MODULE_YIELD;
-
-	return *out;
 }
 
 int unlang_subrequest_op_init(void)

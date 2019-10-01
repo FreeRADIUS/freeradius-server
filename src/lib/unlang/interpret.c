@@ -421,9 +421,9 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		}
 
 		/*
-		 *	Child requests are scheduled, so they may be
-		 *	marked as "stop".  Or one of the parents may
-		 *	be marked as "stop".
+		 *	Child requests are not scheduled, so they
+		 *	cannot be marked as "stop".  Or one of the
+		 *	parents may be marked as "stop".
 		 */
 		for (parent = request;
 		     parent != NULL;
@@ -1136,6 +1136,35 @@ void unlang_interpret_resumable(REQUEST *request)
 	rad_assert(request->backlog != NULL);
 
 	fr_heap_insert(request->backlog, request);
+}
+
+
+/** Hacks for module.c until child requests are runnable
+ *
+ *  The stack MUST contain first a module call, and then something
+ *  else to run.  We mark the previous stack frame as repeatable, so
+ *  that it is run on the way back up the stack.
+ *
+ */
+rlm_rcode_t unlang_interpret_fixup(REQUEST *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth - 1];
+
+	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
+
+	/*
+	 *	Ensure that this frame is run on the way back up the
+	 *	stack.  AND that it's a top frame, so that unwind /
+	 *	return / etc. return to us when it's done.
+	 */
+	repeatable_set(frame);
+
+	/*
+	 *	Now run the lowest frame.  If it yields, the main
+	 *	intepreter can take care of the rest of the work.
+	 */
+	return unlang_interpret_run(request);
 }
 
 
