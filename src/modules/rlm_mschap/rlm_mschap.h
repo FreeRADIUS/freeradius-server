@@ -21,6 +21,7 @@ typedef enum {
 
 extern fr_dict_attr_t const *attr_auth_type;
 extern fr_dict_attr_t const *attr_cleartext_password;
+extern fr_dict_attr_t const *attr_eap_identity;
 extern fr_dict_attr_t const *attr_nt_password;
 extern fr_dict_attr_t const *attr_lm_password;
 extern fr_dict_attr_t const *attr_ms_chap_use_ntlm_auth;
