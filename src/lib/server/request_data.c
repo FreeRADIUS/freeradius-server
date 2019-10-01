@@ -539,8 +539,8 @@ int request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_
 
 	if (!fr_cond_assert_msg((request->state_ctx == request->parent->state_ctx),
 	    "Child's state_ctx (%p), differs from parent's (%p). "
-	    "request_data_restore_to_child must be called before calling request_data_store_in_parent "
-	    "so that parent and child perform state allocations in the same talloc ctx",
+	    "Unbalanced calls to request_data_restore_to_child/request_data_store_in_parent or "
+	    "request_data_restore_to_child never called",
 	    request->state_ctx, request->parent->state_ctx)) return -1;
 
 	/*
@@ -609,8 +609,8 @@ int request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique
 	 */
 	if (!fr_cond_assert_msg((request->state_ctx != request->parent->state_ctx),
 				"Child's state_ctx must not be equal to its parent's state_ctx.  "
-				"If this is not the case it indicates unbalanced"
-				"request_data_restore_to_child / request_data_store_in_parent calls")) return -1;
+	    			"Unbalanced calls to request_data_restore_to_child/request_data_store_in_parent"))
+	    			return -1;
 
 	/*
 	 *	Destroy the child's state_ctx and have it
