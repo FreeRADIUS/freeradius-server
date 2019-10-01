@@ -1117,7 +1117,15 @@ void unlang_interpret_resumable(REQUEST *request)
 	 *	Multiple child request may also mark a parent request
 	 *	runnable, before the parent request starts running.
 	 */
-	if (!is_yielded(frame) || is_scheduled(request)) return;
+	if (!is_yielded(frame) || is_scheduled(request)) {
+		RDEBUG3("Not marking resumable due to %d %d",
+			is_yielded(frame), is_scheduled(request));
+		return;
+	}
+
+	if (!is_scheduled(request)) {
+		RDEBUG3("marking as resumable");
+	}
 
 	rad_assert(request->backlog != NULL);
 
