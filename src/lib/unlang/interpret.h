@@ -108,8 +108,6 @@ int		unlang_interpret_stack_depth(REQUEST *request);
 
 rlm_rcode_t	unlang_interpret_stack_result(REQUEST *request);
 
-rlm_rcode_t	unlang_interpret_fixup(REQUEST *request);
-
 void		unlang_interpret_init(void);
 #ifdef __cplusplus
 }

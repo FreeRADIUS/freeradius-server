@@ -421,7 +421,7 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
 	 */
 	unlang_subrequest_push(out, child, UNLANG_SUB_FRAME);
 
-	return unlang_interpret_fixup(child->parent);
+	return RLM_MODULE_YIELD;
 }
 
 /** Push a pre-compiled xlat and resumption state onto the stack for evaluation
@@ -465,7 +465,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	 */
 	unlang_xlat_push(ctx, out, request, exp, false);
 
-	return unlang_interpret_fixup(request);
+	return UNLANG_ACTION_YIELD;
 }
 
 rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs,
@@ -501,7 +501,7 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 
 	unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_SUB_FRAME);
 
-	return unlang_interpret_fixup(request);
+	return UNLANG_ACTION_YIELD;
 }
 
 
@@ -649,7 +649,17 @@ rlm_rcode_t unlang_module_yield(REQUEST *request,
 	state->resume = resume;
 	state->signal = signal;
 
+	/*
+	 *	We set the repeatable flag here, so that the resume
+	 *	function is always called going back up the stack.
+	 *	This setting is normally done in the intepreter.
+	 *	However, the caller of this function may call us, and
+	 *	then push *other* things onto the stack.  Which means
+	 *	that the interpreter never gets a chance to set this
+	 *	flag.
+	 */
 	frame->interpret = unlang_module_resume;
+	repeatable_set(frame);
 	return RLM_MODULE_YIELD;
 }
 
