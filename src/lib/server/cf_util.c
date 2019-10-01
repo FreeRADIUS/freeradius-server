@@ -1750,9 +1750,9 @@ static inline void truncate_filename(char const **e, char const **p, int *len, c
  */
 int cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t table_len, CONF_PAIR *cp)
 {
-	fr_table_num_sorted_t const	*t_p;
-	char			*list = NULL;
-	int32_t			res;
+	char				*list = NULL;
+	int32_t				res;
+	size_t				i;
 
 	res = fr_table_value_by_str(table, cf_pair_value(cp), FR_TABLE_NOT_FOUND);
 	if (res != FR_TABLE_NOT_FOUND) {
@@ -1760,9 +1760,7 @@ int cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t ta
 		return 0;
 	}
 
-	for (t_p = table; t_p->name != NULL; t_p++) {
-		MEM(list = talloc_asprintf_append_buffer(list, "'%s', ", t_p->name));
-	}
+	for (i = 0; i < table_len; i++) MEM(list = talloc_asprintf_append_buffer(list, "'%s', ", table[i].name));
 
 	if (!list) {
 		cf_log_err(cp, "Internal error parsing %s: Table was empty", cf_pair_attr(cp));
