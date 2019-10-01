@@ -115,6 +115,7 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 		if (state->presult) *state->presult = rcode;
 
 		*presult = rcode;
+
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -208,8 +209,6 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	/*
 	 *	Restore state from the parent to the
 	 *	subrequest.
-	 *	This is necessary for stateful modules like
-	 *	EAP to work.
 	 */
 	fr_state_restore_to_child(child, instruction, 0);
 
@@ -405,6 +404,12 @@ void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 	state->child = child;
 	state->free_child = false;
 	state->detachable = false;
+
+	/*
+	 *	Restore state from the parent to the
+	 *	subrequest.
+	 */
+	fr_state_restore_to_child(child, frame->instruction, 0);
 
 	frame->interpret = unlang_subrequest_process;
 }

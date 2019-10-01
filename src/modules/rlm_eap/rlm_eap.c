@@ -382,7 +382,6 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, UNU
 	/*
 	 *	Cleanup the subrequest
 	 */
-	fr_state_store_in_parent(eap_session->subrequest, instance, 0);
 	(void)fr_cond_assert(request_detach(eap_session->subrequest, true) == 0);
 	TALLOC_FREE(eap_session->subrequest);
 
@@ -615,11 +614,6 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 								     method->submodule->namespace ?
 								     *(method->submodule->namespace) :
 								     request->dict));
-
-	/*
-	 *	Restore session-state and request data from the parent to the child
-	 */
-	fr_state_restore_to_child(eap_session->subrequest, inst, 0);
 
 	if (method->submodule->clone_parent_lists) {
 		fr_pair_list_copy(eap_session->subrequest, &eap_session->subrequest->control, request->control);
