@@ -39,7 +39,7 @@ typedef struct {
 
 void	unlang_subrequest_free(REQUEST **child);
 
-unlang_action_t unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame);
+rlm_rcode_t unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame);
 
 int unlang_detached_child_init(REQUEST *request);
 

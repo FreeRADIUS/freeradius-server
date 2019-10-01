@@ -95,8 +95,9 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 
 	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
+		fr_state_store_in_parent(child, instruction, 0);
+
 		if (state->free_child) {
-			fr_state_store_in_parent(child, instruction, 0);
 			unlang_subrequest_free(&child);
 			state->child = NULL;
 			frame->signal = NULL;
@@ -381,9 +382,9 @@ static unlang_t subrequest_instruction = {
  * @param[in] child		to push.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
- * @return from unlang_interpret_run()
+ * @return rlm_rcode_t
  */
-unlang_action_t unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
+rlm_rcode_t unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 {
 	unlang_stack_t			*stack = child->parent->stack;
 	unlang_stack_frame_t		*frame;
@@ -407,7 +408,9 @@ unlang_action_t unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool to
 	state->detachable = false;
 
 	frame->interpret = unlang_subrequest_process;
-	return unlang_subrequest_process(child->parent, out);
+	if (unlang_subrequest_process(child->parent, out) == UNLANG_ACTION_YIELD) return RLM_MODULE_YIELD;
+
+	return *out;
 }
 
 int unlang_subrequest_op_init(void)
