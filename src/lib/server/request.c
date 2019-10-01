@@ -63,9 +63,12 @@ static int _request_free(REQUEST *request)
 	 *	which talloc frees the children.  And the parents
 	 *	state_ctx pointer needs to stick around so that all of
 	 *	the children can check it.
+	 *
+	 *	If this assertion hits, it means that someone didn't
+	 *	call fr_state_store_in_parent()
 	 */
-	if (request->state_ctx &&
-	    (!request->parent || (request->parent->state_ctx != request->state_ctx))) {
+	if (request->state_ctx) {
+		if (request->parent) rad_assert(request->state_ctx != request->parent->state_ctx);
 		talloc_free(request->state_ctx);
 	}
 
