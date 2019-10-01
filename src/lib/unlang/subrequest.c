@@ -95,7 +95,7 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 
 	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
-		if (!state->persist) {
+		if (state->free_child) {
 			fr_state_store_in_parent(child, instruction, 0);
 			unlang_subrequest_free(&child);
 			state->child = NULL;
@@ -201,7 +201,8 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	 *	in to the currently executing function.
 	 */
 	state->presult = NULL;
-	state->persist = false;
+	state->free_child = true;
+	state->detachable = true;
 
 	/*
 	 *	Restore state from the parent to the
@@ -305,6 +306,11 @@ static unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult)
 	frame = &stack->frame[stack->depth];
 	parent_state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 
+	if (!parent_state->detachable) {
+		RWDEBUG("Ignoring 'detach' as the request is not detachable");
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
 	/*
 	 *	If we can't detach the child OR we can't insert it
 	 *	into the backlog, stop processing it.
@@ -375,8 +381,9 @@ static unlang_t subrequest_instruction = {
  * @param[in] child		to push.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ * @return from unlang_interpret_run()
  */
-void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
+unlang_action_t unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 {
 	unlang_stack_t			*stack = child->parent->stack;
 	unlang_stack_frame_t		*frame;
@@ -395,10 +402,12 @@ void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 	 */
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 	state->presult = out;
-	state->persist = true;
 	state->child = child;
+	state->free_child = false;
+	state->detachable = false;
 
 	frame->interpret = unlang_subrequest_process;
+	return unlang_subrequest_process(child->parent, out);
 }
 
 int unlang_subrequest_op_init(void)

@@ -416,9 +416,10 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
 	 */
 	(void) unlang_module_yield(child->parent, resume, signal, rctx);
 
-	unlang_subrequest_push(out, child, UNLANG_SUB_FRAME);
-
-	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
+	/*
+	 *	Push the subrequest and immediately run it.
+	 */
+	return unlang_subrequest_push(out, child, UNLANG_SUB_FRAME);
 }
 
 /** Push a pre-compiled xlat and resumption state onto the stack for evaluation
@@ -571,6 +572,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	 */
 	caller = request->module;
 	request->module = sp->module_instance->name;
+
 	safe_lock(sp->module_instance);
 	rcode = request->rcode = state->resume(sp->module_instance->dl_inst->data,
 					    state->thread->data, request, state->rctx);
