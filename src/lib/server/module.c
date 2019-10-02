@@ -166,12 +166,12 @@ static int cmd_set_module_status(UNUSED FILE *fp, UNUSED FILE *fp_err, void *ctx
 	module_instance_t *mi = ctx;
 	rlm_rcode_t rcode;
 
-	if (strcmp(info->argv[1], "alive") == 0) {
+	if (strcmp(info->argv[0], "alive") == 0) {
 		mi->force = false;
 		return 0;
 	}
 
-	rcode = fr_table_value_by_str(rcode_table, info->argv[1], RLM_MODULE_UNKNOWN);
+	rcode = fr_table_value_by_str(rcode_table, info->argv[0], RLM_MODULE_UNKNOWN);
 	rad_assert(rcode != RLM_MODULE_UNKNOWN);
 
 	mi->code = rcode;
