@@ -1,12 +1,11 @@
-# When the Login-Time attribute is set to some value, and the
-# user has been permitted to log in, a Session-Timeout is
-# calculated based on the remaining time.  See "doc/README".
+# Config for connecting to a Magic Authentication Gateway
 #
 magic {
+    # Whether the socket connection is local (unix) or remote
     is_local = true
     # The ip or url of the magic gateway
     # socket-address = 127.0.0.1
-    socket-address = tmp/magicsock
-	# The port that the magic gateway is listening on
-	port = 12345
+    socket-address = tmp/magicsock 
+    # The port that the magic gateway is listening on
+    port = 12345
 }
