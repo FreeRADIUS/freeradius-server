@@ -83,7 +83,7 @@ server ldap {
 			#  Comment this out if all entries should be returned.
 			filter = "(objectClass=PosixAccount)"
 
-			#  Search scope, may be 'base', 'one', sub' or 'children'
+			#  Search scope, may be 'base', 'one', 'sub' or 'children'
 #			scope = 'sub'
 
 			#  Specify the list of attributes to return in entries,

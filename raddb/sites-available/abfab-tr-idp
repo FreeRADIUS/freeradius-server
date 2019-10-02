@@ -110,7 +110,7 @@ server abfab-idp {
 #		cui
 
 		#
-		#  If you want to have a log of authentication replies, un-comment the
+		#  If you want to have a log of authentication replies, uncomment the
 		#  following line, and enable the `detail reply_log` module.
 		#
 #		reply_log
@@ -129,7 +129,7 @@ server abfab-idp {
 #		sql_log
 
 		#
-		#  Un-comment the following if you want to modify the user's object
+		#  Uncomment the following if you want to modify the user's object
 		#  in LDAP after a successful login.
 		#
 #		ldap

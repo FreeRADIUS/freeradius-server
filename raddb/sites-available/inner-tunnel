@@ -125,7 +125,7 @@ recv Access-Request {
 
 	#
 	#  If you are using /etc/smbpasswd, and are also doing
-	#  mschap authentication, then un-comment this line, and
+	#  mschap authentication, then uncomment this line, and
 	#  enable the "smbpasswd" module.
 #	smbpasswd
 
@@ -258,7 +258,7 @@ send Access-Accept {
 
 	#
 	#  If you want to have a log of authentication replies,
-	#  un-comment the following line, and enable the
+	#  uncomment the following line, and enable the
 	#  'detail reply_log' module.
 #	reply_log
 
@@ -275,7 +275,7 @@ send Access-Accept {
 #	sql_log
 
 	#
-	#  Un-comment the following if you have set
+	#  Uncomment the following if you have set
 	#  'edir = yes' in the ldap module sub-section of
 	#  the 'modules' section.
 	#

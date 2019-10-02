@@ -100,7 +100,7 @@ server home.example.com {
 		#  cannot fail over to another (possibly) alive server.
 		#
 		#  We want to respond to the NAS, so that it can stop
-		#  re-sending the packet.  We write the packet to the
+		#  resending the packet.  We write the packet to the
 		#  "detail" file, where it will be read, and sent to
 		#  another home server.
 		#

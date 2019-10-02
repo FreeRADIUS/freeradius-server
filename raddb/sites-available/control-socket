@@ -33,7 +33,7 @@ server control {
 	#
 	listen {
 		#
-		#  transport:: Define which comunication channel.
+		#  transport:: Define which communication channel.
 		#
 		transport = unix
 

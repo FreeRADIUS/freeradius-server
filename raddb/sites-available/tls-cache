@@ -4,7 +4,7 @@
 #
 #  When a TLS session is used, the server will automatically create
 #  the following attributes in the session-state list.  These attributes
-#  are the the ones for the *server* certificate.
+#  are the ones for the *server* certificate.
 #
 #	       TLS-Cert-Serial
 #	       TLS-Cert-Expiration
