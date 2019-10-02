@@ -712,22 +712,37 @@ static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd
 
 static int cmd_show_client(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-	int proto = IPPROTO_UDP;
 	RADCLIENT *client;
 
 	if (info->argc >= 2) {
+		int proto;
+
 		if (strcmp(info->argv[1], "tcp") == 0) {
 			proto = IPPROTO_TCP;
-		}
-		/* else it MUST be "udp" */
-	}
 
-	client = client_find(NULL, &info->box[0]->vb_ip, proto);
-	if (!client) {
+		} else if (strcmp(info->argv[1], "udp") == 0) {
+			proto = IPPROTO_TCP;
+
+		} else {
+			fprintf(fp_err, "Unknown proto '%s'.\n", info->argv[1]);
+			return -1;
+		}
+
+		client = client_find(NULL, &info->box[0]->vb_ip, proto);
+		if (client) goto found;
+
+	not_found:
 		fprintf(fp_err, "No such client.\n");
 		return -1;
+	} else {
+		client = client_find(NULL, &info->box[0]->vb_ip, IPPROTO_UDP);
+		if (client) goto found;
+
+		client = client_find(NULL, &info->box[0]->vb_ip, IPPROTO_TCP);
+		if (!client) goto not_found;
 	}
 
+found:
 	fprintf(fp, "shortname\t%s\n", client->shortname);
 	fprintf(fp, "secret\t\t%s\n", client->secret);
 
