@@ -1,0 +1,4 @@
+show client config 127.0.3.1
+shortname	tapioca_test_tcp_client
+secret		123testing
+proto		tcp
