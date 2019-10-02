@@ -735,16 +735,22 @@ static int cmd_show_client(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 		fprintf(fp_err, "No such client.\n");
 		return -1;
 	} else {
-		client = client_find(NULL, &info->box[0]->vb_ip, IPPROTO_UDP);
-		if (client) goto found;
-
-		client = client_find(NULL, &info->box[0]->vb_ip, IPPROTO_TCP);
+		client = client_find(NULL, &info->box[0]->vb_ip, IPPROTO_IP); /* hack */
 		if (!client) goto not_found;
 	}
 
 found:
 	fprintf(fp, "shortname\t%s\n", client->shortname);
 	fprintf(fp, "secret\t\t%s\n", client->secret);
+
+	if (client->proto == IPPROTO_UDP) {
+		fprintf(fp, "proto\t\tudp\n");
+
+	} else if (client->proto == IPPROTO_TCP) {
+		fprintf(fp, "proto\t\ttcp\n");
+	} else {
+		fprintf(fp, "proto\t\t*\n");
+	}
 
 	return 0;
 }
