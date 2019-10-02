@@ -146,7 +146,7 @@ server eap-aka-sim {
 	#  NOTE: We do not currently support handover between the EAP-AKA/SIM
 	#  modules.  Usually this is not an issue because EAP Negotiation
 	#  allows the supplicant and server to negotiate a mutually acceptable
-	#  EAP type. If, however, you want to avoid the additional roundtrips
+	#  EAP type. If, however, you want to avoid the additional round trips
 	#  involved in that negotiation, you can use
 	#  `%{aka_sim_id_method:User-Name}` in the top level virtual server,
 	#  which will return the EAP method hinted by the identity, and then
@@ -304,7 +304,7 @@ server eap-aka-sim {
 	#  - `SIM-RAND`::	User authentication challenge.
 	#  - `SIM-SRES`::	Signing response.
 	#
-	#  If retrieving quintuplets from a AuC, you should provide the
+	#  If retrieving quintuplets from an AuC, you should provide the
 	#  following control attributes:
 	#
 	#  - `SIM-AUTN`::	Authentication value from the AuC.
@@ -510,9 +510,9 @@ server eap-aka-sim {
 	#
 	#  If the rcode returned from this section does not indicate failure
 	#  and a &control:SQN value is provided, we send a new challenge to
-	#  the supplicant and continue, otherwise, authentication fails.
+	#  the supplicant and continue; otherwise authentication fails.
 	#
-	#  NOTE: Only one Synchronisation attempt is permited per
+	#  NOTE: Only one Synchronisation attempt is permitted per
 	#  authentication attempt.
 	#
 	recv Synchronization-Failure {

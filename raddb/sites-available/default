@@ -51,7 +51,7 @@
 #
 #  * configure the module in `mods-available/`
 #  * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
-#  *  un-comment the references to it in this file.
+#  *  uncomment the references to it in this file.
 #
 #  In most cases, those small changes will result in the server being
 #  able to connect to the database, and to authenticate users.
@@ -198,7 +198,7 @@ server default {
 			#  a short period of time, after it is sent to
 			#  the NAS.  The reply packet may be lost in
 			#  the network, and the NAS will not see it.
-			#  The NAS will then re-send the request, and
+			#  The NAS will then resend the request, and
 			#  the server will respond quickly with the
 			#  cached reply.
 			#
@@ -825,7 +825,7 @@ recv Access-Request {
 	#
 	#  If you have a Cisco SIP server authenticating against
 	#  FreeRADIUS, the `digest` module will set `Auth-Type :=
-	#  "Digest"` if we are handling an SIP Digest request and the
+	#  "Digest"` if we are handling a SIP Digest request and the
 	#  `Auth-Type` has not already been set.
 	#
 	digest
@@ -835,7 +835,7 @@ recv Access-Request {
 	#
 	#  The WiMAX specification says that the `Calling-Station-Id`
 	#  is 6 octets of the MAC.  This definition conflicts with RFC
-	#  3580, and all common RADIUS practices. Un-commenting the
+	#  3580, and all common RADIUS practices. Uncommenting the
 	#  `wimax` module here allows the module to change the
 	#  `Calling-Station-Id` attribute to the normal format as
 	#  specified in RFC 3580 Section 3.21.
@@ -888,7 +888,7 @@ recv Access-Request {
 
 	#
 	#  If you are using /etc/smbpasswd, and are also doing mschap
-	#  authentication, the un-comment this line, configure the
+	#  authentication, the uncomment this line, configure the
 	#  module.
 	#
 #	smbpasswd
@@ -904,7 +904,7 @@ recv Access-Request {
 
 	#
 	#  Enforce daily limits on time spent logged in. This module
-	#  is a variant of the the `counter` module.
+	#  is a variant of the `counter` module.
 	#
 #	daily
 
@@ -933,7 +933,7 @@ recv Access-Request {
 	#  e.g. `NT-Password` may come as a 16 byte blob, or as a
 	#  32-byte hex string, or as a base-64 encoded string.  The
 	#  `pap` module will look for common variations of password
-	#  encoding, and conver them all to a normal form.
+	#  encoding, and convert them all to a normal form.
 	#
 	#  This module should be listed last, so that the other
 	#  modules get a chance to set Auth-Type for themselves.
@@ -1059,7 +1059,7 @@ authenticate digest {
 #  good" password from LDAP.  The module binds to the LDAP directory
 #  as the user, along with the password taken from the User-Password
 #  attribute.  The "bind as user" method means that CHAP, MS-CHAP, and
-#  EAP won't work, as they does not supply a plain-text password.
+#  EAP won't work, as they do not supply a plain-text password.
 #
 #  We do NOT recommend using this. LDAP servers are databases, not
 #  authentication servers.  It is only here as a last resort for
@@ -1203,7 +1203,7 @@ send Access-Accept {
 
 	#
 	#  If you want to have a log of authentication replies,
-	#  un-comment the following line. This is defined in
+	#  uncomment the following line. This is defined in
 	#  `mods-available/detail.log`.
 	#
 #	reply_log
@@ -1221,7 +1221,7 @@ send Access-Accept {
 #	sql_log
 
 	#
-	#  Un-comment the following if you want to modify the
+	#  Uncomment the following if you want to modify the
 	#  user's object in LDAP after a successful login.
 	#
 #	ldap
@@ -1505,7 +1505,7 @@ accounting Failed {
 send Accounting-Response {
 	#
 	#  Add the CUI attribute from the corresponding
-	#  Access-Accept to the Accouning-Response.
+	#  Access-Accept to the Accounting-Response.
 	#
 	#  Use it only if your NAS boxes do not support CUI
 	#  themselves.

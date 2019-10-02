@@ -53,7 +53,7 @@ server detail {
 		#  listener reads a second entry.
 		#
 		#  Packets from the detail listener are low priority,
-		#  so they are procesed only when there is nothing
+		#  so they are processed only when there is nothing
 		#  else to do.  i.e. if the server receives many
 		#  Access-Request or Accounting-Request packets from
 		#  the network, they will be processed *before* any
@@ -150,7 +150,7 @@ server detail {
 
 			#
 			#  Track progress through the detail file.  When the detail
-			#  file is large, and the server is re-started, it will
+			#  file is large, and the server is restarted, it will
 			#  read from the START of the file.
 			#
 			#  Setting `track = yes` means it will skip packets which
@@ -221,7 +221,7 @@ server detail {
 				#  Maximum Retransmit Duration: 0..600
 				#
 				#  The total length of time the module will try to
-				#  retransit the packet
+				#  retransmit the packet
 				#
 				#  A special value of "0" means "retransmit forever".
 				#
@@ -259,7 +259,7 @@ recv {
 #
 #  If the listener is configured with 'track = yes', then the entry in
 #  the detail file is marked up as being "done".  Subsequent re-reads
-#  of the same detail file (e.g. on server re-start) will skip the
+#  of the same detail file (e.g. on server restart) will skip the
 #  "done" entries.
 #
 send ok {

@@ -115,7 +115,7 @@ clients radsec-abfab {
 #		trust_router_coi =  "community1.example.net"
 
 	#
-	#  IMPORTANT: In production depployments it is important to set up certificate
+	#  IMPORTANT: In production deployments it is important to set up certificate
 	#  verification so that even if clients spoof IP addresses, one client cannot
 	#  impersonate another.
   	#

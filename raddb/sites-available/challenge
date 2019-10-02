@@ -20,7 +20,7 @@ server challenge {
 recv Access-Request {
 
 	#
-	#  If ther's no State attribute, then this is the request from
+	#  If there's no State attribute, then this is the request from
 	#  the user.
 	#
 	if (!State) {

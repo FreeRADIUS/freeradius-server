@@ -116,7 +116,7 @@ server dynamic_clients {
 			#  a short period of time, after it is sent to
 			#  the NAS.  The reply packet may be lost in
 			#  the network, and the NAS will not see it.
-			#  The NAS will then re-send the request, and
+			#  The NAS will then resend the request, and
 			#  the server will respond quickly with the
 			#  cached reply.
 			#
@@ -141,7 +141,7 @@ server dynamic_clients {
 			#  Whether or not we allow dynamic clients.
 			#
 			#  If set to true, then packets from unknown
-			#  clients are passed throug the "new client"
+			#  clients are passed through the "new client"
 			#  subsection below.  See that section for
 			#  more information.
 			#
@@ -185,7 +185,7 @@ server dynamic_clients {
 				#  In this example, 127.0.0.1 can be
 				#  used to define a dynamic client.
 				#  But the (hypothetical) 127.1.0.1
-				#  address cannot be usef to define
+				#  address cannot be used to define
 				#  a dynamic client.
 				#
 				deny = 127.1/16
