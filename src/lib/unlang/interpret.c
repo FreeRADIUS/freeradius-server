@@ -1103,7 +1103,11 @@ void unlang_interpret_resumable(REQUEST *request)
 	 *	Child requests aren't runnable, only parent requests
 	 *	are.
 	 */
-	while (request->parent) request = request->parent;
+	while (request->parent) {
+		rad_assert(!is_scheduled(request));
+		request->runnable_id = -2; /* hack for now, see unlang_parallel_process() */
+		request = request->parent;
+	}
 
 	/*
 	 *	The request hasn't yielded, OR it's already been
