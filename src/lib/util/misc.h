@@ -72,7 +72,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  *
  * @param[in,out] _p	string to skip over.
  */
-#define fr_skip_not_whitespace(_p) while(!isspace((int)*(_p))) _p++
+#define fr_skip_not_whitespace(_p) while(*_p && !isspace((int)*(_p))) _p++
 
 /** Zero out any whitespace with nul bytes
  *
