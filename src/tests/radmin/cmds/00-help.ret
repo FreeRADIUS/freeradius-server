@@ -1,0 +1,17 @@
+help
+exit
+	Exit from the current context.
+help [(all|commands)]
+	Display list of commands and their help text.
+quit
+	Quit and close the command line immediately.
+set
+	Change settings in the server.
+show
+	Show settings in the server.
+stats
+	Show statistics in the server.
+terminate
+	Terminate the running server and cause it to exit.
+uptime
+	Show uptime since the server started.

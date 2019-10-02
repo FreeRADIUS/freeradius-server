@@ -1,0 +1,4 @@
+show client config 127.0.2.1
+shortname	paodequeijo_test_udp_client
+secret		testing123
+proto		udp

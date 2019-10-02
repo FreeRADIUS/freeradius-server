@@ -102,7 +102,7 @@ $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERAT
 	@echo "ok"
 	@touch $@
 
-test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient test.bin test.trie test.unit test.xlat test.map test.keywords test.auth test.modules $(BUILD_DIR)/tests/radiusd-c test.eap | build.raddb
+test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient test.bin test.trie test.unit test.xlat test.map test.keywords test.auth test.modules test.radmin $(BUILD_DIR)/tests/radiusd-c test.eap | build.raddb
 	@$(MAKE) -C src/tests tests
 
 clean: clean.test
