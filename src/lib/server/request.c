@@ -68,7 +68,7 @@ static int _request_free(REQUEST *request)
 	 *	call fr_state_store_in_parent()
 	 */
 	if (request->state_ctx) {
-		if (request->parent) rad_assert(request->state_ctx != request->parent->state_ctx);
+		rad_assert(!request->parent || (request->state_ctx != request->parent->state_ctx));
 		talloc_free(request->state_ctx);
 	}
 
