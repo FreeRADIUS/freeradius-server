@@ -25,7 +25,7 @@
 #  proxy 1, and the next packet from proxy 2.  The server can
 #  generally handle this case.
 #
-#  What's worse is when an upstream server retransmits the a packet
+#  What's worse is when an upstream server retransmits the packet
 #  through a different proxy.  In that case, FreeRADIUS replies to
 #  proxy 1, which doesn't send the packet upstream.  The next
 #  retransmit comes from proxy 2.  In that case, FreeRADIUS should not

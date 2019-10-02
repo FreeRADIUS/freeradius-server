@@ -54,7 +54,7 @@ perl {
 	#
 	#  filename:: Module to load functions from.
 	#
-	#  The Perl script to execute when the moduile is called.
+	#  The Perl script to execute when the module is called.
 	#  This is very similar to using the `exec` module, but it is
 	#  persistent, and therefore faster.
 	#

@@ -124,7 +124,7 @@ rest {
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#
-	#  For example if you list `rest` in the `authorize` section of a `virtual server`,
+	#  For example, if you list `rest` in the `authorize` section of a `virtual server`,
 	#  the settings from the `authorize` section here will be used.
 	#
 	#  The following config items may be listed in any of the sections:

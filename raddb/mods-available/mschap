@@ -10,7 +10,7 @@
 #  The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
 #
 #  MS-CHAP authentication requires access to either the
-#  Clearext-Password or NT-Password attribute for the user.  Due to
+#  Cleartext-Password or NT-Password attribute for the user.  Due to
 #  the limitations of MS-CHAP, no other password "encryption" methods
 #  are possible.
 #

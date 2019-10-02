@@ -59,7 +59,7 @@ eap {
 	#  Cisco AP1230B firmware 12.2(13)JA1 has a bug.  When given a `User-Name`
 	#  attribute in an `Access-Accept`, it copies one more byte than it should.
 	#
-	#  We can work around it by configurably adding an extra zero byte.
+	#  We can work around it by using this configuration option to add an extra zero byte.
 	#
 	cisco_accounting_username_bug = no
 
@@ -1295,15 +1295,15 @@ eap {
 		#
 		#  cipher_list::
 		#
-		#  If `cipher_list` is set here, it will over-ride the
+		#  If `cipher_list` is set here, it will override the
 		#  `cipher_list` configuration from the `tls-common`
-		#  configuration.  The `EAP-FAST` module has it's own
-		#  over-ride for `cipher_list` because the
+		#  configuration.  The `EAP-FAST` module has its own
+		#  override for `cipher_list` because the
 		#  specifications mandata a different set of ciphers
 		#  than are used by the other `EAP` methods.
 		#
 		#  `cipher_list` though must include "ADH" for anonymous provisioning.
-		#  This is not as straight forward as appending "ADH" alongside
+		#  This is not as straightforward as appending "ADH" alongside
 		#  "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
 		#  recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
 		#
@@ -1374,7 +1374,7 @@ eap {
 	#  `&control:SIM-Algo-Version` selects the SIM algorithm used,
 	#  it must match the algorithm used by the SIM.
 	#
-	#  Accepted values for `SIM-Algo-Versio` are:
+	#  Accepted values for `SIM-Algo-Version` are:
 	#
 	#  * `Comp128v1`
 	#  * `Comp128v2`
@@ -1558,7 +1558,7 @@ eap {
 		#  to prevent vectors being used where they were not intended
 		#  to be.
 		#
-		#  The value of the AT_KDF_INPUT can be overriden in the
+		#  The value of the AT_KDF_INPUT can be overridden in the
 		#  eap-aka-prime virtual server with &reply:KDF-Input if
 		#  this value needs to be determined dynamically.
 		#

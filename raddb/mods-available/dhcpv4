@@ -54,7 +54,7 @@ dhcpv4 {
 #  }
 #  if ("%{dhcpv4_decode:%{Tmp-Octets-0}}" != 2) {
 #    update reply {
-#      &Reply-Message := "Problems to decode the DHPCv4 fields."
+#      &Reply-Message := "Problems decoding the DHPCv4 fields."
 #    }
 #    reject
 #  }

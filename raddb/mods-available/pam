@@ -28,7 +28,7 @@ pam {
 	#
 	#  See `redhat/radiusd-pam` for a sample PAM configuration file.
 	#
-	#  NOTE: Any `Pam-Auth` attribute that is set will over-ride
+	#  NOTE: Any `Pam-Auth` attribute that is set will override
 	#  this one.
 	#
 	pam_auth = radiusd

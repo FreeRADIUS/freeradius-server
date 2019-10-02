@@ -7,7 +7,7 @@
 #
 #  = Couchbase Module
 #
-#  The `couchbase` module is used to provides connections to a `Couchbase` database.
+#  The `couchbase` module is used to provide connections to a `Couchbase` database.
 #
 
 #
@@ -15,7 +15,7 @@
 #
 couchbase {
 	#
-	#  server:: List of Couchbase hosts (hosts may be space, tab, comma or semi-colon separated).
+	#  server:: List of Couchbase hosts (hosts may be space, tab, comma or semicolon separated).
 	#  Ports are optional if servers are listening on the standard port.
 	#
 	#  NOTE: Complete pool urls are preferred.

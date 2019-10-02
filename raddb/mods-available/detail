@@ -58,7 +58,7 @@ detail {
 	#  escape_filenames:: Whether or not to escape "special"
 	#  characters in filenames.
 	#
-	#  Most file systems can handly nearly the full range of UTF-8
+	#  Most file systems can handle nearly the full range of UTF-8
 	#  characters. Ones that can deal with a limited range should
 	#  set this to `yes`.
 	#
@@ -100,7 +100,7 @@ detail {
 	#  locking:: Whether or not we should lock the detail file
 	#  before writing to it.
 	#
-	#  Mainly used if the detail file reader is be reading this file.
+	#  Mainly used if the detail file reader is to be reading this file.
 	#
 #	locking = yes
 

@@ -55,7 +55,7 @@ rediswho {
 	#
 	#  The subsections are named after the contents of the `Acct-Status-Type` attribute.
 	#
-	#  See `dictionary.rfc2866` for names of the various Acct-Status-Type values,
+	#  See `dictionary.rfc2866` for the names of the various Acct-Status-Type values,
 	#  or look at the output of debug mode.
 	#
 	#  This module supports *any* `Acct-Status-Type`.  Just add a subsection

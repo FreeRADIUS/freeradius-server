@@ -108,7 +108,7 @@ yubikey {
 	#                                    The value is a concatenation of the 16-bit
 	#                                    session count & `8-bit` use count which form a
 	#                                    `24-bit` monotonically strictly increasing
-	#                                    integer (until the invidual count ceilings
+	#                                    integer (until the individual count ceilings
 	#                                    are hit)
 	#  | `&request:Yubikey-Timestamp`  | Token's internal clock (mainly useful for debugging).
 	#                                    The value is a 24-bit increasing `integer @ 8 Hz`
@@ -235,7 +235,7 @@ yubikey {
 			#
 			#  spread:: Enable LRU (Least Recently Used).
 			#
-			#  The `yubico` library uses `curl` multihandles. If the multihandle is reused
+			#  The `yubico` library uses `curl` multi-handles. If the multi-handle is reused
 			#  before all requests are completed the connections are re-established.
 			#
 			#  The cost of re-establishing the connections is greater than the benefit of

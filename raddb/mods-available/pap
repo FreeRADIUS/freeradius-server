@@ -63,7 +63,7 @@
 #  as listed in the above table. These attributes should contain the relevant
 #  format password directly, without the header prefix.
 #
-#  Only one control attribute should be set, otherwise behaviour is undefined
+#  Only one control attribute should be set, otherwise the behaviour is undefined
 #  as to which one is used for authentication.
 #
 #  NOTE: It is important to understand the difference between the `User-Password`

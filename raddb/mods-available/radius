@@ -37,7 +37,7 @@
 #  | handled     | the module received an `Access-Challenge`
 #  | fail        | there was no response to the proxied request
 #  | reject      | the module received a `nak` (`Access-Reject`, `CoA-NAK`, etc.)
-#  | noop        | the module saw it's own `Proxy-State` attribute,
+#  | noop        | the module saw its own `Proxy-State` attribute,
 #                  and is will not proxy the request.  This behavior
 #                  prevents proxy loops.
 #  |===
@@ -80,11 +80,11 @@ radius {
 	#  synchronous::
 	#
 	#  In many cases, the module should do retransmissions of
-	#  proxied request on it's own.  See the various
+	#  proxied request on its own.  See the various
 	#  configurations for `initial_retransmission_time`,
 	#  etc. below.  This means setting `synchronous = no`.
 	#
-	#  However, in some cases, it is useful to retranmsit only
+	#  However, in some cases, it is useful to retransmit only
 	#  when the server receives a retransmission from the NAS.
 	#  This is done by setting `synchronous = yes`
 	#
@@ -95,7 +95,7 @@ radius {
 	#
 	#  If the server is receiving packets from another proxy
 	#  server, you should set `synchronous = yes`.  This allows
-	#  the other proxy server to do retranmsissions correctly.
+	#  the other proxy server to do retransmissions correctly.
 	#
 	#  NOTE: The behavior in v3 is the same as `synchronous = yes`
 	#
@@ -147,7 +147,7 @@ radius {
 		#  WARNING: Do NOT do SQL queries, LDAP queries, dynamic
 		#  expansions, etc. in this section.  The contents are
 		#  created when a connection is opened, and are not
-		#  changable after that.
+		#  changeable after that.
 		#
 #		update request {
 #			&User-Name := "test-user"
@@ -247,7 +247,7 @@ radius {
 	#
 	#  ## Packets
 	#
-	#  Each packet can have it's own retransmission timers.
+	#  Each packet can have its own retransmission timers.
 	#
 	#  The sections are named for each packet type. The contents
 	#  are the same for all packet types.  Only the relevant ones
@@ -292,7 +292,7 @@ radius {
 
 		#
 		#  maximum_retransmission_duration:: The total length of time the module will
-		#  try to retransit the packet.
+		#  try to retransmit the packet.
 		#
 		#  Value should be `5..60`
 		#
@@ -300,7 +300,7 @@ radius {
 	}
 
 	#
-	#  ### Accouting Packets
+	#  ### Accounting Packets
 	#
 	#  i.e. If you want `retransmit forever`, you should set:
 	#

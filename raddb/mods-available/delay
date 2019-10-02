@@ -48,7 +48,7 @@ delay {
 	#  the request was received.
 	#
 	#  This configuration can be useful for rate limiting, as most
-	#  NAS will only allow a limited number of request to be in
+	#  NAS will only allow a limited number of requests to be in
 	#  flight.
 	#
 	#  The default is `no`, which means that.

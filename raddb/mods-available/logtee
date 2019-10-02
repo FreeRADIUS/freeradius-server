@@ -78,7 +78,7 @@ logtee {
 	#  | unix   | Write to a UNIX socket.
 	#  |===
 	#
-	#  NOTE: Syslog ouput via `syslog()` is not explicitly supported,
+	#  NOTE: Syslog output via `syslog()` is not explicitly supported,
 	#  but you may use one of the other transports to talk directly to
 	#  a syslog daemon.
 	#
@@ -128,7 +128,7 @@ logtee {
 		#
 		#  escape_filenames::
 		#
-		#  Most file systems can handly nearly the full range of UTF-8
+		#  Most file systems can handle nearly the full range of UTF-8
 		#  characters.  Ones that can deal with a limited range should
 		#  set this to `yes`.
 		#
@@ -140,7 +140,7 @@ logtee {
 	#
 	unix {
 		#
-		#  filename:: Fullpath to the `unix socket` file.
+		#  filename:: Full path to the `unix socket` file.
 		#
 		filename = /path/to/unix.socket
 	}
