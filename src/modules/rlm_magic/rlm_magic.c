@@ -17,10 +17,10 @@
 /**
  * $Id$
  * @file rlm_magic.c
- * @brief Example module code.
+ * @brief Middleware to pass along an authentication attempt to a Magic Gateway for verification
  *
  * @copyright 2013 The FreeRADIUS server project
- * @copyright 2013 your name (your name\@address)
+ * @copyright 2019 Magic Foundation (hello@magic.co)
  */
 RCSID("$Id$")
 
