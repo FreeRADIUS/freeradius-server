@@ -198,7 +198,6 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 
 		thread->misc_conduit = FR_CONDUIT_COMPLETE;
 
-		fprintf(stderr, "COMPLETE %d %d %s\n", hdr->length - 2, start, string + 2);
 		fr_radmin_complete(thread->misc, string + 2, start);
 		thread->misc_conduit = FR_CONDUIT_STDOUT;
 		status = FR_CONDUIT_SUCCESS;
