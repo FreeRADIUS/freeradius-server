@@ -155,6 +155,7 @@ static char cmd_buffer[65536];
 static char *stack[MAX_STACK];
 static char const *prompt = "radmin> ";
 static char prompt_buffer[1024];
+static fr_cmd_t *local_cmds = NULL;
 
 static void NEVER_RETURNS usage(int status)
 {
@@ -537,6 +538,15 @@ static int radmin_help(UNUSED int count, UNUSED int key)
 	len = cmd_copy(rl_line_buffer);
 	if (len < 0) return 0;
 
+	/*
+	 *	Special-case help for local commands.
+	 */
+	if ((len >= 5) && strncmp(cmd_buffer, "local", 5) == 0) {
+		(void) fr_command_print_help(stdout, local_cmds, cmd_buffer);
+		rl_on_new_line();
+		return 0;
+	}
+
 	if (len > 0) {
 		(void) fr_conduit_write(sockfd, FR_CONDUIT_HELP, cmd_buffer, len);
 	} else {
@@ -586,6 +596,23 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 	len = cmd_copy(rl_line_buffer);
 	if (len < 0) return NULL;
+
+	/*
+	 *	Handle local commands specially.
+	 */
+	if (strncmp(cmd_buffer, "local", 5) == 0) {
+		int num;
+		char **expansions = &radmin_expansions[0];
+		char const **expansions_const;
+
+		memcpy(&expansions_const, &expansions, sizeof(expansions)); /* const issues */
+		num = fr_command_complete(local_cmds, cmd_buffer, start,
+					  CMD_MAX_EXPANSIONS, expansions_const);
+		if (num <= 0) return NULL;
+
+		radmin_num_expansions = num;
+		return rl_completion_matches(text, radmin_expansion_walk);
+	}
 
 	start += len;
 
@@ -725,6 +752,60 @@ static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **
 
 	return 1;
 }
+
+static int cmd_test(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	fprintf(fp, "We're testing stuff!\n");
+
+	return 0;
+}
+
+/*
+ *	Local radmin commands
+ */
+static fr_cmd_table_t cmd_table[] = {
+	{
+		.parent = "local",
+		.name = "test",
+		.func = cmd_test,
+		.help = "Test stuff",
+		.read_only = true
+	},
+
+	CMD_TABLE_END
+};
+
+static fr_cmd_info_t local_info;
+
+static int local_command(char *line)
+{
+	int argc, rcode;
+
+	argc = fr_command_str_to_argv(local_cmds, &local_info, line);
+	if (argc < 0) {
+		fprintf(stderr, "Failed parsing local command: %s\n", fr_strerror());
+		return -1;
+	}
+
+	if (!local_info.runnable) {
+		return 0;
+	}
+
+	rcode = fr_command_run(stderr, stdout, &local_info, false);
+	fflush(stdout);
+	fflush(stderr);
+
+	/*
+	 *	reset "info" to be a top-level context again.
+	 */
+	(void) fr_command_clear(0, &local_info);
+
+	if (rcode < 0) return rcode;
+
+	return 1;
+
+}
+
 
 #define MAX_COMMANDS (4)
 
@@ -992,6 +1073,17 @@ int main(int argc, char **argv)
 	if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
 
 	/*
+	 *	Register local commands.
+	 */
+	if (fr_command_add_multi(autofree, &local_cmds, NULL, NULL, cmd_table) < 0) {
+		fprintf(stderr, "%s: Failed registering local commands: %s\n",
+			progname, fr_strerror());
+		goto error;
+	}
+
+	fr_command_info_init(autofree, &local_info);
+
+	/*
 	 *	Run commands from the command-line.
 	 */
 	if (num_commands >= 0) {
@@ -1047,17 +1139,18 @@ int main(int argc, char **argv)
 
 		if (!*line) goto next;
 
+		/*
+		 *	Radmin supports a number of commands which are
+		 *	valid in any context.
+		 */
 		if (strcmp(line, "reconnect") == 0) {
 			if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
 			goto next;
 		}
 
-		if (strncmp(line, "secret ", 7) == 0) {
-			if (!secret) {
-				secret = line + 7;
-				do_challenge(sockfd);
-			}
-
+		if (!secret && !stack_depth && (strncmp(line, "secret ", 7) == 0)) {
+			secret = line + 7;
+			do_challenge(sockfd);
 			goto next;
 		}
 
@@ -1088,6 +1181,26 @@ int main(int argc, char **argv)
 			goto next;
 		}
 
+		/*
+		 *	Radmin also supports local commands which
+		 *	modifies it's behavior.  These commands MUST
+		 */
+		if (!stack_depth && (strncmp(line, "local", 5) == 0)) {
+			if (!isspace((int) line[5])) {
+				fprintf(stderr, "'local' commands MUST be specified all on one line");
+				goto next;
+			}
+
+			/*
+			 *	Parse and run the local command.
+			 */
+			local_command(line);
+			goto next;
+		}
+
+		/*
+		 *	Any other input is sent to the server.
+		 */
 		retries = 0;
 
 		/*
