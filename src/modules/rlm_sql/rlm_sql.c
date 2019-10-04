@@ -1268,12 +1268,6 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		reply_tmp = NULL;
 	}
 
-	/*
-	 *	Neither group checks nor profiles will work without
-	 *	a group membership query.
-	 */
-	if (!inst->config->groupmemb_query) goto release;
-
 skipreply:
 	if ((do_fall_through == FALL_THROUGH_YES) ||
 	    (inst->config->read_groups && (do_fall_through == FALL_THROUGH_DEFAULT))) {
