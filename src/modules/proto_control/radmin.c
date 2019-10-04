@@ -439,9 +439,9 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 {
 	char *line, *p;
 
-#ifndef USE_READLINE
+#ifdef USE_READLINE
 	if (fp_in == stdin) return readline(prompt);
-#endif	
+#endif
 
 	if (prompt && *prompt) puts(prompt);
 	fflush(fp_out);
@@ -467,8 +467,11 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 			continue;
 		}
 
+		/*
+		 *	Return an empty string.
+		 */
 		if (p[0] == '#') {
-			line = NULL;
+			line = "";
 			break;
 		}
 
@@ -494,12 +497,19 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 	return line;
 }
 
-#ifndef USE_READLINE
-#define radmin_free(_x)
-#else
-#define radmin_free free
+static void radmin_free(char *line, FILE *fp_in)
+{
+#ifdef USE_READLINE
+	/*
+	 *	Was read from stdin, so "line" == "readline_buffer"
+	 */
+	if (fp_in != stdin) return;
+#endif
 
+	free(line);
+}
 
+#ifdef USE_READLINE
 static ssize_t cmd_copy(char const *cmd)
 {
 	size_t len;
@@ -1280,7 +1290,7 @@ int main(int argc, char **argv)
 		 *	SUCCESS and PARTIAL end up here too.
 		 */
 	next:
-		radmin_free(line);
+		radmin_free(line, inputfp);
 	}
 
 exit:
