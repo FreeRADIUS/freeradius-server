@@ -153,8 +153,6 @@ static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
 static int stack_depth;
 static char cmd_buffer[65536];
 static char *stack[MAX_STACK];
-static char const *prompt = "radmin> ";
-static char prompt_buffer[1024];
 static fr_cmd_t *local_cmds = NULL;
 
 static void NEVER_RETURNS usage(int status)
@@ -429,20 +427,26 @@ static int do_connect(int *out, char const *file, char const *server)
 }
 
 
-#ifndef USE_READLINE
-/*
- *	@todo - use thread-local storage
- */
 static char *readline_buffer[1024];
 
-static char *readline(char const *prompt)
+/*
+ *	Wrapper around readline which does the "right thing" depending
+ *	on whether we're reading from a file or not.  It also ignores
+ *	blank lines and comments, which the main readline() API
+ *	doesn't do.
+ */
+static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 {
 	char *line, *p;
 
-	if (prompt && *prompt) puts(prompt);
-	fflush(stdout);
+#ifndef USE_READLINE
+	if (fp_in == stdin) return readline(prompt);
+#endif	
 
-	line = fgets(readline_buffer, sizeof(readline_buffer), stdin);
+	if (prompt && *prompt) puts(prompt);
+	fflush(fp_out);
+
+	line = fgets((char *) readline_buffer, sizeof(readline_buffer), fp_in);
 	if (!line) return NULL;
 
 	p = strchr(line, '\n');
@@ -490,6 +494,7 @@ static char *readline(char const *prompt)
 	return line;
 }
 
+#ifndef USE_READLINE
 #define radmin_free(_x)
 #else
 #define radmin_free free
@@ -833,6 +838,9 @@ int main(int argc, char **argv)
 
 	int exit_status = EXIT_SUCCESS;
 
+	char const *prompt = "radmin> ";
+	char prompt_buffer[1024];
+
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radmin");
@@ -1133,7 +1141,7 @@ int main(int argc, char **argv)
 		int retries;
 		ssize_t len;
 
-		line = readline(prompt);
+		line = my_readline(prompt, inputfp, stdout);
 
 		if (!line) break;
 
