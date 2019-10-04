@@ -40,8 +40,6 @@
 #include <freeradius-devel/modules.h>
 
 typedef struct _eap_pwd_t {
-    BN_CTX *bnctx;
-
     uint32_t	group;
     uint32_t	fragment_size;
     char const	*server_id;

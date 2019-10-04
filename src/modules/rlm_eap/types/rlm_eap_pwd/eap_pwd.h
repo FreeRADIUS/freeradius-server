@@ -90,6 +90,7 @@ typedef struct _pwd_session_t {
     uint8_t *out;     /* message to fragment */
     size_t out_pos;
     size_t out_len;
+    BN_CTX *bnctx;
     EC_GROUP *group;
     EC_POINT *pwe;
     BIGNUM *order;
