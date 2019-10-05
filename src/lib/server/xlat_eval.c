@@ -1207,7 +1207,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			 */
 			unlang_xlat_push(pool, &result, request, node, true);
 
-			switch (unlang_interpret_run(request)) {
+			switch (unlang_interpret(request)) {
 			default:
 				break;
 

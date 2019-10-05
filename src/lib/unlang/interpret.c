@@ -594,7 +594,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 /*
  *	Interpret the various types of blocks.
  */
-rlm_rcode_t unlang_interpret_run(REQUEST *request)
+rlm_rcode_t unlang_interpret(REQUEST *request)
 {
 	int			priority;
 	unlang_frame_action_t	fa = UNLANG_FRAME_ACTION_NEXT;
@@ -606,7 +606,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];	/* Quiet static analysis */
 
 #ifndef NDEBUG
-	if (DEBUG_ENABLED5) DEBUG("###### unlang_interpret_run is starting");
+	if (DEBUG_ENABLED5) DEBUG("###### unlang_interpret is starting");
 	DUMP_STACK;
 #endif
 
@@ -808,21 +808,11 @@ void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode
 	DUMP_STACK;
 }
 
-/** Resume interpreting after a previous push or yield.
- *
- *  @todo - either move to using unlang_interpret_run(), or add sanity
- *  checks here that the frame was actually yielded.
- */
-rlm_rcode_t unlang_interpret_resume(REQUEST *request)
-{
-	return unlang_interpret_run(request);
-}
-
 /** Call a module, iteratively, with a local stack, rather than recursively
  *
  * What did Paul Graham say about Lisp...?
  */
-rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *subcs, rlm_rcode_t default_rcode)
+rlm_rcode_t unlang_interpret_section(REQUEST *request, CONF_SECTION *subcs, rlm_rcode_t default_rcode)
 {
 	/*
 	 *	This pushes a new frame onto the stack, which is the
@@ -830,7 +820,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *subcs, rlm_rcode_t 
 	 */
 	unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_TOP_FRAME);
 
-	return unlang_interpret_run(request);
+	return unlang_interpret(request);
 }
 
 /** Execute an unlang section synchronously
@@ -875,7 +865,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	request->el = el;
 	request->backlog = backlog;
 
-	rcode = unlang_interpret(request, cs, action);
+	rcode = unlang_interpret_section(request, cs, action);
 	wait_for_events = (rcode == RLM_MODULE_YIELD);
 
 	while (true) {
@@ -933,7 +923,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	in the backlog.  If this request YIELDs, then
 		 *	do another loop around.
 		 */
-		sub_rcode = unlang_interpret_resume(sub_request);
+		sub_rcode = unlang_interpret(sub_request);
 		if (sub_rcode == RLM_MODULE_YIELD) {
 			wait_for_events = true;
 			continue;
@@ -1086,7 +1076,7 @@ rlm_rcode_t unlang_interpret_stack_result(REQUEST *request)
 
 /** Mark a request as resumable.
  *
- * It's not called "unlang_interpret_resume", because it doesn't actually
+ * It's not called "unlang_interpret", because it doesn't actually
  * resume the request, it just schedules it for resumption.
  *
  * @note that this schedules the request for resumption.  It does not immediately

@@ -81,7 +81,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 		/* FALL-THROUGH */
 
 	case REQUEST_RECV:
-		rcode = unlang_interpret_resume(request);
+		rcode = unlang_interpret(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
@@ -138,7 +138,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 		/* FALL-THROUGH */
 
 	case REQUEST_PROCESS:
-		rcode = unlang_interpret_resume(request);
+		rcode = unlang_interpret(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
@@ -192,7 +192,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 		/* FALL-THROUGH */
 
 	case REQUEST_SEND:
-		rcode = unlang_interpret_resume(request);
+		rcode = unlang_interpret(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 

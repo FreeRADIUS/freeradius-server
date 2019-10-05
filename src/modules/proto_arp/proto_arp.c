@@ -72,7 +72,7 @@ static rlm_rcode_t arp_process(REQUEST *request)
 
 	request->component = "arp";
 
-	return unlang_interpret(request, unlang, RLM_MODULE_NOOP);
+	return unlang_interpret_section(request, unlang, RLM_MODULE_NOOP);
 }
 
 

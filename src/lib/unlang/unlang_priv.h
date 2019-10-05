@@ -330,7 +330,6 @@ static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
  */
 void		unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame);
-rlm_rcode_t	unlang_interpret_run(REQUEST *request);
 
 int		unlang_op_init(void);
 

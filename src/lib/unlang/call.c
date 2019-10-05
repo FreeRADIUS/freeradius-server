@@ -52,7 +52,7 @@ static unlang_action_t unlang_call_child(REQUEST *request, rlm_rcode_t *presult)
 	 *	Run the *child* through the "call" section, as a way
 	 *	to get post-processing of the packet.
 	 */
-	rcode = unlang_interpret_run(child);
+	rcode = unlang_interpret(child);
 	if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 	fr_state_store_in_parent(child, frame->instruction, 0);

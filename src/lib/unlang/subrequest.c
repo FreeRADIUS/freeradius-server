@@ -107,7 +107,7 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 
 	rad_assert(child != NULL);
 
-	rcode = unlang_interpret_run(child);
+	rcode = unlang_interpret(child);
 	if (rcode != RLM_MODULE_YIELD) {
 		if (state->session.enable) fr_state_store_in_parent(child,
 								    state->session.unique_ptr,

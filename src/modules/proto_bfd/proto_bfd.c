@@ -1379,7 +1379,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		request->module = NULL;
 
 		DEBUG2("server %s {", cf_section_name2(request->server_cs));
-		unlang_interpret(request, session->unlang, RLM_MODULE_NOTFOUND);
+		unlang_interpret_section(request, session->unlang, RLM_MODULE_NOTFOUND);
 		DEBUG("}");
 
 		/*

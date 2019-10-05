@@ -1054,7 +1054,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	request->module = NULL;
 	request->component = "authenticate";
 
-	rcode = unlang_interpret(request, cs, RLM_MODULE_REJECT);
+	rcode = unlang_interpret_section(request, cs, RLM_MODULE_REJECT);
 
 	request->component = component;
 	request->module = module;

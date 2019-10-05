@@ -39,7 +39,7 @@ rlm_rcode_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *re
 
 	REQUEST_VERIFY(request);
 
-	rcode = unlang_interpret_resume(request);
+	rcode = unlang_interpret(request);
 
 	/*
 	 *	We've yielded, and can keep running.  Do so.

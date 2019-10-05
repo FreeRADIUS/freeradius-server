@@ -47,7 +47,7 @@ static unlang_action_t unlang_parallel_child_done(REQUEST *request, UNUSED rlm_r
 	 *
 	 *	Note that we call unlang_interpret_resumable() here
 	 *	because unlang_parallel_process() calls
-	 *	unlang_interpret_run(), and NOT child->async->process.
+	 *	unlang_interpret(), and NOT child->async->process.
 	 */
 	if (request->parent) {
 		child->state = CHILD_EXITED;
@@ -185,7 +185,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			 *	kinds of bad things happen.  We may
 			 *	want to fix that in the future.
 			 */
-			result = unlang_interpret_run(state->children[i].child);
+			result = unlang_interpret(state->children[i].child);
 			if (result == RLM_MODULE_YIELD) {
 				state->children[i].state = CHILD_YIELDED;
 				child_state = CHILD_YIELDED;
