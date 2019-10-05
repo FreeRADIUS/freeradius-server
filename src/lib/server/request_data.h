@@ -65,9 +65,9 @@ void		request_data_list_dump(REQUEST *request, fr_dlist_head_t *head);
 
 void		request_data_dump(REQUEST *request);
 
-int		request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int);
+int		request_data_store_in_parent(REQUEST *request, void const *unique_ptr, int unique_int);
 
-int		request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int);
+int		request_data_restore_to_child(REQUEST *request, void const *unique_ptr, int unique_int);
 
 #ifdef WITH_VERIFY_PTR
 bool		request_data_persistable(request_data_t *rd);

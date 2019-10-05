@@ -654,6 +654,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 	 */
 	return unlang_module_yield_to_subrequest(&eap_session->submodule_rcode, eap_session->subrequest,
 						 mod_authenticate_result_async, mod_authenticate_cancel,
+						 &(unlang_subrequest_session_t){ .enable = true, .unique_ptr = eap_session },
 						 eap_session);
 }
 

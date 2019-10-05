@@ -27,6 +27,19 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "subrequest_priv.h"
 
+/** Parameters for initialising the subrequest
+ *
+ * State of one level of nesting within an xlat expansion.
+ */
+typedef struct {
+	rlm_rcode_t			*presult;			//!< Where to store the result.
+	REQUEST				*child;				//!< Pre-allocated child request.
+	bool				free_child;			//!< Whether we should free the child after
+									///< it completes.
+	bool				detachable;			//!< Whether the request can be detached.
+	unlang_subrequest_session_t		session;			//!< Session configuration.
+} unlang_frame_state_subrequest_t;
+
 static fr_dict_t *dict_freeradius;
 
 extern fr_dict_autoload_t subrequest_dict[];
@@ -95,7 +108,9 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 
 	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
-		fr_state_store_in_parent(child, instruction, 0);
+		if (state->session.enable) fr_state_store_in_parent(child,
+								    state->session.unique_ptr,
+								    state->session.unique_int);
 
 		if (state->free_child) {
 			unlang_subrequest_free(&child);
@@ -142,17 +157,16 @@ static unlang_action_t unlang_subrequest_start(REQUEST *request, rlm_rcode_t *pr
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 	REQUEST				*child = state->child;
 
 	/*
 	 *	Restore state from the parent to the
 	 *	subrequest.
-	 *	This is necessary for stateful modules like
-	 *	EAP to work.
 	 */
-	fr_state_restore_to_child(child, instruction, 0);
+	if (state->session.enable) fr_state_restore_to_child(child,
+							     state->session.unique_ptr,
+							     state->session.unique_int);
 
 	RDEBUG2("Creating subrequest (%s)", child->name);
 	log_request_pair_list(L_DBG_LVL_1, request, child->packet->vps, NULL);
@@ -230,6 +244,14 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	state->presult = NULL;
 	state->free_child = true;
 	state->detachable = true;
+
+	/*
+	 *	Store/restore session information in the subrequest
+	 *	keyed off the exact subrequest keyword.
+	 */
+	state->session.enable = true;
+	state->session.unique_ptr = instruction;
+	state->session.unique_int = 0;
 
 	frame->interpret = unlang_subrequest_start;
 	return unlang_subrequest_start(request, presult);
@@ -398,7 +420,8 @@ static unlang_t subrequest_instruction = {
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  */
-void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
+void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child,
+			    unlang_subrequest_session_t const *session, bool top_frame)
 {
 	unlang_stack_t			*stack = child->parent->stack;
 	unlang_stack_frame_t		*frame;
@@ -420,6 +443,7 @@ void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 	state->child = child;
 	state->free_child = false;
 	state->detachable = false;
+	if (session) state->session = *session;
 
 	frame->interpret = unlang_subrequest_start;
 }

@@ -402,13 +402,16 @@ REQUEST *unlang_module_subrequest_alloc(REQUEST *parent, fr_dict_t const *namesp
  *				which is why the parent isn't passed explicitly.
  * @param[in] resume		function to call when the child has finished executing.
  * @param[in] signal		function to call if a signal is received.
+ * @param[in] session		control values.  Whether we restore/store session info.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
  *	- RLM_MODULE_YIELD.
  */
 rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
 					      fr_unlang_module_resume_t resume,
-					      fr_unlang_module_signal_t signal, void *rctx)
+					      fr_unlang_module_signal_t signal,
+					      unlang_subrequest_session_t const *session,
+					      void *rctx)
 {
 	/*
 	 *	Push the resumption point BEFORE adding the subrequest
@@ -419,7 +422,7 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
 	/*
 	 *	Push the subrequest and immediately run it.
 	 */
-	unlang_subrequest_push(out, child, UNLANG_SUB_FRAME);
+	unlang_subrequest_push(out, child, session, UNLANG_SUB_FRAME);
 
 	return RLM_MODULE_YIELD;
 }

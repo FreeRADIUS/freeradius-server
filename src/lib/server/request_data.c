@@ -533,7 +533,7 @@ static int _free_child_data(fr_dlist_head_t *head)
  *	- 0 on success.
  *	- <0 on failure.
  */
-int request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
+int request_data_store_in_parent(REQUEST *request, void const *unique_ptr, int unique_int)
 {
 	fr_dlist_head_t	*child_list;
 
@@ -588,7 +588,7 @@ int request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_
  *	- 0 on success.
  *	- <0 on failure.
  */
-int request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
+int request_data_restore_to_child(REQUEST *request, void const *unique_ptr, int unique_int)
 {
 	fr_dlist_head_t *head;
 

@@ -26,6 +26,7 @@
 #include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/unlang/subrequest.h>
 
 #ifdef __cplusplus
 extern "C" {

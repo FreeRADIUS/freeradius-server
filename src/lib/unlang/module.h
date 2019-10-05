@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/unlang/subrequest.h>
 
 /** A callback when the the timeout occurs
  *
@@ -113,7 +114,9 @@ REQUEST		*unlang_module_subrequest_alloc(REQUEST *parent, fr_dict_t const *names
 
 rlm_rcode_t	unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
 						  fr_unlang_module_resume_t resume,
-						  fr_unlang_module_signal_t signal, void *rctx);
+						  fr_unlang_module_signal_t signal,
+						  unlang_subrequest_session_t const *session,
+						  void *rctx);
 
 rlm_rcode_t	unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs,
 					       rlm_rcode_t default_rcode,

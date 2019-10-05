@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file unlang/subrequest_priv.h
+ * @file unlang/subrequest.h
  *
  * @copyright 2019 The FreeRADIUS server project
  */
@@ -26,12 +26,11 @@
 extern "C" {
 #endif
 
-void	unlang_subrequest_free(REQUEST **child);
-
-void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child,
-			    unlang_subrequest_session_t const *session, bool top_frame);
-
-int unlang_detached_child_init(REQUEST *request);
+typedef struct {
+	bool		enable;				//!< Whether we should store/restore sessions.
+	void const	*unique_ptr;			//!< Session unique ptr identifier.
+	int		unique_int;			//!< Session unique int identifier.
+} unlang_subrequest_session_t;
 
 #ifdef __cplusplus
 }

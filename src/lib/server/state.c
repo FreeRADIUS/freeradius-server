@@ -725,7 +725,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
  *      			or other facility that spawned the subrequest.
  * @param[in] unique_int	Further identification.
  */
-void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
+void fr_state_store_in_parent(REQUEST *request, void const *unique_ptr, int unique_int)
 {
 	if (!fr_cond_assert_msg(request->parent,
 				"Child request must have request->parent set when storing state")) return;
@@ -768,7 +768,7 @@ void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int
  *      			or other facility that spawned the subrequest.
  * @param[in] unique_int	Further identification.
  */
-void fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
+void fr_state_restore_to_child(REQUEST *request, void const *unique_ptr, int unique_int)
 {
 	if (!fr_cond_assert_msg(request->parent,
 				"Child request must have request->parent set when restoring state")) return;
