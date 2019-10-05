@@ -194,8 +194,6 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 			/* FALL-THROUGH */
 
 		case UNLANG_UPDATE_MAP_EXPANDED_RHS:
-			update_state->state = UNLANG_UPDATE_MAP_INIT;
-
 			/*
 			 *	Concat the top level results together
 			 */
@@ -213,6 +211,7 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 			talloc_list_free(&update_state->rhs_result);
 
 		next:
+			update_state->state = UNLANG_UPDATE_MAP_INIT;
 			talloc_list_free(&update_state->lhs_result);
 
 			/*
