@@ -23,6 +23,7 @@
  * @copyright 2019 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/module.h>
 
 #include "compose.h"

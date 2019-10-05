@@ -21,6 +21,9 @@
  *
  * @copyright 2019 The FreeRADIUS server project
  */
+#include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/radius/radius.h>
+
 #include "attrs.h"
 #include "compose.h"
 #include "session.h"

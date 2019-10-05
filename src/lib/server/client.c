@@ -27,11 +27,15 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-#include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/trie.h>
 
 #include <ctype.h>
 #include <fcntl.h>

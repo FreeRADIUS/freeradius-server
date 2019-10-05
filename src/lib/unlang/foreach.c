@@ -24,6 +24,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/server/request_data.h>
 #include "unlang_priv.h"
 #include "return_priv.h"
 

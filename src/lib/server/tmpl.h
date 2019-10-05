@@ -73,6 +73,8 @@ RCSIDH(tmpl_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/util/table.h>
+
 /*
  *	Forward declarations
  */

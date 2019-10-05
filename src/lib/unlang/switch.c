@@ -24,6 +24,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/server/cond.h>
 #include "unlang_priv.h"
 #include "group_priv.h"
 

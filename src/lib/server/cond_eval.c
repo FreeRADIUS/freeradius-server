@@ -26,10 +26,11 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cond_eval.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/server/regex.h>
+#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/regex.h>
 
 #include <ctype.h>
 

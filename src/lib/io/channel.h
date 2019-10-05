@@ -29,6 +29,8 @@ RCSIDH(channel_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/util/table.h>
+
 /**
  *  A two-way channel (i.e. pipe) for exchanging information
  *

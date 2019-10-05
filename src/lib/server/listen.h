@@ -25,6 +25,7 @@
  */
 RCSIDH(listen_h, "$Id$")
 
+#include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/socket.h>
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/util/event.h>

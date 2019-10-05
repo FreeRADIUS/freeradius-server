@@ -22,6 +22,8 @@
  *
  * @copyright 2006-2019 The FreeRADIUS server project
  */
+#include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/rand.h>
 #include "unlang_priv.h"
 #include "module_priv.h"
 

@@ -27,7 +27,7 @@ RCSIDH(io_h, "$Id$")
 
 #include <talloc.h>
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/io/channel.h>
 

@@ -23,11 +23,12 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/server/rad_assert.h>
 
 static fr_dict_t *dict_radius;
 

@@ -55,6 +55,7 @@
  */
 #define LOG_PREFIX "rlm_eap - "
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/radius/radius.h>
 #include <ctype.h>
 

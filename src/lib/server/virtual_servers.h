@@ -30,6 +30,7 @@ extern "C" {
 
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/util/dict.h>
 
 extern const CONF_PARSER virtual_servers_config[];

@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/subrequest.h>
 
 /** A callback when the the timeout occurs

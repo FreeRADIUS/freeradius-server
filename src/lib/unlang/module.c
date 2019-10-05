@@ -26,9 +26,10 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/cond.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/unlang/base.h>
 #include "unlang_priv.h"
 #include "module_priv.h"
@@ -506,7 +507,6 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 
 	return RLM_MODULE_YIELD;
 }
-
 
 /*
  *	Lock the mutex for the module

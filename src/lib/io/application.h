@@ -23,9 +23,10 @@
  *
  * @copyright 2017 The FreeRADIUS project
  */
+#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/dl_module.h>
-#include <freeradius-devel/io/base.h>
+#include <freeradius-devel/server/virtual_servers.h>
 
 /*
  *	src/lib/io/schedule.h

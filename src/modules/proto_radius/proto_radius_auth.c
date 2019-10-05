@@ -23,15 +23,23 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/module.h>
-#include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rad_assert.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+
+#include <freeradius-devel/radius/radius.h>
+
+#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/state.h>
+
+#include <freeradius-devel/unlang/base.h>
+
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/time.h>
 
 typedef struct {
 	bool		log_stripped_names;

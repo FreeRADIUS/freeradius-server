@@ -29,11 +29,12 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/server/cond.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/radmin.h>
+#include <freeradius-devel/server/request_data.h>
+#include <freeradius-devel/unlang/base.h>
 
 static TALLOC_CTX *instance_ctx = NULL;
 static size_t instance_num = 0;
