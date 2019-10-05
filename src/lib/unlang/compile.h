@@ -34,8 +34,7 @@ extern "C" {
 
 int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules);
 
-int		unlang_compile_subsection(CONF_SECTION *subsection,
-					  rlm_components_t component, vp_tmpl_rules_t const *rules);
+int		unlang_compile_section(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules);
 
 bool		unlang_compile_is_keyword(const char *name);
 

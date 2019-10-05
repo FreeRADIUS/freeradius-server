@@ -1249,7 +1249,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 				continue;
 			}
 
-			rcode = unlang_compile_subsection(subcs, list[i].component, rules);
+			rcode = unlang_compile_section(subcs, list[i].component, rules);
 			if (rcode < 0) return -1;
 			continue;
 		}
@@ -1267,7 +1267,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 				return -1;
 			}
 
-			rcode = unlang_compile_subsection(subcs, list[i].component, rules);
+			rcode = unlang_compile_section(subcs, list[i].component, rules);
 			if (rcode < 0) return -1;
 		}
 	}

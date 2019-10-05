@@ -3673,9 +3673,9 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 	return 0;
 }
 
-/** Compile a named subsection
+/** Compile a named section
  *
- * @param[in] cs		the subsection to compile
+ * @param[in] cs		the section to compile
  * @param[in] component 	The default method to call when compiling module calls.
  * @param[in] rules		For resolving attribute references.
  * @return
@@ -3684,7 +3684,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
  *	- 1 on successfully compiled
  *
  */
-int unlang_compile_subsection(CONF_SECTION *cs, rlm_components_t component,
+int unlang_compile_section(CONF_SECTION *cs, rlm_components_t component,
 			      vp_tmpl_rules_t const *rules)
 {
 	char const *name1, *name2;
