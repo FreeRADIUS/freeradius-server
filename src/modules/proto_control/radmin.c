@@ -471,7 +471,7 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 		 *	Return an empty string.
 		 */
 		if (p[0] == '#') {
-			line = "";
+			line[0] = '\0';
 			break;
 		}
 
