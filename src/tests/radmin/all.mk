@@ -10,17 +10,16 @@ TEST := test.radmin
 #
 #  The test files are files without extensions.
 #
-FILES  := $(subst $(DIR)/cmds/%,,$(wildcard $(DIR)/cmds/*.in))
+FILES  := $(subst $(DIR)/%,,$(wildcard $(DIR)/*.txt))
 OUTPUT := $(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 #
 #	Config settings
 #
 RADMIN_BIN         := $(TESTBINDIR)/radmin
-RADMIN_OUTPUT_DIR  := $(BUILD_DIR)/tests/radmin
-RADMIN_RADIUS_LOG  := $(RADMIN_OUTPUT_DIR)/radius.log
-RADMIN_GDB_LOG     := $(RADMIN_OUTPUT_DIR)/gdb.log
-RADMIN_SOCKET_FILE := $(RADMIN_OUTPUT_DIR)/control-socket.sock
+RADMIN_RADIUS_LOG  := $(OUTPUT)/radius.log
+RADMIN_GDB_LOG     := $(OUTPUT)/gdb.log
+RADMIN_SOCKET_FILE := $(OUTPUT)/control-socket.sock
 RADMIN_CONFIG_PATH := $(DIR)/config
 
 include src/tests/radiusd.mk
@@ -61,17 +60,17 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(RADMIN_OUTPUT_DIR)
+	${Q}rm -rf $(OUTPUT)
 
 clean.test: clean.$(TEST)
 
 #
 #	Run the radmin commands against the radiusd.
 #
-$(RADMIN_OUTPUT_DIR)/%: $(DIR)/cmds/% test.radmin.radiusd_kill test.radmin.radiusd_start
-	$(eval EXPECTED := $(patsubst %.in,%.ret,$<))
-	$(eval FOUND    := $(patsubst %.in,%.ret,$@))
-	$(eval TARGET   := $(patsubst %.in,%,$(notdir $@)))
+$(BUILD_DIR)/tests/radmin/%: $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
+	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
+	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
+	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
 	${Q}echo "RADMIN-TEST $(TARGET)"; \
 	if ! $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) > $(FOUND) < $<; then\
 		echo "--------------------------------------------------"; \
