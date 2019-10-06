@@ -51,7 +51,7 @@ $(FILES.$(TEST)): export TZ = GMT
 #
 #  And the actual script to run each test.
 #
-$(BUILD_DIR)/tests/unit/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
+$(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
 	${Q}echo UNIT-TEST $(notdir $@)
 	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r "$@" $<; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r \"$@\" $<"; \

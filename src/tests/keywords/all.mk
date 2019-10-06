@@ -62,7 +62,7 @@ $(BOOTSTRAP): $(DIR)/default-input.attrs | $(OUTPUT)
 #
 #  These ones get copied over from their original files
 #
-$(BUILD)/tests/keywords/%.attrs: $(DIR)/%.attrs $(DIR)/default-input.attrs | $(OUTPUT)
+$(OUTPUT)/%.attrs: $(DIR)/%.attrs $(DIR)/default-input.attrs | $(OUTPUT)
 	${Q}cp $< $@
 
 #
@@ -91,7 +91,7 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
+$(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
 	${Q}echo KEYWORD-TEST $(notdir $@)
 	${Q}if [ -f $<.attrs ] ; then \
 		cp $<.attrs $(BUILD_DIR)/tests/keywords/; \
