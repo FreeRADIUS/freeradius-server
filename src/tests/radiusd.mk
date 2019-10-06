@@ -26,6 +26,15 @@
 #
 #    $(TEST).radiusd_kill and $(TEST).radiusd_start
 #
+#  3. The target 'radiusd_start' define the variable $(RADIUSD_RUN) with the
+#  exactly command used to start the service.
+#
+#  4. You could use the 'RADIUSD_BIN' to set such path to the "radiusd" binary
+#  that you want to against the tests.
+#
+#  e.g:
+#
+#   make RADIUSD_BIN=/path/to/my/radiusd test
 #
 include Make.inc
 
@@ -55,13 +64,15 @@ $(TEST).radiusd_kill: | ${2}
 #	Start radiusd instance
 #
 ${2}/radiusd.pid: ${2}
+	$$(eval RADIUSD_BIN := $$(BIN_PATH)/radiusd)
+	$$(eval RADIUSD_RUN := TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $$(RADIUSD_BIN) -Pxxxl ${2}/radiusd.log -d $(DIR)/config -n ${1} -D "share/dictionary/")
 	${Q}rm -f ${2}/radiusd.log ${2}/radiusd.log
 	${Q}echo "Starting RADIUSD test server for (target=$(TEST),config_dir=$(DIR)/config,config_name=${1})"
-	${Q}if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $$(BIN_PATH)/radiusd -Pxxxl ${2}/radiusd.log -d $(DIR)/config -n ${1} -D "${top_builddir}/share/dictionary/"; then\
+	${Q}if ! $$(RADIUSD_RUN); then \
 		echo "FAILED STARTING RADIUSD"; \
 		tail -n 40 "${2}/radiusd.log"; \
 		echo "Last entries in server log (${2}/radiusd.log):"; \
-		echo "TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl ${2}/radiusd.log -d $(DIR)/config -n ${1} -D \"${top_builddir}/share/dictionary/\""; \
+		echo $$(RADIUSD_RUN); \
 	else \
 		echo "ok"; \
 	fi
