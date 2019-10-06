@@ -5,7 +5,6 @@
 #  - Already defined by scripts/boiler.mk
 #
 #  DIR.      = src/tests/$target
-#  OUTPUT    = build/tests/$target
 #  BUILD_DIR = build/
 #  BIN_PATH  = $(BUILD_DIR)/bin/local
 #
@@ -16,11 +15,12 @@
 #
 #  - Parameter
 #
-#  $1 = config-name found in $(DIR)/config, e.g: src/tests/$target/config/${config-name}.conf
+#  ${1}		config-name found in $(DIR)/config, e.g: src/tests/$target/config/${config-name}.conf
+#  ${2}		output directory
 #
 #  - How to use
 #
-#  1. $(eval $(call RADIUSD_SERVICE,myconfig))
+#  1. $(eval $(call RADIUSD_SERVICE,myconfig,directory/path/))
 #
 #  2. It will defined the targets.
 #
@@ -31,21 +31,21 @@ include Make.inc
 
 define RADIUSD_SERVICE
 .PHONY: $(TEST).radiusd_kill
-$(TEST).radiusd_kill: | $(OUTPUT)
-	@echo "Clean up $(OUTPUT)/radiusd.pid"
-	${Q}if [ -f $(OUTPUT)/radiusd.pid ]; then \
+$(TEST).radiusd_kill: | ${2}
+	@echo "Clean up ${2}/radiusd.pid"
+	${Q}if [ -f ${2}/radiusd.pid ]; then \
 		ret=0; \
-		if ! ps `cat $(OUTPUT)/radiusd.pid` >/dev/null 2>&1; then \
+		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 		    rm -f ${1}; \
 		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		    echo "GDB output was:"; \
-		    cat "$(OUTPUT)/gdb.log"; \
+		    cat "${2}/gdb.log"; \
 		    echo "--------------------------------------------------"; \
-		    tail -n 40 "$(OUTPUT)/gdb.log"; \
-		    echo "Last entries in server log ($(OUTPUT)/gdb.log):"; \
+		    tail -n 40 "${2}/gdb.log"; \
+		    echo "Last entries in server log (${2}/gdb.log):"; \
 		    ret=1; \
 		fi; \
-		if ! kill -TERM `cat $(OUTPUT)/radiusd.pid` >/dev/null 2>&1; then \
+		if ! kill -TERM `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 			ret=1; \
 		fi; \
 		exit ${ret}; \
@@ -54,17 +54,17 @@ $(TEST).radiusd_kill: | $(OUTPUT)
 #
 #	Start radiusd instance
 #
-$(OUTPUT)/radiusd.pid: $(OUTPUT)
-	${Q}rm -f $(OUTPUT)/radiusd.log $(OUTPUT)/radiusd.log
+${2}/radiusd.pid: ${2}
+	${Q}rm -f ${2}/radiusd.log ${2}/radiusd.log
 	${Q}echo "Starting RADIUSD test server for (target=$(TEST),config_dir=$(DIR)/config,config_name=${1})"
-	${Q}if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $$(BIN_PATH)/radiusd -Pxxxl $(OUTPUT)/radiusd.log -d $(DIR)/config -n ${1} -D "${top_builddir}/share/dictionary/"; then\
+	${Q}if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $$(BIN_PATH)/radiusd -Pxxxl ${2}/radiusd.log -d $(DIR)/config -n ${1} -D "${top_builddir}/share/dictionary/"; then\
 		echo "FAILED STARTING RADIUSD"; \
-		tail -n 40 "$(OUTPUT)/radiusd.log"; \
-		echo "Last entries in server log ($(OUTPUT)/radiusd.log):"; \
-		echo "TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl $(OUTPUT)/radiusd.log -d $(DIR)/config -n ${1} -D \"${top_builddir}/share/dictionary/\""; \
+		tail -n 40 "${2}/radiusd.log"; \
+		echo "Last entries in server log (${2}/radiusd.log):"; \
+		echo "TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl ${2}/radiusd.log -d $(DIR)/config -n ${1} -D \"${top_builddir}/share/dictionary/\""; \
 	else \
 		echo "ok"; \
 	fi
 
-$(TEST).radiusd_start: $(OUTPUT)/radiusd.pid
+$(TEST).radiusd_start: ${2}/radiusd.pid
 endef

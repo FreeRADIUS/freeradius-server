@@ -22,3 +22,58 @@ $(BUILD_DIR)/tests:
 #
 $(BUILD_DIR)/tests/autoconf.h.mk: src/include/autoconf.h | $(BUILD_DIR)/tests
 	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
+
+######################################################################
+#
+#  Generic rules to set up the tests
+#
+#  Use $(eval $(call TEST_BOOTSTRAP))
+#
+######################################################################
+define TEST_BOOTSTRAP
+
+#
+#  The test files are files without extensions.
+#
+OUTPUT.$(TEST) := $(patsubst %/,%,$(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
+OUTPUT := $$(OUTPUT.$(TEST))
+
+#
+#  Create the output directory
+#
+.PHONY: $$(OUTPUT.$(TEST))
+$$(OUTPUT.$(TEST)):
+	$${Q}mkdir -p $$@
+
+#
+#  All of the output files depend on the input files
+#
+FILES.$(TEST) := $(addprefix $$(OUTPUT.$(TEST))/,$(notdir $(FILES)))
+
+#
+#  The output files also depend on the directory
+#  and on the previous test.
+#
+$$(FILES.$(TEST)): | $$(OUTPUT.$(TEST))
+
+#
+#  We have a real file that's created if all of the tests pass.
+#
+$(BUILD_DIR)/tests/$(TEST): $$(FILES.$(TEST))
+	$${Q}touch $$@
+
+#
+#  For simplicity, we create a phony target so that the poor developer
+#  doesn't need to remember path names
+#
+$(TEST): $(BUILD_DIR)/tests/$(TEST)
+
+#
+#  Clean the output directory and files.
+#
+.PHONY: clean.$(TEST)
+clean.$(TEST):
+	$${Q}rm -rf $$(OUTPUT.$(TEST))
+
+clean.test: clean.$(TEST)
+endef

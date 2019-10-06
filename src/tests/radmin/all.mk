@@ -6,12 +6,8 @@
 #	Test name
 #
 TEST := test.radmin
-
-#
-#  The test files are files without extensions.
-#
 FILES  := $(subst $(DIR)/%,,$(wildcard $(DIR)/*.txt))
-OUTPUT := $(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+$(eval $(call TEST_BOOTSTRAP))
 
 #
 #	Config settings
@@ -22,52 +18,17 @@ RADMIN_GDB_LOG     := $(OUTPUT)/gdb.log
 RADMIN_SOCKET_FILE := $(OUTPUT)/control-socket.sock
 RADMIN_CONFIG_PATH := $(DIR)/config
 
+#
+#  Generic rules to start / stop the radius service.
+#
 include src/tests/radiusd.mk
 PORT := 12340
-$(eval $(call RADIUSD_SERVICE,control-socket))
-#
-#  Create the output directory
-#
-.PHONY: $(OUTPUT)
-$(OUTPUT):
-	${Q}mkdir -p $@
-
-#
-#  All of the output files depend on the input files
-#
-FILES.$(TEST) := $(addprefix $(OUTPUT),$(notdir $(FILES)))
-
-#
-#  The output files also depend on the directory
-#  and on the previous test.
-#
-$(FILES.$(TEST)): | $(OUTPUT)
-
-#
-#  We have a real file that's created if all of the tests pass.
-#
-$(BUILD_DIR)/tests/$(TEST): $(FILES.$(TEST))
-	${Q}touch $@
-
-#
-#  For simplicity, we create a phony target so that the poor developer
-#  doesn't need to remember path names
-#
-$(TEST): $(BUILD_DIR)/tests/$(TEST)
-
-#
-#  Clean the output directory and files.
-#
-.PHONY: clean.$(TEST)
-clean.$(TEST):
-	${Q}rm -rf $(OUTPUT)
-
-clean.test: clean.$(TEST)
+$(eval $(call RADIUSD_SERVICE,control-socket,$(OUTPUT)))
 
 #
 #	Run the radmin commands against the radiusd.
 #
-$(BUILD_DIR)/tests/radmin/%: $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
+$(OUTPUT)/%: $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
