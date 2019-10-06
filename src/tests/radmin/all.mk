@@ -13,7 +13,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #	Config settings
 #
 RADMIN_BIN         := $(TESTBINDIR)/radmin
-RADMIN_RADIUS_LOG  := $(OUTPUT)/radius.log
+RADMIN_RADIUS_LOG  := $(OUTPUT)/radiusd.log
 RADMIN_GDB_LOG     := $(OUTPUT)/gdb.log
 RADMIN_SOCKET_FILE := $(OUTPUT)/control-socket.sock
 RADMIN_CONFIG_PATH := $(DIR)/config
