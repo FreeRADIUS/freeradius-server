@@ -4189,6 +4189,7 @@ static void request_coa_originate(REQUEST *request)
 	}
 
 	coa = request->coa;
+	coa->listener = NULL;	/* copied here by request_alloc_fake(), but not needed */
 
 	/*
 	 *	src_ipaddr will be set up in proxy_encode.
