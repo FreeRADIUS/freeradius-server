@@ -43,7 +43,6 @@ define RADIUSD_SERVICE
 $(TEST).radiusd_kill: | ${2}
 	@echo "Clean up ${2}/radiusd.pid"
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
-		ret=0; \
 		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 		    rm -f ${1}; \
 		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
@@ -52,12 +51,12 @@ $(TEST).radiusd_kill: | ${2}
 		    echo "--------------------------------------------------"; \
 		    tail -n 40 "${2}/gdb.log"; \
 		    echo "Last entries in server log (${2}/gdb.log):"; \
-		    ret=1; \
+		    exit 1; \
 		fi; \
 		if ! kill -TERM `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
-			ret=1; \
+			exit 1; \
 		fi; \
-		exit ${ret}; \
+		exit 0; \
 	fi
 
 #
