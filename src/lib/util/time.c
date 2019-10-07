@@ -52,6 +52,9 @@ USES_APPLE_DEPRECATED_API
 #include <stdatomic.h>
 
 static _Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
+static char const			*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localtime_r(), tm_zone
+static long				gmtoff[2] = {0, 0};	       	//!< from localtime_r(), tm_gmtoff
+static int				isdst = 0;			//!< from localtime_r(), tm_is_dst
 
 #ifdef HAVE_CLOCK_GETTIME
 static int64_t				our_epoch;
@@ -70,6 +73,8 @@ static uint64_t				our_mach_epoch;
  */
 static inline int fr_time_sync(void)
 {
+	struct tm tm;
+
 	/*
 	 *	our_realtime represents system time
 	 *	at the start of our epoch.
@@ -94,7 +99,6 @@ static inline int fr_time_sync(void)
 				      fr_time_delta_from_timespec(&ts_realtime) -
 				      (fr_time_delta_from_timespec(&ts_monotime) - our_epoch),
 				      memory_order_release);
-		return 0;
 	}
 #else
 	{
@@ -110,10 +114,21 @@ static inline int fr_time_sync(void)
 		atomic_store_explicit(&our_realtime,
 				      fr_time_delta_from_timeval(&tv_realtime) -
 				      (monotime - our_mach_epoch) * (timebase.numer / timebase.denom,
-				      memory_order_release);
-		return 0;
+				      memory_order_release));
 	}
 #endif
+
+	/*
+	 *	Get local time zone name, daylight savings, and GMT
+	 *	offsets.
+	 */
+	(void) localtime_r(time(NULL), &tm);
+
+	isdst = (tm.tm_isdst != 0);
+	tz_names[isdst] = tm.tm_zone;
+	gmtoff[isdst] = tm.tm_gmtoff * NSEC; /* they store seconds, we store nanoseconds */
+
+	return 0;
 }
 
 /** Initialize the local time.
@@ -246,6 +261,45 @@ fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
 {
 	return fr_time_delta_from_timespec(when_ts) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
+
+/**  Return time delta from the time zone.
+ *
+ * @param[in] tz	time zone name
+ * @param[out] delta	the time delta
+ * @return
+ *	- 0 converted OK
+ *	- <0 on error
+ *
+ *  Note that this function ONLY handles a limited number of time
+ *  zones: local and gmt.  It is impossible in general to parse
+ *  arbitrary time zone strings, as there are duplicates.
+ *
+ */
+int fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
+{
+	*delta = 0;
+
+	if ((strcmp(tz, "UTC") == 0) ||
+	    (strcmp(tz, "GMT") == 0)) {
+		return 0;
+	}
+
+	/*
+	 *	Our local time zone OR time zone with daylight savings.
+	 */
+	if (tz_names[0] && (strcmp(tz, tz_names[0]) == 0)) {
+		*delta = gmtoff[0];
+		return 0;
+	}
+
+	if (tz_names[1] && (strcmp(tz, tz_names[1]) == 0)) {
+		*delta = gmtoff[1];
+		return 0;
+	}
+
+	return -1;
+}
+
 
 /** Create fr_time_delta_t from a string
  *
