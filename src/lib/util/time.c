@@ -74,6 +74,7 @@ static uint64_t				our_mach_epoch;
 static inline int fr_time_sync(void)
 {
 	struct tm tm;
+	time_t now;
 
 	/*
 	 *	our_realtime represents system time
@@ -122,7 +123,8 @@ static inline int fr_time_sync(void)
 	 *	Get local time zone name, daylight savings, and GMT
 	 *	offsets.
 	 */
-	(void) localtime_r(time(NULL), &tm);
+	now = time(NULL);
+	(void) localtime_r(&now, &tm);
 
 	isdst = (tm.tm_isdst != 0);
 	tz_names[isdst] = tm.tm_zone;
