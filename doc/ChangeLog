@@ -66,6 +66,8 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Add support to Oracle 19 and 18. Via #2857
 	* Add support for decoding tags in rlm_rest.  Fixes #2848.
 	* Use correct passwords when updating CRLs in raddb/certs/
+	* Properly separate "originate-coa" packets when accounting packets
+	  are read from the detail file reader.
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
