@@ -762,6 +762,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	char		*p;
 	char		*f[4];
 	char		*tail = NULL;
+	fr_time_delta_t	gmtoff = 0;
 
 	/*
 	 *	Test for unix timestamp, which is just a number and
@@ -879,7 +880,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		 */
 		t += tz;
 
-		*date = fr_time_from_timeval(&(struct timeval) { .tv_sec = t });
+		*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
 		*date += subseconds;
 		return 0;
 	}
@@ -894,6 +895,17 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	if (!f[0] || !f[1] || !f[2]) {
 		fr_strerror_printf("Too few fields");
 		return -1;
+	}
+
+	/*
+	 *	Try to parse the time zone.  If it's GMT / UTC or a
+	 *	local time zone we're OK.
+	 *
+	 *	Otherwise, ignore errors and assume GMT.
+	 */
+	if (p) {
+		fr_skip_whitespace(p);
+		(void) fr_time_delta_from_time_zone(p, &gmtoff);
 	}
 
 	/*
@@ -1009,7 +1021,16 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		return -1;
 	}
 
+	/*
+	 *	Get the UTC time, and manually add in the offset from GMT.
+	 */
 	*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
+
+	/*
+	 *	Add in the time zone offset, which the posix
+	 *	functions are too stupid to do.
+	 */
+	*date += gmtoff;
 
 	return 0;
 }
