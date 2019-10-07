@@ -40,8 +40,8 @@ $(OUTPUT)/%: $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
 		echo "--------------------------------------------------"; \
 		echo "$(RADIUSD_RUN)"; \
 		echo "$(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) > $(FOUND) < $<"; \
-		$(MAKE) $(TEST).radiusd_kill; \
-		exit 1;\
+		$(MAKE) test.radmin.radiusd_kill; \
+		exit 1; \
 	fi; \
 	if ! cmp -s $(FOUND) $(EXPECTED); then \
 		echo "RADMIN FAILED $@"; \
