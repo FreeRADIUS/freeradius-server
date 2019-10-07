@@ -110,6 +110,7 @@ typedef struct {
 #define USEC	(1000000)
 
 int fr_time_start(void);
+int fr_time_sync(void);
 fr_time_t fr_time(void);
 
 #define fr_unix_time_from_nsec(_x) _x

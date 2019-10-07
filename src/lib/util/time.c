@@ -71,7 +71,7 @@ static uint64_t				our_mach_epoch;
  *	- 0 on success.
  *	- -1 on failure.
  */
-static inline int fr_time_sync(void)
+int fr_time_sync(void)
 {
 	struct tm tm;
 	time_t now;
