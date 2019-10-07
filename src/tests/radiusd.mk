@@ -49,7 +49,7 @@ $(TEST).radiusd_kill: | ${2}
 		    echo "GDB output was:"; \
 		    cat "${2}/gdb.log"; \
 		    echo "--------------------------------------------------"; \
-		    tail -n 40 "${2}/gdb.log"; \
+		    tail -n 100 "${2}/gdb.log"; \
 		    echo "Last entries in server log (${2}/gdb.log):"; \
 		    exit 1; \
 		fi; \
