@@ -38,7 +38,7 @@ $(OUTPUT)/%: $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
 		tail -n 20 "$(RADMIN_RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADMIN_RADIUS_LOG)):"; \
 		echo "--------------------------------------------------"; \
-		echo "TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -PXxx -d \"$(RADMIN_CONFIG_PATH)\" -n control-socket -D \"${top_builddir}/share/dictionary/\""; \
+		echo "$(RADIUSD_RUN)"; \
 		echo "$(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) > $(FOUND) < $<"; \
 		$(MAKE) $(TEST).radiusd_kill; \
 		exit 1;\
