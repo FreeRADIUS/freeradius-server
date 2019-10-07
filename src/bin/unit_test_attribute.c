@@ -107,6 +107,13 @@ do { \
 		return 0; \
 	} while (0)
 
+#define RETURN_EXIT(_ret) \
+	do { \
+		result->rcode = RESULT_EXIT; \
+		result->ret = _ret; \
+		return 0; \
+	} while (0)
+
 typedef enum {
 	RESULT_OK = 0,				//!< Not an error - Result as expected.
 	RESULT_SKIP_FILE,			//!< Not an error - Skip the rest of this file, or until we
@@ -115,15 +122,17 @@ typedef enum {
 	RESULT_PARSE_ERROR,			//!< Fatal error - Command syntax error.
 	RESULT_COMMAND_ERROR,			//!< Fatal error - Command operation error.
 	RESULT_MISMATCH,			//!< Fatal error - Result didn't match what we expected.
+	RESULT_EXIT,				//!< Stop processing files and exit.
 } command_rcode_t;
 
 fr_table_num_sorted_t command_rcode_table[] = {
-	{ "ok",				RESULT_OK				},
-	{ "skip-file",			RESULT_SKIP_FILE			},
-	{ "error-to-data",		RESULT_DRAIN_ERROR_STACK_TO_DATA	},
-	{ "parse-error",		RESULT_PARSE_ERROR			},
 	{ "command-error",		RESULT_COMMAND_ERROR			},
-	{ "result-mismatch",		RESULT_MISMATCH				}
+	{ "error-to-data",		RESULT_DRAIN_ERROR_STACK_TO_DATA	},
+	{ "exit",			RESULT_EXIT				},
+	{ "ok",				RESULT_OK				},
+	{ "parse-error",		RESULT_PARSE_ERROR			},
+	{ "result-mismatch",		RESULT_MISMATCH				},
+	{ "skip-file",			RESULT_SKIP_FILE			},
 };
 size_t command_rcode_table_len = NUM_ELEMENTS(command_rcode_table);
 
@@ -135,7 +144,8 @@ typedef struct {
 			char const	*got;		//!< What we got.
 			size_t		got_len;	//!< How long got is.
 		};
-		size_t	offset;				//!< Where we failed parsing the command.
+		size_t	offset;			//!< Where we failed parsing the command.
+		int	ret;			//!< What code we should exit with.
 	};
 	command_rcode_t	rcode;
 } command_result_t;
@@ -161,6 +171,12 @@ typedef struct {
  */
 typedef size_t (*command_func_t)(command_result_t *result, command_ctx_t *cc, char *data, size_t data_len, char *in);
 
+typedef struct {
+	command_func_t	func;
+	char const	*usage;
+	char const	*description;
+} command_entry_t;
+
 static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 UNUSED REQUEST *request, UNUSED char const *fmt)
@@ -174,7 +190,7 @@ static dl_loader_t	*dl_loader;
 static const char	*process_filename;
 static int		process_lineno;
 
-static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
+static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			fr_dict_t *dict, const char *root_dir, char const *filename);
 
 /** Print hex string to buffer
@@ -699,7 +715,7 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, char con
 	void		*dl_symbol;
 
 	if (!dl) {
-		ERROR("No protocol library loaded. Specify library with \"load <proto name>\"");
+		fr_strerror_printf("No protocol library loaded. Specify library with \"load <proto name>\"");
 		return 0;
 	}
 
@@ -718,7 +734,7 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, char con
 
 	dl_symbol = dlsym(dl->handle, buffer);
 	if (!dl_symbol) {
-		ERROR("Test point (symbol \"%s\") not exported by library", buffer);
+		fr_strerror_printf("Test point (symbol \"%s\") not exported by library", buffer);
 		unload_proto_library();
 		return 0;
 	}
@@ -783,17 +799,21 @@ static size_t command_comment(UNUSED command_result_t *result, UNUSED command_ct
 static size_t command_include(command_result_t *result, command_ctx_t *cc,
 			      UNUSED char *data, UNUSED size_t data_used, char *in)
 {
-	char *q;
+	char	*q;
+	bool	exit_now = false;
+	int	ret;
 
 	q = strrchr(cc->path, '/');
 	if (q) {
 		*q = '\0';
-		if (process_file(cc->tmp_ctx, cc->features, cc->dict, cc->path, in) < 0) RETURN_COMMAND_ERROR();
+		ret = process_file(&exit_now, cc->tmp_ctx, cc->features, cc->dict, cc->path, in);
+		if (exit_now || (ret != 0)) RETURN_EXIT(ret);
 		*q = '/';
 		RETURN_OK(0);
 	}
 
-	if (process_file(cc->tmp_ctx, cc->features, cc->dict, NULL, in) < 0) RETURN_COMMAND_ERROR();
+	ret = process_file(&exit_now, cc->tmp_ctx, cc->features, cc->dict, NULL, in);
+	if (exit_now || (ret != 0)) RETURN_EXIT(ret);
 
 	RETURN_OK(0);
 }
@@ -942,7 +962,7 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
 
 	cs = cf_section_alloc(NULL, NULL, "if", "condition");
 	if (!cs) {
-		ERROR("Out of memory");
+		fr_strerror_printf("Out of memory");
 		RETURN_COMMAND_ERROR();
 	}
 	cf_filename_set(cs, process_filename);
@@ -973,7 +993,7 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
  *
  */
 static size_t command_data(command_result_t *result, UNUSED command_ctx_t *cc,
-			   char const *data, size_t data_used, char *in)
+			   char *data, size_t data_used, char *in)
 {
 	if (strcmp(in, data) != 0) RETURN_MISMATCH(in, strlen(in), data, data_used);
 
@@ -1120,11 +1140,14 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
  *
  */
 static size_t command_dictionary_dump(UNUSED command_result_t *result, command_ctx_t *cc,
-				      UNUSED char *data, UNUSED size_t data_used, UNUSED char *in)
+				      UNUSED char *data, size_t data_used, UNUSED char *in)
 {
 	fr_dict_dump(cc->proto_dict ? cc->proto_dict : cc->dict);
 
-	RETURN_OK(0);
+	/*
+	 *	Don't modify the contents of the data buffer
+	 */
+	RETURN_OK(data_used);
 }
 
 
@@ -1251,6 +1274,17 @@ static size_t command_eof(UNUSED command_result_t *result, UNUSED command_ctx_t 
 			  UNUSED char *data, UNUSED size_t data_used, UNUSED char *in)
 {
 	return 0;
+}
+
+/** Exit gracefully with the specified code
+ *
+ */
+static size_t command_exit(UNUSED command_result_t *result, UNUSED command_ctx_t *cc,
+			   UNUSED char *data, UNUSED size_t data_used, char *in)
+{
+	if (!*in) RETURN_EXIT(0);
+
+	RETURN_EXIT(atoi(in));
 }
 
 /** Dynamically load a protocol library
@@ -1432,7 +1466,121 @@ static size_t command_xlat_normalise(command_result_t *result, command_ctx_t *cc
 	RETURN_OK(escaped_len);
 }
 
-static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
+static fr_table_ptr_sorted_t	commands[] = {
+	{ "#",			&(command_entry_t){
+					.func = command_comment,
+					.usage = "#<string>",
+					.description = "A comment - not processed"
+				}},
+	{ "$INCLUDE ",		&(command_entry_t){
+					.func = command_include,
+					.usage = "$INCLUDE <relative_path>",
+					.description = "Execute a test file"
+				}},
+	{ "attribute ",		&(command_entry_t){
+					.func = command_normalise_attribute,
+					.usage = "attribute <attr> = <value>",
+					.description = "Parse and reprint an attribute value pair, writing \"ok\" to the data buffer on success"
+				}},
+	{ "command add ",	&(command_entry_t){
+					.func = command_radmin_add,
+					.usage = "command add <string>",
+					.description = "Add a command to a radmin command tree"
+				}},
+	{ "command tab ",	&(command_entry_t){
+					.func = command_radmin_tab,
+					.usage = "command tab <string>",
+					.description = "Test a tab completion against a command table"
+				}},
+	{ "condition ",		&(command_entry_t){
+					.func = command_condition_normalise,
+					.usage = "condition <string>",
+					.description = "Parse and reprint a condition, writing the normalised condition to the data buffer on success"
+				}},
+	{ "data",		&(command_entry_t){
+					.func = command_data,
+					.usage = "data <string>",
+					.description = "Compare the contents of the data buffer with an expected value"
+				}},
+	{ "decode-pair",	&(command_entry_t){
+					.func = command_decode_pair,
+					.usage = "decode-pair[.<testpoint_symbol>] (-|<hex_string>)",
+					.description = "Produce an attribute value pair from a binary value using a specified protocol decoder.  Protocol must be loaded with \"load <protocol>\" first",
+				}},
+	{ "decode-proto",	&(command_entry_t){
+					.func = command_decode_proto,
+					.usage = "decode-proto[.<testpoint_symbol>] (-|<hex string>)",
+					.description = "Decode a packet as attribute value pairs from a binary value using a specified protocol decoder.  Protocol must be loaded with \"load <protocol>\" first",
+				}},
+	{ "dictionary ",	&(command_entry_t){
+					.func = command_dictionary_attribute_parse,
+					.usage = "dictionary <string>",
+					.description = "Parse dictionary attribute definition, writing \"ok\" to the data buffer if successful",
+				}},
+	{ "dictionary-dump",	&(command_entry_t){
+					.func = command_dictionary_dump,
+					.usage = "dictionary-dump",
+					.description = "Print the contents of the currently active protocol dictionary to stdout",
+				}},
+	{ "dictionary-load ",	&(command_entry_t){
+					.func = command_dictionary_load,
+					.usage = "dictionary-load <proto_name> [<proto_dir>]",
+					.description = "Switch the active protocol dictionary",
+				}},
+	{ "encode-pair",	&(command_entry_t){
+					.func = command_encode_pair,
+					.usage = "encode-pair[.<testpoint_symbol>] (-|<attribute> = <value>[,<attribute = <value>])",
+					.description = "Encode one or more attribute value pairs, writing a hex string to the data buffer.  Protocol must be loaded with \"load <protocol>\" first",
+				}},
+	{ "encode-proto",	&(command_entry_t){
+					.func = command_encode_proto,
+					.usage = "encode-proto[.<testpoint_symbol>] (-|<attribute> = <value>[,<attribute = <value>])",
+					.description = "Encode one or more attributes as a packet, writing a hex string to the data buffer"
+				}},
+	{ "eof",		&(command_entry_t){
+					.func = command_eof,
+					.usage = "eof",
+					.description = "Mark the end of a 'virtual' file.  Used to prevent 'need-feature' skipping all the content of a command stream or file",
+				}},
+	{ "exit",		&(command_entry_t){
+					.func = command_exit,
+					.usage = "exit[ <num>]",
+					.description = "Exit with the specified error number.  If no <num> is provided, process will exit with 0"
+				}},
+	{ "load ",		&(command_entry_t){
+					.func = command_proto_load,
+					.usage = "load <protocol>",
+					.description = "Switch the active protocol to the one specified, unloading the previous protocol",
+				}},
+	{ "need-feature ", 	&(command_entry_t){
+					.func = command_need_feature,
+					.usage = "need-feature <feature>",
+					.description = "Skip the contents of the current file, or up to the next \"eof\" command if a particular feature is not available"
+				}},
+	{ "raw ",		&(command_entry_t){
+					.func = command_encode_raw,
+					.usage = "raw <string>",
+					.description = "Create nested attributes from OID strings and values"
+				}},
+	{ "touch ",		&(command_entry_t){
+					.func = command_touch,
+					.usage = "touch <file>",
+					.description = "Touch a file, updating its created timestamp.  Useful for marking the completion of a series of tests"
+				}},
+	{ "value ",		&(command_entry_t){
+					.func = command_value_box_normalise,
+					.usage = "value <type> <string>",
+					.description = "Parse a value of a given type from its presentation form, print it, then parse it again (checking printed/parsed versions match), writing printed form to the data buffer"
+				}},
+	{ "xlat ",		&(command_entry_t){
+					.func = command_xlat_normalise,
+					.usage = "xlat <string>",
+					.description = "Parse then print an xlat expansion, writing the normalised xlat expansion to the data buffer"
+				}}
+};
+static size_t commands_len = NUM_ELEMENTS(commands);
+
+static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			fr_dict_t *dict, const char *root_dir, char const *filename)
 {
 	int				ret = 0;
@@ -1449,31 +1597,6 @@ static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 						.dict = dict,
 						.features = features
 					};
-
-	static fr_table_ptr_sorted_t	commands[] = {
-		{ "#",			command_comment				},
-		{ "$INCLUDE ",		command_include				},
-		{ "attribute ",		command_normalise_attribute		},
-		{ "command add ",	command_radmin_add			},
-		{ "command tab ",	command_radmin_tab			},
-		{ "condition ",		command_condition_normalise		},
-		{ "data",		command_data				},
-		{ "decode-pair",	command_decode_pair			},
-		{ "decode-proto",	command_decode_proto			},
-		{ "dictionary ",	command_dictionary_attribute_parse	},
-		{ "dictionary-dump",	command_dictionary_dump			},
-		{ "dictionary-load ",	command_dictionary_load			},
-		{ "encode-pair",	command_encode_pair			},
-		{ "encode-proto",	command_encode_proto			},
-		{ "eof",		command_eof				},
-		{ "load ",		command_proto_load			},
-		{ "need-feature ", 	command_need_feature			},
-		{ "raw ",		command_encode_raw			},
-		{ "touch ",		command_touch				},
-		{ "value ",		command_value_box_normalise		},
-		{ "xlat ",		command_xlat_normalise			},
-	};
-	static size_t commands_len = NUM_ELEMENTS(commands);
 
 	/*
 	 *	Open the file, or stdin
@@ -1492,7 +1615,7 @@ static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 		if (!fp) {
 			ERROR("Error opening \"%s\": %s", path, fr_syserror(errno));
 			ret = -1;
-			goto done;
+			goto finish;
 		}
 
 		filename = path;
@@ -1505,7 +1628,7 @@ static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 	 */
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		char			*p = strchr(buffer, '\n');
-		command_func_t		func;
+		command_entry_t	*command;
 		command_result_t	result = { .rcode = RESULT_OK };	/* Reset to OK */
 		size_t			match_len;
 
@@ -1515,7 +1638,7 @@ static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 			if (!feof(fp)) {
 				ERROR("Line %d too long in %s", cc.lineno, cc.path);
 				ret = -1;
-				goto done;
+				goto finish;
 			}
 		} else {
 			*p = '\0';
@@ -1531,20 +1654,20 @@ static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 		/*
 		 *	Look up the command by longest prefix
 		 */
-		func = fr_table_value_by_longest_prefix(&match_len, commands, p, -1, NULL);
-		if (!func) {
+		command = fr_table_value_by_longest_prefix(&match_len, commands, p, -1, NULL);
+		if (!command) {
 		bad_input:
 			ERROR("%s[%d]: Unknown command: %s", cc.path, cc.lineno, p);
 			ret = -1;
-			goto done;
+			goto finish;
 		}
 
-		if (func == command_comment) continue;			/* Skip comments */
+		if (command->func == command_comment) continue;			/* Skip comments */
 
 		p += match_len;						/* Jump to after the command */
 		fr_skip_whitespace(p);					/* Skip any whitespace */
 
-		data_len = func(&result, &cc, data, data_len, p);	/* Call the command function */
+		data_len = command->func(&result, &cc, data, data_len, p);	/* Call the command function */
 		DEBUG2("%s[%d]: --> %s", filename, cc.lineno,
 		       fr_table_str_by_value(command_rcode_table, result.rcode, "<INVALID>"));
 
@@ -1561,7 +1684,7 @@ static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 		 *	EOF marker in the input stream.
 		 */
 		case RESULT_SKIP_FILE:
-			if (fp != stdin) goto done;
+			if (fp != stdin) goto finish;
 
 			/*
 			 *	Skip over the input stream until we
@@ -1569,11 +1692,11 @@ static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 			 *	is closed.
 			 */
 			while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-				func = fr_table_value_by_longest_prefix(&match_len, commands,
+				command = fr_table_value_by_longest_prefix(&match_len, commands,
 									buffer, -1, NULL);
-				if (!func) goto bad_input;
+				if (!command) goto bad_input;
 
-				if (func == command_eof) break;
+				if (command->func == command_eof) break;
 			}
 			break;
 
@@ -1584,7 +1707,7 @@ static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 		case RESULT_COMMAND_ERROR:
 			PERROR("%s[%d]", filename, cc.lineno);
 			ret = -1;
-			goto done;
+			goto finish;
 
 		/*
 		 *	Write out any errors in the error stack to
@@ -1628,14 +1751,19 @@ static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 			talloc_free(spaces);
 			talloc_free(g);
 			talloc_free(e);
-			ret = -1;
+			ret = EXIT_FAILURE;
 
-			goto done;
+			goto finish;
 		}
+
+		case RESULT_EXIT:
+			ret = result.ret;
+			*exit_now = true;
+			goto finish;
 		}
 	}
 
-done:
+finish:
 	if (fp != stdin) fclose(fp);
 
 	/*
@@ -1648,15 +1776,43 @@ done:
 	return ret;
 }
 
-static void usage(char *argv[])
+static void usage(char const *name)
 {
-	ERROR("usage: %s [OPTS] filename\n", argv[0]);
-	ERROR("  -d <raddb>         Set user dictionary path (defaults to " RADDBDIR ").");
-	ERROR("  -D <dictdir>       Set main dictionary path (defaults to " DICTDIR ").");
-	ERROR("  -x                 Debugging mode.");
-	ERROR("  -f                 Print features.");
-	ERROR("  -M                 Show talloc memory report.");
-	ERROR("  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.");
+	INFO("usage: %s [options] (-|<filename>[ <filename>])", name);
+	INFO("options:");
+	INFO("  -d <raddb>         Set user dictionary path (defaults to " RADDBDIR ").");
+	INFO("  -D <dictdir>       Set main dictionary path (defaults to " DICTDIR ").");
+	INFO("  -x                 Debugging mode.");
+	INFO("  -f                 Print features.");
+	INFO("  -c                 Print commands.");
+	INFO("  -h                 Print help text.");
+	INFO("  -M                 Show talloc memory report.");
+	INFO("  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.");
+	INFO("Where <filename> is a file containing one or more commands and '-' indicates commands should be read from stdin.");
+}
+
+static void features_print(CONF_SECTION *features)
+{
+	CONF_PAIR *cp;
+
+	INFO("features:");
+	for (cp = cf_pair_find(features, CF_IDENT_ANY);
+	     cp;
+	     cp = cf_pair_find_next(features, cp, CF_IDENT_ANY)) {
+		INFO("  %s %s", cf_pair_attr(cp), cf_pair_value(cp));
+	}
+}
+
+static void commands_print(void)
+{
+	size_t i;
+
+	INFO("commands:");
+	for (i = 0; i < commands_len; i++) {
+		INFO("  %s:", ((command_entry_t const *)commands[i].value)->usage);
+		INFO("    %s.", ((command_entry_t const *)commands[i].value)->description);
+		INFO("");
+	}
 }
 
 int main(int argc, char *argv[])
@@ -1671,6 +1827,12 @@ int main(int argc, char *argv[])
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 	dl_module_loader_t	*dl_modules = NULL;
+	bool			exit_now = false;
+
+	char const		*name;
+	bool			do_features = false;
+	bool			do_commands = false;
+	bool			do_usage = false;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -1686,7 +1848,13 @@ int main(int argc, char *argv[])
 	MEM(features = cf_section_alloc(cs, cs, "feature", NULL));
 	dependency_features_init(features);	/* Add build time features to the config section */
 
-	while ((c = getopt(argc, argv, "d:D:fxMhr:")) != -1) switch (c) {
+	name = argv[0];
+
+	while ((c = getopt(argc, argv, "cd:D:fxMhr:")) != -1) switch (c) {
+		case 'c':
+			do_commands = true;
+			break;
+
 		case 'd':
 			raddb_dir = optarg;
 			break;
@@ -1696,16 +1864,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'f':
-		{
-			CONF_PAIR *cp;
-
-			for (cp = cf_pair_find(features, CF_IDENT_ANY);
-			     cp;
-			     cp = cf_pair_find_next(features, cp, CF_IDENT_ANY)) {
-				fprintf(stdout, "%s %s\n", cf_pair_attr(cp), cf_pair_value(cp));
-			}
-			goto cleanup;
-		}
+			do_features = true;
+			break;
 
 		case 'x':
 			fr_debug_lvl++;
@@ -1723,12 +1883,19 @@ int main(int argc, char *argv[])
 
 		case 'h':
 		default:
-			usage(argv);
-			ret = EXIT_SUCCESS;
-			goto cleanup;
+			do_usage = true;	/* Just set a flag, so we can process extra -x args */
+			break;
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);
+
+	if (do_usage) usage(name);
+	if (do_features) features_print(features);
+	if (do_commands) commands_print();
+	if (do_usage || do_features || do_commands) {
+		ret = EXIT_SUCCESS;
+		goto cleanup;
+	}
 
 	if (receipt_file && (fr_file_unlink(receipt_file) < 0)) {
 		fr_perror("unit_test_attribute");
@@ -1788,7 +1955,7 @@ int main(int argc, char *argv[])
 	 *	Read tests from stdin
 	 */
 	if (argc < 2) {
-		if (process_file(autofree, features, dict, NULL, "-") < 0) ret = EXIT_FAILURE;
+		ret = process_file(&exit_now, autofree, features, dict, NULL, "-");
 
 	/*
 	 *	...or process each file in turn.
@@ -1796,8 +1963,10 @@ int main(int argc, char *argv[])
 	} else {
 		int i;
 
-		for (i = 1; i < argc; i++) if (process_file(autofree, features,
-							    dict, NULL, argv[i]) < 0) ret = EXIT_FAILURE;
+		for (i = 1; i < argc; i++) {
+			ret = process_file(&exit_now, autofree, features, dict, NULL, argv[i]);
+			if ((ret != 0) || exit_now) break;
+		}
 	}
 
 	/*
