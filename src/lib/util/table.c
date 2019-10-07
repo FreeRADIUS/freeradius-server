@@ -311,22 +311,22 @@ static void const *table_sorted_value_by_longest_prefix(size_t *match_len,
 
 	while (start <= end) {
 		void const	*offset;
+		char const	*elem;
+		size_t		tlen;
 
 		mid = start + ((end - start) / 2);	/* Avoid overflow */
 
 		offset = TABLE_IDX(table, mid, element_size);
+		elem = ELEM_NAME(offset);
+		tlen = strlen(elem);
 
-		ret = strncasecmp(name, ELEM_NAME(offset), name_len);
+		ret = strncasecmp(name, elem, tlen < (size_t)name_len ? tlen : (size_t)name_len);
 		if (ret == 0) {
-			size_t tlen;
-
-			tlen = strlen(ELEM_NAME(offset));
-
 			/*
 			 *	Exact match
 			 */
 			if (tlen == (size_t)name_len) {
-				if (match_len) *match_len = name_len;
+				if (match_len) *match_len = tlen;
 				return offset;
 			}
 
@@ -338,7 +338,7 @@ static void const *table_sorted_value_by_longest_prefix(size_t *match_len,
 			 */
 			if (tlen < (size_t)name_len) {
 				found = offset;
-				if (match_len) *match_len = name_len;
+				if (match_len) *match_len = tlen;
 				ret = 1;
 			}
 		}
