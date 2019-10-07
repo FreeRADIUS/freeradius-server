@@ -1490,7 +1490,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ "command tab ",	&(command_entry_t){
 					.func = command_radmin_tab,
 					.usage = "command tab <string>",
-					.description = "Test a tab completion against a command table"
+					.description = "Test a tab completion against a command tree"
 				}},
 	{ "condition ",		&(command_entry_t){
 					.func = command_condition_normalise,
@@ -1535,7 +1535,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ "encode-proto",	&(command_entry_t){
 					.func = command_encode_proto,
 					.usage = "encode-proto[.<testpoint_symbol>] (-|<attribute> = <value>[,<attribute = <value>])",
-					.description = "Encode one or more attributes as a packet, writing a hex string to the data buffer"
+					.description = "Encode one or more attributes as a packet, writing a hex string to the data buffer.  Protocol must be loaded with \"load <protocol>\" first"
 				}},
 	{ "eof",		&(command_entry_t){
 					.func = command_eof,
