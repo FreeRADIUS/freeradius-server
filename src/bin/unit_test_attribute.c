@@ -1490,7 +1490,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ "command tab ",	&(command_entry_t){
 					.func = command_radmin_tab,
 					.usage = "command tab <string>",
-					.description = "Test a tab completion against a command tree"
+					.description = "Test a tab completion against a radmin command tree"
 				}},
 	{ "condition ",		&(command_entry_t){
 					.func = command_condition_normalise,
