@@ -1002,7 +1002,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	/*
 	 *  Returns -1 on failure.
 	 */
-	t = mktime(tm);
+	t = timegm(tm);
 	if (t == (time_t) -1) {
 		fr_strerror_printf("Failed calling system function to parse time - %s",
 				   fr_syserror(errno));

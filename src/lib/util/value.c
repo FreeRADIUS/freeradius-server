@@ -4971,7 +4971,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	case FR_TYPE_DATE:
 		t = fr_unix_time_to_sec(data->vb_date);
-		(void) localtime_r(&t, &s_tm);
+		(void) gmtime_r(&t, &s_tm);
 
 		if (!data->enumv || (data->enumv->flags.type_size == FR_TIME_RES_SEC)) {
 			if (quote > 0) {
