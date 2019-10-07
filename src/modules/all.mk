@@ -23,5 +23,7 @@ endif
 
 ifneq "$(MAKECMDGOALS)" "reconfig"
 src/modules/%/configure: src/modules/%/configure.ac
-	@echo WARNING - may need "'make reconfig'" for AUTOCONF $(dir $@)
+	${Q}if [ $< -nt $@ ]; then \
+		echo "WARNING - may need 'make reconfig' for AUTOCONF $(dir $@)"; \
+	fi
 endif
