@@ -59,6 +59,23 @@ typedef struct {
 	fr_virtual_listen_t	**listener;		//!< Listeners in this virtual server.
 } fr_virtual_server_t;
 
+static fr_dict_t *dict_freeradius;
+
+static fr_dict_attr_t const *attr_auth_type;
+
+extern fr_dict_autoload_t virtual_server_dict[];
+fr_dict_autoload_t virtual_server_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+extern fr_dict_attr_autoload_t virtual_server_dict_attr[];
+fr_dict_attr_autoload_t virtual_server_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ NULL }
+};
+
 /** Top level structure holding all virtual servers
  *
  */
@@ -973,6 +990,16 @@ int virtual_servers_init(CONF_SECTION *config)
 {
 	virtual_server_root = config;
 
+	if (fr_dict_autoload(virtual_server_dict) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
+	}
+	if (fr_dict_attr_autoload(virtual_server_dict_attr) < 0) {
+		PERROR("%s", __FUNCTION__);
+		fr_dict_autofree(virtual_server_dict);
+		return -1;
+	}
+
 	MEM(listen_addr_root = rbtree_create(NULL, listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
 	MEM(server_section_name_tree = rbtree_create(NULL, server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
 
@@ -983,9 +1010,11 @@ int virtual_servers_free(void)
 {
 	TALLOC_FREE(listen_addr_root);
 	TALLOC_FREE(server_section_name_tree);
+
+	fr_dict_autofree(virtual_server_dict);
+
 	return 0;
 }
-
 
 /**
  */
@@ -1061,6 +1090,39 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	request->server_cs = server_cs;
 
 	return rcode;
+}
+
+rlm_rcode_t virtual_server_process_auth(REQUEST *request, CONF_SECTION *virtual_server,
+					rlm_rcode_t default_rcode,
+					fr_unlang_module_resume_t resume,
+					fr_unlang_module_signal_t signal, void *rctx)
+{
+	VALUE_PAIR	*vp;
+	CONF_SECTION	*auth_cs = NULL;
+	char const	*auth_name;
+
+	vp = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
+	if (!vp) {
+		RDEBUG2("No &control:Auth-Type found");
+	fail:
+		request->rcode = RLM_MODULE_FAIL;
+		return unlang_module_yield_to_section(request, NULL, RLM_MODULE_FAIL, resume, signal, rctx);
+	}
+
+	auth_name = fr_dict_enum_alias_by_value(attr_auth_type, &vp->data);
+	if (!auth_name) {
+		REDEBUG2("Invalid %pP value", vp);
+		goto fail;
+	}
+
+	auth_cs = cf_section_find(virtual_server, "authenticate", auth_name);
+	if (!auth_cs) {
+		REDEBUG2("No authenticate %s { ... } section found in virtual server \"%s\"",
+			 auth_name, cf_section_name2(virtual_server));
+		goto fail;
+	}
+
+	return unlang_module_yield_to_section(request, auth_cs, default_rcode, resume, signal, rctx);
 }
 
 /*
@@ -1413,3 +1475,4 @@ virtual_server_method_t *virtual_server_section_methods(char const *name1, char 
 
 	return entry->methods;
 }
+

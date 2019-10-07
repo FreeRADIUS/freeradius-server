@@ -86,6 +86,10 @@ int		virtual_server_has_namespace(CONF_SECTION **out,
 
 rlm_rcode_t	process_authenticate(int type, REQUEST *request);
 
+rlm_rcode_t	virtual_server_process_auth(REQUEST *request, CONF_SECTION *virtual_server,
+					    rlm_rcode_t default_rcode,
+					    fr_unlang_module_resume_t resume,
+					    fr_unlang_module_signal_t signal, void *rctx);
 
 void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for unit_test_module */
 
