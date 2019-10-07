@@ -68,7 +68,7 @@ condition  0x626f62 == bob
 data true
 
 condition  \n == 0x0a
-data ERROR offset 1 Unexpected escape
+data ERROR offset 0 Unexpected escape
 
 condition  a\n == 0x610a
-data ERROR offset 2 Unexpected escape
+data ERROR offset 1 Unexpected escape

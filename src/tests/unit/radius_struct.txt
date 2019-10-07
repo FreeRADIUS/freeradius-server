@@ -1,5 +1,5 @@
 load radius
-load-dictionary radius
+dictionary-load radius
 
 #
 #  Structs in RADIUS

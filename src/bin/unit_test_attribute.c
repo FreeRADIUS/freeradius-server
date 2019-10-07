@@ -38,6 +38,7 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>
+#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/xlat.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/conf.h>
@@ -52,9 +53,8 @@ typedef struct rad_request REQUEST;
 #  include <getopt.h>
 #endif
 
+#include <limits.h>
 #include <assert.h>
-
-#include <freeradius-devel/server/log.h>
 #include <sys/wait.h>
 
 #define EXIT_WITH_FAILURE \
@@ -62,6 +62,104 @@ do { \
 	ret = EXIT_FAILURE; \
 	goto cleanup; \
 } while (0)
+
+#define COMMAND_OUTPUT_MAX	8192
+
+#define RETURN_OK(_len) \
+	do { \
+		result->rcode = RESULT_OK; \
+		return (_len); \
+	} while (0)
+
+#define RETURN_SKIP_FILE() \
+	do { \
+		result->rcode = RESULT_SKIP_FILE; \
+		return 0; \
+	} while (0)
+
+#define RETURN_DRAIN_ERROR_STACK_TO_DATA() \
+	do { \
+		result->rcode = RESULT_DRAIN_ERROR_STACK_TO_DATA; \
+		return 0; \
+	} while (0)
+
+#define RETURN_PARSE_ERROR(_offset) \
+	do { \
+		result->rcode = RESULT_PARSE_ERROR; \
+		result->rcode = RESULT_PARSE_ERROR; \
+		result->offset = _offset; \
+		return 0; \
+	} while (0)
+
+#define RETURN_COMMAND_ERROR() \
+	do { \
+		result->rcode = RESULT_COMMAND_ERROR; \
+		return 0; \
+	} while (0)
+
+#define RETURN_MISMATCH(_expected, _expected_len, _got, _got_len) \
+	do { \
+		result->rcode = RESULT_MISMATCH; \
+		result->expected = _expected; \
+		result->expected_len = _expected_len; \
+		result->got = _got; \
+		result->got_len = _got_len; \
+		return 0; \
+	} while (0)
+
+typedef enum {
+	RESULT_OK = 0,				//!< Not an error - Result as expected.
+	RESULT_SKIP_FILE,			//!< Not an error - Skip the rest of this file, or until we
+						///< reach an "eof" command.
+	RESULT_DRAIN_ERROR_STACK_TO_DATA,	//!< Not an error.
+	RESULT_PARSE_ERROR,			//!< Fatal error - Command syntax error.
+	RESULT_COMMAND_ERROR,			//!< Fatal error - Command operation error.
+	RESULT_MISMATCH,			//!< Fatal error - Result didn't match what we expected.
+} command_rcode_t;
+
+fr_table_num_sorted_t command_rcode_table[] = {
+	{ "ok",				RESULT_OK				},
+	{ "skip-file",			RESULT_SKIP_FILE			},
+	{ "error-to-data",		RESULT_DRAIN_ERROR_STACK_TO_DATA	},
+	{ "parse-error",		RESULT_PARSE_ERROR			},
+	{ "command-error",		RESULT_COMMAND_ERROR			},
+	{ "result-mismatch",		RESULT_MISMATCH				}
+};
+size_t command_rcode_table_len = NUM_ELEMENTS(command_rcode_table);
+
+typedef struct {
+	union {
+		struct {
+			char const	*expected;	//!< Output buffer contents we expected.
+			size_t		expected_len;	//!< How long expected is.
+			char const	*got;		//!< What we got.
+			size_t		got_len;	//!< How long got is.
+		};
+		size_t	offset;				//!< Where we failed parsing the command.
+	};
+	command_rcode_t	rcode;
+} command_result_t;
+
+typedef struct {
+	TALLOC_CTX	*tmp_ctx;		//!< Talloc context for test points.
+
+	char const	*path;			//!< Current path we're operating in.
+	int		lineno;			//!< Current line number.
+
+	fr_dict_t 	*dict;			//!< Base dictionary.
+	fr_dict_t	*proto_dict;		//!< Protocol specific dictionary.
+	CONF_SECTION	*features;		//!< Enabled features.
+} command_ctx_t;
+
+/** Command to execute
+ *
+ * @param[out] result	Of executing the command.
+ * @param[in] cc	Information about the file being processed.
+ * @param[in,out] data	Output of this command, or the previous command.
+ * @param[in] data_len	Length of data in the data buffer.
+ * @param[in] in	Command text to process.
+ */
+typedef size_t (*command_func_t)(command_result_t *result, command_ctx_t *cc, char *data, size_t data_len, char *in);
 
 static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -76,9 +174,40 @@ static dl_loader_t	*dl_loader;
 static const char	*process_filename;
 static int		process_lineno;
 
+static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
+			fr_dict_t *dict, const char *root_dir, char const *filename);
+
+/** Print hex string to buffer
+ *
+ */
+static inline size_t hex_print(char *out, size_t outlen, uint8_t const *in, size_t inlen)
+{
+	char	*p = out;
+	char	*end = p + outlen;
+	size_t	i;
+
+	if (inlen == 0) {
+		*p = '\0';
+		return 0;
+	}
+
+	for (i = 0; i < inlen; i++) {
+		size_t len;
+
+		len = snprintf(p, end - p, "%02x ", in[i]);
+		if (is_truncated(len, end - p)) return 0;
+
+		p += len;
+	}
+
+	*(--p) = '\0';
+
+	return p - out;
+}
+
 /** Concatenate error stack
  */
-static inline void strerror_concat(char *out, size_t outlen)
+static inline size_t strerror_concat(char *out, size_t outlen)
 {
 	char *end = out + outlen;
 	char *p = out;
@@ -91,6 +220,8 @@ static inline void strerror_concat(char *out, size_t outlen)
 			p += strlcpy(p, err, end - p);
 		}
 	}
+
+	return p - out;
 }
 
 /*
@@ -102,8 +233,7 @@ static int encode_tlv(char *buffer, uint8_t *output, size_t outlen);
 
 static char const hextab[] = "0123456789abcdef";
 
-static int encode_data_string(char *buffer,
-			      uint8_t *output, size_t outlen)
+static int encode_data_string(char *buffer, uint8_t *output, size_t outlen)
 {
 	int length = 0;
 	char *p;
@@ -144,7 +274,7 @@ static int encode_data_string(char *buffer,
 		length++;
 	}
 
-	fprintf(stderr, "String is not terminated\n");
+	ERROR("String is not terminated");
 	return 0;
 }
 
@@ -164,9 +294,7 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	}
 
 	if (*p != '}') {
-		fprintf(stderr, "No trailing '}' in string starting "
-			"with \"%s\"\n",
-			buffer);
+		ERROR("No trailing '}' in string starting with \"%s\"", buffer);
 		return 0;
 	}
 
@@ -182,10 +310,13 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	return length;
 }
 
-static int encode_hex(char *p, uint8_t *output, size_t outlen)
+static int hex_to_bin(uint8_t *output, size_t outlen, char *in, size_t inlen)
 {
 	int length = 0;
-	while (*p) {
+	char *p = in;
+	char *end = in + inlen;
+
+	while (p < end) {
 		char *c1, *c2;
 
 		fr_skip_whitespace(p);
@@ -194,8 +325,7 @@ static int encode_hex(char *p, uint8_t *output, size_t outlen)
 
 		if(!(c1 = memchr(hextab, tolower((int) p[0]), 16)) ||
 		   !(c2 = memchr(hextab, tolower((int)  p[1]), 16))) {
-			fprintf(stderr, "Invalid data starting at "
-				"\"%s\"\n", p);
+			ERROR("Invalid data starting at \"%s\"\n", p);
 			return 0;
 		}
 
@@ -206,7 +336,7 @@ static int encode_hex(char *p, uint8_t *output, size_t outlen)
 
 		outlen--;
 		if (outlen == 0) {
-			fprintf(stderr, "Too much data\n");
+			ERROR("Too much data");
 			return 0;
 		}
 	}
@@ -220,8 +350,7 @@ static int encode_data(char *p, uint8_t *output, size_t outlen)
 	int length;
 
 	if (!isspace((int) *p)) {
-		fprintf(stderr, "Invalid character following attribute "
-			"definition\n");
+		ERROR("Invalid character following attribute definition");
 		return 0;
 	}
 
@@ -237,7 +366,7 @@ static int encode_data(char *p, uint8_t *output, size_t outlen)
 			fr_skip_whitespace(p);
 			if (!*p) {
 				if (length == 0) {
-					fprintf(stderr, "No data\n");
+					ERROR("No data");
 					return 0;
 				}
 
@@ -261,10 +390,10 @@ static int encode_data(char *p, uint8_t *output, size_t outlen)
 		return length;
 	}
 
-	length = encode_hex(p, output, outlen);
+	length = hex_to_bin(output, outlen, p, strlen(p));
 
 	if (length == 0) {
-		fprintf(stderr, "Empty string\n");
+		ERROR("Empty string");
 		return 0;
 	}
 
@@ -277,19 +406,17 @@ static int decode_attr(char *buffer, char **endptr)
 
 	attr = strtol(buffer, endptr, 10);
 	if (*endptr == buffer) {
-		fprintf(stderr, "No valid number found in string "
-			"starting with \"%s\"\n", buffer);
+		ERROR("No valid number found in string starting with \"%s\"", buffer);
 		return 0;
 	}
 
 	if (!**endptr) {
-		fprintf(stderr, "Nothing follows attribute number\n");
+		ERROR("Nothing follows attribute number");
 		return 0;
 	}
 
 	if ((attr <= 0) || (attr > 256)) {
-		fprintf(stderr, "Attribute number is out of valid "
-			"range\n");
+		ERROR("Attribute number is out of valid range");
 		return 0;
 	}
 
@@ -301,28 +428,28 @@ static int decode_vendor(char *buffer, char **endptr)
 	long vendor;
 
 	if (*buffer != '.') {
-		fprintf(stderr, "Invalid separator before vendor id\n");
+		ERROR("Invalid separator before vendor id");
 		return 0;
 	}
 
 	vendor = strtol(buffer + 1, endptr, 10);
 	if (*endptr == (buffer + 1)) {
-		fprintf(stderr, "No valid vendor number found\n");
+		ERROR("No valid vendor number found");
 		return 0;
 	}
 
 	if (!**endptr) {
-		fprintf(stderr, "Nothing follows vendor number\n");
+		ERROR("Nothing follows vendor number");
 		return 0;
 	}
 
 	if ((vendor <= 0) || (vendor > (1 << 24))) {
-		fprintf(stderr, "Vendor number is out of valid range\n");
+		ERROR("Vendor number is out of valid range");
 		return 0;
 	}
 
 	if (**endptr != '.') {
-		fprintf(stderr, "Invalid data following vendor number\n");
+		ERROR("Invalid data following vendor number");
 		return 0;
 	}
 	(*endptr)++;
@@ -352,7 +479,7 @@ static int encode_tlv(char *buffer, uint8_t *output, size_t outlen)
 
 	if (length == 0) return 0;
 	if (length > (255 - 2)) {
-		fprintf(stderr, "TLV data is too long\n");
+		ERROR("TLV data is too long");
 		return 0;
 	}
 
@@ -378,7 +505,7 @@ static int encode_vsa(char *buffer, uint8_t *output, size_t outlen)
 	length = encode_tlv(p, output + 4, outlen - 4);
 	if (length == 0) return 0;
 	if (length > (255 - 6)) {
-		fprintf(stderr, "VSA data is too long\n");
+		ERROR("VSA data is too long");
 		return 0;
 	}
 
@@ -430,7 +557,7 @@ static int encode_extended(char *buffer,
 	}
 	if (length == 0) return 0;
 	if (length > (255 - 3)) {
-		fprintf(stderr, "Extended Attr data is too long\n");
+		ERROR("Extended Attr data is too long");
 		return 0;
 	}
 
@@ -510,16 +637,13 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 
 	} else {
 		if (*p != '.') {
-			fprintf(stderr, "Invalid data following "
-				"attribute number\n");
+			ERROR("Invalid data following attribute number");
 			return 0;
 		}
 
 		if (attr < 245) {
-			sublen = encode_extended(p + 1,
-						 output + 2, outlen - 2);
+			sublen = encode_extended(p + 1, output + 2, outlen - 2);
 		} else {
-
 			/*
 			 *	Not like the others!
 			 */
@@ -528,7 +652,7 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 	}
 	if (sublen == 0) return 0;
 	if (sublen > (255 -2)) {
-		fprintf(stderr, "RFC Data is too long\n");
+		ERROR("RFC Data is too long");
 		return 0;
 	}
 
@@ -536,72 +660,6 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 	return length + sublen;
 }
 
-static void parse_condition(fr_dict_t const *dict, char const *input, char *output, size_t outlen)
-{
-	ssize_t dec_len;
-	char const *error = NULL;
-	fr_cond_t *cond;
-	CONF_SECTION *cs;
-
-	cs = cf_section_alloc(NULL, NULL, "if", "condition");
-	if (!cs) {
-		snprintf(output, outlen, "ERROR out of memory");
-		return;
-	}
-	cf_filename_set(cs, process_filename);
-	cf_lineno_set(cs, process_lineno);
-
-	dec_len = fr_cond_tokenize(cs, &cond, &error, dict, input);
-	if (dec_len <= 0) {
-		talloc_free(cs);
-		snprintf(output, outlen, "ERROR offset %d %s", (int) -dec_len, error);
-		return;
-	}
-
-	input += dec_len;
-	if (*input != '\0') {
-		talloc_free(cs);
-		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) dec_len);
-		return;
-	}
-
-	cond_snprint(NULL, output, outlen, cond);
-
-	talloc_free(cs);
-}
-
-static void parse_xlat(fr_dict_t const *dict, char const *input, char *output, size_t outlen)
-{
-	ssize_t		dec_len;
-	char		*fmt;
-	xlat_exp_t	*head;
-	size_t		input_len = strlen(input), len;
-	char		buff[1024];
-
-	/*
-	 *	Process special chars, octal escape sequences and hex sequences
-	 */
-	MEM(fmt = talloc_array(NULL, char, input_len + 1));
-	len = fr_value_str_unescape((uint8_t *)fmt, input, input_len, '\"');
-	fmt[len] = '\0';
-
-	dec_len = xlat_tokenize(fmt, &head, fmt, &(vp_tmpl_rules_t) { .dict_def = dict });
-	if (dec_len <= 0) {
-		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -dec_len, fr_strerror());
-		talloc_free(fmt);
-		return;
-	}
-
-	if (fmt[dec_len] != '\0') {
-		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) dec_len);
-		talloc_free(fmt);
-		return;
-	}
-
-	len = xlat_snprint(buff, sizeof(buff), head);
-	fr_snprint(output, outlen, buff, len, '"');
-	talloc_free(fmt);
-}
 
 static void unload_proto_library(void)
 {
@@ -623,7 +681,7 @@ static ssize_t load_proto_library(char const *proto_name)
 
 		dl = dl_by_name(dl_loader, dl_name, NULL, false);
 		if (!dl) {
-			fprintf(stderr, "Failed to link to library \"%s\": %s\n", dl_name, fr_strerror());
+			ERROR("Failed to link to library \"%s\": %s\n", dl_name, fr_strerror());
 			unload_proto_library();
 			return 0;
 		}
@@ -634,40 +692,37 @@ static ssize_t load_proto_library(char const *proto_name)
 	return strlen(proto_name);
 }
 
-static ssize_t load_test_point_by_command(void **symbol, char *command, size_t offset, char const *dflt_symbol)
+static ssize_t load_test_point_by_command(void **symbol, char *command, char const *dflt_symbol)
 {
 	char		buffer[256];
 	char const	*p, *q;
-	char const	*symbol_name;
 	void		*dl_symbol;
 
 	if (!dl) {
-		fprintf(stderr, "No protocol library loaded. Specify library with \"load <proto name>\"\n");
+		ERROR("No protocol library loaded. Specify library with \"load <proto name>\"");
 		return 0;
 	}
 
-	p = command + offset;
-	q = strchr(p, '.');
+	p = command;
 
 	/*
 	 *	Use the dflt_symbol name as the test point
 	 */
-	if (q) {
-		symbol_name = q + 1;
+	if ((*p == '.') && (q = strchr(p, ' ')) && (q != (p + 1)) && ((size_t)(q - p) < sizeof(buffer))) {
+		p++;
+		strlcpy(buffer, p, (q - p) + 1);
+		p = q + 1;
 	} else {
 		snprintf(buffer, sizeof(buffer), "%s_%s", proto_name_prev, dflt_symbol);
-		symbol_name = buffer;
 	}
 
-	dl_symbol = dlsym(dl->handle, symbol_name);
+	dl_symbol = dlsym(dl->handle, buffer);
 	if (!dl_symbol) {
-		fprintf(stderr, "Test point (symbol \"%s\") not exported by library\n", symbol_name);
+		ERROR("Test point (symbol \"%s\") not exported by library", buffer);
 		unload_proto_library();
 		return 0;
 	}
 	*symbol = dl_symbol;
-
-	p += strlen(p);
 
 	return p - command;
 }
@@ -689,7 +744,7 @@ static int command_walk(UNUSED void *ctx, fr_cmd_walk_info_t *info)
 
 	printf(":%s ", info->name);
 	if (info->syntax) printf("%s", info->syntax);
-	printf("\n");
+	printf("");
 
 	return 1;
 }
@@ -698,37 +753,95 @@ static void command_print(void)
 {
 	void *walk_ctx = NULL;
 
-	printf("Command hierarchy --------\n");
+	printf("Command hierarchy --------");
 	fr_command_debug(stdout, command_head);
 
-	printf("Command list --------\n");
+	printf("Command list --------");
 	while (fr_command_walk(command_head, &walk_ctx, NULL, command_walk) == 1) {
 		// do nothing
 	}
 }
 
+#define CLEAR_TEST_POINT(_cc) \
+do { \
+	talloc_free_children((_cc)->tmp_ctx); \
+	tp = NULL; \
+} while (0)
+
+/** Placeholder function for comments
+ *
+ */
+static size_t command_comment(UNUSED command_result_t *result, UNUSED command_ctx_t *cc,
+			      UNUSED char *data, UNUSED size_t data_used, UNUSED char *in)
+{
+	return 0;
+}
+
+/** Execute another test file
+ *
+ */
+static size_t command_include(command_result_t *result, command_ctx_t *cc,
+			      UNUSED char *data, UNUSED size_t data_used, char *in)
+{
+	char *q;
+
+	q = strrchr(cc->path, '/');
+	if (q) {
+		*q = '\0';
+		if (process_file(cc->tmp_ctx, cc->features, cc->dict, cc->path, in) < 0) RETURN_COMMAND_ERROR();
+		*q = '/';
+		RETURN_OK(0);
+	}
+
+	if (process_file(cc->tmp_ctx, cc->features, cc->dict, NULL, in) < 0) RETURN_COMMAND_ERROR();
+
+	RETURN_OK(0);
+}
+
+/** Parse an print an attribute pair
+ *
+ */
+static size_t command_normalise_attribute(command_result_t *result, command_ctx_t *cc,
+					  char *data, UNUSED size_t data_used, char *in)
+{
+	VALUE_PAIR 	*head = NULL;
+	size_t		len;
+
+	if (fr_pair_list_afrom_str(NULL, cc->proto_dict ? cc->proto_dict : cc->dict, in, &head) != T_EOL) {
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	}
+
+	len = fr_pair_snprint(data, COMMAND_OUTPUT_MAX, head);
+	if (is_truncated(len, COMMAND_OUTPUT_MAX)) {
+		fr_strerror_printf("Encoder output would overflow output buffer");
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	}
+
+	RETURN_OK(len);
+}
+
 /*
  *	Add a command by talloc'ing a table for it.
  */
-static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outlen)
+static size_t command_radmin_add(command_result_t *result, command_ctx_t *cc,
+				 char *data, size_t UNUSED data_used, char *in)
 {
-	char *p, *name;
-	char *parent = NULL;
-	fr_cmd_table_t *table;
+	char		*p, *name;
+	char		*parent = NULL;
+	fr_cmd_table_t	*table;
 
-	table = talloc_zero(ctx, fr_cmd_table_t);
+	table = talloc_zero(cc->tmp_ctx, fr_cmd_table_t);
 
-	p = strchr(input, ':');
+	p = strchr(in, ':');
 	if (!p) {
-		snprintf(output, outlen, "no ':name' specified");
-		return;
+		fr_strerror_printf("no ':name' specified");
+		RETURN_PARSE_ERROR(0);
 	}
 
 	*p = '\0';
 	p++;
 
-
-	parent = talloc_strdup(ctx, input);
+	parent = talloc_strdup(cc->tmp_ctx, in);
 
 	/*
 	 *	Set the name and try to find the syntax.
@@ -753,48 +866,55 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 	table->tab_expand = NULL;
 	table->read_only = true;
 
-	if (fr_command_add(ctx, &command_head, NULL, NULL, table) < 0) {
-		snprintf(output, outlen, "ERROR: failed adding command - %s", fr_strerror());
-		return;
+	if (fr_command_add(table, &command_head, NULL, NULL, table) < 0) {
+		fr_strerror_printf("ERROR: failed adding command - %s", fr_strerror());
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
 	}
 
 	if (fr_debug_lvl) command_print();
 
-	snprintf(output, outlen, "ok");
-	fflush(stdout);
+	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "ok"));
 }
 
 /*
  *	Do tab completion on a command
  */
-static void command_tab(TALLOC_CTX *ctx, char *input, char *output, size_t outlen)
+static size_t command_radmin_tab(command_result_t *result, UNUSED command_ctx_t *cc,
+				 char *data, UNUSED size_t data_used, char *in)
 {
-	int i;
-	int num_expansions;
-	char const *expansions[CMD_MAX_ARGV];
-	char *p, **argv;
-	fr_cmd_info_t info;
+	int		i;
+	int		num_expansions;
+	char const	*expansions[CMD_MAX_ARGV];
+	char		*p = data, *end = p + COMMAND_OUTPUT_MAX, **argv;
+	fr_cmd_info_t	info;
+	size_t		len;
 
 	info.argc = 0;
 	info.max_argc = CMD_MAX_ARGV;
-	info.argv = talloc_zero_array(ctx, char const *, CMD_MAX_ARGV);
-	info.box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
+	info.argv = talloc_zero_array(cc->tmp_ctx, char const *, CMD_MAX_ARGV);
+	info.box = talloc_zero_array(cc->tmp_ctx, fr_value_box_t *, CMD_MAX_ARGV);
 
 	memcpy(&argv, &info.argv, sizeof(argv)); /* const issues */
-	info.argc = fr_dict_str_to_argv(input, argv, CMD_MAX_ARGV);
+	info.argc = fr_dict_str_to_argv(in, argv, CMD_MAX_ARGV);
 	if (info.argc <= 0) {
-		snprintf(output, outlen, "Failed splitting input");
-		return;
+		fr_strerror_printf("Failed splitting input");
+		RETURN_PARSE_ERROR(-(info.argc));
 	}
 
-	num_expansions = fr_command_tab_expand(ctx, command_head, &info, CMD_MAX_ARGV, expansions);
+	num_expansions = fr_command_tab_expand(cc->tmp_ctx, command_head, &info, CMD_MAX_ARGV, expansions);
 
-	snprintf(output, outlen, "%d - ", num_expansions);
-	p = output + strlen(output);
+	len = snprintf(p, end - p, "%d - ", num_expansions);
+	if (is_truncated(len, end - p)) {
+	oob:
+		fr_strerror_printf("Out of output buffer space");
+		RETURN_COMMAND_ERROR();
+	}
+	p += len;
 
 	for (i = 0; i < num_expansions; i++) {
-		snprintf(p, outlen - (p - output), "'%s', ", expansions[i]);
-		p += strlen(p);
+		len = snprintf(p, end - p, "'%s', ", expansions[i]);
+		if (is_truncated(len, end - p)) goto oob;
+		p += len;
 	}
 
 	/*
@@ -804,662 +924,739 @@ static void command_tab(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 		p -= 2;
 		*p = '\0';
 	}
+
+	return p - data;
 }
 
-static void command_parse(TALLOC_CTX *ctx, char *input, char *output, size_t outlen)
+/** Parse and reprint a condition
+ *
+ */
+static size_t command_condition_normalise(command_result_t *result, command_ctx_t *cc,
+					  char *data, UNUSED size_t data_used, char *in)
 {
-	if (strncmp(input, "add ", 4) == 0) {
-		command_add(ctx, input + 4, output, outlen);
-		return;
+	ssize_t			dec_len;
+	char const		*error = NULL;
+	fr_cond_t		*cond;
+	CONF_SECTION		*cs;
+	size_t			len;
+
+	cs = cf_section_alloc(NULL, NULL, "if", "condition");
+	if (!cs) {
+		ERROR("Out of memory");
+		RETURN_COMMAND_ERROR();
+	}
+	cf_filename_set(cs, process_filename);
+	cf_lineno_set(cs, process_lineno);
+
+	dec_len = fr_cond_tokenize(cs, &cond, &error, cc->proto_dict ? cc->proto_dict : cc->dict, in);
+	if (dec_len <= 0) {
+		fr_strerror_printf("ERROR offset %d %s", (int) -dec_len, error);
+
+	return_error:
+		talloc_free(cs);
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
 	}
 
-	if (strncmp(input, "tab ", 4) == 0) {
-		command_tab(ctx, input + 4, output, outlen);
-		return;
+	in += dec_len;
+	if (*in != '\0') {
+		fr_strerror_printf("ERROR offset %d 'Too much text'", (int) dec_len);
+		goto return_error;
 	}
-	snprintf(output, outlen, "Unknown command '%s'", input);
+
+	len = cond_snprint(NULL, data, COMMAND_OUTPUT_MAX, cond);
+	talloc_free(cs);
+
+	RETURN_OK(len);
 }
 
+/** Compare the data buffer to an expected value
+ *
+ */
+static size_t command_data(command_result_t *result, UNUSED command_ctx_t *cc,
+			   char const *data, size_t data_used, char *in)
+{
+	if (strcmp(in, data) != 0) RETURN_MISMATCH(in, strlen(in), data, data_used);
+
+	/*
+	 *	We didn't actually write anything, but this
+	 *	keeps the contents of the data buffer around
+	 *	for the next command to operate on.
+	 */
+	RETURN_OK(data_used);
+}
+
+static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
+				  char *data, size_t data_used, char *in)
+{
+	fr_test_point_pair_decode_t	*tp = NULL;
+	fr_cursor_t 	cursor;
+	void		*decoder_ctx = NULL;
+	char		*p, *end;
+	uint8_t		*to_dec;
+	uint8_t		*to_dec_end;
+	VALUE_PAIR	*head = NULL, *vp;
+	ssize_t		slen;
+	size_t		len;
+
+	p = in;
+
+	slen = load_test_point_by_command((void **)&tp, in, "tp_decode");
+	if (!tp) {
+		fr_strerror_printf_push("Failed locating decoder testpoint");
+		RETURN_COMMAND_ERROR();
+	}
+
+	p += slen;
+	fr_skip_whitespace(p);
+
+	if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, cc->tmp_ctx) < 0)) {
+		fr_strerror_printf_push("Failed initialising decoder testpoint");
+		RETURN_COMMAND_ERROR();
+	}
+
+	/*
+	 *	Decode the previous output
+	 */
+	if (strcmp(p, "-") == 0) {
+		len = hex_to_bin((uint8_t *)data, COMMAND_OUTPUT_MAX, data, data_used);
+	/*
+	 *	Decode hex from input text
+	 */
+	} else {
+		len = hex_to_bin((uint8_t *)data, COMMAND_OUTPUT_MAX, p, strlen(p));
+	}
+	if (len == 0) {
+		fr_strerror_printf_push("Failed decoding hex string");
+		RETURN_PARSE_ERROR(0);	/* FIXME - Return actual offset */
+	}
+	to_dec = (uint8_t *)data;
+	to_dec_end = to_dec + len;
+
+	/*
+	 *	Run the input data through the test
+	 *	point to produce VALUE_PAIRs.
+	 */
+	fr_cursor_init(&cursor, &head);
+	while (to_dec < to_dec_end) {
+		slen = tp->func(cc->tmp_ctx, &cursor, cc->proto_dict ? cc->proto_dict : cc->dict,
+				(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
+		if (slen < 0) {
+			fr_pair_list_free(&head);
+			RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		}
+		if ((size_t)slen > (size_t)(to_dec_end - to_dec)) {
+			fr_perror("Internal sanity check failed at %d", __LINE__);
+			RETURN_COMMAND_ERROR();
+		}
+		to_dec += slen;
+	}
+
+	/*
+	 *	Set p to be the output buffer
+	 */
+	p = data;
+	end = p + COMMAND_OUTPUT_MAX;
+
+	/*
+	 *	Output may be an error, and we ignore
+	 *	it if so.
+	 */
+	if (head) {
+		for (vp = fr_cursor_head(&cursor);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			len = fr_pair_snprint(p, end - p, vp);
+			if (is_truncated(len, end - p)) {
+			oob:
+				fr_strerror_printf("Out of output buffer space");
+				RETURN_COMMAND_ERROR();
+			}
+			p += len;
+
+			if (vp->next) {
+				len = strlcpy(p, ", ", end - p);
+				if (is_truncated(len, end - p)) goto oob;
+				p += len;
+			}
+		}
+		fr_pair_list_free(&head);
+	} else { /* zero-length to_decibute */
+		*p = '\0';
+	}
+	CLEAR_TEST_POINT(cc);
+
+	RETURN_OK(p - data);
+}
+
+/** Incomplete - Will be used to decode packets
+ *
+ */
+static size_t command_decode_proto(command_result_t *result, UNUSED command_ctx_t *cc,
+				   UNUSED char *data, UNUSED size_t data_used, char *in)
+{
+	fr_test_point_proto_decode_t *tp = NULL;
+
+	load_test_point_by_command((void **)&tp, in, "tp_decode");
+	if (!tp) {
+		result->rcode = RESULT_PARSE_ERROR;
+		return 0;
+	}
+
+	return 0;
+}
+
+/** Parse a dictionary attribute, writing "ok" to the data buffer is everything was ok
+ *
+ */
+static size_t command_dictionary_attribute_parse(command_result_t *result, command_ctx_t *cc,
+					  	 char *data, UNUSED size_t data_used, char *in)
+{
+	if (fr_dict_parse_str(cc->dict, in, fr_dict_root(cc->dict)) < 0) RETURN_DRAIN_ERROR_STACK_TO_DATA();
+
+	RETURN_OK(strlcpy(data, "ok", COMMAND_OUTPUT_MAX));
+}
+
+/** Print the currently loaded dictionary
+ *
+ */
+static size_t command_dictionary_dump(UNUSED command_result_t *result, command_ctx_t *cc,
+				      UNUSED char *data, UNUSED size_t data_used, UNUSED char *in)
+{
+	fr_dict_dump(cc->proto_dict ? cc->proto_dict : cc->dict);
+
+	RETURN_OK(0);
+}
+
+
+/** Dynamically load a protocol dictionary
+ *
+ */
+static size_t command_dictionary_load(command_result_t *result, command_ctx_t *cc,
+				      UNUSED char *data, UNUSED size_t data_used, char *in)
+{
+	char *name, *dir, *tmp = NULL;
+	char *q;
+	int ret;
+
+	if (in[0] == '\0') {
+		fr_strerror_printf("Load-dictionary syntax is \"dictionary-load <proto_name> [<proto_dir>]\"");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	/*
+	 *	Decrease ref count if we're loading in a new dictionary
+	 */
+	if (cc->proto_dict) fr_dict_free(&cc->proto_dict);
+
+	q = strchr(in, ' ');
+	if (q) {
+		name = tmp = talloc_bstrndup(NULL, in, q - in);
+		q++;
+		dir = q;
+	} else {
+		name = in;
+		dir = NULL;
+	}
+
+	ret = fr_dict_protocol_afrom_file(&cc->proto_dict, name, dir);
+	talloc_free(tmp);
+	if (ret < 0) RETURN_DRAIN_ERROR_STACK_TO_DATA();
+
+	/*
+	 *	Dump the dictionary if we're in super debug mode
+	 */
+	if (fr_debug_lvl > 5) fr_dict_dump(cc->proto_dict);
+
+	RETURN_OK(0);
+}
+
+static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
+				  char *data, UNUSED size_t data_used, char *in)
+{
+	fr_test_point_pair_encode_t	*tp = NULL;
+
+	fr_cursor_t	cursor;
+	void		*encoder_ctx = NULL;
+	ssize_t		slen;
+	char		*p = in;
+
+	uint8_t		encoded[(COMMAND_OUTPUT_MAX / 2) - 1];
+	uint8_t		*enc_p = encoded, *enc_end = enc_p + sizeof(encoded);
+	VALUE_PAIR	*head = NULL, *vp;
+
+	slen = load_test_point_by_command((void **)&tp, p, "tp_encode");
+	if (!tp) {
+		fr_strerror_printf_push("Failed locating encode testpoint");
+		RETURN_COMMAND_ERROR();
+	}
+
+	p += ((size_t)slen);
+	fr_skip_whitespace(p);
+	if (tp->test_ctx && (tp->test_ctx(&encoder_ctx, cc->tmp_ctx) < 0)) {
+		fr_strerror_printf_push("Failed initialising encoder testpoint");
+		RETURN_COMMAND_ERROR();
+	}
+
+	/*
+	 *	Encode the previous output
+	 */
+	if (strcmp(p, "-") == 0) p = data;
+
+	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->proto_dict ? cc->proto_dict : cc->dict, p, &head) != T_EOL) {
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	}
+
+	fr_cursor_init(&cursor, &head);
+	while ((vp = fr_cursor_current(&cursor))) {
+		slen = tp->func(enc_p, enc_end - enc_p, &cursor, encoder_ctx);
+		if (slen < 0) {
+			fr_pair_list_free(&head);
+			RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		}
+		enc_p += slen;
+
+		if (slen == 0) break;
+	}
+	fr_pair_list_free(&head);
+
+	CLEAR_TEST_POINT(cc);
+
+	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, encoded, enc_p - encoded));
+}
+
+/** Incomplete - Will be used to encode packets
+ *
+ */
+static size_t command_encode_proto(command_result_t *result, UNUSED command_ctx_t *cc,
+				   UNUSED char *data, UNUSED size_t data_used, char *in)
+{
+	fr_test_point_proto_encode_t *tp = NULL;
+
+	load_test_point_by_command((void **)&tp, in, "tp_encode");
+	if (!tp) {
+		result->rcode = RESULT_PARSE_ERROR;
+		return 0;
+	}
+
+	return 0;
+}
+
+/** Command eof
+ *
+ * Mark the end of a test file if we're reading from stdin.
+ *
+ * Doesn't actually do anything, is just a placeholder for the command processing loop.
+ */
+static size_t command_eof(UNUSED command_result_t *result, UNUSED command_ctx_t *cc,
+			  UNUSED char *data, UNUSED size_t data_used, UNUSED char *in)
+{
+	return 0;
+}
+
+/** Dynamically load a protocol library
+ *
+ */
+static size_t command_proto_load(command_result_t *result, UNUSED command_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in)
+{
+	ssize_t slen;
+
+	if (*in == '\0') {
+		fr_strerror_printf("Load syntax is \"load <lib_name>\"");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	slen = load_proto_library(in);
+	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
+
+	RETURN_OK(0);
+}
+
+/** Skip the test file if we're missing a particular feature
+ *
+ */
+static size_t command_need_feature(command_result_t *result, command_ctx_t *cc,
+				   UNUSED char *data, UNUSED size_t data_used, char *in)
+{
+	CONF_PAIR *cp;
+
+	if (in[0] == '\0') {
+		fr_strerror_printf("Prerequisite syntax is \"need-feature <feature>\".  "
+				   "Use -f to print features");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	cp = cf_pair_find(cc->features, in);
+	if (!cp || (strcmp(cf_pair_value(cp), "yes") != 0)) {
+		DEBUG("Skipping, missing feature \"%s\"\n", in);
+		RETURN_SKIP_FILE();
+	}
+
+	RETURN_OK(0);
+}
+
+/** Encode a RADIUS attribute writing the result to the data buffer as space separated hexits
+ *
+ */
+static size_t command_encode_raw(command_result_t *result, UNUSED command_ctx_t *cc,
+			         char *data, UNUSED size_t data_used, char *in)
+{
+	size_t	len;
+	uint8_t	encoded[(COMMAND_OUTPUT_MAX / 2) - 1];
+
+	len = encode_rfc(in, encoded, sizeof(encoded));
+	if (len <= 0) RETURN_PARSE_ERROR(0);
+
+	if (len >= (COMMAND_OUTPUT_MAX / 2)) {
+		fr_strerror_printf("Encoder output would overflow output buffer");
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	}
+
+	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, encoded, len));
+}
+
+/** Touch a file to indicate a test completed
+ *
+ */
+static size_t command_touch(command_result_t *result, UNUSED command_ctx_t *cc,
+			    UNUSED char *data, UNUSED size_t data_used, char *in)
+{
+	if (fr_file_unlink(in) < 0) RETURN_COMMAND_ERROR();
+	if (fr_file_touch(in, 0644) < 0) RETURN_COMMAND_ERROR();
+
+	RETURN_OK(0);
+}
+
+static size_t command_value_box_normalise(command_result_t *result, UNUSED command_ctx_t *cc,
+					  char *data, UNUSED size_t data_used, char *in)
+{
+	fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
+	fr_value_box_t *box2;
+	fr_type_t	type;
+	size_t		match_len;
+	size_t		len;
+	char		*p;
+
+	/*
+	 *	Parse data types
+	 */
+	type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, in, strlen(in), FR_TYPE_INVALID);
+	if (type == FR_TYPE_INVALID) {
+		RETURN_PARSE_ERROR(0);
+	}
+	p = in + match_len;
+	fr_skip_whitespace(p);
+
+	if (fr_value_box_from_str(box, box, &type, NULL, p, -1, '"', false) < 0) {
+		talloc_free(box);
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	}
+
+	/*
+	 *	Don't print dates with enclosing quotation marks.
+	 */
+	if (type != FR_TYPE_DATE) {
+		len = fr_value_box_snprint(data, COMMAND_OUTPUT_MAX, box, '"');
+	} else {
+		len = fr_value_box_snprint(data, COMMAND_OUTPUT_MAX, box, '\0');
+	}
+
+	/*
+	 *	Behind the scenes, parse the data
+	 *	string.  We should get the same value
+	 *	box as last time.
+	 */
+	box2 = talloc_zero(NULL, fr_value_box_t);
+	if (fr_value_box_from_str(box2, box2, &type, NULL, data, len, '"', false) < 0) {
+		talloc_free(box2);
+		talloc_free(box);
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	}
+
+	/*
+	 *	They MUST be identical
+	 */
+	if (fr_value_box_cmp(box, box2) != 0) {
+		fr_strerror_printf("ERROR value box reparsing failed.  Results not identical");
+		fr_strerror_printf_push("out: %pV", box2);
+		fr_strerror_printf_push("in: %pV", box);
+		talloc_free(box2);
+		talloc_free(box);
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	}
+
+	talloc_free(box2);
+	talloc_free(box);
+	RETURN_OK(len);
+}
+
+/** Parse an reprint and xlat expansion
+ *
+ */
+static size_t command_xlat_normalise(command_result_t *result, command_ctx_t *cc,
+				     char *data, UNUSED size_t data_used, char *in)
+{
+	ssize_t		dec_len;
+	size_t		len;
+	char		*fmt;
+	xlat_exp_t	*head = NULL;
+	size_t		input_len = strlen(in), escaped_len;
+	char		buff[1024];
+
+	/*
+	 *	Process special chars, octal escape sequences and hex sequences
+	 */
+	MEM(fmt = talloc_array(NULL, char, input_len + 1));
+	len = fr_value_str_unescape((uint8_t *)fmt, in, input_len, '\"');
+	fmt[len] = '\0';
+
+	dec_len = xlat_tokenize(fmt, &head, fmt,
+				&(vp_tmpl_rules_t) { .dict_def = cc->proto_dict ? cc->proto_dict : cc->dict });
+	if (dec_len <= 0) {
+		fr_strerror_printf("ERROR offset %d '%s'", (int) -dec_len, fr_strerror());
+
+	return_error:
+		talloc_free(fmt);
+		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	}
+
+	if (fmt[dec_len] != '\0') {
+		fr_strerror_printf("ERROR offset %d 'Too much text'", (int) dec_len);
+		goto return_error;
+	}
+
+	len = xlat_snprint(buff, sizeof(buff), head);
+	escaped_len = fr_snprint(data, COMMAND_OUTPUT_MAX, buff, len, '"');
+	talloc_free(fmt);
+
+	RETURN_OK(escaped_len);
+}
 
 static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 			fr_dict_t *dict, const char *root_dir, char const *filename)
 {
-	int			lineno;
-	size_t			i, outlen;
-	ssize_t			len, data_len;
-	FILE			*fp;
-	char			input[8192], buffer[8192];
-	char			output[8192];
-	char			directory[8192];
-	uint8_t			*attr, data[2048];
-	TALLOC_CTX		*tp_ctx = talloc_named_const(ctx, 0, "tp_ctx");
-	fr_dict_t		*proto_dict = NULL;
+	int				ret = 0;
+	FILE				*fp;				/* File we're reading from */
+	char				buffer[8192];			/* Command buffer */
+	char				data[8192];			/* Data written by previous command */
+	ssize_t				data_len = 0;			/* How much data the last command wrote */
+	static char			path[PATH_MAX] = { '\0' };
 
-	bool			encode_error = false;		//!< Whether the last encode errored.
+	command_ctx_t			cc = {
+						.tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx"),
+						.lineno = 0,
+						.path = path,
+						.dict = dict,
+						.features = features
+					};
 
-#define CLEAR_TEST_POINT \
-do { \
-	talloc_free_children(tp_ctx); \
-	tp = NULL; \
-} while (0)
+	static fr_table_ptr_sorted_t	commands[] = {
+		{ "#",			command_comment				},
+		{ "$INCLUDE ",		command_include				},
+		{ "attribute ",		command_normalise_attribute		},
+		{ "command add ",	command_radmin_add			},
+		{ "command tab ",	command_radmin_tab			},
+		{ "condition ",		command_condition_normalise		},
+		{ "data",		command_data				},
+		{ "decode-pair",	command_decode_pair			},
+		{ "decode-proto",	command_decode_proto			},
+		{ "dictionary ",	command_dictionary_attribute_parse	},
+		{ "dictionary-dump",	command_dictionary_dump			},
+		{ "dictionary-load ",	command_dictionary_load			},
+		{ "encode-pair",	command_encode_pair			},
+		{ "encode-proto",	command_encode_proto			},
+		{ "eof",		command_eof				},
+		{ "load ",		command_proto_load			},
+		{ "need-feature ", 	command_need_feature			},
+		{ "raw ",		command_encode_raw			},
+		{ "touch ",		command_touch				},
+		{ "value ",		command_value_box_normalise		},
+		{ "xlat ",		command_xlat_normalise			},
+	};
+	static size_t commands_len = NUM_ELEMENTS(commands);
 
+	/*
+	 *	Open the file, or stdin
+	 */
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
 		filename = "<stdin>";
-		directory[0] = '\0';
-
 	} else {
 		if (root_dir && *root_dir) {
-			snprintf(directory, sizeof(directory), "%s/%s", root_dir, filename);
+			snprintf(path, sizeof(path), "%s/%s", root_dir, filename);
 		} else {
-			strlcpy(directory, filename, sizeof(directory));
+			strlcpy(path, filename, sizeof(path));
 		}
 
-		fp = fopen(directory, "r");
+		fp = fopen(path, "r");
 		if (!fp) {
-			fprintf(stderr, "Error opening %s: %s\n", directory, fr_syserror(errno));
-			talloc_free(tp_ctx);	/* Free testpoint first then the library */
-			return -1;
+			ERROR("Error opening \"%s\": %s", path, fr_syserror(errno));
+			ret = -1;
+			goto done;
 		}
 
-		filename = directory;
+		filename = path;
 	}
 
-	lineno = 0;
-	*output = '\0';
-	data_len = 0;
 	process_filename = filename;
 
+	/*
+	 *	Loop over lines in the file or stdin
+	 */
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		char			*p = strchr(buffer, '\n'), *q;
-		char			test_type[128];
-		VALUE_PAIR		*vp, *head = NULL;
-		fr_type_t		type;
+		char			*p = strchr(buffer, '\n');
+		command_func_t		func;
+		command_result_t	result = { .rcode = RESULT_OK };	/* Reset to OK */
+		size_t			match_len;
 
-		lineno++;
+		cc.lineno++;
 
 		if (!p) {
 			if (!feof(fp)) {
-				fprintf(stderr, "Line %d too long in %s\n",
-					lineno, directory);
-				goto error;
+				ERROR("Line %d too long in %s", cc.lineno, cc.path);
+				ret = -1;
+				goto done;
 			}
 		} else {
 			*p = '\0';
 		}
 
-		/*
-		 *	Comments, with hacks for User-Name[#]
-		 */
-		p = strchr(buffer, '#');
-		if (p && ((p == buffer) ||
-			  ((p > buffer) && (p[-1] != '[')))) *p = '\0';
-
 		p = buffer;
 		fr_skip_whitespace(p);
-		if (!*p) continue;
+		if (*p == '\0') continue;				/* Blank line */
 
-		process_lineno = lineno;
-		DEBUG2("%s[%d]: %s\n", filename, lineno, buffer);
+		process_lineno = cc.lineno;
+		DEBUG2("%s[%d]: %s", filename, cc.lineno, p);
 
-		strlcpy(input, p, sizeof(input));
-
-		q = strchr(p, ' ');
-		if (q && ((size_t)(q - p) > (sizeof(test_type) - 1))) {
-			fprintf(stderr, "Verb \"%.*s\" is too long\n", (int)(q - p), p);
-		error:
-			talloc_free(tp_ctx);	/* Free testpoint first then the library */
-			unload_proto_library();	/* Cleanup */
-			fr_dict_free(&proto_dict);
-			if (fp != stdin) fclose(fp);
-
-			return -1;
+		/*
+		 *	Look up the command by longest prefix
+		 */
+		func = fr_table_value_by_longest_prefix(&match_len, commands, p, -1, NULL);
+		if (!func) {
+		bad_input:
+			ERROR("%s[%d]: Unknown command: %s", cc.path, cc.lineno, p);
+			ret = -1;
+			goto done;
 		}
 
-		if (!q) q = p + strlen(p);
+		if (func == command_comment) continue;			/* Skip comments */
 
-		strlcpy(test_type, p, (q - p) + 1);
+		p += match_len;						/* Jump to after the command */
+		fr_skip_whitespace(p);					/* Skip any whitespace */
 
-		if (strcmp(test_type, "data") == 0) {
+		data_len = func(&result, &cc, data, data_len, p);	/* Call the command function */
+		DEBUG2("%s[%d]: --> %s", filename, cc.lineno,
+		       fr_table_str_by_value(command_rcode_table, result.rcode, "<INVALID>"));
+
+		switch (result.rcode) {
+		/*
+		 *	Command completed successfully
+		 */
+		case RESULT_OK:
+			continue;
+
+		/*
+		 *	If this is a file, then break out of the loop
+		 *	and cleanup, otherwise we need to find the
+		 *	EOF marker in the input stream.
+		 */
+		case RESULT_SKIP_FILE:
+			if (fp != stdin) goto done;
+
+			/*
+			 *	Skip over the input stream until we
+			 *	find an eof command, or the stream
+			 *	is closed.
+			 */
+			while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+				func = fr_table_value_by_longest_prefix(&match_len, commands,
+									buffer, -1, NULL);
+				if (!func) goto bad_input;
+
+				if (func == command_eof) break;
+			}
+			break;
+
+		/*
+		 *	Fatal error parsing a command
+		 */
+		case RESULT_PARSE_ERROR:
+		case RESULT_COMMAND_ERROR:
+			PERROR("%s[%d]", filename, cc.lineno);
+			ret = -1;
+			goto done;
+
+		/*
+		 *	Write out any errors in the error stack to
+		 *	the data buffer, so they can be checked for
+		 *	correctness.
+		 */
+		case RESULT_DRAIN_ERROR_STACK_TO_DATA:
+			data_len = strerror_concat(data, sizeof(data));
+			break;
+
+		/*
+		 *	Result didn't match what we expected
+		 */
+		case RESULT_MISMATCH:
+		{
+			char *g, *e, *g_p, *e_p;
 			char *spaces;
 
-			encode_error = false;	/* Clear the encode error if we're doing a comparison */
+			g = fr_asprintf(cc.tmp_ctx, "%pV",
+					fr_box_strvalue_len(result.got, result.got_len));
+			e = fr_asprintf(cc.tmp_ctx, "%pV",
+					fr_box_strvalue_len(result.expected, result.expected_len));
+			g_p = g;
+			e_p = e;
 
-			/*
-			 *	Handle "no data expected"
-			 */
-			if (((p[4] == '\0') || (p[5] == '\0')) && (output[0] != '\0')) {
-				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected :\n",
-					lineno, directory, output);
-				goto error;
+			ERROR("Mismatch at line %d of %s", cc.lineno, cc.path);
+			ERROR("  got      : %s", g);
+			ERROR("  expected : %s", e);
+
+			while (*g_p && *e_p && (*g_p == *e_p)) {
+				g_p++;
+				e_p++;
 			}
 
-			if (strcmp(p + 5, output) != 0) {
-				char *a, *b;
+			assert((size_t)(e_p - e) <= result.got_len);
+			assert((size_t)(e_p - e) <= result.expected_len);
 
-				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
-					lineno, directory, output, p + 5);
+			spaces = talloc_zero_array(NULL, char, (e_p - e) + 1);
+			memset(spaces, ' ', talloc_array_length(spaces) - 1);
+			ERROR("             %s^ differs here", spaces);
+			talloc_free(spaces);
+			talloc_free(g);
+			talloc_free(e);
+			ret = -1;
 
-				a = p + 5;
-				b = output;
-
-				while (*a == *b) {
-					a++;
-					b++;
-				}
-
-				spaces = talloc_array(NULL, char, (b - output) + 1);
-				memset(spaces, ' ', (b - output));
-				spaces[(b - output)] = '\0';
-				fprintf(stderr, "\t           %s^ differs here\n", spaces);
-				talloc_free(spaces);
-
-				goto error;
-			}
-			fr_strerror();	/* Clear the error buffer */
-			continue;
+			goto done;
 		}
-
-
-		/*
-		 *	Previous encode line errored, skip until we find a "data" item
-		 */
-		if (encode_error) {
-			fr_perror("Skipping \"%s\" due to previous encode error", buffer);
-			continue;
 		}
-
-		if (strcmp(test_type, "load") == 0) {
-			p += 4;
-
-			if (*p++ != ' ') {
-				fprintf(stderr, "Load syntax is \"load <lib_name>\"");
-				goto error;
-			}
-
-			if (load_proto_library(p) <= 0) goto error;
-			continue;
-		}
-
-		if (strcmp(test_type, "load-dictionary") == 0) {
-			char *name, *dir, *tmp = NULL;
-
-			p += 15;
-
-			if (*p++ != ' ') {
-				fprintf(stderr, "Load-dictionary syntax is \"load-dictionary <proto_name> [<proto_dir>]\"");
-				goto error;
-			}
-
-			/*
-			 *	Decrease ref count if we're loading in a new dictionary
-			 */
-			if (proto_dict) fr_dict_free(&proto_dict);
-
-			q = strchr(p, ' ');
-			if (q) {
-				name = tmp = talloc_bstrndup(NULL, p, q - p);
-				q++;
-				dir = q;
-			} else {
-				name = p;
-				dir = NULL;
-			}
-
-			if (fr_dict_protocol_afrom_file(&proto_dict, name, dir) < 0) {
-				fr_perror("unit_test_attribute");
-				talloc_free(tmp);
-				goto error;
-			}
-			talloc_free(tmp);
-
-			/*
-			 *	Dump the dictionary if we're in super debug mode
-			 */
-			if (fr_debug_lvl > 5) fr_dict_dump(proto_dict);
-
-			continue;
-		}
-
-		if (strcmp(test_type, "need-feature") == 0) {
-			CONF_PAIR *cp;
-			p += 12;
-
-			if (*p != ' ') {
-				fprintf(stderr, "Prerequisite syntax is \"need-feature <feature>\".  "
-				        "Use -f to print features");
-				goto error;
-			}
-			p++;
-
-			cp = cf_pair_find(features, p);
-			if (!cp || (strcmp(cf_pair_value(cp), "yes") != 0)) {
-				fprintf(stdout, "Skipping, missing feature \"%s\"\n", p);
-				if (fp != stdin) fclose(fp);
-				talloc_free(tp_ctx);
-				return 0; /* Skip this file */
-			}
-			continue;
-		}
-
-		if (strcmp(test_type, "raw") == 0) {
-			outlen = encode_rfc(p + 4, data, sizeof(data));
-			if (outlen == 0) {
-				fprintf(stderr, "Parse error in line %d of %s\n", lineno, directory);
-				goto error;
-			}
-
-		print_hex:
-			if (outlen == 0) {
-				output[0] = 0;
-				continue;
-			}
-
-			if (outlen >= (sizeof(output) / 2)) {
-				outlen = (sizeof(output) / 2) - 1;
-			}
-
-			if (outlen >= sizeof(data)) outlen = sizeof(data);
-
-			data_len = outlen;
-			for (i = 0; i < outlen; i++) {
-				if (sizeof(output) < (3*i)) break;
-
-				snprintf(output + (3 * i), sizeof(output) - (3 * i) - 1, "%02x ", data[i]);
-			}
-			outlen = strlen(output);
-			output[outlen - 1] = '\0';
-			continue;
-		}
-
-#ifdef WITH_TACACS
-		/*
-		 *	And some TACACS tests
-		 */
-		if (strcmp(test_type, "encode-tacacs") == 0) {
-			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
-
-			if (strcmp(p + 14, "-") == 0) {
-				WARN("cannot encode as client");
-				p = output;
-			} else {
-				p += 14;
-			}
-
-			if (fr_pair_list_afrom_str(packet, proto_dict ? proto_dict : dict, p, &head) != T_EOL) {
-				strerror_concat(output, sizeof(output));
-
-				talloc_free(packet);
-				continue;
-			}
-
-			packet->vps = head;
-			if (fr_tacacs_packet_encode(packet, NULL, 0) < 0) {
-				strerror_concat(output, sizeof(output));
-				talloc_free(packet);
-				continue;
-			}
-
-			outlen = packet->data_len;
-			memcpy(data, packet->data, outlen);
-			talloc_free(packet);
-
-			goto print_hex;
-		}
-
-		if (strcmp(test_type, "decode-tacacs") == 0) {
-			fr_cursor_t cursor;
-			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
-
-			if (strcmp(p + 14, "-") == 0) {
-				WARN("cannot decode as client");
-				attr = data;
-				len = data_len;
-			} else {
-				attr = data;
-				len = encode_hex(p + 14, data, sizeof(data));
-				if (len == 0) {
-					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
-					talloc_free(packet);
-					goto error;
-				}
-			}
-
-			packet->vps = NULL;
-			packet->data = attr;
-			packet->data_len = len;
-
-			if (fr_tacacs_packet_decode(packet) < 0) {
-				strerror_concat(output, sizeof(output));
-				talloc_free(packet);
-				continue;
-			}
-
-			fr_cursor_init(&cursor, &packet->vps);
-			p = output;
-			for (vp = fr_cursor_head(&cursor); vp; vp = fr_cursor_next(&cursor)) {
-				fr_pair_snprint(p, sizeof(output) - (p - output), vp);
-				p += strlen(p);
-
-				if (vp->next) {
-					strcpy(p, ", ");
-					p += 2;
-				}
-			}
-
-			talloc_free(packet);
-			continue;
-		}
-#endif	/* WITH_TACACS */
-
-		if (strcmp(test_type, "attribute") == 0) {
-			p += 10;
-
-			if (fr_pair_list_afrom_str(NULL, proto_dict ? proto_dict : dict, p, &head) != T_EOL) {
-				strerror_concat(output, sizeof(output));
-				continue;
-			}
-
-			fr_pair_snprint(output, sizeof(output), head);
-			fr_pair_list_free(&head);
-			continue;
-		}
-
-		if (strcmp(test_type, "dictionary") == 0) {
-			p += 11;
-
-			if (fr_dict_parse_str(dict, p, fr_dict_root(dict)) < 0) {
-				strerror_concat(output, sizeof(output));
-				continue;
-			}
-
-			strlcpy(output, "ok", sizeof(output));
-			continue;
-		}
-
-		if (strcmp(test_type, "$INCLUDE") == 0) {
-			p += 9;
-			fr_skip_whitespace(p);
-
-			q = strrchr(directory, '/');
-			if (q) {
-				*q = '\0';
-				process_file(ctx, features, dict, directory, p);
-				*q = '/';
-			} else {
-				process_file(ctx, features, dict, NULL, p);
-			}
-			continue;
-		}
-
-		if (strcmp(test_type, "condition") == 0) {
-			p += 10;
-			parse_condition(proto_dict ? proto_dict : dict, p, output, sizeof(output));
-			continue;
-		}
-
-		if (strcmp(test_type, "xlat") == 0) {
-			p += 5;
-			parse_xlat(proto_dict ? proto_dict : dict, p, output, sizeof(output));
-			continue;
-		}
-
-		/*
-		 *	Generic pair decode test point
-		 */
-		if (strncmp(test_type, "decode-pair", 11) == 0) {
-			fr_test_point_pair_decode_t	*tp = NULL;
-			ssize_t				dec_len = 0;
-			fr_cursor_t 			cursor;
-			void				*decoder_ctx = NULL;
-			ssize_t				slen;
-
-			slen = load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode");
-			if (slen <= 0) goto error;
-
-			p += slen + 1;
-			if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, tp_ctx) < 0)) {
-				fr_strerror_printf_push("unit_test_attribute: Failed initialising decoder testpoint at "
-							"line %d of %s", lineno, directory);
-				fr_perror("unit_test_attribute");
-				goto error;
-			}
-
-
-			if (strcmp(p, "-") == 0) {
-				attr = data;
-				len = data_len;
-			} else {
-				attr = data;
-				len = encode_hex(p, data, sizeof(data));
-				if (len == 0) {
-					fprintf(stderr, "Failed decoding hex string at line %d of %s\n",
-						lineno, directory);
-					goto error;
-				}
-			}
-
-			fr_cursor_init(&cursor, &head);
-			while (len > 0) {
-				dec_len = tp->func(tp_ctx, &cursor, proto_dict ? proto_dict : dict,
-						   attr, len, decoder_ctx);
-				if (dec_len < 0) {
-					fr_pair_list_free(&head);
-					break;
-				}
-				if (dec_len > len) {
-					fr_perror("Internal sanity check failed at %d", __LINE__);
-					goto error;
-				}
-				attr += dec_len;
-				len -= dec_len;
-			}
-
-			/*
-			 *	Output may be an error, and we ignore
-			 *	it if so.
-			 */
-			if (head) {
-				p = output;
-				for (vp = fr_cursor_head(&cursor);
-				     vp;
-				     vp = fr_cursor_next(&cursor)) {
-					fr_pair_snprint(p, sizeof(output) - (p - output), vp);
-					p += strlen(p);
-
-					if (vp->next) {
-						strcpy(p, ", ");
-						p += 2;
-					}
-				}
-
-				fr_pair_list_free(&head);
-			} else if (dec_len < 0) {
-				snprintf(output, sizeof(output), "%zd", dec_len);	/* Overwritten with real error */
-				strerror_concat(output, sizeof(output));
-			} else { /* zero-length attribute */
-				*output = '\0';
-			}
-			CLEAR_TEST_POINT;
-			continue;
-		}
-
-		/*
-		 *	Generic pair encode test point
-		 */
-		if (strncmp(test_type, "encode-pair", 11) == 0) {
-			fr_test_point_pair_encode_t	*tp = NULL;
-			ssize_t				enc_len = 0;
-			fr_cursor_t			cursor;
-			void				*encoder_ctx = NULL;
-
-			len = load_test_point_by_command((void **)&tp, test_type, 11, "tp_encode");
-			if (len <= 0) goto error;
-
-			p += ((size_t)len) + 1;
-			if (tp->test_ctx && (tp->test_ctx(&encoder_ctx, tp_ctx) < 0)) {
-				fr_strerror_printf_push("unit_test_attribute: Failed initialising encoder testpoint at "
-							"line %d of %s", lineno, directory);
-				fr_perror("unit_test_attribute");
-				goto error;
-			}
-
-			/*
-			 *	Encode the previous output
-			 */
-			if (strcmp(p, "-") == 0) p = output;
-
-			if (fr_pair_list_afrom_str(tp_ctx, proto_dict ? proto_dict : dict, p, &head) != T_EOL) {
-				strerror_concat(output, sizeof(output));
-				encode_error = true;						/* Record that the operation failed */
-
-				continue;
-			}
-
-			attr = data;
-			fr_cursor_init(&cursor, &head);
-			while ((vp = fr_cursor_current(&cursor))) {
-				enc_len = tp->func(attr, data + sizeof(data) - attr, &cursor, encoder_ctx);
-				if (enc_len < 0) {
-					snprintf(output, sizeof(output), "%zd", enc_len);	/* Overwritten with real error */
-					strerror_concat(output, sizeof(output));
-
-					encode_error = true;					/* Record that the operation failed */
-					fr_pair_list_free(&head);
-
-					goto next_line;						/* Bail out of the encode operation */
-				}
-				attr += enc_len;
-
-				if (enc_len == 0) break;
-			}
-			fr_pair_list_free(&head);
-
-			outlen = attr - data;
-
-			CLEAR_TEST_POINT;
-			goto print_hex;
-		}
-
-		/*
-		 *	Generic proto decode test point
-		 */
-		if (strncmp(test_type, "decode-proto", 12) == 0) {
-			fr_test_point_proto_decode_t *tp;
-
-			if (load_test_point_by_command((void **)&tp, test_type, 12, "tp_decode") <= 0) goto error;
-
-			continue;
-		}
-
-		/*
-		 *	Generic proto encode test point
-		 */
-		if (strncmp(test_type, "encode-proto", 12) == 0) {
-			fr_test_point_proto_encode_t *tp;
-
-			if (load_test_point_by_command((void **)&tp, test_type, 12, "tp_encode") <= 0) goto error;
-
-			continue;
-		}
-
-		/*
-		 *	Test the command API
-		 */
-		if (strcmp(test_type, "command") == 0) {
-			p += 8;
-			command_parse(tp_ctx, p, output, sizeof(output));
-			continue;
-		}
-
-		if (strcmp(test_type, "dict-dump") == 0) {
-			fr_dict_dump(proto_dict ? proto_dict : dict);
-			continue;
-		}
-
-		/*
-		 *	Parse data types
-		 */
-		type = fr_table_value_by_str(fr_value_box_type_table, test_type, FR_TYPE_INVALID);
-		if (type != FR_TYPE_INVALID) {
-			fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
-			fr_value_box_t *box2;
-
-			fr_skip_not_whitespace(p);
-			fr_skip_whitespace(p);
-
-			if (fr_value_box_from_str(box, box, &type, NULL, p, -1, '"', false) < 0) {
-				snprintf(output, sizeof(output), "ERROR parsing value: %s",
-					 fr_strerror());
-				talloc_free(box);
-				continue;
-			}
-
-			/*
-			 *	Don't print dates with enclosing quotation marks.
-			 */
-			if (type != FR_TYPE_DATE) {
-				fr_value_box_snprint(output, sizeof(output), box, '"');
-			} else {
-				fr_value_box_snprint(output, sizeof(output), box, '\0');
-			}
-
-			/*
-			 *	Behind the scenes, parse the output
-			 *	string.  We should get the same value
-			 *	box as last time.
-			 */
-			box2 = talloc_zero(NULL, fr_value_box_t);
-			if (fr_value_box_from_str(box2, box2, &type, NULL, output, -1, '"', false) < 0) {
-				snprintf(output, sizeof(output), "ERROR parsing output value: %s",
-					 fr_strerror());
-				talloc_free(box2);
-				talloc_free(box);
-				continue;
-			}
-
-			/*
-			 *	They MUST be identical
-			 */
-			if (fr_value_box_cmp(box, box2) != 0) {
-				snprintf(output, sizeof(output), "ERROR failed in parse / print / parse.  Results are not identical!");
-				talloc_free(box2);
-				talloc_free(box);
-				continue;
-			}
-
-			talloc_free(box2);
-			talloc_free(box);
-			continue;
-		}
-
-		*p = ' ';
-		fprintf(stderr, "Unknown input at line %d of %s: %s\n", lineno, directory, test_type);
-
-		goto error;
-
-	next_line:
-		continue;
 	}
 
+done:
 	if (fp != stdin) fclose(fp);
 
-	unload_proto_library();	/* Cleanup */
-	fr_dict_free(&proto_dict);
-	talloc_free(tp_ctx);
+	/*
+	 *	Free any residual resources re loaded.
+	 */
+	TALLOC_FREE(cc.tmp_ctx);
+	fr_dict_free(&cc.proto_dict);
+	unload_proto_library();
 
-	return 0;
+	return ret;
 }
 
 static void usage(char *argv[])
 {
-	fprintf(stderr, "usage: %s [OPTS] filename\n", argv[0]);
-	fprintf(stderr, "  -d <raddb>         Set user dictionary directory (defaults to " RADDBDIR ").\n");
-	fprintf(stderr, "  -D <dictdir>       Set main dictionary directory (defaults to " DICTDIR ").\n");
-	fprintf(stderr, "  -x                 Debugging mode.\n");
-	fprintf(stderr, "  -f                 Print features.\n");
-	fprintf(stderr, "  -M                 Show talloc memory report.\n");
-	fprintf(stderr, "  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.\n");
+	ERROR("usage: %s [OPTS] filename\n", argv[0]);
+	ERROR("  -d <raddb>         Set user dictionary path (defaults to " RADDBDIR ").");
+	ERROR("  -D <dictdir>       Set main dictionary path (defaults to " DICTDIR ").");
+	ERROR("  -x                 Debugging mode.");
+	ERROR("  -f                 Print features.");
+	ERROR("  -M                 Show talloc memory report.");
+	ERROR("  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.");
 }
 
 int main(int argc, char *argv[])
@@ -1572,7 +1769,7 @@ int main(int argc, char *argv[])
 	 *	Load the custom dictionary
 	 */
 	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		PERROR("Failed to initialize the dictionaries");
+		PERROR("Failed initialising the dictionaries");
 		EXIT_WITH_FAILURE;
 	}
 
@@ -1583,7 +1780,7 @@ int main(int argc, char *argv[])
 	if (unlang_init() < 0) return -1;
 
 	if (xlat_register(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
-		fprintf(stderr, "Failed registering xlat");
+		ERROR("Failed registering xlat");
 		EXIT_WITH_FAILURE;
 	}
 

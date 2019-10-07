@@ -1,4 +1,4 @@
-load-dictionary radius
+dictionary-load radius
 
 condition &User-Name !~ /^foo\nbar$/
 data !&User-Name =~ /^foo\nbar$/

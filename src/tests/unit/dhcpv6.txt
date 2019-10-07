@@ -2,7 +2,7 @@
 #  Test vectors for DHCP attributes
 #
 load dhcpv6
-load-dictionary dhcpv6
+dictionary-load dhcpv6
 
 #
 #  Simple octets type

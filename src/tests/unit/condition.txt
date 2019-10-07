@@ -9,7 +9,7 @@
 #  A bunch of errors, in the order that the error strings
 #  appear in parser.c
 #
-load-dictionary radius
+dictionary-load radius
 
 condition &request:User-Name == &reply:User-Name
 data &User-Name == &reply:User-Name

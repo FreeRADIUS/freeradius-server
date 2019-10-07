@@ -7,7 +7,7 @@ need-feature tls
 
 # Load the EAP-AKA/SIM encoder/decoder
 load eap-aka-sim
-load-dictionary eap-aka-sim eap/aka-sim
+dictionary-load eap-aka-sim eap/aka-sim
 
 # Boolean attribute
 encode-pair.sim_tp_encode Any-ID-Req = yes

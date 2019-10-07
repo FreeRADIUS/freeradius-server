@@ -1,6 +1,6 @@
 # Load libfreeradius-radius
 load radius
-load-dictionary radius
+dictionary-load radius
 
 # Example attributes as used in RFC 6929
 raw 241.1 "bob"

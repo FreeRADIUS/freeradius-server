@@ -2,7 +2,7 @@
 #  Bad attributes
 #
 load radius
-load-dictionary radius
+dictionary-load radius
 
 decode-pair 01 04 00
 data fr_radius_decode_pair: Insufficient data

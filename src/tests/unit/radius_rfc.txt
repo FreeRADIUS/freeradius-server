@@ -75,7 +75,7 @@
 #
 
 load radius
-load-dictionary radius
+dictionary-load radius
 
 encode-pair User-Name = "bob"
 data 01 05 62 6f 62

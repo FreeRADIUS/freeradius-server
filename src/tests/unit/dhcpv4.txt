@@ -2,7 +2,7 @@
 #  Test vectors for DHCP attributes
 #
 load dhcpv4
-load-dictionary dhcpv4
+dictionary-load dhcpv4
 
 #
 #  DHCP TLV types
