@@ -125,7 +125,7 @@ typedef enum {
 	RESULT_EXIT,				//!< Stop processing files and exit.
 } command_rcode_t;
 
-fr_table_num_sorted_t command_rcode_table[] = {
+static fr_table_num_sorted_t command_rcode_table[] = {
 	{ "command-error",		RESULT_COMMAND_ERROR			},
 	{ "error-to-data",		RESULT_DRAIN_ERROR_STACK_TO_DATA	},
 	{ "exit",			RESULT_EXIT				},
@@ -134,7 +134,7 @@ fr_table_num_sorted_t command_rcode_table[] = {
 	{ "result-mismatch",		RESULT_MISMATCH				},
 	{ "skip-file",			RESULT_SKIP_FILE			},
 };
-size_t command_rcode_table_len = NUM_ELEMENTS(command_rcode_table);
+static size_t command_rcode_table_len = NUM_ELEMENTS(command_rcode_table);
 
 typedef struct {
 	union {
@@ -899,7 +899,7 @@ static size_t command_radmin_add(command_result_t *result, command_ctx_t *cc,
 /*
  *	Do tab completion on a command
  */
-static size_t command_radmin_tab(command_result_t *result, UNUSED command_ctx_t *cc,
+static size_t command_radmin_tab(command_result_t *result, command_ctx_t *cc,
 				 char *data, UNUSED size_t data_used, char *in)
 {
 	int		i;
@@ -1139,7 +1139,7 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
 /** Print the currently loaded dictionary
  *
  */
-static size_t command_dictionary_dump(UNUSED command_result_t *result, command_ctx_t *cc,
+static size_t command_dictionary_dump(command_result_t *result, command_ctx_t *cc,
 				      UNUSED char *data, size_t data_used, UNUSED char *in)
 {
 	fr_dict_dump(cc->proto_dict ? cc->proto_dict : cc->dict);
@@ -1279,7 +1279,7 @@ static size_t command_eof(UNUSED command_result_t *result, UNUSED command_ctx_t 
 /** Exit gracefully with the specified code
  *
  */
-static size_t command_exit(UNUSED command_result_t *result, UNUSED command_ctx_t *cc,
+static size_t command_exit(command_result_t *result, UNUSED command_ctx_t *cc,
 			   UNUSED char *data, UNUSED size_t data_used, char *in)
 {
 	if (!*in) RETURN_EXIT(0);
