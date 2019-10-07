@@ -2368,7 +2368,7 @@ static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
 	}
 }
 
-void fr_dict_dump(fr_dict_t *dict)
+void fr_dict_dump(fr_dict_t const *dict)
 {
 	_fr_dict_dump(dict->root, 0);
 }
