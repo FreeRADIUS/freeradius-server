@@ -44,12 +44,12 @@ $(TEST).radiusd_kill: | ${2}
 	@echo "Clean up ${2}/radiusd.pid"
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
 		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
-		    rm -f ${1}; \
+		    rm -f ${2}/radiusd.pid; \
 		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		    echo "GDB output was:"; \
-		    cat "${2}/gdb.log"; \
+		    cat "${2}/gdb.log" 2> /dev/null; \
 		    echo "--------------------------------------------------"; \
-		    tail -n 100 "${2}/gdb.log"; \
+		    tail -n 100 "${2}/gdb.log" 2> /dev/null; \
 		    echo "Last entries in server log (${2}/gdb.log):"; \
 		    exit 1; \
 		fi; \
