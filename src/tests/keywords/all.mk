@@ -71,7 +71,16 @@ $(OUTPUT)/%.attrs: $(DIR)/%.attrs $(DIR)/default-input.attrs | $(OUTPUT)
 #
 .PRECIOUS: $(OUTPUT)/%.attrs
 
-KEYWORD_MODULES := $(shell grep -- mods-enabled src/tests/keywords/unit_test_module.conf | sed 's,.*/,,')
+#
+#  Cache the list of modules which are enabled, so that we don't run
+#  the shell script on every build.
+#
+#  KEYWORD_MODULES := $(shell grep -- mods-enabled src/tests/keywords/unit_test_module.conf | sed 's,.*/,,')
+#
+$(OUTPUT)/enabled.mk: src/tests/keywords/unit_test_module.conf | $(OUTPUT)
+	${Q}echo "KEYWORD_MODULES := " $$(grep -- mods-enabled src/tests/keywords/unit_test_module.conf | sed 's,.*/,,' | tr '\n' ' ' ) > $@
+-include $(OUTPUT)/enabled.mk
+
 KEYWORD_RADDB	:= $(addprefix raddb/mods-enabled/,$(KEYWORD_MODULES))
 KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_example.la rlm_cache.la rlm_csv.la
 
