@@ -21,7 +21,7 @@ NEEDS_CONFIG := $(patsubst %.in,%,$(foreach file,$(SUBMAKEFILES),$(wildcard $(fi
 SUBMAKEFILES := $(sort $(SUBMAKEFILES) $(NEEDS_CONFIG))
 endif
 
-ifneq "$(MAKECMDGOALS)" "reconfig"
+ifeq "$(MAKECMDGOALS)" "check.configure"
 src/modules/%/configure: src/modules/%/configure.ac
 	@echo WARNING - may need "'make reconfig'" for AUTOCONF $(dir $@)
 endif
