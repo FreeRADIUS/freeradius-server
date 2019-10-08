@@ -100,7 +100,6 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction->parent;
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 	REQUEST				*child = talloc_get_type_abort(state->child, REQUEST);
 	rlm_rcode_t			rcode;
@@ -109,7 +108,7 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 
 	rcode = unlang_interpret(child);
 	if (rcode != RLM_MODULE_YIELD) {
-		if (!fr_cond_assert(rcode < NUM_ELEMENTS(instruction->actions))) return UNLANG_ACTION_STOP_PROCESSING;
+		if (!fr_cond_assert(rcode < NUM_ELEMENTS(frame->instruction->actions))) return UNLANG_ACTION_STOP_PROCESSING;
 
 		if (state->session.enable) fr_state_store_in_parent(child,
 								    state->session.unique_ptr,
