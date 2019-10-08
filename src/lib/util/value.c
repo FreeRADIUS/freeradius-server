@@ -4975,9 +4975,9 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 		if (!data->enumv || (data->enumv->flags.type_size == FR_TIME_RES_SEC)) {
 			if (quote > 0) {
-				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z", &s_tm);
+				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S UTC", &s_tm);
 			} else {
-				len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z", &s_tm);
+				len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S UTC", &s_tm);
 			}
 
 		} else {
