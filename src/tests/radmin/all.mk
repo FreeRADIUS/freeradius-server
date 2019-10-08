@@ -28,7 +28,7 @@ $(eval $(call RADIUSD_SERVICE,control-socket,$(OUTPUT)))
 #
 #	Run the radmin commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
+$(OUTPUT)/%: ${BUILD_DIR}/bin/radmin $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
@@ -40,8 +40,8 @@ $(OUTPUT)/%: $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
 		echo "--------------------------------------------------"; \
 		echo "$(RADIUSD_RUN)"; \
 		echo "$(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) > $(FOUND) < $<"; \
-		$(MAKE) $(TEST).radiusd_kill; \
-		exit 1;\
+		$(MAKE) test.radmin.radiusd_kill; \
+		exit 1; \
 	fi; \
 	if ! cmp -s $(FOUND) $(EXPECTED); then \
 		echo "RADMIN FAILED $@"; \
@@ -56,4 +56,3 @@ $(OUTPUT)/%: $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
 
 $(TEST): $(FILES)
 	${Q}$(MAKE) test.radmin.radiusd_kill
-

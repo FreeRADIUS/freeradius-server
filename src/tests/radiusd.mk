@@ -43,29 +43,28 @@ define RADIUSD_SERVICE
 $(TEST).radiusd_kill: | ${2}
 	@echo "Clean up ${2}/radiusd.pid"
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
-		ret=0; \
 		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
-		    rm -f ${1}; \
+		    rm -f ${2}/radiusd.pid; \
 		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		    echo "GDB output was:"; \
-		    cat "${2}/gdb.log"; \
+		    cat "${2}/gdb.log" 2> /dev/null; \
 		    echo "--------------------------------------------------"; \
-		    tail -n 40 "${2}/gdb.log"; \
+		    tail -n 100 "${2}/gdb.log" 2> /dev/null; \
 		    echo "Last entries in server log (${2}/gdb.log):"; \
-		    ret=1; \
+		    exit 1; \
 		fi; \
 		if ! kill -TERM `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
-			ret=1; \
+			exit 1; \
 		fi; \
-		exit ${ret}; \
+		exit 0; \
 	fi
 
 #
 #	Start radiusd instance
 #
 ${2}/radiusd.pid: ${2}
-	$$(eval RADIUSD_BIN := $$(BIN_PATH)/radiusd)
-	$$(eval RADIUSD_RUN := TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $$(RADIUSD_BIN) -Pxxxl ${2}/radiusd.log -d $(DIR)/config -n ${1} -D "share/dictionary/")
+	$$(eval RADIUSD_BIN := $(JLIBTOOL) --mode=execute $$(BIN_PATH)/radiusd)
+	$$(eval RADIUSD_RUN := TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxxl ${2}/radiusd.log -d $(DIR)/config -n ${1} -D "share/dictionary/")
 	${Q}rm -f ${2}/radiusd.log ${2}/radiusd.log
 	${Q}echo "Starting RADIUSD test server for (target=$(TEST),config_dir=$(DIR)/config,config_name=${1})"
 	${Q}if ! $$(RADIUSD_RUN); then \
