@@ -28,7 +28,7 @@ $(eval $(call RADIUSD_SERVICE,control-socket,$(OUTPUT)))
 #
 #	Run the radmin commands against the radiusd.
 #
-$(OUTPUT)/%: ${BUILD_DIR}/bin/radmin $(DIR)/% test.radmin.radiusd_kill test.radmin.radiusd_start
+$(OUTPUT)/%: $(DIR)/% ${BUILD_DIR}/bin/radmin test.radmin.radiusd_kill test.radmin.radiusd_start
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
