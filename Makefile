@@ -8,11 +8,6 @@
 #
 
 #
-#	we didn't called ./configure? just define the version.
-#
-RADIUSD_VERSION_STRING := $(shell cat VERSION)
-
-#
 #  The default rule is "all".
 #
 all:
@@ -39,6 +34,13 @@ $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]
 include Make.inc
 endif
 endif
+endif
+
+#
+#  'configure' was not run?  Get the version number from the file.
+#
+ifeq "$(RADIUS_VERSION_STRING)" ""
+RADIUSD_VERSION_STRING := $(shell cat VERSION)
 endif
 
 MFLAGS += --no-print-directory
