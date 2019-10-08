@@ -107,6 +107,8 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 
 	rad_assert(child != NULL);
 
+	(void)instruction;
+
 	rcode = unlang_interpret(child);
 	if (rcode != RLM_MODULE_YIELD) {
 		if (!fr_cond_assert(rcode < NUM_ELEMENTS(instruction->actions))) return UNLANG_ACTION_STOP_PROCESSING;
