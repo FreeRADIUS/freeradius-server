@@ -402,7 +402,6 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 	 *	Loop over all the instructions in this list.
 	 */
 	while (frame->instruction) {
-		REQUEST			*parent;
 		unlang_t		*instruction = frame->instruction;
 		unlang_action_t		action = UNLANG_ACTION_UNWIND;
 
@@ -421,26 +420,22 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		}
 
 		/*
-		 *	Child requests are not scheduled, so they
-		 *	cannot be marked as "stop".  Or one of the
-		 *	parents may be marked as "stop".
+		 *	unlang_interpret_signal() takes care of
+		 *	marking the requests as STOP on a CANCEL
+		 *	signal.
 		 */
-		for (parent = request;
-		     parent != NULL;
-		     parent = parent->parent) {
-			if (parent->master_state == REQUEST_STOP_PROCESSING) {
-			do_stop:
-				frame->result = RLM_MODULE_FAIL;
-				frame->priority = 9999;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+		do_stop:
+			frame->result = RLM_MODULE_FAIL;
+			frame->priority = 9999;
 
-				RDEBUG4("** [%i] %s - STOP current subsection with (%s %d)",
-					stack->depth, __FUNCTION__,
-					fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
-					frame->priority);
+			RDEBUG4("** [%i] %s - STOP current subsection with (%s %d)",
+				stack->depth, __FUNCTION__,
+				fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
+				frame->priority);
 
-				unwind_all(stack);
-				return UNLANG_FRAME_ACTION_POP;
-			}
+			unwind_all(stack);
+			return UNLANG_FRAME_ACTION_POP;
 		}
 
 		if (!is_repeatable(frame) && (unlang_ops[instruction->type].debug_braces)) {
@@ -1045,6 +1040,16 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
  */
 void unlang_interpret_signal(REQUEST *request, fr_state_signal_t action)
 {
+	/*
+	 *	If we're stopping, then mark the request as stopped.
+	 *	Then, call the frame signal handler.  The keyword will
+	 *	then take care of calling us for any children, which
+	 *	will then be marked as STOP_PROCESSING.
+	 */
+	if (action == FR_SIGNAL_CANCEL) {
+		request->master_state = REQUEST_STOP_PROCESSING;
+	}
+
 	frame_signal(request, action, 0);
 }
 
