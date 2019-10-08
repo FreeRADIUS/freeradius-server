@@ -55,21 +55,20 @@ BUILD_RADDB := $(strip $(foreach x,install clean,$(findstring $(x),$(MAKECMDGOAL
 ifneq "$(BUILD_RADDB)" ""
 RADDB_DIRS :=		certs mods-available mods-enabled policy.d \
 			sites-available sites-enabled \
-			$(patsubst raddb/%,%,$(shell find raddb/mods-config -type d -print))
+			$(patsubst raddb/%,%,$(call FIND_DIRS,raddb/mods-config))
 
 # Installed directories
-INSTALL_RADDB_DIRS :=	$(R)$(raddbdir)/ $(addprefix $(R)$(raddbdir)/, $(RADDB_DIRS))
+INSTALL_RADDB_DIRS :=	$(R)$(raddbdir)/ $(addprefix $(R)$(raddbdir)/,$(RADDB_DIRS))
 
 # Grab files from the various subdirectories
 INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
 			$(addprefix raddb/,$(LOCAL_FILES)) \
 			$(addprefix raddb/certs/,$(INSTALL_CERT_FILES)) \
-			$(shell find raddb/mods-config -type f -print) \
-			$(shell find raddb/policy.d -type f -print)
+			$(call FIND_FILES,raddb/mods-config) \
+			$(call FIND_FILES,raddb/policy.d)
 
 # Re-write local files to installed files, filtering out editor backups
-INSTALL_RADDB :=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
-			$(filter-out %~,$(INSTALL_FILES)))
+INSTALL_RADDB :=	$(patsubst raddb/%,$(R)$(raddbdir)/%,$(INSTALL_FILES))
 endif
 
 all: build.raddb

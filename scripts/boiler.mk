@@ -49,6 +49,22 @@ else
     ANALYZE_C_DUMP=true
 endif
 
+# FIND_DIRS - find all subdirectories in a given directory
+#
+#  Note that it excludes normal files
+#
+define FIND_DIRS
+$(patsubst %/,%,$(sort $(dir $(wildcard ${1}/*/ ${1}/*/*/ ${1}/*/*/*/ ${1}/*/*/*/*/ ${1}/*/*/*/*/*/))))
+endef
+
+# FIND_FILES - find all files in a given directory
+#
+#  Note that it excludes directories
+#
+define FIND_FILES
+$(filter-out %~ $(call FIND_DIRS,${1}),$(wildcard ${1}/* ${1}/*/* ${1}/*/*/* ${1}/*/*/*/* ${1}/*/*/*/*/* ${1}/*/*/*/*/*/* ))
+endef
+
 # ADD_CLEAN_RULE - Parameterized "function" that adds a new rule and phony
 #   target for cleaning the specified target (removing its build-generated
 #   files).
