@@ -637,7 +637,7 @@ int main(int argc, char *argv[])
 	 */
 	default_log.dst = L_DST_STDOUT;
 	default_log.fd = STDOUT_FILENO;
-	default_log.print_level = false;
+	default_log.print_level = true;
 
 	/*  Process the options.  */
 	while ((c = getopt(argc, argv, "d:D:f:hi:mMn:o:O:r:xX")) != -1) {
