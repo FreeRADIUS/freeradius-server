@@ -1,8 +1,4 @@
 /*
- * unit_test_attribute.c	RADIUS Attribute debugging tool.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,21 +12,24 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * @copyright 2010 Alan DeKok (aland@freeradius.org)
  */
 
+/**
+ * $Id$
+ *
+ * @file unit_test_attribute.c
+ * @brief Provides a test harness for various internal libraries and functions.
+ *
+ * @copyright 2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2010 Alan DeKok (aland@freeradius.org)
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 
 typedef struct rad_request REQUEST;
 
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/map.h>
-
 #include <freeradius-devel/autoconf.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_util.h>
@@ -39,13 +38,11 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
+#include <freeradius-devel/server/map.h>
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/xlat.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/conf.h>
-
-#ifdef WITH_TACACS
-#  include <freeradius-devel/tacacs/tacacs.h>
-#endif
 
 #include <ctype.h>
 
@@ -168,8 +165,10 @@ typedef struct {
  * @param[in,out] data	Output of this command, or the previous command.
  * @param[in] data_len	Length of data in the data buffer.
  * @param[in] in	Command text to process.
+ * @param[in] inlen	Length of the remainder of the command to process.
  */
-typedef size_t (*command_func_t)(command_result_t *result, command_ctx_t *cc, char *data, size_t data_len, char *in);
+typedef size_t (*command_func_t)(command_result_t *result, command_ctx_t *cc, char *data,
+				 size_t data_len, char *in, size_t inlen);
 
 typedef struct {
 	command_func_t	func;
@@ -196,7 +195,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 /** Print hex string to buffer
  *
  */
-static inline size_t hex_print(char *out, size_t outlen, uint8_t const *in, size_t inlen)
+static inline size_t hex_print(char *out, size_t outlen, uint8_t const *in, UNUSED size_t inlen)
 {
 	char	*p = out;
 	char	*end = p + outlen;
@@ -326,7 +325,7 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	return length;
 }
 
-static int hex_to_bin(uint8_t *output, size_t outlen, char *in, size_t inlen)
+static ssize_t hex_to_bin(uint8_t *output, size_t outlen, char *in, UNUSED size_t inlen)
 {
 	int length = 0;
 	char *p = in;
@@ -339,10 +338,16 @@ static int hex_to_bin(uint8_t *output, size_t outlen, char *in, size_t inlen)
 
 		if (!*p) break;
 
-		if(!(c1 = memchr(hextab, tolower((int) p[0]), 16)) ||
-		   !(c2 = memchr(hextab, tolower((int)  p[1]), 16))) {
-			ERROR("Invalid data starting at \"%s\"\n", p);
-			return 0;
+		c1 = memchr(hextab, tolower((int) p[0]), sizeof(hextab));
+		if (c1) {
+			c2 = memchr(hextab, tolower((int) p[1]), sizeof(hextab));
+			if (!c2) {
+				fr_strerror_printf("Invalid hex data starting at \"%s\"", p + 1);
+				return in - (p + 1);
+			}
+		} else {
+			fr_strerror_printf("Invalid hex data starting at \"%s\"", p);
+			return in - p;
 		}
 
 		*output = ((c1 - hextab) << 4) + (c2 - hextab);
@@ -352,8 +357,8 @@ static int hex_to_bin(uint8_t *output, size_t outlen, char *in, size_t inlen)
 
 		outlen--;
 		if (outlen == 0) {
-			ERROR("Too much data");
-			return 0;
+			fr_strerror_printf("Too much data");
+			return in - p;
 		}
 	}
 
@@ -361,7 +366,7 @@ static int hex_to_bin(uint8_t *output, size_t outlen, char *in, size_t inlen)
 }
 
 
-static int encode_data(char *p, uint8_t *output, size_t outlen)
+static ssize_t encode_data(char *p, uint8_t *output, size_t outlen)
 {
 	int length;
 
@@ -407,10 +412,9 @@ static int encode_data(char *p, uint8_t *output, size_t outlen)
 	}
 
 	length = hex_to_bin(output, outlen, p, strlen(p));
-
-	if (length == 0) {
-		ERROR("Empty string");
-		return 0;
+	if (length <= 0) {
+		fr_strerror_printf_push("Empty hex string");
+		return length;
 	}
 
 	return length;
@@ -788,7 +792,7 @@ do { \
  *
  */
 static size_t command_comment(UNUSED command_result_t *result, UNUSED command_ctx_t *cc,
-			      UNUSED char *data, UNUSED size_t data_used, UNUSED char *in)
+			      UNUSED char *data, UNUSED size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
 	return 0;
 }
@@ -797,7 +801,7 @@ static size_t command_comment(UNUSED command_result_t *result, UNUSED command_ct
  *
  */
 static size_t command_include(command_result_t *result, command_ctx_t *cc,
-			      UNUSED char *data, UNUSED size_t data_used, char *in)
+			      UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	char	*q;
 	bool	exit_now = false;
@@ -822,7 +826,7 @@ static size_t command_include(command_result_t *result, command_ctx_t *cc,
  *
  */
 static size_t command_normalise_attribute(command_result_t *result, command_ctx_t *cc,
-					  char *data, UNUSED size_t data_used, char *in)
+					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	VALUE_PAIR 	*head = NULL;
 	size_t		len;
@@ -846,7 +850,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_ctx_
  *	Add a command by talloc'ing a table for it.
  */
 static size_t command_radmin_add(command_result_t *result, command_ctx_t *cc,
-				 char *data, size_t UNUSED data_used, char *in)
+				 char *data, size_t UNUSED data_used, char *in, UNUSED size_t inlen)
 {
 	char		*p, *name;
 	char		*parent = NULL;
@@ -902,7 +906,7 @@ static size_t command_radmin_add(command_result_t *result, command_ctx_t *cc,
  *	Do tab completion on a command
  */
 static size_t command_radmin_tab(command_result_t *result, command_ctx_t *cc,
-				 char *data, UNUSED size_t data_used, char *in)
+				 char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	int		i;
 	int		num_expansions;
@@ -954,7 +958,7 @@ static size_t command_radmin_tab(command_result_t *result, command_ctx_t *cc,
  *
  */
 static size_t command_condition_normalise(command_result_t *result, command_ctx_t *cc,
-					  char *data, UNUSED size_t data_used, char *in)
+					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	ssize_t			dec_len;
 	char const		*error = NULL;
@@ -995,7 +999,7 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
  *
  */
 static size_t command_data(command_result_t *result, UNUSED command_ctx_t *cc,
-			   char *data, size_t data_used, char *in)
+			   char *data, size_t data_used, char *in, UNUSED size_t inlen)
 {
 	if (strcmp(in, data) != 0) RETURN_MISMATCH(in, strlen(in), data, data_used);
 
@@ -1008,7 +1012,7 @@ static size_t command_data(command_result_t *result, UNUSED command_ctx_t *cc,
 }
 
 static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
-				  char *data, size_t data_used, char *in)
+				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_pair_decode_t	*tp = NULL;
 	fr_cursor_t 	cursor;
@@ -1018,7 +1022,6 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	uint8_t		*to_dec_end;
 	VALUE_PAIR	*head = NULL, *vp;
 	ssize_t		slen;
-	size_t		len;
 
 	p = in;
 
@@ -1037,22 +1040,22 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	}
 
 	/*
-	 *	Decode the previous output
+	 *	Hack because we consume more of the command string
+	 *	so we need to check this again.
 	 */
-	if (strcmp(p, "-") == 0) {
-		len = hex_to_bin((uint8_t *)data, COMMAND_OUTPUT_MAX, data, data_used);
+	if (*p == '-') {
+		p = data;
+		inlen = data_used;
+	}
+
 	/*
 	 *	Decode hex from input text
 	 */
-	} else {
-		len = hex_to_bin((uint8_t *)data, COMMAND_OUTPUT_MAX, p, strlen(p));
-	}
-	if (len == 0) {
-		fr_strerror_printf_push("Failed decoding hex string");
-		RETURN_PARSE_ERROR(0);	/* FIXME - Return actual offset */
-	}
+	slen = hex_to_bin((uint8_t *)data, COMMAND_OUTPUT_MAX, p, inlen);
+	if (slen == 0) RETURN_PARSE_ERROR(-(slen));
+
 	to_dec = (uint8_t *)data;
-	to_dec_end = to_dec + len;
+	to_dec_end = to_dec + slen;
 
 	/*
 	 *	Run the input data through the test
@@ -1087,6 +1090,8 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 		for (vp = fr_cursor_head(&cursor);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
+			size_t len;
+
 			len = fr_pair_snprint(p, end - p, vp);
 			if (is_truncated(len, end - p)) {
 			oob:
@@ -1114,7 +1119,7 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
  *
  */
 static size_t command_decode_proto(command_result_t *result, UNUSED command_ctx_t *cc,
-				   UNUSED char *data, UNUSED size_t data_used, char *in)
+				   UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	fr_test_point_proto_decode_t *tp = NULL;
 
@@ -1131,7 +1136,7 @@ static size_t command_decode_proto(command_result_t *result, UNUSED command_ctx_
  *
  */
 static size_t command_dictionary_attribute_parse(command_result_t *result, command_ctx_t *cc,
-					  	 char *data, UNUSED size_t data_used, char *in)
+					  	 char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	if (fr_dict_parse_str(cc->dict, in, fr_dict_root(cc->dict)) < 0) RETURN_DRAIN_ERROR_STACK_TO_DATA();
 
@@ -1142,7 +1147,7 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
  *
  */
 static size_t command_dictionary_dump(command_result_t *result, command_ctx_t *cc,
-				      UNUSED char *data, size_t data_used, UNUSED char *in)
+				      UNUSED char *data, size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
 	fr_dict_dump(cc->proto_dict ? cc->proto_dict : cc->dict);
 
@@ -1157,7 +1162,7 @@ static size_t command_dictionary_dump(command_result_t *result, command_ctx_t *c
  *
  */
 static size_t command_dictionary_load(command_result_t *result, command_ctx_t *cc,
-				      UNUSED char *data, UNUSED size_t data_used, char *in)
+				      UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	char *name, *dir, *tmp = NULL;
 	char *q;
@@ -1196,7 +1201,7 @@ static size_t command_dictionary_load(command_result_t *result, command_ctx_t *c
 }
 
 static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
-				  char *data, UNUSED size_t data_used, char *in)
+				  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	fr_test_point_pair_encode_t	*tp = NULL;
 
@@ -1221,11 +1226,6 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 		fr_strerror_printf_push("Failed initialising encoder testpoint");
 		RETURN_COMMAND_ERROR();
 	}
-
-	/*
-	 *	Encode the previous output
-	 */
-	if (strcmp(p, "-") == 0) p = data;
 
 	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->proto_dict ? cc->proto_dict : cc->dict, p, &head) != T_EOL) {
 		RETURN_DRAIN_ERROR_STACK_TO_DATA();
@@ -1253,7 +1253,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
  *
  */
 static size_t command_encode_proto(command_result_t *result, UNUSED command_ctx_t *cc,
-				   UNUSED char *data, UNUSED size_t data_used, char *in)
+				   UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	fr_test_point_proto_encode_t *tp = NULL;
 
@@ -1273,7 +1273,7 @@ static size_t command_encode_proto(command_result_t *result, UNUSED command_ctx_
  * Doesn't actually do anything, is just a placeholder for the command processing loop.
  */
 static size_t command_eof(UNUSED command_result_t *result, UNUSED command_ctx_t *cc,
-			  UNUSED char *data, UNUSED size_t data_used, UNUSED char *in)
+			  UNUSED char *data, UNUSED size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
 	return 0;
 }
@@ -1282,7 +1282,7 @@ static size_t command_eof(UNUSED command_result_t *result, UNUSED command_ctx_t 
  *
  */
 static size_t command_exit(command_result_t *result, UNUSED command_ctx_t *cc,
-			   UNUSED char *data, UNUSED size_t data_used, char *in)
+			   UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	if (!*in) RETURN_EXIT(0);
 
@@ -1293,7 +1293,7 @@ static size_t command_exit(command_result_t *result, UNUSED command_ctx_t *cc,
  *
  */
 static size_t command_proto_load(command_result_t *result, UNUSED command_ctx_t *cc,
-				 UNUSED char *data, UNUSED size_t data_used, char *in)
+				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	ssize_t slen;
 
@@ -1312,7 +1312,7 @@ static size_t command_proto_load(command_result_t *result, UNUSED command_ctx_t 
  *
  */
 static size_t command_need_feature(command_result_t *result, command_ctx_t *cc,
-				   UNUSED char *data, UNUSED size_t data_used, char *in)
+				   UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	CONF_PAIR *cp;
 
@@ -1335,7 +1335,7 @@ static size_t command_need_feature(command_result_t *result, command_ctx_t *cc,
  *
  */
 static size_t command_encode_raw(command_result_t *result, UNUSED command_ctx_t *cc,
-			         char *data, UNUSED size_t data_used, char *in)
+			         char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	size_t	len;
 	uint8_t	encoded[(COMMAND_OUTPUT_MAX / 2) - 1];
@@ -1355,7 +1355,7 @@ static size_t command_encode_raw(command_result_t *result, UNUSED command_ctx_t 
  *
  */
 static size_t command_touch(command_result_t *result, UNUSED command_ctx_t *cc,
-			    UNUSED char *data, UNUSED size_t data_used, char *in)
+			    UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	if (fr_file_unlink(in) < 0) RETURN_COMMAND_ERROR();
 	if (fr_file_touch(in, 0644) < 0) RETURN_COMMAND_ERROR();
@@ -1364,7 +1364,7 @@ static size_t command_touch(command_result_t *result, UNUSED command_ctx_t *cc,
 }
 
 static size_t command_value_box_normalise(command_result_t *result, UNUSED command_ctx_t *cc,
-					  char *data, UNUSED size_t data_used, char *in)
+					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
 	fr_value_box_t *box2;
@@ -1430,7 +1430,7 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
  *
  */
 static size_t command_xlat_normalise(command_result_t *result, command_ctx_t *cc,
-				     char *data, UNUSED size_t data_used, char *in)
+				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	ssize_t		dec_len;
 	size_t		len;
@@ -1588,7 +1588,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 	int				ret = 0;
 	FILE				*fp;				/* File we're reading from */
 	char				buffer[8192];			/* Command buffer */
-	char				data[8192];			/* Data written by previous command */
+	char				data[COMMAND_OUTPUT_MAX + 1];	/* Data written by previous command */
 	ssize_t				data_len = 0;			/* How much data the last command wrote */
 	static char			path[PATH_MAX] = { '\0' };
 
@@ -1669,7 +1669,19 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		p += match_len;						/* Jump to after the command */
 		fr_skip_whitespace(p);					/* Skip any whitespace */
 
-		data_len = command->func(&result, &cc, data, data_len, p);	/* Call the command function */
+		/*
+		 *	Feed the data buffer in as the command
+		 */
+		if (*p == '-') {
+			data_len = command->func(&result, &cc, data, data_len, data, data_len);
+		}
+		else {
+			data_len = command->func(&result, &cc, data, data_len, p, strlen(p));
+		}
+
+		rad_assert((size_t)data_len < sizeof(data));
+		data[data_len] = '\0';			/* Ensure the data buffer is \0 terminated */
+
 		DEBUG2("%s[%d]: --> %s", filename, cc.lineno,
 		       fr_table_str_by_value(command_rcode_table, result.rcode, "<INVALID>"));
 
