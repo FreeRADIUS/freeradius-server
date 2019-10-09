@@ -5039,6 +5039,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 			buf[0] = (char) quote;
 			buf[len] = (char) quote;
 			buf[len + 1] = '\0';
+			len++;	/* Account for trailing quote */
 		}
 		a = buf;
 		break;
