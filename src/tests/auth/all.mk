@@ -63,7 +63,16 @@ $(OUTPUT)/%.attrs: $(DIR)/%.attrs | $(OUTPUT)
 #
 .PRECIOUS: $(OUTPUT)/%.attrs raddb/mods-enabled/wimax
 
-AUTH_MODULES	:= $(shell grep -- mods-enabled src/tests/auth/unit_test_module.conf  | sed 's,.*/,,')
+#
+#  Cache the list of modules which are enabled, so that we don't run
+#  the shell script on every build.
+#
+#  AUTH_MODULES := $(shell grep -- mods-enabled src/tests/auth/unit_test_module.conf | sed 's,.*/,,')
+#
+$(OUTPUT)/enabled.mk: src/tests/auth/unit_test_module.conf | $(OUTPUT)
+	${Q}echo "auth_MODULES := " $$(grep -- mods-enabled src/tests/auth/unit_test_module.conf | sed 's,.*/,,' | tr '\n' ' ' ) > $@
+-include $(OUTPUT)/enabled.mk
+
 AUTH_RADDB	:= $(addprefix raddb/mods-enabled/,$(AUTH_MODULES))
 AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 
@@ -72,10 +81,10 @@ AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 #
 #	src/tests/auth/FOO		unlang for the test
 #	src/tests/auth/FOO.attrs	input RADIUS and output filter
-#	build/tests/auth/FOO	updated if the test succeeds
+#	build/tests/auth/FOO		updated if the test succeeds
 #	build/tests/auth/FOO.log	debug output for the test
 #
-#  Auto-depend on modules via $(shell grep INCLUDE $(DIR)/radiusd.conf | grep mods-enabled | sed 's/.*}/raddb/'))
+#  Auto-depend on modules via $(AUTH_MODULES)
 #
 #  If the test fails, then look for ERROR in the input.  No error
 #  means it's unexpected, so we die.
