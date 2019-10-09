@@ -742,6 +742,7 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 		 */
 		dup2(devnull, STDOUT_FILENO);
 		dup2(devnull, STDERR_FILENO);
+		log->print_level = false;
 
 	} else if (fr_debug_lvl) {
 		/*
