@@ -147,6 +147,8 @@ $(TEST.MODULES_FILES): $(TEST.AUTH_FILES)
 clean.test.modules:
 	${Q}rm -rf $(BUILD_DIR)/tests/modules/
 
+clean.test: clean.test.modules
+
 #
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.

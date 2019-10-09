@@ -1,27 +1,82 @@
 #
+#  To work around OpenSSL issues with travis.
+#
+.PHONY:
+raddb/test.conf:
+	@echo 'security {' >> $@
+	@echo '        allow_vulnerable_openssl = yes' >> $@
+	@echo '}' >> $@
+	@echo '$$INCLUDE radiusd.conf' >> $@
+
+#
+#  Run "radiusd -C", looking for errors.
+#
+# Only redirect STDOUT, which should contain details of why the test failed.
+# Don't molest STDERR as this may be used to receive output from a debugger.
+$(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | build.raddb
+	@printf "radiusd -C... "
+	@if ! FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+		rm -f raddb/test.conf; \
+		cat $(BUILD_DIR)/tests/radiusd.config.log; \
+		echo "fail"; \
+		echo "FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -XCMd ./raddb -n debug -D ./share/dictionary"; \
+		exit 1; \
+	fi
+	@rm -f raddb/test.conf
+	@echo "ok"
+	@touch $@
+
+#
+#  The tests are manually ordered for now, as it's a PITA to fix all
+#  of the dependencies.
+#
+test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
+		test.bin	\
+		test.trie	\
+		test.unit	\
+		test.xlat	\
+		test.map	\
+		test.keywords	\
+		$(BUILD_DIR)/tests/radiusd-c \
+		test.modules	\
+		test.auth	\
+		test.digest	\
+		test.eap	\
+		test.radmin	\
+		| build.raddb
+
+clean: clean.test
+.PHONY: clean.test
+
+#  Tests specifically for Travis. We do a LOT more than just
+#  the above tests
+travis-test: raddb/test.conf test
+	@FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -xxxv -n test
+	@rm -f raddb/test.conf
+	@$(MAKE) install
+	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
+	@${sbindir}/radiusd -XC
+
+#
 #  The tests do a lot of rooting through files, which slows down non-test builds.
 #
 #  Therefore only include the test subdirectories if we're running the tests.
 #  Or, if we're trying to clean things up.
 #
 ifneq "$(findstring test,$(MAKECMDGOALS))$(findstring clean,$(MAKECMDGOALS))" ""
-SUBMAKEFILES := radmin/all.mk rbmonkey.mk eapol_test/all.mk dict/all.mk trie/all.mk unit/all.mk map/all.mk xlat/all.mk keywords/all.mk util/all.mk auth/all.mk modules/all.mk bin/all.mk daemon/all.mk digest/all.mk
+SUBMAKEFILES := rbmonkey.mk $(subst src/tests/,,$(wildcard src/tests/*/all.mk))
 endif
-
-#
-#  Include all of the autoconf definitions into the Make variable space
-#
--include $(BUILD_DIR)/tests/autoconf.h.mk
 
 .PHONY: $(BUILD_DIR)/tests
 $(BUILD_DIR)/tests:
 	@mkdir -p $@
 
 #
-#  Pull all of the autoconf stuff into here.
+#  Include all of the autoconf definitions into the Make variable space
 #
 $(BUILD_DIR)/tests/autoconf.h.mk: src/include/autoconf.h | $(BUILD_DIR)/tests
 	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
+-include $(BUILD_DIR)/tests/autoconf.h.mk
 
 ######################################################################
 #
