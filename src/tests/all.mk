@@ -15,18 +15,20 @@ raddb/test.conf:
 	@echo '}' >> $@
 	@echo '$$INCLUDE radiusd.conf' >> $@
 
+$(info XXX $(GENERATED_CERT_FILES) )
+
 #
 #  Run "radiusd -C", looking for errors.
 #
 # Only redirect STDOUT, which should contain details of why the test failed.
 # Don't molest STDERR as this may be used to receive output from a debugger.
-$(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | build.raddb
+radiusd-c $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | $(BUILD_DIR)/tests build.raddb
 	@printf "radiusd -C... "
-	@if ! FR_LIBRARY_PATH=${BUILD_DIR}/lib/local/.libs/ ${BUILD_DIR}/make/jlibtool --mode=execute ${BUILD_DIR}/bin/local/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+	@if ! ${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
-		echo "FR_LIBRARY_PATH=${BUILD_DIR}/lib/local/.libs/ ${BUILD_DIR}/make/jlibtool --mode=execute ${BUILD_DIR}/bin/local/radiusd -XCMd ./raddb -n debug -D ./share/dictionary"; \
+		echo "${TESTBIN}radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test"; \
 		exit 1; \
 	fi
 	@rm -f raddb/test.conf
