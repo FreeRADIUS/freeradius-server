@@ -104,20 +104,24 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
  *
  */
 typedef struct {
-	char const		*name;
-	char const		*name2;
+	char const		*name;		//!< module method name1 which is allowed in this section
+	char const		*name2;		//!< module method name2 which is allowed in this section
 } virtual_server_method_t;
 
+/** Processing sections which are allowed in this virtual server.
+ *
+ */
 typedef struct {
-	char const		*name;
-	char const		*name2;
-	rlm_components_t	component;
-	virtual_server_method_t *methods;
+	char const		*name;		//!< Name of the processing section, such as "recv" or "send"
+	char const		*name2;		//!< Second name, such as "Access-Request"
+	rlm_components_t	component;	//!< Sets the default list of actions for this section
+	size_t			offset;		//!< where the CONF_SECTION pointer is writtenx
+	virtual_server_method_t *methods;	//!< list of module methods which are allowed in this section
 } virtual_server_compile_t;
 
 #define COMPILE_TERMINATOR { .name = NULL, .name2 = NULL }
 
-int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules) CC_HINT(nonnull);
+int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules, void *uctx) CC_HINT(nonnull);
 
 int		virtual_server_section_component(rlm_components_t *component, char const *name1, char const *name2);
 virtual_server_method_t *virtual_server_section_methods(char const *name1, char const *name2) CC_HINT(nonnull(1));

@@ -210,6 +210,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 	CONF_SECTION		*server_cs;
 	vp_tmpl_rules_t		parse_rules;
 
+	/*
+	 *	The detail file reader gets its dictionary from the
+	 *	configuration, and not from a static protocol.  So we
+	 *	have to set it manually.
+	 */
 	memset(&parse_rules, 0, sizeof(parse_rules));
 	parse_rules.dict_def = inst->dict;
 
@@ -218,7 +223,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules);
+	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules, inst);
 }
 
 

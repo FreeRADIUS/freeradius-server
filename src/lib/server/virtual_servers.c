@@ -1252,7 +1252,7 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 		 *	Compile the processing sections.
 		 */
 		if (app_process->compile_list &&
-		    (virtual_server_compile_sections(server, app_process->compile_list, &parse_rules) < 0)) {
+		    (virtual_server_compile_sections(server, app_process->compile_list, &parse_rules, type_submodule[i]->data) < 0)) {
 			return -1;
 		}
 
@@ -1285,7 +1285,7 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
  *  This function walks down the registration table, compiling each
  *  named section.
  */
-int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules)
+int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules, void *uctx)
 {
 	int i;
 	CONF_SECTION *subcs = NULL;
@@ -1313,6 +1313,13 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 
 			rcode = unlang_compile_section(subcs, list[i].component, rules);
 			if (rcode < 0) return -1;
+
+			/*
+			 *	Cache the CONF_SECTION which was found.
+			 */
+			if (uctx && (list[i].offset > 0)) {
+				*(CONF_SECTION **) (((uint8_t *) uctx) + list[i].offset) = subcs;
+			}
 			continue;
 		}
 
@@ -1331,6 +1338,14 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 
 			rcode = unlang_compile_section(subcs, list[i].component, rules);
 			if (rcode < 0) return -1;
+
+			/*
+			 *	Note that we don't store the
+			 *	CONF_SECTION here, as it's a wildcard.
+			 *
+			 *	@todo - count number of subsections
+			 *	and store them in an array?
+			 */
 		}
 	}
 
