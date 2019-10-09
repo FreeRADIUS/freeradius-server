@@ -4,7 +4,7 @@
 #
 #  - Already defined by scripts/boiler.mk
 #
-#  DIR.      = src/tests/$target
+#  DIR       = src/tests/$target
 #  BUILD_DIR = build/
 #  BIN_PATH  = $(BUILD_DIR)/bin/local
 #
@@ -66,7 +66,7 @@ ${2}/radiusd.pid: ${2}
 	$$(eval RADIUSD_BIN := $(JLIBTOOL) --mode=execute $$(BIN_PATH)/radiusd)
 	$$(eval RADIUSD_RUN := TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxxl ${2}/radiusd.log -d $(DIR)/config -n ${1} -D "share/dictionary/")
 	${Q}rm -f ${2}/radiusd.log ${2}/radiusd.log
-	${Q}echo "Starting RADIUSD test server for (target=$(TEST),config_dir=$(DIR)/config,config_name=${1})"
+	${Q}echo "Starting RADIUSD test server for (target=$(TEST),port=$(PORT),config_dir=$(DIR)/config,config_name=${1})"
 	${Q}if ! $$(RADIUSD_RUN); then \
 		echo "FAILED STARTING RADIUSD"; \
 		tail -n 40 "${2}/radiusd.log"; \
