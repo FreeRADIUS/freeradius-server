@@ -832,6 +832,8 @@ static size_t command_normalise_attribute(command_result_t *result, command_ctx_
 	}
 
 	len = fr_pair_snprint(data, COMMAND_OUTPUT_MAX, head);
+	talloc_list_free(&head);
+
 	if (is_truncated(len, COMMAND_OUTPUT_MAX)) {
 		fr_strerror_printf("Encoder output would overflow output buffer");
 		RETURN_DRAIN_ERROR_STACK_TO_DATA();
