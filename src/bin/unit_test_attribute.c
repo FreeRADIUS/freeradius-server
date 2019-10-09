@@ -195,7 +195,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 /** Print hex string to buffer
  *
  */
-static inline size_t hex_print(char *out, size_t outlen, uint8_t const *in, UNUSED size_t inlen)
+static inline size_t hex_print(char *out, size_t outlen, uint8_t const *in, size_t inlen)
 {
 	char	*p = out;
 	char	*end = p + outlen;
@@ -325,7 +325,7 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	return length;
 }
 
-static ssize_t hex_to_bin(uint8_t *output, size_t outlen, char *in, UNUSED size_t inlen)
+static ssize_t hex_to_bin(uint8_t *output, size_t outlen, char *in, size_t inlen)
 {
 	int length = 0;
 	char *p = in;
@@ -1012,7 +1012,7 @@ static size_t command_data(command_result_t *result, UNUSED command_ctx_t *cc,
 }
 
 static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
-				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
+				  char *data, size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_pair_decode_t	*tp = NULL;
 	fr_cursor_t 	cursor;
