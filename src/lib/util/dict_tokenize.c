@@ -377,13 +377,25 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 					default:
 						goto unknown_type;
 
+				case FR_TYPE_INT16:
+					if (type == FR_TYPE_DATE) goto unknown_type;
+					/* FALL-THROUGH */
+
 				case FR_TYPE_UINT16:
 					flags->length = 2;
 					break;
 
+				case FR_TYPE_INT32:
+					if (type == FR_TYPE_DATE) goto unknown_type;
+					/* FALL-THROUGH */
+
 				case FR_TYPE_UINT32:
 					flags->length = 4;
 					break;
+
+				case FR_TYPE_INT64:
+					if (type == FR_TYPE_DATE) goto unknown_type;
+					/* FALL-THROUGH */
 
 				case FR_TYPE_UINT64:
 					flags->length = 8;
