@@ -9,9 +9,9 @@
 TEST_PATH := ${top_srcdir}/src/tests/eapol_test
 CONFIG_PATH := $(TEST_PATH)/config
 
-OUTPUT_DIR := $(BUILD_DIR)/tests/eapol_test
-RADIUS_LOG := $(OUTPUT_DIR)/radius.log
-GDB_LOG := $(OUTPUT_DIR)/gdb.log
+OUTPUT := $(BUILD_DIR)/tests/eapol_test
+RADIUS_LOG := $(OUTPUT)/radius.log
+GDB_LOG := $(OUTPUT)/gdb.log
 BIN_PATH := $(BUILD_DIR)/bin/local
 
 #
@@ -32,12 +32,12 @@ EAP_TARGETS	:= $(filter rlm_eap_%,$(ALL_TGTS))
 EAP_TYPES	:= $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
 
 EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(DIR)/$(x)*.conf))
-EAPOL_OK_FILES	 := $(patsubst $(DIR)/%.conf,$(OUTPUT_DIR)/%.ok,$(EAPOL_TEST_FILES))
+EAPOL_OK_FILES	 := $(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,$(EAPOL_TEST_FILES))
 EAPOL_METH_FILES := $(addprefix $(CONFIG_PATH)/methods-enabled/,$(EAP_TYPES))
 
 
-.PHONY: $(OUTPUT_DIR)
-$(OUTPUT_DIR):
+.PHONY: $(OUTPUT)
+$(OUTPUT):
 	${Q}mkdir -p $@
 
 .PHONY: $(CONFIG_PATH)/methods-enabled
@@ -51,14 +51,14 @@ $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)
 #   Only run EAP tests if we have a "test" target
 #
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
-EAPOL_TEST = $(shell test -e "$(OUTPUT_DIR)/eapol_test.skip" || $(top_builddir)/scripts/travis/eapol_test-build.sh)
+EAPOL_TEST = $(shell test -e "$(OUTPUT)/eapol_test.skip" || $(top_builddir)/scripts/travis/eapol_test-build.sh)
 endif
 
 # This gets called recursively, so has to be outside of the condition below
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
 .PHONY: test.radiusd.kill
-test.radiusd.kill: | $(OUTPUT_DIR)
+test.radiusd.kill: | $(OUTPUT)
 	${Q}if [ -f $(CONFIG_PATH)/radiusd.pid ]; then \
 		ret=0; \
 		if ! ps `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
@@ -79,7 +79,7 @@ test.radiusd.kill: | $(OUTPUT_DIR)
 
 .PHONY: clean.test.eap
 clean.test.eap:
-	${Q}rm -f $(OUTPUT_DIR)/*.ok $(OUTPUT_DIR)/*.log $(OUTPUT_DIR)/eapol_test.skip
+	${Q}rm -f $(OUTPUT)/*.ok $(OUTPUT)/*.log $(OUTPUT)/eapol_test.skip
 	${Q}rm -f "$(CONFIG_PATH)/test.conf"
 	${Q}rm -rf "$(CONFIG_PATH)/methods-enabled"
 
@@ -92,7 +92,7 @@ $(CONFIG_PATH)/dictionary:
 $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary src/tests/eapol_test/all.mk
 	${Q}echo "# test configuration file.  Do not install.  Delete at any time." > $@
 	${Q}echo 'testdir =' $(CONFIG_PATH) >> $@
-	${Q}echo 'logdir =' $(OUTPUT_DIR) >> $@
+	${Q}echo 'logdir =' $(OUTPUT) >> $@
 	${Q}echo 'maindir = ${top_builddir}/raddb/' >> $@
 	${Q}echo 'radacctdir = $${testdir}' >> $@
 	${Q}echo 'pidfile = $${testdir}/radiusd.pid' >> $@
@@ -112,7 +112,7 @@ $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary src/tests/eapol_test/all.mk
 $(RADDB_PATH)/certs/%:
 	${Q}make -C $(dir $@)
 
-$(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES) $(OUTPUT_DIR)
+$(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES) $(OUTPUT)
 	${Q}make -C src/tests/certs verify
 	${Q}rm -f $(GDB_LOG) $(RADIUS_LOG)
 	${Q}printf "Starting EAP test server... "
@@ -136,14 +136,14 @@ $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.
 #  radiusd configuration files are named "method".
 #
 $(foreach x,$(EAPOL_TEST_FILES),$(eval \
-	$(patsubst $(DIR)/%.conf,$(OUTPUT_DIR)/%.ok,${x}): ${CONFIG_PATH}/methods-enabled/$(basename $(notdir $(word 1,$(subst -, ,$(x))))) \
+	$(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,${x}): ${CONFIG_PATH}/methods-enabled/$(basename $(notdir $(word 1,$(subst -, ,$(x))))) \
 ))
 
 
 #
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
-$(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | test.radiusd.kill $(CONFIG_PATH)/radiusd.pid
+$(OUTPUT)/%.ok: $(DIR)/%.conf | test.radiusd.kill $(CONFIG_PATH)/radiusd.pid
 	${Q}echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
 	${Q}if ( grep 'key_mgmt=NONE' '$<' > /dev/null && $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$@) 2>&1 ) || \
 		$(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$@) 2>&1; then\
@@ -172,10 +172,10 @@ else
 #  build process.2
 #
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
-$(shell touch "$(OUTPUT_DIR)/eapol_test.skip")
+$(shell touch "$(OUTPUT)/eapol_test.skip")
 endif
 
-test.eap: $(OUTPUT_DIR)
+test.eap: $(OUTPUT)
 	${Q}echo "Skipping EAP tests due to previous build error"
 	${Q}echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
 endif
