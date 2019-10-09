@@ -36,7 +36,6 @@ RCSID("$Id$")
 
 #include <sys/stat.h>
 
-#include <sql.h>
 #include <sqlcli.h>
 #include "rlm_sql.h"
 
