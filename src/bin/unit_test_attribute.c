@@ -1756,9 +1756,6 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 				e_p++;
 			}
 
-			assert((size_t)(e_p - e) <= result.got_len);
-			assert((size_t)(e_p - e) <= result.expected_len);
-
 			spaces = talloc_zero_array(NULL, char, (e_p - e) + 1);
 			memset(spaces, ' ', talloc_array_length(spaces) - 1);
 			ERROR("             %s^ differs here", spaces);
