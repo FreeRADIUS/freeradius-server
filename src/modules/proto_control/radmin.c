@@ -133,6 +133,8 @@ typedef struct {
 static bool echo = false;
 static char const *secret = NULL;
 static bool unbuffered = false;
+static bool use_readline = true;
+
 static fr_log_t radmin_log = {
 	.dst = L_DST_NULL,
 	.colourise = false,
@@ -440,7 +442,7 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 	char *line, *p;
 
 #ifdef USE_READLINE
-	if (fp_in == stdin) return readline(prompt);
+	if (use_readline) return readline(prompt);
 #endif
 
 	if (prompt && *prompt) puts(prompt);
@@ -497,13 +499,13 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 	return line;
 }
 
-static void radmin_free(char *line, FILE *fp_in)
+static void radmin_free(char *line)
 {
 #ifdef USE_READLINE
 	/*
 	 *	Was read from stdin, so "line" == "readline_buffer"
 	 */
-	if (fp_in != stdin) return;
+	if (!use_readline) return;
 #endif
 
 	free(line);
@@ -1067,9 +1069,12 @@ int main(int argc, char **argv)
 	/*
 	 *	Check if stdin is a TTY only if input is from stdin
 	 */
-	if (input_file || !isatty(STDIN_FILENO)) quiet = true;
+	if (input_file || !isatty(STDIN_FILENO)) {
+		use_readline = false;
+		quiet = true;
+	}
 
-	if (!quiet) {
+	if (use_readline) {
 #ifdef USE_READLINE_HISTORY
 		using_history();
 		stifle_history(READLINE_MAX_HISTORY_LINES);
@@ -1280,7 +1285,7 @@ int main(int argc, char **argv)
 			 *
 			 *	Don't add exit / quit / secret / etc.
 			 */
-			if (!quiet) {
+			if (use_readline) {
 				add_history(cmd_buffer);
 				write_history(history_file);
 			}
@@ -1290,7 +1295,7 @@ int main(int argc, char **argv)
 		 *	SUCCESS and PARTIAL end up here too.
 		 */
 	next:
-		radmin_free(line, inputfp);
+		radmin_free(line);
 	}
 
 exit:
