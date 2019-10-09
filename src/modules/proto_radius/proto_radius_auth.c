@@ -60,6 +60,13 @@ typedef struct {
 							//!< captures.
 
 	fr_state_tree_t	*state_tree;			//!< State tree to link multiple requests/responses.
+
+	CONF_SECTION	*recv_access_request;
+	CONF_SECTION	*send_access_accept;
+	CONF_SECTION	*send_access_reject;
+	CONF_SECTION	*send_access_challenge;
+	CONF_SECTION	*send_do_not_respond;
+	CONF_SECTION	*send_protocol_error;
 } proto_radius_auth_t;
 
 static const CONF_PARSER session_config[] = {
@@ -271,7 +278,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 
 		request->component = "radius";
 
-		unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
+		unlang = inst->recv_access_request;
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv Access-Request' section");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -632,31 +639,37 @@ static virtual_server_compile_t compile_list[] = {
 		.name = "recv",
 		.name2 = "Access-Request",
 		.component = MOD_AUTHORIZE,
+		.offset = offsetof(proto_radius_auth_t, recv_access_request),
 	},
 	{
 		.name = "send",
 		.name2 = "Access-Accept",
 		.component = MOD_POST_AUTH,
+		.offset = offsetof(proto_radius_auth_t, send_access_accept),
 	},
 	{
 		.name = "send",
 		.name2 = "Access-Challenge",
 		.component = MOD_POST_AUTH,
+		.offset = offsetof(proto_radius_auth_t, send_access_challenge),
 	},
 	{
 		.name = "send",
 		.name2 = "Access-Reject",
 		.component = MOD_POST_AUTH,
+		.offset = offsetof(proto_radius_auth_t, send_access_reject),
 	},
 	{
 		.name = "send",
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
+		.offset = offsetof(proto_radius_auth_t, send_do_not_respond),
 	},
 	{
 		.name = "send",
 		.name2 = "Protocol-Error",
 		.component = MOD_POST_AUTH,
+		.offset = offsetof(proto_radius_auth_t, send_protocol_error),
 	},
 	{
 		.name = "authenticate",
