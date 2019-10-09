@@ -341,7 +341,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		 *	Only print the 'facility' if we're not colourising the log messages
 		 *	and this isn't syslog.
 		 */
-		if (!log->colourise) fmt_facility = fr_table_str_by_value(fr_log_levels, type, ": ");
+		if (!log->colourise && log->print_level) fmt_facility = fr_table_str_by_value(fr_log_levels, type, ": ");
 
 		/*
 		 *	Add an additional prefix to highlight that this is a bad message

@@ -1211,6 +1211,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	/*
+	 *	Always log to stdout
+	 */
+	default_log.dst = L_DST_STDOUT;
+	default_log.fd = STDOUT_FILENO;
+	default_log.print_level = false;
+
 	while ((c = getopt(argc, argv, "46c:d:D:f:Fhn:p:P:qr:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
@@ -1348,6 +1355,7 @@ int main(int argc, char **argv)
 
 		case 'x':
 			fr_debug_lvl++;
+			if (fr_debug_lvl > 2) default_log.print_level = true;
 			break;
 
 		case 'h':
@@ -1356,12 +1364,6 @@ int main(int argc, char **argv)
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);
-
-	/*
-	 *	Always log to stdout
-	 */
-	default_log.dst = L_DST_STDOUT;
-	default_log.fd = STDOUT_FILENO;
 
 	if ((argc < 3)  || ((secret == NULL) && (argc < 4))) {
 		ERROR("Insufficient arguments");

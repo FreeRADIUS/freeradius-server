@@ -637,6 +637,7 @@ int main(int argc, char *argv[])
 	 */
 	default_log.dst = L_DST_STDOUT;
 	default_log.fd = STDOUT_FILENO;
+	default_log.print_level = false;
 
 	/*  Process the options.  */
 	while ((c = getopt(argc, argv, "d:D:f:hi:mMn:o:O:r:xX")) != -1) {
@@ -688,10 +689,12 @@ int main(int argc, char *argv[])
 
 			case 'X':
 				fr_debug_lvl += 2;
+				default_log.print_level = true;
 				break;
 
 			case 'x':
 				fr_debug_lvl++;
+				if (fr_debug_lvl > 2) default_log.print_level = true;
 				break;
 
 			default:

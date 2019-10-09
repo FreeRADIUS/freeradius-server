@@ -98,6 +98,8 @@ typedef struct {
 
 	bool			dates_utc;	//!< Whether timestamps should be UTC or local timezone.
 
+	bool			print_level;	//!< sometimes we don't want log levels printed
+
 	fr_log_timestamp_t	timestamp;	//!< Prefix log messages with timestamps.
 
 	int			fd;		//!< File descriptor to write messages to.

@@ -1850,6 +1850,10 @@ int main(int argc, char *argv[])
 
 	name = argv[0];
 
+	default_log.dst = L_DST_STDOUT;
+	default_log.fd = STDOUT_FILENO;
+	default_log.print_level = false;
+
 	while ((c = getopt(argc, argv, "cd:D:fxMhr:")) != -1) switch (c) {
 		case 'c':
 			do_commands = true;
@@ -1869,8 +1873,7 @@ int main(int argc, char *argv[])
 
 		case 'x':
 			fr_debug_lvl++;
-			default_log.dst = L_DST_STDOUT;
-			default_log.fd = STDOUT_FILENO;
+			if (fr_debug_lvl > 2) default_log.print_level = true;
 			break;
 
 		case 'M':

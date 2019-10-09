@@ -282,6 +282,7 @@ int main(int argc, char *argv[])
 	 */
 	default_log.dst = L_DST_NULL;
 	default_log.fd = -1;
+	default_log.print_level = true;
 
 	/*
 	 *  Set the panic action and enable other debugging facilities
