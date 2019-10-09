@@ -999,9 +999,9 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
  *
  */
 static size_t command_data(command_result_t *result, UNUSED command_ctx_t *cc,
-			   char *data, size_t data_used, char *in, UNUSED size_t inlen)
+			   char *data, size_t data_used, char *in, size_t inlen)
 {
-	if (strcmp(in, data) != 0) RETURN_MISMATCH(in, strlen(in), data, data_used);
+	if (strcmp(in, data) != 0) RETURN_MISMATCH(in, inlen, data, data_used);
 
 	/*
 	 *	We didn't actually write anything, but this
@@ -1664,7 +1664,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			goto finish;
 		}
 
-		if (command->func == command_comment) continue;			/* Skip comments */
+		if (command->func == command_comment) continue;		/* Skip comments */
 
 		p += match_len;						/* Jump to after the command */
 		fr_skip_whitespace(p);					/* Skip any whitespace */
