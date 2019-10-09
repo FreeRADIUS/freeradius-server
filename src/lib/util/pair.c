@@ -2514,7 +2514,7 @@ void _fr_pair_list_log(fr_log_t const *log, VALUE_PAIR const *vp, char const *fi
 	memcpy(&our_vp, &vp, sizeof(vp)); /* const work-arounds */
 
 	for (vp = fr_cursor_init(&cursor, &our_vp); vp; vp = fr_cursor_next(&cursor)) {
-		fr_log(log, L_DBG, file, line, "%pP", vp);
+		fr_log(log, L_DBG, file, line, "\t%pP", vp);
 	}
 }
 
