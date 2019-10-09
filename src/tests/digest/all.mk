@@ -30,7 +30,7 @@ $(eval $(call RADIUSD_SERVICE,digest,$(OUTPUT)))
 #
 $(OUTPUT)/%: $(DIR)/% test.digest.radiusd_kill test.digest.radiusd_start
 	$(eval TARGET := $(patsubst %.txt,%,$(notdir $@)))
-	${Q}awk '/^#.*TESTS/ { print $$3 }' $< | while read _num; do \
+	${Q}for _num in $$(sed '/^#.*TESTS/!d; s/.*TESTS//g' $<); do \
 		echo "DIGEST-TEST $(TARGET)_$${_num}";                   \
 		cp -f $< $@.request;                                     \
 		echo "Test-Name = \"$(TARGET)\"" >> $@.request;          \

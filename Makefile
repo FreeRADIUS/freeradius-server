@@ -117,8 +117,8 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient $(BUILD_DIR)/tests/rad
 
 clean: clean.test
 .PHONY: clean.test
+
 clean.test: clean.test.modules
-	@$(MAKE) -C src/tests clean
 
 #  Tests specifically for Travis. We do a LOT more than just
 #  the above tests
