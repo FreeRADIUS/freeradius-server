@@ -38,7 +38,7 @@ python {
 	#  Uncomment the following line (and set to true) if you need
 	#  to call Python C extensions that acquire the GIL.
 	#
-	#  This will use the first Python interpreter (*not a subinterpreter*)
+	#  This will use the first Python interpreter (*not a sub-interpreter*)
 	#  to provide the execution environment for this module instance.
 	#
 	#  The tradeoff is, that any module instance with `cext_compat = true`,
@@ -49,12 +49,12 @@ python {
 	#  Not all Python functions use the GIL as it prevents parallel
 	#  execution.  A good indication of whether `cext_compat` is needed
 	#  is whether your script locks up or crashes when calling a
-	#  python C extension.
+	#  Python C extension.
 	#
 	#  [NOTE]
 	#  ====
 	#  This functionality is only available when building with Python 2.7
-	#  or below.  For Python 3 you should buil against Python 3.8 which
+	#  or below.  For Python 3 you should build against Python 3.8 which
 	#  has a proper fix for this issue (per interpreter GILs)
 	#  ====
 	#
@@ -64,7 +64,7 @@ python {
 	#  python_path::
 	#
 	#  The search path for Python modules.  It must include the path to your
-	#  python module.
+	#  Python module.
 	#
 #	python_path = ${modconfdir}/${.:name}
 
@@ -118,7 +118,7 @@ python {
 	#  config { ... }::
 	#
 	#  You can define configuration items (and nested sub-sections) in python `config { ... }`
-	#  section. These items will be accessible in the python script through `radiusd.config`
+	#  section. These items will be accessible in the Python script through `radiusd.config`
 	#  dict for instance:
 	#
 	#  e.g:

@@ -7,7 +7,7 @@
 #
 #  = Mac2IP Module
 #
-#  The `mac2ip` module is a simple file to map a MAC address to a IP address.
+#  The `mac2ip` module is a simple file to map a MAC address to an IP address.
 #
 #  The file is in the format `<mac>,<ip>`.
 #

@@ -30,7 +30,7 @@ winbind {
 	#
 	#  domain:: The windows domain.
 	#
-	#  While not required to be set, it is likely authentication will fail
+	#  While not required to be set, it is likely that authentication will fail
 	#  if it is not set correctly.
 	#
 	#  This configuration option, as the username above, is also expanded before use.

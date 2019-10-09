@@ -325,7 +325,7 @@ ldap {
 
 		#
 		#  access_positive:: Control whether the presence of `access_attribute`
-		#  allows access, or denys access.
+		#  allows access, or denies access.
 		#
 		#  * If `yes`, and the `access_attribute` is present, or `no` and the
 		#  `access_attribute` is absent then access  will be allowed.
@@ -632,7 +632,7 @@ ldap {
 		idle = 60
 
 		#
-		#  probles:: Set the maximum number of keepalive probes TCP should send
+		#  probes:: Set the maximum number of keepalive probes TCP should send
 		#  before dropping  the  connection.
 		#
 		#  NOTE: `LDAP_OPT_X_KEEPALIVE_PROBES` is set to this value.

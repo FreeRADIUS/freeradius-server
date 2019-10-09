@@ -9,7 +9,7 @@
 #
 #  The `etc_group` module provides group names from the `/etc/group` file.
 #
-#  NOTE: Please see the `passwd` module for full doucmentation on the
+#  NOTE: Please see the `passwd` module for full documentation on the
 #  configuration items used here.
 #
 
@@ -17,14 +17,14 @@
 #  ## Configuration Settings
 #
 #  The `passwd` module configuration, for the /etc/group file. Adds a
-#  `Etc-Group-Name` attribute for every group that the user is member
+#  `Etc-Group-Name` attribute for every group that the user is a member
 #  of.
 #
 #  You will have to define the `Etc-Group-Name` in the `dictionary` file
 #  as a 'string' type.
 #
 #  The `Group` and `Group-Name` attributes are automatically created by
-#  the Unix module, and do checking against `/etc/group` automatically.
+#  the Unix module and check against `/etc/group` automatically.
 #
 #  [WARNING]
 #  ====

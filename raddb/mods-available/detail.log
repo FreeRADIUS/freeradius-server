@@ -9,7 +9,7 @@
 #
 #  More examples of doing detail logs.
 #
-#  NOTE: For full explanation of the configuration options,
+#  NOTE: For a full explanation of the configuration options,
 #  please see the `detail` module.
 #
 
@@ -32,7 +32,7 @@ detail auth_log {
 	permissions = 0600
 
 	#
-	#  supress { ... }:: This will stop passwords being written to the log.
+	#  suppress { ... }:: This will stop passwords being written to the log.
 	#
 	suppress {
 		User-Password

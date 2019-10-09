@@ -17,7 +17,7 @@
 #
 
 #
-#  ## Configuration Settingss
+#  ## Configuration Settings
 #
 sql cuisql {
 	#
@@ -92,7 +92,7 @@ sql cuisql {
 	#
 	#  sql_user_name:: `SQL-User-Name` is used as the user for SQL queries.
 	#  Normally it is the same as `User-Name`, but sometimes it needs to be different.
-	#  Then instead of editing `User-Name` (*which we dont' recommend*), you can
+	#  Then instead of editing `User-Name` (*which we don't recommend*), you can
 	#  set `SQL-User-Name` to the new value.
 	#
 	sql_user_name = "%{User-Name}"

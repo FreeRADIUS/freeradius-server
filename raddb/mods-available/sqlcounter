@@ -16,7 +16,7 @@
 #  services are beyond the scope of this module.
 #
 #  Rather than maintaining separate (`GDBM`) databases of accounting info
-#  for each counter, this module uses the data stored in the `raddacct` table
+#  for each counter, this module uses the data stored in the `radacct` table
 #  by the `sql` modules.
 #
 #  NOTE: This module *NEVER* does any database INSERTs or UPDATEs. It is totally
@@ -55,7 +55,7 @@
 #  | `m`       | months
 #  |===
 #
-#  If the letter is ommited days will be assumed.
+#  If the latter is omitted days will be assumed.
 #
 #  In example:
 #
@@ -74,8 +74,8 @@
 #  [options="header,autowidth"]
 #  |===
 #  | Parameter | Description
-#  | `%%b`	   | unix time value of beginning of reset period.
-#  | `%%e`	   | unix time value of end of reset period.
+#  | `%%b`	   | unix time value of beginning of the reset period.
+#  | `%%e`	   | unix time value of end of the reset period.
 #  |===
 #
 #	key = "%{%{Stripped-User-Name}:-%{User-Name}}"

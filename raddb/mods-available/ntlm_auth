@@ -29,7 +29,7 @@
 #
 #  ## Configuration Settings
 #
-#  See the `exec` module for an explantion of the configuration options.
+#  See the `exec` module for an explanation of the configuration options.
 #
 exec ntlm_auth {
 	wait = yes

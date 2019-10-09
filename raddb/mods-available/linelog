@@ -138,7 +138,7 @@ linelog {
 		#
 		#  escape_filenames::
 		#
-		#  Most file systems can handly nearly the full range
+		#  Most file systems can handle nearly the full range
 		#  of UTF-8 characters.  Ones that can only deal with
 		#  a limited range should set this to `yes`.
 		#
@@ -235,7 +235,7 @@ linelog {
 	#
 #	unix {
 		#
-		#  filename:: Fullpath to the `unix socket` file.
+		#  filename:: Full path to the `unix socket` file.
 		#
 #		filename = /path/to/unix.socket
 
