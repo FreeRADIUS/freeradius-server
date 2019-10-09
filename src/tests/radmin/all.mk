@@ -25,6 +25,23 @@ include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,control-socket,$(OUTPUT)))
 
 #
+#  For each file, look for precursor test.
+#  Ensure that each test depends on its precursors.
+#
+$(OUTPUT)/depends.mk: $(FILES) | $(OUTPUT)
+	${Q}rm -f $@
+	${Q}touch $@
+	${Q}for x in $^; do \
+		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/radmin/,g'`; \
+		if [ "$$y" != "" ]; then \
+			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
+			echo "$${z}.txt: $$y" >> $@; \
+			echo "" >> $@; \
+		fi \
+	done
+-include $(OUTPUT)/depends.mk
+
+#
 #	Run the radmin commands against the radiusd.
 #
 $(OUTPUT)/%: $(DIR)/% ${BUILD_DIR}/bin/radmin test.radmin.radiusd_kill test.radmin.radiusd_start
