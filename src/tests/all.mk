@@ -34,11 +34,11 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
 		test.bin	\
 		test.trie	\
 		test.unit	\
+		test.keywords	\
 		test.xlat	\
 		test.map	\
-		test.keywords	\
-		$(BUILD_DIR)/tests/radiusd-c \
 		test.modules	\
+		$(BUILD_DIR)/tests/radiusd-c \
 		test.auth	\
 		test.digest	\
 		test.eap	\
