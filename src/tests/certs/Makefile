@@ -1,6 +1,13 @@
 #
 #  See README.md
 #
+
+#
+#	Just to mute the WARNING messages complaining about the missing openssl.cnf
+#
+OPENSSL_CONF := /dev/null
+export OPENSSL_CONF
+
 .PHONY: all
 all:
 	@rm -rf tmp rsa ecc
