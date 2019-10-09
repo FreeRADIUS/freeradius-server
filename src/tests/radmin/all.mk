@@ -22,7 +22,6 @@ RADMIN_CONFIG_PATH := $(DIR)/config
 #  Generic rules to start / stop the radius service.
 #
 include src/tests/radiusd.mk
-PORT := 12340
 $(eval $(call RADIUSD_SERVICE,control-socket,$(OUTPUT)))
 
 #

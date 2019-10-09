@@ -1,4 +1,11 @@
 #
+#	Common test values
+#
+
+PORT := 12340
+SECRET := testing123
+
+#
 #  To work around OpenSSL issues with travis.
 #
 .PHONY:
