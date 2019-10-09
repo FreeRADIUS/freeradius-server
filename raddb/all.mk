@@ -179,7 +179,7 @@ else
 #  Generate local certificate products when doing a non-package
 #  (i.e. developer) build.  This takes a LONG time!
 #
-$(GENERATED_CERT_FILES):
+$(GENERATED_CERT_FILES): $(wildcard raddb/certs/*cnf)
 	${Q}echo BOOTSTRAP raddb/certs/
 	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
 endif
