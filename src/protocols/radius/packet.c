@@ -517,7 +517,7 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			&packet->dst_ipaddr, packet->dst_port);
 }
 
-void _fr_radius_packet_log_hex(fr_log_t *log, RADIUS_PACKET const *packet, char const *file, int line)
+void _fr_radius_packet_log_hex(fr_log_t const *log, RADIUS_PACKET const *packet, char const *file, int line)
 {
 	uint8_t const *attr, *end;
 	char buffer[256];

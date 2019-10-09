@@ -858,3 +858,15 @@ void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool recei
 		        packet->data_len);
 	}
 }
+
+/*
+ *	Debug the packet header and all attributes
+ */
+void fr_packet_log(fr_log_t const *log, RADIUS_PACKET *packet, bool received)
+{
+	fr_packet_header_log(log, packet, received);
+	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(log, packet->vps);
+#ifndef NDEBUG
+	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(log, packet);
+#endif
+}

@@ -121,7 +121,7 @@ int		fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 				      char const *secret) CC_HINT(nonnull (1,3));
 
 #define fr_radius_packet_log_hex(_log, _packet) _fr_radius_packet_log_hex(_log, _packet, __FILE__, __LINE__);
-void		_fr_radius_packet_log_hex(fr_log_t *log, RADIUS_PACKET const *packet, char const *file, int line) CC_HINT(nonnull);
+void		_fr_radius_packet_log_hex(fr_log_t const *log, RADIUS_PACKET const *packet, char const *file, int line) CC_HINT(nonnull);
 
 typedef struct {
 	uint8_t const		*vector;		//!< vector for encryption / decryption of data

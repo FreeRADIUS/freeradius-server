@@ -1003,8 +1003,7 @@ static int send_one_packet(rc_request_t *request)
 		return -1;
 	}
 
-	fr_packet_header_log(&default_log, request->packet, false);
-	if (fr_debug_lvl > L_DBG_LVL_1) fr_pair_list_log(&default_log, request->packet->vps);
+	fr_packet_log(&default_log, request->packet, false);
 
 	return 0;
 }
@@ -1107,8 +1106,7 @@ static int recv_one_packet(fr_time_t wait_time)
 		goto packet_done;
 	}
 
-	fr_packet_header_log(&default_log, request->reply, true);
-	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(&default_log, request->reply->vps);
+	fr_packet_log(&default_log, request->reply, true);
 
 	/*
 	 *	Increment counters...

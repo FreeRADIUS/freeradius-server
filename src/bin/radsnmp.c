@@ -792,11 +792,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			/*
 			 *	Print the attributes we're about to send
 			 */
-			fr_packet_header_log(&default_log, request, false);
-			if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(&default_log, request->vps);
-#ifndef NDEBUG
-			if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, request);
-#endif
+			fr_packet_log(&default_log, request, false);
 
 			FD_ZERO(&set); /* clear the set */
 			FD_SET(fd, &set);
@@ -855,11 +851,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			/*
 			 *	Print the attributes we received in response
 			 */
-			fr_packet_header_log(&default_log, reply, true);
-			if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(&default_log, reply->vps);
-#ifndef NDEBUG
-			if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, reply);
-#endif
+			fr_packet_log(&default_log, reply, true);
 
 			switch (command) {
 			case RADSNMP_GET:

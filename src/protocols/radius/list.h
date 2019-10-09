@@ -64,6 +64,7 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t m
 uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl);
 uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl);
 void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool received);
+void fr_packet_log(fr_log_t const *log, RADIUS_PACKET *packet, bool received);
 
 /*
  *	"find" returns a pointer to the RADIUS_PACKET* member in the
