@@ -15,8 +15,6 @@ raddb/test.conf:
 	@echo '}' >> $@
 	@echo '$$INCLUDE radiusd.conf' >> $@
 
-$(info XXX $(GENERATED_CERT_FILES) )
-
 #
 #  Run "radiusd -C", looking for errors.
 #
