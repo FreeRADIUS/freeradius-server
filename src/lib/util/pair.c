@@ -2506,7 +2506,7 @@ void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
  * @param[in] file where the message originated
  * @param[in] line where the message originated
  */
-void _fr_pair_list_log(fr_log_t *log, VALUE_PAIR const *vp, char const *file, int line)
+void _fr_pair_list_log(fr_log_t const *log, VALUE_PAIR const *vp, char const *file, int line)
 {
 	VALUE_PAIR *our_vp;
 	fr_cursor_t cursor;

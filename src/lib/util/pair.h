@@ -321,7 +321,7 @@ size_t		fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		fr_pair_fprint(FILE *, VALUE_PAIR const *vp);
 
 #define		fr_pair_list_log(_log, _vp) _fr_pair_list_log(_log, _vp, __FILE__, __LINE__);
-void		_fr_pair_list_log(fr_log_t *log, VALUE_PAIR const *vp, char const *file, int line);
+void		_fr_pair_list_log(fr_log_t const *log, VALUE_PAIR const *vp, char const *file, int line);
 char		*fr_pair_type_asprint(TALLOC_CTX *ctx, fr_type_t type);
 char		*fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
