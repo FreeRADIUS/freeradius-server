@@ -336,7 +336,7 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 
 		if (out_p >= out_end) {
 			fr_strerror_printf("Would overflow output buffer");
-			return in - p;
+			return -(p - in);
 		}
 
 		fr_skip_whitespace(p);
@@ -347,7 +347,7 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 		if (!c1) {
 		bad_input:
 			fr_strerror_printf("Invalid hex data starting at \"%s\"", p);
-			return in - p;
+			return -(p - in);
 		}
 
 		c2 = memchr(hextab, tolower((int)*p++), sizeof(hextab));
@@ -372,8 +372,8 @@ static ssize_t encode_data(char *p, uint8_t *output, size_t outlen)
 	fr_skip_whitespace(p);
 
 	if (*p == '{') {
-		int sublen;
-		char *q;
+		int	sublen;
+		char	*q;
 
 		slen = 0;
 
