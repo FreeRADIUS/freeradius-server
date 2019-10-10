@@ -1046,7 +1046,7 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	 *	Decode hex from input text
 	 */
 	slen = hex_to_bin((uint8_t *)data, COMMAND_OUTPUT_MAX, p, inlen);
-	if (slen == 0) RETURN_PARSE_ERROR(-(slen));
+	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
 
 	to_dec = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
