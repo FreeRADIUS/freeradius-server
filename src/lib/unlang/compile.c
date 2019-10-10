@@ -2995,8 +2995,6 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	g = group_allocate(parent, cs, UNLANG_TYPE_SUBREQUEST);
 	if (!g) return NULL;
 
-	c = unlang_group_to_generic(g);
-
 	unlang_ctx2.actions = unlang_ctx->actions;
 
 	/*
