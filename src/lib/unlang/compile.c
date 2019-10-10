@@ -3587,12 +3587,20 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 {
 	unlang_t		*c;
 	vp_tmpl_rules_t		my_rules;
+	char const		*name1, *name2;
 
 	/*
 	 *	Don't compile it twice, and don't print out debug
 	 *	messages twice.
 	 */
 	if (cf_data_find(cs, unlang_group_t, NULL) != NULL) return 1;
+
+	name1 = cf_section_name1(cs);
+	name2 = cf_section_name2(cs);
+
+	if (!name2) name2 = "";
+
+	cf_log_debug(cs, "Compiling policies in - %s %s {...}", name1, name2);
 
 	/*
 	 *	Ensure that all compile functions get valid rules.
@@ -3624,36 +3632,6 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 	return 0;
 }
 
-/** Compile a named section
- *
- * @param[in] cs		the section to compile
- * @param[in] component 	The default method to call when compiling module calls.
- * @param[in] rules		For resolving attribute references.
- * @return
- *	- <0 on error
- *	- 0 on section was not found
- *	- 1 on successfully compiled
- *
- */
-int unlang_compile_section(CONF_SECTION *cs, rlm_components_t component,
-			      vp_tmpl_rules_t const *rules)
-{
-	char const *name1, *name2;
-
-	name1 = cf_section_name1(cs);
-	name2 = cf_section_name2(cs);
-
-	if (!name2) name2 = "";
-
-	cf_log_debug(cs, "Compiling policies in - %s %s {...}", name1, name2);
-
-	if (unlang_compile(cs, component, rules) < 0) {
-		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
-		return -1;
-	}
-
-	return 1;
-}
 
 /** Check if name is an unlang keyword
  *
