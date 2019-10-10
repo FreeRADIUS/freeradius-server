@@ -35,7 +35,7 @@ $(OUTPUT)/depends.mk: $(FILES) | $(OUTPUT)
 		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/radmin/,g'`; \
 		if [ "$$y" != "" ]; then \
 			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
-			echo "$${z}.txt: $$y" >> $@; \
+			echo "$${z}: $${y}.txt" >> $@; \
 			echo "" >> $@; \
 		fi \
 	done
