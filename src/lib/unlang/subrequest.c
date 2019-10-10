@@ -159,6 +159,13 @@ static unlang_action_t unlang_subrequest_start(REQUEST *request, rlm_rcode_t *pr
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 	REQUEST				*child = state->child;
+	unlang_group_t			*g;
+
+	g = unlang_generic_to_group(frame->instruction);
+	if (!g->num_children) {
+		*presult = RLM_MODULE_NOOP;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	/*
 	 *	Restore state from the parent to the
@@ -192,7 +199,10 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	 *	Initialize the state
 	 */
 	g = unlang_generic_to_group(instruction);
-	rad_assert(g->children != NULL);
+	if (!g->num_children) {
+		*presult = RLM_MODULE_NOOP;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	child = state->child = unlang_io_subrequest_alloc(request, g->dict, UNLANG_DETACHABLE);
 	if (!child) {

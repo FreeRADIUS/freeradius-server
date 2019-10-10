@@ -5,6 +5,6 @@
 if (&User-Name == 'bob') {
 	ok
 }
-else {	# ERROR
-	# empty is not allowed
+else {
 }
+success

@@ -1,6 +1,7 @@
 #
-#  Check that redundant blocks can't be empty
+#  Redundant blocks can be empry, and don't do anything
 #
-redundant {	# ERROR
+redundant {
 
 }
+success

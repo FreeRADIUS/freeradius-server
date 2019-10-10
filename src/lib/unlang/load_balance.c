@@ -117,7 +117,10 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 	uint32_t count = 0;
 
 	g = unlang_generic_to_group(instruction);
-	rad_assert(g->children != NULL);
+	if (!g->num_children) {
+		*presult = RLM_MODULE_NOOP;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	RDEBUG4("%s setting up", frame->instruction->debug_name);
 

@@ -101,7 +101,10 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	void				*process_inst;
 
 	g = unlang_generic_to_group(instruction);
-	rad_assert(g->children != NULL);
+	if (!g->num_children) {
+		*presult = RLM_MODULE_NOOP;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	server = cf_section_name2(g->server_cs);
 

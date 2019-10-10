@@ -53,6 +53,9 @@ foreach &Tmp-Integer-1 {
 }
 
 if (&Tmp-Integer-0 != "%{Tmp-Integer-1[#]}") {
+   update reply {
+   	  &Filter-Id := "shit %{Tmp-Integer-0}"
+   }
 	test_fail
 }
 else {
