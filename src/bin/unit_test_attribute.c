@@ -322,7 +322,7 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	fr_skip_whitespace(p);
 
 	length = encode_tlv(p, output, outlen);
-	if (length == 0) return 0;
+	if (length <= 0) return length;
 
 	return length;
 }
@@ -519,7 +519,7 @@ static int encode_vsa(char *buffer, uint8_t *output, size_t outlen)
 	output[3] = vendor & 0xff;
 
 	length = encode_tlv(p, output + 4, outlen - 4);
-	if (length == 0) return 0;
+	if (length <= 0) return length;
 	if (length > (255 - 6)) {
 		ERROR("VSA data is too long");
 		return 0;
@@ -597,7 +597,7 @@ static int encode_long_extended(char *buffer,
 
 	if (attr == 26) {
 		length = encode_evs(p, output + 4, outlen - 4);
-		if (length == 0) return 0;
+		if (length <= 0) return length;
 
 		output[1] += 5;
 		length -= 5;
@@ -1339,7 +1339,7 @@ static size_t command_encode_raw(command_result_t *result, UNUSED command_ctx_t 
 	len = encode_rfc(in, encoded, sizeof(encoded));
 	if (len <= 0) RETURN_PARSE_ERROR(0);
 
-	if (len >= (COMMAND_OUTPUT_MAX / 2)) {
+	if (len >= sizeof(encoded)) {
 		fr_strerror_printf("Encoder output would overflow output buffer");
 		RETURN_DRAIN_ERROR_STACK_TO_DATA();
 	}
