@@ -1830,7 +1830,7 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	 *	*intepreter* type is GROUP, even if the *debug names*
 	 *	are something else.
 	 */
-	g = group_allocate(parent, cs, UNLANG_TYPE_GROUP);
+	g = group_allocate(parent, cs, unlang_ops[mod_type].debug_braces ? UNLANG_TYPE_GROUP : mod_type);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
