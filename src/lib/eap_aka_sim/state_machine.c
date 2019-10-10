@@ -2031,6 +2031,7 @@ static rlm_rcode_t common_reauthentication_send_resume(void *instance, UNUSED vo
 			return common_failure_notification_enter(inst, request, eap_session);
 
 		}
+		/* FALL-THROUGH */
 
 	/*
 	 *	Policy rejected the user
