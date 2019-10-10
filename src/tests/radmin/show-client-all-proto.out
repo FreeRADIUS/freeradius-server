@@ -1,4 +1,3 @@
-show client config 127.0.1.1
 shortname	rapadura_test_client
 secret		testing123
 proto		*

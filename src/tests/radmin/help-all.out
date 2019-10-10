@@ -1,4 +1,3 @@
-help
 exit
 	Exit from the current context.
 help [(all|commands)]
