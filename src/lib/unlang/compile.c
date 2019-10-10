@@ -2107,9 +2107,10 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 {
 	CONF_ITEM *ci;
 	FR_TOKEN type;
-	char const *name2;
+	char const *name1, *name2;
 	bool had_seen_default = false;
 	unlang_group_t *g;
+	unlang_t *c;
 	ssize_t slen;
 
 	vp_tmpl_rules_t	parse_rules;
@@ -2136,6 +2137,9 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	/*
 	 *	Create the template.  All attributes and xlats are
 	 *	defined by now.
+	 *
+	 *	The 'case' statements need g->vpt filled out to ensure
+	 *	that the data types match.
 	 */
 	type = cf_section_name2_quote(cs);
 	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, &parse_rules, true);
@@ -2163,7 +2167,6 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	     ci != NULL;
 	     ci = cf_item_next(cs, ci)) {
 		CONF_SECTION *subcs;
-		char const *name1;
 
 		if (!cf_item_is_section(ci)) {
 			if (!cf_item_is_pair(ci)) continue;
@@ -2194,6 +2197,10 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 			return NULL;
 		}
 	}
+
+	c = unlang_group_to_generic(g);
+	c->name = "switch";
+	c->debug_name = talloc_typed_asprintf(c, "switch %s", cf_section_name2(cs));
 
 	/*
 	 *	Fixup the template before compiling the children.
@@ -3012,6 +3019,9 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	 */
 	c = compile_children(g, parent, &unlang_ctx2);
 	if (!c) return NULL;
+
+	c->name = "subrequest";
+	c->debug_name = talloc_typed_asprintf(c, "subrequest %s", cf_section_name2(cs));
 
 	g->dict = dict;
 	g->attr_packet_type = da;
