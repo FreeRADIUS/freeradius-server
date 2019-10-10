@@ -325,44 +325,38 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	return length;
 }
 
-static ssize_t hex_to_bin(uint8_t *output, size_t outlen, char *in, size_t inlen)
+static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 {
-	int length = 0;
-	char *p = in;
-	char *end = in + inlen;
+	char		*p = in;
+	char		*end = in + inlen;
+	uint8_t		*out_p = out, *out_end = out_p + outlen;
 
 	while (p < end) {
 		char *c1, *c2;
+
+		if (out_p >= out_end) {
+			fr_strerror_printf("Would overflow output buffer");
+			return in - p;
+		}
 
 		fr_skip_whitespace(p);
 
 		if (!*p) break;
 
-		c1 = memchr(hextab, tolower((int) p[0]), sizeof(hextab));
-		if (c1) {
-			c2 = memchr(hextab, tolower((int) p[1]), sizeof(hextab));
-			if (!c2) {
-				fr_strerror_printf("Invalid hex data starting at \"%s\"", p + 1);
-				return in - (p + 1);
-			}
-		} else {
+		c1 = memchr(hextab, tolower((int) *p++), sizeof(hextab));
+		if (!c1) {
+		bad_input:
 			fr_strerror_printf("Invalid hex data starting at \"%s\"", p);
 			return in - p;
 		}
 
-		*output = ((c1 - hextab) << 4) + (c2 - hextab);
-		output++;
-		length++;
-		p += 2;
+		c2 = memchr(hextab, tolower((int)*p++), sizeof(hextab));
+		if (!c2) goto bad_input;
 
-		outlen--;
-		if (outlen == 0) {
-			fr_strerror_printf("Too much data");
-			return in - p;
-		}
+		*out_p++ = ((c1 - hextab) << 4) + (c2 - hextab);
 	}
 
-	return length;
+	return out_p - out;
 }
 
 
