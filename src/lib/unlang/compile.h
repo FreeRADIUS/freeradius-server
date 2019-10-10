@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file unlang/interpret.h
+ * @file unlang/compile.h
  * @brief Declarations for the unlang interpreter.
  *
  * @copyright 2019 The FreeRADIUS server project
