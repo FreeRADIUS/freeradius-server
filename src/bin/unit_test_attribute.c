@@ -347,6 +347,16 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 		if (!c1) {
 		bad_input:
 			fr_strerror_printf("Invalid hex data starting at \"%s\"", p);
+#ifdef __clang_analyzer__
+			/*
+			 *	Clang analyzer fails to recognise
+			 *	that the p will always be greater
+			 *	than or equal to in, and so the
+			 *	the value will always be less than
+			 *	or equal to zero.
+			 */
+			if (!fr_cond_assert(p >= in)) return 0;
+#endif
 			return in - p;
 		}
 
