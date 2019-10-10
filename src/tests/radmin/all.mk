@@ -49,22 +49,25 @@ $(OUTPUT)/%: $(DIR)/% ${BUILD_DIR}/bin/radmin test.radmin.radiusd_kill test.radm
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
 	${Q}echo "RADMIN-TEST $(TARGET)"; \
-	if ! $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) > $(FOUND) < $<; then\
+	if ! $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND); then\
 		echo "--------------------------------------------------"; \
 		tail -n 20 "$(RADMIN_RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADMIN_RADIUS_LOG)):"; \
 		echo "--------------------------------------------------"; \
-		echo "$(RADIUSD_RUN)"; \
-		echo "$(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) > $(FOUND) < $<"; \
+		echo "RADIUSD: $(RADIUSD_RUN)"; \
+		echo "RADMIN : $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND)"; \
 		$(MAKE) test.radmin.radiusd_kill; \
 		exit 1; \
 	fi; \
 	if ! cmp -s $(FOUND) $(EXPECTED); then \
 		echo "RADMIN FAILED $@"; \
-		echo "ERROR: It is expected to $(FOUND) be same as $(EXPECTED)"; \
-		echo "If you did some update on the Radmin code, please be sure to update the unit tests."; \
+		echo "RADIUSD: $(RADIUSD_RUN)"; \
+		echo "RADMIN : $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND)"; \
+		echo "ERROR: File $(FOUND) is not the same as $(EXPECTED)"; \
+		echo "If you did some update on the radmin code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)"; \
-		diff $(FOUND) $(EXPECTED); \
+		diff $(EXPECTED) $(FOUND); \
+		$(MAKE) test.radmin.radiusd_kill; \
 		exit 1; \
 	else \
 		touch $@;\
