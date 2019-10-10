@@ -2824,13 +2824,13 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 
 static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	return compile_load_balance_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE);
+	return compile_load_balance_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_LOAD_BALANCE);
 }
 
 
 static unlang_t *compile_redundant_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	return compile_load_balance_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_LOAD_BALANCE);
+	return compile_load_balance_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE);
 }
 
 static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
