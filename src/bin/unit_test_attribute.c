@@ -347,16 +347,6 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 		if (!c1) {
 		bad_input:
 			fr_strerror_printf("Invalid hex data starting at \"%s\"", p);
-#ifdef __clang_analyzer__
-			/*
-			 *	Clang analyzer fails to recognise
-			 *	that the p will always be greater
-			 *	than or equal to in, and so the
-			 *	the value will always be less than
-			 *	or equal to zero.
-			 */
-			if (!fr_cond_assert(p >= in)) return 0;
-#endif
 			return in - p;
 		}
 
@@ -372,7 +362,7 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 
 static ssize_t encode_data(char *p, uint8_t *output, size_t outlen)
 {
-	int length;
+	ssize_t slen;
 
 	if (!isspace((int) *p)) {
 		ERROR("Invalid character following attribute definition");
@@ -385,12 +375,12 @@ static ssize_t encode_data(char *p, uint8_t *output, size_t outlen)
 		int sublen;
 		char *q;
 
-		length = 0;
+		slen = 0;
 
 		do {
 			fr_skip_whitespace(p);
 			if (!*p) {
-				if (length == 0) {
+				if (slen == 0) {
 					ERROR("No data");
 					return 0;
 				}
@@ -401,27 +391,27 @@ static ssize_t encode_data(char *p, uint8_t *output, size_t outlen)
 			sublen = encode_data_tlv(p, &q, output, outlen);
 			if (sublen == 0) return 0;
 
-			length += sublen;
+			slen += sublen;
 			output += sublen;
 			outlen -= sublen;
 			p = q;
 		} while (*q);
 
-		return length;
+		return slen;
 	}
 
 	if (*p == '"') {
-		length = encode_data_string(p, output, outlen);
-		return length;
+		slen = encode_data_string(p, output, outlen);
+		return slen;
 	}
 
-	length = hex_to_bin(output, outlen, p, strlen(p));
-	if (length <= 0) {
+	slen = hex_to_bin(output, outlen, p, strlen(p));
+	if (slen <= 0) {
 		fr_strerror_printf_push("Empty hex string");
-		return length;
+		return slen;
 	}
 
-	return length;
+	return slen;
 }
 
 static int decode_attr(char *buffer, char **endptr)
