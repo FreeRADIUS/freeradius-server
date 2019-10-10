@@ -3668,13 +3668,11 @@ bool unlang_compile_is_keyword(const char *name)
 
 	if (!name || !*name) return false;
 
-	for (i = 1; compile_table[i].name != NULL; i++) {
-		if (strcmp(name, compile_table[i].name) == 0) return true;
-	}
+	for (i = UNLANG_TYPE_GROUP; i<= UNLANG_TYPE_POLICY; i++) {
+		if (!unlang_ops[i].name) continue;
 
-	if (strcmp(name, "break") == 0) return true;
-	if (strcmp(name, "detach") == 0) return true;
-	if (strcmp(name, "return") == 0) return true;
+		if (strcmp(name, unlang_ops[i].name) == 0) return true;
+	}
 
 	return false;
 }
