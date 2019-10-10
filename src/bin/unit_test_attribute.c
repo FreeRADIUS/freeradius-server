@@ -195,6 +195,8 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 /** Print hex string to buffer
  *
  */
+static inline size_t hex_print(char *out, size_t outlen, uint8_t const *in, size_t inlen) CC_HINT(nonnull);
+
 static inline size_t hex_print(char *out, size_t outlen, uint8_t const *in, size_t inlen)
 {
 	char	*p = out;
@@ -389,7 +391,7 @@ static ssize_t encode_data(char *p, uint8_t *output, size_t outlen)
 			}
 
 			sublen = encode_data_tlv(p, &q, output, outlen);
-			if (sublen == 0) return 0;
+			if (sublen <= 0) return 0;
 
 			slen += sublen;
 			output += sublen;
@@ -491,7 +493,7 @@ static int encode_tlv(char *buffer, uint8_t *output, size_t outlen)
 		length = encode_data(p, output + 2, outlen - 2);
 	}
 
-	if (length == 0) return 0;
+	if (length <= 0) return length;
 	if (length > (255 - 2)) {
 		ERROR("TLV data is too long");
 		return 0;
@@ -547,7 +549,7 @@ static int encode_evs(char *buffer, uint8_t *output, size_t outlen)
 	output[4] = attr;
 
 	length = encode_data(p, output + 5, outlen - 5);
-	if (length == 0) return 0;
+	if (length <= 0) return length;
 
 	return length + 5;
 }
@@ -569,7 +571,7 @@ static int encode_extended(char *buffer,
 	} else {
 		length = encode_data(p, output + 1, outlen - 1);
 	}
-	if (length == 0) return 0;
+	if (length <= 0) return length;
 	if (length > (255 - 3)) {
 		ERROR("Extended Attr data is too long");
 		return 0;
@@ -602,7 +604,7 @@ static int encode_long_extended(char *buffer,
 	} else {
 		length = encode_data(p, output + 4, outlen - 4);
 	}
-	if (length == 0) return 0;
+	if (length <= 0) return length;
 
 	total = 0;
 	while (1) {
@@ -664,7 +666,7 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 			return encode_long_extended(p + 1, output, outlen);
 		}
 	}
-	if (sublen == 0) return 0;
+	if (sublen <= 0) return sublen;
 	if (sublen > (255 -2)) {
 		ERROR("RFC Data is too long");
 		return 0;
