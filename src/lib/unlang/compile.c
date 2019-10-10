@@ -2109,7 +2109,6 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	FR_TOKEN type;
 	char const *name2;
 	bool had_seen_default = false;
-	unlang_t *c;
 	unlang_group_t *g;
 	ssize_t slen;
 
@@ -2195,8 +2194,6 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 			return NULL;
 		}
 	}
-
-	c = unlang_group_to_generic(g);
 
 	/*
 	 *	Fixup the template before compiling the children.
