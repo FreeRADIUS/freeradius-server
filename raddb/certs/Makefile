@@ -21,6 +21,12 @@ endif
 #
 include passwords.mk
 
+#
+#	Just to mute the WARNING messages complaining about the missing openssl.cnf
+#
+OPENSSL_CONF := /dev/null
+export OPENSSL_CONF
+
 ######################################################################
 #
 #  Make the necessary files, but not client certificates.
