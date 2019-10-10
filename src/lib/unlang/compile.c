@@ -78,7 +78,7 @@ typedef struct {
 static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 			       unlang_type_t mod_type, fr_cond_type_t cond_type);
 
-static char const modcall_spaces[] = "                                                                                                                                                                                                                                                                ";
+static char const unlang_spaces[] = "                                                                                                                                                                                                                                                                ";
 
 
 #if 0
@@ -889,64 +889,64 @@ static void unlang_dump(unlang_t *mc, int depth)
 		{
 			unlang_module_t *single = unlang_generic_to_module(inst);
 
-			DEBUG("%.*s%s", depth, modcall_spaces, single->module_instance->name);
+			DEBUG("%.*s%s", depth, unlang_spaces, single->module_instance->name);
 		}
 			break;
 
 #ifdef WITH_UNLANG
 		case UNLANG_TYPE_MAP:
 			g = unlang_generic_to_group(inst); /* FIXMAP: print option 3, too */
-			DEBUG("%.*s%s %s {", depth, modcall_spaces, unlang_ops[inst->type].name,
+			DEBUG("%.*s%s %s {", depth, unlang_spaces, unlang_ops[inst->type].name,
 			      cf_section_name2(g->cs));
 			goto print_map;
 
 		case UNLANG_TYPE_UPDATE:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, modcall_spaces, unlang_ops[inst->type].name);
+			DEBUG("%.*s%s {", depth, unlang_spaces, unlang_ops[inst->type].name);
 
 		print_map:
 			for (map = g->map; map != NULL; map = map->next) {
 				map_snprint(NULL, buffer, sizeof(buffer), map);
-				DEBUG("%.*s%s", depth + 1, modcall_spaces, buffer);
+				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 			}
 
-			DEBUG("%.*s}", depth, modcall_spaces);
+			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 
 		case UNLANG_TYPE_ELSE:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, modcall_spaces, unlang_ops[inst->type].name);
+			DEBUG("%.*s%s {", depth, unlang_spaces, unlang_ops[inst->type].name);
 			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, modcall_spaces);
+			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 
 		case UNLANG_TYPE_IF:
 		case UNLANG_TYPE_ELSIF:
 			g = unlang_generic_to_group(inst);
 			cond_snprint(NULL, buffer, sizeof(buffer), g->cond);
-			DEBUG("%.*s%s (%s) {", depth, modcall_spaces, unlang_ops[inst->type].name, buffer);
+			DEBUG("%.*s%s (%s) {", depth, unlang_spaces, unlang_ops[inst->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, modcall_spaces);
+			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 
 		case UNLANG_TYPE_SWITCH:
 		case UNLANG_TYPE_CASE:
 			g = unlang_generic_to_group(inst);
 			tmpl_snprint(NULL, buffer, sizeof(buffer), g->vpt);
-			DEBUG("%.*s%s %s {", depth, modcall_spaces, unlang_ops[inst->type].name, buffer);
+			DEBUG("%.*s%s %s {", depth, unlang_spaces, unlang_ops[inst->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, modcall_spaces);
+			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 
 		case UNLANG_TYPE_FOREACH:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s %s {", depth, modcall_spaces, unlang_ops[inst->type].name, inst->name);
+			DEBUG("%.*s%s %s {", depth, unlang_spaces, unlang_ops[inst->type].name, inst->name);
 			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, modcall_spaces);
+			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 
 		case UNLANG_TYPE_BREAK:
-			DEBUG("%.*sbreak", depth, modcall_spaces);
+			DEBUG("%.*sbreak", depth, unlang_spaces);
 			break;
 
 			/*
@@ -956,17 +956,17 @@ static void unlang_dump(unlang_t *mc, int depth)
 #endif
 		case UNLANG_TYPE_GROUP:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, modcall_spaces, unlang_ops[inst->type].name);
+			DEBUG("%.*s%s {", depth, unlang_spaces, unlang_ops[inst->type].name);
 			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, modcall_spaces);
+			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 
 		case UNLANG_TYPE_LOAD_BALANCE:
 		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, modcall_spaces, unlang_ops[inst->type].name);
+			DEBUG("%.*s%s {", depth, unlang_spaces, unlang_ops[inst->type].name);
 			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, modcall_spaces);
+			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 		}
 	}
@@ -979,7 +979,7 @@ static void unlang_dump(unlang_t *mc, int depth)
  * @param ctx data to pass to fixup function (currently unused).
  * @return 0 if valid else -1.
  */
-static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
+static int unlang_fixup_map(vp_map_t *map, UNUSED void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 
@@ -1570,7 +1570,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, modcall_fixup_map, NULL, 256);
+	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
 		cf_log_err(cs, "'map' sections cannot be empty");
@@ -3231,13 +3231,13 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	return c;
 }
 
-typedef unlang_t *(*modcall_compile_function_t)(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs);
+typedef unlang_t *(*unlang_op_compile_t)(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs);
 typedef struct {
 	char const			*name;
-	modcall_compile_function_t	compile;
-} modcall_compile_t;
+	unlang_op_compile_t		compile;
+} unlang_compile_table_t;
 
-static modcall_compile_t compile_table[] = {
+static unlang_compile_table_t compile_table[] = {
 	{ "group",		compile_group },
 	{ "redundant",		compile_redundant },
 	{ "load-balance",	compile_load_balance },
