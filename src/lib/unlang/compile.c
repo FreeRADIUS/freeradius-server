@@ -1483,8 +1483,7 @@ static int compile_map_name(unlang_group_t *g)
 	return 0;
 }
 
-static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
-			     CONF_SECTION *cs, UNUSED unlang_type_t mod_type)
+static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int			rcode;
 	unlang_group_t		*g;
@@ -1609,8 +1608,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 }
 
-static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
-				CONF_SECTION *cs, UNUSED unlang_type_t mod_type)
+static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int			rcode;
 	unlang_group_t		*g;
@@ -1662,8 +1660,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	return c;
 }
 
-static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx,
-				CONF_SECTION *cs, UNUSED unlang_type_t mod_type)
+static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int			rcode;
 	unlang_group_t		*g;
@@ -2044,8 +2041,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 /*
  *	Generic "compile a section with more unlang inside of it".
  */
-static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       unlang_type_t mod_type)
+static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				 unlang_type_t mod_type)
 {
 	unlang_group_t *g;
 	unlang_t *c;
@@ -2067,8 +2064,13 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	return compile_children(g, parent, unlang_ctx);
 }
 
-static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				unlang_type_t mod_type)
+
+static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	return compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_GROUP);
+}
+
+static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	CONF_ITEM *ci;
 	FR_TOKEN type;
@@ -2092,7 +2094,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, mod_type);
+	g = group_allocate(parent, cs, UNLANG_TYPE_SWITCH);
 	if (!g) return NULL;
 
 	/*
@@ -2174,8 +2176,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	return compile_children(g, parent, unlang_ctx);
 }
 
-static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			      unlang_type_t mod_type)
+static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int			i;
 	char const		*name2;
@@ -2274,7 +2275,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 	} /* else it's a default 'case' statement */
 
-	c = compile_group(parent, unlang_ctx, cs, mod_type);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_CASE);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
@@ -2282,7 +2283,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 	/*
 	 *	The interpretor expects this to be NULL for the
-	 *	default case.  compile_group sets it to name2,
+	 *	default case.  compile_section sets it to name2,
 	 *	unless name2 is NULL, in which case it sets it to name1.
 	 */
 	c->name = name2;
@@ -2307,8 +2308,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	return c;
 }
 
-static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				 unlang_type_t mod_type)
+static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	FR_TOKEN		type;
 	char const		*name2;
@@ -2381,7 +2381,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	vpt->tmpl_num = NUM_ALL;
 
-	c = compile_group(parent, unlang_ctx, cs, mod_type);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_FOREACH);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
@@ -2496,8 +2496,8 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 	return c;
 }
 
-static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			    unlang_type_t mod_type)
+static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				       unlang_type_t mod_type)
 {
 	unlang_t *c;
 	unlang_group_t *g;
@@ -2525,7 +2525,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	 */
 	if (!fr_cond_walk(cond, pass2_cond_callback, unlang_ctx)) return NULL;
 
-	c = compile_group(parent, unlang_ctx, cs, mod_type);
+	c = compile_section(parent, unlang_ctx, cs, mod_type);
 	if (!c) return NULL;
 
 	c->name = unlang_ops[c->type].name;
@@ -2562,8 +2562,13 @@ static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_typ
 	return 1;
 }
 
-static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       unlang_type_t mod_type)
+static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	return compile_if_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_IF);
+}
+
+
+static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int rcode;
 
@@ -2571,36 +2576,35 @@ static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	 *	This is always a syntax error.
 	 */
 	if (!cf_section_name2(cs)) {
-		cf_log_err(cs, "'%s' without condition", unlang_ops[mod_type].name);
+		cf_log_err(cs, "'elsif' without condition");
 		return NULL;
 	}
 
-	rcode = previous_if(cs, parent, mod_type);
+	rcode = previous_if(cs, parent, UNLANG_TYPE_ELSIF);
 	if (rcode < 0) return NULL;
 
-	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, mod_type, COND_TYPE_TRUE);
+	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_ELSIF, COND_TYPE_TRUE);
 
-	return compile_if(parent, unlang_ctx, cs, mod_type);
+	return compile_if_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_ELSIF);
 }
 
-static unlang_t *compile_else(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			      unlang_type_t mod_type)
+static unlang_t *compile_else(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int rcode;
 	unlang_t *c;
 
 	if (cf_section_name2(cs)) {
-		cf_log_err(cs, "'%s' cannot have a condition", unlang_ops[mod_type].name);
+		cf_log_err(cs, "'else' cannot have a condition");
 		return NULL;
 	}
 
-	rcode = previous_if(cs, parent, mod_type);
+	rcode = previous_if(cs, parent, UNLANG_TYPE_ELSE);
 	if (rcode < 0) return NULL;
 
 	if (rcode == 0) {
-		c = compile_empty(parent, unlang_ctx, cs, mod_type, COND_TYPE_TRUE);
+		c = compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_ELSE, COND_TYPE_TRUE);
 	} else {
-		c = compile_group(parent, unlang_ctx, cs, mod_type);
+		c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_ELSE);
 	}
 
 	if (!c) return c;
@@ -2663,8 +2667,7 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 }
 
 
-static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				   unlang_type_t mod_type)
+static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	char const *name2;
 	unlang_t *c;
@@ -2673,7 +2676,7 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	 *	No children?  Die!
 	 */
 	if (!cf_item_next(cs, NULL)) {
-		cf_log_err(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
+		cf_log_err(cs, "'redundant' sections cannot be empty");
 		return NULL;
 	}
 
@@ -2681,7 +2684,7 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 		return NULL;
 	}
 
-	c = compile_group(parent, unlang_ctx, cs, mod_type);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_REDUNDANT);
 	if (!c) return NULL;
 
 	/*
@@ -2698,7 +2701,7 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	 */
 	if (name2 &&
 	    (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "instantiate") != 0)) {
-		cf_log_err(cs, "%s sections cannot have a name", unlang_ops[mod_type].name);
+		cf_log_err(cs, "'redundant' sections cannot have a name");
 		return NULL;
 	}
 
@@ -2708,8 +2711,8 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	return c;
 }
 
-static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				      unlang_type_t mod_type)
+static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+						 unlang_type_t mod_type)
 {
 	char const	*name2;
 	unlang_t	*c;
@@ -2735,7 +2738,7 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 		return NULL;
 	}
 
-	c = compile_group(parent, unlang_ctx, cs, mod_type);
+	c = compile_section(parent, unlang_ctx, cs, mod_type);
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
@@ -2813,8 +2816,18 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 	return c;
 }
 
-static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  unlang_type_t mod_type)
+static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	return compile_load_balance_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE);
+}
+
+
+static unlang_t *compile_redundant_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	return compile_load_balance_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_LOAD_BALANCE);
+}
+
+static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	unlang_t *c;
 	char const *name2;
@@ -2826,7 +2839,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	 *	No children?  Die!
 	 */
 	if (!cf_item_next(cs, NULL)) {
-		cf_log_err(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
+		cf_log_err(cs, "parallel sections cannot be empty");
 		return NULL;
 	}
 
@@ -2851,7 +2864,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 	}
 
-	c = compile_group(parent, unlang_ctx, cs, mod_type);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_PARALLEL);
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
@@ -2864,8 +2877,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 }
 
 
-static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				    unlang_type_t mod_type)
+static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	char const		*name2;
 	unlang_t		*c;
@@ -2880,7 +2892,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	char			buffer2[64];
 	char			buffer3[64];
 
-	g = group_allocate(parent, cs, mod_type);
+	g = group_allocate(parent, cs, UNLANG_TYPE_SUBREQUEST);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -3020,8 +3032,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 }
 
 
-static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			      unlang_type_t mod_type)
+static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	unlang_group_t		*g;
 	unlang_t		*c;
@@ -3042,7 +3053,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, mod_type);
+	g = group_allocate(parent, cs, UNLANG_TYPE_CALL);
 	if (!g) return NULL;
 
 	server_cs = virtual_server_find(server);
@@ -3232,12 +3243,10 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	return c;
 }
 
-typedef unlang_t *(*modcall_compile_function_t)(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-						unlang_type_t mod_type);
+typedef unlang_t *(*modcall_compile_function_t)(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs);
 typedef struct {
 	char const			*name;
 	modcall_compile_function_t	compile;
-	unlang_type_t			mod_type;
 	bool				require_children;
 } modcall_compile_t;
 
@@ -3245,25 +3254,25 @@ typedef struct {
 #define REQUIRE_CHILDREN	(true)
 
 static modcall_compile_t compile_table[] = {
-	{ "group",		compile_group, UNLANG_TYPE_GROUP, REQUIRE_CHILDREN },
-	{ "redundant",		compile_redundant, UNLANG_TYPE_REDUNDANT, REQUIRE_CHILDREN },
-	{ "load-balance",	compile_load_balance, UNLANG_TYPE_LOAD_BALANCE, REQUIRE_CHILDREN },
-	{ "redundant-load-balance", compile_load_balance, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE, REQUIRE_CHILDREN },
+	{ "group",		compile_group, REQUIRE_CHILDREN },
+	{ "redundant",		compile_redundant, REQUIRE_CHILDREN },
+	{ "load-balance",	compile_load_balance, REQUIRE_CHILDREN },
+	{ "redundant-load-balance", compile_redundant_load_balance, REQUIRE_CHILDREN },
 
-	{ "case",		compile_case, UNLANG_TYPE_CASE, ALLOW_EMPTY_GROUP },
-	{ "foreach",		compile_foreach, UNLANG_TYPE_FOREACH, REQUIRE_CHILDREN },
-	{ "if",			compile_if, UNLANG_TYPE_IF, ALLOW_EMPTY_GROUP },
-	{ "elsif",		compile_elsif, UNLANG_TYPE_ELSIF, ALLOW_EMPTY_GROUP },
-	{ "else",		compile_else, UNLANG_TYPE_ELSE, REQUIRE_CHILDREN },
-	{ "filter",		compile_filter, UNLANG_TYPE_FILTER, REQUIRE_CHILDREN },
-	{ "update",		compile_update, UNLANG_TYPE_UPDATE, REQUIRE_CHILDREN },
-	{ "map",		compile_map, UNLANG_TYPE_MAP, REQUIRE_CHILDREN },
-	{ "switch",		compile_switch, UNLANG_TYPE_SWITCH, REQUIRE_CHILDREN },
-	{ "parallel",		compile_parallel, UNLANG_TYPE_PARALLEL, REQUIRE_CHILDREN },
-	{ "subrequest",		compile_subrequest, UNLANG_TYPE_SUBREQUEST, REQUIRE_CHILDREN },
-	{ "call",		compile_call, UNLANG_TYPE_CALL, ALLOW_EMPTY_GROUP },
+	{ "case",		compile_case, ALLOW_EMPTY_GROUP },
+	{ "foreach",		compile_foreach, REQUIRE_CHILDREN },
+	{ "if",			compile_if, ALLOW_EMPTY_GROUP },
+	{ "elsif",		compile_elsif, ALLOW_EMPTY_GROUP },
+	{ "else",		compile_else, REQUIRE_CHILDREN },
+	{ "filter",		compile_filter, REQUIRE_CHILDREN },
+	{ "update",		compile_update, REQUIRE_CHILDREN },
+	{ "map",		compile_map, REQUIRE_CHILDREN },
+	{ "switch",		compile_switch, REQUIRE_CHILDREN },
+	{ "parallel",		compile_parallel, REQUIRE_CHILDREN },
+	{ "subrequest",		compile_subrequest, REQUIRE_CHILDREN },
+	{ "call",		compile_call, ALLOW_EMPTY_GROUP },
 
-	{ NULL, NULL, UNLANG_TYPE_NULL, false }
+	{ NULL, NULL, false }
 };
 
 
@@ -3321,8 +3330,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 					return NULL;
 				}
 
-				return compile_table[i].compile(parent, unlang_ctx, cs,
-								compile_table[i].mod_type);
+				return compile_table[i].compile(parent, unlang_ctx, cs);
 			}
 		}
 
@@ -3332,7 +3340,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		if (name2 && (virtual_server_section_component(&component, modrefname, name2) == 0)) {
 			UPDATE_CTX2;
 
-			c = compile_group(parent, &unlang_ctx2, cs, UNLANG_TYPE_GROUP);
+			c = compile_section(parent, &unlang_ctx2, cs, UNLANG_TYPE_GROUP);
 			if (!c) return NULL;
 
 			c->name = modrefname;
@@ -3528,7 +3536,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			 *
 			 *	group foo { ...
 			 */
-			c = compile_group(parent, &unlang_ctx2, subcs,
+			c = compile_section(parent, &unlang_ctx2, subcs,
 					  policy ? UNLANG_TYPE_POLICY : UNLANG_TYPE_GROUP);
 			if (!c) return NULL;
 
@@ -3648,15 +3656,15 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 		rules = &my_rules;
 	}
 
-	c = compile_group(NULL,
-			  &(unlang_compile_t){
-			  	.component = component,
-			  	.section_name1 = cf_section_name1(cs),
-			  	.section_name2 = cf_section_name2(cs),
-			  	.actions = &defaultactions[component],
-				.rules = rules
-			  },
-			  cs, UNLANG_TYPE_GROUP);
+	c = compile_section(NULL,
+			    &(unlang_compile_t){
+				    .component = component,
+					    .section_name1 = cf_section_name1(cs),
+					    .section_name2 = cf_section_name2(cs),
+					    .actions = &defaultactions[component],
+					    .rules = rules
+					    },
+			    cs, UNLANG_TYPE_GROUP);
 	if (!c) return -1;
 
 	unlang_group_name_from_cs(unlang_generic_to_group(c), cs);
