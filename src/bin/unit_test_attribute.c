@@ -183,7 +183,7 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 	return 0;
 }
 
-static char proto_name_prev[128];
+static char		proto_name_prev[128];
 static dl_t		*dl;
 static dl_loader_t	*dl_loader;
 static const char	*process_filename;
@@ -246,26 +246,26 @@ static inline size_t strerror_concat(char *out, size_t outlen)
  *
  **********************************************************************/
 
-static int encode_tlv(char *buffer, uint8_t *output, size_t outlen);
+static ssize_t encode_tlv(char *buffer, uint8_t *output, size_t outlen);
 
 static char const hextab[] = "0123456789abcdef";
 
-static int encode_data_string(char *buffer, uint8_t *output, size_t outlen)
+static ssize_t encode_data_string(char *buffer, uint8_t *output, size_t outlen)
 {
-	int length = 0;
+	ssize_t slen = 0;
 	char *p;
 
 	p = buffer + 1;
 
 	while (*p && (outlen > 0)) {
 		if (*p == '"') {
-			return length;
+			return slen;
 		}
 
 		if (*p != '\\') {
 			*(output++) = *(p++);
 			outlen--;
-			length++;
+			slen++;
 			continue;
 		}
 
@@ -288,19 +288,18 @@ static int encode_data_string(char *buffer, uint8_t *output, size_t outlen)
 		}
 
 		outlen--;
-		length++;
+		slen++;
 	}
 
 	ERROR("String is not terminated");
 	return 0;
 }
 
-static int encode_data_tlv(char *buffer, char **endptr,
-			   uint8_t *output, size_t outlen)
+static ssize_t encode_data_tlv(char *buffer, char **endptr, uint8_t *output, size_t outlen)
 {
-	int depth = 0;
-	int length;
-	char *p;
+	int		depth = 0;
+	ssize_t		slen;
+	char		*p;
 
 	for (p = buffer; *p != '\0'; p++) {
 		if (*p == '{') depth++;
@@ -321,10 +320,10 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	p = buffer + 1;
 	fr_skip_whitespace(p);
 
-	length = encode_tlv(p, output, outlen);
-	if (length <= 0) return length;
+	slen = encode_tlv(p, output, outlen);
+	if (slen <= 0) return 0;
 
-	return length;
+	return slen;
 }
 
 static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
@@ -374,7 +373,7 @@ static ssize_t encode_data(char *p, uint8_t *output, size_t outlen)
 	fr_skip_whitespace(p);
 
 	if (*p == '{') {
-		int	sublen;
+		size_t	sublen;
 		char	*q;
 
 		slen = 0;
@@ -473,11 +472,11 @@ static int decode_vendor(char *buffer, char **endptr)
 	return (int) vendor;
 }
 
-static int encode_tlv(char *buffer, uint8_t *output, size_t outlen)
+static ssize_t encode_tlv(char *buffer, uint8_t *output, size_t outlen)
 {
-	int attr;
-	int length;
-	char *p;
+	int	attr;
+	ssize_t slen;
+	char	*p;
 
 	attr = decode_attr(buffer, &p);
 	if (attr == 0) return 0;
@@ -487,28 +486,28 @@ static int encode_tlv(char *buffer, uint8_t *output, size_t outlen)
 
 	if (*p == '.') {
 		p++;
-		length = encode_tlv(p, output + 2, outlen - 2);
+		slen = encode_tlv(p, output + 2, outlen - 2);
 
 	} else {
-		length = encode_data(p, output + 2, outlen - 2);
+		slen = encode_data(p, output + 2, outlen - 2);
 	}
 
-	if (length <= 0) return length;
-	if (length > (255 - 2)) {
+	if (slen <= 0) return slen;
+	if (slen > (255 - 2)) {
 		ERROR("TLV data is too long");
 		return 0;
 	}
 
-	output[1] += length;
+	output[1] += slen;
 
-	return length + 2;
+	return slen + 2;
 }
 
-static int encode_vsa(char *buffer, uint8_t *output, size_t outlen)
+static ssize_t encode_vsa(char *buffer, uint8_t *output, size_t outlen)
 {
-	int vendor;
-	int length;
-	char *p;
+	int	vendor;
+	ssize_t	slen;
+	char	*p;
 
 	vendor = decode_vendor(buffer, &p);
 	if (vendor == 0) return 0;
@@ -518,23 +517,22 @@ static int encode_vsa(char *buffer, uint8_t *output, size_t outlen)
 	output[2] = (vendor >> 8) & 0xff;
 	output[3] = vendor & 0xff;
 
-	length = encode_tlv(p, output + 4, outlen - 4);
-	if (length <= 0) return length;
-	if (length > (255 - 6)) {
+	slen = encode_tlv(p, output + 4, outlen - 4);
+	if (slen <= 0) return slen;
+	if (slen > (255 - 6)) {
 		ERROR("VSA data is too long");
 		return 0;
 	}
 
-
-	return length + 4;
+	return slen + 4;
 }
 
-static int encode_evs(char *buffer, uint8_t *output, size_t outlen)
+static ssize_t encode_evs(char *buffer, uint8_t *output, size_t outlen)
 {
-	int vendor;
-	int attr;
-	int length;
-	char *p;
+	int	vendor;
+	int	attr;
+	ssize_t	slen;
+	char	*p;
 
 	vendor = decode_vendor(buffer, &p);
 	if (vendor == 0) return 0;
@@ -548,18 +546,17 @@ static int encode_evs(char *buffer, uint8_t *output, size_t outlen)
 	output[3] = vendor & 0xff;
 	output[4] = attr;
 
-	length = encode_data(p, output + 5, outlen - 5);
-	if (length <= 0) return length;
+	slen = encode_data(p, output + 5, outlen - 5);
+	if (slen <= 0) return slen;
 
-	return length + 5;
+	return slen + 5;
 }
 
-static int encode_extended(char *buffer,
-			   uint8_t *output, size_t outlen)
+static ssize_t encode_extended(char *buffer, uint8_t *output, size_t outlen)
 {
-	int attr;
-	int length;
-	char *p;
+	int	attr;
+	ssize_t	slen;
+	char	*p;
 
 	attr = decode_attr(buffer, &p);
 	if (attr == 0) return 0;
@@ -567,25 +564,24 @@ static int encode_extended(char *buffer,
 	output[0] = attr;
 
 	if (attr == 26) {
-		length = encode_evs(p, output + 1, outlen - 1);
+		slen = encode_evs(p, output + 1, outlen - 1);
 	} else {
-		length = encode_data(p, output + 1, outlen - 1);
+		slen = encode_data(p, output + 1, outlen - 1);
 	}
-	if (length <= 0) return length;
-	if (length > (255 - 3)) {
+	if (slen <= 0) return slen;
+	if (slen > (255 - 3)) {
 		ERROR("Extended Attr data is too long");
 		return 0;
 	}
 
-	return length + 1;
+	return slen + 1;
 }
 
-static int encode_long_extended(char *buffer,
-				 uint8_t *output, size_t outlen)
+static ssize_t encode_long_extended(char *buffer, uint8_t *output, size_t outlen)
 {
-	int attr;
-	int length, total;
-	char *p;
+	int	attr;
+	ssize_t slen, total;
+	char	*p;
 
 	attr = decode_attr(buffer, &p);
 	if (attr == 0) return 0;
@@ -596,29 +592,29 @@ static int encode_long_extended(char *buffer,
 	output[3] = 0;
 
 	if (attr == 26) {
-		length = encode_evs(p, output + 4, outlen - 4);
-		if (length <= 0) return length;
+		slen = encode_evs(p, output + 4, outlen - 4);
+		if (slen <= 0) return slen;
 
 		output[1] += 5;
-		length -= 5;
+		slen -= 5;
 	} else {
-		length = encode_data(p, output + 4, outlen - 4);
+		slen = encode_data(p, output + 4, outlen - 4);
 	}
-	if (length <= 0) return length;
+	if (slen <= 0) return slen;
 
 	total = 0;
 	while (1) {
 		int sublen = 255 - output[1];
 
-		if (length <= sublen) {
-			output[1] += length;
+		if (slen <= sublen) {
+			output[1] += slen;
 			total += output[1];
 			break;
 		}
 
-		length -= sublen;
+		slen -= sublen;
 
-		memmove(output + 255 + 4, output + 255, length);
+		memmove(output + 255 + 4, output + 255, slen);
 		memcpy(output + 255, output, 4);
 
 		output[1] = 255;
@@ -632,16 +628,16 @@ static int encode_long_extended(char *buffer,
 	return total;
 }
 
-static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
+static ssize_t encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 {
-	int attr;
-	int length, sublen;
-	char *p;
+	int	attr;
+	ssize_t slen, sublen;
+	char	*p;
 
 	attr = decode_attr(buffer, &p);
 	if (attr == 0) return 0;
 
-	length = 2;
+	slen = 2;
 	output[0] = attr;
 	output[1] = 2;
 
@@ -673,7 +669,7 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 	}
 
 	output[1] += sublen;
-	return length + sublen;
+	return slen + sublen;
 }
 
 
