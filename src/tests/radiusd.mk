@@ -64,7 +64,7 @@ $(TEST).radiusd_kill: | ${2}
 #
 ${2}/radiusd.pid: ${2}
 	$$(eval RADIUSD_BIN := $(JLIBTOOL) --mode=execute $$(BIN_PATH)/radiusd)
-	$$(eval RADIUSD_RUN := TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxxl ${2}/radiusd.log -d $(DIR)/config -n ${1} -D "share/dictionary/")
+	$$(eval RADIUSD_RUN := TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n ${1} -D share/dictionary/ -l ${2}/radiusd.log)
 	${Q}rm -f ${2}/radiusd.log ${2}/radiusd.log
 	${Q}echo "Starting RADIUSD test server for (target=$(TEST),port=$(PORT),config_dir=$(DIR)/config,config_name=${1})"
 	${Q}if ! $$(RADIUSD_RUN); then \
