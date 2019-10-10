@@ -417,6 +417,7 @@ static unlang_t subrequest_instruction = {
  *
  * @param[in] out		Where to write the result of the subrequest.
  * @param[in] child		to push.
+ * @param[in] session		control values.  Whether we restore/store session info.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  */
