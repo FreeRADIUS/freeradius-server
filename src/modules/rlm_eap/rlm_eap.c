@@ -171,6 +171,7 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 
 		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 
+		talloc_free(our_name);
 	}
 		return 0;
 
