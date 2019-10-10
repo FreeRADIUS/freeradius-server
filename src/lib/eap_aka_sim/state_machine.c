@@ -3401,7 +3401,7 @@ static rlm_rcode_t common_failure_notification(void *instance, UNUSED void *thre
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
-	rad_assert(subtype_vp);
+	if (!subtype_vp) return RLM_MODULE_FAIL;
 #endif
 	switch (subtype_vp->vp_uint16) {
 	case FR_SUBTYPE_VALUE_AKA_SIM_NOTIFICATION:
@@ -3471,7 +3471,7 @@ static rlm_rcode_t common_reauthentication(void *instance, UNUSED void *thread, 
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
-	rad_assert(subtype_vp);
+	if (!subtype_vp) return RLM_MODULE_FAIL;
 #endif
 	/*
 	 *	These aren't allowed in Reauthentication responses as they don't apply:
@@ -3544,7 +3544,7 @@ static rlm_rcode_t aka_challenge(void *instance, UNUSED void *thread, REQUEST *r
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
-	rad_assert(subtype_vp);
+	if (!subtype_vp) return RLM_MODULE_FAIL;
 #endif
 	switch (subtype_vp->vp_uint16) {
 	case FR_SUBTYPE_VALUE_AKA_CHALLENGE:
@@ -3665,7 +3665,7 @@ static rlm_rcode_t sim_challenge(void *instance, UNUSED void *thread, REQUEST *r
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
-	rad_assert(subtype_vp);
+	if (!subtype_vp) return RLM_MODULE_FAIL;
 #endif
 	switch (subtype_vp->vp_uint16) {
 	case FR_SUBTYPE_VALUE_SIM_CHALLENGE:
@@ -3731,7 +3731,7 @@ static rlm_rcode_t aka_identity(void *instance, UNUSED void *thread, REQUEST *re
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
-	rad_assert(subtype_vp);
+	if (!subtype_vp) return RLM_MODULE_FAIL;
 #endif
 
 	switch (subtype_vp->vp_uint16) {
@@ -3839,7 +3839,7 @@ static rlm_rcode_t sim_start(void *instance, UNUSED void *thread, REQUEST *reque
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
-	rad_assert(subtype_vp);
+	if (!subtype_vp) return RLM_MODULE_FAIL;
 #endif
 
 	switch (subtype_vp->vp_uint16) {
