@@ -1281,6 +1281,26 @@ static size_t command_exit(command_result_t *result, UNUSED command_ctx_t *cc,
 	RETURN_EXIT(atoi(in));
 }
 
+/** Compare the data buffer to an expected value
+ *
+ *  Note that we fail if the string DOES match!  This command is used
+ *  as a place-holder for tests which SHOULD work in the future, but
+ *  which do not work right no.  It allows us to store the expected
+ *  output in a test that isn't commented out.
+ */
+static size_t command_fail(command_result_t *result, UNUSED command_ctx_t *cc,
+			   char *data, size_t data_used, char *in, size_t inlen)
+{
+	if (strcmp(in, data) == 0) RETURN_MISMATCH(in, inlen, data, data_used);
+
+	/*
+	 *	We didn't actually write anything, but this
+	 *	keeps the contents of the data buffer around
+	 *	for the next command to operate on.
+	 */
+	RETURN_OK(data_used);
+}
+
 /** Dynamically load a protocol library
  *
  */
@@ -1540,6 +1560,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_exit,
 					.usage = "exit[ <num>]",
 					.description = "Exit with the specified error number.  If no <num> is provided, process will exit with 0"
+				}},
+	{ "fail",		&(command_entry_t){
+					.func = command_fail,
+					.usage = "fail <string>",
+					.description = "The expected output should NOT match the string"
 				}},
 	{ "load ",		&(command_entry_t){
 					.func = command_proto_load,
