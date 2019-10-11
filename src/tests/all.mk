@@ -103,7 +103,6 @@ OUTPUT := $$(OUTPUT.$(TEST))
 #
 #  Create the output directory
 #
-.PHONY: $$(OUTPUT.$(TEST))
 $$(OUTPUT.$(TEST)):
 	$${Q}mkdir -p $$@
 
