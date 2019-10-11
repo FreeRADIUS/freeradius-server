@@ -25,9 +25,6 @@ export FR_LIBRARY_PATH
 #
 RADDB_PATH := $(top_builddir)/raddb
 
-PORT := 12350
-SECRET := testing123
-
 EAP_TARGETS	:= $(filter rlm_eap_%,$(ALL_TGTS))
 EAP_TYPES	:= $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
 
