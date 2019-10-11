@@ -41,7 +41,6 @@ include Make.inc
 define RADIUSD_SERVICE
 .PHONY: $(TEST).radiusd_kill
 $(TEST).radiusd_kill: | ${2}
-	@echo "Clean up ${2}/radiusd.pid"
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
 		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 		    rm -f ${2}/radiusd.pid; \
@@ -63,17 +62,14 @@ $(TEST).radiusd_kill: | ${2}
 #	Start radiusd instance
 #
 ${2}/radiusd.pid: ${2}
-	$$(eval RADIUSD_BIN := $(JLIBTOOL) --mode=execute $$(BIN_PATH)/radiusd)
+	$$(eval RADIUSD_BIN := $(JLIBTOOL) --silent --mode=execute $$(BIN_PATH)/radiusd)
 	$$(eval RADIUSD_RUN := TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n ${1} -D share/dictionary/ -l ${2}/radiusd.log)
 	${Q}rm -f ${2}/radiusd.log ${2}/radiusd.log
-	${Q}echo "Starting RADIUSD test server for (target=$(TEST),port=$(PORT),config_dir=$(DIR)/config,config_name=${1})"
 	${Q}if ! $$(RADIUSD_RUN); then \
 		echo "FAILED STARTING RADIUSD"; \
 		tail -n 40 "${2}/radiusd.log"; \
 		echo "Last entries in server log (${2}/radiusd.log):"; \
 		echo $$(RADIUSD_RUN); \
-	else \
-		echo "ok"; \
 	fi
 
 $(TEST).radiusd_start: ${2}/radiusd.pid
