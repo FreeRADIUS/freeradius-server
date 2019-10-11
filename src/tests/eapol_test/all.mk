@@ -53,12 +53,6 @@ endif
 ifneq "$(EAPOL_TEST)" ""
 
 #
-#  Build snakoil certs if they don't exist
-#
-$(RADDB_PATH)/certs/%:
-	${Q}make -C $(dir $@) 2>&1
-
-#
 #  We want the tests to depend on the method configuration used by the
 #  server, too.
 #
@@ -81,28 +75,29 @@ $(IGNORED_EAP_TYPES):
 #
 #  Separate the dependencies here just to keep a bit clear.
 #
-test.eap.check: $(RADDB_PATH)/certs/server.pem $(IGNORED_EAP_TYPES) | $(EAPOL_METH_FILES) $(OUTPUT)
+test.eap.check: $(IGNORED_EAP_TYPES) | $(EAPOL_METH_FILES) $(OUTPUT) $(GENERATED_CERT_FILES)
 
 #
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
-$(OUTPUT)/%.ok: $(DIR)/%.conf | test.eap.radiusd_kill test.eap.check test.eap.radiusd_start
+$(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES) test.eap.radiusd_kill test.eap.radiusd_start
 	$(eval OUT := $(patsubst %.conf,%.log,$@))
+	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	${Q}echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
-	${Q}if ( grep 'key_mgmt=NONE' '$<' > /dev/null && $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) -n > $(OUT) 2>&1 ) || \
-		$(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) > $(OUT) 2>&1; then\
-		touch $@; \
-	else \
-		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$@)):"; \
-		tail -n 40 "$(patsubst %.conf,%.log,$@)"; \
-		echo "--------------------------------------------------"; \
-		tail -n 40 "$(RADIUS_LOG)"; \
-		echo "Last entries in server log ($(RADIUS_LOG)):"; \
-		echo "--------------------------------------------------"; \
-		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)"; \
-		$(MAKE) test.eap.radiusd_kill; \
+	${Q}if ! $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) $(KEY) > $(OUT) 2>&1; then	\
+		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$@)):";	\
+		tail -n 40 "$(patsubst %.conf,%.log,$@)";				\
+		echo "--------------------------------------------------";		\
+		tail -n 40 "$(RADIUS_LOG)";						\
+		echo "Last entries in server log ($(RADIUS_LOG)):";			\
+		echo "--------------------------------------------------";		\
+		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";			\
+		$(MAKE) test.eap.radiusd_kill;						\
+		echo "RADIUSD:   $(RADIUSD_RUN)";					\
+		echo "EAPOL  :   $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";	\
 		exit 1;\
 	fi
+	${Q}touch $@
 
 $(TEST): $(EAPOL_OK_FILES)
 	${Q}$(MAKE) test.eap.radiusd_kill
