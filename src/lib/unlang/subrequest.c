@@ -392,20 +392,22 @@ void unlang_subrequest_free(REQUEST **child)
 	*child = NULL;
 }
 
-static unlang_t subrequest_instruction = {
-	.type = UNLANG_TYPE_SUBREQUEST,
-	.name = "subrequest",
-	.debug_name = "subrequest",
-	.actions = {
-		[RLM_MODULE_REJECT]	= 0,
-		[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-		[RLM_MODULE_OK]		= 0,
-		[RLM_MODULE_HANDLED]	= 0,
-		[RLM_MODULE_INVALID]	= 0,
-		[RLM_MODULE_DISALLOW]	= 0,
-		[RLM_MODULE_NOTFOUND]	= 0,
-		[RLM_MODULE_NOOP]	= 0,
-		[RLM_MODULE_UPDATED]	= 0
+static unlang_group_t subrequest_instruction = {
+	.self = {
+		.type = UNLANG_TYPE_SUBREQUEST,
+		.name = "subrequest",
+		.debug_name = "subrequest",
+		.actions = {
+			[RLM_MODULE_REJECT]	= 0,
+			[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+			[RLM_MODULE_OK]		= 0,
+			[RLM_MODULE_HANDLED]	= 0,
+			[RLM_MODULE_INVALID]	= 0,
+			[RLM_MODULE_DISALLOW]	= 0,
+			[RLM_MODULE_NOTFOUND]	= 0,
+			[RLM_MODULE_NOOP]	= 0,
+			[RLM_MODULE_UPDATED]	= 0
+		},
 	},
 };
 
@@ -434,7 +436,7 @@ void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child,
 	/*
 	 *	Push a new subrequest frame onto the stack
 	 */
-	unlang_interpret_push(child->parent, &subrequest_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	unlang_interpret_push(child->parent, &subrequest_instruction.self, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
 	frame = &stack->frame[stack->depth];
 
 	/*
