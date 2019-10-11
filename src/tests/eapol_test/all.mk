@@ -16,10 +16,16 @@ BIN_PATH := $(BUILD_DIR)/bin/local
 RADDB_PATH := $(top_builddir)/raddb
 
 #
+#	Disabled modules.
+#
+IGNORED_EAP_TYPES := peap ttls
+
+#
 #   This ensures that FreeRADIUS uses modules from the build directory
 #
 EAP_TARGETS      := $(filter rlm_eap_%,$(ALL_TGTS))
-EAP_TYPES        := $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
+EAP_TYPES_LIST   := $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
+EAP_TYPES        := $(filter-out $(IGNORED_EAP_TYPES),$(EAP_TYPES_LIST))
 EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(DIR)/$(x)*.conf))
 EAPOL_OK_FILES  := $(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,$(EAPOL_TEST_FILES))
 EAPOL_METH_FILES := $(addprefix $(CONFIG_PATH)/methods-enabled/,$(EAP_TYPES))
@@ -67,14 +73,20 @@ $(foreach x,$(EAPOL_TEST_FILES),$(eval \
 ))
 
 #
+#	Print the disabled list.
+#
+$(IGNORED_EAP_TYPES):
+	${Q}echo "EAPOL_TEST $@ (Skipping, reenable by removing <$@> from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk)"
+
+#
 #  Separate the dependencies here just to keep a bit clear.
 #
-test.eap.depends: $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES) $(OUTPUT)
+test.eap.check: $(RADDB_PATH)/certs/server.pem $(IGNORED_EAP_TYPES) | $(EAPOL_METH_FILES) $(OUTPUT)
 
 #
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
-$(OUTPUT)/%.ok: $(DIR)/%.conf | test.eap.radiusd_kill test.eap.depends test.eap.radiusd_start
+$(OUTPUT)/%.ok: $(DIR)/%.conf | test.eap.radiusd_kill test.eap.check test.eap.radiusd_start
 	$(eval OUT := $(patsubst %.conf,%.log,$@))
 	${Q}echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
 	${Q}if ( grep 'key_mgmt=NONE' '$<' > /dev/null && $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) -n > $(OUT) 2>&1 ) || \
