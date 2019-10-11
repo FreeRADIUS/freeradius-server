@@ -78,9 +78,9 @@ $(IGNORED_EAP_TYPES):
 test.eap.check: $(IGNORED_EAP_TYPES) | $(EAPOL_METH_FILES) $(OUTPUT) $(GENERATED_CERT_FILES)
 
 #
-#  Run eapol_test if it exists.  Otherwise do nothing
+#  Run EAP tests.
 #
-$(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES) test.eap.radiusd_kill test.eap.radiusd_start
+$(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/methods-enabled/md5 | $(GENERATED_CERT_FILES) test.eap.radiusd_kill test.eap.radiusd_start
 	$(eval OUT := $(patsubst %.conf,%.log,$@))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	${Q}echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
