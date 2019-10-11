@@ -1,4 +1,13 @@
 #
+#   Only run EAP tests if we have a "test" target
+#
+ifneq (,$(findstring test,$(MAKECMDGOALS)))
+EAPOL_TEST = $(shell test -e "$(OUTPUT)/eapol_test.skip" || $(top_builddir)/scripts/travis/eapol_test-build.sh)
+endif
+
+ifneq "$(EAPOL_TEST)" ""
+
+#
 #	Tests for EAP support
 #
 TEST := test.eap
@@ -36,21 +45,32 @@ EAPOL_METH_FILES := $(addprefix $(CONFIG_PATH)/methods-enabled/,$(EAP_TYPES))
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,servers,$(OUTPUT)))
 
-.PHONY: $(CONFIG_PATH)/methods-enabled
+#
+#  Rules to add EAP methods enabled, and mods-enabled / sites-enabled things
+#  for various EAP methods
+#
 $(CONFIG_PATH)/methods-enabled:
 	${Q}mkdir -p $@
 
 $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
 	${Q}ln -sf $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
 
-#
-#   Only run EAP tests if we have a "test" target
-#
-ifneq (,$(findstring test,$(MAKECMDGOALS)))
-EAPOL_TEST = $(shell test -e "$(OUTPUT)/eapol_test.skip" || $(top_builddir)/scripts/travis/eapol_test-build.sh)
-endif
+$(CONFIG_PATH)/mods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la
+	${Q}ln -sf $(CONFIG_PATH)/mods-available/$(notdir $@) $(CONFIG_PATH)/mods-enabled/
 
-ifneq "$(EAPOL_TEST)" ""
+$(CONFIG_PATH)/sites-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la
+	${Q}ln -sf $(CONFIG_PATH)/sites-available/$(notdir $@) $(CONFIG_PATH)/sites-enabled/
+
+
+#
+#  Make sure that we clean things when asked to
+#
+.PHONY: clean.${TEST}.enabled
+clean.${TEST}.enabled:
+	${Q}rm -rf $(CONFIG_PATH)/methods-enabled
+	${Q}rm -f $(CONFIG_PATH)/mods-enabled/* $(CONFIG_PATH)/sites-enabled/*
+
+clean.${TEST}: clean.${TEST}.enabled
 
 #
 #  We want the tests to depend on the method configuration used by the
@@ -98,6 +118,17 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/me
 		exit 1;\
 	fi
 	${Q}touch $@
+
+#
+#  Add dependencies if aka / sim are built
+#
+#  We can't add % rules via variable expansion, so we just add them
+#  as full path names.
+#
+ifneq "$(filter aka sim,$(EAP_TYPES))" ""
+$(foreach X,aka sim aka_prime,$(eval $(OUTPUT)/${X}.ok: $(CONFIG_PATH)/sites-enabled/${X} $(CONFIG_PATH)/mods-enabled/${X}))
+endif
+
 
 $(TEST): $(EAPOL_OK_FILES)
 	${Q}$(MAKE) test.eap.radiusd_kill
