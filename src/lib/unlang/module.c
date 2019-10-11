@@ -561,6 +561,9 @@ static void unlang_module_signal(REQUEST *request, fr_state_signal_t action)
 	}
 }
 
+/** Wrapper to call a module's resumption function
+ *
+ */
 static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -581,7 +584,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 
 	safe_lock(sp->module_instance);
 	rcode = request->rcode = state->resume(sp->module_instance->dl_inst->data,
-					    state->thread->data, request, state->rctx);
+					       state->thread->data, request, state->rctx);
 	safe_unlock(sp->module_instance);
 	request->module = caller;
 
