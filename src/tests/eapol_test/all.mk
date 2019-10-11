@@ -70,7 +70,7 @@ $(foreach x,$(EAPOL_TEST_FILES),$(eval \
 #	Print the disabled list.
 #
 $(IGNORED_EAP_TYPES):
-	${Q}echo "EAPOL_TEST $@ (Skipping, reenable by removing <$@> from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk)"
+	${Q}echo "EAPOL_TEST $@ - Disabled.  Enable by removing '$@' from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk"
 
 #
 #  Separate the dependencies here just to keep a bit clear.
