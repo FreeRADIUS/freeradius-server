@@ -93,8 +93,8 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES) test.eap.radiusd_kill te
 		echo "--------------------------------------------------";		\
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";			\
 		$(MAKE) test.eap.radiusd_kill;						\
-		echo "RADIUSD:   $(RADIUSD_RUN)";					\
-		echo "EAPOL  :   $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";	\
+		echo "RADIUSD :  $(RADIUSD_RUN)";					\
+		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";	\
 		exit 1;\
 	fi
 	${Q}touch $@
