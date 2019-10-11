@@ -49,10 +49,8 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
 		test.auth	\
 		test.digest	\
 		test.radmin	\
+		test.eap	\
 		| build.raddb
-
-#  Run this after "auth" when EAP tests are fixed
-#		test.eap	\
 
 clean: clean.test
 .PHONY: clean.test
