@@ -236,7 +236,7 @@ static int _loop_status(UNUSED void *ctx, fr_time_t wake)
 		INFO("Ready to process requests");
 
 	} else if (wake > (NSEC / 10)) {
-		DEBUG("Waking up in %pV seconds.", fr_box_time_delta(wake));
+		DEBUG4("Waking up in %pV seconds.", fr_box_time_delta(wake));
 	}
 
 	return 0;
