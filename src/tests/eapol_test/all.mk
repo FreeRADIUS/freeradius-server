@@ -100,7 +100,9 @@ test.eap.check: $(IGNORED_EAP_TYPES) | $(EAPOL_METH_FILES) $(OUTPUT) $(GENERATED
 #
 #  Run EAP tests.
 #
-$(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/methods-enabled/md5 | $(GENERATED_CERT_FILES) test.eap.radiusd_kill test.eap.radiusd_start
+$(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/methods-enabled/md5 | $(GENERATED_CERT_FILES)
+	${Q}$(MAKE) test.eap.radiusd_kill || true
+	${Q}$(MAKE) test.eap.radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval OUT := $(patsubst %.conf,%.log,$@))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
@@ -116,8 +118,12 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/me
 		$(MAKE) test.eap.radiusd_kill;						\
 		echo "RADIUSD :  $(RADIUSD_RUN) -lstdout -f";				\
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET) $(KEY) "; \
+		rm -f $(CONFIG_PATH)/methods-enabled/*  $(CONFIG_PATH)/mods-enabled/*  $(CONFIG_PATH)/sites-enabled/* \
+		$(MAKE) test.eap.radiusd_kill						\
 		exit 1;\
 	fi
+	${Q}rm -f $(CONFIG_PATH)/methods-enabled/*  $(CONFIG_PATH)/mods-enabled/*  $(CONFIG_PATH)/sites-enabled/*
+	${Q}$(MAKE) test.eap.radiusd_kill || true
 	${Q}touch $@
 
 #
@@ -130,9 +136,6 @@ ifneq "$(filter aka sim,$(EAP_TYPES))" ""
 $(foreach X,aka sim aka_prime,$(eval $(OUTPUT)/${X}.ok: $(CONFIG_PATH)/sites-enabled/${X} $(CONFIG_PATH)/mods-enabled/${X}))
 endif
 
-
-$(TEST): $(EAPOL_OK_FILES)
-	${Q}$(MAKE) test.eap.radiusd_kill
 else
 #
 #  Build rules and the make file get evaluated at different times
