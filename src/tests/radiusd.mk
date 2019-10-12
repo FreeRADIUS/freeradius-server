@@ -67,7 +67,7 @@ ${2}/radiusd.pid: ${2}
 	${Q}rm -f ${2}/radiusd.log ${2}/radiusd.log
 	${Q}if ! $$(RADIUSD_RUN); then \
 		echo "FAILED STARTING RADIUSD"; \
-		tail -n 40 "${2}/radiusd.log"; \
+		grep 'Error :' "${2}/radiusd.log"; \
 		echo "Last entries in server log (${2}/radiusd.log):"; \
 		echo $$(RADIUSD_RUN); \
 	fi
