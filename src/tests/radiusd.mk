@@ -64,7 +64,7 @@ $(TEST).radiusd_kill: | ${2}
 ${2}/radiusd.pid: ${2}
 	$$(eval RADIUSD_BIN := $(JLIBTOOL) --silent --mode=execute $$(BIN_PATH)/radiusd)
 	$$(eval RADIUSD_RUN := TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n ${1} -D share/dictionary/ -l ${2}/radiusd.log)
-	${Q}rm -f ${2}/radiusd.log ${2}/radiusd.log
+	${Q}rm -f ${2}/radiusd.log
 	${Q}if ! $$(RADIUSD_RUN); then \
 		echo "FAILED STARTING RADIUSD"; \
 		grep 'Error :' "${2}/radiusd.log"; \
