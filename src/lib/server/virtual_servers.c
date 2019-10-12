@@ -49,7 +49,7 @@ typedef struct {
 } fr_virtual_namespace_t;
 
 typedef struct {
-	dl_module_inst_t		*proto_module;		//!< The proto_* module for a listen section.
+	dl_module_inst_t	*proto_module;		//!< The proto_* module for a listen section.
 	fr_app_t const		*app;			//!< Easy access to the exported struct.
 } fr_virtual_listen_t;
 
@@ -598,6 +598,22 @@ int virtual_servers_instantiate(void)
 					return -1;
 				}
 				if ((found->func(server_cs) < 0)) return -1;
+			/*
+			 *	If it's not a virtual namespace, check a
+			 *	dictionary was loaded in a previous phase.
+			 */
+			} else {
+				if (!cf_data_find(server_cs, fr_dict_t, "dictionary")) {
+					if (!cf_section_find(server_cs, "listen", CF_IDENT_ANY)) {
+						cf_log_err(ns, "Failed resolving namespace.  Verify that modules "
+							   "referencing this server are enabled");
+						return -1;
+					}
+
+					cf_log_err(ns, "Failed resolving namespace.  Check namespace is correct");
+
+					return -1;
+				}
 			}
 		}
 
