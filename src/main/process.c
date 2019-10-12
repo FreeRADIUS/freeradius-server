@@ -2382,6 +2382,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	int rcode;
 	int post_proxy_type = 0;
 	VALUE_PAIR *vp;
+	char const *old_server;
 
 	VERIFY_REQUEST(request);
 
@@ -2472,19 +2473,30 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		remove_from_proxy_hash(request);
 	}
 
-	if (request->home_pool && request->home_pool->virtual_server) {
-		char const *old_server = request->server;
+	old_server = request->server;
 
-		request->server = request->home_pool->virtual_server;
-		RDEBUG2("server %s {", request->server);
-		RINDENT();
-		rcode = process_post_proxy(post_proxy_type, request);
-		REXDENT();
-		RDEBUG2("}");
-		request->server = old_server;
+	/*
+	 *	If the home server is virtual, just run pre_proxy from
+	 *	that section.
+	 */
+	if (request->home_server->server) {
+		request->server = request->home_server->server;
+
 	} else {
-		rcode = process_post_proxy(post_proxy_type, request);
+		if (request->home_pool && request->home_pool->virtual_server) {
+			request->server = request->home_pool->virtual_server;
+		}
 	}
+
+	/*
+	 *	Run the request through the given virtual server.
+	 */
+	RDEBUG2("server %s {", request->server);
+	RINDENT();
+	rcode = process_post_proxy(post_proxy_type, request);
+	REXDENT();
+	RDEBUG2("}");
+	request->server = old_server;
 
 #ifdef WITH_COA
 	if (request->proxy && request->packet->code == request->proxy->code) {
