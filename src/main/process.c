@@ -2902,6 +2902,7 @@ static int request_will_proxy(REQUEST *request)
 	home_server_t *home;
 	REALM *realm = NULL;
 	home_pool_t *pool = NULL;
+	char const *old_server;
 
 	VERIFY_REQUEST(request);
 
@@ -3166,22 +3167,15 @@ do_home:
 		pre_proxy_type = vp->vp_integer;
 	}
 
+	old_server = request->server;
+
 	/*
 	 *	If the home server is virtual, just run pre_proxy from
 	 *	that section.
 	 */
 	if (request->home_server->server) {
-		char const *old_server = request->server;
-
 		request->server = request->home_server->server;
 
-		RDEBUG2("server %s {", request->server);
-		RINDENT();
-		rcode = process_pre_proxy(pre_proxy_type, request);
-		REXDENT();
-		RDEBUG2("}");
-
-		request->server = old_server;
 	} else {
 		char buffer[128];
 
@@ -3191,8 +3185,20 @@ do_home:
 				  buffer, sizeof(buffer)),
 			request->proxy->dst_port);
 
-		rcode = process_pre_proxy(pre_proxy_type, request);
+		if (request->home_pool && request->home_pool->virtual_server) {
+			request->server = request->home_pool->virtual_server;
+		}
 	}
+
+	/*
+	 *	Run the request through the given virtual server.
+	 */
+	RDEBUG2("server %s {", request->server);
+	RINDENT();
+	rcode = process_pre_proxy(pre_proxy_type, request);
+	REXDENT();
+	RDEBUG2("}");
+	request->server = old_server;
 
 	switch (rcode) {
 	case RLM_MODULE_FAIL:
