@@ -28,6 +28,7 @@ $(eval $(call RADIUSD_SERVICE,digest,$(OUTPUT)))
 #	Run the digest commands against the radiusd.
 #
 $(OUTPUT)/%: $(DIR)/% test.digest.radiusd_kill test.digest.radiusd_start
+	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval TARGET := $(patsubst %.txt,%,$(notdir $@)))
 	${Q}for _num in $$(sed '/^#.*TESTS/!d; s/.*TESTS//g' $<); do	\
 		echo "DIGEST-TEST $(TARGET)_$${_num}";			\

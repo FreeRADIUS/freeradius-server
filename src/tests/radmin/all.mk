@@ -45,6 +45,7 @@ $(OUTPUT)/depends.mk: $(FILES) | $(OUTPUT)
 #	Run the radmin commands against the radiusd.
 #
 $(OUTPUT)/%: $(DIR)/% ${BUILD_DIR}/bin/radmin test.radmin.radiusd_kill test.radmin.radiusd_start
+	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))

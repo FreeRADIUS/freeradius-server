@@ -101,6 +101,7 @@ test.eap.check: $(IGNORED_EAP_TYPES) | $(EAPOL_METH_FILES) $(OUTPUT) $(GENERATED
 #  Run EAP tests.
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/methods-enabled/md5 | $(GENERATED_CERT_FILES) test.eap.radiusd_kill test.eap.radiusd_start
+	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval OUT := $(patsubst %.conf,%.log,$@))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	${Q}echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
@@ -114,7 +115,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/me
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";			\
 		$(MAKE) test.eap.radiusd_kill;						\
 		echo "RADIUSD :  $(RADIUSD_RUN) -lstdout -f";				\
-		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";	\
+		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET) $(KEY) "; \
 		exit 1;\
 	fi
 	${Q}touch $@
