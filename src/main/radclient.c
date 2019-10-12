@@ -1106,6 +1106,8 @@ static int recv_one_packet(int wait_time)
 	 *	packet matched that.
 	 */
 	if ((request->filter_code != PW_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
+		fr_strerror_printf(NULL);
+
 		if (is_radius_code(request->reply->code)) {
 			REDEBUG("%s: Expected %s got %s", request->name, fr_packet_codes[request->filter_code],
 				fr_packet_codes[request->reply->code]);
