@@ -246,10 +246,10 @@ redo:
 		attr = fr_str2int(header_names, buffer, 0);
 		if (!attr) {
 			if (RDEBUG_ENABLED3) {
-				RDEBUG3("Unknown header {%s} in Password-With-Header = \"%s\", re-writing to "
+				RDEBUG3("Unknown header %s in Password-With-Header = \"%s\", re-writing to "
 					"Cleartext-Password", buffer, vp->vp_strvalue);
 			} else {
-				RDEBUG("Unknown header {%s} in Password-With-Header, re-writing to "
+				RDEBUG("Unknown header %s in Password-With-Header, re-writing to "
 				       "Cleartext-Password", buffer);
 			}
 			goto unknown_header;
