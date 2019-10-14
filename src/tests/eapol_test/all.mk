@@ -37,54 +37,12 @@ EAP_TYPES_LIST   := $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
 EAP_TYPES        := $(filter-out $(IGNORED_EAP_TYPES),$(EAP_TYPES_LIST))
 EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(DIR)/$(x)*.conf))
 EAPOL_OK_FILES  := $(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,$(EAPOL_TEST_FILES))
-EAPOL_METH_FILES := $(addprefix $(CONFIG_PATH)/methods-enabled/,$(EAP_TYPES))
 
 #
 #  Generic rules to start / stop the radius service.
 #
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,servers,$(OUTPUT)))
-
-#
-#  Rules to add EAP methods enabled, and mods-enabled / sites-enabled things
-#  for various EAP methods
-#
-$(CONFIG_PATH)/methods-enabled:
-	${Q}mkdir -p $@
-
-$(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
-	${Q}ln -sf $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
-
-$(CONFIG_PATH)/mods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la
-	${Q}ln -sf $(CONFIG_PATH)/mods-available/$(notdir $@) $(CONFIG_PATH)/mods-enabled/
-
-$(CONFIG_PATH)/sites-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la
-	${Q}ln -sf $(CONFIG_PATH)/sites-available/$(notdir $@) $(CONFIG_PATH)/sites-enabled/
-
-
-#
-#  Make sure that we clean things when asked to
-#
-.PHONY: clean.${TEST}.enabled
-clean.${TEST}.enabled:
-	${Q}rm -rf $(CONFIG_PATH)/methods-enabled
-	${Q}rm -f $(CONFIG_PATH)/mods-enabled/* $(CONFIG_PATH)/sites-enabled/*
-
-clean.${TEST}: clean.${TEST}.enabled
-
-#
-#  We want the tests to depend on the method configuration used by the
-#  server, too.
-#
-#  This monstrosity does that.  Note that:
-#
-#  eapol_test configuration files are named "method" or "method-foo"
-#
-#  radiusd configuration files are named "method".
-#
-$(foreach x,$(EAPOL_TEST_FILES),$(eval \
-	$(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,${x}): ${CONFIG_PATH}/methods-enabled/$(basename $(notdir $(word 1,$(subst -, ,$(x))))) \
-))
 
 #
 #	Print the disabled list.
@@ -95,14 +53,14 @@ $(IGNORED_EAP_TYPES):
 #
 #  Separate the dependencies here just to keep a bit clear.
 #
-test.eap.check: $(IGNORED_EAP_TYPES) | $(EAPOL_METH_FILES) $(OUTPUT) $(GENERATED_CERT_FILES)
+test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
 
 #
 #  Run EAP tests.
 #
-$(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/methods-enabled/md5 | $(GENERATED_CERT_FILES)
-	${Q}$(MAKE) test.eap.radiusd_kill || true
-	${Q}$(MAKE) test.eap.radiusd_start
+$(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
+	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill || true
+	${Q}$(MAKE) --no-print-directory METHOD=$(basename $(notdir $@)) test.eap.radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval OUT := $(patsubst %.conf,%.log,$@))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
@@ -116,14 +74,12 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/me
 		echo "--------------------------------------------------";		\
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";			\
 		$(MAKE) test.eap.radiusd_kill;						\
-		echo "RADIUSD :  $(RADIUSD_RUN) -lstdout -f";				\
+		echo "RADIUSD :  TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n servers -D share/dictionary/ -lstdout -f";				\
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET) $(KEY) "; \
-		rm -f $(CONFIG_PATH)/methods-enabled/*  $(CONFIG_PATH)/mods-enabled/*  $(CONFIG_PATH)/sites-enabled/* \
-		$(MAKE) test.eap.radiusd_kill						\
+		$(MAKE) --no-print-directory test.eap.radiusd_kill						\
 		exit 1;\
 	fi
-	${Q}rm -f $(CONFIG_PATH)/methods-enabled/*  $(CONFIG_PATH)/mods-enabled/*  $(CONFIG_PATH)/sites-enabled/*
-	${Q}$(MAKE) test.eap.radiusd_kill || true
+	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill || true
 	${Q}touch $@
 
 #
