@@ -603,7 +603,7 @@ int virtual_servers_instantiate(void)
 			 *	dictionary was loaded in a previous phase.
 			 */
 			} else {
-				if (!cf_data_find(server_cs, fr_dict_t, "dictionary")) {
+				if (!cf_data_find(server_cs, fr_dict_t *, "dictionary")) {
 					if (!cf_section_find(server_cs, "listen", CF_IDENT_ANY)) {
 						cf_log_err(ns, "Failed resolving namespace.  Verify that modules "
 							   "referencing this server are enabled");
