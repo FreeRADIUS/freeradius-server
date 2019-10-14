@@ -82,16 +82,6 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill || true
 	${Q}touch $@
 
-#
-#  Add dependencies if aka / sim are built
-#
-#  We can't add % rules via variable expansion, so we just add them
-#  as full path names.
-#
-ifneq "$(filter aka sim,$(EAP_TYPES))" ""
-$(foreach X,aka sim aka_prime,$(eval $(OUTPUT)/${X}.ok: $(CONFIG_PATH)/sites-enabled/${X} $(CONFIG_PATH)/mods-enabled/${X}))
-endif
-
 $(TEST): $(EAPOL_OK_FILES)
 
 else
