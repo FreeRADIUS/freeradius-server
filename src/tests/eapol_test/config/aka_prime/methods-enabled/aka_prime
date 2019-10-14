@@ -1,4 +1,5 @@
 type = aka_prime
+default_eap_type = aka_prime
 
 aka_prime {
 	network_name = "testing123"

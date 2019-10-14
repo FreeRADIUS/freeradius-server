@@ -1,4 +1,5 @@
 type = ttls
+default_eap_type = ttls
 
 ## EAP-TTLS
 #

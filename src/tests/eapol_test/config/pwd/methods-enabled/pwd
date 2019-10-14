@@ -1,4 +1,5 @@
 type = pwd
+default_eap_type = pwd
 
 pwd {
 	group = 19

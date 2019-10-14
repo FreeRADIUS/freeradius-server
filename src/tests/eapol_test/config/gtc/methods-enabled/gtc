@@ -1,4 +1,6 @@
 type = gtc
+default_eap_type = gtc
+
 gtc {
 	auth_type = pap
 }

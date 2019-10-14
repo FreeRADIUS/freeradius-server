@@ -1,4 +1,5 @@
 type = md5
+default_eap_type = md5
 
 md5 {
 }

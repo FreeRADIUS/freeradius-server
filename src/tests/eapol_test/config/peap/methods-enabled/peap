@@ -1,4 +1,5 @@
 type = peap
+default_eap_type = peap
 
 peap {
 	#  Which tls-config section the TLS negotiation parameters
