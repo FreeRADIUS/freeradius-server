@@ -95,7 +95,7 @@ $(IGNORED_EAP_TYPES):
 #
 #  Run EAP tests.
 #
-$(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/methods-enabled/md5 | $(GENERATED_CERT_FILES)
+$(OUTPUT)/%.ok: $(DIR)/%.conf $(IGNORED_EAP_TYPES) $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/methods-enabled/md5 | $(GENERATED_CERT_FILES)
 	${Q}$(MAKE) test.eap.radiusd_kill || true
 	${Q}$(MAKE) test.eap.radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
