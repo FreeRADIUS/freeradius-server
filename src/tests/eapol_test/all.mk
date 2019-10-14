@@ -93,11 +93,6 @@ $(IGNORED_EAP_TYPES):
 	${Q}echo "EAPOL_TEST $@ - Disabled.  Enable by removing '$@' from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk"
 
 #
-#  Separate the dependencies here just to keep a bit clear.
-#
-test.eap.check: $(IGNORED_EAP_TYPES) | $(EAPOL_METH_FILES) $(OUTPUT) $(GENERATED_CERT_FILES)
-
-#
 #  Run EAP tests.
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf $(CONFIG_PATH)/methods-enabled/% $(CONFIG_PATH)/methods-enabled/md5 | $(GENERATED_CERT_FILES)
