@@ -136,6 +136,8 @@ ifneq "$(filter aka sim,$(EAP_TYPES))" ""
 $(foreach X,aka sim aka_prime,$(eval $(OUTPUT)/${X}.ok: $(CONFIG_PATH)/sites-enabled/${X} $(CONFIG_PATH)/mods-enabled/${X}))
 endif
 
+$(TEST): $(EAPOL_OK_FILES)
+
 else
 #
 #  Build rules and the make file get evaluated at different times
