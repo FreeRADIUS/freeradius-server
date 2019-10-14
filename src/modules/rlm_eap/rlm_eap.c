@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_eap (%s) - "
-#define LOG_PREFIX_ARGS inst->name
+#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -167,7 +167,7 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	case FR_EAP_METHOD_SIM:
 	{
 		rlm_eap_t *inst = ((dl_module_inst_t *)cf_data_value(cf_data_find(eap_cs,
-									       dl_module_inst_t, "rlm_eap")))->data;
+								     dl_module_inst_t, "rlm_eap")))->data;
 
 		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 
