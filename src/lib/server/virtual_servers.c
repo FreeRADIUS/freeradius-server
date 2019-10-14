@@ -609,10 +609,6 @@ int virtual_servers_instantiate(void)
 							   "referencing this server are enabled");
 						return -1;
 					}
-
-					cf_log_err(ns, "Failed resolving namespace.  Check namespace is correct");
-
-					return -1;
 				}
 			}
 		}
