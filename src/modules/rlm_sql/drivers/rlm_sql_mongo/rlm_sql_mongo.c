@@ -581,7 +581,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		mongoc_cursor_t *cursor;
 		bson_t const *doc;
 
-		rad_assert(aggregate = true);
+		rad_assert(aggregate == true);
 
 		cursor = mongoc_collection_aggregate(collection, MONGOC_QUERY_NONE, bson, NULL, NULL);
 
