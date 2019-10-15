@@ -461,8 +461,7 @@ static int file_callback(void *ctx, void *data)
 	/*
 	 *	The file changed, we'll need to re-read it.
 	 */
-	if (buf.st_mtime != file->buf.st_mtime) {
-
+	if (file->buf.st_mtime != buf.st_mtime) {
 		if (cb->callback(cb->modules, file->cs)) {
 			cb->rcode |= CF_FILE_MODULE;
 			DEBUG3("HUP: Changed module file %s", file->filename);
@@ -470,6 +469,12 @@ static int file_callback(void *ctx, void *data)
 			DEBUG3("HUP: Changed config file %s", file->filename);
 			cb->rcode |= CF_FILE_CONFIG;
 		}
+
+		/*
+		 *	Presume that the file will be immediately
+		 *	re-read, so we update the mtime appropriately.
+		 */
+		file->buf.st_mtime = buf.st_mtime;
 	}
 
 	return 0;
