@@ -38,6 +38,11 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  ENV sub-section of radiusd.conf.
 	* Update dictionary.aptilo. #3002
 	* Update dictionary.airespace. #3039
+	* Add sites-available/coa-relay, which makes CoA easier.
+	  Patch from Terry Burton.  #3045.
+	* Add example stored procedure for IP Pools in MySQL.
+	  See mods-config/sql/ippool/mysql/procedure.sql
+	  Patch from Terry Burton.  #3048.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
