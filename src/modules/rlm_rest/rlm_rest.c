@@ -176,17 +176,21 @@ static int rlm_rest_status_update(REQUEST *request, void *handle)
 	int		code;
 	VALUE_PAIR	*vp;
 
+	RDEBUG2("Updating result attribute(s)");
+
+	RINDENT();
 	code = rest_get_handle_code(handle);
 	if (!code) {
 		pair_delete_request(attr_rest_http_status_code);
-		RDEBUG2("&REST-HTTP-Status-Code !* ANY");
+		RDEBUG2("&request:REST-HTTP-Status-Code !* ANY");
 		return -1;
 	}
 
-	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
+	RDEBUG2("&request:REST-HTTP-Status-Code := %i", code);
 
 	MEM(pair_update_request(&vp, attr_rest_http_status_code) >= 0);
 	vp->vp_uint32 = code;
+	REXDENT();
 
 	return 0;
 }
