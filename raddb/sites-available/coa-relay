@@ -1,9 +1,28 @@
 # -*- text -*-
 ######################################################################
 #
-#  Sample site for receiving a CoA or Disconnect-Request packet for a user
-#  and/or session, looking up matching sessions in the radacct table, then
-#  relaying the packet towards the owning NAS for each session.
+#  This virtual server simplifies the process of sending CoA-Request or
+#  Disconnect-Request packets to a NAS.
+#
+#  This virtual server will receive CoA-Request or Disconnect-Request
+#  packets that contain *minimal* identifying information.  e.g. Just
+#  a User-Name, or maybe just an Acct-Session-Id attribute.  It will
+#  look up that information in a database in order to find the rest of
+#  the session data.  e.g. NAS-IP-Address, NAS-Identifier, NAS-Port,
+#  etc.  That information will be added to the packet, which will then
+#  be sent to the NAS.
+#
+#  This process is useful because NASes require the CoA packets to
+#  contain "session identification" attributes in order to to do CoA
+#  or Disconnect.  If the attributes aren't in the packet, then the
+#  NAS will NAK the request.  This NAK happens even if you ask to
+#  disconnect "User-Name = bob", and there is only one session with a
+#  "bob" active.
+#
+#  Using this virtual server makes the CoA or Disconnect process
+#  easier.  Just tell FreeRADIUS to disconnect "User-Name = bob", and
+#  FreeRADIUS will take care of adding the "session identification"
+#  attributes.
 #
 #  The process is as follows:
 #
@@ -19,7 +38,7 @@
 #      each session using the custom attributes.
 #
 #  This simplifies scripting directly against a set of NAS devices since a
-#  script need only send a single CoA/Disconenct to FreeRADIUS which will
+#  script need only send a single CoA/Disconnect to FreeRADIUS which will
 #  then:
 #
 #    - Lookup all active sessions belonging to a user, in the case that only a
@@ -27,7 +46,7 @@
 #    - Handle routing of the request to the correct NAS, in the case of a
 #      multi-NAS setup
 #
-#  For example, to Disconnect a specific session:
+#  For example, to disconnect a specific session:
 #
 #    $ echo 'Acct-Session-Id = "769df3 312343"' | \
 #      radclient 127.0.0.1 disconnect testing123
@@ -39,16 +58,8 @@
 #      Cisco-AVPair = "subscriber:sub-qos-policy-out=q_out_uncapped"
 #      EOF
 #
-#  In addition to configuring and activating this site...
-#
-#  Custom attributes must be created in the local dictionary:
-#
-#    ATTRIBUTE  COA-Packet-Type            3010  string
-#    ATTRIBUTE  COA-Packet-DST-IP-Address  3011  ipaddr
-#    ATTRIBUTE  COA-Packet-DST-Port        3012  integer
-#    ATTRIBUTE  COA-Acct-Session-Id        3013  string
-#
-#  A detail writer module must be configured:
+#  In addition to configuring and activating this site, a detail
+#  writer module must be configured in mods-enabled:
 #
 #    detail detail_coa {
 #        filename = ${radacctdir}/detail_coa
@@ -76,37 +87,60 @@ listen {
 #  Receive CoA/Disconnect, lookup sessions, write them to a detail file
 #
 server coa {
+	#
 	#  When a packet is received, it is processed through the
 	#  recv-coa section.  This applies to *both* CoA-Request and
 	#  Disconnect-Request packets.
+	#
 	recv-coa {
-
-		# Lookup all active sessions matching User-Name and/or
-		# Acct-Session-Id and write each session (which includes to
-		# owning NAS and session ID) to a detail file.
 		#
-		# Returns a single result in the format:
+		#  Lookup all active sessions matching User-Name and/or
+		#  Acct-Session-Id and write each session (which includes to
+		#  owning NAS and session ID) to a detail file.
 		#
-		# NasIpAddress1#AcctSessionId1|NasIPAddress2#AcctSessionId2|...
+		#  Returns a single result in the format:
+		#
+		#  NasIpAddress1#AcctSessionId1|NasIPAddress2#AcctSessionId2|...
+		#
+		#  i.e. each session is separated by '|', and attributes
+		#  within a session are separated by '#'
+		#
+		#  You will likely have to update the SELECT to add in
+		#  any other "session identification" attributes
+		#  needed by the NAS.  These may include NAS-Port,
+		#  NAS-Identifier, etc.  Only the NAS vendor knows
+		#  what these attributes are unfortunately, so we
+		#  cannot give more detailed advice here.
 		#
 		update control {
 
-			# Example MySQL lookup
-			Tmp-String-0 := "%{sql:SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
+			#
+			#  Example MySQL lookup
+			#
+#			Tmp-String-0 := "%{sql:SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
 
-			# Example PostgreSQL lookup
-			# Tmp-String-0 := "%{sql:SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
+			#
+			#  Example PostgreSQL lookup
+			#
+#			Tmp-String-0 := "%{sql:SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
 
 		}
+
+		#
+		#  Split the string and split into pieces.
+		#
 		if (&control:Tmp-String-0 != "" && "%{explode:&control:Tmp-String-0 |}") {
 			foreach &control:Tmp-String-0 {
-				if ( "%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/ ) {
+				if ("%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/) {
 					update request {
-
 						COA-Packet-Type := "%{Packet-Type}"
 
 						COA-Packet-DST-IP-Address := "%{1}"
 						COA-Acct-Session-Id := "%{2}"
+
+						#
+						#  Add any other attributes here.
+						#
 
 						# Set the CoA/Disconnect port
 						COA-Packet-DST-Port := 1700
@@ -120,11 +154,13 @@ server coa {
 						#User-Name !* ANY
 
 					}
+
+					#
+					#  If we're sending a CoA packet, send it out.
+					#
 					if (COA-Packet-DST-IP-Address && \
 					    COA-Acct-Session-Id != "") {
-
 						detail_coa.accounting
-
 					}
 				}
 			}
@@ -151,13 +187,14 @@ server coa-buffered-reader {
 		track = yes
 	}
 
+	#
+	#  For historical reasons packets from the detail file reader are
+	#  processed through the "accounting" section.
+	#
 	accounting {
-
 		switch &COA-Packet-Type {
-
 			case "Disconnect-Request" {
 				update {
-
 					#  Include given attributes
 					disconnect: += request:[*]
 
@@ -180,7 +217,6 @@ server coa-buffered-reader {
 
 			case "CoA-Request" {
 				update {
-
 					#  Include given attributes
 					coa: += request:[*]
 
@@ -195,14 +231,25 @@ server coa-buffered-reader {
 					coa:Event-Timestamp := "%l"
 					coa:Message-Authenticator := 0x00
 
-					#  Remove this. We're not accounting.
+					#
+					#  Remove attributes which will confuse the NAS
+					#
+					#  The NAS will "helpfully" NAK the packet
+					#  if it contains attributes which are NOT
+					#  "session identification" attributes.
+					#
+					#  Those attributes should be listed here.
+					#
 					coa:Acct-Delay-Time !* ANY
-
+					coa:Proxy-State !* ANY
 				}
 			}
 
 		}
 
+		#
+		#  ACK the CoA / Disconnect packet.
+		#
 		ok
 	}
 }
@@ -212,9 +259,8 @@ server coa-buffered-reader {
 #  The CoA reply (if any) is in the "proxy-reply" attribute list.
 #
 server originate-coa-relay {
-
 	#
-	# Handle the responses here.
+	#  Handle the responses here.
 	#
 	post-proxy {
 		switch &proxy-reply:Packet-Type {
@@ -236,7 +282,7 @@ server originate-coa-relay {
 				ok
 			}
 
-			# Invalid packet type.  This shouldn't happen.
+			#  Invalid packet type.  This shouldn't happen.
 			case {
 				fail
 			}

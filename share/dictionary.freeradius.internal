@@ -181,6 +181,12 @@ ATTRIBUTE	Home-Server-Pool			1111	string
 # For delayed evaluation of maps
 ATTRIBUTE	Attribute-Map				1112	string
 
+# See sites-available/coa-relay
+ATTRIBUTE	COA-Packet-Type				1113	string
+ATTRIBUTE	COA-Packet-DST-IP-Address		1114	ipaddr
+ATTRIBUTE	COA-Packet-DST-Port			1115	integer
+ATTRIBUTE	COA-Acct-Session-Id			1116	string
+
 ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr
 # The rest of the FreeRADIUS-Client-* attributes are at 1150...
