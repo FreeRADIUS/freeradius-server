@@ -1120,6 +1120,11 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 				RWDEBUG("Value key missing (skipping)");
 				continue;
 			}
+
+			/*
+			 *  The value field now becomes the key we're operating on
+			 */
+			value = tmp;
 		}
 
 		/*
