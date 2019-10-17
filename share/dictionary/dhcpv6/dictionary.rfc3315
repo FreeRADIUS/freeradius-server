@@ -43,9 +43,22 @@ STRUCT	Server-ID-DUID			Server-ID-DUID-LL	3
 MEMBER		Server-ID-DUID-LL-Hardware-Type		uint16
 MEMBER		Server-ID-DUID-LL-Address		octets
 
-ATTRIBUTE	IA-NA					3	octets		# Complex struct see RFC 3315
-ATTRIBUTE	IA-TA					4	octets		# Complex struct see RFC 3315
-ATTRIBUTE	IA-ADDR					5	octets		# Complex struct see RFC 3315
+ATTRIBUTE	IA-NA					3	struct
+MEMBER		IA-NA-IAID				uint32
+MEMBER		IA-NA-T1				uint32	# really time_delta, 32-bit seconds
+MEMBER		IA-NA-T2				uint32	# really time_delta, 32-bit seconds
+MEMBER		IA-NA-Options				octets	# Really sub-options
+
+ATTRIBUTE	IA-TA					4	struct
+MEMBER		IA-TA-IAID				uint32
+MEMBER		IA-TA-Options				octets	# Really sub-options
+
+ATTRIBUTE	IA-Addr					5	struct
+MEMBER		IA-Addr-IPv6-Address			ipv6addr
+MEMBER		IA-Addr-Preferred-Lifetime		uint32	# really time_delta, 32-bit seconds
+MEMBER		IA-Addr-Valid-Lifetime			uint32	# really time_delta, 32-bit seconds
+MEMBER		IA-Addr-Options				octets	# really sub-options
+
 ATTRIBUTE	Option-Request				6	octets		# Magic option listing requested options
 ATTRIBUTE	Preference				7	uint8
 ATTRIBUTE	Elapsed-Time				8	uint16
