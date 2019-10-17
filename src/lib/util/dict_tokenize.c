@@ -954,18 +954,26 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 
 	/*
 	 *	The attribute in the current stack frame is NOT the
-	 *	enclosing "struct": unwind until we do find the parent.
+	 *	enclosing "struct": unwind until we do find the
+	 *	parent, OR until we hit the root of the dictionary.
 	 */
 	if (ctx->stack[ctx->stack_depth].da != parent->parent) {
 		int i;
 
 		for (i = ctx->stack_depth - 1; i > 0; i--) {
-			if (ctx->stack[i].da == parent->parent) {
+			if ((ctx->stack[i].da == parent->parent) ||
+			    (ctx->stack[i].da->flags.is_root)) {
 				ctx->stack_depth = i;
 				break;
 			}
 		}
 	}
+
+	/*
+	 *	Allow naked "STRUCT parent name value" definitions, so
+	 *	long as the parent attribute exits.
+	 */
+	if (ctx->stack[ctx->stack_depth].da->flags.is_root) goto get_value;
 
 	/*
 	 *	The attribute in the current stack frame MUST be the
@@ -1000,6 +1008,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 		return -1;
 	}
 
+get_value:
 	/*
 	 *	A STRUCT also defines a VALUE
 	 */
