@@ -72,7 +72,7 @@ typedef struct {
  *  creates the listener, and adds it to the scheduler.
  */
 typedef struct {
-	dl_module_inst_t const   		*dl_inst;			//!< our parent dl_inst
+	dl_module_inst_t const   	*dl_inst;			//!< our parent dl_inst
 
 	uint32_t			max_connections;		//!< maximum number of connections to allow
 	uint32_t			max_clients;			//!< maximum number of dynamic clients to allow
@@ -87,10 +87,10 @@ typedef struct {
 
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 
-	dl_module_inst_t			*submodule;			//!< As provided by the transport_parse
+	dl_module_inst_t		*submodule;			//!< As provided by the transport_parse
 									///< callback.  Broken out into the
 									///< app_io_* fields below for convenience.
-	dl_module_inst_t			*dynamic_submodule;		//!< for dynamically defined clients
+	dl_module_inst_t		*dynamic_submodule;		//!< for dynamically defined clients
 
 	fr_app_t			*app;				//!< main protocol handler
 	void				*app_instance;			//!< instance data for main protocol handler

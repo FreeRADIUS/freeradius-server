@@ -189,7 +189,7 @@ struct rad_module_s {
 struct module_instance_s {
 	char const			*name;		//!< Instance name e.g. user_database.
 
-	dl_module_inst_t			*dl_inst;	//!< Structure containing the module's instance data,
+	dl_module_inst_t		*dl_inst;	//!< Structure containing the module's instance data,
 							//!< configuration, and dl handle.
 
 	module_t const			*module;	//!< Public module structure.  Cached for convenience.
