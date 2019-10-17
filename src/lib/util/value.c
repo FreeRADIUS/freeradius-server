@@ -4156,7 +4156,8 @@ parse:
 	case FR_TYPE_STRUCTURAL_EXCEPT_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_BAD:
-		fr_strerror_printf("Invalid dst_type %d", *dst_type);
+		fr_strerror_printf("Invalid dst_type %s",
+				   fr_table_str_by_value(fr_value_box_type_table, *dst_type, "<INVALID>"));
 		return -1;
 	}
 
