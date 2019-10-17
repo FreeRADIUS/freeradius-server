@@ -13,16 +13,16 @@
 ATTRIBUTE	Client-ID				1	struct
 MEMBER		Client-ID-DUID				uint16 key
 
-STRUCT	Client-ID-DUID			Client-ID-DUID-LLT	1
+STRUCT	Client-ID-DUID-LLT			Client-ID-DUID	1
 MEMBER		Client-ID-DUID-LLT-Hardware-Type	uint16
 MEMBER		Client-ID-DUID-LLT-Time			date
 MEMBER		Client-ID-DUID-LLT-Link-Layer-Address	octets
 
-STRUCT	Client-ID-DUID			Client-ID-DUID-EN	2
+STRUCT	Client-ID-DUID-EN			Client-ID-DUID	2
 MEMBER		Client-ID-DUID-EN-Enterprise-Number	uint32
 MEMBER		Client-ID-DUID-EN-Identifier		octets
 
-STRUCT	Client-ID-DUID			Client-ID-DUID-LL	3
+STRUCT	Client-ID-DUID-LL			Client-ID-DUID	3
 MEMBER		Client-ID-DUID-LL-Hardware-Type		uint16
 MEMBER		Client-ID-DUID-LL-Address		octets
 
@@ -32,16 +32,16 @@ MEMBER		Server-ID-DUID				uint16 key
 #
 #  Duplicate sub-struct as the server cannot (yet) reference structs
 #
-STRUCT	Server-ID-DUID			Server-ID-DUID-LLT	1
+STRUCT	Server-ID-DUID-LLT			Server-ID-DUID	1
 MEMBER		Server-ID-DUID-LLT-Hardware-Type	uint16
 MEMBER		Server-ID-DUID-LLT-Time			date
 MEMBER		Server-ID-DUID-LLT-Link-Layer-Address	octets
 
-STRUCT	Server-ID-DUID			Server-ID-DUID-EN	2
+STRUCT	Server-ID-DUID-EN			Server-ID-DUID	2
 MEMBER		Server-ID-DUID-EN-Enterprise-Number	uint32
 MEMBER		Server-ID-DUID-EN-Identifier		octets
 
-STRUCT	Server-ID-DUID			Server-ID-DUID-LL	3
+STRUCT	Server-ID-DUID-LL			Server-ID-DUID	3
 MEMBER		Server-ID-DUID-LL-Hardware-Type		uint16
 MEMBER		Server-ID-DUID-LL-Address		octets
 

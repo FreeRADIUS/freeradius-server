@@ -914,7 +914,9 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
 }
 
 
-/** Process a STRUCT
+/** Process a STRUCT name attr value
+ *
+ * Define struct 'name' when key 'attr' has 'value'.
  *
  *  Which MUST be a sub-structure of another struct
  */
@@ -926,6 +928,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	fr_type_t			type;
 	unsigned int			attr;
 	fr_dict_attr_flags_t		flags;
+	char				*key_attr = argv[1];
 
 	if (argc != 3) {
 		fr_strerror_printf("Invalid STRUCT syntax");
@@ -935,14 +938,14 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	This SHOULD be the "key" field.
 	 */
-	parent = fr_dict_attr_by_name(ctx->dict, argv[0]);
+	parent = fr_dict_attr_by_name(ctx->dict, key_attr);
 	if (!parent) {
-		fr_strerror_printf("Unknown attribute '%s'", argv[0]);
+		fr_strerror_printf("Unknown attribute '%s'", key_attr);
 		return -1;
 	}
 
 	if (!parent->flags.extra) {
-		fr_strerror_printf("Attribute '%s' is not a 'key' attribute", argv[0]);
+		fr_strerror_printf("Attribute '%s' is not a 'key' attribute", key_attr);
 		return -1;
 	}
 
@@ -980,7 +983,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	enclosing "struct".
 	 */
 	if (ctx->stack[ctx->stack_depth].da != parent->parent) {
-		fr_strerror_printf("Attribute '%s' is not a MEMBER of the current 'struct'", argv[0]);
+		fr_strerror_printf("Attribute '%s' is not a MEMBER of the current 'struct'", key_attr);
 		return -1;
 	}
 
@@ -1004,14 +1007,25 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 
 	default:
 		fr_strerror_printf("STRUCT attribute '%s' cannot follow a variable-sized previous MEMBER attribute '%s'",
-				   argv[0], previous->name);
+				   key_attr, previous->name);
 		return -1;
 	}
 
 get_value:
 	/*
 	 *	A STRUCT also defines a VALUE
+	 *
+	 *	Note that VALUEs are define in the *opposite* order of
+	 *	STRUCT:
+	 *
+	 *	VALUE attr name value
+	 *
+	 *	So to keep the "process value" function happy, we swap
+	 *	the order of the arguments.
 	 */
+	argv[1] = argv[0];
+	argv[0] = key_attr;
+
 	if (dict_read_process_value(ctx, argv, argc) < 0) return -1;
 
 	/*
@@ -1037,14 +1051,14 @@ get_value:
 		break;
 
 	default:
-		fr_strerror_printf("Invalid data type in attribute '%s'", argv[0]);
+		fr_strerror_printf("Invalid data type in attribute '%s'", key_attr);
 		fr_value_box_clear(&value);
 		return -1;
 	}
 	fr_value_box_clear(&value);
 
 	memset(&flags, 0, sizeof(flags));
-	da = dict_attr_alloc(ctx->dict->pool, parent, argv[1], attr, FR_TYPE_STRUCT, &flags);
+	da = dict_attr_alloc(ctx->dict->pool, parent, key_attr, attr, FR_TYPE_STRUCT, &flags);
 	if (!da) {
 		fr_strerror_printf("Failed allocating memory for STRUCT");
 		return -1;

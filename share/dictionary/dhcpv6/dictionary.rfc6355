@@ -10,11 +10,11 @@
 #
 ##############################################################################
 
-STRUCT	Client-ID-DUID			Client-ID-DUID-UUID	4
+STRUCT	Client-ID-DUID-UUID			Client-ID-DUID	4
 MEMBER		Client-ID-DUID-UUID			octets[16]
 
 #
 #  Duplicate sub-struct as the server cannot (yet) reference structs
 #
-STRUCT	Server-ID-DUID			Server-ID-DUID-UUID	4
+STRUCT	Server-ID-DUID-UUID			Server-ID-DUID	4
 MEMBER		Server-ID-DUID-UUID			octets[16]

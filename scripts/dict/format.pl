@@ -237,10 +237,9 @@ while (@ARGV) {
 	}
 
 	#
-	#  Values.
+	#  STRUCT name attr value
 	#
-	if (/^(VALUE|STRUCT)\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
-	    $cmd=$1;
+	if (/^STRUCT\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
 	    $attr=$2;
 	    $len = length $attr;
 
@@ -272,7 +271,7 @@ while (@ARGV) {
 		$lena = $len - 32;
 	    }
 
-	    $name = $3;
+	    $name = $1;
 	    $len = length $name;
 	    if ($len < 24) {
 		$lenx = 24 - $lena - $len;
@@ -287,7 +286,61 @@ while (@ARGV) {
 		$tabsn = " ";
 	    }
 
-	    push @output, "$cmd\t$attr$tabsa$name$tabsn$4$5\n";
+	    push @output, "STRUCT\t$name$tabsa$attr$tabsn$3$4\n";
+	    next;
+	}
+
+	#
+	#  VALUE attr name value
+	#
+	if (/^VALUE\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
+	    $attr=$1;
+	    $len = length $attr;
+
+
+	    if ($len < 32) {
+		$lenx = 32 - $len;
+		$lenx += 7;		# round up
+		$lenx /= 8;
+		$lenx = int $lenx;
+		$tabsa = "\t" x $lenx;
+		if ($tabsa eq "") {
+		    $tabsa = " ";
+		    $len += 1;
+		} else {
+		    $len -= $len % 8;
+		    $len += 8 * length $tabsa;
+		}
+	    } else {
+		$tabsa = " ";
+		$len += 1;
+	    }
+
+	    #
+	    #  For the code below, we assume that the attribute lengths
+	    #
+	    if ($len < 32) {
+		$lena = 0;
+	    } else {
+		$lena = $len - 32;
+	    }
+
+	    $name = $2;
+	    $len = length $name;
+	    if ($len < 24) {
+		$lenx = 24 - $lena - $len;
+		$lenx += 7;		# round up
+		$lenx /= 8;
+		$lenx = int $lenx;
+		$tabsn = "\t" x $lenx;
+		if ($tabsn eq "") {
+		    $tabsn = " ";
+		}
+	    } else {
+		$tabsn = " ";
+	    }
+
+	    push @output, "VALUE\t$attr$tabsa$name$tabsn$3$4\n";
 	    next;
 	}
 

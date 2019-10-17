@@ -56,28 +56,28 @@ MEMBER		3GPP-User-Location-Type			uint8	key
 #
 MEMBER		3GPP-User-Location-PLMN-ID		octets[3]
 
-STRUCT	3GPP-User-Location-Type		3GPP-User-Location-CGI	0
+STRUCT	3GPP-User-Location-CGI		3GPP-User-Location-Type	0
 MEMBER		3GPP-User-Location-CGI-LAC		uint16
 MEMBER		3GPP-User-Location-CGI-CAI		uint16
 
-STRUCT	3GPP-User-Location-Type		3GPP-User-Location-SAI	1
+STRUCT	3GPP-User-Location-SAI		3GPP-User-Location-Type	1
 MEMBER		3GPP-User-Location-SAI-LAC		uint16
 MEMBER		3GPP-User-Location-SAI-SAC		uint16
 
-STRUCT	3GPP-User-Location-Type		3GPP-User-Location-RAI	2
+STRUCT	3GPP-User-Location-RAI		3GPP-User-Location-Type	2
 MEMBER		3GPP-User-Location-RAI-RAI		uint16
 MEMBER		3GPP-User-Location-RAI-RAC		uint16
 
-STRUCT	3GPP-User-Location-Type		3GPP-User-Location-LAI	32
+STRUCT	3GPP-User-Location-LAI		3GPP-User-Location-Type	32
 MEMBER		3GPP-User-Location-LAI-LAI		uint16
 
-STRUCT	3GPP-User-Location-Type		3GPP-User-Location-TAI	128
+STRUCT	3GPP-User-Location-TAI		3GPP-User-Location-Type	128
 MEMBER		3GPP-User-Location-TAI-TAC		uint16
 
-STRUCT	3GPP-User-Location-Type		3GPP-User-Location-ECGI	129
+STRUCT	3GPP-User-Location-ECGI		3GPP-User-Location-Type	129
 MEMBER		3GPP-User-Location-ECGI-ECI		octets[4]
 
-STRUCT	3GPP-User-Location-Type		3GPP-User-Location-TAI-ECGI 130
+STRUCT	3GPP-User-Location-TAI-ECGI		3GPP-User-Location-Type 130
 MEMBER		3GPP-User-Location-TAI-ECGI-TAC		uint16
 MEMBER		3GPP-User-Location-TAI-ECGI-PLMN-ID	octets[3]
 MEMBER		3GPP-User-Location-TAI-ECGI-ECI		octets[4]

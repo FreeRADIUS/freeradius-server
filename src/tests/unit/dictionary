@@ -96,7 +96,7 @@ ATTRIBUTE      Test-Struct     255 struct
 MEMBER         Key-Field       uint8  key
 MEMBER         Filler          uint32
 
-STRUCT Key-Field Sub-Struct 1
+STRUCT Sub-Struct Key-Field 1
 MEMBER	Nested-Sub1 uint8
 MEMBER	Nested-Sub2 uint8
 
