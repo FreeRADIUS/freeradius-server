@@ -397,10 +397,10 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 	/*
 	 *	Allocate an array for the children.
 	 */
-	frame->state = state = talloc_zero_array(request,
-						 sizeof(unlang_parallel_state_t) +
-						 sizeof(state->children[0]) *
-						 g->num_children);
+	frame->state = state = talloc_zero_size(request,
+						sizeof(unlang_parallel_state_t) +
+						sizeof(state->children[0]) *
+						g->num_children);
 	if (!state) {
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
