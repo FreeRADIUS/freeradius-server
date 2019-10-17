@@ -1,0 +1,18 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC 6355 - Definition of the UUID-Based DHCPv6 Unique Identifier (DUID-UUID)
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	DUID-Type			3	uint8
+VALUE	DUID-Type		DUID-LLT			1
+VALUE	DUID-Type		DUID-EN			2
+VALUE	DUID-Type		DUID-LL			3
+
+ATTRIBUTE	DUID-UUID		4	octets[16]

@@ -41,6 +41,7 @@ $INCLUDE dictionary.rfc6011
 $INCLUDE dictionary.rfc6153
 $INCLUDE dictionary.rfc6225
 $INCLUDE dictionary.rfc6334
+$INCLUDE dictionary.rfc6355
 $INCLUDE dictionary.rfc6422
 $INCLUDE dictionary.rfc6440
 $INCLUDE dictionary.rfc6603
