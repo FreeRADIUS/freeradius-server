@@ -10,9 +10,11 @@
 #
 ##############################################################################
 
-ATTRIBUTE	DUID-Type			3	uint8
-VALUE	DUID-Type		DUID-LLT			1
-VALUE	DUID-Type		DUID-EN			2
-VALUE	DUID-Type		DUID-LL			3
+STRUCT	Client-ID-DUID			Client-ID-DUID-UUID	4
+MEMBER		Client-ID-DUID-UUID			octets[16]
 
-ATTRIBUTE	DUID-UUID		4	octets[16]
+#
+#  Duplicate sub-struct as the server cannot (yet) reference structs
+#
+STRUCT	Server-ID-DUID			Server-ID-DUID-UUID	4
+MEMBER		Server-ID-DUID-UUID			octets[16]

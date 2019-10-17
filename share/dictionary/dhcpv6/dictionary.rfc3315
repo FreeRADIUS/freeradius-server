@@ -10,8 +10,39 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Client-ID				1	octets
+ATTRIBUTE	Client-ID				1	struct
+MEMBER		Client-ID-DUID				uint16 key
+
+STRUCT	Client-ID-DUID			Client-ID-DUID-LLT	1
+MEMBER		Client-ID-DUID-LLT-Hardware-Type	uint16
+MEMBER		Client-ID-DUID-LLT-Time			date
+MEMBER		Client-ID-DUID-LLT-Link-Layer-Address	octets
+
+STRUCT	Client-ID-DUID			Client-ID-DUID-EN	2
+MEMBER		Client-ID-DUID-EN-Enterprise-Number	uint32
+MEMBER		Client-ID-DUID-EN-Identifier		octets
+
+STRUCT	Client-ID-DUID			Client-ID-DUID-LL	3
+MEMBER		Client-ID-DUID-LL-Hardware-Type		uint16
+MEMBER		Client-ID-DUID-LL-Address		octets
+
 ATTRIBUTE	Server-ID				2	octets
+#
+#  Duplicate sub-struct as the server cannot (yet) reference structs
+#
+STRUCT	Server-ID-DUID			Server-ID-DUID-LLT	1
+MEMBER		Server-ID-DUID-LLT-Hardware-Type	uint16
+MEMBER		Server-ID-DUID-LLT-Time			date
+MEMBER		Server-ID-DUID-LLT-Link-Layer-Address	octets
+
+STRUCT	Server-ID-DUID			Server-ID-DUID-EN	2
+MEMBER		Server-ID-DUID-EN-Enterprise-Number	uint32
+MEMBER		Server-ID-DUID-EN-Identifier		octets
+
+STRUCT	Server-ID-DUID			Server-ID-DUID-LL	3
+MEMBER		Server-ID-DUID-LL-Hardware-Type		uint16
+MEMBER		Server-ID-DUID-LL-Address		octets
+
 ATTRIBUTE	IA-NA					3	octets		# Complex struct see RFC 3315
 ATTRIBUTE	IA-TA					4	octets		# Complex struct see RFC 3315
 ATTRIBUTE	IA-ADDR					5	octets		# Complex struct see RFC 3315
