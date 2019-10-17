@@ -1696,9 +1696,6 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			data_len = command->func(&result, &cc, data, data_len, p, strlen(p));
 		}
 
-		rad_assert((size_t)data_len < sizeof(data));
-		data[data_len] = '\0';			/* Ensure the data buffer is \0 terminated */
-
 		DEBUG2("%s[%d]: --> %s", filename, cc.lineno,
 		       fr_table_str_by_value(command_rcode_table, result.rcode, "<INVALID>"));
 
@@ -1707,6 +1704,8 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		 *	Command completed successfully
 		 */
 		case RESULT_OK:
+			rad_assert((size_t)data_len < sizeof(data));
+			data[data_len] = '\0';			/* Ensure the data buffer is \0 terminated */
 			continue;
 
 		/*
