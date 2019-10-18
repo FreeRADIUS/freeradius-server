@@ -61,6 +61,14 @@ fr_table_num_ordered_t const date_precision_table[] = {
 };
 size_t date_precision_table_len = NUM_ELEMENTS(date_precision_table);
 
+fr_table_num_ordered_t const radius_subtype_table[] = {
+	{ "encrypt=1",		FLAG_ENCRYPT_USER_PASSWORD },
+	{ "encrypt=2",		FLAG_ENCRYPT_TUNNEL_PASSWORD },
+	{ "encrypt=3",		FLAG_ENCRYPT_ASCEND_SECRET },
+	{ "encrypt=4",		FLAG_ENCRYPT_OTHER },
+};
+size_t radius_subtype_table_len = NUM_ELEMENTS(radius_subtype_table);
+
 /** Magic internal dictionary
  *
  * Internal dictionary is checked in addition to the protocol dictionary
@@ -517,6 +525,9 @@ int dict_protocol_add(fr_dict_t *dict)
 		return -1;
 	}
 	dict->in_protocol_by_num = true;
+
+	dict->subtype_table = radius_subtype_table;
+	dict->subtype_table_len = radius_subtype_table_len;
 
 	return 0;
 }
@@ -2348,14 +2359,14 @@ int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED voi
 	return 0;
 }
 
-static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
+static void _fr_dict_dump(fr_dict_t const *dict, fr_dict_attr_t const *da, unsigned int lvl)
 {
 	unsigned int		i;
 	size_t			len;
 	fr_dict_attr_t const	*p;
 	char			flags[256];
 
-	fr_dict_snprint_flags(flags, sizeof(flags), da->type, &da->flags);
+	fr_dict_snprint_flags(flags, sizeof(flags), dict, da->type, &da->flags);
 
 	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
 	       da->name, da->attr, fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"), flags);
@@ -2363,14 +2374,14 @@ static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
 	len = talloc_array_length(da->children);
 	for (i = 0; i < len; i++) {
 		for (p = da->children[i]; p; p = p->next) {
-			_fr_dict_dump(p, lvl + 1);
+			_fr_dict_dump(dict, p, lvl + 1);
 		}
 	}
 }
 
 void fr_dict_dump(fr_dict_t const *dict)
 {
-	_fr_dict_dump(dict->root, 0);
+	_fr_dict_dump(dict, dict->root, 0);
 }
 
 /** Initialise the global protocol hashes

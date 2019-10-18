@@ -139,21 +139,21 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 
 	(void)fr_dict_print_attr_oid(NULL, oid_str, sizeof(oid_str), NULL, da);
 
-	fr_dict_snprint_flags(flags, sizeof(flags), da->type, &da->flags);
+	fr_dict_snprint_flags(flags, sizeof(flags), dict, da->type, &da->flags);
 
 	/* Protocol Name Type */
 	printf("%s\t%s\t%s\t%s\t%s\n", fr_dict_root(dict)->name, oid_str, da->name,
 	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"), flags);
 }
 
-static void _fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
+static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
 {
 	unsigned int		i;
 	size_t			len;
 	fr_dict_attr_t const	*p;
 	char			flags[256];
 
-	fr_dict_snprint_flags(flags, sizeof(flags), da->type, &da->flags);
+	fr_dict_snprint_flags(flags, sizeof(flags), dict, da->type, &da->flags);
 
 	/*
 	 *	Root attributes are allocated outside of the pool
@@ -175,7 +175,7 @@ static void _fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr
 	len = talloc_array_length(da->children);
 	for (i = 0; i < len; i++) {
 		for (p = da->children[i]; p; p = p->next) {
-			_fr_dict_export(count, low, high, p, lvl + 1);
+			_fr_dict_export(dict, count, low, high, p, lvl + 1);
 		}
 	}
 }
@@ -186,7 +186,7 @@ static void fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_
 	if (low) *low = UINTPTR_MAX;
 	if (high) *high = 0;
 
-	_fr_dict_export(count, low, high, fr_dict_root(dict), 0);
+	_fr_dict_export(dict, count, low, high, fr_dict_root(dict), 0);
 }
 
 int main(int argc, char *argv[])

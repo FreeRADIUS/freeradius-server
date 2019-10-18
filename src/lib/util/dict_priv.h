@@ -79,6 +79,9 @@ struct fr_dict {
 							///< in the dictionary.
 
 	fr_hash_table_t		*autoref;		//!< other dictionaries that we loaded via references
+
+	fr_table_num_ordered_t const *subtype_table;	//!< table of subtypes for this protocol
+	size_t			subtype_table_len;	//!< length of table of subtypes for this protocol
 };
 
 extern bool dict_initialised;
@@ -87,6 +90,9 @@ extern TALLOC_CTX *dict_ctx;
 
 extern fr_table_num_ordered_t const date_precision_table[];
 extern size_t date_precision_table_len;
+
+extern fr_table_num_ordered_t const radius_subtype_table[];
+extern size_t radius_subtype_table_len;
 
 fr_dict_t		*dict_alloc(TALLOC_CTX *ctx);
 

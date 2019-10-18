@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/proto.h>
 #include <ctype.h>
 
-ssize_t fr_dict_snprint_flags(char *out, size_t outlen, fr_type_t type, fr_dict_attr_flags_t const *flags)
+ssize_t fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_t const *dict, fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	char *p = out, *end = p + outlen;
 	size_t len;
@@ -52,8 +52,8 @@ do { \
 	FLAG_SET(concat);
 	FLAG_SET(virtual);
 
-	if (flags->subtype) {
-		p += snprintf(p, end - p, "encrypt=%i,", flags->subtype);
+	if (dict && flags->subtype) {
+		p += snprintf(p, end - p, "%s", fr_table_str_by_value(dict->subtype_table, flags->subtype, "?"));
 		if (p >= end) return -1;
 	}
 
@@ -162,13 +162,13 @@ size_t fr_dict_print_attr_oid(size_t *need, char *out, size_t outlen,
 
 
 
-void fr_dict_print(fr_dict_attr_t const *da, int depth)
+void fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth)
 {
 	char buff[256];
 	unsigned int i;
 	char const *name;
 
-	fr_dict_snprint_flags(buff, sizeof(buff), da->type, &da->flags);
+	fr_dict_snprint_flags(buff, sizeof(buff), dict, da->type, &da->flags);
 
 	switch (da->type) {
 	case FR_TYPE_VSA:
@@ -209,7 +209,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 		if (da->children[i]) {
 			fr_dict_attr_t const *bin;
 
-			for (bin = da->children[i]; bin; bin = bin->next) fr_dict_print(bin, depth + 1);
+			for (bin = da->children[i]; bin; bin = bin->next) fr_dict_print(dict, bin, depth + 1);
 		}
 	}
 }

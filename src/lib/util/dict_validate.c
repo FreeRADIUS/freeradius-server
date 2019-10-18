@@ -104,6 +104,14 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	Tags can only be used in a few limited situations.
 	 */
 	if (flags->has_tag) {
+		/*
+		 *	0 is internal, 1 is RADIUS, everything else is disallowed.
+		 */
+		if (dict->root->attr > 1) {
+			fr_strerror_printf("The 'has_tag' flag can only be used in the RADIUS dictionary");
+			return false;
+		}
+
 		if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
 			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
 					   "or 'string'");
@@ -242,7 +250,10 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		FORBID_OTHER_FLAGS(extra);
 	}
 
-	if (flags->subtype) {
+	/*
+	 *	Subtype flag checks for RADIUS
+	 */
+	if ((flags->subtype) && (dict->root->attr == 1)) {
 		/*
 		 *	Stupid hacks for MS-CHAP-MPPE-Keys.  The User-Password
 		 *	encryption method has no provisions for encoding the

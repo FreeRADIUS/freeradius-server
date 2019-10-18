@@ -308,18 +308,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			flags->has_tag = 1;
 
 			/*
-			 *	Encryption method.
-			 */
-		} else if (strcmp(key, "encrypt") == 0) {
-			char *qq;
-
-			flags->subtype = strtol(value, &qq, 0);
-			if (*qq) {
-				fr_strerror_printf("Invalid encrypt value \"%s\"", value);
-				return -1;
-			}
-
-			/*
 			 *	Marks the attribute up as internal.
 			 *	This means it can use numbers outside of the allowed
 			 *	protocol range, and also means it will not be included
@@ -422,7 +410,18 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 			*ref = talloc_strdup(ctx->dict->pool, value);
 
+		} else if (ctx->dict->subtype_table) {
+			int subtype;
+
+			if (value) value[-1] = '='; /* hackity hack */
+
+			subtype = fr_table_value_by_str(ctx->dict->subtype_table, key, -1);
+			if (subtype < 0) goto unknown_option;
+
+			flags->subtype = subtype;
+
 		} else {
+		unknown_option:
 			fr_strerror_printf("Unknown option '%s'", key);
 			return -1;
 		}
