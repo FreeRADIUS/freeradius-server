@@ -144,7 +144,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	inst->ef = exfile_init(inst, 256, 30, true);
+	inst->ef = exfile_init(inst, 256, 30, !(strcmp(inst->filename, "/dev/stdout") == 0) );
 	if (!inst->ef) {
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
