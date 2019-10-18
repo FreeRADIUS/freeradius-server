@@ -13,24 +13,24 @@ dictionary-load eap-aka-sim eap/aka-sim
 
 # AKA_RES with invalid length (too small)
 decode-pair.aka_tp_decode 04 03 aa bb aa aa aa aa bb bb bb bb
-data sim_decode_pair_value: Failed parsing non-skippable attribute 'AUTS': sim_decode_pair_value: Attribute "AUTS" needs a value of exactly 14 bytes, but value was 10 bytes
+match sim_decode_pair_value: Failed parsing non-skippable attribute 'AUTS': sim_decode_pair_value: Attribute "AUTS" needs a value of exactly 14 bytes, but value was 10 bytes
 
 # AKA_RES with invalid length (too big)
 decode-pair.aka_tp_decode 04 05 aa bb aa aa aa aa bb bb bb bb cc cc cc cc dd dd dd dd
-data sim_decode_pair_value: Failed parsing non-skippable attribute 'AUTS': sim_decode_pair_value: Attribute "AUTS" needs a value of exactly 14 bytes, but value was 18 bytes
+match sim_decode_pair_value: Failed parsing non-skippable attribute 'AUTS': sim_decode_pair_value: Attribute "AUTS" needs a value of exactly 14 bytes, but value was 18 bytes
 
 # AKA_RES with invalid number of bits (too small)
 decode-pair.aka_tp_decode 03 02 00 18 aa bb cc dd
-data sim_decode_pair_value: RES Length field value must be between 32-128 bits, got 24 bits
+match sim_decode_pair_value: RES Length field value must be between 32-128 bits, got 24 bits
 
 # AKA_RES with invalid number of bits (too big - exceed buff)
 decode-pair.aka_tp_decode 03 02 00 80 aa bb cc dd
-data sim_decode_pair_value: RES Length field value (128 bits) > attribute value length (32 bits)
+match sim_decode_pair_value: RES Length field value (128 bits) > attribute value length (32 bits)
 
 # AKA_RES with invalid number of bits (too big - exceed buff)
 decode-pair.aka_tp_decode 03 07 00 88 aa bb cc dd aa bb cc dd aa bb cc dd aa bb cc dd aa bb cc dd aa bb cc dd
-data sim_decode_pair_value: RES Length field value must be between 32-128 bits, got 136 bits
+match sim_decode_pair_value: RES Length field value must be between 32-128 bits, got 136 bits
 
 # AKA_RES with invalid number of bits (too big - exceed limit)
 decode-pair.aka_tp_decode 03 05 00 7f aa bb cc dd aa bb cc dd aa bb cc dd aa bb cc dd
-data sim_decode_pair_value: RES Length (127) is not a multiple of 8
+match sim_decode_pair_value: RES Length (127) is not a multiple of 8

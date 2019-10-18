@@ -5,7 +5,7 @@ load radius
 dictionary-load radius
 
 decode-pair 01 04 00
-data fr_radius_decode_pair: Insufficient data
+match fr_radius_decode_pair: Insufficient data
 
 decode-pair 01 01 00
-data fr_radius_decode_pair: Insufficient data
+match fr_radius_decode_pair: Insufficient data

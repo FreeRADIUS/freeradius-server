@@ -16,22 +16,22 @@ dictionary-load eap-aka-sim eap/aka-sim
 # Res is an octets type attribute but with a length field containing the length
 # of the value in bits.  It may be between 32 - 128 bits in length.
 decode-pair.aka_tp_decode 03 02 00 20 01 02 03 04
-data RES = 0x01020304
+match RES = 0x01020304
 
 decode-pair.aka_tp_decode 03 05 00 80 01 02 03 04 05 06 07 08 01 02 03 04 05 06 07 08
-data RES = 0x01020304050607080102030405060708
+match RES = 0x01020304050607080102030405060708
 
 decode-pair.aka_tp_decode 03 05 00 78 01 02 03 04 05 06 07 08 01 02 03 04 05 06 07 08
-data RES = 0x010203040506070801020304050607
+match RES = 0x010203040506070801020304050607
 
 decode-pair.aka_tp_decode 04 04 01 02 03 04 05 06 07 08 09 aa bb cc dd ee
-data AUTS = 0x010203040506070809aabbccddee
+match AUTS = 0x010203040506070809aabbccddee
 
 decode-pair.aka_tp_decode 86 01 00 00
-data Checkcode = 0x
+match Checkcode = 0x
 
 decode-pair.aka_tp_decode 86 06 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 a0 b0 c0 d0
-data Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0
+match Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0
 
 decode-pair.aka_tp_decode 86 09 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 a0 b0 c0 d0 a0 b0 c0 d0 a0 b0 c0 d0 a0 b0 c0 d0
-data Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0a0b0c0d0a0b0c0d0a0b0c0d0
+match Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0a0b0c0d0a0b0c0d0a0b0c0d0

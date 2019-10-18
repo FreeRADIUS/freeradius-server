@@ -12,27 +12,27 @@
 #
 
 decode-tacacs c1 01 01 01 2b 5a d2 8a 00 00 00 1c 01 00 02 03 03 05 07 05 62 6f 62 70 74 73 2f 36 31 2e 31 2e 31 2e 31 68 65 6c 6c 6f
-data TACACS-Packet-Type = Authentication, TACACS-Sequence-Number = 1, TACACS-Session-Id = 727372426, TACACS-Action = LOGIN, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "pts/6", TACACS-Remote-Address = "1.1.1.1", TACACS-Data = "hello"
+match TACACS-Packet-Type = Authentication, TACACS-Sequence-Number = 1, TACACS-Session-Id = 727372426, TACACS-Action = LOGIN, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "pts/6", TACACS-Remote-Address = "1.1.1.1", TACACS-Data = "hello"
 
 encode-tacacs TACACS-Packet-Type = Authentication, TACACS-Sequence-Number = 2, TACACS-Session-Id = 1002925488, TACACS-Authentication-Status = Pass, TACACS-Server-Message = "Hello, bob"
-data c0 01 02 01 3b c7 6d b0 00 00 00 10 01 00 00 0a 00 00 48 65 6c 6c 6f 2c 20 62 6f 62
+match c0 01 02 01 3b c7 6d b0 00 00 00 10 01 00 00 0a 00 00 48 65 6c 6c 6f 2c 20 62 6f 62
 
 #
 #  Authorization
 #
 
 decode-tacacs c0 02 01 01 a1 77 c4 5e 00 00 00 2f 06 00 02 03 03 05 07 02 0b 0b 62 6f 62 70 74 73 2f 36 31 2e 31 2e 31 2e 31 73 65 72 76 69 63 65 3d 70 70 70 70 72 6f 74 6f 63 6f 6c 3d 69 70
-data TACACS-Packet-Type = Authorization, TACACS-Sequence-Number = 1, TACACS-Session-Id = 2708980830, TACACS-Authentication-Method = TACACSPLUS, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "pts/6", TACACS-Remote-Address = "1.1.1.1"
+match TACACS-Packet-Type = Authorization, TACACS-Sequence-Number = 1, TACACS-Session-Id = 2708980830, TACACS-Authentication-Method = TACACSPLUS, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "pts/6", TACACS-Remote-Address = "1.1.1.1"
 
 encode-tacacs TACACS-Packet-Type = Authorization, TACACS-Sequence-Number = 2, TACACS-Session-Id = 2708980830, TACACS-Authorization-Status = Pass-Repl
-data c0 02 02 01 a1 77 c4 5e 00 00 00 06 02 00 00 00 00 00
+match c0 02 02 01 a1 77 c4 5e 00 00 00 06 02 00 00 00 00 00
 
 #
 #  Accounting
 #
 
 decode-tacacs c0 03 01 01 62 b0 61 30 00 00 00 54 02 06 00 02 03 03 05 07 04 15 0d 0b 0b 62 6f 62 70 74 73 2f 36 31 2e 31 2e 31 2e 31 73 74 61 72 74 5f 74 69 6d 65 3d 31 34 38 30 39 36 39 39 35 35 74 61 73 6b 5f 69 64 3d 31 36 39 39 38 73 65 72 76 69 63 65 3d 70 70 70 70 72 6f 74 6f 63 6f 6c 3d 69 70
-data TACACS-Packet-Type = Accounting, TACACS-Sequence-Number = 1, TACACS-Session-Id = 1655726384, TACACS-Accounting-Flags = Start, TACACS-Authentication-Method = TACACSPLUS, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "pts/6", TACACS-Remote-Address = "1.1.1.1"
+match TACACS-Packet-Type = Accounting, TACACS-Sequence-Number = 1, TACACS-Session-Id = 1655726384, TACACS-Accounting-Flags = Start, TACACS-Authentication-Method = TACACSPLUS, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "pts/6", TACACS-Remote-Address = "1.1.1.1"
 
 encode-tacacs TACACS-Packet-Type = Accounting, TACACS-Sequence-Number = 2, TACACS-Session-Id = 1655726384, TACACS-Accounting-Status = Success
-data c0 03 02 01 62 b0 61 30 00 00 00 05 00 00 00 00 01
+match c0 03 02 01 62 b0 61 30 00 00 00 05 00 00 00 00 01

@@ -2,73 +2,73 @@
 #  Like the conditional tests, but tests for escape sequences
 #
 condition "bob" == 0x626f62
-data true
+match true
 
 condition 0x == '0x'
-data ERROR offset 0 Empty octet string is invalid
+match ERROR offset 0 Empty octet string is invalid
 
 condition 'foo' == 0x
-data ERROR offset 9 Empty octet string is invalid
+match ERROR offset 9 Empty octet string is invalid
 
 # \n gets escaped in double quoted strings
 condition "\n" == 0x0a
-data true
+match true
 
 # but not in single quoted strings
 condition '\n' == 0x5c6e
-data true
+match true
 
 condition '\'' == 0x27
-data true
+match true
 
 condition "'" == 0x27
-data true
+match true
 
 condition "\"" == 0x22
-data true
+match true
 
 condition 0x22 == '"'
-data true
+match true
 
 condition '\'' == "'"
-data true
+match true
 
 condition '\\' == "\\"
-data true
+match true
 
 #
 #  The first string is \ + x
 #
 condition '\x' == "x"
-data false
+match false
 
 # embedded zeros are OK
 condition "a\000a" == 0x610061
-data true
+match true
 
 condition "aa\000" == 0x616100
-data true
+match true
 
 condition 'aa\000' == 0x61615c303030
-data true
+match true
 
 condition 'aa\000' == "aa\000"
-data false
+match false
 
 condition 'a\n' == "a\n"
-data false
+match false
 
 condition  0x626f62 == 'bob'
-data true
+match true
 
 condition  0x626f62 == "bob"
-data true
+match true
 
 condition  0x626f62 == bob
-data true
+match true
 
 condition  \n == 0x0a
-data ERROR offset 0 Unexpected escape
+match ERROR offset 0 Unexpected escape
 
 condition  a\n == 0x610a
-data ERROR offset 1 Unexpected escape
+match ERROR offset 1 Unexpected escape

@@ -8,83 +8,83 @@ dictionary-load radius
 #  VALUEs
 #
 dictionary VALUE	Unit-Enumv	Foo	bar
-data Invalid VALUE for ATTRIBUTE "Unit-Enumv": Invalid integer value "bar"
+match Invalid VALUE for ATTRIBUTE "Unit-Enumv": Invalid integer value "bar"
 
 dictionary VALUE	Unit-Byte	TooBig	256
-data Invalid VALUE for ATTRIBUTE "Unit-Byte": Value 256 is invalid for type uint8 (must be in range 0-255)
+match Invalid VALUE for ATTRIBUTE "Unit-Byte": Value 256 is invalid for type uint8 (must be in range 0-255)
 
 dictionary VALUE	Unit-Byte	Too-Small	-1
-data Invalid VALUE for ATTRIBUTE "Unit-Byte": Value 18446744073709551615 is invalid for type uint8 (must be in range 0-255)
+match Invalid VALUE for ATTRIBUTE "Unit-Byte": Value 18446744073709551615 is invalid for type uint8 (must be in range 0-255)
 
 dictionary VALUE	Unit-Short	Too-Big	65537
-data Invalid VALUE for ATTRIBUTE "Unit-Short": Value 65537 is invalid for type uint16 (must be in range 0-65535)
+match Invalid VALUE for ATTRIBUTE "Unit-Short": Value 65537 is invalid for type uint16 (must be in range 0-65535)
 
 # Check non-uint32 types
 dictionary VALUE	Unit-Integer64	OK	   1
-data ok
+match ok
 
 dictionary VALUE	Unit-Octets	Porridge	1
-data ok
+match ok
 
 dictionary VALUE	Unit-Byte	Life	42
-data ok
+match ok
 
 # re-defining it is not OK
 dictionary VALUE	Unit-Byte	Life	43
-data Duplicate VALUE alias "Life" for attribute "Unit-Byte". Old value was "42", new value was "43"
+match Duplicate VALUE alias "Life" for attribute "Unit-Byte". Old value was "42", new value was "43"
 
 
 #
 #  ATTRIBUTEs
 #
 dictionary ATTRIBUTE	Foo
-data Invalid ATTRIBUTE syntax
+match Invalid ATTRIBUTE syntax
 
 dictionary ATTRIBUTE	Attr-26		26		octets
-data Invalid ATTRIBUTE name
+match Invalid ATTRIBUTE name
 
 dictionary ATTRIBUTE	My-Guy		bob		octets
-data Invalid ATTRIBUTE number
+match Invalid ATTRIBUTE number
 
 dictionary ATTRIBUTE	Unit-Fail	241.243.bob	integer
-data Invalid OID component "bob" (0)
+match Invalid OID component "bob" (0)
 
 # 243.244 doesn't exist
 dictionary ATTRIBUTE	Unit-Fail	241.243.255.1	integer
-data Unknown attribute "255" in OID string "255.1"
+match Unknown attribute "255" in OID string "255.1"
 
 dictionary ATTRIBUTE	Unit-Array	255		octets[123458]
-data Invalid length for 'octets[...]'
+match Invalid length for 'octets[...]'
 
 dictionary ATTRIBUTE	Unit-Integer	255		integer[1]
-data Only 'octets' types can have a 'length' parameter
+match Only 'octets' types can have a 'length' parameter
 
 dictionary ATTRIBUTE	Unit-$bad$stuff	255		integer
-data Invalid character '$' in attribute name "Unit-$bad$stuff"
+match Invalid character '$' in attribute name "Unit-$bad$stuff"
 
 #
 # flags
 #
 dictionary ATTRIBUTE	Unit-Array	241.254		octets[1234]
-data Invalid length for 'octets[...]'
+match Invalid length for 'octets[...]'
 
 dictionary ATTRIBUTE	Unit-Tag	241.255		integer has_tag
-data Definition for 'Unit-Tag' is invalid: The 'has_tag' flag can only be used with RFC and VSA attributes
+match Definition for 'Unit-Tag' is invalid: The 'has_tag' flag can only be used with RFC and VSA attributes
 
 dictionary ATTRIBUTE	Unit-Tag	255		date	has_tag
-data Definition for 'Unit-Tag' is invalid: The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'
+match Definition for 'Unit-Tag' is invalid: The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'
 
 dictionary ATTRIBUTE	Unit-Tag	255		tlv	encrypt=1
-data Definition for 'Unit-Tag' is invalid: The 'encrypt=1' flag can only be used with attributes of type 'string'
+match Definition for 'Unit-Tag' is invalid: The 'encrypt=1' flag can only be used with attributes of type 'string'
 
 #
 #  structs
 #
 dictionary ATTRIBUTE	Unit-Struct	241.254		struct
-data ok
+match ok
 
 dictionary ATTRIBUTE	Unit-Struct-Byte	241.254.1		byte
-data ok
+match ok
 
 dictionary ATTRIBUTE	Unit-Struct-Octets	241.254.2		octets[2]
-data ok
+match ok

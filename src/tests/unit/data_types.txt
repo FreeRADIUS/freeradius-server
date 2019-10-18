@@ -2,14 +2,14 @@
 #  Parse / print data types
 #
 value uint32 0
-data 0
+match 0
 
 value ipaddr 127.0.0.1
-data 127.0.0.1
+match 127.0.0.1
 
 #  And canonicalized
 value ipaddr 127.0.0.001
-data 127.0.0.1
+match 127.0.0.1
 
 #
 #  Time deltas can have qualifiers, but they're always printed
@@ -18,61 +18,61 @@ data 127.0.0.1
 #  Unless the attribute (which we don't have here) has a scale defined
 #
 value time_delta 1
-data 1
+match 1
 
 value time_delta 2.4
-data 2.4
+match 2.4
 
 value time_delta 1ms
-data 0.001
+match 0.001
 
 value time_delta 1us
-data 0.000001
+match 0.000001
 
 value time_delta 1.5us
-data 0.0000015
+match 0.0000015
 
 value time_delta 1ns
-data 0.000000001
+match 0.000000001
 
 value time_delta 1:30
-data 90
+match 90
 
 value uint8 256
-data Value 256 is invalid for type uint8 (must be in range 0...255)
+match Value 256 is invalid for type uint8 (must be in range 0...255)
 
 value uint8 -128
-data Invalid negative value "-128" for unsigned integer
+match Invalid negative value "-128" for unsigned integer
 
 value int8 128
-data Value 128 is invalid for type int8 (must be in range -128...127)
+match Value 128 is invalid for type int8 (must be in range -128...127)
 
 value int8 -128
-data -128
+match -128
 
 value int8 -130
-data Value -130 is invalid for type int8 (must be in range -128...127)
+match Value -130 is invalid for type int8 (must be in range -128...127)
 
 value date Jan  1 1970 12:00:00 UTC
-data Jan  1 1970 12:00:00 UTC
+match Jan  1 1970 12:00:00 UTC
 
 #
 #  10 days in
 #
 value date 864000
-data Jan 11 1970 00:00:00 UTC
+match Jan 11 1970 00:00:00 UTC
 
 # 100 days
 value date 8640000
-data Apr 11 1970 00:00:00 UTC
+match Apr 11 1970 00:00:00 UTC
 
 # 1,000 days
 value date 86400000
-data Sep 27 1972 00:00:00 UTC
+match Sep 27 1972 00:00:00 UTC
 
 # 10,000 days
 value date 864000000
-data May 19 1997 00:00:00 UTC
+match May 19 1997 00:00:00 UTC
 
 #
 #  Input can be whatever.  But for the tests, output is UTC.
@@ -82,7 +82,7 @@ data May 19 1997 00:00:00 UTC
 #  Our parse function ignores time zones, which is bad.
 #
 value date Aug 21 2019 07:43:03 EDT
-data Aug 21 2019 07:43:03 UTC
+match Aug 21 2019 07:43:03 UTC
 
 #
 #  Can't yet test this as the parse / print / parse / cmp

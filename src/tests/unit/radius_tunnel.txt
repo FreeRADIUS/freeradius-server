@@ -7,71 +7,71 @@ dictionary-load radius
 #
 encode-pair Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxabc"
 decode-pair -
-data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxabc"
+match Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxabc"
 
 encode-pair Tunnel-Password:0 = "0"
 decode-pair -
-data Tunnel-Password:0 = "0"
+match Tunnel-Password:0 = "0"
 
 encode-pair Tunnel-Password:0 = "01"
 decode-pair -
-data Tunnel-Password:0 = "01"
+match Tunnel-Password:0 = "01"
 
 encode-pair Tunnel-Password:0 = "012"
 decode-pair -
-data Tunnel-Password:0 = "012"
+match Tunnel-Password:0 = "012"
 
 encode-pair Tunnel-Password:0 = "0123"
 decode-pair -
-data Tunnel-Password:0 = "0123"
+match Tunnel-Password:0 = "0123"
 
 encode-pair Tunnel-Password:0 = "01234"
 decode-pair -
-data Tunnel-Password:0 = "01234"
+match Tunnel-Password:0 = "01234"
 
 encode-pair Tunnel-Password:0 = "012345"
 decode-pair -
-data Tunnel-Password:0 = "012345"
+match Tunnel-Password:0 = "012345"
 
 encode-pair Tunnel-Password:0 = "0123456"
 decode-pair -
-data Tunnel-Password:0 = "0123456"
+match Tunnel-Password:0 = "0123456"
 
 encode-pair Tunnel-Password:0 = "01234567"
 decode-pair -
-data Tunnel-Password:0 = "01234567"
+match Tunnel-Password:0 = "01234567"
 
 encode-pair Tunnel-Password:0 = "012345678"
 decode-pair -
-data Tunnel-Password:0 = "012345678"
+match Tunnel-Password:0 = "012345678"
 
 encode-pair Tunnel-Password:0 = "0123456789"
 decode-pair -
-data Tunnel-Password:0 = "0123456789"
+match Tunnel-Password:0 = "0123456789"
 
 encode-pair Tunnel-Password:0 = "0123456789a"
 decode-pair -
-data Tunnel-Password:0 = "0123456789a"
+match Tunnel-Password:0 = "0123456789a"
 
 encode-pair Tunnel-Password:0 = "0123456789ab"
 decode-pair -
-data Tunnel-Password:0 = "0123456789ab"
+match Tunnel-Password:0 = "0123456789ab"
 
 encode-pair Tunnel-Password:0 = "0123456789abc"
 decode-pair -
-data Tunnel-Password:0 = "0123456789abc"
+match Tunnel-Password:0 = "0123456789abc"
 
 encode-pair Tunnel-Password:0 = "0123456789abcd"
 decode-pair -
-data Tunnel-Password:0 = "0123456789abcd"
+match Tunnel-Password:0 = "0123456789abcd"
 
 encode-pair Tunnel-Password:0 = "0123456789abcde"
 decode-pair -
-data Tunnel-Password:0 = "0123456789abcde"
+match Tunnel-Password:0 = "0123456789abcde"
 
 encode-pair Tunnel-Password:0 = "0123456789abcdef"
 decode-pair -
-data Tunnel-Password:0 = "0123456789abcdef"
+match Tunnel-Password:0 = "0123456789abcdef"
 
 #
 #  We can't look at the data here, because the encode-paird Tunnel-Password has a 2 byte
@@ -79,7 +79,7 @@ data Tunnel-Password:0 = "0123456789abcdef"
 #
 encode-pair Tunnel-Password:0 := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 decode-pair -
-data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+match Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 #
 #  1 octet for the tag.  2 octets for salt.  One octet for encrypted length.
@@ -87,4 +87,4 @@ data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 #
 encode-pair Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789ab"
 decode-pair -
-data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789"
+match Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789"

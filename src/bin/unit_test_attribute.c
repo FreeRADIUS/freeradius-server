@@ -65,32 +65,41 @@ do { \
 #define RETURN_OK(_len) \
 	do { \
 		result->rcode = RESULT_OK; \
+		result->file = __FILE__; \
+		result->line = __LINE__; \
 		return (_len); \
 	} while (0)
 
 #define RETURN_SKIP_FILE() \
 	do { \
 		result->rcode = RESULT_SKIP_FILE; \
+		result->file = __FILE__; \
+		result->line = __LINE__; \
 		return 0; \
 	} while (0)
 
 #define RETURN_DRAIN_ERROR_STACK_TO_DATA() \
 	do { \
 		result->rcode = RESULT_DRAIN_ERROR_STACK_TO_DATA; \
+		result->file = __FILE__; \
+		result->line = __LINE__; \
 		return 0; \
 	} while (0)
 
 #define RETURN_PARSE_ERROR(_offset) \
 	do { \
 		result->rcode = RESULT_PARSE_ERROR; \
-		result->rcode = RESULT_PARSE_ERROR; \
 		result->offset = _offset; \
+		result->file = __FILE__; \
+		result->line = __LINE__; \
 		return 0; \
 	} while (0)
 
 #define RETURN_COMMAND_ERROR() \
 	do { \
 		result->rcode = RESULT_COMMAND_ERROR; \
+		result->file = __FILE__; \
+		result->line = __LINE__; \
 		return 0; \
 	} while (0)
 
@@ -101,6 +110,8 @@ do { \
 		result->expected_len = _expected_len; \
 		result->got = _got; \
 		result->got_len = _got_len; \
+		result->file = __FILE__; \
+		result->line = __LINE__; \
 		return 0; \
 	} while (0)
 
@@ -108,6 +119,8 @@ do { \
 	do { \
 		result->rcode = RESULT_EXIT; \
 		result->ret = _ret; \
+		result->file = __FILE__; \
+		result->line = __LINE__; \
 		return 0; \
 	} while (0)
 
@@ -144,6 +157,8 @@ typedef struct {
 		size_t	offset;			//!< Where we failed parsing the command.
 		int	ret;			//!< What code we should exit with.
 	};
+	char const	*file;
+	int		line;
 	command_rcode_t	rcode;
 } command_result_t;
 
@@ -152,6 +167,7 @@ typedef struct {
 
 	char const	*path;			//!< Current path we're operating in.
 	int		lineno;			//!< Current line number.
+	char const	*filename;		//!< Current file we're operating on.
 
 	fr_dict_t 	*dict;			//!< Base dictionary.
 	fr_dict_t	*proto_dict;		//!< Protocol specific dictionary.
@@ -163,12 +179,12 @@ typedef struct {
  * @param[out] result	Of executing the command.
  * @param[in] cc	Information about the file being processed.
  * @param[in,out] data	Output of this command, or the previous command.
- * @param[in] data_len	Length of data in the data buffer.
+ * @param[in] data_used	Length of data in the data buffer.
  * @param[in] in	Command text to process.
  * @param[in] inlen	Length of the remainder of the command to process.
  */
 typedef size_t (*command_func_t)(command_result_t *result, command_ctx_t *cc, char *data,
-				 size_t data_len, char *in, size_t inlen);
+				 size_t data_used, char *in, size_t inlen);
 
 typedef struct {
 	command_func_t	func;
@@ -189,6 +205,7 @@ static dl_loader_t	*dl_loader;
 static const char	*process_filename;
 static int		process_lineno;
 
+size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			fr_dict_t *dict, const char *root_dir, char const *filename);
 
@@ -987,22 +1004,6 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
 	RETURN_OK(len);
 }
 
-/** Compare the data buffer to an expected value
- *
- */
-static size_t command_data(command_result_t *result, UNUSED command_ctx_t *cc,
-			   char *data, size_t data_used, char *in, size_t inlen)
-{
-	if (strcmp(in, data) != 0) RETURN_MISMATCH(in, inlen, data, data_used);
-
-	/*
-	 *	We didn't actually write anything, but this
-	 *	keeps the contents of the data buffer around
-	 *	for the next command to operate on.
-	 */
-	RETURN_OK(data_used);
-}
-
 static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 				  char *data, size_t data_used, char *in, size_t inlen)
 {
@@ -1116,12 +1117,9 @@ static size_t command_decode_proto(command_result_t *result, UNUSED command_ctx_
 	fr_test_point_proto_decode_t *tp = NULL;
 
 	load_test_point_by_command((void **)&tp, in, "tp_decode");
-	if (!tp) {
-		result->rcode = RESULT_PARSE_ERROR;
-		return 0;
-	}
+	if (!tp) RETURN_PARSE_ERROR(0);
 
-	return 0;
+	RETURN_OK(0);
 }
 
 /** Parse a dictionary attribute, writing "ok" to the data buffer is everything was ok
@@ -1250,12 +1248,9 @@ static size_t command_encode_proto(command_result_t *result, UNUSED command_ctx_
 	fr_test_point_proto_encode_t *tp = NULL;
 
 	load_test_point_by_command((void **)&tp, in, "tp_encode");
-	if (!tp) {
-		result->rcode = RESULT_PARSE_ERROR;
-		return 0;
-	}
+	if (!tp) RETURN_PARSE_ERROR(0);
 
-	return 0;
+	RETURN_OK(0);
 }
 
 /** Command eof
@@ -1281,26 +1276,6 @@ static size_t command_exit(command_result_t *result, UNUSED command_ctx_t *cc,
 	RETURN_EXIT(atoi(in));
 }
 
-/** Compare the data buffer to an expected value
- *
- *  Note that we fail if the string DOES match!  This command is used
- *  as a place-holder for tests which SHOULD work in the future, but
- *  which do not work right no.  It allows us to store the expected
- *  output in a test that isn't commented out.
- */
-static size_t command_fail(command_result_t *result, UNUSED command_ctx_t *cc,
-			   char *data, size_t data_used, char *in, size_t inlen)
-{
-	if (strcmp(in, data) == 0) RETURN_MISMATCH(in, inlen, data, data_used);
-
-	/*
-	 *	We didn't actually write anything, but this
-	 *	keeps the contents of the data buffer around
-	 *	for the next command to operate on.
-	 */
-	RETURN_OK(data_used);
-}
-
 /** Dynamically load a protocol library
  *
  */
@@ -1318,6 +1293,22 @@ static size_t command_proto_load(command_result_t *result, UNUSED command_ctx_t 
 	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
 
 	RETURN_OK(0);
+}
+
+/** Compare the data buffer to an expected value
+ *
+ */
+static size_t command_match(command_result_t *result, UNUSED command_ctx_t *cc,
+			   char *data, size_t data_used, char *in, size_t inlen)
+{
+	if (strcmp(in, data) != 0) RETURN_MISMATCH(in, inlen, data, data_used);
+
+	/*
+	 *	We didn't actually write anything, but this
+	 *	keeps the contents of the data buffer around
+	 *	for the next command to operate on.
+	 */
+	RETURN_OK(data_used);
 }
 
 /** Skip the test file if we're missing a particular feature
@@ -1341,6 +1332,36 @@ static size_t command_need_feature(command_result_t *result, command_ctx_t *cc,
 	}
 
 	RETURN_OK(0);
+}
+
+/** Negate the result of a match command or any command which returns "OK"
+ *
+ */
+static size_t command_no(command_result_t *result, command_ctx_t *cc,
+			 char *data, size_t data_used, char *in, size_t inlen)
+{
+	data_used = process_line(result, cc, data, data_used, in, inlen);
+	switch (result->rcode) {
+	/*
+	 *	OK becomes a command error
+	 */
+	case RESULT_OK:
+		RETURN_COMMAND_ERROR();
+
+	/*
+	 *	Mismatch becomes OK
+	 */
+	case RESULT_MISMATCH:
+		RETURN_OK(0);
+
+	/*
+	 *	The rest are unchanged...
+	 */
+	default:
+		break;
+	}
+
+	return data_used;
 }
 
 /** Encode a RADIUS attribute writing the result to the data buffer as space separated hexits
@@ -1511,11 +1532,6 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "condition <string>",
 					.description = "Parse and reprint a condition, writing the normalised condition to the data buffer on success"
 				}},
-	{ "data",		&(command_entry_t){
-					.func = command_data,
-					.usage = "data <string>",
-					.description = "Compare the contents of the data buffer with an expected value"
-				}},
 	{ "decode-pair",	&(command_entry_t){
 					.func = command_decode_pair,
 					.usage = "decode-pair[.<testpoint_symbol>] (-|<hex_string>)",
@@ -1561,20 +1577,25 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "exit[ <num>]",
 					.description = "Exit with the specified error number.  If no <num> is provided, process will exit with 0"
 				}},
-	{ "fail",		&(command_entry_t){
-					.func = command_fail,
-					.usage = "fail <string>",
-					.description = "The expected output should NOT match the string"
-				}},
 	{ "load ",		&(command_entry_t){
 					.func = command_proto_load,
 					.usage = "load <protocol>",
 					.description = "Switch the active protocol to the one specified, unloading the previous protocol",
 				}},
+	{ "match",		&(command_entry_t){
+					.func = command_match,
+					.usage = "match <string>",
+					.description = "Compare the contents of the data buffer with an expected value"
+				}},
 	{ "need-feature ", 	&(command_entry_t){
 					.func = command_need_feature,
 					.usage = "need-feature <feature>",
 					.description = "Skip the contents of the current file, or up to the next \"eof\" command if a particular feature is not available"
+				}},
+	{ "no ", 		&(command_entry_t){
+					.func = command_no,
+					.usage = "no ...",
+					.description = "Negate the result of a \"match\" command"
 				}},
 	{ "raw ",		&(command_entry_t){
 					.func = command_encode_raw,
@@ -1599,23 +1620,77 @@ static fr_table_ptr_sorted_t	commands[] = {
 };
 static size_t commands_len = NUM_ELEMENTS(commands);
 
+size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, size_t data_used, char *in, UNUSED size_t inlen)
+{
+
+	command_entry_t		*command;
+	size_t			match_len;
+	char			*p;
+
+	p = in;
+	fr_skip_whitespace(p);
+	if (*p == '\0') RETURN_OK(data_used);
+
+	DEBUG2("%s[%d]: %s", cc->filename, cc->lineno, p);
+
+	/*
+	 *	Look up the command by longest prefix
+	 */
+	command = fr_table_value_by_longest_prefix(&match_len, commands, p, -1, NULL);
+	if (!command) {
+		fr_strerror_printf("Unknown command: %s", p);
+		RETURN_COMMAND_ERROR();
+	}
+
+	/*
+	 *	Skip processing the command
+	 */
+	if (command->func == command_comment) RETURN_OK(data_used);
+
+	p += match_len;						/* Jump to after the command */
+	fr_skip_whitespace(p);					/* Skip any whitespace */
+
+	/*
+	 *	Feed the data buffer in as the command
+	 */
+	if (*p == '-') {
+		data_used = command->func(result, cc, data, data_used, data, data_used);
+	}
+	else {
+		data_used = command->func(result, cc, data, data_used, p, strlen(p));
+	}
+
+	rad_assert((size_t)data_used < COMMAND_OUTPUT_MAX);
+	data[data_used] = '\0';			/* Ensure the data buffer is \0 terminated */
+
+	if (data_used) {
+		DEBUG2("%s[%d]: --> %s (wrote %zu bytes)", cc->filename, cc->lineno,
+		       fr_table_str_by_value(command_rcode_table, result->rcode, "<INVALID>"), data_used);
+	} else {
+		DEBUG2("%s[%d]: --> %s", cc->filename, cc->lineno,
+		       fr_table_str_by_value(command_rcode_table, result->rcode, "<INVALID>"));
+	}
+	return data_used;
+}
+
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			fr_dict_t *dict, const char *root_dir, char const *filename)
 {
-	int				ret = 0;
-	FILE				*fp;				/* File we're reading from */
-	char				buffer[8192];			/* Command buffer */
-	char				data[COMMAND_OUTPUT_MAX + 1];	/* Data written by previous command */
-	ssize_t				data_len = 0;			/* How much data the last command wrote */
-	static char			path[PATH_MAX] = { '\0' };
+	int		ret = 0;
+	FILE		*fp;				/* File we're reading from */
+	char		buffer[8192];			/* Command buffer */
+	char		data[COMMAND_OUTPUT_MAX + 1];	/* Data written by previous command */
+	ssize_t		data_used = 0;			/* How much data the last command wrote */
+	static char	path[PATH_MAX] = { '\0' };
 
-	command_ctx_t			cc = {
-						.tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx"),
-						.lineno = 0,
-						.path = path,
-						.dict = dict,
-						.features = features
-					};
+	command_ctx_t	cc = {
+				.tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx"),
+				.lineno = 0,
+				.path = path,
+				.dict = dict,
+				.filename = filename,
+				.features = features
+			};
 
 	/*
 	 *	Open the file, or stdin
@@ -1646,16 +1721,13 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 	 *	Loop over lines in the file or stdin
 	 */
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		char			*p;
-		command_entry_t	*command;
 		command_result_t	result = { .rcode = RESULT_OK };	/* Reset to OK */
-		size_t			match_len;
+		char			*p = strchr(buffer, '\n');
 
 		cc.lineno++;
-		p = strchr(buffer, '\n');
+		process_lineno = cc.lineno;
 
 		if (!p) {
-		line_too_long:
 			if (!feof(fp)) {
 				ERROR("Line %d too long in %s", cc.lineno, cc.path);
 				ret = -1;
@@ -1665,70 +1737,12 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			*p = '\0';
 		}
 
-		/*
-		 *	Backslash? then keep buffering.
-		 */
-		while ((p > buffer) && (p[-1] == '\\')) {
-			char *q;
-
-			p--;
-
-			if (!fgets(p, buffer + sizeof(buffer) - p, fp)) break;
-
-			cc.lineno++;
-			q = strchr(p, '\n');
-			if (!q) goto line_too_long;
-
-			*q = '\0';
-
-			if (q[-1] != '\\') break;
-
-			p = q;
-		}
-
-		p = buffer;
-		fr_skip_whitespace(p);
-		if (*p == '\0') continue;				/* Blank line */
-
-		process_lineno = cc.lineno;
-		DEBUG2("%s[%d]: %s", filename, cc.lineno, p);
-
-		/*
-		 *	Look up the command by longest prefix
-		 */
-		command = fr_table_value_by_longest_prefix(&match_len, commands, p, -1, NULL);
-		if (!command) {
-		bad_input:
-			ERROR("%s[%d]: Unknown command: %s", cc.path, cc.lineno, p);
-			ret = -1;
-			goto finish;
-		}
-
-		if (command->func == command_comment) continue;		/* Skip comments */
-
-		p += match_len;						/* Jump to after the command */
-		fr_skip_whitespace(p);					/* Skip any whitespace */
-
-		/*
-		 *	Feed the data buffer in as the command
-		 */
-		if (*p == '-') {
-			data_len = command->func(&result, &cc, data, data_len, data, data_len);
-		}
-		else {
-			data_len = command->func(&result, &cc, data, data_len, p, strlen(p));
-		}
-
-		DEBUG2("%s[%d]: --> %s", filename, cc.lineno,
-		       fr_table_str_by_value(command_rcode_table, result.rcode, "<INVALID>"));
-
+		data_used = process_line(&result, &cc, data, data_used, buffer, strlen(buffer));
 		switch (result.rcode) {
 		/*
 		 *	Command completed successfully
 		 */
 		case RESULT_OK:
-			rad_assert((size_t)data_len < sizeof(data));
-			data[data_len] = '\0';			/* Ensure the data buffer is \0 terminated */
 			continue;
 
 		/*
@@ -1745,9 +1759,15 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			 *	is closed.
 			 */
 			while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-				command = fr_table_value_by_longest_prefix(&match_len, commands,
-									buffer, -1, NULL);
-				if (!command) goto bad_input;
+				command_entry_t	*command;
+				size_t		match_len;
+
+				command = fr_table_value_by_longest_prefix(&match_len, commands, buffer, -1, NULL);
+				if (!command) {
+					ERROR("%s[%d]: Unknown command: %s", cc.path, cc.lineno, p);
+					ret = -1;
+					goto finish;
+				}
 
 				if (command->func == command_eof) break;
 			}
@@ -1768,7 +1788,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		 *	correctness.
 		 */
 		case RESULT_DRAIN_ERROR_STACK_TO_DATA:
-			data_len = strerror_concat(data, sizeof(data));
+			data_used = strerror_concat(data, sizeof(data));
 			break;
 
 		/*

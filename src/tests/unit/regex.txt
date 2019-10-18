@@ -1,52 +1,52 @@
 dictionary-load radius
 
 condition &User-Name !~ /^foo\nbar$/
-data !&User-Name =~ /^foo\nbar$/
+match !&User-Name =~ /^foo\nbar$/
 
 condition (ok =~ handled)
-data ERROR offset 7 Expected regular expression
+match ERROR offset 7 Expected regular expression
 
 condition (ok == /foo/)
-data ERROR offset 7 Unexpected regular expression
+match ERROR offset 7 Unexpected regular expression
 
 condition /foo/ =~ bar
-data ERROR offset 0 Unexpected regular expression
+match ERROR offset 0 Unexpected regular expression
 
 #
 #  Convert !~ to !(COND) for regex
 #
 condition foo =~ /bar/
-data foo =~ /bar/
+match foo =~ /bar/
 
 condition foo !~ /bar/
-data !foo =~ /bar/
+match !foo =~ /bar/
 
 condition !foo !~ /bar/
-data foo =~ /bar/
+match foo =~ /bar/
 
 #
 #  Flags
 #
 condition foo =~ /bar/i
-data foo =~ /bar/i
+match foo =~ /bar/i
 
 condition foo =~ /bar/m
-data foo =~ /bar/m
+match foo =~ /bar/m
 
 condition foo =~ /bar/im
-data foo =~ /bar/im
+match foo =~ /bar/im
 
 condition foo =~ /bar/gimsux
-data foo =~ /bar/gimsux
+match foo =~ /bar/gimsux
 
 condition foo =~ /bar/ima
-data ERROR offset 14 Unexpected text after condition
+match ERROR offset 14 Unexpected text after condition
 
 condition foo =~ /bar/ii
-data ERROR offset 13 Duplicate flag
+match ERROR offset 13 Duplicate flag
 
 condition foo =~ /bar/iia
-data ERROR offset 13 Duplicate flag
+match ERROR offset 13 Duplicate flag
 
 #
 #  Escape the backslashes correctly
@@ -54,19 +54,19 @@ data ERROR offset 13 Duplicate flag
 #
 
 condition &User-Name =~ /@|\\/
-data &User-Name =~ /@|\\/
+match &User-Name =~ /@|\\/
 
 condition &User-Name =~ /^([^\\]*)\\(.*)$/
-data &User-Name =~ /^([^\\]*)\\(.*)$/
+match &User-Name =~ /^([^\\]*)\\(.*)$/
 
 xlat %{1}
-data %{1}
+match %{1}
 
 xlat %{33}
-data ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
+match ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
 
 condition &User-Name == /foo/
-data ERROR offset 14 Unexpected regular expression
+match ERROR offset 14 Unexpected regular expression
 
 #
 #  Allow a match operator.  Which the user will
@@ -74,4 +74,4 @@ data ERROR offset 14 Unexpected regular expression
 #  like '=' or '{' or '}.  If they do, too bad.
 #
 condition &User-Name =~ m,foo,
-data &User-Name =~ /foo/
+match &User-Name =~ /foo/

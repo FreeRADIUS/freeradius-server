@@ -28,17 +28,17 @@ command add foo :did have INTEGER
 #  Alternate parameters
 #
 command add show module :sql (alive|dead)
-data ok
+match ok
 
 command add show module :file (alive|(foo bar))
-data ok
+match ok
 
 #
 #  Optional parameters
 #
 command add set home server :localhost IPADDR [INTEGER]
-data ok
+match ok
 
 command add set home server :remote [state INTEGER]
-data ok
+match ok
 

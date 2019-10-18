@@ -1,17 +1,17 @@
 encode Attr-240.1.1 = 0x01
-data Previous OID component specified a non-structural type
+match Previous OID component specified a non-structural type
 
 encode Attr-240.26.1.1.1 = 0x01
-data Previous OID component specified a non-structural type
+match Previous OID component specified a non-structural type
 
 encode Attr-246.26.1.1.1 = 0x01
-data Previous OID component specified a non-structural type
+match Previous OID component specified a non-structural type
 
 encode Attr-240.9999999999999999999.1.1 = 0x01
-data Previous OID component specified a non-structural type
+match Previous OID component specified a non-structural type
 
 encode Attr-26.1.1 = 0x01
-data 1a 09 00 00 00 01 01 03 01
+match 1a 09 00 00 00 01 01 03 01
 
 encode Attr-26.1344.1 = 0x01020304
-data 1a 0c 00 00 05 40 01 06 01 02 03 04
+match 1a 0c 00 00 05 40 01 06 01 02 03 04

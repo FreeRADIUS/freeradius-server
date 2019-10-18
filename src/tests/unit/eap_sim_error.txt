@@ -13,92 +13,92 @@ dictionary-load eap-aka-sim eap/aka-sim
 
 # Zero length attribute
 decode-pair.sim_tp_decode 0d 00
-data sim_decode_pair_internal: Malformed attribute 13: Length field 0
+match sim_decode_pair_internal: Malformed attribute 13: Length field 0
 
 # No length field
 decode-pair.sim_tp_decode 0d
-data sim_decode_pair_internal: Insufficient data: Expected >= 2 bytes, got 1 bytes
+match sim_decode_pair_internal: Insufficient data: Expected >= 2 bytes, got 1 bytes
 
 # Boolean attribute (without reserved bytes)
 decode-pair.sim_tp_decode 0d 01
-data sim_decode_pair_internal: Insufficient data for attribute 13: Length field 4, remaining data 2
+match sim_decode_pair_internal: Insufficient data for attribute 13: Length field 4, remaining data 2
 
 # Boolean attribute (invalid length field)
 decode-pair.sim_tp_decode 0d 00 00 00
-data sim_decode_pair_internal: Malformed attribute 13: Length field 0
+match sim_decode_pair_internal: Malformed attribute 13: Length field 0
 
 # Boolean attribute (invalid length field)
 decode-pair.sim_tp_decode 0d 02 00 00
-data sim_decode_pair_internal: Insufficient data for attribute 13: Length field 8, remaining data 4
+match sim_decode_pair_internal: Insufficient data for attribute 13: Length field 8, remaining data 4
 
 # Unknown non-skippable attribute (99)
 decode-pair.sim_tp_decode 63 01 00 00
-data Unknown (non-skippable) attribute 99
+match Unknown (non-skippable) attribute 99
 
 # Unknown skippable attribute (150) - Ensure the 'reserved bytes' in a normal octets
 # attribute are not skipped.
 decode-pair.sim_tp_decode 97 02 00 00 ff ff ff ff
-data Attr-151 = 0x0000ffffffff
+match Attr-151 = 0x0000ffffffff
 
 # Array missing length field
 decode-pair.sim_tp_decode 0f 01
-data sim_decode_pair_internal: Insufficient data for attribute 15: Length field 4, remaining data 2
+match sim_decode_pair_internal: Insufficient data for attribute 15: Length field 4, remaining data 2
 
 # Array actual length field > remaining data
 decode-pair.sim_tp_decode 0f 01 00 01
-data sim_decode_array: Actual length field value (1) > attribute value length (0)
+match sim_decode_array: Actual length field value (1) > attribute value length (0)
 
 # Array actual length not a multiple of the data type
 decode-pair.sim_tp_decode 0f 02 00 03 00 00 00 00
-data sim_array_members: Expected array actual length to be multiple of 2, got 3
+match sim_array_members: Expected array actual length to be multiple of 2, got 3
 
 # Array actual length < element length
 decode-pair.sim_tp_decode 0f 02 00 01 00 00 00 00
-data sim_array_members: Element length (2) > array length (1)
+match sim_array_members: Element length (2) > array length (1)
 
 # String actual length greater than value length
 decode-pair.sim_tp_decode 0e 05 00 11 74 65 73 74 69 6e 67 31 32 33 40 73 69 00 00 00
-data sim_decode_pair_value: Actual length field value (17) > attribute value length (16)
+match sim_decode_pair_value: Actual length field value (17) > attribute value length (16)
 
 # String actual length (possible overflow)
 decode-pair.sim_tp_decode 0e 05 ff ff 74 65 73 74 69 6e 67 31 32 33 40 73 69 00 00 00
-data sim_decode_pair_value: Actual length field value (65535) > attribute value length (16)
+match sim_decode_pair_value: Actual length field value (65535) > attribute value length (16)
 
 # TLV encrypted data not a multiple of 16
 decode-pair.sim_tp_decode 82 02 00 00 00 00 00 00
-data sim_value_decrypt: Encrypted attribute is not a multiple of cipher's block size (16)
+match sim_value_decrypt: Encrypted attribute is not a multiple of cipher's block size (16)
 
 # TLV encrypted data multiple of 16, zeroed out
 decode-pair.sim_tp_decode 82 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-data sim_decode_tlv: Malformed nested attribute 123: Length field (116 bytes) value longer than remaining data in parent (16 bytes)
+match sim_decode_tlv: Malformed nested attribute 123: Length field (116 bytes) value longer than remaining data in parent (16 bytes)
 
 # RFC4186 A.10. example - With IV absent
 decode-pair.sim_tp_decode_rfc4186 82 05 00 00 b6 ed d3 82 79 e2 a1 42 3c 1a fc 5c 45 5c 7d 56 0b 05 00 00 fa f7 6b 71 fb e2 d2 55 b9 6a 35 66 c9 15 c6 17
-data sim_value_decrypt: No IV present in packet, can't decrypt data
+match sim_value_decrypt: No IV present in packet, can't decrypt data
 
 # TLV encrypted data, non zero padding
 decode-pair.sim_tp_decode 82 05 00 00 27 a8 93 8c b2 97 44 32 42 a8 eb f7 d5 fd 82 c6
-data sim_decode_tlv: Padding attribute value not zeroed 0x00000000000000000001
+match sim_decode_tlv: Padding attribute value not zeroed 0x00000000000000000001
 
 decode-pair.sim_tp_decode 82 05 00 00 0f 37 39 c9 fb db 00 7a e2 eb 6f 7c e3 3c bd a0
-data sim_decode_tlv: Padding attribute value not zeroed 0x10000000000000000000
+match sim_decode_tlv: Padding attribute value not zeroed 0x10000000000000000000
 
 decode-pair.sim_tp_decode 82 05 00 00 08 05 38 24 76 76 01 0b 3a f1 48 60 24 08 3b 91
-data sim_decode_tlv: Malformed nested attribute 0: Length field 0
+match sim_decode_tlv: Malformed nested attribute 0: Length field 0
 
 # Padding overruns decrypted data
 decode-pair.sim_tp_decode 82 05 00 00 d7 67 d7 c7 f3 35 13 23 2e 65 c1 15 77 37 35 dc
-data sim_decode_tlv: Malformed nested attribute 6: Length field (12 bytes) value longer than remaining data in parent (8 bytes)
+match sim_decode_tlv: Malformed nested attribute 6: Length field (12 bytes) value longer than remaining data in parent (8 bytes)
 
 # Padding is the entirety of the encrypted TLV
 decode-pair.sim_tp_decode 82 05 00 00 bd 7a 99 e9 72 9b 58 84 52 82 4f d1 0a a7 06 c0
-data sim_decode_tlv: Expected padding attribute length <= 12 bytes, got 16 bytes
+match sim_decode_tlv: Expected padding attribute length <= 12 bytes, got 16 bytes
 
 # Padding has zero length field
 decode-pair.sim_tp_decode 82 05 00 00 eb 3e e8 51 46 11 07 fe c2 72 97 b2 7a d5 e5 63
-data sim_decode_tlv: Malformed nested attribute 6: Length field 0
+match sim_decode_tlv: Malformed nested attribute 6: Length field 0
 
 # Non-encrypted non-skippable attribute found inside AT_ENCR_DATA
 decode-pair.sim_tp_decode 82 05 00 00 c5 3c b6 fb a8 67 79 f0 6d 45 c4 3a 42 33 8e c1
-data sim_decode_tlv: Unknown (non-skippable) attribute 1
+match sim_decode_tlv: Unknown (non-skippable) attribute 1
 
