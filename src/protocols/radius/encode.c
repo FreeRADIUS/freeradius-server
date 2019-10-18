@@ -716,7 +716,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (len > (ssize_t)outlen) len = outlen;
 
-	if (vp->da->flags.encrypt && !packet_ctx) {
+	if (vp->da->flags.subtype && !packet_ctx) {
 		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
 		return -1;
 	}
@@ -726,7 +726,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	Attributes with encrypted values MUST be less than
 	 *	128 bytes long.
 	 */
-	if (da->type != FR_TYPE_STRUCT) switch (vp->da->flags.encrypt) {
+	if (da->type != FR_TYPE_STRUCT) switch (vp->da->flags.subtype) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		encode_password(ptr, &len, data, len, packet_ctx->secret, packet_ctx->vector);
 		break;

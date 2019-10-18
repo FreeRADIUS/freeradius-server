@@ -68,17 +68,20 @@ typedef struct {
 
 	unsigned int		extra : 1;			//!< for LONG extended attributes
 
-	enum {
-		FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
-		FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
-		FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
-		FLAG_ENCRYPT_ASCEND_SECRET,			//!< Encrypt attribute ascend style.
-		FLAG_ENCRYPT_OTHER,				//!< Non-RADIUS encryption
-	} encrypt;
+	uint8_t			subtype;			//!< for FR_TYPE_STRING encoding
 
 	uint8_t			length;				//!< length of the attribute
 	uint8_t			type_size;			//!< For TLV2 and root attributes.
 } fr_dict_attr_flags_t;
+
+enum {
+	FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
+	FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
+	FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
+	FLAG_ENCRYPT_ASCEND_SECRET,			//!< Encrypt attribute ascend style.
+	FLAG_ENCRYPT_OTHER,				//!< Non-RADIUS encryption
+};
+
 
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 extern fr_dict_t *fr_dict_internal;

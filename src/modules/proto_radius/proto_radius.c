@@ -348,7 +348,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp != NULL;
 		     vp = fr_cursor_next(&cursor)) {
-			if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) {
+			if (vp->da->flags.subtype != FLAG_ENCRYPT_NONE) {
 				switch (vp->da->type) {
 				default:
 					break;

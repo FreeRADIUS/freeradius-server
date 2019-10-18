@@ -393,7 +393,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	 *	unfortunately the ordering of these two attributes
 	 *	aren't specified, so we may have to hunt for the IV.
 	 */
-	if (parent->flags.encrypt) {
+	if (parent->flags.subtype) {
 		FR_PROTO_TRACE("found encrypted attribute '%s'", parent->name);
 
 		decr_len = sim_value_decrypt(ctx, &decr, p + 2,
@@ -442,7 +442,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			uint8_t zero = 0;
 			uint8_t i;
 
-			if (!parent->flags.encrypt) {
+			if (!parent->flags.subtype) {
 				fr_strerror_printf("%s: Found padding attribute outside of an encrypted TLV",
 						   __FUNCTION__);
 				goto error;

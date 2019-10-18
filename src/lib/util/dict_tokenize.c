@@ -313,7 +313,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		} else if (strcmp(key, "encrypt") == 0) {
 			char *qq;
 
-			flags->encrypt = strtol(value, &qq, 0);
+			flags->subtype = strtol(value, &qq, 0);
 			if (*qq) {
 				fr_strerror_printf("Invalid encrypt value \"%s\"", value);
 				return -1;

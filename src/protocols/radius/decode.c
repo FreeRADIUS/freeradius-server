@@ -1006,7 +1006,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	 *	then decode the tag.
 	 */
 	if (parent->flags.has_tag && (data_len > 1) && ((p[0] < 0x20) ||
-						       (parent->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
+						       (parent->flags.subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
 		/*
 		 *	Only "short" attributes can be encrypted.
 		 */
@@ -1032,8 +1032,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	/*
 	 *	Decrypt the attribute.
 	 */
-	if (packet_ctx && (parent->flags.encrypt != FLAG_ENCRYPT_NONE)) {
-		FR_PROTO_TRACE("Decrypting type %u", parent->flags.encrypt);
+	if (packet_ctx && (parent->flags.subtype != FLAG_ENCRYPT_NONE)) {
+		FR_PROTO_TRACE("Decrypting type %u", parent->flags.subtype);
 		/*
 		 *	Encrypted attributes can only exist for the
 		 *	old-style format.  Extended attributes CANNOT
@@ -1044,7 +1044,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		if (p == data) memcpy(buffer, p, attr_len);
 		p = buffer;
 
-		switch (parent->flags.encrypt) { /* can't be tagged */
+		switch (parent->flags.subtype) { /* can't be tagged */
 		/*
 		 *  User-Password
 		 */

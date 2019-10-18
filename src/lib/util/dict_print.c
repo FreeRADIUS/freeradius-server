@@ -52,8 +52,8 @@ do { \
 	FLAG_SET(concat);
 	FLAG_SET(virtual);
 
-	if (flags->encrypt) {
-		p += snprintf(p, end - p, "encrypt=%i,", flags->encrypt);
+	if (flags->subtype) {
+		p += snprintf(p, end - p, "encrypt=%i,", flags->subtype);
 		if (p >= end) return -1;
 	}
 

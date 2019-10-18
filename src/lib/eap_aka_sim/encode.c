@@ -806,7 +806,7 @@ static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
 	 *	encrypt the contents of the TLV using AES-CBC-128
 	 *	or another encryption algorithm.
 	 */
-	if (da->flags.encrypt) {
+	if (da->flags.subtype) {
 		slen = encode_encrypted_value(value, end - value, value, p - value, encoder_ctx);
 		if (slen < 0) return PAIR_ENCODE_ERROR;
 
@@ -846,7 +846,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	 *	The ASCII art in the RFCs the attributes in
 	 *	this order.
 	 */
-	if (tlv_stack[depth]->flags.encrypt) {
+	if (tlv_stack[depth]->flags.subtype) {
 		len = encode_iv(out, outlen, encoder_ctx);
 		if (len < 0) return len;
 
