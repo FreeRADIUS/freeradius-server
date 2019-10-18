@@ -57,5 +57,8 @@ data Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2, Unit-Struct4-Short = 4
 decode-pair ff 09 01 00 00 1a 99 05 06
 data Key-Field = Sub-Struct, Filler = 6809, Nested-Sub1 = 5, Nested-Sub2 = 6
 
-encode-pair Key-Field = Sub-Struct, Filler = 6809, Nested-Sub1 = 5, Nested-Sub2 = 6
+encode-pair Key-Field = Sub-Struct, \
+			Filler = 6809, \
+			Nested-Sub1 = 5, \
+			Nested-Sub2 = 6
 data ff 0b 01 00 00 1a 99 01 04 05 06
