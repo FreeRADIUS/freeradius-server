@@ -1646,6 +1646,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 	 *	Loop over lines in the file or stdin
 	 */
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+		bool			backslash = strchr(buffer, '\\') ? true : false;
 		char			*p = strchr(buffer, '\n');
 		command_entry_t	*command;
 		command_result_t	result = { .rcode = RESULT_OK };	/* Reset to OK */
@@ -1661,6 +1662,22 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			}
 		} else {
 			*p = '\0';
+		}
+
+		/*
+		 *	Backslash? then keep buffering.
+		 */
+		if (backslash) {
+			size_t len = strlen(buffer) - 2; /* take over: '\' + '\n' */
+
+			while (fgets(&buffer[len], (sizeof(buffer) - len), fp)) {
+				if (strchr(buffer, '\\')) {
+					len = strlen(buffer) - 2;
+					continue;
+				}
+
+				if (strchr(buffer, '\n')) break; /* continue the game */
+			}
 		}
 
 		p = buffer;
