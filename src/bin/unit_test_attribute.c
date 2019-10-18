@@ -1646,15 +1646,16 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 	 *	Loop over lines in the file or stdin
 	 */
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		bool			backslash = strchr(buffer, '\\') ? true : false;
-		char			*p = strchr(buffer, '\n');
+		char			*p;
 		command_entry_t	*command;
 		command_result_t	result = { .rcode = RESULT_OK };	/* Reset to OK */
 		size_t			match_len;
 
 		cc.lineno++;
+		p = strchr(buffer, '\n');
 
 		if (!p) {
+		line_too_long:
 			if (!feof(fp)) {
 				ERROR("Line %d too long in %s", cc.lineno, cc.path);
 				ret = -1;
@@ -1667,17 +1668,22 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		/*
 		 *	Backslash? then keep buffering.
 		 */
-		if (backslash) {
-			size_t len = strlen(buffer) - 2; /* take over: '\' + '\n' */
+		while ((p > buffer) && (p[-1] == '\\')) {
+			char *q;
 
-			while (fgets(&buffer[len], (sizeof(buffer) - len), fp)) {
-				if (strchr(buffer, '\\')) {
-					len = strlen(buffer) - 2;
-					continue;
-				}
+			p--;
 
-				if (strchr(buffer, '\n')) break; /* continue the game */
-			}
+			if (!fgets(p, buffer + sizeof(buffer) - p, fp)) break;
+
+			cc.lineno++;
+			q = strchr(p, '\n');
+			if (!q) goto line_too_long;
+
+			*q = '\0';
+
+			if (q[-1] != '\\') break;
+
+			p = q;
 		}
 
 		p = buffer;
