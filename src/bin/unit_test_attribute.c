@@ -202,8 +202,6 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 static char		proto_name_prev[128];
 static dl_t		*dl;
 static dl_loader_t	*dl_loader;
-static const char	*process_filename;
-static int		process_lineno;
 
 size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
@@ -980,8 +978,8 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
 		fr_strerror_printf("Out of memory");
 		RETURN_COMMAND_ERROR();
 	}
-	cf_filename_set(cs, process_filename);
-	cf_lineno_set(cs, process_lineno);
+	cf_filename_set(cs, cc->filename);
+	cf_lineno_set(cs, cc->lineno);
 
 	dec_len = fr_cond_tokenize(cs, &cond, &error, cc->proto_dict ? cc->proto_dict : cc->dict, in);
 	if (dec_len <= 0) {
@@ -1715,8 +1713,6 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		filename = path;
 	}
 
-	process_filename = filename;
-
 	/*
 	 *	Loop over lines in the file or stdin
 	 */
@@ -1725,7 +1721,6 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		char			*p = strchr(buffer, '\n');
 
 		cc.lineno++;
-		process_lineno = cc.lineno;
 
 		if (!p) {
 			if (!feof(fp)) {
