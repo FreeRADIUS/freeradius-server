@@ -922,7 +922,7 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
  */
 static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
-	fr_dict_attr_t			*da, *mutable;
+	fr_dict_attr_t const   		*da;
 	fr_dict_attr_t const		*parent, *previous;
 	fr_value_box_t			value;
 	fr_type_t			type;
@@ -1058,17 +1058,14 @@ get_value:
 	fr_value_box_clear(&value);
 
 	memset(&flags, 0, sizeof(flags));
-	da = dict_attr_alloc(ctx->dict->pool, parent, key_attr, attr, FR_TYPE_STRUCT, &flags);
-	if (!da) {
-		fr_strerror_printf("Failed allocating memory for STRUCT");
-		return -1;
-	}
 
-	memcpy(&mutable, &parent, sizeof(parent)); /* const issues */
-	if (dict_attr_child_add(mutable, da) < 0) {
-		talloc_free(da);
-		return -1;
-	}
+	/*
+	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
+	 */
+	if (fr_dict_attr_add(ctx->dict, parent, argv[1], attr, FR_TYPE_STRUCT, &flags) < 0) return -1;
+
+	da = fr_dict_attr_by_name(ctx->dict, argv[1]);
+	if (!da) return -1;
 
 	/*
 	 *	A STRUCT definition is an implicit BEGIN-STRUCT.
