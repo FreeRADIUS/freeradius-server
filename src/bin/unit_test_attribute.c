@@ -209,7 +209,8 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			fr_dict_t *dict, const char *root_dir, char const *filename);
 
-static void mismatch_print(command_ctx_t *cc, char *expected, size_t expected_len, char *got, size_t got_len,
+static void mismatch_print(command_ctx_t *cc, char const *command,
+			   char *expected, size_t expected_len, char *got, size_t got_len,
 			   bool print_diff)
 {
 	char *g, *e, *g_p, *e_p;
@@ -220,7 +221,7 @@ static void mismatch_print(command_ctx_t *cc, char *expected, size_t expected_le
 	e = fr_asprintf(cc->tmp_ctx, "%pV",
 			fr_box_strvalue_len(expected, expected_len));
 
-	ERROR("Mismatch at line %d of %s", cc->lineno, cc->path);
+	ERROR("%s failed at line %d of %s", command, cc->lineno, cc->path);
 	ERROR("  got      : %s", g);
 	ERROR("  expected : %s", e);
 
@@ -1350,7 +1351,7 @@ static size_t command_match(command_result_t *result, command_ctx_t *cc,
 			    char *data, size_t data_used, char *in, size_t inlen)
 {
 	if (strcmp(in, data) != 0) {
-		mismatch_print(cc, in, inlen, data, data_used, true);
+		mismatch_print(cc, "match", in, inlen, data, data_used, true);
 		RETURN_MISMATCH(data_used);
 	}
 
@@ -1384,7 +1385,7 @@ static size_t command_match_regex(command_result_t *result, command_ctx_t *cc,
 		RETURN_COMMAND_ERROR();
 
 	case 0:
-		mismatch_print(cc, in, inlen, data, data_used, false);
+		mismatch_print(cc, "match-regex", in, inlen, data, data_used, false);
 		RETURN_MISMATCH(data_used);
 
 	case 1:
