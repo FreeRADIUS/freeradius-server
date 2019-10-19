@@ -1316,7 +1316,7 @@ static bool dns_label_match(uint8_t const *start, uint8_t const *a, uint8_t cons
 	/*
 	 *	Prefixes don't match, we're done.
 	 */
-	if (memcmp(a + 1, b + 1, *a) != 0) return false;
+	if (strncasecmp((char const *) a + 1, (char const *) b + 1, *a) != 0) return false;
 
 	/*
 	 *	Skip the matching label.
