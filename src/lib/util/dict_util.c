@@ -61,13 +61,29 @@ fr_table_num_ordered_t const date_precision_table[] = {
 };
 size_t date_precision_table_len = NUM_ELEMENTS(date_precision_table);
 
-fr_table_num_ordered_t const radius_subtype_table[] = {
+static fr_table_num_ordered_t const radius_subtype_table[] = {
 	{ "encrypt=1",		FLAG_ENCRYPT_USER_PASSWORD },
 	{ "encrypt=2",		FLAG_ENCRYPT_TUNNEL_PASSWORD },
 	{ "encrypt=3",		FLAG_ENCRYPT_ASCEND_SECRET },
-	{ "encrypt=4",		FLAG_ENCRYPT_OTHER },
+
+	/*
+	 *	And some humanly-readable names
+	 */
+	{ "encrypt=User-Password",	FLAG_ENCRYPT_USER_PASSWORD },
+	{ "encrypt=Tunnel-Password",	FLAG_ENCRYPT_TUNNEL_PASSWORD },
+	{ "encrypt=Ascend-Secret",	FLAG_ENCRYPT_ASCEND_SECRET },
 };
-size_t radius_subtype_table_len = NUM_ELEMENTS(radius_subtype_table);
+static size_t radius_subtype_table_len = NUM_ELEMENTS(radius_subtype_table);
+
+static fr_table_num_ordered_t const dhcpv6_subtype_table[] = {
+	{ "encode=dns_label",		FLAG_ENCODE_DNS_LABEL },
+};
+static size_t dhcpv6_subtype_table_len = NUM_ELEMENTS(dhcpv6_subtype_table);
+
+static fr_table_num_ordered_t const eap_aka_sim_subtype_table[] = {
+	{ "encrypt=aes-cbc",		1 }, /* any non-zero value will do */
+};
+static size_t eap_aka_sim_subtype_table_len = NUM_ELEMENTS(eap_aka_sim_subtype_table);
 
 /** Magic internal dictionary
  *
@@ -526,8 +542,28 @@ int dict_protocol_add(fr_dict_t *dict)
 	}
 	dict->in_protocol_by_num = true;
 
-	dict->subtype_table = radius_subtype_table;
-	dict->subtype_table_len = radius_subtype_table_len;
+	/*
+	 *	Set the subtype flags
+	 */
+	switch (dict->root->attr) {
+	case FR_PROTOCOL_RADIUS:
+		dict->subtype_table = radius_subtype_table;
+		dict->subtype_table_len = radius_subtype_table_len;
+		break;
+
+	case FR_PROTOCOL_DHCPV6:
+		dict->subtype_table = dhcpv6_subtype_table;
+		dict->subtype_table_len = dhcpv6_subtype_table_len;
+		break;
+
+	case FR_PROTOCOL_EAP_AKA_SIM:
+		dict->subtype_table = eap_aka_sim_subtype_table;
+		dict->subtype_table_len = eap_aka_sim_subtype_table_len;
+		break;
+
+	default:
+		break;
+	}
 
 	return 0;
 }

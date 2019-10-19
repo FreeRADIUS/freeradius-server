@@ -27,6 +27,7 @@ extern "C" {
 
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/protocol/base.h>
 
 #define DICT_POOL_SIZE		(1024 * 1024 * 2)
 #define DICT_FIXUP_POOL_SIZE	(1024)
@@ -90,9 +91,6 @@ extern TALLOC_CTX *dict_ctx;
 
 extern fr_table_num_ordered_t const date_precision_table[];
 extern size_t date_precision_table_len;
-
-extern fr_table_num_ordered_t const radius_subtype_table[];
-extern size_t radius_subtype_table_len;
 
 fr_dict_t		*dict_alloc(TALLOC_CTX *ctx);
 

@@ -79,7 +79,11 @@ enum {
 	FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
 	FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
 	FLAG_ENCRYPT_ASCEND_SECRET,			//!< Encrypt attribute ascend style.
-	FLAG_ENCRYPT_OTHER,				//!< Non-RADIUS encryption
+};
+
+enum {
+	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DHCPv6 strings
+	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS lavel
 };
 
 

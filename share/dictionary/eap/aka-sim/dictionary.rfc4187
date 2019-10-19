@@ -46,7 +46,7 @@ VALUE	KDF			Prime-With-CK-Prime-IK-Prime 1
 #  Skippable-Attributes
 #
 ATTRIBUTE	IV				129	octets[16]
-ATTRIBUTE	Encr-Data			130	tlv encrypt=4
+ATTRIBUTE	Encr-Data			130	tlv encrypt=aes-cbc
 
 #
 #  These attributes are reversibly encrypted

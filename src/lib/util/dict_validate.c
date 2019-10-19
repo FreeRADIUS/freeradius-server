@@ -107,7 +107,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		/*
 		 *	0 is internal, 1 is RADIUS, everything else is disallowed.
 		 */
-		if (dict->root->attr > 1) {
+		if (dict->root->attr > FR_PROTOCOL_RADIUS) {
 			fr_strerror_printf("The 'has_tag' flag can only be used in the RADIUS dictionary");
 			return false;
 		}
@@ -253,7 +253,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	/*
 	 *	Subtype flag checks for RADIUS
 	 */
-	if ((flags->subtype) && (dict->root->attr == 1)) {
+	if ((flags->subtype) && (dict->root->attr == FR_PROTOCOL_RADIUS)) {
 		/*
 		 *	Stupid hacks for MS-CHAP-MPPE-Keys.  The User-Password
 		 *	encryption method has no provisions for encoding the
@@ -276,8 +276,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			}
 		}
 
-		if (flags->subtype > FLAG_ENCRYPT_OTHER) {
-			fr_strerror_printf("The 'encrypt' flag can only be 0..4");
+		if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {
+			fr_strerror_printf("The 'encrypt' flag can only be 0..3");
 			return false;
 		}
 
