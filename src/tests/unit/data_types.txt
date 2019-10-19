@@ -101,5 +101,9 @@ match 03 66 6f 6f 03 63 6f 6d 00
 encode-dns-label foo.com,b.ca
 match 03 66 6f 6f 03 63 6f 6d 00 01 62 02 63 61 00
 
+# root gets encoded as a plain 0.
+encode-dns-label .
+match 00
+
 count
-match 46
+match 48

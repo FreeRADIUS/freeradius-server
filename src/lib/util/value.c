@@ -1327,7 +1327,27 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 
 	if (!buf || !buf_len || !where || !value) return -1;
 
+	/*
+	 *	Don't allow stupidities
+	 */
+	if (!((where >= buf) && (where < (buf + buf_len)))) return -1;
+
+	/*
+	 *	We can only encode strings.
+	 */
 	if (value->type != FR_TYPE_STRING) return -1;
+
+	/*
+	 *	'.' or empty string is special, and is encoded as a
+	 *	plain zero byte.
+	 *
+	 *	Since "where < end", we can always write 1 byte to it.
+	 */
+	if ((value->vb_length == 0) ||
+	    ((value->vb_length == 1) && (value->vb_strvalue[0] == '.'))) {
+		*where = 0x00;
+		return 1;
+	}
 
 	/*
 	 *	For now we don't do compression.  We just encode the
