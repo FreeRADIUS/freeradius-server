@@ -891,6 +891,16 @@ static size_t command_normalise_attribute(command_result_t *result, command_ctx_
 }
 
 /*
+ *	Clear the data buffer
+ */
+static size_t command_clear(command_result_t *result, UNUSED command_ctx_t *cc,
+			    char *data, size_t UNUSED data_used, UNUSED char *in, UNUSED size_t inlen)
+{
+	memset(data, 0, COMMAND_OUTPUT_MAX);
+	RETURN_NOOP(0);
+}
+
+/*
  *	Add a command by talloc'ing a table for it.
  */
 static size_t command_radmin_add(command_result_t *result, command_ctx_t *cc,
@@ -1672,6 +1682,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "attribute <attr> = <value>",
 					.description = "Parse and reprint an attribute value pair, writing \"ok\" to the data buffer on success"
 				}},
+	{ "clear",		&(command_entry_t){
+					.func = command_clear,
+					.usage = "clear",
+					.description = "Explicitly zero out the contents of the data buffer"
+				}},
 	{ "command add ",	&(command_entry_t){
 					.func = command_radmin_add,
 					.usage = "command add <string>",
@@ -1849,7 +1864,7 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 	data[data_used] = '\0';			/* Ensure the data buffer is \0 terminated */
 
 	if (data_used) {
-		DEBUG2("%s[%d]: --> %s (wrote %zu bytes)", cc->filename, cc->lineno,
+		DEBUG2("%s[%d]: --> %s (%zu bytes in buffer)", cc->filename, cc->lineno,
 		       fr_table_str_by_value(command_rcode_table, result->rcode, "<INVALID>"), data_used);
 	} else {
 		DEBUG2("%s[%d]: --> %s", cc->filename, cc->lineno,
