@@ -262,8 +262,24 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *   |                              ...                              |
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
-	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
+		/*
+		 *	DNS labels get a special encoder.
+		 */
+		if (da->flags.subtype == FLAG_ENCODE_DNS_LABEL) {
+			slen = fr_value_box_to_dns_label(NULL, p, outlen, p, &vp->data);
+
+			/*
+			 *	@todo - check for free space, etc.
+			 */
+			if (slen <= 0) return PAIR_ENCODE_ERROR;
+
+			p += slen;
+			break;
+		}
+		/* FALL-THROUGH */
+
+	case FR_TYPE_OCTETS:
 		/*
 		 *	If asked to encode more data than allowed,
 		 *	we encode only the allowed data.
