@@ -1332,10 +1332,14 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 	/*
 	 *	For now we don't do compression.  We just encode the
 	 *	label as-is.
+	 *
+	 *	We need a minimum length of string + beginning length
+	 *	+ trailing zero.  Intermediate '.' are converted to
+	 *	length bytes.
 	 */
-	if ((where + value->vb_length + 1) > end) {
+	if ((where + value->vb_length + 2) > end) {
 	need_more:
-		if (need) *need = value->vb_length + 1;
+		if (need) *need = value->vb_length + 2;
 		return 0;
 	}
 
