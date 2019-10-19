@@ -69,6 +69,8 @@ $(foreach x,$(DICT),$(eval $(call DICT_TO_HEADER,$(addsuffix .h,$(subst dictiona
 src/include/protocol:
 	${Q}mkdir -p $@
 
+HEADERS_DY += src/include/protocols/base.h
+
 src/include/protocol/base.h: $(wildcard share/dictionary/*/dictionary) $(wildcard share/dictionary/eap/*/dictionary) | src/include/protocol
 	${Q}echo HEADER $(patsubst src/include/%,%,$@)
 	${Q}echo "#pragma once" > $@
