@@ -112,13 +112,9 @@ do { \
 		return 0; \
 	} while (0)
 
-#define RETURN_MISMATCH(_len, _expected, _expected_len, _got, _got_len) \
+#define RETURN_MISMATCH(_len) \
 	do { \
 		result->rcode = RESULT_MISMATCH; \
-		result->expected = _expected; \
-		result->expected_len = _expected_len; \
-		result->got = _got; \
-		result->got_len = _got_len; \
 		result->file = __FILE__; \
 		result->line = __LINE__; \
 		return (_len); \
@@ -156,14 +152,8 @@ static size_t command_rcode_table_len = NUM_ELEMENTS(command_rcode_table);
 
 typedef struct {
 	TALLOC_CTX	*tmp_ctx;		//!< Temporary context to hold buffers
-						///< in this result.
+						///< in this
 	union {
-		struct {
-			char const	*expected;	//!< Output buffer contents we expected.
-			size_t		expected_len;	//!< How long expected is.
-			char const	*got;		//!< What we got.
-			size_t		got_len;	//!< How long got is.
-		};
 		size_t	offset;			//!< Where we failed parsing the command.
 		int	ret;			//!< What code we should exit with.
 	};
@@ -218,6 +208,40 @@ static dl_loader_t	*dl_loader;
 size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			fr_dict_t *dict, const char *root_dir, char const *filename);
+
+static void mismatch_print(command_ctx_t *cc, char *expected, size_t expected_len, char *got, size_t got_len,
+			   bool print_diff)
+{
+	char *g, *e, *g_p, *e_p;
+	char *spaces;
+
+	g = fr_asprintf(cc->tmp_ctx, "%pV",
+			fr_box_strvalue_len(got, got_len));
+	e = fr_asprintf(cc->tmp_ctx, "%pV",
+			fr_box_strvalue_len(expected, expected_len));
+
+	ERROR("Mismatch at line %d of %s", cc->lineno, cc->path);
+	ERROR("  got      : %s", g);
+	ERROR("  expected : %s", e);
+
+	if (print_diff) {
+		g_p = g;
+		e_p = e;
+
+		while (*g_p && *e_p && (*g_p == *e_p)) {
+			g_p++;
+			e_p++;
+		}
+
+		spaces = talloc_zero_array(NULL, char, (e_p - e) + 1);
+		memset(spaces, ' ', talloc_array_length(spaces) - 1);
+		ERROR("             %s^ differs here", spaces);
+		talloc_free(spaces);
+	};
+
+	talloc_free(g);
+	talloc_free(e);
+}
 
 /** Print hex string to buffer
  *
@@ -1322,10 +1346,13 @@ static size_t command_proto_load(command_result_t *result, UNUSED command_ctx_t 
 /** Compare the data buffer to an expected value
  *
  */
-static size_t command_match(command_result_t *result, UNUSED command_ctx_t *cc,
-			   char *data, size_t data_used, char *in, size_t inlen)
+static size_t command_match(command_result_t *result, command_ctx_t *cc,
+			    char *data, size_t data_used, char *in, size_t inlen)
 {
-	if (strcmp(in, data) != 0) RETURN_MISMATCH(data_used, in, inlen, data, data_used);
+	if (strcmp(in, data) != 0) {
+		mismatch_print(cc, in, inlen, data, data_used, true);
+		RETURN_MISMATCH(data_used);
+	}
 
 	/*
 	 *	We didn't actually write anything, but this
@@ -1333,6 +1360,36 @@ static size_t command_match(command_result_t *result, UNUSED command_ctx_t *cc,
 	 *	for the next command to operate on.
 	 */
 	RETURN_OK(data_used);
+}
+
+/** Compare the data buffer against an expected expression
+ *
+ */
+static size_t command_match_regex(command_result_t *result, command_ctx_t *cc,
+				  char *data, size_t data_used, char *in, size_t inlen)
+{
+	ssize_t		slen;
+	regex_t		*regex;
+	int		ret;
+
+	slen = regex_compile(cc->tmp_ctx, &regex, in, inlen, NULL, false, true);
+	if (slen <= 0) RETURN_COMMAND_ERROR();
+
+	ret = regex_exec(regex, data, data_used, NULL);
+	talloc_free(regex);
+
+	switch (ret) {
+	case -1:
+	default:
+		RETURN_COMMAND_ERROR();
+
+	case 0:
+		mismatch_print(cc, in, inlen, data, data_used, false);
+		RETURN_MISMATCH(data_used);
+
+	case 1:
+		RETURN_OK(data_used);
+	}
 }
 
 /** Skip the test file if we're missing a particular feature
@@ -1643,6 +1700,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "match <string>",
 					.description = "Compare the contents of the data buffer with an expected value"
 				}},
+	{ "match-regex ",	&(command_entry_t){
+					.func = command_match_regex,
+					.usage = "match-regex <regex>",
+					.description = "Compare the contents of the data buffer with a regular expression"
+				}},
 	{ "need-feature ", 	&(command_entry_t){
 					.func = command_need_feature,
 					.usage = "need-feature <feature>",
@@ -1878,31 +1940,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		 */
 		case RESULT_MISMATCH:
 		{
-			char *g, *e, *g_p, *e_p;
-			char *spaces;
 
-			g = fr_asprintf(cc.tmp_ctx, "%pV",
-					fr_box_strvalue_len(result.got, result.got_len));
-			e = fr_asprintf(cc.tmp_ctx, "%pV",
-					fr_box_strvalue_len(result.expected, result.expected_len));
-			g_p = g;
-			e_p = e;
-
-			ERROR("Mismatch at line %d of %s", cc.lineno, cc.path);
-			ERROR("  got      : %s", g);
-			ERROR("  expected : %s", e);
-
-			while (*g_p && *e_p && (*g_p == *e_p)) {
-				g_p++;
-				e_p++;
-			}
-
-			spaces = talloc_zero_array(NULL, char, (e_p - e) + 1);
-			memset(spaces, ' ', talloc_array_length(spaces) - 1);
-			ERROR("             %s^ differs here", spaces);
-			talloc_free(spaces);
-			talloc_free(g);
-			talloc_free(e);
 			ret = EXIT_FAILURE;
 
 			goto finish;
