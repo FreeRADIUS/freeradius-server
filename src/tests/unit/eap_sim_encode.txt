@@ -123,3 +123,6 @@ match 81 05 00 00 d5 85 ac 77 86 b9 03 36 65 7c 77 b4 65 75 b9 c4 82 1d 00 00 68
 # RFC4186 A.10. example
 encode-pair.sim_tp_encode_rfc4186 IV = 0xcdf7ffa65de04c026b56c86b76b102ea, Counter = 1
 match 81 05 00 00 cd f7 ff a6 5d e0 4c 02 6b 56 c8 6b 76 b1 02 ea 82 05 00 00 b6 ed d3 82 79 e2 a1 42 3c 1a fc 5c 45 5c 7d 56
+
+count
+match 62

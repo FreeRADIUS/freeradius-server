@@ -72,3 +72,6 @@ match ERROR offset 0 Unexpected escape
 
 condition  a\n == 0x610a
 match ERROR offset 1 Unexpected escape
+
+count
+match 44

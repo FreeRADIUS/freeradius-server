@@ -36,3 +36,6 @@ match TACACS-Packet-Type = Accounting, TACACS-Sequence-Number = 1, TACACS-Sessio
 
 encode-tacacs TACACS-Packet-Type = Accounting, TACACS-Sequence-Number = 2, TACACS-Session-Id = 1655726384, TACACS-Accounting-Status = Success
 match c0 03 02 01 62 b0 61 30 00 00 00 05 00 00 00 00 01
+
+count
+match 12

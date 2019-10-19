@@ -9,3 +9,6 @@ match fr_radius_decode_pair: Insufficient data
 
 decode-pair 01 01 00
 match fr_radius_decode_pair: Insufficient data
+
+count
+match 6

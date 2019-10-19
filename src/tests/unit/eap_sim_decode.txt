@@ -116,3 +116,6 @@ match IV = 0xcdf7ffa65de04c026b56c86b76b102ea, Counter = 1, MAC = 0xfaf76b71fbe2
 # RFC4186 A.10. example - With IV at the end of the packet
 decode-pair.sim_tp_decode_rfc4186 82 05 00 00 b6 ed d3 82 79 e2 a1 42 3c 1a fc 5c 45 5c 7d 56 0b 05 00 00 fa f7 6b 71 fb e2 d2 55 b9 6a 35 66 c9 15 c6 17 81 05 00 00 cd f7 ff a6 5d e0 4c 02 6b 56 c8 6b 76 b1 02 ea
 match Counter = 1, MAC = 0xfaf76b71fbe2d255b96a3566c915c617, IV = 0xcdf7ffa65de04c026b56c86b76b102ea
+
+count
+match 56

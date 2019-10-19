@@ -88,3 +88,6 @@ match ok
 
 dictionary ATTRIBUTE	Unit-Struct-Octets	241.254.2		octets[2]
 match ok
+
+count
+match 46

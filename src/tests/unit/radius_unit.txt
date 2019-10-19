@@ -86,3 +86,6 @@ match fe 08 03 06 00 00 00 0a
 
 decode-pair -
 match Unit-TLV-Delta-Sec = 10
+
+count
+match 44

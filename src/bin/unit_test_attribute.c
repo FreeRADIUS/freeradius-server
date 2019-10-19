@@ -70,17 +70,26 @@ do { \
 		return (_len); \
 	} while (0)
 
-#define RETURN_SKIP_FILE() \
+#define RETURN_OK_WITH_ERROR(_len) \
 	do { \
-		result->rcode = RESULT_SKIP_FILE; \
+		result->rcode = RESULT_OK; \
 		result->file = __FILE__; \
 		result->line = __LINE__; \
+		result->error_to_data = true; \
 		return 0; \
 	} while (0)
 
-#define RETURN_DRAIN_ERROR_STACK_TO_DATA() \
+#define RETURN_NOOP(_len) \
 	do { \
-		result->rcode = RESULT_DRAIN_ERROR_STACK_TO_DATA; \
+		result->rcode = RESULT_NOOP; \
+		result->file = __FILE__; \
+		result->line = __LINE__; \
+		return (_len); \
+	} while (0)
+
+#define RETURN_SKIP_FILE() \
+	do { \
+		result->rcode = RESULT_SKIP_FILE; \
 		result->file = __FILE__; \
 		result->line = __LINE__; \
 		return 0; \
@@ -103,7 +112,7 @@ do { \
 		return 0; \
 	} while (0)
 
-#define RETURN_MISMATCH(_expected, _expected_len, _got, _got_len) \
+#define RETURN_MISMATCH(_len, _expected, _expected_len, _got, _got_len) \
 	do { \
 		result->rcode = RESULT_MISMATCH; \
 		result->expected = _expected; \
@@ -112,7 +121,7 @@ do { \
 		result->got_len = _got_len; \
 		result->file = __FILE__; \
 		result->line = __LINE__; \
-		return 0; \
+		return (_len); \
 	} while (0)
 
 #define RETURN_EXIT(_ret) \
@@ -126,9 +135,9 @@ do { \
 
 typedef enum {
 	RESULT_OK = 0,				//!< Not an error - Result as expected.
+	RESULT_NOOP,				//!< Not an error - Did nothing...
 	RESULT_SKIP_FILE,			//!< Not an error - Skip the rest of this file, or until we
 						///< reach an "eof" command.
-	RESULT_DRAIN_ERROR_STACK_TO_DATA,	//!< Not an error.
 	RESULT_PARSE_ERROR,			//!< Fatal error - Command syntax error.
 	RESULT_COMMAND_ERROR,			//!< Fatal error - Command operation error.
 	RESULT_MISMATCH,			//!< Fatal error - Result didn't match what we expected.
@@ -137,7 +146,6 @@ typedef enum {
 
 static fr_table_num_sorted_t command_rcode_table[] = {
 	{ "command-error",		RESULT_COMMAND_ERROR			},
-	{ "error-to-data",		RESULT_DRAIN_ERROR_STACK_TO_DATA	},
 	{ "exit",			RESULT_EXIT				},
 	{ "ok",				RESULT_OK				},
 	{ "parse-error",		RESULT_PARSE_ERROR			},
@@ -147,6 +155,8 @@ static fr_table_num_sorted_t command_rcode_table[] = {
 static size_t command_rcode_table_len = NUM_ELEMENTS(command_rcode_table);
 
 typedef struct {
+	TALLOC_CTX	*tmp_ctx;		//!< Temporary context to hold buffers
+						///< in this result.
 	union {
 		struct {
 			char const	*expected;	//!< Output buffer contents we expected.
@@ -160,6 +170,7 @@ typedef struct {
 	char const	*file;
 	int		line;
 	command_rcode_t	rcode;
+	bool		error_to_data;
 } command_result_t;
 
 typedef struct {
@@ -168,6 +179,7 @@ typedef struct {
 	char const	*path;			//!< Current path we're operating in.
 	int		lineno;			//!< Current line number.
 	char const	*filename;		//!< Current file we're operating on.
+	uint32_t	test_count;		//!< How many tests we've executed in this file.
 
 	fr_dict_t 	*dict;			//!< Base dictionary.
 	fr_dict_t	*proto_dict;		//!< Protocol specific dictionary.
@@ -839,7 +851,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_ctx_
 	size_t		len;
 
 	if (fr_pair_list_afrom_str(NULL, cc->proto_dict ? cc->proto_dict : cc->dict, in, &head) != T_EOL) {
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	len = fr_pair_snprint(data, COMMAND_OUTPUT_MAX, head);
@@ -847,7 +859,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_ctx_
 
 	if (is_truncated(len, COMMAND_OUTPUT_MAX)) {
 		fr_strerror_printf("Encoder output would overflow output buffer");
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	RETURN_OK(len);
@@ -901,7 +913,7 @@ static size_t command_radmin_add(command_result_t *result, command_ctx_t *cc,
 
 	if (fr_command_add(table, &command_head, NULL, NULL, table) < 0) {
 		fr_strerror_printf("ERROR: failed adding command - %s", fr_strerror());
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	if (fr_debug_lvl) command_print();
@@ -987,7 +999,7 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
 
 	return_error:
 		talloc_free(cs);
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	in += dec_len;
@@ -998,6 +1010,20 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
 
 	len = cond_snprint(NULL, data, COMMAND_OUTPUT_MAX, cond);
 	talloc_free(cs);
+
+	RETURN_OK(len);
+}
+
+static size_t command_count(command_result_t *result, command_ctx_t *cc,
+			    char *data, UNUSED size_t data_used, UNUSED char *in, UNUSED size_t inlen)
+{
+	size_t		len;
+
+	len = snprintf(data, COMMAND_OUTPUT_MAX, "%u", cc->test_count);
+	if (is_truncated(len, COMMAND_OUTPUT_MAX)) {
+		fr_strerror_printf("Command count would overflow data buffer (shouldn't happen)");
+		RETURN_COMMAND_ERROR();
+	}
 
 	RETURN_OK(len);
 }
@@ -1058,7 +1084,7 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
 		if (slen < 0) {
 			fr_pair_list_free(&head);
-			RETURN_DRAIN_ERROR_STACK_TO_DATA();
+			RETURN_OK_WITH_ERROR();
 		}
 		if ((size_t)slen > (size_t)(to_dec_end - to_dec)) {
 			fr_perror("Internal sanity check failed at %d", __LINE__);
@@ -1126,7 +1152,7 @@ static size_t command_decode_proto(command_result_t *result, UNUSED command_ctx_
 static size_t command_dictionary_attribute_parse(command_result_t *result, command_ctx_t *cc,
 					  	 char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	if (fr_dict_parse_str(cc->dict, in, fr_dict_root(cc->dict)) < 0) RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	if (fr_dict_parse_str(cc->dict, in, fr_dict_root(cc->dict)) < 0) RETURN_OK_WITH_ERROR();
 
 	RETURN_OK(strlcpy(data, "ok", COMMAND_OUTPUT_MAX));
 }
@@ -1178,7 +1204,7 @@ static size_t command_dictionary_load(command_result_t *result, command_ctx_t *c
 
 	ret = fr_dict_protocol_afrom_file(&cc->proto_dict, name, dir);
 	talloc_free(tmp);
-	if (ret < 0) RETURN_DRAIN_ERROR_STACK_TO_DATA();
+	if (ret < 0) RETURN_OK_WITH_ERROR();
 
 	/*
 	 *	Dump the dictionary if we're in super debug mode
@@ -1216,7 +1242,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 	}
 
 	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->proto_dict ? cc->proto_dict : cc->dict, p, &head) != T_EOL) {
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	fr_cursor_init(&cursor, &head);
@@ -1224,7 +1250,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 		slen = tp->func(enc_p, enc_end - enc_p, &cursor, encoder_ctx);
 		if (slen < 0) {
 			fr_pair_list_free(&head);
-			RETURN_DRAIN_ERROR_STACK_TO_DATA();
+			RETURN_OK_WITH_ERROR();
 		}
 		enc_p += slen;
 
@@ -1299,7 +1325,7 @@ static size_t command_proto_load(command_result_t *result, UNUSED command_ctx_t 
 static size_t command_match(command_result_t *result, UNUSED command_ctx_t *cc,
 			   char *data, size_t data_used, char *in, size_t inlen)
 {
-	if (strcmp(in, data) != 0) RETURN_MISMATCH(in, inlen, data, data_used);
+	if (strcmp(in, data) != 0) RETURN_MISMATCH(data_used, in, inlen, data, data_used);
 
 	/*
 	 *	We didn't actually write anything, but this
@@ -1329,7 +1355,7 @@ static size_t command_need_feature(command_result_t *result, command_ctx_t *cc,
 		RETURN_SKIP_FILE();
 	}
 
-	RETURN_OK(0);
+	RETURN_NOOP(0);
 }
 
 /** Negate the result of a match command or any command which returns "OK"
@@ -1376,7 +1402,7 @@ static size_t command_encode_raw(command_result_t *result, UNUSED command_ctx_t 
 
 	if (len >= sizeof(encoded)) {
 		fr_strerror_printf("Encoder output would overflow output buffer");
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, encoded, len));
@@ -1416,7 +1442,7 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 
 	if (fr_value_box_from_str(box, box, &type, NULL, p, -1, '"', false) < 0) {
 		talloc_free(box);
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	/*
@@ -1437,7 +1463,7 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 	if (fr_value_box_from_str(box2, box2, &type, NULL, data, len, '"', false) < 0) {
 		talloc_free(box2);
 		talloc_free(box);
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	/*
@@ -1449,7 +1475,7 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 		fr_strerror_printf_push("in: %pV", box);
 		talloc_free(box2);
 		talloc_free(box);
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	talloc_free(box2);
@@ -1484,7 +1510,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_ctx_t *cc
 
 	return_error:
 		talloc_free(fmt);
-		RETURN_DRAIN_ERROR_STACK_TO_DATA();
+		RETURN_OK_WITH_ERROR();
 	}
 
 	if (fmt[dec_len] != '\0') {
@@ -1529,6 +1555,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_condition_normalise,
 					.usage = "condition <string>",
 					.description = "Parse and reprint a condition, writing the normalised condition to the data buffer on success"
+				}},
+	{ "count",		&(command_entry_t){
+					.func = command_count,
+					.usage = "count",
+					.description = "Write the number of executed tests to the data buffer.  A test is any command that should return 'ok'"
 				}},
 	{ "decode-pair",	&(command_entry_t){
 					.func = command_decode_pair,
@@ -1593,7 +1624,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ "no ", 		&(command_entry_t){
 					.func = command_no,
 					.usage = "no ...",
-					.description = "Negate the result of a \"match\" command"
+					.description = "Negate the result of a command returning 'ok'"
 				}},
 	{ "raw ",		&(command_entry_t){
 					.func = command_encode_raw,
@@ -1618,7 +1649,8 @@ static fr_table_ptr_sorted_t	commands[] = {
 };
 static size_t commands_len = NUM_ELEMENTS(commands);
 
-size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, size_t data_used, char *in, UNUSED size_t inlen)
+size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, size_t data_used,
+		    char *in, UNUSED size_t inlen)
 {
 
 	command_entry_t		*command;
@@ -1627,7 +1659,7 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 
 	p = in;
 	fr_skip_whitespace(p);
-	if (*p == '\0') RETURN_OK(data_used);
+	if (*p == '\0') RETURN_NOOP(data_used);
 
 	DEBUG2("%s[%d]: %s", cc->filename, cc->lineno, p);
 
@@ -1643,7 +1675,7 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 	/*
 	 *	Skip processing the command
 	 */
-	if (command->func == command_comment) RETURN_OK(data_used);
+	if (command->func == command_comment) RETURN_NOOP(data_used);
 
 	p += match_len;						/* Jump to after the command */
 	fr_skip_whitespace(p);					/* Skip any whitespace */
@@ -1658,6 +1690,15 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 		data_used = command->func(result, cc, data, data_used, p, strlen(p));
 	}
 
+	/*
+	 *	Dump the contents of the error stack
+	 *	to the data buffer.
+	 *
+	 *	This is then what's checked in
+	 *	subsequent match commands.
+	 */
+	if (result->error_to_data) data_used = strerror_concat(data, COMMAND_OUTPUT_MAX);
+
 	rad_assert((size_t)data_used < COMMAND_OUTPUT_MAX);
 	data[data_used] = '\0';			/* Ensure the data buffer is \0 terminated */
 
@@ -1671,6 +1712,24 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 	return data_used;
 }
 
+static void command_ctx_init(command_ctx_t *cc, TALLOC_CTX *ctx, char const *path, char const *filename,
+			     fr_dict_t *dict, CONF_SECTION *features)
+{
+	memset(cc, 0, sizeof(*cc));
+	cc->tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx");
+	cc->path = path;
+	cc->dict = dict;
+	cc->filename = filename;
+	cc->features = features;
+}
+
+static void command_ctx_reset(command_ctx_t *cc, TALLOC_CTX *ctx)
+{
+	TALLOC_FREE(cc->tmp_ctx);
+	cc->tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx");
+	cc->test_count = 0;
+}
+
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			fr_dict_t *dict, const char *root_dir, char const *filename)
 {
@@ -1681,14 +1740,9 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 	ssize_t		data_used = 0;			/* How much data the last command wrote */
 	static char	path[PATH_MAX] = { '\0' };
 
-	command_ctx_t	cc = {
-				.tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx"),
-				.lineno = 0,
-				.path = path,
-				.dict = dict,
-				.filename = filename,
-				.features = features
-			};
+	command_ctx_t	cc;
+
+	command_ctx_init(&cc, ctx, path, filename, dict, features);
 
 	/*
 	 *	Open the file, or stdin
@@ -1738,6 +1792,13 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		 *	Command completed successfully
 		 */
 		case RESULT_OK:
+			cc.test_count++;
+			continue;
+
+		/*
+		 *	Did nothing (not a test)
+		 */
+		case RESULT_NOOP:
 			continue;
 
 		/*
@@ -1764,7 +1825,10 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 					goto finish;
 				}
 
-				if (command->func == command_eof) break;
+				if (command->func == command_eof) {
+					command_ctx_reset(&cc, ctx);
+					break;
+				}
 			}
 			break;
 
@@ -1776,15 +1840,6 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			PERROR("%s[%d]", filename, cc.lineno);
 			ret = -1;
 			goto finish;
-
-		/*
-		 *	Write out any errors in the error stack to
-		 *	the data buffer, so they can be checked for
-		 *	correctness.
-		 */
-		case RESULT_DRAIN_ERROR_STACK_TO_DATA:
-			data_used = strerror_concat(data, sizeof(data));
-			break;
 
 		/*
 		 *	Result didn't match what we expected

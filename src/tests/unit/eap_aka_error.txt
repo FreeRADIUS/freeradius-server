@@ -34,3 +34,6 @@ match sim_decode_pair_value: RES Length field value must be between 32-128 bits,
 # AKA_RES with invalid number of bits (too big - exceed limit)
 decode-pair.aka_tp_decode 03 05 00 7f aa bb cc dd aa bb cc dd aa bb cc dd aa bb cc dd
 match sim_decode_pair_value: RES Length (127) is not a multiple of 8
+
+count
+match 14

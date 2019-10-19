@@ -91,3 +91,6 @@ match Aug 21 2019 07:43:03 UTC
 #
 #date 2019-08-21T07:40:31-04:00
 #data foo
+
+count
+match 42

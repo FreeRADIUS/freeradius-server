@@ -35,3 +35,6 @@ match Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0
 
 decode-pair.aka_tp_decode 86 09 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 a0 b0 c0 d0 a0 b0 c0 d0 a0 b0 c0 d0 a0 b0 c0 d0
 match Checkcode = 0x0102030405060708090a0b0c0d0e0f00a0b0c0d0a0b0c0d0a0b0c0d0a0b0c0d0
+
+count
+match 16

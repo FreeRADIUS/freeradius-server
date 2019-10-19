@@ -102,3 +102,5 @@ match sim_decode_tlv: Malformed nested attribute 6: Length field 0
 decode-pair.sim_tp_decode 82 05 00 00 c5 3c b6 fb a8 67 79 f0 6d 45 c4 3a 42 33 8e c1
 match sim_decode_tlv: Unknown (non-skippable) attribute 1
 
+count
+match 48

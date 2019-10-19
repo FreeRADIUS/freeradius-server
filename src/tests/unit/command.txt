@@ -42,3 +42,4 @@ match ok
 command add set home server :remote [state INTEGER]
 match ok
 
+count 0

@@ -5,3 +5,6 @@ load ethernet
 
 encode-proto.libfreeradius_ethernet Ethernet-Src-Address = 0x010203040506, Ethernet-Dst-Address = 0x060504030201
 # data 06 04 05 04 03 02 01 01 02 03 04 05 06 00 00
+
+count
+match 2

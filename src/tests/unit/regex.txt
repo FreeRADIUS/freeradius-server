@@ -75,3 +75,6 @@ match ERROR offset 14 Unexpected regular expression
 #
 condition &User-Name =~ m,foo,
 match &User-Name =~ /foo/
+
+count
+match 41

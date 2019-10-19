@@ -251,3 +251,5 @@ match ERROR offset 19 'Missing closing brace at end of string'
 xlat %{myfirstxlat
 match ERROR offset 1 'No matching closing brace'
 
+count
+match 153
