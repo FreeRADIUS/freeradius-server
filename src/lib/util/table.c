@@ -340,6 +340,8 @@ static void const *table_sorted_value_by_longest_prefix(size_t *match_len,
 				found = offset;
 				if (match_len) *match_len = tlen;
 				ret = 1;
+			} else {
+				ret = -1;
 			}
 		}
 
