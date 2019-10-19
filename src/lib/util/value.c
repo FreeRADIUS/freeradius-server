@@ -1352,7 +1352,10 @@ static bool dns_label_match(uint8_t const *start, uint8_t const *a, uint8_t cons
 	return dns_label_match(start, a, b);
 }
 
-/** Compress "label" by looking at buffer in start..end
+/** Compress "label" by looking for other labels in start..end
+ *
+ *  We assume that the input is valid.  If it isn't valid, bad things
+ *  will happen.
  *
  * "label" MUST be uncompressed.
  */
@@ -1449,6 +1452,11 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 	 */
 	if (value->type != FR_TYPE_STRING) return -1;
 
+	if (value->vb_length > 255) {
+		fr_strerror_printf("Label is too long");
+		return -1;
+	}
+
 	/*
 	 *	'.' or empty string is special, and is encoded as a
 	 *	plain zero byte.
@@ -1462,8 +1470,8 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 	}
 
 	/*
-	 *	For now we don't do compression.  We just encode the
-	 *	label as-is.
+	 *	For now, just encode the value as-is.  We do
+	 *	compression as a second step.
 	 *
 	 *	We need a minimum length of string + beginning length
 	 *	+ trailing zero.  Intermediate '.' are converted to
@@ -1483,7 +1491,7 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 
 	/*
 	 *	@todo - encode into a local buffer, and then try to
-	 *	compress it into the output buffer.  This means that
+	 *	compress that into the output buffer.  This means that
 	 *	the output buffer can be a little bit smaller.
 	 */
 	while (q < strend) {
