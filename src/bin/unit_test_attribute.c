@@ -1483,7 +1483,7 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 	RETURN_OK(len);
 }
 
-static size_t command_write(command_result_t *result, UNUSED command_ctx_t *cc,
+static size_t command_write(command_result_t *result, command_ctx_t *cc,
 			    char *data, size_t data_used, char *in, size_t inlen)
 {
 	FILE	*fp;
@@ -1500,7 +1500,7 @@ static size_t command_write(command_result_t *result, UNUSED command_ctx_t *cc,
 	}
 
 	if (fwrite(data, data_used, 1, fp) != 1) {
-		fr_strerror_printf("Failed writing to \%s\": %s", path, fr_syserror(errno));
+		fr_strerror_printf("Failed writing to \"%s\": %s", path, fr_syserror(errno));
 		goto error;
 	}
 
