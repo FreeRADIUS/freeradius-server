@@ -295,6 +295,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 
 	char			*our_subject = NULL;
 	bool			dup_subject = true;
+	pcre2_match_data	*match_data;
 
 	/*
 	 *	Thread local initialisation
@@ -347,18 +348,34 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		}
 	}
 
+	/*
+	 *	If we weren't given match data we
+	 *	need to alloc it else pcre2_match
+	 *	fails when passed NULL match data.
+	 */
+	if (!regmatch) {
+		match_data = pcre2_match_data_create_from_pattern(preg->compiled, fr_pcre2_tls->gcontext);
+		if (!match_data) {
+			fr_strerror_printf("Failed allocating temporary match data");
+			return -1;
+		}
+	} else {
+		match_data = regmatch->match_data;
+	}
+
 #ifdef PCRE2_CONFIG_JIT
 	if (preg->jitd) {
 		ret = pcre2_jit_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, options,
-				      regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext);
+				      match_data, fr_pcre2_tls->mcontext);
 	} else
 #endif
 	{
 		ret = pcre2_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, options,
-				  regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext);
+				  match_data, fr_pcre2_tls->mcontext);
 	}
+	if (!regmatch) pcre2_match_data_free(match_data);
 	if (ret < 0) {
-		PCRE2_UCHAR errbuff[128];
+		PCRE2_UCHAR	errbuff[128];
 
 		if (dup_subject) talloc_free(our_subject);
 
