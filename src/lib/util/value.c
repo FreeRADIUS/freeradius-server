@@ -1296,6 +1296,118 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	return min;
 }
 
+/** Match two DNS labels
+ *
+ *  Both 'a' and 'b' MUST start with a length byte.
+ *
+ *  Both 'a' and 'b' MUST be valid labels.  This function does NOT
+ *  validate the input at all!
+ *
+ *  'a' MAY contain compressed pointers.  'b' MUST NOT contain
+ *  compressed pointers.
+ */
+static bool dns_label_match(uint8_t const *start, uint8_t const *a, uint8_t const *b)
+{
+	/*
+	 *	Lengths don't match, we're done.
+	 */
+	if (*a != *b) return false;
+
+	/*
+	 *	Prefixes don't match, we're done.
+	 */
+	if (memcmp(a + 1, b + 1, *a) != 0) return false;
+
+	/*
+	 *	Skip the matching label.
+	 */
+	b += *a + 1;
+	a += *a + 1;
+
+	/*
+	 *	If both labels are done, then it's a match.
+	 */
+	if (!*a && !*b) return true;
+
+	/*
+	 *	If 'a' is now a compressed pointer, jump to the actual
+	 *	label.  Note that we don't do bounds checking on the
+	 *	offset.  It's always positive, and it's always valid.
+	 */
+	if (*a > 63) {
+		uint16_t offset;
+
+		offset = start + a[1];
+		offset += ((*a & ~0xc0) << 8);
+
+		a = start + offset;
+
+		/*
+		 *	Compressed pointers can't point to compressed
+		 *	pointers.
+		 */
+		if (*a > 63) return false;
+	}
+
+	return dns_label_match(start, a, b);
+}
+
+/** Compress "label" by looking at buffer in start..end
+ *
+ * "label" MUST be uncompressed.
+ */
+static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t *label)
+{
+	uint8_t const *p;
+	uint8_t *q;
+	size_t offset;
+
+	p = start;
+	q = label;
+
+	while (p < end) {
+		/*
+		 *	Skip compressed pointers.  We know they don't
+		 *	match.
+		 */
+		if (*p > 63) {
+			p += 2;
+			continue;
+		}
+
+		/*
+		 *	Skip end bytes, which clearly don't match.
+		 */
+		if (*p == 0) {
+			p++;
+			continue;
+		}
+
+		/*
+		 *	We know have something which MIGHT match.  Do
+		 *	a full check on it, including dereferencing
+		 *	compressed pointers.
+		 */
+		if (!dns_label_match(start, p, q)) {
+			p += *p + 1;
+			continue;
+		}
+
+		/*
+		 *	We do have a match, encode the offset.
+		 */
+		offset = p - start;
+		if (offset > (1 << 14)) return false;
+
+		label[1] = offset & 0xff;
+		label[0] = ((offset >> 8) & 0xff) | 0xc0;
+		return true;
+	}
+
+	return false;
+}
+
+
 /** Encode a single value box of type string, serializing its contents to a dns label
  *
  * This functions takes a large buffer and encodes the label in part
@@ -1369,6 +1481,11 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 	*label = 0;
 	data = label + 1;
 
+	/*
+	 *	@todo - encode into a local buffer, and then try to
+	 *	compress it into the output buffer.  This means that
+	 *	the output buffer can be a little bit smaller.
+	 */
 	while (q < strend) {
 		/*
 		 *	Just for pairanoia
@@ -1437,10 +1554,27 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 	*(data++) = 0;		/* end of label */
 
 	/*
-	 *	@todo - do label compression on suffixes, by scanning
-	 *	backwards for zero bytes, and doing comparisons.
+	 *	Only one label, don't compress it.  Or, the label is
+	 *	already compressed.
 	 */
+	if ((buf == where) || ((data - where) <= 2)) goto done;
 
+	/*
+	 *	Do label compression on the resulting string, starting
+	 *	from the beginning of the input buffer.
+	 *
+	 *	@todo - this is pretty brute-force.  It works for
+	 *	small number of labels and small buffers.  It's
+	 *	inefficient for anything large.
+	 */
+	for (label = where; *label != 0; label += *label + 1) {
+		if (dns_label_compress(buf, where, label)) {
+			data = label + 2;
+			break;
+		}
+	}
+
+done:
 	if (need) *need = 0;
 	return data - where;
 }
