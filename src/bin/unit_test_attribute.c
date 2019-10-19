@@ -1483,6 +1483,33 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 	RETURN_OK(len);
 }
 
+static size_t command_write(command_result_t *result, UNUSED command_ctx_t *cc,
+			    char *data, size_t data_used, char *in, size_t inlen)
+{
+	FILE	*fp;
+	char	*path;
+
+	path = talloc_bstrndup(cc->tmp_ctx, in, inlen);
+	fp = fopen(path, "w");
+	if (!fp) {
+		fr_strerror_printf("Failed opening \"%s\": %s", path, fr_syserror(errno));
+	error:
+		talloc_free(path);
+		if (fp) fclose(fp);
+		RETURN_COMMAND_ERROR();
+	}
+
+	if (fwrite(data, data_used, 1, fp) != 1) {
+		fr_strerror_printf("Failed writing to \%s\": %s", path, fr_syserror(errno));
+		goto error;
+	}
+
+	talloc_free(path);
+	fclose(fp);
+
+	RETURN_OK(data_used);
+}
+
 /** Parse an reprint and xlat expansion
  *
  */
@@ -1640,6 +1667,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_value_box_normalise,
 					.usage = "value <type> <string>",
 					.description = "Parse a value of a given type from its presentation form, print it, then parse it again (checking printed/parsed versions match), writing printed form to the data buffer"
+				}},
+	{ "write ",		&(command_entry_t){
+					.func = command_write,
+					.usage = "write <file>",
+					.description = "Write the contents of the data buffer (as a raw binary string) to the specified file"
 				}},
 	{ "xlat ",		&(command_entry_t){
 					.func = command_xlat_normalise,
