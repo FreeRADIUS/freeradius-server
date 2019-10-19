@@ -1428,13 +1428,13 @@ static size_t command_no(command_result_t *result, command_ctx_t *cc,
 	 *	OK becomes a command error
 	 */
 	case RESULT_OK:
-		RETURN_COMMAND_ERROR();
+		RETURN_MISMATCH(data_used);
 
 	/*
 	 *	Mismatch becomes OK
 	 */
 	case RESULT_MISMATCH:
-		RETURN_OK(0);
+		RETURN_OK(data_used);
 
 	/*
 	 *	The rest are unchanged...
