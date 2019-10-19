@@ -69,13 +69,14 @@ static fr_table_num_ordered_t const radius_subtype_table[] = {
 	/*
 	 *	And some humanly-readable names
 	 */
-	{ "encrypt=User-Password",	FLAG_ENCRYPT_USER_PASSWORD },
-	{ "encrypt=Tunnel-Password",	FLAG_ENCRYPT_TUNNEL_PASSWORD },
 	{ "encrypt=Ascend-Secret",	FLAG_ENCRYPT_ASCEND_SECRET },
+	{ "encrypt=Tunnel-Password",	FLAG_ENCRYPT_TUNNEL_PASSWORD },
+	{ "encrypt=User-Password",	FLAG_ENCRYPT_USER_PASSWORD },
 };
 static size_t radius_subtype_table_len = NUM_ELEMENTS(radius_subtype_table);
 
 static fr_table_num_ordered_t const dhcpv6_subtype_table[] = {
+	{ "dns_label",			FLAG_ENCODE_DNS_LABEL },
 	{ "encode=dns_label",		FLAG_ENCODE_DNS_LABEL },
 };
 static size_t dhcpv6_subtype_table_len = NUM_ELEMENTS(dhcpv6_subtype_table);

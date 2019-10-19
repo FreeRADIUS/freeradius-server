@@ -269,25 +269,29 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		/*
 		 *	Search for the first '=' or ','
 		 */
-		for (value = p + 1; *value && (*value != '=') && (*value != ','); value++) {
+		for (next = p + 1; *next && (*next != '=') && (*next != ','); next++) {
 			/* do nothing */
 		}
 
 		/*
 		 *	We have a value, zero out the '=' and point to the value.
 		 */
-		if (*value == '=') {
-			*(value++) = '\0';
+		if (*next == '=') {
+			*(next++) = '\0';
+			value = next;
+
 			if (!*value || (*value == ',')) {
 				fr_strerror_printf("Missing value after '%s='", key);
 				return -1;
 			}
+		} else {
+			value = NULL;
 		}
 
 		/*
 		 *	Skip any trailing text in the value.
 		 */
-		for (next = value; *next; next++) {
+		for (/* nothing */; *next; next++) {
 			if (*next == ',') {
 				*(next++) = '\0';
 				break;
