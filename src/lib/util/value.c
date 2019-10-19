@@ -1587,6 +1587,131 @@ done:
 	return data - where;
 }
 
+/** Get the length of a DNS label in a buffer.
+ *
+ *  i.e. the compressed length of one label.
+ *
+ *  Note that even if all labels in the buffer have a good compressed
+ *  length, the buffer may still be invalid.  i.e. the compressed
+ *  pointers may have loops!  a -> b, b -> a.  RFC 1035 could have
+ *  avoided this by mandating that all compressed pointers must point
+ *  *backwards* in the output buffer.
+ *
+ * @param[in] buf	buffer holding one or more DNS labels
+ * @param[in] buf_len	total length of the buffer
+ * @param[in] label	the DNS label to check
+ * @return
+ *	- <=0 on error, where in the buffer the invalid label is located.
+ *	- > 0 encoded size in the buffer of this particular DNS label
+ */
+ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const *label)
+{
+	uint8_t const *p, *end;
+	size_t length;
+
+	if (!buf || (buf_len == 0)) return 0;
+
+	/*
+	 *	Don't allow stupidities
+	 */
+	if (!((label >= buf) && (label < (buf + buf_len)))) return 0;
+
+	end = buf + buf_len;
+	p = buf;
+	length = 0;
+
+	/*
+	 *	We silently accept labels *without* a trailing 0x00,
+	 *	so long as they end at the end of the input buffer.
+	 */
+	while (p < end) {
+		/*
+		 *	End of label
+		 */
+		if (*p == 0) {
+			p++;
+			break;
+		}
+
+		/*
+		 *	Maybe it's a compression pointer.
+		 */
+		if (*p > 63) {
+			uint16_t offset;
+			uint8_t const *q;
+
+			/*
+			 *	0b11 is allowed.
+			 *	0b10 and 0b10 are forbidden
+			 */
+			if ((*p & 0xc0) != 0xc0) return -(p - buf);
+
+			offset = p[1];
+			offset += ((*p & ~0xc0) << 8);
+
+			if (offset > buf_len) {
+				fr_strerror_printf("Pointer %04x is too large for the input buffer", offset);
+				return  -(p - buf);
+			}
+
+			/*
+			 *	The pointer MUST point to a valid
+			 *	label length, and not to another
+			 *	pointer.
+			 */
+			q = buf + offset;
+			if (*q > 63) {
+				fr_strerror_printf("Pointer %04x does not point to the start of a label", offset);
+				return -(p - buf);
+			}
+
+			/*
+			 *	As an additional sanity check, the
+			 *	pointer MUST NOT point to a label
+			 *	within our own label.  If that
+			 *	happens, we have a loop.
+			 */
+			if ((q >= label) && (q <= p + 2)) {
+				fr_strerror_printf("Pointer %04x creates a loop within a label", offset);
+				return -(p - buf);
+			}
+
+			/*
+			 *	A pointer is always the last thing in
+			 *	this label.
+			 *
+			 *	Note that we don't try to add the
+			 *	length of the compressed portion to
+			 *	"length".  We let a later pass take
+			 *	care of that.
+			 */
+			p += 2;
+			return p - buf;
+		}
+
+		/*
+		 *	Else it's an uncompressed label
+		 */
+		if ((p + *p + 1) > end) {
+			fr_strerror_printf("Label header %02x is too large for the buffer", *p);
+			return -(p - buf);
+		}
+
+		/*
+		 *	DNS names can be no more than 255 octets.
+		 */
+		length += *p;
+		if (length > 255) {
+			fr_strerror_printf("Total length of labels is > 255");
+			return -(p - buf);
+		}
+
+		p += *p + 1;
+	}
+
+	return p - buf;
+}
+
 /** Decode a #fr_value_box_t from serialized binary data
  *
  * The general deserialization rules are:
