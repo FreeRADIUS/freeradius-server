@@ -481,15 +481,37 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 	uint8_t			*p = out, *end = p + outlen;
 	ssize_t			slen;
 	size_t			element_len;
+	VALUE_PAIR		*vp;
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	if (!fr_cond_assert_msg(da->flags.array,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
 				__FUNCTION__, da->name)) return PAIR_ENCODE_ERROR;
 
+	/*
+	 *	DNS labels have internalized length, so we don't need
+	 *	length headers.
+	 */
+	if ((da->type == FR_TYPE_STRING) && (da->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
+		while (p < end) {
+			vp = fr_cursor_current(cursor);
+
+			/*
+			 *	@todo - encode length and stuff
+			 */
+			slen = fr_value_box_to_dns_label(NULL, out, outlen, p, &vp->data);
+			if (slen <= 0) return PAIR_ENCODE_ERROR;
+
+			p += slen;
+			vp = next_encodable(cursor, encoder_ctx);
+			if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
+		}
+
+		return p - out;
+	}
+
 	while (p < end) {
 		uint16_t 	*len_field = NULL;	/* GCC is dumb */
-		VALUE_PAIR	*vp;
 
 		element_len = fr_dhcpv6_option_len(fr_cursor_current(cursor));
 

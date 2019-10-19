@@ -11,5 +11,5 @@
 #
 ##############################################################################
 
-ATTRIBUTE	SIP-Server-Domain-Name-List		21	string dns_label
+ATTRIBUTE	SIP-Server-Domain-Name-List		21	string dns_label,array
 ATTRIBUTE	SIP-Server-Address			22	ipv6addr array

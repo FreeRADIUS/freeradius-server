@@ -176,5 +176,11 @@ match 00 38 00 14 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
 encode-pair SIP-Server-Domain-Name-List = "foo.ca"
 match 00 15 00 08 03 66 6f 6f 02 63 61 00
 
+encode-pair SIP-Server-Domain-Name-List = "foo.ca", SIP-Server-Domain-Name-List = "example.com"
+match 00 15 00 15 03 66 6f 6f 02 63 61 00 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com"
+match 00 15 00 17 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04
+
 count
-match 78
+match 80
