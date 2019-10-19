@@ -183,4 +183,4 @@ encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-N
 match 00 15 00 17 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04
 
 count
-match 80
+match 82
