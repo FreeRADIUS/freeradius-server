@@ -1778,7 +1778,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.description = "Touch a file, updating its created timestamp.  Useful for marking the completion of a series of tests"
 				}},
 	{ "value ",		&(command_entry_t){
-					.func = command_value_bo<x_normalise,
+					.func = command_value_box_normalise,
 					.usage = "value <type> <string>",
 					.description = "Parse a value of a given type from its presentation form, print it, then parse it again (checking printed/parsed versions match), writing printed form to the data buffer"
 				}},
