@@ -1337,7 +1337,7 @@ static bool dns_label_match(uint8_t const *start, uint8_t const *a, uint8_t cons
 	if (*a > 63) {
 		uint16_t offset;
 
-		offset = start + a[1];
+		offset = a[1];
 		offset += ((*a & ~0xc0) << 8);
 
 		a = start + offset;
