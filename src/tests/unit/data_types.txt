@@ -92,5 +92,14 @@ match Aug 21 2019 07:43:03 UTC
 #date 2019-08-21T07:40:31-04:00
 #data foo
 
+#
+#  DNS labels WITHOUT compression
+#
+encode-dns-label foo.com
+match 03 66 6f 6f 03 63 6f 6d 00
+
+encode-dns-label foo.com,b.ca
+match 03 66 6f 6f 03 63 6f 6d 00 01 62 02 63 61 00
+
 count
-match 42
+match 46

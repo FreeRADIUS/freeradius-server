@@ -1239,6 +1239,52 @@ static size_t command_dictionary_load(command_result_t *result, command_ctx_t *c
 	RETURN_OK(0);
 }
 
+static size_t command_encode_dns_label(command_result_t *result, UNUSED command_ctx_t *cc,
+				       char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	size_t need;
+	ssize_t ret;
+	char *p, *next;
+	uint8_t *where;
+	uint8_t dns_label[1024];
+
+	p = in;
+	next = strchr(p, ',');
+	if (next) *next = 0;
+
+	where = dns_label;
+
+	while (p) {
+		fr_type_t type = FR_TYPE_STRING;
+		fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
+
+		if (fr_value_box_from_str(box, box, &type, NULL, p, -1, '"', false) < 0) {
+			talloc_free(box);
+			RETURN_OK_WITH_ERROR();
+		}
+
+		ret = fr_value_box_to_dns_label(&need, dns_label, sizeof(dns_label), where, box);
+		talloc_free(box);
+
+		if (ret < 0) RETURN_OK_WITH_ERROR();
+
+		if (ret == 0) RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "need=%zd", need));
+
+		where += ret;
+
+		/*
+		 *	Go to the next input string
+		 */
+		if (!next) break;
+
+		p = next + 1;
+		next = strchr(p, ',');
+		if (next) *next = 0;
+	}
+
+	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, dns_label, where - dns_label));
+}
+
 static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 				  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
@@ -1671,6 +1717,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "dictionary-load <proto_name> [<proto_dir>]",
 					.description = "Switch the active protocol dictionary",
 				}},
+	{ "encode-dns-label ",	&(command_entry_t){
+					.func = command_encode_dns_label,
+					.usage = "encode-dns-label (-|string[,string])",
+					.description = "Encode one or more DNS labels, writing a hex string to the data buffer.",
+				}},
 	{ "encode-pair",	&(command_entry_t){
 					.func = command_encode_pair,
 					.usage = "encode-pair[.<testpoint_symbol>] (-|<attribute> = <value>[,<attribute = <value>])",
@@ -1727,7 +1778,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.description = "Touch a file, updating its created timestamp.  Useful for marking the completion of a series of tests"
 				}},
 	{ "value ",		&(command_entry_t){
-					.func = command_value_box_normalise,
+					.func = command_value_bo<x_normalise,
 					.usage = "value <type> <string>",
 					.description = "Parse a value of a given type from its presentation form, print it, then parse it again (checking printed/parsed versions match), writing printed form to the data buffer"
 				}},

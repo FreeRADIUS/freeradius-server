@@ -1296,6 +1296,131 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	return min;
 }
 
+/** Encode a single value box of type string, serializing its contents to a dns label
+ *
+ * This functions takes a large buffer and encodes the label in part
+ * of the buffer.  This API is necessary in order to allow DNS label
+ * compression.
+ *
+ * @param[out] need	if not NULL, how many bytes are required to serialize
+ *			the remainder of the boxed data.
+ *			Note: Only variable length types will be partially
+ *			encoded. Fixed length types will not be partially encoded.
+ * @param[out] buf	Buffer where labels are stored
+ * @param[in] buf_len	The length of the output buffer
+ * @param[out] where	Where to write this label
+ * @param[in] value	to encode.
+ * @return
+ *	- 0 no bytes were written, see need value to determine if it was because
+ *	  the fr_value_box_t was #FR_TYPE_OCTETS/#FR_TYPE_STRING and was
+ *	  NULL (which is unfortunately valid)
+ *	- >0 the number of bytes written to "where", NOT "buf + where + outlen"
+ *	- <0 on error.
+ */
+ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, uint8_t *where, fr_value_box_t const *value)
+{
+	uint8_t *label;
+	uint8_t *end = buf + buf_len;
+	uint8_t const *q, *strend;
+	uint8_t *data;
+	int namelen = 0;
+
+	if (!buf || !buf_len || !where || !value) return -1;
+
+	if (value->type != FR_TYPE_STRING) return -1;
+
+	/*
+	 *	For now we don't do compression.  We just encode the
+	 *	label as-is.
+	 */
+	if ((where + value->vb_length + 1) > end) {
+	need_more:
+		if (need) *need = value->vb_length + 1;
+		return 0;
+	}
+
+	q = (uint8_t const *) value->vb_strvalue;
+	strend = q + value->vb_length;
+	label = where;
+	*label = 0;
+	data = label + 1;
+
+	while (q < strend) {
+		/*
+		 *	Just for pairanoia
+		 */
+		if (data >= end) goto need_more;
+
+		/*
+		 *	'.' is a label delimiter.
+		 *
+		 *	'..' is disallowed.  '.' at the start of a
+		 *	string is disallowed.
+		 */
+		if (*q == '.') {
+			if (*label == 0) {
+				fr_strerror_printf("Empty labels are invalid");
+				return -1;
+			}
+
+			/*
+			 *	'.' at the end of a non-zero label is
+			 *	allowed.
+			 */
+			if ((q + 1) == strend) break;
+
+			/*
+			 *	Start a new label.
+			 */
+			label = data;
+			*label = 0;
+			data = label + 1;
+
+			q++;
+			continue;
+		}
+
+		/*
+		 *	Label lengths can be 1..63
+		 */
+		if (*label >= 63) {
+			fr_strerror_printf("Label is larger than 63 characters");
+			return -1;
+		}
+
+		/*
+		 *	Name lengths can be 1..255
+		 */
+		if (namelen >= 255) {
+			fr_strerror_printf("Name is larger than 255 characters");
+			return -1;
+		}
+
+		/*
+		 *	Allow [-0-9a-zA-Z]
+		 */
+		if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
+		      ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
+			fr_strerror_printf("Invalid character %02x in label", *q);
+			return -1;
+		}
+
+		*(data++) = *(q++);
+		(*label)++;
+		namelen++;
+	}
+
+	*(data++) = 0;		/* end of label */
+
+	/*
+	 *	@todo - do label compression on suffixes, by scanning
+	 *	backwards for zero bytes, and doing comparisons.
+	 */
+
+	if (need) *need = 0;
+	return data - where;
+}
+
 /** Decode a #fr_value_box_t from serialized binary data
  *
  * The general deserialization rules are:
