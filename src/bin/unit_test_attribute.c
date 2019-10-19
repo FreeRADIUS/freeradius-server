@@ -1268,6 +1268,8 @@ static size_t command_encode_dns_label(command_result_t *result, UNUSED command_
 		fr_type_t type = FR_TYPE_STRING;
 		fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
 
+		fr_skip_whitespace(p);
+
 		if (fr_value_box_from_str(box, box, &type, NULL, p, -1, '"', false) < 0) {
 			talloc_free(box);
 			RETURN_OK_WITH_ERROR();
