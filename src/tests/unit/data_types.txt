@@ -98,6 +98,12 @@ match Aug 21 2019 07:43:03 UTC
 encode-dns-label foo.com
 match 03 66 6f 6f 03 63 6f 6d 00
 
+#
+#  Make sure that we can decode the label, too.
+#
+decode-dns-label -
+match foo.com
+
 encode-dns-label foo.com,b.ca
 match 03 66 6f 6f 03 63 6f 6d 00 01 62 02 63 61 00
 
@@ -109,5 +115,6 @@ match 00
 encode-dns-label F.ISI.ARPA,FOO.F.ISI.ARPA, ARPA, .
 match 01 46 03 49 53 49 04 41 52 50 41 00 03 46 4f 4f c0 00 c0 06 00
 
+
 count
-match 50
+match 52

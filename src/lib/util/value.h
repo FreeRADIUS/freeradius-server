@@ -512,7 +512,13 @@ ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
 
 ssize_t		fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buflen, uint8_t *where, fr_value_box_t const *value);
 
-ssize_t		fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const *label);
+ssize_t		fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **p_label);
+
+ssize_t		fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len);
+
+ssize_t		fr_value_box_from_dns_label(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					    uint8_t const *src, size_t len, uint8_t const *label,
+					    bool tainted);
 
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,

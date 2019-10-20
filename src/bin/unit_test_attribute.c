@@ -1297,6 +1297,38 @@ static size_t command_encode_dns_label(command_result_t *result, UNUSED command_
 	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, dns_label, where - dns_label));
 }
 
+static size_t command_decode_dns_label(command_result_t *result, UNUSED command_ctx_t *cc,
+				       char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	size_t len;
+	ssize_t slen;
+	uint8_t dns_label[1024];
+	fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
+
+	/*
+	 *	Decode hex from input text
+	 */
+	slen = hex_to_bin(dns_label, sizeof(dns_label), in, inlen);
+	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
+
+	/*
+	 *	@todo - decode multiple labels, and print them with commas separating them.
+	 */
+	slen = fr_value_box_from_dns_label(box, box, dns_label, slen, dns_label, false);
+	if (slen < 0) {
+		talloc_free(box);
+		RETURN_OK_WITH_ERROR();
+	}
+
+	/*
+	 *	We don't print it with quotes.
+	 */
+	len = fr_value_box_snprint(data, COMMAND_OUTPUT_MAX, box, '\0');
+	talloc_free(box);
+
+	RETURN_OK(len);
+}
+
 static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 				  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
@@ -1708,6 +1740,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_count,
 					.usage = "count",
 					.description = "Write the number of executed tests to the data buffer.  A test is any command that should return 'ok'"
+				}},
+	{ "decode-dns-label ",	&(command_entry_t){
+					.func = command_decode_dns_label,
+					.usage = "decode-dns-label (-|<hex_string>)",
+					.description = "Decode one or more DNS labels, writing the decoded strings to the data buffer.",
 				}},
 	{ "decode-pair",	&(command_entry_t){
 					.func = command_decode_pair,
