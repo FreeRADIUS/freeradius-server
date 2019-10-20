@@ -1301,32 +1301,52 @@ static size_t command_decode_dns_label(command_result_t *result, UNUSED command_
 				       char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	size_t len;
-	ssize_t slen;
+	ssize_t slen, total, i;
 	uint8_t dns_label[1024];
+	char *out, *end;
 	fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
 
 	/*
 	 *	Decode hex from input text
 	 */
-	slen = hex_to_bin(dns_label, sizeof(dns_label), in, inlen);
-	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
+	total = hex_to_bin(dns_label, sizeof(dns_label), in, inlen);
+	if (total <= 0) RETURN_PARSE_ERROR(-total);
 
-	/*
-	 *	@todo - decode multiple labels, and print them with commas separating them.
-	 */
-	slen = fr_value_box_from_dns_label(box, box, dns_label, slen, dns_label, false);
-	if (slen < 0) {
-		talloc_free(box);
-		RETURN_OK_WITH_ERROR();
+	out = data;
+	end = data + COMMAND_OUTPUT_MAX;
+
+	for (i = 0; i < total; i += slen) {
+		slen = fr_value_box_from_dns_label(box, box, dns_label, total, dns_label + i, false);
+		if (slen < 0) {
+			talloc_free(box);
+			RETURN_OK_WITH_ERROR();
+		}
+
+		/*
+		 *	Separate names by commas
+		 */
+		if (i > 0) *(out++) = ',';
+
+		/*
+		 *	As a special case, print '.' if there is no label
+		 */
+		if (box->vb_length == 0) {
+		       *(out++) = '.';
+		       *out = '\0';
+
+		} else {
+			/*
+			 *	We don't print it with quotes.
+			 */
+			len = fr_value_box_snprint(out, end - out, box, '\0');
+			out += len;
+		}
+
+		fr_value_box_clear(box);
 	}
 
-	/*
-	 *	We don't print it with quotes.
-	 */
-	len = fr_value_box_snprint(data, COMMAND_OUTPUT_MAX, box, '\0');
 	talloc_free(box);
-
-	RETURN_OK(len);
+	RETURN_OK(out - data);
 }
 
 static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,

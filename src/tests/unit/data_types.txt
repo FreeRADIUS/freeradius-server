@@ -107,14 +107,23 @@ match foo.com
 encode-dns-label foo.com,b.ca
 match 03 66 6f 6f 03 63 6f 6d 00 01 62 02 63 61 00
 
+decode-dns-label -
+match foo.com,b.ca
+
 # root gets encoded as a plain 0.
 encode-dns-label .
 match 00
 
+decode-dns-label -
+match .
+
 # From RFC 1035 Section 4.1.4
-encode-dns-label F.ISI.ARPA,FOO.F.ISI.ARPA, ARPA, .
+encode-dns-label F.ISI.ARPA,FOO.F.ISI.ARPA,ARPA,.
 match 01 46 03 49 53 49 04 41 52 50 41 00 03 46 4f 4f c0 00 c0 06 00
+
+decode-dns-label -
+match F.ISI.ARPA,FOO.F.ISI.ARPA,ARPA,.
 
 
 count
-match 52
+match 58

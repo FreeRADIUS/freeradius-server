@@ -1625,7 +1625,19 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 	 *	We silently accept labels *without* a trailing 0x00,
 	 *	so long as they end at the end of the input buffer.
 	 */
-	while (*p != 0x00) {
+	while (p < end) {
+		/*
+		 *	End of label byte.  Skip it.
+		 *
+		 *	If necessary, also tell the caller to skip
+		 *	over it, too.
+		 */
+		if (*p == 0x00) {
+			p++;
+			if (at_first_label) length++;
+			break;
+		}
+
 		/*
 		 *	Maybe it's a compression pointer.
 		 */
@@ -1776,9 +1788,11 @@ ssize_t fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len)
 	return buf_len;
 }
 
-static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const *label, uint8_t const **next)
+static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const **p_label, uint8_t const **next)
 {
-	uint8_t const *p = label;
+	uint8_t const *p;
+
+	p = *p_label;
 
 	if (*p == 0x00) {
 		*next = p + 1;
@@ -1798,6 +1812,7 @@ static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const *label, uint8_
 		p = buf + offset;
 	}
 
+	*p_label = p;
 	*next = p + *p + 1;
 	return *p;
 }
@@ -1835,25 +1850,28 @@ ssize_t fr_value_box_from_dns_label(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	label after this one.
 	 */
 	slen = fr_dns_label_length(src, len, &after);
-	if (slen < 0) return slen;
+	if (slen <= 0) return slen;
 
-	/*
-	 *	Allocate the string and set up the value_box
-	 */
-	dst->vb_strvalue = q = talloc_zero_array(ctx, char, slen + 1);
-	dst->datum.length = slen;
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
 	dst->enumv = NULL;
 	dst->next = NULL;
 
 	/*
-	 *	An empty label, just create an empty string.
+	 *	An empty label is a 0x00 byte.  Just create an empty
+	 *	string.
 	 */
-	if (slen == 0) {
-		*q = '\0';
+	if (slen == 1) {
+		dst->vb_strvalue = talloc_zero_array(ctx, char, 1);
+		dst->datum.length = 0;
 		return after - label;
 	}
+
+	/*
+	 *	Allocate the string and set up the value_box
+	 */
+	dst->vb_strvalue = q = talloc_array(ctx, char, slen + 1);
+	dst->datum.length = slen;
 
 	current = label;
 	p = (uint8_t *) q;
@@ -1864,7 +1882,7 @@ ssize_t fr_value_box_from_dns_label(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 *	Get how many bytes this label has, and where
 		 *	we will go to obtain the next label.
 		 */
-		slen = dns_label_decode(src, current, &next);
+		slen = dns_label_decode(src, &current, &next);
 		if (slen < 0) {
 		fail:
 			fr_value_box_clear(dst);
