@@ -1,4 +1,4 @@
-= Directory mapping and testing with ldapsearch
+= Mapping and testing with ldapsearch
 
 Prior to configuring the `ldap` module, the connectivity and connection
 parameters should be verified using the `ldapsearch` utility.
@@ -296,7 +296,24 @@ efficient).
 - There's no `memberOf` attributes. This means user to group mappings
 are likely stored in group objects instead of the user objects themselves.
 
-.Finding users in older LDAP directories
+==== What to record
+
+- `user_object_base_dn`        - The DN higher in the tree than relevant users
+objects.
+- `user_object_class_filter`   - The filter which matches the objectClass(es) of
+user objects.
+- `uid_attribute`              - The attribute used to identify the user
+(usually `uid`, but can vary considerably between instances).
+- `user_password_attribute`    - The attribute used to hold password data (if
+present).
+- `account_disabled_attribute` - Any attributes used to indicate whether an
+account is disabled. To determine if this attribute exists, repeat the user
+search (above) with a filter for a user account known to be disabled e.g.
+`(uid=a-disabled-user)`.
+- `account_enabled_attribute`  - Any attributes used to indicate whether an
+account is enabled.  Should be present in the search results already obtained.
+
+.Finding users in "mature" LDAP directories
 ****
 The above result represents an ideal scenario.  In reality, LDAP directories
 often accumulate a lot of cruft.  Users objects may be located in
@@ -338,23 +355,6 @@ LDAP server, and generally results in a quicker response.
 ldapsearch ... -E 'pr=100' "(|(ObjectClass=...))" "dn" | ...
 ```
 ****
-
-==== What to record
-
-- `user_object_base_dn`        - The DN higher in the tree than relevant users
-objects.
-- `user_object_class_filter`   - The filter which matches the objectClass(es) of
-user objects.
-- `uid_attribute`              - The attribute used to identify the user
-(usually `uid`, but can vary considerably between instances).
-- `user_password_attribute`    - The attribute used to hold password data (if
-present).
-- `account_disabled_attribute` - Any attributes used to indicate whether an
-account is disabled. To determine if this attribute exists, repeat the user
-search (above) with a filter for a user account known to be disabled e.g.
-`(uid=a-disabled-user)`.
-- `account_enabled_attribute`  - Any attributes used to indicate whether an
-account is enabled.  Should be present in the search results already obtained.
 
 === Groups
 
@@ -399,7 +399,7 @@ result: 0 Success
 ```
 ====
 
-.Finding groups in older directories
+.Finding groups in "mature" directories
 ****
 As with users, groups may be located in multiple areas of the directory.
 

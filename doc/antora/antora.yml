@@ -10,6 +10,7 @@ start_page: ROOT:index.adoc
 nav:
 - modules/ROOT/nav.adoc
 - modules/installation/nav.adoc
+- modules/concepts/nav.adoc
 - modules/howto/nav.adoc
 - modules/tutorials/nav.adoc
 - modules/unlang/nav.adoc

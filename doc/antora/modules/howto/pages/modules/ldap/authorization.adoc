@@ -1,4 +1,4 @@
-= rlm_ldap - Authorization
+= Configuring Authorization
 === Group Membership
 
 Depending on the LDAP vendor you use, LDAP group membership is either handled

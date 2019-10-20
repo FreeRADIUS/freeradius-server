@@ -29,7 +29,7 @@ Everything in the server is fully documented, and there are many
 The documentation is split into sections by subject area, oganized by
 desired outcome. At a high level, the subject areas describe:
 
-* xref:concepts.adoc[Concepts] and introduction for newcomers.
+* xref:concepts:index.adoc[Concepts] and introduction for newcomers.
 * xref:installation:index.adoc[Installing] and xref:installation:upgrade.adoc[upgrading] FreeRADIUS.
 * The syntax of the xref:unlang:index.adoc[unlang] processing language.
 * The xref:raddb:index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
@@ -95,7 +95,7 @@ http://packages.networkradius.com[Network RADIUS, window="_blank"] packages wher
 possible.
 
 Administrators who are new to FreeRADIUS should read the
-xref:concepts.adoc[concepts section] as it describes the concepts behind
+xref:concepts:index.adoc[concepts section] as it describes the concepts behind
 FreeRADIUS. It is vital for newcomers to understand these concepts, as the rest
 of the documentation assumes familiarity with them.
 

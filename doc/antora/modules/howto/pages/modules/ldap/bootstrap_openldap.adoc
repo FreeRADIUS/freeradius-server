@@ -1,15 +1,15 @@
-= Bootstrapping OpenLDAP
+= Installing and Configuring OpenLDAP
 
-This page describes two methods (
-<<bootstrap_with_docker,Docker>> and via <<bootstrap_with_packages,Packages>>) of creating an
-OpenLDAP instance for testing purposes.
+This page describes two methods (using <<bootstrap_with_docker,Docker>> and via
+<<bootstrap_with_packages,Packages>>) of creating an OpenLDAP instance for
+testing purposes.
 
-If you're looking to create a temporary instance of OpenLDAP and spin
-it up as quickly as possible, you should consider using the
+If you're looking to create a temporary instance of OpenLDAP and spin it up as
+quickly as possible, you should consider using the
 https://docs.docker.com/install/[Docker containerisation service].
 
-This will allow you to create a self-contained, and pre-configured
-OpenLDAP instance with a minimum amount of effort.
+A pre-configured docker container allow you to create a self-contained OpenLDAP
+instance with a minimum amount of effort.
 
 If you're looking to create a more permanent installation of OpenLDAP or
 are not comfortable using docker, then you may wish to install OpenLDAP from packages.
@@ -20,6 +20,7 @@ using the OpenLDAP LTB packages available under the
 
 [#bootstrap_with_docker]
 == Using OpenLDAP in a docker container
+
 === Bootstrap
 
 https://github.com/osixia[Osixia!] provides a
@@ -107,6 +108,7 @@ setup correctly>>.
 == Installing OpenLDAP from packages
 === Bootstrap
 ==== Switch to privileged user
+
 [source,shell]
 ----
 sudo -s
@@ -119,6 +121,14 @@ of the user running the LDAP client, determines which resources they can access.
 For convenience we will configure the OLC database to be modifiable only by the
 root user (`UID=0`, `GID=0`).  When configuring OpenLDAP via OLC the `ldapadd`
 utility will be run as root so our changes are authorised.
+
+==== Install packages
+
+OpenLDAP LTB packages available under the
+"Packaging and OpenLDAP extensions" heading https://ltb-project.org/documentation[here].
+
+You should add the appropriate repository definitions and install the `openldap`
+package (`yum install openldap` or `apt-get install openldap`).
 
 ==== Define site specific variables
 Change the values here to match local paths and your site specific
@@ -143,7 +153,7 @@ LDAP_ADMIN_PASSWORD="secret"
 LDAP_READONLY_PASSWORD="readonly"
 ----
 
-==== Switch OpenLDAP from using state configuration files to OLC
+==== Switch OpenLDAP from using static configuration files to OLC
 After installing OpenLDAP, `slapd` (the main OpenLDAP daemon) needs to be
 switched to using OLC (on-line configuration).
 
@@ -214,7 +224,7 @@ olcAccess: to dn.base="" by * read
 EOF
 ----
 
-.Decoding OpenLDAP ACLs
+.Interpreting OpenLDAP ACLs
 ****
 
 The OpenLDAP ACL syntax can be difficult to understand for new users. To help
