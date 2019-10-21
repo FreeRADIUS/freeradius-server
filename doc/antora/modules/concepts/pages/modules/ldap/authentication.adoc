@@ -94,7 +94,7 @@ involves giving the FreeRADIUS "read-only" user permission to read the
 `userPassword` field.
 
 Again, the best method is to test authentication is with the
-xref:howto:modules/ldap/ldapsearch.adoc[ldapsearch] tool.
+xref:howto:modules/ldap/ldapsearch/index.adoc[ldapsearch] tool.
 These tests *must* be run prior to configuring FreeRADIUS.  We strongly
 recommend having the LDAP database return the `userPassword` field to
 FreeRADIUS, so that FreeRADIUS can authenticate the user.

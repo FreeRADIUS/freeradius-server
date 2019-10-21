@@ -1,0 +1,32 @@
+= Mapping and testing with ldapsearch
+
+Every LDAP directory is different.  Each directory has different connection parameters,
+locations for objects, and attributes within those objects.
+
+This section of the LDAP howto will guide you through discovering the values
+needed to configure the LDAP module.
+
+We _strongly_ recommend running these checks in this section on the same machine
+that will be used to host the RADIUS server.  A common cause of connectivity
+issues is that a firewall is preventing network access from the RADIUS server to
+the LDAP server. Running `ldapsearch` on a third machine may not reveal these
+firewall issues.
+
+== xref:modules/ldap/ldapsearch/before_starting.adoc[Before starting]
+
+What questions to ask your LDAP administrator before you begin working with the
+directory.
+
+== xref:modules/ldap/ldapsearch/connection_parameters.adoc[Determining connection parameters]
+
+Discover through trial and error, what connection parameters the LDAP
+directory requires.
+
+== xref:modules/ldap/ldapsearch/locating_objects.adoc[Locating objects]
+
+Discover where users and groups are located within the directory.
+
+== xref:modules/ldap/ldapsearch/translating_to_the_ldap_module.adoc[Using results to configure the LDAP module]
+
+Translate LDAP search arguments and the results from previous sections
+into LDAP module configuration items

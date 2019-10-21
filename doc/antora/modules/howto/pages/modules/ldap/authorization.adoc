@@ -1,5 +1,45 @@
 = Configuring Authorization
-=== Group Membership
+
+The `authorize` method of the LDAP module is responsible for locating the
+authenticating user's LDAP object.
+
+In addition to determining where the user is, the authorize method also
+performs LDAP to FreeRADIUS attribute mappings,
+
+== 1. Locating the user
+
+No matter how the LDAP module is called (via its `authorize`, `authenticate`,
+`accounting` methods or an `LDAP-Group` comparison) the first operation the
+module performs it to populate `&control:LDAP-UserDN` with the location of
+the authenticating user's object in LDAP.
+
+How the LDAP-UserDN value is discovered is determined by the contents of the
+`user { ... }` section of the LDAP module instance.
+
+Below is an example of configuring a user section for OpenLDAP, with callouts
+explaining how the different configuration items are used. See
+xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] for how to determine the
+appropriate values for your directory.
+
+[source,unlang]
+----
+user {
+	base_dn = "ou=people,${..base_dn}"	<1>
+	filter =
+}
+----
+
+== 2. Disambiguating users
+
+dn: olcOverlay=sssvlv,olcDatabase={1}mdb,cn=config
+> objectClass: olcSssVlvConfig
+> olcOverlay: sssvlv
+> olcSssVlvMax: 10
+> olcSssVlvMaxKeys: 5
+
+== 2. Configuring the enable/disable attribute
+
+== Group Membership
 
 Depending on the LDAP vendor you use, LDAP group membership is either handled
 using the LDAP attributes:

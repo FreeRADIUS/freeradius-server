@@ -1,7 +1,7 @@
 = Enabling the LDAP module
 
 The configuration step should be little more than
-xref:modules/ldap/ldapsearch.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[copying the parameters used by ldapsearch]
+xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[copying the parameters used by ldapsearch]
 to the xref:raddb:mods-available/ldap.adoc[ldap module] configuration file.
 
 The xref:raddb:mods-available/ldap.adoc[ldap module] configuration file
@@ -16,15 +16,15 @@ possible in the default configuration.  The defaults are usually close
 to being correct.  All that is necessary is to make minor changes, and
 _test_ them.  FreeRADIUS should look for data.
 
-If the xref:modules/ldap/search[ldapsearch] tests above pass,
+If the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tests above pass,
 then the LDAP module configuration can be copied directly from the
 command-line options to that tool using the
-xref:modules/ldap/ldapsearch.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[translation table] on that page.
+xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[translation table] on that page.
 
 At a minimum you will need to set the following configuration items
 in in xref:raddb:mods-available/ldap.adoc[mods-available/ldap] using
 the values you discovered
-running the xref:modules/ldap/search[ldapsearch] tests.
+running the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tests.
 
 [source,config]
 ----
@@ -36,7 +36,7 @@ ldap {
 
 	user {
 		base_dn = "ou=people,${..base_dn}"  <5>
-		filter = '(objectClass=posixUser)'  <6>
+		filter = '(&(uid=%{%{Stripped-User-Name}:-%{User-Name}})(objectClass=posixUser))'  <6>
 	}
 }
 ----
@@ -51,7 +51,7 @@ ldap {
     to reduce network overhead.
 <4> The object containing all other objects we're interested in.
 <5> The object containing all the users we need to perform AAA functions for.
-<6> Filter to select only valid user objects.
+<6> Filter to select the object matching the authenticating user.
 
 We do _not_ recommend immediately configuring TLS unless you are testing against
 a production server.  The best approach is to test one piece in isolation,

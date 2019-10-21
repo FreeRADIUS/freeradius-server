@@ -1,0 +1,22 @@
+= Installing and Configuring OpenLDAP
+
+This section of the howto describes two methods of creating an OpenLDAP instance for
+testing purposes.
+
+== xref:modules/ldap/bootstrap_openldap/docker.adoc[Docker]
+
+If you're looking to create a temporary instance of OpenLDAP and spin it up as
+quickly as possible, you should consider using the
+https://docs.docker.com/install/[Docker containerisation service].
+
+A pre-configured docker container allow you to create a self-contained OpenLDAP
+instance with a minimum amount of effort.
+
+== xref:modules/ldap/bootstrap_openldap/packages.adoc[Packages]
+
+If you're looking to create a more permanent installation of OpenLDAP or
+are not comfortable using docker, then you may wish to install OpenLDAP from packages.
+
+OpenLDAP is available pre-packaged for many distributions.  We recommend
+using the OpenLDAP LTB packages available under the
+"Packaging and OpenLDAP extensions" heading https://ltb-project.org/documentation[here].

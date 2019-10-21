@@ -1,0 +1,223 @@
+= Determining connection parameters
+
+`ldapsearch` accepts a large number of different arguments, and allow relatively
+complex commands to be sent to the LDAP server.
+
+It will likely take a number of attempts to find the correct `ldapsearch` invocation.
+If you have no prior information about the LDAP server follow the examples below,
+adding progressively more connection parameters until `ldapsearch` returns a positive
+result (`$? == 0` and one or more entries written to stdout).
+
+[source,ldif]
+----
+dn: uid=john,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: john
+userPassword: password
+----
+
+If the `ldapsearch` program fails to return anything useful, then additional
+arguments should be added until the search succeeds. Unfortunately, every piece
+of advice in this section is site-specific, and is independent of RADIUS.
+
+== Search without bind (anonymous)
+At a minimum, unless you have defaults set in your local `ldap.conf` file,
+you will need to provide the following arguments:
+
+- `-z 1` - Limit the number of results to 1.
+- `-x` - Use simple authentication instead of SASL (correct for the majority of servers).
+- `-H <ldap uri>` - The LDAP server to connect to.
+- `-b <dn>` - A point in the LDAP tree to start the search from.
+
+.Performing an anonymous search
+====
+[source,shell]
+----
+ldapsearch -z 1 -x \
+	-H ldap://ldap.example.com:389 \
+	-b "cn=freeradius,dc=example,dc=com"
+----
+====
+
+== Failure - Bad FQDN/IP or attempt blocked by firewall
+
+```
+ldap_sasl_bind(SIMPLE): Can't contact LDAP server (-1)
+```
+
+* Verify (using `dig` or similar) that the FQDN of the LDAP
+server can be resolved.
+* Verify that there is no firewall blocking access.  Some techniques to check this
+which _may_ work.
+** `sudo traceroute -Tn -p 636 ldap.example.com` will be successful (and not
+continue indefinitely) when there is _no_ firewall blocking.
+** `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is no
+firewall blocking access.
+
+== Failure - Bind required
+
+```
+ldap_bind: Server is unwilling to perform (53)
+	additional info: unauthenticated bind (DN with no password) disallowed
+```
+
+The majority of LDAP servers will also require the LDAP client to identify itself,
+this is done with a bind operation.
+
+If a message similar to the one above is returned, it means a bind operation
+must be performed before attempting any operations on the LDAP server.
+
+The following arguments should be added to identify the LDAP client to the LDAP
+server:
+
+- `-D <dn>` - The bind DN.  A unique identifier for the user being bound.
+- `-w <password>` - The bind password.
+
+.Performing a search with a bound user
+====
+[source,shell]
+----
+ldapsearch -z 1 -x \
+	-H ldap://ldap.example.com:389 \
+	-D "cn=freeradius,dc=example,dc=com" \
+	-w mypassword \
+	-b "dc=example,dc=com"
+----
+====
+
+== Failure - Encryption (confidentiality) required
+
+If a message similar to the one below is returned by `ldapsearch`.  TLS must
+be enabled on the connection.
+
+```
+ldap_bind: Confidentiality required (13)
+        additional info: TLS confidentiality required
+```
+
+If you're not sure which encryption method is used (LDAPS or StartTLS) try
+each of them in turn.
+
+In order to configure either encryption method you will need to have acces
+to the certificate chain for the certificate the LDAP server presents.
+
+See the section below on retrieving certificate chains if you don't have
+access to these certificates.
+
+=== Common parameters for both LDAPS and StartTLS)
+
+- `LDAPTLS_CACERT=<ca_cert_and_intermediaries.pem>` - An environmental variable
+specifying a PEM file containing CA and chain of trusted certificates, that
+joins with the chain presented by the LDAP server.  These certificates must be
+provided in order to validate the LDAP server's certificate.
+
+- `LDAPTLS_REQCERT=hard` - An environmental variable requiring the LDAP server
+provide a certificate.
+
+=== Encryption with LDAPS
+
+LDAPS is configured by changing the URI scheme passed as the value to `-H`.
+
+Where an unencrypted or StartTLS connection uses `ldap://`, LDAPS requires
+`ldaps://`.
+
+The port for LDAPS is different than for unencrypted communication. Where an
+unencrypted or StartTLS connection normally uses `TCP/389`, LDAPS normally uses
+`TCP/636`.
+
+For LDAPS an unencrypted or StartTLS URI is changed from:
+```
+-H ldap://<fqdn>:389
+```
+
+to
+
+```
+-H ldaps://<fqdn>:636
+```
+
+.Performing a search with a bound user with LDAPS
+====
+[source,shell]
+----
+LDAPTLS_CACERT=cert_bundle.pem LDAPTLS_REQCERT=hard \
+	ldapsearch -z 1 -x \
+		-H ldaps://ldap.example.com:636 \
+		-D "cn=freeradius,dc=example,dc=com" \
+		-w mypassword \
+		-b "dc=example,dc=com"
+----
+====
+
+=== Encryption with StartTLS
+
+StartTLS connections runs on the same port as unencrypted LDAP.  StartTLS
+is an LDAP
+
+- `-ZZ` - Transition to encrypted communication using the StartTLS extension,
+and fail if we can't.
+
+.Performing a search with a bound user with StartTLS
+====
+[source,shell]
+----
+LDAPTLS_CACERT=cert_bundle.pem LDAPTLS_REQCERT=hard \
+	ldapsearch -z 1 -x \
+		-H ldap://ldap.example.com:389 \
+		-D "cn=freeradius,dc=example,dc=com" \
+		-w mypassword \
+		-b "dc=example,dc=com" \
+		-ZZ
+----
+====
+
+.Retrieving certificate chains from the server
+****
+If using LDAP over TLS `openssl s_client` can display information about the
+certificates presented by the LDAP server. The information returned
+(particularly the certificate issuer(s)) in useful to determine what
+certificates need to be available to the LDAP client.
+
+The `openssl` invocation is different depending on whether StartTLS or LDAPS
+is used.
+
+.LDAPS - Retrieving the certificate chain of the fictitious ldap.example.com server
+====
+```
+echo -n | openssl s_client -host ldap.example.com -port 636 -prexit -showcerts
+CONNECTED(00000003)
+depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = example.com, emailAddress = support@example.com
+verify return:0
+---
+Certificate chain
+ 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.example.com/emailAddress=support@example.com
+   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=example.com/emailAddress=support@example.com
+-----BEGIN CERTIFICATE-----
+MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
+...
+```
+====
+
+.StartTLS - Retrieving the certificate chain of the fictitious ldap.example.com server
+====
+```
+echo -n | openssl s_client -host ldap.example.com -port 389 -prexit -showcerts -starttls ldap
+CONNECTED(00000003)
+depth=1 C = OT, ST = Tentacle Cove, O = FreeRADIUS, OU = Services, CN = example.com, emailAddress = support@example.com
+verify return:0
+---
+Certificate chain
+ 0 s:/C=OT/ST=Tentacle Cove/L=Grenoble/O=FreeRADIUS/OU=Services/CN=ldap.example.com/emailAddress=support@example.com
+   i:/C=OT/ST=Tentacle Cove/O=FreeRADIUS/OU=Services/CN=example.com/emailAddress=support@example.com
+-----BEGIN CERTIFICATE-----
+MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
+...
+```
+[NOTE]
+.Availability of `-starttls ldap`
+Not all builds of `openssl s_client` support `-starttls ldap`.  As of OpenSSL
+1.1.1 this feature is still only available in the OpenSSL master branch. See
+this GitHub Pull Request for details:
+https://github.com/openssl/openssl/pull/2293.
+====
+****

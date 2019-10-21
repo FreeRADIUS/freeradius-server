@@ -1,0 +1,102 @@
+= Translating ldapsearch arguments to LDAP configuration items
+
+[width="100%",cols="30%,20%,50%",options="header",]
+|===
+| Purpose                                     | ldapsearch argument         | `ldap { ... }` config item
+| Limit number of search results              | ```-z```                    | Not supported.
+| Use basic authentication                    | ```-x```                    | Set by default.
+| LDAP Host URI                               | ```-H <uri>```              | ```server = '<uri>'``` +
+                                                                              ```port = (389\|<custom port>)```
+| Base DN                                     | ```-b <dn>```               | ```base_dn = '<dn>'```
+| Bind DN                                     | ```-D <dn>```               | ```identity = '<dn>'```
+| Bind Password                               | ```-w <password>```         | ```password = '<password>'```
+| Enable LDAPS                                | ```-H ldaps://<uri>```      | ```server = 'ldaps://<uri>'``` +
+                                                                              ```port = (636\|<custom port>)```
+| Enable StartTLS                             | ```-ZZ```                   | ```tls { start_tls = yes }```
+| Specify RootCA and intermediaries           | ```LDAPTLS_CACERT=<ca_cert_and_intermediaries.pem>``` | ```tls { ca_file = '<ca_cert_and_intermediaries.pem>' }```
+| Require cert validation to succeed          | ```LDAPTLS_REQCERT=hard```  | ```tls { require_cert = 'demand' }```
+|===
+
+= Translating ldapsearch results to rlm_ldap configuration items
+
+== Users
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { user { ... } }` config item
+| Specify where to search for users           | ```base_dn = '<user_object_base_dn>'```
+| Specify how to find a user                  | ```filter = "(&(<user_object_class_filter>)(<uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})"```
+| Retrieve a "known good" password            | ```update { &control:Password-With-Header = <user_password_attribute>```
+| Allow accounts to be explicitly disabled    | ```access_attribute = '<account_disabled_attribute>'``` +
+                                                ```access_positive = 'no'```
+| Require accounts to be explicitly enabled   | ```access_attribute = '<account_enabled_attribute>'``` +
+                                                ```access_positive = 'yes'```
+|===
+
+== Groups - Common
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify where to search for group           | ```base_dn = '<group_object_base_dn>'```
+| Specify which objects are groups            | ```filter = '<group_object_class_filter>'```
+| Specify which attribute in a group object
+  identifies the group                        | ```name_attribute = '<group_name_attribute>'```
+|===
+
+== Groups - variant 1
+
+User objects reference groups using DNs.
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify how to find group objects by DN, when referenced by a user object. | ```membership_attribute = '<group_object_base_dn>'```
+|===
+
+== Groups - variant 2
+
+User objects reference groups using group names.
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify how to find group objects by name, when referenced by a user object. | ```membership_attribute = '<group_object_base_dn>'```
+|===
+
+== Groups - variant 3
+
+Group objects reference users using DNs.
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify how to find group objects referencing a user by DN. | ```membership_filter = "(<membership_user_dn_filter>=%{control:Ldap-UserDn})"```
+|===
+
+== Groups - variant 4
+
+Group objects reference users using user names.
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| Purpose                                     | `ldap { group { ... } }` config item
+| Specify how to find group objects referencing a user by name. | ```membership_filter = "(<membership_user_name_filter>=%{%{Stripped-User-Name}:-%{User-Name}})"```
+|===
+
+.Mixing and matching group membership schemes
+****
+Although rare, it is possible to have all four group membership scheme variants
+in a single directory. FreeRADIUS supports this configuration.
+
+For _variant 1_ and _variant 2_ FreeRADIUS will automatically determine if the
+user object attribute contained a DN or group name.
+
+For _variant 3_ and _variant 4_ it's possible to construct a filter which matches
+both on user DN and user name e.g.
+
+[source,config]
+----
+membership_filter = "(|(<membership_user_dn_filter>=%{control:Ldap-UserDn})(<membership_user_name_filter>=%{%{Stripped-User-Name}:-%{User-Name}}))"
+----
+****

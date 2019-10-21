@@ -45,14 +45,14 @@ where a high level of redundancy is required.
 === 2. Testing
 
 Once an LDAP server is available, it should be tested via the command-line
-xref:modules/ldap/ldapsearch.adoc[ldapsearch] tool.  This is to ensure that
+xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tool.  This is to ensure that
 the LDAP server has been configured correctly.  If testing via `ldapsearch`
 fails, then that *MUST* those issues must be resolved before configuring
 FreeRADIUS.
 
 === 3. Configuring the LDAP module
 
-Once the xref:modules/ldap/ldapsearch.adoc[ldapsearch] validation tests pass, the
+Once the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] validation tests pass, the
 next step is to xref:modules/ldap/configuration.adoc[configure the LDAP module].
 
 OpenLDAP configuration examples detailing how to install appropriate schemas and

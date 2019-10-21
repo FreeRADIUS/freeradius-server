@@ -1,113 +1,6 @@
-= Installing and Configuring OpenLDAP
+= Installing OpenLDAP from packages
 
-This page describes two methods (using <<bootstrap_with_docker,Docker>> and via
-<<bootstrap_with_packages,Packages>>) of creating an OpenLDAP instance for
-testing purposes.
-
-If you're looking to create a temporary instance of OpenLDAP and spin it up as
-quickly as possible, you should consider using the
-https://docs.docker.com/install/[Docker containerisation service].
-
-A pre-configured docker container allow you to create a self-contained OpenLDAP
-instance with a minimum amount of effort.
-
-If you're looking to create a more permanent installation of OpenLDAP or
-are not comfortable using docker, then you may wish to install OpenLDAP from packages.
-
-OpenLDAP is available pre-packaged for many distributions.  We recommend
-using the OpenLDAP LTB packages available under the
-"Packaging and OpenLDAP extensions" heading https://ltb-project.org/documentation[here].
-
-[#bootstrap_with_docker]
-== Using OpenLDAP in a docker container
-
-=== Bootstrap
-
-https://github.com/osixia[Osixia!] provides a
-https://github.com/osixia/docker-openldap[fully functionally OpenLDAP container]
-which can be instantiated using the docker invocation below.
-
-This docker invocation also sets up a readonly user, and loads the custom
-FreeRADIUS schemas required for RADIUS to LDAP attribute mapping, dynamic client
-definitions, and attribute profiles.
-
-==== Define site specific variables
-Change the values here to match local paths and your site specific
-configuration.
-
-[source,shell]
-----
-# Where to store a temporary shallow clone of the FreeRADIUS source
-# Or the path to an existing copy of the FreeRADIUS source
-FREERADIUS_SRC="/tmp/freeradius-src"
-
-# Base DN
-LDAP_BASE_DN="dc=example,dc=com"
-
-# Domain
-LDAP_DOMAIN="example.com"
-
-# DN Suffix
-LDAP_BASE_DN="dc=example,dc=com"
-
-# Password for the administrative user
-LDAP_ADMIN_PASSWORD="secret"
-
-# Password for the read only user
-LDAP_READONLY_PASSWORD="readonly"
-----
-
-==== Instantiate an OpenLDAP docker container
-
-[source,shell]
-----
-if [ ! -d "${FREERADIUS_SRC}" ]; then
-	git clone --depth 1 https://github.com/FreeRADIUS/freeradius-server.git "${FREERADIUS_SRC}"
-fi
-docker run -it --rm -p 389:389 \
-	--env LDAP_DOMAIN=${LDAP_DOMAIN} \
-	--env LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD} \
-	--env LDAP_READONLY_USER=true \
-	--env LDAP_READONLY_USER_PASSWORD=${LDAP_READONLY_PASSWORD} \
-	--volume "${FREERADIUS_SRC}/doc/schemas/ldap/openldap/freeradius.schema:/container/service/slapd/assets/config/bootstrap/schema/mmc/radius.schema:ro" \
-	--volume "${FREERADIUS_SRC}/doc/schemas/ldap/openldap/freeradius-clients.schema:/container/service/slapd/assets/config/bootstrap/schema/mmc/freeradius-clients.schema:ro" \
-	osixia/openldap:1.2.5 --copy-service
-----
-
-=== Test data
-Once docker is running, there should now be an LDAP server running on
-`localhost`, it can now be populated with test data.
-
-For test data we will be using the object definitions from the LDAP
-module's CIT (Continuous Integration Testing) script.
-
-These object definitions have been designed to exercise all features
-of the FreeRADIUS LDAP module.
-
-[source,shell]
-----
-sed -e '1,/^description:/ d' "${FREERADIUS_SRC}/src/tests/modules/ldap/example.com.ldif" \
-    | ldapadd -H ldap://localhost -x -D cn=admin,${LDAP_BASE_DN} -w admin
-----
-
-There should be no errors, and the console with the running LDAP
-server should show requests being handled.
-
-If the LDAP server server is stopped, as with `CTRL-C`, then the database
-contents will be lost.  All of the steps above will have to be re-done the next
-time the server is started.
-
-In order to make the LDAP database persistent, see the
-https://github.com/osixia/docker-openldap[osixia/openldap
-instructions].
-
-As a final step you should <<verifying_openldap_setup,verify OpenLDAP is
-setup correctly>>.
-
-[#bootstrap_with_packages]
-== Installing OpenLDAP from packages
-=== Bootstrap
-==== Switch to privileged user
+== Switch to privileged user
 
 [source,shell]
 ----
@@ -122,7 +15,9 @@ For convenience we will configure the OLC database to be modifiable only by the
 root user (`UID=0`, `GID=0`).  When configuring OpenLDAP via OLC the `ldapadd`
 utility will be run as root so our changes are authorised.
 
-==== Install packages
+== Bootstrap
+
+=== Install packages
 
 OpenLDAP LTB packages available under the
 "Packaging and OpenLDAP extensions" heading https://ltb-project.org/documentation[here].
@@ -130,7 +25,7 @@ OpenLDAP LTB packages available under the
 You should add the appropriate repository definitions and install the `openldap`
 package (`yum install openldap` or `apt-get install openldap`).
 
-==== Define site specific variables
+=== Define site specific variables
 Change the values here to match local paths and your site specific
 configuration.
 
@@ -153,7 +48,7 @@ LDAP_ADMIN_PASSWORD="secret"
 LDAP_READONLY_PASSWORD="readonly"
 ----
 
-==== Switch OpenLDAP from using static configuration files to OLC
+=== Switch OpenLDAP from using static configuration files to OLC
 After installing OpenLDAP, `slapd` (the main OpenLDAP daemon) needs to be
 switched to using OLC (on-line configuration).
 
@@ -201,7 +96,7 @@ sed -ie 's#^SLAPD_CONF=.*#SLAPD_CONF=""#;s#^SLAPD_CONF_DIR=.*#SLAPD_CONF_DIR="$S
 systemctl start slapd
 ----
 
-==== Define a database and set appropriate ACLs
+=== Define a database and set appropriate ACLs
 
 [source,shell]
 ----
@@ -224,8 +119,9 @@ olcAccess: to dn.base="" by * read
 EOF
 ----
 
-.Interpreting OpenLDAP ACLs
-****
+.Wondering what those ACLs mean?
+[%collapsible]
+====
 
 The OpenLDAP ACL syntax can be difficult to understand for new users. To help
 with implementing site-specific ACLs, the humanly readable translation of the
@@ -242,10 +138,9 @@ base ACLs in the above example is included below.
 * `to dn.base="" by * read`
 ** Any user may access the metadata at the top of the directory.  The is useful for the
    autodiscovery functionality in LDAP browsers.
+====
 
-****
-
-==== Populate the top level object, and add credentials for the readonly user
+=== Populate the top level object, and add credentials for the readonly user
 
 [source,shell]
 ----
@@ -267,7 +162,7 @@ description: LDAP read only user
 EOF
 ----
 
-=== Loading schemas
+== Load schemas
 
 For our tests we need to load some basic bundled OpenLDAP schemas and some
 FreeRADIUS specific schemas for defining profiles, RADIUS to LDAP mappings and
@@ -290,7 +185,7 @@ for i in freeradius.ldif freeradius-clients.ldif; do
 done
 ----
 
-=== Test data
+== Populate with test data
 Once slapd is running and appropriately configured with database definitions an
 admin user, a readonly user, and the prerequisite schemas, it can now be
 populated with test data.
@@ -307,7 +202,7 @@ sed -e '1,/^description:/ d' ${FREERADIUS_SRC}/src/tests/modules/ldap/example.co
     | ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi
 ----
 
-=== Switch to an unprivileged user
+== Switch to an unprivileged user
 [source,shell]
 ----
 exit
@@ -320,8 +215,7 @@ If, however, you need to make further changes to OpenLDAP's configuration, you
 should note that the `ldapadd`, `ldapmodify` commands must be called as root
 with the `-Y EXTERNAL` argument.
 
-[#verifying_openldap_setup]
-== Verifying OpenLDAP setup
+== Check it works
 
 As a final step you should verify that test data has been loaded correctly.
 This can be done using the `ldapsearch` utility using the LDAP read only user.

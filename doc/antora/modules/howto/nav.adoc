@@ -5,14 +5,24 @@
 *** xref:modules/eap/index.adoc[EAP]
 *** xref:modules/expiration/index.adoc[Expiration]
 *** xref:modules/krb5/index.adoc[Krb5]
+
 *** xref:modules/ldap/index.adoc[LDAP]
-**** xref:modules/ldap/bootstrap_openldap.adoc[Installing and Configuring OpenLDAP]
-**** xref:modules/ldap/ldapsearch.adoc[Mapping and testing with ldapsearch]
+
+**** xref:modules/ldap/bootstrap_openldap/index.adoc[Installing and Configuring OpenLDAP]
+***** xref:modules/ldap/bootstrap_openldap/docker.adoc[Docker]
+***** xref:modules/ldap/bootstrap_openldap/packages.adoc[Packages]
+
+**** xref:modules/ldap/ldapsearch/index.adoc[Mapping and testing with ldapsearch]
+***** xref:modules/ldap/ldapsearch/before_starting.adoc[Before starting]
+***** xref:modules/ldap/ldapsearch/connection_parameters.adoc[Determining connection parameters]
+***** xref:modules/ldap/ldapsearch/locating_objects.adoc[Locating objects]
+***** xref:modules/ldap/ldapsearch/translating_to_the_ldap_module.adoc[Translating ldapsearch arguments to LDAP configuration items]
 
 **** xref:modules/ldap/configuration.adoc[Enabling the LDAP module]
 **** xref:modules/ldap/authorization.adoc[Configuring authorization]
 **** xref:modules/ldap/authentication.adoc[Configuring authentication]
 **** xref:modules/ldap/accounting.adoc[Configuring accounting]
+
 *** xref:modules/mschap/index.adoc[MS-CHAP]
 *** xref:modules/pam/index.adoc[PAM]
 *** xref:modules/passwd/index.adoc[Passwd]
