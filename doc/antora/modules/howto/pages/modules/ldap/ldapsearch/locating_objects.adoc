@@ -76,7 +76,8 @@ result: 0 Success
 
 === What to record
 
-- `user.base_dn` - The DN higher in the tree than relevant users object(s_.
+- `user.base_dn` - A DN of an object higher in the tree than relevant users
+   object(s).
 - `user.filter`- The filter which matches the objectClass(es) of user objects.
 - `user.uid_attribute` - The attribute used to identify the user
    (usually `uid`, but can vary considerably between instances).
@@ -223,7 +224,8 @@ result: 0 Success
 
 === What to record
 
-* `group.base_dn` - The DN higher in the tree than all relevant group objects.
+* `group.base_dn` - A DN of an object higher in the tree than all relevant group
+   objects.
 * `group.name_attribute` - The attribute used to identify the group (usually `cn`).
 * _variant 1_
 ** `group.membership_attribute` - User object attribute containing group

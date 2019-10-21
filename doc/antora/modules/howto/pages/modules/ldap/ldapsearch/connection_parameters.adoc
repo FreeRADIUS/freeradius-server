@@ -126,7 +126,7 @@ to the certificate chain for the certificate the LDAP server presents.
 See the section below on retrieving certificate chains if you don't have
 access to these certificates.
 
-=== Common parameters for both LDAPS and StartTLS)
+=== Common parameters for both LDAPS and StartTLS
 
 - `LDAPTLS_CACERT=<ca_cert_and_intermediaries.pem>` - An environmental variable
 specifying a PEM file containing CA and chain of trusted certificates, that
