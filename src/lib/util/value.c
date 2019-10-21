@@ -1296,117 +1296,224 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	return min;
 }
 
-/** Match two DNS labels
+/** Compress "label" by looking at it recursively.
  *
- *  Both 'a' and 'b' MUST start with a length byte.
- *
- *  Both 'a' and 'b' MUST be valid labels.  This function does NOT
- *  validate the input at all!
- *
- *  'a' MAY contain compressed pointers.  'b' MUST NOT contain
- *  compressed pointers.
  */
-static bool dns_label_match(uint8_t const *start, uint8_t const *a, uint8_t const *b)
+static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t *label, uint8_t **new_end)
 {
-	/*
-	 *	Lengths don't match, we're done.
-	 */
-	if (*a != *b) return false;
+	uint8_t *next;
+	uint8_t const *q, *ptr, *suffix;
+	uint16_t offset;
 
 	/*
-	 *	Prefixes don't match, we're done.
+	 *	Don't compress "end of label" byte or pointers.
 	 */
-	if (strncasecmp((char const *) a + 1, (char const *) b + 1, *a) != 0) return false;
-
-	/*
-	 *	Skip the matching label.
-	 */
-	b += *a + 1;
-	a += *a + 1;
-
-	/*
-	 *	If both labels are done, then it's a match.
-	 */
-	if (!*a && !*b) return true;
-
-	/*
-	 *	If 'a' is now a compressed pointer, jump to the actual
-	 *	label.  Note that we don't do bounds checking on the
-	 *	offset.  It's always positive, and it's always valid.
-	 */
-	if (*a > 63) {
-		uint16_t offset;
-
-		offset = a[1];
-		offset += ((*a & ~0xc0) << 8);
-
-		a = start + offset;
-
-		/*
-		 *	Compressed pointers can't point to compressed
-		 *	pointers.
-		 */
-		if (*a > 63) return false;
+	if (!*label || (*label > 63)) {
+		return false;
 	}
 
-	return dns_label_match(start, a, b);
-}
+	/*
+	 *	Check the next label.  Note that this is *after*
+	 *	"end".  It also MUST be a valid, uncompressed label.
+	 */
+	next = label + *label + 1;
 
-/** Compress "label" by looking for other labels in start..end
- *
- *  We assume that the input is valid.  If it isn't valid, bad things
- *  will happen.
- *
- * "label" MUST be uncompressed.
- */
-static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t *label)
-{
-	uint8_t const *p;
-	uint8_t *q;
-	size_t offset;
+	/*
+	 *	We're at the last uncompressed label, scan the input
+	 *	buffer to see if there's a match.
+	 *
+	 *	The scan skips ahead until it find both a label length
+	 *	that matches, AND "next" label which is 0x00.  Only
+	 *	then does it do the string compare of the label
+	 *	values.
+	 */
+	if (*next == 0x00) {
+		q = start;
+		while (q < end) {
+			if (*q == 0x00) {
+				q++;
+				continue;
+			}
 
-	p = start;
-	q = label;
+			if (*q > 63) {
+				q += 2;
+				continue;
+			}
 
-	while (p < end) {
+			ptr = q + *q + 1;
+			if (ptr > end) return false;
+
+			/*
+			 *	Label lengths aren't the same, skip
+			 *	it.
+			 */
+			if (*q != *label) {
+				q = ptr;
+				continue;
+			}
+
+			/*
+			 *	Out label ends with 0x00.  If this
+			 *	label doesn't end with 0x00, skip it.
+			 */
+			if (*ptr != 0x00) {
+				q = ptr;
+				continue;
+			}
+
+			/*
+			 *	The pointer is too far away.  Don't
+			 *	point to it.  This check is mainly for
+			 *	static analyzers.
+			 */
+			if ((q - start) > (1 << 14)) return false;
+
+			/*
+			 *	Only now do case-insensitive
+			 *	comparisons.
+			 */
+			if (strncasecmp((char const *) q + 1, (char const *) label +1, *label) != 0) {
+				q = ptr;
+				continue;
+			}
+
+			/*
+			 *	All of that matches.  Replace the
+			 *	label with a compressed pointer.  And
+			 *	return that we managed to compress
+			 *	this label.
+			 */
+			offset = (q - start);
+			label[0] = (offset >> 8) | 0xc0;
+			label[1] = offset & 0xff;
+			*new_end = label + 2;
+			return true;
+		}
+
+		return false;
+	}
+
+	/*
+	 *	The next label is still uncompressed, so we call
+	 *	ourselves recursively in order to compress it.
+	 */
+	if (*next < 63) {
+		if (!dns_label_compress(start, end, next, new_end)) return false;
+
 		/*
-		 *	Skip compressed pointers.  We know they don't
-		 *	match.
+		 *	Else it WAS compressed.
 		 */
-		if (*p > 63) {
-			p += 2;
+	}
+
+	/*
+	 *	The next label wasn't compressed, OR it is invalid,
+	 *	skip it.  This check is here only to shut up the
+	 *	static analysis tools.
+	 */
+	if (*next < 0xc0) {
+		return false;
+	}
+
+	/*
+	 *	Remember where our suffix points to.
+	 */
+	suffix = start + ((next[0] & ~0xc0) << 8) + next[1];
+
+	/*
+	 *	Our label now ends with a compressed pointer.  Scan
+	 *	the input until we find either an uncompressed label
+	 *	which ends with the same compressed pointer, OR we
+	 *	find an uncompressed label which ends AT our
+	 *	compressed pointer.
+	 */
+	q = start;
+	while (q < end) {
+		if (*q == 0x00) {
+			q++;
 			continue;
 		}
 
 		/*
-		 *	Skip end bytes, which clearly don't match.
+		 *	Skip compressed pointers.  We can't point to
+		 *	compressed pointers/
 		 */
-		if (*p == 0) {
-			p++;
+		if (*q > 63) {
+			q += 2;
 			continue;
 		}
 
 		/*
-		 *	We know have something which MIGHT match.  Do
-		 *	a full check on it, including dereferencing
-		 *	compressed pointers.
+		 *	We now have an uncompressed label in the input
+		 *	buffer.  Check for a match.
 		 */
-		if (!dns_label_match(start, p, q)) {
-			p += *p + 1;
+		ptr = q + *q + 1;
+		if (ptr > end) return false;
+
+		/*
+		 *	Label lengths aren't the same, skip it.
+		 */
+		if (*q != *label) {
+			q = ptr;
 			continue;
 		}
 
 		/*
-		 *	We do have a match, encode the offset.
+		 *	If the NEXT label is uncompressed, then skip
+		 *	it unless it's the suffix we're pointing to.
 		 */
-		offset = p - start;
-		if (offset > (1 << 14)) return false;
+		if (*ptr < 63) {
+			if (ptr != suffix) {
+				q = ptr;
+				continue;
+			}
 
+			goto check_label;
+		}
+
+		/*
+		 *	The next label is a compressed pointer.  If
+		 *	the compressed pointers are different, then
+		 *	skip both this label and the compressed
+		 *	pointer after it.
+		 */
+		if ((ptr[0] != next[0]) ||
+		    (ptr[1] != next[1])) {
+			q = ptr + 2;
+			continue;
+		}
+
+	check_label:
+		/*
+		 *	Pointer is too far away.  Don't point
+		 *	to it.
+		 */
+		if ((q - start) > (1 << 14)) return false;
+
+		/*
+		 *	Only now do case-insensitive
+		 *	comparisons.
+		 */
+		if (strncasecmp((char const *) q + 1, (char const *) label +1, *label) != 0) {
+			q = ptr;
+			continue;
+		}
+
+		/*
+		 *	All of that matches.  Replace the
+		 *	label with a compressed pointer.  And
+		 *	return that we managed to compress
+		 *	this label.
+		 */
+		offset = (q - start);
+		label[0] = (offset >> 8) | 0xc0;
 		label[1] = offset & 0xff;
-		label[0] = ((offset >> 8) & 0xff) | 0xc0;
+		*new_end = label + 2;
 		return true;
 	}
 
+	/*
+	 *	Who knows what it is, we couldn't compress it.
+	 */
 	return false;
 }
 
@@ -1577,20 +1684,9 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 	if (!compression || (buf == where) || ((data - where) <= 2)) goto done;
 
 	/*
-	 *	Do label compression on the resulting string, starting
-	 *	from the beginning of the input buffer, and ending
-	 *	where we started encoding this label.
-	 *
-	 *	@todo - this is pretty brute-force.  It works for
-	 *	small number of labels and small buffers.  It's
-	 *	inefficient for anything large.
+	 *	Compress it, AND tell us where the new end buffer is located.
 	 */
-	for (label = where; *label != 0; label += *label + 1) {
-		if (dns_label_compress(buf, where, label)) {
-			data = label + 2;
-			break;
-		}
-	}
+	(void) dns_label_compress(buf, where, where, &data);
 
 done:
 	if (need) *need = 0;
