@@ -29,4 +29,4 @@ Discover where users and groups are located within the directory.
 == xref:modules/ldap/ldapsearch/translating_to_the_ldap_module.adoc[Using results to configure the LDAP module]
 
 Translate LDAP search arguments and the results from previous sections
-into LDAP module configuration items
+into LDAP module configuration items.
