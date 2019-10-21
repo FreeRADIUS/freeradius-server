@@ -246,5 +246,5 @@ membership information.
 membership information.
 * _variant 3_
 ** `membership_user_dn_filter`       - A filter matching users by DN.
-* _vairant 4_
+* _variant 4_
 ** `membership_user_name_filter`     - A filter matching users by user name.
