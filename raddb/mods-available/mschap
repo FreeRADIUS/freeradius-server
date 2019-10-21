@@ -75,6 +75,12 @@ mschap {
 	#
 	#  Run the ntml_auth command line too:
 	#
+	#  Depending on the Samba version, you may also need to add:
+	#
+	#	--allow-mschap2v
+	#
+	#  to the command-line parameters.
+	#
 #	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%{mschap:Challenge}:-00} --nt-response=%{%{mschap:NT-Response}:-00}"
 
 	# The default is to wait 10 seconds for ntlm_auth to
