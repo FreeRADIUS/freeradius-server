@@ -1317,7 +1317,7 @@ static size_t command_decode_dns_label(command_result_t *result, UNUSED command_
 
 	for (i = 0; i < total; i += slen) {
 		slen = fr_value_box_from_dns_label(box, box, dns_label, total, dns_label + i, false);
-		if (slen < 0) {
+		if (slen <= 0) {
 			talloc_free(box);
 			RETURN_OK_WITH_ERROR();
 		}
