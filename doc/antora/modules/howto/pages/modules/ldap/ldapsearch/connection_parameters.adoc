@@ -34,8 +34,8 @@ you will need to provide the following arguments:
 [source,shell]
 ----
 ldapsearch -z 1 -x \
-	-H ldap://ldap.example.com:389 \
-	-b "cn=freeradius,dc=example,dc=com"
+	-H ldap://localhost:389 \
+	-b "cn=readonly,dc=example,dc=com"
 ----
 ====
 
@@ -100,9 +100,9 @@ server:
 [source,shell]
 ----
 ldapsearch -z 1 -x \
-	-H ldap://ldap.example.com:389 \
-	-D "cn=freeradius,dc=example,dc=com" \
-	-w mypassword \
+	-H ldap://localhost:389 \
+	-D "cn=readonly,dc=example,dc=com" \
+	-w readonly \
 	-b "dc=example,dc=com"
 ----
 ====
@@ -164,9 +164,9 @@ to
 ----
 LDAPTLS_CACERT=cert_bundle.pem LDAPTLS_REQCERT=hard \
 	ldapsearch -z 1 -x \
-		-H ldaps://ldap.example.com:636 \
-		-D "cn=freeradius,dc=example,dc=com" \
-		-w mypassword \
+		-H ldaps://localhost:636 \
+		-D "cn=readonly,dc=example,dc=com" \
+		-w readonly \
 		-b "dc=example,dc=com"
 ----
 ====
@@ -185,9 +185,9 @@ and fail if we can't.
 ----
 LDAPTLS_CACERT=cert_bundle.pem LDAPTLS_REQCERT=hard \
 	ldapsearch -z 1 -x \
-		-H ldap://ldap.example.com:389 \
-		-D "cn=freeradius,dc=example,dc=com" \
-		-w mypassword \
+		-H ldap://localhost:389 \
+		-D "cn=readonly,dc=example,dc=com" \
+		-w readonly \
 		-b "dc=example,dc=com" \
 		-ZZ
 ----
