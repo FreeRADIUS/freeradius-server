@@ -1327,7 +1327,12 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	 *	"end".  It also MUST be a valid, uncompressed label.
 	 */
 	next = label + *label + 1;
-	search = start;
+
+	if (!new_search) {
+		search = start;
+	} else {
+		search = *new_search;
+	}
 
 	/*
 	 *	We're at the last uncompressed label, scan the input

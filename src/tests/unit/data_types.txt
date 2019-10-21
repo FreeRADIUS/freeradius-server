@@ -124,6 +124,11 @@ match 01 46 03 49 53 49 04 41 52 50 41 00 03 46 4f 4f c0 00 c0 06 00
 decode-dns-label -
 match F.ISI.ARPA,FOO.F.ISI.ARPA,ARPA,.
 
+encode-dns-label www.example.com,ftp.example.com,www.ftp.example.com
+match 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04 03 77 77 77 c0 11
+
+decode-dns-label -
+match www.example.com,ftp.example.com,www.ftp.example.com
 
 count
-match 58
+match 62
