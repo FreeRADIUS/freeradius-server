@@ -16,7 +16,7 @@ directory types.
 .Performing a search with a user object filter
 ====
 ```
-ldapsearch -z 10 -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(|(ObjectClass=organizationalPerson)(ObjectClass=PosixAccount)(ObjectClass=Person))"
+ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(|(ObjectClass=organizationalPerson)(ObjectClass=PosixAccount)(ObjectClass=Person))"
 
 # extended LDIF
 #
@@ -95,7 +95,7 @@ and how many user objects they contain.
 .Determining which objects contain users
 ====
 ```
-ldapsearch -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(|(ObjectClass=organizationalPerson)(ObjectClass=PosixAccount)(ObjectClass=Person))" | grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c`
+ldapsearch -x -H ldap://localhost:389 -b "dc=example,dc=com" "(|(ObjectClass=organizationalPerson)(ObjectClass=PosixAccount)(ObjectClass=Person))" | grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c
 2 ou=octopuses,dc=example,dc=com
 10 ou=people,dc=example,dc=com
 1 ou=people,dc=created-by-someone-who-didnt-know-what-dc-meant,dc=example,dc=com
@@ -135,7 +135,7 @@ directory types.
 .Performing a search with a group object filter
 ====
 ```
-ldapsearch -z 10 -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(objectClass=posixGroup)"
+ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(objectClass=posixGroup)"
 
 # extended LDIF
 #
@@ -172,7 +172,7 @@ As with users, groups may be located in multiple areas of the directory.
 .Determining which objects contain groups
 ====
 ```
-ldapsearch -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" -E 'pr=100' "(ObjectClass=posixGroup)" dn | grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c`
+ldapsearch -x -H ldap://localhost:389 -b "dc=example,dc=com" -E 'pr=100' "(ObjectClass=posixGroup)" dn | grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c
 3 ou=groups,dc=example,dc=com
 1 ou=groups,o=long-defunct-org-that-was-merged-with-example-com,dc=example,dc=com
 3 ou=groups,ou=interns-summer-project,dc=example,dc=com
@@ -229,7 +229,7 @@ user object search with '+' set as the second positional argument.
 
 .Searching for a user object and returning operational attributes
 ```
-ldapsearch -z 10 -x -H ldap://ldap.example.com:389 -b "dc=example,dc=com" "(ObjectClass=posixUser)" +
+ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(ObjectClass=posixUser)" +
 ```
 
 === What to record
