@@ -32,7 +32,7 @@ ldap {
 	# example - identity = 'cn=readonly,dc=example,dc=com'
 	identity = '<readonly_user_dn>'             <1>
 
-	# example - e.g. password = 'readonly'
+	# example - password = 'readonly'
 	password = '<readonly_user_password>'       <2>
 
 	# example - server = ldap://localhost
