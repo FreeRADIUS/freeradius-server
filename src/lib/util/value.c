@@ -1298,6 +1298,15 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 
 /** Compress "label" by looking at it recursively.
  *
+ * @param[in] start	start of the input buffer holding one or more labels
+ * @param[in] end	end of the input buffer
+ * @param[out] new_search Where the parent call to dns_label_compress() should start searching from,
+ *			  instead of from "start"
+ * @param[in] label	new label to add to the buffer, generally == end.
+ * @param[out] new_end	new end of the input label after compression
+ * @return
+ *	- false, we didn't compress the input
+ *	- true, we did compress the input.
  */
 static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t const **new_search,
 			       uint8_t *label, uint8_t **new_end)
@@ -1349,6 +1358,13 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 		while (q < end) {
 			if (*q == 0x00) {
 				q++;
+
+				/*
+				 *	None of the previous stuff
+				 *	matched, so we tell the caller
+				 *	to start searching from the
+				 *	next name.
+				 */
 				search = q;
 				continue;
 			}
@@ -1456,6 +1472,12 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	while (q < end) {
 		if (*q == 0x00) {
 			q++;
+
+			/*
+			 *	None of the previous stuff matched, so
+			 *	we tell the caller to start searching
+			 *	from the next name.
+			 */
 			search = q;
 			continue;
 		}
