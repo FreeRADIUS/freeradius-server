@@ -237,7 +237,7 @@ ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,dc=example,dc=com -w reado
 ----
 
 .Expected output
-[source,ldiff]
+[source,ldif]
 ----
 dn: radiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
 objectClass: radiusClient

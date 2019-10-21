@@ -54,6 +54,28 @@ continue indefinitely) when there is _no_ firewall blocking.
 ** `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is no
 firewall blocking access.
 
+== Failed - No such object
+
+[source,ldif]
+----
+# extended LDIF
+#
+# LDAPv3
+# base <dc=example,dc=com> with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# search result
+search: 2
+result: 32 No such object
+----
+
+* Verify that the base DN (`-b`) is correct.
+** If correct, and binding as an anonymous user, bind as a privileged user (see
+   <<Failure - Bind required>>).  The anonymous user may not have access to content
+   in the LDAP directory.
+
 == Failure - Bind required
 
 ```
