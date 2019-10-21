@@ -1582,13 +1582,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 #ifndef WITH_SASL
 	if (inst->user_sasl.mech) {
 		cf_log_err(conf, "Configuration item 'user.sasl.mech' not supported.  "
-			      "Linked libldap does not provide fr_ldap_sasl_bind( function");
+			   "Linked libldap does not provide ldap_sasl_bind( function");
 		goto error;
 	}
 
 	if (inst->handle_config.admin_sasl.mech) {
 		cf_log_err(conf, "Configuration item 'sasl.mech' not supported.  "
-			      "Linked libldap does not provide  fr_ldap_sasl_interactive_bind function");
+			   "Linked libldap does not provide ldap_sasl_interactive_bind function");
 		goto error;
 	}
 #endif
@@ -1596,7 +1596,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 #ifndef HAVE_LDAP_CREATE_SORT_CONTROL
 	if (inst->userobj_sort_by) {
 		cf_log_err(conf, "Configuration item 'sort_by' not supported.  "
-			      "Linked libldap does not provide ldap_create_sort_control function");
+			   "Linked libldap does not provide ldap_create_sort_control function");
 		goto error;
 	}
 #endif
@@ -1604,7 +1604,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 #ifndef HAVE_LDAP_URL_PARSE
 	if (inst->handle_config.use_referral_credentials) {
 		cf_log_err(conf, "Configuration item 'use_referral_credentials' not supported.  "
-			      "Linked libldap does not support URL parsing");
+			   "Linked libldap does not support URL parsing");
 		goto error;
 	}
 #endif
