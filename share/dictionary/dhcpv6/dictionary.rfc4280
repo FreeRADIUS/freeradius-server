@@ -11,5 +11,5 @@
 #
 ##############################################################################
 
-ATTRIBUTE	BCMCS-Server-Domain-Name-List		33	octets		# Domain name list (DNS encoding)
+ATTRIBUTE	BCMCS-Server-Domain-Name-List		33	string	encode=uncompressed_dns_label,array
 ATTRIBUTE	BCMCS-Server-Address			34	ipv6addr array

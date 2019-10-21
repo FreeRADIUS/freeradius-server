@@ -78,6 +78,8 @@ static size_t radius_subtype_table_len = NUM_ELEMENTS(radius_subtype_table);
 static fr_table_num_ordered_t const dhcpv6_subtype_table[] = {
 	{ "dns_label",			FLAG_ENCODE_DNS_LABEL },
 	{ "encode=dns_label",		FLAG_ENCODE_DNS_LABEL },
+	{ "encode=uncompressed_dns_label",	FLAG_ENCODE_UNCOMPRESSED_DNS_LABEL },
+	{ "uncompressed_dns_label",   	FLAG_ENCODE_UNCOMPRESSED_DNS_LABEL },
 };
 static size_t dhcpv6_subtype_table_len = NUM_ELEMENTS(dhcpv6_subtype_table);
 

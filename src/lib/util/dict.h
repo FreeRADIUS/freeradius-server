@@ -84,6 +84,7 @@ enum {
 enum {
 	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DHCPv6 strings
 	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
+	FLAG_ENCODE_UNCOMPRESSED_DNS_LABEL,    		//!< encode as uncompressed DNS label
 };
 
 
