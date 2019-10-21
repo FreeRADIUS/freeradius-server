@@ -13,9 +13,23 @@ directory types.
 - ActiveDirectory - `(|(ObjectClass=User)(ObjectClass=posixAccount))`
 - Novell eDir - `(ObjectClass=User)`
 
+[TIP]
+====
+You may want to perform user searches bound as the 'root' or 'admin' user as
+readonly service accounts may not have access to sensitive attributes like
+`userPassword`.
+
+If you discover that `userPassword` is only available when binding as 'root' or
+'admin', you should request a privileged account for FreeRADIUS to use. This
+account should still only have readonly access, but should have sufficient
+privilledges to retrieve sensitive attributes like `userPassword.`
+====
+
 .Performing a search with a user object filter
 ====
-```
+
+[source,ldif]
+----
 ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(|(ObjectClass=organizationalPerson)(ObjectClass=PosixAccount)(ObjectClass=Person))"
 
 # extended LDIF
@@ -29,15 +43,16 @@ ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(|(ObjectCla
 ...
 
 # doctopus, octopuses, example.com
-dn: uid=doctopus,ou=octopuses,dc=example,dc=com
-objectClass: person
-objectClass: organizationalPerson
-objectClass: inetOrgPerson
+dn: uid=doctopus,ou=octopuses,dc=example,dc=com <1>
+objectClass: person                <2>
+objectClass: organizationalPerson  <2>
+objectClass: inetOrgPerson         <2>
 cn: Doctopus McTentacles
+dialupAccess: true  <3>
 sn: McTentacles
-uid: dpus
+uid: dpus           <4>
 givenName: Doctopus
-userPassword:: MGN0MHB1NTNzUnVsMw==
+userPassword:: MGN0MHB1NTNzUnVsMw== <5>
 
 # search result
 search: 3
@@ -45,39 +60,35 @@ result: 0 Success
 
 # numResponses: 18
 # numEntries: 17
-```
+----
+
+.Interpreting the result
+<1> The Distinguished Name (DN) of the user object.
+<2> Object classes the user object belongs to.
+<3> An account enablement attribute.
+    In this directory the `dialupAccess` attribute is being used to indicate if
+    an account is enabled or disabled.
+<4> The UID of the user.  This is the attribute containing the identity used
+    when the user logs in to services.
+<5> A base64 encoded `userPassword` attribute.  This shows the LDAP directory
+    is willing to provided user password hashes.
 ====
-
-There's a lot of useful information in this result:
-
-- We know where the user objects are likely to be located, as it's fairly
-obvious from the DN (`...,ou=octopuses,dc=example,dc=com`). _Note: In the
-majority of non-FreeRADIUS themed LDAP directories the user object container
-will be `ou=people`_.
-- The result shows a `uid` attribute.  This will almost always be the correct
-attribute for identifying a user.
-- The result shows a base64 encoded `userPassword` attribute.  This
-means users can be authenticated without rebinding the connection (more
-efficient).
-- There's no `memberOf` attributes. This means user to group mappings
-are likely stored in group objects instead of the user objects themselves.
 
 === What to record
 
-- `user_object_base_dn`        - The DN higher in the tree than relevant users
-objects.
-- `user_object_class_filter`   - The filter which matches the objectClass(es) of
-user objects.
-- `uid_attribute`              - The attribute used to identify the user
-(usually `uid`, but can vary considerably between instances).
-- `user_password_attribute`    - The attribute used to hold password data (if
-present).
-- `account_disabled_attribute` - Any attributes used to indicate whether an
-account is disabled. To determine if this attribute exists, repeat the user
-search (above) with a filter for a user account known to be disabled e.g.
-`(uid=a-disabled-user)`.
-- `account_enabled_attribute`  - Any attributes used to indicate whether an
-account is enabled.  Should be present in the search results already obtained.
+- `user.base_dn` - The DN higher in the tree than relevant users object(s_.
+- `user.filter`- The filter which matches the objectClass(es) of user objects.
+- `user.uid_attribute` - The attribute used to identify the user
+   (usually `uid`, but can vary considerably between instances).
+- `user.access_disabled_attribute` - Any attributes used to indicate whether an
+   account is disabled. To determine if this attribute exists, repeat the user
+   search (above) with a filter for a user account known to be disabled e.g.
+   `(uid=a-disabled-user)`.
+- `user.access_enable_attribute` - Any attributes used to indicate whether an
+   account is enabled.  Should be present in the search results already obtained.
+- `user.password_attribute` - The attribute used to hold password data (if
+   present).
+
 
 .Locating users in "mature" LDAP directories
 ****
@@ -132,55 +143,6 @@ directory types.
 - ActiveDirectory - `(objectClass=group)`
 - Novell eDir - `(objectClass=group)`
 
-.Performing a search with a group object filter
-====
-```
-ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(objectClass=posixGroup)"
-
-# extended LDIF
-#
-# LDAPv3
-# base <ou=people,dc=example,dc=com> with scope subtree
-# filter: (ObjectClass=posixGroup)
-# requesting: ALL
-#
-
-...
-
-dn: cn=mariner-alert,ou=groups,dc=example,dc=com
-cn: mariner-alert
-description: Heads up to all delicious denizens of the directory
-member: uid=doctopus,ou=octopuses,dc=example,dc=com
-member: uid=rocktopus,ou=octopuses,dc=example,dc=com
-objectClass: groupOfNames
-objectClass: fdGroupMail
-mail: mariner-alert@example.com
-
-# search result
-search: 3
-result: 0 Success
-
-# numResponses: 10
-# numEntries: 9
-```
-====
-
-.Locating groups in "mature" directories
-****
-As with users, groups may be located in multiple areas of the directory.
-
-.Determining which objects contain groups
-====
-```
-ldapsearch -x -H ldap://localhost:389 -b "dc=example,dc=com" -E 'pr=100' "(ObjectClass=posixGroup)" dn | grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c
-3 ou=groups,dc=example,dc=com
-1 ou=groups,o=long-defunct-org-that-was-merged-with-example-com,dc=example,dc=com
-3 ou=groups,ou=interns-summer-project,dc=example,dc=com
-2 ou=groups,ou=backup-restored-in-the-wrong-place,dc=example,dc=com
-```
-====
-****
-
 === Group membership scheme variants
 Groups memberships can be represented in multiple ways.  There are four main
 variants:
@@ -207,7 +169,7 @@ server implements _variant 1_.
 - If the result shows a attribute containing the name of known group, the LDAP
 server implements _variant 2_.
 
-Repeat the the search for group objects using a filter that matches a group
+Perform the the search for group objects (below) using a filter that matches a group
 the user is known to be a member of e.g. `(&(objectClass=groupOfNames)(cn=mariner-alert))`.
 
 - If the result shows an attribute containing the DN of a user, the ldap server
@@ -215,6 +177,80 @@ implements _variant 3_.
 
 - If the result shows an attribute containing the name of a user, the ldap server
 implements _variant 4_.
+
+.Performing a search with a group object filter
+====
+[source,ldif]
+----
+ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(objectClass=groupOfNames)" "*" "+"
+
+# extended LDIF
+#
+# LDAPv3
+# base <ou=people,dc=example,dc=com> with scope subtree
+# filter: (ObjectClass=posixGroup)
+# requesting: ALL
+#
+
+...
+
+dn: cn=mariner-alert,ou=groups,dc=example,dc=com <1>
+cn: mariner-alert  <2>
+description: Heads up to all delicious denizens of the directory
+member: uid=doctopus,ou=octopuses,dc=example,dc=com  <3>
+member: uid=rocktopus,ou=octopuses,dc=example,dc=com <3>
+objectClass: groupOfNames <4>
+objectClass: fdGroupMail  <4>
+mail: mariner-alert@example.com
+
+# search result
+search: 3
+result: 0 Success
+
+# numResponses: 10
+# numEntries: 9
+----
+
+.Interpreting the result
+
+<1> The Distinguished Name (DN) of the group object.
+<2> The name of the group stored in the `cn` attribute.
+<3> Member attributes pointing to user objects by DN.  Indicates
+    this directory implements group membership variant 3.
+<4> Object classes the group object belongs to.
+
+====
+
+=== What to record
+
+* `group.base_dn` - The DN higher in the tree than all relevant group objects.
+* `group.name_attribute` - The attribute used to identify the group (usually `cn`).
+* _variant 1_
+** `group.membership_attribute` - User object attribute containing group
+  membership information.
+* _variant 2_
+** `group.membership_attribute` - User object attribute containing group
+ membership information.
+* _variant 3_
+** `group.membership_filter_by_uid` - A filter matching users by DN.
+* _variant 4_
+** `group.membership_filter_by_name` - A filter matching users by user name.
+
+.Locating groups in "mature" directories
+****
+As with users, groups may be located in multiple areas of the directory.
+
+.Determining which objects contain groups
+====
+```
+ldapsearch -x -H ldap://localhost:389 -b "dc=example,dc=com" -E 'pr=100' "(ObjectClass=posixGroup)" dn | grep dn: | sed -e 's/dn: [^,]*,//' | sort | uniq -c
+3 ou=groups,dc=example,dc=com
+1 ou=groups,o=long-defunct-org-that-was-merged-with-example-com,dc=example,dc=com
+3 ou=groups,ou=interns-summer-project,dc=example,dc=com
+2 ou=groups,ou=backup-restored-in-the-wrong-place,dc=example,dc=com
+```
+====
+****
 
 === If the variant can't be determined
 
@@ -229,22 +265,5 @@ user object search with '+' set as the second positional argument.
 
 .Searching for a user object and returning operational attributes
 ```
-ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(ObjectClass=posixUser)" +
+ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(ObjectClass=posixUser)" "*" "+"
 ```
-
-=== What to record
-
-* `group_object_base_dn`             - The DN higher in the tree than all
-relevant group objects.
-* `group_name_attribute`             - The attribute used to identify the group
-(usually `cn`).
-* _variant 1_
-** `membership_attribute`            - User object attribute containing group
-membership information.
-* _variant 2_
-** `membership_attribute`            - User object attribute containing group
-membership information.
-* _variant 3_
-** `membership_user_dn_filter`       - A filter matching users by DN.
-* _variant 4_
-** `membership_user_name_filter`     - A filter matching users by user name.

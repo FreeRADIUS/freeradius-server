@@ -22,12 +22,12 @@
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { user { ... } }` config item
-| Specify where to search for users           | ```base_dn = '<user_object_base_dn>'```
-| Specify how to find a user                  | ```filter = "(&(<user_object_class_filter>)(<uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})"```
-| Retrieve a "known good" password            | ```update { &control:Password-With-Header = <user_password_attribute>```
-| Allow accounts to be explicitly disabled    | ```access_attribute = '<account_disabled_attribute>'``` +
+| Specify where to search for users           | ```base_dn = '<user.base_dn>'```
+| Specify how to find a user                  | ```filter = "(&(<user.filter>)(<user.uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})"```
+| Retrieve a "known good" password            | ```update { &control:Password-With-Header = <user.password_attribute>```
+| Allow accounts to be explicitly disabled    | ```access_attribute = '<user.access_disabled_attribute>'``` +
                                                 ```access_positive = 'no'```
-| Require accounts to be explicitly enabled   | ```access_attribute = '<account_enabled_attribute>'``` +
+| Require accounts to be explicitly enabled   | ```access_attribute = '<user.access_enable_attribute>'``` +
                                                 ```access_positive = 'yes'```
 |===
 
@@ -36,10 +36,10 @@
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify where to search for group           | ```base_dn = '<group_object_base_dn>'```
+| Specify where to search for group           | ```base_dn = '<group.base_dn>'```
 | Specify which objects are groups            | ```filter = '<group_object_class_filter>'```
 | Specify which attribute in a group object
-  identifies the group                        | ```name_attribute = '<group_name_attribute>'```
+  identifies the group                        | ```name_attribute = '<group.name_attribute>'```
 |===
 
 == Groups - variant 1
@@ -49,7 +49,7 @@ User objects reference groups using DNs.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects by DN, when referenced by a user object. | ```membership_attribute = '<group_object_base_dn>'```
+| Specify how to find group objects by DN, when referenced by a user object. | ```group.membership_attribute = '<group.base_dn>'```
 |===
 
 == Groups - variant 2
@@ -59,7 +59,7 @@ User objects reference groups using group names.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects by name, when referenced by a user object. | ```membership_attribute = '<group_object_base_dn>'```
+| Specify how to find group objects by name, when referenced by a user object. | ```group.membership_attribute = '<group.base_dn>'```
 |===
 
 == Groups - variant 3
@@ -69,7 +69,7 @@ Group objects reference users using DNs.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects referencing a user by DN. | ```membership_filter = "(<membership_user_dn_filter>=%{control:Ldap-UserDn})"```
+| Specify how to find group objects referencing a user by DN. | ```membership_filter = "(<group.membership_filter_by_uid>=%{control:Ldap-UserDn})"```
 |===
 
 == Groups - variant 4
@@ -79,7 +79,7 @@ Group objects reference users using user names.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects referencing a user by name. | ```membership_filter = "(<membership_user_name_filter>=%{%{Stripped-User-Name}:-%{User-Name}})"```
+| Specify how to find group objects referencing a user by name. | ```membership_filter = "(<group.membership_filter_by_name>=%{%{Stripped-User-Name}:-%{User-Name}})"```
 |===
 
 .Mixing and matching group membership schemes
@@ -95,6 +95,6 @@ both on user DN and user name e.g.
 
 [source,config]
 ----
-membership_filter = "(|(<membership_user_dn_filter>=%{control:Ldap-UserDn})(<membership_user_name_filter>=%{%{Stripped-User-Name}:-%{User-Name}}))"
+membership_filter = "(|(<group.membership_filter_by_uid>=%{control:Ldap-UserDn})(<group.membership_filter_by_name>=%{%{Stripped-User-Name}:-%{User-Name}}))"
 ----
 ****
