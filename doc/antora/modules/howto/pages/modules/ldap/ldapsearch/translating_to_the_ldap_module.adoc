@@ -17,8 +17,6 @@
 | Require cert validation to succeed          | ```LDAPTLS_REQCERT=hard```  | ```tls { require_cert = 'demand' }```
 |===
 
-= Translating ldapsearch results to rlm_ldap configuration items
-
 == Users
 
 [width="100%",cols="30%,70%",options="header",]
