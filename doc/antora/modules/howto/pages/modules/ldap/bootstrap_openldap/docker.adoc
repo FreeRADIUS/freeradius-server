@@ -104,15 +104,6 @@ ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,dc=example,dc=com -w reado
 .Expected output
 [source,ldiff]
 ----
-# extended LDIF
-#
-# LDAPv3
-# base <dc=example,dc=com> with scope subtree
-# filter: (&(objectClass=radiusClient)(radiusClientShortname=client2))
-# requesting: ALL
-#
-
-# 2.2.2.2, clients, example.com
 dn: radiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
 objectClass: radiusClient
 radiusClientIdentifier: 2.2.2.2
@@ -121,12 +112,5 @@ radiusClientShortname: client2
 radiusClientType: cisco
 radiusClientRequireMa: TRUE
 radiusClientComment: Another test client
-
-# search result
-search: 2
-result: 0 Success
-
-# numResponses: 2
-# numEntries: 1
 ----
 ====
