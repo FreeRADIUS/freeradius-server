@@ -1593,31 +1593,33 @@ done:
  *  i.e. how bytes are required to store the uncompressed version of
  *  the label.
  *
+ *  Note that a bare 0x00 byte has length 1, to account for '.'
+ *
  * @param[in] buf	buffer holding one or more DNS labels
  * @param[in] buf_len	total length of the buffer
- * @param[in,out] p_label	the DNS label to check, updated to point to the next label
+ * @param[in,out] next	the DNS label to check, updated to point to the next label
  * @return
- *	- <=0 on error, offset from buf the invalid label is located.
+ *	- <=0 on error, offset from buf where the invalid label is located.
  *	- > 0 decoded size of this particular DNS label
  */
-ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **p_label)
+ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **next)
 {
 	uint8_t const *p, *q, *end;
-	uint8_t const *start, *label;
+	uint8_t const *current, *start;
 	size_t length;
 	bool at_first_label;
 
-	if (!buf || (buf_len == 0) || !p_label) return 0;
+	if (!buf || (buf_len == 0) || !next) return 0;
 
-	label = *p_label;
+	start = *next;
 
 	/*
 	 *	Don't allow stupidities
 	 */
-	if (!((label >= buf) && (label < (buf + buf_len)))) return 0;
+	if (!((start >= buf) && (start < (buf + buf_len)))) return 0;
 
 	end = buf + buf_len;
-	p = start = label;
+	p = current = start;
 	length = 0;
 	at_first_label = true;
 
@@ -1629,31 +1631,43 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 		/*
 		 *	End of label byte.  Skip it.
 		 *
-		 *	Empty labels are length 1.
+		 *	Empty labels are length 1, to account for the
+		 *	'.'.  The caller has to take care of this
+		 *	manually.
 		 */
 		if (*p == 0x00) {
 			p++;
 			if (at_first_label) length++;
+
+			/*
+			 *	We're still processing the first
+			 *	label, tell the caller where the next
+			 *	one is located.
+			 */
+			if (current == start) {
+				*next = p;
+			}
+
 			break;
+		}
+		
+		/*
+		 *	0b10 and 0b10 are forbidden
+		 */
+		if ((*p > 63) && (*p < 0xc0)) {
+			fr_strerror_printf("Data with invalid high bits");
+			return -(p - buf);
 		}
 
 		/*
-		 *	Maybe it's a compression pointer.
+		 *	Maybe it's a compressed pointer.
 		 */
 		if (*p > 63) {
 			uint16_t offset;
 
-			/*
-			 *	0b11 is allowed.
-			 *	0b10 and 0b10 are forbidden
-			 */
-			if ((*p & 0xc0) != 0xc0) {
-				fr_strerror_printf("Data with invalid high bits");
-				return -(p - buf);
-			}
-
 			if ((p + 2) > end) {
-				fr_strerror_printf("Pointer overflows buffer");
+			overflow:
+				fr_strerror_printf("Label overflows buffer");
 				return -(p - buf);
 			}
 
@@ -1682,7 +1696,7 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 			 *	limitation is enforced, pointer loops
 			 *	are impossible.
 			 */
-			if (q >= start) {
+			if (q >= current) {
 				fr_strerror_printf("Pointer %04x creates a loop within a label", offset);
 				return -(p - buf);
 			}
@@ -1704,27 +1718,23 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 			 *	the next label is in the network
 			 *	buffer.
 			 */
-			if (start == label) {
-				*p_label = p + 2;
-			}
+			if (current == start) *next = p + 2;
 
-			p = start = q;
+			p = current = q;
 			continue;
 		}
 
 		/*
 		 *	Else it's an uncompressed label
 		 */
-		if ((p + *p + 1) > end) {
-			fr_strerror_printf("Label header %02x is too large for the buffer", *p);
-			return -(p - buf);
-		}
+		if ((p + *p + 1) > end) goto overflow;
 
 		/*
 		 *	Account for the '.' on every label after the
 		 *	first one.
 		 */
 		if (!at_first_label) length++;
+		at_first_label = false;
 		length += *p;
 
 		/*
@@ -1747,16 +1757,6 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 		}
 
 		p += *p + 1;
-		at_first_label = false;
-	}
-
-	/*
-	 *	If we're jumping away from the label we started with,
-	 *	tell the caller where the next label is in the network
-	 *	buffer.
-	 */
-	if (start == label) {
-		*p_label = p;
 	}
 
 	/*
@@ -1787,11 +1787,11 @@ ssize_t fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len)
 	return buf_len;
 }
 
-static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const **p_label, uint8_t const **next)
+static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const **start, uint8_t const **next)
 {
 	uint8_t const *p;
 
-	p = *p_label;
+	p = *start;
 
 	if (*p == 0x00) {
 		*next = p + 1;
@@ -1799,7 +1799,7 @@ static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const **p_label, uin
 	}
 
 	/*
-	 *	Pointer, it MUST point to a valid label, but we don't
+	 *	Pointer, which MUST point to a valid label, but we don't
 	 *	check.
 	 */
 	if (*p > 63) {
@@ -1811,7 +1811,10 @@ static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const **p_label, uin
 		p = buf + offset;
 	}
 
-	*p_label = p;
+	/*
+	 *	Tell the caller where the actual label is located.
+	 */
+	*start = p;
 	*next = p + *p + 1;
 	return *p;
 }
