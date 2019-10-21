@@ -1299,10 +1299,11 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 /** Compress "label" by looking at it recursively.
  *
  */
-static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t *label, uint8_t **new_end)
+static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t const **new_search,
+			       uint8_t *label, uint8_t **new_end)
 {
 	uint8_t *next;
-	uint8_t const *q, *ptr, *suffix;
+	uint8_t const *q, *ptr, *suffix, *search;
 	uint16_t offset;
 
 	/*
@@ -1317,6 +1318,7 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	 *	"end".  It also MUST be a valid, uncompressed label.
 	 */
 	next = label + *label + 1;
+	search = start;
 
 	/*
 	 *	We're at the last uncompressed label, scan the input
@@ -1326,12 +1328,28 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	 *	that matches, AND "next" label which is 0x00.  Only
 	 *	then does it do the string compare of the label
 	 *	values.
+	 *
+	 *	We speed this up slightly by tracking the previous
+	 *	uncompressed pointer.  If we do compress the current
+	 *	label, then we should also tell the caller where the
+	 *	previous uncompressed label was found.  That way the
+	 *	caller can start looking there for the next piece to
+	 *	compress.  There's no need to search from the
+	 *	beginning of the input buffer, as we're sure that
+	 *	there is no earlier instance of the suffix we found.
+	 *
+	 *	i.e. as we compress the current name, we start
+	 *	searching not at the input buffer, but at the name
+	 *	that ends with the label we just compressed.  We're
+	 *	guaranteed that no name *before* that one will match
+	 *	the suffix we're looking for.
 	 */
 	if (*next == 0x00) {
-		q = start;
+		q = search;
 		while (q < end) {
 			if (*q == 0x00) {
 				q++;
+				search = q;
 				continue;
 			}
 
@@ -1387,6 +1405,7 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 			label[0] = (offset >> 8) | 0xc0;
 			label[1] = offset & 0xff;
 			*new_end = label + 2;
+			if (new_search) *new_search = search;
 			return true;
 		}
 
@@ -1398,7 +1417,7 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	 *	ourselves recursively in order to compress it.
 	 */
 	if (*next < 63) {
-		if (!dns_label_compress(start, end, next, new_end)) return false;
+		if (!dns_label_compress(start, end, &search, next, new_end)) return false;
 
 		/*
 		 *	Else it WAS compressed.
@@ -1425,11 +1444,19 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	 *	which ends with the same compressed pointer, OR we
 	 *	find an uncompressed label which ends AT our
 	 *	compressed pointer.
+	 *
+	 *	Note that we start searching from the beginning of the
+	 *	label which resulted in us finding the compressed
+	 *	pointer!
+	 *
+	 *	We're guaranteed that any label BEFORE that one
+	 *	doesn't end with a matching compressed pointer.
 	 */
-	q = start;
+	q = search;
 	while (q < end) {
 		if (*q == 0x00) {
 			q++;
+			search = q;
 			continue;
 		}
 
@@ -1508,6 +1535,7 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 		label[0] = (offset >> 8) | 0xc0;
 		label[1] = offset & 0xff;
 		*new_end = label + 2;
+		if (new_search) *new_search = search;
 		return true;
 	}
 
@@ -1686,7 +1714,7 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 	/*
 	 *	Compress it, AND tell us where the new end buffer is located.
 	 */
-	(void) dns_label_compress(buf, where, where, &data);
+	(void) dns_label_compress(buf, where, NULL, where, &data);
 
 done:
 	if (need) *need = 0;
