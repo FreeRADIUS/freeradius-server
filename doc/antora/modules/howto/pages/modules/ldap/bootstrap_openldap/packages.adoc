@@ -101,7 +101,7 @@ systemctl start slapd
 [source,shell]
 ----
 # Create MDB database
-cat <<EOF | ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi
+cat <<EOF | ldapadd -Y EXTERNAL -H ldapi:///var/run/slapd/ldapi
 dn: olcDatabase=mdb,cn=config
 objectClass: olcDatabaseConfig
 objectClass: olcMdbConfig
@@ -145,7 +145,7 @@ base ACLs in the above example is included below.
 [source,shell]
 ----
 # Create the top level object and a read only user
-cat <<EOF | ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi
+cat <<EOF | ldapadd -Y EXTERNAL -H ldapi:///var/run/slapd/ldapi
 dn: ${LDAP_BASE_DN}
 objectClass: top
 objectClass: dcObject
@@ -176,12 +176,12 @@ fi
 
 SCHEMA_DIR="${OPENLDAP_PATH}/etc/openldap/schema"
 for i in cosine.ldif inetorgperson.ldif nis.ldif openldap.ldif; do
-	ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi -f ${SCHEMA_DIR}/$i
+	ldapadd -Y EXTERNAL -H ldapi:///var/run/slapd/ldapi -f ${SCHEMA_DIR}/$i
 done
 
 SCHEMA_DIR="${FREERADIUS_SRC}/doc/schemas/ldap/openldap"
 for i in freeradius.ldif freeradius-clients.ldif; do
-	ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi -f ${SCHEMA_DIR}/$i
+	ldapadd -Y EXTERNAL -H ldapi:///var/run/slapd/ldapi -f ${SCHEMA_DIR}/$i
 done
 ----
 
@@ -199,7 +199,7 @@ FreeRADIUS LDAP module.
 [source,shell]
 ----
 sed -e '1,/^description:/ d' ${FREERADIUS_SRC}/src/tests/modules/ldap/example.com.ldif \
-    | ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi
+    | ldapadd -Y EXTERNAL -H ldapi:///var/run/slapd/ldapi
 ----
 
 == Switch to an unprivileged user
