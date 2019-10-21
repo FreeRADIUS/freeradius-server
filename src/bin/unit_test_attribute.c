@@ -1326,21 +1326,12 @@ static size_t command_decode_dns_label(command_result_t *result, UNUSED command_
 		 *	Separate names by commas
 		 */
 		if (i > 0) *(out++) = ',';
-
+		
 		/*
-		 *	As a special case, print '.' if there is no label
+		 *	We don't print it with quotes.
 		 */
-		if (box->vb_length == 0) {
-		       *(out++) = '.';
-		       *out = '\0';
-
-		} else {
-			/*
-			 *	We don't print it with quotes.
-			 */
-			len = fr_value_box_snprint(out, end - out, box, '\0');
-			out += len;
-		}
+		len = fr_value_box_snprint(out, end - out, box, '\0');
+		out += len;
 
 		fr_value_box_clear(box);
 	}

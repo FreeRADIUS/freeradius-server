@@ -1629,8 +1629,7 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 		/*
 		 *	End of label byte.  Skip it.
 		 *
-		 *	If necessary, also tell the caller to skip
-		 *	over it, too.
+		 *	Empty labels are length 1.
 		 */
 		if (*p == 0x00) {
 			p++;
@@ -1862,8 +1861,10 @@ ssize_t fr_value_box_from_dns_label(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	string.
 	 */
 	if (slen == 1) {
-		dst->vb_strvalue = talloc_zero_array(ctx, char, 1);
-		dst->datum.length = 0;
+		dst->vb_strvalue = q = talloc_array(ctx, char, 2);
+		q[0] = '.';
+		q[1] = '\0';
+		dst->datum.length = 1;
 		return after - label;
 	}
 
