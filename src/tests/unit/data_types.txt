@@ -93,7 +93,7 @@ match Aug 21 2019 07:43:03 UTC
 #data foo
 
 #
-#  DNS labels WITHOUT compression
+#  DNS labels
 #
 encode-dns-label foo.com
 match 03 66 6f 6f 03 63 6f 6d 00

@@ -1424,15 +1424,15 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
  * @param[out] buf	Buffer where labels are stored
  * @param[in] buf_len	The length of the output buffer
  * @param[out] where	Where to write this label
+ * @param[in] compression Whether or not to do DNS label compression.
  * @param[in] value	to encode.
  * @return
- *	- 0 no bytes were written, see need value to determine if it was because
- *	  the fr_value_box_t was #FR_TYPE_OCTETS/#FR_TYPE_STRING and was
- *	  NULL (which is unfortunately valid)
+ *	- 0 no bytes were written, see need value to determine
  *	- >0 the number of bytes written to "where", NOT "buf + where + outlen"
  *	- <0 on error.
  */
-ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, uint8_t *where, fr_value_box_t const *value)
+ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, uint8_t *where, bool compression,
+				  fr_value_box_t const *value)
 {
 	uint8_t *label;
 	uint8_t *end = buf + buf_len;
@@ -1440,17 +1440,26 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 	uint8_t *data;
 	int namelen = 0;
 
-	if (!buf || !buf_len || !where || !value) return -1;
+	if (!buf || !buf_len || !where || !value) {
+		fr_strerror_printf("Invalid input");
+		return -1;
+	}
 
 	/*
 	 *	Don't allow stupidities
 	 */
-	if (!((where >= buf) && (where < (buf + buf_len)))) return -1;
+	if (!((where >= buf) && (where < (buf + buf_len)))) {
+		fr_strerror_printf("Label is outside of buffer");
+		return -1;
+	}
 
 	/*
 	 *	We can only encode strings.
 	 */
-	if (value->type != FR_TYPE_STRING) return -1;
+	if (value->type != FR_TYPE_STRING) {
+		fr_strerror_printf("Asked to encode non-string type");
+		return -1;
+	}
 
 	if (value->vb_length > 255) {
 		fr_strerror_printf("Label is too long");
@@ -1546,7 +1555,7 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 		}
 
 		/*
-		 *	Allow [-0-9a-zA-Z]
+		 *	Only encode [-0-9a-zA-Z].  Anything else is forbidden.
 		 */
 		if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
 		      ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
@@ -1565,7 +1574,7 @@ ssize_t fr_value_box_to_dns_label(size_t *need, uint8_t *buf, size_t buf_len, ui
 	 *	Only one label, don't compress it.  Or, the label is
 	 *	already compressed.
 	 */
-	if ((buf == where) || ((data - where) <= 2)) goto done;
+	if (!compression || (buf == where) || ((data - where) <= 2)) goto done;
 
 	/*
 	 *	Do label compression on the resulting string, starting

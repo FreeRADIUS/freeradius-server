@@ -1275,7 +1275,7 @@ static size_t command_encode_dns_label(command_result_t *result, UNUSED command_
 			RETURN_OK_WITH_ERROR();
 		}
 
-		ret = fr_value_box_to_dns_label(&need, dns_label, sizeof(dns_label), where, box);
+		ret = fr_value_box_to_dns_label(&need, dns_label, sizeof(dns_label), where, true, box);
 		talloc_free(box);
 
 		if (ret < 0) RETURN_OK_WITH_ERROR();

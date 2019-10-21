@@ -182,5 +182,20 @@ match 00 15 00 15 03 66 6f 6f 02 63 61 00 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
 encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com"
 match 00 15 00 17 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04
 
+encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com", SIP-Server-Domain-Name-List = "ns.example.com"
+match 00 15 00 1c 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04 02 6e 73 c0 04
+
+#
+#  This attribute is NOT compressed!
+#
+encode-pair BCMCS-Server-Domain-Name-List = "www.example.com"
+match 00 21 00 11 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+encode-pair BCMCS-Server-Domain-Name-List = "www.example.com", BCMCS-Server-Domain-Name-List = "ftp.example.com"
+match 00 21 00 22 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+encode-pair BCMCS-Server-Domain-Name-List = "www.example.com", BCMCS-Server-Domain-Name-List = "ftp.example.com", BCMCS-Server-Domain-Name-List = "ns.example.com"
+match 00 21 00 32 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 02 6e 73 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
 count
-match 82
+match 90

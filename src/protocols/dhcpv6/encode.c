@@ -264,10 +264,13 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	case FR_TYPE_STRING:
 		/*
-		 *	DNS labels get a special encoder.
+		 *	DNS labels get a special encoder.  Since we're
+		 *	only encoding one value, it's always
+		 *	uncompressed.
 		 */
-		if (da->flags.subtype == FLAG_ENCODE_DNS_LABEL) {
-			slen = fr_value_box_to_dns_label(NULL, p, outlen, p, &vp->data);
+		if ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
+		    (da->flags.subtype == FLAG_ENCODE_UNCOMPRESSED_DNS_LABEL)) {
+			slen = fr_value_box_to_dns_label(NULL, p, outlen, p, false, &vp->data);
 
 			/*
 			 *	@todo - check for free space, etc.
@@ -492,14 +495,16 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 	 *	DNS labels have internalized length, so we don't need
 	 *	length headers.
 	 */
-	if ((da->type == FR_TYPE_STRING) && (da->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
+	if ((da->type == FR_TYPE_STRING) && da->flags.subtype){
+		bool compression = (da->flags.subtype == FLAG_ENCODE_DNS_LABEL);
+
 		while (p < end) {
 			vp = fr_cursor_current(cursor);
 
 			/*
 			 *	@todo - encode length and stuff
 			 */
-			slen = fr_value_box_to_dns_label(NULL, out, outlen, p, &vp->data);
+			slen = fr_value_box_to_dns_label(NULL, out, outlen, p, compression, &vp->data);
 			if (slen <= 0) return PAIR_ENCODE_ERROR;
 
 			p += slen;
