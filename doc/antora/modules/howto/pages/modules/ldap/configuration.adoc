@@ -61,7 +61,7 @@ ldap {
     to reduce network overhead.
 <4> The object containing all other objects we're interested in.
 <5> The object containing all the users we need to perform AAA functions for.
-<6> Filter to select the object matching the authenticating user.
+<6> A filter to select the object matching the authenticating user.
 
 We do _not_ recommend immediately configuring TLS unless you are testing against
 a production server.  The best approach is to test one piece in isolation,
