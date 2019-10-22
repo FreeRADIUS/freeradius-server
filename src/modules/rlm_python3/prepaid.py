@@ -42,8 +42,6 @@ def instantiate(p):
     p is a dummy variable here."""
     global dbHandle
 
-    p = p
-
     try:
     	dbHandle = MySQLdb.connect(db=configDb, host=configHost,
     				   user=configUser, passwd=configPasswd)
@@ -171,12 +169,10 @@ def authorize(authData):
     #        )
 
 def authenticate(p):
-    p = p
     return radiusd.RLM_MODULE_OK
 
 
 def preacct(p):
-    p = p
     return radiusd.RLM_MODULE_OK
 
 
