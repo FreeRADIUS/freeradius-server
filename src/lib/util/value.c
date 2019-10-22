@@ -1315,7 +1315,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
  *  Since the algorithm replaces known suffixes with pointers, we
  *  *never* have to compare full names.  Instead, we only ever compare
  *  one label to one other label.  And then only if the labels have
- *  the same suffixes (00 bytes, or a pointer P).
+ *  the same lengths AND the same suffixes (00 byte, or a pointer P).
  *
  *  As an extra optimization, we track the start of the label where we
  *  found the compressed pointer.  e.g. "www.example.com" when
@@ -1337,15 +1337,16 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
  *  compare the full input name to full names in the buffer.
  *
  *
- *  A straightforward approach is to loop over all labels in the name
- *  from longest to shortest, and comparing them to each name in the
- *  buffer in turn.  That algorithm is O(L1 * T * L2 ), where L1 is
- *  the length of the input name, T is the total number of names in
- *  the buffer, and L2 is the average length of names in the buffer.
- *  This algorithm can result in the buffer being scanned many, many,
- *  times.  The scan is also done forwards (due to comparing names one
- *  after the other), but also backwards (due to following pointers).
- *  Which makes for poor locality of reference.
+ *  A different and more straightforward approach is to loop over all
+ *  labels in the name from longest to shortest, and comparing them to
+ *  each name in the buffer in turn.  That algorithm ends up being
+ *  O(L1 * T * L2), where L1 is the length of the input name, T is the
+ *  total number of names in the buffer, and L2 is the average length
+ *  of names in the buffer.  This algorithm can result in the buffer
+ *  being scanned many, many, times.  The scan is also done forwards
+ *  (due to comparing names one after the other), but also backwards
+ *  (due to following pointers).  Which makes for poor locality of
+ *  reference.
  *
  *  i.e. that approach *has* to scan the entire input buffer, because
  *  that's where all of the names are.  Further, it has to scan it at
@@ -1353,20 +1354,24 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
  *  O(N * B) is the *lower* bound for this algorithm.
  *
  *  It gets worse when the straightforward algorithm does pointer
- *  following instead of pointer comparisons.
+ *  following instead of pointer comparisons.  It ends up scanning
+ *  portions of the input buffer many, many, times.  i.e. it can
+ *  compare an input "com" name to "org" once for every "org" name in
+ *  the input buffer.  In contrast, because our algorithm does not do
+ *  pointer following, it only compares "com" to "org" once.
  *
- * @param[in] start	input buffer holding one or more labels
- * @param[in] end	end of the input buffer
- * @param[out] new_search Where the parent call to dns_label_compress() should start searching from,
- *			  instead of from "start"
- * @param[in] label	new label to add to the buffer, must==end at start
- * @param[out] new_end	new end of the input label after compression
+ * @param[in] start	  input buffer holding one or more labels
+ * @param[in] end	  end of the input buffer
+ * @param[out] new_search Where the parent call to dns_label_compress()
+ *			  should start searching from, instead of from "start".
+ * @param[in] label	  label to add to the buffer, must be "end" on the first call.
+ * @param[out] label_end  updated end of the input label after compression.
  * @return
  *	- false, we didn't compress the input
  *	- true, we did compress the input.
  */
 static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t const **new_search,
-			       uint8_t *label, uint8_t **new_end)
+			       uint8_t *label, uint8_t **label_end)
 {
 	uint8_t *next;
 	uint8_t const *q, *ptr, *suffix, *search;
@@ -1453,9 +1458,25 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 			 */
 			if (*q > 63) {
 				q += 2;
+
+				/*
+				 *	None of the previous
+				 *	uncompressed names matched,
+				 *	and this pointer refers to a
+				 *	compressed name.  So it
+				 *	doesn't match, either.
+				 */
+				search = q;
 				continue;
 			}
 
+			/*
+			 *	We now have a label which MIGHT match.
+			 *	We have to walk down it until it does
+			 *	match.  But we don't update "search"
+			 *	here, because there may be a suffix
+			 *	which matches.
+			 */
 			ptr = q + *q + 1;
 			if (ptr > end) return false;
 
@@ -1512,7 +1533,7 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 			offset = (q - start);
 			label[0] = (offset >> 8) | 0xc0;
 			label[1] = offset & 0xff;
-			*new_end = label + 2;
+			*label_end = label + 2;
 			if (new_search) *new_search = search;
 			return true;
 		}
@@ -1525,7 +1546,7 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	 *	ourselves recursively in order to compress it.
 	 */
 	if (*next < 63) {
-		if (!dns_label_compress(start, end, &search, next, new_end)) return false;
+		if (!dns_label_compress(start, end, &search, next, label_end)) return false;
 
 		/*
 		 *	Else it WAS compressed.
@@ -1576,10 +1597,18 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 
 		/*
 		 *	Skip compressed pointers.  We can't point to
-		 *	compressed pointers/
+		 *	compressed pointers.
 		 */
 		if (*q > 63) {
 			q += 2;
+
+			/*
+			 *	None of the previous uncompressed
+			 *	names matched, and this pointer refers
+			 *	to a compressed name.  So it doesn't
+			 *	match, either.
+			 */
+			search = q;
 			continue;
 		}
 
@@ -1620,6 +1649,14 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 		if ((ptr[0] != next[0]) ||
 		    (ptr[1] != next[1])) {
 			q = ptr + 2;
+
+			/*
+			 *	None of the previous uncompressed
+			 *	names matched, and this pointer refers
+			 *	to a compressed name.  So it doesn't
+			 *	match, either.
+			 */
+			search = q;
 			continue;
 		}
 
@@ -1651,7 +1688,7 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 		offset = (q - start);
 		label[0] = (offset >> 8) | 0xc0;
 		label[1] = offset & 0xff;
-		*new_end = label + 2;
+		*label_end = label + 2;
 		if (new_search) *new_search = search;
 		return true;
 	}
