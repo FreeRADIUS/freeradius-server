@@ -53,7 +53,7 @@ FreeRADIUS.
 === 3. Configuring the LDAP module
 
 Once the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] validation tests pass, the
-next step is to xref:modules/ldap/configuration.adoc[configure the LDAP module].
+next step is to xref:modules/ldap/base_configuration/index.adoc[configure the LDAP module].
 
 OpenLDAP configuration examples detailing how to install appropriate schemas and
 populate the server with test data will be provided a the beginning of each

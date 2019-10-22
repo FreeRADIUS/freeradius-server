@@ -1,4 +1,4 @@
-= Enabling the LDAP module
+= Base configuration
 
 The configuration step should be little more than
 xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[copying the parameters used by ldapsearch]

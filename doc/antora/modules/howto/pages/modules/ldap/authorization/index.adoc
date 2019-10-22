@@ -6,7 +6,7 @@ authenticating user's LDAP object.
 In addition to determining where the user is, the authorize method also
 performs LDAP to FreeRADIUS attribute mappings.
 
-You should complete the xref:modules/ldap/configuration.adoc[base configuration]
+You should complete the xref:modules/ldap/base_configuration/index.adoc[base configuration]
 of the LDAP module before attempting to complete any of the howto sections
 listed below.
 
