@@ -23,17 +23,17 @@ referencing:
 ----
 ldap {
 	group {
-		# example - ou=groups,dc=example,dc=com
-		base_dn = '<group_base_dn>'             <1>
+		# example - "ou=groups,dc=example,dc=com"
+		base_dn = "<group_base_dn>"             <1>
 
-		# example - groupOfNames
+		# example - '(objectClass=groupOfNames)'
 		filter = '<group_object_class_filter>'  <2>
 
-		# example - cn
+		# example - 'cn'
 		name_attribute = '<group_name_attribute>'  <3>
 
-		# example - memberOf
-		membership_attribute = '<group_membership_attribute>  <4>
+		# example - 'memberOf'
+		membership_attribute = '<group_membership_attribute>'  <4>
 	}
 }
 ----
@@ -48,17 +48,17 @@ ldap {
 ----
 ldap {
 	group {
-		# example - ou=groups,dc=example,dc=com
-		base_dn = '<group_base_dn>'             <1>
+		# example - "ou=groups,dc=example,dc=com"
+		base_dn = "<group_base_dn>"             <1>
 
-		# example - groupOfNames
+		# example - '(objectClass=groupOfNames)'
 		filter = '<group_object_class_filter>'  <2>
 
-		# example - cn
+		# example - 'cn'
 		name_attribute = '<group_name_attribute>'  <3>
 
-		# example - memberOf
-		membership_attribute = '<group_membership_attribute>  <4>
+		# example - 'memberOf'
+		membership_attribute = '<group_membership_attribute>'  <4>
 	}
 }
 ----
@@ -73,16 +73,16 @@ ldap {
 ----
 ldap {
 	group {
-		# example - ou=groups,dc=example,dc=com
-		base_dn = '<group_base_dn>'             <1>
+		# example - "ou=groups,dc=example,dc=com"
+		base_dn = "<group_base_dn>"             <1>
 
-		# example - groupOfNames
+		# example - '(objectClass=groupOfNames)'
 		filter = '<group_object_class_filter>'  <2>
 
-		# example - cn
+		# example - 'cn'
 		name_attribute = '<group_name_attribute>'  <3>
 
-		# example - (member=%{control:Ldap-UserDn})
+		# example - "(member=%{control:Ldap-UserDn})"
 		membership_filter = "(<group_membership_dn_attribute>=%{control:Ldap-UserDn})"  <4>
 	}
 }
@@ -98,16 +98,16 @@ ldap {
 ----
 ldap {
 	group {
-		# example - ou=groups,dc=example,dc=com
-		base_dn = '<group_base_dn>'             <1>
+		# example - "ou=groups,dc=example,dc=com"
+		base_dn = "<group_base_dn>"             <1>
 
-		# example - groupOfNames
+		# example - '(objectClass=groupOfNames)'
 		filter = '<group_object_class_filter>'  <2>
 
-		# example - cn
+		# example - 'cn'
 		name_attribute = '<group_name_attribute>'  <3>
 
-		# example - (memberUid=%{control:Ldap-UserDn})
+		# example - "(memberUid=%{control:Ldap-UserDn})"
 		membership_filter = "(<group_membership_uid_attribute>=%{control:Ldap-UserDn})"  <4>
 	}
 }

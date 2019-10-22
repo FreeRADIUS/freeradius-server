@@ -38,7 +38,7 @@ ldap {
 	# example - server = ldap://localhost
 	server = '<uri>'                            <3>
 
-	# example - base_dn = 'dc=example, dc=com'
+	# example - base_dn = 'dc=example,dc=com'
 	base_dn = '<dn_that_parents_user_objects_and_group_objects>'  <4>
 
 	user {
