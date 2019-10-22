@@ -21,7 +21,7 @@ As the error message states, there are multiple ways to resolve this issue:
    a user's login account, and another represented a Human Resources record,
    the `user.filter` value could be changed to only return objects with an
    object class that indicated the object represented login account
-   e.g. `(&(objectClass=posixUser)(uid=...))`.
+   e.g. `(&(objectClass=posixAccount)(uid=...))`.
 3. Change the scope of the search to be more restritive.  If the additional user
    object is located in a child object under the user base_dn, setting `user.scope`
    to 'one' will resolve user object ambiguity by restricting the search to the
@@ -60,7 +60,7 @@ EOF
 ----
 ====
 
-== Editing mods-available/ldap to enable SSS
+== Editing mods-available/ldap to enable Server Side Sorting
 
 [source,config]
 ----

@@ -19,7 +19,7 @@ ldap {
 		# example - ou=people,${..base_dn}
 		base_dn = "<user.base_dn>" <1>
 
-		# example - (&(objectClass=posixUser)(uid=%{%{Stripped-User-Name}:-%{User-Name}}))
+		# example - (&(objectClass=posixAccount)(uid=%{%{Stripped-User-Name}:-%{User-Name}}))
 		filter = "(&(<user.filter>)(<user_uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}}))"  <2>
 	}
 }

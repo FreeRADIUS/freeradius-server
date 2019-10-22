@@ -45,7 +45,7 @@ ldap {
 		# example - base_dn = "ou=people,${..base_dn}"
 		base_dn = "<path_from_base_dn_to_user_obj_dn>,${..base_dn}"  <5>
 
-		# example = "(&(uid=%{%{Stripped-User-Name}:-%{User-Name}})(objectClass=posixUser))"
+		# example = "(&(uid=%{%{Stripped-User-Name}:-%{User-Name}})(objectClass=posixAccount))"
 		filter = '(&(<user_uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})(<user_filter>))'  <6>
 	}
 }

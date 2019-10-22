@@ -164,7 +164,7 @@ LDAP server uses must be determined.
 
 Repeat the search for user objects using a filter that matches a user known
 to be members of one or more groups e.g.
-`(&(objectClass=posixUser)(uid=doctopus))`.
+`(&(objectClass=posixAccount)(uid=doctopus))`.
 
 - If the result shows a attribute containing the DN of known group, the LDAP
 server implements _variant 1_.
@@ -272,5 +272,5 @@ user object search with '+' set as the second positional argument.
 
 .Searching for a user object and returning operational attributes
 ```
-ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(ObjectClass=posixUser)" "*" "+"
+ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(ObjectClass=posixAccount)" "*" "+"
 ```
