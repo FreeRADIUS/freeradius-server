@@ -35,10 +35,6 @@ match 00 16 00 10 20 01 48 60 48 60 00 00 00 00 00 00 00 00 88 88
 encode-pair SIP-Server-Address = 2001:0db8:85a3:cade:cafe:8a2e:0370:7334
 match 00 16 00 10 20 01 0d b8 85 a3 ca de ca fe 8a 2e 03 70 73 34
 
-# It should resolv the dns and fill up with the ipv6
-encode-pair SIP-Server-Address = "localhost"
-match 00 16 00 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01
-
 #
 #  Array of IPv6 addresses
 #
@@ -46,4 +42,4 @@ encode-pair SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, SIP-Se
 match 00 16 00 30 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35 20 01 48 60 48 60 00 00 00 00 00 00 00 00 88 88
 
 count
-match 18
+match 16
