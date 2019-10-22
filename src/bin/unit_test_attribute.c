@@ -2057,6 +2057,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		 */
 		case RESULT_MISMATCH:
 		{
+			PERROR("%s[%d] - Expected 'no match', got match!", filename, cc.lineno);
 
 			ret = EXIT_FAILURE;
 
