@@ -213,35 +213,27 @@ static void mismatch_print(command_ctx_t *cc, char const *command,
 			   char *expected, size_t expected_len, char *got, size_t got_len,
 			   bool print_diff)
 {
-	char *g, *e, *g_p, *e_p;
+	char *g, *e;
 	char *spaces;
 
-	g = fr_asprintf(cc->tmp_ctx, "%pV",
-			fr_box_strvalue_len(got, got_len));
-	e = fr_asprintf(cc->tmp_ctx, "%pV",
-			fr_box_strvalue_len(expected, expected_len));
-
 	ERROR("%s failed at line %d of %s", command, cc->lineno, cc->path);
-	ERROR("  got      : %s", g);
-	ERROR("  expected : %s", e);
+	ERROR("  got      : %.*s", (int) got_len, got);
+	ERROR("  expected : %.*s", (int) expected_len, expected);
 
 	if (print_diff) {
-		g_p = g;
-		e_p = e;
+		g = got;
+		e = expected;
 
-		while (*g_p && *e_p && (*g_p == *e_p)) {
-			g_p++;
-			e_p++;
+		while (*g && *e && (*g == *e)) {
+			g++;
+			e++;
 		}
 
-		spaces = talloc_zero_array(NULL, char, (e_p - e) + 1);
+		spaces = talloc_zero_array(NULL, char, (e - expected) + 1);
 		memset(spaces, ' ', talloc_array_length(spaces) - 1);
 		ERROR("             %s^ differs here", spaces);
 		talloc_free(spaces);
 	};
-
-	talloc_free(g);
-	talloc_free(e);
 }
 
 /** Print hex string to buffer
