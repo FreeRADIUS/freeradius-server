@@ -45,4 +45,5 @@ or more groups in LDAP, and/or to change FreeRADIUS' response based on
 the user's group memberships.
 
 This section describes how to configure the LDAP module to perform group
-checks, and how to check whether a user is a member of a specific group.
+membership checks, and to make policy decisions based on the results of those
+checks.

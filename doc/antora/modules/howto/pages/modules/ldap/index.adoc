@@ -65,32 +65,21 @@ For features and configuration items not covered by this tutorial series
 xref:raddb:modules/ldap.adoc[mods-available/ldap] page provides a complete
 reference for all the configuration items available for the rlm_ldap module.
 
-=== Authentication
+=== xref:modules/ldap/base_configuration/index.adoc[Base configuration]
 
-xref:modules/ldap/authentication/index.adoc[LDAP authentication] provides
-examples of configuring different methods of LDAP based authentication
+Configures basic settings required for all functions of the LDAP module.
+
+=== xref:modules/ldap/authorization/index.adoc[Authorization]
+
+Covers Authorization by group, enabling/disabling accounts using attributes,
+LDAP attribute to FreeRADIUS attribute mappings, and LDAP profiles.
+
+=== xref:modules/ldap/authentication/index.adoc[Authentication]
+
+Examples of configuring different methods of LDAP based authentication
 (search, bind, edir).
 
-=== Authorization
+=== xref:modules/ldap/accounting/index.adoc[Accounting]
 
-xref:modules/ldap/authorization/index.adoc[LDAP authorization] covers
-authorization by group, enabling/disabling accounts using attributes, LDAP
-attribute to FreeRADIUS attribute mappings, and LDAP profiles.
-
-=== Accounting
-
-xref:modules/ldap/accounting/index.adoc[LDAP accounting] shows examples of updating
-objects in LDAP after authentication completes, or when accounting data is received.
-
-=== Dynamic client definitions
-
-xref:modules/ldap/authorization/index.adoc[LDAP dynamic clients] demonstrates how
-client defintions can be created on the fly as packets are received from an
-unknown source.
-
-=== Expansion and map functions
-
-xref:modules/ldap/expansions_and_maps.adoc[LDAP expansions and maps]
-provides examples of implementing unlang policies using LDAP `map` and string
-expansions.
-
+Examples of updating objects in LDAP after authentication completes, or when
+accounting data is received.
