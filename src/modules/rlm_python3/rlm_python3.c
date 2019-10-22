@@ -381,8 +381,6 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
  *	This is the core Python function that the others wrap around.
  *	Pass the value-pair print strings in a tuple.
  *
- *	FIXME: We're not checking the errors. If we have errors, what
- *	do we do?
  */
 static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 {
