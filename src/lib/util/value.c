@@ -1296,6 +1296,45 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	return min;
 }
 
+/** Compare two labels in a case-insensitive fashion.
+ *
+ *  This function requires that the input is valid, i.e. all
+ *  characters are within [-0-9A-Za-z].  If any other input is given,
+ *  it will break.
+ */
+static bool labelcmp(uint8_t const *a, uint8_t const *b, size_t len)
+{
+	for (/* nothing */; len > 0; len--) {
+		if (*a == *b) {
+			a++;
+			b++;
+			continue;
+		}
+
+		/*
+		 *	If one or the other isn't a letter, we can't
+		 *	do case insensitive comparisons of them, so
+		 *	they can't match.
+		 */
+		if ((*a < 'A') || (*b < 'A')) {
+			return false;
+		}
+
+		/*
+		 *	If they're equal but different case, then the
+		 *	only bit that's different is 0x20.
+		 */
+		if (((*a)^(*b)) != 0x20) {
+			return false;
+		}
+
+		a++;
+		b++;
+	}
+
+	return true;
+}
+
 /** Compress "label" by looking at it recursively.
  *
  *  For "ftp.example.com", it searches the input buffer for a matching
@@ -1508,15 +1547,8 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 			/*
 			 *	Only now do case-insensitive
 			 *	comparisons.
-			 *
-			 *	@todo - use something a bit smarter
-			 *	and less generic than strncasecmp().
-			 *	We know that the data is ASCII, and
-			 *	that the only case insensitivity is
-			 *	between [a-z] and [A-Z].  So we might
-			 *	use a table lookup here.
 			 */
-			if (strncasecmp((char const *) q + 1, (char const *) label +1, *label) != 0) {
+			if (!labelcmp(q + 1, label + 1, *label)) {
 				q = ptr;
 				continue;
 			}
@@ -1671,7 +1703,7 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 		 *	Only now do case-insensitive
 		 *	comparisons.
 		 */
-		if (strncasecmp((char const *) q + 1, (char const *) label +1, *label) != 0) {
+		if (!labelcmp(q + 1, label + 1, *label)) {
 			q = ptr;
 			continue;
 		}
