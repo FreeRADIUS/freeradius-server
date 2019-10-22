@@ -41,6 +41,119 @@ typedef struct {
 	uint8_t		stuff;	/* TBD */
 } fr_dhcpv6_decode_ctx_t;
 
+static ssize_t decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t const *dict,
+				 fr_dict_attr_t const *parent,
+				 uint8_t const *data, size_t const data_len, UNUSED void *decoder_ctx)
+{
+	VALUE_PAIR		*vp;
+
+	switch (parent->type) {
+	default:
+	raw:
+
+#ifdef __clang_analyzer__
+		if (!ctx || !parent->parent) return -1;
+#endif
+
+		/*
+		 *	Re-write the attribute to be "raw".  It is
+		 *	therefore of type "octets", and will be
+		 *	handled below.
+		 */
+		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent,
+						      fr_dict_vendor_num_by_da(parent), parent->attr);
+		if (!parent) {
+			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
+			return -1;
+		}
+#ifndef NDEBUG
+		/*
+		 *	Fix for Coverity.
+		 */
+		if (parent->type != FR_TYPE_OCTETS) {
+			fr_dict_unknown_free(&parent);
+			return -1;
+		}
+#endif
+		/* FALL-THROUGH */
+
+	case FR_TYPE_FIXED_SIZE:
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return -1;
+
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
+			/*
+			 *	Paranoid loop prevention
+			 */
+			if (vp->da->flags.is_unknown) {
+				talloc_free(vp);
+				return -1;
+			}
+			goto raw;
+		}
+		break;
+	}
+
+	vp->type = VT_DATA;
+	vp->vp_tainted = true;
+	fr_cursor_append(cursor, vp);
+	return data_len;
+}
+
+static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+				 fr_dict_attr_t const *parent,
+				 uint8_t const *data, size_t const data_len, void *decoder_ctx)
+{
+	ssize_t rcode;
+	size_t total;
+	VALUE_PAIR *vp;
+
+	/*
+	 *	If any one of the labels are invalid, then treat the
+	 *	entire set as invalid.
+	 */
+	rcode = fr_dns_labels_network_verify(data, data_len);
+	if (rcode < 0) {
+	raw:
+		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent,
+						      fr_dict_vendor_num_by_da(parent), parent->attr);
+		if (!parent) {
+			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
+			return -1;
+		}
+
+		return decode_pair_value(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
+	}
+
+	/*
+	 *	Loop over the input buffer, decoding the labels one by
+	 *	one.
+	 */
+	for (total = 0; total < data_len; total += rcode) {
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return -1;
+
+		/*
+		 *	Having verified the input above, this next
+		 *	function should never fail unless there's a
+		 *	bug in the code.
+		 */
+		rcode = fr_value_box_from_dns_label(vp, &vp->data, data, data_len, data + total, true);
+		if (rcode < 0) {
+			talloc_free(vp);
+			goto raw;
+		}
+
+		vp->type = VT_DATA;
+		vp->vp_tainted = true;
+		fr_cursor_append(cursor, vp);
+	}
+
+	return data_len;
+}
+
 
 /** Create a "normal" VALUE_PAIR from the given data
  *
@@ -51,12 +164,12 @@ typedef struct {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 static ssize_t fr_dhcpv6_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
-				     uint8_t const *data, size_t data_len, UNUSED void *decoder_ctx)
+				     uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	unsigned int   		option;
 	size_t			len;
+	ssize_t			rcode;
 	fr_dict_attr_t const	*da;
-	VALUE_PAIR		*vp;
 
 	/*
 	 *	Must have at least an option header.
@@ -81,60 +194,14 @@ static ssize_t fr_dhcpv6_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
-	switch (da->type) {
-	default:
-	raw:
-
-#ifdef __clang_analyzer__
-		if (!ctx || !da->parent) return -1;
-#endif
-
-		/*
-		 *	Re-write the attribute to be "raw".  It is
-		 *	therefore of type "octets", and will be
-		 *	handled below.
-		 */
-		da = fr_dict_unknown_afrom_fields(ctx, da->parent,
-						      fr_dict_vendor_num_by_da(da), da->attr);
-		if (!da) {
-			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-			return -1;
-		}
-#ifndef NDEBUG
-		/*
-		 *	Fix for Coverity.
-		 */
-		if (da->type != FR_TYPE_OCTETS) {
-			fr_dict_unknown_free(&da);
-			return -1;
-		}
-#endif
-		/* FALL-THROUGH */
-
-	case FR_TYPE_FIXED_SIZE:
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_STRING:
-		vp = fr_pair_afrom_da(ctx, da);
-		if (!vp) return -1;
-
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data + 4, len, true) < 0) {
-			/*
-			 *	Paranoid loop prevention
-			 */
-			if (vp->da->flags.is_unknown) {
-				talloc_free(vp);
-				return -1;
-			}
-			goto raw;
-		}
-		break;
+	if ((da->type == FR_TYPE_STRING) && da->flags.subtype) {
+		rcode = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+	} else {
+		rcode = decode_pair_value(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 	}
+	if (rcode < 0) return rcode;
 
-	vp->type = VT_DATA;
-	vp->vp_tainted = true;
-	fr_cursor_append(cursor, vp);
-
-	return len + 4;
+	return data_len;
 }
 
 /*
