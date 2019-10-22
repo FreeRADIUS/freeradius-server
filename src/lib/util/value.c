@@ -1298,11 +1298,68 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 
 /** Compress "label" by looking at it recursively.
  *
- * @param[in] start	start of the input buffer holding one or more labels
+ *  For "ftp.example.com", it searches the input buffer for a matching
+ *  "com".  It only does string compares if it finds bytes "03 xx xx
+ *  xx 00".  This means that the scan is quick, because most bytes are
+ *  skipped.
+ *
+ *  If a matching string is found, the label is updated to replace
+ *  "com" with a 2-byte pointer P1.  The process then proceeds
+ *  recursively, with "exampleP1".
+ *
+ *  The input buffer is the scanned again for labels of matching
+ *  length (7 here), AND which either end in the value of "P1", or end
+ *  *at* P1.  If we find a match, we replace "exampleP1" with "P2".
+ *  The process then proceeds recursively with "ftpP2".
+ *
+ *  Since the algorithm replaces known suffixes with pointers, we
+ *  *never* have to compare full names.  Instead, we only ever compare
+ *  one label to one other label.  And then only if the labels have
+ *  the same suffixes (00 bytes, or a pointer P).
+ *
+ *  As an extra optimization, we track the start of the label where we
+ *  found the compressed pointer.  e.g. "www.example.com" when
+ *  compressing "com".  We know that the "com" string CANNOT appear
+ *  before this label.  Because if it did, then the "www.example.com"
+ *  name would have instead been compressed, as in "www.exampleP1".
+ *
+ *  This optimization ensures that we scan as little of the buffer as
+ *  possible, by moving the search start ahead in the buffer.  This
+ *  optimization also means that in many cases, the suffix we're
+ *  looking for (e.g. "example.com") is in the first label we search.
+ *  Which means that we end up ignoring most of the buffer.
+ *
+ *  This algorithm is O(N * B), where N is the number of labels in a
+ *  name (e.g. 3 for "ftp.example.com"), and "B" is the size of the
+ *  buffer.  It also does linear scans of the buffer, which are good
+ *  for read-ahead.  Each input label is compared to labels in the
+ *  buffer only when very limited situations apply.  And we never
+ *  compare the full input name to full names in the buffer.
+ *
+ *
+ *  A straightforward approach is to loop over all labels in the name
+ *  from longest to shortest, and comparing them to each name in the
+ *  buffer in turn.  That algorithm is O(L1 * T * L2 ), where L1 is
+ *  the length of the input name, T is the total number of names in
+ *  the buffer, and L2 is the average length of names in the buffer.
+ *  This algorithm can result in the buffer being scanned many, many,
+ *  times.  The scan is also done forwards (due to comparing names one
+ *  after the other), but also backwards (due to following pointers).
+ *  Which makes for poor locality of reference.
+ *
+ *  i.e. that approach *has* to scan the entire input buffer, because
+ *  that's where all of the names are.  Further, it has to scan it at
+ *  least "N" times, because there are N labels in the input name.  So
+ *  O(N * B) is the *lower* bound for this algorithm.
+ *
+ *  It gets worse when the straightforward algorithm does pointer
+ *  following instead of pointer comparisons.
+ *
+ * @param[in] start	input buffer holding one or more labels
  * @param[in] end	end of the input buffer
  * @param[out] new_search Where the parent call to dns_label_compress() should start searching from,
  *			  instead of from "start"
- * @param[in] label	new label to add to the buffer, generally == end.
+ * @param[in] label	new label to add to the buffer, must==end at start
  * @param[out] new_end	new end of the input label after compression
  * @return
  *	- false, we didn't compress the input
@@ -1328,6 +1385,20 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	 */
 	next = label + *label + 1;
 
+	/*
+	 *	Note that by design, next > end.  We don't care about
+	 *	the size of the buffer we put "label" into.  We only
+	 *	care that all bytes of "label" are valid, and we don't
+	 *	access memroy after "label".
+	 */
+
+	/*
+	 *	On the first call, begin searching from the start of
+	 *	the buffer.
+	 *
+	 *	For subsequent calls, begin from where we started
+	 *	searching before.
+	 */
 	if (!new_search) {
 		search = start;
 	} else {
@@ -1346,17 +1417,19 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	 *	We speed this up slightly by tracking the previous
 	 *	uncompressed pointer.  If we do compress the current
 	 *	label, then we should also tell the caller where the
-	 *	previous uncompressed label was found.  That way the
+	 *	previous uncompressed label started.  That way the
 	 *	caller can start looking there for the next piece to
 	 *	compress.  There's no need to search from the
 	 *	beginning of the input buffer, as we're sure that
 	 *	there is no earlier instance of the suffix we found.
 	 *
 	 *	i.e. as we compress the current name, we start
-	 *	searching not at the input buffer, but at the name
-	 *	that ends with the label we just compressed.  We're
-	 *	guaranteed that no name *before* that one will match
-	 *	the suffix we're looking for.
+	 *	searching not at the beginning of the input buffer/
+	 *	Instead, we start searching at the name which contains
+	 *	the label that we just compressed.  The previous
+	 *	sarching guarantees that no name *before* that one
+	 *	will match the suffix we're looking for.  So we can
+	 *	skip all of the previous names in subsequent searches,
 	 */
 	if (*next == 0x00) {
 		q = search;
@@ -1365,15 +1438,19 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 				q++;
 
 				/*
-				 *	None of the previous stuff
+				 *	None of the previous names
 				 *	matched, so we tell the caller
 				 *	to start searching from the
-				 *	next name.
+				 *	next name in the buffer.
 				 */
 				search = q;
 				continue;
 			}
 
+			/*
+			 *	Our label is a terminal one.  Which
+			 *	can't point to a pointer.
+			 */
 			if (*q > 63) {
 				q += 2;
 				continue;
@@ -1410,6 +1487,13 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 			/*
 			 *	Only now do case-insensitive
 			 *	comparisons.
+			 *
+			 *	@todo - use something a bit smarter
+			 *	and less generic than strncasecmp().
+			 *	We know that the data is ASCII, and
+			 *	that the only case insensitivity is
+			 *	between [a-z] and [A-Z].  So we might
+			 *	use a table lookup here.
 			 */
 			if (strncasecmp((char const *) q + 1, (char const *) label +1, *label) != 0) {
 				q = ptr;
@@ -1417,10 +1501,13 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 			}
 
 			/*
-			 *	All of that matches.  Replace the
-			 *	label with a compressed pointer.  And
-			 *	return that we managed to compress
-			 *	this label.
+			 *	We have a match.  Replace the input
+			 *	label with a compressed pointer.  Tell
+			 *	the caller the start of the found
+			 *	name, so subsequent searches can start
+			 *	from there.  Then return to the caller
+			 *	that we managed to compress this
+			 *	label.
 			 */
 			offset = (q - start);
 			label[0] = (offset >> 8) | 0xc0;
@@ -1553,10 +1640,13 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 		}
 
 		/*
-		 *	All of that matches.  Replace the
-		 *	label with a compressed pointer.  And
-		 *	return that we managed to compress
-		 *	this label.
+		 *	We have a match.  Replace the input
+		 *	label with a compressed pointer.  Tell
+		 *	the caller the start of the found
+		 *	name, so subsequent searches can start
+		 *	from there.  Then return to the caller
+		 *	that we managed to compress this
+		 *	label.
 		 */
 		offset = (q - start);
 		label[0] = (offset >> 8) | 0xc0;
