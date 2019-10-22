@@ -1,0 +1,45 @@
+= Locating the user
+
+No matter how the LDAP module is called (via its `authorize`, `authenticate`,
+`accounting` methods or an `LDAP-Group` comparison) the first operation the
+module performs it to populate `&control:LDAP-UserDN` with the location of
+the authenticating user's object in LDAP.
+
+Below is an example of configuring a user section for OpenLDAP, with callouts
+explaining how the different configuration items are used. See
+xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] for how to determine the
+appropriate values for your directory.
+
+[source,config]
+----
+ldap {
+	user {
+		# example - ou=people,${..base_dn}
+		base_dn = "<user.base_dn>" <1>
+
+		# example - (&(objectClass=posixUser)(uid=%{%{Stripped-User-Name}:-%{User-Name}}))
+		filter = "(&(<user.filter>)(<user_uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}}))"  <2>
+	}
+}
+----
+
+<1> Where in the directory to begin the search for the user object.
+    This must be a point in the directory tree containing the objects for
+    all users that might authenticate.
+<2> The filter used to locate the user object belonging to the
+    authenticating user.  The user filter is normally a combination of two
+    subfilters.
+    The first subfilter specifies the objectClass of user objects.
+    The second filter selects a user object matching the username the
+    user provided at login.
+
+[WARNING]
+====
+It is important that the `user.base_dn` and `user.filter` values are restrictive
+enough to return only a single entry when searching for users. If multiple entries
+are returned the LDAP module will fail.
+
+See xref:modules/ldap/authorization/user_disambiguation.adoc[User object
+disambiguation] for strategies for limiting the number of user object entries
+returned.
+====

@@ -4,42 +4,41 @@ The `authorize` method of the LDAP module is responsible for locating the
 authenticating user's LDAP object.
 
 In addition to determining where the user is, the authorize method also
-performs LDAP to FreeRADIUS attribute mappings,
+performs LDAP to FreeRADIUS attribute mappings.
 
-== 1. Locating the user
+You should complete the xref:modules/ldap/configuration.adoc[base configuration]
+of the LDAP module before attempting to complete any of the howto sections
+listed below.
 
-No matter how the LDAP module is called (via its `authorize`, `authenticate`,
-`accounting` methods or an `LDAP-Group` comparison) the first operation the
-module performs it to populate `&control:LDAP-UserDN` with the location of
-the authenticating user's object in LDAP.
+== xref:modules/ldap/authorization/locating_the_user.adoc[Locating the user]
 
-How the LDAP-UserDN value is discovered is determined by the contents of the
-`user { ... }` section of the LDAP module instance.
+No matter what functionality of the LDAP module is being used you must
+specify search DNs and filters that uniquely identify the authenticating
+user in the directory.
 
-Below is an example of configuring a user section for OpenLDAP, with callouts
-explaining how the different configuration items are used. See
-xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] for how to determine the
-appropriate values for your directory.
+This section should be competed first before attempting any more advanced
+configurations.
 
-[source,unlang]
-----
-user {
-	base_dn = "ou=people,${..base_dn}"	<1>
-	filter =
-}
-----
+== xref:modules/ldap/authorization/user_disambiguation.adoc[Disambiguating user objects]
 
-== 2. Disambiguating users
+In some instances the same user may have objects in different areas of the
+LDAP directory.
 
-dn: olcOverlay=sssvlv,olcDatabase={1}mdb,cn=config
-> objectClass: olcSssVlvConfig
-> olcOverlay: sssvlv
-> olcSssVlvMax: 10
-> olcSssVlvMaxKeys: 5
+If multiple results are returned by the search operation locating the user,
+the LDAP module will reject the authentication attempt.
 
-== 2. Configuring the enable/disable attribute
+This section discusses strategies to disambiguate user objects, and select
+a single user object consistently.
 
-== Group Membership
+== xref:modules/ldap/authorization/user_account_controls.adoc[Configuring the enable/disable attribute]
+
+In some instances it is useful to enable or disable user accounts without
+removing the objects from the directory.
+
+This section discusses methods of enabling or disabling user accounts in
+a way that the result is distinct from a user not being found.
+
+== xref:modules/ldap/authorization/groups.adoc[Group Membership]
 
 Depending on the LDAP vendor you use, LDAP group membership is either handled
 using the LDAP attributes:

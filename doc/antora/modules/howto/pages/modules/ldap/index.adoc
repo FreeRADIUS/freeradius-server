@@ -13,7 +13,7 @@ concepts], as these concepts will not be covered in FreeRADIUS documentation.
 ====
 In an Microsoft Active Directory environment you should use `rlm_winbind` for
 authentication, and `rlm_ldap` for group membership checks as described in
-xref:modules/ldap/authorization.adoc[authorization] section of this tuorial.
+xref:modules/ldap/authorization/index.adoc[authorization] section of this tuorial.
 The WinBind protocol does not support the full range of group checks that is
 possible with LDAP.
 ====
@@ -67,24 +67,24 @@ reference for all the configuration items available for the rlm_ldap module.
 
 === Authentication
 
-xref:modules/ldap/authentication.adoc[LDAP authentication] provides
+xref:modules/ldap/authentication/index.adoc[LDAP authentication] provides
 examples of configuring different methods of LDAP based authentication
 (search, bind, edir).
 
 === Authorization
 
-xref:modules/ldap/authorization.adoc[LDAP authorization] covers
+xref:modules/ldap/authorization/index.adoc[LDAP authorization] covers
 authorization by group, enabling/disabling accounts using attributes, LDAP
 attribute to FreeRADIUS attribute mappings, and LDAP profiles.
 
 === Accounting
 
-xref:modules/ldap/authorization.adoc[LDAP accounting] shows examples of updating
+xref:modules/ldap/accounting/index.adoc[LDAP accounting] shows examples of updating
 objects in LDAP after authentication completes, or when accounting data is received.
 
 === Dynamic client definitions
 
-xref:modules/ldap/authorization.adoc[LDAP dynamic clients] demonstrates how
+xref:modules/ldap/authorization/index.adoc[LDAP dynamic clients] demonstrates how
 client defintions can be created on the fly as packets are received from an
 unknown source.
 

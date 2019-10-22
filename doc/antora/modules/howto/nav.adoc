@@ -19,7 +19,13 @@
 ***** xref:modules/ldap/ldapsearch/translating_to_the_ldap_module.adoc[Translating ldapsearch arguments to LDAP configuration items]
 
 **** xref:modules/ldap/configuration.adoc[Enabling the LDAP module]
-**** xref:modules/ldap/authorization.adoc[Configuring authorization]
+
+**** xref:modules/ldap/authorization/index.adoc[Configuring authorization]
+***** xref:modules/ldap/authorization/locating_the_user.adoc[Locating the user]
+***** xref:modules/ldap/authorization/user_disambiguation.adoc[Disambiguating user objects]
+***** xref:modules/ldap/authorization/user_account_controls.adoc[Controlling user accounts]
+***** xref:modules/ldap/authorization/groups.adoc[Group Membership]
+
 **** xref:modules/ldap/authentication.adoc[Configuring authentication]
 **** xref:modules/ldap/accounting.adoc[Configuring accounting]
 

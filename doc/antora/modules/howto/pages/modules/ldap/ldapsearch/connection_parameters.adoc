@@ -54,7 +54,7 @@ continue indefinitely) when there is _no_ firewall blocking.
 ** `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is no
 firewall blocking access.
 
-== Failed - No such object
+== Failure - No such object
 
 [source,ldif]
 ----

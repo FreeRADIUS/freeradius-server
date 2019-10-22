@@ -1,0 +1,70 @@
+= Controlling user accounts
+
+In some instances it may be useful to "lock out" user accounts.
+
+The naïve approach of including subfilters in `user.filter` to prevent
+user objects for disabled accounts being return can cause subtle issues.
+
+Using a subfilter, it is not possible to distinguish a login with an incorrect
+username from an attempt to use a disabled account (both result in a `notfound`
+return code).
+
+Return code ambiguity causes multiple other issues:
+
+- `notfound` does not result in the user being explicitly rejected.
+  This may result in spurious logging output or un-needed callouts to
+  additional modules.
+- It's not possible in policy to detect a login with a disabled account.
+  This is a lost opportunity to log useful debugging data.
+- It's not possible from FreeRADIUS' log output to detect a login with
+  disabled account. This can make debugging frustrating.
+
+== Controlling user access with user.access_attribute and user.access_positive
+
+See xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] for how to determine the
+appropriate values for your directory.
+
+The presence of the attribute specified by `user.access_attribute` can indicate the account
+is enabled, or disabled, depending on the value of `user.access_positive`.
+
+|===
+|                              | Access Attribute present (set true) | Access Attribute present (set false) | Access Attribute absent
+| `user.access_positive = yes` | `ok`                                | `locked out`                         | `locked out`
+| `user.access_positive = no`  | `locked out`                        | `ok`                                 | `ok`
+|===
+
+When a user is "locked out", the LDAP module will return `disallow` in (≥ v4.0.x) and `userlock` in (≤ v3.0.x).
+
+=== Access attribute indicates account is enabled
+
+[source,config]
+----
+ldap {
+	user {
+		# example - dialupAccess
+		access_attribute = '<user_access_enabled_attribute>' <1>
+		access_positive = yes
+	}
+}
+----
+
+<1> The attribute to use to indicate that the account is enabled.
+    If the attribute is absent or set to false then the user will be
+    "locked out".
+
+=== Access attribute indicates account is disabled
+
+[source,config]
+----
+ldap {
+	user {
+		# example - ms-DS-User-Account-Disabled
+		access_attribute = '<user_access_disabled_attribute>' <1>
+		access_positive = no
+	}
+}
+----
+
+<1> The attribute to use to indicate that the account is disabled.
+    If the attribute is present or set to true then the user will be
+    "locked out".

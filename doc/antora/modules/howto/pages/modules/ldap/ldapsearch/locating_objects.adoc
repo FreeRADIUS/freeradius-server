@@ -71,23 +71,25 @@ result: 0 Success
 <4> The UID of the user.  This is the attribute containing the identity used
     when the user logs in to services.
 <5> A base64 encoded `userPassword` attribute.  This shows the LDAP directory
-    is willing to provided user password hashes.
+    is willing to provided user password hashes.  These hashes can be used by
+    the xref:raddb:mods-available/pap.adoc[pap] module to authenticate the
+    user locally without the overhead of additional bind operations.
 ====
 
 === What to record
 
-- `user.base_dn` - A DN of an object higher in the tree than relevant users
+- `user_base_dn` - A DN of an object higher in the tree than relevant users
    object(s).
-- `user.filter`- The filter which matches the objectClass(es) of user objects.
-- `user.uid_attribute` - The attribute used to identify the user
+- `user_filter`- The filter which matches the objectClass(es) of user objects.
+- `user_uid_attribute` - The attribute used to identify the user
    (usually `uid`, but can vary considerably between instances).
-- `user.access_disabled_attribute` - Any attributes used to indicate whether an
+- `user_access_disabled_attribute` - Any attributes used to indicate whether an
    account is disabled. To determine if this attribute exists, repeat the user
    search (above) with a filter for a user account known to be disabled e.g.
    `(uid=a-disabled-user)`.
-- `user.access_enable_attribute` - Any attributes used to indicate whether an
+- `user_access_enabled_attribute` - Any attributes used to indicate whether an
    account is enabled.  Should be present in the search results already obtained.
-- `user.password_attribute` - The attribute used to hold password data (if
+- `user_password_attribute` - The attribute used to hold password data (if
    present).
 
 
@@ -224,20 +226,21 @@ result: 0 Success
 
 === What to record
 
-* `group.base_dn` - A DN of an object higher in the tree than all relevant group
+* `group_base_dn` - A DN of an object higher in the tree than all relevant group
    objects.
-* `group.name_attribute` - The attribute used to identify the group (usually `cn`).
+* `group_name_attribute` - The attribute used to identify the group (usually `cn`).
+* `group_object_class_filter`- The filter which matches the objectClass(es) of group objects.
 * _variant 1_
-** `group.membership_attribute` - User object attribute containing group
+** `group_membership_attribute` - User object attribute containing group
   membership information. e.g. `memberOf`.
 * _variant 2_
-** `group.membership_attribute` - User object attribute containing group
+** `group_membership_attribute` - User object attribute containing group
  membership information. e.g. `memberOf`.
 * _variant 3_
-** `group.membership_filter_by_uid` - A filter matching user membership by DN
+** `group_membership_filter_by_uid` - A filter matching user membership by DN
 e.g. `(memberUid=%{%{Stripped-User-Name}:-%{User-Name}})`.
 * _variant 4_
-** `group.membership_filter_by_name` - A filter matching user membership uid
+** `group_membership_filter_by_name` - A filter matching user membership uid
 e.g. `(member=%{control:Ldap-UserDn})`.
 
 .Locating groups in "mature" directories

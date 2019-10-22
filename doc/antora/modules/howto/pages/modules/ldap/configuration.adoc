@@ -39,14 +39,14 @@ ldap {
 	server = '<uri>'                            <3>
 
 	# example - base_dn = 'dc=example, dc=com'
-	base_dn = '<dn_that_parents_user_obj_and_group_obj>'  <4>
+	base_dn = '<dn_that_parents_user_objects_and_group_objects>'  <4>
 
 	user {
 		# example - base_dn = "ou=people,${..base_dn}"
 		base_dn = "<path_from_base_dn_to_user_obj_dn>,${..base_dn}"  <5>
 
 		# example = "(&(uid=%{%{Stripped-User-Name}:-%{User-Name}})(objectClass=posixUser))"
-		filter = '(&(<user.uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})(<user.filter>))'  <6>
+		filter = '(&(<user_uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})(<user_filter>))'  <6>
 	}
 }
 ----
@@ -127,7 +127,7 @@ server default {
 }
 ----
 
-See xref:modules/ldap/authorization.adoc[LDAP authorization] for more detailed
+See xref:modules/ldap/authorization/index.adoc[LDAP authorization] for more detailed
 information on configuring LDAP/Group authorization. Including how to perform
 authorization _after_ authentication.
 
