@@ -84,6 +84,11 @@ static ssize_t fr_dhcpv6_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	switch (da->type) {
 	default:
 	raw:
+
+#ifdef __clang_analyzer__
+		if (!ctx || !da->parent) return -1;
+#endif
+
 		/*
 		 *	Re-write the attribute to be "raw".  It is
 		 *	therefore of type "octets", and will be
