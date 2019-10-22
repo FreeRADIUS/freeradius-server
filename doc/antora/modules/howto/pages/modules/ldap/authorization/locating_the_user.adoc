@@ -10,6 +10,8 @@ explaining how the different configuration items are used. See
 xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] for how to determine the
 appropriate values for your directory.
 
+== Editing mods-available/ldap to specify how to search for user objects
+
 [source,config]
 ----
 ldap {

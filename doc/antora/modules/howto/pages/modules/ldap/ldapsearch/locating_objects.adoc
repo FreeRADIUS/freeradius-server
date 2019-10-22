@@ -237,11 +237,11 @@ result: 0 Success
 ** `group_membership_attribute` - User object attribute containing group
  membership information. e.g. `memberOf`.
 * _variant 3_
-** `group_membership_filter_by_uid` - A filter matching user membership by DN
-e.g. `(memberUid=%{%{Stripped-User-Name}:-%{User-Name}})`.
+** `group_membership_dn_attribute` - An attribute in the group object referencing user objects by DN
+e.g. `member`.
 * _variant 4_
-** `group_membership_filter_by_name` - A filter matching user membership uid
-e.g. `(member=%{control:Ldap-UserDn})`.
+** `group_membership_uid_attribute` - An attribute in the group object referencing user objects by UID
+e.g. `memberUID`.
 
 .Locating groups in "mature" directories
 ****

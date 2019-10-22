@@ -1,0 +1,192 @@
+= Group authorization
+
+A very common requirement is to restrict access to particular groups within
+LDAP, or to return different authorizational attributes based on a user's group
+memberships.
+
+How groups are managed by different directories can differ significantly.
+
+Other sections in this tutorial have assigned variant numbers to the different
+group mappings.  The definitions of these variants is repeated below for easy
+referencing:
+
+- _variant 1_ - User objects contain membership attributes referencing group objects by DN.
+- _variant 2_ - User objects contain membership attributes referencing group objects by name.
+- _variant 3_ - Group objects contain membership attributes referencing user objects by DN.
+- _variant 4_ - Group objects contain membership attributes referencing user objects by name.
+
+== Configuring group lookups
+
+=== Editing mods-available/ldap to configure _variant 1_ group checks
+
+[source,config]
+----
+ldap {
+	group {
+		# example - ou=groups,dc=example,dc=com
+		base_dn = '<group_base_dn>'             <1>
+
+		# example - groupOfNames
+		filter = '<group_object_class_filter>'  <2>
+
+		# example - cn
+		name_attribute = '<group_name_attribute>'  <3>
+
+		# example - memberOf
+		membership_attribute = '<group_membership_attribute>  <4>
+	}
+}
+----
+<1> Where in the directory to begin the search for group objects.
+<2> Filter matching the objectClass(es) of all relevant group objects.
+<3> Attribute within the group object containing its name.
+<4> Attribute within the user object referencing groups by their DNs.
+
+=== Editing mods-available/ldap to configure _variant 2_ group checks
+
+[source,config]
+----
+ldap {
+	group {
+		# example - ou=groups,dc=example,dc=com
+		base_dn = '<group_base_dn>'             <1>
+
+		# example - groupOfNames
+		filter = '<group_object_class_filter>'  <2>
+
+		# example - cn
+		name_attribute = '<group_name_attribute>'  <3>
+
+		# example - memberOf
+		membership_attribute = '<group_membership_attribute>  <4>
+	}
+}
+----
+<1> Where in the directory to begin the search for group objects.
+<2> Filter matching the objectClass(es) of all relevant group objects.
+<3> Attribute within the group object containing its name.
+<4> Attribute within the user object referencing groups by their name.
+
+=== Editing mods-available/ldap to configure _variant 3_ group checks
+
+[source,config]
+----
+ldap {
+	group {
+		# example - ou=groups,dc=example,dc=com
+		base_dn = '<group_base_dn>'             <1>
+
+		# example - groupOfNames
+		filter = '<group_object_class_filter>'  <2>
+
+		# example - cn
+		name_attribute = '<group_name_attribute>'  <3>
+
+		# example - (member=%{control:Ldap-UserDn})
+		membership_filter = "(<group_membership_dn_attribute>=%{control:Ldap-UserDn})"  <4>
+	}
+}
+----
+<1> Where in the directory to begin the search for group objects.
+<2> Filter matching the objectClass(es) of all relevant group objects.
+<3> Attribute within the group object containing its name.
+<4> Attribute within the group object referencing users by their DN.
+
+=== Editing mods-available/ldap to configure _variant 4_ group checks
+
+[source,config]
+----
+ldap {
+	group {
+		# example - ou=groups,dc=example,dc=com
+		base_dn = '<group_base_dn>'             <1>
+
+		# example - groupOfNames
+		filter = '<group_object_class_filter>'  <2>
+
+		# example - cn
+		name_attribute = '<group_name_attribute>'  <3>
+
+		# example - (memberUid=%{control:Ldap-UserDn})
+		membership_filter = "(<group_membership_uid_attribute>=%{control:Ldap-UserDn})"  <4>
+	}
+}
+----
+<1> Where in the directory to begin the search for group objects.
+<2> Filter matching the objectClass(es) of all relevant group objects.
+<3> Attribute within the group object containing its name.
+<4> Attribute within the group object referencing users by their name (uid).
+
+== "Live" group lookups
+
+[TIP]
+====
+For _variant 1_ and _variant 2_, when checking group memberships, it is most
+efficient to specify the group in the same format as the reference.
+
+For example, if the directory implements _variant 1_, then the group would be
+specified as a DN, and if the directory implements _variant 2_, then the group
+would be specified by name.
+====
+
+Group checks are performed using the virtual attribute `LDAP-Group`.
+Comparing this attribute to a group name or group DN, will, (if group caching
+is not enabled) result in a query being sent to the LDAP Directory to determine
+if the user is a member of the specified group.
+
+When performing group checks LDAP module abstracts away the differences between
+group membership _variants [1-4]_ so long as it has been configured
+appropriately.
+
+=== Group membership check by DN
+
+[source,unlang]
+----
+if (LDAP-Group == 'cn=foo,ou=groups,dc=example,dc=com') {
+	update reply {
+		&Reply-Message := "Welcome member of group 'foo'"
+	}
+}
+----
+
+=== Group membership check by name
+
+[source,unlang]
+----
+if (LDAP-Group == 'foo') {
+	update reply {
+		&Reply-Message := "Welcome member of group 'foo'"
+	}
+}
+----
+
+== Cached group lookups
+
+In some instances it's useful to retrieve complete group listings for users.
+The most common reasons for this are:
+- To maintain a local cache in case connectivity to the LDAP directory is lost.
+- To perform group checks in ways not supported by the LDAP module.  One example
+  of this is checking for membership in nested groups.
+
+When caching group membership information the LDAP module abstracts away the
+differences between group membership _variants [1-4]_ so long as it has been
+configured appropriately.
+
+Two configuration items control group caching:
+
+- `group.cacheable_name` - If set to 'yes', the names of groups the user is a member of will be cached.
+- `group.cacheable_dn` - If set to 'yes', the DNs of the groups the user is a member of will be cached.
+
+The type of caching should match the format of the group check values. For
+example, when checking for group memberships using DNs `group.cacheable_dn`
+should be set, and when checking for group memberships using group names
+`group.cacheable_name` should be set.
+
+One exception to this, is if nested group checks are being performed.
+In this case `group.cacheable_dn` must be set, as the full path of the group
+objects is required.
+
+
+
+
+

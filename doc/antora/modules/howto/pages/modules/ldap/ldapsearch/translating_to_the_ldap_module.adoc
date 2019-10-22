@@ -49,7 +49,7 @@ User objects reference groups using DNs.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects by DN, when referenced by a user object. | ```group_membership_attribute = '<group_base_dn>'```
+| Specify how to find group objects by DN, when referenced by a user object. | ```membership_attribute = '<group_membership_attribute>'```
 |===
 
 == Groups - variant 2
@@ -59,7 +59,7 @@ User objects reference groups using group names.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects by name, when referenced by a user object. | ```group_membership_attribute = '<group_base_dn>'```
+| Specify how to find group objects by name, when referenced by a user object. | ```membership_attribute = '<group_membership_attribute>'```
 |===
 
 == Groups - variant 3
@@ -69,7 +69,7 @@ Group objects reference users using DNs.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects referencing a user by DN. | ```membership_filter = "(<group_membership_filter_by_uid>=%{control:Ldap-UserDn})"```
+| Specify how to find group objects referencing a user by DN. | ```membership_filter = "(<group_membership_dn_attribute>=%{control:Ldap-UserDn})"```
 |===
 
 == Groups - variant 4
@@ -79,7 +79,7 @@ Group objects reference users using user names.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects referencing a user by name. | ```membership_filter = "(<group_membership_filter_by_name>=%{%{Stripped-User-Name}:-%{User-Name}})"```
+| Specify how to find group objects referencing a user by name. | ```membership_filter = "(<group_membership_uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})"```
 |===
 
 .Mixing and matching group membership schemes

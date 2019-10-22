@@ -31,6 +31,16 @@ As the error message states, there are multiple ways to resolve this issue:
 
 == Enabling and configuring Server Side Sorting
 
+Server Side Sorting controls are specified by
+https://tools.ietf.org/html/rfc2891[RFC 2891].
+
+SSS controls allow the client to request the server sort results in a specific
+and consistent order.  This ensures that in the case where there is an ambiguous
+result, the same user object (the first in the result set) will be used by the
+LDAP module.
+
+Without SSS which object is used by the LDAP module will be essentially random.
+
 [TIP]
 ====
 If you followed the
@@ -49,16 +59,6 @@ olcSssVlvMaxKeys: 5
 EOF
 ----
 ====
-
-Server Side Sorting controls are specified by
-https://tools.ietf.org/html/rfc2891[RFC 2891].
-
-SSS controls allow the client to request the server sort results in a specific
-and consistent order.  This ensures that in the case where there is an ambiguous
-result, the same user object (the first in the result set) will be used by the
-LDAP module.
-
-Without SSS which object is used by the LDAP module will be essentially random.
 
 == Editing mods-available/ldap to enable SSS
 
