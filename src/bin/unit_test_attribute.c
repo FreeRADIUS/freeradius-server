@@ -1521,7 +1521,7 @@ static size_t command_no(command_result_t *result, command_ctx_t *cc,
 	 *	OK becomes a command error
 	 */
 	case RESULT_OK:
-		ERROR("%s[%d] - %.*s - returned 'ok', where we expected 'result-mismatch'",
+		ERROR("%s[%d]: %.*s: returned 'ok', where we expected 'result-mismatch'",
 		      cc->filename, cc->lineno, (int) inlen, in);
 		RETURN_MISMATCH(data_used);
 
