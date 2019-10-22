@@ -1318,7 +1318,7 @@ static size_t command_decode_dns_label(command_result_t *result, UNUSED command_
 		 *	Separate names by commas
 		 */
 		if (i > 0) *(out++) = ',';
-		
+
 		/*
 		 *	We don't print it with quotes.
 		 */
@@ -1521,6 +1521,8 @@ static size_t command_no(command_result_t *result, command_ctx_t *cc,
 	 *	OK becomes a command error
 	 */
 	case RESULT_OK:
+		ERROR("%s[%d] - %.*s - returned 'ok', where we expected 'result-mismatch'",
+		      cc->filename, cc->lineno, (int) inlen, in);
 		RETURN_MISMATCH(data_used);
 
 	/*
@@ -2049,8 +2051,6 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		 */
 		case RESULT_MISMATCH:
 		{
-			PERROR("%s[%d] - Expected 'no match', got match!", filename, cc.lineno);
-
 			ret = EXIT_FAILURE;
 
 			goto finish;
