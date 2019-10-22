@@ -16,6 +16,7 @@ SOURCES		:= \
 		   dict_util.c \
 		   dict_validate.c \
 		   dl.c \
+		   dns.c \
 		   event.c \
 		   fifo.c \
 		   fring.c \

@@ -31,6 +31,7 @@
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/io/test_point.h>
 
 #include "dhcpv6.h"
