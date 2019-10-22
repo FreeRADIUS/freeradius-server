@@ -1375,6 +1375,22 @@ static bool labelcmp(uint8_t const *a, uint8_t const *b, size_t len)
  *  buffer only when very limited situations apply.  And we never
  *  compare the full input name to full names in the buffer.
  *
+ *  In the case where we are adding many names from the same zone to
+ *  the input buffer, the input buffer will start with the zone name.
+ *  So any searches will match that.  The only reason to continue
+ *  scanning the buffer is to see if the name prefix already exists.
+ *  If we assume that the records do not contain duplicates, then we
+ *  can likely skip that scan, too.
+ *
+ *  Adding that optimization, however, requires tracking the maximum
+ *  size of a name across multiple invocations of the function.  For
+ *  example, if the maximum length name in the buffer is 3 labels, and
+ *  we're adding a 3 label name, then we can stop scanning the buffer
+ *  as soon as we compressed the 2 suffix labels.  Since we are
+ *  guaranteed that there are no duplicates, we are sure that there is
+ *  no existing 3-label name which matches a 3-label name in the
+ *  buffer.
+ *
  *
  *  A different and more straightforward approach is to loop over all
  *  labels in the name from longest to shortest, and comparing them to
@@ -1403,7 +1419,7 @@ static bool labelcmp(uint8_t const *a, uint8_t const *b, size_t len)
  * @param[in] end	  end of the input buffer
  * @param[out] new_search Where the parent call to dns_label_compress()
  *			  should start searching from, instead of from "start".
- * @param[in] label	  label to add to the buffer, must be "end" on the first call.
+ * @param[in] label	  label to add to the buffer.
  * @param[out] label_end  updated end of the input label after compression.
  * @return
  *	- false, we didn't compress the input
@@ -1529,8 +1545,9 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 			}
 
 			/*
-			 *	Out label ends with 0x00.  If this
-			 *	label doesn't end with 0x00, skip it.
+			 *	Our input label ends with 0x00.  If
+			 *	this label doesn't end with 0x00, skip
+			 *	it.
 			 */
 			if (*ptr != 0x00) {
 				q = ptr;
