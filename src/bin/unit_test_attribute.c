@@ -737,7 +737,7 @@ static ssize_t load_proto_library(char const *proto_name)
 
 		dl = dl_by_name(dl_loader, dl_name, NULL, false);
 		if (!dl) {
-			ERROR("Failed to link to library \"%s\": %s\n", dl_name, fr_strerror());
+			ERROR("Failed to link to library \"%s\": %s", dl_name, fr_strerror());
 			unload_proto_library();
 			return 0;
 		}
@@ -1502,7 +1502,7 @@ static size_t command_need_feature(command_result_t *result, command_ctx_t *cc,
 
 	cp = cf_pair_find(cc->features, in);
 	if (!cp || (strcmp(cf_pair_value(cp), "yes") != 0)) {
-		DEBUG("Skipping, missing feature \"%s\"\n", in);
+		DEBUG("Skipping, missing feature \"%s\"", in);
 		RETURN_SKIP_FILE();
 	}
 
