@@ -122,12 +122,6 @@ encode-pair Client-Arch-Type = x86-BIOS
 match 00 3d 00 02 00 00
 
 #
-#  Array of IPv6 addresses
-#
-encode-pair SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7335
-match 00 16 00 20 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35
-
-#
 #  Array of strings, each substring should have a 16bit length field containing its length
 #
 encode-pair Bootfile-Param = "I LIKE CHICKEN",  Bootfile-Param = "I LIKE LIVER"
@@ -173,18 +167,6 @@ match 00 36 00 28 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 00
 encode-pair NTP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
 match 00 38 00 14 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
 
-encode-pair SIP-Server-Domain-Name-List = "foo.ca"
-match 00 15 00 08 03 66 6f 6f 02 63 61 00
-
-encode-pair SIP-Server-Domain-Name-List = "foo.ca", SIP-Server-Domain-Name-List = "example.com"
-match 00 15 00 15 03 66 6f 6f 02 63 61 00 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
-
-encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com"
-match 00 15 00 17 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04
-
-encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com", SIP-Server-Domain-Name-List = "ns.example.com"
-match 00 15 00 1c 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04 02 6e 73 c0 04
-
 #
 #  This attribute is NOT compressed!
 #
@@ -198,4 +180,4 @@ encode-pair BCMCS-Server-Domain-Name-List = "www.example.com", BCMCS-Server-Doma
 match 00 21 00 32 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 02 6e 73 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
 
 count
-match 90
+match 80

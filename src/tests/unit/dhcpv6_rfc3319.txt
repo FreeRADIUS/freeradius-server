@@ -1,0 +1,34 @@
+#
+#  Test vectors for DHCPv6 attributes for (SIP) Servers
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  3.1  SIP Servers Domain Name List
+#
+
+#
+#  TLV with single values
+#
+encode-pair SIP-Server-Domain-Name-List = "foo.ca"
+match 00 15 00 08 03 66 6f 6f 02 63 61 00
+
+encode-pair SIP-Server-Domain-Name-List = "foo.ca", SIP-Server-Domain-Name-List = "example.com"
+match 00 15 00 15 03 66 6f 6f 02 63 61 00 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com"
+match 00 15 00 17 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04
+
+encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com", SIP-Server-Domain-Name-List = "ns.example.com"
+match 00 15 00 1c 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04 02 6e 73 c0 04
+
+#
+#  3.2 SIP Servers IPv6 Address List
+#
+
+#
+#  Array of IPv6 addresses
+#
+encode-pair SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7335
+match 00 16 00 20 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35
