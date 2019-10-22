@@ -43,6 +43,7 @@ addons:
       - lintian
       - pbuilder
       - python-dev
+      - python3-dev
       - quilt
       - libruby
       - ruby-dev
