@@ -117,6 +117,9 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 	rcode = fr_dns_labels_network_verify(data, data_len);
 	if (rcode < 0) {
 	raw:
+#ifdef __clang_analyzer__
+		if (!ctx || !parent->parent) return -1;
+#endif
 		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent,
 						      fr_dict_vendor_num_by_da(parent), parent->attr);
 		if (!parent) {
