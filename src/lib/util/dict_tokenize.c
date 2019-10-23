@@ -1476,7 +1476,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			this->da->dict = dict;
 			this->da->ref = da;
 
-			next = this->next;;
+			next = this->next;
 		}
 	}
 

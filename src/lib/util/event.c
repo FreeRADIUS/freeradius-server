@@ -1210,7 +1210,7 @@ uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t call
 
 	fr_dlist_insert_tail(&el->user_callbacks, user);
 
-	return user->ident;;
+	return user->ident;
 }
 
 /** Delete a user callback to the event list.

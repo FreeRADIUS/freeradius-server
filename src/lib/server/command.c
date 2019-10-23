@@ -440,7 +440,7 @@ static int split(char **input, char **output, bool syntax_string)
 				if (!*str) {
 					fr_strerror_printf("Invalid backslash at end of string.");
 					return -1;
-				};
+				}
 				str++;
 				continue;
 			}

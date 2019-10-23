@@ -233,7 +233,7 @@ static void mismatch_print(command_ctx_t *cc, char const *command,
 		memset(spaces, ' ', talloc_array_length(spaces) - 1);
 		ERROR("             %s^ differs here", spaces);
 		talloc_free(spaces);
-	};
+	}
 }
 
 /** Print hex string to buffer
