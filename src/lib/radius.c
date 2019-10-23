@@ -3253,7 +3253,7 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	attr += attrlen;
 
 	while (attr < end) {
-		memcpy(tail, attr + 4, attr[1] - 4);
+		if (attr[1] > 4) memcpy(tail, attr + 4, attr[1] - 4);
 		tail += attr[1] - 4;
 		attr += attr[1]; /* skip VID+WiMax header */
 	}
