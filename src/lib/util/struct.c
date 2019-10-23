@@ -46,7 +46,7 @@ VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 	if (!vp) return NULL;
 
 	if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
-		TALLOC_FREE(vp);
+		fr_pair_list_free(&vp);
 		return NULL;
 	}
 
@@ -114,21 +114,20 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 		if (!child_length) child_length = (end - p);
 
-		vp = fr_pair_afrom_da(ctx, child);
-		if (!vp) return -1;
-
 		/*
 		 *	We only allow a limited number of data types
 		 *	inside of a struct.
 		 */
 		switch (child->type) {
 		default:
-			fr_strerror_printf("Invalid data type passed to decode_struct");
-			return -1;
+			goto unknown;
 
 		case FR_TYPE_VALUES:
 			break;
 		}
+
+		vp = fr_pair_afrom_da(ctx, child);
+		if (!vp) goto unknown;
 
 		/*
 		 *	No protocol-specific data types here (yet).
@@ -137,15 +136,17 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 *	structure is treated as a raw blob.
 		 */
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, child_length, true) < 0) {
-			TALLOC_FREE(vp);
+			fr_pair_list_free(&vp);
 		unknown:
 			fr_pair_list_free(&head);
-			fr_cursor_init(&child_cursor, &head);
 
 			vp = fr_unknown_from_network(ctx, parent, data, data_len);
 			if (!vp) return -1;
 
-			fr_cursor_append(&child_cursor, vp);
+			/*
+			 *	And append this one VP to the output cursor.
+			 */
+			fr_cursor_append(cursor, vp);
 			return data_len;
 		}
 
@@ -198,14 +199,14 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		}
 
 		sublen = fr_struct_from_network(ctx, cursor, child, p, end - p, child_p);
-		if (sublen < 0) return -1;
+		if (sublen < 0) goto unknown;
 
 		/*
 		 *	Else return whatever we decoded.  Note that if
 		 *	the substruct ends in a TLV, we only decode
 		 *	the fixed-length portion of the structure.
 		 */
-		return (end -p) + sublen;
+		return (end - p) + sublen;
 	}
 
 	return data_len;
