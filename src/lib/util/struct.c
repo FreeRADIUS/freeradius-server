@@ -41,7 +41,8 @@ VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 					     fr_dict_vendor_num_by_da(parent), parent->attr);
 	if (!child) return NULL;
 
-	vp = fr_pair_afrom_da(ctx, child);
+	vp = fr_pair_afrom_da(ctx, child); /* makes a copy of 'child' */
+	fr_dict_unknown_free(&child);
 	if (!vp) return NULL;
 
 	if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {

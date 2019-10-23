@@ -124,6 +124,7 @@ int		fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 void		_fr_radius_packet_log_hex(fr_log_t const *log, RADIUS_PACKET const *packet, char const *file, int line) CC_HINT(nonnull);
 
 typedef struct {
+	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
 	uint8_t const		*vector;		//!< vector for encryption / decryption of data
 	char const		*secret;		//!< shared secret.  MUST be talloc'd
 	bool 			tunnel_password_zeros;

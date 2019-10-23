@@ -168,6 +168,8 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		return -1;
 	}
 
+	packet_ctx.tmp_ctx = talloc(packet, uint8_t);
+
 	/*
 	 *	Extract attribute-value pairs
 	 */
@@ -189,6 +191,8 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 */
 		my_len = fr_radius_decode_pair(packet, &cursor, dict_radius, ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
+		fail:
+			talloc_free(packet_ctx.tmp_ctx);
 			fr_pair_list_free(&head);
 			return -1;
 		}
@@ -212,18 +216,18 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		if ((max_attributes > 0) && (num_attributes > max_attributes)) {
 			char host_ipaddr[INET6_ADDRSTRLEN];
 
-			fr_pair_list_free(&head);
 			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request "
 					   "(received %d, max %d are allowed)",
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.addr,
 						     host_ipaddr, sizeof(host_ipaddr)),
 					   num_attributes, max_attributes);
-			return -1;
+			goto fail;
 		}
 
 		ptr += my_len;
 		packet_length -= my_len;
+		talloc_free_children(packet_ctx.tmp_ctx);
 	}
 
 	fr_cursor_init(&out, &packet->vps);
@@ -236,6 +240,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	random pool.
 	 */
 	fr_rand_seed(packet->data, RADIUS_HEADER_LENGTH);
+	talloc_free(packet_ctx.tmp_ctx);
 
 	return 0;
 }

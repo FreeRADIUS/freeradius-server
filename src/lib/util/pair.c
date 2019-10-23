@@ -110,6 +110,17 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	}
 
 	/*
+	 *	If we get passed an unknown da, we need to ensure that
+	 *	it's parented by "vp".
+	 */
+	if (da->flags.is_unknown) {
+		fr_dict_attr_t const *unknown;
+
+		unknown = fr_dict_unknown_acopy(vp, da);
+		da = unknown;
+	}
+
+	/*
 	 *	Use the 'da' to initialize more fields.
 	 */
 	vp->da = da;
@@ -165,7 +176,7 @@ alloc:
 		/*
 		 *	Ensure that the DA is parented by the VP.
 		 */
-		da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_dict_internal), vendor, attr);
+		da = fr_dict_unknown_afrom_fields(vp, fr_dict_root(fr_dict_internal), vendor, attr);
 		if (!da) {
 			talloc_free(vp);
 			return NULL;
@@ -201,6 +212,7 @@ alloc:
 VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *da;
+	VALUE_PAIR *vp;
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) {
@@ -220,7 +232,9 @@ VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 		if (!da) return NULL;
 	}
 
-	return fr_pair_afrom_da(ctx, da);
+	vp = fr_pair_afrom_da(ctx, da);
+	fr_dict_unknown_free(&da);
+	return vp;
 }
 
 /** Deserialise a value pair from a string

@@ -1057,6 +1057,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	uint8_t const		*attr, *end;
 	fr_radius_ctx_t		packet_ctx;
 
+	packet_ctx.tmp_ctx = talloc_init("tmp");
 	packet_ctx.secret = secret;
 	packet_ctx.vector = original + 4;
 
@@ -1071,20 +1072,28 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	 */
 	while (attr < end) {
 		slen = fr_radius_decode_pair(ctx, &cursor, dict_radius, attr, (end - attr), &packet_ctx);
-		if (slen < 0) return slen;
+		if (slen < 0) {
+			talloc_free(packet_ctx.tmp_ctx);
+			return slen;
+		}
 
 		/*
 		 *	If slen is larger than the room in the packet,
 		 *	all kinds of bad things happen.
 		 */
-		 if (!fr_cond_assert(slen <= (end - attr))) return -1;
+		 if (!fr_cond_assert(slen <= (end - attr))) {
+			 talloc_free(packet_ctx.tmp_ctx);
+			 return -1;
+		 }
 
 		attr += slen;
+		talloc_free_children(packet_ctx.tmp_ctx);
 	}
 
 	/*
 	 *	We've parsed the whole packet, return that.
 	 */
+	talloc_free(packet_ctx.tmp_ctx);
 	return packet_len;
 }
 
