@@ -637,8 +637,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t c
 	frag = attr;
 
 	while (fragments >  0) {
-		fprintf(stderr, "LINE %d - %p %p\n", __LINE__, frag + 4, end);
-		memcpy_bounded(tail, frag + 4, frag[1] - 4, end);
+		if (frag[1] > 4) memcpy_bounded(tail, frag + 4, frag[1] - 4, end);
 		tail += frag[1] - 4;
 		frag += frag[1];
 		fragments--;
