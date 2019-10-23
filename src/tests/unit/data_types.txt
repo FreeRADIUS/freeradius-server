@@ -136,5 +136,7 @@ match 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04 03 77
 decode-dns-label -
 match www.example.com,ftp.example.com,www.example.org,ftp.example.org,ns.example.org
 
+encode-dns-label www.it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234.com
+match Label is larger than 63 characters
 count
-match 66
+match 68
