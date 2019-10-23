@@ -44,7 +44,7 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     ${JLIBTOOL}: ${top_makedir}/jlibtool.c
 	$(Q)mkdir -p $(dir $@)
 	$(Q)echo CC jlibtool.c
-	$(Q)${CC} $(CFLAGS) $< -o $@ -DPROGRAM_VERSION=$(RADIUSD_VERSION_STRING)
+	$(Q)${CC} ${INCLUDE} $< -o $@ -DPROGRAM_VERSION=$(RADIUSD_VERSION_STRING)
 
     clean: jlibtool_clean
 
