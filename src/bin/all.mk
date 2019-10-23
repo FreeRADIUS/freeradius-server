@@ -11,5 +11,11 @@ SUBMAKEFILES := \
     unit_test_attribute.mk \
     unit_test_map.mk \
     unit_test_module.mk \
-    checkrad.mk \
-    $(wildcard ${top_builddir}/src/bin/*_ext/all.mk)
+    checkrad.mk
+
+#
+#  Add the fuzzer only if everything was built with the fuzzing flags.
+#
+ifneq "$(findstring -fsanitize=fuzzer,${CFLAGS})" ""
+SUBMAKEFILES += fuzzer.mk
+endif
