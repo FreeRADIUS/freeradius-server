@@ -104,6 +104,13 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		}
 
 		child_length = child->flags.length;
+
+		/*
+		 *	If this field overflows the input, then *all*
+		 *	of the input is suspect.
+		 */
+		if ((p + child_length) > end) goto unknown;
+
 		if (!child_length) child_length = (end - p);
 
 		vp = fr_pair_afrom_da(ctx, child);
@@ -130,6 +137,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 */
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, child_length, true) < 0) {
 			TALLOC_FREE(vp);
+		unknown:
 			fr_pair_list_free(&head);
 			fr_cursor_init(&child_cursor, &head);
 
