@@ -1069,7 +1069,7 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 
 	p = in;
 
-	slen = load_test_point_by_command((void **)&tp, in, "tp_decode");
+	slen = load_test_point_by_command((void **)&tp, in, "tp_decode_pair");
 	if (!tp) {
 		fr_strerror_printf_push("Failed locating decoder testpoint");
 		RETURN_COMMAND_ERROR();

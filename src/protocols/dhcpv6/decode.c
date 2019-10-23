@@ -237,8 +237,8 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 /*
  *	Test points
  */
-extern fr_test_point_pair_decode_t dhcpv6_tp_decode;
-fr_test_point_pair_decode_t dhcpv6_tp_decode = {
+extern fr_test_point_pair_decode_t dhcpv6_tp_decode_pair;
+fr_test_point_pair_decode_t dhcpv6_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
 	.func		= fr_dhcpv6_decode_pair
 };
