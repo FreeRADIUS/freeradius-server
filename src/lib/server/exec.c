@@ -308,7 +308,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	If we are debugging, then we want the error
 		 *	messages to go to the STDERR of the server.
 		 */
-		if (!RDEBUG_ENABLED) dup2(devnull, STDERR_FILENO);
+		if (!request || !RDEBUG_ENABLED) dup2(devnull, STDERR_FILENO);
 		close(devnull);
 
 		/*
