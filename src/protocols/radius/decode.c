@@ -979,7 +979,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	ssize_t			rcode;
 	uint32_t		vendor;
 	fr_dict_attr_t const	*child;
-	VALUE_PAIR		*vp;
+	VALUE_PAIR		*vp = NULL;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
@@ -1357,6 +1357,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 
 	default:
 	raw:
+		if (vp) fr_pair_list_free(&vp);
+
 		/*
 		 *	Re-write the attribute to be "raw".  It is
 		 *	therefore of type "octets", and will be
@@ -1411,11 +1413,12 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	case FR_TYPE_IFID:
 	case FR_TYPE_SIZE:
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, data_len, true) < 0) {
+			fr_pair_list_free(&vp);
+
 			/*
 			 *	Paranoid loop prevention
 			 */
 			if (vp->da->flags.is_unknown) {
-				talloc_free(vp);
 				return -1;
 			}
 			goto raw;
