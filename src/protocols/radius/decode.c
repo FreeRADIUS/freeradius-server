@@ -424,7 +424,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 	if (data_len < 3) return -1; /* type, length, value */
 
 #ifdef __clang_analyzer__
-	if (!packet_ctx) return -1;
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
 #endif
 
 	FR_PROTO_HEX_DUMP(p, data_len, "tlvs");
@@ -483,7 +483,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
 #ifdef __clang_analyzer__
-	if (!packet_ctx) return -1;
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
 #endif
 
 	/*
@@ -679,7 +679,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
 #ifdef __clang_analyzer__
-	if (!packet_ctx) return -1;
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
 #endif
 
 	/*
@@ -852,7 +852,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const 
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
 #ifdef __clang_analyzer__
-	if (!packet_ctx) return -1;
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
 #endif
 
 	/*
@@ -1007,7 +1007,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	}
 
 #ifdef __clang_analyzer__
-	if (!packet_ctx) return -1;
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
 #endif
 
 	FR_PROTO_HEX_DUMP(data, attr_len, "%s", __FUNCTION__ );
