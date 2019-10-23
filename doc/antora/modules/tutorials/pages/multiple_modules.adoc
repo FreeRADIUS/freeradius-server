@@ -23,7 +23,7 @@ for each date. The following information should be added to the
 
 --------------------------------------------------------------------
 detail byname {
-	filename = ${radacctdir}/byname/%{User-Name:-none}
+	filename = ${radacctdir}/byname/%{%{User-Name}:-none}
 	detailperm = 0600
 }
 
