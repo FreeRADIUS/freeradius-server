@@ -38,9 +38,11 @@ static void memcpy_bounded(void * restrict dst, const void * restrict src, size_
 		return;
 	}
 
-	if (!fr_cond_assert(src < end)) {
+	if (!fr_cond_assert(src <= end)) {
 		return;
 	}
+
+	if (len == 0) return;
 
 	if (!fr_cond_assert(((uint8_t const * restrict) src + len) <= (uint8_t const * restrict) end)) {
 		len = (uint8_t const * restrict) end - (uint8_t const * restrict) src;
