@@ -1606,6 +1606,22 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
+static ssize_t fr_radius_decode_proto(void *proto_ctx, uint8_t const *data, size_t data_len)
+{
+	ssize_t rcode;
+	size_t packet_len = data_len;
+	VALUE_PAIR *vp = NULL;
+	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
+
+	if (!fr_radius_ok(data, &packet_len, 200, false, NULL)) return -1;
+
+	rcode = fr_radius_decode(test_ctx, data, packet_len, test_ctx->vector - 4, /* decode adds 4 to this */
+				 test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, &vp);
+	fr_pair_list_free(&vp);
+
+	return rcode;
+}
+
 /*
  *	Test points
  */
@@ -1613,4 +1629,10 @@ extern fr_test_point_pair_decode_t radius_tp_decode_pair;
 fr_test_point_pair_decode_t radius_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
 	.func		= fr_radius_decode_pair
+};
+
+extern fr_test_point_proto_decode_t radius_tp_decode_proto;
+fr_test_point_proto_decode_t radius_tp_decode_proto = {
+	.test_ctx	= decode_test_ctx,
+	.func		= fr_radius_decode_proto
 };
