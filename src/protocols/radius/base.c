@@ -1049,7 +1049,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 /** Decode a raw RADIUS packet into VPs.
  *
  */
-ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, uint8_t const *original,
+ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
 			 char const *secret, UNUSED size_t secret_len, VALUE_PAIR **vps)
 {
 	ssize_t			slen;
