@@ -1,0 +1,145 @@
+= Base configuration
+
+include::howto:partial$pre_test.adoc[]
+
+== Editing mods-available/rest
+
+[source,config]
+----
+rest {
+	# example - "http://localhost"
+	connect_uri = 'http://<http_server_fqdn>'     <1>
+}
+----
+
+<1> A common URL prefix for all REST API endpoints called by this module instance.
+    Connect URI is used to reduce repetition in the config, and as a URI to check
+    connectivity to the REST API on startup, and to warm the connection pool before
+    processing requests.
+
+== Enabling mods-available/rest
+
+The `ldap` module is enabled by creating a soft link from the
+`mods-enabled/` directory to the `mods-available/` directory.
+
+[source,shell]
+----
+cd raddb/mods-enabled && ln -s ../mods-available/rest
+----
+
+== Calling the rest module
+
+=== Calling a generic API endpoint
+
+The REST module allows a different REST API endpoint to be configured for each
+type of section it can be called in.
+
+If called in `recv Access-Request` (≥ v4.0.x) or `authorize { ... }` (≤ v3.0.x)
+the `rest.authorize` module section will be evaluated.
+
+[source,config]
+----
+server default {
+	...
+	recv Access-Request {
+		rest
+		...
+	}
+	...
+}
+----
+
+[source,config]
+----
+rest {
+	...
+	authorize {
+		uri = "${..connect_uri}/user/%{User-Name}?action=authorize" <1>
+		method = 'get' <2>
+	}
+	...
+}
+----
+<1> The URL to authenticate against. Will be expanded (if required).
+<2> The HTTP 'verb' to use.
+
+If called in `recv Accounting-Request` (≥ v4.0.x) or `accounting { ... }` (≤ v3.0.x)
+the `rest.authorize` mould section will be evaluated.
+
+[source,config]
+----
+server default {
+	...
+	recv Accounting-Request {
+		rest
+		...
+	}
+	...
+}
+----
+
+[source,config]
+----
+rest {
+	...
+	accounting {
+		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting" <1>
+		method = 'post' <2>
+	}
+	...
+}
+----
+<1> The URL to authenticate against. Will be expanded (if required).
+<2> The HTTP 'verb' to use.
+
+=== Authenticating a user with HTTP basic auth
+
+The REST module can also authenticate users by performing HTTP basic access
+authentication against a REST API endpoint.
+
+With HTTP Basic Auth, the user's credentials will be base64 encoded and
+submitted in the clear.
+
+It is strongly recommended to use `https://` with HTTP basic auth, to prevent
+snooping.
+
+[source,unlang]
+----
+server default {
+	...
+	recv Access-Request {
+		if (&User-Password) {
+			update control {
+				&Auth-Type := rest
+			}
+		}
+	}
+
+	authenticate rest {
+		rest
+	}
+	...
+}
+----
+
+[source,config]
+----
+rest {
+	...
+	authenticate {
+		uri = "${..connect_uri}/authenticate" <1>
+		username = "%{User-Name}"      <2>
+		password = "%{User-Password}"  <3>
+		method = 'get'  <4>
+		tls = ${..tls}  <5>
+	}
+	...
+}
+----
+<1> The URL to authenticate against. Will be expanded (if required).
+<2> Username to submit for HTTP Basic Auth.  Will be expanded.
+<3> Password to submit for HTTP Basic Auth.  Will be expanded.
+<4> The HTTP 'verb' to use.
+<5> HTTP(s) settings for the module instance.
+
+include::howto:partial$post_test.adoc[]

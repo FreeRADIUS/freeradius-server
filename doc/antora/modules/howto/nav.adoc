@@ -18,7 +18,7 @@
 ***** xref:modules/ldap/ldapsearch/locating_objects.adoc[Locating objects]
 ***** xref:modules/ldap/ldapsearch/translating_to_the_ldap_module.adoc[Translating ldapsearch arguments to LDAP configuration items]
 
-**** xref:modules/ldap/configuration.adoc[Enabling the LDAP module]
+**** xref:modules/ldap/base_configuration/index.adoc[Base configuration]
 
 **** xref:modules/ldap/authorization/index.adoc[Configuring authorization]
 ***** xref:modules/ldap/authorization/locating_the_user.adoc[Locating the user]
@@ -33,6 +33,11 @@
 *** xref:modules/pam/index.adoc[PAM]
 *** xref:modules/passwd/index.adoc[Passwd]
 *** xref:modules/python/index.adoc[Python]
+
+*** xref:modules/rest/index.adoc[REST]
+**** xref:modules/rest/bootstrap_nginx.adoc[Installing and Configuring NGINX]
+**** xref:modules/rest/configuration.adoc[Base configuration]
+
 *** xref:modules/soh/index.adoc[SoH]
 *** xref:modules/sql/index.adoc[SQL]
 *** xref:modules/sqlcounter/index.adoc[SQL-Counter]

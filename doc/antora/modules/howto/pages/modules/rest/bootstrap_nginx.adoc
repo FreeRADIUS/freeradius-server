@@ -1,0 +1,71 @@
+= Bootstrap NGINX
+
+NGINX itself should be installed from packages provided with your OS.
+
+After installing NGINX you should locate its configuration and virtual server directories.
+
+On RHEL and Centos, the main configuration directory is located at `/etc/nginx`, with the
+default virtual server loading endpoint definitions from `/etc/nginx/conf.d`.
+
+We will be making no changes to the main NGINX configuration, and will instead be placing
+stub endpoints in `/etc/nginx/conf.d`.
+
+== Static endpoint
+
+No special logic or server side processing needs to be implemented for simple APIs.
+
+Serving files with static JSON data is often sufficient for testing purposes.
+
+[source,shell]
+----
+cat <<EOF > /usr/share/nginx/html/reply_message.json
+{
+"reply:Reply-Message": "Hello from NGINX!"
+}
+EOF
+----
+
+== Basic authentication endpoint (`default.d/authenticate.conf`)
+
+=== Create a htpasswd file
+
+In order to enabled HTTP Basic Authentication, we first need to create a file containing user
+credentials.
+
+Ensure that the `apache2-utils` (Debian, Ubuntu) or `httpd-tools` (RHEL/CentOS)
+package is installed. This will provide the  `htpasswd` utility.
+
+[source,shell]
+----
+sudo htpasswd -cb /etc/nginx/.htpasswd john password
+----
+
+If you `cat /etc/nginx/.htpasswd` you should see that an entry has been created for john.
+
+[source,shell]
+----
+sudo cat /etc/nginx/.htpasswd
+john:$apr1$Mvht.qj2$/o8yV5T9RnAYEnqNtXBfM0
+----
+
+=== Define an endpoint for HTTP auth
+
+[source,shell]
+----
+sudo -s
+
+cat <<EOF > /etc/nginx/default.d/authenticate.conf
+location /authenticate {
+	auth_basic "FreeRADIUS user authentication";
+	auth_basic_user_file /etc/nginx/.htpasswd;
+	add_header Content-Type text/plain;
+}
+EOF
+
+# create an empty file to serve
+touch /usr/share/nginx/html/authenticate
+
+systemctl reload nginx
+
+exit
+----

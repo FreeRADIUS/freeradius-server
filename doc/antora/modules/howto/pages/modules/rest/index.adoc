@@ -1,0 +1,30 @@
+= REST
+== Introduction
+
+FreeRADIUS can be used to communicate with REST APIs.
+
+== REST base configuration
+
+This section describes the basic configuration needed to configure the REST
+module to communicate with a REST service.
+
+== xref:modules/rest/fixed_data.adoc[Calling REST endpoints with fixed data formats]
+
+The REST module was developed to allow business logic to be separated out into a
+separate discreet service.  This reduces the role of FreeRADIUS to a translation
+daemon, receiving packets from the network and presenting them in JSON or POST
+format for consumption by the API, then parsing a JSON or POST response, and
+translating that back into a network packet.
+
+If you will be developing a new REST API to implement business logic for a AAA
+service, you should follow the guide in this section, and accept and return
+data in that format the REST module expected.
+
+== xref:modules/rest/custom_data.adoc[Calling REST endpoints with a custom data format]
+
+The REST module can also communicate with arbitrary REST endpoints,
+and versions ≥ v4.0.x include a JSON module xref:raddb/mods-available/json[JSON]
+which allows mapping elements of a JSON response to FreeRADIUS.
+
+If you're attempting to integrate an existing REST API, this section will provide
+hints on how to accomplish this.
