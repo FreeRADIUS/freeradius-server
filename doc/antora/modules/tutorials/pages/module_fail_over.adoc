@@ -32,12 +32,12 @@ The first step is to configure the server to have two instances of the
 --------------------------------------------------
 detail detail1 {
 	filename = ${radacctdir}/detail1
-	detailperm = 0600
+	permissions = 0600
 }
 
 detail detail2 {
 	filename = ${radacctdir}/detail2
-	detailperm = 0600
+	permissions = 0600
 }
 --------------------------------------------------
 
