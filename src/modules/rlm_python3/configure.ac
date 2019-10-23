@@ -9,7 +9,7 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CPP
 
 	dnl extra argument: --with-rlm-python3-bin
-	PYTHON_BIN=
+	PYTHON3_BIN=
 	AC_ARG_WITH(rlm-python3-bin,
 	[  --with-rlm-python3-bin=PATH   Path to python3 binary []],
 	[ case "$withval" in
@@ -19,16 +19,16 @@ if test x$with_[]modname != xno; then
 	    yes)
 		;;
 	    *)
-		PYTHON_BIN="$withval"
+		PYTHON3_BIN="$withval"
 		;;
 	  esac ]
 	)
 
-	if test "x$PYTHON_BIN" = x; then
-		AC_CHECK_PROGS(PYTHON_BIN, [ python3 ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+	if test "x$PYTHON3_BIN" = x; then
+		AC_CHECK_PROGS(PYTHON3_BIN, [ python3 ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
 	fi
 
-	if test "x$PYTHON_BIN" = "xnot-found"; then
+	if test "x$PYTHON3_BIN" = "xnot-found"; then
 		fail="python-binary"
 	fi
 
@@ -65,13 +65,13 @@ if test x$with_[]modname != xno; then
 	)
 
 	if test x$fail = x; then
-		PY_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.prefix)'`
+		PY_PREFIX=`${PYTHON3_BIN} -c 'import sys ; print(sys.prefix)'`
 		AC_MSG_NOTICE([Python sys.prefix \"${PY_PREFIX}\"])
 
-		PY_EXEC_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.exec_prefix)'`
+		PY_EXEC_PREFIX=`${PYTHON3_BIN} -c 'import sys ; print(sys.exec_prefix)'`
 		AC_MSG_NOTICE([Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"])
 
-		PY_SYS_VERSION=`${PYTHON_BIN} -c 'import sys ; print(sys.version[[0:3]])'`
+		PY_SYS_VERSION=`${PYTHON3_BIN} -c 'import sys ; print(sys.version[[0:3]])'`
 		AC_MSG_NOTICE([Python sys.version \"${PY_SYS_VERSION}\"])
 
 		if test "x$PY_LIB_DIR" = "x"; then
