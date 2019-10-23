@@ -423,6 +423,10 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 
 	if (data_len < 3) return -1; /* type, length, value */
 
+#ifdef __clang_analyzer__
+	if (!packet_ctx) return -1;
+#endif
+
 	FR_PROTO_HEX_DUMP(p, data_len, "tlvs");
 
 	if (fr_radius_decode_tlv_ok(p, data_len, 1, 1) < 0) return -1;
@@ -477,6 +481,10 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict
 	ssize_t			attrlen, my_len;
 	fr_dict_attr_t const	*da;
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
+
+#ifdef __clang_analyzer__
+	if (!packet_ctx) return -1;
+#endif
 
 	/*
 	 *	Parent must be a vendor
@@ -670,6 +678,10 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	fr_dict_attr_t const	*da;
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
+#ifdef __clang_analyzer__
+	if (!packet_ctx) return -1;
+#endif
+
 	/*
 	 *	data = VID VID VID VID WiMAX-Attr WiMAX-Len Continuation ...
 	 */
@@ -839,6 +851,10 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const 
 	fr_cursor_t		tlv_cursor;
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
+#ifdef __clang_analyzer__
+	if (!packet_ctx) return -1;
+#endif
+
 	/*
 	 *	Container must be a VSA
 	 */
@@ -989,6 +1005,10 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
 		return -1;
 	}
+
+#ifdef __clang_analyzer__
+	if (!packet_ctx) return -1;
+#endif
 
 	FR_PROTO_HEX_DUMP(data, attr_len, "%s", __FUNCTION__ );
 
