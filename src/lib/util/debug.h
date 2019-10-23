@@ -29,7 +29,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/fring.h>
 
-#define MEM(x) if (!(x)) { ERROR("%s[%u] OUT OF MEMORY", __FILE__, __LINE__); _fr_exit_now(__FILE__, __LINE__, EXIT_FAILURE); }
+#define MEM(x) do { if (!(x)) { ERROR("%s[%u] OUT OF MEMORY", __FILE__, __LINE__); _fr_exit_now(__FILE__, __LINE__, EXIT_FAILURE); } } while (0)
 
 typedef enum {
 	DEBUGGER_STATE_UNKNOWN_NO_PTRACE	= -3,	//!< We don't have ptrace so can't check.
