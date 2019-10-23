@@ -50,10 +50,6 @@ int LLVMFuzzerInitialize(UNUSED int *argc, UNUSED char ***argv)
 	char const *dict_dir = getenv("FR_DICTIONARY_DIR");
 	char buffer[1024];
 
-
-	fprintf(stderr, "INITIALIZED\n");
-
-
 	if (!dict_dir) dict_dir = DICTDIR;
 
 	if (fr_dict_global_init(NULL, dict_dir) < 0) {
