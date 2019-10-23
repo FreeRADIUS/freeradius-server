@@ -1386,7 +1386,10 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	 *	information, decode the actual p.
 	 */
 	vp = fr_pair_afrom_da(ctx, parent);
-	if (!vp) return -1;
+	if (!vp) {
+		if (parent->flags.is_unknown) fr_dict_unknown_free(&parent);
+		return -1;
+	}
 	vp->tag = tag;
 
 	switch (parent->type) {
