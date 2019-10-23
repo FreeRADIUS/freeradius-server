@@ -1267,7 +1267,7 @@ static size_t command_encode_dns_label(command_result_t *result, UNUSED command_
 			RETURN_OK_WITH_ERROR();
 		}
 
-		ret = fr_value_box_to_dns_label(&need, dns_label, sizeof(dns_label), where, true, box);
+		ret = fr_dns_label_from_value_box(&need, dns_label, sizeof(dns_label), where, true, box);
 		talloc_free(box);
 
 		if (ret < 0) RETURN_OK_WITH_ERROR();
@@ -1308,7 +1308,7 @@ static size_t command_decode_dns_label(command_result_t *result, UNUSED command_
 	end = data + COMMAND_OUTPUT_MAX;
 
 	for (i = 0; i < total; i += slen) {
-		slen = fr_value_box_from_dns_label(box, box, dns_label, total, dns_label + i, false);
+		slen = fr_dns_label_to_value_box(box, box, dns_label, total, dns_label + i, false);
 		if (slen <= 0) {
 			talloc_free(box);
 			RETURN_OK_WITH_ERROR();

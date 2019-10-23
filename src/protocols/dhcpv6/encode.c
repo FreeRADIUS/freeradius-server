@@ -271,7 +271,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 */
 		if ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
 		    (da->flags.subtype == FLAG_ENCODE_UNCOMPRESSED_DNS_LABEL)) {
-			slen = fr_value_box_to_dns_label(NULL, p, outlen, p, false, &vp->data);
+			slen = fr_dns_label_from_value_box(NULL, p, outlen, p, false, &vp->data);
 
 			/*
 			 *	@todo - check for free space, etc.
@@ -505,7 +505,7 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 			/*
 			 *	@todo - encode length and stuff
 			 */
-			slen = fr_value_box_to_dns_label(NULL, out, outlen, p, compression, &vp->data);
+			slen = fr_dns_label_from_value_box(NULL, out, outlen, p, compression, &vp->data);
 			if (slen <= 0) return PAIR_ENCODE_ERROR;
 
 			p += slen;

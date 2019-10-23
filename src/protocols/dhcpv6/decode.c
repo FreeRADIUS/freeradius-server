@@ -144,7 +144,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 		 *	function should never fail unless there's a
 		 *	bug in the code.
 		 */
-		rcode = fr_value_box_from_dns_label(vp, &vp->data, data, data_len, data + total, true);
+		rcode = fr_dns_label_to_value_box(vp, &vp->data, data, data_len, data + total, true);
 		if (rcode < 0) {
 			talloc_free(vp);
 			goto raw;
