@@ -31,6 +31,7 @@
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/io/test_point.h>
 
@@ -133,14 +134,8 @@ static inline ssize_t encode_option_hdr(uint8_t *out, size_t outlen, uint16_t op
 
 static ssize_t encode_struct(uint8_t *out, size_t outlen,
 			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			     fr_cursor_t *cursor, void *encoder_ctx)
+			     fr_cursor_t *cursor, UNUSED void *encoder_ctx)
 {
-	ssize_t			slen;
-	unsigned int		child_num = 1;
-	uint8_t			*p = out, *end = p + outlen;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
-	fr_dict_attr_t const	*struct_da = tlv_stack[depth];
-
 	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
@@ -155,52 +150,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		return PAIR_ENCODE_ERROR;
 	}
 
-	while (p < end) {
-		fr_dict_attr_t const *field_da;
-
-		FR_PROTO_STACK_PRINT(tlv_stack, depth);
-
-		/*
-		 *	The field attributes should be in order.  If
-		 *	they're not, we fill the struct with zeroes.
-		 */
-		field_da = vp->da;
-		if (field_da->attr != child_num) {
-			field_da = fr_dict_attr_child_by_num(struct_da, child_num);
-			if (!field_da) break;	/* End of the struct */
-
-			CHECK_FREESPACE(outlen, field_da->flags.length);
-
-			slen = field_da->flags.length;
-			memset(p, 0, slen);
-			p += slen;
-			child_num++;
-			continue;
-		}
-
-		slen = encode_value(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
-		if (slen < 0) return slen;
-
-		p += slen;
-		child_num++;
-
-		/*
-		 *	If nothing updated the attribute, stop
-		 */
-		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
-
-		/*
-		 *	We can encode multiple struct members if
-		 *	after rebuilding the TLV Stack, the attribute
-		 *	at this depth is the same.
-		 */
-		if (struct_da != tlv_stack[depth]) break;
-		vp = fr_cursor_current(cursor);
-
-		FR_PROTO_HEX_DUMP(out, p - out, "Done STRUCT");
-	}
-
-	return p - out;
+	return fr_struct_to_network(out, outlen, tlv_stack[depth], cursor);
 }
 
 static ssize_t encode_value(uint8_t *out, size_t outlen,
