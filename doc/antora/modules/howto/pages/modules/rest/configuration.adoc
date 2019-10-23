@@ -128,18 +128,20 @@ rest {
 	...
 	authenticate {
 		uri = "${..connect_uri}/authenticate" <1>
-		username = "%{User-Name}"      <2>
-		password = "%{User-Password}"  <3>
-		method = 'get'  <4>
-		tls = ${..tls}  <5>
+		auth = basic <2>
+		username = "%{User-Name}"      <3>
+		password = "%{User-Password}"  <4>
+		method = 'get'  <5>
+		tls = ${..tls}  <6>
 	}
 	...
 }
 ----
 <1> The URL to authenticate against. Will be expanded (if required).
-<2> Username to submit for HTTP Basic Auth.  Will be expanded.
-<3> Password to submit for HTTP Basic Auth.  Will be expanded.
-<4> The HTTP 'verb' to use.
-<5> HTTP(s) settings for the module instance.
+<2> Specify the type of authentication we'll be using (HTTP basic auth).
+<3> Username to submit for HTTP Basic Auth.  Will be expanded.
+<4> Password to submit for HTTP Basic Auth.  Will be expanded.
+<5> The HTTP 'verb' to use.
+<6> HTTP(s) settings for the module instance.
 
 include::howto:partial$post_test.adoc[]
