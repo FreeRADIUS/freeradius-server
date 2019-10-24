@@ -37,20 +37,26 @@
 #include "dhcpv6.h"
 #include "attrs.h"
 
-
 typedef struct {
-	uint8_t		stuff;	/* TBD */
+	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
 } fr_dhcpv6_decode_ctx_t;
 
 static ssize_t decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t const *dict,
 				 fr_dict_attr_t const *parent,
-				 uint8_t const *data, size_t const data_len, UNUSED void *decoder_ctx)
+				 uint8_t const *data, size_t const data_len, void *decoder_ctx)
 {
-	VALUE_PAIR		*vp;
+	VALUE_PAIR		*vp = NULL;
+	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
+
+#ifdef __clang_analyzer__
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
+#endif
 
 	switch (parent->type) {
 	default:
 	raw:
+
+		if (vp) fr_pair_list_free(&vp);
 
 #ifdef __clang_analyzer__
 		if (!ctx || !parent->parent) return -1;
@@ -61,7 +67,7 @@ static ssize_t decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr
 		 *	therefore of type "octets", and will be
 		 *	handled below.
 		 */
-		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent,
+		parent = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent->parent,
 						      fr_dict_vendor_num_by_da(parent), parent->attr);
 		if (!parent) {
 			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
@@ -71,10 +77,7 @@ static ssize_t decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr
 		/*
 		 *	Fix for Coverity.
 		 */
-		if (parent->type != FR_TYPE_OCTETS) {
-			fr_dict_unknown_free(&parent);
-			return -1;
-		}
+		if (parent->type != FR_TYPE_OCTETS) return -1;
 #endif
 		/* FALL-THROUGH */
 
@@ -85,11 +88,12 @@ static ssize_t decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr
 		if (!vp) return -1;
 
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
+			fr_pair_list_free(&vp);
+
 			/*
 			 *	Paranoid loop prevention
 			 */
 			if (vp->da->flags.is_unknown) {
-				talloc_free(vp);
 				return -1;
 			}
 			goto raw;
@@ -174,6 +178,7 @@ static ssize_t fr_dhcpv6_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	size_t			len;
 	ssize_t			rcode;
 	fr_dict_attr_t const	*da;
+	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
 
 	/*
 	 *	Must have at least an option header.
@@ -182,6 +187,10 @@ static ssize_t fr_dhcpv6_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
 		return -1;
 	}
+
+#ifdef __clang_analyzer__
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
+#endif
 
 	option = (data[0] << 8) | data[1];
 	len = (data[2] << 8) | data[3];
@@ -193,7 +202,7 @@ static ssize_t fr_dhcpv6_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	da = fr_dict_attr_child_by_num(fr_dict_root(dict), option);
 	if (!da) {
 		FR_PROTO_TRACE("Unknown attribute %u", option);
-		da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(dict), 0, option);
+		da = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, fr_dict_root(dict), 0, option);
 	}
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
@@ -227,6 +236,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx = talloc_zero(ctx, fr_dhcpv6_decode_ctx_t);
 	if (!test_ctx) return -1;
 
+	test_ctx->tmp_ctx = talloc(ctx, uint8_t);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;
