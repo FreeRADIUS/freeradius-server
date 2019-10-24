@@ -221,7 +221,6 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	uint8_t			*p = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const   	*key_da;
-	uint8_t			*key_data;
 
 	VP_VERIFY(fr_cursor_current(cursor));
 
