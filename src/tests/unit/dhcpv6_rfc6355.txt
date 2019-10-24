@@ -1,0 +1,49 @@
+#
+#  Test vectors for DHCPv6 attributes for DUID-UUID
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  Encoding an option header:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |        OPTION_CLIENTID        |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+
+#
+#  4.  DUID-UUID Format
+#
+#  The DUID-UUID is carried within Client Identifier or Server
+#  Identifier options.  It has the following format:
+#
+#  0                   1                   2                   3
+#  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          DUID-Type (4)        |    UUID (128 bits)            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+#  |                                                               |
+#  |                                                               |
+#  |                                -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                                |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+#
+#  Figure 1: DUID-UUID Format
+#
+#  DUID-Type -  DUID-UUID (4) - (16 bits)
+#  UUID -  An [RFC4122] UUID (128 bits)
+#
+
+#
+#  Client Identifier
+#
+
+#  Define the DUID-LLT + DUID
+encode-pair Client-ID-DUID = Client-ID-DUID-UUID
+match 00 01 00 02 00 04
+
+decode-pair -
+match Client-ID-DUID = Client-ID-DUID-UUID
