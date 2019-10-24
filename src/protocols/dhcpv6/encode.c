@@ -245,7 +245,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			memcpy(p, vp->vp_ptr, vp->vp_length);
 			memset(p + vp->vp_length, 0, slen - vp->vp_length);
 		} else {
-			memcpy(p, vp->vp_ptr, vp->vp_length);
+			memcpy(p, vp->vp_ptr, slen);
 		}
 		p += slen;
 		break;
