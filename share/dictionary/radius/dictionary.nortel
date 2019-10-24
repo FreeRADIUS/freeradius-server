@@ -19,18 +19,6 @@ ATTRIBUTE	Nortel-User-Role			110	string
 
 ATTRIBUTE	Nortel-Privilege-Level			166	integer
 
-ATTRIBUTE       Fabric-Attach-VLAN-Create               170     integer
-ATTRIBUTE       Fabric-Attach-VLAN-ISID                 171     string
-ATTRIBUTE       Fabric-Attach-VLAN-PVID                 172     integer
-
-ATTRIBUTE       Fabric-Attach-Switch-Mode               180     integer
-ATTRIBUTE       Fabric-Attach-Client-Id                 181     string
-ATTRIBUTE       Fabric-Attach-Client-Type               182     string
-ATTRIBUTE       Fabric-Attach-Client-PSK                183     integer
-ATTRIBUTE       Fabric-Attach-Client-Trust              184     integer
-ATTRIBUTE       Fabric-Attach-Client-Trusted-Binding    185     string
-ATTRIBUTE       Fabric-Attach-Service-Request           186     string
-
 ATTRIBUTE	Passport-Command-Scope			200	integer
 ATTRIBUTE	Passport-Command-Impact			201	integer
 ATTRIBUTE	Passport-Customer-Identifier		202	integer
@@ -39,9 +27,6 @@ ATTRIBUTE	Passport-AllowedOut-Access		204	integer
 ATTRIBUTE	Passport-Login-Directory		205	string
 ATTRIBUTE	Passport-Timeout-Protocol		206	integer
 ATTRIBUTE	Passport-Role				207	string
-
-VALUE   Fabric-Attach-VLAN-Create       No                      0
-VALUE   Fabric-Attach-VLAN-Create       Yes                     1
 
 VALUE	Nortel-Privilege-Level		VoiceMailAdmin		0
 VALUE	Nortel-Privilege-Level		ContactCenter		1
@@ -73,5 +58,60 @@ VALUE	Nortel-Privilege-Level		ApplicationIVR		28
 VALUE	Nortel-Privilege-Level		ISDN-Dial-in		30
 VALUE	Nortel-Privilege-Level		WAN-Dial-in		32
 VALUE	Nortel-Privilege-Level		System-SerialPort	36
+
+##############################################################################
+#
+#	Nortel / Avaya / Extreme ERS 4900/5900 (7.6)
+#	ERS 4800 (5.12) / 3600 (6.2) / 3500 (5.3)
+#	Fabric Attach Radius Attributes
+#	Some series support a subset of the attributes
+#
+##############################################################################
+
+ATTRIBUTE       Fabric-Attach-VLAN-Create               170     integer
+ATTRIBUTE       Fabric-Attach-VLAN-ISID                 171     string
+ATTRIBUTE       Fabric-Attach-VLAN-PVID                 172     integer
+
+ATTRIBUTE       Fabric-Attach-Switch-Mode               180     integer
+ATTRIBUTE       Fabric-Attach-Client-Id                 181     string
+ATTRIBUTE       Fabric-Attach-Client-Type               182     string
+
+VALUE   Fabric-Attach-VLAN-Create       No                      0
+VALUE   Fabric-Attach-VLAN-Create       Yes                     1
+
+VALUE   Fabric-Attach-Switch-Mode	Fabric-Attach-Server-VLAN-Mode  1
+VALUE   Fabric-Attach-Switch-Mode	Fabric-Attach-Server-SPBM-Mode  2
+VALUE   Fabric-Attach-Switch-Mode	Fabric-Attach-Proxy-Server-VLAN-Mode    3
+VALUE   Fabric-Attach-Switch-Mode	Fabric-Attach-Proxy-Server-SPBM-Mode    4
+VALUE   Fabric-Attach-Switch-Mode	Fabric-Attach-Standalone-Proxy  5
+
+##############################################################################
+#
+#	Nortel / Avaya / Extreme ERS 4900/5900 (7.6)
+#	ERS 4800 (5.12) / 3600 (6.2) 
+#
+##############################################################################
+
+ATTRIBUTE       Fabric-Attach-Client-PSK                183     integer
+ATTRIBUTE       Fabric-Attach-Service-Request           186     string
+
+VALUE   Fabric-Attach-Client-PSK        NO-Fabric-Attach-Message-Authentication 0
+VALUE   Fabric-Attach-Client-PSK        Default-Secret-Key-Auth-Failed  10
+VALUE   Fabric-Attach-Client-PSK        Default-Secret-Key-Auth-Succes  11
+VALUE   Fabric-Attach-Client-PSK        User-Defined-Key-Auth-Failed    100
+VALUE   Fabric-Attach-Client-PSK        User-Defined-Key-Auth-Succes    101
+
+##############################################################################
+#
+#	Nortel / Avaya / Extreme ERS 4900/5900 (7.6)
+#
+##############################################################################
+
+ATTRIBUTE       Fabric-Attach-Client-Trust              184     integer
+ATTRIBUTE       Fabric-Attach-Client-Trusted-Binding    185     string
+
+VALUE   Fabric-Attach-Client-Trust      Fabric-Attach-Switch-Trust-None       0
+VALUE   Fabric-Attach-Client-Trust      Fabric-Attach-Switch-Trust-All        1
+VALUE   Fabric-Attach-Client-Trust      Fabric-Attach-Switch-Trust-Restricted 2
 
 END-VENDOR	Nortel
