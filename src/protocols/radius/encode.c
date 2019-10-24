@@ -623,7 +623,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-		if (da->flags.length && (len > da->flags.length)) len = da->flags.length;
 		data = vp->vp_ptr;
 		break;
 
