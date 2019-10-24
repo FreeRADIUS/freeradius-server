@@ -27,3 +27,5 @@
 *** xref:dictionary.adoc[Dictionary]
 *** xref:virtual.adoc[Virtual]
 *** xref:radmin.adoc[Radmin]
+
+*** xref:final_group_project.adoc[Final group project]
