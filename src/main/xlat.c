@@ -1913,6 +1913,8 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 				code = request->reply->code;
 			}
 
+		if (!code) return NULL;
+
 		if (code >= FR_MAX_PACKET_CODE) {
 			return talloc_typed_asprintf(ctx, "%d", packet->code);
 		}
