@@ -300,46 +300,23 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	if (!vp || !outlen) return p - out;
 
 	/*
-	 *	Encode the key field based on the value of the next
-	 *	attribute.  Note that there isn't much point in
-	 *	converting key_da->attr into a value_box_t, and then
-	 *	calling fr_value_box_to_network() to do the work.  The
-	 *	code below isn't much larger in the source, but is
-	 *	rather substantially simpler over all.
+	 *	If our parent is a struct, AND it's parent is
+	 *	the key_da, then we have a keyed struct for
+	 *	the child.  Go encode it.
 	 */
-	if (key_da && (vp->da->parent == key_da)) {
-		switch (key_da->type) {
-		case FR_TYPE_UINT8:
-			*key_data = key_da->attr;
-			break;
-
-		case FR_TYPE_UINT16:
-			if ((p - key_data) < 2) return p - out;
-
-			key_data[0] = (key_da->attr >> 8) & 0xff;
-			key_data[1] = key_da->attr & 0xff;
-			break;
-
-		case FR_TYPE_UINT32:
-			if ((p - key_data) < 4) return p - out;
-
-			key_data[0] = (key_da->attr >> 24) & 0xff;
-			key_data[1] = (key_da->attr >> 16) & 0xff;
-			key_data[2] = (key_da->attr >> 8) & 0xff;
-			key_data[3] = key_da->attr & 0xff;
-			break;
-
-		default:
-			return p - out;
-		}
-
-		/*
-		 *	We don't need to recurse.  the caller will see
-		 *	that the next attribute is of type 'struct',
-		 *	and will call this function again to encode
-		 *	it.
-		 */
+	if (key_da &&
+	    (vp->da->parent->type == FR_TYPE_STRUCT) &&
+	    (vp->da->parent->parent == key_da)) {
+		len = fr_struct_to_network(p, outlen,
+					   vp->da->parent, cursor);
+		if (len < 0) return len;
+		return (p - out) + len;
 	}
+	/*
+	 *	Else we have a key_da with no child struct.
+	 *	Oh well.  Assume that the caller knows WTF
+	 *	he's doing, and encode things as best we can.
+	 */
 
 	return p - out;
 }
