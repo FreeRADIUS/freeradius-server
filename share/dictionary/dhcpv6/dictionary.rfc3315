@@ -14,9 +14,11 @@ ATTRIBUTE	Client-ID				1	struct
 MEMBER		Client-ID-DUID				uint16 key
 
 STRUCT	Client-ID-DUID-LLT			Client-ID-DUID	1
-MEMBER		Client-ID-DUID-LLT-Hardware-Type	uint16
+MEMBER		Client-ID-DUID-LLT-Hardware-Type	uint16 key
 MEMBER		Client-ID-DUID-LLT-Time			date
-MEMBER		Client-ID-DUID-LLT-Link-Layer-Address	octets
+
+STRUCT	Client-ID-DUID-LLT-Ethernet	Client-ID-DUID-LLT-Hardware-Type 1
+MEMBER	Client-ID-DUID-LLT-Ethernet-Address		ether
 
 STRUCT	Client-ID-DUID-EN			Client-ID-DUID	2
 MEMBER		Client-ID-DUID-EN-Enterprise-Number	uint32
