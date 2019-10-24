@@ -33,6 +33,7 @@ FILES  := \
 	dhcpv6_rfc3315.txt \
 	dhcpv6_rfc3319.txt \
 	dhcpv6_rfc3646.txt \
+	dhcpv6_rfc6355.txt \
 	regex.txt \
 	escape.txt \
 	condition.txt \
