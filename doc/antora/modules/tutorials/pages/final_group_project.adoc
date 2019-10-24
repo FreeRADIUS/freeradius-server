@@ -78,7 +78,10 @@ your server.
 
 Liveliness checks should be performed with 'status-server'.
 
-All realms should be configured with "nostrip", so the full username is proxied.
+All remote realms should be configured with "nostrip", so the full username is
+proxied.
+
+The local realm should not have "nostrip" set.
 
 === Bonus tasks
 
@@ -151,6 +154,18 @@ login, retrieve the user's password and store it in
 First, in the `recv Access-Request { ... }` or `authorize { ... }` section of
 of an appropriate virtual server,  call the suffix module.
 
+If, after the suffix module has returned, the `&control:Proxy-To-Realm` attribute
+is set, use the `return` keyword to exit from the section.  This prevents local
+modules being called, when we know the request will be handled by a remote proxy.
+
+[source,unlang]
+----
+suffix
+if (&control:Proxy-To-Realm) {
+	return
+}
+----
+
 The following backend modules have an built in authorization method:
 
 - `files`
@@ -173,8 +188,8 @@ If the backend module does not have an authenticate method (`redis`, `files`,
 
 === Bonus tasks
 
-- If the user was `notfound` log this fact, along with the username, date and
-  client IP address.
+- If the user was `notfound`, i.e. the user is local, log the fact the user was
+not found, along with the username, date and client IP address.
 
 == Authentication
 
@@ -189,6 +204,11 @@ uncommented.
 
 Run `radtest` or `radclient`, with credentials:
 `<your_user>@<your_realm>` and `your_password`. You should receive an Access-Accept.
+
+=== Bonus tasks
+
+- If the user was accepted, log the date, username, and client ip address.
+- If the user was rejected, log the date, username, and client ip address.
 
 == Remote-Authentication
 
