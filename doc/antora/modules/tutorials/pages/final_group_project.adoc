@@ -101,7 +101,15 @@ All realms should be configured with "nostrip", so the full username is proxied.
 
 Add client entries for each of the other participants server's, using
 the participant's name as the client name, the ip of their server as `ipaddr` and
-the secret they supplied as `secret`.
+`your_secret` as the secret.
+
+[WARNING]
+====
+The secret used for the client _must_ be _your_ secret, not the other participants
+secret.  The other participant will be configuring your secret in the home
+server definition to send requests to your home server.  The client and home server
+definitions must match.
+====
 
 == Loading credentials
 
