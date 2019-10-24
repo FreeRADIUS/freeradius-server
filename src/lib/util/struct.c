@@ -271,10 +271,30 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		}
 
 		/*
-		 *	Determine the nested type and call the appropriate encoder
+		 *	Encode fixed-size octets fields so that they
+		 *	are exactly the fixed size, UNLESS the entire
+		 *	output is truncated.
 		 */
-		len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
-		if (len <= 0) return -1;
+		if ((vp->da->type == FR_TYPE_OCTETS) && vp->da->flags.length) {
+			size_t mylen = vp->da->flags.length;
+
+			if (mylen > outlen) mylen = outlen;
+
+			if (vp->vp_length < mylen) {
+				memcpy(p, vp->vp_ptr, vp->vp_length);
+				memset(p + vp->vp_length, 0, mylen - vp->vp_length);
+			} else {
+				memcpy(p, vp->vp_ptr, mylen);
+			}
+			len = mylen;
+
+		} else {
+			/*
+			 *	Determine the nested type and call the appropriate encoder
+			 */
+			len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
+			if (len <= 0) return -1;
+		}
 
 		if (child->flags.extra) {
 			key_da = child;
