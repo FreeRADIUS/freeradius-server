@@ -236,7 +236,6 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	}
 
 	key_da = NULL;
-	key_data = NULL;
 
 	while (outlen) {
 		fr_dict_attr_t const *child;
@@ -253,7 +252,6 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 
 			if (child->flags.extra) {
 				key_da = child;
-				key_data = p;
 			}
 
 			if (child->flags.length > outlen) {
@@ -297,7 +295,6 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 
 		if (child->flags.extra) {
 			key_da = child;
-			key_data = p;
 		}
 
 		p += len;
