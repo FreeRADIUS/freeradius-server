@@ -43,6 +43,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Add example stored procedure for IP Pools in MySQL.
 	  See mods-config/sql/ippool/mysql/procedure.sql
 	  Patch from Terry Burton.  #3048.
+	* Update dictionary.dhcp dictionary with the recent hardware types.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
