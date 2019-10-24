@@ -82,12 +82,14 @@ All realms should be configured with "nostrip", so the full username is proxied.
 
 === Bonus tasks
 
-- When proxied requests fail, create a linelog message containing the date, the
+* When proxied requests fail, create a linelog message containing the date, the
   username and the destination realm.
-- Log all outbound packets to the proxy.
-- Log all inbound packets from the proxy.
-- Reduce the status-server check interval to three seconds.
-- Reduce the status-server "number of answers until alive" to two answers.
+* Log all outbound packets to the proxy.
+* Log all inbound packets from the proxy.
+* For each home server
+** Set the check interval to three seconds.
+** Set the check timeout to three seconds.
+** Set the "number of answers until alive" to three answers.
 
 == Clients
 
