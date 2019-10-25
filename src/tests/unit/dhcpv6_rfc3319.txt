@@ -69,7 +69,7 @@ match 00 16 00 30 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85
 #  We don't yet decode "array" types.
 #
 decode-pair -
-no match SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7335, SIP-Server-Address = 2001:4860:4860::8888
+match SIP-Server-Address = 2001:db8:85a3::8a2e:370:7334, SIP-Server-Address = 2001:db8:85a3::8a2e:370:7335, SIP-Server-Address = 2001:4860:4860::8888
 
 count
 match 30
