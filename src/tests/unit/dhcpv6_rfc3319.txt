@@ -14,14 +14,26 @@ dictionary-load dhcpv6
 encode-pair SIP-Server-Domain-Name-List = "foo.ca"
 match 00 15 00 08 03 66 6f 6f 02 63 61 00
 
+decode-pair -
+match SIP-Server-Domain-Name-List = "foo.ca"
+
 encode-pair SIP-Server-Domain-Name-List = "foo.ca", SIP-Server-Domain-Name-List = "example.com"
 match 00 15 00 15 03 66 6f 6f 02 63 61 00 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+decode-pair -
+match SIP-Server-Domain-Name-List = "foo.ca", SIP-Server-Domain-Name-List = "example.com"
 
 encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com"
 match 00 15 00 22 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
 
+decode-pair -
+match SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com"
+
 encode-pair SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com", SIP-Server-Domain-Name-List = "ns.example.com"
 match 00 15 00 32 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 02 6e 73 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+decode-pair -
+match SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-List = "ftp.example.com", SIP-Server-Domain-Name-List = "ns.example.com"
 
 #
 #  3.2 SIP Servers IPv6 Address List
@@ -36,9 +48,16 @@ match 00 15 00 32 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70
 encode-pair SIP-Server-Address = 2001:4860:4860::8888
 match 00 16 00 10 20 01 48 60 48 60 00 00 00 00 00 00 00 00 88 88
 
+decode-pair -
+match SIP-Server-Address = 2001:4860:4860::8888
+
 # long ipv6
 encode-pair SIP-Server-Address = 2001:0db8:85a3:cade:cafe:8a2e:0370:7334
 match 00 16 00 10 20 01 0d b8 85 a3 ca de ca fe 8a 2e 03 70 73 34
+
+#  Leading 0's are omitted
+decode-pair -
+match SIP-Server-Address = 2001:db8:85a3:cade:cafe:8a2e:370:7334
 
 #
 #  Array of IPv6 addresses
@@ -46,5 +65,11 @@ match 00 16 00 10 20 01 0d b8 85 a3 ca de ca fe 8a 2e 03 70 73 34
 encode-pair SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7335, SIP-Server-Address = 2001:4860:4860::8888
 match 00 16 00 30 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35 20 01 48 60 48 60 00 00 00 00 00 00 00 00 88 88
 
+#
+#  We don't yet decode "array" types.
+#
+decode-pair -
+no match SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7335, SIP-Server-Address = 2001:4860:4860::8888
+
 count
-match 18
+match 30
