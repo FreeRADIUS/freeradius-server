@@ -83,10 +83,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 {
 	VALUE_PAIR		*vp;
 
-#ifdef __clang_analyzer__
-	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
-#endif
-
 	switch (parent->type) {
 	default:
 	raw:
@@ -119,10 +115,6 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	uint8_t const  		*p = data, *end = p + data_len;
 	ssize_t			slen;
 	size_t			element_len;
-
-#ifdef __clang_analyzer__
-	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
-#endif
 
 	if (!fr_cond_assert_msg(parent->flags.array,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
