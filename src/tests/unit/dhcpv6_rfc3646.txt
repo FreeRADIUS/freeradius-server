@@ -1,0 +1,85 @@
+#
+#  Test vectors for DHCPv6/DNS
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  Encoding an option header:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |        OPTION_CLIENTID        |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+
+#
+#  3.  DNS Recursive Name Server option
+#
+#  The format of the DNS Recursive Name Server option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_DNS_SERVERS       |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                                                               |
+#  |            DNS-recursive-name-server (IPv6 address)           |
+#  |                                                               |
+#  |                                                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                                                               |
+#  |            DNS-recursive-name-server (IPv6 address)           |
+#  |                                                               |
+#  |                                                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                              ...                              |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  option-code:               OPTION_DNS_SERVERS (23)
+#
+#  option-len:                Length of the list of DNS recursive name
+#                             servers in octets; must be a multiple of
+#                             16
+#
+#  DNS-recursive-name-server: IPv6 address of DNS recursive name server
+#
+
+encode-pair DNS-Servers = 2804:14d:2a73:44ab::123, DNS-Servers = 2804:14d:2a73:44ab::456
+match 00 17 00 20 28 04 01 4d 2a 73 44 ab 00 00 00 00 00 00 01 23 28 04 01 4d 2a 73 44 ab 00 00 00 00 00 00 04 56
+
+#
+#  4.  Domain Search List option
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_DOMAIN_LIST       |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                          searchlist                           |
+#  |                              ...                              |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  option-code:  OPTION_DOMAIN_LIST (24)
+#
+#  option-len:   Length of the 'searchlist' field in octets
+#
+#  searchlist:   The specification of the list of domain names in the
+#                Domain Search List
+#
+#  The list of domain names in the 'searchlist' MUST be encoded as
+#  specified in section "Representation and use of domain names" of RFC 3315.
+#
+#  -----------------------------------------------------------------------------
+#  @rfc1035#section-3.1
+#
+#  3. DOMAIN NAME SPACE AND RR DEFINITIONS
+#  3.1. Name space definitions
+#  Domain names in messages are expressed in terms of a sequence of labels.
+#  Each label is represented as a one octet length field followed by that
+#  number of octets.  Since every domain name ends with the null label of
+#  the root, a domain name is terminated by a length byte of zero.
+#
+encode-pair Domain-List = "mydomain1.com", Domain-List = "mydomain2.lan", Domain-List = "corp.mydomain3.co"
+match 00 18 00 31 09 6d 79 64 6f 6d 61 69 6e 31 03 63 6f 6d 00 09 6d 79 64 6f 6d 61 69 6e 32 03 6c 61 6e 00 04 63 6f 72 70 09 6d 79 64 6f 6d 61 69 6e 33 02 63 6f 00
