@@ -50,7 +50,7 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
 
 #ifdef __clang_analyzer__
-	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
+	if (!packet_ctx || !packet_ctx->tmp_ctx || !parent->parent) return -1;
 #endif
 
 	/*
@@ -167,8 +167,6 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		raw:
 			slen = decode_raw(ctx, cursor, dict, parent, p, end - p , decoder_ctx);
 			if (slen < 0) return slen;
-			
-			p += slen;
 			break;
 		}
 
