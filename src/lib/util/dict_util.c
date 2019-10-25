@@ -543,18 +543,25 @@ int dict_protocol_add(fr_dict_t *dict)
 	}
 	dict->in_protocol_by_num = true;
 
+	dict->default_type_size = 1;
+	dict->default_type_length = 1;
+
 	/*
-	 *	Set the subtype flags
+	 *	Set the subtype flags and other necessary things.
 	 */
 	switch (dict->root->attr) {
 	case FR_PROTOCOL_RADIUS:
 		dict->subtype_table = radius_subtype_table;
 		dict->subtype_table_len = radius_subtype_table_len;
+		dict->default_type_size = 1;
+		dict->default_type_length = 1;
 		break;;
 
 	case FR_PROTOCOL_DHCPV6:
 		dict->subtype_table = dhcpv6_subtype_table;
 		dict->subtype_table_len = dhcpv6_subtype_table_len;
+		dict->default_type_size = 2;
+		dict->default_type_length = 2;
 		break;
 
 	case FR_PROTOCOL_EAP_AKA_SIM:

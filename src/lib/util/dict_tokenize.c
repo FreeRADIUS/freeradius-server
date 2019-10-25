@@ -2017,10 +2017,10 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			/*
 			 *	Check for extended attr VSAs
 			 *
-			 *	BEGIN-VENDOR foo format=Foo-Encapsulation-Attr
+			 *	BEGIN-VENDOR foo parent=Foo-Encapsulation-Attr
 			 */
 			if (argc > 2) {
-				if (strncmp(argv[2], "format=", 7) != 0) {
+				if (strncmp(argv[2], "parent=", 7) != 0) {
 					fr_strerror_printf_push("Invalid format %s", argv[2]);
 					goto error;
 				}
@@ -2029,12 +2029,12 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				da = fr_dict_attr_by_name(ctx->dict, p);
 				if (!da) {
 					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR: Unknown "
-								"attribute '%s'", p);
+								"parent attribute '%s'", p);
 					goto error;
 				}
 
 				if (da->type != FR_TYPE_VSA) {
-					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR.  "
+					fr_strerror_printf_push("Invalid parent for BEGIN-VENDOR.  "
 								"Attribute '%s' should be 'vsa' but is '%s'", p,
 								fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 					goto error;
@@ -2074,24 +2074,24 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			if (!vendor_da) {
 				memset(&flags, 0, sizeof(flags));
 
-				/*
-				 *	Default to 1,1
-				 */
-				flags.type_size = 1;
-				flags.length = 1;
+				flags.type_size = ctx->dict->default_type_size;
+				flags.length = ctx->dict->default_type_length;
 
+				/*
+				 *	See if this vendor has
+				 *	specific sizes for type /
+				 *	length.
+				 *
+				 *	@todo - Make this more protocol agnostic!
+				 */
 				if ((vsa_da->type == FR_TYPE_VSA) &&
-				    (vsa_da->parent->type != FR_TYPE_EXTENDED)) {
+				    (vsa_da->parent->flags.is_root)) {
 					fr_dict_vendor_t const *dv;
 
 					dv = fr_dict_vendor_by_num(ctx->dict, vendor->pen);
 					if (dv) {
 						flags.type_size = dv->type;
 						flags.length = dv->length;
-
-					} else { /* unknown vendor, shouldn't happen */
-						flags.type_size = 1;
-						flags.length = 1;
 					}
 				}
 

@@ -85,6 +85,8 @@ struct fr_dict {
 	size_t			subtype_table_len;	//!< length of table of subtypes for this protocol
 
 	unsigned int		vsa_parent;		//!< varies with different protocols
+	int			default_type_size;	//!< for TLVs and VSAs
+	int			default_type_length;	//!< for TLVs and VSAs
 };
 
 extern bool dict_initialised;
