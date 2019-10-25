@@ -29,8 +29,8 @@ match 00 15 00 32 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70
 
 # convert ipv4 to ipv6
 # e.g: 0:0:0:0:0:ffff:102:304
-encode-pair SIP-Server-Address = 1.2.3.4
-match 00 16 00 10 00 00 00 00 00 00 00 00 00 00 ff ff 01 02 03 04
+#encode-pair SIP-Server-Address = 1.2.3.4
+#match 00 16 00 10 00 00 00 00 00 00 00 00 00 00 ff ff 01 02 03 04
 
 # short ipv6
 encode-pair SIP-Server-Address = 2001:4860:4860::8888
