@@ -78,14 +78,14 @@ ATTRIBUTE	Unit-Root-247		247		tlv
 ATTRIBUTE	Unit-Long-Octets	247.241		octets
 
 VENDOR FreeRADIUS 11344
-BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-2
+BEGIN-Vendor FreeRADIUS parent=Extended-Vendor-Specific-2
 
 ATTRIBUTE	Unit-EVS-Integer 1 integer
 ATTRIBUTE	Unit-EVS-Octets	 2 octets
 
 END-Vendor FreeRADIUS
 
-BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-5
+BEGIN-Vendor FreeRADIUS parent=Extended-Vendor-Specific-5
 
 ATTRIBUTE	Unit-EVS-5-Integer	1 integer
 ATTRIBUTE	Unit-EVS-5-Octets	2 octets
