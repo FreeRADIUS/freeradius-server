@@ -657,70 +657,6 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	return p - out;
 }
 
-/** Encode a VSIO (Vendor Specific Information Opion)
- *
- *	https://tools.ietf.org/html/rfc8415#section-21.17 says:
- *
- *   The vendor-option-data field MUST be encoded as a sequence of
- *   code/length/value fields of format identical to the DHCP options (see
- *   Section 21.1).  The sub-option codes are defined by the vendor
- *   identified in the enterprise-number field and are not managed by
- *   IANA.  Each of the sub-options is formatted as follows:
- *
- *       0                   1                   2                   3
- *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |          sub-opt-code         |         sub-option-len        |
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      .                                                               .
- *      .                        sub-option-data                        .
- *      .                                                               .
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- */
-static ssize_t encode_vsio_suboption_hdr(uint8_t *out, size_t outlen,
-					 fr_dict_attr_t const **tlv_stack, unsigned int depth,
-					 fr_cursor_t *cursor, void *encoder_ctx)
-{
-	ssize_t			slen;
-	uint8_t			*p = out, *end = p + outlen;
-	fr_dict_attr_t const	*da, *dv;
-
-	FR_PROTO_STACK_PRINT(tlv_stack, depth);
-
-	/*
-	 *	This is the dictionary attribute which contains the
-	 *	vendor IANA ID.
-	 */
-	dv = tlv_stack[depth++];
-	if (dv->type != FR_TYPE_VENDOR) {
-		fr_strerror_printf("Expected Vendor");
-		return PAIR_ENCODE_ERROR;
-	}
-
-	da = tlv_stack[depth];
-
-	/*
-	 *	Encode the different data types
-	 */
-	if (da->type == FR_TYPE_TLV) {
-		slen = encode_tlv_hdr(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
-
-	} else {
-		/*
-		 *	Normal vendor option
-		 */
-		slen = encode_rfc_hdr(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
-	}
-
-	if (slen < 0) return slen;
-	p += slen;
-
-#ifndef NDEBUG
-	FR_PROTO_HEX_DUMP(out, end - p, "Done VSIO body");
-#endif
-
-	return p - out;
-}
 
 /** Encode a Vendor-Specific Information Option
  *
@@ -743,6 +679,7 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 	uint32_t		pen;
 	uint8_t			*p = out, *end = p + outlen;
 	fr_dict_attr_t const	*da = tlv_stack[depth];
+	fr_dict_attr_t const	*dv;
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
@@ -764,12 +701,12 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Now process the vendor ID part (which is one attribute deeper)
 	 */
-	da = tlv_stack[++depth];
+	dv = tlv_stack[++depth];
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	if (da->type != FR_TYPE_VENDOR) {
+	if (dv->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, dv->type, "?Unknown?"));
 		return PAIR_ENCODE_ERROR;
 	}
 
@@ -777,17 +714,47 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 	 *	Copy in the 32bit PEN (Private Enterprise Number)
 	 */
 	p += OPT_HDR_LEN;
-	pen = htonl(da->attr);
+	pen = htonl(dv->attr);
 	memcpy(p, &pen, sizeof(pen));
+	p += 4;
 
 	/*
-	 *	Encode the vendor specific option header
+	 *	https://tools.ietf.org/html/rfc8415#section-21.17 says:
+	 *
+	 *   The vendor-option-data field MUST be encoded as a sequence of
+	 *   code/length/value fields of format identical to the DHCP options (see
+	 *   Section 21.1).  The sub-option codes are defined by the vendor
+	 *   identified in the enterprise-number field and are not managed by
+	 *   IANA.  Each of the sub-options is formatted as follows:
+	 *
+	 *       0                   1                   2                   3
+	 *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *      |          sub-opt-code         |         sub-option-len        |
+	 *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *      .                                                               .
+	 *      .                        sub-option-data                        .
+	 *      .                                                               .
+	 *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
-	slen = encode_vsio_suboption_hdr(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
+
+	/*
+	 *	Encode the different data types
+	 */
+	if (da->type == FR_TYPE_TLV) {
+		slen = encode_tlv_hdr(p, end - p, tlv_stack, depth + 1, cursor, encoder_ctx);
+
+	} else {
+		/*
+		 *	Normal vendor option
+		 */
+		slen = encode_rfc_hdr(p, end - p, tlv_stack, depth + 1, cursor, encoder_ctx);
+	}
+
 	if (slen < 0) return slen;
 	p += slen;
 
-	encode_option_hdr(out, outlen, da->attr, p - out);
+	encode_option_hdr(out, outlen, da->attr, p - (out + 4));
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(out, end - p, "Done VSIO header");
