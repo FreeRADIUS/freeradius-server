@@ -32,6 +32,7 @@
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/dns.h>
+#include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/io/test_point.h>
 
 #include "dhcpv6.h"
@@ -85,7 +86,9 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decoder_ctx)
 {
+	ssize_t			rcode;
 	VALUE_PAIR		*vp;
+	fr_dict_attr_t const	*tlv;
 
 	switch (parent->type) {
 	default:
@@ -103,6 +106,17 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 			goto raw;
 		}
 		break;
+
+	case FR_TYPE_STRUCT:
+		rcode = fr_struct_from_network(ctx, cursor, parent, data, data_len, &tlv);
+		if (rcode < 0) return rcode;
+
+		if (tlv) {
+			fr_strerror_printf("decode children not implemented");
+			return -1;
+		}
+
+		return data_len;
 	}
 
 	vp->type = VT_DATA;
