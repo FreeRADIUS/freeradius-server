@@ -659,25 +659,30 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 
 /** Encode a VSIO (Vendor Specific Information Opion)
  *
- * If it's in the RFC format, call encode_rfc_hdr.  Otherwise, encode it here.
- * This allows variable length vendor options.  There is no specific format
- * specified for vendor option data, so we need to allow for variable width
- * option fields and length field widths.
+ *	https://tools.ietf.org/html/rfc8415#section-21.17 says:
  *
- *     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     .                                                               .
- *     .                          option-data                          .
- *     .                                                               .
- *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   The vendor-option-data field MUST be encoded as a sequence of
+ *   code/length/value fields of format identical to the DHCP options (see
+ *   Section 21.1).  The sub-option codes are defined by the vendor
+ *   identified in the enterprise-number field and are not managed by
+ *   IANA.  Each of the sub-options is formatted as follows:
+ *
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |          sub-opt-code         |         sub-option-len        |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      .                                                               .
+ *      .                        sub-option-data                        .
+ *      .                                                               .
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 static ssize_t encode_vsio_suboption_hdr(uint8_t *out, size_t outlen,
 					 fr_dict_attr_t const **tlv_stack, unsigned int depth,
 					 fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
-	uint8_t			*p = out, *end = p + outlen, *len_field = NULL;		/* GCC is dumb */
-	size_t			hdr_len;
+	uint8_t			*p = out, *end = p + outlen;
 	fr_dict_attr_t const	*da, *dv;
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -695,103 +700,20 @@ static ssize_t encode_vsio_suboption_hdr(uint8_t *out, size_t outlen,
 	da = tlv_stack[depth];
 
 	/*
-	 *	If the option field size is 1 byte, we can just
-	 *	encode it as a standard option header.
-	 */
-	if ((da->type != FR_TYPE_TLV) &&
-	    (dv->flags.type_size == 1) &&
-	    (dv->flags.length == 1)) return encode_rfc_hdr(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
-
-	hdr_len = dv->flags.type_size + dv->flags.length;
-	CHECK_FREESPACE(end - p, hdr_len);
-
-	/*
-	 *	Vendors use different widths for their option
-	 *	number fields.
-	 */
-	switch (dv->flags.type_size) {
-	default:
-		fr_strerror_printf("%s: Internal sanity check failed, type %u", __FUNCTION__,
-				   (unsigned) dv->flags.type_size);
-		return PAIR_ENCODE_ERROR;
-
-	case 4:	/* 32bit */
-		*p++ = (da->attr >> 24) & 0xff;
-		*p++ = (da->attr >> 16) & 0xff;
-		*p++ = (da->attr >> 8) & 0xff;
-		*p++ = (da->attr & 0xff);
-		break;
-
-	case 3: /* 24bit */
-		*p++ = (da->attr >> 16) & 0xff;
-		*p++ = (da->attr >> 8) & 0xff;
-		*p++ = (da->attr & 0xff);
-		break;
-
-	case 2: /* 16bit */
-		*p++ = (da->attr >> 8) & 0xff;
-		*p++ = (da->attr & 0xff);
-		break;
-
-	case 1: /* 8 bit */
-		*p++ = (da->attr & 0xff);
-		break;
-	}
-
-	switch (dv->flags.length) {
-	default:
-		fr_strerror_printf("%s: Internal sanity check failed, length %u",
-				   __FUNCTION__, (unsigned) dv->flags.length);
-		return PAIR_ENCODE_ERROR;
-
-	case 0:	/* No length field ??? */
-		break;
-
-	case 2:	/* 16bit length field */
-		len_field = p;
-		p += sizeof(uint16_t);
-		break;
-
-	case 1: /* 8bit length field */
-		len_field = p;
-		p += sizeof(uint8_t);
-		break;
-	}
-
-	/*
-	 *	Because we've now encoded the attribute header,
-	 *	if this is a TLV, we must process it via the
-	 *	internal tlv function, else we get a double TLV header.
+	 *	Encode the different data types
 	 */
 	if (da->type == FR_TYPE_TLV) {
-		slen = encode_tlv(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
-	/*
-	 *	Array of values inside a vendor option
-	 */
-	} else if (da->flags.array) {
-		slen = encode_array(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
-	/*
-	 *	Normal vendor option
-	 */
+		slen = encode_tlv_hdr(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
+
 	} else {
-		slen = encode_value(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
+		/*
+		 *	Normal vendor option
+		 */
+		slen = encode_rfc_hdr(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
 	}
+
 	if (slen < 0) return slen;
 	p += slen;
-
-	switch (dv->flags.length) {
-	default:
-		break;
-
-	case 2:
-		len_field[0] = ((end - p) >> 8) & 0xff;
-		len_field[1] = (end - p) & 0xff;
-		break;
-
-	case 1:
-		len_field[0] = (end - p) & 0xff;
-		break;
-	}
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(out, end - p, "Done VSIO body");
@@ -860,8 +782,6 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 
 	/*
 	 *	Encode the vendor specific option header
-	 *	i.e. OPTION_VENDOR_OPTS and whatever the length of the vendor
-	 *	specific attribute was.
 	 */
 	slen = encode_vsio_suboption_hdr(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
 	if (slen < 0) return slen;
