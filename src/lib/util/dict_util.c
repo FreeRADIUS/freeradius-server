@@ -550,13 +550,11 @@ int dict_protocol_add(fr_dict_t *dict)
 	case FR_PROTOCOL_RADIUS:
 		dict->subtype_table = radius_subtype_table;
 		dict->subtype_table_len = radius_subtype_table_len;
-		dict->vsa_parent = 26; /* Vendor-Specific magic number! */
 		break;;
 
 	case FR_PROTOCOL_DHCPV6:
 		dict->subtype_table = dhcpv6_subtype_table;
 		dict->subtype_table_len = dhcpv6_subtype_table_len;
-		dict->vsa_parent = 17; /* Vendor-Opts another magic number! */
 		break;
 
 	case FR_PROTOCOL_EAP_AKA_SIM:

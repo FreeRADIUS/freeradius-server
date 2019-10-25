@@ -575,6 +575,14 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 #endif
 
 	/*
+	 *	Dynamically define where VSAs go.  Note that we CANNOT
+	 *	define VSAs until we define an attribute of type VSA!
+	 */
+	if ((type == FR_TYPE_VSA) && (parent->flags.is_root)) {
+		ctx->dict->vsa_parent = attr;
+	}
+
+	/*
 	 *	Add in an attribute
 	 */
 	if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
