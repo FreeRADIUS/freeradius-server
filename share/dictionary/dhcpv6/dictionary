@@ -66,4 +66,6 @@ $INCLUDE dictionary.rfc8026
 $INCLUDE dictionary.rfc8115
 $INCLUDE dictionary.rfc8156
 
+$INCLUDE dictionary.microsoft
+
 END-PROTOCOL 	DHCPv6

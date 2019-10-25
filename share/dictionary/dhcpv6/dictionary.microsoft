@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Microsoft's VSA's
+#
+#	https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-dhcpe/e25219a2-e1d9-4a72-8b30-0eaf8f77ac77
+#
+#	$Id$
+#
+
+VENDOR		Microsoft			311
+
+ATTRIBUTE	Microsoft-Rogue-Detection-Request	94	octets
+ATTRIBUTE	Microsoft-Rogue-Detection-Reply		95	octets

@@ -191,5 +191,13 @@ match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 encode-pair Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d
 match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 00 00
 
+#
+#  Microsoft VSAs. We have no idea what the contents are, and the documentation doesn't say.
+#
+#  For now, the encoder is wrong :(
+#
+encode-pair Microsoft-Rogue-Detection-Request = 0x00
+no match 00 11 00 08 00 01 37 00 5e 00 01 00
+
 count
-match 86
+match 88
