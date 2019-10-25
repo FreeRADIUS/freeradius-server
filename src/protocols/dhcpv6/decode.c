@@ -88,12 +88,11 @@ static ssize_t decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr
 		if (!vp) return -1;
 
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
-			fr_pair_list_free(&vp);
-
 			/*
 			 *	Paranoid loop prevention
 			 */
 			if (vp->da->flags.is_unknown) {
+				fr_pair_list_free(&vp);
 				return -1;
 			}
 			goto raw;
