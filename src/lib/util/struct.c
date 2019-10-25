@@ -195,6 +195,9 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 		child = fr_dict_attr_child_by_num(key_vp->da, child_num);
 		if (!child || (child->type != FR_TYPE_STRUCT)) {
+			/*
+			 *	@todo - create unknown attrs from the data!
+			 */
 			return data_len;
 		}
 
