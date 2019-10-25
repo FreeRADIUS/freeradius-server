@@ -30,6 +30,7 @@ FILES  := \
 	eap_sim_error.txt \
 	dhcpv4.txt \
 	dhcpv6.txt \
+	dhcpv6_rfc3646.txt \
 	dhcpv6_rfc3319.txt \
 	regex.txt \
 	escape.txt \
