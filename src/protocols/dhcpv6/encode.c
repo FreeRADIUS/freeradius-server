@@ -215,12 +215,12 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	case FR_TYPE_STRING:
 		/*
-		 *	DNS labels get a special encoder.  Since we're
-		 *	only encoding one value, it's always
-		 *	uncompressed.
+		 *	DNS labels get a special encoder.  DNS labels
+		 *	MUST NOT be compressed in DHCP.
+		 *
+		 *	https://tools.ietf.org/html/rfc8415#section-10
 		 */
-		if ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
-		    (da->flags.subtype == FLAG_ENCODE_UNCOMPRESSED_DNS_LABEL)) {
+		if (da->flags.subtype == FLAG_ENCODE_DNS_LABEL) {
 			slen = fr_dns_label_from_value_box(NULL, p, outlen, p, false, &vp->data);
 
 			/*
@@ -447,15 +447,16 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 	 *	length headers.
 	 */
 	if ((da->type == FR_TYPE_STRING) && da->flags.subtype){
-		bool compression = (da->flags.subtype == FLAG_ENCODE_DNS_LABEL);
-
 		while (p < end) {
 			vp = fr_cursor_current(cursor);
 
 			/*
-			 *	@todo - encode length and stuff
+			 *	DNS labels get a special encoder.  DNS labels
+			 *	MUST NOT be compressed in DHCP.
+			 *
+			 *	https://tools.ietf.org/html/rfc8415#section-10
 			 */
-			slen = fr_dns_label_from_value_box(NULL, out, outlen, p, compression, &vp->data);
+			slen = fr_dns_label_from_value_box(NULL, out, outlen, p, false, &vp->data);
 			if (slen <= 0) return PAIR_ENCODE_ERROR;
 
 			p += slen;
