@@ -2040,31 +2040,21 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				}
 
 				vsa_da = da;
+
+			} else if (!ctx->dict->vsa_parent) {
+				fr_strerror_printf_push("BEGIN-VENDOR is forbidden for protocol %s",
+							ctx->dict->root->name);
+				goto error;
+
 			} else {
 				/*
-				 *	Automagically create Attribute 26
-				 *
-				 *	This should exist, but in case we're starting without
-				 *	the RFC dictionaries we need to add it in the case
-				 *	it doesn't.
+				 *	Check that the protocol-specific VSA parent exists.
 				 */
-				vsa_da = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, FR_VENDOR_SPECIFIC);
+				vsa_da = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->dict->vsa_parent);
 				if (!vsa_da) {
-					memset(&flags, 0, sizeof(flags));
-
-					if (fr_dict_attr_add(ctx->dict, ctx->stack[ctx->stack_depth].da, "Vendor-Specific",
-							     FR_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags) < 0) {
-						fr_strerror_printf_push("Failed adding Vendor-Specific for Vendor %s",
-									vendor->name);
-						goto error;
-					}
-
-					vsa_da = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, FR_VENDOR_SPECIFIC);
-					if (!vsa_da) {
-						fr_strerror_printf_push("Failed finding Vendor-Specific for Vendor %s",
-									vendor->name);
-						goto error;
-					}
+					fr_strerror_printf_push("Failed finding VSA parent for Vendor %s",
+								vendor->name);
+					goto error;
 				}
 			}
 

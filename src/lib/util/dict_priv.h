@@ -83,6 +83,8 @@ struct fr_dict {
 
 	fr_table_num_ordered_t const *subtype_table;	//!< table of subtypes for this protocol
 	size_t			subtype_table_len;	//!< length of table of subtypes for this protocol
+
+	unsigned int		vsa_parent;		//!< varies with different protocols
 };
 
 extern bool dict_initialised;
