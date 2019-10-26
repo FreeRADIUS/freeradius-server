@@ -60,5 +60,12 @@ match Key-Field = Sub-Struct, Filler = 6809, Nested-Sub1 = 5, Nested-Sub2 = 6
 encode-pair -
 match ff 09 01 00 00 1a 99 05 06
 
+#
+#  Key field with unknown value.  The rest of the struct gets decoded
+#  as an unknown attribute.
+#
+decode-pair ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
+match Key-Field = 2, Filler = 6809, Attr-255.1.2 = 0xfffefdfcfbfa
+
 count
-match 28
+match 30

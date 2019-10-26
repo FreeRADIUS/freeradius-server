@@ -165,20 +165,16 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		child_num++;	/* go to the next child */
 	}
 
-	fr_cursor_head(&child_cursor);
-	fr_cursor_tail(cursor);
-	fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
-
 	/*
 	 *	Is there a substructure after this one?  If so, go
 	 *	decode it.
 	 */
 	if (key_vp) {
-		ssize_t sublen;
+		ssize_t slen;
 
 		switch (key_vp->da->type) {
 		default:
-			return data_len;
+			goto done;
 
 		case FR_TYPE_UINT8:
 			child_num = key_vp->vp_uint8;
@@ -194,23 +190,48 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		}
 
 		child = fr_dict_attr_child_by_num(key_vp->da, child_num);
-		if (!child || (child->type != FR_TYPE_STRUCT)) {
-			/*
-			 *	@todo - create unknown attrs from the data!
-			 */
-			return data_len;
+		if (!child) {
+			child = fr_dict_unknown_afrom_fields(ctx, key_vp->da,
+							     fr_dict_vendor_num_by_da(key_vp->da), child_num);
+			if (!child) goto unknown;
+			goto unknown_child; /* we know it's not a struct */
 		}
 
-		sublen = fr_struct_from_network(ctx, cursor, child, p, end - p, child_p);
-		if (sublen < 0) goto unknown;
+		if (child->type == FR_TYPE_STRUCT) {
+			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p, child_p);
+			if (slen < 0) goto unknown_child;
+			p += slen;
+
+		} else {
+		unknown_child:
+			vp = fr_unknown_from_network(ctx, child, p, end - p);
+			if (!vp) {
+				fr_dict_unknown_free(&child);
+				return -(p - data);
+			}
+
+			fr_cursor_append(&child_cursor, vp);
+			p = end;
+		}
+
+		fr_dict_unknown_free(&child);
+
+		fr_cursor_head(&child_cursor);
+		fr_cursor_tail(cursor);
+		fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
 
 		/*
 		 *	Else return whatever we decoded.  Note that if
-		 *	the substruct ends in a TLV, we only decode
+		 *	the substruct ends in a TLV, we decode only
 		 *	the fixed-length portion of the structure.
 		 */
-		return (end - p) + sublen;
+		return p - data;
 	}
+
+done:
+	fr_cursor_head(&child_cursor);
+	fr_cursor_tail(cursor);
+	fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
 
 	return data_len;
 }
