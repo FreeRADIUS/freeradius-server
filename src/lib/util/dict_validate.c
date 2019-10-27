@@ -587,7 +587,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	switch (parent->type) {
 	case FR_TYPE_STRUCT:
-		if (flags->subtype != FLAG_ENCRYPT_NONE) {
+		if ((dict->root->attr == FR_PROTOCOL_RADIUS) &&
+		    (flags->subtype != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT be encrypted.");
 			return false;
 		}
