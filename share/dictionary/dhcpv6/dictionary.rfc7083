@@ -4,11 +4,11 @@
 # Version $Id$
 ##############################################################################
 #
-#  RFC 7078 - Distributing Address Selection Policy Using DHCPv6
+#  RFC 7083 - Modification to Default Values of SOL_MAX_RT and INF_MAX_RT
 #
 #  $Id$
 #
 ##############################################################################
 
-ATTRIBUTE	Address-Selection			84	octets		# Complex struct see RFC 7078
-ATTRIBUTE	Address-Selection-Table			85	octets		# Complex struct see RFC 7078
+ATTRIBUTE	SOL-Max-RT				82	uint32
+ATTRIBUTE	INF-Max-RT				83	uint32
