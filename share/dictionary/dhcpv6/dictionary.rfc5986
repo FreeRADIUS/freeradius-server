@@ -10,4 +10,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	LIS-Access-Domain			57	octets		# Domain name
+ATTRIBUTE	LIS-Access-Domain			57	string dns_label

@@ -10,11 +10,11 @@
 #
 ##############################################################################
 
-ATTRIBUTE	MIP6-Home-Net-ID-FQDN			49	octets		# Domain name
+ATTRIBUTE	MIP6-Home-Net-ID-FQDN			49	string dns_label
 ATTRIBUTE	MIP6-Home-Net-Info			50	octets		# Complex struct see RFC 6610
 
 ATTRIBUTE	MIP6-Identified-Home-Net-Info		69	octets		# Complex struct see RFC 6610
 ATTRIBUTE	MIP6-Unrestricted-Home-Net-Info		70	octets		# Complex struct see RFC 6610
 ATTRIBUTE	MIP6-Home-Net-Prefix			71	ipv6prefix
 ATTRIBUTE	MIP6-Home-Net-Address			72	ipv6addr
-ATTRIBUTE	MIP6-Home-Agent-FQDN			73	octets		# Domain name
+ATTRIBUTE	MIP6-Home-Agent-FQDN			73	string dns_label

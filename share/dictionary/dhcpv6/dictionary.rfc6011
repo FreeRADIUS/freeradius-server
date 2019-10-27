@@ -10,4 +10,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	SIP-US-CS-Domain-List			58	octets		# Domain name list
+ATTRIBUTE	SIP-US-CS-Domain-List			58	string dns_label,array

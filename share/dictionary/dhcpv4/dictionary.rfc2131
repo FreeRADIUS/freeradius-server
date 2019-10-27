@@ -276,9 +276,9 @@ ATTRIBUTE	DHCP-MoS-IPv4-Address-CS		.2	ipaddr array
 ATTRIBUTE	DHCP-MoS-IPv4-Address-ES		.3	ipaddr array
 
 ATTRIBUTE	DHCP-MoS-IPv4-FQDN			140	tlv
-ATTRIBUTE	DHCP-MoS-IPv4-FQDN-IS			.1	string array
-ATTRIBUTE	DHCP-MoS-IPv4-FQDN-CS			.2	string array
-ATTRIBUTE	DHCP-MoS-IPv4-FQDN-ES			.3	string array
+ATTRIBUTE	DHCP-MoS-IPv4-FQDN-IS			.1	string array # and dns_label
+ATTRIBUTE	DHCP-MoS-IPv4-FQDN-CS			.2	string array # and dns_label
+ATTRIBUTE	DHCP-MoS-IPv4-FQDN-ES			.3	string array # and dns_label
 
 # RFC 6011 - SIP UA Configuration Service Domains
 ATTRIBUTE	DHCP-SIP-UA-Configuration-Service-Domains 141	string

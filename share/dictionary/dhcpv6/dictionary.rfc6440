@@ -10,4 +10,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	ERP-Local-Domain-Name			65	octets		# Domain name
+ATTRIBUTE	ERP-Local-Domain-Name			65	string dns_label

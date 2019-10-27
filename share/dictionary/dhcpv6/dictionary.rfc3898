@@ -14,5 +14,5 @@
 
 ATTRIBUTE	NIS-Servers				27	ipv6addr array
 ATTRIBUTE	NIS-Plus-Servers			28	ipv6addr array
-ATTRIBUTE	NIS-Domain-Name				29	octets		# Domain name
-ATTRIBUTE	NIS-Plus-Domain-Name			30	octets		# Domain name
+ATTRIBUTE	NIS-Domain-Name				29	string dns_label
+ATTRIBUTE	NIS-Plus-Domain-Name			30	string dns_label

@@ -11,4 +11,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	LoST					51	octets		# Domain name
+ATTRIBUTE	LoST					51	string dns_label

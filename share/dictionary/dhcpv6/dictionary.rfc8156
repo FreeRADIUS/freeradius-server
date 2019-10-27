@@ -26,8 +26,8 @@ VALUE	Failover-Connect-Flags		Fixed-PD-Length		1
 ATTRIBUTE	Failover-DNS-Removal-Info		116	tlv
 
 BEGIN-TLV	Failover-DNS-Removal-Info
-ATTRIBUTE	Failover-DNS-Host-Name			117	octets			# Domain name
-ATTRIBUTE	Failover-DNS-Zone-Name			118	octets			# Zone name
+ATTRIBUTE	Failover-DNS-Host-Name			117	string dns_label
+ATTRIBUTE	Failover-DNS-Zone-Name			118	string dns_label
 
 ATTRIBUTE	Failover-DNS-Flags			119	uint16
 VALUE	Failover-DNS-Flags		Fwd-Up-To-Date		0x01

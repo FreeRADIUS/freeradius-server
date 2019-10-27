@@ -11,4 +11,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	AFTR-Name				64	octets		# Domain name
+ATTRIBUTE	AFTR-Name				64	string dns_label
