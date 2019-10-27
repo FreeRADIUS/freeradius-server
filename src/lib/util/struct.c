@@ -334,29 +334,45 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 *	Nothing more to do, or we've done all of the
 		 *	entries in this structure, stop.
 		 */
-		if (!vp || (vp->da->parent != parent)) break;
+		if (!vp || (vp->da->parent != parent)) {
+			break;
+		}
 	}
 
 	if (!vp || !outlen) return p - out;
 
 	/*
-	 *	If our parent is a struct, AND it's parent is
-	 *	the key_da, then we have a keyed struct for
-	 *	the child.  Go encode it.
+	 *	Check for keyed data to encode.
 	 */
-	if (key_da &&
-	    (vp->da->parent->type == FR_TYPE_STRUCT) &&
-	    (vp->da->parent->parent == key_da)) {
-		len = fr_struct_to_network(p, outlen,
-					   vp->da->parent, cursor);
-		if (len < 0) return len;
-		return (p - out) + len;
+	if (key_da) {
+		/*
+		 *	If our parent is a struct, AND it's parent is
+		 *	the key_da, then we have a keyed struct for
+		 *	the child.  Go encode it.
+		 */
+		if ((vp->da->parent->parent == key_da) &&
+		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
+			len = fr_struct_to_network(p, outlen,
+						   vp->da->parent, cursor);
+			if (len < 0) return len;
+			return (p - out) + len;
+		}
+
+		/*
+		 *	The next VP is likely octets and unknown.
+		 */
+		if ((vp->da->parent == key_da) &&
+		    (vp->da->type != FR_TYPE_TLV)) {
+			len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
+			if (len <= 0) return -1;
+			(void) fr_cursor_next(cursor);
+			return (p - out) + len;
+		}
+
+		/*
+		 *	We have no idea what to do.  Ignore it.
+		 */
 	}
-	/*
-	 *	Else we have a key_da with no child struct.
-	 *	Oh well.  Assume that the caller knows WTF
-	 *	he's doing, and encode things as best we can.
-	 */
 
 	return p - out;
 }

@@ -68,7 +68,7 @@ decode-pair ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
 match Key-Field = 2, Filler = 6809, Attr-255.1.2 = 0xfffefdfcfbfa
 
 encode-pair -
-match ff 0f 02 00 00 1a 99 02 08 ff fe fd fc fb fa
+match ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
 
 
 count
