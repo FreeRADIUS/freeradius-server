@@ -9,5 +9,17 @@
 #
 ##############################################################################
 
-ATTRIBUTE	IA-PD					25	octets		# Complex struct see RFC 3633
-ATTRIBUTE	IA-Prefix				26	octets		# Complex struct see RFC 3633
+ATTRIBUTE	IA-PD					25	struct
+MEMBER		IA-PD-IAID				uint32
+MEMBER		IA-PD-T1				uint32 # time delta from "now" in seconds
+MEMBER		IA-PD-T2				uint32 # time delta from "now" in seconds
+MEMBER		IA-PD-Options				octets # really "group" of IA-Prefix and other options
+
+# An IA_PD Prefix option may appear only in an IA_PD option
+ATTRIBUTE	IA-PD-Prefix				26	struct
+MEMBER		IA-PD-Prefix-Preferred-Lifetime		uint32  # time delta from "now" in seconds
+MEMBER		IA-PD-Prefix-Valid-Lifetime		uint32  # time delta from "now" in seconds
+MEMBER		IA-PD-Prefix-IPv6-Prefix-Length		uint8
+MEMBER		IA-PD-Prefix-IPv6-Prefix		ipv6addr # MUST be 16 bytes
+MEMBER		IA-PD-Prefix-Options			octets # really "group" of IA-PD-Prefix and ot
+
