@@ -1,3 +1,4 @@
 checkrad
 radlast
 radtest
+fuzzer_radius.mk
