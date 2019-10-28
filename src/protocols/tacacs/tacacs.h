@@ -15,7 +15,7 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * @copyright 2017 The FreeRADIUS server project
- * @copyright 2017 Network RADIUS SARL (info@networkradius.com)
+ * @copyright 2017 Network RADIUS SARL (legal@networkradius.com)
  */
 #define TACACS_MAX_PACKET_SIZE		4096
 

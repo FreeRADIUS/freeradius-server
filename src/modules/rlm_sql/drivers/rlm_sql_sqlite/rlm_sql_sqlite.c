@@ -19,7 +19,7 @@
  * @file rlm_sql_sqlite.c
  * @brief SQLite driver.
  *
- * @copyright 2013 Network RADIUS SARL (info@networkradius.com)
+ * @copyright 2013 Network RADIUS SARL (legal@networkradius.com)
  * @copyright 2007 Apple Inc.
  */
 RCSID("$Id$")

@@ -23,7 +23,7 @@
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2018 The freeradius server project
- * @copyright 2018 NetworkRADIUS SARL (info@networkradius.com)
+ * @copyright 2018 NetworkRADIUS SARL (legal@networkradius.com)
  */
 #include <stdint.h>
 #include <stddef.h>

@@ -21,7 +21,7 @@
  * @author Arran Cudbard-Bell \<a.cudbardb@freeradius.org\>
  *
  * @copyright 2019 The FreeRADIUS server project
- * @copyright 2019 Network RADIUS \<info@networkradius.com\>
+ * @copyright 2019 Network RADIUS \<legal@networkradius.com\>
  */
 RCSID("$Id$")
 #include <freeradius-devel/eap/base.h>

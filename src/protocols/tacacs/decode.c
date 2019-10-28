@@ -21,7 +21,7 @@
  * @brief Low-Level TACACS+ decoding functions
  *
  * @copyright 2017 The FreeRADIUS server project
- * @copyright 2017 Network RADIUS SARL (info@networkradius.com)
+ * @copyright 2017 Network RADIUS SARL (legal@networkradius.com)
  */
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/net.h>

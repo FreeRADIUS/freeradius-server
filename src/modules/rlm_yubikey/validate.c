@@ -5,7 +5,7 @@
  *
  * @author Arran Cudbard-Bell (a.cudbardb@networkradius.com)
  * @copyright 2013 The FreeRADIUS server project
- * @copyright 2013 Network RADIUS (info@networkradius.com)
+ * @copyright 2013 Network RADIUS (legal@networkradius.com)
  */
 #define LOG_PREFIX "rlm_yubikey (%s) - "
 #define LOG_PREFIX_ARGS inst->name

@@ -24,7 +24,7 @@
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2018 The FreeRADIUS server project
- * @copyright 2018 NetworkRADIUS SARL (info@networkradius.com)
+ * @copyright 2018 NetworkRADIUS SARL (legal@networkradius.com)
  */
 RCSIDH(dhcpv6_h, "$Id$")
 

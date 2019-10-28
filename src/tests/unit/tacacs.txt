@@ -1,7 +1,7 @@
 #
 #  Test vectors for TACACS attributes
 #
-#  Copyright 2017 Network RADIUS SARL <info@networkradius.com>
+#  Copyright 2017 Network RADIUS SARL <legal@networkradius.com>
 #
 
 # ./pam_tacplus/tacc -TRA -u bob -p hello -s 172.17.0.2 -r 1.1.1.1 -k testing123 -S ppp -P ip -L pap
