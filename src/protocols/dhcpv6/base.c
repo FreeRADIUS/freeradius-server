@@ -361,8 +361,6 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	fr_dhcpv6_decode_ctx_t	packet_ctx;
 	VALUE_PAIR		*vp;
 
-	packet_ctx.tmp_ctx = talloc_init("tmp");
-
 	fr_cursor_init(&cursor, vps);
 
 	/*
@@ -406,6 +404,8 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 	p = packet + 4;
 	end = packet + packet_len;
+
+	packet_ctx.tmp_ctx = talloc_init("tmp");
 
 	/*
 	 *	The caller MUST have called fr_dhcpv6_ok() first.  If
