@@ -54,6 +54,8 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t
 	if (!packet_ctx || !packet_ctx->tmp_ctx || !parent->parent) return -1;
 #endif
 
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_raw");
+
 	/*
 	 *	Re-write the attribute to be "raw".  It is
 	 *	therefore of type "octets", and will be
@@ -89,6 +91,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	ssize_t			rcode;
 	VALUE_PAIR		*vp;
 	fr_dict_attr_t const	*tlv;
+
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
 
 	switch (parent->type) {
 	default:
@@ -133,6 +137,8 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	uint8_t const  		*p = data, *end = p + data_len;
 	ssize_t			slen;
 	size_t			element_len;
+
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_array");
 
 	if (!fr_cond_assert_msg(parent->flags.array,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
@@ -207,6 +213,8 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 	VALUE_PAIR *vp;
 	uint8_t const *next;
 
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_dns_labels");
+
 	/*
 	 *	This function handles both single-valued and array
 	 *	types.  It's just easier that way.
@@ -275,6 +283,8 @@ static ssize_t fr_dhcpv6_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	ssize_t			rcode;
 	fr_dict_attr_t const	*da;
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
+
+	FR_PROTO_HEX_DUMP(data, data_len, "fr_dhcpv6_decode_pair");
 
 	/*
 	 *	Must have at least an option header.
