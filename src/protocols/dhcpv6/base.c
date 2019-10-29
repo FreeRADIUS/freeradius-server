@@ -185,7 +185,7 @@ static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 {
 	uint32_t transaction_id;
 	uint8_t const *option;
-	uint8_t const *options = packet = 4;
+	uint8_t const *options = packet + 4;
 	uint8_t const *end = packet + packet_len;
 
 	switch (packet[0]) {
@@ -272,7 +272,7 @@ static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 static bool server_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx)
 {
 	uint8_t const *option;
-	uint8_t const *options = packet = 4;
+	uint8_t const *options = packet + 4;
 	uint8_t const *end = packet + packet_len;
 
 	/*
