@@ -14,32 +14,7 @@ dictionary-load dhcpv6
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #
 
-#
-#  @rfc6355
-#
-#  4.  DUID-UUID Format
-#
-#  The DUID-UUID is carried within Client Identifier or Server
-#  Identifier options.  It has the following format:
-#
-#  0                   1                   2                   3
-#  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-#  |          DUID-Type (4)        |    UUID (128 bits)            |
-#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
-#  |                                                               |
-#  |                                                               |
-#  |                                -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-#  |                                |
-#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-#
-#  Figure 1: DUID-UUID Format
-#
-#  DUID-Type -  DUID-UUID (4) - (16 bits)
-#  UUID -  An [RFC4122] UUID (128 bits)
-
-#
-#  @rfc3315
+#  From RFC 3315
 #
 #  9.2. DUID Based on Link-layer Address Plus Time [DUID-LLT]
 #
@@ -153,3 +128,6 @@ match 00 02 00 0a 00 03 00 02 d3 4d 00 c0 ff ee
 
 decode-pair -
 match Server-ID-DUID = Server-ID-DUID-LL, Server-ID-DUID-LL-Hardware-Type = 2, Server-ID-DUID-LL-Address = 0xd34d00c0ffee
+
+count
+match 26

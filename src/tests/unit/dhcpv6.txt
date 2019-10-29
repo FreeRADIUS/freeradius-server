@@ -179,18 +179,6 @@ match 00 21 00 22 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70
 encode-pair BCMCS-Server-Domain-Name-List = "www.example.com", BCMCS-Server-Domain-Name-List = "ftp.example.com", BCMCS-Server-Domain-Name-List = "ns.example.com"
 match 00 21 00 32 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 02 6e 73 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
 
-encode-pair Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
-match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
-
-#
-#  UUID-Value field is 16 octets.  So we truncate if if it's too long, and pad it with zeros if it's too short.
-#
-encode-pair Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f1112
-match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
-
-encode-pair Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d
-match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 00 00
-
 #
 #  Microsoft VSAs. We have no idea what the contents are, and the documentation doesn't say.
 #
@@ -200,4 +188,4 @@ encode-pair Microsoft-Rogue-Detection-Request = 0x00
 match 00 11 00 09 00 00 01 37 00 5e 00 01 00
 
 count
-match 88
+match 82
