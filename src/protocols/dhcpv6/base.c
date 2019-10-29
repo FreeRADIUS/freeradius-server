@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file protocols/dhcpv6/encode.c
+ * @file protocols/dhcpv6/base.c
  * @brief Functions to encode DHCP options.
  *
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
