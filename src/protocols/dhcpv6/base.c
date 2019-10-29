@@ -31,6 +31,8 @@
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/protocol/dhcpv6/rfc3315.h>
+#include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
 
 #include "dhcpv6.h"
 #include "attrs.h"
@@ -39,9 +41,19 @@ static int instance_count;
 
 fr_dict_t *dict_dhcpv6;
 
-extern fr_dict_autoload_t dhcpv6_dict[];
-fr_dict_autoload_t dhcpv6_dict[] = {
+extern fr_dict_autoload_t libfreeradius_dhcpv6_dict[];
+fr_dict_autoload_t libfreeradius_dhcpv6_dict[] = {
 	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_transaction_id;
+
+extern fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[];
+fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
+	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
 	{ NULL }
 };
 
@@ -91,6 +103,341 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 	}
 }
 
+#define option_len(_x) ((_x[2] << 8) | _x[3])
+
+/** See if the data pointed to by PTR is a valid DHCPv6 packet.
+ *
+ * @param[in] packet		to check.
+ * @param[in] packet_len	The size of the packet data.
+ * @param[in] max_attributes	to allow in the packet.
+ * @return
+ *	- True on success.
+ *	- False on failure.
+ */
+bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
+		  uint32_t max_attributes)
+{
+	uint8_t const *p;
+	uint8_t const *end;
+	uint32_t attributes;
+
+	/*
+	 *	8 bit code + 24 bits of transaction ID
+	 */
+	if (packet_len < 4) return false;
+
+	if (packet_len == 4) return true;
+
+	attributes = 0;
+	p = packet + 4;
+	end = packet + packet_len;
+
+	while (p < end) {
+		uint16_t len;
+
+		if ((end - p) < 4) return false;
+
+		len = option_len(p);
+		if ((end - p) < (4 + len)) return false;
+
+		attributes++;
+		if (attributes > max_attributes) return false;
+
+		p += 4 + len;
+	}
+
+	return true;
+}
+
+/*
+ *	Return pointer to a particular option.
+ */
+static uint8_t const *option_find(uint8_t const *start, uint8_t const *end, unsigned int option)
+{
+	uint8_t const *p = start;
+
+	while (p < end) {
+		uint16_t found = (p[0] << 8) | p[1];
+
+		if (found == option) return p;
+
+		p += 4 + option_len(p);
+	}
+
+	return NULL;
+}
+
+static bool duid_match(uint8_t const *option, fr_dhcpv6_decode_ctx_t const *packet_ctx)
+{
+	uint16_t len;
+
+	len = option_len(option);
+	if (len != packet_ctx->duid_len) return false;
+	if (memcmp(option + 4, packet_ctx->duid, packet_ctx->duid_len) != 0) return false;
+
+	return true;
+}
+
+/** Verify a packet from a client
+ *
+ */
+static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx)
+{
+	uint32_t transaction_id;
+	uint8_t const *option;
+	uint8_t const *options = packet = 4;
+	uint8_t const *end = packet + packet_len;
+
+	switch (packet[0]) {
+
+	case FR_PACKET_TYPE_VALUE_ADVERTISE:
+		transaction_id = (packet[1] << 16) | (packet[2] << 8) | packet[3];
+		if (transaction_id != packet_ctx->transaction_id) return false;
+
+		if (!option_find(options, end, FR_SERVER_ID)) return false;
+
+		option = option_find(options, end, FR_CLIENT_ID);
+		if (!option) return false;
+
+		/*
+		 *	The DUID MUST exist.
+		 */
+		if (!packet_ctx->duid) return false;
+		if (!duid_match(option, packet_ctx)) return false;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_REPLY:
+		transaction_id = (packet[1] << 16) | (packet[2] << 8) | packet[3];
+		if (transaction_id != packet_ctx->transaction_id) return false;
+
+		if (!option_find(options, end, FR_SERVER_ID)) return false;
+
+		/*
+		 *	It's OK to not have a client ID in the reply if we didn't send one.
+		 */
+		option = option_find(options, end, FR_CLIENT_ID);
+		if (!option) {
+			if (!packet_ctx->duid) return true;
+			return false;
+		}
+
+		if (!duid_match(option, packet_ctx)) return false;
+		return false;
+
+	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
+		if (!option_find(options, end, FR_SERVER_ID)) return false;
+
+		option = option_find(options, end, FR_CLIENT_ID);
+		if (!option) return false;
+
+		/*
+		 *	The DUID MUST exist.
+		 */
+		if (!packet_ctx->duid) return false;
+		if (!duid_match(option, packet_ctx)) return false;
+
+		option = option_find(options, end, FR_RECONF_MSG);
+		if (!option) return false;
+
+		/*
+		 *	@todo - check reconfigure message type, and
+		 *	reject if it doesn't match.
+		 */
+
+		/*
+		 *	@todo - check for authentication option and
+		 *	verify it.
+		 */
+		break;
+
+	case FR_PACKET_TYPE_VALUE_SOLICIT:
+	case FR_PACKET_TYPE_VALUE_REQUEST:
+	case FR_PACKET_TYPE_VALUE_CONFIRM:
+	case FR_PACKET_TYPE_VALUE_RENEW:
+	case FR_PACKET_TYPE_VALUE_REBIND:
+	case FR_PACKET_TYPE_VALUE_RELEASE:
+	case FR_PACKET_TYPE_VALUE_DECLINE:
+	case FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST:
+	default:
+		return false;
+	}
+
+	return true;
+}
+
+
+/** Verify a packet from a server
+ *
+ */
+static bool server_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx)
+{
+	uint8_t const *option;
+	uint8_t const *options = packet = 4;
+	uint8_t const *end = packet + packet_len;
+
+	/*
+	 *	Servers MUST have a DUID
+	 */
+	if (!packet_ctx->duid) return false;
+
+	switch (packet[0]) {
+	case FR_PACKET_TYPE_VALUE_SOLICIT:
+	case FR_PACKET_TYPE_VALUE_CONFIRM:
+	case FR_PACKET_TYPE_VALUE_REBIND:
+		if (!option_find(options, end, FR_CLIENT_ID)) return false;
+
+		if (!option_find(options, end, FR_SERVER_ID)) return false;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_REQUEST:
+	case FR_PACKET_TYPE_VALUE_RENEW:
+	case FR_PACKET_TYPE_VALUE_DECLINE:
+	case FR_PACKET_TYPE_VALUE_RELEASE:
+		if (!option_find(options, end, FR_CLIENT_ID)) return false;
+
+		option = option_find(options, end, FR_SERVER_ID);
+		if (!option) return false;
+
+		if (!duid_match(option, packet_ctx)) return false;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST:
+		option = option_find(options, end, FR_SERVER_ID);
+		if (!option) return false;
+
+		if (!duid_match(option, packet_ctx)) return false;
+
+		/*
+		 *	IA options are forbidden.
+		 */
+		if (option_find(options, end, FR_IA_NA)) return false;
+		if (option_find(options, end, FR_IA_TA)) return false;
+		if (option_find(options, end, FR_IA_ADDR)) return false;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_ADVERTISE:
+	case FR_PACKET_TYPE_VALUE_REPLY:
+	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
+	default:
+		return false;
+	}
+	return true;
+}
+
+/** Verify the packet under some various circumstances
+ *
+ * @param[in] packet		to check.
+ * @param[in] packet_len	The size of the packet data.
+ * @param[in] packet_ctx	The expected packet_ctx
+ * @param[in] from_server	true for packets from a server, false for packets from a client.
+ * @return
+ *	- True on success.
+ *	- False on failure.
+ */
+bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx,
+		      bool from_server)
+{
+	/*
+	 *	We don't support relaying or lease querying for now.
+	 */
+	if ((packet[0] == 0) || (packet[0] > FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST)) return false;
+
+	if (!packet_ctx->duid) return false;
+
+	if (from_server) return server_verify(packet, packet_len, packet_ctx);
+
+	return client_verify(packet, packet_len, packet_ctx);
+}
+
+/** Decode a DHCPv6 packet
+ *
+ */
+ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
+			 VALUE_PAIR **vps)
+{
+	ssize_t			slen;
+	fr_cursor_t		cursor;
+	uint8_t const		*p, *end;
+	fr_dhcpv6_decode_ctx_t	packet_ctx;
+	VALUE_PAIR		*vp;
+
+	packet_ctx.tmp_ctx = talloc_init("tmp");
+
+	fr_cursor_init(&cursor, vps);
+
+	/*
+	 *	Get the packet type.
+	 */
+	vp = fr_pair_afrom_da(ctx, attr_packet_type);
+	if (!vp) return -1;
+
+	if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, packet, 1, false) < 0) {
+		fr_pair_list_free(&vp);
+		return -1;
+	}
+
+	vp->type = VT_DATA;
+	fr_cursor_append(&cursor, vp);
+
+	/*
+	 *	@todo - skip over hop-count, IPv6 link address and
+	 *	IPv6 peer address for Relay-forward and Relay-reply
+	 *	messages.  There is no transaction ID in those
+	 *	packets.
+	 */
+
+	/*
+	 *	And the transaction ID.
+	 */
+	vp = fr_pair_afrom_da(ctx, attr_transaction_id);
+	if (!vp) return -1;
+
+	/*
+	 *	The internal attribute is 64-bits, but the ID is 24 bits.
+	 */
+	vp->vp_uint32 = packet[1];
+	vp->vp_uint32 <<= 8;
+	vp->vp_uint32 |= packet[2];
+	vp->vp_uint32 <<= 8;
+	vp->vp_uint32 |= packet[3];
+
+	vp->type = VT_DATA;
+	fr_cursor_append(&cursor, vp);
+
+	p = packet + 4;
+	end = packet + packet_len;
+
+	/*
+	 *	The caller MUST have called fr_dhcpv6_ok() first.  If
+	 *	he doesn't, all hell breaks loose.
+	 */
+	while (p < end) {
+		slen = fr_dhcpv6_decode_option(ctx, &cursor, dict_dhcpv6, p, (end - p), &packet_ctx);
+		if (slen < 0) {
+			talloc_free(packet_ctx.tmp_ctx);
+			return slen;
+		}
+
+		/*
+		 *	If slen is larger than the room in the packet,
+		 *	all kinds of bad things happen.
+		 */
+		 if (!fr_cond_assert(slen <= (end - p))) {
+			 talloc_free(packet_ctx.tmp_ctx);
+			 return -1;
+		 }
+
+		 p += slen;
+		 talloc_free_children(packet_ctx.tmp_ctx);
+	}
+
+	/*
+	 *	We've parsed the whole packet, return that.
+	 */
+	talloc_free(packet_ctx.tmp_ctx);
+	return packet_len;
+}
+
 int fr_dhcpv6_global_init(void)
 {
 	if (instance_count > 0) {
@@ -98,7 +445,11 @@ int fr_dhcpv6_global_init(void)
 		return 0;
 	}
 
-	if (fr_dict_autoload(dhcpv6_dict) < 0) return -1;
+	if (fr_dict_autoload(libfreeradius_dhcpv6_dict) < 0) return -1;
+	if (fr_dict_attr_autoload(libfreeradius_dhcpv6_dict_attr) < 0) {
+		fr_dict_autofree(libfreeradius_dhcpv6_dict);
+		return -1;
+	}
 
 	instance_count++;
 
@@ -109,5 +460,5 @@ void fr_dhcpv6_global_free(void)
 {
 	if (--instance_count > 0) return;
 
-	fr_dict_autofree(dhcpv6_dict);
+	fr_dict_autofree(libfreeradius_dhcpv6_dict);
 }

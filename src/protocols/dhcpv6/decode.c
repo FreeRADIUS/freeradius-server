@@ -38,10 +38,6 @@
 #include "dhcpv6.h"
 #include "attrs.h"
 
-typedef struct {
-	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
-} fr_dhcpv6_decode_ctx_t;
-
 static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t const *dict,
 			  fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len, void *decoder_ctx)
@@ -275,8 +271,8 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
  *   |          option-code          |           option-len          |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-static ssize_t fr_dhcpv6_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
-				     uint8_t const *data, size_t data_len, void *decoder_ctx)
+ssize_t fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+				uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	unsigned int   		option;
 	size_t			len;
@@ -358,5 +354,5 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 extern fr_test_point_pair_decode_t dhcpv6_tp_decode_pair;
 fr_test_point_pair_decode_t dhcpv6_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
-	.func		= fr_dhcpv6_decode_pair
+	.func		= fr_dhcpv6_decode_option
 };

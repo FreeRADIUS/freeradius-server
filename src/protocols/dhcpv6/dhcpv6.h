@@ -40,10 +40,26 @@ typedef struct {
 	fr_dict_attr_t const	*root;				//!< Root attribute of the dictionary.
 } fr_dhcpv6_encode_ctx_t;
 
+typedef struct {
+	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
+	uint32_t		transaction_id;		//!< previous transaction ID
+	uint8_t			*duid;			//!< the expected DUID, in wire format
+	size_t			duid_len;		//!< length of the expected DUID
+} fr_dhcpv6_decode_ctx_t;
+
 /*
  *	base.c
  */
 size_t		fr_dhcpv6_option_len(VALUE_PAIR const *vp);
+
+bool		fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
+			     uint32_t max_attributes);
+
+bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx,
+		      bool from_server);
+
+ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
+				 VALUE_PAIR **vps);
 
 int		fr_dhcpv6_global_init(void);
 
@@ -57,5 +73,5 @@ ssize_t		fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *curso
 /*
  *	decode.c
  */
-ssize_t		fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
+ssize_t		fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 					uint8_t const *data, size_t data_len, void *decoder_ctx);
