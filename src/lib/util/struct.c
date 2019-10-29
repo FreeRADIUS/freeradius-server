@@ -24,6 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/struct.h>
+#include <freeradius-devel/util/proto.h>
 
 VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
@@ -72,8 +73,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 	if (data_len < 1) return -1; /* at least one byte of data */
 
+	FR_PROTO_HEX_DUMP(data, data_len, "fr_struct_from_network");
+
 	/*
-	 *  Record where we were in the list when this function was called
+	 *	Record where we were in the list when this function was called
 	 */
 	fr_cursor_init(&child_cursor, &head);
 	*child_p = NULL;
@@ -88,6 +91,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 */
 		child = fr_dict_attr_child_by_num(parent, child_num);
 		if (!child) break;
+
+		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - child %d", child->attr);
 
 		/*
 		 *	Decode child TLVs, according to the parent attribute.
@@ -110,7 +115,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 *	If this field overflows the input, then *all*
 		 *	of the input is suspect.
 		 */
-		if ((p + child_length) > end) goto unknown;
+		if ((p + child_length) > end) {
+			FR_PROTO_TRACE("fr_struct_from_network - child length %zd overflows buffer", child_length);
+			goto unknown;
+		}
 
 		if (!child_length) child_length = (end - p);
 
@@ -120,6 +128,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 */
 		switch (child->type) {
 		default:
+			FR_PROTO_TRACE("fr_struct_from_network - unknown child type");
 			goto unknown;
 
 		case FR_TYPE_VALUES:
@@ -127,7 +136,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		}
 
 		vp = fr_pair_afrom_da(ctx, child);
-		if (!vp) goto unknown;
+		if (!vp) {
+			FR_PROTO_TRACE("fr_struct_from_network - failed allocating child VP");
+			goto unknown;
+		}
 
 		/*
 		 *	No protocol-specific data types here (yet).
@@ -136,6 +148,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 *	structure is treated as a raw blob.
 		 */
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, child_length, true) < 0) {
+			FR_PROTO_TRACE("fr_struct_from_network - failed decoding child VP");
 			fr_pair_list_free(&vp);
 		unknown:
 			fr_pair_list_free(&head);
@@ -171,6 +184,13 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	 */
 	if (key_vp) {
 		ssize_t slen;
+
+		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - substruct");
+
+		/*
+		 *	Nothing more to decode, don't decode it.
+		 */
+		if (p >= end) goto done;
 
 		switch (key_vp->da->type) {
 		default:
