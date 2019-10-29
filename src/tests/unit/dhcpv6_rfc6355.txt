@@ -38,12 +38,22 @@ dictionary-load dhcpv6
 #
 
 #
-#  Client Identifier
+#  Client Identifier / DUID
 #
 
-#  Define the DUID-LLT + DUID
 encode-pair Client-ID-DUID = Client-ID-DUID-UUID
 match 00 01 00 02 00 04
 
 decode-pair -
 match Client-ID-DUID = Client-ID-DUID-UUID
+
+#
+#  Server Identifier / DUID
+#
+
+encode-pair Server-ID-DUID = Server-ID-DUID-UUID
+match 00 02 00 02 00 04
+
+decode-pair -
+match Server-ID-DUID = Server-ID-DUID-UUID
+
