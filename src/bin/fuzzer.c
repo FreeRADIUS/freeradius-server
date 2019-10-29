@@ -37,6 +37,7 @@ RCSID("$Id$")
 static bool init = false;
 static void *decode_ctx = NULL;
 static fr_test_point_proto_decode_t *tp = NULL;
+static fr_dict_t *dict = NULL;
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
@@ -55,6 +56,12 @@ int LLVMFuzzerInitialize(UNUSED int *argc, UNUSED char ***argv)
 	if (fr_dict_global_init(NULL, dict_dir) < 0) {
 		fr_perror("dict_global");
 		return 0;
+	}
+
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+		fprintf(stderr, "fuzzer: Failed initializing internal dictionary: %s\n",
+			fr_strerror());
+		exit(1);
 	}
 
 	if (!proto) {
