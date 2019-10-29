@@ -34,7 +34,7 @@ endef
 #  have a test point for packet decoding.  See
 #  src/protocols/radius/decode.c for an example.
 #
-PROTOCOLS = radius
+PROTOCOLS = radius dhcpv6
 
 $(foreach X,${PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 endif
