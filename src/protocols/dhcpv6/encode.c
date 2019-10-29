@@ -757,7 +757,7 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 	encode_option_hdr(out, outlen, da->attr, p - (out + 4));
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP(out, end - p, "Done VSIO header");
+	FR_PROTO_HEX_DUMP(out, p - out, "Done VSIO header");
 #endif
 
 	return p - out;
