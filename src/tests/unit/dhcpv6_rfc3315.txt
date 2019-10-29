@@ -1,0 +1,155 @@
+#
+#  Test vectors for DHCPv6 protocol
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  Encoding an option header:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |        OPTION_CLIENTID        |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+
+#
+#  @rfc6355
+#
+#  4.  DUID-UUID Format
+#
+#  The DUID-UUID is carried within Client Identifier or Server
+#  Identifier options.  It has the following format:
+#
+#  0                   1                   2                   3
+#  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          DUID-Type (4)        |    UUID (128 bits)            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+#  |                                                               |
+#  |                                                               |
+#  |                                -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                                |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+#
+#  Figure 1: DUID-UUID Format
+#
+#  DUID-Type -  DUID-UUID (4) - (16 bits)
+#  UUID -  An [RFC4122] UUID (128 bits)
+
+#
+#  @rfc3315
+#
+#  9.2. DUID Based on Link-layer Address Plus Time [DUID-LLT]
+#
+#  The following diagram illustrates the format of a DUID-LLT:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |               1               |    hardware type (16 bits)    |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                        time (32 bits)                         |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .             link-layer address (variable length)              .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+
+#
+#  Client Identifier
+#
+
+#  Define the DUID-LLT + DUID
+encode-pair Client-ID-DUID = Client-ID-DUID-LLT, Client-ID-DUID-LLT-Hardware-Type = 1, Client-ID-DUID-LLT-Time = "Jan  1 1970 12:00:00 UTC", Client-ID-DUID-LLT-Ethernet-Address = aa:bb:cc:dd:ee:ff
+match 00 01 00 0e 00 01 00 01 00 00 a8 c0 aa bb cc dd ee ff
+
+decode-pair -
+match Client-ID-DUID = Client-ID-DUID-LLT, Client-ID-DUID-LLT-Hardware-Type = Client-ID-DUID-LLT-Ethernet, Client-ID-DUID-LLT-Time = "Jan  1 1970 12:00:00 UTC", Client-ID-DUID-LLT-Ethernet-Address = aa:bb:cc:dd:ee:ff
+
+#
+#  Server Identifier
+#
+
+#  Define the DUID-LLT + DUID
+encode-pair Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 3, Server-ID-DUID-LLT-Time = "Jan  1 1970 12:00:00 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0xc0ffeec0ffee
+match 00 02 00 0e 00 01 00 03 00 00 a8 c0 c0 ff ee c0 ff ee
+
+decode-pair -
+match Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 3, Server-ID-DUID-LLT-Time = "Jan  1 1970 12:00:00 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0xc0ffeec0ffee
+
+#
+#  9.3. DUID Assigned by Vendor Based on Enterprise Number [DUID-EN]
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |               2               |       enterprise-number       |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |   enterprise-number (contd)   |                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+#  .                           identifier                          .
+#  .                       (variable length)                       .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+
+#
+#  Client Identifier
+#
+
+#  Define the DUID-EN + DUID
+encode-pair Client-ID-DUID = Client-ID-DUID-EN, Client-ID-DUID-EN-Enterprise-Number = 11344, Client-ID-DUID-EN-Identifier = 0xaabbccddeeff
+match 00 01 00 0c 00 02 00 00 2c 50 aa bb cc dd ee ff
+
+decode-pair -
+match Client-ID-DUID = Client-ID-DUID-EN, Client-ID-DUID-EN-Enterprise-Number = 11344, Client-ID-DUID-EN-Identifier = 0xaabbccddeeff
+
+#
+#  Server Identifier
+#
+
+#  Define the DUID-EN + DUID
+encode-pair Server-ID-DUID = Server-ID-DUID-EN, Server-ID-DUID-EN-Enterprise-Number = 11344, Server-ID-DUID-EN-Identifier = 0xc0ffeec0ffee
+match 00 02 00 0c 00 02 00 00 2c 50 c0 ff ee c0 ff ee
+
+decode-pair -
+match Server-ID-DUID = Server-ID-DUID-EN, Server-ID-DUID-EN-Enterprise-Number = 11344, Server-ID-DUID-EN-Identifier = 0xc0ffeec0ffee
+
+#
+#  9.4. DUID Based on Link-layer Address [DUID-LL]
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |               3               |    hardware type (16 bits)    |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .             link-layer address (variable length)              .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+
+#
+#  Client Identifier
+#
+
+#  Define the DUID-LL + DUID
+encode-pair Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = 2, Client-ID-DUID-LL-Address = 0xaabbccddeeff
+match 00 01 00 0a 00 03 00 02 aa bb cc dd ee ff
+
+decode-pair -
+match Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = 2, Client-ID-DUID-LL-Address = 0xaabbccddeeff
+
+#
+#  Server Identifier
+#
+
+#  Define the DUID-LL + DUID
+encode-pair Server-ID-DUID = Server-ID-DUID-LL, Server-ID-DUID-LL-Hardware-Type = 2, Server-ID-DUID-LL-Address = 0xd34d00c0ffee
+match 00 02 00 0a 00 03 00 02 d3 4d 00 c0 ff ee
+
+decode-pair -
+match Server-ID-DUID = Server-ID-DUID-LL, Server-ID-DUID-LL-Hardware-Type = 2, Server-ID-DUID-LL-Address = 0xd34d00c0ffee
