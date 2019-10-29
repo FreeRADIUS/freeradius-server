@@ -52,4 +52,4 @@ VALUE	Packet-Type			Disconnect		33
 VALUE	Packet-Type			State			34
 VALUE	Packet-Type			Contact			35
 
-ATTRIBUTE	Transaction-ID				65537	uint64		# Actually 48bits
+ATTRIBUTE	Transaction-ID				65537	uint32		# Actually 24 bits
