@@ -242,12 +242,12 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	}
 
 	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
-	if (!code) {
+	if (!code || (code[1] == 0)) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		return false;
 	}
 
-	if ((code[1] < 1) || (code[2] == 0) || (code[2] >= DHCP_MAX_MESSAGE_TYPE)) {
+	if ((code[2] == 0) || (code[2] >= DHCP_MAX_MESSAGE_TYPE)) {
 		fr_strerror_printf("Unknown value %d for message-type option", code[2]);
 		return false;
 	}
