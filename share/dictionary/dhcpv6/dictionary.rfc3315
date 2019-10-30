@@ -67,7 +67,29 @@ ATTRIBUTE	Option-Request				6	octets		# Magic option listing requested options
 ATTRIBUTE	Preference				7	uint8
 ATTRIBUTE	Elapsed-Time				8	uint16
 ATTRIBUTE	Relay-Message				9	octets
-ATTRIBUTE	Auth					11	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Auth					11	struct
+MEMBER		Auth-Protocol				uint8 key
+MEMBER		Auth-Algorithm				uint8
+MEMBER		Auth-Replay-Detection-Method		uint8
+MEMBER		Auth-Replay-Detection			uint64
+MEMBER		Auth-Information			octets
+
+STRUCT	Auth-RKAP			Auth-Protocol		3 # really P=3,A=1,RDM=0
+MEMBER		Auth-RKAP-Type				uint8
+MEMBER		Auth-RKAP-Value				octets[16]
+
+VALUE	Auth-RKAP-Type			Reconfigure-Key		1
+VALUE	Auth-RKAP-Type			HMAC-MD5		2
+
+VALUE	Auth-Protocol			Configuration-Token	0
+VALUE	Auth-Protocol			Delayed-Authentication	1
+VALUE	Auth-Protocol			Obsolete		2
+VALUE	Auth-Protocol			Reconfigure-Key		3
+
+VALUE	Auth-Algorithm			HMAC-MD5		1
+
+VALUE	Auth-Replay-Detection-Method	Monotonicly-Increasing-Value 0
+
 ATTRIBUTE	Unicast					12	ipv6addr
 ATTRIBUTE	Status-Code				13	struct
 MEMBER		Status-Code-Value			uint8
