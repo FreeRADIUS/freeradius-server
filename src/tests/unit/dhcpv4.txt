@@ -71,7 +71,7 @@ match 0f ff 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78
 decode-pair 52 07 01 03 ab cd ef 03 00
 match DHCP-Relay-Circuit-Id = 0xabcdef, Attr-82.3 = 0x
 
-decode-pair 52 07 01 03 ab cd ef 03 01 ad
+decode-pair 52 08 01 03 ab cd ef 03 01 ad
 match DHCP-Relay-Circuit-Id = 0xabcdef, Attr-82.3 = 0xad
 
 #
