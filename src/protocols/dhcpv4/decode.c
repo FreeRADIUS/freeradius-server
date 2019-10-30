@@ -111,7 +111,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	if (vp->da->type == FR_TYPE_STRING) {
 		uint8_t const *q, *end;
 
-		q = end = data + data_len;
+		end = data + data_len;
 
 		/*
 		 *	Not allowed to be an array, copy the whole value
@@ -123,7 +123,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 		}
 
 		for (;;) {
-			q = memchr(p, '\0', q - p);
+			q = memchr(p, '\0', end - p);
 
 			/* Malformed but recoverable */
 			if (!q) q = end;
