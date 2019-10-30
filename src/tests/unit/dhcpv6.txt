@@ -182,10 +182,11 @@ match 00 21 00 32 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70
 #
 #  Microsoft VSAs. We have no idea what the contents are, and the documentation doesn't say.
 #
-#  For now, the encoder is wrong :(
-#
 encode-pair Microsoft-Rogue-Detection-Request = 0x00
 match 00 11 00 09 00 00 01 37 00 5e 00 01 00
 
+decode-pair -
+match Microsoft-Rogue-Detection-Request = 0x00
+
 count
-match 82
+match 84

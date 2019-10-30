@@ -38,6 +38,10 @@
 #include "dhcpv6.h"
 #include "attrs.h"
 
+static ssize_t decode_options(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+			      fr_dict_attr_t const *parent,
+			      uint8_t const *data, size_t const data_len, void *decoder_ctx);
+
 static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t const *dict,
 			  fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len, void *decoder_ctx)
@@ -263,6 +267,106 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 }
 
 
+static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+			  fr_dict_attr_t const *parent,
+			  uint8_t const *data, size_t const data_len, void *decoder_ctx)
+{
+	uint32_t		pen;
+	fr_dict_attr_t const	*da;
+	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
+
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_vsa");
+
+	if (!fr_cond_assert_msg(parent->type == FR_TYPE_VSA,
+				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'vsa'",
+				__FUNCTION__, parent->name)) return PAIR_ENCODE_ERROR;
+
+	/*
+	 *	Enterprise code plus at least one option header
+	 */
+	if (data_len < 8) return decode_raw(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
+
+	memcpy(&pen, data, sizeof(pen));
+	pen = htonl(pen);
+
+	/*
+	 *	Verify that the parent (which should be a VSA)
+	 *	contains a fake attribute representing the vendor.
+	 *
+	 *	If it doesn't then this vendor is unknown, but we know
+	 *	vendor attributes have a standard format, so we can
+	 *	decode the data anyway.
+	 */
+	da = fr_dict_attr_child_by_num(parent, pen);
+	if (!da) {
+		fr_dict_attr_t *n;
+
+		if (fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, &n, parent, pen) < 0) return -1;
+		da = n;
+	}
+
+	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
+	// @todo - decode child TLVs
+
+	return decode_options(ctx, cursor, dict, da, data + 4, data_len - 4, decoder_ctx);
+}
+
+static ssize_t decode_options(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+			      fr_dict_attr_t const *parent,
+			      uint8_t const *data, size_t const data_len, void *decoder_ctx)
+{
+	unsigned int   		option;
+	size_t			len;
+	ssize_t			rcode;
+	fr_dict_attr_t const	*da;
+	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
+
+
+#ifdef __clang_analyzer__
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
+#endif
+
+	/*
+	 *	Must have at least an option header.
+	 */
+	if (data_len < 4) {
+		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
+		return -1;
+	}
+
+	option = (data[0] << 8) | data[1];
+	len = (data[2] << 8) | data[3];
+	if ((len + 4) > data_len) {
+		fr_strerror_printf("%s: Option overflows input", __FUNCTION__);
+		return -1;
+	}
+
+	da = fr_dict_attr_child_by_num(parent, option);
+	if (!da) {
+		FR_PROTO_TRACE("Unknown attribute %u", option);
+		da = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, fr_dict_root(dict), 0, option);
+	}
+	if (!da) return -1;
+	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
+
+	if ((da->type == FR_TYPE_STRING) && da->flags.subtype) {
+		rcode = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+
+	} else if (da->flags.array) {
+		rcode = decode_array(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+
+	} else if (da->type == FR_TYPE_VSA) {
+		rcode = decode_vsa(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+
+	} else {
+		rcode = decode_value(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+	}
+	if (rcode < 0) return rcode;
+
+	return data_len;
+}
+
+
 /** Create a "normal" VALUE_PAIR from the given data
  *
  *    0                   1                   2                   3
@@ -274,51 +378,16 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 ssize_t fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 				uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
-	unsigned int   		option;
-	size_t			len;
-	ssize_t			rcode;
-	fr_dict_attr_t const	*da;
-	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
-
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_dhcpv6_decode_pair");
 
 	/*
-	 *	Must have at least an option header.
+	 *	The API changes, so we just bounce directly to the
+	 *	decode_options() function.
+	 *
+	 *	All options including VSAs in DHCPv6 MUST follow the
+	 *	standard format.
 	 */
-	if (data_len < 4) {
-		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
-		return -1;
-	}
-
-#ifdef __clang_analyzer__
-	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
-#endif
-
-	option = (data[0] << 8) | data[1];
-	len = (data[2] << 8) | data[3];
-	if ((len + 4) > data_len) {
-		fr_strerror_printf("%s: Option overflows input", __FUNCTION__);
-		return -1;
-	}
-
-	da = fr_dict_attr_child_by_num(fr_dict_root(dict), option);
-	if (!da) {
-		FR_PROTO_TRACE("Unknown attribute %u", option);
-		da = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, fr_dict_root(dict), 0, option);
-	}
-	if (!da) return -1;
-	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
-
-	if ((da->type == FR_TYPE_STRING) && da->flags.subtype) {
-		rcode = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
-	} else if (da->flags.array) {
-		rcode = decode_array(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
-	} else {
-		rcode = decode_value(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
-	}
-	if (rcode < 0) return rcode;
-
-	return data_len;
+	return decode_options(ctx, cursor, dict, fr_dict_root(dict), data, data_len, decoder_ctx);
 }
 
 /*
