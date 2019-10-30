@@ -2614,7 +2614,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 sm_lib_safe=`echo "unbound" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "ub_ctx_create" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "ub_ctx_create_ub_event" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
@@ -2624,17 +2624,17 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ub_ctx_create in -lunbound in $try" >&5
-$as_echo_n "checking for ub_ctx_create in -lunbound in $try... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ub_ctx_create_ub_event in -lunbound in $try" >&5
+$as_echo_n "checking for ub_ctx_create_ub_event in -lunbound in $try... " >&6; }
   LIBS="-lunbound $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char ub_ctx_create();
+extern char ub_ctx_create_ub_event();
 int
 main ()
 {
-ub_ctx_create()
+ub_ctx_create_ub_event()
   ;
   return 0;
 }
@@ -2659,16 +2659,16 @@ CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ub_ctx_create in -lunbound" >&5
-$as_echo_n "checking for ub_ctx_create in -lunbound... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ub_ctx_create_ub_event in -lunbound" >&5
+$as_echo_n "checking for ub_ctx_create_ub_event in -lunbound... " >&6; }
 LIBS="-lunbound $old_LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char ub_ctx_create();
+extern char ub_ctx_create_ub_event();
 int
 main ()
 {
-ub_ctx_create()
+ub_ctx_create_ub_event()
   ;
   return 0;
 }
@@ -2745,17 +2745,17 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ub_ctx_create in -lunbound in $try" >&5
-$as_echo_n "checking for ub_ctx_create in -lunbound in $try... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ub_ctx_create_ub_event in -lunbound in $try" >&5
+$as_echo_n "checking for ub_ctx_create_ub_event in -lunbound in $try... " >&6; }
   LIBS="-lunbound $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char ub_ctx_create();
+extern char ub_ctx_create_ub_event();
 int
 main ()
 {
-ub_ctx_create()
+ub_ctx_create_ub_event()
   ;
   return 0;
 }
@@ -2785,7 +2785,7 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
+	if test "x$ac_cv_lib_unbound_ub_ctx_create_ub_event" != "xyes"; then
 		fail="$fail libunbound"
 	fi
 
@@ -3018,6 +3018,237 @@ smart_prefix=
 
 	if test "$ac_cv_header_unbound_h" != "yes"; then
 		fail="$fail unbound.h"
+	fi
+
+	smart_try_dir=$rlm_unbound_include_dir
+
+
+ac_safe=`echo "unbound-event.h" | sed 'y%./+-%__pm%'`
+old_CPPFLAGS="$CPPFLAGS"
+smart_include=
+smart_include_dir="/usr/local/include /opt/include"
+
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+for _dir in $smart_try_dir; do
+  _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+done
+
+for _dir in $smart_include_dir; do
+  _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+for try in $_smart_try_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for unbound-event.h in $try" >&5
+$as_echo_n "checking for unbound-event.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <unbound-event.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
+for _prefix in $smart_prefix; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/unbound-event.h" >&5
+$as_echo_n "checking for ${_prefix}/unbound-event.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <unbound-event.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem ${_prefix}/"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+fi
+
+if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for unbound-event.h" >&5
+$as_echo_n "checking for unbound-event.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <unbound-event.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include=" "
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+if test "x$smart_include" = "x"; then
+
+for prefix in $smart_prefix; do
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file="${_prefix}/${1}"
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+done
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file=unbound-event.h
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+
+for try in $_smart_include_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for unbound-event.h in $try" >&5
+$as_echo_n "checking for unbound-event.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <unbound-event.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+eval "ac_cv_header_$ac_safe=yes"
+CPPFLAGS="$smart_include $old_CPPFLAGS"
+SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
+fi
+
+smart_prefix=
+
+	if test "$ac_cv_header_unboundmevent_h" != "yes"; then
+		fail="$fail unbound-event.h"
 	fi
 
 	targetname=rlm_unbound
