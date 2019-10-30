@@ -1429,7 +1429,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		 */
 	case FR_TYPE_DATE:
 	{
-		int i, length = 4;
+		size_t i, length = 4;
 		int precision = FR_TIME_RES_SEC;
 		uint64_t date;
 		struct timespec ts;
@@ -1438,6 +1438,12 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			length = enumv->flags.length;
 			precision = enumv->flags.type_size;
 		}
+
+		/*
+		 *	Input data doesn't match what we were told we
+		 *	need.
+		 */
+		if (len != length) return -1;
 
 		/*
 		 *	Just loop over the input data until we reach
@@ -1483,7 +1489,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 	case FR_TYPE_TIME_DELTA:
 	{
-		int i, length = 4;
+		size_t i, length = 4;
 		int precision = FR_TIME_RES_SEC;
 		uint64_t date;
 
@@ -1491,6 +1497,12 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			length = enumv->flags.length;
 			precision = enumv->flags.type_size;
 		}
+
+		/*
+		 *	Input data doesn't match what we were told we
+		 *	need.
+		 */
+		if (len != length) return -1;
 
 		/*
 		 *	Just loop over the input data until we reach
