@@ -31,13 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <fcntl.h>
 
-#ifdef HAVE_WDOCUMENTATION
-DIAG_OFF(documentation)
-#endif
-#include <unbound.h>
-#ifdef HAVE_WDOCUMENTATION
-DIAG_ON(documentation)
-#endif
+#include "io.h"
 
 typedef struct {
 	struct ub_ctx	*ub;   /* This must come first.  Do not move */
@@ -311,6 +305,27 @@ error0:
 	return -1;
 }
 
+typedef struct {
+	struct ub_result	*result;	//!< The result from the previous operation.
+} dns_resume_ctx_t;
+
+/*
+static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
+			      REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+			      fr_value_box_t **in)
+{
+	if (!*in) return XLAT_ACTION_DONE;
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input string for attribute reference");
+		return XLAT_ACTION_FAIL;
+	}
+
+	yield_to
+
+}
+*/
+
 static ssize_t xlat_ptr(TALLOC_CTX *ctx, char **out, size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
 			REQUEST *request, char const *fmt)
@@ -373,32 +388,6 @@ static void ub_fd_handler(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED in
 	if (err) {
 		ERROR("Async ub_process: %s", ub_strerror(err));
 	}
-}
-
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	rlm_unbound_t *inst = instance;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	if (inst->timeout > 10000) {
-		cf_log_err(conf, "timeout must be 0 to 10000");
-		return -1;
-	}
-
-	MEM(inst->xlat_a_name = talloc_typed_asprintf(inst, "%s-a", inst->name));
-	MEM(inst->xlat_aaaa_name = talloc_typed_asprintf(inst, "%s-aaaa", inst->name));
-	MEM(inst->xlat_ptr_name = talloc_typed_asprintf(inst, "%s-ptr", inst->name));
-
-	if (xlat_register(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
-	    xlat_register(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
-	    xlat_register(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false)) {
-		cf_log_err(conf, "Failed registering xlats");
-		return -1;
-	}
-
-	return 0;
 }
 
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
@@ -671,6 +660,32 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return -1;
 }
 
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	rlm_unbound_t *inst = instance;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	if (inst->timeout > 10000) {
+		cf_log_err(conf, "timeout must be 0 to 10000");
+		return -1;
+	}
+
+	MEM(inst->xlat_a_name = talloc_typed_asprintf(inst, "%s-a", inst->name));
+	MEM(inst->xlat_aaaa_name = talloc_typed_asprintf(inst, "%s-aaaa", inst->name));
+	MEM(inst->xlat_ptr_name = talloc_typed_asprintf(inst, "%s-ptr", inst->name));
+
+	if (xlat_register(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
+	    xlat_register(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
+	    xlat_register(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false)) {
+		cf_log_err(conf, "Failed registering xlats");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int mod_detach(void *instance)
 {
 	rlm_unbound_t *inst = instance;
@@ -709,12 +724,13 @@ static int mod_detach(void *instance)
 
 extern module_t rlm_unbound;
 module_t rlm_unbound = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "unbound",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_unbound_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach
+	.magic			= RLM_MODULE_INIT,
+	.name			= "unbound",
+	.type			= RLM_TYPE_THREAD_SAFE,
+	.inst_size		= sizeof(rlm_unbound_t),
+	.thread_inst_size	= sizeof(rlm_unbound_thread_t),
+	.config			= module_config,
+	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
+	.detach			= mod_detach
 };
