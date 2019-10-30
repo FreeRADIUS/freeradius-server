@@ -396,7 +396,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	/*
 	 *	Everything else should be real options
 	 */
-	if ((data_len < 2) || (data[1] > data_len)) {
+	if ((data_len < 2) || ((data[1] + 2) > data_len)) {
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
 		return -1;
 	}
