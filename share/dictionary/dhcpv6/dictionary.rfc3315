@@ -122,7 +122,10 @@ VALUE	Status-Code-Value		ExcessiveTimeSkew	22
 
 ATTRIBUTE	Rapid-Commit				14	bool
 ATTRIBUTE	User-Class				15	octets array
-ATTRIBUTE	Vendor-Class				16	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Vendor-Class				16	struct
+MEMBER		Vendor-Class-PEN			uint32
+MEMBER		Vendor-Class-Data			octets  # really 2 octets length + data, repeated
+
 ATTRIBUTE	Vendor-Opts				17	vsa
 ATTRIBUTE	Interface-ID				18	octets
 ATTRIBUTE	Reconf-Msg				19	uint8
