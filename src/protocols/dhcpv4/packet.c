@@ -92,7 +92,7 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 
 		if (data[0] == da->attr) return data;
 
-		if (data[0] == 52) { /* overload sname and/or file */
+		if ((data[0] == 52) && (data[1] > 0)) { /* overload sname and/or file */
 			overload = data[2];
 		}
 
