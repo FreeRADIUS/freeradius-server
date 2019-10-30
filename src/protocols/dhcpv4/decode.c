@@ -445,6 +445,26 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
+
+static ssize_t fr_dhcpv4_decode_proto(UNUSED void *proto_ctx, uint8_t const *data, size_t data_len)
+{
+	ssize_t rcode;
+//	fr_dhcpv4_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv4_ctx_t);
+	RADIUS_PACKET *packet;
+
+	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return -1;
+
+	packet = fr_dhcpv4_packet_alloc(data, data_len);
+	if (!packet) return -1;
+
+	memcpy(&packet->data, &data, sizeof(packet->data)); /* const issues */
+	packet->data_len = data_len;
+	rcode = fr_dhcpv4_packet_decode(packet);
+	talloc_free(packet);
+
+	return rcode;
+}
+
 /*
  *	Test points
  */
@@ -452,4 +472,10 @@ extern fr_test_point_pair_decode_t dhcpv4_tp_decode_pair;
 fr_test_point_pair_decode_t dhcpv4_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
 	.func		= fr_dhcpv4_decode_option
+};
+
+extern fr_test_point_proto_decode_t dhcpv4_tp_decode_proto;
+fr_test_point_proto_decode_t dhcpv4_tp_decode_proto = {
+	.test_ctx	= decode_test_ctx,
+	.func		= fr_dhcpv4_decode_proto
 };

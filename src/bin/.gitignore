@@ -2,4 +2,5 @@ checkrad
 radlast
 radtest
 fuzzer_radius.mk
+fuzzer_dhcpv4.mk
 fuzzer_dhcpv6.mk
