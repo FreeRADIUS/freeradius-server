@@ -934,7 +934,7 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
 static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t const   		*da;
-	fr_dict_attr_t const		*parent, *previous;
+	fr_dict_attr_t const		*parent;
 	fr_value_box_t			value;
 	fr_type_t			type;
 	unsigned int			attr;
@@ -995,30 +995,6 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 */
 	if (ctx->stack[ctx->stack_depth].da != parent->parent) {
 		fr_strerror_printf("Attribute '%s' is not a MEMBER of the current 'struct'", key_attr);
-		return -1;
-	}
-
-	/*
-	 *	Check that the previous attribute exists, and is NOT a
-	 *	variable-length type.
-	 */
-	previous = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->stack[ctx->stack_depth].member_num);
-	if (!previous) return -1;	/* should never happen */
-
-	switch (previous->type) {
-	case FR_TYPE_FIXED_SIZE:
-		break;
-
-		/*
-		 *	Fixed-size "octets" types are OK.
-		 */
-	case FR_TYPE_OCTETS:
-		if (previous->flags.length != 0) break;
-		/* FALL-THROUGH */
-
-	default:
-		fr_strerror_printf("STRUCT attribute '%s' cannot follow a variable-sized previous MEMBER attribute '%s'",
-				   key_attr, previous->name);
 		return -1;
 	}
 
