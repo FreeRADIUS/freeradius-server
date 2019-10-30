@@ -267,7 +267,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 			return -1;
 		}
 
-		if (p[1] > (end - p)) {
+		if ((p[1] + 2) > (end - p)) {
 			fr_strerror_printf("%s: Suboption would overflow option.  Remaining option data %zu byte(s) "
 					   "(from %zu), Suboption length %u", __FUNCTION__, (end - p), data_len, p[1]);
 			return -1;
