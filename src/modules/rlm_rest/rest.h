@@ -23,7 +23,7 @@
  *
  * @copyright 2012-2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-RCSIDH(other_h, "$Id$")
+RCSIDH(rest_h, "$Id$")
 
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/pool.h>
