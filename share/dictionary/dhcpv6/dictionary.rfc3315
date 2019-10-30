@@ -69,7 +69,33 @@ ATTRIBUTE	Elapsed-Time				8	uint16
 ATTRIBUTE	Relay-Message				9	octets
 ATTRIBUTE	Auth					11	octets		# Complex struct see RFC 3315
 ATTRIBUTE	Unicast					12	ipv6addr
+
 ATTRIBUTE	Status-Code				13	octets		# Complex struct see RFC 3315
+VALUE	Status-Code			Success			0
+VALUE	Status-Code			UnspecFail		1
+VALUE	Status-Code			NoAddrsAvail		2
+VALUE	Status-Code			NoBinding		3
+VALUE	Status-Code			NotOnLink		4
+VALUE	Status-Code			UseMulticast		5
+VALUE	Status-Code			NoPrefixAvail		6
+VALUE	Status-Code			UnknownQueryType	7
+VALUE	Status-Code			MalformedQuery		8
+VALUE	Status-Code			NotConfigured		9
+VALUE	Status-Code			NotAllowed		10
+VALUE	Status-Code			QueryTerminated		11
+VALUE	Status-Code			DataMissing		12
+VALUE	Status-Code			CatchUpComplete		13
+VALUE	Status-Code			NotSupported		14
+VALUE	Status-Code			TLSConnectionRefused	15
+VALUE	Status-Code			AddressInUse		16
+VALUE	Status-Code			ConfigurationConflict	17
+VALUE	Status-Code			MissingBindingInformation 18
+VALUE	Status-Code			OutdatedBindingInformation 19
+VALUE	Status-Code			ServerShuttingDown	20
+VALUE	Status-Code			DNSUpdateNotSupported	21
+VALUE	Status-Code			ExcessiveTimeSkew	22
+# Unassigned	23-65535
+
 ATTRIBUTE	Rapid-Commit				14	bool
 ATTRIBUTE	User-Class				15	octets array
 ATTRIBUTE	Vendor-Class				16	octets		# Complex struct see RFC 3315
