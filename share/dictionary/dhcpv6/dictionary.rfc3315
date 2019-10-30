@@ -17,8 +17,8 @@ STRUCT	Client-ID-DUID-LLT			Client-ID-DUID	1
 MEMBER		Client-ID-DUID-LLT-Hardware-Type	uint16 key
 MEMBER		Client-ID-DUID-LLT-Time			date
 
-STRUCT	Client-ID-DUID-LLT-Ethernet	Client-ID-DUID-LLT-Hardware-Type 1
-MEMBER	Client-ID-DUID-LLT-Ethernet-Address		ether
+STRUCT	Client-ID-DUID-LLT-Ethernet Client-ID-DUID-LLT-Hardware-Type 1
+MEMBER		Client-ID-DUID-LLT-Ethernet-Address	ether
 
 STRUCT	Client-ID-DUID-EN			Client-ID-DUID	2
 MEMBER		Client-ID-DUID-EN-Enterprise-Number	uint32
@@ -69,7 +69,35 @@ ATTRIBUTE	Elapsed-Time				8	uint16
 ATTRIBUTE	Relay-Message				9	octets
 ATTRIBUTE	Auth					11	octets		# Complex struct see RFC 3315
 ATTRIBUTE	Unicast					12	ipv6addr
-ATTRIBUTE	Status-Code				13	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Status-Code				13	struct
+MEMBER		Status-Code-Value			uint8
+MEMBER		Status-Code-Message			string
+
+VALUE	Status-Code-Value		Success			0
+VALUE	Status-Code-Value		UnspecFail		1
+VALUE	Status-Code-Value		NoAddrsAvail		2
+VALUE	Status-Code-Value		NoBinding		3
+VALUE	Status-Code-Value		NotOnLink		4
+VALUE	Status-Code-Value		UseMulticast		5
+VALUE	Status-Code-Value		NoPrefixAvail		6
+VALUE	Status-Code-Value		UnknownQueryType	7
+VALUE	Status-Code-Value		MalformedQuery		8
+VALUE	Status-Code-Value		NotConfigured		9
+VALUE	Status-Code-Value		NotAllowed		10
+VALUE	Status-Code-Value		QueryTerminated		11
+VALUE	Status-Code-Value		DataMissing		12
+VALUE	Status-Code-Value		CatchUpComplete		13
+VALUE	Status-Code-Value		NotSupported		14
+VALUE	Status-Code-Value		TLSConnectionRefused	15
+VALUE	Status-Code-Value		AddressInUse		16
+VALUE	Status-Code-Value		ConfigurationConflict	17
+VALUE	Status-Code-Value		MissingBindingInformation 18
+VALUE	Status-Code-Value		OutdatedBindingInformation 19
+VALUE	Status-Code-Value		ServerShuttingDown	20
+VALUE	Status-Code-Value		DNSUpdateNotSupported	21
+VALUE	Status-Code-Value		ExcessiveTimeSkew	22
+# Unassigned	23-65535
+
 ATTRIBUTE	Rapid-Commit				14	bool
 ATTRIBUTE	User-Class				15	octets array
 ATTRIBUTE	Vendor-Class				16	octets		# Complex struct see RFC 3315
