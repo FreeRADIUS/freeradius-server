@@ -69,9 +69,17 @@ DOXYGEN_DIR = doc/doxygen
 DOXYGEN_HTML_DIR = $(DOXYGEN_DIR)/html/
 
 #
-#  There are a number of pre-built files in the doc/ directory.  Find those.
+#  There are a number of pre-built files in the doc/ directory.  Find
+#  those in addition to the ones which are in git.
 #
-DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/developers/%,$(shell find doc -type f))
+#  We skip symlinks, as we don't want to walk through the same files
+#  many times.
+#
+#  We also prune the generated doxygen files, as there are too many of them
+#  and it slows down the build.
+#
+BASE_DOC_FILES	:= $(filter-out doc/doxygen/html/%,$(shell find $$(find doc -depth 1 '!' -type l) -type f))
+DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/developers/%,$(BASE_DOC_FILES))
 
 #
 #  We sort the list of files, because the "find" command above will
@@ -162,6 +170,23 @@ doxygen:
 	@echo DOXYGEN $(DOXYGEN_DIR)
 	${Q}mkdir -p $(DOXYGEN_HTML_DIR)
 	${Q}(cd $(DOXYGEN_DIR) && $(DOXYGEN))
+
+#
+#  Ensure that the installation directory gets created
+#
+$(eval $(call ADD_INSTALL_RULE.file,doc/doxygen/html/index.html,$(R)/$(docdir)/doxygen/html/index.html))
+
+#
+#  Make sure that the base directory is build, and then just copy all
+#  of the files over manually.
+#
+install.doxygen: $(R)/$(docdir)/doxygen/html/index.html
+	@cp -RP doc/doxygen/html $(R)/$(docdir)/doc/doxygen/html
+
+#
+#  Add the doxygen files to the install targt
+#
+install.doc: install.doxygen
 
 #
 #  If we do have doxygen, then add it to the "all documentation"
