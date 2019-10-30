@@ -11,4 +11,10 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Client-FQDN				39	octets		# Complex struct see RFC 4704
+ATTRIBUTE	Client-FQDN				39	struct
+MEMBER		Client-FQDN-Flags			uint8
+MEMBER		Client-FQDN-Domain-Name			octets  # really string dns_label
+
+VALUE	Client-FQDN-Flags			Server-Update  1	# really bit field
+VALUE	Client-FQDN-Flags			Server-Override  2	# really bit field
+VALUE	Client-FQDN-Flags			No-Server-Update  4	# really bit field
