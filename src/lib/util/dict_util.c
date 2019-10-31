@@ -2566,3 +2566,57 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 }
+
+/** Iterate over children of a DA.
+ *
+ *  @param[in] parent	the parent da to iterate over
+ *  @param[in,out] prev	pointer to NULL to start, otherwise pointer to the previously returned child
+ *  @return
+ *     - NULL for end of iteration
+ *     - !NULL for a valid child.  This child MUST be passed to the next loop.
+ */
+fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent, fr_dict_attr_t const **prev)
+{
+	fr_dict_attr_t const * const *bin;
+	fr_dict_attr_t const *child;
+	int i, start;
+
+	if (!parent || !parent->children || !prev) return NULL;
+
+	if (!*prev) {
+		start = 0;
+
+	} else if ((*prev)->next) {
+		/*
+		 *	There are more children in this bin, return
+		 *	the next one.
+		 */
+		return (*prev)->next;
+
+	} else {
+		/*
+		 *	Figure out which bin we were in.  If it was
+		 *	the last one, we're done.
+		 */
+		start = (*prev)->attr & 0xff;
+		if (start == 255) return NULL;
+
+		/*
+		 *	Start at the next bin.
+		 */
+		start++;
+	}
+
+	/*
+	 *	Look for a non-empty bin, and return the first child
+	 *	from there.
+	 */
+	for (i = start; i < 256; i++) {
+		bin = &parent->children[i & 0xff];
+
+		if (*bin) return *bin;
+	}
+
+	return NULL;
+}
+

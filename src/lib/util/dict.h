@@ -426,6 +426,9 @@ ssize_t			fr_dict_valid_name(char const *name, ssize_t len);
 ssize_t			fr_dict_valid_oid_str(char const *name, ssize_t len);
 
 void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
+
+fr_dict_attr_t const	*fr_dict_attr_iterate_children(fr_dict_attr_t const *parent, fr_dict_attr_t const **prev);
+
 /** @} */
 
 #ifdef __cplusplus
