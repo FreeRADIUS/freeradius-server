@@ -12,4 +12,4 @@
 ##############################################################################
 
 ATTRIBUTE	DNS-Servers				23	ipv6addr array
-ATTRIBUTE	Domain-List				24	string array,encode=dns_label	# Domain name list (DNS encoding)
+ATTRIBUTE	Domain-List				24	string array,dns_label	# Domain name list (DNS encoding)

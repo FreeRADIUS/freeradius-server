@@ -66,7 +66,7 @@ MEMBER		IA-Addr-Options				octets	# really sub-options
 ATTRIBUTE	Option-Request				6	uint16 array	# Magic option listing requested options
 
 #
-# grep ^ATTRIBUTE share/dictionary/dhcpv6/dictionary*  | awk '{ print "VALUE\tOption-Request\t" $2 "\t"  $3}'
+# grep ^ATTRIBUTE share/dictionary/dhcpv6/dictionary.rfc*  | awk '{ print "VALUE\tOption-Request\t" $2 "\t"  $3}'
 #
 VALUE	Option-Request			Client-ID		1
 VALUE	Option-Request			Server-ID		2
