@@ -63,7 +63,7 @@ MEMBER		IA-Addr-Preferred-Lifetime		uint32	# really time_delta, 32-bit seconds
 MEMBER		IA-Addr-Valid-Lifetime			uint32	# really time_delta, 32-bit seconds
 MEMBER		IA-Addr-Options				octets	# really sub-options
 
-ATTRIBUTE	Option-Request				6	octets		# Magic option listing requested options
+ATTRIBUTE	Option-Request				6	uint16 array		# Magic option listing requested options
 ATTRIBUTE	Preference				7	uint8
 ATTRIBUTE	Elapsed-Time				8	uint16
 ATTRIBUTE	Relay-Message				9	octets
