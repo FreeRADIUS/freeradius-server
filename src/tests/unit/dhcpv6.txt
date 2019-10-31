@@ -20,11 +20,11 @@ match 00 26 00 00
 #
 #  Bool
 #
-encode-pair Rapid-Commit = yes
+encode-pair Rapid-Commit = 0x
 match 00 0e 00 00
 
-encode-pair Rapid-Commit = no
-match
+decode-pair -
+match Rapid-Commit = 0x
 
 #
 #  1 byte unsigned integer (uint8)
