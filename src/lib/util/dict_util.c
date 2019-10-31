@@ -2578,7 +2578,6 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent, fr_dict_attr_t const **prev)
 {
 	fr_dict_attr_t const * const *bin;
-	fr_dict_attr_t const *child;
 	int i, start;
 
 	if (!parent || !parent->children || !prev) return NULL;
