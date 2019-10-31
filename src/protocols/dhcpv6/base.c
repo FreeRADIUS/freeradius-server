@@ -467,6 +467,7 @@ int fr_dhcpv6_global_init(void)
 		value.vb_uint16 = child->attr;
 
 		if (fr_dict_enum_add_alias(attr_option_request, child->name, &value, true, false) < 0) {
+			fr_dict_autofree(libfreeradius_dhcpv6_dict);
 			return -1;
 		}
 	}
