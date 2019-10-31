@@ -93,7 +93,7 @@ VALUE	Auth-Replay-Detection-Method	Monotonicly-Increasing-Value 0
 
 ATTRIBUTE	Unicast					12	ipv6addr
 ATTRIBUTE	Status-Code				13	struct
-MEMBER		Status-Code-Value			uint8
+MEMBER		Status-Code-Value			uint16
 MEMBER		Status-Code-Message			string
 
 VALUE	Status-Code-Value		Success			0
