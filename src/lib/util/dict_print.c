@@ -64,10 +64,6 @@ do { \
 
 	if (flags->extra) {
 		switch (type) {
-		case FR_TYPE_EXTENDED:
-			p += snprintf(p, end - p, "long,");
-			break;
-
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:

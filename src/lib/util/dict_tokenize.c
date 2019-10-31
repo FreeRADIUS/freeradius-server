@@ -334,13 +334,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		} else if (strcmp(key, "virtual") == 0) {
 			flags->virtual = 1;
 
-		} else if (strcmp(key, "long") == 0) {
-			if (type != FR_TYPE_EXTENDED) {
-				fr_strerror_printf("The 'long' flag can only be used for attributes of type 'extended'");
-				return -1;
-			}
-			flags->extra = 1;
-
 		} else if (strcmp(key, "key") == 0) {
 			if ((type != FR_TYPE_UINT8) && (type != FR_TYPE_UINT16) && (type != FR_TYPE_UINT32)) {
 				fr_strerror_printf("The 'key' flag can only be used for attributes of type 'uint8', 'uint16', or 'uint32'");

@@ -65,6 +65,7 @@ static fr_table_num_ordered_t const radius_subtype_table[] = {
 	{ "encrypt=1",		FLAG_ENCRYPT_USER_PASSWORD },
 	{ "encrypt=2",		FLAG_ENCRYPT_TUNNEL_PASSWORD },
 	{ "encrypt=3",		FLAG_ENCRYPT_ASCEND_SECRET },
+	{ "long",		FLAG_EXTENDED_ATTR },
 
 	/*
 	 *	And some humanly-readable names

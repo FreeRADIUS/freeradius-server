@@ -1000,6 +1000,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	uint8_t			buffer[256];
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 	size_t			min = 0, max = 0;
+	int			extra;
 
 	if (!parent || (attr_len > packet_len) || (attr_len > 128 * 1024)) {
 		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
@@ -1015,6 +1016,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
 
 	data_len = attr_len;
+	extra = (parent->flags.subtype == FLAG_EXTENDED_ATTR);
 
 	/*
 	 *	Silently ignore zero-length attributes.
@@ -1189,7 +1191,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		break;
 
 	case FR_TYPE_EXTENDED:
-		min = 1 + parent->flags.extra;
+		min = 1 + extra;
 
 		/*
 		 *	Not enough data, just create a raw attribute.
@@ -1209,7 +1211,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			 *	flag byte, BUT the "more" flag is not
 			 *	set.  Just decode it.
 			 */
-			if (!parent->flags.extra || ((p[1] & 0x80) == 0)) {
+			if (!extra || ((p[1] & 0x80) == 0)) {
 				rcode = fr_radius_decode_pair_value(ctx, cursor, dict, child,
 								    p + min, attr_len - min, attr_len - min,
 								    decoder_ctx);
@@ -1256,7 +1258,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		/*
 		 *	"long" extended.  Decode the value.
 		 */
-		if (parent->flags.extra) {
+		if (extra) {
 			rcode = decode_extended(ctx, cursor, dict, child, data, attr_len, packet_len, decoder_ctx);
 			if (rcode >= 0) return rcode; /* which may be LONGER than attr_len */
 		}

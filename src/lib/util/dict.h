@@ -74,13 +74,20 @@ typedef struct {
 	uint8_t			type_size;			//!< For TLV2 and root attributes.
 } fr_dict_attr_flags_t;
 
+/** subtype values for RADIUS
+ *
+ */
 enum {
 	FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
 	FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
 	FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
 	FLAG_ENCRYPT_ASCEND_SECRET,			//!< Encrypt attribute ascend style.
+	FLAG_EXTENDED_ATTR,				//!< the attribute is an extended attribute
 };
 
+/** subtype values for DHCPv4 and DHCPv6
+ *
+ */
 enum {
 	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DHCPv6 strings
 	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label

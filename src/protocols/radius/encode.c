@@ -715,7 +715,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (len > (ssize_t)outlen) len = outlen;
 
-	if (vp->da->flags.subtype && !packet_ctx) {
+	if ((vp->da->flags.subtype != FLAG_EXTENDED_ATTR) && !packet_ctx) {
 		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
 		return -1;
 	}
@@ -761,6 +761,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		len = RADIUS_AUTH_VECTOR_LENGTH;
 		break;
 
+		/*
+		 *	Not encrypted, OR an extended attribute, which
+		 *	cannot be encrypted.
+		 */
 	default:
 		if (vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
 			if (vp->vp_type == FR_TYPE_STRING) {
@@ -854,11 +858,14 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	fr_type_t		vsa_type;
 	int			jump = 3;
 #endif
+	int			extra;
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
+
+	extra = (tlv_stack[0]->flags.subtype == FLAG_EXTENDED_ATTR);
 
 	/*
 	 *	@fixme: check depth of stack
@@ -867,7 +874,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 #ifndef NDEBUG
 	vsa_type = tlv_stack[1]->type;
 	if (fr_debug_lvl > 3) {
-		jump += tlv_stack[0]->flags.extra;
+		jump += extra;
 	}
 #endif
 
@@ -876,16 +883,16 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 */
 	switch (attr_type) {
 	case FR_TYPE_EXTENDED:
-		if (outlen < (size_t) (3 + tlv_stack[0]->flags.extra)) return 0;
+		if (outlen < (size_t) (3 + extra)) return 0;
 
 		/*
 		 *	Encode which extended attribute it is.
 		 */
 		out[0] = tlv_stack[depth++]->attr & 0xff;
-		out[1] = 3 + tlv_stack[0]->flags.extra;
+		out[1] = 3 + extra;
 		out[2] = tlv_stack[depth]->attr & 0xff;
 
-		if (tlv_stack[0]->flags.extra) out[3] = 0;	/* flags start off at zero */
+		if (extra) out[3] = 0;	/* flags start off at zero */
 		break;
 
 	default:
@@ -925,7 +932,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 *	"outlen" can be larger than 255 here, but only for the
 	 *	"long" extended type.
 	 */
-	if ((attr_type == FR_TYPE_EXTENDED) && !tlv_stack[0]->flags.extra && (outlen > 255)) outlen = 255;
+	if ((attr_type == FR_TYPE_EXTENDED) && !extra && (outlen > 255)) outlen = 255;
 
 	if (tlv_stack[depth]->type == FR_TYPE_TLV) {
 		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);

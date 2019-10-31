@@ -258,6 +258,11 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	Subtype flag checks for RADIUS
 	 */
 	if ((flags->subtype) && (dict->root->attr == FR_PROTOCOL_RADIUS)) {
+		if ((flags->subtype == FLAG_EXTENDED_ATTR) && (type != FR_TYPE_EXTENDED)) {
+			fr_strerror_printf("The 'long' flag can only be used for attributes of type 'extended'");
+			return false;
+		}
+
 		/*
 		 *	Stupid hacks for MS-CHAP-MPPE-Keys.  The User-Password
 		 *	encryption method has no provisions for encoding the
@@ -280,7 +285,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			}
 		}
 
-		if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {
+		if (flags->subtype > FLAG_EXTENDED_ATTR) {
 			fr_strerror_printf("The 'encrypt' flag can only be 0..3");
 			return false;
 		}
@@ -303,6 +308,10 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		switch (type) {
+		case FR_TYPE_EXTENDED:
+			if (flags->subtype == FLAG_EXTENDED_ATTR) break;
+			/* FALL-THROUGH */
+
 		default:
 		encrypt_fail:
 			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
