@@ -128,5 +128,10 @@ MEMBER		Vendor-Class-Data			octets  # really 2 octets length + data, repeated
 
 ATTRIBUTE	Vendor-Opts				17	vsa
 ATTRIBUTE	Interface-ID				18	octets
+
 ATTRIBUTE	Reconf-Msg				19	uint8
+VALUE	Reconf-Msg			Renew			5
+VALUE	Reconf-Msg			Rebind			6
+VALUE	Reconf-Msg			InformationRequest	11
+
 ATTRIBUTE	Reconf-Accept				20	bool
