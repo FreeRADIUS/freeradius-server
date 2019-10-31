@@ -49,11 +49,14 @@ fr_dict_autoload_t libfreeradius_dhcpv6_dict[] = {
 
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_transaction_id;
+static fr_dict_attr_t const *attr_option_request;
+
 
 extern fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
 	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
+	{ .out = &attr_option_request, .name = "Option-Request", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv6 },
 	{ NULL }
 };
 
@@ -440,6 +443,9 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 int fr_dhcpv6_global_init(void)
 {
+	fr_dict_attr_t const *child;
+	fr_value_box_t		value = { .type = FR_TYPE_UINT16 };
+
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;
@@ -449,6 +455,20 @@ int fr_dhcpv6_global_init(void)
 	if (fr_dict_attr_autoload(libfreeradius_dhcpv6_dict_attr) < 0) {
 		fr_dict_autofree(libfreeradius_dhcpv6_dict);
 		return -1;
+	}
+
+	/*
+	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options
+	 */
+	child = NULL;
+	while ((child = fr_dict_attr_iterate_children(fr_dict_root(dict_dhcpv6), &child)) != NULL) {
+		if (child->attr > 65535) continue;
+
+		value.vb_uint16 = child->attr;
+
+		if (fr_dict_enum_add_alias(attr_option_request, child->name, &value, true, false) < 0) {
+			return -1;
+		}
 	}
 
 	instance_count++;
