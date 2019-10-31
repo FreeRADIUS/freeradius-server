@@ -1,0 +1,1015 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#  Test vectors for DHCPv6 protocol
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  8.  Client/Server Message Formats
+#
+#  All DHCP messages sent between clients and servers share an identical
+#  fixed-format header and a variable-format area for options.
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |    msg-type   |               transaction-id                  |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                                                               |
+#  .                            options                            .
+#  .                 (variable number and length)                  .
+#  |                                                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#            Figure 2: Client/Server Message Format
+#
+#  msg-type           Identifies the DHCP message type; the
+#                     available message types are listed in
+#                     Section 7.3.  A 1-octet field.
+#
+#  transaction-id     The transaction ID for this message exchange.
+#                     A 3-octet field.
+#
+#  options            Options carried in this message; options are
+#                     described in Section 21.  A variable-length
+#                     field (4 octets less than the size of the
+#                     message).
+#
+#
+
+# TODO: We can't encode/decode dhcpv6 'Packets' yet.
+#encode-pair Packet-Type = Reply, Transaction-ID = 0x010203
+#match 07 01 02 03
+
+#decode-pair -
+#match Packet-Type = Reply, Transaction-ID = 0x010203
+
+#
+#  21.1.  Format of DHCP Options
+#
+#  The format of DHCP options is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          option-code          |           option-len          |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                          option-data                          |
+#  |                      (option-len octets)                      |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#                     Figure 12: Option Format
+#
+#  option-code          An unsigned integer identifying the specific
+#                       option type carried in this option.
+#                       A 2-octet field.
+#
+#  option-len           An unsigned integer giving the length of the
+#                       option-data field in this option in octets.
+#                       A 2-octet field.
+#
+#  option-data          The data for the option; the format of this
+#                       data depends on the definition of the option.
+#                       A variable-length field (the length, in
+#                       octets, is specified by option-len).
+
+#
+#  21.2. Client Identifier Option
+#
+#     The Client Identifier option is used to carry a DUID (see section 9)
+#     identifying a client between a client and a server.  The format of
+#     the Client Identifier option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |        OPTION_CLIENTID        |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .                              DUID                             .
+#  .                        (variable length)                      .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  option-code   OPTION_CLIENTID (1).
+#
+#  option-len    Length of DUID in octets.
+#
+
+#  Define the DUID-LLT + DUID
+encode-pair Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
+
+decode-pair -
+match Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+
+#
+#  21.3. Server Identifier Option
+#
+#     The Server Identifier option is used to carry a DUID (see section 9)
+#     identifying a server between a client and a server.  The format of
+#     the Server Identifier option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |        OPTION_SERVERID        |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .                              DUID                             .
+#  .                        (variable length)                      .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  option-code   OPTION_SERVERID (2).
+#
+#  option-len    Length of DUID in octets.
+#
+#  DUID          The DUID for the server.
+#
+
+#  Define the DUID-LLT + DUID
+encode-pair Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+match 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
+
+decode-pair -
+match Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+
+#
+#  21.4. Identity Association for Non-temporary Addresses Option
+#
+#     The Identity Association for Non-temporary Addresses option (IA_NA
+#     option) is used to carry an IA_NA, the parameters associated with the
+#     IA_NA, and the non-temporary addresses associated with the IA_NA.
+#
+#  The format of the IA_NA option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          OPTION_IA_NA         |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                        IAID (4 octets)                        |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                              T1                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                              T2                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                                                               |
+#  .                         IA_NA-options                         .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  option-code          OPTION_IA_NA (3).
+#
+#  option-len           12 + length of IA_NA-options field.
+#
+#  IAID                 The unique identifier for this IA_NA; the
+#                       IAID must be unique among the identifiers for
+#                       all of this client's IA_NAs.  The number
+#                       space for IA_NA IAIDs is separate from the
+#                       number space for IA_TA IAIDs.
+#
+#  T1                   The time at which the client contacts the
+#                       server from which the addresses in the IA_NA
+#                       were obtained to extend the lifetimes of the
+#                       addresses assigned to the IA_NA; T1 is a
+#                       time duration relative to the current time
+#                       expressed in units of seconds.
+#
+#  T2                   The time at which the client contacts any
+#                       available server to extend the lifetimes of
+#                       the addresses assigned to the IA_NA; T2 is a
+#                       time duration relative to the current time
+#                       expressed in units of seconds.
+#
+#  IA_NA-options        Options associated with this IA_NA.
+#
+encode-pair IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = 0x006001ad
+match 00 03 00 10 0a bc de f0 00 00 d3 4d 00 00 b3 3f 00 60 01 ad
+
+decode-pair -
+match IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = 0x006001ad
+
+#
+#  21.5. Identity Association for Temporary Addresses Option
+#
+#     The Identity Association for the Temporary Addresses (IA_TA) option
+#     is used to carry an IA_TA, the parameters associated with the IA_TA
+#     and the addresses associated with the IA_TA.  All of the addresses in
+#     this option are used by the client as temporary addresses, as defined
+#     in RFC 3041 [12].  The format of the IA_TA option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |         OPTION_IA_TA          |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                        IAID (4 octets)                        |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                                                               |
+#  .                         IA_TA-options                         .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  option-code          OPTION_IA_TA (4).
+#
+#  option-len           4 + length of IA_TA-options field.
+#
+#  IAID                 The unique identifier for this IA_TA; the
+#                       IAID must be unique among the identifiers
+#                       for all of this client's IA_TAs.  The number
+#                       space for IA_TA IAIDs is separate from the
+#                       number space for IA_NA IAIDs.
+#
+#  IA_TA-options        Options associated with this IA_TA.
+#
+encode-pair IA-TA-IAID = 3237998080, IA-TA-Options = 0x006001ad
+match 00 04 00 08 c0 ff ee 00 00 60 01 ad
+
+decode-pair -
+match IA-TA-IAID = 3237998080, IA-TA-Options = 0x006001ad
+
+#
+#  21.6.  IA Address Option
+#
+#     The IA Address option is used to specify an address associated with
+#     an IA_NA or an IA_TA.  The IA Address option must be encapsulated in
+#     the IA_NA-options field of an IA_NA option (see Section 21.4) or the
+#     IA_TA-options field of an IA_TA option (see Section 21.5).  The
+#     IAaddr-options field encapsulates those options that are specific to
+#     this address.
+#
+#     The format of the IA Address option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          OPTION_IAADDR        |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                                                               |
+#  |                         IPv6-address                          |
+#  |                                                               |
+#  |                                                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                      preferred-lifetime                       |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                        valid-lifetime                         |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .                        IAaddr-options                         .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#                Figure 17: IA Address Option Format
+#
+#  option-code          OPTION_IAADDR (5).
+#
+#  option-len           24 + length of IAaddr-options field.
+#
+#  IPv6-address         An IPv6 address.  A client MUST NOT form an
+#                       implicit prefix with a length other than 128
+#                       for this address.  A 16-octet field.
+#
+#  preferred-lifetime   The preferred lifetime for the address in the
+#                       option, expressed in units of seconds.  A
+#                       4-octet field containing an unsigned integer.
+#
+#  valid-lifetime       The valid lifetime for the address in the
+#                       option, expressed in units of seconds.  A
+#                       4-octet field containing an unsigned integer.
+#
+#  IAaddr-options       Options associated with this address.  A
+#                       variable-length field (24 octets less than
+#                       the value in the option-len field).
+#
+encode-pair IA-Addr-IPv6-Address = fd85:d2bb:92c::74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = 0x006001ad
+match 00 05 00 1c fd 85 d2 bb 09 2c 00 00 74 ae 28 71 f5 6c 8d 94 00 00 00 78 00 01 51 80 00 60 01 ad
+
+#
+# the inet_pton() fill up the empty blocks with 0: on Linux, but not on OSX.
+# so, we are doing the regex just to ignore it.
+#
+decode-pair -
+match-regex IA-Addr-IPv6-Address = fd85:d2bb:92c:.*:74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = 0x006001ad
+
+#
+#  21.7.  Option Request Option
+#
+#     The Option Request option is used to identify a list of options in a
+#     message between a client and a server.  The format of the Option
+#     Request option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |           OPTION_ORO          |           option-len          |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |    requested-option-code-1    |    requested-option-code-2    |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                              ...                              |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#              Figure 18: Option Request Option Format
+#
+#  option-code               OPTION_ORO (6).
+#
+#  option-len                2 * number of requested options.
+#
+#  requested-option-code-n   The option code for an option requested
+#                            by the client.  Each option code is a
+#                            2-octet field containing an unsigned
+#                            integer.
+#
+encode-pair Option-Request = Unicast, Option-Request = IA-Addr
+match 00 06 00 04 00 0c 00 05
+
+decode-pair -
+match Option-Request = Unicast, Option-Request = IA-Addr
+
+#
+#  21.8.  Preference Option
+#
+#     The Preference option is sent by a server to a client to control the
+#     selection of a server by the client.
+#
+#     The format of the Preference option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |       OPTION_PREFERENCE       |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |  pref-value   |
+#  +-+-+-+-+-+-+-+-+
+#
+#                Figure 19: Preference Option Format
+#
+#  option-code          OPTION_PREFERENCE (7).
+#
+#  option-len           1.
+#
+#  pref-value           The preference value for the server in this
+#                       message.  A 1-octet unsigned integer.
+#
+encode-pair Preference = 123
+match 00 07 00 01 7b
+
+decode-pair -
+match Preference = 123
+
+#
+#  22.9. Elapsed Time Option
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_ELAPSED_TIME      |           option-len          |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          elapsed-time         |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  option-code   OPTION_ELAPSED_TIME (8).
+#
+#  option-len    2.
+#
+#  elapsed-time  The amount of time since the client began its
+#                current DHCP transaction.  This time is expressed in
+#                hundredths of a second (10^-2 seconds).
+#
+encode-pair Elapsed-Time = 45887
+match 00 08 00 02 b3 3f
+
+decode-pair -
+match Elapsed-Time = 45887
+
+#
+#  21.10.  Relay Message Option
+#
+#  *NOT IMPLEMENTED*
+
+#
+#  21.11.  Authentication Option
+#
+#     The Authentication option carries authentication information to
+#     authenticate the identity and contents of DHCP messages.  The use of
+#     the Authentication option is described in Section 20.  The delayed
+#     authentication protocol, defined in [RFC3315], has been obsoleted by
+#     this document, due to lack of usage (see Section 25).  The format of
+#     the Authentication option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          OPTION_AUTH          |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |   protocol    |   algorithm   |      RDM      |               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               |
+#  |                                                               |
+#  |          replay detection (64 bits)           +-+-+-+-+-+-+-+-+
+#  |                                               |               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               |
+#  .                   authentication information                  .
+#  .                       (variable length)                       .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#              Figure 22: Authentication Option Format
+#
+#  option-code                  OPTION_AUTH (11).
+#
+#  option-len                   11 + length of authentication
+#                               information field.
+#
+#  protocol                     The authentication protocol used in
+#                               this Authentication option.  A
+#                               1-octet unsigned integer.
+#
+#  algorithm                    The algorithm used in the
+#                               authentication protocol.  A 1-octet
+#                               unsigned integer.
+#
+#  RDM                          The replay detection method used in
+#                               this Authentication option.  A
+#                               1-octet unsigned integer.
+#
+#  replay detection             The replay detection information for
+#                               the RDM.  A 64-bit (8-octet) field.
+#
+#  authentication information   The authentication information, as
+#                               specified by the protocol and
+#                               algorithm used in this Authentication
+#                               option.  A variable-length field
+#                               (11 octets less than the value in the
+#                               option-len field).
+#
+encode-pair Auth-Protocol =	Reconfigure-Key, Auth-Algorithm = HMAC-MD5, Auth-Replay-Detection-Method = Monotonicly-Increasing-Value, Auth-Replay-Detection = 1234567890, Auth-Information = 0x010203040506070809101112131415
+match 00 0b 00 1a 03 01 00 00 00 00 00 49 96 02 d2 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+
+decode-pair -
+match Auth-Protocol = Reconfigure-Key, Auth-Algorithm = HMAC-MD5, Auth-Replay-Detection-Method = Monotonicly-Increasing-Value, Auth-Replay-Detection = 1234567890, Auth-Information = 0x010203040506070809101112131415
+
+#
+#  21.12.  Server Unicast Option
+#
+#     The server sends this option to a client to indicate to the client
+#     that it is allowed to unicast messages to the server.  The format of
+#     the Server Unicast option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          OPTION_UNICAST       |        option-len             |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                                                               |
+#  |                       server-address                          |
+#  |                                                               |
+#  |                                                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#              Figure 23: Server Unicast Option Format
+#
+#  option-code          OPTION_UNICAST (12).
+#
+#  option-len           16.
+#
+#  server-address       The 128-bit address to which the client
+#                       should send messages delivered using unicast.
+#
+encode-pair Unicast = fec0::
+match 00 0c 00 10 fe c0 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+decode-pair -
+match Unicast = fec0::
+
+#
+#  21.13.  Status Code Option
+#
+#     This option returns a status indication related to the DHCP message
+#     or option in which it appears.  The format of the Status Code
+#     option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |       OPTION_STATUS_CODE      |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          status-code          |                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+#  .                                                               .
+#  .                        status-message                         .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#               Figure 24: Status Code Option Format
+#
+#  option-code          OPTION_STATUS_CODE (13).
+#
+#  option-len           2 + length of status-message field.
+#
+#  status-code          The numeric code for the status encoded in
+#                       this option.  A 2-octet field containing an
+#                       unsigned integer.
+#
+#  status-message       A UTF-8 encoded [RFC3629] text string
+#                       suitable for display to an end user.
+#                       MUST NOT be null-terminated.  A
+#                       variable-length field (2 octets less than the
+#                       value in the option-len field).
+#
+encode-pair Status-Code-Value = NoPrefixAvail, Status-Code-Message = "Tapioca com queijo"
+match 00 0d 00 14 00 06 54 61 70 69 6f 63 61 20 63 6f 6d 20 71 75 65 69 6a 6f
+
+decode-pair -
+match Status-Code-Value = NoPrefixAvail, Status-Code-Message = "Tapioca com queijo"
+
+#
+#  21.14.  Rapid Commit Option
+#
+#     The Rapid Commit option is used to signal the use of the two-message
+#     exchange for address assignment.  The format of the Rapid Commit
+#     option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_RAPID_COMMIT      |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#               Figure 25: Rapid Commit Option Format
+#
+#  option-code          OPTION_RAPID_COMMIT (14).
+#
+#  option-len           0.
+#
+encode-pair Rapid-Commit = 0x
+match 00 0e 00 00
+
+decode-pair -
+match Rapid-Commit = 0x
+
+#
+#  21.15.  User Class Option
+#
+#     The User Class option is used by a client to identify the type or
+#     category of users or applications it represents.
+#
+#     The format of the User Class option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |       OPTION_USER_CLASS       |          option-len           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .                          user-class-data                      .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#                Figure 26: User Class Option Format
+#
+#  option-code          OPTION_USER_CLASS (15).
+#
+#  option-len           Length of user-class-data field.
+#
+#  user-class-data      The user classes carried by the client.  The
+#                       length, in octets, is specified by
+#                       option-len.
+#
+#
+encode-pair User-Class = 0x1122, User-Class = 0x334455
+match 00 0f 00 09 00 02 11 22 00 03 33 44 55
+
+decode-pair -
+match User-Class = 0x1122, User-Class = 0x334455
+
+#
+#  21.16.  Vendor Class Option
+#
+#     This option is used by a client to identify the vendor that
+#     manufactured the hardware on which the client is running.  The
+#     information contained in the data area of this option is contained in
+#     one or more opaque fields that identify details of the hardware
+#     configuration.  The format of the Vendor Class option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_VENDOR_CLASS      |           option-len          |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                       enterprise-number                       |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .                       vendor-class-data                       .
+#  .                             . . .                             .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#               Figure 28: Vendor Class Option Format
+#
+#  option-code          OPTION_VENDOR_CLASS (16).
+#
+#  option-len           4 + length of vendor-class-data field.
+#
+#  enterprise-number    The vendor's registered Enterprise Number as
+#                       maintained by IANA [IANA-PEN].  A 4-octet
+#                       field containing an unsigned integer.
+#
+#  vendor-class-data    The hardware configuration of the node on
+#                       which the client is running.  A
+#                       variable-length field (4 octets less than the
+#                       value in the option-len field).
+#
+encode-pair Vendor-Class-PEN = 11344, Vendor-Class-Data = 0xb33f
+match 00 10 00 06 00 00 2c 50 b3 3f
+
+decode-pair -
+match Vendor-Class-PEN = 11344, Vendor-Class-Data = 0xb33f
+
+#
+#  21.17.  Vendor-specific Information Option
+#
+#     This option is used by clients and servers to exchange vendor-
+#     specific information.
+#
+#     The format of the Vendor-specific Information option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_VENDOR_OPTS       |           option-len          |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                       enterprise-number                       |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .                       vendor-option-data                      .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#       Figure 30: Vendor-specific Information Option Format
+#
+#  option-code          OPTION_VENDOR_OPTS (17).
+#
+#  option-len           4 + length of vendor-option-data field.
+#
+#  enterprise-number    The vendor's registered Enterprise Number as
+#                       maintained by IANA [IANA-PEN].  A 4-octet
+#                       field containing an unsigned integer.
+#
+#  vendor-option-data   Vendor options, interpreted by
+#                       vendor-specific code on the clients and
+#                       servers.  A variable-length field (4 octets
+#                       less than the value in the option-len field).
+#
+# TODO: How to use the vsas?
+#encode-pair Vendor-Opts = 123.1
+#match 00 10 00 06 00 00 2c 50 b3 3f
+
+#decode-pair -
+#match Vendor-Class-PEN = 11344, Vendor-Class-Data = 0xb33f
+
+#
+#  21.18.  Interface-Id Option
+#
+#     The relay agent MAY send the Interface-Id option to identify the
+#     interface on which the client message was received.  If a relay agent
+#     receives a Relay-reply message with an Interface-Id option, the relay
+#     agent relays the message to the client through the interface
+#     identified by the option.
+#
+#     The format of the Interface-Id option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_INTERFACE_ID      |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .                         interface-id                          .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#               Figure 32: Interface-Id Option Format
+#
+#  option-code          OPTION_INTERFACE_ID (18).
+#
+#  option-len           Length of interface-id field.
+#
+#  interface-id         An opaque value of arbitrary length generated
+#                       by the relay agent to identify one of the
+#                       relay agent's interfaces.  The length, in
+#                       octets, is specified by option-len.
+#
+encode-pair Interface-ID = 0xc0ffee
+match 00 12 00 03 c0 ff ee
+
+decode-pair -
+match Interface-ID = 0xc0ffee
+
+#
+#  21.19.  Reconfigure Message Option
+#
+#     A server includes a Reconfigure Message option in a Reconfigure
+#     message to indicate to the client whether the client responds with a
+#     Renew message, a Rebind message, or an Information-request message.
+#     The format of the Reconfigure Message option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_RECONF_MSG        |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |    msg-type   |
+#  +-+-+-+-+-+-+-+-+
+#
+#           Figure 33: Reconfigure Message Option Format
+#
+#  option-code          OPTION_RECONF_MSG (19).
+#
+#  option-len           1.
+#
+#  msg-type             5 for Renew message, 6 for Rebind message,
+#                       11 for Information-request message.  A
+#                       1-octet unsigned integer.
+#
+encode-pair Reconf-Msg = InformationRequest
+match 00 13 00 01 0b
+
+decode-pair -
+match Reconf-Msg = InformationRequest
+
+#
+#  21.20.  Reconfigure Accept Option
+#
+#     A client uses the Reconfigure Accept option to announce to the server
+#     whether the client is willing to accept Reconfigure messages, and a
+#     server uses this option to tell the client whether or not to accept
+#     Reconfigure messages.  In the absence of this option, the default
+#     behavior is that the client is unwilling to accept Reconfigure
+#     messages.  The format of the Reconfigure Accept option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |     OPTION_RECONF_ACCEPT      |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#            Figure 34: Reconfigure Accept Option Format
+#
+#  option-code          OPTION_RECONF_ACCEPT (20).
+#
+#  option-len           0.
+#
+encode-pair Reconf-Accept = 0x
+match 00 14 00 00
+
+decode-pair -
+match Reconf-Accept = 0x
+
+#
+#  21.21.  Identity Association for Prefix Delegation Option
+#
+#     The IA_PD option is used to carry a prefix delegation identity
+#     association, the parameters associated with the IA_PD, and the
+#     prefixes associated with it.  The format of the IA_PD option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |         OPTION_IA_PD          |           option-len          |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                         IAID (4 octets)                       |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                              T1                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                              T2                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  .                                                               .
+#  .                          IA_PD-options                        .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  Figure 35: Identity Association for Prefix Delegation Option Format
+#
+#  option-code          OPTION_IA_PD (25).
+#
+#  option-len           12 + length of IA_PD-options field.
+#
+#  IAID                 The unique identifier for this IA_PD; the
+#                       IAID must be unique among the identifiers for
+#                       all of this client's IA_PDs.  The number
+#                       space for IA_PD IAIDs is separate from the
+#                       number space for other IA option types (i.e.,
+#                       IA_NA and IA_TA).  A 4-octet field containing
+#                       an unsigned integer.
+#
+#  T1                   The time interval after which the client
+#                       should contact the server from which the
+#                       prefixes in the IA_PD were obtained to extend
+#                       the lifetimes of the prefixes delegated to
+#                       the IA_PD; T1 is a time duration relative to
+#                       the message reception time expressed in units
+#                       of seconds.  A 4-octet field containing an
+#                       unsigned integer.
+#
+#  T2                   The time interval after which the client
+#                       should contact any available server to extend
+#                       the lifetimes of the prefixes assigned to the
+#                       IA_PD; T2 is a time duration relative to the
+#                       message reception time expressed in units of
+#                       seconds.  A 4-octet field containing an
+#                       unsigned integer.
+#
+#  IA_PD-options        Options associated with this IA_PD.  A
+#                       variable-length field (12 octets less than
+#                       the value in the option-len field).
+#
+encode-pair IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = 0x006001ad
+match 00 19 00 10 aa bb cc dd 00 00 d3 4d 00 00 b3 3f 00 60 01 ad
+
+decode-pair -
+match IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = 0x006001ad
+
+#
+#  21.22.  IA Prefix Option
+#
+#     The IA Prefix option is used to specify a prefix associated with an
+#     IA_PD.  The IA Prefix option must be encapsulated in the
+#     IA_PD-options field of an IA_PD option (see Section 21.21).
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |        OPTION_IAPREFIX        |           option-len          |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                      preferred-lifetime                       |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                        valid-lifetime                         |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  | prefix-length |                                               |
+#  +-+-+-+-+-+-+-+-+          IPv6-prefix                          |
+#  |                           (16 octets)                         |
+#  |                                                               |
+#  |                                                               |
+#  |                                                               |
+#  |               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |               |                                               .
+#  +-+-+-+-+-+-+-+-+                                               .
+#  .                       IAprefix-options                        .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#                Figure 36: IA Prefix Option Format
+#
+#  option-code          OPTION_IAPREFIX (26).
+#
+#  option-len           25 + length of IAprefix-options field.
+#
+#  preferred-lifetime   The preferred lifetime for the prefix in the
+#                       option, expressed in units of seconds.  A
+#                       value of 0xffffffff represents "infinity"
+#                       (see Section 7.7).  A 4-octet field
+#                       containing an unsigned integer.
+#
+#  valid-lifetime       The valid lifetime for the prefix in the
+#                       option, expressed in units of seconds.  A
+#                       value of 0xffffffff represents "infinity".  A
+#                       4-octet field containing an unsigned integer.
+#
+#  prefix-length        Length for this prefix in bits.  A 1-octet
+#                       unsigned integer.
+#
+#  IPv6-prefix          An IPv6 prefix.  A 16-octet field.
+#
+#  IAprefix-options     Options associated with this prefix.  A
+#                       variable-length field (25 octets less than
+#                       the value in the option-len field).
+#
+encode-pair IA-PD-Prefix-Preferred-Lifetime = 29425646, IA-PD-Prefix-Valid-Lifetime = 46202862, IA-PD-Prefix-IPv6-Prefix-Length = 128, IA-PD-Prefix-IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff, IA-PD-Prefix-Options = 0x006001ad
+match 00 1a 00 1d 01 c0 ff ee 02 c0 ff ee 80 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 60 01 ad
+
+decode-pair -
+match IA-PD-Prefix-Preferred-Lifetime = 29425646, IA-PD-Prefix-Valid-Lifetime = 46202862, IA-PD-Prefix-IPv6-Prefix-Length = 128, IA-PD-Prefix-IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff, IA-PD-Prefix-Options = 0x006001ad
+
+#
+#  21.23.  Information Refresh Time Option
+#
+#     This option is requested by clients and returned by servers to
+#     specify an upper bound for how long a client should wait before
+#     refreshing information retrieved from a DHCP server.  It is only used
+#     in Reply messages in response to Information-request messages.  In
+#     other messages, there will usually be other information that
+#     indicates when the client should contact the server, e.g., T1/T2
+#     times and lifetimes.  This option is useful when the configuration
+#     parameters change or during a renumbering event, as clients running
+#     in the stateless mode will be able to update their configuration.
+#
+#     The format of the Information Refresh Time option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |OPTION_INFORMATION_REFRESH_TIME|         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                   information-refresh-time                    |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#         Figure 37: Information Refresh Time Option Format
+#
+#  option-code                OPTION_INFORMATION_REFRESH_TIME (32).
+#
+#  option-len                 4.
+#
+#  information-refresh-time   Time duration relative to the current
+#                             time, expressed in units of seconds.  A
+#                             4-octet field containing an unsigned
+#                             integer.
+#
+encode-pair Information-Refresh-Time = 3721182122
+match 00 20 00 04 dd cc bb aa
+
+decode-pair -
+match Information-Refresh-Time = 3721182122
+
+#
+#  21.24.  SOL_MAX_RT Option
+#
+#     A DHCP server sends the SOL_MAX_RT option to a client to override the
+#     default value of SOL_MAX_RT.  The value of SOL_MAX_RT in the option
+#     replaces the default value defined in Section 7.6.  One use for the
+#     SOL_MAX_RT option is to set a higher value for SOL_MAX_RT; this
+#     reduces the Solicit traffic from a client that has not received a
+#     response to its Solicit messages.
+#
+#     The format of the SOL_MAX_RT option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_SOL_MAX_RT        |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                       SOL_MAX_RT value                        |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#                Figure 38: SOL_MAX_RT Option Format
+#
+#  option-code          OPTION_SOL_MAX_RT (82).
+#
+#  option-len           4.
+#
+#  SOL_MAX_RT value     Overriding value for SOL_MAX_RT in seconds;
+#                       MUST be in this range: 60 <= "value" <= 86400
+#                       (1 day).  A 4-octet field containing an
+#                       unsigned integer.
+#
+#
+encode-pair SOL-Max-RT = 3721182122
+match 00 52 00 04 dd cc bb aa
+
+decode-pair -
+match SOL-Max-RT = 3721182122
+
+#
+#  21.25.  INF_MAX_RT Option
+#
+#     A DHCP server sends the INF_MAX_RT option to a client to override the
+#     default value of INF_MAX_RT.  The value of INF_MAX_RT in the option
+#     replaces the default value defined in Section 7.6.  One use for the
+#     INF_MAX_RT option is to set a higher value for INF_MAX_RT; this
+#     reduces the Information-request traffic from a client that has not
+#     received a response to its Information-request messages.
+#
+#     The format of the INF_MAX_RT option is:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |      OPTION_INF_MAX_RT        |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                       INF_MAX_RT value                        |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#                Figure 39: INF_MAX_RT Option Format
+#
+#  option-code          OPTION_INF_MAX_RT (83).
+#
+#  option-len           4.
+#
+#  INF_MAX_RT value     Overriding value for INF_MAX_RT in seconds;
+#                       MUST be in this range: 60 <= "value" <= 86400
+#                       (1 day).  A 4-octet field containing an
+#                       unsigned integer.
+#
+encode-pair INF-Max-RT = 86400
+match 00 53 00 04 00 01 51 80
+
+decode-pair -
+match INF-Max-RT = 86400
+
+#
+#  Expected tests
+#
+count
+match 90
