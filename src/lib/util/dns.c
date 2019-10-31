@@ -1008,3 +1008,46 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	return after - label;
 }
+
+/** Get the *network* length of a DNS label in a buffer
+ *
+ * @param[in] buf	buffer holding one or more DNS labels
+ * @param[in] buf_len	total length of the buffer
+ * @return
+ *	- <=0 on error, offset from buf where the invalid label is located.
+ *	- > 0 network length of this particular DNS label
+ */
+ssize_t fr_dns_label_network_network_length(uint8_t const *buf, size_t buf_len)
+{
+	uint8_t const *p = buf;
+	uint8_t const *end = buf + buf_len;
+
+	while (p < end) {
+		if (*p == 0x00) {
+			p++;
+			break;
+		}
+
+		if (*p < 64) {
+			if ((p + *p + 1) > end) {
+				return -(p - buf);
+			}
+
+			p += *p + 1;
+			continue;
+		}
+
+		if (*p < 0xc0) {
+			return -(p - buf);
+		}
+
+		if ((p + 1) > end) {
+			return -(p - buf);
+		}
+
+		p += 2;
+		break;
+	}
+
+	return p - buf;
+}
