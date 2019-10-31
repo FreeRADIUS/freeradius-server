@@ -135,4 +135,4 @@ VALUE	Reconf-Msg			Renew			5
 VALUE	Reconf-Msg			Rebind			6
 VALUE	Reconf-Msg			InformationRequest	11
 
-ATTRIBUTE	Reconf-Accept				20	bool
+ATTRIBUTE	Reconf-Accept				20	octets	# only used to signal. no values.
