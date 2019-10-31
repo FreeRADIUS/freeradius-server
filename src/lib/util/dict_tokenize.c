@@ -343,6 +343,19 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			flags->extra = 1;
 			flags->subtype = FLAG_KEY_FIELD;
 
+		} else if (strcmp(key, "length") == 0) {
+			if (!value || (strcmp(value, "uint16") != 0)) {
+				fr_strerror_printf("The 'length' flag can only be used with value 'uint16'");
+			}
+
+			if ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS) && (type != FR_TYPE_UINT32)) {
+				fr_strerror_printf("The 'length' flag can only be used for attributes of type 'string' or 'octets'");
+				return -1;
+			}
+
+			flags->extra = 1;
+			flags->subtype = FLAG_LENGTH_UINT16;
+
 		} else if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 			flags->length = 4;
 			flags->type_size = FR_TIME_RES_SEC;

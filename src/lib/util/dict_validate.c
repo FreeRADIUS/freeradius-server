@@ -160,7 +160,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			break;
 		}
 
+		/*
+		 *	DHCPv6 has arrays of string / octets, prefixed
+		 *	with a uint16 field of "length".  Also, arrays of dns_labels.
+		 */
 		if (dict->root->attr == FR_PROTOCOL_DHCPV6) {
+			ALLOW_FLAG(extra);
 			ALLOW_FLAG(subtype);
 		}
 
@@ -221,8 +226,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	the data type.
 	 */
 	if (flags->extra) {
-		if (flags->subtype != FLAG_KEY_FIELD) {
-			fr_strerror_printf("The 'key' flag cannot be used with any other flags.");
+		if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_LENGTH_UINT16)) {
+			fr_strerror_printf("The 'key' and 'length' flags cannot be used with any other flags.");
 			return false;
 		}
 
@@ -230,17 +235,39 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
-			ALLOW_FLAG(extra);
-			ALLOW_FLAG(subtype);
+			if (flags->subtype != FLAG_KEY_FIELD) {
+				fr_strerror_printf("Invalid type for extra flag.");
+				return false;
+			}
+
 			if (parent->type != FR_TYPE_STRUCT) {
 				fr_strerror_printf("The 'key' flag can only be used inside of a 'struct'.");
 				return false;
 			}
 
+			ALLOW_FLAG(extra);
+			ALLOW_FLAG(subtype);
+			break;
+
+		case FR_TYPE_OCTETS:
+			if (flags->length != 0) {
+				fr_strerror_printf("Cannot use [..] and length=uint16");
+				return false;
+			}
+			/* FALL-THROUGH */
+
+		case FR_TYPE_STRING:
+			if (flags->subtype != FLAG_LENGTH_UINT16) {
+				fr_strerror_printf("Invalid type for extra flag.");
+				return false;
+			}
+
+			ALLOW_FLAG(extra);
+			ALLOW_FLAG(array);
+			ALLOW_FLAG(subtype);
 			break;
 
 		default:
-			fr_strerror_printf("The 'key' flag can only be used with unsigned integer data types");
 			return -1;
 		}
 

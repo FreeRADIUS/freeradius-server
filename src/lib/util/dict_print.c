@@ -52,7 +52,7 @@ do { \
 	FLAG_SET(concat);
 	FLAG_SET(virtual);
 
-	if (dict && flags->subtype) {
+	if (dict && !flags->extra && flags->subtype) {
 		p += snprintf(p, end - p, "%s", fr_table_str_by_value(dict->subtype_table, flags->subtype, "?"));
 		if (p >= end) return -1;
 	}
@@ -63,11 +63,13 @@ do { \
 	}
 
 	if (flags->extra) {
-		switch (type) {
-		case FR_TYPE_UINT8:
-		case FR_TYPE_UINT16:
-		case FR_TYPE_UINT32:
+		switch (flags->subtype) {
+		case FLAG_KEY_FIELD:
 			p += snprintf(p, end - p, "key,");
+			break;
+
+		case FLAG_LENGTH_UINT16:
+			p += snprintf(p, end - p, "length=uint16,");
 			break;
 
 		default:
