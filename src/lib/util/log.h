@@ -29,6 +29,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/fopencookie.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -106,11 +107,8 @@ typedef struct {
 	char const		*file;		//!< Path to log file.
 
 	void			*cookie;	//!< for fopencookie()
-#ifdef HAVE_FOPENCOOKIE
+
 	ssize_t			(*cookie_write)(void *, char const *, size_t);	//!< write function
-#else
-	int			(*cookie_write)(void *, char const *, int);	//!< write function
-#endif
 } fr_log_t;
 
 extern fr_log_t default_log;

@@ -18,6 +18,7 @@ SOURCES		:= \
 		   dl.c \
 		   dns.c \
 		   event.c \
+		   fopencookie.c \
 		   fifo.c \
 		   fring.c \
 		   getaddrinfo.c \
