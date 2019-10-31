@@ -167,7 +167,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		vp->vp_tainted = true;
 		fr_cursor_append(&child_cursor, vp);
 
-		if (vp->da->flags.extra) key_vp = vp;
+		if (da_is_key_field(vp->da)) key_vp = vp;
 
 		/*
 		 *	Note that we're decoding fixed fields here.
@@ -305,7 +305,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 
 			if (!child) break;
 
-			if (child->flags.extra) {
+			if (da_is_key_field(child)) {
 				key_da = child;
 			}
 
@@ -348,7 +348,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			if (len <= 0) return -1;
 		}
 
-		if (child->flags.extra) {
+		if (da_is_key_field(child)) {
 			key_da = child;
 		}
 

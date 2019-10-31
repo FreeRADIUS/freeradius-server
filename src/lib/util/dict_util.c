@@ -687,7 +687,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 		 *	Children are allowed here, but ONLY if this
 		 *	attribute is a key field.
 		 */
-		if (parent->parent && (parent->parent->type == FR_TYPE_STRUCT) && parent->flags.extra) break;
+		if (parent->parent && (parent->parent->type == FR_TYPE_STRUCT) && da_is_key_field(parent)) break;
 		/* FALL-THROUGH */
 
 	default:

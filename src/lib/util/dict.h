@@ -93,6 +93,15 @@ enum {
 	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
 };
 
+/** subtype values for the dictionary when extra=1
+ *
+ */
+enum {
+	FLAG_EXTRA_NONE = 0,				//!< no extra meaning, should be invalid
+	FLAG_KEY_FIELD,					//!< this is a key field for a subsequent struct
+};
+
+#define da_is_key_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_KEY_FIELD))
 
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 extern fr_dict_t *fr_dict_internal;

@@ -221,24 +221,17 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	the data type.
 	 */
 	if (flags->extra) {
-		switch (type) {
-		case FR_TYPE_EXTENDED:
-			ALLOW_FLAG(extra);
-			if (all_flags) {
-				fr_strerror_printf("The 'long' flag cannot be used with any other flags.");
-				return false;
-			}
-			break;
+		if (flags->subtype != FLAG_KEY_FIELD) {
+			fr_strerror_printf("The 'key' flag cannot be used with any other flags.");
+			return false;
+		}
 
+		switch (type) {
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
 			ALLOW_FLAG(extra);
-			if (all_flags) {
-				fr_strerror_printf("The 'key' flag cannot be used with any other flags.");
-				return false;
-			}
-
+			ALLOW_FLAG(subtype);
 			if (parent->type != FR_TYPE_STRUCT) {
 				fr_strerror_printf("The 'key' flag can only be used inside of a 'struct'.");
 				return false;
@@ -257,7 +250,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	/*
 	 *	Subtype flag checks for RADIUS
 	 */
-	if ((flags->subtype) && (dict->root->attr == FR_PROTOCOL_RADIUS)) {
+	if (!flags->extra && (flags->subtype) && (dict->root->attr == FR_PROTOCOL_RADIUS)) {
 		if ((flags->subtype == FLAG_EXTENDED_ATTR) && (type != FR_TYPE_EXTENDED)) {
 			fr_strerror_printf("The 'long' flag can only be used for attributes of type 'extended'");
 			return false;
@@ -597,6 +590,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	switch (parent->type) {
 	case FR_TYPE_STRUCT:
 		if ((dict->root->attr == FR_PROTOCOL_RADIUS) &&
+		    !flags->extra &&
 		    (flags->subtype != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT be encrypted.");
 			return false;
@@ -652,7 +646,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 						return false;
 					}
 
-					if (!sibling->flags.extra) continue;
+					if (!da_is_key_field(sibling)) continue;
 
 					fr_strerror_printf("Duplicate key attributes '%s' and '%s' in 'struct' type attribute %s are forbidden",
 							   name, sibling->name, parent->name);
@@ -675,7 +669,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
-		if (parent->flags.extra) break;
+		if (da_is_key_field(parent)) break;
 		/* FALL-THROUGH */
 
 	default:
