@@ -266,7 +266,12 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const   	*key_da;
 
-	VP_VERIFY(fr_cursor_current(cursor));
+	if (!vp) {
+		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
+		return -1;
+	}
+
+	VP_VERIFY(vp);
 
 	if (parent->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
@@ -274,8 +279,14 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		return -1;
 	}
 
-	if (!vp || (vp->da->parent != parent)) {
-		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
+	/*
+	 *	@todo - if we get a child which *eventually* has the
+	 *	given parent, then allow encoding of that struct, too.
+	 *	This allows us to encode structures automatically,
+	 *	even if key fields are omitted.
+	 */
+	if (vp->da->parent != parent) {
+		fr_strerror_printf("%s: struct encoding is missing previous attributes", __FUNCTION__);
 		return -1;
 	}
 
