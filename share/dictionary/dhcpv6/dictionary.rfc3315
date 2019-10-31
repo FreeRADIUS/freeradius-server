@@ -49,8 +49,8 @@ MEMBER		Server-ID-DUID-LL-Address		octets
 
 ATTRIBUTE	IA-NA					3	struct
 MEMBER		IA-NA-IAID				uint32
-MEMBER		IA-NA-T1				uint32	# really time_delta, 32-bit seconds
-MEMBER		IA-NA-T2				uint32	# really time_delta, 32-bit seconds
+MEMBER		IA-NA-T1				time_delta
+MEMBER		IA-NA-T2				time_delta
 MEMBER		IA-NA-Options				octets	# Really sub-options
 
 ATTRIBUTE	IA-TA					4	struct
@@ -59,8 +59,8 @@ MEMBER		IA-TA-Options				octets	# Really sub-options
 
 ATTRIBUTE	IA-Addr					5	struct
 MEMBER		IA-Addr-IPv6-Address			ipv6addr
-MEMBER		IA-Addr-Preferred-Lifetime		uint32	# really time_delta, 32-bit seconds
-MEMBER		IA-Addr-Valid-Lifetime			uint32	# really time_delta, 32-bit seconds
+MEMBER		IA-Addr-Preferred-Lifetime		time_delta
+MEMBER		IA-Addr-Valid-Lifetime			time_delta
 MEMBER		IA-Addr-Options				octets	# really sub-options
 
 ATTRIBUTE	Option-Request				6	uint16 array	# Magic option listing requested options
