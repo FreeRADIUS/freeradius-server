@@ -120,8 +120,9 @@ sql {
 	#	are unable to help with the syntax of the Mongo queries.  Please see
 	#	the Mongo documentation for that syntax.
 	#
-	#	The Mongo driver supports two methods:
+	#	The Mongo driver supports only the following methods:
 	#
+	#		findOne
 	#		findAndModify
 	#		aggregate
 	#
