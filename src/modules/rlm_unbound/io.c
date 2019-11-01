@@ -46,23 +46,6 @@ DIAG_ON(documentation)
  */
 typedef void(*unbound_cb_t)(int, short flags, void *uctx);
 
-/** Wrapper around our event loop specifying callbacks for creating new event handles
- *
- * This stores libunbound specific information in addition to the el for the current
- * worker thread.  It's passed into the 'new_event' callback when a new event handle
- * is created.  So we use it to pass in the el, and any other useful information.
- *
- * Lifetime should be bound to the thread instance.
- */
-struct unbound_io_event_base_s {
-	struct ub_event_base	base;		//!< Interface structure for libunbound.
-						///< MUST BE LISTED FIRST.
-
-	rlm_unbound_thread_t	*t;		//!< Thread instance this event base belongs to.
-
-	fr_event_list_t		*el;		//!< Event loop events should be inserted into.
-};
-
 /** Wrapper around event handle for our event loop
  *
  * This stores libunbound specific information for an event in our event loop.
@@ -171,15 +154,6 @@ static void _unbound_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED
 	DEBUG4("unbound event %p - Timeout", ev);
 
 	ev->cb(-1, UB_EV_TIMEOUT, ev->uctx);	/* Inform libunbound */
-
-	/*
-	 *	Advanced libunbound's state
-	 */
-	ret = ub_process(ev->ev_b->t->ub);
-	if (ret != 0) {
-		ERROR("unbound event %p - ub_process errored after timeout event - %s (%i)",
-		      ev, ub_strerror(ret), ret);
-	}
 }
 
 /** Unbound FD became readable
@@ -197,7 +171,7 @@ static void _unbound_io_service_readable(fr_event_list_t *el, int fd, UNUSED int
 
 	DEBUG4("unbound event %p - FD %i now readable", ev, fd);
 
-	ev->cb(-1, UB_EV_READ, ev->uctx);		/* Inform libunbound */
+	ev->cb(fd, UB_EV_READ, ev->uctx);		/* Inform libunbound */
 
 	/*
 	 *	Remove IO events
@@ -207,15 +181,6 @@ static void _unbound_io_service_readable(fr_event_list_t *el, int fd, UNUSED int
 		if (fr_event_fd_delete(el, ev->fd, FR_EVENT_FILTER_IO) < 0) {
 			PERROR("unbound event %p - De-registration failed for FD %i", ev, ev->fd);
 		}
-	}
-
-	/*
-	 *	Advanced libunbound's state
-	 */
-	ret = ub_process(ev->ev_b->t->ub);
-	if (ret != 0) {
-		ERROR("unbound event %p - ub_process errored after read event - %s (%i)",
-		      ev, ub_strerror(ret), ret);
 	}
 }
 
@@ -230,7 +195,7 @@ static void _unbound_io_service_writable(fr_event_list_t *el, int fd, UNUSED int
 
 	DEBUG4("unbound event %p - FD %i now writable", ev, fd);
 
-	ev->cb(-1, UB_EV_WRITE, ev->uctx);	/* Inform libunbound */
+	ev->cb(fd, UB_EV_WRITE, ev->uctx);	/* Inform libunbound */
 
 	/*
 	 *	Remove IO events
@@ -271,14 +236,6 @@ static void _unbound_io_service_errored(UNUSED fr_event_list_t *el,
 	}
 
 	ev->cb(-1, UB_EV_TIMEOUT, ev->uctx);	/* Call libunbound - pretend this is a timeout */
-
-	/*
-	 *	Advanced libunbound's state
-	 */
-	ret = ub_process(ev->ev_b->t->ub);
-	if (ret != 0) {
-		ERROR("unbound event %p - ub_process errored after FD error - %s (%i)", ev, ub_strerror(ret), ret);
-	}
 }
 
 
@@ -500,21 +457,31 @@ static struct ub_event *_unbound_io_event_new(struct ub_event_base* base, int fd
 	return (struct ub_event *)ev;
 }
 
-/** Initialises a ub_ctx, writing it to t->ub
+static int _event_base_free(unbound_io_event_base_t *ev_b)
+{
+	if (ev_b->ub) ub_ctx_delete(ev_b->ub);
+
+	return 0;
+}
+
+/** Alloc a new event base, and unbound ctx initialised from that event base
  *
  * The ub_ctx is configured to use the el specified.
  *
  * When the thread ctx is freed, unbound_io_free should be called to gracefully
  * free the ub_ctx, and then the event base structure it depends on.
  *
- * @param[out] t	Thread instance data to populate.
+ * @param[in] ctx	Talloc ctx to allocate even base in.
+ * @param[out] ev_b_out	Event base.  Free with talloc_free.
  * @parma[in] el	To use to run the unbound event loop.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unbound_io_init(rlm_unbound_thread_t *t, fr_event_list_t *el)
+int unbound_io_init(TALLOC_CTX *ctx, unbound_io_event_base_t **ev_b_out, fr_event_list_t *el)
 {
+	unbound_io_event_base_t *ev_b;
+
 	static struct ub_event_base_vmt vmt = {
 		.new_event	= _unbound_io_event_new
 	};
@@ -524,36 +491,25 @@ int unbound_io_init(rlm_unbound_thread_t *t, fr_event_list_t *el)
 	 *	is freed.  So must be parented from the NULL
 	 *	ctx.
 	 */
-	MEM(t->ev_b = talloc_zero(NULL, unbound_io_event_base_t));
-	t->ev_b->base.magic = UB_EVENT_MAGIC;
-	t->ev_b->base.vmt = &vmt;
-	t->ev_b->el = el;
-	t->ev_b->t = t;
+	MEM(ev_b = talloc_zero(ctx, unbound_io_event_base_t));
+	ev_b->base.magic = UB_EVENT_MAGIC;
+	ev_b->base.vmt = &vmt;
+	ev_b->el = el;
 
 	/*
 	 *	Create the main ub_ctx using our event base
 	 *	which specifies how libunbound integrates
 	 *	with our event loop.
 	 */
-	t->ub = ub_ctx_create_ub_event((struct ub_event_base *)t->ev_b);
-	if (!t->ub) {
+	ev_b->ub = ub_ctx_create_ub_event((struct ub_event_base *)ev_b);
+	if (!ev_b->ub) {
 		ERROR("Failed creating ub_ctx");
-		TALLOC_FREE(t->ev_b);
+		TALLOC_FREE(ev_b);
 		return -1;
 	}
+	talloc_set_destructor(ev_b, _event_base_free);
+
+	*ev_b_out = ev_b;
+
 	return 0;
-}
-
-/** Frees ub_ctx and dependent memory
- *
- * @param[in,out] t	Thread instance data to free resources from.
- */
-void unbound_io_free(rlm_unbound_thread_t *t)
-{
-	if (t->ub) {
-		ub_ctx_delete(t->ub);
-		t->ub = NULL;
-	}
-
-	TALLOC_FREE(t->ev_b);
 }
