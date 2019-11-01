@@ -44,6 +44,8 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  See mods-config/sql/ippool/mysql/procedure.sql
 	  Patch from Terry Burton.  #3048.
 	* Update dictionary.dhcp dictionary with the recent hardware types.
+	* Add experimental rlm_python3.  This should largely work the same
+	  as rlm_python, which was Python2 only.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
