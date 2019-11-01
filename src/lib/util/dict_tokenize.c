@@ -978,15 +978,23 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	enclosing "struct": unwind until we do find the
 	 *	parent, OR until we hit the root of the dictionary.
 	 */
-	if (ctx->stack[ctx->stack_depth].da != parent->parent) {
+	if ((ctx->stack_depth > 1) && (ctx->stack[ctx->stack_depth].da != parent->parent)) {
 		int i;
+		bool found = false;
 
 		for (i = ctx->stack_depth - 1; i > 0; i--) {
 			if ((ctx->stack[i].da == parent->parent) ||
 			    (ctx->stack[i].da->flags.is_root)) {
 				ctx->stack_depth = i;
+				found = true;
 				break;
 			}
+		}
+
+		if (!found) {
+			fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
+					   parent->name);
+			return -1;
 		}
 	}
 
