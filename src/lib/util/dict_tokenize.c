@@ -1151,7 +1151,7 @@ static int dict_read_parse_format(char const *format, unsigned int *pvalue, int 
 static int dict_read_process_protocol(char **argv, int argc)
 {
 	unsigned int	value;
-	unsigned int	type_size = 1;
+	unsigned int	type_size = 0;
 	fr_dict_t	*dict;
 	fr_dict_attr_t	*mutable;
 
@@ -1169,7 +1169,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 	}
 
 	/*
-	 *	255 protocolss FR_TYPE_GROUP type_size hack
+	 *	255 protocols FR_TYPE_GROUP type_size hack
 	 */
 	if ((value == 0) || (value > 255)) {
 		fr_strerror_printf("Invalid value '%u' following PROTOCOL", value);
@@ -1228,7 +1228,8 @@ static int dict_read_process_protocol(char **argv, int argc)
 	 *	And check types no matter what.
 	 */
 	if (dict) {
-		if (dict->root->flags.type_size != type_size) {
+		if (type_size && (dict->root->flags.type_size != type_size)) {
+		conflicting:
 			fr_strerror_printf("Conflicting flags for PROTOCOL \"%s\" (current %d versus new %d)",
 					   dict->root->name, dict->root->flags.type_size, type_size);
 			return -1;
@@ -1243,10 +1244,22 @@ static int dict_read_process_protocol(char **argv, int argc)
 	 */
 	dict_root_set(dict, argv[0], value);
 
-	memcpy(&mutable, &dict->root, sizeof(mutable));
-	mutable->flags.type_size = type_size;
-
 	if (dict_protocol_add(dict) < 0) return -1;
+
+	/*
+	 *	Set the type size
+	 */
+	if (type_size && (dict->root->flags.type_size != type_size)) goto conflicting;
+
+	memcpy(&mutable, &dict->root, sizeof(mutable));
+
+	if (!type_size) {
+		mutable->flags.type_size = dict->default_type_size;
+		mutable->flags.length = dict->default_type_length;
+	} else {
+		mutable->flags.type_size = type_size;
+		mutable->flags.length = 1; /* who knows... */
+	}
 
 	return 0;
 }
