@@ -83,3 +83,6 @@ match 00 17 00 20 28 04 01 4d 2a 73 44 ab 00 00 00 00 00 00 01 23 28 04 01 4d 2a
 #
 encode-pair Domain-List = "mydomain1.com", Domain-List = "mydomain2.lan", Domain-List = "corp.mydomain3.co"
 match 00 18 00 31 09 6d 79 64 6f 6d 61 69 6e 31 03 63 6f 6d 00 09 6d 79 64 6f 6d 61 69 6e 32 03 6c 61 6e 00 04 63 6f 72 70 09 6d 79 64 6f 6d 61 69 6e 33 02 63 6f 00
+
+count
+match 6

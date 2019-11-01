@@ -167,26 +167,5 @@ match 00 36 00 28 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 00
 encode-pair NTP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
 match 00 38 00 14 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
 
-#
-#  This attribute is NOT compressed!
-#
-encode-pair BCMCS-Server-Domain-Name-List = "www.example.com"
-match 00 21 00 11 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
-
-encode-pair BCMCS-Server-Domain-Name-List = "www.example.com", BCMCS-Server-Domain-Name-List = "ftp.example.com"
-match 00 21 00 22 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
-
-encode-pair BCMCS-Server-Domain-Name-List = "www.example.com", BCMCS-Server-Domain-Name-List = "ftp.example.com", BCMCS-Server-Domain-Name-List = "ns.example.com"
-match 00 21 00 32 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 02 6e 73 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
-
-#
-#  Microsoft VSAs. We have no idea what the contents are, and the documentation doesn't say.
-#
-encode-pair Microsoft-Rogue-Detection-Request = 0x00
-match 00 11 00 09 00 00 01 37 00 5e 00 01 00
-
-decode-pair -
-match Microsoft-Rogue-Detection-Request = 0x00
-
 count
 match 84
