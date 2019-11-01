@@ -209,6 +209,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	bool aggregate = false;
 	bool findandmodify = false;
 	bool find = false;
+	bool insert = false;
 	char *ptr;
 	mongoc_client_t *client;
 	bson_t *bson = NULL;
@@ -333,6 +334,9 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 
 	} else if (strcasecmp(command, "aggregate") == 0) {
 		aggregate = true;
+
+	} else if (strcasecmp(command, "insert") == 0) {
+		insert = true;
 
 	} else {
 		ERROR("rlm_sql_mongo: Invalid query - Unknown / unsupported Mongo command '%s'",
@@ -581,6 +585,18 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	done_reply:
 		bson_destroy(&bson_reply);
 
+	} else if (insert) {
+		if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, bson, NULL, &conn->error)) {
+			goto print_error;
+		}
+
+		bson_destroy(bson);
+		mongoc_client_pool_push(conn->driver->pool, client);
+		mongoc_collection_destroy(collection);
+		conn->num_fields = 0;
+
+		return RLM_SQL_OK;
+
 	} else {
 		mongoc_cursor_t *cursor;
 		bson_t const *doc;
@@ -649,6 +665,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	}
 
 	if (!rcode) {
+	print_error:
 		DEBUG("rlm_sql_mongo: Failed running command: %s",
 		       conn->error.message);
 

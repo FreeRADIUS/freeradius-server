@@ -122,9 +122,10 @@ sql {
 	#
 	#	The Mongo driver supports only the following methods:
 	#
-	#		findOne
-	#		findAndModify
 	#		aggregate
+	#		findAndModify
+	#		findOne
+	#		insert
 	#
 	#	For examples, see the query files:
 	#
