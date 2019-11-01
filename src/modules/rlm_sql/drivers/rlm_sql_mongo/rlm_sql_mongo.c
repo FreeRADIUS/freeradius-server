@@ -208,6 +208,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	char *str, *r, *end;
 	bool aggregate = false;
 	bool findandmodify = false;
+	bool find = false;
 	char *ptr;
 	mongoc_client_t *client;
 	bson_t *bson = NULL;
@@ -324,7 +325,10 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		return RLM_SQL_QUERY_INVALID;
 	}
 
-	if (strcasecmp(command, "findAndModify") == 0) {
+	if (strcasecmp(command, "findOne") == 0) {
+	        find = true;
+
+	} else if (strcasecmp(command, "findAndModify") == 0) {
 		findandmodify = true;
 
 	} else if (strcasecmp(command, "aggregate") == 0) {
@@ -581,9 +585,19 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		mongoc_cursor_t *cursor;
 		bson_t const *doc;
 
-		rad_assert(aggregate == true);
+		/*
+		 *	findOne versus aggregate.  For findOne, we
+		 *	limit the results to (drumroll) one.
+		 */
+		if (find) {
+			bson_t *opts = BCON_NEW("limit", BCON_INT64 (1));
+			cursor = mongoc_collection_find_with_opts(collection, bson, opts, NULL);
+			bson_destroy(opts);
 
-		cursor = mongoc_collection_aggregate(collection, MONGOC_QUERY_NONE, bson, NULL, NULL);
+		} else {
+			rad_assert(aggregate == true);
+			cursor = mongoc_collection_aggregate(collection, MONGOC_QUERY_NONE, bson, NULL, NULL);
+		}
 
 		conn->num_rows = 0;
 		conn->bson_row = talloc_zero_array(conn, bson_t *, MAX_ROWS);
@@ -607,7 +621,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		}
 
 		if (mongoc_cursor_error(cursor, &conn->error)) {
-			DEBUG("rlm_sql_mongo: Failed running aggregate query: %s",
+			DEBUG("rlm_sql_mongo: Failed running query: %s",
 			      conn->error.message);
 			rcode = false;
 		} else {
