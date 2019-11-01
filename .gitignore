@@ -75,3 +75,4 @@ run.sh
 
 # rpm packages
 rpmbuild/
+/install
