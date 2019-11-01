@@ -1,0 +1,17 @@
+#
+#  Test vectors for DHCPv6
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  4 byte unsigned integer (uint32)
+#
+encode-pair Information-Refresh-Time = 99
+match 00 20 00 04 00 00 00 63
+
+decode-pair -
+match Information-Refresh-Time = 99
+
+count
+match 6

@@ -1,0 +1,58 @@
+#
+#  Test vectors for DHCPv6
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  Encode ipv6prefix
+#
+encode-pair MIP6-Home-Net-Prefix = 2001:db8::/32
+match 00 47 00 05 20 20 01 0d b8
+
+decode-pair -
+no match MIP6-Home-Net-Prefix = 2001:db8::/32
+
+# Prefix truncates address portion
+encode-pair MIP6-Home-Net-Prefix = 2001:db8:00ff::/32
+match 00 47 00 05 20 20 01 0d b8
+
+decode-pair -
+no match MIP6-Home-Net-Prefix = 2001:db8:00ff::/32
+
+# Prefix longer than address portion
+encode-pair MIP6-Home-Net-Prefix = 2001:db8:00ff::/64
+match 00 47 00 09 40 20 01 0d b8 00 ff 00 00
+
+decode-pair -
+no match MIP6-Home-Net-Prefix = 2001:db8:00ff::/64
+
+encode-pair MIP6-Home-Net-Prefix = 2001:0db8:85a3:0000:0000:8a2e:0370:7334/128
+match 00 47 00 11 80 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+decode-pair -
+no match MIP6-Home-Net-Prefix = 2001:0db8:85a3:0000:0000:8a2e:0370:7334/128
+
+# Cast ipv6addr to 128bit prefix
+encode-pair MIP6-Home-Net-Prefix = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+match 00 47 00 11 80 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+decode-pair -
+no match MIP6-Home-Net-Prefix = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+
+# 0 bit prefix
+encode-pair MIP6-Home-Net-Prefix = ::/0
+match 00 47 00 01 00
+
+decode-pair -
+no match MIP6-Home-Net-Prefix = ::/0
+
+# v4 address - Check the correct 4in6 prefix is added
+encode-pair MIP6-Home-Net-Prefix = ::ffff:192.168.0.1
+match 00 47 00 11 80 00 00 00 00 00 00 00 00 00 00 ff ff c0 a8 00 01
+
+decode-pair -
+no match MIP6-Home-Net-Prefix = ::ffff:192.168.0.1
+
+count
+match 30

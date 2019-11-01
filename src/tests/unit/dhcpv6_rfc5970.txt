@@ -1,0 +1,63 @@
+#
+#  Test vectors for DHCPv6
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  Array of strings, each substring should have a 16bit length field containing its length
+#
+encode-pair Bootfile-Param = "I LIKE CHICKEN", Bootfile-Param = "I LIKE LIVER"
+match 00 3c 00 1e 00 0e 49 20 4c 49 4b 45 20 43 48 49 43 4b 45 4e 00 0c 49 20 4c 49 4b 45 20 4c 49 56 45 52
+
+decode-pair -
+match Bootfile-Param = "I LIKE CHICKEN", Bootfile-Param = "I LIKE LIVER"
+
+# Still needs to add the length field with only one element
+encode-pair Bootfile-Param = "MEOW MIX MEOW MIX"
+match 00 3c 00 13 00 11 4d 45 4f 57 20 4d 49 58 20 4d 45 4f 57 20 4d 49 58
+
+decode-pair -
+match Bootfile-Param = "MEOW MIX MEOW MIX"
+
+encode-pair Bootfile-Param = ""
+match 00 3c 00 02 00 00
+
+decode-pair -
+no match Bootfile-Param = ""
+
+encode-pair Bootfile-Param = "", Bootfile-Param = "foo"
+match 00 3c 00 07 00 00 00 03 66 6f 6f
+
+decode-pair -
+match Bootfile-Param = "", Bootfile-Param = "foo"
+
+#
+#  Array of 16bit integers
+#
+encode-pair Client-Arch-Type = x86-BIOS, Client-Arch-Type = ARM-64-Uboot
+match 00 3d 00 04 00 00 00 16
+
+decode-pair -
+match Client-Arch-Type = x86-BIOS, Client-Arch-Type = ARM-64-Uboot
+
+#
+#  Two different arrays of 16bit integers
+#
+encode-pair Client-Arch-Type = x86-BIOS, Client-Arch-Type = ARM-64-Uboot, S46-Priority = DS-Lite, S46-Priority = MAP-E
+match 00 3d 00 04 00 00 00 16 00 6f 00 04 00 40 00 5e
+
+decode-pair -
+no match Client-Arch-Type = x86-BIOS, Client-Arch-Type = ARM-64-Uboot, S46-Priority = DS-Lite, S46-Priority = MAP-E
+
+#
+#  Array type with one element
+#
+encode-pair Client-Arch-Type = x86-BIOS
+match 00 3d 00 02 00 00
+
+decode-pair -
+match Client-Arch-Type = x86-BIOS
+
+count
+match 30
