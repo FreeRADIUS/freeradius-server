@@ -728,7 +728,6 @@ module_t rlm_unbound = {
 	.name			= "unbound",
 	.type			= RLM_TYPE_THREAD_SAFE,
 	.inst_size		= sizeof(rlm_unbound_t),
-	.thread_inst_size	= sizeof(rlm_unbound_thread_t),
 	.config			= module_config,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
