@@ -124,6 +124,8 @@ static void _unbound_io_event_fd_set(struct ub_event *ub_ev, int fd)
 
 	rad_assert(!ev->active);			/* must not be active */
 
+	if (fd == ev->fd) return;
+
 	DEBUG4("unbound event %p - Changed FD from %i to %i", ev, ev->fd, fd);
 
 	ev->fd = fd;
