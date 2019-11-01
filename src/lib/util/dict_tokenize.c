@@ -1229,7 +1229,6 @@ static int dict_read_process_protocol(char **argv, int argc)
 	 */
 	if (dict) {
 		if (type_size && (dict->root->flags.type_size != type_size)) {
-		conflicting:
 			fr_strerror_printf("Conflicting flags for PROTOCOL \"%s\" (current %d versus new %d)",
 					   dict->root->name, dict->root->flags.type_size, type_size);
 			return -1;
@@ -1245,11 +1244,6 @@ static int dict_read_process_protocol(char **argv, int argc)
 	dict_root_set(dict, argv[0], value);
 
 	if (dict_protocol_add(dict) < 0) return -1;
-
-	/*
-	 *	Set the type size
-	 */
-	if (type_size && (dict->root->flags.type_size != type_size)) goto conflicting;
 
 	memcpy(&mutable, &dict->root, sizeof(mutable));
 
