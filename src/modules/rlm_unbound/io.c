@@ -147,7 +147,6 @@ static void _unbound_io_event_free(struct ub_event *ub_ev)
 static void _unbound_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(uctx, unbound_io_event_t);
-	int			ret;
 
 	rad_assert(ev->active);			/* must be active */
 
@@ -165,7 +164,6 @@ static void _unbound_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED
 static void _unbound_io_service_readable(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(uctx, unbound_io_event_t);
-	int			ret;
 
 	rad_assert(ev->active);			/* must be active */
 
@@ -220,7 +218,6 @@ static void _unbound_io_service_errored(UNUSED fr_event_list_t *el,
 					int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(uctx, unbound_io_event_t);
-	int			ret;
 
 	rad_assert(ev->active);			/* must be active */
 
