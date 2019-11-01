@@ -1,0 +1,14 @@
+#
+#  Test vectors for DHCPv6
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  2 byte unsigned integer (uint16)
+#
+encode-pair ANI-Access-Technology-Type = 3GPP2-NB-IOT
+match 00 69 00 02 00 0d
+
+count
+match 4

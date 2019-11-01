@@ -29,11 +29,20 @@ FILES  := \
 	eap_sim_decode.txt \
 	eap_sim_error.txt \
 	dhcpv4.txt \
-	dhcpv6.txt \
+	dhcpv6_microsoft.txt \
 	dhcpv6_rfc3315.txt \
 	dhcpv6_rfc3319.txt \
 	dhcpv6_rfc3646.txt \
+	dhcpv6_rfc4242.txt \
+	dhcpv6_rfc4280.txt \
+	dhcpv6_rfc4580.txt \
+	dhcpv6_rfc5678.txt \
+	dhcpv6_rfc5908.txt \
+	dhcpv6_rfc5970.txt \
 	dhcpv6_rfc6355.txt \
+	dhcpv6_rfc6610.txt \
+	dhcpv6_rfc7839.txt \
+	dhcpv6_rfc8156.txt \
 	regex.txt \
 	escape.txt \
 	condition.txt \

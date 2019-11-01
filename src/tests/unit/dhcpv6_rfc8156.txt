@@ -1,0 +1,25 @@
+#
+#  Test vectors for DHCPv6
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  Date. Like a 32bit unix timestamp but starts from 1st Jan 2000 instead of 1st Jan 1970
+#
+encode-pair Failover-Expiration-Time = 0
+match 00 78 00 04 00 00 00 00
+
+# Still less than 946080000 (30 years), so still 0 (we can't represent dates earlier than 1st Jan 2000)
+encode-pair Failover-Expiration-Time = 500
+match 00 78 00 04 00 00 00 00
+
+encode-pair Failover-Expiration-Time = 946080000
+match 00 78 00 04 00 00 00 00
+
+# 1st second of 1st Jan 2000
+encode-pair Failover-Expiration-Time = 946080001
+match 00 78 00 04 00 00 00 01
+
+count
+match 10

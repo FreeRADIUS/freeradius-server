@@ -129,5 +129,45 @@ match 00 02 00 0a 00 03 00 02 d3 4d 00 c0 ff ee
 decode-pair -
 match Server-ID-DUID = Server-ID-DUID-LL, Server-ID-DUID-LL-Hardware-Type = 2, Server-ID-DUID-LL-Address = 0xd34d00c0ffee
 
+#
+#  1 byte unsigned integer (uint8)
+#
+encode-pair Preference = 255
+match 00 07 00 01 ff
+
+encode-pair Preference = 0
+match 00 07 00 01 00
+
+#
+#  empty value. (only signal)
+#
+encode-pair Rapid-Commit = 0x
+match 00 0e 00 00
+
+decode-pair -
+match Rapid-Commit = 0x
+
+#
+#  Encode ipv6address
+#
+encode-pair Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+match 00 0c 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+# Scope should be ignored.  We use %0 as numbered scopes work everywhere, interfaces don't
+encode-pair Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334%0
+match 00 0c 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+#
+#  Variable length octets array
+#
+encode-pair User-Class = 0x010203, User-Class = 0x02040810
+match 00 0f 00 0b 00 03 01 02 03 00 04 02 04 08 10
+
+encode-pair User-Class = 0x010203
+match 00 0f 00 05 00 03 01 02 03
+
+encode-pair User-Class = 0x, User-Class = 0x
+match 00 0f 00 04 00 00 00 00
+
 count
-match 26
+match 44

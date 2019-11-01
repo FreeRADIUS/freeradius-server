@@ -1,0 +1,20 @@
+#
+#  Test vectors for DHCPv6
+#
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  This attribute is NOT compressed!
+#
+encode-pair BCMCS-Server-Domain-Name-List = "www.example.com"
+match 00 21 00 11 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+encode-pair BCMCS-Server-Domain-Name-List = "www.example.com", BCMCS-Server-Domain-Name-List = "ftp.example.com"
+match 00 21 00 22 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+encode-pair BCMCS-Server-Domain-Name-List = "www.example.com", BCMCS-Server-Domain-Name-List = "ftp.example.com", BCMCS-Server-Domain-Name-List = "ns.example.com"
+match 00 21 00 32 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 02 6e 73 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+count
+match 8
