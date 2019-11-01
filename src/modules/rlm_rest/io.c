@@ -402,7 +402,7 @@ void rest_io_module_action(void *instance, void *thread, REQUEST *request, void 
  * @param[in] rctx	rlm_rest_handle_t currently used by the request.
  * @param[in] action	What happened.
  */
-void rest_io_xlat_action(REQUEST *request, UNUSED void *instance, void *thread, void *rctx, fr_state_signal_t action)
+void rest_io_xlat_signal(REQUEST *request, UNUSED void *instance, void *thread, void *rctx, fr_state_signal_t action)
 {
 	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(thread, rest_xlat_thread_inst_t);
 	rlm_rest_t			*mod_inst = xti->inst;

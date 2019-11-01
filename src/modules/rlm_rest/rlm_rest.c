@@ -431,7 +431,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	ret = rest_io_request_enqueue(t, request, handle);
 	if (ret < 0) goto error;
 
-	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_action, rctx);
+	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, rctx);
 }
 
 static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *request, void *ctx)
@@ -1003,7 +1003,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
 				       UNUSED xlat_exp_t const *exp, void *uctx)
 {
-	rlm_rest_t			*inst = talloc_get_type_abort(uctx, rlm_rest_t);
+	rlm_rest_t		*inst = talloc_get_type_abort(uctx, rlm_rest_t);
 	rest_xlat_thread_inst_t	*xt = xlat_thread_inst;
 
 	xt->inst = inst;
