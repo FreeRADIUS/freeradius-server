@@ -377,7 +377,6 @@ static ssize_t decode_options(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t co
 	fr_dict_attr_t const	*da;
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
 
-
 #ifdef __clang_analyzer__
 	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
 #endif
@@ -417,9 +416,11 @@ static ssize_t decode_options(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t co
 	} else {
 		rcode = decode_value(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 	}
+
 	if (rcode < 0) return rcode;
 
-	return data_len;
+	return len + 4;
+
 }
 
 
