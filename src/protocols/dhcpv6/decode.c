@@ -91,6 +91,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	ssize_t			rcode;
 	VALUE_PAIR		*vp;
 	fr_dict_attr_t const	*tlv;
+	uint8_t			prefix_len;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
 
@@ -99,7 +100,62 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	raw:
 		return decode_raw(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
 
-	case FR_TYPE_FIXED_SIZE:
+		/*
+		 *	Address MAY be shorter than 16 bytes.
+		 */
+	case FR_TYPE_IPV6_PREFIX:
+		if ((data_len == 0) || (data_len > 17)) goto raw;
+
+		/*
+		 *	No address, the prefix length MUST be zero.
+		 */
+		if (data_len == 1) {
+			if (data[0] != 0) goto raw;
+
+			vp = fr_pair_afrom_da(ctx, parent);
+			if (!vp) return -1;
+
+			vp->vp_ip.af = AF_INET6;
+			vp->vp_ip.scope_id = 0;
+			vp->vp_ip.prefix = 0;
+			memset(&vp->vp_ipv6addr, 0, sizeof(vp->vp_ipv6addr));
+			break;
+		}
+
+		prefix_len = data[0];
+
+		/*
+		 *	If we have a /64 prefix but only 7 bytes of
+		 *	address, that's an error.
+		 */
+		if ((prefix_len >> 3) > (data_len - 1)) goto raw;
+
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return -1;
+
+		vp->vp_ip.af = AF_INET6;
+		vp->vp_ip.scope_id = 0;
+		vp->vp_ip.prefix = prefix_len;
+		memset(&vp->vp_ipv6addr, 0, sizeof(vp->vp_ipv6addr));
+		memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
+		break;
+
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_DATE:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_INT32:
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_BOOL:
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 		vp = fr_pair_afrom_da(ctx, parent);
