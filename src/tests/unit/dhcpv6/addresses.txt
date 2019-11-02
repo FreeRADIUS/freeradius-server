@@ -1,0 +1,64 @@
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  Encode ipv6address
+#
+encode-pair Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+match 00 0c 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+# Scope should be ignored.  We use %0 as numbered scopes work everywhere, interfaces don't
+encode-pair Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334%0
+match 00 0c 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+#
+#  Encode ipv6prefix
+#
+encode-pair MIP6-Home-Net-Prefix = 2001:db8::/32
+match 00 47 00 05 20 20 01 0d b8
+
+# Prefix truncates address portion
+encode-pair MIP6-Home-Net-Prefix = 2001:db8:00ff::/32
+match 00 47 00 05 20 20 01 0d b8
+
+# Prefix longer than address portion
+encode-pair MIP6-Home-Net-Prefix = 2001:db8:00ff::/64
+match 00 47 00 09 40 20 01 0d b8 00 ff 00 00
+
+encode-pair MIP6-Home-Net-Prefix = 2001:0db8:85a3:0000:0000:8a2e:0370:7334/128
+match 00 47 00 11 80 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+# Cast ipv6addr to 128bit prefix
+encode-pair MIP6-Home-Net-Prefix = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+match 00 47 00 11 80 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+# 0 bit prefix
+encode-pair MIP6-Home-Net-Prefix = ::/0
+match 00 47 00 01 00
+
+# v4 address - Check the correct 4in6 prefix is added
+encode-pair MIP6-Home-Net-Prefix = ::ffff:192.168.0.1
+match 00 47 00 11 80 00 00 00 00 00 00 00 00 00 00 ff ff c0 a8 00 01
+
+# convert ipv4 to ipv6
+# e.g: 0:0:0:0:0:ffff:102:304
+#encode-pair Unicast = 1.2.3.4
+#match 00 0c 00 10 00 00 00 00 00 00 00 00 00 00 ff ff 01 02 03 04
+
+# short ipv6
+encode-pair Unicast = 2001:4860:4860::8888
+match 00 0c 00 10 20 01 48 60 48 60 00 00 00 00 00 00 00 00 88 88
+
+decode-pair -
+match Unicast = 2001:4860:4860::8888
+
+# long ipv6
+encode-pair Unicast = 2001:0db8:85a3:cade:cafe:8a2e:0370:7334
+match 00 0c 00 10 20 01 0d b8 85 a3 ca de ca fe 8a 2e 03 70 73 34
+
+#  Leading 0's are omitted
+decode-pair -
+match Unicast = 2001:db8:85a3:cade:cafe:8a2e:370:7334
+
+count
+match 28

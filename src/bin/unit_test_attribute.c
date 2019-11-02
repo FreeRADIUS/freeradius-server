@@ -1568,7 +1568,7 @@ static size_t command_touch(command_result_t *result, UNUSED command_ctx_t *cc,
 			    UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	if (fr_file_unlink(in) < 0) RETURN_COMMAND_ERROR();
-	if (fr_file_touch(in, 0644) < 0) RETURN_COMMAND_ERROR();
+	if (fr_file_touch(NULL, in, 0644, true, 0755) <= 0) RETURN_COMMAND_ERROR();
 
 	RETURN_OK(0);
 }
@@ -2281,12 +2281,17 @@ cleanup:
 	fr_dict_free(&dict);
 	unlang_free();
 	xlat_free();
-	fr_strerror_free();
 
-	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_file_touch(receipt_file, 0644) < 0)) {
+	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_file_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_attribute");
 		ret = EXIT_FAILURE;
 	}
+
+	/*
+	 *	Must be last, we still need the errors
+	 *      from fr_file_touch.
+	 */
+	fr_strerror_free();
 
 	return ret;
 }

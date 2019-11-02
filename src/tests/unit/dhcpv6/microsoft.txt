@@ -1,6 +1,3 @@
-#
-#  Test vectors for DHCPv6
-#
 load dhcpv6
 dictionary-load dhcpv6
 

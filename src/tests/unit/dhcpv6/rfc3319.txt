@@ -1,6 +1,3 @@
-#
-#  Test vectors for DHCPv6 attributes for (SIP) Servers
-#
 load dhcpv6
 dictionary-load dhcpv6
 
@@ -41,8 +38,8 @@ match SIP-Server-Domain-Name-List = "www.example.com", SIP-Server-Domain-Name-Li
 
 # convert ipv4 to ipv6
 # e.g: 0:0:0:0:0:ffff:102:304
-#encode-pair SIP-Server-Address = 1.2.3.4
-#match 00 16 00 10 00 00 00 00 00 00 00 00 00 00 ff ff 01 02 03 04
+encode-pair SIP-Server-Address = 1.2.3.4
+match 00 16 00 10 00 00 00 00 00 00 00 00 00 00 ff ff 01 02 03 04
 
 # short ipv6
 encode-pair SIP-Server-Address = 2001:4860:4860::8888
@@ -72,4 +69,4 @@ decode-pair -
 match SIP-Server-Address = 2001:db8:85a3::8a2e:370:7334, SIP-Server-Address = 2001:db8:85a3::8a2e:370:7335, SIP-Server-Address = 2001:4860:4860::8888
 
 count
-match 30
+match 32

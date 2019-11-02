@@ -1110,16 +1110,16 @@ cleanup:
 	 */
 	trigger_exec_free();
 
+	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_file_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
+		fr_perror("unit_test_module");
+		ret = EXIT_FAILURE;
+	}
+
 	/*
 	 *	Explicitly cleanup the buffer used for storing syserror messages
 	 *	This cuts down on address sanitiser output on error.
 	 */
 	fr_syserror_free();
-
-	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_file_touch(receipt_file, 0644) < 0)) {
-		fr_perror("unit_test_module");
-		ret = EXIT_FAILURE;
-	}
 
 	/*
 	 *	Call pthread destructors.  Which aren't normally

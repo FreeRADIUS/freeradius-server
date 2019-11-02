@@ -109,7 +109,7 @@ $$(OUTPUT.$(TEST)):
 #
 #  All of the output files depend on the input files
 #
-FILES.$(TEST) := $(addprefix $$(OUTPUT.$(TEST))/,$(notdir $(FILES)))
+FILES.$(TEST) := $(addprefix $$(OUTPUT.$(TEST))/,$(FILES))
 
 #
 #  The output files also depend on the directory

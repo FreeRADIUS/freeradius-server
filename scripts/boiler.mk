@@ -65,6 +65,11 @@ define FIND_FILES
 $(filter-out %~ $(call FIND_DIRS,${1}),$(wildcard ${1}/* ${1}/*/* ${1}/*/*/* ${1}/*/*/*/* ${1}/*/*/*/*/* ${1}/*/*/*/*/*/* ))
 endef
 
+# FIND_FILES_SUFFIX - find all the files with a given suffix
+define FIND_FILES_SUFFIX
+$(foreach d,$(wildcard $(1:=/*)),$(call FIND_FILES_SUFFIX,$d,$2) $(filter $(subst *,%,$2),$d))
+endef
+
 # ADD_CLEAN_RULE - Parameterized "function" that adds a new rule and phony
 #   target for cleaning the specified target (removing its build-generated
 #   files).

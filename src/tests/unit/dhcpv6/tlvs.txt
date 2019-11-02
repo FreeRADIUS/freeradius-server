@@ -1,0 +1,23 @@
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  TLV with array type values
+#
+encode-pair MOS-Address-IS = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+match 00 36 00 14 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+encode-pair MOS-Address-IS = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, MOS-Address-IS = 2001:0db8:85a3:0000:0000:8a2e:0370:7335
+match 00 36 00 24 00 01 00 20 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35
+
+encode-pair MOS-Address-IS = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, MOS-Address-ES = 2001:0db8:85a3:0000:0000:8a2e:0370:7335
+match 00 36 00 28 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 00 03 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35
+
+#
+#  TLV with single values
+#
+encode-pair NTP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+match 00 38 00 14 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+count
+match 10

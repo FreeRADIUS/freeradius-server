@@ -1,0 +1,14 @@
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  Bool
+#
+encode-pair Rapid-Commit = 0x
+match 00 0e 00 00
+
+decode-pair -
+match Rapid-Commit = 0x
+
+count
+match 6

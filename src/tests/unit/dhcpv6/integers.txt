@@ -1,0 +1,26 @@
+load dhcpv6
+dictionary-load dhcpv6
+
+#
+#  1 byte unsigned integer (uint8)
+#
+encode-pair Preference = 255
+match 00 07 00 01 ff
+
+encode-pair Preference = 0
+match 00 07 00 01 00
+
+#
+#  2 byte unsigned integer (uint16)
+#
+encode-pair ANI-Access-Technology-Type = 3GPP2-NB-IOT
+match 00 69 00 02 00 0d
+
+#
+#  4 byte unsigned integer (uint32)
+#
+encode-pair Information-Refresh-Time = 99
+match 00 20 00 04 00 00 00 63
+
+count
+match 10
