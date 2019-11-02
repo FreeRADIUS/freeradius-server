@@ -719,7 +719,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 			MEM(buff = talloc_typed_strdup(cs, inst->filename));
 		}
 
-		ret = rad_mkdir(buff, 0700, -1, -1);
+		ret = fr_mkdir(NULL, buff, -1, 0700);
 		talloc_free(buff);
 		if (ret < 0) {
 			ERROR("Failed creating directory for SQLite database: %s", fr_syserror(errno));

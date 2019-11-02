@@ -646,7 +646,7 @@ build_vector:
 		p = strrchr(path, '/');
 		if (p) {
 			*p = '\0';
-			if (rad_mkdir(path, 0700, -1, -1) < 0) {
+			if (fr_mkdir(NULL, path, -1, 0700) < 0) {
 				RERROR("Failed to create directory %s: %s", path, fr_syserror(errno));
 				rcode = RLM_MODULE_FAIL;
 				goto finish;

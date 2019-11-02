@@ -1301,11 +1301,14 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode)
  *	- <= 0 on failure. Negative offset pointing to the
  *	  path separator of the path component that caused the error.
  */
-ssize_t fr_mkdir(int *fd_out, char const *path, size_t len, mode_t mode)
+ssize_t fr_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode)
 {
 	char	*our_path;
 	int	fd = -1;
 	ssize_t	slen;
+
+	if (len < 0) len = strlen(path);
+	if (len == 0) return 0;
 
 	/*
 	 *	Fast path (har har)
@@ -1320,7 +1323,7 @@ ssize_t fr_mkdir(int *fd_out, char const *path, size_t len, mode_t mode)
 	 *	Dup the amount of input path
 	 *      we need.
 	 */
-	our_path = talloc_bstrndup(NULL, path, len);
+	our_path = talloc_bstrndup(NULL, path, (size_t)len);
 	if (!our_path) {
 		fr_strerror_printf("Out of memory");
 		return -1;
