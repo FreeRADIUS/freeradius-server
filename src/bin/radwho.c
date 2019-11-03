@@ -112,7 +112,7 @@ static char *dotime(time_t t)
 	 *	The caller must provide the output buffer buf
 	 *	(which must be at least 26 characters long)
 	 */
-	char buff[26];
+	static char buff[26];
 	char *s = ctime_r(&t, buff);
 
 	if (showname) {
