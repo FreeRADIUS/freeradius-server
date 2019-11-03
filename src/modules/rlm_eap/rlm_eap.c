@@ -617,10 +617,17 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 								     request->dict));
 
 	if (method->submodule->clone_parent_lists) {
-		fr_pair_list_copy(eap_session->subrequest, &eap_session->subrequest->control, request->control);
-		fr_pair_list_copy(eap_session->subrequest->packet,
-				  &eap_session->subrequest->packet->vps,
-				  request->packet->vps);
+		if (fr_pair_list_copy(eap_session->subrequest,
+				      &eap_session->subrequest->control, request->control) < 0) {
+		list_copy_fail:
+			RERROR("Failed copying parent's attribute list");
+			TALLOC_FREE(eap_session->subrequest);
+			return RLM_MODULE_FAIL;
+		}
+
+		if (fr_pair_list_copy(eap_session->subrequest->packet,
+				      &eap_session->subrequest->packet->vps,
+				      request->packet->vps) < 0) goto list_copy_fail;
 	}
 
 	/*
