@@ -647,7 +647,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		VALUE_PAIR *tvp;
 
-		tvp = fr_pair_afrom_da(fake, attr_eap_type);
+		MEM(tvp = fr_pair_afrom_da(fake, attr_eap_type));
 		tvp->vp_uint32 = t->default_provisioning_method;
 		fr_pair_add(&fake->control, tvp);
 
@@ -655,12 +655,12 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
-			tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge);
+			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge));
 			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP3(t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 auth_challenge");
 
-			tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge);
+			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge));
 			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP3(t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 peer_challenge");
