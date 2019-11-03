@@ -60,11 +60,11 @@ VALUE	Client-Link-Layer-Type		Client-Link-Layer-HFI	37
 VALUE	Client-Link-Layer-Type		Client-Link-Layer-HW_EXP2 256
 VALUE	Client-Link-Layer-Type		Client-Link-Layer-AEthernet 257
 
-STRUCT    HW_EXP2        Client-Link-Layer-Type            256
-MEMBER        HW_EXP2-Address                ether
+STRUCT	Client-Link-Layer-HW_EXP2		Client-Link-Layer-Type 256
+MEMBER		Client-Link-Layer-HW_EXP2-Address	ether
 
-STRUCT    AEthernet        Client-Link-Layer-Type        257
-MEMBER        AEthernet-Address            ether
+STRUCT	Client-Link-Layer-AEthernet		Client-Link-Layer-Type 257
+MEMBER		Client-Link-Layer-AEthernet-Address	ether
 
 #
 #	Unassigned	258-65534
