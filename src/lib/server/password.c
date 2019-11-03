@@ -522,22 +522,22 @@ static VALUE_PAIR *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, VALU
 
 	switch (known_good->vp_length) {
 	case SHA224_DIGEST_LENGTH:
-		out = fr_pair_afrom_da(ctx, attr_sha2_224_password);
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_224_password));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA256_DIGEST_LENGTH:
-		out = fr_pair_afrom_da(ctx, attr_sha2_256_password);
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_256_password));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA384_DIGEST_LENGTH:
-		out = fr_pair_afrom_da(ctx, attr_sha2_384_password);
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_384_password));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA512_DIGEST_LENGTH:
-		out = fr_pair_afrom_da(ctx, attr_sha2_512_password);
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_512_password));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
