@@ -475,7 +475,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 */
 		entry->state_comp.server_id = state->server_id;
 
-		vp = fr_pair_afrom_da(packet, state->da);
+		MEM(vp = fr_pair_afrom_da(packet, state->da));
 		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state), false);
 		fr_pair_add(&packet->vps, vp);
 	}
