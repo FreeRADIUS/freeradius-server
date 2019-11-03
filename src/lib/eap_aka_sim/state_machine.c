@@ -940,7 +940,7 @@ static rlm_rcode_t common_failure_notification_send(eap_aka_sim_common_conf_t *i
 	 */
 	if (after_authentication(eap_aka_sim_session)) {
 		if (!notification_vp) {
-			pair_add_reply(&notification_vp, attr_eap_aka_sim_notification);
+			MEM(pair_add_reply(&notification_vp, attr_eap_aka_sim_notification) >= 0);
 			notification_vp->vp_uint16 = eap_aka_sim_session->failure_type; /* Default will be zero */
 		}
 
@@ -986,7 +986,7 @@ static rlm_rcode_t common_failure_notification_send(eap_aka_sim_common_conf_t *i
 		 *	Only valid code is general failure
 		 */
 		if (!notification_vp) {
-			pair_add_reply(&notification_vp, attr_eap_aka_sim_notification);
+			MEM(pair_add_reply(&notification_vp, attr_eap_aka_sim_notification) >= 0);
 			notification_vp->vp_uint16 = FR_NOTIFICATION_VALUE_GENERAL_FAILURE;
 		/*
 		 *	User supplied failure code
