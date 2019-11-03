@@ -398,10 +398,9 @@ static ssize_t decode_options(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t co
 
 	da = fr_dict_attr_child_by_num(parent, option);
 	if (!da) {
-		FR_PROTO_TRACE("Unknown attribute %u", option);
 		da = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, fr_dict_root(dict), 0, option);
+		if (!da) return -1;
 	}
-	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
 	if ((da->type == FR_TYPE_STRING) && da->flags.subtype) {
@@ -420,7 +419,6 @@ static ssize_t decode_options(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t co
 	if (rcode < 0) return rcode;
 
 	return len + 4;
-
 }
 
 
