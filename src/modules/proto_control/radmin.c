@@ -456,34 +456,17 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 		fprintf(stderr, "Input line too long\n");
 		fr_exit_now(EXIT_FAILURE);
 	}
-
 	*p = '\0';
 
-	/*
-	 *	Strip off leading spaces.
-	 */
-	for (p = line; *p != '\0'; p++) {
-		if ((p[0] == ' ') ||
-		    (p[0] == '\t')) {
-			line = p + 1;
-			continue;
-		}
-
-		/*
-		 *	Return an empty string.
-		 */
-		if (p[0] == '#') {
-			line[0] = '\0';
-			break;
-		}
-
-		break;
-	}
+	fr_skip_whitespace(line);
 
 	/*
 	 *	Comments: keep going.
 	 */
-	if (!line) return line;
+	if (line[0] == '#') {
+		*line = '\0';
+		return line;
+	}
 
 	/*
 	 *	Strip off CR / LF
