@@ -680,7 +680,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, tls_s
 		len = t->username->vp_length + EAP_HEADER_LEN + 1;
 		t->status = PEAP_STATUS_PHASE2;
 
-		vp = fr_pair_afrom_da(fake->packet, attr_eap_message);
+		MEM(vp = fr_pair_afrom_da(fake->packet, attr_eap_message));
 
 		q = talloc_array(vp, uint8_t, len);
 		q[0] = FR_EAP_CODE_RESPONSE;
