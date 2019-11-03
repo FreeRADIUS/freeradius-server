@@ -1673,7 +1673,7 @@ static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 
 	if (!info->parent) return -1; /* internal error */
 
-	vp = fr_pair_afrom_da(info->parent, da);
+	MEM(vp = fr_pair_afrom_da(info->parent, da));
 
 	rcode = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
 	if (rcode < 0) return rcode;
