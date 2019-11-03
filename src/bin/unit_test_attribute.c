@@ -2064,7 +2064,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 	}
 
 finish:
-	if (fd && (fp != stdin)) fclose(fp);
+	if (fp && (fp != stdin)) fclose(fp);
 
 	/*
 	 *	Free any residual resources re loaded.
