@@ -686,25 +686,17 @@ static char *mystrtok(char **ptr, char const *sep)
 {
 	char	*res;
 
-	if (**ptr == 0) {
-		return NULL;
-	}
+	if (**ptr == '\0') return NULL;
 
-	while (**ptr && strchr(sep, **ptr)) {
-		(*ptr)++;
-	}
-	if (**ptr == 0) {
-		return NULL;
-	}
+	while (**ptr && strchr(sep, **ptr)) (*ptr)++;
+
+	if (**ptr == '\0') return NULL;
 
 	res = *ptr;
-	while (**ptr && strchr(sep, **ptr) == NULL) {
-		(*ptr)++;
-	}
+	while (**ptr && strchr(sep, **ptr) == NULL) (*ptr)++;
 
-	if (**ptr != 0) {
-		*(*ptr)++ = 0;
-	}
+	if (**ptr != '\0') *(*ptr)++ = '\0';
+
 	return res;
 }
 
@@ -904,7 +896,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	 *
 	 *	Otherwise, ignore errors and assume GMT.
 	 */
-	if (p) {
+	if (*p != '\0') {
 		fr_skip_whitespace(p);
 		(void) fr_time_delta_from_time_zone(p, &gmtoff);
 	}
