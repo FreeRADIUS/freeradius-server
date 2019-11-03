@@ -218,7 +218,7 @@ static int generic_cmp(UNUSED void *instance,
 
 		if (xlat_eval(value, sizeof(value), request, name, NULL, NULL) < 0) return 0;
 
-		vp = fr_pair_afrom_da(req, check->da);
+		MEM(vp = fr_pair_afrom_da(req, check->da));
 		vp->op = check->op;
 		fr_pair_value_from_str(vp, value, -1, '"', false);
 
