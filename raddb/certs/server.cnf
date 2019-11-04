@@ -43,6 +43,7 @@ distinguished_name	= server
 default_bits		= 2048
 input_password		= whatever
 output_password		= whatever
+req_extensions		= v3_req
 
 [server]
 countryName		= FR
@@ -52,3 +53,14 @@ organizationName	= Example Inc.
 emailAddress		= admin@example.org
 commonName		= "Example Server Certificate"
 
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+#  This should be a host name of the RADIUS server.
+#  Note that the host name is exchanged in EAP *before*
+#  the user machine has network access.  So the host name
+#  here doesn't really have to match anything in DNS.
+[alt_names]
+DNS.1 = radius.example.com
