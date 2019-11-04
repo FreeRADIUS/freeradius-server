@@ -151,7 +151,7 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, REQUEST *request,
 	if (vp) {
 		server_cs = virtual_server_find(vp->vp_strvalue);
 		if (!server_cs) {
-			REDEBUG2("Virtual server \"%s\" not found", vp->vp_strvalue);
+			REDEBUG2("Virtual server \"%pV\" not found", &vp->data);
 		error:
 			eap_tls_fail(request, eap_session);
 			return RLM_MODULE_INVALID;

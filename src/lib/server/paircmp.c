@@ -137,7 +137,7 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 
 	name = username->vp_strvalue;
 
-	RDEBUG3("Comparing name \"%s\" and check value \"%s\"", name, check->vp_strvalue);
+	RDEBUG3("Comparing name \"%s\" and check value \"%pV\"", name, &check->data);
 
 	len = strlen(check->vp_strvalue);
 

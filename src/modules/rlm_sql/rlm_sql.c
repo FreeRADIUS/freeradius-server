@@ -656,7 +656,7 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 	 */
 	MEM(pair_update_request(&vp, inst->sql_user) >= 0);
 	fr_pair_value_strsteal(vp, expanded);
-	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
+	RDEBUG2("SQL-User-Name set to '%pV'", &vp->data);
 
 	return 0;
 }

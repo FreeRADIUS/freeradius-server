@@ -1434,7 +1434,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 			fr_pair_value_strcpy(vp,  SSL_CIPHER_get_name(cipher));
 			fr_pair_add(&request->state, vp);
 			RINDENT();
-			RDEBUG2("&session-state:TLS-Session-Cipher-Suite := \"%s\"", vp->vp_strvalue);
+			RDEBUG2("&session-state:%pP", vp);
 			REXDENT();
 		}
 
@@ -1762,7 +1762,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	 */
 	vp = fr_pair_find_by_da(request->control, attr_tls_session_cert_file, TAG_ANY);
 	if (vp) {
-		RDEBUG2("Loading TLS session certificate \"%s\"", vp->vp_strvalue);
+		RDEBUG2("Loading TLS session certificate \"%pV\"", &vp->data);
 
 		if (SSL_use_certificate_file(session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
 			tls_log_error(request, "Failed loading TLS session certificate \"%s\"",

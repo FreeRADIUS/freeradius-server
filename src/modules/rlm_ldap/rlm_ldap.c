@@ -1030,7 +1030,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		fr_pair_value_bstrncpy(vp, password, pass_size);
 
 		if (RDEBUG_ENABLED3) {
-			RDEBUG3("Added eDirectory password.  control:%s += '%s'", vp->da->name, vp->vp_strvalue);
+			RDEBUG3("Added eDirectory password.  control:%pP", vp);
 		} else {
 			RDEBUG2("Added eDirectory password");
 		}

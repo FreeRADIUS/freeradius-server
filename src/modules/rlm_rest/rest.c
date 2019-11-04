@@ -1925,7 +1925,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 			continue;
 		}
 		RINDENT();
-		RDEBUG3("%s", header->vp_strvalue);
+		RDEBUG3("%pV", &header->data);
 		REXDENT();
 
 		ctx->headers = curl_slist_append(ctx->headers, header->vp_strvalue);

@@ -722,7 +722,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, tls_s
 
 			fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);
 
-			RDEBUG2("Got tunneled identity of %s", t->username->vp_strvalue);
+			RDEBUG2("Got tunneled identity of %pV", &t->username->data);
 		}
 	} /* else there WAS a t->username */
 

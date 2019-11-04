@@ -79,7 +79,7 @@ static int rlm_example_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE
 {
 	rad_assert(check->vp_type == FR_TYPE_STRING);
 
-	RINFO("Example-Paircmp called with \"%s\"", check->vp_strvalue);
+	RINFO("Example-Paircmp called with \"%pV\"", &check->data);
 
 	if (strcmp(check->vp_strvalue, "yes") == 0) return 0;
 	return 1;

@@ -104,7 +104,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 	time_t		now;
 
 	if (strspn(check->vp_strvalue, "0123456789: ") != strlen(check->vp_strvalue)) {
-		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
+		RDEBUG2("Bad Time-Of-Day value \"%pV\"", &check->data);
 		return -1;
 	}
 
@@ -119,7 +119,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 	scan = atoi(p);
 	p = strchr(p, ':');
 	if ((scan > 23) || !p) {
-		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
+		RDEBUG2("Bad Time-Of-Day value \"%pV\"", &check->data);
 		return -1;
 	}
 	when = scan * 3600;
@@ -127,7 +127,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 
 	scan = atoi(p);
 	if (scan > 59) {
-		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
+		RDEBUG2("Bad Time-Of-Day value \"%pV\"", &check->data);
 		return -1;
 	}
 	when += scan * 60;
@@ -136,7 +136,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 	if (p) {
 		scan = atoi(p + 1);
 		if (scan > 59) {
-			RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
+			RDEBUG2("Bad Time-Of-Day value \"%pV\"", &check->data);
 			return -1;
 		}
 		when += scan;

@@ -377,7 +377,7 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst,
 
 			VP_VERIFY(response);
 
-			RDEBUG2("MSCHAP-Error: %s", response->vp_strvalue);
+			RDEBUG2("MSCHAP-Error: %pV", &response->data);
 
 			/*
 			 *	Parse the new challenge out of the

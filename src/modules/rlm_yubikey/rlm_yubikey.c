@@ -316,11 +316,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 		RINDENT();
 		if (RDEBUG_ENABLED3) {
-			RDEBUG3("&request:Yubikey-OTP := '%s'", vp->vp_strvalue);
-			RDEBUG3("&request:User-Password := '%s'", password->vp_strvalue);
+			RDEBUG3("&request:%pP", vp);
+			RDEBUG3("&request:%pP", password);
 		} else {
-			RDEBUG2("&request:Yubikey-OTP := <<< secret >>>");
-			RDEBUG2("&request:User-Password := <<< secret >>>");
+			RDEBUG2("&request:%s := <<< secret >>>", vp->da->name);
+			RDEBUG2("&request:%s := <<< secret >>>", password->da->name);
 		}
 		REXDENT();
 

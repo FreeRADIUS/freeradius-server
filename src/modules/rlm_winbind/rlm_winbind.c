@@ -171,7 +171,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		goto error;
 	}
 
-	REDEBUG2("Trying to find user \"%s\" in group \"%s\"", username, check->vp_strvalue);
+	REDEBUG2("Trying to find user \"%s\" in group \"%pV\"", username, &check->data);
 
 	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wb_groups);
 	switch (err) {
