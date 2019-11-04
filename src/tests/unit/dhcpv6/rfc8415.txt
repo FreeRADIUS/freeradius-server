@@ -291,11 +291,13 @@ encode-pair IA-Addr-IPv6-Address = fd85:d2bb:92c::74ae:2871:f56c:8d94, IA-Addr-P
 match 00 05 00 1c fd 85 d2 bb 09 2c 00 00 74 ae 28 71 f5 6c 8d 94 00 00 00 78 00 01 51 80 00 60 01 ad
 
 #
-# the inet_pton() fill up the empty blocks with 0: on Linux, but not on OSX.
-# so, we are doing the regex just to ignore it.
+# inet_pton() on Linux represents fields consisting of only zeros
+# as a single 0. macOS ommits the value entirely.
+#
+# We use a regex match to deal with the inconsistency.
 #
 decode-pair -
-match-regex IA-Addr-IPv6-Address = fd85:d2bb:92c:.*:74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = 0x006001ad
+match-regex IA-Addr-IPv6-Address = fd85:d2bb:92c:0{0,4}:74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = 0x006001ad
 
 #
 #  21.7.  Option Request Option
