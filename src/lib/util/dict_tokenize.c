@@ -1236,7 +1236,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 		return 0;
 	}
 
-	dict = dict_alloc(NULL);
+	dict = dict_alloc(NULL, argv[0]);
 
 	/*
 	 *	Set the root attribute with the protocol name
@@ -2240,7 +2240,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	memcpy(&tmp, &dict_dir_default, sizeof(tmp));
 	dict_path = dict_subdir ? talloc_asprintf(NULL, "%s%c%s", dict_dir_default, FR_DIR_SEP, dict_subdir) : tmp;
 
-	dict = dict_alloc(dict_ctx);
+	dict = dict_alloc(dict_ctx, NULL);
 	if (!dict) {
 	error:
 		if (!fr_dict_internal) talloc_free(dict);

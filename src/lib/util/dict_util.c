@@ -24,7 +24,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict_priv.h>
-#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
@@ -41,6 +40,8 @@ bool			dict_initialised = false;
 char			*dict_dir_default;		//!< The default location for loading dictionaries if one
 							///< wasn't provided.
 TALLOC_CTX		*dict_ctx;
+
+static dl_loader_t	*dict_loader;			//!< for protocol validation
 
 static fr_hash_table_t	*protocol_by_name = NULL;	//!< Hash containing names of all the registered protocols.
 static fr_hash_table_t	*protocol_by_num = NULL;	//!< Hash containing numbers of all the registered protocols.
@@ -2152,6 +2153,27 @@ fr_dict_enum_t *fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alia
 	return fr_hash_table_finddata(dict->values_by_alias, &find);
 }
 
+static int dict_dlopen(fr_dict_t *dict, char const *name)
+{
+	char *module_name;
+
+	if (!name) return 0;
+
+	module_name = talloc_typed_asprintf(NULL, "libfreeradius-%s", name);
+
+	/*
+	 *	Pass in dict as the uctx so that we can get at it in
+	 *	any callbacks.
+	 *
+	 *	Not all dictionaries have validation functions.  It's
+	 *	a soft error if they don't exist.
+	 */
+	dict->dl = dl_by_name(dict_loader, module_name, dict, false);
+
+	talloc_free(module_name);
+	return 0;
+}
+
 static int _dict_free_autoref(UNUSED void *ctx, void *data)
 {
 	fr_dict_t *dict = data;
@@ -2184,10 +2206,11 @@ static int _dict_free(fr_dict_t *dict)
 /** Allocate a new dictionary
  *
  * @param[in] ctx to allocate dictionary in.
+ * @param[in] name the name of the protocol
  * @return
  *	- NULL on memory allocation error.
  */
-fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
+fr_dict_t *dict_alloc(TALLOC_CTX *ctx, char const *name)
 {
 	fr_dict_t *dict;
 
@@ -2247,6 +2270,12 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 
 	dict->values_by_da = fr_hash_table_create(dict, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
 	if (!dict->values_by_da) goto error;
+
+	if (dict_dlopen(dict, name) < 0) goto error;
+
+	/*
+	 *	Try to load libfreeradius-NAME
+	 */
 
 	return dict;
 }
@@ -2429,6 +2458,28 @@ void fr_dict_dump(fr_dict_t const *dict)
 	_fr_dict_dump(dict, dict->root, 0);
 }
 
+/** Callback to automatically load validation routines for dictionaries.
+ *
+ * @param[in] dl	the library we just loaded
+ * @param[in] symbol	pointer to a fr_dict_protocol_t table
+ * @param[in] user_ctx	the global context which we don't need
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
+{
+	fr_dict_t *dict = talloc_get_type_abort(dl->uctx, fr_dict_t);
+	fr_dict_protocol_t const *proto = symbol;
+
+	/*
+	 *	Set the protocol-specific callbacks.
+	 */
+	dict->proto = proto;
+
+	return 0;
+}
+
 /** Initialise the global protocol hashes
  *
  * @note Must be called before any other dictionary functions.
@@ -2459,6 +2510,13 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 
 	talloc_free(dict_dir_default);		/* Free previous value */
 	dict_dir_default = talloc_strdup(ctx, dict_dir);
+
+	dict_loader = dl_loader_init(ctx, NULL, NULL, false, false);
+	if (!dict_loader) return -1;
+
+	if (dl_symbol_init_cb_register(dict_loader, 0, "dict_protocol", dict_onload_func, NULL) < 0) {
+		return -1;
+	}
 
 	dict_initialised = true;
 

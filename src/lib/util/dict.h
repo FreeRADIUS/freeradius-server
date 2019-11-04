@@ -196,6 +196,13 @@ typedef enum {
 	FR_DICT_ATTR_EINVAL		= -5			//!< Invalid arguments.
 } fr_dict_attr_err_t;
 
+/** Protocol-specific callbacks in libfreeradius-PROTOCOL
+ *
+ */
+typedef struct {
+	char const *name;					//!< name of this protocol
+} fr_dict_protocol_t;
+
 /*
  *	Dictionary constants
  */

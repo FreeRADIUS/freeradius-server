@@ -1122,3 +1122,8 @@ void fr_radius_free(void)
 
 	fr_dict_autofree(libfreeradius_radius_dict);
 }
+
+extern fr_dict_protocol_t libfreeradius_radius_dict_protocol;
+fr_dict_protocol_t libfreeradius_radius_dict_protocol = {
+	.name = "radius",
+};
