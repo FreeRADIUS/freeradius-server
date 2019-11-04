@@ -2156,10 +2156,12 @@ fr_dict_enum_t *fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alia
 static int dict_dlopen(fr_dict_t *dict, char const *name)
 {
 	char *module_name;
+	char *p, *q;
 
 	if (!name) return 0;
 
 	module_name = talloc_typed_asprintf(NULL, "libfreeradius-%s", name);
+	for (p = module_name, q = p + talloc_array_length(p) - 1; p < q; p++) *p = tolower(*p);
 
 	/*
 	 *	Pass in dict as the uctx so that we can get at it in

@@ -232,8 +232,12 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 
 			snprintf(buffer, sizeof(buffer), "%s_%s", dl->name, init->symbol);
 
+			/*
+			 *	'-' is not a valid symbol character in
+			 *	C.  But "libfreeradius-radius" is a
+			 *	valid library name.  So we hash things together.
+			 */
 			for (p = buffer; *p != '\0'; p++) {
-				if (isupper((int) *p)) *p = tolower((int) *p);
 				if (*p == '-') *p = '_';
 			}
 
