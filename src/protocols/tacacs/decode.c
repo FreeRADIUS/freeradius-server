@@ -52,7 +52,11 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 		return -1;
 	}
 
-	MEM(vp = fr_pair_afrom_da(ctx, da));
+	vp = fr_pair_afrom_da(ctx, da);
+	if (!vp) {
+		fr_strerror_printf("Out of Memory");
+		return -1;
+	}
 
 	fr_pair_value_bstrncpy(vp, p, field_len);
 	p += field_len;
@@ -85,21 +89,29 @@ int fr_tacacs_packet_decode(RADIUS_PACKET * const packet)
 
 	remaining = ntohl(pkt->hdr.length);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_version_minor));
+	vp = fr_pair_afrom_da(packet, attr_tacacs_version_minor);
+	if (!vp) {
+	oom:
+		fr_strerror_printf("Out of Memory");
+		return -1;
+	}
 	vp->vp_uint8 = pkt->hdr.ver.minor;
 	fr_cursor_append(&cursor, vp);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_packet_type));
+	vp = fr_pair_afrom_da(packet, attr_tacacs_packet_type);
+	if (!vp) goto oom;
 	vp->vp_uint8 = pkt->hdr.type;
 	fr_cursor_append(&cursor, vp);
 
 	packet->code = pkt->hdr.type;
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_sequence_number));
+	vp = fr_pair_afrom_da(packet, attr_tacacs_sequence_number);
+	if (!vp) goto oom;
 	vp->vp_uint8 = pkt->hdr.seq_no;
 	fr_cursor_append(&cursor, vp);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_session_id));
+	vp = fr_pair_afrom_da(packet, attr_tacacs_session_id);
+	if (!vp) goto oom;
 	vp->vp_uint32 = ntohl(pkt->hdr.session_id);
 	fr_cursor_append(&cursor, vp);
 	session_id = vp->vp_uint32;
@@ -118,19 +130,23 @@ int fr_tacacs_packet_decode(RADIUS_PACKET * const packet)
 			/*
 			 *	Decode 4 octets of various flags.
 			 */
-			MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_action));
+			vp = fr_pair_afrom_da(packet, attr_tacacs_action);
+			if (!vp) goto oom;
 			vp->vp_uint8 = pkt->authen.start.action;
 			fr_cursor_append(&cursor, vp);
 
-			MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level));
+			vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level);
+			if (!vp) goto oom;
 			vp->vp_uint8 = pkt->authen.start.priv_lvl;
 			fr_cursor_append(&cursor, vp);
 
-			MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type));
+			vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type);
+			if (!vp) goto oom;
 			vp->vp_uint8 = pkt->authen.start.authen_type;
 			fr_cursor_append(&cursor, vp);
 
-			MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service));
+			vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service);
+			if (!vp) goto oom;
 			vp->vp_uint8 = pkt->authen.start.authen_service;
 			fr_cursor_append(&cursor, vp);
 
@@ -231,19 +247,23 @@ int fr_tacacs_packet_decode(RADIUS_PACKET * const packet)
 		/*
 		 *	Decode 4 octets of various flags.
 		 */
-		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_method));
+		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_method);
+		if (!vp) goto oom;
 		vp->vp_uint8 = pkt->author.req.authen_method;
 		fr_cursor_append(&cursor, vp);
 
-		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level));
+		vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level);
+		if (!vp) goto oom;
 		vp->vp_uint8 = pkt->author.req.priv_lvl;
 		fr_cursor_append(&cursor, vp);
 
-		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type));
+		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type);
+		if (!vp) goto oom;
 		vp->vp_uint8 = pkt->author.req.authen_type;
 		fr_cursor_append(&cursor, vp);
 
-		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service));
+		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service);
+		if (!vp) goto oom;
 		vp->vp_uint8 = pkt->author.req.authen_service;
 		fr_cursor_append(&cursor, vp);
 
@@ -301,23 +321,28 @@ int fr_tacacs_packet_decode(RADIUS_PACKET * const packet)
 		/*
 		 *	Decode 8 octets of various fields.
 		 */
-		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_accounting_flags));
+		vp = fr_pair_afrom_da(packet, attr_tacacs_accounting_flags);
+		if (!vp) goto oom;
 		vp->vp_uint8 = pkt->acct.req.flags;
 		fr_cursor_append(&cursor, vp);
 
-		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_method));
+		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_method);
+		if (!vp) goto oom;
 		vp->vp_uint8 = pkt->acct.req.authen_method;
 		fr_cursor_append(&cursor, vp);
 
-		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level));
+		vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level);
+		if (!vp) goto oom;
 		vp->vp_uint8 = pkt->acct.req.priv_lvl;
 		fr_cursor_append(&cursor, vp);
 
-		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type));
+		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type);
+		if (!vp) goto oom;
 		vp->vp_uint8 = pkt->acct.req.authen_type;
 		fr_cursor_append(&cursor, vp);
 
-		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service));
+		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service);
+		if (!vp) goto oom;
 		vp->vp_uint8 = pkt->acct.req.authen_service;
 		fr_cursor_append(&cursor, vp);
 

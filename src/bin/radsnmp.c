@@ -306,11 +306,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		da = parent;
 	}
 
-	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) {
-		fr_strerror_printf("Failed allocating OID attribute");
-		return -(slen);
-	}
+	MEM(vp = fr_pair_afrom_da(ctx, da));
 
 	/*
 	 *	VALUE_PAIRs with no value need a 1 byte value buffer.
@@ -358,11 +354,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		goto error;
 	}
 
-	vp = fr_pair_afrom_da(ctx, attr_freeradius_snmp_type);
-	if (!vp) {
-		slen = -(slen);
-		goto error;
-	}
+	MEM(vp = fr_pair_afrom_da(ctx, attr_freeradius_snmp_type));
 	vp->vp_uint32 = type;
 
 	fr_cursor_append(cursor, vp);
@@ -752,11 +744,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	Now add an attribute indicating what the
 		 *	SNMP operation was
 		 */
-		vp = fr_pair_afrom_da(request, attr_freeradius_snmp_operation);
-		if (!vp) {
-			ERROR("Failed allocating SNMP operation attribute");
-			return EXIT_FAILURE;
-		}
+		MEM(vp = fr_pair_afrom_da(request, attr_freeradius_snmp_operation));
 		vp->vp_uint32 = (unsigned int)command;	/* Commands must match dictionary */
 		fr_cursor_append(&cursor, vp);
 

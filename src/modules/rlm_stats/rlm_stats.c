@@ -312,9 +312,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		da = fr_dict_attr_by_name(dict_radius, buffer);
 		if (!da) continue;
 
-		vp = fr_pair_afrom_da(request->reply, da);
-		if (!vp) return RLM_MODULE_FAIL;
-
+		MEM(vp = fr_pair_afrom_da(request->reply, da));
 		vp->vp_uint64 = local_stats[i];
 
 		fr_cursor_append(&cursor, vp);

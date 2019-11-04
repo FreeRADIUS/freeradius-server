@@ -252,7 +252,7 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
  * @param[in] dl_loader	Tree of dynamically loaded libraries, and callbacks.
  * @param[in] dl	to search for symbols in.
  */
-static void dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
+static int dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
 {
 	dl_symbol_free_t	*free;
 	fr_cursor_t		cursor;
@@ -264,7 +264,9 @@ static void dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
 		if (free->symbol) {
 			char *sym_name = NULL;
 
-			MEM(sym_name = talloc_typed_asprintf(NULL, "%s_%s", dl->name, free->symbol));
+			sym_name = talloc_typed_asprintf(NULL, "%s_%s", dl->name, free->symbol);
+			if (!sym_name) return -1;
+
 			sym = dlsym(dl->handle, sym_name);
 			talloc_free(sym_name);
 
@@ -273,6 +275,8 @@ static void dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
 
 		free->func(dl, sym, free->ctx);
 	}
+
+	return 0;
 }
 
 /** Register a callback to execute when a dl with a particular symbol is first loaded
@@ -301,7 +305,9 @@ int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 
 	dl_symbol_init_cb_unregister(dl_loader, symbol, func);
 
-	MEM(n = talloc(dl_loader, dl_symbol_init_t));
+	n = talloc(dl_loader, dl_symbol_init_t);
+	if (!n) return -1;
+
 	n->priority = priority;
 	n->symbol = symbol;
 	n->func = func;
@@ -359,7 +365,9 @@ int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 
 	dl_symbol_free_cb_unregister(dl_loader, symbol, func);
 
-	MEM(n = talloc(dl_loader, dl_symbol_free_t));
+	n = talloc(dl_loader, dl_symbol_free_t);
+	if (!n) return -1;
+
 	n->priority = priority;
 	n->symbol = symbol;
 	n->func = func;

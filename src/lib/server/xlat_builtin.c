@@ -1715,12 +1715,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				continue;
 			}
 
-			nvp = fr_pair_afrom_da(talloc_parent(vp), vp->da);
-			if (!nvp) {
-				fr_pair_list_free(&head);
-				talloc_free(vpt);
-				return -1;
-			}
+			MEM(nvp = fr_pair_afrom_da(talloc_parent(vp), vp->da));
 			nvp->tag = vp->tag;
 
 			switch (vp->vp_type) {

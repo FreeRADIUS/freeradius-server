@@ -64,7 +64,7 @@ SOURCES		:= \
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/util/*.h))
 
-SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
+SRC_CFLAGS	:= -D_LIBRADIUS -DNO_ASSERT -I$(top_builddir)/src
 
 # System libraries discovered by our top level configure script, links things
 # like pthread and the regexp libraries.

@@ -226,8 +226,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 	fr_pair_delete_by_da(&packet->vps, attr_ms_chap_challenge);
 	fr_pair_delete_by_da(&packet->vps, attr_ms_chap_response);
 
-	challenge = fr_pair_afrom_da(packet, attr_ms_chap_challenge);
-	if (!challenge) return 0;
+	MEM(challenge = fr_pair_afrom_da(packet, attr_ms_chap_challenge));
 
 	fr_pair_add(request, challenge);
 	challenge->vp_length = 8;
@@ -236,11 +235,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 		p[i] = fr_rand();
 	}
 
-	reply = fr_pair_afrom_da(packet, attr_ms_chap_response);
-	if (!reply) {
-		return 0;
-	}
-
+	MEM(reply = fr_pair_afrom_da(packet, attr_ms_chap_response));
 	fr_pair_add(request, reply);
 	reply->vp_length = 50;
 	reply->vp_octets = p = talloc_array(reply, uint8_t, reply->vp_length);

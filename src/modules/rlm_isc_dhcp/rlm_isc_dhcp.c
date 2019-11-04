@@ -1010,13 +1010,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 		return -1;
 	}
 
-	vp = fr_pair_afrom_da(parent, da);
-	if (!vp) {
-		fr_strerror_printf("out of memory");
-		talloc_free(value);
-		return -1;
-	}
-
+	MEM(vp = fr_pair_afrom_da(parent, da));
 	(void) fr_pair_cursor_init(&cursor, &parent->options);
 
 	/*
@@ -1050,8 +1044,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 		rcode = read_token(state, T_DOUBLE_QUOTED_STRING, MAYBE_SEMICOLON, false);
 		if (rcode <= 0) return rcode;
 
-		vp = fr_pair_afrom_da(parent, da);
-		if (!vp) return -1;
+		MEM(vp = fr_pair_afrom_da(parent, da));
 
 		rcode = fr_pair_value_from_str(vp, state->token, state->token_len, '\0', false);
 		if (rcode < 0) return rcode;
@@ -1787,8 +1780,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request)
 
 		if (info->cmd->type != ISC_FIXED_ADDRESS) continue;
 
-		vp = fr_pair_afrom_da(request->reply->vps, attr_your_ip_address);
-		if (!vp) return -1;
+		MEM(vp = fr_pair_afrom_da(request->reply->vps, attr_your_ip_address));
 
 		rcode = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
 		if (rcode < 0) return rcode;

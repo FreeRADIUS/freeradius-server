@@ -631,7 +631,6 @@ bool module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr
 		return false;
 
 	default:
-		MEM(0);
 		return false;
 	}
 }

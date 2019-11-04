@@ -714,9 +714,10 @@ static int rest_decode_plain(rlm_rest_t const *inst, UNUSED rlm_rest_section_t c
  *	- Number of VALUE_PAIRs processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static int rest_decode_post(rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 			    REQUEST *request, void *handle, char *raw, size_t rawlen)
 {
+	rlm_rest_t const	*inst = instance;
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->candle;
 
@@ -812,7 +813,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 
 		rad_assert(expanded);
 
-		vp = fr_pair_afrom_da(ctx, da);
+		MEM(vp = fr_pair_afrom_da(ctx, da));
 		if (!vp) {
 			REDEBUG("Failed creating valuepair");
 			talloc_free(expanded);
@@ -866,24 +867,25 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
  *	- #VALUE_PAIR just created.
  *	- NULL on error.
  */
-static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 				        TALLOC_CTX *ctx, REQUEST *request,
 				        fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
 {
-	char const	*value;
-	char		*expanded = NULL;
-	int 		ret;
+	rlm_rest_t const	*inst = instance;
+	char const		*value;
+	char			*expanded = NULL;
+	int 			ret;
 
-	VALUE_PAIR	*vp;
+	VALUE_PAIR		*vp;
 
-	fr_value_box_t	src;
+	fr_value_box_t		src;
 
 	if (fr_json_object_is_type(leaf, json_type_null)) {
 		RDEBUG3("Got null value for attribute \"%s\" (skipping)", da->name);
 		return NULL;
 	}
 
-	vp = fr_pair_afrom_da(ctx, da);
+	MEM(vp = fr_pair_afrom_da(ctx, da));
 	if (!vp) {
 		RWDEBUG("Failed creating valuepair for attribute \"%s\" (skipping)", da->name);
 		talloc_free(expanded);

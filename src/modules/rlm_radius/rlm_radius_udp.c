@@ -2055,7 +2055,7 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 		attr[1] = 6;
 		memcpy(attr + 2, &c->inst->parent->proxy_state, 4);
 
-		vp = fr_pair_afrom_da(u, attr_proxy_state);
+		MEM(vp = fr_pair_afrom_da(u, attr_proxy_state));
 		fr_pair_value_memcpy(vp, attr + 2, 4, true);
 		fr_pair_add(&u->extra, vp);
 
@@ -2148,7 +2148,7 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 	if (msg) {
 		VALUE_PAIR *vp;
 
-		vp = fr_pair_afrom_da(u, attr_message_authenticator);
+		MEM(vp = fr_pair_afrom_da(u, attr_message_authenticator));
 		fr_pair_value_memcpy(vp, msg + 2, 16, true);
 		fr_pair_add(&u->extra, vp);
 

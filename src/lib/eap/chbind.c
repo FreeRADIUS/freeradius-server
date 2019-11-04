@@ -297,8 +297,7 @@ VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
 
 	if (!chbind) return NULL; /* don't produce garbage */
 
-	vp = fr_pair_afrom_da(packet, attr_eap_channel_binding_message);
-	if (!vp) return NULL;
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_channel_binding_message));
 	fr_pair_value_memcpy(vp, (uint8_t *) chbind, talloc_array_length((uint8_t *)chbind), false);
 
 	return vp;

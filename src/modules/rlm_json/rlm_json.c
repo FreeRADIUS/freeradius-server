@@ -224,18 +224,14 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 	for (fr_cursor_init(&cursor, out), value = head;
 	     value;
 	     fr_cursor_append(&cursor, vp), value = value->next) {
-		vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
-		if (!vp) {
-		error:
-			talloc_free(*out);
-			return -1;
-		}
+		MEM(vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da));
 		vp->op = map->op;
 
 		if (fr_value_box_steal(vp, &vp->data, value) < 0) {
 			RPEDEBUG("Copying data to attribute failed");
 			talloc_free(vp);
-			goto error;
+			talloc_free(*out);
+			return -1;
 		}
 	}
 	return 0;

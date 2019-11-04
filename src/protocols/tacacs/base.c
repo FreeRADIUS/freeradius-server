@@ -473,21 +473,29 @@ int fr_tacacs_packet_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * co
 	}
 	seq_no = vp->vp_uint8 + 1;	/* we catch client 255 on ingress */
 
-	MEM(vp = fr_pair_afrom_da(packet, vp->da));
+	vp = fr_pair_afrom_da(packet, vp->da);
+	if (!vp) {
+	oom:
+		fr_strerror_printf("Out of memory");
+		return -1;
+	}
 	vp->vp_uint8 = vminor;
 	fr_pair_add(&packet->vps, vp);
 
 	type = tacacs_type(original);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_packet_type));
+	vp = fr_pair_afrom_da(packet, attr_tacacs_packet_type);
+	if (!vp) goto oom;
 	vp->vp_uint8 = type;
 	fr_pair_add(&packet->vps, vp);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_sequence_number));
+	vp = fr_pair_afrom_da(packet, attr_tacacs_sequence_number);
+	if (!vp) goto oom;
 	vp->vp_uint8 = seq_no;
 	fr_pair_add(&packet->vps, vp);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_session_id));
+	vp = fr_pair_afrom_da(packet, attr_tacacs_session_id);
+	if (!vp) goto oom;
 	vp->vp_uint32 = tacacs_session_id(original);
 	fr_pair_add(&packet->vps, vp);
 

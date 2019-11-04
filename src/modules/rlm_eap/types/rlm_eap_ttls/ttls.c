@@ -652,8 +652,7 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, tls_sessi
 				/*
 				 *	Create & remember a User-Name
 				 */
-				t->username = fr_pair_afrom_da(t, attr_user_name);
-				rad_assert(t->username != NULL);
+				MEM(t->username = fr_pair_afrom_da(t, attr_user_name));
 				t->username->vp_tainted = true;
 
 				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);

@@ -588,7 +588,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	 * Add the tunneled attributes to the fake request.
 	 */
 
-	request->packet->vps = fr_pair_afrom_da(fake->packet, attr_eap_message);
+	MEM(request->packet->vps = fr_pair_afrom_da(fake->packet, attr_eap_message));
 	fr_pair_value_memcpy(request->packet->vps, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
 
 	RDEBUG2("Got tunneled request");

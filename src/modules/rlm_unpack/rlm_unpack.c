@@ -164,8 +164,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto nothing;
 	}
 
-	cast = fr_pair_afrom_da(request, da);
-	if (!cast) goto nothing;
+	MEM(cast = fr_pair_afrom_da(request, da));
 
 	memcpy(&(cast->data), input + offset, dict_attr_sizes[type][0]);
 

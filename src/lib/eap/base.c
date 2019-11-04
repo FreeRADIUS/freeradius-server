@@ -137,11 +137,7 @@ VALUE_PAIR *eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = fr_pair_afrom_da(packet, attr_eap_message);
-		if (!vp) {
-			fr_pair_list_free(&head);
-			return NULL;
-		}
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_message));
 		fr_pair_value_memcpy(vp, ptr, size, false);
 
 		fr_cursor_append(&out, vp);

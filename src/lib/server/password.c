@@ -568,12 +568,12 @@ static VALUE_PAIR *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, VALU
 
 	switch (known_good->vp_length) {
 	case SHA224_DIGEST_LENGTH:
-		out = fr_pair_afrom_da(ctx, attr_sha3_224_password);
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_224_password));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA256_DIGEST_LENGTH:
-		out = fr_pair_afrom_da(ctx, attr_sha3_256_password);
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_256_password));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
@@ -583,12 +583,12 @@ static VALUE_PAIR *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, VALU
 		return out;
 
 	case SHA512_DIGEST_LENGTH:
-		out = fr_pair_afrom_da(ctx, attr_sha3_512_password);
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_512_password));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	default:
-		out = password_normify(ctx, request, known_good);
+		MEM(out = password_normify(ctx, request, known_good));
 		if (!out) return NULL;
 
 		normalised = password_process_sha3(ctx, request, out);
@@ -679,7 +679,7 @@ do_header:
 		if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
 		info = &password_info[attr];
 
-		new = fr_pair_afrom_da(ctx, *(info->da));
+		MEM(new = fr_pair_afrom_da(ctx, *(info->da)));
 		switch ((*(info->da))->type) {
 		case FR_TYPE_OCTETS:
 			fr_pair_value_memcpy(new, (uint8_t const *)p, end - p, true);
@@ -739,7 +739,7 @@ do_header:
 	}
 
 bad_header:
-	new = fr_pair_afrom_da(request, def);
+	MEM(new = fr_pair_afrom_da(request, def));
 	fr_pair_value_bstrncpy(new, p, end - p);
 
 	return new;

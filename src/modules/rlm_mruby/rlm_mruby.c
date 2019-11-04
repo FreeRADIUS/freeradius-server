@@ -376,12 +376,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 			continue;
 		}
 
-		if (!(vp = fr_pair_afrom_da(ctx, dst->tmpl_da))) {
-			ERROR("Failed to create attribute %s", ckey);
-			talloc_free(dst);
-			continue;
-		}
-
+		MEM(vp = fr_pair_afrom_da(ctx, dst->tmpl_da));
 		talloc_free(dst);
 
 		vp->op = op;

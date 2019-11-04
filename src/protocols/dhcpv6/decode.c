@@ -254,7 +254,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		p += 2;
 		slen = decode_value(ctx, cursor, dict, parent, p, element_len , decoder_ctx);
 		if (slen < 0) return slen;
-		p += slen;		
+		p += slen;
 	}
 
 	return data_len;

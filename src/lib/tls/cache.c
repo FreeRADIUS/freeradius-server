@@ -282,12 +282,7 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 	/*
 	 *	Put the SSL data into an attribute.
 	 */
-	vp = fr_pair_afrom_da(request->state_ctx, attr_tls_session_data);
-	if (!vp) {
-		RPEDEBUG("Failed allocating &Session-Data");
-		return -1;
-	}
-
+	MEM(vp = fr_pair_afrom_da(request->state_ctx, attr_tls_session_data));
 	fr_pair_value_memcpy(vp, tls_session->session_blob, talloc_array_length(tls_session->session_blob), false);
 	RINDENT();
 	RDEBUG2("&session-state:%pP", vp);

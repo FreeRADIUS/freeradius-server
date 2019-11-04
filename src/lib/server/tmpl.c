@@ -1396,9 +1396,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 
 	*out = NULL;
 
-	vp = fr_pair_afrom_da(request, cast);
-	if (!vp) return -1;
-
+	MEM(vp = fr_pair_afrom_da(request, cast));
 	if (tmpl_is_data(vpt)) {
 		VP_VERIFY(vp);
 		rad_assert(vp->vp_type == vpt->tmpl_value_type);
@@ -2581,11 +2579,7 @@ int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt
 
 		RADIUS_LIST_AND_CTX(ctx, head, request, vpt->tmpl_request, vpt->tmpl_list);
 
-		vp = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-		if (!vp) {
-			REDEBUG("Failed allocating attribute %s", vpt->tmpl_da->name);
-			return -1;
-		}
+		MEM(vp = fr_pair_afrom_da(ctx, vpt->tmpl_da));
 		*out = vp;
 	}
 		return 0;

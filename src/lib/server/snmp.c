@@ -600,9 +600,7 @@ static ssize_t snmp_process_index(fr_cursor_t *out, REQUEST *request,
 			return -(depth);
 		}
 
-		vp = fr_pair_afrom_da(request->reply, da);
-		if (!vp) return 0;
-
+		MEM(vp = fr_pair_afrom_da(request->reply, da));
 		vp->vp_uint32 = i;
 		fr_cursor_prepend(out, vp);
 
@@ -811,13 +809,11 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 		 */
 		if (map_p->get(request->reply, &data, map_p, snmp_ctx) < 0) goto error;
 
-		vp = fr_pair_afrom_da(request->reply, map_p->da);
-		if (!vp) return 0;
+		MEM(vp = fr_pair_afrom_da(request->reply, map_p->da));
 		fr_value_box_steal(vp, &vp->data, &data);
 		fr_cursor_append(out, vp);
 
-		vp = fr_pair_afrom_da(request->reply, attr_snmp_type);
-		if (!vp) return 0;
+		MEM(vp = fr_pair_afrom_da(request->reply, attr_snmp_type));
 		vp->vp_uint32 = map_p->type;
 		fr_cursor_append(out, vp);
 	}
@@ -828,8 +824,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 		ssize_t ret;
 
 		if (!map_p->set || (map_p->type == FR_FREERADIUS_SNMP_TYPE_OBJECT)) {
-			vp = fr_pair_afrom_da(request->reply, attr_snmp_failure);
-			if (!vp) return 0;
+			MEM(vp = fr_pair_afrom_da(request->reply, attr_snmp_failure));
 			vp->vp_uint32 = FR_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
 			fr_cursor_append(out, vp);
 			return 0;
@@ -843,9 +838,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_LENGTH:
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_VALUE:
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_INCONSISTENT_VALUE:
-			vp = fr_pair_afrom_da(request->reply, attr_snmp_failure);
-			if (!vp) break;
-
+			MEM(vp = fr_pair_afrom_da(request->reply, attr_snmp_failure));
 			vp->vp_uint32 = -(ret);
 			fr_cursor_append(out, vp);
 			break;

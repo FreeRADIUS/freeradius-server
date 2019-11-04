@@ -285,19 +285,26 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	fr_cursor_init(&cursor, &packet->vps);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_packet_type));
+	vp = fr_pair_afrom_da(packet, attr_packet_type);
+	if (!vp) {
+	oom:
+		fr_strerror_printf("Out of Memory");
+		return -1;
+	}
 	vp->vp_uint32 = packet->data[1];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
 	fr_cursor_append(&cursor, vp);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_error_code));
+	vp = fr_pair_afrom_da(packet, attr_error_code);
+	if (!vp) goto oom;
 	vp->vp_uint32 = packet->data[2];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
 	fr_cursor_append(&cursor, vp);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_sequence_number));
+	vp = fr_pair_afrom_da(packet, attr_sequence_number);
+	if (!vp) goto oom;
 	vp->vp_uint32 = packet->id; /* already set by vqp_recv */
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);

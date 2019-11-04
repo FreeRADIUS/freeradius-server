@@ -271,11 +271,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 
 	if (data_len > 65535) return NULL; /* paranoia */
 
-	vp = fr_pair_afrom_da(packet, attr_eap_message);
-	if (!vp) {
-		return NULL;
-	}
-
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_message));
 	total = data_len;
 	if (total > 249) total = 249;
 
@@ -293,12 +289,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	fr_cursor_init(&cursor, &head);
 	fr_cursor_append(&cursor, vp);
 	while (total < data_len) {
-		vp = fr_pair_afrom_da(packet, attr_eap_message);
-		if (!vp) {
-			fr_pair_list_free(&head);
-			return NULL;
-		}
-
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_message));
 		fr_pair_value_memcpy(vp, data + total, (data_len - total), false);
 
 		total += vp->vp_length;
@@ -543,8 +534,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, tls_s
 		/*
 		 *	Save it for later.
 		 */
-		t->username = fr_pair_afrom_da(t, attr_user_name);
-		rad_assert(t->username != NULL);
+		MEM(t->username = fr_pair_afrom_da(t, attr_user_name));
 		t->username->vp_tainted = true;
 
 		fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);
@@ -726,7 +716,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, tls_s
 		 *	EAP-Identity packet.
 		 */
 		if ((data[0] == FR_EAP_METHOD_IDENTITY) && (data_len > 1)) {
-			t->username = fr_pair_afrom_da(t, attr_user_name);
+			MEM(t->username = fr_pair_afrom_da(t, attr_user_name));
 			rad_assert(t->username != NULL);
 			t->username->vp_tainted = true;
 
