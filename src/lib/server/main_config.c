@@ -838,10 +838,7 @@ void main_config_name_set_default(main_config_t *config, char const *name, bool 
 void main_config_raddb_dir_set(main_config_t *config, char const *name)
 {
 	if (config->raddb_dir) {
-		char *p;
-
-		memcpy(&p, &config->raddb_dir, sizeof(p));
-		talloc_free(p);
+		talloc_const_free(config->raddb_dir);
 		config->raddb_dir = NULL;
 	}
 	if (name) config->raddb_dir = talloc_typed_strdup(config, name);
@@ -855,10 +852,7 @@ void main_config_raddb_dir_set(main_config_t *config, char const *name)
 void main_config_dict_dir_set(main_config_t *config, char const *name)
 {
 	if (config->dict_dir) {
-		char *p;
-
-		memcpy(&p, &config->dict_dir, sizeof(p));
-		talloc_free(p);
+		talloc_const_free(config->dict_dir);
 		config->dict_dir = NULL;
 	}
 	if (name) config->dict_dir = talloc_typed_strdup(config, name);
