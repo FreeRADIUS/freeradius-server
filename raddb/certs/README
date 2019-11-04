@@ -180,6 +180,9 @@ $ openssl speed rsa2048
 The certificates created using this method are known to be compatible
 with ALL operating systems.  Some common issues are:
 
+  - iOS 13 has stringent new requirements on certificates.  See:
+    https://support.apple.com/en-us/HT210176
+
   - Windows requires certain OIDs in the certificates.  If it doesn't
     see them, it will stop doing EAP.  The most visible effect is
     that the client starts EAP, gets a few Access-Challenge packets,
