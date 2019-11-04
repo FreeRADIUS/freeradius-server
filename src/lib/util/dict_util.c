@@ -2153,7 +2153,7 @@ fr_dict_enum_t *fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alia
 	return fr_hash_table_finddata(dict->values_by_alias, &find);
 }
 
-static int dict_dlopen(fr_dict_t *dict, char const *name)
+int dict_dlopen(fr_dict_t *dict, char const *name)
 {
 	char *module_name;
 	char *p, *q;
@@ -2208,11 +2208,10 @@ static int _dict_free(fr_dict_t *dict)
 /** Allocate a new dictionary
  *
  * @param[in] ctx to allocate dictionary in.
- * @param[in] name the name of the protocol
  * @return
  *	- NULL on memory allocation error.
  */
-fr_dict_t *dict_alloc(TALLOC_CTX *ctx, char const *name)
+fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 {
 	fr_dict_t *dict;
 
@@ -2273,11 +2272,11 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx, char const *name)
 	dict->values_by_da = fr_hash_table_create(dict, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
 	if (!dict->values_by_da) goto error;
 
-	if (dict_dlopen(dict, name) < 0) goto error;
-
 	/*
-	 *	Try to load libfreeradius-NAME
+	 *	Set default type size and length.
 	 */
+	dict->default_type_size = 1;
+	dict->default_type_length = 1;
 
 	return dict;
 }

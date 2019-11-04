@@ -100,7 +100,9 @@ extern TALLOC_CTX *dict_ctx;
 extern fr_table_num_ordered_t const date_precision_table[];
 extern size_t date_precision_table_len;
 
-fr_dict_t		*dict_alloc(TALLOC_CTX *ctx, char const *name);
+fr_dict_t		*dict_alloc(TALLOC_CTX *ctx);
+
+int			dict_dlopen(fr_dict_t *dict, char const *name);
 
 /** Initialise fields in a dictionary attribute structure
  *
