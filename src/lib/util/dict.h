@@ -200,7 +200,11 @@ typedef enum {
  *
  */
 typedef struct {
-	char const *name;					//!< name of this protocol
+	char const		*name;				//!< name of this protocol
+	int			default_type_size;		//!< how many octets are in "type" field
+	int			default_type_length;		//!< how many octets are in "length" field
+	fr_table_num_ordered_t	const *subtype_table;		//!< for "encrypt=1", etc.
+	size_t			subtype_table_len;		//!< length of subtype_table
 } fr_dict_protocol_t;
 
 /*

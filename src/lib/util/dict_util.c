@@ -62,21 +62,6 @@ fr_table_num_ordered_t const date_precision_table[] = {
 };
 size_t date_precision_table_len = NUM_ELEMENTS(date_precision_table);
 
-static fr_table_num_ordered_t const radius_subtype_table[] = {
-	{ "encrypt=1",		FLAG_ENCRYPT_USER_PASSWORD },
-	{ "encrypt=2",		FLAG_ENCRYPT_TUNNEL_PASSWORD },
-	{ "encrypt=3",		FLAG_ENCRYPT_ASCEND_SECRET },
-	{ "long",		FLAG_EXTENDED_ATTR },
-
-	/*
-	 *	And some humanly-readable names
-	 */
-	{ "encrypt=Ascend-Secret",	FLAG_ENCRYPT_ASCEND_SECRET },
-	{ "encrypt=Tunnel-Password",	FLAG_ENCRYPT_TUNNEL_PASSWORD },
-	{ "encrypt=User-Password",	FLAG_ENCRYPT_USER_PASSWORD },
-};
-static size_t radius_subtype_table_len = NUM_ELEMENTS(radius_subtype_table);
-
 static fr_table_num_ordered_t const dhcpv6_subtype_table[] = {
 	{ "dns_label",			FLAG_ENCODE_DNS_LABEL },
 	{ "encode=dns_label",		FLAG_ENCODE_DNS_LABEL },
@@ -545,20 +530,10 @@ int dict_protocol_add(fr_dict_t *dict)
 	}
 	dict->in_protocol_by_num = true;
 
-	dict->default_type_size = 1;
-	dict->default_type_length = 1;
-
 	/*
 	 *	Set the subtype flags and other necessary things.
 	 */
 	switch (dict->root->attr) {
-	case FR_PROTOCOL_RADIUS:
-		dict->subtype_table = radius_subtype_table;
-		dict->subtype_table_len = radius_subtype_table_len;
-		dict->default_type_size = 1;
-		dict->default_type_length = 1;
-		break;;
-
 	case FR_PROTOCOL_DHCPV6:
 		dict->subtype_table = dhcpv6_subtype_table;
 		dict->subtype_table_len = dhcpv6_subtype_table_len;
@@ -2473,10 +2448,22 @@ static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
 	fr_dict_t *dict = talloc_get_type_abort(dl->uctx, fr_dict_t);
 	fr_dict_protocol_t const *proto = symbol;
 
+
 	/*
 	 *	Set the protocol-specific callbacks.
 	 */
 	dict->proto = proto;
+
+	/*
+	 *	@todo - just use dict->proto->foo, once we get the
+	 *	rest of the code cleaned up.
+	 */
+#undef COPY
+#define COPY(_x) dict->_x = proto->_x
+	COPY(default_type_size);
+	COPY(default_type_length);
+	COPY(subtype_table);
+	COPY(subtype_table_len);
 
 	return 0;
 }

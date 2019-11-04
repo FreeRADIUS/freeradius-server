@@ -1123,7 +1123,25 @@ void fr_radius_free(void)
 	fr_dict_autofree(libfreeradius_radius_dict);
 }
 
+static fr_table_num_ordered_t const subtype_table[] = {
+	{ "encrypt=1",		FLAG_ENCRYPT_USER_PASSWORD },
+	{ "encrypt=2",		FLAG_ENCRYPT_TUNNEL_PASSWORD },
+	{ "encrypt=3",		FLAG_ENCRYPT_ASCEND_SECRET },
+	{ "long",		FLAG_EXTENDED_ATTR },
+
+	/*
+	 *	And some humanly-readable names
+	 */
+	{ "encrypt=Ascend-Secret",	FLAG_ENCRYPT_ASCEND_SECRET },
+	{ "encrypt=Tunnel-Password",	FLAG_ENCRYPT_TUNNEL_PASSWORD },
+	{ "encrypt=User-Password",	FLAG_ENCRYPT_USER_PASSWORD },
+};
+
 extern fr_dict_protocol_t libfreeradius_radius_dict_protocol;
 fr_dict_protocol_t libfreeradius_radius_dict_protocol = {
 	.name = "radius",
+	.default_type_size = 1,
+	.default_type_length = 1,
+	.subtype_table = subtype_table,
+	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 };
