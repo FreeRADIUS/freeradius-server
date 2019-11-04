@@ -228,7 +228,14 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 	     init;
 	     init = fr_cursor_next(&cursor)) {
 		if (init->symbol) {
+			char *p;
+
 			snprintf(buffer, sizeof(buffer), "%s_%s", dl->name, init->symbol);
+
+			for (p = buffer; *p != '\0'; p++) {
+				if (isupper((int) *p)) *p = tolower((int) *p);
+				if (*p == '-') *p = '_';
+			}
 
 			sym = dlsym(dl->handle, buffer);
 			if (!sym) {
