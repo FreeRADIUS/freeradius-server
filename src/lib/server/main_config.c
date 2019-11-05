@@ -755,7 +755,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		 *	readable.
 		 */
 		if (fr_mkdir(NULL, config->log_dir, -1, 0755, mkdir_chown, config) < 0) {
-			WARN("Failed creating logdir %s: %s", config->log_dir, fr_syserror(errno));
+			WARN("Failed creating log_dir %s: %s", config->log_dir, fr_syserror(errno));
 		}
 	}
 
