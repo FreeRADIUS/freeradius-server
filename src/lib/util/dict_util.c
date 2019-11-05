@@ -2246,8 +2246,8 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 
 	dict = talloc_zero(ctx, fr_dict_t);
 	if (!dict) {
-	error:
 		fr_strerror_printf("Failed allocating memory for dictionary");
+	error:
 		talloc_free(dict);
 		return NULL;
 	}
@@ -2260,46 +2260,70 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 *	dictionary initialisation.
 	 */
 	dict->pool = talloc_pool(dict, DICT_POOL_SIZE);
-	if (!dict->pool) goto error;
+	if (!dict->pool) {
+		fr_strerror_printf("Failed allocating talloc pool for dictionary");
+		goto error;
+	}
 
 	/*
 	 *	Create the table of vendor by name.   There MAY NOT
 	 *	be multiple vendors of the same name.
 	 */
 	dict->vendors_by_name = fr_hash_table_create(dict, dict_vendor_name_hash, dict_vendor_name_cmp, hash_pool_free);
-	if (!dict->vendors_by_name) goto error;
-
+	if (!dict->vendors_by_name) {
+		fr_strerror_printf("Failed allocating \"vendors_by_name\" table");
+		goto error;
+	}
 	/*
 	 *	Create the table of vendors by value.  There MAY
 	 *	be vendors of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
 	dict->vendors_by_num = fr_hash_table_create(dict, dict_vendor_pen_hash, dict_vendor_pen_cmp, NULL);
-	if (!dict->vendors_by_num) goto error;
+	if (!dict->vendors_by_num) {
+		fr_strerror_printf("Failed allocating \"vendors_by_num\" table");
+		goto error;
+	}
 
 	/*
 	 *	Create the table of attributes by name.   There MAY NOT
 	 *	be multiple attributes of the same name.
 	 */
 	dict->attributes_by_name = fr_hash_table_create(dict, dict_attr_name_hash, dict_attr_name_cmp, NULL);
-	if (!dict->attributes_by_name) goto error;
+	if (!dict->attributes_by_name) {
+		fr_strerror_printf("Failed allocating \"attributes_by_name\" table");
+		goto error;
+	}
 
 	/*
 	 *	Inter-dictionary reference caching
 	 */
 	dict->autoref = fr_hash_table_create(dict, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
+	if (!dict->autoref) {
+		fr_strerror_printf("Failed allocating \"autoref\" table");
+		goto error;
+	}
 
 	/*
 	 *	Horrible hacks for combo-IP.
 	 */
 	dict->attributes_combo = fr_hash_table_create(dict, dict_attr_combo_hash, dict_attr_combo_cmp, hash_pool_free);
-	if (!dict->attributes_combo) goto error;
+	if (!dict->attributes_combo) {
+		fr_strerror_printf("Failed allocating \"attributes_combo\" table");
+		goto error;
+	}
 
 	dict->values_by_name = fr_hash_table_create(dict, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
-	if (!dict->values_by_name) goto error;
+	if (!dict->values_by_name) {
+		fr_strerror_printf("Failed allocating \"values_by_name\" table");
+		goto error;
+	}
 
 	dict->values_by_da = fr_hash_table_create(dict, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
-	if (!dict->values_by_da) goto error;
+	if (!dict->values_by_da) {
+		fr_strerror_printf("Failed allocating \"values_by_da\" table");
+		goto error;
+	}
 
 	/*
 	 *	Set default type size and length.
