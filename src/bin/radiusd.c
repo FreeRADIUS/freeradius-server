@@ -185,7 +185,6 @@ int main(int argc, char *argv[])
 	void		*pool_page_start = NULL, *pool_page_end = NULL;
 	bool		do_mprotect;
 	dl_module_loader_t *dl_modules = NULL;
-	bool		sync_time = true;
 
 	/*
 	 *	Setup talloc callbacks so we get useful errors
@@ -384,7 +383,6 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'X':
-			sync_time = false;
 			config->spawn_workers = false;
 			config->daemonize = false;
 			fr_debug_lvl += 2;
@@ -865,14 +863,7 @@ int main(int argc, char *argv[])
 		DEBUG("Global memory protected");
 	}
 
-	/*
-	 *	Sync timers normally, but not when running with
-	 *	`radiusd -X`. For debug mode, we don't really care if
-	 *	the times are off a little bit.  And skipping this
-	 *	timer means that we don't pollute the debug output
-	 *	with lots of "waking up in 1s".
-	 */
-	if (sync_time) fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
+	fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
 
 	/*
 	 *	Prevent anything from modifying the dictionaries
