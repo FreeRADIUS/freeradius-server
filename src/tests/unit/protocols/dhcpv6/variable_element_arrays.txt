@@ -1,5 +1,5 @@
-load dhcpv6
-dictionary-load dhcpv6
+proto dhcpv6
+proto-dictionary dhcpv6
 
 #
 #  Array of strings, each substring should have a 16bit length field containing its length

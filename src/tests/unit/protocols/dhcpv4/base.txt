@@ -1,8 +1,8 @@
 #
 #  Test vectors for DHCP attributes
 #
-load dhcpv4
-dictionary-load dhcpv4
+proto dhcpv4
+proto-dictionary dhcpv4
 
 #
 #  DHCP TLV types

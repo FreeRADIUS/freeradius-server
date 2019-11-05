@@ -1,5 +1,5 @@
-load radius
-dictionary-load radius
+proto radius
+proto-dictionary radius
 
 #
 #  We can't look at the data here, because the encode-paird Tunnel-Password has a 2 byte

@@ -1,5 +1,5 @@
-load radius
-dictionary-load radius
+proto radius
+proto-dictionary radius
 
 encode-pair Lucent-Max-Shared-Users = 1
 match 1a 0d 00 00 12 ee 00 02 07 00 00 00 01

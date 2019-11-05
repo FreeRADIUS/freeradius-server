@@ -50,8 +50,9 @@ typedef struct rad_request REQUEST;
 #  include <getopt.h>
 #endif
 
-#include <limits.h>
 #include <assert.h>
+#include <libgen.h>
+#include <limits.h>
 #include <sys/wait.h>
 
 #define EXIT_WITH_FAILURE \
@@ -166,13 +167,13 @@ typedef struct {
 typedef struct {
 	TALLOC_CTX	*tmp_ctx;		//!< Talloc context for test points.
 
-	char const	*path;			//!< Current path we're operating in.
+	char		*path;			//!< Current path we're operating in.
 	int		lineno;			//!< Current line number.
 	char const	*filename;		//!< Current file we're operating on.
 	uint32_t	test_count;		//!< How many tests we've executed in this file.
 
 	fr_dict_t 	*dict;			//!< Base dictionary.
-	fr_dict_t	*proto_dict;		//!< Protocol specific dictionary.
+	fr_dict_t	*active_dict;		//!< Protocol specific dictionary.
 	CONF_SECTION	*features;		//!< Enabled features.
 } command_ctx_t;
 
@@ -204,6 +205,8 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 static char		proto_name_prev[128];
 static dl_t		*dl;
 static dl_loader_t	*dl_loader;
+static char const	*raddb_dir = RADDBDIR;
+static char const	*dict_dir = DICTDIR;
 
 size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
@@ -783,6 +786,50 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, char con
 	return p - command;
 }
 
+/** Common dictionary load function
+ *
+ * Callers call fr_dict_dir_set to set the dictionary root to
+ * load dictionaries from, then provide a relative path to
+ * navigate through test subdirectories or protocols
+ */
+static int dictionary_load_common(command_result_t *result, command_ctx_t *cc, char *in, char *default_subdir)
+{
+	static 	char *name, *dir, *tmp = NULL;
+	char *q;
+	int ret;
+
+	if (in[0] == '\0') {
+		fr_strerror_printf("Missing dictionary name");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	/*
+	 *	Decrease ref count if we're loading in a new dictionary
+	 */
+	if (cc->active_dict) fr_dict_free(&cc->active_dict);
+
+	q = strchr(in, ' ');
+	if (q) {
+		name = tmp = talloc_bstrndup(NULL, in, q - in);
+		q++;
+		dir = q;
+	} else {
+		name = in;
+		dir = default_subdir;
+	}
+
+	ret = fr_dict_protocol_afrom_file(&cc->active_dict, name, dir);
+	talloc_free(tmp);
+	if (ret < 0) RETURN_COMMAND_ERROR();
+
+	/*
+	 *	Dump the dictionary if we're in super debug mode
+	 */
+	if (fr_debug_lvl > 5) fr_dict_dump(cc->active_dict);
+
+	RETURN_OK(0);
+}
+
 static fr_cmd_t *command_head = NULL;
 
 static int command_func(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
@@ -867,7 +914,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_ctx_
 	VALUE_PAIR 	*head = NULL;
 	size_t		len;
 
-	if (fr_pair_list_afrom_str(NULL, cc->proto_dict ? cc->proto_dict : cc->dict, in, &head) != T_EOL) {
+	if (fr_pair_list_afrom_str(NULL, cc->active_dict ? cc->active_dict : cc->dict, in, &head) != T_EOL) {
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -880,6 +927,22 @@ static size_t command_normalise_attribute(command_result_t *result, command_ctx_
 	}
 
 	RETURN_OK(len);
+}
+
+/** Change the working directory
+ *
+ */
+static size_t command_cd(command_result_t *result, command_ctx_t *cc,
+			 char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	TALLOC_FREE(cc->path);	/* Free old directories */
+
+	cc->path = fr_file_realpath(cc->tmp_ctx, in, inlen);
+	if (!cc->path) RETURN_COMMAND_ERROR();
+
+	strlcpy(data, cc->path, COMMAND_OUTPUT_MAX);
+
+	RETURN_OK(talloc_array_length(cc->path) - 1);
 }
 
 /*
@@ -1020,7 +1083,7 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
 	cf_filename_set(cs, cc->filename);
 	cf_lineno_set(cs, cc->lineno);
 
-	dec_len = fr_cond_tokenize(cs, &cond, &error, cc->proto_dict ? cc->proto_dict : cc->dict, in);
+	dec_len = fr_cond_tokenize(cs, &cond, &error, cc->active_dict ? cc->active_dict : cc->dict, in);
 	if (dec_len <= 0) {
 		fr_strerror_printf("ERROR offset %d %s", (int) -dec_len, error);
 
@@ -1096,7 +1159,10 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	 *	Decode hex from input text
 	 */
 	slen = hex_to_bin((uint8_t *)data, COMMAND_OUTPUT_MAX, p, inlen);
-	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
+	if (slen <= 0) {
+		CLEAR_TEST_POINT(cc);
+		RETURN_PARSE_ERROR(-(slen));
+	}
 
 	to_dec = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
@@ -1107,14 +1173,16 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	 */
 	fr_cursor_init(&cursor, &head);
 	while (to_dec < to_dec_end) {
-		slen = tp->func(cc->tmp_ctx, &cursor, cc->proto_dict ? cc->proto_dict : cc->dict,
+		slen = tp->func(cc->tmp_ctx, &cursor, cc->active_dict ? cc->active_dict : cc->dict,
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
 		if (slen < 0) {
 			fr_pair_list_free(&head);
+			CLEAR_TEST_POINT(cc);
 			RETURN_OK_WITH_ERROR();
 		}
 		if ((size_t)slen > (size_t)(to_dec_end - to_dec)) {
 			fr_perror("Internal sanity check failed at %d", __LINE__);
+			CLEAR_TEST_POINT(cc);
 			RETURN_COMMAND_ERROR();
 		}
 		to_dec += slen;
@@ -1140,6 +1208,7 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 			if (is_truncated(len, end - p)) {
 			oob:
 				fr_strerror_printf("Out of output buffer space");
+				CLEAR_TEST_POINT(cc);
 				RETURN_COMMAND_ERROR();
 			}
 			p += len;
@@ -1154,8 +1223,8 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	} else { /* zero-length to_decibute */
 		*p = '\0';
 	}
-	CLEAR_TEST_POINT(cc);
 
+	CLEAR_TEST_POINT(cc);
 	RETURN_OK(p - data);
 }
 
@@ -1190,55 +1259,12 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
 static size_t command_dictionary_dump(command_result_t *result, command_ctx_t *cc,
 				      UNUSED char *data, size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
-	fr_dict_dump(cc->proto_dict ? cc->proto_dict : cc->dict);
+	fr_dict_dump(cc->active_dict ? cc->active_dict : cc->dict);
 
 	/*
 	 *	Don't modify the contents of the data buffer
 	 */
 	RETURN_OK(data_used);
-}
-
-
-/** Dynamically load a protocol dictionary
- *
- */
-static size_t command_dictionary_load(command_result_t *result, command_ctx_t *cc,
-				      UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
-{
-	char *name, *dir, *tmp = NULL;
-	char *q;
-	int ret;
-
-	if (in[0] == '\0') {
-		fr_strerror_printf("Load-dictionary syntax is \"dictionary-load <proto_name> [<proto_dir>]\"");
-		RETURN_PARSE_ERROR(0);
-	}
-
-	/*
-	 *	Decrease ref count if we're loading in a new dictionary
-	 */
-	if (cc->proto_dict) fr_dict_free(&cc->proto_dict);
-
-	q = strchr(in, ' ');
-	if (q) {
-		name = tmp = talloc_bstrndup(NULL, in, q - in);
-		q++;
-		dir = q;
-	} else {
-		name = in;
-		dir = NULL;
-	}
-
-	ret = fr_dict_protocol_afrom_file(&cc->proto_dict, name, dir);
-	talloc_free(tmp);
-	if (ret < 0) RETURN_OK_WITH_ERROR();
-
-	/*
-	 *	Dump the dictionary if we're in super debug mode
-	 */
-	if (fr_debug_lvl > 5) fr_dict_dump(cc->proto_dict);
-
-	RETURN_OK(0);
 }
 
 static size_t command_encode_dns_label(command_result_t *result, UNUSED command_ctx_t *cc,
@@ -1349,6 +1375,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode");
 	if (!tp) {
 		fr_strerror_printf_push("Failed locating encode testpoint");
+		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -1356,10 +1383,12 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 	fr_skip_whitespace(p);
 	if (tp->test_ctx && (tp->test_ctx(&encoder_ctx, cc->tmp_ctx) < 0)) {
 		fr_strerror_printf_push("Failed initialising encoder testpoint");
+		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
 	}
 
-	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->proto_dict ? cc->proto_dict : cc->dict, p, &head) != T_EOL) {
+	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->active_dict ? cc->active_dict : cc->dict, p, &head) != T_EOL) {
+		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1368,6 +1397,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 		slen = tp->func(enc_p, enc_end - enc_p, &cursor, encoder_ctx);
 		if (slen < 0) {
 			fr_pair_list_free(&head);
+			CLEAR_TEST_POINT(cc);
 			RETURN_OK_WITH_ERROR();
 		}
 		enc_p += slen;
@@ -1379,6 +1409,26 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 	CLEAR_TEST_POINT(cc);
 
 	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, encoded, enc_p - encoded));
+}
+
+/** Encode a RADIUS attribute writing the result to the data buffer as space separated hexits
+ *
+ */
+static size_t command_encode_raw(command_result_t *result, UNUSED command_ctx_t *cc,
+			         char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	size_t	len;
+	uint8_t	encoded[(COMMAND_OUTPUT_MAX / 2) - 1];
+
+	len = encode_rfc(in, encoded, sizeof(encoded));
+	if (len <= 0) RETURN_PARSE_ERROR(0);
+
+	if (len >= sizeof(encoded)) {
+		fr_strerror_printf("Encoder output would overflow output buffer");
+		RETURN_OK_WITH_ERROR();
+	}
+
+	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, encoded, len));
 }
 
 /** Incomplete - Will be used to encode packets
@@ -1416,25 +1466,6 @@ static size_t command_exit(command_result_t *result, UNUSED command_ctx_t *cc,
 	if (!*in) RETURN_EXIT(0);
 
 	RETURN_EXIT(atoi(in));
-}
-
-/** Dynamically load a protocol library
- *
- */
-static size_t command_proto_load(command_result_t *result, UNUSED command_ctx_t *cc,
-				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
-{
-	ssize_t slen;
-
-	if (*in == '\0') {
-		fr_strerror_printf("Load syntax is \"load <lib_name>\"");
-		RETURN_PARSE_ERROR(0);
-	}
-
-	slen = load_proto_library(in);
-	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
-
-	RETURN_OK(0);
 }
 
 /** Compare the data buffer to an expected value
@@ -1541,24 +1572,32 @@ static size_t command_no(command_result_t *result, command_ctx_t *cc,
 	return data_used;
 }
 
-/** Encode a RADIUS attribute writing the result to the data buffer as space separated hexits
+/** Dynamically load a protocol library
  *
  */
-static size_t command_encode_raw(command_result_t *result, UNUSED command_ctx_t *cc,
-			         char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+static size_t command_proto(command_result_t *result, UNUSED command_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	size_t	len;
-	uint8_t	encoded[(COMMAND_OUTPUT_MAX / 2) - 1];
+	ssize_t slen;
 
-	len = encode_rfc(in, encoded, sizeof(encoded));
-	if (len <= 0) RETURN_PARSE_ERROR(0);
-
-	if (len >= sizeof(encoded)) {
-		fr_strerror_printf("Encoder output would overflow output buffer");
-		RETURN_OK_WITH_ERROR();
+	if (*in == '\0') {
+		fr_strerror_printf("Load syntax is \"load <lib_name>\"");
+		RETURN_PARSE_ERROR(0);
 	}
 
-	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, encoded, len));
+	fr_dict_dir_set(dict_dir);
+	slen = load_proto_library(in);
+	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
+
+	RETURN_OK(0);
+}
+
+static size_t command_proto_dictionary(command_result_t *result, command_ctx_t *cc,
+				       UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	fr_dict_dir_set(dict_dir);
+
+	return dictionary_load_common(result, cc, in, NULL);
 }
 
 /** Touch a file to indicate a test completed
@@ -1571,6 +1610,14 @@ static size_t command_touch(command_result_t *result, UNUSED command_ctx_t *cc,
 	if (fr_file_touch(NULL, in, 0644, true, 0755) <= 0) RETURN_COMMAND_ERROR();
 
 	RETURN_OK(0);
+}
+
+static size_t command_test_dictionary(command_result_t *result, command_ctx_t *cc,
+				      UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	fr_dict_dir_set(cc->path);
+
+	return dictionary_load_common(result, cc, in, ".");
 }
 
 static size_t command_value_box_normalise(command_result_t *result, UNUSED command_ctx_t *cc,
@@ -1684,7 +1731,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_ctx_t *cc
 	fmt[len] = '\0';
 
 	dec_len = xlat_tokenize(fmt, &head, fmt,
-				&(vp_tmpl_rules_t) { .dict_def = cc->proto_dict ? cc->proto_dict : cc->dict });
+				&(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->dict });
 	if (dec_len <= 0) {
 		fr_strerror_printf("ERROR offset %d '%s'", (int) -dec_len, fr_strerror());
 
@@ -1720,6 +1767,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_normalise_attribute,
 					.usage = "attribute <attr> = <value>",
 					.description = "Parse and reprint an attribute value pair, writing \"ok\" to the data buffer on success"
+				}},
+	{ "cd ",		&(command_entry_t){
+					.func = command_cd,
+					.usage = "cd <path>",
+					.description = "Change the directory for loading dictionaries and $INCLUDEs, writing the full path into the data buffer on success"
 				}},
 	{ "clear",		&(command_entry_t){
 					.func = command_clear,
@@ -1771,11 +1823,6 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "dictionary-dump",
 					.description = "Print the contents of the currently active protocol dictionary to stdout",
 				}},
-	{ "dictionary-load ",	&(command_entry_t){
-					.func = command_dictionary_load,
-					.usage = "dictionary-load <proto_name> [<proto_dir>]",
-					.description = "Switch the active protocol dictionary",
-				}},
 	{ "encode-dns-label ",	&(command_entry_t){
 					.func = command_encode_dns_label,
 					.usage = "encode-dns-label (-|string[,string])",
@@ -1801,11 +1848,6 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "exit[ <num>]",
 					.description = "Exit with the specified error number.  If no <num> is provided, process will exit with 0"
 				}},
-	{ "load ",		&(command_entry_t){
-					.func = command_proto_load,
-					.usage = "load <protocol>",
-					.description = "Switch the active protocol to the one specified, unloading the previous protocol",
-				}},
 	{ "match",		&(command_entry_t){
 					.func = command_match,
 					.usage = "match <string>",
@@ -1826,10 +1868,25 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "no ...",
 					.description = "Negate the result of a command returning 'ok'"
 				}},
+	{ "proto ",		&(command_entry_t){
+					.func = command_proto,
+					.usage = "proto <protocol>",
+					.description = "Switch the active protocol to the one specified, unloading the previous protocol",
+				}},
+	{ "proto-dictionary ",	&(command_entry_t){
+					.func = command_proto_dictionary,
+					.usage = "proto-dictionary <proto_name> [<proto_dir>]",
+					.description = "Switch the active dictionary.  Root is set to the default dictionary path, or the one specified with -d.  <proto_dir> is relative to the root.",
+				}},
 	{ "raw ",		&(command_entry_t){
 					.func = command_encode_raw,
 					.usage = "raw <string>",
 					.description = "Create nested attributes from OID strings and values"
+				}},
+	{ "test-dictionary ",	&(command_entry_t){
+					.func = command_test_dictionary,
+					.usage = "test-dictionary <proto_name> [<test_dir>]",
+					.description = "Switch the active dictionary.  Root is set to the path containing the current test file (override with cd <path>).  <test_dir> is relative to the root.",
 				}},
 	{ "touch ",		&(command_entry_t){
 					.func = command_touch,
@@ -1917,15 +1974,19 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 	return data_used;
 }
 
-static void command_ctx_init(command_ctx_t *cc, TALLOC_CTX *ctx, char const *path, char const *filename,
-			     fr_dict_t *dict, CONF_SECTION *features)
+static command_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx, char const *path, char const *filename,
+					fr_dict_t *dict, CONF_SECTION *features)
 {
-	memset(cc, 0, sizeof(*cc));
+	command_ctx_t *cc;
+
+	cc = talloc_zero(ctx, command_ctx_t);
 	cc->tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx");
-	cc->path = path;
+	cc->path = talloc_strdup(cc, path);
 	cc->dict = dict;
 	cc->filename = filename;
 	cc->features = features;
+
+	return cc;
 }
 
 static void command_ctx_reset(command_ctx_t *cc, TALLOC_CTX *ctx)
@@ -1945,9 +2006,9 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 	ssize_t		data_used = 0;			/* How much data the last command wrote */
 	static char	path[PATH_MAX] = { '\0' };
 
-	command_ctx_t	cc;
+	command_ctx_t	*cc;
 
-	command_ctx_init(&cc, ctx, path, filename, dict, features);
+	cc = command_ctx_alloc(ctx, root_dir, filename, dict, features);
 
 	/*
 	 *	Open the file, or stdin
@@ -1979,11 +2040,11 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		command_result_t	result = { .rcode = RESULT_OK };	/* Reset to OK */
 		char			*p = strchr(buffer, '\n');
 
-		cc.lineno++;
+		cc->lineno++;
 
 		if (!p) {
 			if (!feof(fp)) {
-				ERROR("Line %d too long in %s", cc.lineno, cc.path);
+				ERROR("Line %d too long in %s", cc->lineno, cc->path);
 				ret = -1;
 				goto finish;
 			}
@@ -1991,13 +2052,13 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 			*p = '\0';
 		}
 
-		data_used = process_line(&result, &cc, data, data_used, buffer, strlen(buffer));
+		data_used = process_line(&result, cc, data, data_used, buffer, strlen(buffer));
 		switch (result.rcode) {
 		/*
 		 *	Command completed successfully
 		 */
 		case RESULT_OK:
-			cc.test_count++;
+			cc->test_count++;
 			continue;
 
 		/*
@@ -2025,13 +2086,13 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 
 				command = fr_table_value_by_longest_prefix(&match_len, commands, buffer, -1, NULL);
 				if (!command) {
-					ERROR("%s[%d]: Unknown command: %s", cc.path, cc.lineno, p);
+					ERROR("%s[%d]: Unknown command: %s", cc->path, cc->lineno, p);
 					ret = -1;
 					goto finish;
 				}
 
 				if (command->func == command_eof) {
-					command_ctx_reset(&cc, ctx);
+					command_ctx_reset(cc, ctx);
 					break;
 				}
 			}
@@ -2042,7 +2103,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 		 */
 		case RESULT_PARSE_ERROR:
 		case RESULT_COMMAND_ERROR:
-			PERROR("%s[%d]", filename, cc.lineno);
+			PERROR("%s[%d]", filename, cc->lineno);
 			ret = -1;
 			goto finish;
 
@@ -2067,11 +2128,12 @@ finish:
 	if (fp && (fp != stdin)) fclose(fp);
 
 	/*
-	 *	Free any residual resources re loaded.
+	 *	Free any residual resources we loaded.
 	 */
-	TALLOC_FREE(cc.tmp_ctx);
-	fr_dict_free(&cc.proto_dict);
 	unload_proto_library();
+	fr_dict_free(&cc->active_dict);
+	talloc_free(cc);
+
 
 	return ret;
 }
@@ -2118,8 +2180,6 @@ static void commands_print(void)
 int main(int argc, char *argv[])
 {
 	int			c;
-	char const		*raddb_dir = RADDBDIR;
-	char const		*dict_dir = DICTDIR;
 	char const		*receipt_file = NULL;
 	int			*inst = &c;
 	CONF_SECTION		*cs, *features;
@@ -2258,7 +2318,7 @@ int main(int argc, char *argv[])
 	 *	Read tests from stdin
 	 */
 	if (argc < 2) {
-		ret = process_file(&exit_now, autofree, features, dict, NULL, "-");
+		ret = process_file(&exit_now, autofree, features, dict, dirname(argv[0]), "-");
 
 	/*
 	 *	...or process each file in turn.
@@ -2267,7 +2327,7 @@ int main(int argc, char *argv[])
 		int i;
 
 		for (i = 1; i < argc; i++) {
-			ret = process_file(&exit_now, autofree, features, dict, NULL, argv[i]);
+			ret = process_file(&exit_now, autofree, features, dict, dirname(argv[i]), basename(argv[i]));
 			if ((ret != 0) || exit_now) break;
 		}
 	}
@@ -2292,6 +2352,12 @@ cleanup:
 	 *      from fr_file_touch.
 	 */
 	fr_strerror_free();
+
+	/*
+	 *	Explicitly free children to make
+	 *	memory errors on exit less confusing.
+	 */
+	talloc_free_children(autofree);
 
 	return ret;
 }

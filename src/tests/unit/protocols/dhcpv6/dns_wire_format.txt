@@ -1,5 +1,5 @@
-load dhcpv6
-dictionary-load dhcpv6
+proto dhcpv6
+proto-dictionary dhcpv6
 
 encode-pair SIP-Server-Domain-Name-List = "foo.ca"
 match 00 15 00 08 03 66 6f 6f 02 63 61 00

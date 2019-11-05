@@ -1,4 +1,4 @@
-dictionary-load radius
+proto-dictionary radius
 
 #
 #  Literals

@@ -1,0 +1,51 @@
+PROTOCOL	DHCPv6		3
+BEGIN-PROTOCOL	DHCPv6
+
+#
+#	Basic options needed by the DHCPv6 pair encoder and decoder
+#
+ATTRIBUTE	Packet-Type				65536	uint32	internal
+ATTRIBUTE	Transaction-ID				65537	uint32	internal
+
+ATTRIBUTE	Option-Request				65535	uint16 array	# Magic option listing requested options
+
+#
+#	Test attributes
+#
+ATTRIBUTE	Test-string				1	string
+ATTRIBUTE	Test-octets				2	octets
+
+ATTRIBUTE	Test-ipaddr				3	ipaddr
+ATTRIBUTE	Test-ipv4addr				4	ipv4addr
+ATTRIBUTE	Test-ipv4prefix				5	ipv4prefix
+ATTRIBUTE	Test-ipv6addr				6	ipv6addr
+ATTRIBUTE	Test-ipv6prefix				7	ipv6prefix
+ATTRIBUTE	Test-ifid				8	ifid
+ATTRIBUTE	Test-ether				11	ether
+
+ATTRIBUTE	Test-bool				12	bool
+
+ATTRIBUTE	Test-uint8				13	uint8
+ATTRIBUTE	Test-uint16				14	uint16
+ATTRIBUTE	Test-uint32				15	uint32
+ATTRIBUTE	Test-uint64				16	uint64
+
+ATTRIBUTE	Test-int8				17	int8
+ATTRIBUTE	Test-int16				18	int16
+ATTRIBUTE	Test-int32				19	int32
+ATTRIBUTE	Test-int64				20	int64
+
+ATTRIBUTE	Test-float32				21	float32
+
+ATTRIBUTE	Test-time-delta				23	time_delta
+ATTRIBUTE	Test-date				24	date
+
+ATTRIBUTE	Test-size				26	size
+
+ATTRIBUTE	Test-tlv				27	tlv
+ATTRIBUTE	Test-struct				28	struct
+
+ATTRIBUTE	Test-vsa				30	vsa
+ATTRIBUTE	Test-group				32	group
+
+END-PROTOCOL 	DHCPv6

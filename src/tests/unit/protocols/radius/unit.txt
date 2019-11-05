@@ -1,6 +1,6 @@
 # Load libfreeradius-radius
-load radius
-dictionary-load radius
+proto radius
+proto-dictionary radius
 
 #
 #  And using the dictionaries

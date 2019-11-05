@@ -1,4 +1,4 @@
-dictionary-load radius
+proto-dictionary radius
 
 condition &User-Name !~ /^foo\nbar$/
 match !&User-Name =~ /^foo\nbar$/

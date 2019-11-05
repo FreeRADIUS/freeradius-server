@@ -1,5 +1,5 @@
-load radius
-dictionary-load radius
+proto radius
+proto-dictionary radius
 
 encode-pair SN-VPN-Name = "foo"
 match 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f

@@ -1,5 +1,5 @@
-load dhcpv6
-dictionary-load dhcpv6
+proto dhcpv6
+proto-dictionary dhcpv6
 
 #
 #  1 byte unsigned integer (uint8)

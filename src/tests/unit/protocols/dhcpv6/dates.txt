@@ -1,5 +1,5 @@
-load dhcpv6
-dictionary-load dhcpv6
+proto dhcpv6
+proto-dictionary dhcpv6
 
 #
 #  Date. Like a 32bit unix timestamp but starts from 1st Jan 2000 instead of 1st Jan 1970

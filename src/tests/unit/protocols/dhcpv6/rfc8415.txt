@@ -5,8 +5,8 @@
 #
 #  Test vectors for DHCPv6 protocol
 #
-load dhcpv6
-dictionary-load dhcpv6
+proto dhcpv6
+proto-dictionary dhcpv6
 
 #
 #  8.  Client/Server Message Formats

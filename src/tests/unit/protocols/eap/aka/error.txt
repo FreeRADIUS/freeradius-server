@@ -8,8 +8,8 @@
 need-feature tls
 
 # Load the EAP-AKA/SIM encoder/decoder
-load eap-aka-sim
-dictionary-load eap-aka-sim eap/aka-sim
+proto eap-aka-sim
+proto-dictionary eap-aka-sim eap/aka-sim
 
 # AKA_RES with invalid length (too small)
 decode-pair.aka_tp_decode 04 03 aa bb aa aa aa aa bb bb bb bb

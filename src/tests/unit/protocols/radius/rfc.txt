@@ -74,8 +74,8 @@
 #  The output data is the hex version of the encode-paird attribute.
 #
 
-load radius
-dictionary-load radius
+proto radius
+proto-dictionary radius
 
 encode-pair User-Name = "bob"
 match 01 05 62 6f 62

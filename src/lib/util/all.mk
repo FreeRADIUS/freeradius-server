@@ -20,6 +20,7 @@ SOURCES		:= \
 		   event.c \
 		   fopencookie.c \
 		   fifo.c \
+		   file.c \
 		   fring.c \
 		   getaddrinfo.c \
 		   hash.c \
