@@ -18,7 +18,7 @@ FILES  := \
 
 $(eval $(call TEST_BOOTSTRAP))
 
-MAP_UNIT := $(TESTBINDIR)/unit_test_map
+MAP_UNIT := $(TESTBIN)/unit_test_map
 
 #
 #	Re-run the tests if the input file changes
