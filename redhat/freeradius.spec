@@ -188,8 +188,10 @@ This plugin provides Perl support for the FreeRADIUS server project.
 Summary: Python support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: python
-BuildRequires: python-devel
+%{!?el8:Requires: python}
+%{?el8:Requires: python2}
+%{!?el8:BuildRequires: python-devel}
+%{?el8:BuildRequires: python2-devel}
 
 %description python
 This plugin provides Python support for the FreeRADIUS server project.
