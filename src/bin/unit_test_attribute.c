@@ -794,7 +794,8 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, char con
  */
 static int dictionary_load_common(command_result_t *result, command_ctx_t *cc, char *in, char const *default_subdir)
 {
-	static 	char *name, *dir, *tmp = NULL;
+	static	char *name, *tmp = NULL;
+	static 	char const *dir;
 	char *q;
 	int ret;
 
