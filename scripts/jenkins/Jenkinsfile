@@ -1,4 +1,4 @@
-platforms = ["ubuntu14", "ubuntu16", "ubuntu18","centos7","debian8","debian9"]
+platforms = ["ubuntu14", "ubuntu16", "ubuntu18", "centos7", "centos8", "debian8", "debian9", "debian10"]
 
 /*  The detectChanges function looks at the last git commit and searches for changes to
  *   "redhat/freeradius.spec" or anything in the "debian" directory.  If it

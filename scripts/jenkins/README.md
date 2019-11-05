@@ -31,8 +31,9 @@ The Jenkinsfile currently builds packages for the following platforms:
 * Ubuntu 18.04 (Bionic Beaver)
 * Debian 8 (Jessie)
 * Debian 9 (Stretch)
-* Centos 6
-* CentOS 7 
+* Debian 10 (Buster)
+* CentOS 7
+* CentOS 8
 
 Once complete, the packages are available as artifacts and accessible
 from the job page by clicking the "Build Artifacts" link or by
