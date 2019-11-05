@@ -382,7 +382,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 		p = strrchr(exp, FR_DIR_SEP);
 		if (p) {
 			*p = '\0';
-			if (fr_mkdir(NULL, exp, -1, S_IRWXU) < 0) {
+			if (fr_file_mkdir(NULL, exp, -1, S_IRWXU) < 0) {
 				ERROR("Failed creating %s: %s", exp, fr_syserror(errno));
 				talloc_free(exp);
 				return;

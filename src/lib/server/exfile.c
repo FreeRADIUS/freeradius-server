@@ -242,7 +242,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		if ((dirperm & 0060) != 0) dirperm |= 0010;
 		if ((dirperm & 0006) != 0) dirperm |= 0001;
 
-		if (fr_mkdir(NULL, dir, -1, dirperm) < 0) {
+		if (fr_file_mkdir(NULL, dir, -1, dirperm) < 0) {
 			fr_strerror_printf("Failed to create directory %s: %s", dir, fr_syserror(errno));
 			talloc_free(dir);
 			return -1;

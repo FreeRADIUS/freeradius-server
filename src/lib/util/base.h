@@ -45,6 +45,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/fifo.h>
+#include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/fopencookie.h>
 #include <freeradius-devel/util/fring.h>
 #include <freeradius-devel/util/hash.h>
