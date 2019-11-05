@@ -7,16 +7,28 @@ proto-dictionary dhcpv6
 encode-pair Failover-Expiration-Time = 0
 match 00 78 00 04 00 00 00 00
 
+decode-pair -
+match Failover-Expiration-Time = "Jan  1 1970 00:00:00 UTC"
+
 # Still less than 946080000 (30 years), so still 0 (we can't represent dates earlier than 1st Jan 2000)
 encode-pair Failover-Expiration-Time = 500
 match 00 78 00 04 00 00 00 00
 
+decode-pair -
+match Failover-Expiration-Time = "Jan  1 1970 00:00:00 UTC"
+
 encode-pair Failover-Expiration-Time = 946080000
 match 00 78 00 04 00 00 00 00
+
+decode-pair -
+match Failover-Expiration-Time = "Jan  1 1970 00:00:00 UTC"
 
 # 1st second of 1st Jan 2000
 encode-pair Failover-Expiration-Time = 946080001
 match 00 78 00 04 00 00 00 01
 
+decode-pair -
+match Failover-Expiration-Time = "Jan  1 1970 00:00:01 UTC"
+
 count
-match 10
+match 18
