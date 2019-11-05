@@ -631,17 +631,14 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 		if (!attr) break;
 
-		if (*attr == 1) {
-			/*
-			 *	The first child can't be variable length, that's stupid.
-			 *
-			 *	STRUCTs will have their length filled in later.
-			 */
-			if ((type != FR_TYPE_STRUCT) && (flags->length == 0)) {
-				fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
-				return false;
-			}
-		} else {
+		/*
+		 *	If we have keyed structs, then the first
+		 *	member can be variable length.
+		 *
+		 *	For subsequent children, have each one check
+		 *	the previous child.
+		 */
+		if (*attr != 1) {
 			int i;
 			fr_dict_attr_t const *sibling;
 
