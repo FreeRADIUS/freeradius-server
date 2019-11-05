@@ -549,6 +549,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		 *	the error from the last dlopen().
 		 */
 		if (!handle) {
+			talloc_free(ctx);
 			fr_strerror_printf("%s", dlerror());
 			return NULL;
 		}
