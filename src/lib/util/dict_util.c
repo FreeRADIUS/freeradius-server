@@ -2472,7 +2472,7 @@ static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
  *
  * @note Must be called before any other dictionary functions.
  *
- * @param[in] ctx	to allocate protocol hashes in.
+ * @param[in] ctx	to allocate global resources in.
  * @param[in] dict_dir	the default location for the dictionaries.
  * @return
  *	- 0 on success.
@@ -2480,8 +2480,11 @@ static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
  */
 int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 {
+	TALLOC_FREE(dict_ctx);
+	dict_ctx = ctx;
+
 	if (!protocol_by_name) {
-		protocol_by_name = fr_hash_table_create(ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
+		protocol_by_name = fr_hash_table_create(dict_ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
 		if (!protocol_by_name) {
 			fr_strerror_printf("Failed initializing protocol_by_name hash");
 			return -1;
@@ -2489,7 +2492,7 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 	}
 
 	if (!protocol_by_num) {
-		protocol_by_num = fr_hash_table_create(ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
+		protocol_by_num = fr_hash_table_create(dict_ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
 		if (!protocol_by_num) {
 			fr_strerror_printf("Failed initializing protocol_by_num hash");
 			return -1;
@@ -2497,7 +2500,7 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 	}
 
 	talloc_free(dict_dir_default);		/* Free previous value */
-	dict_dir_default = talloc_strdup(ctx, dict_dir);
+	dict_dir_default = talloc_strdup(dict_ctx, dict_dir);
 
 	dict_loader = dl_loader_init(ctx, NULL, NULL, false, false);
 	if (!dict_loader) return -1;
@@ -2507,6 +2510,22 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 	}
 
 	dict_initialised = true;
+
+	return 0;
+}
+
+/** Allow the default dict dir to be changed after initialisation
+ *
+ * @param[in] dict_dir	New default dict dir to use.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_dir_set(char const *dict_dir)
+{
+	talloc_free(dict_dir_default);		/* Free previous value */
+	dict_dir_default = talloc_strdup(dict_ctx, dict_dir);
+	if (!dict_dir_default) return -1;
 
 	return 0;
 }

@@ -414,13 +414,21 @@ void			fr_dl_dict_autofree(dl_t const *module, void *symbol, void *user_ctx);
 int			fr_dl_dict_attr_autoload(dl_t const *module, void *symbol, void *user_ctx);
 /** @} */
 
+/** @name Allocating and freeing
+ *
+ * @{
+ */
 void			fr_dict_free(fr_dict_t **dict);
+
+/** @} */
 
 /** @name Initialisation
  *
  * @{
  */
  int			fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir);
+
+ int			fr_dict_dir_set(char const *dict_dir);
 /** @} */
 
 /** @name Dictionary testing and validation

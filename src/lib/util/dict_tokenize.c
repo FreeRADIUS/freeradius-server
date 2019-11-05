@@ -2406,7 +2406,7 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 	INTERNAL_IF_NULL(dict, -1);
 
 	if (!dict->attributes_by_name) {
-		fr_strerror_printf("%s: Must call fr_dict_internal_afrom_file() before fr_dict_read()", __FUNCTION__);
+		fr_strerror_printf("%s: Must initialise dictionary before calling fr_dict_read()", __FUNCTION__);
 		return -1;
 	}
 
