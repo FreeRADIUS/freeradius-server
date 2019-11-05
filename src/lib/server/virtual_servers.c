@@ -398,7 +398,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		 *	this code, so it doesn't matter.  The only
 		 *	requirement is that it's unique.
 		 */
-		if (fr_dict_enum_add_name_next(da, name2) < 0) {
+		if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(da), name2) < 0) {
 			PERROR("Failed adding section value");
 			return -1;
 		}
@@ -1066,7 +1066,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 		return RLM_MODULE_REJECT;
 	}
 
-	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_AUTH_TYPE);
+	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_AUTH_TYPE);
 	if (!da) return RLM_MODULE_FAIL;
 
 	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));

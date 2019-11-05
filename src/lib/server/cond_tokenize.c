@@ -448,14 +448,14 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 		case FR_TYPE_IPV4_ADDR:
 			if (strchr(c->data.map->rhs->name, '/') != NULL) {
 				type = FR_TYPE_IPV4_PREFIX;
-				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + type);
+				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + type);
 			}
 			break;
 
 		case FR_TYPE_IPV6_ADDR:
 			if (strchr(c->data.map->rhs->name, '/') != NULL) {
 				type = FR_TYPE_IPV6_PREFIX;
-				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + type);
+				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + type);
 			}
 			break;
 
@@ -516,12 +516,12 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 	     tmpl_is_xlat_struct(c->data.map->rhs) ||
 	     tmpl_is_exec(c->data.map->rhs))) {
 		if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV4_ADDR) {
-			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 							    FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
 		}
 
 		if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV6_ADDR) {
-			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 							    FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
 		}
 	}
@@ -760,7 +760,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			return_P("Empty octet string is invalid");
 		}
 
-		c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+		c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 							    FR_CAST_BASE + FR_TYPE_OCTETS);
 	}
 
@@ -967,7 +967,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			      (map->lhs->tmpl_da->type == FR_TYPE_UINT16) ||
 			      (map->lhs->tmpl_da->type == FR_TYPE_UINT32) ||
 			      (map->lhs->tmpl_da->type == FR_TYPE_UINT64))) {
-				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 								    FR_CAST_BASE + FR_TYPE_OCTETS);
 			}
 		}

@@ -227,7 +227,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		}
 
 		if (request) {
-			da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EXEC_EXPORT);
+			da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
 			if (da) {
 				for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, da);
 				     vp && (envlen < ((NUM_ELEMENTS(envp)) - 1));

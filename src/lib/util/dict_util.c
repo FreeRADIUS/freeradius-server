@@ -36,15 +36,7 @@ RCSID("$Id$")
 #  include <sys/stat.h>
 #endif
 
-bool			dict_initialised = false;
-char			*dict_dir_default;		//!< The default location for loading dictionaries if one
-							///< wasn't provided.
-TALLOC_CTX		*dict_ctx;
-
-static dl_loader_t	*dict_loader;			//!< for protocol validation
-
-static fr_hash_table_t	*protocol_by_name = NULL;	//!< Hash containing names of all the registered protocols.
-static fr_hash_table_t	*protocol_by_num = NULL;	//!< Hash containing numbers of all the registered protocols.
+dict_gctx_t *dict_gctx;	//!< Top level structure containing global dictionary state.
 
 fr_table_num_ordered_t const date_precision_table[] = {
 	{ "microseconds",	FR_TIME_RES_USEC },
@@ -72,16 +64,6 @@ static fr_table_num_ordered_t const eap_aka_sim_subtype_table[] = {
 	{ "encrypt=aes-cbc",		1 }, /* any non-zero value will do */
 };
 static size_t eap_aka_sim_subtype_table_len = NUM_ELEMENTS(eap_aka_sim_subtype_table);
-
-/** Magic internal dictionary
- *
- * Internal dictionary is checked in addition to the protocol dictionary
- * when resolving attribute names.
- *
- * This is because internal attributes are valid for every
- * protocol.
- */
-fr_dict_t	*fr_dict_internal = NULL;	//!< Internal server dictionary.
 
 /** Map data types to min / max data sizes
  */
@@ -490,7 +472,6 @@ static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in
 	return n;
 }
 
-
 /** Add a protocol to the global protocol table
  *
  * Inserts a protocol into the global protocol table.  Uses the root attributes
@@ -505,10 +486,10 @@ int dict_protocol_add(fr_dict_t *dict)
 {
 	if (!dict->root) return -1;	/* Should always have root */
 
-	if (!fr_hash_table_insert(protocol_by_name, dict)) {
+	if (!fr_hash_table_insert(dict_gctx->protocol_by_name, dict)) {
 		fr_dict_t *old_proto;
 
-		old_proto = fr_hash_table_finddata(protocol_by_name, dict);
+		old_proto = fr_hash_table_finddata(dict_gctx->protocol_by_name, dict);
 		if (!old_proto) {
 			fr_strerror_printf("%s: Failed inserting protocol name %s", __FUNCTION__, dict->root->name);
 			return -1;
@@ -524,7 +505,7 @@ int dict_protocol_add(fr_dict_t *dict)
 	}
 	dict->in_protocol_by_name = true;
 
-	if (!fr_hash_table_insert(protocol_by_num, dict)) {
+	if (!fr_hash_table_insert(dict_gctx->protocol_by_num, dict)) {
 		fr_strerror_printf("%s: Duplicate protocol number %i", __FUNCTION__, dict->root->attr);
 		return -1;
 	}
@@ -848,7 +829,6 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 	return 0;
 }
 
-
 /** Add an attribute to the dictionary
  *
  * @param[in] dict		of protocol context we're operating in.
@@ -869,6 +849,11 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	fr_dict_attr_t const	*old;
 	fr_dict_attr_t		*mutable;
 	fr_dict_attr_flags_t	our_flags = *flags;
+
+	if (unlikely(dict->read_only)) {
+		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
+		return -1;
+	}
 
 	/*
 	 *	Check that the definition is valid.
@@ -957,9 +942,9 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_enum_add_name(fr_dict_attr_t const *da, char const *name,
-			   fr_value_box_t const *value,
-			   bool coerce, bool takes_precedence)
+int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
+			  fr_value_box_t const *value,
+			  bool coerce, bool takes_precedence)
 {
 	size_t			len;
 	fr_dict_t		*dict;
@@ -982,7 +967,7 @@ int fr_dict_enum_add_name(fr_dict_attr_t const *da, char const *name,
 		return -1;
 	}
 
-	dict = fr_dict_by_da(da);
+	dict = dict_by_da(da);
 
 	enumv = talloc_zero(dict->pool, fr_dict_enum_t);
 	if (!enumv) {
@@ -1083,7 +1068,7 @@ int fr_dict_enum_add_name(fr_dict_attr_t const *da, char const *name,
 /** Add an name to an integer attribute hashing the name for the integer value
  *
  */
-int fr_dict_enum_add_name_next(fr_dict_attr_t const *da, char const *name)
+int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 {
 	fr_value_box_t	v = {
 				.type = da->type
@@ -1253,7 +1238,7 @@ int fr_dict_oid_component(unsigned int *out, char const **oid)
  *	- > 0 on success (number of bytes parsed).
  *	- <= 0 on parse error (negative offset of parse error).
  */
-ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsigned int *attr, char const *oid)
+ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent, unsigned int *attr, char const *oid)
 {
 	char const		*p = oid;
 	unsigned int		num = 0;
@@ -1310,7 +1295,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsi
 		fr_dict_attr_t const *child;
 		p++;
 
-		child = fr_dict_attr_child_by_num(*parent, num);
+		child = dict_attr_child_by_num(*parent, num);
 		if (!child) {
 			fr_strerror_printf("Unknown attribute '%i' in OID string \"%s\" for parent %s",
 					   num, oid, (*parent)->name);
@@ -1349,7 +1334,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsi
  */
 fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 {
-	if (!dict) return fr_dict_internal->root;	/* Remove me when dictionaries are done */
+	if (!dict) return dict_gctx->internal->root;	/* Remove me when dictionaries are done */
 	return dict->root;
 }
 
@@ -1372,7 +1357,7 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_d
 	char const		*p;
 	size_t			len;
 
-	if (!protocol_by_name || !name || !*name || !out) return 0;
+	if (!dict_gctx || !name || !*name || !out) return 0;
 
 	memset(&root, 0, sizeof(root));
 
@@ -1403,7 +1388,7 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_d
 		*out = NULL;
 		return 0;
 	}
-	dict = fr_hash_table_finddata(protocol_by_name, &(fr_dict_t){ .root = &root });
+	dict = fr_hash_table_finddata(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
 	talloc_const_free(root.name);
 
 	if (!dict) {
@@ -1416,47 +1401,41 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_d
 	return p - name;
 }
 
-/** Lookup a protocol by its name
+/**Internal version of #fr_dict_by_protocol_name
  *
- * @param[in] name of the protocol to locate.
- * @return
- * 	- Attribute matching name.
- * 	- NULL if no matching protocolibute could be found.
+ * @note For internal use by the dictionary API only.
+ *
+ * @copybrief fr_dict_by_protocol_name.
  */
-fr_dict_t *fr_dict_by_protocol_name(char const *name)
+fr_dict_t *dict_by_protocol_name(char const *name)
 {
-	if (!protocol_by_name || !name) return NULL;
+	if (!dict_gctx || !name) return NULL;
 
-	return fr_hash_table_finddata(protocol_by_name, &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
+	return fr_hash_table_finddata(dict_gctx->protocol_by_name,
+				      &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
 }
 
-/** Lookup a protocol by its number.
+/** Internal version of #fr_dict_by_protocol_num
  *
- * Returns the #fr_dict_t belonging to the protocol with the specified number
- * if any have been registered.
+ * @note For internal use by the dictionary API only.
  *
- * @param[in] num to search for.
- * @return dictionary representing the protocol (if it exists).
+ * @copybrief fr_dict_by_protocol_num.
  */
-fr_dict_t *fr_dict_by_protocol_num(unsigned int num)
+fr_dict_t *dict_by_protocol_num(unsigned int num)
 {
-	if (!protocol_by_num) return NULL;
+	if (!dict_gctx) return NULL;
 
-	return fr_hash_table_finddata(protocol_by_num, &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
+	return fr_hash_table_finddata(dict_gctx->protocol_by_num,
+				      &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
 }
 
-/** Attempt to locate the protocol dictionary containing an attribute
+/** Internal version of #fr_dict_by_da
  *
- * @note Unlike fr_dict_by_attr_name, doesn't search through all the dictionaries,
- *	just uses the fr_dict_attr_t hierarchy and the talloc hierarchy to locate
- *	the dictionary (much much faster and more scalable).
+ * @note For internal use by the dictionary API only.
  *
- * @param[in] da		To get the containing dictionary for.
- * @return
- *	- The dictionary containing da.
- *	- NULL.
+ * @copybrief fr_dict_by_da
  */
-fr_dict_t *fr_dict_by_da(fr_dict_attr_t const *da)
+fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 {
 	fr_dict_attr_t const *da_p = da;
 
@@ -1511,17 +1490,13 @@ static int _dict_attr_find_in_dicts(void *ctx, void *data)
 	return 1;
 }
 
-/** Attempt to locate the protocol dictionary containing an attribute
+/** Internal version of #fr_dict_by_attr_name
  *
- * @note This is O(n) and will only return the first instance of the dictionary.
+ * @note For internal use by the dictionary API only.
  *
- * @param[out] found	the attribute that was resolved from the name. May be NULL.
- * @param[in] name	the name of the attribute.
- * @return
- *	- the dictionary the attribute was found in.
- *	- NULL if an attribute with the specified name wasn't found in any dictionary.
+ * @copybrief fr_dict_by_attr_name
  */
-fr_dict_t *fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
+fr_dict_t *dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
 {
 	fr_dict_attr_t		find = {
 					.name = name
@@ -1535,12 +1510,70 @@ fr_dict_t *fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
 
 	if (!name || !*name) return NULL;
 
-	ret = fr_hash_table_walk(protocol_by_name, _dict_attr_find_in_dicts, &search);
+	ret = fr_hash_table_walk(dict_gctx->protocol_by_name, _dict_attr_find_in_dicts, &search);
 	if (ret == 0) return NULL;
 
 	if (found) *found = search.found_da;
 
 	return search.found_dict;
+}
+
+/** Lookup a protocol by its name
+ *
+ * @note For internal use by the dictionary API only.
+ *
+ * @param[in] name of the protocol to locate.
+ * @return
+ * 	- Attribute matching name.
+ * 	- NULL if no matching protocol could be found.
+ */
+fr_dict_t const *fr_dict_by_protocol_name(char const *name)
+{
+	return dict_by_protocol_name(name);
+}
+
+/** Lookup a protocol by its number
+ *
+ * Returns the #fr_dict_t belonging to the protocol with the specified number
+ * if any have been registered.
+ *
+ * @param[in] num to search for.
+ * @return dictionary representing the protocol (if it exists).
+ */
+fr_dict_t const *fr_dict_by_protocol_num(unsigned int num)
+{
+	return dict_by_protocol_num(num);
+}
+
+/** Attempt to locate the protocol dictionary containing an attribute
+ *
+ * @note Unlike fr_dict_by_attr_name, doesn't search through all the dictionaries,
+ *	just uses the fr_dict_attr_t hierarchy and the talloc hierarchy to locate
+ *	the dictionary (much much faster and more scalable).
+ *
+ * @param[in] da		To get the containing dictionary for.
+ * @return
+ *	- The dictionary containing da.
+ *	- NULL.
+ */
+fr_dict_t const *fr_dict_by_da(fr_dict_attr_t const *da)
+{
+	return dict_by_da(da);
+}
+
+/** Attempt to locate the protocol dictionary containing an attribute
+ *
+ * @note This is O(n) and will only return the first instance of the dictionary.
+ *
+ * @param[out] found	the attribute that was resolved from the name. May be NULL.
+ * @param[in] name	the name of the attribute.
+ * @return
+ *	- the dictionary the attribute was found in.
+ *	- NULL if an attribute with the specified name wasn't found in any dictionary.
+ */
+fr_dict_t const *fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
+{
+	return dict_by_attr_name(found, name);
 }
 
 /** Look up a vendor by one of its child attributes
@@ -1558,7 +1591,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
 	dv.pen = fr_dict_vendor_num_by_da(da);
 	if (!dv.pen) return NULL;
 
-	dict = fr_dict_by_da(da);
+	dict = dict_by_da(da);
 
 	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
 }
@@ -1651,7 +1684,7 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
 		return NULL;
 	}
 
-	vendor = fr_dict_attr_child_by_num(vendor_root, vendor_pen);
+	vendor = dict_attr_child_by_num(vendor_root, vendor_pen);
 	if (!vendor) {
 		fr_strerror_printf("Vendor %i not defined", vendor_pen);
 		return NULL;
@@ -1739,6 +1772,19 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	return p - name;
 }
 
+/* Internal version of fr_dict_attr_by_name
+ *
+ */
+fr_dict_attr_t *dict_attr_by_name(fr_dict_t const *dict, char const *name)
+{
+	INTERNAL_IF_NULL(dict, NULL);
+
+	if (!name) return NULL;
+
+	return fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t) { .name = name });
+}
+
+
 /** Locate a #fr_dict_attr_t by its name
  *
  * @note Unlike attribute numbers, attribute names are unique to the dictionary.
@@ -1752,11 +1798,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
  */
 fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *name)
 {
-	INTERNAL_IF_NULL(dict, NULL);
-
-	if (!name) return NULL;
-
-	return fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t) { .name = name });
+	return dict_attr_by_name(dict, name);
 }
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
@@ -1844,8 +1886,8 @@ again:
 				 */
 				if (!internal) {
 					internal = true;
-					if (dict_def != fr_dict_internal) {
-						dict = fr_dict_internal;
+					if (dict_def != dict_gctx->internal) {
+						dict = dict_gctx->internal;
 						goto again;
 					}
 				}
@@ -1853,10 +1895,10 @@ again:
 				/*
 				 *	Start the iteration over all dictionaries.
 				 */
-				dict_iter = fr_hash_table_iter_init(protocol_by_num, &iter);
+				dict_iter = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
 			} else {
 			redo:
-				dict_iter = fr_hash_table_iter_next(protocol_by_num, &iter);
+				dict_iter = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter);
 			}
 
 			if (!dict_iter) goto fail;
@@ -1931,7 +1973,7 @@ fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr
  */
 fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type)
 {
-	return fr_hash_table_finddata(fr_dict_by_da(da)->attributes_combo,
+	return fr_hash_table_finddata(dict_by_da(da)->attributes_combo,
 				      &(fr_dict_attr_t){
 				      		.parent = da->parent,
 				      		.attr = da->attr,
@@ -1982,15 +2024,10 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 	return NULL;
 }
 
-/** Check if a child attribute exists in a parent using an attribute number
+/** Internal version of fr_dict_attr_child_by_num
  *
- * @param[in] parent		to check for child in.
- * @param[in] attr		number to look for.
- * @return
- *	- The child attribute on success.
- *	- NULL if the child attribute does not exist.
  */
-inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
+inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *bin;
 
@@ -2002,9 +2039,7 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *par
 	 *	We return the child of the referenced attribute, and
 	 *	not of the "group" attribute.
 	 */
-	if (parent->type == FR_TYPE_GROUP) {
-		parent = parent->ref;
-	}
+	if (parent->type == FR_TYPE_GROUP) parent = parent->ref;
 
 	/*
 	 *	Child arrays may be trimmed back to save memory.
@@ -2015,11 +2050,30 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *par
 	bin = parent->children[attr & 0xff];
 	for (;;) {
 		if (!bin) return NULL;
-		if (bin->attr == attr) return bin;
+		if (bin->attr == attr) {
+			fr_dict_attr_t *out;
+
+			memcpy(&out, &bin, sizeof(bin));
+
+			return out;
+		}
 		bin = bin->next;
 	}
 
 	return NULL;
+}
+
+/** Check if a child attribute exists in a parent using an attribute number
+ *
+ * @param[in] parent		to check for child in.
+ * @param[in] attr		number to look for.
+ * @return
+ *	- The child attribute on success.
+ *	- NULL if the child attribute does not exist.
+ */
+fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
+{
+	return dict_attr_child_by_num(parent, attr);
 }
 
 /** Lookup the structure representing an enum value in a #fr_dict_attr_t
@@ -2037,7 +2091,7 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 
 	if (!da) return NULL;
 
-	dict = fr_dict_by_da(da);
+	dict = dict_by_da(da);
 	if (!dict) {
 		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
 		return NULL;
@@ -2083,7 +2137,7 @@ char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t 
 
 	if (!da) return NULL;
 
-	dict = fr_dict_by_da(da);
+	dict = dict_by_da(da);
 	if (!dict) {
 		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
 		return NULL;
@@ -2109,7 +2163,7 @@ fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name,
 
 	if (!name) return NULL;
 
-	dict = fr_dict_by_da(da);
+	dict = dict_by_da(da);
 	if (!dict) {
 		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
 		return NULL;
@@ -2145,7 +2199,7 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	 *	Not all dictionaries have validation functions.  It's
 	 *	a soft error if they don't exist.
 	 */
-	dict->dl = dl_by_name(dict_loader, module_name, dict, false);
+	dict->dl = dl_by_name(dict_gctx->dict_loader, module_name, dict, false);
 
 	talloc_free(module_name);
 	return 0;
@@ -2161,13 +2215,13 @@ static int _dict_free_autoref(UNUSED void *ctx, void *data)
 
 static int _dict_free(fr_dict_t *dict)
 {
-	if (dict == fr_dict_internal) fr_dict_internal = NULL;
+	if (dict == dict_gctx->internal) dict_gctx->internal = NULL;
 
-	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(protocol_by_name, dict))) {
+	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict_gctx->protocol_by_name, dict))) {
 		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
 		return -1;
 	}
-	if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(protocol_by_num, dict))) {
+	if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(dict_gctx->protocol_by_num, dict))) {
 		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
 		return -1;
 	}
@@ -2480,36 +2534,39 @@ static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
  */
 int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 {
-	TALLOC_FREE(dict_ctx);
-	dict_ctx = ctx;
+	dict_gctx_t *new_ctx = talloc_zero(ctx, dict_gctx_t);
 
-	if (!protocol_by_name) {
-		protocol_by_name = fr_hash_table_create(dict_ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
-		if (!protocol_by_name) {
-			fr_strerror_printf("Failed initializing protocol_by_name hash");
-			return -1;
-		}
-	}
-
-	if (!protocol_by_num) {
-		protocol_by_num = fr_hash_table_create(dict_ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
-		if (!protocol_by_num) {
-			fr_strerror_printf("Failed initializing protocol_by_num hash");
-			return -1;
-		}
-	}
-
-	talloc_free(dict_dir_default);		/* Free previous value */
-	dict_dir_default = talloc_strdup(dict_ctx, dict_dir);
-
-	dict_loader = dl_loader_init(ctx, NULL, NULL, false, false);
-	if (!dict_loader) return -1;
-
-	if (dl_symbol_init_cb_register(dict_loader, 0, "dict_protocol", dict_onload_func, NULL) < 0) {
+	if (!dict_dir) {
+		fr_strerror_printf("No dictionary location provided");
 		return -1;
 	}
 
-	dict_initialised = true;
+	new_ctx->protocol_by_name = fr_hash_table_create(new_ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
+	if (!new_ctx->protocol_by_name) {
+		fr_strerror_printf("Failed initializing protocol_by_name hash");
+	error:
+		talloc_free(new_ctx);
+		return -1;
+	}
+
+	new_ctx->protocol_by_num = fr_hash_table_create(new_ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
+	if (!new_ctx->protocol_by_num) {
+		fr_strerror_printf("Failed initializing protocol_by_num hash");
+		goto error;
+	}
+
+	new_ctx->dict_dir_default = talloc_strdup(new_ctx, dict_dir);
+	if (!new_ctx->dict_dir_default) {
+		fr_strerror_printf("Out of Memory");
+		goto error;
+	}
+
+	new_ctx->dict_loader = dl_loader_init(new_ctx, NULL, NULL, false, false);
+	if (!new_ctx->dict_loader) goto error;
+
+	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol", dict_onload_func, NULL) < 0) goto error;
+
+	dict_gctx = new_ctx;
 
 	return 0;
 }
@@ -2521,13 +2578,82 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_dir_set(char const *dict_dir)
+int fr_dict_global_dir_set(char const *dict_dir)
 {
-	talloc_free(dict_dir_default);		/* Free previous value */
-	dict_dir_default = talloc_strdup(dict_ctx, dict_dir);
-	if (!dict_dir_default) return -1;
+	talloc_free(dict_gctx->dict_dir_default);		/* Free previous value */
+	dict_gctx->dict_dir_default = talloc_strdup(dict_gctx, dict_dir);
+	if (!dict_gctx->dict_dir_default) return -1;
 
 	return 0;
+}
+
+char const *fr_dict_global_dir(void)
+{
+	return dict_gctx->dict_dir_default;
+}
+
+/** Mark all dictionaries and the global dictionary ctx as read only
+ *
+ * Any attempts to add new attributes will now fail.
+ */
+void fr_dict_global_read_only(void)
+{
+	fr_hash_iter_t	iter;
+	fr_dict_t	*dict;
+
+	/*
+	 *	Set everything to read only
+	 */
+	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
+	     dict;
+	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
+		talloc_set_memlimit(dict, talloc_get_size(dict));
+		dict->read_only = true;
+	}
+
+	talloc_set_memlimit(dict_gctx, talloc_get_size(dict_gctx));
+	dict_gctx->read_only = true;
+}
+
+/** Coerce to non-const
+ *
+ */
+fr_dict_t *fr_dict_unconst(fr_dict_t const *dict)
+{
+	fr_dict_t *mutable;
+
+	if (unlikely(dict->read_only)) {
+		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
+		return -1;
+	}
+
+	memcpy(&mutable, &dict, sizeof(dict));
+	return mutable;
+}
+
+/** Coerce to non-const
+ *
+ */
+fr_dict_attr_t *fr_dict_attr_unconst(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t *mutable;
+	fr_dict_t *dict;
+
+	dict = dict_by_da(da);
+	if (unlikely(dict->read_only)) {
+		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
+		return -1;
+	}
+
+	memcpy(&mutable, &da, sizeof(da));
+	return mutable;
+}
+
+fr_dict_t const *fr_dict_internal(void)
+{
+	if (!dict_gctx) return NULL;
+
+	return dict_gctx->internal;
 }
 
 /*
@@ -2682,15 +2808,4 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 	}
 
 	return NULL;
-}
-
-/** Coerce to non-const
- *
- */
-fr_dict_t *fr_dict_unconst(fr_dict_t const *dict)
-{
-	fr_dict_t *mutable;
-
-	memcpy(&mutable, &dict, sizeof(dict));
-	return mutable;
 }

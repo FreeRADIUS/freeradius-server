@@ -118,7 +118,7 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 static int dictionary_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const		*dict_str = cf_pair_value(cf_item_to_pair(ci));
-	fr_dict_t		*dict;
+	fr_dict_t const		*dict;
 
 	dict = fr_dict_by_protocol_name(dict_str);
 	if (!dict) {
@@ -126,7 +126,7 @@ static int dictionary_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 		return -1;
 	}
 
-	*(fr_dict_t **) out = dict;
+	*(fr_dict_t **) out = fr_dict_unconst(dict);
 
 	return 0;
 }

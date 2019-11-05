@@ -556,7 +556,8 @@ int fr_dhcpv4_global_init(void)
 		}
 		value.vb_uint8 = i;
 
-		if (fr_dict_enum_add_name(attr_dhcp_parameter_request_list, attr->name, &value, true, false) < 0) {
+		if (fr_dict_enum_add_name(fr_dict_attr_unconst(attr_dhcp_parameter_request_list),
+					  attr->name, &value, true, false) < 0) {
 			return -1;
 		}
 	}

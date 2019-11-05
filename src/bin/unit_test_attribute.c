@@ -788,7 +788,7 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, char con
 
 /** Common dictionary load function
  *
- * Callers call fr_dict_dir_set to set the dictionary root to
+ * Callers call fr_dict_global_dir_set to set the dictionary root to
  * load dictionaries from, then provide a relative path to
  * navigate through test subdirectories or protocols
  */
@@ -1586,7 +1586,7 @@ static size_t command_proto(command_result_t *result, UNUSED command_ctx_t *cc,
 		RETURN_PARSE_ERROR(0);
 	}
 
-	fr_dict_dir_set(dict_dir);
+	fr_dict_global_dir_set(dict_dir);
 	slen = load_proto_library(in);
 	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
 
@@ -1596,7 +1596,7 @@ static size_t command_proto(command_result_t *result, UNUSED command_ctx_t *cc,
 static size_t command_proto_dictionary(command_result_t *result, command_ctx_t *cc,
 				       UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	fr_dict_dir_set(dict_dir);
+	fr_dict_global_dir_set(dict_dir);
 
 	return dictionary_load_common(result, cc, in, NULL);
 }
@@ -1616,7 +1616,7 @@ static size_t command_touch(command_result_t *result, UNUSED command_ctx_t *cc,
 static size_t command_test_dictionary(command_result_t *result, command_ctx_t *cc,
 				      UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	fr_dict_dir_set(cc->path);
+	fr_dict_global_dir_set(cc->path);
 
 	return dictionary_load_common(result, cc, in, ".");
 }

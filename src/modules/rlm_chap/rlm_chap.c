@@ -201,7 +201,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	if (fr_dict_enum_add_name_next(attr_auth_type, inst->name) < 0) {
+	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), inst->name) < 0) {
 		PERROR("Failed adding %s alias", attr_auth_type->name);
 		return -1;
 	}

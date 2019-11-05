@@ -86,7 +86,7 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 {
 	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
 
-	if (fr_dict_enum_add_name_next(attr_auth_type, auth_type) < 0) {
+	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), auth_type) < 0) {
 		cf_log_err(ci, "Failed adding %s alias", attr_auth_type->name);
 		return -1;
 	}

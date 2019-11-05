@@ -502,14 +502,14 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 			switch (cast->type) {
 			case FR_TYPE_IPV4_ADDR:
 				if (strchr(c->data.map->lhs->name, '/') != NULL) {
-					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 										   FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
 				}
 				break;
 
 			case FR_TYPE_IPV6_ADDR:
 				if (strchr(c->data.map->lhs->name, '/') != NULL) {
-					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 						    				   FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
 				}
 				break;
@@ -529,14 +529,14 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 			switch (cast->type) {
 			case FR_TYPE_IPV4_ADDR:
 				if (strchr(c->data.map->rhs->name, '/') != NULL) {
-					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 										   FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
 				}
 				break;
 
 			case FR_TYPE_IPV6_ADDR:
 				if (strchr(c->data.map->rhs->name, '/') != NULL) {
-					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 						    				   FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
 				}
 				break;
@@ -3056,7 +3056,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	The dictionaries are not compatible, forbid it.
 	 */
 	dict = virtual_server_namespace(server);
-	if (dict && (dict != fr_dict_internal) && fr_dict_internal &&
+	if (dict && (dict != fr_dict_internal()) && fr_dict_internal() &&
 	    unlang_ctx->rules->dict_def && (unlang_ctx->rules->dict_def != dict)) {
 		cf_log_err(cs, "Cannot call namespace '%s' from namespaces '%s'",
 			   fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->dict_def)->name);
@@ -3185,7 +3185,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	Can't use "chap" in "dhcp".
 	 */
 	if (inst->module->dict && *inst->module->dict && unlang_ctx->rules && unlang_ctx->rules->dict_def &&
-	    (unlang_ctx->rules->dict_def != fr_dict_internal) &&
+	    (unlang_ctx->rules->dict_def != fr_dict_internal()) &&
 	    (*inst->module->dict != unlang_ctx->rules->dict_def)) {
 		cf_log_err(ci, "The \"%s\" module can only used with 'namespace = %s'.  It cannot be used with 'namespace = %s'.",
 			   inst->module->name,

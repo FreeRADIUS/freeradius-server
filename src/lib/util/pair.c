@@ -154,11 +154,11 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int
 	fr_dict_attr_t const *parent;
 
 	if (vendor == 0) {
-		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), attr);
+		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), attr);
 		goto alloc;
 	}
 
-	parent = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_VENDOR_SPECIFIC);
+	parent = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_VENDOR_SPECIFIC);
 	if (!parent) return NULL;
 
 	parent = fr_dict_attr_child_by_num(parent, vendor);
@@ -176,7 +176,7 @@ alloc:
 		/*
 		 *	Ensure that the DA is parented by the VP.
 		 */
-		da = fr_dict_unknown_afrom_fields(vp, fr_dict_root(fr_dict_internal), vendor, attr);
+		da = fr_dict_unknown_afrom_fields(vp, fr_dict_root(fr_dict_internal()), vendor, attr);
 		if (!da) {
 			talloc_free(vp);
 			return NULL;

@@ -41,7 +41,7 @@ extern "C" {
 #define INTERNAL_IF_NULL(_dict, _ret) \
 	do { \
 		if (!(_dict)) { \
-			_dict = fr_dict_internal; \
+			_dict = dict_gctx ? dict_gctx->internal : NULL; \
 			if (unlikely(!(_dict))) { \
 				fr_strerror_printf("No dictionaries available for attribute resolution"); \
 				return (_ret); \
@@ -58,6 +58,8 @@ extern "C" {
  * There would also be conflicts for DHCP(v6)/RADIUS attributes etc...
  */
 struct fr_dict {
+	bool			read_only;		//!< If true, disallow modifications.
+
 	bool			in_protocol_by_name;	//!< Whether the dictionary has been inserted into the
 							///< protocol_by_name hash.
 	bool			in_protocol_by_num;	//!< Whether the dictionary has been inserted into the
@@ -93,9 +95,30 @@ struct fr_dict {
 	fr_dict_protocol_t const *proto;		//!< protocol-specific validation functions
 };
 
-extern bool dict_initialised;
-extern char *dict_dir_default;
-extern TALLOC_CTX *dict_ctx;
+typedef struct {
+	bool			read_only;
+	char			*dict_dir_default;	//!< The default location for loading dictionaries if one
+							///< wasn't provided.
+
+	dl_loader_t		*dict_loader;		//!< for protocol validation
+
+	fr_hash_table_t		*protocol_by_name;	//!< Hash containing names of all the
+							///< registered protocols.
+	fr_hash_table_t		*protocol_by_num;	//!< Hash containing numbers of all the
+							///< registered protocols.
+
+	/** Magic internal dictionary
+	 *
+	 * Internal dictionary is checked in addition to the protocol dictionary
+	 * when resolving attribute names.
+	 *
+	 * This is because internal attributes are valid for every
+	 * protocol.
+	 */
+	fr_dict_t		*internal;
+} dict_gctx_t;
+
+extern dict_gctx_t *dict_gctx;
 
 extern fr_table_num_ordered_t const date_precision_table[];
 extern size_t date_precision_table_len;
@@ -147,6 +170,17 @@ bool			dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					       char const *name, int *attr, fr_type_t type,
 					       fr_dict_attr_flags_t *flags);
 
+fr_dict_attr_t		*dict_attr_by_name(fr_dict_t const *dict, char const *name);
+
+fr_dict_attr_t		*dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
+
+fr_dict_t		*dict_by_protocol_name(char const *name);
+
+fr_dict_t		*dict_by_protocol_num(unsigned int num);
+
+fr_dict_t		*dict_by_da(fr_dict_attr_t const *da);
+
+fr_dict_t		*dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
 
 #ifdef __cplusplus
 }

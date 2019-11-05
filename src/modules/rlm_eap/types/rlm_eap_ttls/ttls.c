@@ -622,7 +622,7 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, tls_sessi
 	 *	Add the tunneled attributes to the request request.
 	 */
 	fr_cursor_init(&cursor, &request->packet->vps);
-	if (eap_ttls_decode_pair(request->packet, &cursor, fr_dict_root(fr_dict_internal),
+	if (eap_ttls_decode_pair(request->packet, &cursor, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
 		code = FR_CODE_ACCESS_REJECT;

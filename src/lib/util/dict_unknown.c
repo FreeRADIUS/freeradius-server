@@ -83,6 +83,11 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	fr_dict_attr_t const *parent;
 	fr_dict_attr_flags_t flags;
 
+	if (unlikely(dict->read_only)) {
+		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
+		return -1;
+	}
+
 	da = fr_dict_attr_by_name(dict, old->name);
 	if (da) return da;
 
@@ -316,7 +321,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	 *	If so, use the pre-defined name instead of an unknown
 	 *	one.!
 	 */
-	da = fr_dict_attr_by_name(fr_dict_by_da(parent), n->name);
+	da = fr_dict_attr_by_name(dict_by_da(parent), n->name);
 	if (da) {
 		fr_dict_unknown_free(&parent);
 		parent = n;

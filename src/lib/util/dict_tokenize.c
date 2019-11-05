@@ -82,9 +82,9 @@ typedef struct {
 	dict_tokenize_frame_t	stack[MAX_STACK];     	//!< stack of attributes to track
 	int			stack_depth;		//!< points to the last used stack frame
 
-	fr_dict_attr_t const	*value_attr;		//!< Cache of last attribute to speed up
+	fr_dict_attr_t		*value_attr;		//!< Cache of last attribute to speed up
 							///< value processing.
-	fr_dict_attr_t const	*relative_attr;		//!< for ".82" instead of "1.2.3.82".
+	fr_dict_attr_t		*relative_attr;		//!< for ".82" instead of "1.2.3.82".
 							///< only for parents of type "tlv"
 
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
@@ -447,7 +447,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 }
 
 
-static int dict_ctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
+static int dict_gctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
 {
 	if ((ctx->stack_depth + 1) >= MAX_STACK) {
 		fr_strerror_printf_push("Attribute definitions are nested too deep.");
@@ -465,7 +465,7 @@ static int dict_ctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
 	return 0;
 }
 
-static fr_dict_attr_t const *dict_ctx_unwind(dict_tokenize_ctx_t *ctx)
+static fr_dict_attr_t const *dict_gctx_unwind(dict_tokenize_ctx_t *ctx)
 {
 	while ((ctx->stack_depth > 0) &&
 	       (ctx->stack[ctx->stack_depth].nest == FR_TYPE_INVALID)) {
@@ -519,7 +519,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	 *	unwind the stack to match.
 	 */
 	if (argv[1][0] != '.') {
-		parent = dict_ctx_unwind(ctx);
+		parent = dict_gctx_unwind(ctx);
 
 		/*
 		 *	Allow '0xff00' as attribute numbers, but only
@@ -603,7 +603,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		fr_dict_t const *dict;
 		char *p;
 
-		da = fr_dict_attr_child_by_num(parent, attr);
+		da = dict_attr_child_by_num(parent, attr);
 		if (!da) {
 			fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
 			return -1;
@@ -620,7 +620,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 			goto check;
 		}
 
-		da = fr_dict_attr_by_name(ctx->dict, ref);
+		da = dict_attr_by_name(ctx->dict, ref);
 		if (da) {
 			dict = ctx->dict;
 			goto check;
@@ -681,7 +681,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 			/*
 			 *	Look up the attribute.
 			 */
-			da = fr_dict_attr_by_name(dict, ref + slen);
+			da = dict_attr_by_name(dict, ref + slen);
 			if (!da) {
 				fr_strerror_printf("protocol loaded, but no attribute '%s'", ref + slen);
 				talloc_free(ref);
@@ -707,21 +707,21 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	 *	*canonical* previous attribute, and not any potential
 	 *	duplicate which was just added.
 	 */
-	if (set_relative_attr) ctx->relative_attr = fr_dict_attr_child_by_num(parent, attr);
+	if (set_relative_attr) ctx->relative_attr = dict_attr_child_by_num(parent, attr);
 
 	/*
 	 *	Adding an attribute of type 'struct' is an implicit
 	 *	BEGIN-STRUCT.
 	 */
 	if (type == FR_TYPE_STRUCT) {
-		fr_dict_attr_t const *da = fr_dict_attr_child_by_num(parent, attr);
+		fr_dict_attr_t const *da = dict_attr_child_by_num(parent, attr);
 
 		if (!da) {
 			fr_strerror_printf("Failed adding attribute %s", argv[0]);
 			return -1;
 		}
 
-		if (dict_ctx_push(ctx, da) < 0) return -1;
+		if (dict_gctx_push(ctx, da) < 0) return -1;
 	}
 
 	return 0;
@@ -771,7 +771,11 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Add the MEMBER to the parent.
 	 */
-	if (fr_dict_attr_add(ctx->dict, ctx->stack[ctx->stack_depth].da, argv[0], ++ctx->stack[ctx->stack_depth].member_num, type, &flags) < 0) return -1;
+	if (fr_dict_attr_add(ctx->dict,
+			     ctx->stack[ctx->stack_depth].da,
+			     argv[0],
+			     ++ctx->stack[ctx->stack_depth].member_num,
+			     type, &flags) < 0) return -1;
 
 	/*
 	 *	A 'struct' can have a MEMBER of type 'tlv', but ONLY
@@ -782,8 +786,9 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	to them.
 	 */
 	if (type == FR_TYPE_TLV) {
-		ctx->relative_attr = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->stack[ctx->stack_depth].member_num);
-		if (dict_ctx_push(ctx, ctx->relative_attr) < 0) return -1;
+		ctx->relative_attr = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
+							     ctx->stack[ctx->stack_depth].member_num);
+		if (dict_gctx_push(ctx, ctx->relative_attr) < 0) return -1;
 
 	} else {
 		fr_dict_attr_t *mutable;
@@ -812,8 +817,8 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
  */
 static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
-	fr_dict_attr_t const		*da;
-	fr_value_box_t			value;
+	fr_dict_attr_t		*da;
+	fr_value_box_t		value;
 
 	if (argc != 3) {
 		fr_strerror_printf("Invalid VALUE syntax");
@@ -826,7 +831,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	caching the last attribute for a VALUE.
 	 */
 	if (!ctx->value_attr || (strcasecmp(argv[0], ctx->value_attr->name) != 0)) {
-		ctx->value_attr = fr_dict_attr_by_name(ctx->dict, argv[0]);
+		ctx->value_attr = dict_attr_by_name(ctx->dict, argv[0]);
 	}
 	da = ctx->value_attr;
 
@@ -956,7 +961,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	This SHOULD be the "key" field.
 	 */
-	parent = fr_dict_attr_by_name(ctx->dict, key_attr);
+	parent = dict_attr_by_name(ctx->dict, key_attr);
 	if (!parent) {
 		fr_strerror_printf("Unknown attribute '%s'", key_attr);
 		return -1;
@@ -1066,14 +1071,14 @@ get_value:
 	 */
 	if (fr_dict_attr_add(ctx->dict, parent, argv[1], attr, FR_TYPE_STRUCT, &flags) < 0) return -1;
 
-	da = fr_dict_attr_by_name(ctx->dict, argv[1]);
+	da = dict_attr_by_name(ctx->dict, argv[1]);
 	if (!da) return -1;
 
 	/*
 	 *	A STRUCT definition is an implicit BEGIN-STRUCT.
 	 */
 	ctx->relative_attr = NULL;
-	if (dict_ctx_push(ctx, da) < 0) return -1;
+	if (dict_gctx_push(ctx, da) < 0) return -1;
 
 	return 0;
 }
@@ -1200,7 +1205,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 	/*
 	 *	Cross check name / number.
 	 */
-	dict = fr_dict_by_protocol_name(argv[0]);
+	dict = dict_by_protocol_name(argv[0]);
 	if (dict) {
 #ifdef __clang_analyzer__
 		if (!dict->root) return -1;
@@ -1212,7 +1217,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 			return -1;
 		}
 
-	} else if ((dict = fr_dict_by_protocol_num(value)) != NULL) {
+	} else if ((dict = dict_by_protocol_num(value)) != NULL) {
 #ifdef __clang_analyzer__
 		if (!dict->root || !dict->root->name || !argv[0]) return -1;
 #endif
@@ -1335,7 +1340,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 	 *	before the attributes they reference.
 	 */
 	if (ctx->enum_fixup) {
-		fr_dict_attr_t const *da;
+		fr_dict_attr_t *da;
 		dict_enum_fixup_t *this, *next;
 
 		for (this = ctx->enum_fixup; this != NULL; this = next) {
@@ -1344,7 +1349,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			int		ret;
 
 			next = this->next;
-			da = fr_dict_attr_by_name(ctx->dict, this->attribute);
+			da = dict_attr_by_name(ctx->dict, this->attribute);
 			if (!da) {
 				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s' at %s[%d]",
 						   this->attribute, this->name, this->filename, this->line);
@@ -1411,7 +1416,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			char *p;
 			ssize_t slen;
 
-			da = fr_dict_attr_by_name(ctx->dict, this->ref);
+			da = dict_attr_by_name(ctx->dict, this->ref);
 			if (da) {
 				dict = ctx->dict;
 				goto check;
@@ -1474,7 +1479,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			/*
 			 *	Look up the attribute.
 			 */
-			da = fr_dict_attr_by_name(dict, this->ref + slen + 1);
+			da = dict_attr_by_name(dict, this->ref + slen + 1);
 			if (!da) {
 				fr_strerror_printf("No such attribute '%s' in reference at %s[%d]",
 						   this->ref + slen + 1, this->filename, this->line);
@@ -1825,12 +1830,12 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	dictionary, then we don't allow BEGIN-PROTOCOL
 			 *	statements.
 			 */
-			if (ctx->dict != fr_dict_internal) {
+			if (ctx->dict != dict_gctx->internal) {
 				fr_strerror_printf_push("Nested BEGIN-PROTOCOL statements are not allowed");
 				goto error;
 			}
 
-			found = fr_dict_by_protocol_name(argv[1]);
+			found = dict_by_protocol_name(argv[1]);
 			if (!found) {
 				fr_strerror_printf("Unknown protocol '%s'", argv[1]);
 				goto error;
@@ -1852,7 +1857,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 
 			ctx->dict = found;
 
-			if (dict_ctx_push(ctx, ctx->dict->root) < 0) goto error;
+			if (dict_gctx_push(ctx, ctx->dict->root) < 0) goto error;
 			ctx->stack[ctx->stack_depth].nest = FR_TYPE_MAX;
 			continue;
 		}
@@ -1868,7 +1873,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				goto error;
 			}
 
-			found = fr_dict_by_protocol_name(argv[1]);
+			found = dict_by_protocol_name(argv[1]);
 			if (!found) {
 				fr_strerror_printf("END-PROTOCOL %s does not refer to a valid protocol", argv[1]);
 				goto error;
@@ -1933,7 +1938,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				goto error;
 			}
 
-			da = fr_dict_attr_by_name(ctx->dict, argv[1]);
+			da = dict_attr_by_name(ctx->dict, argv[1]);
 			if (!da) {
 				fr_strerror_printf_push("Unknown attribute '%s'", argv[1]);
 				goto error;
@@ -1954,7 +1959,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				goto error;
 			}
 
-			if (dict_ctx_push(ctx, da) < 0) goto error;
+			if (dict_gctx_push(ctx, da) < 0) goto error;
 			ctx->stack[ctx->stack_depth].nest = FR_TYPE_TLV;
 			continue;
 		} /* BEGIN-TLV */
@@ -1968,7 +1973,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				goto error;
 			}
 
-			da = fr_dict_attr_by_name(ctx->dict, argv[1]);
+			da = dict_attr_by_name(ctx->dict, argv[1]);
 			if (!da) {
 				fr_strerror_printf_push("Unknown attribute '%s'", argv[1]);
 				goto error;
@@ -2034,7 +2039,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				}
 
 				p = argv[2] + 7;
-				da = fr_dict_attr_by_name(ctx->dict, p);
+				da = dict_attr_by_name(ctx->dict, p);
 				if (!da) {
 					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR: Unknown "
 								"parent attribute '%s'", p);
@@ -2066,7 +2071,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				/*
 				 *	Check that the protocol-specific VSA parent exists.
 				 */
-				vsa_da = fr_dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->dict->vsa_parent);
+				vsa_da = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->dict->vsa_parent);
 				if (!vsa_da) {
 					fr_strerror_printf_push("Failed finding VSA parent for Vendor %s",
 								vendor->name);
@@ -2078,7 +2083,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	Create a VENDOR attribute on the fly, either in the context
 			 *	of the VSA (26) attribute.
 			 */
-			vendor_da = fr_dict_attr_child_by_num(vsa_da, vendor->pen);
+			vendor_da = dict_attr_child_by_num(vsa_da, vendor->pen);
 			if (!vendor_da) {
 				memset(&flags, 0, sizeof(flags));
 
@@ -2114,7 +2119,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				vendor_da = new;
 			}
 
-			if (dict_ctx_push(ctx, vendor_da) < 0) goto error;
+			if (dict_gctx_push(ctx, vendor_da) < 0) goto error;
 			ctx->stack[ctx->stack_depth].nest = FR_TYPE_VENDOR;
 			continue;
 		} /* BEGIN-VENDOR */
@@ -2228,12 +2233,11 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 {
 	fr_dict_t		*dict;
 	char			*dict_path = NULL;
-	char			*tmp;
 	size_t			i;
 	fr_dict_attr_flags_t	flags = { .internal = true };
 	char			*type_name;
 
-	if (unlikely(!dict_initialised)) {
+	if (unlikely(!dict_gctx)) {
 		fr_strerror_printf("fr_dict_global_init() must be called before loading dictionary files");
 		return -1;
 	}
@@ -2241,19 +2245,20 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	/*
 	 *	Increase the reference count of the internal dictionary.
 	 */
-	if (fr_dict_internal) {
-		 talloc_increase_ref_count(fr_dict_internal);
-		 *out = fr_dict_internal;
+	if (dict_gctx->internal) {
+		 talloc_increase_ref_count(dict_gctx->internal);
+		 *out = dict_gctx->internal;
 		 return 0;
 	}
 
-	memcpy(&tmp, &dict_dir_default, sizeof(tmp));
-	dict_path = dict_subdir ? talloc_asprintf(NULL, "%s%c%s", dict_dir_default, FR_DIR_SEP, dict_subdir) : tmp;
+	dict_path = dict_subdir ?
+		    talloc_asprintf(NULL, "%s%c%s", fr_dict_global_dir(), FR_DIR_SEP, dict_subdir) :
+		    talloc_strdup(NULL, fr_dict_global_dir());
 
-	dict = dict_alloc(dict_ctx);
+	dict = dict_alloc(dict_gctx);
 	if (!dict) {
 	error:
-		if (!fr_dict_internal) talloc_free(dict);
+		if (!dict_gctx->internal) talloc_free(dict);
 		talloc_free(dict_path);
 		return -1;
 	}
@@ -2303,7 +2308,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	talloc_free(dict_path);
 
 	*out = dict;
-	if (!fr_dict_internal) fr_dict_internal = dict;
+	if (!dict_gctx->internal) dict_gctx->internal = dict;
 
 	return 0;
 }
@@ -2325,12 +2330,12 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	char		*dict_dir = NULL;
 	fr_dict_t	*dict;
 
-	if (unlikely(!dict_initialised)) {
+	if (unlikely(!dict_gctx)) {
 		fr_strerror_printf("fr_dict_global_init() must be called before loading dictionary files");
 		return -1;
 	}
 
-	if (unlikely(!fr_dict_internal)) {
+	if (unlikely(!dict_gctx->internal)) {
 		fr_strerror_printf("Internal dictionary must be initialised before loading protocol dictionaries");
 		return -1;
 	}
@@ -2339,7 +2344,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	 *	Increment the reference count if the dictionary
 	 *	has already been loaded and return that.
 	 */
-	dict = fr_dict_by_protocol_name(proto_name);
+	dict = dict_by_protocol_name(proto_name);
 	if (dict && dict->autoloaded) {
 		talloc_increase_ref_count(dict);
 		*out = dict;
@@ -2347,9 +2352,9 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	}
 
 	if (!proto_dir) {
-		dict_dir = talloc_asprintf(NULL, "%s%c%s", dict_dir_default, FR_DIR_SEP, proto_name);
+		dict_dir = talloc_asprintf(NULL, "%s%c%s", fr_dict_global_dir(), FR_DIR_SEP, proto_name);
 	} else {
-		dict_dir = talloc_asprintf(NULL, "%s%c%s", dict_dir_default, FR_DIR_SEP, proto_dir);
+		dict_dir = talloc_asprintf(NULL, "%s%c%s", fr_dict_global_dir(), FR_DIR_SEP, proto_dir);
 	}
 
 	/*
@@ -2361,7 +2366,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	 *	for multiple protocols, which'll probably be useful
 	 *	at some point.
 	 */
-	if (dict_from_file(fr_dict_internal, dict_dir, FR_DICTIONARY_FILE, NULL, 0) < 0) {
+	if (dict_from_file(dict_gctx->internal, dict_dir, FR_DICTIONARY_FILE, NULL, 0) < 0) {
 	error:
 		talloc_free(dict_dir);
 		return -1;
@@ -2370,7 +2375,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	/*
 	 *	Check the dictionary actually defined the protocol
 	 */
-	dict = fr_dict_by_protocol_name(proto_name);
+	dict = dict_by_protocol_name(proto_name);
 	if (!dict) {
 		fr_strerror_printf("Dictionary \"%s\" missing \"BEGIN-PROTOCOL %s\" declaration", dict_dir, proto_name);
 		goto error;
@@ -2404,6 +2409,11 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 {
 	INTERNAL_IF_NULL(dict, -1);
+
+	if (unlikely(dict->read_only)) {
+		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
+		return -1;
+	}
 
 	if (!dict->attributes_by_name) {
 		fr_strerror_printf("%s: Must initialise dictionary before calling fr_dict_read()", __FUNCTION__);
@@ -2447,7 +2457,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 			return -1;
 		}
 
-		if (!fr_dict_attr_by_name(dict, argv[1])) {
+		if (!dict_attr_by_name(dict, argv[1])) {
 			fr_strerror_printf("Attribute \"%s\" does not exist in dictionary \"%s\"",
 					   argv[1], dict->root->name);
 			goto error;

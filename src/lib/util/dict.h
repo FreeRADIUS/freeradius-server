@@ -106,7 +106,6 @@ enum {
 #define da_is_length_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_LENGTH_UINT16))
 
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
-extern fr_dict_t *fr_dict_internal;
 
 /** Dictionary attribute
  */
@@ -248,10 +247,10 @@ extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1,2,3));
 
-int			fr_dict_enum_add_name(fr_dict_attr_t const *da, char const *name,
-					       fr_value_box_t const *value, bool coerce, bool replace);
+int			fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
+					      fr_value_box_t const *value, bool coerce, bool replace);
 
-int			fr_dict_enum_add_name_next(fr_dict_attr_t const *da, char const *name) CC_HINT(nonnull);
+int			fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name) CC_HINT(nonnull);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 /** @} */
@@ -296,7 +295,7 @@ int			fr_dict_oid_component(unsigned int *out, char const **oid);
 size_t			fr_dict_print_attr_oid(size_t *need, char *buffer, size_t outlen,
 					       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da);
 
-ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
+ssize_t			fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent,
 					    unsigned int *attr, char const *oid) CC_HINT(nonnull);
 /** @} */
 
@@ -308,13 +307,13 @@ fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 
 ssize_t			fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def);
 
-fr_dict_t		*fr_dict_by_protocol_name(char const *name);
+fr_dict_t const		*fr_dict_by_protocol_name(char const *name);
 
-fr_dict_t		*fr_dict_by_protocol_num(unsigned int num);
+fr_dict_t const		*fr_dict_by_protocol_num(unsigned int num);
 
-fr_dict_t		*fr_dict_by_da(fr_dict_attr_t const *da);
+fr_dict_t const		*fr_dict_by_da(fr_dict_attr_t const *da);
 
-fr_dict_t		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
+fr_dict_t const		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
 
 /** Return true if this attribute is parented directly off the dictionary root
  *
@@ -422,15 +421,24 @@ void			fr_dict_free(fr_dict_t **dict);
 
 /** @} */
 
-/** @name Initialisation
+/** @name Global dictionary management
  *
  * @{
  */
- int			fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir);
+int			fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir);
 
- int			fr_dict_dir_set(char const *dict_dir);
+int			fr_dict_global_dir_set(char const *dict_dir);
+
+void			fr_dict_global_read_only(void);
+
+char const		*fr_dict_global_dir(void);
 
 fr_dict_t		*fr_dict_unconst(fr_dict_t const *dict);
+
+fr_dict_attr_t		*fr_dict_attr_unconst(fr_dict_attr_t const *da);
+
+fr_dict_t const		*fr_dict_internal(void);
+
 /** @} */
 
 /** @name Dictionary testing and validation

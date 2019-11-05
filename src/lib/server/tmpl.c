@@ -835,13 +835,13 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	Attribute location checks
 	 */
 	{
-		fr_dict_t *found_in = fr_dict_by_da(vpt->tmpl_da);
+		fr_dict_t const *found_in = fr_dict_by_da(vpt->tmpl_da);
 
 		/*
 		 *	Even if allow_foreign is false, if disallow_internal is not
 		 *	true, we still allow foreign
 		 */
-		if (found_in == fr_dict_internal) {
+		if (found_in == fr_dict_internal()) {
 			if (rules->disallow_internal) {
 				fr_strerror_printf("Internal attributes not allowed here");
 				if (err) *err = ATTR_REF_ERROR_INTERNAL_ATTRIBUTE_NOT_ALLOWED;
@@ -1448,7 +1448,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 	if (!vpt->tmpl_da->flags.is_unknown) return 1;
 
-	da = fr_dict_unknown_add(fr_dict_internal, vpt->tmpl_da);
+	da = fr_dict_unknown_add(fr_dict_unconst(fr_dict_internal()), vpt->tmpl_da);
 	if (!da) return -1;
 	vpt->tmpl_da = da;
 
@@ -1487,7 +1487,7 @@ int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
 
 	if (!tmpl_is_attr_undefined(vpt)) return 1;
 
-	if (fr_dict_attr_add(dict_def, fr_dict_root(fr_dict_internal), vpt->tmpl_unknown_name, -1, type, flags) < 0) {
+	if (fr_dict_attr_add(dict_def, fr_dict_root(fr_dict_internal()), vpt->tmpl_unknown_name, -1, type, flags) < 0) {
 		return -1;
 	}
 	da = fr_dict_attr_by_name(dict_def, vpt->tmpl_unknown_name);
@@ -2964,7 +2964,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 			return_P("Forbidden data type in cast");
 		}
 
-		*castda = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + cast);
+		*castda = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + cast);
 		if (!*castda) {
 			return_P("Cannot cast to this data type");
 		}

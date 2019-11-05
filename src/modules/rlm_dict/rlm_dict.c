@@ -69,7 +69,7 @@ static ssize_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, char **out, UNUSED size_t 
 	fr_dict_attr_t const	*da;
 	ssize_t		ret;
 
-	ret = fr_dict_attr_by_oid(fr_dict_internal, &parent, &attr, fmt);
+	ret = fr_dict_attr_by_oid(fr_dict_internal(), &parent, &attr, fmt);
 	if (ret <= 0) {
 		REMARKER(fmt, -(ret), "%s", fr_strerror());
 		return ret;

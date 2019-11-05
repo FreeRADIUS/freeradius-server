@@ -754,7 +754,7 @@ int paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
 
 	memset(&flags, 0, sizeof(flags));
 
-	da = fr_dict_attr_by_name(fr_dict_internal, name);
+	da = fr_dict_attr_by_name(fr_dict_internal(), name);
 	if (da) {
 		if (paircmp_find(da)) {
 			fr_strerror_printf_push("Cannot register two comparions for attribute %s",
@@ -762,13 +762,13 @@ int paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
 			return -1;
 		}
 	} else if (from) {
-		if (fr_dict_attr_add(fr_dict_internal, fr_dict_root(fr_dict_internal),
+		if (fr_dict_attr_add(fr_dict_unconst(fr_dict_internal()), fr_dict_root(fr_dict_internal()),
 				     name, -1, from->type, &flags) < 0) {
 			fr_strerror_printf_push("Failed creating attribute '%s'", name);
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(fr_dict_internal, name);
+		da = fr_dict_attr_by_name(fr_dict_internal(), name);
 		if (!da) {
 			fr_strerror_printf("Failed finding attribute '%s'", name);
 			return -1;

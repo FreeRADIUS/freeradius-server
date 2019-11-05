@@ -875,6 +875,12 @@ int main(int argc, char *argv[])
 	if (sync_time) fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
 
 	/*
+	 *	Prevent anything from modifying the dictionaries
+	 *	they're now immutable.
+	 */
+	fr_dict_global_read_only();
+
+	/*
 	 *  Process requests until HUP or exit.
 	 */
 	while ((status = main_loop_start()) == 0x80) {
