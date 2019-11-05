@@ -792,7 +792,7 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, char con
  * load dictionaries from, then provide a relative path to
  * navigate through test subdirectories or protocols
  */
-static int dictionary_load_common(command_result_t *result, command_ctx_t *cc, char *in, char *default_subdir)
+static int dictionary_load_common(command_result_t *result, command_ctx_t *cc, char *in, char const *default_subdir)
 {
 	static 	char *name, *dir, *tmp = NULL;
 	char *q;
