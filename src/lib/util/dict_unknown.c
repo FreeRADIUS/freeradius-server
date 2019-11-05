@@ -85,7 +85,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 
 	if (unlikely(dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
-		return -1;
+		return NULL;
 	}
 
 	da = fr_dict_attr_by_name(dict, old->name);
