@@ -2358,7 +2358,7 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
  */
 void fr_dict_autofree(fr_dict_autoload_t const *to_free)
 {
-	fr_dict_t const			**dict;
+	fr_dict_t 			**dict;
 	fr_dict_autoload_t const	*p;
 
 	for (p = to_free; p->out; p++) {
