@@ -31,6 +31,8 @@ extern "C" {
 #include <stdbool.h>
 #include <talloc.h>
 
+typedef int(*fr_mkdir_func_t)(int fd, void *uctx)
+
 ssize_t		fr_file_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode);
 
 char		*fr_file_realpath(TALLOC_CTX *ctx, char const *path, ssize_t len);

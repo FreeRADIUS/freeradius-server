@@ -2319,7 +2319,7 @@ int main(int argc, char *argv[])
 	 *	Read tests from stdin
 	 */
 	if (argc < 2) {
-		ret = process_file(&exit_now, autofree, features, dict, dirname(argv[0]), "-");
+		ret = process_file(&exit_now, autofree, features, dict, name, "-");
 
 	/*
 	 *	...or process each file in turn.
