@@ -219,7 +219,7 @@ static void mismatch_print(command_ctx_t *cc, char const *command,
 	char *g, *e;
 	char *spaces;
 
-	ERROR("%s failed at line %d of %s", command, cc->lineno, cc->path);
+	ERROR("%s failed at line %d of %s/%s", command, cc->lineno, cc->path, cc->filename);
 	ERROR("  got      : %.*s", (int) got_len, got);
 	ERROR("  expected : %.*s", (int) expected_len, expected);
 
