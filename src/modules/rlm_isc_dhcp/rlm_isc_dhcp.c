@@ -982,7 +982,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	 *	name/code checks above.  But doing so allows us to
 	 *	have better error messages.
 	 */
-	rcode = fr_dict_attr_add(dict_dhcpv4, root, name, box.vb_uint32, type, &flags);
+	rcode = fr_dict_attr_add(fr_dict_coerce(dict_dhcpv4), root, name, box.vb_uint32, type, &flags);
 	talloc_free(name);
 	if (rcode < 0) return rcode;
 

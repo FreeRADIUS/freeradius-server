@@ -1501,7 +1501,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		fr_dict_attr_flags_t	flags;
 
 		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(dict_freeradius, fr_dict_root(dict_freeradius),
+		if (fr_dict_attr_add(fr_dict_coerce(dict_freeradius), fr_dict_root(dict_freeradius),
 				     inst->cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
 			PERROR("Error creating cache attribute");
 		error:

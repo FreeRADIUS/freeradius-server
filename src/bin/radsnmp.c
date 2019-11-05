@@ -92,8 +92,8 @@ typedef struct {
 	char			*secret;		//!< Shared secret.
 } radsnmp_conf_t;
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t radsnmp_dict[];
 fr_dict_autoload_t radsnmp_dict[] = {
@@ -1035,7 +1035,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(dict_freeradius, conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_coerce(dict_freeradius), conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("radsnmp");
 		exit(EXIT_FAILURE);
 	}

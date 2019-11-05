@@ -1390,7 +1390,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_read(dict_freeradius, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_coerce(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, __FILE__, __LINE__, "Failed to initialize the dictionaries");
 		return 1;
 	}

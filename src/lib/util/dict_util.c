@@ -2359,7 +2359,7 @@ void fr_dict_autofree(fr_dict_autoload_t const *to_free)
 	fr_dict_autoload_t const	*p;
 
 	for (p = to_free; p->out; p++) {
-		dict = p->out;
+		memcpy(&dict, &p->out, sizeof(dict)); /* const issues */
 		if (!*dict) continue;
 
 		fr_dict_free(dict);
@@ -2684,3 +2684,13 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 	return NULL;
 }
 
+/** Coerce to non-const
+ *
+ */
+fr_dict_t *fr_dict_coerce(fr_dict_t const *dict)
+{
+	fr_dict_t *mutable;
+
+	memcpy(&mutable, &dict, sizeof(dict));
+	return mutable;
+}

@@ -677,7 +677,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(dict_freeradius, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_coerce(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("dhcpclient");
 		exit(EXIT_FAILURE);
 	}
