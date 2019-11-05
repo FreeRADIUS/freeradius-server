@@ -794,9 +794,10 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, char con
  */
 static int dictionary_load_common(command_result_t *result, command_ctx_t *cc, char *in, char const *default_subdir)
 {
-	static 	char *name, *dir, *tmp = NULL;
-	char *q;
-	int ret;
+	char		*name, *tmp = NULL;
+	char const	*dir;
+	char		*q;
+	int		ret;
 
 	if (in[0] == '\0') {
 		fr_strerror_printf("Missing dictionary name");
