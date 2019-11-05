@@ -851,7 +851,7 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 
 /** Add an attribute to the dictionary
  *
- * @param[in] const_dict       	of protocol context we're operating in.
+ * @param[in] dict		of protocol context we're operating in.
  *				If NULL the internal dictionary will be used.
  * @param[in] parent		to add attribute under.
  * @param[in] name		of the attribute.
@@ -862,16 +862,13 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_attr_add(fr_dict_t const *const_dict, fr_dict_attr_t const *parent,
+int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*old;
 	fr_dict_attr_t		*mutable;
 	fr_dict_attr_flags_t	our_flags = *flags;
-	fr_dict_t		*dict;
-
-	memcpy(&dict, &const_dict, sizeof(const_dict)); /* const issues */
 
 	/*
 	 *	Check that the definition is valid.
@@ -2358,17 +2355,14 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
  */
 void fr_dict_autofree(fr_dict_autoload_t const *to_free)
 {
-	fr_dict_t const			**dict;
+	fr_dict_t			**dict;
 	fr_dict_autoload_t const	*p;
 
 	for (p = to_free; p->out; p++) {
-		fr_dict_t **mutable;
 		dict = p->out;
 		if (!*dict) continue;
 
-		memcpy(&mutable, &dict, sizeof(dict)); /* const issues */
-
-		fr_dict_free(mutable);
+		fr_dict_free(dict);
 	}
 }
 

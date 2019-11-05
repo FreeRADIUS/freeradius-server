@@ -245,7 +245,7 @@ extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
  *
  * @{
  */
-int			fr_dict_attr_add(fr_dict_t const *dict, fr_dict_attr_t const *parent, char const *name, int attr,
+int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1,2,3));
 
 int			fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
@@ -394,7 +394,7 @@ int			fr_dict_internal_afrom_file(fr_dict_t **out, char const *internal_name);
 
 int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char const *proto_dir);
 
-int			fr_dict_read(fr_dict_t const *dict, char const *dict_dir, char const *filename);
+int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
 /** @} */
 
 /** @name Autoloader interface
