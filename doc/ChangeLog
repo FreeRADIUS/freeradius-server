@@ -46,6 +46,8 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Update dictionary.dhcp dictionary with the recent hardware types.
 	* Add experimental rlm_python3.  This should largely work the same
 	  as rlm_python, which was Python2 only.
+	* Add Dockerfiles for Debian10 and CentOS8.
+	* Add RPM spec file compatibility for RHEL/CentOS 8.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
