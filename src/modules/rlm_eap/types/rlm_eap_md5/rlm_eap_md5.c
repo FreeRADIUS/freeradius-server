@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include "eap_md5.h"
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_eap_md5_dict[];
 fr_dict_autoload_t rlm_eap_md5_dict[] = {

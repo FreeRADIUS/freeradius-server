@@ -35,7 +35,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/protocol/snmp/freeradius.h>
 
-static fr_dict_t *dict_snmp;
+static fr_dict_t const *dict_snmp;
 
 extern fr_dict_autoload_t snmp_dict[];
 fr_dict_autoload_t snmp_dict[] = {

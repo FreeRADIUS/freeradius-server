@@ -41,8 +41,8 @@ RCSID("$Id$")
 
 static bool done_init = false;
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 static fr_dict_autoload_t xlat_eval_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },

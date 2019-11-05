@@ -33,8 +33,8 @@ typedef struct {
 	fr_dict_enum_t		*auth_type;
 } rlm_digest_t;
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_digest_dict[];
 fr_dict_autoload_t rlm_digest_dict[] = {

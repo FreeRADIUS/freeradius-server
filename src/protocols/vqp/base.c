@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 static int instance_count = 0;
 
-fr_dict_t *dict_vmps;
+fr_dict_t const *dict_vmps;
 
 extern fr_dict_autoload_t libfreeradius_vqp[];
 fr_dict_autoload_t libfreeradius_vqp[] = {

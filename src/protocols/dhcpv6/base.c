@@ -39,7 +39,7 @@
 
 static int instance_count;
 
-fr_dict_t *dict_dhcpv6;
+fr_dict_t const *dict_dhcpv6;
 
 extern fr_dict_autoload_t libfreeradius_dhcpv6_dict[];
 fr_dict_autoload_t libfreeradius_dhcpv6_dict[] = {

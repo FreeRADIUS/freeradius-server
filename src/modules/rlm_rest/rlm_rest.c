@@ -137,8 +137,8 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_rest_dict[];
 fr_dict_autoload_t rlm_rest_dict[] = {

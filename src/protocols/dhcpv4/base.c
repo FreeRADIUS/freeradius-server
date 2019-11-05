@@ -38,7 +38,7 @@ typedef struct {
 	uint8_t		length;
 } dhcp_option_t;
 
-fr_dict_t *dict_dhcpv4;
+fr_dict_t const *dict_dhcpv4;
 
 extern fr_dict_autoload_t dhcpv4_dict[];
 fr_dict_autoload_t dhcpv4_dict[] = {

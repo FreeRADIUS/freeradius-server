@@ -42,9 +42,9 @@ RCSID("$Id$")
 
 static int instance_count = 0;
 
-fr_dict_t *dict_freeradius;
-fr_dict_t *dict_radius;
-fr_dict_t *dict_eap_aka_sim;
+fr_dict_t const *dict_freeradius;
+fr_dict_t const *dict_radius;
+fr_dict_t const *dict_eap_aka_sim;
 
 extern fr_dict_autoload_t libfreeradius_aka_sim_dict[];
 fr_dict_autoload_t libfreeradius_aka_sim_dict[] = {

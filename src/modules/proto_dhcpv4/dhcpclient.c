@@ -75,8 +75,8 @@ typedef struct {
 	uint32_t offered_addr;
 } dc_offer_t;
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_dhcpv4;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_dhcpv4;
 
 extern fr_dict_autoload_t dhcpclient_dict[];
 fr_dict_autoload_t dhcpclient_dict[] = {

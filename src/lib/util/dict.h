@@ -167,7 +167,7 @@ typedef struct {
 typedef struct {
 	fr_dict_attr_t const	**out;				//!< Where to write a pointer to the resolved
 								//!< #fr_dict_attr_t.
-	fr_dict_t		**dict;				//!< The protocol dictionary the attribute should
+	fr_dict_t const		**dict;				//!< The protocol dictionary the attribute should
 								///< be resolved in. ** so it's a compile time
 								///< constant.
 	char const		*name;				//!< of the attribute.
@@ -178,7 +178,7 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_dict_t		**out;				//!< Where to write a pointer to the loaded/resolved
+	fr_dict_t const		**out;				//!< Where to write a pointer to the loaded/resolved
 								//!< #fr_dict_t.
 	char const		*base_dir;			//!< Directory structure beneath share.
 	char const		*proto;				//!< The protocol dictionary name.

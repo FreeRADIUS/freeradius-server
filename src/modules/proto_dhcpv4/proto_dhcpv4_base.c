@@ -31,7 +31,7 @@
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/protocol/dhcpv4/rfc2131.h>
 
-static fr_dict_t *dict_dhcpv4;
+static fr_dict_t const *dict_dhcpv4;
 
 extern fr_dict_autoload_t proto_dhcpv4_base_dict[];
 fr_dict_autoload_t proto_dhcpv4_base_dict[] = {

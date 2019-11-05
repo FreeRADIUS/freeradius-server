@@ -49,7 +49,7 @@ typedef struct {
 	uint8_t		tpa[4];			//!< Target protocol address.
 } arp_over_ether_t;
 
-static fr_dict_t *dict_arp;
+static fr_dict_t const *dict_arp;
 
 extern fr_dict_autoload_t proto_arp_dict[];
 fr_dict_autoload_t proto_arp_dict[] = {

@@ -148,7 +148,7 @@ static CONF_PARSER const type_interval_config[FR_RADIUS_MAX_PACKET_CODE] = {
 	[FR_CODE_DISCONNECT_REQUEST] = { FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_config },
 };
 
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_radius_dict[];
 fr_dict_autoload_t rlm_radius_dict[] = {

@@ -80,8 +80,8 @@ static rc_request_t *rc_request_tail = NULL;
 
 static char const *radclient_version = RADIUSD_VERSION_STRING_BUILD("radclient");
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t radclient_dict[];
 fr_dict_autoload_t radclient_dict[] = {

@@ -137,10 +137,10 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 #ifdef WITH_DHCP
-static fr_dict_t *dict_dhcpv4;
+static fr_dict_t const *dict_dhcpv4;
 #endif
 
 extern fr_dict_autoload_t rlm_redis_ippool_dict[];

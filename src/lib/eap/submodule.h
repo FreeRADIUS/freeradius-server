@@ -42,7 +42,7 @@ typedef struct {
 	module_method_t		entry_point;		//!< Callback for processing the next #eap_round_t of an
 							//!< #eap_session_t.
 
-	fr_dict_t		**namespace;		//!< Namespace children should be allocated in.
+	fr_dict_t const		**namespace;		//!< Namespace children should be allocated in.
 
 	bool			clone_parent_lists;	//!< HACK until all eap methods run their own sections.
 } rlm_eap_submodule_t;

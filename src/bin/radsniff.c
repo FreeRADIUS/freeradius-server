@@ -87,8 +87,8 @@ static fr_table_num_sorted_t const rs_events[] = {
 };
 static size_t rs_events_len = NUM_ELEMENTS(rs_events);
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t radsniff_dict[];
 fr_dict_autoload_t radsniff_dict[] = {

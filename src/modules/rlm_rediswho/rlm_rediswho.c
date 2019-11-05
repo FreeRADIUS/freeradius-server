@@ -79,7 +79,7 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_rediswho_dict[];
 fr_dict_autoload_t rlm_rediswho_dict[] = {

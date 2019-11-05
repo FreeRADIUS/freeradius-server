@@ -296,7 +296,7 @@ typedef struct {
 	rlm_rest_handle_t	*handle;	//!< curl easy handle servicing our request.
 } rlm_rest_xlat_rctx_t;
 
-extern fr_dict_t *dict_freeradius;
+extern fr_dict_t const *dict_freeradius;
 
 extern fr_dict_attr_t const *attr_rest_http_body;
 extern fr_dict_attr_t const *attr_rest_http_header;

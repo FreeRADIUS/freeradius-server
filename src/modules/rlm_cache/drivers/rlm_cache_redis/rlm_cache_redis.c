@@ -44,7 +44,7 @@ typedef struct {
 	fr_redis_cluster_t	*cluster;
 } rlm_cache_redis_t;
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_cache_redis_dict[];
 fr_dict_autoload_t rlm_cache_redis_dict[] = {

@@ -111,7 +111,7 @@ static const CONF_PARSER udp_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_dhcpv4;
+static fr_dict_t const *dict_dhcpv4;
 
 extern fr_dict_autoload_t proto_dhcpv4_udp_dict[];
 fr_dict_autoload_t proto_dhcpv4_udp_dict[] = {

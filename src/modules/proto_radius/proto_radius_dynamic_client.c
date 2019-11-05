@@ -31,8 +31,8 @@
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t proto_radius_dynamic_client_dict[];
 fr_dict_autoload_t proto_radius_dynamic_client_dict[] = {

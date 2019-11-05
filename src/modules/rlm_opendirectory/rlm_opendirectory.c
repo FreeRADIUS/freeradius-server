@@ -60,8 +60,8 @@ int mbr_check_membership_refresh(uuid_t const user, uuid_t group, int *ismember)
 #define kRadiusSACLName		"com.apple.access_radius"
 #define kRadiusServiceName	"radius"
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_opendirectory_dict[];
 fr_dict_autoload_t rlm_opendirectory_dict[] = {

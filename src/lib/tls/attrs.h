@@ -26,8 +26,8 @@ RCSIDH(tls_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t *dict_freeradius;
-extern fr_dict_t *dict_radius;
+extern fr_dict_t const *dict_freeradius;
+extern fr_dict_t const *dict_radius;
 
 extern fr_dict_attr_t const *attr_allow_session_resumption;
 extern fr_dict_attr_t const *attr_eap_session_resumed;

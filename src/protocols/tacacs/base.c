@@ -34,7 +34,7 @@
 #include "tacacs.h"
 #include "attrs.h"
 
-fr_dict_t *dict_tacacs;
+fr_dict_t const *dict_tacacs;
 
 extern fr_dict_autoload_t libfreeradius_tacacs_dict[];
 fr_dict_autoload_t libfreeradius_tacacs_dict[] = {

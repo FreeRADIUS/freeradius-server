@@ -26,9 +26,9 @@
 #include <freeradius-devel/protocol/eap/aka-sim/rfc4187.h>
 #include <freeradius-devel/protocol/eap/aka-sim/freeradius.h>
 
-extern fr_dict_t *dict_freeradius;
-extern fr_dict_t *dict_radius;
-extern fr_dict_t *dict_eap_aka_sim;
+extern fr_dict_t const *dict_freeradius;
+extern fr_dict_t const *dict_radius;
+extern fr_dict_t const *dict_eap_aka_sim;
 
 extern fr_dict_attr_t const *attr_eap_aka_sim_ak;
 extern fr_dict_attr_t const *attr_eap_aka_sim_any_id_req;

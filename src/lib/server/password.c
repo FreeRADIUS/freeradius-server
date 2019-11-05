@@ -70,8 +70,8 @@ typedef struct {
 						///< of what the caller says.
 } password_info_t;
 
-static fr_dict_t *dict_freeradius = NULL;
-static fr_dict_t *dict_radius = NULL;
+static fr_dict_t const *dict_freeradius = NULL;
+static fr_dict_t const *dict_radius = NULL;
 
 static fr_dict_attr_t const *attr_cleartext_password;
 static fr_dict_attr_t const *attr_password_with_header;

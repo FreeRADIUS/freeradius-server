@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <ctype.h>
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_unpack_dict[];
 fr_dict_autoload_t rlm_unpack_dict[] = {

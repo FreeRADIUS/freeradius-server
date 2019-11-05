@@ -43,7 +43,7 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_eap_aka_sim;
+static fr_dict_t const *dict_eap_aka_sim;
 
 extern fr_dict_autoload_t rlm_eap_aka_dict[];
 fr_dict_autoload_t rlm_eap_aka_dict[] = {

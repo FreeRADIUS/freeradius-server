@@ -32,7 +32,7 @@
 
 #include <freeradius-devel/protocol/vmps/vmps.h>
 
-static fr_dict_t *dict_vmps;
+static fr_dict_t const *dict_vmps;
 
 extern fr_dict_autoload_t proto_vmps_all_dict[];
 fr_dict_autoload_t proto_vmps_all_dict[] = {

@@ -184,7 +184,7 @@ size_t log_str2dst_len = NUM_ELEMENTS(log_str2dst);
 
 static char const spaces[] = "                                                                                                                        ";
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t log_dict[];
 fr_dict_autoload_t log_dict[] = {

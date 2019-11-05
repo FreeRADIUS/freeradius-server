@@ -198,7 +198,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t proto_ldap_sync_dict[];
 fr_dict_autoload_t proto_ldap_sync_dict[] = {

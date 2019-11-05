@@ -50,7 +50,7 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_eap_tls_dict[];
 fr_dict_autoload_t rlm_eap_tls_dict[] = {

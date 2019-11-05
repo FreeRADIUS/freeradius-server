@@ -27,4 +27,4 @@ RCSIDH(dhcpv6_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t *dict_dhcpv6;
+extern fr_dict_t const *dict_dhcpv6;

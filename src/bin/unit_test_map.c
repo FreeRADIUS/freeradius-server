@@ -46,8 +46,8 @@ do { \
 	goto cleanup; \
 } while (0)
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t unit_test_module_dict[];
 fr_dict_autoload_t unit_test_module_dict[] = {

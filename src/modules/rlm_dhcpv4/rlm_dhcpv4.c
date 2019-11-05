@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-static fr_dict_t *dict_dhcpv4;
+static fr_dict_t const *dict_dhcpv4;
 
 extern fr_dict_autoload_t rlm_dhcpv4_dict[];
 fr_dict_autoload_t rlm_dhcpv4_dict[] = {

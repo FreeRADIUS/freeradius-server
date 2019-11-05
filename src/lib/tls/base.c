@@ -45,8 +45,8 @@ static int instance_count = 0;
  */
 _Thread_local TALLOC_CTX 	*ssl_talloc_ctx;
 
-fr_dict_t			*dict_freeradius;
-fr_dict_t			*dict_radius;
+fr_dict_t const *dict_freeradius;
+fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t tls_dict[];
 fr_dict_autoload_t tls_dict[] = {

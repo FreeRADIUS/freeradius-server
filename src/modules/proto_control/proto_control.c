@@ -63,7 +63,7 @@ static CONF_PARSER const proto_control_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_control;
+static fr_dict_t const *dict_control;
 
 extern fr_dict_autoload_t proto_control_dict[];
 fr_dict_autoload_t proto_control_dict[] = {

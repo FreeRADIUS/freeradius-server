@@ -25,7 +25,7 @@
  */
 RCSIDH(tacacs_attrs_h, "$Id$")
 
-extern fr_dict_t *dict_tacacs;
+extern fr_dict_t const *dict_tacacs;
 
 extern fr_dict_attr_t const *attr_tacacs_accounting_flags;
 extern fr_dict_attr_t const *attr_tacacs_accounting_status;

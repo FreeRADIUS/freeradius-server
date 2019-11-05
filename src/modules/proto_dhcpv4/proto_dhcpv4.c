@@ -84,7 +84,7 @@ static CONF_PARSER const proto_dhcpv4_config[] = {
 };
 
 
-static fr_dict_t *dict_dhcpv4;
+static fr_dict_t const *dict_dhcpv4;
 
 extern fr_dict_autoload_t proto_dhcpv4_dict[];
 fr_dict_autoload_t proto_dhcpv4_dict[] = {

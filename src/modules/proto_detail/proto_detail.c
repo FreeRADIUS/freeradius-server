@@ -72,7 +72,7 @@ static CONF_PARSER const proto_detail_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t proto_detail_dict[];
 fr_dict_autoload_t proto_detail_dict[] = {

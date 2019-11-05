@@ -59,7 +59,7 @@ typedef struct {
 	fr_virtual_listen_t	**listener;		//!< Listeners in this virtual server.
 } fr_virtual_server_t;
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 static fr_dict_attr_t const *attr_auth_type;
 
