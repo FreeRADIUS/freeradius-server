@@ -2687,7 +2687,7 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 /** Coerce to non-const
  *
  */
-fr_dict_t *fr_dict_coerce(fr_dict_t const *dict)
+fr_dict_t *fr_dict_unconst(fr_dict_t const *dict)
 {
 	fr_dict_t *mutable;
 

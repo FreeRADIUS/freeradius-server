@@ -430,7 +430,7 @@ void			fr_dict_free(fr_dict_t **dict);
 
  int			fr_dict_dir_set(char const *dict_dir);
 
-fr_dict_t		*fr_dict_coerce(fr_dict_t const *dict);
+fr_dict_t		*fr_dict_unconst(fr_dict_t const *dict);
 /** @} */
 
 /** @name Dictionary testing and validation
