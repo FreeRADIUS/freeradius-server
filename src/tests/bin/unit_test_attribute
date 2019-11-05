@@ -6,7 +6,8 @@
 do_test $TESTBIN/unit_test_attribute -h
 
 # execution?
-_t=$(mktemp)
+_t=./build/tests/bin/unit_test_attribute.tmp
+touch $_t
 cb_do_test="rm -fv $_t"
 
 do_test $TESTBIN/unit_test_attribute -D ${DICT_DIR} -Mx $_t
