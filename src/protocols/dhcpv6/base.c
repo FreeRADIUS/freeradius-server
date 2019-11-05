@@ -462,7 +462,7 @@ int fr_dhcpv6_global_init(void)
 	 */
 	child = NULL;
 	while ((child = fr_dict_attr_iterate_children(fr_dict_root(dict_dhcpv6), &child)) != NULL) {
-		if (child->attr > 65535) continue;
+		if (child->flags.internal) continue;
 
 		value.vb_uint16 = child->attr;
 
