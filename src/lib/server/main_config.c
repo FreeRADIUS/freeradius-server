@@ -39,6 +39,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/file.h>
 
 #include <sys/stat.h>
 #include <pwd.h>
@@ -566,7 +567,7 @@ static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 }
 
 #ifdef HAVE_SETUID
-static int mkdir_chown(int fd, UNUSED char const *path, void *uctx)
+static int mkdir_chown(int fd, char const *path, void *uctx)
 {
 	main_config_t *config = uctx;
 	int ret = 0;
