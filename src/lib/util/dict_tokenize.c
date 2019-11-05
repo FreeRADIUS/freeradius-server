@@ -2401,8 +2401,9 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
  *	- 0 on success.
  *      - -1 on failure.
  */
-int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
+int fr_dict_read(fr_dict_t const *dict, char const *dir, char const *filename)
 {
+	fr_dict_t *mutable;
 	INTERNAL_IF_NULL(dict, -1);
 
 	if (!dict->attributes_by_name) {
@@ -2410,7 +2411,8 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 		return -1;
 	}
 
-	return dict_from_file(dict, dir, filename, NULL, 0);
+	memcpy(&mutable, &dict, sizeof(dict));
+	return dict_from_file(mutable, dir, filename, NULL, 0);
 }
 
 /*
