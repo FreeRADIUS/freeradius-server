@@ -1,0 +1,7 @@
+#
+#  Clean image to test packages in
+#
+FROM centos:8
+
+# Seems to work around https://bugs.centos.org/view.php?id=16655
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial

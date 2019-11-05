@@ -1,0 +1,4 @@
+#
+#  Clean image to test packages in
+#
+FROM centos:7

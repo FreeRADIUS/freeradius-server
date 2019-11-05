@@ -1,0 +1,7 @@
+#
+#  Clean image to test packages in
+#
+FROM debian:stretch
+RUN apt-get update && \
+    apt-get -y dist-upgrade && \
+    apt-get -y install procps
