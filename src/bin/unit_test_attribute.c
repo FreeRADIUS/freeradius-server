@@ -938,7 +938,7 @@ static size_t command_cd(command_result_t *result, command_ctx_t *cc,
 {
 	TALLOC_FREE(cc->path);	/* Free old directories */
 
-	cc->path = fr_file_realpath(cc->tmp_ctx, in, inlen);
+	cc->path = fr_realpath(cc->tmp_ctx, in, inlen);
 	if (!cc->path) RETURN_COMMAND_ERROR();
 
 	strlcpy(data, cc->path, COMMAND_OUTPUT_MAX);
@@ -1607,8 +1607,8 @@ static size_t command_proto_dictionary(command_result_t *result, command_ctx_t *
 static size_t command_touch(command_result_t *result, UNUSED command_ctx_t *cc,
 			    UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	if (fr_file_unlink(in) < 0) RETURN_COMMAND_ERROR();
-	if (fr_file_touch(NULL, in, 0644, true, 0755) <= 0) RETURN_COMMAND_ERROR();
+	if (fr_unlink(in) < 0) RETURN_COMMAND_ERROR();
+	if (fr_touch(NULL, in, 0644, true, 0755) <= 0) RETURN_COMMAND_ERROR();
 
 	RETURN_OK(0);
 }
@@ -2261,7 +2261,7 @@ int main(int argc, char *argv[])
 		goto cleanup;
 	}
 
-	if (receipt_file && (fr_file_unlink(receipt_file) < 0)) {
+	if (receipt_file && (fr_unlink(receipt_file) < 0)) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
@@ -2344,14 +2344,14 @@ cleanup:
 	unlang_free();
 	xlat_free();
 
-	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_file_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
+	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_attribute");
 		ret = EXIT_FAILURE;
 	}
 
 	/*
 	 *	Must be last, we still need the errors
-	 *      from fr_file_touch.
+	 *      from fr_touch.
 	 */
 	fr_strerror_free();
 

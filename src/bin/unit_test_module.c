@@ -703,7 +703,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (receipt_file && (fr_file_unlink(receipt_file) < 0)) {
+	if (receipt_file && (fr_unlink(receipt_file) < 0)) {
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
@@ -1110,7 +1110,7 @@ cleanup:
 	 */
 	trigger_exec_free();
 
-	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_file_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
+	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_module");
 		ret = EXIT_FAILURE;
 	}

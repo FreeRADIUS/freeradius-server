@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
 	argc -= (optind - 1);
 	argv += (optind - 1);
 
-	if (receipt_file && (fr_file_unlink(receipt_file) < 0)) {
+	if (receipt_file && (fr_unlink(receipt_file) < 0)) {
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}
@@ -253,7 +253,7 @@ cleanup:
 
 	fr_strerror_free();
 
-	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_file_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
+	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_map");
 		ret = EXIT_FAILURE;
 	}

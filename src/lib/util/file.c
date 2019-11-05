@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/value.h>
 
-static ssize_t _fr_file_mkdir(int *fd_out, char const *path, mode_t mode)
+static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_func_t func, void *uctx)
 {
 	int	ret, fd;
 	char	*p;
@@ -77,7 +77,7 @@ static ssize_t _fr_file_mkdir(int *fd_out, char const *path, mode_t mode)
 	 *	EEXIST is only OK when we're calling
 	 *	mkdir on the whole path, and it exists
 	 *	which should have been caught by
-	 *      fr_file_mkdir before calling this function.
+	 *      fr_mkdir before calling this function.
 	 */
 	if (errno != ENOENT) {
 		fr_strerror_printf("Unexpected error creating "
@@ -96,7 +96,7 @@ static ssize_t _fr_file_mkdir(int *fd_out, char const *path, mode_t mode)
 	if (!p || (p == path)) return -(p - path);
 
 	*p = '\0';
-	if (_fr_file_mkdir(fd_out, path, mode) < 0) return -(p - path);
+	if (_fr_mkdir(fd_out, path, mode, func, uctx) < 0) return -(p - path);
 
 	/*
 	 *	At this point *fd_out, should be an FD
@@ -122,6 +122,15 @@ static ssize_t _fr_file_mkdir(int *fd_out, char const *path, mode_t mode)
 				   "directory we created: %s", fr_syserror(errno));
 		goto mkdirat_error;
 	}
+	*p = FR_DIR_SEP;
+
+	/*
+	 *	Call the user function
+	 */
+	if (func && (func(fd, path, uctx) < 0)) {
+		fr_strerror_printf_push("Callback failed processing directory \"%s\"", path);
+		goto mkdirat_error;
+	}
 
 	/*
 	 *	Swap active *fd_out to point to the dir
@@ -140,12 +149,14 @@ static ssize_t _fr_file_mkdir(int *fd_out, char const *path, mode_t mode)
  * @param[in] path	to populate with directories.
  * @param[in] len	Length of the path string.
  * @param[in] mode	for new directories.
+ * @param[in] func	to call each time a new directory is created.
+ * @param[in] uctx	to pass to func.
  * @return
  *	- >0 on success.
  *	- <= 0 on failure. Negative offset pointing to the
  *	  path separator of the path component that caused the error.
  */
-ssize_t fr_file_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode)
+ssize_t fr_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode, fr_mkdir_func_t func, void *uctx)
 {
 	char	*our_path;
 	int	fd = -1;
@@ -178,7 +189,7 @@ ssize_t fr_file_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode)
 	 *	create any missing dirs in the
 	 *	specified path.
 	 */
-	slen = _fr_file_mkdir(&fd, our_path, mode);
+	slen = _fr_mkdir(&fd, our_path, mode, func, uctx);
 	talloc_free(our_path);
 	if (slen <= 0) return slen;
 
@@ -208,7 +219,7 @@ done:
  *	- NULL on error.
  *	- The absolute version of the input path on success.
  */
-char *fr_file_realpath(TALLOC_CTX *ctx, char const *path, ssize_t len)
+char *fr_realpath(TALLOC_CTX *ctx, char const *path, ssize_t len)
 {
 	char		*tmp_path = NULL, *abs_path, *talloc_abs_path;
 
@@ -245,7 +256,7 @@ char *fr_file_realpath(TALLOC_CTX *ctx, char const *path, ssize_t len)
  *	- >0 on success.
  *	- <= 0 on failure. Error available in error stack (use fr_strerror())
  */
-ssize_t fr_file_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir, mode_t dir_mode) {
+ssize_t fr_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir, mode_t dir_mode) {
 	int fd;
 
 	fd = open(filename, O_WRONLY | O_CREAT, mode);
@@ -256,7 +267,7 @@ ssize_t fr_file_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir
 		if (mkdir && (errno == ENOENT) && (q = strrchr(filename, FR_DIR_SEP))) {
 			int dir_fd;
 
-			slen = fr_file_mkdir(&dir_fd, filename, q - filename, dir_mode);
+			slen = fr_mkdir(&dir_fd, filename, q - filename, dir_mode, NULL, NULL);
 			if (slen <= 0) return slen;
 
 			fd = openat(dir_fd, q + 1, O_WRONLY | O_CREAT, mode);
@@ -289,7 +300,7 @@ ssize_t fr_file_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir
  * 	- 0 if the file was removed.
  * 	- 1 if the file didn't exist.
  */
-int fr_file_unlink(char const *filename) {
+int fr_unlink(char const *filename) {
 	if (unlink(filename) == 0) return 0;
 
 	if (errno == ENOENT) return 1;

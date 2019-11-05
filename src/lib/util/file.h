@@ -31,15 +31,27 @@ extern "C" {
 #include <stdbool.h>
 #include <talloc.h>
 
-typedef int(*fr_mkdir_func_t)(int fd, void *uctx)
+/** Callback for allowing additional operations on newly created directories
+ *
+ * @param[in] fd	Of newly created directory.
+ * @param[in] path	Either relative or full to the new directory.
+ *			Should only be used for debug messages or functions
+ *			that don't have an 'at' variant.
+ * @param[in] uctx	User data to pass to callback.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int(*fr_mkdir_func_t)(int fd, char const *path, void *uctx);
 
-ssize_t		fr_file_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode);
+ssize_t		fr_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode,
+			 fr_mkdir_func_t func, void *uctx);
 
-char		*fr_file_realpath(TALLOC_CTX *ctx, char const *path, ssize_t len);
+char		*fr_realpath(TALLOC_CTX *ctx, char const *path, ssize_t len);
 
-ssize_t		fr_file_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir, mode_t dir_mode);
+ssize_t		fr_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir, mode_t dir_mode);
 
-int 		fr_file_unlink(char const *filename);
+int 		fr_unlink(char const *filename);
 
 #ifdef __cplusplus
 }

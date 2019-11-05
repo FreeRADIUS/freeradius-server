@@ -34,7 +34,6 @@ extern "C" {
 #include <talloc.h>
 
 void (*reset_signal(int signo, void (*func)(int)))(int);
-int		rad_mkdir(char *directory, mode_t mode, uid_t uid, gid_t gid);
 size_t		rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen,
 				       char const *in, UNUSED void *arg);
 size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,

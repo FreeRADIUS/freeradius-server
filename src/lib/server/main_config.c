@@ -566,6 +566,21 @@ static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 }
 
 #ifdef HAVE_SETUID
+static int mkdir_chown(int fd, UNUSED char const *path, void *uctx)
+{
+	main_config_t *config = uctx;
+	int ret = 0;
+
+	if ((config->server_uid != (uid_t)-1) || (config->server_gid != (gid_t)-1)) {
+		rad_suid_up();
+		ret = fchown(fd, config->server_uid, config->server_gid);
+		if (ret < 0) fr_strerror_printf("Failed changing ownership on directory \"%s\": %s",
+						path, fr_syserror(errno));
+		rad_suid_down();
+	}
+
+	return ret;
+}
 /*
  *  Do chroot, if requested.
  *
@@ -729,9 +744,8 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		 *	allowed to write to this directory however.
 		 */
 		my_dir = talloc_typed_strdup(NULL, config->run_dir);
-		if (rad_mkdir(my_dir, 0755, config->server_uid, config->server_gid) < 0) {
-			DEBUG("Failed to create run_dir %s: %s",
-			      my_dir, fr_syserror(errno));
+		if (fr_mkdir(my_dir, 0755, config->server_uid, config->server_gid, mkdir_chown, config) < 0) {
+			WARN("Failed creating run_dir %s: %s", my_dir, fr_syserror(errno));
 		}
 		talloc_free(my_dir);
 	}
@@ -746,9 +760,8 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		 *	readable.
 		 */
 		my_dir = talloc_typed_strdup(config, config->log_dir);
-		if (rad_mkdir(my_dir, 0755, config->server_uid, config->server_gid) < 0) {
-			DEBUG("Failed to create logdir %s: %s",
-			      my_dir, fr_syserror(errno));
+		if (fr_mkdir(my_dir, 0755, config->server_uid, config->server_gid, mkdir_chown, config) < 0) {
+			WARN("Failed creating logdir %s: %s", my_dir, fr_syserror(errno));
 		}
 		talloc_free(my_dir);
 	}
