@@ -2648,7 +2648,7 @@ fr_dict_t *fr_dict_unconst(fr_dict_t const *dict)
 
 	if (unlikely(dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
-		return -1;
+		return NULL;
 	}
 
 	memcpy(&mutable, &dict, sizeof(dict));
@@ -2666,7 +2666,7 @@ fr_dict_attr_t *fr_dict_attr_unconst(fr_dict_attr_t const *da)
 	dict = dict_by_da(da);
 	if (unlikely(dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
-		return -1;
+		return NULL;
 	}
 
 	memcpy(&mutable, &da, sizeof(da));
