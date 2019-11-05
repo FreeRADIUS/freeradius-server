@@ -2026,7 +2026,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 
 		fp = fopen(path, "r");
 		if (!fp) {
-			ERROR("Error opening \"%s\": %s", path, fr_syserror(errno));
+			ERROR("Error opening test file \"%s\": %s", path, fr_syserror(errno));
 			ret = -1;
 			goto finish;
 		}
