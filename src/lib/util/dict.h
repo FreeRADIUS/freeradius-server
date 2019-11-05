@@ -119,13 +119,13 @@ struct dict_attr {
 	union {
 		struct {
 			fr_dict_attr_t const	**children;	//!< Children of this attribute.
-			fr_dict_attr_t const	*next;		//!< Next child in bin.
 		};
 		struct {
 			fr_dict_t const		*dict;		//!< child dictionary
 			fr_dict_attr_t const	*ref;		//!< reference
 		};
 	};
+	fr_dict_attr_t const	*next;				//!< Next child in bin.
 
 
 	unsigned int		depth;				//!< Depth of nesting for this attribute.
