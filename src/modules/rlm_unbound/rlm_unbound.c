@@ -32,10 +32,10 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 #include "io.h"
+#include "log.h"
 
 typedef struct {
 	struct ub_ctx	*ub;   /* This must come first.  Do not move */
-	fr_event_list_t	*el; /* This must come second.  Do not move. */
 
 	char const	*name;
 	char const	*xlat_a_name;
@@ -46,12 +46,7 @@ typedef struct {
 
 	char const	*filename;
 
-	int		log_fd;
-	FILE		*log_stream;
-
-	int		log_pipe[2];
-	FILE		*log_pipe_stream[2];
-	bool		log_pipe_in_use;
+	unbound_log_t	*u_log;
 } rlm_unbound_t;
 
 /*
@@ -372,45 +367,15 @@ error0:
 	return -1;
 }
 
-/*
- *	Even when run in asyncronous mode, callbacks sent to libunbound still
- *	must be run in an application-side thread (via ub_process.)  This is
- *	probably to keep the API usage consistent across threaded and forked
- *	embedded client modes.  This callback function lets an event loop call
- *	ub_process when the instance's file descriptor becomes ready.
- */
-static void ub_fd_handler(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, void *ctx)
-{
-	rlm_unbound_t *inst = ctx;
-	int err;
-
-	err = ub_process(inst->ub);
-	if (err) {
-		ERROR("Async ub_process: %s", ub_strerror(err));
-	}
-}
-
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	rlm_unbound_t *inst = instance;
-	int res;
-	char *optval;
-
-	fr_log_dst_t log_dst;
-	int log_level;
-	int log_fd = -1;
-
-	char k[64]; /* To silence const warns until newer unbound in distros */
+	rlm_unbound_t	*inst = instance;
+	int		res;
+	char		k[64]; /* To silence const warns until newer unbound in distros */
 
 	/*
 	 *	@todo - move this to the thread-instantiate function
 	 */
-	inst->el = main_loop_event_list();
-	inst->log_pipe_stream[0] = NULL;
-	inst->log_pipe_stream[1] = NULL;
-	inst->log_fd = -1;
-	inst->log_pipe_in_use = false;
-
 	inst->ub = ub_ctx_create();
 	if (!inst->ub) {
 		cf_log_err(conf, "ub_ctx_create failed");
@@ -422,94 +387,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	We cannot tell from here whether that option is in effect.
 	 */
 	res = ub_ctx_async(inst->ub, 1);
-
 	if (res) goto error;
-
-	/*	Glean some default settings to match the main server.	*/
-	/*	TODO: debug_level can be changed at runtime. */
-	/*	TODO: log until fork when stdout or stderr and !fr_debug_lvl. */
-	log_level = 0;
-
-	if (fr_debug_lvl > 0) {
-		log_level = fr_debug_lvl;
-
-	} else if (main_config->debug_level > 0) {
-		log_level = main_config->debug_level;
-	}
-
-	switch (log_level) {
-	/* TODO: This will need some tweaking */
-	case 0:
-	case 1:
-		break;
-
-	case 2:
-		log_level = 1;
-		break;
-
-	case 3:
-	case 4:
-		log_level = 2; /* mid-to-heavy levels of output */
-		break;
-
-	case 5:
-	case 6:
-	case 7:
-	case 8:
-		log_level = 3; /* Pretty crazy amounts of output */
-		break;
-
-	default:
-		log_level = 4; /* Insane amounts of output including crypts */
-		break;
-	}
-
-	res = ub_ctx_debuglevel(inst->ub, log_level);
-	if (res) goto error;
-
-	switch (default_log.dst) {
-	case L_DST_STDOUT:
-		if (!fr_debug_lvl) {
-			log_dst = L_DST_NULL;
-			break;
-		}
-		log_dst = L_DST_STDOUT;
-		log_fd = dup(STDOUT_FILENO);
-		break;
-
-	case L_DST_STDERR:
-		if (!fr_debug_lvl) {
-			log_dst = L_DST_NULL;
-			break;
-		}
-		log_dst = L_DST_STDOUT;
-		log_fd = dup(STDERR_FILENO);
-		break;
-
-	case L_DST_FILES:
-		if (main_config->log_file) {
-			char *log_file;
-
-			strcpy(k, "logfile:");
-			/* 3rd argument isn't const'd in libunbounds API */
-			memcpy(&log_file, &main_config->log_file, sizeof(log_file));
-			res = ub_ctx_set_option(inst->ub, k, log_file);
-			if (res) {
-				goto error;
-			}
-			log_dst = L_DST_FILES;
-			break;
-		}
-		/* FALL-THROUGH */
-
-	case L_DST_NULL:
-		log_dst = L_DST_NULL;
-		break;
-
-	default:
-		log_dst = L_DST_SYSLOG;
-		break;
-	}
 
 	/* Now load the config file, which can override gleaned settings. */
 	{
@@ -520,109 +398,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		if (res) goto error;
 	}
 
-	/*
-	 *	Check if the config file tried to use syslog.  Unbound
-	 *	does not share syslog gracefully.
-	 */
-	strcpy(k, "use-syslog");
-	res = ub_ctx_get_option(inst->ub, k, &optval);
-	if (res || !optval) goto error;
-
-	if (!strcmp(optval, "yes")) {
-		char v[3];
-
-		free(optval);
-
-		WARN("Overriding syslog settings");
-		strcpy(k, "use-syslog:");
-		strcpy(v, "no");
-		res = ub_ctx_set_option(inst->ub, k, v);
-		if (res) goto error;
-
-		if (log_dst == L_DST_FILES) {
-			char *log_file;
-
-			/* Reinstate the log file name JIC */
-			strcpy(k, "logfile:");
-			/* 3rd argument isn't const'd in libunbounds API */
-			memcpy(&log_file, &main_config->log_file, sizeof(log_file));
-			res = ub_ctx_set_option(inst->ub, k, log_file);
-			if (res) goto error;
-		}
-
-	} else {
-		if (optval) free(optval);
-		strcpy(k, "logfile");
-
-		res = ub_ctx_get_option(inst->ub, k, &optval);
-		if (res) goto error;
-
-		if (optval && strlen(optval)) {
-			log_dst = L_DST_FILES;
-
-			/*
-			 *	We open log_fd early in the process,
-			 *	so that libunbound doesn't close
-			 *	stdout / stderr on us (grrr, stupid
-			 *	software).  But if the config say to
-			 *	use files, we now have to close the
-			 *	dup'd FD.
-			 */
-			if (log_fd >= 0) {
-				close(log_fd);
-				log_fd = -1;
-			}
-
-		} else if (!fr_debug_lvl) {
-			log_dst = L_DST_NULL;
-		}
-
-		if (optval) free(optval);
-	}
-
-	switch (log_dst) {
-	case L_DST_STDOUT:
-		/*
-		 * We have an fd to log to.  And we've already attempted to
-		 * dup it so libunbound doesn't close it on us.
-		 */
-		if (log_fd == -1) {
-			cf_log_err(conf, "Could not dup fd");
-			goto error_nores;
-		}
-
-		inst->log_stream = fdopen(log_fd, "w");
-		if (!inst->log_stream) {
-			cf_log_err(conf, "error setting up log stream");
-			goto error_nores;
-		}
-
-		res = ub_ctx_debugout(inst->ub, inst->log_stream);
-		if (res) goto error;
-		break;
-
-	case L_DST_FILES:
-		/* We gave libunbound a filename.  It is on its own now. */
-		break;
-
-	case L_DST_NULL:
-		/* We tell libunbound not to log at all. */
-		res = ub_ctx_debugout(inst->ub, NULL);
-		if (res) goto error;
-		break;
-
-	case L_DST_SYSLOG:
-		/*
-		 *  Currently this wreaks havoc when running threaded, so just
-		 *  turn logging off until that gets figured out.
-		 */
-		res = ub_ctx_debugout(inst->ub, NULL);
-		if (res) goto error;
-		break;
-
-	default:
-		break;
-	}
+	if (unbound_log_init(inst, &inst->u_log, inst->ub) < 0) goto error;
 
 	/*
 	 *  Now we need to finalize the context.
@@ -634,28 +410,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	strcpy(k, "notar33lsite.foo123.nottld A 127.0.0.1");
 	ub_ctx_data_remove(inst->ub, k);
-
-	inst->log_fd = ub_fd(inst->ub);
-	if (inst->log_fd >= 0) {
-		if (fr_event_fd_insert(inst, inst->el, inst->log_fd,
-				       ub_fd_handler,
-				       NULL,
-				       NULL,
-				       inst) < 0) {
-			cf_log_err(conf, "could not insert async fd");
-			inst->log_fd = -1;
-			goto error_nores;
-		}
-
-	}
-
 	return 0;
 
  error:
 	cf_log_err(conf, "%s", ub_strerror(res));
-
- error_nores:
-	if (log_fd > -1) close(log_fd);
 
 	return -1;
 }
@@ -690,34 +448,16 @@ static int mod_detach(void *instance)
 {
 	rlm_unbound_t *inst = instance;
 
-	if (inst->log_fd >= 0) {
-		fr_event_fd_delete(inst->el, inst->log_fd, FR_EVENT_FILTER_IO);
-		if (inst->ub) {
-			ub_process(inst->ub);
-			/* This can hang/leave zombies currently
-			 * see upstream bug #519
-			 * ...so expect valgrind to complain with -m
-			 */
-#if 0
-			ub_ctx_delete(inst->ub);
-#endif
-		}
-	}
+	ub_process(inst->ub);
 
-	if (inst->log_pipe_stream[1]) {
-		fclose(inst->log_pipe_stream[1]);
-	}
+	/*
+	 *	This can hang/leave zombies currently
+	 *	see upstream bug #519
+	 *	...so expect valgrind to complain with -m
+	 */
+	talloc_free(inst->u_log);	/* Free logging first */
 
-	if (inst->log_pipe_stream[0]) {
-		if (inst->log_pipe_in_use) {
-			fr_event_fd_delete(inst->el, inst->log_pipe[0], FR_EVENT_FILTER_IO);
-		}
-		fclose(inst->log_pipe_stream[0]);
-	}
-
-	if (inst->log_stream) {
-		fclose(inst->log_stream);
-	}
+	ub_ctx_delete(inst->ub);
 
 	return 0;
 }
