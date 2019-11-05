@@ -69,9 +69,9 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 
-		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
+		unlang = cf_section_find(request->server_cs, "recv", dv->name);
 		if (!unlang) {
-			RWDEBUG("Failed to find 'recv %s' section", dv->alias);
+			RWDEBUG("Failed to find 'recv %s' section", dv->name);
 			request->reply->code = FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
 			goto send_reply;
 		}
@@ -116,7 +116,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
+		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
 
 		if (!unlang) goto send_reply;
 
@@ -152,7 +152,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 			if (request->reply->code != FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) {
 				dv = fr_dict_enum_by_value(attr_packet_type,
 							   fr_box_uint32(request->reply->code));
-				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'.", dv->alias);
+				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'.", dv->name);
 
 				request->reply->code = FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
 
@@ -161,10 +161,10 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
-				unlang = cf_section_find(request->server_cs, "send", dv->alias);
+				unlang = cf_section_find(request->server_cs, "send", dv->name);
 				if (unlang) goto rerun_nak;
 
-				RWDEBUG("Not running 'send %s' section as it does not exist", dv->alias);
+				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);
 			}
 			break;
 		}

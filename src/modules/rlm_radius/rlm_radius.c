@@ -198,7 +198,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(attr_packet_type, type_str, -1);
+	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
 	if (!type_enum) {
 	invalid_code:
 		cf_log_err(ci, "Unknown or invalid RADIUS packet type '%s'", type_str);
@@ -287,7 +287,7 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(attr_packet_type, type_str, -1);
+	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
 	if (!type_enum) {
 	invalid_code:
 		cf_log_err(ci, "Unknown or invalid RADIUS packet type '%s'", type_str);

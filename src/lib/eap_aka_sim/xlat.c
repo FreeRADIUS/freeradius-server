@@ -79,17 +79,17 @@ static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED s
 		return 0;
 
 	case AKA_SIM_METHOD_HINT_SIM:
-		method = fr_dict_enum_alias_by_value(attr_eap_aka_sim_method_hint,
+		method = fr_dict_enum_name_by_value(attr_eap_aka_sim_method_hint,
 						     fr_box_uint32(FR_METHOD_HINT_VALUE_SIM));
 		break;
 
 	case AKA_SIM_METHOD_HINT_AKA:
-		method = fr_dict_enum_alias_by_value(attr_eap_aka_sim_method_hint,
+		method = fr_dict_enum_name_by_value(attr_eap_aka_sim_method_hint,
 						     fr_box_uint32(FR_METHOD_HINT_VALUE_AKA));
 		break;
 
 	case AKA_SIM_METHOD_HINT_AKA_PRIME:
-		method = fr_dict_enum_alias_by_value(attr_eap_aka_sim_method_hint,
+		method = fr_dict_enum_name_by_value(attr_eap_aka_sim_method_hint,
 						     fr_box_uint32(FR_METHOD_HINT_VALUE_AKA_PRIME));
 		break;
 	}
@@ -150,17 +150,17 @@ static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED siz
 		return 0;
 
 	case AKA_SIM_ID_TYPE_PERMANENT:
-		type = fr_dict_enum_alias_by_value(attr_eap_aka_sim_identity_type,
+		type = fr_dict_enum_name_by_value(attr_eap_aka_sim_identity_type,
 						   fr_box_uint32(FR_IDENTITY_TYPE_VALUE_PERMANENT));
 		break;
 
 	case AKA_SIM_ID_TYPE_PSEUDONYM:
-		type = fr_dict_enum_alias_by_value(attr_eap_aka_sim_identity_type,
+		type = fr_dict_enum_name_by_value(attr_eap_aka_sim_identity_type,
 						   fr_box_uint32(FR_IDENTITY_TYPE_VALUE_PSEUDONYM));
 		break;
 
 	case AKA_SIM_ID_TYPE_FASTAUTH:
-		type = fr_dict_enum_alias_by_value(attr_eap_aka_sim_identity_type,
+		type = fr_dict_enum_name_by_value(attr_eap_aka_sim_identity_type,
 						   fr_box_uint32(FR_IDENTITY_TYPE_VALUE_FASTAUTH));
 		break;
 	}

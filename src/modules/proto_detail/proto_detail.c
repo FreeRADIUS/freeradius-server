@@ -170,7 +170,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(attr_packet_type, type_str, -1);
+	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
 	if (!type_enum) {
 		cf_log_err(ci, "Invalid type \"%s\"", type_str);
 		return -1;

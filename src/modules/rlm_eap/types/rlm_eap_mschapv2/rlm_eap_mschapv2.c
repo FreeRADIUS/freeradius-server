@@ -134,11 +134,11 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 {
 	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
 
-	if (fr_dict_enum_add_alias_next(attr_auth_type, auth_type) < 0) {
+	if (fr_dict_enum_add_name_next(attr_auth_type, auth_type) < 0) {
 		cf_log_err(ci, "Failed adding %s alias", attr_auth_type->name);
 		return -1;
 	}
-	*((fr_dict_enum_t **)out) = fr_dict_enum_by_alias(attr_auth_type, auth_type, -1);
+	*((fr_dict_enum_t **)out) = fr_dict_enum_by_name(attr_auth_type, auth_type, -1);
 
 	return 0;
 }
@@ -749,7 +749,7 @@ packet_ready:
 	/*
 	 *	This is a wild & crazy hack.
 	 */
-	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type->alias);
+	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type->name);
 	if (!unlang) {
 		rcode = process_authenticate(inst->auth_type->value->vb_uint32, request);
 	} else {

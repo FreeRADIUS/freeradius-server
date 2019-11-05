@@ -996,11 +996,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	inst->name = cf_section_name2(cs);
 	if (!inst->name) inst->name = "eap";
 
-	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
+	if (fr_dict_enum_add_name_next(attr_auth_type, inst->name) < 0) {
 		PERROR("Failed adding %s alias", inst->name);
 		return -1;
 	}
-	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
 	rad_assert(inst->name);
 
 	/*

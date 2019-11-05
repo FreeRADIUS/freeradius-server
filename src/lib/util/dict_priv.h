@@ -73,7 +73,7 @@ struct fr_dict {
 	fr_hash_table_t		*attributes_combo;	//!< Lookup variants of polymorphic attributes.
 
 	fr_hash_table_t		*values_by_da;		//!< Lookup an attribute enum by its value.
-	fr_hash_table_t		*values_by_alias;	//!< Lookup an attribute enum by its alias name.
+	fr_hash_table_t		*values_by_name;	//!< Lookup an attribute enum by its name name.
 
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
 

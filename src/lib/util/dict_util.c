@@ -337,12 +337,12 @@ static int dict_vendor_pen_cmp(void const *one, void const *two)
 /** Hash a dictionary name
  *
  */
-static uint32_t dict_enum_alias_hash(void const *data)
+static uint32_t dict_enum_name_hash(void const *data)
 {
 	uint32_t hash;
 	fr_dict_enum_t const *enumv = data;
 
-	hash = dict_hash_name((void const *)enumv->alias, enumv->alias_len);
+	hash = dict_hash_name((void const *)enumv->name, enumv->name_len);
 
 	return fr_hash_update(&enumv->da, sizeof(enumv->da), hash);		//-V568
 }
@@ -350,7 +350,7 @@ static uint32_t dict_enum_alias_hash(void const *data)
 /** Compare two dictionary attribute enum values
  *
  */
-static int dict_enum_alias_cmp(void const *one, void const *two)
+static int dict_enum_name_cmp(void const *one, void const *two)
 {
 	int rcode;
 	fr_dict_enum_t const *a = one;
@@ -359,7 +359,7 @@ static int dict_enum_alias_cmp(void const *one, void const *two)
 	rcode = a->da - b->da;
 	if (rcode != 0) return rcode;
 
-	return strcasecmp(a->alias, b->alias);
+	return strcasecmp(a->name, b->name);
 }
 
 /** Hash a dictionary enum value
@@ -934,30 +934,30 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	return 0;
 }
 
-/** Add a value alias
+/** Add a value name
  *
- * Aliases are textual (string) aliases for a given value.
+ * Aliases are textual (string) names for a given value.
  *
- * Value aliases are not limited to integers, and may be added for any non-structural
+ * Value names are not limited to integers, and may be added for any non-structural
  * attribute type.
  *
  * @param[in] da		to add enumeration value to.
- * @param[in] alias		Name of value alias.
- * @param[in] value		to associate with alias.
+ * @param[in] name		Name of value name.
+ * @param[in] value		to associate with name.
  * @param[in] coerce		if the type of the value does not match the
  *				type of the da, attempt to cast it to match
  *				the type of the da.  If this is false and there's
  *				a type mismatch, we fail.
  *				We also fail if the value cannot be coerced to
  *				the attribute type.
- * @param[in] takes_precedence	This alias should take precedence over previous
- *				aliases for the same value, when resolving value
- *				to alias.
+ * @param[in] takes_precedence	This name should take precedence over previous
+ *				names for the same value, when resolving value
+ *				to name.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
+int fr_dict_enum_add_name(fr_dict_attr_t const *da, char const *name,
 			   fr_value_box_t const *value,
 			   bool coerce, bool takes_precedence)
 {
@@ -971,12 +971,12 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 		return -1;
 	}
 
-	if (!*alias) {
+	if (!*name) {
 		fr_strerror_printf("%s: Empty names are not permitted", __FUNCTION__);
 		return -1;
 	}
 
-	len = strlen(alias);
+	len = strlen(name);
 	if (len >= FR_DICT_ENUM_MAX_NAME_LEN) {
 		fr_strerror_printf("%s: Value name too long", __FUNCTION__);
 		return -1;
@@ -990,8 +990,8 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
 		return -1;
 	}
-	enumv->alias = talloc_typed_strdup(enumv, alias);
-	enumv->alias_len = strlen(alias);
+	enumv->name = talloc_typed_strdup(enumv, name);
+	enumv->name_len = strlen(name);
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL, false);
 	if (!enum_value) goto oom;
 
@@ -1029,7 +1029,7 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 		fr_dict_attr_t *tmp;
 		memcpy(&tmp, &enumv, sizeof(tmp));
 
-		if (!fr_hash_table_insert(dict->values_by_alias, tmp)) {
+		if (!fr_hash_table_insert(dict->values_by_name, tmp)) {
 			fr_dict_enum_t *old;
 
 			/*
@@ -1037,7 +1037,7 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 			 *	name and value.  There are lots in
 			 *	dictionary.ascend.
 			 */
-			old = fr_dict_enum_by_alias(da, alias, -1);
+			old = fr_dict_enum_by_name(da, name, -1);
 			if (!fr_cond_assert(old)) return -1;
 
 			if (fr_value_box_cmp(old->value, enumv->value) == 0) {
@@ -1045,8 +1045,8 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 				return 0;
 			}
 
-			fr_strerror_printf("Duplicate VALUE alias \"%s\" for attribute \"%s\". "
-					   "Old value was \"%pV\", new value was \"%pV\"", alias, da->name,
+			fr_strerror_printf("Duplicate VALUE name \"%s\" for attribute \"%s\". "
+					   "Old value was \"%pV\", new value was \"%pV\"", name, da->name,
 					   old->value, enumv->value);
 			talloc_free(enumv);
 			return -1;
@@ -1059,7 +1059,7 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 	 */
 	if (takes_precedence) {
 		if (!fr_hash_table_replace(dict->values_by_da, enumv)) {
-			fr_strerror_printf("%s: Failed inserting value %s", __FUNCTION__, alias);
+			fr_strerror_printf("%s: Failed inserting value %s", __FUNCTION__, name);
 			return -1;
 		}
 	} else {
@@ -1080,10 +1080,10 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 	return 0;
 }
 
-/** Add an alias to an integer attribute hashing the alias for the integer value
+/** Add an name to an integer attribute hashing the name for the integer value
  *
  */
-int fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias)
+int fr_dict_enum_add_name_next(fr_dict_attr_t const *da, char const *name)
 {
 	fr_value_box_t	v = {
 				.type = da->type
@@ -1092,39 +1092,39 @@ int fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias)
 				.type = da->type
 			};
 
-	if (fr_dict_enum_by_alias(da, alias, -1)) return 0;
+	if (fr_dict_enum_by_name(da, name, -1)) return 0;
 
 	switch (da->type) {
 	case FR_TYPE_INT8:
-		v.vb_int8 = s.vb_int8 = fr_hash_string(alias) & INT8_MAX;
+		v.vb_int8 = s.vb_int8 = fr_hash_string(name) & INT8_MAX;
 		break;
 
 	case FR_TYPE_INT16:
-		v.vb_int16 = s.vb_int16 = fr_hash_string(alias) & INT16_MAX;
+		v.vb_int16 = s.vb_int16 = fr_hash_string(name) & INT16_MAX;
 		break;
 
 	case FR_TYPE_INT32:
-		v.vb_int32 = s.vb_int32 = fr_hash_string(alias) & INT32_MAX;
+		v.vb_int32 = s.vb_int32 = fr_hash_string(name) & INT32_MAX;
 		break;
 
 	case FR_TYPE_INT64:
-		v.vb_int64 = s.vb_int64 = fr_hash_string(alias) & INT64_MAX;
+		v.vb_int64 = s.vb_int64 = fr_hash_string(name) & INT64_MAX;
 		break;
 
 	case FR_TYPE_UINT8:
-		v.vb_uint8 = s.vb_uint8 = fr_hash_string(alias) & UINT8_MAX;
+		v.vb_uint8 = s.vb_uint8 = fr_hash_string(name) & UINT8_MAX;
 		break;
 
 	case FR_TYPE_UINT16:
-		v.vb_uint16 = s.vb_uint16 = fr_hash_string(alias) & UINT16_MAX;
+		v.vb_uint16 = s.vb_uint16 = fr_hash_string(name) & UINT16_MAX;
 		break;
 
 	case FR_TYPE_UINT32:
-		v.vb_uint32 = s.vb_uint32 = fr_hash_string(alias) & UINT32_MAX;
+		v.vb_uint32 = s.vb_uint32 = fr_hash_string(name) & UINT32_MAX;
 		break;
 
 	case FR_TYPE_UINT64:
-		v.vb_uint64 = s.vb_uint64 = fr_hash_string(alias) & UINT64_MAX;
+		v.vb_uint64 = s.vb_uint64 = fr_hash_string(name) & UINT64_MAX;
 		break;
 
 	default:
@@ -1135,14 +1135,14 @@ int fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias)
 
 	/*
 	 *	If there's no existing value, add an enum
-	 *	with the hash value of the alias.
+	 *	with the hash value of the name.
 	 *
 	 *	This helps with debugging as the values
 	 *	are consistent.
 	 */
 	if (!fr_dict_enum_by_value(da, &v)) {
 	add:
-		return fr_dict_enum_add_alias(da, alias, &v, false, false);
+		return fr_dict_enum_add_name(da, name, &v, false, false);
 	}
 
 	for (;;) {
@@ -2050,17 +2050,17 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 	if (value->type != da->type) return NULL;
 
 	/*
-	 *	First, look up aliases.
+	 *	First, look up names.
 	 */
 	enumv.da = da;
-	enumv.alias = "";
-	enumv.alias_len = 0;
+	enumv.name = "";
+	enumv.name_len = 0;
 
 	/*
-	 *	Look up the attribute alias target, and use
+	 *	Look up the attribute name target, and use
 	 *	the correct attribute number if found.
 	 */
-	dv = fr_hash_table_finddata(dict->values_by_alias, &enumv);
+	dv = fr_hash_table_finddata(dict->values_by_name, &enumv);
 	if (dv) enumv.da = dv->da;
 
 	enumv.value = value;
@@ -2076,7 +2076,7 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
  * 	- Name of value.
  * 	- NULL if no matching value could be found.
  */
-char const *fr_dict_enum_alias_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
+char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
 	fr_dict_enum_t	*dv;
 	fr_dict_t	*dict;
@@ -2092,22 +2092,22 @@ char const *fr_dict_enum_alias_by_value(fr_dict_attr_t const *da, fr_value_box_t
 	dv = fr_dict_enum_by_value(da, value);
 	if (!dv) return "";
 
-	return dv->alias;
+	return dv->name;
 }
 
 /*
  *	Get a value by its name, keyed off of an attribute.
  */
-fr_dict_enum_t *fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alias, ssize_t len)
+fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len)
 {
 	fr_dict_enum_t	*found;
 	fr_dict_enum_t	find = {
 				.da = da,
-				.alias = alias
+				.name = name
 			};
 	fr_dict_t	*dict;
 
-	if (!alias) return NULL;
+	if (!name) return NULL;
 
 	dict = fr_dict_by_da(da);
 	if (!dict) {
@@ -2115,17 +2115,17 @@ fr_dict_enum_t *fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alia
 		return NULL;
 	}
 
-	if (len < 0) len = strlen(alias);
-	find.alias_len = (size_t)len;
+	if (len < 0) len = strlen(name);
+	find.name_len = (size_t)len;
 
 	/*
-	 *	Look up the attribute alias target, and use
+	 *	Look up the attribute name target, and use
 	 *	the correct attribute number if found.
 	 */
-	found = fr_hash_table_finddata(dict->values_by_alias, &find);
+	found = fr_hash_table_finddata(dict->values_by_name, &find);
 	if (found) find.da = found->da;
 
-	return fr_hash_table_finddata(dict->values_by_alias, &find);
+	return fr_hash_table_finddata(dict->values_by_name, &find);
 }
 
 int dict_dlopen(fr_dict_t *dict, char const *name)
@@ -2241,8 +2241,8 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	dict->attributes_combo = fr_hash_table_create(dict, dict_attr_combo_hash, dict_attr_combo_cmp, hash_pool_free);
 	if (!dict->attributes_combo) goto error;
 
-	dict->values_by_alias = fr_hash_table_create(dict, dict_enum_alias_hash, dict_enum_alias_cmp, hash_pool_free);
-	if (!dict->values_by_alias) goto error;
+	dict->values_by_name = fr_hash_table_create(dict, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
+	if (!dict->values_by_name) goto error;
 
 	dict->values_by_da = fr_hash_table_create(dict, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
 	if (!dict->values_by_da) goto error;

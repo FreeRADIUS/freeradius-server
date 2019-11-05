@@ -140,8 +140,8 @@ struct dict_attr {
  */
 typedef struct {
 	fr_dict_attr_t const	*da;				//!< Dictionary attribute enum is associated with.
-	char const		*alias;				//!< Enum name.
-	size_t			alias_len;			//!< Allows for efficient alias lookups when operating
+	char const		*name;				//!< Enum name.
+	size_t			name_len;			//!< Allows for efficient name lookups when operating
 								///< on partial buffers.
 	fr_value_box_t const	*value;				//!< Enum value (what name maps to).
 } fr_dict_enum_t;
@@ -248,10 +248,10 @@ extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1,2,3));
 
-int			fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
+int			fr_dict_enum_add_name(fr_dict_attr_t const *da, char const *name,
 					       fr_value_box_t const *value, bool coerce, bool replace);
 
-int			fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias) CC_HINT(nonnull);
+int			fr_dict_enum_add_name_next(fr_dict_attr_t const *da, char const *name) CC_HINT(nonnull);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 /** @} */
@@ -381,9 +381,9 @@ fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, un
 
 fr_dict_enum_t		*fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
-char const		*fr_dict_enum_alias_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
+char const		*fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
-fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alias, ssize_t len);
+fr_dict_enum_t		*fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len);
 /** @} */
 
 /** @name Dictionary and protocol loading

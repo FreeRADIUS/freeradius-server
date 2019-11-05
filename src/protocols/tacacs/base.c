@@ -109,7 +109,7 @@ char const *tacacs_packet_code(RADIUS_PACKET const * const packet)
 	dv = fr_dict_enum_by_value(attr_tacacs_packet_type, fr_box_uint32(type));
 	if (!dv) return NULL;
 
-	return dv->alias;
+	return dv->name;
 }
 
 uint32_t tacacs_session_id(RADIUS_PACKET const * const packet)

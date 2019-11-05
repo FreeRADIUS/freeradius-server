@@ -697,7 +697,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 			strlcpy(type_str, value, (p - value) + 1);
 
-			type = fr_dict_enum_by_alias(attr_freeradius_snmp_type, type_str, -1);
+			type = fr_dict_enum_by_name(attr_freeradius_snmp_type, type_str, -1);
 			if (!type) {
 				ERROR("Unknown type \"%s\"", type_str);
 				RESPOND_STATIC("NONE");

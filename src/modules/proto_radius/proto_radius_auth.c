@@ -214,7 +214,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 			auth_type = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
 			if (auth_type) {
 				snprintf(password_buff, sizeof(password_buff), "<via Auth-Type = %s>",
-					 fr_dict_enum_alias_by_value(auth_type->da, &auth_type->data));
+					 fr_dict_enum_name_by_value(auth_type->da, &auth_type->data));
 				password_str = password_buff;
 			} else {
 				password_str = "<no User-Password attribute>";
@@ -407,9 +407,9 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			goto setup_send;
 		}
 
-		unlang = cf_section_find(request->server_cs, "authenticate", dv->alias);
+		unlang = cf_section_find(request->server_cs, "authenticate", dv->name);
 		if (!unlang) {
-			REDEBUG2("No 'authenticate %s' section found: rejecting the user", dv->alias);
+			REDEBUG2("No 'authenticate %s' section found: rejecting the user", dv->name);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
@@ -515,7 +515,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
+		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
 
 		if (!unlang) goto send_reply;
 
@@ -564,7 +564,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
 				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 
-				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv ? dv->alias : "???" );
+				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv ? dv->name : "???" );
 
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
@@ -572,10 +572,10 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
-				unlang = cf_section_find(request->server_cs, "send", dv->alias);
+				unlang = cf_section_find(request->server_cs, "send", dv->name);
 				if (unlang) goto rerun_nak;
 
-				RWDEBUG("Not running 'send %s' section as it does not exist", dv->alias);
+				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);
 			}
 
 			/*

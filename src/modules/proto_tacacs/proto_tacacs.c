@@ -323,7 +323,7 @@ stop_processing:
 			}
 
 			RWDEBUG("Ignoring extra Auth-Type = %s",
-				fr_dict_enum_alias_by_value(auth_type->da, &vp->data));
+				fr_dict_enum_name_by_value(auth_type->da, &vp->data));
 		}
 
 		/*
@@ -361,9 +361,9 @@ stop_processing:
 			goto setup_send;
 		}
 
-		unlang = cf_section_find(request->server_cs, "process", dv->alias);
+		unlang = cf_section_find(request->server_cs, "process", dv->name);
 		if (!unlang) {
-			REDEBUG2("No 'process %s' section found: rejecting the user.", dv->alias);
+			REDEBUG2("No 'process %s' section found: rejecting the user.", dv->name);
 			tacacs_status(request, RLM_MODULE_FAIL);
 			goto setup_send;
 		}

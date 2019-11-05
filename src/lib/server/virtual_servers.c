@@ -387,7 +387,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		 *	If the value already exists, don't
 		 *	create it again.
 		 */
-		dv = fr_dict_enum_by_alias(da, name2, -1);
+		dv = fr_dict_enum_by_name(da, name2, -1);
 		if (dv) continue;
 
 		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);
@@ -398,7 +398,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		 *	this code, so it doesn't matter.  The only
 		 *	requirement is that it's unique.
 		 */
-		if (fr_dict_enum_add_alias_next(da, name2) < 0) {
+		if (fr_dict_enum_add_name_next(da, name2) < 0) {
 			PERROR("Failed adding section value");
 			return -1;
 		}
@@ -1072,15 +1072,15 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));
 	if (!dv) return RLM_MODULE_FAIL;
 
-	subcs = cf_section_find(cs, da->name, dv->alias);
+	subcs = cf_section_find(cs, da->name, dv->name);
 	if (!subcs) {
 		RDEBUG2("%s %s sub-section not found.  Using default return values.",
-			da->name, dv->alias);
+			da->name, dv->name);
 		return RLM_MODULE_REJECT;
 	}
 
 	RDEBUG("Running %s %s from file %s",
-	       da->name, dv->alias, cf_filename(subcs));
+	       da->name, dv->name, cf_filename(subcs));
 	cs = subcs;
 
 	/*
@@ -1119,7 +1119,7 @@ rlm_rcode_t virtual_server_process_auth(REQUEST *request, CONF_SECTION *virtual_
 		return unlang_module_yield_to_section(request, NULL, RLM_MODULE_FAIL, resume, signal, rctx);
 	}
 
-	auth_name = fr_dict_enum_alias_by_value(attr_auth_type, &vp->data);
+	auth_name = fr_dict_enum_name_by_value(attr_auth_type, &vp->data);
 	if (!auth_name) {
 		REDEBUG2("Invalid %pP value", vp);
 		goto fail;
@@ -1274,7 +1274,7 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 
 		code = enumv->value->vb_uint32;
 		if (code >= code_max) {
-			cf_log_err(conf, "Invalid type code \"%s\" for \"%s\"", enumv->alias, app_process->name);
+			cf_log_err(conf, "Invalid type code \"%s\" for \"%s\"", enumv->name, app_process->name);
 			return -1;
 		}
 

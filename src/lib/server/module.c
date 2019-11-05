@@ -627,7 +627,7 @@ bool module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr
 		return true;
 
 	case 1:
-		RDEBUG2("&control:%s already set.  Not setting to %s", vp->da->name, enumv->alias);
+		RDEBUG2("&control:%s already set.  Not setting to %s", vp->da->name, enumv->name);
 		return false;
 
 	default:

@@ -125,9 +125,9 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 		dv = fr_dict_enum_by_value(vp->da, &vp->data);
 		if (!dv) goto setup_send;
 
-		unlang = cf_section_find(request->server_cs, "accounting", dv->alias);
+		unlang = cf_section_find(request->server_cs, "accounting", dv->name);
 		if (!unlang) {
-			REDEBUG2("No 'accounting %s' section found: Ignoring it.", dv->alias);
+			REDEBUG2("No 'accounting %s' section found: Ignoring it.", dv->name);
 			goto setup_send;
 		}
 
@@ -181,7 +181,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
+		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
 
 		if (!unlang) goto send_reply;
 

@@ -111,7 +111,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
+		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
 
 		if (!unlang) goto send_reply;
 
@@ -146,7 +146,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 			 */
 			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
 				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
-				if (dv) RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv->alias);
+				if (dv) RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv->name);
 
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
@@ -154,10 +154,10 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
-				unlang = cf_section_find(request->server_cs, "send", dv->alias);
+				unlang = cf_section_find(request->server_cs, "send", dv->name);
 				if (unlang) goto rerun_nak;
 
-				RWDEBUG("Not running 'send %s' section as it does not exist", dv->alias);
+				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);
 			}
 			break;
 		}

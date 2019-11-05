@@ -465,7 +465,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	 *	Where "foo" is dynamically defined.
 	 */
 	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!fr_dict_enum_by_alias(map->lhs->tmpl_da, map->rhs->name, -1)) {
+		if (!fr_dict_enum_by_name(map->lhs->tmpl_da, map->rhs->name, -1)) {
 			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
 				   map->lhs->tmpl_da->name,
 				   map->rhs->name);
@@ -2944,7 +2944,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 		}
 	}
 
-	type_enum = fr_dict_enum_by_alias(da, packet_name, -1);
+	type_enum = fr_dict_enum_by_name(da, packet_name, -1);
 	if (!type_enum) {
 		cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
 			   packet_name, namespace);

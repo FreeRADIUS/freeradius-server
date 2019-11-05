@@ -2651,7 +2651,7 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
  * @param dst_type	to cast to.
  * @param dst_enumv	Aliases for values contained within this fr_value_box_t.
  *			If #fr_value_box_t is passed to #fr_value_box_asprint
- *			aliases will be printed instead of actual value.
+ *			names will be printed instead of actual value.
  * @param src		Input data.
  * @return
  *	- 0 on success.
@@ -2678,7 +2678,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *
 	 *	The theory here is that the attribute value isn't
 	 *	being converted into its presentation format and
-	 *	re-parsed, and the enumv aliases only get applied
+	 *	re-parsed, and the enumv names only get applied
 	 *	when converting internal values to/from strings,
 	 *	so it's OK just to swap out the enumv.
 	 *
@@ -2947,7 +2947,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
  * @param dst_type	to cast to.
  * @param dst_enumv	Aliases for values contained within this fr_value_box_t.
  *			If #fr_value_box_t is passed to #fr_value_box_asprint
- *			aliases will be printed instead of actual value.
+ *			names will be printed instead of actual value.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -3926,7 +3926,7 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
  * @param[in] ctx		to alloc strings in.
  * @param[out] dst		where to write parsed value.
  * @param[in,out] dst_type	of value data to create/dst_type of value created.
- * @param[in] dst_enumv		fr_dict_attr_t with string aliases for uint32 values.
+ * @param[in] dst_enumv		fr_dict_attr_t with string names for uint32 values.
  * @param[in] in		String to convert. Binary safe for variable length values
  *				if len is provided.
  * @param[in] inlen		may be < 0 in which case strlen(len) is used to determine
@@ -3958,39 +3958,39 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	ret = dict_attr_sizes[*dst_type][1];	/* Max length */
 
 	/*
-	 *	Lookup any aliases before continuing
+	 *	Lookup any names before continuing
 	 */
 	if (dst_enumv) {
 		char		*tmp = NULL;
-		char		*alias;
-		size_t		alias_len;
+		char		*name;
+		size_t		name_len;
 		fr_dict_enum_t	*enumv;
 
 		if (len > (sizeof(buffer) - 1)) {
 			tmp = talloc_array(NULL, char, len + 1);
 			if (!tmp) return -1;
 
-			alias_len = fr_value_str_unescape((uint8_t *)tmp, in, len, quote);
-			alias = tmp;
+			name_len = fr_value_str_unescape((uint8_t *)tmp, in, len, quote);
+			name = tmp;
 		} else {
-			alias_len = fr_value_str_unescape((uint8_t *)buffer, in, len, quote);
-			alias = buffer;
+			name_len = fr_value_str_unescape((uint8_t *)buffer, in, len, quote);
+			name = buffer;
 		}
-		alias[alias_len] = '\0';
+		name[name_len] = '\0';
 
 		/*
-		 *	Check the alias name is valid first before bothering
+		 *	Check the name name is valid first before bothering
 		 *	to look it up.
 		 *
 		 *	Catches any embedded \0 bytes that might cause
 		 *	incorrect results.
 		 */
-		if (fr_dict_valid_name(alias, alias_len) <= 0) {
+		if (fr_dict_valid_name(name, name_len) <= 0) {
 			if (tmp) talloc_free(tmp);
 			goto parse;
 		}
 
-		enumv = fr_dict_enum_by_alias(dst_enumv, alias, alias_len);
+		enumv = fr_dict_enum_by_name(dst_enumv, name, name_len);
 		if (tmp) talloc_free(tmp);
 		if (!enumv) goto parse;
 
@@ -4385,7 +4385,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		fr_dict_enum_t const	*dv;
 
 		dv = fr_dict_enum_by_value(data->enumv, data);
-		if (dv) return talloc_typed_strdup(ctx, dv->alias);
+		if (dv) return talloc_typed_strdup(ctx, dv->name);
 	}
 
 	switch (data->type) {
@@ -4894,7 +4894,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		fr_dict_enum_t const	*dv;
 
 		dv = fr_dict_enum_by_value(data->enumv, data);
-		if (dv) return strlcpy(out, dv->alias, outlen);
+		if (dv) return strlcpy(out, dv->name, outlen);
 	}
 
 	switch (data->type) {

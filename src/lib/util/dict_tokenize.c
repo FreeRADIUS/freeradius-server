@@ -43,7 +43,7 @@ struct dict_enum_fixup_s {
 	char			*filename;		//!< where the "enum" was defined
 	int			line;			//!< ditto
 	char			*attribute;		//!< we couldn't find (and will need to resolve later).
-	char			*alias;			//!< Raw enum name.
+	char			*name;			//!< Raw enum name.
 	char			*value;			//!< Raw enum value.  We can't do anything with this until
 							//!< we know the attribute type, which we only find out later.
 
@@ -855,8 +855,8 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 
 		fixup->attribute = talloc_strdup(fixup, argv[0]);
 		if (!fixup->attribute) goto oom;
-		fixup->alias = talloc_strdup(fixup, argv[1]);
-		if (!fixup->alias) goto oom;
+		fixup->name = talloc_strdup(fixup, argv[1]);
+		if (!fixup->name) goto oom;
 		fixup->value = talloc_strdup(fixup, argv[2]);
 		if (!fixup->value) goto oom;
 
@@ -895,7 +895,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		}
 	}
 
-	if (fr_dict_enum_add_alias(da, argv[1], &value, false, true) < 0) {
+	if (fr_dict_enum_add_name(da, argv[1], &value, false, true) < 0) {
 		fr_value_box_clear(&value);
 		return -1;
 	}
@@ -1347,7 +1347,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			da = fr_dict_attr_by_name(ctx->dict, this->attribute);
 			if (!da) {
 				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s' at %s[%d]",
-						   this->attribute, this->alias, this->filename, this->line);
+						   this->attribute, this->name, this->filename, this->line);
 				return -1;
 			}
 			type = da->type;
@@ -1359,7 +1359,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 				return -1;
 			}
 
-			ret = fr_dict_enum_add_alias(da, this->alias, &value, false, false);
+			ret = fr_dict_enum_add_name(da, this->name, &value, false, false);
 			fr_value_box_clear(&value);
 
 			if (ret < 0) return -1;
@@ -1508,7 +1508,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 	fr_hash_table_walk(ctx->dict->vendors_by_num, hash_null_callback, NULL);
 
 	fr_hash_table_walk(ctx->dict->values_by_da, hash_null_callback, NULL);
-	fr_hash_table_walk(ctx->dict->values_by_alias, hash_null_callback, NULL);
+	fr_hash_table_walk(ctx->dict->values_by_name, hash_null_callback, NULL);
 
 	ctx->value_attr = NULL;
 	ctx->relative_attr = NULL;

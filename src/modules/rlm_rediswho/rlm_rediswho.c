@@ -217,9 +217,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		return RLM_MODULE_NOOP;
 	}
 
-	cs = cf_section_find(inst->cs, dv->alias, NULL);
+	cs = cf_section_find(inst->cs, dv->name, NULL);
 	if (!cs) {
-		RDEBUG2("No subsection %s", dv->alias);
+		RDEBUG2("No subsection %s", dv->name);
 		return RLM_MODULE_NOOP;
 	}
 

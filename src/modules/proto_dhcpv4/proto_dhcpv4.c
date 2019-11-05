@@ -142,7 +142,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(attr_message_type, type_str, -1);
+	type_enum = fr_dict_enum_by_name(attr_message_type, type_str, -1);
 	if (!type_enum) {
 		cf_log_err(ci, "Invalid type \"%s\"", type_str);
 		return -1;
@@ -166,9 +166,9 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 *	Setting 'type = foo' means you MUST have at least a
 	 *	'recv foo' section.
 	 */
-	if (!cf_section_find(server, "recv", type_enum->alias)) {
+	if (!cf_section_find(server, "recv", type_enum->name)) {
 		cf_log_err(ci, "Failed finding 'recv %s {...} section of virtual server %s",
-			   type_enum->alias, cf_section_name2(server));
+			   type_enum->name, cf_section_name2(server));
 		return -1;
 	}
 
@@ -182,14 +182,14 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	inst = talloc_get_type_abort(parent_inst->data, proto_dhcpv4_t);
 	inst->code_allowed[code] = true;
 
-	process_app_cs = cf_section_find(listen_cs, type_enum->alias, NULL);
+	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
 
 	/*
 	 *	Allocate an empty section if one doesn't exist
 	 *	this is so defaults get parsed.
 	 */
 	if (!process_app_cs) {
-		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->alias, NULL));
+		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->name, NULL));
 	}
 
 	/*

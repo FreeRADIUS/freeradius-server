@@ -62,7 +62,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		/*
 		 *	If an alias exists, use that value instead
 		 */
-		found = fr_dict_enum_by_alias(enumv, value, len);
+		found = fr_dict_enum_by_name(enumv, value, len);
 		if (found) {
 			if (fr_value_box_copy(ctx, out, found->value) < 0) return -1;
 			return 0;
@@ -160,7 +160,7 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 		fr_dict_enum_t *enumv;
 
 		enumv = fr_dict_enum_by_value(data->enumv, data);
-		if (enumv) return json_object_new_string(enumv->alias);
+		if (enumv) return json_object_new_string(enumv->name);
 	}
 
 	switch (data->type) {

@@ -59,7 +59,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		RDEBUG("Received %s ID %i",
-		       fr_dict_enum_alias_by_value(inst->attr_packet_type, fr_box_uint32(request->packet->code)),
+		       fr_dict_enum_name_by_value(inst->attr_packet_type, fr_box_uint32(request->packet->code)),
 		       request->packet->id);
 		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
@@ -180,7 +180,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			REDEBUG("Failed ID %i", request->reply->id);
 		} else {
 			RDEBUG("Sent %s ID %i",
-			       fr_dict_enum_alias_by_value(inst->attr_packet_type, fr_box_uint32(request->reply->code)),
+			       fr_dict_enum_name_by_value(inst->attr_packet_type, fr_box_uint32(request->reply->code)),
 			       request->reply->id);
 		}
 
