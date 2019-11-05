@@ -2337,7 +2337,8 @@ int main(int argc, char *argv[])
 	 *	memory, so we get clean talloc reports.
 	 */
 cleanup:
-	if (dl_modules) talloc_free(dl_modules);
+	talloc_free(dl_modules);
+	talloc_free(dl_loader);
 	fr_dict_free(&dict);
 	unlang_free();
 	xlat_free();
@@ -2354,10 +2355,10 @@ cleanup:
 	fr_strerror_free();
 
 	/*
-	 *	Explicitly free children to make
-	 *	memory errors on exit less confusing.
+	 *	Explicitly free the autofree context
+	 *	to make errors less confusing.
 	 */
-	talloc_free_children(autofree);
+	talloc_free(autofree);
 
 	return ret;
 }
