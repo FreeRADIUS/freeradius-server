@@ -512,7 +512,7 @@ int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *v
 
 int			tmpl_define_unknown_attr(vp_tmpl_t *vpt);
 
-int			tmpl_define_undefined_attr(fr_dict_t const *dict, vp_tmpl_t *vpt,
+int			tmpl_define_undefined_attr(fr_dict_t *dict, vp_tmpl_t *vpt,
 						   fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *start,
