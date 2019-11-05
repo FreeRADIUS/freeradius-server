@@ -733,8 +733,6 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	 *
 	 */
 	if (config->write_pid) {
-		char *my_dir;
-
 		/*
 		 *	Control sockets may be accessible by users
 		 *	other than the freeradius user, so we need
@@ -744,27 +742,21 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		 *	The freeradius user should be the only one
 		 *	allowed to write to this directory however.
 		 */
-		my_dir = talloc_typed_strdup(NULL, config->run_dir);
-		if (fr_mkdir(my_dir, 0755, config->server_uid, config->server_gid, mkdir_chown, config) < 0) {
-			WARN("Failed creating run_dir %s: %s", my_dir, fr_syserror(errno));
+		if (fr_mkdir(NULL, config->run_dir, -1, 0755, mkdir_chown, config) < 0) {
+			WARN("Failed creating run_dir %s: %s", config->run_dir, fr_syserror(errno));
 		}
-		talloc_free(my_dir);
 	}
 
 	if ((default_log.dst == L_DST_FILES) && config->log_dir) {
-		char *my_dir;
-
 		/*
 		 *	Every other Linux daemon allows 'other'
 		 *	to traverse the log directory.  That doesn't
 		 *	mean the actual files should be world
 		 *	readable.
 		 */
-		my_dir = talloc_typed_strdup(config, config->log_dir);
-		if (fr_mkdir(my_dir, 0755, config->server_uid, config->server_gid, mkdir_chown, config) < 0) {
-			WARN("Failed creating logdir %s: %s", my_dir, fr_syserror(errno));
+		if (fr_mkdir(NULL, config->log_dir, -1, 0755, mkdir_chown, config) < 0) {
+			WARN("Failed creating logdir %s: %s", config->log_dir, fr_syserror(errno));
 		}
-		talloc_free(my_dir);
 	}
 
 	/*
