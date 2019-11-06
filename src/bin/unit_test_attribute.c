@@ -164,17 +164,31 @@ typedef struct {
 	bool		error_to_data;
 } command_result_t;
 
+/** Configuration parameters passed to command functions
+ *
+ */
 typedef struct {
-	TALLOC_CTX	*tmp_ctx;		//!< Talloc context for test points.
+	fr_dict_t 		*dict;			//!< Dictionary to "reset" to.
+	fr_dict_gctx_t const	*dict_gctx;		//!< Dictionary gctx to "reset" to.
+	char const		*raddb_dir;
+	char const		*dict_dir;
+	CONF_SECTION		*features;		//!< Enabled features.
+} command_config_t;
 
-	char		*path;			//!< Current path we're operating in.
-	int		lineno;			//!< Current line number.
-	char const	*filename;		//!< Current file we're operating on.
-	uint32_t	test_count;		//!< How many tests we've executed in this file.
+typedef struct {
+	TALLOC_CTX		*tmp_ctx;		//!< Talloc context for test points.
 
-	fr_dict_t 	*dict;			//!< Base dictionary.
-	fr_dict_t	*active_dict;		//!< Protocol specific dictionary.
-	CONF_SECTION	*features;		//!< Enabled features.
+	char			*path;			//!< Current path we're operating in.
+	char const		*filename;		//!< Current file we're operating on.
+	int			lineno;			//!< Current line number.
+
+	uint32_t		test_count;		//!< How many tests we've executed in this file.
+
+	fr_dict_t		*active_dict;		//!< Active dictionary passed to encoders
+							///< and decoders.
+	fr_dict_gctx_t		*test_gctx;		//!< Dictionary context for test dictionaries.
+
+	command_config_t const	*config;
 } command_ctx_t;
 
 /** Command to execute
@@ -205,12 +219,10 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 static char		proto_name_prev[128];
 static dl_t		*dl;
 static dl_loader_t	*dl_loader;
-static char const	*raddb_dir = RADDBDIR;
-static char const	*dict_dir = DICTDIR;
 
 size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
-static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
-			fr_dict_t *dict, const char *root_dir, char const *filename);
+static int process_file(bool *exit_now, TALLOC_CTX *ctx,
+			command_config_t const *config, const char *root_dir, char const *filename);
 
 static void mismatch_print(command_ctx_t *cc, char const *command,
 			   char *expected, size_t expected_len, char *got, size_t got_len,
@@ -894,13 +906,13 @@ static size_t command_include(command_result_t *result, command_ctx_t *cc,
 	q = strrchr(cc->path, '/');
 	if (q) {
 		*q = '\0';
-		ret = process_file(&exit_now, cc->tmp_ctx, cc->features, cc->dict, cc->path, in);
+		ret = process_file(&exit_now, cc->tmp_ctx, cc->config, cc->path, in);
 		if (exit_now || (ret != 0)) RETURN_EXIT(ret);
 		*q = '/';
 		RETURN_OK(0);
 	}
 
-	ret = process_file(&exit_now, cc->tmp_ctx, cc->features, cc->dict, NULL, in);
+	ret = process_file(&exit_now, cc->tmp_ctx, cc->config, NULL, in);
 	if (exit_now || (ret != 0)) RETURN_EXIT(ret);
 
 	RETURN_OK(0);
@@ -915,7 +927,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_ctx_
 	VALUE_PAIR 	*head = NULL;
 	size_t		len;
 
-	if (fr_pair_list_afrom_str(NULL, cc->active_dict ? cc->active_dict : cc->dict, in, &head) != T_EOL) {
+	if (fr_pair_list_afrom_str(NULL, cc->active_dict ? cc->active_dict : cc->config->dict, in, &head) != T_EOL) {
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1084,7 +1096,7 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
 	cf_filename_set(cs, cc->filename);
 	cf_lineno_set(cs, cc->lineno);
 
-	dec_len = fr_cond_tokenize(cs, &cond, &error, cc->active_dict ? cc->active_dict : cc->dict, in);
+	dec_len = fr_cond_tokenize(cs, &cond, &error, cc->active_dict ? cc->active_dict : cc->config->dict, in);
 	if (dec_len <= 0) {
 		fr_strerror_printf("ERROR offset %d %s", (int) -dec_len, error);
 
@@ -1174,7 +1186,7 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	 */
 	fr_cursor_init(&cursor, &head);
 	while (to_dec < to_dec_end) {
-		slen = tp->func(cc->tmp_ctx, &cursor, cc->active_dict ? cc->active_dict : cc->dict,
+		slen = tp->func(cc->tmp_ctx, &cursor, cc->active_dict ? cc->active_dict : cc->config->dict,
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
 		if (slen < 0) {
 			fr_pair_list_free(&head);
@@ -1249,7 +1261,7 @@ static size_t command_decode_proto(command_result_t *result, UNUSED command_ctx_
 static size_t command_dictionary_attribute_parse(command_result_t *result, command_ctx_t *cc,
 					  	 char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	if (fr_dict_parse_str(cc->dict, in, fr_dict_root(cc->dict)) < 0) RETURN_OK_WITH_ERROR();
+	if (fr_dict_parse_str(cc->config->dict, in, fr_dict_root(cc->config->dict)) < 0) RETURN_OK_WITH_ERROR();
 
 	RETURN_OK(strlcpy(data, "ok", COMMAND_OUTPUT_MAX));
 }
@@ -1260,7 +1272,7 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
 static size_t command_dictionary_dump(command_result_t *result, command_ctx_t *cc,
 				      UNUSED char *data, size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
-	fr_dict_dump(cc->active_dict ? cc->active_dict : cc->dict);
+	fr_dict_dump(cc->active_dict ? cc->active_dict : cc->config->dict);
 
 	/*
 	 *	Don't modify the contents of the data buffer
@@ -1388,7 +1400,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 		RETURN_COMMAND_ERROR();
 	}
 
-	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->active_dict ? cc->active_dict : cc->dict, p, &head) != T_EOL) {
+	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->active_dict ? cc->active_dict : cc->config->dict, p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -1532,7 +1544,7 @@ static size_t command_need_feature(command_result_t *result, command_ctx_t *cc,
 		RETURN_PARSE_ERROR(0);
 	}
 
-	cp = cf_pair_find(cc->features, in);
+	cp = cf_pair_find(cc->config->features, in);
 	if (!cp || (strcmp(cf_pair_value(cp), "yes") != 0)) {
 		DEBUG("Skipping, missing feature \"%s\"", in);
 		RETURN_SKIP_FILE();
@@ -1576,8 +1588,8 @@ static size_t command_no(command_result_t *result, command_ctx_t *cc,
 /** Dynamically load a protocol library
  *
  */
-static size_t command_proto(command_result_t *result, UNUSED command_ctx_t *cc,
-				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+static size_t command_proto(command_result_t *result, command_ctx_t *cc,
+			    UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	ssize_t slen;
 
@@ -1586,7 +1598,7 @@ static size_t command_proto(command_result_t *result, UNUSED command_ctx_t *cc,
 		RETURN_PARSE_ERROR(0);
 	}
 
-	fr_dict_global_dir_set(dict_dir);
+	fr_dict_global_dir_set(cc->config->dict_dir);
 	slen = load_proto_library(in);
 	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
 
@@ -1596,7 +1608,7 @@ static size_t command_proto(command_result_t *result, UNUSED command_ctx_t *cc,
 static size_t command_proto_dictionary(command_result_t *result, command_ctx_t *cc,
 				       UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	fr_dict_global_dir_set(dict_dir);
+	fr_dict_global_dir_set(cc->config->dict_dir);
 
 	return dictionary_load_common(result, cc, in, NULL);
 }
@@ -1732,7 +1744,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_ctx_t *cc
 	fmt[len] = '\0';
 
 	dec_len = xlat_tokenize(fmt, &head, fmt,
-				&(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->dict });
+				&(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
 	if (dec_len <= 0) {
 		fr_strerror_printf("ERROR offset %d '%s'", (int) -dec_len, fr_strerror());
 
@@ -1975,17 +1987,16 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 	return data_used;
 }
 
-static command_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx, char const *path, char const *filename,
-					fr_dict_t *dict, CONF_SECTION *features)
+static command_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
+					command_config_t const *config, char const *path, char const *filename)
 {
 	command_ctx_t *cc;
 
 	cc = talloc_zero(ctx, command_ctx_t);
 	cc->tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx");
 	cc->path = talloc_strdup(cc, path);
-	cc->dict = dict;
 	cc->filename = filename;
-	cc->features = features;
+	cc->config = config;
 
 	return cc;
 }
@@ -1997,8 +2008,8 @@ static void command_ctx_reset(command_ctx_t *cc, TALLOC_CTX *ctx)
 	cc->test_count = 0;
 }
 
-static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
-			fr_dict_t *dict, const char *root_dir, char const *filename)
+static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const *config,
+			const char *root_dir, char const *filename)
 {
 	int		ret = 0;
 	FILE		*fp;				/* File we're reading from */
@@ -2009,7 +2020,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, CONF_SECTION *features,
 
 	command_ctx_t	*cc;
 
-	cc = command_ctx_alloc(ctx, root_dir, filename, dict, features);
+	cc = command_ctx_alloc(ctx, config, root_dir, filename);
 
 	/*
 	 *	Open the file, or stdin
@@ -2183,13 +2194,16 @@ int main(int argc, char *argv[])
 	int			c;
 	char const		*receipt_file = NULL;
 	int			*inst = &c;
-	CONF_SECTION		*cs, *features;
-	fr_dict_t		*dict = NULL;
+	CONF_SECTION		*cs;
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 	dl_module_loader_t	*dl_modules = NULL;
-	fr_dict_gctx_t const	*dict_gctx;
 	bool			exit_now = false;
+
+	command_config_t	config = {
+					.raddb_dir = RADDBDIR,
+					.dict_dir = DICTDIR
+				};
 
 	char const		*name;
 	bool			do_features = false;
@@ -2207,8 +2221,8 @@ int main(int argc, char *argv[])
 	 *	out features and versions.
 	 */
 	MEM(cs = cf_section_alloc(autofree, NULL, "unit_test_attribute", NULL));
-	MEM(features = cf_section_alloc(cs, cs, "feature", NULL));
-	dependency_features_init(features);	/* Add build time features to the config section */
+	MEM(config.features = cf_section_alloc(cs, cs, "feature", NULL));
+	dependency_features_init(config.features);	/* Add build time features to the config section */
 
 	name = argv[0];
 
@@ -2222,11 +2236,11 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'd':
-			raddb_dir = optarg;
+			config.raddb_dir = optarg;
 			break;
 
 		case 'D':
-			dict_dir = optarg;
+			config.dict_dir = optarg;
 			break;
 
 		case 'f':
@@ -2255,7 +2269,7 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 
 	if (do_usage) usage(name);
-	if (do_features) features_print(features);
+	if (do_features) features_print(config.features);
 	if (do_commands) commands_print();
 	if (do_usage || do_features || do_commands) {
 		ret = EXIT_SUCCESS;
@@ -2287,13 +2301,13 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	dict_gctx = fr_dict_global_ctx_init(autofree, dict_dir);
-	if (!dict_gctx) {
+	config.dict_gctx = fr_dict_global_ctx_init(autofree, config.dict_dir);
+	if (!config.dict_gctx) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
 
-	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&config.dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
@@ -2301,7 +2315,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Load the custom dictionary
 	 */
-	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(config.dict, config.raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		PERROR("Failed initialising the dictionaries");
 		EXIT_WITH_FAILURE;
 	}
@@ -2321,7 +2335,7 @@ int main(int argc, char *argv[])
 	 *	Read tests from stdin
 	 */
 	if (argc < 2) {
-		ret = process_file(&exit_now, autofree, features, dict, name, "-");
+		ret = process_file(&exit_now, autofree, &config, name, "-");
 
 	/*
 	 *	...or process each file in turn.
@@ -2342,7 +2356,7 @@ int main(int argc, char *argv[])
 				file = argv[i];
 			}
 
-			ret = process_file(&exit_now, autofree, features, dict, dir, file);
+			ret = process_file(&exit_now, autofree, &config, dir, file);
 			if ((ret != 0) || exit_now) break;
 		}
 	}
@@ -2358,7 +2372,7 @@ cleanup:
 	if (talloc_free(dl_loader) < 0) {
 		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
 	}
-	fr_dict_free(&dict);
+	fr_dict_free(&config.dict);
 	unlang_free();
 	xlat_free();
 
@@ -2366,7 +2380,7 @@ cleanup:
 	 *	Dictionaries get freed towards the end
 	 *	because it breaks "autofree".
 	 */
-	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+	if (fr_dict_global_ctx_free(config.dict_gctx) < 0) {
 		fr_perror("unit_test_attribute - dict_gctx - ");	/* Print free order issues */
 	}
 
