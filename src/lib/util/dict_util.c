@@ -2546,6 +2546,18 @@ static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
 	return 0;
 }
 
+static int _dict_global_free(dict_gctx_t *ctx)
+{
+	talloc_free(ctx->dict_loader);
+
+	/*
+	 *	Set this to NULL just in case the caller tries to use
+	 *	dict_global_init() again.
+	 */
+	dict_gctx = NULL;
+	return 0;
+}
+
 /** Initialise the global protocol hashes
  *
  * @note Must be called before any other dictionary functions.
@@ -2591,6 +2603,7 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol", dict_onload_func, NULL) < 0) goto error;
 
 	dict_gctx = new_ctx;
+	talloc_set_destructor(dict_gctx, _dict_global_free);
 
 	return 0;
 }
