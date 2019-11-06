@@ -55,13 +55,7 @@ mschap {
 	# attribute, and do prefix/suffix checks in order to obtain
 	# the "best" user name for the request.
 	#
-	#  Depending on the AD / Samba configuration, you may also need to add:
-	#
-	#	--allow-mschapv2
-	#
-	#  to the list of command-line options.
-	#
-	#  For Samba 4, you should also set the "ntlmauth" parameter
+	#  For Samba 4, you should also set the "ntlm auth" parameter
 	#  in the Samba configuration:
 	#
 	#	ntlm auth = yes
@@ -70,14 +64,12 @@ mschap {
 	#
 	#	ntlm auth = mschapv2-and-ntlmv2-only
 	#
-	#  That will let Samba 4 accept the MS-CHAP authentication
+	#  This will let Samba 4 accept the MS-CHAP authentication
 	#  method that is needed by FreeRADIUS.
-	#
-	#  Run the ntml_auth command line too:
 	#
 	#  Depending on the Samba version, you may also need to add:
 	#
-	#	--allow-mschap2v
+	#	--allow-mschapv2
 	#
 	#  to the command-line parameters.
 	#
