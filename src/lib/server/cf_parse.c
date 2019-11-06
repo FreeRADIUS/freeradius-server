@@ -683,6 +683,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			return -1;	/* Unsupported type */
 		}
 
+		if (!array) return -1;
+
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
 			int		ret;
 			cf_parse_t	func;
