@@ -206,6 +206,8 @@ typedef struct {
 	size_t			subtype_table_len;		//!< length of subtype_table
 } fr_dict_protocol_t;
 
+typedef struct fr_dict_gctx_s fr_dict_gctx_t;
+
 /*
  *	Dictionary constants
  */
@@ -425,7 +427,9 @@ void			fr_dict_free(fr_dict_t **dict);
  *
  * @{
  */
-int			fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir);
+fr_dict_gctx_t const	*fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir);
+
+void			fr_dict_global_ctx_set(fr_dict_gctx_t const *gctx);
 
 int			fr_dict_global_dir_set(char const *dict_dir);
 

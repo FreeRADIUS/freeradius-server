@@ -36,7 +36,7 @@ RCSID("$Id$")
 #  include <sys/stat.h>
 #endif
 
-dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dictionary state.
+fr_dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dictionary state.
 
 fr_table_num_ordered_t const date_precision_table[] = {
 	{ "microseconds",	FR_TIME_RES_USEC },
@@ -2571,7 +2571,7 @@ static int _dict_dl_free(UNUSED void *ctx, void *data)
 	return 0;
 }
 
-static int _dict_global_free(dict_gctx_t *ctx)
+static int _dict_global_free(fr_dict_gctx_t *ctx)
 {
 	(void) fr_hash_table_walk(dict_gctx->protocol_by_name, _dict_dl_free, NULL);
 
@@ -2592,20 +2592,24 @@ static int _dict_global_free(dict_gctx_t *ctx)
  * @param[in] ctx	to allocate global resources in.
  * @param[in] dict_dir	the default location for the dictionaries.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- A pointer to the new global context on success.
+ *	- NULL on failure.
  */
-int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
+fr_dict_gctx_t const *fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 {
-	dict_gctx_t *new_ctx;
-
-	if (dict_gctx) return -1;
-
-	new_ctx = talloc_zero(ctx, dict_gctx_t);
+	fr_dict_gctx_t *new_ctx;
 
 	if (!dict_dir) {
 		fr_strerror_printf("No dictionary location provided");
 		return -1;
+	}
+
+	new_ctx = talloc_zero(ctx, fr_dict_gctx_t);
+	if (!new_ctx) {
+	oom:
+		fr_strerror_printf("Out of Memory");
+		talloc_free(new_ctx);
+		return NULL;
 	}
 
 	new_ctx->protocol_by_name = fr_hash_table_create(new_ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
@@ -2613,7 +2617,7 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 		fr_strerror_printf("Failed initializing protocol_by_name hash");
 	error:
 		talloc_free(new_ctx);
-		return -1;
+		return NULL;
 	}
 
 	new_ctx->protocol_by_num = fr_hash_table_create(new_ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
@@ -2623,20 +2627,27 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 	}
 
 	new_ctx->dict_dir_default = talloc_strdup(new_ctx, dict_dir);
-	if (!new_ctx->dict_dir_default) {
-		fr_strerror_printf("Out of Memory");
-		goto error;
-	}
+	if (!new_ctx->dict_dir_default) goto oom;
 
 	new_ctx->dict_loader = dl_loader_init(new_ctx, NULL, NULL, false, false);
 	if (!new_ctx->dict_loader) goto error;
 
-	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol", dict_onload_func, NULL) < 0) goto error;
+	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",
+				       dict_onload_func, NULL) < 0) goto error;
 
 	dict_gctx = new_ctx;
 	talloc_set_destructor(dict_gctx, _dict_global_free);
 
 	return 0;
+}
+
+/** Set a new, active, global dictionary context
+ *
+ * @param[in] gctx	To set.
+ */
+void fr_dict_global_ctx_set(fr_dict_gctx_t const *gctx)
+{
+	memcpy(&dict_gctx, &gctx, sizeof(dict_gctx));
 }
 
 /** Allow the default dict dir to be changed after initialisation

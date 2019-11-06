@@ -95,7 +95,7 @@ struct fr_dict {
 	fr_dict_protocol_t const *proto;		//!< protocol-specific validation functions
 };
 
-typedef struct {
+struct fr_dict_gctx_s {
 	bool			read_only;
 	char			*dict_dir_default;	//!< The default location for loading dictionaries if one
 							///< wasn't provided.
@@ -116,9 +116,9 @@ typedef struct {
 	 * protocol.
 	 */
 	fr_dict_t		*internal;
-} dict_gctx_t;
+};
 
-extern dict_gctx_t *dict_gctx;
+extern fr_dict_gctx_t *dict_gctx;
 
 extern fr_table_num_ordered_t const date_precision_table[];
 extern size_t date_precision_table_len;
