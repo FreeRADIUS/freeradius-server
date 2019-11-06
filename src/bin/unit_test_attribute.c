@@ -2195,9 +2195,6 @@ int main(int argc, char *argv[])
 	bool			do_commands = false;
 	bool			do_usage = false;
 
-	char			dir_buff[PATH_MAX];
-	char			file_buff[PATH_MAX];
-
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("unit_test_attribute");
@@ -2322,7 +2319,7 @@ int main(int argc, char *argv[])
 	 *	Read tests from stdin
 	 */
 	if (argc < 2) {
-		ret = process_file(&exit_now, autofree, features, dict, dirname_r(name, dir_buff), "-");
+		ret = process_file(&exit_now, autofree, features, dict, name, "-");
 
 	/*
 	 *	...or process each file in turn.
@@ -2331,8 +2328,19 @@ int main(int argc, char *argv[])
 		int i;
 
 		for (i = 1; i < argc; i++) {
-			ret = process_file(&exit_now, autofree, features, dict,
-					   dirname_r(argv[i], dir_buff), basename_r(argv[i], file_buff));
+			char *dir, *file;
+			char *p = strrchr(argv[i], '/');
+
+			if (p) {
+				*p = '\0'; /* we are allowed to modify our arguments.  No one cares. */
+				dir = argv[i];
+				file = p + 1;
+			} else {
+				dir = NULL;
+				file = argv[i];
+			}
+
+			ret = process_file(&exit_now, autofree, features, dict, dir, file);
 			if ((ret != 0) || exit_now) break;
 		}
 	}
