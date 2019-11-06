@@ -2358,12 +2358,17 @@ cleanup:
 	if (talloc_free(dl_loader) < 0) {
 		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
 	}
-	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
-		fr_perror("unit_test_attribute - dict_gctx - ");	/* Print free order issues */
-	}
 	fr_dict_free(&dict);
 	unlang_free();
 	xlat_free();
+
+	/*
+	 *	Dictionaries get freed towards the end
+	 *	because it breaks "autofree".
+	 */
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+		fr_perror("unit_test_attribute - dict_gctx - ");	/* Print free order issues */
+	}
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_attribute");
