@@ -1243,9 +1243,9 @@ int main(int argc, char **argv)
 			exit_status = EXIT_FAILURE;
 
 		} else if (result == FR_CONDUIT_PARTIAL) {
-			char *p = stack[stack_depth];
+			char *p;
 
-			if (stack_depth >= MAX_STACK) {
+			if (stack_depth >= (MAX_STACK - 1)) {
 				fprintf(stderr, "Too many sub-contexts running command\n");
 				exit_status = EXIT_FAILURE;
 				break;
@@ -1254,6 +1254,7 @@ int main(int argc, char **argv)
 			/*
 			 *	Point the stack to the last entry.
 			 */
+			p = stack[stack_depth];
 			p += strlen(p);
 			stack_depth++;
 			stack[stack_depth] = p;
