@@ -68,7 +68,7 @@ int talloc_const_free(void const *ptr)
 	if (!ptr) return 0;
 
 	memcpy(&tmp, &ptr, sizeof(tmp));
-	talloc_free(tmp);
+	return talloc_free(tmp);
 }
 /**********************************************************************/
 
