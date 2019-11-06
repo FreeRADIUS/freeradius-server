@@ -58,6 +58,8 @@ extern "C" {
  * There would also be conflicts for DHCP(v6)/RADIUS attributes etc...
  */
 struct fr_dict {
+	fr_dict_gctx_t	        *gctx;			//!< Global dictionary context this dictionary
+							///< was allocated in.
 	bool			read_only;		//!< If true, disallow modifications.
 
 	bool			in_protocol_by_name;	//!< Whether the dictionary has been inserted into the
