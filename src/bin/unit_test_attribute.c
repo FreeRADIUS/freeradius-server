@@ -2328,7 +2328,19 @@ int main(int argc, char *argv[])
 		int i;
 
 		for (i = 1; i < argc; i++) {
-			ret = process_file(&exit_now, autofree, features, dict, dirname(argv[i]), basename(argv[i]));
+			char *dir, *file;
+			char *p = strrchr(argv[i], '/');
+
+			if (p) {
+				*p = '\0'; /* we are allowed to modify our arguments.  No one cares. */
+				dir = argv[i];
+				file = p + 1;
+			} else {
+				dir = NULL;
+				file = argv[i];
+			}
+
+			ret = process_file(&exit_now, autofree, features, dict, dir, file);
 			if ((ret != 0) || exit_now) break;
 		}
 	}
