@@ -36,7 +36,7 @@ RCSID("$Id$")
 #  include <sys/stat.h>
 #endif
 
-dict_gctx_t *dict_gctx;	//!< Top level structure containing global dictionary state.
+dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dictionary state.
 
 fr_table_num_ordered_t const date_precision_table[] = {
 	{ "microseconds",	FR_TIME_RES_USEC },
@@ -1334,7 +1334,12 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
  */
 fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 {
-	if (!dict) return dict_gctx->internal->root;	/* Remove me when dictionaries are done */
+	if (!dict) {
+		if (!dict_gctx) return NULL;
+
+		return dict_gctx->internal->root;	/* Remove me when dictionaries are done */
+	}
+
 	return dict->root;
 }
 
@@ -2215,15 +2220,21 @@ static int _dict_free_autoref(UNUSED void *ctx, void *data)
 
 static int _dict_free(fr_dict_t *dict)
 {
-	if (dict == dict_gctx->internal) dict_gctx->internal = NULL;
+	/*
+	 *	We don't necessarily control the order of freeing
+	 *	children.
+	 */
+	if (dict_gctx) {
+		if (dict == dict_gctx->internal) dict_gctx->internal = NULL;
 
-	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict_gctx->protocol_by_name, dict))) {
-		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
-		return -1;
-	}
-	if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(dict_gctx->protocol_by_num, dict))) {
-		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
-		return -1;
+		if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict_gctx->protocol_by_name, dict))) {
+			fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
+			return -1;
+		}
+		if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(dict_gctx->protocol_by_num, dict))) {
+			fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
+			return -1;
+		}
 	}
 
 	if (dict->autoref &&
@@ -2570,7 +2581,11 @@ static int _dict_global_free(dict_gctx_t *ctx)
  */
 int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 {
-	dict_gctx_t *new_ctx = talloc_zero(ctx, dict_gctx_t);
+	dict_gctx_t *new_ctx;
+
+	if (dict_gctx) return -1;
+
+	new_ctx = talloc_zero(ctx, dict_gctx_t);
 
 	if (!dict_dir) {
 		fr_strerror_printf("No dictionary location provided");
@@ -2617,6 +2632,8 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
  */
 int fr_dict_global_dir_set(char const *dict_dir)
 {
+	if (!dict_gctx) return -1;
+
 	talloc_free(dict_gctx->dict_dir_default);		/* Free previous value */
 	dict_gctx->dict_dir_default = talloc_strdup(dict_gctx, dict_dir);
 	if (!dict_gctx->dict_dir_default) return -1;
@@ -2637,6 +2654,8 @@ void fr_dict_global_read_only(void)
 {
 	fr_hash_iter_t	iter;
 	fr_dict_t	*dict;
+
+	if (!dict_gctx) return;
 
 	/*
 	 *	Set everything to read only
