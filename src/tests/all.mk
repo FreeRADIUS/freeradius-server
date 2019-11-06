@@ -26,7 +26,7 @@ radiusd-c $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd
 		rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
-		echo "${TESTBIN}radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test"; \
+		echo "${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test"; \
 		exit 1; \
 	fi
 	@rm -f raddb/test.conf
