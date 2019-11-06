@@ -86,6 +86,8 @@ void		*fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter);
 
 void		*fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter);
 
+void		fr_hash_table_fill(fr_hash_table_t *ht);
+
 #ifdef __cplusplus
 }
 #endif

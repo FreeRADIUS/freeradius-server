@@ -1509,11 +1509,10 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 	 *	lookups, and we don't want multi-threaded re-ordering
 	 *	of the table entries.  That would be bad.
 	 */
-	fr_hash_table_walk(ctx->dict->vendors_by_name, hash_null_callback, NULL);
-	fr_hash_table_walk(ctx->dict->vendors_by_num, hash_null_callback, NULL);
-
-	fr_hash_table_walk(ctx->dict->values_by_da, hash_null_callback, NULL);
-	fr_hash_table_walk(ctx->dict->values_by_name, hash_null_callback, NULL);
+	fr_hash_table_fill(ctx->dict->vendors_by_name);
+	fr_hash_table_fill(ctx->dict->vendors_by_num);
+	fr_hash_table_fill(ctx->dict->values_by_da);
+	fr_hash_table_fill(ctx->dict->values_by_name);
 
 	ctx->value_attr = NULL;
 	ctx->relative_attr = NULL;
