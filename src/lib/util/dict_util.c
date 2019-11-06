@@ -2213,9 +2213,10 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 
 static int _dict_free_autoref(UNUSED void *ctx, void *data)
 {
-	fr_dict_t *dict = data;
+	fr_dict_t *dict = talloc_get_type_abort(data, fr_dict_t);
 
-	talloc_decrease_ref_count(dict);
+	(void)fr_dict_free(&dict);
+
 	return 0;
 }
 
@@ -2356,13 +2357,18 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 /** Decrement the reference count on a previously loaded dictionary
  *
  * @param[in] dict	to free.
+ * @return how many references to the dictionary remain.
  */
-void fr_dict_free(fr_dict_t **dict)
+int fr_dict_free(fr_dict_t **dict)
 {
-	if (!*dict) return;
+	int ret;
 
-	talloc_decrease_ref_count(*dict);
+	if (!*dict) return 0;
+
+	ret = talloc_decrease_ref_count(*dict);
 	*dict = NULL;
+
+	return ret;
 }
 
 /** Process a dict_attr_autoload element to load/verify a dictionary attribute
