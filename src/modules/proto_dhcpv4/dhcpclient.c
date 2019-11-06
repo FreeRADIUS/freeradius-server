@@ -662,7 +662,7 @@ int main(int argc, char **argv)
 
 	if (argc < 2) usage();
 
-	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+	if (!fr_dict_global_init(autofree, dict_dir)) {
 		fr_perror("dhcpclient");
 		exit(EXIT_FAILURE);
 	}

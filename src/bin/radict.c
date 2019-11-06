@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+	if (!fr_dict_global_init(autofree, dict_dir)) {
 		fr_perror("radict");
 		ret = 1;
 		goto finish;

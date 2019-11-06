@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+	if (!fr_dict_global_init(autofree, dict_dir)) {
 		fr_perror("sync_touch");
 		exit(EXIT_FAILURE);
 	}

@@ -2286,7 +2286,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+	if (!fr_dict_global_init(autofree, dict_dir)) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}

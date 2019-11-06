@@ -1370,7 +1370,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+	if (!fr_dict_global_init(autofree, dict_dir)) {
 		fr_perror("radclient");
 		return 1;
 	}

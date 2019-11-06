@@ -746,7 +746,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
+	if (!fr_dict_global_init(autofree, config->dict_dir)) {
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
