@@ -1325,14 +1325,6 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	return 0;
 }
 
-/** Empty callback for hash table initialization
- *
- */
-static int hash_null_callback(UNUSED void *ctx, UNUSED void *data)
-{
-	return 0;
-}
-
 static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 {
 	/*
