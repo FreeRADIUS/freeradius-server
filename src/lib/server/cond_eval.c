@@ -71,7 +71,7 @@ static bool all_digits(char const *string)
  */
 int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t const *vpt)
 {
-	int rcode;
+	int rcode = -1;
 	int modcode;
 	fr_value_box_t data;
 
