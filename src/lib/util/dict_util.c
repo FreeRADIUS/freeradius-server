@@ -2557,8 +2557,24 @@ static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
 	return 0;
 }
 
+static int _dict_dl_free(UNUSED void *ctx, void *data)
+{
+	fr_dict_t *dict = data;
+
+	if (!dict->dl) return 0;
+
+	talloc_free(dict->dl);
+	dict->dl = NULL;
+	dict->proto = NULL;
+	dict->subtype_table = NULL;
+
+	return 0;
+}
+
 static int _dict_global_free(dict_gctx_t *ctx)
 {
+	(void) fr_hash_table_walk(dict_gctx->protocol_by_name, _dict_dl_free, NULL);
+
 	talloc_free(ctx->dict_loader);
 
 	/*
