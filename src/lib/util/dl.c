@@ -598,6 +598,22 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	return dl;
 }
 
+/** "free" a dl handle, possibly actually freeing it, and unloading the library
+ *
+ * This function should be used to explicitly free a dl.
+ *
+ * Because dls are reference counted, it may not actually free the memory
+ * or unload the library, but it will reduce the reference count.
+ *
+ * @return
+ *	- 0	if the dl was actually freed.
+ *	- >0	the number of remaining references.
+ */
+int dl_free(dl_t const *dl)
+{
+	return talloc_decrease_ref_count(talloc_get_type_abort(dl, dl_t));
+}
+
 #ifndef NDEBUG
 static int _dl_walk_print(void *data, UNUSED void *uctx)
 {

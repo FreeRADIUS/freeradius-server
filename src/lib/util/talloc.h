@@ -95,13 +95,13 @@ int		talloc_memcmp_array(uint8_t const *a, uint8_t const *b);
 
 int		talloc_memcmp_bstr(char const *a, char const *b);
 
-void		talloc_decrease_ref_count(void const *ptr);
+int		talloc_decrease_ref_count(void const *ptr);
 
 void		**talloc_array_null_terminate(void **array);
 
 void		**talloc_array_null_strip(void **array);
 
-void		talloc_const_free(void const *ptr);
+int		talloc_const_free(void const *ptr);
 
 /** Free a list of talloced structures containing a next field
  *

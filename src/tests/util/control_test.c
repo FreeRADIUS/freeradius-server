@@ -53,7 +53,7 @@ static fr_ring_buffer_t *rb = NULL;
 typedef struct rad_request REQUEST;
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
 void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
-void talloc_const_free(void const *ptr);
+int talloc_const_free(void const *ptr);
 
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 {
@@ -64,7 +64,7 @@ void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *re
 {
 }
 
-void talloc_const_free(void const *ptr)
+int talloc_const_free(void const *ptr)
 {
 	void *tmp;
 	if (!ptr) return;

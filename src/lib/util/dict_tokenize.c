@@ -2229,7 +2229,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	char			*type_name;
 
 	if (unlikely(!dict_gctx)) {
-		fr_strerror_printf("fr_dict_global_init() must be called before loading dictionary files");
+		fr_strerror_printf("fr_dict_global_ctx_init() must be called before loading dictionary files");
 		return -1;
 	}
 
@@ -2322,7 +2322,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	fr_dict_t	*dict;
 
 	if (unlikely(!dict_gctx)) {
-		fr_strerror_printf("fr_dict_global_init() must be called before loading dictionary files");
+		fr_strerror_printf("fr_dict_global_ctx_init() must be called before loading dictionary files");
 		return -1;
 	}
 

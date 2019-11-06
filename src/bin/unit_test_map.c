@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (!fr_dict_global_init(autofree, dict_dir)) {
+	if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}

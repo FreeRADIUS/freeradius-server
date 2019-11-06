@@ -299,7 +299,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (!fr_dict_global_init(autofree, config->dict_dir)) {
+	if (!fr_dict_global_ctx_init(autofree, config->dict_dir)) {
 		fr_perror("%s", main_config->name);
 		exit(EXIT_FAILURE);
 	}

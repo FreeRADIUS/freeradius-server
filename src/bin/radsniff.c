@@ -2561,7 +2561,7 @@ int main(int argc, char *argv[])
 							 conf->pcap_filter, conf->pcap_filter);
 	}
 
-	if (!fr_dict_global_init(conf, dict_dir)) {
+	if (!fr_dict_global_ctx_init(conf, dict_dir)) {
 		fr_perror("radsniff");
 		exit(EXIT_FAILURE);
 	}

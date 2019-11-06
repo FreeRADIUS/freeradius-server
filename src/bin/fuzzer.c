@@ -53,7 +53,7 @@ int LLVMFuzzerInitialize(UNUSED int *argc, UNUSED char ***argv)
 
 	if (!dict_dir) dict_dir = DICTDIR;
 
-	if (!fr_dict_global_init(NULL, dict_dir)) {
+	if (!fr_dict_global_ctx_init(NULL, dict_dir)) {
 		fr_perror("dict_global");
 		return 0;
 	}

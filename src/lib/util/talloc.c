@@ -546,13 +546,16 @@ int talloc_memcmp_bstr(char const *a, char const *b)
  * This is equivalent to talloc 1.0 behaviour of talloc_free.
  *
  * @param ptr to decrement ref count for.
+ * @return
+ *	- 0	The memory was freed.
+ *	- >0	How many references remain.
  */
-void talloc_decrease_ref_count(void const *ptr)
+int talloc_decrease_ref_count(void const *ptr)
 {
 	size_t ref_count;
 	void *to_free;
 
-	if (!ptr) return;
+	if (!ptr) return 0;
 
 	memcpy(&to_free, &ptr, sizeof(to_free));
 
@@ -562,6 +565,8 @@ void talloc_decrease_ref_count(void const *ptr)
 	} else {
 		talloc_unlink(talloc_parent(ptr), to_free);
 	}
+
+	return ref_count;
 }
 
 /** Add a NULL pointer to an array of pointers
@@ -630,11 +635,12 @@ void **talloc_array_null_strip(void **array)
  *
  * @param[in] ptr	to free.
  */
-void talloc_const_free(void const *ptr)
+int talloc_const_free(void const *ptr)
 {
 	void *tmp;
-	if (!ptr) return;
+
+	if (!ptr) return 0;
 
 	memcpy(&tmp, &ptr, sizeof(tmp));
-	talloc_free(tmp);
+	return talloc_free(tmp);
 }

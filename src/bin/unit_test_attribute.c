@@ -2188,6 +2188,7 @@ int main(int argc, char *argv[])
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 	dl_module_loader_t	*dl_modules = NULL;
+	fr_dict_gctx_t const	*gctx;
 	bool			exit_now = false;
 
 	char const		*name;
@@ -2286,7 +2287,8 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (!fr_dict_global_init(autofree, dict_dir)) {
+	gctx = fr_dict_global_ctx_init(autofree, dict_dir);
+	if (!gctx) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
@@ -2350,8 +2352,15 @@ int main(int argc, char *argv[])
 	 *	memory, so we get clean talloc reports.
 	 */
 cleanup:
-	talloc_free(dl_modules);
-	talloc_free(dl_loader);
+	if (talloc_free(dl_modules) < 0) {
+		fr_perror("unit_test_attribute - dl_modules - ");	/* Print free order issues */
+	}
+	if (talloc_free(dl_loader) < 0) {
+		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
+	}
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+		fr_perror("unit_test_attribute - dict_gctx - ");	/* Print free order issues */
+	}
 	fr_dict_free(&dict);
 	unlang_free();
 	xlat_free();

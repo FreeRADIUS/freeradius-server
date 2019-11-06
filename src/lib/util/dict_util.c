@@ -24,6 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict_priv.h>
+#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
@@ -2221,6 +2222,12 @@ static int _dict_free_autoref(UNUSED void *ctx, void *data)
 static int _dict_free(fr_dict_t *dict)
 {
 	/*
+	 *	Decrease the reference count on the validation
+	 *	library we loaded.
+	 */
+	dl_free(dict->dl);
+
+	/*
 	 *	We don't necessarily control the order of freeing
 	 *	children.
 	 */
@@ -2557,31 +2564,14 @@ static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
 	return 0;
 }
 
-static int _dict_dl_free(UNUSED void *ctx, void *data)
-{
-	fr_dict_t *dict = data;
-
-	if (!dict->dl) return 0;
-
-	talloc_free(dict->dl);
-	dict->dl = NULL;
-	dict->proto = NULL;
-	dict->subtype_table = NULL;
-
-	return 0;
-}
-
 static int _dict_global_free(fr_dict_gctx_t *ctx)
 {
-	(void) fr_hash_table_walk(dict_gctx->protocol_by_name, _dict_dl_free, NULL);
-
-	talloc_free(ctx->dict_loader);
-
 	/*
 	 *	Set this to NULL just in case the caller tries to use
 	 *	dict_global_init() again.
 	 */
-	dict_gctx = NULL;
+	if (ctx == dict_gctx) dict_gctx = NULL;	/* In case the active context isn't this one */
+
 	return 0;
 }
 
@@ -2595,7 +2585,7 @@ static int _dict_global_free(fr_dict_gctx_t *ctx)
  *	- A pointer to the new global context on success.
  *	- NULL on failure.
  */
-fr_dict_gctx_t const *fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
+fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_dir)
 {
 	fr_dict_gctx_t *new_ctx;
 
@@ -2648,6 +2638,22 @@ fr_dict_gctx_t const *fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 void fr_dict_global_ctx_set(fr_dict_gctx_t const *gctx)
 {
 	memcpy(&dict_gctx, &gctx, sizeof(dict_gctx));
+}
+
+/** Explicitly free all data associated with a global dictionary context
+ *
+ * @note You should *NOT* ignore the return code of this function.
+ *       You should use perror() or PERROR() to print out the reason
+ *       why freeing failed.
+ *
+ * @param[in] gctx	To set.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_global_ctx_free(fr_dict_gctx_t const *gctx)
+{
+	return talloc_const_free(gctx);
 }
 
 /** Allow the default dict dir to be changed after initialisation

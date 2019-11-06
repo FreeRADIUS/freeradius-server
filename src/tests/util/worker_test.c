@@ -76,7 +76,7 @@ void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST con
 {
 }
 
-void talloc_const_free(void const *ptr)
+int talloc_const_free(void const *ptr)
 {
 	void *tmp;
 	if (!ptr) return;

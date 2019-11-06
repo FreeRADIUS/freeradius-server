@@ -950,7 +950,7 @@ int main(int argc, char **argv)
 		 *	Need to read in the dictionaries, else we may get
 		 *	validation errors when we try and parse the config.
 		 */
-		if (!fr_dict_global_init(autofree, dict_dir)) {
+		if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
 			fr_perror("radmin");
 			exit(64);
 		}

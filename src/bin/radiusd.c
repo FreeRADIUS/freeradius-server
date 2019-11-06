@@ -495,7 +495,7 @@ int main(int argc, char *argv[])
 	 *	Initialise the top level dictionary hashes which hold
 	 *	the protocols.
 	 */
-	if (!fr_dict_global_init(global_ctx, config->dict_dir)) {
+	if (!fr_dict_global_ctx_init(global_ctx, config->dict_dir)) {
 		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
