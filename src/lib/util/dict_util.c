@@ -2638,7 +2638,7 @@ fr_dict_gctx_t const *fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 	dict_gctx = new_ctx;
 	talloc_set_destructor(dict_gctx, _dict_global_free);
 
-	return 0;
+	return new_ctx;
 }
 
 /** Set a new, active, global dictionary context
