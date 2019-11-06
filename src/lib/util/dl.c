@@ -611,6 +611,8 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
  */
 int dl_free(dl_t const *dl)
 {
+	if (!dl) return 0;
+
 	return talloc_decrease_ref_count(talloc_get_type_abort(dl, dl_t));
 }
 
