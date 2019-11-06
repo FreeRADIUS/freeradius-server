@@ -74,7 +74,7 @@ extern size_t syslog_severity_table_len;
 extern fr_table_num_sorted_t const log_str2dst[];
 extern size_t log_str2dst_len;
 
-#define debug_enabled(_type, _lvl) ((_type & L_DBG) && (_lvl <= fr_debug_lvl))
+#define debug_enabled(_type, _lvl) (((_type & L_DBG) != 0) && (_lvl <= fr_debug_lvl))
 
 bool	log_rdebug_enabled(fr_log_lvl_t lvl, REQUEST *request) CC_HINT(nonnull);
 
