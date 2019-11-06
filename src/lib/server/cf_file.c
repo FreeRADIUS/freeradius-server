@@ -1843,6 +1843,8 @@ do_frame:
 		 */
 	}
 
+	rad_assert(frame->fp != NULL);
+
 	/*
 	 *	See if EOF was unexpected.
 	 */
@@ -1852,7 +1854,6 @@ do_frame:
 		goto error;
 	}
 
-	rad_assert(frame->fp != NULL);
 	fclose(frame->fp);
 	frame->fp = NULL;
 
