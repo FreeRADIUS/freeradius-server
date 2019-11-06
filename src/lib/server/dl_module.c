@@ -303,7 +303,7 @@ static int _dl_module_free(dl_module_t *dl_module)
 		dl_module->in_tree = false;
 	}
 
-	dl_free(&dl_module->dl);
+	dl_free(dl_module->dl);
 
 	return 0;
 }

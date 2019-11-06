@@ -107,7 +107,7 @@ void			dl_symbol_free_cb_unregister(dl_loader_t *dl_loader,
 dl_t			*dl_by_name(dl_loader_t *dl_loader, char const *name,
 				    void *uctx, bool uctx_free);
 
-int			dl_free(dl_t const **dl);
+int			dl_free(dl_t const *dl);
 
 char const		*dl_search_path(dl_loader_t *dl_loader);
 

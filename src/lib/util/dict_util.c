@@ -2226,7 +2226,7 @@ static int _dict_free(fr_dict_t *dict)
 	 *	Decrease the reference count on the validation
 	 *	library we loaded.
 	 */
-	dl_free(&dict->dl);
+	dl_free(dict->dl);
 
 	/*
 	 *	We don't necessarily control the order of freeing
