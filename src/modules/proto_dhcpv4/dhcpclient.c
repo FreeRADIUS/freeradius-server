@@ -172,7 +172,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 	if (fr_pair_list_afrom_file(request, dict_dhcpv4, &request->vps, fp, &filedone) < 0) {
 		fr_perror("dhcpclient");
 		fr_radius_packet_free(&request);
-		if (fp != stdin) fclose(fp);
+		if (fp && (fp != stdin)) fclose(fp);
 		return NULL;
 	}
 
@@ -191,7 +191,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 			if (fr_value_box_from_str(vp, &vp->data, &type, NULL, vp->xlat, -1, '\0', false) < 0) {
 				fr_perror("dhcpclient");
 				fr_radius_packet_free(&request);
-				if (fp != stdin) fclose(fp);
+				if (fp && (fp != stdin)) fclose(fp);
 				return NULL;
 			}
 			vp->type = VT_DATA;
@@ -228,7 +228,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 
 	} /* loop over the VP's we read in */
 
-	if (fp != stdin) fclose(fp);
+	if (fp && (fp != stdin)) fclose(fp);
 
 	/*
 	 *	And we're done.
