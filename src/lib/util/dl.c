@@ -609,11 +609,11 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
  *	- 0	if the dl was actually freed.
  *	- >0	the number of remaining references.
  */
-int dl_free(dl_t const *dl)
+int dl_free(dl_t const **dl)
 {
-	if (!dl) return 0;
+	if (!dl || !*dl) return 0;
 
-	return talloc_decrease_ref_count(talloc_get_type_abort(dl, dl_t));
+	return talloc_decrease_ref_count(talloc_get_type_abort(*dl, dl_t));
 }
 
 #ifndef NDEBUG
