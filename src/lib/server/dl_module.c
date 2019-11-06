@@ -348,6 +348,8 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 						    name);
 	}
 
+	if (!module_name) return NULL;
+
 	for (p = module_name, q = p + talloc_array_length(p) - 1; p < q; p++) *p = tolower(*p);
 
 	/*
