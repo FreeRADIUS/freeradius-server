@@ -2188,7 +2188,7 @@ int main(int argc, char *argv[])
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 	dl_module_loader_t	*dl_modules = NULL;
-	fr_dict_gctx_t const	*gctx;
+	fr_dict_gctx_t const	*dict_gctx;
 	bool			exit_now = false;
 
 	char const		*name;
@@ -2287,8 +2287,8 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	gctx = fr_dict_global_ctx_init(autofree, dict_dir);
-	if (!gctx) {
+	dict_gctx = fr_dict_global_ctx_init(autofree, dict_dir);
+	if (!dict_gctx) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
