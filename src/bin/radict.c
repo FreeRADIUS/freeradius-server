@@ -305,5 +305,6 @@ int main(int argc, char *argv[])
 	}
 
 finish:
+	talloc_free(autofree);
 	return found ? ret : 64;
 }
