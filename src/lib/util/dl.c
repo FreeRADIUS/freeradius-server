@@ -613,7 +613,7 @@ int dl_free(dl_t const *dl)
 {
 	if (!dl) return 0;
 
-	return talloc_decrease_ref_count(talloc_get_type_abort(dl, dl_t));
+	return talloc_decrease_ref_count(talloc_get_type_abort_const(dl, dl_t));
 }
 
 #ifndef NDEBUG
