@@ -2234,17 +2234,15 @@ static int _dict_free(fr_dict_t *dict)
 	 *	We don't necessarily control the order of freeing
 	 *	children.
 	 */
-	if (dict_gctx) {
-		if (dict == dict_gctx->internal) dict_gctx->internal = NULL;
+	if (dict == dict->gctx->internal) dict->gctx->internal = NULL;
 
-		if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict_gctx->protocol_by_name, dict))) {
-			fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
-			return -1;
-		}
-		if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(dict_gctx->protocol_by_num, dict))) {
-			fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
-			return -1;
-		}
+	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict->gctx->protocol_by_name, dict))) {
+		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
+		return -1;
+	}
+	if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(dict->gctx->protocol_by_num, dict))) {
+		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
+		return -1;
 	}
 
 	if (dict->autoref &&
@@ -2265,6 +2263,11 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 {
 	fr_dict_t *dict;
 
+	if (!dict_gctx) {
+		fr_strerror_printf("Initialise global dictionary ctx with fr_dict_global_ctx_init()");
+		return NULL;
+	}
+
 	dict = talloc_zero(ctx, fr_dict_t);
 	if (!dict) {
 		fr_strerror_printf("Failed allocating memory for dictionary");
@@ -2272,7 +2275,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 		talloc_free(dict);
 		return NULL;
 	}
-
 	talloc_set_destructor(dict, _dict_free);
 
 	/*
@@ -2345,6 +2347,8 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 		fr_strerror_printf("Failed allocating \"values_by_da\" table");
 		goto error;
 	}
+
+	dict->gctx = dict_gctx;	/* Record which global context this was allocated in */
 
 	/*
 	 *	Set default type size and length.
@@ -2633,7 +2637,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",
 				       dict_onload_func, NULL) < 0) goto error;
 
-	dict_gctx = new_ctx;
+	if (!dict_gctx) dict_gctx = new_ctx;	/* Set as the default */
 	talloc_set_destructor(dict_gctx, _dict_global_free);
 
 	return new_ctx;
@@ -2671,7 +2675,7 @@ int fr_dict_global_ctx_free(fr_dict_gctx_t const *gctx)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_global_dir_set(char const *dict_dir)
+int fr_dict_global_ctx_dir_set(char const *dict_dir)
 {
 	if (!dict_gctx) return -1;
 

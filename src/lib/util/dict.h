@@ -433,7 +433,7 @@ void			fr_dict_global_ctx_set(fr_dict_gctx_t const *gctx);
 
 int			fr_dict_global_ctx_free(fr_dict_gctx_t const *gctx);
 
-int			fr_dict_global_dir_set(char const *dict_dir);
+int			fr_dict_global_ctx_dir_set(char const *dict_dir);
 
 void			fr_dict_global_read_only(void);
 

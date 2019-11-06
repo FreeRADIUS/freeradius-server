@@ -186,7 +186,8 @@ typedef struct {
 
 	fr_dict_t		*active_dict;		//!< Active dictionary passed to encoders
 							///< and decoders.
-	fr_dict_gctx_t		*test_gctx;		//!< Dictionary context for test dictionaries.
+	fr_dict_t		*test_internal_dict;	//!< Internal dictionary of test_gctx.
+	fr_dict_gctx_t const	*test_gctx;		//!< Dictionary context for test dictionaries.
 
 	command_config_t const	*config;
 } command_ctx_t;
@@ -800,9 +801,8 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, char con
 
 /** Common dictionary load function
  *
- * Callers call fr_dict_global_dir_set to set the dictionary root to
- * load dictionaries from, then provide a relative path to
- * navigate through test subdirectories or protocols
+ * Callers call fr_dict_global_ctx_set to set the context
+ * the dictionaries will be loaded into.
  */
 static int dictionary_load_common(command_result_t *result, command_ctx_t *cc, char *in, char const *default_subdir)
 {
@@ -1598,7 +1598,7 @@ static size_t command_proto(command_result_t *result, command_ctx_t *cc,
 		RETURN_PARSE_ERROR(0);
 	}
 
-	fr_dict_global_dir_set(cc->config->dict_dir);
+	fr_dict_global_ctx_set(cc->config->dict_gctx);
 	slen = load_proto_library(in);
 	if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
 
@@ -1608,8 +1608,7 @@ static size_t command_proto(command_result_t *result, command_ctx_t *cc,
 static size_t command_proto_dictionary(command_result_t *result, command_ctx_t *cc,
 				       UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	fr_dict_global_dir_set(cc->config->dict_dir);
-
+	fr_dict_global_ctx_set(cc->config->dict_gctx);
 	return dictionary_load_common(result, cc, in, NULL);
 }
 
@@ -1628,9 +1627,13 @@ static size_t command_touch(command_result_t *result, UNUSED command_ctx_t *cc,
 static size_t command_test_dictionary(command_result_t *result, command_ctx_t *cc,
 				      UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	fr_dict_global_dir_set(cc->path);
+	int ret;
 
-	return dictionary_load_common(result, cc, in, ".");
+	fr_dict_global_ctx_set(cc->test_gctx);
+	ret = dictionary_load_common(result, cc, in, ".");
+	fr_dict_global_ctx_set(cc->config->dict_gctx);
+
+	return ret;
 }
 
 static size_t command_value_box_normalise(command_result_t *result, UNUSED command_ctx_t *cc,
@@ -1987,25 +1990,58 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 	return data_used;
 }
 
+static int _command_ctx_free(command_ctx_t *cc)
+{
+	fr_dict_free(&cc->test_internal_dict);
+	return 0;
+}
+
 static command_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 					command_config_t const *config, char const *path, char const *filename)
 {
 	command_ctx_t *cc;
 
 	cc = talloc_zero(ctx, command_ctx_t);
+	talloc_set_destructor(cc, _command_ctx_free);
+
 	cc->tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx");
 	cc->path = talloc_strdup(cc, path);
 	cc->filename = filename;
 	cc->config = config;
+
+	/*
+	 *	Initialise a special temporary dictionary context
+	 *
+	 *	Any protocol dictionaries loaded by "test-dictionary"
+	 *	go in this context, and don't affect the main
+	 *	dictionary context.
+	 */
+	cc->test_gctx = fr_dict_global_ctx_init(cc, cc->config->dict_dir);
+	if (!cc->test_gctx) {
+		PERROR("Failed allocating test dict_gctx");
+		return NULL;
+	}
+
+	fr_dict_global_ctx_set(cc->test_gctx);
+	if (fr_dict_internal_afrom_file(&cc->test_internal_dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+		PERROR("Failed loading test dict_gctx internal dictionary");
+		return NULL;
+	}
+
+	fr_dict_global_ctx_dir_set(cc->path);	/* Load new dictionaries relative to the test file */
+	fr_dict_global_ctx_set(cc->config->dict_gctx);
 
 	return cc;
 }
 
 static void command_ctx_reset(command_ctx_t *cc, TALLOC_CTX *ctx)
 {
-	TALLOC_FREE(cc->tmp_ctx);
+	talloc_free(cc->tmp_ctx);
 	cc->tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx");
 	cc->test_count = 0;
+
+	fr_dict_global_ctx_free(cc->test_gctx);
+	cc->test_gctx = fr_dict_global_ctx_init(cc, cc->config->dict_dir);
 }
 
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const *config,
@@ -2142,10 +2178,10 @@ finish:
 	/*
 	 *	Free any residual resources we loaded.
 	 */
+	if (cc) fr_dict_free(&cc->active_dict);
+	fr_dict_global_ctx_set(config->dict_gctx);	/* Switch back to the main dict ctx */
 	unload_proto_library();
-	fr_dict_free(&cc->active_dict);
 	talloc_free(cc);
-
 
 	return ret;
 }
@@ -2381,7 +2417,7 @@ cleanup:
 	 *	because it breaks "autofree".
 	 */
 	if (fr_dict_global_ctx_free(config.dict_gctx) < 0) {
-		fr_perror("unit_test_attribute - dict_gctx - ");	/* Print free order issues */
+		fr_perror("unit_test_attribute");	/* Print free order issues */
 	}
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
