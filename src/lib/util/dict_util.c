@@ -2601,7 +2601,7 @@ fr_dict_gctx_t const *fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
 
 	if (!dict_dir) {
 		fr_strerror_printf("No dictionary location provided");
-		return -1;
+		return NULL;
 	}
 
 	new_ctx = talloc_zero(ctx, fr_dict_gctx_t);
