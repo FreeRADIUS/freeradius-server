@@ -474,11 +474,9 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 *
 	 *	May help resolve issues with symbol conflicts.
 	 */
-#ifdef RTLD_DEEPBIND
-	if (fr_get_lsan_state() != 1) {
-		flags |= RTLD_DEEPBIND;
-		fr_strerror();	/* clear error buffer */
-	}
+#if defined(RTLD_DEEPBIND) && !defined(__SANITIZE_ADDRESS__)
+	flags |= RTLD_DEEPBIND;
+	fr_strerror();	/* clear error buffer */
 #endif
 
 	/*

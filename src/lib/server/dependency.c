@@ -522,18 +522,6 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-/*
- *	GCC uses __SANITIZE_ADDRESS__, clang uses __has_feature, which
- *	GCC complains about.
- */
-#ifndef __SANITIZE_ADDRESS__
-#ifdef __has_feature
-#if __has_feature(address_sanitizer)
-#define __SANITIZE_ADDRESS__ (1)
-#endif
-#endif
-#endif
-
 	dependency_feature_add(cs, "address-sanitizer",
 #ifdef __SANITIZE_ADDRESS__
 				true
