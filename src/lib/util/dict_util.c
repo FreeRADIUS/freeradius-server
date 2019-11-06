@@ -386,6 +386,8 @@ fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
 	}
 
 	da = talloc_zero(ctx, fr_dict_attr_t);
+	if (!da) return NULL;
+
 	da->name = talloc_typed_strdup(da, name);
 	if (!da->name) {
 		talloc_free(da);

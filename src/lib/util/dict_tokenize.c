@@ -1256,7 +1256,10 @@ static int dict_read_process_protocol(char **argv, int argc)
 	/*
 	 *	Set the root attribute with the protocol name
 	 */
-	dict_root_set(dict, argv[0], value);
+	if (dict_root_set(dict, argv[0], value) < 0) {
+		talloc_free(dict);
+		return -1;
+	}
 
 	if (dict_protocol_add(dict) < 0) return -1;
 
@@ -2257,7 +2260,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	/*
 	 *	Set the root name of the dictionary
 	 */
-	dict_root_set(dict, "internal", 0);
+	if (dict_root_set(dict, "internal", 0) < 0) goto error;
 
 	/*
 	 *	Add cast attributes.  We do it this way,
