@@ -79,7 +79,7 @@ void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *re
 int talloc_const_free(void const *ptr)
 {
 	void *tmp;
-	if (!ptr) return;
+	if (!ptr) return 0;
 
 	memcpy(&tmp, &ptr, sizeof(tmp));
 	talloc_free(tmp);
