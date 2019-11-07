@@ -871,8 +871,6 @@ int main(int argc, char *argv[])
 
 	fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
 
-
-
 	/*
 	 *  Process requests until HUP or exit.
 	 */
