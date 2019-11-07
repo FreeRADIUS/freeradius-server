@@ -7,8 +7,14 @@ proto-dictionary dhcpv6
 encode-pair Preference = 255
 match 00 07 00 01 ff
 
+decode-pair -
+match Preference = 255
+
 encode-pair Preference = 0
 match 00 07 00 01 00
+
+decode-pair -
+match Preference = 0
 
 #
 #  2 byte unsigned integer (uint16)
@@ -16,11 +22,17 @@ match 00 07 00 01 00
 encode-pair ANI-Access-Technology-Type = 3GPP2-NB-IOT
 match 00 69 00 02 00 0d
 
+decode-pair -
+match ANI-Access-Technology-Type = 3GPP2-NB-IOT
+
 #
 #  4 byte unsigned integer (uint32)
 #
 encode-pair Information-Refresh-Time = 99
 match 00 20 00 04 00 00 00 63
 
+decode-pair -
+match Information-Refresh-Time = 99
+
 count
-match 10
+match 18

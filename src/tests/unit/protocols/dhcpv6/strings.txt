@@ -7,12 +7,21 @@ proto-dictionary dhcpv6
 encode-pair Subscriber-ID = "fred"
 match 00 26 00 04 66 72 65 64
 
+decode-pair -
+match Subscriber-ID = "fred"
+
 encode-pair Subscriber-ID = "bob", New-Posix-Timezone = "GB"
 match 00 26 00 03 62 6f 62 00 29 00 02 47 42
+
+decode-pair -
+match Subscriber-ID = "bob", New-Posix-Timezone = "GB"
 
 # Zero length string
 encode-pair Subscriber-ID = ""
 match 00 26 00 00
 
+decode-pair -
+match Subscriber-ID = ""
+
 count
-match 8
+match 14

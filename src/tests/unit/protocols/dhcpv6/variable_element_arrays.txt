@@ -7,15 +7,27 @@ proto-dictionary dhcpv6
 encode-pair Bootfile-Param = "I LIKE CHICKEN",  Bootfile-Param = "I LIKE LIVER"
 match 00 3c 00 1e 00 0e 49 20 4c 49 4b 45 20 43 48 49 43 4b 45 4e 00 0c 49 20 4c 49 4b 45 20 4c 49 56 45 52
 
+decode-pair -
+match Bootfile-Param = "I LIKE CHICKEN", Bootfile-Param = "I LIKE LIVER"
+
 # Still needs to add the length field with only one element
 encode-pair Bootfile-Param = "MEOW MIX MEOW MIX"
 match 00 3c 00 13 00 11 4d 45 4f 57 20 4d 49 58 20 4d 45 4f 57 20 4d 49 58
 
+decode-pair -
+match Bootfile-Param = "MEOW MIX MEOW MIX"
+
 encode-pair Bootfile-Param = ""
 match 00 3c 00 02 00 00
 
-encode-pair Bootfile-Param = "",  Bootfile-Param = "foo"
+decode-pair -
+match Bootfile-Param = ""
+
+encode-pair Bootfile-Param = "", Bootfile-Param = "foo"
 match 00 3c 00 07 00 00 00 03 66 6f 6f
+
+decode-pair -
+match Bootfile-Param = "", Bootfile-Param = "foo"
 
 #
 #  Variable length octets array
@@ -23,11 +35,20 @@ match 00 3c 00 07 00 00 00 03 66 6f 6f
 encode-pair User-Class = 0x010203, User-Class = 0x02040810
 match 00 0f 00 0b 00 03 01 02 03 00 04 02 04 08 10
 
+decode-pair -
+match User-Class = 0x010203, User-Class = 0x02040810
+
 encode-pair User-Class = 0x010203
 match 00 0f 00 05 00 03 01 02 03
+
+decode-pair -
+match User-Class = 0x010203
 
 encode-pair User-Class = 0x, User-Class = 0x
 match 00 0f 00 04 00 00 00 00
 
+decode-pair -
+match User-Class = 0x, User-Class = 0x
+
 count
-match 16
+match 30
