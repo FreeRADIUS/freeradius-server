@@ -55,10 +55,6 @@ fr_table_num_ordered_t const date_precision_table[] = {
 };
 size_t date_precision_table_len = NUM_ELEMENTS(date_precision_table);
 
-static fr_table_num_ordered_t const eap_aka_sim_subtype_table[] = {
-	{ "encrypt=aes-cbc",		1 }, /* any non-zero value will do */
-};
-static size_t eap_aka_sim_subtype_table_len = NUM_ELEMENTS(eap_aka_sim_subtype_table);
 
 /** Map data types to min / max data sizes
  */
@@ -507,19 +503,6 @@ int dict_protocol_add(fr_dict_t *dict)
 		return -1;
 	}
 	dict->in_protocol_by_num = true;
-
-	/*
-	 *	Set the subtype flags and other necessary things.
-	 */
-	switch (dict->root->attr) {
-	case FR_PROTOCOL_EAP_AKA_SIM:
-		dict->subtype_table = eap_aka_sim_subtype_table;
-		dict->subtype_table_len = eap_aka_sim_subtype_table_len;
-		break;
-
-	default:
-		break;
-	}
 
 	return 0;
 }

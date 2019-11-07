@@ -257,3 +257,15 @@ void fr_aka_sim_free(void)
 	fr_dict_autofree(libfreeradius_aka_sim_dict);
 }
 
+static fr_table_num_ordered_t const subtype_table[] = {
+	{ "encrypt=aes-cbc",		1 }, /* any non-zero value will do */
+};
+
+extern fr_dict_protocol_t libfreeradius_eap_aka_sim_dict_protocol;
+fr_dict_protocol_t libfreeradius_eap_aka_sim_dict_protocol = {
+	.name = "eap_aka_sim",
+	.default_type_size = 1,
+	.default_type_length = 1,
+	.subtype_table = subtype_table,
+	.subtype_table_len = NUM_ELEMENTS(subtype_table),
+};
