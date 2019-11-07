@@ -334,7 +334,7 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_tlvs");
 
-	if (!fr_cond_assert_msg(parent->type == FR_TYPE_TLV,
+	if (!fr_cond_assert_msg((parent->type == FR_TYPE_TLV || (parent->type == FR_TYPE_VENDOR)),
 				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'tlv'",
 				__FUNCTION__, parent->name)) return PAIR_ENCODE_ERROR;
 	p = data;
