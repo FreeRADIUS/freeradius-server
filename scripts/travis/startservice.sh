@@ -39,7 +39,7 @@ function run-tests() {
         export LDAP_TEST_SERVER_PORT="3890"
         export REDIS_IPPOOL_TEST_SERVER="127.0.0.1"
         export ANALYZE_C_DUMP="1"
-        export FR_GLOBAL_POOL=2M
+        export FR_GLOBAL_POOL=4M
         ## before_install
         if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 && sudo update-alternatives --config gcc; fi
         if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 60 && sudo update-alternatives --config clang; fi
