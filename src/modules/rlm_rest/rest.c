@@ -888,8 +888,6 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
 	MEM(vp = fr_pair_afrom_da(ctx, da));
 	if (!vp) {
 		RWDEBUG("Failed creating valuepair for attribute \"%s\" (skipping)", da->name);
-		talloc_free(expanded);
-
 		return NULL;
 	}
 
