@@ -484,3 +484,17 @@ void fr_dhcpv6_global_free(void)
 
 	fr_dict_autofree(libfreeradius_dhcpv6_dict);
 }
+
+static fr_table_num_ordered_t const subtype_table[] = {
+	{ "dns_label",			FLAG_ENCODE_DNS_LABEL },
+	{ "encode=dns_label",		FLAG_ENCODE_DNS_LABEL },
+};
+
+extern fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol;
+fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
+	.name = "dhcpv6",
+	.default_type_size = 2,
+	.default_type_length = 2,
+	.subtype_table = subtype_table,
+	.subtype_table_len = NUM_ELEMENTS(subtype_table),
+};

@@ -55,12 +55,6 @@ fr_table_num_ordered_t const date_precision_table[] = {
 };
 size_t date_precision_table_len = NUM_ELEMENTS(date_precision_table);
 
-static fr_table_num_ordered_t const dhcpv6_subtype_table[] = {
-	{ "dns_label",			FLAG_ENCODE_DNS_LABEL },
-	{ "encode=dns_label",		FLAG_ENCODE_DNS_LABEL },
-};
-static size_t dhcpv6_subtype_table_len = NUM_ELEMENTS(dhcpv6_subtype_table);
-
 static fr_table_num_ordered_t const eap_aka_sim_subtype_table[] = {
 	{ "encrypt=aes-cbc",		1 }, /* any non-zero value will do */
 };
@@ -518,13 +512,6 @@ int dict_protocol_add(fr_dict_t *dict)
 	 *	Set the subtype flags and other necessary things.
 	 */
 	switch (dict->root->attr) {
-	case FR_PROTOCOL_DHCPV6:
-		dict->subtype_table = dhcpv6_subtype_table;
-		dict->subtype_table_len = dhcpv6_subtype_table_len;
-		dict->default_type_size = 2;
-		dict->default_type_length = 2;
-		break;
-
 	case FR_PROTOCOL_EAP_AKA_SIM:
 		dict->subtype_table = eap_aka_sim_subtype_table;
 		dict->subtype_table_len = eap_aka_sim_subtype_table_len;
