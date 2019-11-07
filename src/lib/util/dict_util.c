@@ -2275,6 +2275,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 		talloc_free(dict);
 		return NULL;
 	}
+	dict->gctx = dict_gctx;	/* Record which global context this was allocated in */
 	talloc_set_destructor(dict, _dict_free);
 
 	/*
@@ -2347,8 +2348,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 		fr_strerror_printf("Failed allocating \"values_by_da\" table");
 		goto error;
 	}
-
-	dict->gctx = dict_gctx;	/* Record which global context this was allocated in */
 
 	/*
 	 *	Set default type size and length.
