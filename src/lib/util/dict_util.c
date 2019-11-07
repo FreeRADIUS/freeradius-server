@@ -2399,7 +2399,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 			fr_strerror_printf("Can't resolve attribute \"%s\", dictionary not loaded", p->name);
 			fr_strerror_printf_push("Check fr_dict_autoload_t struct has "
 						"an entry to load the dictionary \"%s\" is located in, and that "
-						"the symbol name is correct", p->name);
+						"the fr_dict_autoload_t symbol name is correct", p->name);
 			return -1;
 		}
 
