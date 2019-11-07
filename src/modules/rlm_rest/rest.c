@@ -888,8 +888,6 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
 	MEM(vp = fr_pair_afrom_da(ctx, da));
 	if (!vp) {
 		RWDEBUG("Failed creating valuepair for attribute \"%s\" (skipping)", da->name);
-		talloc_free(expanded);
-
 		return NULL;
 	}
 
@@ -911,7 +909,10 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
 	case json_type_string:
 		value = json_object_get_string(leaf);
 		if (flags->do_xlat && memchr(value, '%', json_object_get_string_len(leaf))) {
-			if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) return NULL;
+			if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) {
+				talloc_free(vp);
+				return NULL;
+			}
 			src.vb_strvalue = expanded;
 			src.datum.length = talloc_array_length(src.vb_strvalue) - 1;
 		} else {
@@ -933,7 +934,7 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
 		src.vb_strvalue = json_object_get_string(leaf);
 		if (!src.vb_strvalue) {
 			RWDEBUG("Failed getting string value for attribute \"%s\" (skipping)", da->name);
-
+			talloc_free(vp);
 			return NULL;
 		}
 		src.type = FR_TYPE_STRING;
