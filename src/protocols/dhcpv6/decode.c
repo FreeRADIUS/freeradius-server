@@ -38,7 +38,7 @@
 #include "dhcpv6.h"
 #include "attrs.h"
 
-static ssize_t decode_options(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const data_len, void *decoder_ctx);
 
@@ -323,6 +323,40 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 }
 
 
+/** Like decode_option(), but decodes *all* of the options.
+ *
+ */
+static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+			   fr_dict_attr_t const *parent,
+			   uint8_t const *data, size_t const data_len, void *decoder_ctx)
+{
+	uint8_t const *p, *end;
+
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_tlvs");
+
+	if (!fr_cond_assert_msg(parent->type == FR_TYPE_TLV,
+				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'tlv'",
+				__FUNCTION__, parent->name)) return PAIR_ENCODE_ERROR;
+	p = data;
+	end = data + data_len;
+
+	while (p < end) {
+		ssize_t slen;
+
+		slen = decode_option(ctx, cursor, dict, parent, p, (end - p), decoder_ctx);
+		if (slen <= 0) {
+			slen = decode_raw(ctx, cursor, dict, parent, p, (end - p), decoder_ctx);
+			if (slen <= 0) return slen;
+			break;
+		}
+
+		p += slen;
+	}
+
+	return data_len;
+}
+
+
 static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 			  fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len, void *decoder_ctx)
@@ -362,12 +396,11 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const 
 	}
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
-	// @todo - decode child TLVs
 
-	return decode_options(ctx, cursor, dict, da, data + 4, data_len - 4, decoder_ctx);
+	return decode_tlvs(ctx, cursor, dict, da, data + 4, data_len - 4, decoder_ctx);
 }
 
-static ssize_t decode_options(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const data_len, void *decoder_ctx)
 {
@@ -412,6 +445,9 @@ static ssize_t decode_options(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t co
 	} else if (da->type == FR_TYPE_VSA) {
 		rcode = decode_vsa(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 
+	} else if (da->type == FR_TYPE_TLV) {
+		rcode = decode_tlvs(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+
 	} else {
 		rcode = decode_value(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 	}
@@ -437,12 +473,12 @@ ssize_t fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t 
 
 	/*
 	 *	The API changes, so we just bounce directly to the
-	 *	decode_options() function.
+	 *	decode_option() function.
 	 *
 	 *	All options including VSAs in DHCPv6 MUST follow the
 	 *	standard format.
 	 */
-	return decode_options(ctx, cursor, dict, fr_dict_root(dict), data, data_len, decoder_ctx);
+	return decode_option(ctx, cursor, dict, fr_dict_root(dict), data, data_len, decoder_ctx);
 }
 
 /*
