@@ -2224,18 +2224,6 @@ static int _dict_free_autoref(UNUSED void *ctx, void *data)
 
 static int _dict_free(fr_dict_t *dict)
 {
-	/*
-	 *	Decrease the reference count on the validation
-	 *	library we loaded.
-	 */
-	dl_free(dict->dl);
-
-	/*
-	 *	We don't necessarily control the order of freeing
-	 *	children.
-	 */
-	if (dict == dict->gctx->internal) dict->gctx->internal = NULL;
-
 	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict->gctx->protocol_by_name, dict))) {
 		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
 		return -1;
@@ -2249,6 +2237,18 @@ static int _dict_free(fr_dict_t *dict)
 	    (fr_hash_table_walk(dict->autoref, _dict_free_autoref, NULL) < 0)) {
 		return -1;
 	}
+
+	/*
+	 *	Decrease the reference count on the validation
+	 *	library we loaded.
+	 */
+	dl_free(dict->dl);
+
+	/*
+	 *	We don't necessarily control the order of freeing
+	 *	children.
+	 */
+	if (dict == dict->gctx->internal) dict->gctx->internal = NULL;
 
 	return 0;
 }
@@ -2496,9 +2496,9 @@ int fr_dl_dict_autoload(UNUSED dl_t const *module, void *symbol, UNUSED void *us
  * @param[in] symbol	An array of fr_dict_autoload_t to load.
  * @param[in] user_ctx	unused.
  */
-void fr_dl_dict_autofree(UNUSED dl_t const *module, UNUSED void *symbol, UNUSED void *user_ctx)
+void fr_dl_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-//	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
+	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
 }
 
 /** Callback to automatically resolve attributes and check the types are correct
@@ -2576,13 +2576,33 @@ static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
 	return 0;
 }
 
-static int _dict_global_free(fr_dict_gctx_t *ctx)
+static int _dict_global_free(fr_dict_gctx_t *gctx)
 {
+	fr_hash_iter_t	iter;
+	fr_dict_t	*dict;
+	bool		still_loaded = false;
+
+	if (gctx->internal) {
+		fr_strerror_printf("Refusing to free dict gctx.  Internal dictionary is still loaded");
+		still_loaded = true;
+	}
+
+	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
+	     dict;
+	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
+	     	(void)talloc_get_type_abort(dict, fr_dict_t);
+		fr_strerror_printf_push("Refusing to free dict gctx.  %s protocol dictionary is still loaded",
+					dict->root->name);
+		still_loaded = true;
+	}
+
+	if (still_loaded) return -1;
+
 	/*
 	 *	Set this to NULL just in case the caller tries to use
 	 *	dict_global_init() again.
 	 */
-	if (ctx == dict_gctx) dict_gctx = NULL;	/* In case the active context isn't this one */
+	if (gctx == dict_gctx) dict_gctx = NULL;	/* In case the active context isn't this one */
 
 	return 0;
 }
