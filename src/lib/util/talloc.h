@@ -157,6 +157,11 @@ static inline void *_talloc_list_get_type_abort(void *head, size_t offset, char 
 #  define talloc_get_type_abort_const talloc_get_type_abort
 #endif
 
+typedef struct talloc_child_ctx_s TALLOC_CHILD_CTX;
+
+TALLOC_CHILD_CTX	*talloc_child_ctx_init(TALLOC_CTX *ctx);
+TALLOC_CHILD_CTX	*talloc_child_ctx_alloc(TALLOC_CHILD_CTX *parent) CC_HINT(nonnull);
+
 #ifdef __cplusplus
 }
 #endif
