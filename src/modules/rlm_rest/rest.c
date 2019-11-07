@@ -1152,6 +1152,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		do {
 			if (max_attrs-- <= 0) {
 				RWDEBUG("At maximum attribute limit");
+				talloc_free(dst);
 				return max;
 			}
 
