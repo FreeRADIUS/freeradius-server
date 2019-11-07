@@ -1,0 +1,48 @@
+#
+#  Test vectors for DHCPv6 / Client Link-Layer Address Option
+#
+proto dhcpv6
+proto-dictionary dhcpv6
+
+#
+#  4.  DHCPv6 Client Link-Layer Address Option
+#
+#  The format of the DHCPv6 Client Link-Layer Address option is shown
+#  below.
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  | OPTION_CLIENT_LINKLAYER_ADDR  |           option-length       |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |   link-layer type (16 bits)   |                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+#  |               link-layer address (variable length)            |
+#  |                                                               |
+#  |                                                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  option-code:        OPTION_CLIENT_LINKLAYER_ADDR (79)
+#  option-length:      2 + length of link-layer address
+#  link-layer type:    Client link-layer address type.  The link-layer
+#                      type MUST be a valid hardware type assigned
+#                      by the IANA, as described in [RFC0826]
+#  link-layer address: Client link-layer address
+#
+
+# type: Ethernet
+encode-pair Client-Link-Layer-Type = Client-Link-Layer-Ethernet, Client-Link-Layer-Ethernet-Address = c0:ff:ee:c0:ff:ee
+match 00 4f 00 08 00 01 c0 ff ee c0 ff ee
+
+decode-pair -
+match Client-Link-Layer-Type = Client-Link-Layer-Ethernet, Client-Link-Layer-Ethernet-Address = c0:ff:ee:c0:ff:ee
+
+# type: Lanstar
+encode-pair Client-Link-Layer-Type = Client-Link-Layer-Lanstar, Client-Link-Layer-Lanstar-Address = 0xc0ffeec0ffee
+match 00 4f 00 08 00 09 c0 ff ee c0 ff ee
+
+decode-pair -
+match Client-Link-Layer-Type = Client-Link-Layer-Lanstar, Client-Link-Layer-Lanstar-Address = 0xc0ffeec0ffee
+
+count
+match 10
