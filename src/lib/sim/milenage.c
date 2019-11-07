@@ -476,7 +476,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 /*
  *  cc milenage.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_MILENAGE -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_milenage && ./test_milenage
  */
-#include <freeradius-devel/util/cutest.h>
+#include <freeradius-devel/util/acutest.h>
 
 void test_set_1(void)
 {

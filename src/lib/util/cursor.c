@@ -601,7 +601,7 @@ void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, siz
  *  cc cursor.c -g3 -Wall -DTESTING_CURSOR -I../../ -I../ -include ../include/build.h -l talloc -o test_cursor && ./test_cursor
  */
 #include <stddef.h>
-#include <freeradius-devel/util/cutest.h>
+#include <freeradius-devel/util/acutest.h>
 
 typedef struct {
 	char const *name;

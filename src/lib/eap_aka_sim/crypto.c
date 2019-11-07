@@ -1249,7 +1249,7 @@ void fr_aka_sim_crypto_keys_log(REQUEST *request, fr_aka_sim_keys_t *keys)
  */
 #include <stddef.h>
 #include <stdbool.h>
-#include <freeradius-devel/util/cutest.h>
+#include <freeradius-devel/util/acutest.h>
 
 /*
  *	EAP-SIM (RFC4186) GSM authentication vectors
