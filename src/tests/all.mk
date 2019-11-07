@@ -10,10 +10,10 @@ SECRET := testing123
 #
 .PHONY:
 raddb/test.conf:
-	@echo 'security {' >> $@
-	@echo '        allow_vulnerable_openssl = yes' >> $@
-	@echo '}' >> $@
-	@echo '$$INCLUDE radiusd.conf' >> $@
+	${Q}echo 'security {' >> $@
+	${Q}echo '        allow_vulnerable_openssl = yes' >> $@
+	${Q}echo '}' >> $@
+	${Q}echo '$$INCLUDE radiusd.conf' >> $@
 
 #
 #  Run "radiusd -C", looking for errors.
@@ -22,16 +22,16 @@ raddb/test.conf:
 # Don't molest STDERR as this may be used to receive output from a debugger.
 radiusd-c $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | $(BUILD_DIR)/tests build.raddb
 	@printf "radiusd -C... "
-	@if ! ${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+	${Q}if ! ${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
 		echo "${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test"; \
 		exit 1; \
 	fi
-	@rm -f raddb/test.conf
+	${Q}rm -f raddb/test.conf
 	@echo "ok"
-	@touch $@
+	${Q}touch $@
 
 #
 #  The tests are manually ordered for now, as it's a PITA to fix all
@@ -58,11 +58,11 @@ clean: clean.test
 #  Tests specifically for Travis. We do a LOT more than just
 #  the above tests
 travis-test: raddb/test.conf test
-	@FR_LIBRARY_PATH=${BUILD_DIR}/lib/local/.libs/ ${BUILD_DIR}/make/jlibtool --mode=execute ${BUILD_DIR}/bin/local/radiusd -xxxv -n test
-	@rm -f raddb/test.conf
-	@$(MAKE) install
-	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
-	@${sbindir}/radiusd -XC
+	${Q}FR_LIBRARY_PATH=${BUILD_DIR}/lib/local/.libs/ ${BUILD_DIR}/make/jlibtool --mode=execute ${BUILD_DIR}/bin/local/radiusd -xxxv -n test
+	${Q}rm -f raddb/test.conf
+	${Q}$(MAKE) install
+	${Q}perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
+	${Q}${sbindir}/radiusd -XC
 
 #
 #  The tests do a lot of rooting through files, which slows down non-test builds.
@@ -76,7 +76,7 @@ endif
 
 .PHONY: $(BUILD_DIR)/tests
 $(BUILD_DIR)/tests:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 #
 #  Include all of the autoconf definitions into the Make variable space

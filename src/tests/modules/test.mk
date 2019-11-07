@@ -50,9 +50,9 @@ endef
 #  ERROR line in the input.
 #
 $(BUILD_DIR)/tests/modules/%: src/tests/modules/%.unlang $(BUILD_DIR)/tests/modules/%.attrs $(TESTBINDIR)/unit_test_module | build.raddb
-	@mkdir -p $(dir $@)
+	${Q}mkdir -p $(dir $@)
 	@echo MODULE-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))
-	@if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xxx > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xxx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat "$@.log"; \
 			echo "# $@.log"; \
@@ -156,8 +156,8 @@ clean.test: clean.test.modules
 -include $(BUILD_DIR)/tests/modules/depends.mk
 
 $(BUILD_DIR)/tests/modules/depends.mk: $(MODULE_UNLANG) | $(BUILD_DIR)/tests/modules
-	@rm -f $@
-	@for x in $^; do \
+	${Q}rm -f $@
+	${Q}for x in $^; do \
 		y=`grep PRE $$x | awk '{ print $$3 }'`; \
 		if [ "$$y" != "" ]; then \
 			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/', | sed 's/.unlang//'`; \

@@ -129,7 +129,7 @@ clean.doc:
 #	Sanity checks
 #
 update-check.doc:
-	${Q}echo "TEST-DOC UPDATE XLAT & RADDB DATABASE"
+	@echo "TEST-DOC UPDATE XLAT & RADDB DATABASE"
 	${Q}./scripts/build/missing-xlat-doc.sh ${top_srcdir}/scripts/build/missing-xlat-doc.txt
 	${Q}./scripts/build/missing-raddb-mod-conf.sh > ${top_srcdir}/scripts/build/missing-raddb-mod-conf.txt
 
@@ -145,15 +145,15 @@ check.doc:
 
 .PHONY: test.doc
 test.doc:
-	${Q}echo TEST-DOC ALL
+	@echo TEST-DOC ALL
 	${Q}${MAKE} all.doc 3>&1 2>&1 > ${BUILD_DIR}/doc_stderr.log
 	${Q}if egrep -qi "(asciidoctor|pandoc).*(error|failed)" ${BUILD_DIR}/doc_stderr.log; then \
-		${Q}echo "TEST-DOC ERROR"                                                           \
+		echo "TEST-DOC ERROR";                                                           \
 		cat ${BUILD_DIR}/doc_stderr.log;                                                    \
 		exit 1;                                                                             \
 	fi
 	${Q}if egrep -qi '^warning:' ${BUILD_DIR}/doc_stderr.log; then \
-		${Q}echo "TEST-DOC DOXYGEN ERROR"                       \
+		echo "TEST-DOC DOXYGEN ERROR";                       \
 		cat ${BUILD_DIR}/doc_stderr.log;                        \
 		exit 1;                                                 \
 	fi
@@ -181,7 +181,7 @@ $(eval $(call ADD_INSTALL_RULE.file,doc/doxygen/html/index.html,$(R)/$(docdir)/d
 #  of the files over manually.
 #
 install.doxygen: $(R)/$(docdir)/doxygen/html/index.html
-	@cp -RP doc/doxygen/html $(R)/$(docdir)/doc/doxygen/html
+	${Q}cp -RP doc/doxygen/html $(R)/$(docdir)/doc/doxygen/html
 
 #
 #  Add the doxygen files to the install targt
@@ -286,11 +286,11 @@ doc/%.pdf: doc/%.md
 
 doc/man/%.8: doc/man/%.adoc
 	@echo MAN $^
-	@${Q}${ASCIIDCOCTOR} asciidoctor -b manpage $<
+	${Q}${ASCIIDCOCTOR} asciidoctor -b manpage $<
 
 doc/man/%.1: doc/man/%.adoc
 	@echo MAN $^
-	@${Q}${ASCIIDCOCTOR} asciidoctor -b manpage $<
+	${Q}${ASCIIDCOCTOR} asciidoctor -b manpage $<
 
 .PHONY: asciidoc html pdf clean clean.doc
 asciidoc: $(ADOC_FILES)
