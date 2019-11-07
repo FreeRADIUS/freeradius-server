@@ -852,6 +852,12 @@ int main(int argc, char *argv[])
 	fr_strerror();
 
 	/*
+	 *	Prevent anything from modifying the dictionaries
+	 *	they're now immutable.
+	 */
+	fr_dict_global_read_only();
+
+	/*
 	 *  Protect global memory - If something attempts
 	 *  to write to this memory we get a SIGBUS.
 	 */
@@ -865,11 +871,7 @@ int main(int argc, char *argv[])
 
 	fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
 
-	/*
-	 *	Prevent anything from modifying the dictionaries
-	 *	they're now immutable.
-	 */
-	fr_dict_global_read_only();
+
 
 	/*
 	 *  Process requests until HUP or exit.
