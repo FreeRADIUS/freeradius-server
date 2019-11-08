@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 ##
 ##  radsqlrelay.pl	This program tails a SQL logfile and forwards
 ##			the queries to a database server. Used to
@@ -11,6 +11,7 @@
 ##  Author:     Nicolas Baradakis <nicolas.baradakis@cegetel.net>
 ##
 ##  Copyright (C) 2005 Cegetel
+##  Copyright (C) 2019 Network RADIUS
 ##
 ##  This program is free software; you can redistribute it and/or
 ##  modify it under the terms of the GNU General Public License
@@ -27,13 +28,30 @@
 ##  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
 ##
 
+use strict;
+
 use DBI;
 use Fcntl;
 use Getopt::Std;
 use POSIX qw(:unistd_h :errno_h);
+use Time::HiRes qw(clock_gettime usleep CLOCK_MONOTONIC);
 
-use warnings;
-use strict;
+# We send watchdogs at half the indicated interval if the
+# Linux::Systemd::Daemon module is available and the WATCHDOG_USEC environment
+# variable is set by the systemd service manager.
+my $watchdog_usec;
+my $next_watchdog;
+eval {
+    require Linux::Systemd::Daemon;
+    Linux::Systemd::Daemon->import();
+    $watchdog_usec = $ENV{'WATCHDOG_USEC'} || undef;
+};
+
+# To synthetically test the watchdog functionality then uncomment these next
+# lines:
+#
+# $watchdog_usec = 30 *1000*1000;
+# sub sd_notify {}
 
 my $maxcollect = 100;    # tunable, works for MySQL!
 
@@ -41,10 +59,17 @@ my $lastinsert;
 my @values;
 
 my $need_exit = 0;
+my $debug = 0;
 
 sub got_signal()
 {
     $need_exit = 1;
+    sd_notify(stopping => 1, status => 'Signalled. Shutting down.') if $watchdog_usec;
+}
+
+sub debug
+{
+    print shift if $debug;
 }
 
 # /!\ OS-dependent structure
@@ -87,17 +112,46 @@ options:
 HERE
 }
 
+
+# Sleep for given amount of time, but don't oversleep the watchdog interval.
+# Send a watchdog notification if it is due.
+# interval can be given as 0 to just check whether a watchdog is due and send
+# it as necessary, in which case we do not yield.
+sub sleep_for ($)
+{
+    my $interval=shift;
+    $interval*=1000*1000;
+    if ($watchdog_usec) {
+        my $now=clock_gettime(CLOCK_MONOTONIC)*1000*1000;
+        if ($now >= $next_watchdog) {
+            $next_watchdog=$now+($watchdog_usec / 2);
+            debug "Sending watchdog\n";
+            sd_notify(watchdog => 1);
+            debug "Next watchdog due in ".(($next_watchdog-$now)/1000/1000)." secs.\n";
+        }
+        # Don't oversleep!
+        $interval=$next_watchdog-$now if $next_watchdog-$now < $interval;
+    }
+    return unless $interval;  # Don't yield if we are not asked to sleep
+    debug "Sleeping for ".($interval/1000/1000)." secs.\n";
+    usleep ($interval);
+}
+
+
 sub connect_wait($)
 {
     my $dbinfo = shift;
     my $dbh;
+    debug "Connecting to " . $dbinfo->{base};
     while (!$dbh) {
+        debug ".";
 	$dbh = DBI->connect($dbinfo->{base}, $dbinfo->{user}, $dbinfo->{pass},
 			    { RaiseError => 0, PrintError => 0,
 			      AutoCommit => 1 });
-	sleep (1) if !$dbh;
+	sleep_for (1) if !$dbh;
 	exit if $need_exit;
     }
+    debug "\n";
     $dbinfo->{handle} = $dbh;
 }
 
@@ -109,6 +163,7 @@ sub process_file($$)
 
     sub do_inserts($) {
         my $dbinfo = shift;
+        debug "I";
         if (scalar(@values) > 0) {
             my $query = $lastinsert . " ";
             $query .= join(" ), ( ",@values);
@@ -120,49 +175,63 @@ sub process_file($$)
 
     sub do_query($$) {
         my ($dbinfo,$query) = @_;
+        debug ">";
         until ($dbinfo->{handle}->do($query)) {
+	    # If an error occured and we're disconnected then try to recomnnect
+	    # and redo the query, otherwise give up so we don't become stuck.
             print $dbinfo->{handle}->errstr."\n";
             if ($dbinfo->{handle}->ping) {
-		sleep (1);
+		sleep_for (1);
+		last;
             } else {
 		print "error: Lost connection to database\n";
 		$dbinfo->{handle}->disconnect;
 		connect_wait($dbinfo);
             }
         }
+        sleep_for(0) if $watchdog_usec;  # Send a watchdog if it is due
     }
 
     unless (-e $path.'.work') {
+        debug "Waiting for $path\n";
 	until (rename($path, $path.'.work')) {
 	    if ($! == ENOENT) {
-		sleep(1);
+		sleep_for(1);
 		return if $need_exit;
 	    } else {
 		print STDERR "error: Couldn't move $path to $path.work: $!\n";
 		exit 1;
 	    }
 	}
+        debug "Renamed $path to $path.work\n";
     }
 
+    debug "\nOpening $path.work\n";
     open(FILE, "+< $path.work") or die "error: Couldn't open $path.work: $!\n";
+    debug "Getting file lock\n";
     setlock(\*FILE) or die "error: Couldn't lock $path.work: $!\n";
 
     $lastinsert = "";
     @values = ();
 
+    debug "Reading: ";
+    my $lines = 0;
     while (<FILE>) {
         chomp (my $line = $_);
+        $lines++;
 
         if (!($line =~ /^\s*insert\s+into\s+`?\w+`?\s+(?:\(.*?\)\s+)?
                             values\s*\(.*\)\s*;\s*$/ix)) {
             # This is no INSERT, so start new collection
             do_inserts($dbinfo);
+            debug ".";
             $lastinsert = "";
             # must output this line
             do_query($dbinfo, "$line");
 
 	} else {
             # This is an INSERT, so collect it
+            debug "+";
             my $insert = $line;
             my $values = $line;
             $insert =~ s/^\s*(insert\s+into\s+`?\w+`?\s+(?:\(.*?\)\s+)?
@@ -180,13 +249,18 @@ sub process_file($$)
 
         # limit to $maxcollect collected lines
         if (scalar(@values) >= $maxcollect) {
+            debug "hit maxcollect limit, doing inserts";
             do_inserts($dbinfo);
         }
     }
 
     # Cleanup
+    debug "\nNo more lines to read, doing any final inserts: ";
     do_inserts($dbinfo);
+    debug "\n";
 
+    debug "Processed $lines lines\n";
+    debug "Removing and closing $path.work\n\n";
     unlink($path.'.work');
     close(FILE); # and unlock
 }
@@ -209,6 +283,7 @@ if ($args{'?'}) {
     usage();
     exit 0;
 }
+$debug = 1 if $args{'x'};
 
 my $data_source;
 if (lc($args{d}) eq 'mysql') {
@@ -239,6 +314,13 @@ if($args{f}) {
 $SIG{INT} = \&got_signal;
 $SIG{TERM} = \&got_signal;
 
+if ($watchdog_usec) {
+    debug "Watchdog set to $watchdog_usec\n";
+    my $now=clock_gettime(CLOCK_MONOTONIC)*1000*1000;
+    $next_watchdog=$now+($watchdog_usec / 2);
+    sd_notify(ready => 1, status => 'Started');
+}
+
 my %dbinfo = (
 	      base => $data_source,
 	      user => $args{u},
@@ -251,8 +333,10 @@ my $path = shift @ARGV;
 until ($need_exit) {
     process_file(\%dbinfo, $path);
     last if ($args{1} || $need_exit);
-    sleep(10);
+    debug "Sleeping\n";
+    sleep_for(10);
 }
 
+debug "Disconnecting from database\n";
 $dbinfo{handle}->disconnect;
 
