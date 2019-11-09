@@ -404,7 +404,10 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	 *	And the transaction ID.
 	 */
 	vp = fr_pair_afrom_da(ctx, attr_transaction_id);
-	if (!vp) return -1;
+	if (!vp) {
+		fr_cursor_free_list(&cursor);
+		return -1;
+	}
 
 	/*
 	 *	The internal attribute is 64-bits, but the ID is 24 bits.
@@ -431,6 +434,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 		slen = fr_dhcpv6_decode_option(ctx, &cursor, dict_dhcpv6, p, (end - p), &packet_ctx);
 		if (slen < 0) {
 			talloc_free(packet_ctx.tmp_ctx);
+			fr_cursor_free_list(&cursor);
 			return slen;
 		}
 
@@ -440,6 +444,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 		 */
 		 if (!fr_cond_assert(slen <= (end - p))) {
 			 talloc_free(packet_ctx.tmp_ctx);
+			 fr_cursor_free_list(&cursor);
 			 return -1;
 		 }
 
@@ -524,8 +529,6 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	return p - packet;
 }
-
-
 
 int fr_dhcpv6_global_init(void)
 {
