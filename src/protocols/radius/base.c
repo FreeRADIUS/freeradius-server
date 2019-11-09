@@ -46,6 +46,8 @@ fr_dict_autoload_t libfreeradius_radius_dict[] = {
 	{ NULL }
 };
 
+fr_dict_attr_t const *attr_packet_type;
+fr_dict_attr_t const *attr_packet_authentication_vector;
 fr_dict_attr_t const *attr_raw_attribute;
 fr_dict_attr_t const *attr_chap_challenge;
 fr_dict_attr_t const *attr_chargeable_user_identity;
@@ -56,6 +58,8 @@ fr_dict_attr_t const *attr_vendor_specific;
 
 extern fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_packet_authentication_vector, .name = "Packet-Authentication-Vector", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_raw_attribute, .name = "Raw-Attribute", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chargeable_user_identity, .name = "Chargeable-User-Identity", .type = FR_TYPE_OCTETS, .dict = &dict_radius },

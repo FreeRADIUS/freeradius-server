@@ -1639,16 +1639,41 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 
 static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
-	ssize_t rcode;
 	size_t packet_len = data_len;
 	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
+	decode_fail_t reason;
+	fr_cursor_t cursor;
+	VALUE_PAIR *vp;
 
-	if (!fr_radius_ok(data, &packet_len, 200, false, NULL)) return -1;
+	if (!fr_radius_ok(data, &packet_len, 200, false, &reason)) {
+		return -1;
+	}
 
-	rcode = fr_radius_decode(ctx, data, packet_len, test_ctx->vector - 4, /* decode adds 4 to this */
-				 test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, vps);
+	*vps = NULL;
+	fr_cursor_init(&cursor, vps);
 
-	return rcode;
+	/*
+	 *	Decode the header
+	 */
+	vp = fr_pair_afrom_da(ctx, attr_packet_type);
+	if (!vp) {
+		fr_strerror_printf("Failed creating Packet-Type");
+		return -1;
+	}
+	vp->vp_uint32 = data[0];
+	fr_cursor_append(&cursor, vp);
+
+	vp = fr_pair_afrom_da(ctx, attr_packet_authentication_vector);
+	if (!vp) {
+		fr_strerror_printf("Failed creating Packet-Authentication-Vector");
+		return -1;
+	}
+	(void) fr_pair_value_memcpy(vp, data + 4, 16, true);
+	fr_cursor_append(&cursor, vp);
+	vp = fr_cursor_tail(&cursor);
+
+	return fr_radius_decode(ctx, data, packet_len, test_ctx->vector - 4, /* decode adds 4 to this */
+				test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, &vp->next);
 }
 
 /*
