@@ -106,9 +106,13 @@ int LLVMFuzzerInitialize(UNUSED int *argc, UNUSED char ***argv)
 
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 {
+	TALLOC_CTX *ctx = talloc_init("fuzzer");
+	VALUE_PAIR *vp = NULL;
+
 	if (!init) LLVMFuzzerInitialize(0, NULL);
 
-	tp->func(decode_ctx, buf, len);
+	tp->func(ctx, &vp, buf, len, decode_ctx);
+	talloc_free(ctx);
 
 	return 0;
 }

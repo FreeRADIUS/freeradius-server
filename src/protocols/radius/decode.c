@@ -1628,7 +1628,6 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	if (fr_radius_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
-	test_ctx->tmp_ctx = talloc(ctx, uint8_t);
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
 	test_ctx->vector = vector;
 	talloc_set_destructor(test_ctx, _test_ctx_free);
@@ -1638,19 +1637,16 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_radius_decode_proto(void *proto_ctx, uint8_t const *data, size_t data_len)
+static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	ssize_t rcode;
 	size_t packet_len = data_len;
-	VALUE_PAIR *vp = NULL;
 	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
 
 	if (!fr_radius_ok(data, &packet_len, 200, false, NULL)) return -1;
 
-	rcode = fr_radius_decode(test_ctx, data, packet_len, test_ctx->vector - 4, /* decode adds 4 to this */
-				 test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, &vp);
-	fr_pair_list_free(&vp);
-	talloc_free_children(test_ctx->tmp_ctx);
+	rcode = fr_radius_decode(ctx, data, packet_len, test_ctx->vector - 4, /* decode adds 4 to this */
+				 test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, vps);
 
 	return rcode;
 }
