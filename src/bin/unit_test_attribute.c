@@ -1241,18 +1241,103 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	RETURN_OK(p - data);
 }
 
-/** Incomplete - Will be used to decode packets
- *
- */
-static size_t command_decode_proto(command_result_t *result, UNUSED command_ctx_t *cc,
-				   UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+static size_t command_decode_proto(command_result_t *result, command_ctx_t *cc,
+				  char *data, size_t data_used, char *in, size_t inlen)
 {
-	fr_test_point_proto_decode_t *tp = NULL;
+	fr_test_point_proto_decode_t	*tp = NULL;
+	fr_cursor_t 	cursor;
+	void		*decoder_ctx = NULL;
+	char		*p, *end;
+	uint8_t		*to_dec;
+	uint8_t		*to_dec_end;
+	VALUE_PAIR	*head = NULL, *vp;
+	ssize_t		slen;
 
-	load_test_point_by_command((void **)&tp, in, "tp_decode");
-	if (!tp) RETURN_PARSE_ERROR(0);
+	p = in;
 
-	RETURN_OK(0);
+	slen = load_test_point_by_command((void **)&tp, in, "tp_decode_proto");
+	if (!tp) {
+		fr_strerror_printf_push("Failed locating decoder testpoint");
+		RETURN_COMMAND_ERROR();
+	}
+
+	p += slen;
+	fr_skip_whitespace(p);
+
+	if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, cc->tmp_ctx) < 0)) {
+		fr_strerror_printf_push("Failed initialising decoder testpoint");
+		RETURN_COMMAND_ERROR();
+	}
+
+	/*
+	 *	Hack because we consume more of the command string
+	 *	so we need to check this again.
+	 */
+	if (*p == '-') {
+		p = data;
+		inlen = data_used;
+	}
+
+	/*
+	 *	Decode hex from input text
+	 */
+	slen = hex_to_bin((uint8_t *)data, COMMAND_OUTPUT_MAX, p, inlen);
+	if (slen <= 0) {
+		CLEAR_TEST_POINT(cc);
+		RETURN_PARSE_ERROR(-(slen));
+	}
+
+	to_dec = (uint8_t *)data;
+	to_dec_end = to_dec + slen;
+
+	slen = tp->func(cc->tmp_ctx, &head,
+			(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
+	if (slen < 0) {
+		fr_pair_list_free(&head);
+		CLEAR_TEST_POINT(cc);
+		RETURN_OK_WITH_ERROR();
+	}
+
+	/*
+	 *	Set p to be the output buffer
+	 */
+	p = data;
+	end = p + COMMAND_OUTPUT_MAX;
+
+	/*
+	 *	Output may be an error, and we ignore
+	 *	it if so.
+	 */
+	if (head) {
+		fr_cursor_init(&cursor, &head);
+
+		for (vp = fr_cursor_head(&cursor);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			size_t len;
+
+			len = fr_pair_snprint(p, end - p, vp);
+			if (is_truncated(len, end - p)) {
+			oob:
+				fr_strerror_printf("Out of output buffer space");
+				CLEAR_TEST_POINT(cc);
+				RETURN_COMMAND_ERROR();
+			}
+			p += len;
+
+			if (vp->next) {
+				len = strlcpy(p, ", ", end - p);
+				if (is_truncated(len, end - p)) goto oob;
+				p += len;
+			}
+		}
+		fr_pair_list_free(&head);
+	} else { /* zero-length to_decibute */
+		*p = '\0';
+	}
+
+	CLEAR_TEST_POINT(cc);
+	RETURN_OK(p - data);
 }
 
 /** Parse a dictionary attribute, writing "ok" to the data buffer is everything was ok
