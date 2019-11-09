@@ -31,6 +31,8 @@
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/protocol/dhcpv6/rfc3315.h>
 #include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
 
@@ -440,6 +442,79 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	talloc_free(packet_ctx.tmp_ctx);
 	return packet_len;
 }
+
+
+/** Decode a DHCPv6 packet
+ *
+ */
+ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
+			 int msg_type, VALUE_PAIR *vps)
+{
+	VALUE_PAIR *vp;
+	fr_dict_attr_t const *root;
+	uint8_t *p, *end;
+	ssize_t slen;
+	fr_cursor_t cursor;
+	fr_dhcpv6_encode_ctx_t packet_ctx;
+
+	if (packet_len < 4) return -1;
+
+	root = fr_dict_root(dict_dhcpv6);
+
+	if (!msg_type) {
+		vp = fr_pair_find_by_da(vps, attr_packet_type, TAG_ANY);
+		if (vp) msg_type = vp->vp_uint32;
+	}
+
+	if ((msg_type <= 0) || (msg_type > 255)) {
+		fr_strerror_printf("Invalid message type %d", msg_type);
+		return -1;
+	}
+
+	packet[0] = msg_type;
+
+	/*
+	 *	Copy over original transaction ID if we have it.
+	 */
+	if (original) {
+		memcpy(packet + 1, original + 1, 3);
+	} else {
+		uint32_t id;
+
+		/*
+		 *	We can set an XID, or we can pick a random one.
+		 */
+		vp = fr_pair_find_by_da(vps, attr_transaction_id, TAG_ANY);
+		if (vp) {
+			id = vp->vp_uint32;
+		} else {
+			id = fr_rand();
+		}
+
+		packet[1] = (id >> 16) & 0xff;
+		packet[2] = (id >> 8) & 0xff;
+		packet[3] = id & 0xff;
+	}
+
+	packet_ctx.root = root;
+
+	fr_cursor_init(&cursor, &vps);
+	p = packet + 4;
+	end = packet + packet_len;
+
+	while (p < end) {
+		slen = fr_dhcpv6_encode_option(p, end - p, &cursor, &packet_ctx);
+		if (slen == PAIR_ENCODE_SKIP) continue;
+
+		if (slen < 0) return slen - (p - packet);
+
+		p += slen;
+	}
+
+	return p - packet;
+}
+
+
 
 int fr_dhcpv6_global_init(void)
 {

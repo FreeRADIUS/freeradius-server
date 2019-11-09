@@ -55,8 +55,11 @@ size_t		fr_dhcpv6_option_len(VALUE_PAIR const *vp);
 bool		fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 			     uint32_t max_attributes);
 
-bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx,
-		      bool from_server);
+bool		fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx,
+				 bool from_server);
+
+ssize_t		fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
+				 int msg_type, VALUE_PAIR *vps);
 
 ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 				 VALUE_PAIR **vps);
