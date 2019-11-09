@@ -851,8 +851,8 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 /*
  *	Test points
  */
-extern fr_test_point_pair_encode_t dhcpv6_tp_encode;
-fr_test_point_pair_encode_t dhcpv6_tp_encode = {
+extern fr_test_point_pair_encode_t dhcpv6_tp_encode_pair;
+fr_test_point_pair_encode_t dhcpv6_tp_encode_pair = {
 	.test_ctx	= encode_test_ctx,
 	.func		= fr_dhcpv6_encode_option
 };

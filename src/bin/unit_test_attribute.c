@@ -1385,7 +1385,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 	uint8_t		*enc_p = encoded, *enc_end = enc_p + sizeof(encoded);
 	VALUE_PAIR	*head = NULL, *vp;
 
-	slen = load_test_point_by_command((void **)&tp, p, "tp_encode");
+	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_pair");
 	if (!tp) {
 		fr_strerror_printf_push("Failed locating encode testpoint");
 		CLEAR_TEST_POINT(cc);
