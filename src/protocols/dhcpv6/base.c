@@ -208,8 +208,7 @@ static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 		 *	The DUID MUST exist.
 		 */
 		if (!packet_ctx->duid) return false;
-		if (!duid_match(option, packet_ctx)) return false;
-		break;
+		return duid_match(option, packet_ctx);
 
 	case FR_PACKET_TYPE_VALUE_REPLY:
 		transaction_id = (packet[1] << 16) | (packet[2] << 8) | packet[3];
@@ -226,8 +225,7 @@ static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 			return false;
 		}
 
-		if (!duid_match(option, packet_ctx)) return false;
-		return false;
+		return duid_match(option, packet_ctx);
 
 	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
 		if (!option_find(options, end, FR_SERVER_ID)) return false;
@@ -303,8 +301,7 @@ static bool server_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 		option = option_find(options, end, FR_SERVER_ID);
 		if (!option) return false;
 
-		if (!duid_match(option, packet_ctx)) return false;
-		break;
+		return duid_match(option, packet_ctx);
 
 	case FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST:
 		option = option_find(options, end, FR_SERVER_ID);
