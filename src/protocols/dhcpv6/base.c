@@ -385,11 +385,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	vp = fr_pair_afrom_da(ctx, attr_packet_type);
 	if (!vp) return -1;
 
-	if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, packet, 1, false) < 0) {
-		fr_pair_list_free(&vp);
-		return -1;
-	}
-
+	vp->vp_uint32 = packet[0];
 	vp->type = VT_DATA;
 	fr_cursor_append(&cursor, vp);
 
@@ -460,7 +456,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 }
 
 
-/** Decode a DHCPv6 packet
+/** Encode a DHCPv6 packet
  *
  */
 ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
@@ -518,7 +514,7 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	p = packet + 4;
 	end = packet + packet_len;
 
-	while (p < end) {
+	while ((p < end) && (fr_cursor_current(&cursor) != NULL)) {
 		slen = fr_dhcpv6_encode_option(p, end - p, &cursor, &packet_ctx);
 		if (slen == PAIR_ENCODE_SKIP) continue;
 
