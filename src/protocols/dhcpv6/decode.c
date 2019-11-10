@@ -510,15 +510,12 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 
 static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	ssize_t rcode;
 	size_t packet_len = data_len;
 //	fr_dhcpv6_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv6_decode_ctx_t);
 
 	if (!fr_dhcpv6_ok(data, packet_len, 200)) return -1;
 
-	rcode = fr_dhcpv6_decode(ctx, data, packet_len, vps);
-
-	return rcode;
+	return fr_dhcpv6_decode(ctx, data, packet_len, vps);
 }
 
 
