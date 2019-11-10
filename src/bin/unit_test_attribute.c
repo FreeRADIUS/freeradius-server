@@ -1529,18 +1529,49 @@ static size_t command_encode_raw(command_result_t *result, UNUSED command_ctx_t 
 	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, encoded, len));
 }
 
-/** Incomplete - Will be used to encode packets
- *
- */
-static size_t command_encode_proto(command_result_t *result, UNUSED command_ctx_t *cc,
-				   UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+static size_t command_encode_proto(command_result_t *result, command_ctx_t *cc,
+				  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	fr_test_point_proto_encode_t *tp = NULL;
+	fr_test_point_proto_encode_t	*tp = NULL;
 
-	load_test_point_by_command((void **)&tp, in, "tp_encode");
-	if (!tp) RETURN_PARSE_ERROR(0);
+	void		*encoder_ctx = NULL;
+	ssize_t		slen;
+	char		*p = in;
 
-	RETURN_OK(0);
+	uint8_t		encoded[(COMMAND_OUTPUT_MAX / 2) - 1];
+	VALUE_PAIR	*head = NULL;
+
+	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_proto");
+	if (!tp) {
+		fr_strerror_printf_push("Failed locating encode testpoint");
+		CLEAR_TEST_POINT(cc);
+		RETURN_COMMAND_ERROR();
+	}
+
+	p += ((size_t)slen);
+	fr_skip_whitespace(p);
+	if (tp->test_ctx && (tp->test_ctx(&encoder_ctx, cc->tmp_ctx) < 0)) {
+		fr_strerror_printf_push("Failed initialising encoder testpoint");
+		CLEAR_TEST_POINT(cc);
+		RETURN_COMMAND_ERROR();
+	}
+
+	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->active_dict ? cc->active_dict : cc->config->dict, p, &head) != T_EOL) {
+		CLEAR_TEST_POINT(cc);
+		RETURN_OK_WITH_ERROR();
+	}
+
+	slen = tp->func(cc->tmp_ctx, head, encoded, sizeof(encoded), encoder_ctx);
+	fr_pair_list_free(&head);
+	if (slen < 0) {
+		CLEAR_TEST_POINT(cc);
+		RETURN_OK_WITH_ERROR();
+	}
+	fr_pair_list_free(&head);
+
+	CLEAR_TEST_POINT(cc);
+
+	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, encoded, slen));
 }
 
 /** Command eof

@@ -848,6 +848,14 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
+static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+{
+//	fr_dhcpv6_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv6_decode_ctx_t);
+
+
+	return fr_dhcpv6_encode(data, data_len, NULL, 0, vps);
+}
+
 /*
  *	Test points
  */
@@ -855,4 +863,10 @@ extern fr_test_point_pair_encode_t dhcpv6_tp_encode_pair;
 fr_test_point_pair_encode_t dhcpv6_tp_encode_pair = {
 	.test_ctx	= encode_test_ctx,
 	.func		= fr_dhcpv6_encode_option
+};
+
+extern fr_test_point_proto_encode_t dhcpv6_tp_encode_proto;
+fr_test_point_proto_encode_t dhcpv6_tp_encode_proto = {
+	.test_ctx	= encode_test_ctx,
+	.func		= fr_dhcpv6_encode_proto
 };
