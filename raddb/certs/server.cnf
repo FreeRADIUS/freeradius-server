@@ -63,5 +63,8 @@ crlDistributionPoints	= URI:http://www.example.com/example_ca.crl
 authorityInfoAccess	= OCSP;URI:http://www.example.org/ocsp
 subjectAltName		= @alt_names
 
+# NAI Realm from RFC 7585
+1.3.6.1.5.5.7.0.85	= ASN1:UTF8String:"*.example.com"
+
 [ alt_names ]
 DNS.1 = radius.example.org
