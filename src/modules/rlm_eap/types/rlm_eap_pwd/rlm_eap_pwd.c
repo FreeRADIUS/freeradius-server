@@ -49,15 +49,6 @@ static CONF_PARSER pwd_module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int mod_detach (void *arg)
-{
-	eap_pwd_t *inst;
-
-	inst = (eap_pwd_t *) arg;
-
-	return 0;
-}
-
 static int mod_instantiate (CONF_SECTION *cs, void **instance)
 {
 	eap_pwd_t *inst;
@@ -635,6 +626,5 @@ rlm_eap_module_t rlm_eap_pwd = {
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.session_init	= mod_session_init,		/* Create the initial request */
 	.process	= mod_process,		/* Process next round of EAP method */
-	.detach		= mod_detach		/* Destroy the submodule instance */
 };
 
