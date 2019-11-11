@@ -82,7 +82,7 @@ typedef struct {
 	char		*directory;		//!< directory name we're reading
 
 	CONF_SECTION	*parent;		//!< which started this file
-	CONF_SECTION	*current;		//!< sub-section we're reaeding
+	CONF_SECTION	*current;		//!< sub-section we're reading
 	CONF_SECTION	*special;		//!< map / update section
 
 	int		braces;
@@ -99,6 +99,7 @@ typedef struct {
 	char		**buff;			//!< buffers for reading / parsing
 	size_t		bufsize;		//!< size of the buffers
 	int		depth;			//!< stack depth
+	char const	*ptr;			//!< current parse pointer
 	cf_stack_frame_t frame[MAX_STACK];	//!< stack frames
 } cf_stack_t;
 
@@ -1267,6 +1268,340 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	return rule->func(parent, NULL, NULL, cf_pair_to_item(cp), rule);
 }
 
+static int parse_input(cf_stack_t *stack)
+{
+	FR_TOKEN	name1_token, name2_token, value_token, op_token;
+	CONF_SECTION	*parent;
+	char const	*value;
+	char		*buff[4];
+	CONF_SECTION	*css;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	char const	*ptr = stack->ptr;
+
+	/*
+	 *	Short names are nicer.
+	 */
+	buff[0] = stack->buff[0];
+	buff[1] = stack->buff[1];
+	buff[2] = stack->buff[2];
+	buff[3] = stack->buff[3];
+	parent = frame->current;
+
+	/*
+	 *	Catch end of a subsection.
+	 */
+	if (*ptr == '}') {
+		/*
+		 *	We're already at the parent section
+		 *	which loaded this file.  We cannot go
+		 *	back up another level.
+		 *
+		 *	This limitation means that we cannot
+		 *	put half of a CONF_SECTION in one
+		 *	file, and then the second half in
+		 *	another file.  That's fine.
+		 */
+		if (parent == frame->parent) {
+			ERROR("%s[%d]: Too many closing braces", frame->filename, frame->lineno);
+			return -1;
+		}
+
+		rad_assert(frame->braces > 0);
+		frame->braces--;
+
+		/*
+		 *	Merge the template into the existing
+		 *	section.  parent uses more memory, but
+		 *	means that templates now work with
+		 *	sub-sections, etc.
+		 */
+		if (!cf_template_merge(parent, parent->template)) return -1;
+
+		if (parent == frame->special) frame->special = NULL;
+
+		frame->current = parent = cf_item_to_section(parent->item.parent);
+		ptr++;
+		stack->ptr = ptr;
+		return 1;
+	}
+
+	/*
+	 *	Found nothing to get excited over.  It MUST be
+	 *	a key word.
+	 */
+	if (cf_get_token(parent, &ptr, &name1_token, buff[1], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return -1;
+	}
+
+	/*
+	 *	parent single word is done.  Create a CONF_PAIR.
+	 */
+	if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
+		value_token = T_INVALID;
+		op_token = T_OP_EQ;
+		value = NULL;
+		goto do_set;
+	}
+
+	/*
+	 *	Handle if/elsif specially.  parent function will
+	 *	update "ptr" to be the next thing that we
+	 *	need.
+	 */
+	if ((strcmp(buff[1], "if") == 0) || (strcmp(buff[1], "elsif") == 0)) {
+		css = process_if(parent, &ptr, buff, frame->filename, frame->lineno);
+		if (!css) return -1;
+		goto add_section;
+	}
+
+	/*
+	 *	"map" sections have three arguments!
+	 *
+	 *	map NAME ARGUMENT { ... }
+	 */
+	if ((strcmp(buff[1], "map") == 0) && (*ptr != '{')) {
+		css = process_map(parent, &ptr, buff, frame->filename, frame->lineno);
+		if (!css) return -1;
+
+		frame->special = css;
+		goto add_section;
+	}
+
+	/*
+	 *	A common pattern is: name { ...}
+	 *	Check for it and skip ahead.
+	 */
+	if (*ptr == '{') {
+		ptr++;
+		name2_token = T_INVALID;
+		value = NULL;
+		goto alloc_section;
+	}
+
+	/*
+	 *	We allow certain kinds of strings, attribute
+	 *	references (i.e. foreach) and bare names that
+	 *	start with a letter.  We also allow UTF-8
+	 *	characters.
+	 *
+	 *	Once we fix the parser to be less generic, we
+	 *	can tighten these rules.  Right now, it's
+	 *	*technically* possible to define a module with
+	 *	&foo or "with spaces" as the second name.
+	 *	Which seems bad.  But the old parser allowed
+	 *	it, so oh well.
+	 */
+	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || (*ptr == '&') ||
+	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr)) {
+		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
+				 frame->filename, frame->lineno) < 0) {
+			return -1;
+		}
+
+		if (*ptr != '{') {
+			ERROR("%s[%d]: Parse error: expected '{', got text \"%s\"",
+			      frame->filename, frame->lineno, ptr);
+			return -1;
+		}
+		ptr++;
+		value = buff[2];
+
+	alloc_section:
+		css = cf_section_alloc(parent, parent, buff[1], value);
+		if (!css) {
+			ERROR("%s[%d]: Failed allocating memory for section",
+			      frame->filename, frame->lineno);
+			return -1;
+		}
+
+		css->item.filename = frame->filename;
+		css->item.lineno = frame->lineno;
+		css->name2_quote = name2_token;
+
+		/*
+		 *	Hack for better error messages in
+		 *	nested sections.  parent information
+		 *	should really be put into a parser
+		 *	struct, as with tmpls.
+		 */
+		if (!frame->special && ((strcmp(css->name1, "update") == 0) ||
+					(strcmp(css->name1, "filter") == 0))) {
+			frame->special = css;
+		}
+
+	add_section:
+		cf_item_add(parent, &(css->item));
+
+		/*
+		 *	The current section is now the child section.
+		 */
+		frame->current = parent = css;
+		frame->braces++;
+		css = NULL;
+		stack->ptr = ptr;
+		return 1;
+	}
+
+	/*
+	 *	The next thing MUST be an operator.  All
+	 *	operators start with one of these characters,
+	 *	so we check for them first.
+	 */
+	if (!((*ptr == '=') || (*ptr == '!') || (*ptr == '>') || (*ptr == '<') ||
+	      (*ptr == '-') || (*ptr == '+') || (*ptr == ':'))) {
+		ERROR("%s[%d]: Parse error at unexpected text: %s",
+		      frame->filename, frame->lineno, ptr);
+		return -1;
+	}
+
+	/*
+	 *	If we're not parsing a section, then the next
+	 *	token MUST be an operator.
+	 */
+	name2_token = gettoken(&ptr, buff[2], stack->bufsize, false);
+	switch (name2_token) {
+	case T_OP_ADD:
+	case T_OP_SUB:
+	case T_OP_NE:
+	case T_OP_GE:
+	case T_OP_GT:
+	case T_OP_LE:
+	case T_OP_LT:
+	case T_OP_CMP_EQ:
+	case T_OP_CMP_FALSE:
+		if (!parent || !frame->special) {
+			ERROR("%s[%d]: Invalid operator in assignment",
+			      frame->filename, frame->lineno);
+			return -1;
+		}
+		/* FALL-THROUGH */
+
+	case T_OP_EQ:
+	case T_OP_SET:
+		fr_skip_whitespace(ptr);
+		op_token = name2_token;
+		break;
+
+	default:
+		ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
+		      frame->filename, frame->lineno, buff[1], fr_table_str_by_value(fr_tokens_table, name2_token, "<INVALID>"));
+
+		return -1;
+	}
+
+	/*
+	 *	MUST have something after the operator.
+	 */
+	if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';')) {
+		ERROR("%s[%d]: Syntax error: Expected to see a value after the operator '%s': %s",
+		      frame->filename, frame->lineno, buff[2], ptr);
+		return -1;
+	}
+
+	/*
+	 *	foo = { ... } for nested groups.
+	 *
+	 *	As a special case, we allow sub-sections after '=', etc.
+	 *
+	 *	This syntax is only for inside of "update"
+	 *	sections, and for attributes of type "group".
+	 *	But the parser isn't (yet) smart enough to
+	 *	know about that context.  So we just silently
+	 *	allow it everywhere.
+	 */
+	if (*ptr == '{') {
+		if (!frame->special) {
+			ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
+			      frame->filename, frame->lineno);
+			return -1;
+		}
+
+		if (*buff[1] != '&') {
+			ERROR("%s[%d]: Parse error: Expected '&' before attribute name",
+			      frame->filename, frame->lineno);
+			return -1;
+		}
+
+		if (!fr_assignment_op[name2_token]) {
+			ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for group",
+			      frame->filename, frame->lineno, buff[2]);
+			return -1;
+		}
+
+		/*
+		 *	Now that we've peeked ahead to
+		 *	see the open brace, parse it
+		 *	for real.
+		 */
+		ptr++;
+
+		/*
+		 *	Leave name2_token as the
+		 *	operator (as a hack).  But
+		 *	note that there's no actual
+		 *	name2.  We'll deal with that
+		 *	situation later.
+		 */
+		value = NULL;
+		goto alloc_section;
+	}
+
+	/*
+	 *	Parse the value for a CONF_PAIR.
+	 */
+	if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return -1;
+	}
+	value = buff[2];
+
+	/*
+	 *	Add parent CONF_PAIR to our CONF_SECTION
+	 */
+do_set:
+	if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], frame->filename, frame->lineno) < 0) return -1;
+
+	fr_skip_whitespace(ptr);
+
+	/*
+	 *	Skip semicolon if we see it after a
+	 *	CONF_PAIR.  Also allow comma for
+	 *	backwards compatablity with secret
+	 *	things in v3.
+	 */
+	if ((*ptr == ';') || (*ptr == ',')) {
+		ptr++;
+		stack->ptr = ptr;
+		return 1;
+	}
+
+	/*
+	 *	Closing brace is allowed after a CONF_PAIR
+	 *	definition.
+	 */
+	if (*ptr == '}') {
+		stack->ptr = ptr;
+		return 1;
+	}
+
+	/*
+	 *	Anything OTHER than EOL or comment is a syntax
+	 *	error.
+	 */
+	if (*ptr && (*ptr != '#')) {
+		ERROR("%s[%d]: Syntax error: Unexpected text: %s",
+		      frame->filename, frame->lineno, ptr);
+		return -1;
+	}
+
+	/*
+	 *	Since we're at EOL or comment, just drop the
+	 *	text, and go read another line of text.
+	 */
+	return 0;
+}
+
 /*
  *	Read a configuration file or files.
  */
@@ -1274,14 +1609,13 @@ static int cf_file_include(cf_stack_t *stack)
 {
 	CONF_SECTION	*parent, *css;
 	char const	*ptr;
-	char const	*value;
 
-	FR_TOKEN	name1_token, name2_token, value_token, op_token;
 	bool		has_spaces;
 	char		*cbuff;
 	size_t		len;
 	char		*buff[4];
 	cf_stack_frame_t	*frame;
+	int		rcode;
 
 	/*
 	 *	Short names are nicer.
@@ -1297,7 +1631,6 @@ do_frame:
 	frame = &stack->frame[stack->depth];
 	parent = frame->current; /* add items here */
 	has_spaces = false;
-	name1_token = T_INVALID;
 
 	/*
 	 *	First try reading from the frame as a directory.  If
@@ -1513,8 +1846,6 @@ do_frame:
 			}
 
 			if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
-				int rcode;
-
 				ptr += 9;
 
 				rcode = process_include(stack, parent, ptr, false);
@@ -1540,318 +1871,18 @@ do_frame:
 
 		/*
 		 *	All of the file handling code is done.  Parse the input.
-		 */
-	next_start_token:
+		 */		
+	next_token:
 		fr_skip_whitespace(ptr);
 		if (!*ptr || (*ptr == '#')) continue;
 
-		/*
-		 *	Catch end of a subsection.
-		 */
-		if (*ptr == '}') {
-	closing_brace:
-			/*
-			 *	We're already at the parent section
-			 *	which loaded this file.  We cannot go
-			 *	back up another level.
-			 *
-			 *	This limitation means that we cannot
-			 *	put half of a CONF_SECTION in one
-			 *	file, and then the second half in
-			 *	another file.  That's fine.
-			 */
-			if (parent == frame->parent) {
-				ERROR("%s[%d]: Too many closing braces", frame->filename, frame->lineno);
-				goto error;
-			}
+		stack->ptr = ptr;
+		rcode = parse_input(stack);
+		ptr = stack->ptr;
 
-			rad_assert(frame->braces > 0);
-			frame->braces--;
-
-			/*
-			 *	Merge the template into the existing
-			 *	section.  parent uses more memory, but
-			 *	means that templates now work with
-			 *	sub-sections, etc.
-			 */
-			if (!cf_template_merge(parent, parent->template)) goto error;
-
-			if (parent == frame->special) frame->special = NULL;
-
-			frame->current = parent = cf_item_to_section(parent->item.parent);
-			ptr++;
-			goto next_start_token;
-		}
-
-		/*
-		 *	Found nothing to get excited over.  It MUST be
-		 *	a key word.
-		 */
-		if (cf_get_token(parent, &ptr, &name1_token, buff[1], stack->bufsize,
-				 frame->filename, frame->lineno) < 0) {
-			goto error;
-		}
-
-		/*
-		 *	parent single word is done.  Create a CONF_PAIR.
-		 */
-		if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
-			value_token = T_INVALID;
-			op_token = T_OP_EQ;
-			value = NULL;
-			goto do_set;
-		}
-
-		/*
-		 *	Handle if/elsif specially.  parent function will
-		 *	update "ptr" to be the next thing that we
-		 *	need.
-		 */
-		if ((strcmp(buff[1], "if") == 0) || (strcmp(buff[1], "elsif") == 0)) {
-			css = process_if(parent, &ptr, buff, frame->filename, frame->lineno);
-			if (!css) goto error;
-			goto add_section;
-		}
-
-		/*
-		 *	"map" sections have three arguments!
-		 *
-		 *	map NAME ARGUMENT { ... }
-		 */
-		if ((strcmp(buff[1], "map") == 0) && (*ptr != '{')) {
-			css = process_map(parent, &ptr, buff, frame->filename, frame->lineno);
-			if (!css) goto error;
-
-			frame->special = css;
-			goto add_section;
-		}
-
-		/*
-		 *	A common pattern is: name { ...}
-		 *	Check for it and skip ahead.
-		 */
-		if (*ptr == '{') {
-			ptr++;
-			name2_token = T_INVALID;
-			value = NULL;
-			goto alloc_section;
-		}
-
-		/*
-		 *	We allow certain kinds of strings, attribute
-		 *	references (i.e. foreach) and bare names that
-		 *	start with a letter.  We also allow UTF-8
-		 *	characters.
-		 *
-		 *	Once we fix the parser to be less generic, we
-		 *	can tighten these rules.  Right now, it's
-		 *	*technically* possible to define a module with
-		 *	&foo or "with spaces" as the second name.
-		 *	Which seems bad.  But the old parser allowed
-		 *	it, so oh well.
-		 */
-		if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || (*ptr == '&') ||
-		    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr)) {
-			if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
-					 frame->filename, frame->lineno) < 0) {
-				goto error;
-			}
-
-			if (*ptr != '{') {
-				ERROR("%s[%d]: Parse error: expected '{', got text \"%s\"",
-				      frame->filename, frame->lineno, ptr);
-				goto error;
-			}
-			ptr++;
-			value = buff[2];
-
-		alloc_section:
-			css = cf_section_alloc(parent, parent, buff[1], value);
-			if (!css) {
-				ERROR("%s[%d]: Failed allocating memory for section",
-				      frame->filename, frame->lineno);
-				goto error;
-			}
-
-			css->item.filename = frame->filename;
-			css->item.lineno = frame->lineno;
-			css->name2_quote = name2_token;
-
-			/*
-			 *	Hack for better error messages in
-			 *	nested sections.  parent information
-			 *	should really be put into a parser
-			 *	struct, as with tmpls.
-			 */
-			if (!frame->special && ((strcmp(css->name1, "update") == 0) ||
-						(strcmp(css->name1, "filter") == 0))) {
-				frame->special = css;
-			}
-
-		add_section:
-			cf_item_add(parent, &(css->item));
-
-			/*
-			 *	The current section is now the child section.
-			 */
-			frame->current = parent = css;
-			frame->braces++;
-			css = NULL;
-			goto next_start_token;
-		}
-
-		/*
-		 *	The next thing MUST be an operator.  All
-		 *	operators start with one of these characters,
-		 *	so we check for them first.
-		 */
-		if (!((*ptr == '=') || (*ptr == '!') || (*ptr == '>') || (*ptr == '<') ||
-		      (*ptr == '-') || (*ptr == '+') || (*ptr == ':'))) {
-			ERROR("%s[%d]: Parse error at unexpected text: %s",
-			      frame->filename, frame->lineno, ptr);
-			goto error;
-		}
-
-		/*
-		 *	If we're not parsing a section, then the next
-		 *	token MUST be an operator.
-		 */
-		name2_token = gettoken(&ptr, buff[2], stack->bufsize, false);
-		switch (name2_token) {
-		case T_OP_ADD:
-		case T_OP_SUB:
-		case T_OP_NE:
-		case T_OP_GE:
-		case T_OP_GT:
-		case T_OP_LE:
-		case T_OP_LT:
-		case T_OP_CMP_EQ:
-		case T_OP_CMP_FALSE:
-			if (!parent || !frame->special) {
-				ERROR("%s[%d]: Invalid operator in assignment",
-				      frame->filename, frame->lineno);
-				goto error;
-			}
-			/* FALL-THROUGH */
-
-		case T_OP_EQ:
-		case T_OP_SET:
-			fr_skip_whitespace(ptr);
-			op_token = name2_token;
-			break;
-
-		default:
-			ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
-			      frame->filename, frame->lineno, buff[1], fr_table_str_by_value(fr_tokens_table, name2_token, "<INVALID>"));
-
-			goto error;
-		}
-
-		/*
-		 *	MUST have something after the operator.
-		 */
-		if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';')) {
-			ERROR("%s[%d]: Syntax error: Expected to see a value after the operator '%s': %s",
-			      frame->filename, frame->lineno, buff[2], ptr);
-			goto error;
-		}
-
-		/*
-		 *	foo = { ... } for nested groups.
-		 *
-		 *	As a special case, we allow sub-sections after '=', etc.
-		 *
-		 *	This syntax is only for inside of "update"
-		 *	sections, and for attributes of type "group".
-		 *	But the parser isn't (yet) smart enough to
-		 *	know about that context.  So we just silently
-		 *	allow it everywhere.
-		 */
-		if (*ptr == '{') {
-			if (!frame->special) {
-				ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
-				      frame->filename, frame->lineno);
-				goto error;
-			}
-
-			if (*buff[1] != '&') {
-				ERROR("%s[%d]: Parse error: Expected '&' before attribute name",
-				      frame->filename, frame->lineno);
-				goto error;
-			}
-
-			if (!fr_assignment_op[name2_token]) {
-				ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for group",
-				      frame->filename, frame->lineno, buff[2]);
-				goto error;
-			}
-
-			/*
-			 *	Now that we've peeked ahead to
-			 *	see the open brace, parse it
-			 *	for real.
-			 */
-			ptr++;
-
-			/*
-			 *	Leave name2_token as the
-			 *	operator (as a hack).  But
-			 *	note that there's no actual
-			 *	name2.  We'll deal with that
-			 *	situation later.
-			 */
-			value = NULL;
-			goto alloc_section;
-		}
-
-		/*
-		 *	Parse the value for a CONF_PAIR.
-		 */
-		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
-				 frame->filename, frame->lineno) < 0) {
-			goto error;
-		}
-		value = buff[2];
-
-		/*
-		 *	Add parent CONF_PAIR to our CONF_SECTION
-		 */
-	do_set:
-		if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], frame->filename, frame->lineno) < 0) goto error;
-
-		fr_skip_whitespace(ptr);
-
-		/*
-		 *	Skip semicolon if we see it after a
-		 *	CONF_PAIR.  Also allow comma for
-		 *	backwards compatablity with secret
-		 *	things in v3.
-		 */
-		if ((*ptr == ';') || (*ptr == ',')) {
-			ptr++;
-			goto next_start_token;
-		}
-
-		/*
-		 *	Closing brace is allowed after a CONF_PAIR
-		 *	definition.
-		 */
-		if (*ptr == '}') goto closing_brace;
-
-		/*
-		 *	Anything OTHER than EOL or comment is a syntax
-		 *	error.
-		 */
-		if (*ptr && (*ptr != '#')) {
-			ERROR("%s[%d]: Syntax error: Unexpected text: %s",
-			      frame->filename, frame->lineno, ptr);
-			goto error;
-		}
-
-		/*
-		 *	Since we're at EOL or comment, just drop the
-		 *	text, and go read another line of text.
-		 */
+		if (rcode < 0) goto error;
+		parent = frame->current;
+		if (rcode == 1) goto next_token;
 	}
 
 	rad_assert(frame->fp != NULL);
