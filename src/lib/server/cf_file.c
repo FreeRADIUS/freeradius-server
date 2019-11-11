@@ -1053,10 +1053,8 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 	/*
 	 *	Short names are nicer.
 	 */
-	buff[0] = stack->buff[0];
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
-	buff[3] = stack->buff[3];
 
 	/*
 	 *	if / elsif
@@ -1107,7 +1105,7 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 	 *	than the buffer we put the condition
 	 *	into.
 	 */
-	if ((size_t) slen >= (talloc_array_length(buff[2]) - 1)) {
+	if ((size_t) slen >= (stack->bufsize - 1)) {
 		cf_log_err(cs, "Condition is too large after \"%s\"", buff[1]);
 		talloc_free(cs);
 		return NULL;
@@ -1161,17 +1159,15 @@ static CONF_SECTION *process_map(cf_stack_t *stack)
 	/*
 	 *	Short names are nicer.
 	 */
-	buff[0] = stack->buff[0];
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
-	buff[3] = stack->buff[3];
 
 	if (invalid_location(frame->current, "map", frame->filename, frame->lineno)) {
 		ERROR("%s[%d]: Invalid syntax for 'map'", frame->filename, frame->lineno);
 		return NULL;
 	}
 
-	if (cf_get_token(parent, &ptr, &token, buff[1], talloc_array_length(buff[1]),
+	if (cf_get_token(parent, &ptr, &token, buff[1], stack->bufsize,
 			 frame->filename, frame->lineno) < 0) {
 		return NULL;
 	}
@@ -1195,7 +1191,7 @@ static CONF_SECTION *process_map(cf_stack_t *stack)
 	/*
 	 *	Now get the expansion string.
 	 */
-	if (cf_get_token(parent, &ptr, &token, buff[2], talloc_array_length(buff[2]),
+	if (cf_get_token(parent, &ptr, &token, buff[2], stack->bufsize,
 			 frame->filename, frame->lineno) < 0) {
 		return NULL;
 	}
@@ -1894,7 +1890,6 @@ do_frame:
 
 				stack->ptr = ptr;
 				if (process_template(stack) < 0) goto error;
-				ptr = stack->ptr;
 				continue;
 			}
 
