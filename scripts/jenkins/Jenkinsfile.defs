@@ -1,0 +1,92 @@
+platforms = ["ubuntu14", "ubuntu16", "ubuntu18", "centos7", "centos8", "debian8", "debian9", "debian10"]
+artifacts = 'build-number, **/*.changes, **/*.buildinfo, **/*.deb, **/*.rpm'
+
+/*  The detectChanges function looks at the last git commit and searches for changes to
+ *   "redhat/freeradius.spec" or anything in the "debian" directory.  If it
+ *   finds any changes to those files it returns the string " --no-cache "
+ *   which can be fed to a docker build command to tell docker to rebuild
+ *   the image from scratch so that it can pick up any new dependencies
+ *   specified in those package manifest files
+ */
+
+def detectChanges() {
+    def string = ""
+    def changeLogSets = currentBuild.changeSets
+    for (int i = 0; i < changeLogSets.size(); i++) {
+        def entries = changeLogSets[i].items
+        for (int j = 0; j < entries.length; j++) {
+            def entry = entries[j]
+            def files = new ArrayList(entry.affectedFiles)
+            for (int k = 0; k < files.size(); k++) {
+                def file = files[k]
+                if (file.path =~ /(^debian\/.*)|(redhat\/freeradius.spec)/) {
+                    echo "changes in file ${file.path}, passing --no-cache flag to docker build"
+                    string = " --no-cache "
+                    return string
+                }
+            }
+        }
+    }
+    return string
+}
+
+/*
+ *  The buildClosures function is the core function of the script and uses
+ *  function currying to be able to pass multiple dynamically generated
+ *  jenkins build commands into a jenkins parallel block.
+ *  This function ensures that the docker image is built and builds
+ *  FreeRADIUS packages inside the docker image
+ */
+
+def buildClosures(arg, scmBranches, scmURC) {
+    println arg.inspect()
+    def platforms = arg
+    def closures = [:]
+    for (value in platforms) {
+        //final valueCopy = value
+
+        closures[value] = {platform ->
+                stage("build-${platform}") {
+                    docker.build("${platform}-test","-f ./scripts/jenkins/${platform}/Dockerfile ./scripts/jenkins/${platform}").inside {
+
+                        //checkout([$class: 'GitSCM', branches: scm.branches, userRemoteConfigs: scm.userRemoteConfigs, extensions: [[$class: 'CleanBeforeCheckout'],[$class: 'RelativeTargetDirectory', relativeTargetDir: "${platform}/build"],[$class: 'CloneOption', depth: 0, noTags: false, reference: '', shallow: false]], submoduleCfg: []])
+
+                        checkout([$class: 'GitSCM', branches: scmBranches, userRemoteConfigs: scmURC, extensions: [[$class: 'CleanBeforeCheckout'],[$class: 'RelativeTargetDirectory', relativeTargetDir: "${platform}/build"],[$class: 'CloneOption', depth: 0, noTags: false, reference: '', shallow: false]], submoduleCfg: []])
+                        sh "cat /etc/os-release || cat /etc/redhat-release"
+                        def commit_num = readFile("./build-number").trim()
+                        dir("${platform}/build/") {
+                            if (platform.contains("centos")) {
+                                sh 'mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,BUILDROOT,RPMS,SRPMS}'
+                                sh 'tar -j -c --transform "s/./freeradius-server-$(cat VERSION)/" --exclude ".git" --exclude "rpmbuild" -f rpmbuild/SOURCES/freeradius-server-$(cat VERSION).tar.bz2 .'
+                                sh 'for file in $(grep "^Source...:" redhat/freeradius.spec | cut -d" " -f2) ; do cp redhat/$file rpmbuild/SOURCES/$file ; done'
+                                sh "sed -i -e \"s/^Release:.*\$/Release: ${commit_num}/\" redhat/freeradius.spec"
+                                sh 'rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb redhat/freeradius.spec'
+                            } else {
+                                def version = sh (script: "dpkg-parsechangelog | grep '^Version: ' | awk '{print \$2}'", returnStdout: true).trim()
+                                def commit_msg = sh (script: "git log --oneline -1 \$GIT_COMMIT", returnStdout: true).trim()
+
+                                sh "dch -b -v ${version}-${commit_num} \"${commit_msg}\""
+                                sh "make deb"
+                            }
+                        }
+                    }
+                }
+                echo platform.toString()
+            }.curry(value)
+    }
+    closures
+}
+
+
+/*
+ *  Find the number of commits since the previous release and
+ *  write out to a file, "build-number". This is used in packages
+ *  so that new commits don't create packages with the same
+ *  version number.
+ */
+
+def genBuildNumber() {
+	sh (script: "git describe --tags --long --match 'release_*' --match 'branch_*' | sed -e \'s/^.*-\\([0-9]*\\)-g[0-9a-f]*/\\1/\' > build-number")
+}
+
+return this
