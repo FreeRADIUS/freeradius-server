@@ -1629,6 +1629,77 @@ do_set:
 	return 0;
 }
 
+
+static int frame_readdir(cf_stack_t *stack)
+{
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	struct dirent	*dp;
+	struct stat stat_buf;
+	CONF_SECTION *parent = frame->current;
+
+	while ((dp = readdir(frame->dir)) != NULL) {
+		char const *p;
+
+		if (dp->d_name[0] == '.') continue;
+
+		/*
+		 *	Check for valid characters
+		 */
+		for (p = dp->d_name; *p != '\0'; p++) {
+			if (isalpha((int)*p) ||
+			    isdigit((int)*p) ||
+			    (*p == '-') ||
+			    (*p == '_') ||
+			    (*p == '.')) continue;
+			break;
+		}
+		if (*p != '\0') continue;
+
+		snprintf(stack->buff[1], stack->bufsize, "%s%s",
+			 frame->directory, dp->d_name);
+
+		if (stat(stack->buff[1], &stat_buf) != 0) {
+			ERROR("%s[%d]: Failed checking file %s: %s",
+			      (frame - 1)->filename, (frame - 1)->lineno,
+			      stack->buff[1], fr_syserror(errno));
+			continue;
+		}
+
+		if (S_ISDIR(stat_buf.st_mode)) {
+			WARN("%s[%d]: Ignoring directory %s",
+			     (frame - 1)->filename, (frame - 1)->lineno,
+			     stack->buff[1]);
+			continue;
+		}
+
+		/*
+		 *	Push the next filename onto the stack.
+		 */
+		stack->depth++;
+		frame = &stack->frame[stack->depth];
+		memset(frame, 0, sizeof(*frame));
+		frame->fp = NULL;
+		frame->parent = parent;
+		frame->current = parent;
+		frame->filename = talloc_strdup(frame->parent, stack->buff[1]);
+		frame->lineno = 0;
+		frame->from_dir = true;
+		frame->special = NULL; /* can't do includes inside of update / map */
+		return 1;
+	}
+
+	/*
+	 *	Done reading the directory entry.  Close it, and go
+	 *	back up a stack frame.
+	 */
+	closedir(frame->dir);
+	frame->dir = NULL;
+	talloc_free(frame->directory);
+	stack->depth--;
+	return 1;
+}
+
+
 /*
  *	Read a configuration file or files.
  */
@@ -1657,7 +1728,6 @@ static int cf_file_include(cf_stack_t *stack)
 do_frame:
 	frame = &stack->frame[stack->depth];
 	parent = frame->current; /* add items here */
-	has_spaces = false;
 
 	/*
 	 *	First try reading from the frame as a directory.  If
@@ -1665,87 +1735,9 @@ do_frame:
 	 *	the filename.
 	 */
 	if (frame->dir) {
-		struct dirent	*dp;
-		struct stat stat_buf;
-
-		while ((dp = readdir(frame->dir)) != NULL) {
-			char const *p;
-
-			if (dp->d_name[0] == '.') continue;
-
-			/*
-			 *	Check for valid characters
-			 */
-			for (p = dp->d_name; *p != '\0'; p++) {
-				if (isalpha((int)*p) ||
-				    isdigit((int)*p) ||
-				    (*p == '-') ||
-				    (*p == '_') ||
-				    (*p == '.')) continue;
-				break;
-			}
-			if (*p != '\0') continue;
-
-			snprintf(stack->buff[1], stack->bufsize, "%s%s",
-				 frame->directory, dp->d_name);
-
-			if (stat(stack->buff[1], &stat_buf) != 0) {
-				ERROR("%s[%d]: Failed checking file %s: %s",
-				     (frame - 1)->filename, (frame - 1)->lineno,
-				     stack->buff[1], fr_syserror(errno));
-				continue;
-			}
-
-			if (S_ISDIR(stat_buf.st_mode)) {
-				WARN("%s[%d]: Ignoring directory %s",
-				     (frame - 1)->filename, (frame - 1)->lineno,
-				     stack->buff[1]);
-				continue;
-			}
-
-			/*
-			 *	Push the next filename onto the stack.
-			 */
-			stack->depth++;
-			frame = &stack->frame[stack->depth];
-			memset(frame, 0, sizeof(*frame));
-			frame->fp = NULL;
-			frame->parent = parent;
-			frame->current = parent;
-			frame->filename = talloc_strdup(frame->parent, stack->buff[1]);
-			frame->from_dir = true;
-			frame->special = NULL; /* can't do includes inside of update / map */
-			break;
-		}
-
-		/*
-		 *	Done reading the directory entry.  Close it,
-		 *	and go back up a stack frame.
-		 */
-		if (!dp) {
-			closedir(frame->dir);
-			frame->dir = NULL;
-			talloc_free(frame->directory);
-			stack->depth--;
-			goto do_frame;
-		}
-
-		/*
-		 *	Else we have a filename pushed onto the stack.  Process it.
-		 */
-	}
-
-	/*
-	 *	If we haven't opened a file, do that now.
-	 */
-	if (!frame->fp) {
-		rad_assert(frame->filename != NULL);
-		frame->lineno = 0;
-
-		/*
-		 *	We get called with a new filename each time.  So open the FP.
-		 */
-		if (cf_file_open(frame->parent, frame->filename, frame->from_dir, &frame->fp) < 0) {
+		rcode = frame_readdir(stack);
+		if (rcode == 0) goto do_frame;
+		if (rcode < 0) {
 		error:
 			while (stack->depth >= 0) {
 				if (frame->fp) {
@@ -1764,7 +1756,24 @@ do_frame:
 
 			return -1;
 		}
-	} /* else we're continuing a previously opened file */
+
+		/*
+		 *	Reset which frame we're looking at.
+		 */
+		frame = &stack->frame[stack->depth];
+	}
+
+	/*
+	 *	Open the new file.  It either came from the first call
+	 *	to the function, or was pushed onto the stack by
+	 *	frame_readdir().
+	 */
+	if (!frame->fp &&
+	    (cf_file_open(frame->parent, frame->filename, frame->from_dir, &frame->fp) < 0)) {
+		goto error;
+	}
+
+	has_spaces = false;
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
