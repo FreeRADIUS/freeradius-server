@@ -48,7 +48,6 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  as rlm_python, which was Python2 only.
 	* Add Dockerfiles for Debian10 and CentOS8.
 	* Add RPM spec file compatibility for RHEL/CentOS 8.
-	* Add Jenkins files.  Patches from Matthew Newton.
 	* Notes on iOS 13 certificate issues.  See
 	  https://support.apple.com/en-us/HT210176.
 	* Notes on certificate constraints.  See raddb/certs/server.cnf.
