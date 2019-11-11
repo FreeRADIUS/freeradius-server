@@ -991,15 +991,27 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 }
 
 
-static int process_template(CONF_SECTION *parent, char const *ptr, char *buff[static 4], char const *filename, int lineno)
+static int process_template(cf_stack_t *stack)
 {
 	CONF_ITEM *ci;
 	CONF_SECTION *parent_cs, *templatecs;
 	FR_TOKEN token;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
 
-	token = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
+	token = getword(&stack->ptr, stack->buff[2], stack->bufsize, true);
 	if (token != T_EOL) {
-		ERROR("%s[%d]: Unexpected text after $TEMPLATE", filename, lineno);
+		ERROR("%s[%d]: Unexpected text after $TEMPLATE", frame->filename, frame->lineno);
+		return -1;
+	}
+
+	if (!parent) {
+		ERROR("%s[%d]: Internal sanity check error in template reference", frame->filename, frame->lineno);
+		return -1;
+	}
+
+	if (parent->template) {
+		ERROR("%s[%d]: Section already has a template", frame->filename, frame->lineno);
 		return -1;
 	}
 
@@ -1007,23 +1019,15 @@ static int process_template(CONF_SECTION *parent, char const *ptr, char *buff[st
 
 	templatecs = cf_section_find(parent_cs, "templates", NULL);
 	if (!templatecs) {
-		ERROR("%s[%d]: No \"templates\" section for reference \"%s\"", filename, lineno, buff[2]);
+		ERROR("%s[%d]: No \"templates\" section for reference \"%s\"",
+		      frame->filename, frame->lineno, stack->buff[2]);
 		return -1;
 	}
 
-	ci = cf_reference_item(parent_cs, templatecs, buff[2]);
+	ci = cf_reference_item(parent_cs, templatecs, stack->buff[2]);
 	if (!ci || (ci->type != CONF_ITEM_SECTION)) {
-		ERROR("%s[%d]: Reference \"%s\" not found", filename, lineno, buff[2]);
-		return -1;
-	}
-
-	if (!parent) {
-		ERROR("%s[%d]: Internal sanity check error in template reference", filename, lineno);
-		return -1;
-	}
-
-	if (parent->template) {
-		ERROR("%s[%d]: Section already has a template", filename, lineno);
+		ERROR("%s[%d]: Reference \"%s\" not found",
+		      frame->filename, frame->lineno, stack->buff[2]);
 		return -1;
 	}
 
@@ -1888,7 +1892,9 @@ do_frame:
 				ptr += 9;
 				fr_skip_whitespace(ptr);
 
-				if (process_template(parent, ptr, buff, frame->filename, frame->lineno) < 0) goto error;
+				stack->ptr = ptr;
+				if (process_template(stack) < 0) goto error;
+				ptr = stack->ptr;
 				continue;
 			}
 
