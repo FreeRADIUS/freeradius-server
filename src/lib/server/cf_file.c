@@ -1700,6 +1700,110 @@ static int frame_readdir(cf_stack_t *stack)
 }
 
 
+static int cf_file_fill(cf_stack_t *stack)
+{
+	bool at_eof, has_spaces;
+	size_t len;
+	char const *ptr;
+	char *cbuff;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+
+read_more:
+	has_spaces = false;
+	cbuff = stack->buff[0];
+
+read_continuation:
+	/*
+	 *	Get data, and remember if we are at EOF.
+	 */
+	at_eof = (fgets(cbuff, stack->bufsize - (cbuff - stack->buff[0]), frame->fp) == NULL);
+	frame->lineno++;
+
+	/*
+	 *	We read the entire 8k worth of data: complain.
+	 *	Note that we don't care if the last character
+	 *	is \n: it's still forbidden.  This means that
+	 *	the maximum allowed length of text is 8k-1, which
+	 *	should be plenty.
+	 */
+	len = strlen(cbuff);
+	if ((cbuff + len + 1) >= (stack->buff[0] + stack->bufsize)) {
+		ERROR("%s[%d]: Line too long", frame->filename, frame->lineno);
+		return -1;
+	}
+
+	/*
+	 *	Suppress leading whitespace after a
+	 *	continuation line.
+	 */
+	if (has_spaces) {
+		ptr = cbuff;
+		fr_skip_whitespace(ptr);
+
+		if (ptr > cbuff) {
+			memmove(cbuff, ptr, len - (ptr - cbuff));
+			len -= (ptr - cbuff);
+		}
+	}
+
+	/*
+	 *	Skip blank lines when we're at the start of
+	 *	the read buffer.
+	 */
+	if (cbuff == stack->buff[0]) {
+		if (at_eof) return 0;
+
+		ptr = stack->buff[0];
+		fr_skip_whitespace(ptr);
+
+		if (!*ptr || (*ptr == '#')) goto read_more;
+
+	} else if (at_eof || (len == 0)) {
+		ERROR("%s[%d]: Continuation at EOF is illegal", frame->filename, frame->lineno);
+		return -1;
+	}
+
+	/*
+	 *	See if there's a continuation.
+	 */
+	while ((len > 0) &&
+	       ((cbuff[len - 1] == '\n') || (cbuff[len - 1] == '\r'))) {
+		len--;
+		cbuff[len] = '\0';
+	}
+
+	if ((len > 0) && (cbuff[len - 1] == '\\')) {
+		/*
+		 *	Check for "suppress spaces" magic.
+		 */
+		if (!has_spaces && (len > 2) && (cbuff[len - 2] == '"')) {
+			has_spaces = true;
+		}
+
+		cbuff[len - 1] = '\0';
+		cbuff += len - 1;
+		goto read_continuation;
+	}
+
+	stack->ptr = ptr = stack->buff[0];
+
+	/*
+	 *	We now have one full line of text in the input
+	 *	buffer, without continuations.
+	 */
+	fr_skip_whitespace(ptr);
+
+	/*
+	 *	Nothing left, or just a comment.  Go read
+	 *	another line of text.
+	 */
+	if (!*ptr || (*ptr == '#')) goto read_more;
+
+	stack->ptr = ptr;
+	return 1;
+}
+
+
 /*
  *	Read a configuration file or files.
  */
@@ -1708,9 +1812,6 @@ static int cf_file_include(cf_stack_t *stack)
 	CONF_SECTION	*parent;
 	char const	*ptr;
 
-	bool		has_spaces;
-	char		*cbuff;
-	size_t		len;
 	char		*buff[4];
 	cf_stack_frame_t	*frame;
 	int		rcode;
@@ -1722,8 +1823,6 @@ static int cf_file_include(cf_stack_t *stack)
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
 	buff[3] = stack->buff[3];
-
-	cbuff = buff[0];
 
 do_frame:
 	frame = &stack->frame[stack->depth];
@@ -1755,102 +1854,22 @@ do_frame:
 		return -1;
 	}
 
-	has_spaces = false;
-
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
 	 */
 	for (;;) {
-		int at_eof;
+		/*
+		 *	Fill the buffers with data.
+		 */
+		rcode = cf_file_fill(stack);
+		if (rcode < 0) return -1;
+		if (rcode == 0) break;
 
 		/*
-		 *	Get data, and remember if we are at EOF.
+		 *	The text here MUST be at the start of a line,
+		 *	OR have only whitespace in front of it.
 		 */
-		at_eof = (fgets(cbuff, stack->bufsize - (cbuff - buff[0]), frame->fp) == NULL);
-		frame->lineno++;
-
-		/*
-		 *	We read the entire 8k worth of data: complain.
-		 *	Note that we don't care if the last character
-		 *	is \n: it's still forbidden.  This means that
-		 *	the maximum allowed length of text is 8k-1, which
-		 *	should be plenty.
-		 */
-		len = strlen(cbuff);
-		if ((cbuff + len + 1) >= (buff[0] + stack->bufsize)) {
-			ERROR("%s[%d]: Line too long", frame->filename, frame->lineno);
-			return -1;
-		}
-
-		/*
-		 *	Suppress leading whitespace after a
-		 *	continuation line.
-		 */
-		if (has_spaces) {
-			ptr = cbuff;
-			fr_skip_whitespace(ptr);
-
-			if (ptr > cbuff) {
-				memmove(cbuff, ptr, len - (ptr - cbuff));
-				len -= (ptr - cbuff);
-			}
-		}
-
-		/*
-		 *	Skip blank lines when we're at the start of
-		 *	the read buffer.
-		 */
-		if (cbuff == buff[0]) {
-			if (at_eof) break;
-
-			ptr = buff[0];
-			fr_skip_whitespace(ptr);
-
-			if (!*ptr || (*ptr == '#')) continue;
-
-		} else if (at_eof || (len == 0)) {
-			ERROR("%s[%d]: Continuation at EOF is illegal", frame->filename, frame->lineno);
-			return -1;
-		}
-
-		/*
-		 *	See if there's a continuation.
-		 */
-		while ((len > 0) &&
-		       ((cbuff[len - 1] == '\n') || (cbuff[len - 1] == '\r'))) {
-			len--;
-			cbuff[len] = '\0';
-		}
-
-		if ((len > 0) && (cbuff[len - 1] == '\\')) {
-			/*
-			 *	Check for "suppress spaces" magic.
-			 */
-			if (!has_spaces && (len > 2) && (cbuff[len - 2] == '"')) {
-				has_spaces = true;
-			}
-
-			cbuff[len - 1] = '\0';
-			cbuff += len - 1;
-			continue;
-		}
-
-		ptr = cbuff = buff[0];
-		has_spaces = false;
-
-		/*
-		 *	We now have one full line of text in the input
-		 *	buffer, without continuations.
-		 */
-
-		fr_skip_whitespace(ptr);
-
-		/*
-		 *	Nothing left, or just a comment.  Go read
-		 *	another line of text.
-		 */
-		if (!*ptr || (*ptr == '#')) continue;
-
+		ptr = stack->ptr;
 		if (*ptr == '$') {
 			/*
 			 *	Allow for $INCLUDE files
