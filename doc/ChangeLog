@@ -48,6 +48,11 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	  as rlm_python, which was Python2 only.
 	* Add Dockerfiles for Debian10 and CentOS8.
 	* Add RPM spec file compatibility for RHEL/CentOS 8.
+	* Add Jenkins files.  Patches from Matthew Newton.
+	* Notes on iOS 13 certificate issues.  See
+	  https://support.apple.com/en-us/HT210176.
+	* Notes on certificate constraints.  See raddb/certs/server.cnf.
+	* Add NAIRealm example to raddb/certs/server.cnf, for RFC 7585.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host.  Fixes #2627.
@@ -80,6 +85,10 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Properly separate "originate-coa" packets when accounting packets
 	  are read from the detail file reader.
 	* Use the correct virtual server for pre/post-proxy.
+	* radsqlrelay fixes backported from "master" branch.
+	  Patches from Terry Burton.
+	* Fix DoS issues due to multithreaded BN_CTX access.
+	  Patch from Mathy Vanhoef.  CVE-2019-17185
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
