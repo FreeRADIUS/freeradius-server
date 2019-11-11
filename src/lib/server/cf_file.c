@@ -1737,25 +1737,7 @@ do_frame:
 	if (frame->dir) {
 		rcode = frame_readdir(stack);
 		if (rcode == 0) goto do_frame;
-		if (rcode < 0) {
-		error:
-			while (stack->depth >= 0) {
-				if (frame->fp) {
-					fclose(frame->fp);
-					frame->fp = NULL;
-				}
-				if (frame->dir) {
-					closedir(frame->dir);
-					frame->dir = NULL;
-					talloc_free(frame->directory);
-				}
-
-				frame--;
-				stack->depth--;
-			}
-
-			return -1;
-		}
+		if (rcode < 0) return -1;
 
 		/*
 		 *	Reset which frame we're looking at.
@@ -1770,7 +1752,7 @@ do_frame:
 	 */
 	if (!frame->fp &&
 	    (cf_file_open(frame->parent, frame->filename, frame->from_dir, &frame->fp) < 0)) {
-		goto error;
+		return -1;
 	}
 
 	has_spaces = false;
@@ -1797,7 +1779,7 @@ do_frame:
 		len = strlen(cbuff);
 		if ((cbuff + len + 1) >= (buff[0] + stack->bufsize)) {
 			ERROR("%s[%d]: Line too long", frame->filename, frame->lineno);
-			goto error;
+			return -1;
 		}
 
 		/*
@@ -1828,7 +1810,7 @@ do_frame:
 
 		} else if (at_eof || (len == 0)) {
 			ERROR("%s[%d]: Continuation at EOF is illegal", frame->filename, frame->lineno);
-			goto error;
+			return -1;
 		}
 
 		/*
@@ -1876,7 +1858,7 @@ do_frame:
 			if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
 				ptr += 8;
 
-				if (process_include(stack, parent, ptr, true) < 0) goto error;
+				if (process_include(stack, parent, ptr, true) < 0) return -1;
 				goto do_frame;
 			}
 
@@ -1884,7 +1866,7 @@ do_frame:
 				ptr += 9;
 
 				rcode = process_include(stack, parent, ptr, false);
-				if (rcode < 0) goto error;
+				if (rcode < 0) return -1;
 				if (rcode == 0) continue;
 				goto do_frame;
 			}
@@ -1897,12 +1879,12 @@ do_frame:
 				fr_skip_whitespace(ptr);
 
 				stack->ptr = ptr;
-				if (process_template(stack) < 0) goto error;
+				if (process_template(stack) < 0) return -1;
 				continue;
 			}
 
 			ERROR("%s[%d]: Invalid text starting with '$'", frame->filename, frame->lineno);
-			goto error;
+			return -1;
 		}
 
 		/*
@@ -1916,7 +1898,7 @@ do_frame:
 		rcode = parse_input(stack);
 		ptr = stack->ptr;
 
-		if (rcode < 0) goto error;
+		if (rcode < 0) return -1;
 		parent = frame->current;
 		if (rcode == 1) goto next_token;
 	}
@@ -1929,7 +1911,7 @@ do_frame:
 	if (feof(frame->fp) && (parent != frame->parent)) {
 		ERROR("%s[%d]: EOF reached without closing brace for section %s starting at line %d",
 		      frame->filename, frame->lineno, cf_section_name1(parent), cf_lineno(parent));
-		goto error;
+		return -1;
 	}
 
 	fclose(frame->fp);
@@ -1946,6 +1928,27 @@ do_frame:
 	return 0;
 }
 
+static void cf_stack_cleanup(cf_stack_t *stack)
+{
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+
+	while (stack->depth >= 0) {
+		if (frame->fp) {
+			fclose(frame->fp);
+			frame->fp = NULL;
+		}
+		if (frame->dir) {
+			closedir(frame->dir);
+			frame->dir = NULL;
+			talloc_free(frame->directory);
+		}
+
+		frame--;
+		stack->depth--;
+	}
+
+	talloc_free(stack->buff);
+}
 
 /*
  *	Bootstrap a config file.
@@ -1991,7 +1994,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	cs->item.filename = frame->filename;
 
 	if (cf_file_include(&stack) < 0) {
-		talloc_free(stack.buff);
+		cf_stack_cleanup(&stack);
 		return -1;
 	}
 
