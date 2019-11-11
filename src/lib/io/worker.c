@@ -788,9 +788,8 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 
 	request->el = worker->el;
 	request->backlog = worker->runnable;
-	request->packet = fr_radius_alloc(request, false);
+	MEM(request->packet = fr_radius_alloc(request, false));
 	request->packet->timestamp = *cd->request.recv_time; /* Legacy - Remove once everything looks at request->async */
-	rad_assert(request->packet != NULL);
 	request->reply = fr_radius_alloc(request, false);
 	rad_assert(request->reply != NULL);
 
