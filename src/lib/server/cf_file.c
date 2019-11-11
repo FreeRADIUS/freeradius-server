@@ -1634,7 +1634,7 @@ do_set:
  */
 static int cf_file_include(cf_stack_t *stack)
 {
-	CONF_SECTION	*parent, *css;
+	CONF_SECTION	*parent;
 	char const	*ptr;
 
 	bool		has_spaces;
@@ -1771,7 +1771,6 @@ do_frame:
 	 */
 	for (;;) {
 		int at_eof;
-		css = NULL;
 
 		/*
 		 *	Get data, and remember if we are at EOF.
