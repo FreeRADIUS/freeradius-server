@@ -1909,17 +1909,17 @@ do_frame:
 		/*
 		 *	All of the file handling code is done.  Parse the input.
 		 */		
-	next_token:
-		fr_skip_whitespace(ptr);
-		if (!*ptr || (*ptr == '#')) continue;
+		do {
+			fr_skip_whitespace(ptr);
+			if (!*ptr || (*ptr == '#')) break;
 
-		stack->ptr = ptr;
-		rcode = parse_input(stack);
-		ptr = stack->ptr;
+			stack->ptr = ptr;
+			rcode = parse_input(stack);
+			ptr = stack->ptr;
 
-		if (rcode < 0) return -1;
-		parent = frame->current;
-		if (rcode == 1) goto next_token;
+			if (rcode < 0) return -1;
+			parent = frame->current;
+		} while (rcode == 1);
 	}
 
 	rad_assert(frame->fp != NULL);
