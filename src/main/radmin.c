@@ -343,7 +343,9 @@ int main(int argc, char **argv)
 
 	char const	*radius_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
+#ifdef USE_READLINE_HISTORY
 	char 		history_file[PATH_MAX];
+#endif
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
