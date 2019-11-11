@@ -1132,26 +1132,38 @@ static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *
 	return cs;
 }
 
-static CONF_SECTION *process_map(CONF_SECTION *parent, char const **ptr_p, char *buff[static 4], char const *filename, int lineno)
+static CONF_SECTION *process_map(cf_stack_t *stack)
 {
 	char const *mod;
 	char const *value = NULL;
-	char const *ptr = *ptr_p;
 	CONF_SECTION *css;
 	FR_TOKEN token;
+	char const	*ptr = stack->ptr;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+	char		*buff[4];
 
-	if (invalid_location(parent, "map", filename, lineno)) {
-		ERROR("%s[%d]: Invalid syntax for 'map'", filename, lineno);
+	/*
+	 *	Short names are nicer.
+	 */
+	buff[0] = stack->buff[0];
+	buff[1] = stack->buff[1];
+	buff[2] = stack->buff[2];
+	buff[3] = stack->buff[3];	
+
+	if (invalid_location(frame->current, "map", frame->filename, frame->lineno)) {
+		ERROR("%s[%d]: Invalid syntax for 'map'", frame->filename, frame->lineno);
 		return NULL;
 	}
 
 	if (cf_get_token(parent, &ptr, &token, buff[1], talloc_array_length(buff[1]),
-			 filename, lineno) < 0) {
+			 frame->filename, frame->lineno) < 0) {
 		return NULL;
 	}
 
 	if (token != T_BARE_WORD) {
-		ERROR("%s[%d]: Invalid syntax for 'map' - module name must not be a quoted string", filename, lineno);
+		ERROR("%s[%d]: Invalid syntax for 'map' - module name must not be a quoted string",
+		      frame->filename, frame->lineno);
 		return NULL;
 	}
 	mod = buff[1];
@@ -1169,18 +1181,18 @@ static CONF_SECTION *process_map(CONF_SECTION *parent, char const **ptr_p, char 
 	 *	Now get the expansion string.
 	 */
 	if (cf_get_token(parent, &ptr, &token, buff[2], talloc_array_length(buff[2]),
-			 filename, lineno) < 0) {
+			 frame->filename, frame->lineno) < 0) {
 		return NULL;
 	}
 	if (!fr_str_tok[token]) {
 		ERROR("%s[%d]: Expecting string expansions in 'map' definition",
-		      filename, lineno);
+		      frame->filename, frame->lineno);
 		return NULL;
 	}
 
 	if (*ptr != '{') {
 		ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
-		      filename, lineno);
+		      frame->filename, frame->lineno);
 		return NULL;
 	}
 	ptr++;
@@ -1192,11 +1204,12 @@ alloc_section:
 	 */
 	css = cf_section_alloc(parent, parent, "map", mod);
 	if (!css) {
-		ERROR("%s[%d]: Failed allocating memory for section", filename, lineno);
+		ERROR("%s[%d]: Failed allocating memory for section",
+		      frame->filename, frame->lineno);
 		return NULL;
 	}
-	css->item.filename = filename;
-	css->item.lineno = lineno;
+	css->item.filename = frame->filename;
+	css->item.lineno = frame->lineno;
 	css->name2_quote = T_BARE_WORD;
 
 	css->argc = 0;
@@ -1207,7 +1220,7 @@ alloc_section:
 		css->argv_quote[0] = token;
 		css->argc++;
 	}
-	*ptr_p = ptr;
+	stack->ptr = ptr;
 
 	return css;
 }
@@ -1271,12 +1284,12 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 static int parse_input(cf_stack_t *stack)
 {
 	FR_TOKEN	name1_token, name2_token, value_token, op_token;
-	CONF_SECTION	*parent;
 	char const	*value;
-	char		*buff[4];
 	CONF_SECTION	*css;
-	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	char const	*ptr = stack->ptr;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+	char		*buff[4];
 
 	/*
 	 *	Short names are nicer.
@@ -1284,8 +1297,7 @@ static int parse_input(cf_stack_t *stack)
 	buff[0] = stack->buff[0];
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
-	buff[3] = stack->buff[3];
-	parent = frame->current;
+	buff[3] = stack->buff[3];	
 
 	/*
 	 *	Catch end of a subsection.
@@ -1361,10 +1373,11 @@ static int parse_input(cf_stack_t *stack)
 	 *	map NAME ARGUMENT { ... }
 	 */
 	if ((strcmp(buff[1], "map") == 0) && (*ptr != '{')) {
-		css = process_map(parent, &ptr, buff, frame->filename, frame->lineno);
+		css = process_map(stack);
 		if (!css) return -1;
 
 		frame->special = css;
+		ptr = stack->ptr;
 		goto add_section;
 	}
 
