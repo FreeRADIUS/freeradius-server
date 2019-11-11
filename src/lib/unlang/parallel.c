@@ -268,13 +268,14 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			 *	Not ready to run.
 			 */
 		case CHILD_YIELDED:
+			rad_assert(state->children[i].child != NULL);
+
 			if (state->children[i].child->runnable_id == -2) { /* see unlang_interpret_resumable() */
 				(void) fr_heap_extract(state->children[i].child->backlog,
 						       state->children[i].child);
 				goto runnable;
 			}
 
-			rad_assert(state->children[i].child != NULL);
 			rad_assert(state->children[i].instruction != NULL);
 			RDEBUG3("parallel child %s is already YIELDED", state->children[i].child->name);
 			child_state = CHILD_YIELDED;
