@@ -538,7 +538,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			char *r;
 
 			p++;
-			strtoul(p, &r, 10);
+			(void) strtoul(p, &r, 10);
 			p = r;
 		}
 
