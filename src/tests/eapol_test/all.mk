@@ -48,7 +48,7 @@ $(eval $(call RADIUSD_SERVICE,servers,$(OUTPUT)))
 #	Print the disabled list.
 #
 $(IGNORED_EAP_TYPES):
-	${Q}echo "EAPOL_TEST $@ - Disabled.  Enable by removing '$@' from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk"
+	@echo "EAPOL_TEST $@ - Disabled.  Enable by removing '$@' from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk"
 
 #
 #  Separate the dependencies here just to keep a bit clear.
@@ -64,7 +64,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval OUT := $(patsubst %.conf,%.log,$@))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
-	${Q}echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
+	@echo "EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))"
 	${Q}if ! $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) $(KEY) > $(OUT) 2>&1; then	\
 		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$@)):";	\
 		tail -n 40 "$(patsubst %.conf,%.log,$@)";				\
@@ -97,5 +97,5 @@ $(shell touch "$(OUTPUT)/eapol_test.skip")
 endif
 
 $(TEST): $(OUTPUT)
-	${Q}echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
+	@echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
 endif

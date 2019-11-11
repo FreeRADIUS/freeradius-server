@@ -101,7 +101,7 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #  ERROR line in the input.
 #
 $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
-	${Q}echo KEYWORD-TEST $(notdir $@)
+	@echo "KEYWORD-TEST $(notdir $@)"
 	${Q}if [ -f $<.attrs ] ; then \
 		cp $<.attrs $(BUILD_DIR)/tests/keywords/; \
 	else \
