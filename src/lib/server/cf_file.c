@@ -1032,7 +1032,7 @@ static int process_template(CONF_SECTION *parent, char const *ptr, char *buff[st
 }
 
 
-static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *buff[static 4], char const *filename, int lineno)
+static CONF_SECTION *process_if(cf_stack_t *stack)
 {
 	ssize_t slen = 0;
 	char const *error = NULL;
@@ -1040,13 +1040,24 @@ static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *
 	CONF_DATA const *cd;
 	fr_dict_t const *dict = NULL;
 	CONF_SECTION *cs;
-	char const *ptr = *ptr_p;
 	char *p;
+	char const	*ptr = stack->ptr;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+	char		*buff[4];
+
+	/*
+	 *	Short names are nicer.
+	 */
+	buff[0] = stack->buff[0];
+	buff[1] = stack->buff[1];
+	buff[2] = stack->buff[2];
+	buff[3] = stack->buff[3];
 
 	/*
 	 *	if / elsif
 	 */
-	if (invalid_location(parent, buff[1], filename, lineno)) return NULL;
+	if (invalid_location(parent, buff[1], frame->filename, frame->lineno)) return NULL;
 
 	cd = cf_data_find_in_parent(parent, fr_dict_t **, "dictionary");
 	if (!cd) {
@@ -1065,8 +1076,8 @@ static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *
 		cf_log_err(parent, "Failed allocating memory for section");
 		return NULL;
 	}
-	cs->item.filename = filename;
-	cs->item.lineno = lineno;
+	cs->item.filename = frame->filename;
+	cs->item.lineno = frame->lineno;
 
 	/*
 	 *	Skip (...) to find the {
@@ -1128,7 +1139,7 @@ static CONF_SECTION *process_if(CONF_SECTION *parent, char const **ptr_p, char *
 	 *	the condition to the CONF_SECTION.
 	 */
 	cf_data_add(cs, cond, NULL, false);
-	*ptr_p = ptr;
+	stack->ptr = ptr;
 	return cs;
 }
 
@@ -1149,7 +1160,7 @@ static CONF_SECTION *process_map(cf_stack_t *stack)
 	buff[0] = stack->buff[0];
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
-	buff[3] = stack->buff[3];	
+	buff[3] = stack->buff[3];
 
 	if (invalid_location(frame->current, "map", frame->filename, frame->lineno)) {
 		ERROR("%s[%d]: Invalid syntax for 'map'", frame->filename, frame->lineno);
@@ -1297,7 +1308,7 @@ static int parse_input(cf_stack_t *stack)
 	buff[0] = stack->buff[0];
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
-	buff[3] = stack->buff[3];	
+	buff[3] = stack->buff[3];
 
 	/*
 	 *	Catch end of a subsection.
@@ -1362,7 +1373,9 @@ static int parse_input(cf_stack_t *stack)
 	 *	need.
 	 */
 	if ((strcmp(buff[1], "if") == 0) || (strcmp(buff[1], "elsif") == 0)) {
-		css = process_if(parent, &ptr, buff, frame->filename, frame->lineno);
+		stack->ptr = ptr;
+		css = process_if(stack);
+		ptr = stack->ptr;
 		if (!css) return -1;
 		goto add_section;
 	}
@@ -1373,11 +1386,12 @@ static int parse_input(cf_stack_t *stack)
 	 *	map NAME ARGUMENT { ... }
 	 */
 	if ((strcmp(buff[1], "map") == 0) && (*ptr != '{')) {
+		stack->ptr = ptr;
 		css = process_map(stack);
+		ptr = stack->ptr;
 		if (!css) return -1;
 
 		frame->special = css;
-		ptr = stack->ptr;
 		goto add_section;
 	}
 
