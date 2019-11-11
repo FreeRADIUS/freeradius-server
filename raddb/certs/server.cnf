@@ -66,4 +66,4 @@ subjectAltName = @alt_names
 DNS.1 = radius.example.com
 
 # NAIRealm from RFC 7585
-otherName.0 = 1.3.6.1.5.5.7.0.85;FORMAT:UTF8,UTF8:*.example.com
+otherName.0 = 1.3.6.1.5.5.7.8.8;FORMAT:UTF8,UTF8:*.example.com
