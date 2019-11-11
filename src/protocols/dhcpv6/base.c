@@ -183,10 +183,10 @@ static bool duid_match(uint8_t const *option, fr_dhcpv6_decode_ctx_t const *pack
 	return true;
 }
 
-/** Verify a packet from a client
+/** Verify a reply packet from a server to a client
  *
  */
-static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx)
+static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx)
 {
 	uint32_t transaction_id;
 	uint8_t const *option;
@@ -194,27 +194,49 @@ static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 	uint8_t const *end = packet + packet_len;
 
 	switch (packet[0]) {
-
 	case FR_PACKET_TYPE_VALUE_ADVERTISE:
 		transaction_id = (packet[1] << 16) | (packet[2] << 8) | packet[3];
-		if (transaction_id != packet_ctx->transaction_id) return false;
+		if (transaction_id != packet_ctx->transaction_id) {
+		fail_tid:
+			fr_strerror_printf("Transaction ID does not match");
+			return false;
+		}
 
-		if (!option_find(options, end, FR_SERVER_ID)) return false;
+		if (!option_find(options, end, FR_SERVER_ID)) {
+		fail_sid:
+			fr_strerror_printf("Packet does not contain a Server-Id option");
+			return false;
+		}
 
 		option = option_find(options, end, FR_CLIENT_ID);
-		if (!option) return false;
+		if (!option) {
+		fail_cid:
+			fr_strerror_printf("Packet does not contain a Client-Id option");
+			return false;
+		}
 
 		/*
 		 *	The DUID MUST exist.
 		 */
-		if (!packet_ctx->duid) return false;
-		return duid_match(option, packet_ctx);
+		if (!packet_ctx->duid) {
+		fail_duid:
+			fr_strerror_printf("Packet context does not contain a DUID");
+			return false;
+		}
+
+	check_duid:
+		if (!duid_match(option, packet_ctx)) {
+		fail_match:
+			fr_strerror_printf("DUID in packet does not match our DUID");
+			return false;
+		}
+		return true;
 
 	case FR_PACKET_TYPE_VALUE_REPLY:
 		transaction_id = (packet[1] << 16) | (packet[2] << 8) | packet[3];
-		if (transaction_id != packet_ctx->transaction_id) return false;
+		if (transaction_id != packet_ctx->transaction_id) goto fail_tid;
 
-		if (!option_find(options, end, FR_SERVER_ID)) return false;
+		if (!option_find(options, end, FR_SERVER_ID)) goto fail_sid;
 
 		/*
 		 *	It's OK to not have a client ID in the reply if we didn't send one.
@@ -222,25 +244,27 @@ static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 		option = option_find(options, end, FR_CLIENT_ID);
 		if (!option) {
 			if (!packet_ctx->duid) return true;
-			return false;
+			goto fail_cid;
 		}
-
-		return duid_match(option, packet_ctx);
-
+		goto check_duid;
+		
 	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
-		if (!option_find(options, end, FR_SERVER_ID)) return false;
+		if (!option_find(options, end, FR_SERVER_ID)) goto fail_sid;
 
 		option = option_find(options, end, FR_CLIENT_ID);
-		if (!option) return false;
+		if (!option) goto fail_cid;
 
 		/*
 		 *	The DUID MUST exist.
 		 */
-		if (!packet_ctx->duid) return false;
-		if (!duid_match(option, packet_ctx)) return false;
+		if (!packet_ctx->duid) goto fail_duid;
+		if (!duid_match(option, packet_ctx)) goto fail_match;
 
 		option = option_find(options, end, FR_RECONF_MSG);
-		if (!option) return false;
+		if (!option) {
+			fr_strerror_printf("Packet does not contain a Reconf-Msg option");
+			return false;
+		}
 
 		/*
 		 *	@todo - check reconfigure message type, and
@@ -262,6 +286,7 @@ static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 	case FR_PACKET_TYPE_VALUE_DECLINE:
 	case FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST:
 	default:
+		fr_strerror_printf("Invalid message type sent to client");
 		return false;
 	}
 
@@ -269,10 +294,10 @@ static bool client_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 }
 
 
-/** Verify a packet from a server
+/** Verify a packet from a client to a server
  *
  */
-static bool server_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx)
+static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx)
 {
 	uint8_t const *option;
 	uint8_t const *options = packet + 4;
@@ -281,46 +306,72 @@ static bool server_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_de
 	/*
 	 *	Servers MUST have a DUID
 	 */
-	if (!packet_ctx->duid) return false;
+	if (!packet_ctx->duid) {
+		fr_strerror_printf("Packet context does not contain a DUID");
+		return false;
+	}
 
 	switch (packet[0]) {
 	case FR_PACKET_TYPE_VALUE_SOLICIT:
 	case FR_PACKET_TYPE_VALUE_CONFIRM:
 	case FR_PACKET_TYPE_VALUE_REBIND:
-		if (!option_find(options, end, FR_CLIENT_ID)) return false;
+		if (!option_find(options, end, FR_CLIENT_ID)) {
+		fail_cid:
+			fr_strerror_printf("Packet does not contain a Client-Id option");
+			return false;
+		}
 
-		if (!option_find(options, end, FR_SERVER_ID)) return false;
+		if (!option_find(options, end, FR_SERVER_ID)) {
+		fail_sid:
+			fr_strerror_printf("Packet does not contain a Server-Id option");
+			return false;
+		}
 		break;
 
 	case FR_PACKET_TYPE_VALUE_REQUEST:
 	case FR_PACKET_TYPE_VALUE_RENEW:
 	case FR_PACKET_TYPE_VALUE_DECLINE:
 	case FR_PACKET_TYPE_VALUE_RELEASE:
-		if (!option_find(options, end, FR_CLIENT_ID)) return false;
+		if (!option_find(options, end, FR_CLIENT_ID)) goto fail_cid;
 
 		option = option_find(options, end, FR_SERVER_ID);
-		if (!option) return false;
+		if (!option) goto fail_sid;
 
-		return duid_match(option, packet_ctx);
+		if (!duid_match(option, packet_ctx)) {
+		fail_match:
+			fr_strerror_printf("DUID in packet does not match our DUID");
+			return false;
+		}
+		break;
 
 	case FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST:
 		option = option_find(options, end, FR_SERVER_ID);
-		if (!option) return false;
+		if (!option) goto fail_sid;
 
-		if (!duid_match(option, packet_ctx)) return false;
+		if (!duid_match(option, packet_ctx)) goto fail_match;
 
 		/*
 		 *	IA options are forbidden.
 		 */
-		if (option_find(options, end, FR_IA_NA)) return false;
-		if (option_find(options, end, FR_IA_TA)) return false;
-		if (option_find(options, end, FR_IA_ADDR)) return false;
+		if (option_find(options, end, FR_IA_NA)) {
+			fr_strerror_printf("Packet contains an IA-NA option");
+			return false;
+		}
+		if (option_find(options, end, FR_IA_TA)) {
+			fr_strerror_printf("Packet contains an IA-TA option");
+			return false;
+		}
+		if (option_find(options, end, FR_IA_ADDR)) {
+			fr_strerror_printf("Packet contains an IA-Addr option");
+			return false;
+		}
 		break;
 
 	case FR_PACKET_TYPE_VALUE_ADVERTISE:
 	case FR_PACKET_TYPE_VALUE_REPLY:
 	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
 	default:
+		fr_strerror_printf("Invalid message type sent to server");
 		return false;
 	}
 	return true;
@@ -346,9 +397,9 @@ bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode
 
 	if (!packet_ctx->duid) return false;
 
-	if (from_server) return server_verify(packet, packet_len, packet_ctx);
+	if (from_server) return verify_to_client(packet, packet_len, packet_ctx);
 
-	return client_verify(packet, packet_len, packet_ctx);
+	return verify_from_client(packet, packet_len, packet_ctx);
 }
 
 /*
