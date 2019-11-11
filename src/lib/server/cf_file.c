@@ -1493,13 +1493,56 @@ do_frame:
 		 *	buffer, without continuations.
 		 */
 
-	next_start_token:
 		fr_skip_whitespace(ptr);
 
 		/*
 		 *	Nothing left, or just a comment.  Go read
 		 *	another line of text.
 		 */
+		if (!*ptr || (*ptr == '#')) continue;
+
+		if (*ptr == '$') {
+			/*
+			 *	Allow for $INCLUDE files
+			 */
+			if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
+				ptr += 8;
+
+				if (process_include(stack, parent, ptr, true) < 0) goto error;
+				goto do_frame;
+			}
+
+			if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
+				int rcode;
+
+				ptr += 9;
+
+				rcode = process_include(stack, parent, ptr, false);
+				if (rcode < 0) goto error;
+				if (rcode == 0) continue;
+				goto do_frame;
+			}
+
+			/*
+			 *	Allow for $TEMPLATE things
+			 */
+			if (strncasecmp(buff[1], "$TEMPLATE", 9) == 0) {
+				ptr += 9;
+				fr_skip_whitespace(ptr);
+
+				if (process_template(parent, ptr, buff, frame->filename, frame->lineno) < 0) goto error;
+				continue;
+			}
+
+			ERROR("%s[%d]: Invalid text starting with '$'", frame->filename, frame->lineno);
+			goto error;
+		}
+
+		/*
+		 *	All of the file handling code is done.  Parse the input.
+		 */
+	next_start_token:
+		fr_skip_whitespace(ptr);
 		if (!*ptr || (*ptr == '#')) continue;
 
 		/*
@@ -1538,38 +1581,6 @@ do_frame:
 			frame->current = parent = cf_item_to_section(parent->item.parent);
 			ptr++;
 			goto next_start_token;
-		}
-
-		/*
-		 *	Allow for $INCLUDE files
-		 */
-		if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
-			ptr += 8;
-
-			if (process_include(stack, parent, ptr, true) < 0) goto error;
-			goto do_frame;
-		}
-
-		if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
-			int rcode;
-
-			ptr += 9;
-
-			rcode = process_include(stack, parent, ptr, false);
-			if (rcode < 0) goto error;
-			if (rcode == 0) continue;
-			goto do_frame;
-		}
-
-		/*
-		 *	Allow for $TEMPLATE things
-		 */
-		if (strncasecmp(buff[1], "$TEMPLATE", 9) == 0) {
-			ptr += 9;
-			fr_skip_whitespace(ptr);
-
-			if (process_template(parent, ptr, buff, frame->filename, frame->lineno) < 0) goto error;
-			continue;
 		}
 
 		/*
