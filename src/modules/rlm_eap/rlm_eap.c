@@ -1025,7 +1025,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		/*
 		 *	Add the methods the submodule provides
 		 */
-		for (j = 0; i < MAX_PROVIDED_METHODS; j++) {
+		for (j = 0; j < MAX_PROVIDED_METHODS; j++) {
 			if (!submodule->provides[j]) break;
 
 			method = submodule->provides[j];
