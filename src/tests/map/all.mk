@@ -24,7 +24,7 @@ MAP_UNIT := $(TESTBIN)/unit_test_map
 #	Re-run the tests if the input file changes
 #
 $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_map
-	${Q}echo MAP-TEST $(notdir $<)
+	@echo "MAP-TEST $(notdir $<)"
 	${Q}if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r "$@" "$<" > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat "$@.log"; \

@@ -27,7 +27,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #  that we're running
 #
 $(BUILD_DIR)/tests/bin/%: $(DIR)/% %
-	${Q}echo BIN-TEST $(notdir $@)
+	@echo "BIN-TEST $(notdir $@)"
 	${Q}if ! TESTBIN="$(TESTBIN)" DICT_DIR="$(top_srcdir)/share/dictionary" $<; then \
 		echo TESTBIN=\"$(TESTBIN)\" DICT_DIR="$(top_srcdir)/share/dictionary" $<; \
 		exit 1; \
