@@ -215,6 +215,18 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree,
 			 */
 			for (vp = fr_cursor_init(&cursor, &entry->reply); vp; vp = fr_cursor_next(&cursor)) {
 				/*
+				 * If we're dealing with Tunnel-Password,
+				 * note that we're truncating it to 249 bytes.
+				 */
+				if (strcmp(vp->da->name, "Tunnel-Password") == 0) {
+					if (strlen(vp->data.strvalue) > 249) {
+						ERROR("[%s]:%d Refusing to accept Tunnel-Password with length longer than 249 characters.",
+						      filename, entry->lineno);
+						return -1;
+					}
+				}
+
+				/*
 				 *	If it's NOT a vendor attribute,
 				 *	and it's NOT a wire protocol
 				 *	and we ignore Fall-Through,
