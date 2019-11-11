@@ -3,8 +3,8 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Add Jenkins continuous integration.  Fixes #2620.
 	  Used to build http://packages.networkradius.com/
 	* Added Force10 dictionary.
-	* Update dictionary.hp with new attributes for REST. #2690
-	* Update dictionary.aruba with new attributes for REST. #2696
+	* Update dictionary.hp with new attributes.  #2690
+	* Update dictionary.aruba with new attributes.  #2696
 	* Update logrotate settings to rotate as non-root user. #2666
 	* Fix side-channel leak in EAP-PWD.  Patch from Mathy Vanhoef.
 	* Relax OpenSSL version checks, now that their API is both
