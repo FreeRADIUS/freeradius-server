@@ -611,6 +611,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			return -2;
 		}
 
+		array = NULL;
+
 		/*
 		 *	Functions don't necessarily *need* to write
 		 *	anywhere, so their data pointer can be NULL.
@@ -621,7 +623,6 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 				cf_log_err(cs, "Rule doesn't specify output destination");
 				return -1;
 			}
-			array = NULL;
 		}
 		/*
 		 *	Tmpl is outside normal range
