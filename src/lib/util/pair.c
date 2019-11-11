@@ -1404,9 +1404,11 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 
 	(void) fr_strerror();	/* Clear any existing messages */
 
-	if (!fr_cond_assert(!(!filter && !list))) return;
-
 	if (!list) {
+		if (!filter) {
+			(void) fr_cond_assert(filter != NULL);
+			return;
+		}
 		fr_strerror_printf("Attribute \"%s\" not found in list", filter->da->name);
 		return;
 	}
