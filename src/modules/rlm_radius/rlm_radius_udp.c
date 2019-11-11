@@ -2455,7 +2455,11 @@ static int status_udp_request_free(fr_io_request_t *u)
 	fr_io_connection_t	*c = u->c;
 	rlm_radius_udp_connection_t *radius = c->ctx;
 
-	DEBUG3("%s - Freeing status check ID %d on connection %s", c->module_name, u->rr->id, c->name);
+	if (u->rr) {
+		DEBUG3("%s - Freeing status check ID %d on connection %s", c->module_name, u->rr->id, c->name);
+	} else {
+		DEBUG3("%s - Freeing status check on connection %s", c->module_name, c->name);
+	}
 	radius->status_u = NULL;
 
 	/*
