@@ -100,6 +100,7 @@ typedef struct {
 	size_t		bufsize;		//!< size of the buffers
 	int		depth;			//!< stack depth
 	char const	*ptr;			//!< current parse pointer
+	char		*fill;			//!< where we start filling the buffer from
 	cf_stack_frame_t frame[MAX_STACK];	//!< stack frames
 } cf_stack_t;
 
@@ -1369,7 +1370,7 @@ static int parse_input(cf_stack_t *stack)
 	}
 
 	/*
-	 *	See which unlang keywords are allowed where.
+	 *	See which unlang keywords are allowed
 	 */
 	process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
 	if (process) {
@@ -1700,18 +1701,16 @@ static int cf_file_fill(cf_stack_t *stack)
 	bool at_eof, has_spaces;
 	size_t len;
 	char const *ptr;
-	char *cbuff;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 
 read_more:
 	has_spaces = false;
-	cbuff = stack->buff[0];
 
 read_continuation:
 	/*
 	 *	Get data, and remember if we are at EOF.
 	 */
-	at_eof = (fgets(cbuff, stack->bufsize - (cbuff - stack->buff[0]), frame->fp) == NULL);
+	at_eof = (fgets(stack->fill, stack->bufsize - (stack->fill - stack->buff[0]), frame->fp) == NULL);
 	frame->lineno++;
 
 	/*
@@ -1721,8 +1720,8 @@ read_continuation:
 	 *	the maximum allowed length of text is 8k-1, which
 	 *	should be plenty.
 	 */
-	len = strlen(cbuff);
-	if ((cbuff + len + 1) >= (stack->buff[0] + stack->bufsize)) {
+	len = strlen(stack->fill);
+	if ((stack->fill + len + 1) >= (stack->buff[0] + stack->bufsize)) {
 		ERROR("%s[%d]: Line too long", frame->filename, frame->lineno);
 		return -1;
 	}
@@ -1732,12 +1731,12 @@ read_continuation:
 	 *	continuation line.
 	 */
 	if (has_spaces) {
-		ptr = cbuff;
+		ptr = stack->fill;
 		fr_skip_whitespace(ptr);
 
-		if (ptr > cbuff) {
-			memmove(cbuff, ptr, len - (ptr - cbuff));
-			len -= (ptr - cbuff);
+		if (ptr > stack->fill) {
+			memmove(stack->fill, ptr, len - (ptr - stack->fill));
+			len -= (ptr - stack->fill);
 		}
 	}
 
@@ -1745,7 +1744,7 @@ read_continuation:
 	 *	Skip blank lines when we're at the start of
 	 *	the read buffer.
 	 */
-	if (cbuff == stack->buff[0]) {
+	if (stack->fill == stack->buff[0]) {
 		if (at_eof) return 0;
 
 		ptr = stack->buff[0];
@@ -1762,25 +1761,25 @@ read_continuation:
 	 *	See if there's a continuation.
 	 */
 	while ((len > 0) &&
-	       ((cbuff[len - 1] == '\n') || (cbuff[len - 1] == '\r'))) {
+	       ((stack->fill[len - 1] == '\n') || (stack->fill[len - 1] == '\r'))) {
 		len--;
-		cbuff[len] = '\0';
+		stack->fill[len] = '\0';
 	}
 
-	if ((len > 0) && (cbuff[len - 1] == '\\')) {
+	if ((len > 0) && (stack->fill[len - 1] == '\\')) {
 		/*
 		 *	Check for "suppress spaces" magic.
 		 */
-		if (!has_spaces && (len > 2) && (cbuff[len - 2] == '"')) {
+		if (!has_spaces && (len > 2) && (stack->fill[len - 2] == '"')) {
 			has_spaces = true;
 		}
 
-		cbuff[len - 1] = '\0';
-		cbuff += len - 1;
+		stack->fill[len - 1] = '\0';
+		stack->fill += len - 1;
 		goto read_continuation;
 	}
 
-	stack->ptr = ptr = stack->buff[0];
+	ptr = stack->fill;
 
 	/*
 	 *	We now have one full line of text in the input
@@ -1794,7 +1793,6 @@ read_continuation:
 	 */
 	if (!*ptr || (*ptr == '#')) goto read_more;
 
-	stack->ptr = ptr;
 	return 1;
 }
 
@@ -1856,6 +1854,7 @@ do_frame:
 		/*
 		 *	Fill the buffers with data.
 		 */
+		stack->fill = stack->buff[0];
 		rcode = cf_file_fill(stack);
 		if (rcode < 0) return -1;
 		if (rcode == 0) break;
@@ -1864,7 +1863,9 @@ do_frame:
 		 *	The text here MUST be at the start of a line,
 		 *	OR have only whitespace in front of it.
 		 */
-		ptr = stack->ptr;
+		ptr = stack->buff[0];
+		fr_skip_whitespace(ptr);
+
 		if (*ptr == '$') {
 			/*
 			 *	Allow for $INCLUDE files
