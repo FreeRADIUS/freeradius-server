@@ -1232,6 +1232,7 @@ alloc_section:
 		css->argc++;
 	}
 	stack->ptr = ptr;
+	frame->special = css;
 
 	return css;
 }
@@ -1292,6 +1293,15 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	return rule->func(parent, NULL, NULL, cf_pair_to_item(cp), rule);
 }
 
+static fr_table_ptr_sorted_t unlang_keywords[] = {
+	{ "elsif",	(void *) process_if },
+	{ "if",		(void *) process_if },
+	{ "map",	(void *) process_map },
+};
+static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
+
+typedef CONF_SECTION *(*cf_process_func_t)(cf_stack_t *);
+
 static int parse_input(cf_stack_t *stack)
 {
 	FR_TOKEN	name1_token, name2_token, value_token, op_token;
@@ -1301,6 +1311,7 @@ static int parse_input(cf_stack_t *stack)
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
+	cf_process_func_t process;
 
 	/*
 	 *	Short names are nicer.
@@ -1358,30 +1369,14 @@ static int parse_input(cf_stack_t *stack)
 	}
 
 	/*
-	 *	Handle if/elsif specially.  parent function will
-	 *	update "ptr" to be the next thing that we
-	 *	need.
+	 *	See which unlang keywords are allowed where.
 	 */
-	if ((strcmp(buff[1], "if") == 0) || (strcmp(buff[1], "elsif") == 0)) {
+	process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
+	if (process) {
 		stack->ptr = ptr;
-		css = process_if(stack);
+		css = process(stack);
 		ptr = stack->ptr;
 		if (!css) return -1;
-		goto add_section;
-	}
-
-	/*
-	 *	"map" sections have three arguments!
-	 *
-	 *	map NAME ARGUMENT { ... }
-	 */
-	if (strcmp(buff[1], "map") == 0) {
-		stack->ptr = ptr;
-		css = process_map(stack);
-		ptr = stack->ptr;
-		if (!css) return -1;
-
-		frame->special = css;
 		goto add_section;
 	}
 
