@@ -34,6 +34,10 @@ endef
 #  have a test point for packet decoding.  See
 #  src/protocols/radius/decode.c for an example.
 #
+#  The fuzzer binary needs special magic to run, as it doesn't parse
+#  command-line options.  See scripts/build/fuzzer for a shell script
+#  wrapper.
+#
 PROTOCOLS = radius dhcpv4 dhcpv6
 
 $(foreach X,${PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
