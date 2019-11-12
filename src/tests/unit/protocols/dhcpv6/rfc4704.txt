@@ -1,0 +1,50 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#  Test vectors for DHCPv6 protocol
+#
+proto dhcpv6
+proto-dictionary dhcpv6
+
+#
+#  4.  The DHCPv6 Client FQDN Option
+#
+#  The format of the DHCPv6 Client FQDN option is shown below:
+#
+#  0                   1                   2                   3
+#  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          OPTION_FQDN          |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |   flags       |                                               |
+#  +-+-+-+-+-+-+-+-+                                               |
+#  .                                                               .
+#  .                          domain-name                          .
+#  .                                                               .
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#   option-code      OPTION_CLIENT_FQDN (39)
+#
+#   option-len       1 + length of domain name
+#
+#   flags            flag bits used between client and server to
+#                    negotiate who performs which updates
+#
+#   domain-name      the partial or fully qualified domain name
+#                    (with length option-len - 1)
+#
+
+#
+# TODO: The current API do not support 'struct' attributes with
+# fields like 'string encode=dns_label'. e.g: Client-FQDN-Domain-Name
+#
+encode-pair Client-FQDN-Domain-Name = "tapioca01", Client-FQDN-Flags = Server-Update
+no match 00 27 00 0b 01 09 74 61 70 69 6f 63 61 30 31
+
+decode-pair -
+no match Client-FQDN-Domain-Name = "tapioca01", Client-FQDN-Flags = Server-Update
+
+count
+match 6
