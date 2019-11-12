@@ -50,7 +50,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
-static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
+static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR const *vp)
 {
 	if (!vp) return false;
 	if (vp->da->flags.internal) return false;
@@ -169,10 +169,22 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	Pack multiple attributes into into a single option
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
+		fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
+
 		slen = encode_struct(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 		if (slen < 0) return slen;
 
-		vp = next_encodable(cursor, encoder_ctx);
+		/*
+		 *	The encode_struct() routine eats all relevant
+		 *	VPs.  It stops when the cursor is pointing to
+		 *	a VP which is *not* part of the struct.  As a
+		 *	result, we shouldn't call next_encodable()
+		 *	here unless the next VP isn't encodable.
+		 */
+		vp = fr_cursor_current(cursor);
+		if (!is_encodable(packet_ctx->root, vp)) {
+			vp = next_encodable(cursor, packet_ctx);
+		}
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 		return slen;
 	}
