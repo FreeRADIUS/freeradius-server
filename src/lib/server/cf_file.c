@@ -1358,16 +1358,6 @@ static int parse_input(cf_stack_t *stack)
 	}
 
 	/*
-	 *	parent single word is done.  Create a CONF_PAIR.
-	 */
-	if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
-		value_token = T_INVALID;
-		op_token = T_OP_EQ;
-		value = NULL;
-		goto do_set;
-	}
-
-	/*
 	 *	Handle if/elsif specially.  parent function will
 	 *	update "ptr" to be the next thing that we
 	 *	need.
@@ -1385,7 +1375,7 @@ static int parse_input(cf_stack_t *stack)
 	 *
 	 *	map NAME ARGUMENT { ... }
 	 */
-	if ((strcmp(buff[1], "map") == 0) && (*ptr != '{')) {
+	if (strcmp(buff[1], "map") == 0) {
 		stack->ptr = ptr;
 		css = process_map(stack);
 		ptr = stack->ptr;
@@ -1393,6 +1383,16 @@ static int parse_input(cf_stack_t *stack)
 
 		frame->special = css;
 		goto add_section;
+	}
+
+	/*
+	 *	parent single word is done.  Create a CONF_PAIR.
+	 */
+	if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
+		value_token = T_INVALID;
+		op_token = T_OP_EQ;
+		value = NULL;
+		goto do_set;
 	}
 
 	/*
