@@ -1110,7 +1110,7 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 				memcpy(&stack->fill, &ptr, sizeof(ptr)); /* const issues */
 				stack->fill += end;
 				rcode = cf_file_fill(stack);
-				if (rcode < 0) return rcode;
+				if (rcode < 0) return NULL;
 				continue;
 			}
 
