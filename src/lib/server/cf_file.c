@@ -1037,6 +1037,8 @@ static int process_template(cf_stack_t *stack)
 }
 
 
+static int cf_file_fill(cf_stack_t *stack);
+
 static CONF_SECTION *process_if(cf_stack_t *stack)
 {
 	ssize_t slen = 0;
@@ -1085,7 +1087,44 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 	/*
 	 *	Skip (...) to find the {
 	 */
-	slen = fr_cond_tokenize(cs, &cond, &error, dict, ptr);
+	while (true) {
+		slen = fr_cond_tokenize(cs, &cond, &error, dict, ptr);
+		if (slen < 0) {
+			ssize_t end = -slen;
+
+			/*
+			 *	For paranoia, check that "end" is valid.
+			 */
+			if ((ptr + end) > (stack->buff[0] + stack->bufsize)) {
+				cf_log_err(parent, "Failed parsing condition");
+				return NULL;
+			}
+
+			/*
+			 *	The condition failed to parse at EOL.
+			 *	Therefore we try to read another line.
+			 */
+			if (!ptr[end]) {
+				int rcode;
+
+				memcpy(&stack->fill, &ptr, sizeof(ptr)); /* const issues */
+				stack->fill += end;
+				rcode = cf_file_fill(stack);
+				if (rcode < 0) return rcode;
+				continue;
+			}
+
+			/*
+			 *	@todo - suppress leading spaces
+			 */
+		}
+		break;
+	}
+
+	/*
+	 *	We either read the whole line, OR there was a
+	 *	different error parsing the condition.
+	 */
 	if (slen < 0) {
 		char *spaces, *text;
 
