@@ -1,0 +1,110 @@
+def artifacts = 'build-number, **/*.changes, **/*.buildinfo, **/*.deb, **/*.rpm'
+
+/*
+ *  Build FreeRADIUS packages for common Linux distributions.
+ *  Function definitions are pulled in from Jenkinsfile.defs so
+ *  that they can be used in other Jenkinsfiles.
+ */
+
+properties([
+	parameters([
+		string(
+			name: 'source',
+			defaultValue: 'https://github.com/FreeRADIUS/freeradius-server',
+			description: 'URL of git repository where the source tree can be found',
+			trim: true
+		),
+		string(
+			name: 'branch',
+			defaultValue: 'v3.0.x',
+			description: 'Name of the git branch the packages are built from',
+			trim: true
+		),
+		string(
+			name: 'jdbranch',
+			defaultValue: 'v3.0.x',
+			description: 'Branch to use to get Jenkinsfile and Docker files from',
+			trim: true
+		),
+		text(
+			name: 'platforms',
+			defaultValue: '''ubuntu14
+ubuntu16
+ubuntu18
+debian8
+debian9
+debian10
+centos7
+centos8''',
+			description: 'List of operating systems to build packages for'
+		),
+		string(
+			name: 'package_version',
+			defaultValue: '',
+			description: 'Version number used in the built packages, e.g. "3.0.19"',
+			trim: true
+		),
+		string(
+			name: 'package_release',
+			defaultValue: '1',
+			description: 'Release suffix used in the built packages, e.g. "2" would create "3.0.19-2". Will use "1" if not set.',
+			trim: true
+		),
+		booleanParam(
+			name: 'use_commit',
+			defaultValue: true,
+			description: 'If enabled, uses the git commit number in the package version, e.g. 3.0.19+GIT-1 (otherwise 3.0.19-1).'
+		)
+	])
+])
+
+
+/*
+ *  Given the provided parameters, build packages as specified and then archive them.
+ */
+
+node {
+	cleanWs(patterns: [[pattern: '**/*.deb , **/*.changes , **/*.buildinfo , **/*.rpm', type: 'INCLUDE']])
+
+	def server_dir = "freeradius-server"
+
+	checkout([
+		$class: 'GitSCM',
+		userRemoteConfigs: [
+			[url: params.source]
+		],
+		branches: [
+			[name: params.jdbranch]
+		],
+		doGenerateSubmoduleConfigurations: false,
+		extensions: [
+			[$class: 'RelativeTargetDirectory',
+				relativeTargetDir: server_dir
+			],
+			[$class: 'CloneOption',
+				depth: 0,
+				noTags: false,
+				reference: '',
+				shallow: false
+			]
+		],
+		submoduleCfg: []
+	])
+
+
+	def fr = load server_dir + "/scripts/jenkins/Jenkinsfile.defs"
+	fr.genBuildNumber(server_dir, "build-number")
+
+	def build_opts = [:]
+	build_opts.platforms = params.platforms.trim().split()
+	build_opts.source = params.source
+	build_opts.branch = params.branch
+	build_opts.package_version = params.package_version
+	build_opts.package_release = params.package_release
+	build_opts.use_commit = params.use_commit
+	build_opts.server_dir = server_dir
+
+	parallel fr.buildClosures(build_opts)
+
+	archiveArtifacts artifacts
+}

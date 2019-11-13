@@ -1,0 +1,36 @@
+def platforms = ["ubuntu14", "ubuntu16", "ubuntu18", "centos7", "centos8", "debian8", "debian9", "debian10"]
+def server_dir = "freeradius-server"
+def artifacts = 'build-number, **/*.changes, **/*.buildinfo, **/*.deb, **/*.rpm'
+
+/*
+ *  Build FreeRADIUS packages for common Linux distributions.
+ *  Source is used as defined in the Jenkins job. Function
+ *  definitions are pulled in from Jenkinsfile.defs so that they
+ *  can be used in other Jenkinsfiles.
+ */
+
+node {
+	cleanWs(patterns: [[pattern: '**/*.deb , **/*.changes , **/*.buildinfo , **/*.rpm', type: 'INCLUDE']])
+
+	dir(server_dir) {
+		checkout scm
+	}
+
+	def fr = load server_dir + "/scripts/jenkins/Jenkinsfile.defs"
+	fr.genBuildNumber(server_dir, "build-number")
+
+	def build_opts = [:]
+	build_opts.platforms = platforms
+	build_opts.source = scm.getUserRemoteConfigs()[0].getUrl()
+	build_opts.branch = scm.getBranches()[0].getName();
+	build_opts.package_version = ''
+	build_opts.package_release = '1'
+	build_opts.use_commit = true
+	build_opts.server_dir = server_dir
+
+	print build_opts.inspect()
+
+	parallel fr.buildClosures(build_opts)
+
+	archiveArtifacts artifacts
+}
