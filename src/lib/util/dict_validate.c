@@ -535,6 +535,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	switch (parent->type) {
 	case FR_TYPE_STRUCT:
 		ALLOW_FLAG(extra);
+		ALLOW_FLAG(subtype);
 		if (all_flags) {
 			fr_strerror_printf("Invalid flag for attribute inside of a 'struct'");
 			return false;

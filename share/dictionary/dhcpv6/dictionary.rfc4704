@@ -13,7 +13,7 @@
 
 ATTRIBUTE	Client-FQDN				39	struct
 MEMBER		Client-FQDN-Flags			uint8
-MEMBER		Client-FQDN-Domain-Name			octets  # really string dns_label
+MEMBER		Client-FQDN-Domain-Name			string		dns_label
 
 VALUE	Client-FQDN-Flags			Server-Update  1	# really bit field
 VALUE	Client-FQDN-Flags			Server-Override  2	# really bit field
