@@ -36,6 +36,14 @@ extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
 
 #define OPT_HDR_LEN	(sizeof(uint16_t) * 2)
 
+/** subtype values for DHCPv4 and DHCPv6
+ *
+ */
+enum {
+	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DHCPv6 strings
+	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
+};
+
 typedef struct {
 	fr_dict_attr_t const	*root;				//!< Root attribute of the dictionary.
 } fr_dhcpv6_encode_ctx_t;

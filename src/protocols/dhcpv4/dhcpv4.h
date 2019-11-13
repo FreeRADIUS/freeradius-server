@@ -59,6 +59,14 @@ typedef enum {
 	FR_DHCP_MAX = (16)
 } fr_dhcpv4_codes_t;
 
+/** subtype values for DHCPv4 and DHCPv6
+ *
+ */
+enum {
+	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DHCPv6 strings
+	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
+};
+
 typedef struct {
 	uint8_t		opcode;
 	uint8_t		htype;

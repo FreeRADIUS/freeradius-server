@@ -622,6 +622,33 @@ static fr_table_num_ordered_t const subtype_table[] = {
 	{ "encode=dns_label",		FLAG_ENCODE_DNS_LABEL },
 };
 
+static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
+		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+{
+	if (type == FR_TYPE_EXTENDED) {
+		fr_strerror_printf("Attributes of type 'extended' cannot be used with DHCP");
+		return false;
+	}
+
+	if (flags.has_tag) {
+		fr_strerror_printf("Tagged attributes cannot be used with DHCP");
+		return false;
+	}
+
+	/*
+	 *	"extra" signifies that subtype is being used by the
+	 *	dictionaries itself.
+	 */
+	if (flags->extra || !flags->subtype) return true;
+
+	if (type != FR_TYPE_STRING) {
+		fr_strerror_printf("The 'dns_label' flag can only be used with attributes of type 'string'");
+		return false;
+	}
+
+	return true;
+}
+
 extern fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol;
 fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 	.name = "dhcpv6",
@@ -629,4 +656,5 @@ fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 	.default_type_length = 2,
 	.subtype_table = subtype_table,
 	.subtype_table_len = NUM_ELEMENTS(subtype_table),
+	.attr_valid = attr_valid,
 };

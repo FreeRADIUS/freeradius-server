@@ -159,10 +159,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 *	DHCPv6 has arrays of string / octets, prefixed
 		 *	with a uint16 field of "length".  Also, arrays of dns_labels.
 		 */
-		if (dict->root->attr == FR_PROTOCOL_DHCPV6) {
-			ALLOW_FLAG(extra);
-			ALLOW_FLAG(subtype);
-		}
+		ALLOW_FLAG(extra);
+		ALLOW_FLAG(subtype);
 
 		FORBID_OTHER_FLAGS(array);
 	}
