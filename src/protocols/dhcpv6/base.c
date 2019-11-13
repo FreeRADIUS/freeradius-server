@@ -57,7 +57,7 @@ static fr_dict_attr_t const *attr_option_request;
 extern fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
-	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
+	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
 	{ .out = &attr_option_request, .name = "Option-Request", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv6 },
 	{ NULL }
 };
@@ -459,11 +459,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	/*
 	 *	The internal attribute is 64-bits, but the ID is 24 bits.
 	 */
-	vp->vp_uint32 = packet[1];
-	vp->vp_uint32 <<= 8;
-	vp->vp_uint32 |= packet[2];
-	vp->vp_uint32 <<= 8;
-	vp->vp_uint32 |= packet[3];
+	(void) fr_pair_value_memcpy(vp, packet + 1, 3, false);
 
 	vp->type = VT_DATA;
 	fr_cursor_append(&cursor, vp);
@@ -541,22 +537,20 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	 */
 	if (original) {
 		memcpy(packet + 1, original + 1, 3);
-	} else {
-		uint32_t id;
-
+	} else {		
 		/*
 		 *	We can set an XID, or we can pick a random one.
 		 */
 		vp = fr_pair_find_by_da(vps, attr_transaction_id, TAG_ANY);
-		if (vp) {
-			id = vp->vp_uint32;
+		if (vp && (vp->vp_length >= 3)) {
+			memcpy(packet + 1, vp->vp_octets, 3);
 		} else {
-			id = fr_rand();
-		}
+			uint32_t id = fr_rand();
 
-		packet[1] = (id >> 16) & 0xff;
-		packet[2] = (id >> 8) & 0xff;
-		packet[3] = id & 0xff;
+			packet[1] = (id >> 16) & 0xff;
+			packet[2] = (id >> 8) & 0xff;
+			packet[3] = id & 0xff;
+		}
 	}
 
 	packet_ctx.root = root;
