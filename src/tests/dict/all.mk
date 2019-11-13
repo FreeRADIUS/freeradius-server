@@ -6,7 +6,7 @@ TEST := test.dict
 #
 #  Input files.
 #
-FILES := $(wildcard $(DIR)/*.dict)
+FILES := base.dict
 
 $(eval $(call TEST_BOOTSTRAP))
 
