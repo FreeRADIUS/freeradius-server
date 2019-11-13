@@ -90,7 +90,7 @@ size_t fr_net_af_table_len = NUM_ELEMENTS(fr_net_af_table);
 	expected = fr_udp_checksum((uint8_t const *) udp, ntohs(udp->len), udp->checksum,
 				   ip->ip_src, ip->ip_dst);
 	if (udp->checksum != expected) {
-		fr_strerror_printf("DHCP: UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
+		fr_strerror_printf("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
 				   ntohs(udp->checksum), ntohs(expected));
 		/* Not a fatal error */
 		ret = 1;
