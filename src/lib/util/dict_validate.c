@@ -125,11 +125,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
-		if (flags->subtype && (flags->subtype != FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
-			fr_strerror_printf("The 'has_tag' flag can only be used with 'encrypt=2'");
-			return false;
-		}
-
 		/*
 		 *	"has_tag" can also be used with "encrypt=", and "internal" (for testing)
 		 */
@@ -272,81 +267,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		FORBID_OTHER_FLAGS(extra);
-	}
-
-	/*
-	 *	Subtype flag checks for RADIUS
-	 */
-	if (!flags->extra && (flags->subtype) && (dict->root->attr == FR_PROTOCOL_RADIUS)) {
-		if ((flags->subtype == FLAG_EXTENDED_ATTR) && (type != FR_TYPE_EXTENDED)) {
-			fr_strerror_printf("The 'long' flag can only be used for attributes of type 'extended'");
-			return false;
-		}
-
-		/*
-		 *	Stupid hacks for MS-CHAP-MPPE-Keys.  The User-Password
-		 *	encryption method has no provisions for encoding the
-		 *	length of the data.  For User-Password, the data is
-		 *	(presumably) all printable non-zero data.  For
-		 *	MS-CHAP-MPPE-Keys, the data is binary crap.  So... we
-		 *	MUST specify a length in the dictionary.
-		 */
-		if ((flags->subtype == FLAG_ENCRYPT_USER_PASSWORD) && (type != FR_TYPE_STRING)) {
-			if (type != FR_TYPE_OCTETS) {
-				fr_strerror_printf("The 'encrypt=1' flag can only be used with "
-						   "attributes of type 'string'");
-				return false;
-			}
-
-			if (flags->length == 0) {
-				fr_strerror_printf("The 'encrypt=1' flag MUST be used with an explicit length for "
-						   "'octets' data types");
-				return false;
-			}
-		}
-
-		if (flags->subtype > FLAG_EXTENDED_ATTR) {
-			fr_strerror_printf("The 'encrypt' flag can only be 0..3");
-			return false;
-		}
-
-		/*
-		 *	The Tunnel-Password encryption method can be used anywhere.
-		 *
-		 *	We forbid User-Password and Ascend-Send-Secret
-		 *	methods in the extended space.
-		 */
-		if ((flags->subtype != FLAG_ENCRYPT_TUNNEL_PASSWORD) && !flags->internal && !parent->flags.internal) {
-			for (v = parent; v != NULL; v = v->parent) {
-				if (v->type == FR_TYPE_EXTENDED) {
-					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
-							   "of type '%s'", flags->subtype,
-							   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
-					return false;
-				}
-			}
-		}
-
-		switch (type) {
-		case FR_TYPE_EXTENDED:
-			if (flags->subtype == FLAG_EXTENDED_ATTR) break;
-			/* FALL-THROUGH */
-
-		default:
-		encrypt_fail:
-			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
-					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
-			return false;
-
-		case FR_TYPE_TLV:
-		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_UINT32:
-		case FR_TYPE_OCTETS:
-			if (flags->subtype == FLAG_ENCRYPT_ASCEND_SECRET) goto encrypt_fail;
-
-		case FR_TYPE_STRING:
-			break;
-		}
 	}
 
 	/*
@@ -616,13 +536,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	switch (parent->type) {
 	case FR_TYPE_STRUCT:
-		if ((dict->root->attr == FR_PROTOCOL_RADIUS) &&
-		    !flags->extra &&
-		    (flags->subtype != FLAG_ENCRYPT_NONE)) {
-			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT be encrypted.");
-			return false;
-		}
-
 		ALLOW_FLAG(extra);
 		if (all_flags) {
 			fr_strerror_printf("Invalid flag for attribute inside of a 'struct'");
@@ -794,6 +707,11 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			}
 		}
 	}
+
+	/*
+	 *	Run protocol-specific validation functions.
+	 */
+	if (dict->attr_valid) return dict->attr_valid(dict, parent, name, *attr, type, flags);
 
 	return true;
 }

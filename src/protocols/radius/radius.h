@@ -72,6 +72,17 @@ typedef enum {
 	DECODE_FAIL_MAX
 } decode_fail_t;
 
+/** subtype values for RADIUS
+ *
+ */
+enum {
+	FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
+	FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
+	FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
+	FLAG_ENCRYPT_ASCEND_SECRET,			//!< Encrypt attribute ascend style.
+	FLAG_EXTENDED_ATTR,				//!< the attribute is an extended attribute
+};
+
 /*
  *	protocols/radius/base.c
  */

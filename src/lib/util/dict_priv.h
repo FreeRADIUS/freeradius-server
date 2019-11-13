@@ -93,6 +93,8 @@ struct fr_dict {
 	int			default_type_size;	//!< for TLVs and VSAs
 	int			default_type_length;	//!< for TLVs and VSAs
 
+	fr_dict_attr_valid_func_t attr_valid;			//!< validation function for new attributes
+
 	dl_t			*dl;			//!< for validation
 	fr_dict_protocol_t const *proto;		//!< protocol-specific validation functions
 };

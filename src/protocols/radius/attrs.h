@@ -26,6 +26,7 @@
 RCSIDH(radius_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/radius/radius.h>
 
 extern fr_dict_t const *dict_freeradius;
 extern fr_dict_t const *dict_radius;

@@ -2541,6 +2541,7 @@ static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
 	COPY(default_type_length);
 	COPY(subtype_table);
 	COPY(subtype_table_len);
+	COPY(attr_valid);
 
 	return 0;
 }

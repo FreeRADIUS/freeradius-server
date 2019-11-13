@@ -74,17 +74,6 @@ typedef struct {
 	uint8_t			type_size;			//!< For TLV2 and root attributes.
 } fr_dict_attr_flags_t;
 
-/** subtype values for RADIUS
- *
- */
-enum {
-	FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
-	FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
-	FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
-	FLAG_ENCRYPT_ASCEND_SECRET,			//!< Encrypt attribute ascend style.
-	FLAG_EXTENDED_ATTR,				//!< the attribute is an extended attribute
-};
-
 /** subtype values for DHCPv4 and DHCPv6
  *
  */
@@ -195,6 +184,9 @@ typedef enum {
 	FR_DICT_ATTR_EINVAL		= -5			//!< Invalid arguments.
 } fr_dict_attr_err_t;
 
+typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_t *dict, fr_dict_attr_t const *parent,
+					  char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t *flags);
+
 /** Protocol-specific callbacks in libfreeradius-PROTOCOL
  *
  */
@@ -204,6 +196,7 @@ typedef struct {
 	int			default_type_length;		//!< how many octets are in "length" field
 	fr_table_num_ordered_t	const *subtype_table;		//!< for "encrypt=1", etc.
 	size_t			subtype_table_len;		//!< length of subtype_table
+	fr_dict_attr_valid_func_t attr_valid;			//!< validation function for new attributes
 } fr_dict_protocol_t;
 
 typedef struct fr_dict_gctx_s fr_dict_gctx_t;
