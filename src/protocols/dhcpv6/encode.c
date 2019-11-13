@@ -134,7 +134,7 @@ static inline ssize_t encode_option_hdr(uint8_t *out, size_t outlen, uint16_t op
 
 static ssize_t encode_struct(uint8_t *out, size_t outlen,
 			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			     fr_cursor_t *cursor, UNUSED void *encoder_ctx)
+			     fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -150,7 +150,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		return PAIR_ENCODE_ERROR;
 	}
 
-	return fr_struct_to_network(out, outlen, tlv_stack[depth], cursor);
+	return fr_struct_to_network(out, outlen, tlv_stack, depth, cursor, encoder_ctx, encode_value);
 }
 
 static ssize_t encode_value(uint8_t *out, size_t outlen,

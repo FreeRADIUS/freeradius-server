@@ -36,13 +36,13 @@ proto-dictionary dhcpv6
 #                    (with length option-len - 1)
 #
 
+encode-pair Client-FQDN-Flags = Server-Update, Client-FQDN-Domain-Name = "tapioca01"
+match 00 27 00 0c 01 09 74 61 70 69 6f 63 61 30 31 00
+
 #
 # TODO: The current API do not support 'struct' attributes with
 # fields like 'string encode=dns_label'. e.g: Client-FQDN-Domain-Name
 #
-encode-pair Client-FQDN-Flags = Server-Update, Client-FQDN-Domain-Name = "tapioca01"
-no match 00 27 00 0c 01 09 74 61 70 69 6f 63 61 30 31 00
-
 decode-pair -
 no match Client-FQDN-Flags = Server-Update, Client-FQDN-Domain-Name = "tapioca01"
 

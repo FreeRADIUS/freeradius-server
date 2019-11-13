@@ -33,7 +33,7 @@ RCSID("$Id$")
 static unsigned int salt_offset = 0;
 
 static ssize_t encode_value(uint8_t *out, size_t outlen,
-			    fr_dict_attr_t const **tlv_stack, int depth,
+			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx);
 
 static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
@@ -524,7 +524,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
  *	< 0, failure.
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
-			    fr_dict_attr_t const **tlv_stack, int depth,
+			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx)
 {
 	size_t			offset;
@@ -553,7 +553,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	if (da->type == FR_TYPE_STRUCT) {
 		ssize_t struct_len;
 
-		struct_len = fr_struct_to_network(out, outlen, tlv_stack[depth], cursor);
+		struct_len = fr_struct_to_network(out, outlen, tlv_stack, depth, cursor, encoder_ctx, encode_value);
 		if (struct_len <= 0) return struct_len;
 
 		vp = fr_cursor_current(cursor);

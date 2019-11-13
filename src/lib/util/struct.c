@@ -258,13 +258,15 @@ done:
 
 
 ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
-			     fr_dict_attr_t const *parent, fr_cursor_t *cursor)
+			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			     fr_cursor_t *cursor, void *encoder_ctx,
+			     fr_encode_value_t encode_value)
 {
 	ssize_t			len;
 	unsigned int		child_num = 1;
 	uint8_t			*p = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
-	fr_dict_attr_t const   	*key_da;
+	fr_dict_attr_t const   	*key_da, *parent;
 
 	if (!vp) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
@@ -272,6 +274,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	}
 
 	VP_VERIFY(vp);
+	parent = tlv_stack[depth];
 
 	if (parent->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
@@ -323,29 +326,49 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		}
 
 		/*
-		 *	Encode fixed-size octets fields so that they
-		 *	are exactly the fixed size, UNLESS the entire
-		 *	output is truncated.
+		 *	Call the protocol encoder, but ONLY if there
+		 *	are special flags required.
 		 */
-		if ((vp->da->type == FR_TYPE_OCTETS) && vp->da->flags.length) {
-			size_t mylen = vp->da->flags.length;
+		if (encode_value && !child->flags.extra && child->flags.subtype) {
+			ssize_t slen;
 
-			if (mylen > outlen) mylen = outlen;
-
-			if (vp->vp_length < mylen) {
-				memcpy(p, vp->vp_ptr, vp->vp_length);
-				memset(p + vp->vp_length, 0, mylen - vp->vp_length);
-			} else {
-				memcpy(p, vp->vp_ptr, mylen);
-			}
-			len = mylen;
+			tlv_stack[depth + 1] = child;
+			slen = encode_value(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+			if (slen < 0) return slen;
+			len = slen;
+			vp = fr_cursor_current(cursor);
 
 		} else {
 			/*
-			 *	Determine the nested type and call the appropriate encoder
+			 *	Encode fixed-size octets fields so that they
+			 *	are exactly the fixed size, UNLESS the entire
+			 *	output is truncated.
 			 */
-			len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
-			if (len <= 0) return -1;
+			if ((vp->da->type == FR_TYPE_OCTETS) && vp->da->flags.length) {
+				size_t mylen = vp->da->flags.length;
+
+				if (mylen > outlen) mylen = outlen;
+
+				if (vp->vp_length < mylen) {
+					memcpy(p, vp->vp_ptr, vp->vp_length);
+					memset(p + vp->vp_length, 0, mylen - vp->vp_length);
+				} else {
+					memcpy(p, vp->vp_ptr, mylen);
+				}
+				len = mylen;
+
+			} else {
+				/*
+				 *	Determine the nested type and call the appropriate encoder
+				 */
+				len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
+				if (len <= 0) return -1;
+			}
+
+			do {
+				vp = fr_cursor_next(cursor);
+				if (!vp || !vp->da->flags.internal) break;
+			} while (vp != NULL);
 		}
 
 		if (da_is_key_field(child)) {
@@ -355,11 +378,6 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		p += len;
 		outlen -= len;				/* Subtract from the buffer we have available */
 		child_num++;
-
-		do {
-			vp = fr_cursor_next(cursor);
-			if (!vp || !vp->da->flags.internal) break;
-		} while (vp != NULL);
 
 		/*
 		 *	Nothing more to do, or we've done all of the
@@ -383,8 +401,9 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 */
 		if ((vp->da->parent->parent == key_da) &&
 		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
-			len = fr_struct_to_network(p, outlen,
-						   vp->da->parent, cursor);
+			tlv_stack[depth + 1] = vp->da->parent; /* hackity hack */
+			len = fr_struct_to_network(p, outlen, tlv_stack, depth + 1,
+						   cursor, encoder_ctx, encode_value);
 			if (len < 0) return len;
 			return (p - out) + len;
 		}
