@@ -43,7 +43,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
-		if (vp->da->flags.subtype != FLAG_ENCRYPT_NONE) continue;
+		if (vp->da->flags.internal || vp->da->flags.subtype) continue;
 		if (vp->da == attr_message_authenticator) continue;
 
 		total += 2 + vp->vp_length;
