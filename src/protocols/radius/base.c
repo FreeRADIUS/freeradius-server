@@ -1156,13 +1156,18 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	if (flags->extra) return true;
 
 	if (parent->type == FR_TYPE_STRUCT) {
+		if (flags->subtype == FLAG_EXTENDED_ATTR) {
+			fr_strerror_printf("Attributes of type 'extended' cannot be used inside of a 'struct'");
+			return false;
+		}
+
 		if (flags->subtype != FLAG_ENCRYPT_NONE) {
 			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT be encrypted.");
 			return false;
 		}
 
-		if (flags->subtype == FLAG_EXTENDED_ATTR) {
-			fr_strerror_printf("Attributes of type 'extended' cannot be used inside of a 'struct'");
+		if (flags->has_tag) {
+			fr_strerror_printf("Tagged attributes cannot be used inside of a 'struct'");
 			return false;
 		}
 
