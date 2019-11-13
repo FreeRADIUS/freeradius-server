@@ -652,7 +652,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 		return false;
 	}
 
-	if (flags.has_tag) {
+	if (flags->has_tag) {
 		fr_strerror_printf("Tagged attributes cannot be used with DHCP");
 		return false;
 	}
