@@ -232,13 +232,25 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 *
 		 *	https://tools.ietf.org/html/rfc8415#section-10
 		 */
-		if (da->flags.subtype == FLAG_ENCODE_DNS_LABEL) {
+		if ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
+		    (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL)) {
 			slen = fr_dns_label_from_value_box(NULL, p, outlen, p, false, &vp->data);
 
 			/*
 			 *	@todo - check for free space, etc.
 			 */
 			if (slen <= 0) return PAIR_ENCODE_ERROR;
+
+			/*
+			 *	RFC 4704 says "FQDN", unless it's a
+			 *	single label, in which case it's a
+			 *	partial name, and we omit the trailing
+			 *	zero.
+			 */
+			if ((da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL) &&
+			    (*(p + p[0] + 1) == 0)) {
+				slen--;
+			}
 
 			p += slen;
 			break;
