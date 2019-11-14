@@ -59,12 +59,12 @@ test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
 #  Run EAP tests.
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
+	@echo "EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))"
 	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill || true
 	${Q}$(MAKE) --no-print-directory METHOD=$(basename $(notdir $@)) test.eap.radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval OUT := $(patsubst %.conf,%.log,$@))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
-	@echo "EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))"
 	${Q}if ! $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) $(KEY) > $(OUT) 2>&1; then	\
 		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$@)):";	\
 		tail -n 40 "$(patsubst %.conf,%.log,$@)";				\
@@ -74,7 +74,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 		echo "--------------------------------------------------";		\
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";			\
 		$(MAKE) test.eap.radiusd_kill;						\
-		echo "RADIUSD :  TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n servers -D share/dictionary/ -lstdout -f";				\
+		echo "RADIUSD :  TEST_PORT=$(PORT) $(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n servers -D share/dictionary/ -lstdout -f";				\
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET) $(KEY) "; \
 		$(MAKE) --no-print-directory test.eap.radiusd_kill						\
 		exit 1;\
