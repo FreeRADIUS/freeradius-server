@@ -1953,7 +1953,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ "dictionary-dump",	&(command_entry_t){
 					.func = command_dictionary_dump,
 					.usage = "dictionary-dump",
-					.description = "Print the contents of the currently active protocol dictionary to stdout",
+					.description = "Print the contents of the currently active dictionary to stdout",
 				}},
 	{ "encode-dns-label ",	&(command_entry_t){
 					.func = command_encode_dns_label,
