@@ -70,7 +70,7 @@ ${2}/radiusd.pid: ${2}
 		echo "FAILED STARTING RADIUSD"; \
 		grep 'Error :' "${2}/radiusd.log"; \
 		echo "Last entries in server log (${2}/radiusd.log):"; \
-		echo $$(RADIUSD_RUN); \
+		echo "RADIUSD_RUN: $$(RADIUSD_RUN)"; \
 	fi
 
 $(TEST).radiusd_start: ${2}/radiusd.pid
