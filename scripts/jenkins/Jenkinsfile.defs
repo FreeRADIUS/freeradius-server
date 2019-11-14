@@ -111,7 +111,7 @@ def buildClosures(args) {
 						if (platform.contains("centos")) {
 							sh 'sed -i -e "s/^Version:.*$/Version: ' + version + '/" redhat/freeradius.spec'
 							sh 'sed -i -e "s/^Release:.*$/Release: ' + release + '/" redhat/freeradius.spec'
-							sh 'RADIUSD_VERSION_STRING="' + version + '" make rpm'
+							sh 'make RADIUSD_VERSION_STRING="' + version + '" rpm'
 						} else {
 							sh "apt-get install -y unixodbc-dev"
 
