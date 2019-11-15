@@ -7,6 +7,7 @@
 #
 TEST  := test.digest
 FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
+
 $(eval $(call TEST_BOOTSTRAP))
 
 #
@@ -45,6 +46,3 @@ $(OUTPUT)/%: $(DIR)/% test.digest.radiusd_kill test.digest.radiusd_start
 		fi;							\
 		touch $@;						\
 	done
-
-$(TEST): $(FILES)
-	${Q}$(MAKE) test.digest.radiusd_kill
