@@ -25,9 +25,8 @@ VALUE 4RD-Map-Rule-WPK-Authorized Authorized 0x80
 VALUE 4RD-Map-Rule-WPK-Authorized Not-Authorized 0x00
 
 ATTRIBUTE	4RD-Non-Map-Rule			99	struct
-MEMBER		4RD-Non-Map-Rule-Flag			uint8
+MEMBER		4RD-Non-Map-Rule-Flag-Traffic-Class-Provided	bit[1]
+MEMBER		4RD-Non-Map-Rule-Flag-Reserved		bit[6]
+MEMBER		4RD-Non-Map-Rule-Flag-Hub-And-Spoke	bit[1]
 MEMBER		4RD-Non-Map-Rule-Domain-PMTU		uint8
 
-#  Really bit masks
-VALUE 4RD-Non-Map-Rule-Flag Tunnel-Traffic-Class-Provided 0x01
-VALUE 4RD-Non-Map-Rule-Flag Hub-And-Spoke		0x80

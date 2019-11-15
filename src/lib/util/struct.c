@@ -109,6 +109,14 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			return (p - data);
 		}
 
+		/*
+		 *	This isn't done yet.
+		 */
+		if (da_is_bit_field(child)) {
+			fr_strerror_printf("Bit field decoding is not yet done.");
+			return -1;
+		}
+
 		child_length = child->flags.length;
 
 		/*
@@ -256,6 +264,54 @@ done:
 	return data_len;
 }
 
+/** Put bits into an output buffer
+ *
+ * @param p	where the bits go
+ * @param end	end of the output buffer
+ * @param start_bit start bit in the output buffer where the data goes, 0..7
+ * @param num_bits  number of bits to write to the output
+ * @param data	data to write, all in the lower "num_bits" of the uint64_t variable
+ */
+static int put_bits(uint8_t *p, uint8_t const *end, int start_bit, int num_bits, uint64_t data)
+{
+	uint8_t old;
+
+	/*
+	 *	Jump to the start byte
+	 */
+	if (start_bit > 7) {
+		p += start_bit >> 3;
+		start_bit &= 0x07;
+	}
+
+	if ((p + ((start_bit + num_bits) >> 3)) > end) return -1;
+
+	if (num_bits > 56) return -1;
+
+	/*
+	 *	Too much data? Mask it off.
+	 */
+	if (data > ((uint64_t) 1) << num_bits) {
+		data &= (((uint64_t) 1) << num_bits) - 1;
+	}
+
+	/*
+	 *	Grab the old byte.  Shift the data so that it's start
+	 *	bit is where we want, then convert the data to nework
+	 *	byte order.
+	 *
+	 *	Copy over old as many bytes as we need, and then "or"
+	 *	in the original data.
+	 */
+	old = p[0];
+	data <<= (64 - (start_bit + num_bits));
+	data = htonll(data);
+	memcpy(p, &data, (num_bits + 7) >> 3); /* only copy as much as necessary */
+	p[0] |= old;
+
+	return 0;
+}
+
 
 ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
@@ -264,6 +320,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 {
 	ssize_t			len;
 	unsigned int		child_num = 1;
+	unsigned int		offset = 0;
 	uint8_t			*p = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const   	*key_da, *parent;
@@ -303,15 +360,40 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 *	they're not, we fill the struct with zeroes.
 		 */
 		child = vp->da;
+
+		if (!da_is_bit_field(child)) offset = 0;
+
 		if (child->attr != child_num) {
 			child = fr_dict_attr_child_by_num(parent, child_num);
 
 			if (!child) break;
 
+			/*
+			 *	Zero out the bit field.
+			 */
+			if (da_is_bit_field(child)) {
+				if (offset == 0) *p = 0;
+
+				(void) put_bits(p, p + outlen, offset, child->flags.length, 0);
+
+				offset += child->flags.length;
+				if (offset >= 8) {
+					p += (offset >> 3);
+					outlen -= (offset >> 3);
+					offset &= 0x07;
+				}
+
+				child_num++;
+				continue;
+			}
+
 			if (da_is_key_field(child)) {
 				key_da = child;
 			}
 
+			/*
+			 *	Zero out the unused field.
+			 */
 			if (child->flags.length > outlen) {
 				len = outlen;
 			} else {
@@ -329,7 +411,53 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 *	Call the protocol encoder, but ONLY if there
 		 *	are special flags required.
 		 */
-		if (encode_value && !child->flags.extra && child->flags.subtype) {
+		if (da_is_bit_field(child)) {
+			uint64_t value;
+
+			if (offset == 0) *p = 0;
+
+			switch (child->type) {
+				case FR_TYPE_BOOL:
+					value = vp->vp_bool;
+					break;
+
+				case FR_TYPE_UINT8:
+					value = vp->vp_uint8;
+					break;
+
+				case FR_TYPE_UINT16:
+					value = vp->vp_uint16;
+					break;
+
+				case FR_TYPE_UINT32:
+					value = vp->vp_uint32;
+					break;
+
+				case FR_TYPE_UINT64:
+					value = vp->vp_uint64;
+					break;
+
+				default:
+					fr_strerror_printf("Invalid bit field");
+					return -1;
+			}
+
+			(void) put_bits(p, p + outlen, offset, child->flags.length, value);
+
+			offset += child->flags.length;
+			if (offset >= 8) {
+				p += (offset >> 3);
+				outlen -= (offset >> 3);
+				offset &= 0x07;
+			}
+
+			do {
+				vp = fr_cursor_next(cursor);
+				if (!vp || !vp->da->flags.internal) break;
+			} while (vp != NULL);
+			goto next;
+
+		} else if (encode_value && !child->flags.extra && child->flags.subtype) {
 			ssize_t slen;
 
 			tlv_stack[depth + 1] = child;
@@ -377,6 +505,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 
 		p += len;
 		outlen -= len;				/* Subtract from the buffer we have available */
+	next:
 		child_num++;
 
 		/*

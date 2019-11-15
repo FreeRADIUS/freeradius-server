@@ -1,0 +1,18 @@
+# -*- text -*-
+# Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#  Test vectors for DHCPv6 protocol
+#
+proto dhcpv6
+proto-dictionary dhcpv6
+
+encode-pair 4RD-Non-Map-Rule-Flag-Traffic-Class-Provided = true, 4RD-Non-Map-Rule-Flag-Hub-And-Spoke = true, 4RD-Non-Map-Rule-Domain-PMTU = 31
+match 00 63 00 02 81 1f
+
+decode-pair -
+no match 4RD-Non-Map-Rule-Flag-Traffic-Class-Provided = true, 4RD-Non-Map-Rule-Flag-Reserved = 0, 4RD-Non-Map-Rule-Flag-Hub-And-Spoke = true, 4RD-Non-Map-Rule-Domain-PMTU = 31
+
+count
+match 6
