@@ -1,3 +1,8 @@
+FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Add Jenkins continuous integration.  Fixes #2620.
