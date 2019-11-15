@@ -44,3 +44,6 @@ $(OUTPUT)/%: $(DIR)/% test.digest.radiusd_kill test.digest.radiusd_start
 		fi;							\
 		touch $@;						\
 	done
+
+$(TEST):
+	${Q}$(MAKE) test.digest.radiusd_kill
