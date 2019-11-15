@@ -283,26 +283,30 @@ freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git
 # high-level targets
 .PHONY: dist-check
 dist-check: redhat/freeradius.spec suse/freeradius.spec debian/changelog
-	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION_STRING)" ]; then \
-		cat redhat/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION_STRING)/' > redhat/.foo; \
+	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //g'` != "$(RADIUSD_VERSION_STRING)" ]; then \
+		cat redhat/freeradius.spec | sed 's/^Version:.*/Version: $(RADIUSD_VERSION_STRING)/' > redhat/.foo; \
 		mv redhat/.foo redhat/freeradius.spec; \
 		echo redhat/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION_STRING)" ]; then \
-		cat suse/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION_STRING)/' > suse/.foo; \
+	@if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //g'` != "$(RADIUSD_VERSION_STRING)" ]; then \
+		cat suse/freeradius.spec | sed 's/^Version: .*/Version:      $(RADIUSD_VERSION_STRING)/' > suse/.foo; \
 		mv suse/.foo suse/freeradius.spec; \
 		echo suse/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;s/\+.*//'`  != "$(RADIUSD_VERSION_STRING)" ]; then \
+	@if [ `head -n 1 doc/ChangeLog | awk '/^FreeRADIUS/{print $$2}'` != "$(RADIUSD_VERSION_STRING)" ]; then \
+		echo doc/ChangeLog needs to be updated; \
+		exit 1; \
+	fi
+	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;s/\+.*//'` != "$(RADIUSD_VERSION_STRING)" ]; then \
 		echo debian/changelog needs to be updated; \
 		exit 1; \
 	fi
 
 dist: dist-check freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
 
-dist-sign: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig
+dist-sign: dist-check freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig
 
 dist-publish: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2 freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig
 	scp $^ freeradius.org@ftp.freeradius.org:public_ftp
