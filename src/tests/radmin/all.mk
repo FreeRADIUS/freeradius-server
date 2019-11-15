@@ -6,7 +6,7 @@
 #	Test name
 #
 TEST := test.radmin
-FILES  := $(subst $(DIR)/%,,$(wildcard $(DIR)/*.txt))
+FILES  := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 $(eval $(call TEST_BOOTSTRAP))
 
 #
@@ -50,7 +50,7 @@ $(OUTPUT)/%: $(DIR)/% ${BUILD_DIR}/bin/radmin test.radmin.radiusd_kill test.radm
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
 	${Q}echo "RADMIN-TEST $(TARGET)"; \
-	if ! $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND); then\
+	${Q}if ! $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND); then\
 		echo "--------------------------------------------------"; \
 		tail -n 20 "$(RADMIN_RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADMIN_RADIUS_LOG)):"; \
@@ -60,7 +60,7 @@ $(OUTPUT)/%: $(DIR)/% ${BUILD_DIR}/bin/radmin test.radmin.radiusd_kill test.radm
 		$(MAKE) test.radmin.radiusd_kill; \
 		exit 1; \
 	fi; \
-	if ! cmp -s $(FOUND) $(EXPECTED); then \
+	${Q}if ! cmp -s $(FOUND) $(EXPECTED); then \
 		echo "RADMIN FAILED $@"; \
 		echo "RADIUSD: $(RADIUSD_RUN)"; \
 		echo "RADMIN : $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND)"; \

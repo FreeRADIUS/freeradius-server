@@ -6,7 +6,7 @@
 #	Test name
 #
 TEST  := test.digest
-FILES := $(subst $(DIR)/%,,$(wildcard $(DIR)/*.txt))
+FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 $(eval $(call TEST_BOOTSTRAP))
 
 #
