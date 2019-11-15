@@ -13,11 +13,9 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 #	Config settings
 #
-RADCLIENT_BIN     := $(TESTBINDIR)/radclient
 DIGEST_BUILD_DIR  := $(BUILD_DIR)/tests/digest
 DIGEST_RADIUS_LOG := $(DIGEST_BUILD_DIR)/radiusd.log
 DIGEST_GDB_LOG    := $(DIGEST_BUILD_DIR)/gdb.log
-DIGEST_TEST_FILES := $(wildcard $(DIR)/*.txt)
 
 #
 #  Generic rules to start / stop the radius service.
@@ -36,12 +34,12 @@ $(OUTPUT)/%: $(DIR)/% test.digest.radiusd_kill test.digest.radiusd_start
 		cp -f $< $@.request;					\
 		echo "Test-Name = \"$(TARGET)\"" >> $@.request;		\
 		echo "Test-Number = \"$${_num}\"" >> $@.request;	\
-		if ! $(RADCLIENT_BIN) -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET) > $@.out; then \
+		if ! $(TESTBIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET) > $@.out; then \
 			echo "FAILED";					\
 			cat $@.out;					\
 			$(MAKE) test.digest.radiusd_kill;		\
 			echo "RADIUSD:   $(RADIUSD_RUN)";		\
-			echo "RADCLIENT: $(RADCLIENT_BIN) -f $@_request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET)"; \
+			echo "RADCLIENT: $(TESTBIN)/radclient -f $@_request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET)"; \
 			exit 1;						\
 		fi;							\
 		touch $@;						\
