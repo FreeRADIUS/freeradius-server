@@ -44,7 +44,7 @@ match 00 27 00 0b 01 09 74 61 70 69 6f 63 61 30 31
 # fields like 'string encode=dns_label'. e.g: Client-FQDN-Domain-Name
 #
 decode-pair -
-no match Client-FQDN-Flags = Server-Update, Client-FQDN-Domain-Name = "tapioca01"
+match Client-FQDN-Flags = Server-Update, Client-FQDN-Domain-Name = "tapioca01"
 
 count
 match 6
