@@ -219,7 +219,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	the data type.
 	 */
 	if (flags->extra) {
-		if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_LENGTH_UINT16)) {
+		if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_LENGTH_UINT16) &&
+		    (flags->subtype != FLAG_BIT_FIELD)) {
 			fr_strerror_printf("The 'key' and 'length' flags cannot be used with any other flags.");
 			return false;
 		}
@@ -228,7 +229,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
-			if (flags->subtype != FLAG_KEY_FIELD) {
+			if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_BIT_FIELD)) {
 				fr_strerror_printf("Invalid type for extra flag.");
 				return false;
 			}
@@ -268,10 +269,11 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 	/*
-	 *	Force "length" for fixed-size data types.  Check / set
-	 *	"length" and "type_size" for other types.
+	 *	Force "length" for fixed-size data types which aren't
+	 *	bit fields.  Check / set "length" and "type_size" for
+	 *	other types.
 	 */
-	switch (type) {
+	if (!flags->extra || (flags->subtype != FLAG_BIT_FIELD)) switch (type) {
 	case FR_TYPE_UINT8:
 	case FR_TYPE_BOOL:
 		flags->length = 1;
@@ -514,7 +516,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					flags->type_size);
 				return false;
 			}
-		} else {
+		} else if (!flags->extra) {
 			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
 				fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
 				return false;

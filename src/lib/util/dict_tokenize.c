@@ -199,7 +199,8 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 	return 0;
 }
 
-static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_attr_flags_t *flags)
+static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, fr_type_t *type_p,
+				   fr_dict_attr_flags_t *flags)
 {
 	char *p;
 	fr_type_t type;
@@ -208,26 +209,11 @@ static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_
 	 *	Some types can have fixed length
 	 */
 	p = strchr(name, '[');
-	if (p) *p = '\0';
-
-	/*
-	 *	find the type of the attribute.
-	 */
-	type = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_INVALID);
-	if (type == FR_TYPE_INVALID) {
-		fr_strerror_printf("Unknown data type '%s'", name);
-		return -1;
-	}
-
 	if (p) {
 		char *q;
 		unsigned int length;
 
-		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("Only 'octets' types can have a 'length' parameter");
-			return -1;
-		}
-
+		*p = '\0';
 		q = strchr(p + 1, ']');
 		if (!q) {
 			fr_strerror_printf("Invalid format for '%s[...]'", name);
@@ -246,7 +232,58 @@ static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_
 			return -1;
 		}
 
+		/*
+		 *	Now that we have a length, check the data type.
+		 */
+		if (strcmp(name, "octets") == 0) {
+			type = FR_TYPE_OCTETS;
+
+		} else if (strcmp(name, "bit") == 0) {
+			if (ctx->stack[ctx->stack_depth].da->type != FR_TYPE_STRUCT) {
+				fr_strerror_printf("Bit fields can only be used inside of a STRUCT");
+				return -1;
+			}
+
+			flags->extra = 1;
+			flags->subtype = FLAG_BIT_FIELD;
+
+			if (length == 1) {
+				type = FR_TYPE_BOOL;
+			} else if (length < 8) {
+				type = FR_TYPE_UINT8;
+			} else if (length < 16) {
+				type = FR_TYPE_UINT16;
+			} else if (length < 32) {
+				type = FR_TYPE_UINT32;
+			} else if (length < 56) { /* for laziness in encode / decode */
+				type = FR_TYPE_UINT64;
+			} else {
+				fr_strerror_printf("Invalid length for bit field");
+				return -1;
+			}
+
+			/*
+			 *	We track where on a byte boundary this bit field ends.
+			 */
+			flags->type_size = length;
+
+		} else {
+			fr_strerror_printf("Only 'octets' types can have a 'length' parameter");
+			return -1;
+		}
+
 		flags->length = length;
+		*type_p = type;
+		return 0;
+	}
+
+	/*
+	 *	find the type of the attribute.
+	 */
+	type = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_INVALID);
+	if (type == FR_TYPE_INVALID) {
+		fr_strerror_printf("Unknown data type '%s'", name);
+		return -1;
 	}
 
 	*type_p = type;
@@ -337,6 +374,11 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		} else if (strcmp(key, "key") == 0) {
 			if ((type != FR_TYPE_UINT8) && (type != FR_TYPE_UINT16) && (type != FR_TYPE_UINT32)) {
 				fr_strerror_printf("The 'key' flag can only be used for attributes of type 'uint8', 'uint16', or 'uint32'");
+				return -1;
+			}
+
+			if (flags->extra) {
+				fr_strerror_printf("Bit fields cannot be key fields");
 				return -1;
 			}
 
@@ -506,7 +548,12 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 
 	memcpy(&flags, base_flags, sizeof(flags));
 
-	if (dict_process_type_field(argv[2], &type, &flags) < 0) return -1;
+	if (dict_process_type_field(ctx, argv[2], &type, &flags) < 0) return -1;
+
+	if (flags.extra && (flags.subtype == FLAG_BIT_FIELD)) {
+		fr_strerror_printf("Bit fields can only be defined as a MEMBER of a STRUCT");
+		return -1;
+	}
 
 	/*
 	 *	Relative OIDs apply ONLY to attributes of type 'tlv'.
@@ -757,7 +804,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 
 	memcpy(&flags, base_flags, sizeof(flags));
 
-	if (dict_process_type_field(argv[1], &type, &flags) < 0) return -1;
+	if (dict_process_type_field(ctx, argv[1], &type, &flags) < 0) return -1;
 
 	/*
 	 *	Parse options.
@@ -767,6 +814,43 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 #ifdef __clang_analyzer__
 	if (!ctx->dict) return -1;
 #endif
+
+	/*
+	 *	Double check bit field magic
+	 */
+	if (ctx->stack[ctx->stack_depth].member_num > 0) {
+		fr_dict_attr_t const *previous;
+
+		previous = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
+						  ctx->stack[ctx->stack_depth].member_num);
+		if (!previous) {
+			fr_strerror_printf("Failed to find previous MEMBER");
+			return -1;
+		}
+
+		/*
+		 *	Check that the previous bit field ended on a
+		 *	byte boundary.
+		 */
+		if (previous->flags.extra && (previous->flags.subtype == FLAG_BIT_FIELD)) {
+			/*
+			 *	This attribute is a bit field.  Keep
+			 *	track of where in the byte we are
+			 *	located.
+			 */
+			if (flags.extra && (flags.subtype == FLAG_BIT_FIELD)) {
+				flags.type_size += previous->flags.type_size;
+				flags.type_size &= 0x07;
+
+			} else {
+				if (previous->flags.type_size != 0) {
+					fr_strerror_printf("Previous bitfield %s did not end on a byte boundary",
+							   previous->name);
+					return -1;
+				}
+			}
+		}
+	}
 
 	/*
 	 *	Add the MEMBER to the parent.
@@ -787,7 +871,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 */
 	if (type == FR_TYPE_TLV) {
 		ctx->relative_attr = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
-							     ctx->stack[ctx->stack_depth].member_num);
+							    ctx->stack[ctx->stack_depth].member_num);
 		if (dict_gctx_push(ctx, ctx->relative_attr) < 0) return -1;
 
 	} else {

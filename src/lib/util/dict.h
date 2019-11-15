@@ -80,10 +80,12 @@ typedef struct {
 enum {
 	FLAG_EXTRA_NONE = 0,				//!< no extra meaning, should be invalid
 	FLAG_KEY_FIELD,					//!< this is a key field for a subsequent struct
+	FLAG_BIT_FIELD,				       	//!< bit field inside of a struct
 	FLAG_LENGTH_UINT16,			       	//!< string / octets type is prefixed by uint16 of length
 };
 
 #define da_is_key_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_KEY_FIELD))
+#define da_is_bit_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_BIT_FIELD))
 #define da_is_length_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_LENGTH_UINT16))
 
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
