@@ -409,6 +409,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 	ssize_t			rcode;
 	fr_dict_attr_t const	*da;
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
+	VALUE_PAIR *vp;
 
 #ifdef __clang_analyzer__
 	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
@@ -438,25 +439,33 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 
 	if ((da->type == FR_TYPE_STRING) && da->flags.subtype) {
 		rcode = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
-
 	} else if (da->flags.array) {
 		rcode = decode_array(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
-
 	} else if (da->type == FR_TYPE_VSA) {
 		rcode = decode_vsa(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
-
 	} else if (da->type == FR_TYPE_TLV) {
 		rcode = decode_tlvs(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
-
 	} else {
 		rcode = decode_value(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 	}
 
 	if (rcode < 0) return rcode;
 
+	/*
+	 *	It is a hack!
+	 *
+	 *	RFC 4704 says "FQDN", unless it's a single label, in which case it's a
+	 *	partial name, and we omit the trailing zero.
+	 */
+	for (vp = fr_cursor_head(cursor); vp; vp = fr_cursor_next(cursor)) {
+		if (vp->da->type == FR_TYPE_STRING &&
+			vp->da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL) {
+			fr_pair_value_bstrncpy(vp, vp->vp_strvalue+1, vp->vp_length-1);
+		}
+	}
+
 	return len + 4;
 }
-
 
 /** Create a "normal" VALUE_PAIR from the given data
  *
