@@ -22,3 +22,11 @@ MEMBER		GeoLocation-Altitude			bit[30]
 MEMBER		GeoLocation-Version			bit[2]	# must be 1
 MEMBER		GeoLocation-Reserved			bit[3]
 MEMBER		GeoLocation-Datum			bit[3]
+
+VALUE	GeoLocation-Altitude-Type	Unknown			0
+VALUE	GeoLocation-Altitude-Type	Meters			1
+VALUE	GeoLocation-Altitude-Type	Floors			2
+
+VALUE	GeoLocation-Datum		WGS84			1
+VALUE	GeoLocation-Datum		NAD83			2
+VALUE	GeoLocation-Datum		NAD83			3
