@@ -64,9 +64,9 @@ centos8''',
  */
 
 node {
-	cleanWs(patterns: [[pattern: '**/*.deb , **/*.changes , **/*.buildinfo , **/*.rpm', type: 'INCLUDE']])
-
 	def server_dir = "freeradius-server"
+
+	sh 'find . -type f \\( -name "*.deb" -o -name "*.changes" -o -name "*.buildinfo" -o -name "*.rpm" \\) -delete'
 
 	checkout([
 		$class: 'GitSCM',
