@@ -104,7 +104,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			uint64_t value;
 
 			num_bits = offset + child->flags.length;
-			if ((end - p) < (num_bits >> 3)) goto unknown;
+			if ((end - p) < ((num_bits + 7) >> 3)) goto unknown;
 
 			memset(array, 0, sizeof(array));
 			memcpy(&array[0], p, ((num_bits + 7) >> 3)); /* round up to nearest byte */
