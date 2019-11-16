@@ -1,3 +1,8 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  Version $Id$
+#
+
 proto dhcpv6
 proto-dictionary dhcpv6
 
