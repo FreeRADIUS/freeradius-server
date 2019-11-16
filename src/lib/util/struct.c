@@ -70,6 +70,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	VALUE_PAIR		*head = NULL;
 	fr_cursor_t		child_cursor;
 	VALUE_PAIR		*vp, *key_vp;
+	unsigned int		offset = 0;
 
 	if (data_len < 1) return -1; /* at least one byte of data */
 
@@ -95,6 +96,68 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - child %d", child->attr);
 
 		/*
+		 *	This isn't done yet.
+		 */
+		if (da_is_bit_field(child)) {
+			uint8_t array[8];
+			unsigned int num_bits;
+			uint64_t value;
+
+			num_bits = offset + child->flags.length;
+			if ((end - p) < (num_bits >> 3)) goto unknown;
+
+			memset(array, 0, sizeof(array));
+			memcpy(&array[0], p, ((num_bits + 7) >> 3)); /* round up to nearest byte */
+
+			if (offset > 0) array[0] &= (1 << (8 - offset)) - 1; /* mask off bits we don't care about */
+
+			memcpy(&value, &array[0], sizeof(value));
+			value = htonll(value);
+			value >>= (8 - offset); /* move it to the lower bits */
+			value >>= (56 - child->flags.length);
+
+			vp = fr_pair_afrom_da(ctx, child);
+			if (!vp) {
+				FR_PROTO_TRACE("fr_struct_from_network - failed allocating child VP");
+				goto unknown;
+			}
+
+			switch (child->type) {
+				case FR_TYPE_BOOL:
+					vp->vp_bool = value;
+					break;
+
+				case FR_TYPE_UINT8:
+					vp->vp_uint8 = value;
+					break;
+
+				case FR_TYPE_UINT16:
+					vp->vp_uint16 = value;
+					break;
+
+				case FR_TYPE_UINT32:
+					vp->vp_uint32 = value;
+					break;
+
+				case FR_TYPE_UINT64:
+					vp->vp_uint64 = value;
+					break;
+
+				default:
+					goto unknown;
+			}
+
+			vp->type = VT_DATA;
+			vp->vp_tainted = true;
+			fr_cursor_append(&child_cursor, vp);
+			p += (num_bits >> 3);
+			offset = num_bits & 0x07;
+			child_num++;
+			continue;
+		}
+		offset = 0;	/* reset for non-bit-field attributes */
+
+		/*
 		 *	Decode child TLVs, according to the parent attribute.
 		 *
 		 *	Return only PARTIALLY decoded data.  Let the
@@ -107,14 +170,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			fr_cursor_tail(cursor);
 			fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
 			return (p - data);
-		}
-
-		/*
-		 *	This isn't done yet.
-		 */
-		if (da_is_bit_field(child)) {
-			fr_strerror_printf("Bit field decoding is not yet done.");
-			return -1;
 		}
 
 		child_length = child->flags.length;

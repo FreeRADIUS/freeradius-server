@@ -12,7 +12,7 @@ encode-pair 4RD-Non-Map-Rule-Flag-Traffic-Class-Provided = true, 4RD-Non-Map-Rul
 match 00 63 00 02 81 1f
 
 decode-pair -
-no match 4RD-Non-Map-Rule-Flag-Traffic-Class-Provided = true, 4RD-Non-Map-Rule-Flag-Reserved = 0, 4RD-Non-Map-Rule-Flag-Hub-And-Spoke = true, 4RD-Non-Map-Rule-Domain-PMTU = 31
+match 4RD-Non-Map-Rule-Flag-Traffic-Class-Provided = yes, 4RD-Non-Map-Rule-Flag-Reserved = 0, 4RD-Non-Map-Rule-Flag-Hub-And-Spoke = yes, 4RD-Non-Map-Rule-Domain-PMTU = 31
 
 count
 match 6
