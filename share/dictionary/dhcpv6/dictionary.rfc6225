@@ -28,5 +28,5 @@ VALUE	GeoLocation-Altitude-Type	Meters			1
 VALUE	GeoLocation-Altitude-Type	Floors			2
 
 VALUE	GeoLocation-Datum		WGS84			1
-VALUE	GeoLocation-Datum		NAD83_NAVD88		2
-VALUE	GeoLocation-Datum		NAD83_MLLW		3
+VALUE	GeoLocation-Datum		NAD83-NAVD88		2
+VALUE	GeoLocation-Datum		NAD83-MLLW		3
