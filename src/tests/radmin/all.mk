@@ -28,7 +28,7 @@ $(eval $(call RADIUSD_SERVICE,control-socket,$(OUTPUT)))
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
 #
-$(OUTPUT)/depends.mk: $(FILES) | $(OUTPUT)
+$(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 	${Q}rm -f $@
 	${Q}touch $@
 	${Q}for x in $^; do \
@@ -74,5 +74,5 @@ $(OUTPUT)/%: $(DIR)/% ${BUILD_DIR}/bin/radmin test.radmin.radiusd_kill test.radm
 		touch $@;\
 	fi
 
-$(TEST): $(FILES)
+$(TEST):
 	${Q}$(MAKE) test.radmin.radiusd_kill
