@@ -50,8 +50,8 @@ endef
 #  ERROR line in the input.
 #
 $(BUILD_DIR)/tests/modules/%: src/tests/modules/%.unlang $(BUILD_DIR)/tests/modules/%.attrs $(TESTBINDIR)/unit_test_module | build.raddb
+	@echo "MODULE-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
 	${Q}mkdir -p $(dir $@)
-	@echo MODULE-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))
 	${Q}if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xxx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat "$@.log"; \
