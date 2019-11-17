@@ -142,42 +142,6 @@ static int fr_ldap_rebind(LDAP *handle, LDAP_CONST char *url,
 }
 #endif
 
-/** Close and delete a connection
- *
- * Unbinds the LDAP connection, informing the server and freeing any memory, then releases the memory used by the
- * connection handle.
- *
- * @param[in] c		to destroy.
- * @return always indicates success.
- */
-static int fr_ldap_connection_reset(fr_ldap_connection_t *c)
-{
-	talloc_free_children(c);	/* Force inverted free order */
-
-	fr_ldap_control_clear(c);
-
-	if (!c->handle) return 0;	/* Don't need to do anything else if we don't yet have a handle */
-
-#ifdef HAVE_LDAP_UNBIND_EXT_S
-	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
-	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
-
-	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      NUM_ELEMENTS(our_serverctrls),
-			      NUM_ELEMENTS(our_clientctrls),
-			      c, NULL, NULL);
-
-	DEBUG3("Closing libldap handle %p", c->handle);
-	ldap_unbind_ext(c->handle, our_serverctrls, our_clientctrls);	/* Same code as ldap_unbind_ext_s */
-#else
-	DEBUG3("Closing libldap handle %p", c->handle);
-	ldap_unbind(c->handle);						/* Same code as ldap_unbind_s */
-#endif
-	c->handle = NULL;
-
-	return 0;
-}
-
 /** Allocate and configure a new connection
  *
  * Configures both our ldap handle, and libldap's handle.
@@ -202,13 +166,6 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 	int				ldap_errno, ldap_version;
 
 	rad_assert(config->server);
-
-	/*
-	 *	Puts the handle back into a pristine state
-	 *	without leaking memory, but leaves the original
-	 *	fr_ldap_connection_t intact.
-	 */
-	if (c->handle) fr_ldap_connection_reset(c);
 
 #ifdef HAVE_LDAP_INITIALIZE
 	ldap_errno = ldap_initialize(&handle, config->server);
@@ -350,18 +307,75 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 	return 0;
 }
 
-/** Close libldap's file descriptor
+/** Free the handle, closing the connection to ldap
  *
- * @param[in] fd	to close.
+ * @param[in] h		to close.
  * @param[in] uctx	Connection config and handle.
  */
-static void _ldap_connection_close(UNUSED int fd, void *uctx)
+static void _ldap_connection_close(void *h, UNUSED void *uctx)
 {
-	fr_ldap_connection_t	*c = talloc_get_type_abort(uctx, fr_ldap_connection_t);
+	talloc_free(h);
+}
 
-	INFO("Closing connection");
+/** Close and delete a connection
+ *
+ * Unbinds the LDAP connection, informing the server and freeing any memory, then releases the memory used by the
+ * connection handle.
+ *
+ * @param[in] c		to destroy.
+ * @return always indicates success.
+ */
+static int _ldap_connection_free(fr_ldap_connection_t *c)
+{
+	talloc_free_children(c);	/* Force inverted free order */
 
-	fr_ldap_connection_reset(c);
+	fr_ldap_control_clear(c);
+
+	if (!c->handle) return 0;	/* Don't need to do anything else if we don't yet have a handle */
+
+#ifdef HAVE_LDAP_UNBIND_EXT_S
+	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
+	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
+
+	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
+			      c, NULL, NULL);
+
+	DEBUG3("Closing libldap handle %p", c->handle);
+	ldap_unbind_ext(c->handle, our_serverctrls, our_clientctrls);	/* Same code as ldap_unbind_ext_s */
+#else
+	DEBUG3("Closing libldap handle %p", c->handle);
+	ldap_unbind(c->handle);						/* Same code as ldap_unbind_s */
+#endif
+	c->handle = NULL;
+
+	return 0;
+}
+
+/** Allocate our ldap connection handle layer
+ *
+ * This is using handles outside of the connection state machine.
+ *
+ * @param[in] ctx to allocate connection handle in.
+ * @return
+ *	- A new unbound/unconfigured connection handle on success.
+ *	  Call f#r_ldap_connection_configure next.
+ *	- NULL on OOM.
+ */
+fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
+{
+	fr_ldap_connection_t *c;
+
+	/*
+	 *	Allocate memory for the handle.
+	 */
+	c = talloc_zero(ctx, fr_ldap_connection_t);
+	if (!c) return NULL;
+
+	talloc_set_destructor(c, _ldap_connection_free);
+
+	return c;
 }
 
 /** (Re-)Initialises the libldap side of the connection handle
@@ -401,59 +415,40 @@ static void _ldap_connection_close(UNUSED int fd, void *uctx)
  *        connected.
  *  - Continue running the state machine
  *
- * @param[out] fd_out	Underlying file descriptor from libldap handle.
+ * @param[out] h	Underlying file descriptor from libldap handle.
+ * @arapm[in] conn	Being initialised.
  * @param[in] uctx	Our LDAP connection handle (a #fr_ldap_connection_t).
  * @return
  *	- FR_CONNECTION_STATE_CONNECTING on success.
  *	- FR_CONNECTION_STATE_FAILED on failure.
  */
-static fr_connection_state_t _ldap_connection_init(int *fd_out, void *uctx)
+static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *conn, void *uctx)
 {
-	fr_ldap_connection_t	*c = talloc_get_type_abort(uctx, fr_ldap_connection_t);
+	fr_ldap_config_t const	*config = talloc_get_type_abort(uctx, fr_ldap_config_t);
+	fr_ldap_connection_t	*c;
 	fr_ldap_state_t		state;
 
-	*fd_out = -1;	/* We set a real value later */
+	c = fr_ldap_connection_alloc(conn);
 
 	/*
 	 *	Configure/allocate the libldap handle
 	 */
-	if (fr_ldap_connection_configure(c, c->config) < 0) return FR_CONNECTION_STATE_FAILED;
-
-	/* Don't block */
-	if (ldap_set_option(c->handle, LDAP_OPT_CONNECT_ASYNC, LDAP_OPT_ON) != LDAP_OPT_SUCCESS) {
+	if (fr_ldap_connection_configure(c, config) < 0) {
+	error:
+		talloc_free(c);
 		return FR_CONNECTION_STATE_FAILED;
 	}
+
+	/* Don't block */
+	if (ldap_set_option(c->handle, LDAP_OPT_CONNECT_ASYNC, LDAP_OPT_ON) != LDAP_OPT_SUCCESS) goto error;
 	fr_ldap_connection_timeout_set(c, 0);					/* Forces LDAP_X_CONNECTING */
 
 	state = fr_ldap_state_next(c);
-	if (state == FR_LDAP_STATE_ERROR) return FR_CONNECTION_STATE_FAILED;
+	if (state == FR_LDAP_STATE_ERROR) goto error;
+
+	*h = c;	/* Set the handle */
 
 	return FR_CONNECTION_STATE_CONNECTING;
-}
-
-/** Allocate our ldap connection handle layer
- *
- * This is using handles outside of the connection state machine.
- *
- * @param[in] ctx to allocate connection handle in.
- * @return
- *	- A new unbound/unconfigured connection handle on success.
- *	  Call f#r_ldap_connection_configure next.
- *	- NULL on OOM.
- */
-fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
-{
-	fr_ldap_connection_t *c;
-
-	/*
-	 *	Allocate memory for the handle.
-	 */
-	c = talloc_zero(ctx, fr_ldap_connection_t);
-	if (!c) return NULL;
-
-	talloc_set_destructor(c, fr_ldap_connection_reset);
-
-	return c;
 }
 
 /** Alloc a self re-establishing connection to an LDAP server
@@ -463,22 +458,20 @@ fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
  * @param[in] config		to use to bind the connection to an LDAP server.
  * @param[in] log_prefix	to prepend to connection state messages.
  */
-fr_ldap_connection_t *fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-						     fr_ldap_config_t const *config, char *log_prefix)
+fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+					        fr_ldap_config_t const *config, char *log_prefix)
 {
-	fr_ldap_connection_t	*c;
+	fr_connection_t *conn;
 
-	MEM(c = fr_ldap_connection_alloc(ctx));
-	c->config = config;
-	c->conn = fr_connection_alloc(c, el,
-				      config->net_timeout, config->reconnection_delay,
-				      _ldap_connection_init,
-				      NULL,
-				      _ldap_connection_close,
-				      log_prefix, c);
-	if (!c->conn) return NULL;
+	conn = fr_connection_alloc(ctx, el,
+				   config->net_timeout, config->reconnection_delay,
+				   _ldap_connection_init,
+				   NULL,
+				   _ldap_connection_close,
+				   log_prefix, config);
+	if (!conn) return NULL;
 
-	return c;
+	return conn;
 }
 
 int fr_ldap_connection_timeout_set(fr_ldap_connection_t const *c, fr_time_delta_t timeout)

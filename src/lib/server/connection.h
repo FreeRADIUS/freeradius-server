@@ -43,8 +43,11 @@ typedef enum {
 	FR_CONNECTION_STATE_CONNECTING,		//!< Waiting for connection to establish.
 	FR_CONNECTION_STATE_TIMEOUT,		//!< Timeout during #FR_CONNECTION_STATE_CONNECTING.
 	FR_CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
-	FR_CONNECTION_STATE_FAILED		//!< Connection failed and is waiting to reconnect.
+	FR_CONNECTION_STATE_FAILED,		//!< Connection failed and is waiting to reconnect.
+	FR_CONNECTION_STATE_MAX
 } fr_connection_state_t;
+
+typedef void(*fr_connection_watch_t)(fr_connection_t *conn, fr_connection_state_t state, void *uctx);
 
 extern fr_table_num_sorted_t const fr_connection_states[];
 extern size_t fr_connection_states_len;
@@ -53,13 +56,17 @@ extern size_t fr_connection_states_len;
  *
  * Should attempt to open a non-blocking connection and return it in fd_out.
  *
- * @param[out] fd_out	Where to write the new file descriptor.
+ * @param[out] h_out	Where to write the new handle.
+ * @param[in] conn	If integrating with a 3rd party library
+ *			that will trigger connection API state transitions,
+ *      		the connection should be passed as the uctx argument
+ *			for library I/O callbacks.
  * @param[in] uctx	User context.
  * @return
- *	- #FR_CONNECTION_STATE_CONNECTING	if a file descriptor was successfully created.
- *	- #FR_CONNECTION_STATE_FAILED		if we could not open a file descriptor.
+ *	- #FR_CONNECTION_STATE_CONNECTING	if a handle was successfully created.
+ *	- #FR_CONNECTION_STATE_FAILED		if we could not create a handle.
  */
-typedef fr_connection_state_t (*fr_connection_init_t)(int *fd_out, void *uctx);
+typedef fr_connection_state_t (*fr_connection_init_t)(void **h_out, fr_connection_t *conn, void *uctx);
 
 /** Notification that the connection is now open
  *
@@ -67,19 +74,19 @@ typedef fr_connection_state_t (*fr_connection_init_t)(int *fd_out, void *uctx);
  * to call other code if it becomes readable or writable.
  *
  * @param[in] el	to use for inserting I/O events.
- * @param[in] fd	That was successfully opened.
+ * @param[in] h		Handle that was successfully opened.
  * @param[in] uctx	User context.
  * @return
- *	- #FR_CONNECTION_STATE_CONNECTED	if the file descriptor is useable.
- *	- #FR_CONNECTION_STATE_FAILED		if the file descriptor is unusable.
+ *	- #FR_CONNECTION_STATE_CONNECTED	if the handle is useable.
+ *	- #FR_CONNECTION_STATE_FAILED		if the handle is unusable.
  */
-typedef fr_connection_state_t (*fr_connection_open_t)(fr_event_list_t *el, int fd, void *uctx);
+typedef fr_connection_state_t (*fr_connection_open_t)(fr_event_list_t *el, void *h, void *uctx);
 
 /** Notification that a connection attempt has failed
  *
  * @note If the callback frees the connection, it must return #FR_CONNECTION_STATE_HALTED.
  *
- * @param[in] fd	That was successfully opened.
+ * @param[in] h		Handle that failed.
  * @param[in] state	the connection was in when it failed. Usually one of:
  *			- #FR_CONNECTION_STATE_CONNECTING	the connection attempt explicitly failed.
  *			- #FR_CONNECTION_STATE_CONNECTED	something called #fr_connection_signal_reconnect.
@@ -91,7 +98,7 @@ typedef fr_connection_state_t (*fr_connection_open_t)(fr_event_list_t *el, int f
  *						attempts Can be restarted with
  *	  					#fr_connection_signal_init().
  */
-typedef fr_connection_state_t (*fr_connection_failed_t)(int fd, fr_connection_state_t state, void *uctx);
+typedef fr_connection_state_t (*fr_connection_failed_t)(void *h, fr_connection_state_t state, void *uctx);
 
 /** Notification that the connection has errored and must be closed
  *
@@ -101,27 +108,40 @@ typedef fr_connection_state_t (*fr_connection_failed_t)(int fd, fr_connection_st
  * If this callback does not close the file descriptor, the server will leak
  * file descriptors.
  *
- * @param[in] fd	to close.
+ * @param[in] h	to close.
  * @param[in] uctx	User context.
  */
-typedef void (*fr_connection_close_t)(int fd, void *uctx);
+typedef void (*fr_connection_close_t)(void *h, void *uctx);
+
+fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
+
+int			fr_connection_get_handle(fr_connection_t const *conn);
+void			fr_connection_set_handle(fr_connection_t *conn, void *handle);
+
+void			fr_connection_set_failed_func(fr_connection_t *conn, fr_connection_failed_t func);
+
+void			fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
+						    fr_connection_watch_t watch, bool oneshot, void const *uctx);
+void			fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
+						     fr_connection_watch_t watch, bool oneshot, void const *uctx);
+
+int			fr_connection_del_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
+						    fr_connection_watch_t watch);
+int			fr_connection_del_watch_post(fr_connection_t *conn, fr_connection_state_t state,
+						     fr_connection_watch_t watch);
 
 fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					     fr_time_delta_t connection_timeout,
 					     fr_time_delta_t reconnection_delay,
 					     fr_connection_init_t init, fr_connection_open_t open,
 					     fr_connection_close_t close,
-					     char const *log_prefix, void *uctx);
+					     char const *log_prefix, void const *uctx);
 
-void			fr_connection_failed_func(fr_connection_t *conn, fr_connection_failed_t func);
 void			fr_connection_signal_init(fr_connection_t *conn);
-void			fr_connection_signal_open(fr_connection_t *conn);
+void			fr_connection_signal_connected(fr_connection_t *conn);
 void			fr_connection_signal_reconnect(fr_connection_t *conn);
 
-fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
-int			fr_connection_get_fd(fr_connection_t const *conn);
-void			fr_connection_set_fd(fr_connection_t *conn, int fd);
-
+int			fr_connection_signal_on_fd(fr_connection_t *conn, int fd);
 #ifdef __cplusplus
 }
 #endif

@@ -505,8 +505,9 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 /** Shutdown/close a file descriptor
  *
  */
-static void _conn_close(int fd, void *uctx)
+static void _conn_close(void *h, void *uctx)
 {
+	int fd = *((int *)h);
 	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);
 
 	if (c->idle_ev) fr_event_timer_delete(c->thread->el, &c->idle_ev);
@@ -534,12 +535,14 @@ static void _conn_close(int fd, void *uctx)
 
 /** Initialise a new outbound connection
  *
- * @param[out] fd_out	Where to write the new file descriptor.
+ * @param[out] h_out	Where to write the new file descriptor.
+ * @param[in] conn	to initialise.
  * @param[in] uctx	A #fr_io_connection_thread_t.
  */
-static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
+static fr_connection_state_t _conn_init(void **h_out, fr_connection_t *conn, void *uctx)
 {
 	int				fd;
+	int				*fd_s;
 	fr_io_connection_t		*c = talloc_get_type_abort(uctx, fr_io_connection_t);
 
 	/*
@@ -589,11 +592,15 @@ static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 	conn_transition(c, CONN_OPENING);
 	c->fd = fd;
 
+	fr_connection_signal_on_fd(conn, fd);
+
+	fd_s = talloc(c, int);
+	*fd_s = fd;
+	*h_out = fd_s;
+
 	// @todo - initialize the tracking memory, etc.
 	// i.e. histograms (or hyperloglog) of packets, so we can see
 	// which connections / home servers are fast / slow.
-
-	*fd_out = fd;
 
 	return FR_CONNECTION_STATE_CONNECTING;
 }
@@ -2481,11 +2488,11 @@ static int status_udp_request_free(fr_io_request_t *u)
 
 /** Connection failed
  *
- * @param[in] fd	of connection that failed.
+ * @param[in] h		of connection that failed.
  * @param[in] state	the connection was in when it failed.
  * @param[in] uctx	the connection.
  */
-static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t state, void *uctx)
+static fr_connection_state_t _conn_failed(UNUSED void *h, fr_connection_state_t state, void *uctx)
 {
 	fr_io_connection_t	*c = talloc_get_type_abort(uctx, fr_io_connection_t);
 
@@ -2537,8 +2544,9 @@ static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t s
 /** Process notification that fd is open
  *
  */
-static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void *uctx)
+static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, void *h, void *uctx)
 {
+	int				fd = *((int *)h);
 	fr_io_connection_t		*c = talloc_get_type_abort(uctx, fr_io_connection_t);
 	fr_io_connection_thread_t	*t = c->thread;
 	rlm_radius_udp_connection_t	*radius = c->ctx;
@@ -2706,8 +2714,8 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
  */
 static void conn_alloc(rlm_radius_udp_t *inst, fr_io_connection_thread_t *t)
 {
-	fr_io_connection_t	*c;
-	rlm_radius_udp_connection_t *radius;
+	fr_io_connection_t		*c;
+	rlm_radius_udp_connection_t	*radius;
 
 	c = talloc_zero(t, fr_io_connection_t);
 	c->module_name = inst->parent->name;
@@ -2763,7 +2771,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, fr_io_connection_thread_t *t)
 			   c->module_name);
 		return;
 	}
-	fr_connection_failed_func(c->conn, _conn_failed);
+	fr_connection_set_failed_func(c->conn, _conn_failed);
 
 	/*
 	 *	Enforce max_connections via atomic variables.
