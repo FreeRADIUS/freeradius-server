@@ -26,7 +26,7 @@ $(FILES.$(TEST)): export TZ = GMT
 #
 $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
-	@echo "UNIT-TEST $(subst $(DIR)/,,$<)"
+	@echo "UNIT-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
 	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(DIR) -r "$@" $<; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(DIR) -r \"$@\" $<"; \
 		rm -f $(BUILD_DIR)/tests/test.unit; \
