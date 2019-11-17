@@ -95,7 +95,6 @@ static void _redis_io_service_readable(UNUSED fr_event_list_t *el, int fd, UNUSE
 	redisAsyncHandleRead(h->ac);
 }
 
-
 /** Redis FD became writable
  *
  */
@@ -237,9 +236,9 @@ static void _redis_io_timer_modify(void *uctx, struct timeval tv)
 }
 #endif
 
-/** Handle freeing the redisAsyncCtx
+/** Handle freeing the redisAsyncContext
  *
- * delRead and delWrite don't seem to be called when the redisAsyncCtx is freed
+ * delRead and delWrite don't seem to be called when the redisAsyncContext is freed
  *
  * As the IO events must be removed from the event loop *before* the FD is closed
  * and as the IO events will only be automatically de-registered when when the
@@ -402,7 +401,7 @@ static void _redis_io_connection_close(void *h, UNUSED void *uctx)
 	fr_redis_handle_t	*our_h = talloc_get_type_abort(h, fr_redis_handle_t);
 
 	/*
-	 *	The destructor will free the redisAsyncCtx
+	 *	The destructor will free the redisAsyncContext
 	 *	which'll close the connection, after removing
 	 *	it from the event loop.
 	 */
@@ -431,7 +430,7 @@ fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				   conf);
 }
 
-/** Return the redisAsyncCtx associated with the connection
+/** Return the redisAsyncContext associated with the connection
  *
  * This is needed to issue commands to the redis server.
  *
