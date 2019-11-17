@@ -172,7 +172,7 @@ fr_event_list_t *fr_connection_get_el(fr_connection_t const *conn)
  * @param[in] conn	to retrieve fd from.
  * @return the active connection handle.
  */
-int fr_connection_get_handle(fr_connection_t const *conn)
+void *fr_connection_get_handle(fr_connection_t const *conn)
 {
 	return conn->h;
 }
@@ -814,7 +814,7 @@ int fr_connection_signal_on_fd(fr_connection_t *conn, int fd)
 	 *	If connection becomes writable we
 	 *	assume it's open.
 	 */
-	if (fr_event_fd_insert(conn, conn->el, conn->h,
+	if (fr_event_fd_insert(conn, conn->el, fd,
 			       NULL,
 			       _connection_writable,
 			       _connection_error,

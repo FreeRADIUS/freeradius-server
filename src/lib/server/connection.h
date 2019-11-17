@@ -115,7 +115,7 @@ typedef void (*fr_connection_close_t)(void *h, void *uctx);
 
 fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
 
-int			fr_connection_get_handle(fr_connection_t const *conn);
+void			*fr_connection_get_handle(fr_connection_t const *conn);
 void			fr_connection_set_handle(fr_connection_t *conn, void *handle);
 
 void			fr_connection_set_failed_func(fr_connection_t *conn, fr_connection_failed_t func);
