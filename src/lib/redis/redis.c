@@ -23,7 +23,7 @@
  * @copyright 2000,2006,2015 The FreeRADIUS server project
  * @copyright 2011 TekSavvy Solutions (gabe@teksavvy.com)
  */
-#include "base.h"
+#include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 
 fr_table_num_sorted_t const redis_reply_types[] = {

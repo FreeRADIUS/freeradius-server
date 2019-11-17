@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,10 +26,6 @@
  * @copyright 2000,2006,2015 The FreeRADIUS server project
  * @copyright 2011 TekSavvy Solutions (gabe@teksavvy.com)
  */
-
-#ifndef LIBFREERADIUS_REDIS_H
-#define	LIBFREERADIUS_REDIS_H
-
 RCSIDH(redis_h, "$Id$")
 
 #include <freeradius-devel/server/base.h>
@@ -36,6 +33,10 @@ RCSIDH(redis_h, "$Id$")
 #include <freeradius-devel/server/module.h>
 
 #include <hiredis/hiredis.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define MAX_REDIS_COMMAND_LEN		4096
 #define MAX_REDIS_ARGS			32
@@ -114,6 +115,11 @@ typedef struct {
 	uint32_t		max_alt;	//!< Maximum alternative nodes to try.
 	fr_time_delta_t		retry_delay;	//!< How long to wait when we received a -TRYAGAIN
 						//!< message.
+	fr_time_delta_t		connection_timeout;
+
+	fr_time_delta_t		reconnection_delay;
+
+	char const		*log_prefix;
 } fr_redis_conf_t;
 
 #define REDIS_COMMON_CONFIG \
@@ -152,4 +158,7 @@ uint32_t		fr_redis_version_num(char const *version);
 fr_redis_rcode_t	fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcode_t *rcode,
 						 redisReply *out[], size_t out_len,
 						 fr_redis_conn_t *conn) CC_HINT(nonnull);
-#endif /* LIBFREERADIUS_REDIS_H */
+
+#ifdef __cplusplus
+}
+#endif

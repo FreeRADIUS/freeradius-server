@@ -1,3 +1,5 @@
+#pragma once
+
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,13 +27,13 @@
  * @copyright 2015 Network RADIUS (legal@networkradius.com)
  * @copyright 2015 The FreeRADIUS server project
  */
-
-#ifndef LIBFREERADIUS_REDIS_CLUSTER_H
-#define	LIBFREERADIUS_REDIS_CLUSTER_H
-
 RCSIDH(cluster_h, "$Id$")
 
 #include <freeradius-devel/server/pool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct fr_redis_cluster fr_redis_cluster_t;
 typedef struct fr_redis_cluster_key_slot_s fr_redis_cluster_key_slot_t;
@@ -134,4 +136,6 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   char const *trigger_prefix,
 					   VALUE_PAIR *trigger_args);
 
-#endif	/* LIBFREERADIUS_REDIS_CLUSTER_H */
+#ifdef __cplusplus
+}
+#endif
