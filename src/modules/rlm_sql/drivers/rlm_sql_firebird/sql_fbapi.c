@@ -31,11 +31,9 @@ static void fb_set_tpb(rlm_sql_firebird_conn_t *conn, int count, ...)
 	va_list arg;
 
 	va_start(arg, count);
-	conn->tpb = malloc(count);
+	MEM(conn->tpb = malloc(count));
 
-	for (i = 0; i < count; i++) {
-		conn->tpb[i] = (char) va_arg(arg, int);
-	}
+	for (i = 0; i < count; i++) conn->tpb[i] = (char) va_arg(arg, int);
 
 	conn->tpb_len = count;
 
@@ -66,13 +64,13 @@ static void fb_set_sqlda(XSQLDA *sqlda) {
 
 	for (i = 0; i < sqlda->sqld; i++) {
 		if ((sqlda->sqlvar[i].sqltype & ~1) == SQL_VARYING) {
-			sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen + sizeof(short));
+			MEM(sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen + sizeof(short)));
 		} else {
-			sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen);
+			MEM(sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen));
 		}
 
 		if (sqlda->sqlvar[i].sqltype & 1) {
-			sqlda->sqlvar[i].sqlind = (short*)calloc(sizeof(short), 1);
+			MEM(sqlda->sqlvar[i].sqlind = (short*)calloc(sizeof(short), 1));
 		} else {
 			sqlda->sqlvar[i].sqlind = 0;
 		}
@@ -326,7 +324,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 int fb_init_socket(rlm_sql_firebird_conn_t *conn)
 {
 	memset(conn, 0, sizeof(*conn));
-	conn->sqlda_out = (XSQLDA ISC_FAR *) calloc(XSQLDA_LENGTH (5), 1);
+	MEM(conn->sqlda_out = (XSQLDA ISC_FAR *) calloc(XSQLDA_LENGTH (5), 1));
 	conn->sqlda_out->sqln = 5;
 	conn->sqlda_out->version =  SQLDA_VERSION1;
 	conn->sql_dialect = 3;
@@ -360,7 +358,7 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t *config)
 		conn->dpb_len += strlen(config->sql_password) + 2;
 	}
 
-	conn->dpb = (char *) malloc(conn->dpb_len);
+	MEM(conn->dpb = (char *) malloc(conn->dpb_len));
 	p = conn->dpb;
 
 	*conn->dpb++= isc_dpb_version1;
@@ -387,7 +385,7 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t *config)
 		 */
 		int ls = strlen(config->sql_server);
 		int ld = strlen(config->sql_db);
-		database = (char *) calloc(ls + ld + 2, 1);
+		MEM(database = (char *) calloc(ls + ld + 2, 1));
 		strcpy(database, config->sql_server);
 		database[ls] = ':';
 		memmove(database + ls + 1, config->sql_db, ld);
