@@ -120,7 +120,7 @@ static inline void fr_dlist_entry_unlink(fr_dlist_t *entry)
 
 static inline void _fr_dlist_init(fr_dlist_head_t *list_head, size_t offset, char const *type)
 {
-	fr_dlist_entry_init(&head->entry);
+	fr_dlist_entry_init(&list_head->entry);
 	list_head->offset = offset;
 	list_head->type = type;
 	list_head->num_elements = 0;
