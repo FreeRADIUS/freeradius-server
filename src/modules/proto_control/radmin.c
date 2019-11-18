@@ -299,7 +299,7 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 
 					len = p - str;
 
-					radmin_expansions[radmin_num_expansions] = malloc(len + 1);
+					MEM(radmin_expansions[radmin_num_expansions] = malloc(len + 1));
 					memcpy(radmin_expansions[radmin_num_expansions], str, len);
 					radmin_expansions[radmin_num_expansions][len] = '\0';
 					radmin_num_expansions++;
