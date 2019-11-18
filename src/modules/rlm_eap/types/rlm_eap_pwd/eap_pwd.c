@@ -95,162 +95,151 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 	HMAC_CTX_free(hmac_ctx);
 }
 
-static BIGNUM *
-consttime_BN (void)
+static BIGNUM *consttime_BN (void)
 {
-    BIGNUM *bn;
+	BIGNUM *bn;
 
-    bn = BN_new();
-    if (bn) {
-        BN_set_flags(bn, BN_FLG_CONSTTIME);
-    }
-    return bn;
+	bn = BN_new();
+	if (bn) BN_set_flags(bn, BN_FLG_CONSTTIME);
+	return bn;
 }
 
 /*
  * compute the legendre symbol in constant time
  */
-static int
-legendre (BIGNUM *a, BIGNUM *p, BN_CTX *bnctx)
+static int legendre(BIGNUM *a, BIGNUM *p, BN_CTX *bnctx)
 {
-    int symbol;
-    unsigned int mask;
-    BIGNUM *res, *pm1over2;
+	int		symbol;
+	unsigned int	mask;
+	BIGNUM		*res, *pm1over2;
 
-    pm1over2 = consttime_BN();
-    res = consttime_BN();
+	pm1over2 = consttime_BN();
+	res = consttime_BN();
 
-    if (!BN_sub(pm1over2, p, BN_value_one()) || !BN_rshift1(pm1over2, pm1over2) ||
-        !BN_mod_exp_mont_consttime(res, a, pm1over2, p, bnctx, NULL)) {
-        return -2;
-    }
+	if (!BN_sub(pm1over2, p, BN_value_one()) ||
+	    !BN_rshift1(pm1over2, pm1over2) ||
+	    !BN_mod_exp_mont_consttime(res, a, pm1over2, p, bnctx, NULL)) return -2;
 
-    symbol = -1;
-    mask = const_time_eq(BN_is_word(res, 1), 1);
-    symbol = const_time_select_int(mask, 1, symbol);
-    mask = const_time_eq(BN_is_zero(res), 1);
-    symbol = const_time_select_int(mask, -1, symbol);
+	symbol = -1;
+	mask = const_time_eq(BN_is_word(res, 1), 1);
+	symbol = const_time_select_int(mask, 1, symbol);
+	mask = const_time_eq(BN_is_zero(res), 1);
+	symbol = const_time_select_int(mask, -1, symbol);
 
-    BN_free(pm1over2);
-    BN_free(res);
-    return symbol;
+	BN_free(pm1over2);
+	BN_free(res);
+
+	return symbol;
 }
 
-static void
-do_equation (EC_GROUP *group, BIGNUM *y2, BIGNUM *x, BN_CTX *bnctx)
+static void do_equation(EC_GROUP *group, BIGNUM *y2, BIGNUM *x, BN_CTX *bnctx)
 {
-    BIGNUM *p, *a, *b, *tmp1, *pm1;
+	BIGNUM *p, *a, *b, *tmp1, *pm1;
 
-    tmp1 = BN_new();
-    pm1 = BN_new();
-    p = BN_new();
-    a = BN_new();
-    b = BN_new();
-    EC_GROUP_get_curve_GFp(group, p, a, b, bnctx);
+	tmp1 = BN_new();
+	pm1 = BN_new();
+	p = BN_new();
+	a = BN_new();
+	b = BN_new();
+	EC_GROUP_get_curve_GFp(group, p, a, b, bnctx);
 
-    BN_sub(pm1, p, BN_value_one());
+	BN_sub(pm1, p, BN_value_one());
 
-    /*
-     * y2 = x^3 + ax + b
-     */
-    BN_mod_sqr(tmp1, x, p, bnctx);
-    BN_mod_mul(y2, tmp1, x, p, bnctx);
-    BN_mod_mul(tmp1, a, x, p, bnctx);
-    BN_mod_add_quick(y2, y2, tmp1, p);
-    BN_mod_add_quick(y2, y2, b, p);
+	/*
+	 * y2 = x^3 + ax + b
+	 */
+	BN_mod_sqr(tmp1, x, p, bnctx);
+	BN_mod_mul(y2, tmp1, x, p, bnctx);
+	BN_mod_mul(tmp1, a, x, p, bnctx);
+	BN_mod_add_quick(y2, y2, tmp1, p);
+	BN_mod_add_quick(y2, y2, b, p);
 
-    BN_free(tmp1);
-    BN_free(pm1);
-    BN_free(p);
-    BN_free(a);
-    BN_free(b);
+	BN_free(tmp1);
+	BN_free(pm1);
+	BN_free(p);
+	BN_free(a);
+	BN_free(b);
 
-    return;
+	return;
 }
 
-static int
-is_quadratic_residue (BIGNUM *val, BIGNUM *p, BIGNUM *qr, BIGNUM *qnr, BN_CTX *bnctx)
+static int is_quadratic_residue(BIGNUM *val, BIGNUM *p, BIGNUM *qr, BIGNUM *qnr, BN_CTX *bnctx)
 {
-    int offset, check, ret = 0;
-    BIGNUM *r = NULL, *pm1 = NULL, *res = NULL, *qr_or_qnr = NULL;
-    unsigned int mask;
-    unsigned char *qr_bin = NULL, *qnr_bin = NULL, *qr_or_qnr_bin = NULL;
+	int offset, check, ret = 0;
+	BIGNUM *r = NULL, *pm1 = NULL, *res = NULL, *qr_or_qnr = NULL;
+	unsigned int mask;
+	unsigned char *qr_bin = NULL, *qnr_bin = NULL, *qr_or_qnr_bin = NULL;
 
-    if (((r = consttime_BN()) == NULL) ||
-        ((res = consttime_BN()) == NULL) ||
-        ((qr_or_qnr = consttime_BN()) == NULL) ||
-        ((pm1 = consttime_BN()) == NULL)) {
-        ret = -2;
-        goto fail;
-    }
+	if (((r = consttime_BN()) == NULL) ||
+	    ((res = consttime_BN()) == NULL) ||
+	    ((qr_or_qnr = consttime_BN()) == NULL) ||
+	    ((pm1 = consttime_BN()) == NULL)) {
+		ret = -2;
+		goto fail;
+	}
 
-    if (((qr_bin = (unsigned char *)malloc(BN_num_bytes(p))) == NULL) ||
-        ((qnr_bin = (unsigned char *)malloc(BN_num_bytes(p))) == NULL) ||
-        ((qr_or_qnr_bin = (unsigned char *)malloc(BN_num_bytes(p))) == NULL)) {
-        ret = -2;
-        goto fail;
-    }
-    /*
-     * we select binary in constant time so make them binary
-     */
-    memset(qr_bin, 0, BN_num_bytes(p));
-    memset(qnr_bin, 0, BN_num_bytes(p));
-    memset(qr_or_qnr_bin, 0, BN_num_bytes(p));
+	if (((qr_bin = (unsigned char *)malloc(BN_num_bytes(p))) == NULL) ||
+	    ((qnr_bin = (unsigned char *)malloc(BN_num_bytes(p))) == NULL) ||
+	    ((qr_or_qnr_bin = (unsigned char *)malloc(BN_num_bytes(p))) == NULL)) {
+		ret = -2;
+		goto fail;
+	}
 
-    offset = BN_num_bytes(p) - BN_num_bytes(qr);
-    BN_bn2bin(qr, qr_bin + offset);
+	/*
+	 * we select binary in constant time so make them binary
+	 */
+	memset(qr_bin, 0, BN_num_bytes(p));
+	memset(qnr_bin, 0, BN_num_bytes(p));
+	memset(qr_or_qnr_bin, 0, BN_num_bytes(p));
 
-    offset = BN_num_bytes(p) - BN_num_bytes(qnr);
-    BN_bn2bin(qnr, qnr_bin + offset);
+	offset = BN_num_bytes(p) - BN_num_bytes(qr);
+	BN_bn2bin(qr, qr_bin + offset);
 
-    /*
-     * r = (random() mod p-1) + 1
-     */
-    BN_sub(pm1, p, BN_value_one());
-    BN_rand_range(r, pm1);
-    BN_add(r, r, BN_value_one());
+	offset = BN_num_bytes(p) - BN_num_bytes(qnr);
+	BN_bn2bin(qnr, qnr_bin + offset);
 
-    BN_copy(res, val);
+	/*
+	 * r = (random() mod p-1) + 1
+	 */
+	BN_sub(pm1, p, BN_value_one());
+	BN_rand_range(r, pm1);
+	BN_add(r, r, BN_value_one());
 
-    /*
-     * res = val * r * r which ensures res != val but has same quadratic residocity
-     */
-    BN_mod_mul(res, res, r, p, bnctx);
-    BN_mod_mul(res, res, r, p, bnctx);
+	BN_copy(res, val);
 
-    /*
-     * if r is even (mask is -1) then multiply by qnr and our check is qnr
-     * otherwise multiply by qr and our check is qr
-     */
-    mask = const_time_is_zero(BN_is_odd(r));
-    const_time_select_bin(mask, qnr_bin, qr_bin, BN_num_bytes(p), qr_or_qnr_bin);
-    BN_bin2bn(qr_or_qnr_bin, BN_num_bytes(p), qr_or_qnr);
-    BN_mod_mul(res, res, qr_or_qnr, p, bnctx);
-    check = const_time_select_int(mask, -1, 1);
+	/*
+	 * res = val * r * r which ensures res != val but has same quadratic residocity
+	 */
+	BN_mod_mul(res, res, r, p, bnctx);
+	BN_mod_mul(res, res, r, p, bnctx);
 
-    if ((ret = legendre(res, p, bnctx)) == -2) {
-        ret = -1;       /* just say no it's not */
-        goto fail;
-    }
-    mask = const_time_eq(ret, check);
-    ret = const_time_select_int(mask, 1, 0);
+	/*
+	 * if r is even (mask is -1) then multiply by qnr and our check is qnr
+	 * otherwise multiply by qr and our check is qr
+	 */
+	mask = const_time_is_zero(BN_is_odd(r));
+	const_time_select_bin(mask, qnr_bin, qr_bin, BN_num_bytes(p), qr_or_qnr_bin);
+	BN_bin2bn(qr_or_qnr_bin, BN_num_bytes(p), qr_or_qnr);
+	BN_mod_mul(res, res, qr_or_qnr, p, bnctx);
+	check = const_time_select_int(mask, -1, 1);
+
+	if ((ret = legendre(res, p, bnctx)) == -2) {
+		ret = -1;       /* just say no it's not */
+		goto fail;
+	}
+	mask = const_time_eq(ret, check);
+	ret = const_time_select_int(mask, 1, 0);
 
 fail:
-    if (qr_bin != NULL) {
-        free(qr_bin);
-    }
-    if (qnr_bin != NULL) {
-        free(qnr_bin);
-    }
-    if (qr_or_qnr_bin != NULL) {
-        free(qr_or_qnr_bin);
-    }
-    BN_free(r);
-    BN_free(res);
-    BN_free(qr_or_qnr);
-    BN_free(pm1);
+	if (qr_bin != NULL) free(qr_bin);
+	if (qnr_bin != NULL) free(qnr_bin);
+	if (qr_or_qnr_bin != NULL) free(qr_or_qnr_bin);
+	BN_free(r);
+	BN_free(res);
+	BN_free(qr_or_qnr);
+	BN_free(pm1);
 
-    return ret;
+	return ret;
 }
 
 int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t grp_num,
@@ -406,7 +395,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
                  */
                 cmp = const_time_memcmp(pm1buf, prfbuf, primebytelen);
                 skip = const_time_fill_msb((unsigned int)cmp);
-                
+
                 /*
                  * need to unambiguously identify the solution, if there is
                  * one..
