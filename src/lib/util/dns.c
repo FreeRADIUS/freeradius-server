@@ -677,7 +677,7 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 	uint8_t const *p, *q, *end;
 	uint8_t const *current, *start;
 	size_t length;
-	bool at_first_label;
+	bool at_first_label, set_next;
 
 	if (!buf || (buf_len == 0) || !next) return 0;
 
@@ -692,6 +692,7 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 	p = current = start;
 	length = 0;
 	at_first_label = true;
+	set_next = false;
 
 	/*
 	 *	We silently accept labels *without* a trailing 0x00,
@@ -716,6 +717,7 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 			 */
 			if (current == start) {
 				*next = p;
+				set_next = true;
 			}
 
 			break;
@@ -788,7 +790,10 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 			 *	the next label is in the network
 			 *	buffer.
 			 */
-			if (current == start) *next = p + 2;
+			if (current == start) {
+				*next = p + 2;
+				set_next = true;
+			}
 
 			p = current = q;
 			continue;
@@ -832,7 +837,8 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 	/*
 	 *	Return the length of this label.
 	 */
-	*next = p;
+	if (!set_next) *next = p; /* should be 'end'< */
+
 	return length;
 }
 
