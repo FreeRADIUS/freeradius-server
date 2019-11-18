@@ -974,6 +974,21 @@ create_attrs:
 	return total;
 }
 
+/** Wrapper called by fr_struct_from_network()
+ *
+ *  Because extended attributes can continue across the current value.
+ *  So that function needs to know both the value length, *and* the
+ *  packet length.  But when we're decoding values inside of a struct,
+ *  we're not using extended attributes.
+ */
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+			    fr_dict_attr_t const *parent,
+			    uint8_t const *data, size_t data_len, void *decoder_ctx)
+{
+	return fr_radius_decode_pair_value(ctx, cursor, dict, parent, data, data_len, data_len, decoder_ctx);
+}
+
+
 /** Create any kind of VP from the attribute contents
  *
  * "length" is AT LEAST the length of this attribute, as we
@@ -1351,7 +1366,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	attribute, OR it's already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		rcode = fr_struct_from_network(ctx, cursor, parent, p, attr_len, &child);
+		rcode = fr_struct_from_network(ctx, cursor, parent, p, attr_len, &child,
+					       decode_value, decoder_ctx);
 		if (rcode < 0) goto raw;
 
 		/*

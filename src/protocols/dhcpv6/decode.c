@@ -39,8 +39,8 @@
 #include "attrs.h"
 
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
-			      fr_dict_attr_t const *parent,
-			      uint8_t const *data, size_t const data_len, void *decoder_ctx);
+			     fr_dict_attr_t const *parent,
+			     uint8_t const *data, size_t const data_len, void *decoder_ctx);
 
 static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t const *dict,
 			  fr_dict_attr_t const *parent,
@@ -81,6 +81,35 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t
 	vp->vp_tainted = true;
 	fr_cursor_append(cursor, vp);
 	return data_len;
+}
+
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+			    fr_dict_attr_t const *parent,
+			    uint8_t const *data, size_t const data_len, void *decoder_ctx);
+static ssize_t decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+			    fr_dict_attr_t const *parent,
+			    uint8_t const *data, size_t const data_len, void *decoder_ctx);
+static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+				 fr_dict_attr_t const *parent,
+				 uint8_t const *data, size_t const data_len, void *decoder_ctx);
+
+/** Handle arrays of DNS lavels for fr_struct_from_network()
+ *
+ */
+static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+				       fr_dict_attr_t const *parent,
+				       uint8_t const *data, size_t const data_len, void *decoder_ctx)
+{
+	if (parent->flags.array) return decode_array(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
+
+	/*
+	 *	@todo - we might need to limit this to only one DNS label.
+	 */
+	if (!parent->flags.extra && (parent->type == FR_TYPE_STRING) && parent->flags.subtype) {
+		return decode_dns_labels(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
+	}
+
+	return decode_value(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
 }
 
 
@@ -168,7 +197,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		break;
 
 	case FR_TYPE_STRUCT:
-		rcode = fr_struct_from_network(ctx, cursor, parent, data, data_len, &tlv);
+		rcode = fr_struct_from_network(ctx, cursor, parent, data, data_len, &tlv,
+					       decode_value_trampoline, decoder_ctx);
 		if (rcode < 0) return rcode;
 
 		if (tlv) {
@@ -312,7 +342,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 		 *	bug in the code.
 		 */
 		rcode = fr_dns_label_to_value_box(vp, &vp->data, data, data_len, data + total, true);
-		if (rcode < 0) {
+		if (rcode <= 0) {
 			fr_pair_list_free(&vp);
 			goto raw;
 		}

@@ -62,7 +62,8 @@ VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
  */
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			       fr_dict_attr_t const **child_p)
+			       fr_dict_attr_t const **child_p,
+			       fr_decode_value_t decode_value, void *decoder_ctx)
 {
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
@@ -186,6 +187,23 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		if (!child_length) child_length = (end - p);
 
 		/*
+		 *	Magic values get the callback called.
+		 *
+		 *	Note that if this is an *array* of DNS labels,
+		 *	the callback should deal with this.
+		 */
+		if (decode_value && !child->flags.extra && child->flags.subtype) {
+			ssize_t slen;
+
+			slen = decode_value(ctx, &child_cursor, NULL, child, p, child_length, decoder_ctx);
+			if (slen < 0) return slen - (p - data);
+
+			p += slen;   	/* not always the same as child->flags.length */
+			child_num++;	/* go to the next child */
+			continue;
+		}
+
+		/*
 		 *	We only allow a limited number of data types
 		 *	inside of a struct.
 		 */
@@ -281,7 +299,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		}
 
 		if (child->type == FR_TYPE_STRUCT) {
-			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p, child_p);
+			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p, child_p,
+				decode_value, decoder_ctx);
 			if (slen < 0) goto unknown_child;
 			p += slen;
 
