@@ -53,6 +53,7 @@ typedef struct {
 	char const	*type;		//!< of items contained within the list.  Used for talloc
 					///< validation.
 	fr_dlist_t	entry;		//!< Struct holding the head and tail of the list.
+	size_t		num_elements;
 } fr_dlist_head_t;
 
 /** Initialise a linked list without metadata
@@ -153,6 +154,8 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_head(fr_dlist_head_t *lis
 	entry->next = head->next;
 	head->next->prev = entry;
 	head->next = entry;
+
+	list_head->num_elements++;
 }
 
 /** Insert an item into the tail of a list
@@ -184,6 +187,8 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_tail(fr_dlist_head_t *lis
 	entry->prev = head->prev;
 	head->prev->next = entry;
 	head->prev = entry;
+
+	list_head->num_elements++;
 }
 
 /** Return the HEAD item of a list or NULL if the list is empty
@@ -347,6 +352,8 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
 
 	if (prev == head) return NULL;	/* Works with fr_dlist_next so that the next item is the list HEAD */
 
+	list_head->num_elements--;
+
 	return (void *) (((uint8_t *) prev) - list_head->offset);
 }
 
@@ -406,6 +413,7 @@ static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_
 	dst->prev = src->prev;
 
 	fr_dlist_entry_init(src);
+	list_src->num_elements = 0;
 }
 
 /** Free all items in a doubly linked list (with talloc)
@@ -421,6 +429,15 @@ static inline void fr_dlist_talloc_free(fr_dlist_head_t *head)
 		talloc_free(e);
 		e = p;
 	}
+}
+
+/** Return the number of elements in the dlist
+ *
+ * @param[in] head of list to count elements for.
+ */
+static inline size_t fr_dlist_num_elements(fr_dlist_head_t *head)
+{
+	return head->num_elements;
 }
 
 #ifdef __cplusplus
