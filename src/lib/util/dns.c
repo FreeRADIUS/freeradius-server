@@ -832,6 +832,7 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 	/*
 	 *	Return the length of this label.
 	 */
+	*next = p;
 	return length;
 }
 
