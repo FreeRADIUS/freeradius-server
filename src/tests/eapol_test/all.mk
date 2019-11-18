@@ -74,7 +74,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 		echo "--------------------------------------------------";		\
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";			\
 		$(MAKE) test.eap.radiusd_kill;						\
-		echo "RADIUSD :  TEST_PORT=$(PORT) $(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n servers -D share/dictionary/ -lstdout -f";				\
+		echo "RADIUSD :  TEST_PORT=$(PORT) $(RADIUSD_BIN) -Pxxx -d $(dir $<))/config -n servers -D share/dictionary/ -lstdout -f";				\
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET) $(KEY) "; \
 		$(MAKE) --no-print-directory test.eap.radiusd_kill						\
 		exit 1;\
