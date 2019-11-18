@@ -118,7 +118,11 @@ static int legendre(BIGNUM *a, BIGNUM *p, BN_CTX *bnctx)
 
 	if (!BN_sub(pm1over2, p, BN_value_one()) ||
 	    !BN_rshift1(pm1over2, pm1over2) ||
-	    !BN_mod_exp_mont_consttime(res, a, pm1over2, p, bnctx, NULL)) return -2;
+	    !BN_mod_exp_mont_consttime(res, a, pm1over2, p, bnctx, NULL)) {
+		BN_free(pm1over2);
+		BN_free(res);
+		return -2;
+	}
 
 	symbol = -1;
 	mask = const_time_eq(BN_is_word(res, 1), 1);
@@ -324,33 +328,34 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		DEBUG("unable to alloc space for prf buffer");
 		goto fail;
 	}
-        if ((xbuf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+	if ((xbuf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
 		DEBUG("unable to alloc space for x buffer");
 		goto fail;
-        }
-        if ((pm1buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+	}
+	if ((pm1buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
 		DEBUG("unable to alloc space for pm1 buffer");
 		goto fail;
-        }
+	}
 
-        /*
-         * derive random quadradic residue and quadratic non-residue
-         */
-        do {
-            BN_rand_range(qr, session->prime);
-        } while (legendre(qr, session->prime, bnctx) != 1);
-        do {
-            BN_rand_range(qnr, session->prime);
-        } while (legendre(qnr, session->prime, bnctx) != -1);
+	/*
+	* derive random quadradic residue and quadratic non-residue
+	*/
+	do {
+		BN_rand_range(qr, session->prime);
+	} while (legendre(qr, session->prime, bnctx) != 1);
 
-        if (!BN_sub(rnd, session->prime, BN_value_one())) {
-            goto fail;
-        }
-        BN_bn2bin(rnd, pm1buf);
+	do {
+		BN_rand_range(qnr, session->prime);
+	} while (legendre(qnr, session->prime, bnctx) != -1);
 
-        save_is_odd = 0;
-        found = 0;
-        memset(xbuf, 0, primebytelen);
+	if (!BN_sub(rnd, session->prime, BN_value_one())) {
+		goto fail;
+	}
+	BN_bn2bin(rnd, pm1buf);
+
+	save_is_odd = 0;
+	found = 0;
+	memset(xbuf, 0, primebytelen);
 	ctr = 0;
 	while (ctr < 40) {
 		ctr++;
@@ -380,73 +385,73 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		 * we have to shift right the amount we masked off.
 		 */
 		if (primebitlen % 8) {
-                    rbits = 8 - (primebitlen % 8);
-                    for (i = primebytelen - 1; i > 0; i--) {
-                        prfbuf[i] = (prfbuf[i - 1] << (8 - rbits)) | (prfbuf[i] >> rbits);
-                    }
-                    prfbuf[0] >>= rbits;
-                }
+			rbits = 8 - (primebitlen % 8);
+			for (i = primebytelen - 1; i > 0; i--) {
+				prfbuf[i] = (prfbuf[i - 1] << (8 - rbits)) | (prfbuf[i] >> rbits);
+			}
+			prfbuf[0] >>= rbits;
+		}
 		BN_bin2bn(prfbuf, primebytelen, x_candidate);
 
-                /*
-                 * it would've been better if the spec reduced the candidate
-                 * modulo the prime but it didn't. So if the candidate >= prime
-                 * we need to skip it but still run through the operations below
-                 */
-                cmp = const_time_memcmp(pm1buf, prfbuf, primebytelen);
-                skip = const_time_fill_msb((unsigned int)cmp);
+		/*
+		* it would've been better if the spec reduced the candidate
+		* modulo the prime but it didn't. So if the candidate >= prime
+		* we need to skip it but still run through the operations below
+		*/
+		cmp = const_time_memcmp(pm1buf, prfbuf, primebytelen);
+		skip = const_time_fill_msb((unsigned int)cmp);
 
-                /*
-                 * need to unambiguously identify the solution, if there is
-                 * one..
-                 */
-                is_odd = BN_is_odd(rnd) ? 1 : 0;
+		/*
+		* need to unambiguously identify the solution, if there is
+		* one..
+		*/
+		is_odd = BN_is_odd(rnd) ? 1 : 0;
 
-                /*
-                 * check whether x^3 + a*x + b is a quadratic residue
-                 *
-                 * save the first quadratic residue we find in the loop but do
-                 * it in constant time.
-                 */
-                do_equation(session->group, y_sqrd, x_candidate, bnctx);
-                qr_or_qnr = is_quadratic_residue(y_sqrd, session->prime, qr, qnr, bnctx);
+		/*
+		* check whether x^3 + a*x + b is a quadratic residue
+		*
+		* save the first quadratic residue we find in the loop but do
+		* it in constant time.
+		*/
+		do_equation(session->group, y_sqrd, x_candidate, bnctx);
+		qr_or_qnr = is_quadratic_residue(y_sqrd, session->prime, qr, qnr, bnctx);
 
-                /*
-                 * if the candidate >= prime then we want to skip it
-                 */
-                qr_or_qnr = const_time_select(skip, 0, qr_or_qnr);
+		/*
+		* if the candidate >= prime then we want to skip it
+		*/
+		qr_or_qnr = const_time_select(skip, 0, qr_or_qnr);
 
-                /*
-                 * if we haven't found PWE yet (found = 0) then mask will be true,
-                 * if we have found PWE then mask will be false
-                 */
-                mask = const_time_select(found, 0, -1);
+		/*
+		* if we haven't found PWE yet (found = 0) then mask will be true,
+		* if we have found PWE then mask will be false
+		*/
+		mask = const_time_select(found, 0, -1);
 
-                /*
-                 * save will be 1 if we want to save this value-- i.e. we haven't
-                 * found PWE yet and this is a quadratic residue-- and 0 otherwise
-                 */
-                save = const_time_select(mask, qr_or_qnr, 0);
+		/*
+		* save will be 1 if we want to save this value-- i.e. we haven't
+		* found PWE yet and this is a quadratic residue-- and 0 otherwise
+		*/
+		save = const_time_select(mask, qr_or_qnr, 0);
 
-                /*
-                 * mask will be true (-1) if we want to save this and false (0)
-                 * otherwise
-                 */
-                mask = const_time_eq(save, 1);
+		/*
+		* mask will be true (-1) if we want to save this and false (0)
+		* otherwise
+		*/
+		mask = const_time_eq(save, 1);
 
-                const_time_select_bin(mask, prfbuf, xbuf, primebytelen, xbuf);
-                save_is_odd = const_time_select(mask, is_odd, save_is_odd);
-                found = const_time_select(mask, -1, found);
-
+		const_time_select_bin(mask, prfbuf, xbuf, primebytelen, xbuf);
+		save_is_odd = const_time_select(mask, is_odd, save_is_odd);
+		found = const_time_select(mask, -1, found);
 	}
-        /*
-         * now we can savely construct PWE
-         */
-        BN_bin2bn(xbuf, primebytelen, x_candidate);
-        if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe,
-                                                     x_candidate, save_is_odd, NULL)) {
-            goto fail;
-        }
+
+	/*
+	* now we can savely construct PWE
+	*/
+	BN_bin2bn(xbuf, primebytelen, x_candidate);
+	if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe,
+	                                     x_candidate, save_is_odd, NULL)) {
+		goto fail;
+	}
 
 	session->group_num = grp_num;
 	if (0) {
@@ -456,13 +461,15 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 
 	/* cleanliness and order.... */
 	BN_clear_free(x_candidate);
-        BN_clear_free(y_sqrd);
-        BN_clear_free(qr);
-        BN_clear_free(qnr);
+	BN_clear_free(y_sqrd);
+	BN_clear_free(qr);
+	BN_clear_free(qnr);
 	BN_clear_free(rnd);
+
 	if (prfbuf) talloc_free(prfbuf);
-        if (xbuf) talloc_free(xbuf);
-        if (pm1buf) talloc_free(pm1buf);
+	if (xbuf) talloc_free(xbuf);
+	if (pm1buf) talloc_free(pm1buf);
+
 	HMAC_CTX_free(ctx);
 
 	return ret;
