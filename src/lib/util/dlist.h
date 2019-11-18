@@ -118,11 +118,12 @@ static inline void fr_dlist_entry_unlink(fr_dlist_t *entry)
 #define fr_dlist_talloc_init(_head, _type, _field) \
 	_Generic((((_type *)0)->_field), fr_dlist_t: _fr_dlist_init(_head, offsetof(_type, _field), #_type))
 
-static inline void _fr_dlist_init(fr_dlist_head_t *head, size_t offset, char const *type)
+static inline void _fr_dlist_init(fr_dlist_head_t *list_head, size_t offset, char const *type)
 {
 	fr_dlist_entry_init(&head->entry);
-	head->offset = offset;
-	head->type = type;
+	list_head->offset = offset;
+	list_head->type = type;
+	list_head->num_elements = 0;
 }
 
 /** Insert an item into the head of a list
