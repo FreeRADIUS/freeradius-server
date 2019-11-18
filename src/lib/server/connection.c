@@ -125,7 +125,8 @@ do { \
 static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t *list)
 {
 	fr_connection_watch_entry_t *entry = NULL;
-	if (fr_dlist_empty(list)) return;
+
+	if (conn->deferred_free) return;	/* If something freed the connection then don't call more watchers */
 
 	while ((entry = fr_dlist_next(list, entry))) {
 		entry->func(conn, conn->state, entry->uctx);
@@ -140,12 +141,24 @@ static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t 
 /** Call the pre handler watch functions
  *
  */
-#define WATCH_PRE(_conn) connection_watch_call((_conn), &(_conn)->watch_pre[(_conn)->state]);
+#define WATCH_PRE(_conn) \
+do { \
+	if (fr_dlist_empty(&(_conn)->watch_pre[(_conn)->state])) break; \
+	HANDLER_BEGIN(conn); \
+	connection_watch_call((_conn), &(_conn)->watch_pre[(_conn)->state]); \
+	HANDLER_END(conn); \
+} while(0)
 
 /** Call the post handler watch functions
  *
  */
-#define WATCH_POST(_conn) connection_watch_call((_conn), &(_conn)->watch_post[(_conn)->state]);
+#define WATCH_POST(_conn) \
+do { \
+	if (fr_dlist_empty(&(_conn)->watch_post[(_conn)->state])) break; \
+	HANDLER_BEGIN(conn); \
+	connection_watch_call((_conn), &(_conn)->watch_post[(_conn)->state]); \
+	HANDLER_END(conn); \
+} while(0)
 
 /*
  *	State transition functions
@@ -436,12 +449,16 @@ static void connection_state_failed_enter(fr_connection_t *conn, fr_time_t now)
 	 *	API client can free any resources associated
 	 *	with the connection handle.
 	 */
-	HANDLER_BEGIN(conn);
 	WATCH_PRE(conn);
-	if (conn->close && !conn->is_closed) conn->close(conn->h, conn->uctx);
-	conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
+	if (conn->close && !conn->is_closed) {
+		HANDLER_BEGIN(conn);
+		conn->close(conn->h, conn->uctx);
+		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
+		HANDLER_END(conn);
+	} else {
+		conn->is_closed = true;
+	}
 	WATCH_POST(conn);
-	HANDLER_END(conn);
 
 	/*
 	 *	If there's a failed callback, give it the
@@ -536,15 +553,16 @@ static void connection_state_connected_enter(fr_connection_t *conn, UNUSED fr_ti
 
 	fr_event_timer_delete(conn->el, &conn->connection_timer);
 
-	HANDLER_BEGIN(conn);
 	WATCH_PRE(conn);
 	if (conn->open) {
+		HANDLER_BEGIN(conn);
 		ret = conn->open(conn->el, conn->h, conn->uctx);
+		HANDLER_END(conn);
 	} else {
 		ret = FR_CONNECTION_STATE_CONNECTED;
 	}
 	WATCH_POST(conn);
-	HANDLER_END(conn);
+
 
 	switch (ret) {
 	/*
@@ -638,15 +656,16 @@ static void connection_state_init_enter(fr_connection_t *conn, fr_time_t now)
 	/*
 	 *	If we have an init callback, call it.
 	 */
-	HANDLER_BEGIN(conn);
+
 	WATCH_PRE(conn);
 	if (conn->init) {
+		HANDLER_BEGIN(conn);
 		ret = conn->init(&conn->h, conn, conn->uctx);
+		HANDLER_END(conn);
 	} else {
 		ret = FR_CONNECTION_STATE_CONNECTING;
 	}
 	WATCH_POST(conn);
-	HANDLER_END(conn);
 
 	switch (ret) {
 	case FR_CONNECTION_STATE_CONNECTING:

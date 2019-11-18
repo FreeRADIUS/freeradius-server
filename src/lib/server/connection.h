@@ -47,8 +47,6 @@ typedef enum {
 	FR_CONNECTION_STATE_MAX
 } fr_connection_state_t;
 
-typedef void(*fr_connection_watch_t)(fr_connection_t *conn, fr_connection_state_t state, void *uctx);
-
 extern fr_table_num_sorted_t const fr_connection_states[];
 extern size_t fr_connection_states_len;
 
@@ -108,10 +106,21 @@ typedef fr_connection_state_t (*fr_connection_failed_t)(void *h, fr_connection_s
  * If this callback does not close the file descriptor, the server will leak
  * file descriptors.
  *
- * @param[in] h	to close.
+ * @param[in] h		Handle to close.
  * @param[in] uctx	User context.
  */
 typedef void (*fr_connection_close_t)(void *h, void *uctx);
+
+/** Receive a notification when a connection enters a particular state
+ *
+ * It is permitted for watchers to signal state changes, and/or to free the
+ * connection.  The actual free will be deferred until the watcher returns.
+ *
+ * @param[in] conn	Being watched.
+ * @param[in] state	That was entered.
+ * @param[in] uctx	that was passed to fr_connection_add_watch_*.
+ */
+typedef void(*fr_connection_watch_t)(fr_connection_t *conn, fr_connection_state_t state, void *uctx);
 
 fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
 
