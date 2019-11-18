@@ -267,7 +267,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 	ssize_t rcode;
 	size_t total;
 	VALUE_PAIR *vp;
-	uint8_t const *next;
+	uint8_t const *next = data;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_dns_labels");
 
@@ -277,10 +277,12 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 	 */
 	if (!parent->flags.array) {
 		rcode = fr_dns_label_length(data, data_len, &next);
-		if (rcode < 0) goto raw;
+		if (rcode <= 0) goto raw;
 
 		/*
 		 *	If the DNS label doesn't exactly fill the option, it's an error.
+		 *
+		 *	@todo - we may want to remove this check.
 		 */
 		if (next != (data + data_len)) goto raw;
 
