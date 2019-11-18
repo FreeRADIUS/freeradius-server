@@ -118,7 +118,11 @@ static int legendre(BIGNUM *a, BIGNUM *p, BN_CTX *bnctx)
 
 	if (!BN_sub(pm1over2, p, BN_value_one()) ||
 	    !BN_rshift1(pm1over2, pm1over2) ||
-	    !BN_mod_exp_mont_consttime(res, a, pm1over2, p, bnctx, NULL)) return -2;
+	    !BN_mod_exp_mont_consttime(res, a, pm1over2, p, bnctx, NULL)) {
+		BN_free(pm1over2);
+		BN_free(res);
+		return -2;
+	}
 
 	symbol = -1;
 	mask = const_time_eq(BN_is_word(res, 1), 1);
@@ -438,7 +442,6 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		const_time_select_bin(mask, prfbuf, xbuf, primebytelen, xbuf);
 		save_is_odd = const_time_select(mask, is_odd, save_is_odd);
 		found = const_time_select(mask, -1, found);
-
 	}
 
 	/*
