@@ -42,6 +42,7 @@ fi
 
 if [ ! -f server.key ]; then
   openssl req -new  -out server.csr -keyout server.key -config ./server.cnf || exit 1
+  chmod g+r server.key
 fi
 
 if [ ! -f ca.key ]; then
@@ -62,11 +63,13 @@ fi
 
 if [ ! -f server.p12 ]; then
   openssl pkcs12 -export -in server.crt -inkey server.key -out server.p12  -passin pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` -passout pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` || exit 1
+  chmod g+r server.p12
 fi
 
 if [ ! -f server.pem ]; then
   openssl pkcs12 -in server.p12 -out server.pem -passin pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` -passout pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` || exit 1
   openssl verify -CAfile ca.pem server.pem || exit 1
+  chmod g+r server.pem
 fi
 
 if [ ! -f ca.der ]; then
@@ -75,6 +78,7 @@ fi
 
 if [ ! -f client.key ]; then
   openssl req -new  -out client.csr -keyout client.key -config ./client.cnf
+  chmod g+r client.key
 fi
 
 if [ ! -f client.crt ]; then
