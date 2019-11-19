@@ -15,7 +15,7 @@ ATTRIBUTE	Geolocation				63	struct
 MEMBER		GeoLocation-Latitude-Uncertainty	bit[6]
 MEMBER		GeoLocation-Latitude			bit[34]  # 9 bits of integer, 25 bits of fraction
 MEMBER		GeoLocation-Longitude-Uncertainty	bit[6]
-MEMBER		GeoLocation-Longitude1			bit[34]  # 9 bits of integer, 25 bits of fraction
+MEMBER		GeoLocation-Longitude			bit[34]  # 9 bits of integer, 25 bits of fraction
 MEMBER		GeoLocation-Altitude-Type		bit[4]
 MEMBER		GeoLocation-Altitude-Uncertainty	bit[6]
 MEMBER		GeoLocation-Altitude			bit[30]
