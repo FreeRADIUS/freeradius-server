@@ -9,9 +9,9 @@
 #
 #  Skippable-Attributes
 #
-ATTRIBUTE	Virtual-Network-ID		145	octets
-ATTRIBUTE	Virtual-Network-Req		146	octets
-ATTRIBUTE	Connectivity-Type		147	octets
-ATTRIBUTE	Handover-Indication		148	octets
-ATTRIBUTE	Handover-Session-ID		149	octets
-ATTRIBUTE	MN-Serial-ID			150	octets
+ATTRIBUTE	Virtual-Network-ID			145	octets
+ATTRIBUTE	Virtual-Network-Req			146	octets
+ATTRIBUTE	Connectivity-Type			147	octets
+ATTRIBUTE	Handover-Indication			148	octets
+ATTRIBUTE	Handover-Session-ID			149	octets
+ATTRIBUTE	MN-Serial-ID				150	octets

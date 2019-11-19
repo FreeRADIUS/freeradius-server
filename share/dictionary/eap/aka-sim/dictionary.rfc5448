@@ -9,5 +9,5 @@
 #
 #  Non-Skippable attributes
 #
-ATTRIBUTE	KDF-Input			23	string
-ATTRIBUTE	KDF				24	short
+ATTRIBUTE	KDF-Input				23	string
+ATTRIBUTE	KDF					24	short

@@ -13,125 +13,125 @@
 ATTRIBUTE	Client-Link-Layer			79	struct		# Complex struct see RFC 6939
 MEMBER		Client-Link-Layer-Type			uint16 key
 
-STRUCT	Client-Link-Layer-Ethernet	Client-Link-Layer-Type	1
+STRUCT	Client-Link-Layer-Ethernet		Client-Link-Layer-Type 1
 MEMBER		Client-Link-Layer-Ethernet-Address	ether
 
-STRUCT	Client-Link-Layer-Experiemental-Ethernet	Client-Link-Layer-Type	2
-MEMBER		Client-Link-Layer-Experiemental-Ethernet-Address	octets
+STRUCT	Client-Link-Layer-Experiemental-Ethernet		Client-Link-Layer-Type 2
+MEMBER		Client-Link-Layer-Experiemental-Ethernet-Address octets
 
 STRUCT	Client-Link-Layer-AX.25	Client-Link-Layer-Type	3
 MEMBER		Client-Link-Layer-AX.25-Address	octets
 
-STRUCT	Client-Link-Layer-Proteon-Token-Ring	Client-Link-Layer-Type	4
-MEMBER		Client-Link-Layer-Proteon-Token-Ring-Address	octets
+STRUCT	Client-Link-Layer-Proteon-Token-Ring		Client-Link-Layer-Type 4
+MEMBER		Client-Link-Layer-Proteon-Token-Ring-Address octets
 
-STRUCT	Client-Link-Layer-Chaos	Client-Link-Layer-Type	5
-MEMBER		Client-Link-Layer-Chaos-Address	octets
+STRUCT	Client-Link-Layer-Chaos		Client-Link-Layer-Type	5
+MEMBER		Client-Link-Layer-Chaos-Address		octets
 
-STRUCT	Client-Link-Layer-IEEE-802	Client-Link-Layer-Type	6
+STRUCT	Client-Link-Layer-IEEE-802		Client-Link-Layer-Type 6
 MEMBER		Client-Link-Layer-IEEE-802-Address	octets
 
-STRUCT	Client-Link-Layer-Arcnet	Client-Link-Layer-Type	7
+STRUCT	Client-Link-Layer-Arcnet		Client-Link-Layer-Type 7
 MEMBER		Client-Link-Layer-Arcnet-Address	octets
 
-STRUCT	Client-Link-Layer-Hyperchannel	Client-Link-Layer-Type	8
+STRUCT	Client-Link-Layer-Hyperchannel		Client-Link-Layer-Type 8
 MEMBER		Client-Link-Layer-Hyperchannel-Address	octets
 
-STRUCT	Client-Link-Layer-Lanstar	Client-Link-Layer-Type	9
+STRUCT	Client-Link-Layer-Lanstar		Client-Link-Layer-Type 9
 MEMBER		Client-Link-Layer-Lanstar-Address	octets
 
-STRUCT	Client-Link-Layer-Autonet-Short-Address	Client-Link-Layer-Type	10
-MEMBER		Client-Link-Layer-Autonet-Short-Address-Address	octets
+STRUCT	Client-Link-Layer-Autonet-Short-Address		Client-Link-Layer-Type 10
+MEMBER		Client-Link-Layer-Autonet-Short-Address-Address octets
 
-STRUCT	Client-Link-Layer-LocalTalk	Client-Link-Layer-Type	11
+STRUCT	Client-Link-Layer-LocalTalk		Client-Link-Layer-Type 11
 MEMBER		Client-Link-Layer-LocalTalk-Address	octets
 
-STRUCT	Client-Link-Layer-LocalNet	Client-Link-Layer-Type	12
+STRUCT	Client-Link-Layer-LocalNet		Client-Link-Layer-Type 12
 MEMBER		Client-Link-Layer-LocalNet-Address	octets
 
-STRUCT	Client-Link-Layer-Ultra-Link	Client-Link-Layer-Type	13
+STRUCT	Client-Link-Layer-Ultra-Link		Client-Link-Layer-Type 13
 MEMBER		Client-Link-Layer-Ultra-Link-Address	octets
 
-STRUCT	Client-Link-Layer-SMDS	Client-Link-Layer-Type	14
-MEMBER		Client-Link-Layer-SMDS-Address	octets
+STRUCT	Client-Link-Layer-SMDS		Client-Link-Layer-Type	14
+MEMBER		Client-Link-Layer-SMDS-Address		octets
 
-STRUCT	Client-Link-Layer-Frame-Relay	Client-Link-Layer-Type	15
+STRUCT	Client-Link-Layer-Frame-Relay		Client-Link-Layer-Type 15
 MEMBER		Client-Link-Layer-Frame-Relay-Address	octets
 
-STRUCT	Client-Link-Layer-ATM-16	Client-Link-Layer-Type	16
+STRUCT	Client-Link-Layer-ATM-16		Client-Link-Layer-Type 16
 MEMBER		Client-Link-Layer-ATM-16-Address	octets
 
-STRUCT	Client-Link-Layer-HDLC	Client-Link-Layer-Type	17
-MEMBER		Client-Link-Layer-HDLC-Address	octets
+STRUCT	Client-Link-Layer-HDLC		Client-Link-Layer-Type	17
+MEMBER		Client-Link-Layer-HDLC-Address		octets
 
-STRUCT	Client-Link-Layer-Fibre-Channel	Client-Link-Layer-Type	18
+STRUCT	Client-Link-Layer-Fibre-Channel		Client-Link-Layer-Type 18
 MEMBER		Client-Link-Layer-Fibre-Channel-Address	octets
 
-STRUCT	Client-Link-Layer-ATM-19	Client-Link-Layer-Type	19
+STRUCT	Client-Link-Layer-ATM-19		Client-Link-Layer-Type 19
 MEMBER		Client-Link-Layer-ATM-19-Address	octets
 
-STRUCT	Client-Link-Layer-Serial-Line	Client-Link-Layer-Type	20
+STRUCT	Client-Link-Layer-Serial-Line		Client-Link-Layer-Type 20
 MEMBER		Client-Link-Layer-Serial-Line-Address	octets
 
-STRUCT	Client-Link-Layer-ATM-21	Client-Link-Layer-Type	21
+STRUCT	Client-Link-Layer-ATM-21		Client-Link-Layer-Type 21
 MEMBER		Client-Link-Layer-ATM-21-Address	octets
 
-STRUCT	Client-Link-Layer-MIL-STD-188-220	Client-Link-Layer-Type	22
-MEMBER		Client-Link-Layer-MIL-STD-188-220-Address	octets
+STRUCT	Client-Link-Layer-MIL-STD-188-220		Client-Link-Layer-Type 22
+MEMBER		Client-Link-Layer-MIL-STD-188-220-Address octets
 
-STRUCT	Client-Link-Layer-Metricom	Client-Link-Layer-Type	23
+STRUCT	Client-Link-Layer-Metricom		Client-Link-Layer-Type 23
 MEMBER		Client-Link-Layer-Metricom-Address	octets
 
-STRUCT	Client-Link-Layer-IEEE-1394	Client-Link-Layer-Type	24
+STRUCT	Client-Link-Layer-IEEE-1394		Client-Link-Layer-Type 24
 MEMBER		Client-Link-Layer-IEEE-1394-Address	octets
 
-STRUCT	Client-Link-Layer-MAPOS	Client-Link-Layer-Type	25
-MEMBER		Client-Link-Layer-MAPOS-Address	octets
+STRUCT	Client-Link-Layer-MAPOS		Client-Link-Layer-Type	25
+MEMBER		Client-Link-Layer-MAPOS-Address		octets
 
-STRUCT	Client-Link-Layer-Twinaxial	Client-Link-Layer-Type	26
+STRUCT	Client-Link-Layer-Twinaxial		Client-Link-Layer-Type 26
 MEMBER		Client-Link-Layer-Twinaxial-Address	octets
 
-STRUCT	Client-Link-Layer-EUI-64	Client-Link-Layer-Type	27
+STRUCT	Client-Link-Layer-EUI-64		Client-Link-Layer-Type 27
 MEMBER		Client-Link-Layer-EUI-64-Address	octets
 
-STRUCT	Client-Link-Layer-HIPARP	Client-Link-Layer-Type	28
+STRUCT	Client-Link-Layer-HIPARP		Client-Link-Layer-Type 28
 MEMBER		Client-Link-Layer-HIPARP-Address	octets
 
-STRUCT	Client-Link-Layer-IP-Over-ISO-7816-3	Client-Link-Layer-Type	29
-MEMBER		Client-Link-Layer-IP-Over-ISO-7816-3-Address	octets
+STRUCT	Client-Link-Layer-IP-Over-ISO-7816-3		Client-Link-Layer-Type 29
+MEMBER		Client-Link-Layer-IP-Over-ISO-7816-3-Address octets
 
-STRUCT	Client-Link-Layer-ARPSec	Client-Link-Layer-Type	30
+STRUCT	Client-Link-Layer-ARPSec		Client-Link-Layer-Type 30
 MEMBER		Client-Link-Layer-ARPSec-Address	octets
 
-STRUCT	Client-Link-Layer-IPSec-Tunnel	Client-Link-Layer-Type	31
+STRUCT	Client-Link-Layer-IPSec-Tunnel		Client-Link-Layer-Type 31
 MEMBER		Client-Link-Layer-IPSec-Tunnel-Address	octets
 
-STRUCT	Client-Link-Layer-Infiniband	Client-Link-Layer-Type	32
+STRUCT	Client-Link-Layer-Infiniband		Client-Link-Layer-Type 32
 MEMBER		Client-Link-Layer-Infiniband-Address	octets
 
-STRUCT	Client-Link-Layer-CAI-TIA-102	Client-Link-Layer-Type	33
+STRUCT	Client-Link-Layer-CAI-TIA-102		Client-Link-Layer-Type 33
 MEMBER		Client-Link-Layer-CAI-TIA-102-Address	octets
 
-STRUCT	Client-Link-Layer-Wiegand-Interface	Client-Link-Layer-Type	34
-MEMBER		Client-Link-Layer-Wiegand-Interface-Address	octets
+STRUCT	Client-Link-Layer-Wiegand-Interface		Client-Link-Layer-Type 34
+MEMBER		Client-Link-Layer-Wiegand-Interface-Address octets
 
-STRUCT	Client-Link-Layer-Pure-IP	Client-Link-Layer-Type	35
+STRUCT	Client-Link-Layer-Pure-IP		Client-Link-Layer-Type 35
 MEMBER		Client-Link-Layer-Pure-IP-Address	octets
 
-STRUCT	Client-Link-Layer-HW-EXP1	Client-Link-Layer-Type	36
+STRUCT	Client-Link-Layer-HW-EXP1		Client-Link-Layer-Type 36
 MEMBER		Client-Link-Layer-HW-EXP1-Address	octets
 
-STRUCT	Client-Link-Layer-HFI	Client-Link-Layer-Type	37
-MEMBER		Client-Link-Layer-HFI-Address	octets
+STRUCT	Client-Link-Layer-HFI		Client-Link-Layer-Type	37
+MEMBER		Client-Link-Layer-HFI-Address		octets
 
 #
 #	Unassigned 38-255
 #
 
-STRUCT	Client-Link-Layer-HW_EXP2	Client-Link-Layer-Type	256
+STRUCT	Client-Link-Layer-HW_EXP2		Client-Link-Layer-Type 256
 MEMBER		Client-Link-Layer-HW_EXP2-Address	octets
 
-STRUCT	Client-Link-Layer-AEthernet	Client-Link-Layer-Type	257
+STRUCT	Client-Link-Layer-AEthernet		Client-Link-Layer-Type 257
 MEMBER		Client-Link-Layer-AEthernet-Address	octets
 
 #

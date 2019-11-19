@@ -9,10 +9,10 @@
 #
 #  Skippable-Attributes
 #
-ATTRIBUTE	IPMS-Ind			137	octets
-ATTRIBUTE	IPMS-Res			138	octets
-ATTRIBUTE	Tust-Ind			139	octets
-ATTRIBUTE	Short-Name-For-Network		140	octets
-ATTRIBUTE	Full-Name-For-Network		141	octets
+ATTRIBUTE	IPMS-Ind				137	octets
+ATTRIBUTE	IPMS-Res				138	octets
+ATTRIBUTE	Tust-Ind				139	octets
+ATTRIBUTE	Short-Name-For-Network			140	octets
+ATTRIBUTE	Full-Name-For-Network			141	octets
 
-ATTRIBUTE	Twan-Conn-Mode			144	octets
+ATTRIBUTE	Twan-Conn-Mode				144	octets
