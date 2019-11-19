@@ -3171,7 +3171,7 @@ post_ca:
 
 		if (rad_debug_lvl && insecure_tls_version) {
 			WARN("The configuration allows TLS 1.0 and/or TLS 1.1.  We STRONGLY recommned using only TLS 1.2 for security");
-			WARN("Please set: min_tls_version = \"1.2\"");
+			WARN("Please set: tls_min_version = \"1.2\"");
 		}
 	}
 
