@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS radacct (
 	username varchar(64) NOT NULL default '',
 	realm varchar(64) default '',
 	nasipaddress varchar(15) NOT NULL default '',
-	nasportid varchar(15) default NULL,
+	nasportid varchar(30) default NULL,
 	nasporttype varchar(32) default NULL,
 	acctstarttime datetime NULL default NULL,
 	acctupdatetime datetime NULL default NULL,
