@@ -17,7 +17,7 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
--- 	CALL sp_allocate_previous_or_new_framedipaddress( \
+-- 	CALL fr_allocate_previous_or_new_framedipaddress( \
 -- 		'%{control:${pool_name}}', \
 -- 		'%{User-Name}', \
 -- 		'%{Calling-Station-Id}', \
@@ -33,8 +33,8 @@ CREATE INDEX poolname_username_callingstationid ON radippool(pool_name,username,
 
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS sp_allocate_previous_or_new_framedipaddress;
-CREATE PROCEDURE sp_allocate_previous_or_new_framedipaddress (
+DROP PROCEDURE IF EXISTS fr_allocate_previous_or_new_framedipaddress;
+CREATE PROCEDURE fr_allocate_previous_or_new_framedipaddress (
         IN v_pool_name VARCHAR(64),
         IN v_username VARCHAR(64),
         IN v_callingstationid VARCHAR(64),
