@@ -40,6 +40,7 @@ radiusd-c $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd
 test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
 		test.bin	\
 		test.trie	\
+		test.dict	\
 		test.unit	\
 		test.keywords	\
 		test.xlat	\
