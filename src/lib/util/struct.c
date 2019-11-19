@@ -586,7 +586,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 *	Nothing more to do, or we've done all of the
 		 *	entries in this structure, stop.
 		 */
-		if (!vp || (vp->da->parent != parent)) {
+		if (!vp || (vp->da->parent != parent) || (vp->da->attr < child_num)) {
 			break;
 		}
 	}
