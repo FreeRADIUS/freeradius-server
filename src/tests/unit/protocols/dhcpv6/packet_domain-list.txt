@@ -1,0 +1,32 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  Version $Id$
+#
+#  Test vectors for DHCPv6 protocol
+#
+#  Based on https://github.com/the-tcpdump-group/tcpdump/blob/master/tests/dhcpv6-domain-list.pcap
+#
+proto dhcpv6
+proto-dictionary dhcpv6
+
+#
+#  1. Reply (Client -> Broadcast)
+#
+#  DHCPv6
+#    Message type: Reply (7)
+#    Transaction ID: 0xaa56ce
+#    Client Identifier
+#    Server Identifier
+#    Domain Search List
+#
+encode-proto Packet-Type = Reply, Transaction-ID = 0xaa56ce, Client-ID-DUID = Client-ID-DUID-LLT, Client-ID-DUID-LLT-Hardware-Type = Client-ID-DUID-LLT-Ethernet, Client-ID-DUID-LLT-Time = "Apr  5 1983 09:58:23 UTC", Client-ID-DUID-LLT-Ethernet-Address = 00:0c:29:38:f3:68, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 1, Server-ID-DUID-LLT-Time = "Apr  5 1983 01:34:19 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0x000c299ba153, Domain-List = "example.com", Domain-List = "sales.example.com", Domain-List = "eng.example.com"
+match 07 aa 56 ce 00 01 00 0e 00 01 00 01 18 f0 0b 3f 00 0c 29 38 f3 68 00 02 00 0e 00 01 00 01 18 ef 95 1b 00 0c 29 9b a1 53 00 18 00 31 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 05 73 61 6c 65 73 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 65 6e 67 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+decode-proto -
+match Packet-Type = Reply, Transaction-ID = 0xaa56ce, Client-ID-DUID = Client-ID-DUID-LLT, Client-ID-DUID-LLT-Hardware-Type = Client-ID-DUID-LLT-Ethernet, Client-ID-DUID-LLT-Time = "Apr  5 1983 09:58:23 UTC", Client-ID-DUID-LLT-Ethernet-Address = 00:0c:29:38:f3:68, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 1, Server-ID-DUID-LLT-Time = "Apr  5 1983 01:34:19 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0x000c299ba153, Domain-List = "example.com", Domain-List = "sales.example.com", Domain-List = "eng.example.com"
+
+#
+#  eof
+#
+count
+match 6
