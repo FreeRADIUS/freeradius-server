@@ -107,6 +107,17 @@ radius {
 #	no_connection_fail = no
 
 	#
+	#  originate::
+	#
+	#  Sometimes we are creating a request that is not for the purpose of
+	#  proxying another request, in which case we do not want to add a
+	#  Proxy-State attribute.
+	#
+	#  In some cases, such as originating a CoA or Disconnect request,
+	#  including Proxy-State may confuse the receiving NAS.
+#	originate = no
+
+	#
 	#  status_checks { ... }:: For "are you alive?" queries.
 	#
 	#  If the home server does not respond to proxied packets, the
