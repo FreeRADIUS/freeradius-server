@@ -86,6 +86,7 @@ struct rlm_radius_t {
 	bool			replicate;	//!< are we ignoring responses?
 	bool			synchronous;	//!< are we doing synchronous proxying?
 	bool			no_connection_fail; //!< are we failing immediately on no connection?
+	bool			originate;  //!< are we originating packets rather than proxying?
 
 	dl_module_inst_t		*io_submodule;	//!< As provided by the transport_parse
 	fr_radius_client_io_t const *io;	//!< Easy access to the IO handle

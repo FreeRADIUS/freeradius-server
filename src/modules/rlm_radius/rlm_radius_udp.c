@@ -2013,7 +2013,9 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 	}
 
 	/*
-	 *	Add Proxy-State to the tail end of the packet.
+	 *	Add Proxy-State to the tail end of the packet unless we are
+	 *	originating the request.
+	 *
 	 *	We need to add it here, and NOT in
 	 *	request->packet->vps, because multiple modules
 	 *	may be sending the packets at the same time.
@@ -2021,7 +2023,7 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 	 *	Note that the length check will always pass, due to
 	 *	the buflen manipulation done above.
 	 */
-	if (proxy_state) {
+	if (proxy_state && !c->inst->parent->originate) {
 		uint8_t		*attr = c->buffer + packet_len;
 		VALUE_PAIR	*vp;
 		vp_cursor_t	cursor;
@@ -2207,10 +2209,12 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 	 *	checks.
 	 */
 	if (u != radius->status_u) {
-		if (!c->inst->parent->synchronous) {
-			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
-			       u->timer.rt / USEC, u->timer.rt % USEC);
+		const char* action;
 
+		action = c->inst->parent->originate ? "Originating" : "Proxying";
+		if (!c->inst->parent->synchronous) {
+			RDEBUG("%s request.  Expecting response within %d.%06ds",
+			       action, u->timer.rt / USEC, u->timer.rt % USEC);
 		} else {
 			/*
 			 *	If the packet doesn't get a response,
@@ -2222,7 +2226,7 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 			 *	request through a fail handler,
 			 *	instead of just freeing it.
 			 */
-			RDEBUG("Proxying request.  Relying on NAS to perform retransmissions");
+			RDEBUG("%s request.  Relying on NAS to perform retransmissions", action);
 		}
 
 		/*
