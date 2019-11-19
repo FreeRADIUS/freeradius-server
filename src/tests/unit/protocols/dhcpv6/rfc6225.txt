@@ -1,0 +1,91 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  Version $Id$
+#
+
+#
+#  Test vectors for DHCPv6 protocol
+#
+proto dhcpv6
+proto-dictionary dhcpv6
+
+#
+#  The format of the DHCPv6 [RFC3315] GeoLoc Option is as follows:
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |       Option Code (63)        |            OptLen             |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |  LatUnc   |                  Latitude                         +
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  | Lat (cont'd)  |  LongUnc  |               Longitude           +
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |    Longitude (cont'd)         | AType |   AltUnc  |  Altitude +
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |               Altitude (cont'd)               |Ver| Res |Datum|
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#  Code:      16 bits.  The code for the DHCP Option Code (63).
+#
+#  OptLen:    Option Length.  For version 1, the option length is 16
+#
+#  LatUnc:    6 bits.  When the Ver field = 1, this field represents
+#             latitude uncertainty.  The contents of this field are
+#             undefined for other values of the Ver field.
+#
+#  Latitude:  A 34-bit fixed-point value consisting of 9 bits of
+#             integer and 25 bits of fraction, interpreted as described
+#             in Section 2.3.
+#
+#  LongUnc:   6 bits.  When the Ver field = 1, this field represents
+#             longitude uncertainty.  The contents of this field are
+#             undefined for other values of the Ver field.
+#
+#  Longitude: A 34-bit fixed-point value consisting of 9 bits of
+#             integer and 25 bits of fraction, interpreted as described
+#             in Section 2.3.
+#
+#  AType:     4 bits.  Altitude Type, defined in Section 2.4.
+#
+#  AltUnc:    6 bits.  When the Ver field = 1, this field represents
+#             altitude uncertainty.  The contents of this field are
+#             undefined for other values of the Ver field.
+#
+#  Altitude:  A 30-bit value defined by the AType field, described in
+#             Section 2.4.
+#
+#  Ver:       The Ver field is 2 bits, providing for four potential
+#             versions.  This specification defines the behavior of
+#             version 1.  The Ver field is always located at the same
+#             offset from the beginning of the option, regardless of
+#             the version in use.  DHCPv6 clients implementing this
+#             specification MUST support receiving version 1 responses.
+#             DHCPv6 servers implementing this specification MUST send
+#             version 1 responses.
+#
+#  Res:       3 bits.  The Res field is reserved.  These bits have been
+#             used by [IEEE-802.11y], but are not defined within this
+#             specification.
+#
+#  Datum:     3 bits.  The Map Datum used for the coordinates given in
+#             this option.
+#
+
+#
+#  TODO: We are not sure yet how to encode the Lat/Lon.
+#  Therefore, we are using the hex for now.
+#
+#  e.g: Ottawa, CA
+#
+#  Lati: 45.421532 = 0x4235afa6
+#  Long: -75.697189 = 0xc29764f6
+#
+encode-pair GeoLocation-Latitude-Uncertainty = 1, GeoLocation-Latitude = 0x4235afa6, GeoLocation-Longitude-Uncertainty = 1, GeoLocation-Longitude = 0xc29764f6, GeoLocation-Altitude-Type = Meters, GeoLocation-Altitude-Uncertainty = 1, GeoLocation-Altitude = 99, GeoLocation-Version = 1, GeoLocation-Reserved = 0, GeoLocation-Datum = NAD83-NAVD88
+match 00 3f 00 10 04 42 35 af a6 04 c2 97 64 f6 10 00 00 00 63 42
+
+decode-pair -
+match GeoLocation-Latitude-Uncertainty = 1, GeoLocation-Latitude = 1110814630, GeoLocation-Longitude-Uncertainty = 1, GeoLocation-Longitude = 3264701686, GeoLocation-Altitude-Type = Meters, GeoLocation-Altitude-Uncertainty = 0, GeoLocation-Altitude = 99, GeoLocation-Version = 1, GeoLocation-Reserved = 0, GeoLocation-Datum = NAD83-NAVD88
+
+count
+match 6
