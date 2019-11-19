@@ -855,4 +855,8 @@ module_t rlm_radius = {
 		[MOD_AUTHORIZE]		= mod_process,
 		[MOD_AUTHENTICATE]     	= mod_process,
 	},
+        .method_names = (module_method_names_t[]){
+                { CF_IDENT_ANY,       CF_IDENT_ANY,   mod_process },
+                MODULE_NAME_TERMINATOR
+        },
 };
