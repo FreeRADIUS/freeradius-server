@@ -17,7 +17,7 @@ MEMBER		DNS-Recursive-Name-Server-FQDN		octets	# really array of DNS labels
 #
 #  Drugs are good, apparently.
 #
-VALUE	DNS-Recursive-Name-Server-Preference	High	0x01
-VALUE	DNS-Recursive-Name-Server-Preference	Medium	0x00
-VALUE	DNS-Recursive-Name-Server-Preference	Low	0x03
-VALUE	DNS-Recursive-Name-Server-Preference	Reserved 0x04
+VALUE	DNS-Recursive-Name-Server-Preference High		0x01
+VALUE	DNS-Recursive-Name-Server-Preference Medium		0x00
+VALUE	DNS-Recursive-Name-Server-Preference Low		0x03
+VALUE	DNS-Recursive-Name-Server-Preference Reserved		0x04

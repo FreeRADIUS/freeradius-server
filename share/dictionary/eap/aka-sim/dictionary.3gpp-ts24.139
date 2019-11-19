@@ -9,5 +9,5 @@
 #
 #  Skippable-Attributes
 #
-ATTRIBUTE	RQSI-Ind			142	octets
-ATTRIBUTE	RQSI-Res			143	octets
+ATTRIBUTE	RQSI-Ind				142	octets
+ATTRIBUTE	RQSI-Res				143	octets

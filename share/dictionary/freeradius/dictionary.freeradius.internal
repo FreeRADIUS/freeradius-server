@@ -196,7 +196,6 @@ ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
 
 #	For default policies
 
-
 ATTRIBUTE	Called-Station-SSID			1139	string
 
 ATTRIBUTE	Acct-Input-Octets64			1148	integer64

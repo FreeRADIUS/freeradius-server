@@ -10,50 +10,50 @@
 #  Internal (Non-Protocol) attributes
 #
 FLAGS	internal
-ATTRIBUTE	Subtype				256	integer
+ATTRIBUTE	Subtype					256	integer
 
-VALUE	Subtype			AKA-Challenge			1
-VALUE	Subtype			AKA-Authentication-Reject 	2
-VALUE	Subtype			AKA-Synchronization-Failure 	4
-VALUE	Subtype			AKA-Identity			5	# EAP-SIM uses SIM-Start packets for the same purpose
-VALUE	Subtype			SIM-Start			10
-VALUE	Subtype			SIM-Challenge			11
-VALUE	Subtype			AKA-SIM-Notification		12
-VALUE	Subtype			AKA-SIM-Reauthentication	13
-VALUE	Subtype			AKA-SIM-Client-Error		14
+VALUE	Subtype				AKA-Challenge		1
+VALUE	Subtype				AKA-Authentication-Reject 2
+VALUE	Subtype				AKA-Synchronization-Failure 4
+VALUE	Subtype				AKA-Identity		5	# EAP-SIM uses SIM-Start packets for the same purpose
+VALUE	Subtype				SIM-Start		10
+VALUE	Subtype				SIM-Challenge		11
+VALUE	Subtype				AKA-SIM-Notification	12
+VALUE	Subtype				AKA-SIM-Reauthentication 13
+VALUE	Subtype				AKA-SIM-Client-Error	14
 
-ATTRIBUTE	HMAC				257	string
-ATTRIBUTE	Key				258	octets
-ATTRIBUTE	Extra				259	octets
+ATTRIBUTE	HMAC					257	string
+ATTRIBUTE	Key					258	octets
+ATTRIBUTE	Extra					259	octets
 
 #
 #  UMTS vector
 #
-ATTRIBUTE	XRES				260	octets
-ATTRIBUTE	CK				261	octets
-ATTRIBUTE	IK				262	octets
-ATTRIBUTE	AUTHN				263	octets
+ATTRIBUTE	XRES					260	octets
+ATTRIBUTE	CK					261	octets
+ATTRIBUTE	IK					262	octets
+ATTRIBUTE	AUTHN					263	octets
 
 #
 #  SIM vector
 #
-ATTRIBUTE	SRES				270	octets
-ATTRIBUTE	KC				271	octets
+ATTRIBUTE	SRES					270	octets
+ATTRIBUTE	KC					271	octets
 
 #
 #  Identity negotiation
 #
-ATTRIBUTE	Method-Hint			280	integer
+ATTRIBUTE	Method-Hint				280	integer
 
-VALUE	Method-Hint		AKA-Prime		0
-VALUE	Method-Hint		AKA			1
-VALUE	Method-Hint		SIM			2
+VALUE	Method-Hint			AKA-Prime		0
+VALUE	Method-Hint			AKA			1
+VALUE	Method-Hint			SIM			2
 
-ATTRIBUTE	Identity-Type			281	integer
+ATTRIBUTE	Identity-Type				281	integer
 
-VALUE	Identity-Type		Permanent		0
-VALUE	Identity-Type		Pseudonym		1
-VALUE	Identity-Type		Fastauth		2
+VALUE	Identity-Type			Permanent		0
+VALUE	Identity-Type			Pseudonym		1
+VALUE	Identity-Type			Fastauth		2
 
 ATTRIBUTE	Permanent-Identity			282	string
 ATTRIBUTE	KDF-Identity				283	string	# Allow override of KDF Identity input
@@ -61,8 +61,7 @@ ATTRIBUTE	KDF-Identity				283	string	# Allow override of KDF Identity input
 #
 #  Reauthentication
 #
-ATTRIBUTE	MK				290	octets		# Master key
-ATTRIBUTE	AK				291	octets
-ATTRIBUTE	K-Re				292	octets		# AKA' KDF 1 reauthentication key.
-
+ATTRIBUTE	MK					290	octets		# Master key
+ATTRIBUTE	AK					291	octets
+ATTRIBUTE	K-Re					292	octets		# AKA' KDF 1 reauthentication key.
 

@@ -25,5 +25,5 @@ MEMBER		MPL-Proactive-C-IMax			uint8
 MEMBER		MPL-Proactive-C-T-Exp			uint16
 MEMBER		MPL-Proactive-Domain-Address		ipv6addr	# optional, and can be omitted
 
-VALUE	MPL-Proactive-Forwarding	True	0x80
-VALUE	MPL-Proactive-Forwarding	False	0x00
+VALUE	MPL-Proactive-Forwarding	True			0x80
+VALUE	MPL-Proactive-Forwarding	False			0x00

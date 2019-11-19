@@ -10,61 +10,61 @@
 #
 #  Non-Skippable attributes
 #
-ATTRIBUTE	RAND				1	octets[16] array	# Not an array, single value
-ATTRIBUTE	AUTN				2	octets[16]
-ATTRIBUTE	RES				3	octets[16]		# Special case (length field with length in bits)
-ATTRIBUTE	AUTS				4	octets[14]		# Special case no reserved field.
-ATTRIBUTE	Nonce-MT			7	octets[16]
-ATTRIBUTE	Permanent-ID-Req		10	bool
-ATTRIBUTE	MAC				11	octets[16]
-ATTRIBUTE	Notification			12	short
+ATTRIBUTE	RAND					1	octets[16] array	# Not an array, single value
+ATTRIBUTE	AUTN					2	octets[16]
+ATTRIBUTE	RES					3	octets[16]		# Special case (length field with length in bits)
+ATTRIBUTE	AUTS					4	octets[14]		# Special case no reserved field.
+ATTRIBUTE	Nonce-MT				7	octets[16]
+ATTRIBUTE	Permanent-ID-Req			10	bool
+ATTRIBUTE	MAC					11	octets[16]
+ATTRIBUTE	Notification				12	short
 
-VALUE	Notification		General-Failure-After-Authentication 0
-VALUE	Notification		Temporarily-Denied	1026
-VALUE	Notification		Not-Subscribed		1031
-VALUE	Notification		General-Failure		16384
-VALUE	Notification		Success			32768
+VALUE	Notification			General-Failure-After-Authentication 0
+VALUE	Notification			Temporarily-Denied	1026
+VALUE	Notification			Not-Subscribed		1031
+VALUE	Notification			General-Failure		16384
+VALUE	Notification			Success			32768
 
-ATTRIBUTE	Any-ID-Req			13	bool
-ATTRIBUTE	Identity			14	string
-ATTRIBUTE	Version-List			15	short array
-ATTRIBUTE	Selected-Version		16	short
-ATTRIBUTE	Fullauth-ID-Req			17	bool
-ATTRIBUTE	Client-Error-Code		22	short
+ATTRIBUTE	Any-ID-Req				13	bool
+ATTRIBUTE	Identity				14	string
+ATTRIBUTE	Version-List				15	short array
+ATTRIBUTE	Selected-Version			16	short
+ATTRIBUTE	Fullauth-ID-Req				17	bool
+ATTRIBUTE	Client-Error-Code			22	short
 
-VALUE	Client-Error-Code	Unable-To-Process-Packet 0
-VALUE	Client-Error-Code	Unsupported-Version	1
-VALUE	Client-Error-Code	Insufficient-Challenges	2
-VALUE	Client-Error-Code	RANDS-Not-Fresh		3
+VALUE	Client-Error-Code		Unable-To-Process-Packet 0
+VALUE	Client-Error-Code		Unsupported-Version	1
+VALUE	Client-Error-Code		Insufficient-Challenges	2
+VALUE	Client-Error-Code		RANDS-Not-Fresh		3
 
-ATTRIBUTE	KDF-Input			23	string
-ATTRIBUTE	KDF				24	short
+ATTRIBUTE	KDF-Input				23	string
+ATTRIBUTE	KDF					24	short
 
-VALUE	KDF			Prime-With-CK-Prime-IK-Prime 1
+VALUE	KDF				Prime-With-CK-Prime-IK-Prime 1
 
 #
 #  Skippable-Attributes
 #
-ATTRIBUTE	IV				129	octets[16]
-ATTRIBUTE	Encr-Data			130	tlv encrypt=aes-cbc
+ATTRIBUTE	IV					129	octets[16]
+ATTRIBUTE	Encr-Data				130	tlv encrypt=aes-cbc
 
 #
 #  These attributes are reversibly encrypted
 #
 BEGIN-TLV	Encr-Data
-ATTRIBUTE	Padding				6	octets		# 4, 8, 12 bytes
-ATTRIBUTE	Counter				19	short
-ATTRIBUTE	Counter-Too-Small		20	bool
-ATTRIBUTE	Nonce-S				21	octets[16]
-ATTRIBUTE	Next-Pseudonym			132	string
-ATTRIBUTE	Next-Reauth-ID			133	string
+ATTRIBUTE	Padding					6	octets		# 4, 8, 12 bytes
+ATTRIBUTE	Counter					19	short
+ATTRIBUTE	Counter-Too-Small			20	bool
+ATTRIBUTE	Nonce-S					21	octets[16]
+ATTRIBUTE	Next-Pseudonym				132	string
+ATTRIBUTE	Next-Reauth-ID				133	string
 END-TLV		Encr-Data
 
-ATTRIBUTE	Checkcode			134	octets		# 0, 20 or 32 bytes
+ATTRIBUTE	Checkcode				134	octets		# 0, 20 or 32 bytes
 
-ATTRIBUTE	Bidding				136	short
+ATTRIBUTE	Bidding					136	short
 
-VALUE	Bidding			Prefer-AKA		0
-VALUE	Bidding			Prefer-AKA-Prime	32768	# D Bit
+VALUE	Bidding				Prefer-AKA		0
+VALUE	Bidding				Prefer-AKA-Prime	32768	# D Bit
 
-ATTRIBUTE	Result-Ind			137	bool
+ATTRIBUTE	Result-Ind				137	bool
