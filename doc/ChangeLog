@@ -1,8 +1,16 @@
 FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	Feature improvements
+	* New stored procedure for allocating IPs with PostgreSQL.
+	  Rates of 1500 IPs per second are now possible.
+	  See raddb/mods-config/sql/ippool/postgresql/procedure.sql
+	  Patch from Terry Burton.
 
 	Bug fixes
+	* Set permissions of certificates in bootstrap shell script.
+	  Fixes #3132.
 	* Increase the 'nasportid' SQL field for 'varchar(32)'. #3141
+	* Skip processing proxy reply if there are no home servers
+	  available.
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements
