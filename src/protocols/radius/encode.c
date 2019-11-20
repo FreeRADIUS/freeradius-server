@@ -715,7 +715,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (len > (ssize_t)outlen) len = outlen;
 
-	if ((vp->da->flags.subtype != FLAG_EXTENDED_ATTR) && !packet_ctx) {
+	if (!vp->da->flags.extra && (vp->da->flags.subtype != FLAG_EXTENDED_ATTR) && !packet_ctx) {
 		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
 		return -1;
 	}
@@ -725,7 +725,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	Attributes with encrypted values MUST be less than
 	 *	128 bytes long.
 	 */
-	if (da->type != FR_TYPE_STRUCT) switch (vp->da->flags.subtype) {
+	if (!da->flags.extra && (da->type != FR_TYPE_STRUCT)) switch (vp->da->flags.subtype) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		encode_password(ptr, &len, data, len, packet_ctx->secret, packet_ctx->vector);
 		break;
@@ -865,7 +865,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	extra = (tlv_stack[0]->flags.subtype == FLAG_EXTENDED_ATTR);
+	extra = (!tlv_stack[0]->flags.extra && (tlv_stack[0]->flags.subtype == FLAG_EXTENDED_ATTR));
 
 	/*
 	 *	@fixme: check depth of stack

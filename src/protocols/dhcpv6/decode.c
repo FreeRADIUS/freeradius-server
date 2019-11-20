@@ -105,7 +105,7 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_
 	/*
 	 *	@todo - we might need to limit this to only one DNS label.
 	 */
-	if (!parent->flags.extra && (parent->type == FR_TYPE_STRING) && parent->flags.subtype) {
+	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra && parent->flags.subtype) {
 		return decode_dns_labels(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
 	}
 
@@ -468,7 +468,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 	}
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
-	if ((da->type == FR_TYPE_STRING) && da->flags.subtype) {
+	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
 		rcode = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 
 	} else if (da->flags.array) {

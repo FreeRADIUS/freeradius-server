@@ -232,8 +232,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 *
 		 *	https://tools.ietf.org/html/rfc8415#section-10
 		 */
-		if ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
-		    (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL)) {
+		if (!da->flags.extra &&
+		    ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
+		     (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
 			slen = fr_dns_label_from_value_box(NULL, p, outlen, p, false, &vp->data);
 
 			/*
@@ -470,7 +471,7 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 	 *	DNS labels have internalized length, so we don't need
 	 *	length headers.
 	 */
-	if ((da->type == FR_TYPE_STRING) && da->flags.subtype){
+	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype){
 		while (p < end) {
 			vp = fr_cursor_current(cursor);
 
