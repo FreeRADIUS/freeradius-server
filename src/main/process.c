@@ -1642,7 +1642,8 @@ static void request_running(REQUEST *request, int action)
 			 *	handler.
 			 */
 			if (request_proxy(request) < 0) {
-				if (request->home_server && request->home_server->server) goto req_finished;
+				if (!request->home_server ||
+				    (request->home_server && request->home_server->server)) goto req_finished;
 
 				(void) setup_post_proxy_fail(request);
 				process_proxy_reply(request, NULL);
