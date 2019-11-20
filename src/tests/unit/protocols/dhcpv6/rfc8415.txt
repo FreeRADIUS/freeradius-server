@@ -1,5 +1,7 @@
 #  -*- text -*-
 #  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
 #  Version $Id$
 #
 
@@ -1011,8 +1013,5 @@ match 00 53 00 04 00 01 51 80
 decode-pair -
 match INF-Max-RT = 86400
 
-#
-#  Expected tests
-#
 count
 match 90

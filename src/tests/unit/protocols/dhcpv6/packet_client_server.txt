@@ -1,5 +1,7 @@
 #  -*- text -*-
 #  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
 #  Version $Id$
 #
 #  Test vectors for DHCPv6 protocol
@@ -121,8 +123,5 @@ match 07 00 b3 3f 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e
 decode-proto -
 match Packet-Type = Reply, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Status-Code-Value = Success, Status-Code-Message = "Release received."
 
-#
-#	eof
-#
 count
 match 26

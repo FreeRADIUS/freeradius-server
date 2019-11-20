@@ -1,5 +1,7 @@
 #  -*- text -*-
 #  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
 #  Version $Id$
 #
 #  Test vectors for DHCPv6 protocol
@@ -19,8 +21,5 @@ match 07 68 90 d8 00 01 00 0e 00 01 00 01 18 f0 0b 3f 00 0c 29 38 f3 68 00 02 00
 decode-proto -
 match Packet-Type = Reply, Transaction-ID = 0x6890d8, Client-ID-DUID = Client-ID-DUID-LLT, Client-ID-DUID-LLT-Hardware-Type = Client-ID-DUID-LLT-Ethernet, Client-ID-DUID-LLT-Time = "Apr  5 1983 09:58:23 UTC", Client-ID-DUID-LLT-Ethernet-Address = 00:0c:29:38:f3:68, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 1, Server-ID-DUID-LLT-Time = "Apr  5 1983 01:34:19 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0x000c299ba153, SIP-Server-Domain-Name-List = "sip1.my-domain.net", SIP-Server-Domain-Name-List = "sip2.example.com", SIP-Server-Domain-Name-List = "sip3.sub.my-domain.org"
 
-#
-#  eof
-#
 count
 match 6

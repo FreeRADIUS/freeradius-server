@@ -1,5 +1,7 @@
 #  -*- text -*-
 #  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
 #  Version $Id$
 #
 #  Test vectors for DHCPv6 protocol
@@ -46,8 +48,5 @@ match 07 2f fd d1 00 03 00 28 02 03 04 05 00 00 0e 10 00 00 15 18 00 05 00 18 2a
 decode-proto -
 match Packet-Type = Reply, Transaction-ID = 0x2ffdd1, IA-NA-IAID = 33752069, IA-NA-T1 = 3600, IA-NA-T2 = 5400, IA-NA-Options = 0x000500182a0000010001020038e6b22ec440acdf0000119400001c20, Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = 1, Client-ID-DUID-LL-Address = 0x000102030405, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 1, Server-ID-DUID-LLT-Time = "Nov 27 1982 15:34:36 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0x001122334455
 
-#
-#  eof
-#
 count
 match 18
