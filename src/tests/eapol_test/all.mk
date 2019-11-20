@@ -48,7 +48,7 @@ $(eval $(call RADIUSD_SERVICE,servers,$(OUTPUT)))
 #	Print the disabled list.
 #
 $(IGNORED_EAP_TYPES):
-	@echo "EAPOL_TEST $@ - Disabled.  Enable by removing '$@' from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk"
+	@echo "EAPOL-TEST $@ - Disabled.  Enable by removing '$@' from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk"
 
 #
 #  Separate the dependencies here just to keep a bit clear.
@@ -59,7 +59,7 @@ test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
 #  Run EAP tests.
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
-	@echo "EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))"
+	@echo "EAPOL-TEST $(notdir $(patsubst %.conf,%,$<))"
 	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill || true
 	${Q}$(MAKE) --no-print-directory METHOD=$(basename $(notdir $@)) test.eap.radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
