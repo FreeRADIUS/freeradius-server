@@ -33,9 +33,11 @@ endif
 #
 ifneq "$(MAKECMDGOALS)" "deb"
 ifneq "$(MAKECMDGOALS)" "rpm"
+ifeq "$(findstring docker,$(MAKECMDGOALS))" ""
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
+endif
 endif
 endif
 
@@ -52,7 +54,9 @@ export DESTDIR := $(R)
 # And over-ride all of the other magic.
 ifneq "$(MAKECMDGOALS)" "deb"
 ifneq "$(MAKECMDGOALS)" "rpm"
+ifeq "$(findstring docker,$(MAKECMDGOALS))" ""
 include scripts/boiler.mk
+endif
 endif
 endif
 
@@ -321,28 +325,9 @@ dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$
 #
 #	Docker-related targets
 #
-.PHONY: docker
-docker:
-	docker build scripts/docker/ubuntu18 --build-arg=release=release_`echo $(RADIUSD_VERSION_STRING) | tr .- __` -t freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)
-	docker build scripts/docker/alpine --build-arg=release=release_`echo $(RADIUSD_VERSION_STRING) | tr .- __` -t freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)-alpine
-
-.PHONY: docker-push
-docker-push: docker
-	docker push freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)
-	docker push freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)-alpine
-
-.PHONY: docker-tag-latest
-docker-tag-latest: docker
-	docker tag freeradius/freeradius-server:$(RADIUSD_VERSION_STRING) freeradius/freeradius-server:latest
-	docker tag freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)-alpine freeradius/freeradius-server:latest-alpine
-
-.PHONY: docker-push-latest
-docker-push-latest: docker-push docker-tag-latest
-	docker push freeradius/freeradius-server:latest
-	docker push freeradius/freeradius-server:latest-alpine
-
-.PHONY: docker-publish
-docker-publish: docker-push-latest
+ifneq "$(findstring docker,$(MAKECMDGOALS))" ""
+include scripts/docker/docker.mk
+endif
 
 #
 #	Build a debian package
