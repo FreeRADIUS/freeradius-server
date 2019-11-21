@@ -1631,8 +1631,6 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
 	while (da_p->parent) {
 		if (da_p->type == FR_TYPE_VENDOR) break;
 		da_p = da_p->parent;
-
-		if (!da_p) return NULL;
 	}
 	if (da_p->type != FR_TYPE_VENDOR) return NULL;
 
