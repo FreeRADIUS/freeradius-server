@@ -174,7 +174,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_DATE:
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_IPV4_ADDR:
@@ -194,6 +193,24 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 			fr_pair_list_free(&vp);
 			goto raw;
 		}
+		break;
+
+	/*
+	 *	A standard 32bit integer, but unlike normal UNIX timestamps
+	 *	starts from the 1st of January 2000.
+	 *
+	 *	In the encoder we subtract 30 years to any values, so
+	 *	here we need to add that to the time here.
+	 */
+	case FR_TYPE_DATE:
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return -1;
+
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
+			fr_pair_list_free(&vp);
+			goto raw;
+		}
+		vp->vp_date += ((fr_time_t) DHCPV6_DATE_OFFSET) * NSEC;
 		break;
 
 	case FR_TYPE_STRUCT:

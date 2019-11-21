@@ -45,6 +45,13 @@ enum {
 	FLAG_ENCODE_PARTIAL_DNS_LABEL, 			//!< encode as a partial DNS label
 };
 
+/*
+ *	DHCPv6 defines dates to start from Jan 1, 2000.  Which is
+ *	exactly this number of seconds off of the standard Unix time
+ *	stamps.
+ */
+#define DHCPV6_DATE_OFFSET (946684800)
+
 typedef struct {
 	fr_dict_attr_t const	*root;				//!< Root attribute of the dictionary.
 } fr_dhcpv6_encode_ctx_t;

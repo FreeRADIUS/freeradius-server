@@ -401,25 +401,24 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	A standard 32bit integer, but unlike normal UNIX timestamps
 	 *	starts from the 1st of January 2000.
 	 *
-	 *	In the decoder we add 946,080,000 seconds (30 years) to any
-	 *	values, so here we need to subtract 946,080,000 seconds, or
-	 *	if the value is less than 946,080,000 seconds, just encode
-	 *	a 0x0000000000 value.
+	 *	In the decoder we add 30 years to any values, so here
+	 *	we need to subtract that time, or if the value is less
+	 *	than that time, just encode a 0x0000000000
+	 *	value.
 	 */
 	case FR_TYPE_DATE:
 	{
 		uint32_t adj_date;
-		fr_time_t date = fr_time_to_sec(vp->vp_date);
+		uint64_t date = fr_time_to_sec(vp->vp_date);
 
 		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
-
-		if (date < 946080000) {	/* 30 years */
+		if (date < DHCPV6_DATE_OFFSET) {	/* 30 years */
 			memset(p, 0, sizeof(uint32_t));
 			p += sizeof(uint32_t);
 			break;
 		}
 
-		adj_date = htonl(date - 946080000);
+		adj_date = htonl(date - DHCPV6_DATE_OFFSET);
 		memcpy(p, &adj_date, sizeof(adj_date));
 		p += sizeof(adj_date);
 	}

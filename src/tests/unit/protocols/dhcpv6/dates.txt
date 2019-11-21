@@ -9,33 +9,39 @@ proto dhcpv6
 proto-dictionary dhcpv6
 
 #
-#  Date. Like a 32bit unix timestamp but starts from 1st Jan 2000 instead of 1st Jan 1970
+#  Date. Like a 32bit unix timestamp but starts from 1st Jan 2000 instead of 1st Jan 2000
 #
 encode-pair Failover-Expiration-Time = 0
 match 00 78 00 04 00 00 00 00
 
 decode-pair -
-match Failover-Expiration-Time = "Jan  1 1970 00:00:00 UTC"
+match Failover-Expiration-Time = "Jan  1 2000 00:00:00 UTC"
+
+#
+#  Anything before Jan 1, 2000 gets mashed to "0".
+#
+encode-pair Failover-Expiration-Time = "Jan  1 1999 00:00:00 UTC"
+match 00 78 00 04 00 00 00 00
 
 # Still less than 946080000 (30 years), so still 0 (we can't represent dates earlier than 1st Jan 2000)
 encode-pair Failover-Expiration-Time = 500
 match 00 78 00 04 00 00 00 00
 
 decode-pair -
-match Failover-Expiration-Time = "Jan  1 1970 00:00:00 UTC"
+match Failover-Expiration-Time = "Jan  1 2000 00:00:00 UTC"
 
-encode-pair Failover-Expiration-Time = 946080000
+encode-pair Failover-Expiration-Time = 946684800
 match 00 78 00 04 00 00 00 00
 
 decode-pair -
-match Failover-Expiration-Time = "Jan  1 1970 00:00:00 UTC"
+match Failover-Expiration-Time = "Jan  1 2000 00:00:00 UTC"
 
 # 1st second of 1st Jan 2000
-encode-pair Failover-Expiration-Time = 946080001
+encode-pair Failover-Expiration-Time = 946684801
 match 00 78 00 04 00 00 00 01
 
 decode-pair -
-match Failover-Expiration-Time = "Jan  1 1970 00:00:01 UTC"
+match Failover-Expiration-Time = "Jan  1 2000 00:00:01 UTC"
 
 count
-match 18
+match 20
