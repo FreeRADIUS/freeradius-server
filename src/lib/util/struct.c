@@ -192,7 +192,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 *	Note that if this is an *array* of DNS labels,
 		 *	the callback should deal with this.
 		 */
-		if (decode_value && !child->flags.extra && child->flags.subtype) {
+		if (decode_value) {
 			ssize_t slen;
 
 			slen = decode_value(ctx, &child_cursor, NULL, child, p, child_length, decoder_ctx);
@@ -200,6 +200,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 			p += slen;   	/* not always the same as child->flags.length */
 			child_num++;	/* go to the next child */
+			if (da_is_key_field(child)) key_vp = fr_cursor_tail(&child_cursor);
 			continue;
 		}
 
@@ -301,7 +302,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		if (child->type == FR_TYPE_STRUCT) {
 			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p, child_p,
 				decode_value, decoder_ctx);
-			if (slen < 0) goto unknown_child;
+			if (slen <= 0) goto unknown_child;
 			p += slen;
 
 		} else {
