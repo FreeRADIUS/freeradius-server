@@ -540,6 +540,14 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*
+	 *	Catch errors early on.
+	 */
+	if (!vp->da->flags.extra && (vp->da->flags.subtype != FLAG_EXTENDED_ATTR) && !packet_ctx) {
+		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
+		return -1;
+	}
+
+	/*
 	 *	It's a little weird to consider a TLV as a value,
 	 *	but it seems to work OK.
 	 */
@@ -715,17 +723,13 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (len > (ssize_t)outlen) len = outlen;
 
-	if (!vp->da->flags.extra && (vp->da->flags.subtype != FLAG_EXTENDED_ATTR) && !packet_ctx) {
-		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
-		return -1;
-	}
 	/*
 	 *	Encrypt the various password styles
 	 *
 	 *	Attributes with encrypted values MUST be less than
 	 *	128 bytes long.
 	 */
-	if (!da->flags.extra && (da->type != FR_TYPE_STRUCT)) switch (vp->da->flags.subtype) {
+	if (!da->flags.extra) switch (vp->da->flags.subtype) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		encode_password(ptr, &len, data, len, packet_ctx->secret, packet_ctx->vector);
 		break;
@@ -777,7 +781,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		}
 		memcpy(ptr, data, len);
 		break;
-	} /* switch over encryption flags */
+	} else {
+		memcpy(ptr, data, len);
+	}
 
 	FR_PROTO_HEX_DUMP(out, len, "value %s", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
 
