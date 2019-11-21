@@ -99,6 +99,11 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 		if (vp->da->flags.length) return vp->da->flags.length;	/* Variable type with fixed length */
 		return vp->vp_length;
 
+	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
+		if (vp->data.enumv->flags.length) return vp->data.enumv->flags.length;
+		return 4;
+
 	default:
 		return fr_dhcpv6_attr_sizes[vp->vp_type][0];
 
