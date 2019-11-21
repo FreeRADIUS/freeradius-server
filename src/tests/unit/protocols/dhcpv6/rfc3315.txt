@@ -42,22 +42,22 @@ proto-dictionary dhcpv6
 #
 
 #  Define the DUID-LLT + DUID
-encode-pair Client-ID-DUID = Client-ID-DUID-LLT, Client-ID-DUID-LLT-Hardware-Type = 1, Client-ID-DUID-LLT-Time = "Jan  1 1970 12:00:00 UTC", Client-ID-DUID-LLT-Ethernet-Address = aa:bb:cc:dd:ee:ff
+encode-pair Client-ID-DUID = Client-ID-DUID-LLT, Client-ID-DUID-LLT-Hardware-Type = 1, Client-ID-DUID-LLT-Time = "Jan  1 2000 12:00:00 UTC", Client-ID-DUID-LLT-Ethernet-Address = aa:bb:cc:dd:ee:ff
 match 00 01 00 0e 00 01 00 01 00 00 a8 c0 aa bb cc dd ee ff
 
 decode-pair -
-match Client-ID-DUID = Client-ID-DUID-LLT, Client-ID-DUID-LLT-Hardware-Type = Client-ID-DUID-LLT-Ethernet, Client-ID-DUID-LLT-Time = "Jan  1 1970 12:00:00 UTC", Client-ID-DUID-LLT-Ethernet-Address = aa:bb:cc:dd:ee:ff
+match Client-ID-DUID = Client-ID-DUID-LLT, Client-ID-DUID-LLT-Hardware-Type = Client-ID-DUID-LLT-Ethernet, Client-ID-DUID-LLT-Time = "Jan  1 2000 12:00:00 UTC", Client-ID-DUID-LLT-Ethernet-Address = aa:bb:cc:dd:ee:ff
 
 #
 #  Server Identifier
 #
 
 #  Define the DUID-LLT + DUID
-encode-pair Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 3, Server-ID-DUID-LLT-Time = "Jan  1 1970 12:00:00 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0xc0ffeec0ffee
+encode-pair Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 3, Server-ID-DUID-LLT-Time = "Jan  1 2000 12:00:00 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0xc0ffeec0ffee
 match 00 02 00 0e 00 01 00 03 00 00 a8 c0 c0 ff ee c0 ff ee
 
 decode-pair -
-match Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 3, Server-ID-DUID-LLT-Time = "Jan  1 1970 12:00:00 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0xc0ffeec0ffee
+match Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 3, Server-ID-DUID-LLT-Time = "Jan  1 2000 12:00:00 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0xc0ffeec0ffee
 
 #
 #  9.3. DUID Assigned by Vendor Based on Enterprise Number [DUID-EN]

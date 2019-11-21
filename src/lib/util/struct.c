@@ -532,10 +532,10 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			} while (vp != NULL);
 			goto next;
 
-		} else if (encode_value && !child->flags.extra && child->flags.subtype) {
+		} else if (encode_value) {
 			ssize_t slen;
 
-			tlv_stack[depth + 1] = child;
+			fr_proto_tlv_stack_build(tlv_stack, child);
 			slen = encode_value(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
 			if (slen < 0) return slen;
 			len = slen;
@@ -605,8 +605,8 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 */
 		if ((vp->da->parent->parent == key_da) &&
 		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
-			tlv_stack[depth + 1] = vp->da->parent; /* hackity hack */
-			len = fr_struct_to_network(p, outlen, tlv_stack, depth + 1,
+			fr_proto_tlv_stack_build(tlv_stack, vp->da->parent);
+			len = fr_struct_to_network(p, outlen, tlv_stack, depth + 2, /* note + 2 !!! */
 						   cursor, encoder_ctx, encode_value);
 			if (len < 0) return len;
 			return (p - out) + len;
