@@ -390,6 +390,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
+	case FR_TYPE_TIME_DELTA:
 		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
 		slen = fr_value_box_to_network(NULL, p, end - p, &vp->data);
 		if (slen < 0) return PAIR_ENCODE_ERROR;
@@ -433,14 +434,14 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
-		fr_strerror_printf("Unsupported attribute type %d", da->type);
+		fr_strerror_printf("Unsupported attribute type %s",
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 		return PAIR_ENCODE_ERROR;
 	}
 
@@ -876,7 +877,6 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
 //	fr_dhcpv6_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv6_decode_ctx_t);
-
 
 	return fr_dhcpv6_encode(data, data_len, NULL, 0, vps);
 }
