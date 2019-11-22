@@ -186,6 +186,12 @@ GENERATED_CERT_FILES += raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem
 endef
 
 $(foreach x,ca server ocsp client,$(eval $(call BUILD_CERT,${x})))
+
+.PHONY: raddb/certs/dh
+raddb/certs/dh:
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ dh
+
+GENERATED_CERT_FILES += raddb/certs/dh
 endif
 
 #
