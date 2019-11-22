@@ -41,8 +41,6 @@ LOCAL_CERT_FILES :=	dh \
 			ecc/server.key \
 			ecc/server.pem
 
-GENERATED_CERT_FILES := $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
-
 INSTALL_CERT_PRODUCTS := $(addprefix $(R)$(raddbdir)/certs/,$(INSTALL_CERT_FILES))
 
 ifeq ("$(TEST_CERTS)","yes")
@@ -179,9 +177,15 @@ else
 #  Generate local certificate products when doing a non-package
 #  (i.e. developer) build.  This takes a LONG time!
 #
-$(GENERATED_CERT_FILES): $(wildcard raddb/certs/*cnf)
-	${Q}echo BOOTSTRAP raddb/certs/
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
+define BUILD_CERT
+raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem : raddb/certs/${1}.cnf
+	${Q}echo MAKE-CERT ${1}
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ ${1}
+
+GENERATED_CERT_FILES += raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem
+endef
+
+$(foreach x,ca server ocsp client,$(eval $(call BUILD_CERT,${x})))
 endif
 
 #
