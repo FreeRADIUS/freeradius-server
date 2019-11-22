@@ -26,7 +26,19 @@ raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem : raddb/certs/${1}.cnf
 GENERATED_CERT_FILES += raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem
 endef
 
+#
+#  Ensure that the CA is created before the other certificates.
+#
+define DEPEND_CERT
+raddb/certs/ecc/${1}.pem: raddb/certs/ecc/${2}.pem
+
+raddb/certs/rsa/${1}.pem: raddb/certs/rsa/${2}.pem
+endef
+
 $(foreach x,ca server ocsp client,$(eval $(call BUILD_CERT,${x})))
+$(eval $(call DEPEND_CERT,server ca))
+$(eval $(call DEPEND_CERT,client ca))
+$(eval $(call DEPEND_CERT,ocsp ca))
 
 .PHONY: raddb/certs/dh
 raddb/certs/dh:
