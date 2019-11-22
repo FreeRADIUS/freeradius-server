@@ -21,7 +21,7 @@ LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 define BUILD_CERT
 raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem : raddb/certs/${1}.cnf
 	${Q}echo MAKE-CERT ${1}
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ ${1}
+	+${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ ${1}
 
 GENERATED_CERT_FILES += raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem
 endef
@@ -42,7 +42,7 @@ $(eval $(call DEPEND_CERT,ocsp ca))
 
 .PHONY: raddb/certs/dh
 raddb/certs/dh:
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ dh
+	+${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ dh
 
 GENERATED_CERT_FILES += raddb/certs/dh
 
