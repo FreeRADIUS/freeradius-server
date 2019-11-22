@@ -20,8 +20,6 @@ LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 #
 define BUILD_CERT
 raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem : raddb/certs/${1}.cnf
-	${Q}echo MAKE-CERT ${1}
-	+${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ ${1}
 
 GENERATED_CERT_FILES += raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem
 endef
@@ -40,11 +38,13 @@ $(eval $(call DEPEND_CERT,server ca))
 $(eval $(call DEPEND_CERT,client ca))
 $(eval $(call DEPEND_CERT,ocsp ca))
 
-.PHONY: raddb/certs/dh
-raddb/certs/dh:
-	+${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ dh
-
 GENERATED_CERT_FILES += raddb/certs/dh
+
+#
+#  Build the output files only once.  The sub-make will do everything.
+#
+$(GENERATED_CERT_FILES):
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
 
 INSTALL_CERT_FILES :=	Makefile README.md xpextensions \
 			ca.cnf server.cnf ocsp.cnf inner-server.cnf \
