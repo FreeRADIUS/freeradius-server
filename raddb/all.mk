@@ -15,6 +15,25 @@ DEFAULT_MODULES :=	always attr_filter cache_eap chap client \
 
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
+#
+#  Rules to create certificates and other files from the configuration.
+#
+define BUILD_CERT
+raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem : raddb/certs/${1}.cnf
+	${Q}echo MAKE-CERT ${1}
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ ${1}
+
+GENERATED_CERT_FILES += raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem
+endef
+
+$(foreach x,ca server ocsp client,$(eval $(call BUILD_CERT,${x})))
+
+.PHONY: raddb/certs/dh
+raddb/certs/dh:
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ dh
+
+GENERATED_CERT_FILES += raddb/certs/dh
+
 INSTALL_CERT_FILES :=	Makefile README.md xpextensions \
 			ca.cnf server.cnf ocsp.cnf inner-server.cnf \
 			client.cnf bootstrap
@@ -177,21 +196,7 @@ else
 #  Generate local certificate products when doing a non-package
 #  (i.e. developer) build.  This takes a LONG time!
 #
-define BUILD_CERT
-raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem : raddb/certs/${1}.cnf
-	${Q}echo MAKE-CERT ${1}
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ ${1}
-
-GENERATED_CERT_FILES += raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem
-endef
-
-$(foreach x,ca server ocsp client,$(eval $(call BUILD_CERT,${x})))
-
-.PHONY: raddb/certs/dh
-raddb/certs/dh:
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ dh
-
-GENERATED_CERT_FILES += raddb/certs/dh
+build.raddb: $(GENERATED_CERT_FILES)
 endif
 
 #
