@@ -15,37 +15,6 @@ DEFAULT_MODULES :=	always attr_filter cache_eap chap client \
 
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
-#
-#  Rules to create certificates and other files from the configuration.
-#
-define BUILD_CERT
-raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem : raddb/certs/${1}.cnf
-
-GENERATED_CERT_FILES += raddb/certs/ecc/${1}.pem raddb/certs/rsa/${1}.pem
-endef
-
-#
-#  Ensure that the CA is created before the other certificates.
-#
-define DEPEND_CERT
-raddb/certs/ecc/${1}.pem: raddb/certs/ecc/${2}.pem
-
-raddb/certs/rsa/${1}.pem: raddb/certs/rsa/${2}.pem
-endef
-
-$(foreach x,ca server ocsp client,$(eval $(call BUILD_CERT,${x})))
-$(eval $(call DEPEND_CERT,server ca))
-$(eval $(call DEPEND_CERT,client ca))
-$(eval $(call DEPEND_CERT,ocsp ca))
-
-GENERATED_CERT_FILES += raddb/certs/dh
-
-#
-#  Build the output files only once.  The sub-make will do everything.
-#
-$(GENERATED_CERT_FILES):
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
-
 INSTALL_CERT_FILES :=	Makefile README.md xpextensions \
 			ca.cnf server.cnf ocsp.cnf inner-server.cnf \
 			client.cnf bootstrap
@@ -71,6 +40,8 @@ LOCAL_CERT_FILES :=	dh \
 			ecc/server.crt \
 			ecc/server.key \
 			ecc/server.pem
+
+GENERATED_CERT_FILES := $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
 
 INSTALL_CERT_PRODUCTS := $(addprefix $(R)$(raddbdir)/certs/,$(INSTALL_CERT_FILES))
 
@@ -208,7 +179,9 @@ else
 #  Generate local certificate products when doing a non-package
 #  (i.e. developer) build.  This takes a LONG time!
 #
-build.raddb: $(GENERATED_CERT_FILES)
+$(GENERATED_CERT_FILES): $(wildcard raddb/certs/*cnf)
+	${Q}echo BOOTSTRAP raddb/certs/
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
 endif
 
 #
