@@ -2360,9 +2360,37 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				if (*p == ' ') *p = '-';
 			}
 
-			X509V3_EXT_print(out, ext, 0, 0);
-			len = BIO_read(out, value , sizeof(value) - 1);
-			if (len <= 0) continue;
+			if (X509V3_EXT_get(ext)) { /* Known extension, converting value into plain string */
+				X509V3_EXT_print(out, ext, 0, 0);
+				len = BIO_read(out, value, sizeof(value) - 1);
+				if (len <= 0) continue;
+			} else {
+				/*
+				 * An extension not known to OpenSSL, dump it's value as a value of an unknown attribute.
+				 */
+				value[0] = '0';
+				value[1] = 'x';
+				char *dstp = value + 2;
+				const unsigned char *srcp;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+				const ASN1_STRING *srcasn1p;
+				srcasn1p = X509_EXTENSION_get_data(ext);
+				srcp = ASN1_STRING_get0_data(srcasn1p);
+#else
+				ASN1_STRING *srcasn1p;
+				srcasn1p = X509_EXTENSION_get_data(ext);
+				srcp = ASN1_STRING_data(srcasn1p);
+#endif
+				int j, asn1len;
+				const char hexdigits[] = "0123456789abcdef";
+				asn1len = ASN1_STRING_length(srcasn1p);
+				/* 5 comes from '0x' + .. + \0 */
+				for (j = 0; j < asn1len && dstp < (value + sizeof(value) - 5); j++, srcp++) {
+					*dstp++ = hexdigits[(*srcp >> 4) & 0xf];
+					*dstp++ = hexdigits[*srcp & 0xf];
+				}
+				len = 2 + (asn1len * 2);
+			}
 
 			value[len] = '\0';
 
