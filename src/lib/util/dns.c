@@ -858,7 +858,7 @@ ssize_t fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len)
 
 	for (label = buf; label < end; /* nothing */) {
 		slen = fr_dns_label_length(buf, buf_len, &label);
-		if (slen < 0) return slen; /* already is offset from 'buf' and not 'label' */
+		if (slen <= 0) return slen; /* already is offset from 'buf' and not 'label' */
 	}
 
 	return buf_len;
