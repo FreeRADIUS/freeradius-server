@@ -2065,7 +2065,7 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static char const *cert_attr_names[8][2] = {
+static char const *cert_attr_names[9][2] = {
 	{ "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
 	{ "TLS-Client-Cert-Expiration",			"TLS-Cert-Expiration" },
 	{ "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
@@ -2073,7 +2073,8 @@ static char const *cert_attr_names[8][2] = {
 	{ "TLS-Client-Cert-Common-Name",		"TLS-Cert-Common-Name" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
-	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" }
+	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" },
+	{ "TLS-Client-Cert-ValidSince",			"TLS-Cert-ValidSince" }
 };
 
 #define FR_TLS_SERIAL		(0)
@@ -2084,6 +2085,7 @@ static char const *cert_attr_names[8][2] = {
 #define FR_TLS_SAN_EMAIL       	(5)
 #define FR_TLS_SAN_DNS          (6)
 #define FR_TLS_SAN_UPN          (7)
+#define FR_TLS_VALIDSINCE	(8)
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -2211,6 +2213,19 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+	}
+
+	/*
+	 *	Get the Valid Since Date
+	 */
+	buf[0] = '\0';
+	asn_time = X509_get_notBefore(client_cert);
+	if (certs && (lookup <= 1) && asn_time &&
+	    (asn_time->length < (int) sizeof(buf))) {
+		memcpy(buf, (char*) asn_time->data, asn_time->length);
+		buf[asn_time->length] = '\0';
+		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_VALIDSINCE][lookup], buf, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 
