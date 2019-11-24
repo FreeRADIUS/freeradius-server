@@ -436,7 +436,7 @@ static inline void fr_dlist_talloc_free(fr_dlist_head_t *head)
  *
  * @param[in] head of list to count elements for.
  */
-static inline size_t fr_dlist_num_elements(fr_dlist_head_t *head)
+static inline size_t fr_dlist_num_elements(fr_dlist_head_t const *head)
 {
 	return head->num_elements;
 }
