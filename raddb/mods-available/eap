@@ -328,6 +328,17 @@ eap {
 
 		ca_path = ${cadir}
 
+		# OpenSSL does not reload contents of ca_path dir over time.
+		# That means that if check_crl is enabled and CRLs are loaded
+		# from ca_path dir, at some point CRLs will expire and
+		# RADIUSd will stop authenticating users.
+		# If ca_path_reload_interval is non-zero, it will force OpenSSL
+		# to reload all data from ca_path periodically
+		#
+		# Flush ca_path each hour
+	#	ca_path_reload_interval = 3600
+
+
 		# Accept an expired Certificate Revocation List
 		#
 	#	allow_expired_crl = no

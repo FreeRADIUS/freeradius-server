@@ -319,6 +319,7 @@ int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
 int 		tls_handshake_send(REQUEST *, tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *ssn);
 void		tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize);
+X509_STORE	*fr_init_x509_store(fr_tls_server_conf_t *conf);
 
 /*
  *	Low-level TLS stuff
@@ -371,6 +372,9 @@ struct fr_tls_server_conf_t {
 	bool		check_crl;
 	bool		check_all_crl;
 	bool		allow_expired_crl;
+	uint32_t	ca_path_reload_interval;
+	uint32_t	ca_path_last_reload;
+	X509_STORE	*old_x509_store;
 	char const	*check_cert_cn;
 	char const	*cipher_list;
 	bool		cipher_server_preference;
@@ -388,6 +392,8 @@ struct fr_tls_server_conf_t {
 	char const	*verify_tmp_dir;
 	char const	*verify_client_cert_cmd;
 	bool		require_client_cert;
+
+	pthread_mutex_t	mutex;
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	/*

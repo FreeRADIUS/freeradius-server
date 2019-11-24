@@ -583,10 +583,51 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	SSL		*new_tls = NULL;
 	int		verify_mode = 0;
 	VALUE_PAIR	*vp;
+	X509_STORE	*new_cert_store;
 
 	rad_assert(request != NULL);
 
 	RDEBUG2("Initiating new TLS session");
+
+	/*
+	 *	Replace X509 store if it is time to update CRLs/certs in ca_path
+	 */
+	if (conf->ca_path_reload_interval > 0 && conf->ca_path_last_reload + conf->ca_path_reload_interval <= request->timestamp) {
+		pthread_mutex_lock(&conf->mutex);
+		/* recheck conf->ca_path_last_reload because it may be inaccurate without mutex */
+		if (conf->ca_path_last_reload + conf->ca_path_reload_interval <= request->timestamp) {
+			RDEBUG2("Flushing X509 store to re-read data from ca_path dir");
+
+			if ((new_cert_store = fr_init_x509_store(conf)) == NULL) {
+				RERROR("Error replacing X509 store, out of memory (?)");
+			} else {
+				if (conf->old_x509_store) X509_STORE_free(conf->old_x509_store);
+				/*
+				 * Swap empty store with the old one.
+				 */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+				conf->old_x509_store = SSL_CTX_get_cert_store(conf->ctx);
+				/*
+				 * Old store will not be free()'d until refcount is zero.
+				 * Each X509_STORE_free() call decreases refcount so this
+				 * store will be free()'d next time this code is executed.
+				 */
+				SSL_CTX_set1_cert_store(conf->ctx, new_cert_store);
+#else
+				/*
+				 * We do not use SSL_CTX_set_cert_store() call here because
+				 * we are not sure that old X509 store is not in the use by some
+				 * thread (i.e. cert check in progress).
+				 * Keep it allocated till next store replacement.
+				 */
+				conf->old_x509_store = conf->ctx->cert_store;
+				conf->ctx->cert_store = new_cert_store;
+#endif
+				conf->ca_path_last_reload = request->timestamp;
+			}
+		}
+		pthread_mutex_unlock(&conf->mutex);
+	}
 
 	new_tls = SSL_new(conf->ctx);
 	if (new_tls == NULL) {
@@ -1256,6 +1297,7 @@ static CONF_PARSER tls_server_config[] = {
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
 	{ "check_all_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_all_crl), "no" },
 #endif
+	{ "ca_path_reload_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, ca_path_reload_interval), "0" },
 	{ "allow_expired_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, allow_expired_crl), NULL },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
@@ -1312,6 +1354,7 @@ static CONF_PARSER tls_client_config[] = {
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
+	{ "ca_path_reload_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, ca_path_reload_interval), "0" },
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
@@ -2576,19 +2619,18 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 }
 
 
-#ifdef HAVE_OPENSSL_OCSP_H
 /*
- * 	Create Global X509 revocation store and use it to verify
- * 	OCSP responses
+ * 	Configure a X509 CA store to verify OCSP or client repsonses
  *
  * 	- Load the trusted CAs
  * 	- Load the trusted issuer certificates
+ *	- Configure CRLs check if needed
  */
-static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
+X509_STORE *fr_init_x509_store(fr_tls_server_conf_t *conf)
 {
-	X509_STORE *store = NULL;
+	X509_STORE *store = X509_STORE_new();
 
-	store = X509_STORE_new();
+	if (store == NULL) return NULL;
 
 	/* Load the CAs we trust */
 	if (conf->ca_file || conf->ca_path)
@@ -2607,7 +2649,6 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 #endif
 	return store;
 }
-#endif	/* HAVE_OPENSSL_OCSP_H */
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
@@ -3008,20 +3049,35 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 		return NULL;
 	}
 
-	/* Load the CAs we trust */
 load_ca:
+	/*
+	 * Load the CAs we trust and configure CRL checks if needed
+	 */
 #if defined(X509_V_FLAG_PARTIAL_CHAIN)
 	X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), X509_V_FLAG_PARTIAL_CHAIN);
 #endif
 	if (conf->ca_file || conf->ca_path) {
-		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
-			tls_error_log(NULL, "Failed reading Trusted root CA list \"%s\"",
-				      conf->ca_file);
-			return NULL;
-		}
+		if ((certstore = fr_init_x509_store(conf)) == NULL ) return NULL;
+		SSL_CTX_set_cert_store(ctx, certstore);
 	}
+
 	if (conf->ca_file && *conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 
+	conf->ca_path_last_reload = time(NULL);
+	conf->old_x509_store = NULL;
+
+	/*
+	 * Disable reloading of cert store if we're not using CA path
+	 */
+	if (!conf->ca_path) conf->ca_path_reload_interval = 0;
+
+	if (conf->ca_path_reload_interval > 0 && conf->ca_path_reload_interval < 300) {
+		DEBUG2("ca_path_reload_interval is set too low, reset it to 300");
+		conf->ca_path_reload_interval = 300;
+	}
+
+
+	/* Load private key */
 	if (conf->private_key_file) {
 		if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
 			tls_error_log(NULL, "Failed reading private key file \"%s\"",
@@ -3307,24 +3363,6 @@ post_ca:
 			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 	}
 
-	/*
-	 *	Check the certificates for revocation.
-	 */
-#ifdef X509_V_FLAG_CRL_CHECK
-	if (conf->check_crl) {
-		certstore = SSL_CTX_get_cert_store(ctx);
-		if (certstore == NULL) {
-			tls_error_log(NULL, "Error reading Certificate Store");
-	    		return NULL;
-		}
-		X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
-
-#ifdef X509_V_FLAG_CRL_CHECK_ALL
-		if (conf->check_all_crl)
-			X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK_ALL);
-#endif
-	}
-#endif
 
 	/*
 	 *	Set verify modes
@@ -3428,6 +3466,8 @@ static int _tls_server_conf_free(fr_tls_server_conf_t *conf)
 
 	if (conf->cache_ht) fr_hash_table_free(conf->cache_ht);
 
+	pthread_mutex_destroy(&conf->mutex);
+
 #ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp_store) X509_STORE_free(conf->ocsp_store);
 	conf->ocsp_store = NULL;
@@ -3524,6 +3564,11 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	}
 
 	/*
+	 *	Initialize configuration mutex
+	 */
+	 pthread_mutex_init(&conf->mutex, NULL);
+
+	/*
 	 *	Initialize TLS
 	 */
 	conf->ctx = tls_init_ctx(conf, 0);
@@ -3593,7 +3638,7 @@ skip_list:
 	 * 	Initialize OCSP Revocation Store
 	 */
 	if (conf->ocsp_enable) {
-		conf->ocsp_store = init_revocation_store(conf);
+		conf->ocsp_store = fr_init_x509_store(conf);
 		if (conf->ocsp_store == NULL) goto error;
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
