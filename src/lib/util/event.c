@@ -1711,8 +1711,6 @@ service:
 	 */
 	talloc_list_free(&el->fd_to_free);
 
-	el->now = fr_time();
-
 	/*
 	 *	Run all of the timer events.
 	 */
