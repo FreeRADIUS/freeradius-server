@@ -1403,12 +1403,13 @@ int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
 /** Gather outstanding timer and file descriptor events
  *
  * @param[in] el	to process events for.
+ * @param[in] now	The current time.
  * @param[in] wait	if true, block on the kevent() call until a timer or file descriptor event occurs.
  * @return
  *	- <0 error, or the event loop is exiting
- *	- the number of outstanding events.
+ *	- the number of outstanding I/O events, +1 if there's at least one outstanding timer event.
  */
-int fr_event_corral(fr_event_list_t *el, bool wait)
+int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 {
 	fr_time_t		when, *wake;
 	struct timespec		ts_when, *ts_wake;
@@ -1440,7 +1441,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 				return -1;
 			}
 
-			el->now = fr_time();
+			el->now = now;
 
 			/*
 			 *	Next event is in the future, get the time
@@ -1774,7 +1775,7 @@ int fr_event_loop(fr_event_list_t *el)
 
 	el->dispatch = true;
 	while (!el->exit) {
-		if (unlikely(fr_event_corral(el, true)) < 0) break;
+		if (unlikely(fr_event_corral(el, fr_time(), true)) < 0) break;
 		fr_event_service(el);
 	}
 	el->dispatch = false;

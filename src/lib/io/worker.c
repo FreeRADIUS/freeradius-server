@@ -1469,7 +1469,7 @@ void fr_worker(fr_worker_t *worker)
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
-		num_events = fr_event_corral(worker->el, wait_for_event);
+		num_events = fr_event_corral(worker->el, worker->last_event, wait_for_event);
 		DEBUG3("\t%sGot num_events %d", worker->name, num_events);
 		if (num_events < 0) {
 			if (worker->exiting) return; /* don't complain if we're exiting */

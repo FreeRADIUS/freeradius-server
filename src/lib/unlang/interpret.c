@@ -872,7 +872,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	failure, all kinds of bad things happen.  Oh
 		 *	well.
 		 */
-		num_events = fr_event_corral(el, wait_for_events);
+		num_events = fr_event_corral(el, fr_time(), wait_for_events);
 		if (num_events < 0) {
 			RPERROR("Failed retrieving events");
 			rcode = RLM_MODULE_FAIL;

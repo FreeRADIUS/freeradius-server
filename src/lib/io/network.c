@@ -1340,7 +1340,7 @@ void fr_network(fr_network_t *nr)
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
-		num_events = fr_event_corral(nr->el, wait_for_event);
+		num_events = fr_event_corral(nr->el, fr_time(), wait_for_event);
 		DEBUG3("Got num_events %d", num_events);
 		if (num_events < 0) break;
 

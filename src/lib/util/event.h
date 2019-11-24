@@ -230,7 +230,7 @@ int		fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, voi
 int		fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 int		fr_event_post_delete(fr_event_list_t *el, fr_event_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 
-int		fr_event_corral(fr_event_list_t *el, bool wait);
+int		fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait);
 void		fr_event_service(fr_event_list_t *el);
 
 void		fr_event_loop_exit(fr_event_list_t *el, int code);
