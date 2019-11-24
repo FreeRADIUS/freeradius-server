@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include "parallel_priv.h"
 #include "module_priv.h"
 
-static fr_table_num_sorted_t const unlang_action_table[] = {
+static fr_table_num_ordered_t const unlang_action_table[] = {
 	{ "unwind", 		UNLANG_ACTION_UNWIND },
 	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
 	{ "next",		UNLANG_ACTION_EXECUTE_NEXT },
@@ -42,6 +42,13 @@ static fr_table_num_sorted_t const unlang_action_table[] = {
 	{ "yield",		UNLANG_ACTION_YIELD }
 };
 static size_t unlang_action_table_len = NUM_ELEMENTS(unlang_action_table);
+
+static fr_table_num_ordered_t const unlang_frame_action_table[] = {
+	{ "pop", 		UNLANG_FRAME_ACTION_POP		},
+	{ "next",		UNLANG_FRAME_ACTION_NEXT	},
+	{ "yield",		UNLANG_FRAME_ACTION_YIELD	}
+};
+static size_t unlang_frame_action_table_len = NUM_ELEMENTS(unlang_frame_action_table);
 
 #ifndef NDEBUG
 static void instruction_dump(REQUEST *request, unlang_t *instruction)
@@ -610,6 +617,8 @@ rlm_rcode_t unlang_interpret(REQUEST *request)
 	RDEBUG4("** [%i] %s - interpreter entered", stack->depth, __FUNCTION__);
 
 	for (;;) {
+		RDEBUG4("** [%i] %s - frame action %s", stack->depth, __FUNCTION__,
+			fr_table_str_by_value(unlang_frame_action_table, fa, "<INVALID>"));
 		switch (fa) {
 		case UNLANG_FRAME_ACTION_NEXT:	/* Evaluate the current frame */
 			priority = -1;
@@ -714,6 +723,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request)
 
 		case UNLANG_FRAME_ACTION_YIELD:
 			rad_assert(stack->result == RLM_MODULE_YIELD);
+			RDEBUG4("** [%i] %s - interpreter yielding", stack->depth, __FUNCTION__);
 			return stack->result;
 		}
 		break;
@@ -723,6 +733,8 @@ rlm_rcode_t unlang_interpret(REQUEST *request)
 	 *	Nothing in this section, use the top frame stack->result.
 	 */
 	if ((priority < 0) || (stack->result == RLM_MODULE_UNKNOWN)) {
+			RDEBUG4("** [%i] %s - empty section, using stack result (%s %d)", stack->depth, __FUNCTION__,
+				fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"), priority);
 		stack->result = frame->result;
 		priority = frame->priority;
 	}
@@ -840,6 +852,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	char const	*caller;
 	REQUEST		*sub_request = NULL;
 	bool		wait_for_events;
+	int		iterations = 0;
 
 	/*
 	 *	Don't talloc from the request
@@ -872,6 +885,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	failure, all kinds of bad things happen.  Oh
 		 *	well.
 		 */
+		DEBUG4("Corralling events (%s wait)", wait_for_events ? "will" : "will not");
 		num_events = fr_event_corral(el, fr_time(), wait_for_events);
 		if (num_events < 0) {
 			RPERROR("Failed retrieving events");
@@ -894,7 +908,10 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	runnable request into the backlog, OR
 		 *	setting new timers.
 		 */
-		if (num_events > 0) fr_event_service(el);
+		if (num_events > 0) {
+			DEBUG4("Servicing events");
+			fr_event_service(el);
+		}
 
 		/*
 		 *	If there are no runnable requests, then go
@@ -918,7 +935,10 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	in the backlog.  If this request YIELDs, then
 		 *	do another loop around.
 		 */
+		RDEBUG4(">>> interpreter (iteration %i)", ++iterations);
 		sub_rcode = unlang_interpret(sub_request);
+		RDEBUG4("<<< interpreter (iteration %i) - %s", iterations,
+			fr_table_str_by_value(mod_rcode_table, sub_rcode, "<INVALID>"));
 		if (sub_rcode == RLM_MODULE_YIELD) {
 			wait_for_events = true;
 			continue;
@@ -932,8 +952,8 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		wait_for_events = false;
 		if (sub_request == request) {
 			rcode = sub_rcode;
-
 		} else {
+			RDEBUG4("Cleaning up subrequest");
 			talloc_free(sub_request);
 		}
 	}
