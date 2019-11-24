@@ -1456,7 +1456,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 		fr_event_timer_t *ev;
 
 		ev = fr_heap_peek(el->times);
-		if (ev && (ev->when > el->now)) timer_event_ready = true;
+		if (ev && (ev->when <= el->now)) timer_event_ready = true;
 	}
 
 	/*
