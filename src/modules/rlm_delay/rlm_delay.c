@@ -188,7 +188,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 }
 
 static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				REQUEST *request,
+				       REQUEST *request,
 				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       UNUSED fr_value_box_t **in, void *rctx)
 {
