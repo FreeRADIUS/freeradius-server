@@ -1447,10 +1447,12 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 			 *	Next event is in the future, get the time
 			 *	between now and that event.
 			 */
-			if (ev->when > el->now) when = ev->when - el->now;
-
+			if (ev->when > el->now) {
+				when = ev->when - el->now;
+			} else {
+				num_timer_events = 1;
+			}
 			wake = &when;
-			num_timer_events = 1;
 		} else {
 			wake = NULL;
 		}
