@@ -374,6 +374,7 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				     char const *log_prefix,
 				     void const *uctx)
 {
+	size_t i;
 	fr_connection_t *conn;
 
 	rad_assert(el);
@@ -393,6 +394,13 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	conn->close = close;
 	conn->log_prefix = talloc_typed_strdup(conn, log_prefix);
 	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
+
+	for (i = 0; i < NUM_ELEMENTS(conn->watch_pre); i++) {
+		fr_dlist_talloc_init(&conn->watch_pre[i], fr_connection_watch_entry_t, list);
+	}
+	for (i = 0; i < NUM_ELEMENTS(conn->watch_post); i++) {
+		fr_dlist_talloc_init(&conn->watch_post[i], fr_connection_watch_entry_t, list);
+	}
 
 	return conn;
 }
@@ -640,23 +648,14 @@ static void connection_state_connecting_enter(fr_connection_t *conn, fr_time_t n
 static void connection_state_init_enter(fr_connection_t *conn, fr_time_t now)
 {
 	fr_connection_state_t	ret;
-	size_t			i;
 
 	rad_assert((conn->state == FR_CONNECTION_STATE_HALTED) || (conn->state == FR_CONNECTION_STATE_FAILED));
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
 
-	for (i = 0; i < NUM_ELEMENTS(conn->watch_pre); i++) {
-		fr_dlist_talloc_init(&conn->watch_pre[i], fr_connection_watch_entry_t, list);
-	}
-	for (i = 0; i < NUM_ELEMENTS(conn->watch_post); i++) {
-		fr_dlist_talloc_init(&conn->watch_post[i], fr_connection_watch_entry_t, list);
-	}
-
 	/*
 	 *	If we have an init callback, call it.
 	 */
-
 	WATCH_PRE(conn);
 	if (conn->init) {
 		HANDLER_BEGIN(conn);
