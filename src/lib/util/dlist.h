@@ -335,7 +335,7 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
 	fr_dlist_t *head;
 	fr_dlist_t *prev;
 
-	if (!ptr) return NULL;
+	if (!ptr || fr_dlist_empty(list_head)) return NULL;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
@@ -351,9 +351,9 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
 	entry->next->prev = prev = entry->prev;
 	entry->prev = entry->next = entry;
 
-	if (prev == head) return NULL;	/* Works with fr_dlist_next so that the next item is the list HEAD */
-
 	list_head->num_elements--;
+
+	if (prev == head) return NULL;	/* Works with fr_dlist_next so that the next item is the list HEAD */
 
 	return (void *) (((uint8_t *) prev) - list_head->offset);
 }
