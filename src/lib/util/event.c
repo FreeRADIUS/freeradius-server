@@ -1407,17 +1407,17 @@ int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
  * @param[in] wait	if true, block on the kevent() call until a timer or file descriptor event occurs.
  * @return
  *	- <0 error, or the event loop is exiting
- *	- the number of outstanding I/O events, +1 if there's at least one outstanding timer event.
+ *	- the number of outstanding I/O events, +1 if at least one timer will fire.
  */
 int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 {
 	fr_time_t		when, *wake;
 	struct timespec		ts_when, *ts_wake;
 	fr_event_pre_t		*pre;
-	int			num_fd_events, num_timer_events;
+	int			num_fd_events;
+	bool			timer_event_ready = false;
 
 	el->num_fd_events = 0;
-	num_timer_events = 0;
 
 	if (el->exit) {
 		fr_strerror_printf("Event loop exiting");
@@ -1430,6 +1430,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 */
 	when = 0;
 	wake = &when;
+	el->now = now;
 
 	if (wait) {
 		if (fr_heap_num_elements(el->times) > 0) {
@@ -1441,21 +1442,21 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 				return -1;
 			}
 
-			el->now = now;
-
 			/*
 			 *	Next event is in the future, get the time
 			 *	between now and that event.
 			 */
-			if (ev->when > el->now) {
-				when = ev->when - el->now;
-			} else {
-				num_timer_events = 1;
-			}
+			if (ev->when > el->now) when = ev->when - el->now;
 			wake = &when;
+			timer_event_ready = true;
 		} else {
 			wake = NULL;
 		}
+	} else {
+		fr_event_timer_t *ev;
+
+		ev = fr_heap_peek(el->times);
+		if (ev && (ev->when > el->now)) timer_event_ready = true;
 	}
 
 	/*
@@ -1467,7 +1468,6 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	     pre != NULL;
 	     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
 		if (pre->callback(pre->uctx, wake ? *wake : 0) > 0) {
-			num_timer_events++;
 			wake = &when;
 			when = 0;
 		}
@@ -1506,7 +1506,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 
 	el->num_fd_events = num_fd_events;
 
-	return num_fd_events + num_timer_events;
+	return num_fd_events + (timer_event_ready ? 1 : 0);
 }
 
 /** Service any outstanding timer or file descriptor events
