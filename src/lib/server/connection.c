@@ -744,6 +744,8 @@ void fr_connection_signal_connected(fr_connection_t *conn)
  */
 void fr_connection_signal_reconnect(fr_connection_t *conn)
 {
+	DEBUG2("Signalled to reconnect");
+
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_FAILED:	/* Don't circumvent reconnection_delay */
 	case FR_CONNECTION_STATE_INIT:		/* Already initialising */
@@ -756,7 +758,6 @@ void fr_connection_signal_reconnect(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_CONNECTED:
 	case FR_CONNECTION_STATE_TIMEOUT:
-		DEBUG2("Reconnecting...");
 		connection_state_failed_enter(conn, fr_time());
 		return;
 
