@@ -497,11 +497,15 @@ static void connection_state_failed_enter(fr_connection_t *conn, fr_time_t now)
 	case FR_CONNECTION_STATE_INIT:				/* Failed during initialisation */
 	case FR_CONNECTION_STATE_CONNECTED:			/* Failed after connecting */
 	case FR_CONNECTION_STATE_CONNECTING:			/* Failed during connecting */
-		if (fr_event_timer_at(conn, conn->el, &conn->reconnection_timer,
-				      now + conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
-			PERROR("Failed inserting delay timer event");
-			rad_assert(0);
+		if (conn->reconnection_delay) {
+			if (fr_event_timer_at(conn, conn->el, &conn->reconnection_timer,
+					      now + conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
+				PERROR("Failed inserting delay timer event");
+				rad_assert(0);
+			}
+			return;
 		}
+		connection_state_init_enter(conn, now);
 		break;
 
 	case FR_CONNECTION_STATE_TIMEOUT:			/* Failed during connecting */
