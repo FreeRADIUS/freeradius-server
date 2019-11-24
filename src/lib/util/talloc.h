@@ -45,7 +45,7 @@ TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
 /*
  *	Add variant that zeroes out newly allocated memory
  */
-#ifdef HAVE__TALLOC_POOLED_OBJECT
+#if defined(HAVE__TALLOC_POOLED_OBJECT) && defined(talloc_pooled_object)
 #  define HAVE_TALLOC_ZERO_POOLED_OBJECT	1
 #  define HAVE_TALLOC_POOLED_OBJECT		1
 
@@ -71,6 +71,7 @@ static inline TALLOC_CTX *_talloc_zero_pooled_object(const void *ctx,
 #else
 #  define	talloc_zero_pooled_object(_ctx, _type, _num_subobjects, _total_subobjects_size) \
 		talloc_zero(_ctx, _type)
+#undef talloc_pooled_object
 #  define	talloc_pooled_object(_ctx, _type, _num_subobjects, _total_subobjects_size) \
 		talloc(_ctx, _type)
 #endif
