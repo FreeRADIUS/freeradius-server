@@ -1,0 +1,26 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+#  Test vectors for RADIUS protocol
+#
+#  Based on https://github.com/the-tcpdump-group/tcpdump/blob/master/tests/RADIUS-port1700.pcap
+#
+
+proto radius
+proto-dictionary radius
+
+#
+#  1.
+#
+# [ Raw ]
+#   load      = '+\xa6\x00\x19\x7f\xbf\x02\xc6f+Y\x90\x83\x8a^n3\x1b?\xf0\x01\x05bob'
+#
+decode-proto 2b a6 00 19 7f bf 02 c6 66 2b 59 90 83 8a 5e 6e 33 1b 3f f0 01 05 62 6f 62
+match Packet-Type = CoA-Request, Packet-Authentication-Vector = 0x7fbf02c6662b5990838a5e6e331b3ff0, User-Name = "bob"
+
+count
+match 4
+

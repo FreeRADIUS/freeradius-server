@@ -1,0 +1,195 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+#  Test vectors for RADIUS protocol
+#
+#  Based on https://github.com/the-tcpdump-group/tcpdump/blob/master/tests/RADIUS-RFC4675.pcap
+#
+
+proto radius
+proto-dictionary radius
+
+#
+#  1.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 70
+#   len       = 80
+#   authenticator= f44757bc498c3393763a27d0b2393702
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 12
+#    |  value     = 'bob-tagged'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = '\xa3\x0e"\xb06\x9e\x89\xf8\x9e\xb6\xe0a,,<'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 127.0.0.1
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 1
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = ffb19e8ea9620aec372d7fa3b2c76287
+#
+decode-proto 01 46 00 50 f4 47 57 bc 49 8c 33 93 76 3a 27 d0 b2 39 37 02 01 0c 62 6f 62 2d 74 61 67 67 65 64 02 12 a3 0e 22 b0 36 9e 89 f8 9e b6 e0 61 2c 2c 3c 23 04 06 7f 00 00 01 05 06 00 00 00 01 50 12 ff b1 9e 8e a9 62 0a ec 37 2d 7f a3 b2 c7 62 87
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0xf44757bc498c3393763a27d0b2393702, User-Name = "bob-tagged", User-Password = "5\340+zBc\363\342\216\360\347E,8\276\250", NAS-IP-Address = 127.0.0.1, NAS-Port = 1, Message-Authenticator = 0xffb19e8ea9620aec372d7fa3b2c76287
+
+#
+#  2.
+#
+# [ RADIUS ]
+#   code      = Access-Accept
+#   id        = 70
+#   len       = 53
+#   authenticator= 766a0314eaf4b95f1ec271ae19cb3bdc
+#   \attributes\
+#    |[ Egress-VLANID ]
+#    |  type      = Egress-VLANID
+#    |  len       = 6
+#    |  value     = 822083707
+#    |[ Radius Attribute ]
+#    |  type      = Ingress-Filters
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x01'
+#    |[ Radius Attribute ]
+#    |  type      = Egress-VLAN-Name
+#    |  len       = 11
+#    |  value     = '1vlanname'
+#    |[ Radius Attribute ]
+#    |  type      = User-Priority-Table
+#    |  len       = 10
+#    |  value     = 'abcdabcd'
+#
+decode-proto 02 46 00 35 76 6a 03 14 ea f4 b9 5f 1e c2 71 ae 19 cb 3b dc 38 06 31 00 00 7b 39 06 00 00 00 01 3a 0b 31 76 6c 61 6e 6e 61 6d 65 3b 0a 61 62 63 64 61 62 63 64
+match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0x766a0314eaf4b95f1ec271ae19cb3bdc, Egress-VLANID = 822083707, Ingress-Filters = Enabled, Egress-VLAN-Name = "1vlanname", User-Priority-Table = 0x6162636461626364
+
+#
+#  3.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 181
+#   len       = 82
+#   authenticator= 11851d8b1b483f54a864b703ea21f4dc
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 14
+#    |  value     = 'bob-untagged'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = '\xf9i\xa0\x07E=\x0f\x91\xbbXn\x8e\xd6y\xbfF'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 127.0.0.1
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 1
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = af8f6f9bd87d66d1c364ad3bfe9e525b
+#
+decode-proto 01 b5 00 52 11 85 1d 8b 1b 48 3f 54 a8 64 b7 03 ea 21 f4 dc 01 0e 62 6f 62 2d 75 6e 74 61 67 67 65 64 02 12 f9 69 a0 07 45 3d 0f 91 bb 58 6e 8e d6 79 bf 46 04 06 7f 00 00 01 05 06 00 00 00 01 50 12 af 8f 6f 9b d8 7d 66 d1 c3 64 ad 3b fe 9e 52 5b
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x11851d8b1b483f54a864b703ea21f4dc, User-Name = "bob-untagged", User-Password = "o\207\251\3151\300u\213\253\036i\252\326m=\315", NAS-IP-Address = 127.0.0.1, NAS-Port = 1, Message-Authenticator = 0xaf8f6f9bd87d66d1c364ad3bfe9e525b
+
+#
+#  4.
+#
+# [ RADIUS ]
+#   code      = Access-Accept
+#   id        = 181
+#   len       = 43
+#   authenticator= e223a663823b20ccc18bcf90c3ecbe27
+#   \attributes\
+#    |[ Egress-VLANID ]
+#    |  type      = Egress-VLANID
+#    |  len       = 6
+#    |  value     = 838860923
+#    |[ Radius Attribute ]
+#    |  type      = Ingress-Filters
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x02'
+#    |[ Radius Attribute ]
+#    |  type      = Egress-VLAN-Name
+#    |  len       = 11
+#    |  value     = '2vlanname'
+#
+decode-proto 02 b5 00 2b e2 23 a6 63 82 3b 20 cc c1 8b cf 90 c3 ec be 27 38 06 32 00 00 7b 39 06 00 00 00 02 3a 0b 32 76 6c 61 6e 6e 61 6d 65
+match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0xe223a663823b20ccc18bcf90c3ecbe27, Egress-VLANID = 838860923, Ingress-Filters = Disabled, Egress-VLAN-Name = "2vlanname"
+
+#
+#  5.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 90
+#   len       = 81
+#   authenticator= 8dd685f50f837e8ad29e9cc095261172
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 13
+#    |  value     = 'bob-invalid'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = 'Zr\xc9\x16\xf6\xf4\x9b\xbe\x89\xcen\nYi\xfe'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 127.0.0.1
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 1
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = c39fb2d328b7a55e41cc66bf89f1acd5
+#
+decode-proto 01 5a 00 51 8d d6 85 f5 0f 83 7e 8a d2 9e 9c c0 95 26 11 72 01 0d 62 6f 62 2d 69 6e 76 61 6c 69 64 02 12 5a 72 c9 16 f6 f4 9b be 89 ce 23 6e 0a 59 69 fe 04 06 7f 00 00 01 05 06 00 00 00 01 50 12 c3 9f b2 d3 28 b7 a5 5e 41 cc 66 bf 89 f1 ac d5
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x8dd685f50f837e8ad29e9cc095261172, User-Name = "bob-invalid", User-Password = "̜\300܂\tᤙ\210$J\nM\353u", NAS-IP-Address = 127.0.0.1, NAS-Port = 1, Message-Authenticator = 0xc39fb2d328b7a55e41cc66bf89f1acd5
+
+#
+#  6.
+#
+# [ RADIUS ]
+#   code      = Access-Accept
+#   id        = 90
+#   len       = 43
+#   authenticator= fbaa7d05d009953514d00697da4d1dfc
+#   \attributes\
+#    |[ Egress-VLANID ]
+#    |  type      = Egress-VLANID
+#    |  len       = 6
+#    |  value     = 855638139
+#    |[ Radius Attribute ]
+#    |  type      = Ingress-Filters
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x03'
+#    |[ Radius Attribute ]
+#    |  type      = Egress-VLAN-Name
+#    |  len       = 11
+#    |  value     = '3vlanname'
+#
+decode-proto 02 5a 00 2b fb aa 7d 05 d0 09 95 35 14 d0 06 97 da 4d 1d fc 38 06 33 00 00 7b 39 06 00 00 00 03 3a 0b 33 76 6c 61 6e 6e 61 6d 65
+match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0xfbaa7d05d009953514d00697da4d1dfc, Egress-VLANID = 855638139, Ingress-Filters = 3, Egress-VLAN-Name = "3vlanname"
+
+count
+match 14
+

@@ -1,0 +1,46 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+#  Test vectors for RADIUS protocol
+#
+#  Based on https://github.com/the-tcpdump-group/tcpdump/blob/master/tests/RADIUS-RFC5176-2.pcap
+#
+
+proto radius
+proto-dictionary radius
+
+#
+#  1.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 200
+#   len       = 55
+#   authenticator= bc6e7022445e359835692c8c121c1985
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 5
+#    |  value     = 'bob'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = '\x12\xf4\x1b\xff\x81\r\xbe"\x94\xa8\xee\xdcb\xc5}\x03'
+#    |[ Radius Attribute ]
+#    |  type      = Error-Cause
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\xc9'
+#    |[ Radius Attribute ]
+#    |  type      = Error-Cause
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\xd1'
+#
+decode-proto 01 c8 00 37 bc 6e 70 22 44 5e 35 98 35 69 2c 8c 12 1c 19 85 01 05 62 6f 62 02 12 12 f4 1b ff 81 0d be 22 94 a8 ee dc 62 c5 7d 03 65 06 00 00 00 c9 65 06 00 00 00 d1
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0xbc6e7022445e359835692c8c121c1985, User-Name = "bob", User-Password = "\204\032\0225\365\360\3048\204\356\351\370b\321\377\210", Error-Cause = Residual-Context-Removed, Error-Cause = 209
+
+count
+match 4
+
