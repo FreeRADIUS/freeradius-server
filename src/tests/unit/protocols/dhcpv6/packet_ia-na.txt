@@ -15,11 +15,73 @@ proto-dictionary dhcpv6
 #
 #  1.
 #
+# [ DHCPv6 Solicit Message ]
+#   msgtype   = SOLICIT
+#   trid      = 0x90b45c
+# [ DHCP6 Client Identifier Option ]
+#    optcode   = CLIENTID
+#    optlen    = 10
+#    \duid      \
+#     |[ DUID - Based on Link-layer Address ]
+#     |  type      = Link-layer Address
+#     |  hwtype    = Ethernet (10Mb)
+#     |  lladdr    = 00:01:02:03:04:05
+# [ DHCP6 Option Request Option ]
+#     optcode   = ORO
+#     optlen    = 4
+#     reqopts   = [DNS Recursive Name Server Option, Domain Search List option]
+# [ DHCP6 Elapsed Time Option ]
+#      optcode   = ELAPSED_TIME
+#      optlen    = 2
+#      elapsedtime= 0.00 sec
+# [ DHCP6 Identity Association for Non-temporary Addresses Option ]
+#       optcode   = IA_NA
+#       optlen    = 12
+#       iaid      = 0x2030405
+#       T1        = 3600
+#       T2        = 5400
+#       \ianaopts  \
+#
 decode-proto 01 90 b4 5c 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 06 00 04 00 17 00 18 00 08 00 02 00 00 00 03 00 0c 02 03 04 05 00 00 0e 10 00 00 15 18
 match Packet-Type = Solicit, Transaction-ID = 0x90b45c, Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = 1, Client-ID-DUID-LL-Address = 0x000102030405, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 0, IA-NA-IAID = 33752069, IA-NA-T1 = 3600, IA-NA-T2 = 5400
 
 #
 #  2.
+#
+# [ DHCPv6 Advertise Message ]
+#   msgtype   = ADVERTISE
+#   trid      = 0x90b45c
+# [ DHCP6 Identity Association for Non-temporary Addresses Option ]
+#    optcode   = IA_NA
+#    optlen    = 40
+#    iaid      = 0x2030405
+#    T1        = 3600
+#    T2        = 5400
+#    \ianaopts  \
+#     |[ DHCP6 IA Address Option (IA_TA or IA_NA suboption) ]
+#     |  optcode   = IAADDR
+#     |  optlen    = 24
+#     |  addr      = 2a00:1:1:200:38e6:b22e:c440:acdf
+#     |  preflft   = 4500
+#     |  validlft  = 7200
+#     |  iaaddropts= ''
+# [ DHCP6 Client Identifier Option ]
+#     optcode   = CLIENTID
+#     optlen    = 10
+#     \duid      \
+#      |[ DUID - Based on Link-layer Address ]
+#      |  type      = Link-layer Address
+#      |  hwtype    = Ethernet (10Mb)
+#      |  lladdr    = 00:01:02:03:04:05
+# [ DHCP6 Server Identifier Option ]
+#      optcode   = SERVERID
+#      optlen    = 14
+#      \duid      \
+#       |[ DUID - Link-layer address plus time ]
+#       |  type      = Link-layer address plus time
+#       |  hwtype    = Ethernet (10Mb)
+#       |  timeval   = Mon, 26 Nov 2012 15:34:36 -0300 (1353944076)
+#       |  lladdr    = 00:11:22:33:44:55
 #
 decode-proto 02 90 b4 5c 00 03 00 28 02 03 04 05 00 00 0e 10 00 00 15 18 00 05 00 18 2a 00 00 01 00 01 02 00 38 e6 b2 2e c4 40 ac df 00 00 11 94 00 00 1c 20 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 46 48 8c 00 11 22 33 44 55
 match Packet-Type = Advertise, Transaction-ID = 0x90b45c, IA-NA-IAID = 33752069, IA-NA-T1 = 3600, IA-NA-T2 = 5400, IA-NA-Options = 0x000500182a0000010001020038e6b22ec440acdf0000119400001c20, Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = 1, Client-ID-DUID-LL-Address = 0x000102030405, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 1, Server-ID-DUID-LLT-Time = "Nov 26 2012 15:34:36 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0x001122334455
@@ -27,11 +89,89 @@ match Packet-Type = Advertise, Transaction-ID = 0x90b45c, IA-NA-IAID = 33752069,
 #
 #  3.
 #
+# [ DHCPv6 Request Message ]
+#   msgtype   = REQUEST
+#   trid      = 0x2ffdd1
+# [ DHCP6 Client Identifier Option ]
+#    optcode   = CLIENTID
+#    optlen    = 10
+#    \duid      \
+#     |[ DUID - Based on Link-layer Address ]
+#     |  type      = Link-layer Address
+#     |  hwtype    = Ethernet (10Mb)
+#     |  lladdr    = 00:01:02:03:04:05
+# [ DHCP6 Server Identifier Option ]
+#     optcode   = SERVERID
+#     optlen    = 14
+#     \duid      \
+#      |[ DUID - Link-layer address plus time ]
+#      |  type      = Link-layer address plus time
+#      |  hwtype    = Ethernet (10Mb)
+#      |  timeval   = Mon, 26 Nov 2012 15:34:36 -0300 (1353944076)
+#      |  lladdr    = 00:11:22:33:44:55
+# [ DHCP6 Option Request Option ]
+#      optcode   = ORO
+#      optlen    = 4
+#      reqopts   = [DNS Recursive Name Server Option, Domain Search List option]
+# [ DHCP6 Elapsed Time Option ]
+#       optcode   = ELAPSED_TIME
+#       optlen    = 2
+#       elapsedtime= 0.00 sec
+# [ DHCP6 Identity Association for Non-temporary Addresses Option ]
+#        optcode   = IA_NA
+#        optlen    = 40
+#        iaid      = 0x2030405
+#        T1        = 3600
+#        T2        = 5400
+#        \ianaopts  \
+#         |[ DHCP6 IA Address Option (IA_TA or IA_NA suboption) ]
+#         |  optcode   = IAADDR
+#         |  optlen    = 24
+#         |  addr      = 2a00:1:1:200:38e6:b22e:c440:acdf
+#         |  preflft   = 7200
+#         |  validlft  = 7500
+#         |  iaaddropts= ''
+#
 decode-proto 03 2f fd d1 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 46 48 8c 00 11 22 33 44 55 00 06 00 04 00 17 00 18 00 08 00 02 00 00 00 03 00 28 02 03 04 05 00 00 0e 10 00 00 15 18 00 05 00 18 2a 00 00 01 00 01 02 00 38 e6 b2 2e c4 40 ac df 00 00 1c 20 00 00 1d 4c
 match Packet-Type = Request, Transaction-ID = 0x2ffdd1, Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = 1, Client-ID-DUID-LL-Address = 0x000102030405, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 1, Server-ID-DUID-LLT-Time = "Nov 26 2012 15:34:36 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0x001122334455, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 0, IA-NA-IAID = 33752069, IA-NA-T1 = 3600, IA-NA-T2 = 5400, IA-NA-Options = 0x000500182a0000010001020038e6b22ec440acdf00001c2000001d4c
 
 #
 #  4.
+#
+# [ DHCPv6 Reply Message ]
+#   msgtype   = REPLY
+#   trid      = 0x2ffdd1
+# [ DHCP6 Identity Association for Non-temporary Addresses Option ]
+#    optcode   = IA_NA
+#    optlen    = 40
+#    iaid      = 0x2030405
+#    T1        = 3600
+#    T2        = 5400
+#    \ianaopts  \
+#     |[ DHCP6 IA Address Option (IA_TA or IA_NA suboption) ]
+#     |  optcode   = IAADDR
+#     |  optlen    = 24
+#     |  addr      = 2a00:1:1:200:38e6:b22e:c440:acdf
+#     |  preflft   = 4500
+#     |  validlft  = 7200
+#     |  iaaddropts= ''
+# [ DHCP6 Client Identifier Option ]
+#     optcode   = CLIENTID
+#     optlen    = 10
+#     \duid      \
+#      |[ DUID - Based on Link-layer Address ]
+#      |  type      = Link-layer Address
+#      |  hwtype    = Ethernet (10Mb)
+#      |  lladdr    = 00:01:02:03:04:05
+# [ DHCP6 Server Identifier Option ]
+#      optcode   = SERVERID
+#      optlen    = 14
+#      \duid      \
+#       |[ DUID - Link-layer address plus time ]
+#       |  type      = Link-layer address plus time
+#       |  hwtype    = Ethernet (10Mb)
+#       |  timeval   = Mon, 26 Nov 2012 15:34:36 -0300 (1353944076)
+#       |  lladdr    = 00:11:22:33:44:55
 #
 decode-proto 07 2f fd d1 00 03 00 28 02 03 04 05 00 00 0e 10 00 00 15 18 00 05 00 18 2a 00 00 01 00 01 02 00 38 e6 b2 2e c4 40 ac df 00 00 11 94 00 00 1c 20 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 46 48 8c 00 11 22 33 44 55
 match Packet-Type = Reply, Transaction-ID = 0x2ffdd1, IA-NA-IAID = 33752069, IA-NA-T1 = 3600, IA-NA-T2 = 5400, IA-NA-Options = 0x000500182a0000010001020038e6b22ec440acdf0000119400001c20, Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = 1, Client-ID-DUID-LL-Address = 0x000102030405, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = 1, Server-ID-DUID-LLT-Time = "Nov 26 2012 15:34:36 UTC", Server-ID-DUID-LLT-Link-Layer-Address = 0x001122334455
