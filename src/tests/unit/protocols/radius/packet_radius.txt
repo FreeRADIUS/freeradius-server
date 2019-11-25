@@ -1,0 +1,235 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+#  Test vectors for RADIUS protocol
+#
+#  Based on https://github.com/the-tcpdump-group/tcpdump/blob/master/tests/RADIUS.pcap
+#
+
+proto radius
+proto-dictionary radius
+
+#
+#  1.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 5
+#   len       = 139
+#   authenticator= ecfe3d2fe4473ec6299095ee46aedf77
+#   \attributes\
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 10.0.0.1
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 50012
+#    |[ NAS-Port-Type ]
+#    |  type      = NAS-Port-Type
+#    |  len       = 6
+#    |  value     = Ethernet
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 14
+#    |  value     = 'John.McGuirk'
+#    |[ Radius Attribute ]
+#    |  type      = Called-Station-Id
+#    |  len       = 19
+#    |  value     = '00-19-06-EA-B8-8C'
+#    |[ Radius Attribute ]
+#    |  type      = Calling-Station-Id
+#    |  len       = 19
+#    |  value     = '00-14-22-E9-54-5E'
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 1500
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 19
+#    |  \value     \
+#    |   |[ EAP ]
+#    |   |  code      = Response
+#    |   |  id        = 0
+#    |   |  len       = 17
+#    |   |  type      = Identity
+#    |   |  identity  = 'John.McGuirk'
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 28c5beb8842486da70db51316f9d7889
+#
+decode-proto 01 05 00 8b ec fe 3d 2f e4 47 3e c6 29 90 95 ee 46 ae df 77 04 06 0a 00 00 01 05 06 00 00 c3 5c 3d 06 00 00 00 0f 01 0e 4a 6f 68 6e 2e 4d 63 47 75 69 72 6b 1e 13 30 30 2d 31 39 2d 30 36 2d 45 41 2d 42 38 2d 38 43 1f 13 30 30 2d 31 34 2d 32 32 2d 45 39 2d 35 34 2d 35 45 06 06 00 00 00 02 0c 06 00 00 05 dc 4f 13 02 00 00 11 01 4a 6f 68 6e 2e 4d 63 47 75 69 72 6b 50 12 28 c5 be b8 84 24 86 da 70 db 51 31 6f 9d 78 89
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0xecfe3d2fe4473ec6299095ee46aedf77, NAS-IP-Address = 10.0.0.1, NAS-Port = 50012, NAS-Port-Type = Ethernet, User-Name = "John.McGuirk", Called-Station-Id = "00-19-06-EA-B8-8C", Calling-Station-Id = "00-14-22-E9-54-5E", Service-Type = Framed-User, Framed-MTU = 1500, EAP-Message = 0x02000011014a6f686e2e4d63477569726b, Message-Authenticator = 0x28c5beb8842486da70db51316f9d7889
+
+#
+#  2.
+#
+# [ RADIUS ]
+#   code      = Access-Challenge
+#   id        = 5
+#   len       = 109
+#   authenticator= f050649184625d36f14c9075b7a48b83
+#   \attributes\
+#    |[ Framed-IP-Address ]
+#    |  type      = Framed-IP-Address
+#    |  len       = 6
+#    |  value     = 255.255.255.254
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 576
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Radius Attribute ]
+#    |  type      = Reply-Message
+#    |  len       = 11
+#    |  value     = 'Hello, %u'
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 24
+#    |  \value     \
+#    |   |[ EAP-MD5 ]
+#    |   |  code      = Request
+#    |   |  id        = 1
+#    |   |  len       = 22
+#    |   |  type      = MD5-Challenge
+#    |   |  value_size= 16
+#    |   |  value     = 266b0e9a58322f4d01ab25b35f879464
+#    |   |  optional_name= b''
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 11b5043c8a288758173133a5e07434cf
+#    |[ State ]
+#    |  type      = State
+#    |  len       = 18
+#    |  value     = c6d195032fdc30240f7313b231ef1d77
+#
+decode-proto 0b 05 00 6d f0 50 64 91 84 62 5d 36 f1 4c 90 75 b7 a4 8b 83 08 06 ff ff ff fe 0c 06 00 00 02 40 06 06 00 00 00 02 12 0b 48 65 6c 6c 6f 2c 20 25 75 4f 18 01 01 00 16 04 10 26 6b 0e 9a 58 32 2f 4d 01 ab 25 b3 5f 87 94 64 50 12 11 b5 04 3c 8a 28 87 58 17 31 33 a5 e0 74 34 cf 18 12 c6 d1 95 03 2f dc 30 24 0f 73 13 b2 31 ef 1d 77
+match Packet-Type = Access-Challenge, Packet-Authentication-Vector = 0xf050649184625d36f14c9075b7a48b83, Framed-IP-Address = 255.255.255.254, Framed-MTU = 576, Service-Type = Framed-User, Reply-Message = "Hello, %u", EAP-Message = 0x010100160410266b0e9a58322f4d01ab25b35f879464, Message-Authenticator = 0x11b5043c8a288758173133a5e07434cf, State = 0xc6d195032fdc30240f7313b231ef1d77
+
+#
+#  3.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 6
+#   len       = 174
+#   authenticator= 6a6f38e6dae830304d2333e5d5364643
+#   \attributes\
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 10.0.0.1
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 50012
+#    |[ NAS-Port-Type ]
+#    |  type      = NAS-Port-Type
+#    |  len       = 6
+#    |  value     = Ethernet
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 14
+#    |  value     = 'John.McGuirk'
+#    |[ Radius Attribute ]
+#    |  type      = Called-Station-Id
+#    |  len       = 19
+#    |  value     = '00-19-06-EA-B8-8C'
+#    |[ Radius Attribute ]
+#    |  type      = Calling-Station-Id
+#    |  len       = 19
+#    |  value     = '00-14-22-E9-54-5E'
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 1500
+#    |[ State ]
+#    |  type      = State
+#    |  len       = 18
+#    |  value     = c6d195032fdc30240f7313b231ef1d77
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 36
+#    |  \value     \
+#    |   |[ EAP-MD5 ]
+#    |   |  code      = Response
+#    |   |  id        = 1
+#    |   |  len       = 34
+#    |   |  type      = MD5-Challenge
+#    |   |  value_size= 16
+#    |   |  value     = c9f9769597e320843f5f2af7b8f1c9bd
+#    |   |  optional_name= 4a6f686e2e4d63477569726b
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 2726e2713194ebf2bc894f6a6202af38
+#
+decode-proto 01 06 00 ae 6a 6f 38 e6 da e8 30 30 4d 23 33 e5 d5 36 46 43 04 06 0a 00 00 01 05 06 00 00 c3 5c 3d 06 00 00 00 0f 01 0e 4a 6f 68 6e 2e 4d 63 47 75 69 72 6b 1e 13 30 30 2d 31 39 2d 30 36 2d 45 41 2d 42 38 2d 38 43 1f 13 30 30 2d 31 34 2d 32 32 2d 45 39 2d 35 34 2d 35 45 06 06 00 00 00 02 0c 06 00 00 05 dc 18 12 c6 d1 95 03 2f dc 30 24 0f 73 13 b2 31 ef 1d 77 4f 24 02 01 00 22 04 10 c9 f9 76 95 97 e3 20 84 3f 5f 2a f7 b8 f1 c9 bd 4a 6f 68 6e 2e 4d 63 47 75 69 72 6b 50 12 27 26 e2 71 31 94 eb f2 bc 89 4f 6a 62 02 af 38
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x6a6f38e6dae830304d2333e5d5364643, NAS-IP-Address = 10.0.0.1, NAS-Port = 50012, NAS-Port-Type = Ethernet, User-Name = "John.McGuirk", Called-Station-Id = "00-19-06-EA-B8-8C", Calling-Station-Id = "00-14-22-E9-54-5E", Service-Type = Framed-User, Framed-MTU = 1500, State = 0xc6d195032fdc30240f7313b231ef1d77, EAP-Message = 0x020100220410c9f9769597e320843f5f2af7b8f1c9bd4a6f686e2e4d63477569726b, Message-Authenticator = 0x2726e2713194ebf2bc894f6a6202af38
+
+#
+#  4.
+#
+# [ RADIUS ]
+#   code      = Access-Accept
+#   id        = 6
+#   len       = 97
+#   authenticator= fbba6a784c7decb314caf0f27944a37b
+#   \attributes\
+#    |[ Framed-IP-Address ]
+#    |  type      = Framed-IP-Address
+#    |  len       = 6
+#    |  value     = 255.255.255.254
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 576
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Radius Attribute ]
+#    |  type      = Reply-Message
+#    |  len       = 21
+#    |  value     = 'Hello, John.McGuirk'
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 6
+#    |  \value     \
+#    |   |[ EAP ]
+#    |   |  code      = Success
+#    |   |  id        = 1
+#    |   |  len       = 4
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = b9c4ae6213a71d32125ef7ca4e4c6360
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 14
+#    |  value     = 'John.McGuirk'
+#
+decode-proto 02 06 00 61 fb ba 6a 78 4c 7d ec b3 14 ca f0 f2 79 44 a3 7b 08 06 ff ff ff fe 0c 06 00 00 02 40 06 06 00 00 00 02 12 15 48 65 6c 6c 6f 2c 20 4a 6f 68 6e 2e 4d 63 47 75 69 72 6b 4f 06 03 01 00 04 50 12 b9 c4 ae 62 13 a7 1d 32 12 5e f7 ca 4e 4c 63 60 01 0e 4a 6f 68 6e 2e 4d 63 47 75 69 72 6b
+match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0xfbba6a784c7decb314caf0f27944a37b, Framed-IP-Address = 255.255.255.254, Framed-MTU = 576, Service-Type = Framed-User, Reply-Message = "Hello, John.McGuirk", EAP-Message = 0x03010004, Message-Authenticator = 0xb9c4ae6213a71d32125ef7ca4e4c6360, User-Name = "John.McGuirk"
+
+count
+match 10
+

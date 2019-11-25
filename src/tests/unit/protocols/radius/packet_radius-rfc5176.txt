@@ -1,0 +1,71 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+#  Test vectors for RADIUS protocol
+#
+#  Based on https://github.com/the-tcpdump-group/tcpdump/blob/master/tests/RADIUS-RFC5176.pcap
+#
+
+proto radius
+proto-dictionary radius
+
+#
+#  1.
+#
+# [ Raw ]
+#   load      = '(\x01\x00&\xe1y-+J\xb3I\xf1\xa4\xc0\xfc\xc73\xd0\x91\xc1P\x12XQ=f(G\xe5\xf8sJ0\xdb\xda\xc8\xe4\xaf'
+#
+decode-proto 28 01 00 26 e1 79 2d 2b 4a b3 49 f1 a4 c0 fc c7 33 d0 91 c1 50 12 58 51 3d 66 28 47 e5 f8 73 4a 30 db da c8 e4 af
+match Packet-Type = Disconnect-Request, Packet-Authentication-Vector = 0xe1792d2b4ab349f1a4c0fcc733d091c1, Message-Authenticator = 0x58513d662847e5f8734a30dbdac8e4af
+
+#
+#  2.
+#
+# [ Raw ]
+#   load      = ")\x02\x00&;\xc9\xc3C\xf6\x89\x99\x07V\xb9lX:V\x89\nP\x12\xa7O\xa4\xbe\xa5\xe0\x8c\x87\x0e\xdbiC,'}\x17"
+#
+decode-proto 29 02 00 26 3b c9 c3 43 f6 89 99 07 56 b9 6c 58 3a 56 89 0a 50 12 a7 4f a4 be a5 e0 8c 87 0e db 69 43 2c 27 7d 17
+match Packet-Type = Disconnect-ACK, Packet-Authentication-Vector = 0x3bc9c343f689990756b96c583a56890a, Message-Authenticator = 0xa74fa4bea5e08c870edb69432c277d17
+
+#
+#  3.
+#
+# [ Raw ]
+#   load      = '*\x03\x00&\xd8g\xc3\x08\xc9\xc41\x12\xb3\xa6i\xa0\xe8\xc0\xab\x8cP\x12\x1b\xdb\xc1p\x92I\xed\xe4\xda(\x81"\xa0\x87\xb8\xae'
+#
+decode-proto 2a 03 00 26 d8 67 c3 08 c9 c4 31 12 b3 a6 69 a0 e8 c0 ab 8c 50 12 1b db c1 70 92 49 ed e4 da 28 81 22 a0 87 b8 ae
+match Packet-Type = Disconnect-NAK, Packet-Authentication-Vector = 0xd867c308c9c43112b3a669a0e8c0ab8c, Message-Authenticator = 0x1bdbc1709249ede4da288122a087b8ae
+
+#
+#  4.
+#
+# [ Raw ]
+#   load      = "+\x04\x00&_\x180\x9b\xe6|\xd6\x15\x0f\xe4\xc3\xa0\xb956\xc9P\x12'\x03\xee6|\xd0F\xd1\xdf\xbc_\xe5\xb3\xcf[\xbf"
+#
+decode-proto 2b 04 00 26 5f 18 30 9b e6 7c d6 15 0f e4 c3 a0 b9 35 36 c9 50 12 27 03 ee 36 7c d0 46 d1 df bc 5f e5 b3 cf 5b bf
+match Packet-Type = CoA-Request, Packet-Authentication-Vector = 0x5f18309be67cd6150fe4c3a0b93536c9, Message-Authenticator = 0x2703ee367cd046d1dfbc5fe5b3cf5bbf
+
+#
+#  5.
+#
+# [ Raw ]
+#   load      = ',\x05\x00&U\xabl\xb7\x8a\xa1a\xd6\x92u?\xa9\x13\x0cP\x19P\x12\xe4\xdf\xa9\xee\xdd\xf9\xd2\x16\xde+\xe1x\n\xdc\xbbs'
+#
+decode-proto 2c 05 00 26 55 ab 6c b7 8a a1 61 d6 92 75 3f a9 13 0c 50 19 50 12 e4 df a9 ee dd f9 d2 16 de 2b e1 78 0a dc bb 73
+match Packet-Type = CoA-ACK, Packet-Authentication-Vector = 0x55ab6cb78aa161d692753fa9130c5019, Message-Authenticator = 0xe4dfa9eeddf9d216de2be1780adcbb73
+
+#
+#  6.
+#
+# [ Raw ]
+#   load      = '-\x06\x00&@\xf2\x1b\xde\xe2z\x87\xa5\xd7W\xa3\x0b\xfe\xd6/(P\x12\x85%y\xe8\xe2\xe5\xdc\xbdx\x1a\x90\x07&j\x06\xa7'
+#
+decode-proto 2d 06 00 26 40 f2 1b de e2 7a 87 a5 d7 57 a3 0b fe d6 2f 28 50 12 85 25 79 e8 e2 e5 dc bd 78 1a 90 07 26 6a 06 a7
+match Packet-Type = CoA-NAK, Packet-Authentication-Vector = 0x40f21bdee27a87a5d757a30bfed62f28, Message-Authenticator = 0x852579e8e2e5dcbd781a9007266a06a7
+
+count
+match 14
+
