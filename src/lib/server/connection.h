@@ -43,11 +43,12 @@ typedef enum {
 	FR_CONNECTION_STATE_CONNECTING,		//!< Waiting for connection to establish.
 	FR_CONNECTION_STATE_TIMEOUT,		//!< Timeout during #FR_CONNECTION_STATE_CONNECTING.
 	FR_CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
+	FR_CONNECTION_STATE_CLOSED,		//!< Connection has been closed.
 	FR_CONNECTION_STATE_FAILED,		//!< Connection failed and is waiting to reconnect.
 	FR_CONNECTION_STATE_MAX
 } fr_connection_state_t;
 
-extern fr_table_num_sorted_t const fr_connection_states[];
+extern fr_table_num_ordered_t const fr_connection_states[];
 extern size_t fr_connection_states_len;
 
 /** Callback for the initialise state
@@ -121,6 +122,10 @@ typedef void (*fr_connection_close_t)(void *h, void *uctx);
  * @param[in] uctx	that was passed to fr_connection_add_watch_*.
  */
 typedef void(*fr_connection_watch_t)(fr_connection_t *conn, fr_connection_state_t state, void *uctx);
+
+uint64_t		fr_connection_get_num_reconnected(fr_connection_t const *conn);
+
+uint64_t		fr_connection_get_num_timed_out(fr_connection_t const *conn);
 
 fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
 

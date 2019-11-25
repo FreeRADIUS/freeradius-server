@@ -40,13 +40,14 @@
 #endif
 #include <talloc.h>
 
-fr_table_num_sorted_t const fr_connection_states[] = {
-	{ "CONNECTED",		FR_CONNECTION_STATE_CONNECTED	},
-	{ "CONNECTING",		FR_CONNECTION_STATE_CONNECTING	},
-	{ "FAILED",		FR_CONNECTION_STATE_FAILED	},
-	{ "HALTED",		FR_CONNECTION_STATE_HALTED	},
+fr_table_num_ordered_t const fr_connection_states[] = {
 	{ "INIT",		FR_CONNECTION_STATE_INIT	},
-	{ "TIMEOUT",		FR_CONNECTION_STATE_TIMEOUT	}
+	{ "CONNECTING",		FR_CONNECTION_STATE_CONNECTING	},
+	{ "TIMEOUT",		FR_CONNECTION_STATE_TIMEOUT	},
+	{ "CONNECTED",		FR_CONNECTION_STATE_CONNECTED	},
+	{ "FAILED",		FR_CONNECTION_STATE_FAILED	},
+	{ "CLOSED",		FR_CONNECTION_STATE_CLOSED	},
+	{ "HALTED",		FR_CONNECTION_STATE_HALTED	},
 };
 size_t fr_connection_states_len = NUM_ELEMENTS(fr_connection_states);
 
@@ -66,6 +67,12 @@ typedef struct {
 struct fr_conn {
 	uint64_t		id;			//!< Unique identifier for the connection.
 	fr_connection_state_t	state;			//!< Current connection state.
+
+	uint64_t		reconnected;		//!< How many times we've attempted to establish or
+							///< re-establish this connection.
+	uint64_t		timed_out;		//!< How many times has this connection timed out when
+							///< connecting.
+
 	void			*h;			//!< Connection handle
 	fr_event_list_t		*el;			//!< Event list for timers and I/O events.
 	char const		*log_prefix;		//!< Prefix to add to log messages.
@@ -82,8 +89,6 @@ struct fr_conn {
 	fr_connection_open_t	open;			//!< Callback for 'open' notification.
 	fr_connection_close_t	close;			//!< Callback to close a connection.
 	fr_connection_failed_t	failed;			//!< Callback for 'failed' notification.
-
-
 
 	fr_event_timer_t const	*connection_timer;	//!< Timer to prevent connections going on indefinitely.
 	fr_event_timer_t const	*reconnection_timer;	//!< Timer to delay retries.
@@ -163,12 +168,35 @@ do { \
 /*
  *	State transition functions
  */
-static void connection_state_failed_enter(fr_connection_t *conn, fr_time_t now);
-static void connection_state_timeout_enter(fr_connection_t *conn, fr_time_t now);
-static void connection_state_connected_enter(fr_connection_t *conn, fr_time_t now);
-static void connection_state_connecting_enter(fr_connection_t *conn, fr_time_t now);
-static void connection_state_halted_enter(fr_connection_t *conn, fr_time_t now);
-static void connection_state_init_enter(fr_connection_t *conn, fr_time_t now);
+static void connection_state_closed_enter(fr_connection_t *conn);
+static void connection_state_failed_enter(fr_connection_t *conn);
+static void connection_state_timeout_enter(fr_connection_t *conn);
+static void connection_state_connected_enter(fr_connection_t *conn);
+static void connection_state_connecting_enter(fr_connection_t *conn);
+static void connection_state_halted_enter(fr_connection_t *conn);
+static void connection_state_init_enter(fr_connection_t *conn);
+
+/** Return the number of times we've attempted to establish or re-establish this connection
+ *
+ * @param[in] conn	to get count from.
+ * @return the number of times the connection has reconnected.
+ */
+uint64_t fr_connection_get_num_reconnected(fr_connection_t const *conn)
+{
+	if (conn->reconnected == 0) return 0;	/* Has never been initialised */
+
+	return conn->reconnected - 1;		/* We don't count the first connection attempt */
+}
+
+/** Return the number of times this connection has timed out whilst connecting
+ *
+ * @param[in] conn	to get count from.
+ * @return the number of times the connection has timed out whilst connecting.
+ */
+uint64_t fr_connection_get_num_timed_out(fr_connection_t const *conn)
+{
+	return conn->timed_out;
+}
 
 /** Get the event list associated with the connection
  *
@@ -334,8 +362,17 @@ static int _connection_free(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_HALTED:
 		break;
 
+
+	/*
+	 *	Need to close the connection first
+	 */
+	case FR_CONNECTION_STATE_CONNECTING:
+	case FR_CONNECTION_STATE_CONNECTED:
+		connection_state_closed_enter(conn);
+		/* FALL-THROUGH */
+
 	default:
-		connection_state_halted_enter(conn, fr_time());
+		connection_state_halted_enter(conn);
 		break;
 	}
 	return 0;
@@ -408,14 +445,52 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 /** The requisite period of time has passed, try and re-open the connection
  *
  * @param[in] el	the time event ocurred on.
- * @param[in] now	the current time.
+ * @param[in] now	The current time.
  * @param[in] uctx	The #fr_connection_t the fd is associated with.
  */
-static void _reconnect_delay_done(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void _reconnect_delay_done(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 
-	connection_state_init_enter(conn, now);
+	connection_state_init_enter(conn);
+}
+
+/** Close the connection, then wait for another state change
+ *
+ */
+static void connection_state_closed_enter(fr_connection_t *conn)
+{
+	switch (conn->state) {
+	case FR_CONNECTION_STATE_CONNECTING:
+	case FR_CONNECTION_STATE_CONNECTED:
+	case FR_CONNECTION_STATE_FAILED:
+		break;
+
+	default:
+		rad_assert(0);
+		return;
+	}
+
+	STATE_TRANSITION(FR_CONNECTION_STATE_CLOSED);
+
+	fr_event_timer_delete(conn->el, &conn->connection_timer);
+
+	/*
+	 *	If there's a close callback, call it, so that the
+	 *	API client can free any resources associated
+	 *	with the connection handle.
+	 */
+	WATCH_PRE(conn);
+	if (conn->close && !conn->is_closed) {
+		HANDLER_BEGIN(conn);
+		DEBUG4("Calling close(%p, %p)", conn->h, conn->uctx);
+		conn->close(conn->h, conn->uctx);
+		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
+		HANDLER_END(conn);
+	} else {
+		conn->is_closed = true;
+	}
+	WATCH_POST(conn);
 }
 
 /** Connection failed
@@ -428,9 +503,8 @@ static void _reconnect_delay_done(UNUSED fr_event_list_t *el, fr_time_t now, voi
  * back to init.
  *
  * @param[in] conn	that failed.
- * @param[in] now	The current time.
  */
-static void connection_state_failed_enter(fr_connection_t *conn, fr_time_t now)
+static void connection_state_failed_enter(fr_connection_t *conn)
 {
 	fr_connection_state_t prev;
 
@@ -453,27 +527,11 @@ static void connection_state_failed_enter(fr_connection_t *conn, fr_time_t now)
 	STATE_TRANSITION(FR_CONNECTION_STATE_FAILED);
 
 	/*
-	 *	If there's a close callback, call it, so that the
-	 *	API client can free any resources associated
-	 *	with the connection handle.
-	 */
-	WATCH_PRE(conn);
-	if (conn->close && !conn->is_closed) {
-		HANDLER_BEGIN(conn);
-		DEBUG4("Calling close(%p, %p)", conn->h, conn->uctx);
-		conn->close(conn->h, conn->uctx);
-		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
-		HANDLER_END(conn);
-	} else {
-		conn->is_closed = true;
-	}
-	WATCH_POST(conn);
-
-	/*
 	 *	If there's a failed callback, give it the
 	 *	opportunity to suspend/destroy the
 	 *	connection.
 	 */
+	WATCH_PRE(conn);
 	if (conn->failed) {
 		fr_connection_state_t ret;
 
@@ -482,34 +540,72 @@ static void connection_state_failed_enter(fr_connection_t *conn, fr_time_t now)
 		       fr_table_str_by_value(fr_connection_states, prev, "<INVALID>"), conn->uctx);
 		ret = conn->failed(conn->h, prev, conn->uctx);
 		HANDLER_END(conn);
+		WATCH_POST(conn);
+
+		/*
+		 *	Enter the closed state if we failed during
+		 *	connecting, or when we were connected.
+		 */
+		switch (prev) {
+		case FR_CONNECTION_STATE_CONNECTED:
+		case FR_CONNECTION_STATE_CONNECTING:
+			connection_state_closed_enter(conn);
+			break;
+
+		default:
+			break;
+		}
+
 		switch (ret) {
 		case FR_CONNECTION_STATE_INIT:
 			break;
 
 		case FR_CONNECTION_STATE_HALTED:
 		default:
-			connection_state_halted_enter(conn, now);
+			connection_state_halted_enter(conn);
 			return;
+		}
+	} else {
+		WATCH_POST(conn);
+
+		/*
+		 *	Enter the closed state if we failed during
+		 *	connecting, or when we were connected.
+		 */
+		switch (prev) {
+		case FR_CONNECTION_STATE_CONNECTED:
+		case FR_CONNECTION_STATE_CONNECTING:
+			connection_state_closed_enter(conn);
+			break;
+
+		default:
+			break;
 		}
 	}
 
+	/*
+	 *	What previous state we were in
+	 *	determines if we need to apply the
+	 *	reconnect timeout.
+	 */
 	switch (prev) {
 	case FR_CONNECTION_STATE_INIT:				/* Failed during initialisation */
 	case FR_CONNECTION_STATE_CONNECTED:			/* Failed after connecting */
 	case FR_CONNECTION_STATE_CONNECTING:			/* Failed during connecting */
 		if (conn->reconnection_delay) {
-			if (fr_event_timer_at(conn, conn->el, &conn->reconnection_timer,
-					      now + conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
+			DEBUG2("Delaying reconnection by %pVs", fr_box_time_delta(conn->reconnection_delay));
+			if (fr_event_timer_in(conn, conn->el, &conn->reconnection_timer,
+					      conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
 				PERROR("Failed inserting delay timer event");
 				rad_assert(0);
 			}
 			return;
 		}
-		connection_state_init_enter(conn, now);
+		connection_state_init_enter(conn);
 		break;
 
 	case FR_CONNECTION_STATE_TIMEOUT:			/* Failed during connecting */
-		connection_state_init_enter(conn, now);
+		connection_state_init_enter(conn);
 		break;
 
 	default:
@@ -522,28 +618,29 @@ static void connection_state_failed_enter(fr_connection_t *conn, fr_time_t now)
  * The connection took took long to open.  Timeout the attempt and transition
  * to the failed state.
  */
-static void connection_state_timeout_enter(fr_connection_t *conn, fr_time_t now)
+static void connection_state_timeout_enter(fr_connection_t *conn)
 {
+	rad_assert(conn->state == FR_CONNECTION_STATE_CONNECTING);
+
 	ERROR("Connection failed - timed out after %pVs", fr_box_time_delta(conn->connection_timeout));
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_TIMEOUT);
 
-	connection_state_failed_enter(conn, now);
+	conn->timed_out++;
+
+	connection_state_failed_enter(conn);
 }
 
 /** Enter the halted state
  *
  * Here we wait, until signalled by fr_connection_signal_reconnect.
  */
-static void connection_state_halted_enter(fr_connection_t *conn, UNUSED fr_time_t now)
+static void connection_state_halted_enter(fr_connection_t *conn)
 {
-	STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
+	rad_assert(conn->is_closed);
 
+	STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
 	WATCH_PRE(conn);
-	if (conn->close && !conn->is_closed) {
-		DEBUG4("Calling close(%p, %p)", conn->h, conn->uctx);
-		conn->close(conn->h, conn->uctx);
-	}
 	WATCH_POST(conn);
 }
 
@@ -559,9 +656,8 @@ static void connection_state_halted_enter(fr_connection_t *conn, UNUSED fr_time_
  * The connection API cannot monitor the connection for failure conditions.
  *
  * @param[in] conn	Entering the connecting state.
- * @param[in] now	The current time.
  */
-static void connection_state_connected_enter(fr_connection_t *conn, UNUSED fr_time_t now)
+static void connection_state_connected_enter(fr_connection_t *conn)
 {
 	int	ret;
 
@@ -570,7 +666,6 @@ static void connection_state_connected_enter(fr_connection_t *conn, UNUSED fr_ti
 	STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
 
 	fr_event_timer_delete(conn->el, &conn->connection_timer);
-
 	WATCH_PRE(conn);
 	if (conn->open) {
 		HANDLER_BEGIN(conn);
@@ -597,7 +692,7 @@ static void connection_state_connected_enter(fr_connection_t *conn, UNUSED fr_ti
 	case FR_CONNECTION_STATE_FAILED:
 	default:
 		PERROR("Connection failed");
-		connection_state_failed_enter(conn, fr_time());
+		connection_state_failed_enter(conn);
 		return;
 	}
 }
@@ -607,14 +702,14 @@ static void connection_state_connected_enter(fr_connection_t *conn, UNUSED fr_ti
  * Connection wasn't opened within the configured period of time
  *
  * @param[in] el	the time event ocurred on.
- * @param[in] now	the current time.
+ * @param[in] now	The current time.
  * @param[in] uctx	The #fr_connection_t the fd is associated with.
  */
-static void _connection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void _connection_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 
-	connection_state_timeout_enter(conn, now);
+	connection_state_timeout_enter(conn);
 }
 
 /** Enter the connecting state
@@ -623,11 +718,19 @@ static void _connection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, void 
  * or for the connection timer to expire.
  *
  * @param[in] conn	Entering the connecting state.
- * @param[in] now	The current time.
  */
-static void connection_state_connecting_enter(fr_connection_t *conn, fr_time_t now)
+static void connection_state_connecting_enter(fr_connection_t *conn)
 {
-	rad_assert(conn->state == FR_CONNECTION_STATE_INIT);
+	switch (conn->state) {
+	case FR_CONNECTION_STATE_INIT:
+	case FR_CONNECTION_STATE_CLOSED:
+	case FR_CONNECTION_STATE_FAILED:
+		break;
+
+	default:
+		rad_assert(0);
+		return;
+	}
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTING);
 
@@ -639,9 +742,8 @@ static void connection_state_connecting_enter(fr_connection_t *conn, fr_time_t n
 	 *	set, then add the timer.
 	 */
 	if (conn->connection_timeout) {
-		if (fr_event_timer_at(conn, conn->el, &conn->connection_timer,
-				      now + conn->connection_timeout,
-				      _connection_timeout, conn) < 0) {
+		if (fr_event_timer_in(conn, conn->el, &conn->connection_timer,
+				      conn->connection_timeout, _connection_timeout, conn) < 0) {
 			PERROR("Failed inserting connection timeout event");
 			rad_assert(0);
 		}
@@ -654,13 +756,31 @@ static void connection_state_connecting_enter(fr_connection_t *conn, fr_time_t n
  * file descriptor.
  *
  * @param[in] conn	To initialise.
- * @param[in] now	The current time.
  */
-static void connection_state_init_enter(fr_connection_t *conn, fr_time_t now)
+static void connection_state_init_enter(fr_connection_t *conn)
 {
 	fr_connection_state_t	ret;
 
-	rad_assert((conn->state == FR_CONNECTION_STATE_HALTED) || (conn->state == FR_CONNECTION_STATE_FAILED));
+	switch (conn->state) {
+	case FR_CONNECTION_STATE_HALTED:
+	case FR_CONNECTION_STATE_CLOSED:
+	case FR_CONNECTION_STATE_FAILED:
+		break;
+
+	default:
+		rad_assert(0);
+		return;
+	}
+
+	/*
+	 *	Increment every time we enter
+	 *	We have to do this, as we don't know
+	 *	whether the connection was halted by
+	 *	the failed callback, and is now being
+	 *	reconnected, or was automatically
+	 *	reconnected.
+	 */
+	conn->reconnected++;
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
 
@@ -681,7 +801,7 @@ static void connection_state_init_enter(fr_connection_t *conn, fr_time_t now)
 	switch (ret) {
 	case FR_CONNECTION_STATE_CONNECTING:
 		conn->is_closed = false;	/* We now have a handle */
-		connection_state_connecting_enter(conn, now);
+		connection_state_connecting_enter(conn);
 		return;
 
 	/*
@@ -690,7 +810,7 @@ static void connection_state_init_enter(fr_connection_t *conn, fr_time_t now)
 	case FR_CONNECTION_STATE_FAILED:
 	default:
 		PERROR("Connection initialisation failed");
-		connection_state_failed_enter(conn, now);
+		connection_state_failed_enter(conn);
 		break;
 	}
 }
@@ -702,7 +822,7 @@ void fr_connection_signal_init(fr_connection_t *conn)
 {
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_HALTED:
-		connection_state_init_enter(conn, fr_time());
+		connection_state_init_enter(conn);
 		return;
 
 	default:
@@ -727,7 +847,7 @@ void fr_connection_signal_connected(fr_connection_t *conn)
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_CONNECTING:
 		DEBUG2("Connection established");
-		connection_state_connected_enter(conn, fr_time());
+		connection_state_connected_enter(conn);
 		return;
 
 	default:
@@ -758,7 +878,8 @@ void fr_connection_signal_reconnect(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_CONNECTED:
 	case FR_CONNECTION_STATE_TIMEOUT:
-		connection_state_failed_enter(conn, fr_time());
+	case FR_CONNECTION_STATE_CLOSED:
+		connection_state_failed_enter(conn);
 		return;
 
 	case FR_CONNECTION_STATE_MAX:
@@ -780,7 +901,7 @@ static void _connection_error(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 
 	ERROR("Connection failed for fd (%u): %s", fd, fr_syserror(fd_errno));
-	connection_state_failed_enter(conn, fr_time());
+	connection_state_failed_enter(conn);
 }
 
 /** Receive a write notification after a socket is connected
@@ -795,7 +916,7 @@ static void _connection_writable(fr_event_list_t *el, int fd, UNUSED int flags, 
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
 
 	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
-	connection_state_connected_enter(conn, fr_time());
+	connection_state_connected_enter(conn);
 }
 
 /** Remove the FD we were watching for connection open/fail from the event loop
@@ -803,19 +924,19 @@ static void _connection_writable(fr_event_list_t *el, int fd, UNUSED int flags, 
  */
 static void _connection_signal_on_fd_cleanup(fr_connection_t *conn, fr_connection_state_t state, void *uctx)
 {
-	int fd = *((int *)uctx);
+	int fd = *(talloc_get_type_abort(uctx, int));
 
 	/*
 	 *	Two states can trigger a cleanup
 	 *	Remove the watch on the one that didn't
 	 */
 	switch (state) {
-	case FR_CONNECTION_STATE_FAILED:
+	case FR_CONNECTION_STATE_CLOSED:
 		fr_connection_del_watch_pre(conn, FR_CONNECTION_STATE_CONNECTED, _connection_signal_on_fd_cleanup);
 		break;
 
 	case FR_CONNECTION_STATE_CONNECTED:
-		fr_connection_del_watch_pre(conn, FR_CONNECTION_STATE_FAILED, _connection_signal_on_fd_cleanup);
+		fr_connection_del_watch_pre(conn, FR_CONNECTION_STATE_CLOSED, _connection_signal_on_fd_cleanup);
 		break;
 
 	default:
@@ -838,7 +959,6 @@ static void _connection_signal_on_fd_cleanup(fr_connection_t *conn, fr_connectio
  */
 int fr_connection_signal_on_fd(fr_connection_t *conn, int fd)
 {
-	fr_time_t	now = fr_time();
 	int		*fd_s;
 
 	/*
@@ -852,7 +972,7 @@ int fr_connection_signal_on_fd(fr_connection_t *conn, int fd)
 			       conn) < 0) {
 		PERROR("Failed inserting fd (%u) into event loop %p",
 		       fd, conn->el);
-		connection_state_failed_enter(conn, now);
+		connection_state_failed_enter(conn);
 		return -1;
 	}
 
@@ -869,10 +989,9 @@ int fr_connection_signal_on_fd(fr_connection_t *conn, int fd)
 	 *	the I/O handlers if the connection
 	 *      fails, or is connected.
 	 */
-	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_FAILED,
+	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_CLOSED,
 				    _connection_signal_on_fd_cleanup, true, fd_s);
 	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_CONNECTED,
 				    _connection_signal_on_fd_cleanup, true, fd_s);
-
 	return 0;
 }
