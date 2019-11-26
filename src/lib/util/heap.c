@@ -284,6 +284,46 @@ uint32_t fr_heap_num_elements(fr_heap_t *hp)
 	return (uint32_t)hp->num_elements;
 }
 
+/** Iterate over entries in heap
+ *
+ * @note If the heap is modified the iterator should be considered invalidated.
+ *
+ * @param[in] hp	to iterate over.
+ * @param[in] iter	Pointer to an iterator struct, used to maintain
+ *			state between calls.
+ * @return
+ *	- User data.
+ *	- NULL if at the end of the list.
+ */
+void *fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter)
+{
+	*iter = 0;
+
+	if (unlikely(!hp) || (hp->num_elements == 0)) return NULL;
+
+	return hp->p[0];
+}
+
+/** Get the next entry in a heap
+ *
+ * @note If the heap is modified the iterator should be considered invalidated.
+ *
+ * @param[in] hp	to iterate over.
+ * @param[in] iter	Pointer to an iterator struct, used to maintain
+ *			state between calls.
+ * @return
+ *	- User data.
+ *	- NULL if at the end of the list.
+ */
+void *fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter)
+{
+	if (unlikely(!hp)) return NULL;
+
+	if ((*iter + 1) >= hp->num_elements) return NULL;
+	*iter += 1;
+
+	return hp->p[*iter];
+}
 
 #ifdef TESTING
 static bool fr_heap_check(fr_heap_t *hp, void *data)
