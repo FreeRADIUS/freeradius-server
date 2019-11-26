@@ -1,0 +1,797 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+#  Test vectors for RADIUS protocol
+#
+#  Based on:
+#  - https://wiki.wireshark.org/SampleCaptures
+#  - https://wiki.wireshark.org/SampleCaptures?action=AttachFile&do=get&target=radius_localhost.pcapng
+#
+proto radius
+proto-dictionary radius
+
+#
+#  1.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 103
+#   len       = 87
+#   authenticator= 40b664dbf5d681b2adbd1769515118c8
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = '\xdb\xc6\xc4\xb7X\xbe\x14\xf0\x05\xb3\x87|\x9e/\xb6\x01'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 5f0f8647e8c89bd881364268fcd04532
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 12
+#    |  \value     \
+#    |   |[ EAP ]
+#    |   |  code      = Response
+#    |   |  id        = 102
+#    |   |  len       = 10
+#    |   |  type      = Identity
+#    |   |  identity  = 'steve'
+#
+decode-proto 01 67 00 57 40 b6 64 db f5 d6 81 b2 ad bd 17 69 51 51 18 c8 01 07 73 74 65 76 65 02 12 db c6 c4 b7 58 be 14 f0 05 b3 87 7c 9e 2f b6 01 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 5f 0f 86 47 e8 c8 9b d8 81 36 42 68 fc d0 45 32 4f 0c 02 66 00 0a 01 73 74 65 76 65
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x40b664dbf5d681b2adbd1769515118c8, User-Name = "steve", User-Password = "M(\315},Cn\352\025\365\200X\236;4\212", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0x5f0f8647e8c89bd881364268fcd04532, EAP-Message = 0x0266000a017374657665
+
+#
+#  2.
+#
+# [ RADIUS ]
+#   code      = Access-Challenge
+#   id        = 103
+#   len       = 131
+#   authenticator= 83ece707a2f31bb65badfb22a64023d9
+#   \attributes\
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Framed-Protocol ]
+#    |  type      = Framed-Protocol
+#    |  len       = 6
+#    |  value     = PPP
+#    |[ Framed-IP-Address ]
+#    |  type      = Framed-IP-Address
+#    |  len       = 6
+#    |  value     = 172.16.3.33
+#    |[ Framed-IP-Netmask ]
+#    |  type      = Framed-IP-Netmask
+#    |  len       = 6
+#    |  value     = 255.255.255.0
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Routing
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x03'
+#    |[ Radius Attribute ]
+#    |  type      = Filter-Id
+#    |  len       = 9
+#    |  value     = 'std.ppp'
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 1500
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Compression
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x01'
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 24
+#    |  \value     \
+#    |   |[ EAP-MD5 ]
+#    |   |  code      = Request
+#    |   |  id        = 103
+#    |   |  len       = 22
+#    |   |  type      = MD5-Challenge
+#    |   |  value_size= 16
+#    |   |  value     = ff0bf1d6e401a9cbe5b46eb943e5549a
+#    |   |  optional_name= b''
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 6e794a020c45c66f4247ba8c5ff04ed1
+#    |[ State ]
+#    |  type      = State
+#    |  len       = 18
+#    |  value     = 736f868573088277414ae3f31eac34e9
+#
+decode-proto 0b 67 00 83 83 ec e7 07 a2 f3 1b b6 5b ad fb 22 a6 40 23 d9 06 06 00 00 00 02 07 06 00 00 00 01 08 06 ac 10 03 21 09 06 ff ff ff 00 0a 06 00 00 00 03 0b 09 73 74 64 2e 70 70 70 0c 06 00 00 05 dc 0d 06 00 00 00 01 4f 18 01 67 00 16 04 10 ff 0b f1 d6 e4 01 a9 cb e5 b4 6e b9 43 e5 54 9a 50 12 6e 79 4a 02 0c 45 c6 6f 42 47 ba 8c 5f f0 4e d1 18 12 73 6f 86 85 73 08 82 77 41 4a e3 f3 1e ac 34 e9
+match Packet-Type = Access-Challenge, Packet-Authentication-Vector = 0x83ece707a2f31bb65badfb22a64023d9, Service-Type = Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 172.16.3.33, Framed-IP-Netmask = 255.255.255.0, Framed-Routing = Broadcast-Listen, Filter-Id = "std.ppp", Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP, EAP-Message = 0x016700160410ff0bf1d6e401a9cbe5b46eb943e5549a, Message-Authenticator = 0x6e794a020c45c66f4247ba8c5ff04ed1, State = 0x736f868573088277414ae3f31eac34e9
+
+#
+#  3.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 104
+#   len       = 117
+#   authenticator= b3e22ff855a690280e6c3444c46e663b
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = "\xfb\x92\xfby\x8e\xd9\xd60'P\x18\xe4\\l\x8b\xa2"
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 8f34afd11960af922582abea64ffc2f3
+#    |[ State ]
+#    |  type      = State
+#    |  len       = 18
+#    |  value     = 736f868573088277414ae3f31eac34e9
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 24
+#    |  \value     \
+#    |   |[ EAP-MD5 ]
+#    |   |  code      = Response
+#    |   |  id        = 103
+#    |   |  len       = 22
+#    |   |  type      = MD5-Challenge
+#    |   |  value_size= 16
+#    |   |  value     = c76e1d28726fd1c0cb671a5424168d26
+#    |   |  optional_name= b''
+#
+decode-proto 01 68 00 75 b3 e2 2f f8 55 a6 90 28 0e 6c 34 44 c4 6e 66 3b 01 07 73 74 65 76 65 02 12 fb 92 fb 79 8e d9 d6 30 27 50 18 e4 5c 6c 8b a2 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 8f 34 af d1 19 60 af 92 25 82 ab ea 64 ff c2 f3 18 12 73 6f 86 85 73 08 82 77 41 4a e3 f3 1e ac 34 e9 4f 18 02 67 00 16 04 10 c7 6e 1d 28 72 6f d1 c0 cb 67 1a 54 24 16 8d 26
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0xb3e22ff855a690280e6c3444c46e663b, User-Name = "steve", User-Password = "m|\362\263\372$\254*7\026\037\300\\x\t)", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0x8f34afd11960af922582abea64ffc2f3, State = 0x736f868573088277414ae3f31eac34e9, EAP-Message = 0x026700160410c76e1d28726fd1c0cb671a5424168d26
+
+#
+#  4.
+#
+# [ RADIUS ]
+#   code      = Access-Reject
+#   id        = 104
+#   len       = 44
+#   authenticator= 71624da25c0b5897f70539e019a81eae
+#   \attributes\
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 6
+#    |  \value     \
+#    |   |[ EAP ]
+#    |   |  code      = Failure
+#    |   |  id        = 103
+#    |   |  len       = 4
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = ce70fe87a997b44de583cd19bea29321
+#
+decode-proto 03 68 00 2c 71 62 4d a2 5c 0b 58 97 f7 05 39 e0 19 a8 1e ae 4f 06 04 67 00 04 50 12 ce 70 fe 87 a9 97 b4 4d e5 83 cd 19 be a2 93 21
+match Packet-Type = Access-Reject, Packet-Authentication-Vector = 0x71624da25c0b5897f70539e019a81eae, EAP-Message = 0x04670004, Message-Authenticator = 0xce70fe87a997b44de583cd19bea29321
+
+#
+#  5.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 113
+#   len       = 87
+#   authenticator= a4e48005358cafa1bdd4fc63eb8bc476
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = '\x15\xb2\xec\x9a\x8d\xcf>\x08\x03s\x84\xaa\xc1a\xa8\xb5'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 4f0d82ff3605618aa3865f5a72901479
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 12
+#    |  \value     \
+#    |   |[ EAP ]
+#    |   |  code      = Response
+#    |   |  id        = 112
+#    |   |  len       = 10
+#    |   |  type      = Identity
+#    |   |  identity  = 'steve'
+#
+decode-proto 01 71 00 57 a4 e4 80 05 35 8c af a1 bd d4 fc 63 eb 8b c4 76 01 07 73 74 65 76 65 02 12 15 b2 ec 9a 8d cf 3e 08 03 73 84 aa c1 61 a8 b5 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 4f 0d 82 ff 36 05 61 8a a3 86 5f 5a 72 90 14 79 4f 0c 02 70 00 0a 01 73 74 65 76 65
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0xa4e48005358cafa1bdd4fc63eb8bc476, User-Name = "steve", User-Password = "\203\\\345P\3712D\022\0235\203\216\301u*>", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0x4f0d82ff3605618aa3865f5a72901479, EAP-Message = 0x0270000a017374657665
+
+#
+#  6.
+#
+# [ RADIUS ]
+#   code      = Access-Challenge
+#   id        = 113
+#   len       = 131
+#   authenticator= 33fd82fc521b41a414e3f8e418275d45
+#   \attributes\
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Framed-Protocol ]
+#    |  type      = Framed-Protocol
+#    |  len       = 6
+#    |  value     = PPP
+#    |[ Framed-IP-Address ]
+#    |  type      = Framed-IP-Address
+#    |  len       = 6
+#    |  value     = 172.16.3.33
+#    |[ Framed-IP-Netmask ]
+#    |  type      = Framed-IP-Netmask
+#    |  len       = 6
+#    |  value     = 255.255.255.0
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Routing
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x03'
+#    |[ Radius Attribute ]
+#    |  type      = Filter-Id
+#    |  len       = 9
+#    |  value     = 'std.ppp'
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 1500
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Compression
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x01'
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 24
+#    |  \value     \
+#    |   |[ EAP-MD5 ]
+#    |   |  code      = Request
+#    |   |  id        = 113
+#    |   |  len       = 22
+#    |   |  type      = MD5-Challenge
+#    |   |  value_size= 16
+#    |   |  value     = ba0bf4a7e7177359caa52e7eb10d9d0b
+#    |   |  optional_name= b''
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 59fdf234544b48d7c932e7bd721aa8d4
+#    |[ State ]
+#    |  type      = State
+#    |  len       = 18
+#    |  value     = dbe0f49fdb91f0d023718fe66f2de007
+#
+decode-proto 0b 71 00 83 33 fd 82 fc 52 1b 41 a4 14 e3 f8 e4 18 27 5d 45 06 06 00 00 00 02 07 06 00 00 00 01 08 06 ac 10 03 21 09 06 ff ff ff 00 0a 06 00 00 00 03 0b 09 73 74 64 2e 70 70 70 0c 06 00 00 05 dc 0d 06 00 00 00 01 4f 18 01 71 00 16 04 10 ba 0b f4 a7 e7 17 73 59 ca a5 2e 7e b1 0d 9d 0b 50 12 59 fd f2 34 54 4b 48 d7 c9 32 e7 bd 72 1a a8 d4 18 12 db e0 f4 9f db 91 f0 d0 23 71 8f e6 6f 2d e0 07
+match Packet-Type = Access-Challenge, Packet-Authentication-Vector = 0x33fd82fc521b41a414e3f8e418275d45, Service-Type = Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 172.16.3.33, Framed-IP-Netmask = 255.255.255.0, Framed-Routing = Broadcast-Listen, Filter-Id = "std.ppp", Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP, EAP-Message = 0x017100160410ba0bf4a7e7177359caa52e7eb10d9d0b, Message-Authenticator = 0x59fdf234544b48d7c932e7bd721aa8d4, State = 0xdbe0f49fdb91f0d023718fe66f2de007
+
+#
+#  7.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 114
+#   len       = 117
+#   authenticator= 8ab086d60ae57ca04652a68710e630de
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = '\xc0\x8d\xaf~\xa4\x99\xd4\x8b\xe3%\x12\xa0\xae[\xc7'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = c50b17d546cdf7c0a0bfffbdd35a7280
+#    |[ State ]
+#    |  type      = State
+#    |  len       = 18
+#    |  value     = dbe0f49fdb91f0d023718fe66f2de007
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 24
+#    |  \value     \
+#    |   |[ EAP-MD5 ]
+#    |   |  code      = Response
+#    |   |  id        = 113
+#    |   |  len       = 22
+#    |   |  type      = MD5-Challenge
+#    |   |  value_size= 16
+#    |   |  value     = 36d93b94f142714e95061613640ed36d
+#    |   |  optional_name= b''
+#
+decode-proto 01 72 00 75 8a b0 86 d6 0a e5 7c a0 46 52 a6 87 10 e6 30 de 01 07 73 74 65 76 65 02 12 c0 23 8d af 7e a4 99 d4 8b e3 25 12 a0 ae 5b c7 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 c5 0b 17 d5 46 cd f7 c0 a0 bf ff bd d3 5a 72 80 18 12 db e0 f4 9f db 91 f0 d0 23 71 8f e6 6f 2d e0 07 4f 18 02 71 00 16 04 10 36 d9 3b 94 f1 42 71 4e 95 06 16 13 64 0e d3 6d
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x8ab086d60ae57ca04652a68710e630de, User-Name = "steve", User-Password = "V̈́e\nY\343Λ\245\"6\240\272\331L", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc50b17d546cdf7c0a0bfffbdd35a7280, State = 0xdbe0f49fdb91f0d023718fe66f2de007, EAP-Message = 0x02710016041036d93b94f142714e95061613640ed36d
+
+#
+#  8.
+#
+# [ RADIUS ]
+#   code      = Access-Accept
+#   id        = 114
+#   len       = 102
+#   authenticator= e6c459f60763148765355164ac599414
+#   \attributes\
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Framed-Protocol ]
+#    |  type      = Framed-Protocol
+#    |  len       = 6
+#    |  value     = PPP
+#    |[ Framed-IP-Address ]
+#    |  type      = Framed-IP-Address
+#    |  len       = 6
+#    |  value     = 172.16.3.33
+#    |[ Framed-IP-Netmask ]
+#    |  type      = Framed-IP-Netmask
+#    |  len       = 6
+#    |  value     = 255.255.255.0
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Routing
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x03'
+#    |[ Radius Attribute ]
+#    |  type      = Filter-Id
+#    |  len       = 9
+#    |  value     = 'std.ppp'
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 1500
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Compression
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x01'
+#    |[ EAP-Message ]
+#    |  type      = EAP-Message
+#    |  len       = 6
+#    |  \value     \
+#    |   |[ EAP ]
+#    |   |  code      = Success
+#    |   |  id        = 113
+#    |   |  len       = 4
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 69ff0aab721668cd28256de57573b9bd
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#
+decode-proto 02 72 00 66 e6 c4 59 f6 07 63 14 87 65 35 51 64 ac 59 94 14 06 06 00 00 00 02 07 06 00 00 00 01 08 06 ac 10 03 21 09 06 ff ff ff 00 0a 06 00 00 00 03 0b 09 73 74 64 2e 70 70 70 0c 06 00 00 05 dc 0d 06 00 00 00 01 4f 06 03 71 00 04 50 12 69 ff 0a ab 72 16 68 cd 28 25 6d e5 75 73 b9 bd 01 07 73 74 65 76 65
+match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0xe6c459f60763148765355164ac599414, Service-Type = Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 172.16.3.33, Framed-IP-Netmask = 255.255.255.0, Framed-Routing = Broadcast-Listen, Filter-Id = "std.ppp", Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP, EAP-Message = 0x03710004, Message-Authenticator = 0x69ff0aab721668cd28256de57573b9bd, User-Name = "steve"
+
+#
+#  9.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 97
+#   len       = 75
+#   authenticator= 27896aa2d9719bb136ca6d51d925ea83
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = '\xe4\x7f\xed\xf8\xe6m+b\x11@p\x90\xb9)\xf0\x03'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 5e3adc9efc352420e8ca852cdfd202dd
+#
+decode-proto 01 61 00 4b 27 89 6a a2 d9 71 9b b1 36 ca 6d 51 d9 25 ea 83 01 07 73 74 65 76 65 02 12 e4 7f ed f8 e6 6d 2b 62 11 40 70 90 b9 29 f0 03 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 5e 3a dc 9e fc 35 24 20 e8 ca 85 2c df d2 02 dd
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x27896aa2d9719bb136ca6d51d925ea83, User-Name = "steve", User-Password = "r\221\3442\222\220Qx\001\006w\264\271=r\210", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0x5e3adc9efc352420e8ca852cdfd202dd
+
+#
+#  10.
+#
+# [ RADIUS ]
+#   code      = Access-Accept
+#   id        = 97
+#   len       = 71
+#   authenticator= 8f2f54cfbb2b5e386e6d252cabd46891
+#   \attributes\
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Framed-Protocol ]
+#    |  type      = Framed-Protocol
+#    |  len       = 6
+#    |  value     = PPP
+#    |[ Framed-IP-Address ]
+#    |  type      = Framed-IP-Address
+#    |  len       = 6
+#    |  value     = 172.16.3.33
+#    |[ Framed-IP-Netmask ]
+#    |  type      = Framed-IP-Netmask
+#    |  len       = 6
+#    |  value     = 255.255.255.0
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Routing
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x03'
+#    |[ Radius Attribute ]
+#    |  type      = Filter-Id
+#    |  len       = 9
+#    |  value     = 'std.ppp'
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 1500
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Compression
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x01'
+#
+decode-proto 02 61 00 47 8f 2f 54 cf bb 2b 5e 38 6e 6d 25 2c ab d4 68 91 06 06 00 00 00 02 07 06 00 00 00 01 08 06 ac 10 03 21 09 06 ff ff ff 00 0a 06 00 00 00 03 0b 09 73 74 64 2e 70 70 70 0c 06 00 00 05 dc 0d 06 00 00 00 01
+match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0x8f2f54cfbb2b5e386e6d252cabd46891, Service-Type = Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 172.16.3.33, Framed-IP-Netmask = 255.255.255.0, Framed-Routing = Broadcast-Listen, Filter-Id = "std.ppp", Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP
+
+#
+#  11.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 168
+#   len       = 76
+#   authenticator= 95bbe85b56ad0aa36dd80f9b7c59067d
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = CHAP-Password
+#    |  len       = 19
+#    |  value     = '\xa8\x05t\xae,A:9?\x07\xb5VI\x84\xbd\xa7@'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = 9da0af08542770931216d4a4cf110bf3
+#
+decode-proto 01 a8 00 4c 95 bb e8 5b 56 ad 0a a3 6d d8 0f 9b 7c 59 06 7d 01 07 73 74 65 76 65 03 13 a8 05 74 ae 2c 41 3a 39 3f 07 b5 56 49 84 bd a7 40 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 9d a0 af 08 54 27 70 93 12 16 d4 a4 cf 11 0b f3
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x95bbe85b56ad0aa36dd80f9b7c59067d, User-Name = "steve", CHAP-Password = 0xa80574ae2c413a393f07b5564984bda740, NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0x9da0af08542770931216d4a4cf110bf3
+
+#
+#  12.
+#
+# [ RADIUS ]
+#   code      = Access-Accept
+#   id        = 168
+#   len       = 71
+#   authenticator= 76d70f96ce405e457bdb0861cc33eacc
+#   \attributes\
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Framed-Protocol ]
+#    |  type      = Framed-Protocol
+#    |  len       = 6
+#    |  value     = PPP
+#    |[ Framed-IP-Address ]
+#    |  type      = Framed-IP-Address
+#    |  len       = 6
+#    |  value     = 172.16.3.33
+#    |[ Framed-IP-Netmask ]
+#    |  type      = Framed-IP-Netmask
+#    |  len       = 6
+#    |  value     = 255.255.255.0
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Routing
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x03'
+#    |[ Radius Attribute ]
+#    |  type      = Filter-Id
+#    |  len       = 9
+#    |  value     = 'std.ppp'
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 1500
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Compression
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x01'
+#
+decode-proto 02 a8 00 47 76 d7 0f 96 ce 40 5e 45 7b db 08 61 cc 33 ea cc 06 06 00 00 00 02 07 06 00 00 00 01 08 06 ac 10 03 21 09 06 ff ff ff 00 0a 06 00 00 00 03 0b 09 73 74 64 2e 70 70 70 0c 06 00 00 05 dc 0d 06 00 00 00 01
+match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0x76d70f96ce405e457bdb0861cc33eacc, Service-Type = Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 172.16.3.33, Framed-IP-Netmask = 255.255.255.0, Framed-Routing = Broadcast-Listen, Filter-Id = "std.ppp", Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP
+
+#
+#  13.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 43
+#   len       = 75
+#   authenticator= 6f75df8862888f90d4f6ff19ae4f38fb
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = '\x1alE\x1b\xc3\xa8E~JP9\xe3lHC\xb6'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = aa5dcc5ab695fb6baf1cec851f601e22
+#
+decode-proto 01 2b 00 4b 6f 75 df 88 62 88 8f 90 d4 f6 ff 19 ae 4f 38 fb 01 07 73 74 65 76 65 02 12 1a 6c 45 1b c3 a8 45 7e 4a 50 39 e3 6c 48 43 b6 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 aa 5d cc 5a b6 95 fb 6b af 1c ec 85 1f 60 1e 22
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x6f75df8862888f90d4f6ff19ae4f38fb, User-Name = "steve", User-Password = "\214\202LѷU?dZ\026>\307l\\\301=", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xaa5dcc5ab695fb6baf1cec851f601e22
+
+#
+#  14.
+#
+# [ RADIUS ]
+#   code      = Access-Reject
+#   id        = 43
+#   len       = 20
+#   authenticator= 42d5fe68699de5322f636f566bdd10f3
+#   \attributes\
+#
+decode-proto 03 2b 00 14 42 d5 fe 68 69 9d e5 32 2f 63 6f 56 6b dd 10 f3
+match Packet-Type = Access-Reject, Packet-Authentication-Vector = 0x42d5fe68699de5322f636f566bdd10f3
+
+#
+#  15.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 184
+#   len       = 75
+#   authenticator= 00efa0456c0755d2c0509338beff4840
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = 'F\xb9\x07a\xedd\xb6(5\xc1f\xd0p\xfbS\xeb'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = c8f4e9e54928fbaec3bb91f76a43684c
+#
+decode-proto 01 b8 00 4b 00 ef a0 45 6c 07 55 d2 c0 50 93 38 be ff 48 40 01 07 73 74 65 76 65 02 12 46 b9 07 61 ed 64 b6 28 35 c1 66 d0 70 fb 53 eb 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 c8 f4 e9 e5 49 28 fb ae c3 bb 91 f7 6a 43 68 4c
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0755d2c0509338beff4840, User-Name = "steve", User-Password = "\320W\016\253\231\231\3142%\207a\364p\357\321`", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc8f4e9e54928fbaec3bb91f76a43684c
+
+#
+#  16.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 184
+#   len       = 75
+#   authenticator= 00efa0456c0755d2c0509338beff4840
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = 'F\xb9\x07a\xedd\xb6(5\xc1f\xd0p\xfbS\xeb'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = c8f4e9e54928fbaec3bb91f76a43684c
+#
+decode-proto 01 b8 00 4b 00 ef a0 45 6c 07 55 d2 c0 50 93 38 be ff 48 40 01 07 73 74 65 76 65 02 12 46 b9 07 61 ed 64 b6 28 35 c1 66 d0 70 fb 53 eb 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 c8 f4 e9 e5 49 28 fb ae c3 bb 91 f7 6a 43 68 4c
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0755d2c0509338beff4840, User-Name = "steve", User-Password = "\320W\016\253\231\231\3142%\207a\364p\357\321`", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc8f4e9e54928fbaec3bb91f76a43684c
+
+#
+#  17.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 184
+#   len       = 75
+#   authenticator= 00efa0456c0755d2c0509338beff4840
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = 'F\xb9\x07a\xedd\xb6(5\xc1f\xd0p\xfbS\xeb'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = c8f4e9e54928fbaec3bb91f76a43684c
+#
+decode-proto 01 b8 00 4b 00 ef a0 45 6c 07 55 d2 c0 50 93 38 be ff 48 40 01 07 73 74 65 76 65 02 12 46 b9 07 61 ed 64 b6 28 35 c1 66 d0 70 fb 53 eb 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 c8 f4 e9 e5 49 28 fb ae c3 bb 91 f7 6a 43 68 4c
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0755d2c0509338beff4840, User-Name = "steve", User-Password = "\320W\016\253\231\231\3142%\207a\364p\357\321`", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc8f4e9e54928fbaec3bb91f76a43684c
+
+#
+#  18.
+#
+# [ RADIUS ]
+#   code      = Access-Request
+#   id        = 148
+#   len       = 75
+#   authenticator= 49b92b106a475b3d86687e511514e5ac
+#   \attributes\
+#    |[ Radius Attribute ]
+#    |  type      = User-Name
+#    |  len       = 7
+#    |  value     = 'steve'
+#    |[ Radius Attribute ]
+#    |  type      = User-Password
+#    |  len       = 18
+#    |  value     = '\x00-(7Sm\x16)\x1d\xe2\x18\xb4l\xa0\xbd\x92'
+#    |[ NAS-IP-Address ]
+#    |  type      = NAS-IP-Address
+#    |  len       = 6
+#    |  value     = 192.168.0.28
+#    |[ NAS-Port ]
+#    |  type      = NAS-Port
+#    |  len       = 6
+#    |  value     = 123
+#    |[ Message-Authenticator ]
+#    |  type      = Message-Authenticator
+#    |  len       = 18
+#    |  value     = da2e52a7d91ff9f1355c01206033d610
+#
+decode-proto 01 94 00 4b 49 b9 2b 10 6a 47 5b 3d 86 68 7e 51 15 14 e5 ac 01 07 73 74 65 76 65 02 12 00 2d 28 37 53 6d 16 29 1d e2 18 b4 6c a0 bd 92 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 da 2e 52 a7 d9 1f f9 f1 35 5c 01 20 60 33 d6 10
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x49b92b106a475b3d86687e511514e5ac, User-Name = "steve", User-Password = "\226\303!\375'\220l3\r\244\037\220l\264?\031", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xda2e52a7d91ff9f1355c01206033d610
+
+#
+#  19.
+#
+# [ RADIUS ]
+#   code      = Access-Accept
+#   id        = 148
+#   len       = 71
+#   authenticator= f8ee562ed9f55c3a6681982499070d57
+#   \attributes\
+#    |[ Service-Type ]
+#    |  type      = Service-Type
+#    |  len       = 6
+#    |  value     = Framed
+#    |[ Framed-Protocol ]
+#    |  type      = Framed-Protocol
+#    |  len       = 6
+#    |  value     = PPP
+#    |[ Framed-IP-Address ]
+#    |  type      = Framed-IP-Address
+#    |  len       = 6
+#    |  value     = 172.16.3.33
+#    |[ Framed-IP-Netmask ]
+#    |  type      = Framed-IP-Netmask
+#    |  len       = 6
+#    |  value     = 255.255.255.0
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Routing
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x03'
+#    |[ Radius Attribute ]
+#    |  type      = Filter-Id
+#    |  len       = 9
+#    |  value     = 'std.ppp'
+#    |[ Framed-MTU ]
+#    |  type      = Framed-MTU
+#    |  len       = 6
+#    |  value     = 1500
+#    |[ Radius Attribute ]
+#    |  type      = Framed-Compression
+#    |  len       = 6
+#    |  value     = '\x00\x00\x00\x01'
+#
+decode-proto 02 94 00 47 f8 ee 56 2e d9 f5 5c 3a 66 81 98 24 99 07 0d 57 06 06 00 00 00 02 07 06 00 00 00 01 08 06 ac 10 03 21 09 06 ff ff ff 00 0a 06 00 00 00 03 0b 09 73 74 64 2e 70 70 70 0c 06 00 00 05 dc 0d 06 00 00 00 01
+match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0xf8ee562ed9f55c3a6681982499070d57, Service-Type = Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 172.16.3.33, Framed-IP-Netmask = 255.255.255.0, Framed-Routing = Broadcast-Listen, Filter-Id = "std.ppp", Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP
+
+count
+match 40
+
