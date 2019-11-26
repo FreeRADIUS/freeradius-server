@@ -79,7 +79,7 @@ static size_t kevent_filter_table_len = NUM_ELEMENTS(kevent_filter_table);
 struct fr_event_timer {
 	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	fr_time_t		when;			//!< When this timer should fire.
-	fr_event_cb_t		callback;		//!< Callback to execute when the timer fires.
+	fr_event_timer_cb_t		callback;		//!< Callback to execute when the timer fires.
 	void const		*uctx;			//!< Context pointer to pass to the callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
@@ -274,7 +274,7 @@ typedef struct {
  */
 typedef struct {
 	fr_dlist_t		entry;			//!< Linked list of callback.
-	fr_event_cb_t		callback;		//!< The callback to call.
+	fr_event_timer_cb_t		callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
 } fr_event_post_t;
 
@@ -1021,7 +1021,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
  *	- -1 on failure.
  */
 int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-		      fr_time_t when, fr_event_cb_t callback, void const *uctx)
+		      fr_time_t when, fr_event_timer_cb_t callback, void const *uctx)
 {
 	fr_event_timer_t *ev;
 
@@ -1124,7 +1124,7 @@ int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
  *	- -1 on failure.
  */
 int fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-		      fr_time_delta_t delta, fr_event_cb_t callback, void const *uctx)
+		      fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx)
 {
 	fr_time_t now;
 
@@ -1316,7 +1316,7 @@ int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx)
+int fr_event_post_insert(fr_event_list_t *el, fr_event_timer_cb_t callback, void *uctx)
 {
 	fr_event_post_t *post;
 
@@ -1338,7 +1338,7 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_post_delete(fr_event_list_t *el, fr_event_cb_t callback, void *uctx)
+int fr_event_post_delete(fr_event_list_t *el, fr_event_timer_cb_t callback, void *uctx)
 {
 	fr_event_post_t *post, *next;
 
@@ -1368,7 +1368,7 @@ int fr_event_post_delete(fr_event_list_t *el, fr_event_cb_t callback, void *uctx
  */
 int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
 {
-	fr_event_cb_t	callback;
+	fr_event_timer_cb_t	callback;
 	void			*uctx;
 	fr_event_timer_t	*ev;
 

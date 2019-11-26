@@ -825,7 +825,7 @@ static void conn_finished_request(fr_io_connection_t *c, fr_io_request_t *u)
 // ATD END
 
 
-static int conn_timeout_init(fr_event_list_t *el, fr_io_request_t *u, fr_event_cb_t callback)
+static int conn_timeout_init(fr_event_list_t *el, fr_io_request_t *u, fr_event_timer_cb_t callback)
 {
 	u->timer.start = u->time_sent = fr_time();
 
