@@ -13,6 +13,8 @@
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/map.h>
 
+#define LDAP_DEPRECATED 0	/* Quiet warnings about LDAP_DEPRECATED not being defined */
+
 #include <lber.h>
 #include <ldap.h>
 #include "config.h"
