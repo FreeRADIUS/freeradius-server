@@ -1,0 +1,6 @@
+- Implement config parser
+- Write test cases for enquing and dequing requests.
+- Write test cases for connection management/spawning.
+- Remove relative hack from event loop, and overload fr_time when building a the test utility.
+- Add timers for requests (and additional cancellation reason)
+- Add timers for cancellation acks.
