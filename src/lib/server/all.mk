@@ -35,6 +35,7 @@ SOURCES	:= \
 	stats.c \
 	tmpl.c \
 	trigger.c \
+	trunk.c \
 	users_file.c \
 	util.c \
 	virtual_servers.c \
