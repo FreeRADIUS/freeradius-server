@@ -28,10 +28,12 @@ endif
 #
 ifneq "$(MAKECMDGOALS)" "deb"
 ifneq "$(MAKECMDGOALS)" "rpm"
+ifneq "$(MAKECMDGOALS)" "deb-build-deps"
 ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
+endif
 endif
 endif
 endif
@@ -310,6 +312,16 @@ dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$
 #
 #	Build a debian package
 #
+debian/control: debian/rules
+	debian/rules $?
+
+freeradius-build-deps_$(RADIUSD_VERSION_STRING)_all.deb: debian/control
+	mk-build-deps $?
+
+.PHONY: deb-build-deps
+deb-build-deps: freeradius-build-deps_$(RADIUSD_VERSION_STRING)_all.deb
+	apt-get install -y ./$?
+
 .PHONY: deb
 deb:
 	@if ! which fakeroot; then \
