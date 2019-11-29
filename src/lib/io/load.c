@@ -122,6 +122,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	everything together, not before.
 	 */
 	l->stats.ema = (((backlog - l->stats.ema) * 2) + ((l->pps + 1) * l->stats.ema)) / (l->pps + 1);
+	l->stats.last_send = now;
 
 	/*
 	 *	We don't have "pps" packets in the backlog, go send
@@ -173,7 +174,6 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 */
 		if (l->config->max_pps && (l->pps > l->config->max_pps)) {
 			l->state = FR_LOAD_STATE_DRAINING;
-			l->stats.last_send = now;
 		}
 	}
 
