@@ -1,7 +1,7 @@
 TARGET	:= libfreeradius-io.a
 
 SOURCES	:=	ring_buffer.c message.c atomic_queue.c queue.c channel.c worker.c \
-		schedule.c network.c control.c master.c app_io.c
+		schedule.c network.c control.c master.c app_io.c load.c
 
 TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-util.la
 TGT_LDLIBS	:= $(LIBS)
