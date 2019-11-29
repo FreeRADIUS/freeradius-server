@@ -113,6 +113,6 @@ int fr_load_generator_stop(fr_load_t *l) CC_HINT(nonnull);
 
 fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_time) CC_HINT(nonnull);
 
-int fr_log_generator_stats_print(fr_load_t const *l, FILE *fp) CC_HINT(nonnull);
+int fr_load_generator_stats_print(fr_load_t const *l, FILE *fp) CC_HINT(nonnull);
 
-fr_load_stats_t const * fr_log_generator_stats(fr_load_t const *l) CC_HINT(nonnull);
+fr_load_stats_t const * fr_load_generator_stats(fr_load_t const *l) CC_HINT(nonnull);

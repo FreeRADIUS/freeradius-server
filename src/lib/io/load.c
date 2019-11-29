@@ -295,7 +295,7 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 /** Print load generator statistics in CVS format.
  *
  */
-int fr_log_generator_stats_print(fr_load_t const *l, FILE *fp)
+int fr_load_generator_stats_print(fr_load_t const *l, FILE *fp)
 {
 	int i;
 
@@ -320,7 +320,7 @@ int fr_log_generator_stats_print(fr_load_t const *l, FILE *fp)
 	return 0;
 }
 
-fr_load_stats_t const * fr_log_generator_stats(fr_load_t const *l)
+fr_load_stats_t const * fr_load_generator_stats(fr_load_t const *l)
 {
 	return &l->stats;
 }
