@@ -1694,8 +1694,9 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
 	fr_io_thread_t *thread;
+	fr_listen_t *child;
 
-	get_inst(li, &inst, &thread, &connection, NULL);
+	get_inst(li, &inst, &thread, &connection, &child);
 
 	/*
 	 *	We're not doing IO, so there are no timers for
@@ -1721,6 +1722,11 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	} else {
 		connection->el = el;
 		connection->nr = nr;
+	}
+
+
+	if (inst->app_io->event_list_set) {
+		inst->app_io->event_list_set(child, el, nr);
 	}
 }
 
