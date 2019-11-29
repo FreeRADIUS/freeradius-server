@@ -737,9 +737,15 @@ static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t stat
 		break;
 
 	case CONN_OPENING:
+		fr_dlist_remove(&c->thread->opening, c);
+		break;
+
 	case CONN_FULL:
+		fr_dlist_remove(&c->thread->full, c);
+		break;
+
 	case CONN_BLOCKED:
-		fr_dlist_remove(&c->thread->blocked, c); /* we only need 'offset' from the list */
+		fr_dlist_remove(&c->thread->blocked, c);
 		break;
 
 	case CONN_ACTIVE:
