@@ -159,6 +159,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		next = now + l->delta;
 		delta = l->delta; /* shut up compiler */
 	}
+	l->last_send = now;
 
 	/*
 	 *	If we're done this step, go to the next one.
