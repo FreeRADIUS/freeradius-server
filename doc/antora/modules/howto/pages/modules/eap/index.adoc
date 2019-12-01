@@ -65,9 +65,9 @@ References:
 
 The Implementation of EAP over RADIUS is based on the following RFCs
 
-* `rfc2869` – RADIUS Extensions
-* `rfc2284` – PPP Extensible Authentication Protocol (EAP)
-* `rfc2716` – PPP EAP TLS Authentication Protocol
+* `rfc2869` - RADIUS Extensions
+* `rfc2284` - PPP Extensible Authentication Protocol (EAP)
+* `rfc2716` - PPP EAP TLS Authentication Protocol
 
 Following links help to understand HOW EAP works
 http://www.ieee802.org/1/mirror/8021/docs2000/ieee_plenary.PDF
@@ -171,23 +171,13 @@ NOTE: `EAP-SIM` will send WEP attributes to the resquestor.
 
 == EAP Clients
 
-[arabic]
-. XSupplicant - freeradius (EAP/TLS) notes may be found at:
+The main EAP client is https://w1.fi/wpa_supplicant/
 
-http://www.eax.com/802/ or http://www.missl.cs.umd.edu/wireless/eaptls/
+== Audit
 
-XSupplicant is hosted by:
+An Open Source audit tool is available at:
 
-http://www.open1x.org/
-
-[arabic, start=2]
-. XP - freeradius (EAP/TLS) notes may be found at:
-
-http://www.denobula.com/EAPTLS.pdf
-
-== Testing
-
-You will find several test cases in `src/tests/` for the `EAP-SIM` code.
+https://github.com/ANSSI-FR/audit-radius
 
 == FAQ & Examples
 
