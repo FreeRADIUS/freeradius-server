@@ -57,6 +57,7 @@ struct fr_load_s {
 
 	fr_load_stats_t		stats;			//!< sending statistics
 	fr_time_t		step_start;		//!< when the current step started
+	fr_time_t		step_end;		//!< when the current step will end
 
 	uint32_t		pps;
 	fr_time_delta_t		delta;			//!< between packets
@@ -164,8 +165,9 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	If we're done this step, go to the next one.
 	 */
-	if ((next - l->step_start) >= l->config->duration) {
+	if (next >= l->step_end) {
 		l->step_start = next;
+		l->step_end = next + l->config->duration * NSEC;
 		l->pps += l->config->step;
 		l->delta = (NSEC * l->config->parallel) / l->pps;
 
@@ -207,6 +209,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 int fr_load_generator_start(fr_load_t *l)
 {
 	l->step_start = fr_time();
+	l->step_end = l->step_start + l->config->duration * NSEC;
 	load_timer(l->el, l->step_start, l);
 	return 0;
 }
