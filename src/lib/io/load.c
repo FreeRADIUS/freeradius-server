@@ -64,7 +64,7 @@ struct fr_load_s {
 
 	uint32_t		count;
 
-	fr_time_t		last_send;		//!< last time we sent a packet
+	fr_time_t		next;			//!< The next time we're supposed to send a packet
 	fr_event_timer_t const	*ev;
 };
 
@@ -84,11 +84,6 @@ fr_load_t *fr_load_generator_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_loa
 	l->config = config;
 	l->callback = callback;
 	l->uctx = uctx;
-
-	l->stats.start = fr_time();
-	l->pps = l->config->start_pps;
-	l->delta = (NSEC * l->config->parallel) / l->pps;
-	l->count = l->config->parallel;
 
 	return l;
 }
@@ -140,13 +135,12 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		l->state = FR_LOAD_STATE_SENDING;
 		l->count = l->config->parallel;
 
-		next = l->last_send + l->delta;
+		next = l->next + l->delta;
 		if (next < now) {
 			delta = 0;
 		} else {
 			delta = next - now;
 		}
-
 	} else {
 		/*
 		 *	We have too many packets in the backlog, we're
@@ -160,15 +154,16 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		next = now + l->delta;
 		delta = l->delta; /* shut up compiler */
 	}
-	l->last_send = now;
+	l->next = next;
 
 	/*
 	 *	If we're done this step, go to the next one.
 	 */
 	if (next >= l->step_end) {
 		l->step_start = next;
-		l->step_end = next + l->config->duration * NSEC;
+		l->step_end = next + ((uint64_t) l->config->duration) * NSEC;
 		l->pps += l->config->step;
+		l->stats.pps = l->pps;
 		l->delta = (NSEC * l->config->parallel) / l->pps;
 
 		/*
@@ -209,7 +204,14 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 int fr_load_generator_start(fr_load_t *l)
 {
 	l->step_start = fr_time();
-	l->step_end = l->step_start + l->config->duration * NSEC;
+	l->step_end = l->step_start + ((uint64_t) l->config->duration) * NSEC;
+
+	l->pps = l->config->start_pps;
+	l->stats.pps = l->pps;
+	l->delta = (NSEC * l->config->parallel) / l->pps;
+	l->next = l->step_start + l->delta;
+	l->count = l->config->parallel;
+
 	load_timer(l->el, l->step_start, l);
 	return 0;
 }

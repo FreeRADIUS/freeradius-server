@@ -84,6 +84,7 @@ typedef struct {
 	fr_time_t	last_send;	//!< last packet we sent
 	fr_time_delta_t rtt;		//!< smoothed round trip time
 	fr_time_delta_t	rttvar;		//!< RTT variation
+	int		pps;		//!< current expected packets/s
 	int		sent;		//!< total packets sent
 	int		received;      	//!< total packets received (should be == sent)
 	int		ema;		//!< exponential moving average
