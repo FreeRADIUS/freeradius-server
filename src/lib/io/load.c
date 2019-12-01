@@ -203,7 +203,8 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
  */
 int fr_load_generator_start(fr_load_t *l)
 {
-	l->step_start = fr_time();
+	l->stats.start = fr_time();
+	l->step_start = l->stats.start;
 	l->step_end = l->step_start + ((uint64_t) l->config->duration) * NSEC;
 
 	l->pps = l->config->start_pps;
