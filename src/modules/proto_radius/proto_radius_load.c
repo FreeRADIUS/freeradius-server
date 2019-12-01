@@ -69,6 +69,9 @@ typedef struct {
 	fr_load_config_t		load;			//!< load configuration
 	fr_stats_t			stats;			//!< statistics for this socket
 
+	int				fd;			//!< for CSV files
+	fr_event_timer_t const		*ev;			//!< for writing statistics
+
 	int				sockets[2];
 	fr_listen_t			*parent;		//!< master IO handler
 } proto_radius_load_thread_t;
@@ -86,11 +89,14 @@ struct proto_radius_load_s {
 	RADCLIENT			*client;		//!< static client
 
 	fr_load_config_t		load;			//!< load configuration
+
+	char const     			*csv;			//!< where to write CSV stats
 };
 
 
 static const CONF_PARSER load_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, proto_radius_load_t, filename) },
+	{ FR_CONF_OFFSET("csv", FR_TYPE_STRING, proto_radius_load_t, csv) },
 
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_radius_load_t, max_packet_size), .dflt = "4096" } ,
 	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, proto_radius_load_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
@@ -266,6 +272,37 @@ static int mod_generate(fr_time_t now, void *uctx)
 }
 
 
+static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	proto_radius_load_thread_t	*thread = uctx;
+	size_t len;
+	fr_load_stats_t const *stats;
+	char buffer[1024];
+	double now_f, last_send_f;
+
+	(void) fr_event_timer_in(thread, el, &thread->ev, NSEC, write_stats, thread);
+
+	stats = fr_load_generator_stats(thread->l);
+
+	now_f = now - stats->start;
+	now_f /= NSEC;
+
+	last_send_f = stats->last_send - stats->start;
+	last_send_f /= NSEC;
+
+	len = snprintf(buffer, sizeof(buffer),
+		       "%f,%f,"
+		       "%" PRIu64 ",%" PRIu64 ",%d,%d,%d,%d,%d,"
+		       "%d,%d,%d,%d,%d,%d,%d,%d\n",
+		       now_f, last_send_f,
+		       stats->rtt, stats->rttvar, stats->pps,
+		       stats->sent, stats->received,stats->ema, stats->max_backlog,
+		       stats->times[0], stats->times[1], stats->times[2], stats->times[3],
+		       stats->times[4], stats->times[5], stats->times[6], stats->times[7]);
+	(void) write(thread->fd, buffer, len);
+}
+
+
 /** Set the event list for a new socket
  *
  * @param[in] li the listener
@@ -276,6 +313,8 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 {
 	proto_radius_load_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_load_t);
 	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
+	size_t len;
+	char buffer[256];
 
 	thread->el = el;
 	thread->nr = nr;
@@ -287,7 +326,17 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 
 	(void) fr_load_generator_start(thread->l);
 
-	// @todo - set up additional timer which fires once a second in order to print out the statistics
+	if (!inst->csv) return;
+
+	thread->fd = open(inst->csv, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
+	if (thread->fd < 0) {
+		ERROR("Failed opening %s - %s", inst->csv, fr_syserror(errno));
+	}
+
+	(void) fr_event_timer_in(thread, thread->el, &thread->ev, NSEC, write_stats, thread);
+
+	len = snprintf(buffer, sizeof(buffer), "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"sent\",\"received\",\"ema_backlog\",\"max_backlog\",\"usec\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"10s\"\n");
+	(void) write(thread->fd, buffer, len);
 }
 
 static char const *mod_name(fr_listen_t *li)
