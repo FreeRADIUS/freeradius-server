@@ -292,14 +292,19 @@ static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	len = snprintf(buffer, sizeof(buffer),
 		       "%f,%f,"
-		       "%" PRIu64 ",%" PRIu64 ",%d,%d,%d,%d,%d,"
+		       "%" PRIu64 ",%" PRIu64 ",%d,"
+		       "%d,%d,%d,"
+		       "%d,%d,"
 		       "%d,%d,%d,%d,%d,%d,%d,%d\n",
 		       now_f, last_send_f,
 		       stats->rtt, stats->rttvar, stats->pps,
-		       stats->sent, stats->received,stats->ema, stats->max_backlog,
+		       stats->sent, stats->received, stats->step_received,
+		       stats->ema, stats->max_backlog,
 		       stats->times[0], stats->times[1], stats->times[2], stats->times[3],
 		       stats->times[4], stats->times[5], stats->times[6], stats->times[7]);
-	(void) write(thread->fd, buffer, len);
+	if (write(thread->fd, buffer, len) < 0) {
+		DEBUG("Failed writing to %s - %s", thread->inst->csv, fr_syserror(errno));
+	}
 }
 
 
@@ -335,8 +340,10 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 
 	(void) fr_event_timer_in(thread, thread->el, &thread->ev, NSEC, write_stats, thread);
 
-	len = snprintf(buffer, sizeof(buffer), "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"sent\",\"received\",\"ema_backlog\",\"max_backlog\",\"usec\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"10s\"\n");
-	(void) write(thread->fd, buffer, len);
+	len = snprintf(buffer, sizeof(buffer), "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"sent\",\"received\",\"step_received\",\"ema_backlog\",\"max_backlog\",\"usec\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"10s\"\n");
+	if (write(thread->fd, buffer, len) < 0) {
+		DEBUG("Failed writing to %s - %s", thread->inst->csv, fr_syserror(errno));
+	}
 }
 
 static char const *mod_name(fr_listen_t *li)
