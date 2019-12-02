@@ -356,7 +356,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 	 */
 	if (tmpl_is_attr_undefined(vpt)) {
 		func = xlat_func_find(vpt->tmpl_unknown_name);
-		if (func) {
+		if (func && (func->type == XLAT_FUNC_SYNC)) {
 			node = xlat_exp_alloc(ctx, XLAT_VIRTUAL,
 					      vpt->tmpl_unknown_name, talloc_array_length(vpt->tmpl_unknown_name) - 1);
 			talloc_free(vpt);	/* Free the tmpl, we don't need it */
