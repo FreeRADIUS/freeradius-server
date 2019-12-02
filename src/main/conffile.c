@@ -123,6 +123,7 @@ typedef struct cf_file_t {
 	char const	*filename;
 	CONF_SECTION	*cs;
 	struct stat	buf;
+	bool		from_dir;
 } cf_file_t;
 
 CONF_SECTION *root_config = NULL;
@@ -329,7 +330,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		if (stat(filename, &my_file.buf) < 0) goto error;
 
 		file = rbtree_finddata(tree, &my_file);
-		if (file) return 0;
+		if (file && !file->from_dir) return 0;
 	}
 
 	DEBUG2("including configuration file %s", filename);
