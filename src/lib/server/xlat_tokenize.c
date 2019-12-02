@@ -283,6 +283,7 @@ static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head,
 	p += slen;
 	if (*(p - 1) != '}') {	/* @fixme: xlat_tokenize_literal should not consume the closing brace */
 		fr_strerror_printf("No matching closing brace");
+		talloc_free(node);
 		return -1;						/* error @ second character of format string */
 	}
 
@@ -344,6 +345,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 
 	if (*q != '}') {
 		fr_strerror_printf("No matching closing brace");
+		talloc_free(vpt);
 		return -1;						/* error @ second character of format string */
 	}
 
