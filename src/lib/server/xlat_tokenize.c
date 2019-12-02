@@ -666,6 +666,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 	 */
 	if (brace) {
 		fr_strerror_printf("Missing closing brace at end of string");
+		talloc_free(node);
 		return -(p - fmt);
 	}
 
