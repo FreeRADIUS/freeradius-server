@@ -4,6 +4,7 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  Rates of 1500 IPs per second are now possible.
 	  See raddb/mods-config/sql/ippool/postgresql/procedure.sql
 	  Patch from Terry Burton.
+	* Added RCNTEC dictionary. Closes #3168.
 
 	Bug fixes
 	* Set permissions of certificates in bootstrap shell script.
