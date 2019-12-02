@@ -489,7 +489,17 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		if (stat(filename, &my_file.buf) < 0) goto error;
 
 		file = rbtree_finddata(tree, &my_file);
-		if (file) return 0;
+
+		/*
+		 *	The file was previously read by including it
+		 *	explicitly.  After it was read, we have a
+		 *	$INCLUDE of the directory it is in.  In that
+		 *	case, we ignore the file.
+		 *
+		 *	However, if the file WAS read from a wildcard
+		 *	$INCLUDE directory, then we read it again.
+		 */
+		if (file && !file->from_dir) return 1;
 	}
 
 	DEBUG2("including configuration file %s", filename);
@@ -507,6 +517,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 
 	file->filename = filename;
 	file->cs = cs;
+	file->from_dir = from_dir;
 
 	if (fstat(fd, &file->buf) == 0) {
 #ifdef S_IWOTH
@@ -1881,9 +1892,18 @@ do_frame:
 	 *	to the function, or was pushed onto the stack by
 	 *	frame_readdir().
 	 */
-	if (!frame->fp &&
-	    (cf_file_open(frame->parent, frame->filename, frame->from_dir, &frame->fp) < 0)) {
-		return -1;
+	if (!frame->fp) {
+		rcode = cf_file_open(frame->parent, frame->filename, frame->from_dir, &frame->fp);
+		if (rcode < 0) return -1;
+
+		/*
+		 *	Ignore this file
+		 */
+		if (rcode == 1) {
+			cf_log_warn(frame->current, "Ignoring file %s - it was already read",
+				    frame->filename);
+			goto pop_stack;
+		}
 	}
 
 	/*
@@ -1971,6 +1991,7 @@ do_frame:
 	fclose(frame->fp);
 	frame->fp = NULL;
 
+pop_stack:
 	/*
 	 *	More things to read, go read them.
 	 */
