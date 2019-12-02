@@ -347,7 +347,11 @@ DIAG_ON(deprecated-declarations)
 		 *	a SIGKILL.
 		 */
 
-		if (_PTRACE(flags, ppid) == 0) {
+		if ((_PTRACE(flags, ppid) == 0)
+#ifdef __APPLE__
+		    || (errno == EPERM)
+#endif
+		    ) {
 			/* Wait for the parent to stop */
 			waitpid(ppid, NULL, 0);
 
