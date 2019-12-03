@@ -336,6 +336,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	thread->fd = open(inst->csv, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
 	if (thread->fd < 0) {
 		ERROR("Failed opening %s - %s", inst->csv, fr_syserror(errno));
+		return;
 	}
 
 	(void) fr_event_timer_in(thread, thread->el, &thread->ev, NSEC, write_stats, thread);
