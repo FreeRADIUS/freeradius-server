@@ -128,6 +128,12 @@ match \"%{reply:3GPP-IMSI[2]}\"
 xlat /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
 match /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
 
+xlat %{length}
+match ERROR offset 2 'Unknown attribute'
+
+xlat %{length:
+match ERROR offset 1 'No matching closing brace'
+
 xlat %{length:1 + 2
 match ERROR offset 14 'Missing closing brace at end of string'
 
@@ -252,4 +258,4 @@ xlat %{myfirstxlat
 match ERROR offset 1 'No matching closing brace'
 
 count
-match 153
+match 157
