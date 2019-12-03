@@ -299,7 +299,7 @@ static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
 		       now_f, last_send_f,
 		       stats->rtt, stats->rttvar, stats->pps,
 		       stats->sent, stats->received,
-		       stats->ema, stats->max_backlog,
+		       stats->backlog_ema, stats->max_backlog,
 		       stats->times[0], stats->times[1], stats->times[2], stats->times[3],
 		       stats->times[4], stats->times[5], stats->times[6], stats->times[7]);
 	if (write(thread->fd, buffer, len) < 0) {

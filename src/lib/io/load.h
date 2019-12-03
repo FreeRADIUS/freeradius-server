@@ -84,10 +84,11 @@ typedef struct {
 	fr_time_t	last_send;	//!< last packet we sent
 	fr_time_delta_t rtt;		//!< smoothed round trip time
 	fr_time_delta_t	rttvar;		//!< RTT variation
-	int		pps;		//!< current expected packets/s
+	int		pps;		//!< current offered packets/s
+	int		pps_ema;	//!< EMA of accepted PPS
 	int		sent;		//!< total packets sent
 	int		received;      	//!< total packets received (should be == sent)
-	int		ema;		//!< exponential moving average
+	int		backlog_ema;	//!< exponential moving average
 	int		max_backlog;	//!< maximum backlog we saw during the test
 	int		times[8];	//!< response time in microseconds to tens of seconds
 } fr_load_stats_t;

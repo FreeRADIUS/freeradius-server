@@ -117,7 +117,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	For numerical stability, we only divide *after* adding
 	 *	everything together, not before.
 	 */
-	l->stats.ema = (((backlog - l->stats.ema) * 2) + ((l->pps + 1) * l->stats.ema)) / (l->pps + 1);
+	l->stats.backlog_ema = (((backlog - l->stats.backlog_ema) * 2) + ((l->pps + 1) * l->stats.backlog_ema)) / (l->pps + 1);
 	l->stats.last_send = now;
 
 	/*
@@ -131,7 +131,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Otherwise, switch to a gated mode where we only send
 	 *	new packets once a reply comes in.
 	 */
-	if (((uint32_t) l->stats.ema * 1000) < (l->pps * l->config->milliseconds)) {
+	if (((uint32_t) l->stats.backlog_ema * 1000) < (l->pps * l->config->milliseconds)) {
 		l->state = FR_LOAD_STATE_SENDING;
 		l->count = l->config->parallel;
 
@@ -316,7 +316,7 @@ int fr_load_generator_stats_print(fr_load_t const *l, FILE *fp)
 
 	fprintf(fp, "%d,", l->stats.sent);
 	fprintf(fp, "%d,", l->stats.received);
-	fprintf(fp, "%d,", l->stats.ema);
+	fprintf(fp, "%d,", l->stats.backlog_ema);
 	fprintf(fp, "%d,", l->stats.max_backlog);
 
 	for (i = 0; i < 7; i++) {
