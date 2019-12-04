@@ -169,7 +169,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 	for (i = 1; i <= colcount; i++) {
 		len = 0;
-		SQLColAttributes(conn->stmt, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH, NULL, 0, NULL, &len);
+		SQLColAttributes(conn->stmt, ((SQLUSMALLINT) i), SQL_DESC_LENGTH, NULL, 0, NULL, &len);
 		conn->row[i - 1] = talloc_array(conn->row, char, ++len);
 		SQLBindCol(conn->stmt, i, SQL_C_CHAR, (SQLCHAR *)conn->row[i - 1], len, NULL);
 	}
