@@ -334,6 +334,9 @@ void fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t st
 
 /** Add a callback to be executed after a state function has been called
  *
+ * Where a user callback is executed on state change, the post function
+ * is only called if the callback succeeds.
+ *
  * @param[in] conn	to add watcher to.
  * @param[in] state	to call watcher on entering.
  * @param[in] watch	function to call.
@@ -344,7 +347,7 @@ void fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t s
 {
 	if (state >= FR_CONNECTION_STATE_MAX) return;
 
-	connection_add_watch(conn, &conn->watch_pre[state], watch, oneshot, uctx);
+	connection_add_watch(conn, &conn->watch_post[state], watch, oneshot, uctx);
 }
 
 /** Close a connection if it's freed
@@ -685,8 +688,6 @@ static void connection_state_connected_enter(fr_connection_t *conn)
 	} else {
 		ret = FR_CONNECTION_STATE_CONNECTED;
 	}
-	WATCH_POST(conn);
-
 
 	switch (ret) {
 	/*
@@ -694,6 +695,7 @@ static void connection_state_connected_enter(fr_connection_t *conn)
 	 */
 	case FR_CONNECTION_STATE_CONNECTED:
 		DEBUG2("Connection established");
+		WATCH_POST(conn);	/* Only call if we successfully connected */
 		return;
 
 	/*
@@ -806,11 +808,11 @@ static void connection_state_init_enter(fr_connection_t *conn)
 	} else {
 		ret = FR_CONNECTION_STATE_CONNECTING;
 	}
-	WATCH_POST(conn);
 
 	switch (ret) {
 	case FR_CONNECTION_STATE_CONNECTING:
 		conn->is_closed = false;	/* We now have a handle */
+		WATCH_POST(conn);		/* Only call if we successfully initialised the handle */
 		connection_state_connecting_enter(conn);
 		return;
 
