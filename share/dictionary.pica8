@@ -13,6 +13,6 @@ VENDOR		Pica8				35098
 
 BEGIN-VENDOR	Pica8
 
-ATTRIBUTE	Pica8			Pica8-AVPair	1	string
+ATTRIBUTE	Pica8-AVPair				1	string
 
 END-VENDOR	Pica8
