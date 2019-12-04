@@ -111,8 +111,9 @@ typedef enum {
  * pending data written, then `fr_trunk_connection_signal_writable(tconn)` should be
  * called.
  *
- * @param[in] ctx		to allocate connection in.
- *				Usually a fr_trunk_request_ctx_t.
+ * @param[in] tconn		The trunk connection this connection will be bound to.
+ *				Should be used as the context for any connections
+ *				allocated.
  * @param[in] el		The event list to use for I/O and timer events.
  * @param[in] log_prefix	What to prefix connection log messages with.
  * @param[in] uctx		User data to pass to the alloc callback.
@@ -120,7 +121,7 @@ typedef enum {
  *	- A new fr_connection_t on success (should be in the halted state).
  *	- NULL on error.
  */
-typedef fr_connection_t *(*fr_trunk_connection_alloc_t)(TALLOC_CTX *ctx, fr_event_list_t *el,
+typedef fr_connection_t *(*fr_trunk_connection_alloc_t)(fr_trunk_connection_t *tconn, fr_event_list_t *el,
 							char const *log_prefix, void *uctx);
 
 /** Multiplex one or more requests into a single connection
@@ -321,11 +322,14 @@ typedef struct {
 								///< to mark the request as runnable.
 } fr_trunk_io_funcs_t;
 
-/** @name Request helpers
+/** @name Statistics
  * @{
  */
-void		fr_trunk_request_get_resumption_data(REQUEST **request_out, void **preq_out, void **rctx_out,
-						     fr_trunk_request_t *treq);
+uint16_t	fr_trunk_connection_count(fr_trunk_t *trunk, int conn_states);
+
+uint64_t	fr_trunk_requests_by_state_count(fr_trunk_t *trunk, int req_states);
+
+uint64_t	fr_trunk_requests_by_conn_state_count(fr_trunk_t *trunk, int conn_states);
 /** @} */
 
 /** @name Request state signalling
