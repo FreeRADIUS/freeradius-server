@@ -58,6 +58,7 @@ struct fr_load_s {
 	fr_load_stats_t		stats;			//!< sending statistics
 	fr_time_t		step_start;		//!< when the current step started
 	fr_time_t		step_end;		//!< when the current step will end
+	int			step_received;
 
 	uint32_t		pps;
 	fr_time_delta_t		delta;			//!< between packets
@@ -162,6 +163,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	if (next >= l->step_end) {
 		l->step_start = next;
 		l->step_end = next + ((uint64_t) l->config->duration) * NSEC;
+		l->step_received = l->stats.received;
 		l->pps += l->config->step;
 		l->stats.pps = l->pps;
 		l->delta = (NSEC * l->config->parallel) / l->pps;
@@ -243,6 +245,16 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	l->stats.rttvar = RTTVAR(l->stats.rtt, l->stats.rttvar, t);
 	l->stats.rtt = RTT(l->stats.rtt, t);
 
+	l->stats.received++;
+
+	/*
+	 *	Track packets/s.  Since times are in nanoseconds, we
+	 *	have to scale the counters up by NSEC.  And since NSEC
+	 *	is 1B, the calculations have to be done via 64-bit
+	 *	numbers, and then converted to a final 32-bit counter.
+	 */
+	l->stats.pps_accepted = (((uint64_t) (l->stats.received - l->step_received)) * NSEC) / (now - l->step_start);
+
 	/*
 	 *	t is in nanoseconds.
 	 */
@@ -263,8 +275,6 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	} else {
 	       l->stats.times[7]++; /* tens of seconds */
 	}
-
-	l->stats.received++;
 
 	/*
 	 *	Still sending packets.  Rely on the timer to send more

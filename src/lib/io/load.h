@@ -85,7 +85,7 @@ typedef struct {
 	fr_time_delta_t rtt;		//!< smoothed round trip time
 	fr_time_delta_t	rttvar;		//!< RTT variation
 	int		pps;		//!< current offered packets/s
-	int		pps_ema;	//!< EMA of accepted PPS
+	int       	pps_accepted;	//!< Accepted PPS for the last second
 	int		sent;		//!< total packets sent
 	int		received;      	//!< total packets received (should be == sent)
 	int		backlog_ema;	//!< exponential moving average
