@@ -33,6 +33,13 @@
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/table.h>
 
+#ifdef HAVE_STDATOMIC_H
+#  include <stdatomic.h>
+#else
+#  include <freeradius-devel/util/stdatomic.h>
+#endif
+
+static atomic_uint_fast64_t request_counter = ATOMIC_VAR_INIT(1);
 /** Used for sanity checks and to simplify freeing
  *
  * Allows us to track which
@@ -73,6 +80,8 @@ typedef enum {
  *
  */
 struct fr_trunk_request_s {
+	uint64_t 		id;			//!< Trunk request ID.
+
 	int32_t			heap_id;		//!< Used to track the request conn->pending heap.
 
 	fr_dlist_t		list;			//!< Used to track the trunk request in the conn->sent
