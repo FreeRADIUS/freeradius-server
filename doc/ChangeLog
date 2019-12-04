@@ -21,6 +21,9 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  Patch from Terry Burton.
 	* rlm_sql_unixodbc fixes. Patches from Terry Burton. Fixes #2822
 	* Fixes when building with LibreSSL. Patch from Nathan Owens.
+	* The rlm_python should append the 'python_path' paths in 'sys.path',
+	  It fixes the expected behavior to use the existing Python modules.
+      Fixes #3180
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements

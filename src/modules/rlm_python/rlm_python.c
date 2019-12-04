@@ -70,7 +70,6 @@ typedef struct rlm_python_t {
 
 #if PY_VERSION_HEX > 0x03050000
 	wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
-	wchar_t		*wide_path;		//!< Special wide char encoding of radiusd path.
 #endif
 	PyObject	*module;		//!< Local, interpreter specific module, containing
 						//!< FreeRADIUS functions.
@@ -1032,19 +1031,19 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 *	the lifetime of the module.
 		 */
 		if (inst->python_path) {
-#if PY_VERSION_HEX > 0x03050000
-			{
-				inst->wide_path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
-				PySys_SetPath(inst->wide_path);
-			}
-#else
-			{
-				char *path;
+			char *p, *path;
+			PyObject *sys = PyImport_ImportModule("sys");
+			PyObject *sys_path = PyObject_GetAttrString(sys, "path");
 
-				memcpy(&path, &inst->python_path, sizeof(path));
-				PySys_SetPath(path);
+			memcpy(&p, &inst->python_path, sizeof(path));
+
+			for (path = strtok(p, ":"); path != NULL; path = strtok(NULL, ":")) {
+				PyList_Append(sys_path, PyString_FromString(path));
 			}
-#endif
+
+			PyObject_SetAttrString(sys, "path", sys_path);
+			Py_DecRef(sys);
+			Py_DecRef(sys_path);
 		}
 
 		/*
@@ -1213,7 +1212,6 @@ static int mod_detach(void *instance)
 
 #if PY_VERSION_HEX > 0x03050000
 		if (inst->wide_name) PyMem_RawFree(inst->wide_name);
-		if (inst->wide_path) PyMem_RawFree(inst->wide_path);
 #endif
 	}
 
