@@ -444,10 +444,10 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 					       fr_trunk_t *trunk, fr_time_t now);
 
 static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now);
-static inline void trunk_connection_auto_full(fr_trunk_connection_t *tconn);
-static inline void trunk_connection_auto_active(fr_trunk_connection_t *tconn);
-static inline void trunk_connection_readable(fr_trunk_connection_t *tconn);
-static inline void trunk_connection_writable(fr_trunk_connection_t *tconn);
+static void trunk_connection_auto_full(fr_trunk_connection_t *tconn);
+static void trunk_connection_auto_active(fr_trunk_connection_t *tconn);
+static void trunk_connection_readable(fr_trunk_connection_t *tconn);
+static void trunk_connection_writable(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_full(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_active(fr_trunk_connection_t *tconn);
@@ -1417,7 +1417,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
  * @param[in] tconn	to return request count for.
  * @return The number of requests in any state, associated with a tconn.
  */
-static inline uint32_t trunk_connection_request_count(fr_trunk_connection_t const *tconn, int state)
+static uint32_t trunk_connection_request_count(fr_trunk_connection_t const *tconn, int state)
 {
 	uint32_t count = 0;
 
@@ -1435,7 +1435,7 @@ static inline uint32_t trunk_connection_request_count(fr_trunk_connection_t cons
  * @param[in] trunk	to retrieve counts for.
  * @param[in] states	One or more states or'd together.
  */
-inline uint16_t fr_trunk_connection_count(fr_trunk_t *trunk, int states)
+uint16_t fr_trunk_connection_count(fr_trunk_t *trunk, int states)
 {
 	uint16_t count = 0;
 
@@ -1452,7 +1452,7 @@ inline uint16_t fr_trunk_connection_count(fr_trunk_t *trunk, int states)
  *
  * @param[in] tconn	to potentially mark as full.
  */
-static inline void trunk_connection_auto_full(fr_trunk_connection_t *tconn)
+static void trunk_connection_auto_full(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t	*trunk = tconn->trunk;
 	uint32_t	count;
@@ -1469,7 +1469,7 @@ static inline void trunk_connection_auto_full(fr_trunk_connection_t *tconn)
  *
  * @param[in] tconn	to potentially mark as active.
  */
-static inline void trunk_connection_auto_active(fr_trunk_connection_t *tconn)
+static void trunk_connection_auto_active(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t	*trunk = tconn->trunk;
 	uint32_t	count;
@@ -1485,7 +1485,7 @@ static inline void trunk_connection_auto_active(fr_trunk_connection_t *tconn)
 /** A connection is readable.  Call the request_demux function to read pending requests
  *
  */
-static inline void trunk_connection_readable(fr_trunk_connection_t *tconn)
+static void trunk_connection_readable(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t *trunk = tconn->trunk;
 
@@ -1495,7 +1495,7 @@ static inline void trunk_connection_readable(fr_trunk_connection_t *tconn)
 /** A connection is writable.  Call the request_mux function to write pending requests
  *
  */
-static inline void trunk_connection_writable(fr_trunk_connection_t *tconn)
+static void trunk_connection_writable(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t *trunk = tconn->trunk;
 
@@ -2256,7 +2256,7 @@ static void _trunk_manage_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
  * @param[in] states	One or more states or'd together.
  * @return The count number of requests in a particular state.
  */
-inline uint64_t fr_trunk_requests_by_state_count(fr_trunk_t *trunk, int states)
+uint64_t fr_trunk_requests_by_state_count(fr_trunk_t *trunk, int states)
 {
 	uint64_t		count = 0;
 	fr_trunk_connection_t	*tconn = NULL;
@@ -2298,7 +2298,7 @@ inline uint64_t fr_trunk_requests_by_state_count(fr_trunk_t *trunk, int states)
  * @param[in] states	One or more states or'd together.
  * @return The count number of requests on connections in a particular state.
  */
-inline uint64_t fr_trunk_requests_by_conn_state_count(fr_trunk_t *trunk, int states)
+uint64_t fr_trunk_requests_by_conn_state_count(fr_trunk_t *trunk, int states)
 {
 	uint64_t		count = 0;
 	fr_trunk_connection_t	*tconn;
