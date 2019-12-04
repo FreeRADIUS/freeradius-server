@@ -129,6 +129,8 @@ uint64_t		fr_connection_get_num_timed_out(fr_connection_t const *conn);
 
 fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
 
+uint64_t 		fr_connection_get_id(fr_connection_t const *conn);
+
 void			*fr_connection_get_handle(fr_connection_t const *conn);
 void			fr_connection_set_handle(fr_connection_t *conn, void *handle);
 

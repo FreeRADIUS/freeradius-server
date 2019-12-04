@@ -208,6 +208,16 @@ fr_event_list_t *fr_connection_get_el(fr_connection_t const *conn)
 	return conn->el;
 }
 
+/** Get the connection id  Useful for debugging messages
+ *
+ * @param[in] conn	to retrieve number from.
+ * @return the unique connection id.
+ */
+uint64_t fr_connection_get_id(fr_connection_t const *conn)
+{
+	return conn->id;
+}
+
 /** Get the handle associated with a connection
  *
  * @param[in] conn	to retrieve fd from.
