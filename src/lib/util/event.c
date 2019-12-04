@@ -844,6 +844,13 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 			return -1;
 		}
 		talloc_set_destructor(ef, _event_fd_delete);
+
+		/*
+		 *	Bind the lifetime of the event to the specified
+		 *	talloc ctx.  If the talloc ctx is freed, the
+		 *	event will also be freed.
+		 */
+		talloc_link_ctx(ctx, ef);
 		ef->linked_ctx = ctx;
 		ef->el = el;
 
