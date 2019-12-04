@@ -298,9 +298,6 @@ struct fr_event_list {
 	int			exit;			//!< If non-zero, the event loop will exit after its current
 							///< iteration, returning this value.
 
-	bool			timers_relative;	//!< All new 'in' timer events, are inserted relative
-							///< to el->now.
-
 	fr_time_t 		now;			//!< The last time the event list was serviced.
 	bool			dispatch;		//!< Whether the event list is currently dispatching events.
 
@@ -1128,12 +1125,7 @@ int fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
 {
 	fr_time_t now;
 
-	/*
-	 *	Sometimes we need everything to be relative
-	 *      to the last time the corral function was
-	 *      called (for testing purposes).
-	 */
-	now = !el->timers_relative ? fr_time() : el->now;
+	now = fr_time();
 	now += delta;
 
 	return fr_event_timer_at(ctx, el, ev_p, now, callback, uctx);
@@ -1789,15 +1781,6 @@ int fr_event_loop(fr_event_list_t *el)
 	el->dispatch = false;
 
 	return el->exit;
-}
-
-/** All deltas are calculated from the last value of el->now
- *
- * @param[in] el to modify.
- */
-void fr_event_list_relative_mode(fr_event_list_t *el)
-{
-	el->timers_relative = true;
 }
 
 /** Cleanup an event list

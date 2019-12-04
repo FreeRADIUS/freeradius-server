@@ -237,7 +237,6 @@ void		fr_event_loop_exit(fr_event_list_t *el, int code);
 bool		fr_event_loop_exiting(fr_event_list_t *el);
 int		fr_event_loop(fr_event_list_t *el);
 
-void		fr_event_list_relative_mode(fr_event_list_t *el);
 fr_event_list_t	*fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_ctx);
 
 #ifdef __cplusplus
