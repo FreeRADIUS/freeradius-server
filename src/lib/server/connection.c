@@ -22,8 +22,8 @@
  *
  * @copyright 2017-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#define LOG_PREFIX "[%" PRIu64 "] %s - "
-#define LOG_PREFIX_ARGS conn->id, conn->log_prefix
+#define LOG_PREFIX "%s - [%" PRIu64 "] "
+#define LOG_PREFIX_ARGS conn->log_prefix, conn->id
 
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/log.h>
@@ -101,7 +101,7 @@ struct fr_conn {
 
 #define STATE_TRANSITION(_new) \
 do { \
-	DEBUG4("Changed state %s -> %s", \
+	DEBUG4("Connection changed state %s -> %s", \
 	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"), \
 	       fr_table_str_by_value(fr_connection_states, _new, "<INVALID>")); \
 	conn->state = _new; \
