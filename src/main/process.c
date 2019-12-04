@@ -1757,6 +1757,16 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		}
 
 		/*
+		 *	Immediately remove the request from the
+		 *	request hash.
+		 */
+		if (!rbtree_deletebydata(pl, &request->packet)) {
+			rad_assert(0 == 1);
+		}
+		request->in_request_hash = false;
+		request->master_state = REQUEST_STOP_PROCESSING;
+
+		/*
 		 *	Mark the request as done ASAP, and before we
 		 *	log anything.  The child may stop processing
 		 *	the request just as we're logging the
