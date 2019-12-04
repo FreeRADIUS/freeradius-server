@@ -157,6 +157,12 @@ typedef void (*fr_event_pid_cb_t)(fr_event_list_t *el, pid_t pid, int status, vo
  */
 typedef void (*fr_event_user_handler_t)(int kq, struct kevent const *kev, void *uctx);
 
+/** Alternative time source, useful for testing
+ *
+ * @return the current time in nanoseconds past the epoch.
+ */
+typedef fr_time_t (*fr_event_time_source_t)(void);
+
 /** Callbacks for the #FR_EVENT_FILTER_IO filter
  */
 typedef struct {
@@ -238,6 +244,7 @@ bool		fr_event_loop_exiting(fr_event_list_t *el);
 int		fr_event_loop(fr_event_list_t *el);
 
 fr_event_list_t	*fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_ctx);
+void		fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t func);
 
 #ifdef __cplusplus
 }

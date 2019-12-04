@@ -44,6 +44,10 @@ RCSID("$Id$")
 
 #define FR_EV_BATCH_FDS (256)
 
+DIAG_OFF(unused-macros)
+#define fr_time() "Use el->time for event loop timing"
+DIAG_ON(unused-macros)
+
 #if !defined(SO_GET_FILTER) && defined(SO_ATTACH_FILTER)
 #  define SO_GET_FILTER SO_ATTACH_FILTER
 #endif
@@ -298,6 +302,7 @@ struct fr_event_list {
 	int			exit;			//!< If non-zero, the event loop will exit after its current
 							///< iteration, returning this value.
 
+	fr_event_time_source_t	time;			//!< Where our time comes from.
 	fr_time_t 		now;			//!< The last time the event list was serviced.
 	bool			dispatch;		//!< Whether the event list is currently dispatching events.
 
@@ -404,7 +409,7 @@ fr_time_t fr_event_list_time(fr_event_list_t *el)
 	if (el && el->dispatch) {
 		return el->now;
 	} else {
-		return fr_time();
+		return el->time();
 	}
 }
 
@@ -1132,7 +1137,7 @@ int fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
 {
 	fr_time_t now;
 
-	now = fr_time();
+	now = el->time();
 	now += delta;
 
 	return fr_event_timer_at(ctx, el, ev_p, now, callback, uctx);
@@ -1782,7 +1787,7 @@ int fr_event_loop(fr_event_list_t *el)
 
 	el->dispatch = true;
 	while (!el->exit) {
-		if (unlikely(fr_event_corral(el, fr_time(), true)) < 0) break;
+		if (unlikely(fr_event_corral(el, el->time(), true)) < 0) break;
 		fr_event_service(el);
 	}
 	el->dispatch = false;
@@ -1828,6 +1833,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
+	el->time = fr_time;
 	el->kq = -1;	/* So destructor can be used before kqueue() provides us with fd */
 	talloc_set_destructor(el, _event_list_free);
 
@@ -1867,6 +1873,16 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	}
 
 	return el;
+}
+
+/** Override event list time source
+ *
+ * @param[in] el	to set new time function for.
+ * @param[in] func	to set.
+ */
+void fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t func)
+{
+	el->time = func;
 }
 
 #ifdef TESTING
@@ -1931,7 +1947,7 @@ int main(int argc, char **argv)
 	fr_rand_init(&rand_pool, 1);
 	rand_pool.randcnt = 0;
 
-	array[0] = fr_time();
+	array[0] = el->time();
 	for (i = 1; i < MAX; i++) {
 		array[i] = array[i - 1];
 		array[i] += event_rand() & 0xffff;
@@ -1940,7 +1956,7 @@ int main(int argc, char **argv)
 	}
 
 	while (fr_event_list_num_timers(el)) {
-		now = fr_time();
+		now = el->time();
 		when = now;
 		if (!fr_event_timer_run(el, &when)) {
 			int delay = (when - now) / 1000;	/* nanoseconds to microseconds */
