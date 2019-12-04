@@ -121,6 +121,25 @@ int talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child)
 {
 	fr_talloc_link_t *link;
 
+	/*
+	 *	Don't link to a NULL context.
+	 */
+	if (!parent) return 0;
+
+#if 0
+	/*
+	 *	Commented out for debugging.
+	 */
+	{
+		TALLOC_CTX *check;
+
+		check = talloc_parent(child);
+		if (fr_cond_assert(parent != check)) {
+			return -1;
+		}
+	}
+#endif
+
 	link = talloc(parent, fr_talloc_link_t);
 	if (!link) return -1;
 

@@ -855,7 +855,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		 *	talloc ctx.  If the talloc ctx is freed, the
 		 *	event will also be freed.
 		 */
-		talloc_link_ctx(ctx, ef);
+		if (ctx != el) talloc_link_ctx(ctx, ef);
 		ef->linked_ctx = ctx;
 		ef->el = el;
 
@@ -1069,7 +1069,7 @@ int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
 		 *	talloc ctx.  If the talloc ctx is freed, the
 		 *	event will also be freed.
 		 */
-		if (ctx) talloc_link_ctx(ctx, ev);
+		if (ctx != el) talloc_link_ctx(ctx, ev);
 
 		talloc_set_destructor(ev, _event_timer_free);
 	} else {
