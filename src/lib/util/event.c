@@ -406,7 +406,7 @@ int fr_event_list_kq(fr_event_list_t *el)
  */
 fr_time_t fr_event_list_time(fr_event_list_t *el)
 {
-	if (el && el->dispatch) {
+	if (el->dispatch) {
 		return el->now;
 	} else {
 		return el->time();
