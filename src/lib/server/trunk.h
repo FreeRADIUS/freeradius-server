@@ -86,6 +86,21 @@ typedef enum {
 	FR_TRUNK_CANCEL_REASON_MOVE			//!< Request cancelled because it's being moved.
 } fr_trunk_cancel_reason_t;
 
+/** What type of I/O events the trunk connection is currently interested in receiving
+ *
+ */
+typedef enum {
+	FR_TRUNK_CONN_EVENT_NONE = 0x00,		//!< Don't notify the trunk on connection state
+							///< changes.
+	FR_TRUNK_CONN_EVENT_READ = 0x01,		//!< Trunk should be notified if a connection is
+							///< readable.
+	FR_TRUNK_CONN_EVENT_WRITE = 0x02,		//!< Trunk should be notified if a connection is
+							///< writable.
+	FR_TRUNK_CONN_EVENT_BOTH = 0x03,		//!< Trunk should be notified if a connection is
+							///< readable or writable.
+
+} fr_trunk_connection_event_t;
+
 /** Allocate a new connection for the trunk
  *
  * The trunk code only interacts with the connections via the connection API.
@@ -123,6 +138,27 @@ typedef enum {
  */
 typedef fr_connection_t *(*fr_trunk_connection_alloc_t)(fr_trunk_connection_t *tconn, fr_event_list_t *el,
 							char const *log_prefix, void *uctx);
+
+/** Inform the API client which connections the trunk API wants to be notified of I/O events on
+ *
+ * I/O handlers may call one or more of the following functions to signal
+ * that an event has occurred.
+ *
+ * - fr_trunk_connection_signal_writable - Connection is now writable.
+ * - fr_trunk_connection_signal_readable - Connection is now readable.
+ * - fr_trunk_connection_signal_full - Connection is full or congested.
+ * - fr_trunk_connection_signal_active - Connection is no longer full or congested.
+ * - fr_trunk_connection_signal_reconnect - Connection is inviable and should be reconnected.
+ *
+ * @param[in] tconn		That wants to be notified.
+ * @param[in] conn		The underlying connection.
+ * @param[in] el		to insert FD events into.
+ * @param[in] notify_on		When to signal the trunk connection.
+ * @param[in] uctx		User data to pass to the notify callback.
+ */
+typedef void *(*fr_trunk_connection_notify_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn,
+					      fr_event_list_t *el,
+					      fr_trunk_connection_event_t notify_on, void *uctx);
 
 /** Multiplex one or more requests into a single connection
  *
@@ -235,7 +271,7 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  * were generated whilst encoding the protocol request should be freed.
  *
  * Once this function has returned, if a cancel_sent callback has been
- * provided, the treq will enter the FR_TRUNK_REQUEST_CANCEL_INFORMED
+ * provided, the treq will enter the FR_TRUNK_REQUEST_CANCEL_EVENTED
  * state, and be placed on the connection's cancellation queue.
  *
  * The cancellation queue will be drained the next time the connection becomes
@@ -298,7 +334,10 @@ typedef void (*fr_trunk_request_free_t)(REQUEST *request, void *preq_to_free, vo
  *
  */
 typedef struct {
-	fr_trunk_connection_alloc_t	connection_alloc;
+	fr_trunk_connection_alloc_t	connection_alloc;	//!< Allocate a new fr_connection_t.
+
+	fr_trunk_connection_notify_t	connection_notify;	//!< Update the I/O event registrations for
+								///< a connection.
 
 	fr_heap_cmp_t			request_prioritise;	//!< Ordering function for requests.  Controls
 								///< where in the outbound queues they're inserted.
@@ -329,7 +368,7 @@ uint16_t	fr_trunk_connection_count(fr_trunk_t *trunk, int conn_states);
 
 uint64_t	fr_trunk_requests_by_state_count(fr_trunk_t *trunk, int req_states);
 
-uint64_t	fr_trunk_requests_by_conn_state_count(fr_trunk_t *trunk, int conn_states);
+uint64_t	fr_trunk_requests_by_connection_state_count(fr_trunk_t *trunk, int conn_states);
 /** @} */
 
 /** @name Request state signalling
@@ -350,20 +389,20 @@ void		fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq);
 void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq);
 /** @} */
 
-/** @name Dequeue protocol requests and cancellations
- * @{
- */
-fr_trunk_request_t *fr_trunk_connection_pop_cancellation(fr_trunk_connection_t *tconn);
-
-fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn);
-/** @} */
-
 /** @name Enqueue requests
  * @{
  */
 
 int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQUEST *request,
 					 void *preq, void *rctx);
+/** @} */
+
+/** @name Dequeue protocol requests and cancellations
+ * @{
+ */
+fr_trunk_request_t *fr_trunk_connection_pop_cancellation(fr_trunk_connection_t *tconn);
+
+fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn);
 /** @} */
 
 /** @name Connection state signalling
@@ -381,6 +420,8 @@ void		fr_trunk_connection_signal_readable(fr_trunk_connection_t *tconn);
 void		fr_trunk_connection_signal_full(fr_trunk_connection_t *tconn);
 
 void		fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn);
+
+void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn);
 /** @} */
 
 /** @name Connection management
