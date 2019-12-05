@@ -8,128 +8,71 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	dnl extra argument: --with-rlm-python3-bin
-	PYTHON3_BIN=
-	AC_ARG_WITH(rlm-python3-bin,
-	[  --with-rlm-python3-bin=PATH   Path to python3 binary []],
+	dnl extra argument: --with-rlm-python3-config-bin
+	PYTHON3_CONFIG_BIN=
+	AC_ARG_WITH(rlm-python3-config-bin,
+	[  --with-rlm-python3-config-bin=PATH   Path to python-config3 binary []],
 	[ case "$withval" in
 	    no)
-		AC_MSG_ERROR(Need rlm-python3-bin)
+		AC_MSG_ERROR(Need rlm-python3-config-bin)
 		;;
 	    yes)
 		;;
 	    *)
-		PYTHON3_BIN="$withval"
+		PYTHON3_CONFIG_BIN="$withval"
 		;;
 	  esac ]
 	)
 
-	if test "x$PYTHON3_BIN" = x; then
-		AC_CHECK_PROGS(PYTHON3_BIN, [ python3 ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+	if test "x$PYTHON3_CONFIG_BIN" = x; then
+		AC_CHECK_PROGS(PYTHON3_CONFIG_BIN, [ python3-config ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
 	fi
 
-	if test "x$PYTHON3_BIN" = "xnot-found"; then
-		fail="python-binary"
-	fi
+	dnl #
+	dnl # It is necessary due to a weird behavior with 'python3-config'
+	dnl #
+	old_CFLAGS="$CFLAGS"
+	unset CFLAGS
 
-	dnl extra argument: --with-rlm-python3-lib-dir
-	PY_LIB_DIR=
-	AC_ARG_WITH(rlm-python3-lib-dir,
-	[  --with-rlm-python3-lib-dir=DIR       Directory for Python library files []],
-	[ case "$withval" in
-	    no)
-		AC_MSG_ERROR(Need rlm-python3-lib-dir)
-		;;
-	    yes)
-		;;
-	    *)
-		PY_LIB_DIR="$withval"
-		;;
-	  esac ]
-	)
+	python3_cflags=`${PYTHON3_CONFIG_BIN} --cflags`
+	AC_MSG_NOTICE([${PYTHON3_CONFIG_BIN}'s cflags were \"${python3_cflags}\"])
 
-	dnl extra argument: --with-rlm-python3-include-dir
-	PY_INC_DIR=
-	AC_ARG_WITH(rlm-python3-include-dir,
-	[  --with-rlm-python3-include-dir=DIR   Directory for Python include files []],
-	[ case "$withval" in
-	    no)
-		AC_MSG_ERROR(Need rlm-python3-include-dir)
-		;;
-	    yes)
-		;;
-	    *)
-		PY_INC_DIR="$withval"
-		;;
-	  esac ]
-	)
+	dnl # Convert -I to -isystem to get rid of warnings about issues in Python headers
+	dnl # Strip -systemroot
+	dnl # Strip optimisation flags (-O[0-9]?). We decide our optimisation level, not python.
+	dnl # -D_FORTIFY_SOURCE needs -O.
+	dnl # Strip debug symbol flags (-g[0-9]?). We decide on debugging symbols, not python
+	dnl # Strip -W*, we decide what warnings are important
+	dnl # Strip -DNDEBUG
+	mod_cflags=`echo $python3_cflags | sed -e '\
+		s/-I/-isystem/g;\
+		s/-isysroot[[ =]]\{0,1\}[[^-]]*//g;\
+		s/-O[[^[[:blank:]]]]*//g;\
+		s/-Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]//g;\
+		s/-g[[^ ]]*//g;\
+		s/-W[[^ ]]*//g;\
+		s/-DNDEBUG[[[:blank:]]]*//g;
+		'`
+	AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
-	if test x$fail = x; then
-		PY_PREFIX=`${PYTHON3_BIN} -c 'import sys ; print(sys.prefix)'`
-		AC_MSG_NOTICE([Python sys.prefix \"${PY_PREFIX}\"])
+	python3_ldflags=`${PYTHON3_CONFIG_BIN} --ldflags`
+	AC_MSG_NOTICE([${PYTHON3_CONFIG_BIN}'s ldflags were \"$python3_ldflags}\"])
 
-		PY_EXEC_PREFIX=`${PYTHON3_BIN} -c 'import sys ; print(sys.exec_prefix)'`
-		AC_MSG_NOTICE([Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"])
+	dnl # Strip -Wl,-O1... Is -O even a valid linker flag??
+	dnl # Strip -Wl,-Bsymbolic-functions as thats not always supported or required
+	dnl # Strip -Xlinker -export-dynamic as it causes weird linking issues on Linux
+	dnl #   See: https://bugs.python.org/issue36508
+	mod_ldflags=`echo $python3_ldflags | sed -e '\
+		s/-Wl,-O[[[:digit:]]][[[:blank:]]]*//g;\
+		s/-Wl,-Bsymbolic-functions[[[:blank:]]]*//g;\
+		s/-Xlinker -export-dynamic//g;\
+		s/-Wl,-stack_size,[[[:digit:]]]*[[[:blank:]]]//g;
+		'`
+	AC_MSG_NOTICE([Sanitized ldflags were \"${mod_ldflags}\"])
 
-		PY_SYS_VERSION=`${PYTHON3_BIN} -c 'import sys ; print(sys.version[[0:3]])'`
-		AC_MSG_NOTICE([Python sys.version \"${PY_SYS_VERSION}\"])
+	CFLAGS=$old_CFLAGS
 
-		if test "x$PY_LIB_DIR" = "x"; then
-			PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
-			PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
-		fi
-
-		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config/Makefile"
-		if test -f ${PY_MAKEFILE}; then
-			PY_LOCAL_MOD_LIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[[:blank:]]]/ /g;s/^ *//;s/ *$//'`
-			AC_MSG_NOTICE([Python local_mod_libs \"${PY_LOCAL_MOD_LIBS}\"])
-
-			PY_BASE_MOD_LIBS=`sed -n -e 's/^BASEMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[[:blank:]]]/ /g;s/^ *//;s/ *$//'`
-			AC_MSG_NOTICE([Python base_mod_libs \"${PY_BASE_MOD_LIBS}\"])
-
-			PY_OTHER_LIBS=`sed -n -e 's/^LIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[[:blank:]]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
-			PY_OTHER_LDFLAGS=`sed -n -e 's/^LINKFORSHARED=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[[:blank:]]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
-			AC_MSG_NOTICE([Python other_libs \"${PY_OTHER_LDFLAGS} ${PY_OTHER_LIBS}\"])
-		fi
-		PY_EXTRA_LIBS="$PY_LOCALMODLIBS $PY_BASE_MOD_LIBS $PY_OTHER_LIBS"
-
-		old_CFLAGS=$CFLAGS
-		CFLAGS="$CFLAGS $PY_CFLAGS"
-		smart_try_dir="$PY_PREFIX/include/python$PY_SYS_VERSION"
-		FR_SMART_CHECK_INCLUDE(Python.h)
-		CFLAGS=$old_CFLAGS
-
-		if test "x$ac_cv_header_Python_h" = "xyes"; then
-			mod_cflags="$SMART_CPPFLAGS"
-		else
-			fail="$fail Python.h"
-			targetname=
-		fi
-
-		old_LIBS=$LIBS
-		LIBS="$LIBS $PY_LIB_LOC $PY_EXTRA_LIBS -lm"
-		smart_try_dir=$PY_LIB_DIR
-		FR_SMART_CHECK_LIB(python${PY_SYS_VERSION}, Py_Initialize)
-		LIBS=$old_LIBS
-
-		eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
-		if test "x$t" = "xyes"; then
-			mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
-			targetname=modname
-		else
-			FR_SMART_CHECK_LIB(python${PY_SYS_VERSION}m, Py_Initialize)
-			eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
-			if test "x$t" = "xyes"; then
-				mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
-				targetname=modname
-			else
-				targetname=
-				fail="$fail libpython$PY_SYS_VERSION"
-			fi
-		fi
-	fi
-
-	AC_CHECK_FUNCS([dl_iterate_phdr])
+	targetname="rlm_python3"
 else
 	targetname=
 	echo \*\*\* module modname is disabled.
