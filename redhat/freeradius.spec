@@ -737,6 +737,8 @@ fi
 # freetds
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/main/mssql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/main/mssql/*
+%dir %attr(750,root,radiusd) %%{_sysconfdir}/raddb/mods-config/sql/ippool/mssql
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/mssql/*
 # oracle
 %if %{?_with_rlm_sql_oracle:1}%{!?_with_rlm_sql_oracle:0}
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql
