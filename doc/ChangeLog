@@ -4,6 +4,9 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  Rates of 1500 IPs per second are now possible.
 	  See raddb/mods-config/sql/ippool/postgresql/procedure.sql
 	  Patch from Terry Burton.
+	* Add SQL IP pool support for Microsoft SQL Server
+	  See raddb/mods-config/sql/ippool/mssql/
+	  Patch from Terry Burton.
 	* Added RCNTEC dictionary. Closes #3168.
 
 	Bug fixes
@@ -16,6 +19,8 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  the dedup tree.  This avoids crashes in corner cases.
 	* Update SQLite IPPool queries.  Fixes #3177
 	  Patch from Terry Burton.
+	* rlm_sql_unixodbc fixes. Patches from Terry Burton. Fixes #2822
+	* Fixes when building with LibreSSL. Patch from Nathan Owens.
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements
