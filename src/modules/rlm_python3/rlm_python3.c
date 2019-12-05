@@ -1163,37 +1163,34 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 *	the lifetime of the module.
 		 */
 		if (inst->python_path) {
+			char *p, *path;
+			PyObject *sys = PyImport_ImportModule("sys");
+			PyObject *sys_path = PyObject_GetAttrString(sys, "path");
+
+			memcpy(&p, &inst->python_path, sizeof(path));
+
+			for (path = strtok(p, ":"); path != NULL; path = strtok(NULL, ":")) {
 #if PY_VERSION_HEX > 0x03050000
-			{
-				wchar_t *path;
-				PyObject* sys = PyImport_ImportModule("sys");
-				PyObject* sys_path = PyObject_GetAttrString(sys,"path");
+				wchar_t *py_path;
 
-				MEM(path = Py_DecodeLocale(inst->python_path, NULL));
-				PyList_Append(sys_path, PyUnicode_FromWideChar(path,-1));				
-				PyObject_SetAttrString(sys,"path",sys_path);
-				PyMem_RawFree(path);
-			}
+				MEM(py_path = Py_DecodeLocale(path, NULL));
+				PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
+				PyMem_RawFree(py_path);
 #elif PY_VERSION_HEX > 0x03000000
-			{
-				wchar_t *path;
-				PyObject* sys = PyImport_ImportModule("sys");
-				PyObject* sys_path = PyObject_GetAttrString(sys,"path");
+				wchar_t *py_path;
 
-				MEM(path = _Py_char2wchar(inst->python_path, NULL));
-				PyList_Append(sys_path, PyUnicode_FromWideChar(path,-1));				
-				PyObject_SetAttrString(sys,"path",sys_path);
-			}
+				MEM(py_path = _Py_char2wchar(path, NULL));
+				PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
+				PyMem_RawFree(py_path);
 #else
-			{
-				char *path;
-
-				memcpy(&path, &inst->python_path, sizeof(path));
-				Py_SetPath(path);
-			}
+				PyList_Append(sys_path, PyLong_FromString(path));
 #endif
-		}
+			}
 
+			PyObject_SetAttrString(sys, "path", sys_path);
+			Py_DecRef(sys);
+			Py_DecRef(sys_path);
+		}
 	} else {
 		inst->module = main_module;
 		Py_IncRef(inst->module);
