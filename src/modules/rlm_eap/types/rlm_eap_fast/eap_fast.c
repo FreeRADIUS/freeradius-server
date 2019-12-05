@@ -44,7 +44,7 @@ static int openssl_get_keyblock_size(REQUEST *request, SSL *ssl)
 {
 	const EVP_CIPHER *c;
 	const EVP_MD *h;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	int md_size;
 
 	if (ssl->enc_read_ctx == NULL || ssl->enc_read_ctx->cipher == NULL ||
