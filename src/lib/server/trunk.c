@@ -363,7 +363,7 @@ do { \
 	if ((_treq)->trunk->funcs.request_cancel) { \
 		void *prev = (_treq)->trunk->in_handler; \
 		(_treq)->trunk->in_handler = (void *)(_treq)->trunk->funcs.request_cancel; \
-		DEBUG4("Calling funcs.request_cancel(%p, %p, %p, %s, %p)", (_treq)->tconn->conn, (_treq), (_treq)->preq, fr_table_str_by_value(fr_trunk_cancellation_reasons, (_reason), "<INVALID>"), (_treq)->trunk->uctx); \
+		DEBUG4("Calling funcs.request_cancel(conn=%p, treq=%p, preq=%p, reason=%s, uctx=%p)", (_treq)->tconn->conn, (_treq), (_treq)->preq, fr_table_str_by_value(fr_trunk_cancellation_reasons, (_reason), "<INVALID>"), (_treq)->trunk->uctx); \
 		(_treq)->trunk->funcs.request_cancel((_treq)->tconn->conn, (_treq), (_treq)->preq, (_reason), (_treq)->trunk->uctx); \
 		(_treq)->trunk->in_handler = prev; \
 	} \
@@ -376,7 +376,7 @@ do { \
 do { \
 	if ((_treq)->trunk->funcs.request_complete) { \
 		void *prev = (_treq)->trunk->in_handler; \
-		DEBUG4("Calling funcs.request_complete(%p, %p, %p, %p)", (_treq)->request, (_treq)->preq, (_treq)->rctx, (_treq)->trunk->uctx); \
+		DEBUG4("Calling funcs.request_complete(request=%p, preq=%p, rctx=%p, uctx=%p)", (_treq)->request, (_treq)->preq, (_treq)->rctx, (_treq)->trunk->uctx); \
 		(_treq)->trunk->in_handler = (void *)(_treq)->trunk->funcs.request_complete; \
 		(_treq)->trunk->funcs.request_complete((_treq)->request, (_treq)->preq, (_treq)->rctx, (_treq)->trunk->uctx); \
 		(_treq)->trunk->in_handler = prev; \
@@ -390,7 +390,7 @@ do { \
 do { \
 	if ((_treq)->trunk->funcs.request_fail) { \
 		void *prev = (_treq)->trunk->in_handler; \
-		DEBUG4("Calling funcs.request_fail(%p, %p, %p, %p)", (_treq)->request, (_treq)->preq, (_treq)->rctx, (_treq)->trunk->uctx); \
+		DEBUG4("Calling funcs.request_fail(request=%p, preq=%p, rctx=%p, uctx=%p)", (_treq)->request, (_treq)->preq, (_treq)->rctx, (_treq)->trunk->uctx); \
 		(_treq)->trunk->in_handler = (void *)(_treq)->trunk->funcs.request_fail; \
 		(_treq)->trunk->funcs.request_fail((_treq)->request, (_treq)->preq, (_treq)->rctx, (_treq)->trunk->uctx); \
 		(_treq)->trunk->in_handler = prev; \
@@ -404,7 +404,7 @@ do { \
 do { \
 	if ((_treq)->trunk->funcs.request_free) { \
 		void *prev = (_treq)->trunk->in_handler; \
-		DEBUG4("Calling funcs.request_free(%p, %p, %p)", (_treq)->request, (_treq)->preq, (_treq)->trunk->uctx); \
+		DEBUG4("Calling funcs.request_free(request=%p, preq=%p, uctx=%p)", (_treq)->request, (_treq)->preq, (_treq)->trunk->uctx); \
 		(_treq)->trunk->in_handler = (void *)(_treq)->trunk->funcs.request_free; \
 		(_treq)->trunk->funcs.request_free((_treq)->request, (_treq)->preq, (_treq)->trunk->uctx); \
 		(_treq)->trunk->in_handler = prev; \
@@ -417,7 +417,7 @@ do { \
 #define DO_REQUEST_MUX(_tconn) \
 do { \
 	void *prev = (_tconn)->trunk->in_handler; \
-	DEBUG4("Calling funcs.request_mux(%p, %p, %p)", (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
+	DEBUG4("Calling funcs.request_mux(tconn=%p, conn=%p, uctx=%p)", (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = (void *)(_tconn)->trunk->funcs.request_mux; \
 	(_tconn)->trunk->funcs.request_mux((_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = prev; \
@@ -429,7 +429,7 @@ do { \
 #define DO_REQUEST_DEMUX(_tconn) \
 do { \
 	void *prev = (_tconn)->trunk->in_handler; \
-	DEBUG4("Calling funcs.request_demux(%p, %p, %p)", (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
+	DEBUG4("Calling funcs.request_demux(tconn=%p, conn=%p, uctx=%p)", (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = (void *)(_tconn)->trunk->funcs.request_demux; \
 	(_tconn)->trunk->funcs.request_demux((_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = prev; \
@@ -442,10 +442,28 @@ do { \
 do { \
 	if ((_tconn)->trunk->funcs.request_cancel_mux) { \
 		void *prev = (_tconn)->trunk->in_handler; \
-		DEBUG4("Calling funcs.request_cancel_mux(%p, %p, %p)", (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
+		DEBUG4("Calling funcs.request_cancel_mux(tconn=%p, conn=%p, uctx=%p)", (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
 		(_tconn)->trunk->in_handler = (void *)(_tconn)->trunk->funcs.request_cancel_mux; \
 		(_tconn)->trunk->funcs.request_cancel_mux((_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
 		(_tconn)->trunk->in_handler = prev; \
+	} \
+} while(0)
+
+/** Allocate a new connection
+ *
+ */
+#define DO_CONNECTION_ALLOC(_tconn) \
+do { \
+	void *prev = trunk->in_handler; \
+	DEBUG4("Calling funcs.connection_alloc(tconn=%p, el=%p, log_prefix=\"%s\", uctx=%p)", \
+	       (_tconn), (_tconn)->trunk->el, trunk->log_prefix, (_tconn)->trunk->uctx); \
+	(_tconn)->trunk->in_handler = (_tconn)->trunk->funcs.connection_alloc; \
+	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, trunk->log_prefix, trunk->uctx); \
+	(_tconn)->trunk->in_handler = prev; \
+	if (!(_tconn)->conn) { \
+		ERROR("Failed creating new connection"); \
+		talloc_free(tconn); \
+		return -1; \
 	} \
 } while(0)
 
@@ -456,7 +474,7 @@ do { \
 do { \
 	if ((_tconn)->trunk->funcs.connection_notify) { \
 		void *prev = (_tconn)->trunk->in_handler; \
-		DEBUG4("Calling funcs.connection_notify(%p, %p, %p, %s, %p)", \
+		DEBUG4("Calling funcs.connection_notify(tconn=%p, conn=%p, el=%p, events=%s, uctx=%p)", \
 		       (_tconn), (_tconn)->conn, (_tconn)->trunk->el, \
 		       fr_table_str_by_value(fr_trunk_connection_events, (_events), "<INVALID>"), (_tconn)->trunk->uctx); \
 		(_tconn)->trunk->in_handler = (void *)(_tconn)->trunk->funcs.connection_notify; \
@@ -643,6 +661,7 @@ static void trunk_request_enter_unassigned(fr_trunk_request_t *treq)
 
 	case FR_TRUNK_REQUEST_PENDING:
 	case FR_TRUNK_REQUEST_CANCEL:
+	case FR_TRUNK_REQUEST_CANCEL_PARTIAL:
 	case FR_TRUNK_REQUEST_CANCEL_SENT:
 		trunk_request_remove_from_conn(treq);
 		break;
@@ -870,6 +889,11 @@ static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel
 	 *	lifetime of the original REQUEST *.
 	 */
 	if (treq->cancel_reason == FR_TRUNK_CANCEL_REASON_SIGNAL) treq->request = NULL;
+
+	/*
+	 *	Register for I/O write events if we need to.
+	 */
+	trunk_connection_event_update(treq->tconn);
 }
 
 /** Transition a request to the cancel_partial state, placing it in a connection's cancel_partial slot
@@ -935,6 +959,13 @@ static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq)
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_CANCEL_SENT);
 	fr_dlist_insert_tail(&tconn->cancel_sent, treq);
+
+	/*
+	 *	De-register for I/O write events
+	 *	and register the read events
+	 *	to drain the cancel ACKs.
+	 */
+	trunk_connection_event_update(treq->tconn);
 }
 
 /** Cancellation was acked, the request is complete, free it
@@ -1304,7 +1335,7 @@ static int _trunk_request_free(fr_trunk_request_t *treq)
 	case FR_TRUNK_REQUEST_FAILED:
 		break;
 
-	case FR_TRUNK_REQUEST_CANCEL_SENT:
+	case FR_TRUNK_REQUEST_CANCEL_COMPLETE:
 		break;
 
 	default:
@@ -1451,6 +1482,8 @@ void fr_trunk_request_signal_fail(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 {
+	fr_trunk_t	*trunk = treq->trunk;
+
 	if (!fr_cond_assert_msg(!IN_HANDLER(treq->trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return;
 
@@ -1464,20 +1497,19 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 		trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_SIGNAL);
 
 		switch (treq->state) {
-		/*
-		 *	Need to give this a chance to complete.
-		 */
-		case FR_TRUNK_REQUEST_CANCEL_SENT:
-			break;
-
-		/*
-		 *	The cancel callback didn't move
-		 *	the request into the FR_TRUNK_REQUEST_CANCEL_SENT
-		 *	state so we're done.
-		 */
 		case FR_TRUNK_REQUEST_CANCEL:
-			trunk_request_enter_unassigned(treq);
-			talloc_free(treq);
+			/*
+			 *	No cancel muxer.  We're done.
+			 *
+			 *      If we do have a cancel mux function,
+			 *	the next time this connection becomes
+			 *	writable, we'll call the cancel mux
+			 *      function.
+			 */
+			if (!trunk->funcs.request_cancel_mux) {
+				trunk_request_enter_unassigned(treq);
+				talloc_free(treq);
+			}
 			break;
 
 		/*
@@ -1486,6 +1518,16 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 		default:
 			rad_assert(0);
 		}
+		break;
+
+	/*
+	 *	We're already in the process of cancelling a
+	 *	request, so ignore duplicate signals.
+	 */
+	case FR_TRUNK_REQUEST_CANCEL:
+	case FR_TRUNK_REQUEST_CANCEL_PARTIAL:
+	case FR_TRUNK_REQUEST_CANCEL_SENT:
+	case FR_TRUNK_REQUEST_CANCEL_COMPLETE:
 		break;
 
 	/*
@@ -2158,21 +2200,19 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 {
 	fr_trunk_connection_t	*tconn;
 
+
 	/*
 	 *	Call the API client's callback to create
 	 *	a new fr_connection_t.
 	 */
 	MEM(tconn = talloc_zero(trunk, fr_trunk_connection_t));
 	tconn->trunk = trunk;
-
-	DEBUG4("Calling funcs.connection_alloc(%p, %p, \"%s\", %p)", tconn, trunk->el, trunk->log_prefix, trunk->uctx);
-	tconn->conn = trunk->funcs.connection_alloc(tconn, trunk->el, trunk->log_prefix, trunk->uctx);
-	if (!tconn->conn) {
-		ERROR("Failed creating new connection");
-		talloc_free(tconn);
-		return -1;
-	}
 	tconn->state = FR_TRUNK_CONN_HALTED;
+
+	/*
+	 *	Allocate a new fr_connection_t or fail.
+	 */
+	DO_CONNECTION_ALLOC(tconn);
 
 	MEM(tconn->pending = fr_heap_talloc_create(tconn, trunk->funcs.request_prioritise,
 						   fr_trunk_request_t, heap_id));
@@ -3413,6 +3453,9 @@ static void test_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void
 	 *	Demuxer can handle both normal requests and cancelled ones
 	 */
 	switch (preq->treq->state) {
+	case FR_TRUNK_REQUEST_CANCEL:
+		break;		/* Hack - just ignore it */
+
 	case FR_TRUNK_REQUEST_CANCEL_SENT:
 		fr_trunk_request_signal_cancel_complete(preq->treq);
 		break;
@@ -3502,23 +3545,6 @@ static void test_request_free(REQUEST *request, void *preq, void *uctx)
 
 	our_preq->freed = true;
 }
-
-/** Write a failure result to the rctx so that the API client is aware that the request failed
- *
- * This function should free any memory not bound to the lifetime of the rctx
- * or request, or that was allocated explicitly to prepare for the REQUEST *
- * being used by a trunk, this may include library request handles and
- * (partially-)encoded packets.
- *
- * The rctx should be modified in such a way that indicates to the API client
- * that the request could not be sent using the trunk.
- *
- * After this function returns the REQUEST * will be marked as runnable.
- *
- * @note If a cancel function is provided, this function should be used to remove
- *       active requests from any request/response matching, not the fail function.
- */
-typedef void (*fr_trunk_request_fail_t)(REQUEST *request, void *preq, void *rctx, void *uctx);
 
 static void test_enqueue_basic(void)
 {
@@ -3669,7 +3695,6 @@ static void test_enqueue_cancellation_points(void)
 					.request_mux = test_mux,
 					.request_demux = test_demux,
 					.request_cancel = test_request_cancel,
-					.request_cancel_mux = test_cancel_mux,
 					.request_complete = test_request_complete,
 					.request_fail = test_request_fail,
 					.request_free = test_request_free
@@ -3705,6 +3730,7 @@ static void test_enqueue_cancellation_points(void)
 	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
+	preq->treq = treq;
 	fr_trunk_request_signal_cancel(treq);
 	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_ALL) == 0);
 
@@ -3715,7 +3741,6 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 	talloc_free(trunk);
 
-
 	/*
 	 *	Cancellation in partial via trunk free
 	 */
@@ -3723,6 +3748,7 @@ static void test_enqueue_cancellation_points(void)
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
+	preq->treq = treq;
 
 	events = fr_event_corral(el, test_time_base, false);	/* Connect the connection */
 	fr_event_service(el);
@@ -3747,6 +3773,7 @@ static void test_enqueue_cancellation_points(void)
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
+	preq->treq = treq;
 
 	events = fr_event_corral(el, test_time_base, false);	/* Connect the connection */
 	fr_event_service(el);
@@ -3771,6 +3798,7 @@ static void test_enqueue_cancellation_points(void)
 	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
+	preq->treq = treq;
 
 	events = fr_event_corral(el, test_time_base, false);	/* Connect the connection */
 	fr_event_service(el);
@@ -3793,6 +3821,7 @@ static void test_enqueue_cancellation_points(void)
 	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
+	preq->treq = treq;
 
 	events = fr_event_corral(el, test_time_base, false);	/* Connect the connection */
 	fr_event_service(el);
@@ -3811,9 +3840,129 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 	talloc_free(trunk);
 
+	/*
+	 *	Cancellation in cancel-partial via trunk free
+	 */
+	io_funcs.request_cancel_mux = test_cancel_mux;	/* Set a cancel muxer */
+
+	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
+	preq = talloc_zero(NULL, test_proto_request_t);
+	preq->signal_cancel_partial = true;
+	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
+	preq->treq = treq;
+
+	events = fr_event_corral(el, test_time_base, false);	/* Connect the connection */
+	fr_event_service(el);
+
+	events = fr_event_corral(el, test_time_base, false);	/* Send the request */
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_SENT) == 1);
+	fr_trunk_request_signal_cancel(treq);
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_CANCEL) == 1);
+
+	events = fr_event_corral(el, test_time_base, false);	/* Send the cancellation request */
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_CANCEL_PARTIAL) == 1);
+
+	talloc_free(trunk);
+
+	TEST_CHECK(preq->completed == false);
+	TEST_CHECK(preq->failed == true);
+	TEST_CHECK(preq->cancelled == true);
+	TEST_CHECK(preq->freed == true);
+	talloc_free(preq);
+
+	/*
+	 *	Cancellation in cancel-sent via trunk free
+	 */
+	io_funcs.request_cancel_mux = test_cancel_mux;	/* Set a cancel muxer */
+
+	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
+	preq = talloc_zero(NULL, test_proto_request_t);
+	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
+	preq->treq = treq;
+
+	events = fr_event_corral(el, test_time_base, false);	/* Connect the connection */
+	fr_event_service(el);
+
+	events = fr_event_corral(el, test_time_base, false);	/* Send the request */
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_SENT) == 1);
+	fr_trunk_request_signal_cancel(treq);
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_CANCEL) == 1);
+
+	events = fr_event_corral(el, test_time_base, false);	/* Send the cancellation request */
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_CANCEL_SENT) == 1);
+
+	talloc_free(trunk);
+
+	TEST_CHECK(preq->completed == false);
+	TEST_CHECK(preq->failed == true);
+	TEST_CHECK(preq->cancelled == true);
+	TEST_CHECK(preq->freed == true);
+	talloc_free(preq);
+
+	/*
+	 *	Cancellation after cancel-complete via trunk free
+	 */
+	io_funcs.request_cancel_mux = test_cancel_mux;	/* Set a cancel muxer */
+
+	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
+	preq = talloc_zero(NULL, test_proto_request_t);
+	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
+	preq->treq = treq;
+
+	events = fr_event_corral(el, test_time_base, false);	/* Connect the connection */
+	fr_event_service(el);
+
+	events = fr_event_corral(el, test_time_base, false);	/* Send the request */
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_SENT) == 1);
+	fr_trunk_request_signal_cancel(treq);
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_CANCEL) == 1);
+
+	events = fr_event_corral(el, test_time_base, false);	/* Send the cancellation request */
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_CANCEL_SENT) == 1);
+
+	events = fr_event_corral(el, test_time_base, false);	/* Loop the cancel request back round */
+	fr_event_service(el);
+
+	events = fr_event_corral(el, test_time_base, false);	/* Read the cancel ACK (such that it is) */
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_requests_by_state_count(trunk, FR_TRUNK_REQUEST_ALL) == 0);
+
+	talloc_free(trunk);
+
+	TEST_CHECK(preq->completed == false);
+	TEST_CHECK(preq->failed == false);
+	TEST_CHECK(preq->cancelled == true);
+	TEST_CHECK(preq->freed == true);
+	talloc_free(preq);
+
+
 	talloc_free(ctx);
 }
 
+/*
+ *	Test the two partial to sent state changes
+ */
+
+/*
+ *	Test calling reconnect with requests in each different state
+ */
+
+/*
+ *	Connection spawning
+ */
 
 TEST_LIST = {
 	/*
