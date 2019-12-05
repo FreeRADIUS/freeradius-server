@@ -457,7 +457,7 @@ do { \
 	void *prev = trunk->in_handler; \
 	DEBUG4("Calling funcs.connection_alloc(tconn=%p, el=%p, log_prefix=\"%s\", uctx=%p)", \
 	       (_tconn), (_tconn)->trunk->el, trunk->log_prefix, (_tconn)->trunk->uctx); \
-	(_tconn)->trunk->in_handler = (_tconn)->trunk->funcs.connection_alloc; \
+	(_tconn)->trunk->in_handler = (void *) (_tconn)->trunk->funcs.connection_alloc; \
 	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, trunk->log_prefix, trunk->uctx); \
 	(_tconn)->trunk->in_handler = prev; \
 	if (!(_tconn)->conn) { \
