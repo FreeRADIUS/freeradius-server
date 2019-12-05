@@ -1441,7 +1441,7 @@ static inline uint32_t trunk_requests_by_connection_count(fr_trunk_connection_t 
  * @param[in] trunk	to retrieve counts for.
  * @param[in] states	One or more states or'd together.
  */
-extern inline uint16_t fr_trunk_connection_count(fr_trunk_t *trunk, int states)
+uint16_t fr_trunk_connection_count(fr_trunk_t *trunk, int states)
 {
 	uint16_t count = 0;
 
