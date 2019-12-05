@@ -90,6 +90,7 @@ typedef struct {
 	int		received;      	//!< total packets received (should be == sent)
 	int		backlog_ema;	//!< exponential moving average
 	int		max_backlog;	//!< maximum backlog we saw during the test
+	bool		blocked;	//!< whether or not we're blocked
 	int		times[8];	//!< response time in microseconds to tens of seconds
 } fr_load_stats_t;
 
@@ -115,6 +116,6 @@ int fr_load_generator_stop(fr_load_t *l) CC_HINT(nonnull);
 
 fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_time) CC_HINT(nonnull);
 
-int fr_load_generator_stats_print(fr_load_t const *l, FILE *fp) CC_HINT(nonnull);
+size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer, size_t buflen);
 
 fr_load_stats_t const * fr_load_generator_stats(fr_load_t const *l) CC_HINT(nonnull);

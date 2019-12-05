@@ -64,6 +64,7 @@ struct fr_load_s {
 	fr_time_delta_t		delta;			//!< between packets
 
 	uint32_t		count;
+	bool			header;			//!< for printing statistics
 
 	fr_time_t		next;			//!< The next time we're supposed to send a packet
 	fr_event_timer_t const	*ev;
@@ -134,6 +135,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 */
 	if (((uint32_t) l->stats.backlog_ema * 1000) < (l->pps * l->config->milliseconds)) {
 		l->state = FR_LOAD_STATE_SENDING;
+		l->stats.blocked = false;
 		l->count = l->config->parallel;
 
 		next = l->next + l->delta;
@@ -288,6 +290,7 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	 *	Since we have a reply, send another request.
 	 */
 	if (l->state == FR_LOAD_STATE_GATED) {
+		l->stats.blocked = true;
 		load_timer(l->el, now, l);
 		return FR_LOAD_CONTINUE;
 	}
@@ -312,29 +315,36 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 /** Print load generator statistics in CVS format.
  *
  */
-int fr_load_generator_stats_print(fr_load_t const *l, FILE *fp)
+size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer, size_t buflen)
 {
-	int i;
+	double now_f, last_send_f;
 
-	fprintf(fp, "%" PRIu64 ",", l->stats.start);
-	fprintf(fp, "%" PRIu64 ",", fr_time());		/* now */
-	fprintf(fp, "%" PRIu64 ",", l->stats.end);
-	fprintf(fp, "%" PRIu64 ",", l->stats.last_send);
-
-	fprintf(fp, "%" PRIu64 ",", l->stats.rtt);
-	fprintf(fp, "%" PRIu64 ",", l->stats.rttvar);
-
-	fprintf(fp, "%d,", l->stats.sent);
-	fprintf(fp, "%d,", l->stats.received);
-	fprintf(fp, "%d,", l->stats.backlog_ema);
-	fprintf(fp, "%d,", l->stats.max_backlog);
-
-	for (i = 0; i < 7; i++) {
-		fprintf(fp, "%d,", l->stats.times[i]);
+	if (!l->header) {
+		l->header = true;
+		return snprintf(buffer, buflen, "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"pps_accepted\",\"sent\",\"received\",\"ema_backlog\",\"max_backlog\",\"usec\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"10s\"\n");
 	}
-	fprintf(fp, "%d\n", l->stats.times[7]);
 
-	return 0;
+
+	now_f = now - l->stats.start;
+	now_f /= NSEC;
+
+	last_send_f = l->stats.last_send - l->stats.start;
+	last_send_f /= NSEC;
+
+	return snprintf(buffer, buflen,
+			"%f,%f,"
+			"%" PRIu64 ",%" PRIu64 ","
+			"%d,%d,"
+			"%d,%d,"
+			"%d,%d,"
+			"%d,%d,%d,%d,%d,%d,%d,%d\n",
+			now_f, last_send_f,
+			l->stats.rtt, l->stats.rttvar,
+			l->stats.pps, l->stats.pps_accepted,
+			l->stats.sent, l->stats.received,
+			l->stats.backlog_ema, l->stats.max_backlog,
+			l->stats.times[0], l->stats.times[1], l->stats.times[2], l->stats.times[3],
+			l->stats.times[4], l->stats.times[5], l->stats.times[6], l->stats.times[7]);
 }
 
 fr_load_stats_t const * fr_load_generator_stats(fr_load_t const *l)
