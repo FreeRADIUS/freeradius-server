@@ -156,9 +156,9 @@ typedef fr_connection_t *(*fr_trunk_connection_alloc_t)(fr_trunk_connection_t *t
  * @param[in] notify_on		When to signal the trunk connection.
  * @param[in] uctx		User data to pass to the notify callback.
  */
-typedef void *(*fr_trunk_connection_notify_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn,
-					      fr_event_list_t *el,
-					      fr_trunk_connection_event_t notify_on, void *uctx);
+typedef void (*fr_trunk_connection_notify_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn,
+					     fr_event_list_t *el,
+					     fr_trunk_connection_event_t notify_on, void *uctx);
 
 /** Multiplex one or more requests into a single connection
  *
