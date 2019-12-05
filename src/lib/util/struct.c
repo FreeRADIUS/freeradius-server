@@ -111,7 +111,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - child %d", child->attr);
 
 		/*
-		 *	This isn't done yet.
+		 *	Check for bit fields.
 		 */
 		if (da_is_bit_field(child)) {
 			uint8_t array[8];
@@ -177,6 +177,9 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 *
 		 *	Return only PARTIALLY decoded data.  Let the
 		 *	caller decode the rest.
+		 *
+		 *	@todo - pass TLVs to the "decode_value"
+		 *	function, so it can decode them.
 		 */
 		if (child->type == FR_TYPE_TLV) {
 			*child_p = child;
@@ -614,6 +617,11 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		/*
 		 *	Nothing more to do, or we've done all of the
 		 *	entries in this structure, stop.
+		 *
+		 *	Note that TLVs are passed to the
+		 *	"encode_value" function, which should encode
+		 *	them.  This is currently done for RADIUS, but
+		 *	not for DHCPv4 or DHCPv6.
 		 */
 		if (!vp || (vp->da->parent != parent) || (vp->da->attr < child_num)) {
 			break;
