@@ -265,6 +265,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return -1;
 		}
 
+		if ((flags->subtype == FLAG_LENGTH_UINT16) &&
+		    ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS) && (type != FR_TYPE_STRUCT))) {
+				fr_strerror_printf("The 'length' flag can only be used for attributes of type 'string' or 'octets'");
+				return -1;
+			}
+
 		FORBID_OTHER_FLAGS(extra);
 	}
 

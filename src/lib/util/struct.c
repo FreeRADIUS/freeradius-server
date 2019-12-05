@@ -85,6 +85,20 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	child_num = 1;
 	key_vp = NULL;
 
+	/*
+	 *	Decode structs with length prefixes.
+	 */
+	if (da_is_length_field(parent)) {
+		size_t struct_len;
+
+		struct_len = (p[0] << 8) | p[1];
+		if ((struct_len + 2) > data_len) goto unknown;
+
+		data_len = struct_len + 2;
+		end = data + data_len;
+		p += 2;
+	}
+
 	while (p < end) {
 		size_t child_length;
 
@@ -396,6 +410,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	ssize_t			len;
 	unsigned int		child_num = 1;
 	unsigned int		offset = 0;
+	bool			do_length = false;
 	uint8_t			*p = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const   	*key_da, *parent;
@@ -426,6 +441,19 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	}
 
 	key_da = NULL;
+
+	/*
+	 *	Some structs are prefixed by a 16-bit length.
+	 */
+	if (da_is_length_field(parent)) {
+		if (outlen < 2) return 0;
+
+		out[0] = 0;
+		out[1] = 0;
+		p += 2;
+		outlen -= 2;
+		do_length = true;
+	}
 
 	while (outlen) {
 		fr_dict_attr_t const *child;
@@ -609,7 +637,8 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			len = fr_struct_to_network(p, outlen, tlv_stack, depth + 2, /* note + 2 !!! */
 						   cursor, encoder_ctx, encode_value);
 			if (len < 0) return len;
-			return (p - out) + len;
+			p += len;
+			goto done;
 		}
 
 		/*
@@ -620,12 +649,22 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
 			if (len <= 0) return -1;
 			(void) fr_cursor_next(cursor);
-			return (p - out) + len;
+			p += len;
+			goto done;
 		}
 
 		/*
 		 *	We have no idea what to do.  Ignore it.
 		 */
+	}
+
+done:
+	if (do_length) {
+		len = (p - (out + 2));
+		if (len > 65535) return -1;
+
+		out[0] = (len >> 8) & 0xff;
+		out[1] = len & 0xff;
 	}
 
 	return p - out;
