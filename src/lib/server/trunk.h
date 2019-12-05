@@ -278,11 +278,12 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  * writable.
  *
  * @param[in] conn		to remove request from.
- * @param[in] treq		Trunk request to remove.
+ * @param[in] treq		Trunk request to cancel.
+ * @param[in] preq		Preq to cancel.
  * @param[in] reason		Why the request was cancelled.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
-typedef void (*fr_trunk_request_cancel_t)(fr_connection_t *conn, fr_trunk_request_t *treq,
+typedef void (*fr_trunk_request_cancel_t)(fr_connection_t *conn, fr_trunk_request_t *treq, void *preq,
 					  fr_trunk_cancel_reason_t reason, void *uctx);
 
 /** Write a successful result to the rctx so that the API client is aware of the result
@@ -384,6 +385,8 @@ void		fr_trunk_request_signal_fail(fr_trunk_request_t *treq);
 
 void		fr_trunk_request_signal_cancel(fr_trunk_request_t *treq);
 
+void		fr_trunk_request_signal_cancel_partial(fr_trunk_request_t *treq);
+
 void		fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq);
 
 void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq);
@@ -400,9 +403,9 @@ int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQU
 /** @name Dequeue protocol requests and cancellations
  * @{
  */
-fr_trunk_request_t *fr_trunk_connection_pop_cancellation(fr_trunk_connection_t *tconn);
+fr_trunk_request_t *fr_trunk_connection_pop_cancellation(void **preq, fr_trunk_connection_t *tconn);
 
-fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn);
+fr_trunk_request_t *fr_trunk_connection_pop_request(void **preq, void **rctx, fr_trunk_connection_t *tconn);
 /** @} */
 
 /** @name Connection state signalling
