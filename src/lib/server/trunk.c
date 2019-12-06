@@ -2586,7 +2586,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	connections to active before spawning
 		 *	any new connections.
 		 */
-		if (conn_count >= trunk->conf->max_connections) {
+		if ((trunk->conf->max_connections > 0) && (conn_count >= trunk->conf->max_connections)) {
 			DEBUG4("Not opening connection - Have %u connections, need %u or below",
 			       conn_count, trunk->conf->max_connections);
 			goto done;
@@ -3057,6 +3057,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log
 	trunk->el = el;
 	trunk->log_prefix = talloc_strdup(trunk, log_prefix);
 	trunk->conf = conf;
+
 	memcpy(&trunk->funcs, funcs, sizeof(trunk->funcs));
 	memcpy(&trunk->uctx, &uctx, sizeof(trunk->uctx));
 	talloc_set_destructor(trunk, _trunk_free);
