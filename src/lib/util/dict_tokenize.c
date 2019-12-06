@@ -390,11 +390,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				fr_strerror_printf("The 'length' flag can only be used with value 'uint16'");
 			}
 
-			if ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS) && (type != FR_TYPE_STRUCT)) {
-				fr_strerror_printf("The 'length' flag can only be used for attributes of type 'string' or 'octets'");
-				return -1;
-			}
-
 			flags->extra = 1;
 			flags->subtype = FLAG_LENGTH_UINT16;
 
