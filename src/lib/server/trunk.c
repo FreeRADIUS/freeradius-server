@@ -1665,6 +1665,7 @@ void fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq)
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_CANCEL:
+	case FR_TRUNK_REQUEST_CANCEL_PARTIAL:
 		trunk_request_enter_cancel_sent(treq);
 		break;
 
