@@ -141,7 +141,7 @@ typedef enum {
 							///< can be 'connected' and 'full' or 'connected' and 'active'.
 	FR_TRUNK_CONN_CLOSED		= 0x04,		//!< Connection failed.  We now wait for it to enter the
 							///< connecting and connected states.
-	FR_TRUNK_CONN_FULL		= 0x08,		//!< Connection is full and can't accept any more requests.
+	FR_TRUNK_CONN_INACTIVE		= 0x08,		//!< Connection is inactive and can't accept any more requests.
 	FR_TRUNK_CONN_DRAINING		= 0x10		//!< Connection will be closed once it has no more outstanding
 							///< requests.
 } fr_trunk_connection_state_t;
@@ -154,7 +154,7 @@ typedef enum {
 	FR_TRUNK_CONN_CONNECTING | \
 	FR_TRUNK_CONN_ACTIVE | \
 	FR_TRUNK_CONN_CLOSED | \
-	FR_TRUNK_CONN_FULL | \
+	FR_TRUNK_CONN_INACTIVE | \
 	FR_TRUNK_CONN_DRAINING \
 )
 
@@ -190,7 +190,7 @@ struct fr_trunk_connection_s {
 
 	fr_dlist_head_t		cancel_sent;		//!< Requests we need to inform a remote server about.
 
-	bool			signalled_full;		//!< Connection marked full because of signal.
+	bool			signalled_inactive;		//!< Connection marked full because of signal.
 							///< Will not automatically be marked active if
 							///< the number of requests associated with it
 							///< falls below max_requests_per_conn.
@@ -290,7 +290,7 @@ static fr_table_num_ordered_t const fr_trunk_connection_states[] = {
 	{ "HALTED",		FR_TRUNK_CONN_HALTED		},
 	{ "CONNECTING",		FR_TRUNK_CONN_CONNECTING	},
 	{ "ACTIVE",		FR_TRUNK_CONN_ACTIVE		},
-	{ "FULL",		FR_TRUNK_CONN_FULL		},
+	{ "INACTIVE",		FR_TRUNK_CONN_INACTIVE		},
 	{ "CLOSED",		FR_TRUNK_CONN_CLOSED		},
 	{ "DRAINING",		FR_TRUNK_CONN_DRAINING		}
 };
@@ -558,7 +558,7 @@ static inline void trunk_connection_auto_active(fr_trunk_connection_t *tconn);
 static inline void trunk_connection_readable(fr_trunk_connection_t *tconn);
 static inline void trunk_connection_writable(fr_trunk_connection_t *tconn);
 static void trunk_connection_event_update(fr_trunk_connection_t *tconn);
-static void trunk_connection_enter_full(fr_trunk_connection_t *tconn);
+static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_active(fr_trunk_connection_t *tconn);
 
@@ -621,7 +621,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 	}
 
 	switch (tconn->state){
-	case FR_TRUNK_CONN_FULL:
+	case FR_TRUNK_CONN_INACTIVE:
 		trunk_connection_auto_active(tconn);	/* Check if we can switch back to active */
 		/* FALL-THROUGH */
 
@@ -1692,7 +1692,7 @@ uint16_t fr_trunk_connection_count(fr_trunk_t *trunk, int states)
 
 	if (states & FR_TRUNK_CONN_CONNECTING) count += fr_dlist_num_elements(&trunk->connecting);
 	if (states & FR_TRUNK_CONN_ACTIVE) count += fr_heap_num_elements(trunk->active);
-	if (states & FR_TRUNK_CONN_FULL) count += fr_dlist_num_elements(&trunk->full);
+	if (states & FR_TRUNK_CONN_INACTIVE) count += fr_dlist_num_elements(&trunk->full);
 	if (states & FR_TRUNK_CONN_CLOSED) count += fr_dlist_num_elements(&trunk->failed);
 	if (states & FR_TRUNK_CONN_DRAINING) count += fr_dlist_num_elements(&trunk->draining);
 
@@ -1709,11 +1709,11 @@ static inline void trunk_connection_auto_full(fr_trunk_connection_t *tconn)
 	uint32_t	count;
 
 	if (!trunk->conf->max_requests_per_conn ||
-	    tconn->signalled_full ||
+	    tconn->signalled_inactive ||
 	    (tconn->state != FR_TRUNK_CONN_ACTIVE)) return;
 
 	count = trunk_requests_by_connection_count(tconn, FR_TRUNK_REQUEST_ALL);
-	if (count >= trunk->conf->max_requests_per_conn) trunk_connection_enter_full(tconn);
+	if (count >= trunk->conf->max_requests_per_conn) trunk_connection_enter_inactive(tconn);
 }
 
 /** Automatically mark a connection as active
@@ -1726,8 +1726,8 @@ static inline void trunk_connection_auto_active(fr_trunk_connection_t *tconn)
 	uint32_t	count;
 
 	if (!trunk->conf->max_requests_per_conn ||
-	    tconn->signalled_full ||
-	    (tconn->state != FR_TRUNK_CONN_FULL)) return;
+	    tconn->signalled_inactive ||
+	    (tconn->state != FR_TRUNK_CONN_INACTIVE)) return;
 
 	count = trunk_requests_by_connection_count(tconn, FR_TRUNK_REQUEST_ALL);
 	if (count < trunk->conf->max_requests_per_conn) trunk_connection_enter_active(tconn);
@@ -1774,7 +1774,7 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 	 *	We only register I/O events if the trunk is in one of these states
 	 */
 	case FR_TRUNK_CONN_ACTIVE:
-	case FR_TRUNK_CONN_FULL:
+	case FR_TRUNK_CONN_INACTIVE:
 	case FR_TRUNK_CONN_DRAINING:
 		/*
 		 *	If the connection is always writable,
@@ -1812,7 +1812,7 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
  * Removes the connection from the connected heap, and places it in the
  * full list.
  */
-static void trunk_connection_enter_full(fr_trunk_connection_t *tconn)
+static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t		*trunk = tconn->trunk;
 	int			ret;
@@ -1827,7 +1827,7 @@ static void trunk_connection_enter_full(fr_trunk_connection_t *tconn)
 		if (!fr_cond_assert(0)) return;
 	}
 
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FULL);
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE);
 	fr_dlist_insert_head(&trunk->full, tconn);
 }
 
@@ -1873,7 +1873,7 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 	fr_trunk_t		*trunk = tconn->trunk;
 
 	switch (tconn->state) {
-	case FR_TRUNK_CONN_FULL:
+	case FR_TRUNK_CONN_INACTIVE:
 		fr_dlist_remove(&trunk->full, tconn);
 		break;
 
@@ -2014,7 +2014,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 		rad_assert(trunk_requests_by_connection_count(tconn, FR_TRUNK_REQUEST_ALL) == 0);
 		break;
 
-	case FR_TRUNK_CONN_FULL:
+	case FR_TRUNK_CONN_INACTIVE:
 		fr_dlist_remove(&trunk->full, tconn);
 		need_requeue = true;
 		break;
@@ -2100,7 +2100,7 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 		need_requeue = true;
 		break;
 
-	case FR_TRUNK_CONN_FULL:
+	case FR_TRUNK_CONN_INACTIVE:
 		fr_dlist_remove(&trunk->full, tconn);
 		need_requeue = true;
 		break;
@@ -2374,18 +2374,18 @@ void fr_trunk_connection_signal_readable(fr_trunk_connection_t *tconn)
 	trunk_connection_readable(tconn);
 }
 
-/** Signal a trunk connection is full and cannot accept more requests
+/** Signal a trunk connection cannot accept more requests
  *
  * @param[in] tconn to signal.
  */
-void fr_trunk_connection_signal_full(fr_trunk_connection_t *tconn)
+void fr_trunk_connection_signal_inactive(fr_trunk_connection_t *tconn)
 {
 	/* Can be called anywhere */
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
-		tconn->signalled_full = true;		/* Prevent tconn from automatically being marked as active */
-		trunk_connection_enter_full(tconn);
+		tconn->signalled_inactive = true;		/* Prevent tconn from automatically being marked as active */
+		trunk_connection_enter_inactive(tconn);
 		break;
 
 	default:
@@ -2401,9 +2401,9 @@ void fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn)
 {
 	/* Can be called anywhere */
 
-	tconn->signalled_full = false;			/* Allow full/active state to be changed automatically again */
+	tconn->signalled_inactive = false;			/* Allow inactive/active state to be changed automatically again */
 	switch (tconn->state) {
-	case FR_TRUNK_CONN_FULL:
+	case FR_TRUNK_CONN_INACTIVE:
 		trunk_connection_auto_active(tconn);	/* Mark as active if it should be active */
 		break;
 
@@ -2719,7 +2719,7 @@ uint64_t fr_trunk_requests_by_connection_state_count(fr_trunk_t *trunk, int stat
 			count += trunk_requests_by_connection_count(tconn, FR_TRUNK_REQUEST_ALL);
 		}
 	}
-	if (states & FR_TRUNK_CONN_FULL) {
+	if (states & FR_TRUNK_CONN_INACTIVE) {
 		tconn = NULL;
 		while ((tconn = fr_dlist_next(&trunk->full, tconn))) {
 			count += trunk_requests_by_connection_count(tconn, FR_TRUNK_REQUEST_ALL);
@@ -2895,7 +2895,7 @@ void fr_trunk_reconnect(fr_trunk_t *trunk, int states)
 		}
 	}
 
-	if (states & FR_TRUNK_CONN_FULL) {
+	if (states & FR_TRUNK_CONN_INACTIVE) {
 		for (i = fr_dlist_num_elements(&trunk->full); i > 0; i--) {
 			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->full))->conn);
 		}

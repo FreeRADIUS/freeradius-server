@@ -146,7 +146,7 @@ typedef fr_connection_t *(*fr_trunk_connection_alloc_t)(fr_trunk_connection_t *t
  *
  * - fr_trunk_connection_signal_writable - Connection is now writable.
  * - fr_trunk_connection_signal_readable - Connection is now readable.
- * - fr_trunk_connection_signal_full - Connection is full or congested.
+ * - fr_trunk_connection_signal_active - Connection is full or congested.
  * - fr_trunk_connection_signal_active - Connection is no longer full or congested.
  * - fr_trunk_connection_signal_reconnect - Connection is inviable and should be reconnected.
  *
@@ -420,7 +420,7 @@ void		fr_trunk_connection_signal_writable(fr_trunk_connection_t *tconn);
 
 void		fr_trunk_connection_signal_readable(fr_trunk_connection_t *tconn);
 
-void		fr_trunk_connection_signal_full(fr_trunk_connection_t *tconn);
+void		fr_trunk_connection_signal_inactive(fr_trunk_connection_t *tconn);
 
 void		fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn);
 
