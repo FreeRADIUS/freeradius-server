@@ -1705,7 +1705,7 @@ void fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq)
  * @param[in] request	to enqueue.
  * @param[in] preq	Protocol request to write out.  Will be freed when
  *			treq is freed. MUST NOT BE PARENTED.
- * @param[in] data	to write.
+ * @param[in] rctx	The resume context.
  * @return
  *	- TRUNK_ENQUEUE_OK.
  *	- TRUNK_ENQUEUE_IN_BACKLOG.
