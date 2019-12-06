@@ -887,12 +887,10 @@ static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_PARTIAL:
 		REQUEST_EXTRACT_PARTIAL(treq);
-		DO_REQUEST_CANCEL(treq, reason);
 		break;
 
 	case FR_TRUNK_REQUEST_SENT:
 		fr_dlist_remove(&tconn->sent, treq);
-		DO_REQUEST_CANCEL(treq, reason);
 		break;
 
 	default:
@@ -902,6 +900,8 @@ static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_CANCEL);
 	fr_dlist_insert_tail(&tconn->cancel, treq);
 	treq->cancel_reason = reason;
+
+	DO_REQUEST_CANCEL(treq, reason);
 
 	/*
 	 *	Our treq is no longer bound to an actual
