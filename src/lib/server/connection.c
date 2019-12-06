@@ -496,7 +496,7 @@ static void connection_state_closed_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	if (conn->close && !conn->is_closed) {
 		HANDLER_BEGIN(conn);
-		DEBUG4("Calling close(%p, %p)", conn->h, conn->uctx);
+		DEBUG4("Calling close(h=%p, uctx=%p)", conn->h, conn->uctx);
 		conn->close(conn->h, conn->uctx);
 		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
 		HANDLER_END(conn);
@@ -549,7 +549,7 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 		fr_connection_state_t ret;
 
 		HANDLER_BEGIN(conn);
-		DEBUG4("Calling failed(%p, %s, %p)", conn->h,
+		DEBUG4("Calling failed(h=%p, state=%s, uctx=%p)", conn->h,
 		       fr_table_str_by_value(fr_connection_states, prev, "<INVALID>"), conn->uctx);
 		ret = conn->failed(conn->h, prev, conn->uctx);
 		HANDLER_END(conn);
@@ -682,7 +682,7 @@ static void connection_state_connected_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	if (conn->open) {
 		HANDLER_BEGIN(conn);
-		DEBUG4("Calling open(%p, %p, %p)", conn->el, conn->h, conn->uctx);
+		DEBUG4("Calling open(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
 		ret = conn->open(conn->el, conn->h, conn->uctx);
 		HANDLER_END(conn);
 	} else {
@@ -802,7 +802,7 @@ static void connection_state_init_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	if (conn->init) {
 		HANDLER_BEGIN(conn);
-		DEBUG4("Calling init(%p, %p, %p)", &conn->h, conn, conn->uctx);
+		DEBUG4("Calling init(h_out=%p, conn=%p, uctx=%p)", &conn->h, conn, conn->uctx);
 		ret = conn->init(&conn->h, conn, conn->uctx);
 		HANDLER_END(conn);
 	} else {
