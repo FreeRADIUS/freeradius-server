@@ -168,15 +168,24 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	}
 
 	/*
-	 *	Update the "next" timer to the correct value, no
-	 *	matter what.
+	 *	Skip timers if we're too busy.
 	 */
 	l->next += l->delta;
-	if (l->next <= now) {
-		delta = 0;
-		fprintf(stderr, ".");
-	} else {
-		delta = l->next - now;
+	if (l->next < now) {
+		while ((l->next + l->delta) < now) {
+			l->next += l->delta;
+		}
+	}
+	delta = l->next - now;
+
+	/*
+	 *	Track packets/s.  Since times are in nanoseconds, we
+	 *	have to scale the counters up by NSEC.  And since NSEC
+	 *	is 1B, the calculations have to be done via 64-bit
+	 *	numbers, and then converted to a final 32-bit counter.
+	 */
+	if (now > l->step_start) {
+		l->stats.pps_accepted = (((uint64_t) (l->stats.received - l->step_received)) * NSEC) / (now - l->step_start);
 	}
 
 	/*
