@@ -2562,7 +2562,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	 *	We're above the target requests per connection
 	 *	spawn more connections!
 	 */
-	if ((trunk->last_above_target > trunk->last_below_target)) {
+	if ((trunk->last_above_target >= trunk->last_below_target)) {
 		if ((now - trunk->last_above_target) < trunk->conf->open_delay) {
 			DEBUG4("Not opening connection - Need %pVs above threshold, have %pVs",
 			       fr_box_time_delta(trunk->conf->open_delay),
@@ -2576,7 +2576,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	that a call to trunk_requests_per_connnection
 		 *	was missed.
 		 */
-		rad_assert(trunk->last_above_target > trunk->last_below_target);
+		rad_assert(trunk->last_above_target >= trunk->last_below_target);
 
 		/*
 		 *	We don't consider 'draining' connections
