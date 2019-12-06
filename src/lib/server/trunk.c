@@ -660,7 +660,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
  */
 static void trunk_request_enter_unassigned(fr_trunk_request_t *treq)
 {
-	fr_trunk_t	*trunk = treq->trunk;
+	fr_trunk_t		*trunk = treq->trunk;
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_UNASSIGNED:
@@ -740,7 +740,7 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq)
  */
 static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t	*trunk = treq->trunk;
+	fr_trunk_t		*trunk = treq->trunk;
 
 	rad_assert(tconn->trunk == trunk);
 	rad_assert(tconn->state == FR_TRUNK_CONN_ACTIVE);
@@ -820,8 +820,8 @@ static void trunk_request_enter_partial(fr_trunk_request_t *treq)
  */
 static void trunk_request_enter_sent(fr_trunk_request_t *treq)
 {
-	fr_trunk_connection_t *tconn = treq->tconn;
-	fr_trunk_t	*trunk = treq->trunk;
+	fr_trunk_connection_t	*tconn = treq->tconn;
+	fr_trunk_t		*trunk = treq->trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
 
@@ -872,8 +872,8 @@ static void trunk_request_enter_sent(fr_trunk_request_t *treq)
  */
 static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel_reason_t reason)
 {
-	fr_trunk_connection_t *tconn = treq->tconn;
-	fr_trunk_t	*trunk = treq->trunk;
+	fr_trunk_connection_t	*tconn = treq->tconn;
+	fr_trunk_t		*trunk = treq->trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
 
@@ -990,8 +990,8 @@ static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq)
  */
 static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq)
 {
-	fr_trunk_connection_t *tconn = treq->tconn;
-	fr_trunk_t	*trunk = treq->trunk;
+	fr_trunk_connection_t	*tconn = treq->tconn;
+	fr_trunk_t		*trunk = treq->trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
 	if (!fr_cond_assert(!treq->request)) return;	/* Only a valid state for REQUEST * which have been cancelled */
@@ -1078,7 +1078,7 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
 static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tconn_out, fr_trunk_t *trunk,
 						      REQUEST *request)
 {
-	fr_trunk_connection_t		*tconn;
+	fr_trunk_connection_t	*tconn;
 	uint64_t		limit;
 
 	/*
@@ -1178,8 +1178,8 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
  */
 static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *treq)
 {
-	fr_trunk_t			*trunk = treq->trunk;
-	fr_trunk_connection_t			*tconn = NULL;
+	fr_trunk_t		*trunk = treq->trunk;
+	fr_trunk_connection_t	*tconn = NULL;
 	fr_trunk_enqueue_t	rcode;
 
 	/*
@@ -1680,7 +1680,7 @@ void fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq)
 fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_trunk_t *trunk,
 					    REQUEST *request, void *preq, void *rctx)
 {
-	fr_trunk_connection_t		*tconn;
+	fr_trunk_connection_t	*tconn;
 	fr_trunk_request_t	*treq;
 	fr_trunk_enqueue_t	rcode;
 
@@ -2108,7 +2108,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_t	*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->trunk;
 
 	/*
 	 *	Other conditions will be handled by on_closed
