@@ -142,6 +142,13 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		count = l->config->parallel;
 		l->stats.skipped = 0;
 
+		/*
+		 *	Limit "count" so that it doesn't over-run backlog.
+		 */
+		if (((uint32_t) ((count + l->stats.backlog) * 1000)) > (l->pps * l->config->milliseconds)) {
+			count = (count + l->stats.backlog) - ((l->pps * l->config->milliseconds) / 1000);
+		}
+
 	} else {
 
 		/*
