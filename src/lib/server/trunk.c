@@ -542,8 +542,10 @@ do { \
 #define CONN_REORDER(_tconn) \
 do { \
 	int _ret; \
+	if ((fr_heap_num_elements((_tconn)->trunk->active) == 1)) break; \
+	if (!fr_cond_assert((_tconn)->state == FR_TRUNK_CONN_ACTIVE)) break; \
 	_ret = fr_heap_extract((_tconn)->trunk->active, (_tconn)); \
-	if (!fr_cond_assert(_ret == 0)) return; \
+	if (!fr_cond_assert(_ret == 0)) break; \
 	fr_heap_insert((_tconn)->trunk->active, (_tconn)); \
 } while (0)
 
@@ -630,7 +632,8 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 
 	switch (tconn->state){
 	case FR_TRUNK_CONN_INACTIVE:
-		trunk_connection_auto_active(tconn);	/* Check if we can switch back to active */
+		trunk_connection_auto_active(tconn);			/* Check if we can switch back to active */
+		if (tconn->state == FR_TRUNK_CONN_INACTIVE) break;	/* Only fallthrough if conn is now active */
 		/* FALL-THROUGH */
 
 	case FR_TRUNK_CONN_ACTIVE:
@@ -773,7 +776,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	 *	Reorder the connection in the heap now it has an
 	 *	additional request.
 	 */
-	CONN_REORDER(tconn);
+	if (tconn->state == FR_TRUNK_CONN_ACTIVE) CONN_REORDER(tconn);
 
 	/*
 	 *	We have a new request, see if we need to register
