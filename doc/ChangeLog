@@ -8,6 +8,7 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  See raddb/mods-config/sql/ippool/mssql/
 	  Patch from Terry Burton.
 	* Added RCNTEC dictionary. Closes #3168.
+	* Added Pica8 dictionary. Closes #3179.
 
 	Bug fixes
 	* Set permissions of certificates in bootstrap shell script.
