@@ -40,8 +40,6 @@ typedef struct fr_trunk_s fr_trunk_t;
  *
  */
 typedef struct {
-	bool			connected;		//!< Whether the trunk is actively processing
-							///< requests.
 	uint16_t		min_connections;	//!< Shouldn't let connections drop below this number.
 
 	uint16_t		max_connections;	//!< Maximum number of connections in the trunk.
@@ -61,10 +59,6 @@ typedef struct {
 
 	uint32_t		max_requests_per_conn;	//!< Maximum connections per request.
 							///< Used to determine if we need to create new connections.
-
-	uint8_t			max_request_requeue;	//!< Maximum number of times a request can move between
-							///< connections.  Note we only count as a requeue
-							///< after a request enters the 'sent' state.
 
 	bool			always_writable;	//!< Set to true, if our ability to write requests to
 							///< a connection handle is not dependant on the state
