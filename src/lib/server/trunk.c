@@ -713,6 +713,13 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq)
 	fr_heap_insert(trunk->backlog, treq);	/* Insert into the backlog heap */
 
 	/*
+	 *	New requests in the backlog alters the
+	 *	ratio of requests to connections, so we
+	 *	need to recalculate.
+	 */
+	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
+
+	/*
 	 *	To reduce latency, if there's no connections
 	 *      in the connecting state, call the trunk manage
 	 *	function immediately.
