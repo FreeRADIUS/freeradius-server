@@ -259,34 +259,25 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 
 	l->stats.received++;
 
-
-	/*
-	 *	Track packets/s.  Since times are in nanoseconds, we
-	 *	have to scale the counters up by NSEC.  And since NSEC
-	 *	is 1B, the calculations have to be done via 64-bit
-	 *	numbers, and then converted to a final 32-bit counter.
-	 */
-	l->stats.pps_accepted = (((uint64_t) (l->stats.received - l->step_received)) * NSEC) / (now - l->step_start);
-
 	/*
 	 *	t is in nanoseconds.
 	 */
 	if (t < 1000) {
-	       l->stats.times[0]++; /* microseconds */
+	       l->stats.times[0]++; /* < microseconds */
 	} else if (t < 10000) {
-	       l->stats.times[1]++; /* tens of microseconds */
+	       l->stats.times[1]++; /* microseconds */
 	} else if (t < 100000) {
-	       l->stats.times[2]++; /* 100s of microseconds */
+	       l->stats.times[2]++; /* 10s of microseconds */
 	} else if (t < 1000000) {
-	       l->stats.times[3]++; /* milliseconds */
+	       l->stats.times[3]++; /* 100s of microiseconds */
 	} else if (t < 10000000) {
-	       l->stats.times[4]++; /* 10s of milliseconds */
+	       l->stats.times[4]++; /* milliseconds */
 	} else if (t < 100000000) {
-	       l->stats.times[5]++; /* 100s of milliseconds */
+	       l->stats.times[5]++; /* 10s of milliseconds */
 	} else if (t < NSEC) {
-	       l->stats.times[6]++; /* seconds */
+	       l->stats.times[6]++; /* 100s of milliseconds */
 	} else {
-	       l->stats.times[7]++; /* tens of seconds */
+	       l->stats.times[7]++; /* seconds */
 	}
 
 	/*
@@ -332,7 +323,7 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 
 	if (!l->header) {
 		l->header = true;
-		return snprintf(buffer, buflen, "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"pps_accepted\",\"sent\",\"received\",\"ema_backlog\",\"max_backlog\",\"usec\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"10s\",\"blocked\"\n");
+		return snprintf(buffer, buflen, "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"pps_accepted\",\"sent\",\"received\",\"ema_backlog\",\"max_backlog\",\"<usec\",\"us\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"blocked\"\n");
 	}
 
 
