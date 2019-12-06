@@ -70,6 +70,7 @@ if test x$with_[]modname != xno; then
 		s/-Wl,-O[[[:digit:]]][[[:blank:]]]*//g;\
 		s/-Wl,-Bsymbolic-functions[[[:blank:]]]*//g;\
 		s/-Xlinker -export-dynamic//g;\
+		s/-Wl,-stack_size,[[[:digit:]]]*[[[:blank:]]]//g;
 		'`
 	AC_MSG_NOTICE([Sanitized ldflags were \"${mod_ldflags}\"])
 
