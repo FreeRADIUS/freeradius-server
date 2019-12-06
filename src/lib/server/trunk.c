@@ -2630,7 +2630,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	could be immediately re-activated.
 		 */
 		if ((now - trunk->last_open) < trunk->conf->open_delay) {
-			DEBUG4("Not opening connection - Need to wait %pVs, waited %pVs",
+			DEBUG4("Not opening connection - Need to wait %pVs, elapsed %pVs",
 			       fr_box_time_delta(trunk->conf->open_delay),
 			       fr_box_time_delta(now - trunk->last_open));
 			goto done;
@@ -2695,7 +2695,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 
 	close:
 		if ((now - trunk->last_closed) < trunk->conf->close_delay) {
-			DEBUG4("Not closing connection - Need to wait %pVs, waited %pVs",
+			DEBUG4("Not closing connection - Need to wait %pVs, elapsed %pVs",
 			       fr_box_time_delta(trunk->conf->close_delay),
 			       fr_box_time_delta(now - trunk->last_closed));
 			goto done;
