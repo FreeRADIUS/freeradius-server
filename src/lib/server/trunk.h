@@ -359,11 +359,11 @@ typedef struct {
 /** @name Statistics
  * @{
  */
-uint16_t	fr_trunk_connection_count(fr_trunk_t *trunk, int conn_states);
+uint16_t	fr_trunk_connection_count_by_state(fr_trunk_t *trunk, int conn_state);
 
-uint64_t	fr_trunk_requests_by_state_count(fr_trunk_t *trunk, int req_states);
+uint32_t	fr_trunk_request_count_by_connection(fr_trunk_connection_t const *tconn, int req_state);
 
-uint64_t	fr_trunk_requests_by_connection_state_count(fr_trunk_t *trunk, int conn_states);
+uint64_t	fr_trunk_request_count_by_state(fr_trunk_t *trunk, int conn_state, int req_state);
 /** @} */
 
 /** @name Request state signalling
