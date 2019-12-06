@@ -88,7 +88,8 @@ typedef struct {
 	int       	pps_accepted;	//!< Accepted PPS for the last second
 	int		sent;		//!< total packets sent
 	int		received;      	//!< total packets received (should be == sent)
-	int		backlog_ema;	//!< exponential moving average
+	int		skipped;	//!< we skipped sending this number of packets
+	int		backlog;	//!< current backlog
 	int		max_backlog;	//!< maximum backlog we saw during the test
 	bool		blocked;	//!< whether or not we're blocked
 	int		times[8];	//!< response time in microseconds to tens of seconds

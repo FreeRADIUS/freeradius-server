@@ -95,30 +95,12 @@ fr_load_t *fr_load_generator_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_loa
  */
 static void fr_load_generator_send(fr_load_t *l, fr_time_t now, int count)
 {
-	int i, backlog;
+	int i;
 
 	/*
 	 *	Send as many packets as necessary.
 	 */
 	l->stats.sent += count;
-
-	/*
-	 *	Keep track of the overall maximum backlog for the
-	 *	duration of the entire test run.
-	 */
-	backlog = l->stats.sent - l->stats.received;
-	if (backlog > l->stats.max_backlog) l->stats.max_backlog = backlog;
-
-	/*
-	 *	ema_n+1 = (sample - ema_n) * (2 / (n + 1)) + ema_n
-	 *
-	 *	Where we want the average over N samples.  For us,
-	 *	this means "packets per second".
-	 *
-	 *	For numerical stability, we only divide *after* adding
-	 *	everything together, not before.
-	 */
-	l->stats.backlog_ema = (((backlog - l->stats.backlog_ema) * 2) + ((l->pps + 1) * l->stats.backlog_ema)) / (l->pps + 1);
 	l->stats.last_send = now;
 
 	/*
@@ -137,6 +119,13 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	int count;
 
 	/*
+	 *	Keep track of the overall maximum backlog for the
+	 *	duration of the entire test run.
+	 */
+	l->stats.backlog = l->stats.sent - l->stats.received;
+	if (l->stats.backlog > l->stats.max_backlog) l->stats.max_backlog = l->stats.backlog;
+
+	/*
 	 *	We don't have "pps" packets in the backlog, go send
 	 *	some more.  We scale the backlog by 1000 milliseconds
 	 *	per second.  Then, multiple the PPS by the number of
@@ -147,15 +136,14 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Otherwise, switch to a gated mode where we only send
 	 *	new packets once a reply comes in.
 	 */
-	if (l->state == FR_LOAD_STATE_GATED) {
-		count = 0;
-
-	} else if (((uint32_t) l->stats.backlog_ema * 1000) < (l->pps * l->config->milliseconds)) {
+	if (((uint32_t) l->stats.backlog * 1000) < (l->pps * l->config->milliseconds)) {
 		l->state = FR_LOAD_STATE_SENDING;
 		l->stats.blocked = false;
 		count = l->config->parallel;
+		l->stats.skipped = 0;
 
 	} else {
+
 		/*
 		 *	We have too many packets in the backlog, we're
 		 *	gated.  Don't send more packets until we have
@@ -164,7 +152,9 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 *	Note that we will send *these* packets.
 		 */
 		l->state = FR_LOAD_STATE_GATED;
-		count = 1;
+		l->stats.blocked = true;
+		count = 0;
+		l->stats.skipped += l->count;
 	}
 
 	/*
@@ -173,20 +163,11 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	l->next += l->delta;
 	if (l->next < now) {
 		while ((l->next + l->delta) < now) {
+//			l->stats.skipped += l->count;
 			l->next += l->delta;
 		}
 	}
 	delta = l->next - now;
-
-	/*
-	 *	Track packets/s.  Since times are in nanoseconds, we
-	 *	have to scale the counters up by NSEC.  And since NSEC
-	 *	is 1B, the calculations have to be done via 64-bit
-	 *	numbers, and then converted to a final 32-bit counter.
-	 */
-	if (now > l->step_start) {
-		l->stats.pps_accepted = (((uint64_t) (l->stats.received - l->step_received)) * NSEC) / (now - l->step_start);
-	}
 
 	/*
 	 *	If we're done this step, go to the next one.
@@ -197,6 +178,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		l->step_received = l->stats.received;
 		l->pps += l->config->step;
 		l->stats.pps = l->pps;
+		l->stats.skipped = 0;
 		l->delta = (NSEC * l->config->parallel) / l->pps;
 
 		/*
@@ -231,9 +213,10 @@ int fr_load_generator_start(fr_load_t *l)
 
 	l->pps = l->config->start_pps;
 	l->stats.pps = l->pps;
+	l->count = l->config->parallel;
+
 	l->delta = (NSEC * l->config->parallel) / l->pps;
 	l->next = l->step_start + l->delta;
-	l->count = l->config->parallel;
 
 	load_timer(l->el, l->step_start, l);
 	return 0;
@@ -260,6 +243,11 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	fr_time_t now;
 	fr_time_delta_t t;
 
+	/*
+	 *	Note that the replies may come out of order with
+	 *	respect to the request.  So we can't use this reply
+	 *	for any kind of timing.
+	 */
 	now = fr_time();
 	t = now - request_time;
 
@@ -301,8 +289,10 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	 *	Since we have a reply, send another request.
 	 */
 	if (l->state == FR_LOAD_STATE_GATED) {
-		l->stats.blocked = true;
-		fr_load_generator_send(l, now, 1);
+		if (l->stats.skipped > 0) {
+			l->stats.skipped--;
+			fr_load_generator_send(l, now, 1);
+		}
 		return FR_LOAD_CONTINUE;
 	}
 
@@ -332,7 +322,7 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 
 	if (!l->header) {
 		l->header = true;
-		return snprintf(buffer, buflen, "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"pps_accepted\",\"sent\",\"received\",\"ema_backlog\",\"max_backlog\",\"<usec\",\"us\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"blocked\"\n");
+		return snprintf(buffer, buflen, "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"pps_accepted\",\"sent\",\"received\",\"backlog\",\"max_backlog\",\"<usec\",\"us\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"blocked\"\n");
 	}
 
 
@@ -341,6 +331,16 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 
 	last_send_f = l->stats.last_send - l->stats.start;
 	last_send_f /= NSEC;
+
+	/*
+	 *	Track packets/s.  Since times are in nanoseconds, we
+	 *	have to scale the counters up by NSEC.  And since NSEC
+	 *	is 1B, the calculations have to be done via 64-bit
+	 *	numbers, and then converted to a final 32-bit counter.
+	 */
+	if (now > l->step_start) {
+		l->stats.pps_accepted = (((uint64_t) (l->stats.received - l->step_received)) * NSEC) / (now - l->step_start);
+	}
 
 	return snprintf(buffer, buflen,
 			"%f,%f,"
@@ -354,7 +354,7 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 			l->stats.rtt, l->stats.rttvar,
 			l->stats.pps, l->stats.pps_accepted,
 			l->stats.sent, l->stats.received,
-			l->stats.backlog_ema, l->stats.max_backlog,
+			l->stats.backlog, l->stats.max_backlog,
 			l->stats.times[0], l->stats.times[1], l->stats.times[2], l->stats.times[3],
 			l->stats.times[4], l->stats.times[5], l->stats.times[6], l->stats.times[7],
 			l->stats.blocked);
