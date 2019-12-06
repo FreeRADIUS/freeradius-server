@@ -90,18 +90,17 @@ fr_load_t *fr_load_generator_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_loa
 	return l;
 }
 
-static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+/** Send one or more packets.
+ *
+ */
+static void fr_load_generator_send(fr_load_t *l, fr_time_t now, int count)
 {
-	fr_load_t *l = uctx;
-	fr_time_t next;
-	fr_time_t delta;
-	int backlog;
-	uint32_t i;
+	int i, backlog;
 
 	/*
 	 *	Send as many packets as necessary.
 	 */
-	l->stats.sent += l->count;
+	l->stats.sent += count;
 
 	/*
 	 *	Keep track of the overall maximum backlog for the
@@ -123,6 +122,21 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	l->stats.last_send = now;
 
 	/*
+	 *	Run the callback AFTER we set the timer.  Which makes
+	 *	it more likely that the next timer fires on time.
+	 */
+	for (i = 0; i < count; i++) {
+		l->callback(now, l->uctx);
+	}
+}
+
+static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	fr_load_t *l = uctx;
+	fr_time_t delta;
+	int count;
+
+	/*
 	 *	We don't have "pps" packets in the backlog, go send
 	 *	some more.  We scale the backlog by 1000 milliseconds
 	 *	per second.  Then, multiple the PPS by the number of
@@ -133,17 +147,14 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Otherwise, switch to a gated mode where we only send
 	 *	new packets once a reply comes in.
 	 */
-	if (((uint32_t) l->stats.backlog_ema * 1000) < (l->pps * l->config->milliseconds)) {
+	if (l->state == FR_LOAD_STATE_GATED) {
+		count = 0;
+
+	} else if (((uint32_t) l->stats.backlog_ema * 1000) < (l->pps * l->config->milliseconds)) {
 		l->state = FR_LOAD_STATE_SENDING;
 		l->stats.blocked = false;
-		l->count = l->config->parallel;
+		count = l->config->parallel;
 
-		next = l->next + l->delta;
-		if (next < now) {
-			delta = 0;
-		} else {
-			delta = next - now;
-		}
 	} else {
 		/*
 		 *	We have too many packets in the backlog, we're
@@ -153,18 +164,27 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 *	Note that we will send *these* packets.
 		 */
 		l->state = FR_LOAD_STATE_GATED;
-		l->count = 1;
-		next = now + l->delta;
-		delta = l->delta; /* shut up compiler */
+		count = 1;
 	}
-	l->next = next;
+
+	/*
+	 *	Update the "next" timer to the correct value, no
+	 *	matter what.
+	 */
+	l->next += l->delta;
+	if (l->next <= now) {
+		delta = 0;
+		fprintf(stderr, ".");
+	} else {
+		delta = l->next - now;
+	}
 
 	/*
 	 *	If we're done this step, go to the next one.
 	 */
-	if (next >= l->step_end) {
-		l->step_start = next;
-		l->step_end = next + ((uint64_t) l->config->duration) * NSEC;
+	if (l->next >= l->step_end) {
+		l->step_start = l->next;
+		l->step_end = l->next + ((uint64_t) l->config->duration) * NSEC;
 		l->step_received = l->stats.received;
 		l->pps += l->config->step;
 		l->stats.pps = l->pps;
@@ -182,23 +202,12 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Set the timer for the next packet.
 	 */
-	if ((l->state == FR_LOAD_STATE_SENDING) &&
-	    (fr_event_timer_in(l, el, &l->ev, delta, load_timer, l) < 0)) {
+	if (fr_event_timer_in(l, el, &l->ev, delta, load_timer, l) < 0) {
 		l->state = FR_LOAD_STATE_DRAINING;
 		return;
 	}
-	/*
-	 *	Else we're gated, and we only send packets when we
-	 *	receive a reply.
-	 */
 
-	/*
-	 *	Run the callback AFTER we set the timer.  Which makes
-	 *	it more likely that the next timer fires on time.
-	 */
-	for (i = 0; i < l->count; i++) {
-		l->callback(now, l->uctx);
-	}
+	if (count) fr_load_generator_send(l, now, count);
 }
 
 
@@ -233,6 +242,7 @@ int fr_load_generator_stop(fr_load_t *l)
 	return fr_event_timer_delete(l->el, &l->ev);
 }
 
+
 /** Tell the load generator that we have a reply to a packet we sent.
  *
  */
@@ -248,6 +258,7 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	l->stats.rtt = RTT(l->stats.rtt, t);
 
 	l->stats.received++;
+
 
 	/*
 	 *	Track packets/s.  Since times are in nanoseconds, we
@@ -291,7 +302,7 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	 */
 	if (l->state == FR_LOAD_STATE_GATED) {
 		l->stats.blocked = true;
-		load_timer(l->el, now, l);
+		fr_load_generator_send(l, now, 1);
 		return FR_LOAD_CONTINUE;
 	}
 
@@ -321,7 +332,7 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 
 	if (!l->header) {
 		l->header = true;
-		return snprintf(buffer, buflen, "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"pps_accepted\",\"sent\",\"received\",\"ema_backlog\",\"max_backlog\",\"usec\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"10s\"\n");
+		return snprintf(buffer, buflen, "\"time\",\"last_packet\",\"rtt\",\"rttvar\",\"pps\",\"pps_accepted\",\"sent\",\"received\",\"ema_backlog\",\"max_backlog\",\"usec\",\"10us\",\"100us\",\"ms\",\"10ms\",\"100ms\",\"s\",\"10s\",\"blocked\"\n");
 	}
 
 
@@ -337,14 +348,16 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 			"%d,%d,"
 			"%d,%d,"
 			"%d,%d,"
-			"%d,%d,%d,%d,%d,%d,%d,%d\n",
+			"%d,%d,%d,%d,%d,%d,%d,%d,"
+			"%d\n",
 			now_f, last_send_f,
 			l->stats.rtt, l->stats.rttvar,
 			l->stats.pps, l->stats.pps_accepted,
 			l->stats.sent, l->stats.received,
 			l->stats.backlog_ema, l->stats.max_backlog,
 			l->stats.times[0], l->stats.times[1], l->stats.times[2], l->stats.times[3],
-			l->stats.times[4], l->stats.times[5], l->stats.times[6], l->stats.times[7]);
+			l->stats.times[4], l->stats.times[5], l->stats.times[6], l->stats.times[7],
+			l->stats.blocked);
 }
 
 fr_load_stats_t const * fr_load_generator_stats(fr_load_t const *l)
