@@ -265,6 +265,7 @@ $INCLUDE dictionary.paloalto
 $INCLUDE dictionary.patton
 $INCLUDE dictionary.perle
 $INCLUDE dictionary.pfsense
+$INCLUDE dictionary.pica8
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.prosoft
 $INCLUDE dictionary.proxim
