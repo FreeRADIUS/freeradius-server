@@ -1303,11 +1303,13 @@ static void trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk_con
  *
  * @param[in] tconn	To remove requests from.
  * @param[in] states	One or more states or'd together.
+ * @return the number of requests re-queued.
  */
-static void trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states)
+static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states)
 {
 	fr_dlist_head_t			to_process;
 	fr_trunk_request_t		*treq = NULL;
+	uint64_t			moved = 0;
 
 	fr_dlist_talloc_init(&to_process, fr_trunk_request_t, list);
 
@@ -1322,6 +1324,8 @@ static void trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int 
 	 */
 	while ((treq = fr_dlist_next(&to_process, treq))) {
 		fr_trunk_request_t *prev;
+
+		moved++;
 
 		prev = fr_dlist_remove(&to_process, treq);
 		switch (trunk_request_enqueue_existing(treq)) {
@@ -1364,6 +1368,8 @@ static void trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int 
 	while ((treq = fr_dlist_next(&to_process, treq))) {
 		fr_trunk_request_t *prev;
 
+		moved++;
+
 		prev = fr_dlist_remove(&to_process, treq);
 		talloc_free(treq);
 		treq = prev;
@@ -1376,6 +1382,27 @@ static void trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int 
 	 */
 	if (tconn->state == FR_TRUNK_CONN_DRAINING) {
 		trunk_requests_per_connnection(NULL, NULL, tconn->trunk, fr_time());
+	}
+
+	return moved;
+}
+
+/** Move requests off of a connection and requeue elsewhere
+ *
+ * @param[in] tconn	to move requests off of.
+ * @param[in] states	Only move requests in this state.
+ * @return The number of requests requeued.
+ */
+uint64_t fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states)
+{
+	switch (tconn->state) {
+	case FR_TRUNK_CONN_ACTIVE:
+	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_DRAINING:
+		return trunk_connection_requests_requeue(tconn, states);
+
+	default:
+		return 0;
 	}
 }
 

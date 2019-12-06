@@ -386,9 +386,10 @@ void		fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq);
 void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq);
 /** @} */
 
-/** @name Enqueue requests
+/** @name (R)enqueue requests
  * @{
  */
+uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states);
 
 int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQUEST *request,
 					 void *preq, void *rctx);
