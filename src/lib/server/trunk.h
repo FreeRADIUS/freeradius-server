@@ -409,7 +409,8 @@ fr_trunk_request_t *fr_trunk_connection_pop_request(void **preq, void **rctx, fr
  * - writable means the connection is writable and the muxer should be called.
  * - readable means the connection is readable and the demuxer should be called.
  * - full means the connection cannot accept any new requests.
- * - active means the connection can accept requests again,
+ * - active means the connection can accept requests again.
+ * - reconnect means the connection is likely bad, and should be reconnected.
  * @{
  */
 void		fr_trunk_connection_signal_writable(fr_trunk_connection_t *tconn);

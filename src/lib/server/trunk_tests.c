@@ -36,7 +36,8 @@ static void test_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *
 			break;
 		}
 
-		write(fd, &preq, talloc_array_length(preq));
+		if (test_verbose_level__ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
+		write(fd, &preq, sizeof(preq));
 		fr_trunk_request_signal_sent(treq);
 	}
 	TEST_CHECK(count > 0);
@@ -65,7 +66,8 @@ static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 			break;
 		}
 
-		write(fd, &preq, talloc_array_length(preq));
+		if (test_verbose_level__ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
+		write(fd, &preq, sizeof(preq));
 		fr_trunk_request_signal_cancel_sent(treq);
 	}
 	TEST_CHECK(count > 0);
@@ -75,30 +77,38 @@ static void test_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void
 {
 	int			fd = *(talloc_get_type_abort(fr_connection_get_handle(conn), int));
 	test_proto_request_t	*preq;
+	ssize_t			slen;
 
-	TEST_CHECK(read(fd, &preq, sizeof(preq)) == sizeof(preq));
+	do {
+		slen = read(fd, &preq, sizeof(preq));
+		if (slen <= 0) return;
 
-	talloc_get_type_abort(preq, test_proto_request_t);
+		if (test_verbose_level__ >= 3) printf("%s - Read %p\n", __FUNCTION__, preq);
+		TEST_CHECK(slen == sizeof(preq));
+		talloc_get_type_abort(preq, test_proto_request_t);
 
-	/*
-	 *	Demuxer can handle both normal requests and cancelled ones
-	 */
-	switch (preq->treq->state) {
-	case FR_TRUNK_REQUEST_CANCEL:
-		break;		/* Hack - just ignore it */
+		if (preq->freed) continue;
 
-	case FR_TRUNK_REQUEST_CANCEL_SENT:
-		fr_trunk_request_signal_cancel_complete(preq->treq);
-		break;
+		/*
+		 *	Demuxer can handle both normal requests and cancelled ones
+		 */
+		switch (preq->treq->state) {
+		case FR_TRUNK_REQUEST_CANCEL:
+			break;		/* Hack - just ignore it */
 
-	case FR_TRUNK_REQUEST_SENT:
-		fr_trunk_request_signal_complete(preq->treq);
-		break;
+		case FR_TRUNK_REQUEST_CANCEL_SENT:
+			fr_trunk_request_signal_cancel_complete(preq->treq);
+			break;
 
-	default:
-		rad_assert(0);
-		break;
-	}
+		case FR_TRUNK_REQUEST_SENT:
+			fr_trunk_request_signal_complete(preq->treq);
+			break;
+
+		default:
+			rad_assert(0);
+			break;
+		}
+	} while (slen >= 0);
 }
 
 static void _conn_io_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
@@ -189,7 +199,7 @@ static void _conn_io_loopback(fr_event_list_t *el, int fd, int flags, void *uctx
 	rad_assert(fd == our_h[1]);
 
 	slen = read(fd, buff, sizeof(buff));
-	if (test_verbose_level__ >= 3) printf("Received %zu bytes of data, sending it back\n", slen);
+	if (test_verbose_level__ >= 3) printf("%s - Received %zu bytes of data, writing it back\n", __FUNCTION__, slen);
 	write(our_h[1], buff, (size_t)slen);
 }
 
@@ -231,6 +241,9 @@ static fr_connection_state_t _conn_init(void **h_out, fr_connection_t *conn, UNU
 	rad_assert(socketpair(AF_UNIX, SOCK_STREAM, 0, h) >= 0);
 	rad_assert(h[0] >= 0);
 	rad_assert(h[1] >= 0);
+
+	fr_nonblock(h[0]);
+	fr_nonblock(h[1]);
 	fr_connection_signal_on_fd(conn, h[0]);
 	*h_out = h;
 
@@ -1303,7 +1316,7 @@ static void test_connection_levels(void)
 					.req_per_conn_target = 2,	/* One request per connection */
 					.manage_interval = NSEC * 0.5
 				};
-	test_proto_request_t	*preq;
+	test_proto_request_t	*preq_a, *preq_b, *preq_c, *preq_d, *preq_e;
 	fr_trunk_request_t	*treq_a, *treq_b, *treq_c, *treq_d, *treq_e;
 	REQUEST			*request;
 
@@ -1317,57 +1330,119 @@ static void test_connection_levels(void)
 	test_time_base += NSEC * 0.5;	/* Need to provide a timer starting value above zero */
 
 	trunk = test_setup_trunk(ctx, el, &conf, true);
-	preq = talloc_zero(NULL, test_proto_request_t);
+	preq_a = talloc_zero(ctx, test_proto_request_t);
+	preq_b = talloc_zero(ctx, test_proto_request_t);
+	preq_c = talloc_zero(ctx, test_proto_request_t);
+	preq_d = talloc_zero(ctx, test_proto_request_t);
+	preq_e = talloc_zero(ctx, test_proto_request_t);
 
 	/*
 	 *	Queuing a request should start a connection.
 	 */
-	TEST_CASE("C0 - Enqueue should spawn");
-	TEST_CHECK(fr_trunk_request_enqueue(&treq_a, trunk, request, preq, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+	TEST_CASE("C0, R1 - Enqueue should spawn");
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_a, trunk, request, preq_a, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+	preq_a->treq = treq_a;
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
 	/*
 	 *	Queuing another request should *NOT* start another connection
 	 */
-	TEST_CASE("C1 connecting, max_requests_per_conn 2 - Enqueue MUST NOT spawn");
-	TEST_CHECK(fr_trunk_request_enqueue(&treq_b, trunk, request, preq, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+	TEST_CASE("C1 connecting, R2 - MUST NOT spawn");
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_b, trunk, request, preq_b, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+	preq_b->treq = treq_b;
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
+
+	TEST_CASE("C1 connecting, R3 - MUST NOT spawn");
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_c, trunk, request, preq_c, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+	preq_c->treq = treq_c;
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
+
+	TEST_CASE("C1 connecting, R4 - MUST NOT spawn");
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_d, trunk, request, preq_d, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+	preq_d->treq = treq_d;
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) ==1);
+
+	TEST_CASE("C1 connecting, R5 - MUST NOT spawn, NO CAPACITY");
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_e, trunk, request, preq_e, NULL) == TRUNK_ENQUEUE_NO_CAPACITY);
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
 	/*
-	 *	Queuing another request should start another connection
-	 *	as we're over the max_requests_per_conn value.
-	 */
-	TEST_CHECK(fr_trunk_request_enqueue(&treq_c, trunk, request, preq, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
-	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 2);
-
-	/*
-	 *	...and again
-	 */
-	TEST_CHECK(fr_trunk_request_enqueue(&treq_d, trunk, request, preq, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
-	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 2);
-
-	/*
-	 *	Should fail.  We're at capacity.
-	 */
-	TEST_CHECK(fr_trunk_request_enqueue(&treq_e, trunk, request, preq, NULL) == TRUNK_ENQUEUE_NO_CAPACITY);
-	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 2);
-
-	/*
-	 *	Allow the connections to open
+	 *	Allowing connection to open
 	 */
 	events = fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 4);
+
+	TEST_CASE("C1 active, R4 - Check pending 2");
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 2);
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_BACKLOG) == 2);
 
 	/*
-	 *	Send the requests
+	 *	Sending requests
 	 */
 	events = fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_SENT) == 4);
+
+	TEST_CASE("C1 active, R4 - Check sent 2");
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_SENT) == 2);
+
+	/*
+	 *	Looping I/O
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	/*
+	 *	Receiving responses
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CHECK(preq_a->completed == true);
+	TEST_CHECK(preq_a->failed == false);
+	TEST_CHECK(preq_a->cancelled == false);
+	TEST_CHECK(preq_a->freed == true);
+
+	TEST_CHECK(preq_b->completed == true);
+	TEST_CHECK(preq_b->failed == false);
+	TEST_CHECK(preq_b->cancelled == false);
+	TEST_CHECK(preq_b->freed == true);
+
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 2);
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_BACKLOG) == 0);
+
+	TEST_CASE("C1 active, R0 - Check complete 2, pending 0");
+
+	/*
+	 *	Sending requests
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	/*
+	 *	Looping I/O
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	/*
+	 *	Receiving responses
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CHECK(preq_c->completed == true);
+	TEST_CHECK(preq_c->failed == false);
+	TEST_CHECK(preq_c->cancelled == false);
+	TEST_CHECK(preq_c->freed == true);
+
+	TEST_CHECK(preq_d->completed == true);
+	TEST_CHECK(preq_d->failed == false);
+	TEST_CHECK(preq_d->cancelled == false);
+	TEST_CHECK(preq_d->freed == true);
+
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_ALL) == 0);
 
 	talloc_free(trunk);
-	talloc_free(preq);
 	talloc_free(ctx);
 }
 

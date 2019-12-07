@@ -630,6 +630,8 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 		break;
 	}
 
+	DEBUG4("[%" PRIu64 "] Trunk connection releasing request %" PRIu64, fr_connection_get_id(tconn->conn), treq->id);
+
 	switch (tconn->state){
 	case FR_TRUNK_CONN_INACTIVE:
 		trunk_connection_auto_active(tconn);			/* Check if we can switch back to active */
@@ -644,7 +646,6 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 		break;
 	}
 
-	DEBUG4("[%" PRIu64 "] Trunk connection released request %" PRIu64, fr_connection_get_id(tconn->conn), treq->id);
 	treq->tconn = NULL;
 
 	/*
@@ -1121,51 +1122,14 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 */
 	if (trunk->conf->max_requests_per_conn > 0) {
 		uint64_t	total_reqs;
-		uint16_t	total_conns;
-		int		conn_states;
 
 		total_reqs = fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_ALL) + 1;
 		limit = trunk->conf->max_connections * (uint64_t)trunk->conf->max_requests_per_conn;
 		if ((limit > 0) && (total_reqs > limit)) {
 			ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
-				  "No active connections and limit of %"PRIu64" requests reached", limit);
+				  "Limit of %"PRIu64" requests reached", limit);
 
 			return TRUNK_ENQUEUE_NO_CAPACITY;
-		}
-
-		/*
-		 *	If the request would be inserted into
-		 *	the backlog, and we have a limit on
-		 *	the number of requests per connection
-		 *	check if we have sufficient potential
-		 *      capacity to handle the current number
-		 *	of requests.
-		 */
-		conn_states = FR_TRUNK_CONN_ACTIVE | FR_TRUNK_CONN_CONNECTING;
-
-		/*
-		 *	Includes requests in the backlog and
-		 *	divide them by the number of active
-		 *	or connecting connections we have.
-		 */
-		total_reqs = fr_trunk_request_count_by_state(trunk, conn_states, FR_TRUNK_REQUEST_ALL) + 1;
-		total_conns = fr_trunk_connection_count_by_state(trunk, conn_states);
-
-		/*
-		 *	We don't have enough potential
-		 *      capacity, spawn a new connection.
-		 */
-		if ((total_conns == 0) || (DIVIDE_CEIL(total_reqs, total_conns) > trunk->conf->max_requests_per_conn)) {
-			fr_time_t now = fr_time();
-
-			if ((now - trunk->last_open) < trunk->conf->open_delay) {
-				DEBUG4("Not opening connection - Need to wait %pVs, elapsed %pVs",
-			       	       fr_box_time_delta(trunk->conf->open_delay),
-				       fr_box_time_delta(now - trunk->last_open));
-				return TRUNK_ENQUEUE_NO_CAPACITY;
-			}
-
-			trunk_connection_spawn(trunk, now);
 		}
 	}
 
@@ -1339,15 +1303,18 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 
 	/*
 	 *	Prevent requests being requeued on the same trunk
-	 *      connection, which would break rebalancing.
+	 *	connection, which would break rebalancing.
 	 *
-	 *	This is a bit of a hack.
+	 *	This is a bit of a hack, but nothing should test
+	 *	for connection/list consistency in this code,
+	 *      and if something is added later, it'll be flagged
+	 *	by the tests.
 	 */
 	if (tconn->state == FR_TRUNK_CONN_ACTIVE) fr_heap_extract(trunk->active, tconn);
 
 	/*
-	 *	Loop over all the requests we gathered
-	 *	and redistribute them to new connections.
+	 *	Loop over all the requests we gathered and
+	 *	redistribute them to new connections.
 	 */
 	while ((treq = fr_dlist_next(&to_process, treq))) {
 		fr_trunk_request_t *prev;
@@ -1489,10 +1456,9 @@ static int _trunk_request_free(fr_trunk_request_t *treq)
  *
  * @param[in] trunk	to add request to.
  * @param[in] request	to wrap in a trunk request (treq).
- * @param[in] preq	The we need to write to the connection.
- *			This is separate to the rctx, as the rctx may
- *			be used to track state across multiple calls,
- *			whereas the preq is specific to a single request
+ * @param[in] preq	The we need to write to the connection. This is separate to
+ *			the rctx, as the rctx may be used to track state across multiple
+ *			calls, whereas the preq is specific to a single request
  * @param[in] rctx	Used to store the current state of the module
  */
 static fr_trunk_request_t *trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request, void *preq, void *rctx)
@@ -1596,9 +1562,8 @@ void fr_trunk_request_signal_fail(fr_trunk_request_t *treq)
 
 /** Cancel a trunk request
  *
- * Request can be in any state, but requests to cancel if the request
- * is not in the FR_TRUNK_REQUEST_PARTIAL or FR_TRUNK_REQUEST_SENT state
- * will be ignored.
+ * Request can be in any state, but requests to cancel if the request is not in
+ * the FR_TRUNK_REQUEST_PARTIAL or FR_TRUNK_REQUEST_SENT state will be ignored.
  *
  * @param[in] treq	to signal state change for.
  */
@@ -1686,8 +1651,8 @@ void fr_trunk_request_signal_cancel_partial(fr_trunk_request_t *treq)
 
 /** Signal that a remote server has been notified of the cancellation
  *
- * Called from request_cancel_mux to indicate that the datastore has
- * been informed that the response is no longer needed.
+ * Called from request_cancel_mux to indicate that the datastore has been informed
+ * that the response is no longer needed.
  *
  * @param[in] treq	to signal state change for.
  */
@@ -1709,8 +1674,7 @@ void fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq)
 
 /** Signal that a remote server acked our cancellation
  *
- * Called from request_demux to indicate that it got an
- * ack for the cancellation.
+ * Called from request_demux to indicate that it got an ack for the cancellation.
  *
  * @param[in] treq	to signal state change for.
  */
@@ -1947,8 +1911,7 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 /** Transition a connection to the full state
  *
  * Called whenever a trunk connection is at the maximum number of requests.
- * Removes the connection from the connected heap, and places it in the
- * full list.
+ * Removes the connection from the connected heap, and places it in the full list.
  */
 static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 {
@@ -1971,8 +1934,8 @@ static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 
 /** Transition a connection to the draining state
  *
- * Removes the connection from the active heap so it won't
- * be assigned any new connections.
+ * Removes the connection from the active heap so it won't be assigned any new
+ * connections.
  */
 static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 {
@@ -2002,9 +1965,9 @@ static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 
 /** Transition a connection back to the active state
  *
- * This should only be called on a connection which is in the
- * full state.  This is *NOT* to signal the a connection has
- * just become active from the connecting state.
+ * This should only be called on a connection which is in the full state.
+ * This is *NOT* to signal the a connection has just become active from the
+ * connecting state.
  */
 static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 {
@@ -2414,14 +2377,12 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
  * has been popped:
  *
  * - #fr_trunk_request_signal_cancel_sent
- *   The remote datastore has been informed, but we need to wait for
- *   acknowledgement.  The #request_demux function must handle the
- *   acks calling #fr_trunk_request_signal_cancel_complete when an
- *   ack is received.
+ *   The remote datastore has been informed, but we need to wait for acknowledgement.
+ *   The #request_demux function must handle the acks calling
+ *   #fr_trunk_request_signal_cancel_complete when an ack is received.
  *
  * - #fr_trunk_request_signal_cancel_complete
- *   The request was cancelled and we don't need to wait, clean it
- *   up immediately.
+ *   The request was cancelled and we don't need to wait, clean it up immediately.
  *
  * @param[out] preq	associated with the trunk request.
  * @param[in] tconn	Connection to drain cancellation request from.
@@ -2444,31 +2405,26 @@ fr_trunk_request_t *fr_trunk_connection_pop_cancellation(void **preq, fr_trunk_c
 
 /** Pop a request off a connection's pending queue
  *
- * The request we return is advanced by the request moving out of the
- * partial or pending states, when the mux function signals us.
+ * The request we return is advanced by the request moving out of the partial or
+ * pending states, when the mux function signals us.
  *
- * If the same request is returned again and again, it means the muxer
- * isn't actually doing anything with the request we returned, and it's
- * and error in the muxer code.
+ * If the same request is returned again and again, it means the muxer isn't actually
+ * doing anything with the request we returned, and it's and error in the muxer code.
  *
- * One of these signalling functions must be used after the request has
- * been popped:
+ * One of these signalling functions must be used after the request has been popped:
  *
  * - #fr_trunk_request_signal_complete
- *   The request was completed. Either we got a synchronous response,
- *   or we knew the response without contacting an external server (cache).
+ *   The request was completed. Either we got a synchronous response, or we knew the
+ *   response without contacting an external server (cache).
  *
  * - #fr_trunk_request_signal_fail
- *   Failed muxing the request due to a permanent issue, i.e. an invalid
- *   request.
+ *   Failed muxing the request due to a permanent issue, i.e. an invalid request.
  *
  * - #fr_trunk_request_signal_partial
- *   Wrote part of a request.  This request will be returned on the next
- *   call to this function so that the request_mux function can finish
- *   sending it.
+ *   Wrote part of a request.  This request will be returned on the next call to this
+ *   function so that the request_mux function can finish sending it.
  *
- * - #fr_trunk_request_signal_sent
- *   Successfully sent a request.
+ * - #fr_trunk_request_signal_sent Successfully sent a request.
  *
  * @param[out] preq	associated with the trunk request.
  * @param[out] rctx	associated with the trunk request.
@@ -2705,13 +2661,14 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	Do the n+1 check, i.e. if we open one connection
 		 *	will that take us below our target threshold.
 		 */
-		average = req_count / (conn_count + 1);
-		if (average < trunk->conf->req_per_conn_target) {
-			DEBUG4("Not opening connection - Would leave us below our target req per conn "
-			       "(%u vs %u)", average, trunk->conf->req_per_conn_target);
-			goto done;
+		if (conn_count > 0) {
+			average = req_count / (conn_count + 1);
+			if (average < trunk->conf->req_per_conn_target) {
+				DEBUG4("Not opening connection - Would leave us below our target req per conn "
+				       "(%u vs %u)", average, trunk->conf->req_per_conn_target);
+				goto done;
+			}
 		}
-
 
 		/*
 		 *	If we've got a connection in the draining list
