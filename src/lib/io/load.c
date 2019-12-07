@@ -108,7 +108,7 @@ static void fr_load_generator_send(fr_load_t *l, fr_time_t now, int count)
 	 *	it more likely that the next timer fires on time.
 	 */
 	for (i = 0; i < count; i++) {
-		l->callback(now, l->uctx);
+		l->callback(now + i, l->uctx);
 	}
 }
 
