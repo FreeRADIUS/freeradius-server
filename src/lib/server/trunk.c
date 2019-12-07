@@ -53,11 +53,6 @@ static fr_time_t test_time(void)
 #define fr_time test_time
 #endif
 
-/** Get the ceiling value of integer division
- *
- */
-#define DIVIDE_CEIL(_x, _y)	(1 + (((_x) - 1) / (_y)))
-
 /** Used for sanity checks and to simplify freeing
  *
  * Allows us to track which
