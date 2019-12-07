@@ -186,7 +186,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		l->pps += l->config->step;
 		l->stats.pps = l->pps;
 		l->stats.skipped = 0;
-		l->delta = (NSEC * l->config->parallel) / l->pps;
+		l->delta = (NSEC * ((uint64_t) l->config->parallel)) / l->pps;
 
 		/*
 		 *	Stop at max PPS, if it's set.  Otherwise
@@ -222,7 +222,7 @@ int fr_load_generator_start(fr_load_t *l)
 	l->stats.pps = l->pps;
 	l->count = l->config->parallel;
 
-	l->delta = (NSEC * l->config->parallel) / l->pps;
+	l->delta = (NSEC * ((uint64_t) l->config->parallel)) / l->pps;
 	l->next = l->step_start + l->delta;
 
 	load_timer(l->el, l->step_start, l);
