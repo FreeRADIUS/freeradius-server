@@ -189,7 +189,7 @@ static void _conn_io_loopback(fr_event_list_t *el, int fd, int flags, void *uctx
 	rad_assert(fd == our_h[1]);
 
 	slen = read(fd, buff, sizeof(buff));
-	printf("Received %zu bytes of data, sending it back\n", slen);
+	if (test_verbose_level__ >= 3) printf("Received %zu bytes of data, sending it back\n", slen);
 	write(our_h[1], buff, (size_t)slen);
 }
 
@@ -634,9 +634,7 @@ static void test_enqueue_cancellation_points(void)
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 
-	/*
-	 *	Cancellation in backlog via trunk free
-	 */
+	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_BACKLOG");
 	talloc_free(trunk);
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == true);
@@ -644,9 +642,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CHECK(preq->freed == true);
 	talloc_free(preq);
 
-	/*
-	 *	Cancellation in backlog via signal
-	 */
+	TEST_CASE("cancellation via signal - FR_TRUNK_REQUEST_BACKLOG");
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -661,9 +657,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 	talloc_free(trunk);
 
-	/*
-	 *	Cancellation in partial via trunk free
-	 */
+	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_PARTIAL");
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
@@ -686,9 +680,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CHECK(preq->freed == true);
 	talloc_free(preq);
 
-	/*
-	 *	Cancellation in partial via signal
-	 */
+	TEST_CASE("cancellation via signal - FR_TRUNK_REQUEST_PARTIAL");
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
@@ -712,9 +704,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 	talloc_free(trunk);
 
-	/*
-	 *	Cancellation in sent via trunk free
-	 */
+	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_SENT");
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -735,9 +725,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CHECK(preq->freed == true);
 	talloc_free(preq);
 
-	/*
-	 *	Cancellation in sent via signal
-	 */
+	TEST_CASE("cancellation via signal - FR_TRUNK_REQUEST_SENT");
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -760,9 +748,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 	talloc_free(trunk);
 
-	/*
-	 *	Cancellation in cancel-partial via trunk free
-	 */
+	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_CANCEL_PARTIAL");
 	trunk = test_setup_trunk(ctx, el, &conf, true);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_cancel_partial = true;
@@ -792,9 +778,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CHECK(preq->freed == true);
 	talloc_free(preq);
 
-	/*
-	 *	Cancellation in cancel-sent via trunk free
-	 */
+	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_CANCEL_SENT");
 	trunk = test_setup_trunk(ctx, el, &conf, true);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -823,9 +807,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CHECK(preq->freed == true);
 	talloc_free(preq);
 
-	/*
-	 *	Cancellation after cancel-complete via trunk free
-	 */
+	TEST_CASE("trunk free after FR_TRUNK_REQUEST_CANCEL_COMPLETE");
 	trunk = test_setup_trunk(ctx, el, &conf, true);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -895,6 +877,8 @@ static void test_partial_to_complete_states(void)
 	preq->signal_partial = true;
 	preq->signal_cancel_partial = true;
 
+	TEST_CASE("FR_TRUNK_REQUEST_PARTIAL -> FR_TRUNK_REQUEST_SENT");
+
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 	preq->treq = treq;
 
@@ -913,6 +897,8 @@ static void test_partial_to_complete_states(void)
 
 	fr_trunk_request_signal_cancel(treq);
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_CANCEL) == 1);
+
+	TEST_CASE("FR_TRUNK_REQUEST_CANCEL_PARTIAL -> FR_TRUNK_REQUEST_CANCEL_SENT");
 
 	events = fr_event_corral(el, test_time_base, false);	/* Send partial cancel request */
 	fr_event_service(el);
@@ -973,6 +959,8 @@ static void test_requeue_on_reconnect(void)
 	events = fr_event_corral(el, test_time_base, false);	/* Connect the connection(s) */
 	fr_event_service(el);
 
+	TEST_CASE("dequeue on reconnect - FR_TRUNK_REQUEST_PENDING");
+
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 2);
 
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -995,6 +983,8 @@ static void test_requeue_on_reconnect(void)
 	fr_trunk_connection_signal_reconnect(treq->tconn);
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_BACKLOG) == 1);
 	TEST_CHECK(!treq->tconn);
+
+	TEST_CASE("cancel on reconnect - FR_TRUNK_REQUEST_PARTIAL");
 
 	/*
 	 *	Allow the connections to reconnect
@@ -1033,6 +1023,8 @@ static void test_requeue_on_reconnect(void)
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
 	TEST_CHECK(tconn != treq->tconn);	/* Ensure it moved */
 
+	TEST_CASE("cancel on reconnect - FR_TRUNK_REQUEST_SENT");
+
 	/*
 	 *	Sent the request (fully)
 	 */
@@ -1061,6 +1053,8 @@ static void test_requeue_on_reconnect(void)
 
 	preq->cancelled = false;		/* Reset */
 
+	TEST_CASE("free on reconnect - FR_TRUNK_REQUEST_CANCEL");
+
 	/*
 	 *	Signal the request should be cancelled
 	 */
@@ -1080,6 +1074,16 @@ static void test_requeue_on_reconnect(void)
 	TEST_CHECK(preq->freed == true);
 
 	talloc_free(preq);
+
+	/*
+	 *	Allow the connection we just reconnected
+	 *	top open so it doesn't interfere with
+	 *	the next test.
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CASE("free on reconnect - FR_TRUNK_REQUEST_CANCEL_PARTIAL");
 
 	/*
 	 *	Queue up a new request, and get it to the cancel-partial state.
@@ -1121,6 +1125,16 @@ static void test_requeue_on_reconnect(void)
 	TEST_CHECK(preq->freed == true);
 
 	talloc_free(preq);
+
+	/*
+	 *	Allow the connection we just reconnected
+	 *	top open so it doesn't interfere with
+	 *	the next test.
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CASE("free on reconnect - FR_TRUNK_REQUEST_CANCEL_SENT");
 
 	/*
 	 *	Queue up a new request, and get it to the cancel-sent state.
@@ -1191,16 +1205,12 @@ static void test_connection_start_on_enqueue(void)
 	trunk = test_setup_trunk(ctx, el, &conf, true);
 	preq = talloc_zero(NULL, test_proto_request_t);
 
-	/*
-	 *	Queuing a request should start a connection.
-	 */
+	TEST_CASE("C0 - Enqueue should spawn");
 	fr_trunk_request_enqueue(&treq_a, trunk, request, preq, NULL);
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
-	/*
-	 *	Queuing another request should *NOT* start another connection
-	 */
+	TEST_CASE("C1 connecting, !max_requests_per_conn - Enqueue MUST NOT spawn");
 	fr_trunk_request_enqueue(&treq_b, trunk, request, preq, NULL);
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
@@ -1213,13 +1223,69 @@ static void test_connection_start_on_enqueue(void)
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 1);
 
-	/*
-	 *	Queuing another request should *NOT* start another connection
-	 */
+	TEST_CASE("C1 active, !max_requests_per_conn - Enqueue MUST NOT spawn");
 	fr_trunk_request_enqueue(&treq_c, trunk, request, preq, NULL);
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 1);
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 3);
+
+	talloc_free(ctx);
+}
+
+static void test_connection_rebalance_requests(void)
+{
+	TALLOC_CTX		*ctx = talloc_init("test");
+	fr_trunk_t		*trunk;
+	fr_event_list_t		*el;
+	int			events;
+	fr_trunk_conf_t		conf = {
+					.min_connections = 2,	/* No connections on start */
+					.manage_interval = NSEC * 0.5
+				};
+	test_proto_request_t	*preq;
+	fr_trunk_connection_t	*tconn;
+	fr_trunk_request_t	*treq_a, *treq_b, *treq_c;
+	REQUEST			*request;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_event_list_set_time_func(el, test_time);
+
+	request = request_alloc(ctx);
+
+	trunk = test_setup_trunk(ctx, el, &conf, true);
+	preq = talloc_zero(NULL, test_proto_request_t);
+
+	/*
+	 *	Allow the connections to open
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	/*
+	 *	Mark one of the connections as full, and
+	 *	enqueue three requests on the other.
+	 */
+	tconn = fr_heap_peek(trunk->active);
+	fr_trunk_connection_signal_inactive(tconn);
+
+	fr_trunk_request_enqueue(&treq_a, trunk, request, preq, NULL);
+	fr_trunk_request_enqueue(&treq_b, trunk, request, preq, NULL);
+	fr_trunk_request_enqueue(&treq_c, trunk, request, preq, NULL);
+
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 3);
+	TEST_CHECK(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) == 0);
+
+	/*
+	 *	Now mark the previous connection as
+	 *	active.  It should receive at least
+	 *	one of the requests.
+	 */
+	fr_trunk_connection_signal_active(tconn);
+
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 3);
+	TEST_CHECK(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) >= 1);
 
 	talloc_free(ctx);
 }
@@ -1256,12 +1322,14 @@ static void test_connection_levels(void)
 	/*
 	 *	Queuing a request should start a connection.
 	 */
+	TEST_CASE("C0 - Enqueue should spawn");
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_a, trunk, request, preq, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
 	/*
 	 *	Queuing another request should *NOT* start another connection
 	 */
+	TEST_CASE("C1 connecting, max_requests_per_conn 2 - Enqueue MUST NOT spawn");
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_b, trunk, request, preq, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
@@ -1327,6 +1395,10 @@ TEST_LIST = {
 	{ "Enqueue - Partial state transitions",	test_partial_to_complete_states },
 	{ "Requeue - On reconnect",			test_requeue_on_reconnect },
 
+	/*
+	 *	Rebalance
+	 */
+	{ "Rebalance - Connection rebalance",		test_connection_rebalance_requests },
 	/*
 	 *	Connection spawning tests
 	 */

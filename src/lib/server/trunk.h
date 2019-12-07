@@ -332,7 +332,8 @@ typedef struct {
 	fr_trunk_connection_alloc_t	connection_alloc;	//!< Allocate a new fr_connection_t.
 
 	fr_trunk_connection_notify_t	connection_notify;	//!< Update the I/O event registrations for
-								///< a connection.
+
+	fr_heap_cmp_t			connection_prioritise;	//!< Ordering function for connections.
 
 	fr_heap_cmp_t			request_prioritise;	//!< Ordering function for requests.  Controls
 								///< where in the outbound queues they're inserted.
@@ -389,7 +390,7 @@ void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq);
 /** @name (R)enqueue requests
  * @{
  */
-uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states);
+uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max);
 
 int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQUEST *request,
 					 void *preq, void *rctx);
