@@ -570,6 +570,10 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				return false;
 			}
 
+			/*
+			 *	@todo - allow dns_label encoding as
+			 *	the first member.
+			 */
 			if ((dict_attr_sizes[sibling->type][1] == ~(size_t) 0) &&
 			    !((sibling->type == FR_TYPE_OCTETS) &&
 			      (sibling->flags.length > 0))) {
