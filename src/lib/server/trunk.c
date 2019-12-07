@@ -324,7 +324,6 @@ do { \
 	       fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>")); \
 	tconn->state = _new; \
 	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time()); \
-	trunk_connection_event_update(tconn); \
 } while (0)
 
 #define CONN_BAD_STATE_TRANSITION(_new) \
@@ -2148,6 +2147,11 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	moved off or failed.
 	 */
 	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) == 0);
+
+	/*
+	 *	Remove the I/O events
+	 */
+	trunk_connection_event_update(tconn);
 }
 
 /** Connection failed to connect before it was connected
