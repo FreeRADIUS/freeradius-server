@@ -124,8 +124,6 @@ struct fr_trunk_request_s {
 
 	fr_trunk_connection_t	*tconn;			//!< Connection this request belongs to.
 
-	uint8_t			requeued;		//!< How many times this request has been re-enqueued.
-
 	void			*preq;			//!< Data for the muxer to write to the connection.
 
 	void			*rctx;			//!< Resume ctx of the module.
@@ -198,7 +196,7 @@ struct fr_trunk_connection_s {
 	bool			signalled_inactive;		//!< Connection marked full because of signal.
 							///< Will not automatically be marked active if
 							///< the number of requests associated with it
-							///< falls below max_requests_per_conn.
+							///< falls below max_req_per_conn.
 
 	bool			freeing;		//!< Conn is being freed, cancel_sent state should
 							///< be skipped.
@@ -1120,11 +1118,11 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 *	number of connections, and maximum
 	 *	number of requests per connection.
 	 */
-	if (trunk->conf->max_requests_per_conn > 0) {
+	if (trunk->conf->max_req_per_conn > 0) {
 		uint64_t	total_reqs;
 
 		total_reqs = fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_ALL) + 1;
-		limit = trunk->conf->max_connections * (uint64_t)trunk->conf->max_requests_per_conn;
+		limit = trunk->conf->max_connections * (uint64_t)trunk->conf->max_req_per_conn;
 		if ((limit > 0) && (total_reqs > limit)) {
 			ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
 				  "Limit of %"PRIu64" requests reached", limit);
@@ -1795,12 +1793,12 @@ static inline void trunk_connection_auto_full(fr_trunk_connection_t *tconn)
 	fr_trunk_t	*trunk = tconn->trunk;
 	uint32_t	count;
 
-	if (!trunk->conf->max_requests_per_conn ||
+	if (!trunk->conf->max_req_per_conn ||
 	    tconn->signalled_inactive ||
 	    (tconn->state != FR_TRUNK_CONN_ACTIVE)) return;
 
 	count = fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL);
-	if (count >= trunk->conf->max_requests_per_conn) trunk_connection_enter_inactive(tconn);
+	if (count >= trunk->conf->max_req_per_conn) trunk_connection_enter_inactive(tconn);
 }
 
 /** Automatically mark a connection as active
@@ -1816,7 +1814,7 @@ static inline void trunk_connection_auto_active(fr_trunk_connection_t *tconn)
 	    (tconn->state != FR_TRUNK_CONN_INACTIVE)) return;
 
 	count = fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL);
-	if ((trunk->conf->max_requests_per_conn == 0) || (count < trunk->conf->max_requests_per_conn)) {
+	if ((trunk->conf->max_req_per_conn == 0) || (count < trunk->conf->max_req_per_conn)) {
 		trunk_connection_enter_active(tconn);
 	}
 }
@@ -2663,9 +2661,9 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 */
 		if (conn_count > 0) {
 			average = req_count / (conn_count + 1);
-			if (average < trunk->conf->req_per_conn_target) {
+			if (average < trunk->conf->target_req_per_conn) {
 				DEBUG4("Not opening connection - Would leave us below our target req per conn "
-				       "(%u vs %u)", average, trunk->conf->req_per_conn_target);
+				       "(%u vs %u)", average, trunk->conf->target_req_per_conn);
 				goto done;
 			}
 		}
@@ -2743,9 +2741,9 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	will that take us above our target threshold.
 		 */
 		average = req_count / (conn_count - 1);
-		if (average > trunk->conf->req_per_conn_target) {
+		if (average > trunk->conf->target_req_per_conn) {
 			DEBUG4("Not closing connection - Would leave us above our target req per conn "
-			       "(%u vs %u)", average, trunk->conf->req_per_conn_target);
+			       "(%u vs %u)", average, trunk->conf->target_req_per_conn);
 			goto done;
 		}
 
@@ -2884,12 +2882,12 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	 *	No connections, but we do have requests
 	 */
 	if (conn_count == 0) {
-		if ((req_count > 0) && (trunk->conf->req_per_conn_target > 0)) goto above_target;
+		if ((req_count > 0) && (trunk->conf->target_req_per_conn > 0)) goto above_target;
 		goto done;
 	}
 
 	if (req_count == 0) {
-		if (trunk->conf->req_per_conn_target > 0) goto below_target;
+		if (trunk->conf->target_req_per_conn > 0) goto below_target;
 		goto done;
 	}
 
@@ -2897,13 +2895,13 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	 *	Calculate the average
 	 */
 	average = req_count / conn_count;
-	if (average > trunk->conf->req_per_conn_target) {
+	if (average > trunk->conf->target_req_per_conn) {
 	above_target:
 		/*
 		 *	Edge - Below target to above target (too many requests per conn)
 		 */
 		if (trunk->last_above_target >= trunk->last_below_target) trunk->last_above_target = now;
-	} else if (average < trunk->conf->req_per_conn_target) {
+	} else if (average < trunk->conf->target_req_per_conn) {
 	below_target:
 		/*
 		 *	Edge - Above target to below target (too few requests per conn)

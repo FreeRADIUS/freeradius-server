@@ -44,9 +44,12 @@ typedef struct {
 
 	uint16_t		max_connections;	//!< Maximum number of connections in the trunk.
 
-	uint32_t		req_per_conn_target;	//!< How many pending requests should ideally be
+	uint32_t		target_req_per_conn;	//!< How many pending requests should ideally be
 							///< running on each connection.  Averaged across
 							///< the 'active' set of connections.
+
+	uint32_t		max_req_per_conn;	//!< Maximum connections per request.
+							///< Used to determine if we need to create new connections.
 
 	fr_time_delta_t		open_delay;		//!< How long we must be above target utilisation
 							///< to spawn a new connection.
@@ -57,14 +60,11 @@ typedef struct {
 	fr_time_delta_t		manage_interval;	//!< How often we run the management algorithm to
 							///< open/close connections.
 
-	uint32_t		max_requests_per_conn;	//!< Maximum connections per request.
-							///< Used to determine if we need to create new connections.
-
 	bool			always_writable;	//!< Set to true, if our ability to write requests to
 							///< a connection handle is not dependant on the state
 							///< of the underlying connection, i.e. if the library
 							///< used to implement the connection can always receive
-							///< and buffer new requests, irrespective of the state
+							///< and buffer new requests irrespective of the state
 							///< of the underlying socket.
 							///< If this is true, #fr_trunk_connection_signal_writable
 							///< does not need to be called, and requests will be

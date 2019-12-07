@@ -1223,7 +1223,7 @@ static void test_connection_start_on_enqueue(void)
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
-	TEST_CASE("C1 connecting, !max_requests_per_conn - Enqueue MUST NOT spawn");
+	TEST_CASE("C1 connecting, !max_req_per_conn - Enqueue MUST NOT spawn");
 	fr_trunk_request_enqueue(&treq_b, trunk, request, preq, NULL);
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
@@ -1236,7 +1236,7 @@ static void test_connection_start_on_enqueue(void)
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 1);
 
-	TEST_CASE("C1 active, !max_requests_per_conn - Enqueue MUST NOT spawn");
+	TEST_CASE("C1 active, !max_req_per_conn - Enqueue MUST NOT spawn");
 	fr_trunk_request_enqueue(&treq_c, trunk, request, preq, NULL);
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 1);
@@ -1312,8 +1312,8 @@ static void test_connection_levels(void)
 	fr_trunk_conf_t		conf = {
 					.min_connections = 0,		/* No connections on start */
 					.max_connections = 2,
-					.max_requests_per_conn = 2,
-					.req_per_conn_target = 2,	/* One request per connection */
+					.max_req_per_conn = 2,
+					.target_req_per_conn = 2,	/* One request per connection */
 					.manage_interval = NSEC * 0.5
 				};
 	test_proto_request_t	*preq_a, *preq_b, *preq_c, *preq_d, *preq_e;
