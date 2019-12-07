@@ -1845,9 +1845,14 @@ static inline void trunk_connection_writable(fr_trunk_connection_t *tconn)
 	 *      to inform a backend datastore we no longer
 	 *	care about the result
 	 */
-	if (trunk->funcs.request_cancel_mux && !fr_dlist_empty(&tconn->cancel)) DO_REQUEST_CANCEL_MUX(tconn);
-	if (!tconn->partial && !fr_heap_num_elements(tconn->pending)) return;
-
+	if (trunk->funcs.request_cancel_mux && fr_trunk_request_count_by_connection(tconn,
+										    FR_TRUNK_REQUEST_CANCEL |
+										    FR_TRUNK_REQUEST_CANCEL_PARTIAL)) {
+		DO_REQUEST_CANCEL_MUX(tconn);
+	}
+	if (!fr_trunk_request_count_by_connection(tconn,
+						  FR_TRUNK_REQUEST_PENDING |
+						  FR_TRUNK_REQUEST_PARTIAL)) return;
 	DO_REQUEST_MUX(tconn);
 }
 
@@ -1861,7 +1866,11 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 
 	switch (tconn->state) {
 	/*
-	 *	We only register I/O events if the trunk is in one of these states
+	 *	We only register I/O events if the trunk connection is
+	 *	in one of these states.
+	 *
+	 *	For the other states the trunk shouldn't be processing
+	 *	requests.
 	 */
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_INACTIVE:
@@ -1887,6 +1896,10 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 			events |= FR_TRUNK_CONN_EVENT_READ;
 		}
 
+	/*
+	 *	If the connection is no longer in one of the above
+	 *	states we need to de-register all the IO handlers.
+	 */
 	default:
 		break;
 	}
