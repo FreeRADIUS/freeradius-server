@@ -123,7 +123,7 @@ struct fr_trunk_request_s {
 
 	void			*rctx;			//!< Resume ctx of the module.
 
-	REQUEST		        *request;		//!< The request that we're writing the data on behalf of.
+	REQUEST			*request;		//!< The request that we're writing the data on behalf of.
 
 	fr_trunk_cancel_reason_t cancel_reason;		//!< Why this request was cancelled.
 };
@@ -2553,7 +2553,7 @@ static void trunk_rebalance(fr_trunk_t *trunk)
 	/*
 	 *	Keep requeuing requests from the connection
 	 *	at the bottom of the heap until the
-	 *      connection at the top if shifted from that
+	 *	connection at the top is shifted from that
 	 *	position.
 	 */
 	while ((fr_heap_peek(trunk->active) == head) &&
