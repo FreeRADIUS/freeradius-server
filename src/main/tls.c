@@ -2364,13 +2364,13 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				X509V3_EXT_print(out, ext, 0, 0);
 				len = BIO_read(out, value, sizeof(value) - 1);
 				if (len <= 0) continue;
+				value[len] = '\0';
 			} else {
 				/*
 				 * An extension not known to OpenSSL, dump it's value as a value of an unknown attribute.
 				 */
 				value[0] = '0';
 				value[1] = 'x';
-				char *dstp = value + 2;
 				const unsigned char *srcp;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 				const ASN1_STRING *srcasn1p;
@@ -2381,18 +2381,15 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				srcasn1p = X509_EXTENSION_get_data(ext);
 				srcp = ASN1_STRING_data(srcasn1p);
 #endif
-				int j, asn1len;
-				const char hexdigits[] = "0123456789abcdef";
-				asn1len = ASN1_STRING_length(srcasn1p);
-				/* 5 comes from '0x' + .. + \0 */
-				for (j = 0; j < asn1len && dstp < (value + sizeof(value) - 5); j++, srcp++) {
-					*dstp++ = hexdigits[(*srcp >> 4) & 0xf];
-					*dstp++ = hexdigits[*srcp & 0xf];
+				int asn1len = ASN1_STRING_length(srcasn1p);
+				/* 3 comes from '0x' + \0 */
+				if ((size_t)(asn1len << 1) >= sizeof(value) - 3) {
+					RDEBUG("Value of '%s' attribute is too long to be stored, it will be truncated", attribute);
+					asn1len = (sizeof(value) - 3) >> 1;
 				}
-				len = 2 + (asn1len * 2);
+				fr_bin2hex(value + 2, srcp, asn1len);
 			}
 
-			value[len] = '\0';
 
 			vp = fr_pair_make(talloc_ctx, certs, attribute, value, T_OP_ADD);
 			if (!vp) {
