@@ -40,6 +40,10 @@ typedef struct fr_trunk_s fr_trunk_t;
  *
  */
 typedef struct {
+	unsigned		req_pool_headers;	//!< How many chunk headers the pool should contain.
+
+	size_t			req_pool_size;		//!< How big the pool should be.
+
 	uint16_t		min_connections;	//!< Shouldn't let connections drop below this number.
 
 	uint16_t		max_connections;	//!< Maximum number of connections in the trunk.
@@ -59,6 +63,9 @@ typedef struct {
 
 	fr_time_delta_t		manage_interval;	//!< How often we run the management algorithm to
 							///< open/close connections.
+
+	fr_time_delta_t		req_cleanup_delay;	//!< How long must a request in the unassigned list
+							///< not have been used for, before it's cleaned up.
 
 	bool			always_writable;	//!< Set to true, if our ability to write requests to
 							///< a connection handle is not dependant on the state
@@ -391,6 +398,10 @@ void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq);
  * @{
  */
 uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max);
+
+void		fr_trunk_request_free(fr_trunk_request_t *treq);
+
+fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request);
 
 int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQUEST *request,
 					 void *preq, void *rctx);

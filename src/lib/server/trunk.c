@@ -27,6 +27,10 @@
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS trunk->log_prefix
 
+#ifdef NDEBUG
+#  define TALLOC_GET_TYPE_ABORT_NOOP
+#endif
+
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/trunk.h>
 #include <freeradius-devel/unlang/base.h>
@@ -126,6 +130,8 @@ struct fr_trunk_request_s {
 	REQUEST			*request;		//!< The request that we're writing the data on behalf of.
 
 	fr_trunk_cancel_reason_t cancel_reason;		//!< Why this request was cancelled.
+
+	fr_time_t		last_freed;		//!< Last time this request was freed.
 };
 
 /** Used for sanity checks and to track which list the connection is in
@@ -188,7 +194,7 @@ struct fr_trunk_connection_s {
 
 	fr_dlist_head_t		cancel_sent;		//!< Requests we need to inform a remote server about.
 
-	bool			signalled_inactive;		//!< Connection marked full because of signal.
+	bool			signalled_inactive;	//!< Connection marked full because of signal.
 							///< Will not automatically be marked active if
 							///< the number of requests associated with it
 							///< falls below max_req_per_conn.
@@ -206,6 +212,9 @@ struct fr_trunk_s {
 	fr_event_list_t		*el;			//!< Event list used by this trunk and the connection.
 
 	fr_trunk_conf_t	const	*conf;			//!< Trunk common configuration.
+
+	fr_dlist_head_t		unassigned;		//!< Requests in the unassigned state.  Waiting to be
+							///< enqueued.
 
 	fr_heap_t		*backlog;		//!< The request backlog.  Requests we couldn't
 							///< immediately assign to a connection.
@@ -248,6 +257,14 @@ struct fr_trunk_s {
 	fr_time_t		last_connected;		//!< Last time a connection connected.
 
 	fr_time_t		last_failed;		//!< Last time a connection failed.
+	/** @} */
+
+	/** @name Statistics
+	 * @{
+ 	 */
+	uint64_t		req_alloc_new;		//!< How many requests we've allocated.
+
+	uint64_t		req_alloc_reused;	//!< How many requests were reused.
 	/** @} */
 
 	/** @name Callbacks
@@ -1399,85 +1416,6 @@ uint64_t fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int 
 	}
 }
 
-/** If the trunk request is freed then update the target requests
- *
- * @param[in] treq	request.
- */
-static int _trunk_request_free(fr_trunk_request_t *treq)
-{
-	fr_trunk_t	*trunk = treq->trunk;
-
-	/*
-	 *	The only valid states a trunk request can be
-	 *	freed from.
-	 */
-	switch (treq->state) {
-	case FR_TRUNK_REQUEST_UNASSIGNED:
-	case FR_TRUNK_REQUEST_COMPLETE:
-	case FR_TRUNK_REQUEST_FAILED:
-		break;
-
-	case FR_TRUNK_REQUEST_CANCEL_COMPLETE:
-		break;
-
-	default:
-		if (!fr_cond_assert(0)) return 1;
-	}
-
-	/*
-	 *	There should usually always be a trunk...
-	 */
-	if (unlikely(!treq->trunk)) return 0;
-
-	/*
-	 *	Update the last above/below target stats
-	 *	We only do this when we alloc or free
-	 *	connections, or on connection
-	 *      state changes.
-	 */
-	trunk_requests_per_connnection(NULL, NULL, treq->trunk, fr_time());
-
-	/*
-	 *	Finally, free the protocol request.
-	 */
-	DO_REQUEST_FREE(treq);
-
-	return 0;
-}
-
-/** Allocates a new trunk request
- *
- * @param[in] trunk	to add request to.
- * @param[in] request	to wrap in a trunk request (treq).
- * @param[in] preq	The we need to write to the connection. This is separate to
- *			the rctx, as the rctx may be used to track state across multiple
- *			calls, whereas the preq is specific to a single request
- * @param[in] rctx	Used to store the current state of the module
- */
-static fr_trunk_request_t *trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request, void *preq, void *rctx)
-{
-	fr_trunk_request_t *treq;
-
-	MEM(treq = talloc_zero(request, fr_trunk_request_t));
-	treq->id = atomic_fetch_add_explicit(&request_counter, 1, memory_order_relaxed);
-	treq->trunk = trunk;
-	treq->request = request;
-	treq->preq = preq;
-	treq->rctx = rctx;
-	treq->state = FR_TRUNK_REQUEST_UNASSIGNED;
-	talloc_set_destructor(treq, _trunk_request_free);
-
-	/*
-	 *	Update the last above/below target stats
-	 *	We only do this when we alloc or free
-	 *	connections, or on connection
-	 *      state changes.
-	 */
-	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
-
-	return treq;
-}
-
 /** Signal a partial write
  *
  * Where there's high load, and the outbound write buffer is full
@@ -1687,15 +1625,141 @@ void fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq)
 	}
 }
 
+/** If the trunk request is freed then update the target requests
+ *
+ * gperftools showed calling the request free function directly was slightly faster
+ * than using talloc_free.
+ *
+ * @param[in] treq	request.
+ */
+void fr_trunk_request_free(fr_trunk_request_t *treq)
+{
+	fr_trunk_t	*trunk = treq->trunk;
+
+	/*
+	 *	The only valid states a trunk request can be
+	 *	freed from.
+	 */
+	switch (treq->state) {
+	case FR_TRUNK_REQUEST_UNASSIGNED:
+	case FR_TRUNK_REQUEST_COMPLETE:
+	case FR_TRUNK_REQUEST_FAILED:
+		break;
+
+	case FR_TRUNK_REQUEST_CANCEL_COMPLETE:
+		break;
+
+	default:
+		if (!fr_cond_assert(0)) return;
+	}
+
+	/*
+	 *	Finally, free the protocol request.
+	 */
+	DO_REQUEST_FREE(treq);
+
+	/*
+	 *	Update the last above/below target stats
+	 *	We only do this when we alloc or free
+	 *	connections, or on connection
+	 *      state changes.
+	 */
+	trunk_requests_per_connnection(NULL, NULL, treq->trunk, fr_time());
+
+	/*
+	 *
+	 *      Otherwise return the trunk request back
+	 *	to the unassigned list.
+	 */
+	treq->state = FR_TRUNK_REQUEST_UNASSIGNED;
+	treq->preq = NULL;
+	treq->rctx = NULL;
+	treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
+	treq->last_freed = fr_time();
+
+	/*
+	 *	Insert at the head, so that we can free
+	 *	requests that have been unused for N
+	 *	seconds from the tail.
+	 */
+	fr_dlist_insert_tail(&trunk->unassigned, treq);
+}
+
+/** Actually free the trunk request
+ *
+ */
+static int _trunk_request_free(fr_trunk_request_t *treq)
+{
+	fr_trunk_t	*trunk = treq->trunk;
+
+	rad_assert(treq->state == FR_TRUNK_REQUEST_UNASSIGNED);
+
+	fr_dlist_remove(&trunk->unassigned, treq);
+
+	return 0;
+}
+
+/** (Pre-)Allocate a new trunk request
+ *
+ * @param[in] trunk	to add request to.
+ * @param[in] request	to wrap in a trunk request (treq).
+ * @return
+ *	- A newly allocated (or reused) treq. If trunk->conf.req_pool_headers or
+ *        trunk->conf.req_pool_size are not zero then the request will be a talloc pool,
+ *	  which can be used to hold the preq.
+ *	- NULL on memory allocation error.
+ */
+fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
+{
+	fr_trunk_request_t *treq;
+
+	/*
+	 *	Allocate or reuse an existing request
+	 */
+	treq = fr_dlist_head(&trunk->unassigned);
+	if (treq) {
+		fr_dlist_remove(&trunk->unassigned, treq);
+		rad_assert(treq->state == FR_TRUNK_REQUEST_UNASSIGNED);
+		rad_assert(treq->trunk == trunk);
+		rad_assert(treq->tconn == NULL);
+		rad_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_NONE);
+		rad_assert(treq->last_freed > 0);
+		trunk->req_alloc_reused++;
+	} else {
+		MEM(treq = talloc_pooled_object(trunk, fr_trunk_request_t,
+						trunk->conf->req_pool_headers, trunk->conf->req_pool_size));
+		talloc_set_destructor(treq, _trunk_request_free);
+		treq->state = FR_TRUNK_REQUEST_UNASSIGNED;
+		treq->trunk = trunk;
+		treq->tconn = NULL;
+		treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
+		treq->preq = NULL;
+		treq->rctx = NULL;
+		treq->last_freed = 0;
+		trunk->req_alloc_new++;
+	}
+
+	treq->id = atomic_fetch_add_explicit(&request_counter, 1, memory_order_relaxed);
+	/* heap_id	- initialised when treq inserted into pending */
+	/* list		- empty */
+	/* preq		- populated later */
+	/* rctx		- populated lated */
+	treq->request = request;
+
+	return treq;
+}
+
 /** Enqueue a request that needs data written to the trunk
  *
- * @param[out] treq_out	A trunk request handle.  Should be stored and used to
- *			cancel the trunk request on signal.
- * @param[in] trunk	to enqueue request on.
- * @param[in] request	to enqueue.
- * @param[in] preq	Protocol request to write out.  Will be freed when
- *			treq is freed. MUST NOT BE PARENTED.
- * @param[in] rctx	The resume context.
+ * @param[in,out] treq_out	A trunk request handle.  If the memory pointed to
+ *				is NULL, a new treq will be allocated.
+ *				Otherwise treq should point to memory allocated
+ *				with fr_trunk_request_alloc.
+ * @param[in] trunk		to enqueue request on.
+ * @param[in] request		to enqueue.
+ * @param[in] preq		Protocol request to write out.  Will be freed when
+ *				treq is freed. MUST NOT BE PARENTED.
+ * @param[in] rctx		The resume context.
  * @return
  *	- TRUNK_ENQUEUE_OK.
  *	- TRUNK_ENQUEUE_IN_BACKLOG.
@@ -1724,20 +1788,34 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 	rcode = trunk_request_check_enqueue(&tconn, trunk, request);
 	switch (rcode) {
 	case TRUNK_ENQUEUE_OK:
-		MEM(treq = trunk_request_alloc(trunk, request, preq, rctx));
+		if (*treq_out) {
+			treq = *treq_out;
+		} else {
+			MEM(treq = fr_trunk_request_alloc(trunk, request));
+		}
+		treq->preq = preq;
+		treq->rctx = rctx;
 		trunk_request_enter_pending(treq, tconn);
 		if (trunk->conf->always_writable) trunk_connection_writable(tconn);
 		break;
 
 	case TRUNK_ENQUEUE_IN_BACKLOG:
-		MEM(treq = trunk_request_alloc(trunk, request, preq, rctx));
+		if (*treq_out) {
+			treq = *treq_out;
+		} else {
+			MEM(treq = fr_trunk_request_alloc(trunk, request));
+		}
+		treq->preq = preq;
+		treq->rctx = rctx;
 		trunk_request_enter_backlog(treq);
 		break;
 
 	default:
 		return rcode;
 	}
-	*treq_out = treq;
+	if (treq_out) *treq_out = treq;
+
+	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
 
 	return rcode;
 }
@@ -2602,9 +2680,17 @@ static void trunk_rebalance(fr_trunk_t *trunk)
 static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 {
 	fr_trunk_connection_t	*tconn = NULL;
+	fr_trunk_request_t	*treq;
 	uint32_t		average;
 	uint32_t		req_count;
 	uint16_t		conn_count;
+
+	/*
+	 *	Cleanup requests in our request cache which
+	 *	have been idle for too long.
+	 */
+	while ((treq = fr_dlist_tail(&trunk->unassigned)) &&
+	       ((treq->last_freed + trunk->conf->req_cleanup_delay) <= now)) talloc_free(treq);
 
 	/*
 	 *	We're above the target requests per connection
@@ -3066,6 +3152,10 @@ static int _trunk_free(fr_trunk_t *trunk)
 	 */
 	while ((treq = fr_heap_peek(trunk->backlog))) trunk_request_enter_failed(treq);
 
+	/*
+	 *	Free any requests in our request cache
+	 */
+	while ((treq = fr_dlist_head(&trunk->unassigned))) talloc_free(treq);
 	return 0;
 }
 
@@ -3117,6 +3207,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log
 	/*
 	 *	Request backlog queue
 	 */
+	fr_dlist_talloc_init(&trunk->unassigned, fr_trunk_request_t, list);
 	MEM(trunk->backlog = fr_heap_talloc_create(trunk, trunk->funcs.request_prioritise,
 						   fr_trunk_request_t, heap_id));
 

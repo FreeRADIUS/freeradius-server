@@ -3,7 +3,7 @@ static void *dummy_uctx = NULL;
 #include <freeradius-devel/util/acutest.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
+//#include <gperftools/profiler.h>
 typedef struct {
 	fr_trunk_request_t	*treq;			//!< Trunk request.
 	bool			cancelled;		//!< Seen by the cancelled callback.
@@ -22,6 +22,7 @@ static void test_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *
 	void			*preq;
 	size_t			count = 0;
 	int			fd = *(talloc_get_type_abort(fr_connection_get_handle(conn), int));
+	ssize_t			slen;
 
 	while ((treq = fr_trunk_connection_pop_request(&preq, NULL, tconn))) {
 		test_proto_request_t	*our_preq = preq;
@@ -30,14 +31,19 @@ static void test_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *
 		/*
 		 *	Simulate a partial write
 		 */
-		if (our_preq->signal_partial) {
+		if (our_preq && our_preq->signal_partial) {
 			fr_trunk_request_signal_partial(treq);
 			our_preq->signal_partial = false;
 			break;
 		}
 
 		if (test_verbose_level__ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
-		write(fd, &preq, sizeof(preq));
+
+		slen = write(fd, &preq, sizeof(preq));
+		if (slen < 0) return;
+		if (slen == 0) return;
+		if (slen < sizeof(preq)) abort();
+
 		fr_trunk_request_signal_sent(treq);
 	}
 	TEST_CHECK(count > 0);
@@ -49,6 +55,7 @@ static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 	void			*preq;
 	size_t			count = 0;
 	int			fd = *(talloc_get_type_abort(fr_connection_get_handle(conn), int));
+	ssize_t			slen;
 
 	/*
 	 *	For cancellation we just do
@@ -60,14 +67,22 @@ static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 		/*
 		 *	Simulate a partial cancel write
 		 */
-		if (our_preq->signal_cancel_partial) {
+		if (our_preq && our_preq->signal_cancel_partial) {
 			fr_trunk_request_signal_cancel_partial(treq);
 			our_preq->signal_cancel_partial = false;
 			break;
 		}
 
 		if (test_verbose_level__ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
-		write(fd, &preq, sizeof(preq));
+		slen = write(fd, &preq, sizeof(preq));
+		if (slen < 0) {
+			fr_perror("%s - %s", __FUNCTION__, fr_syserror(errno));
+			return;
+		}
+		if (slen < 0) return;
+		if (slen == 0) return;
+		if (slen < sizeof(preq)) abort();
+
 		fr_trunk_request_signal_cancel_sent(treq);
 	}
 	TEST_CHECK(count > 0);
@@ -83,7 +98,7 @@ static void test_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void
 		slen = read(fd, &preq, sizeof(preq));
 		if (slen <= 0) return;
 
-		if (test_verbose_level__ >= 3) printf("%s - Read %p\n", __FUNCTION__, preq);
+		if (test_verbose_level__ >= 3) printf("%s - Read %p (%zu)\n", __FUNCTION__, preq, (size_t)slen);
 		TEST_CHECK(slen == sizeof(preq));
 		talloc_get_type_abort(preq, test_proto_request_t);
 
@@ -161,29 +176,41 @@ static void _conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 static void test_request_cancel(UNUSED fr_connection_t *conn, UNUSED fr_trunk_request_t *treq, void *preq,
 				UNUSED fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
-	test_proto_request_t	*our_preq = talloc_get_type_abort(preq, test_proto_request_t);
+	test_proto_request_t	*our_preq;
 
+	if (!preq) return;
+
+	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->cancelled = true;
 }
 
 static void test_request_complete(REQUEST *request, void *preq, void *rctx, void *uctx)
 {
-	test_proto_request_t	*our_preq = talloc_get_type_abort(preq, test_proto_request_t);
+	test_proto_request_t	*our_preq;
 
+	if (!preq) return;
+
+	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->completed = true;
 }
 
 static void test_request_fail(REQUEST *request, void *preq, void *rctx, void *uctx)
 {
-	test_proto_request_t	*our_preq = talloc_get_type_abort(preq, test_proto_request_t);
+	test_proto_request_t	*our_preq;
 
+	if (!preq) return;
+
+	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->failed = true;
 }
 
 static void test_request_free(REQUEST *request, void *preq, void *uctx)
 {
-	test_proto_request_t	*our_preq = talloc_get_type_abort(preq, test_proto_request_t);
+	test_proto_request_t	*our_preq;
 
+	if (!preq) return;
+
+	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->freed = true;
 }
 
@@ -193,14 +220,32 @@ static void test_request_free(REQUEST *request, void *preq, void *uctx)
 static void _conn_io_loopback(fr_event_list_t *el, int fd, int flags, void *uctx)
 {
 	int		*our_h = talloc_get_type_abort(uctx, int);
-	uint8_t		buff[1024];
+	static uint8_t	buff[1024];
+	static size_t	to_write;
 	ssize_t		slen;
 
 	rad_assert(fd == our_h[1]);
 
-	slen = read(fd, buff, sizeof(buff));
-	if (test_verbose_level__ >= 3) printf("%s - Received %zu bytes of data, writing it back\n", __FUNCTION__, slen);
-	write(our_h[1], buff, (size_t)slen);
+	while (true) {
+		slen = read(fd, buff, sizeof(buff));
+		if (slen <= 0) return;
+
+		to_write = (size_t)slen;
+
+		if (test_verbose_level__ >= 3) printf("%s - Read %zu bytes of data\n", __FUNCTION__, slen);
+		slen = write(our_h[1], buff, (size_t)to_write);
+		if (slen < 0) return;
+
+		if (slen < to_write) {
+			to_write -= slen;
+			if (test_verbose_level__ >= 3) {
+				printf("%s - Partial write %zu bytes left\n", __FUNCTION__, to_write);
+			}
+			return;
+		} else {
+			if (test_verbose_level__ >= 3) printf("%s - Wrote %zu bytes of data\n", __FUNCTION__, slen);
+		}
+	}
 }
 
 static void _conn_close(void *h, UNUSED void *uctx)
@@ -237,10 +282,8 @@ static fr_connection_state_t _conn_init(void **h_out, fr_connection_t *conn, UNU
 {
 	int *h;
 
-	rad_assert(h = talloc_array(conn, int, 2));
-	rad_assert(socketpair(AF_UNIX, SOCK_STREAM, 0, h) >= 0);
-	rad_assert(h[0] >= 0);
-	rad_assert(h[1] >= 0);
+	h = talloc_array(conn, int, 2);
+	socketpair(AF_UNIX, SOCK_STREAM, 0, h);
 
 	fr_nonblock(h[0]);
 	fr_nonblock(h[1]);
@@ -367,10 +410,8 @@ static fr_connection_state_t _conn_init_no_signal(void **h_out, fr_connection_t 
 {
 	int *h;
 
-	rad_assert(h = talloc_array(conn, int, 2));
-	rad_assert(socketpair(AF_UNIX, SOCK_STREAM, 0, h) >= 0);
-	rad_assert(h[0] >= 0);
-	rad_assert(h[1] >= 0);
+	h = talloc_array(conn, int, 2);
+	socketpair(AF_UNIX, SOCK_STREAM, 0, h);
 	*h_out = h;
 
 	return FR_CONNECTION_STATE_CONNECTING;
@@ -1446,6 +1487,109 @@ static void test_connection_levels(void)
 	talloc_free(ctx);
 }
 
+
+#undef fr_time	/* Need to the real time */
+static void test_enqueue_and_io_speed(void)
+{
+	TALLOC_CTX		*ctx = talloc_init("test");
+	fr_trunk_t		*trunk;
+	fr_event_list_t		*el;
+	fr_trunk_conf_t		conf = {
+					.min_connections = 1,		/* No connections on start */
+					.max_connections = 0,
+					.max_req_per_conn = 0,
+					.target_req_per_conn = 0,	/* One request per connection */
+					.req_pool_headers = 1,
+					.req_pool_size = sizeof(test_proto_request_t),
+					.manage_interval = NSEC * 0.5
+				};
+	REQUEST			*request;
+	size_t			i = 0, requests = 100000;
+	fr_time_t		enqueue_start = 0, enqueue_stop = 0, io_start = 0, io_stop = 0;
+	fr_time_delta_t		enqueue_time, io_time, total_time;
+	int			events;
+	fr_trunk_request_t	**treq_array;
+	test_proto_request_t	**preq_array;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_event_list_set_time_func(el, test_time);
+
+	request = request_alloc(ctx);
+
+	test_time_base += NSEC * 0.5;	/* Need to provide a timer starting value above zero */
+
+	trunk = test_setup_trunk(ctx, el, &conf, true);
+
+	/*
+	 *	Open the connections
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	/*
+	 *	Build up a cache of requests
+	 *	This prevents all mallocs on request enqueue.
+	 *
+	 *	When the server's running, this does represent
+	 *	close to what we'd have as a steady state.
+	 */
+	MEM(treq_array = talloc_array(ctx, fr_trunk_request_t *, requests));
+	for (i = 0; i < requests; i++) treq_array[i] = fr_trunk_request_alloc(trunk, NULL);
+	for (i = 0; i < requests; i++) fr_trunk_request_free(treq_array[i]);
+
+	MEM(preq_array = talloc_array(ctx, test_proto_request_t *, requests));
+
+	TEST_CASE("Enqueue requests");
+	enqueue_start = fr_time();
+//	ProfilerStart(getenv("FR_PROFILE"));
+	for (i = 0; i < requests; i++) {
+		fr_trunk_request_t	*treq;
+		test_proto_request_t	*preq = NULL;
+
+		treq = fr_trunk_request_alloc(trunk, NULL);
+		preq = talloc_zero(treq, test_proto_request_t);
+		preq->treq = treq;
+		fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
+	}
+	enqueue_stop = fr_time();
+	enqueue_time = enqueue_stop - enqueue_start;
+	if (test_verbose_level__ >= 1) {
+		INFO("Enqueue time %pV (%u rps) (%"PRIu64"/%"PRIu64")",
+		     fr_box_time_delta(enqueue_time),
+		     (uint32_t)(requests / ((float)enqueue_time / NSEC)),trunk->req_alloc_new, trunk->req_alloc_reused);
+	}
+
+	TEST_CASE("Perform I/O operations");
+	io_start = fr_time();
+	while (true) {
+		events = fr_event_corral(el, test_time_base, false);
+		if (!events) break;
+		fr_event_service(el);
+	}
+	io_stop = fr_time();
+	io_time = io_stop - io_start;
+
+	if (test_verbose_level__ >= 1) {
+		INFO("I/O time %pV (%u rps)",
+		     fr_box_time_delta(io_time),
+		     (uint32_t)(requests / ((float)io_time / NSEC)));
+	}
+
+	if (test_verbose_level__ >= 1) {
+		total_time = io_stop - enqueue_start;
+		INFO("Total time %pV (%u rps)",
+		     fr_box_time_delta(total_time),
+		     (uint32_t)(requests / ((float)io_time / NSEC)));
+	}
+
+//	ProfilerStop();
+
+	talloc_free(ctx);
+}
+#define fr_time test_time
+
 /*
  *	Connection spawning
  */
@@ -1474,10 +1618,16 @@ TEST_LIST = {
 	 *	Rebalance
 	 */
 	{ "Rebalance - Connection rebalance",		test_connection_rebalance_requests },
+
 	/*
 	 *	Connection spawning tests
 	 */
 	{ "Spawn - Test connection start on enqueue",	test_connection_start_on_enqueue },
 	{ "Spawn - Connection levels",			test_connection_levels },
+
+	/*
+	 *	Performance tests
+	 */
+	{ "Speed Test - Enqueue, and I/O",		test_enqueue_and_io_speed },
 	{ NULL }
 };
