@@ -20,7 +20,7 @@ LDFLAGS += -fprofile-instr-generate
 #
 #  Order is important here.  And the dependencies in the rest of the
 #  makefiles aren't *quite* there to allow for these to be targets.
-#  So we just run them manually one after the other.x
+#  So we just run them manually one after the other.
 #
 coverage: all
 	${Q}$(MAKE) test
