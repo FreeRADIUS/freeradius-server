@@ -28,7 +28,7 @@
 #define LOG_PREFIX_ARGS trunk->log_prefix
 
 #ifdef NDEBUG
-#  define TALLOC_GET_TYPE_ABORT_NOOP
+#  define TALLOC_GET_TYPE_ABORT_NOOP 1
 #endif
 
 #include <freeradius-devel/server/connection.h>
