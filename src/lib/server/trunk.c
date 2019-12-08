@@ -3156,6 +3156,7 @@ static int _trunk_free(fr_trunk_t *trunk)
 	 *	Free any requests in our request cache
 	 */
 	while ((treq = fr_dlist_head(&trunk->unassigned))) talloc_free(treq);
+
 	return 0;
 }
 
@@ -3205,9 +3206,13 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log
 	talloc_set_destructor(trunk, _trunk_free);
 
 	/*
-	 *	Request backlog queue
+	 *	Unused request list...
 	 */
 	fr_dlist_talloc_init(&trunk->unassigned, fr_trunk_request_t, list);
+
+	/*
+	 *	Request backlog queue
+	 */
 	MEM(trunk->backlog = fr_heap_talloc_create(trunk, trunk->funcs.request_prioritise,
 						   fr_trunk_request_t, heap_id));
 
