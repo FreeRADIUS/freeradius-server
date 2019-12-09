@@ -55,7 +55,11 @@ typedef struct {
 	fr_time_t			dynamic;	//!< timestamp for packet doing dynamic client definition
 	fr_io_address_t   		*address;	//!< of this packet.. shared between multiple packets
 	fr_io_client_t			*client;	//!< client handling this packet.
-	uint8_t				packet[20];	//!< original request packet
+
+	union {
+		uint8_t				packet[20];	//!< original request packet
+		fr_dlist_t		entry;
+	};
 } fr_io_track_t;
 
 /** The master IO instance
