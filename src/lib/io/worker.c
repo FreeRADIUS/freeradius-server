@@ -476,8 +476,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	Nothing to do, delete max_request_time timers.
 	 */
 	if (!worker->num_active) {
-		talloc_const_free(worker->ev_cleanup);
-		worker->ev_cleanup = NULL;
+		fr_event_timer_delete(worker->el, &worker->ev_cleanup);
 	}
 
 	/*
