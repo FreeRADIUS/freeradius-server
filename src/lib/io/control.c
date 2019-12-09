@@ -337,7 +337,10 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
-	(void) write(c->pipe[1], ".", 1);
+	while (write(c->pipe[1], ".", 1) == 0) {
+		/* nothing */
+	}
+
 	return 0;
 }
 
