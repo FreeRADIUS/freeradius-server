@@ -1037,6 +1037,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	fr_dict_attr_t const *da;
 	fr_dict_enum_t const *dv;
 	CONF_SECTION	*subcs;
+	fr_dict_t const	*dict_internal;
 
 	rad_assert(request->server_cs != NULL);
 
@@ -1066,10 +1067,11 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 		return RLM_MODULE_REJECT;
 	}
 
-	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_AUTH_TYPE);
+	dict_internal = fr_dict_internal();
+	da = fr_dict_attr_child_by_num(fr_dict_root(dict_internal), FR_AUTH_TYPE);
 	if (!da) return RLM_MODULE_FAIL;
 
-	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));
+	dv = fr_dict_dict_enum_by_value(dict_internal, da, fr_box_uint32((uint32_t) auth_type));
 	if (!dv) return RLM_MODULE_FAIL;
 
 	subcs = cf_section_find(cs, da->name, dv->name);
