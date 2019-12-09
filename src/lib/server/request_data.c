@@ -653,3 +653,17 @@ bool request_data_verify_parent(TALLOC_CTX *parent, fr_dlist_head_t *entry)
 	return true;
 }
 #endif
+
+/** Clear all of the request data associated with a request.
+ *
+ */
+int request_data_clear(REQUEST *request)
+{
+	request_data_t	*rd = NULL;
+
+	while ((rd = fr_dlist_next(&request->data, rd))) {
+		if (talloc_free(rd) < 0) return -1;
+	}
+
+	return 0;
+}

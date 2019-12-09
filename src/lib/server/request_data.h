@@ -75,6 +75,8 @@ bool		request_data_persistable(request_data_t *rd);
 bool		request_data_verify_parent(TALLOC_CTX *parent, fr_dlist_head_t *entry);
 #endif
 
+int		request_data_clear(REQUEST *request);
+
 #ifdef __cplusplus
 }
 #endif
