@@ -1,4 +1,3 @@
-static void *dummy_uctx = NULL;
 
 #include <freeradius-devel/util/acutest.h>
 #include <sys/types.h>
@@ -13,6 +12,13 @@ typedef struct {
 	bool			signal_partial;		//!< Muxer should signal that this request is partially written.
 	bool			signal_cancel_partial;	//!< Muxer should signal that this request is partially cancelled.
 } test_proto_request_t;
+
+typedef struct {
+	uint64_t		cancelled;		//!< Count of tests in this run that were cancelled.
+	uint64_t		completed;		//!< Count of tests in this run that completed.
+	uint64_t		failed;			//!< Count of tests in this run that failed.
+	uint64_t		freed;			//!< Count of tests in this run that were freed.
+} test_proto_stats_t;
 
 #define DEBUG_LVL_SET if (test_verbose_level__ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
 
@@ -127,9 +133,11 @@ static void test_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void
 }
 
 static void _conn_io_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
-			   UNUSED int fd_errno, void *uctx)
+			   UNUSED int fd_errno, UNUSED void *uctx)
 {
-	fr_trunk_connection_t *tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
 	fr_trunk_connection_signal_reconnect(tconn);
 }
 
@@ -174,44 +182,52 @@ static void _conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 }
 
 static void test_request_cancel(UNUSED fr_connection_t *conn, UNUSED fr_trunk_request_t *treq, void *preq,
-				UNUSED fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
+				UNUSED fr_trunk_cancel_reason_t reason, void *uctx)
 {
+	test_proto_stats_t	*stats = uctx;
 	test_proto_request_t	*our_preq;
 
 	if (!preq) return;
 
 	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->cancelled = true;
+	if (stats) stats->cancelled++;
 }
 
 static void test_request_complete(REQUEST *request, void *preq, void *rctx, void *uctx)
 {
+	test_proto_stats_t	*stats = uctx;
 	test_proto_request_t	*our_preq;
 
 	if (!preq) return;
 
 	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->completed = true;
+	if (stats) stats->completed++;
 }
 
 static void test_request_fail(REQUEST *request, void *preq, void *rctx, void *uctx)
 {
+	test_proto_stats_t	*stats = uctx;
 	test_proto_request_t	*our_preq;
 
 	if (!preq) return;
 
 	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->failed = true;
+	if (stats) stats->failed++;
 }
 
 static void test_request_free(REQUEST *request, void *preq, void *uctx)
 {
+	test_proto_stats_t	*stats = uctx;
 	test_proto_request_t	*our_preq;
 
 	if (!preq) return;
 
 	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->freed = true;
+	if (stats) stats->freed++;
 }
 
 /** Whenever the second socket in a socket pair is readable, read all pending data, and write it back
@@ -298,12 +314,10 @@ static fr_connection_t *test_setup_socket_pair_connection_alloc(fr_trunk_connect
 								fr_time_delta_t timeout, fr_time_delta_t retry,
 								char const *log_prefix, void *uctx)
 {
-	TEST_CHECK(uctx == &dummy_uctx);
-
 	return fr_connection_alloc(tconn, el, timeout, retry, _conn_init, _conn_open, _conn_close, log_prefix, tconn);
 }
 
-static fr_trunk_t *test_setup_trunk(TALLOC_CTX *ctx, fr_event_list_t *el, fr_trunk_conf_t *conf, bool with_cancel_mux)
+static fr_trunk_t *test_setup_trunk(TALLOC_CTX *ctx, fr_event_list_t *el, fr_trunk_conf_t *conf, bool with_cancel_mux, void *uctx)
 {
 	fr_trunk_io_funcs_t	io_funcs = {
 					.connection_alloc = test_setup_socket_pair_connection_alloc,
@@ -322,7 +336,7 @@ static fr_trunk_t *test_setup_trunk(TALLOC_CTX *ctx, fr_event_list_t *el, fr_tru
 	 */
 	if (with_cancel_mux) io_funcs.request_cancel_mux = test_cancel_mux;
 
-	return fr_trunk_alloc(ctx, el, "test_socket_pair", false, conf, &io_funcs, &dummy_uctx);
+	return fr_trunk_alloc(ctx, el, "test_socket_pair", false, conf, &io_funcs, uctx);
 }
 
 static void test_socket_pair_alloc_then_free(void)
@@ -347,7 +361,7 @@ static void test_socket_pair_alloc_then_free(void)
 	TEST_CHECK(el != NULL);
 	fr_event_list_set_time_func(el, test_time);
 
-	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
+	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, NULL);
 	TEST_CHECK(trunk != NULL);
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 2);
@@ -383,7 +397,7 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 	TEST_CHECK(el != NULL);
 	fr_event_list_set_time_func(el, test_time);
 
-	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
+	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, NULL);
 	TEST_CHECK(trunk != NULL);
 
 	events = fr_event_corral(el, test_time_base, true);
@@ -426,8 +440,6 @@ static fr_connection_t *test_setup_socket_pair_1s_timeout_connection_alloc(fr_tr
 									   UNUSED fr_time_delta_t timeout, UNUSED fr_time_delta_t retry,
 									   char const *log_prefix, void *uctx)
 {
-	TEST_CHECK(uctx == &dummy_uctx);
-
 	return fr_connection_alloc(tconn, el, NSEC * 1, NSEC * 1, _conn_init_no_signal,
 				   _conn_open, _conn_close, log_prefix, uctx);
 }
@@ -455,7 +467,7 @@ static void test_socket_pair_alloc_then_connect_timeout(void)
 	fr_event_list_set_time_func(el, test_time);
 
 	TEST_CHECK(el != NULL);
-	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
+	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, NULL);
 	TEST_CHECK(trunk != NULL);
 
 	/*
@@ -494,8 +506,6 @@ static fr_connection_t *test_setup_socket_pair_1s_reconnection_delay_alloc(fr_tr
 									   UNUSED fr_time_delta_t timeout, UNUSED fr_time_delta_t retry,
 									   char const *log_prefix, void *uctx)
 {
-	TEST_CHECK(uctx == &dummy_uctx);
-
 	return fr_connection_alloc(tconn, el, NSEC * 1, NSEC * 1,
 				   _conn_init, _conn_open, _conn_close, log_prefix, uctx);
 }
@@ -522,7 +532,7 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	TEST_CHECK(el != NULL);
 	fr_event_list_set_time_func(el, test_time);
 
-	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, &dummy_uctx);
+	trunk = fr_trunk_alloc(ctx, el, "test_socket_pair", false, &conf, &io_funcs, NULL);
 	TEST_CHECK(trunk != NULL);
 
 	/*
@@ -589,7 +599,7 @@ static void test_enqueue_basic(void)
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	fr_event_list_set_time_func(el, test_time);
 
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 
 	/*
 	 *	Our preq is a pointer to the trunk
@@ -694,7 +704,7 @@ static void test_enqueue_cancellation_points(void)
 
 	request = request_alloc(ctx);
 
-	trunk = test_setup_trunk(ctx, el, &conf, false);
+	trunk = test_setup_trunk(ctx, el, &conf, false, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 
@@ -707,7 +717,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 
 	TEST_CASE("cancellation via signal - FR_TRUNK_REQUEST_BACKLOG");
-	trunk = test_setup_trunk(ctx, el, &conf, false);
+	trunk = test_setup_trunk(ctx, el, &conf, false, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -723,7 +733,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(trunk);
 
 	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_PARTIAL");
-	trunk = test_setup_trunk(ctx, el, &conf, false);
+	trunk = test_setup_trunk(ctx, el, &conf, false, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
 	treq = NULL;
@@ -747,7 +757,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 
 	TEST_CASE("cancellation via signal - FR_TRUNK_REQUEST_PARTIAL");
-	trunk = test_setup_trunk(ctx, el, &conf, false);
+	trunk = test_setup_trunk(ctx, el, &conf, false, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
 	treq = NULL;
@@ -772,7 +782,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(trunk);
 
 	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_SENT");
-	trunk = test_setup_trunk(ctx, el, &conf, false);
+	trunk = test_setup_trunk(ctx, el, &conf, false, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -794,7 +804,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 
 	TEST_CASE("cancellation via signal - FR_TRUNK_REQUEST_SENT");
-	trunk = test_setup_trunk(ctx, el, &conf, false);
+	trunk = test_setup_trunk(ctx, el, &conf, false, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -818,7 +828,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(trunk);
 
 	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_CANCEL_PARTIAL");
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_cancel_partial = true;
 	treq = NULL;
@@ -849,7 +859,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 
 	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_CANCEL_SENT");
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -879,7 +889,7 @@ static void test_enqueue_cancellation_points(void)
 	talloc_free(preq);
 
 	TEST_CASE("trunk free after FR_TRUNK_REQUEST_CANCEL_COMPLETE");
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
@@ -945,7 +955,7 @@ static void test_partial_to_complete_states(void)
 
 	request = request_alloc(ctx);
 
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
 	preq->signal_cancel_partial = true;
@@ -1025,7 +1035,7 @@ static void test_requeue_on_reconnect(void)
 
 	request = request_alloc(ctx);
 
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
 	preq->signal_cancel_partial = true;
@@ -1277,7 +1287,7 @@ static void test_connection_start_on_enqueue(void)
 
 	test_time_base += NSEC * 0.5;	/* Need to provide a timer starting value above zero */
 
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 
 	TEST_CASE("C0 - Enqueue should spawn");
@@ -1330,7 +1340,7 @@ static void test_connection_rebalance_requests(void)
 
 	request = request_alloc(ctx);
 
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
 
 	/*
@@ -1393,7 +1403,7 @@ static void test_connection_levels(void)
 
 	test_time_base += NSEC * 0.5;	/* Need to provide a timer starting value above zero */
 
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq_a = talloc_zero(ctx, test_proto_request_t);
 	preq_b = talloc_zero(ctx, test_proto_request_t);
 	preq_c = talloc_zero(ctx, test_proto_request_t);
@@ -1534,6 +1544,7 @@ static void test_enqueue_and_io_speed(void)
 	int			events;
 	fr_trunk_request_t	**treq_array;
 	test_proto_request_t	**preq_array;
+	test_proto_stats_t	stats;
 
 	DEBUG_LVL_SET;
 
@@ -1544,7 +1555,8 @@ static void test_enqueue_and_io_speed(void)
 
 	test_time_base += NSEC * 0.5;	/* Need to provide a timer starting value above zero */
 
-	trunk = test_setup_trunk(ctx, el, &conf, true);
+	memset(&stats, 0, sizeof(stats));
+	trunk = test_setup_trunk(ctx, el, &conf, true, &stats);
 
 	/*
 	 *	Open the connections
@@ -1582,7 +1594,8 @@ static void test_enqueue_and_io_speed(void)
 	if (test_verbose_level__ >= 1) {
 		INFO("Enqueue time %pV (%u rps) (%"PRIu64"/%"PRIu64")",
 		     fr_box_time_delta(enqueue_time),
-		     (uint32_t)(requests / ((float)enqueue_time / NSEC)),trunk->req_alloc_new, trunk->req_alloc_reused);
+		     (uint32_t)(requests / ((float)enqueue_time / NSEC)),
+		     trunk->req_alloc_new, trunk->req_alloc_reused);
 	}
 
 	TEST_CASE("Perform I/O operations");
@@ -1607,6 +1620,11 @@ static void test_enqueue_and_io_speed(void)
 		     fr_box_time_delta(total_time),
 		     (uint32_t)(requests / ((float)total_time / NSEC)));
 	}
+
+	TEST_CHECK(stats.completed == requests);
+	TEST_CHECK(stats.failed == 0);
+	TEST_CHECK(stats.cancelled == 0);
+	TEST_CHECK(stats.freed == requests);
 
 //	ProfilerStop();
 

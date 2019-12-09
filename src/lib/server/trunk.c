@@ -47,7 +47,7 @@
 static atomic_uint_fast64_t request_counter = ATOMIC_VAR_INIT(1);
 
 #ifdef TESTING_TRUNK
-static fr_time_t test_time_base;
+static fr_time_t test_time_base = 1;
 
 static fr_time_t test_time(void)
 {
