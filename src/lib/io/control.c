@@ -99,7 +99,7 @@ static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 	now = fr_time();
 
 	for (i = 0; i < num; i++) {
-		uint32_t id;
+		uint32_t id = 0;
 		size_t message_size;
 
 		message_size = fr_control_message_pop(c->aq, &id, data, sizeof(data));
