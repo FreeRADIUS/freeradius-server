@@ -466,7 +466,9 @@ void		fr_trunk_reconnect(fr_trunk_t *trunk, int state);
 /** @name Trunk allocation
  * @{
  */
-fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log_prefix, bool delay_spawn,
+int		fr_trunk_start(fr_trunk_t *trunk);
+
+fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log_prefix, bool delay_start,
 				fr_trunk_conf_t const *conf, fr_trunk_io_funcs_t const *funcs,
 				void const *uctx);
 /** @} */

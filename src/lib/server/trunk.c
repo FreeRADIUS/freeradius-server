@@ -229,6 +229,12 @@ struct fr_trunk_connection_s {
  	uint64_t		sent_count;		//!< The number of requests that have been sent using
  							///< this connection.
  	/** @} */
+
+	/** @name Timers
+	 * @{
+ 	 */
+  	fr_event_timer_t const	*lifetime_ev;		//!< Maximum time this connection can be open.
+  	/** @} */
 };
 
 /** Main trunk management handle
@@ -312,9 +318,16 @@ struct fr_trunk_s {
 	 * @{
  	 */
  	fr_event_timer_t const	*manage_ev;		//!< Periodic connection management event.
+	/** @} */
 
+	/** @name State
+	 * @{
+ 	 */
 	bool			freeing;		//!< Trunk is being freed, don't spawn new
 							///< connections or re-enqueue.
+
+	bool			started;		//!< Has the trunk been started.
+	/** @} */
 };
 
 static CONF_PARSER const fr_trunk_config_requests[] = {
@@ -1856,22 +1869,11 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 				"%s requests must be in \"unassigned\" state", __FUNCTION__)) return TRUNK_ENQUEUE_FAIL;
 
 	/*
-	 *	If delay_spawn was set, we may need
+	 *	If delay_start was set, we may need
 	 *	to insert the timer for the connection manager.
 	 */
-	if (unlikely(!trunk->manage_ev)) {
-		uint16_t i;
-
-		/*
-		 *	Insert the timer event
-		 */
-		fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf->manage_interval,
-				  _trunk_timer, trunk);
-
-		/*
-		 *	Spawn the initial set of connections
-		 */
-		for (i = 0; i < trunk->conf->start; i++) if (trunk_connection_spawn(trunk, fr_time()) != 0) break;
+	if (unlikely(!trunk->started)) {
+		if (fr_trunk_start(trunk) < 0) return TRUNK_ENQUEUE_FAIL;
 	}
 
 	rcode = trunk_request_check_enqueue(&tconn, trunk, request);
@@ -2276,6 +2278,19 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
 	fr_dlist_insert_head(&trunk->connecting, tconn);	/* MUST remain a head insertion for reconnect logic */
 }
 
+/** Trigger a reconnection of the trunk connection
+ *
+ * @param[in] el	Event list the timer was inserted into.
+ * @param[in] now	Current time.
+ * @param[in] uctx	The tconn.
+ */
+static void  _trunk_connection_lifetime_expire(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
+	fr_trunk_connection_signal_reconnect(tconn);
+}
+
 /** Connection transitioned to the connected state
  *
  * Reflect the connection state change in the lists we use to track connections.
@@ -2306,6 +2321,15 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 	 *	draining too.
 	 */
 	trunk->last_connected = fr_time();
+
+	/*
+	 *	Insert a timer to reconnect the
+	 *	connection periodically.
+	 */
+	if (trunk->conf->lifetime > 0) {
+		(void)fr_event_timer_in(tconn, trunk->el, &tconn->lifetime_ev,
+					trunk->conf->lifetime, _trunk_connection_lifetime_expire, tconn);
+	}
 }
 
 /** Connection failed after it was connected
@@ -2386,6 +2410,11 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	Remove the I/O events
 	 */
 	trunk_connection_event_update(tconn);
+
+	/*
+	 *	Remove the reconnect event
+	 */
+	if (trunk->conf->lifetime > 0) fr_event_timer_delete(trunk->el, &tconn->lifetime_ev);
 }
 
 /** Connection failed to connect before it was connected
@@ -3329,6 +3358,36 @@ void fr_trunk_reconnect(fr_trunk_t *trunk, int states)
 	}
 }
 
+/** Start the trunk running
+ *
+ */
+int fr_trunk_start(fr_trunk_t *trunk)
+{
+	uint16_t i;
+
+	if (unlikely(trunk->started)) return 0;
+
+	/*
+	 *	Spawn the initial set of connections
+	 */
+	for (i = 0; i < trunk->conf->start; i++) {
+		if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
+	}
+
+	/*
+	 *	Insert the event timer to manage
+	 *	the interval between managing connections.
+	 */
+	if (trunk->conf->manage_interval > 0) {
+		fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf->manage_interval,
+				  _trunk_timer, trunk);
+	}
+
+	trunk->started = true;
+
+	return 0;
+}
+
 /** Order connections by queue depth
  *
  */
@@ -3397,7 +3456,7 @@ static int _trunk_free(fr_trunk_t *trunk)
  * @param[in] ctx		To use for any memory allocations.  Must be thread local.
  * @param[in] el		to use for I/O and timer events.
  * @param[in] log_prefix	To prepend to global messages.
- * @param[in] delay_spawn	If true, then we will not spawn any connections
+ * @param[in] delay_start	If true, then we will not spawn any connections
  *				until the first request is enqueued.
  * @param[in] conf		Common user configurable parameters
  * @param[in] funcs		Callback functions.
@@ -3407,12 +3466,11 @@ static int _trunk_free(fr_trunk_t *trunk)
  *	- New trunk handle on success.
  *	- NULL on error.
  */
-fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log_prefix, bool delay_spawn,
+fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log_prefix, bool delay_start,
 			   fr_trunk_conf_t const *conf, fr_trunk_io_funcs_t const *funcs,
 			   void const *uctx)
 {
 	fr_trunk_t	*trunk;
-	uint16_t	i;
 
 	/*
 	 *	Check we have the functions we need
@@ -3461,25 +3519,11 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log
 
 	DEBUG4("Trunk allocated %p", trunk);
 
-	if (delay_spawn) return trunk;
-
-	/*
-	 *	Spawn the initial set of connections
-	 */
-	for (i = 0; i < trunk->conf->start; i++) {
-		if (trunk_connection_spawn(trunk, fr_time()) != 0) {
+	if (!delay_start) {
+		if (fr_trunk_start(trunk) < 0) {
 			talloc_free(trunk);
 			return NULL;
 		}
-	}
-
-	/*
-	 *	Insert the event timer to manage
-	 *	the interval between managing connections.
-	 */
-	if (trunk->conf->manage_interval > 0) {
-		fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf->manage_interval,
-				  _trunk_timer, trunk);
 	}
 
 	return trunk;
