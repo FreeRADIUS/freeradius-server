@@ -400,7 +400,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 		 *	Find the appropriate Auth-Type by name.
 		 */
 		vp = auth_type;
-		dv = fr_dict_enum_by_value(vp->da, &vp->data);
+		dv = fr_dict_dict_enum_by_value(dict_freeradius, vp->da, &vp->data);
 		if (!dv) {
 			REDEBUG2("Unknown Auth-Type %d found: rejecting the user", vp->vp_uint32);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -513,7 +513,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			}
 		}
 
-		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+		dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
 
@@ -562,13 +562,13 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
-				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+				dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
 
 				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv ? dv->name : "???" );
 
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
-				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+				dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
