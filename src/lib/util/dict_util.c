@@ -2062,7 +2062,6 @@ fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, un
  */
 fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
-	fr_dict_enum_t	enumv, *dv;
 	fr_dict_t	*dict;
 
 	if (!da) return NULL;
@@ -2072,6 +2071,22 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
 		return NULL;
 	}
+
+	return fr_dict_dict_enum_by_value(dict, da, value);
+}
+
+/** Lookup the structure representing an enum value in a #fr_dict_attr_t
+ *
+ * @param[in] dict		the dictionary root
+ * @param[in] da		to search in.
+ * @param[in] value		to search for.
+ * @return
+ * 	- Matching #fr_dict_enum_t.
+ * 	- NULL if no matching #fr_dict_enum_t could be found.
+ */
+fr_dict_enum_t *fr_dict_dict_enum_by_value(fr_dict_t const *dict, fr_dict_attr_t const *da, fr_value_box_t const *value)
+{
+	fr_dict_enum_t	enumv, *dv;
 
 	/*
 	 *	Could be NULL or an unknown attribute, in which case
