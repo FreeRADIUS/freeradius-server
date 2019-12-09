@@ -3120,7 +3120,23 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	if (trunk->freeing) goto done;
 
 	/*
-	 *	All states except draining.
+	 *	Count all connections except draining and draining to free.
+	 *
+	 *	Omitting these connection states artificially raises the
+	 *	request to connection ratio, so that we can preemptively spawn
+	 *	new connections.
+	 *
+	 *	In the case of FR_TRUNK_CONN_DRAINING the trunk management
+	 *	code has enough hysteresis to not immediately reactivate the
+	 *	connection.
+	 *
+	 *	In the case of TRUNK_CONN_DRAINING_TO_FREE the trunk
+	 *	management code should spawn a new connection to takes its place.
+	 *
+	 *	Connections placed in the DRAINING_TO_FREE sate are being
+	 *	closed preemptively to deal with bugs on the server we're
+	 *	talking to, or misconfigured firewalls which are trashing
+	 *	TCP/UDP connection states.
 	 */
 	conn_count = fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ALL ^
 							(FR_TRUNK_CONN_DRAINING | FR_TRUNK_CONN_DRAINING_TO_FREE));
