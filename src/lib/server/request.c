@@ -28,6 +28,53 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/unlang/base.h>
 
+/** Mark a request as unused, and place it into a free list.
+ *
+ */
+void request_unused(fr_dlist_head_t *head, REQUEST *request)
+{
+	if (fr_dlist_num_elements(head) > 256) {
+		talloc_free(request);
+		return;
+	}
+
+	talloc_const_free(request->name);
+	request->name = NULL;
+	request->number = 0;
+	request->child_number = 0;
+	request->dict = NULL;
+	request->el = NULL;
+	request->backlog = NULL;
+	request->listener = NULL;
+	request->client = NULL;
+
+	talloc_free_children(request->packet);
+	memset(request->packet, 0, sizeof(*request->packet));
+	if (request->reply) {
+		talloc_free_children(request->reply);
+		memset(request->reply, 0, sizeof(*request->reply));
+	}
+
+	fr_pair_list_free(&request->control);
+	if (request->state_ctx) talloc_free_children(request->state_ctx);
+	request->state = NULL;
+	request->process = NULL;
+	request->proxy = NULL;
+	request->server_cs = NULL;
+	request->component = "free_list";
+	request->module = NULL;
+	talloc_free_children(request->stack);
+	unlang_interpret_stack_clear(request);
+	request->parent = NULL;
+	request->ev = NULL;
+	TALLOC_FREE(request->async);
+
+	(void) request_data_clear(request);
+
+	(void) fr_dlist_insert_head(head, request);
+}
+
+
 /** Callback for freeing a request struct
  *
  */
@@ -77,6 +124,40 @@ static int _request_free(REQUEST *request)
 	return 0;
 }
 
+static REQUEST *request_setup(REQUEST *request)
+{
+#ifndef NDEBUG
+	request->magic = REQUEST_MAGIC;
+#endif
+
+	request->request_state = REQUEST_INIT;
+	request->master_state = REQUEST_ACTIVE;
+
+	/*
+	 *	These may be changed later by request_pre_handler
+	 */
+	request->log.lvl = fr_debug_lvl;	/* Default to global debug level */
+	if (!request->log.dst) {
+		request->log.dst = talloc_zero(request, log_dst_t);
+	} else {
+		memset(request->log.dst, 0, sizeof(*request->log.dst));
+	}
+	request->log.dst->func = vlog_request;
+	request->log.dst->uctx = &default_log;
+
+	request->module = NULL;
+	request->component = "<core>";
+
+	request->seq_start = 0;
+	request->runnable_id = -1;
+	request->time_order_id = -1;
+
+	fr_dlist_entry_init(&request->entry);
+
+	return request;
+}
+
+
 /** Create a new REQUEST data structure
  *
  */
@@ -87,39 +168,35 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request = talloc_zero(ctx, REQUEST);
 	if (!request) return NULL;
 	talloc_set_destructor(request, _request_free);
-#ifndef NDEBUG
-	request->magic = REQUEST_MAGIC;
-#endif
-#ifdef WITH_PROXY
-	request->proxy = NULL;
-#endif
-	request->reply = NULL;
-	request->control = NULL;
-
-	/*
-	 *	These may be changed later by request_pre_handler
-	 */
-	request->log.lvl = fr_debug_lvl;	/* Default to global debug level */
-	request->log.dst = talloc_zero(request, log_dst_t);
-	request->log.dst->func = vlog_request;
-	request->log.dst->uctx = &default_log;
-
-	request->module = NULL;
-	request->component = "<core>";
 
 	MEM(request->stack = unlang_interpret_stack_alloc(request));
-
-	request->runnable_id = -1;
-	request->time_order_id = -1;
-
-	request->state_ctx = talloc_init("session-state");
 
 	/*
 	 *	Initialise the request data list
 	 */
 	request_data_list_init(&request->data);
 
-	return request;
+	request->state_ctx = talloc_init("session-state");
+
+	return request_setup(request);
+}
+
+
+/** Re-use or create a new REQUEST data structure
+ *
+ */
+REQUEST *request_alloc_used(fr_dlist_head_t *head, TALLOC_CTX *ctx)
+{
+	REQUEST *request;
+
+	request = fr_dlist_head(head);
+	if (!request) return request_alloc(ctx);
+
+	fr_dlist_remove(head, request);
+
+	unlang_interpret_stack_clear(request);
+
+	return request_setup(request);
 }
 
 static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
@@ -221,6 +298,7 @@ REQUEST *request_alloc_fake(REQUEST *request, fr_dict_t const *namespace)
 
 	return fake;
 }
+
 
 /** Allocate a fake request which is detachable from the parent.
  * i.e. if the parent goes away, sometimes the child MAY continue to
