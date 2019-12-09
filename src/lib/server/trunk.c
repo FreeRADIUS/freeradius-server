@@ -106,6 +106,11 @@ typedef enum {
 	FR_TRUNK_REQUEST_CANCEL_COMPLETE \
 )
 
+/** Get the ceiling value of integer division
+ *
+ */
+#define DIVIDE_CEIL(_x, _y)	(1 + (((_x) - 1) / (_y)))
+
 /** Wraps a normal request
  *
  */
@@ -117,7 +122,7 @@ struct fr_trunk_request_s {
 	fr_dlist_t		list;			//!< Used to track the trunk request in the conn->sent
 							///< or trunk->backlog request.
 
-	fr_trunk_request_state_t state;			//!< Which list the request is currently located in.
+	fr_trunk_request_state_t state;			//!< Which list the request is now located in.
 
 	fr_trunk_t		*trunk;			//!< Trunk this request belongs to.
 
@@ -420,7 +425,8 @@ typedef enum {
 	TRUNK_ENQUEUE_OK = 0,			//!< Operation was successful.
 	TRUNK_ENQUEUE_NO_CAPACITY = -1,		//!< At maximum number of connections,
 						///< and no connection has capacity.
-	TRUNK_ENQUEUE_DST_UNAVAILABLE = -2	//!< Destination is down
+	TRUNK_ENQUEUE_DST_UNAVAILABLE = -2,	//!< Destination is down.
+	TRUNK_ENQUEUE_FAIL = -3			//!< General failure.
 } fr_trunk_enqueue_t;
 
 /** Call the cancel callback if set
@@ -637,8 +643,8 @@ static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn
 static void trunk_connection_enter_active(fr_trunk_connection_t *tconn);
 
 static void trunk_rebalance(fr_trunk_t *trunk);
-static void trunk_manage(fr_trunk_t *trunk, fr_time_t now);
-static void _trunk_manage_timer(fr_event_list_t *el, fr_time_t now, void *uctx);
+static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller);
+static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx);
 static void trunk_backlog_drain(fr_trunk_t *trunk);
 
 /** Remove a request from all connection lists
@@ -695,7 +701,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 		break;
 	}
 
-	DEBUG4("[%" PRIu64 "] Trunk connection releasing request %" PRIu64, fr_connection_get_id(tconn->conn), treq->id);
+	DEBUG4("[%" PRIu64 "] Trunk connection released request %" PRIu64, fr_connection_get_id(tconn->conn), treq->id);
 
 	switch (tconn->state){
 	case FR_TRUNK_CONN_INACTIVE:
@@ -799,7 +805,7 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq)
 	 */
 	if ((fr_trunk_connection_count_by_state(treq->trunk, FR_TRUNK_CONN_CONNECTING) == 0) ||
 	    (fr_trunk_connection_count_by_state(treq->trunk, FR_TRUNK_CONN_DRAINING) > 0)) {
-		trunk_manage(treq->trunk, fr_time());
+		trunk_manage(treq->trunk, fr_time(), __FUNCTION__);
 	}
 }
 
@@ -1418,6 +1424,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		 */
 		case TRUNK_ENQUEUE_DST_UNAVAILABLE:
 		case TRUNK_ENQUEUE_NO_CAPACITY:
+		case TRUNK_ENQUEUE_FAIL:
 			trunk_request_enter_failed(treq);
 			break;
 		}
@@ -1833,6 +1840,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
  *	- TRUNK_ENQUEUE_IN_BACKLOG.
  *	- TRUNK_ENQUEUE_NO_CAPACITY.
  *	- TRUNK_ENQUEUE_DST_UNAVAILABLE
+ *	- TRUNK_ENQUEUE_FAIL
  */
 fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_trunk_t *trunk,
 					    REQUEST *request, void *preq, void *rctx)
@@ -1842,7 +1850,10 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 	fr_trunk_enqueue_t	rcode;
 
 	if (!fr_cond_assert_msg(!IN_HANDLER(trunk),
-				"%s cannot be called within a handler", __FUNCTION__)) return -2;
+				"%s cannot be called within a handler", __FUNCTION__)) return TRUNK_ENQUEUE_FAIL;
+
+	if (!fr_cond_assert_msg(!*treq_out || ((*treq_out)->state == FR_TRUNK_REQUEST_UNASSIGNED),
+				"%s requests must be in \"unassigned\" state", __FUNCTION__)) return TRUNK_ENQUEUE_FAIL;
 
 	/*
 	 *	If delay_spawn was set, we may need
@@ -1855,7 +1866,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		 *	Insert the timer event
 		 */
 		fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf->manage_interval,
-				  _trunk_manage_timer, trunk);
+				  _trunk_timer, trunk);
 
 		/*
 		 *	Spawn the initial set of connections
@@ -2826,13 +2837,15 @@ static void trunk_rebalance(fr_trunk_t *trunk)
  * - Return if we last closed a connection within 'closed_delay'.
  * - Otherwise we move a connection to draining state.
  */
-static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
+static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 {
 	fr_trunk_connection_t	*tconn = NULL;
 	fr_trunk_request_t	*treq;
-	uint32_t		average;
+	uint32_t		average = 0;
 	uint32_t		req_count;
 	uint16_t		conn_count;
+
+	DEBUG4("%s - Managing trunk", caller);
 
 	/*
 	 *	Cleanup requests in our request cache which
@@ -2846,8 +2859,8 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	 *	spawn more connections!
 	 */
 	if ((trunk->last_above_target >= trunk->last_below_target)) {
-		if ((now - trunk->last_above_target) < trunk->conf->open_delay) {
-			DEBUG4("Not opening connection - Need %pVs above threshold, have %pVs",
+		if ((trunk->last_above_target + trunk->conf->open_delay) > now) {
+			DEBUG4("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
 			       fr_box_time_delta(trunk->conf->open_delay),
 			       fr_box_time_delta(now - trunk->last_above_target));
 			goto done;	/* too soon */
@@ -2890,12 +2903,16 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	will that take us below our target threshold.
 		 */
 		if (conn_count > 0) {
-			average = req_count / (conn_count + 1);
+			average = DIVIDE_CEIL(req_count, (conn_count + 1));
 			if (average < trunk->conf->target_req_per_conn) {
-				DEBUG4("Not opening connection - Would leave us below our target req per conn "
-				       "(%u vs %u)", average, trunk->conf->target_req_per_conn);
+				DEBUG4("Not opening connection - Would leave us below our target requests "
+				       "per connection (now %u, after open %u)",
+				       DIVIDE_CEIL(req_count, conn_count), average);
 				goto done;
 			}
+		} else {
+			(void)trunk_connection_spawn(trunk, now);
+			goto done;
 		}
 
 		/*
@@ -2913,13 +2930,16 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	Implement delay if there's no connections that
 		 *	could be immediately re-activated.
 		 */
-		if ((now - trunk->last_open) < trunk->conf->open_delay) {
-			DEBUG4("Not opening connection - Need to wait %pVs, elapsed %pVs",
+		if ((trunk->last_open + trunk->conf->open_delay) > now) {
+			DEBUG4("Not opening connection - Need to wait %pVs before opening another connection.  "
+			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf->open_delay),
 			       fr_box_time_delta(now - trunk->last_open));
 			goto done;
 		}
 
+		DEBUG4("Opening connection - Above target requests per connection (now %u, target %u)",
+		       DIVIDE_CEIL(req_count, conn_count), trunk->conf->target_req_per_conn);
 		/* last_open set by trunk_connection_spawn */
 		(void)trunk_connection_spawn(trunk, now);
 		goto done;
@@ -2930,14 +2950,15 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	 *	Free some connections...
 	 */
 	if (trunk->last_below_target > trunk->last_above_target) {
-		if ((now - trunk->last_below_target) < trunk->conf->close_delay) {
-			DEBUG4("Not closing connection - Need %pVs below threshold, have %pVs",
+		if ((trunk->last_below_target + trunk->conf->close_delay) > now) {
+			DEBUG4("Not closing connection - Need to be below target for %pVs. It's been %pVs",
 			       fr_box_time_delta(trunk->conf->close_delay),
 			       fr_box_time_delta(now - trunk->last_below_target));
 			goto done;	/* too soon */
 		}
 
 		trunk_requests_per_connnection(&conn_count, &req_count, trunk, now);
+
 		/*
 		 *	If this assert is triggered it means
 		 *	that a call to trunk_requests_per_connnection
@@ -2945,8 +2966,19 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 */
 		rad_assert(trunk->last_below_target > trunk->last_above_target);
 
-		if (conn_count == 0) {
-			DEBUG4("Not closing connection - Have 0 active connections");
+		if (!conn_count) {
+			DEBUG4("Not closing connection - No connections to close!");
+			goto done;
+		}
+
+		if (!req_count) {
+			DEBUG4("Closing connection - No outstanding requests");
+			goto close;
+		}
+
+		if ((trunk->conf->min > 0) && ((conn_count - 1) < trunk->conf->min)) {
+			DEBUG4("Not closing connection - Have %u connections, need %u or above",
+			       conn_count, trunk->conf->min);
 			goto done;
 		}
 
@@ -2958,8 +2990,6 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	maintaining the connection would lead to lots of
 		 *	log file churn.
 		 */
-		if (!req_count) goto close;
-
 		if (conn_count == 1) {
 			DEBUG4("Not closing connection - Would leave connections "
 			       "and there are still %u outstanding requests", req_count);
@@ -2970,20 +3000,25 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	Do the n-1 check, i.e. if we close one connection
 		 *	will that take us above our target threshold.
 		 */
-		average = req_count / (conn_count - 1);
+		average = DIVIDE_CEIL(req_count, (conn_count - 1));
 		if (average > trunk->conf->target_req_per_conn) {
-			DEBUG4("Not closing connection - Would leave us above our target req per conn "
-			       "(%u vs %u)", average, trunk->conf->target_req_per_conn);
+			DEBUG4("Not closing connection - Would leave us above our target requests per connection "
+			       "(now %u, after close %u)", DIVIDE_CEIL(req_count, conn_count), average);
 			goto done;
 		}
 
+		DEBUG4("Closing connection - Below target requests per connection (now %u, target %u)",
+		       DIVIDE_CEIL(req_count, conn_count), trunk->conf->target_req_per_conn);
+
 	close:
-		if ((now - trunk->last_closed) < trunk->conf->close_delay) {
-			DEBUG4("Not closing connection - Need to wait %pVs, elapsed %pVs",
+		if ((trunk->last_closed + trunk->conf->close_delay) > now) {
+			DEBUG4("Not closing connection - Need to wait %pVs before closing another connection.  "
+			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf->close_delay),
 			       fr_box_time_delta(now - trunk->last_closed));
 			goto done;
 		}
+
 
 		tconn = fr_heap_peek_tail(trunk->active);
 		rad_assert(tconn);
@@ -3031,13 +3066,13 @@ done:
  * @param[in] now	current time.
  * @param[in] uctx	The trunk.
  */
-static void _trunk_manage_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_t *trunk = talloc_get_type_abort(uctx, fr_trunk_t);
 
-	trunk_manage(trunk, now);
+	trunk_manage(trunk, now, __FUNCTION__);
 	fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf->manage_interval,
-			  _trunk_manage_timer, trunk);
+			  _trunk_timer, trunk);
 }
 
 /** Return a count of requests in a specific state
@@ -3164,17 +3199,17 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	/*
 	 *	Calculate the average
 	 */
-	average = req_count / conn_count;
+	average = DIVIDE_CEIL(req_count, conn_count);
 	if (average > trunk->conf->target_req_per_conn) {
 	above_target:
 		/*
-		 *	Edge - Below target to above target (too many requests per conn)
+		 *	Edge - Below target to above target (too many requests per conn - spawn more)
 		 */
-		if (trunk->last_above_target >= trunk->last_below_target) trunk->last_above_target = now;
+		if (trunk->last_above_target <= trunk->last_below_target) trunk->last_above_target = now;
 	} else if (average < trunk->conf->target_req_per_conn) {
 	below_target:
 		/*
-		 *	Edge - Above target to below target (too few requests per conn)
+		 *	Edge - Above target to below target (too few requests per conn - close some)
 		 */
 		if (trunk->last_below_target <= trunk->last_above_target) trunk->last_below_target = now;
 	}
@@ -3224,6 +3259,7 @@ static void trunk_backlog_drain(fr_trunk_t *trunk)
 		 *	re-enliven the yielded request.
 		 */
 		case TRUNK_ENQUEUE_DST_UNAVAILABLE:
+		case TRUNK_ENQUEUE_FAIL:
 			trunk_request_enter_failed(treq);
 			continue;
 
@@ -3443,7 +3479,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log
 	 */
 	if (trunk->conf->manage_interval > 0) {
 		fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf->manage_interval,
-				  _trunk_manage_timer, trunk);
+				  _trunk_timer, trunk);
 	}
 
 	return trunk;

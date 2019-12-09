@@ -1376,7 +1376,14 @@ static void test_connection_rebalance_requests(void)
 	talloc_free(ctx);
 }
 
-static void test_connection_levels(void)
+#define ALLOC_REQ(_id) \
+do { \
+	treq_##_id = fr_trunk_request_alloc(trunk, NULL); \
+	preq_##_id = talloc_zero(ctx, test_proto_request_t); \
+	preq_##_id->treq = treq_##_id; \
+} while (0)
+
+static void test_connection_levels_max(void)
 {
 	TALLOC_CTX		*ctx = talloc_init("test");
 	fr_trunk_t		*trunk;
@@ -1404,39 +1411,35 @@ static void test_connection_levels(void)
 	test_time_base += NSEC * 0.5;	/* Need to provide a timer starting value above zero */
 
 	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
-	preq_a = talloc_zero(ctx, test_proto_request_t);
-	preq_b = talloc_zero(ctx, test_proto_request_t);
-	preq_c = talloc_zero(ctx, test_proto_request_t);
-	preq_d = talloc_zero(ctx, test_proto_request_t);
-	preq_e = talloc_zero(ctx, test_proto_request_t);
 
 	/*
 	 *	Queuing a request should start a connection.
 	 */
 	TEST_CASE("C0, R1 - Enqueue should spawn");
+	ALLOC_REQ(a);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_a, trunk, request, preq_a, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
-	preq_a->treq = treq_a;
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
 	/*
 	 *	Queuing another request should *NOT* start another connection
 	 */
 	TEST_CASE("C1 connecting, R2 - MUST NOT spawn");
+	ALLOC_REQ(b);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_b, trunk, request, preq_b, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
-	preq_b->treq = treq_b;
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
 	TEST_CASE("C1 connecting, R3 - MUST NOT spawn");
+	ALLOC_REQ(c);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_c, trunk, request, preq_c, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
-	preq_c->treq = treq_c;
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
 	TEST_CASE("C1 connecting, R4 - MUST NOT spawn");
+	ALLOC_REQ(d);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_d, trunk, request, preq_d, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
-	preq_d->treq = treq_d;
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) ==1);
 
 	TEST_CASE("C1 connecting, R5 - MUST NOT spawn, NO CAPACITY");
+	ALLOC_REQ(e);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_e, trunk, request, preq_e, NULL) == TRUNK_ENQUEUE_NO_CAPACITY);
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
@@ -1520,6 +1523,153 @@ static void test_connection_levels(void)
 	talloc_free(ctx);
 }
 
+static void test_connection_levels_alternating_edges(void)
+{
+	TALLOC_CTX		*ctx = talloc_init("test");
+	fr_trunk_t		*trunk;
+	fr_event_list_t		*el;
+	int			events;
+	fr_trunk_conf_t		conf = {
+					.start = 0, 			/* No connections on start */
+					.min = 0,
+					.max = 0,
+					.max_req_per_conn = 0,
+					.target_req_per_conn = 2,	/* One request per connection */
+					.manage_interval = NSEC * 0.1
+				};
+
+	test_proto_request_t	*preq_a, *preq_b, *preq_c;
+	fr_trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL;
+	REQUEST			*request;
+	test_proto_stats_t	stats;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_event_list_set_time_func(el, test_time);
+
+	request = request_alloc(ctx);
+
+	test_time_base += NSEC * 0.5;	/* Need to provide a timer starting value above zero */
+
+	memset(&stats, 0, sizeof(stats));
+	trunk = test_setup_trunk(ctx, el, &conf, true, &stats);
+
+	/*
+	 *	Queuing a request should start a connection.
+	 */
+	TEST_CASE("C0, R1 - Enqueue should spawn");
+	ALLOC_REQ(a);
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_a, trunk, request, preq_a, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
+
+	TEST_CASE("C1 connecting, R2 - MUST NOT spawn");
+	ALLOC_REQ(b);
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_b, trunk, request, preq_b, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
+	test_time_base += NSEC * 1;
+
+	/*
+	 *	Open connection
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 2);
+
+	TEST_CASE("C1 connected, R3 - should spawn");
+	ALLOC_REQ(c);
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_c, trunk, request, preq_c, NULL) == TRUNK_ENQUEUE_OK);
+	test_time_base += NSEC * 1;
+
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_SENT) == 3);
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 1);
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
+
+	/*
+	 *	Complete requests
+	 */
+	test_time_base += NSEC * 1;
+
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	test_time_base += NSEC * 1;
+
+	TEST_CASE("C1 connected, C2 connecting, R2 - MUST NOT spawn");
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_ALL) == 3);
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 2);
+
+	/*
+	 *	Finish the last request, should close one connection
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	test_time_base += NSEC * 1;
+
+	TEST_CASE("C1 connected, R0");
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_ALL) == 0);
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 1);
+
+	/*
+	 *	Requests now done, should close another connection
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	test_time_base += NSEC * 1;
+
+	TEST_CASE("C0, R0");
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 0);
+
+	TEST_CHECK(stats.completed == 3);
+	TEST_CHECK(stats.failed == 0);
+	TEST_CHECK(stats.cancelled == 0);
+	TEST_CHECK(stats.freed == 3);
+
+	/*
+	 *	Queuing a request should start a connection.
+	 */
+	TEST_CASE("C0, R1 - Enqueue should spawn");
+	ALLOC_REQ(a);
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_a, trunk, request, preq_a, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
+
+	TEST_CASE("C1 connecting, R2 - MUST NOT spawn");
+	ALLOC_REQ(b);
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_b, trunk, request, preq_b, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
+	test_time_base += NSEC * 1;
+
+	/*
+	 *	Open connection
+	 */
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 2);
+
+	TEST_CASE("C1 connected, R3 - should spawn");
+	ALLOC_REQ(c);
+	TEST_CHECK(fr_trunk_request_enqueue(&treq_c, trunk, request, preq_c, NULL) == TRUNK_ENQUEUE_OK);
+	test_time_base += NSEC * 1;
+
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_SENT) == 3);
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE) == 1);
+	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
+
+	talloc_free(trunk);
+	talloc_free(ctx);
+}
 
 #undef fr_time	/* Need to the real time */
 static void test_enqueue_and_io_speed(void)
@@ -1665,7 +1815,8 @@ TEST_LIST = {
 	 *	Connection spawning tests
 	 */
 	{ "Spawn - Test connection start on enqueue",	test_connection_start_on_enqueue },
-	{ "Spawn - Connection levels",			test_connection_levels },
+	{ "Spawn - Connection levels max",		test_connection_levels_max },
+	{ "Spawn - Connection levels alternating edges",test_connection_levels_alternating_edges },
 
 	/*
 	 *	Performance tests
