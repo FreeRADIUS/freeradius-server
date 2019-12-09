@@ -78,7 +78,7 @@ typedef struct {
 	fr_heap_t	*heap;			//!< heap, ordered by priority
 } fr_worker_heap_t;
 
-#ifndef NDEBUG
+#ifdef WITH_VERIFY_PTR
 static void fr_worker_verify(fr_worker_t *worker);
 #define WORKER_VERIFY fr_worker_verify(worker)
 #else
@@ -1564,7 +1564,7 @@ void fr_worker_name(fr_worker_t *worker, char const *name)
 }
 
 
-#ifndef NDEBUG
+#ifdef WITH_VERIFY_PTR
 /** Verify the worker data structures.
  *
  * @param[in] worker the worker
