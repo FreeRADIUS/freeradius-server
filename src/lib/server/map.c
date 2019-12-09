@@ -1774,9 +1774,16 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		rad_assert(((mod->op == T_OP_CMP_FALSE) && tmpl_is_null(mod->rhs)) ||
 			   tmpl_is_data(mod->rhs));
 
-		for (vb = &mod->rhs->tmpl_value;
-		     vb;
-		     vb = vb->next) map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_INVALID ? vb : NULL);
+		/*
+		 *	map_list_mod_debug()
+		 */
+		if (RDEBUG_ENABLED2) {
+			for (vb = &mod->rhs->tmpl_value;
+			     vb;
+			     vb = vb->next) {
+				map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_INVALID ? vb : NULL);
+			}
+		}
 	}
 	mod = vlm->mod;	/* Reset */
 
