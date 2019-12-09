@@ -201,6 +201,13 @@ struct fr_trunk_connection_s {
 
 	bool			freeing;		//!< Conn is being freed, cancel_sent state should
 							///< be skipped.
+
+	/** @name Statistics
+	 * @{
+ 	 */
+ 	uint64_t		sent_count;		//!< The number of requests that have been sent using
+ 							///< this connection.
+ 	/** @} */
 };
 
 /** Main trunk management handle
@@ -284,6 +291,33 @@ struct fr_trunk_s {
 
 	bool			freeing;		//!< Trunk is being freed, don't spawn new
 							///< connections or re-enqueue.
+};
+
+static CONF_PARSER const fr_trunk_config_requests[] = {
+	{ FR_CONF_OFFSET("per_connection_max", FR_TYPE_UINT32, fr_trunk_conf_t, max_req_per_conn), .dflt = "2000" },
+	{ FR_CONF_OFFSET("per_connection_target", FR_TYPE_UINT32, fr_trunk_conf_t, target_req_per_conn), .dflt = "1000" },
+	{ FR_CONF_OFFSET("free_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, close_delay), .dflt = "10.0" },
+
+	CONF_PARSER_TERMINATOR
+};
+
+CONF_PARSER const fr_trunk_config[] = {
+	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_trunk_conf_t, start), .dflt = "5" },
+	{ FR_CONF_OFFSET("min", FR_TYPE_UINT16, fr_trunk_conf_t, min), .dflt = "1" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT16, fr_trunk_conf_t, max), .dflt = "5" },
+	{ FR_CONF_OFFSET("uses", FR_TYPE_UINT64, fr_trunk_conf_t, max_uses), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, connect_timeout), .dflt = "3.0" },
+
+	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, reconnect_delay), .dflt = "1" },
+	{ FR_CONF_OFFSET("open_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, open_delay), .dflt = "0.2" },
+	{ FR_CONF_OFFSET("close_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, close_delay), .dflt = "10.0" },
+
+	{ FR_CONF_OFFSET("manage_interval", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, manage_interval), "0.2" },
+
+	{ FR_CONF_POINTER("requests", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) fr_trunk_config_requests },
+
+	CONF_PARSER_TERMINATOR
 };
 
 static fr_table_num_ordered_t const fr_trunk_request_states[] = {
@@ -475,7 +509,7 @@ do { \
 	DEBUG4("Calling connection_alloc(tconn=%p, el=%p, log_prefix=\"%s\", uctx=%p)", \
 	       (_tconn), (_tconn)->trunk->el, trunk->log_prefix, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = (void *) (_tconn)->trunk->funcs.connection_alloc; \
-	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, trunk->log_prefix, trunk->uctx); \
+	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf->connect_timeout, (_tconn)->trunk->conf->reconnect_delay, (_tconn)->trunk->log_prefix, trunk->uctx); \
 	(_tconn)->trunk->in_handler = prev; \
 	if (!(_tconn)->conn) { \
 		ERROR("Failed creating new connection"); \
@@ -572,8 +606,9 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 					       fr_trunk_t *trunk, fr_time_t now);
 
 static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now);
-static inline void trunk_connection_auto_full(fr_trunk_connection_t *tconn);
-static inline void trunk_connection_auto_active(fr_trunk_connection_t *tconn);
+static inline void trunk_connection_max_uses_enforce(fr_trunk_connection_t *tconn);
+static inline void trunk_connection_auto_inactive(fr_trunk_connection_t *tconn);
+static inline void trunk_connection_auto_reactivate(fr_trunk_connection_t *tconn);
 static inline void trunk_connection_readable(fr_trunk_connection_t *tconn);
 static inline void trunk_connection_writable(fr_trunk_connection_t *tconn);
 static void trunk_connection_event_update(fr_trunk_connection_t *tconn);
@@ -644,7 +679,10 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 
 	switch (tconn->state){
 	case FR_TRUNK_CONN_INACTIVE:
-		trunk_connection_auto_active(tconn);			/* Check if we can switch back to active */
+		trunk_connection_max_uses_enforce(tconn);
+		if (tconn->state == FR_TRUNK_CONN_CLOSED) return;
+
+		trunk_connection_auto_reactivate(tconn);		/* Check if we can switch back to active */
 		if (tconn->state == FR_TRUNK_CONN_INACTIVE) break;	/* Only fallthrough if conn is now active */
 		/* FALL-THROUGH */
 
@@ -788,7 +826,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	 *	Check if we need to automatically transition the
 	 *	connection to full.
 	 */
-	trunk_connection_auto_full(tconn);
+	trunk_connection_auto_inactive(tconn);
 
 	/*
 	 *	Reorder the connection in the heap now it has an
@@ -858,6 +896,12 @@ static void trunk_request_enter_sent(fr_trunk_request_t *treq)
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_SENT);
 	fr_dlist_insert_tail(&tconn->sent, treq);
+
+	/*
+	 *	Update the connection's sent stats
+	 */
+	tconn->sent_count++;
+	trunk_connection_max_uses_enforce(tconn);
 
 	/*
 	 *	We just sent a request, we probably need
@@ -1026,7 +1070,7 @@ static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq)
 	trunk_request_remove_from_conn(treq);
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_CANCEL_COMPLETE);
-	talloc_free(treq);	/* Free the request */
+	fr_trunk_request_free(treq);	/* Free the request */
 }
 
 /** Request completed successfully, inform the API client and free the request
@@ -1051,7 +1095,7 @@ static void trunk_request_enter_complete(fr_trunk_request_t *treq)
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_COMPLETE);
 	DO_REQUEST_COMPLETE(treq);
-	talloc_free(treq);	/* Free the request */
+	fr_trunk_request_free(treq);	/* Free the request */
 }
 
 /** Request failed, inform the API client and free the request
@@ -1077,7 +1121,7 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_FAILED);
 	DO_REQUEST_FAIL(treq);
-	talloc_free(treq);	/* Free the request */
+	fr_trunk_request_free(treq);	/* Free the request */
 }
 
 /** Check to see if a trunk request can be enqueued
@@ -1134,7 +1178,7 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 		uint64_t	total_reqs;
 
 		total_reqs = fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_ALL) + 1;
-		limit = trunk->conf->max_connections * (uint64_t)trunk->conf->max_req_per_conn;
+		limit = trunk->conf->max * (uint64_t)trunk->conf->max_req_per_conn;
 		if ((limit > 0) && (total_reqs > limit)) {
 			ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
 				  "Limit of %"PRIu64" requests reached", limit);
@@ -1379,7 +1423,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		fr_trunk_request_t *prev;
 
 		prev = fr_dlist_remove(&to_process, treq);
-		talloc_free(treq);
+		fr_trunk_request_free(treq);
 		treq = prev;
 	}
 
@@ -1526,7 +1570,7 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 			 */
 			if (!trunk->funcs.request_cancel_mux) {
 				trunk_request_enter_unassigned(treq);
-				talloc_free(treq);
+				fr_trunk_request_free(treq);
 			}
 			break;
 
@@ -1554,7 +1598,7 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 	 */
 	default:
 		trunk_request_enter_unassigned(treq);
-		talloc_free(treq);
+		fr_trunk_request_free(treq);
 		break;
 	}
 }
@@ -1743,7 +1787,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 	/* heap_id	- initialised when treq inserted into pending */
 	/* list		- empty */
 	/* preq		- populated later */
-	/* rctx		- populated lated */
+	/* rctx		- populated later */
 	treq->request = request;
 
 	return treq;
@@ -1781,8 +1825,18 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 	 *	to insert the timer for the connection manager.
 	 */
 	if (unlikely(!trunk->manage_ev)) {
+		uint16_t i;
+
+		/*
+		 *	Insert the timer event
+		 */
 		fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf->manage_interval,
 				  _trunk_manage_timer, trunk);
+
+		/*
+		 *	Spawn the initial set of connections
+		 */
+		for (i = 0; i < trunk->conf->start; i++) if (trunk_connection_spawn(trunk, fr_time()) != 0) break;
 	}
 
 	rcode = trunk_request_check_enqueue(&tconn, trunk, request);
@@ -1857,35 +1911,91 @@ uint32_t fr_trunk_request_count_by_connection(fr_trunk_connection_t const *tconn
 	return count;
 }
 
-/** Automatically mark a connection as full
+/** Enforce the maximum times a connection can be used
  *
- * @param[in] tconn	to potentially mark as full.
+ * Should be called when a request is removed from a connection, or
+ * when a request is sent using a connection.
  */
-static inline void trunk_connection_auto_full(fr_trunk_connection_t *tconn)
+static inline void trunk_connection_max_uses_enforce(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t	*trunk = tconn->trunk;
-	uint32_t	count;
+	fr_trunk_t *trunk = tconn->trunk;
 
-	if (!trunk->conf->max_req_per_conn ||
-	    tconn->signalled_inactive ||
-	    (tconn->state != FR_TRUNK_CONN_ACTIVE)) return;
+	if (trunk->conf->max_uses == 0) return;
 
-	count = fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL);
-	if (count >= trunk->conf->max_req_per_conn) trunk_connection_enter_inactive(tconn);
+	/*
+	 *	Enforces max_uses
+	 *
+	 *	If we've sent the maximum number of requests
+	 *	we're allowed per connection, mark the
+	 *	connection an inactive and requeue any pending
+	 *      requests.
+	 */
+	switch (tconn->state) {
+	case FR_TRUNK_CONN_ACTIVE:
+		if (tconn->sent_count >= trunk->conf->max_uses) {
+			trunk_connection_enter_inactive(tconn);
+			trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_PENDING, 0);
+		}
+		return;
+
+	/*
+	 *	Check to see if we're at zero requests and if
+	 *	we are, reconnect.
+	 */
+	case FR_TRUNK_CONN_INACTIVE:
+		if (fr_trunk_request_count_by_connection(tconn,
+							 FR_TRUNK_REQUEST_SENT |
+							 FR_TRUNK_REQUEST_PARTIAL |
+							 (trunk->funcs.request_cancel_mux ?
+							 FR_TRUNK_REQUEST_CANCEL_SENT |
+							 FR_TRUNK_REQUEST_CANCEL_PARTIAL : 0)) == 0) {
+			fr_trunk_connection_signal_reconnect(tconn);
+		}
+		return;
+
+	default:
+		return;
+	}
 }
 
-/** Automatically mark a connection as active
+/** Automatically mark a connection as inactive
  *
- * @param[in] tconn	to potentially mark as active.
+ * @param[in] tconn	to potentially mark as inactive.
  */
-static inline void trunk_connection_auto_active(fr_trunk_connection_t *tconn)
+static inline void trunk_connection_auto_inactive(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t	*trunk = tconn->trunk;
 	uint32_t	count;
 
-	if (tconn->signalled_inactive ||
-	    (tconn->state != FR_TRUNK_CONN_INACTIVE)) return;
+	if (tconn->state != FR_TRUNK_CONN_ACTIVE) return;
 
+	/*
+	 *	Enforces max_req_per_conn
+	 */
+	if (trunk->conf->max_req_per_conn > 0) {
+		count = fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL);
+		if (count >= trunk->conf->max_req_per_conn) trunk_connection_enter_inactive(tconn);
+	}
+}
+
+/** Automatically mark a connection as active or reconnect it
+ *
+ * @param[in] tconn	to potentially mark as active or reconnect.
+ */
+static inline void trunk_connection_auto_reactivate(fr_trunk_connection_t *tconn)
+{
+	fr_trunk_t	*trunk = tconn->trunk;
+	uint32_t	count;
+
+	/*
+	 *	Externally signalled that the connection should
+	 *	be kept inactive.
+	 */
+	if (tconn->signalled_inactive) return;
+
+	/*
+	 *	Enforces max_req_per_conn
+	 */
 	count = fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL);
 	if ((trunk->conf->max_req_per_conn == 0) || (count < trunk->conf->max_req_per_conn)) {
 		trunk_connection_enter_active(tconn);
@@ -2226,6 +2336,12 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	moved off or failed.
 	 */
 	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) == 0);
+
+	/*
+	 *	Clear statistics and flags
+	 */
+	tconn->sent_count = 0;
+	tconn->signalled_inactive = false;
 
 	/*
 	 *	Remove the I/O events
@@ -2584,7 +2700,7 @@ void fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn)
 	tconn->signalled_inactive = false;			/* Allow inactive/active state to be changed automatically again */
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_INACTIVE:
-		trunk_connection_auto_active(tconn);	/* Mark as active if it should be active */
+		trunk_connection_auto_reactivate(tconn);	/* Mark as active if it should be active */
 		break;
 
 	default:
@@ -2662,16 +2778,16 @@ static void trunk_rebalance(fr_trunk_t *trunk)
  * If when the management function runs, the trunk was above the target
  * most recently, we:
  * - Return if we've been in this state for a shorter period than 'open_delay'.
- * - Return if we're at max_connections.
+ * - Return if we're at max.
  * - Return if opening a new connection will take us below the load target.
  * - Return if we last opened a connection within 'open_delay'.
  * - Otherwise we attempt to open a new connection.
  *
  * If the trunk we below the target most recently, we:
  * - Return if we've been in this state for a shorter period than 'close_delay'.
- * - Return if we're at min_connections.
+ * - Return if we're at min.
  * - Return if we have no connections.
- * - Close a connection if min_connections is 0, and we have no outstanding
+ * - Close a connection if min is 0, and we have no outstanding
  *   requests.  Then return.
  * - Return if closing a new connection will take us above the load target.
  * - Return if we last closed a connection within 'closed_delay'.
@@ -2720,9 +2836,9 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	connections to active before spawning
 		 *	any new connections.
 		 */
-		if ((trunk->conf->max_connections > 0) && (conn_count >= trunk->conf->max_connections)) {
+		if ((trunk->conf->max > 0) && (conn_count >= trunk->conf->max)) {
 			DEBUG4("Not opening connection - Have %u connections, need %u or below",
-			       conn_count, trunk->conf->max_connections);
+			       conn_count, trunk->conf->max);
 			goto done;
 		}
 
@@ -3233,11 +3349,8 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log
 	/*
 	 *	Spawn the initial set of connections
 	 */
-	for (i = 0; i < trunk->conf->min_connections; i++) {
-		fr_trunk_enqueue_t rcode;
-
-		rcode = trunk_connection_spawn(trunk, fr_time());
-		if (rcode != TRUNK_ENQUEUE_OK) {
+	for (i = 0; i < trunk->conf->start; i++) {
+		if (trunk_connection_spawn(trunk, fr_time()) != 0) {
 			talloc_free(trunk);
 			return NULL;
 		}

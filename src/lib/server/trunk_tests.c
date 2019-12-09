@@ -293,12 +293,14 @@ static fr_connection_state_t _conn_init(void **h_out, fr_connection_t *conn, UNU
 	return FR_CONNECTION_STATE_CONNECTING;
 }
 
-static fr_connection_t *test_setup_socket_pair_connection_alloc(fr_trunk_connection_t *tconn, fr_event_list_t *el,
+static fr_connection_t *test_setup_socket_pair_connection_alloc(fr_trunk_connection_t *tconn,
+								fr_event_list_t *el,
+								fr_time_delta_t timeout, fr_time_delta_t retry,
 								char const *log_prefix, void *uctx)
 {
 	TEST_CHECK(uctx == &dummy_uctx);
 
-	return fr_connection_alloc(tconn, el, 0, 0, _conn_init, _conn_open, _conn_close, log_prefix, tconn);
+	return fr_connection_alloc(tconn, el, timeout, retry, _conn_init, _conn_open, _conn_close, log_prefix, tconn);
 }
 
 static fr_trunk_t *test_setup_trunk(TALLOC_CTX *ctx, fr_event_list_t *el, fr_trunk_conf_t *conf, bool with_cancel_mux)
@@ -331,7 +333,8 @@ static void test_socket_pair_alloc_then_free(void)
 	int			events;
 
 	fr_trunk_conf_t		conf = {
-					.min_connections = 2
+					.start = 2,
+					.min = 2
 				};
 	fr_trunk_io_funcs_t	io_funcs = {
 					.connection_alloc = test_setup_socket_pair_connection_alloc,
@@ -367,7 +370,8 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 	fr_event_list_t		*el;
 	int			events;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 2
+					.start = 2,
+					.min = 2
 				};
 	fr_trunk_io_funcs_t	io_funcs = {
 					.connection_alloc = test_setup_socket_pair_connection_alloc,
@@ -419,6 +423,7 @@ static fr_connection_state_t _conn_init_no_signal(void **h_out, fr_connection_t 
 
 static fr_connection_t *test_setup_socket_pair_1s_timeout_connection_alloc(fr_trunk_connection_t *tconn,
 									   fr_event_list_t *el,
+									   UNUSED fr_time_delta_t timeout, UNUSED fr_time_delta_t retry,
 									   char const *log_prefix, void *uctx)
 {
 	TEST_CHECK(uctx == &dummy_uctx);
@@ -435,7 +440,8 @@ static void test_socket_pair_alloc_then_connect_timeout(void)
 	int			events;
 	fr_trunk_connection_t		*tconn;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 1
+					.start = 1,
+					.min = 1
 				};
 	fr_trunk_io_funcs_t	io_funcs = {
 					.connection_alloc = test_setup_socket_pair_1s_timeout_connection_alloc,
@@ -485,6 +491,7 @@ static void test_socket_pair_alloc_then_connect_timeout(void)
 
 static fr_connection_t *test_setup_socket_pair_1s_reconnection_delay_alloc(fr_trunk_connection_t *tconn,
 									   fr_event_list_t *el,
+									   UNUSED fr_time_delta_t timeout, UNUSED fr_time_delta_t retry,
 									   char const *log_prefix, void *uctx)
 {
 	TEST_CHECK(uctx == &dummy_uctx);
@@ -501,7 +508,8 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	int			events;
 	fr_trunk_connection_t	*tconn;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 1
+					.start = 1,
+					.min = 1
 				};
 	fr_trunk_io_funcs_t	io_funcs = {
 					.connection_alloc = test_setup_socket_pair_1s_reconnection_delay_alloc,
@@ -567,11 +575,12 @@ static void test_enqueue_basic(void)
 	fr_event_list_t		*el;
 	int			events;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 1,
+					.start = 1,
+					.min = 1,
 					.manage_interval = NSEC * 0.5
 				};
 	test_proto_request_t	*preq;
-	fr_trunk_request_t	*treq;
+	fr_trunk_request_t	*treq = NULL;
 	fr_trunk_enqueue_t	rcode;
 	REQUEST			*request;
 
@@ -670,11 +679,12 @@ static void test_enqueue_cancellation_points(void)
 	fr_event_list_t		*el;
 	int			events;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 1,
+					.start = 1,
+					.min = 1,
 					.manage_interval = NSEC * 0.5
 				};
 	test_proto_request_t	*preq;
-	fr_trunk_request_t	*treq;
+	fr_trunk_request_t	*treq = NULL;
 	REQUEST			*request;
 
 	DEBUG_LVL_SET;
@@ -699,6 +709,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CASE("cancellation via signal - FR_TRUNK_REQUEST_BACKLOG");
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 	preq->treq = treq;
 	fr_trunk_request_signal_cancel(treq);
@@ -715,6 +726,7 @@ static void test_enqueue_cancellation_points(void)
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 	preq->treq = treq;
 
@@ -738,6 +750,7 @@ static void test_enqueue_cancellation_points(void)
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_partial = true;
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 	preq->treq = treq;
 
@@ -761,6 +774,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_SENT");
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 	preq->treq = treq;
 
@@ -782,6 +796,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CASE("cancellation via signal - FR_TRUNK_REQUEST_SENT");
 	trunk = test_setup_trunk(ctx, el, &conf, false);
 	preq = talloc_zero(NULL, test_proto_request_t);
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 	preq->treq = treq;
 
@@ -806,6 +821,7 @@ static void test_enqueue_cancellation_points(void)
 	trunk = test_setup_trunk(ctx, el, &conf, true);
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_cancel_partial = true;
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 	preq->treq = treq;
 
@@ -835,6 +851,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CASE("cancellation via trunk free - FR_TRUNK_REQUEST_CANCEL_SENT");
 	trunk = test_setup_trunk(ctx, el, &conf, true);
 	preq = talloc_zero(NULL, test_proto_request_t);
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 	preq->treq = treq;
 
@@ -864,6 +881,7 @@ static void test_enqueue_cancellation_points(void)
 	TEST_CASE("trunk free after FR_TRUNK_REQUEST_CANCEL_COMPLETE");
 	trunk = test_setup_trunk(ctx, el, &conf, true);
 	preq = talloc_zero(NULL, test_proto_request_t);
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 	preq->treq = treq;
 
@@ -912,11 +930,12 @@ static void test_partial_to_complete_states(void)
 	fr_event_list_t		*el;
 	int			events;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 1,
+					.start = 1,
+					.min = 1,
 					.manage_interval = NSEC * 0.5
 				};
 	test_proto_request_t	*preq;
-	fr_trunk_request_t	*treq;
+	fr_trunk_request_t	*treq = NULL;
 	REQUEST			*request;
 
 	DEBUG_LVL_SET;
@@ -990,11 +1009,12 @@ static void test_requeue_on_reconnect(void)
 	fr_event_list_t		*el;
 	int			events;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 2,
+					.start = 2,
+					.min = 2,
 					.manage_interval = NSEC * 0.5
 				};
 	test_proto_request_t	*preq;
-	fr_trunk_request_t	*treq;
+	fr_trunk_request_t	*treq = NULL;
 	REQUEST			*request;
 	fr_trunk_connection_t	*tconn;
 
@@ -1144,7 +1164,7 @@ static void test_requeue_on_reconnect(void)
 	 */
 	preq = talloc_zero(NULL, test_proto_request_t);
 	preq->signal_cancel_partial = true;
-
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
@@ -1194,7 +1214,7 @@ static void test_requeue_on_reconnect(void)
 	 *	Queue up a new request, and get it to the cancel-sent state.
 	 */
 	preq = talloc_zero(NULL, test_proto_request_t);
-
+	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, request, preq, NULL);
 
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
@@ -1240,11 +1260,12 @@ static void test_connection_start_on_enqueue(void)
 	fr_event_list_t		*el;
 	int			events;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 0,	/* No connections on start */
+					.start = 0,
+					.min = 0,	/* No connections on start */
 					.manage_interval = NSEC * 0.5
 				};
 	test_proto_request_t	*preq;
-	fr_trunk_request_t	*treq_a, *treq_b, *treq_c;
+	fr_trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL;
 	REQUEST			*request;
 
 	DEBUG_LVL_SET;
@@ -1293,12 +1314,13 @@ static void test_connection_rebalance_requests(void)
 	fr_event_list_t		*el;
 	int			events;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 2,	/* No connections on start */
+					.start = 2,
+					.min = 2,	/* No connections on start */
 					.manage_interval = NSEC * 0.5
 				};
 	test_proto_request_t	*preq;
 	fr_trunk_connection_t	*tconn;
-	fr_trunk_request_t	*treq_a, *treq_b, *treq_c;
+	fr_trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL;
 	REQUEST			*request;
 
 	DEBUG_LVL_SET;
@@ -1351,14 +1373,15 @@ static void test_connection_levels(void)
 	fr_event_list_t		*el;
 	int			events;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 0,		/* No connections on start */
-					.max_connections = 2,
+					.start = 0, 		/* No connections on start */
+					.min = 0,
+					.max = 2,
 					.max_req_per_conn = 2,
 					.target_req_per_conn = 2,	/* One request per connection */
 					.manage_interval = NSEC * 0.5
 				};
 	test_proto_request_t	*preq_a, *preq_b, *preq_c, *preq_d, *preq_e;
-	fr_trunk_request_t	*treq_a, *treq_b, *treq_c, *treq_d, *treq_e;
+	fr_trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL, *treq_d = NULL, *treq_e = NULL;
 	REQUEST			*request;
 
 	DEBUG_LVL_SET;
@@ -1495,8 +1518,9 @@ static void test_enqueue_and_io_speed(void)
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	fr_trunk_conf_t		conf = {
-					.min_connections = 1,		/* No connections on start */
-					.max_connections = 0,
+					.start = 1,
+					.min = 1,
+					.max = 0,
 					.max_req_per_conn = 0,
 					.target_req_per_conn = 0,	/* One request per connection */
 					.req_pool_headers = 1,
@@ -1581,7 +1605,7 @@ static void test_enqueue_and_io_speed(void)
 		total_time = io_stop - enqueue_start;
 		INFO("Total time %pV (%u rps)",
 		     fr_box_time_delta(total_time),
-		     (uint32_t)(requests / ((float)io_time / NSEC)));
+		     (uint32_t)(requests / ((float)total_time / NSEC)));
 	}
 
 //	ProfilerStop();

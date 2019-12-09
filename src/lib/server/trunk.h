@@ -27,6 +27,7 @@ RCSIDH(server_trunk_h, "$Id$")
 
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/cf_parse.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,13 +41,11 @@ typedef struct fr_trunk_s fr_trunk_t;
  *
  */
 typedef struct {
-	unsigned		req_pool_headers;	//!< How many chunk headers the pool should contain.
+	uint16_t		start;			//!< How many connections to start.
 
-	size_t			req_pool_size;		//!< How big the pool should be.
+	uint16_t		min;			//!< Shouldn't let connections drop below this number.
 
-	uint16_t		min_connections;	//!< Shouldn't let connections drop below this number.
-
-	uint16_t		max_connections;	//!< Maximum number of connections in the trunk.
+	uint16_t		max;			//!< Maximum number of connections in the trunk.
 
 	uint32_t		target_req_per_conn;	//!< How many pending requests should ideally be
 							///< running on each connection.  Averaged across
@@ -55,19 +54,33 @@ typedef struct {
 	uint32_t		max_req_per_conn;	//!< Maximum connections per request.
 							///< Used to determine if we need to create new connections.
 
+	uint64_t		max_uses;		//!< The maximum time a connection can be used.
+
+	fr_time_delta_t		lifetime;		//!< Time between reconnects.
+
+	fr_time_delta_t		connect_timeout;	//!< How long to wait for a connection to establish.
+
+	fr_time_delta_t		reconnect_delay;	//!< How long to wait before reconnecting failed
+							///< connection attempts.
+
 	fr_time_delta_t		open_delay;		//!< How long we must be above target utilisation
 							///< to spawn a new connection.
 
 	fr_time_delta_t		close_delay;		//!< How long we must be below target utilisation
 							///< to close an existing connection.
 
-	fr_time_delta_t		manage_interval;	//!< How often we run the management algorithm to
-							///< open/close connections.
 
 	fr_time_delta_t		req_cleanup_delay;	//!< How long must a request in the unassigned list
 							///< not have been used for, before it's cleaned up.
 
-	bool			always_writable;	//!< Set to true, if our ability to write requests to
+	fr_time_delta_t		manage_interval;	//!< How often we run the management algorithm to
+							///< open/close connections.
+
+	unsigned		req_pool_headers;	//!< How many chunk headers the pool should contain.
+
+	size_t			req_pool_size;		//!< How big the pool should be.
+
+	bool			always_writable;	//!< Set to true if our ability to write requests to
 							///< a connection handle is not dependant on the state
 							///< of the underlying connection, i.e. if the library
 							///< used to implement the connection can always receive
@@ -102,6 +115,11 @@ typedef enum {
 
 } fr_trunk_connection_event_t;
 
+/** Config parser definitions to populate a fr_trunk_conf_t
+ *
+ */
+extern CONF_PARSER const fr_trunk_config[];
+
 /** Allocate a new connection for the trunk
  *
  * The trunk code only interacts with the connections via the connection API.
@@ -131,6 +149,9 @@ typedef enum {
  *				Should be used as the context for any connections
  *				allocated.
  * @param[in] el		The event list to use for I/O and timer events.
+ * @param[in] connect_timeout	How long to wait in the connecting state before giving up.
+ * @param[in] reconnect_delay	How long to wait before attempting to connect after a
+ *				failure.
  * @param[in] log_prefix	What to prefix connection log messages with.
  * @param[in] uctx		User data to pass to the alloc callback.
  * @return
@@ -138,6 +159,7 @@ typedef enum {
  *	- NULL on error.
  */
 typedef fr_connection_t *(*fr_trunk_connection_alloc_t)(fr_trunk_connection_t *tconn, fr_event_list_t *el,
+							fr_time_delta_t connect_timeout, fr_time_delta_t reconnect_delay,
 							char const *log_prefix, void *uctx);
 
 /** Inform the API client which connections the trunk API wants to be notified of I/O events on
@@ -394,7 +416,7 @@ void		fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq);
 void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq);
 /** @} */
 
-/** @name (R)enqueue requests
+/** @name (R)enqueue and alloc requests
  * @{
  */
 uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max);
