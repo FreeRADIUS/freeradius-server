@@ -92,15 +92,12 @@ static void fr_worker_verify(fr_worker_t *worker);
 struct fr_worker_t {
 	char const		*name;		//!< name of this worker
 
-	int			kq;		//!< my kq
 	pthread_t		id;		//!< my thread ID
 
 	fr_log_t const		*log;		//!< log destination
 	fr_log_lvl_t		lvl;		//!< log level
 
 	fr_atomic_queue_t	*aq_control;	//!< atomic queue for control messages sent to me
-
-	uintptr_t		aq_ident;	//!< identifier for control-plane events
 
 	fr_control_t		*control;	//!< the control plane
 
@@ -158,7 +155,6 @@ static void fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx)
 		fr_dlist_init(&worker->_name.list, fr_channel_data_t, request.entry); \
 		worker->_name.heap = fr_heap_create(worker, _func, fr_channel_data_t, channel.heap_id); \
 		if (!worker->_name.heap) { \
-			(void) fr_event_user_delete(worker->el, fr_worker_evfilt_user, worker); \
 			talloc_free(worker); \
 			goto nomem; \
 		} \
@@ -315,29 +311,6 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 		fr_cond_assert(ok);
 		break;
 	}
-}
-
-
-/** Service a control-plane event.
- *
- * @param[in] kq the kq to service
- * @param[in] kev the kevent to service
- * @param[in] ctx the fr_worker_t
- */
-static void fr_worker_evfilt_user(UNUSED int kq, UNUSED struct kevent const *kev, void *ctx)
-{
-	fr_time_t now;
-	fr_worker_t *worker = ctx;
-	char data[256];
-
-	talloc_get_type_abort(worker, fr_worker_t);
-
-	now = fr_time();
-
-	/*
-	 *	Service all available control-plane events
-	 */
-	fr_control_service(worker->control, data, sizeof(data), now);
 }
 
 
@@ -1300,9 +1273,6 @@ nomem:
 	memset(&worker->tracking, 0, sizeof(worker->tracking));
 	fr_dlist_init(&worker->tracking.list, fr_time_tracking_t, list.entry);
 
-	worker->kq = fr_event_list_kq(worker->el);
-	rad_assert(worker->kq >= 0);
-
 	worker->aq_control = fr_atomic_queue_create(worker, 1024);
 	if (!worker->aq_control) {
 		fr_strerror_printf("Failed creating atomic queue");
@@ -1311,17 +1281,10 @@ nomem:
 		return NULL;
 	}
 
-	worker->aq_ident = fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker);
-	if (!worker->aq_ident) {
-		fr_strerror_printf_push("Failed updating event list");
-		goto fail;
-	}
-
-	worker->control = fr_control_create(worker, worker->kq, worker->aq_control, worker->aq_ident);
+	worker->control = fr_control_create(worker, el, worker->aq_control);
 	if (!worker->control) {
 		fr_strerror_printf_push("Failed creating control plane");
 	fail2:
-		(void) fr_event_user_delete(worker->el, fr_worker_evfilt_user, worker);
 		goto fail;
 	}
 
@@ -1360,17 +1323,6 @@ nomem:
 	return worker;
 }
 
-/** Get the KQ for the worker
- *
- * @param[in] worker the worker data structure
- * @return kq
- */
-int fr_worker_kq(fr_worker_t *worker)
-{
-	WORKER_VERIFY;
-
-	return worker->kq;
-}
 
 /** Get the event loop for the worker
  *
@@ -1498,7 +1450,6 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 {
 	WORKER_VERIFY;
 
-	fprintf(fp, "\tkq = %d\n", worker->kq);
 	fprintf(fp, "\tnum_channels = %d\n", worker->num_channels);
 	fprintf(fp, "\tstats.in = %" PRIu64 "\n", worker->stats.in);
 

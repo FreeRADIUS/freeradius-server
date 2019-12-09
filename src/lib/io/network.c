@@ -99,14 +99,10 @@ typedef struct {
  *	https://www.eecs.harvard.edu/~michaelm/postscripts/tpds2001.pdf
  */
 struct fr_network_t {
-	int			kq;			//!< our KQ
-
 	fr_log_t const		*log;			//!< log destination
 	fr_log_lvl_t		lvl;			//!< debug log level
 
 	fr_atomic_queue_t	*aq_control;		//!< atomic queue for control messages sent to me
-
-	uintptr_t		aq_ident;		//!< identifier for control-plane events
 
 	fr_control_t		*control;		//!< the control plane
 
@@ -933,27 +929,6 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
 }
 
 
-/** Service a control-plane event.
- *
- * @param[in] kq the kq to service
- * @param[in] kev the kevent to service
- * @param[in] ctx the fr_worker_t
- */
-static void fr_network_evfilt_user(UNUSED int kq, UNUSED struct kevent const *kev, void *ctx)
-{
-	fr_time_t now;
-	fr_network_t *nr = talloc_get_type_abort(ctx, fr_network_t);
-	uint8_t data[256];
-
-	now = fr_time();
-
-	/*
-	 *	Service all available control-plane events
-	 */
-	fr_control_service(nr->control, data, sizeof(data), now);
-}
-
-
 /** Create a network
  *
  * @param[in] ctx the talloc ctx
@@ -980,27 +955,16 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 	nr->max_workers = MAX_WORKERS;
 	nr->num_workers = 0;
 
-	nr->kq = fr_event_list_kq(nr->el);
-	rad_assert(nr->kq >= 0);
-
 	nr->aq_control = fr_atomic_queue_create(nr, 1024);
 	if (!nr->aq_control) {
 		talloc_free(nr);
 		return NULL;
 	}
 
-	nr->aq_ident = fr_event_user_insert(nr->el, fr_network_evfilt_user, nr);
-	if (!nr->aq_ident) {
-		fr_strerror_printf_push("Failed updating event list");
-		talloc_free(nr);
-		return NULL;
-	}
-
-	nr->control = fr_control_create(nr, nr->kq, nr->aq_control, nr->aq_ident);
+	nr->control = fr_control_create(nr, el, nr->aq_control);
 	if (!nr->control) {
 		fr_strerror_printf_push("Failed creating control queue");
 	fail:
-		(void) fr_event_user_delete(nr->el, fr_network_evfilt_user, nr);
 		talloc_free(nr);
 		return NULL;
 	}

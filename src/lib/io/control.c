@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/ring_buffer.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/misc.h>
 
 #include <string.h>
 #include <sys/event.h>
@@ -74,30 +75,56 @@ typedef struct {
  *  The control structure.
  */
 struct fr_control_t {
-	int			kq;			//!< destination KQ
+	fr_event_list_t		*el;			//!< our event list
 
 	fr_atomic_queue_t	*aq;			//!< destination AQ
 
-	uintptr_t		ident;			//!< our ident for kqueue.
+	int			pipe[2];       		//!< our pipes
 
 	fr_control_ctx_t 	type[FR_CONTROL_MAX_TYPES];	//!< callbacks
 };
 
 
+static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	fr_control_t *c = talloc_get_type_abort(uctx, fr_control_t);
+	ssize_t i, num;
+	fr_time_t now;
+	char read_buffer[256];
+	uint8_t	data[256];
+
+	num = read(fd, read_buffer, sizeof(read_buffer));
+	if (num <= 0) return;
+
+	now = fr_time();
+
+	for (i = 0; i < num; i++) {
+		uint32_t id;
+		size_t message_size;
+
+		message_size = fr_control_message_pop(c->aq, &id, data, sizeof(data));
+		if (!message_size) return;
+
+		if (id >= FR_CONTROL_MAX_TYPES) continue;
+
+		if (!c->type[id].callback) continue;
+
+		c->type[id].callback(c->type[id].ctx, data, message_size, now);
+	}
+}
+
 /** Create a control-plane signaling path.
  *
  * @param[in] ctx the talloc context
- * @param[in] kq the KQ descriptor where we will be sending signals
+ * @param[in] el the event list for the control socket
  * @param[in] aq the atomic queue where we will be pushing message data
- * @param[in] ident the identifier to use for EVFILT_USER signals.
  * @return
  *	- NULL on error
  *	- fr_control_t on success
  */
-fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq, uintptr_t ident)
+fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq)
 {
 	fr_control_t *c;
-	struct kevent kev;
 
 	c = talloc_zero(ctx, fr_control_t);
 	if (!c) {
@@ -105,26 +132,25 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq, 
 		return NULL;
 	}
 
-	c->kq = kq;
+	c->el = el;
 	c->aq = aq;
-	c->ident = ident;
+
+	if (pipe((int *) &c->pipe) < 0) {
+		talloc_free(c);
+		fr_strerror_printf("Failed opening pipe for control socket: %s", fr_syserror(errno));
+		return NULL;
+	}
 
 	/*
-	 *	Tell the KQ to listen on our events.
-	 *
-	 *	We COULD overload the "ident" field with our channel
-	 *	number, followed by the actual signal we're sending.
-	 *	This would work.  The downside is that it would
-	 *	require N*M EVFILT_USER kevents to be registered,
-	 *	which is bad
-	 *
-	 *	The implementation here is perhaps a bit less optimal,
-	 *	but it's clean, and it works.
+	 *	We don't want reads from the pipe to be blocking.
 	 */
-	EV_SET(&kev, ident, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, NULL);
-	if (kevent(c->kq, &kev, 1, NULL, 0, NULL) < 0) {
+	(void) fr_nonblock(c->pipe[0]);
+
+	if (fr_event_fd_insert(c, el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
+		close(c->pipe[0]);
+		close(c->pipe[1]);
 		talloc_free(c);
-		fr_strerror_printf("Failed opening KQ for control socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed adding FD to event list control socket: %s", fr_strerror());
 		return NULL;
 	}
 
@@ -191,15 +217,12 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
  */
 void fr_control_free(fr_control_t *c)
 {
-	struct kevent kev;
-
 	(void) talloc_get_type_abort(c, fr_control_t);
 
-	EV_SET(&kev, c->ident, EVFILT_USER, EV_DELETE, NOTE_FFNOP, 0, NULL);
-	if (kevent(c->kq, &kev, 1, NULL, 0, NULL) < 0) {
-		talloc_free(c);
-		fr_strerror_printf("Failed opening KQ for control socket: %s", fr_syserror(errno));
-	}
+	(void) fr_event_fd_delete(c->el, c->pipe[0], FR_EVENT_FILTER_IO);
+
+	close(c->pipe[0]);
+	close(c->pipe[1]);
 
 	talloc_free(c);
 }
@@ -310,19 +333,12 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
  */
 int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
-	int rcode;
-	struct kevent kev;
-
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
-	EV_SET(&kev, c->ident, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
-	rcode = kevent(c->kq, &kev, 1, NULL, 0, NULL);
-	if (rcode >= 0) return rcode;
-
-	fr_strerror_printf("Failed sending user event to kqueue (%i): %s", c->kq, fr_syserror(errno));
-	return rcode;
+	(void) write(c->pipe[1], ".", 1);
+	return 0;
 }
 
 
@@ -431,21 +447,4 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 	c->type[id].callback = NULL;
 
 	return 0;
-}
-
-void fr_control_service(fr_control_t *c, void *data, size_t data_size, fr_time_t now)
-{
-	uint32_t id = 0;
-	size_t message_size;
-
-	while (true) {
-		message_size = fr_control_message_pop(c->aq, &id, data, data_size);
-		if (!message_size) return;
-
-		if (id >= FR_CONTROL_MAX_TYPES) continue;
-
-		if (!c->type[id].callback) continue;
-
-		c->type[id].callback(c->type[id].ctx, data, message_size, now);
-	}
 }
