@@ -2284,7 +2284,7 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
  * @param[in] now	Current time.
  * @param[in] uctx	The tconn.
  */
-static void  _trunk_connection_lifetime_expire(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void  _trunk_connection_lifetime_expire(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 
