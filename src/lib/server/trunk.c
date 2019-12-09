@@ -332,7 +332,7 @@ CONF_PARSER const fr_trunk_config[] = {
 	{ FR_CONF_OFFSET("open_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, open_delay), .dflt = "0.2" },
 	{ FR_CONF_OFFSET("close_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, close_delay), .dflt = "10.0" },
 
-	{ FR_CONF_OFFSET("manage_interval", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, manage_interval), "0.2" },
+	{ FR_CONF_OFFSET("manage_interval", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, manage_interval), .dflt = "0.2" },
 
 	{ FR_CONF_POINTER("requests", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) fr_trunk_config_requests },
 
