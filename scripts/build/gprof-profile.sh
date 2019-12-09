@@ -43,7 +43,7 @@ if ! test -e "$bin"; then
 fi
 
 if ! $need_something && ! otool -L "$bin" | grep 'libprofiler' > /dev/null; then
-	ERROR "$1 must be linked against libprofiler"
+	ERROR "$bin must be linked against libprofiler"
 	ERROR "Either '-lprofiler' or \`brew install gperftools\` and rerun configure"
 	need_something=true
 fi
