@@ -361,7 +361,7 @@ static fr_table_num_ordered_t const fr_trunk_connection_states[] = {
 	{ "INACTIVE",		FR_TRUNK_CONN_INACTIVE		},
 	{ "CLOSED",		FR_TRUNK_CONN_CLOSED		},
 	{ "DRAINING",		FR_TRUNK_CONN_DRAINING		},
-	{ "DRAINING-TO-FREE",	FR_TRUNK_CONN_DRAINING_TO_FREE }
+	{ "DRAINING-TO-FREE",	FR_TRUNK_CONN_DRAINING_TO_FREE	}
 };
 static size_t fr_trunk_connection_states_len = NUM_ELEMENTS(fr_trunk_connection_states);
 
@@ -382,10 +382,10 @@ static size_t fr_trunk_connection_events_len = NUM_ELEMENTS(fr_trunk_connection_
 
 #define CONN_STATE_TRANSITION(_new) \
 do { \
-	DEBUG4("[%" PRIu64 "] Trunk connection changed state %s -> %s", \
-	       fr_connection_get_id(tconn->conn), \
-	       fr_table_str_by_value(fr_trunk_connection_states, tconn->state, "<INVALID>"), \
-	       fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>")); \
+	INFO("[%" PRIu64 "] Trunk connection changed state %s -> %s", \
+	     fr_connection_get_id(tconn->conn), \
+	     fr_table_str_by_value(fr_trunk_connection_states, tconn->state, "<INVALID>"), \
+	     fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>")); \
 	tconn->state = _new; \
 	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time()); \
 } while (0)
