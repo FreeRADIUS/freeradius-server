@@ -41,6 +41,8 @@ typedef struct {
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
 	fr_heap_t			*alive_clients;			//!< heap of active clients
 
+	fr_dlist_head_t			track_list;			//!< list of free fr_io_track_t
+
 	fr_listen_t			*listen;			//!< The master IO path
 	fr_listen_t			*child;				//!< The child (app_io) IO path
 	fr_schedule_t			*sc;				//!< the scheduler
@@ -145,6 +147,7 @@ static fr_event_update_t resume_read[] = {
 	FR_EVENT_RESUME(fr_event_io_func_t, read),
 	{ 0 }
 };
+
 
 /*
  *  Return negative numbers to put 'one' at the top of the heap.
@@ -822,8 +825,14 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 	if (client->inst->app_io->track_duplicates) track = rbtree_finddata(client->table, &my_track);
 	if (!track) {
-		MEM(track = talloc_zero(client, fr_io_track_t));
-		talloc_get_type_abort(track, fr_io_track_t);
+		track = fr_dlist_head(&client->thread->track_list);
+		if (!track) {
+			MEM(track = talloc_zero(client, fr_io_track_t));
+			talloc_get_type_abort(track, fr_io_track_t);
+		} else {
+			fr_dlist_remove(&client->thread->track_list, track);
+			memset(track, 0, sizeof(*track));
+		}
 
 		MEM(track->address = talloc_zero(track, fr_io_address_t));
 		memcpy(track->address, address, sizeof(*address));
@@ -900,6 +909,24 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	return track;
 }
 
+
+static void track_free(fr_io_track_t *track)
+{
+	fr_io_thread_t *thread = track->client->thread;
+
+	/*
+	 *	Keep most recently used elements around.  But
+	 *	limit them to ~1000 entries.
+	 */
+	fr_dlist_insert_head(&thread->track_list, track);
+	if (fr_dlist_num_elements(&thread->track_list) > 1000) {
+		track = fr_dlist_tail(&thread->track_list);
+		fr_dlist_remove(&thread->track_list, &track->entry);
+		talloc_free(track);
+	}
+}
+
+
 static int pending_free(fr_io_pending_packet_t *pending)
 {
 	fr_io_track_t *track = pending->track;
@@ -925,8 +952,7 @@ static int pending_free(fr_io_pending_packet_t *pending)
 			(void) rbtree_deletebydata(track->client->table, track);
 		}
 
-		// @todo - put this into a slab allocator
-		talloc_free(track);
+		track_free(track);
 	}
 
 	return 0;
@@ -1704,6 +1730,10 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	 */
 	if (!inst->submodule) return;
 
+	if (inst->app_io->event_list_set) {
+		inst->app_io->event_list_set(child, el, nr);
+	}
+
 	/*
 	 *	No dynamic clients AND no packet cleanups?  We don't
 	 *	need timers.
@@ -1722,11 +1752,6 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	} else {
 		connection->el = el;
 		connection->nr = nr;
-	}
-
-
-	if (inst->app_io->event_list_set) {
-		inst->app_io->event_list_set(child, el, nr);
 	}
 }
 
@@ -1972,8 +1997,8 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	if (track->packets == 0) {
 		if (inst->app_io->track_duplicates) (void) rbtree_deletebydata(client->table, track);
-		talloc_free(track);
 
+		track_free(track);
 	} else {
 		if (track->reply) {
 			talloc_free(track->reply);
@@ -2078,8 +2103,15 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 						 buffer, buffer_len, written);
 		if (packet_len > 0) {
 			rad_assert(buffer_len == (size_t) packet_len);
-			MEM(track->reply = talloc_memdup(track, buffer, buffer_len));
-			track->reply_len = buffer_len;
+
+			/*
+			 *	No need to stash the reply if we're
+			 *	not tracking duplicates.
+			 */
+			if (inst->app_io->track_duplicates) {
+				MEM(track->reply = talloc_memdup(track, buffer, buffer_len));
+				track->reply_len = buffer_len;
+			}
 		} else {
 			track->reply_len = 1; /* don't respond */
 		}
@@ -2411,6 +2443,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	inst->app_io_conf = inst->submodule->conf;
 	inst->app_io_instance = inst->submodule->data;
+
+	/*
+	 *	If we're not tracking duplicatesm then we don't need a
+	 *	cleanup delay.
+	 */
+	if (!inst->app_io->track_duplicates) inst->cleanup_delay = 0;
 
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
@@ -2771,6 +2809,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	thread = talloc_zero(NULL, fr_io_thread_t);
 	thread->listen = li;
 	thread->sc = sc;
+	fr_dlist_init(&thread->track_list, fr_io_track_t, entry);
 
 	talloc_set_destructor(thread, _thread_io_free);
 
