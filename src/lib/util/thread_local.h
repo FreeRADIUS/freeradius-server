@@ -49,8 +49,11 @@ typedef void (*pthread_destructor_t)(void*);
  *	These should ONLY be called where __Thread_local is a pointer to heap
  *	allocated memory that needs to be freed on thread exit.
  *
- *	For other types like ints _Thread_local should be used directly
- *	without the macros.
+ *	Depending on the platform, the thread local storage itself may be freed
+ *	before the destructor is called.
+ *
+ *	The only way this code can work is if the value passed to the destructor
+ *	initialisation is the address of non-TLS memory.
  */
 /** Pre-initialise resources required for a thread local destructor
  *
