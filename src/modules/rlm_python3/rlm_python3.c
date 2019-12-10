@@ -1282,11 +1282,18 @@ static int mod_detach(void *instance)
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
-	PYTHON_FUNC_DESTROY(authorize);
 	PYTHON_FUNC_DESTROY(authenticate);
+	PYTHON_FUNC_DESTROY(authorize);
 	PYTHON_FUNC_DESTROY(preacct);
 	PYTHON_FUNC_DESTROY(accounting);
 	PYTHON_FUNC_DESTROY(checksimul);
+	PYTHON_FUNC_DESTROY(pre_proxy);
+	PYTHON_FUNC_DESTROY(post_proxy);
+	PYTHON_FUNC_DESTROY(post_auth);
+#ifdef WITH_COA
+	PYTHON_FUNC_DESTROY(recv_coa);
+	PYTHON_FUNC_DESTROY(send_coa);
+#endif
 	PYTHON_FUNC_DESTROY(detach);
 
 	Py_DecRef(inst->pythonconf_dict);
