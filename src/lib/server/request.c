@@ -28,23 +28,125 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/unlang/base.h>
 
+/** The thread local free list
+ *
+ * Any entries remaining in the list will be freed then the thread is joined
+ */
+fr_thread_local_setup(fr_dlist_head_t *, request_free_list)
+
+/** Setup logging and other fields for a request
+ *
+ * @param[in] request		to (re)-initialise.
+ */
+static void request_init(REQUEST *request)
+{
+#ifndef NDEBUG
+	request->magic = REQUEST_MAGIC;
+#endif
+
+	request->request_state = REQUEST_INIT;
+	request->master_state = REQUEST_ACTIVE;
+
+	/*
+	 *	Initialise the stack
+	 */
+	MEM(request->stack = unlang_interpret_stack_alloc(request));
+
+	/*
+	 *	Initialise the request data list
+	 */
+	request_data_list_init(&request->data);
+
+	/*
+	 *	Initialise the state_ctx
+	 */
+	if (!request->state_ctx) request->state_ctx = talloc_init("session-state");
+
+	/*
+	 *	These may be changed later by request_pre_handler
+	 */
+	request->log.lvl = fr_debug_lvl;	/* Default to global debug level */
+	if (!request->log.dst) {
+		request->log.dst = talloc_zero(request, log_dst_t);
+	} else {
+		memset(request->log.dst, 0, sizeof(*request->log.dst));
+	}
+	request->log.dst->func = vlog_request;
+	request->log.dst->uctx = &default_log;
+
+	request->module = NULL;
+	request->component = "<core>";
+
+	request->seq_start = 0;
+	request->runnable_id = -1;
+	request->time_order_id = -1;
+
+	fr_dlist_entry_init(&request->free_entry);	/* Needs to be initialised properly, else bad things happen */
+}
+
 /** Callback for freeing a request struct
  *
+ * @param[in] request		to free or return to the free list.
+ * @return
+ *	- 0 in the request was freed.
+ *	- -1 if the request was inserted into the free list.
  */
 static int _request_free(REQUEST *request)
 {
 	rad_assert(!request->ev);
 
-#ifndef NDEBUG
-	request->magic = 0x01020304;	/* set the request to be nonsense */
-#endif
-	request->client = NULL;
-#ifdef WITH_PROXY
-	request->proxy = NULL;
-#endif
+	/*
+	 *	Reinsert into the free list if it's not already
+	 *	in the free list.
+	 *
+	 *	If it *IS* already in the free list, then free it.
+	 */
+	if (unlikely(fr_dlist_entry_in_list(&request->free_entry))) {
+		fr_dlist_entry_unlink(&request->free_entry);	/* Don't trust the list head to be available */
+		talloc_free(request->state_ctx);
+		goto really_free;
+	}
 
 	/*
-	 *	This is parented separately.
+	 *	We keep a buffer of <active> + N requests per
+	 *	thread, to avoid spurious allocations.
+	 */
+	if (fr_dlist_num_elements(request_free_list) <= 256) {
+		TALLOC_CTX		*state_ctx;
+		fr_dlist_head_t		*free_list;
+
+		/*
+		 *	Ensure any data associated
+		 *	with the state ctx is freed.
+		 */
+		if (request->state_ctx) {
+			rad_assert(!request->parent || (request->state_ctx != request->parent->state_ctx));
+			talloc_free_children(request->state_ctx);
+ 			state_ctx = request->state_ctx;
+		} else {
+			state_ctx = NULL;
+		}
+		free_list = request_free_list;
+
+		/*
+		 *	Reinitialise the request
+		 */
+		talloc_free_children(request);
+		memset(request, 0, sizeof(*request));
+		request->component = "free_list";
+		request->state_ctx = state_ctx;		/* Use the old, now cleared, state_ctx */
+
+		/*
+		 *	Reinsert into the free list
+		 */
+		fr_dlist_insert_head(free_list, request);
+		request_free_list = free_list;
+
+		return -1;	/* Prevent free */
+ 	}
+
+	/*
+	 *	state_ctx is parented separately.
 	 *
 	 *	The reason why it's OK to do this, is if the state attributes
 	 *	need to persist across requests, they will already have been
@@ -72,9 +174,33 @@ static int _request_free(REQUEST *request)
 		talloc_free(request->state_ctx);
 	}
 
+	/*
+	 *	Ensure anything that might reference the request is
+	 *	freed before it is.
+	 */
 	talloc_free_children(request);
 
+really_free:
+#ifndef NDEBUG
+	request->magic = 0x01020304;	/* set the request to be nonsense */
+#endif
+
 	return 0;
+}
+
+/** Free any free requests when the thread is joined
+ *
+ */
+static void _request_free_list_free_on_exit(void *arg)
+{
+	fr_dlist_head_t *list = talloc_get_type_abort(arg, fr_dlist_head_t);
+	REQUEST		*request;
+
+	/*
+	 *	See the destructor for why this works
+	 */
+	while ((request = fr_dlist_head(list))) talloc_free(request);
+	talloc_free(list);
 }
 
 /** Create a new REQUEST data structure
@@ -82,42 +208,60 @@ static int _request_free(REQUEST *request)
  */
 REQUEST *request_alloc(TALLOC_CTX *ctx)
 {
-	REQUEST *request;
-
-	request = talloc_zero(ctx, REQUEST);
-	if (!request) return NULL;
-	talloc_set_destructor(request, _request_free);
-#ifndef NDEBUG
-	request->magic = REQUEST_MAGIC;
-#endif
-#ifdef WITH_PROXY
-	request->proxy = NULL;
-#endif
-	request->reply = NULL;
-	request->control = NULL;
+	REQUEST			*request;
+	fr_dlist_head_t		*free_list;
 
 	/*
-	 *	These may be changed later by request_pre_handler
+	 *	Setup the free list, or return the free
+	 *	list for this thread.
 	 */
-	request->log.lvl = fr_debug_lvl;	/* Default to global debug level */
-	request->log.dst = talloc_zero(request, log_dst_t);
-	request->log.dst->func = vlog_request;
-	request->log.dst->uctx = &default_log;
+	if (unlikely(!request_free_list)) {
+		MEM(free_list = talloc(NULL, fr_dlist_head_t));
+		fr_dlist_init(free_list, REQUEST, free_entry);
+		fr_thread_local_set_destructor(request_free_list, _request_free_list_free_on_exit, free_list);
+	} else {
+		free_list = request_free_list;
+	}
 
-	request->module = NULL;
-	request->component = "<core>";
+	request = fr_dlist_head(free_list);
+	if (!request) {
+		/*
+		 *	Only allocate requests in the NULL
+		 *	ctx.  There's no scenario where it's
+		 *	appropriate to allocate them in a
+		 *	pool, and using a strict talloc
+		 *	hierarchy means that child requests
+		 *	cannot be returned to a free list
+		 *	and would have to be freed.
+		 */
+		MEM(request = talloc_zero_pooled_object(NULL, REQUEST,
+							1 + 				/* Stack pool */
+							UNLANG_STACK_MAX + 		/* Stack Frames */
+							3 + 				/* packets */
+							10,				/* extra */
+							(UNLANG_FRAME_PRE_ALLOC * UNLANG_STACK_MAX) +	/* Stack memory */
+							(sizeof(RADIUS_PACKET) * 2) +	/* packets */
+							128				/* extra */
+							));
+		talloc_set_destructor(request, _request_free);
 
-	MEM(request->stack = unlang_interpret_stack_alloc(request));
+		/*
+		 *	Bind lifetime to a parent.
+		 *
+		 *	If the parent is freed the destructor
+		 *	will fire, and return the request
+		 *	to a "top level" free list.
+		 */
+		if (ctx) talloc_link_ctx(ctx, request);
+	} else {
+		/*
+		 *	Remove from the free list, as we're
+		 *	about to use it!
+		 */
+		fr_dlist_remove(free_list, request);
+	}
 
-	request->runnable_id = -1;
-	request->time_order_id = -1;
-
-	request->state_ctx = talloc_init("session-state");
-
-	/*
-	 *	Initialise the request data list
-	 */
-	request_data_list_init(&request->data);
+	request_init(request);
 
 	return request;
 }
@@ -201,7 +345,6 @@ static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
 	return fake;
 }
 
-
 /*
  *	Create a new REQUEST, based on an old one.
  *
@@ -221,6 +364,7 @@ REQUEST *request_alloc_fake(REQUEST *request, fr_dict_t const *namespace)
 
 	return fake;
 }
+
 
 /** Allocate a fake request which is detachable from the parent.
  * i.e. if the parent goes away, sometimes the child MAY continue to

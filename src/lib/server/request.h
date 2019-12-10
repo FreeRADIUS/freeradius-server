@@ -150,6 +150,8 @@ struct fr_request_s {
 	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.
 
 	fr_async_t		*async;		//!< for new async listeners
+
+	fr_dlist_t		free_entry;	//!< Request's entry in the free list.
 };				/* REQUEST typedef */
 
 #ifdef WITH_VERIFY_PTR

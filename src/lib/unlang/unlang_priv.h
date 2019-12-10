@@ -37,8 +37,6 @@
 extern "C" {
 #endif
 
-#define UNLANG_STACK_MAX (64)
-
 /* Actions may be a positive integer (the highest one returned in the group
  * will be returned), or the keyword "return", represented here by
  * MOD_ACTION_RETURN, to cause an immediate return.

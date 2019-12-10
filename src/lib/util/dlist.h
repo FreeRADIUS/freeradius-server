@@ -71,6 +71,24 @@ static inline void fr_dlist_entry_unlink(fr_dlist_t *entry)
 {
 	entry->prev->next = entry->next;
 	entry->next->prev = entry->prev;
+	entry->prev = entry->next = entry;
+}
+
+/** Check if a list entry is part of a list
+ *
+ * This works because the fr_dlist_head_t has an entry in the list.
+ * So if next and prev both point to the entry for the object being
+ * passed in, then it can't be part of a list with a fr_flist_head_t.
+ *
+ * @return
+ *	- True if in a list.
+ *	- False otherwise.
+ */
+static inline bool fr_dlist_entry_in_list(fr_dlist_t *entry)
+{
+	if ((entry->prev == entry) && (entry->next == entry)) return false;
+
+	return true;
 }
 
 /** Initialise the head structure of a doubly linked list
