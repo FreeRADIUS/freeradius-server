@@ -19,7 +19,7 @@ TGT_PREREQS := libfreeradius-util.la
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS  := $(LIBS) $(OPENSSL_LIBS) $(GPERFTOOLS_LIBS)
-TGT_LDFLAGS := $(OPENSSL_FLAGS) $(GPERFTOOL_FLAGS)
+TGT_LDFLAGS := $(OPENSSL_FLAGS) $(GPERFTOOLS_LDFLAGS)
 
 src/lib/tls/base.h: src/lib/tls/base-h src/include/autoconf.sed src/include/autoconf.h
 	${Q}$(ECHO) HEADER $@

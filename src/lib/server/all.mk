@@ -48,7 +48,7 @@ HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/server/*.h))
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS	:= $(LIBS) $(SYSTEMD_LIBS) $(GPERFTOOLS_LIBS) $(LCRYPT)
-TGT_LDFLAGS	:= $(LDFLAGS) $(SYSTEMD_LDFLAGS) $(GPERFTOOLS_FLAGS)
+TGT_LDFLAGS	:= $(LDFLAGS) $(SYSTEMD_LDFLAGS) $(GPERFTOOLS_LDFLAGS)
 
 ifneq ($(OPENSSL_LIBS),)
 TGT_PREREQS	:= libfreeradius-tls.a
