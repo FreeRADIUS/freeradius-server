@@ -858,7 +858,6 @@ void fr_connection_signal_connected(fr_connection_t *conn)
 
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_CONNECTING:
-		DEBUG2("Connection established");
 		connection_state_connected_enter(conn);
 		return;
 
