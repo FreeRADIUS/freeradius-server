@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 /** The thread local free list
  *
- * Any entries remaining in the list will be freed then the thread is joined
+ * Any entries remaining in the list will be freed when the thread is joined
  */
 fr_thread_local_setup(fr_dlist_head_t *, request_free_list)
 
