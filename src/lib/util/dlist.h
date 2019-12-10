@@ -67,7 +67,7 @@ static inline void fr_dlist_entry_init(fr_dlist_t *entry)
 /** Remove an item from the dlist when we don't have access to the head
  *
  */
-static inline void fr_dlist_entry_unlink(fr_dlist_t *entry)
+static inline CC_HINT(nonnull) void fr_dlist_entry_unlink(fr_dlist_t *entry)
 {
 	entry->prev->next = entry->next;
 	entry->next->prev = entry->prev;
@@ -84,7 +84,7 @@ static inline void fr_dlist_entry_unlink(fr_dlist_t *entry)
  *	- True if in a list.
  *	- False otherwise.
  */
-static inline bool fr_dlist_entry_in_list(fr_dlist_t *entry)
+static inline CC_HINT(nonnull) bool fr_dlist_entry_in_list(fr_dlist_t const *entry)
 {
 	if ((entry->prev == entry) && (entry->next == entry)) return false;
 
@@ -237,6 +237,23 @@ static inline CC_HINT(nonnull) bool fr_dlist_empty(fr_dlist_head_t const *list_h
 	fr_dlist_t const *head = &(list_head->entry);
 
 	return (head->prev == head);
+}
+
+/** Check if the list head is initialised
+ *
+ * Memory must be zeroed out or initialised.
+ *
+ * @return
+ *	- True if dlist initialised.
+ *	- False if dlist not initialised
+ */
+static inline CC_HINT(nonnull) bool fr_dlist_initialised(fr_dlist_head_t const *list_head)
+{
+	fr_dlist_t const *head = &(list_head->entry);
+
+	if (!head->prev && !head->next) return false;
+
+	return true;
 }
 
 /** Return the TAIL item of a list or NULL if the list is empty
