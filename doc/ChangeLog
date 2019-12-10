@@ -20,8 +20,6 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	* Increase the 'nasportid' SQL field for 'varchar(32)'. #3141
 	* Skip processing proxy reply if there are no home servers
 	  available.
-	* Be more aggressive about removing conflicting packets from
-	  the dedup tree.  This avoids crashes in corner cases.
 	* Update SQLite IPPool queries.  Fixes #3177
 	  Patch from Terry Burton.
 	* rlm_sql_unixodbc fixes. Patches from Terry Burton. Fixes #2822
