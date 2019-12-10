@@ -13,3 +13,11 @@
 #define SRADUTMP		LOGDIR "/sradutmp"
 #define RADWTMP			LOGDIR "/radwtmp"
 #define SRADWTMP		LOGDIR "/sradwtmp"
+
+#ifdef __APPLE__
+#  define LT_SHREXT ".dylib"
+#elif defined (WIN32)
+#  define LT_SHREXT ".dll"
+#else
+#  define LT_SHREXT ".so"
+#endif
