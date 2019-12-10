@@ -62,7 +62,7 @@ static size_t		reserve_size = 2048;
 static size_t		allocation_mask = 0x3ff;
 
 /**********************************************************************/
-typedef struct rad_request REQUEST;
+typedef struct fr_request_s REQUEST;
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
 void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
 int talloc_const_free(void const *ptr);

@@ -50,7 +50,7 @@ static fr_control_t	*control = NULL;
 static fr_ring_buffer_t *rb = NULL;
 
 /**********************************************************************/
-typedef struct rad_request REQUEST;
+typedef struct fr_request_s REQUEST;
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
 void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
 int talloc_const_free(void const *ptr);

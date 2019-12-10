@@ -65,7 +65,7 @@ static bool		quiet = false;
 static fr_schedule_worker_t workers[MAX_WORKERS];
 
 /**********************************************************************/
-typedef struct rad_request REQUEST;
+typedef struct fr_request_s REQUEST;
 
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 {

@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 
-typedef struct rad_request REQUEST;
+typedef struct fr_request_s REQUEST;
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/io/test_point.h>

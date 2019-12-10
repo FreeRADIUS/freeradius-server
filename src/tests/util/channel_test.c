@@ -51,7 +51,7 @@ static int			max_outstanding = 1;
 static bool			touch_memory = false;
 
 /**********************************************************************/
-typedef struct rad_request REQUEST;
+typedef struct fr_request_s REQUEST;
 
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 {

@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 typedef struct fr_async_t fr_async_t;
-typedef struct rad_request REQUEST;
+typedef struct fr_request_s REQUEST;
 
 typedef struct rad_listen rad_listen_t;
 typedef struct rad_client RADCLIENT;
@@ -80,7 +80,7 @@ typedef enum fr_request_state_t {
 typedef	void (*fr_request_process_t)(REQUEST *, fr_state_signal_t);	//!< Function handler for requests.
 typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(REQUEST *);
 
-struct rad_request {
+struct fr_request_s {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
 						//!< or request structs that have not been properly initialised.
