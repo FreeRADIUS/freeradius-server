@@ -1,6 +1,7 @@
 # -*- text -*-
 # Copyright (C) 2019 The FreeRADIUS Server project and contributors
-# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0#
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
 #
 # Pica8 RADIUS attributes
 # For general information please visit:
@@ -12,5 +13,8 @@ VENDOR		Pica8				35098
 BEGIN-VENDOR	Pica8
 
 ATTRIBUTE	Pica8-AVPair				1	string
+ATTRIBUTE	Pica8-IP-Downloadable-ACL-Rule		2	string
+ATTRIBUTE	Pica8-IP-Downloadable-ACL-Name		3	string
+ATTRIBUTE	Pica8-Redirect-URL			4	string
 
 END-VENDOR	Pica8
