@@ -67,8 +67,10 @@ static CONF_PARSER module_config[] = {
 	A(preacct)
 	A(accounting)
 	A(checksimul)
+#ifdef WITH_PROXY
 	A(pre_proxy)
 	A(post_proxy)
+#endif
 	A(post_auth)
 #ifdef WITH_COA
 	A(recv_coa)
@@ -98,7 +100,9 @@ static struct {
 	A(L_AUTH)
 	A(L_INFO)
 	A(L_ERR)
+#ifdef WITH_PROXY
 	A(L_PROXY)
+#endif
 	A(L_ACCT)
 	A(L_DBG_WARN)
 	A(L_DBG_ERR)
@@ -510,6 +514,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 			goto finish;
 		}
 
+#ifdef WITH_PROXY
 		/* fill proxy vps */
 		if (request->proxy) {
 			if (!mod_populate_vps(pArgs, 4, request->proxy->vps)) {
@@ -517,10 +522,13 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 				ret = RLM_MODULE_FAIL;
 				goto finish;
 			}
-		} else {
+		} else
+#endif
+		{
 			mod_populate_vps(pArgs, 4, NULL);
 		}
 
+#ifdef WITH_PROXY
 		/* fill proxy_reply vps */
 		if (request->proxy_reply) {
 			if (!mod_populate_vps(pArgs, 5, request->proxy_reply->vps)) {
@@ -528,7 +536,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 				ret = RLM_MODULE_FAIL;
 				goto finish;
 			}
-		} else {
+		} else
+#endif
+		{
 			mod_populate_vps(pArgs, 5, NULL);
 		}
 
@@ -550,9 +560,14 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		    PyDict_SetItemString(pDictInput, "request", PyTuple_GET_ITEM(pArgs, 0)) ||
 		    PyDict_SetItemString(pDictInput, "reply", PyTuple_GET_ITEM(pArgs, 1)) ||
 		    PyDict_SetItemString(pDictInput, "config", PyTuple_GET_ITEM(pArgs, 2)) ||
-		    PyDict_SetItemString(pDictInput, "session-state", PyTuple_GET_ITEM(pArgs, 3)) ||
+		    PyDict_SetItemString(pDictInput, "session-state", PyTuple_GET_ITEM(pArgs, 3))
+#ifdef WITH_PROXY
+		    ||
 		    PyDict_SetItemString(pDictInput, "proxy-request", PyTuple_GET_ITEM(pArgs, 4)) ||
-		    PyDict_SetItemString(pDictInput, "proxy-reply", PyTuple_GET_ITEM(pArgs, 5))) {
+		    PyDict_SetItemString(pDictInput, "proxy-reply", PyTuple_GET_ITEM(pArgs, 5))
+#endif
+		    ) {
+
 			ERROR("%s:%d, %s - PyDict_SetItemString failed", __func__, __LINE__, funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
@@ -819,8 +834,10 @@ MOD_FUNC(authorize)
 MOD_FUNC(preacct)
 MOD_FUNC(accounting)
 MOD_FUNC(checksimul)
+#ifdef WITH_PROXY
 MOD_FUNC(pre_proxy)
 MOD_FUNC(post_proxy)
+#endif
 MOD_FUNC(post_auth)
 #ifdef WITH_COA
 MOD_FUNC(recv_coa)
@@ -1242,8 +1259,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PYTHON_FUNC_LOAD(preacct);
 	PYTHON_FUNC_LOAD(accounting);
 	PYTHON_FUNC_LOAD(checksimul);
+#ifdef WITH_PROXY
 	PYTHON_FUNC_LOAD(pre_proxy);
 	PYTHON_FUNC_LOAD(post_proxy);
+#endif
 	PYTHON_FUNC_LOAD(post_auth);
 #ifdef WITH_COA
 	PYTHON_FUNC_LOAD(recv_coa);
@@ -1287,8 +1306,10 @@ static int mod_detach(void *instance)
 	PYTHON_FUNC_DESTROY(preacct);
 	PYTHON_FUNC_DESTROY(accounting);
 	PYTHON_FUNC_DESTROY(checksimul);
+#ifdef WITH_PROXY
 	PYTHON_FUNC_DESTROY(pre_proxy);
 	PYTHON_FUNC_DESTROY(post_proxy);
+#endif
 	PYTHON_FUNC_DESTROY(post_auth);
 #ifdef WITH_COA
 	PYTHON_FUNC_DESTROY(recv_coa);
@@ -1354,8 +1375,10 @@ module_t rlm_python3 = {
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
 		[MOD_SESSION]		= mod_checksimul,
+#ifdef WITH_PROXY
 		[MOD_PRE_PROXY]		= mod_pre_proxy,
 		[MOD_POST_PROXY]	= mod_post_proxy,
+#endif
 		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
 		[MOD_RECV_COA]		= mod_recv_coa,
