@@ -96,7 +96,6 @@ struct fr_request_s {
 	fr_request_state_t	request_state;	//!< state for the various protocol handlers.
 
 	fr_dlist_head_t		data;		//!< Request metadata.
-	fr_dlist_t		entry;		//!< for the free list
 
 	rad_listen_t		*listener;	//!< The listener that received the request.
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
@@ -181,10 +180,6 @@ REQUEST		*request_alloc_fake(REQUEST *parent, fr_dict_t const *namespace);
 REQUEST		*request_alloc_detachable(REQUEST *request, fr_dict_t const *namespace);
 
 int		request_detach(REQUEST *fake, bool will_free);
-
-REQUEST		*request_alloc_used(fr_dlist_head_t *head, TALLOC_CTX *ctx) CC_HINT(nonnull(1));
-
-void		request_unused(fr_dlist_head_t *head, REQUEST *request) CC_HINT(nonnull);
 
 #ifdef WITH_VERIFY_PTR
 void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */

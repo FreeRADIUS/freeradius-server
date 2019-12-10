@@ -115,8 +115,6 @@ struct fr_worker_t {
 
 	size_t			talloc_pool_size; //!< for each REQUEST
 
-	fr_dlist_head_t		request_list;	//!< for re-use of free requests
-
 
 	fr_worker_heap_t	to_decode;	//!< messages from the master, to be decoded or localized
 	fr_worker_heap_t       	localized;	//!< localized messages to be decoded
@@ -533,7 +531,7 @@ finished:
 #endif
 
 	DEBUG3("freeing request");
-	request_unused(&worker->request_list, request);
+	talloc_free(request);
 }
 
 
@@ -757,14 +755,14 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		worker->num_decoded++;
 	} while (!cd);
 
-	ctx = request = request_alloc_used(&worker->request_list, NULL);
+	ctx = request = request_alloc(NULL);
 	if (!request) goto nak;
 
 	request->el = worker->el;
 	request->backlog = worker->runnable;
-	if (!request->packet) MEM(request->packet = fr_radius_alloc(request, false));
+	MEM(request->packet = fr_radius_alloc(request, false));
 	request->packet->timestamp = *cd->request.recv_time; /* Legacy - Remove once everything looks at request->async */
-	if (!request->reply) request->reply = fr_radius_alloc(request, false);
+	request->reply = fr_radius_alloc(request, false);
 	rad_assert(request->reply != NULL);
 
 	request->async = talloc_zero(request, fr_async_t);
@@ -878,7 +876,7 @@ nak:
 			RWARN("Discarding duplicate of request (%"PRIu64")", old->number);
 
 			fr_channel_null_reply(request->async->channel);
-			request_unused(&worker->request_list, request);
+			talloc_free(request);
 
 			/*
 			 *	Signal there's a dup, and ignore the
@@ -1189,12 +1187,6 @@ void fr_worker_destroy(fr_worker_t *worker)
 		worker_stop_request(worker, request, now);
 		talloc_free(request);
 	}
-
-	while ((request = fr_dlist_head(&worker->request_list)) != NULL) {
-		fr_dlist_remove(&worker->request_list, request);
-		talloc_free(request);
-	}
-
 	rad_assert(fr_heap_num_elements(worker->runnable) == 0);
 
 #if 0
@@ -1326,8 +1318,6 @@ nomem:
 		talloc_free(worker->runnable);
 		goto fail2;
 	}
-
-	fr_dlist_init(&worker->request_list, REQUEST, entry);
 
 	return worker;
 }
