@@ -1032,9 +1032,8 @@ done:
 	} else {
 		fp = fopen(output_file, "w");
 		if (!fp) {
-			fprintf(stderr, "Failed writing %s: %s\n",
-				output_file, fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fprintf(stderr, "Failed writing %s: %s\n", output_file, fr_syserror(errno));
+			goto cleanup;
 		}
 	}
 
@@ -1054,7 +1053,7 @@ done:
 			fr_pair_validate_debug(request, failed);
 			fr_perror("Output file %s does not match attributes in filter %s (%s)",
 				  output_file ? output_file : input_file, filter_file, fr_strerror());
-			EXIT_WITH_FAILURE;
+			goto cleanup;
 		}
 	}
 

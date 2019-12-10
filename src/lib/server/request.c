@@ -244,15 +244,6 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 							128				/* extra */
 							));
 		talloc_set_destructor(request, _request_free);
-
-		/*
-		 *	Bind lifetime to a parent.
-		 *
-		 *	If the parent is freed the destructor
-		 *	will fire, and return the request
-		 *	to a "top level" free list.
-		 */
-		if (ctx) talloc_link_ctx(ctx, request);
 	} else {
 		/*
 		 *	Remove from the free list, as we're
@@ -262,6 +253,15 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	}
 
 	request_init(request);
+
+	/*
+	 *	Bind lifetime to a parent.
+	 *
+	 *	If the parent is freed the destructor
+	 *	will fire, and return the request
+	 *	to a "top level" free list.
+	 */
+	if (ctx) talloc_link_ctx(ctx, request);
 
 	return request;
 }

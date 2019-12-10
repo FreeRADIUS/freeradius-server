@@ -108,8 +108,6 @@ static int _link_ctx_self_free(fr_talloc_link_t **link_p)
  *
  * @note This is not thread safe. Do not free parent before threads are joined, do not call from a
  *	child thread.
- * @note It's OK to free the child before threads are joined, but this will leak memory until the
- *	parent is freed.
  *
  * @param parent who's fate the child should share.
  * @param child bound to parent's lifecycle.
