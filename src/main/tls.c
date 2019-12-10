@@ -2074,7 +2074,7 @@ static char const *cert_attr_names[9][2] = {
 	{ "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" },
-	{ "TLS-Client-Cert-ValidSince",			"TLS-Cert-ValidSince" }
+	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" }
 };
 
 #define FR_TLS_SERIAL		(0)
@@ -2085,7 +2085,7 @@ static char const *cert_attr_names[9][2] = {
 #define FR_TLS_SAN_EMAIL       	(5)
 #define FR_TLS_SAN_DNS          (6)
 #define FR_TLS_SAN_UPN          (7)
-#define FR_TLS_VALIDSINCE	(8)
+#define FR_TLS_VALID_SINCE	(8)
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -2225,7 +2225,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
-		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_VALIDSINCE][lookup], buf, T_OP_SET);
+		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_VALID_SINCE][lookup], buf, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 

@@ -525,7 +525,7 @@ ATTRIBUTE	TLS-Cert-Common-Name			1914	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Email		1915	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Dns		1916	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Upn		1917	string
-ATTRIBUTE	TLS-Cert-ValidSince			1918	string
+ATTRIBUTE	TLS-Cert-Valid-Since			1918	string
 # 1919: reserved for future cert attribute
 ATTRIBUTE	TLS-Client-Cert-Serial			1920	string
 ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string
@@ -542,7 +542,7 @@ ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Dns	1931	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string
 ATTRIBUTE	TLS-PSK-Identity			1933	string
 ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage-OID 1936	string
-ATTRIBUTE	TLS-Client-Cert-ValidSince		1937	string
+ATTRIBUTE	TLS-Client-Cert-Valid-Since		1937	string
 
 # 1938 - 1939: reserved for future cert attributes
 
