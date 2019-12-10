@@ -1217,7 +1217,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_python_t	*inst = instance;
-	int		code = 0;
+	int		code = RLM_MODULE_OK;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -1254,12 +1254,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Call the instantiate function.
 	 */
-	code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
-	if (code < 0) {
-	error:
-		python_error_log();	/* Needs valid thread with GIL */
-		PyEval_SaveThread();
-		return -1;
+	if (inst->instantiate.function) {
+		code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
+		if (code < 0) {
+		error:
+			python_error_log();	/* Needs valid thread with GIL */
+			PyEval_SaveThread();
+			return -1;
+		}
 	}
 	PyEval_SaveThread();
 
@@ -1269,14 +1271,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 static int mod_detach(void *instance)
 {
 	rlm_python_t *inst = instance;
-	int	     ret;
+	int	     ret = RLM_MODULE_OK;
 
 	/*
 	 *	Call module destructor
 	 */
 	PyEval_RestoreThread(inst->sub_interpreter);
 
-	ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
+	if (inst->detach.function) ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
