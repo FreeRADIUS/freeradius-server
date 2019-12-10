@@ -9,6 +9,10 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  Patch from Terry Burton.
 	* Added RCNTEC dictionary. Closes #3168.
 	* Added Pica8 dictionary. Closes #3179.
+	* Add TLS-Client-Cert-Valid-Since attribute holding notBefore date.
+	  Patch from Boris Lytochkin.  Fixes #3157.
+	* Generate attributes containing unknown OIDs.
+	  See raddb/sites-available/tls.  Patch from Boris Lytochkin.
 
 	Bug fixes
 	* Set permissions of certificates in bootstrap shell script.
@@ -24,7 +28,7 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	* Fixes when building with LibreSSL. Patch from Nathan Owens.
 	* The rlm_python should append the 'python_path' paths in 'sys.path',
 	  It fixes the expected behavior to use the existing Python modules.
-      Fixes #3180
+	  Fixes #3180
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements
