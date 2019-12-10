@@ -139,6 +139,7 @@ static void _redis_io_common(fr_connection_t *conn, fr_redis_handle_t *h, bool r
 		if (fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO) < 0) {
 			PERROR("redis handle %p - De-registration failed for FD %i", h, c->fd);
 		}
+		return;
 	}
 
 	DEBUG4("redis handle %p - Registered for %s%serror events on FD %i",
@@ -149,7 +150,7 @@ static void _redis_io_common(fr_connection_t *conn, fr_redis_handle_t *h, bool r
 			       write ? _redis_io_service_writable : NULL,
 			       _redis_io_service_errored,
 			       conn) < 0) {
-		PERROR("redis handle %p - Registeration failed for %s%serror events on FD %i",
+		PERROR("redis handle %p - Registration failed for %s%serror events on FD %i",
 		       h, read ? "read+" : "", write ? "write+" : "", c->fd);
 		return;
 	}
@@ -313,8 +314,8 @@ static int _redis_handle_free(fr_redis_handle_t *h)
  */
 static fr_connection_state_t _redis_io_connection_init(void **h_out, fr_connection_t *conn, void *uctx)
 {
-	fr_redis_conf_t		*conf = talloc_get_type_abort(uctx, fr_redis_conf_t);
-	char const		*host = *conf->hostname;
+	fr_redis_io_conf_t	*conf = uctx;
+	char const		*host = conf->hostname;
 	uint16_t		port = conf->port;
 	fr_redis_handle_t	*h;
 	int			ret;
@@ -353,6 +354,13 @@ static fr_connection_state_t _redis_io_connection_init(void **h_out, fr_connecti
 	memcpy(&h->ac->data, &conn, sizeof(h->ac->data));
 
 	/*
+	 *	Handle has to be associated with the
+	 *	conn in case I/O handlers want to get
+	 *	at it.
+	 */
+	*h_out = h;
+
+	/*
 	 *	Install the I/O service functions
 	 *
 	 *	Event library must be set first
@@ -379,8 +387,6 @@ static fr_connection_state_t _redis_io_connection_init(void **h_out, fr_connecti
 		ERROR("Failed setting disconnected callback: Error %i", ret);
 		goto error;
 	}
-
-	*h_out = h;
 
 	return FR_CONNECTION_STATE_CONNECTING;
 }
@@ -411,7 +417,7 @@ static void _redis_io_connection_close(void *h, UNUSED void *uctx)
 /** Allocate an async redis I/O connection
  *
  */
-fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_conf_t const *conf)
+fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_io_conf_t const *conf)
 {
 	/*
 	 *	We don't specify an open callback

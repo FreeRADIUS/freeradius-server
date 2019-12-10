@@ -38,9 +38,20 @@ RCSIDH(redis_io_h, "$Id$")
 extern "C" {
 #endif
 
+typedef struct {
+	char			*hostname;
+	uint16_t		port;
+	uint32_t		database;	//!< number on Redis server.
+
+	char const		*password;	//!< to authenticate to Redis.
+	fr_time_delta_t		connection_timeout;
+	fr_time_delta_t		reconnection_delay;
+	char const		*log_prefix;
+} fr_redis_io_conf_t;
+
 typedef struct fr_redis_handle_s fr_redis_handle_t;
 
-fr_connection_t		*fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_conf_t const *conf);
+fr_connection_t		*fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_io_conf_t const *conf);
 
 redisAsyncContext	*fr_redis_connection_get_async_ctx(fr_connection_t *conn);
 
