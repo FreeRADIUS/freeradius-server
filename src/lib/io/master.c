@@ -921,7 +921,7 @@ static void track_free(fr_io_track_t *track)
 	fr_dlist_insert_head(&thread->track_list, track);
 	if (fr_dlist_num_elements(&thread->track_list) > 1000) {
 		track = fr_dlist_tail(&thread->track_list);
-		fr_dlist_remove(&thread->track_list, &track->entry);
+		fr_dlist_remove(&thread->track_list, track);
 		talloc_free(track);
 	}
 }
