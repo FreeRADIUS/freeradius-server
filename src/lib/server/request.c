@@ -237,7 +237,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 		MEM(request = talloc_zero_pooled_object(NULL, REQUEST,
 							1 + 				/* Stack pool */
 							UNLANG_STACK_MAX + 		/* Stack Frames */
-							3 + 				/* packets */
+							2 + 				/* packets */
 							10,				/* extra */
 							(UNLANG_FRAME_PRE_ALLOC * UNLANG_STACK_MAX) +	/* Stack memory */
 							(sizeof(RADIUS_PACKET) * 2) +	/* packets */
