@@ -32,6 +32,15 @@ RCSID("$Id$")
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 
+#if defined(HAVE_REGEX_PCRE) || (defined(HAVE_REGEX_PCRE2) && defined(PCRE2_CONFIG_JIT))
+#ifndef FR_PCRE_JIT_STACK_MIN
+#  define FR_PCRE_JIT_STACK_MIN	(128 * 1024)
+#endif
+#ifndef FR_PCRE_JIT_STACK_MAX
+#  define FR_PCRE_JIT_STACK_MAX (512 * 1024)
+#endif
+#endif
+
 /*
  *######################################
  *#      FUNCTIONS FOR LIBPCRE2        #
@@ -144,7 +153,7 @@ static int fr_pcre2_tls_init(void)
 #ifdef PCRE2_CONFIG_JIT
 	pcre2_config(PCRE2_CONFIG_JIT, &tls->do_jit);
 	if (tls->do_jit) {
-		tls->jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, tls->gcontext);
+		tls->jit_stack = pcre2_jit_stack_create(FR_PCRE_JIT_STACK_MIN, FR_PCRE_JIT_STACK_MAX, tls->gcontext);
 		if (!tls->jit_stack) {
 			fr_strerror_printf("Failed allocating JIT stack");
 			goto error;
@@ -870,7 +879,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		 *	Starts at 128K, max is 512K per thread.
 		 */
 		fr_thread_local_set_destructor(fr_pcre_jit_stack, _pcre_jit_stack_free,
-					       pcre_jit_stack_alloc(128 * 1024, 512 * 1024));
+					       pcre_jit_stack_alloc(FR_PCRE_JIT_STACK_MIN, FR_PCRE_JIT_STACK_MAX));
 		if (!fr_pcre_jit_stack) {
 			fr_strerror_printf("Allocating JIT stack failed");
 			return -1;
