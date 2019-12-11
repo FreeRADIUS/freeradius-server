@@ -1333,13 +1333,7 @@ static int mod_detach(void *instance)
 		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
 		Py_Finalize();
 		dlclose(python_dlhandle);
-
-#if PY_VERSION_HEX > 0x03050000
-		//if (inst->wide_name) PyMem_RawFree(inst->wide_name);
-		//if (inst->wide_path) PyMem_RawFree(inst->wide_path);
-#endif
 	}
-
 
 	return ret;
 }
