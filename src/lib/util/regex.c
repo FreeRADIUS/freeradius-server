@@ -819,6 +819,17 @@ static fr_table_num_ordered_t const regex_pcre_error_str[] = {
 	{ "PCRE_ERROR_RECURSIONLIMIT",	PCRE_ERROR_RECURSIONLIMIT },
 	{ "PCRE_ERROR_NULLWSLIMIT",	PCRE_ERROR_NULLWSLIMIT },
 	{ "PCRE_ERROR_BADNEWLINE",	PCRE_ERROR_BADNEWLINE },
+	{ "PCRE_ERROR_BADOFFSET",	PCRE_ERROR_BADOFFSET },
+	{ "PCRE_ERROR_SHORTUTF8",	PCRE_ERROR_SHORTUTF8 },
+	{ "PCRE_ERROR_RECURSELOOP",	PCRE_ERROR_RECURSELOOP },
+	{ "PCRE_ERROR_JIT_STACKLIMIT",	PCRE_ERROR_JIT_STACKLIMIT },
+	{ "PCRE_ERROR_BADMODE",		PCRE_ERROR_BADMODE },
+	{ "PCRE_ERROR_BADENDIANNESS",	PCRE_ERROR_BADENDIANNESS },
+	{ "PCRE_ERROR_DFA_BADRESTART",	PCRE_ERROR_DFA_BADRESTART },
+	{ "PCRE_ERROR_JIT_BADOPTION",	PCRE_ERROR_JIT_BADOPTION },
+	{ "PCRE_ERROR_BADLENGTH",	PCRE_ERROR_BADLENGTH },
+	{ "PCRE_ERROR_UNSET",		PCRE_ERROR_UNSET },
+
 	{ NULL, 0 }
 };
 static size_t regex_pcre_error_str_len = NUM_ELEMENTS(regex_pcre_error_str);
@@ -855,7 +866,11 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	 *	Allocate thread local JIT stack
 	 */
 	if (!fr_pcre_jit_stack) {
-		fr_thread_local_set_destructor(fr_pcre_jit_stack, _pcre_jit_stack_free, pcre_jit_stack_alloc(128, 512));
+		/*
+		 *	Starts at 128K, max is 512K per thread.
+		 */
+		fr_thread_local_set_destructor(fr_pcre_jit_stack, _pcre_jit_stack_free,
+					       pcre_jit_stack_alloc(128 * 1024, 512 * 1024));
 		if (!fr_pcre_jit_stack) {
 			fr_strerror_printf("Allocating JIT stack failed");
 			return -1;
