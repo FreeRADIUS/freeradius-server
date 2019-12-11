@@ -1102,20 +1102,13 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		python_dlhandle = dlopen_libpython(RTLD_NOW | RTLD_GLOBAL);
 		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table");
 
-#if PY_VERSION_HEX > 0x03050000
+#if PY_VERSION_HEX >= 0x03050000
 		{
 			wchar_t  *name;
 
 			MEM(name = Py_DecodeLocale(main_config.name, NULL));
 			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
 			PyMem_RawFree(name);
-		}
-#elif PY_VERSION_HEX > 0x0300000
-		{
-			wchar_t *name;
-
-			MEM(name = _Py_char2wchar(main_config.name, NULL));
-			Py_SetProgramName(inst->wide_name);		/* The value of argv[0] as a wide char string */
 		}
 #else
 		{
