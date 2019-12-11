@@ -454,13 +454,13 @@ void		fr_trunk_connection_signal_inactive(fr_trunk_connection_t *tconn);
 
 void		fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn);
 
-void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn);
+void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason);
 /** @} */
 
 /** @name Connection management
  * @{
  */
-void		fr_trunk_reconnect(fr_trunk_t *trunk, int state);
+void		fr_trunk_reconnect(fr_trunk_t *trunk, int state, fr_connection_reason_t reason);
 /** @} */
 
 /** @name Trunk allocation

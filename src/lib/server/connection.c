@@ -45,8 +45,9 @@ fr_table_num_ordered_t const fr_connection_states[] = {
 	{ "CONNECTING",		FR_CONNECTION_STATE_CONNECTING	},
 	{ "TIMEOUT",		FR_CONNECTION_STATE_TIMEOUT	},
 	{ "CONNECTED",		FR_CONNECTION_STATE_CONNECTED	},
-	{ "FAILED",		FR_CONNECTION_STATE_FAILED	},
+	{ "SHUTDOWN",		FR_CONNECTION_STATE_SHUTDOWN	},
 	{ "CLOSED",		FR_CONNECTION_STATE_CLOSED	},
+	{ "FAILED",		FR_CONNECTION_STATE_FAILED	},
 	{ "HALTED",		FR_CONNECTION_STATE_HALTED	},
 };
 size_t fr_connection_states_len = NUM_ELEMENTS(fr_connection_states);
@@ -88,6 +89,7 @@ struct fr_conn {
 	fr_connection_init_t	init;			//!< Callback for initialising a connection.
 	fr_connection_open_t	open;			//!< Callback for 'open' notification.
 	fr_connection_close_t	close;			//!< Callback to close a connection.
+	fr_connection_shutdown_t shutdown;		//!< Signal the connection handle to start shutting down.
 	fr_connection_failed_t	failed;			//!< Callback for 'failed' notification.
 
 	fr_event_timer_t const	*connection_timer;	//!< Timer to prevent connections going on indefinitely.
@@ -172,6 +174,7 @@ static void connection_state_closed_enter(fr_connection_t *conn);
 static void connection_state_failed_enter(fr_connection_t *conn);
 static void connection_state_timeout_enter(fr_connection_t *conn);
 static void connection_state_connected_enter(fr_connection_t *conn);
+static void connection_state_shutdown_enter(fr_connection_t *conn);
 static void connection_state_connecting_enter(fr_connection_t *conn);
 static void connection_state_halted_enter(fr_connection_t *conn);
 static void connection_state_init_enter(fr_connection_t *conn);
@@ -218,6 +221,16 @@ uint64_t fr_connection_get_id(fr_connection_t const *conn)
 	return conn->id;
 }
 
+/** Get the log_prefix, useful for debugging messages
+ *
+ * @param[in] conn	to retrieve number from.
+ * @return the log prefix set for the connection.
+ */
+char const *fr_connection_get_log_prefix(fr_connection_t const *conn)
+{
+	return conn->log_prefix;
+}
+
 /** Get the handle associated with a connection
  *
  * @param[in] conn	to retrieve fd from.
@@ -226,26 +239,6 @@ uint64_t fr_connection_get_id(fr_connection_t const *conn)
 void *fr_connection_get_handle(fr_connection_t const *conn)
 {
 	return conn->h;
-}
-
-/** Set the handle associated with a connection
- *
- * Will not free the previous handle.  This must be done manually.
- *
- * @param[in] conn	to set fd for.
- * @param[in] handle	to set.
- */
-void fr_connection_set_handle(fr_connection_t *conn, void *handle)
-{
-	conn->h = handle;
-}
-
-/** Set an (optional) callback to be called on connection timeout/failure
- *
- */
-void fr_connection_set_failed_func(fr_connection_t *conn, fr_connection_failed_t func)
-{
-	conn->failed = func;
 }
 
 /** Remove a watch function from a pre/post[state] list
@@ -350,111 +343,6 @@ void fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t s
 	connection_add_watch(conn, &conn->watch_post[state], watch, oneshot, uctx);
 }
 
-/** Close a connection if it's freed
- *
- * @param[in] conn to free.
- * @return
- *	- 0 connection was freed immediately.
- *	- 1 connection free was deferred.
- */
-static int _connection_free(fr_connection_t *conn)
-{
-	/*
-	 *	Don't allow the connection to be
-	 *	arbitrarily freed by a callback.
-	 *
-	 *	Set the deferred free flag, and
-	 *	free the connection afterwards.
-	 */
-	if (conn->in_handler) {
-		conn->deferred_free = true;
-		return 1;
-	}
-
-	switch (conn->state) {
-	case FR_CONNECTION_STATE_HALTED:
-		break;
-
-
-	/*
-	 *	Need to close the connection first
-	 */
-	case FR_CONNECTION_STATE_CONNECTING:
-	case FR_CONNECTION_STATE_CONNECTED:
-		connection_state_closed_enter(conn);
-		/* FALL-THROUGH */
-
-	default:
-		connection_state_halted_enter(conn);
-		break;
-	}
-	return 0;
-}
-
-/** Allocate a new connection
- *
- * After the connection has been allocated, it should be started with a call to #fr_connection_signal_init.
- *
- * The connection state machine can detect when the connection is open in one of two ways.
- * - You can install a generic socket open/fail callback, using fr_connection_signal_on_fd.
- * - You can call either #fr_connection_signal_connected or fr_connection_signal_recommend.
- *   This allows the connection state machine to work with more difficult library APIs,
- *   which may not return control to the caller as connections are opened.
- *
- * @param[in] ctx		to allocate connection handle in.  If the connection
- *				handle is freed, and the #fr_connection_state_t is
- *				#FR_CONNECTION_STATE_CONNECTING or #FR_CONNECTION_STATE_CONNECTED the
- *				close callback will be called.
- * @param[in] el		to use for timer events, and to pass to the #fr_connection_open_t callback.
- * @param[in] connection_timeout	(optional) how long to wait for a connection to open.
- * @param[in] reconnection_delay	How long to wait on connection failure before retrying.
- * @param[in] init		(optional) callback to initialise a new file descriptor.
- * @param[in] open		(optional) callback to receive notifications that the connection is open.
- * @param[in] close		(optional) Callback to close the connection.
- * @param[in] log_prefix	To prepend to log messages.
- * @param[in] uctx		User context to pass to callbacks.
- * @return
- *	- A new #fr_connection_t on success.
- *	- NULL on failure.
- */
-fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-				     fr_time_delta_t connection_timeout,
-				     fr_time_delta_t reconnection_delay,
-				     fr_connection_init_t init, fr_connection_open_t open, fr_connection_close_t close,
-				     char const *log_prefix,
-				     void const *uctx)
-{
-	size_t i;
-	fr_connection_t *conn;
-
-	rad_assert(el);
-
-	conn = talloc_zero(ctx, fr_connection_t);
-	if (!conn) return NULL;
-	talloc_set_destructor(conn, _connection_free);
-
-	conn->id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed);
-	conn->state = FR_CONNECTION_STATE_HALTED;
-	conn->el = el;
-	conn->h = NULL;
-	conn->reconnection_delay = reconnection_delay;
-	conn->connection_timeout = connection_timeout;
-	conn->init = init;
-	conn->open = open;
-	conn->close = close;
-	conn->log_prefix = talloc_typed_strdup(conn, log_prefix);
-	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
-
-	for (i = 0; i < NUM_ELEMENTS(conn->watch_pre); i++) {
-		fr_dlist_talloc_init(&conn->watch_pre[i], fr_connection_watch_entry_t, list);
-	}
-	for (i = 0; i < NUM_ELEMENTS(conn->watch_post); i++) {
-		fr_dlist_talloc_init(&conn->watch_post[i], fr_connection_watch_entry_t, list);
-	}
-
-	return conn;
-}
-
 /** The requisite period of time has passed, try and re-open the connection
  *
  * @param[in] el	the time event ocurred on.
@@ -496,14 +384,70 @@ static void connection_state_closed_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	if (conn->close && !conn->is_closed) {
 		HANDLER_BEGIN(conn);
-		DEBUG4("Calling close(h=%p, uctx=%p)", conn->h, conn->uctx);
-		conn->close(conn->h, conn->uctx);
+		DEBUG4("Calling close(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
+		conn->close(conn->el, conn->h, conn->uctx);
 		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
 		HANDLER_END(conn);
 	} else {
 		conn->is_closed = true;
 	}
 	WATCH_POST(conn);
+}
+
+/** Connection timeout
+ *
+ * Connection wasn't opened within the configured period of time
+ *
+ * @param[in] el	the time event ocurred on.
+ * @param[in] now	The current time.
+ * @param[in] uctx	The #fr_connection_t the fd is associated with.
+ */
+static void _connection_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
+
+	connection_state_timeout_enter(conn);
+}
+
+/** Gracefully shutdown the handle
+ *
+ */
+static void connection_state_shutdown_enter(fr_connection_t *conn)
+{
+	switch (conn->state) {
+	case FR_CONNECTION_STATE_CONNECTED:
+		break;
+
+	default:
+		rad_assert(0);
+		return;
+	}
+
+	STATE_TRANSITION(FR_CONNECTION_STATE_SHUTDOWN);
+
+	WATCH_PRE(conn);
+	HANDLER_BEGIN(conn);
+	DEBUG4("Calling shutdown(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
+	conn->shutdown(conn->el, conn->h, conn->uctx);
+	HANDLER_END(conn);
+	WATCH_POST(conn);
+
+	/*
+	 *	If there's a connection timeout,
+	 *	set, then add the timer.
+	 *
+	 *	The connection may be bad, in which
+	 *	case we want to automatically fail
+	 *	if it doesn't shutdown within the
+	 *	timeout period.
+	 */
+	if (conn->connection_timeout) {
+		if (fr_event_timer_in(conn, conn->el, &conn->connection_timer,
+				      conn->connection_timeout, _connection_timeout, conn) < 0) {
+			PERROR("Failed inserting connection timeout event");
+			rad_assert(0);
+		}
+	}
 }
 
 /** Connection failed
@@ -633,7 +577,14 @@ static void connection_state_failed_enter(fr_connection_t *conn)
  */
 static void connection_state_timeout_enter(fr_connection_t *conn)
 {
-	rad_assert(conn->state == FR_CONNECTION_STATE_CONNECTING);
+	switch (conn->state) {
+	case FR_CONNECTION_STATE_CONNECTING:
+	case FR_CONNECTION_STATE_SHUTDOWN:
+		break;
+
+	default:
+		rad_assert(0);
+	}
 
 	ERROR("Connection failed - timed out after %pVs", fr_box_time_delta(conn->connection_timeout));
 
@@ -707,21 +658,6 @@ static void connection_state_connected_enter(fr_connection_t *conn)
 		connection_state_failed_enter(conn);
 		return;
 	}
-}
-
-/** Connection timeout
- *
- * Connection wasn't opened within the configured period of time
- *
- * @param[in] el	the time event ocurred on.
- * @param[in] now	The current time.
- * @param[in] uctx	The #fr_connection_t the fd is associated with.
- */
-static void _connection_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
-{
-	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
-
-	connection_state_timeout_enter(conn);
 }
 
 /** Enter the connecting state
@@ -872,8 +808,9 @@ void fr_connection_signal_connected(fr_connection_t *conn)
  * and should be reconnected.
  *
  * @param[in] conn		to reconnect.
+ * @param[in] reason		Why the connection was signalled to reconnect.
  */
-void fr_connection_signal_reconnect(fr_connection_t *conn)
+void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_t reason)
 {
 	DEBUG2("Signalled to reconnect");
 
@@ -886,8 +823,16 @@ void fr_connection_signal_reconnect(fr_connection_t *conn)
 		fr_connection_signal_init(conn);
 		return;
 
-	case FR_CONNECTION_STATE_CONNECTING:
+	case FR_CONNECTION_STATE_SHUTDOWN:
+		if (reason == FR_CONNECTION_EXPIRED) return;
+		connection_state_failed_enter(conn);
+		break;
+
 	case FR_CONNECTION_STATE_CONNECTED:
+		if ((reason == FR_CONNECTION_EXPIRED) && conn->shutdown) connection_state_shutdown_enter(conn);
+		/* FALL-THROUGH */
+
+	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_TIMEOUT:
 	case FR_CONNECTION_STATE_CLOSED:
 		connection_state_failed_enter(conn);
@@ -1005,4 +950,137 @@ int fr_connection_signal_on_fd(fr_connection_t *conn, int fd)
 	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_CONNECTED,
 				    _connection_signal_on_fd_cleanup, true, fd_s);
 	return 0;
+}
+
+/** Set the handle associated with a connection
+ *
+ * Will not free the previous handle.  This must be done manually.
+ *
+ * @param[in] conn	to set fd for.
+ * @param[in] handle	to set.
+ */
+void fr_connection_set_handle(fr_connection_t *conn, void *handle)
+{
+	conn->h = handle;
+}
+
+/** Set an (optional) callback to be called on connection timeout/failure
+ *
+ */
+void fr_connection_set_failed_func(fr_connection_t *conn, fr_connection_failed_t func)
+{
+	conn->failed = func;
+}
+
+/** Set an (optional) callback to trigger a graceful shutdown
+ *
+ */
+void fr_connection_set_shutdown_func(fr_connection_t *conn, fr_connection_shutdown_t func)
+{
+	conn->shutdown = func;
+}
+
+/** Close a connection if it's freed
+ *
+ * @param[in] conn to free.
+ * @return
+ *	- 0 connection was freed immediately.
+ *	- 1 connection free was deferred.
+ */
+static int _connection_free(fr_connection_t *conn)
+{
+	/*
+	 *	Don't allow the connection to be
+	 *	arbitrarily freed by a callback.
+	 *
+	 *	Set the deferred free flag, and
+	 *	free the connection afterwards.
+	 */
+	if (conn->in_handler) {
+		conn->deferred_free = true;
+		return 1;
+	}
+
+	switch (conn->state) {
+	case FR_CONNECTION_STATE_HALTED:
+		break;
+
+
+	/*
+	 *	Need to close the connection first
+	 */
+	case FR_CONNECTION_STATE_CONNECTING:
+	case FR_CONNECTION_STATE_CONNECTED:
+		connection_state_closed_enter(conn);
+		/* FALL-THROUGH */
+
+	default:
+		connection_state_halted_enter(conn);
+		break;
+	}
+	return 0;
+}
+
+/** Allocate a new connection
+ *
+ * After the connection has been allocated, it should be started with a call to #fr_connection_signal_init.
+ *
+ * The connection state machine can detect when the connection is open in one of two ways.
+ * - You can install a generic socket open/fail callback, using fr_connection_signal_on_fd.
+ * - You can call either #fr_connection_signal_connected or fr_connection_signal_recommend.
+ *   This allows the connection state machine to work with more difficult library APIs,
+ *   which may not return control to the caller as connections are opened.
+ *
+ * @param[in] ctx		to allocate connection handle in.  If the connection
+ *				handle is freed, and the #fr_connection_state_t is
+ *				#FR_CONNECTION_STATE_CONNECTING or #FR_CONNECTION_STATE_CONNECTED the
+ *				close callback will be called.
+ * @param[in] el		to use for timer events, and to pass to the #fr_connection_open_t callback.
+ * @param[in] connection_timeout	(optional) how long to wait for a connection to open.
+ * @param[in] reconnection_delay	How long to wait on connection failure before retrying.
+ * @param[in] init		(optional) callback to initialise a new file descriptor.
+ * @param[in] open		(optional) callback to receive notifications that the connection is open.
+ * @param[in] close		(optional) Callback to close the connection.
+ * @param[in] log_prefix	To prepend to log messages.
+ * @param[in] uctx		User context to pass to callbacks.
+ * @return
+ *	- A new #fr_connection_t on success.
+ *	- NULL on failure.
+ */
+fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+				     fr_time_delta_t connection_timeout,
+				     fr_time_delta_t reconnection_delay,
+				     fr_connection_init_t init, fr_connection_open_t open, fr_connection_close_t close,
+				     char const *log_prefix,
+				     void const *uctx)
+{
+	size_t i;
+	fr_connection_t *conn;
+
+	rad_assert(el);
+
+	conn = talloc_zero(ctx, fr_connection_t);
+	if (!conn) return NULL;
+	talloc_set_destructor(conn, _connection_free);
+
+	conn->id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed);
+	conn->state = FR_CONNECTION_STATE_HALTED;
+	conn->el = el;
+	conn->h = NULL;
+	conn->reconnection_delay = reconnection_delay;
+	conn->connection_timeout = connection_timeout;
+	conn->init = init;
+	conn->open = open;
+	conn->close = close;
+	conn->log_prefix = talloc_typed_strdup(conn, log_prefix);
+	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
+
+	for (i = 0; i < NUM_ELEMENTS(conn->watch_pre); i++) {
+		fr_dlist_talloc_init(&conn->watch_pre[i], fr_connection_watch_entry_t, list);
+	}
+	for (i = 0; i < NUM_ELEMENTS(conn->watch_post); i++) {
+		fr_dlist_talloc_init(&conn->watch_post[i], fr_connection_watch_entry_t, list);
+	}
+
+	return conn;
 }

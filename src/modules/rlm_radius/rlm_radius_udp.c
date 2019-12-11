@@ -453,7 +453,7 @@ static void fd_idle(fr_io_connection_t *c)
 			       conn_error,
 			       c) < 0) {
 		PERROR("Failed inserting FD event");
-		fr_connection_signal_reconnect(c->conn);
+		fr_connection_signal_reconnect(c->conn, FR_CONNECTION_FAILED);
 	}
 }
 
@@ -482,7 +482,7 @@ static void fd_active(fr_io_connection_t *c)
 		/*
 		 *	May free the connection!
 		 */
-		fr_connection_signal_reconnect(c->conn);
+		fr_connection_signal_reconnect(c->conn, FR_CONNECTION_FAILED);
 	}
 }
 
@@ -498,14 +498,14 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	/*
 	 *	Something bad happened... Fix it...
 	 */
-	fr_connection_signal_reconnect(c->conn);
+	fr_connection_signal_reconnect(c->conn, FR_CONNECTION_FAILED);
 }
 
 
 /** Shutdown/close a file descriptor
  *
  */
-static void _conn_close(void *h, void *uctx)
+static void _conn_close(UNUSED fr_event_list_t *el, void *h, void *uctx)
 {
 	int fd = *((int *)h);
 	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);

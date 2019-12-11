@@ -219,7 +219,7 @@ static void _logtee_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int 
 	/*
 	 *	Something bad happened... Fix it...
 	 */
-	fr_connection_signal_reconnect(t->conn);
+	fr_connection_signal_reconnect(t->conn, FR_CONNECTION_FAILED);
 }
 
 /** Drain any data we received
@@ -244,7 +244,7 @@ static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, UNUSED int f
 		case ETIMEDOUT:
 		case EIO:
 		case ENXIO:
-			fr_connection_signal_reconnect(t->conn);
+			fr_connection_signal_reconnect(t->conn, FR_CONNECTION_FAILED);
 			return;
 
 		/*
@@ -289,7 +289,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 			case ENXIO:
 			case EPIPE:
 			case ENETDOWN:
-				fr_connection_signal_reconnect(t->conn);
+				fr_connection_signal_reconnect(t->conn, FR_CONNECTION_FAILED);
 				return;
 
 			/*
@@ -351,7 +351,7 @@ static void logtee_fd_active(rlm_logtee_thread_t *t)
 /** Shutdown/close a file descriptor
  *
  */
-static void _logtee_conn_close(void *h, UNUSED void *uctx)
+static void _logtee_conn_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
 	int	fd = *((int *)h);
 

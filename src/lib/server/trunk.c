@@ -203,6 +203,8 @@ struct fr_trunk_connection_s {
 							///< the number of requests associated with it
 							///< falls below max_req_per_conn.
 
+	bool			free_on_close;		//!< When the connection closes, free it.
+
 	bool			freeing;		//!< Conn is being freed, cancel_sent state should
 							///< be skipped.
 	/** @} */
@@ -2278,6 +2280,40 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
 	fr_dlist_insert_head(&trunk->connecting, tconn);	/* MUST remain a head insertion for reconnect logic */
 }
 
+/** Connection transitioned to the shutdown state
+ *
+ * If we're not already in the draining-to-free state, transition there now.
+ *
+ * The idea is that if something signalled the connection to shutdown, we need
+ * to reflect that by dequeuing any pending requests, not accepting new ones,
+ * and waiting for the existing requests to complete.
+ *
+ * @note This function is only called from the connection API as a watcher.
+ *
+ * @param[in] conn	The connection which changes state.
+ * @param[in] state	The connection is now in.
+ * @param[in] uctx	The fr_trunk_connection_t wrapping the connection.
+ */
+static void _trunk_connection_on_shutdown(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
+	switch (tconn->state) {
+	case FR_TRUNK_CONN_DRAINING_TO_FREE:	/* Do Nothing */
+		return;
+
+	case FR_TRUNK_CONN_ACTIVE:		/* Transition to draining-to-free */
+	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_DRAINING:
+		break;
+
+	default:
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING_TO_FREE);
+	}
+
+	trunk_connection_enter_draining_to_free(tconn);
+}
+
 /** Trigger a reconnection of the trunk connection
  *
  * @param[in] el	Event list the timer was inserted into.
@@ -2288,7 +2324,7 @@ static void  _trunk_connection_lifetime_expire(UNUSED fr_event_list_t *el, UNUSE
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 
-	fr_trunk_connection_signal_reconnect(tconn);
+	trunk_connection_enter_draining_to_free(tconn);
 }
 
 /** Connection transitioned to the connected state
@@ -2415,6 +2451,20 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	Remove the reconnect event
 	 */
 	if (trunk->conf->lifetime > 0) fr_event_timer_delete(trunk->el, &tconn->lifetime_ev);
+}
+
+/** Give the trunk API an opportunity to free the connection if it closes
+ *
+ */
+static void _trunk_connection_on_closed_post(UNUSED fr_connection_t *conn,
+					     UNUSED fr_connection_state_t state, UNUSED void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
+	/*
+	 *	Something wanted the connection freed when it finally closed...
+	 */
+	if (tconn->free_on_close) talloc_free(tconn);
 }
 
 /** Connection failed to connect before it was connected
@@ -2613,6 +2663,12 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	fr_connection_add_watch_pre(tconn->conn, FR_CONNECTION_STATE_CLOSED,
 				    _trunk_connection_on_closed, false, tconn);		/* Before close() has been called */
 
+	fr_connection_add_watch_post(tconn->conn, FR_CONNECTION_STATE_CLOSED,
+				     _trunk_connection_on_closed_post, false, tconn);	/* After close() has been called */
+
+	fr_connection_add_watch_post(tconn->conn, FR_CONNECTION_STATE_SHUTDOWN,		/* After shutdown() has been called */
+				     _trunk_connection_on_shutdown, false, tconn);
+
 	fr_connection_add_watch_pre(tconn->conn, FR_CONNECTION_STATE_FAILED,
 				    _trunk_connection_on_failed, false, tconn);
 
@@ -2785,9 +2841,9 @@ void fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn)
  *
  * @param[in] tconn to signal.
  */
-void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn)
+void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason)
 {
-	fr_connection_signal_reconnect(tconn->conn);
+	fr_connection_signal_reconnect(tconn->conn, reason);
 }
 
 /** Rebalance connections across active trunk members when a new connection becomes active
@@ -3069,7 +3125,14 @@ done:
 			fr_trunk_connection_t *prev;
 
 			prev = fr_dlist_prev(&trunk->draining, tconn);
-			talloc_free(tconn);
+
+			/*
+			 *	Close the connection as gracefully
+			 *	as possible, by invoking its shutdown
+			 *	method.
+			 */
+			fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_EXPIRED);
+			tconn->free_on_close = true;
 			tconn = prev;
 		}
 	}
@@ -3082,8 +3145,14 @@ done:
 		if (fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) == 0) {
 			fr_trunk_connection_t *prev;
 
+			/*
+			 *	Close the connection as gracefully
+			 *	as possible, by invoking its shutdown
+			 *	method.
+			 */
 			prev = fr_dlist_prev(&trunk->draining_to_free, tconn);
-			talloc_free(tconn);
+			fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_EXPIRED);
+			tconn->free_on_close = true;
 			tconn = prev;
 		}
 	}
@@ -3303,8 +3372,9 @@ static void trunk_backlog_drain(fr_trunk_t *trunk)
  *
  * @param[in] trunk		to signal.
  * @param[in] states		One or more states or'd together.
+ * @param[in] reason		Why the connections are being signalled to reconnect.
  */
-void fr_trunk_reconnect(fr_trunk_t *trunk, int states)
+void fr_trunk_reconnect(fr_trunk_t *trunk, int states, fr_connection_reason_t reason)
 {
 	size_t i;
 
@@ -3321,7 +3391,7 @@ void fr_trunk_reconnect(fr_trunk_t *trunk, int states)
 	 	 *	the head so this should be ok.
 		 */
 		for (i = fr_dlist_num_elements(&trunk->connecting); i > 0; i--) {
-			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->connecting))->conn);
+			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->connecting))->conn, reason);
 		}
 	}
 
@@ -3329,31 +3399,31 @@ void fr_trunk_reconnect(fr_trunk_t *trunk, int states)
 		fr_trunk_connection_t *tconn;
 
 		while ((tconn = fr_heap_peek(trunk->active))) {
-			fr_connection_signal_reconnect(tconn->conn);
+			fr_connection_signal_reconnect(tconn->conn, reason);
 		}
 	}
 
 	if (states & FR_TRUNK_CONN_INACTIVE) {
 		for (i = fr_dlist_num_elements(&trunk->inactive); i > 0; i--) {
-			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->inactive))->conn);
+			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->inactive))->conn, reason);
 		}
 	}
 
 	if (states & FR_TRUNK_CONN_CLOSED) {
 		for (i = fr_dlist_num_elements(&trunk->failed); i > 0; i--) {
-			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->failed))->conn);
+			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->failed))->conn, reason);
 		}
 	}
 
 	if (states & FR_TRUNK_CONN_DRAINING) {
 		for (i = fr_dlist_num_elements(&trunk->draining); i > 0; i--) {
-			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->draining))->conn);
+			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->draining))->conn, reason);
 		}
 	}
 
 	if (states & FR_TRUNK_CONN_DRAINING_TO_FREE) {
 		for (i = fr_dlist_num_elements(&trunk->draining_to_free); i > 0; i--) {
-			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->draining_to_free))->conn);
+			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->draining_to_free))->conn, reason);
 		}
 	}
 }

@@ -138,7 +138,7 @@ static void _conn_io_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int
 
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 
-	fr_trunk_connection_signal_reconnect(tconn);
+	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 }
 
 static void _conn_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
@@ -264,7 +264,7 @@ static void _conn_io_loopback(fr_event_list_t *el, int fd, int flags, void *uctx
 	}
 }
 
-static void _conn_close(void *h, UNUSED void *uctx)
+static void _conn_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
 	int *our_h = talloc_get_type_abort(h, int);
 
@@ -552,7 +552,7 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	/*
 	 *	Trigger reconnection
 	 */
-	fr_connection_signal_reconnect(tconn->conn);
+	fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_FAILED);
 	test_time_base += NSEC * 0.5;
 
 	events = fr_event_corral(el, test_time_base, false);
@@ -1053,7 +1053,7 @@ static void test_requeue_on_reconnect(void)
 	tconn = treq->tconn;	/* Store the conn the request was assigned to */
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
 
-	fr_trunk_connection_signal_reconnect(tconn);
+	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 
 	/*
 	 *	Should be reassigned to the other connection
@@ -1064,7 +1064,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Should be reassigned to the backlog
 	 */
-	fr_trunk_connection_signal_reconnect(treq->tconn);
+	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_BACKLOG) == 1);
 	TEST_CHECK(!treq->tconn);
 
@@ -1095,7 +1095,7 @@ static void test_requeue_on_reconnect(void)
 	 *	then be re-assigned.
 	 */
 	tconn = treq->tconn;
-	fr_trunk_connection_signal_reconnect(treq->tconn);
+	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);
@@ -1118,7 +1118,7 @@ static void test_requeue_on_reconnect(void)
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_SENT) == 1);
 
 	tconn = treq->tconn;
-	fr_trunk_connection_signal_reconnect(treq->tconn);
+	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
 
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
 
@@ -1150,7 +1150,7 @@ static void test_requeue_on_reconnect(void)
 	 *	freed instead of being moved between
 	 *	connections.
 	 */
-	fr_trunk_connection_signal_reconnect(treq->tconn);
+	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);
@@ -1201,7 +1201,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Trigger a reconnection
 	 */
-	fr_trunk_connection_signal_reconnect(treq->tconn);
+	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);
@@ -1251,7 +1251,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Trigger a reconnection
 	 */
-	fr_trunk_connection_signal_reconnect(treq->tconn);
+	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);

@@ -43,10 +43,19 @@ typedef enum {
 	FR_CONNECTION_STATE_CONNECTING,		//!< Waiting for connection to establish.
 	FR_CONNECTION_STATE_TIMEOUT,		//!< Timeout during #FR_CONNECTION_STATE_CONNECTING.
 	FR_CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
+	FR_CONNECTION_STATE_SHUTDOWN,		//!< Connection is shutting down.
 	FR_CONNECTION_STATE_CLOSED,		//!< Connection has been closed.
 	FR_CONNECTION_STATE_FAILED,		//!< Connection failed and is waiting to reconnect.
 	FR_CONNECTION_STATE_MAX
 } fr_connection_state_t;
+
+typedef enum {
+	FR_CONNECTION_FAILED = 0,		//!< Connection is being reconnected because it failed.
+	FR_CONNECTION_EXPIRED 			//!< Connection is being reconnected because it's at
+						///< the end of its life.  In this case we enter the
+						///< closing state and try and close the connection
+						///< gracefully.
+} fr_connection_reason_t;
 
 extern fr_table_num_ordered_t const fr_connection_states[];
 extern size_t fr_connection_states_len;
@@ -81,6 +90,25 @@ typedef fr_connection_state_t (*fr_connection_init_t)(void **h_out, fr_connectio
  */
 typedef fr_connection_state_t (*fr_connection_open_t)(fr_event_list_t *el, void *h, void *uctx);
 
+/** Start the process of gracefully shutting down the connection
+ *
+ * This function is called when the connection is signalled to gracefully
+ * disconnect.  It should place the connection in a state where pending
+ * I/O operations complete, and buffers are flushed.
+ *
+ * After all pending events are complete, the connection should be signalled
+ * that the handle is in the closed state.
+ *
+ * @param[in] el	to use for inserting I/O events.
+ * @param[in] h		Handle that needs to be closed.
+ * @param[in] uctx	User context.
+ * @return
+ *	- #FR_CONNECTION_STATE_CLOSING		if the handle is shutting down.
+ *	- #FR_CONNECTION_STATE_FAILED		if the handle is unusable, and we
+ *						should just transition directly to failed.
+ */
+typedef fr_connection_state_t (*fr_connection_shutdown_t)(fr_event_list_t *el, void *h, void *uctx);
+
 /** Notification that a connection attempt has failed
  *
  * @note If the callback frees the connection, it must return #FR_CONNECTION_STATE_HALTED.
@@ -107,10 +135,11 @@ typedef fr_connection_state_t (*fr_connection_failed_t)(void *h, fr_connection_s
  * If this callback does not close the file descriptor, the server will leak
  * file descriptors.
  *
+ * @param[in] el	to use for inserting I/O events.
  * @param[in] h		Handle to close.
  * @param[in] uctx	User context.
  */
-typedef void (*fr_connection_close_t)(void *h, void *uctx);
+typedef void (*fr_connection_close_t)(fr_event_list_t *el, void *h, void *uctx);
 
 /** Receive a notification when a connection enters a particular state
  *
@@ -123,41 +152,90 @@ typedef void (*fr_connection_close_t)(void *h, void *uctx);
  */
 typedef void(*fr_connection_watch_t)(fr_connection_t *conn, fr_connection_state_t state, void *uctx);
 
+/** @name Statistics
+ * @{
+ */
 uint64_t		fr_connection_get_num_reconnected(fr_connection_t const *conn);
 
 uint64_t		fr_connection_get_num_timed_out(fr_connection_t const *conn);
+/** @} */
 
+/** @name Retrieve read only values from the connection
+ * @{
+ */
 fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
 
 uint64_t 		fr_connection_get_id(fr_connection_t const *conn);
 
+char const		*fr_connection_get_log_prefix(fr_connection_t const *conn);
+
 void			*fr_connection_get_handle(fr_connection_t const *conn);
-void			fr_connection_set_handle(fr_connection_t *conn, void *handle);
+/** @} */
 
-void			fr_connection_set_failed_func(fr_connection_t *conn, fr_connection_failed_t func);
-
+/** @name Add watcher functions that get called before (pre) the state callback and after (post)
+ * @{
+ */
 void			fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
 						    fr_connection_watch_t watch, bool oneshot, void const *uctx);
+
 void			fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
 						     fr_connection_watch_t watch, bool oneshot, void const *uctx);
 
 int			fr_connection_del_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
 						    fr_connection_watch_t watch);
+
 int			fr_connection_del_watch_post(fr_connection_t *conn, fr_connection_state_t state,
 						     fr_connection_watch_t watch);
+/** @} */
 
+/** @name Signal the connection to change states
+ * @{
+ */
+void			fr_connection_signal_init(fr_connection_t *conn);
+
+void			fr_connection_signal_connected(fr_connection_t *conn);
+
+void			fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_t reason);
+/** @} */
+
+/** @name Install generic I/O events on an FD to signal state changes
+ * @{
+ */
+int			fr_connection_signal_on_fd(fr_connection_t *conn, int fd);
+/** @} */
+
+/** @name Modify the connection handle
+ * @{
+ */
+void			fr_connection_set_handle(fr_connection_t *conn, void *handle);
+/** @} */
+
+/** @name Set a callback for additional states
+ *
+ * These are not needed for every connection.
+ * - Failed is needed if you want to deal with failure conditions specifically.
+ *   Otherwise most of the same work can be done in close().
+ * - Shutdown is needed if the API you're working with supports graceful
+ *   shutdown, or if you're working with raw TCP connections and need to call
+ *   shutdown().
+ * @{
+ */
+void			fr_connection_set_failed_func(fr_connection_t *conn, fr_connection_failed_t func);
+
+void			fr_connection_set_shutdown_func(fr_connection_t *conn, fr_connection_shutdown_t func);
+/** @} */
+
+/** @name Allocate a new connection
+ * @{
+ */
 fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					     fr_time_delta_t connection_timeout,
 					     fr_time_delta_t reconnection_delay,
 					     fr_connection_init_t init, fr_connection_open_t open,
 					     fr_connection_close_t close,
 					     char const *log_prefix, void const *uctx);
+/** @} */
 
-void			fr_connection_signal_init(fr_connection_t *conn);
-void			fr_connection_signal_connected(fr_connection_t *conn);
-void			fr_connection_signal_reconnect(fr_connection_t *conn);
-
-int			fr_connection_signal_on_fd(fr_connection_t *conn, int fd);
 #ifdef __cplusplus
 }
 #endif
