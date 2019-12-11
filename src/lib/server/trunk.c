@@ -609,6 +609,15 @@ do { \
 	tconn->partial = NULL; \
 } while (0)
 
+/** Remove the current request from the sent list
+ *
+ */
+#define REQUEST_EXTRACT_SENT(_treq) fr_dlist_remove(&tconn->sent, treq);
+
+/** Remove the current request from the cancel list
+ *
+ */
+#define REQUEST_EXTRACT_CANCEL(_treq) fr_dlist_remove(&tconn->cancel, treq);
 
 /** Remove the current request from the cancel_partial slot
  *
@@ -619,6 +628,10 @@ do { \
 	tconn->cancel_partial = NULL; \
 } while (0)
 
+/** Remove the current request from the cancel sent list
+ *
+ */
+#define REQUEST_EXTRACT_CANCEL_SENT(_treq) fr_dlist_remove(&tconn->cancel_sent, treq);
 
 /** Reorder the connections in the active heap
  *
@@ -696,11 +709,11 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 		break;
 
 	case FR_TRUNK_REQUEST_SENT:
-		fr_dlist_remove(&tconn->sent, treq);
+		REQUEST_EXTRACT_SENT(treq);
 		break;
 
 	case FR_TRUNK_REQUEST_CANCEL:
-		fr_dlist_remove(&tconn->cancel, treq);
+		REQUEST_EXTRACT_CANCEL(treq);
 		break;
 
 	case FR_TRUNK_REQUEST_CANCEL_PARTIAL:
@@ -708,7 +721,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 		break;
 
 	case FR_TRUNK_REQUEST_CANCEL_SENT:
-		fr_dlist_remove(&tconn->cancel_sent, treq);
+		REQUEST_EXTRACT_CANCEL_SENT(treq);
 		break;
 
 	default:
@@ -789,7 +802,7 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq)
 		break;
 
 	case FR_TRUNK_REQUEST_CANCEL:
-		fr_dlist_remove(&tconn->cancel, treq);
+		REQUEST_EXTRACT_CANCEL(treq);
 		break;
 
 	default:
@@ -848,7 +861,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 		break;
 
 	case FR_TRUNK_REQUEST_CANCEL:	/* Moved from another connection */
-		fr_dlist_remove(&tconn->cancel, treq);
+		REQUEST_EXTRACT_CANCEL(treq);
 		break;
 
 	default:
@@ -989,7 +1002,7 @@ static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel
 		break;
 
 	case FR_TRUNK_REQUEST_SENT:
-		fr_dlist_remove(&tconn->sent, treq);
+		REQUEST_EXTRACT_SENT(treq);
 		break;
 
 	default:
@@ -1034,7 +1047,7 @@ static void trunk_request_enter_cancel_partial(fr_trunk_request_t *treq)
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_CANCEL:	/* The only valid state cancel_sent can be reached from */
-		fr_dlist_remove(&tconn->cancel, treq);
+		REQUEST_EXTRACT_CANCEL(treq);
 		break;
 
 	default:
@@ -1069,7 +1082,7 @@ static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq)
 		break;
 
 	case FR_TRUNK_REQUEST_CANCEL:
-		fr_dlist_remove(&tconn->cancel, treq);
+		REQUEST_EXTRACT_CANCEL(treq);
 		break;
 
 	default:
@@ -1104,7 +1117,7 @@ static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq)
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_CANCEL_SENT:
-		fr_dlist_remove(&tconn->cancel_sent, treq);
+		REQUEST_EXTRACT_CANCEL_SENT(treq);
 		break;
 
 	default:
