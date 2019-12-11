@@ -312,7 +312,7 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
  * @param[in] h		to close.
  * @param[in] uctx	Connection config and handle.
  */
-static void _ldap_connection_close(void *h, UNUSED void *uctx)
+static void _ldap_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
 	talloc_free(h);
 }
