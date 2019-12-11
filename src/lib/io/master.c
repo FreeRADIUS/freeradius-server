@@ -407,6 +407,7 @@ static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED size_t
 static int _client_free(fr_io_client_t *client)
 {
 	if (client->pending) TALLOC_FREE(client->pending);
+	if (client->radclient) TALLOC_FREE(client->radclient);
 
 	return 0;
 }
