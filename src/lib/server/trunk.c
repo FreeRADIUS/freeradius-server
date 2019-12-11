@@ -119,7 +119,7 @@ struct fr_trunk_request_s {
 
 	int32_t			heap_id;		//!< Used to track the request conn->pending heap.
 
-	fr_dlist_t		list;			//!< Used to track the trunk request in the conn->sent
+	fr_dlist_t		entry;			//!< Used to track the trunk request in the conn->sent
 							///< or trunk->backlog request.
 
 	fr_trunk_request_state_t state;			//!< Which list the request is now located in.
@@ -177,7 +177,7 @@ struct fr_trunk_connection_s {
 	int32_t			heap_id;		//!< Used to track the connection in the connected
 							///< heap.
 
-	fr_dlist_t		list;			//!< Used to track the connection in the connecting,
+	fr_dlist_t		entry;			//!< Used to track the connection in the connecting,
 							///< full and failed lists.
 
 	/** @name Handles
@@ -1392,7 +1392,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 
 	if (max == 0) max = UINT64_MAX;
 
-	fr_dlist_talloc_init(&to_process, fr_trunk_request_t, list);
+	fr_dlist_talloc_init(&to_process, fr_trunk_request_t, entry);
 
 	/*
 	 *	Remove non-cancelled requests from the connection
@@ -2592,7 +2592,7 @@ static int _trunk_connection_free(fr_trunk_connection_t *tconn)
 		fr_dlist_head_t	to_fail;
 		fr_trunk_request_t *treq = NULL;
 
-		fr_dlist_talloc_init(&to_fail, fr_trunk_request_t, list);
+		fr_dlist_talloc_init(&to_fail, fr_trunk_request_t, entry);
 
 		/*
 		 *	Remove requests from this connection
@@ -2642,9 +2642,9 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 
 	MEM(tconn->pending = fr_heap_talloc_create(tconn, trunk->funcs.request_prioritise,
 						   fr_trunk_request_t, heap_id));
-	fr_dlist_talloc_init(&tconn->sent, fr_trunk_request_t, list);
-	fr_dlist_talloc_init(&tconn->cancel, fr_trunk_request_t, list);
-	fr_dlist_talloc_init(&tconn->cancel_sent, fr_trunk_request_t, list);
+	fr_dlist_talloc_init(&tconn->sent, fr_trunk_request_t, entry);
+	fr_dlist_talloc_init(&tconn->cancel, fr_trunk_request_t, entry);
+	fr_dlist_talloc_init(&tconn->cancel_sent, fr_trunk_request_t, entry);
 
 	/*
 	 *	OK, we have the connection, now setup watch
@@ -3568,7 +3568,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log
 	/*
 	 *	Unused request list...
 	 */
-	fr_dlist_talloc_init(&trunk->unassigned, fr_trunk_request_t, list);
+	fr_dlist_talloc_init(&trunk->unassigned, fr_trunk_request_t, entry);
 
 	/*
 	 *	Request backlog queue
@@ -3581,11 +3581,11 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log
 	 */
 	MEM(trunk->active = fr_heap_talloc_create(trunk, trunk->funcs.connection_prioritise,
 						  fr_trunk_connection_t, heap_id));
-	fr_dlist_talloc_init(&trunk->connecting, fr_trunk_connection_t, list);
-	fr_dlist_talloc_init(&trunk->inactive, fr_trunk_connection_t, list);
-	fr_dlist_talloc_init(&trunk->failed, fr_trunk_connection_t, list);
-	fr_dlist_talloc_init(&trunk->draining, fr_trunk_connection_t, list);
-	fr_dlist_talloc_init(&trunk->draining_to_free, fr_trunk_connection_t, list);
+	fr_dlist_talloc_init(&trunk->connecting, fr_trunk_connection_t, entry);
+	fr_dlist_talloc_init(&trunk->inactive, fr_trunk_connection_t, entry);
+	fr_dlist_talloc_init(&trunk->failed, fr_trunk_connection_t, entry);
+	fr_dlist_talloc_init(&trunk->draining, fr_trunk_connection_t, entry);
+	fr_dlist_talloc_init(&trunk->draining_to_free, fr_trunk_connection_t, entry);
 
 	DEBUG4("Trunk allocated %p", trunk);
 
