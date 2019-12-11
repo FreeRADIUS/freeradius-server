@@ -79,7 +79,7 @@ struct fr_conn {
 	char const		*log_prefix;		//!< Prefix to add to log messages.
 	void			*uctx;			//!< User data.
 
-	bool			in_handler;		//!< Connection is currently in a callback.
+	void			*in_handler;		//!< Connection is currently in a callback.
 	bool			deferred_free;		//!< Something freed the connection.
 	bool			is_closed;		//!< The close callback has previously been called.
 
@@ -109,17 +109,29 @@ do { \
 	conn->state = _new; \
 } while (0)
 
+#define BAD_STATE_TRANSITION(_new) \
+do { \
+	if (!fr_cond_assert_msg(0, "Connection %" PRIu64 " invalid transition %s -> %s", \
+				conn->id, \
+				fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"), \
+				fr_table_str_by_value(fr_connection_states, _new, "<INVALID>"))) return; \
+} while (0)
+
 /** Called when we enter a handler
  *
  */
-#define HANDLER_BEGIN(_conn) (_conn)->in_handler = true
+#define HANDLER_BEGIN(_conn, _func) \
+void *_prev_handler = (_conn)->in_handler; \
+do { \
+	(_conn)->in_handler = (void *)(_func); \
+} while (0)
 
 /** Called when we exit a handler
  *
  */
 #define HANDLER_END(_conn) \
 do { \
-	(_conn)->in_handler = false; \
+	(_conn)->in_handler = _prev_handler; \
 	if ((_conn)->deferred_free) { \
 		talloc_free(_conn); \
 		return; \
@@ -151,7 +163,7 @@ static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t 
 #define WATCH_PRE(_conn) \
 do { \
 	if (fr_dlist_empty(&(_conn)->watch_pre[(_conn)->state])) break; \
-	HANDLER_BEGIN(conn); \
+	HANDLER_BEGIN(conn, &(_conn)->watch_pre[(_conn)->state]); \
 	connection_watch_call((_conn), &(_conn)->watch_pre[(_conn)->state]); \
 	HANDLER_END(conn); \
 } while(0)
@@ -162,7 +174,7 @@ do { \
 #define WATCH_POST(_conn) \
 do { \
 	if (fr_dlist_empty(&(_conn)->watch_post[(_conn)->state])) break; \
-	HANDLER_BEGIN(conn); \
+	HANDLER_BEGIN(conn, &(_conn)->watch_post[(_conn)->state]); \
 	connection_watch_call((_conn), &(_conn)->watch_post[(_conn)->state]); \
 	HANDLER_END(conn); \
 } while(0)
@@ -368,7 +380,7 @@ static void connection_state_closed_enter(fr_connection_t *conn)
 		break;
 
 	default:
-		rad_assert(0);
+		 BAD_STATE_TRANSITION(FR_CONNECTION_STATE_CLOSED);
 		return;
 	}
 
@@ -383,7 +395,7 @@ static void connection_state_closed_enter(fr_connection_t *conn)
 	 */
 	WATCH_PRE(conn);
 	if (conn->close && !conn->is_closed) {
-		HANDLER_BEGIN(conn);
+		HANDLER_BEGIN(conn, conn->close);
 		DEBUG4("Calling close(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
 		conn->close(conn->el, conn->h, conn->uctx);
 		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
@@ -421,17 +433,19 @@ static void connection_state_shutdown_enter(fr_connection_t *conn)
 		break;
 
 	default:
-		rad_assert(0);
+		BAD_STATE_TRANSITION(FR_CONNECTION_STATE_SHUTDOWN);
 		return;
 	}
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_SHUTDOWN);
 
 	WATCH_PRE(conn);
-	HANDLER_BEGIN(conn);
-	DEBUG4("Calling shutdown(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
-	ret = conn->shutdown(conn->el, conn->h, conn->uctx);
-	HANDLER_END(conn);
+	{
+		HANDLER_BEGIN(conn, conn->shutdown);
+		DEBUG4("Calling shutdown(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
+		ret = conn->shutdown(conn->el, conn->h, conn->uctx);
+		HANDLER_END(conn);
+	}
 	switch (ret) {
 	case FR_CONNECTION_STATE_SHUTDOWN:
 		break;
@@ -501,12 +515,13 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	if (conn->failed) {
 		fr_connection_state_t ret;
-
-		HANDLER_BEGIN(conn);
-		DEBUG4("Calling failed(h=%p, state=%s, uctx=%p)", conn->h,
-		       fr_table_str_by_value(fr_connection_states, prev, "<INVALID>"), conn->uctx);
-		ret = conn->failed(conn->h, prev, conn->uctx);
-		HANDLER_END(conn);
+		{
+			HANDLER_BEGIN(conn, conn->failed);
+			DEBUG4("Calling failed(h=%p, state=%s, uctx=%p)", conn->h,
+			       fr_table_str_by_value(fr_connection_states, prev, "<INVALID>"), conn->uctx);
+			ret = conn->failed(conn->h, prev, conn->uctx);
+			HANDLER_END(conn);
+		}
 		WATCH_POST(conn);
 
 		/*
@@ -593,7 +608,7 @@ static void connection_state_timeout_enter(fr_connection_t *conn)
 		break;
 
 	default:
-		rad_assert(0);
+		BAD_STATE_TRANSITION(FR_CONNECTION_STATE_TIMEOUT);
 	}
 
 	ERROR("Connection failed - timed out after %pVs", fr_box_time_delta(conn->connection_timeout));
@@ -642,7 +657,7 @@ static void connection_state_connected_enter(fr_connection_t *conn)
 	fr_event_timer_delete(conn->el, &conn->connection_timer);
 	WATCH_PRE(conn);
 	if (conn->open) {
-		HANDLER_BEGIN(conn);
+		HANDLER_BEGIN(conn, conn->open);
 		DEBUG4("Calling open(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
 		ret = conn->open(conn->el, conn->h, conn->uctx);
 		HANDLER_END(conn);
@@ -686,7 +701,7 @@ static void connection_state_connecting_enter(fr_connection_t *conn)
 		break;
 
 	default:
-		rad_assert(0);
+		BAD_STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTING);
 		return;
 	}
 
@@ -726,7 +741,7 @@ static void connection_state_init_enter(fr_connection_t *conn)
 		break;
 
 	default:
-		rad_assert(0);
+		BAD_STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
 		return;
 	}
 
@@ -747,7 +762,7 @@ static void connection_state_init_enter(fr_connection_t *conn)
 	 */
 	WATCH_PRE(conn);
 	if (conn->init) {
-		HANDLER_BEGIN(conn);
+		HANDLER_BEGIN(conn, conn->init);
 		DEBUG4("Calling init(h_out=%p, conn=%p, uctx=%p)", &conn->h, conn, conn->uctx);
 		ret = conn->init(&conn->h, conn, conn->uctx);
 		HANDLER_END(conn);
