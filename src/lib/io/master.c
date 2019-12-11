@@ -829,12 +829,14 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		if (!track) {
 			MEM(track = talloc_zero(client, fr_io_track_t));
 			talloc_get_type_abort(track, fr_io_track_t);
+			MEM(track->address = talloc_zero(track, fr_io_address_t));
 		} else {
 			fr_dlist_remove(&client->thread->track_list, track);
+			fr_io_address_t *old = track->address;
 			memset(track, 0, sizeof(*track));
+			track->address = old;
 		}
 
-		MEM(track->address = talloc_zero(track, fr_io_address_t));
 		memcpy(track->address, address, sizeof(*address));
 		track->address->radclient = client->radclient;
 
@@ -913,6 +915,8 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 static void track_free(fr_io_track_t *track)
 {
 	fr_io_thread_t *thread = track->client->thread;
+
+	if (track->ev) (void) fr_event_timer_delete(thread->el, &track->ev);
 
 	/*
 	 *	Keep most recently used elements around.  But
