@@ -414,6 +414,8 @@ static void _connection_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now
  */
 static void connection_state_shutdown_enter(fr_connection_t *conn)
 {
+	fr_connection_state_t ret;
+
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_CONNECTED:
 		break;
@@ -428,8 +430,16 @@ static void connection_state_shutdown_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	HANDLER_BEGIN(conn);
 	DEBUG4("Calling shutdown(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
-	conn->shutdown(conn->el, conn->h, conn->uctx);
+	ret = conn->shutdown(conn->el, conn->h, conn->uctx);
 	HANDLER_END(conn);
+	switch (ret) {
+	case FR_CONNECTION_STATE_SHUTDOWN:
+		break;
+
+	default:
+		connection_state_failed_enter(conn);
+		return;
+	}
 	WATCH_POST(conn);
 
 	/*
