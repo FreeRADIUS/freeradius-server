@@ -542,7 +542,7 @@ static int send_with_pcap(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 {
 	fr_cursor_t	cursor;
-	char		buffer[256];
+	char		buffer[2048];
 
 	char		src_ipaddr[INET6_ADDRSTRLEN];
 	char		dst_ipaddr[INET6_ADDRSTRLEN];
