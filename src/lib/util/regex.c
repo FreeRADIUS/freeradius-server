@@ -795,6 +795,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	return len;
 }
 
+#if 0
 static fr_table_num_ordered_t const regex_pcre_error_str[] = {
 	{ "PCRE_ERROR_NOMATCH",		PCRE_ERROR_NOMATCH },
 	{ "PCRE_ERROR_NULL",		PCRE_ERROR_NULL },
@@ -822,6 +823,7 @@ static fr_table_num_ordered_t const regex_pcre_error_str[] = {
 	{ NULL, 0 }
 };
 static size_t regex_pcre_error_str_len = NUM_ELEMENTS(regex_pcre_error_str);
+#endif
 
 #ifdef HAVE_PCRE_JIT_EXEC
 /** Free a PCRE JIT stack on exit
@@ -889,10 +891,12 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 				regmatch ? (int *)regmatch->match_data : NULL, matches * 3);
 	}
 	if (ret < 0) {
+		PCRE2_UCHAR errbuff[128];
+
 		if (ret == PCRE_ERROR_NOMATCH) return 0;
 
-		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret,
-				   fr_table_str_by_value(regex_pcre_error_str, ret, "<INVALID>"));
+		pcre2_get_error_message(ret, errbuff, sizeof(errbuff));
+		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret, errbuff);
 		return -1;
 	}
 
