@@ -123,7 +123,7 @@ again:
 	case FR_LDAP_STATE_RUN:		/* There's no next state for run, so this an error */
 	case FR_LDAP_STATE_ERROR:
 		STATE_TRANSITION(FR_LDAP_STATE_INIT);
-		fr_connection_signal_reconnect(c->conn);
+		fr_connection_signal_reconnect(c->conn, FR_CONNECTION_FAILED);
 		break;
 	}
 
