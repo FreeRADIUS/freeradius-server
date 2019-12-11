@@ -2457,7 +2457,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
  *
  */
 static void _trunk_connection_on_closed_post(UNUSED fr_connection_t *conn,
-					     UNUSED fr_connection_state_t state, UNUSED void *uctx)
+					     UNUSED fr_connection_state_t state, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 
