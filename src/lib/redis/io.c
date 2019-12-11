@@ -391,6 +391,18 @@ static fr_connection_state_t _redis_io_connection_init(void **h_out, fr_connecti
 	return FR_CONNECTION_STATE_CONNECTING;
 }
 
+/** Gracefully signal that the connection should shutdown
+ *
+ */
+fr_connection_state_t _redis_io_connection_shutdown(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
+{
+	fr_redis_handle_t	*our_h = talloc_get_type_abort(h, fr_redis_handle_t);
+
+	redisAsyncDisconnect(our_h->ac);	/* Should not free the handle */
+
+	return FR_CONNECTION_STATE_SHUTDOWN;
+}
+
 /** Notification that the connection has errored and must be closed
  *
  * This should be used to close the file descriptor.  It is assumed
@@ -419,6 +431,7 @@ static void _redis_io_connection_close(void *h, UNUSED void *uctx)
  */
 fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_io_conf_t const *conf)
 {
+	fr_connection_t *conn;
 	/*
 	 *	We don't specify an open callback
 	 *	as hiredis handles switching over
@@ -426,7 +439,7 @@ fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	within hireds, and calls us when
 	 *	the connection is open.
 	 */
-	return fr_connection_alloc(ctx, el,
+	conn = fr_connection_alloc(ctx, el,
 				   conf->connection_timeout,
 				   conf->reconnection_delay,
 				   _redis_io_connection_init,
@@ -434,6 +447,9 @@ fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				   _redis_io_connection_close,
 				   conf->log_prefix,
 				   conf);
+	if (!conn) return NULL;
+
+	fr_connection_set_shutdown_func(conn, _redis_io_connection_shutdown);
 }
 
 /** Return the redisAsyncContext associated with the connection
