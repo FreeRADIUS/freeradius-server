@@ -34,4 +34,4 @@ Proxy-State = 0x323531
 #
 #  There's not an Accounting-Failed packet type in RADIUS...
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

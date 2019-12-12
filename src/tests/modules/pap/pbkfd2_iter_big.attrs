@@ -7,5 +7,5 @@ User-Password = 'password'
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept
 

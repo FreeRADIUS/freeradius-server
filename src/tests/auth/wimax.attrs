@@ -22,4 +22,4 @@ WiMAX-Service-Data-Flow-Id = 2
 WiMAX-hHA-IP-MIP4 = 192.0.2.2
 
 # and the response
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

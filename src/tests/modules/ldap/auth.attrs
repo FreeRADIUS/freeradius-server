@@ -8,7 +8,7 @@ NAS-IP-Address = 1.2.3.5
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept
 Idle-Timeout == 3600
 Session-Timeout == 7200
 Acct-Interim-Interval == 1800

@@ -11,7 +11,7 @@ Filter-Id += "4"
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept
 Called-Station-Id == 'bob'
 Called-Station-Id == 'hello'
 Called-Station-Id == '1'

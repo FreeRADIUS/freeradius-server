@@ -9,4 +9,4 @@ Calling-Station-Id = 00:11:22:33:44:55
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

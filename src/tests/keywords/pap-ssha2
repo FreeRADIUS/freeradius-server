@@ -6,8 +6,8 @@
 #  Skip if the server wasn't built with openssl
 #
 if ('${feature.tls}' != 'yes') {
-	update control {
-		&Response-Packet-Type := Access-Accept
+	update reply {
+		&Packet-Type := Access-Accept
 	}
 	handled
 }

@@ -1,4 +1,4 @@
 User-Name = "bob",
 CHAP-Password := "hello"
 
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

@@ -8,5 +8,5 @@ NAS-IP-Address = "1.2.3.4"
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Reject
+Packet-Type == Access-Reject
 Reply-Message == "Authentication failed"

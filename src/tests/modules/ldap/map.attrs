@@ -8,4 +8,4 @@ NAS-IP-Address = 6.6.6.6
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

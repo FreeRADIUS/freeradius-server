@@ -6,4 +6,4 @@ User-Name = 'bob'
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

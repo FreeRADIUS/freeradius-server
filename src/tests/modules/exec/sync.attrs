@@ -7,4 +7,4 @@ User-Password = "taponi"
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

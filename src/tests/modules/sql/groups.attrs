@@ -8,5 +8,5 @@ NAS-IP-Address = "1.2.3.4"
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept
 Reply-Message == "Hello User B"

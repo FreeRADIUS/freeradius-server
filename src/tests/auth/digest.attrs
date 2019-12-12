@@ -22,4 +22,4 @@ Digest-CNonce = "0a4f113b",
 Digest-Body-Digest = "c1ed018b8ec4a3b170c0921f5b564e48",
 Message-Authenticator = ""
 
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

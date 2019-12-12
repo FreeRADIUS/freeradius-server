@@ -3,5 +3,5 @@ User-Password = 'hello'
 Service-Type := 'Framed-User'
 Calling-Station-ID := '00:11:22:33:44:55:66:ROAMYROAM'
 
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept
 User-Name == '7_6_5_4_3_2_1_1_2_3_4_5_6_7'

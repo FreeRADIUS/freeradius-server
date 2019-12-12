@@ -8,5 +8,5 @@ NAS-IP-Address = 127.0.0.1
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept
 Filter-Id == 'filter'

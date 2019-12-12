@@ -11,6 +11,6 @@ Cisco-AVPair += "shit=4"
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept
 Called-Station-Id == "3"
 Called-Station-Id == "1"
