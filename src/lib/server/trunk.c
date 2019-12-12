@@ -202,11 +202,6 @@ struct fr_trunk_connection_s {
 							///< Will not automatically be marked active if
 							///< the number of requests associated with it
 							///< falls below max_req_per_conn.
-
-	bool			free_on_close;		//!< When the connection closes, free it.
-
-	bool			freeing;		//!< Conn is being freed, cancel_sent state should
-							///< be skipped.
 	/** @} */
 
 	/** @name Request lists
@@ -2446,20 +2441,6 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	/*
 	 *	Remove the reconnect event
 	 */
-}
-
-/** Give the trunk API an opportunity to free the connection if it closes
- *
- */
-static void _trunk_connection_on_closed_post(UNUSED fr_connection_t *conn,
-					     UNUSED fr_connection_state_t state, void *uctx)
-{
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-
-	/*
-	 *	Something wanted the connection freed when it finally closed...
-	 */
-	if (tconn->free_on_close) talloc_free(tconn);
 	if (trunk->conf.lifetime > 0) fr_event_timer_delete(trunk->el, &tconn->lifetime_ev);
 }
 
@@ -2561,6 +2542,11 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	moved off or failed.
 	 */
 	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) == 0);
+
+	/*
+	 *	And free the connection...
+	 */
+	talloc_free(tconn);
 }
 
 /** Free a connection
@@ -2569,9 +2555,6 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
  */
 static int _trunk_connection_free(fr_trunk_connection_t *tconn)
 {
-
-	int		ret;
-
 	/*
 	 *	Loop over all the requests we gathered
 	 *	and transition them to the failed state,
@@ -2603,12 +2586,26 @@ static int _trunk_connection_free(fr_trunk_connection_t *tconn)
 		}
 	}
 
-	tconn->freeing = true;
-	ret = talloc_free(tconn->conn);
-	tconn->conn = NULL;
-	if (ret != 0) tconn->freeing = false;
+	/*
+	 *	Ensure we're not signalled by the connection
+	 *	as it processes its backlog of state changes,
+	 *	as we are out of here...
+	 */
+	fr_connection_del_watch_post(tconn->conn, FR_CONNECTION_STATE_CONNECTING, _trunk_connection_on_connecting);
+	fr_connection_del_watch_post(tconn->conn, FR_CONNECTION_STATE_CONNECTED, _trunk_connection_on_connected);
+	fr_connection_del_watch_pre(tconn->conn, FR_CONNECTION_STATE_CLOSED, _trunk_connection_on_closed);
+	fr_connection_del_watch_post(tconn->conn, FR_CONNECTION_STATE_SHUTDOWN, _trunk_connection_on_shutdown);
+	fr_connection_del_watch_pre(tconn->conn, FR_CONNECTION_STATE_FAILED, _trunk_connection_on_failed);
+	fr_connection_del_watch_post(tconn->conn, FR_CONNECTION_STATE_HALTED, _trunk_connection_on_halted);
 
-	return ret;
+	/*
+	 *	This may return -1, indicating the free was deferred
+	 *	this is fine.  It just means the conn will be freed
+	 *	after all the handlers have exited.
+	 */
+	(void)talloc_free(tconn->conn);
+
+	return 0;
 }
 
 /** Attempt to spawn a new connection
@@ -2658,9 +2655,6 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 
 	fr_connection_add_watch_pre(tconn->conn, FR_CONNECTION_STATE_CLOSED,
 				    _trunk_connection_on_closed, false, tconn);		/* Before close() has been called */
-
-	fr_connection_add_watch_post(tconn->conn, FR_CONNECTION_STATE_CLOSED,
-				     _trunk_connection_on_closed_post, false, tconn);	/* After close() has been called */
 
 	fr_connection_add_watch_post(tconn->conn, FR_CONNECTION_STATE_SHUTDOWN,		/* After shutdown() has been called */
 				     _trunk_connection_on_shutdown, false, tconn);
@@ -2738,11 +2732,13 @@ fr_trunk_request_t *fr_trunk_connection_pop_cancellation(void **preq, fr_trunk_c
  *
  * - #fr_trunk_request_signal_sent Successfully sent a request.
  *
+ * @param[out] request	if any.
  * @param[out] preq	associated with the trunk request.
  * @param[out] rctx	associated with the trunk request.
  * @param[in] tconn	to pop a request from.
  */
-fr_trunk_request_t *fr_trunk_connection_pop_request(void **preq, void **rctx, fr_trunk_connection_t *tconn)
+fr_trunk_request_t *fr_trunk_connection_pop_request(REQUEST **request, void **preq, void **rctx,
+						    fr_trunk_connection_t *tconn)
 {
 	fr_trunk_request_t *treq;
 
@@ -2753,6 +2749,7 @@ fr_trunk_request_t *fr_trunk_connection_pop_request(void **preq, void **rctx, fr
 	treq = tconn->partial ? tconn->partial : fr_heap_peek(tconn->pending);
 	if (!treq) return NULL;
 
+	if (request) *request = treq->request;
 	if (preq) *preq = treq->preq;
 	if (rctx) *rctx = treq->rctx;
 
@@ -3122,13 +3119,13 @@ done:
 
 			prev = fr_dlist_prev(&trunk->draining, tconn);
 
+			DEBUG4("Closing DRAINING connection with no requests");
 			/*
 			 *	Close the connection as gracefully
 			 *	as possible, by invoking its shutdown
 			 *	method.
 			 */
-			fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_EXPIRED);
-			tconn->free_on_close = true;
+			fr_connection_signal_shutdown(tconn->conn);
 			tconn = prev;
 		}
 	}
@@ -3141,14 +3138,14 @@ done:
 		if (fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) == 0) {
 			fr_trunk_connection_t *prev;
 
+			DEBUG4("Closing DRAINING-TO-FREE connection with no requests");
 			/*
 			 *	Close the connection as gracefully
 			 *	as possible, by invoking its shutdown
 			 *	method.
 			 */
 			prev = fr_dlist_prev(&trunk->draining_to_free, tconn);
-			fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_EXPIRED);
-			tconn->free_on_close = true;
+			fr_connection_signal_shutdown(tconn->conn);
 			tconn = prev;
 		}
 	}
@@ -3497,12 +3494,12 @@ static int _trunk_free(fr_trunk_t *trunk)
 	 *	its in, which means the head
 	 *	should keep advancing automatically.
 	 */
-	while ((tconn = fr_heap_peek(trunk->active))) talloc_free(tconn);
-	while ((tconn = fr_dlist_head(&trunk->connecting))) talloc_free(tconn);
-	while ((tconn = fr_dlist_head(&trunk->inactive))) talloc_free(tconn);
-	while ((tconn = fr_dlist_head(&trunk->failed))) talloc_free(tconn);
-	while ((tconn = fr_dlist_head(&trunk->draining))) talloc_free(tconn);
-	while ((tconn = fr_dlist_head(&trunk->draining_to_free))) talloc_free(tconn);
+	while ((tconn = fr_heap_peek(trunk->active))) fr_connection_signal_halt(tconn->conn);
+	while ((tconn = fr_dlist_head(&trunk->connecting))) fr_connection_signal_halt(tconn->conn);
+	while ((tconn = fr_dlist_head(&trunk->inactive))) fr_connection_signal_halt(tconn->conn);
+	while ((tconn = fr_dlist_head(&trunk->failed))) fr_connection_signal_halt(tconn->conn);
+	while ((tconn = fr_dlist_head(&trunk->draining))) fr_connection_signal_halt(tconn->conn);
+	while ((tconn = fr_dlist_head(&trunk->draining_to_free))) fr_connection_signal_halt(tconn->conn);
 
 	/*
 	 *	Free any requests left in the backlog
@@ -3521,20 +3518,20 @@ static int _trunk_free(fr_trunk_t *trunk)
  *
  * @param[in] ctx		To use for any memory allocations.  Must be thread local.
  * @param[in] el		to use for I/O and timer events.
+ * @param[in] funcs		Callback functions.
+ * @param[in] conf		Common user configurable parameters.
  * @param[in] log_prefix	To prepend to global messages.
+ * @param[in] uctx		User data to pass to the alloc function.
  * @param[in] delay_start	If true, then we will not spawn any connections
  *				until the first request is enqueued.
- * @param[in] conf		Common user configurable parameters
- * @param[in] funcs		Callback functions.
- * @param[in] uctx		User data to pass to the alloc function.
 
  * @return
  *	- New trunk handle on success.
  *	- NULL on error.
  */
-fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log_prefix, bool delay_start,
-			   fr_trunk_conf_t const *conf, fr_trunk_io_funcs_t const *funcs,
-			   void const *uctx)
+fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+			   fr_trunk_io_funcs_t const *funcs, fr_trunk_conf_t const *conf,
+			   char const *log_prefix, void const *uctx, bool delay_start)
 {
 	fr_trunk_t	*trunk;
 

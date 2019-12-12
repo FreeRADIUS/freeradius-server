@@ -443,7 +443,8 @@ int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQU
  */
 fr_trunk_request_t *fr_trunk_connection_pop_cancellation(void **preq, fr_trunk_connection_t *tconn);
 
-fr_trunk_request_t *fr_trunk_connection_pop_request(void **preq, void **rctx, fr_trunk_connection_t *tconn);
+fr_trunk_request_t *fr_trunk_connection_pop_request(REQUEST **request, void **preq, void **rctx,
+						    fr_trunk_connection_t *tconn);
 /** @} */
 
 /** @name Connection state signalling
@@ -476,10 +477,9 @@ void		fr_trunk_reconnect(fr_trunk_t *trunk, int state, fr_connection_reason_t re
  * @{
  */
 int		fr_trunk_start(fr_trunk_t *trunk);
-
-fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log_prefix, bool delay_start,
-				fr_trunk_conf_t const *conf, fr_trunk_io_funcs_t const *funcs,
-				void const *uctx);
+fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+				fr_trunk_io_funcs_t const *funcs, fr_trunk_conf_t const *conf,
+				char const *log_prefix, void const *uctx, bool delay_start);
 /** @} */
 
 #ifdef __cplusplus
