@@ -22,13 +22,6 @@ RCSID("$Id$")
  *
  * Any entries remaining in the list will be freed when the thread is joined
  */
-#define ARRAY_SIZE (8)
-typedef struct {
-	bool		used;
-	fr_md5_ctx_t	*md_ctx;
-} fr_md5_free_list_t;
-fr_thread_local_setup(fr_md5_free_list_t *, md5_array)
-
 fr_thread_local_setup(fr_md5_ctx_t *, md5_ctx)
 
 /*
@@ -38,6 +31,13 @@ fr_thread_local_setup(fr_md5_ctx_t *, md5_ctx)
  *	be operating in FIPS mode where MD5 digest functions are unavailable.
  */
 #ifdef HAVE_OPENSSL_EVP_H
+#define ARRAY_SIZE (8)
+typedef struct {
+	bool		used;
+	fr_md5_ctx_t	*md_ctx;
+} fr_md5_free_list_t;
+fr_thread_local_setup(fr_md5_free_list_t *, md5_array)
+
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>
 
