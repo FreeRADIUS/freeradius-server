@@ -1948,7 +1948,7 @@ do_frame:
 			/*
 			 *	Allow for $TEMPLATE things
 			 */
-			if (strncasecmp(buff[1], "$TEMPLATE", 9) == 0) {
+			if (strncasecmp(ptr, "$TEMPLATE", 9) == 0) {
 				ptr += 9;
 				fr_skip_whitespace(ptr);
 
