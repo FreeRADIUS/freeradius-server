@@ -435,15 +435,6 @@ do { \
 				fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>"))) return; \
 } while (0)
 
-typedef enum {
-	TRUNK_ENQUEUE_IN_BACKLOG = 1,		//!< Request should be enqueued in backlog
-	TRUNK_ENQUEUE_OK = 0,			//!< Operation was successful.
-	TRUNK_ENQUEUE_NO_CAPACITY = -1,		//!< At maximum number of connections,
-						///< and no connection has capacity.
-	TRUNK_ENQUEUE_DST_UNAVAILABLE = -2,	//!< Destination is down.
-	TRUNK_ENQUEUE_FAIL = -3			//!< General failure.
-} fr_trunk_enqueue_t;
-
 /** Call the cancel callback if set
  *
  */
@@ -1187,11 +1178,11 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
  * @param[in] trunk		To enqueue requests on.
  * @param[in] request		associated with the treq (if any).
  * @return
- *	- TRUNK_ENQUEUE_OK			caller should enqueue request on provided tconn.
- *	- TRUNK_ENQUEUE_IN_BACKLOG		Request should be queued in the backlog.
- *	- TRUNK_ENQUEUE_NO_CAPACITY		Unable to enqueue request as we have no spare
+ *	- FR_TRUNK_ENQUEUE_OK			caller should enqueue request on provided tconn.
+ *	- FR_TRUNK_ENQUEUE_IN_BACKLOG		Request should be queued in the backlog.
+ *	- FR_TRUNK_ENQUEUE_NO_CAPACITY		Unable to enqueue request as we have no spare
  *						connections or backlog space.
- *	- TRUNK_ENQUEUE_DST_UNAVAILABLE		Can't enqueue because the destination is
+ *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE		Can't enqueue because the destination is
  *						unreachable.
  */
 static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tconn_out, fr_trunk_t *trunk,
@@ -1207,7 +1198,7 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	tconn = fr_heap_peek(trunk->active);
 	if (tconn) {
 		*tconn_out = tconn;
-		return TRUNK_ENQUEUE_OK;
+		return FR_TRUNK_ENQUEUE_OK;
 	}
 
 	/*
@@ -1223,7 +1214,7 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 		ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
 			  "No active connections and last event was a connection failure");
 
-		return TRUNK_ENQUEUE_DST_UNAVAILABLE;
+		return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
 	}
 
 	/*
@@ -1240,11 +1231,11 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 			ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
 				  "Limit of %"PRIu64" requests reached", limit);
 
-			return TRUNK_ENQUEUE_NO_CAPACITY;
+			return FR_TRUNK_ENQUEUE_NO_CAPACITY;
 		}
 	}
 
-	return TRUNK_ENQUEUE_IN_BACKLOG;
+	return FR_TRUNK_ENQUEUE_IN_BACKLOG;
 }
 
 /** Enqueue a request which has never been assigned to a connection or was previously cancelled
@@ -1253,9 +1244,9 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
  *			from its existing connection with
  *			#trunk_connection_requests_dequeue.
  * @return
- *	- TRUNK_ENQUEUE_OK			Request was re-enqueued.
- *	- TRUNK_ENQUEUE_NO_CAPACITY		Request enqueueing failed because we're at capacity.
- *	- TRUNK_ENQUEUE_DST_UNAVAILABLE		Enqueuing failed for some reason.
+ *	- FR_TRUNK_ENQUEUE_OK			Request was re-enqueued.
+ *	- FR_TRUNK_ENQUEUE_NO_CAPACITY		Request enqueueing failed because we're at capacity.
+ *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE		Enqueuing failed for some reason.
  *      					Usually because the connection to the resource is down.
  */
 static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *treq)
@@ -1271,12 +1262,12 @@ static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *tre
 
 	rcode = trunk_request_check_enqueue(&tconn, trunk, treq->request);
 	switch (rcode) {
-	case TRUNK_ENQUEUE_OK:
+	case FR_TRUNK_ENQUEUE_OK:
 		trunk_request_enter_pending(treq, tconn);
 		if (trunk->conf->always_writable) trunk_connection_writable(tconn);
 		break;
 
-	case TRUNK_ENQUEUE_IN_BACKLOG:
+	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
 		/*
 		 *	No more connections and request
 		 *	is already in the backlog.
@@ -1284,7 +1275,7 @@ static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *tre
 		 *	Signal our caller it should stop
 		 *	trying to drain the backlog.
 		 */
-		if (treq->state == FR_TRUNK_REQUEST_BACKLOG) return TRUNK_ENQUEUE_NO_CAPACITY;
+		if (treq->state == FR_TRUNK_REQUEST_BACKLOG) return FR_TRUNK_ENQUEUE_NO_CAPACITY;
 		trunk_request_enter_backlog(treq);
 		break;
 
@@ -1432,7 +1423,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 
 		prev = fr_dlist_remove(&to_process, treq);
 		switch (trunk_request_enqueue_existing(treq)) {
-		case TRUNK_ENQUEUE_OK:
+		case FR_TRUNK_ENQUEUE_OK:
 			break;
 
 		/*
@@ -1442,7 +1433,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		 *	load, it's been placed back
 		 *	in the backlog.
 		 */
-		case TRUNK_ENQUEUE_IN_BACKLOG:
+		case FR_TRUNK_ENQUEUE_IN_BACKLOG:
 			break;
 
 		/*
@@ -1450,9 +1441,9 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		 *	there's nothing to do except
 		 *	fail the request.
 		 */
-		case TRUNK_ENQUEUE_DST_UNAVAILABLE:
-		case TRUNK_ENQUEUE_NO_CAPACITY:
-		case TRUNK_ENQUEUE_FAIL:
+		case FR_TRUNK_ENQUEUE_DST_UNAVAILABLE:
+		case FR_TRUNK_ENQUEUE_NO_CAPACITY:
+		case FR_TRUNK_ENQUEUE_FAIL:
 			trunk_request_enter_failed(treq);
 			break;
 		}
@@ -1864,11 +1855,11 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
  *				treq is freed. MUST NOT BE PARENTED.
  * @param[in] rctx		The resume context.
  * @return
- *	- TRUNK_ENQUEUE_OK.
- *	- TRUNK_ENQUEUE_IN_BACKLOG.
- *	- TRUNK_ENQUEUE_NO_CAPACITY.
- *	- TRUNK_ENQUEUE_DST_UNAVAILABLE
- *	- TRUNK_ENQUEUE_FAIL
+ *	- FR_TRUNK_ENQUEUE_OK.
+ *	- FR_TRUNK_ENQUEUE_IN_BACKLOG.
+ *	- FR_TRUNK_ENQUEUE_NO_CAPACITY.
+ *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE
+ *	- FR_TRUNK_ENQUEUE_FAIL
  */
 fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_trunk_t *trunk,
 					    REQUEST *request, void *preq, void *rctx)
@@ -1878,22 +1869,22 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 	fr_trunk_enqueue_t	rcode;
 
 	if (!fr_cond_assert_msg(!IN_HANDLER(trunk),
-				"%s cannot be called within a handler", __FUNCTION__)) return TRUNK_ENQUEUE_FAIL;
+				"%s cannot be called within a handler", __FUNCTION__)) return FR_TRUNK_ENQUEUE_FAIL;
 
 	if (!fr_cond_assert_msg(!*treq_out || ((*treq_out)->state == FR_TRUNK_REQUEST_UNASSIGNED),
-				"%s requests must be in \"unassigned\" state", __FUNCTION__)) return TRUNK_ENQUEUE_FAIL;
+				"%s requests must be in \"unassigned\" state", __FUNCTION__)) return FR_TRUNK_ENQUEUE_FAIL;
 
 	/*
 	 *	If delay_start was set, we may need
 	 *	to insert the timer for the connection manager.
 	 */
 	if (unlikely(!trunk->started)) {
-		if (fr_trunk_start(trunk) < 0) return TRUNK_ENQUEUE_FAIL;
+		if (fr_trunk_start(trunk) < 0) return FR_TRUNK_ENQUEUE_FAIL;
 	}
 
 	rcode = trunk_request_check_enqueue(&tconn, trunk, request);
 	switch (rcode) {
-	case TRUNK_ENQUEUE_OK:
+	case FR_TRUNK_ENQUEUE_OK:
 		if (*treq_out) {
 			treq = *treq_out;
 		} else {
@@ -1905,7 +1896,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		if (trunk->conf->always_writable) trunk_connection_writable(tconn);
 		break;
 
-	case TRUNK_ENQUEUE_IN_BACKLOG:
+	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
 		if (*treq_out) {
 			treq = *treq_out;
 		} else {
@@ -3354,13 +3345,13 @@ static void trunk_backlog_drain(fr_trunk_t *trunk)
 	 */
 	while ((treq = fr_heap_peek(trunk->backlog))) {
 		switch (trunk_request_enqueue_existing(treq)) {
-		case TRUNK_ENQUEUE_OK:
+		case FR_TRUNK_ENQUEUE_OK:
 			continue;
 
 		/*
 		 *	Signal to stop
 		 */
-		case TRUNK_ENQUEUE_IN_BACKLOG:
+		case FR_TRUNK_ENQUEUE_IN_BACKLOG:
 			break;
 
 		/*
@@ -3369,12 +3360,12 @@ static void trunk_backlog_drain(fr_trunk_t *trunk)
 		 *	which will free it and
 		 *	re-enliven the yielded request.
 		 */
-		case TRUNK_ENQUEUE_DST_UNAVAILABLE:
-		case TRUNK_ENQUEUE_FAIL:
+		case FR_TRUNK_ENQUEUE_DST_UNAVAILABLE:
+		case FR_TRUNK_ENQUEUE_FAIL:
 			trunk_request_enter_failed(treq);
 			continue;
 
-		case TRUNK_ENQUEUE_NO_CAPACITY:
+		case FR_TRUNK_ENQUEUE_NO_CAPACITY:
 			rad_assert(fr_heap_num_elements(trunk->active) == 0);
 			return;
 		}

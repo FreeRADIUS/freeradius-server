@@ -115,6 +115,15 @@ typedef enum {
 
 } fr_trunk_connection_event_t;
 
+typedef enum {
+	FR_TRUNK_ENQUEUE_IN_BACKLOG = 1,		//!< Request should be enqueued in backlog
+	FR_TRUNK_ENQUEUE_OK = 0,			//!< Operation was successful.
+	FR_TRUNK_ENQUEUE_NO_CAPACITY = -1,		//!< At maximum number of connections,
+							///< and no connection has capacity.
+	FR_TRUNK_ENQUEUE_DST_UNAVAILABLE = -2,		//!< Destination is down.
+	FR_TRUNK_ENQUEUE_FAIL = -3			//!< General failure.
+} fr_trunk_enqueue_t;
+
 /** Config parser definitions to populate a fr_trunk_conf_t
  *
  */
