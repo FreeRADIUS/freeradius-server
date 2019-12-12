@@ -1325,7 +1325,7 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	conn->close = funcs->close;
 	conn->failed = funcs->failed;
 	conn->shutdown = funcs->shutdown;
-
+	conn->is_closed = true;		/* Starts closed */
 	conn->log_prefix = talloc_typed_strdup(conn, log_prefix);
 	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
 
