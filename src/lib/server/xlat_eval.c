@@ -64,7 +64,6 @@ static fr_dict_attr_t const *attr_virtual_server;
 
 static fr_dict_attr_t const *attr_packet_authentication_vector;
 static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_response_packet_type;
 
 static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
@@ -81,7 +80,6 @@ static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 
 	{ .out = &attr_packet_authentication_vector, .name = "Packet-Authentication-Vector", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_response_packet_type, .name = "Response-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -483,15 +481,7 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	packet = radius_packet(request, vpt->tmpl_list);
 	if (!packet) return XLAT_ACTION_DONE;
 
-	if (vpt->tmpl_da == attr_response_packet_type) {
-		if (packet != request->reply) RWARN("%%{Response-Packet-Type} is ONLY for responses!");
-		packet = request->reply;
-
-		RWARN("Please replace %%{Response-Packet-Type} with %%{reply:Packet-Type}");
-
-		goto packet_type;
-	} else if (vpt->tmpl_da == attr_packet_type) {
-	packet_type:
+	if (vpt->tmpl_da == attr_packet_type) {
 		if (!packet || !packet->code) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));

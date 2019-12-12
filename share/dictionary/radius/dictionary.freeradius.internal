@@ -67,30 +67,6 @@ VALUE	Packet-Type			Protocol-Error		52
 
 VALUE	Packet-Type			Do-Not-Respond		256
 
-ATTRIBUTE	Response-Packet-Type			1001	integer virtual
-VALUE	Response-Packet-Type		Access-Request		1
-VALUE	Response-Packet-Type		Access-Accept		2
-VALUE	Response-Packet-Type		Access-Reject		3
-VALUE	Response-Packet-Type		Accounting-Request	4
-VALUE	Response-Packet-Type		Accounting-Response	5
-VALUE	Response-Packet-Type		Accounting-Status	6
-VALUE	Response-Packet-Type		Password-Request	7
-VALUE	Response-Packet-Type		Password-Accept		8
-VALUE	Response-Packet-Type		Password-Reject		9
-VALUE	Response-Packet-Type		Accounting-Message	10
-VALUE	Response-Packet-Type		Access-Challenge	11
-VALUE	Response-Packet-Type		Status-Server		12
-VALUE	Response-Packet-Type		Status-Client		13
-
-VALUE	Response-Packet-Type		Disconnect-Request	40
-VALUE	Response-Packet-Type		Disconnect-ACK		41
-VALUE	Response-Packet-Type		Disconnect-NAK		42
-VALUE	Response-Packet-Type		CoA-Request		43
-VALUE	Response-Packet-Type		CoA-ACK			44
-VALUE	Response-Packet-Type		CoA-NAK			45
-#
-#  Special value
-#
-VALUE	Response-Packet-Type		Do-Not-Respond		256
+# 1001 was Response-Packet-Type.  Now &reply:Packet-Type
 
 ATTRIBUTE	Packet-Authentication-Vector		1002	octets virtual
