@@ -152,6 +152,22 @@ typedef void (*fr_connection_close_t)(fr_event_list_t *el, void *h, void *uctx);
  */
 typedef void(*fr_connection_watch_t)(fr_connection_t *conn, fr_connection_state_t state, void *uctx);
 
+/** @name Add watcher functions that get called before (pre) the state callback and after (post)
+ * @{
+ */
+void			fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
+						    fr_connection_watch_t watch, bool oneshot, void const *uctx);
+
+void			fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
+						     fr_connection_watch_t watch, bool oneshot, void const *uctx);
+
+int			fr_connection_del_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
+						    fr_connection_watch_t watch);
+
+int			fr_connection_del_watch_post(fr_connection_t *conn, fr_connection_state_t state,
+						     fr_connection_watch_t watch);
+/** @} */
+
 /** @name Statistics
  * @{
  */
@@ -172,21 +188,6 @@ char const		*fr_connection_get_log_prefix(fr_connection_t const *conn);
 void			*fr_connection_get_handle(fr_connection_t const *conn);
 /** @} */
 
-/** @name Add watcher functions that get called before (pre) the state callback and after (post)
- * @{
- */
-void			fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
-						    fr_connection_watch_t watch, bool oneshot, void const *uctx);
-
-void			fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
-						     fr_connection_watch_t watch, bool oneshot, void const *uctx);
-
-int			fr_connection_del_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
-						    fr_connection_watch_t watch);
-
-int			fr_connection_del_watch_post(fr_connection_t *conn, fr_connection_state_t state,
-						     fr_connection_watch_t watch);
-/** @} */
 
 /** @name Signal the connection to change states
  * @{

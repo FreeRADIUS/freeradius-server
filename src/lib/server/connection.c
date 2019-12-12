@@ -150,6 +150,19 @@ typedef struct {
 	fr_dlist_t		entry;		//!< Entry in the signals list.
 	connection_dsignal_t	signal;		//!< Signal that was deferred.
 } connection_dsignal_entry_t;
+
+/*
+ *	State transition functions
+ */
+static void connection_state_closed_enter(fr_connection_t *conn);
+static void connection_state_failed_enter(fr_connection_t *conn);
+static void connection_state_timeout_enter(fr_connection_t *conn);
+static void connection_state_connected_enter(fr_connection_t *conn);
+static void connection_state_shutdown_enter(fr_connection_t *conn);
+static void connection_state_connecting_enter(fr_connection_t *conn);
+static void connection_state_halted_enter(fr_connection_t *conn);
+static void connection_state_init_enter(fr_connection_t *conn);
+
 /** Add a deferred signal to the signal list
  *
  * Processing signals whilst in handlers usually leads to weird
@@ -281,80 +294,6 @@ do { \
 	HANDLER_END(conn); \
 } while(0)
 
-/*
- *	State transition functions
- */
-static void connection_state_closed_enter(fr_connection_t *conn);
-static void connection_state_failed_enter(fr_connection_t *conn);
-static void connection_state_timeout_enter(fr_connection_t *conn);
-static void connection_state_connected_enter(fr_connection_t *conn);
-static void connection_state_shutdown_enter(fr_connection_t *conn);
-static void connection_state_connecting_enter(fr_connection_t *conn);
-static void connection_state_halted_enter(fr_connection_t *conn);
-static void connection_state_init_enter(fr_connection_t *conn);
-
-/** Return the number of times we've attempted to establish or re-establish this connection
- *
- * @param[in] conn	to get count from.
- * @return the number of times the connection has reconnected.
- */
-uint64_t fr_connection_get_num_reconnected(fr_connection_t const *conn)
-{
-	if (conn->reconnected == 0) return 0;	/* Has never been initialised */
-
-	return conn->reconnected - 1;		/* We don't count the first connection attempt */
-}
-
-/** Return the number of times this connection has timed out whilst connecting
- *
- * @param[in] conn	to get count from.
- * @return the number of times the connection has timed out whilst connecting.
- */
-uint64_t fr_connection_get_num_timed_out(fr_connection_t const *conn)
-{
-	return conn->timed_out;
-}
-
-/** Get the event list associated with the connection
- *
- * @param[in] conn	to retrieve the event list from.
- * @return the event list associated with the connection.
- */
-fr_event_list_t *fr_connection_get_el(fr_connection_t const *conn)
-{
-	return conn->el;
-}
-
-/** Get the connection id  Useful for debugging messages
- *
- * @param[in] conn	to retrieve number from.
- * @return the unique connection id.
- */
-uint64_t fr_connection_get_id(fr_connection_t const *conn)
-{
-	return conn->id;
-}
-
-/** Get the log_prefix, useful for debugging messages
- *
- * @param[in] conn	to retrieve number from.
- * @return the log prefix set for the connection.
- */
-char const *fr_connection_get_log_prefix(fr_connection_t const *conn)
-{
-	return conn->log_prefix;
-}
-
-/** Get the handle associated with a connection
- *
- * @param[in] conn	to retrieve fd from.
- * @return the active connection handle.
- */
-void *fr_connection_get_handle(fr_connection_t const *conn)
-{
-	return conn->h;
-}
-
 /** Remove a watch function from a pre/post[state] list
  *
  */
@@ -455,6 +394,68 @@ void fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t s
 	if (state >= FR_CONNECTION_STATE_MAX) return;
 
 	connection_add_watch(conn, &conn->watch_post[state], watch, oneshot, uctx);
+}
+
+/** Return the number of times we've attempted to establish or re-establish this connection
+ *
+ * @param[in] conn	to get count from.
+ * @return the number of times the connection has reconnected.
+ */
+uint64_t fr_connection_get_num_reconnected(fr_connection_t const *conn)
+{
+	if (conn->reconnected == 0) return 0;	/* Has never been initialised */
+
+	return conn->reconnected - 1;		/* We don't count the first connection attempt */
+}
+
+/** Return the number of times this connection has timed out whilst connecting
+ *
+ * @param[in] conn	to get count from.
+ * @return the number of times the connection has timed out whilst connecting.
+ */
+uint64_t fr_connection_get_num_timed_out(fr_connection_t const *conn)
+{
+	return conn->timed_out;
+}
+
+/** Get the event list associated with the connection
+ *
+ * @param[in] conn	to retrieve the event list from.
+ * @return the event list associated with the connection.
+ */
+fr_event_list_t *fr_connection_get_el(fr_connection_t const *conn)
+{
+	return conn->el;
+}
+
+/** Get the connection id  Useful for debugging messages
+ *
+ * @param[in] conn	to retrieve number from.
+ * @return the unique connection id.
+ */
+uint64_t fr_connection_get_id(fr_connection_t const *conn)
+{
+	return conn->id;
+}
+
+/** Get the log_prefix, useful for debugging messages
+ *
+ * @param[in] conn	to retrieve number from.
+ * @return the log prefix set for the connection.
+ */
+char const *fr_connection_get_log_prefix(fr_connection_t const *conn)
+{
+	return conn->log_prefix;
+}
+
+/** Get the handle associated with a connection
+ *
+ * @param[in] conn	to retrieve fd from.
+ * @return the active connection handle.
+ */
+void *fr_connection_get_handle(fr_connection_t const *conn)
+{
+	return conn->h;
 }
 
 /** The requisite period of time has passed, try and re-open the connection
