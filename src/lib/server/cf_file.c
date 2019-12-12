@@ -1855,17 +1855,8 @@ static int cf_file_include(cf_stack_t *stack)
 	CONF_SECTION	*parent;
 	char const	*ptr;
 
-	char		*buff[4];
 	cf_stack_frame_t	*frame;
 	int		rcode;
-
-	/*
-	 *	Short names are nicer.
-	 */
-	buff[0] = stack->buff[0];
-	buff[1] = stack->buff[1];
-	buff[2] = stack->buff[2];
-	buff[3] = stack->buff[3];
 
 do_frame:
 	frame = &stack->frame[stack->depth];
