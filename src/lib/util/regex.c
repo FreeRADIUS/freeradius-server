@@ -837,7 +837,9 @@ static fr_table_num_ordered_t const regex_pcre_error_str[] = {
 	{ "PCRE_ERROR_DFA_BADRESTART",	PCRE_ERROR_DFA_BADRESTART },
 	{ "PCRE_ERROR_JIT_BADOPTION",	PCRE_ERROR_JIT_BADOPTION },
 	{ "PCRE_ERROR_BADLENGTH",	PCRE_ERROR_BADLENGTH },
+#ifdef PCRE_ERROR_UNSET
 	{ "PCRE_ERROR_UNSET",		PCRE_ERROR_UNSET },
+#endif
 
 	{ NULL, 0 }
 };
