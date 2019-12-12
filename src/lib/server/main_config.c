@@ -1108,7 +1108,7 @@ do {\
 				MEM(handle_p = talloc(NULL, void *));
 				*handle_p = handle;
 				talloc_set_destructor(handle_p, _dlhandle_free);
-				(void) cf_data_add(subcs, handle, value, true);
+				(void) cf_data_add(subcs, handle_p, value, true);
 			}
 		} /* loop over pairs in ENV */
 	} /* there's an ENV subsection */
