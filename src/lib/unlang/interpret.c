@@ -996,17 +996,6 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	return stack;
 }
 
-/** Clear the stack for eventual re-use
- *
- */
-void unlang_interpret_stack_clear(REQUEST *request)
-{
-	unlang_stack_t *stack = request->stack;
-
-	stack->result = RLM_MODULE_UNKNOWN;
-	stack->depth = 0;
-}
-
 /** Send a signal (usually stop) to a request
  *
  * This is typically called via an "async" action, i.e. an action

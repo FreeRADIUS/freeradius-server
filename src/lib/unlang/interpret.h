@@ -100,8 +100,6 @@ rlm_rcode_t	unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 
 void		*unlang_interpret_stack_alloc(TALLOC_CTX *ctx);
 
-void		unlang_interpret_stack_clear(REQUEST *request);
-
 void		unlang_interpret_resumable(REQUEST *request);
 
 void		unlang_interpret_signal(REQUEST *request, fr_state_signal_t action);
