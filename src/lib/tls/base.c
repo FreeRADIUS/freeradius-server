@@ -436,8 +436,6 @@ static void openssl_free(void *to_free, char const *file, UNUSED int line)
 #else
 static void openssl_free(void *to_free, char const *file, int line)
 {
-	(void)_talloc_free(to_free, file);
-
 	char buffer[256];
 
 	snprintf(buffer, sizeof(buffer), "%s:%i", file, line);
