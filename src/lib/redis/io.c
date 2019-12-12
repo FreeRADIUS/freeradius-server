@@ -51,7 +51,7 @@ static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 
 	DEBUG4("Signalled by hiredis, connection disconnected");
 
-	fr_connection_signal_reconnect(conn);
+	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 }
 
 /** Called by hiredis to indicate the connection is live
@@ -106,7 +106,7 @@ static void _redis_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED
 	/*
 	 *	Connection state machine will handle reconnecting
 	 */
-	fr_connection_signal_reconnect(conn);
+	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 }
 
 /** Deal with the method hiredis uses to register/unregister interest in a file descriptor
@@ -372,13 +372,15 @@ static fr_connection_state_t _redis_io_connection_init(void **h_out, fr_connecti
 		goto error;
 	}
 
+	fr_dlist_talloc_init(&h->ignore, fr_redis_sqn_ignore_t, entry);
+
 	return FR_CONNECTION_STATE_CONNECTING;
 }
 
 /** Gracefully signal that the connection should shutdown
  *
  */
-fr_connection_state_t _redis_io_connection_shutdown(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
+static fr_connection_state_t _redis_io_connection_shutdown(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
 	fr_redis_handle_t	*our_h = talloc_get_type_abort(h, fr_redis_handle_t);
 
@@ -395,10 +397,11 @@ fr_connection_state_t _redis_io_connection_shutdown(UNUSED fr_event_list_t *el, 
  * If this callback does not close the file descriptor, the server will leak
  * file descriptors.
  *
+ * @param[in] el	to remove event handlers from.
  * @param[in] h		to close.
  * @param[in] uctx	User context.
  */
-static void _redis_io_connection_close(void *h, UNUSED void *uctx)
+static void _redis_io_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
 	fr_redis_handle_t	*our_h = talloc_get_type_abort(h, fr_redis_handle_t);
 
@@ -413,7 +416,9 @@ static void _redis_io_connection_close(void *h, UNUSED void *uctx)
 /** Allocate an async redis I/O connection
  *
  */
-fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_io_conf_t const *conf)
+fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+					   fr_connection_conf_t const *conn_conf, fr_redis_io_conf_t const *io_conf,
+					   char const *log_prefix)
 {
 	fr_connection_t *conn;
 	/*
@@ -424,18 +429,17 @@ fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	the connection is open.
 	 */
 	conn = fr_connection_alloc(ctx, el,
-				   conf->connection_timeout,
-				   conf->reconnection_delay,
-				   _redis_io_connection_init,
-				   NULL,
-				   _redis_io_connection_close,
-				   conf->log_prefix,
-				   conf);
+				   &(fr_connection_funcs_t){
+				   	.init = _redis_io_connection_init,
+				   	.close = _redis_io_connection_close,
+				   	.shutdown = _redis_io_connection_shutdown
+				   },
+				   conn_conf,
+				   log_prefix,
+				   io_conf);
 	if (!conn) return NULL;
 
-	fr_dlist_talloc_init(&conn->ignore, fr_redis_sqn_t);
-
-	fr_connection_set_shutdown_func(conn, _redis_io_connection_shutdown);
+	return conn;
 }
 
 /** Return the redisAsyncContext associated with the connection

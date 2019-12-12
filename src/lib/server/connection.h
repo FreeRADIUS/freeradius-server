@@ -57,6 +57,12 @@ typedef enum {
 						///< gracefully.
 } fr_connection_reason_t;
 
+typedef struct {
+	fr_time_delta_t connection_timeout;	//!< How long to wait for the connection to open
+						//!< or for shutdown to close the connection.
+	fr_time_delta_t reconnection_delay;	//!< How long to wait after failures.
+} fr_connection_conf_t;
+
 extern fr_table_num_ordered_t const fr_connection_states[];
 extern size_t fr_connection_states_len;
 
@@ -141,6 +147,17 @@ typedef fr_connection_state_t (*fr_connection_failed_t)(void *h, fr_connection_s
  */
 typedef void (*fr_connection_close_t)(fr_event_list_t *el, void *h, void *uctx);
 
+/** Holds a complete set of functions for a connection
+ *
+ */
+typedef struct {
+	fr_connection_init_t		init;
+	fr_connection_open_t		open;
+	fr_connection_shutdown_t	shutdown;
+	fr_connection_failed_t		failed;
+	fr_connection_close_t		close;
+} fr_connection_funcs_t;
+
 /** Receive a notification when a connection enters a particular state
  *
  * It is permitted for watchers to signal state changes, and/or to free the
@@ -215,29 +232,11 @@ int			fr_connection_signal_on_fd(fr_connection_t *conn, int fd);
 void			fr_connection_set_handle(fr_connection_t *conn, void *handle);
 /** @} */
 
-/** @name Set a callback for additional states
- *
- * These are not needed for every connection.
- * - Failed is needed if you want to deal with failure conditions specifically.
- *   Otherwise most of the same work can be done in close().
- * - Shutdown is needed if the API you're working with supports graceful
- *   shutdown, or if you're working with raw TCP connections and need to call
- *   shutdown().
- * @{
- */
-void			fr_connection_set_failed_func(fr_connection_t *conn, fr_connection_failed_t func);
-
-void			fr_connection_set_shutdown_func(fr_connection_t *conn, fr_connection_shutdown_t func);
-/** @} */
-
 /** @name Allocate a new connection
  * @{
  */
 fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					     fr_time_delta_t connection_timeout,
-					     fr_time_delta_t reconnection_delay,
-					     fr_connection_init_t init, fr_connection_open_t open,
-					     fr_connection_close_t close,
+					     fr_connection_funcs_t const *funcs, fr_connection_conf_t const *conf,
 					     char const *log_prefix, void const *uctx);
 /** @} */
 

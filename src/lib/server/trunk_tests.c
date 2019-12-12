@@ -311,10 +311,23 @@ static fr_connection_state_t _conn_init(void **h_out, fr_connection_t *conn, UNU
 
 static fr_connection_t *test_setup_socket_pair_connection_alloc(fr_trunk_connection_t *tconn,
 								fr_event_list_t *el,
-								fr_time_delta_t timeout, fr_time_delta_t retry,
+								fr_connection_conf_t const *conn_conf,
 								char const *log_prefix, void *uctx)
 {
-	return fr_connection_alloc(tconn, el, timeout, retry, _conn_init, _conn_open, _conn_close, log_prefix, tconn);
+	fr_connection_conf_t cstat;
+
+	if (!conn_conf) {
+		memset(&cstat, 0, sizeof(cstat));
+		conn_conf = &cstat;
+	}
+	return fr_connection_alloc(tconn, el,
+				   &(fr_connection_funcs_t){
+				   	.init = _conn_init,
+				   	.open = _conn_open,
+				   	.close = _conn_close
+				   },
+				   conn_conf,
+				   log_prefix, tconn);
 }
 
 static fr_trunk_t *test_setup_trunk(TALLOC_CTX *ctx, fr_event_list_t *el, fr_trunk_conf_t *conf, bool with_cancel_mux, void *uctx)
@@ -437,11 +450,20 @@ static fr_connection_state_t _conn_init_no_signal(void **h_out, fr_connection_t 
 
 static fr_connection_t *test_setup_socket_pair_1s_timeout_connection_alloc(fr_trunk_connection_t *tconn,
 									   fr_event_list_t *el,
-									   UNUSED fr_time_delta_t timeout, UNUSED fr_time_delta_t retry,
+									   UNUSED fr_connection_conf_t const *conf,
 									   char const *log_prefix, void *uctx)
 {
-	return fr_connection_alloc(tconn, el, NSEC * 1, NSEC * 1, _conn_init_no_signal,
-				   _conn_open, _conn_close, log_prefix, uctx);
+	return fr_connection_alloc(tconn, el,
+				   &(fr_connection_funcs_t){
+				   	.init = _conn_init_no_signal,
+				   	.open = _conn_open,
+				   	.close = _conn_close
+				   },
+				   &(fr_connection_conf_t){
+				   	.connection_timeout = NSEC * 1,
+				   	.reconnection_delay = NSEC * 1
+				   },
+				   log_prefix, uctx);
 }
 
 static void test_socket_pair_alloc_then_connect_timeout(void)
@@ -503,11 +525,20 @@ static void test_socket_pair_alloc_then_connect_timeout(void)
 
 static fr_connection_t *test_setup_socket_pair_1s_reconnection_delay_alloc(fr_trunk_connection_t *tconn,
 									   fr_event_list_t *el,
-									   UNUSED fr_time_delta_t timeout, UNUSED fr_time_delta_t retry,
+									   UNUSED fr_connection_conf_t const *conn_conf,
 									   char const *log_prefix, void *uctx)
 {
-	return fr_connection_alloc(tconn, el, NSEC * 1, NSEC * 1,
-				   _conn_init, _conn_open, _conn_close, log_prefix, uctx);
+	return fr_connection_alloc(tconn, el,
+				   &(fr_connection_funcs_t){
+				   	.init = _conn_init,
+				   	.open = _conn_open,
+				   	.close = _conn_close
+				   },
+				   &(fr_connection_conf_t){
+				   	.connection_timeout = NSEC * 1,
+				   	.reconnection_delay = NSEC * 1
+				   },
+				   log_prefix, uctx);
 }
 
 static void test_socket_pair_alloc_then_reconnect_check_delay(void)

@@ -41,6 +41,8 @@ typedef struct fr_trunk_s fr_trunk_t;
  *
  */
 typedef struct {
+	fr_connection_conf_t const *conn_conf;		//!< Connection configuration.
+
 	uint16_t		start;			//!< How many connections to start.
 
 	uint16_t		min;			//!< Shouldn't let connections drop below this number.
@@ -57,11 +59,6 @@ typedef struct {
 	uint64_t		max_uses;		//!< The maximum time a connection can be used.
 
 	fr_time_delta_t		lifetime;		//!< Time between reconnects.
-
-	fr_time_delta_t		connect_timeout;	//!< How long to wait for a connection to establish.
-
-	fr_time_delta_t		reconnect_delay;	//!< How long to wait before reconnecting failed
-							///< connection attempts.
 
 	fr_time_delta_t		open_delay;		//!< How long we must be above target utilisation
 							///< to spawn a new connection.
@@ -158,9 +155,7 @@ extern CONF_PARSER const fr_trunk_config[];
  *				Should be used as the context for any connections
  *				allocated.
  * @param[in] el		The event list to use for I/O and timer events.
- * @param[in] connect_timeout	How long to wait in the connecting state before giving up.
- * @param[in] reconnect_delay	How long to wait before attempting to connect after a
- *				failure.
+ * @param[in] conf		Connection configuration.
  * @param[in] log_prefix	What to prefix connection log messages with.
  * @param[in] uctx		User data to pass to the alloc callback.
  * @return
@@ -168,7 +163,7 @@ extern CONF_PARSER const fr_trunk_config[];
  *	- NULL on error.
  */
 typedef fr_connection_t *(*fr_trunk_connection_alloc_t)(fr_trunk_connection_t *tconn, fr_event_list_t *el,
-							fr_time_delta_t connect_timeout, fr_time_delta_t reconnect_delay,
+							fr_connection_conf_t const *conf,
 							char const *log_prefix, void *uctx);
 
 /** Inform the API client which connections the trunk API wants to be notified of I/O events on

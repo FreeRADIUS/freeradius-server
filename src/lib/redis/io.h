@@ -51,6 +51,11 @@ typedef struct {
 
 typedef uint64_t fr_redis_sqn_t;
 
+typedef struct {
+	fr_dlist_t	entry;
+	fr_redis_sqn_t	sqn;
+} fr_redis_sqn_ignore_t;
+
 /** Store I/O state
  *
  * There are three layers of wrapping structures
@@ -85,7 +90,7 @@ typedef struct {
  * *MUST* be called for every command sent using the handle. Relies on the fact
  * that responses from REDIS are FIFO with requests.
  *
- * @param[in] conn	the request was sent on.
+ * @param[in] h	the request was sent on.
  * @return the handle specific SQN.
  */
 static inline fr_redis_sqn_t fr_redis_connection_sent_request(fr_redis_handle_t *h)
@@ -95,18 +100,18 @@ static inline fr_redis_sqn_t fr_redis_connection_sent_request(fr_redis_handle_t 
 
 /** Ignore a response with a specific sequence number
  *
- * @param[in] conn		to ignore the response on.
- * @param[in] sqn_to_ignore	the command to ignore.
+ * @param[in] h		to ignore the response on.
+ * @param[in] sqn	the command to ignore.
  */
-static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_redis_sqn_t sqn_to_ignore)
+static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_redis_sqn_t sqn)
 {
-	fr_redis_sqn_t *sqn;
+	fr_redis_sqn_ignore_t *ignore;
 
-	rad_assert(sqn_to_ignore <= rconn->rsp_sqn);
+	rad_assert(sqn <= h->rsp_sqn);
 
-	MEM(sqn_to_ignore = talloc_zero(h, fr_redis_sqn_t));
-	*sqn = sqn_to_ignore;
-	fr_dlist_insert_tail(&h->ignore, sqn_to_ignore);
+	MEM(ignore = talloc_zero(h, fr_redis_sqn_ignore_t));
+	ignore->sqn = sqn;
+	fr_dlist_insert_tail(&h->ignore, ignore);
 }
 
 /** Update the response sequence number and check if we should ignore the response
@@ -114,26 +119,29 @@ static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_
  * *MUST* be called for every reply received using the handle. Relies on the fact
  * that responses from REDIS are FIFO with requests.
  *
- * @param[in] conn		to check for ignored responses.
+ * @param[in] h		to check for ignored responses.
  */
 static inline bool fr_redis_connection_process_response(fr_redis_handle_t *h)
 {
-	fr_redis_sqn_t	check = h->rsp_sqn++;
-	fr_redis_sqn_t	*head;
+	fr_redis_sqn_t		check = h->rsp_sqn++;
+	fr_redis_sqn_ignore_t	*head;
 
-	rad_assert(h->rsp_sqn <= h->req_sqn);	/* Can't have more responses than requests */
+	rad_assert(h->rsp_sqn <= h->req_sqn);		/* Can't have more responses than requests */
 
-	if (!fr_dlist_num_elements(tconn->ignore)) return true;	/* Not looking out for any cancellations */
+	head = fr_dlist_head(&h->ignore);
+	if (!head || (head->sqn > check)) return true;	/* First response to ignore is some time after this one */
+	rad_assert(head->sqn == check);
 
-	head = fr_dlist_head(tconn->ignore);
-	if (*head > check) return true;		/* First response to ignore is some time after this one */
-	rad_assert(*head == check);
-
-	fr_dlist_remove(tconn->ignore, head);
+	fr_dlist_remove(&h->ignore, head);
 	talloc_free(head);
+
+	return false;
 }
 
-fr_connection_t		*fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_io_conf_t const *conf);
+fr_connection_t		*fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+						   fr_connection_conf_t const *conn_conf,
+						   fr_redis_io_conf_t const *io_conf,
+						   char const *log_prefix);
 
 redisAsyncContext	*fr_redis_connection_get_async_ctx(fr_connection_t *conn);
 

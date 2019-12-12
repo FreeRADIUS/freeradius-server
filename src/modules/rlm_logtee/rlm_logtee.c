@@ -575,8 +575,16 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	/*
 	 *	This opens the outbound connection
 	 */
-	t->conn = fr_connection_alloc(t, el, inst->connection_timeout, inst->reconnection_delay,
-				      _logtee_conn_init, _logtee_conn_open, _logtee_conn_close,
+	t->conn = fr_connection_alloc(t, el,
+				      &(fr_connection_funcs_t){
+					.init = _logtee_conn_init,
+				   	.open = _logtee_conn_open,
+				   	.close = _logtee_conn_close
+				      },
+				      &(fr_connection_conf_t){
+					.connection_timeout = inst->connection_timeout,
+				   	.reconnection_delay = inst->reconnection_delay
+				      },
 				      inst->name, t);
 	if (t->conn == NULL) return -1;
 

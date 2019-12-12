@@ -2770,10 +2770,17 @@ static void conn_alloc(rlm_radius_udp_t *inst, fr_io_connection_thread_t *t)
 	}
 	fr_dlist_init(&c->sent, fr_io_request_t, entry);
 
-	c->conn = fr_connection_alloc(c, t->el, t->connection_timeout, t->reconnection_delay,
-				      _conn_init,
-				      _conn_open,
-				      _conn_close,
+	c->conn = fr_connection_alloc(c, t->el,
+				      &(fr_connection_funcs_t){
+					.init = _conn_init,
+				   	.open = _conn_open,
+				   	.close = _conn_close,
+				   	.failed = _conn_failed
+				      },
+				      &(fr_connection_conf_t){
+					.connection_timeout = t->connection_timeout,
+				   	.reconnection_delay = t->reconnection_delay
+				      },
 				      c->module_name, c);
 	if (!c->conn) {
 		talloc_free(c);
@@ -2781,7 +2788,6 @@ static void conn_alloc(rlm_radius_udp_t *inst, fr_io_connection_thread_t *t)
 			   c->module_name);
 		return;
 	}
-	fr_connection_set_failed_func(c->conn, _conn_failed);
 
 	/*
 	 *	Enforce max_connections via atomic variables.

@@ -464,10 +464,14 @@ fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t
 	fr_connection_t *conn;
 
 	conn = fr_connection_alloc(ctx, el,
-				   config->net_timeout, config->reconnection_delay,
-				   _ldap_connection_init,
-				   NULL,
-				   _ldap_connection_close,
+				   &(fr_connection_funcs_t){
+				   	.init = _ldap_connection_init,
+				   	.close = _ldap_connection_close
+				   },
+				   &(fr_connection_conf_t){
+				   	.connect_timeout = config->net_timeout,
+				   	.reconnect_delay = config->reconnect_delay
+				   },
 				   log_prefix, config);
 	if (!conn) return NULL;
 

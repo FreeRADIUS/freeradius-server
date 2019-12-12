@@ -133,7 +133,7 @@ typedef enum {
 	CONNECTION_DSIGNAL_FREE				//!< Free a connection (no further dsignals processed).
 } connection_dsignal_t;
 
-fr_table_num_ordered_t const connection_dsignals[] = {
+static fr_table_num_ordered_t const connection_dsignals[] = {
 	{ "INIT",		CONNECTION_DSIGNAL_INIT			},
 	{ "CONNECTING",		CONNECTION_DSIGNAL_CONNECTED		},
 	{ "RECONNECT-FAILED",	CONNECTION_DSIGNAL_RECONNECT_FAILED	},
@@ -142,7 +142,7 @@ fr_table_num_ordered_t const connection_dsignals[] = {
 	{ "HALT",		CONNECTION_DSIGNAL_HALT			},
 	{ "FREE",		CONNECTION_DSIGNAL_FREE			}
 };
-size_t connection_dsignals_len = NUM_ELEMENTS(connection_dsignals);
+static size_t connection_dsignals_len = NUM_ELEMENTS(connection_dsignals);
 
 /** Holds a signal from a handler until it's safe to process it
  *
@@ -200,10 +200,8 @@ static void connection_deferred_signal_process(fr_connection_t *conn)
 		signal = dsignal->signal;
 		talloc_free(dsignal);
 
-/*
 		DEBUG4("Processing deferred signal - %s",
 		       fr_table_str_by_value(connection_dsignals, signal, "<INVALID>"));
-*/
 
 		switch (signal) {
 		case CONNECTION_DSIGNAL_INIT:
@@ -212,6 +210,7 @@ static void connection_deferred_signal_process(fr_connection_t *conn)
 
 		case CONNECTION_DSIGNAL_CONNECTED:
 			fr_connection_signal_connected(conn);
+			break;
 
 		case CONNECTION_DSIGNAL_RECONNECT_FAILED:		/* Reconnect - Failed */
 			fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
@@ -1237,22 +1236,6 @@ void fr_connection_set_handle(fr_connection_t *conn, void *handle)
 	conn->h = handle;
 }
 
-/** Set an (optional) callback to be called on connection timeout/failure
- *
- */
-void fr_connection_set_failed_func(fr_connection_t *conn, fr_connection_failed_t func)
-{
-	conn->failed = func;
-}
-
-/** Set an (optional) callback to trigger a graceful shutdown
- *
- */
-void fr_connection_set_shutdown_func(fr_connection_t *conn, fr_connection_shutdown_t func)
-{
-	conn->shutdown = func;
-}
-
 /** Close a connection if it's freed
  *
  * @param[in] conn to free.
@@ -1308,11 +1291,8 @@ static int _connection_free(fr_connection_t *conn)
  *				#FR_CONNECTION_STATE_CONNECTING or #FR_CONNECTION_STATE_CONNECTED the
  *				close callback will be called.
  * @param[in] el		to use for timer events, and to pass to the #fr_connection_open_t callback.
- * @param[in] connection_timeout	(optional) how long to wait for a connection to open or shutdown.
- * @param[in] reconnection_delay	(optional) How long to wait on connection failure before retrying.
- * @param[in] init		(optional) callback to initialise a new file descriptor.
- * @param[in] open		(optional) callback to receive notifications that the connection is open.
- * @param[in] close		(optional) Callback to close the connection.
+ * @param[in] funcs		callback functions.
+ * @param[in] conf		our configuration.
  * @param[in] log_prefix	To prepend to log messages.
  * @param[in] uctx		User context to pass to callbacks.
  * @return
@@ -1320,9 +1300,8 @@ static int _connection_free(fr_connection_t *conn)
  *	- NULL on failure.
  */
 fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-				     fr_time_delta_t connection_timeout,
-				     fr_time_delta_t reconnection_delay,
-				     fr_connection_init_t init, fr_connection_open_t open, fr_connection_close_t close,
+				     fr_connection_funcs_t const *funcs,
+				     fr_connection_conf_t const *conf,
 				     char const *log_prefix,
 				     void const *uctx)
 {
@@ -1339,11 +1318,14 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	conn->state = FR_CONNECTION_STATE_HALTED;
 	conn->el = el;
 	conn->h = NULL;
-	conn->reconnection_delay = reconnection_delay;
-	conn->connection_timeout = connection_timeout;
-	conn->init = init;
-	conn->open = open;
-	conn->close = close;
+	conn->reconnection_delay = conf->reconnection_delay;
+	conn->connection_timeout = conf->connection_timeout;
+	conn->init = funcs->init;
+	conn->open = funcs->open;
+	conn->close = funcs->close;
+	conn->failed = funcs->failed;
+	conn->shutdown = funcs->shutdown;
+
 	conn->log_prefix = talloc_typed_strdup(conn, log_prefix);
 	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
 

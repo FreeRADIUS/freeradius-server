@@ -335,20 +335,26 @@ static CONF_PARSER const fr_trunk_config_requests[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static CONF_PARSER const fr_trunk_config_connection[] = {
+	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, fr_connection_conf_t, connection_timeout), .dflt = "3.0" },
+	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIME_DELTA, fr_connection_conf_t, reconnection_delay), .dflt = "1" },
+
+	CONF_PARSER_TERMINATOR
+};
+
 CONF_PARSER const fr_trunk_config[] = {
 	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_trunk_conf_t, start), .dflt = "5" },
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT16, fr_trunk_conf_t, min), .dflt = "1" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT16, fr_trunk_conf_t, max), .dflt = "5" },
 	{ FR_CONF_OFFSET("uses", FR_TYPE_UINT64, fr_trunk_conf_t, max_uses), .dflt = "0" },
 	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, lifetime), .dflt = "0" },
-	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, connect_timeout), .dflt = "3.0" },
 
-	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, reconnect_delay), .dflt = "1" },
 	{ FR_CONF_OFFSET("open_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, open_delay), .dflt = "0.2" },
 	{ FR_CONF_OFFSET("close_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, close_delay), .dflt = "10.0" },
 
 	{ FR_CONF_OFFSET("manage_interval", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, manage_interval), .dflt = "0.2" },
 
+	{ FR_CONF_OFFSET("connection", FR_TYPE_SUBSECTION, fr_trunk_conf_t, conn_conf), .subcs = (void const *) fr_trunk_config_connection },
 	{ FR_CONF_POINTER("requests", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) fr_trunk_config_requests },
 
 	CONF_PARSER_TERMINATOR
@@ -533,10 +539,10 @@ do { \
 #define DO_CONNECTION_ALLOC(_tconn) \
 do { \
 	void *prev = trunk->in_handler; \
-	DEBUG4("Calling connection_alloc(tconn=%p, el=%p, log_prefix=\"%s\", uctx=%p)", \
-	       (_tconn), (_tconn)->trunk->el, trunk->log_prefix, (_tconn)->trunk->uctx); \
+	DEBUG4("Calling connection_alloc(tconn=%p, el=%p, conf=%p, log_prefix=\"%s\", uctx=%p)", \
+	       (_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf.conn_conf, trunk->log_prefix, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = (void *) (_tconn)->trunk->funcs.connection_alloc; \
-	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf.connect_timeout, (_tconn)->trunk->conf.reconnect_delay, (_tconn)->trunk->log_prefix, trunk->uctx); \
+	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf.conn_conf, (_tconn)->trunk->log_prefix, trunk->uctx); \
 	(_tconn)->trunk->in_handler = prev; \
 	if (!(_tconn)->conn) { \
 		ERROR("Failed creating new connection"); \
