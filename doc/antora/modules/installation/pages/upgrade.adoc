@@ -685,3 +685,8 @@ Instead of using this, please use the `sql_ippool` module with sqlite.
 It is difficult to maintain multiple implementations of the same
 functionality. As a result, we have simplified the server by removing
 duplicate functionality.
+
+== Deleted Functionality
+
+The `Response-Packet-Type` attribute has been removed.  Please replace
+it with `&reply:Packet-Type`.
