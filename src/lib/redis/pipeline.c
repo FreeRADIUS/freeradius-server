@@ -38,7 +38,7 @@
  */
 struct fr_redis_cluster_thread_s {
 	fr_event_list_t			*el;
-	fr_trunk_conf_t			*tconf;		//!< Configuration for all trunks in the cluster.
+	fr_trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
 	char				*log_prefix;	//!< Common log prefix to use for all cluster related
 							///< messages.
 	bool				delay_start;	//!< Prevent connections from spawning immediately.
@@ -64,7 +64,7 @@ typedef enum {
 /** Represents a single command
  *
  */
-typedef struct {
+struct fr_redis_command_s {
 	fr_redis_command_set_t		*cmds;		//!< Command set this entry belongs to.
 	fr_dlist_t			entry;		//!< Entry in the command buffer.
 
@@ -78,7 +78,7 @@ typedef struct {
 							///< the handle.
 
 	redisReply			*result;	//!< The result from the REDIS server.
-} fr_redis_command_t;
+};
 
 /** Represents a collection of pipelined commands
  *
@@ -238,6 +238,7 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 						     COMMAND_PRE_ALLOC_COUNT * (sizeof(fr_redis_command_t) +
 						     COMMAND_PRE_ALLOC_LEN)));
 		talloc_set_destructor(cmds, _redis_command_set_free);
+		fr_dlist_entry_init(&cmds->entry);
 	} else {
 		fr_dlist_remove(free_list, cmds);
 	}
@@ -261,9 +262,14 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
  */
 static int _redis_command_free(fr_redis_command_t *cmd)
 {
-	if (cmd->result) fr_redis_reply_free(&cmd->result);
+	//if (cmd->result) fr_redis_reply_free(&cmd->result);
 
 	return 0;
+}
+
+redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd)
+{
+	return cmd->result;
 }
 
 /** Add a preformatted/expanded command to the command set
@@ -411,20 +417,20 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
  * @note Called only from hiredis, not the trunk itself.
  *
  * @param[in] ac		The async context the command was enqueued on.
- * @param[in] reply		redisReply containing the result of the command.
+ * @param[in] vreply		redisReply containing the result of the command.
  * @param[in] privdata		fr_redis_command_t that was sent to the Redis server.
  *				The fr_redis_command_t contains a pointer to the
  *      			fr_redis_command_set_t which holds the treq which
  *				we use to signal that we have responses for all
  *				commands.
  */
-static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *reply, void *privdata)
+static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, void *privdata)
 {
 	fr_redis_command_t	*cmd;
 	fr_redis_command_set_t	*cmds;
 	fr_connection_t		*conn = talloc_get_type_abort(ac->ev.data, fr_connection_t);
 	fr_redis_handle_t	*h = talloc_get_type_abort(fr_connection_get_handle(conn), fr_redis_handle_t);
-
+	redisReply		*reply = vreply;
 	/*
 	 *	First check if we should ignore the response
 	 */
@@ -489,8 +495,7 @@ static void _redis_pipeline_mux(fr_trunk_connection_t *tconn, fr_connection_t *c
 		 *	is disconnecting, but if that's happening then
 		 *	we shouldn't be enqueueing new requests?
 		 */
-		if (unlikely(redisAsyncFormattedCommand(h->ac, _redis_pipeline_demux,
-							cmd, cmd->str, cmd->len) != REDIS_OK)) {
+		if (unlikely(redisAsyncCommand(h->ac, _redis_pipeline_demux, cmd, "%s", cmd->str) != REDIS_OK)) {
 			ROPTIONAL(ERROR, REDEBUG, "Unexpected error queueing REDIS command");
 
 			while ((cmd = fr_dlist_head(&cmds->sent))) {
@@ -505,6 +510,7 @@ static void _redis_pipeline_mux(fr_trunk_connection_t *tconn, fr_connection_t *c
 		fr_dlist_remove(&cmds->pending, cmd);
 		fr_dlist_insert_tail(&cmds->sent, cmd);
 	}
+	fr_trunk_request_signal_sent(treq);
 }
 
 /** Deal with cancellation of sent requests
@@ -600,13 +606,13 @@ static void _redis_pipeline_command_set_free(UNUSED REQUEST *request, void *preq
 
 /** Allocate a new trunk
  *
- * @param[in] rtcluster	to allocate the trunk for.
+ * @param[in] cluster_thread	to allocate the trunk for.
  * @param[in] io_conf	Describing the connection to a single REDIS host.
  * @return
  *	- On success, a new fr_redis_trunk_t which can be used for pipelining commands.
  *	- NULL on failure.
  */
-fr_redis_trunk_t *redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_redis_io_conf_t const *io_conf)
+fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread, fr_redis_io_conf_t const *io_conf)
 {
 	fr_redis_trunk_t	*rtrunk;
 	fr_trunk_io_funcs_t	io_funcs = {
@@ -619,11 +625,11 @@ fr_redis_trunk_t *redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_red
 					.request_free		= _redis_pipeline_command_set_free
 				};
 
-	MEM(rtrunk = talloc_zero(rtcluster, fr_redis_trunk_t));
+	MEM(rtrunk = talloc_zero(cluster_thread, fr_redis_trunk_t));
 	rtrunk->io_conf = io_conf;
-	rtrunk->trunk = fr_trunk_alloc(rtrunk, rtcluster->el,
-				       &io_funcs, rtcluster->tconf, rtcluster->log_prefix, rtrunk,
-				       rtcluster->delay_start);
+	rtrunk->trunk = fr_trunk_alloc(rtrunk, cluster_thread->el,
+				       &io_funcs, cluster_thread->tconf, cluster_thread->log_prefix, rtrunk,
+				       cluster_thread->delay_start);
 	if (!rtrunk->trunk) {
 		talloc_free(rtrunk);
 		return NULL;
@@ -631,4 +637,20 @@ fr_redis_trunk_t *redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_red
 
 	return rtrunk;
 }
+
+fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_trunk_conf_t const *tconf)
+{
+	fr_redis_cluster_thread_t *cluster_thread;
+	fr_trunk_conf_t *our_tconf;
+
+	MEM(cluster_thread = talloc_zero(ctx, fr_redis_cluster_thread_t));
+	MEM(our_tconf = talloc_memdup(cluster_thread, tconf, sizeof(*tconf)));
+	our_tconf->always_writable = true;
+
+	cluster_thread->el = el;
+	cluster_thread->tconf = our_tconf;
+
+	return cluster_thread;
+}
+
 

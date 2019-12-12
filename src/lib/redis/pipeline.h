@@ -30,6 +30,7 @@ RCSIDH(redis_pipeline_h, "$Id$")
 
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/trunk.h>
 #include <freeradius-devel/redis/io.h>
 #include <hiredis/async.h>
 
@@ -46,6 +47,7 @@ typedef enum {
 } fr_redis_pipeline_status_t;
 
 typedef struct fr_redis_cluster_thread_s fr_redis_cluster_thread_t;
+typedef struct fr_redis_command_s fr_redis_command_t;
 typedef struct fr_redis_command_set_s fr_redis_command_set_t;
 typedef struct fr_redis_trunk_s fr_redis_trunk_t;
 
@@ -69,14 +71,19 @@ fr_redis_pipeline_status_t	fr_redis_command_preformatted_add(fr_redis_command_se
  */
 fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, fr_redis_command_set_t *cmds);
 
+redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd);
+
 fr_redis_command_set_t		*fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 							    REQUEST *request,
 							    fr_redis_command_set_complete_t complete,
 							    fr_redis_command_set_fail_t fail,
 							    void *rctx);
 
-fr_redis_trunk_t		*redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster,
-						   fr_redis_io_conf_t const *conf);
+fr_redis_trunk_t		*fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster,
+						      fr_redis_io_conf_t const *conf);
+
+fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+							       fr_trunk_conf_t const *tconf);
 
 #ifdef __cplusplus
 }

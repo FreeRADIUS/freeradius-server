@@ -117,6 +117,12 @@ static void _redis_io_common(fr_connection_t *conn, fr_redis_handle_t *h, bool r
 	redisContext		*c = &(h->ac->c);
 	fr_event_list_t		*el = fr_connection_get_el(conn);
 
+	/*
+	 *	hiredis doesn't even attempt to dedup registration
+	 *      requests *sigh*...
+	 */
+	if ((h->read_set == read) && (h->write_set == write)) return;
+
 	if (!read && !write) {
 		DEBUG4("redis handle %p - De-registering FD %i", h, c->fd);
 
