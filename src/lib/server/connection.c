@@ -80,7 +80,6 @@ struct fr_conn {
 	void			*uctx;			//!< User data.
 
 	void			*in_handler;		//!< Connection is currently in a callback.
-	bool			deferred_free;		//!< Something freed the connection.
 	bool			is_closed;		//!< The close callback has previously been called.
 
 	fr_dlist_head_t		watch_pre[FR_CONNECTION_STATE_MAX];	//!< Function called before state callback.
@@ -99,6 +98,9 @@ struct fr_conn {
 							//!< #FR_CONNECTION_STATE_CONNECTING state.
 	fr_time_delta_t		reconnection_delay;	//!< How long to wait in the
 							//!< #FR_CONNECTION_STATE_FAILED state.
+
+	fr_dlist_head_t		deferred_signals;	//!< A list of signals we received whilst we were in
+							///< a handler.
 };
 
 #define STATE_TRANSITION(_new) \
@@ -117,6 +119,109 @@ do { \
 				fr_table_str_by_value(fr_connection_states, _new, "<INVALID>"))) return; \
 } while (0)
 
+/** Deferred signals
+ *
+ */
+typedef enum {
+	CONNECTION_DSIGNAL_INIT,			//!< Restart a halted connection.
+	CONNECTION_DSIGNAL_CONNECTED,			//!< Signal that a connection is connected.
+	CONNECTION_DSIGNAL_RECONNECT_FAILED,		//!< Reconnect a failed connection.
+	CONNECTION_DSIGNAL_RECONNECT_EXPIRED,		//!< Reconnect an expired connection (gracefully).
+	CONNECTION_DSIGNAL_SHUTDOWN,			//!< Close a connection (gracefully).
+	CONNECTION_DSIGNAL_HALT,			//!< Close a connection (ungracefully).
+	CONNECTION_DSIGNAL_FREE				//!< Free a connection (no further dsignals processed).
+} connection_dsignal_t;
+
+fr_table_num_ordered_t const connection_dsignals[] = {
+	{ "INIT",		CONNECTION_DSIGNAL_INIT			},
+	{ "CONNECTING",		CONNECTION_DSIGNAL_CONNECTED		},
+	{ "RECONNECT-FAILED",	CONNECTION_DSIGNAL_RECONNECT_FAILED	},
+	{ "RECONNECT-EXPIRED",	CONNECTION_DSIGNAL_RECONNECT_EXPIRED	},
+	{ "SHUTDOWN",		CONNECTION_DSIGNAL_SHUTDOWN		},
+	{ "HALT",		CONNECTION_DSIGNAL_HALT			},
+	{ "FREE",		CONNECTION_DSIGNAL_FREE			}
+};
+size_t connection_dsignals_len = NUM_ELEMENTS(connection_dsignals);
+
+/** Holds a signal from a handler until it's safe to process it
+ *
+ */
+typedef struct {
+	fr_dlist_t		entry;		//!< Entry in the signals list.
+	connection_dsignal_t	signal;		//!< Signal that was deferred.
+} connection_dsignal_entry_t;
+/** Add a deferred signal to the signal list
+ *
+ * Processing signals whilst in handlers usually leads to weird
+ * inconsistent states within the connection.
+ *
+ * If a public signal function is called, and detects its being called
+ * from within the handler, it instead adds a deferred signal entry
+ * and immediately returns.
+ *
+ * Once the handler is complete, and all pending C stack state changes
+ * are complete, the deferred signals are drained and processed.
+ */
+static inline void connection_deferred_signal_add(fr_connection_t *conn, connection_dsignal_t signal)
+{
+	connection_dsignal_entry_t *dsignal;
+
+	dsignal = talloc_zero(conn, connection_dsignal_entry_t);
+	dsignal->signal = signal;
+	fr_dlist_insert_tail(&conn->deferred_signals, dsignal);
+
+//	DEBUG4("Adding deferred signal - %s", fr_table_str_by_value(connection_dsignals, signal, "<INVALID>"));
+}
+
+/** Process any deferred signals
+ *
+ */
+static void connection_deferred_signal_process(fr_connection_t *conn)
+{
+	connection_dsignal_entry_t *dsignal;
+
+	while ((dsignal = fr_dlist_head(&conn->deferred_signals))) {
+		connection_dsignal_t signal;
+		fr_dlist_remove(&conn->deferred_signals, dsignal);
+		signal = dsignal->signal;
+		talloc_free(dsignal);
+
+/*
+		DEBUG4("Processing deferred signal - %s",
+		       fr_table_str_by_value(connection_dsignals, signal, "<INVALID>"));
+*/
+
+		switch (signal) {
+		case CONNECTION_DSIGNAL_INIT:
+			fr_connection_signal_init(conn);
+			break;
+
+		case CONNECTION_DSIGNAL_CONNECTED:
+			fr_connection_signal_connected(conn);
+
+		case CONNECTION_DSIGNAL_RECONNECT_FAILED:		/* Reconnect - Failed */
+			fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+			break;
+
+		case CONNECTION_DSIGNAL_RECONNECT_EXPIRED:		/* Reconnect - Expired */
+			fr_connection_signal_reconnect(conn, FR_CONNECTION_EXPIRED);
+			break;
+
+		case CONNECTION_DSIGNAL_SHUTDOWN:
+			fr_connection_signal_shutdown(conn);
+			break;
+
+		case CONNECTION_DSIGNAL_HALT:
+			fr_connection_signal_halt(conn);
+			break;
+
+		case CONNECTION_DSIGNAL_FREE:				/* Freed */
+			talloc_free(conn);
+			return;
+		}
+	}
+}
+
 /** Called when we enter a handler
  *
  */
@@ -132,11 +237,8 @@ do { \
 #define HANDLER_END(_conn) \
 do { \
 	(_conn)->in_handler = _prev_handler; \
-	if ((_conn)->deferred_free) { \
-		talloc_free(_conn); \
-		return; \
-	} \
 } while(0)
+
 
 /** Call a list of watch functions associated with a state
  *
@@ -793,14 +895,21 @@ static void connection_state_init_enter(fr_connection_t *conn)
  */
 void fr_connection_signal_init(fr_connection_t *conn)
 {
+	if (conn->in_handler) {
+		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_INIT);
+		return;
+	}
+
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_HALTED:
 		connection_state_init_enter(conn);
-		return;
+		break;
 
 	default:
-		return;
+		break;
 	}
+
+	connection_deferred_signal_process(conn);
 }
 
 /** Asynchronously signal that the connection is open
@@ -817,14 +926,21 @@ void fr_connection_signal_connected(fr_connection_t *conn)
 {
 	rad_assert(!conn->open);	/* Use one or the other not both! */
 
+	if (conn->in_handler) {
+		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_CONNECTED);
+		return;
+	}
+
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_CONNECTING:
 		connection_state_connected_enter(conn);
-		return;
+		break;
 
 	default:
-		return;
+		break;
 	}
+
+	connection_deferred_signal_process(conn);
 }
 
 /** Asynchronously signal the connection should be reconnected
@@ -839,6 +955,16 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 {
 	DEBUG2("Signalled to reconnect");
 
+	if (conn->in_handler) {
+		if ((reason == FR_CONNECTION_EXPIRED) && conn->shutdown) {
+			connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_RECONNECT_EXPIRED);
+			return;
+		}
+
+		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_RECONNECT_FAILED);
+		return;
+	}
+
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_FAILED:	/* Don't circumvent reconnection_delay */
 	case FR_CONNECTION_STATE_INIT:		/* Already initialising */
@@ -846,10 +972,10 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 
 	case FR_CONNECTION_STATE_HALTED:
 		fr_connection_signal_init(conn);
-		return;
+		break;
 
 	case FR_CONNECTION_STATE_SHUTDOWN:
-		if (reason == FR_CONNECTION_EXPIRED) return;
+		if (reason == FR_CONNECTION_EXPIRED) break;
 		connection_state_failed_enter(conn);
 		break;
 
@@ -861,14 +987,104 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 	case FR_CONNECTION_STATE_TIMEOUT:
 	case FR_CONNECTION_STATE_CLOSED:
 		connection_state_failed_enter(conn);
-		return;
+		break;
 
 	case FR_CONNECTION_STATE_MAX:
 		rad_assert(0);
 		return;
 	}
+
+	connection_deferred_signal_process(conn);
 }
 
+/** Shuts down a connection gracefully
+ *
+ * If a shutdown function has been provided, it is called.
+ * It's then up to the shutdown function to install I/O handlers to signal
+ * when the connection has finished shutting down and should be closed
+ * via #fr_connection_signal_halt.
+ *
+ * @param[in] conn	to shutdown.
+ */
+void fr_connection_signal_shutdown(fr_connection_t *conn)
+{
+	if (conn->in_handler) {
+		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_SHUTDOWN);
+		return;
+	}
+
+	switch (conn->state) {
+	case FR_CONNECTION_STATE_HALTED:
+	case FR_CONNECTION_STATE_SHUTDOWN:
+		break;
+
+	case FR_CONNECTION_STATE_FAILED:
+	case FR_CONNECTION_STATE_INIT:
+		connection_state_halted_enter(conn);
+		break;
+
+	case FR_CONNECTION_STATE_CONNECTED:
+	case FR_CONNECTION_STATE_CONNECTING:
+		if (conn->shutdown) {
+			connection_state_shutdown_enter(conn);
+			break;
+		}
+		connection_state_closed_enter(conn);
+		connection_state_halted_enter(conn);
+		break;
+
+	case FR_CONNECTION_STATE_TIMEOUT:
+	case FR_CONNECTION_STATE_CLOSED:
+		connection_state_halted_enter(conn);
+		break;
+
+	case FR_CONNECTION_STATE_MAX:
+		rad_assert(0);
+		return;
+	}
+
+	connection_deferred_signal_process(conn);
+}
+
+/** Shuts down a connection ungracefully
+ *
+ * If a connection is in an open or connection state it will be closed immediately.
+ * Otherwise the connection will transition directly to the halted state.
+ *
+ * @param[in] conn	to halt.
+ */
+void fr_connection_signal_halt(fr_connection_t *conn)
+{
+	if (conn->in_handler) {
+		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_HALT);
+		return;
+	}
+
+	switch (conn->state) {
+	case FR_CONNECTION_STATE_HALTED:
+		break;
+
+	case FR_CONNECTION_STATE_FAILED:
+	case FR_CONNECTION_STATE_INIT:
+	case FR_CONNECTION_STATE_SHUTDOWN:
+	case FR_CONNECTION_STATE_TIMEOUT:
+	case FR_CONNECTION_STATE_CLOSED:
+		connection_state_halted_enter(conn);
+		break;
+
+	case FR_CONNECTION_STATE_CONNECTED:
+	case FR_CONNECTION_STATE_CONNECTING:
+		connection_state_closed_enter(conn);
+		connection_state_halted_enter(conn);
+		break;
+
+	case FR_CONNECTION_STATE_MAX:
+		rad_assert(0);
+		return;
+	}
+
+	connection_deferred_signal_process(conn);
+}
 /** Receive an error notification when we're connecting a socket
  *
  * @param[in] el	event list the I/O event occurred on.
@@ -883,6 +1099,8 @@ static void _connection_error(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 
 	ERROR("Connection failed for fd (%u): %s", fd, fr_syserror(fd_errno));
 	connection_state_failed_enter(conn);
+
+	connection_deferred_signal_process(conn);
 }
 
 /** Receive a write notification after a socket is connected
@@ -898,6 +1116,8 @@ static void _connection_writable(fr_event_list_t *el, int fd, UNUSED int flags, 
 
 	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
 	connection_state_connected_enter(conn);
+
+	connection_deferred_signal_process(conn);
 }
 
 /** Remove the FD we were watching for connection open/fail from the event loop
@@ -1018,18 +1238,17 @@ static int _connection_free(fr_connection_t *conn)
 	 *	Don't allow the connection to be
 	 *	arbitrarily freed by a callback.
 	 *
-	 *	Set the deferred free flag, and
-	 *	free the connection afterwards.
+	 *	Add a deferred signal to free the
+	 *	connection later.
 	 */
 	if (conn->in_handler) {
-		conn->deferred_free = true;
-		return 1;
+		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_FREE);
+		return -1;
 	}
 
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_HALTED:
 		break;
-
 
 	/*
 	 *	Need to close the connection first
@@ -1106,6 +1325,7 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	for (i = 0; i < NUM_ELEMENTS(conn->watch_post); i++) {
 		fr_dlist_talloc_init(&conn->watch_post[i], fr_connection_watch_entry_t, list);
 	}
+	fr_dlist_talloc_init(&conn->deferred_signals, connection_dsignal_entry_t, entry);
 
 	return conn;
 }

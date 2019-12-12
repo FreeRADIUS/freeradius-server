@@ -196,6 +196,10 @@ void			fr_connection_signal_init(fr_connection_t *conn);
 void			fr_connection_signal_connected(fr_connection_t *conn);
 
 void			fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_t reason);
+
+void			fr_connection_signal_shutdown(fr_connection_t *conn);
+
+void			fr_connection_signal_halt(fr_connection_t *conn);
 /** @} */
 
 /** @name Install generic I/O events on an FD to signal state changes
