@@ -58,7 +58,7 @@ static atomic_uint_fast64_t connection_counter = ATOMIC_VAR_INIT(1);
  *
  */
 typedef struct {
-	fr_dlist_t		list;			//!< List entry.
+	fr_dlist_t		entry;			//!< List entry.
 	fr_connection_watch_t	func;			//!< Function to call when a connection enters
 							///< the state this list belongs to
 	bool			oneshot;		//!< Remove the function after it's called once.
@@ -1321,10 +1321,10 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
 
 	for (i = 0; i < NUM_ELEMENTS(conn->watch_pre); i++) {
-		fr_dlist_talloc_init(&conn->watch_pre[i], fr_connection_watch_entry_t, list);
+		fr_dlist_talloc_init(&conn->watch_pre[i], fr_connection_watch_entry_t, entry);
 	}
 	for (i = 0; i < NUM_ELEMENTS(conn->watch_post); i++) {
-		fr_dlist_talloc_init(&conn->watch_post[i], fr_connection_watch_entry_t, list);
+		fr_dlist_talloc_init(&conn->watch_post[i], fr_connection_watch_entry_t, entry);
 	}
 	fr_dlist_talloc_init(&conn->deferred_signals, connection_dsignal_entry_t, entry);
 
