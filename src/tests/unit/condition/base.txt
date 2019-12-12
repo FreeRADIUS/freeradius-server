@@ -99,16 +99,16 @@ match !&User-Name == &User-Password || &Filter-Id == &Reply-Message
 condition ((a == b) || (c == d)))
 match ERROR offset 22 Unexpected closing brace
 
-condition (handled && (&Response-Packet-Type == Access-Challenge))
-match handled && &Response-Packet-Type == Access-Challenge
+condition (handled && (&Packet-Type == Access-Challenge))
+match handled && &Packet-Type == Access-Challenge
 
 # This is OK, without the braces
-condition handled && &Response-Packet-Type == Access-Challenge
-match handled && &Response-Packet-Type == Access-Challenge
+condition handled && &Packet-Type == Access-Challenge
+match handled && &Packet-Type == Access-Challenge
 
 # and this, though it's not a good idea.
-condition handled &&&Response-Packet-Type == Access-Challenge
-match handled && &Response-Packet-Type == Access-Challenge
+condition handled &&&Packet-Type == Access-Challenge
+match handled && &Packet-Type == Access-Challenge
 
 condition &reply: == &request:
 match ERROR offset 0 Cannot use list references in condition
