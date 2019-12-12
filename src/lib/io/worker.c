@@ -707,6 +707,29 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	}
 }
 
+/*
+ *	talloc_typed_asprintf() is horrifically slow for printing
+ *	simple numbers.
+ */
+static char *itoa_internal(TALLOC_CTX *ctx, uint64_t number)
+{
+	char buffer[32];
+	char *p;
+	char const *numbers = "0123456789";
+
+	p = buffer + 30;
+	*(p--) = '\0';
+
+	while (number > 0) {
+		*(p--) = numbers[number % 10];
+		number /= 10;
+	}
+
+	if (p[1]) return talloc_strdup(ctx, p + 1);
+
+	return talloc_strdup(ctx, "0");
+}
+
 
 /** Get a runnable request
  *
@@ -789,7 +812,8 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->async->recv_time = *request->async->original_recv_time;
 	request->async->el = worker->el;
 	request->number = worker->number++;
-	request->name = talloc_typed_asprintf(request, "%" PRIu64 , request->number);
+
+	request->name = itoa_internal(request, request->number);
 
 	request->async->listen = cd->listen;
 	request->async->packet_ctx = cd->packet_ctx;
