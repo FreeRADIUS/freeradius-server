@@ -870,8 +870,8 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 		new->depth = cs->depth;
 	}
 
-	new->item.lineno = cs->item.lineno;
-	new->item.filename = cs->item.filename;
+	cf_filename_set(new, cs->item.filename);
+	cf_lineno_set(new, cs->item.lineno);
 
 	fr_cursor_copy(&cursor, &cs->item.cursor);	/* Mutable cursor */
 	for (ci = fr_cursor_head(&cursor);
@@ -1128,7 +1128,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	cp->lhs_quote = lhs_quote;
 	cp->rhs_quote = rhs_quote;
 	cp->op = op;
-	cp->item.filename = "";		/* will be over-written if necessary */
+	cf_filename_set(cp, "");		/* will be over-written if necessary */
 	fr_cursor_init(&cp->item.cursor, &cp->item.child);
 
 	cp->attr = talloc_typed_strdup(cp, attr);
@@ -1161,13 +1161,12 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 	rad_assert(parent);
 	rad_assert(cp);
 
-	new = cf_pair_alloc(parent, cp->attr, cf_pair_value(cp),
-			    cp->op, cp->lhs_quote, cp->rhs_quote);
+	new = cf_pair_alloc(parent, cp->attr, cf_pair_value(cp), cp->op, cp->lhs_quote, cp->rhs_quote);
 	if (!new) return NULL;
 
 	new->parsed = cp->parsed;
-	new->item.lineno = cp->item.lineno;
-	new->item.filename = cp->item.filename;
+	cf_lineno_set(new, cp->item.lineno);
+	cf_filename_set(new, cp->item.filename);
 
 	return new;
 }
@@ -1561,9 +1560,8 @@ CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name,
 		return NULL;
 	}
 	cd->is_talloced = true;
-	cd->item.filename = filename;
-	cd->item.lineno = lineno;
-
+	cf_filename_set(cd, filename);
+	cf_lineno_set(cd, lineno);
 	cf_item_add(ci, cd);
 
 	return cd;
@@ -1607,9 +1605,8 @@ CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const
 		return NULL;
 	}
 	cd->is_talloced = false;
-	cd->item.filename = filename;
-	cd->item.lineno = lineno;
-
+	cf_filename_set(cd, filename);
+	cf_lineno_set(cd, lineno);
 	cf_item_add(ci, cd);
 
 	return cd;

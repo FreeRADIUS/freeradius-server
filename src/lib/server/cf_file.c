@@ -287,8 +287,8 @@ char const *cf_expand_variables(char const *cf, int lineno,
 					return NULL;
 				}
 
-				subcs->item.filename = ci->filename;
-				subcs->item.lineno = ci->lineno;
+				cf_filename_set(subcs, ci->filename);
+				cf_lineno_set(subcs, ci->lineno);
 				cf_item_add(outer_cs, &(subcs->item));
 
 				ptr = next + 1;
@@ -402,9 +402,8 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			cp2 = cf_pair_dup(cs, cp1);
 			if (!cp2) return false;
 
-			cp2->item.filename = cp1->item.filename;
-			cp2->item.lineno = cp1->item.lineno;
-
+			cf_filename_set(cp2, cp1->item.filename);
+			cf_lineno_set(cp2, cp1->item.lineno);
 			cf_item_add(cs, &(cp2->item));
 			continue;
 		}
@@ -436,9 +435,8 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 						false);
 			if (!subcs2) return false;
 
-			subcs2->item.filename = subcs1->item.filename;
-			subcs2->item.lineno = subcs1->item.lineno;
-
+			cf_filename_set(subcs2, subcs1->item.filename);
+			cf_lineno_set(subcs2, subcs1->item.lineno);
 			cf_item_add(cs, &(subcs2->item));
 			continue;
 		}
@@ -515,7 +513,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 
 	MEM(file = talloc(tree, cf_file_t));
 
-	file->filename = filename;
+	file->filename = talloc_strdup(file, filename);	/* The rest of the code expects this to be a talloced buffer */
 	file->cs = cs;
 	file->from_dir = from_dir;
 
@@ -570,7 +568,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 	file = talloc(tree, cf_file_t);
 	if (!file) return false;
 
-	file->filename = filename;
+	file->filename = talloc_strdup(file, filename);	/* The rest of the code expects this to be talloced */
 	file->cs = cs;
 
 	if (!check_perms) {
@@ -1092,8 +1090,8 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 		cf_log_err(parent, "Failed allocating memory for section");
 		return NULL;
 	}
-	cs->item.filename = frame->filename;
-	cs->item.lineno = frame->lineno;
+	cf_filename_set(cs, frame->filename);
+	cf_lineno_set(cs, frame->lineno);
 
 	/*
 	 *	Skip (...) to find the {
@@ -1270,8 +1268,8 @@ alloc_section:
 		      frame->filename, frame->lineno);
 		return NULL;
 	}
-	css->item.filename = frame->filename;
-	css->item.lineno = frame->lineno;
+	cf_filename_set(css, frame->filename);
+	cf_lineno_set(css, frame->lineno);
 	css->name2_quote = T_BARE_WORD;
 
 	css->argc = 0;
@@ -1328,8 +1326,8 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 
 	cp = cf_pair_alloc(parent, attr, value, op_token, name1_token, value_token);
 	if (!cp) return -1;
-	cp->item.filename = filename;
-	cp->item.lineno = lineno;
+	cf_filename_set(cp, filename);
+	cf_lineno_set(cp, lineno);
 	cp->pass2 = pass2;
 	cf_item_add(parent, &(cp->item));
 
@@ -1488,8 +1486,8 @@ static int parse_input(cf_stack_t *stack)
 			return -1;
 		}
 
-		css->item.filename = frame->filename;
-		css->item.lineno = frame->lineno;
+		cf_filename_set(css, frame->filename);
+		cf_lineno_set(css, frame->lineno);
 		css->name2_quote = name2_token;
 
 		/*
@@ -1954,7 +1952,7 @@ do_frame:
 
 		/*
 		 *	All of the file handling code is done.  Parse the input.
-		 */		
+		 */
 		do {
 			fr_skip_whitespace(ptr);
 			if (!*ptr || (*ptr == '#')) break;
