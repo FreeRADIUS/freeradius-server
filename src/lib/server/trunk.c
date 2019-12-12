@@ -1557,10 +1557,6 @@ void fr_trunk_request_signal_sent(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_complete(fr_trunk_request_t *treq)
 {
-	if (!fr_cond_assert_msg(IN_REQUEST_MUX(treq->trunk) || IN_REQUEST_DEMUX(treq->trunk),
-				"%s can only be called from within request_mux or request_demux handlers",
-				__FUNCTION__)) return;
-
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_SENT:
 	case FR_TRUNK_REQUEST_PENDING:	/* Got immediate response, i.e. cached */
@@ -1578,10 +1574,6 @@ void fr_trunk_request_signal_complete(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_fail(fr_trunk_request_t *treq)
 {
-	if (!fr_cond_assert_msg(IN_REQUEST_MUX(treq->trunk) || IN_REQUEST_DEMUX(treq->trunk),
-				"%s can only be called from within request_mux or request_demux handlers",
-				__FUNCTION__)) return;
-
 	trunk_request_enter_failed(treq);
 }
 
