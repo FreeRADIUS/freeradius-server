@@ -18,6 +18,17 @@ RCSID("$Id$")
  */
 #include <freeradius-devel/util/md5.h>
 
+/** The thread local free list
+ *
+ * Any entries remaining in the list will be freed when the thread is joined
+ */
+#define ARRAY_SIZE (8)
+typedef struct {
+	bool		used;
+	fr_md5_ctx_t	*md_ctx;
+} fr_md5_free_list_t;
+fr_thread_local_setup(fr_md5_free_list_t *, md5_array)
+
 fr_thread_local_setup(fr_md5_ctx_t *, md5_ctx)
 
 /*
@@ -40,7 +51,15 @@ static int have_openssl_md5 = -1;
 
 static void _md5_ctx_openssl_free_on_exit(void *arg)
 {
-	EVP_MD_CTX_free(arg);
+	int i;
+	fr_md5_free_list_t *free_list = arg;
+
+	for (i = 0; i < ARRAY_SIZE; i++) {
+		if (free_list[i].used) continue;
+
+		EVP_MD_CTX_free(free_list[i].md_ctx);
+	}
+	talloc_free(free_list);
 }
 
 /** @copydoc fr_md5_ctx_reset
@@ -67,36 +86,56 @@ static void fr_md5_openssl_ctx_copy(fr_md5_ctx_t *dst, fr_md5_ctx_t const *src)
  */
 static fr_md5_ctx_t *fr_md5_openssl_ctx_alloc(bool thread_local)
 {
+	int i;
 	EVP_MD_CTX *md_ctx;
+	fr_md5_free_list_t *free_list;
+
+	thread_local = true;
 
 	/*
 	 *	Use the thread local ctx to avoid heap allocations.
 	 */
-	if (thread_local) {
-		if (unlikely(!md5_ctx)) {
-			md_ctx = EVP_MD_CTX_new();
-			if (unlikely(!md_ctx)) {
-			oom:
-				fr_strerror_printf("Out of memory");
-				return NULL;
-			}
-			fr_thread_local_set_destructor(md5_ctx, _md5_ctx_openssl_free_on_exit, md_ctx);
-			EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL);
-		} else {
-			md_ctx = md5_ctx;
-		}
-	/*
-	 *	If the MD5 ctx might be used across a yield point
-	 *	shared should be set to false, and new contexts
-	 *	should be allocated.
-	 */
-	} else {
+	if (!thread_local) {
+	alloc:
 		md_ctx = EVP_MD_CTX_new();
-		if (unlikely(!md_ctx)) goto oom;
+		if (unlikely(!md_ctx)) {
+		oom:
+			fr_strerror_printf("Out of memory");
+			return NULL;
+		}
 		EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL);
+		return md_ctx;
 	}
 
-	return md_ctx;
+	if (unlikely(!md5_array)) {
+		free_list = talloc_zero_array(NULL, fr_md5_free_list_t, ARRAY_SIZE);
+		if (unlikely(!free_list)) goto oom;
+
+		fr_thread_local_set_destructor(md5_array, _md5_ctx_openssl_free_on_exit, free_list);
+
+		/*
+		 *	Initialize all MD5 contexts
+		 */
+		for (i = 0; i < ARRAY_SIZE; i++) {
+			free_list[i].md_ctx = EVP_MD_CTX_new();
+			if (!free_list[i].md_ctx ) goto oom;
+			EVP_DigestInit_ex(free_list[i].md_ctx, EVP_md5(), NULL);
+		}
+	} else {
+		free_list = md5_array;
+	}
+
+	for (i = 0; i < ARRAY_SIZE; i++) {
+		if (free_list[i].used) continue;
+
+		free_list[i].used = true;
+		return free_list[i].md_ctx;
+	}
+
+	/*
+	 *	No more free contexts, just allocate a new one.
+	 */
+	goto alloc;
 }
 
 /** @copydoc fr_md5_ctx_free
@@ -104,10 +143,16 @@ static fr_md5_ctx_t *fr_md5_openssl_ctx_alloc(bool thread_local)
  */
 static void fr_md5_openssl_ctx_free(fr_md5_ctx_t **ctx)
 {
-	if (md5_ctx && (md5_ctx == *ctx)) {
-		fr_md5_openssl_ctx_reset(*ctx);
-		*ctx = NULL;
-		return;
+	int i;
+	fr_md5_free_list_t *free_list = md5_array;
+
+	if (free_list) for (i = 0; i < ARRAY_SIZE; i++) {
+		if (free_list[i].md_ctx == *ctx) {
+			free_list[i].used = false;
+			fr_md5_openssl_ctx_reset(*ctx);
+			*ctx = NULL;
+			return;
+		}
 	}
 
 	EVP_MD_CTX_free(*ctx);
