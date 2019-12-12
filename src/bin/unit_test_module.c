@@ -566,6 +566,110 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, U
 	return RLM_MODULE_FAIL;
 }
 
+static void process(REQUEST *request)
+{
+	CONF_SECTION		*unlang;
+	VALUE_PAIR		*vp;
+	char			*auth_type;
+	fr_dict_enum_t const	*dv = NULL;
+	/*
+	 *	Simulate an authorize section
+	 */
+	rad_assert(request->server_cs != NULL);
+	unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
+	if (!unlang) {
+		REDEBUG("Failed to find 'recv Access-Request' section");
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		goto send_reply;
+	}
+
+	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+	case RLM_MODULE_NOOP:
+		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		break;
+
+	default:
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		goto send_reply;
+	}
+
+	/*
+	 *	Simulate an authenticate section
+	 */
+	vp = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
+	if (!vp) return;
+
+	switch (vp->vp_int32) {
+	case FR_AUTH_TYPE_VALUE_ACCEPT:
+		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		goto send_reply;
+
+	case FR_AUTH_TYPE_VALUE_REJECT:
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		goto send_reply;
+
+	default:
+		break;
+	}
+
+	auth_type = fr_pair_value_asprint(vp, vp, '\0');
+	unlang = cf_section_find(request->server_cs, "authenticate", auth_type);
+	talloc_free(auth_type);
+	if (!unlang) {
+		REDEBUG("Failed to find 'recv %pV' section", &vp->data);
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		goto send_reply;
+	}
+
+	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+	case RLM_MODULE_NOOP:
+		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		break;
+
+	default:
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		break;
+	}
+
+send_reply:
+	dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
+	if (!dv) return;
+
+	unlang = cf_section_find(request->server_cs, "send", dv->name);
+	if (!unlang) return;
+
+	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
+	default:
+		break;
+
+	case RLM_MODULE_REJECT:
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		break;
+	}
+}
+
+static REQUEST *request_clone(REQUEST *old)
+{
+	REQUEST *request;
+
+	request = request_alloc(NULL);
+	if (!request) return NULL;
+
+	if (!request->packet) request->packet = fr_radius_alloc(request, false);
+	if (!request->reply) request->reply = fr_radius_alloc(request, false);
+
+	memcpy(request->packet, old->packet, sizeof(*request->packet));
+	(void) fr_pair_list_copy(request->packet, &request->packet->vps, old->packet->vps);
+	request->packet->timestamp = fr_time();
+	request->number = old->number++;
+
+	return request;
+}
+
 /*
  *	The main guy.
  */
@@ -573,6 +677,7 @@ int main(int argc, char *argv[])
 {
 	int			ret = EXIT_SUCCESS;
 	int			c;
+	int			count = 1;
 	const char 		*input_file = NULL;
 	const char		*output_file = NULL;
 	const char		*filter_file = NULL;
@@ -584,8 +689,6 @@ int main(int argc, char *argv[])
 	fr_state_tree_t		*state = NULL;
 	fr_event_list_t		*el = NULL;
 	RADCLIENT		*client = NULL;
-	CONF_SECTION		*unlang;
-	char			*auth_type;
 	fr_dict_t		*dict = NULL;
 	char const 		*receipt_file = NULL;
 
@@ -638,8 +741,12 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "d:D:f:hi:mMn:o:O:r:xX")) != -1) {
+	while ((c = getopt(argc, argv, "c:d:D:f:hi:mMn:o:O:r:xX")) != -1) {
 		switch (c) {
+			case 'c':
+				count = atoi(optarg);
+				break;
+
 			case 'd':
 				main_config_raddb_dir_set(config, optarg);
 				break;
@@ -961,70 +1068,20 @@ int main(int argc, char *argv[])
 		fclose(fp);
 	}
 
-	/*
-	 *	Simulate an authorize section
-	 */
-	rad_assert(request->server_cs != NULL);
-	unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
-	if (!unlang) {
-		REDEBUG("Failed to find 'recv Access-Request' section");
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		goto done;
+	if (count == 1) {
+		process(request);
+	} else {
+		int i;
+		REQUEST *old = request_clone(request);
+		talloc_free(request);
+
+		for (i = 0; i < count; i++) {
+			request = request_clone(old);
+			process(request);
+			talloc_free(request);
+		}
 	}
 
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-	case RLM_MODULE_NOOP:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
-		break;
-
-	default:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		goto done;
-	}
-
-	/*
-	 *	Simulate an authenticate section
-	 */
-	vp = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
-	if (!vp) goto done;
-
-	switch (vp->vp_int32) {
-	case FR_AUTH_TYPE_VALUE_ACCEPT:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
-		goto done;
-
-	case FR_AUTH_TYPE_VALUE_REJECT:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		goto done;
-
-	default:
-		break;
-	}
-
-	auth_type = fr_pair_value_asprint(vp, vp, '\0');
-	unlang = cf_section_find(request->server_cs, "authenticate", auth_type);
-	talloc_free(auth_type);
-	if (!unlang) {
-		REDEBUG("Failed to find 'recv %pV' section", &vp->data);
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		goto done;
-	}
-
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-	case RLM_MODULE_NOOP:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
-		break;
-
-	default:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		goto done;
-	}
-
-done:
 	if (!output_file || (strcmp(output_file, "-") == 0)) {
 		fp = stdout;
 	} else {
@@ -1143,6 +1200,7 @@ static void NEVER_RETURNS usage(main_config_t const *config, int status)
 
 	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
+	fprintf(output, "  -c <count>         Run packets through the interpreter <count> times\n");
 	fprintf(output, "  -d <raddb_dir>     Configuration files are in \"raddb_dir/*\".\n");
 	fprintf(output, "  -D <dict_dir>      Dictionary files are in \"dict_dir/*\".\n");
 	fprintf(output, "  -f <file>          Filter reply against attributes in 'file'.\n");
