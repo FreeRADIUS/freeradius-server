@@ -115,7 +115,6 @@ static fr_dict_attr_t const *attr_packet_src_port;
 
 static fr_dict_attr_t const *attr_radclient_test_name;
 static fr_dict_attr_t const *attr_request_authenticator;
-static fr_dict_attr_t const *attr_response_packet_type;
 
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_digest_attributes;
@@ -152,7 +151,6 @@ fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_response_packet_type, .name = "Response-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
@@ -480,7 +478,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					vp->type = VT_DATA;
 				}
 
-				if ((vp->da == attr_response_packet_type) || (vp->da == attr_packet_type)) {
+				if (vp->da == attr_packet_type) {
 					vp = fr_cursor_remove(&cursor);	/* so we don't break the filter */
 					request->filter_code = vp->vp_uint32;
 					talloc_free(vp);
@@ -520,8 +518,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			 */
 			if (vp->da == attr_packet_type) {
 				request->packet->code = vp->vp_uint32;
-			} else if (vp->da == attr_response_packet_type) {
-				request->filter_code = vp->vp_uint32;
 			} else if (vp->da == attr_packet_dst_port) {
 				request->packet->dst_port = vp->vp_uint16;
 			} else if ((vp->da == attr_packet_dst_ip_address) ||
@@ -656,12 +652,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			case FR_CODE_UNDEFINED:
-				REDEBUG("Both Packet-Type and Response-Packet-Type undefined, specify at least one, "
+				REDEBUG("Packet-Type must be defined,"
 					"or a well known RADIUS port");
 				goto error;
 
 			default:
-				REDEBUG("Can't determine expected Response-Packet-Type for Packet-Type %i",
+				REDEBUG("Can't determine expected &reply:Packet-Type for Packet-Type %i",
 					request->packet->code);
 				goto error;
 			}
@@ -691,7 +687,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			default:
-				REDEBUG("Can't determine expected Packet-Type for Response-Packet-Type %i",
+				REDEBUG("Can't determine expected Packet-Type for &reply:Packet-Type %i",
 					request->filter_code);
 				goto error;
 			}
