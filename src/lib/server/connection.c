@@ -1281,8 +1281,8 @@ static int _connection_free(fr_connection_t *conn)
  *				#FR_CONNECTION_STATE_CONNECTING or #FR_CONNECTION_STATE_CONNECTED the
  *				close callback will be called.
  * @param[in] el		to use for timer events, and to pass to the #fr_connection_open_t callback.
- * @param[in] connection_timeout	(optional) how long to wait for a connection to open.
- * @param[in] reconnection_delay	How long to wait on connection failure before retrying.
+ * @param[in] connection_timeout	(optional) how long to wait for a connection to open or shutdown.
+ * @param[in] reconnection_delay	(optional) How long to wait on connection failure before retrying.
  * @param[in] init		(optional) callback to initialise a new file descriptor.
  * @param[in] open		(optional) callback to receive notifications that the connection is open.
  * @param[in] close		(optional) Callback to close the connection.
