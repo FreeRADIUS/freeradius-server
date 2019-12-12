@@ -84,6 +84,7 @@ struct fr_conn {
 
 	fr_dlist_head_t		watch_pre[FR_CONNECTION_STATE_MAX];	//!< Function called before state callback.
 	fr_dlist_head_t		watch_post[FR_CONNECTION_STATE_MAX];	//!< Function called after state callback.
+	fr_connection_watch_entry_t *next_watcher;	//!< Hack to insulate watcher iterator from deletions.
 
 	fr_connection_init_t	init;			//!< Callback for initialising a connection.
 	fr_connection_open_t	open;			//!< Callback for 'open' notification.
@@ -258,18 +259,33 @@ do { \
  */
 static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t *list)
 {
-	fr_connection_watch_entry_t *entry = NULL;
+	/*
+	 *	Nested watcher calls are not allowed
+	 *	and shouldn't be possible because of
+	 *	deferred signal processing.
+	 */
+	rad_assert(conn->next_watcher == NULL);
 
-	if (conn->deferred_free) return;	/* If something freed the connection then don't call more watchers */
+	while ((conn->next_watcher = fr_dlist_next(list, conn->next_watcher))) {
+		fr_connection_watch_entry_t	*entry = conn->next_watcher;
+		bool				oneshot = entry->oneshot;	/* Watcher could be freed, so store now */
 
-	while ((entry = fr_dlist_next(list, entry))) {
+		if (oneshot) conn->next_watcher = fr_dlist_remove(list, entry);
+
+/*
+		DEBUG4("Notifying %swatcher - (%p)(conn=%p, state=%s, uctx=%p)",
+		       entry->oneshot ? "oneshot " : "",
+		       entry->func,
+		       conn,
+		       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"),
+		       entry->uctx);
+*/
+
 		entry->func(conn, conn->state, entry->uctx);
-		if (entry->oneshot) {
-			fr_connection_watch_entry_t *to_free = entry;
-			entry = fr_dlist_remove(list, entry);
-			talloc_free(to_free);
-		}
+
+		if (oneshot) talloc_free(entry);
 	}
+	conn->next_watcher = NULL;
 }
 
 /** Call the pre handler watch functions
@@ -297,13 +313,24 @@ do { \
 /** Remove a watch function from a pre/post[state] list
  *
  */
-static int connection_del_watch(fr_dlist_head_t *list, fr_connection_watch_t watch)
+static int connection_del_watch(fr_connection_t *conn, fr_dlist_head_t *state_lists,
+				fr_connection_state_t state, fr_connection_watch_t watch)
 {
 	fr_connection_watch_entry_t	*entry = NULL;
+	fr_dlist_head_t		        *list = &state_lists[state];
 
 	while ((entry = fr_dlist_next(list, entry))) {
 		if (entry->func == watch) {
-			fr_dlist_remove(list, entry);
+/*
+			DEBUG4("Removing %s watcher %p",
+			       fr_table_str_by_value(fr_connection_states, state, "<INVALID>"),
+			       watch);
+*/
+			if (conn->next_watcher == entry) {
+				conn->next_watcher = fr_dlist_remove(list, entry);
+			} else {
+				fr_dlist_remove(list, entry);
+			}
 			talloc_free(entry);
 			return 0;
 		}
@@ -326,7 +353,7 @@ int fr_connection_del_watch_pre(fr_connection_t *conn, fr_connection_state_t sta
 {
 	if (state >= FR_CONNECTION_STATE_MAX) return -2;
 
-	return connection_del_watch(&conn->watch_pre[state], watch);
+	return connection_del_watch(conn, conn->watch_pre, state, watch);
 }
 
 /** Remove a watch function from a post list
@@ -343,7 +370,7 @@ int fr_connection_del_watch_post(fr_connection_t *conn, fr_connection_state_t st
 {
 	if (state >= FR_CONNECTION_STATE_MAX) return -2;
 
-	return connection_del_watch(&conn->watch_post[state], watch);
+	return connection_del_watch(conn, conn->watch_post, state, watch);
 }
 
 /** Add a watch entry to the pre/post[state] list
