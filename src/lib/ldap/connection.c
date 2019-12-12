@@ -469,8 +469,8 @@ fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t
 				   	.close = _ldap_connection_close
 				   },
 				   &(fr_connection_conf_t){
-				   	.connect_timeout = config->net_timeout,
-				   	.reconnect_delay = config->reconnect_delay
+				   	.connection_timeout = config->net_timeout,
+				   	.reconnection_delay = config->reconnection_delay
 				   },
 				   log_prefix, config);
 	if (!conn) return NULL;
