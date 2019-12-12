@@ -3328,7 +3328,11 @@ static void trunk_backlog_drain(fr_trunk_t *trunk)
 
 	if (fr_heap_num_elements(trunk->backlog) == 0) return;
 
-	DEBUG2("Draining backlog of requests");
+	/*
+	 *	If it's always writable, this isn't
+	 *	really a noteworthy event.
+	 */
+	if (!trunk->conf.always_writable) DEBUG4("Draining backlog of requests");
 
 	/*
 	 *	Do *NOT* add an artificial limit
@@ -3544,22 +3548,20 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Check we have the functions we need
 	 */
-	if (!fr_cond_assert(funcs->request_prioritise)) return NULL;
 	if (!fr_cond_assert(funcs->connection_alloc)) return NULL;
-#ifndef TESTING_TRUNK
-	if (!fr_cond_assert(funcs->request_mux)) return NULL;
-	if (!fr_cond_assert(funcs->request_demux)) return NULL;
-#endif
-
 
 	MEM(trunk = talloc_zero(ctx, fr_trunk_t));
 	trunk->el = el;
 	trunk->log_prefix = talloc_strdup(trunk, log_prefix);
-	memcpy(&trunk->conf, conf, sizeof(trunk->conf));
+
 	memcpy(&trunk->funcs, funcs, sizeof(trunk->funcs));
 	if (!trunk->funcs.connection_prioritise) {
 		trunk->funcs.connection_prioritise = _trunk_connection_order_by_shortest_queue;
 	}
+	if (!trunk->funcs.request_prioritise) trunk->funcs.request_prioritise = fr_pointer_cmp;
+
+	memcpy(&trunk->conf, conf, sizeof(trunk->conf));
+
 	memcpy(&trunk->uctx, &uctx, sizeof(trunk->uctx));
 	talloc_set_destructor(trunk, _trunk_free);
 
