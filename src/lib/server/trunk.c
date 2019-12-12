@@ -247,7 +247,7 @@ struct fr_trunk_s {
 
 	fr_event_list_t		*el;			//!< Event list used by this trunk and the connection.
 
-	fr_trunk_conf_t	const	*conf;			//!< Trunk common configuration.
+	fr_trunk_conf_t		conf;			//!< Trunk common configuration.
 
 	fr_dlist_head_t		unassigned;		//!< Requests in the unassigned state.  Waiting to be
 							///< enqueued.
@@ -541,7 +541,7 @@ do { \
 	DEBUG4("Calling connection_alloc(tconn=%p, el=%p, log_prefix=\"%s\", uctx=%p)", \
 	       (_tconn), (_tconn)->trunk->el, trunk->log_prefix, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = (void *) (_tconn)->trunk->funcs.connection_alloc; \
-	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf->connect_timeout, (_tconn)->trunk->conf->reconnect_delay, (_tconn)->trunk->log_prefix, trunk->uctx); \
+	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf.connect_timeout, (_tconn)->trunk->conf.reconnect_delay, (_tconn)->trunk->log_prefix, trunk->uctx); \
 	(_tconn)->trunk->in_handler = prev; \
 	if (!(_tconn)->conn) { \
 		ERROR("Failed creating new connection"); \
@@ -947,7 +947,7 @@ static void trunk_request_enter_sent(fr_trunk_request_t *treq)
 	/*
 	 *	Enforces max_uses
 	 */
-	if ((trunk->conf->max_uses > 0) && (tconn->sent_count >= trunk->conf->max_uses)) {
+	if ((trunk->conf.max_uses > 0) && (tconn->sent_count >= trunk->conf.max_uses)) {
 		trunk_connection_enter_draining_to_free(tconn);
 	}
 
@@ -1222,11 +1222,11 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 *	number of connections, and maximum
 	 *	number of requests per connection.
 	 */
-	if (trunk->conf->max_req_per_conn > 0) {
+	if (trunk->conf.max_req_per_conn > 0) {
 		uint64_t	total_reqs;
 
 		total_reqs = fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_ALL) + 1;
-		limit = trunk->conf->max * (uint64_t)trunk->conf->max_req_per_conn;
+		limit = trunk->conf.max * (uint64_t)trunk->conf.max_req_per_conn;
 		if ((limit > 0) && (total_reqs > limit)) {
 			ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
 				  "Limit of %"PRIu64" requests reached", limit);
@@ -1264,7 +1264,7 @@ static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *tre
 	switch (rcode) {
 	case FR_TRUNK_ENQUEUE_OK:
 		trunk_request_enter_pending(treq, tconn);
-		if (trunk->conf->always_writable) trunk_connection_writable(tconn);
+		if (trunk->conf.always_writable) trunk_connection_writable(tconn);
 		break;
 
 	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
@@ -1821,7 +1821,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 		trunk->req_alloc_reused++;
 	} else {
 		MEM(treq = talloc_pooled_object(trunk, fr_trunk_request_t,
-						trunk->conf->req_pool_headers, trunk->conf->req_pool_size));
+						trunk->conf.req_pool_headers, trunk->conf.req_pool_size));
 		talloc_set_destructor(treq, _trunk_request_free);
 		treq->state = FR_TRUNK_REQUEST_UNASSIGNED;
 		treq->trunk = trunk;
@@ -1893,7 +1893,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		treq->preq = preq;
 		treq->rctx = rctx;
 		trunk_request_enter_pending(treq, tconn);
-		if (trunk->conf->always_writable) trunk_connection_writable(tconn);
+		if (trunk->conf.always_writable) trunk_connection_writable(tconn);
 		break;
 
 	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
@@ -1969,9 +1969,9 @@ static inline void trunk_connection_auto_inactive(fr_trunk_connection_t *tconn)
 	/*
 	 *	Enforces max_req_per_conn
 	 */
-	if (trunk->conf->max_req_per_conn > 0) {
+	if (trunk->conf.max_req_per_conn > 0) {
 		count = fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL);
-		if (count >= trunk->conf->max_req_per_conn) trunk_connection_enter_inactive(tconn);
+		if (count >= trunk->conf.max_req_per_conn) trunk_connection_enter_inactive(tconn);
 	}
 }
 
@@ -1994,7 +1994,7 @@ static inline void trunk_connection_auto_reactivate(fr_trunk_connection_t *tconn
 	 *	Enforces max_req_per_conn
 	 */
 	count = fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL);
-	if ((trunk->conf->max_req_per_conn == 0) || (count < trunk->conf->max_req_per_conn)) {
+	if ((trunk->conf.max_req_per_conn == 0) || (count < trunk->conf.max_req_per_conn)) {
 		trunk_connection_enter_active(tconn);
 	}
 }
@@ -2056,7 +2056,7 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 		 *	If the connection is always writable,
 		 *	then we don't care about write events.
 		 */
-		if (!trunk->conf->always_writable &&
+		if (!trunk->conf.always_writable &&
 		    fr_trunk_request_count_by_connection(tconn,
 							 FR_TRUNK_REQUEST_PARTIAL |
 						       	 FR_TRUNK_REQUEST_PENDING |
@@ -2366,9 +2366,9 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 	 *	Insert a timer to reconnect the
 	 *	connection periodically.
 	 */
-	if (trunk->conf->lifetime > 0) {
+	if (trunk->conf.lifetime > 0) {
 		(void)fr_event_timer_in(tconn, trunk->el, &tconn->lifetime_ev,
-					trunk->conf->lifetime, _trunk_connection_lifetime_expire, tconn);
+					trunk->conf.lifetime, _trunk_connection_lifetime_expire, tconn);
 	}
 }
 
@@ -2454,7 +2454,6 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	/*
 	 *	Remove the reconnect event
 	 */
-	if (trunk->conf->lifetime > 0) fr_event_timer_delete(trunk->el, &tconn->lifetime_ev);
 }
 
 /** Give the trunk API an opportunity to free the connection if it closes
@@ -2469,6 +2468,7 @@ static void _trunk_connection_on_closed_post(UNUSED fr_connection_t *conn,
 	 *	Something wanted the connection freed when it finally closed...
 	 */
 	if (tconn->free_on_close) talloc_free(tconn);
+	if (trunk->conf.lifetime > 0) fr_event_timer_delete(trunk->el, &tconn->lifetime_ev);
 }
 
 /** Connection failed to connect before it was connected
@@ -2941,16 +2941,16 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	 *	have been idle for too long.
 	 */
 	while ((treq = fr_dlist_tail(&trunk->unassigned)) &&
-	       ((treq->last_freed + trunk->conf->req_cleanup_delay) <= now)) talloc_free(treq);
+	       ((treq->last_freed + trunk->conf.req_cleanup_delay) <= now)) talloc_free(treq);
 
 	/*
 	 *	We're above the target requests per connection
 	 *	spawn more connections!
 	 */
 	if ((trunk->last_above_target >= trunk->last_below_target)) {
-		if ((trunk->last_above_target + trunk->conf->open_delay) > now) {
+		if ((trunk->last_above_target + trunk->conf.open_delay) > now) {
 			DEBUG4("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
-			       fr_box_time_delta(trunk->conf->open_delay),
+			       fr_box_time_delta(trunk->conf.open_delay),
 			       fr_box_time_delta(now - trunk->last_above_target));
 			goto done;	/* too soon */
 		}
@@ -2971,9 +2971,9 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	connections to active before spawning
 		 *	any new connections.
 		 */
-		if ((trunk->conf->max > 0) && (conn_count >= trunk->conf->max)) {
+		if ((trunk->conf.max > 0) && (conn_count >= trunk->conf.max)) {
 			DEBUG4("Not opening connection - Have %u connections, need %u or below",
-			       conn_count, trunk->conf->max);
+			       conn_count, trunk->conf.max);
 			goto done;
 		}
 
@@ -2993,7 +2993,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 */
 		if (conn_count > 0) {
 			average = DIVIDE_CEIL(req_count, (conn_count + 1));
-			if (average < trunk->conf->target_req_per_conn) {
+			if (average < trunk->conf.target_req_per_conn) {
 				DEBUG4("Not opening connection - Would leave us below our target requests "
 				       "per connection (now %u, after open %u)",
 				       DIVIDE_CEIL(req_count, conn_count), average);
@@ -3019,16 +3019,16 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	Implement delay if there's no connections that
 		 *	could be immediately re-activated.
 		 */
-		if ((trunk->last_open + trunk->conf->open_delay) > now) {
+		if ((trunk->last_open + trunk->conf.open_delay) > now) {
 			DEBUG4("Not opening connection - Need to wait %pVs before opening another connection.  "
 			       "It's been %pVs",
-			       fr_box_time_delta(trunk->conf->open_delay),
+			       fr_box_time_delta(trunk->conf.open_delay),
 			       fr_box_time_delta(now - trunk->last_open));
 			goto done;
 		}
 
 		DEBUG4("Opening connection - Above target requests per connection (now %u, target %u)",
-		       DIVIDE_CEIL(req_count, conn_count), trunk->conf->target_req_per_conn);
+		       DIVIDE_CEIL(req_count, conn_count), trunk->conf.target_req_per_conn);
 		/* last_open set by trunk_connection_spawn */
 		(void)trunk_connection_spawn(trunk, now);
 		goto done;
@@ -3039,9 +3039,9 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	 *	Free some connections...
 	 */
 	if (trunk->last_below_target > trunk->last_above_target) {
-		if ((trunk->last_below_target + trunk->conf->close_delay) > now) {
+		if ((trunk->last_below_target + trunk->conf.close_delay) > now) {
 			DEBUG4("Not closing connection - Need to be below target for %pVs. It's been %pVs",
-			       fr_box_time_delta(trunk->conf->close_delay),
+			       fr_box_time_delta(trunk->conf.close_delay),
 			       fr_box_time_delta(now - trunk->last_below_target));
 			goto done;	/* too soon */
 		}
@@ -3065,9 +3065,9 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			goto close;
 		}
 
-		if ((trunk->conf->min > 0) && ((conn_count - 1) < trunk->conf->min)) {
+		if ((trunk->conf.min > 0) && ((conn_count - 1) < trunk->conf.min)) {
 			DEBUG4("Not closing connection - Have %u connections, need %u or above",
-			       conn_count, trunk->conf->min);
+			       conn_count, trunk->conf.min);
 			goto done;
 		}
 
@@ -3090,20 +3090,20 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	will that take us above our target threshold.
 		 */
 		average = DIVIDE_CEIL(req_count, (conn_count - 1));
-		if (average > trunk->conf->target_req_per_conn) {
+		if (average > trunk->conf.target_req_per_conn) {
 			DEBUG4("Not closing connection - Would leave us above our target requests per connection "
 			       "(now %u, after close %u)", DIVIDE_CEIL(req_count, conn_count), average);
 			goto done;
 		}
 
 		DEBUG4("Closing connection - Below target requests per connection (now %u, target %u)",
-		       DIVIDE_CEIL(req_count, conn_count), trunk->conf->target_req_per_conn);
+		       DIVIDE_CEIL(req_count, conn_count), trunk->conf.target_req_per_conn);
 
 	close:
-		if ((trunk->last_closed + trunk->conf->close_delay) > now) {
+		if ((trunk->last_closed + trunk->conf.close_delay) > now) {
 			DEBUG4("Not closing connection - Need to wait %pVs before closing another connection.  "
 			       "It's been %pVs",
-			       fr_box_time_delta(trunk->conf->close_delay),
+			       fr_box_time_delta(trunk->conf.close_delay),
 			       fr_box_time_delta(now - trunk->last_closed));
 			goto done;
 		}
@@ -3173,7 +3173,7 @@ static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_trunk_t *trunk = talloc_get_type_abort(uctx, fr_trunk_t);
 
 	trunk_manage(trunk, now, __FUNCTION__);
-	fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf->manage_interval,
+	fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf.manage_interval,
 			  _trunk_timer, trunk);
 }
 
@@ -3289,12 +3289,12 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	 *	No connections, but we do have requests
 	 */
 	if (conn_count == 0) {
-		if ((req_count > 0) && (trunk->conf->target_req_per_conn > 0)) goto above_target;
+		if ((req_count > 0) && (trunk->conf.target_req_per_conn > 0)) goto above_target;
 		goto done;
 	}
 
 	if (req_count == 0) {
-		if (trunk->conf->target_req_per_conn > 0) goto below_target;
+		if (trunk->conf.target_req_per_conn > 0) goto below_target;
 		goto done;
 	}
 
@@ -3302,13 +3302,13 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	 *	Calculate the average
 	 */
 	average = DIVIDE_CEIL(req_count, conn_count);
-	if (average > trunk->conf->target_req_per_conn) {
+	if (average > trunk->conf.target_req_per_conn) {
 	above_target:
 		/*
 		 *	Edge - Below target to above target (too many requests per conn - spawn more)
 		 */
 		if (trunk->last_above_target <= trunk->last_below_target) trunk->last_above_target = now;
-	} else if (average < trunk->conf->target_req_per_conn) {
+	} else if (average < trunk->conf.target_req_per_conn) {
 	below_target:
 		/*
 		 *	Edge - Above target to below target (too few requests per conn - close some)
@@ -3444,7 +3444,7 @@ int fr_trunk_start(fr_trunk_t *trunk)
 	/*
 	 *	Spawn the initial set of connections
 	 */
-	for (i = 0; i < trunk->conf->start; i++) {
+	for (i = 0; i < trunk->conf.start; i++) {
 		if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
 	}
 
@@ -3452,8 +3452,8 @@ int fr_trunk_start(fr_trunk_t *trunk)
 	 *	Insert the event timer to manage
 	 *	the interval between managing connections.
 	 */
-	if (trunk->conf->manage_interval > 0) {
-		fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf->manage_interval,
+	if (trunk->conf.manage_interval > 0) {
+		fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf.manage_interval,
 				  _trunk_timer, trunk);
 	}
 
@@ -3483,7 +3483,7 @@ static int8_t _trunk_connection_order_by_shortest_queue(void const *one, void co
  */
 static int _trunk_free(fr_trunk_t *trunk)
 {
-	fr_connection_t		*tconn;
+	fr_trunk_connection_t	*tconn;
 	fr_trunk_request_t	*treq;
 
 	DEBUG4("Trunk free %p", trunk);
@@ -3560,8 +3560,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *log
 	MEM(trunk = talloc_zero(ctx, fr_trunk_t));
 	trunk->el = el;
 	trunk->log_prefix = talloc_strdup(trunk, log_prefix);
-	trunk->conf = conf;
-
+	memcpy(&trunk->conf, conf, sizeof(trunk->conf));
 	memcpy(&trunk->funcs, funcs, sizeof(trunk->funcs));
 	if (!trunk->funcs.connection_prioritise) {
 		trunk->funcs.connection_prioritise = _trunk_connection_order_by_shortest_queue;
