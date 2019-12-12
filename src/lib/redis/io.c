@@ -30,22 +30,6 @@
 
 #include <hiredis/async.h>
 
-/** Store I/O state
- *
- * There are three layers of wrapping structures
- *
- * fr_connection_t -> fr_redis_handle_t -> redisAsyncContext
- *
- */
-struct fr_redis_handle_s {
-	bool			read_set;		//!< We're listening for reads.
-	bool			write_set;		//!< We're listening for writes.
-	bool			ignore_disconnect_cb;	//!< Ensure that redisAsyncFree doesn't cause
-							///< a callback loop.
-	fr_event_timer_t const	*timer;			//!< Connection timer.
-	redisAsyncContext	*ac;			//!< Async handle for hiredis.
-};
-
 /** Called by hiredis to indicate the connection is dead
  *
  */
@@ -448,6 +432,8 @@ fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				   conf->log_prefix,
 				   conf);
 	if (!conn) return NULL;
+
+	fr_dlist_talloc_init(&conn->ignore, fr_redis_sqn_t);
 
 	fr_connection_set_shutdown_func(conn, _redis_io_connection_shutdown);
 }

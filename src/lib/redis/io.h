@@ -49,7 +49,89 @@ typedef struct {
 	char const		*log_prefix;
 } fr_redis_io_conf_t;
 
-typedef struct fr_redis_handle_s fr_redis_handle_t;
+typedef uint64_t fr_redis_sqn_t;
+
+/** Store I/O state
+ *
+ * There are three layers of wrapping structures
+ *
+ * fr_connection_t -> fr_redis_handle_t -> redisAsyncContext
+ *
+ */
+typedef struct {
+	bool			read_set;		//!< We're listening for reads.
+	bool			write_set;		//!< We're listening for writes.
+	bool			ignore_disconnect_cb;	//!< Ensure that redisAsyncFree doesn't cause
+							///< a callback loop.
+	fr_event_timer_t const	*timer;			//!< Connection timer.
+
+
+	redisAsyncContext	*ac;			//!< Async handle for hiredis.
+
+	fr_dlist_head_t		ignore;			//!< Contains SQNs for responses that should be ignored.
+
+	fr_redis_sqn_t		req_sqn;		//!< Current redis request number.
+							///< Note: It would take 5.8 million years running
+							///< at 100,000 requests/s to overflow, but my OCD
+							///< requires that the max uses for trunk connections
+							///< is set to UINT64_MAX if not specified by
+							///< the user. It's one branch, and it makes me
+							///< happy, deal with it.
+	fr_redis_sqn_t		rsp_sqn;		//!< Current redis response number.
+} fr_redis_handle_t;
+
+/** Tell the handle we sent a command, and get the SQN that command was assigned
+ *
+ * *MUST* be called for every command sent using the handle. Relies on the fact
+ * that responses from REDIS are FIFO with requests.
+ *
+ * @param[in] conn	the request was sent on.
+ * @return the handle specific SQN.
+ */
+static inline fr_redis_sqn_t fr_redis_connection_sent_request(fr_redis_handle_t *h)
+{
+	return h->req_sqn++;
+}
+
+/** Ignore a response with a specific sequence number
+ *
+ * @param[in] conn		to ignore the response on.
+ * @param[in] sqn_to_ignore	the command to ignore.
+ */
+static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_redis_sqn_t sqn_to_ignore)
+{
+	fr_redis_sqn_t *sqn;
+
+	rad_assert(sqn_to_ignore <= rconn->rsp_sqn);
+
+	MEM(sqn_to_ignore = talloc_zero(h, fr_redis_sqn_t));
+	*sqn = sqn_to_ignore;
+	fr_dlist_insert_tail(&h->ignore, sqn_to_ignore);
+}
+
+/** Update the response sequence number and check if we should ignore the response
+ *
+ * *MUST* be called for every reply received using the handle. Relies on the fact
+ * that responses from REDIS are FIFO with requests.
+ *
+ * @param[in] conn		to check for ignored responses.
+ */
+static inline bool fr_redis_connection_process_response(fr_redis_handle_t *h)
+{
+	fr_redis_sqn_t	check = h->rsp_sqn++;
+	fr_redis_sqn_t	*head;
+
+	rad_assert(h->rsp_sqn <= h->req_sqn);	/* Can't have more responses than requests */
+
+	if (!fr_dlist_num_elements(tconn->ignore)) return true;	/* Not looking out for any cancellations */
+
+	head = fr_dlist_head(tconn->ignore);
+	if (*head > check) return true;		/* First response to ignore is some time after this one */
+	rad_assert(*head == check);
+
+	fr_dlist_remove(tconn->ignore, head);
+	talloc_free(head);
+}
 
 fr_connection_t		*fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_io_conf_t const *conf);
 
