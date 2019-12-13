@@ -1,6 +1,23 @@
 #!/bin/sh
 set -e
 
+#
+#  Add docker subnet as a known client.
+#
+CLIENT_ADDR="${CLIENT_ADDR:-172.17.0.0/16}"
+CLIENT_SECRET="${CLIENT_SECRET:-testing123}"
+
+cat >> /etc/freeradius/clients.conf <<EOF
+
+#
+#  Docker interface
+#
+client docker_client01 {
+	ipaddr = ${CLIENT_ADDR}
+	secret = ${CLIENT_SECRET}
+}
+EOF
+
 # this if will check if the first argument is a flag
 # but only works if all arguments require a hyphenated flag
 # -v; -SL; -f arg; etc will work, but not arg1 arg2

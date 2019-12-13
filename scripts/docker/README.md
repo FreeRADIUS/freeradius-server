@@ -26,10 +26,16 @@ $ docker run --name my-radius -d freeradius/freeradius-server
 
 The image contains only the default FreeRADIUS configuration which
 has no users, and accepts test clients on 127.0.0.1. In order to
-use it in production, you will need to add clients to the
-`clients.conf` file, and users to the "users" file in
-`mods-config/files/authorize`.
+use it in production, you will need to add clients to the `clients.conf`
+file, and users to the "users" file in `mods-config/files/authorize`.
 
+Also we support parameters to inform the client address/subnet and secret.
+
+e.g:
+
+```console
+$ docker run --name my-radius -e CLIENT_ADDR="172.17.0.0/16" -e CLIENT_SECRET="testing123" -d freeradius/freeradius-server
+```
 
 ## Defining the configuration
 
