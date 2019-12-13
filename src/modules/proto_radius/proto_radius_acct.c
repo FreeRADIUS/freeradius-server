@@ -127,7 +127,7 @@ static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
 
 		unlang = cf_section_find(request->server_cs, "accounting", dv->name);
 		if (!unlang) {
-			REDEBUG2("No 'accounting %s' section found: Ignoring it.", dv->name);
+			RDEBUG2("No 'accounting %s { ... }' section found - skipping...", dv->name);
 			goto setup_send;
 		}
 
