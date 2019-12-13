@@ -617,7 +617,7 @@ static void connection_state_shutdown_enter(fr_connection_t *conn)
 static void connection_state_failed_enter(fr_connection_t *conn)
 {
 	fr_connection_state_t prev;
-	fr_connection_state_t ret;
+	fr_connection_state_t ret = FR_CONNECTION_STATE_INIT;
 
 	rad_assert(conn->state != FR_CONNECTION_STATE_FAILED);
 
@@ -644,13 +644,11 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	 */
 	WATCH_PRE(conn);
 	if (conn->failed) {
-		{
-			HANDLER_BEGIN(conn, conn->failed);
-			DEBUG4("Calling failed(h=%p, state=%s, uctx=%p)", conn->h,
-			       fr_table_str_by_value(fr_connection_states, prev, "<INVALID>"), conn->uctx);
-			ret = conn->failed(conn->h, prev, conn->uctx);
-			HANDLER_END(conn);
-		}
+		HANDLER_BEGIN(conn, conn->failed);
+		DEBUG4("Calling failed(h=%p, state=%s, uctx=%p)", conn->h,
+		       fr_table_str_by_value(fr_connection_states, prev, "<INVALID>"), conn->uctx);
+		ret = conn->failed(conn->h, prev, conn->uctx);
+		HANDLER_END(conn);
 	}
 	WATCH_POST(conn);
 
