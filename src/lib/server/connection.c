@@ -509,7 +509,7 @@ static void connection_state_closed_enter(fr_connection_t *conn)
 		break;
 
 	default:
-		 BAD_STATE_TRANSITION(FR_CONNECTION_STATE_CLOSED);
+		BAD_STATE_TRANSITION(FR_CONNECTION_STATE_CLOSED);
 		return;
 	}
 
@@ -617,6 +617,7 @@ static void connection_state_shutdown_enter(fr_connection_t *conn)
 static void connection_state_failed_enter(fr_connection_t *conn)
 {
 	fr_connection_state_t prev;
+	fr_connection_state_t ret;
 
 	rad_assert(conn->state != FR_CONNECTION_STATE_FAILED);
 
@@ -643,7 +644,6 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	 */
 	WATCH_PRE(conn);
 	if (conn->failed) {
-		fr_connection_state_t ret;
 		{
 			HANDLER_BEGIN(conn, conn->failed);
 			DEBUG4("Calling failed(h=%p, state=%s, uctx=%p)", conn->h,
@@ -651,46 +651,43 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 			ret = conn->failed(conn->h, prev, conn->uctx);
 			HANDLER_END(conn);
 		}
-		WATCH_POST(conn);
+	}
+	WATCH_POST(conn);
 
-		/*
-		 *	Enter the closed state if we failed during
-		 *	connecting, or when we were connected.
-		 */
-		switch (prev) {
-		case FR_CONNECTION_STATE_CONNECTED:
-		case FR_CONNECTION_STATE_CONNECTING:
-			connection_state_closed_enter(conn);
-			break;
+	/*
+	 *	Enter the closed state if we failed during
+	 *	connecting, or when we were connected.
+	 */
+	switch (prev) {
+	case FR_CONNECTION_STATE_CONNECTED:
+	case FR_CONNECTION_STATE_CONNECTING:
+		connection_state_closed_enter(conn);
+		break;
 
-		default:
-			break;
-		}
+	default:
+		break;
+	}
 
+	if (conn->failed) {
 		switch (ret) {
+		/*
+		 *	The callback signalled it wants the
+		 *	connection to be reinitialised
+		 *	after reconnection_delay, or
+		 *	immediately if the failure was due
+		 *	to a connection timeout.
+		 */
 		case FR_CONNECTION_STATE_INIT:
 			break;
 
+		/*
+		 *	The callback signalled it wants the
+		 *	connection to stop.
+		 */
 		case FR_CONNECTION_STATE_HALTED:
 		default:
 			connection_state_halted_enter(conn);
 			return;
-		}
-	} else {
-		WATCH_POST(conn);
-
-		/*
-		 *	Enter the closed state if we failed during
-		 *	connecting, or when we were connected.
-		 */
-		switch (prev) {
-		case FR_CONNECTION_STATE_CONNECTED:
-		case FR_CONNECTION_STATE_CONNECTING:
-			connection_state_closed_enter(conn);
-			break;
-
-		default:
-			break;
 		}
 	}
 
@@ -712,10 +709,20 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 			}
 			return;
 		}
+
+		/*
+		 *	If the underlying library doesn't
+		 *	implement some kind of delay, this
+		 *	can cause busy loops.
+		 *
+		 *	The solution is to implement delay
+		 *      or set reconnect_delay in the
+		 *	trunk configuration.
+		 */
 		connection_state_init_enter(conn);
 		break;
 
-	case FR_CONNECTION_STATE_TIMEOUT:			/* Failed during connecting */
+	case FR_CONNECTION_STATE_TIMEOUT:			/* Failed during connecting due to timeout */
 		connection_state_init_enter(conn);
 		break;
 
@@ -756,6 +763,8 @@ static void connection_state_timeout_enter(fr_connection_t *conn)
 static void connection_state_halted_enter(fr_connection_t *conn)
 {
 	rad_assert(conn->is_closed);
+
+	fr_event_timer_delete(conn->el, &conn->connection_timer);
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
 	WATCH_PRE(conn);
