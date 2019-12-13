@@ -977,6 +977,12 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 static void python_interpreter_free(UNUSED rlm_python_t *inst, PyThreadState *interp)
 {
+	/*
+	 *	We incremented the reference count earlier
+	 *	during module initialisation.
+	 */
+	Py_XDECREF(inst->module);
+
 	PyEval_RestoreThread(interp);	/* Switches thread state and locks GIL */
 	Py_EndInterpreter(interp);	/* Destroys interpreter (GIL still locked) - sets thread state to NULL */
 	PyThreadState_Swap(global_interpreter);	/* Get a none-null thread state */
