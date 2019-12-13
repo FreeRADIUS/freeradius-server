@@ -757,7 +757,6 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		REQUEST_VERIFY(request);
 		rad_assert(request->runnable_id < 0);
 		fr_time_tracking_resume(&request->async->tracking, now, &worker->tracking);
-		rad_assert(fr_dlist_entry_empty(&request->async->tracking.list.entry));
 		return request;
 	}
 
@@ -1012,7 +1011,6 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		break;
 
 	case RLM_MODULE_YIELD:
-		rad_assert(fr_dlist_entry_empty(&request->async->tracking.list.entry));
 		fr_time_tracking_yield(&request->async->tracking, fr_time(), &worker->tracking);
 		return;
 
