@@ -393,6 +393,15 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
 	return (void *) (((uint8_t *) prev) - list_head->offset);
 }
 
+#ifndef NDEBUG
+static inline bool fr_dlist_entry_empty(fr_dlist_t const *entry)
+{
+	if (entry->prev != entry->next) return false;
+	if (entry->prev != entry) return false;
+	return true;
+}
+#endif
+
 /** Check all items in the list are valid
  *
  * Checks item talloc headers and types to ensure they're consistent
