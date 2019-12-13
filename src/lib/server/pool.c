@@ -1088,6 +1088,11 @@ int fr_pool_start(fr_pool_t *pool)
 	fr_pool_connection_t 	*this;
 
 	/*
+	 *	Don't spawn any connections
+	 */
+	if (check_config) return 0;
+
+	/*
 	 *	Create all of the connections, unless the admin says
 	 *	not to.
 	 */
