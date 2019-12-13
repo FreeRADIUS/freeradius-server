@@ -78,30 +78,6 @@ typedef enum {
 	FR_TIME_RES_NSEC
 } fr_time_res_t;
 
-/** A structure to track the time spent processing a request.
- *
- * The same structure is used by threads to track when they are
- * running / waiting.  The functions modifying fr_time_tracking_t all
- * take an explicit "when" parameter.  This parameter allows the
- * thread to update a requests tracking structure, and then use that
- * same fr_time_t to update the threads tracking structure.
- *
- * While fr_time() is fast, it is also called very often.  We should
- * therefore be careful to call it only when necessary.
- */
-typedef struct {
-	fr_time_t	when;			//!< last time we changed a field
-	fr_time_t	start;			//!< time this request started being processed
-	fr_time_t	end;			//!< when we stopped processing this request
-	fr_time_t	predicted;		//!< predicted processing time for this request
-	fr_time_t	yielded;		//!< time this request yielded
-	fr_time_t	resumed;		//!< time this request last resumed;
-	fr_time_t	running;		//!< total time spent running
-	fr_time_t	waiting;		//!< total time spent waiting
-
-	fr_dlist_head_t	list;			//!< for linking a request to various lists
-} fr_time_tracking_t;
-
 typedef struct {
 	uint64_t	array[8];		//!< 100ns to 100s
 } fr_time_elapsed_t;
@@ -222,14 +198,8 @@ fr_time_t	fr_time_from_timespec(struct timespec const *when_tv) CC_HINT(nonnull)
 int		fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta) CC_HINT(nonnull);
 int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint) CC_HINT(nonnull);
 
-void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
-void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
-void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
-void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
-void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp) CC_HINT(nonnull);
-void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end) CC_HINT(nonnull);
-void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs) CC_HINT(nonnull(1,2));
-
+void		fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end) CC_HINT(nonnull);
+void		fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs) CC_HINT(nonnull(1,2));
 
 #ifdef __cplusplus
 }

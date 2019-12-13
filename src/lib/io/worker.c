@@ -63,6 +63,7 @@ RCSID("$Id$")
 
 #define LOG_DST worker->log
 
+#include <freeradius-devel/io/time_tracking.h>
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/message.h>
