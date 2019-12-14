@@ -66,9 +66,25 @@ insert_acct_class {
 #	If the &Attr-Foo doesn't exist, it's value is taken as zero.
 #
 acct_counters64.preacct {
-	update request {
-		&Acct-Input-Octets64 = "%{expr:(&Acct-Input-Gigawords << 32) | &Acct-Input-Octets}"
-		&Acct-Output-Octets64 = "%{expr:(&Acct-Output-Gigawords << 32) | &Acct-Output-Octets}"
+	if (!&Acct-Input-Gigawords) {
+		update request {
+			&Acct-Input-Octets64 := "%{%{Acct-Input-Octets}:-0}"
+		}
+	}
+	else {
+		update request {
+			&Acct-Input-Octets64 = "%{expr:(&Acct-Input-Gigawords << 32) | &Acct-Input-Octets}"
+		}
+	}
+	if (!&Acct-Output-Gigawords) {
+		update request {
+			&Acct-Output-Octets64 := "%{%{Acct-Output-Octets}:-0}"
+		}
+	}
+	else {
+		update request {
+			&Acct-Output-Octets64 = "%{expr:(&Acct-Output-Gigawords << 32) | &Acct-Output-Octets}"
+		}
 	}
 }
 
