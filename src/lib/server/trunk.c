@@ -2365,8 +2365,6 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 	 */
 	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) == 0);
 
- 	trunk_connection_enter_active(tconn);
-
  	/*
 	 *	Set here, as the active state can
 	 *	be transitioned to from full and
@@ -2379,9 +2377,15 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 	 *	connection periodically.
 	 */
 	if (trunk->conf.lifetime > 0) {
-		(void)fr_event_timer_in(tconn, trunk->el, &tconn->lifetime_ev,
-					trunk->conf.lifetime, _trunk_connection_lifetime_expire, tconn);
+		if (fr_event_timer_in(tconn, trunk->el, &tconn->lifetime_ev,
+				       trunk->conf.lifetime, _trunk_connection_lifetime_expire, tconn) < 0) {
+			PERROR("Failed inserting connection reconnection timer event, halting connection");
+			fr_connection_signal_shutdown(tconn->conn);
+			return;
+		}
 	}
+
+ 	trunk_connection_enter_active(tconn);
 }
 
 /** Connection failed after it was connected
@@ -3204,8 +3208,12 @@ static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_trunk_t *trunk = talloc_get_type_abort(uctx, fr_trunk_t);
 
 	trunk_manage(trunk, now, __FUNCTION__);
-	fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf.manage_interval,
-			  _trunk_timer, trunk);
+
+	if (fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf.manage_interval,
+			      _trunk_timer, trunk) < 0) {
+		PERROR("Failed inserting trunk management event");
+		/* Not much we can do, hopefully the trunk will be freed soon */
+	}
 }
 
 /** Return a count of requests in a specific state
@@ -3452,17 +3460,18 @@ int fr_trunk_start(fr_trunk_t *trunk)
 	/*
 	 *	Spawn the initial set of connections
 	 */
-	for (i = 0; i < trunk->conf.start; i++) {
-		if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
-	}
+	for (i = 0; i < trunk->conf.start; i++) if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
 
 	/*
 	 *	Insert the event timer to manage
 	 *	the interval between managing connections.
 	 */
 	if (trunk->conf.manage_interval > 0) {
-		fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf.manage_interval,
-				  _trunk_timer, trunk);
+		if (fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf.manage_interval,
+				      _trunk_timer, trunk) < 0) {
+			PERROR("Failed inserting trunk management event");
+			return -1;
+		}
 	}
 
 	trunk->started = true;
