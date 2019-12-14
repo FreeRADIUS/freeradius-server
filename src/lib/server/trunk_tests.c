@@ -398,7 +398,10 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 	int			events;
 	fr_trunk_conf_t		conf = {
 					.start = 2,
-					.min = 2
+					.min = 2,
+					.conn_conf = &(fr_connection_conf_t){
+						.reconnection_delay = NSEC * 0.5
+					}
 				};
 	fr_trunk_io_funcs_t	io_funcs = {
 					.connection_alloc = test_setup_socket_pair_connection_alloc,
@@ -421,8 +424,16 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 
 	events = fr_event_corral(el, test_time_base, false);
 	TEST_CHECK(events == 0);	/* I/O events should have been cleared */
+	TEST_MSG("Got %u events", events);
 
 	fr_trunk_reconnect(trunk, FR_TRUNK_CONN_ACTIVE, FR_CONNECTION_FAILED);
+
+	test_time_base += NSEC * 2;
+	events = fr_event_corral(el, test_time_base, true);
+	TEST_CHECK(events == 1);	/* Two timer events but event loops only adds one to the total*/
+	TEST_MSG("Got %u events", events);
+	fr_event_service(el);
+
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 2);
 
 	events = fr_event_corral(el, test_time_base, true);
@@ -550,7 +561,11 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	fr_trunk_connection_t	*tconn;
 	fr_trunk_conf_t		conf = {
 					.start = 1,
-					.min = 1
+					.min = 1,
+					.conn_conf = &(fr_connection_conf_t){
+						.reconnection_delay = NSEC * 1,
+						.connection_timeout = NSEC * 1
+					}
 				};
 	fr_trunk_io_funcs_t	io_funcs = {
 					.connection_alloc = test_setup_socket_pair_1s_reconnection_delay_alloc,
@@ -1044,7 +1059,10 @@ static void test_requeue_on_reconnect(void)
 	fr_trunk_conf_t		conf = {
 					.start = 2,
 					.min = 2,
-					.manage_interval = NSEC * 0.5
+					.manage_interval = NSEC * 0.5,
+					.conn_conf = &(fr_connection_conf_t){
+						.reconnection_delay = NSEC * 0.1
+					}
 				};
 	test_proto_request_t	*preq;
 	fr_trunk_request_t	*treq = NULL;
@@ -1094,6 +1112,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Allow the connections to reconnect
 	 */
+	test_time_base += NSEC * 1;
 	events = fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
@@ -1104,6 +1123,7 @@ static void test_requeue_on_reconnect(void)
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
 	TEST_CHECK(treq->tconn != NULL);
 
+	test_time_base += NSEC * 1;
 	events = fr_event_corral(el, test_time_base, false);	/* Send the request (partially) */
 	fr_event_service(el);
 
@@ -1147,6 +1167,7 @@ static void test_requeue_on_reconnect(void)
 	 *	Allow the connections to reconnect
 	 *	and send the request.
 	 */
+	test_time_base += NSEC * 1;
 	events = fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 	TEST_CHECK(tconn != treq->tconn);	/* Ensure it moved */
@@ -1185,6 +1206,7 @@ static void test_requeue_on_reconnect(void)
 	 *	top open so it doesn't interfere with
 	 *	the next test.
 	 */
+	test_time_base += NSEC * 1;
 	events = fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
@@ -1203,6 +1225,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Sent the request (fully)
 	 */
+	test_time_base += NSEC * 1;
 	events = fr_event_corral(el, test_time_base, false);	/* Send the request (fully) */
 	fr_event_service(el);
 
@@ -1214,6 +1237,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Transition to cancel partial
 	 */
+	test_time_base += NSEC * 1;
 	events = fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
@@ -1236,6 +1260,7 @@ static void test_requeue_on_reconnect(void)
 	 *	top open so it doesn't interfere with
 	 *	the next test.
 	 */
+	test_time_base += NSEC * 1;
 	events = fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
@@ -1253,6 +1278,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Sent the request (fully)
 	 */
+	test_time_base += NSEC * 1;
 	events = fr_event_corral(el, test_time_base, false);	/* Send the request (fully) */
 	fr_event_service(el);
 
@@ -1264,6 +1290,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Transition to cancel
 	 */
+	test_time_base += NSEC * 1;
 	events = fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
@@ -1273,6 +1300,10 @@ static void test_requeue_on_reconnect(void)
 	 *	Trigger a reconnection
 	 */
 	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+
+	test_time_base += NSEC * 1;
+	events = fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);

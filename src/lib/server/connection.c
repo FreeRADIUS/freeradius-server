@@ -106,7 +106,7 @@ struct fr_conn {
 
 #define STATE_TRANSITION(_new) \
 do { \
-	DEBUG4("Connection changed state %s -> %s", \
+	DEBUG2("Connection changed state %s -> %s", \
 	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"), \
 	       fr_table_str_by_value(fr_connection_states, _new, "<INVALID>")); \
 	conn->state = _new; \
@@ -494,7 +494,16 @@ static void _reconnect_delay_done(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 
-	connection_state_init_enter(conn);
+	switch (conn->state) {
+	case FR_CONNECTION_STATE_FAILED:
+	case FR_CONNECTION_STATE_CLOSED:
+		connection_state_init_enter(conn);
+		break;
+
+	default:
+		BAD_STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
+		break;
+	}
 }
 
 /** Close the connection, then wait for another state change
@@ -709,15 +718,12 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 		}
 
 		/*
-		 *	If the underlying library doesn't
-		 *	implement some kind of delay, this
-		 *	can cause busy loops.
-		 *
-		 *	The solution is to implement delay
-		 *      or set reconnect_delay in the
-		 *	trunk configuration.
+		 *	If there's no reconnection
+		 *	delay, then don't automatically
+		 *	reconnect, and wait to be
+		 *	signalled.
 		 */
-		connection_state_init_enter(conn);
+		connection_state_halted_enter(conn);
 		break;
 
 	case FR_CONNECTION_STATE_TIMEOUT:			/* Failed during connecting due to timeout */
@@ -929,6 +935,9 @@ static void connection_state_init_enter(fr_connection_t *conn)
  */
 void fr_connection_signal_init(fr_connection_t *conn)
 {
+	DEBUG2("Signalled to start from %s state",
+	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
+
 	if (conn->in_handler) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_INIT);
 		return;
@@ -960,6 +969,9 @@ void fr_connection_signal_connected(fr_connection_t *conn)
 {
 	rad_assert(!conn->open);	/* Use one or the other not both! */
 
+	DEBUG2("Signalled connected from %s state",
+	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
+
 	if (conn->in_handler) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_CONNECTED);
 		return;
@@ -987,7 +999,8 @@ void fr_connection_signal_connected(fr_connection_t *conn)
  */
 void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_t reason)
 {
-	DEBUG2("Signalled to reconnect");
+	DEBUG2("Signalled to reconnect from %s state",
+	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
 
 	if (conn->in_handler) {
 		if ((reason == FR_CONNECTION_EXPIRED) && conn->shutdown) {
@@ -1001,6 +1014,7 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_FAILED:	/* Don't circumvent reconnection_delay */
+	case FR_CONNECTION_STATE_CLOSED:	/* Don't circumvent reconnection_delay */
 	case FR_CONNECTION_STATE_INIT:		/* Already initialising */
 		break;
 
@@ -1019,7 +1033,6 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 
 	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_TIMEOUT:
-	case FR_CONNECTION_STATE_CLOSED:
 		connection_state_failed_enter(conn);
 		break;
 
@@ -1042,6 +1055,9 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
  */
 void fr_connection_signal_shutdown(fr_connection_t *conn)
 {
+	DEBUG2("Signalled to shutdown from %s state",
+	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
+
 	if (conn->in_handler) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_SHUTDOWN);
 		return;
@@ -1089,6 +1105,9 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
  */
 void fr_connection_signal_halt(fr_connection_t *conn)
 {
+	DEBUG2("Signalled to halt from %s state",
+	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
+
 	if (conn->in_handler) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_HALT);
 		return;
