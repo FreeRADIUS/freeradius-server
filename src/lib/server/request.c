@@ -287,7 +287,7 @@ REQUEST *request_alloc_local(TALLOC_CTX *ctx)
 
 	request_init(request);
 
-	talloc_set_destructor(ctx, _request_local_free);
+	talloc_set_destructor(request, _request_local_free);
 
 	return request;
 }
