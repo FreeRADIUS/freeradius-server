@@ -98,7 +98,8 @@ do { \
 do { \
 	fr_time_tracking_t	*_parent; \
 	for (_parent = (_tt)->parent; _parent; _parent = _parent->parent) { \
-		_parent->started = _parent->last_changed = _now; \
+		_parent->started = _now; \
+		_parent->last_changed = _now; \
 	} \
 } while (0)
 
@@ -109,7 +110,8 @@ do { \
 do { \
 	fr_time_tracking_t	*_parent; \
 	for (_parent = (_tt)->parent; _parent; _parent = _parent->parent) { \
-		_parent->_event = _parent->last_changed = _now; \
+		_parent->_event = _now; \
+		_parent->last_changed = _now; \
 		_parent->running_total += _run_time; \
 	} \
 } while (0)
@@ -121,7 +123,8 @@ do { \
 do { \
 	fr_time_tracking_t	*_parent; \
 	for (_parent = (_tt)->parent; _parent; _parent = _parent->parent){ \
-		_parent->_event = _parent->last_changed = _now; \
+		_parent->_event = _now; \
+		_parent->last_changed = _now; \
 		_parent->running_total += _wait_time; \
 	} \
 } while (0)
