@@ -268,7 +268,7 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 		if (strncmp(proto_dict, "eap-", 4) == 0) return 0;
 
 		cf_log_perr(ci, "Failed initialising namespace \"%s\" - %s", namespace_str, fr_strerror());
-		return -1;
+		return 0;	/* Ignore for now */
 	}
 
 	return 0;
