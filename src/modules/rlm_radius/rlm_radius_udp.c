@@ -512,7 +512,7 @@ static void _conn_close(fr_event_list_t *el, void *h, void *uctx)
 
 	if (c->idle_ev) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
-	fr_event_fd_delete(c->el, fd, FR_EVENT_FILTER_IO);
+	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
 
 	if (shutdown(fd, SHUT_RDWR) < 0) {
 		DEBUG3("%s - Failed shutting down connection %s: %s",

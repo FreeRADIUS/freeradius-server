@@ -649,7 +649,7 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
 /*
  *	Create connection pool winbind context
  */
-static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_time_delta_t timeout)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
 	struct wbcContext **wb_ctx;
 	rlm_mschap_t const	*inst = instance;
