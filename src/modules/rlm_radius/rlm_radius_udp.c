@@ -505,12 +505,14 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 /** Shutdown/close a file descriptor
  *
  */
-static void _conn_close(UNUSED fr_event_list_t *el, void *h, void *uctx)
+static void _conn_close(fr_event_list_t *el, void *h, void *uctx)
 {
 	int fd = *((int *)h);
 	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);
 
 	if (c->idle_ev) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
+	fr_event_fd_delete(c->el, fd, FR_EVENT_FILTER_IO);
 
 	if (shutdown(fd, SHUT_RDWR) < 0) {
 		DEBUG3("%s - Failed shutting down connection %s: %s",
