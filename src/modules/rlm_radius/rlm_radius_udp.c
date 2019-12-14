@@ -2865,7 +2865,6 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 
 	} else if (conn_timeout_init(t->el, u, response_timeout) < 0) {
 		RDEBUG("%s - Failed starting retransmit tracking", inst->parent->name);
-		talloc_free(u);
 		return RLM_MODULE_FAIL;
 	}
 
