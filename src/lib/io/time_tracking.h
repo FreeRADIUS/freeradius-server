@@ -257,7 +257,6 @@ static inline CC_HINT(nonnull) void fr_time_tracking_resume(fr_time_tracking_t *
 static inline void fr_time_tracking_end(fr_time_delta_t *predicted,
 					fr_time_tracking_t *tt, fr_time_t now)
 {
-	fr_time_tracking_t	*parent;
 	fr_time_delta_t		run_time;
 
 	rad_assert(tt->state == FR_TIME_TRACKING_RUNNING);
@@ -272,7 +271,7 @@ static inline void fr_time_tracking_end(fr_time_delta_t *predicted,
 
 	if (predicted) *predicted = !(*predicted) ? tt->running_total : RTT((*predicted), tt->running_total);
 
-	parent = NULL;
+	tt->parent = NULL;
 }
 
 /** Print debug information about the time tracking structure
