@@ -2639,6 +2639,7 @@ static int _trunk_connection_free(fr_trunk_connection_t *tconn)
 	 *	after all the handlers have exited.
 	 */
 	(void)talloc_free(tconn->conn);
+	tconn->conn = NULL;
 
 	return 0;
 }
