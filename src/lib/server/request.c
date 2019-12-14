@@ -266,6 +266,23 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	return request;
 }
 
+/** Allocate a request that's not in the free list
+ *
+ * This can be useful if modules need a persistent request for their own purposes
+ * which needs to be outside of the normal free list, so that it can be freed
+ * when the module requires, not when the thread destructor runs.
+ */
+REQUEST *request_alloc_local(TALLOC_CTX *ctx)
+{
+	REQUEST *request;
+
+	MEM(request = talloc_zero(ctx, REQUEST));
+
+	request_init(request);
+
+	return request;
+}
+
 static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
 {
 	fake->number = request->child_number++;

@@ -2597,7 +2597,15 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, void *h, voi
 
 		u = talloc_zero(c, fr_io_request_t);
 
-		request = request_alloc(u);
+		/*
+		 *	Allocate outside of the free list.
+		 *	There appears to be an issue where
+		 *	the thread destructor runs too
+		 *	early, and frees the freelist's
+		 *	head before the module destructor
+		 *      runs.
+		 */
+		request = request_alloc_local(u);
 		request->async = talloc_zero(request, fr_async_t);
 		talloc_const_free(request->name);
 		request->name = talloc_strdup(request, c->module_name);
