@@ -118,12 +118,5 @@ REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace,
 	 */
 	child->async->process = unlang_io_process_interpret;
 
-	/*
-	 *	Note that we don't do time tracking on the child.
-	 *	Instead, all of it is done in the context of the
-	 *	parent.
-	 */
-	fr_dlist_init(&child->async->tracking.list, fr_time_tracking_t, list.entry);
-
 	return child;
 }

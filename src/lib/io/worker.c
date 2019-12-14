@@ -90,7 +90,7 @@ static void fr_worker_verify(fr_worker_t *worker);
 /**
  *  A worker which takes packets from a master, and processes them.
  */
-struct fr_worker_t {
+struct fr_worker_s {
 	char const		*name;		//!< name of this worker
 
 	pthread_t		id;		//!< my thread ID
@@ -132,6 +132,7 @@ struct fr_worker_t {
 	uint64_t    		num_timeouts;	//!< number of messages which timed out
 	uint64_t    		num_active;	//!< number of active requests
 
+	fr_time_delta_t		predicted;	//!< How long we predict a request will take to execute.
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
 	bool			was_sleeping;	//!< used to suppress multiple sleep signals in a row
@@ -367,7 +368,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	 *	Fill in the NAK.
 	 */
 	reply->m.when = now;
-	reply->reply.cpu_time = worker->tracking.running;
+	reply->reply.cpu_time = worker->tracking.running_total;
 	reply->reply.processing_time = 10; /* @todo - set to something better? */
 	reply->reply.request_time = cd->m.when;
 
@@ -421,7 +422,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	Just toss the request.
 	 */
 	if (request->async->fake) {
-		fr_time_tracking_end(&request->async->tracking, now, &worker->tracking);
+		fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
 		goto finished;
 	}
 
@@ -469,7 +470,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	/*
 	 *	The request is done.  Track that.
 	 */
-	fr_time_tracking_end(&request->async->tracking, now, &worker->tracking);
+	fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
 	rad_assert(worker->num_active > 0);
 	worker->num_active--;
 
@@ -485,9 +486,9 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *
 	 *	sequence / ack will be filled in by fr_channel_send_reply()
 	 */
-	reply->m.when = request->async->tracking.when;
-	reply->reply.cpu_time = worker->tracking.running;
-	reply->reply.processing_time = request->async->tracking.running;
+	reply->m.when = request->async->tracking.last_changed;
+	reply->reply.cpu_time = worker->tracking.running_total;
+	reply->reply.processing_time = request->async->tracking.running_total;
 	reply->reply.request_time = request->async->recv_time;
 
 	reply->listen = request->async->listen;
@@ -525,7 +526,6 @@ finished:
 	request->async->original_recv_time = NULL;
 	request->async->el = NULL;
 	request->async->process = NULL;
-	fr_dlist_remove(&worker->tracking.list, &request->async->tracking);
 	request->async->channel = NULL;
 	request->async->packet_ctx = NULL;
 	request->async->listen = NULL;
@@ -541,7 +541,7 @@ finished:
  */
 static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
 {
-	fr_time_tracking_resume(&request->async->tracking, now, &worker->tracking);
+	fr_time_tracking_resume(&request->async->tracking, now);
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 
 	/*
@@ -757,7 +757,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		DEBUG3("%s found runnable request", worker->name);
 		REQUEST_VERIFY(request);
 		rad_assert(request->runnable_id < 0);
-		fr_time_tracking_resume(&request->async->tracking, now, &worker->tracking);
+		fr_time_tracking_resume(&request->async->tracking, now);
 		return request;
 	}
 
@@ -947,7 +947,7 @@ nak:
 	 *	Bootstrap the async state machine with the initial
 	 *	state of the request.
 	 */
-	fr_time_tracking_start(&request->async->tracking, now, &worker->tracking);
+	fr_time_tracking_start(&worker->tracking, &request->async->tracking, now);
 	worker->num_active++;
 	rad_assert(request->runnable_id < 0);
 
@@ -1012,7 +1012,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		break;
 
 	case RLM_MODULE_YIELD:
-		fr_time_tracking_yield(&request->async->tracking, fr_time(), &worker->tracking);
+		fr_time_tracking_yield(&request->async->tracking, fr_time());
 		return;
 
 	case RLM_MODULE_OK:
@@ -1295,7 +1295,6 @@ nomem:
 	 *	the worker thread is running.
 	 */
 	memset(&worker->tracking, 0, sizeof(worker->tracking));
-	fr_dlist_init(&worker->tracking.list, fr_time_tracking_t, list.entry);
 
 	worker->aq_control = fr_atomic_queue_create(worker, 1024);
 	if (!worker->aq_control) {
@@ -1478,9 +1477,9 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 	fprintf(fp, "\tstats.in = %" PRIu64 "\n", worker->stats.in);
 
 	fprintf(fp, "\tcalculated (predicted) total CPU time = %" PRIu64 "\n",
-		worker->tracking.predicted * worker->stats.in);
+		worker->predicted * worker->stats.in);
 	fprintf(fp, "\tcalculated (counted) per request time = %" PRIu64 "\n",
-		worker->tracking.running / worker->stats.in);
+		worker->tracking.running_total / worker->stats.in);
 
 	fr_time_tracking_debug(&worker->tracking, fp);
 
@@ -1612,13 +1611,13 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_inf
 	}
 
 	if ((info->argc == 0) || (strcmp(info->argv[0], "cpu") == 0)) {
-		when = worker->tracking.predicted;
+		when = worker->predicted;
 		fprintf(fp, "cpu.average_request_time\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
 
-		when = worker->tracking.running;
+		when = worker->tracking.running_total;
 		fprintf(fp, "cpu.used\t\t\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
 
-		when = worker->tracking.waiting;
+		when = worker->tracking.waiting_total;
 		fprintf(fp, "cpu.waiting\t\t\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
 
 		when = fr_time() - worker->last_event;

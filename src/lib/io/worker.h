@@ -35,7 +35,7 @@ extern "C" {
  *
  *  Once spawned, workers exist until they choose to exit.
  */
-typedef struct fr_worker_t fr_worker_t;
+typedef struct fr_worker_s fr_worker_t;
 
 #ifdef __cplusplus
 }

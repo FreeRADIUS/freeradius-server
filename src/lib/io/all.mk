@@ -12,7 +12,6 @@ SOURCES	:= \
 	queue.c \
 	ring_buffer.c \
 	schedule.c \
-	time_tracking.c \
 	worker.c
 
 TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-util.la
