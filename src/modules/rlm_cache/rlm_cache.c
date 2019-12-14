@@ -404,10 +404,11 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 
 				MEM(c_map->lhs = tmpl_init(talloc(c_map, vp_tmpl_t),
 							   TMPL_TYPE_ATTR, map->lhs->name, map->lhs->len, T_BARE_WORD));
-				c_map->lhs->tmpl_da = vp->da;
 				if (vp->da->flags.is_unknown) { /* for tmpl_verify() */
 					c_map->lhs->tmpl_unknown = fr_dict_unknown_acopy(c_map->lhs, vp->da);
 					c_map->lhs->tmpl_da = c_map->lhs->tmpl_unknown;
+				} else {
+					c_map->lhs->tmpl_da = vp->da;
 				}
 
 				c_map->lhs->tmpl_tag = vp->tag;
