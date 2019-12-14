@@ -688,6 +688,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	if (s->listen->app_io->close) {
 		s->listen->app_io->close(s->listen);
 	} else {
+		fr_event_fd_delete(nr->el, s->listen->fd, FR_EVENT_FILTER_IO);
 		close(s->listen->fd);
 	}
 
