@@ -606,8 +606,11 @@ static void connection_state_shutdown_enter(fr_connection_t *conn)
 	if (conn->connection_timeout) {
 		if (fr_event_timer_in(conn, conn->el, &conn->connection_timer,
 				      conn->connection_timeout, _connection_timeout, conn) < 0) {
-			PERROR("Failed inserting connection timeout event");
-			rad_assert(0);
+			/*
+			 *	Can happen when the event loop is exiting
+			 */
+			PERROR("Failed setting connection_timeout timer, closing connection");
+			connection_state_closed_enter(conn);
 		}
 	}
 }
@@ -711,8 +714,11 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 			DEBUG2("Delaying reconnection by %pVs", fr_box_time_delta(conn->reconnection_delay));
 			if (fr_event_timer_in(conn, conn->el, &conn->reconnection_timer,
 					      conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
-				PERROR("Failed inserting delay timer event");
-				rad_assert(0);
+				/*
+				 *	Can happen when the event loop is exiting
+				 */
+				PERROR("Failed inserting reconnection_delay timer event, halting connection");
+				connection_state_halted_enter(conn);
 			}
 			return;
 		}
@@ -859,8 +865,19 @@ static void connection_state_connecting_enter(fr_connection_t *conn)
 	if (conn->connection_timeout) {
 		if (fr_event_timer_in(conn, conn->el, &conn->connection_timer,
 				      conn->connection_timeout, _connection_timeout, conn) < 0) {
-			PERROR("Failed inserting connection timeout event");
-			rad_assert(0);
+			PERROR("Failed setting connection_timeout event, failing connection");
+
+			/*
+			 *	This can happen when the event loop
+			 *	is exiting.
+			 *
+			 *	Entering fail will close partially
+			 *	open connection and then, if we still
+			 *	can't insert a timer, then the connection
+			 *	will be halted and sit idle until its
+			 *	freed.
+			 */
+			connection_state_failed_enter(conn);
 		}
 	}
 }
