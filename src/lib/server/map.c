@@ -2892,6 +2892,8 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		vpt.tmpl_num = NUM_ANY;
 		vpt.type = TMPL_TYPE_ATTR;
 
+		if (vp->da->flags.is_unknown) memcpy(&vpt.tmpl_unknown, &vp->da, sizeof(vpt.tmpl_unknown));
+
 		/*
 		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
 		 *	around the list ref. The attribute value has no quoting, so we choose
