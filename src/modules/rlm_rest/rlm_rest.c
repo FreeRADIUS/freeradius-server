@@ -33,6 +33,8 @@ RCSID("$Id$")
 #include <ctype.h>
 #include "rest.h"
 
+static int instance_count;
+
 static fr_table_num_sorted_t const http_negotiation_table[] = {
 
 	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
@@ -1127,24 +1129,21 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-/** Initialises libcurl.
+/** Initialise global curl options
  *
- * Allocates global variables and memory required for libcurl to function.
- * MUST only be called once per module instance.
- *
- * mod_unload must not be called if mod_load fails.
- *
- * @see mod_unload
- *
- * @return
- *	- 0 on success.
- *	- -1 on failure.
+ * libcurl is meant to performa reference counting, but still seems to
+ * leak lots of memory if we call curl_global_init many times.
  */
-static int mod_load(void)
+static int fr_curl_init(void)
 {
 	CURLcode ret;
 
 	curl_version_info_data *curlversion;
+
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
 
 	/* developer sanity */
 	rad_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
@@ -1163,6 +1162,35 @@ static int mod_load(void)
 
 	INFO("rlm_curl - libcurl version: %s", curl_version());
 
+	instance_count++;
+
+	return 0;
+}
+
+static void fr_curl_free(void)
+{
+	if (--instance_count > 0) return;
+
+	curl_global_cleanup();
+}
+
+/** Initialises libcurl.
+ *
+ * Allocates global variables and memory required for libcurl to function.
+ * MUST only be called once per module instance.
+ *
+ * mod_unload must not be called if mod_load fails.
+ *
+ * @see mod_unload
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_load(void)
+{
+	if (fr_curl_init() < 0) return -1;
+
 #ifdef HAVE_JSON
 	fr_json_version_print();
 #endif
@@ -1176,7 +1204,7 @@ static int mod_load(void)
  */
 static void mod_unload(void)
 {
-	curl_global_cleanup();
+	fr_curl_free();
 }
 
 /*
