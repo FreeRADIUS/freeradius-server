@@ -1060,6 +1060,8 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
  */
 void unlang_interpret_signal(REQUEST *request, fr_state_signal_t action)
 {
+	unlang_stack_t		*stack = request->stack;
+
 	/*
 	 *	If we're stopping, then mark the request as stopped.
 	 *	Then, call the frame signal handler.  The keyword will
@@ -1075,7 +1077,7 @@ void unlang_interpret_signal(REQUEST *request, fr_state_signal_t action)
 	 *	yet should have a stack depth of zero, so we don't
 	 *	need to do anything.
 	 */
-	if (request->stack->depth > 0) frame_signal(request, action, 0);
+	if (stack && (stack->depth > 0)) frame_signal(request, action, 0);
 }
 
 /** Return the depth of the request's stack
