@@ -1070,7 +1070,12 @@ void unlang_interpret_signal(REQUEST *request, fr_state_signal_t action)
 		request->master_state = REQUEST_STOP_PROCESSING;
 	}
 
-	frame_signal(request, action, 0);
+	/*
+	 *	Requests that haven't been run through the interpreter
+	 *	yet should have a stack depth of zero, so we don't
+	 *	need to do anything.
+	 */
+	if (request->stack->depth > 0) frame_signal(request, action, 0);
 }
 
 /** Return the depth of the request's stack
