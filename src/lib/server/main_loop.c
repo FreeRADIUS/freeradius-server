@@ -187,7 +187,11 @@ void main_loop_free(void)
 
 int main_loop_start(void)
 {
-	int ret;
+	int	ret;
+
+#ifdef HAVE_SYSTEMD_WATCHDOG
+	bool	under_systemd = (getenv("NOTIFY_SOCKET") != NULL);
+#endif
 
 	if (!event_list) return 0;
 
@@ -195,7 +199,7 @@ int main_loop_start(void)
 	/*
 	 *	Tell systemd we're ready!
 	 */
-	sd_notify(0, "READY=1");
+	if (under_systemd) sd_notify(0, "READY=1");
 
 	/*
 	 *	Start placating the watchdog (if told to do so).
@@ -206,8 +210,10 @@ int main_loop_start(void)
 	ret = fr_event_loop(event_list);
 #ifdef HAVE_SYSTEMD_WATCHDOG
 	if (ret != 0x80) {	/* Not HUP */
-		INFO("Informing systemd we're stopping");
-		sd_notify(0, "STOPPING=1");
+		if (under_systemd) {
+			INFO("Informing systemd we're stopping");
+			sd_notify(0, "STOPPING=1");
+		}
 	}
 #endif
 	return ret;

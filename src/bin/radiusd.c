@@ -617,8 +617,7 @@ int main(int argc, char *argv[])
 	 *	presence of the NOTIFY_SOCKET envrionmental variable to determine
 	 *	whether we're running under systemd.
 	 */
-	if (getenv("NOTIFY_SOCKET"))
-		INFO("Built without support for systemd watchdog, but running under systemd");
+	if (getenv("NOTIFY_SOCKET")) INFO("Built without support for systemd watchdog, but running under systemd");
 #endif
 
 	/*
