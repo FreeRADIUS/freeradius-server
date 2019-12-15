@@ -1,0 +1,138 @@
+ARG osname=buster
+FROM debian:${osname}
+
+ARG osname
+ARG DEBIAN_FRONTEND=noninteractive
+ARG source=https://github.com/FreeRADIUS/freeradius-server.git
+
+RUN apt update; apt install -y \
+    asciidoctor \
+    clang \
+    cmake \
+    devscripts \
+    doxygen \
+    equivs \
+    g++ \
+    git \
+    gnupg2 \
+    graphviz \
+    libiodbc2-dev \
+    libjson-perl \
+    libnl-3-dev \
+    libnl-genl-3-dev \
+    lldb \
+    llvm \
+    npm \
+    pandoc \
+    python3-dev \
+    quilt \
+    rsync \
+    ruby-dev \
+    software-properties-common;
+
+RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1; \
+    mkdir -p /usr/local/src/repositories; \
+    cd /usr/local/src/repositories; \
+    git clone --branch master --depth=1 https://github.com/mheily/libkqueue.git; \
+    cd libkqueue; \
+    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./; \
+    make; \
+    make install;
+
+RUN cd /usr/local/src/repositories; \
+    git clone ${source}; 
+
+WORKDIR /usr/local/src/repositories/freeradius-server
+RUN debian/rules debian/control;
+RUN cat debian/control
+# The following line didn't work
+#RUN echo 'y' | mk-build-deps -it'apt-get -yV' debian/control;
+RUN echo the following is based on the generated debian/control file; \
+  apt install -y \
+    libsystemd-dev \
+    debhelper \
+    quilt \
+    dpkg-dev \
+    dh-systemd \
+    autotools-dev \
+    libcurl4-openssl-dev \
+    libcap-dev \
+    libgdbm-dev \
+    libjson-c3 \
+    libjson-c-dev \
+    libkrb5-dev \
+#    libkqueue-dev \
+    libldap2-dev \
+    libpam0g-dev \
+    libpcap-dev \
+    libpcre3-dev \
+    libperl-dev \
+    default-libmysqlclient-dev \
+    libpq-dev \
+    libreadline-dev \
+    libsasl2-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libtalloc-dev \
+    libwbclient-dev \
+    libyubikey-dev \
+    libykclient-dev \
+    libmemcached-dev \
+    libhiredis-dev \
+    python-dev \
+    samba-dev \
+    dh-systemd \
+    unixodbc-dev \
+    asciidoctor \
+    pandoc \
+    lsb-base \
+    ssl-cert \
+    adduser \
+    openssl \
+    make;
+
+
+# All the previous was based on
+# https://github.com/FreeRADIUS/freeradius-server/blob/master/scripts/docker/build-debian10/Dockerfile.deps
+# with python3-dev added and some packages
+# now from apt instead of source,
+# since newer packages were available in Debian buster
+#
+# The following was added when debugging for v4
+
+
+# dependencies from https://packages.debian.org/buster/freeradius
+RUN apt install -y \
+  libc6 \
+  libcap2 \
+  libct4 \
+  libgdbm6 \
+  libpam0g \
+  libpcre3 \
+  libperl5.28 \
+  libreadline7 \
+  libsqlite3-0 \
+  libssl1.1 \
+  libtalloc2 \
+  libwbclient0 \
+  lsb-base \
+# dependencies https://packages.debian.org/buster/freeradius-config
+  adduser \
+  ca-certificates \
+  make \
+  openssl \
+  ssl-cert \
+# dependencies https://packages.debian.org/buster/libfreeradius3
+  libc6 \
+  libcap2 \
+  libpcap0.8 \
+  libpcre3 \
+  libreadline7 \
+  libssl1.1 \
+  libtalloc2 \
+# Just to be sure
+  libtalloc-dev \
+  build-essential \
+  libssl-dev;
+
+
