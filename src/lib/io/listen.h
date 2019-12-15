@@ -45,7 +45,7 @@ struct fr_listen {
 /**
  *	Minimal data structure to use the new code.
  */
-struct fr_async_t {
+struct fr_async_s {
 	fr_io_process_t		process;		//!< The current state function.
 	void			*process_inst;		//!< Instance data for the current state machine.
 

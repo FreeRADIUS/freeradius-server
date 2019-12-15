@@ -35,7 +35,7 @@ extern "C" {
 #include <stdio.h>
 #include <talloc.h>
 
-typedef struct fr_trie_t fr_trie_t;
+typedef struct fr_trie_s fr_trie_t;
 typedef int (*fr_trie_walk_t)(void *ctx, uint8_t const *key, size_t keylen, void *data);
 
 fr_trie_t	*fr_trie_alloc(TALLOC_CTX *ctx);

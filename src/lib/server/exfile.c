@@ -42,7 +42,7 @@ typedef struct {
 } exfile_entry_t;
 
 
-struct exfile_t {
+struct exfile_s {
 	uint32_t		max_entries;		//!< How many file descriptors we keep track of.
 	uint32_t		max_idle;		//!< Maximum idle time for a descriptor.
 	time_t			last_cleaned;

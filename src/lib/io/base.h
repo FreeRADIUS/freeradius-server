@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 typedef struct fr_listen fr_listen_t;
-typedef struct fr_trie_t fr_trie_t;
+typedef struct fr_trie_s fr_trie_t;
 
 typedef struct {
 	uint64_t	in;

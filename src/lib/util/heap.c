@@ -35,7 +35,7 @@ RCSID("$Id$")
  *	of the field is held inside of the heap structure.
  */
 
-struct fr_heap_t {
+struct fr_heap_s {
 	size_t		size;			//!< Number of nodes allocated.
 	size_t		offset;			//!< Offset of heap index in element structure.
 

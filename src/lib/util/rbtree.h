@@ -35,8 +35,8 @@ extern "C" {
 #include <talloc.h>
 
 /* rbtree.c */
-typedef struct rbtree_t rbtree_t;
-typedef struct rbnode_t rbnode_t;
+typedef struct rbtree_s rbtree_t;
+typedef struct rbnode_s rbnode_t;
 
 /* callback order for walking  */
 typedef enum {

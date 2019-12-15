@@ -90,7 +90,7 @@ RCSID("$Id$")
  *  message into the ring buffer.  This helps with locality of
  *  reference, and removes the need to track two separate things.
  */
-struct fr_message_set_t {
+struct fr_message_set_s {
 	int			mr_current;	//!< current used message ring entry
 	int			mr_max;		//!< max used message ring entry
 

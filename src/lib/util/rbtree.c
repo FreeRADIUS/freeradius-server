@@ -34,7 +34,7 @@ typedef enum {
 	RED
 } node_colour_t;
 
-struct rbnode_t {
+struct rbnode_s {
 	rbnode_t		*left;		//!< Left child
 	rbnode_t		*right;		//!< Right child
 	rbnode_t		*parent;	//!< Parent
@@ -47,7 +47,7 @@ struct rbnode_t {
 #define NIL &sentinel	   /* all leafs are sentinels */
 static rbnode_t sentinel = { NIL, NIL, NULL, BLACK, NULL};
 
-struct rbtree_t {
+struct rbtree_s {
 #ifndef NDEBUG
 	uint32_t		magic;
 #endif

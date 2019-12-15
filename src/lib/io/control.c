@@ -74,7 +74,7 @@ typedef struct {
 /**
  *  The control structure.
  */
-struct fr_control_t {
+struct fr_control_s {
 	fr_event_list_t		*el;			//!< our event list
 
 	fr_atomic_queue_t	*aq;			//!< destination AQ

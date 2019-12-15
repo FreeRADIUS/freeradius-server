@@ -65,11 +65,12 @@ typedef struct {
 	vp_map_t	*map;		//!< if there is an "update" section in the configuration.
 } rlm_csv_t;
 
-typedef struct {
-	struct rlm_csv_entry_t *next;
+typedef struct rlm_csv_entry_s rlm_csv_entry_t;
+struct rlm_csv_entry_s {
+	rlm_csv_entry_t *next;
 	fr_value_box_t *key;
 	char *data[];
-} rlm_csv_entry_t;
+};
 
 /*
  *	A mapping of configuration file names to internal variables.

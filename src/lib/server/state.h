@@ -33,7 +33,7 @@ extern "C" {
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/request.h>
 
-typedef struct fr_state_tree_t fr_state_tree_t;
+typedef struct fr_state_tree_s fr_state_tree_t;
 
 fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, bool thread_safe,
 				    uint32_t max_sessions, uint32_t timeout, uint8_t server_id);

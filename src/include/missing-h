@@ -439,7 +439,7 @@ int clock_gettime(int clk_id, struct timespec *t);
 #    define uint128_t __uint128_t
 #    define int128_t __int128_t
 #  else
-typedef struct uint128_t {
+typedef struct {
 	union {
 		uint8_t v[16];
 		struct {
@@ -453,7 +453,7 @@ typedef struct uint128_t {
 		};
 	};
 } uint128_t;
-typedef struct int128_t {
+typedef struct {
 	union {
 		uint8_t v[16];
 		struct {

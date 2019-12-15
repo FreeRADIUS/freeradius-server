@@ -58,16 +58,17 @@ typedef union cookie_u {
 } cookie_u;
 
 /**
- * This may be used to provide a simple interface from a command line or higher 
+ * This may be used to provide a simple interface from a command line or higher
  * evel language to allow the setting of specific key-value pairs.
  *
  * Options ref: https://docs.couchbase.com/sdk-api/couchbase-c-client-2.5.6/group__lcb-cntl.html
  */
-typedef struct couchbase_opts_t {
-    char *key;			   //!< Key value for lcb_cntl_string().
-    char *val;			   //!< Value for the key used in lcb_cntl_string().
-    struct couchbase_opts_t *next; //!< Linked list.
-} couchbase_opts_t;
+typedef struct couchbase_opts_s couchbase_opts_t;
+struct couchbase_opts_s {
+    char *key;				//!< Key value for lcb_cntl_string().
+    char *val;				//!< Value for the key used in lcb_cntl_string().
+    couchbase_opts_t *next; 		//!< Linked list.
+};
 
 extern fr_dict_attr_t const *attr_acct_status_type;
 extern fr_dict_attr_t const *attr_acct_session_time;

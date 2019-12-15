@@ -32,7 +32,7 @@ RCSIDH(request_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_async_t fr_async_t;
+typedef struct fr_async_s fr_async_t;
 typedef struct fr_request_s REQUEST;
 
 typedef struct rad_listen rad_listen_t;

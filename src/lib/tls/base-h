@@ -223,7 +223,7 @@ typedef struct {
 } fr_tls_chain_conf_t;
 
 /* configured values goes right here */
-struct fr_tls_conf_t {
+struct fr_tls_conf_s {
 	SSL_CTX		**ctx;				//!< We use an array of contexts to reduce contention.
 							//!< Each context may only be used by a single thread
 							//!< concurrently.
@@ -306,7 +306,7 @@ struct fr_tls_conf_t {
 #endif
 };
 
-typedef struct fr_tls_conf_t fr_tls_conf_t;
+typedef struct fr_tls_conf_s fr_tls_conf_t;
 
 extern int fr_tls_ex_index_vps;
 extern int fr_tls_max_threads;

@@ -132,7 +132,7 @@ typedef struct {
  *	Structure defining a list of packets (incoming or outgoing)
  *	that should be managed.
  */
-struct fr_packet_list_t {
+struct fr_packet_list_s {
 	rbtree_t	*tree;
 
 	int		alloc_id;

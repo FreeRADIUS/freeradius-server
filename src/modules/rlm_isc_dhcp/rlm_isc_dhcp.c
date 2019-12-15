@@ -60,7 +60,7 @@ fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
 	{ NULL }
 };
 
-typedef struct rlm_isc_dhcp_info_t rlm_isc_dhcp_info_t;
+typedef struct rlm_isc_dhcp_info_s rlm_isc_dhcp_info_t;
 
 #define NO_SEMICOLON	(0)
 #define YES_SEMICOLON	(1)
@@ -122,7 +122,7 @@ static const CONF_PARSER module_config[] = {
 /**  Holds the state of the current tokenizer
  *
  */
-typedef struct rlm_isc_dhcp_tokenizer_t {
+typedef struct {
 	rlm_isc_dhcp_t	*inst;		//!< module instance
 	FILE		*fp;
 	char const	*filename;
@@ -164,7 +164,7 @@ typedef enum rlm_isc_dhcp_type_t {
 /** Describes the commands that we accept, including it's syntax (i.e. name), etc.
  *
  */
-typedef struct rlm_isc_dhcp_cmd_t {
+typedef struct {
 	char const		*name;
 	rlm_isc_dhcp_type_t	type;
 	rlm_isc_dhcp_parse_t	parse;
@@ -180,7 +180,7 @@ typedef struct rlm_isc_dhcp_cmd_t {
  *	Since we only implement a tiny portion of it's configuration,
  *	we tend to accept all kinds of things, and then just ignore them.
  */
-struct rlm_isc_dhcp_info_t {
+struct rlm_isc_dhcp_info_s {
 	rlm_isc_dhcp_cmd_t const *cmd;
 	int			argc;
 	fr_value_box_t 		**argv;
@@ -757,7 +757,7 @@ static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 }
 
 
-typedef struct isc_host_ether_t {
+typedef struct {
 	uint8_t			ether[6];
 	rlm_isc_dhcp_info_t	*host;
 } isc_host_ether_t;
@@ -777,7 +777,7 @@ static int host_ether_cmp(void const *one, void const *two)
 	return memcmp(a->ether, b->ether, 6);
 }
 
-typedef struct isc_host_uid_t {
+typedef struct {
 	fr_value_box_t		*client;
 	rlm_isc_dhcp_info_t	*host;
 } isc_host_uid_t;

@@ -35,7 +35,7 @@
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
 
-typedef struct dynamic_client_t {
+typedef struct {
 	dl_instance_t			*submodule;		//!< proto_radius_dynamic_client
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
 
@@ -55,7 +55,7 @@ typedef struct dynamic_client_t {
 	uint32_t			lifetime;		//!< of the dynamic client, in seconds.
 } dynamic_client_t;
 
-typedef struct dynamic_packet_t {
+typedef struct {
 	uint8_t			*packet;
 	fr_tracking_entry_t	*track;
 	fr_dlist_t		entry;

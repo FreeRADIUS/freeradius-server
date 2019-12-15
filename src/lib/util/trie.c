@@ -483,7 +483,7 @@ static int trie_number = 0;
 #define TRIE_TYPE_CHECK(_x, _r)
 #endif
 
-struct fr_trie_t {
+struct fr_trie_s {
 	TRIE_HEADER;
 
 	fr_trie_t	*trie;	/* for USER and PATH nodes*/
@@ -2170,13 +2170,13 @@ void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
 
 /* WALK FUNCTIONS */
 
-typedef struct fr_trie_callback_t fr_trie_callback_t;
+typedef struct fr_trie_callback_s fr_trie_callback_t;
 
 typedef int (*fr_trie_key_walk_t)(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more);
 
 static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more);
 
-struct fr_trie_callback_t {
+struct fr_trie_callback_s {
 	uint8_t		*start;
 	uint8_t const	*end;
 

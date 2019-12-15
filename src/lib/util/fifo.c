@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/fifo.h>
 
-struct fr_fifo_t {
+struct fr_fifo_s {
 	unsigned int	num;		//!< How many elements exist in the fifo.
 	unsigned int	first, last;	//!< Head and tail indexes for the fifo.
 	unsigned int	max;		//!< How many elements were created in the fifo.

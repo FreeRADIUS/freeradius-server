@@ -98,7 +98,7 @@ typedef struct {
  *	https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf
  *	https://www.eecs.harvard.edu/~michaelm/postscripts/tpds2001.pdf
  */
-struct fr_network_t {
+struct fr_network_s {
 	fr_log_t const		*log;			//!< log destination
 	fr_log_lvl_t		lvl;			//!< debug log level
 

@@ -33,7 +33,7 @@ extern "C" {
 
 #include <talloc.h>
 
-typedef struct	fr_fifo_t fr_fifo_t;
+typedef struct fr_fifo_s fr_fifo_t;
 typedef void (*fr_fifo_free_t)(void *);
 
 /** Creates a fifo that verifies elements are of a specific talloc type

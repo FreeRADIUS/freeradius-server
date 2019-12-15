@@ -33,7 +33,7 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b);
 void fr_request_from_reply(RADIUS_PACKET *request,
 			     RADIUS_PACKET const *reply);
 
-typedef struct fr_packet_list_t fr_packet_list_t;
+typedef struct fr_packet_list_s fr_packet_list_t;
 
 fr_packet_list_t *fr_packet_list_create(int alloc_id);
 void fr_packet_list_free(fr_packet_list_t *pl);

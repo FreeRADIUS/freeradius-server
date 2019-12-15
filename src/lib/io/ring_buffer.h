@@ -34,7 +34,7 @@ RCSIDH(ring_buffer_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_ring_buffer_t fr_ring_buffer_t;
+typedef struct fr_ring_buffer_s fr_ring_buffer_t;
 
 fr_ring_buffer_t	*fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size);
 

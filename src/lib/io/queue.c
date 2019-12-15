@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/io/queue.h>
 
-struct fr_queue_t {
+struct fr_queue_s {
 	int		head;		//!< head of the queue
 	int		tail;		//!< tail of the queue
 

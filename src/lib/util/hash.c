@@ -48,7 +48,7 @@ struct fr_hash_entry_s {
 	void 		*data;
 };
 
-struct fr_hash_table_t {
+struct fr_hash_table_s {
 	int			num_elements;
 	int			num_buckets; /* power of 2 */
 	int			next_grow;

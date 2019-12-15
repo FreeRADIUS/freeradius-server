@@ -32,7 +32,7 @@ RCSID("$Id$")
 /*
  *	Ring buffers are allocated in a block.
  */
-struct fr_ring_buffer_t {
+struct fr_ring_buffer_s {
 	uint8_t		*buffer;	//!< actual start of the ring buffer
 	size_t		size;		//!< Size of this ring buffer
 

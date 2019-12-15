@@ -37,7 +37,7 @@ typedef struct {
 	atomic_int64_t seq;
 } fr_atomic_queue_entry_t;
 
-struct fr_atomic_queue_t {
+struct fr_atomic_queue_s {
 	alignas(128) atomic_int64_t head;
 	atomic_int64_t tail;
 

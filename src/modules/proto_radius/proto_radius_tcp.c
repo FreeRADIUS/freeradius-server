@@ -37,7 +37,7 @@
 
 extern fr_app_io_t proto_radius_tcp;
 
-typedef struct proto_radius_tcp_thread_t {
+typedef struct {
 	char const			*name;			//!< socket name
 	int				sockfd;
 

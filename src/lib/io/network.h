@@ -29,7 +29,7 @@ RCSIDH(network_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_network_t fr_network_t;
+typedef struct fr_network_s fr_network_t;
 
 #ifdef __cplusplus
 }

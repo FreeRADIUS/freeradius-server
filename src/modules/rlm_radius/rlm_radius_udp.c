@@ -82,7 +82,7 @@ typedef struct {
 	fr_time_delta_t		zombie_period;
 } fr_io_connection_thread_t;
 
-typedef enum fr_io_connection_state_t {
+typedef enum {
 	CONN_INIT = 0,					//!< Configured but not started.
 	CONN_OPENING,					//!< Trying to connect.
 	CONN_ACTIVE,					//!< has free IDs
@@ -148,10 +148,10 @@ typedef struct {
 } fr_io_connection_t;
 
 
-typedef enum fr_io_request_state_t {
+typedef enum {
 	REQUEST_IO_STATE_INIT = 0,
-	REQUEST_IO_STATE_QUEUED,				//!< in the thread queue
-	REQUEST_IO_STATE_WRITTEN,				//!< in the connection "sent" heap
+	REQUEST_IO_STATE_QUEUED,			//!< in the thread queue
+	REQUEST_IO_STATE_WRITTEN,			//!< in the connection "sent" heap
 	REQUEST_IO_STATE_REPLIED,      			//!< timed out, or received a reply
 	REQUEST_IO_STATE_DONE,				//!< and done
 } fr_io_request_state_t;

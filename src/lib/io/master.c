@@ -77,7 +77,7 @@ typedef enum {
 	PR_CLIENT_PENDING,				//!< dynamic client pending definition
 } fr_io_client_state_t;
 
-typedef struct fr_io_connection_t fr_io_connection_t;
+typedef struct fr_io_connection_s fr_io_connection_t;
 
 /** Client definitions for master IO
  *
@@ -122,7 +122,7 @@ struct fr_io_client_s {
  *  tell the parent it's alive, and the parent can push packets to the
  *  child.
  */
-struct fr_io_connection_t {
+struct fr_io_connection_s {
 	char const			*name;		//!< taken from proto_FOO_TRANSPORT
 	int				packets;	//!< number of packets using this connection
 	fr_io_address_t   		*address;      	//!< full information about the connection.

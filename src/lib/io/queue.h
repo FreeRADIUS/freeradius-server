@@ -33,7 +33,7 @@ RCSIDH(queue_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_queue_t fr_queue_t;
+typedef struct fr_queue_s fr_queue_t;
 
 fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size);
 fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size) CC_HINT(nonnull);

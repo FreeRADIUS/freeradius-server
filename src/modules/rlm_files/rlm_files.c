@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
-typedef struct rlm_files_t {
+typedef struct {
 	vp_tmpl_t *key;
 
 	char const *filename;

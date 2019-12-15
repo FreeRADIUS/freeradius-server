@@ -42,7 +42,7 @@ typedef int32_t fr_heap_iter_t;
  */
 typedef int8_t (*fr_heap_cmp_t)(void const *a, void const *b);
 
-typedef struct fr_heap_t fr_heap_t;
+typedef struct fr_heap_s fr_heap_t;
 
 /** Creates a heap that can be used with non-talloced elements
  *

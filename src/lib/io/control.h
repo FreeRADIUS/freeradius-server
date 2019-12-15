@@ -41,7 +41,7 @@ extern "C" {
  *
  *  Multiple-producer, single consumer.
  */
-typedef struct fr_control_t fr_control_t;
+typedef struct fr_control_s fr_control_t;
 typedef	void (*fr_control_callback_t)(void *ctx, void const *data, size_t data_size, fr_time_t now);
 
 /*

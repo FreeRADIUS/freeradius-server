@@ -49,11 +49,11 @@ struct fr_cmd_argv_s {
 	fr_cmd_argv_t		*child;
 };
 
-struct fr_cmd_t {
+struct fr_cmd_s {
 	char const		*name;
 
-	struct fr_cmd_t		*next;
-	struct fr_cmd_t		*child;				//!< if there are subcommands
+	struct fr_cmd_s		*next;
+	struct fr_cmd_s		*child;				//!< if there are subcommands
 
 	char const		*syntax;			//!< only for terminal nodes
 	char const		*help;				//!< @todo - long / short help

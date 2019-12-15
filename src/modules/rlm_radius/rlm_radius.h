@@ -30,7 +30,7 @@
  * @copyright 2017 Alan DeKok (aland@freeradius.org)
  */
 
-typedef struct rlm_radius_t rlm_radius_t;
+typedef struct rlm_radius_s rlm_radius_t;
 
 
 /** Push a REQUEST to an IO submodule
@@ -75,7 +75,7 @@ typedef struct {
 /*
  *	Define a structure for our module configuration.
  */
-struct rlm_radius_t {
+struct rlm_radius_s {
 	char const		*name;		//!< Module instance name.
 
 	fr_time_delta_t		connection_timeout;

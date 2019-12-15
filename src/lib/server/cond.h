@@ -36,7 +36,7 @@ extern "C" {
 /*
  *	Also defined in radiusd.h for radius_evalute_cond()
  */
-typedef struct fr_cond_t fr_cond_t;
+typedef struct fr_cond_s fr_cond_t;
 #endif
 
 typedef enum {
@@ -70,7 +70,7 @@ typedef enum {
  *	(!(COND))		no LHS/RHS, child is COND, child OP is NOT
  *	(COND1 OP COND2)	no LHS/RHS, next is COND2, next OP is OP
  */
-struct fr_cond_t {
+struct fr_cond_s {
 	fr_cond_type_t		type;
 
 	CONF_ITEM const		*ci;

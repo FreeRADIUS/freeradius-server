@@ -112,7 +112,7 @@ typedef struct {
 	REQUEST			*thawed;			//!< The request that thawed this entry.
 } fr_state_entry_t;
 
-struct fr_state_tree_t {
+struct fr_state_tree_s {
 	uint64_t		id;				//!< Next ID to assign.
 	uint64_t		timed_out;			//!< Number of states that were cleaned up due to
 								//!< timeout.

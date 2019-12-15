@@ -33,7 +33,7 @@ extern "C" {
 /*
  *	Multiple threads logging to one or more files.
  */
-typedef struct exfile_t exfile_t;
+typedef struct exfile_s exfile_t;
 
 exfile_t	*exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle, bool locking);
 

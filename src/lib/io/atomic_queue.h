@@ -50,7 +50,7 @@ RCSIDH(atomic_queue_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_atomic_queue_t fr_atomic_queue_t;
+typedef struct fr_atomic_queue_s fr_atomic_queue_t;
 
 fr_atomic_queue_t	*fr_atomic_queue_create(TALLOC_CTX *ctx, int size);
 bool			fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data);
