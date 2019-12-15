@@ -94,8 +94,7 @@ RUN echo the following is based on the generated debian/control file; \
 
 # All the previous was based on
 # https://github.com/FreeRADIUS/freeradius-server/blob/master/scripts/docker/build-debian10/Dockerfile.deps
-# with python3-dev added and some packages
-# now from apt instead of source,
+# with python3-dev added and some packages from apt instead of source,
 # since newer packages were available in Debian buster
 #
 # The following was added when debugging for v4
