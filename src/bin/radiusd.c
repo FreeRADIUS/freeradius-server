@@ -951,7 +951,9 @@ int main(int argc, char *argv[])
 	trigger_exec(NULL, NULL, "server.stop", false, NULL);
 
 	/*
-	 *  Stop the scheduler
+	 *  Stop the scheduler, this signals the network and worker threads
+	 *  to exit gracefully.  fr_schedule_destroy only returns once all
+	 *  threads have been joined.
 	 */
 	(void) fr_schedule_destroy(sc);
 
