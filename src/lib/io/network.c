@@ -386,7 +386,8 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_channel_data_t *cd, *next;
 	fr_time_t *recv_time;
 
-	if (!fr_cond_assert(s->listen->fd == sockfd)) return;
+	if (!fr_cond_assert_msg(s->listen->fd == sockfd, "Expected listen->fd (%u) to be equal event fd (%u)",
+				s->listen->fd, sockfd)) return;
 
 	DEBUG3("network read");
 
