@@ -905,7 +905,9 @@ int main(int argc, char *argv[])
 	}
 
 	fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
+#ifndef NDEBUG
 	if (exit_after > 0) fr_exit_after(main_loop_event_list(), 0, &exit_after);
+#endif
 	/*
 	 *  Process requests until HUP or exit.
 	 */
