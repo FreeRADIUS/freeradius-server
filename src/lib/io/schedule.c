@@ -120,11 +120,10 @@ struct fr_schedule_s {
 	fr_log_t	*log;			//!< log destination
 	fr_log_lvl_t	lvl;			//!< log level
 
-	int		max_networks;		//!< number of network threads
-	int		max_workers;		//!< max number of worker threads
+	unsigned int	max_networks;		//!< number of network threads
+	unsigned int	max_workers;		//!< max number of worker threads
 
-	int		num_workers;		//!< number of worker threads
-	int		num_workers_exited;	//!< number of exited workers
+	unsigned int	num_workers_exited;	//!< number of exited workers
 
 	sem_t		semaphore;		//!< for inter-thread signaling
 
@@ -150,9 +149,9 @@ int fr_schedule_worker_id(void)
 	return worker_id;
 }
 
-/** Initialize and run the worker thread.
+/** Entry point for worker threads
  *
- * @param[in] arg the fr_schedule_worker_t
+ * @param[in] arg	the fr_schedule_worker_t
  * @return NULL
  */
 static void *fr_schedule_worker_thread(void *arg)
@@ -171,7 +170,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	INFO("Worker %d starting\n", sw->id);
+	INFO("Worker %d starting", sw->id);
 
 	sw->el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!sw->el) {
@@ -216,7 +215,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	fr_worker(sw->worker);
 
-	DEBUG3("Worker %d finished\n", sw->id);
+	DEBUG3("Worker %d finished", sw->id);
 
 	status = FR_CHILD_EXITED;
 
@@ -228,7 +227,7 @@ fail:
 		sw->worker = NULL;
 	}
 
-	DEBUG3("Worker %d exiting\n", sw->id);
+	DEBUG3("Worker %d exiting", sw->id);
 
 	/*
 	 *	Tell the scheduler we're done.
@@ -252,7 +251,7 @@ static void *fr_schedule_network_thread(void *arg)
 	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
 	fr_event_list_t			*el;
 
-	INFO("Network %d starting\n", sn->id);
+	INFO("Network %d starting", sn->id);
 
 	sn->ctx = ctx = talloc_init("network %d", sn->id);
 	if (!ctx) {
@@ -359,7 +358,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
 {
-	int i;
+	unsigned int i;
 	fr_schedule_worker_t *sw, *next;
 	fr_schedule_t *sc;
 
@@ -391,7 +390,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sc->el = el;
 	sc->max_networks = max_networks;
 	sc->max_workers = max_workers;
-	sc->num_workers = 0;
 	sc->log = logger;
 	sc->lvl = lvl;
 
@@ -481,14 +479,14 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Create all of the workers.
 	 */
 	for (i = 0; i < sc->max_workers; i++) {
-		DEBUG3("Creating %d/%d workers\n", i, sc->max_workers);
+		DEBUG3("Creating %u/%u workers", i, sc->max_workers);
 
 		/*
 		 *	Create a worker "glue" structure
 		 */
 		sw = talloc_zero(sc, fr_schedule_worker_t);
 		if (!sw) {
-			ERROR("Worker %d - Failed allocating memory", i);
+			ERROR("Worker %u - Failed allocating memory", i);
 			break;
 		}
 
@@ -498,11 +496,9 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		fr_dlist_insert_head(&sc->workers, sw);
 
 		if (fr_schedule_pthread_create(&sw->pthread_id, fr_schedule_worker_thread, sw) < 0) {
-			ERROR("Failed creating worker %d: %s\n", i, fr_strerror());
+			ERROR("Failed creating worker %u: %s", i, fr_strerror());
 			break;
 		}
-
-		sc->num_workers++;
 	}
 
 
@@ -511,8 +507,9 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	they've started, OR there's been a problem and they
 	 *	can't start.
 	 */
-	for (i = 0; i < sc->num_workers; i++) {
-		DEBUG3("Waiting for semaphore from worker %d/%d\n", i, sc->num_workers);
+	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
+		DEBUG3("Waiting for semaphore from worker %u/%u",
+		       i, (unsigned int)fr_dlist_num_elements(&sc->workers));
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
@@ -526,7 +523,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		next = fr_dlist_next(&sc->workers, sw);
 
 		if (sw->status != FR_CHILD_RUNNING) {
-			sc->num_workers--;
 			fr_dlist_remove(&sc->workers, sw);
 			continue;
 		}
@@ -535,7 +531,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Failed to start some workers, refuse to do anything!
 	 */
-	if (sc->num_workers < sc->max_workers) {
+	if ((unsigned int)fr_dlist_num_elements(&sc->workers) < sc->max_workers) {
 		fr_schedule_destroy(sc);
 		return NULL;
 	}
@@ -559,8 +555,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		goto st_fail;
 	}
 
-	if (sc) INFO("Scheduler created successfully with %d networks and %d workers",
-		       sc->max_networks, sc->num_workers);
+	if (sc) INFO("Scheduler created successfully with %u networks and %u workers",
+		     sc->max_networks, (unsigned int)fr_dlist_num_elements(&sc->workers));
 
 	return sc;
 }
@@ -574,7 +570,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
  */
 int fr_schedule_destroy(fr_schedule_t *sc)
 {
-	int i;
+	unsigned int i;
 	fr_schedule_worker_t *sw;
 
 	sc->running = false;
@@ -593,7 +589,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	}
 
 	rad_assert(sc->sn);
-	rad_assert(sc->num_workers > 0);
+	rad_assert(fr_dlist_num_elements(&sc->workers) > 0);
 
 	/*
 	 *	If the network thread is running, tell it to exit, and
@@ -621,8 +617,9 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	modules.  Otherwise, the modules will be removed from
 	 *	underneath the workers!
 	 */
-	for (i = 0; i < sc->num_workers; i++) {
-		DEBUG3("Wait for semaphore indicating exit %d/%d\n", i, sc->num_workers);
+	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
+		DEBUG2("Waiting for semaphore indicating exit %u/%u", i,
+		       (unsigned int)fr_dlist_num_elements(&sc->workers));
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
@@ -630,8 +627,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	Clean up the exited workers.
 	 */
 	while ((sw = fr_dlist_head(&sc->workers)) != NULL) {
-		sc->num_workers--;
-
 		fr_dlist_remove(&sc->workers, sw);
 
 		/*
@@ -645,7 +640,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		if (pthread_join(sw->pthread_id, NULL) != 0) {
 			ERROR("Failed joining worker %i: %s", sw->id, fr_syserror(errno));
 		} else {
-			DEBUG3("Worker %i exited", sw->id);
+			DEBUG2("Worker %i exited", sw->id);
 		}
 		talloc_free(sw->ctx);
 	}
