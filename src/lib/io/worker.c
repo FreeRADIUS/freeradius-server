@@ -598,7 +598,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_tim
 	/*
 	 *	There are still active requests.  Reset the timer.
 	 */
-	if (worker->num_active) worker_reset_timer(worker);
+	worker_reset_timer(worker);
 }
 
 /** See when we next need to service the time_order heap for "too old"
@@ -610,12 +610,18 @@ static void worker_reset_timer(fr_worker_t *worker)
 	fr_time_t	cleanup;
 	REQUEST		*request;
 
+	/*
+	 *	No more requests, delete the timer.
+	 */
 	request = fr_heap_peek_tail(worker->time_order);
-	if (!request) return;
+	if (!request) {
+		if (worker->ev_cleanup) fr_event_timer_delete(worker->el, &worker->ev_cleanup);
+		return;
+	}
 	rad_assert(worker->num_active > 0);
 
-	cleanup = worker->max_request_time;
-	cleanup += request->async->recv_time;
+	cleanup = request->async->recv_time;
+	cleanup += worker->max_request_time;
 
 	/*
 	 *	Suppress the timer update if it's within 1s of the
@@ -1037,7 +1043,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	}
 
 	fr_worker_send_reply(worker, request, size);
-	if (!worker->num_active) worker_reset_timer(worker);
+	worker_reset_timer(worker);
 }
 
 /** Run the event loop 'pre' callback
