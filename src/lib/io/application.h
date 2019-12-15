@@ -31,7 +31,7 @@
 /*
  *	src/lib/io/schedule.h
  */
-typedef struct fr_schedule_t fr_schedule_t;
+typedef struct fr_schedule_s fr_schedule_t;
 
 /** Bootstrap the #fr_app_t
  *

@@ -29,7 +29,7 @@ RCSIDH(schedule_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_schedule_t fr_schedule_t;
+typedef struct fr_schedule_s fr_schedule_t;
 
 #ifdef __cplusplus
 }

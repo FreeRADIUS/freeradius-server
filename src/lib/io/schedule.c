@@ -112,7 +112,7 @@ typedef struct {
 /**
  *  The scheduler
  */
-struct fr_schedule_t {
+struct fr_schedule_s {
 	bool		running;		//!< is the scheduler running?
 
 	fr_event_list_t	*el;			//!< event list for single-threaded mode.
