@@ -215,7 +215,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	fr_worker(sw->worker);
 
-	DEBUG3("Worker %d finished", sw->id);
+	INFO("Worker %d finished", sw->id);
 
 	status = FR_CHILD_EXITED;
 
@@ -227,7 +227,7 @@ fail:
 		sw->worker = NULL;
 	}
 
-	DEBUG3("Worker %d exiting", sw->id);
+	INFO("Worker %d exiting", sw->id);
 
 	/*
 	 *	Tell the scheduler we're done.
@@ -291,7 +291,7 @@ static void *fr_schedule_network_thread(void *arg)
 fail:
 	sn->status = status;
 
-	DEBUG3("Network exiting");
+	INFO("Network exiting");
 
 	/*
 	 *	Tell the scheduler we're done.
