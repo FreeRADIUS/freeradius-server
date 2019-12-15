@@ -170,12 +170,18 @@ static void fr_time_sync_event(fr_event_list_t *el, UNUSED fr_time_t now, UNUSED
  */
 static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
+	static fr_event_timer_t *ev;
+
 	fr_time_delta_t	exit_after = *(fr_time_delta_t *)uctx;
 
 	if (now == 0) {
-		fr_event_timer_in(el, el, NULL, exit_after, fr_exit_after, NULL);
+		if (fr_event_timer_in(el, el, &ev, exit_after, fr_exit_after, NULL) < 0) {
+			PERROR("Failed inserting exit event");
+		}
 		return;
 	}
+
+	talloc_free(ev);
 
 	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
 }
