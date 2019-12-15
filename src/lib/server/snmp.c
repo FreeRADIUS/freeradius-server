@@ -1122,3 +1122,8 @@ int fr_snmp_init(void)
 
 	return _fr_snmp_init(snmp_iso);	/* The SNMP root node */
 }
+
+void fr_snmp_free(void)
+{
+	fr_dict_autofree(snmp_dict);
+}

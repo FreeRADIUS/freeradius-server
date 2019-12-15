@@ -993,6 +993,8 @@ cleanup:
 	 */
 	log_global_free();
 
+	fr_snmp_free();
+
 	server_free();
 
 	/*

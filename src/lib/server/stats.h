@@ -87,6 +87,7 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 void fr_stats_bins(fr_stats_t *stats, fr_time_t start, fr_time_t end);
 int fr_snmp_process(REQUEST *request);
 int fr_snmp_init(void);
+void fr_snmp_free(void);
 
 
 #define FR_STATS_INC(_x, _y) radius_ ## _x ## _stats._y++;if (listener) listener->stats._y++;if (client) client->_x._y++;
