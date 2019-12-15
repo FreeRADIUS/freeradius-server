@@ -181,8 +181,6 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 		return;
 	}
 
-	talloc_free(ev);
-
 	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
 }
 #endif
@@ -919,6 +917,11 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *  Ignore the TERM signal: we're about to die.
+	 */
+	signal(SIGTERM, SIG_IGN);
+
+	/*
 	 *  Unprotect global memory
 	 */
 	if (do_mprotect) {
@@ -941,11 +944,6 @@ int main(int argc, char *argv[])
 	fr_radmin_stop();
 
 	/*
-	 *  Ignore the TERM signal: we're about to die.
-	 */
-	signal(SIGTERM, SIG_IGN);
-
-	/*
 	 *   Fire signal and stop triggers after ignoring SIGTERM, so handlers are
 	 *   not killed with the rest of the process group, below.
 	 */
@@ -956,12 +954,6 @@ int main(int argc, char *argv[])
 	 *  Stop the scheduler
 	 */
 	(void) fr_schedule_destroy(sc);
-
-	/*
-	 *  Send a TERM signal to all associated processes
-	 *  (including us, which gets ignored.)
-	 */
-	if (config->spawn_workers) kill(-radius_pid, SIGTERM);
 
 	/*
 	 *  We're exiting, so we can delete the PID file.
@@ -979,6 +971,14 @@ int main(int argc, char *argv[])
 	 */
 	main_loop_free();		/* Free the requests */
 
+	/*
+	 *  Send a TERM signal to all associated processes
+	 *  (including us, which gets ignored.)
+	 *
+	 *  This _shouldn't_ be needed, but may help with
+	 *  processes created by the exec code or triggers.
+	 */
+	if (config->spawn_workers) kill(-radius_pid, SIGTERM);
 cleanup:
 	/*
 	 *  Frees request specific logging resources which is OK
