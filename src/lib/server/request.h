@@ -177,7 +177,7 @@ struct fr_request_s {
 
 REQUEST		*request_alloc(TALLOC_CTX *ctx);
 
-REQUEST		*request_alloc_local(TALLOC_CTX *ctx);
+REQUEST		*request_local_alloc(TALLOC_CTX *ctx);
 
 REQUEST		*request_alloc_fake(REQUEST *parent, fr_dict_t const *namespace);
 

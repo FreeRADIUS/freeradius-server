@@ -279,7 +279,7 @@ static int _request_local_free(REQUEST *request)
  * which needs to be outside of the normal free list, so that it can be freed
  * when the module requires, not when the thread destructor runs.
  */
-REQUEST *request_alloc_local(TALLOC_CTX *ctx)
+REQUEST *request_local_alloc(TALLOC_CTX *ctx)
 {
 	REQUEST *request;
 

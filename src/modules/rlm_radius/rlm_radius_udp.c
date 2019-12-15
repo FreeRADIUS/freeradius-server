@@ -2605,7 +2605,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, void *h, voi
 		 *	head before the module destructor
 		 *      runs.
 		 */
-		request = request_alloc_local(u);
+		request = request_local_alloc(u);
 		request->async = talloc_zero(request, fr_async_t);
 		talloc_const_free(request->name);
 		request->name = talloc_strdup(request, c->module_name);
