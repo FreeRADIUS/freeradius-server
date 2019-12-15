@@ -84,7 +84,6 @@ struct fr_control_t {
 	fr_control_ctx_t 	type[FR_CONTROL_MAX_TYPES];	//!< callbacks
 };
 
-
 static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_control_t *c = talloc_get_type_abort(uctx, fr_control_t);
@@ -113,6 +112,24 @@ static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 	}
 }
 
+/** Free a control structure
+ *
+ *  This function really only calls the underlying "garbage collect".
+ *
+ * @param[in] c the control structure
+ */
+static int _control_free(fr_control_t *c)
+{
+	(void) talloc_get_type_abort(c, fr_control_t);
+
+	(void) fr_event_fd_delete(c->el, c->pipe[0], FR_EVENT_FILTER_IO);
+
+	close(c->pipe[0]);
+	close(c->pipe[1]);
+
+	return 0;
+}
+
 /** Create a control-plane signaling path.
  *
  * @param[in] ctx the talloc context
@@ -131,7 +148,6 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 		fr_strerror_printf("Failed allocating memory");
 		return NULL;
 	}
-
 	c->el = el;
 	c->aq = aq;
 
@@ -140,6 +156,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 		fr_strerror_printf("Failed opening pipe for control socket: %s", fr_syserror(errno));
 		return NULL;
 	}
+	talloc_set_destructor(c, _control_free);
 
 	/*
 	 *	We don't want reads from the pipe to be blocking.
@@ -147,8 +164,6 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 	(void) fr_nonblock(c->pipe[0]);
 
 	if (fr_event_fd_insert(c, el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
-		close(c->pipe[0]);
-		close(c->pipe[1]);
 		talloc_free(c);
 		fr_strerror_printf("Failed adding FD to event list control socket: %s", fr_strerror());
 		return NULL;
@@ -209,23 +224,6 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
 	return 0;
 }
 
-/** Free a control structure
- *
- *  This function really only calls the underlying "garbage collect".
- *
- * @param[in] c the control structure
- */
-void fr_control_free(fr_control_t *c)
-{
-	(void) talloc_get_type_abort(c, fr_control_t);
-
-	(void) fr_event_fd_delete(c->el, c->pipe[0], FR_EVENT_FILTER_IO);
-
-	close(c->pipe[0]);
-	close(c->pipe[1]);
-
-	talloc_free(c);
-}
 
 
 /** Allocate a control message

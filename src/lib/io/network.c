@@ -980,7 +980,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 	if (!nr->rb) {
 		fr_strerror_printf_push("Failed creating ring buffer");
 	fail2:
-		fr_control_free(nr->control);
+		talloc_free(nr->control);
 		goto fail;
 	}
 
