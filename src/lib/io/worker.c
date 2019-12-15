@@ -141,7 +141,6 @@ struct fr_worker_s {
 	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
 	fr_time_t		last_event;	//!< last time we ran the event loop
 
-	fr_time_t		next_cleanup;	//!< when we next do the max_request_time checks
 	fr_event_timer_t const	*ev_cleanup;	//!< timer for max_request_time
 
 	fr_channel_t		**channel;	//!< list of channels
@@ -390,7 +389,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	worker->stats.out++;
 }
 
-static void worker_reset_timer(fr_worker_t *worker);
+static void worker_max_request_timer(fr_worker_t *worker);
 
 
 /** Reply to a request
@@ -581,7 +580,13 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_tim
 	 *	be deleted.
 	 */
 	while ((request = fr_heap_peek_tail(worker->time_order)) != NULL) {
+		fr_time_t cleanup;
+
 		REQUEST_VERIFY(request);
+
+		cleanup = request->async->recv_time;
+		cleanup += worker->max_request_time;
+		if (cleanup > now) break;
 
 		/*
 		 *	Waiting too long, delete it.
@@ -596,16 +601,16 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_tim
 	}
 
 	/*
-	 *	There are still active requests.  Reset the timer.
+	 *	Reset the max request timer.
 	 */
-	worker_reset_timer(worker);
+	worker_max_request_timer(worker);
 }
 
 /** See when we next need to service the time_order heap for "too old"
  * packets.
  *
  */
-static void worker_reset_timer(fr_worker_t *worker)
+static void worker_max_request_timer(fr_worker_t *worker)
 {
 	fr_time_t	cleanup;
 	REQUEST		*request;
@@ -615,24 +620,11 @@ static void worker_reset_timer(fr_worker_t *worker)
 	 */
 	request = fr_heap_peek_tail(worker->time_order);
 	if (!request) {
-		if (worker->ev_cleanup) fr_event_timer_delete(worker->el, &worker->ev_cleanup);
-		return;
+		cleanup = fr_event_list_time(worker->el);
+	} else {
+		cleanup = request->async->recv_time;
 	}
-	rad_assert(worker->num_active > 0);
-
-	cleanup = request->async->recv_time;
 	cleanup += worker->max_request_time;
-
-	/*
-	 *	Suppress the timer update if it's within 1s of the
-	 *	previous one.
-	 */
-	if (worker->ev_cleanup) {
-		if ((cleanup > worker->next_cleanup) &&
-		    (cleanup - worker->next_cleanup) <= NSEC) return;
-	}
-
-	worker->next_cleanup = cleanup;
 
 	DEBUG2("Resetting worker %s cleanup timer to +%pV",
 	       worker->name, fr_box_time_delta(worker->max_request_time));
@@ -957,7 +949,6 @@ nak:
 	worker->num_active++;
 	rad_assert(request->runnable_id < 0);
 
-	worker_reset_timer(worker);
 	return request;
 }
 
@@ -1043,7 +1034,6 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	}
 
 	fr_worker_send_reply(worker, request, size);
-	worker_reset_timer(worker);
 }
 
 /** Run the event loop 'pre' callback
@@ -1348,6 +1338,11 @@ nomem:
 		talloc_free(worker->runnable);
 		goto fail2;
 	}
+
+	/*
+	 *	Set the initial cleanup timer
+	 */
+	worker_max_request_timer(worker);
 
 	return worker;
 }
