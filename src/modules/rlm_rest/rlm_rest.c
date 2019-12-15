@@ -19,7 +19,7 @@
  * @file rlm_rest.c
  * @brief Integrate FreeRADIUS with RESTfull APIs
  *
- * @copyright 2012-2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2012-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/table.h>
 
@@ -1137,13 +1138,21 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 static int fr_curl_init(void)
 {
 	CURLcode ret;
-
 	curl_version_info_data *curlversion;
 
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;
 	}
+
+#ifdef WITH_TLS
+	/*
+	 *	Use our OpenSSL init with the hope that
+	 *	the free function will also free the
+	 *	memory allocated during SSL init.
+	 */
+	if (tls_init() < 0) return -1;
+#endif
 
 	/* developer sanity */
 	rad_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
@@ -1170,6 +1179,10 @@ static int fr_curl_init(void)
 static void fr_curl_free(void)
 {
 	if (--instance_count > 0) return;
+
+#ifdef WITH_TLS
+	tls_free();
+#endif
 
 	curl_global_cleanup();
 }
