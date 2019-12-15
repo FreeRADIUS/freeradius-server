@@ -160,6 +160,26 @@ static void fr_time_sync_event(fr_event_list_t *el, UNUSED fr_time_t now, UNUSED
 	(void) fr_time_sync();
 }
 
+#ifndef NDEBUG
+/** Encourage the server to exit after a period of time
+ *
+ * @param[in] el	The main loop.
+ * @param[in] now	Current time.  Should be 0, when adding the event.
+ * @param[in] uctx	Pointer to a fr_time_delta_t indicating how long
+ *			the server should run before exit.
+ */
+static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	fr_time_delta_t	exit_after = *(fr_time_delta_t *)uctx;
+
+	if (now == 0) {
+		fr_event_timer_in(el, el, NULL, exit_after, fr_exit_after, NULL);
+		return;
+	}
+
+	fr_event_loop_exit(el, 1);
+}
+#endif
 
 /*
  *	The main guy.
@@ -184,7 +204,12 @@ int main(int argc, char *argv[])
 	size_t		pool_size = 0;
 	void		*pool_page_start = NULL, *pool_page_end = NULL;
 	bool		do_mprotect;
+
 	dl_module_loader_t *dl_modules = NULL;
+
+#ifndef NDEBUG
+	fr_time_delta_t	exit_after = 0;
+#endif
 
 	/*
 	 *	Setup talloc callbacks so we get useful errors
@@ -291,7 +316,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Cd:D:fhi:l:L:Mn:p:PrstTvxX")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "Cd:D:e:fhi:l:L:Mn:p:PrstTvxX")) != -1) switch (c) {
 		case 'C':
 			check_config = true;
 			config->spawn_workers = false;
@@ -306,6 +331,12 @@ int main(int argc, char *argv[])
 		case 'D':
 			main_config_dict_dir_set(config, optarg);
 			break;
+
+#ifndef NDEBUG
+		case 'e':
+			exit_after = (fr_time_delta_t)atoi(optarg) * NSEC;
+			break;
+#endif
 
 		case 'f':
 			config->daemonize = false;
@@ -870,7 +901,7 @@ int main(int argc, char *argv[])
 	}
 
 	fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
-
+	if (exit_after > 0) fr_exit_after(main_loop_event_list(), 0, &exit_after);
 	/*
 	 *  Process requests until HUP or exit.
 	 */
@@ -1019,6 +1050,9 @@ static void NEVER_RETURNS usage(main_config_t const *config, int status)
 	fprintf(output, "  -C            Check configuration and exit.\n");
 	fprintf(stderr, "  -d <raddb>    Set configuration directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
+#ifndef NDEBUG
+	fprintf(output, "  -e <seconds>  Exit after the specified number of seconds.  Useful for diagnosing \"crash-on-exit\" issues.\n");
+#endif
 	fprintf(output, "  -f            Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h            Print this help message.\n");
 	fprintf(output, "  -l <log_file> Logging output will be written to this file.\n");
