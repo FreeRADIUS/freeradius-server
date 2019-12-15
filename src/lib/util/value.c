@@ -920,23 +920,31 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		break;
 
 	case FR_TYPE_INT16:
-		dst->vb_uint16 = htons(src->vb_uint16);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint16 = htons(src->vb_uint16);
 		break;
 
 	case FR_TYPE_INT32:
-		dst->vb_uint32 = htonl(src->vb_uint32);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint32 = htonl(src->vb_uint32);
+		break;
+
+	case FR_TYPE_DATE:
+		dst->vb_date = htonll(src->vb_date);
+		break;
+
+	case FR_TYPE_TIME_DELTA:
+		dst->vb_time_delta = htonll(src->vb_time_delta);
 		break;
 
 	case FR_TYPE_INT64:
-		dst->vb_uint64 = htonll(src->vb_uint64);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint64 = htonll(src->vb_uint64);
 		break;
 
 	case FR_TYPE_FLOAT32:
-		dst->vb_uint32 = htonl(dst->vb_uint32);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint32 = htonl(dst->vb_uint32);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		dst->vb_uint64 = htonll(dst->vb_uint64);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint64 = htonll(dst->vb_uint64);
 		break;
 
 	case FR_TYPE_BOOL:
@@ -949,12 +957,10 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 		fr_value_box_copy(NULL, dst, src);
 		return 0;
 
-	case FR_TYPE_DATE:
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 	case FR_TYPE_NON_VALUES:
