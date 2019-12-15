@@ -953,6 +953,11 @@ int main(int argc, char *argv[])
 	trigger_exec(NULL, NULL, "server.stop", false, NULL);
 
 	/*
+	 *  Stop the scheduler
+	 */
+	(void) fr_schedule_destroy(sc);
+
+	/*
 	 *  Send a TERM signal to all associated processes
 	 *  (including us, which gets ignored.)
 	 */
@@ -963,11 +968,6 @@ int main(int argc, char *argv[])
 	 *  (If it doesn't exist, we can ignore the error returned by unlink)
 	 */
 	if (config->daemonize) unlink(config->pid_file);
-
-	/*
-	 *  Stop the scheduler
-	 */
-	(void) fr_schedule_destroy(sc);
 
 	/*
 	 *  Free memory in an explicit and consistent order
