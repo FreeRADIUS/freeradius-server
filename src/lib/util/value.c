@@ -1723,8 +1723,11 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	/*
 	 *	Get the raw binary in memory representation
 	 */
-	default:
+	case FR_TYPE_NUMERIC:
 		fr_value_box_hton(dst, src);	/* Flip any uint32 representations */
+		/* FALL-THROUGH */
+
+	default:
 		bin = talloc_memdup(ctx, ((uint8_t *)&dst->datum) + fr_value_box_offsets[src->type],
 				    fr_value_box_field_sizes[src->type]);
 		break;
