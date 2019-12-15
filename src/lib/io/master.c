@@ -827,15 +827,12 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	if (!track) {
 		track = fr_dlist_head(&client->thread->track_list);
 		if (!track) {
-			MEM(track = talloc_zero(client, fr_io_track_t));
-			talloc_get_type_abort(track, fr_io_track_t);
-			MEM(track->address = talloc_zero(track, fr_io_address_t));
+			MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 2, sizeof(fr_io_address_t) + 128));
 		} else {
 			fr_dlist_remove(&client->thread->track_list, track);
-			fr_io_address_t *old = track->address;
-			memset(track, 0, sizeof(*track));
-			track->address = old;
 		}
+
+		MEM(track->address = talloc_zero(track, fr_io_address_t));
 
 		memcpy(track->address, address, sizeof(*address));
 		track->address->radclient = client->radclient;
@@ -917,6 +914,8 @@ static void track_free(fr_io_track_t *track)
 	fr_io_thread_t *thread = track->client->thread;
 
 	if (track->ev) (void) fr_event_timer_delete(thread->el, &track->ev);
+
+	talloc_free_children(track);
 
 	/*
 	 *	Keep most recently used elements around.  But
@@ -2113,6 +2112,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			 *	not tracking duplicates.
 			 */
 			if (inst->app_io->track_duplicates) {
+				rad_assert(!track->reply);
 				MEM(track->reply = talloc_memdup(track, buffer, buffer_len));
 				track->reply_len = buffer_len;
 			}
