@@ -830,6 +830,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 			MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 2, sizeof(fr_io_address_t) + 128));
 		} else {
 			fr_dlist_remove(&client->thread->track_list, track);
+			memset(track, 0, sizeof(*track));
 		}
 
 		MEM(track->address = talloc_zero(track, fr_io_address_t));
