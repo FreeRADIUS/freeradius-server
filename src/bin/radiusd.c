@@ -980,7 +980,10 @@ int main(int argc, char *argv[])
 	 *  This _shouldn't_ be needed, but may help with
 	 *  processes created by the exec code or triggers.
 	 */
-	if (config->spawn_workers) kill(-radius_pid, SIGTERM);
+	if (config->spawn_workers) {
+		INFO("All threads have exited, sending SIGTERM to remaining children");
+		kill(-radius_pid, SIGTERM);
+	}
 cleanup:
 	/*
 	 *  Frees request specific logging resources which is OK
