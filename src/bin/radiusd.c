@@ -177,7 +177,7 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 		return;
 	}
 
-	fr_event_loop_exit(el, 1);
+	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
 }
 #endif
 
