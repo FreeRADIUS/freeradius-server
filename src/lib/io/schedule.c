@@ -125,7 +125,8 @@ struct fr_schedule_s {
 
 	unsigned int	num_workers_exited;	//!< number of exited workers
 
-	sem_t		semaphore;		//!< for inter-thread signaling
+	sem_t		worker_sem;		//!< for inter-thread signaling
+	sem_t		network_sem;		//!< for inter-thread signaling
 
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
 	void					*worker_instantiate_ctx;	//!< thread instantiation context
@@ -206,7 +207,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	/*
 	 *	Tell the originator that the thread has started.
 	 */
-	sem_post(&sc->semaphore);
+	sem_post(&sc->worker_sem);
 
 	/*
 	 *	Do all of the work.
@@ -232,7 +233,7 @@ fail:
 	/*
 	 *	Tell the scheduler we're done.
 	 */
-	sem_post(&sc->semaphore);
+	sem_post(&sc->worker_sem);
 
 	return NULL;
 }
@@ -277,7 +278,7 @@ static void *fr_schedule_network_thread(void *arg)
 	/*
 	 *	Tell the originator that the thread has started.
 	 */
-	sem_post(&sc->semaphore);
+	sem_post(&sc->network_sem);
 
 	DEBUG3("Spawned asycn network 0");
 
@@ -296,7 +297,7 @@ fail:
 	/*
 	 *	Tell the scheduler we're done.
 	 */
-	sem_post(&sc->semaphore);
+	sem_post(&sc->network_sem);
 
 	return NULL;
 }
@@ -446,8 +447,15 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 */
 	fr_dlist_init(&sc->workers, fr_schedule_worker_t, entry);
 
-	memset(&sc->semaphore, 0, sizeof(sc->semaphore));
-	if (sem_init(&sc->semaphore, 0, SEMAPHORE_LOCKED) != 0) {
+	memset(&sc->network_sem, 0, sizeof(sc->network_sem));
+	if (sem_init(&sc->network_sem, 0, SEMAPHORE_LOCKED) != 0) {
+		ERROR("Failed creating semaphore: %s", fr_syserror(errno));
+		talloc_free(sc);
+		return NULL;
+	}
+
+	memset(&sc->worker_sem, 0, sizeof(sc->worker_sem));
+	if (sem_init(&sc->worker_sem, 0, SEMAPHORE_LOCKED) != 0) {
 		ERROR("Failed creating semaphore: %s", fr_syserror(errno));
 		talloc_free(sc);
 		return NULL;
@@ -466,7 +474,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		goto fail;
 	}
 
-	SEM_WAIT_INTR(&sc->semaphore);
+	SEM_WAIT_INTR(&sc->network_sem);
 	if (sc->sn->status != FR_CHILD_RUNNING) {
 	fail:
 		fr_schedule_destroy(sc);
@@ -510,7 +518,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
 		DEBUG3("Waiting for semaphore from worker %u/%u",
 		       i, (unsigned int)fr_dlist_num_elements(&sc->workers));
-		SEM_WAIT_INTR(&sc->semaphore);
+		SEM_WAIT_INTR(&sc->worker_sem);
 	}
 
 	/*
@@ -599,17 +607,8 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 */
 	if (sc->sn->status == FR_CHILD_RUNNING) {
 		fr_network_exit(sc->sn->nr);
-		SEM_WAIT_INTR(&sc->semaphore);
+		SEM_WAIT_INTR(&sc->network_sem);
 		fr_network_destroy(sc->sn->nr);
-	}
-
-	/*
-	 *	Signal all of the workers to exit.
-	 */
-	for (sw = fr_dlist_head(&sc->workers);
-	     sw != NULL;
-	     sw = fr_dlist_next(&sc->workers, sw)) {
-		fr_worker_exit(sw->worker);
 	}
 
 	/*
@@ -620,7 +619,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
 		DEBUG2("Waiting for semaphore indicating exit %u/%u", i,
 		       (unsigned int)fr_dlist_num_elements(&sc->workers));
-		SEM_WAIT_INTR(&sc->semaphore);
+		SEM_WAIT_INTR(&sc->network_sem);
 	}
 
 	/*
@@ -647,8 +646,8 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 
 	TALLOC_FREE(sc->sn->ctx);
 
-	sem_destroy(&sc->semaphore);
-
+	sem_destroy(&sc->network_sem);
+	sem_destroy(&sc->worker_sem);
 done:
 	/*
 	 *	Now that all of the workers are done, we can return to

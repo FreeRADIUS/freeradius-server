@@ -288,17 +288,9 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 
 			if (worker->channel[i] != ch) continue;
 
-			/*
-			 *	@todo check the status, and
-			 *	put the channel into a
-			 *	"closing" list if we can't
-			 *	close it right now.  Then,
-			 *	wake up after a time and try
-			 *	to close it again.
-			 */
-			(void) fr_channel_responder_ack_close(ch);
-
 			ms = fr_channel_responder_uctx_get(ch);
+
+			fr_channel_responder_ack_close(ch);
 			rad_assert(ms != NULL);
 			fr_message_set_gc(ms);
 			talloc_free(ms);
@@ -311,6 +303,12 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 		}
 
 		fr_cond_assert(ok);
+
+		/*
+		 *	Our last input channel closed,
+		 *	time to die.
+		 */
+		if (worker->num_channels == 0) fr_worker_exit(worker);
 		break;
 	}
 }
