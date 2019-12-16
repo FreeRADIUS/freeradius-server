@@ -115,7 +115,8 @@ typedef struct {
 	char const		*name;		//!< Name of the processing section, such as "recv" or "send"
 	char const		*name2;		//!< Second name, such as "Access-Request"
 	rlm_components_t	component;	//!< Sets the default list of actions for this section
-	size_t			offset;		//!< where the CONF_SECTION pointer is writtenx
+	size_t			offset;		//!< where the CONF_SECTION pointer is written
+	size_t			instruction;	//!< where the instruction pointer is written
 	virtual_server_method_t *methods;	//!< list of module methods which are allowed in this section
 } virtual_server_compile_t;
 

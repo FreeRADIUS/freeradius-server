@@ -1316,6 +1316,8 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 		 *	found.
 		 */
 		if (list[i].name2 != CF_IDENT_ANY) {
+			void *instruction = NULL;
+
 			subcs = cf_section_find(server, list[i].name, list[i].name2);
 			if (!subcs) {
 				DEBUG3("Warning: Skipping %s %s { ... } as it was not found.",
@@ -1323,14 +1325,19 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 				continue;
 			}
 
-			rcode = unlang_compile(subcs, list[i].component, rules, NULL);
+			rcode = unlang_compile(subcs, list[i].component, rules, &instruction);
 			if (rcode < 0) return -1;
 
 			/*
 			 *	Cache the CONF_SECTION which was found.
 			 */
-			if (uctx && (list[i].offset > 0)) {
-				*(CONF_SECTION **) (((uint8_t *) uctx) + list[i].offset) = subcs;
+			if (uctx) {
+				if (list[i].offset > 0) {
+					*(CONF_SECTION **) (((uint8_t *) uctx) + list[i].offset) = subcs;
+				}
+				if (list[i].instruction > 0) {
+					*(void **) (((uint8_t *) uctx) + list[i].instruction) = instruction;
+				}
 			}
 			continue;
 		}
