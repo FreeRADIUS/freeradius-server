@@ -303,7 +303,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 
 	filename = log_dst->file;
 
-	if (!log_rdebug_enabled(lvl, request)) return;
+	if (!log_rdebug_enabled(lvl, request)) goto finish;
 
 	/*
 	 *	Debug messages get treated specially.
@@ -368,7 +368,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 		 *	This is SLOW!  Doing it for every log message
 		 *	in every request is NOT recommended!
 		 */
-		if (xlat_aeval(request, &exp, request, filename, rad_filename_escape, NULL) < 0) return;
+		if (xlat_aeval(request, &exp, request, filename, rad_filename_escape, NULL) < 0) goto finish;
 
 		/*
 		 *	Restore the original logging function
