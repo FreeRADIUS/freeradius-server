@@ -2772,43 +2772,43 @@ test -n "$PYTHON_CONFIG_BIN" || PYTHON_CONFIG_BIN="not-found"
 
 	if test "x$PYTHON_CONFIG_BIN" = "xnot-found"; then
 		fail="python-config"
-	fi
+	else
+								old_CFLAGS="$CFLAGS"
+		unset CFLAGS
 
-				old_CFLAGS="$CFLAGS"
-	unset CFLAGS
-
-	python_cflags=`${PYTHON_CONFIG_BIN} --cflags`
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&5
+		python_cflags=`${PYTHON_CONFIG_BIN} --cflags`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&6;}
 
-								mod_cflags=`echo $python_cflags | sed -e '\
-		s/-I/-isystem/g;\
-		s/-isysroot[ =]\{0,1\}[^-]*//g;\
-		s/-O[^[[:blank:]]]*//g;\
-		s/-Wp,-D_FORTIFY_SOURCE=[[:digit:]]//g;\
-		s/-g[^ ]*//g;\
-		s/-W[^ ]*//g;\
-		s/-DNDEBUG[[:blank:]]*//g;
-		'`
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5
+																mod_cflags=`echo $python_cflags | sed -e '\
+			s/-I/-isystem/g;\
+			s/-isysroot[ =]\{0,1\}[^-]*//g;\
+			s/-O[^[[:blank:]]]*//g;\
+			s/-Wp,-D_FORTIFY_SOURCE=[[:digit:]]//g;\
+			s/-g[^ ]*//g;\
+			s/-W[^ ]*//g;\
+			s/-DNDEBUG[[:blank:]]*//g;
+			'`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized cflags were \"${mod_cflags}\"" >&6;}
 
-	python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags`
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&5
+		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&6;}
 
-					mod_ldflags=`echo $python_ldflags | sed -e '\
-		s/-Wl,-O[[:digit:]][[:blank:]]*//g;\
-		s/-Wl,-Bsymbolic-functions[[:blank:]]*//g;\
-		s/-Xlinker -export-dynamic//g;\
-		s/-Wl,-stack_size,[[:digit:]]*[[:blank:]]//g;
-		'`
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldflags were \"${mod_ldflags}\"" >&5
+										mod_ldflags=`echo $python_ldflags | sed -e '\
+			s/-Wl,-O[[:digit:]][[:blank:]]*//g;\
+			s/-Wl,-Bsymbolic-functions[[:blank:]]*//g;\
+			s/-Xlinker -export-dynamic//g;\
+			s/-Wl,-stack_size,[[:digit:]]*[[:blank:]]//g;
+			'`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldflags were \"${mod_ldflags}\"" >&5
 $as_echo "$as_me: Sanitized ldflags were \"${mod_ldflags}\"" >&6;}
 
-	CFLAGS=$old_CFLAGS
+		CFLAGS=$old_CFLAGS
 
-	targetname="rlm_python"
+		targetname="rlm_python"
+	fi
 else
 	targetname=
 	echo \*\*\* module rlm_python is disabled.
