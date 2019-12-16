@@ -43,12 +43,12 @@
  *
  *  Both queues have linked lists of received packets, ordered by
  *  time.  This list is used to clean up packets which have been in
- *  the heap for "too long", in fr_worker_check_timeouts().
+ *  the heap for "too long", in worker_check_timeouts().
  *
  *  When a packet is decoded, it is put into the "runnable" heap, and
  *  also into the "time_order" heap. The main loop fr_worker() then
  *  pulls new requests off of this heap and runs them.  The
- *  fr_worker_check_timeouts() function also checks the tail of the
+ *  worker_check_timeouts() function also checks the tail of the
  *  "time_order" heap, and ages out requests which have been active
  *  for "too long".
  *
@@ -80,8 +80,8 @@ typedef struct {
 } fr_worker_heap_t;
 
 #ifdef WITH_VERIFY_PTR
-static void fr_worker_verify(fr_worker_t *worker);
-#define WORKER_VERIFY fr_worker_verify(worker)
+static void worker_verify(fr_worker_t *worker);
+#define WORKER_VERIFY worker_verify(worker)
 #else
 #define WORKER_VERIFY
 #endif
@@ -146,7 +146,8 @@ struct fr_worker_s {
 	fr_channel_t		**channel;	//!< list of channels
 };
 
-static void fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
+static int worker_pre_event(void *ctx, fr_time_t wake);
+static void worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 
 /*
  *	We need wrapper macros because we have multiple instances of
@@ -183,7 +184,7 @@ static void fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx)
  * @param[in] ch the channel to drain
  * @param[in] cd the message (if any) to start with
  */
-static void fr_worker_recv_request(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd)
+static void worker_recv_request(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd)
 {
 	fr_worker_t *worker = ctx;
 
@@ -193,6 +194,20 @@ static void fr_worker_recv_request(void *ctx, fr_channel_t *ch, fr_channel_data_
 	WORKER_HEAP_INSERT(to_decode, cd);
 }
 
+static void worker_exit(fr_worker_t *worker)
+{
+	worker->exiting = true;
+
+	/*
+	 *	Don't allow the post event to run
+	 *	any more requests.  They'll be
+	 *	signalled to stop before we exit.
+	 */
+	(void) fr_event_pre_delete(worker->el, worker_pre_event, worker);
+	(void) fr_event_post_delete(worker->el, worker_post_event, worker);
+	fr_event_loop_exit(worker->el, 1);
+}
+
 /** Handle a control plane message sent to the worker via a channel
  *
  * @param[in] ctx	the worker
@@ -200,7 +215,7 @@ static void fr_worker_recv_request(void *ctx, fr_channel_t *ch, fr_channel_data_
  * @param[in] data_size	size of the data
  * @param[in] now	the current time
  */
-static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_size, fr_time_t now)
+static void worker_channel_callback(void *ctx, void const *data, size_t data_size, fr_time_t now)
 {
 	int			i;
 	bool			ok, was_sleeping;
@@ -308,7 +323,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 		 *	Our last input channel closed,
 		 *	time to die.
 		 */
-		if (worker->num_channels == 0) fr_worker_exit(worker);
+		if (worker->num_channels == 0) worker_exit(worker);
 		break;
 	}
 }
@@ -324,7 +339,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
  * @param[in] cd	the message to NAK
  * @param[in] now	when the message is NAKd
  */
-static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
+static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
 {
 	size_t			size;
 	fr_channel_data_t	*reply;
@@ -399,7 +414,7 @@ static void worker_max_request_timer(fr_worker_t *worker);
  * @param[in] request		we're sending a reply for.
  * @param[in] size		The maximum size of the reply data
  */
-static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size)
+static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size)
 {
 	fr_channel_data_t *reply;
 	fr_channel_t *ch;
@@ -589,7 +604,7 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
  * @param[in] when	the current time
  * @param[in] uctx	the fr_worker_t.
  */
-static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
+static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
 {
 	fr_time_t	now = fr_time();
 	REQUEST		*request;
@@ -618,7 +633,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_tim
 		/*
 		 *	Tell the network side that this request is done.
 		 */
-		fr_worker_send_reply(worker, request, 1);
+		worker_send_reply(worker, request, 1);
 	}
 
 	/*
@@ -651,7 +666,7 @@ static void worker_max_request_timer(fr_worker_t *worker)
 	DEBUG2("Resetting worker %s cleanup timer to +%pV",
 	       worker->name, fr_box_time_delta(worker->max_request_time));
 	if (fr_event_timer_at(worker, worker->el, &worker->ev_cleanup,
-			      cleanup, fr_worker_max_request_time, worker) < 0) {
+			      cleanup, worker_max_request_time, worker) < 0) {
 		ERROR("Failed inserting max_request_time timer");
 	}
 }
@@ -666,7 +681,7 @@ static void worker_max_request_timer(fr_worker_t *worker)
  * @param[in] worker the worker
  * @param[in] now the current time
  */
-static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
+static void worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 {
 	fr_channel_data_t	*cd;
 	fr_time_t		waiting;
@@ -688,7 +703,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		WORKER_HEAP_EXTRACT(localized, cd);
 		ERROR("NAKing request - waited %pVs (too long) to extract packet from localized list. "
 		      "A module is blocking or load is too high", fr_box_time_delta(waiting));
-		fr_worker_nak(worker, cd, now);
+		worker_nak(worker, cd, now);
 	}
 
 	/*
@@ -710,7 +725,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 			      "A module is blocking or load is too high", fr_box_time_delta(waiting));
 
 		nak:
-			fr_worker_nak(worker, cd, now);
+			worker_nak(worker, cd, now);
 			continue;
 		}
 
@@ -855,7 +870,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	if (ret < 0) {
 		talloc_free(ctx);
 nak:
-		fr_worker_nak(worker, cd, now);
+		worker_nak(worker, cd, now);
 		return NULL;
 	}
 
@@ -867,7 +882,7 @@ nak:
 
 	if (!request->async->process) {
 		RERROR("Protocol failed to set 'process' function");
-		fr_worker_nak(worker, cd, now);
+		worker_nak(worker, cd, now);
 		return NULL;
 	}
 
@@ -986,7 +1001,7 @@ nak:
  * @param[in] worker the worker
  * @param[in] request the request to process
  */
-static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
+static void worker_run_request(fr_worker_t *worker, REQUEST *request)
 {
 	ssize_t size = 0;
 	rlm_rcode_t final;
@@ -1056,7 +1071,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		(void) rbtree_deletebydata(worker->dedup, request);
 	}
 
-	fr_worker_send_reply(worker, request, size);
+	worker_send_reply(worker, request, size);
 }
 
 /** Run the event loop 'pre' callback
@@ -1068,7 +1083,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
  * @param[in] ctx the worker
  * @param[in] wake the time when the event loop will wake up.
  */
-static int fr_worker_pre_event(void *ctx, fr_time_t wake)
+static int worker_pre_event(void *ctx, fr_time_t wake)
 {
 	bool sleeping;
 	int i;
@@ -1254,8 +1269,8 @@ void fr_worker_destroy(fr_worker_t *worker)
 		fr_channel_responder_ack_close(worker->channel[i]);
 	}
 
-	(void) fr_event_pre_delete(worker->el, fr_worker_pre_event, worker);
-	(void) fr_event_post_delete(worker->el, fr_worker_post_event, worker);
+	(void) fr_event_pre_delete(worker->el, worker_pre_event, worker);
+	(void) fr_event_post_delete(worker->el, worker_post_event, worker);
 
 	talloc_free(worker);
 }
@@ -1306,7 +1321,7 @@ nomem:
 	worker->ring_buffer_size = (1 << 16);
 	worker->max_request_time = fr_time_delta_from_sec(30);
 
-	if (fr_event_pre_insert(worker->el, fr_worker_pre_event, worker) < 0) {
+	if (fr_event_pre_insert(worker->el, worker_pre_event, worker) < 0) {
 		fr_strerror_printf("Failed adding pre-check to event list");
 		talloc_free(worker);
 		return NULL;
@@ -1334,7 +1349,7 @@ nomem:
 		goto fail;
 	}
 
-	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_CHANNEL, worker, fr_worker_channel_callback) < 0) {
+	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_CHANNEL, worker, worker_channel_callback) < 0) {
 		fr_strerror_printf_push("Failed adding control channel");
 		goto fail2;
 	}
@@ -1360,7 +1375,7 @@ nomem:
 		goto fail;
 	}
 
-	if (fr_event_post_insert(worker->el, fr_worker_post_event, worker) < 0) {
+	if (fr_event_post_insert(worker->el, worker_post_event, worker) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
 		talloc_free(worker->runnable);
 		goto fail2;
@@ -1386,20 +1401,7 @@ fr_event_list_t *fr_worker_el(fr_worker_t *worker)
 	return worker->el;
 }
 
-/** Signal a worker to exit
- *
- *  WARNING: This may be called from another thread!  Care is required.
- *
- * @param[in] worker the worker data structure to manage
- */
-void fr_worker_exit(fr_worker_t *worker)
-{
-	worker->exiting = true;
-
-	fr_event_loop_exit(worker->el, 1);
-}
-
-static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
+static void worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
 {
 	fr_time_t now;
 	REQUEST *request;
@@ -1419,7 +1421,7 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t wh
 	 */
 	if ((now - worker->checked_timeout) > (NSEC / 10)) {
 		DEBUG3("\t%s checking timeouts", worker->name);
-		fr_worker_check_timeouts(worker, now);
+		worker_check_timeouts(worker, now);
 	}
 
 	/*
@@ -1436,7 +1438,7 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t wh
 	 *	Run the request, and either track it as
 	 *	yielded, or send a reply.
 	 */
-	fr_worker_run_request(worker, request);
+	worker_run_request(worker, request);
 }
 
 /** The main loop and entry point of the worker thread.
@@ -1532,7 +1534,7 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	ch = fr_channel_create(ctx, master, worker->control, same);
 	if (!ch) return NULL;
 
-	fr_channel_set_recv_request(ch, worker, fr_worker_recv_request);
+	fr_channel_set_recv_request(ch, worker, worker_recv_request);
 
 	/*
 	 *	Tell the worker about the channel
@@ -1567,7 +1569,7 @@ void fr_worker_name(fr_worker_t *worker, char const *name)
  *
  * @param[in] worker the worker
  */
-static void fr_worker_verify(fr_worker_t *worker)
+static void worker_verify(fr_worker_t *worker)
 {
 	int i;
 

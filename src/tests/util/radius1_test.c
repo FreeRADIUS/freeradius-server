@@ -456,11 +456,6 @@ static void master_process(TALLOC_CTX *ctx)
 
 				MPRINT1("Master received close ack signal for worker %d\n", sw->id);
 
-				/*
-				 *	Tell the event loop to exit, and signal the worker
-				 *	so that it stops waiting on the KQ.
-				 */
-				(void) fr_worker_exit(sw->worker);
 				(void) pthread_kill(sw->pthread_id, SIGTERM);
 				running = false;
 				break;

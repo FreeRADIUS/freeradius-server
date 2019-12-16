@@ -64,8 +64,6 @@ fr_event_list_t *fr_worker_el(fr_worker_t *worker) CC_HINT(nonnull);
 
 void		fr_worker(fr_worker_t *worker) CC_HINT(nonnull);
 
-void		fr_worker_exit(fr_worker_t *worker) CC_HINT(nonnull);
-
 void		fr_worker_debug(fr_worker_t *worker, FILE *fp) CC_HINT(nonnull);
 
 void		fr_worker_name(fr_worker_t *worker, char const *name) CC_HINT(nonnull);
