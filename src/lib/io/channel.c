@@ -143,6 +143,7 @@ typedef struct {
 
 	fr_atomic_queue_t	*aq;		//!< The queue of messages - visible only to this channel.
 
+	atomic_bool		active;		//!< Whether the channel is active.
 } fr_channel_end_t;
 
 typedef struct fr_channel_s fr_channel_t;
@@ -156,7 +157,6 @@ struct fr_channel_s {
 	fr_time_t		cpu_time;	//!< Total time used by the responder for this channel.
 	fr_time_t		processing_time; //!< Time spent by the responder processing requests.
 
-	atomic_bool		active;		//!< Whether the channel is active.
 	bool			same_thread;	//!< are both ends in the same thread?
 
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
@@ -252,12 +252,12 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
 	ch->end[TO_RESPONDER].last_write = now;
 	ch->end[TO_RESPONDER].last_read_other = now;
 	ch->end[TO_RESPONDER].last_sent_signal = now;
+	atomic_store(&ch->end[TO_RESPONDER].active, true);
 
 	ch->end[TO_REQUESTOR].last_write = now;
 	ch->end[TO_REQUESTOR].last_read_other = now;
 	ch->end[TO_REQUESTOR].last_sent_signal = now;
-
-	atomic_store(&ch->active, true);
+	atomic_store(&ch->end[TO_REQUESTOR].active, true);
 
 	return ch;
 }
@@ -322,6 +322,11 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	uint64_t sequence;
 	fr_time_t when, message_interval;
 	fr_channel_end_t *requestor;
+
+	if (!ch->end[TO_RESPONDER].active) {
+		fr_strerror_printf("Channel not active");
+		return -1;
+	}
 
 	/*
 	 *	Same thread?  Just call the "recv" function directly.
@@ -519,8 +524,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	fr_channel_end_t	*responder;
 	uint64_t		their_view_of_my_sequence;
 
-	if (!ch->active) {
-		fr_strerror_printf("Channel not yet active");
+	if (!ch->end[TO_REQUESTOR].active) {
+		fr_strerror_printf("Channel not active");
 		return -1;
 	}
 
@@ -807,7 +812,7 @@ int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, UNUSED struct k
  */
 bool fr_channel_active(fr_channel_t *ch)
 {
-	return atomic_load(&ch->active);
+	return atomic_load(&ch->end[TO_REQUESTOR].active) && atomic_load(&ch->end[TO_REQUESTOR].active);
 }
 
 /** Signal a responder that the channel is closing
@@ -819,17 +824,24 @@ bool fr_channel_active(fr_channel_t *ch)
  */
 int fr_channel_signal_responder_close(fr_channel_t *ch)
 {
+	int ret;
+
 	fr_channel_control_t cc;
 
-	(void) talloc_get_type_abort(ch, fr_channel_t);
+	if (!ch->end[TO_RESPONDER].active) return 0;		/* Already signalled to close */
 
-	atomic_store(&ch->active, false);
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
 	cc.ack = TO_RESPONDER;
 	cc.ch = ch;
 
-	return fr_control_message_send(ch->end[TO_RESPONDER].control, ch->end[TO_RESPONDER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+	ret = fr_control_message_send(ch->end[TO_RESPONDER].control,
+				      ch->end[TO_RESPONDER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+
+	atomic_store(&ch->end[TO_RESPONDER].active, false);	/* Prevent further requests */
+
+	return ret;
 }
 
 /** Acknowledge that the channel is closing
@@ -841,17 +853,26 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
  */
 int fr_channel_responder_ack_close(fr_channel_t *ch)
 {
+	int ret;
+
 	fr_channel_control_t cc;
+
+	if (!ch->end[TO_REQUESTOR].active) return 0;		/* Already signalled to close */
 
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
-	atomic_store(&ch->active, false);
+	atomic_store(&ch->end[TO_REQUESTOR].active, false);	/* Prevent further responses */
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
 	cc.ack = TO_REQUESTOR;
 	cc.ch = ch;
 
-	return fr_control_message_send(ch->end[TO_REQUESTOR].control, ch->end[TO_REQUESTOR].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+	ret = fr_control_message_send(ch->end[TO_REQUESTOR].control,
+				      ch->end[TO_REQUESTOR].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+
+	atomic_store(&ch->end[TO_REQUESTOR].active, false);	/* Prevent further requests */
+
+	return ret;
 }
 
 /** Add responder-specific data to a channel

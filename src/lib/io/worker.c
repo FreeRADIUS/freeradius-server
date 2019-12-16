@@ -511,7 +511,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 		 *	Not much we can do except complain
 		 *	loudly and cleanup the request.
 		 */
-		RPERROR("%s - Failed sending reply to network thread", worker->name);
+		RPERROR("Worker %s - Failed sending reply to network thread", worker->name);
 	}
 
 	worker->stats.out++;
