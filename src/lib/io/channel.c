@@ -812,7 +812,7 @@ int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, UNUSED struct k
  */
 bool fr_channel_active(fr_channel_t *ch)
 {
-	return atomic_load(&ch->end[TO_REQUESTOR].active) && atomic_load(&ch->end[TO_REQUESTOR].active);
+	return atomic_load(&ch->end[TO_REQUESTOR].active) && atomic_load(&ch->end[TO_RESPONDER].active);
 }
 
 /** Signal a responder that the channel is closing
