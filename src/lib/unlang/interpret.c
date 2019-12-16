@@ -813,8 +813,6 @@ void unlang_interpret_push_instruction(REQUEST *request, void *instruction, rlm_
 
 	if (!instruction) {
 		instruction = unlang_group_to_generic(&empty_group);
-	} else {
-		(void) talloc_get_type_abort(instruction, unlang_t);
 	}
 
 	/*
