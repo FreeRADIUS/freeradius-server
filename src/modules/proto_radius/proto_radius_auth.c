@@ -299,7 +299,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 		/*
 		 *	Push the conf section into the unlang stack.
 		 */
-		RDEBUG("Running 'recv Access-Request' from file %s", cf_filename(unlang));
+		RDEBUG("Running 'recv Access-Request' from file %s", cf_filename(inst->recv_access_request));
 		unlang_interpret_push_instruction(request, inst->unlang_access_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
