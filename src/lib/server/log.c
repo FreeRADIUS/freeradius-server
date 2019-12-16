@@ -246,9 +246,9 @@ inline bool log_rdebug_enabled(fr_log_lvl_t lvl, REQUEST *request)
 /** Cleanup the memory pool used by vlog_request
  *
  */
-static void _fr_vlog_request_pool_free(UNUSED void *arg)
+static void _fr_vlog_request_pool_free(void *arg)
 {
-	TALLOC_FREE(fr_vlog_request_pool);
+	talloc_free(arg);
 }
 
 /** Send a log message to its destination, possibly including fields from the request
