@@ -619,7 +619,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
 		DEBUG2("Waiting for semaphore indicating exit %u/%u", i,
 		       (unsigned int)fr_dlist_num_elements(&sc->workers));
-		SEM_WAIT_INTR(&sc->network_sem);
+		SEM_WAIT_INTR(&sc->worker_sem);
 	}
 
 	/*
