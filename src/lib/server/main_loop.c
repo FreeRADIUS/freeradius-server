@@ -239,7 +239,7 @@ static int _loop_status(UNUSED void *ctx, fr_time_t wake)
 
 	if (!wake) {
 		if (main_config->drop_requests) return 0;
-		INFO("Ready to process requests");
+		DEBUG4("Ready to process requests");
 
 	} else if (wake > (NSEC / 10)) {
 		DEBUG4("Waking up in %pV seconds", fr_box_time_delta(wake));
