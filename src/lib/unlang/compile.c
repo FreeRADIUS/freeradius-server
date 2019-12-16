@@ -3583,7 +3583,7 @@ fail:
 	return NULL;
 }
 
-int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules)
+int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules, void **instruction)
 {
 	unlang_t		*c;
 	vp_tmpl_rules_t		my_rules;
@@ -3627,6 +3627,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 	 *	Associate the unlang with the configuration section.
 	 */
 	cf_data_add(cs, c, NULL, false);
+	if (instruction) *instruction = c;
 
 	dump_tree(c, c->debug_name);
 	return 0;

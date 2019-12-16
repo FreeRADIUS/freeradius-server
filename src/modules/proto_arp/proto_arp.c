@@ -309,7 +309,7 @@ static int arp_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 
 	cf_log_debug(cs, "Loading arp {...}");
 
-	if (unlang_compile(cs, MOD_POST_AUTH, NULL) < 0) {
+	if (unlang_compile(cs, MOD_POST_AUTH, NULL, NULL) < 0) {
 		cf_log_err(cs, "Failed compiling 'arp' section");
 		return -1;
 	}

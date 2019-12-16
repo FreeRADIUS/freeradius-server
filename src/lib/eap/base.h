@@ -51,7 +51,7 @@ do { \
 	CONF_SECTION *_tmp; \
 	_tmp = cf_section_find(server_cs, _verb, _name); \
 	if (_tmp) { \
-		if (unlang_compile(_tmp, MOD_AUTHORIZE, NULL) < 0) return -1; \
+		if (unlang_compile(_tmp, MOD_AUTHORIZE, NULL, NULL) < 0) return -1; \
 		found = true; \
 	} \
 	if (_out) _out->_field = _tmp; \
@@ -62,7 +62,7 @@ do { \
 	CONF_SECTION *_tmp; \
 	_tmp = cf_section_find(server_cs, _verb, _name); \
 	if (_tmp) { \
-		if (unlang_compile(_tmp, MOD_AUTHENTICATE, NULL) < 0) return -1; \
+		if (unlang_compile(_tmp, MOD_AUTHENTICATE, NULL, NULL) < 0) return -1; \
 		found = true; \
 	} \
 	if (_out) _out->_field = _tmp; \

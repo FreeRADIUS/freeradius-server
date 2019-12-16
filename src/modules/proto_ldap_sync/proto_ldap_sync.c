@@ -1190,7 +1190,7 @@ static int ldap_compile_section(CONF_SECTION *server_cs, char const *name1, char
 
 	cf_log_debug(cs, "Loading %s %s {...}", name1, name2);
 
-	if (unlang_compile(cs, component, NULL) < 0) {
+	if (unlang_compile(cs, component, NULL, NULL) < 0) {
 		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
 	}

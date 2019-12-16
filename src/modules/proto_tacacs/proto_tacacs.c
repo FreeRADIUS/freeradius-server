@@ -617,7 +617,7 @@ static int tacacs_compile_section(CONF_SECTION *server_cs, char const *name1, ch
 
 	cf_log_debug(cs, "Loading %s %s {...}", name1, name2);
 
-	ret = unlang_compile(cs, component, NULL);
+	ret = unlang_compile(cs, component, NULL, NULL);
 	if (ret < 0) {
 		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
