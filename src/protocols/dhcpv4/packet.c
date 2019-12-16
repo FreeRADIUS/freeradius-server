@@ -209,8 +209,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcpv4_decode_option(packet, &cursor, dict_dhcpv4,
-						      p, ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p), NULL);
+			len = fr_dhcpv4_decode_option(packet, &cursor, dict_dhcpv4, p, (end - p), NULL);
 			if (len <= 0) {
 				fr_pair_list_free(&head);
 				return len;

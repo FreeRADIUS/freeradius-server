@@ -379,6 +379,13 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	parent = fr_dict_root(dict);
 
 	/*
+	 *	DHCPv4 options don't overflow one field.  So limit the
+	 *	maximum size of decoded data to the option header,
+	 *	plus a maximum of 255 octets of data.
+	 */
+	if (data_len > (2 + 255)) data_len = 2 +255;
+
+	/*
 	 *	Padding / End of options
 	 */
 	if (p[0] == 0) return 1;		/* 0x00 - Padding option */
