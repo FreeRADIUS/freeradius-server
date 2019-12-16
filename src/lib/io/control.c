@@ -81,6 +81,8 @@ struct fr_control_s {
 
 	int			pipe[2];       		//!< our pipes
 
+	bool			same_thread;		//!< are the two ends in the same thread
+
 	fr_control_ctx_t 	type[FR_CONTROL_MAX_TYPES];	//!< callbacks
 };
 
@@ -225,7 +227,6 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
 }
 
 
-
 /** Allocate a control message
  *
  * @param[in] c the control structure
@@ -332,6 +333,13 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
 	(void) talloc_get_type_abort(c, fr_control_t);
+
+	if (c->same_thread) {
+		if (!c->type[id].callback) return -1;
+
+		c->type[id].callback(c->type[id].ctx, data, data_size, fr_time());
+		return 0;
+	}
 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
@@ -446,6 +454,21 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 	c->type[id].id = 0;
 	c->type[id].ctx = NULL;
 	c->type[id].callback = NULL;
+
+	return 0;
+}
+
+int fr_control_same_thread(fr_control_t *c)
+{
+	c->same_thread = true;
+	(void) fr_event_fd_delete(c->el, c->pipe[0], FR_EVENT_FILTER_IO);
+	close(c->pipe[0]);
+	close(c->pipe[1]);
+
+	/*
+	 *	Nothing more to do now that everything is gone.
+	 */
+	talloc_set_destructor(c, NULL);
 
 	return 0;
 }

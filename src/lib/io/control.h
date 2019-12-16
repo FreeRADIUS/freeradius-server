@@ -71,6 +71,8 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_callback_t callback) CC_HINT(nonnull(1,4));
 int fr_control_callback_delete(fr_control_t *c, uint32_t id) CC_HINT(nonnull);
 
+int fr_control_same_thread(fr_control_t *c);
+
 #ifdef __cplusplus
 }
 #endif
