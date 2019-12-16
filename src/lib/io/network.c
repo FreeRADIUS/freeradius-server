@@ -671,7 +671,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			       NULL,
 			       fr_network_error,
 			       s) < 0) {
-		PERROR("Failed adding new socket to event loop");
+		PERROR("Failed removing \"read\" callback from event loop");
 		fr_network_socket_dead(nr, s);
 	}
 }
@@ -837,7 +837,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 				   &funcs,
 				   app_io->error ? fr_network_error : NULL,
 				   s) < 0) {
-		PERROR("Failed adding new socket to event loop");
+		PERROR("Failed adding directory monitor event loop");
 		talloc_free(s);
 		return;
 	}
