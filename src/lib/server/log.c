@@ -286,6 +286,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	 *	No output means no output.
 	 */
 	if (!log_dst) return;
+	if (!log_rdebug_enabled(lvl, request)) return;
 
 	/*
 	 *	Allocate a thread local, 4k pool so we don't
@@ -302,8 +303,6 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	}
 
 	filename = log_dst->file;
-
-	if (!log_rdebug_enabled(lvl, request)) return;
 
 	/*
 	 *	Debug messages get treated specially.
