@@ -29,6 +29,12 @@ RCSID("$Id$")
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/server/rad_assert.h>
 
+#ifdef HAVE_STDATOMIC_H
+#  include <stdatomic.h>
+#else
+#  include <freeradius-devel/util/stdatomic.h>
+#endif
+
 /*
  *	Debugging, mainly for channel_test
  */
@@ -123,7 +129,7 @@ typedef struct {
 
 	uint64_t		sequence;	//!< Sequence number for this channel.
 	uint64_t		ack;		//!< Sequence number of the other end.
-	uint64_t		their_view_of_my_sequence;	//!< Should be clear.
+	atomic_uint_fast64_t	their_view_of_my_sequence;	//!< Should be clear.
 
 	uint64_t		sequence_at_last_signal;	//!< When we last signaled.
 
@@ -150,7 +156,7 @@ struct fr_channel_s {
 	fr_time_t		cpu_time;	//!< Total time used by the responder for this channel.
 	fr_time_t		processing_time; //!< Time spent by the responder processing requests.
 
-	bool			active;		//!< Whether the channel is active.
+	atomic_bool		active;		//!< Whether the channel is active.
 	bool			same_thread;	//!< are both ends in the same thread?
 
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
@@ -251,7 +257,7 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
 	ch->end[TO_REQUESTOR].last_read_other = now;
 	ch->end[TO_REQUESTOR].last_sent_signal = now;
 
-	ch->active = true;
+	atomic_store(&ch->active, true);
 
 	return ch;
 }
@@ -449,7 +455,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 
 	requestor->num_outstanding--;
 	requestor->ack = cd->live.sequence;
-	requestor->their_view_of_my_sequence = cd->live.ack;
+	atomic_store(&requestor->their_view_of_my_sequence, cd->live.ack);
 
 	rad_assert(requestor->last_read_other <= cd->m.when);
 	requestor->last_read_other = cd->m.when;
@@ -486,7 +492,7 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 
 	responder->num_outstanding++;
 	responder->ack = cd->live.sequence;
-	responder->their_view_of_my_sequence = cd->live.ack;
+	atomic_store(&responder->their_view_of_my_sequence, cd->live.ack);
 
 	rad_assert(responder->last_read_other <= cd->m.when);
 	responder->last_read_other = cd->m.when;
@@ -508,9 +514,15 @@ bool fr_channel_recv_request(fr_channel_t *ch)
  */
 int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 {
-	uint64_t sequence;
-	fr_time_t when, message_interval;
-	fr_channel_end_t *responder;
+	uint64_t		sequence;
+	fr_time_t		when, message_interval;
+	fr_channel_end_t	*responder;
+	uint64_t		their_view_of_my_sequence;
+
+	if (!ch->active) {
+		fr_strerror_printf("Channel not yet active");
+		return -1;
+	}
 
 	/*
 	 *	Same thread?  Just call the "recv" function directly.
@@ -567,17 +579,9 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	MPRINT("\twhen - last signal = %"PRIu64" - %"PRIu64" = %"PRIu64"\n", when, responder->last_sent_signal, when - responder->last_sent_signal);
 	MPRINT("\tsequence - ack = %"PRIu64" - %"PRIu64" = %"PRIu64"\n", responder->sequence, responder->their_view_of_my_sequence, responder->sequence - responder->their_view_of_my_sequence);
 
-#ifdef __APPLE__
-	/*
-	 *	If we've sent them a signal since the last ACK, they
-	 *	will receive it, and process the packets.  So we don't
-	 *	need to signal them again.
-	 *
-	 *	But... this doesn't appear to work on the Linux
-	 *	libkqueue implementation.
-	 */
-	if (responder->sequence_at_last_signal > responder->their_view_of_my_sequence) return 0;
-#endif
+	their_view_of_my_sequence = atomic_load(&responder->their_view_of_my_sequence);
+
+	if (responder->sequence_at_last_signal > their_view_of_my_sequence) return 0;
 
 	/*
 	 *	If we've received a new packet in the last while, OR
@@ -803,7 +807,7 @@ int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, UNUSED struct k
  */
 bool fr_channel_active(fr_channel_t *ch)
 {
-	return ch->active;
+	return atomic_load(&ch->active);
 }
 
 /** Signal a responder that the channel is closing
@@ -819,7 +823,7 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
-	ch->active = false;
+	atomic_store(&ch->active, false);
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
 	cc.ack = TO_RESPONDER;
@@ -841,7 +845,7 @@ int fr_channel_responder_ack_close(fr_channel_t *ch)
 
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
-	ch->active = false;
+	atomic_store(&ch->active, false);
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
 	cc.ack = TO_REQUESTOR;
