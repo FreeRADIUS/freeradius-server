@@ -322,8 +322,10 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	uint64_t sequence;
 	fr_time_t when, message_interval;
 	fr_channel_end_t *requestor;
+	bool active;
 
-	if (!ch->end[TO_RESPONDER].active) {
+	active = atomic_load(&ch->end[TO_RESPONDER].active);
+	if (!active) {
 		fr_strerror_printf("Channel not active");
 		return -1;
 	}
@@ -523,8 +525,10 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	fr_time_t		when, message_interval;
 	fr_channel_end_t	*responder;
 	uint64_t		their_view_of_my_sequence;
+	bool			active;
 
-	if (!ch->end[TO_REQUESTOR].active) {
+	active = atomic_load(&ch->end[TO_REQUESTOR].active);
+	if (!active) {
 		fr_strerror_printf("Channel not active");
 		return -1;
 	}
@@ -825,10 +829,11 @@ bool fr_channel_active(fr_channel_t *ch)
 int fr_channel_signal_responder_close(fr_channel_t *ch)
 {
 	int ret;
-
+	bool active;
 	fr_channel_control_t cc;
 
-	if (!ch->end[TO_RESPONDER].active) return 0;		/* Already signalled to close */
+	active = atomic_load(&ch->end[TO_RESPONDER].active);
+	if (!active) return 0;					/* Already signalled to close */
 
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
@@ -854,10 +859,12 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 int fr_channel_responder_ack_close(fr_channel_t *ch)
 {
 	int ret;
+	bool active;
 
 	fr_channel_control_t cc;
 
-	if (!ch->end[TO_REQUESTOR].active) return 0;		/* Already signalled to close */
+	active = atomic_load(&ch->end[TO_REQUESTOR].active);
+	if (!active) return 0;					/* Already signalled to close */
 
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
