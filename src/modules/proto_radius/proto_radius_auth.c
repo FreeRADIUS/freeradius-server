@@ -62,11 +62,17 @@ typedef struct {
 	fr_state_tree_t	*state_tree;			//!< State tree to link multiple requests/responses.
 
 	CONF_SECTION	*recv_access_request;
+	void		*unlang_access_request;
 	CONF_SECTION	*send_access_accept;
+	void		*unlang_access_accept;
 	CONF_SECTION	*send_access_reject;
+	void		*unlang_access_reject;
 	CONF_SECTION	*send_access_challenge;
+	void		*unlang_access_challenge;
 	CONF_SECTION	*send_do_not_respond;
+	void		*unlang_do_not_respond;
 	CONF_SECTION	*send_protocol_error;
+	void		*unlang_protocol_error;
 } proto_radius_auth_t;
 
 static const CONF_PARSER session_config[] = {
@@ -266,6 +272,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 	CONF_SECTION			*unlang;
 	fr_dict_enum_t const		*dv = NULL;
 	fr_cursor_t			cursor;
+	void				*instruction;
 
 	REQUEST_VERIFY(request);
 
@@ -278,8 +285,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 
 		request->component = "radius";
 
-		unlang = inst->recv_access_request;
-		if (!unlang) {
+		if (!inst->unlang_access_request) {
 			REDEBUG("Failed to find 'recv Access-Request' section");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
@@ -294,7 +300,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 		 *	Push the conf section into the unlang stack.
 		 */
 		RDEBUG("Running 'recv Access-Request' from file %s", cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
+		unlang_interpret_push_instruction(request, inst->unlang_access_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
 		/* FALL-THROUGH */
@@ -513,12 +519,6 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			}
 		}
 
-		dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
-		unlang = NULL;
-		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
-
-		if (!unlang) goto send_reply;
-
 	rerun_nak:
 		/*
 		 *	Access-Challenge packets require a State.  If
@@ -536,8 +536,42 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			fr_pair_value_memcpy(vp, buffer, sizeof(buffer), false);
 		}
 
+		switch (request->reply->code) {
+		case FR_CODE_ACCESS_ACCEPT:
+			unlang = inst->send_access_accept;
+			instruction = inst->unlang_access_accept;
+			break;
+
+		case FR_CODE_ACCESS_REJECT:
+			unlang = inst->send_access_reject;
+			instruction = inst->unlang_access_reject;
+			break;
+
+		case FR_CODE_ACCESS_CHALLENGE:
+			unlang = inst->send_access_challenge;
+			instruction = inst->unlang_access_challenge;
+			break;
+
+		default:
+			request->reply->code = FR_CODE_DO_NOT_RESPOND;
+			/* FALL-THROUGH */
+
+		case FR_CODE_DO_NOT_RESPOND:
+			unlang = inst->send_do_not_respond;
+			instruction = inst->unlang_do_not_respond;
+			break;
+
+		case FR_CODE_PROTOCOL_ERROR:
+			unlang = inst->send_protocol_error;
+			instruction = inst->unlang_protocol_error;
+			break;
+
+		}
+
+		if (!instruction) goto send_reply;
+
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		unlang_interpret_push_instruction(request, instruction, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_SEND;
 		/* FALL-THROUGH */
@@ -640,36 +674,42 @@ static virtual_server_compile_t compile_list[] = {
 		.name2 = "Access-Request",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(proto_radius_auth_t, recv_access_request),
+		.instruction = offsetof(proto_radius_auth_t, unlang_access_request),
 	},
 	{
 		.name = "send",
 		.name2 = "Access-Accept",
 		.component = MOD_POST_AUTH,
 		.offset = offsetof(proto_radius_auth_t, send_access_accept),
+		.instruction = offsetof(proto_radius_auth_t, unlang_access_accept),
 	},
 	{
 		.name = "send",
 		.name2 = "Access-Challenge",
 		.component = MOD_POST_AUTH,
 		.offset = offsetof(proto_radius_auth_t, send_access_challenge),
+		.instruction = offsetof(proto_radius_auth_t, unlang_access_challenge),
 	},
 	{
 		.name = "send",
 		.name2 = "Access-Reject",
 		.component = MOD_POST_AUTH,
 		.offset = offsetof(proto_radius_auth_t, send_access_reject),
+		.instruction = offsetof(proto_radius_auth_t, unlang_access_reject),
 	},
 	{
 		.name = "send",
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
 		.offset = offsetof(proto_radius_auth_t, send_do_not_respond),
+		.instruction = offsetof(proto_radius_auth_t, unlang_do_not_respond),
 	},
 	{
 		.name = "send",
 		.name2 = "Protocol-Error",
 		.component = MOD_POST_AUTH,
 		.offset = offsetof(proto_radius_auth_t, send_protocol_error),
+		.instruction = offsetof(proto_radius_auth_t, unlang_protocol_error),
 	},
 	{
 		.name = "authenticate",
