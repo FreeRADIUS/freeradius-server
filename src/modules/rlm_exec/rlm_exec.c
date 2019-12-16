@@ -44,6 +44,7 @@ typedef struct {
 	pair_list_t	output_list;
 	bool		shell_escape;
 	fr_time_delta_t	timeout;
+	bool		timeout_is_set;
 } rlm_exec_t;
 
 static const CONF_PARSER module_config[] = {
@@ -52,7 +53,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_STRING, rlm_exec_t, input) },
 	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_STRING, rlm_exec_t, output) },
 	{ FR_CONF_OFFSET("shell_escape", FR_TYPE_BOOL, rlm_exec_t, shell_escape), .dflt = "yes" },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_exec_t, timeout) },
+	{ FR_CONF_OFFSET_IS_SET("timeout", FR_TYPE_TIME_DELTA, rlm_exec_t, timeout) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -229,24 +230,28 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	/*
-	 *	Get the time to wait before killing the child
-	 */
-	if (!inst->timeout) {
-		inst->timeout = fr_time_delta_from_sec(EXEC_TIMEOUT);
+	if (inst->timeout_is_set || !inst->timeout) {
+		/*
+		 *	Pick the shorter one
+		 */
+		inst->timeout = main_config->max_request_time > fr_time_delta_from_sec(EXEC_TIMEOUT) ?
+			fr_time_delta_from_sec(EXEC_TIMEOUT):
+			main_config->max_request_time;
 	}
-	if (inst->timeout < fr_time_delta_from_sec(1)) {
-		cf_log_err(conf, "Timeout '%pVs' is too small (minimum: 1s)", fr_box_time_delta(inst->timeout));
-		return -1;
-	}
+	else {
+		if (inst->timeout < fr_time_delta_from_sec(1)) {
+			cf_log_err(conf, "Timeout '%pVs' is too small (minimum: 1s)", fr_box_time_delta(inst->timeout));
+			return -1;
+		}
 
-	/*
-	 *	Blocking a request longer than max_request_time isn't going to help anyone.
-	 */
-	if (inst->timeout > main_config->max_request_time) {
-		cf_log_err(conf, "Timeout '%pVs' is too large (maximum: %pVs)",
-			   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->max_request_time));
-		return -1;
+		/*
+		 *	Blocking a request longer than max_request_time isn't going to help anyone.
+		 */
+		if (inst->timeout > main_config->max_request_time) {
+			cf_log_err(conf, "Timeout '%pVs' is too large (maximum: %pVs)",
+				   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->max_request_time));
+			return -1;
+		}
 	}
 
 	return 0;
