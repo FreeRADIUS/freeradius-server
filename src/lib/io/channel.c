@@ -383,14 +383,18 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 		 *	outstanding, look for a reply.
 		 */
 	} else if (requestor->num_outstanding > 1) {
-		while (fr_channel_recv_reply(ch));
+		bool has_reply;
+
+		has_reply = fr_channel_recv_reply(ch);
+
+		if (has_reply) while (fr_channel_recv_reply(ch));
 
 		/*
 		 *	There's no reply yet, so we still have packets outstanding.
 		 *	Or, there is a reply, and there are more packets outstanding.
 		 *	Skip the signal.
 		 */
-		if (!requestor->must_signal && (!*p_reply || (*p_reply && (requestor->num_outstanding > 1)))) {
+		if (!requestor->must_signal && (!has_reply || (has_reply && (requestor->num_outstanding > 1)))) {
 			MPRINT("REQUESTOR SKIPS signal\n");
 			return 0;
 		}
