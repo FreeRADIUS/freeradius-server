@@ -256,9 +256,7 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 	case FR_CHANNEL_DATA_READY_REQUESTOR:
 		rad_assert(ch != NULL);
 		DEBUG3("data <--");
-		while (fr_channel_recv_reply(ch)) {
-			/* nothing */
-		}
+		while (fr_channel_recv_reply(ch));
 		break;
 
 	case FR_CHANNEL_DATA_READY_RESPONDER:
