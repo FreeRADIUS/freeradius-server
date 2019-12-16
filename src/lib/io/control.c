@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
 
+#include <fcntl.h>
 #include <string.h>
 #include <sys/event.h>
 
@@ -163,7 +164,8 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 	/*
 	 *	We don't want reads from the pipe to be blocking.
 	 */
-	(void) fr_nonblock(c->pipe[0]);
+	(void) fcntl(c->pipe[0], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
+	(void) fcntl(c->pipe[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 
 	if (fr_event_fd_insert(c, el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
 		talloc_free(c);
