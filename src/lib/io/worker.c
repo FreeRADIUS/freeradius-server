@@ -1318,7 +1318,7 @@ nomem:
 	worker->max_channels = max_channels;
 	worker->talloc_pool_size = 4096; /* at least enough for a REQUEST */
 	worker->message_set_size = 1024;
-	worker->ring_buffer_size = (1 << 16);
+	worker->ring_buffer_size = (1 << 17);
 	worker->max_request_time = fr_time_delta_from_sec(30);
 
 	if (fr_event_pre_insert(worker->el, worker_pre_event, worker) < 0) {
