@@ -589,7 +589,7 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
 	 */
 	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
 	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
-	(void) rbtree_deletebydata(worker->dedup, request);
+	if (request->async->listen->track_duplicates) rbtree_deletebydata(worker->dedup, request);
 
 #ifndef NDEBUG
 	request->async->process = NULL;
@@ -897,7 +897,7 @@ nak:
 	 *	Look for conflicting / duplicate packets, but only if
 	 *	requested to do so.
 	 */
-	if (request->async->listen->app_io->track_duplicates) {
+	if (request->async->listen->track_duplicates) {
 		REQUEST *old;
 
 		old = rbtree_finddata(worker->dedup, request);
@@ -1068,7 +1068,7 @@ static void worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	Only real packets are in the dedup tree.  And even
 	 *	then, only some of the time.
 	 */
-	if (!request->async->fake && request->async->listen->app_io->track_duplicates) {
+	if (!request->async->fake && request->async->listen->track_duplicates) {
 		(void) rbtree_deletebydata(worker->dedup, request);
 	}
 

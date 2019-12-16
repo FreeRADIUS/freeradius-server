@@ -594,6 +594,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		li->app_io = thread->child->app_io;
 		li->thread_instance = connection;
 		li->app_io_instance = dl_inst->data;
+		li->track_duplicates = thread->child->app_io->track_duplicates;
 
 		/*
 		 *	Create writable thread instance data.
@@ -632,6 +633,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		li->connected = true;
 		li->thread_instance = connection;
 		li->app_io_instance = li->thread_instance;
+		li->track_duplicates = thread->child->app_io->track_duplicates;
 
 		/*
 		 *	Instantiate the child, and open the socket.
@@ -2831,6 +2833,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	li->app_io = &fr_master_app_io;
 	li->thread_instance = thread;
 	li->app_io_instance = inst;
+	li->track_duplicates = inst->app_io->track_duplicates;
 
 	/*
 	 *	The child listener points to the *actual* IO path.
@@ -2849,6 +2852,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 *	Reset these fields to point to the IO instance data.
 	 */
 	child->app_io = inst->app_io;
+	child->track_duplicates = inst->app_io->track_duplicates;
 
 	if (child->app_io->thread_inst_size > 0) {
 		child->thread_instance = talloc_zero_array(NULL, uint8_t,
