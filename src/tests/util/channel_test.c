@@ -199,7 +199,7 @@ check_close:
 
 		if (!signaled_close && (num_messages >= max_messages) && (num_outstanding == 0)) {
 			MPRINT1("Master signaling worker to exit.\n");
-			rcode = fr_channel_signal_worker_close(channel);
+			rcode = fr_channel_signal_responder_close(channel);
 			if (rcode < 0) {
 				fprintf(stderr, "Failed signaling close: %s\n", fr_syserror(errno));
 				exit(EXIT_FAILURE);
@@ -248,7 +248,7 @@ check_close:
 			MPRINT1("Master got channel event %d\n", ce);
 
 			switch (ce) {
-			case FR_CHANNEL_DATA_READY_NETWORK:
+			case FR_CHANNEL_DATA_READY_REQUESTOR:
 				MPRINT1("Master got data ready signal\n");
 				rad_assert(new_channel == channel);
 
@@ -395,10 +395,10 @@ static void *channel_worker(void *arg)
 					fr_message_done(&cd->m);
 				}
 
-				(void) fr_channel_worker_ack_close(channel);
+				(void) fr_channel_responder_ack_close(channel);
 				break;
 
-			case FR_CHANNEL_DATA_READY_WORKER:
+			case FR_CHANNEL_DATA_READY_RESPONDER:
 				MPRINT1("\tWorker got data ready signal\n");
 				rad_assert(new_channel == channel);
 

@@ -35,8 +35,8 @@ extern "C" {
  *  A two-way channel (i.e. pipe) for exchanging information
  *
  *  While the channels are two-way, they are designed to have a
- *  "master" writing requests to the channel, and a "worker" reading
- *  requests, and writing replies back to the master.
+ *  "frontend" writing requests to the channel, and a "worker" reading
+ *  requests, and writing replies back to the frontend.
  */
 typedef struct fr_channel_s fr_channel_t;
 
@@ -64,8 +64,8 @@ extern "C" {
 
 typedef enum fr_channel_event_t {
 	FR_CHANNEL_ERROR = 0,
-	FR_CHANNEL_DATA_READY_WORKER,
-	FR_CHANNEL_DATA_READY_NETWORK,
+	FR_CHANNEL_DATA_READY_RESPONDER,
+	FR_CHANNEL_DATA_READY_REQUESTOR,
 	FR_CHANNEL_OPEN,
 	FR_CHANNEL_CLOSE,
 
@@ -134,39 +134,39 @@ typedef struct {
 extern fr_table_num_sorted_t const channel_packet_priority[];
 extern size_t channel_packet_priority_len;
 
-fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker, bool same) CC_HINT(nonnull);
+fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *frontend, fr_control_t *worker, bool same) CC_HINT(nonnull);
 
-int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm) CC_HINT(nonnull);
-bool fr_channel_recv_request(fr_channel_t *ch) CC_HINT(nonnull);
+int	fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm) CC_HINT(nonnull);
+bool	fr_channel_recv_request(fr_channel_t *ch) CC_HINT(nonnull);
 
-int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd) CC_HINT(nonnull);
-int fr_channel_null_reply(fr_channel_t *ch) CC_HINT(nonnull);
+int	fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd) CC_HINT(nonnull);
+int	fr_channel_null_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
-bool fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
+bool	fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 typedef void (*fr_channel_recv_callback_t)(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd);
-int fr_channel_set_recv_reply(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply) CC_HINT(nonnull(1,3));
-int fr_channel_set_recv_request(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply) CC_HINT(nonnull(1,3));
+int	fr_channel_set_recv_reply(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply) CC_HINT(nonnull(1,3));
+int	fr_channel_set_recv_request(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply) CC_HINT(nonnull(1,3));
 
-int fr_channel_worker_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
+int	fr_channel_responder_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
 
-int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, struct kevent const *kev) CC_HINT(nonnull);
-fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void const *data, size_t data_size) CC_HINT(nonnull);
+int	fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, struct kevent const *kev) CC_HINT(nonnull);
+fr_channel_event_t	fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void const *data, size_t data_size) CC_HINT(nonnull);
 
-bool fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);
+bool	fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);
 
-int fr_channel_signal_open(fr_channel_t *ch) CC_HINT(nonnull);
+int	fr_channel_signal_open(fr_channel_t *ch) CC_HINT(nonnull);
 
-int fr_channel_signal_worker_close(fr_channel_t *ch) CC_HINT(nonnull);
-int fr_channel_worker_ack_close(fr_channel_t *ch) CC_HINT(nonnull);
+int	fr_channel_signal_responder_close(fr_channel_t *ch) CC_HINT(nonnull);
+int	fr_channel_responder_ack_close(fr_channel_t *ch) CC_HINT(nonnull);
 
-void fr_channel_worker_ctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull);
-void *fr_channel_worker_ctx_get(fr_channel_t *ch) CC_HINT(nonnull);
-void fr_channel_network_ctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull);
-void *fr_channel_network_ctx_get(fr_channel_t *ch) CC_HINT(nonnull);
+void	fr_channel_responder_uctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull);
+void	*fr_channel_responder_uctx_get(fr_channel_t *ch) CC_HINT(nonnull);
+void	fr_channel_requestor_uctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull);
+void	*fr_channel_requestor_uctx_get(fr_channel_t *ch) CC_HINT(nonnull);
 
 
-void fr_channel_debug(fr_channel_t *ch, FILE *fp);
+void	fr_channel_debug(fr_channel_t *ch, FILE *fp);
 
 #ifdef __cplusplus
 }

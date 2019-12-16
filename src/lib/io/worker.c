@@ -231,12 +231,12 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 		DEBUG3("\t--> noop");
 		return;
 
-	case FR_CHANNEL_DATA_READY_NETWORK:
+	case FR_CHANNEL_DATA_READY_REQUESTOR:
 		rad_assert(0 == 1);
 		DEBUG3("\t--> ??? network");
 		break;
 
-	case FR_CHANNEL_DATA_READY_WORKER:
+	case FR_CHANNEL_DATA_READY_RESPONDER:
 		rad_assert(ch != NULL);
 		DEBUG3("\t--> data");
 
@@ -266,7 +266,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 						   sizeof(fr_channel_data_t),
 						   worker->ring_buffer_size);
 			rad_assert(ms != NULL);
-			fr_channel_worker_ctx_add(ch, ms);
+			fr_channel_responder_uctx_add(ch, ms);
 
 			worker->num_channels++;
 			ok = true;
@@ -295,9 +295,9 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 			 *	wake up after a time and try
 			 *	to close it again.
 			 */
-			(void) fr_channel_worker_ack_close(ch);
+			(void) fr_channel_responder_ack_close(ch);
 
-			ms = fr_channel_worker_ctx_get(ch);
+			ms = fr_channel_responder_uctx_get(ch);
 			rad_assert(ms != NULL);
 			fr_message_set_gc(ms);
 			talloc_free(ms);
@@ -339,7 +339,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	ch = cd->channel.ch;
 	listen = cd->listen;
 
-	ms = fr_channel_worker_ctx_get(ch);
+	ms = fr_channel_responder_uctx_get(ch);
 	rad_assert(ms != NULL);
 
 	size = listen->app_io->default_reply_size;
@@ -431,7 +431,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	ch = request->async->channel;
 	rad_assert(ch != NULL);
 
-	ms = fr_channel_worker_ctx_get(ch);
+	ms = fr_channel_responder_uctx_get(ch);
 	rad_assert(ms != NULL);
 
 	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
@@ -1101,14 +1101,14 @@ static int fr_worker_pre_event(void *ctx, fr_time_t wake)
 	/*
 	 *	Nothing more to do, and the event loop has us sleeping
 	 *	for a period of time.  Signal the producers that we're
-	 *	sleeping.  The fr_channel_worker_sleeping() function
+	 *	sleeping.  The fr_channel_responder_sleeping() function
 	 *	will take care of skipping the signal if there are no
 	 *	outstanding requests for it.
 	 */
 	for (i = 0; i < worker->max_channels; i++) {
 		if (!worker->channel[i]) continue;
 
-		(void) fr_channel_worker_sleeping(worker->channel[i]);
+		(void) fr_channel_responder_sleeping(worker->channel[i]);
 	}
 	worker->was_sleeping = true;
 
@@ -1223,7 +1223,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 	for (i = 0; i < worker->max_channels; i++) {
 		if (!worker->channel[i]) continue;
 
-		fr_channel_worker_ack_close(worker->channel[i]);
+		fr_channel_responder_ack_close(worker->channel[i]);
 	}
 #endif
 

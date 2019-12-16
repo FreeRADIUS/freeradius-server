@@ -214,7 +214,7 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 	/*
 	 *	Update stats for the worker.
 	 */
-	worker = fr_channel_network_ctx_get(ch);
+	worker = fr_channel_requestor_uctx_get(ch);
 	worker->stats.out++;
 	worker->cpu_time = cd->reply.cpu_time;
 	if (!worker->predicted) {
@@ -253,7 +253,7 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 		DEBUG3("noop <--");
 		break;
 
-	case FR_CHANNEL_DATA_READY_NETWORK:
+	case FR_CHANNEL_DATA_READY_REQUESTOR:
 		rad_assert(ch != NULL);
 		DEBUG3("data <--");
 		while (fr_channel_recv_reply(ch)) {
@@ -261,7 +261,7 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 		}
 		break;
 
-	case FR_CHANNEL_DATA_READY_WORKER:
+	case FR_CHANNEL_DATA_READY_RESPONDER:
 		rad_assert(0 == 1);
 		DEBUG3("worker ??? <--");
 		break;
@@ -876,7 +876,7 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 	w->channel = fr_worker_channel_create(worker, w, nr->control);
 	if (!w->channel) fr_exit_now(1);
 
-	fr_channel_network_ctx_add(w->channel, w);
+	fr_channel_requestor_uctx_add(w->channel, w);
 	fr_channel_set_recv_reply(w->channel, nr, fr_network_recv_reply);
 
 	/*
@@ -1066,7 +1066,7 @@ int fr_network_destroy(fr_network_t *nr)
 	for (i = 0; i < nr->num_workers; i++) {
 		fr_network_worker_t *worker = nr->workers[i];
 
-		fr_channel_signal_worker_close(worker->channel);
+		fr_channel_signal_responder_close(worker->channel);
 	}
 
 	/*

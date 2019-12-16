@@ -436,7 +436,7 @@ static void master_process(TALLOC_CTX *ctx)
 			MPRINT1("Master got channel event %d\n", ce);
 
 			switch (ce) {
-			case FR_CHANNEL_DATA_READY_NETWORK:
+			case FR_CHANNEL_DATA_READY_REQUESTOR:
 				MPRINT1("Master got data ready signal\n");
 
 				reply = fr_channel_recv_reply(ch);
