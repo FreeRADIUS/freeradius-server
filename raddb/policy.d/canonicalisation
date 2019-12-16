@@ -1,5 +1,5 @@
 #
-#	Split User-Name in NAI format (RFC 4282) into components
+#	Split User-Name in NAI format (RFC 7542) into components
 #
 #  This policy writes the Username and Domain portions of the
 #  NAI into the Stripped-User-Name and Stripped-User-Domain
@@ -10,6 +10,10 @@
 #  compliant regexp without perl style regular expressions (or
 #  at least not a legible one).
 #
+#  i.e. this regular expression will accept all valid NAIs,
+#  and will not reject valid NAIs.  Unfortunately, it will also
+#  accept invalid NAIs.
+#
 nai_regexp = '^([^@]*)(@([-[:alnum:]]+\.[-[:alnum:].]+))?$'
 
 split_username_nai {
@@ -17,7 +21,7 @@ split_username_nai {
 		update request {
 			&Stripped-User-Name := "%{1}"
 		}
-		
+
 		# Only add the Stripped-User-Domain attribute if
 		# we have a domain. This means presence checks
 		# for Stripped-User-Domain work.
@@ -45,7 +49,7 @@ split_username_nai.post-proxy {
 		update proxy-reply {
 			&Stripped-User-Name := "%{1}"
 		}
-		
+
 		# Only add the Stripped-User-Domain attribute if
 		# we have a domain. This means presence checks
 		# for Stripped-User-Domain work.
