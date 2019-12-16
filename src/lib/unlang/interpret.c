@@ -762,31 +762,31 @@ rlm_rcode_t unlang_interpret(REQUEST *request)
 	return stack->result;
 }
 
+static unlang_group_t empty_group = {
+	.self = {
+		.type = UNLANG_TYPE_GROUP,
+		.debug_name = "empty-group",
+		.actions = {
+			MOD_ACTION_RETURN,
+			MOD_ACTION_RETURN,
+			MOD_ACTION_RETURN,
+			MOD_ACTION_RETURN,
+			MOD_ACTION_RETURN,
+			MOD_ACTION_RETURN,
+			MOD_ACTION_RETURN,
+			MOD_ACTION_RETURN,
+			MOD_ACTION_RETURN
+		},
+	},
+};
+
+
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */
 void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_rcode, bool top_frame)
 {
 	unlang_t	*instruction = NULL;
-	unlang_stack_t	*stack = request->stack;
-
-	static unlang_group_t empty_group = {
-		.self = {
-			.type = UNLANG_TYPE_GROUP,
-			.debug_name = "empty-group",
-			.actions = {
-				MOD_ACTION_RETURN,
-				MOD_ACTION_RETURN,
-				MOD_ACTION_RETURN,
-				MOD_ACTION_RETURN,
-				MOD_ACTION_RETURN,
-				MOD_ACTION_RETURN,
-				MOD_ACTION_RETURN,
-				MOD_ACTION_RETURN,
-				MOD_ACTION_RETURN
-			},
-		},
-	};
 
 	/*
 	 *	Interpretable unlang instructions are stored as CONF_DATA
@@ -800,7 +800,22 @@ void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode
 		}
 	}
 
-	if (!instruction) instruction = unlang_group_to_generic(&empty_group);
+
+	unlang_interpret_push_instruction(request, instruction, default_rcode, top_frame);
+}
+
+/** Push an instruction onto the request stack for later interpretation.
+ *
+ */
+void unlang_interpret_push_instruction(REQUEST *request, void *instruction, rlm_rcode_t default_rcode, bool top_frame)
+{
+	unlang_stack_t	*stack = request->stack;
+
+	if (!instruction) {
+		instruction = unlang_group_to_generic(&empty_group);
+	} else {
+		(void) talloc_get_type_abort(instruction, unlang_t);
+	}
 
 	/*
 	 *	Push the default action, and the instruction which has

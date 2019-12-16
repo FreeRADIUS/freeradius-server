@@ -92,6 +92,9 @@ void		unlang_interpret_push_function(REQUEST *request,
 void		unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs,
 					      rlm_rcode_t default_action, bool top_frame);
 
+void		unlang_interpret_push_instruction(REQUEST *request, void *instruction,
+						  rlm_rcode_t default_rcode, bool top_frame);
+
 rlm_rcode_t	unlang_interpret(REQUEST *request);
 
 rlm_rcode_t	unlang_interpret_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
