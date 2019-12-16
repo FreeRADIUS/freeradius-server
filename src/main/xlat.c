@@ -486,6 +486,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			type++;
 		}
 	}
+	REXDENT();
 
 	*out = '\0';
 	return 0;
