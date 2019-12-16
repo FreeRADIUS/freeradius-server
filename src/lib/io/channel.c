@@ -129,7 +129,7 @@ typedef struct {
 
 	uint64_t		sequence;	//!< Sequence number for this channel.
 	uint64_t		ack;		//!< Sequence number of the other end.
-	atomic_uint_fast64_t	their_view_of_my_sequence;	//!< Should be clear.
+	uint64_t		their_view_of_my_sequence;	//!< Should be clear.
 
 	uint64_t		sequence_at_last_signal;	//!< When we last signaled.
 
@@ -460,7 +460,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 
 	requestor->num_outstanding--;
 	requestor->ack = cd->live.sequence;
-	atomic_store(&requestor->their_view_of_my_sequence, cd->live.ack);
+	requestor->their_view_of_my_sequence = cd->live.ack;
 
 	rad_assert(requestor->last_read_other <= cd->m.when);
 	requestor->last_read_other = cd->m.when;
@@ -497,7 +497,7 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 
 	responder->num_outstanding++;
 	responder->ack = cd->live.sequence;
-	atomic_store(&responder->their_view_of_my_sequence, cd->live.ack);
+	responder->their_view_of_my_sequence = cd->live.ack;
 
 	rad_assert(responder->last_read_other <= cd->m.when);
 	responder->last_read_other = cd->m.when;
@@ -584,7 +584,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	MPRINT("\twhen - last signal = %"PRIu64" - %"PRIu64" = %"PRIu64"\n", when, responder->last_sent_signal, when - responder->last_sent_signal);
 	MPRINT("\tsequence - ack = %"PRIu64" - %"PRIu64" = %"PRIu64"\n", responder->sequence, responder->their_view_of_my_sequence, responder->sequence - responder->their_view_of_my_sequence);
 
-	their_view_of_my_sequence = atomic_load(&responder->their_view_of_my_sequence);
+	their_view_of_my_sequence = responder->their_view_of_my_sequence;
 
 	if (responder->sequence_at_last_signal > their_view_of_my_sequence) return 0;
 
