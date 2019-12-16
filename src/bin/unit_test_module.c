@@ -180,7 +180,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc(ctx);
+	request = request_local_alloc(ctx);
 
 	/*
 	 *	FIXME - Should be less RADIUS centric, but everything
@@ -1108,6 +1108,7 @@ int main(int argc, char *argv[])
 			fr_pair_validate_debug(request, failed);
 			fr_perror("Output file %s does not match attributes in filter %s (%s)",
 				  output_file ? output_file : input_file, filter_file, fr_strerror());
+			ret = EXIT_FAILURE;
 			goto cleanup;
 		}
 	}
