@@ -357,6 +357,18 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	ch = cd->channel.ch;
 	listen = cd->listen;
 
+	/*
+	 *	If the channel has been closed, but we haven't
+	 *	been informed, that is extremely bad.
+	 *
+	 *	Try to continue working... but we'll likely
+	 *	leak memory or SEGV soon.
+	 */
+	if (!fr_cond_assert_msg(fr_channel_active(ch), "Wanted to send NAK but channel has been closed")) {
+		fr_message_done(&cd->m);
+		return;
+	}
+
 	ms = fr_channel_responder_uctx_get(ch);
 	rad_assert(ms != NULL);
 
@@ -446,6 +458,17 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	 */
 	ch = request->async->channel;
 	rad_assert(ch != NULL);
+
+	/*
+	 *	If the channel has been closed, but we haven't
+	 *	been informed, that is extremely bad.
+	 *
+	 *	Try to continue working... but we'll likely
+	 *	leak memory or SEGV soon.
+	 */
+	if (!fr_cond_assert_msg(fr_channel_active(ch), "Wanted to send reply but channel has been closed")) {
+		return;
+	}
 
 	ms = fr_channel_responder_uctx_get(ch);
 	rad_assert(ms != NULL);
