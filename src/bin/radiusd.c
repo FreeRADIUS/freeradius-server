@@ -910,6 +910,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Process requests until HUP or exit.
 	 */
+	INFO("Ready to process requests");	/* we were actually ready a while ago, but oh well */
 	while ((status = main_loop_start()) == 0x80) {
 #ifdef WITH_STATS
 		radius_stats_init(1);
