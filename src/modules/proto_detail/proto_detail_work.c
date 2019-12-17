@@ -768,6 +768,7 @@ static int mod_close_internal(proto_detail_work_thread_t *thread)
 #ifdef NOTE_REVOKE
 	fr_event_fd_delete(thread->el, thread->fd, FR_EVENT_FILTER_VNODE);
 #endif
+	fr_event_fd_delete(thread->el, thread->fd, FR_EVENT_FILTER_IO);
 
 	unlink(thread->filename_work);
 
