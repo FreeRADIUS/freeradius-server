@@ -60,7 +60,7 @@ int			fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void 
 fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *log, fr_log_lvl_t lvl,
 					    int max_inputs, int max_workers,
 					    fr_schedule_thread_instantiate_t worker_thread_instantiate,
-					    void *worker_thread_ctx) CC_HINT(nonnull(3));
+					    CONF_SECTION *root_cs) CC_HINT(nonnull(3));
 /* schedulers are async, so there's no fr_schedule_run() */
 int			fr_schedule_destroy(fr_schedule_t *sc);
 

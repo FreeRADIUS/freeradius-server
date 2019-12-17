@@ -775,7 +775,7 @@ int main(int argc, char *argv[])
 		sc = fr_schedule_create(NULL, el, &default_log, fr_debug_lvl,
 					networks, workers,
 					thread_instantiate,
-					config->root_cs);
+					cf_section_find(config->root_cs, "thread", CF_IDENT_ANY));
 		if (!sc) {
 			PERROR("Failed starting the scheduler: %s", fr_strerror());
 			EXIT_WITH_FAILURE;

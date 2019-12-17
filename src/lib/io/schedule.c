@@ -117,6 +117,7 @@ typedef struct {
 struct fr_schedule_s {
 	bool		running;		//!< is the scheduler running?
 
+	CONF_SECTION	*cs;			//!< thread pool configuration section
 	fr_event_list_t	*el;			//!< event list for single-threaded mode.
 
 	fr_log_t	*log;			//!< log destination
@@ -131,7 +132,6 @@ struct fr_schedule_s {
 	sem_t		network_sem;		//!< for inter-thread signaling
 
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
-	void					*worker_instantiate_ctx;	//!< thread instantiation context
 
 	fr_dlist_head_t	workers;		//!< list of workers
 
@@ -193,10 +193,18 @@ static void *fr_schedule_worker_thread(void *arg)
 	/*
 	 *	@todo make this a registry
 	 */
-	if (sc->worker_thread_instantiate &&
-	    (sc->worker_thread_instantiate(sw->ctx, fr_worker_el(sw->worker), sc->worker_instantiate_ctx) < 0)) {
-		ERROR("Worker %d - Failed calling thread instantiate: %s", sw->id, fr_strerror());
-		goto fail;
+	if (sc->worker_thread_instantiate) {
+		CONF_SECTION *cs;
+
+		snprintf(buffer, sizeof(buffer), "%d", sw->id);
+
+		cs = cf_section_find(sc->cs, "worker", buffer);
+		if (!cs) cs = cf_section_find(sc->cs, "worker", NULL);
+
+		if (sc->worker_thread_instantiate(sw->ctx, fr_worker_el(sw->worker), cs) < 0) {
+			ERROR("Worker %d - Failed calling thread instantiate: %s", sw->id, fr_strerror());
+			goto fail;
+		}
 	}
 
 	sw->status = FR_CHILD_RUNNING;
@@ -363,7 +371,7 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
  * @param[in] max_networks	number of network threads.
  * @param[in] max_workers	number of worker threads.
  * @param[in] worker_thread_instantiate		callback for new worker threads.
- * @param[in] worker_thread_ctx	context for callback.
+ * @param[in] cs		"thread pool" configuration section
  * @return
  *	- NULL on error
  *	- fr_schedule_t new scheduler
@@ -372,7 +380,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 				  fr_log_t *logger, fr_log_lvl_t lvl,
 				  int max_networks, int max_workers,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
-				  void *worker_thread_ctx)
+				  CONF_SECTION *cs)
 {
 	unsigned int i;
 	fr_schedule_worker_t *sw, *next;
@@ -403,6 +411,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		return NULL;
 	}
 
+	sc->cs = cs;
 	sc->el = el;
 	sc->max_networks = max_networks;
 	sc->max_workers = max_workers;
@@ -410,7 +419,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sc->lvl = lvl;
 
 	sc->worker_thread_instantiate = worker_thread_instantiate;
-	sc->worker_instantiate_ctx = worker_thread_ctx;
 
 	sc->running = true;
 
@@ -435,10 +443,16 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		/*
 		 *	Parent thread-specific data from the single_worker
 		 */
-		if (sc->worker_thread_instantiate &&
-		    (sc->worker_thread_instantiate(sc->single_worker, el, sc->worker_instantiate_ctx) < 0)) {
-			ERROR("Failed calling thread instantiate: %s", fr_strerror());
-			goto st_fail;
+		if (sc->worker_thread_instantiate) {
+			CONF_SECTION *subcs;
+
+			subcs = cf_section_find(sc->cs, "worker", "0");
+			if (!subcs) subcs = cf_section_find(sc->cs, "worker", NULL);
+
+			if (sc->worker_thread_instantiate(sc->single_worker, el, subcs) < 0) {
+				ERROR("Failed calling thread instantiate: %s", fr_strerror());
+				goto st_fail;
+			}
 		}
 
 		if (fr_command_register_hook(NULL, "0", sc->single_worker, cmd_worker_table) < 0) {
