@@ -281,7 +281,7 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
  * @param nr the network
  * @param cd the message we've received
  */
-static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
+static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 {
 	fr_network_worker_t *worker;
 
@@ -321,7 +321,7 @@ static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	 */
 	if (fr_channel_send_request(worker->channel, cd) < 0) {
 		worker->stats.dropped++;
-		return false;
+		return -1;
 	}
 
 	worker->stats.in++;
@@ -334,7 +334,7 @@ static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	 */
 	worker->cpu_time += worker->predicted;
 
-	return true;
+	return 0;
 }
 
 
@@ -487,14 +487,14 @@ next_message:
 		next = (fr_channel_data_t *) fr_message_alloc_reserve(s->ms, &cd->m, data_size, s->leftover,
 								      s->listen->default_message_size);
 		if (!next) {
-			ERROR("Failed reserving partial packet.");
+			PERROR("Failed reserving partial packet.");
 			// @todo - probably close the socket...
 			rad_assert(0 == 1);
 		}
 	}
 
-	if (!fr_network_send_request(nr, cd)) {
-		ERROR("Failed sending packet to worker");
+	if (fr_network_send_request(nr, cd) < 0) {
+		PERROR("Failed sending packet to worker");
 		fr_message_done(&cd->m);
 		nr->stats.dropped++;
 		s->stats.dropped++;
