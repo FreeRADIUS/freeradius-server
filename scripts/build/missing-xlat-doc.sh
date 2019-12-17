@@ -16,6 +16,11 @@ doc_xlat="doc/"
 OUTPUT=$1
 shift
 
+if [ -z "$OUTPUT" ]; then
+	echo "Usage: $0 /path/output"
+	exit 1
+fi
+
 #
 #  Where the correct output is located
 #
