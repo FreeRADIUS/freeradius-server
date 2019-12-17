@@ -179,15 +179,12 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	snprintf(buffer, sizeof(buffer), "%d", sw->id);
+	snprintf(buffer, sizeof(buffer), "Worker %d", sw->id);
 	sw->worker = fr_worker_create(ctx, buffer, sw->el, sc->log, sc->lvl);
 	if (!sw->worker) {
 		ERROR("Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
 	}
-
-	snprintf(buffer, sizeof(buffer), "thread %d - ", sw->id);
-	fr_worker_name(sw->worker, buffer);
 
 	/*
 	 *	@todo make this a registry

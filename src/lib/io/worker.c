@@ -1547,23 +1547,6 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	return ch;
 }
 
-
-/** Set the name of a worker.
- *
- *  Called by the master (i.e. network) thread when it needs to create
- *  a new channel to a particuler worker.
- *
- * @param[in] worker the worker
- * @param[in] name the name to set for the worker. (strdup'd by the worker)
- */
-void fr_worker_name(fr_worker_t *worker, char const *name)
-{
-	WORKER_VERIFY;
-
-	worker->name = talloc_strdup(worker, name);
-}
-
-
 #ifdef WITH_VERIFY_PTR
 /** Verify the worker data structures.
  *
