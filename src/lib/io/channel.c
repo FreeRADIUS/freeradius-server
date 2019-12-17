@@ -964,18 +964,25 @@ int fr_channel_signal_open(fr_channel_t *ch)
 	return fr_control_message_send(ch->end[TO_RESPONDER].control, ch->end[TO_RESPONDER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
-void fr_channel_debug(fr_channel_t *ch, FILE *fp)
+void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char const *file, int line)
 {
-	fprintf(fp, "to responder\n");
-	fprintf(fp, "\tnum_signals sent = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.signals);
-	fprintf(fp, "\tnum_signals re-sent = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.resignals);
-	fprintf(fp, "\tnum_kevents checked = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.kevents);
-	fprintf(fp, "\tsequence = %"PRIu64"\n", ch->end[TO_RESPONDER].sequence);
-	fprintf(fp, "\tack = %"PRIu64"\n", ch->end[TO_RESPONDER].ack);
+	fr_log(log, L_INFO, file, line, "requestor\n");
+	fr_log(log, L_INFO, file, line, "\tsignals sent = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.signals);
+	fr_log(log, L_INFO, file, line, "\tsignals re-sent = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.resignals);
+	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.kevents);
+	fr_log(log, L_INFO, file, line, "\toutstanding = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.outstanding);
+	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.packets);
+	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.message_interval);
+	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.last_read_other);
+	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.last_read_other);
+	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.last_sent_signal);
 
-	fprintf(fp, "to requestor\n");
-	fprintf(fp, "\tnum_signals sent = %" PRIu64"\n", ch->end[TO_REQUESTOR].stats.signals);
-	fprintf(fp, "\tnum_kevents checked = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.kevents);
-	fprintf(fp, "\tsequence = %"PRIu64"\n", ch->end[TO_REQUESTOR].sequence);
-	fprintf(fp, "\tack = %"PRIu64"\n", ch->end[TO_REQUESTOR].ack);
+	fr_log(log, L_INFO, file, line, "responder\n");
+	fr_log(log, L_INFO, file, line, "\tsignals sent = %" PRIu64"\n", ch->end[TO_REQUESTOR].stats.signals);
+	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.kevents);
+	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.packets);
+	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.message_interval);
+	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.last_read_other);
+	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.last_read_other);
+	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.last_sent_signal);
 }

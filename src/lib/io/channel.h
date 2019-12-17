@@ -186,7 +186,7 @@ void	fr_channel_requestor_uctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull)
 void	*fr_channel_requestor_uctx_get(fr_channel_t *ch) CC_HINT(nonnull);
 
 
-void	fr_channel_debug(fr_channel_t *ch, FILE *fp);
+void	fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char const *file, int line);
 
 #ifdef __cplusplus
 }
