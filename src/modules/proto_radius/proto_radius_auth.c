@@ -453,13 +453,6 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			RDEBUG2("Failed to authenticate the user");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 
-			vp = fr_pair_find_by_da(request->packet->vps, attr_module_failure_message, TAG_ANY);
-			if (vp) {
-				auth_message(inst, request, false, "Login incorrect (%pV)", &vp->data);
-			} else {
-				auth_message(inst, request, false, "Login incorrect");
-			}
-
 			/*
 			 *	Maybe the shared secret is wrong?
 			 */
@@ -498,15 +491,6 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 		 */
 		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 		if (vp) request->reply->code = vp->vp_uint32;
-
-		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
-			vp = fr_pair_find_by_da(request->packet->vps, attr_module_success_message, TAG_ANY);
-			if (vp){
-				auth_message(inst, request, true, "Login OK (%pV)", &vp->data);
-			} else {
-				auth_message(inst, request, true, "Login OK");
-			}
-		}
 
 	setup_send:
 		if (!request->reply->code) {
@@ -655,6 +639,25 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			break;
 		}
 
+		/*
+		 *	Write login OK message when we actually know
+		 *	we're sending an accept.
+		 */
+		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
+			vp = fr_pair_find_by_da(request->packet->vps, attr_module_success_message, TAG_ANY);
+			if (vp){
+				auth_message(inst, request, true, "Login OK (%pV)", &vp->data);
+			} else {
+				auth_message(inst, request, true, "Login OK");
+			}
+		} else if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
+			vp = fr_pair_find_by_da(request->packet->vps, attr_module_failure_message, TAG_ANY);
+			if (vp) {
+				auth_message(inst, request, false, "Login incorrect (%pV)", &vp->data);
+			} else {
+				auth_message(inst, request, false, "Login incorrect");
+			}
+		}
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Sending %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
 			log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
