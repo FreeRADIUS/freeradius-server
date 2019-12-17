@@ -105,9 +105,9 @@ Requires: readline
 Requires: libtalloc
 Requires: libkqueue
 Requires: net-snmp
+%if %{?_with_wbclient:1}%{!?_with_wbclient:0}
 %{?el7:Requires: libwbclient}
-%{?el6:Requires: samba4-libs}
-%{?el6:Requires: samba4-winbind-clients}
+%endif
 Requires: zlib
 Requires: pam
 
