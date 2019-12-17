@@ -73,6 +73,26 @@ typedef enum fr_channel_event_t {
 	FR_CHANNEL_EMPTY,
 } fr_channel_event_t;
 
+/** Statistics for the channel
+ *
+ */
+typedef struct {
+	uint64_t       		outstanding; 	//!< Number of outstanding requests with no reply.
+	uint64_t		signals;	//!< Number of kevent signals we've sent.
+	uint64_t		resignals;	//!< Number of signals resent.
+
+	uint64_t		packets;	//!< Number of actual data packets.
+
+	uint64_t		kevents;	//!< Number of times we've looked at kevents.
+
+	fr_time_t		last_write;	//!< Last write to the channel.
+	fr_time_t		last_read_other; //!< Last time we successfully read a message from the other the channel
+	fr_time_delta_t		message_interval; //!< Interval between messages.
+
+	fr_time_t		last_sent_signal; //!< The last time when we signaled the other end.
+} fr_channel_stats_t;
+
+
 /**
  *  Channel information which is added to a message.
  *
