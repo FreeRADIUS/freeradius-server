@@ -124,8 +124,9 @@ struct fr_schedule_s {
 	fr_log_t	*log;			//!< log destination
 	fr_log_lvl_t	lvl;			//!< log level
 
-	unsigned int	max_networks;		//!< number of network threads
-	unsigned int	max_workers;		//!< max number of worker threads
+
+	uint32_t	max_networks;		//!< number of network threads
+	uint32_t	max_workers;		//!< number of network threads
 
 	unsigned int	num_workers_exited;	//!< number of exited workers
 
@@ -363,8 +364,54 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
 	return 0;
 }
 
-static const CONF_PARSER schedule_config[] = {
+static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
+			      CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	if (value != 1) value = 1;
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
+			     CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	if (value < 1) value = 1;
+	if (value > 64) value = 64;
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static const CONF_PARSER scheduler_config[] = {
 	{ FR_CONF_OFFSET("stats_interval", FR_TYPE_TIME_DELTA, fr_schedule_t, stats_interval), },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER thread_config[] = {
+	{ FR_CONF_OFFSET("num_networks", FR_TYPE_UINT32, fr_schedule_t, max_networks), .dflt = STRINGIFY(1),
+	  .func = num_networks_parse },
+	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, fr_schedule_t, max_workers), .dflt = STRINGIFY(4),
+	  .func = num_workers_parse },
+
+	{ FR_CONF_POINTER("scheduler", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) scheduler_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -375,8 +422,6 @@ static const CONF_PARSER schedule_config[] = {
  * @param[in] el		event list, only for single-threaded mode.
  * @param[in] logger		destination for all logging messages.
  * @param[in] lvl		log level.
- * @param[in] max_networks	number of network threads.
- * @param[in] max_workers	number of worker threads.
  * @param[in] worker_thread_instantiate		callback for new worker threads.
  * @param[in] cs		"thread pool" configuration section
  * @return
@@ -385,33 +430,12 @@ static const CONF_PARSER schedule_config[] = {
  */
 fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 				  fr_log_t *logger, fr_log_lvl_t lvl,
-				  int max_networks, int max_workers,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  CONF_SECTION *cs)
 {
 	unsigned int i;
 	fr_schedule_worker_t *sw, *next;
 	fr_schedule_t *sc;
-	CONF_SECTION *subcs;
-
-	/*
-	 *	Single-threaded mode MUST have event list, and zero
-	 *	networks or workers
-	 */
-	if (el && (max_networks || max_workers)) {
-		fr_strerror_printf("Cannot specify event list and networks or workers");
-		return NULL;
-	}
-
-	/*
-	 *	Multi-threaded mode must NOT have an event list, and
-	 *	non-zero networks and workers.
-	 */
-	if (!el && (!max_networks || !max_workers)) {
-		fr_strerror_printf("Must specify the number of networks (%d >= 0) and workers (%d >= 0)",
-			max_networks, max_workers);
-		return NULL;
-	}
 
 	sc = talloc_zero(ctx, fr_schedule_t);
 	if (!sc) {
@@ -421,26 +445,10 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	sc->cs = cs;
 	sc->el = el;
-	sc->max_networks = max_networks;
-	sc->max_workers = max_workers;
 	sc->log = logger;
 	sc->lvl = lvl;
 
-	/*
-	 *	Parse any scheduler-specific configuration.
-	 */
-	subcs = cf_section_find(cs, "scheduler", NULL);
-	if (subcs) {
-		cf_section_rule_push(subcs, schedule_config);
-		if (cf_section_parse(sc, sc, subcs) < 0) {
-			talloc_free(sc);
-			fr_strerror_printf("Failed parsing scheduler configuration");
-			return NULL;
-		}
-	}
-
 	sc->worker_thread_instantiate = worker_thread_instantiate;
-
 	sc->running = true;
 
 	/*
@@ -465,6 +473,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		 *	Parent thread-specific data from the single_worker
 		 */
 		if (sc->worker_thread_instantiate) {
+			CONF_SECTION *subcs;
+
 			subcs = cf_section_find(sc->cs, "worker", "0");
 			if (!subcs) subcs = cf_section_find(sc->cs, "worker", NULL);
 
@@ -488,6 +498,26 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		DEBUG("Scheduler created in single-threaded mode");
 
 		return sc;
+	}
+
+	/*
+	 *	Parse any scheduler-specific configuration.
+	 */
+	if (!cs) {
+		sc->max_networks = 1;
+		sc->max_workers = 4;
+	} else {
+		cf_section_rules_push(cs, thread_config);
+		if (cf_section_parse(sc, sc, cs) < 0) {
+			talloc_free(sc);
+			fr_strerror_printf("Failed parsing scheduler configuration");
+			return NULL;
+		}
+
+		if (sc->max_networks != 1) sc->max_networks = 1;
+		if (sc->max_workers < 1) sc->max_workers = 1;
+		if (sc->max_workers > 64) sc->max_workers = 64;
+
 	}
 
 	/*

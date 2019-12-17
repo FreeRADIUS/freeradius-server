@@ -757,8 +757,6 @@ int main(int argc, char *argv[])
 	 *	Start the network / worker threads.
 	 */
 	{
-		int networks = config->num_networks;
-		int workers = config->num_workers;
 		fr_event_list_t *el = NULL;
 
 		/*
@@ -767,13 +765,10 @@ int main(int argc, char *argv[])
 		 *	it's own event list.
 		 */
 		if (!config->spawn_workers) {
-			networks = 0;
-			workers = 0;
 			el = main_loop_event_list();
 		}
 
 		sc = fr_schedule_create(NULL, el, &default_log, fr_debug_lvl,
-					networks, workers,
 					thread_instantiate,
 					cf_section_find(config->root_cs, "thread", CF_IDENT_ANY));
 		if (!sc) {

@@ -76,8 +76,6 @@ fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
 static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,CONF_ITEM *ci, CONF_PARSER const *rule);
 static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int lib_dir_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -145,15 +143,6 @@ static const CONF_PARSER log_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER thread_config[] = {
-	{ FR_CONF_OFFSET("num_networks", FR_TYPE_UINT32, main_config_t, num_networks), .dflt = STRINGIFY(1),
-	  .func = num_networks_parse },
-	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, main_config_t, num_workers), .dflt = STRINGIFY(4),
-	  .func = num_workers_parse },
-
-	CONF_PARSER_TERMINATOR
-};
-
 
 static const CONF_PARSER resources[] = {
 	/*
@@ -192,8 +181,6 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
 	{ FR_CONF_POINTER("resources", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) resources },
-
-	{ FR_CONF_POINTER("thread", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) thread_config, .ident2 = CF_IDENT_ANY },
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -343,42 +330,6 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	memcpy(&value, out, sizeof(value));
 
 	FR_INTEGER_COND_CHECK("max_request_time", value, (value != 0), 100);
-
-	memcpy(out, &value, sizeof(value));
-
-	return 0;
-}
-
-
-static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
-			      CONF_ITEM *ci, CONF_PARSER const *rule)
-{
-	int		ret;
-	uint32_t	value;
-
-	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
-
-	memcpy(&value, out, sizeof(value));
-
-	FR_INTEGER_BOUND_CHECK("thread.num_networks", value, ==, 1);
-
-	memcpy(out, &value, sizeof(value));
-
-	return 0;
-}
-
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
-			     CONF_ITEM *ci, CONF_PARSER const *rule)
-{
-	int		ret;
-	uint32_t	value;
-
-	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
-
-	memcpy(&value, out, sizeof(value));
-
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >, 0);
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <, 64);
 
 	memcpy(out, &value, sizeof(value));
 

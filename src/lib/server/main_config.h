@@ -61,9 +61,6 @@ struct main_config_s {
 	fr_time_delta_t	max_request_time;		//!< How long a request can be processed for before
 							//!< timing out.
 
-	uint32_t	num_networks;			//!< number of network threads
-	uint32_t	num_workers;			//!< number of network threads
-
 	bool		drop_requests;			//!< Administratively disable request processing.
 
 	char const	*log_dir;
