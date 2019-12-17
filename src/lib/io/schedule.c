@@ -106,6 +106,8 @@ typedef struct {
 
 	fr_schedule_child_status_t status;	//!< status of the worker
 	fr_network_t	*nr;			//!< the receive data structure
+
+	fr_event_timer_t const *ev;		//!< timer for stats_interval
 } fr_schedule_network_t;
 
 
@@ -135,6 +137,8 @@ struct fr_schedule_s {
 
 	fr_network_t	*single_network;	//!< for single-threaded mode
 	fr_worker_t	*single_worker;		//!< for single-threaded mode
+
+	fr_time_delta_t	stats_interval;		//!< print channel statistics
 
 	fr_schedule_network_t *sn;		//!< pointer to the (one) network thread
 };
@@ -236,6 +240,15 @@ fail:
 }
 
 
+static void stats_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	fr_schedule_network_t		*sn = talloc_get_type_abort(uctx, fr_schedule_network_t);
+
+	fr_network_stats_log(sn->nr, sn->sc->log);
+
+	(void) fr_event_timer_at(sn, el, &sn->ev, now + sn->sc->stats_interval, stats_timer, sn);
+}
+
 /** Initialize and run the network thread.
  *
  * @param[in] arg the fr_schedule_network_t
@@ -278,6 +291,11 @@ static void *fr_schedule_network_thread(void *arg)
 	sem_post(&sc->network_sem);
 
 	DEBUG3("Spawned asycn network 0");
+
+	/*
+	 *	Print out statistics for this network IO handler.
+	 */
+	if (sc->stats_interval) (void) fr_event_timer_in(sn, el, &sn->ev, sn->sc->stats_interval, stats_timer, sn);
 
 	/*
 	 *	Do all of the work.
