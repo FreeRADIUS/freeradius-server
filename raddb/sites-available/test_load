@@ -20,7 +20,7 @@ server load {
 	namespace = radius
 
 	#
-	#  Listen 
+	#  Listen
 	#
 	listen {
 		#
@@ -63,7 +63,7 @@ server load {
 
 			#
 			#  start_pps:: What packet/s rate to start at.
-			#			
+			#
 			start_pps	= 600
 
 			#
