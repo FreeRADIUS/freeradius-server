@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/server/cf_parse.h>
 
 #include <pthread.h>
 
@@ -362,6 +363,12 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
 	return 0;
 }
 
+static const CONF_PARSER schedule_config[] = {
+	{ FR_CONF_OFFSET("stats_interval", FR_TYPE_TIME_DELTA, fr_schedule_t, stats_interval), },
+
+	CONF_PARSER_TERMINATOR
+};
+
 /** Create a scheduler and spawn the child threads.
  *
  * @param[in] ctx		talloc context.
@@ -385,6 +392,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	unsigned int i;
 	fr_schedule_worker_t *sw, *next;
 	fr_schedule_t *sc;
+	CONF_SECTION *subcs;
 
 	/*
 	 *	Single-threaded mode MUST have event list, and zero
@@ -418,6 +426,19 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sc->log = logger;
 	sc->lvl = lvl;
 
+	/*
+	 *	Parse any scheduler-specific configuration.
+	 */
+	subcs = cf_section_find(cs, "scheduler", NULL);
+	if (subcs) {
+		cf_section_rule_push(subcs, schedule_config);
+		if (cf_section_parse(sc, sc, subcs) < 0) {
+			talloc_free(sc);
+			fr_strerror_printf("Failed parsing scheduler configuration");
+			return NULL;
+		}
+	}
+
 	sc->worker_thread_instantiate = worker_thread_instantiate;
 
 	sc->running = true;
@@ -444,8 +465,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		 *	Parent thread-specific data from the single_worker
 		 */
 		if (sc->worker_thread_instantiate) {
-			CONF_SECTION *subcs;
-
 			subcs = cf_section_find(sc->cs, "worker", "0");
 			if (!subcs) subcs = cf_section_find(sc->cs, "worker", NULL);
 
