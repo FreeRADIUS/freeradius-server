@@ -639,6 +639,10 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 	case LDAP_PROC_SUCCESS:
 		break;
 
+	case LDAP_PROC_BAD_DN:
+		ROPTIONAL(RDEBUG2, DEBUG2, "DN %s does not exist", dn);
+		break;
+
 	default:
 		ROPTIONAL(RPEDEBUG, PERROR, "Failed performing search");
 
