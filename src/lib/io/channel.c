@@ -528,7 +528,6 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	uint64_t		sequence;
 	fr_time_t		when, message_interval;
 	fr_channel_end_t	*responder;
-	uint64_t		their_view_of_my_sequence;
 	bool			active;
 
 	active = atomic_load(&ch->end[TO_REQUESTOR].active);
