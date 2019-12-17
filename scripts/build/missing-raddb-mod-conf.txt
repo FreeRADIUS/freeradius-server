@@ -10,3 +10,10 @@ WARNING: raddb/mods-available/rest has no reference for: fail_body_decode
 WARNING: raddb/mods-available/rest has no reference for: fail_header_decode
 WARNING: Module src/modules/rlm_securid has no raddb/mods-available/securid
 WARNING: Module src/modules/rlm_sigtran has no raddb/mods-available/sigtran
+WARNING: src/lib/io/schedule.c: 'stats_interval' has no reference in raddb/*
+WARNING: src/lib/server/trunk.c: 'close_delay' has no reference in raddb/*
+WARNING: src/lib/server/trunk.c: 'free_delay' has no reference in raddb/*
+WARNING: src/lib/server/trunk.c: 'manage_interval' has no reference in raddb/*
+WARNING: src/lib/server/trunk.c: 'open_delay' has no reference in raddb/*
+WARNING: src/lib/server/trunk.c: 'per_connection_max' has no reference in raddb/*
+WARNING: src/lib/server/trunk.c: 'per_connection_target' has no reference in raddb/*
