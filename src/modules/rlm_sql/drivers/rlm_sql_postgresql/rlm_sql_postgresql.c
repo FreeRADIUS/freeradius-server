@@ -622,7 +622,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		CONF_SECTION *cs;
 
 		cs = cf_section_find(conf, "states", NULL);
-		if (cs && (sql_sate_entries_from_cs(inst->states, cs) < 0)) return -1;
+		if (cs && (sql_state_entries_from_cs(inst->states, cs) < 0)) return -1;
 	}
 
 	return 0;

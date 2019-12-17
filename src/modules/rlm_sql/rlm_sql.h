@@ -259,5 +259,5 @@ int		sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
  */
 fr_trie_t	*sql_state_trie_alloc(TALLOC_CTX *ctx);
 int		sql_state_entries_from_table(fr_trie_t *states, sql_state_entry_t const table[]);
-int		sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *overrides);
+int		sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *overrides);
 sql_state_entry_t const		*sql_state_entry_find(fr_trie_t const *states, char const *sql_state);

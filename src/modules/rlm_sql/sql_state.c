@@ -150,7 +150,7 @@ int sql_state_entries_from_table(fr_trie_t *states, sql_state_entry_t const tabl
  *	- 0 on success.
  *	- -1 on failure.
  */
-int sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
+int sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 {
 	CONF_PAIR *cp = NULL;
 
