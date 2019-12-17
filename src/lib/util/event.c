@@ -630,8 +630,8 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 			 */
 			ret = kevent(el->kq, evset, count, NULL, 0, NULL);
 			if (!fr_cond_assert_msg(ret >= 0,
-						"FD was closed without being removed from the KQ: %s",
-						fr_syserror(errno))) {
+						"FD %i was closed without being removed from the KQ: %s",
+						ef->fd, fr_syserror(errno))) {
 				return -1;	/* Prevent the free, and leave the fd in the trees */
 			}
 		}
