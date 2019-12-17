@@ -1461,6 +1461,20 @@ int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats)
 	return 5;
 }
 
+void fr_network_stats_log(fr_network_t const *nr, fr_log_t const *log)
+{
+	int i;
+
+	/*
+	 *	Dump all of the channel statistics.
+	 */
+	for (i = 0; i < nr->max_workers; i++) {
+		if (!nr->workers[i]) continue;
+
+		fr_channel_stats_log(nr->workers[i]->channel, log, __FILE__, __LINE__);
+	}
+}
+
 static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	fr_network_t const *nr = ctx;
