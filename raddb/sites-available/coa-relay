@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #  This virtual server simplifies the process of sending CoA-Request or
@@ -156,10 +156,10 @@ server coa {
 
 					update control {
 
-						# NAS-IP-Address
+						#  NAS-IP-Address
 						&Tmp-IP-Address-0 := "%{1}"
 
-						# Acct-Session-Id
+						#  Acct-Session-Id
 						&Tmp-String-1 := "%{2}"
 
 					}
