@@ -176,7 +176,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	if (tmpl) {
 		vp_tmpl_t *vpt;
 
-		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
 
 		/*
 		 *	This is so we produce TMPL_TYPE_ATTR_UNDEFINED template that
@@ -229,7 +229,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
-		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
 		break;
 
 	case FR_TYPE_UINT32:
@@ -251,7 +251,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		}
 
 		*(uint32_t *)out = v;
-		cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint32_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint32_t *)out);
 	}
 		break;
 
@@ -266,7 +266,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 		*(uint8_t *)out = (uint8_t) v;
-		cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint8_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint8_t *)out);
 	}
 		break;
 
@@ -281,13 +281,13 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 		*(uint16_t *)out = (uint16_t) v;
-		cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint16_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint16_t *)out);
 	}
 		break;
 
 	case FR_TYPE_UINT64:
 		*(uint64_t *)out = strtoull(cp->value, NULL, 0);
-		cf_log_debug(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
 		break;
 
 	case FR_TYPE_SIZE:
@@ -297,13 +297,13 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
-		cf_log_debug(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(size_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(size_t *)out);
 		break;
 	}
 
 	case FR_TYPE_INT32:
 		*(int32_t *)out = strtol(cp->value, NULL, 10);
-		cf_log_debug(cs, "%.*s%s = %d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
 		break;
 
 	case FR_TYPE_STRING:
@@ -314,10 +314,10 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 *	Hide secrets when using "radiusd -X".
 		 */
 		if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
-			cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp));
+			if (!cp->printed) cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp));
 		} else {
-			cf_log_debug(cs, "%.*s%s = \"%pV\"", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
-				     fr_box_strvalue_buffer(cp->value));
+			if (!cp->printed) cf_log_debug(cs, "%.*s%s = \"%pV\"", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
+						       fr_box_strvalue_buffer(cp->value));
 		}
 
 		/*
@@ -395,7 +395,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	case FR_TYPE_TIME_DELTA:
 	{
 		fr_time_delta_t delta;
-		char *p;
 
 		if (fr_time_delta_from_str(&delta, cp->value, FR_TIME_RES_SEC) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
@@ -403,10 +402,12 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 
-		p = fr_value_box_asprint(NULL, fr_box_time_delta(delta), 0);
-
-		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), p);
-		talloc_free(p);
+		if (!cp->printed) {
+			char *p;
+			p = fr_value_box_asprint(NULL, fr_box_time_delta(delta), 0);
+			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), p);
+			talloc_free(p);
+		}
 
 		memcpy(out, &delta, sizeof(delta));
 	}
@@ -421,8 +422,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
-		cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
-			     (double) num);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
+					       (double) num);
 		memcpy(out, &num, sizeof(num));
 	}
 		break;
@@ -436,7 +437,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
-		cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), num);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), num);
 		memcpy(out, &num, sizeof(num));
 	}
 		break;
@@ -458,6 +459,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 finish:
 	cp->parsed = true;
+	cp->printed = true;
 
 	return rcode;
 }
@@ -763,6 +765,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		if (rule->func) {
 			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+			cp->printed = true;
 			func = rule->func;
 		}
 
