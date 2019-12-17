@@ -592,9 +592,17 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	MPRINT("\twhen - last signal = %"PRIu64" - %"PRIu64" = %"PRIu64"\n", when, responder->last_sent_signal, when - responder->last_sent_signal);
 	MPRINT("\tsequence - ack = %"PRIu64" - %"PRIu64" = %"PRIu64"\n", responder->sequence, responder->their_view_of_my_sequence, responder->sequence - responder->their_view_of_my_sequence);
 
-	their_view_of_my_sequence = responder->their_view_of_my_sequence;
-
-	if (responder->sequence_at_last_signal > their_view_of_my_sequence) return 0;
+#ifdef __APPLE__
+	/*
+	 *	If we've sent them a signal since the last ACK, they
+	 *	will receive it, and process the packets.  So we don't
+	 *	need to signal them again.
+	 *
+	 *	But... this doesn't appear to work on the Linux
+	 *	libkqueue implementation.
+	 */
+	if (responder->sequence_at_last_signal > responder->their_view_of_my_sequence) return 0;
+#endif
 
 	/*
 	 *	If we've received a new packet in the last while, OR
