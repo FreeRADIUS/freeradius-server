@@ -427,7 +427,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 			break;
 
 		case L_AUTH:
-			syslog_priority = LOG_AUTH;
+			syslog_priority = LOG_AUTH | LOG_INFO;
 			break;
 		}
 		syslog(syslog_priority,
