@@ -272,6 +272,11 @@ _Generic((_ct), \
 #define FR_TYPE_SUBSECTION	102
 #define FR_TYPE_VOID		103
 
+/*
+ *	It's a developer option and should be used carefully.
+ */
+#define FR_TYPE_HIDDEN     	0
+
 /** @name #CONF_PARSER type flags
  *
  * These flags should be or'd with another FR_TYPE_* value to create validation

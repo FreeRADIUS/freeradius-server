@@ -43,8 +43,8 @@ done
 #
 grep -l --include="*.c" -r FR_CONF_ src | egrep -v "${ignored_dirs}" | sort -n | uniq | \
 while read fr_conf_file; do
-	grep "FR_CONF_" $fr_conf_file | sed '/_DEPRECATED/d; /_SUBSECTION/d; s/^.*{ FR_CONF_.*("//g; s/".*$//g' | \
-	sort | uniq | egrep -v "${ignored_keys}" | \
+	grep "FR_CONF_" $fr_conf_file | egrep -v "(_DEPRECATED|_SUBSECTION|FR_TYPE_HIDDEN)" | \
+	sed 's/^.*{ FR_CONF_.*("//g; s/".*$//g' | sort | uniq | egrep -v "${ignored_keys}" | \
 	while read fr_conf; do
 		if ! grep -q "${fr_conf}.*=" -r raddb/; then
 			echo "WARNING: ${fr_conf_file}: '${fr_conf}' has no reference in raddb/*"
