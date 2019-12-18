@@ -1436,13 +1436,13 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	case FR_TYPE_DATE:
 	{
 		size_t i, length = 4;
-		int precision = FR_TIME_RES_SEC;
+		fr_time_res_t precision = FR_TIME_RES_SEC;
 		uint64_t date;
 		struct timespec ts;
 
 		if (enumv) {
 			length = enumv->flags.length;
-			precision = enumv->flags.type_size;
+			precision = (fr_time_res_t)enumv->flags.type_size;
 		}
 
 		/*
