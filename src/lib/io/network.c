@@ -746,9 +746,9 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 	num_messages = s->listen->num_messages;
 	if (num_messages < 8) num_messages = 8;
 
-//	size = s->listen->default_message_size * num_messages;
-//	if (!size) size = (1 << 17);
-	size = (1 << 17);
+	size = s->listen->default_message_size * num_messages;
+	if (size < (1 << 17)) size = (1 << 17);
+	if (size > (100 * 1024 * 1024)) size = (100 * 1024 * 1024);
 
 	/*
 	 *	Allocate the ring buffer for messages and packets.
