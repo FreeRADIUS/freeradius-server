@@ -387,10 +387,10 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		 *	Set the expiry time and close out the transaction.
 		 */
 		if (c->expires > 0) {
-			RDEBUG3("EXPIREAT \"%pV\" %u",
+			RDEBUG3("EXPIREAT \"%pV\" %" PRIu64,
 				fr_box_strvalue_len((char const *)c->key, c->key_len),
 				fr_unix_time_to_sec(c->expires));
-			if (redisAppendCommand(conn->handle, "EXPIREAT %b %u", c->key,
+			if (redisAppendCommand(conn->handle, "EXPIREAT %b %" PRIu64, c->key,
 					       c->key_len,
 					       fr_unix_time_to_sec(c->expires)) != REDIS_OK) goto append_error;
 			pipelined++;
