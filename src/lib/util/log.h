@@ -54,6 +54,7 @@ typedef enum {
 	L_INFO = 3,				//!< Informational message.
 	L_ERR = 4,				//!< Error message.
 	L_WARN = 5,				//!< Warning.
+	L_AUTH = 6,				//!< Authentication logs
 	L_DBG = 16,				//!< Only displayed when debugging is enabled.
 	L_DBG_INFO = 17,			//!< Info only displayed when debugging is enabled.
 	L_DBG_WARN = 18,			//!< Warning only displayed when debugging is enabled.

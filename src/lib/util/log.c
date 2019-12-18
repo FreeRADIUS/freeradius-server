@@ -157,6 +157,7 @@ fr_table_num_ordered_t const fr_log_levels[] = {
 	{ "Info  : ",		L_INFO		},
 	{ "Warn  : ",		L_WARN		},
 	{ "Error : ",		L_ERR		},
+	{ "Auth  : ",		L_AUTH		},
 	{ "WARN  : ",		L_DBG_WARN	},
 	{ "ERROR : ",		L_DBG_ERR	},
 	{ "WARN  : ",		L_DBG_WARN_REQ	},
@@ -423,6 +424,10 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 
 		case L_ERR:
 			syslog_priority = LOG_ERR;
+			break;
+
+		case L_AUTH:
+			syslog_priority = LOG_AUTH;
 			break;
 		}
 		syslog(syslog_priority,
