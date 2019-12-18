@@ -97,10 +97,10 @@ fr_time_t fr_time(void);
 #define fr_unix_time_from_msec(_x)	(fr_unix_time_t)fr_time_delta_from_msec((fr_time_delta_t)(_x))
 #define fr_unix_time_from_sec(_x)	(fr_unix_time_t)fr_time_delta_from_sec((fr_time_delta_t)(_x))
 
-#define fr_unix_time_to_nsec(_x)_x
-#define fr_unix_time_to_usec fr_time_delta_to_usec
-#define fr_unix_time_to_msec fr_time_delta_to_msec
-#define fr_unix_time_to_sec  fr_time_delta_to_sec
+#define fr_unix_time_to_nsec(_x)	(uint64_t)(_x)
+#define fr_unix_time_to_usec(_x) 	(uint64_t)fr_time_delta_to_usec(_x)
+#define fr_unix_time_to_msec(_x) 	(uint64_t)fr_time_delta_to_msec(_x)
+#define fr_unix_time_to_sec(_x)  	(uint64_t)fr_time_delta_to_sec(_x)
 
 static inline fr_unix_time_t fr_unix_time_from_timeval(struct timeval const *tv)
 {
