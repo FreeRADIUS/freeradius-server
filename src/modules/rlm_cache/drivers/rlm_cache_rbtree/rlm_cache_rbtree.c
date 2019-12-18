@@ -177,7 +177,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	Clear out old entries
 	 */
 	c = fr_heap_peek(driver->heap);
-	if (c && (c->expires < fr_time_to_sec(request->packet->timestamp))) {
+	if (c && (c->expires < fr_time_to_unix_time(request->packet->timestamp))) {
 		fr_heap_extract(driver->heap, c);
 		rbtree_deletebydata(driver->cache, c);
 		talloc_free(c);

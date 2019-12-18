@@ -89,12 +89,15 @@ int fr_time_start(void);
 int fr_time_sync(void);
 fr_time_t fr_time(void);
 
-#define fr_unix_time_from_nsec(_x) _x
-#define fr_unix_time_from_usec fr_time_delta_from_usec
-#define fr_unix_time_from_msec fr_time_delta_from_msec
-#define fr_unix_time_from_sec  fr_time_delta_from_sec
+/*
+ *	Need cast because of difference in sign
+ */
+#define fr_unix_time_from_nsec(_x)	(fr_unix_time_t)(_x)
+#define fr_unix_time_from_usec(_x)	(fr_unix_time_t)fr_time_delta_from_usec((fr_time_delta_t)(_x))
+#define fr_unix_time_from_msec(_x)	(fr_unix_time_t)fr_time_delta_from_msec((fr_time_delta_t)(_x))
+#define fr_unix_time_from_sec(_x)	(fr_unix_time_t)fr_time_delta_from_sec((fr_time_delta_t)(_x))
 
-#define fr_unix_time_to_nsec(_x) _x
+#define fr_unix_time_to_nsec(_x)_x
 #define fr_unix_time_to_usec fr_time_delta_to_usec
 #define fr_unix_time_to_msec fr_time_delta_to_msec
 #define fr_unix_time_to_sec  fr_time_delta_to_sec

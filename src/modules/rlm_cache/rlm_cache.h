@@ -79,8 +79,8 @@ typedef struct {
 	uint8_t const		*key;			//!< Key used to identify entry.
 	size_t			key_len;		//!< Length of key data.
 	long long int		hits;			//!< How many times the entry has been retrieved.
-	time_t			created;		//!< When the entry was created.
-	time_t			expires;		//!< When the entry expires.
+	fr_unix_time_t		created;		//!< When the entry was created.
+	fr_unix_time_t		expires;		//!< When the entry expires.
 
 	vp_map_t		*maps;			//!< Head of the maps list.
 } rlm_cache_entry_t;

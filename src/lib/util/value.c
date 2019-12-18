@@ -1438,7 +1438,6 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		size_t i, length = 4;
 		fr_time_res_t precision = FR_TIME_RES_SEC;
 		uint64_t date;
-		struct timespec ts;
 
 		if (enumv) {
 			length = enumv->flags.length;
