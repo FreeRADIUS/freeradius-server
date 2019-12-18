@@ -182,6 +182,11 @@ eap {
 #		auto_chain = no
 
 		#
+		#  allow_renegotiation:: Whether or not to allow cipher renegotiation.
+		#
+#		allow_renegotiation = no
+
+		#
 		#  .A chain of certificates to present to the client
 		#
 		#  Multiple chain sections can be specified to allow different
@@ -249,6 +254,11 @@ eap {
 			#  from multiple Root CAs.
 			#
 			ca_file = ${certdir}/rsa/ca.pem
+
+			#
+			#  verify_depth:: Maximum number of certificates we can traverse.
+			#
+#			verify_depth = 0
 
 			#
 			#  private_key_password:: Password used to encrypt the private key.
@@ -409,6 +419,12 @@ eap {
 		#  	openssl dhparam -out certs/dh 2048
 		#
 		dh_file = ${certdir}/dh
+
+		#
+		#  disable_single_dh_use:: It will instruct OpenSSL to always reuse a
+		#  exiting key when using temporary/ephemeral ECDH parameters.
+		#
+#		disable_single_dh_use = yes
 
 		#
 		#  fragment_size::

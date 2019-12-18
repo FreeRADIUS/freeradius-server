@@ -91,6 +91,11 @@ eap inner-eap {
 #		auto_chain = yes
 
 		#
+		#  allow_renegotiation:: Whether or not to allow cipher renegotiation.
+		#
+#		allow_renegotiation = no
+
+		#
 		#  chain { ... }:: See the `eap` module for common configuration explanation.
 		#
 		chain {
@@ -106,9 +111,20 @@ eap inner-eap {
 		ca_file = ${cadir}/rsa/ca.pem
 
 		#
+		#  verify_depth:: Maximum number of certificates we can traverse.
+		#
+#		verify_depth = 0
+
+		#
 		#  dh_file::
 		#
 		dh_file = ${certdir}/dh
+
+		#
+		#  disable_single_dh_use:: It will instruct OpenSSL to always reuse a
+		#  exiting key when using temporary/ephemeral ECDH parameters.
+		#
+#		disable_single_dh_use = yes
 
 		#
 		#  random_file:: See the `eap` module for common configuration explanation.

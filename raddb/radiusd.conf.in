@@ -273,6 +273,11 @@ log {
 	colourise = yes
 
 	#
+	#  line_number:: Print src file and line number in log messages.
+	#
+#	line_number = no
+
+	#
 	#  timestamp:: Add a timestamp to the start of every log message.
 	#
 	#  By default this is done with log levels of `-Xx` or `-xxx`
@@ -285,6 +290,11 @@ log {
 	#  NOTE: Is overridden by the `-T` command line option.
 	#
 #	timestamp = no
+
+	#
+	#  use_utc:: Print all timestamps in log messages as UTC.
+	#
+#	use_utc = no
 
 	#
 	#  file:: The logging messages for the server are appended to the

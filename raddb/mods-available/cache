@@ -83,6 +83,9 @@ cache {
 #			uses = 0
 #			lifetime = 0
 #			idle_timeout = 60
+#			held_trigger_min = 0
+#			held_trigger_max = 0.5
+#			max_pending = 0
 #		}
 #	}
 
@@ -138,6 +141,9 @@ cache {
 #			uses = 0
 #			lifetime = 0
 #			idle_timeout = 60
+#			held_trigger_min = 0
+#			held_trigger_max = 0.5
+#			max_pending = 0
 #		}
 #	}
 

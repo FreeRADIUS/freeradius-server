@@ -95,6 +95,23 @@ redis {
 		spare = 1
 
 		#
+		#  held_trigger_min:: If a connection is held for less than the specified
+		#  period, fire a trigger.
+		#
+#		held_trigger_min = 0
+
+		#
+		#  held_trigger_max:: If a connection is held for longer than the specified
+		#  period, fire a trigger.
+		#
+#		held_trigger_max = 0.5
+
+		#
+		#  max_pending:: Max number of pending connections to allow.
+		#
+#		max_pending = 0
+
+		#
 		#  uses:: Number of uses before the connection is closed.
 		#
 		#  NOTE: `0` means "infinite".
