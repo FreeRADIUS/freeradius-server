@@ -1468,7 +1468,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		switch (precision) {
 		default:
 		case FR_TIME_RES_SEC: /* external seconds, internal nanoseconds */
-			date *= 1000000000;
+			date *= NSEC;
 			break;
 
 		case FR_TIME_RES_MSEC:
@@ -1483,13 +1483,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			break;
 		}
 
-		/*
-		 *	Convert nanoseconds to struct timespec.
-		 */
-		ts.tv_sec = date / NSEC;
-		ts.tv_nsec = date % NSEC;
-
-		dst->vb_date = fr_time_from_timespec(&ts);
+		dst->vb_date = date;
 	}
 		break;
 
