@@ -75,6 +75,7 @@ struct cf_pair {
 	bool			pass2;		//!< do expansion in pass2.
 	bool			parsed;		//!< Was this item used during parsing?
 	bool			referenced;	//!< Was this item referenced in the config?
+	bool			printed;	//!< Don't debug print pairs twice
 };
 
 /** A section grouping multiple #CONF_PAIR
