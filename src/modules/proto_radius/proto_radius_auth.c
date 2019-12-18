@@ -146,6 +146,10 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
 	{ NULL }
 };
 
+
+#define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+
+
 /*
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
@@ -253,7 +257,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	msg = fr_vasprintf(request, fmt, ap);
 	va_end(ap);
 
-	RINFO("%s: [%pV%s%pV] (%s)%s",
+	RAUTH("%s: [%pV%s%pV] (%s)%s",
 	      msg,
 	      username ? &username->data : fr_box_strvalue("<no User-Name attribute>"),
 	      logit ? "/" : "",
