@@ -83,12 +83,13 @@ static size_t kevent_filter_table_len = NUM_ELEMENTS(kevent_filter_table);
 struct fr_event_timer {
 	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	fr_time_t		when;			//!< When this timer should fire.
-	fr_event_timer_cb_t		callback;		//!< Callback to execute when the timer fires.
+	fr_event_timer_cb_t	callback;		//!< Callback to execute when the timer fires.
 	void const		*uctx;			//!< Context pointer to pass to the callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
 	fr_event_timer_t const	**parent;		//!< Previous timer.
 	int32_t			heap_id;	       	//!< Where to store opaque heap data.
+	fr_event_timer_t	*next;			//!< in linked list of event timers
 };
 
 typedef enum {
@@ -321,6 +322,7 @@ struct fr_event_list {
 							///< handlers complete.
 
 	fr_event_fd_t		*fd_to_free;		//!< File descriptor events pending deletion.
+	fr_event_timer_t	*ev_to_add;		//!< event to add
 };
 
 /** Compare two timer events to see which one should occur first
@@ -1104,7 +1106,11 @@ int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
 	ev->linked_ctx = ctx;
 	ev->parent = ev_p;
 
-	if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
+	if (el->in_handler) {
+		ev->next = el->ev_to_add;
+		el->ev_to_add = ev;
+
+	} else if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
 		talloc_free(ev);
 		return -1;
 	}
@@ -1710,7 +1716,6 @@ service:
 			break;
 		}
 	}
-	el->in_handler = false;
 
 	/*
 	 *	Process any deferred frees performed
@@ -1724,13 +1729,42 @@ service:
 	talloc_list_free(&el->fd_to_free);
 
 	/*
-	 *	Run all of the timer events.
+	 *	Run all of the timer events.  Note that these can add
+	 *	new timers!
 	 */
 	if (fr_heap_num_elements(el->times) > 0) {
 		do {
 			when = el->now;
 		} while (fr_event_timer_run(el, &when) == 1);
 	}
+
+	/*
+	 *	New timers were added while running timers. Instead of
+	 *	being added to the main heap, they were added to the
+	 *	"in progress" list.  We can now add them to the main
+	 *	heap.
+	 *
+	 *	Doing it this way prevents the server from running
+	 *	into an infinite loop when it takes a long time to
+	 *	service FD events.  The timer callback MAY add a new
+	 *	timer which is in the past.  So the above loop could
+	 *	run forever.
+	 */
+	if (el->ev_to_add) {
+		fr_event_timer_t *ev, *next;
+
+		while ((ev = el->ev_to_add) != NULL) {
+			next = ev->next;
+			ev->next = NULL;
+
+			if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
+				talloc_free(ev);
+			}
+			el->ev_to_add = next;
+		}
+	}
+
+	el->in_handler = false;
 
 	/*
 	 *	Run all of the post-processing events.
