@@ -1526,16 +1526,16 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 
 	el->num_fd_events = num_fd_events;
 
-	if (timer_event_ready || num_fd_events) {
-		return num_fd_events + timer_event_ready;
-	}
-
 	/*
-	 *	Else there were no timer events ready BEFORE the call
-	 *	to kevent(), but there MUST be timer events ready now.
-	 *	Because otherwise kevent() wouldn't have returned.
+	 *	The caller doesn't really care what the value of the
+	 *	return code is.  Just that it's greater than zero if
+	 *	events needs servicing.
+	 *
+	 *	num_fd_events	  > 0 - if kevent() returns FD events
+	 *	timer_event_ready > 0 - if there were timers ready BEFORE calling kevent()
+	 *	wait              > 0 - if kevent() waited, and hit a timeout AFTER "timer_event_ready"
 	 */
-	return 1;
+	return num_fd_events + timer_event_ready + wait;
 }
 
 /** Service any outstanding timer or file descriptor events
