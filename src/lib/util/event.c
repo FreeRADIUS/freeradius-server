@@ -1478,13 +1478,18 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 *	Run the status callbacks.  It may tell us that the
 	 *	application has more work to do, in which case we
 	 *	re-set the timeout to be instant.
+	 *
+	 *	We only run these callbacks if the caller is otherwise
+	 *	idle.
 	 */
-	for (pre = fr_dlist_head(&el->pre_callbacks);
-	     pre != NULL;
-	     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
-		if (pre->callback(pre->uctx, wake ? *wake : 0) > 0) {
-			wake = &when;
-			when = 0;
+	if (wait) {
+		for (pre = fr_dlist_head(&el->pre_callbacks);
+		     pre != NULL;
+		     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
+			if (pre->callback(pre->uctx, wake ? *wake : 0) > 0) {
+				wake = &when;
+				when = 0;
+			}
 		}
 	}
 
