@@ -1531,7 +1531,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 */
 	if (!num_fd_events) {
 		el->now += when;
-		timer_event_ready = true;
+		if (wait) timer_event_ready = true;
 	}
 	/*
 	 *	The caller doesn't really care what the value of the
