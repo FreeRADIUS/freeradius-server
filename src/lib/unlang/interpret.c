@@ -598,7 +598,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
  */
 rlm_rcode_t unlang_interpret(REQUEST *request)
 {
-	int			priority;
+	int			priority = -1;
 	unlang_frame_action_t	fa = UNLANG_FRAME_ACTION_NEXT;
 
 	/*
@@ -621,8 +621,6 @@ rlm_rcode_t unlang_interpret(REQUEST *request)
 			fr_table_str_by_value(unlang_frame_action_table, fa, "<INVALID>"));
 		switch (fa) {
 		case UNLANG_FRAME_ACTION_NEXT:	/* Evaluate the current frame */
-			priority = -1;
-
 			rad_assert(stack->depth > 0);
 			rad_assert(stack->depth < UNLANG_STACK_MAX);
 
