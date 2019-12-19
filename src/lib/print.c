@@ -101,7 +101,7 @@ int fr_utf8_char(uint8_t const *str, ssize_t inlen)
 	}
 
 	if ((str[0] >= 0xf1) &&		/* 6 */
-	    (str[1] <= 0xf3) &&
+	    (str[0] <= 0xf3) &&
 	    (str[1] >= 0x80) &&
 	    (str[1] <= 0xbf) &&
 	    (str[2] >= 0x80) &&
