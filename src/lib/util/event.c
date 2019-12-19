@@ -1527,6 +1527,11 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	el->num_fd_events = num_fd_events;
 
 	/*
+	 *	If there are no FD events, we must have woken up from a timer.
+	 */
+	if (!num_fd_events) el->now += when;
+
+	/*
 	 *	The caller doesn't really care what the value of the
 	 *	return code is.  Just that it's greater than zero if
 	 *	events needs servicing.
