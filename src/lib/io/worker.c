@@ -148,7 +148,6 @@ struct fr_worker_s {
 	fr_channel_t		**channel;	//!< list of channels
 };
 
-static int worker_pre_event(void *ctx, fr_time_t wake);
 static void worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 
 /*
@@ -205,7 +204,6 @@ static void worker_exit(fr_worker_t *worker)
 	 *	any more requests.  They'll be
 	 *	signalled to stop before we exit.
 	 */
-	(void) fr_event_pre_delete(worker->el, worker_pre_event, worker);
 	(void) fr_event_post_delete(worker->el, worker_post_event, worker);
 	fr_event_loop_exit(worker->el, 1);
 }
@@ -1098,83 +1096,6 @@ static void worker_run_request(fr_worker_t *worker, REQUEST *request)
 	worker_send_reply(worker, request, size);
 }
 
-/** Run the event loop 'pre' callback
- *
- *  This function MUST DO NO WORK.  All it does is check if there's
- *  work, and tell the event code to return to the main loop if
- *  there's work to do.
- *
- * @param[in] ctx the worker
- * @param[in] wake the time when the event loop will wake up.
- */
-static int worker_pre_event(void *ctx, fr_time_t wake)
-{
-	bool sleeping;
-	int i;
-	fr_worker_t *worker = ctx;
-
-	WORKER_VERIFY;
-
-	/*
-	 *	See if we need to sleep, because if there's nothing
-	 *	more to do, we need to tell the other end of the
-	 *	channels that we're sleeping.
-	 */
-	sleeping = (fr_heap_num_elements(worker->runnable) == 0);
-	if (sleeping) sleeping = (fr_heap_num_elements(worker->localized.heap) == 0);
-	if (sleeping) sleeping = (fr_heap_num_elements(worker->to_decode.heap) == 0);
-
-	/*
-	 *	Tell the event loop that there is new work to do.  We
-	 *	don't want to wait for events, but instead check them,
-	 *	and start processing packets immediately.
-	 */
-	if (!sleeping) {
-		worker->was_sleeping = false;
-		return 1;
-	}
-
-	/*
-	 *	The application is polling the event loop, but has
-	 *	other work to do.  Don't do anything special here, as
-	 *	we will get called again on the next round of the
-	 *	event loop.
-	 */
-	if (wake) return 0;
-
-	DEBUG3("Sleeping running %u, localized %u, to_decode %u",
-	       fr_heap_num_elements(worker->runnable),
-	       fr_heap_num_elements(worker->localized.heap),
-	       fr_heap_num_elements(worker->to_decode.heap));
-	DEBUG3("Requests %" PRIu64 ", decoded %" PRIu64 ", replied %" PRIu64 " active %" PRIu64 "",
-	       worker->stats.in, worker->num_decoded,
-	       worker->stats.out, worker->num_active);
-
-	/*
-	 *	We were sleeping, don't send another signal that we
-	 *	are still sleeping.
-	 */
-	if (worker->was_sleeping) {
-		DEBUG3("Was sleeping, not re-signaling");
-		return 0;
-	}
-
-	/*
-	 *	Nothing more to do, and the event loop has us sleeping
-	 *	for a period of time.  Signal the producers that we're
-	 *	sleeping.  The fr_channel_responder_sleeping() function
-	 *	will take care of skipping the signal if there are no
-	 *	outstanding requests for it.
-	 */
-	for (i = 0; i < worker->max_channels; i++) {
-		if (!worker->channel[i]) continue;
-
-		(void) fr_channel_responder_sleeping(worker->channel[i]);
-	}
-	worker->was_sleeping = true;
-
-	return 0;
-}
 
 /**
  *  Track a channel in the "to_decode" or "localized" heap.
@@ -1292,7 +1213,6 @@ void fr_worker_destroy(fr_worker_t *worker)
 		fr_channel_responder_ack_close(worker->channel[i]);
 	}
 
-	(void) fr_event_pre_delete(worker->el, worker_pre_event, worker);
 	(void) fr_event_post_delete(worker->el, worker_post_event, worker);
 
 	talloc_free(worker);
@@ -1343,12 +1263,6 @@ nomem:
 	worker->message_set_size = 1024;
 	worker->ring_buffer_size = (1 << 17);
 	worker->max_request_time = fr_time_delta_from_sec(30);
-
-	if (fr_event_pre_insert(worker->el, worker_pre_event, worker) < 0) {
-		fr_strerror_printf("Failed adding pre-check to event list");
-		talloc_free(worker);
-		return NULL;
-	}
 
 	/*
 	 *	The worker thread starts now.  Manually initialize it,
