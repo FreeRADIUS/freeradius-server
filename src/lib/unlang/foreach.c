@@ -124,13 +124,11 @@ static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
-	unlang_t			*instruction = frame->instruction;
+	unlang_t			*instruction;
 	unlang_frame_state_foreach_t	*foreach = NULL;
 	unlang_group_t			*g;
 	int				i, foreach_depth = 0;
 	VALUE_PAIR			*vps;
-
-	g = unlang_generic_to_group(instruction);
 
 	if (stack->depth >= UNLANG_STACK_MAX) {
 		ERROR("Internal sanity check failed: module stack is too deep");
@@ -138,6 +136,8 @@ static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 	}
 
 	frame = &stack->frame[stack->depth];
+	instruction = frame->instruction;
+	g = unlang_generic_to_group(instruction);
 
 	/*
 	 *	Ensure any breaks terminate here...
