@@ -360,13 +360,6 @@ include scripts/docker/crossbuild/crossbuild.mk
 endif
 
 #
-#  Profiling
-#
-ifneq "$(findstring profile,$(MAKECMDGOALS))" ""
-include scripts/build/profile.mk
-endif
-
-#
 #  The "coverage" target
 #
 ifneq "$(findstring coverage,$(MAKECMDGOALS))" ""
