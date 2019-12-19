@@ -1521,7 +1521,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 
 	el->num_fd_events = num_fd_events;
 
-	return num_fd_events + (timer_event_ready ? 1 : 0);
+	return num_fd_events + timer_event_ready;
 }
 
 /** Service any outstanding timer or file descriptor events
