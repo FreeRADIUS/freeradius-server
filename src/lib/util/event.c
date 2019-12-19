@@ -1434,6 +1434,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	fr_event_pre_t		*pre;
 	int			num_fd_events;
 	bool			timer_event_ready = false;
+	fr_event_timer_t	*ev;
 
 	el->num_fd_events = 0;
 
@@ -1443,38 +1444,34 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	}
 
 	/*
-	 *	Find the first event.  If there's none, we wait
-	 *	on the socket forever.
+	 *	By default we wait for 0ns, which means returning
+	 *	immediately from kevent().
 	 */
 	when = 0;
 	wake = &when;
 	el->now = now;
 
-	if (wait) {
-		if (fr_heap_num_elements(el->times) > 0) {
-			fr_event_timer_t *ev;
-
-			ev = fr_heap_peek(el->times);
-			if (!fr_cond_assert(ev)) {
-				fr_strerror_printf("Timer heap says it is non-empty, but there are no entries in it");
-				return -1;
-			}
-
-			/*
-			 *	Next event is in the future, get the time
-			 *	between now and that event.
-			 */
-			if (ev->when > el->now) when = ev->when - el->now;
-			wake = &when;
+	/*
+	 *	See when we have to wake up.  Either now, if the timer
+	 *	events are in the past.  Or, we wait for a future
+	 *	timer event.
+	 */
+	ev = fr_heap_peek(el->times);
+	if (ev) {
+		if (ev->when <= el->now) {
 			timer_event_ready = true;
-		} else {
-			wake = NULL;
-		}
-	} else {
-		fr_event_timer_t *ev;
 
-		ev = fr_heap_peek(el->times);
-		if (ev && (ev->when <= el->now)) timer_event_ready = true;
+		} else if (wait) {
+			when = ev->when - el->now;
+
+		} /* else we're not waiting, leave "when == 0" */
+
+	} else if (wait) {
+		/*
+		 *	We're asked to wait, but there's no timer
+		 *	event.  We can then sleep forever.
+		 */
+		wake = NULL;
 	}
 
 	/*
