@@ -1744,6 +1744,8 @@ service:
 	 */
 	talloc_list_free(&el->fd_to_free);
 
+	el->now = el->time();
+
 	/*
 	 *	Run all of the timer events.  Note that these can add
 	 *	new timers!
