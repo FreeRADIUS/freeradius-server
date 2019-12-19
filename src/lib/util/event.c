@@ -1744,6 +1744,14 @@ service:
 	 */
 	talloc_list_free(&el->fd_to_free);
 
+	/*
+	 *	We must call el->time() again here, else the event
+	 *	list's time gets updated too infrequently, and we
+	 *	can end up with a situation where timers are
+	 *	serviced much later than they should be, which can
+	 *	cause strange interaction effects, spurious calls
+	 *	to kevent, and busy loops.
+	 */
 	el->now = el->time();
 
 	/*
