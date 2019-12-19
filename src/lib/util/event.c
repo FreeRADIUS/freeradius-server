@@ -1527,20 +1527,21 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	el->num_fd_events = num_fd_events;
 
 	/*
-	 *	If there are no FD events, we must have woken up from a timer.
+	 *	If there are no FD events, we must have woken up from a timer
 	 */
-	if (!num_fd_events) el->now += when;
-
+	if (!num_fd_events) {
+		el->now += when;
+		timer_event_ready = true;
+	}
 	/*
 	 *	The caller doesn't really care what the value of the
 	 *	return code is.  Just that it's greater than zero if
 	 *	events needs servicing.
 	 *
 	 *	num_fd_events	  > 0 - if kevent() returns FD events
-	 *	timer_event_ready > 0 - if there were timers ready BEFORE calling kevent()
-	 *	wait              > 0 - if kevent() waited, and hit a timeout AFTER "timer_event_ready"
+	 *	timer_event_ready > 0 - if there were timers ready BEFORE or AFTER calling kevent()
 	 */
-	return num_fd_events + timer_event_ready + wait;
+	return num_fd_events + timer_event_ready;
 }
 
 /** Service any outstanding timer or file descriptor events
