@@ -641,13 +641,12 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
  */
 void fr_pair_list_free(VALUE_PAIR **vps)
 {
-	VALUE_PAIR	*vp;
-	fr_cursor_t	cursor;
+	VALUE_PAIR	*vp, *next;
 
 	if (!vps || !*vps) return;
 
-	fr_cursor_init(&cursor, vps);
-	while ((vp = fr_cursor_remove(&cursor))) {
+	for (vp = *vps; vp != NULL; vp = next) {
+		next = vp->next;
 		VP_VERIFY(vp);
 		talloc_free(vp);
 	}
@@ -779,7 +778,6 @@ void *fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx)
  */
 VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag)
 {
-	fr_cursor_t 	cursor;
 	VALUE_PAIR	*vp;
 
 	/* List head may be NULL if it contains no VPs */
@@ -789,9 +787,7 @@ VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_
 
 	if (!da) return NULL;
 
-	for (vp = fr_cursor_init(&cursor, &head);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	for (vp = head; vp != NULL; vp = vp->next) {
 		if ((da == vp->da) && TAG_EQ(tag, vp->tag)) return vp;
 	}
 
@@ -805,7 +801,6 @@ VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_
  */
 VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned int attr, int8_t tag)
 {
-	fr_cursor_t 	cursor;
 	VALUE_PAIR	*vp;
 
 	/* List head may be NULL if it contains no VPs */
@@ -813,9 +808,7 @@ VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned 
 
 	LIST_VERIFY(head);
 
-	for (vp = fr_cursor_init(&cursor, &head);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	for (vp = head; vp != NULL; vp = vp->next) {
 		if (!fr_dict_attr_is_top_level(vp->da)) continue;
 
 	     	if (vendor > 0) {
@@ -838,7 +831,6 @@ VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned 
  */
 VALUE_PAIR *fr_pair_find_by_child_num(VALUE_PAIR *head, fr_dict_attr_t const *parent, unsigned int attr, int8_t tag)
 {
-	fr_cursor_t 		cursor;
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp;
 
@@ -850,9 +842,7 @@ VALUE_PAIR *fr_pair_find_by_child_num(VALUE_PAIR *head, fr_dict_attr_t const *pa
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) return NULL;
 
-	for (vp = fr_cursor_init(&cursor, &head);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	for (vp = head; vp != NULL; vp = vp->next) {
 		if ((da == vp->da) && TAG_EQ(tag, vp->tag)) return vp;
 	}
 
