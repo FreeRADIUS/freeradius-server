@@ -654,7 +654,7 @@ static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
 			} else {
 				auth_message(inst, request, true, "Login OK");
 			}
-		} else if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
+		} else if (request->reply->code == FR_CODE_ACCESS_REJECT) {
 			vp = fr_pair_find_by_da(request->packet->vps, attr_module_failure_message, TAG_ANY);
 			if (vp) {
 				auth_message(inst, request, false, "Login incorrect (%pV)", &vp->data);
