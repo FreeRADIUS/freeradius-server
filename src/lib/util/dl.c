@@ -576,7 +576,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 
 	dl = talloc_zero(dl_loader, dl_t);
 	if (!dl) {
-		if(handle) dlclose(handle);
+		dlclose(handle);
 		return NULL;
 	}
 
