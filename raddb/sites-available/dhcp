@@ -73,7 +73,7 @@ listen {
 		#       reply:DHCP-Server-IP-Address
 		#       reply:DHCP-DHCP-Server-Identifier
 		#
-		src_ipaddr = 127.0.0.1
+#		src_ipaddr = 127.0.0.1
 
 		#  The DHCP server defaults to allowing broadcast packets.
 		#  Set this to "no" only when the server receives *all* packets
