@@ -2098,6 +2098,7 @@ static rlm_rcode_t session_load_resume(void *instance, UNUSED void *thread,
 			return common_failure_notification_enter(inst, request, eap_session);
 
 		}
+		/* FALL-THROUGH */
 
 	/*
 	 *	Policy rejected the user
