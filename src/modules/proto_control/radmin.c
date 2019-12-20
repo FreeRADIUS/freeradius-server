@@ -1150,7 +1150,10 @@ int main(int argc, char **argv)
 		 *	valid in any context.
 		 */
 		if (strcmp(line, "reconnect") == 0) {
-			if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
+			if (do_connect(&sockfd, file, server) < 0) {
+				radmin_free(line);
+				exit(EXIT_FAILURE);
+			}
 			goto next;
 		}
 
@@ -1164,6 +1167,7 @@ int main(int argc, char **argv)
 		 *	Quit the program
 		 */
 		if (strcmp(line, "quit") == 0) {
+			radmin_free(line);
 			break;
 		}
 
@@ -1171,7 +1175,10 @@ int main(int argc, char **argv)
 		 *	Exit the current context.
 		 */
 		if (strcmp(line, "exit") == 0) {
-			if (!stack_depth) break;
+			if (!stack_depth) {
+				radmin_free(line);
+				break;
+			}
 
 			stack_depth--;
 			*stack[stack_depth] = '\0';
@@ -1219,6 +1226,7 @@ int main(int argc, char **argv)
 		len = cmd_copy(line);
 		if (len < 0) {
 			exit_status = EXIT_FAILURE;
+			radmin_free(line);
 			break;
 		}
 
@@ -1229,6 +1237,7 @@ int main(int argc, char **argv)
 			if (!quiet) fprintf(stderr, "... reconnecting ...\n");
 
 			if (do_connect(&sockfd, file, server) < 0) {
+				radmin_free(line);
 				exit(EXIT_FAILURE);
 			}
 
@@ -1236,6 +1245,7 @@ int main(int argc, char **argv)
 			if (retries < 2) goto retry;
 
 			fprintf(stderr, "Failed to connect to server\n");
+			radmin_free(line);
 			exit(EXIT_FAILURE);
 
 		} else if (result == FR_CONDUIT_FAIL) {
@@ -1248,6 +1258,7 @@ int main(int argc, char **argv)
 			if (stack_depth >= (MAX_STACK - 1)) {
 				fprintf(stderr, "Too many sub-contexts running command\n");
 				exit_status = EXIT_FAILURE;
+				radmin_free(line);
 				break;
 			}
 
