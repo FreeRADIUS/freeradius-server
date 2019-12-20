@@ -1216,7 +1216,7 @@ void fr_worker(fr_worker_t *worker)
  *
  *	This should be run ONLY in single-threaded mode!
  */
-void fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx)
+void fr_worker_post_event(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 	REQUEST *request;
