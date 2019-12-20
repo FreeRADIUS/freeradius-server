@@ -250,6 +250,7 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 		rad_assert(ch != NULL);
 
 		ok = false;
+
 		/*
 		 *	Locate the signalling channel in the list
 		 *	of channels.
