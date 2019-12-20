@@ -516,6 +516,9 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 }
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
+static bool profile_on = false;
+static char *profile_filename = NULL;
+
 static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	fr_value_box_t box;
@@ -529,6 +532,11 @@ static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ct
 	if (box.vb_bool) {
 		char *filename;
 
+		if (profile_on) {
+			fprintf(fp_err, "Profiling is already on, to file %s\n", profile_filename);
+			return -1;
+		}
+
 		if (info->argc >= 2) {
 			memcpy(&filename, &info->argv[1], sizeof(filename)); /* const issues */
 		} else {
@@ -536,19 +544,35 @@ static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ct
 		}
 
 		if (filename) {
-			ProfilerStart(filename);
+			MEM(profile_filename = talloc_strdup(radmin_ctx, filename));
 		} else {
 			pid_t pid = getpid();
-
-			filename = talloc_asprintf(NULL, "/tmp/freeradius-profile.%u", pid);
-			ProfilerStart(filename);
-			talloc_free(filename);
+			MEM(profile_filename = talloc_asprintf(NULL, "/tmp/freeradius-profile.%u.prof", pid));
 		}
+		ProfilerStart(filename);
 
-	} else {
+	} else if (profile_on) {
 		ProfilerStop();
+		profile_on = false;
+		talloc_free(profile_filename);
+
+	}
+	/*
+	 *	Else profiling is already off, allow the admin to turn
+	 *	it off again without producing an error
+	 */
+
+	return 0;
+}
+
+static int cmd_show_profile_status(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	if (!profile_on) {
+		fprintf(fp, "off\n");
+		return 0;
 	}
 
+	fprintf(fp, "on %s\n", profile_filename);
 	return 0;
 }
 #endif
@@ -983,6 +1007,21 @@ static fr_cmd_table_t cmd_table[] = {
 		.read_only = false,
 	},
 
+	{
+		.parent = "show",
+		.name = "debug",
+		.help = "Show debug settings.",
+		.read_only = true
+	},
+
+	{
+		.parent = "show debug",
+		.name = "level",
+		.func = cmd_show_debug_level,
+		.help = "show debug level",
+		.read_only = true,
+	},
+
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
 	{
 		.parent = "set",
@@ -999,22 +1038,22 @@ static fr_cmd_table_t cmd_table[] = {
 		.help = "Change the profiler status on/off, and potentially the filename",
 		.read_only = false,
 	},
-#endif
 
 	{
 		.parent = "show",
-		.name = "debug",
-		.help = "Show debug settings.",
+		.name = "profile",
+		.help = "Show profile settings.",
 		.read_only = true
 	},
 
 	{
-		.parent = "show debug",
-		.name = "level",
-		.func = cmd_show_debug_level,
-		.help = "show debug level",
+		.parent = "show profile",
+		.name = "status",
+		.func = cmd_show_profile_status,
+		.help = "show profile status, including filename if profiling is on.",
 		.read_only = true,
 	},
+#endif
 
 	CMD_TABLE_END
 };
