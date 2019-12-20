@@ -134,7 +134,6 @@ struct fr_worker_s {
 	fr_channel_t		**channel;	//!< list of channels
 };
 
-static void worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now);
 
 /** Callback which handles a message being received on the worker side.
@@ -162,7 +161,6 @@ static void worker_exit(fr_worker_t *worker)
 	 *	any more requests.  They'll be
 	 *	signalled to stop before we exit.
 	 */
-	(void) fr_event_post_delete(worker->el, worker_post_event, worker);
 	fr_event_loop_exit(worker->el, 1);
 }
 
@@ -863,32 +861,6 @@ nak:
 }
 
 
-/** Get a runnable request
- *
- * @param[in] worker the worker
- * @param[in] now the current time
- * @return
- *	- NULL on nothing to run
- *	- REQUEST the runnable request
- */
-static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
-{
-	REQUEST			*request;
-
-	/*
-	 *	Grab a runnable request, and resume it.
-	 */
-	request = fr_heap_pop(worker->runnable);
-	if (!request) return NULL;
-
-	DEBUG3("Found runnable request");
-	REQUEST_VERIFY(request);
-	rad_assert(request->runnable_id < 0);
-	fr_time_tracking_resume(&request->async->tracking, now);
-	return request;
-}
-
-
 /** Run a request
  *
  *  Until it either yields, or is done.
@@ -898,13 +870,18 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
  *
  * @param[in] worker the worker
  * @param[in] request the request to process
+ * @param[in] now the current time
  */
-static void worker_run_request(fr_worker_t *worker, REQUEST *request)
+static void worker_run_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
 {
 	ssize_t size = 0;
 	rlm_rcode_t final;
 
 	WORKER_VERIFY;
+
+	REQUEST_VERIFY(request);
+	rad_assert(request->runnable_id < 0);
+	fr_time_tracking_resume(&request->async->tracking, now);
 
 	rad_assert(request->parent == NULL);
 	rad_assert(request->async->process != NULL);
@@ -1058,8 +1035,6 @@ void fr_worker_destroy(fr_worker_t *worker)
 		fr_channel_responder_ack_close(worker->channel[i]);
 	}
 
-	(void) fr_event_post_delete(worker->el, worker_post_event, worker);
-
 	talloc_free(worker);
 }
 
@@ -1154,12 +1129,6 @@ nomem:
 		goto fail;
 	}
 
-	if (fr_event_post_insert(worker->el, worker_post_event, worker) < 0) {
-		fr_strerror_printf("Failed inserting post-processing event");
-		talloc_free(worker->runnable);
-		goto fail2;
-	}
-
 	/*
 	 *	Set the initial cleanup timer
 	 */
@@ -1180,32 +1149,6 @@ fr_event_list_t *fr_worker_el(fr_worker_t *worker)
 	return worker->el;
 }
 
-static void worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
-{
-	fr_time_t now;
-	REQUEST *request;
-	fr_worker_t *worker = uctx;
-
-	WORKER_VERIFY;
-
-	now = fr_time();
-
-	/*
-	 *	Get a runnable request.  If there isn't one, continue.
-	 *
-	 *	@todo - check for multiple requests, and go process
-	 *	many, so long as we haven't ignored the network side
-	 *	for too long.
-	 */
-	request = fr_worker_get_request(worker, now);
-	if (!request) return;
-
-	/*
-	 *	Run the request, and either track it as
-	 *	yielded, or send a reply.
-	 */
-	worker_run_request(worker, request);
-}
 
 /** The main loop and entry point of the worker thread.
  *
@@ -1218,6 +1161,7 @@ void fr_worker(fr_worker_t *worker)
 	while (true) {
 		bool wait_for_event;
 		int num_events;
+		REQUEST *request;
 
 		WORKER_VERIFY;
 
@@ -1252,6 +1196,14 @@ void fr_worker(fr_worker_t *worker)
 			DEBUG3("Servicing events");
 			fr_event_service(worker->el);
 		}
+
+		/*
+		 *	Grab a runnable request, and resume it.
+		 */
+		request = fr_heap_pop(worker->runnable);
+		if (!request) continue;
+
+		worker_run_request(worker, request, fr_time());
 	}
 }
 
