@@ -1212,6 +1212,21 @@ void fr_worker(fr_worker_t *worker)
 	}
 }
 
+/** Post-event handler
+ *
+ *	This should be run ONLY in single-threaded mode!
+ */
+void fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
+	REQUEST *request;
+
+	request = fr_heap_pop(worker->runnable);
+	if (!request) return;
+
+	worker_run_request(worker, request, now);
+}
+
 
 /** Print debug information about the worker structure
  *

@@ -497,6 +497,14 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		(void) fr_network_worker_add(sc->single_network, sc->single_worker);
 		DEBUG("Scheduler created in single-threaded mode");
 
+		/*
+		 *	Add the event which processes REQUEST packets.
+		 */
+		if (fr_event_post_insert(el, fr_worker_post_event, sc->single_worker) < 0) {
+			fr_strerror_printf("Failed inserting post-processing event");
+			goto st_fail;
+		}
+
 		return sc;
 	}
 
