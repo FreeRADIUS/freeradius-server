@@ -34,15 +34,6 @@
  *  The network thread then sends the worker new packets, which the
  *  worker receives and processes.
  *
- *  The lifecycle of a packet MUST be carefully managed.  Initially,
- *  messages are put into the "to_decode" heap.  The heap is ordered
- *  by (priority, time), so that high priority packets take precedence
- *  over low priority packets.
- *
- *  Both queues have linked lists of received packets, ordered by
- *  time.  This list is used to clean up packets which have been in
- *  the heap for "too long", in worker_check_timeouts().
- *
  *  When a packet is decoded, it is put into the "runnable" heap, and
  *  also into the "time_order" heap. The main loop fr_worker() then
  *  pulls new requests off of this heap and runs them.  The
@@ -117,8 +108,6 @@ struct fr_worker_s {
 	size_t			talloc_pool_size; //!< for each REQUEST
 
 
-	fr_worker_heap_t	to_decode;	//!< messages from the master, to be decoded.
-
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
 	fr_heap_t		*time_order;	//!< time ordered heap of requests
 	rbtree_t		*dedup;		//!< de-dup tree
@@ -146,35 +135,7 @@ struct fr_worker_s {
 };
 
 static void worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
-
-/*
- *	We need wrapper macros because we have multiple instances of
- *	the same code.
- */
-#define WORKER_HEAP_INIT(_name, _func) do { \
-		fr_dlist_init(&worker->_name.list, fr_channel_data_t, request.entry); \
-		worker->_name.heap = fr_heap_create(worker, _func, fr_channel_data_t, channel.heap_id); \
-		if (!worker->_name.heap) { \
-			talloc_free(worker); \
-			goto nomem; \
-		} \
-	} while (0)
-
-#define WORKER_HEAP_INSERT(_name, _var) do { \
-		(void) fr_heap_insert(worker->_name.heap, _var);       \
-		fr_dlist_insert_head(&worker->_name.list, _var);       \
-	} while (0)
-
-#define WORKER_HEAP_POP(_name, _var) do { \
-		_var = fr_heap_pop(worker->_name.heap);                \
-		if (_var) fr_dlist_remove(&worker->_name.list, _var);  \
-	} while (0)
-
-#define WORKER_HEAP_EXTRACT(_name, _var) do { \
-               (void) fr_heap_extract(worker->_name.heap, _var);       \
-               fr_dlist_remove(&worker->_name.list, _var);	       \
-       } while (0)
-
+static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now);
 
 /** Callback which handles a message being received on the worker side.
  *
@@ -189,7 +150,7 @@ static void worker_recv_request(void *ctx, fr_channel_t *ch, fr_channel_data_t *
 	worker->stats.in++;
 	DEBUG3("Received request %" PRIu64 "", worker->stats.in);
 	cd->channel.ch = ch;
-	WORKER_HEAP_INSERT(to_decode, cd);
+	worker_request_bootstrap(worker, cd, fr_time());
 }
 
 static void worker_exit(fr_worker_t *worker)
@@ -690,41 +651,6 @@ static void worker_max_request_timer(fr_worker_t *worker)
 	}
 }
 
-/** Check timeouts on the various queues
- *
- *  This function checks and enforces timeouts on the multiple worker
- *  queues.  The high priority events can starve low priority ones.
- *  When that happens, the low priority events will be in the queues for
- *  "too long", and will need to be cleaned up.
- *
- * @param[in] worker the worker
- * @param[in] now the current time
- */
-static void worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
-{
-	fr_channel_data_t	*cd;
-	fr_time_t		waiting;
-
-	/*
-	 *	Check the "to_decode" queue for old packets.
-	 */
-	while ((cd = fr_dlist_tail(&worker->to_decode.list)) != NULL) {
-		waiting = now - cd->m.when;
-
-		/*
-		 *	Waiting too long, delete it.
-		 */
-		if (waiting > worker->max_request_time) {
-			WORKER_HEAP_EXTRACT(to_decode, cd);
-			ERROR("NAKing request - waited %pVs (too long) to extract packet from to_decode. "
-			      "A module is blocking or load is too high", fr_box_time_delta(waiting));
-
-			worker_nak(worker, cd, now);
-			continue;
-		}
-	}
-}
-
 /*
  *	talloc_typed_asprintf() is horrifically slow for printing
  *	simple numbers.
@@ -749,49 +675,16 @@ static char *itoa_internal(TALLOC_CTX *ctx, uint64_t number)
 }
 
 
-/** Get a runnable request
- *
- * @param[in] worker the worker
- * @param[in] now the current time
- * @return
- *	- NULL on nothing to run
- *	- REQUEST the runnable request
- */
-static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
+static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
 {
 	bool			is_dup;
 	int			ret = -1;
-	fr_channel_data_t	*cd;
 	REQUEST			*request;
-	fr_listen_t const	*listen;
 	TALLOC_CTX		*ctx;
+	fr_listen_t const	*listen;
 
-	/*
-	 *	Grab a runnable request, and resume it.
-	 */
-	request = fr_heap_pop(worker->runnable);
-	if (request) {
-		DEBUG3("Found runnable request");
-		REQUEST_VERIFY(request);
-		rad_assert(request->runnable_id < 0);
-		fr_time_tracking_resume(&request->async->tracking, now);
-		return request;
-	}
-
-	/*
-	 *	Find either a localized message, or one which is in
-	 *	the "to_decode" queue.
-	 */
-	do {
-		WORKER_HEAP_POP(to_decode, cd);
-		if (!cd) {
-			DEBUG3("decode list is empty");
-			return NULL;
-		}
-
-		DEBUG3("Found request to decode");
-		worker->num_decoded++;
-	} while (!cd);
+	DEBUG3("Found request to decode");
+	worker->num_decoded++;
 
 	ctx = request = request_alloc(NULL);
 	if (!request) goto nak;
@@ -849,7 +742,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		talloc_free(ctx);
 nak:
 		worker_nak(worker, cd, now);
-		return NULL;
+		return;
 	}
 
 	/*
@@ -861,7 +754,7 @@ nak:
 	if (!request->async->process) {
 		RERROR("Protocol failed to set 'process' function");
 		worker_nak(worker, cd, now);
-		return NULL;
+		return;
 	}
 
 	/*
@@ -886,7 +779,7 @@ nak:
 			if (is_dup) {
 				RDEBUG("Got duplicate packet notice after we had sent a reply - ignoring");
 				fr_channel_null_reply(request->async->channel);
-				return NULL;
+				return;
 			}
 			goto insert_new;
 		}
@@ -930,7 +823,7 @@ nak:
 			 */
 			unlang_interpret_signal(old, FR_SIGNAL_DUP);
 			worker->stats.dup++;
-			return NULL;
+			return;
 		}
 
 		/*
@@ -962,9 +855,36 @@ nak:
 	 *	state of the request.
 	 */
 	fr_time_tracking_start(&worker->tracking, &request->async->tracking, now);
+	fr_time_tracking_yield(&request->async->tracking, now);
 	worker->num_active++;
 	rad_assert(request->runnable_id < 0);
 
+	(void) fr_heap_insert(worker->runnable, request);
+}
+
+
+/** Get a runnable request
+ *
+ * @param[in] worker the worker
+ * @param[in] now the current time
+ * @return
+ *	- NULL on nothing to run
+ *	- REQUEST the runnable request
+ */
+static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
+{
+	REQUEST			*request;
+
+	/*
+	 *	Grab a runnable request, and resume it.
+	 */
+	request = fr_heap_pop(worker->runnable);
+	if (!request) return NULL;
+
+	DEBUG3("Found runnable request");
+	REQUEST_VERIFY(request);
+	rad_assert(request->runnable_id < 0);
+	fr_time_tracking_resume(&request->async->tracking, now);
 	return request;
 }
 
@@ -1054,20 +974,6 @@ static void worker_run_request(fr_worker_t *worker, REQUEST *request)
 
 
 /**
- *  Track a channel in the "to_decode" heap.
- */
-static int8_t worker_message_cmp(void const *one, void const *two)
-{
-	fr_channel_data_t const *a = one, *b = two;
-	int ret;
-
-	ret = (a->priority > b->priority) - (a->priority < b->priority);
-	if (ret != 0) return ret;
-
-	return (a->m.when > b->m.when) - (a->m.when < b->m.when);
-}
-
-/**
  *  Track a REQUEST in the "runnable" heap.
  */
 static int8_t worker_runnable_cmp(void const *one, void const *two)
@@ -1120,21 +1026,10 @@ static int worker_dedup_cmp(void const *one, void const *two)
 void fr_worker_destroy(fr_worker_t *worker)
 {
 	int i;
-	fr_channel_data_t *cd;
 	REQUEST *request;
 	fr_time_t now = fr_time();
 
 //	WORKER_VERIFY;
-
-	/*
-	 *	These messages aren't in the channel, so we have to
-	 *	mark them as unused.
-	 */
-	while (true) {
-		WORKER_HEAP_POP(to_decode, cd);
-		if (!cd) break;
-		fr_message_done(&cd->m);
-	}
 
 	/*
 	 *	Destroy all of the active requests.  These are ones
@@ -1241,8 +1136,6 @@ nomem:
 		goto fail2;
 	}
 
-	WORKER_HEAP_INIT(to_decode, worker_message_cmp);
-
 	worker->runnable = fr_heap_talloc_create(worker, worker_runnable_cmp, REQUEST, runnable_id);
 	if (!worker->runnable) {
 		fr_strerror_printf("Failed creating runnable heap");
@@ -1296,19 +1189,6 @@ static void worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t when,
 	WORKER_VERIFY;
 
 	now = fr_time();
-
-	/*
-	 *      Ten times a second, check for timeouts on incoming packets.
-	 *
-	 *	@todo - change this to a timer, based on a new field,
-	 *	request->async->cleanup_time.  Then round that UP to
-	 *	the next nearest second (or 1/10s) so that the
-	 *	cleanups are done periodically.
-	 */
-	if ((now - worker->checked_timeout) > (NSEC / 10)) {
-		DEBUG3("Checking timeouts");
-		worker_check_timeouts(worker, now);
-	}
 
 	/*
 	 *	Get a runnable request.  If there isn't one, continue.
@@ -1450,9 +1330,6 @@ static void worker_verify(fr_worker_t *worker)
 
 	rad_assert(worker->el != NULL);
 	(void) talloc_get_type_abort(worker->el, fr_event_list_t);
-
-	rad_assert(worker->to_decode.heap != NULL);
-	(void) talloc_get_type_abort(worker->to_decode.heap, fr_heap_t);
 
 	rad_assert(worker->runnable != NULL);
 	(void) talloc_get_type_abort(worker->runnable, fr_heap_t);
