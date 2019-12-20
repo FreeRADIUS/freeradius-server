@@ -35,11 +35,9 @@
  *  worker receives and processes.
  *
  *  The lifecycle of a packet MUST be carefully managed.  Initially,
- *  messages are put into the "to_decode" heap.  If the messages sit
- *  in the heap for too long, they are localized and put into the
- *  "localized" heap.  Each heap is ordered by (priority, time), so
- *  that high priority packets take precedence over low priority
- *  packets.
+ *  messages are put into the "to_decode" heap.  The heap is ordered
+ *  by (priority, time), so that high priority packets take precedence
+ *  over low priority packets.
  *
  *  Both queues have linked lists of received packets, ordered by
  *  time.  This list is used to clean up packets which have been in
@@ -119,8 +117,7 @@ struct fr_worker_s {
 	size_t			talloc_pool_size; //!< for each REQUEST
 
 
-	fr_worker_heap_t	to_decode;	//!< messages from the master, to be decoded or localized
-	fr_worker_heap_t       	localized;	//!< localized messages to be decoded
+	fr_worker_heap_t	to_decode;	//!< messages from the master, to be decoded.
 
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
 	fr_heap_t		*time_order;	//!< time ordered heap of requests
@@ -709,60 +706,22 @@ static void worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	fr_time_t		waiting;
 
 	/*
-	 *	Check the "localized" queue for old packets.
-	 *
-	 *	We check it before the "to_decode" list, so that we
-	 *	don't check packets twice.
-	 */
-	while ((cd = fr_dlist_tail(&worker->localized.list)) != NULL) {
-		waiting = now - cd->m.when;
-
-		if (waiting < (worker->max_request_time - fr_time_delta_from_sec(2))) break;
-
-		/*
-		 *	Waiting too long, delete it.
-		 */
-		WORKER_HEAP_EXTRACT(localized, cd);
-		ERROR("NAKing request - waited %pVs (too long) to extract packet from localized list. "
-		      "A module is blocking or load is too high", fr_box_time_delta(waiting));
-		worker_nak(worker, cd, now);
-	}
-
-	/*
 	 *	Check the "to_decode" queue for old packets.
 	 */
 	while ((cd = fr_dlist_tail(&worker->to_decode.list)) != NULL) {
-		fr_message_t *lm;
-
 		waiting = now - cd->m.when;
-
-		if (waiting < (NSEC / 100)) break;
 
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		if (waiting > NSEC) {
+		if (waiting > worker->max_request_time) {
 			WORKER_HEAP_EXTRACT(to_decode, cd);
 			ERROR("NAKing request - waited %pVs (too long) to extract packet from to_decode. "
 			      "A module is blocking or load is too high", fr_box_time_delta(waiting));
 
-		nak:
 			worker_nak(worker, cd, now);
 			continue;
 		}
-
-		/*
-		 *	0.01 to 1s.  Localize it.
-		 */
-		WORKER_HEAP_EXTRACT(to_decode, cd);
-		lm = fr_message_localize(worker, &cd->m, sizeof(*cd));
-		if (!lm) {
-			PERROR("NAKing request - Failed localizing message from to_decode_list");
-			goto nak;
-		}
-		cd = (fr_channel_data_t *) lm;
-
-		WORKER_HEAP_INSERT(localized, cd);
 	}
 }
 
@@ -824,12 +783,9 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	the "to_decode" queue.
 	 */
 	do {
-		WORKER_HEAP_POP(localized, cd);
+		WORKER_HEAP_POP(to_decode, cd);
 		if (!cd) {
-			WORKER_HEAP_POP(to_decode, cd);
-		}
-		if (!cd) {
-			DEBUG3("Localized and decode lists are empty");
+			DEBUG3("decode list is empty");
 			return NULL;
 		}
 
@@ -1098,7 +1054,7 @@ static void worker_run_request(fr_worker_t *worker, REQUEST *request)
 
 
 /**
- *  Track a channel in the "to_decode" or "localized" heap.
+ *  Track a channel in the "to_decode" heap.
  */
 static int8_t worker_message_cmp(void const *one, void const *two)
 {
@@ -1176,12 +1132,6 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 */
 	while (true) {
 		WORKER_HEAP_POP(to_decode, cd);
-		if (!cd) break;
-		fr_message_done(&cd->m);
-	}
-
-	while (true) {
-		WORKER_HEAP_POP(localized, cd);
 		if (!cd) break;
 		fr_message_done(&cd->m);
 	}
@@ -1292,7 +1242,6 @@ nomem:
 	}
 
 	WORKER_HEAP_INIT(to_decode, worker_message_cmp);
-	WORKER_HEAP_INIT(localized, worker_message_cmp);
 
 	worker->runnable = fr_heap_talloc_create(worker, worker_runnable_cmp, REQUEST, runnable_id);
 	if (!worker->runnable) {
@@ -1504,9 +1453,6 @@ static void worker_verify(fr_worker_t *worker)
 
 	rad_assert(worker->to_decode.heap != NULL);
 	(void) talloc_get_type_abort(worker->to_decode.heap, fr_heap_t);
-
-	rad_assert(worker->localized.heap != NULL);
-	(void) talloc_get_type_abort(worker->localized.heap, fr_heap_t);
 
 	rad_assert(worker->runnable != NULL);
 	(void) talloc_get_type_abort(worker->runnable, fr_heap_t);
