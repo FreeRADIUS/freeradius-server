@@ -1003,7 +1003,7 @@ static int worker_dedup_cmp(void const *one, void const *two)
  */
 void fr_worker_destroy(fr_worker_t *worker)
 {
-	int i;
+	int i, count;
 	REQUEST *request;
 	fr_time_t now = fr_time();
 
@@ -1014,8 +1014,12 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 *	which are still waiting for timers or file descriptor
 	 *	events.
 	 */
+	count = 0;
 	while ((request = fr_heap_peek(worker->time_order)) != NULL) {
-		RDEBUG("Worker is exiting - telling request to stop");
+		if (count < 10) {
+			RDEBUG("Worker is exiting - telling request to stop");
+			count++;
+		}
 		worker_stop_request(worker, request, now);
 		talloc_free(request);
 	}
