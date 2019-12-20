@@ -113,6 +113,7 @@ addons:
     - quilt
     # For rendering clang scan results
     - slapd
+    - libgoogle-perftools-dev
 services:
 - mysql
 - postgresql

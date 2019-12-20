@@ -50,7 +50,7 @@ $(OUTPUT)/%: $(DIR)/% ${BUILD_DIR}/bin/radmin test.radmin.radiusd_kill test.radm
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
-	${Q}if ! $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND); then\
+	${Q}if ! $(RADMIN_BIN) -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND) 2>&1; then\
 		echo "--------------------------------------------------"; \
 		tail -n 20 "$(RADMIN_RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADMIN_RADIUS_LOG)):"; \
