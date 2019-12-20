@@ -516,24 +516,24 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 }
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
-static bool profile_on = false;
-static char *profile_filename = NULL;
-
 static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	fr_value_box_t box;
 	fr_type_t type = FR_TYPE_BOOL;
+	struct ProfilerState state;
 
 	if (fr_value_box_from_str(NULL, &box, &type, NULL, info->argv[0], strlen(info->argv[0]), '\0', false) < 0) {
 		fprintf(fp_err, "Failed setting profile status '%s' - %s\n", info->argv[0], fr_strerror());
 		return -1;
 	}
 
+	ProfilerGetCurrentState(&state);
+
 	if (box.vb_bool) {
 		char *filename;
 
-		if (profile_on) {
-			fprintf(fp_err, "Profiling is already on, to file %s\n", profile_filename);
+		if (state.enabled) {
+			fprintf(fp_err, "Profiling is already on, to file %s\n", state.profile_name);
 			return -1;
 		}
 
@@ -544,18 +544,17 @@ static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ct
 		}
 
 		if (filename) {
-			MEM(profile_filename = talloc_strdup(radmin_ctx, filename));
+			ProfilerStart(filename);
 		} else {
 			pid_t pid = getpid();
-			MEM(profile_filename = talloc_asprintf(NULL, "/tmp/freeradius-profile.%u.prof", pid));
+			MEM(filename = talloc_asprintf(NULL, "/tmp/freeradius-profile.%u.prof", pid));
+			ProfilerStart(filename);
+			talloc_free(filename);
 		}
-		ProfilerStart(filename);
 
-	} else if (profile_on) {
+	} else if (state.enabled) {
+		ProfilerFlush();
 		ProfilerStop();
-		profile_on = false;
-		talloc_free(profile_filename);
-
 	}
 	/*
 	 *	Else profiling is already off, allow the admin to turn
@@ -567,12 +566,15 @@ static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ct
 
 static int cmd_show_profile_status(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	if (!profile_on) {
+	struct ProfilerState state;
+	ProfilerGetCurrentState(&state);
+
+	if (!state.enabled) {
 		fprintf(fp, "off\n");
 		return 0;
 	}
 
-	fprintf(fp, "on %s\n", profile_filename);
+	fprintf(fp, "on %s\n", state.profile_name);
 	return 0;
 }
 #endif
