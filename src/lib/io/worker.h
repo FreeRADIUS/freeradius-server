@@ -66,6 +66,8 @@ void		fr_worker(fr_worker_t *worker) CC_HINT(nonnull);
 
 void		fr_worker_debug(fr_worker_t *worker, FILE *fp) CC_HINT(nonnull);
 
+int		fr_worker_pre_event(void *uctx, fr_time_t wake);
+
 void		fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 
 fr_channel_t	*fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master) CC_HINT(nonnull);

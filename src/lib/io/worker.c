@@ -1212,6 +1212,27 @@ void fr_worker(fr_worker_t *worker)
 	}
 }
 
+/** Pre-event handler
+ *
+ *	This should be run ONLY in single-threaded mode!
+ */
+int fr_worker_pre_event(void *uctx, fr_time_t wake)
+{
+	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
+	REQUEST *request;
+
+	request = fr_heap_peek(worker->runnable);
+	if (!request) return 0;
+
+	/*
+	 *	There's work to do.  Tell the event handler to poll
+	 *	for IO / timers, but also immediately return to the
+	 *	calling function, which has more work to do.
+	 */
+	return 1;
+}
+
+
 /** Post-event handler
  *
  *	This should be run ONLY in single-threaded mode!
@@ -1226,6 +1247,7 @@ void fr_worker_post_event(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	worker_run_request(worker, request, now);
 }
+
 
 
 /** Print debug information about the worker structure
