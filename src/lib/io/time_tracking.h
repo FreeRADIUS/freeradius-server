@@ -176,9 +176,9 @@ static inline CC_HINT(nonnull) void fr_time_tracking_push(fr_time_tracking_t *pa
 	rad_assert(parent->parent = tt->parent);
 
 	rad_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	run_time = now - tt->last_changed;
 	tt->last_changed = parent->started = now;
 
-	run_time = now - tt->last_changed;
 	UPDATE_PARENT_RUN_TIME(tt, run_time, last_changed, now);
 
 	tt->parent = parent;
@@ -196,9 +196,9 @@ static inline CC_HINT(nonnull) void fr_time_tracking_pop(fr_time_tracking_t *tt,
 	fr_time_delta_t		run_time;
 
 	rad_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	run_time = now - tt->last_changed;
 	tt->last_changed = tt->parent->ended = now;
 
-	run_time = now - tt->last_changed;
 	tt->running_total += run_time;
 	UPDATE_PARENT_RUN_TIME(tt, run_time, last_changed, now);
 
