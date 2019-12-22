@@ -116,8 +116,7 @@ struct fr_worker_s {
 	fr_time_elapsed_t	cpu_time;	//!< histogram of total CPU time per request
 	fr_time_elapsed_t	wall_clock;	//!< histogram of wall clock time per request
 
-	uint64_t       		num_decoded;	//!< number of messages which have been decoded
-	uint64_t    		num_timeouts;	//!< number of messages which timed out
+	uint64_t    		num_naks;	//!< number of messages which were nak'd
 	uint64_t    		num_active;	//!< number of active requests
 
 	fr_time_delta_t		predicted;	//!< How long we predict a request will take to execute.
@@ -304,7 +303,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	fr_message_set_t	*ms;
 	fr_listen_t		*listen;
 
-	worker->num_timeouts++;
+	worker->num_naks++;
 
 	/*
 	 *	Cache the outbound channel.  We'll need it later.
@@ -681,9 +680,6 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	REQUEST			*request;
 	TALLOC_CTX		*ctx;
 	fr_listen_t const	*listen;
-
-	DEBUG3("Found request to decode");
-	worker->num_decoded++;
 
 	ctx = request = request_alloc(NULL);
 	if (!request) goto nak;
@@ -1348,13 +1344,12 @@ int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
 	if (num >= 2) stats[1] = worker->stats.out;
 	if (num >= 3) stats[2] = worker->stats.dup;
 	if (num >= 4) stats[3] = worker->stats.dropped;
-	if (num >= 5) stats[4] = worker->num_decoded;
-	if (num >= 6) stats[5] = worker->num_timeouts;
-	if (num >= 7) stats[6] = worker->num_active;
+	if (num >= 5) stats[4] = worker->num_naks;
+	if (num >= 6) stats[5] = worker->num_active;
 
-	if (num <= 7) return num;
+	if (num <= 6) return num;
 
-	return 7;
+	return 6;
 }
 
 static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
@@ -1367,27 +1362,27 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_inf
 		fprintf(fp, "count.out\t\t\t%" PRIu64 "\n", worker->stats.out);
 		fprintf(fp, "count.dup\t\t\t%" PRIu64 "\n", worker->stats.dup);
 		fprintf(fp, "count.dropped\t\t\t%" PRIu64 "\n", worker->stats.dropped);
-		fprintf(fp, "count.decoded\t\t\t%" PRIu64 "\n", worker->num_decoded);
-		fprintf(fp, "count.timeouts\t\t\t%" PRIu64 "\n", worker->num_timeouts);
+		fprintf(fp, "count.naks\t\t\t%" PRIu64 "\n", worker->num_naks);
 		fprintf(fp, "count.active\t\t\t%" PRIu64 "\n", worker->num_active);
 		fprintf(fp, "count.runnable\t\t\t%u\n", fr_heap_num_elements(worker->runnable));
 	}
 
 	if ((info->argc == 0) || (strcmp(info->argv[0], "cpu") == 0)) {
 		when = worker->predicted;
-		fprintf(fp, "cpu.average_request_time\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
+		fprintf(fp, "cpu.request_time_rtt\t\t%u.%09" PRIu64 "\n", (unsigned int) (when / NSEC), when % NSEC);
 
 		when = worker->tracking.running_total;
-		fprintf(fp, "cpu.used\t\t\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
+		when /= (worker->stats.in - worker->stats.dropped);
+		fprintf(fp, "cpu.average_request_time\t%u.%09" PRIu64 "\n", (unsigned int) (when / NSEC), when % NSEC);
+
+		when = worker->tracking.running_total;
+		fprintf(fp, "cpu.used\t\t\t%u.%06u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000);
 
 		when = worker->tracking.waiting_total;
 		fprintf(fp, "cpu.waiting\t\t\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
 
-		when = fr_time() - worker->last_event;
-		fprintf(fp, "cpu.event_loop_serviced\t\t-%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
-
-		fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu.requests", 1);
-		fr_time_elapsed_fprint(fp, &worker->wall_clock, "time.requests", 1);
+		fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu.requests", 4);
+		fr_time_elapsed_fprint(fp, &worker->wall_clock, "time.requests", 4);
 	}
 
 	return 0;
