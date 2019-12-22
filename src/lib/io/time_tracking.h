@@ -154,7 +154,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_start(fr_time_tracking_t *p
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
 	tt->state = FR_TIME_TRACKING_RUNNING;
-	tt->started = tt->last_changed = now;
+	tt->started = tt->last_changed = tt->last_resumed = now;
 
 	tt->parent = parent;
 
@@ -265,7 +265,7 @@ static inline void fr_time_tracking_end(fr_time_delta_t *predicted,
 	tt->state = FR_TIME_TRACKING_STOPPED;
 	tt->ended = tt->last_changed = now;
 
-	run_time = now - tt->last_changed;
+	run_time = now - tt->last_resumed;
 	tt->running_total += run_time;
 	UPDATE_PARENT_RUN_TIME(tt, run_time, ended, now);
 
