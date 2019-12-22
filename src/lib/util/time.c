@@ -541,16 +541,35 @@ static const char *names[8] = {
 
 static char const *tab_string = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
-void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs)
+void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tab_offset)
 {
 	int i;
+	size_t prefix_len;
 
 	if (!prefix) prefix = "elapsed";
 
+	prefix_len = strlen(prefix);
+
 	for (i = 0; i < 8; i++) {
+		size_t len;
+
 		if (!elapsed->array[i]) continue;
 
-		fprintf(fp, "%s.%s\t%.*s%" PRIu64 "\n",
-			prefix, names[i], tabs, tab_string, elapsed->array[i]);
+		len = prefix_len + strlen(names[i]);
+
+		if (len >= (size_t) (tab_offset * 8)) {
+			fprintf(fp, "%s.%s %" PRIu64 "\n",
+				prefix, names[i], elapsed->array[i]);
+
+		} else {
+			int tabs;
+
+			tabs = ((tab_offset * 8) - len);
+			if ((tabs & 0x07) != 0) tabs += 7;
+			tabs >>= 3;
+
+			fprintf(fp, "%s.%s%.*s%" PRIu64 "\n",
+				prefix, names[i], tabs, tab_string, elapsed->array[i]);
+		}
 	}
 }
