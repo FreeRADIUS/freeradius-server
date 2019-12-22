@@ -43,7 +43,7 @@
  *
  *  A request may return one of RLM_MODULE_YIELD,
  *  RLM_MODULE_OK, or RLM_MODULE_HANDLED.  If a request is
- *  yeilded, it is placed onto the yielded list in the worker
+ *  yielded, it is placed onto the yielded list in the worker
  *  "tracking" data structure.
  *
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
