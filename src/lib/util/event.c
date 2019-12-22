@@ -1766,16 +1766,18 @@ service:
 	}
 
 	/*
-	 *	New timers were added while running timers. Instead of
-	 *	being added to the main heap, they were added to the
-	 *	"in progress" list.  We can now add them to the main
-	 *	heap.
+	 *	New timers can be added while running the timer
+	 *	callback. Instead of being added to the main timer
+	 *	heap, they are instead added to the "to do" list.
+	 *	Once we're finished running the callbacks, we walk
+	 *	through the "to do" list, and add the callbacks to the
+	 *	timer heap.
 	 *
 	 *	Doing it this way prevents the server from running
-	 *	into an infinite loop when it takes a long time to
-	 *	service FD events.  The timer callback MAY add a new
-	 *	timer which is in the past.  So the above loop could
-	 *	run forever.
+	 *	into an infinite loop.  The timer callback MAY add a
+	 *	new timer which is in the past.  The loop above would
+	 *	then immediately run the new callback, which could
+	 *	also add an event in the past...
 	 */
 	if (el->ev_to_add) {
 		fr_event_timer_t *ev, *next;
