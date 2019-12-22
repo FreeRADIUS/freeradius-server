@@ -125,7 +125,7 @@ do { \
 	for (_parent = (_tt)->parent; _parent; _parent = _parent->parent){ \
 		_parent->_event = _now; \
 		_parent->last_changed = _now; \
-		_parent->running_total += _wait_time; \
+		_parent->waiting_total += _wait_time; \
 	} \
 } while (0)
 
@@ -220,7 +220,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_yield(fr_time_tracking_t *t
 	tt->state = FR_TIME_TRACKING_YIELDED;
 	tt->last_yielded = tt->last_changed = now;
 
-	run_time = now - tt->last_changed;
+	run_time = now - tt->last_resumed;
 	tt->running_total += run_time;
 	UPDATE_PARENT_RUN_TIME(tt, run_time, last_yielded, now);
 }
@@ -240,7 +240,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_resume(fr_time_tracking_t *
 	tt->state = FR_TIME_TRACKING_RUNNING;
 	tt->last_resumed = tt->last_changed = now;
 
-	wait_time = now - tt->last_changed;
+	wait_time = now - tt->last_yielded;
 	tt->waiting_total += wait_time;
 	UPDATE_PARENT_WAIT_TIME(tt, wait_time, last_resumed, now);
 }
