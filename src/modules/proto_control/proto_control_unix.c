@@ -164,6 +164,11 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 	if (hdr->length >= sizeof(string)) goto fail;
 
 	/*
+	 *	If the write gives us nothing, send an empty SUCCESS back.
+	 */
+	if (!hdr->length) goto done;
+
+	/*
 	 *	fr_command_run() expects a zero-terminated string...
 	 */
 	memcpy(string, cmd, hdr->length);
