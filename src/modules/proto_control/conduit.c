@@ -229,6 +229,11 @@ ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *out, siz
 		return -1;
 	}
 
+	/*
+	 *	Asked to write nothing, suppress it.
+	 */
+	if (!outlen) return 0;
+
 	hdr.conduit = htons(conduit);
 	hdr.length = htonl(outlen);
 

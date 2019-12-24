@@ -166,7 +166,10 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 	/*
 	 *	If the write gives us nothing, send an empty SUCCESS back.
 	 */
-	if (!hdr->length) goto done;
+	if (!hdr->length) {
+		status = FR_CONDUIT_SUCCESS;
+		goto done;
+	}
 
 	/*
 	 *	fr_command_run() expects a zero-terminated string...
