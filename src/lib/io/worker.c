@@ -1372,7 +1372,7 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_inf
 		fprintf(fp, "cpu.request_time_rtt\t\t%u.%09" PRIu64 "\n", (unsigned int) (when / NSEC), when % NSEC);
 
 		when = worker->tracking.running_total;
-		when /= (worker->stats.in - worker->stats.dropped);
+		if (when > 0) when /= (worker->stats.in - worker->stats.dropped);
 		fprintf(fp, "cpu.average_request_time\t%u.%09" PRIu64 "\n", (unsigned int) (when / NSEC), when % NSEC);
 
 		when = worker->tracking.running_total;
