@@ -491,7 +491,7 @@ static void radmin_free(char *line)
 	if (!use_readline) return;
 #endif
 
-	free(line);
+	if (line) free(line);
 }
 
 #ifdef USE_READLINE
@@ -1135,7 +1135,7 @@ int main(int argc, char **argv)
 	stack_depth = 0;
 	stack[0] = cmd_buffer;
 
-	while (1) {
+	while (true) {
 		int retries;
 		ssize_t len;
 
@@ -1229,6 +1229,8 @@ int main(int argc, char **argv)
 			radmin_free(line);
 			break;
 		}
+
+		if (len == 0) goto next;
 
 	retry:
 
