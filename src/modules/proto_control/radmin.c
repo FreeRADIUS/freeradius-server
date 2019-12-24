@@ -328,6 +328,10 @@ static ssize_t run_command(int fd, char const *command,
 			   char *buffer, size_t bufsize)
 {
 	ssize_t r;
+	char const *p = command;
+
+	fr_skip_whitespace(p);
+	if (!*p) return FR_CONDUIT_SUCCESS;
 
 	if (echo) {
 		fprintf(stdout, "%s\n", command);
@@ -336,7 +340,7 @@ static ssize_t run_command(int fd, char const *command,
 	/*
 	 *	Write the text to the socket.
 	 */
-	r = fr_conduit_write(fd, FR_CONDUIT_STDIN, command, strlen(command));
+	r = fr_conduit_write(fd, FR_CONDUIT_STDIN, p, strlen(p));
 	if (r <= 0) return r;
 
 	return flush_conduits(fd, buffer, bufsize);
