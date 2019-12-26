@@ -888,18 +888,41 @@ static void worker_run_request(fr_worker_t *worker, REQUEST *request, fr_time_t 
 	RDEBUG("Running request");
 
 	/*
-	 *	If we still have the same packet, and the channel is
-	 *	active, run it.  Otherwise, tell it that it's done.
+	 *	Do some status checks for real requests.
 	 */
-	if ((*request->async->original_recv_time == request->async->recv_time) &&
-	    (request->async->fake ||
-	     fr_channel_active(request->async->channel))) {
-		final = request->async->process(request->async->process_inst, request);
+	if (!request->async->fake) {
+		/*
+		 *	The channel is gone, so just stop the request
+		 *	and free it.
+		 */
+		if (!fr_channel_active(request->async->channel)) {
+			worker_stop_request(worker, request, now);
+			talloc_free(request);
+			return;
+		}
 
-	} else {
-		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-		final = RLM_MODULE_HANDLED;
+		/*
+		 *	The network side has received a new packet
+		 *	that conflicts with this one.  Cancel this
+		 *	request, and tell the network side that we've
+		 *	cancelled it.
+		 *
+		 *	@todo - We should likely just delete this, and
+		 *	all instances of original_recv_time.  The
+		 *	network side will instead signal us if there's
+		 *	a conflicting packet.
+		 */
+		if (*request->async->original_recv_time != request->async->recv_time) {
+			unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+			worker_send_reply(worker, request, now);
+			return;
+		}
 	}
+
+	/*
+	 *	Everything else, run the request.
+	 */
+	final = request->async->process(request->async->process_inst, request);
 
 	/*
 	 *	Figure out what to do next.
