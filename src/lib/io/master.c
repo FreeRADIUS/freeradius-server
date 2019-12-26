@@ -1127,7 +1127,7 @@ redo:
 		*packet_ctx = track;
 		*leftover = 0;
 		*priority = pending->priority;
-		recv_time = recv_time_p = pending->recv_time;
+		recv_time = *recv_time_p = pending->recv_time;
 		client = track->client;
 
 		memcpy(buffer, pending->buffer, pending->buffer_len);
@@ -1555,7 +1555,7 @@ have_client:
 		/*
 		 *	Return the packet.
 		 */
-		*recv_time_p = &track->timestamp;
+		*recv_time_p = track->timestamp;
 		*packet_ctx = track;
 		return packet_len;
 	}
