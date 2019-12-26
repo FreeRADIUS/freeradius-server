@@ -633,11 +633,9 @@ static void worker_max_request_timer(fr_worker_t *worker)
 	 *	No more requests, delete the timer.
 	 */
 	request = fr_heap_peek_tail(worker->time_order);
-	if (!request) {
-		cleanup = fr_event_list_time(worker->el);
-	} else {
-		cleanup = request->async->recv_time;
-	}
+	if (!request) return;
+
+	cleanup = request->async->recv_time;
 	cleanup += worker->max_request_time;
 
 	DEBUG2("Resetting cleanup timer to +%pV", fr_box_time_delta(worker->max_request_time));
@@ -846,6 +844,7 @@ nak:
 	rad_assert(request->runnable_id < 0);
 
 	(void) fr_heap_insert(worker->runnable, request);
+	if (!worker->ev_cleanup) worker_max_request_timer(worker);
 }
 
 
@@ -1121,11 +1120,6 @@ nomem:
 		fr_strerror_printf("Failed creating de_dup tree");
 		goto fail;
 	}
-
-	/*
-	 *	Set the initial cleanup timer
-	 */
-	worker_max_request_timer(worker);
 
 	return worker;
 }
