@@ -126,7 +126,6 @@ struct fr_worker_s {
 	bool			exiting;	//!< are we exiting?
 
 	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
-	fr_time_t		last_event;	//!< last time we ran the event loop
 
 	fr_event_timer_t const	*ev_cleanup;	//!< timer for max_request_time
 
@@ -1189,8 +1188,6 @@ void fr_worker(fr_worker_t *worker)
 
 		WORKER_VERIFY;
 
-		worker->last_event = fr_time();
-
 		/*
 		 *	There are runnable requests.  We still service
 		 *	the event loop, but we don't wait for events.
@@ -1204,7 +1201,7 @@ void fr_worker(fr_worker_t *worker)
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
-		num_events = fr_event_corral(worker->el, worker->last_event, wait_for_event);
+		num_events = fr_event_corral(worker->el, fr_time(), wait_for_event);
 		DEBUG3("Got num_events %u", num_events);
 		if (num_events < 0) {
 			if (worker->exiting) return; /* don't complain if we're exiting */
