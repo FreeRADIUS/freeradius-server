@@ -126,13 +126,12 @@ typedef struct {
 	union {
 		struct {
 			fr_time_t		recv_time;	//!< time original request was received (network -> worker)
-			fr_dlist_t		entry;		//!< list of unprocessed packets for the worker
 			bool			is_dup;		//!< dup, new, etc.
 		} request;
 
 		struct {
-			fr_time_t		cpu_time;	//!<  total CPU time, including predicted work, (only worker -> network)
-			fr_time_t		processing_time;  //!< actual processing time for this packet (only worker -> network)
+			fr_time_delta_t		cpu_time;	//!<  total CPU time, including predicted work, (only worker -> network)
+			fr_time_delta_t		processing_time;  //!< actual processing time for this packet (only worker -> network)
 			fr_time_t		request_time;	//!< timestamp of the request packet
 	        } reply;
 	};
