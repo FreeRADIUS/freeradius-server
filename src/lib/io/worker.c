@@ -62,14 +62,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/dlist.h>
 
-/**
- *  Track things by priority and time.
- */
-typedef struct {
-	fr_dlist_head_t	list;			//!< list of things, ordered by time.
-	fr_heap_t	*heap;			//!< heap, ordered by priority
-} fr_worker_heap_t;
-
 #ifdef WITH_VERIFY_PTR
 static void worker_verify(fr_worker_t *worker);
 #define WORKER_VERIFY worker_verify(worker)
