@@ -344,7 +344,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	reply->m.when = now;
 	reply->reply.cpu_time = worker->tracking.running_total;
 	reply->reply.processing_time = 10; /* @todo - set to something better? */
-	reply->reply.request_time = cd->m.when;
+	reply->reply.request_time = cd->request.recv_time;
 
 	reply->listen = cd->listen;
 	reply->packet_ctx = cd->packet_ctx;
