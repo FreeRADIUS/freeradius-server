@@ -436,7 +436,7 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 						      reply->m.data, reply->m.rb_size);
 		}
 		if (slen < 0) {
-			ERROR("Failed decoding request");
+			ERROR("Failed encoding request");
 			*reply->m.data = 0;
 			slen = 1;
 		}
@@ -456,13 +456,6 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
 	rad_assert(worker->num_active > 0);
 	worker->num_active--;
-
-	/*
-	 *	Nothing to do, delete max_request_time timers.
-	 */
-	if (!worker->num_active) {
-		fr_event_timer_delete(worker->el, &worker->ev_cleanup);
-	}
 
 	/*
 	 *	Fill in the rest of the fields in the channel message.
