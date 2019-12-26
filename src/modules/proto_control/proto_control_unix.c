@@ -283,16 +283,13 @@ static ssize_t mod_read_init(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED f
 	return 0;
 }
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
 	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	ssize_t				data_size;
 
-	fr_time_t			*recv_time_p;
 	fr_conduit_type_t		conduit;
 	bool				want_more;
-
-	recv_time_p = *recv_time;
 
 	/*
 	 *      Read data into the buffer.
@@ -334,7 +331,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	/*
 	 *	Run the state machine to process the rest of the packet.
 	 */
-	return thread->read(li, packet_ctx, recv_time, buffer, (size_t) data_size, leftover, priority, is_dup);
+	return thread->read(li, packet_ctx, recv_time_p, buffer, (size_t) data_size, leftover, priority, is_dup);
 }
 
 
