@@ -2834,10 +2834,17 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 		 *	Done the input, but not the commands.
 		 */
 		if (!*p) {
+			/*
+			 *	If we've ALSO matched this complete
+			 *	command, AND it has children, then
+			 *	print help about the children.
+			 */
+			if (!*q && cmd->intermediate) goto intermediate;
 			break;
 		}
 
 		if (cmd->intermediate) {
+		intermediate:
 			rad_assert(cmd->child != NULL);
 			word = p;
 			cmd = cmd->child;
@@ -2856,6 +2863,8 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 	if (!cmd) {
 		return 0;
 	}
+
+	fprintf(stderr, "SYNTAX %s %d\n", cmd->name, cmd->intermediate);
 
 	/*
 	 *	For one command, try to print out the syntax, as it's
