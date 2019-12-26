@@ -125,7 +125,7 @@ typedef struct {
 
 	union {
 		struct {
-			fr_time_t		*recv_time;	//!< time original request was received (network -> worker)
+			fr_time_t		recv_time;	//!< time original request was received (network -> worker)
 			fr_dlist_t		entry;		//!< list of unprocessed packets for the worker
 			bool			is_dup;		//!< dup, new, etc.
 		} request;

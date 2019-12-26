@@ -51,7 +51,6 @@ struct fr_async_s {
 	void			*process_inst;		//!< Instance data for the current state machine.
 
 	fr_time_t		recv_time;
-	fr_time_t		*original_recv_time;
 	fr_event_list_t		*el;
 
 	fr_time_tracking_t	tracking;

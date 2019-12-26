@@ -382,7 +382,6 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_network_t *nr = s->nr;
 	ssize_t data_size;
 	fr_channel_data_t *cd, *next;
-	fr_time_t *recv_time;
 
 	if (!fr_cond_assert_msg(s->listen->fd == sockfd, "Expected listen->fd (%u) to be equal event fd (%u)",
 				s->listen->fd, sockfd)) return;
@@ -427,7 +426,7 @@ next_message:
 	 *	network side knows that it needs to close the
 	 *	connection.
 	 */
-	data_size = s->listen->app_io->read(s->listen, &cd->packet_ctx, &recv_time,
+	data_size = s->listen->app_io->read(s->listen, &cd->packet_ctx, &cd->request.recv_time,
 					    cd->m.data, cd->m.rb_size, &s->leftover, &cd->priority, &cd->request.is_dup);
 	if (data_size == 0) {
 		/*
@@ -464,11 +463,15 @@ next_message:
 	 *
 	 *	We always use "now" as the time of the message, as the
 	 *	packet MAY be a duplicate packet magically resurrected
-	 *	from the past.
+	 *	from the past.  i.e. If the read routines are doing
+	 *	dedup, then they notice that the packet is a
+	 *	duplicate.  In that case, they send over a copy of the
+	 *	packet, BUT with the original timestamp.  This
+	 *	information tells the worker that the packet is a
+	 *	duplicate.
 	 */
 	cd->m.when = fr_time();
 	cd->listen = s->listen;
-	cd->request.recv_time = recv_time;
 
 	/*
 	 *	Nothing in the buffer yet.  Allocate room for one

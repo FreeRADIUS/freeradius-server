@@ -112,16 +112,13 @@ static const CONF_PARSER load_listen_config[] = {
 };
 
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_radius_load_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_load_t);
 	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
 	fr_io_address_t			*address, **address_p;
 
 	size_t				packet_len;
-	fr_time_t			timestamp;
-
-	fr_time_t			*recv_time_p;
 
 	*leftover = 0;		/* always for load generation */
 
@@ -132,14 +129,14 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	address_p = (fr_io_address_t **) packet_ctx;
 	address = *address_p;
 
-	recv_time_p = *recv_time;
+
 
 	memset(address, 0, sizeof(*address));
 	address->src_ipaddr.af = AF_INET;
 	address->dst_ipaddr.af = AF_INET;
 	address->radclient = inst->client;
 
-	timestamp = thread->recv_time;
+	*recv_time_p = thread->recv_time;
 
 	if (buffer_len < inst->packet_len) {
 		DEBUG2("proto_radius_load read buffer is too small for input packet");
@@ -154,8 +151,6 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	/*
 	 *	The packet is always OK for RADIUS.
 	 */
-
-	*recv_time_p = timestamp;
 
 	/*
 	 *	proto_radius sets the priority

@@ -149,7 +149,7 @@ static fr_event_update_t resume_read[] = {
 	{ 0 }
 };
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_detail_work_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_work_t);
 	proto_detail_work_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
@@ -191,7 +191,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 
 		DEBUG("Retrying packet %d (retransmission %u)", track->id, track->count);
 		*packet_ctx = track;
-		*recv_time = &track->timestamp;
+		*recv_time_p = track->timestamp;
 		*priority = inst->parent->priority;
 		return track->packet_len;
 	}
@@ -509,7 +509,7 @@ redo:
 	thread->header_offset += packet_len;
 
 	*packet_ctx = track;
-	*recv_time = &track->timestamp;
+	*recv_time_p = track->timestamp;
 	*priority = inst->parent->priority;
 
 done:

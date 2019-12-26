@@ -108,7 +108,6 @@ REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace,
 #define COPY_FIELD(_x) child->async->_x = parent->async->_x
 	COPY_FIELD(listen);
 	COPY_FIELD(recv_time);
-	child->async->original_recv_time = &child->async->recv_time;
 	child->async->fake = true;
 
 	/*

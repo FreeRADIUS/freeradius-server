@@ -521,7 +521,6 @@ finished:
 	rad_assert(request->runnable_id < 0);
 
 #ifndef NDEBUG
-	request->async->original_recv_time = NULL;
 	request->async->el = NULL;
 	request->async->process = NULL;
 	request->async->channel = NULL;
@@ -686,7 +685,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	request->el = worker->el;
 	request->backlog = worker->runnable;
 	MEM(request->packet = fr_radius_alloc(request, false));
-	request->packet->timestamp = *cd->request.recv_time; /* Legacy - Remove once everything looks at request->async */
+	request->packet->timestamp = cd->request.recv_time; /* Legacy - Remove once everything looks at request->async */
 	request->reply = fr_radius_alloc(request, false);
 	rad_assert(request->reply != NULL);
 
@@ -701,17 +700,10 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 
 	/*
 	 *	Update the transport-specific fields.
-	 *
-	 *	Note that the message "when" time MUST be copied from
-	 *	the original recv time.  We use "when" here, instead
-	 *	of *cd->request.recv_time, on the odd chance that a
-	 *	new packet arrived while we were getting around to
-	 *	processing this message.
 	 */
 	request->async->channel = cd->channel.ch;
 
-	request->async->original_recv_time = cd->request.recv_time;
-	request->async->recv_time = *request->async->original_recv_time;
+	request->async->recv_time = cd->request.recv_time;
 	request->async->el = worker->el;
 	request->number = worker->number++;
 
@@ -887,35 +879,13 @@ static void worker_run_request(fr_worker_t *worker, REQUEST *request, fr_time_t 
 	RDEBUG("Running request");
 
 	/*
-	 *	Do some status checks for real requests.
+	 *	For real requests, if the channel is gone, just stop
+	 *	the request and free it.
 	 */
-	if (!request->async->fake) {
-		/*
-		 *	The channel is gone, so just stop the request
-		 *	and free it.
-		 */
-		if (!fr_channel_active(request->async->channel)) {
-			worker_stop_request(worker, request, now);
-			talloc_free(request);
-			return;
-		}
-
-		/*
-		 *	The network side has received a new packet
-		 *	that conflicts with this one.  Cancel this
-		 *	request, and tell the network side that we've
-		 *	cancelled it.
-		 *
-		 *	@todo - We should likely just delete this, and
-		 *	all instances of original_recv_time.  The
-		 *	network side will instead signal us if there's
-		 *	a conflicting packet.
-		 */
-		if (*request->async->original_recv_time != request->async->recv_time) {
-			unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-			worker_send_reply(worker, request, now);
-			return;
-		}
+	if (!request->async->fake && !fr_channel_active(request->async->channel)) {
+		worker_stop_request(worker, request, now);
+		talloc_free(request);
+		return;
 	}
 
 	/*

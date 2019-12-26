@@ -129,7 +129,7 @@ fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
 	{ NULL }
 };
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
@@ -137,12 +137,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	int				flags;
 	ssize_t				data_size;
 	size_t				packet_len;
-	fr_time_t			timestamp;
 	uint8_t				message_type;
 	uint32_t			xid, ipaddr;
 	dhcp_packet_t			*packet;
-
-	fr_time_t			*recv_time_p;
 
 	*leftover = 0;		/* always for UDP */
 
@@ -152,7 +149,6 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	 */
 	address_p = (fr_io_address_t **) packet_ctx;
 	address = *address_p;
-	recv_time_p = *recv_time;
 
 	/*
 	 *      Tell udp_recv if we're connected or not.
@@ -162,7 +158,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
 			     &address->src_ipaddr, &address->src_port,
 			     &address->dst_ipaddr, &address->dst_port,
-			     &address->if_index, &timestamp);
+			     &address->if_index, recv_time_p);
 	if (data_size < 0) {
 		DEBUG2("proto_dhvpv4_udp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
@@ -196,8 +192,6 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 			ntohl(address->dst_ipaddr.addr.v4.s_addr));
 		return 0;
 	}
-
-	*recv_time_p = fr_time();
 
 	/*
 	 *	proto_dhcpv4 sets the priority

@@ -100,16 +100,13 @@ static const CONF_PARSER tcp_listen_config[] = {
 };
 
 
-static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_control_tcp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_control_tcp_t);
 	ssize_t				data_size;
 
-	fr_time_t			*recv_time_p;
 	fr_conduit_type_t		conduit;
 	bool				want_more;
-
-	recv_time_p = *recv_time;
 
 	/*
 	 *      Read data into the buffer.
@@ -134,7 +131,6 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **r
 		return 0;
 	}
 
-	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
 
 	// @todo - copy the rest of the code from proto_control_unix,

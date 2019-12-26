@@ -811,8 +811,8 @@ static RADCLIENT *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_t 
 
 
 static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
-						    fr_io_address_t *address,
-						    uint8_t const *packet, fr_time_t recv_time, bool *is_dup)
+				      fr_io_address_t *address,
+				      uint8_t const *packet, fr_time_t recv_time, bool *is_dup)
 {
 	fr_io_track_t my_track, *track = NULL;
 
@@ -1041,7 +1041,7 @@ static int _client_live_free(fr_io_client_t *client)
  *
  *  The app_io->read does the transport-specific data read.
  */
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time_p,
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p,
 			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
 	fr_io_instance_t const *inst;
@@ -1125,10 +1125,9 @@ redo:
 		 *	caller, and return.
 		 */
 		*packet_ctx = track;
-		*recv_time_p = &track->timestamp;
 		*leftover = 0;
 		*priority = pending->priority;
-		recv_time = pending->recv_time;
+		recv_time = recv_time_p = pending->recv_time;
 		client = track->client;
 
 		memcpy(buffer, pending->buffer, pending->buffer_len);
@@ -1191,7 +1190,6 @@ redo:
 
 	} else {
 		fr_io_address_t *local_address;
-		fr_time_t *local_recv_time;
 
 		/*
 		 *	We're either not a TCP socket, or we are a
@@ -1199,7 +1197,6 @@ redo:
 		 */
 do_read:
 		local_address = &address;
-		local_recv_time = &recv_time;
 
 		/*
 		 *	@todo - For connected TCP sockets which are
@@ -1219,7 +1216,7 @@ do_read:
 		 *	to have yet another layer of trampoline
 		 *	functions which do all of the TLS work.
 		 */
-		packet_len = inst->app_io->read(child, (void **) &local_address, &local_recv_time,
+		packet_len = inst->app_io->read(child, (void **) &local_address, &recv_time,
 					  buffer, buffer_len, leftover, priority, is_dup);
 		if (packet_len <= 0) {
 			return packet_len;

@@ -101,17 +101,13 @@ static const CONF_PARSER tcp_listen_config[] = {
 };
 
 
-static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_radius_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_tcp_t);
 	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 	ssize_t				data_size;
 	size_t				packet_len;
 	decode_fail_t			reason;
-
-	fr_time_t			*recv_time_p;
-
-	recv_time_p = *recv_time;
 
 	/*
 	 *      Read data into the buffer.
@@ -187,7 +183,6 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **r
 		return -1;
 	}
 
-	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
 
 	/*
