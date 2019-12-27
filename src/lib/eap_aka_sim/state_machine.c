@@ -113,7 +113,7 @@ static inline void section_rcode_ignored(REQUEST *request)
 	switch (request->rcode) {
 	case RLM_MODULE_USER_SECTION_REJECT:
 		RWDEBUG("Ignoring rcode (%s)",
-			fr_table_str_by_value(mod_rcode_table, request->rcode, "<invalid>"));
+			fr_table_str_by_value(rcode_table, request->rcode, "<invalid>"));
 		break;
 
 	default:
@@ -1920,7 +1920,7 @@ static rlm_rcode_t common_eap_success_enter_resume(void *instance, UNUSED void *
 		case RLM_MODULE_USER_SECTION_REJECT:
 			RWDEBUG("Ignoring rcode (%s) from send EAP-Success { ... } "
 				"as we already sent a Success-Notification",
-				fr_table_str_by_value(mod_rcode_table, request->rcode, "<invalid>"));
+				fr_table_str_by_value(rcode_table, request->rcode, "<invalid>"));
 			RWDEBUG("If you need to force a failure, return an error code from "
 				"send Success-Notification { ... }");
 			break;
