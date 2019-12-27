@@ -291,6 +291,9 @@ extern unlang_op_t unlang_ops[];
 
 extern char const *const comp2str[];
 
+extern fr_table_num_sorted_t const mod_rcode_table[];
+extern size_t mod_rcode_table_len;
+
 /** @name Conversion functions for converting #unlang_t to its specialisations
  *
  * Simple conversions: #unlang_module_t and #unlang_group_t are subclasses of #unlang_t,

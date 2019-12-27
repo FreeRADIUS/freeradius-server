@@ -783,14 +783,14 @@ error:
 		 */
 		if (lua_isnumber(L, -1)) {
 			ret = lua_tointeger(L, -1);
-			if (fr_table_str_by_value(mod_rcode_table, ret, NULL) != NULL) goto done;
+			if (fr_table_str_by_value(rcode_table, ret, NULL) != NULL) goto done;
 		}
 
 		/*
 		 *	e.g: return "handled", "ok", "fail", ...
 		 */
 		if (lua_isstring(L, -1)) {
-			ret = fr_table_value_by_str(mod_rcode_table, lua_tostring(L, -1), -1);
+			ret = fr_table_value_by_str(rcode_table, lua_tostring(L, -1), -1);
 			if (ret != -1) goto done;
 		}
 
@@ -822,7 +822,7 @@ static int _lua_rcode_table_index(lua_State *L)
 	char const *key = lua_tostring(L, -1);
 	int ret;
 
-	ret = fr_table_value_by_str(mod_rcode_table, key, -1);
+	ret = fr_table_value_by_str(rcode_table, key, -1);
 	if (ret != -1) {
 		lua_pushinteger(L, ret);
 		return 1;
