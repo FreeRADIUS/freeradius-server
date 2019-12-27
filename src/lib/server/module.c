@@ -161,7 +161,7 @@ static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUS
 	return 0;
 }
 
-static int cmd_set_module_status(UNUSED FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
 	module_instance_t *mi = ctx;
 	rlm_rcode_t rcode;
@@ -172,7 +172,10 @@ static int cmd_set_module_status(UNUSED FILE *fp, UNUSED FILE *fp_err, void *ctx
 	}
 
 	rcode = fr_table_value_by_str(rcode_table, info->argv[0], RLM_MODULE_UNKNOWN);
-	rad_assert(rcode != RLM_MODULE_UNKNOWN);
+	if (rcode == RLM_MODULE_UNKNOWN) {
+		fprintf(fp_err, "Unknown status '%s'\n", info->argv[0]);
+		return -1;
+	}
 
 	mi->code = rcode;
 	mi->force = true;
