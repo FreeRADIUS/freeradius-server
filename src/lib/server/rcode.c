@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rcode.h>
 
 fr_table_num_sorted_t const rcode_table[] = {
-	{ "disallow",		RLM_MODULE_DISALLOW     }
+	{ "disallow",		RLM_MODULE_DISALLOW     },
 	{ "fail",		RLM_MODULE_FAIL	 	},
 	{ "handled",		RLM_MODULE_HANDLED      },
 	{ "invalid",		RLM_MODULE_INVALID      },
