@@ -261,6 +261,17 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			ALLOW_FLAG(subtype);
 			break;
 
+		case FR_TYPE_STRUCT:
+			if (flags->subtype != FLAG_LENGTH_UINT16) {
+				fr_strerror_printf("Invalid type for extra flag.");
+				return false;
+			}
+
+			ALLOW_FLAG(extra);
+			/* @todo - allow arrays of struct? */
+			ALLOW_FLAG(subtype);
+			break;
+
 		default:
 			return -1;
 		}
