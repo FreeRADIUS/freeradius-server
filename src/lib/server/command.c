@@ -2717,6 +2717,16 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		}
 
 		/*
+		 *	We've run off of the end of the input, and
+		 *	found a partially matching command.  Return
+		 *	all of the commands which match this
+		 *	expansion.
+		 */
+		if (!*p && *q) {
+			goto expand;
+		}
+
+		/*
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
@@ -2731,6 +2741,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			rad_assert(cmd->child != NULL);
 			word = p;
 			cmd = cmd->child;
+
 			info->argv[info->argc] = cmd->name;
 			info->argc++;
 			continue;
@@ -2863,8 +2874,6 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 	if (!cmd) {
 		return 0;
 	}
-
-	fprintf(stderr, "SYNTAX %s %d\n", cmd->name, cmd->intermediate);
 
 	/*
 	 *	For one command, try to print out the syntax, as it's
