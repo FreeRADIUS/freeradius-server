@@ -962,20 +962,21 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		/*
 		 *	Get how many bytes this label has, and where
 		 *	we will go to obtain the next label.
+		 *
+		 *	Note that slen > 0 here, as dns_label_decode()
+		 *	only returns 0 when the current byte is 0x00,
+		 *	which it can't be.
 		 */
 		slen = dns_label_decode(src, &current, &next);
-		if (slen < 0) {
-		fail:
-			fr_value_box_clear(dst);
-			return -1;
-		}
 
 		/*
 		 *	As a sanity check, ensure we don't have a
 		 *	buffer overflow.
 		 */
 		if ((p + slen) > (uint8_t *) q) {
-			goto fail;
+		fail:
+			fr_value_box_clear(dst);
+			return -1;
 		}
 
 		/*
