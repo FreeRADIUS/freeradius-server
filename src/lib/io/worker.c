@@ -1151,13 +1151,14 @@ void fr_worker(fr_worker_t *worker)
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
 		num_events = fr_event_corral(worker->el, fr_time(), wait_for_event);
-		DEBUG3("Got num_events %u", num_events);
 		if (num_events < 0) {
 			if (worker->exiting) return; /* don't complain if we're exiting */
 
 			PERROR("Failed corralling events");
 			break;
 		}
+
+		DEBUG3("Got num_events %u", num_events);
 
 		/*
 		 *	Service outstanding events.
