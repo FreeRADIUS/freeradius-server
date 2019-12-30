@@ -504,8 +504,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		 *	Upsert if we add a function or change the flags.
 		 */
 		if (has_current_func &&
-		    (!has_prev_func ||
-		     (has_prev_func && (current_fflags != prev_fflags)))) {
+		    (!has_prev_func || (current_fflags != prev_fflags))) {
 			if ((size_t)(add_p - add) >= (NUM_ELEMENTS(add))) {
 		     		fr_strerror_printf("Out of memory to store kevent EV_ADD filters");
 		     		return -1;
