@@ -1726,8 +1726,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR *
 		do {
 			next = vp->next;
 			fr_cursor_append(&cursor, vp);
-			vp = next;
-		} while (vp);
+		} while (next && (vp = next));
 
 		buf[0] = '\0';
 	}
