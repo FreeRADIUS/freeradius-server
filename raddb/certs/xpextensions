@@ -14,6 +14,52 @@ crlDistributionPoints = URI:http://www.example.com/example_ca.crl
 extendedKeyUsage = 1.3.6.1.5.5.7.3.1
 crlDistributionPoints = URI:http://www.example.com/example_ca.crl
 
+# Enterprise Wi-Fi clients from 2020 onwards which have the
+# Wi-Fi Certified WPA3 Release 2 (December 2019) certification 
+# honour the following two policies for enhanced security 
+# posture regarding certificate validation:
+#
+# Adding the 'Trust Override Disabled - STRICT' policy means that
+# the client device is not allowed to request and accept ad-hoc 
+# trust decisions from the user ("Is this the certificate you
+# expect here?") and instead aborts authentication until the
+# device has been properly configured using out-of-band means
+# with all the details needed to verify the certificate (i.e.
+# either the tuple (CA, server name) or the literal server cert).
+#
+# Adding the 'Trust Override Disabled - TOFU' policy means that
+# the client device is allowed to ask the end user for such an
+# override exactly once, when first connecting to an unknown
+# network. Once the network is known and the trust decision made,
+# any other certificate that is presented and would require
+# another override is rejected and authentication aborted.
+# 
+# Both of these policies provide a protection against rogue
+# authentication servers in that they make sure configurations
+# on end user devices are sufficient to identify the genuine
+# server.
+#
+# The difference is that the TOFU policy allows a leap of faith
+# on first sight of a network ONCE - very much comparable to
+# how SSH establishes trust in a new host. This adds convenience
+# for end users who did not bother to configure their devices 
+# beforehand, but adds an element of uncertainty in that the 
+# attacker could be present on that first contact with the network.
+#
+# Network administrators who consider the TOFU leap of faith
+# unacceptable should choose STRICT; everyone else gains security
+# by choosing TOFU without giving up on convenience for their
+# end users.
+#
+# For completeness, it is also possible to include none of the
+# two to stay with the "anything goes" that was the situation
+# prior to Wi-Fi Certified WPA3 Release December 2019.
+#
+# This is the 'Trust Override Disabled - STRICT' policy.
+#certificatePolicies     = 1.3.6.1.4.1.40808.1.3.1
+# This is the 'Trust Override Disabled - TOFU' policy.
+certificatePolicies     = 1.3.6.1.4.1.40808.1.3.2
+
 #
 #  Add this to the PKCS#7 keybag attributes holding the client's private key
 #  for machine authentication.
