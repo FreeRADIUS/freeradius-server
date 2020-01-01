@@ -841,15 +841,18 @@ nak:
  *  cleaning up the request.
  *
  * @param[in] worker the worker
- * @param[in] request the request to process
  * @param[in] now the current time
  */
-static void worker_run_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
+static void worker_run_request(fr_worker_t *worker, fr_time_t now)
 {
 	ssize_t size = 0;
 	rlm_rcode_t final;
+	REQUEST *request;
 
 	WORKER_VERIFY;
+
+	request = fr_heap_pop(worker->runnable);
+	if (!request) return;
 
 	REQUEST_VERIFY(request);
 	rad_assert(request->runnable_id < 0);
@@ -1133,7 +1136,6 @@ void fr_worker(fr_worker_t *worker)
 	while (true) {
 		bool wait_for_event;
 		int num_events;
-		REQUEST *request;
 
 		WORKER_VERIFY;
 
@@ -1169,12 +1171,9 @@ void fr_worker(fr_worker_t *worker)
 		}
 
 		/*
-		 *	Grab a runnable request, and resume it.
+		 *	Run any outstanding requests.
 		 */
-		request = fr_heap_pop(worker->runnable);
-		if (!request) continue;
-
-		worker_run_request(worker, request, fr_time());
+		worker_run_request(worker, fr_time());
 	}
 }
 
@@ -1206,12 +1205,8 @@ int fr_worker_pre_event(void *uctx, UNUSED fr_time_t wake)
 void fr_worker_post_event(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
-	REQUEST *request;
 
-	request = fr_heap_pop(worker->runnable);
-	if (!request) return;
-
-	worker_run_request(worker, request, now);
+	worker_run_request(worker, now);
 }
 
 
