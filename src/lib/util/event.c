@@ -1794,15 +1794,15 @@ service:
 
 	el->in_handler = false;
 
+	el->now = el->time();
+
 	/*
 	 *	Run all of the post-processing events.
 	 */
 	for (post = fr_dlist_head(&el->post_callbacks);
 	     post != NULL;
 	     post = fr_dlist_next(&el->post_callbacks, post)) {
-		when = el->now;
-
-		post->callback(el, when, post->uctx);
+		post->callback(el, el->now, post->uctx);
 	}
 }
 
