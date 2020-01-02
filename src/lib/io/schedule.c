@@ -203,7 +203,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		cs = cf_section_find(sc->cs, "worker", buffer);
 		if (!cs) cs = cf_section_find(sc->cs, "worker", NULL);
 
-		if (sc->worker_thread_instantiate(sw->ctx, fr_worker_el(sw->worker), cs) < 0) {
+		if (sc->worker_thread_instantiate(sw->ctx, sw->el, cs) < 0) {
 			ERROR("Worker %d - Failed calling thread instantiate: %s", sw->id, fr_strerror());
 			goto fail;
 		}

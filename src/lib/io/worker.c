@@ -1112,18 +1112,6 @@ nomem:
 	return worker;
 }
 
-/** Get the event loop for the worker
- *
- * @param[in] worker the worker data structure
- * @return kq
- */
-fr_event_list_t *fr_worker_el(fr_worker_t *worker)
-{
-	WORKER_VERIFY;
-
-	return worker->el;
-}
-
 
 /** The main loop and entry point of the worker thread.
  *
