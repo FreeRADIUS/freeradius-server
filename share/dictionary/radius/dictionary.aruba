@@ -52,16 +52,20 @@ ATTRIBUTE	Aruba-Auth-SurvMethod			39	integer
 ATTRIBUTE	Aruba-Port-Bounce-Host			40	integer
 
 ATTRIBUTE	Aruba-Calea-Server-Ip			41	ipaddr
-
 ATTRIBUTE	Aruba-Admin-Path			42	string
-
 ATTRIBUTE	Aruba-Captive-Portal-URL		43	string
-
 ATTRIBUTE	Aruba-MPSK-Passphrase			44	octets encrypt=2
-
 ATTRIBUTE	Aruba-ACL-Server-Query-Info		45	string
-
 ATTRIBUTE	Aruba-Command-String			46	string
+ATTRIBUTE	Aruba-Network-Profile			47	string
+ATTRIBUTE	Aruba-Admin-Device-Group			48	string
+ATTRIBUTE	Aruba-PoE-Priority			49	integer
+ATTRIBUTE	Aruba-Port-Auth-Mode			50	integer
+
+ATTRIBUTE	Aruba-NAS-Filter-Rule			51	string
+ATTRIBUTE	Aruba-QoS-Trust-Mode			52	integer
+ATTRIBUTE	Aruba-UBT-Gateway-Role			53	string
+ATTRIBUTE	Aruba-Gateway-Zone			54	string
 
 VALUE	Aruba-AirGroup-Device-Type	Personal-Device		1
 VALUE	Aruba-AirGroup-Device-Type	Shared-Device		2
@@ -69,5 +73,16 @@ VALUE	Aruba-AirGroup-Device-Type	Deleted-Device		3
 
 VALUE	Aruba-AirGroup-Version		AirGroup-v1		1
 VALUE	Aruba-AirGroup-Version		AirGroup-v2		2
+
+VALUE	Aruba-PoE-Priority	Critical		0
+VALUE	Aruba-PoE-Priority	High		1
+VALUE	Aruba-PoE-Priority	Low		2
+
+VALUE	Aruba-Port-Auth-Mode	Infrastructure-Mode		1
+VALUE	Aruba-Port-Auth-Mode	Client-Mode		2
+
+VALUE	Aruba-QoS-Trust-Mode	DSCP		0
+VALUE	Aruba-QoS-Trust-Mode	QoS	1
+VALUE	Aruba-QoS-Trust-Mode	None	2
 
 END-VENDOR Aruba
