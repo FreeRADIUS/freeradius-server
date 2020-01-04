@@ -372,13 +372,13 @@ static void worker_max_request_timer(fr_worker_t *worker);
  * @param[in] worker		This worker.
  * @param[in] request		we're sending a reply for.
  * @param[in] size		The maximum size of the reply data
+ * @param[in] now		The current time
  */
-static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size)
+static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size, fr_time_t now)
 {
 	fr_channel_data_t *reply;
 	fr_channel_t *ch;
 	fr_message_set_t *ms;
-	fr_time_t now;
 
 	REQUEST_VERIFY(request);
 
@@ -386,8 +386,6 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	 *	If we're sending a reply, then it's no longer runnable.
 	 */
 	rad_assert(request->runnable_id < 0);
-
-	now = fr_time();
 
 	/*
 	 *	If it's a fake request, don't send a real reply.
@@ -595,9 +593,11 @@ static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 		worker_stop_request(worker, request, now);
 
 		/*
-		 *	Tell the network side that this request is done.
+		 *	Tell the network side that this request is
+		 *	done.  Also make sure that each time stamp is
+		 *	unique.
 		 */
-		worker_send_reply(worker, request, 1);
+		worker_send_reply(worker, request, 1, now);
 	}
 
 	/*
@@ -843,16 +843,20 @@ nak:
  *  cleaning up the request.
  *
  * @param[in] worker the worker
- * @param[in] now the current time
+ * @param[in] start the current time
  */
-static void worker_run_request(fr_worker_t *worker, fr_time_t now)
+static void worker_run_request(fr_worker_t *worker, fr_time_t start)
 {
 	ssize_t size = 0;
 	rlm_rcode_t final;
 	REQUEST *request;
+	fr_time_t now;
 
 	WORKER_VERIFY;
 
+	now = start;
+
+redo:
 	request = fr_heap_pop(worker->runnable);
 	if (!request) return;
 
@@ -900,8 +904,9 @@ static void worker_run_request(fr_worker_t *worker, fr_time_t now)
 		break;
 
 	case RLM_MODULE_YIELD:
-		fr_time_tracking_yield(&request->async->tracking, fr_time());
-		return;
+		now = fr_time();
+		fr_time_tracking_yield(&request->async->tracking, now);
+		goto keep_going;
 
 	case RLM_MODULE_OK:
 		/*
@@ -924,7 +929,22 @@ static void worker_run_request(fr_worker_t *worker, fr_time_t now)
 		(void) rbtree_deletebydata(worker->dedup, request);
 	}
 
-	worker_send_reply(worker, request, size);
+	now = fr_time();
+	worker_send_reply(worker, request, size, now);
+	now = fr_time();
+
+keep_going:
+	/*
+	 *	If this request ran for less than 0.1ms, then go run
+	 *	another request.  This change means that the worker
+	 *	checks the event loop only 10K times per second, which
+	 *	should be good enough.
+	 */
+	if ((now - start) > (NSEC / 100000)) {
+		return;
+	}
+
+	goto redo;
 }
 
 
