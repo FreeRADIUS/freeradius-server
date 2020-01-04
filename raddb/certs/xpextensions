@@ -19,6 +19,8 @@ crlDistributionPoints = URI:http://www.example.com/example_ca.crl
 # honour the following two policies for enhanced security 
 # posture regarding certificate validation:
 #
+# https://www.wi-fi.org/discover-wi-fi/security
+#
 # Adding the 'Trust Override Disabled - STRICT' policy means that
 # the client device is not allowed to request and accept ad-hoc 
 # trust decisions from the user ("Is this the certificate you
