@@ -340,7 +340,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
 
 	FR_INTEGER_BOUND_CHECK("start_pps", inst->load.start_pps, >=, 10);
-	FR_INTEGER_BOUND_CHECK("start_pps", inst->load.start_pps, <, 100000);
+	FR_INTEGER_BOUND_CHECK("start_pps", inst->load.start_pps, <, 400000);
 
 	FR_INTEGER_BOUND_CHECK("step", inst->load.step, >=, 1);
 	FR_INTEGER_BOUND_CHECK("step", inst->load.step, <, 100000);
