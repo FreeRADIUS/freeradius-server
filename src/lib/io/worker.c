@@ -533,7 +533,9 @@ finished:
  */
 static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
 {
-	fr_time_tracking_resume(&request->async->tracking, now);
+	if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
+		fr_time_tracking_resume(&request->async->tracking, now);
+	}
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 
 	/*
