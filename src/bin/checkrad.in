@@ -1549,12 +1549,11 @@ if ($ARGV[0] eq 'livingston') {
 	$ret = &dot1x_snmp;
 } elsif ($ARGV[0] eq 'other') {
 	$ret = 1;
-}
-elsif ($ARGV[0] eq 'juniper_mx') {
+} elsif ($ARGV[0] eq 'juniper_mx') {
         $ret = &juniper_mx_snmp;
 } elsif ($ARGV[0] eq 'ericsson_ssr') {
         $ret = &ericsson_ssr_snmp;
-else {
+} else {
 	print LOG "  checkrad: unknown NAS type $ARGV[0]\n" if ($debug);
 	print STDERR "checkrad: unknown NAS type $ARGV[0]\n";
 	$ret = 2;
