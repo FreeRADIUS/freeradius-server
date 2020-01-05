@@ -33,6 +33,8 @@
 #		mikrotik_telnet  1.1    Author: Evren Yurtesen <yurtesen@ispro.net.tr>
 #		mikrotik_snmp    1.0    Author: Evren Yurtesen <yurtesen@ispro.net.tr>
 #		redback_telnet          Author: Eduardo Roldan
+#		juniper_mx	        Author: Nitzan Tzelniker
+#		ericsson_ssr_snmp	Author: Nitzan Tzelniker
 #
 #	Config: $debug is the file you want to put debug messages in
 #		$snmpget is the location of your ``snmpget'' program
@@ -1418,6 +1420,55 @@ sub redback_telnet {
     return 0;
 }
 
+sub juniper_mx_snmp {
+        #receives acct_session
+        my $temp = $ARGV[4];
+        #removes the leading 0s
+        my $clean_temp = int $temp;
+        # Look up community string in naspasswd file.
+        my ($login, $pass) = naspasswd($ARGV[1], 1);
+        if ($login eq '') {
+                $pass = $cmmty_string;
+        } elsif ($login ne 'SNMP') {
+                if ($debug) {
+                        print LOG
+                        "   Error: Need SNMP community string for $ARGV[1]\n";
+                }
+                return 2;
+        }
+                $out=snmpget($ARGV[1], $pass, ".1.3.6.1.4.1.2636.3.64.1.1.1.3.1.3.0.$clean_temp");
+                if($out=~/^$ARGV[3](\@.+)?$/){
+                        return 1;
+                }else{
+                        return 0;
+                }
+}
+
+sub ericsson_ssr_snmp {
+        #receives acct_session
+        my $temp = $ARGV[4];
+                $clean_temp = ascii_to_oid($temp);
+                
+
+        # Look up community string in naspasswd file.
+        my ($login, $pass) = naspasswd($ARGV[1], 1);
+        if ($login eq '') {
+                $pass = $cmmty_string;
+        } elsif ($login ne 'SNMP') {
+                if ($debug) {
+                        print LOG
+                        "   Error: Need SNMP community string for $ARGV[1]\n";
+                }
+                return 2;
+        }
+                $out=snmpget($ARGV[1], $pass, ".1.3.6.1.4.1.2352.2.27.1.1.6.1.1.25$clean_temp");
+                if($out=~/^$ARGV[3](\@.+)?$/){
+                        return 1;
+                }else{
+                        return 0;
+                }
+}
+
 ###############################################################################
 
 # Poor man's getopt (for -d)
@@ -1498,7 +1549,12 @@ if ($ARGV[0] eq 'livingston') {
 	$ret = &dot1x_snmp;
 } elsif ($ARGV[0] eq 'other') {
 	$ret = 1;
-} else {
+}
+elsif ($ARGV[0] eq 'juniper_mx') {
+        $ret = &juniper_mx_snmp;
+} elsif ($ARGV[0] eq 'ericsson_ssr') {
+        $ret = &ericsson_ssr_snmp;
+else {
 	print LOG "  checkrad: unknown NAS type $ARGV[0]\n" if ($debug);
 	print STDERR "checkrad: unknown NAS type $ARGV[0]\n";
 	$ret = 2;
