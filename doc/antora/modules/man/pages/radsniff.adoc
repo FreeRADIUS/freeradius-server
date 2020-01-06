@@ -82,10 +82,10 @@ contents of RADIUS packets using the FreeRADIUS dictionaries.
 *-q*::
   Print less debugging information.
 
-*-r filter*::
+*-r attribute-filter*::
   RADIUS attribute request filter.
 
-*-R filter*::
+*-R attribute-filter*::
   RADIUS attribute response filter.
 
 *-s secret*::
