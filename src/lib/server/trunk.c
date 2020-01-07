@@ -295,7 +295,7 @@ struct fr_trunk_s {
 
 	fr_time_t		last_connected;		//!< Last time a connection connected.
 
-	fr_time_t		last_open_failed;		//!< Last time a connection failed.
+	fr_time_t		last_open_failed;	//!< Last time a connection failed.
 	/** @} */
 
 	/** @name Statistics

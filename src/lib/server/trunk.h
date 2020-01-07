@@ -68,15 +68,17 @@ typedef struct {
 							///< to close an existing connection.
 
 
-	fr_time_delta_t		req_cleanup_delay;	//!< How long must a request in the unassigned list
-							///< not have been used for, before it's cleaned up.
+	fr_time_delta_t		req_cleanup_delay;	//!< How long must a request in the unassigned (free)
+							///< list not have been used for before it's cleaned up
+							///< and actually freed.
 
 	fr_time_delta_t		manage_interval;	//!< How often we run the management algorithm to
 							///< open/close connections.
 
-	unsigned		req_pool_headers;	//!< How many chunk headers the pool should contain.
+	unsigned		req_pool_headers;	//!< How many chunk headers the talloc pool allocated
+							///< with the treq should contain.
 
-	size_t			req_pool_size;		//!< How big the pool should be.
+	size_t			req_pool_size;		//!< The size of the talloc pool allocated with the treq.
 
 	bool			always_writable;	//!< Set to true if our ability to write requests to
 							///< a connection handle is not dependant on the state
@@ -129,60 +131,73 @@ extern CONF_PARSER const fr_trunk_config[];
 
 /** Allocate a new connection for the trunk
  *
- * The trunk code only interacts with the connections via the connection API.
- * Which means its shielded from all the implementation details of opening
+ * The trunk code only interacts with underlying connections via the connection API.
+ * As a result the trunk API is shielded from the implementation details of opening
  * and closing connections.
  *
- * When allocating a new connection, the trunk connection should specify an
- * open callback which installs read/write handlers.
+ * When creating new connections, this callback is used to allocate and configure
+ * a new #fr_connection_t, this #fr_connection_t and the fr_connection API is how the
+ * trunk signals the underlying connection that it should start, reconnect, and halt (stop).
  *
- * The trunk API must be informed when a connection is readable, and, if
- * `always_writable == false`, when the connection is writable.
+ * The trunk must be informed when the underlying connection is readable, and,
+ * if `always_writable == false`, when the connection is writable.
  *
- * When the connection is readable, a read I/O handler installed in the open()
- * callback of the fr_connection_t, must either call
- * `fr_trunk_connection_signal_readable(tconn)` immediately, or feed any incoming
- * data to the underlying library, and _then_ call #fr_trunk_connection_signal_readable.
+ * When the connection is readable, a read I/O handler installed by the open()
+ * callback of the #fr_connection_t must either:
  *
- * When the connection is writable, if `always_writable == true` then the
- * underlying library should be informed the connection is writable.
+ * - If there's no underlying I/O library, call `fr_trunk_connection_signal_readable(tconn)`
+ *   immediately, relying on the trunk demux callback to perform decoding and demuxing.
+ * - If there is an underlying I/O library, feed any incoming data to that library and
+ *   then call #fr_trunk_connection_signal_readable if the underlying I/O library
+ *   indicates complete responses are ready for processing.
  *
- * When the connection is writable, if `always_writable == false` then the
- * underlying library should be informed the connection is writable, with any
- * pending data written, then `fr_trunk_connection_signal_writable(tconn)` should be
- * called.
+ * When the connection is writable a write I/O handler installed by the open() callback
+ * of the #fr_connection_t must either:
+ *
+ * - If `always_writable == true` - Inform the underlying I/O library that the connection
+ *   is writable.  The trunk API does not need to be informed as it will immediately pass
+ *   through any enqueued requests to the I/O library.
+ * - If `always_writable == false` and there's an underlying I/O library,
+ *   call `fr_trunk_connection_signal_writable(tconn)` to allow the trunk mux callback
+ *   to pass requests to the underlying I/O library and (optionally) signal the I/O library
+ *   that the connection is writable.
+ * - If `always_writable == false` and there's no underlying I/O library,
+ *   call `fr_trunk_connection_signal_writable(tconn)` to allow the trunk mux callback
+ *   to encode and write requests to a socket.
  *
  * @param[in] tconn		The trunk connection this connection will be bound to.
- *				Should be used as the context for any connections
+ *				Should be used as the context for any #fr_connection_t
  *				allocated.
  * @param[in] el		The event list to use for I/O and timer events.
- * @param[in] conf		Connection configuration.
+ * @param[in] conf		Configuration of the #fr_connection_t.
  * @param[in] log_prefix	What to prefix connection log messages with.
- * @param[in] uctx		User data to pass to the alloc callback.
+ * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  * @return
- *	- A new fr_connection_t on success (should be in the halted state).
+ *	- A new fr_connection_t on success (should be in the halted state - the default).
  *	- NULL on error.
  */
 typedef fr_connection_t *(*fr_trunk_connection_alloc_t)(fr_trunk_connection_t *tconn, fr_event_list_t *el,
 							fr_connection_conf_t const *conf,
 							char const *log_prefix, void *uctx);
 
-/** Inform the API client which connections the trunk API wants to be notified of I/O events on
+/** Inform the trunk API client which I/O events the trunk wants to receive
  *
- * I/O handlers may call one or more of the following functions to signal
- * that an event has occurred.
+ * I/O handlers installed by this callback should call one or more of the following
+ * functions to signal that an I/O event has occurred:
  *
  * - fr_trunk_connection_signal_writable - Connection is now writable.
  * - fr_trunk_connection_signal_readable - Connection is now readable.
- * - fr_trunk_connection_signal_active - Connection is full or congested.
+ * - fr_trunk_connection_signal_inactive - Connection is full or congested.
  * - fr_trunk_connection_signal_active - Connection is no longer full or congested.
  * - fr_trunk_connection_signal_reconnect - Connection is inviable and should be reconnected.
  *
- * @param[in] tconn		That wants to be notified.
- * @param[in] conn		The underlying connection.
- * @param[in] el		to insert FD events into.
- * @param[in] notify_on		When to signal the trunk connection.
- * @param[in] uctx		User data to pass to the notify callback.
+ * @param[in] tconn		That should be notified of I/O events.
+ * @param[in] conn		The #fr_connection_t bound to the tconn.
+ *				Use #fr_connection_get_handle to access the
+ *				connection handle or file descriptor.
+ * @param[in] el		to insert I/O events into.
+ * @param[in] notify_on		I/O events to signal the trunk connection on.
+ * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
 typedef void (*fr_trunk_connection_notify_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 					     fr_event_list_t *el,
@@ -190,44 +205,46 @@ typedef void (*fr_trunk_connection_notify_t)(fr_trunk_connection_t *tconn, fr_co
 
 /** Multiplex one or more requests into a single connection
  *
- * In most cases this function should pop requests from the pending
- * queue of the connection using #fr_trunk_connection_pop_request.
+ * This callback should:
  *
- * This function should then serialize the protocol request data contained
- * within the request's rctx, writing it to the provided conn.
- * This function should then insert the treq (fr_trunk_request_t)
- * into a tracking structure stored in the conn (either in the handle or the
- * uctx).
- * This tracking structure will be used later in the demux function to match
- * protocol requests with protocol responses.
+ * - Pop one or more requests from the trunk connection's pending queue using
+ *   #fr_trunk_connection_pop_request.
+ * - Serialize the protocol request data contained within the trunk request's (treq's)
+ *   pctx, writing it to the provided #fr_connection_t (or underlying connection handle).
+ * - Insert the provided treq
+ *   into a tracking structure associated with the #fr_connection_t or uctx.
+ *   This tracking structure will be used later in the trunk demux callback to match
+ *   protocol requests with protocol responses.
  *
- * If working at the socket level, and a write on a file descriptor indicates
- * less data was written than was needed, the API client should track the
- * amount of data written, and should call `fr_trunk_request_signal_partial(treq)`
- * this will move the request out of the pending queue, and store it in the
- * partial field of the connection.  The next time #fr_trunk_connection_pop_request
- * is called, the treq will be returned first.  The API client should continue
- * writing the partially written request to the socket.
+ * If working at the socket level and a write on a file descriptor indicates
+ * less data was written than was needed, the trunk API client should track the
+ * amount of data written in the protocol request (preq), and should call
+ * `fr_trunk_request_signal_partial(treq)`.
+ * #fr_trunk_request_signal_partial will move the request out of the pending
+ * queue, and store it in the partial slot of the trunk connection.
+ * The next time #fr_trunk_connection_pop_request is called, the partially written
+ * treq will be returned first.  The API client should continue writing the partially
+ * written request to the socket.
  *
- * After calling #fr_trunk_request_signal_partial this function *MUST NOT*
+ * After calling #fr_trunk_request_signal_partial this callback *MUST NOT*
  * call #fr_trunk_connection_pop_request again, and should immediately return.
  *
  * If the request can't be written to the connection because it the connection
- * has become unusable, this function should call
+ * has become unusable, this callback should call
  * `fr_connection_signal_reconnect(conn)` to notify the connection API that the
  * connection is unusable. The current request will either fail, or be
  * re-enqueued depending on the trunk configuration.
  *
- * After calling #fr_connection_signal_reconnect this function *MUST NOT*
+ * After calling #fr_connection_signal_reconnect this callback *MUST NOT*
  * call #fr_trunk_connection_pop_request again, and should immediately return.
  *
  * If the protocol request data can't be written to the connection because the
- * data is invalid, or because some other error occurred, this function should
- * call `fr_trunk_request_signal_fail(treq)`, this function may then continue
- * processing other requests.
+ * data is invalid or because some other error occurred, this callback should
+ * call `fr_trunk_request_signal_fail(treq)`, this callback may then continue
+ * popping/processing other requests.
  *
- * @param[in] tconn		The trunk connection used to dequeue trunk
- *      			requests.
+ * @param[in] tconn		The trunk connection to dequeue trunk
+ *      			requests from.
  * @param[in] conn		Connection to write the request to.
  *				Use #fr_connection_get_handle to access the
  *				connection handle or file descriptor.
@@ -237,28 +254,31 @@ typedef void (*fr_trunk_request_mux_t)(fr_trunk_connection_t *tconn, fr_connecti
 
 /** Demultiplex on or more responses, reading them from a connection, decoding them, and matching them with their requests
  *
- * This function should read responses from the connection, decode them,
- * and match them with a treq (fr_trunk_request_t) using a tracking structure
- * stored in the conn (either in the handle or the uctx).
+ * This callback should either:
+ *
+ * - If an underlying I/O library is used, request complete responses from
+ *   the I/O library, and match the responses with a treq (trunk request)
+ *   using a tracking structure associated with the #fr_connection_t or uctx.
+ * - If no underlying I/O library is used, read responses from the #fr_connection_t,
+ *   decode those responses, and match those responses with a treq using a tracking
+ *   structure associated with the #fr_connection_t or uctx.
  *
  * Once the treq has been retrieved from the tracking structure, the original
- * REQUEST * and rctx may be retrieved with
- * #fr_trunk_request_get_resumption_data.
+ * REQUEST * and rctx may be retrieved with #fr_trunk_request_get_resumption_data.
  *
  * The result (positive or negative), should be written to the rctx structure.
  *
- * `fr_trunk_request_signal_success(treq)` should be used to inform the trunk
+ * #fr_trunk_request_signal_success should be used to inform the trunk
  * that the request should be placed back into the worker thread's runnable
  * queue and should continue being processed.
  *
- * If a connection appears to have become unusable, this function should call
- * `fr_connection_signal_reconnect(conn)` and immediately return.  The current
- * request will either fail, or be re-enqueued depending on the trunk
- * configuration.
+ * If a connection appears to have become unusable, this callback should call
+ * #fr_connection_signal_reconnect and immediately return.  The current
+ * treq will either fail, or be re-enqueued depending on the trunk configuration.
  *
- * #tr_trunk_request_signal_fail should *NOT* be called in any circumstances
- * as this function is only used for reporting failures at an I/O layer level
- * not failures of queries or external services.
+ * #tr_trunk_request_signal_fail should *NOT* be called as this function is only
+ * used for reporting failures at an I/O layer level not failures of queries or
+ * external services.
  *
  * @param[in] tconn		The trunk connection.
  * @param[in] conn		Connection to read the request from.
@@ -268,20 +288,27 @@ typedef void (*fr_trunk_request_mux_t)(fr_trunk_connection_t *tconn, fr_connecti
  */
 typedef void (*fr_trunk_request_demux_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
 
-/** Inform a remote service like a database that a request should be cancelled
+/** Inform a remote service like a datastore that a request should be cancelled
  *
- * This function will be called any time there are one or more requests to be
- * cancelled and the conn is writable.  For efficiency, this function should
- * call #fr_trunk_connection_pop_cancellation multiple times, and process all
- * outstanding cancellation requests.
+ * This callback will be called any time there are one or more requests to be
+ * cancelled and a #fr_connection_t is writable, or as soon as a request is
+ * cancelled if `always_writable == true`.
  *
- * If the response from the datastore needs to be tracked, then the treq should
- * be inserted into a tracking tree shared with the demuxer, and
- * #fr_trunk_request_signal_cancel_sent should be called to move the request into
+ * For efficiency, this callback should call #fr_trunk_connection_pop_cancellation
+ * multiple times, and process all outstanding cancellation requests.
+ *
+ * If the response (cancel ACK) from the remote service needs to be tracked,
+ * then the treq should be inserted into a tracking tree shared with the demuxer,
+ * and #fr_trunk_request_signal_cancel_sent should be called to move the treq into
  * the cancel_sent state.
  *
- * When the demuxer finds a matching response, it should remove the entry
- * from the tracking tree.
+ * As with the main mux callback, if a cancellation request is partially written
+ * #fr_trunk_request_signal_cancel_partial should be called, and the amount
+ * of data written should be tracked in the preq (protocol request).
+ *
+ * When the demuxer finds a matching (cancel ACK) response, the demuxer should
+ * remove the entry from the tracking tree and call
+ * #fr_trunk_request_signal_cancel_complete.
  *
  * @param[in] tconn		The trunk connection used to dequeue
  *				cancellation requests.
@@ -292,18 +319,39 @@ typedef void (*fr_trunk_request_demux_t)(fr_trunk_connection_t *tconn, fr_connec
  */
 typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
 
-/** Remove an outstanding request from a matching structure
+/** Remove an outstanding request from a tracking/matching structure
  *
- * The treq (fr_trunk_request_t), and any associated resources should be
- * removed from the the matching structure in the conn, and resources that do
- * were generated whilst encoding the protocol request should be freed.
+ * The treq (trunk request), and any associated resources should be
+ * removed from the the matching structure associated with the #fr_connection_t or uctx.
  *
- * Once this function has returned, if a cancel_sent callback has been
- * provided, the treq will enter the FR_TRUNK_REQUEST_CANCEL_EVENTED
- * state, and be placed on the connection's cancellation queue.
+ * Which resources should be freed depends on the cancellation reason:
  *
- * The cancellation queue will be drained the next time the connection becomes
- * writable.
+ * - FR_TRUNK_CANCEL_REASON_MOVE - If an encoded request can be reused
+ *   it should be kept.  The trunk mux callback should be aware that
+ *   an encoded request may already be associated with a preq and use
+ *   that instead of re-encoding the preq.
+ *   If the encoded request cannot be reused it should be freed, and
+ *   any fields in the preq that were modified during the last mux call
+ *   (other than perhaps counters) should be reset to their initial values.
+ * - FR_TRUNK_CANCEL_REASON_SIGNAL - The encoded request and any I/O library
+ *   request handled may be freed or that may be left to another callback.
+ *
+ * After this callback is complete one of several actions will be taken:
+ *
+ * - If the cancellation reason was FR_TRUNK_CANCEL_REASON_MOVE, the treq
+ *   will move to the unassigned state, and then either be placed in the
+ *   trunk backlog, or immediately enqueued on another trunk connection.
+ * - If the reason was FR_TRUNK_CANCEL_SIGNAL
+ *   - ...and a request_cancel_mux callback was provided, the
+ *     the request_cancel_mux callback will be called when the connection
+ *     is next writable (or immediately if `always_writable == true`) and
+ *     the request_cancel_mux callback will send an explicit cancellation
+ *     request to terminate any outstanding queries on remote datastores.
+ *   - ...and no request_cancel_mux callback was provided, the
+ *     treq will enter the unassigned state and then be freed.
+ *
+ * @note FR_TRUNK_CANCEL_REASON_MOVE will only be set if the underlying connection
+ * is bad.  No cancellation requests will be sent for requests being moved.
  *
  * @param[in] conn		to remove request from.
  * @param[in] treq		Trunk request to cancel.
@@ -314,44 +362,47 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
 typedef void (*fr_trunk_request_cancel_t)(fr_connection_t *conn, fr_trunk_request_t *treq, void *preq,
 					  fr_trunk_cancel_reason_t reason, void *uctx);
 
-/** Write a successful result to the rctx so that the API client is aware of the result
+/** Write a successful result to the rctx so that the trunk API client is aware of the result
  *
- * This function should free any memory not bound to the lifetime of the rctx
+ * The rctx should be modified in such a way that indicates to the trunk API client
+ * that the request was sent using the trunk and a response was received.
+ *
+ * This callback should free any memory not bound to the lifetime of the rctx
  * or request, or that was allocated explicitly to prepare for the REQUEST *
- * being used by a trunk, this may include library request handles and
- * encoded packets.
+ * being used by a trunk.  This may include I/O library request handles, raw
+ * responses, and decoded responses.
  *
- * The rctx should be modified in such a way that indicates to the API client
- * that the request could not be sent using the trunk.
- *
- * After this function returns the REQUEST * will be marked as runnable.
+ * After this callback is complete, the request_free callback will be called if provided.
  */
 typedef void (*fr_trunk_request_complete_t)(REQUEST *request, void *preq, void *rctx, void *uctx);
 
-/** Write a failure result to the rctx so that the API client is aware that the request failed
+/** Write a failure result to the rctx so that the trunk API client is aware that the request failed
  *
- * This function should free any memory not bound to the lifetime of the rctx
- * or request, or that was allocated explicitly to prepare for the REQUEST *
- * being used by a trunk, this may include library request handles and
- * (partially-)encoded packets.
- *
- * The rctx should be modified in such a way that indicates to the API client
+ * The rctx should be modified in such a way that indicates to the trunk API client
  * that the request could not be sent using the trunk.
  *
- * After this function returns the REQUEST * will be marked as runnable.
+ * This callback should free any memory not bound to the lifetime of the rctx
+ * or request, or that was allocated explicitly to prepare for the REQUEST *
+ * being used by a trunk.
  *
- * @note If a cancel function is provided, this function should be used to remove
+ * @note If a cancel function is provided, the cancel function should be used to remove
  *       active requests from any request/response matching, not the fail function.
+ *	 Both the cancel and fail functions will be called for a request that has been
+ *	 sent or partially sent.
+ *
+ * After this callback is complete, the request_free callback will be called if provided.
  */
 typedef void (*fr_trunk_request_fail_t)(REQUEST *request, void *preq, void *rctx, void *uctx);
 
 /** Free resources associated with a trunk request
  *
  * The trunk request is complete.  If there's a request still associated with the
- * trunk request, that will be provided, so that i can be marked runnable if there's
- * no further processing required.
+ * trunk request, that will be provided so that it can be marked runnable, but
+ * be aware that the REQUEST * value will be NULL if the request was cancelled due
+ * to a signal.
  *
- * The preq *MUST* be explicitly freed by this function.
+ * The preq and any associated data such as encoded packets or I/O library request
+ * handled *MUST* be explicitly freed by this function.
  *
  * @param[in] request		to mark as runnable if no further processing is required.
  * @param[in] preq_to_free	As per the name.
