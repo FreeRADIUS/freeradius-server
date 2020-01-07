@@ -226,10 +226,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
+	inst->pool = module_connection_pool_init(conf, inst, krb5_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 #else
-	inst->conn = mod_conn_create(inst, inst, 0);
+	inst->conn = krb5_mod_conn_create(inst, inst, 0);
 	if (!inst->conn) return -1;
 #endif
 	return 0;

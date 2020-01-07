@@ -271,7 +271,7 @@ static int _mod_conn_free(rlm_rest_handle_t *randle)
  * @see fr_pool_connection_create_t
  * @see connection.c
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
+void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
 	rlm_rest_t const	*inst = instance;
 

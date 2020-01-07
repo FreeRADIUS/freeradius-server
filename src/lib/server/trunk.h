@@ -263,20 +263,16 @@ typedef void (*fr_trunk_request_mux_t)(fr_trunk_connection_t *tconn, fr_connecti
  *   decode those responses, and match those responses with a treq using a tracking
  *   structure associated with the #fr_connection_t or uctx.
  *
- * Once the treq has been retrieved from the tracking structure, the original
- * REQUEST * and rctx may be retrieved with #fr_trunk_request_get_resumption_data.
- *
  * The result (positive or negative), should be written to the rctx structure.
  *
- * #fr_trunk_request_signal_success should be used to inform the trunk
- * that the request should be placed back into the worker thread's runnable
- * queue and should continue being processed.
+ * #fr_trunk_request_signal_complete should be used to inform the trunk
+ * that the request is now complete.
  *
  * If a connection appears to have become unusable, this callback should call
  * #fr_connection_signal_reconnect and immediately return.  The current
  * treq will either fail, or be re-enqueued depending on the trunk configuration.
  *
- * #tr_trunk_request_signal_fail should *NOT* be called as this function is only
+ * #fr_trunk_request_signal_fail should *NOT* be called as this function is only
  * used for reporting failures at an I/O layer level not failures of queries or
  * external services.
  *

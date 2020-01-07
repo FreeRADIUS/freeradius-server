@@ -323,7 +323,7 @@ static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
 {
 	return (unlang_t *)p;
 }
-/* @} **/
+/** @} */
 
 /** @name Internal interpreter functions needed by ops
  *
@@ -335,7 +335,7 @@ void		unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 int		unlang_op_init(void);
 
 void		unlang_op_free(void);
-/* @} **/
+/** @} */
 
 /** @name io shims
  *
@@ -348,7 +348,7 @@ rlm_rcode_t	unlang_io_process_interpret(UNUSED void const *instance, REQUEST *re
 
 REQUEST		*unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace, bool detachable);
 
-/* @} **/
+/** @} */
 
 /** @name op init functions
  *
@@ -383,7 +383,7 @@ int		unlang_subrequest_op_init(void);
 void		unlang_subrequest_op_free(void);
 
 void		unlang_switch_init(void);
- /* @} **/
+ /** @} */
 
 #ifdef __cplusplus
 }

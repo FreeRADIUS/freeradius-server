@@ -74,7 +74,7 @@ fr_ldap_connection_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
  * @param request The current request.
  * @param conn to release.
  */
-void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t *conn)
+void ldap_mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t *conn)
 {
 	/*
 	 *	Could have already been free'd due to a previous error.
@@ -109,7 +109,7 @@ void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connecti
  *
  * Create a new ldap connection and allocate memory for a new rlm_handle_t
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
+void *ldap_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	fr_ldap_rcode_t		status;
 	fr_ldap_connection_t	*conn;

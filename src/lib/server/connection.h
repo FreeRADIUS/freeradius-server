@@ -109,7 +109,7 @@ typedef fr_connection_state_t (*fr_connection_open_t)(fr_event_list_t *el, void 
  * @param[in] h		Handle that needs to be closed.
  * @param[in] uctx	User context.
  * @return
- *	- #FR_CONNECTION_STATE_CLOSING		if the handle is shutting down.
+ *	- #FR_CONNECTION_STATE_SHUTDOWN		if the handle has shutdown.
  *	- #FR_CONNECTION_STATE_FAILED		if the handle is unusable, and we
  *						should just transition directly to failed.
  */

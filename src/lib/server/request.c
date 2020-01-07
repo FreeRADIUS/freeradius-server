@@ -28,7 +28,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/unlang/base.h>
 
-/** The thread local free list
+/*
+ * The thread local free list
  *
  * Any entries remaining in the list will be freed when the thread is joined
  */

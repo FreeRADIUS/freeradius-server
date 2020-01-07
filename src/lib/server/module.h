@@ -252,7 +252,7 @@ exfile_t	*module_exfile_init(TALLOC_CTX *ctx,
 				    bool locking,
 				    char const *trigger_prefix,
 				    VALUE_PAIR *trigger_args);
-/** @{ */
+/** @} */
 
 /** @name Helper functions
  *
@@ -268,7 +268,7 @@ bool		module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, f
 
 int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
 
-/** @{ */
+/** @} */
 
 /** @name Module and module thread lookup
  *

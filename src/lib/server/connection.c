@@ -395,6 +395,7 @@ static void connection_add_watch(fr_connection_t *conn, fr_dlist_head_t *list,
  * @param[in] state	to call watcher on entering.
  * @param[in] watch	function to call.
  * @param[in] oneshot	If true, remove the function after calling.
+ * @param[in] uctx	to pass to callbacks.
  */
 void fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
 				 fr_connection_watch_t watch, bool oneshot, void const *uctx)
@@ -413,6 +414,7 @@ void fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t st
  * @param[in] state	to call watcher on entering.
  * @param[in] watch	function to call.
  * @param[in] oneshot	If true, remove the function after calling.
+ * @param[in] uctx	to pass to callbacks.
  */
 void fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
 				  fr_connection_watch_t watch, bool oneshot, void const *uctx)

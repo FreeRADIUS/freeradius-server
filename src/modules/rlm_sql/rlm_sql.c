@@ -1162,7 +1162,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	INFO("Attempting to connect to database \"%s\"", inst->config->sql_db);
 
-	inst->pool = module_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL, NULL, NULL);
+	inst->pool = module_connection_pool_init(inst->cs, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 
 	return RLM_MODULE_OK;

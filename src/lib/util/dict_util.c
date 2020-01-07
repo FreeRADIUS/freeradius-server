@@ -1379,11 +1379,11 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_d
 	return p - name;
 }
 
-/**Internal version of #fr_dict_by_protocol_name
+/** Internal version of #fr_dict_by_protocol_name
  *
  * @note For internal use by the dictionary API only.
  *
- * @copybrief fr_dict_by_protocol_name.
+ * @copybrief fr_dict_by_protocol_name
  */
 fr_dict_t *dict_by_protocol_name(char const *name)
 {
@@ -1397,7 +1397,7 @@ fr_dict_t *dict_by_protocol_name(char const *name)
  *
  * @note For internal use by the dictionary API only.
  *
- * @copybrief fr_dict_by_protocol_num.
+ * @copybrief fr_dict_by_protocol_num
  */
 fr_dict_t *dict_by_protocol_num(unsigned int num)
 {

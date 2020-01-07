@@ -1918,8 +1918,9 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 
 /** Return the count number of connections in the specified states
  *
- * @param[in] trunk	to retrieve counts for.
- * @param[in] states	One or more states or'd together.
+ * @param[in] trunk		to retrieve counts for.
+ * @param[in] conn_state	One or more connection states or'd together.
+ * @return The number of connections in the specified states.
  */
 uint16_t fr_trunk_connection_count_by_state(fr_trunk_t *trunk, int conn_state)
 {
@@ -1938,8 +1939,10 @@ uint16_t fr_trunk_connection_count_by_state(fr_trunk_t *trunk, int conn_state)
 
 /** Return the count number of requests associated with a trunk connection
  *
- * @param[in] tconn	to return request count for.
- * @return The number of requests in any state, associated with a tconn.
+ * @param[in] tconn		to return request count for.
+ * @param[in] req_state		One or more request states or'd together.
+ *
+ * @return The number of requests in the specified states, associated with a tconn.
  */
 uint32_t fr_trunk_request_count_by_connection(fr_trunk_connection_t const *tconn, int req_state)
 {
@@ -2654,6 +2657,7 @@ static int _trunk_connection_free(fr_trunk_connection_t *tconn)
  * then inserts the connection into the 'connecting' list.
  *
  * @param[in] trunk	to spawn connection in.
+ * @param[in] now	The current time.
  */
 static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 {
@@ -2724,7 +2728,7 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
  *
  * - #fr_trunk_request_signal_cancel_sent
  *   The remote datastore has been informed, but we need to wait for acknowledgement.
- *   The #request_demux function must handle the acks calling
+ *   The #fr_trunk_request_demux_t callback must handle the acks calling
  *   #fr_trunk_request_signal_cancel_complete when an ack is received.
  *
  * - #fr_trunk_request_signal_cancel_complete
@@ -2872,7 +2876,8 @@ void fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn)
 
 /** Signal a trunk connection is no longer viable
  *
- * @param[in] tconn to signal.
+ * @param[in] tconn	to signal.
+ * @param[in] reason	the connection is being reconnected.
  */
 void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason)
 {
@@ -3218,9 +3223,10 @@ static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 /** Return a count of requests in a specific state
  *
- * @parma[in] trunk	to retrieve counts for.
- * @param[in] req_state	One or more states or'd together.
- * @return The count number of requests in a particular state.
+ * @param[in] trunk		to retrieve counts for.
+ * @param[in] conn_state	One or more connection states or'd together.
+ * @param[in] req_state		One or more request states or'd together.
+ * @return The number of requests in a particular state, on connection in a particular state.
  */
 uint64_t fr_trunk_request_count_by_state(fr_trunk_t *trunk, int conn_state, int req_state)
 {

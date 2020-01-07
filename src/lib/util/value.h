@@ -167,7 +167,7 @@ struct value_box {
 #define vb_time_delta				datum.time_delta
 
 #define vb_length				datum.length
-/* @} **/
+/** @} */
 
 /** @name Argument boxing macros
  *
@@ -221,7 +221,7 @@ struct value_box {
 #define fr_box_size(_val)			_fr_box(FR_TYPE_SIZE, .vb_size, _val)
 
 #define fr_box_time_delta(_val)			_fr_box(FR_TYPE_TIME_DELTA, .vb_time_delta, _val)
-/* @} **/
+/** @} */
 
 /** @name Convenience functions
  *
@@ -265,7 +265,7 @@ static inline bool fr_value_box_list_len_min(fr_value_box_t const *head, size_t 
 
 	return (i == min);
 }
-/* @} **/
+/** @} */
 
 /** @name Value box assignment functions
  *
@@ -482,7 +482,7 @@ _Generic((_var), \
 	double *		: fr_value_unbox_float64 \
 )(_var, _box)
 
-/* @} **/
+/** @} */
 /*
  *	Allocation - init/alloc use static functions (above)
  */

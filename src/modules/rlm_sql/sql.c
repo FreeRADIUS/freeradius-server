@@ -63,7 +63,7 @@ fr_table_num_sorted_t const sql_rcode_table[] = {
 };
 size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
+void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	int rcode;
 	rlm_sql_t *inst = instance;
@@ -348,7 +348,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 	}
 
 	/*
-	 *  inst->pool may be NULL is this function is called by mod_conn_create.
+	 *  inst->pool may be NULL is this function is called by sql_mod_conn_create.
 	 */
 	count = inst->pool ? fr_pool_state(inst->pool)->num : 0;
 
@@ -450,7 +450,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
 	}
 
 	/*
-	 *  inst->pool may be NULL is this function is called by mod_conn_create.
+	 *  inst->pool may be NULL is this function is called by sql_mod_conn_create.
 	 */
 	count = inst->pool ? fr_pool_state(inst->pool)->num : 0;
 

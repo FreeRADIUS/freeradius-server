@@ -229,14 +229,14 @@ struct vp_tmpl_s {
 #define tmpl_unknown_name      		data.attribute.unknown.name
 #define tmpl_num			data.attribute.num
 #define tmpl_tag			data.attribute.tag
-/* @} **/
+/** @} */
 
 /** @name Field accessors for #TMPL_TYPE_XLAT_STRUCT
  *
  * @{
  */
 #define tmpl_xlat			data.xlat
-/* @} **/
+/** @} */
 
 /** @name Field accessors for #TMPL_TYPE_DATA
  *
@@ -245,7 +245,7 @@ struct vp_tmpl_s {
 #define tmpl_value			data.literal
 #define tmpl_value_length		data.literal.datum.length
 #define tmpl_value_type			data.literal.type
-/* @} **/
+/** @} */
 
 /** @name Field accessors for #TMPL_TYPE_REGEX_STRUCT and #TMPL_TYPE_REGEX
  *
@@ -255,7 +255,7 @@ struct vp_tmpl_s {
 #  define tmpl_preg			data.preg	//!< #TMPL_TYPE_REGEX_STRUCT only.
 #  define tmpl_regex_flags			data.regex_flags
 #endif
-/* @} **/
+/** @} */
 
 #ifndef WITH_VERIFY_PTR
 #  define TMPL_VERIFY(_x)

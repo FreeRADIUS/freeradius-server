@@ -309,6 +309,7 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 
 /** Free the handle, closing the connection to ldap
  *
+ * @param[in] el	UNUSED.
  * @param[in] h		to close.
  * @param[in] uctx	Connection config and handle.
  */
@@ -416,7 +417,7 @@ fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
  *  - Continue running the state machine
  *
  * @param[out] h	Underlying file descriptor from libldap handle.
- * @arapm[in] conn	Being initialised.
+ * @param[in] conn	Being initialised.
  * @param[in] uctx	Our LDAP connection handle (a #fr_ldap_connection_t).
  * @return
  *	- FR_CONNECTION_STATE_CONNECTING on success.

@@ -488,7 +488,7 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 
 	return vpt;
 }
-/* @} **/
+/** @} */
 
 /** @name Create new #vp_tmpl_t from a string
  *
@@ -1263,7 +1263,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 
 	return slen;
 }
-/* @} **/
+/** @} */
 
 /** @name Cast or convert #vp_tmpl_t
  *
@@ -1517,7 +1517,7 @@ int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
 
 	return 0;
 }
-/* @} **/
+/** @} */
 
 /** @name Resolve a #vp_tmpl_t outputting the result in various formats
  *
@@ -2588,7 +2588,7 @@ int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt
 		return err;
 	}
 }
-/* @} **/
+/** @} */
 
 #ifdef WITH_VERIFY_PTR
 /** Used to check whether areas of a vp_tmpl_t are zeroed out

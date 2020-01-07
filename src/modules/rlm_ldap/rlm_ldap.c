@@ -371,7 +371,7 @@ free_values:
 free_result:
 	ldap_msgfree(result);
 free_socket:
-	mod_conn_release(inst, request, conn);
+	ldap_mod_conn_release(inst, request, conn);
 free_urldesc:
 	ldap_free_urldesc(ldap_url);
 
@@ -557,7 +557,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 free_result:
 	ldap_msgfree(result);
 free_socket:
-	mod_conn_release(inst, request, conn);
+	ldap_mod_conn_release(inst, request, conn);
 free_expanded:
 	talloc_free(expanded.ctx);
 free_urldesc:
@@ -639,7 +639,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 */
 	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!user_dn) {
-		mod_conn_release(inst, request, conn);
+		ldap_mod_conn_release(inst, request, conn);
 		return 1;
 	}
 
@@ -682,7 +682,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	rad_assert(conn);
 
 finish:
-	if (conn) mod_conn_release(inst, request, conn);
+	if (conn) ldap_mod_conn_release(inst, request, conn);
 
 	if (!found) {
 		RDEBUG2("User is not a member of \"%pV\"", &check->data);
@@ -791,7 +791,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!dn) {
-		mod_conn_release(inst, request, conn);
+		ldap_mod_conn_release(inst, request, conn);
 
 		return rcode;
 	}
@@ -830,7 +830,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	};
 
 finish:
-	mod_conn_release(inst, request, conn);
+	ldap_mod_conn_release(inst, request, conn);
 
 	return rcode;
 }
@@ -1142,7 +1142,7 @@ skip_edir:
 finish:
 	talloc_free(expanded.ctx);
 	if (result) ldap_msgfree(result);
-	mod_conn_release(inst, request, conn);
+	ldap_mod_conn_release(inst, request, conn);
 
 	return rcode;
 }
@@ -1372,7 +1372,7 @@ error:
 	 */
 	for (i = 0; i < last_exp; i++) talloc_free(expanded[i]);
 
-	mod_conn_release(inst, request, conn);
+	ldap_mod_conn_release(inst, request, conn);
 
 	return rcode;
 }
@@ -1976,7 +1976,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Initialize the socket pool.
 	 */
 	inst->pool = module_connection_pool_init(inst->cs, &inst->handle_config,
-						 mod_conn_create, NULL, NULL, NULL, NULL);
+						 ldap_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) goto error;
 
 	fr_ldap_global_config(inst->ldap_debug, inst->tls_random_file);

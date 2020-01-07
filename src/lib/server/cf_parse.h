@@ -314,7 +314,7 @@ _Generic((_ct), \
 #define FR_TYPE_ON_READ     		(1 << 23) 			//!< run the parse callback during the file read phase
 
 #define FR_BASE_TYPE(_t)		(0xff & (_t))
-/* @} **/
+/** @} */
 
 #define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\
 do {\
