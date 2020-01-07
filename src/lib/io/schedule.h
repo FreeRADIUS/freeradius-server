@@ -54,12 +54,19 @@ extern "C" {
  */
 typedef int (*fr_schedule_thread_instantiate_t)(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx);
 
+typedef struct {
+	uint32_t	max_networks;		//!< number of network threads
+	uint32_t	max_workers;		//!< number of network threads
+
+	fr_time_delta_t	stats_interval;		//!< print channel statistics
+} fr_schedule_config_t;
+
 int			fr_schedule_worker_id(void);
 
 int			fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *arg);
 fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *log, fr_log_lvl_t lvl,
 					    fr_schedule_thread_instantiate_t worker_thread_instantiate,
-					    CONF_SECTION *root_cs) CC_HINT(nonnull(3));
+					    fr_schedule_config_t *config) CC_HINT(nonnull(3));
 /* schedulers are async, so there's no fr_schedule_run() */
 int			fr_schedule_destroy(fr_schedule_t *sc);
 

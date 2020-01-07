@@ -758,6 +758,12 @@ int main(int argc, char *argv[])
 	 */
 	{
 		fr_event_list_t *el = NULL;
+		fr_schedule_config_t *schedule;
+
+		schedule = talloc_zero(global_ctx, fr_schedule_config_t);
+		schedule->max_workers = config->max_networks;
+		schedule->max_networks = config->max_workers;
+		schedule->stats_interval = config->stats_interval;
 
 		/*
 		 *	Single server mode: use the global event list.
@@ -769,8 +775,7 @@ int main(int argc, char *argv[])
 		}
 
 		sc = fr_schedule_create(NULL, el, &default_log, fr_debug_lvl,
-					thread_instantiate,
-					cf_section_find(config->root_cs, "thread", CF_IDENT_ANY));
+					thread_instantiate, schedule);
 		if (!sc) {
 			PERROR("Failed starting the scheduler: %s", fr_strerror());
 			EXIT_WITH_FAILURE;

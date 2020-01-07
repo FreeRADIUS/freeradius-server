@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/server/cf_parse.h>
 
 #include <pthread.h>
 
@@ -124,9 +123,7 @@ struct fr_schedule_s {
 	fr_log_t	*log;			//!< log destination
 	fr_log_lvl_t	lvl;			//!< log level
 
-
-	uint32_t	max_networks;		//!< number of network threads
-	uint32_t	max_workers;		//!< number of network threads
+	fr_schedule_config_t *config;		//!< configuration
 
 	unsigned int	num_workers_exited;	//!< number of exited workers
 
@@ -139,8 +136,6 @@ struct fr_schedule_s {
 
 	fr_network_t	*single_network;	//!< for single-threaded mode
 	fr_worker_t	*single_worker;		//!< for single-threaded mode
-
-	fr_time_delta_t	stats_interval;		//!< print channel statistics
 
 	fr_schedule_network_t *sn;		//!< pointer to the (one) network thread
 };
@@ -256,7 +251,7 @@ static void stats_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	fr_network_stats_log(sn->nr, sn->sc->log);
 
-	(void) fr_event_timer_at(sn, el, &sn->ev, now + sn->sc->stats_interval, stats_timer, sn);
+	(void) fr_event_timer_at(sn, el, &sn->ev, now + sn->sc->config->stats_interval, stats_timer, sn);
 }
 
 /** Initialize and run the network thread.
@@ -305,7 +300,7 @@ static void *fr_schedule_network_thread(void *arg)
 	/*
 	 *	Print out statistics for this network IO handler.
 	 */
-	if (sc->stats_interval) (void) fr_event_timer_in(sn, el, &sn->ev, sn->sc->stats_interval, stats_timer, sn);
+	if (sc->config->stats_interval) (void) fr_event_timer_in(sn, el, &sn->ev, sn->sc->config->stats_interval, stats_timer, sn);
 
 	/*
 	 *	Do all of the work.
@@ -364,58 +359,6 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
 	return 0;
 }
 
-static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
-			      CONF_ITEM *ci, CONF_PARSER const *rule)
-{
-	int		ret;
-	uint32_t	value;
-
-	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
-
-	memcpy(&value, out, sizeof(value));
-
-	if (value != 1) value = 1;
-
-	memcpy(out, &value, sizeof(value));
-
-	return 0;
-}
-
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
-			     CONF_ITEM *ci, CONF_PARSER const *rule)
-{
-	int		ret;
-	uint32_t	value;
-
-	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
-
-	memcpy(&value, out, sizeof(value));
-
-	if (value < 1) value = 1;
-	if (value > 64) value = 64;
-
-	memcpy(out, &value, sizeof(value));
-
-	return 0;
-}
-
-static const CONF_PARSER scheduler_config[] = {
-	{ FR_CONF_OFFSET("stats_interval", FR_TYPE_TIME_DELTA, fr_schedule_t, stats_interval), },
-
-	CONF_PARSER_TERMINATOR
-};
-
-static const CONF_PARSER thread_config[] = {
-	{ FR_CONF_OFFSET("num_networks", FR_TYPE_UINT32, fr_schedule_t, max_networks), .dflt = STRINGIFY(1),
-	  .func = num_networks_parse },
-	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, fr_schedule_t, max_workers), .dflt = STRINGIFY(4),
-	  .func = num_workers_parse },
-
-	{ FR_CONF_POINTER("scheduler", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) scheduler_config },
-
-	CONF_PARSER_TERMINATOR
-};
-
 /** Create a scheduler and spawn the child threads.
  *
  * @param[in] ctx		talloc context.
@@ -423,7 +366,7 @@ static const CONF_PARSER thread_config[] = {
  * @param[in] logger		destination for all logging messages.
  * @param[in] lvl		log level.
  * @param[in] worker_thread_instantiate		callback for new worker threads.
- * @param[in] cs		"thread pool" configuration section
+ * @param[in] config		configuration for the scheduler
  * @return
  *	- NULL on error
  *	- fr_schedule_t new scheduler
@@ -431,7 +374,7 @@ static const CONF_PARSER thread_config[] = {
 fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 				  fr_log_t *logger, fr_log_lvl_t lvl,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
-				  CONF_SECTION *cs)
+				  fr_schedule_config_t *config)
 {
 	unsigned int i;
 	fr_schedule_worker_t *sw, *next;
@@ -443,7 +386,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		return NULL;
 	}
 
-	sc->cs = cs;
+	sc->config = config;
 	sc->el = el;
 	sc->log = logger;
 	sc->lvl = lvl;
@@ -516,20 +459,16 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Parse any scheduler-specific configuration.
 	 */
-	if (!cs) {
-		sc->max_networks = 1;
-		sc->max_workers = 4;
+	if (!config) {
+		MEM(sc->config = talloc_zero(sc, fr_schedule_config_t));
+		sc->config->max_networks = 1;
+		sc->config->max_workers = 4;
 	} else {
-		cf_section_rules_push(cs, thread_config);
-		if (cf_section_parse(sc, sc, cs) < 0) {
-			talloc_free(sc);
-			fr_strerror_printf("Failed parsing scheduler configuration");
-			return NULL;
-		}
+		sc->config = config;
 
-		if (sc->max_networks != 1) sc->max_networks = 1;
-		if (sc->max_workers < 1) sc->max_workers = 1;
-		if (sc->max_workers > 64) sc->max_workers = 64;
+		if (sc->config->max_networks != 1) sc->config->max_networks = 1;
+		if (sc->config->max_workers < 1) sc->config->max_workers = 1;
+		if (sc->config->max_workers > 64) sc->config->max_workers = 64;
 
 	}
 
@@ -577,8 +516,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Create all of the workers.
 	 */
-	for (i = 0; i < sc->max_workers; i++) {
-		DEBUG3("Creating %u/%u workers", i, sc->max_workers);
+	for (i = 0; i < sc->config->max_workers; i++) {
+		DEBUG3("Creating %u/%u workers", i, sc->config->max_workers);
 
 		/*
 		 *	Create a worker "glue" structure
@@ -630,7 +569,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Failed to start some workers, refuse to do anything!
 	 */
-	if ((unsigned int)fr_dlist_num_elements(&sc->workers) < sc->max_workers) {
+	if ((unsigned int)fr_dlist_num_elements(&sc->workers) < sc->config->max_workers) {
 		fr_schedule_destroy(sc);
 		return NULL;
 	}
@@ -655,7 +594,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	}
 
 	if (sc) INFO("Scheduler created successfully with %u networks and %u workers",
-		     sc->max_networks, (unsigned int)fr_dlist_num_elements(&sc->workers));
+		     sc->config->max_networks, (unsigned int)fr_dlist_num_elements(&sc->workers));
 
 	return sc;
 }

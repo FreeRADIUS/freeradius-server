@@ -43,6 +43,7 @@ extern main_config_t const *main_config;		//!< Global configuration singleton.
 
 #include <freeradius-devel/util/dict.h>
 
+
 /** Main server configuration
  *
  * The parsed version of the main server config.
@@ -133,6 +134,10 @@ struct main_config_s {
 
 	size_t		talloc_memory_limit;		//!< Limit the amount of talloced memory the server uses.
 							//!< Only applicable in single threaded mode.
+	uint32_t	max_networks;			//!< for the scheduler
+	uint32_t	max_workers;			//!< for the scheduler
+	fr_time_delta_t	stats_interval;			//!< for the scheduler
+
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
