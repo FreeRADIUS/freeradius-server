@@ -182,19 +182,6 @@ static const CONF_PARSER server_config[] = {
 
 	{ FR_CONF_POINTER("resources", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) resources },
 
-	/*
-	 *	People with old configs will have these.  They are listed
-	 *	AFTER the "log" section, so if they exist in radiusd.conf,
-	 *	it will prefer "log_foo = bar" to "log { foo = bar }".
-	 *	They're listed with default values of NULL, so that if they
-	 *	DON'T exist in radiusd.conf, then the previously parsed
-	 *	values for "log { foo = bar}" will be used.
-	 */
-	{ FR_CONF_DEPRECATED("log_auth", FR_TYPE_BOOL, NULL, NULL) },
-	{ FR_CONF_DEPRECATED("log_auth_badpass", FR_TYPE_BOOL, NULL, NULL) },
-	{ FR_CONF_DEPRECATED("log_auth_goodpass", FR_TYPE_BOOL, NULL, NULL ) },
-	{ FR_CONF_DEPRECATED("log_stripped_names", FR_TYPE_BOOL, NULL, NULL) },
-
 	CONF_PARSER_TERMINATOR
 };
 
