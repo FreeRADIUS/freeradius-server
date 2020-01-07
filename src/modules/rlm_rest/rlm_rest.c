@@ -67,6 +67,7 @@ static size_t http_negotiation_table_len = NUM_ELEMENTS(http_negotiation_table);
  */
 static CONF_PARSER tls_config[] = {
 	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("ca_info_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_info_file) },
 	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_path) },
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_certificate_file) },
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_private_key_file) },
