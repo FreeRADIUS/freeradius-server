@@ -40,7 +40,6 @@ extern main_config_t const *main_config;		//!< Global configuration singleton.
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/main_config.h>
 
 #include <freeradius-devel/util/dict.h>
 
