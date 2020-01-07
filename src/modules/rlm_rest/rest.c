@@ -2038,9 +2038,9 @@ do {\
 	if (section->tls_certificate_file) SET_OPTION(CURLOPT_SSLCERT, section->tls_certificate_file);
 	if (section->tls_private_key_file) SET_OPTION(CURLOPT_SSLKEY, section->tls_private_key_file);
 	if (section->tls_private_key_password) SET_OPTION(CURLOPT_KEYPASSWD, section->tls_private_key_password);
-	if (section->tls_ca_file) SET_OPTION(CURLOPT_ISSUERCERT, section->tls_ca_file);
-	if (section->tls_ca_info_file) SET_OPTION(CURLOPT_CAINFO, section->tls_ca_info_file);
+	if (section->tls_ca_file) SET_OPTION(CURLOPT_CAINFO, section->tls_ca_file);
 	if (section->tls_ca_path) SET_OPTION(CURLOPT_CAPATH, section->tls_ca_path);
+	if (section->tls_certificate_issuer_file) SET_OPTION(CURLOPT_ISSUERCERT, section->tls_certificate_issuer_file);
 	if (section->tls_random_file) SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
 
 	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1L : 0L);
