@@ -3218,7 +3218,7 @@ static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 /** Return a count of requests in a specific state
  *
- * @parma[in] trunk	to retrieve counts for.
+ * @param[in] trunk	to retrieve counts for.
  * @param[in] req_state	One or more states or'd together.
  * @return The count number of requests in a particular state.
  */
