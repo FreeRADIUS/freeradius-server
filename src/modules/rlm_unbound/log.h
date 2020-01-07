@@ -19,7 +19,7 @@
  * $Id$
  *
  * @brief Function prototypes and datatypes for the REST (HTTP) transport.
- * @file rlm_unbound/unbound.h
+ * @file rlm_unbound/log.h
  *
  * @copyright 2019 The FreeRADIUS server project
  * @copyright 2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)

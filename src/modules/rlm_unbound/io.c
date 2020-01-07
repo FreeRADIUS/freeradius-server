@@ -472,7 +472,7 @@ static int _event_base_free(unbound_io_event_base_t *ev_b)
  *
  * @param[in] ctx	Talloc ctx to allocate even base in.
  * @param[out] ev_b_out	Event base.  Free with talloc_free.
- * @parma[in] el	To use to run the unbound event loop.
+ * @param[in] el	To use to run the unbound event loop.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
