@@ -20,13 +20,76 @@ rest {
 	#
 	tls {
 		#
-		#  .Set options about the certificate.
+		#  .Certificate validation options
 		#
-#		ca_file	             = ${certdir}/cacert.pem
-#		ca_path	             = ${certdir}
-#		certificate_file     = /path/to/radius.crt
+		#  Specifies how the certificate(s) presented by the HTTPS server being contacted
+		#  are validated, and which certificates (if any) to send to the HTTPS server.
+		#
+
+		#
+		#  ca_file:: PEM formatted file containing the chain to validate the HTTPS server's cert
+		#
+		#  Should usually contain a concatenation of one or more intermediary CA
+		#  files, shallowest (i.e. the one that signed the HTTPS server's cert) first, and
+		#  deepest (the root CA) last.
+		#
+		#  Providing a complete certificate chain here is the most common way of validating
+		#  the certificate presented by a HTTPS server.
+		#
+#		ca_file	             = "${certdir}/cacert.pem"
+
+		#
+		#  ca_issuer_file:: PEM formatted file containing the CA that signed the HTTPS server's cert
+		#
+		#  Specifies the certificate that directly signed the certificate presented by the
+		#  HTTPS server.
+		#
+		#  This configuration option can be used to prevent certificates passing validation that
+		#  were signed by other intermediary CAs or root CAs in the trusted certificate chain.
+		#
+#		ca_issuer_file     = "${certdir}/caissuer.pem"
+
+		#
+		#  ca_path:: A directory containing multiple root CA certs named by their hash
+		#
+		#  See the OpenSSL documentation for more details:
+		#  - https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_set_default_verify_paths.html
+		#  - https://www.openssl.org/docs/man1.1.1/man1/c_rehash.html
+		#
+		#  This configuration option should only be used when the HTTPS server being contacted
+		#  is not known ahead of time (using a URL from an external source), and/or the CA used
+		#  to sign the HTTPS server certificate is unknown.
+		#
+#		ca_path	             = "${certdir}"
+
+		#
+		#  certificate_file:: PEM formatted file containing the certificate we present to the HTTPS server
+		#
+		#  Specifies a certificate and any intermediary CAs we should send to the HTTPS server.
+		#
+		#  This file should usually contain the client certificate file first, then any
+		#  intermediary signing CAs, shallowest (direct signee of the certificate_file)
+		#  to deepest (signed directly by the root CA).
+		#
+#		certificate_file     = /path/to/radius.pem
+
+		#
+		#  private_key_file:: PEM formatted file containing the private key for the specified certificate_file
+		#
+		#  Must be specified if certificate_file is being used.
+		#
 #		private_key_file     = /path/to/radius.key
+
+		#
+		#  private_key_password:: Password used to decrypt the private key file.
+		#
+		#  Should only be specified in the private_key_file is encrypted.
+		#
 #		private_key_password = "supersecret"
+
+		#
+		#  random_file:: Source of random data used for various cryptographic functions.
+		#
 #		random_file          = /dev/urandom
 
 		#
@@ -37,8 +100,8 @@ rest {
 		#  [options="header,autowidth"]
 		#  |===
 		#  | Option | Description
-		#  | `no`   | Don't even bother trying.
-		#  | `yes`  | verify the cert was issued by one of the trusted CAs.
+		#  | `no`   | Server certificate can be signed by any CA or be self-signed.
+		#  | `yes`  | Server certificate must be issued by one of the trusted CAs.
 		#  |===
 		#
 		#  Default is `yes`
@@ -53,8 +116,8 @@ rest {
 		#  [options="header,autowidth"]
 		#  |===
 		#  | Option | Description
-		#  | `no`   | Don't even bother trying.
-		#  | `yes`  | verify the CN in the certificate matches the host in the URI.
+		#  | `no`   | Server certificate CN can be any value.
+		#  | `yes`  | Server certificate CN matches the host in the URI.
 		#  |===
 		#
 		#  Default is `yes`
