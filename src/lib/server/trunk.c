@@ -1844,6 +1844,34 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 
 /** Enqueue a request that needs data written to the trunk
  *
+ * When a REQUEST * needs to make an asynchronous request to an external datastore
+ * it should call this function, specifying a preq (protocol request) containing
+ * the data necessary to request information from the external datastore, and an
+ * rctx (resume ctx) used to hold the decoded response and/or any error codes.
+ *
+ * After a treq is successfully enqueued it will either be assigned immediately
+ * to the pending queue of a connection, or if no connections are available,
+ * (depending on the trunk configuration) the treq will be placed in the trunk's
+ * global backlog.
+ *
+ * After receiving a positive return code from this function the caller should
+ * immediately yield, to allow the various timers and I/O handlers that drive tconn
+ * (trunk connection) and treq state changes to be called.
+ *
+ * When a tconn becomes writable (or the trunk is configured to be always writable)
+ * the #fr_trunk_request_mux_t callback will be called to dequeue, encode and
+ * send any pending requests for that tconn.  The #fr_trunk_request_mux_t callback
+ * is also responsible for tracking the outbound requests to allow the
+ * #fr_trunk_request_demux_t callback to match inbound responses with the original
+ * treq.  Once the #fr_trunk_request_mux_t callback is done processing the treq
+ * it signals what state the treq should enter next using one of the
+ * fr_trunk_request_signal_* functions.
+ *
+ * When a tconn becomes readable the user specified #fr_trunk_request_demux_t
+ * callback is called to process any responses, match them with the original treq.
+ * and signal what state they should enter next using one of the
+ * fr_trunk_request_signal_* functions.
+ *
  * @param[in,out] treq_out	A trunk request handle.  If the memory pointed to
  *				is NULL, a new treq will be allocated.
  *				Otherwise treq should point to memory allocated
@@ -1852,7 +1880,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
  * @param[in] request		to enqueue.
  * @param[in] preq		Protocol request to write out.  Will be freed when
  *				treq is freed. MUST NOT BE PARENTED.
- * @param[in] rctx		The resume context.
+ * @param[in] rctx		The resume context to write any result to.
  * @return
  *	- FR_TRUNK_ENQUEUE_OK.
  *	- FR_TRUNK_ENQUEUE_IN_BACKLOG.
@@ -2894,7 +2922,6 @@ void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_conne
  * where the connection that just had a request dequeued, receives the same
  * request back.
  *
- *
  * @param[in] trunk	The trunk to rebalance.
  */
 static void trunk_rebalance(fr_trunk_t *trunk)
@@ -3548,6 +3575,18 @@ static int _trunk_free(fr_trunk_t *trunk)
 
 /** Allocate a new collection of connections
  *
+ * This function should be called first to allocate a new trunk connection.
+ *
+ * After the trunk has been allocated, #fr_trunk_request_alloc and
+ * #fr_trunk_request_enqueue should be used to allocate memory for trunk
+ * requests, and pass a preq (protocol request) to the trunk for
+ * processing.
+ *
+ * The trunk will then asynchronously process the request, writing the result
+ * to a specified rctx.  See #fr_trunk_request_enqueue for more details.
+ *
+ * @note Trunks may not be shared between multiple threads under any circumstances.
+ *
  * @param[in] ctx		To use for any memory allocations.  Must be thread local.
  * @param[in] el		to use for I/O and timer events.
  * @param[in] funcs		Callback functions.
@@ -3556,7 +3595,6 @@ static int _trunk_free(fr_trunk_t *trunk)
  * @param[in] uctx		User data to pass to the alloc function.
  * @param[in] delay_start	If true, then we will not spawn any connections
  *				until the first request is enqueued.
-
  * @return
  *	- New trunk handle on success.
  *	- NULL on error.
