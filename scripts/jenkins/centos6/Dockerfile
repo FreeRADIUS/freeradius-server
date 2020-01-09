@@ -37,5 +37,5 @@ RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.n
 #
 #  Install build dependencies
 #
-# RUN [ -e redhat/freeradius.spec ] && yum-builddep -y redhat/freeradius.spec
+RUN [ -e redhat/freeradius.spec ] && yum-builddep -y redhat/freeradius.spec
 
