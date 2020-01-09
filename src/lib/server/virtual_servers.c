@@ -154,16 +154,20 @@ const CONF_PARSER virtual_servers_config[] = {
 };
 
 typedef struct {
-	bool	free;
-	fr_dict_t *dict;
+	bool	do_free;
+	fr_dict_t const *dict;
 } virtual_server_dict_t;
 
 /** Decrement references on dictionaries as the config sections are freed
  *
  */
-static int _virtual_server_dict_free(virtual_server_dict_t *dict)
+static int _virtual_server_dict_free(virtual_server_dict_t *cd)
 {
-	if (dict->free) fr_dict_free(&dict->dict);
+	if (cd->do_free) {
+		fr_dict_t *dict;
+		memcpy(&dict, &cd->dict, sizeof(dict));
+		fr_dict_free(&dict);
+	}
 	return 0;
 }
 
@@ -173,8 +177,8 @@ static void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *di
 	virtual_server_dict_t *cd;
 
 	cd = talloc_zero(NULL, virtual_server_dict_t);
-	cd->free = do_free;
-	memcpy(&cd->dict, &dict, sizeof(dict)); /* const issues */
+	cd->do_free = do_free;
+	cd->dict = dict;
 	talloc_set_destructor(cd, _virtual_server_dict_free);
 
 	cf_data_add(server_cs, cd, "dictionary", true);
@@ -872,7 +876,7 @@ int virtual_namespace_register(char const *namespace,
  *	- NULL on error.
  *	- Namespace on success.
  */
-fr_dict_t *virtual_server_namespace(char const *virtual_server)
+fr_dict_t const *virtual_server_namespace(char const *virtual_server)
 {
 	CONF_SECTION const *server_cs;
 	CONF_DATA const *cd;

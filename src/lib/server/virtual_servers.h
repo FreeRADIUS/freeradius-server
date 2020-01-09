@@ -77,7 +77,7 @@ int		virtual_namespace_register(char const *namespace,
 					   char const *proto_dict, char const *proto_dir,
 					   fr_virtual_server_compile_t func);
 
-fr_dict_t	*virtual_server_namespace(char const *virtual_server);
+fr_dict_t const	*virtual_server_namespace(char const *virtual_server);
 
 int		virtual_server_has_namespace(CONF_SECTION **out,
 					     char const *virtual_server, fr_dict_t const *namespace,
