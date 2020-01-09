@@ -260,8 +260,10 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 
 		found = rbtree_finddata(vns_tree,
 					&(fr_virtual_namespace_t){ .namespace = cf_section_name2(server_cs) });
-		proto_dict = found->proto_dict;
-		proto_dir = found->proto_dir;
+		if (found) {
+			proto_dict = found->proto_dict;
+			proto_dir = found->proto_dir;
+		}
 	}
 
 	if (virtual_server_namespace_set(server_cs, proto_dict, proto_dir) < 0) {
