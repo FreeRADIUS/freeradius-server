@@ -554,6 +554,7 @@ int virtual_servers_instantiate(void)
 	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 
 	rad_assert(virtual_servers);
+	rad_assert(vns_tree);
 
 	DEBUG2("#### Instantiating listeners ####");
 
@@ -568,47 +569,45 @@ int virtual_servers_instantiate(void)
 		size_t			j, listen_cnt;
 		CONF_ITEM		*ci = NULL;
 		CONF_SECTION		*server_cs = virtual_servers[i]->server_cs;
+		fr_virtual_namespace_t	*found;
+		CONF_PAIR		*ns;
 
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
-		if (vns_tree) {
-			fr_virtual_namespace_t	*found;
-			CONF_PAIR		*ns;
+		ns = cf_pair_find(server_cs, "namespace");
+		if (!ns) {
+			cf_log_err(server_cs, "Missing \"namespace\" config item");
+			return -1;
+		}
 
-			ns = cf_pair_find(server_cs, "namespace");
-			if (!ns) {
-				cf_log_err(server_cs, "Missing \"namespace\" config item");
+		found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
+		if (found) {
+			/*
+			 *	Stupid hack because of the on_read
+			 *	namespace stuff.
+			 */
+			if (virtual_server_namespace_set(server_cs,
+							 found->proto_dict,
+							 found-> proto_dir) < 0) {
+				cf_log_perr(ci, "Failed loading dictionary for virtual namespace \"%s\" - %s",
+					    cf_pair_value(ns), fr_strerror());
 				return -1;
 			}
+			if ((found->func(server_cs) < 0)) return -1;
 
-			found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
-			if (found) {
-				/*
-				 *	Stupid hack because of the on_read
-				 *	namespace stuff.
-				 */
-				if (virtual_server_namespace_set(server_cs,
-								 found->proto_dict,
-								 found-> proto_dir) < 0) {
-					cf_log_perr(ci, "Failed loading dictionary for virtual namespace \"%s\" - %s",
-						    cf_pair_value(ns), fr_strerror());
-					return -1;
-				}
-				if ((found->func(server_cs) < 0)) return -1;
+		} else {
 			/*
 			 *	If it's not a virtual namespace, check a
 			 *	dictionary was loaded in a previous phase.
 			 */
-			} else {
-				if (!cf_data_find(server_cs, fr_dict_t *, "dictionary")) {
-					if (!cf_section_find(server_cs, "listen", CF_IDENT_ANY)) {
-						cf_log_err(ns, "Failed resolving namespace.  Verify that modules "
-							   "referencing this server are enabled");
-						return -1;
-					}
+			if (!cf_data_find(server_cs, fr_dict_t *, "dictionary")) {
+				if (!cf_section_find(server_cs, "listen", CF_IDENT_ANY)) {
+					cf_log_err(ns, "Failed resolving namespace.  Verify that modules "
+						   "referencing this server are enabled");
+					return -1;
 				}
 			}
 		}
