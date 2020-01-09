@@ -176,7 +176,7 @@ static void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *di
 {
 	virtual_server_dict_t *cd;
 
-	cd = talloc_zero(NULL, virtual_server_dict_t);
+	cd = talloc_zero(server_cs, virtual_server_dict_t);
 	cd->do_free = do_free;
 	cd->dict = dict;
 	talloc_set_destructor(cd, _virtual_server_dict_free);
