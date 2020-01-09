@@ -97,8 +97,6 @@ static rbtree_t *server_section_name_tree = NULL;
 static int server_section_name_cmp(void const *one, void const *two);
 static int virtual_server_section_register(virtual_server_compile_t const *entry);
 
-static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
@@ -137,8 +135,7 @@ static const CONF_PARSER server_config[] = {
 };
 
 static const CONF_PARSER namespace_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_ON_READ, fr_virtual_server_t, namespace),
-	  .func = namespace_on_read },
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -155,6 +152,28 @@ const CONF_PARSER virtual_servers_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+
+
+/** Decrement references on dictionaries as the config sections are freed
+ *
+ */
+static int _virtual_server_dict_free(fr_dict_t **dict)
+{
+	fr_dict_free(dict);
+	return 0;
+}
+
+
+static void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free)
+{
+	fr_dict_t	**dict_p;
+
+	dict_p = talloc_zero(NULL, fr_dict_t *);
+	memcpy(dict_p, &dict, sizeof(dict)); /* const issues */
+	if (do_free) talloc_set_destructor(dict_p, _virtual_server_dict_free);
+
+	cf_data_add(server_cs, dict_p, "dictionary", true);
+}
 
 /** dl_open a proto_* module
  *
@@ -174,6 +193,7 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
 	dl_module_t const	*module;
+	fr_app_t const		*app;
 
 	if (!namespace) {
 		cf_log_err(listen_cs, "No 'namespace' set for virtual server");
@@ -191,90 +211,12 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	}
 	cf_data_add(listen_cs, module, "proto module", true);
 
-	return 0;
-}
-
-/** Decrement references on dictionaries as the config sections are freed
- *
- */
-static int _virtual_server_dict_free(fr_dict_t **dict)
-{
-	fr_dict_free(dict);
-	return 0;
-}
-
-/** Load a dictionary for a virtual server and
- *
- * @param[in] server_cs		to set the namespace for.
- * @param[in] proto_dict	to load.
- * @param[in] proto_dir		Path override for dictionary.
- */
-static int virtual_server_namespace_set(CONF_SECTION *server_cs,
-					char const *proto_dict, char const *proto_dir)
-{
-	fr_dict_t	**dict_p;
-	fr_dict_t	*dict = NULL;
-
-	if (fr_dict_protocol_afrom_file(&dict, proto_dict, proto_dir) < 0) return -1;
-
-	dict_p = talloc_zero(NULL, fr_dict_t *);
-	*dict_p = dict;
-	talloc_set_destructor(dict_p, _virtual_server_dict_free);
-
-	cf_data_add(server_cs, dict_p, "dictionary", true);
+	app = (fr_app_t const *) module->common;
+	if (app->dict) virtual_server_dict_set(server_cs, *app->dict, false);
 
 	return 0;
 }
 
-/** Load a protocol dictionary matching the specified namespace
- *
- * @param[in] ctx	to allocate data in.
- * @param[out] out	always NULL
- * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_SECTION containing the namespace pair.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	rbtree_t		*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
-	CONF_PAIR		*namespace_cp = cf_item_to_pair(ci);
-	char const		*namespace_str = cf_pair_value(namespace_cp);
-	char const		*proto_dict = namespace_str;
-	char const		*proto_dir = NULL;
-	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
-
-	if (DEBUG_ENABLED4) cf_log_debug(ci, "Initialising namespace \"%s\"", namespace_str);
-
-	/*
-	 *	Doesn't currently work, because namespace
-	 *	*REALLY REALLY* shouldn't be processed on_read,
-	 *	because it doesn't give modules a chance to
-	 *	run their bootstrap methods.
-	 */
-	if (vns_tree) {
-		fr_virtual_namespace_t	*found;
-
-		found = rbtree_finddata(vns_tree,
-					&(fr_virtual_namespace_t){ .namespace = cf_section_name2(server_cs) });
-		if (found) {
-			proto_dict = found->proto_dict;
-			proto_dir = found->proto_dir;
-		}
-	}
-
-	if (virtual_server_namespace_set(server_cs, proto_dict, proto_dir) < 0) {
-		if (strncmp(proto_dict, "eap-", 4) == 0) return 0;
-
-		cf_log_perr(ci, "Failed initialising namespace \"%s\" - %s", namespace_str, fr_strerror());
-		return 0;	/* Ignore for now */
-	}
-
-	return 0;
-}
 
 /** Callback to set up listen_on_read
  *
@@ -569,7 +511,6 @@ int virtual_servers_instantiate(void)
 		size_t			j, listen_cnt;
 		CONF_ITEM		*ci = NULL;
 		CONF_SECTION		*server_cs = virtual_servers[i]->server_cs;
-		fr_virtual_namespace_t	*found;
 		CONF_PAIR		*ns;
 
  		listener = virtual_servers[i]->listener;
@@ -583,32 +524,26 @@ int virtual_servers_instantiate(void)
 			return -1;
 		}
 
-		found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
-		if (found) {
-			/*
-			 *	Stupid hack because of the on_read
-			 *	namespace stuff.
-			 */
-			if (virtual_server_namespace_set(server_cs,
-							 found->proto_dict,
-							 found-> proto_dir) < 0) {
-				cf_log_perr(ci, "Failed loading dictionary for virtual namespace \"%s\" - %s",
-					    cf_pair_value(ns), fr_strerror());
-				return -1;
-			}
-			if ((found->func(server_cs) < 0)) return -1;
+		/*
+		 *	If the dictionary was already loaded, e.g. by
+		 *	listen_on_read(), then don't do anything else.
+		 */
+		if (!cf_data_find(server_cs, fr_dict_t *, "dictionary")) {
+			fr_virtual_namespace_t	*found;
 
-		} else {
-			/*
-			 *	If it's not a virtual namespace, check a
-			 *	dictionary was loaded in a previous phase.
-			 */
-			if (!cf_data_find(server_cs, fr_dict_t *, "dictionary")) {
-				if (!cf_section_find(server_cs, "listen", CF_IDENT_ANY)) {
-					cf_log_err(ns, "Failed resolving namespace.  Verify that modules "
-						   "referencing this server are enabled");
-					return -1;
-				}
+			found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
+			if (found) {
+				fr_dict_t *dict;
+
+				if (fr_dict_protocol_afrom_file(&dict, found->proto_dict, found->proto_dir) < 0) return -1;
+				virtual_server_dict_set(server_cs, dict, true);
+
+				if ((found->func(server_cs) < 0)) return -1;
+
+			} else if (!listener) {
+				cf_log_err(ns, "Failed resolving namespace.  Verify that modules "
+					   "referencing this server are enabled");
+				return -1;
 			}
 		}
 
