@@ -588,6 +588,7 @@ fr_app_t proto_vmps = {
 	.name			= "vmps",
 	.config			= proto_vmps_config,
 	.inst_size		= sizeof(proto_vmps_t),
+	.dict			= &dict_vmps,
 
 	.onload			= mod_load,
 	.unload			= mod_unload,

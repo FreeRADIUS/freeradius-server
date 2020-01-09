@@ -732,6 +732,7 @@ fr_app_t proto_radius = {
 	.name			= "radius",
 	.config			= proto_radius_config,
 	.inst_size		= sizeof(proto_radius_t),
+	.dict			= &dict_radius,
 
 	.onload			= mod_load,
 	.unload			= mod_unload,

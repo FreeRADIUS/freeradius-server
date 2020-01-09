@@ -620,6 +620,7 @@ fr_app_t proto_dhcpv4 = {
 	.name			= "dhcpv4",
 	.config			= proto_dhcpv4_config,
 	.inst_size		= sizeof(proto_dhcpv4_t),
+	.dict			= &dict_dhcpv4,
 
 	.onload			= mod_load,
 	.unload			= mod_unload,
