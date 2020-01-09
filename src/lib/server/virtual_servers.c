@@ -496,7 +496,6 @@ int virtual_servers_instantiate(void)
 	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 
 	rad_assert(virtual_servers);
-	rad_assert(vns_tree);
 
 	DEBUG2("#### Instantiating listeners ####");
 
@@ -528,7 +527,7 @@ int virtual_servers_instantiate(void)
 		 *	If the dictionary was already loaded, e.g. by
 		 *	listen_on_read(), then don't do anything else.
 		 */
-		if (!cf_data_find(server_cs, fr_dict_t *, "dictionary")) {
+		if (!cf_data_find(server_cs, fr_dict_t *, "dictionary") && vns_tree) {
 			fr_virtual_namespace_t	*found;
 
 			found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
