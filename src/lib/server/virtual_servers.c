@@ -1255,8 +1255,10 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
  */
 int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules, void *uctx)
 {
-	int i;
+	int i, found;
 	CONF_SECTION *subcs = NULL;
+
+	found = 0;
 
 	/*
 	 *	The sections are in trees, so this isn't as bad as it
@@ -1295,6 +1297,8 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 					*(void **) (((uint8_t *) uctx) + list[i].instruction) = instruction;
 				}
 			}
+
+			found++;
 			continue;
 		}
 
@@ -1321,10 +1325,11 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 			 *	@todo - count number of subsections
 			 *	and store them in an array?
 			 */
+			found++;
 		}
 	}
 
-	return 0;
+	return found;
 }
 
 static int server_section_name_cmp(void const *one, void const *two)
