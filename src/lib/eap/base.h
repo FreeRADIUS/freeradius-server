@@ -57,6 +57,14 @@ do { \
 	if (_out) _out->_field = _tmp; \
 } while (0)
 
+#define EAP_SECTION_DEFINE(_field, _verb, _name) \
+	{ \
+		.name = _verb, \
+		.name2 = _name, \
+		.component = MOD_AUTHORIZE, \
+		.offset = offsetof(eap_aka_sim_actions_t, _field), \
+	}
+
 #define EAP_PROCESS_SECTION_COMPILE(_out, _field, _verb, _name) \
 do { \
 	CONF_SECTION *_tmp; \
