@@ -150,19 +150,6 @@
 #
 
 #
-# Set up different IP address pools for the terminal servers.
-# Note that the "+" behind the IP address means that this is the "base"
-# IP address. The Port-Id (S0, S1 etc) will be added to it.
-#
-#DEFAULT	Service-Type == Framed-User, Huntgroup-Name == "alphen"
-#		Framed-IP-Address = 192.0.2.32+,
-#		Fall-Through = Yes
-
-#DEFAULT	Service-Type == Framed-User, Huntgroup-Name == "delft"
-#		Framed-IP-Address = 198.51.100.32+,
-#		Fall-Through = Yes
-
-#
 # Sample defaults for all framed connections.
 #
 #DEFAULT	Service-Type == Framed-User
