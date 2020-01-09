@@ -3588,12 +3588,17 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 	unlang_t		*c;
 	vp_tmpl_rules_t		my_rules;
 	char const		*name1, *name2;
+	CONF_DATA const		*cd;
 
 	/*
 	 *	Don't compile it twice, and don't print out debug
 	 *	messages twice.
 	 */
-	if (cf_data_find(cs, unlang_group_t, NULL) != NULL) return 1;
+	cd = cf_data_find(cs, unlang_group_t, NULL);
+	if (cd) {
+		if (instruction) *instruction = cf_data_value(cd);
+		return 1;
+	}
 
 	name1 = cf_section_name1(cs);
 	name2 = cf_section_name2(cs);
