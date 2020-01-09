@@ -317,27 +317,37 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-#define EAP_SECTION_COMPILE(_out, _field, _verb, _name) \
-do { \
-	CONF_SECTION *_tmp; \
-	_tmp = cf_section_find(server_cs, _verb, _name); \
-	if (_tmp) { \
-		if (unlang_compile(_tmp, MOD_AUTHORIZE, NULL, NULL) < 0) return -1; \
-		found = true; \
-	} \
-	if (_out) _out->_field = _tmp; \
-} while (0)
+#undef EAP_SECTION_DEFINE
+#define EAP_SECTION_DEFINE(_field, _verb, _name) \
+	{ \
+		.name = _verb, \
+		.name2 = _name, \
+		.component = MOD_AUTHORIZE, \
+		.offset = offsetof(eap_tls_actions_t, _field), \
+	}
+
+static virtual_server_compile_t compile_list[] = {
+	EAP_SECTION_DEFINE(recv_access_request, "recv", "Access-Request"),
+
+	COMPILE_TERMINATOR
+};
+
 
 /** Compile virtual server sections
  *
  */
 static int mod_section_compile(eap_tls_actions_t *actions, CONF_SECTION *server_cs)
 {
-	bool found = false;
+	int found;
+	vp_tmpl_rules_t parse_rules;
 
 	if (!fr_cond_assert(server_cs)) return -1;
 
-	EAP_SECTION_COMPILE(actions, recv_access_request, "recv", "Access-Request");
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_freeradius;
+
+	found = virtual_server_compile_sections(server_cs, compile_list, &parse_rules, actions);
+	if (found < 0) return -1;
 
 	/*
 	 *	Warn if we couldn't find any actions.
