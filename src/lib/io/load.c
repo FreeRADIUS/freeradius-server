@@ -123,7 +123,6 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	duration of the entire test run.
 	 */
 	l->stats.backlog = l->stats.sent - l->stats.received;
-	if (l->stats.backlog < 0) l->stats.backlog = 0;
 	if (l->stats.backlog > l->stats.max_backlog) l->stats.max_backlog = l->stats.backlog;
 
 	/*
@@ -181,8 +180,6 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	If we're done this step, go to the next one.
 	 */
 	if (l->next >= l->step_end) {
-		_exit(0);
-
 		l->step_start = l->next;
 		l->step_end = l->next + ((uint64_t) l->config->duration) * NSEC;
 		l->step_received = l->stats.received;
@@ -228,9 +225,6 @@ int fr_load_generator_start(fr_load_t *l)
 	l->delta = (NSEC * ((uint64_t) l->config->parallel)) / l->pps;
 	l->next = l->step_start + l->delta;
 
-	l->stats.sent = 0;
-	l->stats.received = 0;
-
 	load_timer(l->el, l->step_start, l);
 	return 0;
 }
@@ -266,8 +260,6 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 
 	l->stats.rttvar = RTTVAR(l->stats.rtt, l->stats.rttvar, t);
 	l->stats.rtt = RTT(l->stats.rtt, t);
-
-	if (l->stats.received > l->stats.sent) return FR_LOAD_CONTINUE;
 
 	l->stats.received++;
 
