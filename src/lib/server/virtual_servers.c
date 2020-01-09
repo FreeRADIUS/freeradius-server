@@ -536,22 +536,32 @@ int virtual_servers_instantiate(void)
 		 *	If the dictionary was already loaded, e.g. by
 		 *	listen_on_read(), then don't do anything else.
 		 */
-		if (!cf_data_find(server_cs, fr_dict_t *, "dictionary") && vns_tree) {
-			fr_virtual_namespace_t	*found;
+		if (!cf_data_find(server_cs, virtual_server_dict_t, "dictionary")) {
+			fr_dict_t *dict = NULL;
 
-			found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
-			if (found) {
-				fr_dict_t *dict;
+			if (vns_tree) {
+				fr_virtual_namespace_t	*found;
 
-				if (fr_dict_protocol_afrom_file(&dict, found->proto_dict, found->proto_dir) < 0) return -1;
+				found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
+				if (found) {
+
+					if (fr_dict_protocol_afrom_file(&dict, found->proto_dict, found->proto_dir) < 0) return -1;
+					virtual_server_dict_set(server_cs, dict, true);
+
+					if ((found->func(server_cs) < 0)) return -1;
+				}
+			}
+
+			/*
+			 *	Maybe it's a valid namespace, but we
+			 *	just don't have a dictionary for it.
+			 *	Load the dictionary now.
+			 */
+			if (!dict) {
+				char const *value = cf_pair_value(ns);
+
+				if (fr_dict_protocol_afrom_file(&dict, value, NULL) < 0) return -1;
 				virtual_server_dict_set(server_cs, dict, true);
-
-				if ((found->func(server_cs) < 0)) return -1;
-
-			} else if (!listener) {
-				cf_log_err(ns, "Failed resolving namespace.  Verify that modules "
-					   "referencing this server are enabled");
-				return -1;
 			}
 		}
 
@@ -885,7 +895,7 @@ fr_dict_t const *virtual_server_namespace(char const *virtual_server)
 	server_cs = virtual_server_find(virtual_server);
 	if (!server_cs) return NULL;
 
-	cd = cf_data_find(server_cs, fr_dict_t *, "dictionary");
+	cd = cf_data_find(server_cs, virtual_server_dict_t, "dictionary");
 	if (!cd) return NULL;
 
 	dict = (virtual_server_dict_t *) cf_data_value(cd);
@@ -1188,6 +1198,7 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 
 	memset(&parse_rules, 0, sizeof(parse_rules));
 	parse_rules.dict_def = virtual_server_namespace(cf_section_name2(server));
+	rad_assert(parse_rules.dict_def != NULL);
 
 	/*
 	 *	Instantiate the process modules
