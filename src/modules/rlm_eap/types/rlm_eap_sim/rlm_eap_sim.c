@@ -146,7 +146,7 @@ static int mod_section_compile(eap_aka_sim_actions_t *actions, CONF_SECTION *ser
 	 *	Warn if we couldn't find any actions.
 	 */
 	if (!found) {
-		cf_log_warn(server_cs, "No \"eap-aka\" actions found in virtual server \"%s\"",
+		cf_log_warn(server_cs, "No \"eap-sim\" actions found in virtual server \"%s\"",
 			    cf_section_name2(server_cs));
 	}
 
