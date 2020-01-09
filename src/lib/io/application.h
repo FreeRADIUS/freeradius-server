@@ -103,6 +103,8 @@ typedef void (*fr_app_event_list_set_t)(fr_listen_t *li, fr_event_list_t *el, vo
 typedef struct {
 	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
+	fr_dict_t const			**dict;		//!< default dictionary for this application.
+
 	fr_app_bootstrap_t		bootstrap;	//!< Bootstrap function to allow the fr_app_t to load the
 							///< various submodules it requires.
 
