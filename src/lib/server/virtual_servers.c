@@ -153,26 +153,31 @@ const CONF_PARSER virtual_servers_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+typedef struct {
+	bool	free;
+	fr_dict_t *dict;
+} virtual_server_dict_t;
 
 /** Decrement references on dictionaries as the config sections are freed
  *
  */
-static int _virtual_server_dict_free(fr_dict_t **dict)
+static int _virtual_server_dict_free(virtual_server_dict_t *dict)
 {
-	fr_dict_free(dict);
+	if (dict->free) fr_dict_free(&dict->dict);
 	return 0;
 }
 
 
 static void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free)
 {
-	fr_dict_t	**dict_p;
+	virtual_server_dict_t *cd;
 
-	dict_p = talloc_zero(NULL, fr_dict_t *);
-	memcpy(dict_p, &dict, sizeof(dict)); /* const issues */
-	if (do_free) talloc_set_destructor(dict_p, _virtual_server_dict_free);
+	cd = talloc_zero(NULL, virtual_server_dict_t);
+	cd->free = do_free;
+	memcpy(&cd->dict, &dict, sizeof(dict)); /* const issues */
+	talloc_set_destructor(cd, _virtual_server_dict_free);
 
-	cf_data_add(server_cs, dict_p, "dictionary", true);
+	cf_data_add(server_cs, cd, "dictionary", true);
 }
 
 /** dl_open a proto_* module
@@ -871,6 +876,7 @@ fr_dict_t *virtual_server_namespace(char const *virtual_server)
 {
 	CONF_SECTION const *server_cs;
 	CONF_DATA const *cd;
+	virtual_server_dict_t *dict;
 
 	server_cs = virtual_server_find(virtual_server);
 	if (!server_cs) return NULL;
@@ -878,7 +884,9 @@ fr_dict_t *virtual_server_namespace(char const *virtual_server)
 	cd = cf_data_find(server_cs, fr_dict_t *, "dictionary");
 	if (!cd) return NULL;
 
-	return *(fr_dict_t **) cf_data_value(cd);
+	dict = (virtual_server_dict_t *) cf_data_value(cd);
+	
+	return dict->dict;
 }
 
 /** Verify that a given virtual_server exists and is of a particular namespace
