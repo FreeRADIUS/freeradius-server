@@ -52,6 +52,76 @@ fr_dict_autoload_t rlm_eap_aka_dict[] = {
 	{ NULL }
 };
 
+static virtual_server_compile_t compile_list[] = {
+	/*
+	 *	Identity negotiation
+	 */
+	EAP_SECTION_DEFINE(send_identity_request, "send", "Identity-Request"),
+	EAP_SECTION_DEFINE(recv_identity_response, "recv", "Identity-Response"),
+
+	/*
+	 *	Optional override sections if the user *really*
+	 *	wants to apply special policies for subsequent
+	 *	request/response rounds.
+	 */
+	EAP_SECTION_DEFINE(aka.send_aka_identity_request, "send", "AKA-Identity-Request"),
+	EAP_SECTION_DEFINE(aka.recv_aka_identity_response, "recv", "AKA-Identity-Response"),
+
+	/*
+	 *	Full-Authentication
+	 */
+	EAP_SECTION_DEFINE(send_challenge_request, "send", "Challenge-Request"),
+	EAP_SECTION_DEFINE(recv_challenge_response, "recv", "Challenge-Response"),
+
+	/*
+	 *	Fast-Re-Authentication
+	 */
+	EAP_SECTION_DEFINE(send_reauthentication_request, "send", "Reauthentication-Request"),
+	EAP_SECTION_DEFINE(recv_reauthentication_response, "recv", "Reauthentication-Response"),
+
+	/*
+	 *	Failures originating from the supplicant
+	 */
+	EAP_SECTION_DEFINE(recv_client_error, "recv", "Client-Error"),
+	EAP_SECTION_DEFINE(aka.recv_authentication_reject, "recv", "Authentication-Reject"),
+	EAP_SECTION_DEFINE(aka.recv_syncronization_failure, "recv", "Syncronization-Failure"),
+
+	/*
+	 *	Failure originating from the server
+	 */
+	EAP_SECTION_DEFINE(send_failure_notification, "send", "Failure-Notification"),
+	EAP_SECTION_DEFINE(recv_failure_notification_ack, "recv", "Failure-Notification-ACK"),
+
+	/*
+	 *	Protected success indication
+	 */
+	EAP_SECTION_DEFINE(send_success_notification, "send", "Success-Notification"),
+	EAP_SECTION_DEFINE(recv_success_notification_ack, "recv", "Success-Notification-ACK"),
+
+	/*
+	 *	Final EAP-Success and EAP-Failure messages
+	 */
+	EAP_SECTION_DEFINE(send_eap_success, "send", "EAP-Success"),
+	EAP_SECTION_DEFINE(send_eap_failure, "send", "EAP-Failure"),
+
+	/*
+	 *	Fast-Reauth vectors
+	 */
+	EAP_SECTION_DEFINE(store_session, "store", "session"),
+	EAP_SECTION_DEFINE(load_session, "load", "session"),
+	EAP_SECTION_DEFINE(clear_session, "clear", "session"),
+
+	/*
+	 *	Pseudonym processing
+	 */
+	EAP_SECTION_DEFINE(store_pseudonym, "store", "pseudonym"),
+	EAP_SECTION_DEFINE(load_pseudonym, "load", "pseudonym"),
+	EAP_SECTION_DEFINE(clear_pseudonym, "clear", "pseudonym"),
+
+	COMPILE_TERMINATOR
+};
+
+
 /** Compile virtual server sections
  *
  * Called twice, once when a server with an eap-aka namespace is found, and once
@@ -65,74 +135,16 @@ fr_dict_autoload_t rlm_eap_aka_dict[] = {
  */
 static int mod_section_compile(eap_aka_sim_actions_t *actions, CONF_SECTION *server_cs)
 {
-	bool found = false;
+	int found;
+	vp_tmpl_rules_t parse_rules;
 
 	if (!fr_cond_assert(server_cs)) return -1;
 
-	/*
-	 *	Identity negotiation
-	 */
-	EAP_SECTION_COMPILE(actions, send_identity_request, "send", "Identity-Request");
-	EAP_SECTION_COMPILE(actions, recv_identity_response, "recv", "Identity-Response");
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_eap_aka_sim;
 
-	/*
-	 *	Optional override sections if the user *really*
-	 *	wants to apply special policies for subsequent
-	 *	request/response rounds.
-	 */
-	EAP_SECTION_COMPILE(actions, aka.send_aka_identity_request, "send", "AKA-Identity-Request");
-	EAP_SECTION_COMPILE(actions, aka.recv_aka_identity_response, "recv", "AKA-Identity-Response");
-
-	/*
-	 *	Full-Authentication
-	 */
-	EAP_SECTION_COMPILE(actions, send_challenge_request, "send", "Challenge-Request");
-	EAP_SECTION_COMPILE(actions, recv_challenge_response, "recv", "Challenge-Response");
-
-	/*
-	 *	Fast-Re-Authentication
-	 */
-	EAP_SECTION_COMPILE(actions, send_reauthentication_request, "send", "Reauthentication-Request");
-	EAP_SECTION_COMPILE(actions, recv_reauthentication_response, "recv", "Reauthentication-Response");
-
-	/*
-	 *	Failures originating from the supplicant
-	 */
-	EAP_SECTION_COMPILE(actions, recv_client_error, "recv", "Client-Error");
-	EAP_SECTION_COMPILE(actions, aka.recv_authentication_reject, "recv", "Authentication-Reject");
-	EAP_SECTION_COMPILE(actions, aka.recv_syncronization_failure, "recv", "Syncronization-Failure");
-
-	/*
-	 *	Failure originating from the server
-	 */
-	EAP_SECTION_COMPILE(actions, send_failure_notification, "send", "Failure-Notification");
-	EAP_SECTION_COMPILE(actions, recv_failure_notification_ack, "recv", "Failure-Notification-ACK");
-
-	/*
-	 *	Protected success indication
-	 */
-	EAP_SECTION_COMPILE(actions, send_success_notification, "send", "Success-Notification");
-	EAP_SECTION_COMPILE(actions, recv_success_notification_ack, "recv", "Success-Notification-ACK");
-
-	/*
-	 *	Final EAP-Success and EAP-Failure messages
-	 */
-	EAP_SECTION_COMPILE(actions, send_eap_success, "send", "EAP-Success");
-	EAP_SECTION_COMPILE(actions, send_eap_failure, "send", "EAP-Failure");
-
-	/*
-	 *	Fast-Reauth vectors
-	 */
-	EAP_SECTION_COMPILE(actions, store_session, "store", "session");
-	EAP_SECTION_COMPILE(actions, load_session, "load", "session");
-	EAP_SECTION_COMPILE(actions, clear_session, "clear", "session");
-
-	/*
-	 *	Pseudonym processing
-	 */
-	EAP_SECTION_COMPILE(actions, store_pseudonym, "store", "pseudonym");
-	EAP_SECTION_COMPILE(actions, load_pseudonym, "load", "pseudonym");
-	EAP_SECTION_COMPILE(actions, clear_pseudonym, "clear", "pseudonym");
+	found = virtual_server_compile_sections(server_cs, compile_list, &parse_rules, actions);
+	if (found < 0) return -1;
 
 	/*
 	 *	Warn if we couldn't find any actions.
