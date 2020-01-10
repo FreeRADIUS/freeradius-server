@@ -95,9 +95,19 @@ extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 struct dict_attr {
 	unsigned int		attr;				//!< Attribute number.
 	fr_type_t		type;				//!< Value type.
+	char const		*name;				//!< Attribute name.
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
+	fr_dict_attr_t const	*next;				//!< Next child in bin.
 
+	unsigned int		depth;				//!< Depth of nesting for this attribute.
+
+	fr_dict_attr_flags_t	flags;				//!< Flags.
+
+	/*
+	 *	The remaining fields vary depending on the attribute
+	 *	properties.
+	 */
 	union {
 		struct {
 			fr_dict_attr_t const	**children;	//!< Children of this attribute.
@@ -107,13 +117,6 @@ struct dict_attr {
 			fr_dict_attr_t const	*ref;		//!< reference
 		};
 	};
-	fr_dict_attr_t const	*next;				//!< Next child in bin.
-
-
-	unsigned int		depth;				//!< Depth of nesting for this attribute.
-
-	fr_dict_attr_flags_t	flags;				//!< Flags.
-	char const		*name;				//!< Attribute name.
 };
 
 /** Value of an enumerated attribute
