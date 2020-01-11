@@ -54,8 +54,9 @@ typedef struct fr_dict fr_dict_t;
  */
 typedef struct {
 	unsigned int		is_root : 1;			//!< Is root of a dictionary.
-	unsigned int 		is_unknown : 1;			//!< Attribute number or vendor is unknown.
-	unsigned int		is_raw : 1;			//!< raw attribute, unknown or malformed
+	unsigned int 		is_unknown : 1;			//!< &Attr-1.2.3.4 taken from a packet
+	unsigned int		is_raw : 1;			//!< &Attr-1.2.3.4 taken from the config,
+								//!< and added (along with parents) to the dictionionaries
 	unsigned int		internal : 1;			//!< Internal attribute, should not be received
 								///< in protocol packets, should not be encoded.
 	unsigned int		has_tag : 1;			//!< Tagged attribute.
