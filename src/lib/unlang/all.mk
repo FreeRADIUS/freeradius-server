@@ -11,6 +11,7 @@ SOURCES	:=	base.c \
 		io.c \
 		load_balance.c \
 		map.c \
+		method.c \
 		module.c \
 		parallel.c \
 		return.c \

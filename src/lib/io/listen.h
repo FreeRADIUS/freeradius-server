@@ -47,9 +47,6 @@ struct fr_listen {
  *	Minimal data structure to use the new code.
  */
 struct fr_async_s {
-	module_method_t		process;		//!< The current state function.
-	void			*process_inst;		//!< Instance data for the current state machine.
-
 	fr_time_t		recv_time;
 	fr_event_list_t		*el;
 

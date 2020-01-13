@@ -27,6 +27,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/method.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include "proto_radius.h"
 
@@ -532,8 +533,7 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 
 		app_process = (fr_app_worker_t const *) inst->io.dynamic_submodule->module->common;
 
-		request->async->process = app_process->entry_point;
-		request->async->process_inst = inst->io.dynamic_submodule;
+		unlang_interpret_push_method(request, inst->io.dynamic_submodule->data, app_process->entry_point);
 		track->dynamic = 0;
 		return;
 	}
@@ -544,8 +544,7 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 		return;
 	}
 
-	request->async->process = ((fr_app_worker_t const *)type_submodule->module->common)->entry_point;
-	request->async->process_inst = type_submodule->data;
+	unlang_interpret_push_method(request, type_submodule->data, ((fr_app_worker_t const *)type_submodule->module->common)->entry_point);
 }
 
 

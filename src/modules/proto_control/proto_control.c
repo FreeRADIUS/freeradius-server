@@ -26,6 +26,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/method.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include "proto_control.h"
 
@@ -115,7 +116,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	 *
 	 *	Future changes may allow different types of control access?
 	 */
-	return dl_module_instance(ctx, out, listen_cs,	parent_inst, "all", DL_MODULE_TYPE_SUBMODULE);
+	return dl_module_instance(ctx, out, listen_cs,	parent_inst, "process", DL_MODULE_TYPE_SUBMODULE);
 }
 
 /** Wrapper around dl_instance
@@ -298,6 +299,10 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	return inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
 }
 
+/*
+ *	@todo - this function isn't actually used for anything, as
+ *	there is no proto_control_process.c
+ */
 static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
 	proto_control_t const *inst = talloc_get_type_abort_const(instance, proto_control_t);
@@ -313,13 +318,13 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 
 		app_process = (fr_app_worker_t const *) inst->dynamic_submodule->module->common;
 
-		request->async->process = app_process->entry_point;
+		unlang_interpret_push_method(request, inst->io.dynamic_submodule->data, app_process->entry_point);
 		track->dynamic = 0;
 		return;
 	}
 
 	rad_assert(inst->process != NULL);
-	request->async->process = inst->process;
+	unlang_interpret_push_method(request, NULL, inst->process);
 }
 
 
