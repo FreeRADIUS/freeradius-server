@@ -59,7 +59,7 @@ static unlang_t function_instruction = {
 /** Call a generic function
  *
  * @param[in] request	The current request.
- * @param[out] presult	The frame result.  Always set to RLM_MODULE_OK (fixme?).
+ * @param[out] presult	The frame result.
  */
 static unlang_action_t unlang_function_call(REQUEST *request, rlm_rcode_t *presult)
 {
