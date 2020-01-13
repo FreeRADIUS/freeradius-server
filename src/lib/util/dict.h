@@ -111,6 +111,7 @@ struct dict_attr {
 	 */
 	union {
 		struct {
+			fr_dict_attr_t const	*vendor;	//!< ancestor which has type FR_TYPE_VENDOR
 			fr_dict_attr_t const	**children;	//!< Children of this attribute.
 		};
 		struct {
@@ -332,15 +333,9 @@ static inline bool fr_dict_attr_is_top_level(fr_dict_attr_t const *da)
  */
 static inline uint32_t fr_dict_vendor_num_by_da(fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t const *da_p = da;
+	if (!da->vendor) return 0;
 
-	while (da_p->parent) {
-		if (da_p->type == FR_TYPE_VENDOR) break;
-		da_p = da_p->parent;
-	}
-	if (da_p->type != FR_TYPE_VENDOR) return 0;
-
-	return da_p->attr;
+	return da->vendor->attr;
 }
 
 fr_dict_vendor_t const	*fr_dict_vendor_by_da(fr_dict_attr_t const *da);

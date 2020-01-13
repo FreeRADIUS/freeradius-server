@@ -758,6 +758,23 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		if (dict_gctx_push(ctx, da) < 0) return -1;
 	}
 
+	/*
+	 *	Point to the vendor definition.  Since ~90% of
+	 *	attributes are VSAs, caching this pointer will help.
+	 */
+	if (parent->type == FR_TYPE_VENDOR) {
+		fr_dict_attr_t *self;
+
+		memcpy(&self, &da, sizeof(self)); /* const issues */
+		self->vendor = parent;
+
+	} else if (parent->vendor) {
+		fr_dict_attr_t *self;
+
+		memcpy(&self, &da, sizeof(self)); /* const issues */
+		self->vendor = parent->vendor;
+	}
+
 	return 0;
 }
 
