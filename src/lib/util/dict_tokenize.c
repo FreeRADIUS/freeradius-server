@@ -84,7 +84,7 @@ typedef struct {
 
 	fr_dict_attr_t		*value_attr;		//!< Cache of last attribute to speed up
 							///< value processing.
-	fr_dict_attr_t		*relative_attr;		//!< for ".82" instead of "1.2.3.82".
+	fr_dict_attr_t const   	*relative_attr;		//!< for ".82" instead of "1.2.3.82".
 							///< only for parents of type "tlv"
 
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
@@ -525,7 +525,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 
 	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
-	fr_dict_attr_t const	*parent;
+	fr_dict_attr_t const	*parent, *da;
 	char			*ref = NULL;
 
 	if ((argc < 3) || (argc > 4)) {
@@ -637,19 +637,26 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
 
 	/*
+	 *	If we need to set the previous attribute, we have to
+	 *	look it up by number.  This lets us set the
+	 *	*canonical* previous attribute, and not any potential
+	 *	duplicate which was just added.
+	 */
+	da = dict_attr_child_by_num(parent, attr);
+	if (!da) {
+		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
+		return -1;
+	}
+
+	if (set_relative_attr) ctx->relative_attr = da;
+
+	/*
 	 *	Hack up groups according to "ref"
 	 */
 	if (type == FR_TYPE_GROUP) {
-		fr_dict_attr_t const *da;
 		fr_dict_attr_t *self;
 		fr_dict_t const *dict;
 		char *p;
-
-		da = dict_attr_child_by_num(parent, attr);
-		if (!da) {
-			fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
-			return -1;
-		}
 
 		memcpy(&self, &da, sizeof(self)); /* const issues */
 
@@ -744,25 +751,10 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	}
 
 	/*
-	 *	If we need to set the previous attribute, we have to
-	 *	look it up by number.  This lets us set the
-	 *	*canonical* previous attribute, and not any potential
-	 *	duplicate which was just added.
-	 */
-	if (set_relative_attr) ctx->relative_attr = dict_attr_child_by_num(parent, attr);
-
-	/*
 	 *	Adding an attribute of type 'struct' is an implicit
 	 *	BEGIN-STRUCT.
 	 */
 	if (type == FR_TYPE_STRUCT) {
-		fr_dict_attr_t const *da = dict_attr_child_by_num(parent, attr);
-
-		if (!da) {
-			fr_strerror_printf("Failed adding attribute %s", argv[0]);
-			return -1;
-		}
-
 		if (dict_gctx_push(ctx, da) < 0) return -1;
 	}
 
