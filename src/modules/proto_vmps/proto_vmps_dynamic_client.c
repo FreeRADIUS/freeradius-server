@@ -57,7 +57,7 @@ fr_dict_attr_autoload_t proto_vmps_dynamic_client_dict_attr[] = {
 #define CLIENT_ADD	(1)
 #define CLIENT_NAK	(257)
 
-static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
+static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;

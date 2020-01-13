@@ -46,7 +46,7 @@ fr_dict_attr_autoload_t proto_radius_status_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
+static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;

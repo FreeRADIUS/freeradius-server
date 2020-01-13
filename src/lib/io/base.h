@@ -313,14 +313,6 @@ typedef int (*fr_io_signal_t)(fr_listen_t *li);
  */
 typedef int (*fr_io_close_t)(fr_listen_t *li);
 
-/** Process a request through the transport async state machine.
- *
- * @param[in] instance		Usually the #fr_app_worker_t instance data.
- *				for the #fr_app_worker_t that gave us the
- *				entry point.
- */
-typedef	rlm_rcode_t (*fr_io_process_t)(void const *instance, REQUEST *request);
-
 /*
  *	Structures and definitions for the master IO handler.
  */

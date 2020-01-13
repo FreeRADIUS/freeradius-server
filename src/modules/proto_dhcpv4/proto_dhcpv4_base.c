@@ -120,7 +120,7 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 	}
 }
 
-static rlm_rcode_t mod_process(UNUSED void const *instance, REQUEST *request)
+static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;

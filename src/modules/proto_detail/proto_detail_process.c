@@ -47,7 +47,7 @@ fr_dict_attr_autoload_t proto_detail_process_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(void const *instance, REQUEST *request)
+static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR			*vp;
 	rlm_rcode_t			rcode;

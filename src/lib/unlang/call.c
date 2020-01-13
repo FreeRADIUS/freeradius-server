@@ -74,7 +74,7 @@ static unlang_action_t unlang_call_process(REQUEST *request, rlm_rcode_t *presul
 	 *	(e.g. Access-Request -> Accounting-Request) unless
 	 *	we're in a subrequest.
 	 */
-	rcode = child->async->process(child->async->process_inst, child);
+	rcode = child->async->process(child->async->process_inst, NULL, child);
 	if (rcode == RLM_MODULE_YIELD) {
 		return UNLANG_ACTION_YIELD;
 	}
@@ -97,7 +97,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	fr_dict_attr_t const		*attr_packet_type;
 	fr_dict_enum_t const		*type_enum;
 
-	fr_io_process_t			*process_p;
+	module_method_t			*process_p;
 	void				*process_inst;
 
 	g = unlang_generic_to_group(instruction);
@@ -161,7 +161,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	process_p = (fr_io_process_t *) cf_data_value(cf_data_find(g->server_cs, fr_io_process_t, type_enum->name));
+	process_p = (module_method_t *) cf_data_value(cf_data_find(g->server_cs, module_method_t, type_enum->name));
 	if (!process_p) {
 		REDEBUG("No such packet type '%s' in server '%s'",
 			type_enum->name, cf_section_name2(g->server_cs));

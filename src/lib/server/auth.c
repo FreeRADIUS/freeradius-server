@@ -163,7 +163,7 @@ runit:
 	}
 
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
-	final = request->async->process(request->async->process_inst, request);
+	final = request->async->process(request->async->process_inst, NULL, request);
 	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	fr_cond_assert(final == RLM_MODULE_OK);

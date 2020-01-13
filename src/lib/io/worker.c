@@ -884,7 +884,7 @@ redo:
 	/*
 	 *	Everything else, run the request.
 	 */
-	final = request->async->process(request->async->process_inst, request);
+	final = request->async->process(request->async->process_inst, NULL, request);
 
 	/*
 	 *	Figure out what to do next.

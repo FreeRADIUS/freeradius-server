@@ -1151,8 +1151,8 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submo
 		 *	here by packet name, and doesn't need to root
 		 *	through all of the listeners.
 		 */
-		if (!cf_data_find(server, fr_io_process_t, value)) {
-			fr_io_process_t *process_p = talloc(server, fr_io_process_t);
+		if (!cf_data_find(server, module_method_t, value)) {
+			module_method_t *process_p = talloc(server, module_method_t);
 			*process_p = app_process->entry_point;
 
 			(void) cf_data_add(server, process_p, value, NULL);

@@ -344,7 +344,7 @@ void		unlang_op_free(void);
  *
  * @{
  */
-rlm_rcode_t	unlang_io_process_interpret(UNUSED void const *instance, REQUEST *request);
+rlm_rcode_t	unlang_io_process_interpret(UNUSED void *instance, UNUSED void *thread, REQUEST *request);
 
 REQUEST		*unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace, bool detachable);
 
