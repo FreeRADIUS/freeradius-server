@@ -333,6 +333,8 @@ static inline bool fr_dict_attr_is_top_level(fr_dict_attr_t const *da)
  */
 static inline uint32_t fr_dict_vendor_num_by_da(fr_dict_attr_t const *da)
 {
+	if (da->type == FR_TYPE_VENDOR) return da->attr;
+
 	if (!da->vendor) return 0;
 
 	return da->vendor->attr;

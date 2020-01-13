@@ -149,6 +149,18 @@ static inline void dict_attr_init(fr_dict_attr_t *da,
 	da->flags = *flags;
 	da->parent = parent;
 	da->depth = parent ? parent->depth + 1 : 0;
+
+	/*
+	 *	Point to the vendor definition.  Since ~90% of
+	 *	attributes are VSAs, caching this pointer will help.
+	 */
+	if (parent) {
+		if (parent->type == FR_TYPE_VENDOR) {
+			da->vendor = parent;
+		} else if (parent->vendor) {
+			da->vendor = parent->vendor;
+		}
+	}
 }
 
 fr_dict_attr_t 		*dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name);

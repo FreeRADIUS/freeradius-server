@@ -1624,17 +1624,13 @@ fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t ve
  */
 fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t const *da_p = da;
-
 	DA_VERIFY(da);
 
-	while (da_p->parent) {
-		if (da_p->type == FR_TYPE_VENDOR) break;
-		da_p = da_p->parent;
-	}
-	if (da_p->type != FR_TYPE_VENDOR) return NULL;
+	if (da->type == FR_TYPE_VENDOR) return da;
 
-	return da_p;
+	if (!da->vendor) return NULL;
+
+	return da->vendor;
 }
 
 /** Return vendor attribute for the specified dictionary and pen
