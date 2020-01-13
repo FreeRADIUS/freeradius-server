@@ -115,15 +115,15 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	static char const *type_lib_table[] = {
-		[FR_DHCP_DISCOVER]	= "base",
-		[FR_DHCP_OFFER]		= "base",
-		[FR_DHCP_REQUEST]	= "base",
-		[FR_DHCP_DECLINE]	= "base",
-		[FR_DHCP_ACK]		= "base",
-		[FR_DHCP_NAK]		= "base",
-		[FR_DHCP_RELEASE]	= "base",
-		[FR_DHCP_INFORM]	= "base",
-		[FR_DHCP_LEASE_QUERY]	= "base",
+		[FR_DHCP_DISCOVER]	= "process",
+		[FR_DHCP_OFFER]		= "process",
+		[FR_DHCP_REQUEST]	= "process",
+		[FR_DHCP_DECLINE]	= "process",
+		[FR_DHCP_ACK]		= "process",
+		[FR_DHCP_NAK]		= "process",
+		[FR_DHCP_RELEASE]	= "process",
+		[FR_DHCP_INFORM]	= "process",
+		[FR_DHCP_LEASE_QUERY]	= "process",
 	};
 
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
