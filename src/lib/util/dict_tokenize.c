@@ -1230,6 +1230,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 	unsigned int	type_size = 0;
 	fr_dict_t	*dict;
 	fr_dict_attr_t	*mutable;
+	bool		require_dl = false;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_printf("Missing arguments after PROTOCOL.  Expected PROTOCOL <num> <name>");
@@ -1260,6 +1261,16 @@ static int dict_read_process_protocol(char **argv, int argc)
 		char const *p;
 		char *q;
 
+		/*
+		 *	For now, we don't allow multiple options here.
+		 *
+		 *	@todo - allow multiple options.
+		 */
+		if (strcmp(argv[2], "verify=lib") == 0) {
+			require_dl = true;
+			goto post_option;
+		}
+
 		if (strncasecmp(argv[2], "format=", 7) != 0) {
 			fr_strerror_printf("Invalid format for PROTOCOL.  Expected 'format=', got '%s'", argv[2]);
 			return -1;
@@ -1272,6 +1283,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 			return -1;
 		}
 	}
+post_option:
 
 	/*
 	 *	Cross check name / number.
@@ -1321,6 +1333,12 @@ static int dict_read_process_protocol(char **argv, int argc)
 	 */
 	if (dict_dlopen(dict, argv[0]) < 0) {
 		talloc_free(dict);
+		return -1;
+	}
+
+	if (require_dl && !dict->dl) {
+		talloc_free(dict);
+		fr_strerror_printf("Failed to find libfreeradius-%s", argv[0]);
 		return -1;
 	}
 

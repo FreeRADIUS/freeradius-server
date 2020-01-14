@@ -25,7 +25,7 @@
 #	On top of that, a number of options are really TLV's.
 #	We need to be able to understand them, too.
 #
-PROTOCOL	DHCPv4		2
+PROTOCOL	DHCPv4		2	verify=lib
 BEGIN-PROTOCOL	DHCPv4
 
 $INCLUDE dictionary.freeradius.internal

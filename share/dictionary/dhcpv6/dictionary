@@ -10,7 +10,7 @@
 #
 ##############################################################################
 
-PROTOCOL	DHCPv6		3
+PROTOCOL	DHCPv6		3	verify=lib
 BEGIN-PROTOCOL	DHCPv6
 
 $INCLUDE dictionary.freeradius.internal

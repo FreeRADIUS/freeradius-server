@@ -60,7 +60,7 @@
 #	7		= 1	(integer encoding)
 #
 
-PROTOCOL	RADIUS		1
+PROTOCOL	RADIUS		1	verify=lib
 BEGIN-PROTOCOL	RADIUS
 
 #
