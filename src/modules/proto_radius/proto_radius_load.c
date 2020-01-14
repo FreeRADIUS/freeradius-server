@@ -129,8 +129,6 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	address_p = (fr_io_address_t **) packet_ctx;
 	address = *address_p;
 
-
-
 	memset(address, 0, sizeof(*address));
 	address->src_ipaddr.af = AF_INET;
 	address->dst_ipaddr.af = AF_INET;
@@ -383,7 +381,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	if (!inst->client) return 0;
 
 	client->ipaddr.af = AF_INET;
-	client->ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
 	client->src_ipaddr = client->ipaddr;
 
 	client->longname = client->shortname = inst->filename;
