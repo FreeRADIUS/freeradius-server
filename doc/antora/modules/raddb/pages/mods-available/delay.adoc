@@ -1,0 +1,84 @@
+
+
+
+
+= Delay Module
+
+The `delay` module delays the processing of a request in a
+non-blocking fashion.
+
+The module is most useful for rate limiting reject responses.
+Instead of having a specific "reject delay" configuration, it is
+instead possible to have a policy that delays the response.
+
+TIP: The module can also be used to introduce artificial jitter into
+responses.
+
+
+
+## Configuration Settings
+
+
+
+### Simple delay
+
+
+delay:: How long to delay request processing for.
+
+
+
+force_reschedule:: Whether the request should be rescheduled even if no
+delay is needed.
+
+Rescheduling the request pauses it momentarily, and
+introduces a small delay.  It allows for processing of
+other requests ahead of this one.  The result is a small
+amount of "jitter" in responses, which can help avoid some
+deterministic timings in the network.
+
+
+
+relative:: Whether delay should be calculated relative to when
+the request was received.
+
+This configuration can be useful for rate limiting, as most
+NAS will only allow a limited number of requests to be in
+flight.
+
+The default is `no`, which means that.
+
+
+
+### Delaying Access-Reject packets
+
+The `delay_reject` module should be used in a `send Access-Reject`
+section, as the last module in that section. When `delay_reject`
+is used there, the reject will be delayed for either
+FreeRADIUS-Response-Delay seconds, or if that attribute does
+not exist, then one second.
+
+While the response is delayed, the server will continue processing
+other requests.  It will simply set a timer to wake up and send the
+response after the delay.
+
+NOTE: We set `relative = yes` here.  That setting ensures that
+if the server takes more than one second to process the request,
+then the `delay_reject` module will not add *additional* delays.
+Instead, this module will ensure that the `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]` is sent
+no earlier than one second after the `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` had been
+received.
+
+
+== Default Configuration
+
+```
+delay {
+	delay = 1.0
+#	force_reschedule = no
+#	relative = no
+}
+delay delay_reject {
+	delay = "%{%{reply:FreeRADIUS-Response-Delay}:-1}"
+	relative = yes
+}
+```

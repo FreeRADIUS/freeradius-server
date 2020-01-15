@@ -1,0 +1,118 @@
+
+
+
+
+= Control socket interface.
+
+
+
+
+
+
+namespace:: Determine the current scope as a control service.
+
+
+
+All configuration related to the control interface.
+
+
+transport:: Define which communication channel.
+
+
+
+UNIX socket-file as communication channel.
+
+
+filename:: Socket location.
+
+Most operating systems (other than Linux), do not respect
+permissions set on socket files.
+
+To work around this issue, we ensure the
+permissions on the directory containing the socket,
+are sufficiently restrictive to only allow access
+by the FreeRADIUS user, or the gid below (if set).
+
+It is recommended to house the socket in its own
+sub-directory.  FreeRADIUS will create this sub-directory
+if it doesn't exist and set the appropriate ownership and
+permissions.
+
+
+
+peercred:: It is enabled by default, and offers an additional layer
+of security.  When enabled FreeRADIUS will check the euid and
+egid of the process connecting to the control socket.
+
+The client process is allowed to connect if any of the following
+are true:
+
+- The client processes' euid is 0 (root).
+- The client processes' euid matches FreeRADIUS' euid.
+- gid is set (below), and the client processes' egid matches the
+  configured gid.
+
+NOTE: With peercred enabled, auxiliary groups of the client process
+are not considered.  If you have multiple users and need to control
+control socket authorization via group membership, you should set
+`peercred = no`, and rely on filesystem permissions for enforcement.
+
+
+
+uid:: Name of user who is allowed to connect to the control socket.
+
+
+
+gid:: Name of group that is allowed to connect to the control socket.
+
+
+
+mode:: Access mode.
+
+This can be used to give *some* administrators access to
+monitor the system, but not to change it.
+
+ro = read only access (default)
+rw = read/write access.
+
+
+@todo - add "limit" section
+
+
+These don't do anything for now
+
+
+
+== Default Configuration
+
+```
+#	In the future, we will add username/password checking for
+#	connections to the control socket.  We will also add
+#	command authorization, where the commands entered by the
+#	administrator are run through a virtual server before
+#	they are executed.
+#	For now, anyone who has permission to connect to the socket
+#	has nearly complete control over the server.  Be warned!
+#	NOTE: This functionality is NOT enabled by default.
+#	See also the "radmin" program, which is used to communicate
+#	with the server over the control socket.
+server control {
+	namespace = control
+	listen {
+		transport = unix
+		unix {
+			filename = ${run_dir}/control/${name}.sock
+#			peercred = no
+#			uid = radius
+#			gid = radius
+			mode = rw
+		}
+	}
+	recv {
+		ok
+	}
+	send {
+		ok
+	}
+}
+```

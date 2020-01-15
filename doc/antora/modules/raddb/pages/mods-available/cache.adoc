@@ -1,0 +1,261 @@
+
+
+
+
+= Cache Module
+
+The `cache` module is used to cache attributes. The idea is that you can look
+up information in a database, and then cache it. Repeated requests for the same
+information will then have the cached values added to the request.
+
+The module can cache a fixed set of attributes per key.
+It can be listed in any `recv` or `send` section.
+
+NOTE: If you want to have different things cached for different
+sections, you will need to define multiple instances of the module,
+via `cache <nameN> { ... }`.
+
+[options="header,autowidth"]
+|===
+| Option    | Description
+| `ok`      | if it found or created a cache entry.
+| `updated` | if it merged a cached entry.
+| `noop`    | if it did nothing.
+| `fail`    | on error.
+|===
+
+
+
+## Configuration Settings
+
+
+driver::
+
+The current backend datastore used to store the cache entries are:
+
+[options="header,autowidth"]
+|===
+| Driver                | Description
+| `rlm_cache_rbtree`    | An in memory, non persistent rbtree based datastore.
+                          Useful for caching data locally.
+| `rlm_cache_memcached` | A non persistent "webscale" distributed datastore.
+                          Useful if the cached data need to be shared between
+                          a cluster of RADIUS servers.
+| `rlm_cache_redis`     | A persistent "webscale" clustered, sharded, data store.
+                          Extremely fast, and a good candidate for sharing
+                          data such as EAP session blobs, between a cluster of
+                          servers.
+|===
+
+
+
+NOTE: Some drivers accept specific options, to set them a config section with the
+the name as the driver should be added to the cache instance.
+
+Driver specific options are:
+
+
+
+### Memcached cache driver
+
+
+options:: Memcached configuration options.
+
+The memcached options are documented at
+http://docs.libmemcached.org/libmemcached_configuration.html#memcached
+
+
+
+pool:: Connection pool.
+
+
+
+### Redis cache driver
+
+
+server:: Redis Server name.
+
+If using Redis cluster, multiple 'bootstrap' servers may be
+listed here (as separate config items). These will be contacted
+in turn until one provides us with a valid map for the cluster.
+Server strings may contain unique ports.
+
+e.g.:
+
+  server = '127.0.0.1:30001'
+  server = '[::1]:30002'
+
+Instantiation failure behaviour is controlled by `pool.start` as
+with every other module, but with clustering, the pool section
+determines limits for each node in the cluster, not the cluster
+as a whole.
+
+
+
+port:: Port to use for Redis server.
+
+The default port is 6379.
+
+
+
+password:: For authenticating ourselves to the Redis server.
+
+
+
+database:: The database number to use.
+
+
+
+pool:: Connection pool.
+
+
+
+key:: The `key` used to index the cache. It is dynamically expanded at run time.
+
+
+
+ttl::
+
+The TTL of cache entries, in seconds. Entries older than this
+will be expired.
+
+This value should be between `10` and `86400`.
+
+
+
+NOTE: You can flush the cache via
+`radmin -e "set module config cache epoch 123456789"`
+Where last value is a 32-bit Unix timestamp. Cache entries older
+than this are expired, as new entries added.
+You should never set the "epoch" configuration item in this file.
+
+
+add_stats::
+
+If `yes` the following attributes will be added to the request:
+  * `&request:Cache-Entry-Hits` - The number of times this entry
+has been retrieved.
+
+NOTE: Not supported by the `rlm_cache_memcached` module.
+
+
+
+max_entries:: Maximum entries allowed.
+
+
+
+update { ... }:: The list of attributes to cache for a particular key.
+
+Each key gets the same set of cached attributes. The attributes
+are dynamically expanded at run time.
+
+The semantics of this construct are identical to an `unlang`
+update block, except the left hand side of the expression
+represents the cache entry. see man unlang for more information
+on update blocks.
+
+NOTE: Only `request`, `reply`, `control` and `session-state` lists
+are available in cache entries. Attempting to store attributes
+in other lists *will raise an error* during config validation.
+
+
+<list>:<attribute> <op> <value>::
+
+
+Cache all instances of `Reply-Message in the reply list.
+
+Add our own to show when the cache was last updated.
+
+Add your own value for `link:https://freeradius.org/rfc/rfc2865.html#Class[Class]`.
+
+
+This module supports a number of runtime configuration parameters
+represented by attributes in the `&control:` list.
+
+&control:Cache-TTL:: Sets the TTL of an entry to be created, or
+ modifies the TTL of an existing entry.
+
+[options="header,autowidth"]
+|===
+| Condition            | Description
+| `Cache-TTL` of > `0` | Set the TTL of the entry to the new value
+                         (and reset the expiry timer).
+| `Cache-TTL` of < `0` | Expire the existing entry and create a new
+                         one with TTL set to `Cache-TTL` * `-1`.
+| `Cache-TTL` of `0`   | Expire the existing entry and create a new one.
+|===
+
+&control:Cache-Status-Only:: If present and set to `yes` will
+prevent a new entry from being created, and existing entries from
+being merged. It will also alter the module's return codes.
+
+   * The module will return `ok` if a cache entry was found.
+   * The module will return `notfound` if no cache entry was found.
+
+NOTE: If this is set to `yes`, no other cache control attributes will
+be honoured, but they will still be cleared.
+
+&control:Cache-Allow-Insert:: If present and set to `no` will
+prevent a new entry from being created. If not present or set
+to `yes`, and no entry exists, a new one will be created.
+This is evaluated after `Cache-TTL`, so expired entries may be
+recreated.
+
+&control:Cache-Allow-Merge:: If present and set to `no` will
+prevent existing entries from being merged. If not present or
+set to `yes`, and an entry exists (and is valid), it will be
+merged with the current request.
+This is evaluated before `Cache-TTL`, so entries being expired
+may first be merged.
+
+&control:Cache-Merge-New:: If present and set to `yes` will merge new
+cache entries into the current request. Useful if results of execs or
+expansions are stored directly in the cache.
+
+NOTE: All runtime configuration attributes will be removed from the
+`&control:` list after the cache module is called.
+
+
+== Default Configuration
+
+```
+cache {
+#	driver = "rlm_cache_rbtree"
+#	memcached {
+#		options = "--SERVER=localhost"
+#		pool {
+#			start = ${thread[pool].num_workers}
+#			min = ${thread[pool].num_workers}
+#			max = ${thread[pool].num_workers}
+#			spare = 1
+#			uses = 0
+#			lifetime = 0
+#			idle_timeout = 60
+#		}
+#	}
+#	redis {
+#		server = 127.0.0.1
+#		port = 6379
+#		password = 'supersecret'
+#		database = 0
+#		pool {
+#			start = ${thread[pool].num_workers}
+#			min = ${thread[pool].num_workers}
+#			max = ${thread[pool].num_workers}
+#			spare = 1
+#			uses = 0
+#			lifetime = 0
+#			idle_timeout = 60
+#		}
+#	}
+	key = &User-Name
+	ttl = 10
+	add_stats = no
+#	max_entries = 0
+	update {
+		&reply:Reply-Message := &reply:Reply-Message
+		&reply:Reply-Message := "Cache last updated at %t"
+		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
+	}
+}
+```

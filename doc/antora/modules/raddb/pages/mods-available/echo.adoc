@@ -1,0 +1,125 @@
+
+
+
+
+= Echo Module
+
+The `echo` module is used for execute an external program in more than
+one section (e.g. `recv`, `pre_proxy`, etc), then it is probably best
+to define a different instance of the `exec` module for every section.
+
+NOTE: This is a more specific example of the `exec` module.
+
+  Attribute-Name = `%{echo:/path/to/program args}`
+
+The return value of the program run determines the result of the exec
+instance call as follows:
+
+[options="header,autowidth"]
+|===
+| Code | Return    | Description
+| < 0  | fail      | the module failed.
+| = 0  | ok        | the module succeeded.
+| = 1  | reject    | the module rejected the user.
+| = 2  | fail      | the module failed.
+| = 3  | ok        | the module succeeded.
+| = 4  | handled   | the module has done everything to handle the request.
+| = 5  | invalid   | the user's configuration entry was invalid.
+| = 6  | disallow  | the user was locked out.
+| = 7  | notfound  | the user was not found.
+| = 8  | noop      | the module did nothing.
+| = 9  | updated   | the module updated information in the request.
+| > 9  | fail      | the module failed.
+|===
+
+NOTE: See `doc/configurable_failover` for details.
+
+
+
+## Configuration Settings
+
+
+wait:: Wait for the program to finish.
+
+If we do NOT wait, then the program is "fire and
+forget", and any output attributes from it are ignored.
+
+If we are looking for the program to output
+attributes, and want to add those attributes to the
+request, then we MUST wait for the program to
+finish, and therefore set 'wait=yes'
+
+
+
+program:: The name of the program to execute, and it's
+arguments.
+
+Dynamic translation is done on this field, so things like
+the following example will work.
+
+
+
+input_pairs:: The attributes which are placed into the
+environment variables for the program.
+
+Allowed values are:
+
+[options="header,autowidth"]
+|===
+| Pairs         | Description
+| request       | attributes from the request
+| config        | attributes from the configuration items list
+| reply         | attributes from the reply
+| proxy-request | attributes from the proxy request
+| proxy-reply   | attributes from the proxy reply
+|===
+
+NOTE: Some attributes may not exist at some stages.
+e.g. There may be no proxy-reply attributes if this module is used
+in the `recv` section.
+
+
+
+output_pairs::: Where to place the output attributes (if any) from
+the executed program.
+
+The values allowed, and the restrictions as to availability, are the
+same as for the `input_pairs`.
+
+
+
+shell_escape:: Escape the environment variables.
+
+If this is set, all the RADIUS attributes are capitalised and dashes
+replaced with underscores. Also, RADIUS values are surrounded with
+double-quotes.
+
+That is to say:
+
+  User-Name=BobUser => USER_NAME="BobUser"
+
+
+
+timeout:: Set a time wait for the program to finish.
+
+Default is `10` seconds, which should be plenty for nearly
+anything. Range is `1` to `30` seconds.
+
+WARNING: You are strongly encouraged to NOT increase this value.
+Decreasing can be used to cause authentication to fail sooner
+when you know it's going to fail anyway due to the time taken,
+thereby saving resources.
+
+
+== Default Configuration
+
+```
+exec echo {
+	wait = yes
+	program = "/bin/echo %{User-Name}"
+	input_pairs = request
+	output_pairs = reply
+	shell_escape = yes
+#	timeout = 10
+}
+```

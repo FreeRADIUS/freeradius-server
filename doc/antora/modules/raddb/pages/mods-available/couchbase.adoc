@@ -1,0 +1,256 @@
+
+
+
+
+= Couchbase Module
+
+The `couchbase` module is used to provide connections to a `link:https://www.couchbase.com/[Couchbase]` database.
+
+
+
+## Configuration Settings
+
+
+server:: List of Couchbase hosts (hosts may be space, tab, comma or semicolon separated).
+Ports are optional if servers are listening on the standard port.
+
+NOTE: Complete pool urls are preferred.
+
+
+
+bucket:: Couchbase bucket name.
+
+
+
+username:: Couchbase bucket username (optional).
+
+
+
+password:: Couchbase bucket password (optional).
+
+
+
+opts { ... }:: flags for libcouchbase (see Couchbase documentation).
+
+Set this to enable debugging, view timeouts, and all options
+supported by `lcb_cntl_string()` from libcouchbase API.
+
+NOTE: These debugging options can produce significant amounts of logging output.
+
+
+
+acct_key:: Couchbase accounting document key.
+
+This key is dynamically expanded at run time.
+
+
+
+doctype:: Value for the 'docType' element in the json body for accounting documents.
+
+
+
+expire:: Accounting document expire time in seconds (0 = never).
+
+
+
+update { ... }:: Map attribute names to json element names for accounting.
+
+Configuration items are in the format `<radius attribute> = '<element name>'`
+
+NOTE: Element names should be *single quoted*.
+Attributes not in this map will not be recorded.
+
+
+
+user_key:: Couchbase document key for user documents (`unlang` supported).
+
+
+
+read_clients:: Set to `yes` to read radius clients from the Couchbase view specified below.
+NOTE: Clients will *ONLY* be read on server *startup*.
+
+
+
+client { ... }:: `Map` attribute names to jSON element names when loading clients.
+
+Configuration follows the same rules as the accounting `map` above.
+
+
+view:: Couchbase view that should return all available client documents.
+
+
+
+template { ... }:: Sets default values (not obtained from couchbase) for new client entries.
+
+
+
+attribute { ... }:: Sets the client mappings following the format: `<client attribute> = '<element name>'`.
+
+The following attributes are required:
+
+[options="header,autowidth"]
+|===
+| Attr                            | Description
+| `ipaddr`, `ipv4add`, `ipv6addr` | Client IP Address.
+| `secret`                        | RADIUS shared secret.
+|===
+
+NOTE: All attributes usually supported in a `client` definition are also
+supported here. Element names *should be single quoted*.
+
+
+
+pool { ... }:: The connection pool is new for >= `3.0`, and will be used in many
+modules, for all kinds of connection-related activity.
+
+
+start:: Connections to create during module instantiation.
+If the server cannot create specified number of connections
+during instantiation it will exit.
+Set to `0` to allow the server to start without the couchbase
+being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one
+is requested, the request will NOT get a connection.
+
+Setting `max` to LESS than the number of threads means
+that some threads may starve, and you will see errors
+like '_No connections available and at max connection limit_'
+
+Setting `max` to MORE than the number of threads means
+that there are more connections than necessary.
+
+
+
+spare:: Spare connections to be left idle.
+
+NOTE: Idle connections *WILL* be closed if `idle_timeout`
+is set.  This should be less than or equal to `max` above.
+
+
+
+uses:: Number of uses before the connection is closed.
+
+NOTE: `0` means "infinite".
+
+
+
+lifetime:: The lifetime (in seconds) of the connection.
+
+NOTE: A setting of `0` means infinite (no limit).
+
+
+
+idle_timeout:: The idle timeout (in seconds).  A connection which is
+unused for this length of time will be closed.
+
+NOTE: A setting of `0` means infinite (no timeout).
+
+
+
+connect_timeout:: Connection timeout (in seconds).  The maximum amount of
+time to wait for a new connection to be established.
+
+
+[WARNING]
+====
+All configuration settings are enforced.  If a
+connection is closed because of `idle_timeout`,
+`uses`, or `lifetime`, then the total number of
+connections *MAY* fall below `min`.  When that
+happens, it will open a new connection.  It will
+also log a *WARNING* message.
+
+The solution is to either lower the `min` connections,
+or increase `lifetime`/`idle_timeout`.
+====
+
+== Default Configuration
+
+```
+couchbase {
+	server = "http://cb01.example.org:8091/ http://cb02.example.org:8091/"
+	bucket = "radius"
+#	username = "radius"
+#	password = "password"
+	opts {
+#		console_log_level = "5"
+#		console_log_file = "${logdir}/libcouchbase.log"
+#		send_hello = "false"
+#		detailed_errcodes = "true"
+	}
+	acct_key = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
+	doctype = "radacct"
+	expire = 2592000
+	update {
+		&Acct-Session-Id	= 'sessionId'
+		&Acct-Unique-Session-Id	= 'uniqueId'
+		&Acct-Status-Type	= 'lastStatus'
+		&Acct-Authentic		= 'authentic'
+		&User-Name		= 'userName'
+		&Stripped-User-Name	= 'strippedUserName'
+		&Stripped-User-Domain	= 'strippedUserDomain'
+		&Realm			= 'realm'
+		&NAS-IP-Address		= 'nasIpAddress'
+		&NAS-Identifier		= 'nasIdentifier'
+		&NAS-Port		= 'nasPort'
+		&Called-Station-Id	= 'calledStationId'
+		&Called-Station-SSID	= 'calledStationSSID'
+		&Calling-Station-Id	= 'callingStationId'
+		&Framed-Protocol	= 'framedProtocol'
+		&Framed-IP-Address	= 'framedIpAddress'
+		&NAS-Port-Type		= 'nasPortType'
+		&Connect-Info		= 'connectInfo'
+		&Acct-Session-Time	= 'sessionTime'
+		&Acct-Input-Packets	= 'inputPackets'
+		&Acct-Output-Packets	= 'outputPackets'
+		&Acct-Input-Octets	= 'inputOctets'
+		&Acct-Output-Octets	= 'outputOctets'
+		&Acct-Input-Gigawords	= 'inputGigawords'
+		&Acct-Output-Gigawords	= 'outputGigawords'
+		&Event-Timestamp	= 'lastUpdated'
+	}
+	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+#	read_clients = no
+	client {
+		view = "_design/client/_view/by_id"
+		template {
+#			login				= 'test'
+#			password			= 'test'
+#			proto	 			= tcp
+#			require_message_authenticator	= yes
+		}
+		attribute {
+			ipaddr                          = 'clientIdentifier'
+			secret                          = 'clientSecret'
+			shortname                       = 'clientShortname'
+			nas_type                        = 'nasType'
+			virtual_server                  = 'virtualServer'
+			require_message_authenticator   = 'requireMessageAuthenticator'
+			limit {
+				max_connections             = 'maxConnections'
+				lifetime                    = 'clientLifetime'
+				idle_timeout                = 'idleTimeout'
+			}
+		}
+	}
+	pool {
+		start = ${thread[pool].num_workers}
+		min = ${thread[pool].num_workers}
+		max = ${thread[pool].num_workers}
+		spare = 1
+		uses = 0
+		lifetime = 0
+		idle_timeout = 1200
+		connect_timeout = 3.0
+	}
+}
+```

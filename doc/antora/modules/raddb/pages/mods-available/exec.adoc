@@ -1,0 +1,133 @@
+
+
+
+
+= Exec Module
+
+The module `exec` is used for executing external programs.
+
+This module is useful only for `xlat`.  To use it, put `exec` into
+the `instantiate` section.  You can then do dynamic translation of
+attributes like:
+
+  Attribute-Name = "%{exec:/path/to/program args}"
+
+The value of the attribute will be replaced with the output of the
+program which is executed.  Due to RADIUS protocol limitations,
+any output over `253` bytes will be ignored.
+
+The RADIUS attributes from the user request will be placed
+into environment variables of the executed program, as
+described in `man unlang` and in `doc/unlang/xlat.adoc`
+
+The return value of the program run determines the result of the exec
+instance call as follows:
+
+[options="header,autowidth"]
+|===
+| Code | Return    | Description
+| < 0  | fail      | the module failed.
+| = 0  | ok        | the module succeeded.
+| = 1  | reject    | the module rejected the user.
+| = 2  | fail      | the module failed.
+| = 3  | ok        | the module succeeded.
+| = 4  | handled   | the module has done everything to handle the request.
+| = 5  | invalid   | the user's configuration entry was invalid.
+| = 6  | disallow  | the user was locked out.
+| = 7  | notfound  | the user was not found.
+| = 8  | noop      | the module did nothing.
+| = 9  | updated   | the module updated information in the request.
+| > 9  | fail      | the module failed.
+|===
+
+
+
+## Configuration Settings
+
+
+wait:: Wait for the program to finish.
+
+If we do NOT wait, then the program is "fire and
+forget", and any output attributes from it are ignored.
+
+
+
+program:: The name of the program to execute, and it's
+arguments.
+
+Dynamic translation is done on this field, so things like
+the following example will work.
+
+If 'program' is set to a value, then the module *cannot* be
+used in an `xlat`.  See the `echo` module for examples of
+how to use the module "in line".
+
+
+
+input_pairs:: The attributes which are placed into the
+environment variables for the program.
+
+Allowed values are:
+
+[options="header,autowidth"]
+|===
+| Pairs         | Description
+| request       | attributes from the request
+| config        | attributes from the configuration items list
+| reply         | attributes from the reply
+| proxy-request | attributes from the proxy request
+| proxy-reply   | attributes from the proxy reply
+|===
+
+NOTE: Some attributes may not exist at some stages.
+e.g. There may be no proxy-reply attributes if this module is used
+in the `recv` section.
+
+
+
+output_pairs::: Where to place the output attributes (if any) from
+the executed program.
+
+The values allowed, and the restrictions as to availability, are the
+same as for the `input_pairs`.
+
+This configuration item is used only when the `program`
+configuration item is set, and when `wait = yes` is set.
+
+
+
+shell_escape:: Escape the environment variables.
+
+If this is set, all the RADIUS attributes are capitalised and dashes
+replaced with underscores. Also, RADIUS values are surrounded with
+double-quotes.
+
+That is to say:
+
+  User-Name=BobUser => USER_NAME="BobUser"
+
+
+
+timeout:: Set a time wait for the program to finish.
+
+Default is `10` seconds, which should be plenty for nearly
+anything. Range is `1` to `30` seconds.
+
+WARNING: You are strongly encouraged to NOT increase this
+value.  In fact, you are much better off decreasing it to a
+lower value.  Doing so will improve network stability and
+responsiveness.
+
+
+== Default Configuration
+
+```
+exec {
+	wait = yes
+#	program = "/bin/true %{User-Name}"
+	input_pairs = request
+#	output_pairs = reply
+	shell_escape = yes
+	timeout = 10
+}
+```

@@ -1,0 +1,332 @@
+
+
+
+
+= SQL Module
+
+The `sql` module handles configuration for the SQL drivers.
+
+The database schemas and queries are located in subdirectories:
+
+[options="header,autowidth"]
+|===
+| Directory                      | Description
+| sql/<driver>/main/schema.sql	| Schema
+| sql/<driver>/main/queries.conf	| Authorisation and Accounting queries
+|===
+
+Driver specific configuration options are located in `sql` prefix
+config files in:
+
+  mods-config/sql/driver/<driver>
+
+Where `<driver>` is cassandra, db2, firebird, freetds, null, mysql
+oracle, postgresql, sqlite and unixodbc.
+
+
+
+## Configuration Settings
+
+
+dialect:: The dialect of SQL you want to use.
+
+Allowed dialects are:
+
+    * cassandra
+    * mysql
+    * mssql
+    * oracle
+    * postgresql
+    * sqlite
+
+
+
+driver:: The sub-module to use to execute queries. It
+should usually match the `dialect` above.
+
+In some cases, the driver is different from the `dialect`.
+
+The rlm_sql_null driver can be used with any `dialect`,
+along with the `logfile` directive below.  It will then
+write the SQL queries to a log file.
+
+For MS-SQL, there are multiple driver options, as given in
+the table below.  If the databases require syntax
+  *different* from MS-SQL, please submit bug reports so that
+we can fix them,
+
+[options="header,autowidth"]
+|===
+| Driver            | Dialect
+| rlm_sql_db2       | mssql
+| rlm_sql_firebird  | mssql
+| rlm_sql_freetds   | mssql
+| rlm_sql_null      | any
+| rlm_sql_unixodbc  | mssql
+|===
+
+
+
+Include driver specific configuration file if one
+exists. These are in a separate configuration file
+in mods-config/sql/driver/<driver>.
+
+
+
+.Connection info:
+
+
+
+radius_db:: Database table configuration for everything.
+
+WARNING: Except for Oracle database.
+
+
+
+.If you are using `Oracle` then use this instead.
+
+
+
+.If you're using `postgresql` this can also be used instead of the connection info parameters.
+
+
+
+NOTE: Postgreql doesn't take `tls{}` options in its module config like mysql does,
+if you want to use SSL connections then use this form of connection info parameter.
+
+
+
+acct_table1::
+acct_table2::
+
+If you want both stop and start records logged to the same SQL table, leave this as is.
+If you want them in different tables, put the start table in `acct_table1` and stop
+table in `acct_table2`.
+
+
+
+postauth_table:: Allow for storing data after authentication.
+
+
+
+authcheck_table::
+groupcheck_table::
+
+Tables containing `check` items.
+
+
+
+authreply_table::
+groupreply_table::
+
+Tables containing `reply` items.
+
+
+
+usergroup_table:: Table to keep group info.
+
+
+
+read_groups:: Read the groups from the database.
+
+If set to `yes`, we read the group tables unless `Fall-Through = no` in the reply table.
+If set to `no`, we do not read the group tables unless `Fall-Through = yes` in the
+reply table.
+
+Default is `yes`.
+
+
+
+read_profiles:: Read the profiles from the database.
+
+If set to `yes`, we read profiles unless `Fall-Through = no` in the groupreply table.
+If set to `no` we do not read profiles unless `Fall-Through = yes` in the groupreply table.
+
+Default is `yes`.
+
+
+
+logfile:: Write SQL queries to a logfile.
+
+This is potentially useful for tracing issues with authorization queries.
+See also `logfile` directives in `mods-config/sql/main/*/queries.conf`.
+You can enable per-section logging by enabling `logfile` there, or global logging by
+enabling `logfile` here.
+
+Per-section logging can be disabled by setting "logfile = ''"
+
+
+
+query_timeout:: Set the maximum query duration for `rlm_sql_mysql` and `rlm_sql_cassandra`.
+
+
+
+pool { ... }::
+
+The connection pool is new for 3.0, and will be used in many modules, for all kinds of
+connection-related activity.
+
+When the server is not threaded, the connection pool limits are ignored, and only one
+connection is used.
+
+[NOTE]
+====
+If you want to have multiple SQL modules re-use the same connection pool, use `pool = name`
+instead of a `pool` section.
+
+e.g:
+
+[source,sql]
+----
+sql1 {
+ ...
+ pool {
+   ...
+ }
+}
+
+# sql2 will use the connection pool from sql1
+sql2 {
+ ...
+ pool = sql1
+}
+----
+====
+
+
+start:: Connections to create during module instantiation.
+
+If the server cannot create specified number of connections during instantiation
+it will exit.
+
+Set to `0` to allow the server to start without the database being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one is requested, the request
+will NOT get a connection.
+
+Setting `max` to LESS than the number of threads means that some threads may starve,
+and you will see errors like _No connections available and at max connection limit_.
+
+Setting `max` to MORE than the number of threads means that there are more
+connections than necessary.
+
+
+
+spare:: Spare connections to be left idle.
+
+NOTE: Idle connections WILL be closed if `idle_timeout`
+is set.  This should be less than or equal to `max` above.
+
+
+
+uses:: Number of uses before the connection is closed.
+
+`0` means "infinite".
+
+
+
+retry_delay:: The number of seconds to wait after the server tries
+to open a connection, and fails.
+
+During this time, no new connections will be opened.
+
+
+
+lifetime:: The lifetime (in seconds) of the connection.
+
+
+
+idle_timeout:: idle timeout (in seconds).
+
+A connection which is unused for this length of time will be closed.
+
+
+
+connect_timeout:: Connection timeout (in seconds).
+
+The maximum amount of time to wait for a new connection to be established.
+
+Not supported by:
+
+[options="header,autowidth"]
+|===
+| Driver             | Description
+| rlm_sql_firebird   | Likely possible but no documentation.
+| rlm_sql_oracle     | Not possible.
+| rlm_sql_postgresql | Should be set via the radius_db string instead.
+|===
+
+
+
+[NOTE]
+====
+  * All configuration settings are enforced.  If a connection is closed because
+of `idle_timeout`, `uses`, or `lifetime`, then the total number of connections
+MAY fall below `min`.
+When that happens, it will open a new connection.  It will also log a WARNING message.
+
+  * The solution is to either lower the "min" connections, or increase lifetime/idle_timeout.
+====
+
+
+
+group_attribute:: The group attribute specific to this instance of `rlm_sql`.
+
+
+
+.Read database-specific queries.
+
+Not all drivers ship with `query.conf` or `schema.sql` files. For those which don't,
+please create them and contribute them back to the project.
+
+
+== Default Configuration
+
+```
+sql {
+	dialect = "sqlite"
+	driver = "rlm_sql_${dialect}"
+	$-INCLUDE ${modconfdir}/sql/driver/${dialect}
+#	server = "localhost"
+#	port = 3306
+#	login = "radius"
+#	password = "radpass"
+	radius_db = "radius"
+#	radius_db = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=your_sid)))"
+#	radius_db = "dbname=radius host=localhost user=radius password=radpass"
+#	radius_db = "host=localhost port=5432 dbname=radius user=radius password=raddpass sslmode=verify-full sslcert=/etc/ssl/client.crt sslkey=/etc/ssl/client.key sslrootcert=/etc/ssl/ca.crt"
+	acct_table1 = "radacct"
+	acct_table2 = "radacct"
+	postauth_table = "radpostauth"
+	authcheck_table = "radcheck"
+	groupcheck_table = "radgroupcheck"
+	authreply_table = "radreply"
+	groupreply_table = "radgroupreply"
+	usergroup_table = "radusergroup"
+#	read_groups = yes
+#	read_profiles = yes
+#	logfile = ${logdir}/sqllog.sql
+#	query_timeout = 5
+	pool {
+		start = ${thread[pool].num_workers}
+		min = ${thread[pool].num_workers}
+		max = ${thread[pool].num_workers}
+		spare = 1
+		uses = 0
+		retry_delay = 30
+		lifetime = 0
+		idle_timeout = 60
+		connect_timeout = 3.0
+	}
+	group_attribute = "${.:instance}-Group"
+	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
+}
+```

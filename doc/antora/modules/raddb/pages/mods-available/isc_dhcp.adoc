@@ -1,0 +1,74 @@
+
+
+
+
+= isc_dhcp Module
+
+The `isc_dhcp` module reads ISC DHCP configuration files.
+
+When the module is listed in the `recv DHCP-Discover` section, as
+"isc_dhcp.authorize" (sorry), it will look up the client by
+`client-identifier`, or failing that, `hardware ethernet`.  If
+found, the module will apply a `fixed-address` option to assign an
+IP address.
+
+Leases are *not* handled by this module.  Instead, you should use
+an "ip pool" module in the `send DHCP-Offer" section.  Then after
+an IP address has been allocated, list `isc_dhcp` (without the
+`authorize`).
+
+The module will then apply any matching options to the packet.
+
+
+
+## Configuration Settings
+
+
+moddir:: Search for files in a subdirectory of mods-config which
+matches this instance of the files module.
+
+
+
+filename:: The ISC DHCP configuration file
+
+
+
+debug:: For developers, we print out what we're parsing.
+
+
+
+pedantic:: Be harsh or forgiving about what we parse
+
+The `isc_dhcp` module implements only a small subset of the
+ISC DHCP configuration file commands.  However, the module
+  *parses* just about everything that is allowable in the ISC
+DHCP configuration.
+
+The goal here is to allow an easy migration from ISC DHCP
+to FreeRADIUS, by just copying over "dhcpd.conf".
+FreeRADIUS will at least start, instead of complaining
+about everything.
+
+If `pedantic = true`, then the module will fail with an
+error when it sees a command it knows it can't implement.
+The module will also issue warnings for commands which are
+ignored (e.g. OMAPI ones, "listen on port X", and similar).
+The module will also issue warnings for commands which
+should be implemented at some point.
+
+If a command does not produce any errors or warnings, it is
+implemented and supported.
+
+The default is `pedantic = false`
+
+
+== Default Configuration
+
+```
+isc_dhcp {
+	moddir = ${modconfdir}/${.:instance}
+	filename = ${moddir}/dhcpd.conf
+	debug = true
+#	pedantic = true
+}
+```

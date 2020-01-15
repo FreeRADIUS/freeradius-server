@@ -1,0 +1,127 @@
+
+
+
+
+= Cipher Module
+
+The `cipher` module is used to transform plaintext in some way that is dependent
+on a key or key pair, producing encrypted ciphertext.
+
+Registers the following expansions:
+
+[options="header,autowidth"]
+|===
+| XLAT                                          | Description
+| `%{<inst>_encrypt:<plaintext>...}`            | Encrypts plaintext using `certificate_file`
+| `%{<inst>_decrypt:<ciphertext>...}`           | Decrypts ciphertext using `private_key_file`
+| `%{<inst>_sign:<plaintext>...}`               | Signs plaintext using `private_key_file`
+| `%{<inst>_verify:<signature> <plaintext>...}` | Validates a signature using `certificate_file`
+|===
+
+NOTE: `<ciphertext>` and `<signature>` are ingested and excreted to in their raw form.
+You should use armouring expansions i.e. `%{base64_encode:}`, `%{base64_decode:}` if the values
+are to be passed outside of FreeRADIUS.
+
+e.g:
+
+  %{base64_encode:%{cipher_encrypt:<plaintext>}}
+  %{cipher_decrypt:%{base64_decode:<ciphertext>}}
+
+NOTE: The supported versions are determined _entirely_ by the version of OpenSSL used, we
+pass the name of the digest off to OpenSSL and it tells _us_ whether it's valid/supported
+or not.
+
+OpenSSL >= 1.0.0 should support at least:
+
+   * `md2`     (not recommended)
+   * `md4`     (not recommended)
+   * `md5`     (not recommended)
+   * `sha1`    (widely used but deprecated)
+   * `sha224`
+   * `sha256`  (the default)
+   * `sha384`
+   * `sha512`
+
+OpenSSL >= 1.1.1 also supports the `sha3` family of digest functions.
+
+   * `sha3_224`
+   * `sha3_256`
+   * `sha3_384`
+   * `sha3_512`
+
+
+
+## Configuration Settings
+
+
+type::
+
+Available schemes are:
+
+  * `rsa`
+
+
+
+### RSA asymmetrically keyed ciphering
+
+private_key_password::
+
+Private key used for decrypting and signing data.
+
+
+
+certificate_file::
+
+The PEM encoded certificate used for encrypting data and verifying signatures.
+
+
+
+oaep { ... }::
+
+Parameters for the OAEP RSA padding scheme.
+
+
+
+signature_digest::
+
+Digest used to ingest the plaintext before signing or verification.
+
+
+
+padding_type::
+
+The type of padding applied to the plaintext being one of:
+
+  * `none` (no padding)
+  * `pkcs`
+  * `oaep`
+  * `x931` (signing only)
+  * `ssl` (v1/v2)
+
+NOTE: Defaults to *pkcs*.
+
+
+
+random_file:: Provides random number generator.
+
+
+== Default Configuration
+
+```
+cipher {
+	type = rsa
+	rsa {
+		private_key_password = whatever
+		private_key_file = ${certdir}/rsa/server.pem
+		certificate_file = ${certdir}/rsa/server.pem
+		oaep {
+#			oaep_digest = "sha256"
+#			mgf1_digest = "sha256"
+#			label = ""
+		}
+#		signature_digest = "sha256"
+#		padding_type = pkcs
+#		random_file = /dev/urandom
+	}
+}
+```

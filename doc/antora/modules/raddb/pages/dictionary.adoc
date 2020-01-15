@@ -1,0 +1,56 @@
+
+
+
+
+= Local dictionary definitions
+
+This is the local dictionary file which can be
+edited by local administrators.  It will be loaded
+  *after* the main dictionary files are loaded.
+
+FreeRADIUS will automatically load the main dictionary files from:
+
+	${prefix}/share/freeradius/dictionary
+
+It is no longer necessary for this file to `$INCLUDE` the main
+dictionaries from this file.  However, if the `$INCLUDE` line is
+here, nothing bad will happen.
+
+
+## Editing the dictionary
+
+Any new/changed attributes *must* be placed in this file.
+The pre-defined dictionaries *should not* be edited.
+See `man dictionary` for documentation on how dictionary
+entries should be formatted.
+
+All local attributes and `$INCLUDE` directives should
+go into this file.
+
+The numbers you pick should be between 3000 and 4000.
+These attributes will *not* go into a RADIUS packet.
+
+If you do want attributes to go into a RADIUS packet, you
+will need to use VSAs. This means requesting allocation
+of a Private Enterprise Code from http://iana.org/. We
+strongly suggest doing that *only* if you are a vendor of
+RADIUS equipment.
+
+See https://tools.ietf.org/html/rfc6158[RFC 6158] for more details:
+  http://ietf.org/rfc/rfc6158.txt
+
+
+## Example attributes
+
+The attributes below are examples. You should edit them as
+required, or add your own.
+
+
+
+== Default Configuration
+
+```
+#ATTRIBUTE	My-Local-String		3000	string
+#ATTRIBUTE	My-Local-IPAddr		3001	ipaddr
+#ATTRIBUTE	My-Local-Integer	3002	integer
+```

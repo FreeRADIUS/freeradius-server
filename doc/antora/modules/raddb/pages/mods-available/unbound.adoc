@@ -1,0 +1,22 @@
+
+
+
+
+= Unbound Module
+
+The `unbound` module performs queries against a DNS service to allow
+FQDNs to be resolved during request processing.
+
+
+
+## Configuration Settings
+
+filename = "${raddbdir}/mods-config/unbound/default.conf"
+timeout = 3000
+
+== Default Configuration
+
+```
+unbound dns {
+}
+```

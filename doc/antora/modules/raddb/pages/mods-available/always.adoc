@@ -1,0 +1,96 @@
+
+
+
+
+= Always Module
+
+The `always` module simply returns the same result, always, without
+doing anything else.  It is here for use in complex policies.
+
+The main configuration item is `rcode`, which sets the return  code that
+this  instantiation  of  the  module  will return. The default, if none
+specified, is 'fail'.
+
+
+
+## Syntax
+
+
+rcode:: Return code.
+
+The `rcode` may be one of the following values:
+
+[options="header,autowidth"]
+|===
+| Parameter  | Description
+| `reject`   | Reject the user.
+| `fail`     | Simulate or indicate a failure.
+| `ok`       | Simulate or indicate a success.
+| `handled`  | Indicate that the request has been handled,
+               stop processing, and send response if set.
+| `invalid`  | Indicate that the request is invalid.
+| `disallow` | Indicate that the user account has been
+               locked out.
+| `notfound` | Indicate that a user account can't be found.
+| `noop`     | Simulate a no-op.
+| `updated`  | Indicate that the request has been updated.
+|===
+
+
+
+simulcount::
+
+If an instance of this module is listed in a `session {}`
+section, this simulates a user having `<integer>` number of sessions.
+
+
+
+mpp::
+
+If an instance is listed in a `session {}` section, this
+simulates the user having multilink sessions.
+
+
+
+## Configuration Settings
+
+The following default instances allow the use of return codes like
+`reject` or `ok` in `unlang` policies.
+
+
+== Default Configuration
+
+```
+#always <name> {
+#	rcode = <value>
+#	simulcount = <integer>
+#	mpp = <integer>
+#}
+always reject {
+	rcode = reject
+}
+always fail {
+	rcode = fail
+}
+always ok {
+	rcode = ok
+}
+always handled {
+	rcode = handled
+}
+always invalid {
+	rcode = invalid
+}
+always disallow {
+	rcode = disallow
+}
+always notfound {
+	rcode = notfound
+}
+always noop {
+	rcode = noop
+}
+always updated {
+	rcode = updated
+}
+```

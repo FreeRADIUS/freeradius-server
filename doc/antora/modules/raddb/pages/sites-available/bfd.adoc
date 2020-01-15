@@ -1,0 +1,160 @@
+
+
+
+
+= BFD (Bidirectional Forwarding Detection)
+
+The purpose of `BFD` is to quickly detect if a link is up or down.
+
+We are using it to determine if a `peer` application is up or down.
+For example, when two servers are configured in primary / secondary
+mode, they should be set up as BFD peers.  They can then detect
+when the other one goes down.
+
+The code is in FreeRADIUS because we want to know if the *application*
+is running. It doesn't matter if the link is up, or if the host system
+is running. If the FreeRADIUS daemon is down, then we want to know ASAP.
+
+NOTE: See also `raddb/trigger.conf`.  There are BFD-specific triggers
+which are executed when the link is started, goes up, down, or is
+administratively down.
+
+
+
+## Default instance
+
+
+
+### server bfd  { ... }
+
+
+#### listen { ... }
+
+
+type:: Type is bfd
+
+
+
+ipaddr: IP address, or IPv6 address as normal.
+
+
+
+port:: Port as normal.
+
+
+
+auth_type:: BFD Authentication method.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option         | Description
+| none           | no password, not recommended
+| simple         | cleartext password in the packet, not recommended
+| keyed-md5      | MD5 based, like  RADIUS style shared secret key
+| met-keyed-md5  | similar to above
+| keyed-sha1     | SHA1 based, like RADIUS style shared secret key
+| met-keyed-sha1 | similar to above
+|===
+
+NOTE: The other side of the BFD connection has to have the same
+kind of authentication set.
+
+
+
+secret:: The secret key used for authentication.
+
+If it starts with "0x", then it is treated as a hex string. This is recommended
+for security.  The secrets should be `~16` octets long, and random.
+
+
+
+min_transmit_interval:: Minimum time interval to transmit. (milliseconds)
+
+
+
+min_receive_interval:: Minimum time interval to receive. (milliseconds)
+
+
+
+max_timeouts:: Max number of timeouts. (milliseconds)
+
+
+
+demand:: BFD Demand mode.
+
+allowed values: {no, yes}
+
+
+
+### peer { ... }
+
+Each BFD `listen { ... }` socket has at least one, possibly more, peer.
+
+It exchanges BFD packets with each peer.
+
+
+ipaddr:: Each peer has an IP address and a port.
+
+NOTE: For now, you can't set a per-peer `auth_type`.
+
+
+
+port:: The peer port.
+
+
+
+demand:: BFD Demand mode.
+
+allowed values: {no, yes}
+
+
+
+secret:: Each peer should have its own unique secret.
+
+NOTE: If this isn't set, the global secret above will be used.
+
+
+
+#### bfd { ... }
+
+The virtual server used to handle BFD packets.
+
+NOTE: You can't really run any of the normal RADIUS modules here.
+But you could run an external shell script, Perl, etc.
+
+
+Say it's OK.
+
+
+
+Any other modules listed here will have their `authorize` section run.
+
+
+== Default Configuration
+
+```
+server bfd {
+	listen {
+		type = bfd
+		ipaddr = 127.0.0.1
+		port = 10000
+		auth_type = keyed-sha1
+		secret = "hello"
+		min_transmit_interval = 1000
+		min_receive_interval = 1000
+		max_timeouts = 3
+		demand = no
+		peer {
+			ipaddr = 127.0.0.1
+			port = 10001
+			demand = no
+			secret = 0x12345678
+		}
+	}
+	bfd {
+		ok
+	}
+}
+```

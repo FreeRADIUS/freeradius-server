@@ -1,0 +1,93 @@
+
+
+
+
+= Client Module
+
+The `client` module loads RADIUS clients as needed, rather than when the server
+starts.
+
+This module is listed in the `new client { ... }` section of a virtual server to read
+client definitions from FreeRADIUS config files transforming them into attributes.
+These attributes are then used by the server to create internal client definitions.
+
+This indirection is necessary as client definitions can be provided by many different
+modules (`ldap`, `sql`, `couchbase` etc...), all of which emit client data in
+attribute form.  Treating static configuration files specially would increase code
+complexity.
+
+There are no configuration entries for this module. Instead, it relies on the `client`
+configuration.
+
+You must:
+
+1. Link `raddb/sites-enabled/dynamic_clients` to `raddb/sites-available/dynamic_clients`.
+
+2. Define a client network/mask (see the top of `raddb/sites-enabled/dynamic_clients).
+
+3. Uncomment the `directory` entry in that client definition.
+
+4. List `client` in the `new client { .. }` section of the `client` virtual server.
+The default example already does this.
+
+5. Put files into the above directory, one per IP.  e.g. file `192.0.2.1` should contain
+a normal client definition
+for a client with IP address `192.0.2.1`.
+
+NOTE: For more documentation, see the file `raddb/sites-available/dynamic-clients`
+
+
+
+## Client Configuration
+
+In addition to loading `client` definitions in from flat files, the clients module can
+also be used to access data from previously defined clients.
+
+
+
+### Attribute Mapping
+
+Maps arbitrary fields from a client definition to attributes in the current request.
+
+[source,unlang]
+---
+map client [<ipaddr>] {            // <1>
+     &Tmp-String-0 = 'nas_type'    // <2>
+     &Tmp-String-1 := 'shortname'  // <3>
+     &Tmp-String-3 += 'groups'     // <4>
+}
+---
+
+<1> By default `map client { ... }` will operate on the current client, but alternative
+    clients can by specified by `<ipaddr>`.
+<2> Assigns the value of the `nas_type` field from the client definition to
+    `&Tmp-String-0` if `&Tmp-String-0` doesn't exist.
+<3> Assigns the value of the `shortname` field from the client definition to
+    `&Tmp-String-1`.
+<4> Creates multiple `&Tmp-String-3` attributes from a custom group field associated
+    with the client.
+
+
+### Access Expansion
+
+[options="header,autowidth"]
+|===
+| XLAT                          | Description
+| `%{client:nas_type}`          | Expands to client's `nas_type` (or "" if nas_type not set).
+| `%{client:<ipaddr>.nas_type}` | Expands to the `nas_type` of the client specified
+                                  by `<ipaddr>` (or "" if `nas_type` not set).
+|===
+
+
+
+## Configuration Settings
+
+This module takes no configuration.
+
+
+== Default Configuration
+
+```
+client {
+}
+```

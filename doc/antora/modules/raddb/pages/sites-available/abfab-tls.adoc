@@ -1,0 +1,126 @@
+
+
+
+
+= ABFAB listening on TLS
+
+If you need to provide the `abfab-tr-idp` with SSL support, enable it.
+
+
+
+## Example configuration
+
+
+
+### listen { ... }
+
+
+
+## tls { ... }
+
+
+NOTE: Moonshot tends to distribute certs separate from keys.
+
+
+
+
+
+
+
+
+.Please see the `sites-availables/abfab-idp` file.
+
+
+
+.Reference to the next `clients {...}` section.
+
+
+
+### clients { ... }
+
+This client stanza will match other RP proxies from other realms
+established via the trustrouter.  In general additional client
+stanzas are also required for local services.
+
+
+.Allow all clients, but require TLS.
+
+
+
+.An example local service.
+
+
+
+ipaddr::
+
+
+gss_acceptor_host_name::
+
+You should either set `gss_acceptor_host_name` below or set up policy to confirm
+that a client claims the right acceptor hostname when using ABFAB.
+
+If set, the RADIUS server will confirm that all requests have this value for the
+acceptor host name.
+
+
+
+gss_acceptor_realm_name:: Foreign realms will typically reject a request
+if this is not properly set.
+
+
+
+trust_router_coi:: Override the `default_community` in the realm module.
+
+
+
+IMPORTANT: In production deployments it is important to set up certificate
+verification so that even if clients spoof IP addresses, one client cannot
+impersonate another.
+
+
+
+== Default Configuration
+
+```
+listen {
+	ipaddr = *
+	port = 2083
+	type = auth
+	proto = tcp
+	tls {
+		chain {
+			certificate_file = ${certdir}/server.pem
+			private_key_file = ${certdir}/server.key
+			private_key_password = whatever
+		}
+		ca_file = ${cadir}/ca.pem
+		dh_file = ${certdir}/dh
+		fragment_size = 8192
+		ca_path = ${cadir}
+		cipher_list = "DEFAULT"
+		cache {
+			enable = no
+			lifetime = 24 # hours
+			max_entries = 255
+		}
+		require_client_cert = yes
+		verify {
+		}
+		psk_query = "%{psksql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
+	}
+	virtual_server = abfab-idp
+	clients = radsec-abfab
+}
+clients radsec-abfab {
+	client default {
+		ipaddr = 0.0.0.0/0
+		proto = tls
+	}
+	client service_1 {
+#		ipaddr = 192.0.2.20
+#		gss_acceptor_host_name = "server.example.com"
+#		gss_acceptor_realm_name = "example.com"
+#		trust_router_coi =  "community1.example.net"
+	}
+}
+```

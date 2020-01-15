@@ -1,0 +1,113 @@
+
+
+
+
+= Passwd Module
+
+The `passwd` module searches a passwd-like file, and extracts
+attributes it.
+
+This module allows you to retrieve any account information from any
+files with passwd-like format (/etc/passwd, /etc/group, smbpasswd,
+.htpasswd, etc). Every field of the file may be mapped to a RADIUS
+attribute, with one of the fields used as a key.
+
+The module reads the file when it initializes, and caches the data in
+memory. This makes it very fast, even  for files with  thousands  of
+lines. To  re-read  the  file the module will need to be reloaded with
+`radmin(8)`, or the server will need to be sent a SIGHUP, as dynamic
+updates are not supported.
+
+See the `smbpasswd` and `etc_group` files for more examples.
+
+
+## Configuration Settings
+
+An example configuration for using `/etc/passwd`.
+
+This is an example which will NOT WORK if you have shadow passwords,
+NIS, etc.  The `unix` module is normally responsible for reading
+system passwords.  You should use it instead of this example.
+
+
+filename:: Path to the file which the module will read.
+
+
+
+delimiter::
+
+Symbol to use as a field separator in passwd file.
+
+WARNING: The symbols `\0` and `\n` are not allowed.
+
+The Default is `:`
+
+
+
+format::
+
+This parameters correlates record in the `passwd` file and RADIUS
+attributes.
+
+  * Field marked as `*` is a key field. That is, the parameter with
+this name from the request is used to search for the record from
+passwd file.
+
+  * Attributes marked as `=` are added to the `&reply:` list,
+instead of default `&control:` list.
+
+  * Attributes marked as `~` are added to the `&request:` list.
+
+  * Field marked as `,` may contain a comma separated list of attributes.
+
+The format here uses the first field as the key.  If the
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` matches, the `Crypt-Password` attribute is
+created from the second field, and is added to the
+`&control:` list.
+
+
+
+ignore_empty:: Empty fields in the input will be skipped and the RADIUS attribute will
+not be added.
+
+By setting this value to "no", all attributes in the format list will always be added,
+even if they have no value.
+
+Default is `yes`.
+
+
+
+hash_size::
+
+A future version of the server will have the module automatically
+determine the hash size.  Having it set manually should not be
+necessary.  It should be set to 50% of the number of lines in the file.
+
+WARNING: The value must be larger than zero.
+
+
+
+ignore_nislike:: Ignore NIS-related records.
+
+
+
+allow_multiple_keys:: Control whether or not many records for a key are allowed.
+
+If set to `yes`, then the module processes all matching
+entries.  If set to `no`, the module processes only the
+first matching entry.
+
+
+== Default Configuration
+
+```
+passwd etc_passwd {
+	filename = /etc/passwd
+#	delimiter = ":"
+	format = "*User-Name:Crypt-Password:"
+#	ignore_empty = no
+	hash_size = 100
+	ignore_nislike = no
+	allow_multiple_keys = no
+}
+```

@@ -1,0 +1,338 @@
+
+
+
+
+= Triggers
+
+Triggers are events in the server can cause a hook to be executed.
+
+The triggers are named as `type.subtype.value`.  These names refer
+to subsections and then configuration items in the `trigger`
+section below.  When an event occurs, the trigger is executed.  The
+trigger is simply a program that is run, with optional arguments.
+
+The server does not wait when a trigger is executed.  It is simply
+a `one-shot` event that is sent.
+
+NOTE: The trigger names should be self-explanatory.
+
+
+
+## SNMP configuration
+
+For now, this is only for SNMP traps.
+
+They are enabled by uncommenting (or adding) `$INCLUDE trigger.conf`
+in the main `radiusd.conf` file.
+
+The traps *require* that the files in the "mibs" directory be copied
+to the global mibs directory, usually `/usr/share/snmp/mibs/`.
+If this is not done, the `snmptrap` program has no idea what information
+to send, and will not work.  The MIB installation is *not* done as
+part of the default installation, so that step *must* be done manually.
+
+The global MIB directory can be found by running the following command:
+
+    snmptranslate -Dinit_mib .1.3 2>&1 | grep MIBDIR | \
+        sed "s/' .*//;s/.* '//;s/.*://"
+
+Or maybe just:
+
+    snmptranslate -Dinit_mib .1.3 2>&1 | grep MIBDIR
+
+If you have copied the MIBs to that directory, you can test the
+FreeRADIUS MIBs by running the following command:
+
+    snmptranslate -m +FREERADIUS-NOTIFICATION-MIB -IR -On serverStart
+
+It should print out:
+
+    .1.3.6.1.4.1.11344.4.1.1
+
+As always, run the server in debugging mode after enabling the
+traps.  You will see the `snmptrap` command being run, and it will
+print out any errors or issues that it encounters.  Those need to
+be fixed before running the server in daemon mode.
+
+We also suggest running in debugging mode as the `radiusd` user, if
+you have "user" or "group" set in `radiusd.conf`.  The `snmptrap`
+program may behave differently when run as `root` rather than the
+`radiusd` user.
+
+
+Configuration for SNMP traps / notifications, used in the
+"snmptrap" option below.
+
+To disable traps, edit `radiusd.conf` and delete the line
+which says `$INCLUDE trigger.conf`.
+
+
+cmd:: Absolute path for the `snmptrap` command, and
+default command-line arguments.
+
+You can also temporarily disable traps by changing
+the command to `/bin/echo`.
+
+
+
+community:: The SNMP community string
+
+
+
+agent:: Agent configuration
+
+
+
+snmptrap:: Define the full command used to run the traps.
+
+This entry should not be edited.  Instead, edit the "trap" section above.
+
+
+
+## Trigger definitions
+
+The individual triggers are defined here.  You can disable one by
+deleting it, or by commenting it out.  You can disable an entire
+section of traps by deleting the section.
+
+The entries below should not be edited.  For example, the double colons
+  *must* immediately follow the `${snmptrap}` reference.  Adding a space
+before the double colons  will break all SNMP traps.
+
+However... the traps are just programs which are run when
+particular events occur.  If you want to replace a trap with
+another program, you can.  Just edit the definitions below, so that
+they run a program of your choice.
+
+For example, you can leverage the "start/stop" triggers to run a
+program when the server starts, or when it stops.  But that will
+prevent the start/stop SNMP traps from working, of course.
+
+
+### Server core triggers
+
+The 'server' section is for events that happen in the
+server core
+
+
+start:: The server has just started.
+
+
+
+stop:: The server is about to stop.
+
+
+
+max_requests:: The "max_requests" condition has been reached.
+
+This will trigger only once per 60 seconds.
+
+
+
+#### Client events
+
+For events related to clients:
+
+
+add:: A new dynamic client has been added
+
+
+
+NOTE: There is no event for when dynamic clients
+expire.
+
+
+#### Signal events
+
+Events related to signals received:
+
+
+hup:: When a HUP signal has been received.
+
+
+
+term:: When a TERM signal has been received.
+
+
+
+#### Thread pool events
+
+Events related to the thread pool:
+
+
+start:: A new thread has been started.
+
+
+
+stop:: An existing thread has been stopped.
+
+
+
+unresponsive:: An existing thread is unresponsive.
+
+
+
+max_threads:: the "max_threads" limit has
+been reached.
+
+
+
+### Module triggers
+
+Triggers for specific modules.  These are *not* in the module
+configuration because they are global to all instances of the
+module.  You can have module-specific triggers, by placing a
+"trigger" subsection in the module configuration.
+
+
+#### rlm_files: The files module
+
+
+args:: Define common arguments to use below:
+
+
+
+hup:: The module has been HUP'd via `radmin`.
+
+
+
+NOTE: "hup" can be used for every module
+which can be HUP'd via radmin
+
+
+
+#### rlm_ldap: The LDAP module
+
+If the server does "bind as user", it will open and
+close an LDAP connection every time it binds as a
+user. Be aware that this will likely produce a lot
+of triggers.
+
+
+Define common arguments to use below:
+
+
+
+open:: A new connection to the directory has been opened.
+
+
+
+close:: A connection to the directory has been closed.
+
+
+
+hup:: The module has been HUP'd via `radmin`.
+
+
+
+min:: Connection was released too quickly.
+
+
+
+max:: Connection was held for too long.
+
+
+
+#### rlm_sql: The SQL module
+
+
+args:: Define common arguments to use below:
+
+
+
+open:: A new connection to the database has been opened.
+
+
+
+close:: A connection to the database has been closed.
+
+
+
+fail:: Failed to open a new connection to the database.
+
+
+
+hup:: The module has been HUP'd via `radmin`.
+
+
+
+min:: A connection was released too quickly.
+
+
+
+max:: A connection was held for too long.
+
+
+
+NOTE: You can also use connection pool's start/stop/open/close triggers
+for any module which uses the `pool` section, both here and under
+`pool.trigger` in module configuration.
+
+
+
+## Creating new triggers
+
+Triggers are defined in the server source code. Those are the
+only traps which are generated.
+
+WARNING: You *cannot* add new traps by defining them in one of the sections
+in this file.  New traps can be created only by editing both the
+source code of the server *and* the MIBs. If you are not an expert
+in C and SNMP, then creating new traps will be difficult.
+
+
+== Default Configuration
+
+```
+snmp {
+	trap {
+		cmd = "/usr/bin/snmptrap -v2c"
+		community = "public"
+		agent = "localhost ''"
+	}
+}
+snmptrap = "${snmp.trap.cmd} -c ${snmp.trap.community} ${snmp.trap.agent} FREERADIUS-NOTIFICATION-MIB"
+trigger {
+	server {
+		start = "${snmptrap}::serverStart"
+		stop = "${snmptrap}::serverStop"
+		max_requests = "${snmptrap}::serverMaxRequests"
+		client {
+			add = "/path/to/file %{Packet-Src-IP-Address}"
+		}
+		signal {
+			hup = "${snmptrap}::signalHup"
+			term = "${snmptrap}::signalTerm"
+		}
+		thread {
+			start = "${snmptrap}::threadStart"
+			stop = "${snmptrap}::threadStop"
+			unresponsive = "${snmptrap}::threadUnresponsive"
+			max_threads = "${snmptrap}::threadMaxThreads"
+		}
+	}
+	modules {
+		files {
+			args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
+			hup = "${snmptrap}::serverModuleHup ${args}"
+		}
+		ldap {
+			args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
+			open = "${snmptrap}::serverModuleConnectionUp ${args}"
+			close = "${snmptrap}::serverModuleConnectionDown ${args}"
+			hup = "${snmptrap}::serverModuleHup ${args}"
+			min = "${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}"
+			max = "${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}"
+		}
+		sql {
+			args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
+			open = "${snmptrap}::serverModuleConnectionUp ${args}"
+			close = "${snmptrap}::serverModuleConnectionDown ${args}"
+			fail = "${snmptrap}::serverModuleConnectionFail ${args}"
+			hup = "${snmptrap}::serverModuleHup ${args}"
+			min = "${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}"
+			max = "${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}"
+		}
+	}
+}
+```

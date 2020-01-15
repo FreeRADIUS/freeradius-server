@@ -1,0 +1,178 @@
+
+
+
+
+= Buffered SQL
+
+In 2.0.0, `radrelay` functionality is integrated into the
+server core.  This virtual server gives an example of
+using `radrelay` functionality inside of the server.
+
+In this example, the `detail` file is read, and the data
+is put into SQL.  This configuration is used when a RADIUS
+server on this machine is receiving accounting packets,
+and writing them to the detail file.
+
+The purpose of this virtual server is to decouple the storage
+of long-term accounting data in SQL from "live" information
+needed by the RADIUS server as it is running.
+
+The benefit of this approach is that for a busy server, the
+overhead of performing SQL queries may be significant.  Also,
+if the SQL databases are large (as is typical for ones storing
+months of data), the `INSERTs` and `UPDATEs` may take a relatively
+long time.  Rather than slowing down the RADIUS server by
+having it interact with a database, you can just log the
+packets to a detail file, and then read that file later at a
+time when the RADIUS server is typically lightly loaded.
+
+If you use on virtual server to log to the detail file,
+and another virtual server (i.e. this one) to read from
+the detail file, then this process will happen automatically.
+A sudden spike of RADIUS traffic means that the detail file
+will grow in size, and the server will be able to handle
+large volumes of traffic quickly.  When the traffic dies down,
+the server will have time to read the detail file, and insert
+the data into a long-term SQL database.
+
+
+
+## Default instance
+
+
+
+## server buffered-sql { ... }
+
+
+### listen { ... }
+
+
+type:: It should be `detail`.
+
+
+
+filename:: The location where the detail file is located.
+
+IMPORTANT: This should be on local disk, and NOT on an NFS mounted location!
+
+On most systems, this should support file globbing e.g. `${radacctdir}/detail-*:*"`
+
+This lets you write many smaller detail files as in the example in radiusd.conf:
+`.../detail-%Y%m%d:%H`  Writing many small files is often better than writing
+one large file.  File globbing also means that with a common naming scheme for
+detail files, then you can have many detail file writers, and only one reader.
+
+
+
+load_factor::
+
+The server can read accounting packets from the detail file much more quickly
+than those packets can be written to a database.  If the database is overloaded,
+then bad things can happen.
+
+The server will keep track of how long it takes to process an entry from the detail
+file.  It will then pause between handling entries.  This pause allows databases to
+"catch up", and gives the server time to notice that other packets may have arrived.
+
+The pause is calculated dynamically, to ensure that the load due to reading the detail
+files is limited to a small percentage of CPU time. The server will try to keep the
+percentage of time taken by "detail" file entries to `load_factor` percentage of
+the CPU time.
+
+NOTE: If the `load_factor` is set to 100, then the server will read packets as fast as
+it can, usually causing databases to go into overload.
+
+allowed values: `1 to 100`
+
+
+
+poll_interval:: Interval for polling the detail file.
+
+If the detail file doesn't exist, the server will wake up, and poll for it every N seconds.
+
+Useful range of values: `1 to 60`
+
+
+
+retry_interval:: Set the retry interval for when the home server does not respond.
+
+The current packet will be sent repeatedly, at this interval, until the home server responds.
+
+Useful range of values: `5 to 30`
+
+
+
+track:: Track progress through the detail file.
+
+When the detail file is large, and the server is restarted, it will read from the START of
+the file.
+
+Setting `track = yes` means it will skip packets which have already been processed.
+
+The default is `no`.
+
+
+
+one_shot::
+
+In some circumstances it may be desirable for the server to start up, process a detail file,
+and immediately quit. To do this enable the `one_shot` option below.
+
+NOTE: Do not enable this for normal server operation.
+
+The default is `no`.
+
+
+
+### recv Accounting-Request
+
+Pre-accounting. Decide which accounting type to use.
+
+
+Ensure that we have a semi-unique identifier for every request, and many NAS
+boxes are broken.
+
+
+
+Read the `acct_users` file.  This isn't always necessary, and can be deleted
+if you do not use it.
+
+
+
+### send Accounting-Response
+
+Accounting. Log the accounting data.
+
+
+Log traffic to an SQL database.
+
+See `Accounting queries` in `mods-config/sql/main/$driver/queries.conf`
+
+
+
+Cisco VoIP specific bulk accounting.
+
+
+== Default Configuration
+
+```
+server buffered-sql {
+	listen {
+		type = detail
+		filename = "${radacctdir}/detail-*"
+		load_factor = 10
+		poll_interval = 1
+		retry_interval = 30
+#		track = yes
+#		one_shot = no
+	}
+	recv Accounting-Request {
+		acct_unique
+		files
+	}
+	send Accounting-Response {
+#		sql
+#		pgsql-voip
+	}
+}
+```

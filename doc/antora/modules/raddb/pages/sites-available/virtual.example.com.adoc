@@ -1,0 +1,124 @@
+
+
+
+
+
+You will want to edit this to your local needs.  We suggest copying
+the text from the "default" file here, and then editing the text.
+That way, any changes to the "default" file will not affect this
+virtual server, and vice-versa.
+
+When this virtual server receives the request, the original
+attributes can be accessed as "outer.request", "outer.control", etc.
+See "man unlang" for more details.
+
+
+
+This example virtual server will listen on alternate ports
+and perform basic authentication and accounting.
+Consult the default file for information on the syntax and available options.
+
+
+
+In v4, all "server" sections MUST start with a "namespace"
+parameter.  This tells the server which protocol is being used.
+Consult the sites-available/default for more information and documentation.
+
+
+
+Define our listeners and the types of application packets we expect.
+
+
+
+
+
+Our listener for Accounting
+
+
+
+
+
+Now we define our policy framework for how this virtual server will handle various application packets.
+Consult the default file for information on the syntax and available options.
+insert policies here
+
+In this example we simply validate locally
+
+
+
+
+
+insert policies here
+
+insert policies here
+
+
+Ensure that we have a semi-unique identifier for every
+request, and many NAS boxes are broken.
+
+
+
+Read the 'acct_users' file
+
+
+
+
+Create a 'detail'ed log of the packets.
+Note that accounting requests which are proxied
+are also logged in the detail file.
+
+
+
+Filter attributes from the accounting response.
+
+
+
+
+Allow for PAP in our example
+
+
+etc.
+
+== Default Configuration
+
+```
+#	Sample virtual server for internally proxied requests.
+server virtual.example.com {
+	namespace = radius
+	listen {
+		type = Access-Request
+		transport = udp
+		udp {
+			ipaddr = *
+			port = 11812
+		}
+	}
+	listen {
+		type = Accounting-Request
+		transport = udp
+		udp {
+			ipaddr = *
+			port = 11813
+		}
+	}
+	recv Access-Request {
+		filter_username
+		auth_log
+		files
+		pap
+	}
+	send Access-Accept {
+	}
+	recv Accounting-Request {
+		acct_unique
+		files
+	}
+	send Accounting-Response {
+		detail
+		attr_filter.accounting_response
+	}
+	authenticate pap {
+		pap
+	}
+}
+```

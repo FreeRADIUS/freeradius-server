@@ -1,0 +1,223 @@
+
+Sample virtual server for receiving entries from an LDAP directory
+using the https://tools.ietf.org/html/rfc4533[RFC 4533] (LDAP Content Synchronization Operation) in
+refreshAndPersist mode.
+
+
+Persistent searches work in a similar way to normal searches except
+they continue running indefinitely.  We continue to receive notifications
+of changes (add, delete, modify) to entries that would have been returned
+by a normal search with the base_dn, filter, and scope specified.
+
+The intent of persistent searches is usually to allow directory content
+to be replicated by another LDAP server, here the primary use case is
+to receive notifications of changes to entries so we can disseminate that
+information or act on it.
+
+Each virtual-server may have multiple listen sections, with each
+listen section containing multiple sync sections.
+
+The listen section represents a single connection, and a sync represents
+a single persistent search.
+
+Most options within the listen section are identical to rlm_ldap.
+See /etc/raddb/mods-available/ldap for more detailed descriptions of
+configuration items.
+
+
+The LDAP server to connect to.
+
+May be prefixed with:
+  - ldaps:// (LDAP over SSL)
+  - ldapi:// (LDAP over Unix socket)
+  - ldapc:// (Connectionless LDAP)
+
+Port to connect on, defaults to 389, will be ignored for LDAP URIs.
+
+Administrator account for persistent search.
+If using SASL + KRB5 these should be commented out.
+
+How long to wait after failing to initialise a persistent search
+or after receiving malformed/unexpected messages from the LDAP server.
+
+How long to wait before reinitialising the connection if we become
+disconnected from the LDAP directory.
+
+
+SASL parameters to use for binding as the sync user.
+
+SASL mechanism
+
+SASL authorisation identity to proxy.
+
+SASL realm. Used for kerberos.
+
+
+Persistent searches.
+
+You can configure an unlimited (within reason), number of syncs
+to retrieve entries from the LDAP directory.
+
+Where to start searching in the tree for entries
+
+Only return entries matching this filter
+Comment this out if all entries should be returned.
+
+Search scope, may be 'base', 'one', 'sub' or 'children'
+
+Specify the list of attributes to return in entries,
+one config item per LDAP attribute.
+
+If no attr config items are specified, then all attributes
+will be returned.
+
+
+
+Provides FreeRADIUS with the last cookie value we received for the sync
+
+A request will be generated with the following attributes:
+
+- &request:LDAP-Sync-DN		the base_dn of the sync.
+- &request:LDAP-Sync-Filter		the filter of the sync (optional).
+- &request:LDAP-Sync-Scope		the scope of the sync (optional).
+- &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+
+You should use these attributes to uniquely identify the sync when retrieving
+previous cookie values.
+
+Called for a sync when:
+- FreeRADIUS first starts.
+- If a sync experiences an error and needs to be restarted.
+- If a connection experiences an error and needs to be restarted.
+
+The section may return one of the following/codes attributes:
+- ok/updated and &reply:LDAP-Sync-Cookie to indicate a cookie value was loaded.
+- noop to indicate that no cookie was found.
+  A cookie value representing the current state of the LDAP server may then be
+  optionally synthesised to avoid a complete refresh phase.
+- Any other code to indicate failure.
+
+Stores the latest cookie we've received for a sync
+
+A request will be generated with the following attributes:
+
+- &request:LDAP-Sync-DN		the base_dn of the sync.
+- &request:LDAP-Sync-Cookie		the cookie value to store.
+- &request:LDAP-Sync-Filter		the filter of the sync (optional).
+- &request:LDAP-Sync-Scope		the scope of the sync (optional).
+- &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+
+The return code of this section is ignored.
+
+Notification that a new entry has been added to the LDAP directory
+
+It is recommended that cached entries use LDAP-Sync-Entry-UUID as the key.
+This can be usually be retrieved from the entryUUID operational attribute.
+
+Delete operations may not include the DN of the object if they occur during
+a refreshDeletes phase.
+
+A request will be generated with the following attributes:
+
+- &request:LDAP-Sync-DN		the base_dn of the sync.
+- &request:LDAP-Sync-Entry-UUID	the UUID of the object.
+- &request:LDAP-Sync-Entry-DN	the DN of the object that was added.
+- &*:*				attributes mapped from the LDAP entry to FreeRADIUS
+			attributes using the update section within the sync.
+- &request:LDAP-Sync-Filter		the filter of the sync (optional).
+- &request:LDAP-Sync-Scope		the scope of the sync (optional).
+- &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+
+The return code of this section is ignored (for now).
+
+Notification that an entry has been modified in the LDAP directory
+
+It is recommended that cached entries use LDAP-Sync-Entry-UUID as the key.
+This can be usually be retrieved from the entryUUID operational attribute.
+
+Delete operations may not include the DN of the object if they occur during
+a refreshDeletes phase.
+
+A request will be generated with the following attributes:
+
+- &request:LDAP-Sync-DN		the base_dn of the sync.
+- &request:LDAP-Sync-Entry-UUID	the UUID of the object.
+- &request:LDAP-Sync-Entry-DN	the DN of the object that was added.
+- &*:*				attributes mapped from the LDAP entry to FreeRADIUS
+			attributes using the update section within the sync.
+- &request:LDAP-Sync-Filter		the filter of the sync (optional).
+- &request:LDAP-Sync-Scope		the scope of the sync (optional).
+- &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+
+The return code of this section is ignored (for now).
+
+Notification that an entry has been modified in the LDAP directory
+
+It is recommended that cached entries use LDAP-Sync-Entry-UUID as the key.
+This can be usually be retrieved from the entryUUID operational attribute.
+
+Delete operations may not include the DN of the object if they occur during
+a refreshDeletes phase.
+
+A request will be generated with the following attributes:
+
+- &request:LDAP-Sync-DN		the base_dn of the sync.
+- &request:LDAP-Sync-Entry-UUID	the UUID of the object.
+- &request:LDAP-Sync-Entry-DN	the DN of the object that was added (optional).
+- &request:LDAP-Sync-Filter		the filter of the sync (optional).
+- &request:LDAP-Sync-Scope		the scope of the sync (optional).
+- &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+
+The return code of this section is ignored (for now).
+
+== Default Configuration
+
+```
+server ldap {
+	namespace = ldap
+	listen  {
+		type = sync
+		server = "localhost"
+#		port = 389
+#		identity = 'cn=admin,dc=example,dc=org'
+#		password = mypass
+#		sync_retry_interval = 5.0
+#		conn_retry_interval = 5.0
+		sasl {
+#			mech = 'PLAIN'
+#			proxy = 'autz_id'
+#			realm = 'example.org'
+		}
+		sync {
+			base_dn = "ou=people,dc=example,dc=org"
+			filter = "(objectClass=PosixAccount)"
+#			scope = 'sub'
+#			attr = 'cn'
+#			attr = 'foo'
+			update {
+				&User-Name := 'cn'
+				&Password-With-Header := 'userPassword'
+			}
+		}
+		sync {
+			base_dn = "ou=groups,dc=example,dc=org"
+			filter = "(objectClass=unixGroup}"
+		}
+	}
+	load Cookie {
+		debug_all
+	}
+	store Cookie {
+		debug_all
+	}
+	recv Add {
+		debug_all
+	}
+	recv Modify {
+		debug_all
+	}
+	recv Delete {
+		debug_all
+	}
+}
+```

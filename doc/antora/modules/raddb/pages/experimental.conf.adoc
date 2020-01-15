@@ -1,0 +1,97 @@
+
+
+
+
+= Experimental modules
+
+This file contains the configuration for experimental modules.
+
+By default, it is *not* included in the build.
+
+
+
+## Example module configuration
+
+Configuration for the example module. Even if this modules is
+loaded and initialised, it should have no real effect as long
+it is not referenced in one of the virtual server sections.
+
+
+
+boolean:: Boolean variable.
+
+Allowed values: `no` or `yes`
+
+
+
+integer:: An integer, of any value:
+
+
+
+string:: A string.
+
+
+
+ipaddr::
+
+An IP address, either in dotted quad (`1.2.3.4`) or
+hostname (`example.com`).
+
+
+
+mysubsection::
+
+A subsection.
+
+
+anotherinteger::
+
+
+
+deeply { ... }::
+
+Subsections nest.
+
+
+
+## Other experimental modules
+
+Instantiate a few instances of the idn module
+
+
+
+.section without name.
+
+
+
+
+.more commonly known as...
+
+
+
+.another one.
+
+
+== Default Configuration
+
+```
+example {
+	boolean = yes
+	integer = 16
+	string = "This is an example configuration string"
+	ipaddr = 127.0.0.1
+	mysubsection {
+		anotherinteger = 1000
+		deeply nested {
+			string = "This is a different string"
+		}
+	}
+}
+idn {
+}
+idn idna {
+}
+idn idna_lenient {
+	UseSTD3ASCIIRules = no
+}
+```

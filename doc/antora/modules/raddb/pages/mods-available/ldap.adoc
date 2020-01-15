@@ -1,0 +1,893 @@
+
+
+
+
+= LDAP (Lightweight Directory Access Protocol) Module
+
+The `ldap` module allows LDAP directory entries to be retrieved, modified,
+inserted and deleted.
+
+NOTE: May also perform user authentication using LDAP binds, or by retrieving
+the contents of a password attribute for later comparison by a module such
+as `pap`, or an `eap` method.
+
+
+
+## Configuration Settings
+
+ldap { ... }::
+
+
+server::
+
+Note that this needs to match the name(s) in the LDAP server
+certificate, if you're using ldaps.  See OpenLDAP documentation
+for the behavioral semantics of specifying more than one host.
+
+Depending on the `libldap` in use, server may be specified as an LDAP
+URI.  In the case of `OpenLDAP` this allows additional the following
+additional schemes:
+
+[options="header,autowidth"]
+|===
+| Scheme   | Description
+| ldaps:// | (LDAP over SSL)
+| ldapi:// | (LDAP over Unix socket)
+| ldapc:// | (Connectionless LDAP)
+|===
+
+
+
+port:: Port to connect on, defaults to 389, will be ignored for LDAP URIs.
+
+
+
+identity::  Administrator account for searching and possibly modifying.
+
+WARNING: If using SASL + KRB5 these should be commented out.
+
+
+
+password:: Password for the `identity` account.
+
+
+
+base_dn:: Unless overridden in another section, the dn from which all
+searches will start from.
+
+
+
+[NOTE]
+====
+You can run the `ldapsearch` command line tool using the
+parameters from this module's configuration.
+
+  ldapsearch -D ${identity} -w ${password} -h ${server} -b 'CN=user,${base_dn}'
+
+That will give you the LDAP information for 'user'.
+
+Group membership can be queried by using the above "ldapsearch" string,
+and adding "memberof" qualifiers.  For ActiveDirectory, use:
+
+  ldapsearch ... '(&(objectClass=user)(sAMAccountName=user)(memberof=CN=group,${base_dn}))'
+
+Where 'user' is the user as above, and 'group' is the group you are querying for.
+====
+
+
+
+### SASL parameters to use for admin binds
+
+sasl { ... }::
+
+When we're prompted by the SASL library, the config items in the SASL
+section (in addition to the identity password config items above)
+determine the responses given.
+
+If any directive is commented out, a NULL response will be
+provided to cyrus-sasl.
+
+Unfortunately the only way to control Keberos here is through
+environmental variables, as cyrus-sasl provides no API to
+set the kerberos (libkrb5) config directly.
+
+Full documentation for MIT krb5 can be
+found at http://web.mit.edu/kerberos/krb5-devel/doc/admin/env_variables.html
+
+At a minimum you probably want to set `KRB5_CLIENT_KTNAME`.
+
+
+mech:: SASL mechanism.
+
+
+
+proxy:: SASL authorisation identity to proxy.
+
+
+
+realm:: SASL realm. Used for kerberos.
+
+
+
+### Generic valuepair attribute
+
+If set, this will attribute will be retrieved in addition to any
+mapped attributes.
+
+Values should be in the format:
+
+  <fr attr> <op> <value>
+
+Where:
+
+[options="header,autowidth"]
+|===
+| Parameter  | Description
+| <fr attr>  | Is the attribute you wish to create,
+               with any valid list and request qualifiers.
+| <op>       | Is any assignment operator (`=`, `:=`, `+=`, `-=`).
+| <value>    | Is the value to parse into the new attribute.
+               If the value is wrapped in double quotes it
+               will be xlat expanded.
+|===
+
+
+
+### Global
+
+
+random_file:: Provides random number generator.
+
+
+
+ldap_debug:: Debug flags for libldap (see OpenLDAP documentation).
+
+.Please see the option 'ldap_debug'
+
+
+
+### Mapping of LDAP directory attributes to RADIUS dictionary attributes.
+
+WARNING: Although this format is almost identical to the `unlang`
+update section format, it does *NOT* mean that you can use other
+`unlang` constructs in module configuration files.
+
+Configuration items are in the format:
+
+  <fr attr> <op> <ldap attr>
+
+Where:
+
+[options="header,autowidth"]
+|===
+| Parameter   | Description
+| <fr attr>   | Is the destination RADIUS attribute
+                with any valid list and request qualifiers.
+| <op>        | Is any assignment attribute (=, :=, +=, -=).
+| <ldap attr> | Is the attribute associated with user or
+                profile objects in the LDAP directory.
+                If the attribute name is wrapped in double quotes
+                it will be `xlat` expanded.
+|===
+
+Request and list qualifiers may be placed after the `update`
+section name to set default destination requests/lists
+for `<fr attr>s` with no list qualifiers.
+
+NOTE: LDAP attribute names should be single quoted unless you want
+the name to be derived from an xlat expansion, or an attribute ref.
+
+update { ... }::
+
+
+NOTE: Where only a list is specified as the RADIUS attribute,
+the value of the LDAP attribute is parsed as a valuepair
+in the same format as the 'valuepair_attribute' (above).
+
+
+edir:: Set to `yes` if you have eDirectory and want to use the universal
+password mechanism.
+
+
+
+edir_autz:: Set to `yes` if you want to bind as the user after retrieving the
+`Cleartext-Password`. This will consume the login grace, and verify user authorization.
+
+
+
+[NOTE]
+====
+  * The option `set_auth_type` was removed in `v3.x.x`.
+  * Equivalent functionality can be achieved by adding the following
+  stanza to the `recv Access-Request {}` section of your virtual server.
+
+e.g:
+
+[source, unlang]
+----
+ldap
+if ((ok || updated) && &User-Password) {
+	update {
+		&control:Auth-Type := ldap
+	}
+}
+----
+====
+
+
+
+### User object Identification
+
+
+base_dn:: Where to start searching in the tree for users.
+
+
+
+filter:: Filter for user objects, should be specific enough
+to identify a single user object.
+
+
+
+sasl { ... }:: SASL parameters to use for user binds
+
+When we're prompted by the SASL library, these control
+the responses given.
+
+NOTE: Any of the config items below may be an attribute ref
+or and expansion.  This allows different SASL mechs,
+proxy IDs and realms to be used for different users.
+
+
+mech:: SASL mechanism.
+
+
+
+proxy:: SASL authorisation identity to proxy.
+
+
+
+realm:: SASL realm. Used for kerberos.
+
+
+
+scope:: Search scope, may be `base`, `one`, `sub' or `children`.
+
+
+
+sort_by:: Server side result sorting.
+
+A list of space delimited attributes to order the result set by.
+
+  * If the filter matches multiple objects only the first
+result will be processed.
+
+  * If the attribute name is prefixed with a hyphen '-' the
+sorting order will be reversed for that attribute.
+
+  * If `sort_by` is set, and the server does not support sorting
+the search will fail.
+
+  * If a search returns multiple user objects and `sort_by` is not
+set, the search will fail.
+
+
+
+access_attribute:: If this is undefined, anyone is authorised.
+
+If it is defined, the contents of this attribute determine whether
+or not the user is authorised.
+
+
+
+access_positive:: Control whether the presence of `access_attribute`
+allows access, or denies access.
+
+  * If `yes`, and the `access_attribute` is present, or `no` and the
+`access_attribute` is absent then access  will be allowed.
+
+  * If `yes`, and the `access_attribute` is absent, or `no` and the
+`access_attribute` is present, then access will not be allowed.
+
+  * If the value of the retrieved `access_attribute` is `false`, it will
+negate the result.
+
+e.g:
+
+  access_positive = yes
+  access_attribute = userAccessAllowed
+
+With an LDAP object containing:
+
+  userAccessAllowed: false
+
+Will result in the user being locked out.
+
+
+
+### User membership checking
+
+
+base_dn:: Where to start searching in the tree for groups.
+
+
+
+filter:: Filter for group objects, should match all available
+group objects a user might be a member of.
+
+If using Active Directory you are likely to need `group`
+instead of `posixGroup`.
+
+
+
+scope:: Search scope, may be `base`, `one`, `sub` or `children`.
+
+
+
+name_attribute:: Attribute that uniquely identifies a group.
+
+Is used when converting group DNs to group names.
+
+
+
+membership_filter:: Filter to find all group objects a user is a member of.
+
+That is, group objects with attributes that identify
+members (the inverse of `membership_attribute`).
+
+
+
+membership_attribute:: The attribute, in user objects, which contain
+the names or DNs of groups a user is a member of.
+
+Unless a conversion between group name and group DN is
+needed, there's no requirement for the group objects
+referenced to actually exist.
+
+[NOTE]
+====
+If the LDAP server does not support the `memberOf` attribute (or equivalent),
+then you will need to use the membership_filter option above instead.
+If you can't see the `memberOf` attribute then it is also possible that the
+LDAP bind user does not have the correct permissions to view it.
+====
+
+
+
+cacheable_name:: If `cacheable_name` or `cacheable_dn` are enabled,
+all group information for the user will be retrieved from the directory
+and written to `LDAP-Group` attributes appropriate for the instance of rlm_ldap.
+
+For group comparisons these attributes will be checked instead of querying
+the LDAP directory directly.
+
+This feature is intended to be used with `rlm_cache`, but may also be useful
+if all group values need to be processed using `unlang` policies.
+
+If you wish to use this feature, you should enable the type that matches the
+format of your check items.
+
+i.e. if your groups are specified as DNs then enable `cacheable_dn`
+else enable `cacheable_name`.
+
+
+
+cacheable_dn:: See `cacheable_name` for more details.
+
+
+
+cache_attribute:: Override the normal cache attribute (`<inst>-LDAP-Group` or
+`LDAP-Group` if using the default instance) and create a custom attribute.
+
+This can help if multiple module instances are used in fail-over.
+
+
+
+allow_dangling_group_ref::
+
+If the group being checked is specified as a name, but the user's groups are
+referenced by DN, and one of those group DNs is invalid, the whole group check
+is treated as invalid, and a negative result will be returned.
+
+When set to `yes`, this option ignores invalid DN references.
+
+
+
+group_attribute:: Override the normal group comparison attribute name
+`(<inst>-Group` or `LDAP-Group` if using the default instance).
+
+
+
+### User profiles
+
+RADIUS profile objects contain sets of attributes to insert into the request.
+These attributes are mapped using the same mapping scheme applied to user
+objects (the update section above).
+
+
+filter:: Filter for RADIUS profile objects.
+
+
+
+default:: The default profile. This may be a DN or an attribute reference.
+
+NOTE: To get old v2.2.x style behaviour, or to use the `&User-Profile` attribute
+to specify the default profile, set this to `&control:User-Profile`.
+
+
+
+attribute:: The LDAP attribute containing profile DNs to apply
+in addition to the default profile above.
+
+These are retrieved from the user object, at the same time as the
+attributes from the update section, are are applied if authorization
+is successful.
+
+
+
+### Modify user object on receiving Accounting-Request
+
+Useful for recording things like the last time the user logged
+in, or the `Acct-Session-ID` for CoA/DM.
+
+LDAP modification items are in the format:
+
+  <ldap attr> <op> <value>
+
+Where:
+
+[options="header,autowidth"]
+|===
+| Parameter   | Description
+| <ldap attr> | The LDAP attribute to add modify or delete.
+| <op>        | One of the assignment operators: (`:=`, `+=`, `-=`, `++`).
+                Note: `=` is *not* supported.
+| <value>     | The value to add modify or delete.
+|===
+
+WARNING: If using the `:=` operator with a multi-valued LDAP
+attribute, all instances of the attribute will be removed and
+replaced with a single attribute.
+
+
+
+
+
+
+### Post-Auth can modify LDAP objects too
+
+
+
+### LDAP connection-specific options
+
+These options set timeouts, keep-alives, etc. for the connections.
+
+
+dereference:: Control under which situations aliases are followed.
+
+May be one of 'never', 'searching', 'finding' or 'always'
+
+default: libldap's default which is usually 'never'.
+
+NOTE: `LDAP_OPT_DEREF` is set to this value.
+
+
+
+chase_referrals:: and the such `rebind` control whether the server follows
+references returned by LDAP directory.
+
+They are  mostly for Active Directory compatibility.
+If you set these to `no`, then searches will likely return 'operations error',
+instead of a useful result.
+
+
+
+rebind:: See `chase_referrals` for more detail.
+
+
+
+use_referral_credentials:: On `rebind`, use the credentials from the rebind url
+instead of admin credentials used during the initial bind.
+
+Default `no`
+
+
+
+session_tracking:: If `yes`, then include `link:https://tools.ietf.org/html/draft-wahl-ldap-session-03[draft-wahl-ldap-session]` tracking
+controls.
+
+If yes, encodes `link:https://freeradius.org/rfc/rfc2865.html#NAS-IP-Address[NAS-IP-Address]`, `link:https://freeradius.org/rfc/rfc3162.html#NAS-IPv6-Address[NAS-IPv6-Address]`, `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`, `link:https://freeradius.org/rfc/rfc2866.html#Acct-Session-Id[Acct-Session-Id]`,
+`link:https://freeradius.org/rfc/rfc2866.html#Acct-Multi-Session-Id[Acct-Multi-Session-Id]` as session tracking controls in applicable LDAP operations.
+
+Default `no`
+
+
+
+sasl_secprops:: SASL Security Properties (see SASL_SECPROPS in ldap.conf man page).
+
+NOTE: uncomment when using GSS-API sasl mechanism along with TLS encryption against
+Active-Directory LDAP servers (this disables sealing and signing at the GSS level as
+required by AD).
+
+
+
+res_timeout:: Seconds to wait for LDAP query to finish.
+
+Default: `20`
+
+
+
+srv_timelimit:: Seconds LDAP server has to process the query (server-side
+time limit).
+
+Default: `20`
+
+NOTE: `LDAP_OPT_TIMELIMIT` is set to this value.
+
+
+
+idle:: Set the number of seconds a connection needs to remain idle
+before  TCP starts sending keepalive probes.
+
+NOTE: `LDAP_OPT_X_KEEPALIVE_IDLE` is set to this value.
+
+
+
+probes:: Set the maximum number of keepalive probes TCP should send
+before dropping  the  connection.
+
+NOTE: `LDAP_OPT_X_KEEPALIVE_PROBES` is set to this value.
+
+
+
+interval:: Set the interval in seconds between individual keepalive probes.
+
+NOTE: `LDAP_OPT_X_KEEPALIVE_INTERVAL` is set to this value.
+
+
+
+ldap_debug:: Debug flags for libldap (see OpenLDAP documentation).
+Set this to enable debugging output from different code areas within libldap.
+
+NOTE: These debugging options can produce significant amounts of logging output.
+
+[options="header,autowidth"]
+|===
+| Option             | Value
+| LDAP_DEBUG_TRACE   | 0x0001
+| LDAP_DEBUG_PACKETS | 0x0002
+| LDAP_DEBUG_ARGS    | 0x0004
+| LDAP_DEBUG_CONNS   | 0x0008
+| LDAP_DEBUG_BER     | 0x0010
+| LDAP_DEBUG_FILTER  | 0x0020
+| LDAP_DEBUG_CONFIG  | 0x0040
+| LDAP_DEBUG_ACL     | 0x0080
+| LDAP_DEBUG_STATS   | 0x0100
+| LDAP_DEBUG_STATS2  | 0x0200
+| LDAP_DEBUG_SHELL   | 0x0400
+| LDAP_DEBUG_PARSE   | 0x0800
+| LDAP_DEBUG_SYNC    | 0x4000
+| LDAP_DEBUG_NONE    | 0x8000
+| LDAP_DEBUG_ANY     | (-1)
+|===
+
+e.g:
+
+If you want to see the LDAP logs only for `trace` and `parse`,
+facilities you should use:
+
+  (LDAP_DEBUG_TRACE + LDAP_DEBUG_PARSE) = 0x0801
+
+Setting the `ldap_debug` configuration item as follows:
+
+   ldap_debug = 0x0801
+
+Default: 0x0000 (no debugging messages)
+
+
+
+### TLS encrypted connections
+
+This subsection configures the `tls` related items that control how FreeRADIUS
+connects to an LDAP server. It contains all of the `tls_*` configuration entries
+used in older versions of FreeRADIUS.
+
+Those configuration entries can still be used, but we recommend using these.
+
+
+start_tls:: Set this to `yes` to use TLS encrypted connections
+to the LDAP database by using the StartTLS extended operation.
+
+The StartTLS operation is supposed to be used with normal ldap connections
+instead of using ldaps (port 636) connections
+
+
+
+NOTE: If `start_tls = yes`, then fill up those such options with the certificate information.
+
+
+
+require_cert:: Certificate Verification requirements.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option   | Description
+| 'never'  | do not even bother trying.
+| 'allow'  | try, but don't fail if the certificate cannot be verified.
+| 'demand' | fail if the certificate does not verify.
+| 'hard'   | similar to 'demand' but fails if TLS cannot negotiate.
+|===
+
+NOTE: The default is libldap's default, which varies based on the contents of `ldap.conf`.
+
+
+
+### Connection Pool
+
+The connection pool is new for >= 3.0, and will be used in many
+modules, for all kinds of connection-related activity.
+
+When the server is not threaded, the connection pool limits are
+ignored, and only one connection is used.
+
+
+start:: Connections to create during module instantiation.
+
+If the server cannot create specified number of connections
+during instantiation it will exit.
+Set to `0` to allow the server to start without the directory
+being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one
+is requested, the request will NOT get a connection.
+
+Setting `max` to *LESS* than the number of threads means
+that some threads may starve, and you will see errors
+like _No connections available and at max connection limit_.
+
+Setting `max` to MORE than the number of threads means
+that there are more connections than necessary.
+
+
+
+spare:: Spare connections to be left idle.
+
+NOTE: Idle connections WILL be closed if `idle_timeout`
+is set. This should be less than or equal to `max` above.
+
+
+
+uses:: Number of uses before the connection is closed.
+
+NOTE: A setting of `0` means infinite (no limit).
+
+
+
+retry_delay:: The number of seconds to wait after the server tries
+to open a connection, and fails.
+
+During this time, no new connections will be opened.
+
+
+
+lifetime:: The lifetime (in seconds) of the connection.
+
+
+
+idle_timeout:: Idle timeout (in seconds).
+
+A connection which is unused for this length of time will be closed.
+
+
+
+connect_timeout:: Connection timeout (in seconds).
+
+The maximum amount of time to wait for a new connection to be established.
+
+NOTE: Sets `LDAP_OPT_NETWORK_TIMEOUT` in libldap.
+
+
+
+[NOTE]
+====
+All configuration settings are enforced.  If a
+connection is closed because of `idle_timeout`,
+`uses`, or `lifetime`, then the total number of
+connections MAY fall below `min`.  When that
+happens, it will open a new connection.  It will
+also log a WARNING message.
+
+The solution is to either lower the `min` connections,
+or increase lifetime/idle_timeout.
+====
+
+
+
+## Expansions
+
+The rlm_ldap provides the below xlat's functions.
+
+### %{ldap_escape:...}
+
+Escape a string for use in an LDAP filter or DN.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+}
+update reply {
+    &Reply-Message := "The LDAP url is %{ldap_escape:%{control:Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+"The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
+```
+
+### %{ldap_unescape:...}
+
+Unescape a string for use in an LDAP filter or DN.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
+}
+update reply {
+    &Reply-Message := "The LDAP url is %{ldap_unescape:%{control:Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+"The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+```
+
+
+== Default Configuration
+
+```
+ldap {
+	server = 'localhost'
+#	server = 'ldap.rrdns.example.org'
+#	server = 'ldap.rrdns.example.org'
+#	port = 389
+#	identity = 'cn=admin,dc=example,dc=org'
+#	password = mypass
+	base_dn = 'dc=example,dc=org'
+	sasl {
+#		mech = 'PLAIN'
+#		proxy = 'autz_id'
+#		realm = 'example.org'
+	}
+#	valuepair_attribute = 'radiusAttribute'
+	global {
+#		random_file = /dev/urandom
+#		ldap_debug = 0x0000
+	}
+	update {
+		&control:Password-With-Header	+= 'userPassword'
+#		&control:NT-Password		:= 'ntPassword'
+#		&reply:Reply-Message		:= 'radiusReplyMessage'
+#		&reply:Tunnel-Type		:= 'radiusTunnelType'
+#		&reply:Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
+#		&reply:Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
+		&control:			+= 'radiusControlAttribute'
+		&request:			+= 'radiusRequestAttribute'
+		&reply:				+= 'radiusReplyAttribute'
+	}
+#	edir = no
+#	edir_autz = no
+	user {
+		base_dn = "${..base_dn}"
+		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
+		sasl {
+#			mech = 'PLAIN'
+#			proxy = &User-Name
+#			realm = 'example.org'
+		}
+#		scope = 'sub'
+#		sort_by = '-uid'
+#		access_attribute = 'dialupAccess'
+#		access_positive = yes
+	}
+	group {
+		base_dn = "${..base_dn}"
+		filter = '(objectClass=posixGroup)'
+#		scope = 'sub'
+#		name_attribute = cn
+#		membership_filter = "(|(member=%{control:Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
+		membership_attribute = 'memberOf'
+#		cacheable_name = 'no'
+#		cacheable_dn = 'no'
+#		cache_attribute = 'LDAP-Cached-Membership'
+#		allow_dangling_group_ref = 'no'
+		group_attribute = "${.:instance}-Group"
+	}
+	profile {
+#		filter = '(objectclass=radiusprofile)'
+#		default = 'cn=radprofile,dc=example,dc=org'
+#		attribute = 'radiusProfileDn'
+	}
+	accounting {
+		reference = "%{tolower:type.%{Acct-Status-Type}}"
+		type {
+			start {
+				update {
+					description := "Online at %S"
+				}
+			}
+			interim-update {
+				update {
+					description := "Last seen at %S"
+				}
+			}
+			stop {
+				update {
+					description := "Offline at %S"
+				}
+			}
+		}
+	}
+	post-auth {
+		update {
+			description := "Authenticated at %S"
+		}
+	}
+	options {
+#		dereference = 'always'
+		chase_referrals = yes
+		rebind = yes
+		use_referral_credentials = no
+#		session_tracking = yes
+#		sasl_secprops = 'noanonymous,noplain,maxssf=0'
+		res_timeout = 10
+		srv_timelimit = 3
+		idle = 60
+		probes = 3
+		interval = 3
+		ldap_debug = 0x0000
+	}
+	tls {
+#		start_tls = yes
+#		ca_file	= ${certdir}/cacert.pem
+#		ca_path	= ${certdir}
+#		certificate_file = /path/to/radius.crt
+#		private_key_file = /path/to/radius.key
+#		random_file = /dev/urandom
+#		require_cert = 'demand'
+	}
+	pool {
+		start = ${thread[pool].num_workers}
+		min = ${thread[pool].num_workers}
+		max = ${thread[pool].num_workers}
+		spare = 1
+		uses = 0
+		retry_delay = 30
+		lifetime = 0
+		idle_timeout = 60
+		connect_timeout = 3.0
+	}
+}
+```

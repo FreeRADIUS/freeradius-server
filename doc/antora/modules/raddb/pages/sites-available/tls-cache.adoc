@@ -1,0 +1,127 @@
+
+This virtual server controls caching of TLS sessions.
+
+When a TLS session is used, the server will automatically create
+the following attributes in the session-state list.  These attributes
+are the ones for the *server* certificate.
+
+
+If a client certificate is required (e.g. EAP-TLS or sometimes PEAP / TTLS),
+the following attributes are also created in the session-state list:
+
+
+
+
+
+
+This section is run whenever the server needs to read an
+entry from the TLS session cache.
+
+It should read the attribute &session-state:TLS-Session-Data
+from the cache, along with any other attributes which
+were in the cache
+
+On success it should return 'ok' or 'updated'.
+
+The return code has no real effect on session processing
+and will just cause the server to emit a warning.
+
+
+
+This section is run whenever the server needs to write an
+entry to the TLS session cache.
+
+It should write the attribute &session-state:Session-Data
+to the cache, along with any other attributes which
+need to be cached.
+
+On success it should return 'ok' or 'updated'.
+
+The return code has no real effect on session processing
+and will just cause the server to emit a warning.
+
+
+
+This section is run whenever the server needs to delete an
+entry from the TLS session cache.
+
+On success it should return 'ok', 'updated', 'noop' or 'notfound'
+
+The return code has no real effect on session processing
+and will just cause the server to emit a warning.
+
+
+
+This section is run after certificate attributes are added
+to the request list, and before performing OCSP validation.
+
+It should read the attribute &control:TLS-OCSP-Cert-Valid
+from the cache.
+
+On success it should return 'ok', 'updated', 'noop' or 'notfound'
+To force OCSP validation failure, it should return 'reject'.
+
+
+
+This section is run after OCSP validation has completed.
+
+It should write the attribute &reply:TLS-OCSP-Cert-Valid
+to the cache.
+
+On success it should return 'ok' or 'updated'.
+
+The return code has no real effect on session processing
+and will just cause the server to emit a warning.
+
+
+== Default Configuration
+
+```
+#	       TLS-Cert-Serial
+#	       TLS-Cert-Expiration
+#	       TLS-Cert-Subject
+#	       TLS-Cert-Issuer
+#	       TLS-Cert-Common-Name
+#	       TLS-Cert-Subject-Alt-Name-Email
+#	       TLS-Client-Cert-Serial
+#	       TLS-Client-Cert-Expiration
+#	       TLS-Client-Cert-Subject
+#	       TLS-Client-Cert-Issuer
+#	       TLS-Client-Cert-Common-Name
+#	       TLS-Client-Cert-Subject-Alt-Name-Email
+server tls-cache {
+	namespace = tls_cache
+	load tls-session {
+		update control {
+			Cache-Allow-Insert := no
+		}
+		cache_tls_session
+	}
+	store tls-session {
+		update control {
+			Cache-TTL := 0
+		}
+		cache_tls_session
+	}
+	clear tls-session {
+		update control {
+			Cache-TTL := 0
+			Cache-Allow-Insert := no
+		}
+		cache_tls_session
+	}
+	load ocsp-state {
+		update control {
+			Cache-Allow-Insert := no
+		}
+		cache_ocsp
+	}
+	store ocsp-state {
+		update control {
+			Cache-TTL := "%{expr:&reply:TLS-OCSP-Next-Update * -1}"
+			Cache-Allow-Merge := no
+		}
+		cache_ocsp
+	}
+}
+```

@@ -1,0 +1,488 @@
+
+
+
+
+= Rest Module
+
+The `rest` module sends HTTP requests to remote servers and decodes
+the responses. Can also perform basic auth with user's credentials.
+
+See https://tools.ietf.org/html/rfc2616[RFC 2616] for more details about HTTP.
+
+
+
+tls { ... }:: Configure the tls related items that control
+how FreeRADIUS connects to a HTTPS server.
+
+
+.Certificate validation options
+
+Specifies how the certificate(s) presented by the HTTPS server being contacted
+are validated, and which certificates (if any) to send to the HTTPS server.
+
+
+
+ca_file:: PEM formatted file containing the chain to validate the HTTPS server's cert
+
+Should usually contain a concatenation of one or more intermediary CA
+files, shallowest (i.e. the one that signed the HTTPS server's cert) first, and
+deepest (the root CA) last.
+
+Providing a complete certificate chain here is the most common way of validating
+the certificate presented by a HTTPS server.
+
+
+
+ca_issuer_file:: PEM formatted file containing the CA that signed the HTTPS server's cert
+
+Specifies the certificate that directly signed the certificate presented by the
+HTTPS server.
+
+This configuration option can be used to prevent certificates passing validation that
+were signed by other intermediary CAs or root CAs in the trusted certificate chain.
+
+
+
+ca_path:: A directory containing multiple root CA certs named by their hash
+
+See the OpenSSL documentation for more details:
+- https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_set_default_verify_paths.html
+- https://www.openssl.org/docs/man1.1.1/man1/c_rehash.html
+
+This configuration option should only be used when the HTTPS server being contacted
+is not known ahead of time (using a URL from an external source), and/or the CA used
+to sign the HTTPS server certificate is unknown.
+
+
+
+certificate_file:: PEM formatted file containing the certificate we present to the HTTPS server
+
+Specifies a certificate and any intermediary CAs we should send to the HTTPS server.
+
+This file should usually contain the client certificate file first, then any
+intermediary signing CAs, shallowest (direct signee of the certificate_file)
+to deepest (signed directly by the root CA).
+
+
+
+private_key_file:: PEM formatted file containing the private key for the specified certificate_file
+
+Must be specified if certificate_file is being used.
+
+
+
+private_key_password:: Password used to decrypt the private key file.
+
+Should only be specified in the private_key_file is encrypted.
+
+
+
+random_file:: Source of random data used for various cryptographic functions.
+
+
+
+check_cert:: Server certificate verification requirements.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option | Description
+| `no`   | Server certificate can be signed by any CA or be self-signed.
+| `yes`  | Server certificate must be issued by one of the trusted CAs.
+|===
+
+Default is `yes`
+
+
+
+check_cert_cn:: Server certificate CN verification requirements.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option | Description
+| `no`   | Server certificate CN can be any value.
+| `yes`  | Server certificate CN matches the host in the URI.
+|===
+
+Default is `yes`
+
+
+
+extract_cert_attrs:: Extract OIDs from presented certificates as OIDs.
+
+Default is `no`
+
+
+
+connect_uri:: It will open a connection to the server specified in `connect_uri`
+to populate the connection cache, ready for the first request.
+
+If you wish to disable this pre-caching and reachability check,
+comment out the configuration item below.
+
+WARNING: The server will not start if the server specified is unreachable.
+
+
+
+connect_proxy:: Proxy server used for all outbound connections.
+
+
+
+http_negotiation:: The negotiation scheme and target HTTP version.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option     | Description
+| `default`  | Use whichever negotiation scheme and version is the default
+               for `libcurl`.
+| `1.0`      | Disable negotiation.  Force HTTP `1.0`.
+| `1.1`      | Disable negotiation.  Force HTTP `1.1`.
+| `2.0`      | Disable negotiation.  Force HTTP `2.0`.
+| `2.0+auto` | Try and negotiate 2.0 and fallback to `1.1`.
+| `2.0+tls`  | For `https` try and negotiate 2.0 and fallback to `1.1`.
+               For `http` try and negotiate 2.0 and fallback to `1.1`.
+|===
+
+
+
+multiplex:: Execute multiple requests simultaneously using the same HTTP connection.
+
+NOTE: HTTP >= 2.0 is required for multiplexing to succeed. If we can't negotiate
+a high enough http version, multiplexing will be silently disabled.
+
+
+
+chunk:: Max chunk-size.
+
+
+
+## Sections
+
+The following config items can be used in each of the sections.
+The sections themselves reflect the sections in the server.
+
+For example, if you list `rest` in the `authorize` section of a `virtual server`,
+the settings from the `authorize` section here will be used.
+
+The following config items may be listed in any of the sections:
+
+[options="header,autowidth"]
+|===
+| Option         | Description
+| `uri`          | To send the request to.
+| `proxy`        | Rhe request via this server, supports `socks/http/https` uri and `:port`.
+| `method`       | HTTP method to use, one of 'get', 'post', 'put', 'patch',
+                   'delete' or any custom HTTP method.
+| `body`         | The format of the HTTP body sent to the remote server.
+                   May be 'none', 'post' or 'json', defaults to 'none'.
+| `data`         | Send custom freeform data in the HTTP body. `Content-type`
+                   may be specified with `body`. Will be expanded.
+                   Values from expansion will not be escaped, this should be
+                   done using the appropriate `xlat` method e.g. `%{urlencode:<attr>}`
+| `force_to`     | Force the response to be decoded with this decoder.
+                   May be 'plain' (creates reply:REST-HTTP-Body), 'post' or 'json'.
+| `tls`          | TLS settings for HTTPS.
+| `auth`         | HTTP auth method to use, one of 'none', 'srp', 'basic',
+                   'digest', 'digest-ie', 'gss-negotiate', 'ntlm',
+                   'ntlm-winbind', 'any', 'safe'. defaults to _'none'_.
+| `username`     | User to authenticate as, will be expanded.
+| `password`     | Password to use for authentication, will be expanded.
+| `require_auth` | Require HTTP authentication.
+| `timeout`      | HTTP request timeout in seconds, defaults to 4.0.
+| `max_body_in`  | Maximum size of incoming HTTP body, defaults to 16k.
+|===
+
+Additional HTTP headers may be specified with `control:REST-HTTP-Header`.
+
+The values of those attributes should be in the format:
+
+  <attribute>: <value>
+
+`control:REST-HTTP-Header` attributes will be consumed after each call
+to the rest module, and each `%{rest:}` expansion.
+
+
+
+.Body encodings are the same for requests and responses
+
+POST - All attributes and values are urlencoded.
+
+e.g:
+
+`[outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attributeN>=<valueN>`
+
+JSON - All attributes and values are escaped according to the JSON specification.
+
+e.g:
+
+[source,json]
+----
+{
+    "<attribute0>":{
+        "type":"<type0>",
+        "value":[<value0>,<value1>,<valueN>]
+    },
+    "<attribute1>":{
+        "type":"<type1>",
+        "value":[...]
+    },
+    "<attributeN>":{
+        "type":"<typeN>",
+        "value":[...]
+    },
+}
+----
+
+The response format adds three optional fields:
+
+[options="header,autowidth"]
+|===
+| Fields    | Description
+| `do_xlat` | If `true`, any values will be xlat expanded. Defaults to `true`.
+| `is_json` | If `true`, any nested JSON data will be copied to the attribute
+              in string form. Defaults to `true`.
+| `op`      | Controls how the attribute is inserted into the target list.
+              Defaults to `:=`. To create multiple attributes from multiple
+              values, this should be set to `+=`, otherwise only the last
+              value will be used, and it will be assigned to a single
+              attribute.
+|===
+
+[source,json]
+----
+{
+    "[outer.][<list>:]<attribute0>":{
+        "is_json":<bool>,
+        "do_xlat":<bool>,
+        "op":"<operator>",
+        "value":[<value0>,<value1>,<valueN>]
+    },
+    "<attribute1>":"value",
+    "<attributeN>":{
+        "value":[<value0>,<value1>,<valueN>],
+        "op":"+="
+    }
+}
+----
+
+[NOTE]
+====
+  * Module return codes are determined by HTTP response codes. These vary depending on the
+section.
+
+  * If the `body` is processed and found to be malformed or unsupported `fail` will be returned.
+  * If the `body` is processed and found to contain attribute updated will be returned,
+except in the case of a `401` code.
+====
+
+
+
+xlat { ... }::: Allows a subset of section configuration items to be configured for
+any calls to this module's `xlat` function.
+
+
+
+### Authorize { ... }
+
+[options="header,autowidth"]
+|===
+| Code | Meaning      | Process body? | Module code
+| 404  | not found    | no            | notfound
+| 410  | gone         | no            | notfound
+| 403  | forbidden    | no            | disallow
+| 401  | unauthorized | yes           | reject
+| 204  | no content   | no            | ok
+| 2xx  | successful   | yes           | ok/updated
+| 5xx  | server error | no            | fail
+| xxx  | -            | no            | invalid
+|===
+
+
+
+### Authenticate { ... }
+
+Same as `Authorize { ... }`
+
+
+
+### Accounting { ... }
+
+[options="header,autowidth"]
+|===
+| Code | Meaning      | Process body? | Module code
+| 204  | no content   | no            | ok
+| 2xx  | successful   | yes           | ok/updated
+| 5xx  | server error | no            | fail
+| xxx  | -            | no            | invalid
+|===
+
+
+
+### Post-Auth { ... }
+
+Same as `Accounting { ... }`
+
+
+
+pool { ... }::
+
+This pool controls the number of handles available per-thread.
+
+Each handle represents a single HTTP request.
+
+[NOTE]
+====
+  * With HTTP <= 1.1, each request is bound to a single connection
+so this pool, so these configuration items are useful for limiting
+the number of outbound requests to the server.
+
+  * With HTTP >= 2.0 with multiplexing enabled, multiple requests are
+sent over a single HTTP connection, so the pool is more useful
+for limiting the number of outstanding requests, and allowing for
+handle reuse.
+====
+
+
+start:: Connections to create during module instantiation.
+If the server cannot create specified number of connections
+during instantiation it will exit.
+
+Set to `0` to allow the server to start without the web service
+being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one
+is requested, the request will NOT get a connection.
+
+Setting `max` to LESS than the number of threads means
+that some threads may starve, and you will see errors
+like 'No connections available and at max connection limit'
+
+Setting `max` to MORE than the number of threads means
+that there are more connections than necessary.
+
+
+
+spare:: Spare connections to be left idle.
+
+NOTE: Idle connections WILL be closed if `idle_timeout`
+is set.  This should be less than or equal to `max` above.
+
+
+
+uses:: Number of uses before the connection is closed.
+
+NOTE: `0` means "infinite".
+
+
+
+retry_delay:: The number of seconds to wait after the server tries
+to open a connection, and fails.
+
+During this time, no new connections will be opened.
+
+
+
+lifetime:: The lifetime (in seconds) of the connection.
+
+NOTE: `0` means "infinite".
+
+
+
+idle_timeout:: The idle timeout (in seconds).
+
+A connection which is unused for this length of time will be closed.
+
+NOTE: `0` means "infinite".
+
+
+
+connect_timeout:: Connection timeout (in seconds).
+
+The maximum amount of time to wait for a new connection to be established.
+
+
+
+[NOTE]
+====
+All configuration settings are enforced.  If a connection is closed because of
+`idle_timeout`, `uses`, or `lifetime`, then the total number of connections MAY
+fall below `min`.
+
+When that happens, it will open a new connection.  It will also log a *WARNING*
+message.
+
+The solution is to either lower the "min" connections,
+or increase lifetime/idle_timeout.
+====
+
+
+== Default Configuration
+
+```
+rest {
+	tls {
+#		ca_file	             = "${certdir}/cacert.pem"
+#		ca_issuer_file     = "${certdir}/caissuer.pem"
+#		ca_path	             = "${certdir}"
+#		certificate_file     = /path/to/radius.pem
+#		private_key_file     = /path/to/radius.key
+#		private_key_password = "supersecret"
+#		random_file          = /dev/urandom
+#		check_cert = no
+#		check_cert_cn = no
+#		extract_cert_attrs = no
+	}
+	connect_uri = "http://127.0.0.1:9090/"
+#	connect_proxy = "socks://127.0.0.1"
+#	http_negotiation = "default"
+#	multiplex = yes
+#	chunk = 0
+	xlat {
+		tls = ${..tls}
+	}
+	authorize {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
+		method = 'GET'
+		tls = ${..tls}
+	}
+	authenticate {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
+		method = 'GET'
+		tls = ${..tls}
+	}
+	accounting {
+		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}"
+		method = 'POST'
+		tls = ${..tls}
+	}
+	post-auth {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
+		method = 'POST'
+		tls = ${..tls}
+	}
+	pool {
+		start = 20
+		min = 1
+		max = 50
+		spare = 1
+		uses = 0
+		retry_delay = 30
+		lifetime = 0
+		idle_timeout = 60
+		connect_timeout = 3.0
+	}
+}
+```

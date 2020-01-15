@@ -1,0 +1,372 @@
+
+
+See raddb/mods-available/dhcp_sqlippool for the IP Pool configuration.
+
+See raddb/policy.d/dhcp_sqlippool for the "glue" code that allows
+the RADIUS based "sqlippool" module to be used for DHCP.
+
+See raddb/mods-config/sql/ippool/ for the schemas.
+
+See raddb/sites-available/dhcp for instructions on how to configure
+the DHCP server.
+
+
+
+
+The DHCP functionality goes into a virtual server.
+
+
+Define a DHCP socket.
+
+The default port below is 6700, so you don't break your network.
+If you want it to do real DHCP, change this to 67, and good luck!
+
+You can also bind the DHCP socket to an interface.
+See below, and raddb/radiusd.conf for examples.
+
+This lets you run *one* DHCP server instance and have it listen on
+multiple interfaces, each with a separate policy.
+
+If you have multiple interfaces, it is a good idea to bind the
+listen section to an interface.  You will also need one listen
+section per interface.
+
+
+
+IP address to listen on. Will usually be the IP of the
+interface, or 0.0.0.0
+
+The port should be 67 for a production network. Don't set
+it to 67 on a production network unless you really know
+what you're doing. Even if nothing is configured below, the
+server may still NAK legitimate responses from clients.
+
+Interface name we are listening on. See comments above.
+
+source IP address for unicast packets sent by the
+DHCP server.
+
+The source IP for unicast packets is chosen from the first
+one of the following items which returns a valid IP
+address:
+
+     src_ipaddr
+     ipaddr
+     reply:DHCP-Server-IP-Address
+     reply:DHCP-DHCP-Server-Identifier
+
+
+The DHCP server defaults to allowing broadcast packets.
+Set this to "no" only when the server receives *all* packets
+from a relay agent.  i.e. when *no* clients are on the same
+LAN as the DHCP server.
+
+It's set to "no" here for testing. It will usually want to
+be "yes" in production, unless you are only dealing with
+relayed packets.
+
+On Linux if you're running the server as non-root, you
+will need to do:
+
+sudo setcap cap_net_admin=ei /path/to/radiusd
+
+This will allow the server to set ARP table entries
+for newly allocated IPs
+
+
+If there is no `client` entry in a DHCPv4 virtual server, it will
+automatically create and use a "0/0" client.
+
+If there is one or more clients defined in a DHCPv4 virtual server,
+they will be used to limit source IP addresses for DHCPv4 packets.
+Only packets from known clients or networks will be accepted.
+
+If a `client` is defined, you should list all subnets used for end
+user machines, along with all DHCPv4 gateways that send packets to
+the server.
+
+     ipaddr = 192.168.0.0/16
+
+Packets received on the socket will be processed through one
+of the following sections, named after the DHCP packet type.
+See dictionary.dhcpv4 for the packet types.
+
+Return packets will be sent to, in preference order:
+   DHCP-Gateway-IP-Address
+   DHCP-Client-IP-Address
+   DHCP-Your-IP-Address
+At least one of these attributes should be set at the end of each
+section for a response to be sent.
+
+
+Set the type of packet to send in reply.
+
+The server will look at the DHCP-Message-Type attribute to
+determine which type of packet to send in reply. Common
+values would be DHCP-Offer, DHCP-Ack or DHCP-NAK. See
+dictionary.dhcp for all the possible values.
+
+DHCP-Do-Not-Respond can be used to tell the server to not
+respond.
+
+In the event that DHCP-Message-Type is not set then the
+server will fall back to determining the type of reply
+based on the rcode of this section.
+
+
+The contents here are invented.  Change them!
+
+Do a simple mapping of MAC to assigned IP.
+
+See below for the definition of the "mac2ip"
+module.
+
+mac2ip
+
+If the MAC wasn't found in that list, do something else.
+You could call a Perl, Python, or Java script here.
+
+if (notfound) {
+...
+}
+
+Or, allocate IPs from the DHCP pool in SQL. You may need to
+set the pool name here if you haven't set it elsewhere.
+
+If DHCP-Message-Type is not set, returning "ok" or
+"updated" from this section will respond with a DHCP-Offer
+message.
+
+Other rcodes will tell the server to not return any response.
+
+
+Response packet type. See DHCP-Discover section above.
+
+The contents here are invented.  Change them!
+
+Do a simple mapping of MAC to assigned IP.
+
+See below for the definition of the "mac2ip"
+module.
+
+mac2ip
+
+If the MAC wasn't found in that list, do something else.
+You could call a Perl, Python, or Java script here.
+
+if (notfound) {
+...
+}
+
+Or, allocate IPs from the DHCP pool in SQL. You may need to
+set the pool name here if you haven't set it elsewhere.
+
+If DHCP-Message-Type is not set, returning "ok" or
+"updated" from this section will respond with a DHCP-Ack
+packet.
+
+"handled" will not return a packet, all other rcodes will
+send back a DHCP-NAK.
+
+
+Other DHCP packet types
+
+There should be a separate section for each DHCP message type.
+By default this configuration will ignore them all. Any packet type
+not defined here will be responded to with a DHCP-NAK.
+
+
+
+
+For Windows 7 boxes
+
+
+
+The thing being queried for is implicit
+in the packets.
+
+has MAC, asking for IP, etc.
+look up MAC in database
+
+has IP, asking for MAC, etc.
+look up IP in database
+
+has host name, asking for IP, MAC, etc.
+look up identifier in database
+
+
+stop processing
+
+
+We presume that the database lookup returns "notfound"
+if it can't find anything.
+
+
+
+Add more logic here.  Is the lease inactive?
+If so, respond with DHCP-Lease-Unassigned.
+
+Otherwise, respond with DHCP-Lease-Active
+
+
+
+Also be sure to return ALL information about
+the lease.
+
+
+
+The reply types are:
+
+DHCP-Lease-Unknown
+DHCP-Lease-Active
+DHCP-Lease-Unassigned
+
+
+
+
+
+This next section is a sample configuration for the "passwd"
+module, that reads flat-text files.  It should go into
+radiusd.conf, in the "modules" section.
+
+The file is in the format <mac>,<ip>
+
+
+This lets you perform simple static IP assignment.
+
+There is a preconfigured "mac2ip" module setup in
+mods-available/mac2ip. To use it do:
+
+  # cd raddb/
+  # ln -s ../mods-available/mac2ip mods-enabled/mac2ip
+  # mkdir mods-config/passwd
+
+Then create the file mods-config/passwd/mac2ip with the above
+format.
+
+
+This is an example only - see mods-available/mac2ip instead; do
+not uncomment these lines here.
+
+
+== Default Configuration
+
+```
+#	This is a virtual server that handles DHCP.
+server dhcp {
+	namespace = dhcpv4
+listen {
+	type = DHCP-Discover
+	type = DHCP-Request
+	type = DHCP-Inform
+	type = DHCP-Release
+	type = DHCP-Decline
+	transport = udp
+	udp {
+		ipaddr = 127.0.0.1
+		port = 6700
+#		interface = lo0
+#		src_ipaddr = 127.0.0.1
+		broadcast = no
+	}
+}
+#client private {
+#}
+recv DHCP-Discover {
+	update reply {
+	       &DHCP-Message-Type = DHCP-Offer
+	}
+	update reply {
+		&DHCP-Domain-Name-Server = 127.0.0.1
+		&DHCP-Domain-Name-Server = 127.0.0.2
+		&DHCP-Subnet-Mask = 255.255.255.0
+		&DHCP-Router-Address = 192.0.2.1
+		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-DHCP-Server-Identifier = 192.0.2.1
+	}
+#	update control {
+#		&Pool-Name := "local"
+#	}
+#	dhcp_sqlippool
+	ok
+}
+recv DHCP-Request {
+	update reply {
+	       &DHCP-Message-Type = DHCP-Ack
+	}
+	update reply {
+		&DHCP-Domain-Name-Server = 127.0.0.1
+		&DHCP-Domain-Name-Server = 127.0.0.2
+		&DHCP-Subnet-Mask = 255.255.255.0
+		&DHCP-Router-Address = 192.0.2.1
+		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-DHCP-Server-Identifier = 192.0.2.1
+	}
+#	update control {
+#		&Pool-Name := "local"
+#	}
+#	dhcp_sqlippool
+	ok
+}
+recv DHCP-Decline {
+	update reply {
+	       &DHCP-Message-Type = DHCP-Do-Not-Respond
+	}
+	reject
+}
+recv DHCP-Inform {
+	update reply {
+	       &DHCP-Message-Type = DHCP-Do-Not-Respond
+	}
+	reject
+}
+#recv DHCP-Inform {
+#	update reply {
+#		Packet-Dst-Port = 67
+#		DHCP-Message-Type = DHCP-ACK
+#		DHCP-DHCP-Server-Identifier = "%{Packet-Dst-IP-Address}"
+#		DHCP-Site-specific-28 = 0x0a00
+#	}
+#	ok
+#}
+recv DHCP-Release {
+	update reply {
+	       &DHCP-Message-Type = DHCP-Do-Not-Respond
+	}
+	reject
+}
+recv DHCP-Lease-Query {
+	if (&DHCP-Client-Hardware-Address) {
+	}
+	elsif (&DHCP-Your-IP-Address) {
+	}
+	elsif (&DHCP-Client-Identifier) {
+	}
+	else {
+		update reply {
+			&DHCP-Message-Type = DHCP-Lease-Unknown
+		}
+		ok
+		return
+	}
+	if (notfound) {
+		update reply {
+			&DHCP-Message-Type = DHCP-Lease-Unknown
+		}
+		ok
+		return
+	}
+	update reply {
+		&DHCP-Message-Type = DHCP-Lease-Unassigned
+	}
+}
+}
+#	00:01:02:03:04:05,192.0.2.100
+#	01:01:02:03:04:05,192.0.2.101
+#	02:01:02:03:04:05,192.0.2.102
+#passwd mac2ip {
+#	filename = ${confdir}/mac2ip
+#	format = "*DHCP-Client-Hardware-Address:=DHCP-Your-IP-Address"
+#	delimiter = ","
+#}
+```

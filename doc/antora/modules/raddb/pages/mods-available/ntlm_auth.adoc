@@ -1,0 +1,44 @@
+
+
+
+
+= NTLM Auth Module
+
+The `ntlm_auth` module tests NTLM authentication with PAP.
+
+If you have problems with authentication failing, even when the
+password is good, it may be a bug in an old version of Samba:
+
+  https://bugzilla.samba.org/show_bug.cgi?id=6563
+
+Depending on the AD / Samba configuration, you may also need to add:
+
+  --allow-mschapv2
+
+to the list of command-line options.
+
+For more documentation on integrating FreeRADIUS with Active Directory, please
+see the following web page:
+
+
+
+
+## Configuration Settings
+
+See the `exec` module for an explanation of the configuration options.
+
+
+
+You will need to edit the path and domain to match your
+local system.  The other fields can be left alone.
+
+
+== Default Configuration
+
+```
+#	http://deployingradius.com/documents/configuration/active_directory.html
+exec ntlm_auth {
+	wait = yes
+	program = "/path/to/ntlm_auth --request-nt-key --domain=MYDOMAIN --username=%{mschap:User-Name} --password=%{User-Password}"
+}
+```

@@ -1,0 +1,288 @@
+
+
+
+
+In v4, all "server" sections MUST start with a "namespace"
+parameter.  This tells the server which protocol is being used.
+
+
+
+This virtual server will read detail files from the
+following directory.
+
+
+
+This has to be listed first, sorry.
+
+The value given here must match the `namespace` of
+the virtual server which originally created the
+detail files.
+
+
+
+Types of packets we are reading.
+
+
+
+What transports are being used to read detail
+files.  For now, only "file" is supported.
+
+Future releases will allow reading "detail"
+style information from sockets or streams.
+
+
+
+Unlike v3, there is no "load_factor" configuration.
+
+Instead, the detail file listener is "self
+clocking".  The listener reads one entry, and as
+soon as it gets a response to that entry, the
+listener reads a second entry.
+
+Packets from the detail listener are low priority,
+so they are processed only when there is nothing
+else to do.  i.e. if the server receives many
+Access-Request or Accounting-Request packets from
+the network, they will be processed *before* any
+packets from the detail file.
+
+This behavior ensures that the detail file is read
+as fast as possible.  At the same time, it ensures
+that the detail file does not affect higher
+priority packets from the network.
+
+
+
+Set the priority for packets from the detail
+listener.  For safety, it should be set low.  This
+means that "real" packets from a NAS will be
+processed before packets from the detail listener.
+
+i.e. the packets from the detail listener won't be
+processed until ALL OTHER packets in the system
+have been received, processed, and responded to.
+
+The default is for the server to process packets in
+the following priority:
+
+Status-Server
+Access-Request
+Disconnect-Request
+CoA-Request
+Accounting-Request
+packets from the "detail" listener.
+
+This priority setting ensures that the server will
+be responsive and stable.
+
+Allowed values: 1 to 65536.
+
+Setting it to "1" means "very low priority".
+
+Setting it to "65536" means "higher priority than
+Access-Request packet"
+
+
+
+Check for the existence of detail files.
+
+You MUST also configure a "work" subsection below.
+
+
+The wildcard to use for finding detail files
+
+
+
+If there are no detail files in the directory,
+the listener will periodically wake up to check
+for new entries.
+
+If this is set to `0`. then the server will
+rely on file system notifications to
+discover when a detail file has been added.
+Setting it to `0` only works on Linux.  On
+other operating systems, it MUST be set to
+a non-zero value.
+
+Allowed values: 0 to 3600
+
+
+Configuration related to processing the
+"detail.work" file.
+
+This MUST also be specified, along with the "file"
+subsection above.
+
+
+The name of the current working file.  If
+omitted, it is the directory from the
+`file` subsection, `filename` argument
+given above, with "/detail.work" appended
+to it.
+
+As of v4, you can have multiple detail file
+readers in the same directory.  The only
+caveat is that the wildcards CANNOT overlap.
+
+The best way to enforce that is to give the
+the files different prefixes.
+
+
+
+Track progress through the detail file.  When the detail
+file is large, and the server is restarted, it will
+read from the START of the file.
+
+Setting `track = yes` means it will skip packets which
+have already been processed.  The default is `no`.
+
+
+
+The maximum size (in bytes) of one entry in
+the detail file.  If this setting is too
+low, then the "too large" entries in the
+detail file will be ignored.
+
+
+
+Whether or not the detail.work file reader
+retransmits packets which have failed.
+
+default = yes
+
+
+
+Limits for the files, retransmissions, etc.
+
+
+Number of simultaneous packets it
+will read from the file and feed
+into the server core.
+
+Useful values: 1..256
+
+
+Initial retransmit time: 1..60
+
+If there is no response within this time,
+the module will retransmit the packet.
+
+
+
+Maximum Retransmit Time: 5..30
+
+The maximum time between retransmissions.
+
+
+
+The following are maximums that *all* apply.
+i.e. if any one of the limits is hit, the
+retransmission stops.
+
+
+
+Maximum Retransmit Count: 0..20
+
+How many times the module will send the packet
+before giving up.
+
+A special value of "0" means "retransmit forever".
+
+
+
+Maximum Retransmit Duration: 0..600
+
+The total length of time the module will try to
+retransmit the packet
+
+A special value of "0" means "retransmit forever".
+
+
+
+All packets read by the detail listener are processed through the
+'recv' section.  Note that there is no second name to the section.
+
+
+
+We handled the packet successfully.  Run the "send ok" section.
+
+
+
+If the "recv" section returns "ok" or "updated", it
+will run the "send ok" section to send the reply.
+
+All other return codes (e.g. "fail") will cause it to run
+the "send fail" section.
+
+
+
+All successful packets sent by the detail listener are processed through the
+'send ok' section.  Note that the name is the same for all packet types.
+
+If the listener is configured with 'track = yes', then the entry in
+the detail file is marked up as being "done".  Subsequent re-reads
+of the same detail file (e.g. on server restart) will skip the
+"done" entries.
+
+
+
+All failed packets sent by the detail listener are processed through the
+'send fail' section.  Note that the name is the same for all packet types.
+
+If the listener is configured with 'track = yes', then the packet
+will be retransmitted by the detail file reader, until the packet
+returns "success".  See the "limit" subsection above for retransmission
+configuration.
+
+
+
+Note that unlike other listeners, there is no "send Do-Not-Respond"
+section.  You should just return "fail" instead.
+
+
+
+== Default Configuration
+
+```
+#	This virtual server gives an example of reading the detail
+#	file for the v4 configuration.
+server detail {
+	namespace = detail
+	directory = ${radacctdir}/detail
+	listen {
+		dictionary = radius
+		type = Accounting-Request
+		transport = file
+#		priority = 1
+		file {
+			filename = "${...directory}/detail-*"
+			poll_interval = 5
+		}
+		work {
+			filename = "${...directory}/detail.work"
+			track = yes
+			max_entry_size = 65536
+			retransmit = yes
+			limit {
+				maximum_outstanding = 1
+				initial_retransmission_time = 1
+				maximum_retransmission_time = 30
+				maximum_retransmission_count = 6
+				maximum_retransmission_duration = 40
+			}
+		}
+	}
+recv {
+	update request {
+		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %{%{integer:Event-Timestamp}:-%{integer:Packet-Original-Timestamp}}}"
+	}
+	ok
+}
+send ok {
+	ok
+}
+send fail {
+	ok
+}
+} # virtual server "detail"
+```

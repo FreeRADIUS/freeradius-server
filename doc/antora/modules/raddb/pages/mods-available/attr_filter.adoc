@@ -1,0 +1,144 @@
+
+
+
+= Attr_filter Module
+
+The `attr_filter` module exists for filtering certain attributes and
+values in received (or transmitted) radius  packets. It gives the
+server a flexible framework to filter the attributes we send to or
+receive from home servers or NASes. This makes sense, for example,
+in an  out-sourced  dialup  situation to various policy decisions, such as
+restricting a client to certain ranges of `link:https://freeradius.org/rfc/rfc2865.html#Idle-Timeout[Idle-Timeout]` or `Session-Time-out`.
+
+Filter rules are normally defined and applied on a per-realm basis, Filter
+rules can optionally be applied using another attribute, by editing the key
+configuration for this module.
+
+The rules for each entry are parsed to top to bottom, and an attribute
+must pass *all* the rules which affect it in order to make it past the filter.
+Order of the rules is important.
+The operators and their purpose in defining the rules are as follows:
+
+[options="header", cols="10%,90%"]
+|===
+| Operator | Description
+| =        | THIS OPERATOR IS NOT ALLOWED. If used, and warning message is
+             printed and it is treated as *==*.
+| :=       | Set, this attribute and value will always be placed in the
+             output A/V Pairs. If the attribute exists, it is overwritten.
+| ==       | Equal, value must match exactly.
+| =*       | Always Equal, allow all values for the specified attribute.
+| !*       | Never Equal, disallow all values for the specified attribute.
+             (This is redundant, as any A/V Pair not explicitly permitted
+             will be dropped).
+| !=       | Not Equal, value must not match.
+| >=       | Greater Than or Equal.
+| <=       | Less Than or Equal.
+| >        | Greater Than.
+| <        | Less Than.
+|===
+
+If regular expressions are enabled the following operators are also possible.
+(Regular Expressions are included by default unless your system doesn't support
+them, which should be rare). The value field uses standard regular expression syntax.
+
+[options="header", cols="10%,90%"]
+|===
+| Operator | Description
+| =~       | Regular Expression Equal
+| !~       | Regular Expression Not Equal
+|===
+
+## Syntax
+
+The configuration items are:
+
+
+key:: The `key` to use for filter the packets.
+
+
+
+relaxed:: Only move attribute if it passed all rules, or if the config says we
+should copy unmatched attributes.
+
+
+
+filename:: The `filename` with the attributes to filter.
+
+
+
+## Configuration Settings
+
+The following default instances.
+
+
+
+### pre-proxy
+
+Filters the attributes in the packets we send to
+the RADIUS home servers.
+
+Add this before calling rlm_radius for proxying.
+
+
+
+### post-proxy
+
+Filters the attributes received in replies from proxied
+servers, to make sure we send back to our RADIUS client
+only allowed attributes.
+
+Add this after calling `rlm_radius` for proxying.
+
+
+
+### access_reject
+
+Enforce RFC requirements on the contents of `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]`
+packets. This should be called from `send Access-Reject`.
+
+
+
+### access_challenge
+
+Enforce RFC requirements on the contents of `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]`
+packets. This is called from `send Access-Challenge`.
+
+
+
+### accounting_response
+
+Enforce RFC requirements on the contents of the
+`link:https://freeradius.org/rfc/rfc2866.html#Accounting-Response[Accounting-Response]` packets. Called from the
+`send Accounting-Response` section.
+
+
+== Default Configuration
+
+```
+#attr_filter attr_filter.<section> {
+#	key = "<value>"
+#	relaxed = no
+#	filename = </path/><section>
+#}
+attr_filter attr_filter.pre-proxy {
+	key = "%{Realm}"
+	filename = ${modconfdir}/${.:name}/pre-proxy
+}
+attr_filter attr_filter.post-proxy {
+	key = "%{Realm}"
+	filename = ${modconfdir}/${.:name}/post-proxy
+}
+attr_filter attr_filter.access_reject {
+	key = "%{User-Name}"
+	filename = ${modconfdir}/${.:name}/access_reject
+}
+attr_filter attr_filter.access_challenge {
+	key = "%{User-Name}"
+	filename = ${modconfdir}/${.:name}/access_challenge
+}
+attr_filter attr_filter.accounting_response {
+	key = "%{User-Name}"
+	filename = ${modconfdir}/${.:name}/accounting_response
+}
+```

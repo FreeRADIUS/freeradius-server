@@ -1,0 +1,94 @@
+
+
+
+
+= SQL-IP-Pool Module
+
+The module `sqlippool` provide configuration for the SQL based IP Pool module.
+
+NOTE: The database schemas are available at `raddb/sql/ippool/<DB>/schema.sql`.
+
+## Configuration Settings
+
+
+sql_module_instance:: SQL instance to use (from `raddb/mods-available/sql`)
+
+If you have multiple sql instances, such as `sql sql1 {...}`,
+use the *instance* name here: `sql1`.
+
+
+
+dialect:: This is duplicative of info available in the SQL module, but
+we have to list it here as we do not yet support nested
+reference expansions.
+
+
+
+ippool_table:: SQL table to use for ippool range and lease info.
+
+
+
+lease_duration:: IP lease duration. (Leases expire even if `Acct Stop` packet is lost).
+
+
+
+attribute_name:: Attribute to use for querying / updating IP addresses.
+
+[NOTE]
+====
+It MUST be a type which contains IP addresses.
+
+e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
+====
+
+
+
+pool_key:: Attribute which should be considered unique per NAS.
+
+  * Using `link:https://freeradius.org/rfc/rfc2865.html#NAS-Port[NAS-Port]` gives behaviour similar to `rlm_ippool` and ACS. (default).
+  * Using `link:https://freeradius.org/rfc/rfc2865.html#Calling-Station-Id[Calling-Station-Id]` works for NAS that send fixed `link:https://freeradius.org/rfc/rfc2865.html#NAS-Port[NAS-Port]`.
+
+WARNING: ONLY change this if you know what you are doing!
+
+
+
+messages { ... }:: These messages are added to the `control::` items, as
+`Module-Success-Message`. They are not logged anywhere else, unlike
+previous versions.
+If you want to have them logged to a file, see the `linelog` module,
+and create an entry which writes `Module-Success-Message` message.
+
+WARNING: MySQL (MyISAM) has certain limitations that means it can hand out
+the same IP address to 2 different users.
+  *We suggest* using an SQL DB with proper transaction support, such as PostgreSQL,
+or using MySQL with InnoDB.
+
+
+
+
+
+
+
+.Load the queries from a separate file.
+
+
+== Default Configuration
+
+```
+sqlippool {
+	sql_module_instance = "sql"
+	dialect = "mysql"
+	ippool_table = "radippool"
+	lease_duration = 3600
+	attribute_name = Framed-IP-Address
+	pool_key = "%{NAS-Port}"
+	messages {
+		exists = "Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		success = "Allocated IP: %{reply:${..attribute_name}} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		clear = "Released IP %{${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
+		failed = "IP Allocation FAILED from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		nopool = "No Pool-Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	}
+	$INCLUDE ${modconfdir}/sql/ippool/${dialect}/queries.conf
+}
+```

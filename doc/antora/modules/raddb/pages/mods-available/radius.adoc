@@ -1,0 +1,364 @@
+
+
+
+
+= Radius Module
+
+The `radius` module in v4, can be used to implement proxying and request
+fan-out, as well as synchronous and asynchronous `CoA` and `DM`.
+
+## Configuration Settings
+
+Any proxied packet (including `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Request[Accounting-Request]`) can
+receive a `Protocol-Error` response packet.  This packet
+is an explicit `NAK` that something went wrong processing
+the request.
+
+WARNING: For security reasons, the module ensures that all proxied
+`link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets contain a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` attribute.
+This behavior is *NOT* configurable, and *CANNOT* be changed.
+
+The module adds a Proxy-State attribute to all proxied packets.
+This `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` contains a 32-bit random number, which is unique
+to this module.  This unique number helps to detect proxy loops.
+
+The module has the following return codes:
+
+[options="header,autowidth"]
+|===
+| Code        | Description
+| invalid     | Something went wrong sending the request,
+                or the reply packet is invalid.
+| ok          | the module received an `ack` (`link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]`,
+                `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Response[Accounting-Response]`, `CoA-ACK`, etc.)
+| handled     | the module received an `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]`
+| fail        | there was no response to the proxied request
+| reject      | the module received a `nak` (`link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]`, `CoA-NAK`, etc.)
+| noop        | the module saw its own `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` attribute,
+                and is will not proxy the request.  This behavior
+                prevents proxy loops.
+|===
+
+
+transport:: Only UDP transport is allowed.
+
+
+
+max_attributes:: Maximum number of attributes to decode in response.
+
+Default is 255.
+
+
+
+type:: List of allowed packet types.
+
+There is currently no way to change the packet type in the
+request.  See `unlang` fork for that functionality.
+
+NOTE: `Status-Server` is reserved for `inter-server` signaling,
+and cannot be proxied.
+
+
+
+replicate:: Whether or not we are replicating packets.
+
+Replication is "send proxied request, and continue,
+without waiting for a response".  Any response received
+is discarded, and does not affect packet processing.
+
+
+
+synchronous::
+
+In many cases, the module should do retransmissions of
+proxied request on its own.  See the various
+configurations for `initial_retransmission_time`,
+etc. below.  This means setting `synchronous = no`.
+
+However, in some cases, it is useful to retransmit only
+when the server receives a retransmission from the NAS.
+This is done by setting `synchronous = yes`
+
+In general, if the server is receiving packets directly
+from a NAS, you should set `synchronous = no`.  This is
+because the NAS retransmission behavior is horrible,
+inconsistent, and hard to configure.
+
+If the server is receiving packets from another proxy
+server, you should set `synchronous = yes`.  This allows
+the other proxy server to do retransmissions correctly.
+
+NOTE: The behavior in v3 is the same as `synchronous = yes`
+
+
+
+no_connection_fail:: It enables fails immediately on failed connections.
+
+
+
+originate::
+
+Sometimes we are creating a request that is not for the purpose of
+proxying another request, in which case we do not want to add a
+Proxy-State attribute.
+
+In some cases, such as originating a CoA or Disconnect request,
+including Proxy-State may confuse the receiving NAS.
+
+
+status_checks { ... }:: For "are you alive?" queries.
+
+If the home server does not respond to proxied packets, the
+module starts pinging the home server with these packets.
+
+
+type:: You can specify any type of packet here, though
+Status-Server is recommended.
+
+If you specify another type of packet, it MUST be listed
+as an allowed `type`, above.
+
+
+
+update request { ... }::
+
+`Status-Server` packet contents are fixed and cannot
+be edited.
+
+For other packet types, you can create the contents
+here.  The section MUST be "update request", and
+anything else will cause a parse error.
+
+We RECOMMEND that you use packet contents which
+lets the other end easily tell that they are not
+"real" packets from a NAS.
+
+The example here is for Access-Request.  The
+contents will vary by other packet types.
+
+The module will automatically update the contents
+of the Event-Timestamp attribute to be the time
+when the packet is sent.  The module will also
+automatically add a Proxy-State attribute.
+
+WARNING: Do NOT do SQL queries, LDAP queries, dynamic
+expansions, etc. in this section.  The contents are
+created when a connection is opened, and are not
+changeable after that.
+
+
+
+
+udp { ... }:: UDP is configured here.
+
+
+
+NOTE: Don't change anything if you are not sure.
+
+
+
+interface:: Interface to bind to.
+
+
+
+max_packet_size:: Our max packet size. may be different from the parent.
+
+
+
+recv_buff:: How big the kernel's receive buffer should be.
+
+
+
+send_buff:: How big the kernel's send buffer should be.
+
+
+
+src_ipaddr:: IP we open our socket on.
+
+
+
+max_connections:: Limit the number of connections to the home server.
+
+Recommended values are `4..1024`.
+
+Default is `32`.
+
+
+
+connection { ... }:: Per-connection configurations.
+
+
+connect_timeout:: Timeout on the initial connection attempt.
+
+If the connection isn't open after this time, it is marked dead.
+
+
+
+reconnect_delay:: Timeout on subsequent reconnection attempts.
+
+i.e. if there is an error writing packets to the socket,
+it is closed, and the module tries to connect the socket.
+
+
+
+idle_timeout:: If the socket is idle for this length of time,
+it is closed.
+
+Use `0` for `no timeout`.
+
+
+
+zombie_period:: If the home server does not reply to a packet, the
+`zombie_period` starts.
+
+The connection is marked `zombie`, and isn't used to send new packets.
+If there are no responses within `zombie_period`, the server either
+closes the connection (no `status_check`), or starts pinging the
+home server (`status_check = Status-Server`).
+
+
+
+## Packets
+
+Each packet can have its own retransmission timers.
+
+The sections are named for each packet type. The contents
+are the same for all packet types.  Only the relevant ones
+are parsed (see `type` above).
+
+
+
+### Access requests packets
+
+
+initial_retransmission_time::  If there is no response within this time,
+the module will retransmit the packet.
+
+Value should be `1..5`.
+
+
+
+maximum_retransmission_time:: The maximum time between retransmissions.
+
+Value should be `5..30`
+
+
+
+[NOTE]
+====
+  * The following are maximums that *all* apply.
+
+i.e. if any one of the limits is hit, the retransmission stops.
+====
+
+
+
+maximum_retransmission_count:: How many times the module will send the packet
+before giving up.
+
+Value should be `1..20` _(0 == retransmit forever)_
+
+
+
+maximum_retransmission_duration:: The total length of time the module will
+try to retransmit the packet.
+
+Value should be `5..60`
+
+
+
+### Accounting Packets
+
+i.e. If you want `retransmit forever`, you should set:
+
+  maximum_retransmission_time = 0
+  maximum_retransmission_count = 0
+
+
+
+### CoA Packets
+
+
+
+### Disconnect packets
+
+
+
+### Status-Server packets
+
+The configuration here helps the module determine if a home
+server is alive and responding to requests.
+
+WARNING: The `Status-Server` packets CANNOT be proxied.
+
+
+== Default Configuration
+
+```
+radius {
+	transport = udp
+#	max_attributes = 255
+	type = Access-Request
+	type = Accounting-Request
+#	replicate = no
+#	synchronous = no
+#	no_connection_fail = no
+#	originate = no
+	status_checks {
+		type = Status-Server
+#		update request {
+#			&User-Name := "test-user"
+#			&User-Password := "this-is-not-a-real-password"
+#			&NAS-Identifier := "Status check.  Are you alive?"
+#			&Event-Timestamp = 0
+#		}
+	}
+	udp {
+		ipaddr = 127.0.0.1
+		port = 1812
+		secret = testing123
+#		interface = "eth0"
+#		max_packet_size = 4096
+#		recv_buff = 4096
+#		send_buff = 4096
+#		src_ipaddr = ""
+	}
+#	max_connections = 32
+	connection {
+		connect_timeout = 5
+		reconnect_delay = 5
+		idle_timeout = 5
+		zombie_period = 10
+	}
+	Access-Request {
+		initial_retransmission_time = 2
+		maximum_retransmission_time = 16
+		maximum_retransmission_count = 2
+		maximum_retransmission_duration = 30
+	}
+	Accounting-Request {
+		initial_retransmission_time = 2
+		maximum_retransmission_time = 16
+		maximum_retransmission_count = 5
+		maximum_retransmission_duration = 30
+	}
+	Coa-Request {
+		initial_retransmission_time = 2
+		maximum_retransmission_time = 16
+		maximum_retransmission_count = 5
+		maximum_retransmission_duration = 30
+	}
+	Disconnect-Request {
+		initial_retransmission_time = 2
+		maximum_retransmission_time = 16
+		maximum_retransmission_count = 5
+		maximum_retransmission_duration = 30
+	}
+	Status-Server {
+		initial_retransmission_time = 2
+		maximum_retransmission_time = 16
+		maximum_retransmission_count = 5
+		maximum_retransmission_duration = 30
+	}
+}
+```

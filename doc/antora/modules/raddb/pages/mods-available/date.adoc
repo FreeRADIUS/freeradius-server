@@ -1,0 +1,91 @@
+
+
+
+
+= Date Module
+
+The `date` module xlat does convert time formats.
+
+
+
+## Configuration Settings
+
+
+
+### Simple date
+
+
+format::
+
+The `xlat` performs in three modes depending on the input it
+is passed.
+
+The input string can be:
+
+  - an attribute name of a date or integer attribute;
+  - an attribute name of a string attribute;
+  - the fixed strings `request` or `now`.
+
+."Attribute" mode:
+
+If the given attribute is of `date` or `integer` type, the date
+xlat will convert it to a `time` string in the format of the
+format config item.
+
+If the given attribute is a `string` type, the `xlat` will attempt
+to parse it in the format specified by the format config item,
+and will expand to a Unix timestamp (seconds since the epoch).
+
+."Get time" mode:
+
+If the input is the string `request`, the `xlat` will format the
+time the current request packet arrived according to the format
+string, and return it as a string.
+
+If the input is the string `now`, the `xlat` will behave as
+above, for the current time.
+
+See also the core provided expansions which are equivalent to
+`request` and `now`, but return numerical values:
+
+[options="header,autowidth"]
+|===
+| Parameter | Description
+| %l        | request time in seconds since the epoch.
+| %M        | request time microsecond component.
+| %c        | current time in seconds since the epoch.
+| %C        | current time microsecond component.
+|===
+
+
+
+utc::
+
+If `utc` is enabled then any conversions from a date
+attribute to a `string` will be made as UTC, not localtime.
+
+.Default is to use localtime.
+
+
+
+### ISO format
+
+The core `xlat`, `%T` returns the request timestamp in `ISO` format
+including milliseconds. This expansion returns it without the
+millisecond component.
+
+Use e.g. `%{date_iso:request}:`
+
+
+== Default Configuration
+
+```
+date {
+	format = "%b %e %Y %H:%M:%S %Z"
+#	utc = no
+}
+date date_iso {
+	format = "%Y-%m-%dT%H:%M:%SZ"
+	utc = yes
+}
+```

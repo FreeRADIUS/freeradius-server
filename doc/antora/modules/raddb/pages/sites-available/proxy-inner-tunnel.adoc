@@ -1,0 +1,42 @@
+
+
+
+
+
+
+This example is very simple.  All inner tunnel requests get
+proxied to another RADIUS server.
+
+
+Do other things here, as necessary.
+
+e.g. run the "realms" module, to decide how to proxy
+the inner tunnel request.
+
+
+You should update this to be one of your realms.
+
+
+This is necessary so that the inner tunnel EAP-MSCHAPv2
+method can be called.  That method takes care of turning
+EAP-MSCHAPv2 into plain MS-CHAPv2, if necessary.
+
+
+== Default Configuration
+
+```
+#	This is a virtual server that handles *only* inner tunnel
+#	requests for EAP-TTLS and PEAP types.
+server proxy-inner-tunnel {
+recv Access-Request {
+	update control {
+		&Proxy-To-Realm := "example.com"
+	}
+}
+authenticate eap {
+	eap
+}
+post-proxy {
+}
+}
+```

@@ -1,0 +1,134 @@
+
+
+
+
+
+In v4, all "server" sections MUST start with a "namespace"
+parameter.  This tells the server which protocol is being used.
+
+All of the subsequent "listen" sections in this server will
+only accept packets for that protocol.
+
+
+
+Type of VMPS packets to listen for.
+
+VMPS sockets only support IPv4 addresses.
+
+Port on which to listen.
+Allowed values are:
+integer port number
+1589 is the default VMPS port.
+
+Some systems support binding to an interface, in addition
+to the IP address.  This feature isn't strictly necessary,
+but for sites with many IP addresses on one interface,
+it's useful to say "listen on all addresses for
+eth0".
+
+If your system does not support this feature, you will
+get an error if you try to use it.
+
+interface = eth0
+
+If you have switches that are allowed to send VMPS, but NOT
+RADIUS packets, then list them here as "client" sections.
+
+Note that for compatibility with RADIUS, you still have to
+list a "secret" for each client, though that secret will not
+be used for anything.
+
+
+This section is called when it receives a Join-Request.
+
+
+Some requests may not have a MAC address.  Try to
+create one using other attributes.
+
+Do a simple mapping of MAC to VLAN.
+
+See radiusd.conf for the definition of the "mac2vlan"
+module.
+
+mac2vlan
+
+required VMPS reply attributes
+
+
+
+If you have VLAN's in a database, you can select
+the VLAN name based on the MAC address.
+
+&VLAN-Name = "%{sql:select ... where mac='%{Mac}'}"
+
+
+This section is called when it sends a Join-Response.
+
+
+
+This section is called when it receives a Reconfirm-Request.
+
+
+Add contents here!
+
+
+
+This section is called when it receives a Reconfirm-Response
+
+
+Add contents here!
+
+
+
+This section is called when not responding to packets.
+
+
+== Default Configuration
+
+```
+#	As of version 2.0.0, the server also supports the VMPS
+#	protocol.
+server vmps {
+	namespace = vmps
+	listen {
+		transport = udp
+		type = Join-Request
+		type = Reconfirm-Request
+		udp {
+			ipaddr = *
+			port = 1589
+		}
+	}
+	recv Join-Request {
+		if (!&MAC-Address) {
+			if (&Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
+				update request {
+					&MAC-Address = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
+				}
+			}
+			else {
+				update request {
+					&MAC-Address = &Cookie
+				}
+			}
+		}
+		update reply {
+			&Packet-Type = Join-Response
+			&Cookie = &MAC-Address
+			&VLAN-Name = "please_use_real_vlan_here"
+		}
+	}
+	send Join-Response {
+	     ok
+	}
+	recv Reconfirm-Request {
+		ok
+	}
+	recv Reconfirm-Response {
+		ok
+	}
+	send Do-Not-Respond {
+	     ok
+	}
+}
+```

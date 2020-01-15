@@ -1,0 +1,34 @@
+
+
+
+
+= ADFAB PSK Module
+
+The `abfab_psk_sql` module is used to authorize PSK from `link:https://tools.ietf.org/html/rfc7831[ABFAB]` trust router.
+
+
+
+## Configuration Settings
+
+
+
+sql { ... }:: See `sql` documentation.
+
+
+driver:: Database driver.
+
+
+
+sqlite { ... }:: Database statement based on `driver` setting.
+
+
+== Default Configuration
+
+```
+sql psksql {
+	driver = "rlm_sql_sqlite"
+	sqlite {
+		filename = "/var/lib/trust_router/keys"
+	}
+}
+```

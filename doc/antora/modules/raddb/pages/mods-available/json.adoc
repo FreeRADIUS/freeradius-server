@@ -1,0 +1,139 @@
+
+
+
+
+= JSON Module
+
+The `json` module registers a `map` function to allow mapping fields
+from JSON structures to attributes.
+
+The path through the JSON document's tree is specified with FR jpath,
+which is the FreeRADIUS implementation of the jpath grammar described
+at http://goessner.net/articles/JsonPath/
+
+Selectors currently implemented are:
+
+[options="header,autowidth"]
+|===
+| Selector                 | Description
+| $                        | Root node (only valid at the start of the path).
+| @                        | Current node (only valid at the start of the path).
+| .<name>                  | A field within an object.
+| [<idx>]                  | Index within an array.
+| [<start>:<end>[:<step>]] | A slice within an array (identical to the Python syntax).
+| [<idx>,<start>:<end>]    | Multiple indexes/slices within an array.
+| .*                       | All the children of the current node.
+| ..                       | Recursive descent.
+|===
+
+[NOTE]
+====
+  * Automatic casting will occur between JSON and attribute types where possible.
+  * Assignment of JSON objects/arrays to strings is supported, in which case the
+ JSON serialized form of the object/array is used.
+  * If a jpath matches multiple nodes, unless the map includes the `+=` operator
+  * only the first node's value will be used.
+  * If the map uses `+=` then multiple instances of the attribute will be created,
+ each holding a different node value.
+====
+
+
+
+## Configuration Settings
+
+This module takes no configuration.
+
+
+
+
+## Sample
+
+Assuming that you have the url http://example.org/api/user/$username
+service replying some JSON content as below.
+
+[source, json]
+----
+{
+ "user": "bob",
+ "account number": 7124503,
+   "groups": {
+     "admin",
+     "networks",
+     "bob"
+   }
+ }
+}
+----
+
+Then, you can call using the module `rest` and access the JSON fields as below example.
+
+[source, unlang]
+----
+map json "%{rest:GET http://example.org/api/user/%{User-Name}" {
+ &Tmp-Integer-0  := '$.account number'
+ &Group          += '$.groups.*'
+}
+----
+
+
+
+## Expansions
+
+The rlm_json provides the below xlat's functions to handle the JSON string.
+
+### %{jpathvalidate:...}
+
+Determine if a jpath expression is valid.
+
+NOTE: Validate parser for everything except unions and expressions.
+
+.Return: _size_t_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := '$.my.json.payload[1]'
+}
+update reply {
+    &Reply-Message := "Validation of %{control:Tmp-String-0} is %{jpathvalidate:$.my.json.payload[1]}"
+}
+----
+
+.Output
+
+```
+Validation of $.my.json.payload[1] is 20:$.my.json.payload[1]
+```
+
+### %{jsonquote:...}
+
+Escapes string for use as a JSON string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+  &Tmp-String-0 := "caipirinha/gelada"
+}
+update reply {
+  &Reply-Message := "The string %{control:Tmp-String-0} should be %{jsonquote:%{control:Tmp-String-0}} to be a valid JSON string."
+}
+----
+
+.Output
+
+```
+The string caipirinha/gelada should be caipirinha\\/gelada to be a valid JSON string.
+```
+
+== Default Configuration
+
+```
+json {
+}
+```

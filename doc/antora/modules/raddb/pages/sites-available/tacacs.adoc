@@ -1,0 +1,267 @@
+
+
+
+
+
+
+Port on which to listen.
+Allowed values are:
+integer port number
+49 is the default TACACS+ port.
+
+Type of packets to listen for.  Here, it is TACACS+.
+
+Some systems support binding to an interface, in addition
+to the IP address.  This feature isn't strictly necessary,
+but for sites with many IP addresses on one interface,
+it's useful to say "listen on all addresses for
+eth0".
+
+If your system does not support this feature, you will
+get an error if you try to use it.
+
+interface = eth0
+
+
+
+This section is called when it receives an Authentication.
+
+
+draft-ietf-opsawg-tacacs section 4.4.2
+ASCII is very generic and driven via unlang so go wild!
+
+if (&User-Name && &User-Password) {
+if (!&TACACS-User-Message) {
+update reply {
+	TACACS-Authentication-Status = Get-Data
+	TACACS-Authentication-Flags = No-Echo
+	TACACS-Server-Message = "pin: "
+}
+handled
+}
+if (&TACACS-User-Message != "1234") {
+reject
+}
+}
+
+
+
+
+
+
+
+
+
+
+
+This section is called when it sends an Authentication.
+
+
+
+
+
+
+Proxying of TACACS+ requests is NOT supported.
+
+
+
+
+== Default Configuration
+
+```
+#	As of version 4.0.0, the server also supports the TACACS+
+#	protocol.
+server tacacs {
+	namespace = tacacs
+	listen {
+		ipaddr = *
+		transport = tcp
+		tcp {
+			port = 49
+			type = tacacs
+		}
+		type = Authentication
+		type = Authorization
+	}
+	recv Authentication {
+		if (&TACACS-Sequence-Number > 1) {
+			update request {
+				TACACS-Authentication-Type = &session-state:TACACS-Authentication-Type
+			}
+		}
+		switch &TACACS-Authentication-Type {
+			case "ASCII" {
+				if (&TACACS-Sequence-Number == 1) {
+					update request {
+						&User-Name = &TACACS-User-Name
+					}
+				} else {
+					update request {
+						User-Name = &session-state:User-Name
+						User-Password = &session-state:User-Password
+					}
+				}
+				if (!&User-Name) {
+					if (&TACACS-User-Message) {
+						update request {
+							&User-Name = &TACACS-User-Message
+							&TACACS-User-Message !* "*"
+						}
+					} else {
+						update reply {
+							TACACS-Authentication-Status = Get-User
+							TACACS-Server-Message = "username: "
+						}
+						handled
+					}
+				}
+				if (!&User-Password) {
+					if (&TACACS-User-Message) {
+						update request {
+							&User-Password = &TACACS-User-Message
+							&TACACS-User-Message !* "*"
+						}
+					} else {
+						update reply {
+							TACACS-Authentication-Status = Get-Pass
+							TACACS-Server-Message = "password: "
+						}
+						handled
+					}
+				}
+			}
+			case "PAP" {
+				if (&TACACS-Sequence-Number == 1) {
+					if (!&TACACS-User-Name) {
+						update reply {
+							&TACACS-Server-Message = "missing User-Name field"
+						}
+						invalid
+					}
+					update request {
+						&User-Name = &TACACS-User-Name
+						&User-Password = &TACACS-Data
+					}
+				} else {
+					update request {
+						User-Name = &session-state:User-Name
+					}
+				}
+				if (!&User-Password) {
+					if (&TACACS-User-Message) {
+						update request {
+							&User-Password = &TACACS-User-Message
+						}
+					} else {
+						update reply {
+							TACACS-Authentication-Status = Get-Pass
+							TACACS-Server-Message = "password: "
+						}
+						handled
+					}
+				}
+			}
+			case "CHAP" {
+				if (&TACACS-Sequence-Number > 1) {
+					invalid
+				}
+				if (&TACACS-User-Name && &TACACS-Data =~ /^(.)(.{16})(.{16})$/) {
+					update request {
+						&User-Name = &TACACS-User-Name
+						&CHAP-Challenge = "%{2}"
+						&CHAP-Password = "%{1}%{3}"
+					}
+				} else {
+					update reply {
+						&TACACS-Server-Message = "missing User-Name and/or Data fields"
+					}
+					invalid
+				}
+			}
+			case "MSCHAP" {		# UNTESTED
+				if (&TACACS-Sequence-Number > 1) {
+					invalid
+				}
+				if (&TACACS-User-Name && &TACACS-Data =~ /^(.)(.{8})(.{50})$/) {
+					update request {
+						&User-Name = &TACACS-User-Name
+						&MS-CHAP-Challenge = "%{2}"
+						&MS-CHAP-Response = "%{1}%{3}"
+					}
+				} else {
+					update reply {
+						&TACACS-Server-Message = "missing User-Name and/or Data fields"
+					}
+					invalid
+				}
+			}
+			case "MSCHAPv2" {	# UNTESTED
+				if (&TACACS-Sequence-Number > 1) {
+					invalid
+				}
+				if (&TACACS-User-Name && &TACACS-Data =~ /^(.)(.{16})(.{50})$/) {
+					update request {
+						&User-Name = &TACACS-User-Name
+						&MS-CHAP-Challenge = "%{2}"
+						&MS-CHAP2-Response = "%{1}%{3}"
+					}
+				} else {
+					update reply {
+						&TACACS-Server-Message = "missing User-Name and/or Data fields"
+					}
+					invalid
+				}
+			}
+			case {
+				update reply {
+					&TACACS-Server-Message = "unsupported authentication type"
+				}
+				invalid
+			}
+		}
+		files
+		mschap
+		chap
+		pap
+	}
+	send Authentication {
+		switch &TACACS-Authentication-Type {
+			case "ASCII" {
+				update session-state {
+					&TACACS-Authentication-Type := &TACACS-Authentication-Type
+					&User-Name := &User-Name
+					&User-Password := &User-Password
+				}
+			}
+			case {
+				update reply {
+					&reply:TACACS-Server-Message = &reply:Reply-Message
+				}
+			}
+		}
+	}
+	recv Authorization {
+		update config {
+			&Auth-Type = Accept
+		}
+	}
+	send Authorization {
+	}
+	recv Accounting-Request {
+		update config {
+			&Auth-Type = Accept
+		}
+	}
+	send Accounting-Response {
+	}
+	authenticate mschap {
+		mschap
+	}
+	authenticate chap {
+		chap
+	}
+	authenticate pap {
+		pap
+	}
+}
+```

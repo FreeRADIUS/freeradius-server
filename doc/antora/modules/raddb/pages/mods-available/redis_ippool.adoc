@@ -1,0 +1,146 @@
+
+
+
+
+= Redis IP Pool Module
+
+The `redis_ippool` module implements a fast and scalable IP
+allocation system using Redis.
+
+The module supports both IPv4 and IPv6 address and prefix
+allocation, and implements pre-allocation for use with DHCPv4.
+
+Lease allocation throughput scales with the number of members in
+the Redis cluster.
+
+
+
+## Configuration Settings
+
+Al configuration items at this level (below the `redis` block)
+are polymorphic, meaning `xlats`, attribute references, literal values
+and execs may be specified.
+
+For example `pool_nam` could be `pool_name = 'my_test_pool'` if only a
+single pool were being used.
+
+
+pool_name:: Name of the pool from which leases are allocated.
+
+
+
+offer_time:: How long a lease is reserved for after making an offer.
+
+If no value is provided, the value from lease_time is used
+for initial allocations.
+
+NOTE: No value should be provided for _PPP/VPNs_, this is mainly for the
+_DORA_ flow in _DHCP_.
+
+
+
+lease_time:: How long a lease is allocated.
+
+
+
+wait_num:: How many slaves we want to acknowledge allocations or updates.
+
+
+
+wait_timeout:: How long we wait for slaves to acknowledge writing.
+
+
+
+gateway:: Gateway identifier, usually `link:https://freeradius.org/rfc/rfc2865.html#NAS-Identifier[NAS-Identifier]` or the actual Option 82 gateway.
+Used for bulk lease cleanups.
+
+
+
+device:: The device identifier.
+
+This is usually the MAC address.  It could be a combination
+of attributes, a `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` or a certificate serial number
+(if the number of sessions were limited to one per
+user/serial).
+
+
+
+requested_address:: The IP address being renewed or released.
+
+
+
+ipv4_integer:: Whether IPv4 addresses should be cast to integers, for renew operations.
+
+
+
+
+allocated_address_attr:: List and attribute where the allocated address is written to.
+
+
+
+range_attr:: List and attribute where the `Pool-Range` ID (if set) is written to.
+
+The idea of the `Pool-Range` is that it provides a key into other datastores
+or caches, which store the additional options associated with the range an
+IP address belongs to.
+
+There may be multiple ranges of IP address contained within any given pool,
+which is why this is provided in addition to the pool name.
+
+
+
+expiry_attr:: If set - the list and attribute to write the remaining lease time to.
+
+This attribute can be populated on alloc, or renew, if an
+IP address was available for the alloc.
+
+
+
+copy_on_update:: If true - Copy the value of ip_address to the attribute specified by
+`allocated_address_attr` when performing an update/renew.
+
+This behavior is needed for DHCP where we need to send back
+`DHCP-Your-IP-Address` in ACKs.
+
+
+
+redis { ... }:: Redis connection settings.
+
+Identical to all other Redis based modules.
+
+NOTE: See the `redis` module for more information.
+
+
+
+== Default Configuration
+
+```
+redis_ippool {
+	pool_name = &control:Pool-Name
+	offer_time = 30
+	lease_time = 3600
+#	wait_num = 10
+#	wait_timeout = 2
+#	gateway = &NAS-Identifier
+	device = &DHCP-Client-Hardware-Address
+	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+#	ipv4_integer = yes
+	allocated_address_attr = &reply:DHCP-Your-IP-Address
+	range_attr = &reply:Pool-Range
+	expiry_attr = &reply:DHCP-IP-Address-Lease-Time
+	copy_on_update = yes
+	redis {
+		server = localhost
+		pool {
+			start = 0
+			min = ${thread[pool].num_workers}
+			max = ${thread[pool].num_workers}
+			spare = 1
+			uses = 0
+			lifetime = 0
+			retry_delay = 30
+			idle_timeout = 60
+		}
+	}
+}
+```

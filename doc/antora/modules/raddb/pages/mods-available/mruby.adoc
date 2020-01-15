@@ -1,0 +1,35 @@
+
+
+
+
+= Ruby Module
+
+The `mruby` module processes attributes through a Ruby interpreter.
+
+  * Please see the `src/modules/rlm_mruby/example.rb` sample.
+  * Please see https://www.ruby-lang.org/en/documentation/ for more
+information about the Ruby language.
+
+
+
+## Configuration Settings
+
+If `mruby` is called for a section which does not have a function defined,
+it will return `noop`.
+
+
+filename:: Module to load functions from.
+
+
+
+module:: Name of the loaded module.
+
+
+== Default Configuration
+
+```
+mruby {
+	filename = "${modconfdir}/${.name}/example.rb"
+	module = "Radiusd"
+}
+```

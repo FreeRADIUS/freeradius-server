@@ -1,0 +1,26 @@
+
+
+
+
+= Expiration Module
+
+The `expiration` module manages the `Expiration` attribute.
+
+It should be included in the *end* of the `recv` section in order to
+handle user `Expiration`. It should also be included in the `instantiate`
+section in order to register the `Expiration` compare function.
+
+
+
+## Configuration Settings
+
+This module takes no configuration.
+
+
+
+== Default Configuration
+
+```
+expiration {
+}
+```

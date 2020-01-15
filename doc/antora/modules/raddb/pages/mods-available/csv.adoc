@@ -1,0 +1,171 @@
+
+
+
+
+= CSV Module
+
+Read CSV files and use them in maps.
+
+The CSV files MUST be formatted according to `https://tools.ietf.org/html/rfc4180[RFC 4180]`.
+
+WARNING: Multi-line fields are NOT allowed.
+
+The CSV map can be used in a `map` section, as in the following example.
+
+  map csv "%{User-Name}" {
+  }
+
+The argument to "map" is dynamically expanded.  The result is taken
+as a string, and is used as the value of the "key".  The key is
+then looked up in the cached CSV file.  The fields are then mapped
+to the attributes on the left side of the map.
+
+NOTE: All key lookups are done as string comparisons.  All data in
+the CSV files are treated as strings.
+
+## Configuration Settings
+
+
+filename:: The file which contains the CSV data.
+
+
+
+delimiter:: The field delimiter. MUST be a one-character string.
+
+
+
+header:: Whether or not there is a one-line header in the file.
+
+If the value is set to 'yes', then the CSV file MUST contain
+a header as the first line of the file.  That header line
+must contain the field names.
+
+
+
+fields:: A string which defines field names.
+
+This configuration item is used only when `header = no`.
+The content of the `fields` item must be the same as in https://tools.ietf.org/html/rfc4180[RFC 4180].
+That is, a list of field names, separated by the `delimiter`
+character.
+
+[NOTE]
+=====
+  * the header MUST have the same number of fields as are in the CSV file.
+  * the field names MUST NOT include whitespace.
+  * Fields which are not used should have no name
+
+e.g. *"foo,,bar"* defines 3 fields, where the second is unused.
+=====
+
+
+index_field:: The name of the field which is used to index the
+entries.
+
+It can be any one of the field names defined above.
+
+The CSV rows are normally placed into a hash table, indexed
+by this field.  A hash table allows for fast lookups, no
+matter the size of the CSV file.
+
+If the `data_type` of the index field is `ipaddr` or
+`ipv6addr`, then the CSV rows are placed into a prefix
+trie, indexed by this field.  The prefix trie allows for
+faast prefix lookups.
+
+When looking up entries in a hash table, the key must match
+the `index_field` exactly.  When looking up entries in a
+prefix trie, the closest enclosing prefix is matched.  This
+prefix match allows you to place `192.0.2/24` as an index
+field in the file, and then lookups of `192.0.2.1` will
+return that row.
+
+
+
+data_type:: The data type of the index_field.
+
+This data type MUST be one of the data types known to FreeRADIUS.
+e.g. "string", "ipaddr", etc.
+
+
+
+key:: The key string used to look up entries via the `index_field`.
+
+When the `csv` module is listed in a processing section,
+the `key` is used to find the appropriate entry.  The `update`
+section below is then applied.
+
+
+
+### Mapping of CSV fields to RADIUS dictionary attributes.
+
+WARNING: Although this format is almost identical to the `unlang`
+update section format, it does *NOT* mean that you can use other
+`unlang` constructs in module configuration files.
+
+Configuration items are in the format:
+
+  <fr attr> <op> <csv field>
+
+Where:
+
+[options="header,autowidth"]
+|===
+| Parameter   | Description
+| <fr attr>   | Is the destination RADIUS attribute
+                with any valid list and request qualifiers.
+| <op>        | Is any assignment attribute (=, :=, +=, -=).
+| <csv field> | Is the name of a field from the CSV file, as taken
+                from the `fields` configuration item.
+|===
+
+Request and list qualifiers may be placed after the `update`
+section name to set default destination requests/lists
+for `<fr attr>s` with no list qualifiers.
+
+NOTE: CSV field names should be single quoted unless you want
+the name to be derived from an xlat expansion, or an attribute ref.
+
+update { ... }::
+
+
+
+The module also exports a `map` expansion, via the syntax:
+
+map cvs key { ... }
+
+Where `csv` is the name of the module, and `key` is an expansion
+as given the the key` field above.  For example, the map could
+look like this:
+
+map csv &User-Name {
+&reply:Reply-Message := 'three'
+&reply:Filter-Id := 'four'
+}
+
+This map does the same operations as the key / update
+fields given above.  The benefit here is that the key can
+be dynamically changed, depending on the needs of the
+current section.
+
+
+== Default Configuration
+
+```
+#		Attribute-Name := field1
+#		Attribute-Name := field2
+#		...
+csv {
+	filename = ${modconfdir}/csv/${.:instance}
+	delimiter = ","
+	header = no
+	fields = "apple,,orange,pear"
+	index_field = "apple"
+	data_type = string
+	key = &User-Name
+	update reply {
+	       &Reply-Message := 'orange'
+	       &Filter-Id := 'pear'
+	}
+}
+```

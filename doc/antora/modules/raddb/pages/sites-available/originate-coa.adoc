@@ -1,0 +1,100 @@
+
+
+
+
+= Originate CoA-Request packets
+
+The server can originate Change of Authorization (CoA) or
+Disconnect request packets.  These packets are used to dynamically
+change the parameters of a users session (bandwidth, etc.), or
+to forcibly disconnect the user.
+
+There are some caveats.  Not all NAS vendors support this
+functionality.  Even for the ones that do, it may be difficult to
+find out what needs to go into a CoA-Request or Disconnect-Request
+packet.  All we can suggest is to read the NAS documentation
+available from the vendor.  That documentation SHOULD describe
+what information their equipment needs to see in a CoA packet.
+
+This information is usually a list of attributes such as:
+
+
+CoA packets can be originated when a normal Access-Request or
+Accounting-Request packet is received.  Simply create a subrequest,
+and call the `radius` module to send the packet.
+
+
+Note that this functionality is configured differently from v3.
+
+
+
+This is an *example* virtual server.  It accepts `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Request[Accounting-Request]`
+packets.  It then sends a `Disconnect-Request` packet for every
+`link:https://freeradius.org/rfc/rfc2866.html#Accounting-Request[Accounting-Request]` packet it receives.
+
+You should NOT enable this virtual server.  Instead, use it as an
+example, and copy the "subrequest" section to the virtual server
+that is actually receiving `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Request[Accounting-Request]` packets.
+
+
+Listen on the Accounting port.
+
+
+
+
+The subrequest begins empty, so copy all necessary
+attributes over.
+
+
+
+Call the `radius` module to send a CoA packet.
+
+Note that you MUST create an instance of the
+`radius` module, called "radius.coa" in order for
+this to work.
+
+See the `radius` module for more documentation on
+how it works.
+
+
+
+
+== Default Configuration
+
+```
+#	NAS-IP-Address (or NAS-IPv6 address)
+#	NAS-Identifier
+#	User-Name
+#	Acct-Session-Id
+#	subrequest Disconnect-Request {
+#	       &User-Name = &parent.request:User-Name
+#	       &Acct-Session-Id = &parent.request:Acct-Session-Id
+#	       &NAS-IP-Address = &parent.NAS-IP-Address}
+#	       ...
+#	}
+server originate-coa.example.com {
+	namespace = radius
+	listen {
+		type = Accounting-Request
+		transport = udp
+		udp {
+			ipaddr = *
+			port = 1812
+		}
+	}
+recv Accounting-Request {
+	subrequest Disconnect-Request {
+		update request {
+			&User-Name := &parent.request:User-Name
+			&Acct-Session-Id := &parent.request:Acct-Session-Id
+			&NAS-Identifier := &parent.request:NAS-Identifier
+			&NAS-IP-Address := &parent.request:NAS-IP-Addres
+			&NAS-IPv6-Address := &parent.request:NAS-IPv6-Address
+			&NAS-Port := &parent.request:NAS-Port
+			&Framed-IP-Address := &parent.request:Framed-IP-Address
+		}
+		radius.coa
+	}
+}  # recv Accounting-Request
+}
+```

@@ -1,0 +1,63 @@
+
+
+
+
+= ARP Virtual Server
+
+This is a virtual server that handles ARP.
+
+It allows the administrator to log ARP packets on the
+local network.  The idea is that the ARP packets can be
+checked against a database (e.g. DHCP), or stored in
+an ARP-specific database.  If something funny is
+going on, it can produce syslog messages informing the
+administrator.
+
+See `arpwatch` for examples of what it should do.   For now,
+this is just a toy example.
+
+NOTE: It NEVER sends an ARP packet.
+
+
+
+## Example configuration
+
+
+
+## server arp { ... }
+
+This is the default `arp` virtual server.
+
+
+### listen { ... }
+
+Please see `listen` for more.
+
+
+type:: ARP is type arp.
+
+
+
+interface:: The only configuration possible for ARP
+is the name of the interface.
+
+
+
+### arp { ... }
+
+If you need to know the interface, use `%{listen:interface}`
+
+
+== Default Configuration
+
+```
+server arp {
+	listen {
+		type = arp
+		interface = en1
+	}
+	arp {
+		ok
+	}
+}
+```

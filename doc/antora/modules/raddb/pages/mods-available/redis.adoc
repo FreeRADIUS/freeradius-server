@@ -1,0 +1,160 @@
+
+
+
+
+= REDIS Module
+
+The `redis` module handles connections to a redis database,
+and the `%{redis: ...}` dynamic expansion.
+
+See also https://redis.io/documentation for documentation on the
+Redis database.
+
+
+
+## Configuration Settings
+
+This module connects to a Redis database.  Other modules
+(e.g. `redis_ippool`) perform task-specific functions using Redis.
+
+
+server:: The server to connect to.
+
+If using Redis cluster, multiple 'bootstrap' servers may be
+listed here (as separate config items). These will be contacted
+in turn until one provides us with a valid map for the cluster.
+
+Server strings may contain unique ports e.g.:
+
+  server = '127.0.0.1:30001'
+  server = '[::1]:30002'
+
+NOTE: Instantiation failure behaviour is controlled by `pool.start`
+as with every other module, but with clustering, the `pool { ... }`
+section determines limits for each node in the cluster, not the
+cluster as a whole.
+
+
+The default port.
+
+password:: The password used to authenticate to the server.
+
+We recommend using a strong password.
+
+
+
+pool { ... }::
+
+Information for the connection pool.  The configuration items below
+are the same for all modules which use the new connection pool.
+
+
+start:: Connections to create during module instantiation.
+If the server cannot create specified number of connections
+during instantiation it will exit.
+
+Set to `0` to allow the server to start without the web service
+being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one
+is requested, the request will NOT get a connection.
+
+Setting `max` to LESS than the number of threads means
+that some threads may starve, and you will see errors
+like 'No connections available and at max connection limit'
+
+Setting `max` to MORE than the number of threads means
+that there are more connections than necessary.
+
+
+
+spare:: Spare connections to be left idle.
+
+NOTE: Idle connections WILL be closed if `idle_timeout`
+is set.  This should be less than or equal to `max` above.
+
+
+
+uses:: Number of uses before the connection is closed.
+
+NOTE: `0` means "infinite".
+
+
+
+retry_delay:: The number of seconds to wait after the server tries
+to open a connection, and fails.
+
+During this time, no new connections will be opened.
+
+
+
+lifetime:: The lifetime (in seconds) of the connection.
+
+NOTE: `0` means "infinite".
+
+
+
+cleanup_interval:: The pool is checked for free connections every
+`cleanup_interval`.
+
+If there are free connections, then one of them is closed.
+
+
+
+idle_timeout:: The idle timeout (in seconds).
+
+A connection which is unused for this length of time will be closed.
+
+NOTE: `0` means "infinite".
+
+
+
+connect_timeout:: Connection timeout (in seconds).
+
+The maximum amount of time to wait for a new connection to be established.
+
+
+
+[NOTE]
+====
+All configuration settings are enforced.  If a connection is closed because of
+`idle_timeout`, `uses`, or `lifetime`, then the total number of connections MAY
+fall below `min`.
+
+When that happens, it will open a new connection.  It will also log a *WARNING*
+message.
+
+The solution is to either lower the "min" connections,
+or increase lifetime/idle_timeout.
+====
+
+
+== Default Configuration
+
+```
+redis {
+	server = 127.0.0.1
+	port = 6379
+#	password = thisisreallysecretandhardtoguess
+	pool {
+		start = ${thread[pool].num_workers}
+		min = ${thread[pool].num_workers}
+		max = ${thread[pool].num_workers}
+		spare = 1
+		uses = 0
+		retry_delay = 30
+		lifetime = 86400
+		cleanup_interval = 300
+		idle_timeout = 600
+		connect_timeout = 3.0
+	}
+}
+```

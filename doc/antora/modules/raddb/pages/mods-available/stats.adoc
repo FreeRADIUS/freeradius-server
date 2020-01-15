@@ -1,0 +1,33 @@
+
+
+
+
+= Stats Module
+
+The `stats` module tracks packet statistics.
+
+It should be listed *last* in any `send ... { }` section.
+
+When listed in a `send` section, it will increment statistics for
+input / output packets.
+
+When listed in a `recv Status-Server` section, it will add global
+server statistics to the packet.
+
+See `dictionary.freeradius`, and the `FreeRADIUS-Stats4` attributes,
+for a list of which attributes it adds.
+
+
+
+## Configuration Settings
+
+This module takes no configuration.
+
+
+
+== Default Configuration
+
+```
+stats {
+}
+```

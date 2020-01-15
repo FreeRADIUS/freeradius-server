@@ -1,0 +1,63 @@
+
+
+
+
+= Unpack Module
+
+The `unpack` module unpacks binary data from octets type attributes
+into individual attributes.
+
+It is used when vendors put multiple fields into one attribute
+of type "octets".
+
+NOTE: The module is useful only for `xlat`.
+
+
+
+## Syntax
+
+To use it, add it to the `raddb/mods-enabled/` directory.  Then,
+use it on the right-hand side of a variable assignment.
+
+ %{unpack:<data> <offset> <data_type>}
+
+The arguments are three fields:
+
+data::
+
+Either `&Attribute-Name` the name of the attribute to unpack.
+MUST be a `string` or `octets` type.
+or 0xabcdef e.g. hex data.
+
+offset::
+
+The offset into the string from which it starts unpacking. The offset starts
+at zero, for the first attribute.
+
+data_type::
+
+the data type to unpack at that offset. e.g. `integer`, `ipaddr`, `byte`, `short`, etc.
+
+
+
+## Sample
+
+if we have `Class = 0x00000001020304`, then
+
+  %{unpack:&Class 4 uint16}
+
+will unpack octets `4` and `5` as a `uint16`, which has value `0x0304`.
+
+
+
+## Configuration Settings
+
+This module takes no configuration.
+
+
+== Default Configuration
+
+```
+unpack {
+}
+```

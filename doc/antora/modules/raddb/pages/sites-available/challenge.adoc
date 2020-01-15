@@ -1,0 +1,78 @@
+
+
+
+
+
+
+
+
+If there's no State attribute, then this is the request from
+the user.
+
+
+Do authentication for step 2.
+Set the "known good" password to the number
+saved in the session-state list.
+
+
+If the password doesn't match, the user is rejected
+immediately.
+
+
+Set the random number to save.
+
+
+
+Send an Access-Challenge.
+See raddb/policy.d/control for the definition
+of "challenge"
+
+
+
+Do PAP authentication with the password.
+
+
+== Default Configuration
+
+```
+#	This file gives an example of using Challenge-Response
+#	In this example, the user logs in with a password, which has
+#	to be "hello".  The server will send them a challenge
+#	consisting of a random number 0..9.  The user has to respond
+#	with that number.
+listen {
+	type = auth
+	ipaddr = *
+	port = 2000
+	virtual_server = challenge
+}
+server challenge {
+recv Access-Request {
+	if (!State) {
+		update control {
+			Auth-Type := Step1
+			Cleartext-Password := "hello"
+		}
+	}
+	else {
+		update control {
+			Auth-Type := Step2
+			Cleartext-Password := &session-state:Tmp-Integer-0
+		}
+	}
+}
+authenticate step1 {
+	pap
+	update session-state {
+		Tmp-Integer-0 := "%{randstr:n}"
+	}
+	update reply {
+		Reply-Message := &session-state:Tmp-Integer-0
+	}
+	challenge
+}
+authenticate step2 {
+	pap
+}
+}
+```

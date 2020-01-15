@@ -1,0 +1,224 @@
+
+
+
+
+= Client Definitions
+
+The `clients.conf` file defines global clients.  These clients are
+systems which are permitted to send packets to the server.  For
+security, packets from other IP addresses are ignored.
+
+
+
+## Client subsection
+
+A client is defined via a section called `client NAME { ... }`.
+The NAME field is mandatory, and is used as the "short name" of the
+client.
+
+The default configuration allows packets from 127.0.0.1, and no
+other IP address.  This configuration is to allow testing of the
+server after an initial installation.  If you are not going to be
+permitting RADIUS queries from localhost, we suggest that you
+delete, or comment out, the 'localhost' entry.
+
+
+ipaddr:: define the unique IP address (or network) for this client.
+
+NOTE: Only *one* of ipaddr, ipv4addr, ipv6addr may be
+specified for a client.
+
+IPv4 or IPv6 addresses with optional CIDR notation `/<mask>` to
+specify ranges can be used. `ipaddr` will also accept domain
+names, e.g. `example.org`, and will resolve the name via DNS
+(however, see note of recommendation below).
+
+If both A and AAAA records are found, A records will be
+used in preference to AAAA.
+
+
+
+ipv4addr:: Similar to `ipaddr`, but only allows v4
+addresses. Looks up A record for domain names.
+
+  * `*` is "any" address.
+  * `127.0.0.1` is localhost.
+
+
+
+ipv6addr:: Similar to `ipaddr` but only allows v6
+addresses. Looks up AAAA record for domain names.
+
+  * `::` is "any" address.
+  * `::1` is localhost.
+
+
+
+NOTE: We *strongly* recommend using IP addresses instead of
+host names.  Using host names means that the server will do
+DNS lookups when it starts, making it dependent on DNS.
+i.e. If anything goes wrong with DNS, the server won't
+start!
+
+The server also looks up the IP address from DNS once, and
+only once, when it starts.  If the DNS record is later
+updated, the server *will not* see that update.
+
+
+
+proto:: The transport protocol used by this client.
+
+If unspecified, defaults to "udp", which is the traditional
+RADIUS transport.  It may also be "tcp", in which case the
+server will accept connections from this client *only* over TCP.
+
+
+
+secret:: The shared secret use to "encrypt" and "sign"
+packets between the NAS and FreeRADIUS.  You *must*
+change this secret from the default, otherwise it's not
+a secret any more!
+
+The secret can be any string, up to 8k characters in length.
+
+Control codes can be entered via octal encoding,
+e.g. `\101\102` is the same as `AB`
+Quotation marks can be entered by escaping them,
+e.g. `foo\"bar`
+
+An important note on security:  The security of the
+RADIUS protocol depends *completely* on this secret! We
+recommend using a shared secret that is composed of:
+
+  * upper case letters
+  * lower case letters
+  * numbers
+
+And is *at least* 8 characters, but preferably 16 characters in
+length.  The secret *must* be random, and should not be words,
+phrase, or anything else that is recognisable.
+
+The default secret below is only for testing, and should
+not be used in any real environment.
+
+
+
+require_message_authenticator:: Old-style clients do not send a
+`link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` in an `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`. https://tools.ietf.org/html/rfc5080[RFC 5080] suggests
+that all clients *should* include it in an Access-Request. The
+configuration item below allows the server to require it. If a
+client is required to include a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` and it
+does not, then the packet will be silently discarded.
+
+Allowed values: yes, no
+
+
+
+shortname:: The short name is used as an alias for the fully
+qualified domain name, or the IP address.
+
+It is accepted for compatibility with 1.x, but it is no
+longer necessary in >= 2.0.
+
+By default, `shortname` is set to the name of the subsection.
+e.g. if we have `client localhost {...}`, then `shortname`
+is set to `localhost`.
+
+
+
+### Connection limiting
+
+Connection limiting is only for clients which use `proto = tcp`.
+
+The `limit` section is ignored for clients which use UDP
+transport.
+
+
+max_connections:: Limit the number of simultaneous TCP
+connections from a client.
+
+The default is 16.
+Setting this to 0 means "no limit".
+
+
+The per-socket "max_requests" option does not exist.
+
+
+lifetime:: The lifetime, in seconds, of a TCP  connection.
+After this lifetime, the connection will be closed.
+
+Setting this to 0 means "forever".
+
+
+
+idle_timeout:: The idle timeout, in seconds, of a TCP
+connection. If no packets have been received over the
+connection for this time, the connection will be closed.
+
+Setting this to 0 means "no timeout".
+
+We *strongly recommend* that you set an idle timeout.
+
+
+
+## Client examples
+
+
+
+Defining an IPv6 client for `localhost` using the `ipv6addr` option.
+
+
+
+All IPv6 Site-local clients
+
+
+
+Client that uses a DNS hostname.
+(See important note on the use of hostname above.)
+
+
+
+You can specify one secret for a network of clients.
+When a client request comes in, the *best* match is chosen,
+i.e. the entry from the smallest possible network.
+
+
+
+== Default Configuration
+
+```
+client localhost {
+	ipaddr = 127.0.0.1
+#	ipv4addr = *
+#	ipv6addr = ::
+	proto = *
+	secret = testing123
+	require_message_authenticator = no
+#	shortname = localhost
+	limit {
+		max_connections = 16
+		lifetime = 0
+		idle_timeout = 30
+	}
+}
+client localhost_ipv6 {
+	ipv6addr	= ::1
+	secret		= testing123
+}
+#client sitelocal_ipv6 {
+#	ipv6addr	= fe80::/16
+#	secret		= testing123
+#}
+#client example.org {
+#	ipaddr		= radius.example.org
+#	secret		= testing123
+#}
+#client private-network-1 {
+#	ipaddr		= 192.0.2.0/24
+#	secret		= testing123-1
+#}
+#client private-network-2 {
+#	ipaddr		= 198.51.100.0/24
+#	secret		= testing123-2
+#}
+```

@@ -1,0 +1,186 @@
+
+
+
+
+= ABFAB: Trust Router
+
+This file represents a server that is implementing an identity provider
+for `GSS-EAP` (https://tools.ietf.org/html/rfc7055[RFC 7055]) using the trust router protocol for dynamic realm
+discovery.  Any ABFAB identity provider is also an ABFAB relying party proxy.
+
+NOTE: This file does not include a TLS listener. Please see `abfab-tls`
+for a simple example of a RADSEC listener for ABFAB.
+
+
+
+## Default Instance
+
+
+
+## server { ... }
+
+
+
+### recv Access-Request
+
+Run these rules when receiving an `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`
+
+
+.Please see the `policy.d/abfab-tr` for full documentation.
+
+
+
+.Please see the `policy.d/filter` for full documentation.
+
+
+
+If you intend to use CUI and you require that the `Operator-Name`
+be set for CUI generation and you want to generate CUI also
+for your local clients then uncomment the operator-name below and
+set the operator-name for your clients in `clients.conf`
+
+operator-name
+
+
+If you want to generate CUI for some clients that do not send proper
+CUI requests, then uncomment the cui below and set `add_cui = yes`
+for these clients in `clients.conf`
+
+cui
+
+
+For EAP requests.
+
+
+
+.Please see the link:../mods-available/expiration.adoc[mods-available/expiration] for full documentation.
+
+
+
+.Please see the link:../mods-available/logintime.adoc[mods-available/logintime] for full documentation.
+
+
+
+EAP authentication.
+
+
+Allow EAP authentication.
+
+
+
+### send Access-Accept
+
+Run these rules when sending an `link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]`
+
+
+For `EAP-TTLS` and `PEAP`, add the cached attributes to the reply.
+The `session-state` attributes are automatically cached when
+an `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]` is sent, and automatically retrieved
+when an `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` is received.
+
+The `session-state` attributes are automatically deleted after
+an `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]` or `link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]` is sent.
+
+
+
+Create the `CUI` value and add the attribute to `link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]`.
+Uncomment the line below if *returning* the CUI.
+
+
+
+If you want to have a log of authentication replies, uncomment the
+following line, and enable the `detail reply_log` module.
+
+
+
+After authenticating the user, do another SQL query.
+
+See "Authentication Logging Queries" in mods-available/sql
+
+
+
+Instead of sending the query to the SQL server,
+write it into a log file.
+
+
+
+Uncomment the following if you want to modify the user's object
+in LDAP after a successful login.
+
+
+
+.Please see the `exec` for full documentation.
+
+
+
+Remove reply message if the response contains an `link:https://freeradius.org/rfc/rfc2869.html#EAP-Message[EAP-Message]`.
+
+.Please see the `policy.d/eap` for full documentation.
+
+
+
+### send Access-Reject
+
+Run these rules for sending an `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]`.
+
+NOTE: if you have set `edir = yes` in the `ldap` module configuration,
+please remember to add the ldap module name (or instance).
+
+
+.Log failed authentications in SQL, too.
+
+
+
+.Please see the `attr_filter` for full documentation.
+
+
+
+NOTE: Insert `EAP-Failure` message if the request was rejected by policy instead of
+because of an authentication failure And already has an `EAP` message For non-ABFAB,
+we insert the failure all the time, but for ABFAB It's more desirable to preserve
+`link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` when we can.
+
+
+
+.Remove reply message if the response contains an `link:https://freeradius.org/rfc/rfc2869.html#EAP-Message[EAP-Message]`.
+
+
+== Default Configuration
+
+```
+server abfab-idp {
+	recv Access-Request {
+		abfab_psk_authorize
+		abfab_client_check
+		filter_username
+		eap {
+			ok = return
+		}
+		expiration
+		logintime
+	}
+	authenticate eap {
+		eap
+	}
+	send Access-Accept {
+		update {
+			&reply: += &session-state:
+		}
+#		cui
+#		reply_log
+		-sql
+#		sql_log
+#		ldap
+		exec
+		remove_reply_message_if_eap
+	}
+	send Access-Reject {
+		-sql
+		attr_filter.access_reject
+		if (&reply:Eap-Message) {
+			eap
+		}
+		remove_reply_message_if_eap
+	}
+}
+```

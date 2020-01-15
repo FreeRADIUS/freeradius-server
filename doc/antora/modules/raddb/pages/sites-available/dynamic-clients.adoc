@@ -1,0 +1,353 @@
+
+
+
+
+
+
+
+
+
+
+This virtual server is an EXAMPLE, and should not be enabled as-is.
+
+To enable dynamic clients in an existing virtual server, copy
+the "dynamic_clients" sub-section of the "udp" listener from
+the below example. Then copy the "new client", "add client",
+and "deny client" sub-sections into the virtual server.
+
+When clients are added to a listener, they exist ONLY for that
+listener.  Dynamic clients can process packets ONLY through the
+virtual server in which they are defined.  Unlike v3, you CANNOT
+define a global client, and point it to a different virtual server,
+
+
+See the "default" virtual server for examples of how to
+configure a "listen" section.  Only the "dynamic_clients"
+changes are documented here.
+
+
+
+
+Limits for this socket.
+
+
+Limit the number of dynamic clients which
+can be defined.
+
+If there are no dynamic clients, this
+configuration item is ignored.
+
+The special value of "0" means "no limit".
+We do not recommend this.
+
+
+
+Limit the total number of connections which
+used.  Each connection opens a new socket,
+so be aware of system file descriptor
+limitations.
+
+If the listeners do not use connected
+sockets, then this configuration item is
+ignored.
+
+
+
+Free a dynamic client, or close a
+connection if it does not receive
+a packet within this time.
+
+Useful range of values: 5 to 600
+
+
+
+If a dynamic client is disallowed, it is
+placed onto a "NAK" blacklist for a period
+of time.  This blacklist helps to prevent
+DoS attacks.
+
+After "nak_timeout" seconds, the blacklist
+entry will be removed, and the IP will be
+allowed to try again to define a dynamic
+client.
+
+Useful range of values: 1 to 600
+
+
+
+cleanup_delay: The time to wait (in
+seconds) before cleaning up a reply to an
+Access-Request packet.
+
+The reply is normally cached internally for
+a short period of time, after it is sent to
+the NAS.  The reply packet may be lost in
+the network, and the NAS will not see it.
+The NAS will then resend the request, and
+the server will respond quickly with the
+cached reply.
+
+If this value is set too low, then
+duplicate requests from the NAS MAY NOT be
+detected, and will instead be handled as
+separate requests.
+
+If this value is set too high, then the
+server will use more memory for no benefit.
+
+Useful range of values: 2 to 10
+
+
+
+
+Whether or not we allow dynamic clients.
+
+If set to true, then packets from unknown
+clients are passed through the "new client"
+subsection below.  See that section for
+more information.
+
+
+
+If dynamic clients are allowed, then limit
+them to only a small set of source
+networks.
+
+If dynamic clients are not allowed, then
+this section is ignored.
+
+
+Allow packets from these networks
+to define dynamic clients.
+
+Packets from all other sources will
+be rejected.
+
+Even if a packet is from an allowed
+network, it still must be allowed
+by the "new client" subsection.
+
+There is no limit to the number of
+networks which can be listed here.
+
+
+
+The default is to deny all networks
+which are not in the "allow" list.
+
+However, it may be useful to allow
+a large range, and then deny a
+subset of IPs in that range.  For
+that situation, use a "deny"
+
+In this example, 127.0.0.1 can be
+used to define a dynamic client.
+But the (hypothetical) 127.1.0.1
+address cannot be used to define
+a dynamic client.
+
+
+
+When a request is received from an unknown client, it
+is initially passed through this 'new client' section
+to determine whether to add the client or not.
+
+If the client is added, the request is then sent "for real"
+through the normal virtual server sections, as usual.
+
+
+Put any modules you want here.  SQL, LDAP, "exec",
+Perl, etc.  The only requirements is that the
+attributes to define a new client MUST go into the
+control list.
+
+The packet received here is a complete, normal,
+RADIUS packet.  All attributes are decoded and
+available.  However, all attributes that depend on
+the shared secret (e.g. User-Password, etc.) are
+blank.
+
+
+
+Example 1: Hard-code a client IP.  This example is
+           useless, but it documents the attributes
+           you need.
+
+
+Copy the IP address of the client from
+the request just received
+
+require_message_authenticator
+
+secret
+
+shortname
+
+nas_type
+
+virtual_server
+
+This can ONLY be used if the network client
+definition (e.g. "client dynamic" above) has
+NO virtual_server defined.
+
+If the network client definition does have a
+virtual_server defined, then that is used,
+and there is no need to define this attribute.
+
+&FreeRADIUS-Client-Virtual-Server = "something"
+
+
+
+Example 2: Look the clients up in SQL.
+
+This requires the SQL module to be configured, of course.
+
+
+
+Example 3: Look the clients up in LDAP
+
+@todo - use the new 'map' function to map the
+       'nastable' to the attributes
+
+Do an LDAP lookup in the elements OU, check to
+see if the Packet-Src-IP-Address object has an
+"ou" attribute, if it does continue.  Change
+"ACME.COM" to the real OU of your organization.
+
+Assuming the following schema:
+
+  OU=Elements,OU=Radius,DC=ACME,DC=COM
+
+Elements will hold a record of every NAS in your
+Network.  Create Group objects based on the IP
+Address of the NAS and set the "Location" or "l"
+attribute to the NAS Huntgroup the NAS belongs to
+allow them to be centrally managed in LDAP.
+
+e.g. CN=10.1.2.3,OU=Elements,OU=Radius,DC=ACME,DC=COM
+
+With a "l" value of "CiscoRTR" for a Cisco Router
+that has a NAS-IP-Address or Source-IP-Address of
+10.1.2.3.
+
+And with a "ou" value of the shared secret password
+for the NAS element, i.e. "password".
+
+
+Set the Client-Shortname to be the Location
+"l" just like in the Huntgroups, but this
+time to the shortname.
+
+
+Lookup and set the Shared Secret based on
+the "ou" attribute.
+
+
+Tell the caller that the client was defined properly.
+
+If the 'new client' section does NOT return "ok", then
+the new client is ignored.
+
+
+
+This subsection is called if the client was added.
+
+If this section is empty, you can just delete it entirely.
+
+
+
+This subsection is called if the client was NOT added.
+
+If this section is empty, you can just delete it entirely.
+
+
+
+Reject all packets sent to this dummy virtual server.
+
+This virtual server is just an example for dynamic
+clients, and should not be used for authentication or
+accounting. Copy the above sections to the real virtual
+server being used instead.
+
+
+== Default Configuration
+
+```
+#	Sample configuration file for dynamically updating the list
+#	of RADIUS clients at run time.
+#	Everything is keyed off a client "network" (for example,
+#	192.168.0.2/24). This configuration lets the server know
+#	that clients within that network are defined dynamically.
+#	When the server receives a packet from an unknown IP address
+#	within that network, it tries to find a dynamic definition
+#	for that client.  If the definition is found, the IP address
+#	(and other configuration) is added to the server's internal
+#	cache of "known clients", with a configurable lifetime.
+#	Further packets from that IP address result in the client
+#	definition being found in the cache.  Once the lifetime is
+#	reached, the client definition is deleted, and any new requests
+#	from that client are looked up as above.
+#	If the dynamic definition is not found, then the request is
+#	treated as if it came from an unknown client, i.e. it is
+#	silently discarded.
+#	The server has a negative cache for denied dynamic clients.
+#	Once a client is denied, it is added to the negative cache,
+#	and all packets from that source IP are rejected for 30s.
+server dynamic_clients {
+	listen {
+		type = Access-Request
+		transport = udp
+		limit {
+			max_clients = 256
+			max_connections = 256
+			idle_timeout = 60.0
+			nak_lifetime = 30.0
+			cleanup_delay = 5.0
+		}
+		udp {
+			ipaddr = *
+			port = 2812
+			dynamic_clients = true
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+				deny = 127.1/16
+			}
+		}
+	}
+	new client {
+		update control {
+			&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+			&FreeRADIUS-Client-Require-MA = no
+			&FreeRADIUS-Client-Secret = "testing123"
+			&FreeRADIUS-Client-Shortname = "%{Packet-Src-IP-Address}"
+			&FreeRADIUS-Client-NAS-Type = "other"
+		}
+		map sql "SELECT nasname,shortname,secret,type,server FROM nas WHERE nasname = '%{Packet-Src-IP-Address}' LIMIT 1" {
+			&control:FreeRADIUS-Client-IP-Address := 'nasname'
+			&control:FreeRADIUS-Client-Shortname := 'shortname'
+			&control:FreeRADIUS-Client-Secret := 'secret'
+			&control:FreeRADIUS-Client-NAS-Type := 'type'
+			&control:FreeRADIUS-Client-Virtual-Server := 'server'
+		}
+		if ("%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?ou?sub?cn=%{Packet-Src-IP-Address}}") {
+			update control {
+				&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+				&FreeRADIUS-Client-Shortname = "%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?l?sub?cn=%{Packet-Src-IP-Address}}"
+				&FreeRADIUS-Client-Secret = "%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?ou?sub?cn=%{Packet-Src-IP-Address}}"
+			}
+		}
+		ok
+	}
+	add client {
+		ok
+	}
+	deny client {
+		ok
+	}
+	recv Access-Request {
+		reject
+	}
+}
+```

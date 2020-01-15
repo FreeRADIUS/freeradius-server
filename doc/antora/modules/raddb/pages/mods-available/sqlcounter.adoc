@@ -1,0 +1,167 @@
+
+
+
+
+= SQL Counter Module
+
+The `sqlcounter` module  provides a general framework to allow access
+based on accumulated usage of a resource, such as total time online in
+a given period, total data transferred in a given period, etc. This is
+very useful in a _Prepaid Service_ situation, where a user has paid for
+a finite amount of usage and should not be allowed to use more than
+that service. Collection, monitoring, and replenishment of prepaid
+services are beyond the scope of this module.
+
+Rather than maintaining separate (`link:https://www.gnu.org.ua/software/gdbm/[GDBM]`) databases of accounting info
+for each counter, this module uses the data stored in the `radacct` table
+by the `sql` modules.
+
+NOTE: This module *NEVER* does any database INSERTs or UPDATEs. It is totally
+dependent on the SQL module to process `Accounting` packets.
+
+
+
+## Syntax
+
+Configuration explanation.
+
+
+sql_module_instance:: Holds the instance of the `sql` module to use when
+querying the SQL database.
+
+NOTE: Normally it is just `sql`. If you define more and one SQL module instance
+(usually for failover situations), you can specify which module has access to
+the Accounting Data (`radacct table`).
+
+
+reset:: Defines when the counters are all reset to zero.
+
+It can be `hourly`, `daily`, `weekly`, `monthly` or `never`.
+
+It can also be user defined as the form: `num[hdwm]`
+
+where:
+[options="header,autowidth"]
+|===
+| Parameter | Description
+| `h`       | hours
+| `d`       | days
+| `w`       | weeks
+| `m`       | months
+|===
+
+If the latter is omitted days will be assumed.
+
+In example:
+
+  * `reset` = 10h (reset every 10 hours)
+  * `reset` = 12  (reset every 12 days)
+
+
+key:: Specifies the unique identifier for the counter records (usually `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`).
+
+The `query` parameter specifies the SQL query used to get the current Counter value
+from the database.
+
+There are `2` parameters that can be used in the query:
+
+[options="header,autowidth"]
+|===
+| Parameter | Description
+| `%%b`	   | unix time value of beginning of the reset period.
+| `%%e`	   | unix time value of end of the reset period.
+|===
+
+
+counter_name:: Name of the `check` attribute to use to access the counter in
+the `users` file or SQL `radcheck` or `radcheckgroup` tables.
+
+
+
+
+
+## Configuration Settings
+
+
+
+### Daily Counter
+
+
+
+
+
+
+### Monthly Counter
+
+
+
+
+
+
+### No Reset Counter
+
+
+
+
+
+
+### Expire on login
+
+Set an account to expire T seconds after first login. Requires the `Expire-After`
+attribute to be set, in seconds.
+
+NOTE: You may need to edit `raddb/dictionary` to add the `Expire-After` attribute.
+
+
+
+
+
+== Default Configuration
+
+```
+#	sqlcounter <name> {
+#	sql_module_instance = sql_foo
+#	reset = 12h
+#	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+#	DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
+#		 Reply-Message = "You've used up more than one hour today"
+#	}
+sqlcounter dailycounter {
+	sql_module_instance = sql
+	dialect = ${modules.sql.dialect}
+	counter_name = &Daily-Session-Time
+	check_name = &control:Max-Daily-Session
+	reply_name = &reply:Session-Timeout
+	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+	reset = daily
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
+}
+sqlcounter monthlycounter {
+	sql_module_instance = sql
+	dialect = ${modules.sql.dialect}
+	counter_name = &Monthly-Session-Time
+	check_name = &control:Max-Monthly-Session
+	reply_name = &reply:Session-Timeout
+	key = &User-Name
+	reset = monthly
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
+}
+sqlcounter noresetcounter {
+	sql_module_instance = sql
+	dialect = ${modules.sql.dialect}
+	counter_name = &Max-All-Session-Time
+	check_name = &control:Max-All-Session
+	key = &User-Name
+	reset = never
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
+}
+sqlcounter expire_on_login {
+	sql_module_instance = sql
+	dialect = ${modules.sql.dialect}
+	counter_name = &Expire-After-Initial-Login
+	check_name = &control:Expire-After
+	key = &User-Name
+	reset = never
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
+}
+```

@@ -1,0 +1,78 @@
+
+
+
+
+= Cache EAP Module
+
+The `cache_eap` module caches EAP replies.
+
+This module should be listed in the `send Access-Challenge` and
+`send Access-Accept` sections to write the cache, and in `recv
+Access-Request` to read the cache.  When it runs, it will cache the
+current reply for an EAP session.
+
+The "rbtree" cache back-end is an "in memory" cache.  Which means
+that the TLS session cache will be lost if the server restarts.
+The TLS session cache can be preserved by using an external
+back-end, such as "memcached" or "redis".
+
+When EAP packets are being proxied, they sometimes are sent through
+a series of proxies.  When that happens, a failover "upstream"
+means that one packet from the EAP session can be received via
+proxy 1, and the next packet from proxy 2.  The server can
+generally handle this case.
+
+What's worse is when an upstream server retransmits the packet
+through a different proxy.  In that case, FreeRADIUS replies to
+proxy 1, which doesn't send the packet upstream.  The next
+retransmit comes from proxy 2.  In that case, FreeRADIUS should not
+process the EAP data in the packet, it should just retransmit the
+previous reply.
+
+These retransmits are not duplicate packets as per https://tools.ietf.org/html/rfc5080#section-2.2.2[RFC 5080 Section 2.2.2],
+so the "duplicate detection cache" in the server cannot send
+a duplicate reply packet.  Instead, it has to send a different
+packet (i.e. different RADIUS packet header, different src/dst
+IP/port), but with the same contents.
+
+[NOTE]
+====
+  * This module enables that retransmit.
+
+  * The module is not enabled in the default configuration because that
+  proxy architecture is used only in limited situations.  In the
+  interest of efficiency, the cache is not used where it is not
+  needed.
+
+  * Please see the `cache` module for full documentation on the cache
+  configuration.
+====
+
+
+
+## Configuration Settings
+
+
+key:: Cache key.
+
+
+
+ttl:: TTL for cache entries.
+
+
+
+update <section> { ... }::
+
+
+== Default Configuration
+
+```
+cache cache_eap {
+	key = "%{%{control:State}:-%{%{reply:State}:-%{State}}}"
+	ttl = 15
+	update reply {
+		&reply: += &reply:
+		&control:State := &request:State
+	}
+}
+```

@@ -1,0 +1,60 @@
+
+
+
+
+= DHCP SQL-IP-Pool Module
+
+The module `dhcp_sqlippool` provides configuration for `DHCP` to use `SQL IP Pools`.
+
+[NOTE]
+====
+  * See the `raddb/policy.d/dhcp_sqlippool` for the "glue" code that allows
+the RADIUS based `sqlippool` module to be used for DHCP.
+  * See `raddb/sites-available/dhcp` for instructions on how to configure the DHCP server.
+====
+
+## Configuration Settings
+
+See the `sqlippool` module for common configuration explanation.
+
+
+
+
+
+
+NOTE: Client's MAC address is mapped to `link:https://freeradius.org/rfc/rfc2865.html#Calling-Station-Id[Calling-Station-Id]` in `policy.conf`.
+
+
+
+
+The current sample is prepared to work with MySQL.
+
+
+
+NOTE: To use sqlite you need to add `%` to `safe_characters` in
+`raddb/mods-config/sql/main/sqlite/queries.conf.`
+
+
+
+
+
+
+
+== Default Configuration
+
+```
+sqlippool dhcp_sqlippool {
+	sql_module_instance = "sql"
+	ippool_table = "radippool"
+	lease_duration = 7200
+	pool_key = "%{Calling-Station-Id}"
+	attribute_name = DHCP-Your-IP-Address
+	$INCLUDE ${modconfdir}/sql/ippool-dhcp/mysql/queries.conf
+#	$INCLUDE ${modconfdir}/sql/ippool-dhcp/sqlite/queries.conf
+	sqlippool_log_exists = "DHCP: Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_success = "DHCP: Allocated IP: %{reply:${..attribute_name}} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_clear = "DHCP: Released IP %{${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
+	sqlippool_log_failed = "DHCP: IP Allocation FAILED from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_nopool = "DHCP: No Pool-Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+}
+```

@@ -1,0 +1,283 @@
+
+This virtual server simplifies the process of sending CoA-Request or
+Disconnect-Request packets to a NAS.
+
+This virtual server will receive CoA-Request or Disconnect-Request
+packets that contain *minimal* identifying information.  e.g. Just
+a User-Name, or maybe just an Acct-Session-Id attribute.  It will
+look up that information in a database in order to find the rest of
+the session data.  e.g. NAS-IP-Address, NAS-Identifier, NAS-Port,
+etc.  That information will be added to the packet, which will then
+be sent to the NAS.
+
+This process is useful because NASes require the CoA packets to
+contain "session identification" attributes in order to to do CoA
+or Disconnect.  If the attributes aren't in the packet, then the
+NAS will NAK the request.  This NAK happens even if you ask to
+disconnect "User-Name = bob", and there is only one session with a
+"bob" active.
+
+Using this virtual server makes the CoA or Disconnect process
+easier.  Just tell FreeRADIUS to disconnect "User-Name = bob", and
+FreeRADIUS will take care of adding the "session identification"
+attributes.
+
+The process is as follows:
+
+  - A CoA/Disconnect-Request is received by FreeRADIUS.
+  - The radacct table is searched for active sessions that match each of
+    the provided identifier attributes: User-Name, Acct-Session-Id. The
+    search returns the owning NAS and Acct-Unique-Id for the matching
+    session/s.
+  - We originate CoA/Disconenct-Requests containing the original content,
+    filtered as required, with session identification added, to the
+    corresponding NAS for each session.
+
+This simplifies scripting directly against a set of NAS devices since a
+script need only send a single CoA/Disconnect to FreeRADIUS which will
+then:
+
+  - Lookup all active sessions belonging to a user, in the case that only a
+    User-Name attribute is provided in the request
+  - Populate all necessary session identifiers
+  - Handle routing of the request to the correct NAS, in the case of a
+    multi-NAS setup
+
+For example, to disconnect a specific session:
+
+  $ echo 'Acct-Session-Id = "769df3 312343"' | \
+    radclient -t 15 127.0.0.1 disconnect testing123
+
+To perform a CoA update of all active sessions belonging to a user:
+
+  $ cat <<EOF | radclient -t 15 127.0.0.1 coa testing123
+    User-Name = bob
+    Cisco-AVPair = "subscriber:sub-qos-policy-out=q_out_uncapped"
+    EOF
+
+In addition to configuring and activating this site, instances of the radius
+client module must be created for each NAS, for example:
+
+    radius radius-originate-coa-192.0.2.1 {
+
+
+    }
+
+Refer to `mods-enabled/radius` as a detailed reference for configuring
+client access to each NAS.
+
+
+
+Listen on a local CoA port.
+
+This uses the normal set of clients, with the same secret as for
+authentication and accounting.
+
+
+
+Receive a CoA request
+
+
+Lookup all active sessions matching User-Name and/or
+Acct-Session-Id and send updates for each session
+
+The query returns a single result in the format:
+
+NasIpAddress1#AcctSessionId1|NasIPAddress2#AcctSessionId2|...
+
+i.e. each session is separated by '|', and attributes
+within a session are separated by '#'
+
+You will likely have to update the SELECT to add in
+any other "session identification" attributes
+needed by the NAS.  These may include NAS-Port,
+NAS-Identifier, etc.  Only the NAS vendor knows
+what these attributes are unfortunately, so we
+cannot give more detailed advice here.
+
+
+
+Example MySQL lookup
+
+
+
+Example PostgreSQL lookup
+
+
+
+Keep a count of what we send.
+
+
+
+
+Split the string and split into pieces.
+
+
+
+
+Send an update for each session we find.
+
+
+
+NAS-IP-Address
+
+Acct-Session-Id
+
+
+
+
+
+The subrequest begins empty, so initially copy all attributes
+from the incoming request.
+
+
+
+Add/override the session identification attributes looked up
+
+
+
+Some NASs want these, others don't
+
+
+
+
+Remove attributes which will confuse the NAS
+
+The NAS will "helpfully" NAK the packet
+if it contains attributes which are NOT
+"session identification" attributes.
+
+
+
+SQL-User-Name is a side-effect of the xlat
+
+
+
+Those attributes should be listed here
+
+
+
+Uncomment if the NAS does not expect User-Name
+
+&User-Name !* ANY
+
+
+
+Call the radius client module instance for the NAS-IP-Address
+
+
+Repeat this for each NAS
+
+
+
+Increment count of sent updates
+
+
+
+
+
+Likely a missing "case" if we can't map NAS-IP-Address to a module
+
+
+
+
+
+
+Report what we did
+
+
+
+
+Receive a Disconnect request
+
+
+Populate this section as above, but use "subrequest Disconnect-Request"
+
+
+
+
+== Default Configuration
+
+```
+#	      type = CoA-Request
+#	      type = Disconnect-Request
+#	      transport = udp
+#	      udp {
+#		      ipaddr = 192.0.2.1
+#		      port = 1700
+#		      secret = "testing123"
+#	      }
+#	      # We are "originating" these packets since including Proxy-State
+#	      # may confuse the NAS
+#	      originate = yes
+#	      # Uncomment this to fire and forget, rather than wait and retry
+#	      # replicate = yes
+server coa {
+	namespace = radius
+	listen {
+		type = CoA-Request
+		type = Disconnect-Request
+		transport = udp
+		udp {
+			ipaddr = 127.0.0.1
+			port = 3799
+		}
+	}
+	recv CoA-Request {
+		update control {
+#			&Tmp-String-0 := "%{sql:SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
+#			&Tmp-String-0 := "%{sql:SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
+			&Tmp-Integer-0 := 0
+		}
+		if ("%{explode:&control:Tmp-String-0 |}") {
+			foreach &control:Tmp-String-0 {
+				if ("%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/) {
+					update control {
+						&Tmp-IP-Address-0 := "%{1}"
+						&Tmp-String-1 := "%{2}"
+					}
+					subrequest CoA-Request {
+						update request {
+							&request := &parent.request:[*]
+							&Acct-Session-Id := &parent.control:Tmp-String-1
+							&Event-Timestamp := "%l"
+							&Message-Authenticator := 0x00
+						}
+						filter request {
+							&SQL-User-Name !* ANY
+							&Acct-Delay-Time !* ANY
+							&Proxy-State !* ANY
+						}
+						switch &parent.control:Tmp-IP-Address-0 {
+							case "192.0.2.1" {
+								update parent.control {
+									&Tmp-Integer-0 := %{expr: %{parent.control:Tmp-Integer-0} + 1}
+								}
+								radius-originate-coa-192.0.2.1
+							}
+							case {
+								update parent.control {
+									&Reply-Message += "Missing map for NAS: %{parent.control:Tmp-IP-Address-0}"
+								}
+							}
+						}  # subrequest
+					}
+				}
+			}  # foreach session
+		}
+		if (&control:Tmp-Integer-0) {
+			update reply {
+				&Reply-Message += "Sent updates for %{control:Tmp-Integer-0} active sessions"
+			}
+			ok
+		} else {
+			update reply {
+				&Reply-Message += "No active sessions found"
+			}
+			reject
+		}
+	}
+	recv Disconnect-Request {
+	}
+}
+```

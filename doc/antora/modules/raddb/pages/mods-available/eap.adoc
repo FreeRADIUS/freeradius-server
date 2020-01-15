@@ -1,0 +1,1735 @@
+
+
+
+
+= EAP Module
+
+The `eap` module takes care of all EAP authentication as described in https://tools.ietf.org/html/rfc3579[RFC 3579].
+
+[WARNING]
+====
+Whatever you do, do NOT set 'Auth-Type := EAP'.  The server is smart enough
+to figure this out on its own.
+
+The most common side effect of setting 'Auth-Type := EAP' is that the users
+then cannot use ANY other authentication method.
+====
+
+
+
+## Configuration Settings
+
+
+default_eap_type::: Invoke the default supported EAP type when `EAP-Identity`
+response is received.
+
+The incoming EAP messages *DO NOT* specify which EAP type they will be using,
+so it MUST be set here.
+
+For now, only one default EAP type may be used at a time.
+
+If the `EAP-Type` attribute is set by another module, then that EAP
+type takes precedence over the default type configured here.
+
+
+
+ignore_unknown_eap_types::
+
+There are many EAP types, but the server has support for only a
+limited subset.  If the server receives a request for an EAP type it
+does not support, then it normally rejects the request.  By setting
+this configuration to `yes`, you can tell the server to instead keep
+processing the request.  Another module MUST then be configured to
+proxy the request to another RADIUS server which supports that EAP
+type.
+
+NOTE: If another module is NOT configured to handle the request, then the
+request will still end up being rejected.
+
+
+
+cisco_accounting_username_bug::
+
+Cisco AP1230B firmware 12.2(13)JA1 has a bug.  When given a `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`
+attribute in an `link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]`, it copies one more byte than it should.
+
+We can work around it by using this configuration option to add an extra zero byte.
+
+
+
+## Allowed EAP-types
+
+type:: Only EAP types listed below with a `type = <EAP-Type>` pair will be allowed.
+
+
+
+### EAP-MD5
+
+WARNING: EAP-MD5 authentication cannot be used for wireless
+connections.  It is insecure, and does not provide for dynamic WEP
+keys or WPA enterprise.
+
+
+
+
+### EAP-PWD (Secure password-based authentication)
+
+In v4, the "known good" password is taken from the `&request.control:Cleartext-Password` list,
+as is done by other modules. The change from v3 is that the `inner-tunnel` virtual server
+is no not used.
+
+
+
+
+fragment_size:: This has the same meaning as for TLS.
+
+
+
+### Generic Token Card
+
+Currently, this is only permitted inside of `EAP-TTLS`, or `EAP-PEAP`.
+The module `challenges` the user with text, and the response from the
+user is taken to be the `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`.
+
+WARNING: Proxying the tunneled `EAP-GTC` session is a bad idea, the users
+password will go over the wire in plain-text, for anyone to see.
+
+
+challenge:: The default challenge, which many clients ignore.
+
+
+
+auth_type::
+
+The plain-text response which comes back is put into a
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` attribute, and passed to another module for
+authentication.  This allows the `EAP-GTC` response to be
+checked against plain-text, or crypt'd passwords.
+
+If you say "Local" instead of "PAP", then the module will
+look for a `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` configured for the request, and do
+the authentication itself.
+
+
+
+## Common TLS configuration for TLS-based EAP types
+
+See `doc/raddb/certs/index.adoc` for additional comments on certificates.
+
+If OpenSSL was not found at the time the server was built, the `tls`,
+`ttls`, and `peap` sections will be ignored.
+
+If you do not currently have certificates signed by a trusted CA you
+may use the 'snakeoil' certificates. Included with the server in
+`raddb/certs`.
+
+If these certificates have not been auto-generated:
+
+  cd raddb/certs
+  make
+
+These test certificates *SHOULD NOT* be used in a normal
+deployment.  They are created only to make it easier to
+install the server, and to perform some simple tests with
+EAP-TLS, TTLS, or PEAP.
+
+Note that you should NOT use a globally known CA here!
+e.g. using a Verisign cert as a "known CA" means that
+ANYONE who has a certificate signed by them may be able to
+authenticate via EAP-TLS!  This is likely not what you
+want.
+
+
+auto_chain::
+
+OpenSSL will automatically create certificate chains, unless
+we tell it to not do that.  The problem is that it sometimes
+gets the chains right from a certificate signature view, but
+wrong from the clients view.
+
+NOTE: When setting `auto_chain = no`, the server `chain {}`
+section(s) below MUST include the full certificate chain.
+
+
+
+.A chain of certificates to present to the client
+
+Multiple chain sections can be specified to allow different
+chains for different key types (RSA, DSA, DH, EC).
+
+If multiple chains for the same key type are specified
+the last chain to be processed will be used for that
+key type.
+
+WARNING: The chain selected is based on the cipher
+agreed by the client and server. Therefore, for example,
+if the client includes EC ciphers in its proposal, but
+only has an RSA certificate, then the authentication is
+likely to fail as cipher negotiation can select an EC
+cipher.
+
+The key type does not need to be explicitly specified as
+it is determined from the certificate provided.
+
+
+format:: The format of the certificate(s) and private key file.
+
+May be one of `PEM`, `DER` or `ASN1` (ASN1 is an alias for `DER`).
+
+
+
+certificate_file::
+
+If PEM is being used the `certificate_file` specified below
+should contain the server certificates, and any intermediary CAs
+which are not available to the client.
+
+[NOTE]
+====
+If `verify_mode` (below) is set to `hard` or `soft` all
+intermediary CAs and the Root CA should be included.
+
+Any certificate chain MUST be in order from server
+certificate (first in the file) to intermediary CAs (second) to
+Root CA (last in the file) as per https://tools.ietf.org/html/rfc4346#section-7.4.2[RFC 4346 Section 7.4.2] (see certificate_list)
+
+If DER is being used the `certificate_file` should contain ONLY
+the server's certificate, and one or more `ca_file` items should be
+used to load intermediary CAs and the Root CA.
+====
+
+We recommend using `ca_file` to load the
+root CAs, instead of putting them in
+`certificate_file`.
+
+
+
+ca_file::
+
+Load an additional intermediary CA or Root CA for consideration in
+chain compilation.  Multiple "ca_file" config items may be used
+to load multiple certificates.
+
+When multiple `ca_file` entries are used, the server will still present
+only one `certificate_file` to the clients.  The main use for multiple
+`ca_file` entries is to permit the use of EAP-TLS with client certificates
+from multiple Root CAs.
+
+
+
+private_key_password:: Password used to encrypt the private key.
+If the private key is not encrypted, this configuration item
+will have no effect.
+
+
+
+private_key_file::
+
+If the Private key & Certificate are located in the same file,
+then `private_key_file` & `certificate_file` must contain the
+same file name.
+
+
+
+verify_mode::
+
+During startup we attempt to precompile the certificate chain
+from server certificate to Root CA.  This configuration item specifies
+what happens if compilation fails.
+
+[options="header,autowidth"]
+|===
+| Error | Description
+| hard  | Error out if we cannot build a complete certificate chain.
+| soft  | Warn if we cannot build a complete certificate chain.
+| none  | Stay silent if we cannot build a complete certificate chain.
+|===
+
+The default is `hard`.  The only time this should be changed is if
+you want to limit the number of intermediary CAs sent to the
+client by not including them in the chain.
+
+[NOTE]
+====
+  * Depending on the value of `auto_chain` we may still be able to
+  build a complete chain, but this will be done at runtime.
+
+  * `auto_chain` has no effect on which certificates are considered
+for pre-compilation.  Only those listed in this `chain {}` section
+will be used.
+====
+
+
+
+include_root_ca::
+
+Omit the Root CA from the compiled certificate chain.
+The Root CA should already be known/trusted by the client so it is
+usually not needed unless the client is particularly poorly behaved.
+
+NOTE: The Root CA must still be available for chain compilation to
+succeed even if `include_root_ca = no`.
+
+Default: `no`.
+
+
+
+### ECC certificate chain for key agility
+
+This is disabled by default, see the warning above.
+If your supplicants propose a mix of different
+types of ciphers and have all of the CA keys for
+each type available, then multiple chains may be
+enabled simultaneously.
+
+
+
+## Server certificate
+
+The server certificate may also be specified at
+runtime on a per session basis.  In that use-case,
+the certificate file must consist of the
+certificate and private key, PEM encoded.  The
+password should either be set above with
+`password`, or the certificate should have no
+password.
+
+The file should be provided as the attribute:
+
+    &control:TLS-Session-Cert-File
+
+If there are any errors loading or verifying the
+certificate, authentication will fail.
+
+This configuration can be used to periodically
+verify correct supplicant behaviour, by presenting
+an untrusted or invalid server certificate and
+verifying that the supplicant returns the correct
+TLS alert (available in Module-Failure-Message).
+
+NOTE: After receiving a fatal alert, TLS negotiation
+cannot continue, but as most supplicants retry
+enthusiastically this probably won't be an issue.
+
+
+
+ca_file:: Trusted Root CA list
+
+ALL of the CA's in this list will be trusted to issue client
+certificates for authentication.
+
+NOTE: You should not use a public CA here.  This should either be
+set to a certificate chain for your institution's CA
+or a self signed Root CA.
+#
+
+
+psk_identity:::
+
+If OpenSSL supports TLS-PSK, then we can use a PSK identity
+and (hex) password.
+
+If using a fixed identity, it must be the same on
+the client.  The passphrase must be a hex value,
+and can be up to 256 hex characters.
+
+
+
+WARNING: Dynamic queries for the `PSK`.  If `TLS-PSK` is used,
+and `psk_query` is set, then you MUST NOT use
+`psk_identity` or `psk_hexphrase`.
+
+
+
+psk_query::
+
+Instead, use a dynamic expansion similar to the one
+below.  It keys off of TLS-PSK-Identity.  It should
+return a of string no more than 512 hex characters.
+That string will be converted to binary, and will
+be used as the dynamic PSK hexphrase.
+
+Note that this query is just an example.  You will
+need to customize it for your installation.
+
+
+
+For DH cipher suites to work, you have to run OpenSSL to
+create the DH file first:
+
+	openssl dhparam -out certs/dh 2048
+
+
+
+fragment_size::
+
+This can never exceed the size of a RADIUS packet (4096
+bytes), and is preferably half that, to accommodate other
+attributes in RADIUS packet.  On most APs the MAX packet
+length is configured between `1500 - 1600` In these cases,
+fragment size should be `1024` or less.
+
+
+
+check_crl:: Check the Certificate Revocation List.
+
+Will check CRLs for all certificates in the certificate chain.
+
+1. Copy CA certificates and CRLs to same directory.
+2. Execute `c_rehash <CA certs&CRLs Directory>`. `c_rehash` is
+   OpenSSL's command.
+3. uncomment the lines below.
+4. Restart radiusd.
+
+
+
+ca_path:: Full path to the CA file.
+
+
+
+allow_expired_crl:: Accept an expired Certificate Revocation List.
+
+
+
+check_cert_issuer::
+
+If `check_cert_issuer` is set, the value will be checked
+against the DN of the issuer in the client certificate.  If
+the values do not match, the certificate verification will
+fail, rejecting the user.
+
+This check can be done more generally by checking the value
+of the `TLS-Client-Cert-Issuer` attribute.  This check can be
+done via any mechanism you choose.
+
+
+
+check_cert_cn::
+
+If `check_cert_cn` is set, the value will be xlat'ed and
+checked against the CN in the client certificate.  If the
+values do not match, the certificate verification will fail
+rejecting the user.
+
+This check is done only if the previous `check_cert_issuer`
+is not set, or if the check succeeds.
+
+This check can be done more generally by checking the value
+of the `TLS-Client-Cert-Common-Name` attribute.  This check can be done
+via any mechanism you choose.
+
+
+
+cipher_list::
+
+Set this option to specify the allowed TLS cipher suites.
+The format is listed in `man 1 ciphers`.
+
+NOTE: For `EAP-FAST`, use "ALL:!EXPORT:!eNULL:!SSLv2"
+
+
+
+cipher_server_preference::
+
+If enabled, OpenSSL will use server cipher list
+(possibly defined by cipher_list option above)
+for choosing right cipher suite rather than
+using client-specified list which is OpenSSl default
+behavior. Having it set to 'yes' is best practice
+for TLS.
+
+
+
+tls_max_version::
+
+[NOTE]
+====
+  * Work-arounds for OpenSSL nonsense.  OpenSSL 1.0.1f and 1.0.1g do
+not calculate the `EAP` keys correctly.  The fix is to upgrade
+OpenSSL, or to disable TLS 1.2 here.
+
+  * SSLv2 and SSLv3 are permanently disabled due to security
+issues.
+
+  * We STRONGLY RECOMMEND that TLS 1.0 and TLS 1.1 be disabled.
+They are insecure and SHOULD NOT BE USED.
+====
+
+
+
+tls_min_version::
+
+[NOTE]
+====
+Prevents versions < tls_min_version from being negotiated.
+In general the higher the tls_min_version the more secure
+the protocol, but the narrower the range of supported TLS
+clients.
+
+SSLv2 and SSLv3 are permanently disabled due to security
+issues.
+====
+
+
+
+ecdh_curve:: Elliptical cryptography configuration.
+
+Only for OpenSSL >= 0.9.8.f
+
+
+
+### TLS Session resumption
+
+We currently support https://tools.ietf.org/html/rfc5246[RFC 5246] style TLS session resumption
+only.
+
+Once authentication has completed the TLS client is provided
+with a unique session identifier (or cookie) that it may
+present during its next authentication attempt.
+
+Presenting this identifier allows the client to skip the
+majority of TLS tunnel setup during its next authentication
+session.
+
+Resuming a TLS session avoids the certificate exchange and in
+the case `PEAP` and `TTLS`, allows the client to skip the inner
+`EAP` method.
+
+Enabling `Session-Resumption` is highly recommended for sites
+using slow authentication backends such as winbindd/Active
+Directory, and for access federations operating over the
+internet, such as Eduroam.
+
+NOTE: You must ensure any attributes required for policy
+decisions are cached at the same time as the TLS session
+data. See link:../sites-available/tls-cache.adoc[sites-available/tls-cache] for documentation on
+how TLS cache now works.
+
+If using the default `tls-cache` virtual server and
+cache module config, policy attributes may be stored in the
+`&session-state:` list.
+
+
+virtual_server::
+
+To enable session resumption, uncomment the virtual
+server entry below, and link
+link:../sites-available/tls-cache.adoc[sites-available/tls-cache] to `sites-enabled/tls-cache`.
+
+You can disallow resumption for a particular user by
+adding the following attribute to the control item
+list:
+
+  Allow-Session-Resumption = No
+
+NOTE: If no virtual_server is specified you *CANNOT* enable
+resumption for just one user by setting the above
+attribute to `yes`.
+
+
+
+name:: Name of the context TLS sessions are created under.
+
+Qualifies TLS sessions so that they can't be used for
+purposes for which they were not intended.
+
+If you wish to share session resumption data between
+multiple EAP modules/virtual servers they all must have
+the same name value set.
+
+To disable - set to a zero length string "".
+
+NOTE: OpenSSL only allows 32 bytes of session ctx, so
+the value provided here is digested with SHA256.
+
+
+
+lifetime::
+
+The period for which a resumable session remains valid.
+The actual period is the lower of this value, and the
+ttl set in `rlm_cache`.
+
+Default is 24hrs inline with https://tools.ietf.org/html/rfc4346[RFC 4346].
+
+
+
+verify:: Revalidate client's certificate chain each time
+a session is resumed.
+
+Intermediaries provided by the client are not cached,
+or copied to the server's certificate store, so
+rebuilding the certificate chain will fail if we don't
+have the intermediaries loaded from `ca_file` or `ca_path`.
+
+This is useful with long cache lifetimes, where a
+certificate may be revoked in the interim between the
+session being created and re-used.
+
+
+
+require_extended_master_secret::
+
+Only allow session resumption if an extended master
+secret has been created.  This requires client support.
+
+Extended Master Secrets (https://tools.ietf.org/html/rfc7627[RFC 7627]) are required to
+prevent MITM attacks, where the attacker can resume
+a session if it can insert itself into the path between
+the TLS client and TLS server.
+
+See more at https://mitls.org/pages/attacks/3SHAKE
+
+WARNING: This attack is undetectable by the client.
+
+
+
+require_perfect_forward_secrecy::
+
+Only allow session resumption if a cipher which would
+allow perfect forward secrecy has been selected.
+
+
+
+[NOTE]
+====
+As of 4.0 OpenSSL's internal cache has been disabled due to
+scoping/threading issues.
+
+The following configuration options are deprecated.  TLS
+session caching is now handled by the `cache` module.
+That module is more configurable, and has more back-ends
+than the simple configurations below.
+
+  * `enable`
+  * `persist_dir`
+  * `max_entries`
+====
+
+
+
+### Dynamic CRLs or OCSP
+
+As of version 2.1.10, client certificates can be validated
+via an external command.  This allows dynamic CRLs or OCSP to
+be used.
+
+This configuration is commented out in the default
+configuration.  Uncomment it, and configure the correct paths
+below to enable it.
+
+
+tmpdir::
+
+A temporary directory where the client certificates
+are stored.  This directory MUST be owned by the UID
+of the server, and MUST not be accessible by any
+other users.  When the server starts, it will do
+`chmod go-rwx` on the directory, for security
+reasons.  The directory MUST exist when the server
+starts.
+
+You should also delete all of the files in the
+directory when the server starts.
+
+
+
+client::
+
+The command used to verify the client cert. We
+recommend using the OpenSSL command-line tool.
+
+The `${..ca_path}` text is a reference to the ca_path
+variable defined above.
+
+The `%{TLS-Client-Cert-Filename}` is the name of the
+temporary file containing the cert in PEM format.
+This file is automatically deleted by the server when
+the command returns.
+
+
+
+### OCSP Configuration
+
+Certificates can be verified against an OCSP Responder.
+This makes it possible to immediately revoke certificates without
+the distribution of new Certificate Revocation Lists (CRLs).
+
+In addition to the configuration items below, the behaviour of
+OCSP can be altered by runtime attributes.
+
+If OCSP is enabled, the `&reply:TLS-OCSP-Cert-Valid` attribute will
+be added after OCSP completes.  One of the following values will
+be set:
+
+[options="header,autowidth"]
+|===
+| Value   | Description
+| no      | OCSP responder indicated the certificate is not valid.
+| yes     | OCSP responder indicated the certificate is valid.
+| skipped | OCSP checks were skipped.
+|===
+
+If an OCSP check is performed, the `&reply:TLS-OCSP-Next-Update`
+attribute will also be added.  The value of this will attribute
+be the number of seconds until the certificate state need be refreshed.
+This can be used as a `Cache-TTL` value if you wish to use the cache
+module to store OCSP certificate validation status.
+
+If when the OCSP check is performed, a `&control:TLS-OCSP-Cert-Valid`
+attribute is present, its value will force the outcome of the OCSP
+check, and the OCSP responder will not be contacted.
+Values map to the following OCSP responses:
+
+[options="header,autowidth"]
+|===
+| Value   | Description
+| no      | Invalid.
+| yes     | Valid.
+| skipped | If `softfail = yes` value else invalid.
+|===
+
+
+enable::
+
+Deleting the entire `ocsp` subsection also disables ocsp checking.
+
+Default is `no`.
+
+
+
+virtual_server::
+
+OCSP checks are performed immediately after the
+complete certificate is received from the supplicant,
+and directly after the attributes from that
+certificate are inserted into the request.
+
+In order to retrieve cached OCSP states, a virtual
+server must be defined here.
+
+See `raddb/sites-available/tls-cache` for details.
+
+
+
+override_cert_url::
+
+The OCSP Responder URL can be automatically extracted
+from the certificate in question. To override the
+OCSP Responder URL set `override_cert_url = yes`.
+
+
+
+url::
+
+If the OCSP Responder address is not extracted from
+the certificate, the URL can be defined here.
+
+
+
+use_nonce::
+
+If the OCSP Responder can not cope with nonce in the
+request, then it can be disabled here.
+
+[WARNING]
+====
+  * For security reasons, disabling this option is not
+recommended as nonce protects against replay attacks.
+
+  * Microsoft AD Certificate Services OCSP
+Responder does not enable nonce by default. It is more
+secure to enable nonce on the responder than to
+disable it in the query here.
+
+See http://technet.microsoft.com/en-us/library/cc770413%28WS.10%29.aspx
+====
+
+
+
+timeout::
+
+Number of seconds before giving up waiting for OCSP
+response.
+
+Default is `0`.
+
+
+
+softfail::
+
+Normally an error in querying the OCSP responder (no
+response from server, server did not understand the
+request, etc) will result in a validation failure.
+
+To treat these errors as `soft` failures and still
+accept the certificate, enable this option.
+
+WARNING: this may enable clients with revoked
+certificates to connect if the OCSP responder is not
+available. *Use with caution*.
+
+
+
+### OCSP stapling for server certificates
+
+If requested, we query either the server listed below (as url),
+or the one specified in our server certificate, to retrieve an
+OCSP response to pass back to the TLS client.
+
+staple { ... }::
+
+This allows TLS clients to check for certificate revocation before
+divulging credentials to a (possibly rogue) server, that may be
+presenting a compromised certificate.
+
+
+enable::
+
+Enable it. Deleting the entire `ocsp` subsection also disables ocsp checking.
+
+Default is `no`.
+
+
+
+virtual_server::
+
+OCSP checks are performed whenever a TLS client includes
+an OCSP stapling extension.
+
+In order to retrieve cached OCSP staples, a virtual
+server must be defined here.
+
+The same virtual server can be used for caching
+client OCSP response states, and stapling information.
+
+See `raddb/sites-available/tls-cache` for details.
+
+
+
+override_cert_url::
+
+The OCSP Responder URL can be automatically extracted
+from the certificate in question. To override the
+OCSP Responder URL set `override_cert_url = yes`.
+
+
+
+url::
+
+If the OCSP Responder address is not extracted from
+the certificate, the URL can be defined here.
+
+
+
+use_nonce::
+
+If the OCSP Responder can not cope with nonce in the
+request, then it can be disabled here.
+
+[WARNING]
+====
+  * For security reasons, disabling this option is not
+recommended as nonce protects against replay attacks.
+
+  * Microsoft AD Certificate Services OCSP
+Responder does not enable nonce by default. It is more
+secure to enable nonce on the responder than to
+disable it in the query here. See
+http://technet.microsoft.com/en-us/library/cc770413%28WS.10%29.aspx
+====
+
+
+
+Number of seconds before giving up waiting for OCSP
+response.
+
+Default is `0`.
+
+
+
+softfail::
+
+Normally if we can't query the OCSP Responder
+we issue a fatal alert, and abort.  Set this to `true`
+to allow the session to continue without an OCSP
+stapling response being sent to the TLS client.
+
+
+
+### EAP-TLS
+
+As of Version 3.0, the TLS configuration for `TLS-based`
+EAP types is above in the `tls-config { ... }` section.
+
+Point to the common TLS configuration
+
+
+require_client_cert::
+
+`EAP-TLS` can work without a client certificate, but situations
+whether this is useful are quite limited.
+
+Currently only the Hotspot 2.0 R2 standard utilises `EAP-TLS`
+without a peer certificate.
+
+This is to secure the SSID used to provide connectivity to the OSU
+(Online Signup Server).
+
+You can override this option by setting:
+
+  EAP-TLS-Require-Client-Cert = Yes/No
+
+in the control items for a request.
+
+
+
+include_length::
+
+flag which is by default set to yes If set to `yes`,
+Total length of the message is included in EVERY
+packet we send. If set to `no`, Total length of the message is
+included ONLY in the First packet of a fragment series.
+
+
+
+virtual_server::
+
+As part of checking a client certificate, the `EAP-TLS` sets
+some attributes such as `TLS-Client-Cert-Common-Name`. This virtual
+server has access to these attributes, and can be used to
+accept or reject the request.
+
+
+
+### EAP-TTLS
+
+The TTLS module implements the `EAP-TTLS` protocol, which can be
+described as EAP inside of Diameter, inside of TLS, inside of EAP,
+inside of RADIUS.
+
+NOTE: To use `EAP-TTLS `you must also configure an `inner` method in
+`mods-enabled/eap_inner`.
+
+Surprisingly, it works quite well.
+
+When using `PAP`, `GTC`, or `MSCAHPv2` as an inner method `EAP-TTLS` is
+only secure if the supplicant is configured to validate the the
+server certificate presented.
+
+It is trivial to retrieve the user's credentials from these inner
+methods, if the user connects to a rogue server.
+
+
+tls::
+
+Which `tls-config` section the TLS negotiation parameters
+are in - see `EAP-TLS` above for an explanation.
+
+In the case that an old configuration from FreeRADIUS
+v2.x is being used, all the options of the `tls-config { ... }`
+section may also appear instead in the 'tls' section
+above. If that is done, the `tls=` option here (and in tls above)
+MUST be commented out.
+
+
+
+[WARNING]
+====
+Both `copy_request_to_tunnel` and `use_tunneled_reply` have been
+removed in v4.0.
+
+See the new policy `copy_request_to_tunnel` in
+link:../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
+for more information.
+====
+
+
+
+virtual_server::
+
+The inner tunneled request can be sent through a virtual
+server constructed specifically for this purpose.
+
+If this entry is commented out, the inner tunneled request
+will be sent through the virtual server that processed the
+outer requests.
+
+
+
+include_length::
+
+This has the same meaning, and overwrites, the same field in
+the `tls` configuration, above. The default value here is
+`yes`.
+
+
+
+require_client_cert::
+
+`EAP-TTLS` does not require a client certificate.
+However, you can require one by setting the
+following option. You can also override this option by
+setting
+
+  EAP-TLS-Require-Client-Cert = Yes
+
+in the control items for a request.
+
+NOTE: The majority of supplicants do not support using a
+client certificate with `EAP-TTLS`, so this option is unlikely
+to be usable for most people.
+
+
+
+### EAP-PEAP
+
+The tunneled `EAP` session needs a default `EAP` type which is separate
+from the one for the non-tunneled EAP module.  Inside of the TLS/PEAP
+tunnel, we recommend using `EAP-MS-CHAPv2`.
+
+When using `GTC`, or `MSCAHPv2` as an inner method, `PEAP` is only secure
+if the supplicant is configured to validate the server certificate.
+
+It is trivial to retrieve the user's credentials from these inner
+methods, if the user connects to a rogue server.
+
+#### Windows compatibility
+
+[IMPORTANT]
+====
+  * If you see the server send an `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]`, and the client never
+sends another `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`, then	*STOP*!
+
+  * The server certificate has to have special OID's in it, or else the
+Microsoft clients will silently fail.  See the `scripts/xpextensions`
+file for details, and the following page
+http://support.microsoft.com/kb/814394/en-us .
+
+  * For additional Windows XP SP2 issues,
+see: http://support.microsoft.com/kb/885453/en-us
+
+  * If is still doesn't work, and you're using Samba, you may be
+encountering a Samba bug.
+see: https://bugzilla.samba.org/show_bug.cgi?id=6563
+
+  * Note that we do not necessarily agree with their explanation. but
+the fix does appear to work.
+====
+
+NOTE: To use `EAP-TTLS` you must also configure an inner method in
+`mods-enabled/eap_inner`.
+
+
+tls::
+
+Which `tls-config` section the TLS negotiation parameters are
+in - see `EAP-TLS` above for an explanation.
+
+In the case that an old configuration from FreeRADIUS v2.x is
+being used, all the options of the `tls-config` section may
+also appear instead in the `tls` section above. If that is
+done, the tls= option here (and in tls above) MUST be
+commented out.
+
+
+
+default_eap_type::
+
+The tunneled EAP session needs a default EAP type which is
+separate from the one for the non-tunneled EAP module.
+Inside of the PEAP tunnel, we recommend using MS-CHAPv2, as
+that is the default type supported by Windows clients.
+
+
+
+[NOTE]
+====
+Both `copy_request_to_tunnel` and `use_tunneled_reply` have been
+removed in v4.0.
+
+See the new policy `copy_request_to_tunnel` in
+link:../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
+for more information.
+====
+
+
+
+proxy_tunneled_request_as_eap::
+
+When the tunneled session is proxied, the home server may not
+understand `EAP-MSCHAP-V2`. Set this entry to `no` to proxy the
+tunneled `EAP-MSCHAP-V2` as normal`MSCHAPv2`.
+
+
+
+virtual_server::
+
+The inner tunneled request can be sent through a virtual
+server constructed specifically for this purpose.
+
+If this entry is commented out, the inner tunneled request
+will be sent through the virtual server that processed the
+outer requests.
+
+
+
+soh::
+
+This option enables support for `MS-SoH` see `doc/SoH.txt` for
+more info. It is disabled by default.
+
+
+
+soh_virtual_server::
+
+The `SoH` reply will be turned into a request which can be sent
+to a specific virtual server:
+
+
+
+require_client_cert::
+
+Unlike `EAP-TLS`, `PEAP `does not require a client certificate.
+However, you can require one by setting the following
+option. You can also override this option by setting
+
+EAP-TLS-Require-Client-Cert = Yes
+
+in the `control` items for a request.
+
+NOTE: The majority of supplicants do not support using a
+client certificate with `PEAP`, so this option is unlikely to
+be usable for most people.
+
+
+
+### EAP MS-CHAPv2
+
+This takes no configuration.
+
+NOTE: It is the EAP MS-CHAPv2 sub-module, not the main `mschap`
+module.
+
+Note also that in order for this sub-module to work, the main
+`mschap` module MUST ALSO be configured.
+
+This module is the *Microsoft* implementation of `MS-CHAPv2` in `EAP`.
+There is another (*incompatible*) implementation of `MS-CHAPv2 in `EAP` by
+Cisco, which *FreeRADIUS does not currently support*.
+
+
+auth_type::
+
+The plain-text response which comes back is put into a
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` attribute, and passed to another module for
+authentication.
+
+
+
+send_error::
+
+Prior to version 2.1.11, the module never sent the
+`link:https://freeradius.org/rfc/rfc2548.html#MS-CHAP-Error[MS-CHAP-Error]` message to the client.  This worked, but it had
+issues when the cached password was wrong.  The server
+  *should* send `E=691 R=0` to the client, which tells it to
+prompt the user for a new password.
+
+CAUTION: The default is to behave as in `2.1.10` and earlier, which is
+known to work.  If you set `send_error = yes`, then the error
+message will be sent back to the client. This *may* help some
+clients work better, but *may* also cause other clients to
+stop working.
+
+
+
+identity::
+
+Server identifier to send back in the challenge. This should
+generally be the host name of the RADIUS server.  Or, some
+information to uniquely identify it.
+
+
+
+with_ntdomain_hack:: Windows clients send `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` in the form of "DOMAIN\User",
+but send the challenge/response based only on the User portion.
+
+Default is `no`.
+
+
+
+### EAP-FAST
+
+The FAST module implements the EAP-FAST protocol.
+
+NOTE: To use `EAP-FAST` you must also configure an `inner` method in
+`mods-enabled/eap_inner`.
+
+
+tls::
+
+Point to the common TLS configuration.
+
+
+
+cipher_list::
+
+If `cipher_list` is set here, it will override the
+`cipher_list` configuration from the `tls-common`
+configuration.  The `EAP-FAST` module has its own
+override for `cipher_list` because the
+specifications mandata a different set of ciphers
+than are used by the other `EAP` methods.
+
+`cipher_list` though must include "ADH" for anonymous provisioning.
+This is not as straightforward as appending "ADH" alongside
+"DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
+recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
+
+NOTE: for OpenSSL 1.1.0 and above you may need to add ":@SECLEVEL=0"
+
+
+
+pac_lifetime:: PAC lifetime in seconds.
+
+Default is: `seven days`
+
+
+
+authority_identity:: Authority ID of the server.
+
+if you are running a cluster of RADIUS servers, you should make
+the value chosen here (and for `pac_opaque_key`) the same on all
+your RADIUS servers.  This value should be unique to your
+installation.  We suggest using a domain name.
+
+
+
+pac_opaque_key::
+
+PAC Opaque encryption key (must be exactly 32 bytes in size).
+
+This value MUST be secret, and MUST be generated using
+a secure method, such as via `openssl rand -hex 32`
+
+
+
+virtual_server:: Same as for `TTLS`, `PEAP`, etc.
+
+
+
+default_provisioning_eap_type:: Default provisioning EAP type.
+
+Default is `mschapv2`
+
+
+
+### EAP-SIM
+
+Triplets can be provided using control attributes:
+
+  * `&control:EAP-SIM-KC`
+  * `&control:EAP-SIM-RAND`
+  * `&control:EAP-SIM-SRES`
+
+NOTE: Three instances of each attribute must be provided.
+
+Alternatively triplets can be generated locally using
+control attributes:
+
+  * `&control:SIM-Ki`
+  * `&control:SIM-OPc`
+  * `&control:SIM-Algo-Version` (optional - see defaults below)
+
+UMTS Milenage inputs (AMF, SQN) are ignored.
+
+`&control:SIM-Algo-Version` selects the SIM algorithm used,
+it must match the algorithm used by the SIM.
+
+Accepted values for `SIM-Algo-Version` are:
+
+  * `Comp128v1`
+  * `Comp128v2`
+  * `Comp128v3` (default if no &control:SIM-OPc)
+  * `Comp128v4` (default if &control:SIM-OPc is available)
+
+NOTE: In general operators will not provide the Ki (subscriber
+key) for their `SIM cards`, as the Ki is considered highly
+sensitive.
+
+Local triplet generation is intended for testing and
+research purposes where programmable or virtual SIM cards
+are in use.
+
+
+request_identity:: Send a SIM-Start message to Requests
+an additional identity to the one from the EAP-Identity-Response.
+
+If `yes` - We send a request with AT_SUBTYPE SIM-start
+with an AT_ANY_ID_REQ attribute to prompt the supplicant
+to send a new identity.
+
+The type of identity requested can be controlled by adding
+one of the following attributes from the
+`recv Identity-Response { ... }` section of the specified
+EAP-SIM virtual_server, to the reply list:
+
+- &reply:Any-Id-Req
+- &reply:Fullauth-Id-Req
+- &reply:Permanent-Id-Req
+
+Even if this configuration item is set to 'no', additional
+identities can be requested by policy.
+See sites-available/eap-aka-sim for details.
+
+
+
+ephemeral_id_length:: The length of any pseudonyms or
+fastauth identities we generate (not including hint byte).
+
+See sites-available/eap-aka-sim for details on how to trigger
+the generation of pseudonym or fastauth identities.
+
+
+
+strip_permanent_identity_hint:: Strip the identity hint when
+copying &EAP-Identity or &Identity to &Permanent-Identity.
+
+The stripping is only performed if this config item is set
+to yes, and the hint byte matches what we'd expect for the
+EAP-Method being executed.
+
+
+
+protected_success:: Send a protected success message.
+
+If `yes` - indicate to the peer that we'd like to send
+a protected success message.  If the peer agrees and
+authentication succeeds, send a `SIM-Notification` (Success)
+packet protected with an `AT_MAC` attribute.
+
+After the Notification is ACKed by the peer, we send
+the final `EAP-Success` packet containing `MPPE` keys.
+
+
+
+virtual_server:: EAP-SIM virtual server containing policy
+sections.  This must be set, EAP-SIM will not function
+without it, as certain operations like vector gathering
+require user configuration.
+
+
+
+### EAP-AKA
+
+
+protected_success:: Send protected success messages
+
+
+
+virtual_server:: Same as for `TTLS`, `PEAP`, etc.
+
+
+request_identity:: Send a AKA-Identity message to request
+an additional identity to the one from the EAP-Identity-Response.
+
+If `yes` - We send a request with AT_SUBTYPE AKA-Identity
+with an AT_ANY_ID_REQ attribute to prompt the supplicant
+to send a new identity.
+
+The type of identity requested can be controlled by adding
+one of the following attributes from the
+`recv Identity-Response { ... }` section of the specified
+EAP-AKA virtual_server, to the reply list:
+
+- &reply:Any-Id-Req
+- &reply:Fullauth-Id-Req
+- &reply:Permanent-Id-Req
+
+Even if this configuration item is set to 'no', additional
+identities can be requested by policy.
+See sites-available/eap-aka-sim for details.
+
+
+
+ephemeral_id_length:: The length of any pseudonyms or
+fastauth identities we generate (not including hint byte).
+
+See sites-available/eap-aka-sim for details on how to trigger
+the generation of pseudonym or fastauth identities.
+
+
+
+strip_permanent_identity_hint:: Strip the identity hint when
+copying &EAP-Identity or &Identity to &Permanent-Identity.
+
+The stripping is only performed if this config item is set
+to yes, and the hint byte matches what we'd expect for the
+EAP-Method being executed.
+
+
+
+protected_success:: Send a protected success message.
+
+If `yes` - indicate to the peer that we'd like to send
+a protected success message.  If the peer agrees and
+authentication succeeds, send a `AKA-Notification` (Success)
+packet protected with an `AT_MAC` attribute.
+
+After the Notification is ACKed by the peer, we send
+the final `EAP-Success` packet containing `MPPE` keys.
+
+
+
+prefer_aka_prime:: Send the AT_BIDDING attribute in
+AKA-Challenge messages.
+
+When AT_BIDDING is sent in a AKA-Challenge and the supplicant
+supports EAP-AKA-Prime, https://tools.ietf.org/html/rfc5448[RFC 5448] states the supplicant
+should abort the authentication attempt as a bidding down
+attack may have occurred.
+
+If a value is not provided for this configuration item
+it will be determined automatically by whether the
+EAP-AKA-Prime EAP method is enabled.
+
+
+
+virtual_server:: EAP-AKA virtual server containing policy
+sections.  This must be set, EAP-AKA will not function
+without it, as certain operations like vector gathering
+require user configuration.
+
+
+
+### EAP-AKA-Prime
+
+
+network_name:: The default value used for AT_KDF_INPUT
+
+EAP-AKA-Prime mixes various keys with a network identifier
+specifying the user's point of connection into the network
+to prevent vectors being used where they were not intended
+to be.
+
+The value of the AT_KDF_INPUT can be overridden in the
+eap-aka-prime virtual server with &reply:KDF-Input if
+this value needs to be determined dynamically.
+
+How this value should be created and formatted is specified
+in 3GPP.24.302.
+
+
+
+request_identity:: Send a AKA-Identity message to request
+an additional identity to the one from the EAP-Identity-Response.
+
+If `yes` - We send a request with AT_SUBTYPE AKA-Identity
+with an AT_ANY_ID_REQ attribute to prompt the supplicant
+to send a new identity.
+
+The type of identity requested can be controlled by adding
+one of the following attributes from the
+`recv Identity-Response { ... }` section of the specified
+EAP-AKA virtual_server, to the reply list:
+
+- &reply:Any-Id-Req
+- &reply:Fullauth-Id-Req
+- &reply:Permanent-Id-Req
+
+Even if this configuration item is set to 'no', additional
+identities can be requested by policy.
+See sites-available/eap-aka-sim for details.
+
+
+
+ephemeral_id_length:: The length of any pseudonyms or
+fastauth identities we generate (not including hint byte).
+
+See sites-available/eap-aka-sim for details on how to trigger
+the generation of pseudonym or fastauth identities.
+
+
+
+strip_permanent_identity_hint:: Strip the identity hint when
+copying &EAP-Identity or &Identity to &Permanent-Identity.
+
+The stripping is only performed if this config item is set
+to yes, and the hint byte matches what we'd expect for the
+EAP-Method being executed.
+
+
+
+protected_success:: Send a protected success message.
+
+If `yes` - indicate to the peer that we'd like to send
+a protected success message.  If the peer agrees and
+authentication succeeds, send a `AKA-Notification` (Success)
+packet protected with an `AT_MAC` attribute.
+
+After the Notification is ACKed by the peer, we send
+the final `EAP-Success` packet containing `MPPE` keys.
+
+
+
+virtual_server:: EAP-AKA virtual server containing policy
+sections.  This must be set, EAP-AKA-Prime will not function
+without it, as certain operations like vector gathering
+require user configuration.
+
+
+
+## Expansions
+
+The rlm_eap module provides the below functions to interact with the `3GPP` and `SIM` protocols.
+
+### %{3gpp_pseudonym_decrypt:...}
+
+TODO
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+TODO
+----
+
+.Output
+
+```
+TODO
+```
+
+### %{3gpp_pseudonym_encrypt:...}
+
+TODO
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+TODO
+----
+
+.Output
+
+```
+TODO
+```
+
+### %{3gpp_pseudonym_key_index:...}
+
+TODO
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+TODO
+----
+
+.Output
+
+```
+TODO
+```
+
+### %{sim_id_method:...}
+
+TODO
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+TODO
+----
+
+.Output
+
+```
+TODO
+```
+
+### %{sim_id_type:...}
+
+TODO
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+TODO
+----
+
+.Output
+
+```
+TODO
+```
+
+== Default Configuration
+
+```
+eap {
+	default_eap_type = md5
+	ignore_unknown_eap_types = no
+	cisco_accounting_username_bug = no
+	type = md5
+#	type = pwd
+	type = gtc
+	type = tls
+	type = ttls
+	type = mschapv2
+	type = peap
+#	type = fast
+#	type = aka
+#	type = sim
+	md5 {
+	}
+#	pwd {
+#		group = 19
+#		server_id = theserver@example.com
+#		fragment_size = 1020
+#	}
+	gtc {
+#		challenge = "Password: "
+		auth_type = PAP
+	}
+	tls-config tls-common {
+#		auto_chain = no
+		chain rsa {
+#			format = "PEM"
+			certificate_file = ${certdir}/rsa/server.pem
+			ca_file = ${certdir}/rsa/ca.pem
+			private_key_password = whatever
+			private_key_file = ${certdir}/rsa/server.key
+#			verify_mode = "hard"
+			include_root_ca = no
+		}
+#		chain ecc {
+#			certificate_file = ${certdir}/ecc/server.pem
+#			ca_file = ${certdir}/ecc/ca.pem
+#			private_key_password = whatever
+#			private_key_file = ${certdir}/ecc/server.key
+#		}
+		ca_file = ${cadir}/rsa/ca.pem
+#		psk_identity = "test"
+#		psk_hexphrase = "036363823"
+#		psk_query = "%{sql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
+		dh_file = ${certdir}/dh
+#		fragment_size = 1024
+#		check_crl = yes
+		ca_path = ${cadir}
+#		allow_expired_crl = no
+#		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
+#		check_cert_cn = %{User-Name}
+		cipher_list = "DEFAULT"
+		cipher_server_preference = yes
+#		tls_max_version = 1.2
+#		tls_min_version = 1.2
+		ecdh_curve = "prime256v1"
+		cache {
+#			virtual_server = 'tls-cache'
+#			name = "%{EAP-Type}%{Virtual-Server}"
+#			lifetime = 86400
+#			verify = no
+#			require_extended_master_secret = yes
+#			require_perfect_forward_secrecy = no
+		}
+		verify {
+#			tmpdir = /tmp/radiusd
+#			client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
+		}
+		ocsp {
+#			enable = no
+#			virtual_server = 'tls-cache'
+			override_cert_url = yes
+			url = "http://127.0.0.1/ocsp/"
+#			use_nonce = yes
+#			timeout = 0
+#			softfail = no
+		}
+		staple {
+#			enable = no
+#			virtual_server = 'tls-cache'
+			override_cert_url = yes
+			url = "http://127.0.0.1/ocsp/"
+#			use_nonce = yes
+#			timeout = 0
+#			softfail = no
+		}
+	}
+	tls {
+		tls = tls-common
+#		require_client_cert = yes
+#		include_length = yes
+#		virtual_server = check-eap-tls
+	}
+	ttls {
+		tls = tls-common
+		virtual_server = "inner-tunnel"
+#		include_length = yes
+#		require_client_cert = yes
+	}
+	peap {
+		tls = tls-common
+		default_eap_type = mschapv2
+#		proxy_tunneled_request_as_eap = yes
+		virtual_server = "inner-tunnel"
+#		soh = yes
+#		soh_virtual_server = "soh-server"
+#		require_client_cert = yes
+	}
+	mschapv2 {
+#		auth_type = mschap
+#		send_error = no
+#		identity = "FreeRADIUS"
+#		with_ntdomain_hack = yes
+	}
+	fast {
+		tls = tls-common
+		cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
+		pac_lifetime = 604800
+		authority_identity = "1234"
+		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
+		virtual_server = inner-tunnel
+#		default_provisioning_eap_type = mschapv2
+	}
+	sim {
+#		request_identity = no
+#		ephemeral_id_length = 14
+#		strip_permanent_identity_hint = yes
+#		protected_success = yes
+		virtual_server = eap-aka-sim
+	}
+	aka {
+#		protected_success = no
+#		virtual_server = ""
+#		request_identity = no
+#		ephemeral_id_length = 14
+#		strip_permanent_identity_hint = yes
+#		protected_success = yes
+#		prefer_aka_prime = yes
+		virtual_server = eap-aka-sim
+	}
+	aka-prime {
+#		network_name = ""
+#		request_identity = no
+#		ephemeral_id_length = 14
+#		strip_permanent_identity_hint = yes
+#		protected_success = yes
+		virtual_server = eap-aka-sim
+	}
+}
+```

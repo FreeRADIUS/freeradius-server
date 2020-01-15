@@ -1,0 +1,712 @@
+
+
+
+
+= FreeRADIUS server configuration file - 4.0.0
+
+Read `man radiusd` before editing this file.  See the section
+titled DEBUGGING.  It outlines a method where you can quickly
+obtain the configuration you want, without running into
+trouble.
+
+Run the server in debugging mode, and READ the output.
+
+    $ radiusd -X
+
+We cannot emphasize this point strongly enough.  The vast
+majority of problems can be solved by carefully reading the
+debugging output, which includes warnings about common issues,
+and suggestions for how they may be fixed.
+
+There may be a lot of output, but look carefully for words like:
+`warning`, `error`, `reject`, or `failure`.  The messages there
+will usually be enough to guide you to a solution.
+
+If you are going to ask a question on the mailing list, then
+explain what you are trying to do, and include the output from
+debugging mode (`radiusd -X`).  Failure to do so means that all
+of the responses to your question will be people telling you
+to _post the output of `radiusd -X`_.
+
+
+## Default instance
+
+The location of other config files and logfiles are declared
+in this file.
+
+Also general configuration for modules can be done in this
+file, it is exported through the API to modules that ask for
+it.
+
+See `man radiusd.conf` for documentation on the format of this
+file.  Note that the individual configuration items are NOT
+documented in that "man" page.  They are only documented here,
+in the comments.
+
+The `unlang` policy language can be used to create complex
+if / else policies.  See `man unlang` for details.
+
+NOTE: The paths used for installed server files. They are set
+automatically at install time and will not normally need to be
+changed.
+
+
+
+name:: the name of the running server.
+
+See also the `-n` command-line option.
+
+
+
+Location of config and logfiles.
+
+
+
+Should likely be ${localstatedir}/lib/radiusd
+
+
+
+libdir:: Where to find the rlm_* modules.
+
+This should be automatically set at configuration time.
+
+If the server builds and installs, but fails at execution time
+with an 'undefined symbol' error, then you can use the `libdir`
+directive to work around the problem.
+
+The cause is usually that a library has been installed on your
+system in a place where the dynamic linker *cannot* find it.  When
+executing as root (or another user), your personal environment
+  *may* be set up to allow the dynamic linker to find the
+library. When executing as a daemon, FreeRADIUS *may not* have
+the same personalized configuration.
+
+To work around the problem, find out which library contains
+that symbol, and add the directory containing that library to
+the end of `libdir`, with a colon separating the directory
+names. *No* spaces are allowed. e.g.
+
+    libdir = /usr/local/lib:/opt/package/lib
+
+You can also try setting the `LD_LIBRARY_PATH` environment
+variable in a script which starts the server.
+
+If that does not work, then you can re-configure and re-build the
+server to NOT use shared libraries, via:
+
+    ./configure --disable-shared
+    make
+    make install
+
+
+
+pidfile:: Where to place the PID of the RADIUS server.
+
+The server may be signalled while it's running by using this
+file.
+
+This file is written when _only_ running in daemon mode.
+
+e.g.:  `kill -HUP $(cat /var/run/radiusd/radiusd.pid)`
+
+
+
+panic_action:: Command to execute if the server dies unexpectedly.
+
+[WARNING]
+====
+FOR PRODUCTION SYSTEMS, ACTIONS SHOULD ALWAYS EXIT.
+AN INTERACTIVE ACTION MEANS THE SERVER IS NOT RESPONDING TO REQUESTS.
+AN INTERACTICE ACTION MEANS THE SERVER WILL NOT RESTART.
+
+THE SERVER MUST NOT BE ALLOWED EXECUTE UNTRUSTED PANIC ACTION CODE
+PATTACH CAN BE USED AS AN ATTACK VECTOR.
+====
+
+The panic action is a command which will be executed if the server
+receives a fatal, non user generated signal, i.e. `SIGSEGV`, `SIGBUS`,
+`SIGABRT` or `SIGFPE`.
+
+This can be used to start an interactive debugging session so
+that information regarding the current state of the server can
+be acquired.
+
+The following string substitutions are available:
+- `%e`   The currently executing program e.g. `/sbin/radiusd`
+- `%p`   The PID of the currently executing program e.g. `12345`
+
+Standard `${}` substitutions are also allowed.
+
+An example panic action for opening an interactive session in GDB would be:
+
+
+Again, don't use that on a production system.
+
+An example panic action for opening an automated session in GDB would be:
+
+
+NOTE: That command can be used on a production system.
+
+
+
+max_request_time:: The maximum time (in seconds) to handle a request.
+
+Requests which take more time than this to process may be killed, and
+a REJECT message is returned.
+
+WARNING: If you notice that requests take a long time to be handled,
+then this MAY INDICATE a bug in the server, in one of the modules
+used to handle a request, OR in your local configuration.
+
+This problem is most often seen when using an SQL database.  If it takes
+more than a second or two to receive an answer from the SQL database,
+then it probably means that you haven't indexed the database.  See your
+SQL server documentation for more information.
+
+Useful range of values: `5` to `120`
+
+
+
+max_requests:: The maximum number of requests which the server keeps
+track of.  This should be `256` multiplied by the number of clients.
+e.g. With `4` clients, this number should be `1024`.
+
+If this number is too low, then when the server becomes busy,
+it will not respond to any new requests, until the 'cleanup_delay'
+time has passed, and it has removed the old requests.
+
+If this number is set too high, then the server will use a bit more
+memory for no real benefit.
+
+If you aren't sure what it should be set to, it's better to set it
+too high than too low.  Setting it to `1000` per client is probably
+the highest it should be.
+
+Useful range of values: `256` to `infinity`
+
+
+
+reverse_lookups:: Log the names of clients or just their IP addresses
+
+e.g., www.freeradius.org (`on`) or 206.47.27.232 (`off`).
+
+The default is `off` because it would be overall better for the net
+if people had to knowingly turn this feature on, since enabling it
+means that each client request will result in AT LEAST one lookup
+request to the nameserver.   Enabling `hostname_lookups` will also
+mean that your server may stop randomly for `30` seconds from time
+to time, if the DNS requests take too long.
+
+Turning hostname lookups off also means that the server won't block
+for `30` seconds, if it sees an IP address which has no name associated
+with it.
+
+allowed values: {no, yes}
+
+
+
+hostname_lookups:: Global toggle for preventing hostname resolution
+
+The default is `on` because people often use hostnames in configuration
+files.  The main disadvantage of enabling this is the server may block
+at inopportune moments (like opening new connections) if the DNS servers
+are unavailable
+
+allowed values: {no, yes}
+
+
+
+Logging section.  The various `log_*` configuration items
+will eventually be moved here.
+
+
+destination: Destination for log messages.
+
+This can be one of:
+
+|===
+| Destination | Description
+| files       | Log to `file`, as defined below.
+| syslog      | To syslog (see also the `syslog_facility`, below.
+| stdout      | Standard output.
+| stderr      | Standard error.
+|===
+
+The command-line option `-X` over-rides this option, and forces
+logging to go to stdout.
+
+
+
+colourise:: Highlight important messages sent to stderr and stdout.
+
+Option will be ignored (disabled) if output if `TERM` is not
+an xterm or output is not to a TTY.
+
+
+
+timestamp:: Add a timestamp to the start of every log message.
+
+By default this is done with log levels of `-Xx` or `-xxx`
+where the destination is not syslog, or at all levels where the
+output is a file.
+
+The config option below forcefully enables or disables timestamps
+irrespective of the log destination.
+
+NOTE: Is overridden by the `-T` command line option.
+
+
+
+file:: The logging messages for the server are appended to the
+tail of this file `if ${destination} == "files"`
+
+NOTE: If the server is running in debugging mode, this file is
+NOT used.
+
+
+
+syslog_facility:: Which syslog facility to use, `if ${destination} == "syslog"`.
+
+The exact values permitted here are _OS-dependent_.  You probably
+don't want to change this.
+
+
+
+.ENVIRONMENT VARIABLES
+
+You can reference environment variables using an expansion like
+`$ENV{PATH}`.  However it is sometimes useful to be able to also set
+environment variables.  This section lets you do that.
+
+The main purpose of this section is to allow administrators to keep
+RADIUS-specific configuration in the RADIUS configuration files.
+For example, if you need to set an environment variable which is
+used by a module.  You could put that variable into a shell script,
+but that's awkward.  Instead, just list it here.
+
+Note that these environment variables are set AFTER the
+configuration file is loaded.  So you cannot set FOO here, and
+expect to reference it via `$ENV{FOO}` in another configuration file.
+You should instead just use a normal configuration variable for
+that.
+
+
+Set environment varable `FOO` to value '/bar/baz'.
+
+NOTE: Note that you MUST use '='.  You CANNOT use '+=' to append
+values.
+
+
+
+Delete environment variable `BAR`.
+
+
+
+`LD_PRELOAD` is special.  It is normally set before the
+application runs, and is interpreted by the dynamic linker.
+Which means you cannot set it inside of an application, and
+expect it to load libraries.
+
+Since this functionality is useful, we extend it here.
+
+You can set
+
+LD_PRELOAD = /path/to/library.so
+
+and the server will load the named libraries.  Multiple
+libraries can be loaded by specificing multiple individual
+`LD_PRELOAD` entries.
+
+
+
+
+.Security Configuration
+
+There may be multiple methods of attacking on the server.  This
+section holds the configuration items which minimize the impact
+of those attacks
+
+
+chroot: directory where the server does "chroot".
+
+The chroot is done very early in the process of starting
+the server.  After the chroot has been performed it
+switches to the `user` listed below (which MUST be
+specified).  If `group` is specified, it switches to that
+group, too.  Any other groups listed for the specified
+`user` in `/etc/group` are also added as part of this
+process.
+
+The current working directory (chdir / cd) is left
+  *outside* of the `chroot` until all of the modules have been
+initialized.  This allows the `raddb` directory to be left
+outside of the `chroot`.  Once the modules have been
+initialized, it does a `chdir` to `${logdir}`.  This means
+that it should be impossible to break out of the chroot.
+
+If you are worried about security issues related to this
+use of chdir, then simply ensure that the "raddb" directory
+is inside of the chroot, end be sure to do "cd raddb"
+BEFORE starting the server.
+
+If the server is statically linked, then the only files
+that have to exist in the chroot are `${run_dir}` and
+`${logdir}`.  If you do the `cd raddb` as discussed above,
+then the `raddb` directory has to be inside of the `chroot`
+directory, too.
+
+
+
+user::
+group::
+
+The name (or `#number`) of the `user`/`group` to run `radiusd` as.
+
+If these are commented out, the server will run as the
+user/group that started it.  In order to change to a
+different user/group, you MUST be root ( or have root
+privileges ) to start the server.
+
+We STRONGLY recommend that you run the server with as few
+permissions as possible.  That is, if you're not using
+shadow passwords, the user and group items below should be
+set to radius'.
+
+NOTE: Some kernels refuse to `setgid(group)` when the
+value of (unsigned)group is above 60000; don't use group
+`nobody` on these systems!
+
+On systems with shadow passwords, you might have to set
+`group = shadow` for the server to be able to read the
+shadow password file.  If you can authenticate users while
+in debug mode, but not in daemon mode, it may be that the
+debugging mode server is running as a user that can read
+the shadow info, and the user listed below can not.
+
+The server will also try to use `initgroups` to read
+/etc/groups.  It will join all groups where "user" is a
+member.  This can allow for some finer-grained access
+controls.
+
+
+
+allow_core_dumps:: Core dumps are a bad thing.
+
+This should only be set to `yes` if you're debugging
+a problem with the server.
+
+allowed values: {no, yes}
+
+
+
+max_attributes:: The maximum number of attributes
+permitted in a RADIUS packet.  Packets which have MORE
+than this number of attributes in them will be dropped.
+
+If this number is set too low, then no RADIUS packets
+will be accepted.
+
+If this number is set too high, then an attacker may be
+able to send a small number of packets which will cause
+the server to use all available memory on the machine.
+
+Setting this number to 0 means "allow any number of attributes"
+
+
+
+allow_vulnerable_openssl: Allow the server to start with
+versions of OpenSSL known to have critical vulnerabilities.
+
+This check is based on the version number reported by libssl
+and may not reflect patches applied to libssl by
+distribution maintainers.
+
+
+
+openssl_fips_mode:: Enable OpenSSL FIPS mode.
+
+This disables non-FIPS compliant digests and algorithms
+
+
+
+.Clients Configuration
+
+Client configuration is defined in `clients.conf`.
+
+[WARNING]
+====
+The `clients.conf` file contains all of the information from the old
+`clients` and `naslist` configuration files.  We recommend that you
+do NOT use `client's` or `naslist`, although they are still
+supported.
+
+Anything listed in 'clients.conf' will take precedence over the
+information from the old-style configuration files.
+====
+
+
+
+.Thread Pool Configuration
+
+In v4, the thread pool does not change size dynamically.  Instead,
+there are a small number of threads which read from the network,
+and a slightly larger number of threads which process a request.
+
+
+num_networks:: Only one network thread is supported for now.
+
+
+
+num_workers:: The worker threads can be varied.  It should be
+at least one, and no more than 32.  Since each request is
+non-blocking, there is no reason to run hundreds of threads
+as in v3.
+
+
+
+.SNMP notifications.
+
+Uncomment the following line to enable snmptraps.  Note that you
+MUST also configure the full path to the `snmptrap` command in
+the `trigger.conf` file.
+
+
+
+.Module Configuration
+
+The names and configuration of each module is located in this section.
+
+After the modules are defined here, they may be referred to by name,
+in other sections of this configuration file.
+
+
+Each module has a configuration as follows:
+
+```
+name [ instance ] {
+	config_item = value
+	...
+}
+```
+
+The `name` is used to load the `rlm_name` library
+which implements the functionality of the module.
+
+The 'instance' is optional.  To have two different instances
+of a module, it first must be referred to by 'name'.
+The different copies of the module are then created by
+inventing two 'instance' names, e.g. 'instance1' and 'instance2'
+
+The instance names can then be used in later configuration
+INSTEAD of the original 'name'.  See the 'radutmp' configuration
+for an example.
+
+
+
+Some modules have ordering issues.
+
+e.g. `sqlippool` uses  the configuration from `sql`.
+In that case, the `sql` module must be read off of disk before
+the `sqlippool`.
+
+However, the directory inclusion below just reads the
+directory from start to finish.  Which means that the
+modules are read off of disk randomly.
+
+As of `>= 3.0.18`, you can list individual modules *before* the
+directory inclusion.  Those modules will be loaded first.
+Then, when the directory is read, those modules will be
+skipped and not read twice.
+
+
+
+Modules are in mods-enabled/.  Files matching
+the regex /[a-zA-Z0-9_.]+/ are loaded.  The modules are
+initialized ONLY if they are referenced in a processing
+section, such as authorize, authenticate, accounting,
+pre/post-proxy, etc.
+
+
+
+.Instantiation
+
+This section orders the loading of the modules.  Modules
+listed here will get loaded BEFORE the later sections like
+authorize, authenticate, etc. get examined.
+
+This section is not strictly needed.  When a section like
+authorize refers to a module, it's automatically loaded and
+initialized.  However, some modules may not be listed in any
+of the following sections, so they can be listed here.
+
+Also, listing modules here ensures that you have control over
+the order in which they are initialized.  If one module needs
+something defined by another module, you can list them in order
+here, and ensure that the configuration will be OK.
+
+After the modules listed here have been loaded, all of the modules
+in the "mods-enabled" directory will be loaded.  Loading the
+"mods-enabled" directory means that unlike Version 2, you usually
+don't need to list modules here.
+
+
+We list the counter module here so that it registers
+the check_name attribute before any module which sets
+it.
+
+
+
+subsections here can be thought of as `virtual` modules.
+
+e.g. If you have two redundant SQL servers, and you want to
+use them in the authorize and accounting sections, you could
+place a `redundant` block in each section, containing the
+exact same text.  Or, you could uncomment the following
+lines, and list `redundant_sql` in the authorize and
+accounting sections.
+
+The `virtual` module defined here can also be used with
+dynamic expansions, under a few conditions:
+
+  * The section is `redundant`, or `load-balance`, or
+  `redundant-load-balance`
+  * The section contains modules ONLY, and no sub-sections
+  * All modules in the section are using the same rlm_
+  driver, e.g. They are all sql, or all ldap, etc.
+
+When those conditions are satisfied, the server will
+automatically register a dynamic expansion, using the
+name of the `virtual` module.  In the example below,
+it will be `redundant_sql`.  You can then use this expansion
+just like any other:
+
+	update reply {
+		Filter-Id := "%{redundant_sql: ... }"
+	}
+
+In this example, the expansion is done via module `sql1`,
+and if that expansion fails, using module `sql2`.
+
+For best results, configure the `pool` subsection of the
+module so that `retry_delay` is non-zero.  That will allow
+the redundant block to quickly ignore all "down" SQL
+databases.  If instead we have `retry_delay = 0`, then
+every time the redundant block is used, the server will try
+to open a connection to every `down` database, causing
+problems.
+
+		sql1
+		sql2
+
+
+.Policies
+
+Policies are virtual modules, similar to those defined in the
+`instantiate` section above.
+
+Defining a policy in one of the `policy.d` files means that it can be
+referenced in multiple places as a *name*, rather than as a series of
+conditions to match, and actions to take.
+
+Policies are something like subroutines in a normal language, but
+they cannot be called recursively. They MUST be defined in order.
+If policy A calls policy B, then B MUST be defined before A.
+
+
+
+.Load virtual servers.
+
+This next $INCLUDE line loads files in the directory that
+match the regular expression: /[a-zA-Z0-9_.]+/
+
+It allows you to define new virtual servers simply by placing
+a file into the raddb/sites-enabled/ directory.
+
+All of the other configuration sections like:
+
+  * `recv Access-Request {}`
+  * `process Access-Request {}`
+  * `process Accounting-Request {}`
+
+Have been moved to the the file:
+
+`raddb/sites-available/default`
+
+This is the `default` virtual server that has the same
+configuration as in version 1.0.x and 1.1.x.  The default
+installation enables this virtual server.  You should
+edit it to create policies for your local site.
+
+For more documentation on virtual servers, see:
+
+`doc/raddb/sites-available/index.adoc`
+
+
+== Default Configuration
+
+```
+prefix = /Users/arr2036/Documents/Repositories/projects/freeradius-server/install
+exec_prefix = ${prefix}
+sysconfdir = ${prefix}/etc
+localstatedir = ${prefix}/var
+sbindir = ${exec_prefix}/sbin
+logdir = ${localstatedir}/log/radius
+raddbdir = ${sysconfdir}/raddb
+radacctdir = ${logdir}/radacct
+name = radiusd
+confdir = ${raddbdir}
+modconfdir = ${confdir}/mods-config
+certdir = ${confdir}/certs
+cadir   = ${confdir}/certs
+run_dir = ${localstatedir}/run/${name}
+db_dir = ${raddbdir}
+libdir = ${exec_prefix}/lib
+pidfile = ${run_dir}/${name}.pid
+#panic_action = "gdb %e %p"
+#panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p 2>&1 | tee ${logdir}/gdb-${name}-%p.log"
+max_request_time = 30
+max_requests = 16384
+reverse_lookups = no
+hostname_lookups = yes
+log {
+	destination = files
+	colourise = yes
+#	timestamp = no
+	file = ${logdir}/radius.log
+	syslog_facility = daemon
+}
+ENV {
+#	FOO = '/bar/baz'
+#	BAR
+#	LD_PRELOAD = /path/to/library1.so
+#	LD_PRELOAD = /path/to/library2.so
+}
+security {
+#	chroot = /path/to/chroot/directory
+#	user = radius
+#	group = radius
+	allow_core_dumps = no
+	max_attributes = 200
+	allow_vulnerable_openssl = no
+#	openssl_fips_mode = no
+}
+$INCLUDE clients.conf
+thread pool {
+	num_networks = 1
+	num_workers = 4
+}
+#$INCLUDE trigger.conf
+modules {
+#	$INCLUDE mods-enabled/sql
+	$INCLUDE mods-enabled/
+}
+instantiate {
+#	daily
+#	redundant redundant_sql {
+#	}
+}
+policy {
+	$INCLUDE policy.d/
+}
+$INCLUDE sites-enabled/
+```

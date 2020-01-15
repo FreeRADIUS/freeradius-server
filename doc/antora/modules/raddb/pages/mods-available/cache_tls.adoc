@@ -1,0 +1,99 @@
+
+
+
+
+= Cache TLS Session Module
+
+The `cache_tls` module caches TLS sessions for resiliency.
+
+This module should be listed in a `send Access-Accept` section to
+write the cache, and in `recv Access-Request` to read the cache.
+When it runs, it will cache the current TLS session.  That cache
+allows for fast session resumption.
+
+The `rbtree` cache back-end is an "in memory" cache.  Which means
+that the TLS session cache will be lost if the server restarts.
+The TLS session cache can be preserved by using an external
+back-end, such as `memcached` or `redis`.
+
+Also, if an external backend is used, then the TLS session cache
+can be shared across multiple RADIUS servers.  That makes for
+simple load balancing with full session resumption.
+
+NOTE: Please see the `cache` module for full documentation on the cache
+configuration.
+
+
+
+## Configuration Settings
+
+
+
+### TLS Session Configuration
+
+
+driver:: `cache` driver.
+
+
+
+key:: The `cache` key.
+
+
+
+ttl:: TTL for `cache` entries.
+
+
+
+update <section> { ... }::
+
+
+
+NOTE: If you want to store authorization attributes too, consider
+performing LDAP/SQL lookups in the tls-cache virtual server and
+storing the results in `&session-state`.
+
+The complete list can then be restored along with the
+`Session-Data` using the entry below.
+
+Policies run in `post-auth` then have access to the same data
+irrespective of whether the session is being resumed.
+
+
+
+### OCSP Session Configuration
+
+In addition to TLS sessions, the OCSP queries can be cached.
+
+
+driver:: `cache` driver.
+
+
+
+key:: `cache` key.
+
+
+
+update <section> { ... }::
+
+
+== Default Configuration
+
+```
+cache cache_tls_session {
+	driver = "rlm_cache_rbtree"
+	key = &Session-Id
+	ttl = 3600	# 60 mins
+	update {
+		&session-state:Session-Data := &session-state:Session-Data
+#		&session-state: += &session-state:
+	}
+}
+cache cache_ocsp {
+	driver = "rlm_cache_rbtree"
+	key = &session-state:TLS-Client-Cert-Serial
+	update {
+		&control:TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
+		&control:TLS-OCSP-Response := &TLS-OCSP-Response
+	}
+}
+```

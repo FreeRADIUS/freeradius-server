@@ -1,0 +1,178 @@
+
+
+
+
+= WinModule
+
+The `winbind` module authenticate PAP passwords against Microsoft Active
+Directory or Samba, via the winbind API.
+
+This module is for PAP authentication (where plaintext passwords
+are sent in the `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` attribute) only. For authenticating
+`mschap` requests against AD/Samba see the options available in the
+`rlm_mschap` module.
+
+NOTE: Samba version 4.2.1 or higher is required to use this module.
+
+
+
+## Configuration Settings
+
+
+username:: The username to pass to `winbind` for authentication.
+
+
+
+domain:: The windows domain.
+
+While not required to be set, it is likely that authentication will fail
+if it is not set correctly.
+
+This configuration option, as the username above, is also expanded before use.
+
+If unset then winbind will be queried for the correct value. If you
+actually want it blank it should be explicitly set here.
+
+
+
+group { ... }:: Group membership checking.
+
+
+search_username:: AD username to search for group searches.
+
+This should generally not include a realm, so `Stripped-User-Name`
+is likely the best attribute if it exists.
+
+
+
+add_domain:: Include the domain in group searches.
+
+When this is enabled, winbind_domain is prepended to the
+username (as `domain\username`) before searching. This is
+generally required.
+
+
+
+attribute:: Attribute to use for group comparisons.
+
+This will normally be `Winbind-Group` if this instance is
+unnamed, otherwise it will be `name-Winbind-Group`. The
+name of this attribute can be overridden here.
+
+
+
+pool { ... }::
+
+Information for the `winbind` connection pool.
+
+The configuration items below are the same for all modules which
+use the new connection pool.
+
+
+start::
+
+Connections to create during module instantiation.
+If the server cannot create specified number of
+connections during instantiation it will exit.
+
+Set to `0` to allow the server to start without the
+winbind daemon being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one
+is requested, the request will NOT get a connection.
+
+Setting `max` to LESS than the number of threads means
+that some threads may starve, and you will see errors
+like 'No connections available and at max connection limit'
+
+Setting `max` to MORE than the number of threads means
+that there are more connections than necessary.
+
+
+
+spare:: Spare connections to be left idle.
+
+NOTE: Idle connections WILL be closed if `idle_timeout`
+is set. This should be less than or equal to `max` above.
+
+
+
+uses:: Number of uses before the connection is closed.
+
+NOTE: A setting of 0 means infinite (no limit).
+
+
+
+retry_delay:: The number of seconds to wait after the server tries
+to open a connection, and fails.
+
+During this time, no new connections will be opened.
+
+
+
+lifetime:: The lifetime (in seconds) of the connection.
+
+NOTE: A setting of 0 means infinite (no limit).
+
+
+
+cleanup_interval:: The pool is checked for free connections every
+`cleanup_interval`.
+
+If there are free connections, then one of them is closed.
+
+
+
+idle_timeout:: The idle timeout (in seconds).
+
+A connection which is unused for this length of time will be closed.
+
+NOTE: A setting of 0 means infinite (no timeout).
+
+
+
+[NOTE]
+====
+All configuration settings are enforced.  If a connection is closed because of
+`idle_timeout`, `uses`, or `lifetime`, then the total
+number of connections MAY fall below `min`.
+
+When that happens, it will open a new connection. It will also log a *WARNING* message.
+
+The solution is to either lower the "min" connections, or
+increase lifetime/idle_timeout.
+====
+
+
+== Default Configuration
+
+```
+winbind {
+	username = "%{%{Stripped-User-Name}:-%{User-Name}}"
+#	domain = ""
+	group {
+		search_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
+#		add_domain = yes
+#		attribute = "Winbind-Group"
+	}
+	pool {
+		start = ${thread[pool].num_workers}
+		min = ${thread[pool].num_workers}
+		max = ${thread[pool].num_workers}
+		spare = 1
+		uses = 0
+		retry_delay = 30
+		lifetime = 86400
+		cleanup_interval = 300
+		idle_timeout = 600
+	}
+}
+```

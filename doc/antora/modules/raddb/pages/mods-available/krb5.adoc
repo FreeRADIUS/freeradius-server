@@ -1,0 +1,146 @@
+
+
+
+
+= Kerberos Module
+
+The `krb5` module enables the use of Kerberos 5 for authentication.
+
+NOTE: This default config presumes you have the MIT Kerberos 5 distribution.
+
+## Configuration Settings
+
+krb5 { ... }::
+
+
+keytab:: Containing the key used by rlm_krb5.
+
+
+
+service_principal:: Principal that is used by rlm_krb5.
+
+
+
+pool { ... }:: Pool of `krb5` contexts.
+
+This allows us to make the module multithreaded and to avoid expensive
+operations like resolving and opening keytabs on every request.
+It may also allow TCP connections to the KDC to be cached if that is
+supported by the version of libkrb5 used.
+
+NOTE: The context `pool` is only used if the underlying libkrb5 reported
+that it was thread safe at compile time.
+
+
+start:: Connections to create during module instantiation.
+
+If the server cannot create specified number of
+connections during instantiation it will exit.
+Set to `0` to allow the server to start without the
+KDC being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one
+is requested, the request will NOT get a connection.
+
+Setting `max` to *LESS* than the number of threads means
+that some threads may starve, and you will see errors
+like _No connections available and at max connection limit_.
+
+Setting `max` to MORE than the number of threads means
+that there are more connections than necessary.
+
+
+
+spare:: Spare connections to be left idle.
+
+NOTE: Idle connections WILL be closed if `idle_timeout`
+is set. This should be less than or equal to `max` above.
+
+
+
+uses:: Number of uses before the connection is closed.
+
+NOTE: A setting of `0` means infinite (no limit).
+
+
+
+lifetime:: The lifetime (in seconds) of the connection.
+
+NOTE: A setting of `0` means infinite (no limit).
+
+
+
+idle_timeout:: The idle timeout (in seconds).  A connection which is
+unused for this length of time will be closed.
+
+NOTE: A setting of `0` means infinite (no timeout).
+
+
+
+[NOTE]
+====
+All configuration settings are enforced.  If a
+connection is closed because of `idle_timeout`,
+`uses`, or `lifetime`, then the total number of
+connections MAY fall below `min`.  When that
+happens, it will open a new connection.  It will
+also log a WARNING message.
+
+The solution is to either lower the `min` connections,
+or increase lifetime/idle_timeout.
+====
+
+
+
+## Sample
+
+You can configure the module with the following parameters:
+
+[source, unlang]
+----
+krb5 {
+# Keytab containing the key used by rlm_krb5
+keytab = /path/to/keytab
+
+# Principal that is used by rlm_krb5
+service_principal = radius/some.host.com
+}
+----
+
+Make sure the keytab is readable by the user that is used to run `radiusd` and
+that your authorization configuration really uses `krb5` to do the
+authentication. You will need to add the following to the `authenticate`
+section of your `radiusd.conf` file:
+
+[source, unlang]
+Auth-Type Kerberos {
+krb5
+}
+----
+
+
+== Default Configuration
+
+```
+krb5 {
+	keytab = /path/to/keytab
+	service_principal = name_of_principle
+	pool {
+		start = ${thread[pool].num_workers}
+		min = ${thread[pool].num_workers}
+		max = ${thread[pool].num_workers}
+		spare = 1
+		uses = 0
+		lifetime = 0
+		idle_timeout = 0
+	}
+}
+```

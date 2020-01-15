@@ -1,0 +1,21 @@
+
+A virtual server which is used to validate channel-bindings.
+
+
+
+Only the "authorize" section is needed.
+
+In general this section should include a policy for each type
+of channel binding that may be in use.  For example each lower
+layer such as GSS-EAP (https://tools.ietf.org/html/rfc7055[RFC 7055]) or IEEE 802.11I is likely to
+need a separate channel binding policy.
+
+== Default Configuration
+
+```
+server channel_bindings {
+	recv Access-Request {
+		abfab_channel_bindings
+	}
+}
+```

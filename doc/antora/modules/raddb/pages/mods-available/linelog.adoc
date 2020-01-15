@@ -1,0 +1,404 @@
+
+
+
+
+= Linelog Module
+
+The `linelog` module will log entries from attributes, string expansions,
+or static strings, and writes them to a variety of backends, including syslog,
+flat files, and raw UDP/TCP sockets.
+
+NOTE: Multiple linelog's modules may be used for any given request.
+The `logtee` modules will not affect normal logging output.
+i.e. This logging is *in addition* to any other logging that is
+done by the server.
+
+
+
+## Configuration Settings
+
+
+delimiter::  Custom line delimiters.
+
+Defaults to `\n` (newline) but may be any UTF8 multi-character
+string.
+
+
+
+format:: The default format string. May be an attribute reference.
+
+e.g. `&User-Name`, or `xlat`, `literal` or `exec`.
+
+
+
+[NOTE]
+====
+The `reference` configuration item can be omitted.  If it
+is omitted, then the log message is static, and is always
+given by `format`, above.
+
+If `reference` is defined, then the value is dynamically
+expanded, and the result is used to find another
+configuration entry here, with the given name.  That name
+is then used as the format string.
+
+If the configuration entry cannot be found, then no log
+message is printed.
+
+i.e: You can have many log messages in one `linelog` module.
+If this two-step expansion did not exist, you would have
+needed to configure one `linelog` module for each log message.
+====
+
+
+
+reference::
+
+Reference the `Packet-Type` (`link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`, etc.)  If
+`reference` is commented out, the `format` entry above is
+used instead.
+
+May be an attribute reference, e.g. `&User-Name`, or `xlat`, `literal` or `exec`.
+
+
+
+messages { ... }::
+
+The messages defined here are chosen from the `reference`
+expansion, above.
+
+Pairs may be attributes attribute reference `&User-Name` , `xlat`, `literal` or `exec`.
+
+
+
+
+destination:: What should be done with log messages.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option | Description
+| file   | Write to a file.
+| syslog | Send via the system's syslog() function.
+| file   | Write to a file - NYI.
+| tcp    | Write to a TCP socket.
+| udp    | Write to a UDP socket.
+| unix   | Write to a UNIX socket.
+|===
+
+
+
+.File as the destination for log messages.
+
+
+filename:: The file where the logs will go.
+
+WARNING: We STRONGLY suggest that you do not use
+data from the packet as part of the filename.  This
+data is untrusted, and may play games with your
+file system!  If it is necessary you must set
+`escape_filenames = yes` in order to prevent
+security issues.
+
+
+
+permissions:: The Unix-style permissions on the log file.
+
+Depending on format string, the log file may contain secret or
+private information about users.  Keep the file permissions as
+restrictive as possible.
+
+
+
+group:: The Unix group which owns the log file.
+
+The user that freeradius runs as must be in the specified
+group, otherwise it will not be possible to set the group.
+
+
+
+escape_filenames::
+
+Most file systems can handle nearly the full range
+of UTF-8 characters.  Ones that can only deal with
+a limited range should set this to `yes`.
+
+
+
+The connection pool for TCP and Unix socket connections.
+
+
+start::
+
+Connections to create during module instantiation.
+If the server cannot create specified number of
+connections during instantiation it will exit.
+Set to 0 to allow the server to `start` without the
+web service being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one
+is requested, the request will NOT get a connection.
+
+Setting `max` to LESS than the number of threads means
+that some threads may starve, and you will see errors
+like 'No connections available and at `max` connection limit'
+
+Setting `max` to MORE than the number of threads means
+that there are more connections than necessary.
+
+
+
+spare:: Spare connections to be left idle.
+
+NOTE: Idle connections WILL be closed if `idle_timeout`
+is set.  This should be less than or equal to `max` above.
+
+
+
+uses:: Number of uses before the connection is closed.
+
+`0` means "infinite"
+
+
+
+retry_delay::
+
+The number of seconds to wait after the server tries
+to open a connection, and fails.  During this time,
+no new connections will be opened.
+
+
+
+lifetime:: The lifetime (in seconds) of the connection.
+
+
+
+idle_timeout:: A connection which is unused for this length
+of time will be closed.
+
+Default `60` seconds.
+
+
+
+NOTE: All configuration settings are enforced.  If a
+connection is closed because of `idle_timeout`,
+`uses`, or `lifetime`, then the total number of
+connections MAY fall below `min`.  When that
+happens, it will open a new connection.  It will
+also log a WARNING message.
+
+The solution is to either lower the `min` connections,
+or increase `lifetime`/`idle_timeout`.
+
+
+
+.UNIX socket-file as destination
+
+
+filename:: Full path to the `unix socket` file.
+
+
+
+pool:: The `pool { ... }` of connections.
+
+
+
+.TCP-server as a destination
+
+
+server:: Server to connect to.
+
+
+
+port:: Port to connect to.
+
+
+
+timeout:: Connect and write timeout (in seconds).
+
+
+
+pool:: The `pool { ... }` of connections.
+
+
+
+.UDP-server as a destination
+
+
+server:: Server to connect to.
+
+
+
+port:: Port to connect to.
+
+
+
+timeout:: Connect and write timeout (in seconds).
+
+
+
+pool:: The `pool { ... }` of connections.
+
+
+
+.Syslog-server as a destination
+
+
+facility:: Syslog facility (if logging via syslog).
+
+Defaults to the syslog_facility config item in radiusd.conf.
+
+Standard facilities are:
+
+[options="header,autowidth"]
+|===
+| Option     | Description
+| kern       | Messages generated by the kernel.  These cannot
+               be generated by any user processes.
+| user       | Messages generated by random user processes.
+               This is the default facility identifier if
+               none is specified.
+| mail       | The mail system.
+| daemon     | System daemons, such as routed(8), that are not
+               provided for explicitly by other facilities.
+| auth       | The authorization system: login(1), su(1),
+               getty(8), etc.
+| lpr        | The line printer spooling system: cups-lpd(8),
+               cupsd(8), etc.
+| news       | The network news system.
+| uucp       | The uucp system.
+| cron       | The cron daemon: cron(8).
+| authpriv   | The same as LOG_AUTH, but logged to a file
+               readable only by selected individuals.
+| ftp        | The file transfer protocol daemons: ftpd(8),
+               tftpd(8).
+| local[0-7] | Reserved for local use.
+|===
+
+Default is `daemon`.
+
+
+
+severity:: Syslog severity (if logging via `syslog`).
+
+Possible values are:
+
+[options="header,autowidth"]
+|===
+| Option     | Description
+| emergency  | A panic condition.  This is normally broadcast
+               to all users.
+| alert      | A condition that should be corrected immediately,
+               such as a corrupted system database.
+| critical   | Critical conditions, e.g., hard device errors.
+| error      | Errors.
+| warning    | Warning messages.
+| notice     | Conditions that are not error conditions, but
+               should possibly be handled specially.
+| info       | Informational messages.
+| debug      | Messages that contain information normally of use
+               only when debugging a program.
+|===
+
+Defaults is `info`.
+
+
+
+## Sample
+
+Another example, for accounting packets.
+
+
+Please see the `linelog` module for common configuration explanation.
+
+
+
+
+
+
+Example for `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Request[Accounting-Request]`.
+
+
+Don't log anything for these packets.
+
+
+Don't log anything for other `link:https://freeradius.org/rfc/rfc2866.html#Acct-Status-Type[Acct-Status-Type]` 's.
+
+== Default Configuration
+
+```
+linelog {
+#	delimiter = "\n"
+	format = "This is a log message for %{User-Name}"
+	reference = "messages.%{%{reply:Packet-Type}:-default}"
+	messages {
+		default = "Unknown packet type %{Packet-Type}"
+		Access-Accept = "Sent accept: %{User-Name}"
+		Access-Reject = "Sent reject: %{User-Name}"
+		Access-Challenge = "Sent challenge: %{User-Name}"
+	}
+	destination = 'file'
+	file {
+		filename = ${logdir}/linelog
+		permissions = 0600
+#		group = ${security.group}
+		escape_filenames = no
+	}
+	pool {
+		start = ${thread[pool].num_workers}
+		min = ${thread[pool].num_workers}
+		max = ${thread[pool].num_workers}
+		spare = 1
+		uses = 0
+		retry_delay = 30
+		lifetime = 0
+		idle_timeout = 60
+	}
+#	unix {
+#		filename = /path/to/unix.socket
+#		pool = ${..pool}
+#	}
+	tcp {
+		server = "localhost"
+		port = 514
+		timeout = 2.0
+#		pool = ${..pool}
+	}
+	udp {
+		server = "localhost"
+		port = 514
+		timeout = 2.0
+		pool = ${..pool}
+	}
+	syslog {
+#		facility = daemon
+#		severity = info
+	}
+}
+linelog log_accounting {
+	destination = file
+	format = ""
+	file {
+		filename = ${logdir}/linelog-accounting
+		permissions = 0600
+	}
+	reference = "Accounting-Request.%{%{Acct-Status-Type}:-unknown}"
+	Accounting-Request {
+		Start = "Connect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address})"
+		Stop = "Disconnect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address}) %{Acct-Session-Time} seconds"
+		Alive = ""
+		Accounting-On = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just came online"
+		Accounting-Off = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just went offline"
+		unknown = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
+	}
+}
+```

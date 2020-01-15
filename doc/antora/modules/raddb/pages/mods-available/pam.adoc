@@ -1,0 +1,37 @@
+
+
+
+
+= Pluggable Authentication Module
+
+For Linux, see http://www.kernel.org/pub/linux/libs/pam/index.html
+
+WARNING: On some systems, the system PAM libraries have
+memory leaks!  We STRONGLY SUGGEST that you do not
+use `link:http://www.kernel.org/pub/linux/libs/pam/index.html[PAM]` for authentication, due to those memory leaks.
+
+
+
+## Configuration Settings
+
+
+pam_auth::
+
+The name to use for PAM authentication.
+
+`link:http://www.kernel.org/pub/linux/libs/pam/index.html[PAM]` looks in `/etc/pam.d/${pam_auth_name}` for it's
+configuration.
+
+See `redhat/radiusd-pam` for a sample PAM configuration file.
+
+NOTE: Any `Pam-Auth` attribute that is set will override
+this one.
+
+
+== Default Configuration
+
+```
+pam {
+	pam_auth = radiusd
+}
+```

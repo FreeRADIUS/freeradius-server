@@ -1,0 +1,120 @@
+
+
+
+
+= REDISWho Module
+
+The `rediswho` module tracks the last set of login sessions for a user.
+
+
+
+## Configuration Settings
+
+
+server::
+
+If using Redis cluster, multiple 'bootstrap' servers may be
+listed here (as separate config items). These will be contacted
+in turn until one provides us with a valid map for the cluster.
+Server strings may contain unique ports e.g.:
+
+  server = '127.0.0.1:30001'
+  server = '[::1]:30002'
+
+NOTE: Instantiation failure behaviour is controlled by
+`pool.start` as with other modules. With clustering
+however, the `pool { ... }` section determines limits for
+each node we access in the cluster, and not the cluster as
+a whole.
+
+
+
+trim_count:: How many sessions to keep track of per user.
+
+If there are more than this number, older sessions are deleted.
+
+
+
+expire_time:: Expiry time in seconds.
+
+Any sessions which have not received an update in this time will be
+automatically expired.
+
+
+
+## Queries by Acct-Status-Type
+
+Each subsection contains insert / trim / expire queries.
+
+The subsections are named after the contents of the `link:https://freeradius.org/rfc/rfc2866.html#Acct-Status-Type[Acct-Status-Type]` attribute.
+
+See `dictionary.rfc2866` for the names of the various Acct-Status-Type values,
+or look at the output of debug mode.
+
+This module supports *any* `link:https://freeradius.org/rfc/rfc2866.html#Acct-Status-Type[Acct-Status-Type]`.  Just add a subsection
+of the appropriate name, along with insert / trim / expire queries.
+
+
+
+### Start
+
+
+
+### Interim-Update
+
+
+
+### Stop
+
+
+
+### Accounting-On
+
+
+
+### Accounting-Off
+
+
+
+### Failed
+
+
+== Default Configuration
+
+```
+rediswho {
+	server = 127.0.0.1
+	trim_count = 15
+	expire_time = 86400
+	Start {
+		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
+		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
+		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	}
+	Interim-Update {
+		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
+		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
+		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	}
+	Stop {
+		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
+		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
+		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	}
+#	Accounting-On {
+#		insert = ""
+#		trim =   ""
+#		expire = ""
+#	}
+#	Accounting-Off {
+#		insert = ""
+#		trim =   ""
+#		expire = ""
+#	}
+#	Failed {
+#		insert = ""
+#		trim =   ""
+#		expire = ""
+#	}
+}
+```

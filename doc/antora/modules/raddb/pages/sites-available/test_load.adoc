@@ -1,0 +1,149 @@
+
+
+
+
+= The Load Test Virtual Server
+
+The load test virtual server generates test load, without using a
+client program.
+
+## Virtual Server
+
+
+
+For now, only "namespace = radius" is supported.
+
+
+
+Listen
+
+
+Any packet types are supported.
+
+However, only one packet type should be specified.
+
+
+
+The load generator uses the "load" transport.
+
+
+
+load:: Configuration for load testing.
+
+
+filename:: File which contains one test packet.
+
+The contents of the file are the same as
+used by "radclient".
+
+For now, the secret is hard-coded to
+"testing123".
+
+The Packet-Type attribute is also ignored.
+
+
+
+csv:: Where the output statistics are printed,
+in CSV format.
+
+The first line of the output file contains a header
+which describes the columns.
+
+
+
+start_pps:: What packet/s rate to start at.
+
+
+
+max_pps:: What maximum packet/s rate to end at.
+
+
+
+duration:: How long in seconds to run each test.
+
+
+
+step:: Once `duration` is done, increase
+the PPS by this rate.
+
+The tests are run repeatedly for `duration`
+seconds, increasing the PPS by `step` each
+time, until `max_pps` is reached.  At that
+point, the test stops, and no more packets
+are generated.
+
+
+
+parallel: How many packets to send at once.
+
+The "interrupt" rate of the load generator
+is "pps / parallel".  The server can
+generally process 5K "interrupts" per
+second.  So to send 50K pps, set "pps =
+50K" and "parallel = 10".
+
+
+
+max_backlog:: The maximum allowed backlog
+in milliseconds, not packets.
+
+The backlog is "packets sent without a
+reply".
+
+If we are sending at 2K PPS, and
+"max_backlog = 1000", then the maximum
+number of packets allowed in the backlog
+will be 2K.
+
+Using a time-based backlog seems to be more
+flexible than a counter-based backlog.
+
+Once the backlog is hit, the load generator
+will stop sending packets on timed
+intervals.  Instead, it will send one new
+packet when it receives a reply.  If the
+backlog falls below the "max_backlog"
+limit, then the load generator switches
+back to sending at the "pps" rate.
+
+
+
+Put any logic here.
+
+
+
+
+
+== Default Configuration
+
+```
+server load {
+	namespace = radius
+	listen {
+		type = Access-Request
+		transport = load
+		load {
+			filename = ${confdir}/input.txt
+			csv = ${logdir}/stats.csv
+			start_pps	= 600
+			max_pps		= 1000
+			duration	= 5
+			step		= 20
+			parallel	= 1
+			max_backlog	= 1000
+		}
+	}
+recv Access-Request {
+	accept
+}
+authenticate pap {
+	pap
+}
+send Access-Accept {
+	ok
+}
+send Access-Reject {
+	ok
+}
+}
+```

@@ -1,0 +1,300 @@
+
+RADIUS over TLS
+
+
+
+
+
+
+
+Connection limiting for sockets with "proto = tcp".
+
+
+Limit the number of simultaneous TCP connections to the socket
+
+The default is 16.
+Setting this to 0 means "no limit"
+
+The per-socket "max_requests" option does not exist.
+
+
+The lifetime, in seconds, of a TCP connection.  After
+this lifetime, the connection will be closed.
+
+Setting this to 0 means "forever".
+
+
+The idle timeout, in seconds, of a TCP connection.
+If no packets have been received over the connection for
+this time, the connection will be closed.
+
+Setting this to 0 means "no timeout".
+
+We STRONGLY RECOMMEND that you set an idle timeout.
+
+
+
+If Private key & Certificate are located in
+the same file, then private_key_file &
+certificate_file must contain the same file
+name.
+
+If ca_file (below) is not used, then the
+certificate_file below MUST include not
+only the server certificate, but ALSO all
+of the CA certificates used to sign the
+server certificate.
+
+Trusted Root CA list
+
+ALL of the CA's in this list will be trusted
+to issue client certificates for authentication.
+
+In general, you should use self-signed
+certificates for 802.1x (EAP) authentication.
+In that case, this CA file should contain
+  *one* CA certificate.
+
+This parameter is used only for EAP-TLS,
+when you issue client certificates.  If you do
+not use client certificates, and you do not want
+to permit EAP-TLS authentication, then delete
+this configuration item.
+
+
+For DH cipher suites to work, you have to
+run OpenSSL to create the DH file first:
+
+	openssl dhparam -out certs/dh 1024
+
+
+
+If your system doesn't have /dev/urandom,
+you will need to create this file, and
+periodically change its contents.
+
+For security reasons, FreeRADIUS doesn't
+write to files in its configuration
+directory.
+
+random_file = /dev/urandom
+
+
+The default fragment size is 1K.
+However, it's possible to send much more data than
+that over a TCP connection.  The upper limit is 64K.
+Setting the fragment size to more than 1K means that
+there are fewer round trips when setting up a TLS
+connection.  But only if the certificates are large.
+
+
+include_length is a flag which is
+by default set to yes If set to
+yes, Total Length of the message is
+included in EVERY packet we send.
+If set to no, Total Length of the
+message is included ONLY in the
+First packet of a fragment series.
+
+include_length = yes
+
+Check the Certificate Revocation List
+
+1) Copy CA certificates and CRLs to same directory.
+2) Execute 'c_rehash <CA certs&CRLs Directory>'.
+  'c_rehash' is OpenSSL's command.
+3) uncomment the line below.
+5) Restart radiusd
+check_crl = yes
+
+Accept an expired Certificate Revocation List
+
+allow_expired_crl = no
+
+
+If check_cert_issuer is set, the value will
+be checked against the DN of the issuer in
+the client certificate.  If the values do not
+match, the certificate verification will fail,
+rejecting the user.
+
+This check can be done more generally by checking
+the value of the TLS-Client-Cert-Issuer attribute.
+This check can be done via any mechanism you choose.
+
+check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
+
+
+If check_cert_cn is set, the value will
+be xlat'ed and checked against the CN
+in the client certificate.  If the values
+do not match, the certificate verification
+will fail rejecting the user.
+
+This check is done only if the previous
+"check_cert_issuer" is not set, or if
+the check succeeds.
+
+This check can be done more generally by checking
+the value of the TLS-Client-Cert-Common-Name attribute.
+This check can be done via any mechanism you choose.
+
+check_cert_cn = %{User-Name}
+
+Set this option to specify the allowed
+TLS cipher suites.  The format is listed
+in "man 1 ciphers".
+
+If enabled, OpenSSL will use server cipher list
+(possibly defined by cipher_list option above)
+for choosing right cipher suite rather than
+using client-specified list which is OpenSSl default
+behavior. Having it set to 'yes' is best practice
+for TLS.
+
+
+Session resumption / fast reauthentication
+cache.
+
+The cache contains the following information:
+
+session Id - unique identifier, managed by SSL
+User-Name  - from the Access-Accept
+Stripped-User-Name - from the Access-Request
+Cached-Session-Policy - from the Access-Accept
+
+The "Cached-Session-Policy" is the name of a
+policy which should be applied to the cached
+session.  This policy can be used to assign
+VLANs, IP addresses, etc.  It serves as a useful
+way to re-apply the policy from the original
+Access-Accept to the subsequent Access-Accept
+for the cached session.
+
+On session resumption, these attributes are
+copied from the cache, and placed into the
+reply list.
+
+You probably also want "use_tunneled_reply = yes"
+when using fast session resumption.
+
+
+Lifetime of the cached entries, in hours.
+The sessions will be deleted after this
+time.
+
+
+
+Internal "name" of the session cache.
+Used to distinguish which TLS context
+sessions belong to.
+
+The server will generate a random value
+if unset. This will change across server
+restart so you MUST set the "name" if you
+want to persist sessions (see below).
+
+If you use IPv6, change the "ipaddr" below
+to "ipv6addr"
+
+name = "TLS ${..ipaddr} ${..port} ${..proto}"
+
+
+Simple directory-based storage of sessions.
+Two files per session will be written, the SSL
+state and the cached VPs. This will persist session
+across server restarts.
+
+The server will need write perms, and the directory
+should be secured from anyone else. You might want
+a script to remove old files from here periodically:
+
+  find ${logdir}/tlscache -mtime +2 -exec rm -f {} \;
+
+This feature REQUIRES "name" option be set above.
+
+persist_dir = "${logdir}/tlscache"
+
+
+Require a client certificate.
+
+
+
+As of version 2.1.10, client certificates can be
+validated via an external command.  This allows
+dynamic CRLs or OCSP to be used.
+
+This configuration is commented out in the
+default configuration.  Uncomment it, and configure
+the correct paths below to enable it.
+
+A temporary directory where the client
+certificates are stored.  This directory
+MUST be owned by the UID of the server,
+and MUST not be accessible by any other
+users.  When the server starts, it will do
+"chmod go-rwx" on the directory, for
+security reasons.  The directory MUST
+exist when the server starts.
+
+You should also delete all of the files
+in the directory when the server starts.
+   		tmpdir = /tmp/radiusd
+
+The command used to verify the client cert.
+We recommend using the OpenSSL command-line
+tool.
+
+The ${..ca_path} text is a reference to
+the ca_path variable defined above.
+
+The %{TLS-Client-Cert-Filename} is the name
+of the temporary file containing the cert
+in PEM format.  This file is automatically
+deleted by the server when the command
+returns.
+  		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
+
+
+
+== Default Configuration
+
+```
+server radsec {
+	listen {
+		transport = tls
+		type = Access-Request
+		type = Accounting-Request
+		tls {
+			ipaddr = *
+			port = 2083
+			limit {
+			      max_connections = 16
+			      lifetime = 0
+			      idle_timeout = 30
+			}
+			private_key_password = whatever
+			private_key_file = ${certdir}/server.pem
+			certificate_file = ${certdir}/server.pem
+			ca_file = ${cadir}/ca.pem
+			dh_file = ${certdir}/dh
+			fragment_size = 8192
+			ca_path = ${cadir}
+			cipher_list = "DEFAULT"
+			cipher_server_preference = yes
+			cache {
+			      lifetime = 24 # hours
+			}
+			require_client_cert = yes
+			verify {
+			}
+		}
+	}
+	recv Access-Request {
+		ok
+	}
+	recv Accounting-Request {
+		ok
+	}
+}
+```

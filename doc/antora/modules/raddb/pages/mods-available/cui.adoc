@@ -1,0 +1,106 @@
+
+
+
+
+= CUI Module
+
+The module `cui` (`link:https://freeradius.org/rfc/rfc6572.html#Chargeable-User-Identity[Chargeable-User-Identity]`) writes
+`link:https://freeradius.org/rfc/rfc6572.html#Chargeable-User-Identity[Chargeable-User-Identity]` log to an SQL database.   It uses the `sql`
+module to do the bulk of the work, but has custom schemas and
+queries.
+
+  * Schema is in `raddb/sql/cui/<DB>/schema.sql`
+  * Queries are in `raddb/sql/cui/<DB>/queries.conf`
+
+
+
+## Configuration Settings
+
+
+dialect:: The dialect of SQL you want to use, this should usually match
+the driver below.
+
+NOTE: If you're using rlm_sql_null, then it should be the type of
+database the logged queries are going to be executed against.
+
+
+
+driver:: The sub-module to use to execute queries. This should match
+the database you're attempting to connect to.
+
+There are CUI queries available for:
+
+[options="header,autowidth"]
+|===
+| DB          | Driver
+| SQLite      | rlm_sql_sqlite
+| MySQL       | rlm_sql_mysql
+| PostgreSQL  | rlm_sql_postgresql
+| Log to disk | rlm_sql_null
+|===
+
+
+
+[NOTE]
+====
+For dialect `mysql` and `postgresql` the following information should be provided:
+
+====
+
+
+sqlite { ... }:: SQLite configuration.
+
+
+
+logfile:: Write CUI queries to a logfile. Useful for debugging.
+
+
+
+pool { ... }:: persistent connections to external resources.
+
+
+
+cui_table:: The name of the database table to use for store.
+
+
+
+sql_user_name:: `SQL-User-Name` is used as the user for SQL queries.
+Normally it is the same as `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`, but sometimes it needs to be different.
+Then instead of editing `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` (*which we don't recommend*), you can
+set `SQL-User-Name` to the new value.
+
+
+
+.Load the queries from a separate file.
+
+
+== Default Configuration
+
+```
+sql cuisql {
+	dialect = "sqlite"
+	driver = "rlm_sql_${dialect}"
+#	server = "localhost"
+#	port = 3306
+#	login = "radius"
+#	password = "radpass"
+#	radius_db = "radius"
+	sqlite {
+		filename = ${radacctdir}/cui.sqlite
+		bootstrap = ${modconfdir}/${..:name}/cui/sqlite/schema.sql
+	}
+#	logfile = ${logdir}/cuilog.sql
+	pool {
+		start = 5
+		min = 4
+		max = 10
+		spare = 3
+		uses = 0
+		lifetime = 0
+		idle_timeout = 60
+	}
+	cui_table = "cui"
+	sql_user_name = "%{User-Name}"
+	$INCLUDE ${modconfdir}/${.:name}/cui/${dialect}/queries.conf
+}
+```

@@ -1,0 +1,352 @@
+
+
+
+
+= Microsoft CHAP authentication Module
+
+The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
+
+MS-CHAP authentication requires access to either the
+Cleartext-Password or NT-Password attribute for the user.  Due to
+the limitations of MS-CHAP, no other password "encryption" methods
+are possible.
+
+This module validates a user with `MS-CHAP` or `MS-CHAPv2` authentication.
+If called in `recv Access-Request`, it will look for `MS-CHAP` Challenge/Response
+attributes in the `request` list and adds an `Auth-Type` attribute set to
+`mschap` in the Config-Items list unless Auth-Type has already set.
+
+The module also enforces the `SMB-Account-Ctrl` attribute. See the
+Samba documentation for the meaning of SMB account control. The
+module does not read Samba password files. Instead, the rlm_passwd
+module can be used to read a Samba password file, and then supply
+an `NT-Password` attribute which this module can use.
+
+[NOTE]
+====
+For more documentation on integrating FreeRADIUS with Active Directory, please
+see the following web page:
+http://deployingradius.com/documents/configuration/active_directory.html
+====
+
+
+
+## Configuration Settings
+
+NOTE: If you are using `/etc/smbpasswd`, see the `passwd` module
+for an example of how to use `/etc/smbpasswd`
+
+
+normalise::
+
+By default the server will use heuristics to try and automatically
+handle base64 or hex encoded passwords or hashes.
+This behaviour can be disabled by setting the following to `no`.
+
+The default is `yes`
+
+
+
+use_mppe::
+
+By default the `mschap` will add `link:https://freeradius.org/rfc/rfc2548.html#MS-CHAP-MPPE-Keys[MS-CHAP-MPPE-Keys]` for `MS-CHAPv1` and
+`link:https://freeradius.org/rfc/rfc2548.html#MS-MPPE-Recv-Key[MS-MPPE-Recv-Key]` and `link:https://freeradius.org/rfc/rfc2548.html#MS-MPPE-Send-Key[MS-MPPE-Send-Key]` for `MS-CHAPv2`.  Set this
+configuration item to `no` in order to not add the MPPE keys.
+
+Default is `yes`.
+
+
+
+require_encryption::
+
+if `use_mppe` is enabled, the `require_encryption` makes encryption moderate.
+
+Default is `no`.
+
+
+
+require_strong::
+
+It always requires 128 bit key encryption.
+
+Default is `no`.
+
+
+
+with_ntdomain_hack:: Windows clients send `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` in the form of "DOMAIN\User",
+but send the challenge/response based only on the User portion.
+
+Default is `yes`.
+
+
+
+ntlm_auth:: Path and arguments to the `ntlm_auth` program.
+
+The module can perform authentication itself, OR
+use a Windows Domain Controller.  This configuration
+directive tells the module to call the `ntlm_auth`
+program, which will do the authentication, and return
+the `NT-Key`.
+
+NOTE: you MUST have the such services "winbindd" and "nmbd"
+running on the local machine for `ntlm_auth` to work.
+
+See the `ntlm_auth` program documentation for details.
+
+If `ntlm_auth` is configured below, then the `mschap` module
+will call `ntlm_auth` for every `MS-CHAP` authentication request.
+
+If there is a cleartext or NT hashed password available, you can set
+`MS-CHAP-Use-NTLM-Auth := No` in the control items, and the `mschap`
+module will do the authentication itself, without calling `ntlm_auth`.
+
+You can also try setting the user name as:
+
+`... --username=%{mschap:User-Name} ...`
+
+In that case, the `mschap` module will look at the `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`
+attribute, and do prefix/suffix checks in order to obtain the _best_
+user name for the request.
+
+Depending on the AD / Samba configuration, you may also need to add:
+
+`--allow-mschapv2`
+
+to the list of command-line options.
+
+WARNING: Be VERY careful when editing the following line!
+Change the path, and ideally nothing else.
+
+
+
+ntlm_auth_timeout:: Time to wait for `ntlm_auth` to run.
+
+This is a long time, and if `ntlm_auth` is taking that long
+then you likely have other problems in your domain.
+
+The length of time can be decreased with the following
+option, which can save clients waiting if your `ntlm_auth`
+usually finishes quicker.
+
+Range `1` to `10` seconds.
+
+Default is `10` seconds.
+
+
+
+winbind { ...}:: Configuration options for talking to Winbind.
+
+
+username:: User name for winbind
+domain:: Domain name for winbind
+
+An alternative to using `ntlm_auth` is to connect to the
+winbind daemon directly for authentication. This option
+is likely to be faster and may be useful on busy systems.
+
+Performance seems to be about twice that of `ntlm_auth`,
+which still isn't a lot.
+
+Using this option requires libwbclient from Samba 4.2.1 or
+later to be installed. Make sure that `ntlm_auth` above is
+commented out.
+
+
+
+retry_with_normalised_username::
+
+When using single sign-on with a winbind connection and the
+client uses a different casing for the username than the
+casing is according to the backend, reauth may fail because
+of some Windows internals.
+This switch tries to find the user in the correct casing in
+the backend, and retry authentication with that username.
+
+
+
+.Pool
+
+TIP: Information for the winbind connection pool.  The
+configuration items below are the same for all modules
+which use the connection pool.
+
+
+start::
+
+Connections to create during module instantiation.
+If the server cannot create specified number of
+connections during instantiation it will exit.
+Set to 0 to allow the server to start without the
+winbind daemon being available.
+
+
+
+min::
+
+Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one
+is requested, the request will NOT get a connection.
+
+Setting `max` to LESS than the number of threads means
+that some threads may starve, and you will see errors
+like 'No connections available and at max connection limit'
+
+Setting `max` to MORE than the number of threads means
+that there are more connections than necessary.
+
+
+
+spare:: Spare connections to be left idle.
+
+NOTE: Idle connections WILL be closed if `idle_timeout`
+is set. This should be less than or equal to `max` above.
+
+
+
+uses:: Number of uses before the connection is closed.
+
+0 means "infinite"
+
+
+
+retry_delay::
+
+The number of seconds to wait after the server tries
+to open a connection, and fails.  During this time,
+no new connections will be opened.
+
+
+
+lifetime::
+
+The lifetime (in seconds) of the connection.
+
+NOTE: A setting of 0 means infinite (no limit).
+
+
+
+cleanup_interval::
+
+The pool is checked for free connections every
+`cleanup_interval`.  If there are free connections,
+then one of them is closed.
+
+
+
+idle_timeout::
+
+The idle timeout (in seconds).  A connection which is
+unused for this length of time will be closed.
+
+NOTE: A setting of `0` means infinite (no timeout).
+
+
+
+[NOTE]
+====
+All configuration settings are enforced.  If a
+connection is closed because of `idle_timeout`,
+`uses`, or `lifetime`, then the total number of
+connections MAY fall below `min`.  When that
+happens, it will open a new connection.  It will
+also log a WARNING message.
+
+The solution is to either lower the `min` connections,
+or increase lifetime/idle_timeout.
+====
+
+
+
+.Pass Change
+
+
+ntlm_auth:: Path and arguments to ntlm_auth for password change.
+
+ntlm_auth_username:: The user name for ntlm_auth password change.
+
+ntlm_auth_domain:: The domain name for ntlm_auth password change.
+
+This module support `MS-CHAPv2` (not v1) password
+change requests.  See `doc/howto/modules/mschap.adoc` for
+some IMPORTANT information.
+
+Samba/ntlm_auth - if you are using `ntlm_auth` to validate
+passwords, you will need to use `ntlm_auth` to change passwords.
+
+Uncomment the three lines below, and change the path to `ntlm_auth.
+
+
+
+local_cpw::
+
+To implement a local password change, you need to supply a string
+which is then expanded, so that the password can be placed somewhere.
+
+e.g. passed to a script (`exec`), or written to SQL (UPDATE/INSERT).
+
+TIP: We give both examples here, but *only one should be used*.
+
+
+
+use_open_directory::
+
+For Apple Server, when running on the same machine as Open Directory.
+It has no effect on other systems.
+
+
+
+allow_retry::
+
+On failure, set (or not) the `MS-CHAP` error code saying _retries allowed_.
+
+
+
+retry_msg::
+
+An optional retry message.
+
+
+== Default Configuration
+
+```
+mschap {
+#	normalise = no
+#	use_mppe = no
+#	require_encryption = yes
+#	require_strong = yes
+#	with_ntdomain_hack = no
+#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%{mschap:Challenge}:-00} --nt-response=%{%{mschap:NT-Response}:-00}"
+#	ntlm_auth_timeout = 10
+	winbind {
+#		username = "%{mschap:User-Name}"
+#		domain = "%{mschap:NT-Domain}"
+#		retry_with_normalised_username = no
+	}
+	pool {
+		start = ${thread[pool].num_workers}
+		min = ${thread[pool].num_workers}
+		max = ${thread[pool].num_workers}
+		spare = 1
+		uses = 0
+		retry_delay = 30
+		lifetime = 86400
+		cleanup_interval = 300
+		idle_timeout = 600
+	}
+	passchange {
+#		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
+#		ntlm_auth_username = "username: %{mschap:User-Name}"
+#		ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
+#		local_cpw = "%{exec:/path/to/script %{mschap:User-Name} %{MS-CHAP-New-Cleartext-Password}}"
+#		local_cpw = "%{sql:UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='NT-Password'}"
+	}
+#	use_open_directory = yes
+#	allow_retry = yes
+#	retry_msg = "Re-enter (or reset) the password"
+}
+```

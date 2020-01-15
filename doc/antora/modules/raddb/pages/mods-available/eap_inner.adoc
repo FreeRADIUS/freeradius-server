@@ -1,0 +1,170 @@
+
+
+
+
+= EAP/Inner Module
+
+The `eap_inner` module provides a sample configuration for an `EAP`
+module that occurs *inside* of a tunneled method. It is used to limit
+the `EAP` types that can occur inside of the inner tunnel.
+
+See also `raddb/sites-available/inner-tunnel`
+
+See the `eap` module for full documentation on the meaning of these
+configuration entries.
+
+
+
+## Configuration Settings
+
+eap inner-eap { ... }::
+
+
+default_eap_type:: Set the correct method from the table below.
+
+The inner method can be negotiated, but it's more efficient to
+offer the correct one the first time.
+
+[options="header,autowidth"]
+|===
+| EAP Types | Description       | Key
+| PEAP      | username/password | mschapv2
+| TTLS      | username/password | gtc, mschapv2
+| PEAP      | certificate       | tls
+| TTLS      | certificate       | tls
+|===
+
+
+
+type:: Only EAP types listed below with a 'type = <EAP-Type>' pair will be allowed.
+
+
+
+## md5 { ... }
+
+`md5` is OK to use the inner tunnel, as keying material is provided by
+the outer EAP method.
+
+
+
+## gtc { ... }
+
+See the `eap` module for common configuration explanation.
+
+
+
+
+## mschapv2 { ... }
+
+See the `eap` module for common configuration explanation.
+
+
+
+CAUTION: No TTLS or PEAP configuration should be listed here.
+
+
+
+## tls-config tls-peer { ... }
+
+
+auto_chain:: See the `eap` module for common configuration explanation.
+
+
+
+chain { ... }:: See the `eap` module for common configuration explanation.
+
+
+
+ca_file:: See the `eap` module for common configuration explanation.
+
+
+
+dh_file::
+
+
+
+random_file:: See the `eap` module for common configuration explanation.
+
+
+
+fragment_size:: See the `eap` module for common configuration explanation.
+
+
+
+check_crl:: See the `eap` module for common configuration explanation.
+
+
+
+ca_path:: See the `eap` module for common configuration explanation.
+
+
+
+check_cert_issuer:: See the `eap` module for common configuration explanation.
+
+
+
+check_cert_cn:: See the `eap` module for common configuration explanation.
+
+
+
+allow_expired_crl:: See the `eap` module for common configuration explanation.
+
+
+
+## tls { ... }
+
+You SHOULD use different certificates than are used
+for the outer EAP configuration!
+
+You can create the `inner-server.pem` file by doing:
+
+     cd raddb/certs
+     vi inner-server.cnf
+     make inner-server
+
+NOTE: The inner certificate MUST be different from the
+`server.cnf` file.
+
+
+== Default Configuration
+
+```
+eap inner-eap {
+	default_eap_type = mschapv2
+	type = md5
+	type = gtc
+	type = mschapv2
+	type = tls
+	md5 {
+	}
+	gtc {
+#		challenge = "Password: "
+		auth_type = PAP
+	}
+	mschapv2 {
+#		send_error = no
+	}
+	tls-config tls-peer {
+#		auto_chain = yes
+		chain {
+			certificate_file = ${certdir}/rsa/server.pem
+			ca_file = ${certdir}/rsa/ca.pem
+			private_key_password = whatever
+			private_key_file = ${certdir}/rsa/server.key
+		}
+		ca_file = ${cadir}/rsa/ca.pem
+		dh_file = ${certdir}/dh
+#		random_file = /dev/urandom
+		fragment_size = 16384
+#		check_crl = yes
+		ca_path = ${cadir}
+#		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
+#		check_cert_cn = %{User-Name}
+#		allow_expired_crl = no
+	}
+	tls {
+		tls = tls-peer
+		require_client_cert = yes
+	}
+}
+```
