@@ -2310,6 +2310,47 @@ size_t fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, cha
 
 	if (vp->type == VT_XLAT) return snprintf(out, outlen, "%c%s%c", quote, vp->xlat, quote);
 
+	if (vp->da->type == FR_TYPE_GROUP) {
+		VALUE_PAIR *child, *head = vp->vp_ptr;
+		fr_cursor_t cursor;
+		char *p, *end;
+		size_t len;
+
+		if (!fr_cond_assert(head != NULL)) return 0;
+
+		/*
+		 *	"{  }"
+		 */
+		if (outlen < 4) return 0;
+
+		p = out;
+		end = out + outlen - 2; /* need room for the last " }" */
+
+		*(p++) = '{';
+		*(p++) = ' ';
+
+		for (child = fr_cursor_init(&cursor, &head);
+		     child != NULL;
+		     child = fr_cursor_next(&cursor)) {
+			VP_VERIFY(child);
+
+			len = fr_pair_snprint(p, end - p, child);
+			if (len == 0) goto done;
+
+			p += len;
+			*(p++) = ',';
+			*(p++) = ' ';
+
+		}
+
+		p -= 2;		/* over-write the last ", " */
+
+	done:
+		*(p++) = ' ';
+		*(p++) = '}';
+		return p - out;
+	}
+
 	return fr_value_box_snprint(out, outlen, &vp->data, quote);
 }
 
