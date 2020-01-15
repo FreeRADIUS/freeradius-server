@@ -1802,6 +1802,11 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		}
 
 	next:
+		/*
+		 *	Free the unknown attribute, we don't need it any more.
+		 */
+		if (da_unknown) fr_dict_unknown_free(da_unknown);
+
 		*tail = vp;
 		tail = &((*tail)->next);
 
