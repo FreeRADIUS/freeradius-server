@@ -1584,9 +1584,10 @@ mismatch:
 FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list)
 {
 	VALUE_PAIR	*vp, *head, **tail;
-	char const	*p;
+	char const	*p, *next;
 	FR_TOKEN	last_token = T_INVALID;
 	VALUE_PAIR_RAW	raw;
+	fr_dict_attr_t const *root = fr_dict_root(dict);
 
 	/*
 	 *	We allow an empty line.
@@ -1600,8 +1601,57 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 
 	p = buffer;
 	do {
-		raw.l_opand[0] = '\0';
+		ssize_t slen;
+		fr_dict_attr_t const *da;
+
+		fr_skip_whitespace(p);
+
+		if (!*p || (*p == '#')) {
+			last_token = T_EOL;
+			break;
+		}
+
+		/*
+		 *	Parse the name.
+		 */
+		slen = fr_dict_attr_by_qualified_name_substr(NULL, &da, dict, p, true);
+		if (slen <= 0) {
+			fr_dict_attr_t *da_unknown;
+
+			fprintf(stderr, "ERROR %s\n", fr_strerror());
+
+			slen = fr_dict_unknown_afrom_oid_substr(ctx, &da_unknown, root, p);
+			if (slen <= 0) {
+				fr_strerror_printf("Invalid attribute name at %s", p);
+				last_token = T_INVALID;
+				break;
+			}
+
+			da = da_unknown;
+		}
+
+		next = p + slen;
+
+		/*
+		 *	Allow tags if the attribute supports them.
+		 */
+		if (da->flags.has_tag && (*next == ':') && isdigit((int) next[1])) {
+			next += 2;
+			while (isdigit((int) *next)) next++;
+		}
+
+		if ((size_t) (next - p) >= sizeof(raw.l_opand)) {
+			fr_strerror_printf("Attribute name too long");
+			last_token = T_INVALID;
+			break;
+		}
+
+		memcpy(raw.l_opand, p, next - p);
+		raw.l_opand[next - p] = '\0';
 		raw.r_opand[0] = '\0';
+
+		p = next;
+		fr_skip_whitespace(p);
 
 		last_token = fr_pair_raw_from_str(&p, &raw);
 
@@ -2638,78 +2688,11 @@ static FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 	/*
 	 *	Skip leading spaces
 	 */
-	p = *ptr;
-	while ((*p == ' ') || (*p == '\t')) p++;
-
-	if (!*p) {
+	if (!*ptr) {
 		fr_strerror_printf("No token read where we expected "
 				   "an attribute name");
 		return T_INVALID;
 	}
-
-	if (*p == '#') return T_HASH;
-
-	/*
-	 *	Try to get the attribute name.
-	 */
-	q = raw->l_opand;
-	*q = '\0';
-	while (*p) {
-		uint8_t const *t = (uint8_t const *) p;
-
-		if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
-		too_long:
-			fr_strerror_printf("Attribute name too long");
-			return T_INVALID;
-		}
-
-		/*
-		 *	This is arguably easier than trying to figure
-		 *	out which operators come after the attribute
-		 *	name.  Yes, our "lexer" is bad.
-		 */
-		if (!fr_dict_attr_allowed_chars[(uint8_t)*t] && (*t != '.')) break;
-
-		/*
-		 *	Attribute:=value is NOT
-		 *
-		 *	Attribute:
-		 *	=
-		 *	value
-		 */
-		if ((*p == ':') && (!isdigit((int) p[1]))) break;
-
-		*(q++) = *(p++);
-	}
-
-	/*
-	 *	Haven't found any valid characters in the name.
-	 */
-	if (!*raw->l_opand) {
-		fr_strerror_printf("Invalid attribute name");
-		return T_INVALID;
-	}
-
-	/*
-	 *	Look for tag (:#).  This is different from :=, which
-	 *	is an operator.
-	 */
-	if ((*p == ':') && (isdigit((int) p[1]))) {
-		if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
-			goto too_long;
-		}
-		*(q++) = *(p++);
-
-		while (isdigit((int) *p)) {
-			if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
-				goto too_long;
-			}
-			*(q++) = *(p++);
-		}
-	}
-
-	*q = '\0';
-	*ptr = p;
 
 	/* Now we should have an operator here. */
 	raw->op = gettoken(ptr, buf, sizeof(buf), false);
