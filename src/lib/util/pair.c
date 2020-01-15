@@ -39,6 +39,8 @@ RCSID("$Id$")
 #  define FREE_MAGIC (0xF4EEF4EE)
 #endif
 
+static FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw);
+
 /** Free a VALUE_PAIR
  *
  * @note Do not call directly, use talloc_free instead.
@@ -2622,10 +2624,9 @@ char *fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
  * @param[out] raw The struct to write the raw VALUE_PAIR to.
  * @return the last token read.
  */
-FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
+static FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 {
 	char const	*p;
-	char *q;
 	FR_TOKEN	ret = T_INVALID, next, quote;
 	char		buf[8];
 

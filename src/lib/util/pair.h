@@ -327,9 +327,6 @@ char		*fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
 void		fr_pair_list_tainted(VALUE_PAIR *vp);
 
-/* Hacky raw pair thing that needs to go away */
-FR_TOKEN 	fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw);
-
 #ifdef __cplusplus
 }
 #endif
