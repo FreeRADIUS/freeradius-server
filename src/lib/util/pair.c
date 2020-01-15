@@ -1649,6 +1649,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		}
 
 		if ((size_t) (next - p) >= sizeof(raw.l_opand)) {
+			fr_dict_unknown_free(da);
 			fr_strerror_printf("Attribute name too long");
 			goto error;
 		}
@@ -1665,6 +1666,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		 */
 		raw.op = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
 		if ((raw.op  < T_EQSTART) || (raw.op  > T_EQEND)) {
+			fr_dict_unknown_free(da);
 			fr_strerror_printf("Expecting operator");
 			goto error;
 		}
@@ -1707,6 +1709,11 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		} else {
 			FR_TOKEN quote;
 			char const *q;
+
+			/*
+			 *	Free the unknown attribute, we don't need it any more.
+			 */
+			fr_dict_unknown_free(da);
 
 			/*
 			 *	Get the RHS thing.
