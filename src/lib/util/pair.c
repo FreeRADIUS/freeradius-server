@@ -1614,7 +1614,10 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		 *	Stop at the end of the input, returning
 		 *	whatever token was last read.
 		 */
-		if (!*p || (*p == '#')) {
+		if (!*p) break;
+
+		if (*p == '#') {
+			last_token = T_EOL;
 			break;
 		}
 
