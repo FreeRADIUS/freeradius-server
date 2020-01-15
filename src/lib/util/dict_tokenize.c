@@ -1332,25 +1332,22 @@ post_option:
 	 *	validation routines don't exist.
 	 */
 	if (dict_dlopen(dict, argv[0]) < 0) {
+	error:
 		talloc_free(dict);
 		return -1;
 	}
 
 	if (require_dl && !dict->dl) {
-		talloc_free(dict);
 		fr_strerror_printf("Failed to find libfreeradius-%s", argv[0]);
-		return -1;
+		goto error;
 	}
 
 	/*
 	 *	Set the root attribute with the protocol name
 	 */
-	if (dict_root_set(dict, argv[0], value) < 0) {
-		talloc_free(dict);
-		return -1;
-	}
+	if (dict_root_set(dict, argv[0], value) < 0) goto error;
 
-	if (dict_protocol_add(dict) < 0) return -1;
+	if (dict_protocol_add(dict) < 0) goto error;
 
 	memcpy(&mutable, &dict->root, sizeof(mutable));
 
