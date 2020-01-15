@@ -39,8 +39,6 @@ RCSID("$Id$")
 #  define FREE_MAGIC (0xF4EEF4EE)
 #endif
 
-static FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw);
-
 /** Free a VALUE_PAIR
  *
  * @note Do not call directly, use talloc_free instead.
@@ -1580,11 +1578,12 @@ mismatch:
  * @param[in] buffer	to read valuepairs from.
  * @param[in] list	where the parsed VALUE_PAIRs will be appended.
  * @param[in,out] token	The last token we parsed
+ * @param[in] depth	the nesting depth for FR_TYPE_GROUP
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list, FR_TOKEN *token)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list, FR_TOKEN *token, int depth)
 {
 	VALUE_PAIR	*vp, *head, **tail;
 	char const	*p, *next;
@@ -1604,14 +1603,17 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 	tail = &head;
 
 	p = buffer;
-	do {
+	while (true) {
 		ssize_t slen;
 		fr_dict_attr_t const *da;
 
 		fr_skip_whitespace(p);
 
+		/*
+		 *	Stop at the end of the input, returning
+		 *	whatever token was last read.
+		 */
 		if (!*p || (*p == '#')) {
-			last_token = T_EOL;
 			break;
 		}
 
@@ -1622,11 +1624,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		if (slen <= 0) {
 			fr_dict_attr_t *da_unknown;
 
-			fprintf(stderr, "ERROR %s\n", fr_strerror());
-
 			slen = fr_dict_unknown_afrom_oid_substr(ctx, &da_unknown, root, p);
 			if (slen <= 0) {
-				fr_strerror_printf("Invalid attribute name");
+				fr_strerror_printf("Invalid attribute name %s", p);
 				p += -slen;
 
 			error:
@@ -1671,89 +1671,158 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 
 		fr_skip_whitespace(p);
 
-#if 0
 		/*
 		 *	Allow grouping attributes.
 		 */
 		if (da->type == FR_TYPE_GROUP) {
 			VALUE_PAIR *child = NULL;
 
+			if (*p != '{') {
+				fr_strerror_printf("Group list MUST start with '{'");
+				goto error;
+			}
+			p++;
+
 			vp = fr_pair_afrom_da(ctx, da);
-			if (!vp) {
-				last_token = T_INVALID;
-				break;
+			if (!vp) goto error;
+
+			slen = fr_pair_list_afrom_substr(vp, dict, p, &child, &last_token, depth + 1);
+			if (slen <= 0) {
+				talloc_free(vp);
+				goto error;
 			}
 
-//			last_token = fr_pair_list_afrom_str(vp, dict, p,
+			if (last_token != T_RCBRACE) {
+			failed_group:
+				fr_strerror_printf("Failed to end group list with '}'");
+				talloc_free(vp);
+				goto error;
+			}
 
-			goto next;
-		}
-#endif
+			p += slen;
+			fr_skip_whitespace(p);
+			if (*p != '}') goto failed_group;
+			p++;
 
-		last_token = fr_pair_raw_from_str(&p, &raw);
-
-		/*
-		 *	JUST a hash.  Don't try to create a VP.
-		 *	Let the caller determine if an empty list is OK.
-		 */
-		if (last_token == T_HASH) {
-			last_token = T_EOL;
-			break;
-		}
-		if (last_token == T_INVALID) break;
-
-		/*
-		 *	Regular expressions get sanity checked by pair_make().
-		 *
-		 *	@todo - note that they will also be escaped,
-		 *	so we may need to fix that later.
-		 */
-		if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
-			vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, raw.r_opand, raw.op);
-			if (!vp) goto error;
 		} else {
-			/*
-			 *	All other attributes get the name
-			 *	parsed, which also includes parsing
-			 *	the tag.
-			 */
-			vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, NULL, raw.op);
-			if (!vp) goto error;
+			FR_TOKEN quote;
+			char const *q;
 
 			/*
-			 *	We don't care what the value is, so
-			 *	ignore it.
+			 *	Get the RHS thing.
 			 */
-			if ((raw.op == T_OP_CMP_TRUE) || (raw.op == T_OP_CMP_FALSE)) goto next;
+			quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
+			if (quote == T_EOL) {
+				fr_strerror_printf("Failed to get value");
+				goto error;
+			}
+
+			switch (quote) {
+				/*
+				 *	Perhaps do xlat's
+				 */
+			case T_DOUBLE_QUOTED_STRING:
+				/*
+				 *	Only report as double quoted if it contained valid
+				 *	a valid xlat expansion.
+				 */
+				q = strchr(raw.r_opand, '%');
+				if (q && (q[1] == '{')) {
+					raw.quote = quote;
+				} else {
+					raw.quote = T_SINGLE_QUOTED_STRING;
+				}
+				break;
+
+			case T_SINGLE_QUOTED_STRING:
+			case T_BACK_QUOTED_STRING:
+			case T_BARE_WORD:
+				raw.quote = quote;
+				break;
+
+			default:
+				fr_strerror_printf("Failed to find expected value on right hand side");
+				goto error;
+			}
+
+			fr_skip_whitespace(p);
 
 			/*
-			 *	fr_pair_raw_from_str() only returns this when
-			 *	the input looks like it needs to be xlat'd.
+			 *	Regular expressions get sanity checked by pair_make().
+			 *
+			 *	@todo - note that they will also be escaped,
+			 *	so we may need to fix that later.
 			 */
-			if (raw.quote == T_DOUBLE_QUOTED_STRING) {
-				if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
+			if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
+				vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, raw.r_opand, raw.op);
+				if (!vp) goto error;
+			} else {
+				/*
+				 *	All other attributes get the name
+				 *	parsed, which also includes parsing
+				 *	the tag.
+				 */
+				vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, NULL, raw.op);
+				if (!vp) goto error;
+
+				/*
+				 *	We don't care what the value is, so
+				 *	ignore it.
+				 */
+				if ((raw.op == T_OP_CMP_TRUE) || (raw.op == T_OP_CMP_FALSE)) goto next;
+
+				/*
+				 *	fr_pair_raw_from_str() only returns this when
+				 *	the input looks like it needs to be xlat'd.
+				 */
+				if (raw.quote == T_DOUBLE_QUOTED_STRING) {
+					if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
+						talloc_free(vp);
+						goto error;
+					}
+
+					/*
+					 *	Parse it ourselves.  The RHS
+					 *	might NOT be tainted, but we
+					 *	don't know.  So just mark it
+					 *	as such to be safe.
+					 */
+				} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', true) < 0) {
 					talloc_free(vp);
 					goto error;
 				}
-
-				/*
-				 *	Parse it ourselves.  The RHS
-				 *	might NOT be tainted, but we
-				 *	don't know.  So just mark it
-				 *	as such to be safe.
-				 */
-			} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', true) < 0) {
-				talloc_free(vp);
-				goto error;
 			}
 		}
 
 	next:
 		*tail = vp;
 		tail = &((*tail)->next);
-	} while (*p && (last_token == T_COMMA));
 
-	fr_pair_add(list, head);
+		/*
+		 *	Now look for EOL, hash, etc.
+		 */
+		if (!*p || (*p == '#')) {
+			last_token = T_EOL;
+			break;
+		}
+
+		/*
+		 *	Stop at '}', too, if we're inside of a group.
+		 */
+		if ((depth > 0) && (*p == '}')) {
+			last_token = T_RCBRACE;
+			break;
+		}
+
+		if (*p != ',') {
+			fr_strerror_printf("Unexpected input");
+			goto error;
+		}
+		p++;
+		last_token = T_COMMA;
+	}
+
+	if (head) fr_pair_add(list, head);
 
 	/*
 	 *	And return the last token which we read.
@@ -1779,7 +1848,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 {
 	FR_TOKEN token;
 
-	(void) fr_pair_list_afrom_substr(ctx, dict, buffer, list, &token);
+	(void) fr_pair_list_afrom_substr(ctx, dict, buffer, list, &token, 0);
 	return token;
 }
 
@@ -2715,101 +2784,6 @@ char *fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 	talloc_free(value);
 
 	return str;
-}
-
-/** Read a single valuepair from a buffer, and advance the pointer
- *
- *  Returns T_EOL if end of line was encountered.
- *
- * @param[in,out] ptr to read from and update.
- * @param[out] raw The struct to write the raw VALUE_PAIR to.
- * @return the last token read.
- */
-static FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
-{
-	char const	*p;
-	FR_TOKEN	ret = T_INVALID, next, quote;
-	char		buf[8];
-
-	if (!ptr || !*ptr || !raw) {
-		fr_strerror_printf("Invalid arguments");
-		return T_INVALID;
-	}
-
-	/*
-	 *	Skip leading spaces
-	 */
-	if (!*ptr) {
-		fr_strerror_printf("No token read where we expected "
-				   "an attribute name");
-		return T_INVALID;
-	}
-
-	/*
-	 *	Read value.  Note that empty string values are allowed
-	 */
-	quote = gettoken(ptr, raw->r_opand, sizeof(raw->r_opand), false);
-	if (quote == T_EOL) {
-		fr_strerror_printf("Failed to get value");
-
-		return T_INVALID;
-	}
-
-	/*
-	 *	Peek at the next token. Must be T_EOL, T_COMMA, or T_HASH
-	 */
-	p = *ptr;
-
-	next = gettoken(&p, buf, sizeof(buf), false);
-	switch (next) {
-	case T_HASH:
-		next = T_EOL;
-		break;
-
-	case T_RCBRACE:		/* FR_TYPE_GROUP */
-	case T_EOL:
-		break;
-
-	case T_COMMA:
-		*ptr = p;
-		break;
-
-	default:
-		fr_strerror_printf("Expected end of line or comma");
-		return T_INVALID;
-	}
-	ret = next;
-
-	switch (quote) {
-	/*
-	 *	Perhaps do xlat's
-	 */
-	case T_DOUBLE_QUOTED_STRING:
-		/*
-		 *	Only report as double quoted if it contained valid
-		 *	a valid xlat expansion.
-		 */
-		p = strchr(raw->r_opand, '%');
-		if (p && (p[1] == '{')) {
-			raw->quote = quote;
-		} else {
-			raw->quote = T_SINGLE_QUOTED_STRING;
-		}
-
-		break;
-
-	case T_SINGLE_QUOTED_STRING:
-	case T_BACK_QUOTED_STRING:
-	case T_BARE_WORD:
-		raw->quote = quote;
-		break;
-
-	default:
-		fr_strerror_printf("Failed to find expected value on right hand side");
-		return T_INVALID;
-	}
-
-	return ret;
 }
 
 #ifdef WITH_VERIFY_PTR
