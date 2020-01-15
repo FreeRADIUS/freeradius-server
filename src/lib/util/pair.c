@@ -1579,9 +1579,12 @@ mismatch:
  * @param[in] dict	to resolve attributes in.
  * @param[in] buffer	to read valuepairs from.
  * @param[in] list	where the parsed VALUE_PAIRs will be appended.
- * @return the last token parsed, or #T_INVALID
+ * @param[in,out] token	The last token we parsed
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
  */
-FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list, FR_TOKEN *token)
 {
 	VALUE_PAIR	*vp, *head, **tail;
 	char const	*p, *next;
@@ -1593,7 +1596,8 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 	 *	We allow an empty line.
 	 */
 	if (buffer[0] == 0) {
-		return T_EOL;
+		*token = T_EOL;
+		return 0;
 	}
 
 	head = NULL;
@@ -1622,9 +1626,13 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 
 			slen = fr_dict_unknown_afrom_oid_substr(ctx, &da_unknown, root, p);
 			if (slen <= 0) {
-				fr_strerror_printf("Invalid attribute name at %s", p);
-				last_token = T_INVALID;
-				break;
+				fr_strerror_printf("Invalid attribute name");
+				p += -slen;
+
+			error:
+				fr_pair_list_free(&head);
+				*token = T_INVALID;
+				return -(p - buffer);
 			}
 
 			da = da_unknown;
@@ -1642,8 +1650,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 
 		if ((size_t) (next - p) >= sizeof(raw.l_opand)) {
 			fr_strerror_printf("Attribute name too long");
-			last_token = T_INVALID;
-			break;
+			goto error;
 		}
 
 		memcpy(raw.l_opand, p, next - p);
@@ -1652,6 +1659,36 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 
 		p = next;
 		fr_skip_whitespace(p);
+
+		/*
+		 *	There must be an operator here.
+		 */
+		raw.op = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
+		if ((raw.op  < T_EQSTART) || (raw.op  > T_EQEND)) {
+			fr_strerror_printf("Expecting operator");
+			goto error;
+		}
+
+		fr_skip_whitespace(p);
+
+#if 0
+		/*
+		 *	Allow grouping attributes.
+		 */
+		if (da->type == FR_TYPE_GROUP) {
+			VALUE_PAIR *child = NULL;
+
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) {
+				last_token = T_INVALID;
+				break;
+			}
+
+//			last_token = fr_pair_list_afrom_str(vp, dict, p,
+
+			goto next;
+		}
+#endif
 
 		last_token = fr_pair_raw_from_str(&p, &raw);
 
@@ -1673,11 +1710,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 		 */
 		if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
 			vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, raw.r_opand, raw.op);
-			if (!vp) {
-			invalid:
-				last_token = T_INVALID;
-				break;
-			}
+			if (!vp) goto error;
 		} else {
 			/*
 			 *	All other attributes get the name
@@ -1685,7 +1718,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 			 *	the tag.
 			 */
 			vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, NULL, raw.op);
-			if (!vp) goto invalid;
+			if (!vp) goto error;
 
 			/*
 			 *	We don't care what the value is, so
@@ -1700,7 +1733,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 			if (raw.quote == T_DOUBLE_QUOTED_STRING) {
 				if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
 					talloc_free(vp);
-					goto invalid;
+					goto error;
 				}
 
 				/*
@@ -1711,7 +1744,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 				 */
 			} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', true) < 0) {
 				talloc_free(vp);
-				goto invalid;
+				goto error;
 			}
 		}
 
@@ -1720,16 +1753,34 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 		tail = &((*tail)->next);
 	} while (*p && (last_token == T_COMMA));
 
-	if (last_token == T_INVALID) {
-		fr_pair_list_free(&head);
-	} else {
-		fr_pair_add(list, head);
-	}
+	fr_pair_add(list, head);
 
 	/*
 	 *	And return the last token which we read.
 	 */
-	return last_token;
+	*token = last_token;
+	return p - buffer;
+}
+
+/** Read one line of attribute/value pairs into a list.
+ *
+ * The line may specify multiple attributes separated by commas.
+ *
+ * @note If the function returns #T_INVALID, an error has occurred and
+ * @note the valuepair list should probably be freed.
+ *
+ * @param[in] ctx	for talloc
+ * @param[in] dict	to resolve attributes in.
+ * @param[in] buffer	to read valuepairs from.
+ * @param[in] list	where the parsed VALUE_PAIRs will be appended.
+ * @return the last token parsed, or #T_INVALID
+ */
+FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list)
+{
+	FR_TOKEN token;
+
+	(void) fr_pair_list_afrom_substr(ctx, dict, buffer, list, &token);
+	return token;
 }
 
 /*
@@ -2694,14 +2745,6 @@ static FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		return T_INVALID;
 	}
 
-	/* Now we should have an operator here. */
-	raw->op = gettoken(ptr, buf, sizeof(buf), false);
-	if (raw->op  < T_EQSTART || raw->op  > T_EQEND) {
-		fr_strerror_printf("Expecting operator");
-
-		return T_INVALID;
-	}
-
 	/*
 	 *	Read value.  Note that empty string values are allowed
 	 */
@@ -2723,6 +2766,7 @@ static FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		next = T_EOL;
 		break;
 
+	case T_RCBRACE:		/* FR_TYPE_GROUP */
 	case T_EOL:
 		break;
 
