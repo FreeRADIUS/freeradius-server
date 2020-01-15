@@ -1649,7 +1649,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		}
 
 		if ((size_t) (next - p) >= sizeof(raw.l_opand)) {
-			if (da_unknown) fr_dict_unknown_free(da_unknown);
+			fr_dict_unknown_free(&da);
 			fr_strerror_printf("Attribute name too long");
 			goto error;
 		}
@@ -1666,7 +1666,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		 */
 		raw.op = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
 		if ((raw.op  < T_EQSTART) || (raw.op  > T_EQEND)) {
-			if (da_unknown) fr_dict_unknown_free(da_unknown);
+			fr_dict_unknown_free(&da);
 			fr_strerror_printf("Expecting operator");
 			goto error;
 		}
@@ -1713,7 +1713,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			/*
 			 *	Free the unknown attribute, we don't need it any more.
 			 */
-			if (da_unknown) fr_dict_unknown_free(da_unknown);
+			fr_dict_unknown_free(&da);
 			da_unknown = NULL;
 
 			/*
@@ -1806,8 +1806,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Free the unknown attribute, we don't need it any more.
 		 */
-		if (da_unknown) fr_dict_unknown_free(da_unknown);
-		da_unknown = NULL;
+		fr_dict_unknown_free(&da);
 
 		*tail = vp;
 		tail = &((*tail)->next);
