@@ -69,9 +69,11 @@ static void instruction_dump(REQUEST *request, unlang_t *instruction)
 static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 {
 	instruction_dump(request, frame->instruction);
+	unlang_stack_t *stack = request->stack;
 
 	RINDENT();
 
+	RDEBUG("frame           %zd", (frame - stack->frame));
 	if (frame->state) RDEBUG2("state          %s (%p)", talloc_get_name(frame->state), frame->state);
 	if (frame->next) {
 		RDEBUG2("next           %s", frame->next->debug_name);
