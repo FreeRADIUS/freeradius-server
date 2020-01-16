@@ -13,7 +13,7 @@ ATTRIBUTE	IA-PD					25	struct
 MEMBER		IA-PD-IAID				uint32
 MEMBER		IA-PD-T1				time_delta # time delta from "now" in seconds
 MEMBER		IA-PD-T2				time_delta # time delta from "now" in seconds
-MEMBER		IA-PD-Options				octets # really "group" of IA-Prefix and other options
+MEMBER		IA-PD-Options				group # of IA-PD-Prefix and other options
 
 # An IA_PD Prefix option may appear only in an IA_PD option
 ATTRIBUTE	IA-PD-Prefix				26	struct
@@ -21,5 +21,5 @@ MEMBER		IA-PD-Prefix-Preferred-Lifetime		time_delta  # time delta from "now" in 
 MEMBER		IA-PD-Prefix-Valid-Lifetime		time_delta  # time delta from "now" in seconds
 MEMBER		IA-PD-Prefix-IPv6-Prefix-Length		uint8
 MEMBER		IA-PD-Prefix-IPv6-Prefix		ipv6addr # MUST be 16 bytes
-MEMBER		IA-PD-Prefix-Options			octets # really "group" of IA-PD-Prefix and ot
+MEMBER		IA-PD-Prefix-Options			group 	# of other options associated with this prefix
 

@@ -101,11 +101,11 @@ match Packet-Type = Reply, Transaction-ID = 0xc0ffee, Server-ID-DUID = Server-ID
 #    Elapsed time
 #    Identity Association for Prefix Delegation
 #
-encode-proto Packet-Type = Release, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 45887, IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = 0x006001ad
-match 08 00 b3 3f 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 06 00 04 00 17 00 18 00 08 00 02 b3 3f 00 19 00 10 aa bb cc dd 00 00 d3 4d 00 00 b3 3f 00 60 01 ad
+encode-proto Packet-Type = Release, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 45887, IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = { Preference = 1 }
+match 08 00 b3 3f 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 06 00 04 00 17 00 18 00 08 00 02 b3 3f 00 19 00 11 aa bb cc dd 00 00 d3 4d 00 00 b3 3f 00 07 00 01 01
 
 decode-proto -
-match Packet-Type = Release, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 45887, IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = 0x006001ad
+match Packet-Type = Release, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 45887, IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = { Preference = 1 }
 
 #
 #  6. Reply (Server -> Client)

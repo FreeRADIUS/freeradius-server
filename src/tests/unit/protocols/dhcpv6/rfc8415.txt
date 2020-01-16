@@ -831,11 +831,11 @@ match Reconf-Accept = 0x
 #                       variable-length field (12 octets less than
 #                       the value in the option-len field).
 #
-encode-pair IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = 0x006001ad
-match 00 19 00 10 aa bb cc dd 00 00 d3 4d 00 00 b3 3f 00 60 01 ad
+encode-pair IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = { Preference = 1 }
+match 00 19 00 11 aa bb cc dd 00 00 d3 4d 00 00 b3 3f 00 07 00 01 01
 
 decode-pair -
-match IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = 0x006001ad
+match IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = { Preference = 1 }
 
 #
 #  21.22.  IA Prefix Option
@@ -892,11 +892,11 @@ match IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options
 #                       variable-length field (25 octets less than
 #                       the value in the option-len field).
 #
-encode-pair IA-PD-Prefix-Preferred-Lifetime = 29425646, IA-PD-Prefix-Valid-Lifetime = 46202862, IA-PD-Prefix-IPv6-Prefix-Length = 128, IA-PD-Prefix-IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff, IA-PD-Prefix-Options = 0x006001ad
-match 00 1a 00 1d 01 c0 ff ee 02 c0 ff ee 80 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 60 01 ad
+encode-pair IA-PD-Prefix-Preferred-Lifetime = 29425646, IA-PD-Prefix-Valid-Lifetime = 46202862, IA-PD-Prefix-IPv6-Prefix-Length = 128, IA-PD-Prefix-IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff, IA-PD-Options = { Preference = 1 }
+match 00 1a 00 19 01 c0 ff ee 02 c0 ff ee 80 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 19 00 11 00 00 00 00 00 00 00 00 00 00 00 00 00 07 00 01 01
 
 decode-pair -
-match IA-PD-Prefix-Preferred-Lifetime = 29425646, IA-PD-Prefix-Valid-Lifetime = 46202862, IA-PD-Prefix-IPv6-Prefix-Length = 128, IA-PD-Prefix-IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff, IA-PD-Prefix-Options = 0x006001ad
+match IA-PD-Prefix-Preferred-Lifetime = 29425646, IA-PD-Prefix-Valid-Lifetime = 46202862, IA-PD-Prefix-IPv6-Prefix-Length = 128, IA-PD-Prefix-IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff, IA-PD-IAID = 0, IA-PD-T1 = 0, IA-PD-T2 = 0, IA-PD-Options = { Preference = 1 }
 
 #
 #  21.23.  Information Refresh Time Option
