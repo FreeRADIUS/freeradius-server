@@ -6,6 +6,7 @@ List with some usual howtos for FreeRADIUS.
 
 * xref:bugs.adoc[Bugs]
 * xref:coding-methods.adoc[Coding Methods]
+* xref:coverage.adoc[Code Coverage]
 * xref:profile.adoc[Profiling]
 * xref:contributing.adoc[Contributing]
 * xref:installation:dependencies.adoc[Build dependencies]

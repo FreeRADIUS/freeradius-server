@@ -1,0 +1,11 @@
+= Code Coverage
+
+We use the link:https://gcc.gnu.org/onlinedocs/gcc/Gcov-Intro.html#Gcov-Intro[gcov] tool to know our tests coverage.
+
+[source,shell]
+----
+$ make clean
+$ make coverage
+----
+
+If completed with success, a pretty report will be available in `${source_tree}/build/coverage/index.html`
