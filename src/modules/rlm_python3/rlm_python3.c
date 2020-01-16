@@ -190,18 +190,16 @@ static void python_error_log(void)
 
 	if (!pExcType || !pExcValue) {
 		ERROR("%s:%d, Unknown error", __func__, __LINE__);
-		if (pExcType) {
-			Py_DecRef(pExcType);
-		}
-		if (pExcValue) {
-			Py_DecRef(pExcValue);
-		}
+		Py_XDECREF(pExcType);
+		Py_XDECREF(pExcValue);
 		return;
 	}
 
 	if (((pStr1 = PyObject_Str(pExcType)) != NULL) && 
 	    ((pStr2 = PyObject_Str(pExcValue)) != NULL)) {
 		ERROR("%s:%d, Exception type: %s, Exception value: %s", __func__, __LINE__, PyUnicode_AsUTF8(pStr1), PyUnicode_AsUTF8(pStr2));
+		Py_DECREF(pStr1);
+		Py_DECREF(pStr2);
 	} 
 
 	if (pExcTraceback) {
@@ -221,46 +219,23 @@ static void python_error_log(void)
 				char *str = PyBytes_AsString(pTraceString);
 				ERROR("%s:%d, full_backtrace: %s", __func__, __LINE__, str);
 
-				if (pyth_val) {
-					Py_DecRef(pyth_val);
-				}
-				if (pystr) {
-					Py_DecRef(pystr);
-				}
-				if (pTraceString) {
-					Py_DecRef(pTraceString);
-				}
+				Py_DECREF(pyth_val);
+				Py_DECREF(pystr);
+				Py_DECREF(pTraceString);
+				Py_DECREF(pyth_func);
 			}
-			if (pyth_func) {
-				Py_DecRef(pyth_func);
-			}
-			Py_DecRef(pyth_module);
+			Py_DECREF(pyth_module);
 		} else {
 			ERROR("%s:%d, py_module is null, name: %p", __func__, __LINE__, module_name);
 		}
 
-		if (module_name) {
-			Py_DecRef(module_name);
-		}
-
-		Py_DecRef(pRepr);
+		Py_DECREF(module_name);
+		Py_DECREF(pRepr);
+		Py_DECREF(pExcTraceback);
 	}
 
-	if (pExcType) {
-		Py_DecRef(pExcType);
-	}
-	if (pExcValue) {
-		Py_DecRef(pExcValue);
-	}
-	if (pExcTraceback) {
-		Py_DecRef(pExcTraceback);
-	}
-	if (pStr1) {
-		Py_DecRef(pStr1);
-	}
-	if (pStr2) {
-		Py_DecRef(pStr2);
-	}
+	Py_DECREF(pExcType);
+	Py_DECREF(pExcValue);
 }
 
 static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
