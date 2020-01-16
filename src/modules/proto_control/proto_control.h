@@ -33,8 +33,8 @@
 typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
-	dl_module_inst_t		**type_submodule;		//!< Instance of the various types
-	dl_module_inst_t		*dynamic_submodule;		//!< proto_control_dynamic_client
+	dl_module_inst_t			**type_submodule;		//!< Instance of the various types
+	dl_module_inst_t			*dynamic_submodule;		//!< proto_control_dynamic_client
 									//!< only one instance per type allowed.
 	module_method_t			process;			//!< process function
 

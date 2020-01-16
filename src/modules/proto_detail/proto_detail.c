@@ -28,7 +28,6 @@
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/unlang/method.h>
 #include "proto_detail.h"
 
 extern fr_app_t proto_detail;
@@ -402,8 +401,8 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 	app_process = (fr_app_worker_t const *)inst->type_submodule->module->common;
 
 	request->server_cs = inst->server_cs;
-
-	unlang_interpret_push_method(request, inst->process_instance, app_process->entry_point);
+	request->async->process = app_process->entry_point;
+	request->async->process_inst = inst->process_instance;
 }
 
 /** Open listen sockets/connect to external event source

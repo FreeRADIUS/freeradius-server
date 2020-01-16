@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/unlang/interpret.h>
 
 #include <freeradius-devel/util/print.h>
 
@@ -153,11 +152,6 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 	}
 
 runit:
-#if 1
-	RDEBUG("rad_virtual_server() needs to be fixed to work with the new method");
-	final = RLM_MODULE_REJECT;
-	return final;
-#else
 	if (!request->async) {
 #ifdef __clang_analyzer__
 		if (!request->parent) return RLM_MODULE_FAIL;
@@ -168,20 +162,8 @@ runit:
 		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));
 	}
 
-	/*
-	 *	@todo - copy root stack frame from the parent.  It
-	 *	contains the method to call which processes the
-	 *	packet.  Now that request->async->process is gone, we
-	 *	have to fix this code.
-	 *
-	 *	However, if we're running another virtual server, we
-	 *	should really be using the unlang "call"
-	 *	functionality.  That code already looks at the virtual
-	 *	server in order to tell the child how to run.
-	 */
-
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
-	final = unlang_interpret(request);
+	final = request->async->process(request->async->process_inst, NULL, request);
 	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	fr_cond_assert(final == RLM_MODULE_OK);
@@ -196,7 +178,6 @@ runit:
 	}
 
 	return RLM_MODULE_OK;
-#endif
 }
 
 /*

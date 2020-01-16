@@ -505,6 +505,7 @@ finished:
 
 #ifndef NDEBUG
 	request->async->el = NULL;
+	request->async->process = NULL;
 	request->async->channel = NULL;
 	request->async->packet_ctx = NULL;
 	request->async->listen = NULL;
@@ -549,6 +550,10 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
 	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
 	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
 	if (request->async->listen->track_duplicates) rbtree_deletebydata(worker->dedup, request);
+
+#ifndef NDEBUG
+	request->async->process = NULL;
+#endif
 }
 
 /** Enforce max_request_time
@@ -717,6 +722,12 @@ nak:
 	 */
 	listen->app->entry_point_set(listen->app_instance, request);
 
+	if (!request->async->process) {
+		RERROR("Protocol failed to set 'process' function");
+		worker_nak(worker, cd, now);
+		return;
+	}
+
 	/*
 	 *	We're done with this message.
 	 */
@@ -854,6 +865,7 @@ redo:
 	fr_time_tracking_resume(&request->async->tracking, now);
 
 	rad_assert(request->parent == NULL);
+	rad_assert(request->async->process != NULL);
 	rad_assert(request->async->listen != NULL);
 	rad_assert(request->runnable_id < 0); /* removed from the runnable heap */
 
@@ -872,7 +884,7 @@ redo:
 	/*
 	 *	Everything else, run the request.
 	 */
-	final = unlang_interpret(request);
+	final = request->async->process(request->async->process_inst, NULL, request);
 
 	/*
 	 *	Figure out what to do next.

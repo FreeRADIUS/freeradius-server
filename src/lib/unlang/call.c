@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/state.h>
 #include "unlang_priv.h"
 #include "subrequest_priv.h"
-#include "method.h"
 
 /** Send a signal from parent request to subrequest in another virtual server
  *
@@ -75,7 +74,7 @@ static unlang_action_t unlang_call_process(REQUEST *request, rlm_rcode_t *presul
 	 *	(e.g. Access-Request -> Accounting-Request) unless
 	 *	we're in a subrequest.
 	 */
-	rcode = unlang_interpret(child);
+	rcode = child->async->process(child->async->process_inst, NULL, child);
 	if (rcode == RLM_MODULE_YIELD) {
 		return UNLANG_ACTION_YIELD;
 	}
@@ -187,7 +186,8 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	 *	Tell the child how to run.
 	 */
 	child->server_cs = g->server_cs;
-	unlang_interpret_push_method(child, process_inst, *process_p);
+	child->async->process = *process_p;
+	child->async->process_inst = process_inst;
 
 	/*
 	 *	Expected by the process functions

@@ -26,7 +26,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/listen.h>
 #include "unlang_priv.h"
-#include "method.h"
 
 /** Run the interpreter after creating a subrequest.
  *
@@ -116,7 +115,7 @@ REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace,
 	 *	bare-bones function which just runs on section of
 	 *	"unlang", and doesn't send replies or anything else.
 	 */
-	unlang_interpret_push_method(child, NULL, unlang_io_process_interpret);
+	child->async->process = unlang_io_process_interpret;
 
 	return child;
 }
