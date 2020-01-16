@@ -518,6 +518,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			case UNLANG_TYPE_XLAT:
 			case UNLANG_TYPE_CALL:
 			case UNLANG_TYPE_DETACH:
+			case UNLANG_TYPE_FUNCTION:
 				repeatable_set(frame);
 				yielded_set(frame);
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
