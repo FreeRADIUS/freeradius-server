@@ -1701,6 +1701,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			failed_group:
 				fr_strerror_printf("Failed to end group list with '}'");
 				talloc_free(vp);
+				fr_pair_list_free(&child);
 				goto error;
 			}
 
@@ -1708,6 +1709,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			fr_skip_whitespace(p);
 			if (*p != '}') goto failed_group;
 			p++;
+			vp->vp_ptr = child;
 
 		} else {
 			FR_TOKEN quote;
