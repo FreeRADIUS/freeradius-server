@@ -424,6 +424,32 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	}
 		break;
 
+	case FR_TYPE_GROUP:
+	{
+		VALUE_PAIR *child;
+		fr_cursor_t child_cursor;
+
+		/*
+		 *	Encode the child options.
+		 */
+		child = vp->vp_ptr;
+		if (child) {
+			(void) fr_cursor_init(&child_cursor, &child);
+
+			while (fr_cursor_current(&child_cursor) != NULL) {
+				child = fr_cursor_current(&child_cursor);
+				slen = fr_dhcpv6_encode_option(p, end - p, &child_cursor, encoder_ctx);
+				if (slen == PAIR_ENCODE_SKIP) continue;
+
+				if (slen < 0) return PAIR_ENCODE_ERROR;
+				if (slen == 0) break;
+
+				p += slen;
+			}
+		}
+	}
+		break;
+
 	case FR_TYPE_INVALID:
 	case FR_TYPE_EXTENDED:
 	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
@@ -436,7 +462,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
-	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("Unsupported attribute type %s",

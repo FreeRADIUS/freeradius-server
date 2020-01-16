@@ -41,6 +41,9 @@
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 			     fr_dict_attr_t const *parent,
 			     uint8_t const *data, size_t const data_len, void *decoder_ctx);
+static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+			   fr_dict_attr_t const *parent,
+			   uint8_t const *data, size_t const data_len, void *decoder_ctx, bool do_raw);
 
 static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t const *dict,
 			  fr_dict_attr_t const *parent,
@@ -224,6 +227,32 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		}
 
 		return data_len;
+
+	case FR_TYPE_GROUP:
+	{
+		fr_cursor_t child_cursor;
+		VALUE_PAIR *head = NULL;
+
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return -1;
+
+		/*
+		 *	Child VPs go into vp->ptr, not in the main
+		 *	parent list.  We start decoding attributes
+		 *	from the dictionary root, not from this
+		 *	parent.  We also don't decode an option
+		 *	header, as we're just decoding the values
+		 *	here.
+		 */
+		fr_cursor_init(&child_cursor, &head);
+		rcode = decode_tlvs(ctx, &child_cursor, dict, fr_dict_root(dict_dhcpv6), data, data_len, decoder_ctx, false);
+		if (rcode < 0) {
+			talloc_free(vp);
+			goto raw;
+		}
+		vp->vp_ptr = head;
+		break;
+	}
 	}
 
 	vp->type = VT_DATA;
@@ -377,7 +406,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
  */
 static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 			   fr_dict_attr_t const *parent,
-			   uint8_t const *data, size_t const data_len, void *decoder_ctx)
+			   uint8_t const *data, size_t const data_len, void *decoder_ctx, bool do_raw)
 {
 	uint8_t const *p, *end;
 
@@ -394,6 +423,8 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const
 
 		slen = decode_option(ctx, cursor, dict, parent, p, (end - p), decoder_ctx);
 		if (slen <= 0) {
+			if (!do_raw) return -1;
+
 			slen = decode_raw(ctx, cursor, dict, parent, p, (end - p), decoder_ctx);
 			if (slen <= 0) return slen;
 			break;
@@ -446,7 +477,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const 
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
 
-	return decode_tlvs(ctx, cursor, dict, da, data + 4, data_len - 4, decoder_ctx);
+	return decode_tlvs(ctx, cursor, dict, da, data + 4, data_len - 4, decoder_ctx, true);
 }
 
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
@@ -495,7 +526,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 		rcode = decode_vsa(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		rcode = decode_tlvs(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+		rcode = decode_tlvs(ctx, cursor, dict, da, data + 4, len, decoder_ctx, true);
 
 	} else {
 		rcode = decode_value(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
