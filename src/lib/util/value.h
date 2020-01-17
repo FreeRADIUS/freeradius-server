@@ -314,7 +314,7 @@ static inline fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type
 	fr_value_box_t *value;
 
 	value = talloc_zero(ctx, fr_value_box_t);
-	if (!value) return NULL;
+	if (unlikely(!value)) return NULL;
 
 	fr_value_box_init(value, type, enumv, tainted);
 
@@ -333,6 +333,8 @@ static inline fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
 	fr_value_box_t *value;
 
 	value = talloc_zero(ctx, fr_value_box_t);
+	if (unlikely(!value)) return NULL;
+
 	value->type = FR_TYPE_INVALID;
 
 	return value;
