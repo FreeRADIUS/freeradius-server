@@ -45,27 +45,6 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
-#define USEC 1000000
-static void tv_sub(struct timeval *end, struct timeval *start,
-		   struct timeval *elapsed)
-{
-	elapsed->tv_sec = end->tv_sec - start->tv_sec;
-	if (elapsed->tv_sec > 0) {
-		elapsed->tv_sec--;
-		elapsed->tv_usec = USEC;
-	} else {
-		elapsed->tv_usec = 0;
-	}
-	elapsed->tv_usec += end->tv_usec;
-	elapsed->tv_usec -= start->tv_usec;
-
-	if (elapsed->tv_usec >= USEC) {
-		elapsed->tv_usec -= USEC;
-		elapsed->tv_sec++;
-	}
-}
-
-
 /** Start a process
  *
  * @param cmd Command to execute. This is parsed into argv[] parts,
@@ -427,12 +406,12 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
 		FD_SET(fd, &fds);
 
 		gettimeofday(&when, NULL);
-		tv_sub(&when, &start, &elapsed);
+		rad_tv_sub(&when, &start, &elapsed);
 		if (elapsed.tv_sec >= timeout) goto too_long;
 
 		when.tv_sec = timeout;
 		when.tv_usec = 0;
-		tv_sub(&when, &elapsed, &wake);
+		rad_tv_sub(&when, &elapsed, &wake);
 
 		rcode = select(fd + 1, &fds, NULL, NULL, &wake);
 		if (rcode == 0) {

@@ -74,26 +74,6 @@ static const CONF_PARSER driver_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-#define USEC 1000000
-static void tv_sub(struct timeval *end, struct timeval *start,
-		struct timeval *elapsed)
-{
-	elapsed->tv_sec = end->tv_sec - start->tv_sec;
-	if (elapsed->tv_sec > 0) {
-		elapsed->tv_sec--;
-		elapsed->tv_usec = USEC;
-	} else {
-		elapsed->tv_usec = 0;
-	}
-	elapsed->tv_usec += end->tv_usec;
-	elapsed->tv_usec -= start->tv_usec;
-
-	if (elapsed->tv_usec >= USEC) {
-		elapsed->tv_usec -= USEC;
-		elapsed->tv_sec++;
-	}
-}
-
 static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 #if defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
@@ -361,12 +341,12 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 
 		if (config->query_timeout) {
 			gettimeofday(&when, NULL);
-			tv_sub(&when, &start, &elapsed);
+			rad_tv_sub(&when, &start, &elapsed);
 			if (elapsed.tv_sec >= config->query_timeout) goto too_long;
 
 			when.tv_sec = config->query_timeout;
 			when.tv_usec = 0;
-			tv_sub(&when, &elapsed, &wake);
+			rad_tv_sub(&when, &elapsed, &wake);
 		}
 
 		r = select(sockfd + 1, &read_fd, NULL, NULL, config->query_timeout ? &wake : NULL);
