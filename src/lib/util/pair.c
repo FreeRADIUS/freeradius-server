@@ -384,6 +384,18 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 		return n;
 	}
 
+	/*
+	 *	Groups are special.
+	 */
+	if (n->da->type == FR_TYPE_GROUP) {
+		if (fr_pair_list_copy(n, (VALUE_PAIR **) &n->vp_ptr, vp->vp_ptr) < 0) {
+			talloc_free(n);
+			return NULL;
+		}
+
+		return n;
+	}
+
 	fr_value_box_copy(n, &n->data, &vp->data);
 
 	return n;
@@ -561,6 +573,11 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
 	 */
 	if (!da->flags.has_tag && (tag != TAG_NONE)) {
 		fr_strerror_printf("Invalid tag for attribute %s", attribute);
+		return NULL;
+	}
+
+	if (da->type == FR_TYPE_GROUP) {
+		fr_strerror_printf("Attributes of type 'group' are not supported");
 		return NULL;
 	}
 
@@ -1274,6 +1291,12 @@ int fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 
 		ret = (a_p->tag < b_p->tag) - (a_p->tag > b_p->tag);
 		if (ret != 0) return ret;
+
+		if (a_p->da->type == FR_TYPE_GROUP) {
+			ret = fr_pair_list_cmp(a_p->vp_ptr, b_p->vp_ptr);
+			if (ret != 0) return ret;
+			continue;
+		}
 
 		ret = fr_value_box_cmp(&a_p->data, &b_p->data);
 		if (ret != 0) {
@@ -2257,6 +2280,18 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen, cha
 	type = vp->da->type;
 
 	/*
+	 *	This is not yet supported because the rest of the APIs
+	 *	to parse pair names, etc. don't yet enforce "inlen".
+	 *	This is likely not a problem in practice, but we
+	 *	haven't yet audited the uses of this function for that
+	 *	behavior.
+	 */
+	if (type == FR_TYPE_GROUP) {
+		fr_strerror_printf("Attributes of type 'group' are not yet supported");
+		return -1;
+	}
+
+	/*
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs unescaping
 	 */
@@ -2557,6 +2592,25 @@ char *fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 
 	if (vp->type == VT_XLAT) return fr_asprint(ctx, vp->xlat, talloc_array_length(vp->xlat) - 1, quote);
 
+	/*
+	 *	Groups are magical.
+	 */
+	if (vp->type == FR_TYPE_GROUP) {
+		char *tmp = talloc_array(ctx, char, 1024);
+		char *out;
+		size_t len;
+
+		len = fr_pair_value_snprint(tmp, 1024, vp, quote);
+		if (len >= 1024) {
+			talloc_free(tmp);
+			return NULL;
+		}
+
+		out = talloc_memdup(ctx, tmp, len + 1);
+		talloc_free(tmp);
+		return out;
+	}
+
 	return fr_value_box_asprint(ctx, &vp->data, quote);
 }
 
@@ -2615,10 +2669,10 @@ char *fr_pair_type_asprint(TALLOC_CTX *ctx, fr_type_t type)
 	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
-	case FR_TYPE_DATE :
+	case FR_TYPE_DATE:
 		return talloc_typed_strdup(ctx, "0");
 
-	case FR_TYPE_IPV4_ADDR :
+	case FR_TYPE_IPV4_ADDR:
 		return talloc_typed_strdup(ctx, "?.?.?.?");
 
 	case FR_TYPE_IPV4_PREFIX:
@@ -2640,6 +2694,9 @@ char *fr_pair_type_asprint(TALLOC_CTX *ctx, fr_type_t type)
 	case FR_TYPE_ABINARY:
 		return talloc_typed_strdup(ctx, "??");
 #endif
+
+	case FR_TYPE_GROUP:
+		return talloc_typed_strdup(ctx, "{ ? }");
 
 	default :
 		break;
@@ -2808,7 +2865,7 @@ char *fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 /*
  *	Verify a VALUE_PAIR
  */
-inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
+void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 {
 	if (!vp) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR pointer was NULL", file, line);
@@ -2923,6 +2980,23 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 		break;
+
+       case FR_TYPE_GROUP:
+	       if (!vp->vp_ptr) break;
+
+	       {
+		       fr_cursor_t cursor;
+		       VALUE_PAIR *child, *head;
+
+		       head = vp->vp_ptr;
+
+		       for (child = fr_cursor_init(&cursor, &head);
+			    child != NULL;
+			    child = fr_cursor_next(&cursor)) {
+			       fr_pair_verify(file, line, child);
+		       }
+	       }
+	       break;
 
 	default:
 		break;
@@ -3049,6 +3123,9 @@ void fr_pair_list_tainted(VALUE_PAIR *vps)
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
+
+		if (vp->da->type == FR_TYPE_GROUP) fr_pair_list_tainted(vp->vp_ptr);
+
 		vp->vp_tainted = true;
 	}
 }
