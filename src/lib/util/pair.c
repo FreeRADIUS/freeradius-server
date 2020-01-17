@@ -2594,7 +2594,7 @@ char *fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 	/*
 	 *	Groups are magical.
 	 */
-	if (vp->type == FR_TYPE_GROUP) {
+	if (vp->da->type == FR_TYPE_GROUP) {
 		char *tmp = talloc_array(ctx, char, 1024);
 		char *out;
 		size_t len;
