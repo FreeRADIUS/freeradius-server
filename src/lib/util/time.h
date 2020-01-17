@@ -21,7 +21,8 @@
  * @file lib/util/time.h
  * @brief Simple time functions
  *
- * @copyright 2016 Alan DeKok (aland@freeradius.org)
+ * @copyright 2016-2019 Alan DeKok (aland@freeradius.org)
+ * @copyright 2019-2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(time_h, "$Id$")
 

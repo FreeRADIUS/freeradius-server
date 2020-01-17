@@ -20,7 +20,8 @@
  * @brief Platform independent time functions
  * @file lib/util/time.c
  *
- * @copyright 2016 Alan DeKok (aland@freeradius.org)
+ * @copyright 2016-2019 Alan DeKok (aland@freeradius.org)
+ * @copyright 2019-2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
