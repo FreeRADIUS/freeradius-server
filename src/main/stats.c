@@ -58,25 +58,6 @@ fr_stats_t proxy_dsc_stats = FR_STATS_INIT;
 #endif
 #endif
 
-static void tv_sub(struct timeval *end, struct timeval *start,
-		   struct timeval *elapsed)
-{
-	elapsed->tv_sec = end->tv_sec - start->tv_sec;
-	if (elapsed->tv_sec > 0) {
-		elapsed->tv_sec--;
-		elapsed->tv_usec = USEC;
-	} else {
-		elapsed->tv_usec = 0;
-	}
-	elapsed->tv_usec += end->tv_usec;
-	elapsed->tv_usec -= start->tv_usec;
-
-	if (elapsed->tv_usec >= USEC) {
-		elapsed->tv_usec -= USEC;
-		elapsed->tv_sec++;
-	}
-}
-
 static void stats_time(fr_stats_t *stats, struct timeval *start,
 		       struct timeval *end)
 {
@@ -86,7 +67,7 @@ static void stats_time(fr_stats_t *stats, struct timeval *start,
 	if ((start->tv_sec == 0) || (end->tv_sec == 0) ||
 	    (end->tv_sec < start->tv_sec)) return;
 
-	tv_sub(end, start, &diff);
+	rad_tv_sub(end, start, &diff);
 
 	if (diff.tv_sec >= 10) {
 		stats->elapsed[7]++;

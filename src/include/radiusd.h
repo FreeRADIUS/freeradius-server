@@ -416,6 +416,7 @@ uint32_t	rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval
 int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				int max_argc, char const *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
+void		rad_tv_sub(struct timeval const *end, struct timeval const *start, struct timeval *elapsed);
 
 void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
 void		rad_mode_to_str(char out[10], mode_t mode);

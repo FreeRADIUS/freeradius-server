@@ -304,9 +304,8 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 					      char const *query)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
-	struct timeval timeout = {config->query_timeout, 0};
-	int sockfd, r;
-	fd_set read_fd;
+	struct timeval start;
+	int sockfd;
 	ExecStatusType status;
 	int numfields = 0;
 	PGresult *tmp_result;
@@ -331,11 +330,28 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	 * We try to avoid blocking by waiting until the driver indicates that
          * the result is ready or our timeout expires
 	 */
+	gettimeofday(&start, NULL);
 	while (PQisBusy(conn->db)) {
+		int r;
+		fd_set read_fd;
+		struct timeval when, elapsed, wake;
+
 		FD_ZERO(&read_fd);
 		FD_SET(sockfd, &read_fd);
-		r = select(sockfd + 1, &read_fd, NULL, NULL, config->query_timeout ? &timeout : NULL);
+
+		if (config->query_timeout) {
+			gettimeofday(&when, NULL);
+			rad_tv_sub(&when, &start, &elapsed);
+			if (elapsed.tv_sec >= config->query_timeout) goto too_long;
+
+			when.tv_sec = config->query_timeout;
+			when.tv_usec = 0;
+			rad_tv_sub(&when, &elapsed, &wake);
+		}
+
+		r = select(sockfd + 1, &read_fd, NULL, NULL, config->query_timeout ? &wake : NULL);
 		if (r == 0) {
+		too_long:
 			ERROR("rlm_sql_postgresql: Socket read timeout after %d seconds", config->query_timeout);
 			return RLM_SQL_RECONNECT;
 		}

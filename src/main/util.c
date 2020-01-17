@@ -1706,3 +1706,27 @@ int rad_segid(gid_t gid)
 	}
 	return 0;
 }
+
+/** Determine the elapsed time between two timevals
+  *
+  * @param end timeval nearest to the present
+  * @param start timeval furthest from the present
+  * @param elapsed Where to write the elapsed time
+  */
+void rad_tv_sub(struct timeval const *end, struct timeval const *start, struct timeval *elapsed)
+{
+	elapsed->tv_sec = end->tv_sec - start->tv_sec;
+	if (elapsed->tv_sec > 0) {
+		elapsed->tv_sec--;
+		elapsed->tv_usec = USEC;
+	} else {
+		elapsed->tv_usec = 0;
+	}
+	elapsed->tv_usec += end->tv_usec;
+	elapsed->tv_usec -= start->tv_usec;
+
+	if (elapsed->tv_usec >= USEC) {
+		elapsed->tv_usec -= USEC;
+		elapsed->tv_sec++;
+	}
+}
