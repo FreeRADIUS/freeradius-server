@@ -313,14 +313,12 @@ dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$
 #	Build a debian package
 #
 debian/control: debian/rules
-	debian/rules $?
+	debian/rules $@
 
-freeradius-build-deps_$(RADIUSD_VERSION_STRING)_all.deb: debian/control
-	mk-build-deps $?
-
+# freeradius-build-deps_$(RADIUSD_VERSION_STRING)_all.deb: debian/control
 .PHONY: deb-build-deps
-deb-build-deps: freeradius-build-deps_$(RADIUSD_VERSION_STRING)_all.deb
-	apt-get install -y ./$?
+deb-build-deps: debian/control
+	mk-build-deps -t 'apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y' -ir $?
 
 .PHONY: deb
 deb:
