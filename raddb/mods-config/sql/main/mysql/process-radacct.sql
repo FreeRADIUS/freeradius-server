@@ -15,7 +15,7 @@
 --  fr_new_data_usage_period stored procedure.
 --
 --  This table can be queried in various ways to produce reports of aggregate
---  data use over time. For example, if the fr_new_data_usage_period SP was
+--  data use over time. For example, if the fr_new_data_usage_period SP is
 --  invoked one per day just after midnight, to produce usage data with daily
 --  granularity, then a reasonably accurate monthly bandwidth summary for a
 --  given user could be obtained with:
@@ -68,6 +68,11 @@ CREATE INDEX idx_data_usage_by_period_period_start ON data_usage_by_period (peri
 --  ensure that the start/end of each period aligns well with any intended
 --  reporting intervals.
 --
+--  It can be invoked by running:
+--
+--      CALL fr_new_data_usage_period();
+--
+--
 DELIMITER $$
 
 DROP PROCEDURE IF EXISTS fr_new_data_usage_period;
@@ -113,7 +118,7 @@ BEGIN
     -- Create an open-ended "next period" for all ongoing sessions and carry a
     -- negative value of their data usage to avoid double-accounting when we
     -- process the next period. Their current data usage has already been
-    -- counted allocated towards the current and possibly previous periods.
+    -- allocated to the current and possibly previous periods.
     --
     INSERT INTO data_usage_by_period (username, period_start, period_end, acctinputoctets, acctoutputoctets)
     SELECT *
