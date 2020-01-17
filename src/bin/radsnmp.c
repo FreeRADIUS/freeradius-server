@@ -348,7 +348,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		return -(slen);
 	}
 
-	ret = fr_pair_value_from_str(vp, value, strlen(value), '\0', true);
+	ret = fr_pair_value_from_str(vp, value, -1, '\0', true);
 	if (ret < 0) {
 		slen = -(slen);
 		goto error;
