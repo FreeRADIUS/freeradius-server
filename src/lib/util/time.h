@@ -165,13 +165,13 @@ static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
  *
  * @param[in] _when	The server epoch time to convert.
  */
-#define fr_time_to_timeval(_when) fr_time_delta_to_timeval(fr_time_wallclock_at_server_epoch() + _when)
+#define fr_time_to_timeval(_when) fr_time_delta_to_timeval(fr_time_wallclock_at_last_sync() + _when)
 
 /** Convert server epoch time to unix epoch time
  *
  * @param[in] _when	The server epoch time to convert.
  */
-#define fr_time_to_timespec(_when) fr_time_delta_to_timespec(fr_time_wallclock_at_server_epoch() + _when)
+#define fr_time_to_timespec(_when) fr_time_delta_to_timespec(fr_time_wallclock_at_last_sync() + _when)
 
 /** Compare two fr_time_t values
  *
@@ -193,7 +193,7 @@ int64_t		fr_time_to_sec(fr_time_t when);
 
 fr_unix_time_t fr_time_to_unix_time(fr_time_t when);
 
-int64_t		fr_time_wallclock_at_server_epoch(void);
+int64_t		fr_time_wallclock_at_last_sync(void);
 
 fr_time_t	fr_time_from_sec(time_t when) CC_HINT(nonnull);
 fr_time_t	fr_time_from_timeval(struct timeval const *when_tv) CC_HINT(nonnull);

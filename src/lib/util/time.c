@@ -100,6 +100,8 @@ int fr_time_sync(void)
 				      fr_time_delta_from_timespec(&ts_realtime) -
 				      (fr_time_delta_from_timespec(&ts_monotime) - our_epoch),
 				      memory_order_release);
+
+		now = ts_realtime.tv_sec;
 	}
 #else
 	{
@@ -116,6 +118,8 @@ int fr_time_sync(void)
 				      fr_time_delta_from_timeval(&tv_realtime) -
 				      (monotime - our_mach_epoch) * (timebase.numer / timebase.denom,
 				      memory_order_release));
+
+		now = tv_realtime.tv_sec;
 	}
 #endif
 
@@ -123,7 +127,6 @@ int fr_time_sync(void)
 	 *	Get local time zone name, daylight savings, and GMT
 	 *	offsets.
 	 */
-	now = time(NULL);
 	(void) localtime_r(&now, &tm);
 
 	isdst = (tm.tm_isdst != 0);
@@ -184,15 +187,15 @@ fr_time_t fr_time(void)
 #endif
 }
 
-/** Nanoseconds since the Unix Epoch at the start of the Server Epoch
+/** Nanoseconds since the Unix Epoch the last time we synced internal time with wallclock time
  *
  */
-int64_t fr_time_wallclock_at_server_epoch(void)
+int64_t fr_time_wallclock_at_last_sync(void)
 {
 	return atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
-/** Convert an fr_time_t to our version of unix time (nsec since epoch)
+/** Convert an fr_time_t (internal time) to our version of unix time (wallclock time)
  *
  */
 fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
@@ -201,7 +204,7 @@ fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
 }
 
 
-/** Convert an fr_time_t to number of usec since the unix epoch
+/** Convert an fr_time_t (internal time) to number of usec since the unix epoch (wallclock time)
  *
  */
 int64_t fr_time_to_usec(fr_time_t when)
@@ -209,7 +212,7 @@ int64_t fr_time_to_usec(fr_time_t when)
 	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000);
 }
 
-/** Convert an fr_time_t to number of msec since the unix epoch
+/** Convert an fr_time_t (internal time) to number of msec since the unix epoch (wallclock time)
  *
  */
 int64_t fr_time_to_msec(fr_time_t when)
@@ -217,7 +220,7 @@ int64_t fr_time_to_msec(fr_time_t when)
 	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000000);
 }
 
-/** Convert an fr_time_t to number of sec since the unix epoch
+/** Convert an fr_time_t (internal time) to number of sec since the unix epoch (wallclock time)
  *
  */
 int64_t fr_time_to_sec(fr_time_t when)
@@ -225,7 +228,7 @@ int64_t fr_time_to_sec(fr_time_t when)
 	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / NSEC);
 }
 
-/** Convert a timeval to a fr_time_t
+/** Convert a timeval (wallclock time) to a fr_time_t (internal time)
  *
  * @param[in] when_tv	The timestamp to convert.
  * @return
@@ -238,7 +241,7 @@ fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
 	return fr_time_delta_from_timeval(when_tv) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
-/** Convert a time_t to a fr_time_t
+/** Convert a time_t (wallclock time) to a fr_time_t (internal time)
  *
  * @param[in] when	The timestamp to convert.
  * @return
@@ -251,7 +254,7 @@ fr_time_t fr_time_from_sec(time_t when)
 	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
-/** Convert a timespec to a fr_time_t
+/** Convert a timespec (wallclock time) to a fr_time_t (internal time)
  *
  * @param[in] when_ts	The timestamp to convert.
  * @return
@@ -264,7 +267,9 @@ fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
 	return fr_time_delta_from_timespec(when_ts) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
-/**  Return time delta from the time zone.
+/** Return time delta from the time zone.
+ *
+ * Returns the delta between UTC and the timezone specified by tz
  *
  * @param[in] tz	time zone name
  * @param[out] delta	the time delta
@@ -272,10 +277,9 @@ fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
  *	- 0 converted OK
  *	- <0 on error
  *
- *  Note that this function ONLY handles a limited number of time
+ *  @note This function ONLY handles a limited number of time
  *  zones: local and gmt.  It is impossible in general to parse
  *  arbitrary time zone strings, as there are duplicates.
- *
  */
 int fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
 {
