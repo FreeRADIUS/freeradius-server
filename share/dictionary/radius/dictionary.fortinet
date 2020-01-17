@@ -7,7 +7,8 @@
 #	Fortinet's VSA's
 #	As posted to the list by Richie Lee.
 #
-#	http://kb.fortinet.com/kb/viewContent.do?externalId=FD36919&sliceId=1
+#	https://kb.fortinet.com/kb/viewContent.do?externalId=FD36919&sliceId=1
+#	Last Updated: 2019-0502
 #
 #	$Id$
 #
@@ -26,6 +27,8 @@ ATTRIBUTE	Fortinet-Vdom-Name			3	string
 ATTRIBUTE	Fortinet-Client-IPv6-Address		4	octets
 ATTRIBUTE	Fortinet-Interface-Name			5	string
 ATTRIBUTE	Fortinet-Access-Profile			6	string
+ATTRIBUTE	Fortinet-SSID				7	string
+ATTRIBUTE	Fortinet-AP-Name			8	string
 ATTRIBUTE	Fortinet-FAC-Auth-Status		11	string
 ATTRIBUTE	Fortinet-FAC-Token-ID			12	string
 ATTRIBUTE	Fortinet-FAC-Challenge-Code		15	string
@@ -40,5 +43,14 @@ ATTRIBUTE	Fortinet-WirelessController-Device-MAC	23	ether
 ATTRIBUTE	Fortinet-WirelessController-WTP-ID	24	string
 ATTRIBUTE	Fortinet-WirelessController-Assoc-Time	25	date
 ATTRIBUTE	Fortinet-FWN-AVPair			26	string
+ATTRIBUTE	Fortinet-FDD-Access-Profile		30	string
+ATTRIBUTE	Fortinet-FDD-Trusted-Hosts		31	string
+ATTRIBUTE	Fortinet-FDD-SPP-Name			32	string
+ATTRIBUTE	Fortinet-FDD-Is-System-Admin		33	string
+ATTRIBUTE	Fortinet-FDD-Is-SPP-Admin		34	string
+ATTRIBUTE	Fortinet-FDD-SPP-Policy-Group		35	string
+ATTRIBUTE	Fortinet-FDD-Allow-API-Access		36	string
+ATTRIBUTE	Fortinet-Fpc-User-Role			40	string
+ATTRIBUTE	Fortinet-Tenant-Identification		41	string
 
 END-VENDOR Fortinet
