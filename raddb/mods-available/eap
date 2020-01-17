@@ -77,6 +77,7 @@ eap {
 	type = peap
 #	type = fast
 #	type = aka
+#	type = aka_prime
 #	type = sim
 
 	#
@@ -1549,7 +1550,7 @@ eap {
 	#
 	#  ### EAP-AKA-Prime
 	#
-	aka-prime {
+	aka_prime {
 		#
 		#  network_name:: The default value used for AT_KDF_INPUT
 		#
