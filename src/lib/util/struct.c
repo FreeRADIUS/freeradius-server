@@ -464,16 +464,18 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		/*
 		 *	The child attributes should be in order.  If
 		 *	they're not, we fill the struct with zeroes.
+		 *
+		 *	The caller will encode TLVs.
 		 */
-		child = vp->da;
+		child = fr_dict_attr_child_by_num(parent, child_num);
+		if (!child || (child->type == FR_TYPE_TLV)) break;
 
 		if (!da_is_bit_field(child)) offset = 0;
 
-		if (child->attr != child_num) {
-			child = fr_dict_attr_child_by_num(parent, child_num);
-
-			if (!child) break;
-
+		/*
+		 *	Skipped a VP, or left one off at the end, fill the struct with zeros.
+		 */
+		if (!vp || (vp->da != child)) {
 			/*
 			 *	Zero out the bit field.
 			 */
@@ -613,19 +615,6 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		outlen -= len;				/* Subtract from the buffer we have available */
 	next:
 		child_num++;
-
-		/*
-		 *	Nothing more to do, or we've done all of the
-		 *	entries in this structure, stop.
-		 *
-		 *	Note that TLVs are passed to the
-		 *	"encode_value" function, which should encode
-		 *	them.  This is currently done for RADIUS, but
-		 *	not for DHCPv4 or DHCPv6.
-		 */
-		if (!vp || (vp->da->parent != parent) || (vp->da->attr < child_num)) {
-			break;
-		}
 	}
 
 	if (!vp || !outlen) return p - out;

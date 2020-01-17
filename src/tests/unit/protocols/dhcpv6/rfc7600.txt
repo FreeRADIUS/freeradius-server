@@ -38,19 +38,19 @@ proto-dictionary dhcpv6
 #  o  rule-ipv6-prefix: Rule IPv6 prefix, left-aligned
 #
 encode-pair 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304 }
-match 00 61 00 0c 00 62 00 08 10 80 04 01 01 02 03 04
+match 00 61 00 18 00 62 00 14 10 80 04 01 01 02 03 04 00 00 00 00 00 00 00 00 00 00 00 00
 
 decode-pair -
-match 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304 }
+match 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304, 4RD-Map-Rule-IPv6-Prefix = 0x000000000000000000000000 }
 
 #
 #  Multiple rules
 #
 encode-pair 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304, 4RD-Map-Rule-IPv4-Prefix-Len = 8, 4RD-Map-Rule-IPv6-Prefix-Len = 0, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x7f000001 }
-match 00 61 00 18 00 62 00 08 10 80 04 01 01 02 03 04 00 62 00 08 08 00 04 01 7f 00 00 01
+match 00 61 00 30 00 62 00 14 10 80 04 01 01 02 03 04 00 00 00 00 00 00 00 00 00 00 00 00 00 62 00 14 08 00 04 01 7f 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00
 
 decode-pair -
-match 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304, 4RD-Map-Rule-IPv4-Prefix-Len = 8, 4RD-Map-Rule-IPv6-Prefix-Len = 0, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x7f000001 }
+match 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304, 4RD-Map-Rule-IPv6-Prefix = 0x000000000000000000000000, 4RD-Map-Rule-IPv4-Prefix-Len = 8, 4RD-Map-Rule-IPv6-Prefix-Len = 0, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x7f000001, 4RD-Map-Rule-IPv6-Prefix = 0x000000000000000000000000 }
 
 #
 #   0                   1                   2                   3
