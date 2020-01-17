@@ -10,7 +10,7 @@
 #
 ##############################################################################
 
-ATTRIBUTE	4RD					97	group		# Complex struct see RFC 7600
+ATTRIBUTE	4RD					97	group		# of 4RD-Map-Rule and 4RD-Non-Map-Rule
 
 ATTRIBUTE	4RD-Map-Rule				98	struct
 MEMBER		4RD-Map-Rule-IPv4-Prefix-Len		uint8

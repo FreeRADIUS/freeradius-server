@@ -12,7 +12,7 @@
 
 ATTRIBUTE	Address-Selection			84	struct
 MEMBER		Address-Selection-Flags			uint8
-MEMBER		Address-Selection-Table-Rows		group	# really "group" of Address-Selection-Table
+MEMBER		Address-Selection-Table-Rows		group	# of Address-Selection-Table
 
 VALUE	Address-Selection-Flags		Privacy-Reference	0x01	# bit mask
 VALUE	Address-Selection-Flags		Automatic-Row-Addition	0x02	# bit mask
