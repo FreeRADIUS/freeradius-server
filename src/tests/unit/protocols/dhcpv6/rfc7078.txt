@@ -1,0 +1,103 @@
+#  -*- text -*-
+#  Copyright (C) 2020 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+#
+#  Test vectors for DHCPv6 protocol
+#
+proto dhcpv6
+proto-dictionary dhcpv6
+
+#
+#  2.  Address Selection Options
+#
+#  The Address Selection option provides the address selection policy
+#  table and some other configuration parameters.
+#
+#  An Address Selection option contains zero or more policy table
+#  options.  Multiple policy table options in an Address Selection
+#  option constitute a single policy table.  When an Address Selection
+#  option does not contain a policy table option, it may be used to just
+#  convey the A and P flags for Automatic Row Additions and Privacy
+#  Preference, respectively.
+#
+#  The format of the Address Selection option is given below.
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |          OPTION_ADDRSEL       |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |  Reserved |A|P|                                               |
+#  +-+-+-+-+-+-+-+-+     POLICY TABLE OPTIONS                      |
+#  |                      (variable length)                        |
+#  |                                                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#                 Figure 1: Address Selection Option Format
+#
+#  option-code:  OPTION_ADDRSEL (84).
+#  option-len:  The total length of the Reserved field, A and P flags,
+#  and POLICY TABLE OPTIONS in octets.
+#  Reserved:  Reserved field.  The server MUST set this value to 0, and
+#  the client MUST ignore its content.
+#
+#  POLICY TABLE OPTIONS:  Zero or more Address Selection Policy
+#  Table options, as described below.  This option corresponds to a
+#  row in the policy table defined in Section 2.1 of [RFC6724].
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |     OPTION_ADDRSEL_TABLE      |         option-len            |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |    label      |  precedence   |   prefix-len  |               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               |
+#  |                                                               |
+#  |                   prefix   (variable length)                  |
+#  |                                                               |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#    Figure 2: Address Selection Policy Table Option Format
+#
+#  option-code:  OPTION_ADDRSEL_TABLE (85).
+#  option-len:  The total length of the label field, precedence field,
+#  prefix-len field, and prefix field.
+#
+#  label:  An 8-bit unsigned integer; this value is for correlation of
+#          source address prefixes and destination address prefixes.  This
+#          field is used to deliver a label value in the [RFC6724] policy
+#          table.
+#  precedence:  An 8-bit unsigned integer; this value is used for
+#          sorting destination addresses.  This field is used to deliver a
+#          precedence value in the [RFC6724] policy table.
+#  prefix-len:  An 8-bit unsigned integer; the number of leading bits in
+#          the prefix that are valid.  The value ranges from 0 to 128.  If
+#          an option with a prefix length greater than 128 is included, the
+#          whole Address Selection option MUST be ignored.
+#
+#  prefix: A variable-length field containing an IP address or the
+#          prefix of an IP address.  An IPv4-mapped address [RFC4291] must
+#          be used to represent an IPv4 address as a prefix value.
+#
+#          This field is padded with zeros up to the nearest octet boundary
+#          when prefix-len is not divisible by 8.  This can be expressed
+#          using the following equation: (prefix-len + 7)/8
+#
+#          So, the length of this field should be between 0 and 16 bytes.
+#
+#          For example, the prefix 2001:db8::/60 would be encoded with a
+#          prefix-len of 60; the prefix would be 8 octets and would contain
+#          octets 20 01 0d b8 00 00 00 00.
+#
+encode-pair Address-Selection-Flags = Privacy-Reference, Address-Selection-Table-Rows = { Address-Selection-Table-Label = 17, Address-Selection-Table-Precedence = 8, Address-Selection-Table-Prefix = ::ffff:0.0.0.16/128 }
+match 00 54 00 18 01 00 55 00 13 11 08 80 00 00 00 00 00 00 00 00 00 00 ff ff 00 00 00 10
+
+decode-pair -
+match Address-Selection-Flags = Privacy-Reference, Address-Selection-Table-Rows = { Address-Selection-Table-Label = 17, Address-Selection-Table-Precedence = 8, Address-Selection-Table-Prefix = ::ffff:0.0.0.16/128 }
+
+count
+match 6
