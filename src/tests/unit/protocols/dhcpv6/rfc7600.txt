@@ -44,6 +44,15 @@ decode-pair -
 match 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304 }
 
 #
+#  Multiple rules
+#
+encode-pair 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304, 4RD-Map-Rule-IPv4-Prefix-Len = 8, 4RD-Map-Rule-IPv6-Prefix-Len = 0, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x7f000001 }
+match 00 61 00 18 00 62 00 08 10 80 04 01 01 02 03 04 00 62 00 08 08 00 04 01 7f 00 00 01
+
+decode-pair -
+match 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304, 4RD-Map-Rule-IPv4-Prefix-Len = 8, 4RD-Map-Rule-IPv6-Prefix-Len = 0, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x7f000001 }
+
+#
 #   0                   1                   2                   3
 #   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -73,4 +82,4 @@ decode-pair -
 match 4RD-Non-Map-Rule-Flag-Traffic-Class-Provided = yes, 4RD-Non-Map-Rule-Flag-Reserved = 0, 4RD-Non-Map-Rule-Flag-Hub-And-Spoke = yes, 4RD-Non-Map-Rule-Domain-PMTU = 31
 
 count
-match 10
+match 14
