@@ -359,6 +359,24 @@ ENV {
 }
 
 #
+#  .Templates
+#
+#  Template files hold common definitions that can be used in other
+#  server sections.  When a template is referenced, the configuration
+#  items within the referenced template are copied to the referencing
+#  section.
+#
+#  Using templates reduces repetition of common configuration items,
+#  which in turn makes the server configuration easier to maintain.
+#
+#  See template.d/default for examples of using templates, and the
+#  referencing syntax.
+#
+templates {
+	$INCLUDE template.d/
+}
+
+#
 #  .Security Configuration
 #
 #  There may be multiple methods of attacking on the server.  This
@@ -399,7 +417,7 @@ security {
 
 	#
 	#  user::
-	#  group:: 
+	#  group::
 	#
 	#  The name (or `#number`) of the `user`/`group` to run `radiusd` as.
 	#
