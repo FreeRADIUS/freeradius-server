@@ -364,12 +364,13 @@ void fr_json_version_print(void)
  * @param[in] prefix	The prefix to use, can be NULL to skip the prefix.
  * @return JSON string representation of the value pairs
  */
-const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix)
+char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix)
 {
 	fr_cursor_t		cursor;
 	VALUE_PAIR 		*vp;
 	struct json_object	*obj;
 	const char		*p;
+	char			*out;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 
 	MEM(obj = json_object_new_object());
@@ -445,10 +446,10 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 	}
 
 	MEM(p = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
-	MEM(p = talloc_strdup(ctx, p));
+	MEM(out = talloc_strdup(ctx, p));
 
 	json_object_put(obj);	/* Should also free string buff from above */
 
-	return p;
+	return out;
 }
 
