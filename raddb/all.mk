@@ -1,7 +1,7 @@
 #
 #  The list of files to install.
 #
-LOCAL_FILES :=		clients.conf dictionary templates.conf experimental.conf \
+LOCAL_FILES :=		clients.conf dictionary experimental.conf \
 			radiusd.conf trigger.conf panic.gdb
 
 DEFAULT_SITES :=	default inner-tunnel
@@ -53,7 +53,7 @@ LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users)
 
 BUILD_RADDB := $(strip $(foreach x,install clean,$(findstring $(x),$(MAKECMDGOALS))))
 ifneq "$(BUILD_RADDB)" ""
-RADDB_DIRS :=		certs mods-available mods-enabled policy.d \
+RADDB_DIRS :=		certs mods-available mods-enabled policy.d template.d \
 			sites-available sites-enabled \
 			$(patsubst raddb/%,%,$(call FIND_DIRS,raddb/mods-config))
 
@@ -65,7 +65,8 @@ INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
 			$(addprefix raddb/,$(LOCAL_FILES)) \
 			$(addprefix raddb/certs/,$(INSTALL_CERT_FILES)) \
 			$(call FIND_FILES,raddb/mods-config) \
-			$(call FIND_FILES,raddb/policy.d)
+			$(call FIND_FILES,raddb/policy.d) \
+			$(call FIND_FILES,raddb/template.d)
 
 # Re-write local files to installed files, filtering out editor backups
 INSTALL_RADDB :=	$(patsubst raddb/%,$(R)$(raddbdir)/%,$(INSTALL_FILES))
