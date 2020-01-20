@@ -59,3 +59,4 @@
 **** xref:eap-ttls.adoc[EAP-TTLS]
 **** xref:eap-peap.adoc[EAP-PEAP]
 **** xref:eap-tls.adoc[EAP-TLS]
+** xref:data-usage-reporting/index.adoc[Data Usage Reporting]
