@@ -468,7 +468,17 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 *	The caller will encode TLVs.
 		 */
 		child = fr_dict_attr_child_by_num(parent, child_num);
-		if (!child || (child->type == FR_TYPE_TLV)) break;
+		if (!child) break;
+
+		/*
+		 *	Encode child TLVs at the end of a struct.
+		 *
+		 *	@todo - just have a loop here looking for
+		 *	vp->da->parent == child, and encoding those.
+		 */
+		if (child->type == FR_TYPE_TLV) {
+			break;
+		}
 
 		if (!da_is_bit_field(child)) offset = 0;
 
@@ -516,8 +526,12 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		}
 
 		/*
-		 *	Call the protocol encoder, but ONLY if there
-		 *	are special flags required.
+		 *	The 'struct' encoder handles bit fields.
+		 *	They're just integers, so there's no need to
+		 *	call the protocol encoder.
+		 *
+		 *	This limitation means that we can't have
+		 *	encrypted bit fields, but that's fine.
 		 */
 		if (da_is_bit_field(child)) {
 			uint64_t value;
@@ -568,6 +582,10 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		} else if (encode_value) {
 			ssize_t slen;
 
+
+			/*
+			 *	Call the protocol encoder for non-bit fields.
+			 */
 			fr_proto_tlv_stack_build(tlv_stack, child);
 			slen = encode_value(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
 			if (slen < 0) return slen;
