@@ -33,11 +33,11 @@
 #  ====
 #  * Automatic casting will occur between JSON and attribute types where possible.
 #  * Assignment of JSON objects/arrays to strings is supported, in which case the
-#   JSON serialized form of the object/array is used.
+#    JSON serialized form of the object/array is used.
 #  * If a jpath matches multiple nodes, unless the map includes the `+=` operator
 #  * only the first node's value will be used.
 #  * If the map uses `+=` then multiple instances of the attribute will be created,
-#   each holding a different node value.
+#    each holding a different node value.
 #  ====
 #
 
@@ -59,14 +59,13 @@ json {
 #  [source, json]
 #  ----
 #  {
-#   "user": "bob",
-#   "account number": 7124503,
-#     "groups": {
-#       "admin",
-#       "networks",
-#       "bob"
-#     }
-#   }
+#    "user": "bob",
+#    "account number": 7124503,
+#    "groups": [
+#      "admin",
+#      "networks",
+#      "bob"
+#    ]
 #  }
 #  ----
 #
@@ -75,8 +74,8 @@ json {
 #  [source, unlang]
 #  ----
 #  map json "%{rest:GET http://example.org/api/user/%{User-Name}" {
-#   &Tmp-Integer-0  := '$.account number'
-#   &Group          += '$.groups.*'
+#    &Tmp-Integer-0  := '$.account number'
+#    &Group          += '$.groups.*'
 #  }
 #  ----
 #
@@ -99,10 +98,10 @@ json {
 #  [source,unlang]
 #  ----
 #  update control {
-#      &Tmp-String-0 := '$.my.json.payload[1]'
+#    &Tmp-String-0 := '$.my.json.payload[1]'
 #  }
 #  update reply {
-#      &Reply-Message := "Validation of %{control:Tmp-String-0} is %{jpathvalidate:$.my.json.payload[1]}"
+#    &Reply-Message := "Validation of %{control:Tmp-String-0} is %{jpathvalidate:$.my.json.payload[1]}"
 #  }
 #  ----
 #
