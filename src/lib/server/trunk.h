@@ -97,7 +97,8 @@ typedef struct {
 typedef enum {
 	FR_TRUNK_CANCEL_REASON_NONE = 0,		//!< Request has not been cancelled.
 	FR_TRUNK_CANCEL_REASON_SIGNAL,			//!< Request cancelled due to a signal.
-	FR_TRUNK_CANCEL_REASON_MOVE			//!< Request cancelled because it's being moved.
+	FR_TRUNK_CANCEL_REASON_MOVE,			//!< Request cancelled because it's being moved.
+	FR_TRUNK_CANCEL_REASON_REQUEUE			//!< A previously sent request is being requeued.
 } fr_trunk_cancel_reason_t;
 
 /** What type of I/O events the trunk connection is currently interested in receiving
@@ -142,7 +143,7 @@ extern CONF_PARSER const fr_trunk_config[];
  * The trunk must be informed when the underlying connection is readable, and,
  * if `always_writable == false`, when the connection is writable.
  *
- * When the connection is readable, a read I/O handler installed by the open()
+ * When the connection is readable, a read I/O handler installed by the init()
  * callback of the #fr_connection_t must either:
  *
  * - If there's no underlying I/O library, call `fr_trunk_connection_signal_readable(tconn)`
@@ -398,7 +399,9 @@ typedef void (*fr_trunk_request_fail_t)(REQUEST *request, void *preq, void *rctx
  * to a signal.
  *
  * The preq and any associated data such as encoded packets or I/O library request
- * handled *MUST* be explicitly freed by this function.
+ * handled *SHOULD* be explicitly freed by this function.
+ * The exception to this is if the preq is parented by the treq, in which case the
+ * preq will be explicitly freed when the treq is returned to the free list.
  *
  * @param[in] request		to mark as runnable if no further processing is required.
  * @param[in] preq_to_free	As per the name.
@@ -476,6 +479,8 @@ uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int
 void		fr_trunk_request_free(fr_trunk_request_t *treq);
 
 fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request);
+
+void		fr_trunk_request_requeue(fr_trunk_request_t *treq);
 
 int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQUEST *request,
 					 void *preq, void *rctx);

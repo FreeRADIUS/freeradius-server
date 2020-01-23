@@ -396,6 +396,7 @@ static fr_table_num_ordered_t const fr_trunk_cancellation_reasons[] = {
 	{ "FR_TRUNK_CANCEL_REASON_NONE",	FR_TRUNK_CANCEL_REASON_NONE	},
 	{ "FR_TRUNK_CANCEL_REASON_SIGNAL",	FR_TRUNK_CANCEL_REASON_SIGNAL	},
 	{ "FR_TRUNK_CANCEL_REASON_MOVE",	FR_TRUNK_CANCEL_REASON_MOVE	},
+	{ "FR_TRUNK_CANCEL_REASON_REQUEUE",	FR_TRUNK_CANCEL_REASON_REQUEUE	}
 };
 static size_t fr_trunk_cancellation_reasons_len = NUM_ELEMENTS(fr_trunk_cancellation_reasons);
 
@@ -986,6 +987,8 @@ static void trunk_request_enter_sent(fr_trunk_request_t *treq)
  *			- FR_TRUNK_CANCEL_REASON_MOVE request cancelled
  *			  because the connection failed and it needs
  *			  to be assigned to a new connection.
+ *			- FR_TRUNK_CANCEL_REASON_REQUEUE request cancelled
+ *			  as it needs to be resent on the same connection.
  */
 static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel_reason_t reason)
 {
@@ -1247,13 +1250,13 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 
 /** Enqueue a request which has never been assigned to a connection or was previously cancelled
  *
- * @param[in] treq	to re enqueue.  Muse have been removed
+ * @param[in] treq	to re enqueue.  Must have been removed
  *			from its existing connection with
  *			#trunk_connection_requests_dequeue.
  * @return
  *	- FR_TRUNK_ENQUEUE_OK			Request was re-enqueued.
  *	- FR_TRUNK_ENQUEUE_NO_CAPACITY		Request enqueueing failed because we're at capacity.
- *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE		Enqueuing failed for some reason.
+ *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE	Enqueuing failed for some reason.
  *      					Usually because the connection to the resource is down.
  */
 static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *treq)
@@ -1842,6 +1845,23 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 	return treq;
 }
 
+/** Re-enqueue a request on the same connection
+ *
+ * If the treq has been sent, we assume that we're being signalled to requeue
+ * because something outside of the trunk API has determined that a retransmission
+ * is required.  The easiest way to perform that retransmission is to clean up
+ * any tracking information for the request, and the requeue it for transmission.
+ *
+ * @param[in] treq	to requeue (retransmit).
+ */
+void fr_trunk_request_requeue(fr_trunk_request_t *treq)
+{
+	fr_trunk_connection_t	*tconn = treq->tconn;	/* Existing conn */
+
+	trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
+	trunk_request_enter_pending(treq, tconn);
+}
+
 /** Enqueue a request that needs data written to the trunk
  *
  * When a REQUEST * needs to make an asynchronous request to an external datastore
@@ -1879,7 +1899,10 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
  * @param[in] trunk		to enqueue request on.
  * @param[in] request		to enqueue.
  * @param[in] preq		Protocol request to write out.  Will be freed when
- *				treq is freed. MUST NOT BE PARENTED.
+ *				treq is freed. Should ideally be parented by the
+ *				treq if possible.
+ *				Use #fr_trunk_request_alloc for pre-allocation of
+ *				the treq.
  * @param[in] rctx		The resume context to write any result to.
  * @return
  *	- FR_TRUNK_ENQUEUE_OK.
