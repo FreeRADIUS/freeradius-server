@@ -1,19 +1,18 @@
 CREATE TABLE radippool (
 	id                      INT PRIMARY KEY,
 	pool_name               VARCHAR(30) NOT NULL,
-	framedipaddress         VARCHAR(30) NOT NULL,
-	nasipaddress            VARCHAR(30) NOT NULL,
-	pool_key                INT NOT NULL,
-	CalledStationId         VARCHAR(64),
+	framedipaddress         VARCHAR(15) NOT NULL,
+	nasipaddress            VARCHAR(15) NOT NULL,
+	pool_key                VARCHAR(30) NOT NULL,
+	CalledStationId         VARCHAR(64) NOT NULL,
 	CallingStationId        VARCHAR(64) NOT NULL,
 	expiry_time             timestamp(0) NOT NULL,
-	username                VARCHAR(100)
+	username                VARCHAR(64)
 );
 
-CREATE INDEX radippool_poolname_ipaadr ON radippool (pool_name, framedipaddress);
 CREATE INDEX radippool_poolname_expire ON radippool (pool_name, expiry_time);
-CREATE INDEX radippool_nasipaddr_key ON radippool (nasipaddress, pool_key);
-CREATE INDEX radippool_nasipaddr_calling ON radippool (nasipaddress, callingstationid);
+CREATE INDEX radippool_framedipaddress ON radippool (framedipaddress);
+CREATE INDEX radippool_nasip_poolkey_ipaddress ON radippool (nasipaddress, pool_key, framedipaddress);
 
 CREATE SEQUENCE radippool_seq START WITH 1 INCREMENT BY 1;
 
