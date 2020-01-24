@@ -674,6 +674,29 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller);
 static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx);
 static void trunk_backlog_drain(fr_trunk_t *trunk);
 
+/** Compare two protocol requests
+ *
+ * Allows protocol requests to be prioritised with a function
+ * specified by the API client.  Defaults to by pointer address
+ * if no function is specified.
+ *
+ * @param[in] a	treq to compare to b.
+ * @param[in] b treq to compare to a.
+ * @return
+ *	- +1 if a > b.
+ *	- 0 if a == b.
+ *	- -1 if a < b.
+ */
+static int8_t _trunk_request_prioritise(void const *a, void const *b)
+{
+	fr_trunk_request_t const *treq_a = talloc_get_type_abort(a, fr_trunk_request_t);
+	fr_trunk_request_t const *treq_b = talloc_get_type_abort(b, fr_trunk_request_t);
+
+	rad_assert(treq_a->trunk == treq_b->trunk);
+
+	return treq_a->trunk->funcs.request_prioritise(treq_a->preq, treq_b->preq);
+}
+
 /** Remove a request from all connection lists
  *
  * A common function used by init, fail, complete state functions to disassociate
@@ -2728,7 +2751,7 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	 */
 	DO_CONNECTION_ALLOC(tconn);
 
-	MEM(tconn->pending = fr_heap_talloc_create(tconn, trunk->funcs.request_prioritise,
+	MEM(tconn->pending = fr_heap_talloc_create(tconn, _trunk_request_prioritise,
 						   fr_trunk_request_t, heap_id));
 	fr_dlist_talloc_init(&tconn->sent, fr_trunk_request_t, entry);
 	fr_dlist_talloc_init(&tconn->cancel, fr_trunk_request_t, entry);
@@ -3594,29 +3617,6 @@ static int _trunk_free(fr_trunk_t *trunk)
 	while ((treq = fr_dlist_head(&trunk->unassigned))) talloc_free(treq);
 
 	return 0;
-}
-
-/** Compare two protocol requests
- *
- * Allows protocol requests to be prioritised with a function
- * specified by the API client.  Defaults to by pointer address
- * if no function is specified.
- *
- * @param[in] a	treq to compare to b.
- * @param[in] b treq to compare to a.
- * @return
- *	- +1 if a > b.
- *	- 0 if a == b.
- *	- -1 if a < b.
- */
-static int8_t _trunk_request_prioritise(void const *a, void const *b)
-{
-	fr_trunk_request_t const *treq_a = talloc_get_type_abort(a, fr_trunk_request_t);
-	fr_trunk_request_t const *treq_b = talloc_get_type_abort(b, fr_trunk_request_t);
-
-	rad_assert(treq_a->trunk == treq_b->trunk);
-
-	return treq_a->trunk->funcs.request_prioritise(treq_a->preq, treq_b->preq);
 }
 
 /** Allocate a new collection of connections
