@@ -689,8 +689,8 @@ static void trunk_backlog_drain(fr_trunk_t *trunk);
  */
 static int8_t _trunk_request_prioritise(void const *a, void const *b)
 {
-	fr_trunk_request_t const *treq_a = talloc_get_type_abort(a, fr_trunk_request_t);
-	fr_trunk_request_t const *treq_b = talloc_get_type_abort(b, fr_trunk_request_t);
+	fr_trunk_request_t const *treq_a = talloc_get_type_abort_const(a, fr_trunk_request_t);
+	fr_trunk_request_t const *treq_b = talloc_get_type_abort_const(b, fr_trunk_request_t);
 
 	rad_assert(treq_a->trunk == treq_b->trunk);
 
