@@ -139,38 +139,6 @@ struct fr_trunk_request_s {
 	fr_time_t		last_freed;		//!< Last time this request was freed.
 };
 
-/** Used for sanity checks and to track which list the connection is in
- *
- */
-typedef enum {
-	FR_TRUNK_CONN_HALTED		= 0x00,		//!< In the initial state.
-	FR_TRUNK_CONN_CONNECTING	= 0x01,		//!< Connection is connecting.
-	FR_TRUNK_CONN_ACTIVE		= 0x02,		//!< Connection is connected and ready to service requests.
-							///< This is active and not 'connected', because a connection
-							///< can be 'connected' and 'full' or 'connected' and 'active'.
-	FR_TRUNK_CONN_FAILED		= 0x04,		//!< Connection failed.  We now wait for it to enter the
-							///< closed state.
-	FR_TRUNK_CONN_CLOSED		= 0x08,		//!< Connection was closed, either explicitly or due to failure.
-	FR_TRUNK_CONN_INACTIVE		= 0x10,		//!< Connection is inactive and can't accept any more requests.
-	FR_TRUNK_CONN_DRAINING		= 0x20,		//!< Connection will be closed once it has no more outstanding
-							///< requests, if it's not reactivated.
-	FR_TRUNK_CONN_DRAINING_TO_FREE	= 0x40		//!< Connection will be closed once it has no more outstanding
-							///< requests.
-} fr_trunk_connection_state_t;
-
-/** All connection states
- *
- */
-#define FR_TRUNK_CONN_ALL \
-(\
-	FR_TRUNK_CONN_CONNECTING | \
-	FR_TRUNK_CONN_ACTIVE | \
-	FR_TRUNK_CONN_FAILED | \
-	FR_TRUNK_CONN_CLOSED | \
-	FR_TRUNK_CONN_INACTIVE | \
-	FR_TRUNK_CONN_DRAINING | \
-	FR_TRUNK_CONN_DRAINING_TO_FREE \
-)
 
 /** Associates request queues with a connection
  *
@@ -1993,7 +1961,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 /** Return the count number of connections in the specified states
  *
  * @param[in] trunk		to retrieve counts for.
- * @param[in] conn_state	One or more connection states or'd together.
+ * @param[in] conn_state	One or more #fr_trunk_connection_state_t states or'd together.
  * @return The number of connections in the specified states.
  */
 uint16_t fr_trunk_connection_count_by_state(fr_trunk_t *trunk, int conn_state)

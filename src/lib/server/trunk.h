@@ -116,6 +116,39 @@ typedef enum {
 
 } fr_trunk_connection_event_t;
 
+/** Used for sanity checks and to track which list the connection is in
+ *
+ */
+typedef enum {
+	FR_TRUNK_CONN_HALTED		= 0x00,		//!< In the initial state.
+	FR_TRUNK_CONN_CONNECTING	= 0x01,		//!< Connection is connecting.
+	FR_TRUNK_CONN_ACTIVE		= 0x02,		//!< Connection is connected and ready to service requests.
+							///< This is active and not 'connected', because a connection
+							///< can be 'connected' and 'full' or 'connected' and 'active'.
+	FR_TRUNK_CONN_FAILED		= 0x04,		//!< Connection failed.  We now wait for it to enter the
+							///< closed state.
+	FR_TRUNK_CONN_CLOSED		= 0x08,		//!< Connection was closed, either explicitly or due to failure.
+	FR_TRUNK_CONN_INACTIVE		= 0x10,		//!< Connection is inactive and can't accept any more requests.
+	FR_TRUNK_CONN_DRAINING		= 0x20,		//!< Connection will be closed once it has no more outstanding
+							///< requests, if it's not reactivated.
+	FR_TRUNK_CONN_DRAINING_TO_FREE	= 0x40		//!< Connection will be closed once it has no more outstanding
+							///< requests.
+} fr_trunk_connection_state_t;
+
+/** All connection states
+ *
+ */
+#define FR_TRUNK_CONN_ALL \
+(\
+	FR_TRUNK_CONN_CONNECTING | \
+	FR_TRUNK_CONN_ACTIVE | \
+	FR_TRUNK_CONN_FAILED | \
+	FR_TRUNK_CONN_CLOSED | \
+	FR_TRUNK_CONN_INACTIVE | \
+	FR_TRUNK_CONN_DRAINING | \
+	FR_TRUNK_CONN_DRAINING_TO_FREE \
+)
+
 typedef enum {
 	FR_TRUNK_ENQUEUE_IN_BACKLOG = 1,		//!< Request should be enqueued in backlog
 	FR_TRUNK_ENQUEUE_OK = 0,			//!< Operation was successful.
