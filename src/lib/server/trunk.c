@@ -3596,6 +3596,29 @@ static int _trunk_free(fr_trunk_t *trunk)
 	return 0;
 }
 
+/** Compare two protocol requests
+ *
+ * Allows protocol requests to be prioritised with a function
+ * specified by the API client.  Defaults to by pointer address
+ * if no function is specified.
+ *
+ * @param[in] a	treq to compare to b.
+ * @param[in] b treq to compare to a.
+ * @return
+ *	- +1 if a > b.
+ *	- 0 if a == b.
+ *	- -1 if a < b.
+ */
+static int8_t _trunk_request_prioritise(void const *a, void const *b)
+{
+	fr_trunk_request_t const *treq_a = talloc_get_type_abort(a, fr_trunk_request_t);
+	fr_trunk_request_t const *treq_b = talloc_get_type_abort(b, fr_trunk_request_t);
+
+	rad_assert(treq_a->trunk == treq_b->trunk);
+
+	return treq_a->trunk->funcs.request_prioritise(treq_a->preq, treq_b->preq);
+}
+
 /** Allocate a new collection of connections
  *
  * This function should be called first to allocate a new trunk connection.
@@ -3656,7 +3679,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Request backlog queue
 	 */
-	MEM(trunk->backlog = fr_heap_talloc_create(trunk, trunk->funcs.request_prioritise,
+	MEM(trunk->backlog = fr_heap_talloc_create(trunk, _trunk_request_prioritise,
 						   fr_trunk_request_t, heap_id));
 
 	/*
