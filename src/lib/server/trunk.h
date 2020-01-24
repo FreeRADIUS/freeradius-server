@@ -497,11 +497,43 @@ fr_trunk_request_t *fr_trunk_connection_pop_request(REQUEST **request, void **pr
 
 /** @name Connection state signalling
  *
- * - writable means the connection is writable and the muxer should be called.
- * - readable means the connection is readable and the demuxer should be called.
- * - full means the connection cannot accept any new requests.
- * - active means the connection can accept requests again.
- * - reconnect means the connection is likely bad, and should be reconnected.
+ * The following states are signalled from I/O event handlers:
+ *
+ * - writable - The connection is writable (the muxer will be called).
+ * - readable - The connection is readable (the demuxer will be called).
+ * - reconnect - The connection is likely bad and should be reconnected.
+ *   If the code signalling has access to the conn, fr_connection_signal_reconnect
+ *   can be used instead of fr_trunk_connection_signal_reconnect.
+ *
+ * The following states are signalled to control whether a connection may be
+ * assigned new requests:
+ *
+ * - inactive - The connection cannot accept any new requests.  Either due to
+ *   congestion or some other administrative reason.
+ * - active - The connection can, once again, accept new requests.
+ *
+ * Note: In normal operation a connection will automatically transition between
+ * the active and inactive states if conf->max_req_per_conn is specified and the
+ * number of pending requests on that connection are equal to that number.
+ * If however, the connection has previously been signalled inactive, it will not
+ * automatically be reactivated once the number of connections drops below
+ * max_req_per_conn.
+ *
+ * For other connection states the trunk API should not be signalled directly.
+ * It will be informed by "watch" callbacks inserted into the #fr_connection_t as
+ * to when the connection changes state.
+ *
+ * #fr_trunk_connection_signal_active does not need to be called in any of the
+ * #fr_connection_t state callbacks.  It is only used to activate a connection
+ * which has been previously marked inactive using
+ * #fr_trunk_connection_signal_inactive.
+ *
+ * If #fr_trunk_connection_signal_inactive is being used to remove a congested
+ * connection from the active list (i.e. on receipt of an explicit protocol level
+ * congestion notification), consider calling #fr_trunk_connection_requests_requeue
+ * with the FR_TRUNK_REQUEST_PENDING state to redistribute that connection's
+ * backlog to other connections in the trunk.
+ *
  * @{
  */
 void		fr_trunk_connection_signal_writable(fr_trunk_connection_t *tconn);
@@ -525,6 +557,7 @@ void		fr_trunk_reconnect(fr_trunk_t *trunk, int state, fr_connection_reason_t re
  * @{
  */
 int		fr_trunk_start(fr_trunk_t *trunk);
+
 fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				fr_trunk_io_funcs_t const *funcs, fr_trunk_conf_t const *conf,
 				char const *log_prefix, void const *uctx, bool delay_start);
