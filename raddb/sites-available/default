@@ -1191,7 +1191,7 @@ send Access-Accept {
 	#
 	#  Get an address from the IP Pool.
 	#
-#	main_pool
+#	sqlippool
 
 
 	#
@@ -1541,10 +1541,10 @@ send Accounting-Response {
 #	sradutmp
 
 	#
-	#  Return an address to the IP Pool when we see a stop
-	#  record.
+	#  Refresh leases when we see a start or alive. Return an address to
+	#  the IP Pool when we see a stop record.
 	#
-#	main_pool
+#	sqlippool
 
 	#
 	#  Log traffic to an SQL database.
