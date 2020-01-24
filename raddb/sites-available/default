@@ -638,7 +638,7 @@ accounting {
 #	sradutmp
 
 	#  Return an address to the IP Pool when we see a stop record.
-#	main_pool
+#	sqlippool
 
 	#
 	#  Log traffic to an SQL database.
@@ -727,8 +727,9 @@ post-auth {
 		&reply: += &session-state:
 	}
 
-	#  Get an address from the IP Pool.
-#	main_pool
+	#  Refresh leases when we see a start or alive. Return an address to
+	#  the IP Pool when we see a stop record.
+#	sqlippool
 
 
 	#  Create the CUI value and add the attribute to Access-Accept.
