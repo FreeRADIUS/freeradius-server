@@ -44,12 +44,12 @@ sqlippool {
 	#
 	#  [NOTE]
 	#  ====
-	#  It MUST be a type which contains IP addresses.
+	#  It MUST be a qualified name of an attribute of a type which contains IP addresses.
 	#
 	#  e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
 	#  ====
 	#
-	attribute_name = Framed-IP-Address
+	attribute_name = radius.Framed-IP-Address
 
 	#
 	#  pool_key:: Attribute which should be considered unique per NAS.
