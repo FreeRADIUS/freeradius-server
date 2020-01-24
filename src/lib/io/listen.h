@@ -59,7 +59,7 @@ struct fr_async_s {
 	void			*packet_ctx;
 	fr_listen_t		*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
-	uint32_t		priority;
+	uint32_t		priority;	//!< higher == higher priority
 	bool			fake;		//!< is it a fake request
 };
 
