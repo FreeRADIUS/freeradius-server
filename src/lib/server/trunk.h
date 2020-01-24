@@ -516,7 +516,7 @@ fr_trunk_request_t *fr_trunk_connection_pop_request(REQUEST **request, void **pr
  * the active and inactive states if conf->max_req_per_conn is specified and the
  * number of pending requests on that connection are equal to that number.
  * If however, the connection has previously been signalled inactive, it will not
- * automatically be reactivated once the number of connections drops below
+ * automatically be reactivated once the number of requests drops below
  * max_req_per_conn.
  *
  * For other connection states the trunk API should not be signalled directly.
