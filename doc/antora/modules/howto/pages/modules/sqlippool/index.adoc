@@ -1,39 +1,1074 @@
-= SQL Based IP Pool module.
+= SQL-Based IP Pool module.
 
-== Description
+== Introduction
 
-As of September 2006 this module is still under some development and
-currently is only tested by the developers on PostgreSQL (Version 8.1)
-Use it at your own risk! If plan to attempt to use a DB other than
-PostgreSQL please expect to have to do extra work which is not for SQL
-newbies. Having said that it works great for us in production and should
-(with some work) function correctly with other SQL server types.
+The `sqlippool` module leases IP addresses to devices from one or more pools of
+addresses without issuing the same leased IP address to multiple devices
+simultaneously.
 
-To use the sqlipool module you simply need to have an IP-Pool Attribute
-(Keep in mind that its a *CHECK* item, not reply) in the required
-configuration file, which is either in files(users), sql or any other
-type of configuration schema.
+Using FreeRADIUS for IP address allocation has some advantages. Moving pool
+management off of a set of standalone NASs serving a common set of devices
+allows all of the IP addresses to remain available when one or more of the NASs
+becomes unavailable.
 
-The initialization of the radippool table is left to the user instead of
-being handled inside the module. This allows pool management to be done
-from any sql capable programming language and pools can be created,
-resized, deleted at run time without radiusd needing to be restarted.
+Networks may have organisation-specific policies for the way that IP addresses
+are assigned which can be implemented by FreeRADIUS. For example, with careful
+development of the IP allocation policy FreeRADIUS can provide affinity of IP
+addresses to specific NASs or user groups, and also perform controlled
+attrition to decant users off of particular address ranges (for example to
+retire or repurpose them) over a period of time without forcibly disconnecting
+the users.
 
-The only required fields are, pool_name and ip_address. A pool consists
-of one or more rows in the table with the same pool_name and a different
-ip_address. There is no restriction on which ip addresses/ranges may be
-in the same pool, and addresses do not need to be concurrent.
+As with most FreeRADIUS modules `sqlippool` ships with a default config that
+works out of the box for basic network requirements with just a little
+configuration. However it can also be configured to achieve sophisticated IP
+allocation policies with some amount of basic SQL knowledge.
 
-We are currently using the variable definitions of the xlat module, so
-before editing the sqlippool.conf file, please go and read the
-`doc/unlang/xlat.adoc`. It will help you alot!..
 
-As you may noticed, there is a pool-key variable in the config file
-which allows you to select which attribute is unique according to your
-NAS setup. On a standard dialup NAS this is going to be "NAS-Port" but
-on an ethernet or wireless network it will probably be
-"Calling-Station-Id". Other more exotic options like "3GPP-IMSI" may
-also exist depending on your NAS. The only requirement is that the
-pool-key must be unique and must be received in both Access-Request and
-Accounting packages so that we know to clear the lease on the ip when
-the session disconnects.
+[#operation]
+== Operation
+
+The SQL IP Pools module takes action entirely in response to incoming RADIUS
+requests. The entire state is normally held in the `radippool` table. Therefore
+the RADIUS server can be restarted, switched out or debugged without loss of
+information.
+
+=== `Access-Request`: A device connects to the NAS with correct credentials
+
+. FreeRADIUS receives an `Access-Request` from the NAS which it authenticates
+and then adds some initial control and reply attributes from various data
+sources as defined by the authentication policy. The `Pool-Name` control
+attribute is added to a request to indicate that the reply should be modified
+to include an IP address allocated from the named pool into the
+`Framed-IP-Address` reply attribute (by default).
+
+. If a `Pool-Name` control attribute is present and a `Framed-IP-Address`
+attribute is not already present, FreeRADIUS initially runs the
+`allocate_clear` query to purge the details of expired leases and then runs the
+main `allocate_find` query that chooses a free IP address from the pool
+indicated by `Pool-Name`.  If `allocate_find` does not return an IP address the
+`pool_check` query is run to determine whether the reason, either the requested
+pool is empty (i.e.  no free addresses) or it is non-existent, and this
+information is returned in the `sqlippool` module return code.
+
+. If an IP address has been found, FreeRADIUS runs the `allocate_update` query to
+assign the IP address to the device by updating the `radippool` entry for the
+IP address with an initial `expiry time` based on the configured
+`lease_duration` (by default), a unique identifier for the device as specified
+by the `pool_key` configuration item (typically `NAS-Port`) and a NAS
+identifier (the `NAS-IP-Address`). Additionally the default schema and queries
+record the user identifier (`User-Name`) and device identifier
+(`Calling-Station-Id`) which can be used to implement user and device affinity
+with a previously allocated IP address.
+
+. FreeRADIUS sends an Access-Accept containing a `Framed-IP-Address` attribute
+holding the allocated IP address to the NAS.
+
+
+=== `Accounting Start`: A device and a NAS successfully establish a session
+
+. The NAS sends an `Accounting Start` request to FreeRADIUS.
+
+. FreeRADIUS uses the configured `pool_key` and NAS identifier to identify the
+entry in the `radippool` table to update the `expiry_time` based on the
+configured `lease_duration`. (This effectively extends the initial lease to the
+configured `lease_duration` in case the event that the Accounting Start request
+was delayed.)
+
+. FreeRADIUS sends an `Accounting-Response`.
+
+
+=== `Accounting Alive`: A NAS sends an Alive notification for a device's session
+
+. The NAS sends an `Accounting Interim-Update` request to FreeRADIUS.
+
+. FreeRADIUS uses the configured `pool_key`, IP address, user and device
+identifiers to lookup the IP lease entry in the `radippool` table and update
+its `expiry_time` based on the configured `lease_duration`. (This effectively
+*renews the lease* as long and the device remains connected and the NAS
+continues to send accounting updates.)
+
+. FreeRADIUS sends an `Accounting-Response` to the NAS.
+
+
+=== `Accounting Stop`: A device disconnects or its session times out
+
+. The NAS sends an `Accounting Stop` request to FreeRADIUS.
+
+. FreeRADIUS uses the configured `pool_key`, IP address, user and device
+identifiers to lookup the IP lease entry in the `radippool` table and clear the
+`pool_key` and `expiry_time`. (This effectively *releases the IP address* back
+into the pool of free addresses.)
+
+. FreeRADIUS sends an `Accounting-Response` to the NAS.
+
+
+=== `Accounting On/Off`: A NAS indicates that all of its sessions have been cleared
+
+. The NAS sends an `Accounting On` or `Accounting Off` request to FreeRADIUS.
+
+. FreeRADIUS uses the `NAS-IP-Address` to identify all leases in the
+`radippool` table belonging to sessions owned by the NAS and immediately
+releases those IP addresses. (This effectively returns all IP address occupied
+by the dropped sessions back into the pool.)
+
+. FreeRADIUS sends an `Accounting-Response` to the NAS.
+
+
+== Step by step setup instructions
+
+As with any FreeRADIUS configuration you are strongly recommended to start with
+a basic configuration that is based entirely on the default `raddb`
+configuration for `sqlippools` which is known to work.
+
+Afterwards amend the configuration one thing at a time, testing after each step,
+until you have successfully implemented your intended policy.
+
+Here we provide essential step by step instructions for how to configure the
+`sqlippool` module using a standard out of the box configuration. These actions
+are straightforward and will arrive at a working configuration, however the
+considerations behind how to set some of the module configuration items are
+nuanced (requiring an understanding of the NAS and wider access network) and
+are therefore discussed in separate sections below to which you should refer.
+
+TIP: If at any time you break your system then follow the
+https://wiki.freeradius.org/guide/radiusd-X[guide to debugging FreeRADIUS]. If
+necessary undo your recent changes, consider what went wrong and if you are
+still uncertain then ask for help from the FreeRADIUS project, explaining what
+you are trying to achieve, what exactly isn't working and provide the full
+debugging output for a relevant test run.
+
+
+=== 1. Enable the module and call it during request processing
+
+Firstly enable the module by creating its symlink.
+
+[source,shell]
+----
+cd /etc/raddb/mods-enabled
+ln -s ../mods-available/sqlippool
+----
+
+Ensure that the module is invoked during authentication and accounting request
+processing by uncommenting any lines containing `sqlippool` in the send
+`Access-Accept` and `Accounting-Response` sections of the `default` site.
+
+.[raddb]/sites-enabled/default
+[source,config]
+----
+send Access-Accept {
+...
+       sqlippool
+...
+}
+
+...
+
+send Accounting-Response {
+...
+       sqlippool
+...
+}
+----
+
+In the event that `sqlippool` is unable to allocate an IP address you may want
+to record the reason for the failure in a `Reply-Message` attribute of an
+`Access-Reject` response.
+
+.Example of recording the allocation failure reason in `Reply-Message`
+=============================================
+
+.[raddb]/sites-enabled/default
+[source,config]
+----
+send Access-Accept {
+...
+        group {
+                sqlippool {
+                        ok = return
+                        noop = return
+                }
+                # On failure for any reason, reject
+                update {
+                        &reply:Reply-Message += Module-Failure-Message
+                }
+                reject
+        }
+...
+}
+
+----
+=============================================
+
+You must now configure the module configuration items in
+`[raddb]/mods-enabled/sqlippool` as described below...
+
+
+=== 2. Configure a database server
+
+The database performance requirements for a system with busy IP Pools is likely
+to determine your choice of database software and architecture.
+
+Read and understand the considerations for <<database-performance,choosing a database
+server>>.
+
+Consider how these relate to your solution, then select an appropriate backend
+database for the SQL IP Pools. If a database server is already deployed in your
+environment that your solution must adopt then understand any caveats that may
+apply to your current solution and plan your testing and capacity planning to
+carefully address these.
+
+The `sqlippools` module requires a connection to the database to be provided
+using an instance of the `sql` module. Configure this as described in
+xref:modules/sql/index.adoc[the SQL module guide].
+
+Set the `sql_module_instance` configuration item to the name of the `sql`
+instance that you have configured and set the `dialect` configuration item to
+the same as that of the `sql` module. This determines which version of the
+`queries.conf` file is used.
+
+.[raddb]/mods-enabled/sqlippool
+[source,config]
+----
+sqlippool {
+...
+        sql_module_instance = "sql"
+        dialect = "mysql"
+...
+}
+----
+
+
+WARNING: If the SQL IP Pools database is a multi-master cluster (such as
+Galera) then you will have multiple instances of the `sql` module, one per
+node. For redundancy, you should configure a `sqlipool` instance corresponding
+to each `sql` instance for each master node in your cluster. However, you *must
+not* use a load-balancing policy such as `load-balance` or
+`redundant-load-balance` to spread SQL IP Pool load between cluster nodes for
+the <<database-clusters,reasons explained here>>. Do not ignore this advice
+unless you are certain that you have understood the implications. Instead you
+should use the basic `redundant` policy which will direct all queries to the
+first available instance and then be careful to ensure that you do not run out
+of connections or that the module might routinely fail in a way that directs IP
+allocation queries to multiple database instances simultaneously during normal
+operation.
+
+Load the SQL IP Pool schema into the database. Methods vary between databases,
+but a typical example would be:
+
+.[raddb]/mods-enabled/sqlippool
+[source,shell]
+----
+mysql radius < /etc/raddb/mods-config/sql/ippool/mysql/schema.sql
+----
+
+NOTE: The above command assumes that passwordless login has been configured via
+the user’s `~/.my.cnf` file, or otherwise.
+
+For performance reasons, if you are using a database that supports `SELECT ...
+FOR UPDATE SKIP LOCKED` then you should edit the
+`[raddb]/mods-config/sql/ippools/<dialect>/queries.conf` file corresponding to
+your database dialect to select the `SKIP LOCKED` variant of the
+`allocate_find` query. This will allow the database to remain responsive under
+concurrent load.
+
+
+=== 3. Configure a unique device identifier
+
+Read and understand the considerations for <<device-identifier,choosing a device identifier>>.
+
+Set the `pool_key` configuration item to the chosen unique device identifier attribute or
+combination of attributes.
+
+.[raddb]/mods-enabled/sqlippool
+[source,config]
+----
+sqlippool {
+...
+        pool_key = "%{NAS-Port-Id}:%{Calling-Station-Id}"
+...
+}
+----
+
+
+=== 4. Configure the lease duration
+
+Read and understand the considerations for <<lease-duration,choosing a lease duration>>.
+
+Set the `lease_duration` configuration item to the chosen lease duration in seconds.
+
+.[raddb]/mods-enabled/sqlippool
+[source,config]
+----
+sqlippool {
+...
+        lease_duration = 3600
+...
+}
+----
+
+WARNING: Remember to enable Interim-Updates on the NAS and configure the update
+interval with respect to the chosen `lease_duration`, typically to less than
+half the lease duration.
+
+In some access networks there may be circumstances where the device and NAS do
+not always finish establishing a connection after FreeRADIUS has issued an IP
+address and sent it in an `Access-Accept`, i.e. the session never really
+starts and FreeRADIUS does not receive an `Accounting Start` request. This may
+be due to a network fault, the device or NAS rejecting the data sent in the
+`Access-Accept` response, or some additional policy implemented elsewhere. In
+the default configuration, when a successfully authenticated session does not
+become fully established the IP address will have been allocated for the full
+`lease_duration` despite the device not having actually connected. It will remain
+like this since there will be no `Accounting Stop` request generated for a
+session that does not become fully established.
+
+[#short-initial-lease]
+TIP: This waste of an address may be undesirable if the capacity of the pool is
+a concern, especially if sticky IPs are not enabled and a device that is
+repeatedly failing to establish a connection is able to continue to consume IP
+addresses. With some consideration, this initial lease could be amended to a
+short, fixed interval rather than the full lease duration. Replace
+`lease_duration` with a fixed value in seconds in the `allocate_update` query
+in `queries.conf` or in the stored procedure in `procedure.sql`, whichever is
+in use. This fixed interval should be greater than the maximum time it could
+take for an Accounting Start to be received for successful connections.
+
+FreeRADIUS errs on the side of caution and initially allocates IP
+addresses during authentication for the full lease duration for two reasons:
+(1) We do not actually know how long it takes for a session to become
+established and for the Accounting Start request to actually be sent by the
+NAS. (2) We do not know that Accounting Start requests will always be reliably
+generated by the NAS even when a device has established a connection.  These
+should be considered if you decide to amend the default policy.
+
+
+=== 5. Configure the IP address attribute
+
+Set the `attribute_name` configuration item to whatever RADIUS attribute is
+required by the NAS, for example:
+
+.[raddb]/mods-enabled/sqlippool
+[source,config]
+----
+sqlippool {
+...
+        attribute_name = radius.Framed-IP-Address
+...
+}
+----
+
+TIP: Consult your NAS documentation to determine what attribute is used to
+indicate the assigned IP address *and* any additional attributes that are
+required for the RADIUS reply, e.g. `Framed-IP-Netmask`.
+
+TIP: If your NAS is allocating IPv6 prefixes to devices on the basis of a
+Framed-IPv6-Prefix RADIUS attribute then you can put the IPv6 prefixes into the
+`radippool` table and set `attribute_name = Framed-IPv6-Prefix`.
+
+
+=== 6. Populate the pool
+
+Populate the pool either manually using a text editor or database tool, or via a script.
+
+.Example shell command for populating the `radacct` table
+=============================================
+ for i in `seq 10 250`; do
+     echo "INSERT INTO radippool (          \
+               pool_name,                   \
+               framedipaddress,             \
+               pool_key,                    \
+               nasipaddress,                \
+               calledstationid,             \
+               callingstationid,            \
+               expiry_time                  \
+           ) VALUES (                       \
+               'internet',                  \
+               '192.0.2.$i',                \
+               '0',                         \
+               '',                          \
+               '',                          \
+               '',                          \
+               CURRENT_TIMESTAMP            \
+           );"
+ done | mysql radius
+
+=============================================
+
+CAUTION: If at any time you should accidentally remove an IP address from the
+pool that is in use then to avoid issuing duplicate IP addresses you must
+either wait for the existing session to expire (or terminate it manually. e.g.
+CoA/Disconnect) or reintroduce the IP address with a future expiry date beyond
+which any existing session will have closed (or at least beyond the accounting
+interval).
+
+
+=== 7. Enable a pool user
+
+For a request to acquire an address from the pool you must set a `Pool-Name`
+check attribute, either directly in the virtual server configuration or via a
+data source such as `sql` (for example using the `radcheck` table).
+
+.Example of setting a Pool-Name attribute using the `radcheck` table
+=============================================
+
+[source,shell]
+----
+echo "INSERT INTO radcheck (username,attribute,op,value)   \
+      VALUES ('bob','Pool-Name',':=','internet');"         \
+     | mysql radius
+----
+
+=============================================
+
+
+.Example of setting a Pool-Name attribute using in the server config
+=============================================
+
+.[raddb]/sites-enabled/default
+[source,config]
+----
+send Access-Accept {
+...
+        update control {
+                &Pool-Name := 'internet'
+        }
+
+        sqlippool
+...
+}
+----
+
+=============================================
+
+NOTE: Recall that if `sqlippool` is invoked without a `Pool-Name` check
+attribute then no action is taken. Also recall that if `sqlippool` is invoked
+whilst the attribute configured in the `attribute_name` configuration item
+(e.g. `Framed-IP-Address`) already exists then no action is taken.
+
+
+=== 8. Test the basic setup
+
+Start by creating some text files holding the test request data based on the
+actual form of the contents of packets originating from the NAS.
+
+.Example RADIUS requests text files for testing SQL IP Pools
+=============================================
+
+.access-request.rad
+[source,config]
+----
+User-Name = bob
+User-Password = testing123
+Calling-Station-Id = 00:53:00:11:22:33
+NAS-Port = 12345
+NAS-IP-Address = 192.0.2.5
+----
+
+.accounting-start.rad
+[source,config]
+----
+Acct-Session-Id = 1000
+Acct-Status-Id = Start
+User-Name = bob
+User-Password = testing123
+Calling-Station-Id = 00:53:00:11:22:33
+NAS-Port = 12345
+NAS-IP-Address = 192.0.2.5
+Framed-IP-Address = ???.???.???.???
+----
+
+.accounting-alive.rad
+[source,config]
+----
+Acct-Session-Id = 1000
+Acct-Status-Id = Interim-Update
+User-Name = bob
+User-Password = testing123
+Calling-Station-Id = 00:53:00:11:22:33
+NAS-Port = 12345
+NAS-IP-Address = 192.0.2.5
+Framed-IP-Address = ???.???.???.???
+----
+
+.accounting-stop.rad
+[source,config]
+----
+Acct-Session-Id = 1000
+Acct-Status-Id = Interim-Update
+User-Name = bob
+User-Password = testing123
+Calling-Station-Id = 00:53:00:11:22:33
+NAS-Port = 12345
+NAS-IP-Address = 192.0.2.5
+Framed-IP-Address = ???.???.???.???
+----
+
+.accounting-on.rad
+[source,config]
+----
+Acct-Status-Id = On
+NAS-IP-Address = 192.0.2.5
+----
+
+.accounting-off.rad
+[source,config]
+----
+Acct-Status-Id = Off
+NAS-IP-Address = 192.0.2.5
+----
+
+=============================================
+
+Now run through a series of tests examining the effect on the `radippool`
+tables at each stage to ensure that it matches the expected behaviour as
+described in the <<operation,Operation section>>.
+
+
+**Testing initial authentication**
+
+Send the Access Request to FreeRADIUS.
+
+[source,terminal]
+----
+cat access-request.rad | radclient -x 127.0.0.1 auth testing123
+Sent Access-Request Id 1 from 0.0.0.0:2000 to 127.0.0.1:1812 length 81
+	Cleartext-Password = "testing123"
+	User-Name = "bob"
+	User-Password = "testing123"
+	Calling-Station-Id = "00:53:00:11:22:33"
+	NAS-Port = 12345
+	NAS-IP-Address = 192.0.2.5
+Received Access-Accept Id 1 from 127.0.0.1:1812 to 0.0.0.0:2000 length 31
+	User-Name = "bob"
+	Framed-IP-Address = 192.0.2.10
+----
+
+Note that an IP address has been issued in the `Framed-IP-Address` of the
+reply.
+
+TIP: If you do no receive an IP address then start FreeRADIUS in debugging mode
+to determine where the process if failing as described in the
+https://wiki.freeradius.org/guide/radiusd-X[guide to debugging FreeRADIUS]. Do
+not proceed until you have resolved the IP allocation issue.
+
+Check the status of the `radippool` table.
+
+[source,terminal]
+----
+echo "SELECT * FROM radippool WHERE username <> ''" | mysql radius
++----+-----------+-----------------+--------------+----------+-------------------+---------------------+
+| id | pool_name | framedipaddress | nasipaddress | username | callingstationid  | expiry_time         |
++----+-----------+-----------------+--------------+----------+-------------------+---------------------+
+| 1  | internet  | 192.0.2.10      | 192.0.2.5    | bob      | 00:53:00:11:22:33 | 2020-01-01 10:10:10 |
++----+-----------+-----------------+--------------+----------+-------------------+---------------------+
+1 rows in set (0.0030 sec)
+----
+
+For the entry matching the given IP address ensure that the IP allocation has
+been recorded correctly. Check that:
+
+. The `pool_key` matches the expected value of the unique identifier that you
+chose. Double check that values of this form will be unique across all of your
+devices.
+
+. The `expiry_time` is `lease_duration` seconds ahead of the time of the
+request (or some fixed value that you chose for the initial lease if you
+updated the default policy.)
+
+. The `User-Name` and `Calling-Station-Id` attributes are populated correctly
+where this information is given in the request.
+
+. The `NAS-IP-Address` has been provided. If not then you may need to
+reconfigure your NAS to provide this or instantiate this attribute from
+`Packet-Src-IP-Address` using an unlang policy in FreeRADIUS. Otherwise when
+the NAS reboots you will not be able to match the affected IP addresses to the
+device.
+
+Update your sample text files containing the accounting requests to include the
+allocated IP Address *before proceeding* with accounting packet testing.
+
+
+**Testing Accounting Start**
+
+[source,terminal]
+----
+cat accounting-start.rad | radclient -x 127.0.0.1 acct testing123
+----
+
+Check the status of the `radippool` table.
+
+For the entry matching the given IP address ensure that *initial lease
+extension* is occurring by verifying that the `expiry_time` is in the future by
+`lease_duration` seconds from the time of the request.
+
+
+**Testing Accounting Interim-Update**
+
+[source,terminal]
+----
+cat accounting-alive.rad | radclient -x 127.0.0.1 acct testing123
+----
+
+Check the status of the `radippool` table.
+
+For the entry matching the given IP address ensure that *IP address renewal* is
+occurring by verifying that the `expiry_time` is in the future by
+`lease_duration` seconds from the time of the request.
+
+
+**Testing Accounting Stop**
+
+[source,terminal]
+----
+cat accounting-stop.rad | radclient -x 127.0.0.1 acct testing123
+----
+
+Check the status of the `radippool` table.
+
+For the entry matching the given IP address ensure that *IP address release* is
+occurring by verifying that the `expiry_time` is set prior to the current time
+or is null.
+
+
+**Additional tests**
+
+* Repeat this authentication test with the same user to ensure that the same IP
+address is allocated for a re-authentication of an ongoing session.
+
+* Repeat the authentication test with multiple users to ensure that each user is
+assigned a unique IP address.
+
+* Test that `Accounting On/Off` packets clear all sessions owned by the NAS.
+
+* If you have already enabled a sticky IP policy then ensure that user
+and device data is not removed when an `Accounting Stop` (and `Accounting
+On/Off`) request is received. Ensure that users receive their previous IP
+address when they authenticate using a device whose recent session is
+disconnected.
+
+
+== Recommended additional configuration
+
+Once the initial configuration is working there are some additional recommended
+configuration steps to consider.
+
+The basic configuration arrived at in the previous section will be functional
+but it is likely to exhibit poor performance under concurrent load. It also
+implements a simple, dynamic IP allocation policy that you may want to change.
+
+
+=== Enable the IP allocation stored procedure
+
+The stored procedure is provided as an efficient means to both find and
+allocate an IP address with a single SQL call so that no locks are held across
+rounds trips between FreeRADIUS and the database. Depending on the database
+software and configuration the stored procedure may increase the IP allocation
+performance by as much as 100x and ensure that the system doesn't fail due to
+excessive locking under high load.
+
+Load the IP allocation stored procedure in the `procedure.sql` file
+corresponding to the database dialect.
+
+Methods vary between databases, but a typical example would be:
+
+[source,shell]
+----
+mysql radius < /etc/raddb/mods-config/sql/ippool/mysql/procedure.sql
+----
+
+NOTE: The above command assumes that passwordless login has been configured via
+the user’s `~/.my.cnf` file, or otherwise.
+
+Read the comments in the `procedure.sql` file which explain how to use the
+stored procedure, then amend the `allocate_find`, `allocate_update` and
+possibly `allocate_clear` queries (as well as the corresponding start/end
+transaction query-parts) in the dialect's `queries.conf` file, *exactly as
+described*.
+
+
+.Example queries.conf configuration to use the stored procedure with MySQL
+=============================================
+
+[raddb]/mods-config/sql/ipool/<dialect>/queries.conf
+[source,config]
+----
+...
+allocate_begin = ""
+
+allocate_find = "\
+      CALL fr_allocate_previous_or_new_framedipaddress( \
+              '%{control:${pool_name}}', \
+              '%{User-Name}', \
+              '%{Calling-Station-Id}', \
+              '%{NAS-IP-Address}', \
+              '${pool_key}', \
+              ${lease_duration} \
+      )"
+
+allocate_update = ""
+
+allocate_commit = ""
+
+...
+----
+
+=============================================
+
+Now that the IP allocation stored procedure has been enabled you should re-test
+your configuration.
+
+
+=== Customise the IP allocation policy
+
+The IP allocation policy is mainly configured by modifying the `allocate_find`
+query, however it is likely that the other queries will also need to be
+modified to get the results you want.
+
+By default each user is likely to get a different IP address each time they
+authenticate unless they re-authenticate before their existing session has
+terminated (as is the case with many EAP-based implementations during "fast
+re-authentication").
+
+Often it is required that upon reconnection a device obtains its previous IP
+address, sometimes referred to as a "sticky IPs" policy.
+
+If you are using the base queries (rather than the recommended stored
+procedure) then the `queries.conf` file for your database dialect contains
+several example `allocate_find` queries for choosing either a dynamic or sticky
+IP policy.
+
+If you are using the recommended stored procedure then the `procedure.sql` file
+which contains the definition of the stored procedure for your database dialect
+has comments that explain how to amend the procedure to choose either a dynamic
+or sticky IP policy.
+
+With a sticky IP policy it is necessary to disable the `allocate_clear` query
+and amend the default actions of the `stop_clear`, `on_clear` and `off_clear`
+queries.  By default, each of these queries clobbers the `User-Name` and
+`Calling-Station-Id` attributes when sessions expire therefore erasing the
+affinity information.
+
+TIP: A performance benefit of sticky IP addresses derived from the fact that
+reallocation of an existing IP address is generally much quicker than
+allocating a new IP address since it generally involves an indexed lookup of a
+single IP address based on the device's request attributes rather than a walk
+of the table's indexes.
+
+TIP: The default `radippool` table contains attributes for `User-Name` and
+`Calling-Station` that can be used to set the affinity for a sticky IP policy.
+With care, these can be modified and the queries adjusted accordingly so that
+any RADIUS attribute that is available during authentication can be used.
+
+.Example queries for use with a sticky IP policy
+=============================================
+
+.[raddb]/mods-config/sql/ipool/<dialect>/queries.conf
+[source,config]
+----
+...
+allocate_begin = ""
+allocate_clear = ""
+allocate_find = "\
+        CALL fr_allocate_previous_or_new_framedipaddress( \
+                '%{control:${pool_name}}', \
+                '%{User-Name}', \
+                '%{Calling-Station-Id}', \
+                '%{NAS-IP-Address}', \
+                '${pool_key}', \
+                ${lease_duration} \
+        )"
+allocate_update = ""
+allocate_commit = ""
+...
+stop_clear = "\
+        UPDATE ${ippool_table} \
+        SET \
+                nasipaddress = '', \
+                pool_key = 0, \
+                expiry_time = NOW() \
+        WHERE nasipaddress = '%{%{Nas-IP-Address}:-%{Nas-IPv6-Address}}' \
+        AND pool_key = '${pool_key}' \
+        AND username = '%{User-Name}' \
+        AND callingstationid = '%{Calling-Station-Id}' \
+        AND framedipaddress = '%{${attribute_name}}'"
+
+on_clear = "\
+        UPDATE ${ippool_table} \
+        SET \
+                nasipaddress = '', \
+                pool_key = 0, \
+                expiry_time = NOW() \
+        WHERE nasipaddress = '%{%{Nas-IP-Address}:-%{Nas-IPv6-Address}}'"
+
+off_clear = "\
+        UPDATE ${ippool_table} \
+        SET \
+                nasipaddress = '', \
+                pool_key = 0, \
+                expiry_time = NOW() \
+        WHERE nasipaddress = '%{%{Nas-IP-Address}:-%{Nas-IPv6-Address}}'"
+...
+----
+
+.[raddb]/mods-config/sql/ipool/<dialect>/procedure.sql
+[source,sql]
+----
+...
+        -- Reissue an user's previous IP address, provided that the lease
+        -- is available (i.e. enable sticky IPs)
+        --
+        SELECT framedipaddress INTO r_address
+        FROM radippool
+        WHERE pool_name = v_pool_name
+                AND username = v_username
+                AND callingstationid = v_callingstationid
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED;
+
+        -- If we didn't reallocate a previous address then pick the least
+        -- recently used address from the pool which maximises the
+        -- likelihood of re-assigning the other addresses to their recent
+        -- user
+        --
+        IF r_address IS NULL THEN
+                SELECT framedipaddress INTO r_address
+                FROM radippool
+                WHERE pool_name = v_pool_name
+                        AND ( expiry_time < NOW() OR expiry_time IS NULL )
+                ORDER BY
+                        expiry_time
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED;
+        END IF;
+...
+----
+
+=============================================
+
+Now that you have amended your IP allocation policy you should re-test your
+configuration carefully to validate each of the amended queries and exercise
+all of the features of your policy.
+
+If your testing passes then FreeRADIUS should now be ready to allocate IP
+addresses.
+
+
+== Detailed considerations
+
+[#database-performance]
+=== Choice of database server
+
+The performance of the `sqlippool` module is much more sensitive to the choice
+of backend database than is typical for other FreeRADIUS database workloads.
+
+The `sqlippool` module allocates IP addresses by using a relational database to
+implement the "accept" part of a "worker queue" pattern, where multiple workers
+attempt to select a single, unique work item from an unordered queue. In our
+case the queue is the IP pool and each worker is an authentication request
+attempting to reserve a unique IP address.
+
+The overall performance largely depends on how directly and optimally the
+database server software supports this pattern.
+
+In particular, the SQL standard introduces two pragmas that facilitate an
+optimised implementation of a worker queue:
+
+`SELECT FOR UPDATE ...`::
+Selects rows whilst exclusively locking them to prevent simultaneous locking
+reads and writes of those same rows. When connections are simultaneously
+selecting an IP address from a pool this pragma is what provides the guarantee
+of uniqueness of the IP selected for each authentication request.
+
+`... SKIP LOCKED`::
+This is a modifier for `SELECT FOR UPDATE` that optimises the select by
+allowing each reader to disregard any locked rows in order to avoid blocking.
+This pragma avoids the "thundering herd" problem that can cripple performance
+during highly concurrent IP allocation: Several authentication requests wait a
+lock to be release on a single IP address that is in the process of being
+allocated to a device. When the lock is release all but one of these previously
+blocked connections block waiting for the next free IP address to be allocated.
+And so on until they have all been serviced or their query times out... In the
+absence of this pragma concurrent authentication requests are unnecessarily
+serialised whilst their IP addresses are allocated resulting in poor
+performance.
+
+Here are some comments regarding the main database engines in relation to this
+issue:
+
+PostgreSQL::
+Since version 9.5 provides a direct implementation of the `SELECT ... FOR
+UPDATE SKIP LOCKED` statement which means that it is a very efficient backend
+for `sqlippool`.
+
+MySQL::
+Since version 8 the InnoDB storage enging provides a direct implementation of
+the `SELECT ... FOR UPDATE SKIP LOCKED` statement which means that it is a very
+efficient backend for `sqlippool`. Previous versions do not implement the `SKIP
+LOCKED` pragma and therefore may have poor performance under concurrent load.
+Ensure that you use a storage engine what supports transactions. Do not use
+MyISAM.
+
+MariaDB::
+Current versions lack `SKIP LOCKED` and therefore may have poor performance
+under concurrent load. For this reason, given the choice between MariaDB and
+a recent version of MySQL you should use MySQL for SQL IP Pools. Ensure that
+you use a storage engine what supports transactions such as InnoDB: Do not use
+MyISAM or Aria.
+
+MS SQL Server::
+Does not provide a `SELECT ... FOR UPDATE` implementation nor a direct means to
+provide a row-level, exclusive lock that ensures uniqueness of the selected
+row. However FreeRADIUS is able to use an artificial `UPDATE` of a selected row
+along with non-standard "hints" to obtain the required `SELECT ... FOR UPDATE
+SKIP LOCKED` semantics, but we pay a performance penalty by doing so. The
+overall performance is moderate but it does not collapse under concurreent
+load.
+
+Oracle::
+Provides a direct implementation of the `SELECT ... FOR UPDATE SKIP LOCKED`
+statement. It should be very efficient but limitations of the query syntax
+result in the need to use multiple subqueries for which pay a performance
+penalty. The overall performance is moderate but it does not collapse under
+concurreent load.
+
+SQLite::
+Does not provide a `SELECT ... FOR UPDATE` implementation due to its simplified
+locking characteristics. The only locking that is available for this purpose is
+an exclusive lock taken over the entire database. This makes it unsuitable for
+anything other than managing a small number of devices.
+
+[#database-clusters]
+[NOTE]
+.Database clusters (e.g. MaxScale, Galera)
+===================================================================================
+
+It is usually the case that row-level locks issued by `SELECT ... FOR UPDATE`
+do not propagate around database clusters which means that unique IP address
+selection cannot always be guaranteed.
+
+Ingress nodes (relays, proxies, etc.) typically balance reads across all
+cluster nodes (master and slave) whilst sending writes to one or more masters.
+For many workloads this guarantees an appropriate level of data coherency,
+however for an IP pool allocation implementation this is insufficient since we
+must guarantee that no two nodes may concurrently `SELECT` the same IP address
+from the pool of free addresses.
+
+With clusters the behaviour is normally that when multiple connections
+initially select the same IP address, one of them will succeed and when the
+remaining transactions attempt to finalise the lease of the already-allocated
+IP address only then will the conflict be detected.
+
+When this occurs the sane and correct behaviour of most clusters is for
+deadlocks to be generated for all but the first transaction and for them to be
+rolled back. However this will result in IP allocation failures, which is
+likely to be reported as an `Access-Reject`.
+
+CAUTION: If however the cluster does not abort the transactions but goes on to
+erroneously commit them, duplicate IP addresses will be allocated! It is
+therefore critical to understand how your database cluster manages this case.
+
+Incorrectly configured clusters are likely to have generally good performance
+under high volumes of serialised load but may exhibit a performance cliff-edge
+once a moderate level of concurrency is reached. The main symptom of this would
+be the sudden onset of deadlock. Test your cluster under conditions that
+represent the maximum load on the system, such as all devices simultaneously
+re-authenticating after some form of failure.
+
+TIP: In some cases it may be possible to alleviate these kinds of issue by
+using a `redundant` policy for the `sql` module instances rather than a
+`load-balance` policy, or by adding routing hints to the SQL queries to direct
+all SQL IP Pool related queries to a single cluster node.
+
+===================================================================================
+
+
+[#device-identifier]
+=== Choice of unique device identifier
+
+Prior to issuing IP addresses to devices it is necessary to determine how to
+uniquely identify devices to which IP addresses will be assigned on the basis
+of the available RADIUS attributes.
+
+In many fixed-line configurations a unique identifier for a device may be the
+`NAS-Port` or `NAS-Port-Id`. In other scenarios identifiers based on the NAS
+port may be shared by several devices and are unsuitable for uniquely
+identifying devices. In some cases a circuit-specific identifier such as
+`ADSL-Agent-Circuit-Id` may be present.
+
+CAUTION: However, a circuit-specific identifier is unsuitable if there are
+multiple hosts on the circuit with which you issue individual addresses (for
+example when using PPPoE passthrough to provide unique sessions to firewalls
+behind a seperate CPE modem.) In this case the "device" must be thought of not
+as the circuit but the individual hosts behind it.
+
+The `Calling-Station-Id` attribute may contain host specific information (such
+as a hardware address). You should consider the provenance of the data and
+whether you trust it, e.g. does it report a MAC address that is under an
+untrusted user's control.  Sometimes a combination of attributes including one
+that you trust (such as "%{ADSL-Agent-Circuit-Id}:%{Calling-Station-Id}") may
+be appropriate.
+
+The `pool_key` is used to issue indexed lookups into the `radippool` table so for
+performance reasons it should have differentiation in the leading characters.
+You need to understand your network configuration and the available RADIUS
+attributes to determine what is an acceptable `pool_key`. You may need to
+reconfigure your NAS to provide a suitable unique device identifier.
+
+TIP: Most NASs allow the content of the `Calling-Station-Id` to the customised
+so that in includes device specific information and network-related information
+(such as SSID in the case of wireless networks).
+
+NOTE: When accounting is enabled it is essential that any `pool_key` attribute
+is included in *both authentication and accounting requests*. Otherwise lease
+renewal will fail and IP addresses will be prematurely returned to the pool
+before sessions have disconnected, resulting in duplicate IP allocations.
+
+
+[#lease-duration]
+=== Choice of lease duration
+
+`sqlippools` manages the status of the IP addresses (either leased or free)
+using the `expiry_time` of each entry in the `radippool` table. If it is in the
+future then the IP address is considered to be actively leased (in use by a
+device), otherwise it is free to be re-allocated to a device.
+
+The `lease_duration` configuration item is used to set the `expiry_time` for an
+IP address lease both when it is allocated at the start of a session and renewed
+during an ongoing session.  The `expiry_time` is set to `lease_duration`
+seconds after the current time. `expiry_time` and `lease_duration` are used as
+a means to manage the IP address pools. They are not communicated to the NAS or
+device.
+
+In access networks where the IP address pool is plentiful and sessions have a
+defined maximum length (for example when `Session-Timeout` RADIUS attribute is
+being honoured), setting a `lease_duration` that is a little longer than the
+maximum permitted session length is acceptable.
+
+Often either the session duration is not restricted or the capacity of the pool
+is small (relative to the number of devices) so that it needs careful
+management to continuously free IP addresses that are no longer in active use.
+
+Normally *accounting must be enabled* on the NAS and *an accounting interim
+interval set* for two reasons:
+
+. `Accounting Interim-Update` requests indicate that an IP address is still in
+use by an ongoing session. This causes the lease to be periodically extended
+before it expires and prevents an IP address from being prematurely freed as
+this would result in active sessions having duplicate IP addresses.
+
+. `Accounting Stop` (and `Accounting On/Off`) requests indicate that an IP
+address is no longer in use so that it can be immediately released. This
+ensures that a IP address is not leases longer than necessary and avoids wasted
+pool space when a group of devices reconnect after their sessions are
+interrupted.
+
+CAUTION: It is essential that Accounting Interim-Update ("Alive") requests are
+received reliably. Many NASs will repeat accounting requests that are not
+acknowledged by a RADIUS server or forward them elsewhere. You should
+determine whether accounting requests are delivered reliably in your network.
+
+If accounting requests are received reliably then `lease_duration` could be set a
+little longer than *twice the accounting interim interval* to handle the
+occasional lost interim-update. Otherwise the lease duration might need to be
+set several times longer.
