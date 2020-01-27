@@ -43,6 +43,7 @@ SOURCES		:= \
 		   proto.c \
 		   rand.c \
 		   rbtree.c \
+		   retry.c \
 		   regex.c \
 		   sha1.c \
 		   snprintf.c \
