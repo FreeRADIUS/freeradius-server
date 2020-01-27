@@ -7,8 +7,11 @@
 #
 #  = JSON Module
 #
-#  The `json` module registers a `map` function to allow mapping fields
-#  from JSON structures to attributes.
+#  The `json` module registers a `map` function to allow mapping fields from
+#  JSON structures to attributes. It also adds some xlats for processing and
+#  generating JSON documents.
+#
+#  ## JSON 'map' function
 #
 #  The path through the JSON document's tree is specified with FR jpath,
 #  which is the FreeRADIUS implementation of the jpath grammar described
@@ -40,21 +43,11 @@
 #    each holding a different node value.
 #  ====
 #
-
-#
-#  ## Configuration Settings
-#
-#  This module takes no configuration.
-#
-json {
-
-}
-
 #
 #  ## Sample
 #
-#  Assuming that you have the url http://example.org/api/user/$username
-#  service replying some JSON content as below.
+#  Assuming that the URL http://example.org/api/user/$username replies with
+#  some JSON content as below.
 #
 #  [source, json]
 #  ----
@@ -69,7 +62,8 @@ json {
 #  }
 #  ----
 #
-#  Then, you can call using the module `rest` and access the JSON fields as below example.
+#  In this case, the `rest` module can be used to get the JSON data and the
+#  fields can be accessed using 'map' as shown in the example below.
 #
 #  [source, unlang]
 #  ----
@@ -81,9 +75,92 @@ json {
 #
 
 #
+#  ## Configuration Settings
+#
+json {
+
+	#
+	#  The only options for the JSON module are to control the output
+	#  format of the `json_encode` xlat.
+	#
+	encode_format {
+
+		#
+		#  output_mode:: set the format of JSON documenta
+		#  that should be created. This may be one of:
+		#
+		#  - object
+		#  - object_simple
+		#  - array
+		#  - array_of_names
+		#  - array_of_values
+		#
+		#  Examples of each format are given below.
+		#
+#		output_format = object
+
+		#
+		#  ### Formatting options for attribute names
+		#
+		attribute {
+			#
+			#  prefix:: Add a colon-delimited prefix to all
+			#  attribute names in the output document. For example,
+			#  with a prefix of "foo", `User-Name` will be output as
+			#  `foo:User-Name`.
+			#
+#			prefix =
+		}
+
+		#
+		#  ### Formatting options for attribute values
+		#
+		value {
+
+			#
+			#  single_value_as_array:: always put values in an array
+			#
+			#  Output formats will by default put single values as a
+			#  JSON object (string, integer, etc). More than one
+			#  value will, depending on the output format, be added
+			#  as an array.
+			#
+			#  When this option is enabled, values will always be
+			#  added as an array.
+			#
+#			single_value_as_array = no
+
+			#
+			#  enum_as_integer:: output the integer value of
+			#  enumerated attributes
+			#
+			#  Where an attribute has enum values, the textual
+			#  representation of the value will normally be output.
+			#  Enable this option to force the numeric value
+			#  instead.
+			#
+#			enum_as_integer = no
+
+			#
+			#  always_string:: force all values to be strings
+			#
+			#  Integer values are normally written to the JSON
+			#  document as numbers (i.e. without quotes). Enable
+			#  this option to force all values to be as quoted
+			#  strings.
+			#
+#			always_string = no
+		}
+
+	}
+
+}
+
+
+#
 #  ## Expansions
 #
-#  The rlm_json provides the below xlat's functions to handle the JSON string.
+#  rlm_json provides the below xlat functions to handle the JSON documents.
 #
 #  ### %{jpathvalidate:...}
 #
@@ -134,4 +211,173 @@ json {
 #  ```
 #  The string caipirinha/gelada should be caipirinha\\/gelada to be a valid JSON string.
 #  ```
+#
+#  ### %{json_encode:...}
+#
+#  Generates a JSON document from a given list of attribute templates. The
+#  format of document generated can be controlled with the 'encode' section in
+#  the module configuration. Attribute values will automatically be escaped so
+#  they are JSON-safe.
+#
+#  NOTE: The name of the xlat is based on the instance name of this module. If
+#  the module was defined as `json jdoc {...}`, then the xlat name will be
+#  `jdoc_encode`.
+#
+#  The xlat should be passed a list of attributes to encode. Each attribute
+#  (after template expansion) will be added to a list of attributes to include
+#  in the JSON document. If any of the attributes given are preceeded with a `!`
+#  then they are removed from the list. Once all attributes have been processed,
+#  the JSON document will be created using this list.
+#
+#  For example, the following will produce a JSON document with two attributes in
+#  it, `User-Name` and `Calling-Station-Id`, from the RADIUS request:
+#
+#  .Example
+#
+#  ```
+#  %{json_encode:&User-Name &Calling-Station-Id}
+#  ```
+#
+#  The following will include all attributes in the RADIUS request, except for
+#  `User-Password`:
+#
+#  .Example
+#
+#  ```
+#  %{json_encode:&request:[*] !&User-Password}
+#  ```
+#
+#  In another (contrived) example, all the attributes in the RADIUS request will
+#  be included in the document, _except_ any attributes in the RADIUS reply.
+#  `&User-Name` will be included from the control list, too, if it exists:
+#
+#  .Example
+#
+#  ```
+#  %{json_encode:&request:[*] !&reply:[*] &control:User-Name}
+#  ```
+#
+#  #### Output format modes
+#
+#  There are a number of output modes, each generating a different format of
+#  JSON document.
+#
+#  NOTE: In the JSON document, "type" is the type of the _attribute_, which is
+#  not necessarily the same as the type of the "value" in the document. See e.g.
+#  `Login-Service` above, an enumerated value.
+#
+#  The following examples assume the three attributes are being added to the
+#  JSON document:
+#
+#  ```
+#  User-Name = bob
+#  Filter-Id = ab
+#  Filter-Id += cd
+#  ```
+#
+#  #### Object output mode examples
+#
+#  These modes output a JSON object.
+#
+#  .Output mode "object"
+#
+#  [source,json]
+#  ----
+#  {
+#    "User-Name": {
+#      "type": "string",
+#      "value": "bob"
+#    },
+#    "Filter-Id": {
+#      "type": "string",
+#      "value": ["ab","cd"]
+#    }
+#  }
+#  ----
+#
+#  .Output mode "object_simple"
+#
+#  [source,json]
+#  ----
+#  {
+#    "User-Name": "bob",
+#    "Filter-Id": ["ab","cd"]
+#  }
+#  ----
+#
+#  #### Array output mode examples
+#
+#  The "array" mode is a list of objects, each containing an attribute. If the
+#  "single_value_as_array" value option is set then each attribute will only
+#  appear once in the array, and "value" will be a list of all the values from
+#  the same attribute.
+#
+#  .Output mode "array"
+#
+#  [source,json]
+#  ----
+#  [
+#    {
+#      "name": "User-Name",
+#      "type": "string",
+#      "value": "bob"
+#    },
+#    {
+#      "name": "Filter-Id",
+#      "type": "string",
+#      "value": "ab"
+#    },
+#    {
+#      "name": "Filter-Id",
+#      "type": "string",
+#      "value": "cd"
+#    }
+#  ]
+#  ----
+#
+#  .Output mode "array" when "single_value_as_array" is also set
+#
+#  [source,json]
+#  ----
+#  [
+#    {
+#      "name": "User-Name",
+#      "type": "string",
+#      "value": ["bob"]
+#    },
+#    {
+#      "name": "Filter-Id",
+#      "type": "string",
+#      "value": ["ab","cd"]
+#    }
+#  ]
+#  ----
+#
+#  The following output modes either do not include the attribute names or
+#  values. They are likely to be useful only when the attributes are
+#  individually specified and _guaranteed to exist_. In this case the attribute
+#  names in `array_of_names` will have corresponding indexes to the values in
+#  `array_of_values`.
+#
+#  .Output mode "array_of_names"
+#
+#  [source,json]
+#  ----
+#  [
+#    "User-Name",
+#    "Filter-Id",
+#    "Filter-Id"
+#  ]
+#  ----
+#
+#  .Output mode "array_of_values"
+#
+#  [source,json]
+#  ----
+#  [
+#    "bob",
+#    "ab",
+#    "cd"
+#  ]
+#  ----
 #
