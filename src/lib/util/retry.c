@@ -48,6 +48,7 @@ int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 	 *	Initial:
 	 *
 	 *	RT = IRT + RAND * IRT
+	 *	   = IRT * (1 + RAND)
 	 */
 	scale = fr_rand();
 	scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
@@ -87,6 +88,7 @@ fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 		return FR_RETRY_MRC;
 	}
 
+redo:
 	/*
 	 *	Cap delay at MRD
 	 */
@@ -110,7 +112,7 @@ fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 	 *	have to scale everything relative to that.
 	 *
 	 *	RT = 2*RTprev + RAND*RTprev
-	 *	   = RTprev + (2 + RAND)
+	 *	   = RTprev * (2 + RAND)
 	 */
 	scale = fr_rand();
 	scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
@@ -120,6 +122,9 @@ fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 
 	/*
 	 *	Cap delay at MRT.
+	 *
+	 *	RT = MRT + RAND * MRT
+	 *	   = MRT * (1 + RAND)
 	 */
 	if (r->config->mrt && (rt > r->config->mrt)) {
 		scale = fr_rand();
@@ -140,6 +145,17 @@ fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 	 *	way the timer won't drift.
 	 */
 	r->next += rt;
+
+	/*
+	 *	The "next" retransmission time is in the past, AND
+	 *	we're already halfway through the time after that.
+	 *	Skip this retransmission, and set the time for the
+	 *	next one.
+	 *
+	 *	i.e. if we weren't serviced for one event, just skip
+	 *	it, and go to the next one.
+	 */
+	if ((r->next + (rt / 2)) < now) goto redo;
 
 	return FR_RETRY_CONTINUE;
 }
