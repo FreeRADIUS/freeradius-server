@@ -904,38 +904,38 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 		/*
 		 *	It exists, we don't have to do anything else.
 		 */
-		  if (subcs) return 0;
+		if (subcs) return 0;
 
 		/*
 		 *	If there is no subsection, either complain,
 		 *	allow it, or create it with default values.
 		 */
-		  if (rule->type & FR_TYPE_REQUIRED) {
-			  cf_log_err(cs, "Missing %s {} subsection", rule->name);
-			  return -1;
-		  }
+		if (rule->type & FR_TYPE_REQUIRED) {
+		  	cf_log_err(cs, "Missing %s {} subsection", rule->name);
+		  	return -1;
+		}
 
-		  /*
-		   *	It's OK for this to be missing.  Don't
-		   *	initialize it.
-		   */
-		  if ((rule->type & FR_TYPE_OK_MISSING) != 0) return 0;
+		/*
+		 *	It's OK for this to be missing.  Don't
+		 *	initialize it.
+		 */
+		if ((rule->type & FR_TYPE_OK_MISSING) != 0) return 0;
 
-		  /*
-		   *	If there's no subsection in the
-		   *	config, BUT the CONF_PARSER wants one,
-		   *	then create an empty one.  This is so
-		   *	that we can track the strings,
-		   *	etc. allocated in the subsection.
-		   */
-		  if (DEBUG_ENABLED4) cf_log_debug(cs, "Allocating fake section \"%s\"", rule->name);
+		/*
+		 *	If there's no subsection in the
+		 *	config, BUT the CONF_PARSER wants one,
+		 *	then create an empty one.  This is so
+		 *	that we can track the strings,
+		 *	etc. allocated in the subsection.
+		 */
+		if (DEBUG_ENABLED4) cf_log_debug(cs, "Allocating fake section \"%s\"", rule->name);
 
-		  if (rule->ident2 != CF_IDENT_ANY) name2 = rule->ident2;
-		  subcs = cf_section_alloc(cs, cs, rule->name, name2);
-		  if (!subcs) return -1;
+		if (rule->ident2 != CF_IDENT_ANY) name2 = rule->ident2;
+		subcs = cf_section_alloc(cs, cs, rule->name, name2);
+		if (!subcs) return -1;
 
-		  cf_item_add(cs, &(subcs->item));
-		  return 0;
+		cf_item_add(cs, &(subcs->item));
+		return 0;
 	}
 
 	/*
