@@ -2,141 +2,219 @@
 
 == Introduction
 
-The `sqlippool` module leases IP addresses to devices from one or more pools of
-addresses without issuing the same leased IP address to multiple devices
-simultaneously.
+The `sqlippool` module allocates IP addresses from one or more pools
+of addresses.  It tracks addrwss to that it does not issue the same
+leased IP address to multiple devices.
 
-Using FreeRADIUS for IP address allocation has some advantages. Moving pool
-management off of a set of standalone NASs serving a common set of devices
-allows all of the IP addresses to remain available when one or more of the NASs
-becomes unavailable.
+Using FreeRADIUS for IP address allocation has some advantages.
+Centralized pool management means that the pools remains available
+when one or more of the NASs becomes unavailable.  When pools are
+managed on a NAS, the pools are down when the NAS is down.
 
-Networks may have organisation-specific policies for the way that IP addresses
-are assigned which can be implemented by FreeRADIUS. For example, with careful
-development of the IP allocation policy FreeRADIUS can provide affinity of IP
-addresses to specific NASs or user groups, and also perform controlled
-attrition to decant users off of particular address ranges (for example to
-retire or repurpose them) over a period of time without forcibly disconnecting
-the users.
+Networks may have organisation-specific policies for the way that IP
+addresses are assigned.  These policies are difficult to implement on
+a NAS, but can be implemented with FreeRADIUS.  For example,
+FreeRADIUS can assign pools of IP addresses to specific NASs or user
+groups.  FreeRADIUS also control reallocation, in order to move users
+from one pool to another, without disconnecting them.  This move
+allows address ranges to be retired or repurposed without forcibly
+disconnecting the users.
 
-As with most FreeRADIUS modules `sqlippool` ships with a default config that
-works out of the box for basic network requirements with just a little
-configuration. However it can also be configured to achieve sophisticated IP
-allocation policies with some amount of basic SQL knowledge.
+As with most FreeRADIUS modules, the `sqlippool` module ships with a
+default configuration that "just works".  However, the module can also
+be configured to use sophisticated IP allocation policies, via custom
+SQL queries.
+
+All of the SQL queries used by the module are configurable.  The
+module simply provides for a few "hooks", in order to allocate an IP,
+clear an IP, expire IPs, etc.  The result is that the IP pool
+allocations works with all possible SQL databases, without requiring
+code changes.  In addition, anyone familiar with SQL can customize the
+allocation policies.  Minimal knowledge of FreeRADIUS is required.
 
 
 [#operation]
 == Operation
 
-The SQL IP Pools module takes action entirely in response to incoming RADIUS
-requests. The entire state is normally held in the `radippool` table. Therefore
-the RADIUS server can be restarted, switched out or debugged without loss of
-information.
+The SQL IP Pools module only perform an action when FreeRADIUS
+receives a packet.  The entire state of the pools is held in the
+`radippool` table.  The benefit of this approach is that the RADIUS
+server can be restarted, replaced, or debugged without losing track of
+any IP addresses.
+
+One downside is that there is no method to perform actions at a
+particular time.  We suggust using "cron" for periodic cleanups,
+analysis, etc.
+
+xAnother downside is that FreeRADIUS does not "know" the state of a
+particular IP address.  The `sqlippool` module simply runs SQL
+queries, which either return an IP address, or return "failed to
+allocate IP".  Since the entire state of the pool is in the SQL
+database, we recommend using standard SQL queries to find the state of
+an individual IP address, MAC address, etc.
 
 === `Access-Request`: A device connects to the NAS with correct credentials
 
-. FreeRADIUS receives an `Access-Request` from the NAS which it authenticates
-and then adds some initial control and reply attributes from various data
-sources as defined by the authentication policy. The `Pool-Name` control
-attribute is added to a request to indicate that the reply should be modified
-to include an IP address allocated from the named pool into the
-`Framed-IP-Address` reply attribute (by default).
+. FreeRADIUS receives an `Access-Request` from the NAS.  After some
+processing (modules. `unlang`, etc.), the `Pool-Name` attribute is
+added to the `control` list.  This attribute indicates that the IP
+address should be allocated from the named pool.  This attribute can
+be added from any module, database, `unlang`, etc.
 
-. If a `Pool-Name` control attribute is present and a `Framed-IP-Address`
-attribute is not already present, FreeRADIUS initially runs the
-`allocate_clear` query to purge the details of expired leases and then runs the
-main `allocate_find` query that chooses a free IP address from the pool
-indicated by `Pool-Name`.  If `allocate_find` does not return an IP address the
-`pool_check` query is run to determine whether the reason, either the requested
-pool is empty (i.e.  no free addresses) or it is non-existent, and this
-information is returned in the `sqlippool` module return code.
+. When the `sqlippool` module is eventually run, it looks for the
+`Pool-Name` attribute, and runs the various SQL queries in order to
+perform IP address allocation.  If the module is configured to place
+address into the `Framed-IP-Address` attribute (as it is by default),
+and that attribute already exists, the module does nothing, and
+returns `noop`.
 
-. If an IP address has been found, FreeRADIUS runs the `allocate_update` query to
-assign the IP address to the device by updating the `radippool` entry for the
-IP address with an initial `expiry time` based on the configured
-`lease_duration` (by default), a unique identifier for the device as specified
-by the `pool_key` configuration item (typically `NAS-Port`) and a NAS
-identifier (the `NAS-IP-Address`). Additionally the default schema and queries
-record the user identifier (`User-Name`) and device identifier
-(`Calling-Station-Id`) which can be used to implement user and device affinity
-with a previously allocated IP address.
+. Otherwise, the module runs the `allocate_clear` query in order to
+clear expired leases.  This process frees up expired leases, and
+performs any additional cleanup that is necessarty.
 
-. FreeRADIUS sends an Access-Accept containing a `Framed-IP-Address` attribute
-holding the allocated IP address to the NAS.
+. The module then runs the `allocate_find` query, which chooses a free
+IP address from the pool indicated by `Pool-Name`.  If `allocate_find`
+does not return an IP address, the `pool_check` query is run in order
+to determine why the allocation failed.  For example, either the
+requested pool is empty (i.e.  no free addresses), or it is
+non-existent.  This information is returned in the `sqlippool` module
+return code, as `notfound`, or one of the other return codes.
+
+. If an IP address has been found, the module runs the
+`allocate_update` query.  This query assigns the IP address to the
+device by updating the `radippool` row for the IP address with
+information about the lease.  The default information includes `expiry
+time` based on the configured `lease_duration`, a unique identifier
+for the device as specified by the `pool_key` configuration item
+(typically `NAS-Port`) and a NAS identifier (the `NAS-IP-Address`).
+Additionally, the default schema and queries record the user
+identifier (`User-Name`) and device identifier (`Calling-Station-Id`).
+This information can be used to assign the same IP to the same user or
+device, on subsequent allocation requests.
+
+. The module returns `updated` to indicate that it was successfull in
+allocating an IP address.
+
+. After some additional processing (modules, `unlang`, etc.),
+FreeRADIUS sends an Access-Accept containing a `Framed-IP-Address`
+attribute holding the allocated IP address to the NAS.
 
 
 === `Accounting Start`: A device and a NAS successfully establish a session
 
-. The NAS sends an `Accounting Start` request to FreeRADIUS.
+. The NAS sends an `Accounting Start` request to FreeRADIUS.  After some
+processing (modules. `unlang`, etc.), the `sqlippool` module is run.
 
-. FreeRADIUS uses the configured `pool_key` and NAS identifier to identify the
-entry in the `radippool` table to update the `expiry_time` based on the
-configured `lease_duration`. (This effectively extends the initial lease to the
-configured `lease_duration` in case the event that the Accounting Start request
-was delayed.)
+. The `sqlippol` module runs the `start_update` query.  This query
+uses the configured `pool_key` and NAS identifier in order to identify
+which entry in the `radippool` table to update.  The `expiry_time` is
+updated based on the configured `lease_duration`. This update extends
+the initial lease to the configured `lease_duration` in case the event
+that the Accounting Start request was delayed.
 
-. FreeRADIUS sends an `Accounting-Response`.
+. The module returns `updated` to indicate that it was successfull in
+updating the state of the IP address.
+
+. After some additional processing (modules, `unlang`, etc.),
+FreeRADIUS sends an Accounting-Response to the NAS.
 
 
 === `Accounting Alive`: A NAS sends an Alive notification for a device's session
 
 . The NAS sends an `Accounting Interim-Update` request to FreeRADIUS.
+After some processing (modules. `unlang`, etc.), the `sqlippool`
+module is run.
 
-. FreeRADIUS uses the configured `pool_key`, IP address, user and device
-identifiers to lookup the IP lease entry in the `radippool` table and update
-its `expiry_time` based on the configured `lease_duration`. (This effectively
-*renews the lease* as long and the device remains connected and the NAS
-continues to send accounting updates.)
+. The `sqlippol` module runs the `alive_update` query.  This query
+uses the configured `pool_key` and NAS identifier in order to identify
+which entry in the `radippool` table to update.  The `expiry_time` is
+updated based on the configured `lease_duration`.
 
-. FreeRADIUS sends an `Accounting-Response` to the NAS.
+. The module returns `updated` to indicate that it was successfull in
+updating the state of the IP address.
 
+. After some additional processing (modules, `unlang`, etc.),
+FreeRADIUS sends an Accounting-Response to the NAS.
 
 === `Accounting Stop`: A device disconnects or its session times out
 
-. The NAS sends an `Accounting Stop` request to FreeRADIUS.
+. The NAS sends an `Accounting Stop` request to FreeRADIUS.  After
+some processing (modules. `unlang`, etc.), the `sqlippool` module is
+run.
 
-. FreeRADIUS uses the configured `pool_key`, IP address, user and device
-identifiers to lookup the IP lease entry in the `radippool` table and clear the
-`pool_key` and `expiry_time`. (This effectively *releases the IP address* back
-into the pool of free addresses.)
+. The `sqlippol` module runs the `stop_clear` query.  This query uses
+the configured `pool_key` and NAS identifier in order to identify
+which entry in the `radippool` table to update.  The update "clears"
+the IP address, and marks it as free for later allocation.  Note that
+by default, this "clear" does not remove information about which user
+or device was associated with that address.  The result is that on
+subsequent allocations, it is possible to re-allocate the same IP
+address to the same user or device.
 
-. FreeRADIUS sends an `Accounting-Response` to the NAS.
+. The module returns `updated` to indicate that it was successfull in
+updating the state of the IP address.
+
+. After some additional processing (modules, `unlang`, etc.),
+FreeRADIUS sends an Accounting-Response to the NAS.
 
 
 === `Accounting On/Off`: A NAS indicates that all of its sessions have been cleared
 
-. The NAS sends an `Accounting On` or `Accounting Off` request to FreeRADIUS.
+. The NAS sends an `Accounting On` or `Accounting Off` request to
+FreeRADIUS.  After some processing (modules. `unlang`, etc.), the
+`sqlippool` module is run.
 
-. FreeRADIUS uses the `NAS-IP-Address` to identify all leases in the
-`radippool` table belonging to sessions owned by the NAS and immediately
-releases those IP addresses. (This effectively returns all IP address occupied
-by the dropped sessions back into the pool.)
+. The `sqlippol` module runs the `on_clear` or `off_clear` query,
+depending on the `Acct-Status-Type` attribute on/off.  This query
+uses the `NAS-IP-Address` in order to identify all leases in the
+`radippool` table which belong to the NAS in question.  The leases are
+cleared, and the IP addresses are immediately released for further
+allocation.  This proces effectively returns all IP address occupied
+by the dropped sessions back into the pool.
 
-. FreeRADIUS sends an `Accounting-Response` to the NAS.
+. The module returns `updated` to indicate that it was successfull in
+updating the state of the IP addresses.
 
+. After some additional processing (modules, `unlang`, etc.),
+FreeRADIUS sends an Accounting-Response to the NAS.
 
 == Step by step setup instructions
 
-As with any FreeRADIUS configuration you are strongly recommended to start with
-a basic configuration that is based entirely on the default `raddb`
-configuration for `sqlippools` which is known to work.
+As with any FreeRADIUS configuration you are strongly recommended to
+start with the default configuration for `sqlippools`, as it is known
+to work.
 
-Afterwards amend the configuration one thing at a time, testing after each step,
-until you have successfully implemented your intended policy.
+Change the configuration, one thing at a time, testing after each
+step, until you have successfully implemented your intended policy.
+We also recommend using a revision control system such as `git`.  When
+configuration changes are tracked, it becomes trivial to fix issues by
+checking out a "known working" version of the configuration.  The
+alternative is to try to track changes manually, or to manually
+recreate what is believed to be a "working" configuration.
 
-Here we provide essential step by step instructions for how to configure the
-`sqlippool` module using a standard out of the box configuration. These actions
-are straightforward and will arrive at a working configuration, however the
-considerations behind how to set some of the module configuration items are
-nuanced (requiring an understanding of the NAS and wider access network) and
-are therefore discussed in separate sections below to which you should refer.
+This guide provides essential step by step instructions for
+configuring the `sqlippool` module.  These instructions begin with a
+"default" configuration.  The actions described here are
+straightforward, and will arrive at a working configuration.
+
+However, the reasons for setting particular module configuration items
+are complex, and require an understanding of the NAS and wider access
+network.  We therefore discuss these reasons in a separate section, so
+that the guide is simpler to follow.
 
 TIP: If at any time you break your system then follow the
-https://wiki.freeradius.org/guide/radiusd-X[guide to debugging FreeRADIUS]. If
-necessary undo your recent changes, consider what went wrong and if you are
-still uncertain then ask for help from the FreeRADIUS project, explaining what
-you are trying to achieve, what exactly isn't working and provide the full
-debugging output for a relevant test run.
+https://wiki.freeradius.org/guide/radiusd-X[guide to debugging
+FreeRADIUS]. If anything goes wrong, it should be trivial to revert
+any recent changes.  Then, consider what went wrong by examining the
+debug output.  If the issues are still clear, then ask a question on
+the
+http://lists.freeradius.org/mailman/listinfo/freeradius-users[freeradius-users]
+mailing list.  Please also read the
+https://wiki.freeradius.org/list-help[list help] instructions, for
+what information we need in order to help you.  This information is
+typically an explantion of what you are trying to achieve, what
+exactly isn't working and provide the full debugging output for a
+relevant test run.
 
 
 === 1. Enable the module and call it during request processing
@@ -201,26 +279,29 @@ send Access-Accept {
 =============================================
 
 You must now configure the module configuration items in
-`[raddb]/mods-enabled/sqlippool` as described below...
+`[raddb]/mods-enabled/sqlippool` as described below.
 
 
 === 2. Configure a database server
 
-The database performance requirements for a system with busy IP Pools is likely
-to determine your choice of database software and architecture.
+The performance requirements for a system with a many IP allocations
+is likely to determine your choice of database software and
+architecture.
 
 Read and understand the considerations for <<database-performance,choosing a database
 server>>.
 
-Consider how these relate to your solution, then select an appropriate backend
-database for the SQL IP Pools. If a database server is already deployed in your
-environment that your solution must adopt then understand any caveats that may
-apply to your current solution and plan your testing and capacity planning to
-carefully address these.
+Consider how these relate to your solution, then select an appropriate
+backend database for the SQL IP Pools. If a database server is already
+deployed in your environment, then any solution fit within the
+existing limitations.  High load IP address allocation can severely
+stress an SQL database.  Depending on many factos, performance can
+very from dozens of IP allocations per second to thousands of
+allocations per second.
 
-The `sqlippools` module requires a connection to the database to be provided
-using an instance of the `sql` module. Configure this as described in
-xref:modules/sql/index.adoc[the SQL module guide].
+The `sqlippools` module requires a connection to the database to be
+provided, using an instance of the `sql` module. Configure this as
+described in xref:modules/sql/index.adoc[the SQL module guide].
 
 Set the `sql_module_instance` configuration item to the name of the `sql`
 instance that you have configured and set the `dialect` configuration item to
