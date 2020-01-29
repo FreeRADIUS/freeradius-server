@@ -2259,8 +2259,8 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 		if (!fr_cond_assert(0)) return;
 	}
 
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_ACTIVE);
 	MEM(fr_heap_insert(trunk->active, tconn) == 0);	/* re-insert into the active heap*/
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_ACTIVE);
 
 	/*
 	 *	Reorder the connections
