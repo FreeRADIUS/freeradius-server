@@ -40,7 +40,6 @@ int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 	memset(r, 0, sizeof(*r));
 
 	r->config = config;
-
 	r->count = 1;
 	r->start = now;
 
@@ -51,10 +50,11 @@ int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 	 *	   = IRT * (1 + RAND)
 	 */
 	scale = fr_rand();
-	scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
 	scale += ((fr_time_delta_t) 1) << 32; /* multiple it by 1 * 2^32 */
-	delay = scale * r->config->irt;
-	rt = (fr_time_delta_t) (delay >> 64);
+	scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
+	delay = (uint128_t) scale * (uint128_t) r->config->irt;
+
+	rt = (fr_time_delta_t) (delay >> 32);
 
 	r->rt = rt;
 	r->next = now + rt;
@@ -117,8 +117,8 @@ redo:
 	scale = fr_rand();
 	scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
 	scale += ((fr_time_delta_t) 1) << 33; /* multiple it by 2 * 2^32 */
-	delay = scale * r->rt;
-	rt = (fr_time_delta_t) (delay >> 64);
+	delay = (uint128_t) scale * (uint128_t) r->rt;
+	rt = (fr_time_delta_t) (delay >> 32);
 
 	/*
 	 *	Cap delay at MRT.
@@ -130,8 +130,8 @@ redo:
 		scale = fr_rand();
 		scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
 		scale += ((fr_time_delta_t) 1) << 32; /* multiple it by 1 * 2^32 */
-		delay = scale * r->config->mrt;
-		rt = (fr_time_delta_t) (delay >> 64);
+		delay = (uint128_t) scale * (uint128_t) r->config->mrt;
+		rt = (fr_time_delta_t) (delay >> 32);
 	}
 
 	/*
