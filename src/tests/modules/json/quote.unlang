@@ -4,13 +4,44 @@
 
 update request {
 	&Tmp-String-0 := 'foo/bar'
+	&Tmp-String-1 := 'foo"bar'
 }
 update request {
-	&Tmp-String-1 := "%{jsonquote:%{Tmp-String-0}}"
+	&Tmp-String-2 := "%{jsonquote:%{Tmp-String-0}}"
+	&Tmp-String-3 := "%{jsonquote:%{Tmp-String-1}}"
 }
 
 # Check for correct escapes
-if (&Tmp-String-1 == 'foo\/bar') {
+if (&Tmp-String-2 == 'foo\/bar') {
+	test_pass
+} else {
+	test_fail
+}
+
+if (&Tmp-String-3 == 'foo\"bar') {
+	test_pass
+} else {
+	test_fail
+}
+
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+# Check for correct handling of null input
+
+update request {
+	&Tmp-String-4 := "%{jsonquote:}"
+}
+
+if (&Tmp-String-4 == '') {
+	test_pass
+} else {
+	test_fail
+}
+
+if (&Module-Failure-Message == 'Failed concatenating input: Invalid arguments.  List was NULL') {
 	test_pass
 } else {
 	test_fail
