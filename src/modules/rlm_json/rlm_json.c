@@ -82,23 +82,50 @@ typedef struct {
 	json_object		*root;
 } rlm_json_jpath_to_eval_t;
 
-static ssize_t jsonquote_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+/** Ensure contents are quoted correctly for a JSON document
+ *
+ * @param ctx talloc context
+ * @param out Where to write the output
+ * @param request The current request.
+ * @param xlat_inst unused
+ * @param xlat_thread_inst unused
+ * @param in list of value boxes as input
+ * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
+ */
+static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request,
+				     UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				     fr_value_box_t **in)
 {
-	size_t len;
+	fr_value_box_t *vb;
 	char *tmp;
 
-	tmp = fr_json_from_string(request, fmt, false);
+	if (!in) {
+		REDEBUG("Nothing to quote");
+		return XLAT_ACTION_FAIL;
+	}
 
-	/* Indicate truncation */
-	if (!tmp) return outlen + 1;
-	len = strlen(tmp);
-	if (len >= outlen) return outlen + 1;
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
-	*out = tmp;
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	return len;
+	if (!(tmp = fr_json_from_string(vb, (*in)->vb_strvalue, false))) {
+		REDEBUG("Unable to JSON-quote string");
+	error:
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (unlikely(fr_value_box_bstrsteal(vb, vb, NULL, tmp, false) < 0)) {
+		REDEBUG("Failed to allocate JSON string");
+		goto error;
+	}
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Determine if a jpath expression is valid
@@ -523,7 +550,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat_register(instance, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_async_register(instance, "jsonquote", json_quote_xlat);
 	xlat_register(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	name = talloc_asprintf(inst, "%s_encode", inst->name);
