@@ -331,7 +331,7 @@ CONF_PARSER const fr_trunk_config[] = {
 
 	{ FR_CONF_OFFSET("manage_interval", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, manage_interval), .dflt = "0.2" },
 
-	{ FR_CONF_OFFSET("connection", FR_TYPE_SUBSECTION, fr_trunk_conf_t, conn_conf), .subcs = (void const *) fr_trunk_config_connection },
+	{ FR_CONF_OFFSET("connection", FR_TYPE_SUBSECTION, fr_trunk_conf_t, conn_conf), .subcs = (void const *) fr_trunk_config_connection, .subcs_size = sizeof(fr_trunk_config_connection) },
 	{ FR_CONF_POINTER("requests", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) fr_trunk_config_requests },
 
 	CONF_PARSER_TERMINATOR
