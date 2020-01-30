@@ -42,7 +42,7 @@ typedef struct fr_trunk_s fr_trunk_t;
  *
  */
 typedef struct {
-	fr_connection_conf_t const conn_conf;		//!< Connection configuration.
+	fr_connection_conf_t const *conn_conf;		//!< Connection configuration.
 
 	uint16_t		start;			//!< How many connections to start.
 

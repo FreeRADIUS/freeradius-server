@@ -519,9 +519,9 @@ do { \
 do { \
 	void *prev = trunk->in_handler; \
 	DEBUG4("Calling connection_alloc(tconn=%p, el=%p, conf=%p, log_prefix=\"%s\", uctx=%p)", \
-	       (_tconn), (_tconn)->trunk->el, &(_tconn)->trunk->conf.conn_conf, trunk->log_prefix, (_tconn)->trunk->uctx); \
+	       (_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf.conn_conf, trunk->log_prefix, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = (void *) (_tconn)->trunk->funcs.connection_alloc; \
-	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, &(_tconn)->trunk->conf.conn_conf, (_tconn)->trunk->log_prefix, trunk->uctx); \
+	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf.conn_conf, (_tconn)->trunk->log_prefix, trunk->uctx); \
 	(_tconn)->trunk->in_handler = prev; \
 	if (!(_tconn)->conn) { \
 		ERROR("Failed creating new connection"); \
