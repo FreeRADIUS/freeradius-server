@@ -297,6 +297,9 @@ struct fr_trunk_s {
 							///< connections or re-enqueue.
 
 	bool			started;		//!< Has the trunk been started.
+
+	bool			managing_connections;	//!< Whether the trunk is allowed to manage
+							///< (open/close) connections.
 	/** @} */
 };
 
@@ -3020,198 +3023,6 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	       ((treq->last_freed + trunk->conf.req_cleanup_delay) <= now)) talloc_free(treq);
 
 	/*
-	 *	We're above the target requests per connection
-	 *	spawn more connections!
-	 */
-	if ((trunk->last_above_target >= trunk->last_below_target)) {
-		/*
-		 *	If connecting is provided, check we
-		 *	wouldn't have too many connections in
-		 *	the connecting state.
-		 *
-		 *	This is a throttle in the case of transitory
-		 *	load spikes, or a backend becoming
-		 *	unavailable.
-		 */
-		if ((trunk->conf.connecting > 0) &&
-		    (fr_trunk_connection_count_by_state(trunk, FR_CONNECTION_STATE_CONNECTING) >=
-		     trunk->conf.connecting)) {
-			DEBUG4("Not opening connection - Too many (%u) connections in the connecting state",
-			       trunk->conf.connecting);
-			return;
-		}
-
-		if ((trunk->last_above_target + trunk->conf.open_delay) > now) {
-			DEBUG4("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
-			       fr_box_time_delta(trunk->conf.open_delay),
-			       fr_box_time_delta(now - trunk->last_above_target));
-			goto done;	/* too soon */
-		}
-
-		trunk_requests_per_connnection(&conn_count, &req_count, trunk, now);
-		/*
-		 *	If this assert is triggered it means
-		 *	that a call to trunk_requests_per_connnection
-		 *	was missed.
-		 */
-		rad_assert(trunk->last_above_target >= trunk->last_below_target);
-
-		/*
-		 *	We don't consider 'draining' connections
-		 *	in the max calculation, as if we do
-		 *	determine that we need to spawn a new
-		 *	request, then we'd move all 'draining'
-		 *	connections to active before spawning
-		 *	any new connections.
-		 */
-		if ((trunk->conf.max > 0) && (conn_count >= trunk->conf.max)) {
-			DEBUG4("Not opening connection - Have %u connections, need %u or below",
-			       conn_count, trunk->conf.max);
-			goto done;
-		}
-
-		/*
-		 *	We consider requests pending on all connections
-		 *      and the trunk's backlog as that's the current count
-		 *	load.
-		 */
-		if (!req_count) {
-			DEBUG4("Not opening connection - No outstanding requests");
-			goto done;
-		}
-
-		/*
-		 *	Do the n+1 check, i.e. if we open one connection
-		 *	will that take us below our target threshold.
-		 */
-		if (conn_count > 0) {
-			average = DIVIDE_CEIL(req_count, (conn_count + 1));
-			if (average < trunk->conf.target_req_per_conn) {
-				DEBUG4("Not opening connection - Would leave us below our target requests "
-				       "per connection (now %u, after open %u)",
-				       DIVIDE_CEIL(req_count, conn_count), average);
-				goto done;
-			}
-		} else {
-			(void)trunk_connection_spawn(trunk, now);
-			goto done;
-		}
-
-		/*
-		 *	If we've got a connection in the draining list
-		 *      move it back into the active list if we've
-		 *      been requested to add a connection back in.
-		 */
-		tconn = fr_dlist_head(&trunk->draining);
-		if (tconn) {
-			trunk_connection_enter_active(tconn);
-			goto done;
-		}
-
-		/*
-		 *	Implement delay if there's no connections that
-		 *	could be immediately re-activated.
-		 */
-		if ((trunk->last_open + trunk->conf.open_delay) > now) {
-			DEBUG4("Not opening connection - Need to wait %pVs before opening another connection.  "
-			       "It's been %pVs",
-			       fr_box_time_delta(trunk->conf.open_delay),
-			       fr_box_time_delta(now - trunk->last_open));
-			goto done;
-		}
-
-		DEBUG4("Opening connection - Above target requests per connection (now %u, target %u)",
-		       DIVIDE_CEIL(req_count, conn_count), trunk->conf.target_req_per_conn);
-		/* last_open set by trunk_connection_spawn */
-		(void)trunk_connection_spawn(trunk, now);
-		goto done;
-	}
-
-	/*
-	 *	We're below the target requests per connection.
-	 *	Free some connections...
-	 */
-	if (trunk->last_below_target > trunk->last_above_target) {
-		if ((trunk->last_below_target + trunk->conf.close_delay) > now) {
-			DEBUG4("Not closing connection - Need to be below target for %pVs. It's been %pVs",
-			       fr_box_time_delta(trunk->conf.close_delay),
-			       fr_box_time_delta(now - trunk->last_below_target));
-			goto done;	/* too soon */
-		}
-
-		trunk_requests_per_connnection(&conn_count, &req_count, trunk, now);
-
-		/*
-		 *	If this assert is triggered it means
-		 *	that a call to trunk_requests_per_connnection
-		 *	was missed.
-		 */
-		rad_assert(trunk->last_below_target > trunk->last_above_target);
-
-		if (!conn_count) {
-			DEBUG4("Not closing connection - No connections to close!");
-			goto done;
-		}
-
-		if (!req_count) {
-			DEBUG4("Closing connection - No outstanding requests");
-			goto close;
-		}
-
-		if ((trunk->conf.min > 0) && ((conn_count - 1) < trunk->conf.min)) {
-			DEBUG4("Not closing connection - Have %u connections, need %u or above",
-			       conn_count, trunk->conf.min);
-			goto done;
-		}
-
-		/*
-		 *	The minimum number of connections must be set
-		 *	to zero for this to work.
-		 *	min == 0, no requests, close all the connections.
-		 *      This is useful for backup databases, when
-		 *	maintaining the connection would lead to lots of
-		 *	log file churn.
-		 */
-		if (conn_count == 1) {
-			DEBUG4("Not closing connection - Would leave connections "
-			       "and there are still %u outstanding requests", req_count);
-			goto done;
-		}
-
-		/*
-		 *	Do the n-1 check, i.e. if we close one connection
-		 *	will that take us above our target threshold.
-		 */
-		average = DIVIDE_CEIL(req_count, (conn_count - 1));
-		if (average > trunk->conf.target_req_per_conn) {
-			DEBUG4("Not closing connection - Would leave us above our target requests per connection "
-			       "(now %u, after close %u)", DIVIDE_CEIL(req_count, conn_count), average);
-			goto done;
-		}
-
-		DEBUG4("Closing connection - Below target requests per connection (now %u, target %u)",
-		       DIVIDE_CEIL(req_count, conn_count), trunk->conf.target_req_per_conn);
-
-	close:
-		if ((trunk->last_closed + trunk->conf.close_delay) > now) {
-			DEBUG4("Not closing connection - Need to wait %pVs before closing another connection.  "
-			       "It's been %pVs",
-			       fr_box_time_delta(trunk->conf.close_delay),
-			       fr_box_time_delta(now - trunk->last_closed));
-			goto done;
-		}
-
-
-		tconn = fr_heap_peek_tail(trunk->active);
-		rad_assert(tconn);
-		trunk->last_closed = now;
-		trunk_connection_enter_draining(tconn);
-
-		goto done;
-	}
-
-done:
-	/*
 	 *	Free any connections which have drained
 	 *	and we didn't reactivate during the last
 	 *	round of management.
@@ -3258,6 +3069,209 @@ done:
 			fr_connection_signal_shutdown(tconn->conn);
 			tconn = prev;
 		}
+	}
+
+	/*
+	 *	A trunk can be signalled to not proactively
+	 *	manage connections if a destination is known
+	 *	to be unreachable, and doing so would result
+	 *	in spurious connections still being opened.
+	 *
+	 *	We still run other connection management
+	 *	functions and just short circuit the function
+	 *	here.
+	 */
+	if (!trunk->managing_connections) return;
+
+	/*
+	 *	We're above the target requests per connection
+	 *	spawn more connections!
+	 */
+	if ((trunk->last_above_target >= trunk->last_below_target)) {
+		/*
+		 *	If connecting is provided, check we
+		 *	wouldn't have too many connections in
+		 *	the connecting state.
+		 *
+		 *	This is a throttle in the case of transitory
+		 *	load spikes, or a backend becoming
+		 *	unavailable.
+		 */
+		if ((trunk->conf.connecting > 0) &&
+		    (fr_trunk_connection_count_by_state(trunk, FR_CONNECTION_STATE_CONNECTING) >=
+		     trunk->conf.connecting)) {
+			DEBUG4("Not opening connection - Too many (%u) connections in the connecting state",
+			       trunk->conf.connecting);
+			return;
+		}
+
+		if ((trunk->last_above_target + trunk->conf.open_delay) > now) {
+			DEBUG4("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
+			       fr_box_time_delta(trunk->conf.open_delay),
+			       fr_box_time_delta(now - trunk->last_above_target));
+			return;	/* too soon */
+		}
+
+		trunk_requests_per_connnection(&conn_count, &req_count, trunk, now);
+
+		/*
+		 *	If this assert is triggered it means
+		 *	that a call to trunk_requests_per_connnection
+		 *	was missed.
+		 */
+		rad_assert(trunk->last_above_target >= trunk->last_below_target);
+
+		/*
+		 *	We don't consider 'draining' connections
+		 *	in the max calculation, as if we do
+		 *	determine that we need to spawn a new
+		 *	request, then we'd move all 'draining'
+		 *	connections to active before spawning
+		 *	any new connections.
+		 */
+		if ((trunk->conf.max > 0) && (conn_count >= trunk->conf.max)) {
+			DEBUG4("Not opening connection - Have %u connections, need %u or below",
+			       conn_count, trunk->conf.max);
+			return;
+		}
+
+		/*
+		 *	We consider requests pending on all connections
+		 *      and the trunk's backlog as that's the current count
+		 *	load.
+		 */
+		if (!req_count) {
+			DEBUG4("Not opening connection - No outstanding requests");
+			return;
+		}
+
+		/*
+		 *	Do the n+1 check, i.e. if we open one connection
+		 *	will that take us below our target threshold.
+		 */
+		if (conn_count > 0) {
+			average = DIVIDE_CEIL(req_count, (conn_count + 1));
+			if (average < trunk->conf.target_req_per_conn) {
+				DEBUG4("Not opening connection - Would leave us below our target requests "
+				       "per connection (now %u, after open %u)",
+				       DIVIDE_CEIL(req_count, conn_count), average);
+				return;
+			}
+		} else {
+			(void)trunk_connection_spawn(trunk, now);
+			return;
+		}
+
+		/*
+		 *	If we've got a connection in the draining list
+		 *      move it back into the active list if we've
+		 *      been requested to add a connection back in.
+		 */
+		tconn = fr_dlist_head(&trunk->draining);
+		if (tconn) {
+			trunk_connection_enter_active(tconn);
+			return;
+		}
+
+		/*
+		 *	Implement delay if there's no connections that
+		 *	could be immediately re-activated.
+		 */
+		if ((trunk->last_open + trunk->conf.open_delay) > now) {
+			DEBUG4("Not opening connection - Need to wait %pVs before opening another connection.  "
+			       "It's been %pVs",
+			       fr_box_time_delta(trunk->conf.open_delay),
+			       fr_box_time_delta(now - trunk->last_open));
+			return;
+		}
+
+		DEBUG4("Opening connection - Above target requests per connection (now %u, target %u)",
+		       DIVIDE_CEIL(req_count, conn_count), trunk->conf.target_req_per_conn);
+		/* last_open set by trunk_connection_spawn */
+		(void)trunk_connection_spawn(trunk, now);
+	}
+
+	/*
+	 *	We're below the target requests per connection.
+	 *	Free some connections...
+	 */
+	else if (trunk->last_below_target > trunk->last_above_target) {
+		if ((trunk->last_below_target + trunk->conf.close_delay) > now) {
+			DEBUG4("Not closing connection - Need to be below target for %pVs. It's been %pVs",
+			       fr_box_time_delta(trunk->conf.close_delay),
+			       fr_box_time_delta(now - trunk->last_below_target));
+			return;	/* too soon */
+		}
+
+		trunk_requests_per_connnection(&conn_count, &req_count, trunk, now);
+
+		/*
+		 *	If this assert is triggered it means
+		 *	that a call to trunk_requests_per_connnection
+		 *	was missed.
+		 */
+		rad_assert(trunk->last_below_target > trunk->last_above_target);
+
+		if (!conn_count) {
+			DEBUG4("Not closing connection - No connections to close!");
+			return;
+		}
+
+		if (!req_count) {
+			DEBUG4("Closing connection - No outstanding requests");
+			goto close;
+		}
+
+		if ((trunk->conf.min > 0) && ((conn_count - 1) < trunk->conf.min)) {
+			DEBUG4("Not closing connection - Have %u connections, need %u or above",
+			       conn_count, trunk->conf.min);
+			return;
+		}
+
+		/*
+		 *	The minimum number of connections must be set
+		 *	to zero for this to work.
+		 *	min == 0, no requests, close all the connections.
+		 *      This is useful for backup databases, when
+		 *	maintaining the connection would lead to lots of
+		 *	log file churn.
+		 */
+		if (conn_count == 1) {
+			DEBUG4("Not closing connection - Would leave connections "
+			       "and there are still %u outstanding requests", req_count);
+			return;
+		}
+
+		/*
+		 *	Do the n-1 check, i.e. if we close one connection
+		 *	will that take us above our target threshold.
+		 */
+		average = DIVIDE_CEIL(req_count, (conn_count - 1));
+		if (average > trunk->conf.target_req_per_conn) {
+			DEBUG4("Not closing connection - Would leave us above our target requests per connection "
+			       "(now %u, after close %u)", DIVIDE_CEIL(req_count, conn_count), average);
+			return;
+		}
+
+		DEBUG4("Closing connection - Below target requests per connection (now %u, target %u)",
+		       DIVIDE_CEIL(req_count, conn_count), trunk->conf.target_req_per_conn);
+
+	close:
+		if ((trunk->last_closed + trunk->conf.close_delay) > now) {
+			DEBUG4("Not closing connection - Need to wait %pVs before closing another connection.  "
+			       "It's been %pVs",
+			       fr_box_time_delta(trunk->conf.close_delay),
+			       fr_box_time_delta(now - trunk->last_closed));
+			return;
+		}
+
+
+		tconn = fr_heap_peek_tail(trunk->active);
+		rad_assert(tconn);
+		trunk->last_closed = now;
+		trunk_connection_enter_draining(tconn);
+
+		return;
 	}
 }
 
@@ -3540,8 +3554,31 @@ int fr_trunk_start(fr_trunk_t *trunk)
 	}
 
 	trunk->started = true;
+	trunk->managing_connections = true;
 
 	return 0;
+}
+
+/** Allow the trunk to open and close connections in response to load
+ *
+ */
+void fr_trunk_connection_manage_start(fr_trunk_t *trunk)
+{
+	if (!trunk->started || trunk->managing_connections) return;
+
+	DEBUG4("Connection management enabled");
+	trunk->managing_connections = true;
+}
+
+/** Stop the trunk from opening and closing connections in response to load
+ *
+ */
+void fr_trunk_connection_manage_stop(fr_trunk_t *trunk)
+{
+	if (!trunk->started || !trunk->managing_connections) return;
+
+	DEBUG4("Connection management disabled");
+	trunk->managing_connections = false;
 }
 
 /** Order connections by queue depth
