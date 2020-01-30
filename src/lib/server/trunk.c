@@ -3728,10 +3728,3 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	return trunk;
 }
-
-/*
- *  cc  -g3 -Wall -DHAVE_DLFCN_H -DTESTING_TRUNK -I../../../src -include freeradius-devel/build.h -L../../../build/lib/local/.libs -ltalloc -lfreeradius-unlang -lfreeradius-util -lfreeradius-server -o test_trunk trunk.c
- */
-#ifdef TESTING_TRUNK
-#  include "trunk_tests.c"
-#endif

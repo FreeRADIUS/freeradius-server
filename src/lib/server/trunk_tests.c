@@ -1,7 +1,9 @@
-
 #include <freeradius-devel/util/acutest.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+
+#include "trunk.c"
+
 //#include <gperftools/profiler.h>
 typedef struct {
 	fr_trunk_request_t	*treq;			//!< Trunk request.
@@ -22,7 +24,7 @@ typedef struct {
 
 #define DEBUG_LVL_SET if (test_verbose_level__ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
 
-static void test_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
+static void test_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	fr_trunk_request_t	*treq;
 	void			*preq;
@@ -48,14 +50,14 @@ static void test_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *
 		slen = write(fd, &preq, sizeof(preq));
 		if (slen < 0) return;
 		if (slen == 0) return;
-		if (slen < sizeof(preq)) abort();
+		if (slen < (ssize_t)sizeof(preq)) abort();
 
 		fr_trunk_request_signal_sent(treq);
 	}
 	TEST_CHECK(count > 0);
 }
 
-static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
+static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	fr_trunk_request_t	*treq;
 	void			*preq;
@@ -87,14 +89,14 @@ static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 		}
 		if (slen < 0) return;
 		if (slen == 0) return;
-		if (slen < sizeof(preq)) abort();
+		if (slen < (ssize_t)sizeof(preq)) abort();
 
 		fr_trunk_request_signal_cancel_sent(treq);
 	}
 	TEST_CHECK(count > 0);
 }
 
-static void test_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
+static void test_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	int			fd = *(talloc_get_type_abort(fr_connection_get_handle(conn), int));
 	test_proto_request_t	*preq;
@@ -155,7 +157,7 @@ static void _conn_io_write(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int
 
 static void _conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 			 fr_event_list_t *el,
-			 fr_trunk_connection_event_t notify_on, void *uctx)
+			 fr_trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
 	int fd = *(talloc_get_type_abort(fr_connection_get_handle(conn), int));
 
@@ -194,7 +196,7 @@ static void test_request_cancel(UNUSED fr_connection_t *conn, UNUSED fr_trunk_re
 	if (stats) stats->cancelled++;
 }
 
-static void test_request_complete(REQUEST *request, void *preq, void *rctx, void *uctx)
+static void test_request_complete(UNUSED REQUEST *request, void *preq, UNUSED void *rctx, void *uctx)
 {
 	test_proto_stats_t	*stats = uctx;
 	test_proto_request_t	*our_preq;
@@ -206,7 +208,7 @@ static void test_request_complete(REQUEST *request, void *preq, void *rctx, void
 	if (stats) stats->completed++;
 }
 
-static void test_request_fail(REQUEST *request, void *preq, void *rctx, void *uctx)
+static void test_request_fail(UNUSED REQUEST *request, void *preq, UNUSED void *rctx, void *uctx)
 {
 	test_proto_stats_t	*stats = uctx;
 	test_proto_request_t	*our_preq;
@@ -218,7 +220,7 @@ static void test_request_fail(REQUEST *request, void *preq, void *rctx, void *uc
 	if (stats) stats->failed++;
 }
 
-static void test_request_free(REQUEST *request, void *preq, void *uctx)
+static void test_request_free(UNUSED REQUEST *request, void *preq, void *uctx)
 {
 	test_proto_stats_t	*stats = uctx;
 	test_proto_request_t	*our_preq;
@@ -233,7 +235,7 @@ static void test_request_free(REQUEST *request, void *preq, void *uctx)
 /** Whenever the second socket in a socket pair is readable, read all pending data, and write it back
  *
  */
-static void _conn_io_loopback(fr_event_list_t *el, int fd, int flags, void *uctx)
+static void _conn_io_loopback(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	int		*our_h = talloc_get_type_abort(uctx, int);
 	static uint8_t	buff[1024];
@@ -252,7 +254,7 @@ static void _conn_io_loopback(fr_event_list_t *el, int fd, int flags, void *uctx
 		slen = write(our_h[1], buff, (size_t)to_write);
 		if (slen < 0) return;
 
-		if (slen < to_write) {
+		if (slen < (ssize_t)to_write) {
 			to_write -= slen;
 			if (test_verbose_level__ >= 3) {
 				printf("%s - Partial write %zu bytes left\n", __FUNCTION__, to_write);
@@ -279,7 +281,7 @@ static void _conn_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 /** Insert I/O handlers that loop any data back round
  *
  */
-static fr_connection_state_t _conn_open(fr_event_list_t *el, void *h, void *uctx)
+static fr_connection_state_t _conn_open(fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
 	int *our_h = talloc_get_type_abort(h, int);
 
@@ -312,7 +314,7 @@ static fr_connection_state_t _conn_init(void **h_out, fr_connection_t *conn, UNU
 static fr_connection_t *test_setup_socket_pair_connection_alloc(fr_trunk_connection_t *tconn,
 								fr_event_list_t *el,
 								fr_connection_conf_t const *conn_conf,
-								char const *log_prefix, void *uctx)
+								char const *log_prefix, UNUSED void *uctx)
 {
 	fr_connection_conf_t cstat;
 
@@ -448,7 +450,7 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 	talloc_free(ctx);
 }
 
-static fr_connection_state_t _conn_init_no_signal(void **h_out, fr_connection_t *conn, void *uctx)
+static fr_connection_state_t _conn_init_no_signal(void **h_out, fr_connection_t *conn, UNUSED void *uctx)
 {
 	int *h;
 
