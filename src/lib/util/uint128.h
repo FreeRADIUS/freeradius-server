@@ -201,6 +201,25 @@ static uint128_t uint128_lshift(uint128_t num, uint8_t bits)
 	return num;
 }
 
+/** Right shift 128 bit integer
+ *
+ * @note shift must be 127 bits or less.
+ */
+static uint128_t uint128_rshift(uint128_t num, uint8_t bits)
+{
+	rad_assert(bits < 128);
+
+	if (bits >= 64) {
+		num.h = 0;
+		num.l = num.h >> (bits - 64);
+		return num;
+	}
+	num.l = (num.l >> bits) | (num.h << (64 - bits));
+	num.h >>= bits;
+
+	return num;
+}
+
 /** Perform bitwise & of two 128bit unsigned integers
  *
  */
@@ -261,6 +280,7 @@ static uint128_t uint128_new(uint64_t h, uint64_t l) {
 #define uint128_mul(_a, _b) ((_a) * (_b))
 
 #define uint128_lshift(_num, _bits) (_num << _bits)
+#define uint128_rshift(_num, _bits) (_num >> _bits)
 #define uint128_band(_a, _b) (_a & _b)
 #define uint128_bor(_a, _b) (_a | _b)
 
