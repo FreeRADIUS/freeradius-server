@@ -77,5 +77,6 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/udpfromto.h>
+#include <freeradius-devel/util/uint128.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/version.h>
