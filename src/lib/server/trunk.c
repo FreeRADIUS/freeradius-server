@@ -2152,8 +2152,8 @@ static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 		if (!fr_cond_assert(0)) return;
 	}
 
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE);
 	fr_dlist_insert_head(&trunk->inactive, tconn);
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE);
 }
 
 /** Transition a connection to the draining state
@@ -2180,8 +2180,8 @@ static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 		if (!fr_cond_assert(0)) return;
 	}
 
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING);
 	fr_dlist_insert_head(&trunk->draining, tconn);
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING);
 
 	/*
 	 *	Immediately re-enqueue all pending
@@ -2219,8 +2219,8 @@ static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn
 		if (!fr_cond_assert(0)) return;
 	}
 
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING_TO_FREE);
 	fr_dlist_insert_head(&trunk->draining_to_free, tconn);
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING_TO_FREE);
 
 	/*
 	 *	Immediately re-enqueue all pending
@@ -2337,8 +2337,8 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
 	 */
 	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) == 0);
 
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_CONNECTING);
 	fr_dlist_insert_head(&trunk->connecting, tconn);	/* MUST remain a head insertion for reconnect logic */
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_CONNECTING);
 }
 
 /** Connection transitioned to the shutdown state
@@ -2488,8 +2488,8 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_CLOSED);
 	}
 
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_CLOSED);
 	fr_dlist_insert_head(&trunk->closed, tconn);	/* MUST remain a head insertion for reconnect logic */
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_CLOSED);
 
 	/*
 	 *	Now *AFTER* the connection has been
@@ -2544,8 +2544,8 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_
 	 */
 	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_ALL) == 0);
 
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
 	fr_dlist_insert_head(&trunk->failed, tconn);
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
 
 	trunk->last_open_failed = fr_time();
 }
