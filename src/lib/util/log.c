@@ -44,7 +44,8 @@ RCSID("$Id$")
 FILE	*fr_log_fp = NULL;
 int	fr_debug_lvl = 0;
 
-fr_thread_local_setup(TALLOC_CTX *, fr_vlog_pool)
+fr_thread_local_setup(TALLOC_CTX *, fr_vlog_pool); /* macro */
+
 static uint32_t location_indent = 30;
 
 /** Canonicalize error strings, removing tabs, and generate spaces for error marker

@@ -42,7 +42,7 @@ unsigned int sha1_data_problems = 0;
 #  include <openssl/hmac.h>
 #  include <freeradius-devel/tls/missing.h>
 
-fr_thread_local_setup(HMAC_CTX *, sha1_hmac_ctx)
+fr_thread_local_setup(HMAC_CTX *, sha1_hmac_ctx); /* macro */
 
 static void _hmac_sha1_ctx_free_on_exit(void *arg)
 {

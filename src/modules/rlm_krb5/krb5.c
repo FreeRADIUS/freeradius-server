@@ -34,7 +34,7 @@ RCSID("$Id$")
 #ifdef HAVE_KRB5_GET_ERROR_MESSAGE
 #  define KRB5_STRERROR_BUFSIZE (2048)
 
-fr_thread_local_setup(char *, krb5_error_buffer)	/* macro */
+fr_thread_local_setup(char *, krb5_error_buffer); /* macro */
 
 /*
  *	Explicitly cleanup the memory allocated to the error buffer.

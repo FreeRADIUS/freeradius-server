@@ -48,7 +48,7 @@ struct fr_redis_cluster_thread_s {
  *
  * Any entries remaining in the list will be freed when the thread is joined
  */
-fr_thread_local_setup(fr_dlist_head_t *, command_set_free_list)
+fr_thread_local_setup(fr_dlist_head_t *, command_set_free_list); /* macro */
 
 typedef enum {
 	FR_REDIS_COMMAND_NORMAL = 0,			//!< A normal, non-transactional command.

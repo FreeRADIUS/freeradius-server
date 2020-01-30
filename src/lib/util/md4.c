@@ -17,7 +17,7 @@ RCSID("$Id$")
  */
 #include <freeradius-devel/util/md4.h>
 
-fr_thread_local_setup(fr_md4_ctx_t *, md4_ctx)
+fr_thread_local_setup(fr_md4_ctx_t *, md4_ctx); /* macro */
 
 /*
  *	If we have OpenSSL's EVP API available, then build wrapper functions.

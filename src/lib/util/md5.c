@@ -22,7 +22,7 @@ RCSID("$Id$")
  *
  * Any entries remaining in the list will be freed when the thread is joined
  */
-fr_thread_local_setup(fr_md5_ctx_t *, md5_ctx)
+fr_thread_local_setup(fr_md5_ctx_t *, md5_ctx); /* macro */
 
 /*
  *	If we have OpenSSL's EVP API available, then build wrapper functions.
@@ -36,7 +36,7 @@ typedef struct {
 	bool		used;
 	fr_md5_ctx_t	*md_ctx;
 } fr_md5_free_list_t;
-fr_thread_local_setup(fr_md5_free_list_t *, md5_array)
+fr_thread_local_setup(fr_md5_free_list_t *, md5_array); /* macro */
 
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>

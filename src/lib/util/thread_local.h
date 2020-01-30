@@ -85,7 +85,10 @@ static int __fr_thread_local_set_destructor_##_n(pthread_destructor_t func, void
 	(void) pthread_setspecific(__fr_thread_local_key_##_n, value);\
 	_n = value;\
 	return 0;\
-}
+}\
+/* to permit semicolon after macro call, which keeps doxygen happy: */\
+UNUSED static void *__fr_thread_local_macro_terminator_##_n
+
 /** Set a destructor for thread local storage to free the memory on thread exit
  *
  * @note Pointers to thread local storage seem to become unusable as threads are

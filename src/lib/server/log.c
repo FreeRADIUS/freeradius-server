@@ -43,7 +43,7 @@ RCSID("$Id$")
 #include <sys/file.h>
 #include <pthread.h>
 
-fr_thread_local_setup(TALLOC_CTX *, fr_vlog_request_pool)
+fr_thread_local_setup(TALLOC_CTX *, fr_vlog_request_pool); /* macro */
 
 /** Syslog facility table
  *

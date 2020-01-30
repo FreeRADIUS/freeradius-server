@@ -73,7 +73,7 @@ typedef struct {
 /** Thread local storage for pcre2
  *
  */
-fr_thread_local_setup(fr_pcre2_tls_t *, fr_pcre2_tls)
+fr_thread_local_setup(fr_pcre2_tls_t *, fr_pcre2_tls); /* macro */
 
 /** Talloc wrapper for pcre2 memory allocation
  *
@@ -646,7 +646,7 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 #endif
 
 #ifdef HAVE_PCRE_JIT_EXEC
-fr_thread_local_setup(pcre_jit_stack *, fr_pcre_jit_stack)
+fr_thread_local_setup(pcre_jit_stack *, fr_pcre_jit_stack); /* macro */
 #endif
 
 /** Free regex_t structure
