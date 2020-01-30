@@ -78,7 +78,7 @@ DOXYGEN_HTML_DIR = $(DOXYGEN_DIR)/html/
 #  We also prune the generated doxygen files, as there are too many of them
 #  and it slows down the build.
 #
-BASE_DOC_FILES	:= $(filter-out doc/doxygen/html/%,$(shell find $$(find doc -depth 1 '!' -type l) -type f))
+BASE_DOC_FILES	:= $(filter-out doc/doxygen/html/%,$(shell find $$(find doc -maxdepth 1 '!' -type l) -type f))
 DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/developers/%,$(BASE_DOC_FILES))
 
 #
