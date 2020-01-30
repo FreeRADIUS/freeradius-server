@@ -50,12 +50,16 @@ typedef struct {
 
 	uint16_t		max;			//!< Maximum number of connections in the trunk.
 
+	uint16_t		connecting;		//!< Maximum number of connections that can be in the
+							///< connecting state.  Used to throttle connection spawning.
+
 	uint32_t		target_req_per_conn;	//!< How many pending requests should ideally be
 							///< running on each connection.  Averaged across
 							///< the 'active' set of connections.
 
 	uint32_t		max_req_per_conn;	//!< Maximum connections per request.
-							///< Used to determine if we need to create new connections.
+							///< Used to determine if we need to create new connections
+							///< and whether we can enqueue new requests.
 
 	uint64_t		max_uses;		//!< The maximum time a connection can be used.
 

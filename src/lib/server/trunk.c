@@ -319,6 +319,7 @@ CONF_PARSER const fr_trunk_config[] = {
 	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_trunk_conf_t, start), .dflt = "5" },
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT16, fr_trunk_conf_t, min), .dflt = "1" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT16, fr_trunk_conf_t, max), .dflt = "5" },
+	{ FR_CONF_OFFSET("connecting", FR_TYPE_UINT16, fr_trunk_conf_t, connecting), .dflt = "2" },
 	{ FR_CONF_OFFSET("uses", FR_TYPE_UINT64, fr_trunk_conf_t, max_uses), .dflt = "0" },
 	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, lifetime), .dflt = "0" },
 
@@ -3023,6 +3024,23 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	 *	spawn more connections!
 	 */
 	if ((trunk->last_above_target >= trunk->last_below_target)) {
+		/*
+		 *	If connecting is provided, check we
+		 *	wouldn't have too many connections in
+		 *	the connecting state.
+		 *
+		 *	This is a throttle in the case of transitory
+		 *	load spikes, or a backend becoming
+		 *	unavailable.
+		 */
+		if ((trunk->conf.connecting > 0) &&
+		    (fr_trunk_connection_count_by_state(trunk, FR_CONNECTION_STATE_CONNECTING) >=
+		     trunk->conf.connecting)) {
+			DEBUG4("Not opening connection - Too many (%u) connections in the connecting state",
+			       trunk->conf.connecting);
+			return;
+		}
+
 		if ((trunk->last_above_target + trunk->conf.open_delay) > now) {
 			DEBUG4("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
