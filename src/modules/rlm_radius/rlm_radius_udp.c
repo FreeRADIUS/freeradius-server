@@ -291,7 +291,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
  *	Status-Server checks.  Manually build the packet, and
  *	all of its associated glue.
  */
-static void status_check_alloc(udp_handle_t *h)
+static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 {
 	udp_request_t *u;
 	REQUEST *request;
@@ -313,7 +313,7 @@ static void status_check_alloc(udp_handle_t *h)
 	talloc_const_free(request->name);
 	request->name = talloc_strdup(request, h->module_name);
 
-	request->el = h->c->thread->el;
+	request->el = el;
 	request->packet = fr_radius_alloc(request, false);
 	request->reply = fr_radius_alloc(request, false);
 
@@ -425,7 +425,7 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, void *handle,
 	 */
 	h->last_reply = h->mrs_time = fr_time();
 
-	if (h->inst->parent->status_check) status_check_alloc(h);
+	if (h->inst->parent->status_check) status_check_alloc(el, h);
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }
@@ -1499,7 +1499,7 @@ static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UN
 }
 
 
-static void status_check_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	udp_request_t		*u = talloc_get_type_abort(uctx, udp_request_t);
 	udp_handle_t		*h = u->h;
@@ -1531,7 +1531,7 @@ static void status_check_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 		return;
 	}
 
-	if (fr_event_timer_at(u, h->thread->el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
+	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
 		ERROR("Failed inserting retransmit timeout for connection %s", h->name);
 		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 		return;
@@ -1542,7 +1542,7 @@ static void status_check_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 /** Mark a connection "zombie" due to zombie timeout.
  *
  */
-static void handle_zombie_timeout(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void handle_zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	udp_handle_t *h = talloc_get_type_abort(uctx, udp_handle_t);
 	udp_request_t *u = h->status_u;
@@ -1576,7 +1576,7 @@ static void handle_zombie_timeout(UNUSED fr_event_list_t *el, fr_time_t now, voi
 		return;
 	}
 
-	if (fr_event_timer_at(u, h->thread->el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
+	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
 		ERROR("Failed inserting retransmit timeout for connection %s", h->name);
 		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 		return;
