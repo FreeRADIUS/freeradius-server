@@ -916,7 +916,7 @@ static void track_free(fr_io_track_t *track)
 {
 	fr_io_thread_t *thread = track->client->thread;
 
-	if (track->ev) (void) fr_event_timer_delete(thread->el, &track->ev);
+	if (track->ev) (void) fr_event_timer_delete(&track->ev);
 
 	talloc_free_children(track);
 

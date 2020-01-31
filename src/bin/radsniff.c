@@ -1011,7 +1011,7 @@ static int _request_free(rs_request_t *request)
 	if (request->event) {
 		int rcode;
 
-		rcode = fr_event_timer_delete(events, &request->event);
+		rcode = fr_event_timer_delete(&request->event);
 		if (rcode < 0) {
 			fprintf(stderr, "Failed deleting timer: %s\n", fr_strerror());
 			RS_ASSERT(0 == 1);
@@ -1457,7 +1457,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				original->rt_rsp++;
 
 				fr_radius_packet_free(&original->linked);
-				fr_event_timer_delete(event->list, &original->event);
+				fr_event_timer_delete(&original->event);
 			/*
 			 *	...nope it's the first response to a request.
 			 */
@@ -1666,7 +1666,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original->expect = talloc_steal(original, search.expect);
 
 			/* Disarm the timer for the cleanup event for the original request */
-			fr_event_timer_delete(event->list, &original->event);
+			fr_event_timer_delete(&original->event);
 		/*
 		 *	...nope it's a new request.
 		 */

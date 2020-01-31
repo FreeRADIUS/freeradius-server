@@ -107,7 +107,7 @@ static unlang_t xlat_instruction = {
 static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
 {
 	if (ev->ev) {
-		(void) fr_event_timer_delete(ev->request->el, &(ev->ev));
+		(void) fr_event_timer_delete(&(ev->ev));
 		return 0;
 	}
 

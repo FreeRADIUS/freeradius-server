@@ -117,7 +117,7 @@ static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 
 	if (has_worker) return;
 
-	if (thread->ev) fr_event_timer_delete(thread->el, &thread->ev);
+	if (thread->ev) fr_event_timer_delete(&thread->ev);
 
 	work_init(thread);
 }

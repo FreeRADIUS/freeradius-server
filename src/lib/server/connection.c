@@ -526,7 +526,7 @@ static void connection_state_closed_enter(fr_connection_t *conn)
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CLOSED);
 
-	fr_event_timer_delete(conn->el, &conn->connection_timer);
+	fr_event_timer_delete(&conn->connection_timer);
 
 	/*
 	 *	If there's a close callback, call it, so that the
@@ -638,7 +638,7 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	/*
 	 *	Explicit error occurred, delete the connection timer
 	 */
-	fr_event_timer_delete(conn->el, &conn->connection_timer);
+	fr_event_timer_delete(&conn->connection_timer);
 
 	/*
 	 *	Record what state the connection is currently in
@@ -776,7 +776,7 @@ static void connection_state_halted_enter(fr_connection_t *conn)
 {
 	rad_assert(conn->is_closed);
 
-	fr_event_timer_delete(conn->el, &conn->connection_timer);
+	fr_event_timer_delete(&conn->connection_timer);
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
 	WATCH_PRE(conn);
@@ -804,7 +804,7 @@ static void connection_state_connected_enter(fr_connection_t *conn)
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
 
-	fr_event_timer_delete(conn->el, &conn->connection_timer);
+	fr_event_timer_delete(&conn->connection_timer);
 	WATCH_PRE(conn);
 	if (conn->open) {
 		HANDLER_BEGIN(conn, conn->open);

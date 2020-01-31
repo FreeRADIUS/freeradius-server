@@ -238,7 +238,7 @@ int fr_load_generator_stop(fr_load_t *l)
 {
 	if (!l->ev) return 0;
 
-	return fr_event_timer_delete(l->el, &l->ev);
+	return fr_event_timer_delete(&l->ev);
 }
 
 

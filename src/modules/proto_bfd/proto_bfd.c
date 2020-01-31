@@ -917,7 +917,7 @@ static int bfd_start_packets(bfd_state_t *session)
 	/*
 	 *	Reset the timers.
 	 */
-	fr_event_timer_delete(session->el, &session->ev_packet);
+	fr_event_timer_delete(&session->ev_packet);
 
 	session->last_sent = fr_time();
 
@@ -956,7 +956,7 @@ static void bfd_set_timeout(bfd_state_t *session, fr_time_t when)
 {
 	fr_time_t now = when;
 
-	fr_event_timer_delete(session->el, &session->ev_timeout);
+	fr_event_timer_delete(&session->ev_timeout);
 
 	now += fr_time_delta_from_usec(session->detection_time);
 
@@ -1003,8 +1003,8 @@ static int bfd_start_control(bfd_state_t *session)
 
 static int bfd_stop_control(bfd_state_t *session)
 {
-	fr_event_timer_delete(session->el, &session->ev_timeout);
-	fr_event_timer_delete(session->el, &session->ev_packet);
+	fr_event_timer_delete(&session->ev_timeout);
+	fr_event_timer_delete(&session->ev_packet);
 	return 1;
 }
 

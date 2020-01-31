@@ -2523,7 +2523,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	/*
 	 *	Remove the reconnect event
 	 */
-	if (trunk->conf.lifetime > 0) fr_event_timer_delete(trunk->el, &tconn->lifetime_ev);
+	if (trunk->conf.lifetime > 0) fr_event_timer_delete(&tconn->lifetime_ev);
 }
 
 /** Connection failed
@@ -3613,7 +3613,7 @@ static int _trunk_free(fr_trunk_t *trunk)
 	 *	We really don't want this firing after
 	 *	we've freed everything.
 	 */
-	fr_event_timer_delete(trunk->el, &trunk->manage_ev);
+	fr_event_timer_delete(&trunk->manage_ev);
 
 	/*
 	 *	Now free the connections in each of the lists.

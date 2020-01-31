@@ -224,7 +224,7 @@ int		fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t co
 				  fr_time_t when, fr_event_timer_cb_t callback, void const *uctx);
 int		fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
 				  fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx);
-int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev);
+int		fr_event_timer_delete(fr_event_timer_t const **ev);
 int		fr_event_timer_run(fr_event_list_t *el, fr_time_t *when);
 
 uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));

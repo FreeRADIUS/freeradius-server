@@ -230,7 +230,7 @@ static void _unbound_io_service_errored(UNUSED fr_event_list_t *el,
 	 *	that it fired.  This is imperfect but unbound
 	 *	doesn't have a callback for receiving errors.
 	 */
-	if (fr_event_timer_delete(ev->ev_b->el, &ev->timer) < 0) {
+	if (fr_event_timer_delete(&ev->timer) < 0) {
 		PERROR("ubound event %p - Failed disarming timeout", ev);
 	}
 
@@ -345,7 +345,7 @@ static int _unbound_io_event_deactivate(struct ub_event *ub_ev)
 	if (ev->events & UB_EV_TIMEOUT) {
 		DEBUG4("unbound event %p - Disarming timeout", ev);
 
-		if (ev->timer && (fr_event_timer_delete(ev->ev_b->el, &ev->timer) < 0)) {
+		if (ev->timer && (fr_event_timer_delete(&ev->timer) < 0)) {
 			PERROR("ubound event %p - Failed disarming timeout", ev);
 
 			ret = -1;
@@ -380,7 +380,7 @@ static int _unbound_io_timer_modify(struct ub_event *ub_ev, UNUSED struct ub_eve
 		       ev, uctx, ev->uctx);
 		ev->uctx = uctx;
 	}
-	if (ev->timer && (fr_event_timer_delete(ev->ev_b->el, &ev->timer) < 0)) {
+	if (ev->timer && (fr_event_timer_delete(&ev->timer) < 0)) {
 		PERROR("ubound event %p - Failed disarming timeout", ev);
 
 		ret = -1;	/* Continue ? */
@@ -411,7 +411,7 @@ static int _unbound_io_timer_deactivate(struct ub_event *ub_ev)
 
 	DEBUG4("unbound event %p - Disarming timeout", ev);
 
-	if (ev->timer && (fr_event_timer_delete(ev->ev_b->el, &ev->timer) < 0)) {
+	if (ev->timer && (fr_event_timer_delete(&ev->timer) < 0)) {
 		PERROR("unbound event %p - Failed disarming timeout", ev);
 
 		return -1;

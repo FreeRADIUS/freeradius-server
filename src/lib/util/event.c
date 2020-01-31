@@ -965,18 +965,16 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 
 /** Delete a timer event from the event list
  *
- * @param[in] el	to delete event from.
  * @param[in] ev_p	of the event being deleted.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
+int fr_event_timer_delete(fr_event_timer_t const **ev_p)
 {
 	fr_event_timer_t *ev;
 
 	if (unlikely(!*ev_p)) return 0;
-	if (!fr_cond_assert((*ev_p)->el == el)) return -1;
 
 	memcpy(&ev, ev_p, sizeof(ev));
 	return talloc_free(ev);
@@ -1410,7 +1408,7 @@ int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
 	/*
 	 *	Delete the event before calling it.
 	 */
-	fr_event_timer_delete(el, ev->parent);
+	fr_event_timer_delete(ev->parent);
 
 	callback(el, *when, uctx);
 
@@ -1867,7 +1865,7 @@ static int _event_list_free(fr_event_list_t *el)
 {
 	fr_event_timer_t const *ev;
 
-	while ((ev = fr_heap_peek(el->times)) != NULL) fr_event_timer_delete(el, &ev);
+	while ((ev = fr_heap_peek(el->times)) != NULL) fr_event_timer_delete(&ev);
 
 	talloc_free_children(el);
 

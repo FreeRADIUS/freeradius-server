@@ -185,7 +185,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t req
 	 */
 	state = fr_load_generator_have_reply(thread->l, request_time);
 	if (state == FR_LOAD_DONE) {
-		fr_event_timer_delete(thread->el, &thread->ev);
+		fr_event_timer_delete(&thread->ev);
 		fr_exit_now(1);
 	}
 

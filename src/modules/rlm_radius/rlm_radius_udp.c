@@ -1188,7 +1188,7 @@ static void status_check_reply(udp_request_t *u)
 
 	if (u->num_replies < 3) return;
 
-	if (u->ev) (void) fr_event_timer_delete(h->c->el, &u->ev);
+	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 	DEBUG("Have enough replies to status check, marking connection as active - %s", h->name);
 	fr_trunk_connection_signal_active(h->c->tconn);
 
@@ -1292,7 +1292,7 @@ drain:
 	(void) rr_track_delete(h->id, rr);
 	u->rr = NULL;
 
-	if (u->ev) (void) fr_event_timer_delete(c->el, &u->ev);
+	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 	h->last_reply = fr_time();
 
 	code = h->buffer[0];
@@ -1465,7 +1465,7 @@ static void request_cancel(UNUSED fr_connection_t *conn, fr_trunk_request_t *tre
 
 		if (u->packet) TALLOC_FREE(u->packet);
 
-		if (u->ev) (void) fr_event_timer_delete(h->c->el, &u->ev);
+		if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
 		u->rcode = RLM_MODULE_FAIL;
 		u->h = NULL;
@@ -1622,7 +1622,7 @@ static int udp_request_free(udp_request_t *u)
 	 */
 	if (!u->h) return 0;
 
-	if (u->ev) (void) fr_event_timer_delete(u->h->c->el, &u->ev);
+	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
 	/*
 	 *	The module is doing async proxying, we don't need to
@@ -1635,7 +1635,7 @@ static int udp_request_free(udp_request_t *u)
 	/*
 	 *	Don't perform zombie checks on Status-Server
 	 */
-	if (u == u->h->status_u) return NULL;
+	if (u == u->h->status_u) return 0;
 
 	/*
 	 *	The module is doing synchronous proxying.  i.e. where

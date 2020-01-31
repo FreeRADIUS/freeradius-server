@@ -81,7 +81,7 @@ static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNU
 static int _unlang_event_free(unlang_module_event_t *ev)
 {
 	if (ev->ev) {
-		(void) fr_event_timer_delete(ev->request->el, &(ev->ev));
+		(void) fr_event_timer_delete(&(ev->ev));
 		return 0;
 	}
 
