@@ -1827,7 +1827,6 @@ static void test_enqueue_and_io_speed(void)
 
 	talloc_free(ctx);
 }
-#define fr_time test_time
 
 /*
  *	Connection spawning
