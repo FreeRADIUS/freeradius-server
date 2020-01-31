@@ -1635,7 +1635,7 @@ static int udp_request_free(udp_request_t *u)
 	/*
 	 *	Don't perform zombie checks on Status-Server
 	 */
-	if (u == u->h->status_u) return NULL;
+	if (u == u->h->status_u) return 0;
 
 	/*
 	 *	The module is doing synchronous proxying.  i.e. where
