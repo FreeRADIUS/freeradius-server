@@ -135,7 +135,7 @@ static void test_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *con
 }
 
 static void _conn_io_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
-			   UNUSED int fd_errno, UNUSED void *uctx)
+			   UNUSED int fd_errno, void *uctx)
 {
 
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
