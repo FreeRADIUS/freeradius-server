@@ -323,7 +323,7 @@ int test_check__(int cond, const char* file, int line, const char* fmt, ...);
 void test_case__(const char* fmt, ...);
 void test_message__(const char* fmt, ...);
 void test_dump__(const char* title, const void* addr, size_t size);
-void test_abort__(void);
+void test_abort__(void) TEST_ATTRIBUTE__(noreturn);
 
 
 #ifndef TEST_NO_MAIN
