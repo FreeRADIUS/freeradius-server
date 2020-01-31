@@ -52,18 +52,20 @@ static CONF_PARSER const status_check_update_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#define DELTA_STRINGIFY(_x) STRINGIFY(fr_time_delta_to_sec(_x))
+
 static CONF_PARSER const connection_config[] = {
 	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, rlm_radius_t, connection_timeout),
-	  .dflt = STRINGIFY(5) },
+	  .dflt = DELTA_STRINGIFY(5) },
 
 	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIME_DELTA, rlm_radius_t, reconnection_delay),
-	  .dflt = STRINGIFY(5) },
+	  .dflt = DELTA_STRINGIFY(5) },
 
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, rlm_radius_t, idle_timeout),
-	  .dflt = STRINGIFY(300) },
+	  .dflt = DELTA_STRINGIFY(300) },
 
 	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIME_DELTA, rlm_radius_t, zombie_period),
-	  .dflt = STRINGIFY(40) },
+	  .dflt = DELTA_STRINGIFY(40) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -72,42 +74,42 @@ static CONF_PARSER const connection_config[] = {
  *	Retransmission intervals for the packets we support.
  */
 static CONF_PARSER auth_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].irt), .dflt = DELTA_STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrt), .dflt = DELTA_STRINGIFY(16) },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrd), .dflt = DELTA_STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER acct_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = DELTA_STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = DELTA_STRINGIFY(5) },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(1) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = DELTA_STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER status_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(10) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].irt), .dflt = DELTA_STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrt), .dflt = DELTA_STRINGIFY(10) },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrd), .dflt = DELTA_STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER coa_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_COA_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].irt), .dflt = DELTA_STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrt), .dflt = DELTA_STRINGIFY(16) },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrd), .dflt = DELTA_STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER disconnect_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].irt), .dflt = DELTA_STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrt), .dflt = DELTA_STRINGIFY(16) },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrd), .dflt = DELTA_STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -137,6 +139,8 @@ static CONF_PARSER const module_config[] = {
 	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
 	{ FR_CONF_POINTER("connection", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) connection_config },
+
+	{ FR_CONF_OFFSET("trunk", FR_TYPE_SUBSECTION, rlm_radius_t, trunk_conf), .subcs = (void const *) fr_trunk_config, },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -551,6 +555,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
+	/*
+	 *	These limits are specific to RADIUS, and cannot be over-ridden
+	 */
+	FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
+	FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
+
 	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, <=, fr_time_delta_from_sec(30));
 
@@ -619,15 +629,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Set limits on retransmission timers
 	 */
 	if (inst->allowed[FR_CODE_ACCESS_REQUEST]) {
-		FR_INTEGER_BOUND_CHECK("Access-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].irt, >=, 1);
-		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, >=, 5);
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
 		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCESS_REQUEST].mrc, >=, 1);
-		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, >=, 5);
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_INTEGER_BOUND_CHECK("Access-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCESS_REQUEST].mrc, <=, 10);
-		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 	/*
@@ -638,62 +648,62 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	max_request_time.
 	 */
 	if (inst->allowed[FR_CODE_ACCOUNTING_REQUEST]) {
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, >=, 1);
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, >=, fr_time_delta_from_sec(1));
 #if 0
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, 5);
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrc, >=, 0);
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, 0);
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, fr_time_delta_from_sec(0));
 #endif
 
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrc, <=, 10);
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 	/*
 	 *	Status-Server
 	 */
 	if (inst->allowed[FR_CODE_STATUS_SERVER]) {
-		FR_INTEGER_BOUND_CHECK("Status-Server.initial_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].irt, >=, 1);
-		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, >=, 5);
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.maximum_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, >=, fr_time_delta_from_sec(5));
 		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_count", inst->retry[FR_CODE_STATUS_SERVER].mrc, >=, 1);
-		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, >=, 5);
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.maximum_retransmission_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_INTEGER_BOUND_CHECK("Status-Server.initial_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.maximum_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_count", inst->retry[FR_CODE_STATUS_SERVER].mrc, <=, 10);
-		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.maximum_retransmission_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 	/*
 	 *	CoA
 	 */
 	if (inst->allowed[FR_CODE_COA_REQUEST]) {
-		FR_INTEGER_BOUND_CHECK("CoA-Request.initial_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].irt, >=, 1);
-		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].mrt, >=, 5);
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.initial_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.maximum_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
 		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_count", inst->retry[FR_CODE_COA_REQUEST].mrc, >=, 1);
-		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, >=, 5);
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.maximum_retransmission_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_INTEGER_BOUND_CHECK("CoA-Request.initial_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].mrt, <=, 60);
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.initial_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.maximum_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].mrt, <=, fr_time_delta_from_sec(60));
 		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_count", inst->retry[FR_CODE_COA_REQUEST].mrc, <=, 10);
-		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.maximum_retransmission_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 	/*
 	 *	Disconnect
 	 */
 	if (inst->allowed[FR_CODE_DISCONNECT_REQUEST]) {
-		FR_INTEGER_BOUND_CHECK("Disconnect-Request.initial_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].irt, >=, 1);
-		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, >=, 5);
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.initial_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.maximum_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_count", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrc, >=, 1);
-		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, >=, 5);
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.maximum_retransmission_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_INTEGER_BOUND_CHECK("Disconnect-Request.initial_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.initial_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.maximum_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_count", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
-		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.maximum_retransmission_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 setup_io_submodule:

@@ -32,27 +32,6 @@ RCSID("$Id$")
 #include "track.h"
 #include "rlm_radius.h"
 
-/** Free an rlm_radius_id_t
- *
- */
-static int rr_track_free(rlm_radius_id_t *id)
-{
-	int i;
-
-	for (i = 0; i < 256; i++) {
-		if (!id->id[i].request) continue;
-
-		/*
-		 *	The timers are parented from the request, so
-		 *	we have to manually free them here.
-		 */
-		if (id->id[i].timer->ev) talloc_const_free(id->id[i].timer->ev);
-	}
-
-	return 0;
-}
-
-
 /** Create an rlm_radius_id_t
  *
  * @param ctx the talloc ctx
@@ -76,8 +55,6 @@ rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx)
 		id->num_free++;
 	}
 
-	talloc_set_destructor(id, rr_track_free);
-
 	id->next_id = fr_rand() & 0xff;
 
 	return id;
@@ -100,14 +77,13 @@ static int rr_cmp(void const *one, void const *two)
  * @param[in] id		The rlm_radius_id_t tracking table.
  * @param[in] request		The request which will send the proxied packet.
  * @param[in] code		Of the outbound request.
- * @param[in] request_io_ctx   	the structure linking REQUEST to IO data
- * @param[in] timer		structure containing retransmission data
+ * @param request_io_ctx The context to associate with the request
  * @return
  *	- NULL on error
  *	- rlm_radius_request_t on success
  */
-rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code, void *request_io_ctx,
-				     rlm_radius_retransmit_t *timer)
+rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code,
+				     void *request_io_ctx)
 {
 	rlm_radius_request_t *rr;
 
@@ -167,19 +143,14 @@ retry:
 	rr->id = id->next_id;
 
 done:
-	rr->request_io_ctx = request_io_ctx;
 	rr->request = request;
+	rr->request_io_ctx = request_io_ctx;
 
-	rr->timer = timer;
 	rr->code = code;
 
 	/*
 	 *	rr->id is already allocated
-	 *
-	 *	don't touch the timer fields.  The caller should have
-	 *	initialized them to all zero.
 	 */
-
 
 	id->num_requests++;
 	return rr;
@@ -196,6 +167,11 @@ done:
  */
 int rr_track_update(rlm_radius_id_t *id, rlm_radius_request_t *rr, uint8_t *vector)
 {
+	/*
+	 *	The authentication vector may have changed.
+	 */
+	if (id->subtree[rr->id]) (void) rbtree_deletebydata(id->subtree[rr->id], rr);
+
 	memcpy(rr->vector, vector, sizeof(rr->vector));
 
 	/*
@@ -376,101 +352,4 @@ void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag)
 	(void) talloc_get_type_abort(id, rlm_radius_id_t);
 
 	id->use_authenticator = flag;
-}
-
-int rr_track_retry(rlm_radius_retransmit_t *timer, fr_time_t now)
-{
-	uint32_t delay, frac;
-
-	/*
-	 *	Get when we SHOULD have woken up, which might not be
-	 *	the same as 'now'.
-	 */
-	timer->next = timer->start;
-	timer->next += timer->rt * 1000; /* rt is in usec */
-
-	/*
-	 *	Increment retransmission counter
-	 */
-	timer->count++;
-
-	/*
-	 *	We retried too many times.  Fail.
-	 */
-	if (timer->retry->mrc && (timer->count > timer->retry->mrc)) {
-		DEBUG3("RETRANSMIT - reached MRC %d", timer->retry->mrc);
-		return 0;
-	}
-
-	/*
-	 *	Cap delay at MRD
-	 */
-	if (timer->retry->mrd) {
-		fr_time_t end;
-
-		end = timer->start;
-		end += timer->retry->mrd * NSEC;
-
-		if (now > end) {
-			DEBUG3("RETRANSMIT - reached MRD %d", timer->retry->mrd);
-			return 0;
-		}
-	}
-
-	/*
-	 *	RFC 5080 Section 2.2.1
-	 *
-	 *	RT = 2*RTprev + RAND*RTprev
-	 *	   = 1.9 * RTprev + rand(0,.2) * RTprev
-	 *	   = 1.9 * RTprev + rand(0,1) * (RTprev / 5)
-	 */
-	delay = fr_rand();
-	delay ^= (delay >> 16);
-	delay &= 0xffff;
-	frac = timer->rt / 5;
-	delay = ((frac >> 16) * delay) + (((frac & 0xffff) * delay) >> 16);
-
-	delay += (2 * timer->rt) - (timer->rt / 10);
-
-	/*
-	 *	Cap delay at MRT
-	 */
-	if (timer->retry->mrt && (delay > (timer->retry->mrt * USEC))) {
-		int mrt_usec = timer->retry->mrt * USEC;
-
-		/*
-		 *	delay = MRT + RAND * MRT
-		 *	      = 0.9 MRT + rand(0,.2)  * MRT
-		 */
-		delay = fr_rand();
-		delay ^= (delay >> 15);
-		delay &= 0x1ffff;
-		delay = ((mrt_usec >> 16) * delay) + (((mrt_usec & 0xffff) * delay) >> 16);
-		delay += mrt_usec - (mrt_usec / 10);
-	}
-
-	/*
-	 *	And finally set the retransmission timer.
-	 */
-	timer->rt = delay;
-
-	/*
-	 *	Get the next delay time.
-	 */
-	timer->next += timer->rt * 1000;
-
-	DEBUG3("RETRANSMIT - in %d.%06ds", timer->rt / USEC, timer->rt % USEC);
-	return 1;
-}
-
-
-int rr_track_start(rlm_radius_retransmit_t *timer)
-{
-	timer->count = 1;
-	timer->rt = timer->retry->irt * USEC; /* rt is in usec */
-
-	timer->next = timer->start;
-	timer->next += timer->rt * 1000;
-
-	return 0;
 }

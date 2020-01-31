@@ -18,7 +18,9 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/trunk.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/retry.h>
 #include <freeradius-devel/unlang/module.h>
 
 /*
@@ -65,13 +67,6 @@ typedef struct {
 	fr_unlang_module_resume_t	resume;			//!< resume a request, and get rcode
 } fr_radius_client_io_t;
 
-typedef struct {
-	uint32_t		irt;			//!< Initial transmission time
-	uint32_t		mrc;			//!< Maximum retransmission count
-	uint32_t		mrt;			//!< Maximum retransmission time
-	uint32_t		mrd;			//!< Maximum retransmission duration
-} rlm_radius_retry_t;
-
 /*
  *	Define a structure for our module configuration.
  */
@@ -103,7 +98,9 @@ struct rlm_radius_s {
 	vp_map_t		*status_check_map;	//!< attributes for the status-server checks
 
 	int			allowed[FR_RADIUS_MAX_PACKET_CODE];
-	rlm_radius_retry_t	retry[FR_RADIUS_MAX_PACKET_CODE];
+	fr_retry_config_t      	retry[FR_RADIUS_MAX_PACKET_CODE];
+
+	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration
 };
 
 

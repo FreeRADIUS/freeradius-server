@@ -27,26 +27,15 @@
 #include "rlm_radius.h"
 #include <freeradius-devel/util/dlist.h>
 
-typedef struct {
-	fr_time_t      		start;		//!< when we started sending the packet
-	uint32_t		count;		//!< how many times we sent this packet
-	uint32_t		rt;		//!< retransmit timer (microseconds)
-	fr_time_t		next;		//!< next time when the timer should fire
-	fr_event_timer_t const	*ev;		//!< timer event associated with this packet
-	rlm_radius_retry_t	*retry;		//!< pointer to retry structure
-} rlm_radius_retransmit_t;
-
 /** Track one request to a response
  *
  */
 typedef struct {
-	void			*request_io_ctx;
 	REQUEST			*request;	//!< as always...
+	void			*request_io_ctx;
 
 	int			code;		//!< packet code (sigh)
 	int			id;		//!< our ID
-
-	rlm_radius_retransmit_t *timer;		//!< retransmission
 
 	union {
 		fr_dlist_t		entry;		//!< for free chain
@@ -70,11 +59,8 @@ typedef struct {
 
 rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx);
 rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code,
-				     void *request_io_ctx, rlm_radius_retransmit_t *timer) CC_HINT(nonnull);
+				     void *request_io_ctx) CC_HINT(nonnull);
 int rr_track_update(rlm_radius_id_t *id, rlm_radius_request_t *rr, uint8_t *vector) CC_HINT(nonnull);
 rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t *vector) CC_HINT(nonnull(1));
 int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr) CC_HINT(nonnull);
 void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag) CC_HINT(nonnull);
-
-int rr_track_start(rlm_radius_retransmit_t *timer) CC_HINT(nonnull);
-int rr_track_retry(rlm_radius_retransmit_t *timer, fr_time_t now) CC_HINT(nonnull);
