@@ -1424,7 +1424,7 @@ static void request_cancel(UNUSED fr_connection_t *conn, fr_trunk_request_t *tre
 			   fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
 	udp_request_t	*u = talloc_get_type_abort(preq, udp_request_t);
-	udp_handle_t	 *h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
+	udp_handle_t	*h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
 
 	/*
 	 *	If we've been signaled to cancel, then ACK the cancel.
@@ -1468,29 +1468,6 @@ static void request_cancel(UNUSED fr_connection_t *conn, fr_trunk_request_t *tre
 		u->num_replies = 0;
 		break;
 	}
-}
-
-static fr_trunk_io_funcs_t trunk_funcs = {
-	.connection_alloc = thread_conn_alloc,
-	.connection_notify = thread_conn_notify,
-	.request_prioritise = request_prioritise,
-	.request_mux = request_mux,
-	.request_demux = request_demux,
-	.request_complete = request_complete,
-	.request_cancel = request_cancel,
-};
-
-
-static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *ctx)
-{
-	udp_request_t *u = talloc_get_type_abort(ctx, udp_request_t);
-	rlm_rcode_t rcode;
-
-	rcode = u->rcode;
-	rad_assert(rcode != RLM_MODULE_YIELD);
-	talloc_free(u);
-
-	return rcode;
 }
 
 
@@ -1579,9 +1556,31 @@ static void handle_zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx
 }
 
 
-static void check_for_zombie(udp_handle_t *h)
+/** Request has failed to send.
+ *
+ */
+static void request_fail(UNUSED REQUEST *request, void *preq, UNUSED void *rctx, UNUSED void *uctx)
 {
+	udp_request_t	*u = talloc_get_type_abort(preq, udp_request_t);
+	udp_handle_t	 *h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
 	fr_time_t now, when;
+
+	u->rcode = RLM_MODULE_FAIL;
+
+	/*
+	 *	We're replicating, don't do zombie checks.
+	 *
+	 *	Note that we still do zombie checks if we're doing
+	 *	synchronous proxying.  This is so that we can
+	 *	determine if a connection is up, even if the NAS
+	 *	retransmission behavior is poor.
+	 */
+	if (h->inst->replicate) return;
+
+	/*
+	 *	Already a zombie timer, do nothing.
+	 */
+	if (h->zombie_ev) return;
 
 	now = fr_time();
 	when = h->last_reply;
@@ -1607,6 +1606,32 @@ static void check_for_zombie(udp_handle_t *h)
 	fr_trunk_connection_signal_inactive(h->c->tconn);
 }
 
+
+static fr_trunk_io_funcs_t trunk_funcs = {
+	.connection_alloc = thread_conn_alloc,
+	.connection_notify = thread_conn_notify,
+	.request_prioritise = request_prioritise,
+	.request_mux = request_mux,
+	.request_demux = request_demux,
+	.request_complete = request_complete,
+	.request_cancel = request_cancel,
+	.request_fail = request_fail,
+};
+
+
+static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *ctx)
+{
+	udp_request_t *u = talloc_get_type_abort(ctx, udp_request_t);
+	rlm_rcode_t rcode;
+
+	rcode = u->rcode;
+	rad_assert(rcode != RLM_MODULE_YIELD);
+	talloc_free(u);
+
+	return rcode;
+}
+
+
 /** Free a udp_request_t
  */
 static int udp_request_free(udp_request_t *u)
@@ -1630,20 +1655,6 @@ static int udp_request_free(udp_request_t *u)
 	if (!u->synchronous) return 0;
 
 	if (u->rr) (void) rr_track_delete(h->id, u->rr);
-
-	/*
-	 *	Don't perform zombie checks on Status-Server
-	 */
-	if (u == h->status_u) return 0;
-
-	/*
-	 *	The module is doing synchronous proxying.  i.e. where
-	 *	we retransmit only when the NAS retransmits.  Since we
-	 *	don't have our own timers, we have to check for zombie
-	 *	connections when the request is finished.  But we do
-	 *	that only if we don't already have a zombie timer.
-	 */
-	if (!h->zombie_ev) check_for_zombie(h);
 
 	return 0;
 }
