@@ -635,7 +635,6 @@ static void test_enqueue_basic(void)
 	TALLOC_CTX		*ctx = talloc_init("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
-	int			events;
 	fr_trunk_conf_t		conf = {
 					.start = 1,
 					.min = 1,
@@ -1323,7 +1322,6 @@ static void test_connection_start_on_enqueue(void)
 	TALLOC_CTX		*ctx = talloc_init("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
-	int			events;
 	fr_trunk_conf_t		conf = {
 					.start = 0,
 					.min = 0,	/* No connections on start */
@@ -1375,7 +1373,6 @@ static void test_connection_rebalance_requests(void)
 	TALLOC_CTX		*ctx = talloc_init("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
-	int			events;
 	fr_trunk_conf_t		conf = {
 					.start = 2,
 					.min = 2,	/* No connections on start */
