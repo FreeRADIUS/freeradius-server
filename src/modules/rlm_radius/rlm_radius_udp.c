@@ -109,15 +109,13 @@ typedef struct {
 
 	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
 	udp_request_t		*status_u;		//!< for sending Status-Server packets
+	REQUEST			*status_request;
 } udp_handle_t;
 
 /** Connect REQUEST to local tracking structure
  *
  */
 struct udp_request_s {
-	fr_trunk_request_t	*treq;
-
-	REQUEST			*request;		//!< our request
 	uint32_t		priority;		//!< copied from request->async->priority
 	fr_time_t		recv_time;		//!< copied from request->async->recv_time
 
@@ -140,6 +138,10 @@ struct udp_request_s {
 	fr_event_timer_t const	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
+
+typedef struct {
+	fr_trunk_request_t	*treq;
+} udp_rctx_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, dst_ipaddr), },
@@ -306,7 +308,7 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	 *	head before the module destructor
 	 *      runs.
 	 */
-	request = request_local_alloc(u);
+	request = request_local_alloc(h);
 	request->async = talloc_zero(request, fr_async_t);
 	talloc_const_free(request->name);
 	request->name = talloc_strdup(request, h->module_name);
@@ -377,7 +379,6 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	 *	Initialize the request IO ctx.  Note that we don't set
 	 *	destructors.
 	 */
-	u->request = request;
 	u->code = inst->parent->status_check;
 	request->packet->code = u->code;
 	u->c = h->c;		/* h can mutate during the lifetime of c */
@@ -399,6 +400,7 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	DEBUG2("%s - Allocated %s ID %u for status checks on connection %s",
 	       h->module_name, fr_packet_codes[u->code], u->rr->id, h->name);
 	h->status_u = u;
+	h->status_request = request;
 }
 
 /** Process notification that fd is open
@@ -876,9 +878,10 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 
 static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
-	udp_request_t		*u = talloc_get_type_abort(uctx, udp_request_t);
-	udp_handle_t		*h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
-	REQUEST			*request = u->request;
+	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
+	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
+	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
+	REQUEST			*request = treq->request;
 	fr_retry_state_t	state;
 
 	state = fr_retry_next(&u->retry, now);
@@ -895,8 +898,7 @@ static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 		u->rr = NULL;
 		u->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
-		fr_trunk_request_signal_complete(u->treq);
-		u->treq = NULL;
+		fr_trunk_request_signal_complete(treq);
 		return;
 	}
 
@@ -910,17 +912,18 @@ static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Queue the request for retransmission.
 	 */
-	fr_trunk_request_requeue(u->treq);
+	fr_trunk_request_requeue(treq);
 }
 
 
-static int write_packet(fr_event_list_t *el,
-			udp_request_t *u, udp_handle_t *h, uint8_t const *packet, size_t packet_len)
+static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t const *packet, size_t packet_len)
 {
-	char const *action;
-	ssize_t rcode;
-	REQUEST *request = u->request;
-	rlm_radius_udp_t const *inst = h->inst;
+	char const		*action;
+	ssize_t			rcode;
+	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
+	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
+	REQUEST			*request = treq->request;
+	rlm_radius_udp_t const	*inst = h->inst;
 
 	/*
 	 *	Tell the admin what's going on
@@ -940,7 +943,7 @@ static int write_packet(fr_event_list_t *el,
 		/*
 		 *	Set up a timer for retransmits.
 		 */
-		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timer, u) < 0) {
+		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timer, treq) < 0) {
 			RERROR("Failed inserting retransmit timeout for connection");
 			return -1;
 		}
@@ -958,7 +961,7 @@ static int write_packet(fr_event_list_t *el,
 		RDEBUG("%s request.  Relying on NAS to perform more retransmissions", action);
 	}
 
-	fr_trunk_request_signal_sent(u->treq);
+	fr_trunk_request_signal_sent(treq);
 
 	rcode = write(h->fd, packet, packet_len);
 	if (rcode < 0) {
@@ -990,7 +993,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	If it's an initial packet, allocate the ID.
 		 */
 		if (!u->rr) {
-			u->rr = rr_track_alloc(h->id, request, u->code, u);
+			u->rr = rr_track_alloc(h->id, request, u->code, treq);
 			if (!u->rr) {
 			fail:
 				u->c = NULL;
@@ -1004,7 +1007,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	If it's a retransmission, then just call write().
 		 */
 		if (u->packet) {
-			if (write_packet(el, u, h, u->packet, u->packet_len) < 0) {
+			if (write_packet(el, treq, u->packet, u->packet_len) < 0) {
 				goto fail2;
 			}
 			continue;
@@ -1020,7 +1023,7 @@ static void request_mux(fr_event_list_t *el,
 			goto fail;
 		}
 
-		if (write_packet(el, u, h, h->buffer, (h->buffer[2] << 8) | h->buffer[3]) < 0) {
+		if (write_packet(el, treq, h->buffer, (h->buffer[2] << 8) | h->buffer[3]) < 0) {
 			goto fail2;
 		}
 
@@ -1048,7 +1051,6 @@ static void request_mux(fr_event_list_t *el,
 		 *	the "sent" state.  And we don't want to see
 		 *	this request again.
 		 */
-		u->treq = treq;
 		u->c = c;
 
 		// @todo - if there are no free IDs, call fr_trunk_connection_requests_requeue()
@@ -1225,9 +1227,10 @@ static void status_check_reply(udp_request_t *u, udp_handle_t *h)
 	}
 }
 
-static udp_request_t *read_packet(udp_handle_t *h, udp_connection_t *c)
+static fr_trunk_request_t *read_packet(udp_handle_t *h, udp_connection_t *c)
 {
 	rlm_radius_udp_t const	*inst = c->thread->inst;
+	fr_trunk_request_t	*treq;
 	udp_request_t		*u;
 	REQUEST			*request;
 	ssize_t			data_len;
@@ -1283,9 +1286,14 @@ drain:
 		return NULL;
 	}
 
-	u = rr->request_io_ctx;
-	request = u->request;
+	/*
+	 *	FIXME - Will abort on status server packets.
+	 *	These probably need to be dealt with differently.
+	 */
+	treq = talloc_get_type_abort(rr->request_io_ctx, fr_trunk_request_t);
+	request = treq->request;
 	rad_assert(request != NULL);
+	u = talloc_get_type_abort(treq->preq, udp_request_t);
 
 	original[0] = rr->code;
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
@@ -1324,7 +1332,7 @@ drain:
 	if (!code || (code >= FR_RADIUS_MAX_PACKET_CODE)) {
 		REDEBUG("Unknown reply code %d", code);
 		u->rcode = RLM_MODULE_INVALID;
-		return u;
+		return treq;
 	}
 
 	/*
@@ -1342,13 +1350,13 @@ drain:
 	if (!allowed_replies[code]) {
 		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
 		u->rcode = RLM_MODULE_INVALID;
-		return u;
+		return treq;
 	}
 
 	if (allowed_replies[code] != (FR_CODE) u->code) {
 		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
 		u->rcode = RLM_MODULE_INVALID;
-		return u;
+		return treq;
 	}
 
 	/*
@@ -1387,7 +1395,7 @@ decode:
 		REDEBUG("Failed decoding attributes for packet");
 		fr_pair_list_free(&reply);
 		u->rcode = RLM_MODULE_INVALID;
-		return u;
+		return treq;
 	}
 
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
@@ -1420,27 +1428,24 @@ decode:
 	 */
 	fr_pair_add(&request->reply->vps, reply);
 
-	return u;
+	return treq;
 }
 
 static void request_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 	udp_connection_t	*c = h->c;
-	REQUEST			*request;
-	udp_request_t		*u;
+	fr_trunk_request_t	*treq;
 
 	DEBUG3("%s - Reading data for connection %s", h->module_name, h->name);
 
 redo:
-	u = read_packet(h, c);
-	if (!u) return;
-
-	request = u->request;
+	treq = read_packet(h, c);
+	if (!treq) return;
 
 	// decode the packet, and do funky stuff with it.
-	request->reply->code = h->buffer[0];
-	fr_trunk_request_signal_complete(u->treq);
+	treq->request->reply->code = h->buffer[0];
+	fr_trunk_request_signal_complete(treq);
 
 	goto redo;
 }
@@ -1494,7 +1499,6 @@ static void request_cancel(UNUSED fr_connection_t *conn, fr_trunk_request_t *tre
 
 		u->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
-		u->treq = NULL;
 		u->num_replies = 0;
 		break;
 	}
@@ -1565,7 +1569,7 @@ static void handle_zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx
 	u->num_replies = 0;
 	u->recv_time = u->retry.start;
 
-	if (encode(u->request, u, h) < 0) {
+	if (encode(h->status_request, u, h) < 0) {
 		DEBUG("Failed encoding status check packet for connection %s", h->name);
 		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 		return;
@@ -1689,14 +1693,19 @@ static int udp_request_free(udp_request_t *u)
 	return 0;
 }
 
-static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_ctx, void *tctx)
+static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *tctx)
 {
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_request_t			*u = talloc_get_type_abort(request_io_ctx, udp_request_t);
+	udp_rctx_t			*our_rctx = talloc_get_type_abort(rctx, udp_rctx_t);
+	udp_request_t			*u;
 	udp_thread_t			*thread = talloc_get_type_abort(tctx, udp_thread_t);
+	fr_trunk_request_t		*treq;
 
 	rad_assert(request->packet->code > 0);
 	rad_assert(request->packet->code < FR_RADIUS_MAX_PACKET_CODE);
+
+	MEM(treq = fr_trunk_request_alloc(thread->trunk, request));
+	MEM(u = talloc_zero(treq, udp_request_t));
 
 	/*
 	 *	If configured, and we don't have any active
@@ -1706,11 +1715,13 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 	if (inst->parent->no_connection_fail &&
 	    (fr_trunk_connection_count_by_state(thread->trunk, FR_TRUNK_CONN_ACTIVE) == 0)) {
 		REDEBUG("Failing request due to 'no_connection_fail = true', and there are no active connections");
+		talloc_free(treq);
 		return RLM_MODULE_FAIL;
 	}
 
 	if (request->packet->code == FR_CODE_STATUS_SERVER) {
 		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
+		talloc_free(treq);
 		return RLM_MODULE_NOOP;
 	}
 
@@ -1719,7 +1730,6 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 	u->rcode = RLM_MODULE_FAIL;
 	u->code = request->packet->code;
 	u->synchronous = inst->parent->synchronous;
-	u->request = request;
 	u->priority = request->async->priority;	  /* cached for speed */
 	u->recv_time = request->async->recv_time; /* cached for speed */
 
@@ -1747,38 +1757,50 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 		rad_assert(u->retry.next > 0);
 	}
 
-	if (fr_trunk_request_enqueue(&u->treq, thread->trunk, request, u, u) < 0) {
-		talloc_free(u);
+	if (fr_trunk_request_enqueue(&treq, thread->trunk, request, u, u) < 0) {
+		talloc_free(treq);
 		return RLM_MODULE_FAIL;
 	}
 
+	our_rctx->treq = treq;	/* Remember for signalling purposes */
 	talloc_set_destructor(u, udp_request_free);
 
 	return RLM_MODULE_YIELD;
 }
 
 
-static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thread, void *request_io_ctx, fr_state_signal_t action)
+static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thread, void *rctx, fr_state_signal_t action)
 {
-	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_request_t	*u = talloc_get_type_abort(request_io_ctx, udp_request_t);
+	rlm_radius_udp_t	*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+	udp_rctx_t		*our_rctx = talloc_get_type_abort(rctx, udp_rctx_t);
 
-	if (action == FR_SIGNAL_CANCEL) {
-		fr_trunk_request_signal_cancel(u->treq);
+	switch (action) {
+	/*
+	 *	The request is being cancelled, tell the
+	 *	trunk so it can clean up the treq.
+	 */
+	case FR_SIGNAL_CANCEL:
+		fr_trunk_request_signal_cancel(our_rctx->treq);
 		return;
-	}
-
-	if (action != FR_SIGNAL_DUP) return;
 
 	/*
-	 *	Asychronous mode means that we do retransmission, and
-	 *	we don't rely on the retransmission from the NAS.
+	 *	Requeue the request on the same connection
+	 *      causing a "retransmission" if the request
+	 *	has already been sent out.
 	 */
-	if (!inst->parent->synchronous) return;
+	case FR_SIGNAL_DUP:
+		/*
+		 *	Asychronous mode means that we do retransmission, and
+		 *	we don't rely on the retransmission from the NAS.
+		 */
+		if (!inst->parent->synchronous) return;
+		fr_trunk_request_requeue(our_rctx->treq);
+		return;
 
-	fr_trunk_request_requeue(u->treq);
+	default:
+		return;
+	}
 }
-
 
 /** Bootstrap the module
  *
@@ -1898,8 +1920,8 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.name			= "radius_udp",
 	.inst_size		= sizeof(rlm_radius_udp_t),
 
-	.request_inst_size 	= sizeof(udp_request_t),
-	.request_inst_type	= "udp_request_t",
+	.request_inst_size 	= sizeof(udp_rctx_t),
+	.request_inst_type	= "udp_rctx_t",
 
 	.thread_inst_size	= sizeof(udp_thread_t),
 	.thread_inst_type	= "udp_thread_t",
