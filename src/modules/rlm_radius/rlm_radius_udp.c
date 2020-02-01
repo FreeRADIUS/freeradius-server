@@ -914,7 +914,8 @@ static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 }
 
 
-static int write_packet(udp_request_t *u, udp_handle_t *h, uint8_t const *packet, size_t packet_len)
+static int write_packet(fr_event_list_t *el,
+			udp_request_t *u, udp_handle_t *h, uint8_t const *packet, size_t packet_len)
 {
 	char const *action;
 	ssize_t rcode;
@@ -939,7 +940,7 @@ static int write_packet(udp_request_t *u, udp_handle_t *h, uint8_t const *packet
 		/*
 		 *	Set up a timer for retransmits.
 		 */
-		if (fr_event_timer_at(u, h->thread->el, &u->ev, u->retry.next, request_timer, u) < 0) {
+		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timer, u) < 0) {
 			RERROR("Failed inserting retransmit timeout for connection");
 			return -1;
 		}
@@ -971,7 +972,7 @@ static int write_packet(udp_request_t *u, udp_handle_t *h, uint8_t const *packet
 }
 
 
-static void request_mux(UNUSED fr_event_list_t *el,
+static void request_mux(fr_event_list_t *el,
 			fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(conn), udp_handle_t);
@@ -1000,7 +1001,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 		 *	If it's a retransmission, then just call write().
 		 */
 		if (u->packet) {
-			if (write_packet(u, h, u->packet, u->packet_len) < 0) {
+			if (write_packet(el, u, h, u->packet, u->packet_len) < 0) {
 				goto fail2;
 			}
 			continue;
@@ -1016,7 +1017,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 			goto fail;
 		}
 
-		if (write_packet(u, h, h->buffer, (h->buffer[2] << 8) | h->buffer[3]) < 0) {
+		if (write_packet(el, u, h, h->buffer, (h->buffer[2] << 8) | h->buffer[3]) < 0) {
 			goto fail2;
 		}
 
