@@ -281,6 +281,8 @@ typedef void (*fr_trunk_connection_notify_t)(fr_trunk_connection_t *tconn, fr_co
  * call `fr_trunk_request_signal_fail(treq)`, this callback may then continue
  * popping/processing other requests.
  *
+ * @param[in] el		For timer management.
+ *
  * @param[in] tconn		The trunk connection to dequeue trunk
  *      			requests from.
  * @param[in] conn		Connection to write the request to.
@@ -288,7 +290,8 @@ typedef void (*fr_trunk_connection_notify_t)(fr_trunk_connection_t *tconn, fr_co
  *				connection handle or file descriptor.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
-typedef void (*fr_trunk_request_mux_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
+typedef void (*fr_trunk_request_mux_t)(fr_event_list_t *el,
+				       fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
 
 /** Demultiplex on or more responses, reading them from a connection, decoding them, and matching them with their requests
  *

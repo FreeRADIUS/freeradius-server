@@ -477,10 +477,10 @@ do { \
 #define DO_REQUEST_MUX(_tconn) \
 do { \
 	void *prev = (_tconn)->trunk->in_handler; \
-	DEBUG4("[%" PRIu64 "] Calling request_mux(tconn=%p, conn=%p, uctx=%p)", \
-	       fr_connection_get_id((_tconn)->conn), (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
+	DEBUG4("[%" PRIu64 "] Calling request_mux(el=%p, tconn=%p, conn=%p, uctx=%p)", \
+	       fr_connection_get_id((_tconn)->conn), (_tconn)->trunk->el, (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = (void *)(_tconn)->trunk->funcs.request_mux; \
-	(_tconn)->trunk->funcs.request_mux((_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
+	(_tconn)->trunk->funcs.request_mux((_tconn)->trunk->el, (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
 	(_tconn)->trunk->in_handler = prev; \
 } while(0)
 

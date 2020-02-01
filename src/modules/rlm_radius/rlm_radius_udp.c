@@ -75,7 +75,6 @@ typedef struct {
 	fr_trunk_connection_t	*tconn;
 	fr_connection_t		*conn;
 	udp_thread_t		*thread;
-	fr_event_list_t		*el;			//!< Event list.
 } udp_connection_t;
 
 typedef struct udp_request_s udp_request_t;
@@ -492,7 +491,6 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 	c = talloc_zero(tconn, udp_connection_t);
 	if (!c) return NULL;
 
-	c->el = el;
 	c->thread = thread;
 	c->tconn = tconn;
 
@@ -946,7 +944,8 @@ static int write_packet(udp_request_t *u, udp_handle_t *h, uint8_t const *packet
 }
 
 
-static void request_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
+static void request_mux(UNUSED fr_event_list_t *el,
+			fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(conn), udp_handle_t);
 	udp_connection_t	*c = h->c;
