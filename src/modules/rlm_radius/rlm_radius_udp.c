@@ -93,10 +93,11 @@ typedef struct {
 
 	uint32_t		max_packet_size;	//!< Our max packet size. may be different from the parent.
 
-	fr_ipaddr_t		dst_ipaddr;		//!< IP of the home server. stupid 'const' issues.
-	uint16_t		dst_port;		//!< Port of the home server.
-	fr_ipaddr_t		src_ipaddr;		//!< Our source IP.
-	uint16_t	       	src_port;		//!< Our source port.
+	fr_ipaddr_t		src_ipaddr;		//!< Source IP address.  May be altered on bind
+							//!< to be the actual IP address packets will be
+							//!< sent on.  This is why we can't use the inst
+							//!< src_ipaddr field.
+	uint16_t		src_port;		//!< Source port specific to this connection.
 
 	uint8_t			*buffer;		//!< Receive buffer.
 	size_t			buflen;			//!< Receive buffer length.
@@ -219,8 +220,6 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	h->module_name = inst->parent->name;
 	h->inst = inst;
 	h->thread = c->thread;
-	h->dst_ipaddr = inst->dst_ipaddr;
-	h->dst_port = inst->dst_port;
 	h->src_ipaddr = inst->src_ipaddr;
 	h->src_port = 0;
 	h->max_packet_size = inst->max_packet_size;
@@ -233,7 +232,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	/*
 	 *	Open the outgoing socket.
 	 */
-	fd = fr_socket_client_udp(&h->src_ipaddr, &h->src_port, &h->dst_ipaddr, h->dst_port, true);
+	fd = fr_socket_client_udp(&h->src_ipaddr, &h->src_port, &inst->dst_ipaddr, inst->dst_port, true);
 	if (fd < 0) {
 		ERROR("%s - Failed opening socket", h->module_name);
 		talloc_free(h);
@@ -245,7 +244,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	 */
 	h->name = fr_asprintf(h, "connecting proto udp local %pV port %u remote %pV port %u",
 			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
-			      fr_box_ipaddr(h->dst_ipaddr), h->dst_port);
+			      fr_box_ipaddr(inst->dst_ipaddr), inst->dst_port);
 
 #ifdef SO_RCVBUF
 	if (h->inst->recv_buff_is_set) {
@@ -408,11 +407,12 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 static fr_connection_state_t conn_open(fr_event_list_t *el, void *handle, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(handle, udp_handle_t);
+	rlm_radius_udp_t const *inst = h->inst;
 
 	talloc_const_free(h->name);
 	h->name = fr_asprintf(h, "proto udp local %pV port %u remote %pV port %u",
 			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
-			      fr_box_ipaddr(h->dst_ipaddr), h->dst_port);
+			      fr_box_ipaddr(inst->dst_ipaddr), inst->dst_port);
 
 	DEBUG("%s - Connection open - %s", h->module_name, h->name);
 
