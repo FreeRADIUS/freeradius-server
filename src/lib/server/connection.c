@@ -1230,18 +1230,6 @@ int fr_connection_signal_on_fd(fr_connection_t *conn, int fd)
 	return 0;
 }
 
-/** Set the handle associated with a connection
- *
- * Will not free the previous handle.  This must be done manually.
- *
- * @param[in] conn	to set fd for.
- * @param[in] handle	to set.
- */
-void fr_connection_set_handle(fr_connection_t *conn, void *handle)
-{
-	conn->pub.h = handle;
-}
-
 /** Close a connection if it's freed
  *
  * @param[in] conn to free.

@@ -230,12 +230,6 @@ void			fr_connection_signal_halt(fr_connection_t *conn);
 int			fr_connection_signal_on_fd(fr_connection_t *conn, int fd);
 /** @} */
 
-/** @name Modify the connection handle
- * @{
- */
-void			fr_connection_set_handle(fr_connection_t *conn, void *handle);
-/** @} */
-
 /** @name Allocate a new connection
  * @{
  */
