@@ -217,7 +217,7 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 	bind_ctx->serverctrls = serverctrls;
 	bind_ctx->clientctrls = clientctrls;
 
-	el = fr_connection_get_el(c->conn);
+	el = c->conn->el;
 
 	if (ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) {
 		int ret;

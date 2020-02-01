@@ -232,7 +232,7 @@ int fr_ldap_start_tls_async(fr_ldap_connection_t *c, LDAPControl **serverctrls, 
 	tls_ctx->serverctrls = serverctrls;
 	tls_ctx->clientctrls = clientctrls;
 
-	el = fr_connection_get_el(c->conn);
+	el = c->conn->el;
 
 	if (ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) {
 		int ret;

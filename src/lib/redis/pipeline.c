@@ -429,7 +429,7 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	fr_redis_command_t	*cmd;
 	fr_redis_command_set_t	*cmds;
 	fr_connection_t		*conn = talloc_get_type_abort(ac->ev.data, fr_connection_t);
-	fr_redis_handle_t	*h = talloc_get_type_abort(fr_connection_get_handle(conn), fr_redis_handle_t);
+	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
 	redisReply		*reply = vreply;
 	/*
 	 *	First check if we should ignore the response
@@ -485,7 +485,7 @@ static void _redis_pipeline_mux(fr_trunk_connection_t *tconn, fr_connection_t *c
 	fr_trunk_request_t	*treq;
 	fr_redis_command_set_t 	*cmds;
 	fr_redis_command_t	*cmd;
-	fr_redis_handle_t	*h = talloc_get_type_abort(fr_connection_get_handle(conn), fr_redis_handle_t);
+	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
 	REQUEST			*request;
 
 	treq = fr_trunk_connection_pop_request(&request, (void *)&cmds, NULL, tconn);
@@ -523,7 +523,7 @@ static void _redis_pipeline_command_set_cancel(fr_connection_t *conn, UNUSED fr_
 					       fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	/*
 	 *	How we cancel is very different depending

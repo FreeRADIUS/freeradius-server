@@ -36,7 +36,7 @@
 static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 {
 	fr_connection_t		*conn = talloc_get_type_abort(ac->data, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	/*
 	 *	redisAsyncFree was called with a live
@@ -72,7 +72,7 @@ static void _redis_connected(redisAsyncContext const *ac, UNUSED int status)
 static void _redis_io_service_readable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_connection_t const	*conn = talloc_get_type_abort_const(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - FD %i now readble", h, fd);
 
@@ -85,7 +85,7 @@ static void _redis_io_service_readable(UNUSED fr_event_list_t *el, int fd, UNUSE
 static void _redis_io_service_writable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_connection_t const	*conn = talloc_get_type_abort_const(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - FD %i now writable", h, fd);
 
@@ -99,7 +99,7 @@ static void _redis_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED
 				      int fd_errno, void *uctx)
 {
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - FD %i errored: %s", h, fd, fr_syserror(fd_errno));
 
@@ -115,7 +115,7 @@ static void _redis_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED
 static void _redis_io_common(fr_connection_t *conn, fr_redis_handle_t *h, bool read, bool write)
 {
 	redisContext		*c = &(h->ac->c);
-	fr_event_list_t		*el = fr_connection_get_el(conn);
+	fr_event_list_t		*el = conn->el;
 
 	/*
 	 *	hiredis doesn't even attempt to dedup registration
@@ -155,7 +155,7 @@ static void _redis_io_common(fr_connection_t *conn, fr_redis_handle_t *h, bool r
 static void _redis_io_add_read(void *uctx)
 {
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	_redis_io_common(conn, h, true, h->write_set);
 }
@@ -166,7 +166,7 @@ static void _redis_io_add_read(void *uctx)
 static void _redis_io_del_read(void *uctx)
 {
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	_redis_io_common(conn, h, false, h->write_set);
 }
@@ -177,7 +177,7 @@ static void _redis_io_del_read(void *uctx)
 static void _redis_io_add_write(void *uctx)
 {
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	_redis_io_common(conn, h, h->read_set, true);
 }
@@ -188,7 +188,7 @@ static void _redis_io_add_write(void *uctx)
 static void _redis_io_del_write(void *uctx)
 {
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	_redis_io_common(conn, h, h->read_set, false);
 }
@@ -200,7 +200,7 @@ static void _redis_io_del_write(void *uctx)
 static void _redis_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_connection_t const	*conn = talloc_get_type_abort_const(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - Timeout", h);
 
@@ -213,14 +213,14 @@ static void _redis_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED f
 static void _redis_io_timer_modify(void *uctx, struct timeval tv)
 {
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 	fr_time_delta_t		timeout;
 
 	timeout = fr_time_delta_from_timeval(&tv);
 
 	DEBUG4("redis handle %p - Timeout in %pV seconds", h, fr_box_time_delta(timeout));
 
-	if (fr_event_timer_in(h, fr_connection_get_el(conn), &h->timer,
+	if (fr_event_timer_in(h, conn->el, &h->timer,
 			      timeout, _redis_io_service_timer_expired, conn) < 0) {
 		PERROR("redis timeout %p - Failed adding timeout", h);
 	}
@@ -248,7 +248,7 @@ static void _redis_io_timer_modify(void *uctx, struct timeval tv)
 static void _redis_io_free(void *uctx)
 {
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - Freed", h);
 
@@ -457,6 +457,6 @@ fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
  */
 redisAsyncContext *fr_redis_connection_get_async_ctx(fr_connection_t *conn)
 {
-	fr_redis_handle_t	*h = fr_connection_get_handle(conn);
+	fr_redis_handle_t	*h = conn->h;
 	return h->ac;
 }

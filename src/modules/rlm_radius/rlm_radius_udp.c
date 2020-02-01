@@ -560,7 +560,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_connection_t		*conn = fr_trunk_connection_get_connection(tconn);
-	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(conn), udp_handle_t);
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
 	ERROR("%s - Connection %s failed - %s", h->inst->parent->name, h->name, fr_syserror(fd_errno));
 
@@ -571,7 +571,7 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 			       fr_event_list_t *el,
 			       fr_trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(conn), udp_handle_t);
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 	fr_event_fd_cb_t	read_fn = NULL;
 	fr_event_fd_cb_t	write_fn = NULL;
 
@@ -877,7 +877,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	udp_request_t		*u = talloc_get_type_abort(uctx, udp_request_t);
-	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
+	udp_handle_t		*h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
 	REQUEST			*request = u->request;
 	fr_retry_state_t	state;
 
@@ -975,14 +975,17 @@ static int write_packet(fr_event_list_t *el,
 static void request_mux(fr_event_list_t *el,
 			fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(conn), udp_handle_t);
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 	udp_connection_t	*c = h->c;
 	rlm_radius_udp_t const	*inst = c->thread->inst;
 	fr_trunk_request_t	*treq;
 	REQUEST			*request;
 	udp_request_t		*u;
 
-	while ((treq = fr_trunk_connection_pop_request(&request, (void **) &u, (void **) &u, tconn)) != NULL) {
+	while ((treq = fr_trunk_connection_pop_request(tconn)) != NULL) {
+		u = treq->preq;
+		request = treq->request;
+
 		/*
 		 *	If it's an initial packet, allocate the ID.
 		 */
@@ -1422,7 +1425,7 @@ decode:
 
 static void request_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(conn), udp_handle_t);
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 	udp_connection_t	*c = h->c;
 	REQUEST			*request;
 	udp_request_t		*u;
@@ -1451,7 +1454,7 @@ static void request_cancel(UNUSED fr_connection_t *conn, fr_trunk_request_t *tre
 			   fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
 	udp_request_t	*u = talloc_get_type_abort(preq, udp_request_t);
-	udp_handle_t	*h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
+	udp_handle_t	*h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
 
 	/*
 	 *	If we've been signaled to cancel, then ACK the cancel.
@@ -1501,7 +1504,7 @@ static void request_cancel(UNUSED fr_connection_t *conn, fr_trunk_request_t *tre
 static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	udp_request_t		*u = talloc_get_type_abort(uctx, udp_request_t);
-	udp_handle_t	 	*h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
+	udp_handle_t	 	*h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
 	fr_retry_state_t	state;
 	ssize_t			rcode;
 
@@ -1589,7 +1592,7 @@ static void handle_zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx
 static void request_fail(UNUSED REQUEST *request, void *preq, UNUSED void *rctx, UNUSED void *uctx)
 {
 	udp_request_t	*u = talloc_get_type_abort(preq, udp_request_t);
-	udp_handle_t	 *h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
+	udp_handle_t	 *h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
 	fr_time_t now, when;
 
 	u->rcode = RLM_MODULE_FAIL;
@@ -1673,7 +1676,7 @@ static int udp_request_free(udp_request_t *u)
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
-	h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
+	h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
 
 	/*
 	 *	The module is doing async proxying, we don't need to

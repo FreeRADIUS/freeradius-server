@@ -23,9 +23,12 @@
  * @copyright 2017-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #define LOG_PREFIX "%s - [%" PRIu64 "] "
-#define LOG_PREFIX_ARGS conn->log_prefix, conn->id
+#define LOG_PREFIX_ARGS conn->pub.log_prefix, conn->pub.id
 
+typedef struct fr_connection_s fr_connection_t;
+#define FR_CONNECTION_NO_TYPEDEF 1
 #include <freeradius-devel/server/connection.h>
+
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/cond_eval.h>
@@ -65,8 +68,9 @@ typedef struct {
 	void			*uctx;			//!< User data to pass to the function.
 } fr_connection_watch_entry_t;
 
-struct fr_conn {
-	uint64_t		id;			//!< Unique identifier for the connection.
+struct fr_connection_s {
+	struct fr_connection_pub_s pub;			//!< Public fields
+
 	fr_connection_state_t	state;			//!< Current connection state.
 
 	uint64_t		reconnected;		//!< How many times we've attempted to establish or
@@ -74,9 +78,6 @@ struct fr_conn {
 	uint64_t		timed_out;		//!< How many times has this connection timed out when
 							///< connecting.
 
-	void			*h;			//!< Connection handle
-	fr_event_list_t		*el;			//!< Event list for timers and I/O events.
-	char const		*log_prefix;		//!< Prefix to add to log messages.
 	void			*uctx;			//!< User data.
 
 	void			*in_handler;		//!< Connection is currently in a callback.
@@ -115,7 +116,7 @@ do { \
 #define BAD_STATE_TRANSITION(_new) \
 do { \
 	if (!fr_cond_assert_msg(0, "Connection %" PRIu64 " invalid transition %s -> %s", \
-				conn->id, \
+				conn->pub.id, \
 				fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"), \
 				fr_table_str_by_value(fr_connection_states, _new, "<INVALID>"))) return; \
 } while (0)
@@ -446,46 +447,6 @@ uint64_t fr_connection_get_num_timed_out(fr_connection_t const *conn)
 	return conn->timed_out;
 }
 
-/** Get the event list associated with the connection
- *
- * @param[in] conn	to retrieve the event list from.
- * @return the event list associated with the connection.
- */
-fr_event_list_t *fr_connection_get_el(fr_connection_t const *conn)
-{
-	return conn->el;
-}
-
-/** Get the connection id  Useful for debugging messages
- *
- * @param[in] conn	to retrieve number from.
- * @return the unique connection id.
- */
-uint64_t fr_connection_get_id(fr_connection_t const *conn)
-{
-	return conn->id;
-}
-
-/** Get the log_prefix, useful for debugging messages
- *
- * @param[in] conn	to retrieve number from.
- * @return the log prefix set for the connection.
- */
-char const *fr_connection_get_log_prefix(fr_connection_t const *conn)
-{
-	return conn->log_prefix;
-}
-
-/** Get the handle associated with a connection
- *
- * @param[in] conn	to retrieve fd from.
- * @return the active connection handle.
- */
-void *fr_connection_get_handle(fr_connection_t const *conn)
-{
-	return conn->h;
-}
-
 /** The requisite period of time has passed, try and re-open the connection
  *
  * @param[in] el	the time event ocurred on.
@@ -536,8 +497,8 @@ static void connection_state_closed_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	if (conn->close && !conn->is_closed) {
 		HANDLER_BEGIN(conn, conn->close);
-		DEBUG4("Calling close(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
-		conn->close(conn->el, conn->h, conn->uctx);
+		DEBUG4("Calling close(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
+		conn->close(conn->pub.el, conn->pub.h, conn->uctx);
 		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
 		HANDLER_END(conn);
 	} else {
@@ -582,8 +543,8 @@ static void connection_state_shutdown_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	{
 		HANDLER_BEGIN(conn, conn->shutdown);
-		DEBUG4("Calling shutdown(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
-		ret = conn->shutdown(conn->el, conn->h, conn->uctx);
+		DEBUG4("Calling shutdown(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
+		ret = conn->shutdown(conn->pub.el, conn->pub.h, conn->uctx);
 		HANDLER_END(conn);
 	}
 	switch (ret) {
@@ -606,7 +567,7 @@ static void connection_state_shutdown_enter(fr_connection_t *conn)
 	 *	timeout period.
 	 */
 	if (conn->connection_timeout) {
-		if (fr_event_timer_in(conn, conn->el, &conn->connection_timer,
+		if (fr_event_timer_in(conn, conn->pub.el, &conn->connection_timer,
 				      conn->connection_timeout, _connection_timeout, conn) < 0) {
 			/*
 			 *	Can happen when the event loop is exiting
@@ -659,9 +620,9 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	if (conn->failed) {
 		HANDLER_BEGIN(conn, conn->failed);
-		DEBUG4("Calling failed(h=%p, state=%s, uctx=%p)", conn->h,
+		DEBUG4("Calling failed(h=%p, state=%s, uctx=%p)", conn->pub.h,
 		       fr_table_str_by_value(fr_connection_states, prev, "<INVALID>"), conn->uctx);
-		ret = conn->failed(conn->h, prev, conn->uctx);
+		ret = conn->failed(conn->pub.h, prev, conn->uctx);
 		HANDLER_END(conn);
 	}
 	WATCH_POST(conn);
@@ -714,7 +675,7 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_CONNECTING:			/* Failed during connecting */
 		if (conn->reconnection_delay) {
 			DEBUG2("Delaying reconnection by %pVs", fr_box_time_delta(conn->reconnection_delay));
-			if (fr_event_timer_in(conn, conn->el, &conn->reconnection_timer,
+			if (fr_event_timer_in(conn, conn->pub.el, &conn->reconnection_timer,
 					      conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
 				/*
 				 *	Can happen when the event loop is exiting
@@ -808,8 +769,8 @@ static void connection_state_connected_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	if (conn->open) {
 		HANDLER_BEGIN(conn, conn->open);
-		DEBUG4("Calling open(el=%p, h=%p, uctx=%p)", conn->el, conn->h, conn->uctx);
-		ret = conn->open(conn->el, conn->h, conn->uctx);
+		DEBUG4("Calling open(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
+		ret = conn->open(conn->pub.el, conn->pub.h, conn->uctx);
 		HANDLER_END(conn);
 	} else {
 		ret = FR_CONNECTION_STATE_CONNECTED;
@@ -865,7 +826,7 @@ static void connection_state_connecting_enter(fr_connection_t *conn)
 	 *	set, then add the timer.
 	 */
 	if (conn->connection_timeout) {
-		if (fr_event_timer_in(conn, conn->el, &conn->connection_timer,
+		if (fr_event_timer_in(conn, conn->pub.el, &conn->connection_timer,
 				      conn->connection_timeout, _connection_timeout, conn) < 0) {
 			PERROR("Failed setting connection_timeout event, failing connection");
 
@@ -924,8 +885,8 @@ static void connection_state_init_enter(fr_connection_t *conn)
 	WATCH_PRE(conn);
 	if (conn->init) {
 		HANDLER_BEGIN(conn, conn->init);
-		DEBUG4("Calling init(h_out=%p, conn=%p, uctx=%p)", &conn->h, conn, conn->uctx);
-		ret = conn->init(&conn->h, conn, conn->uctx);
+		DEBUG4("Calling init(h_out=%p, conn=%p, uctx=%p)", &conn->pub.h, conn, conn->uctx);
+		ret = conn->init(&conn->pub.h, conn, conn->uctx);
 		HANDLER_END(conn);
 	} else {
 		ret = FR_CONNECTION_STATE_CONNECTING;
@@ -1217,7 +1178,7 @@ static void _connection_signal_on_fd_cleanup(fr_connection_t *conn, fr_connectio
 		break;
 	}
 
-	fr_event_fd_delete(conn->el, fd, FR_EVENT_FILTER_IO);
+	fr_event_fd_delete(conn->pub.el, fd, FR_EVENT_FILTER_IO);
 	talloc_free(uctx);
 }
 
@@ -1238,13 +1199,13 @@ int fr_connection_signal_on_fd(fr_connection_t *conn, int fd)
 	 *	If connection becomes writable we
 	 *	assume it's open.
 	 */
-	if (fr_event_fd_insert(conn, conn->el, fd,
+	if (fr_event_fd_insert(conn, conn->pub.el, fd,
 			       NULL,
 			       _connection_writable,
 			       _connection_error,
 			       conn) < 0) {
 		PERROR("Failed inserting fd (%u) into event loop %p",
-		       fd, conn->el);
+		       fd, conn->pub.el);
 		connection_state_failed_enter(conn);
 		return -1;
 	}
@@ -1278,7 +1239,7 @@ int fr_connection_signal_on_fd(fr_connection_t *conn, int fd)
  */
 void fr_connection_set_handle(fr_connection_t *conn, void *handle)
 {
-	conn->h = handle;
+	conn->pub.h = handle;
 }
 
 /** Close a connection if it's freed
@@ -1359,10 +1320,10 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	if (!conn) return NULL;
 	talloc_set_destructor(conn, _connection_free);
 
-	conn->id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed);
+	conn->pub.id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed);
 	conn->state = FR_CONNECTION_STATE_HALTED;
-	conn->el = el;
-	conn->h = NULL;
+	conn->pub.el = el;
+	conn->pub.h = NULL;
 	conn->reconnection_delay = conf->reconnection_delay;
 	conn->connection_timeout = conf->connection_timeout;
 	conn->init = funcs->init;
@@ -1371,7 +1332,7 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	conn->failed = funcs->failed;
 	conn->shutdown = funcs->shutdown;
 	conn->is_closed = true;		/* Starts closed */
-	conn->log_prefix = talloc_typed_strdup(conn, log_prefix);
+	conn->pub.log_prefix = talloc_typed_strdup(conn, log_prefix);
 	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
 
 	for (i = 0; i < NUM_ELEMENTS(conn->watch_pre); i++) {

@@ -316,7 +316,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
  */
 static void logtee_fd_idle(rlm_logtee_thread_t *t)
 {
-	int fd = *((int *)fr_connection_get_handle(t->conn));
+	int fd = *((int *)t->conn->h);
 
 	DEBUG3("Marking socket (%i) as idle", fd);
 	if (fr_event_fd_insert(t->conn, t->el, fd,
@@ -336,7 +336,7 @@ static void logtee_fd_idle(rlm_logtee_thread_t *t)
  */
 static void logtee_fd_active(rlm_logtee_thread_t *t)
 {
-	int fd = *((int *)fr_connection_get_handle(t->conn));
+	int fd = *((int *)t->conn->h);
 
 	DEBUG3("Marking socket (%i) as active - Draining requests", fd);
 	if (fr_event_fd_insert(t->conn, t->el, fd,

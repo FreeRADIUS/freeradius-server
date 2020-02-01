@@ -34,7 +34,12 @@ RCSIDH(server_trunk_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_trunk_request_s fr_trunk_request_t;
+/** Allow public and private versions of the same structure
+ *
+ */
+#ifndef TRUNK_REQUEST_NO_TYPEDEF
+typedef struct fr_trunk_request_pub_s fr_trunk_request_t;
+#endif
 typedef struct fr_trunk_connection_s fr_trunk_connection_t;
 typedef struct fr_trunk_s fr_trunk_t;
 
@@ -94,6 +99,26 @@ typedef struct {
 							///< does not need to be called, and requests will be
 							///< enqueued as soon as they're received.
 } fr_trunk_conf_t;
+
+/** Public fields for the trunk request
+ *
+ * This saves the overhead of using accessors for commonly used fields in trunk
+ * requests.
+ *
+ * Though these fields are public, they should _NOT_ be modified by clients of
+ * the trunk API.
+ */
+struct fr_trunk_request_pub_s {
+	fr_trunk_t		*trunk;			//!< Trunk this request belongs to.
+
+	fr_trunk_connection_t	*tconn;			//!< Connection this request belongs to.
+
+	void			*preq;			//!< Data for the muxer to write to the connection.
+
+	void			*rctx;			//!< Resume ctx of the module.
+
+	REQUEST			*request;		//!< The request that we're writing the data on behalf of.
+};
 
 /** Reasons for a request being cancelled
  *
@@ -231,7 +256,7 @@ typedef fr_connection_t *(*fr_trunk_connection_alloc_t)(fr_trunk_connection_t *t
  *
  * @param[in] tconn		That should be notified of I/O events.
  * @param[in] conn		The #fr_connection_t bound to the tconn.
- *				Use #fr_connection_get_handle to access the
+ *				Use conn->h to access the
  *				connection handle or file descriptor.
  * @param[in] el		to insert I/O events into.
  * @param[in] notify_on		I/O events to signal the trunk connection on.
@@ -286,7 +311,7 @@ typedef void (*fr_trunk_connection_notify_t)(fr_trunk_connection_t *tconn, fr_co
  * @param[in] tconn		The trunk connection to dequeue trunk
  *      			requests from.
  * @param[in] conn		Connection to write the request to.
- *				Use #fr_connection_get_handle to access the
+ *				Use conn->h to access the
  *				connection handle or file descriptor.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
@@ -319,7 +344,7 @@ typedef void (*fr_trunk_request_mux_t)(fr_event_list_t *el,
  *
  * @param[in] tconn		The trunk connection.
  * @param[in] conn		Connection to read the request from.
- *				Use #fr_connection_get_handle to access the
+ *				Use conn->h to access the
  *				connection handle or file descriptor.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
@@ -350,7 +375,7 @@ typedef void (*fr_trunk_request_demux_t)(fr_trunk_connection_t *tconn, fr_connec
  * @param[in] tconn		The trunk connection used to dequeue
  *				cancellation requests.
  * @param[in] conn		Connection to write the request to.
- *				Use #fr_connection_get_handle to access the
+ *				Use conn->h to access the
  *				connection handle or file descriptor.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
@@ -529,10 +554,9 @@ int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQU
 /** @name Dequeue protocol requests and cancellations
  * @{
  */
-fr_trunk_request_t *fr_trunk_connection_pop_cancellation(void **preq, fr_trunk_connection_t *tconn);
+fr_trunk_request_t *fr_trunk_connection_pop_cancellation(fr_trunk_connection_t *tconn);
 
-fr_trunk_request_t *fr_trunk_connection_pop_request(REQUEST **request, void **preq, void **rctx,
-						    fr_trunk_connection_t *tconn);
+fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn);
 /** @} */
 
 /** @name Connection state signalling

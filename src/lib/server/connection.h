@@ -33,7 +33,24 @@ extern "C" {
 
 #include <talloc.h>
 
-typedef struct fr_conn fr_connection_t;
+#ifndef FR_CONNECTION_NO_TYPEDEF
+typedef struct fr_connection_pub_s fr_connection_t; /* We use the private version of the fr_connection_t */
+#endif
+
+/** Public fields for the connection
+ *
+ * This saves the overhead of using accessors for commonly used fields in
+ * connections.
+ *
+ * Though these fields are public, they should _NOT_ be modified by clients of
+ * the connection API.
+ */
+struct fr_connection_pub_s {
+	uint64_t		id;		//!< Unique identifier for the connection.
+	void			*h;		//!< Connection handle
+	fr_event_list_t		*el;		//!< Event list for timers and I/O events.
+	char const		*log_prefix;	//!< Prefix to add to log messages.
+};
 
 typedef enum {
 	FR_CONNECTION_STATE_HALTED = 0,		//!< The connection is in a halted stat.  It does not have
@@ -192,19 +209,6 @@ uint64_t		fr_connection_get_num_reconnected(fr_connection_t const *conn);
 
 uint64_t		fr_connection_get_num_timed_out(fr_connection_t const *conn);
 /** @} */
-
-/** @name Retrieve read only values from the connection
- * @{
- */
-fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
-
-uint64_t 		fr_connection_get_id(fr_connection_t const *conn);
-
-char const		*fr_connection_get_log_prefix(fr_connection_t const *conn);
-
-void			*fr_connection_get_handle(fr_connection_t const *conn);
-/** @} */
-
 
 /** @name Signal the connection to change states
  * @{

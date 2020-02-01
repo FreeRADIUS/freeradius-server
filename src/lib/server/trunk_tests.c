@@ -27,21 +27,20 @@ typedef struct {
 static void test_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	fr_trunk_request_t	*treq;
-	void			*preq;
 	size_t			count = 0;
-	int			fd = *(talloc_get_type_abort(fr_connection_get_handle(conn), int));
+	int			fd = *(talloc_get_type_abort(conn->h, int));
 	ssize_t			slen;
 
-	while ((treq = fr_trunk_connection_pop_request(NULL, &preq, NULL, tconn))) {
-		test_proto_request_t	*our_preq = preq;
+	while ((treq = fr_trunk_connection_pop_request(tconn))) {
+		test_proto_request_t	*preq = treq->pub.preq;
 		count++;
 
 		/*
 		 *	Simulate a partial write
 		 */
-		if (our_preq && our_preq->signal_partial) {
+		if (preq && preq->signal_partial) {
 			fr_trunk_request_signal_partial(treq);
-			our_preq->signal_partial = false;
+			preq->signal_partial = false;
 			break;
 		}
 
@@ -60,24 +59,23 @@ static void test_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, f
 static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	fr_trunk_request_t	*treq;
-	void			*preq;
 	size_t			count = 0;
-	int			fd = *(talloc_get_type_abort(fr_connection_get_handle(conn), int));
+	int			fd = *(talloc_get_type_abort(conn->h, int));
 	ssize_t			slen;
 
 	/*
 	 *	For cancellation we just do
 	 */
-	while ((treq = fr_trunk_connection_pop_cancellation(&preq, tconn))) {
-		test_proto_request_t	*our_preq = preq;
+	while ((treq = fr_trunk_connection_pop_cancellation(tconn))) {
+		test_proto_request_t	*preq = treq->pub.preq;
 		count++;
 
 		/*
 		 *	Simulate a partial cancel write
 		 */
-		if (our_preq && our_preq->signal_cancel_partial) {
+		if (preq && preq->signal_cancel_partial) {
 			fr_trunk_request_signal_cancel_partial(treq);
-			our_preq->signal_cancel_partial = false;
+			preq->signal_cancel_partial = false;
 			break;
 		}
 
@@ -98,7 +96,7 @@ static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 
 static void test_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
-	int			fd = *(talloc_get_type_abort(fr_connection_get_handle(conn), int));
+	int			fd = *(talloc_get_type_abort(conn->h, int));
 	test_proto_request_t	*preq;
 	ssize_t			slen;
 
@@ -159,7 +157,7 @@ static void _conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 			 fr_event_list_t *el,
 			 fr_trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
-	int fd = *(talloc_get_type_abort(fr_connection_get_handle(conn), int));
+	int fd = *(talloc_get_type_abort(conn->h, int));
 
 	switch (notify_on) {
 	case FR_TRUNK_CONN_EVENT_NONE:
@@ -1096,7 +1094,7 @@ static void test_requeue_on_reconnect(void)
 	fr_trunk_request_enqueue(&treq, trunk, NULL, preq, NULL);
 	preq->treq = treq;
 
-	tconn = treq->tconn;	/* Store the conn the request was assigned to */
+	tconn = treq->pub.tconn;	/* Store the conn the request was assigned to */
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
 
 	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
@@ -1104,15 +1102,15 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Should be reassigned to the other connection
 	 */
-	TEST_CHECK(tconn != treq->tconn);
+	TEST_CHECK(tconn != treq->pub.tconn);
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
 
 	/*
 	 *	Should be reassigned to the backlog
 	 */
-	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+	fr_trunk_connection_signal_reconnect(treq->pub.tconn, FR_CONNECTION_FAILED);
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_BACKLOG) == 1);
-	TEST_CHECK(!treq->tconn);
+	TEST_CHECK(!treq->pub.tconn);
 
 	TEST_CASE("cancel on reconnect - FR_TRUNK_REQUEST_PARTIAL");
 
@@ -1128,7 +1126,7 @@ static void test_requeue_on_reconnect(void)
 	 *	connections.
 	 */
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
-	TEST_CHECK(treq->tconn != NULL);
+	TEST_CHECK(treq->pub.tconn != NULL);
 
 	test_time_base += NSEC * 1;
 	fr_event_corral(el, test_time_base, false);	/* Send the request (partially) */
@@ -1142,8 +1140,8 @@ static void test_requeue_on_reconnect(void)
 	 *	preq should pass through the cancel function,
 	 *	then be re-assigned.
 	 */
-	tconn = treq->tconn;
-	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+	tconn = treq->pub.tconn;
+	fr_trunk_connection_signal_reconnect(treq->pub.tconn, FR_CONNECTION_FAILED);
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);
@@ -1153,7 +1151,7 @@ static void test_requeue_on_reconnect(void)
 	preq->cancelled = false;		/* Reset */
 
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
-	TEST_CHECK(tconn != treq->tconn);	/* Ensure it moved */
+	TEST_CHECK(tconn != treq->pub.tconn);	/* Ensure it moved */
 
 	TEST_CASE("cancel on reconnect - FR_TRUNK_REQUEST_SENT");
 
@@ -1165,8 +1163,8 @@ static void test_requeue_on_reconnect(void)
 
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_SENT) == 1);
 
-	tconn = treq->tconn;
-	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+	tconn = treq->pub.tconn;
+	fr_trunk_connection_signal_reconnect(treq->pub.tconn, FR_CONNECTION_FAILED);
 
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_PENDING) == 1);
 
@@ -1177,7 +1175,7 @@ static void test_requeue_on_reconnect(void)
 	test_time_base += NSEC * 1;
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
-	TEST_CHECK(tconn != treq->tconn);	/* Ensure it moved */
+	TEST_CHECK(tconn != treq->pub.tconn);	/* Ensure it moved */
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);
@@ -1199,7 +1197,7 @@ static void test_requeue_on_reconnect(void)
 	 *	freed instead of being moved between
 	 *	connections.
 	 */
-	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+	fr_trunk_connection_signal_reconnect(treq->pub.tconn, FR_CONNECTION_FAILED);
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);
@@ -1253,7 +1251,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Trigger a reconnection
 	 */
-	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+	fr_trunk_connection_signal_reconnect(treq->pub.tconn, FR_CONNECTION_FAILED);
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);
@@ -1306,7 +1304,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Trigger a reconnection
 	 */
-	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+	fr_trunk_connection_signal_reconnect(treq->pub.tconn, FR_CONNECTION_FAILED);
 
 	test_time_base += NSEC * 1;
 	fr_event_corral(el, test_time_base, false);
