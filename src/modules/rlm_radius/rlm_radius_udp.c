@@ -522,7 +522,7 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
  * @param[in] flags	describing the read event.
  * @param[in] uctx	The trunk connection handle (tconn).
  */
-static void udp_conn_readble(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 
