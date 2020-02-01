@@ -135,7 +135,7 @@ struct udp_request_s {
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 
-	udp_handle_t		*h;			//!< The outbound connection
+	udp_connection_t       	*c;			//!< The outbound connection
 	rlm_radius_request_t	*rr;			//!< ID tracking, resend count, etc.
 	fr_event_timer_t const	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
@@ -382,7 +382,7 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	u->request = request;
 	u->code = inst->parent->status_check;
 	request->packet->code = u->code;
-	u->h = h;
+	u->c = h->c;		/* h can mutate during the lifetime of c */
 
 	/*
 	 *	Reserve a permanent ID for the packet.  This
@@ -611,9 +611,8 @@ static int8_t request_prioritise(void const *one, void const *two)
 	return (a->recv_time > b->recv_time) - (a->recv_time < b->recv_time);
 }
 
-static int encode(REQUEST *request, udp_request_t *u)
+static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 {
-	udp_handle_t		*h = u->h;
 	rlm_radius_udp_t const	*inst = h->inst;
 	ssize_t			packet_len;
 	uint8_t			*msg = NULL;
@@ -853,7 +852,7 @@ static int encode(REQUEST *request, udp_request_t *u)
 static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	udp_request_t		*u = talloc_get_type_abort(uctx, udp_request_t);
-	udp_handle_t		*h = u->h;
+	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
 	REQUEST			*request = u->request;
 	fr_retry_state_t	state;
 
@@ -870,7 +869,7 @@ static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 		(void) rr_track_delete(h->id, u->rr);
 		u->rr = NULL;
 		u->rcode = RLM_MODULE_FAIL;
-		u->h = NULL;
+		u->c = NULL;
 		u->treq = NULL;
 		fr_trunk_request_signal_complete(u->treq);
 		return;
@@ -890,12 +889,11 @@ static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 }
 
 
-static int write_packet(udp_request_t *u, uint8_t const *packet, size_t packet_len)
+static int write_packet(udp_request_t *u, udp_handle_t *h, uint8_t const *packet, size_t packet_len)
 {
 	char const *action;
 	ssize_t rcode;
 	REQUEST *request = u->request;
-	udp_handle_t *h = u->h;
 	rlm_radius_udp_t const *inst = h->inst;
 
 	/*
@@ -940,7 +938,7 @@ static int write_packet(udp_request_t *u, uint8_t const *packet, size_t packet_l
 	if (rcode < 0) {
 		// @todo - handle EWOULDBLOCK
 		REDEBUG("Failed writing packet to %s - %s",
-			u->h->name, fr_syserror(errno));
+			h->name, fr_syserror(errno));
 		return -1;
 	}
 
@@ -965,18 +963,18 @@ static void request_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNU
 			u->rr = rr_track_alloc(h->id, request, u->code, u);
 			if (!u->rr) {
 			fail:
+				u->c = NULL;
 				fr_trunk_request_signal_fail(treq);
 				continue;
 			}
 		}
 
-		u->h = h;
 
 		/*
 		 *	If it's a retransmission, then just call write().
 		 */
 		if (u->packet) {
-			if (write_packet(u, u->packet, u->packet_len) < 0) {
+			if (write_packet(u, h, u->packet, u->packet_len) < 0) {
 				goto fail2;
 			}
 			continue;
@@ -985,14 +983,14 @@ static void request_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNU
 		/*
 		 *	Encode the request.
 		 */
-		if (encode(request, u) < 0) {
+		if (encode(request, u, h) < 0) {
 		fail2:
 			(void) rr_track_delete(h->id, u->rr);
 			u->rr = NULL;
 			goto fail;
 		}
 
-		if (write_packet(u, h->buffer, (h->buffer[2] << 8) | h->buffer[3]) < 0) {
+		if (write_packet(u, h, h->buffer, (h->buffer[2] << 8) | h->buffer[3]) < 0) {
 			goto fail2;
 		}
 
@@ -1021,7 +1019,7 @@ static void request_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNU
 		 *	this request again.
 		 */
 		u->treq = treq;
-		u->h = h;
+		u->c = c;
 
 		// @todo - if there are no free IDs, call fr_trunk_connection_requests_requeue()
 	}
@@ -1066,12 +1064,11 @@ static rlm_rcode_t code2rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 /** Deal with Protocol-Error replies, and possible negotiation
  *
  */
-static void protocol_error_reply(udp_request_t *u)
+static void protocol_error_reply(udp_request_t *u, udp_handle_t *h)
 {
 	bool	  	error_601 = false;
 	uint32_t  	response_length = 0;
 	uint8_t const	*attr, *end;
-	udp_handle_t	*h = u->h;
 
 	end = h->buffer + ((h->buffer[2] << 8) | h->buffer[3]);
 
@@ -1182,10 +1179,8 @@ static void protocol_error_reply(udp_request_t *u)
 /** Deal with replies replies to status checks and possible negotiation
  *
  */
-static void status_check_reply(udp_request_t *u)
+static void status_check_reply(udp_request_t *u, udp_handle_t *h)
 {
-	udp_handle_t *h = u->h;
-
 	if (u->num_replies < 3) return;
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
@@ -1196,7 +1191,7 @@ static void status_check_reply(udp_request_t *u)
 	 *	@todo - do other negotiation and signaling.
 	 */
 	if (h->buffer[0] == FR_CODE_PROTOCOL_ERROR) {
-		protocol_error_reply(u);
+		protocol_error_reply(u, h);
 	}
 }
 
@@ -1284,8 +1279,8 @@ drain:
 	 *	expose Status-Server to the admins.  It's only used by
 	 *	this module for internal signalling.
 	 */
-	if (u == u->h->status_u) {
-		status_check_reply(u);
+	if (u == h->status_u) {
+		status_check_reply(u, h);
 		return NULL;
 	}
 
@@ -1310,7 +1305,7 @@ drain:
 	 *	packet.
 	 */
 	if (code == FR_CODE_PROTOCOL_ERROR) {
-		protocol_error_reply(u);
+		protocol_error_reply(u, h);
 		goto decode;
 	}
 
@@ -1428,8 +1423,8 @@ static void request_complete(REQUEST *request, UNUSED void *preq, UNUSED void *r
 static void request_cancel(UNUSED fr_connection_t *conn, fr_trunk_request_t *treq, void *preq,
 			   fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
-	udp_request_t *u = talloc_get_type_abort(preq, udp_request_t);
-	udp_handle_t *h = u->h;
+	udp_request_t	*u = talloc_get_type_abort(preq, udp_request_t);
+	udp_handle_t	 *h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
 
 	/*
 	 *	If we've been signaled to cancel, then ACK the cancel.
@@ -1468,7 +1463,7 @@ static void request_cancel(UNUSED fr_connection_t *conn, fr_trunk_request_t *tre
 		if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
 		u->rcode = RLM_MODULE_FAIL;
-		u->h = NULL;
+		u->c = NULL;
 		u->treq = NULL;
 		u->num_replies = 0;
 		break;
@@ -1502,7 +1497,7 @@ static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UN
 static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	udp_request_t		*u = talloc_get_type_abort(uctx, udp_request_t);
-	udp_handle_t		*h = u->h;
+	udp_handle_t	 	*h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
 	fr_retry_state_t	state;
 	ssize_t			rcode;
 
@@ -1563,7 +1558,7 @@ static void handle_zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx
 	u->num_replies = 0;
 	u->recv_time = u->retry.start;
 
-	if (encode(u->request, u) < 0) {
+	if (encode(u->request, u, h) < 0) {
 		DEBUG("Failed encoding status check packet for connection %s", h->name);
 		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 		return;
@@ -1616,13 +1611,17 @@ static void check_for_zombie(udp_handle_t *h)
  */
 static int udp_request_free(udp_request_t *u)
 {
+	udp_handle_t *h;
+
 	/*
 	 *	We don't have a connection, so we can't update any of
 	 *	the connection timers or states.
 	 */
-	if (!u->h) return 0;
+	if (!u->c) return 0;
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+
+	h = talloc_get_type_abort(fr_connection_get_handle(u->c->conn), udp_handle_t);
 
 	/*
 	 *	The module is doing async proxying, we don't need to
@@ -1630,12 +1629,12 @@ static int udp_request_free(udp_request_t *u)
 	 */
 	if (!u->synchronous) return 0;
 
-	if (u->rr) (void) rr_track_delete(u->h->id, u->rr);
+	if (u->rr) (void) rr_track_delete(h->id, u->rr);
 
 	/*
 	 *	Don't perform zombie checks on Status-Server
 	 */
-	if (u == u->h->status_u) return 0;
+	if (u == h->status_u) return 0;
 
 	/*
 	 *	The module is doing synchronous proxying.  i.e. where
@@ -1644,7 +1643,7 @@ static int udp_request_free(udp_request_t *u)
 	 *	connections when the request is finished.  But we do
 	 *	that only if we don't already have a zombie timer.
 	 */
-	if (!u->h->zombie_ev) check_for_zombie(u->h);
+	if (!h->zombie_ev) check_for_zombie(h);
 
 	return 0;
 }
@@ -1675,7 +1674,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 	}
 
 	u->rr = NULL;
-	u->h = NULL;
+	u->c = NULL;
 	u->rcode = RLM_MODULE_FAIL;
 	u->code = request->packet->code;
 	u->synchronous = inst->parent->synchronous;
