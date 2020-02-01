@@ -484,46 +484,46 @@ typedef struct {
 /** @name Statistics
  * @{
  */
-uint16_t	fr_trunk_connection_count_by_state(fr_trunk_t *trunk, int conn_state);
+uint16_t	fr_trunk_connection_count_by_state(fr_trunk_t *trunk, int conn_state) CC_HINT(nonnull);
 
-uint32_t	fr_trunk_request_count_by_connection(fr_trunk_connection_t const *tconn, int req_state);
+uint32_t	fr_trunk_request_count_by_connection(fr_trunk_connection_t const *tconn, int req_state) CC_HINT(nonnull);
 
-uint64_t	fr_trunk_request_count_by_state(fr_trunk_t *trunk, int conn_state, int req_state);
+uint64_t	fr_trunk_request_count_by_state(fr_trunk_t *trunk, int conn_state, int req_state) CC_HINT(nonnull);
 /** @} */
 
 /** @name Request state signalling
  * @{
  */
-void		fr_trunk_request_signal_partial(fr_trunk_request_t *treq);
+void		fr_trunk_request_signal_partial(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
-void		fr_trunk_request_signal_sent(fr_trunk_request_t *treq);
+void		fr_trunk_request_signal_sent(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
-void		fr_trunk_request_signal_complete(fr_trunk_request_t *treq);
+void		fr_trunk_request_signal_complete(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
-void		fr_trunk_request_signal_fail(fr_trunk_request_t *treq);
+void		fr_trunk_request_signal_fail(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
-void		fr_trunk_request_signal_cancel(fr_trunk_request_t *treq);
+void		fr_trunk_request_signal_cancel(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
-void		fr_trunk_request_signal_cancel_partial(fr_trunk_request_t *treq);
+void		fr_trunk_request_signal_cancel_partial(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
-void		fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq);
+void		fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
-void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq);
+void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq) CC_HINT(nonnull);
 /** @} */
 
 /** @name (R)enqueue and alloc requests
  * @{
  */
-uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max);
+uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max) CC_HINT(nonnull);
 
 void		fr_trunk_request_free(fr_trunk_request_t *treq);
 
-fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request);
+fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request) CC_HINT(nonnull(1));
 
-void		fr_trunk_request_requeue(fr_trunk_request_t *treq);
+void		fr_trunk_request_requeue(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
 int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQUEST *request,
-					 void *preq, void *rctx);
+					 void *preq, void *rctx) CC_HINT(nonnull(2));
 /** @} */
 
 /** @name Dequeue protocol requests and cancellations
@@ -576,41 +576,41 @@ fr_trunk_request_t *fr_trunk_connection_pop_request(REQUEST **request, void **pr
  *
  * @{
  */
-void		fr_trunk_connection_signal_writable(fr_trunk_connection_t *tconn);
+void		fr_trunk_connection_signal_writable(fr_trunk_connection_t *tconn) CC_HINT(nonnull);
 
-void		fr_trunk_connection_signal_readable(fr_trunk_connection_t *tconn);
+void		fr_trunk_connection_signal_readable(fr_trunk_connection_t *tconn) CC_HINT(nonnull);
 
-void		fr_trunk_connection_signal_inactive(fr_trunk_connection_t *tconn);
+void		fr_trunk_connection_signal_inactive(fr_trunk_connection_t *tconn) CC_HINT(nonnull);
 
-void		fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn);
+void		fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn) CC_HINT(nonnull);
 
-void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason);
+void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason) CC_HINT(nonnull);
 /** @} */
 
 /** @name Trunk connection accessors
  * @{
  */
-fr_connection_t	*fr_trunk_connection_get_connection(fr_trunk_connection_t *tconn);
+fr_connection_t	*fr_trunk_connection_get_connection(fr_trunk_connection_t *tconn) CC_HINT(nonnull);
 /** @} */
 
 /** @name Connection management
  * @{
  */
-void		fr_trunk_reconnect(fr_trunk_t *trunk, int state, fr_connection_reason_t reason);
+void		fr_trunk_reconnect(fr_trunk_t *trunk, int state, fr_connection_reason_t reason) CC_HINT(nonnull);
 /** @} */
 
 /** @name Trunk allocation
  * @{
  */
-int		fr_trunk_start(fr_trunk_t *trunk);
+int		fr_trunk_start(fr_trunk_t *trunk) CC_HINT(nonnull);
 
-void		fr_trunk_connection_manage_start(fr_trunk_t *trunk);
+void		fr_trunk_connection_manage_start(fr_trunk_t *trunk) CC_HINT(nonnull);
 
-void		fr_trunk_connection_manage_stop(fr_trunk_t *trunk);
+void		fr_trunk_connection_manage_stop(fr_trunk_t *trunk) CC_HINT(nonnull);
 
 fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				fr_trunk_io_funcs_t const *funcs, fr_trunk_conf_t const *conf,
-				char const *log_prefix, void const *uctx, bool delay_start);
+				char const *log_prefix, void const *uctx, bool delay_start) CC_HINT(nonnull(1, 2, 3, 4));
 /** @} */
 
 #ifdef __cplusplus
