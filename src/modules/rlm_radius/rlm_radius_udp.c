@@ -895,8 +895,8 @@ static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 		u->rr = NULL;
 		u->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
-		u->treq = NULL;
 		fr_trunk_request_signal_complete(u->treq);
+		u->treq = NULL;
 		return;
 	}
 
