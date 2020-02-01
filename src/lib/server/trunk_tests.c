@@ -24,7 +24,7 @@ typedef struct {
 
 #define DEBUG_LVL_SET if (test_verbose_level__ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
 
-static void test_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
+static void test_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	fr_trunk_request_t	*treq;
 	void			*preq;
