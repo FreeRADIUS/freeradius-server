@@ -616,7 +616,6 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	rlm_radius_udp_t const	*inst = h->inst;
 	ssize_t			packet_len;
 	uint8_t			*msg = NULL;
-	uint8_t			*proxy = NULL;
 	int			message_authenticator = u->require_ma * 18;
 	int			proxy_state = 6;
 	char const		*module_name;
@@ -741,7 +740,6 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		fr_pair_value_memcpy(vp, attr + 2, 4, true);
 		fr_pair_add(&u->extra, vp);
 		packet_len += 6;
-		proxy = attr + 2;
 	}
 
 	/*
