@@ -706,19 +706,20 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		uint8_t		*attr = h->buffer + packet_len;
 		VALUE_PAIR	*vp;
 		vp_cursor_t	cursor;
-		int		count;
+		int		count = 0;
 
 		rad_assert((size_t) (packet_len + proxy_state) <= h->buflen);
 
 		/*
 		 *	Count how many Proxy-State attributes have
-		 *	*our* magic number.
+		 *	*our* magic number.  Note that we also add a
+		 *	counter to each Proxy-State, so we're double
+		 *	sure that it's a loop.
 		 */
 		if (fr_debug_lvl) {
-			count = 0;
 			(void) fr_pair_cursor_init(&cursor, &request->packet->vps);
 			while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_proxy_state, TAG_ANY)) != NULL) {
-				if ((vp->vp_length == 4) && (memcmp(vp->vp_octets, &inst->parent->proxy_state, 4) == 0)) {
+				if ((vp->vp_length == 5) && (memcmp(vp->vp_octets, &inst->parent->proxy_state, 4) == 0)) {
 					count++;
 				}
 			}
@@ -733,13 +734,14 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		}
 
 		attr[0] = (uint8_t)attr_proxy_state->attr;
-		attr[1] = 6;
+		attr[1] = 7;
 		memcpy(attr + 2, &inst->parent->proxy_state, 4);
+		attr[6] = count & 0xff;
 
 		MEM(vp = fr_pair_afrom_da(u, attr_proxy_state));
-		fr_pair_value_memcpy(vp, attr + 2, 4, true);
+		fr_pair_value_memcpy(vp, attr + 2, 5, true);
 		fr_pair_add(&u->extra, vp);
-		packet_len += 6;
+		packet_len += 7;
 	}
 
 	/*
