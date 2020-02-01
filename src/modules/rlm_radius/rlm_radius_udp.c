@@ -512,32 +512,59 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 	return c->conn;
 }
 
-static void conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+/** Standard I/O read function
+ *
+ * Underlying FD in now readable, so call the trunk to read any pending requests
+ * from this connection.
+ *
+ * @param[in] el	The event list signalling.
+ * @param[in] fd	that's now readable.
+ * @param[in] flags	describing the read event.
+ * @param[in] uctx	The trunk connection handle (tconn).
+ */
+static void udp_conn_readble(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
-	udp_connection_t	*c = talloc_get_type_abort(uctx, udp_connection_t);
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 
-	fr_trunk_connection_signal_readable(c->tconn);
+	fr_trunk_connection_signal_readable(tconn);
 }
 
+/** Standard I/O write function
+ *
+ * Underlying FD is now writable, so call the trunk to write any pending requests
+ * to this connection.
+ *
+ * @param[in] el	The event list signalling.
+ * @param[in] fd	that's now writable.
+ * @param[in] flags	describing the write event.
+ * @param[in] uctx	The trunk connection handle (tcon).
+ */
 static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
-	udp_connection_t	*c = talloc_get_type_abort(uctx, udp_connection_t);
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 
-	fr_trunk_connection_signal_writable(c->tconn);
+	fr_trunk_connection_signal_writable(tconn);
 }
 
 /** Connection errored
  *
+ * We were signalled by the event loop that a fatal error occurred on this connection.
+ *
+ * @param[in] el	The event list signalling.
+ * @param[in] fd	that errored.
+ * @param[in] flags	El flags.
+ * @param[in] fd_errno	The nature of the error.
+ * @param[in] uctx	The trunk connection handle (tconn).
  */
 static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
-	udp_connection_t	*c = talloc_get_type_abort(uctx, udp_connection_t);
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	fr_connection_t		*conn = fr_trunk_connection_get_connection(tconn);
+	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(conn), udp_handle_t);
 
-	/*
-	 *	@todo - no access to udp_handle_t handle, so no way to print out the actual
-	 *	connection name.  <sigh>
-	 */
-	ERROR("%s - Connection failed - %s", c->thread->inst->parent->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection failed - %s", h->inst->parent->name, fr_syserror(fd_errno));
+
+	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 }
 
 static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
@@ -572,7 +599,7 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 			       read_fn,
 			       write_fn,
 			       conn_error,
-			       h->c) < 0) {
+			       tconn) < 0) {
 		ERROR("%s - Failed inserting FD event", h->module_name);
 
 		/*
