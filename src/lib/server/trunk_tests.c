@@ -373,11 +373,12 @@ static void test_socket_pair_alloc_then_free(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	TEST_CHECK(el != NULL);
+
 	fr_event_list_set_time_func(el, test_time);
 
 	trunk = fr_trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false);
 	TEST_CHECK(trunk != NULL);
+	if (!trunk) return;
 
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 2);
 	events = fr_event_corral(el, test_time_base, true);
@@ -412,11 +413,14 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	TEST_CHECK(el != NULL);
+
+	if (!el) return;
+
 	fr_event_list_set_time_func(el, test_time);
 
 	trunk = fr_trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false);
 	TEST_CHECK(trunk != NULL);
+	if (!trunk) return;
 
 	events = fr_event_corral(el, test_time_base, true);
 	TEST_CHECK(events == 2);	/* Two I/O write events, no timers */
@@ -498,12 +502,13 @@ static void test_socket_pair_alloc_then_connect_timeout(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	TEST_CHECK(el != NULL);
+
 	fr_event_list_set_time_func(el, test_time);
 
-	TEST_CHECK(el != NULL);
+
 	trunk = fr_trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false);
 	TEST_CHECK(trunk != NULL);
+	if (!trunk) return;
 
 	/*
 	 *	Trigger connection timeout
@@ -579,11 +584,11 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	TEST_CHECK(el != NULL);
 	fr_event_list_set_time_func(el, test_time);
 
 	trunk = fr_trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false);
 	TEST_CHECK(trunk != NULL);
+	if (!trunk) return;
 
 	/*
 	 *	Trigger connection timeout
