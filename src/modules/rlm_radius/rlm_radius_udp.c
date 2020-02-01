@@ -1455,38 +1455,30 @@ static void request_complete(REQUEST *request, UNUSED void *preq, UNUSED void *r
 	unlang_interpret_resumable(request);
 }
 
-static void request_cancel(UNUSED fr_connection_t *conn, fr_trunk_request_t *treq, void *preq,
+static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 			   fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
-	udp_request_t	*u = talloc_get_type_abort(preq, udp_request_t);
-	udp_handle_t	*h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
+	udp_request_t	*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
+	udp_handle_t	*h = talloc_get_type_abort(conn->h, udp_handle_t);
+
+	switch (reason) {
+	/*
+	 *	The request is being terminated, and will
+	 *	soon be freed.  Let the request_fail function
+	 *	handle any cleanup required.
+	 */
+	case FR_TRUNK_CANCEL_REASON_NONE:
+	case FR_TRUNK_CANCEL_REASON_SIGNAL:
+		break;
 
 	/*
-	 *	If we've been signaled to cancel, then ACK the cancel.
+	 *	Request is moving to a different connection,
+	 *	or was previously sent on this connection
+	 *	but needs to be sent again.
+	 *	Free up the resources associated with this
+	 *	request packet, and stop any timers.
 	 */
-	switch (reason) {
-		/*
-		 *	We've been re-queued, do nothing.
-		 */
-	case FR_TRUNK_CANCEL_REASON_NONE:
 	case FR_TRUNK_CANCEL_REASON_REQUEUE:
-		break;
-
-		/*
-		 *	If we've been signaled to cancel, then ACK the
-		 *	cancel.  Everything will be cleaned up when
-		 *	udp_request_free() is called.
-		 */
-	case FR_TRUNK_CANCEL_REASON_SIGNAL:
-		fr_trunk_request_signal_cancel_complete(treq);
-		talloc_free(u);
-		break;
-
-		/*
-		 *	Request is moving to a different connection.
-		 *	Free up the resources associated with this
-		 *	request.
-		 */
 	case FR_TRUNK_CANCEL_REASON_MOVE:
 		if (u->rr) {
 			(void) rr_track_delete(h->id, u->rr);

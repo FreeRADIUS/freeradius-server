@@ -399,8 +399,13 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
 
 /** Remove an outstanding request from a tracking/matching structure
  *
- * The treq (trunk request), and any associated resources should be
- * removed from the the matching structure associated with the #fr_connection_t or uctx.
+ * If the treq (trunk request) is in the FR_TRUNK_REQUEST_PARTIAL or
+ * FR_TRUNK_REQUEST_SENT states, this callback will be called prior
+ * to moving the treq to a new connection or freeing it.
+ *
+ * The treq, and any associated resources, should be
+ * removed from the the matching structure associated with the
+ * #fr_connection_t or uctx.
  *
  * Which resources should be freed depends on the cancellation reason:
  *
@@ -412,7 +417,8 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *   any fields in the preq that were modified during the last mux call
  *   (other than perhaps counters) should be reset to their initial values.
  * - FR_TRUNK_CANCEL_REASON_SIGNAL - The encoded request and any I/O library
- *   request handled may be freed or that may be left to another callback.
+ *   request handled may be freed though that may (optionally) be left to
+ *   another callback like #fr_trunk_request_fail_t.
  *
  * After this callback is complete one of several actions will be taken:
  *
@@ -431,13 +437,17 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  * @note FR_TRUNK_CANCEL_REASON_MOVE will only be set if the underlying connection
  * is bad.  No cancellation requests will be sent for requests being moved.
  *
+ * @note There is no need to signal request state changes in the cancellation
+ * function.  The trunk will move the request into the correct state.
+ * This callback is only to allow the API client to cleanup the preq in
+ * preparation for the cancellation event.
+ *
  * @param[in] conn		to remove request from.
- * @param[in] treq		Trunk request to cancel.
- * @param[in] preq		Preq to cancel.
+ * @param[in] preq_to_reset	Preq to reset.
  * @param[in] reason		Why the request was cancelled.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
-typedef void (*fr_trunk_request_cancel_t)(fr_connection_t *conn, fr_trunk_request_t *treq, void *preq,
+typedef void (*fr_trunk_request_cancel_t)(fr_connection_t *conn, void *preq_to_reset,
 					  fr_trunk_cancel_reason_t reason, void *uctx);
 
 /** Write a successful result to the rctx so that the trunk API client is aware of the result

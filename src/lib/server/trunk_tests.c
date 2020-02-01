@@ -181,7 +181,7 @@ static void _conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 	}
 }
 
-static void test_request_cancel(UNUSED fr_connection_t *conn, UNUSED fr_trunk_request_t *treq, void *preq,
+static void test_request_cancel(UNUSED fr_connection_t *conn, void *preq,
 				UNUSED fr_trunk_cancel_reason_t reason, void *uctx)
 {
 	test_proto_stats_t	*stats = uctx;

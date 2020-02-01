@@ -418,8 +418,8 @@ do { \
 	if ((_treq)->pub.trunk->funcs.request_cancel) { \
 		void *prev = (_treq)->pub.trunk->in_handler; \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_cancel; \
-		DEBUG4("Calling request_cancel(conn=%p, treq=%p, preq=%p, reason=%s, uctx=%p)", (_treq)->pub.tconn->pub.conn, (_treq), (_treq)->pub.preq, fr_table_str_by_value(fr_trunk_cancellation_reasons, (_reason), "<INVALID>"), (_treq)->pub.trunk->uctx); \
-		(_treq)->pub.trunk->funcs.request_cancel((_treq)->pub.tconn->pub.conn, (_treq), (_treq)->pub.preq, (_reason), (_treq)->pub.trunk->uctx); \
+		DEBUG4("Calling request_cancel(conn=%p, preq=%p, reason=%s, uctx=%p)", (_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, fr_table_str_by_value(fr_trunk_cancellation_reasons, (_reason), "<INVALID>"), (_treq)->pub.trunk->uctx); \
+		(_treq)->pub.trunk->funcs.request_cancel((_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, (_reason), (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = prev; \
 	} \
 } while(0)
