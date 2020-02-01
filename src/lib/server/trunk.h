@@ -34,13 +34,15 @@ RCSIDH(server_trunk_h, "$Id$")
 extern "C" {
 #endif
 
-/** Allow public and private versions of the same structure
- *
+/*
+ *	Allow public and private versions of the same structures
  */
 #ifndef TRUNK_REQUEST_NO_TYPEDEF
 typedef struct fr_trunk_request_pub_s fr_trunk_request_t;
 #endif
-typedef struct fr_trunk_connection_s fr_trunk_connection_t;
+#ifndef TRUNK_CONNECTION_NO_TYPEDEF
+typedef struct fr_trunk_connection_pub_s fr_trunk_connection_t;
+#endif
 typedef struct fr_trunk_s fr_trunk_t;
 
 /** Common configuration parameters for a trunk
@@ -118,6 +120,20 @@ struct fr_trunk_request_pub_s {
 	void			*rctx;			//!< Resume ctx of the module.
 
 	REQUEST			*request;		//!< The request that we're writing the data on behalf of.
+};
+
+/** Public fields for the trunk connection
+ *
+ * This saves the overhead of using accessors for commonly used fields in trunk
+ * connections.
+ *
+ * Though these fields are public, they should _NOT_ be modified by clients of
+ * the trunk API.
+ */
+struct fr_trunk_connection_pub_s {
+	fr_connection_t		*conn;			//!< The underlying connection.
+
+	fr_trunk_t		*trunk;			//!< Trunk this connection belongs to.
 };
 
 /** Reasons for a request being cancelled

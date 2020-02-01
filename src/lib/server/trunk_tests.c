@@ -520,8 +520,8 @@ static void test_socket_pair_alloc_then_connect_timeout(void)
 	TEST_CHECK(tconn != NULL);
 	if (tconn == NULL) return;
 
-	TEST_CHECK(fr_connection_get_num_timed_out(tconn->conn) == 0);
-	TEST_CHECK(fr_connection_get_num_reconnected(tconn->conn) == 0);
+	TEST_CHECK(fr_connection_get_num_timed_out(tconn->pub.conn) == 0);
+	TEST_CHECK(fr_connection_get_num_reconnected(tconn->pub.conn) == 0);
 
 	/*
 	 *	Timeout should now fire
@@ -531,8 +531,8 @@ static void test_socket_pair_alloc_then_connect_timeout(void)
 	/*
 	 *	Connection delay not implemented for timed out connections
 	 */
-	TEST_CHECK(fr_connection_get_num_timed_out(tconn->conn) == 1);
-	TEST_CHECK(fr_connection_get_num_reconnected(tconn->conn) == 1);
+	TEST_CHECK(fr_connection_get_num_timed_out(tconn->pub.conn) == 1);
+	TEST_CHECK(fr_connection_get_num_reconnected(tconn->pub.conn) == 1);
 
 	events = fr_event_corral(el, test_time_base, false);
 	TEST_CHECK(events == 0);	/* I/O events should have been cleared */
@@ -601,13 +601,13 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	TEST_CHECK(tconn != NULL);
 	if (tconn == NULL) return;
 
-	TEST_CHECK(fr_connection_get_num_timed_out(tconn->conn) == 0);
-	TEST_CHECK(fr_connection_get_num_reconnected(tconn->conn) == 0);
+	TEST_CHECK(fr_connection_get_num_timed_out(tconn->pub.conn) == 0);
+	TEST_CHECK(fr_connection_get_num_reconnected(tconn->pub.conn) == 0);
 
 	/*
 	 *	Trigger reconnection
 	 */
-	fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_FAILED);
+	fr_connection_signal_reconnect(tconn->pub.conn, FR_CONNECTION_FAILED);
 	test_time_base += NSEC * 0.5;
 
 	events = fr_event_corral(el, test_time_base, false);
@@ -620,8 +620,8 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 
 	fr_event_service(el);		/* Services the timer, which then triggers init */
 
-	TEST_CHECK(fr_connection_get_num_timed_out(tconn->conn) == 0);
-	TEST_CHECK(fr_connection_get_num_reconnected(tconn->conn) == 1);
+	TEST_CHECK(fr_connection_get_num_timed_out(tconn->pub.conn) == 0);
+	TEST_CHECK(fr_connection_get_num_reconnected(tconn->pub.conn) == 1);
 
 	events = fr_event_corral(el, test_time_base, true);
 	TEST_CHECK(events == 2);	/* Should have a pending I/O event and a timer */

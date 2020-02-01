@@ -32,7 +32,9 @@
 #endif
 
 typedef struct fr_trunk_request_s fr_trunk_request_t;
-#define TRUNK_REQUEST_NO_TYPEDEF 1	/* We use the private version of the fr_trunk_request_t */
+typedef struct fr_trunk_connection_s fr_trunk_connection_t;
+#define TRUNK_REQUEST_NO_TYPEDEF 1	/* We use the private version of fr_trunk_request_t */
+#define TRUNK_CONNECTION_NO_TYPEDEF 1	/* We use the private version of fr_trunk_connection_t */
 #include <freeradius-devel/server/trunk.h>
 
 #include <freeradius-devel/server/connection.h>
@@ -143,21 +145,15 @@ struct fr_trunk_request_s {
  *
  */
 struct fr_trunk_connection_s {
+	struct fr_trunk_connection_pub_s pub;		//!< Public fields in the trunk connection.
+							///< This *MUST* be the first field in this
+							///< structure.
+
 	int32_t			heap_id;		//!< Used to track the connection in the connected
 							///< heap.
 
 	fr_dlist_t		entry;			//!< Used to track the connection in the connecting,
 							///< full and failed lists.
-
-	/** @name Handles
-	 * @{
- 	 */
-	fr_trunk_t		*trunk;			//!< Trunk this connection belongs to.
-
-	fr_connection_t		*conn;			//!< Connection we're wrapping.  This is the handle
-							///< we use to register watchers and control
-							///< the connection.
-	/** @} */
 
 	/** @name State
 	 * @{
@@ -382,7 +378,7 @@ static size_t fr_trunk_connection_events_len = NUM_ELEMENTS(fr_trunk_connection_
 #define CONN_STATE_TRANSITION(_new) \
 do { \
 	INFO("[%" PRIu64 "] Trunk connection changed state %s -> %s", \
-	     tconn->conn->id, \
+	     tconn->pub.conn->id, \
 	     fr_table_str_by_value(fr_trunk_connection_states, tconn->state, "<INVALID>"), \
 	     fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>")); \
 	tconn->state = _new; \
@@ -392,7 +388,7 @@ do { \
 #define CONN_BAD_STATE_TRANSITION(_new) \
 do { \
 	if (!fr_cond_assert_msg(0, "[%" PRIu64 "] Trunk connection invalid transition %s -> %s", \
-				tconn->conn->id, \
+				tconn->pub.conn->id, \
 				fr_table_str_by_value(fr_trunk_connection_states, tconn->state, "<INVALID>"),	\
 				fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>"))) return;	\
 } while (0)
@@ -422,8 +418,8 @@ do { \
 	if ((_treq)->pub.trunk->funcs.request_cancel) { \
 		void *prev = (_treq)->pub.trunk->in_handler; \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_cancel; \
-		DEBUG4("Calling request_cancel(conn=%p, treq=%p, preq=%p, reason=%s, uctx=%p)", (_treq)->pub.tconn->conn, (_treq), (_treq)->pub.preq, fr_table_str_by_value(fr_trunk_cancellation_reasons, (_reason), "<INVALID>"), (_treq)->pub.trunk->uctx); \
-		(_treq)->pub.trunk->funcs.request_cancel((_treq)->pub.tconn->conn, (_treq), (_treq)->pub.preq, (_reason), (_treq)->pub.trunk->uctx); \
+		DEBUG4("Calling request_cancel(conn=%p, treq=%p, preq=%p, reason=%s, uctx=%p)", (_treq)->pub.tconn->pub.conn, (_treq), (_treq)->pub.preq, fr_table_str_by_value(fr_trunk_cancellation_reasons, (_reason), "<INVALID>"), (_treq)->pub.trunk->uctx); \
+		(_treq)->pub.trunk->funcs.request_cancel((_treq)->pub.tconn->pub.conn, (_treq), (_treq)->pub.preq, (_reason), (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = prev; \
 	} \
 } while(0)
@@ -475,12 +471,12 @@ do { \
  */
 #define DO_REQUEST_MUX(_tconn) \
 do { \
-	void *prev = (_tconn)->trunk->in_handler; \
+	void *prev = (_tconn)->pub.trunk->in_handler; \
 	DEBUG4("[%" PRIu64 "] Calling request_mux(el=%p, tconn=%p, conn=%p, uctx=%p)", \
-	       (_tconn)->conn->id, (_tconn)->trunk->el, (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
-	(_tconn)->trunk->in_handler = (void *)(_tconn)->trunk->funcs.request_mux; \
-	(_tconn)->trunk->funcs.request_mux((_tconn)->trunk->el, (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
-	(_tconn)->trunk->in_handler = prev; \
+	       (_tconn)->pub.conn->id, (_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+	(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_mux; \
+	(_tconn)->pub.trunk->funcs.request_mux((_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+	(_tconn)->pub.trunk->in_handler = prev; \
 } while(0)
 
 /** Read one or more requests from a connection
@@ -488,12 +484,12 @@ do { \
  */
 #define DO_REQUEST_DEMUX(_tconn) \
 do { \
-	void *prev = (_tconn)->trunk->in_handler; \
+	void *prev = (_tconn)->pub.trunk->in_handler; \
 	DEBUG4("[%" PRIu64 "] Calling request_demux(tconn=%p, conn=%p, uctx=%p)", \
-	       (_tconn)->conn->id, (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
-	(_tconn)->trunk->in_handler = (void *)(_tconn)->trunk->funcs.request_demux; \
-	(_tconn)->trunk->funcs.request_demux((_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
-	(_tconn)->trunk->in_handler = prev; \
+	       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+	(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_demux; \
+	(_tconn)->pub.trunk->funcs.request_demux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+	(_tconn)->pub.trunk->in_handler = prev; \
 } while(0)
 
 /** Write one or more cancellation requests to a connection
@@ -501,13 +497,13 @@ do { \
  */
 #define DO_REQUEST_CANCEL_MUX(_tconn) \
 do { \
-	if ((_tconn)->trunk->funcs.request_cancel_mux) { \
-		void *prev = (_tconn)->trunk->in_handler; \
+	if ((_tconn)->pub.trunk->funcs.request_cancel_mux) { \
+		void *prev = (_tconn)->pub.trunk->in_handler; \
 		DEBUG4("[%" PRIu64 "] Calling request_cancel_mux(tconn=%p, conn=%p, uctx=%p)", \
-		       (_tconn)->conn->id, (_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
-		(_tconn)->trunk->in_handler = (void *)(_tconn)->trunk->funcs.request_cancel_mux; \
-		(_tconn)->trunk->funcs.request_cancel_mux((_tconn), (_tconn)->conn, (_tconn)->trunk->uctx); \
-		(_tconn)->trunk->in_handler = prev; \
+		       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+		(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_cancel_mux; \
+		(_tconn)->pub.trunk->funcs.request_cancel_mux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+		(_tconn)->pub.trunk->in_handler = prev; \
 	} \
 } while(0)
 
@@ -518,11 +514,11 @@ do { \
 do { \
 	void *prev = trunk->in_handler; \
 	DEBUG4("Calling connection_alloc(tconn=%p, el=%p, conf=%p, log_prefix=\"%s\", uctx=%p)", \
-	       (_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf.conn_conf, trunk->log_prefix, (_tconn)->trunk->uctx); \
-	(_tconn)->trunk->in_handler = (void *) (_tconn)->trunk->funcs.connection_alloc; \
-	(_tconn)->conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->trunk->el, (_tconn)->trunk->conf.conn_conf, (_tconn)->trunk->log_prefix, trunk->uctx); \
-	(_tconn)->trunk->in_handler = prev; \
-	if (!(_tconn)->conn) { \
+	       (_tconn), (_tconn)->pub.trunk->el, (_tconn)->pub.trunk->conf.conn_conf, trunk->log_prefix, (_tconn)->pub.trunk->uctx); \
+	(_tconn)->pub.trunk->in_handler = (void *) (_tconn)->pub.trunk->funcs.connection_alloc; \
+	(_tconn)->pub.conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->pub.trunk->el, (_tconn)->pub.trunk->conf.conn_conf, (_tconn)->pub.trunk->log_prefix, trunk->uctx); \
+	(_tconn)->pub.trunk->in_handler = prev; \
+	if (!(_tconn)->pub.conn) { \
 		ERROR("Failed creating new connection"); \
 		talloc_free(tconn); \
 		return -1; \
@@ -534,14 +530,14 @@ do { \
  */
 #define DO_CONNECTION_NOTIFY(_tconn, _events) \
 do { \
-	if ((_tconn)->trunk->funcs.connection_notify) { \
-		void *prev = (_tconn)->trunk->in_handler; \
+	if ((_tconn)->pub.trunk->funcs.connection_notify) { \
+		void *prev = (_tconn)->pub.trunk->in_handler; \
 		DEBUG4("[%" PRIu64 "] Calling connection_notify(tconn=%p, conn=%p, el=%p, events=%s, uctx=%p)", \
-		       (_tconn)->conn->id, (_tconn), (_tconn)->conn, (_tconn)->trunk->el, \
-		       fr_table_str_by_value(fr_trunk_connection_events, (_events), "<INVALID>"), (_tconn)->trunk->uctx); \
-		(_tconn)->trunk->in_handler = (void *)(_tconn)->trunk->funcs.connection_notify; \
-		(_tconn)->trunk->funcs.connection_notify((_tconn), (_tconn)->conn, (_tconn)->trunk->el, (_events), (_tconn)->trunk->uctx); \
-		(_tconn)->trunk->in_handler = prev; \
+		       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->el, \
+		       fr_table_str_by_value(fr_trunk_connection_events, (_events), "<INVALID>"), (_tconn)->pub.trunk->uctx); \
+		(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.connection_notify; \
+		(_tconn)->pub.trunk->funcs.connection_notify((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->el, (_events), (_tconn)->pub.trunk->uctx); \
+		(_tconn)->pub.trunk->in_handler = prev; \
 	} \
 } while(0)
 
@@ -609,11 +605,11 @@ do { \
 #define CONN_REORDER(_tconn) \
 do { \
 	int _ret; \
-	if ((fr_heap_num_elements((_tconn)->trunk->active) == 1)) break; \
+	if ((fr_heap_num_elements((_tconn)->pub.trunk->active) == 1)) break; \
 	if (!fr_cond_assert((_tconn)->state == FR_TRUNK_CONN_ACTIVE)) break; \
-	_ret = fr_heap_extract((_tconn)->trunk->active, (_tconn)); \
+	_ret = fr_heap_extract((_tconn)->pub.trunk->active, (_tconn)); \
 	if (!fr_cond_assert(_ret == 0)) break; \
-	fr_heap_insert((_tconn)->trunk->active, (_tconn)); \
+	fr_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
 static void trunk_request_enter_backlog(fr_trunk_request_t *treq);
@@ -687,7 +683,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_UNASSIGNED:
@@ -722,7 +718,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 		break;
 	}
 
-	DEBUG4("[%" PRIu64 "] Trunk connection released request %" PRIu64, tconn->conn->id, treq->id);
+	DEBUG4("[%" PRIu64 "] Trunk connection released request %" PRIu64, tconn->pub.conn->id, treq->id);
 
 	switch (tconn->state){
 	case FR_TRUNK_CONN_INACTIVE:
@@ -842,7 +838,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 {
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	rad_assert(tconn->trunk == trunk);
+	rad_assert(tconn->pub.trunk == trunk);
 	rad_assert(tconn->state == FR_TRUNK_CONN_ACTIVE);
 
 	switch (treq->state) {
@@ -862,7 +858,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	}
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_PENDING);
-	DEBUG4("[%" PRIu64 "] Trunk connection assigned request %"PRIu64, tconn->conn->id, treq->id);
+	DEBUG4("[%" PRIu64 "] Trunk connection assigned request %"PRIu64, tconn->pub.conn->id, treq->id);
 	fr_heap_insert(tconn->pending, treq);
 	treq->pub.tconn = tconn;
 
@@ -894,7 +890,7 @@ static void trunk_request_enter_partial(fr_trunk_request_t *treq)
 	fr_trunk_connection_t *tconn = treq->pub.tconn;
 	fr_trunk_t	*trunk = treq->pub.trunk;
 
-	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_UNASSIGNED:
@@ -923,7 +919,7 @@ static void trunk_request_enter_sent(fr_trunk_request_t *treq)
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_PENDING:
@@ -989,7 +985,7 @@ static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_PARTIAL:
@@ -1036,7 +1032,7 @@ static void trunk_request_enter_cancel_partial(fr_trunk_request_t *treq)
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 	rad_assert(trunk->funcs.request_cancel_mux);
 	rad_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_SIGNAL);
 
@@ -1067,7 +1063,7 @@ static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq)
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 	rad_assert(trunk->funcs.request_cancel_mux);
 	rad_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_SIGNAL);
 
@@ -1107,7 +1103,7 @@ static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq)
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 	if (!fr_cond_assert(!treq->pub.request)) return;	/* Only a valid state for REQUEST * which have been cancelled */
 
 	switch (treq->state) {
@@ -1134,7 +1130,7 @@ static void trunk_request_enter_complete(fr_trunk_request_t *treq)
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_SENT:
@@ -1159,7 +1155,7 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	if (!fr_cond_assert(!tconn || (tconn->trunk == trunk))) return;
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_BACKLOG:
@@ -1393,7 +1389,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
  */
 static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max)
 {
-	fr_trunk_t			*trunk = tconn->trunk;
+	fr_trunk_t			*trunk = tconn->pub.trunk;
 	fr_dlist_head_t			to_process;
 	fr_trunk_request_t		*treq = NULL;
 	uint64_t			moved = 0;
@@ -1486,7 +1482,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 	 *	we need to update those values now.
 	 */
 	if (tconn->state == FR_TRUNK_CONN_DRAINING) {
-		trunk_requests_per_connnection(NULL, NULL, tconn->trunk, fr_time());
+		trunk_requests_per_connnection(NULL, NULL, tconn->pub.trunk, fr_time());
 	}
 
 	return moved;
@@ -2009,7 +2005,7 @@ uint32_t fr_trunk_request_count_by_connection(fr_trunk_connection_t const *tconn
  */
 static inline void trunk_connection_auto_inactive(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t	*trunk = tconn->trunk;
+	fr_trunk_t	*trunk = tconn->pub.trunk;
 	uint32_t	count;
 
 	if (tconn->state != FR_TRUNK_CONN_ACTIVE) return;
@@ -2029,7 +2025,7 @@ static inline void trunk_connection_auto_inactive(fr_trunk_connection_t *tconn)
  */
 static inline void trunk_connection_auto_reactivate(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t	*trunk = tconn->trunk;
+	fr_trunk_t	*trunk = tconn->pub.trunk;
 	uint32_t	count;
 
 	/*
@@ -2052,7 +2048,7 @@ static inline void trunk_connection_auto_reactivate(fr_trunk_connection_t *tconn
  */
 static inline void trunk_connection_readable(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t *trunk = tconn->trunk;
+	fr_trunk_t *trunk = tconn->pub.trunk;
 
 	DO_REQUEST_DEMUX(tconn);
 }
@@ -2062,7 +2058,7 @@ static inline void trunk_connection_readable(fr_trunk_connection_t *tconn)
  */
 static inline void trunk_connection_writable(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t *trunk = tconn->trunk;
+	fr_trunk_t *trunk = tconn->pub.trunk;
 
 	/*
 	 *	Call the cancel_sent function (if we have one)
@@ -2085,7 +2081,7 @@ static inline void trunk_connection_writable(fr_trunk_connection_t *tconn)
  */
 static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t			*trunk = tconn->trunk;
+	fr_trunk_t			*trunk = tconn->pub.trunk;
 	fr_trunk_connection_event_t	events = FR_TRUNK_CONN_EVENT_NONE;
 
 	switch (tconn->state) {
@@ -2142,7 +2138,7 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
  */
 static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t		*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
 	int			ret;
 
 	switch (tconn->state) {
@@ -2166,7 +2162,7 @@ static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
  */
 static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t		*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
 	int			ret;
 
 	switch (tconn->state) {
@@ -2201,7 +2197,7 @@ static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
  */
 static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t		*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
 	int			ret;
 
 	switch (tconn->state) {
@@ -2242,7 +2238,7 @@ static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn
  */
 static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t		*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_INACTIVE:
@@ -2307,7 +2303,7 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_t		*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_HALTED:
@@ -2404,7 +2400,7 @@ static void  _trunk_connection_lifetime_expire(UNUSED fr_event_list_t *el, UNUSE
 static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_t		*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
 
 	/*
 	 *	If a connection was just connected,
@@ -2428,7 +2424,7 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 		if (fr_event_timer_in(tconn, trunk->el, &tconn->lifetime_ev,
 				       trunk->conf.lifetime, _trunk_connection_lifetime_expire, tconn) < 0) {
 			PERROR("Failed inserting connection reconnection timer event, halting connection");
-			fr_connection_signal_shutdown(tconn->conn);
+			fr_connection_signal_shutdown(tconn->pub.conn);
 			return;
 		}
 	}
@@ -2449,7 +2445,7 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_t		*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
 	int			ret;
 	bool			need_requeue = false;
 
@@ -2533,7 +2529,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_t		*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
 
 	/*
 	 *	Other conditions will be handled by on_closed
@@ -2570,7 +2566,7 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_
 static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_t		*trunk = tconn->trunk;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
 	int			ret;
 	bool			need_requeue = false;
 
@@ -2654,7 +2650,7 @@ static int _trunk_connection_free(fr_trunk_connection_t *tconn)
 	 *	just signal to the API client that the
 	 *	requests failed.
 	 */
-	if (tconn->trunk->freeing) {
+	if (tconn->pub.trunk->freeing) {
 		fr_dlist_head_t	to_fail;
 		fr_trunk_request_t *treq = NULL;
 
@@ -2678,20 +2674,20 @@ static int _trunk_connection_free(fr_trunk_connection_t *tconn)
 	 *	as it processes its backlog of state changes,
 	 *	as we are about to be freed.
 	 */
-	fr_connection_del_watch_post(tconn->conn, FR_CONNECTION_STATE_CONNECTING, _trunk_connection_on_connecting);
-	fr_connection_del_watch_post(tconn->conn, FR_CONNECTION_STATE_CONNECTED, _trunk_connection_on_connected);
-	fr_connection_del_watch_pre(tconn->conn, FR_CONNECTION_STATE_CLOSED, _trunk_connection_on_closed);
-	fr_connection_del_watch_post(tconn->conn, FR_CONNECTION_STATE_SHUTDOWN, _trunk_connection_on_shutdown);
-	fr_connection_del_watch_pre(tconn->conn, FR_CONNECTION_STATE_FAILED, _trunk_connection_on_failed);
-	fr_connection_del_watch_post(tconn->conn, FR_CONNECTION_STATE_HALTED, _trunk_connection_on_halted);
+	fr_connection_del_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_CONNECTING, _trunk_connection_on_connecting);
+	fr_connection_del_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_CONNECTED, _trunk_connection_on_connected);
+	fr_connection_del_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_CLOSED, _trunk_connection_on_closed);
+	fr_connection_del_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_SHUTDOWN, _trunk_connection_on_shutdown);
+	fr_connection_del_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_FAILED, _trunk_connection_on_failed);
+	fr_connection_del_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_HALTED, _trunk_connection_on_halted);
 
 	/*
 	 *	This may return -1, indicating the free was deferred
 	 *	this is fine.  It just means the conn will be freed
 	 *	after all the handlers have exited.
 	 */
-	(void)talloc_free(tconn->conn);
-	tconn->conn = NULL;
+	(void)talloc_free(tconn->pub.conn);
+	tconn->pub.conn = NULL;
 
 	return 0;
 }
@@ -2714,7 +2710,7 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	 *	a new fr_connection_t.
 	 */
 	MEM(tconn = talloc_zero(trunk, fr_trunk_connection_t));
-	tconn->trunk = trunk;
+	tconn->pub.trunk = trunk;
 	tconn->state = FR_TRUNK_CONN_HALTED;
 
 	/*
@@ -2736,25 +2732,25 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	 *	between the different lists in the trunk
 	 *	with minimum extra code.
 	 */
-	fr_connection_add_watch_post(tconn->conn, FR_CONNECTION_STATE_CONNECTING,
+	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_CONNECTING,
 				     _trunk_connection_on_connecting, false, tconn);	/* After init() has been called */
 
-	fr_connection_add_watch_post(tconn->conn, FR_CONNECTION_STATE_CONNECTED,
+	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_CONNECTED,
 				     _trunk_connection_on_connected, false, tconn);	/* After open() has been called */
 
-	fr_connection_add_watch_pre(tconn->conn, FR_CONNECTION_STATE_CLOSED,
+	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_CLOSED,
 				    _trunk_connection_on_closed, false, tconn);		/* Before close() has been called */
 
-	fr_connection_add_watch_post(tconn->conn, FR_CONNECTION_STATE_SHUTDOWN,		/* After shutdown() has been called */
+	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_SHUTDOWN,		/* After shutdown() has been called */
 				     _trunk_connection_on_shutdown, false, tconn);
 
-	fr_connection_add_watch_pre(tconn->conn, FR_CONNECTION_STATE_FAILED,
+	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_FAILED,
 				    _trunk_connection_on_failed, false, tconn);		/* Before failed() has been called */
 
-	fr_connection_add_watch_post(tconn->conn, FR_CONNECTION_STATE_HALTED,
+	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_HALTED,
 				     _trunk_connection_on_halted, false, tconn);	/* About to be freed */
 
-	fr_connection_signal_init(tconn->conn);	/* annnnd GO! */
+	fr_connection_signal_init(tconn->pub.conn);	/* annnnd GO! */
 
 	talloc_set_destructor(tconn, _trunk_connection_free);
 
@@ -2785,7 +2781,7 @@ fr_trunk_request_t *fr_trunk_connection_pop_cancellation(fr_trunk_connection_t *
 {
 	fr_trunk_request_t *treq;
 
-	if (!fr_cond_assert_msg(IN_REQUEST_CANCEL_MUX(tconn->trunk),
+	if (!fr_cond_assert_msg(IN_REQUEST_CANCEL_MUX(tconn->pub.trunk),
 				"%s can only be called from within request_cancel_mux handler",
 				__FUNCTION__)) return NULL;
 
@@ -2826,7 +2822,7 @@ fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn
 {
 	fr_trunk_request_t *treq;
 
-	if (!fr_cond_assert_msg(IN_REQUEST_MUX(tconn->trunk),
+	if (!fr_cond_assert_msg(IN_REQUEST_MUX(tconn->pub.trunk),
 				"%s can only be called from within request_mux handler",
 				__FUNCTION__)) return NULL;
 
@@ -2844,12 +2840,12 @@ fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn
  */
 void fr_trunk_connection_signal_writable(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t *trunk = tconn->trunk;
+	fr_trunk_t *trunk = tconn->pub.trunk;
 
-	if (!fr_cond_assert_msg(!IN_HANDLER(tconn->trunk),
+	if (!fr_cond_assert_msg(!IN_HANDLER(tconn->pub.trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return;
 
-	DEBUG4("[%" PRIu64 "] Signalled writable", tconn->conn->id);
+	DEBUG4("[%" PRIu64 "] Signalled writable", tconn->pub.conn->id);
 
 	trunk_connection_writable(tconn);
 }
@@ -2862,12 +2858,12 @@ void fr_trunk_connection_signal_writable(fr_trunk_connection_t *tconn)
  */
 void fr_trunk_connection_signal_readable(fr_trunk_connection_t *tconn)
 {
-	fr_trunk_t *trunk = tconn->trunk;
+	fr_trunk_t *trunk = tconn->pub.trunk;
 
-	if (!fr_cond_assert_msg(!IN_HANDLER(tconn->trunk),
+	if (!fr_cond_assert_msg(!IN_HANDLER(tconn->pub.trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return;
 
-	DEBUG4("[%" PRIu64 "] Signalled readable", tconn->conn->id);
+	DEBUG4("[%" PRIu64 "] Signalled readable", tconn->pub.conn->id);
 
 	trunk_connection_readable(tconn);
 }
@@ -2917,7 +2913,7 @@ void fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn)
  */
 void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason)
 {
-	fr_connection_signal_reconnect(tconn->conn, reason);
+	fr_connection_signal_reconnect(tconn->pub.conn, reason);
 }
 
 /** Get the underlying connection for a trunk connection
@@ -2927,7 +2923,7 @@ void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_conne
  */
 fr_connection_t *fr_trunk_connection_get_connection(fr_trunk_connection_t *tconn)
 {
-	return tconn->conn;
+	return tconn->pub.conn;
 }
 
 /** Rebalance connections across active trunk members when a new connection becomes active
@@ -3047,7 +3043,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			 *	complete at which point we'll be informed
 			 *	and free our tconn wrapper.
 			 */
-			fr_connection_signal_shutdown(tconn->conn);
+			fr_connection_signal_shutdown(tconn->pub.conn);
 			tconn = prev;
 		}
 	}
@@ -3066,7 +3062,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			 *	on how this works.
 			 */
 			prev = fr_dlist_prev(&trunk->draining_to_free, tconn);
-			fr_connection_signal_shutdown(tconn->conn);
+			fr_connection_signal_shutdown(tconn->pub.conn);
 			tconn = prev;
 		}
 	}
@@ -3501,7 +3497,7 @@ do { \
 	if (states & (_state)) { \
 		size_t i; \
 		for (i = fr_dlist_num_elements(&trunk->_list); i > 0; i--) { \
-			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->_list))->conn, reason); \
+			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->_list))->pub.conn, reason); \
 		} \
 	} \
 } while (0);
@@ -3517,7 +3513,7 @@ do { \
 
 	if (states & FR_TRUNK_CONN_ACTIVE) {
 		fr_trunk_connection_t *tconn;
-		while ((tconn = fr_heap_peek(trunk->active))) fr_connection_signal_reconnect(tconn->conn, reason);
+		while ((tconn = fr_heap_peek(trunk->active))) fr_connection_signal_reconnect(tconn->pub.conn, reason);
 	}
 
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_INACTIVE, inactive);
@@ -3621,13 +3617,13 @@ static int _trunk_free(fr_trunk_t *trunk)
 	 *	Each time a connection is freed it removes itself from the list
 	 *	its in, which means the head should keep advancing automatically.
 	 */
-	while ((tconn = fr_heap_peek(trunk->active))) fr_connection_signal_halt(tconn->conn);
-	while ((tconn = fr_dlist_head(&trunk->connecting))) fr_connection_signal_halt(tconn->conn);
-	while ((tconn = fr_dlist_head(&trunk->inactive))) fr_connection_signal_halt(tconn->conn);
-	while ((tconn = fr_dlist_head(&trunk->failed))) fr_connection_signal_halt(tconn->conn);
-	while ((tconn = fr_dlist_head(&trunk->closed))) fr_connection_signal_halt(tconn->conn);
-	while ((tconn = fr_dlist_head(&trunk->draining))) fr_connection_signal_halt(tconn->conn);
-	while ((tconn = fr_dlist_head(&trunk->draining_to_free))) fr_connection_signal_halt(tconn->conn);
+	while ((tconn = fr_heap_peek(trunk->active))) fr_connection_signal_halt(tconn->pub.conn);
+	while ((tconn = fr_dlist_head(&trunk->connecting))) fr_connection_signal_halt(tconn->pub.conn);
+	while ((tconn = fr_dlist_head(&trunk->inactive))) fr_connection_signal_halt(tconn->pub.conn);
+	while ((tconn = fr_dlist_head(&trunk->failed))) fr_connection_signal_halt(tconn->pub.conn);
+	while ((tconn = fr_dlist_head(&trunk->closed))) fr_connection_signal_halt(tconn->pub.conn);
+	while ((tconn = fr_dlist_head(&trunk->draining))) fr_connection_signal_halt(tconn->pub.conn);
+	while ((tconn = fr_dlist_head(&trunk->draining_to_free))) fr_connection_signal_halt(tconn->pub.conn);
 
 	/*
 	 *	Free any requests left in the backlog
