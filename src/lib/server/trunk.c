@@ -2930,6 +2930,16 @@ void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_conne
 	fr_connection_signal_reconnect(tconn->conn, reason);
 }
 
+/** Get the underlying connection for a trunk connection
+ *
+ * @param[in] tconn	to return the underlying connection for.
+ * @return The fr_connection_t used by the tconn.
+ */
+fr_connection_t *fr_trunk_connection_get_connection(fr_trunk_connection_t *tconn)
+{
+	return tconn->conn;
+}
+
 /** Rebalance connections across active trunk members when a new connection becomes active
  *
  * We don't have any visibility into the connection prioritisation algorithm

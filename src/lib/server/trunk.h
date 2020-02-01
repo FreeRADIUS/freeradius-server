@@ -587,6 +587,12 @@ void		fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn);
 void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason);
 /** @} */
 
+/** @name Trunk connection accessors
+ * @{
+ */
+fr_connection_t	*fr_trunk_connection_get_connection(fr_trunk_connection_t *tconn);
+/** @} */
+
 /** @name Connection management
  * @{
  */
