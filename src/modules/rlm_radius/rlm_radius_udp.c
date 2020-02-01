@@ -406,7 +406,7 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 /** Process notification that fd is open
  *
  */
-static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uctx)
+static fr_connection_state_t conn_open(fr_event_list_t *el, void *handle, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(handle, udp_handle_t);
 
