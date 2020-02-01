@@ -562,7 +562,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	fr_connection_t		*conn = fr_trunk_connection_get_connection(tconn);
 	udp_handle_t		*h = talloc_get_type_abort(fr_connection_get_handle(conn), udp_handle_t);
 
-	ERROR("%s - Connection failed - %s", h->inst->parent->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed - %s", h->inst->parent->name, h->name, fr_syserror(fd_errno));
 
 	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 }
