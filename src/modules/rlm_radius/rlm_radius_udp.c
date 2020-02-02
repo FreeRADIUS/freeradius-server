@@ -106,6 +106,7 @@ typedef struct {
 
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
+	fr_time_t		last_sent;		//!< last time we sent a packet.
 
 	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
 	udp_request_t		*status_u;		//!< for sending Status-Server packets
@@ -996,8 +997,17 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	If we're sending packets, and there's no zombie timer,
 	 *	and we've reached (passed) the zombie timeout, then
 	 *	start sending status check packets
+	 *
+	 *	"last_reply" can be zero if we haven't sent a packet
+	 *	before, or there's been a lomng delay since we last
+	 *	sent a packet.
+	 *
+	 *	We therefore start zombie_period at "last_sent" if we
+	 *	haven't seen a reply.
 	 */
-	if (!h->inst->replicate && !h->zombie_ev && ((h->last_reply + h->inst->parent->zombie_period) <= now)) {
+	if (!h->inst->replicate && !h->zombie_ev &&
+	    ((h->last_reply && ((h->last_reply + h->inst->parent->zombie_period) <= now)) ||
+	     (h->last_sent + h->inst->parent->zombie_period) <= now)) {
 		status_check_start(el, h, now);
 	}
 
@@ -1047,6 +1057,8 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 	 */
 	if (u->retry.count == 1) {
 		action = inst->parent->originate ? "Originating" : "Proxying";
+		h->last_sent = u->retry.start;
+
 	} else {
 		action = "Retransmitting";
 	}
@@ -1667,6 +1679,20 @@ static int udp_request_free(udp_request_t *u)
 	if (!u->synchronous) return 0;
 
 	if (u->rr) (void) rr_track_delete(h->id, u->rr);
+
+	/*
+	 *	There are no outstanding replies, (other than
+	 *	status-server), so we set the "last_reply" time to
+	 *	zero.
+	 *
+	 *	This setting ensures that if we get a new outgoing
+	 *	packet ~40s after the last reply, then it doesn't
+	 *	immediately go into zombie_period on the timeout of
+	 *	the first request.
+	 */
+	if (h->id->num_requests == (h->status_u != 0)) {
+		h->last_reply = 0;
+	}
 
 	return 0;
 }
