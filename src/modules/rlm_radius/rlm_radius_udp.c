@@ -876,13 +876,130 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 }
 
 
-static void request_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+/** Run the status check timers.
+ *
+ */
+static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	udp_request_t		*u = talloc_get_type_abort(uctx, udp_request_t);
+	udp_handle_t	 	*h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
+	fr_retry_state_t	state;
+	ssize_t			rcode;
+
+	state = fr_retry_next(&u->retry, now);
+	if (state == FR_RETRY_MRD) {
+		DEBUG("Reached maximum_retransmit_duration for status check, marking connection as dead - %s", h->name);
+		goto fail;
+	}
+
+	if (state == FR_RETRY_MRC) {
+		DEBUG("Reached maximum_retransmit_count for status check, marking connection as dead - %s", h->name);
+	fail:
+		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+		return;
+	}
+
+	DEBUG("Retransmitting %s ID %d length %ld for status check over connection %s",
+	      fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
+
+	// @todo - update Event-Timestamp, and re-sign the packet?
+
+	rcode = write(h->fd, u->packet, u->packet_len);
+	if ((rcode < 0) || ((size_t) rcode < u->packet_len)) {
+		DEBUG("Failed writing status check packet for connection %s", h->name);
+		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+		return;
+	}
+
+	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
+		ERROR("Failed inserting retransmit timeout for connection %s", h->name);
+		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+		return;
+	}
+}
+
+
+/** Start doing status checks.  Or ignore them if not configured.
+ *
+ */
+static void status_check_start(fr_event_list_t *el, udp_handle_t *h, fr_time_t now)
+{
+	udp_request_t *u = h->status_u;
+	ssize_t rcode;
+
+	/*
+	 *	No status checks: this connection is dead.
+	 *
+	 *	We will requeue this packet on another
+	 *	connection.
+	 */
+	if (!h->inst->parent->status_check) {
+		DEBUG2("No status_check response, closing connection %s", h->name);
+		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+		return;
+	}
+
+	/*
+	 *	Mark the connection as inactive, but keep sending
+	 *	packets on it.
+	 */
+	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->name);
+	fr_trunk_connection_signal_inactive(h->c->tconn);
+
+	/*
+	 *	Initialize timers for Status-Server.
+	 */
+	(void) fr_retry_init(&u->retry, now, &h->inst->parent->retry[u->code]);
+	u->num_replies = 0;
+	u->recv_time = u->retry.start;
+
+	/*
+	 *	Encode the packet.
+	 */
+	if (encode(h->status_request, u, h) < 0) {
+		DEBUG("Failed encoding status check packet for connection %s", h->name);
+		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+		return;
+	}
+
+	/*
+	 *	Write it immediately.
+	 *
+	 *	@todo - check if the socket is writable.
+	 */
+	rcode = write(h->fd, u->packet, u->packet_len);
+	if ((rcode < 0) || ((size_t) rcode < u->packet_len)) {
+		DEBUG("Failed writing status check packet for connection %s", h->name);
+		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+		return;
+	}
+
+	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
+		ERROR("Failed inserting retransmit timeout for connection %s", h->name);
+		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+		return;
+	}
+}
+
+/** Handle retries for a REQUEST
+ *
+ */
+static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 	REQUEST			*request = treq->request;
 	fr_retry_state_t	state;
+
+	/*
+	 *	If we're sending packets, and there's no zombie timer,
+	 *	and we've reached (passed) the zombie timeout, then
+	 *	start sending status check packets
+	 */
+	if (!h->inst->replicate && !h->zombie_ev && ((h->last_reply + h->inst->parent->zombie_period) <= now)) {
+		status_check_start(el, h, now);
+	}
 
 	state = fr_retry_next(&u->retry, now);
 	if (state == FR_RETRY_MRD) {
@@ -1208,15 +1325,20 @@ static void protocol_error_reply(udp_request_t *u, udp_handle_t *h)
 	u->rcode = RLM_MODULE_HANDLED;
 }
 
+
 /** Deal with replies replies to status checks and possible negotiation
  *
  */
 static void status_check_reply(udp_request_t *u, udp_handle_t *h)
 {
+	/*
+	 *	@todo - make this configurable
+	 */
 	if (u->num_replies < 3) return;
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
-	DEBUG("Have enough replies to status check, marking connection as active - %s", h->name);
+
+	DEBUG("Received expected replies to status check, marking connection as active - %s", h->name);
 	fr_trunk_connection_signal_active(h->c->tconn);
 
 	/*
@@ -1226,6 +1348,7 @@ static void status_check_reply(udp_request_t *u, udp_handle_t *h)
 		protocol_error_reply(u, h);
 	}
 }
+
 
 static fr_trunk_request_t *read_packet(udp_handle_t *h, udp_connection_t *c)
 {
@@ -1497,142 +1620,6 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 }
 
 
-static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
-{
-	udp_request_t		*u = talloc_get_type_abort(uctx, udp_request_t);
-	udp_handle_t	 	*h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
-	fr_retry_state_t	state;
-	ssize_t			rcode;
-
-	state = fr_retry_next(&u->retry, now);
-	if (state == FR_RETRY_MRD) {
-		DEBUG("Reached maximum_retransmit_duration for status check, marking connection as dead - %s", h->name);
-		goto fail;
-	}
-
-	if (state == FR_RETRY_MRC) {
-		DEBUG("Reached maximum_retransmit_count for status check, marking connection as dead - %s", h->name);
-	fail:
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-
-	DEBUG("Retransmitting %s ID %d length %ld for status check over connection %s",
-	      fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
-
-	// @todo - update Event-Timestamp, and re-sign the packet?
-
-	rcode = write(h->fd, u->packet, u->packet_len);
-	if ((rcode < 0) || ((size_t) rcode < u->packet_len)) {
-		DEBUG("Failed writing status check packet for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-
-	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
-		ERROR("Failed inserting retransmit timeout for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-}
-
-
-/** Mark a connection "zombie" due to zombie timeout.
- *
- */
-static void handle_zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
-{
-	udp_handle_t *h = talloc_get_type_abort(uctx, udp_handle_t);
-	udp_request_t *u = h->status_u;
-	ssize_t rcode;
-
-	ERROR("%s - Zombie timeout for connection %s", h->module_name, h->name);
-
-	if (!h->inst->parent->status_check) {
-		DEBUG2("No status_check response, closing connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-
-	/*
-	 *	Initialize timers for Status-Server.
-	 */
-	(void) fr_retry_init(&u->retry, now, &h->inst->parent->retry[u->code]);
-	u->num_replies = 0;
-	u->recv_time = u->retry.start;
-
-	if (encode(h->status_request, u, h) < 0) {
-		DEBUG("Failed encoding status check packet for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-
-	rcode = write(h->fd, u->packet, u->packet_len);
-	if ((rcode < 0) || ((size_t) rcode < u->packet_len)) {
-		DEBUG("Failed writing status check packet for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-
-	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
-		ERROR("Failed inserting retransmit timeout for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-}
-
-
-/** Request has failed to send.
- *
- */
-static void request_fail(UNUSED REQUEST *request, void *preq, UNUSED void *rctx, UNUSED void *uctx)
-{
-	udp_request_t	*u = talloc_get_type_abort(preq, udp_request_t);
-	udp_handle_t	 *h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
-	fr_time_t now, when;
-
-	u->rcode = RLM_MODULE_FAIL;
-
-	/*
-	 *	We're replicating, don't do zombie checks.
-	 *
-	 *	Note that we still do zombie checks if we're doing
-	 *	synchronous proxying.  This is so that we can
-	 *	determine if a connection is up, even if the NAS
-	 *	retransmission behavior is poor.
-	 */
-	if (h->inst->replicate) return;
-
-	/*
-	 *	Already a zombie timer, do nothing.
-	 */
-	if (h->zombie_ev) return;
-
-	now = fr_time();
-	when = h->last_reply;
-
-	/*
-	 *	Use the zombie_period for the timeout.
-	 *
-	 *	Note that we do this check on every packet, which is a
-	 *	bit annoying, but oh well.
-	 */
-	when += h->inst->parent->zombie_period;
-	if (when > now) return;
-
-	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->name);
-
-	if (fr_event_timer_in(h, h->c->thread->el, &h->zombie_ev, h->inst->parent->zombie_period, handle_zombie_timeout, h) < 0) {
-		ERROR("%s - Failed inserting zombie timeout for connection %s",
-		      h->module_name, h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-
-	fr_trunk_connection_signal_inactive(h->c->tconn);
-}
-
-
 static fr_trunk_io_funcs_t trunk_funcs = {
 	.connection_alloc = thread_conn_alloc,
 	.connection_notify = thread_conn_notify,
@@ -1641,7 +1628,6 @@ static fr_trunk_io_funcs_t trunk_funcs = {
 	.request_demux = request_demux,
 	.request_complete = request_complete,
 	.request_cancel = request_cancel,
-	.request_fail = request_fail,
 };
 
 
