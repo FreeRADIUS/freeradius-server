@@ -1119,7 +1119,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		 *	No password: can't do authentication.
 		 */
 		if (!password) {
-			REDEBUG("FAILED: No NT/LM-Password.  Cannot perform authentication");
+			REDEBUG("FAILED: No NT-Password.  Cannot perform authentication");
 			return -1;
 		}
 
