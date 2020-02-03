@@ -2673,7 +2673,7 @@ static fr_command_table_t command_table_set[] = {
 #ifdef WITH_STATS
 static fr_command_table_t command_table_stats[] = {
 	{ "client", FR_READ,
-	  "stats client [auth/acct] <ipaddr> [udp|tcp] [listen <ipaddr> <port>] "
+	  "stats client [auth/acct/coa] <ipaddr> [udp|tcp] [listen <ipaddr> <port>] "
 	  "- show statistics for given client, or for all clients (auth or acct)",
 	  command_stats_client, NULL },
 
