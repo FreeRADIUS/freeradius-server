@@ -52,48 +52,63 @@ static CONF_PARSER const status_check_update_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-#define DELTA_STRINGIFY(_x) STRINGIFY(fr_time_delta_to_sec(_x))
+static int convert_delta_to_sec(TALLOC_CTX *ctx, void *out, void *parent,
+				UNUSED CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+    int             ret;
+    uint64_t        tmp, value;
+
+    if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+    memcpy(&tmp, out, sizeof(value));
+
+    value = fr_time_delta_to_sec(tmp);
+
+    memcpy(out, &value, sizeof(value));
+
+    return 0;
+}
 
 /*
  *	Retransmission intervals for the packets we support.
  */
 static CONF_PARSER auth_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].irt), .dflt = DELTA_STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrt), .dflt = DELTA_STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].irt), .dflt = STRINGIFY(2), .func = convert_delta_to_sec },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrt), .dflt = STRINGIFY(16), .func = convert_delta_to_sec },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrd), .dflt = DELTA_STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrd), .dflt = STRINGIFY(30), .func = convert_delta_to_sec },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER acct_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = DELTA_STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = DELTA_STRINGIFY(5) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = STRINGIFY(2), .func = convert_delta_to_sec },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(5), .func = convert_delta_to_sec },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(1) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = DELTA_STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = STRINGIFY(30), .func = convert_delta_to_sec },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER status_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].irt), .dflt = DELTA_STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrt), .dflt = DELTA_STRINGIFY(10) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].irt), .dflt = STRINGIFY(2), .func = convert_delta_to_sec },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(10), .func = convert_delta_to_sec },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrd), .dflt = DELTA_STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrd), .dflt = STRINGIFY(30), .func = convert_delta_to_sec },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER coa_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].irt), .dflt = DELTA_STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrt), .dflt = DELTA_STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].irt), .dflt = STRINGIFY(2), .func = convert_delta_to_sec },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrt), .dflt = STRINGIFY(16), .func = convert_delta_to_sec },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrd), .dflt = DELTA_STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrd), .dflt = STRINGIFY(30), .func = convert_delta_to_sec },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER disconnect_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].irt), .dflt = DELTA_STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrt), .dflt = DELTA_STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].irt), .dflt = STRINGIFY(2), .func = convert_delta_to_sec },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrt), .dflt = STRINGIFY(16), .func = convert_delta_to_sec },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrd), .dflt = DELTA_STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrd), .dflt = STRINGIFY(30), .func = convert_delta_to_sec },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -120,7 +135,7 @@ static CONF_PARSER const module_config[] = {
 
 	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
-	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIME_DELTA, rlm_radius_t, zombie_period), .dflt = DELTA_STRINGIFY(40) },
+	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIME_DELTA, rlm_radius_t, zombie_period), .dflt = STRINGIFY(40), .func = convert_delta_to_sec },
 
 	{ FR_CONF_OFFSET("trunk", FR_TYPE_SUBSECTION, rlm_radius_t, trunk_conf), .subcs = (void const *) fr_trunk_config, },
 
