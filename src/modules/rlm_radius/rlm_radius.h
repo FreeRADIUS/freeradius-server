@@ -73,9 +73,6 @@ typedef struct {
 struct rlm_radius_s {
 	char const		*name;		//!< Module instance name.
 
-	fr_time_delta_t		connection_timeout;
-	fr_time_delta_t		reconnection_delay;
-	fr_time_delta_t		idle_timeout;
 	fr_time_delta_t		zombie_period;
 
 	bool			replicate;	//!< are we ignoring responses?
@@ -88,8 +85,6 @@ struct rlm_radius_s {
 	void			*io_instance;	//!< Easy access to the IO instance
 	CONF_SECTION		*io_conf;	//!< Easy access to the IO config section
 
-	uint32_t		max_connections;  //!< maximum number of open connections
-	atomic_uint32_t		num_connections;  //!< actual number of connections
 	uint32_t		max_attributes;   //!< Maximum number of attributes to decode in response.
 
 	uint32_t		proxy_state;  	//!< Unique ID (mostly) of this module.

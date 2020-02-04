@@ -54,22 +54,6 @@ static CONF_PARSER const status_check_update_config[] = {
 
 #define DELTA_STRINGIFY(_x) STRINGIFY(fr_time_delta_to_sec(_x))
 
-static CONF_PARSER const connection_config[] = {
-	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, rlm_radius_t, connection_timeout),
-	  .dflt = DELTA_STRINGIFY(5) },
-
-	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIME_DELTA, rlm_radius_t, reconnection_delay),
-	  .dflt = DELTA_STRINGIFY(5) },
-
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, rlm_radius_t, idle_timeout),
-	  .dflt = DELTA_STRINGIFY(300) },
-
-	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIME_DELTA, rlm_radius_t, zombie_period),
-	  .dflt = DELTA_STRINGIFY(40) },
-
-	CONF_PARSER_TERMINATOR
-};
-
 /*
  *	Retransmission intervals for the packets we support.
  */
@@ -134,11 +118,9 @@ static CONF_PARSER const module_config[] = {
 
 	{ FR_CONF_POINTER("status_checks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_checks_config },
 
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, rlm_radius_t, max_connections), .dflt = STRINGIFY(32) },
-
 	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
-	{ FR_CONF_POINTER("connection", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) connection_config },
+	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIME_DELTA, rlm_radius_t, zombie_period), .dflt = DELTA_STRINGIFY(40) },
 
 	{ FR_CONF_OFFSET("trunk", FR_TYPE_SUBSECTION, rlm_radius_t, trunk_conf), .subcs = (void const *) fr_trunk_config, },
 
@@ -549,7 +531,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	size_t i, num_types;
-	uint32_t num_connections;
 	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 
 	inst->name = cf_section_name2(conf);
@@ -561,17 +542,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
 	FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
 
-	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, >=, fr_time_delta_from_sec(1));
-	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, <=, fr_time_delta_from_sec(30));
-
-	FR_TIME_DELTA_BOUND_CHECK("connection.reconnect_delay", inst->reconnection_delay, >=, fr_time_delta_from_sec(5));
-	FR_TIME_DELTA_BOUND_CHECK("connection.reconnect_delay", inst->reconnection_delay, <=, fr_time_delta_from_sec(300));
-
-	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, >=, fr_time_delta_from_sec(5));
-	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, <=, fr_time_delta_from_sec(600));
-
-	FR_TIME_DELTA_BOUND_CHECK("connection.zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
-	FR_TIME_DELTA_BOUND_CHECK("connection.zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(120));
+	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(120));
 
 	num_types = talloc_array_length(inst->types);
 	rad_assert(num_types > 0);
@@ -719,12 +691,6 @@ setup_io_submodule:
 	 *	Get random Proxy-State identifier for this module.
 	 */
 	inst->proxy_state = fr_rand();
-
-	FR_INTEGER_BOUND_CHECK("max_connections", inst->max_connections, >=, 2);
-	FR_INTEGER_BOUND_CHECK("max_connections", inst->max_connections, <=, 1024);
-
-	num_connections = 0;
-	store(inst->num_connections, num_connections);
 
 	/*
 	 *	Bootstrap the submodule.
