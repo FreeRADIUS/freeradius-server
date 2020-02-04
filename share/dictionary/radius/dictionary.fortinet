@@ -42,7 +42,7 @@ ATTRIBUTE	Fortinet-AppCtrl-Risk-Block		22	octets
 ATTRIBUTE	Fortinet-WirelessController-Device-MAC	23	ether
 ATTRIBUTE	Fortinet-WirelessController-WTP-ID	24	string
 ATTRIBUTE	Fortinet-WirelessController-Assoc-Time	25	date
-ATTRIBUTE	Fortinet-FWN-AVPair			26	string
+ATTRIBUTE	Fortinet-FortiWAN-AVPair		26	string
 ATTRIBUTE	Fortinet-FDD-Access-Profile		30	string
 ATTRIBUTE	Fortinet-FDD-Trusted-Hosts		31	string
 ATTRIBUTE	Fortinet-FDD-SPP-Name			32	string
