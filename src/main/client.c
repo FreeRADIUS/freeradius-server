@@ -286,7 +286,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		}
 
 		ERROR("Failed to add duplicate client %s", client->shortname);
-		client_free(client);
 		return false;
 	}
 #undef namecmp
@@ -295,7 +294,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 *	Other error adding client: likely is fatal.
 	 */
 	if (!rbtree_insert(clients->trees[client->ipaddr.prefix], client)) {
-		client_free(client);
 		return false;
 	}
 
