@@ -920,13 +920,50 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 }
 
 
-/** Start doing status checks.  Or ignore them if not configured.
+/** See if the connection is zombied.
  *
+ *	We check for zombie when major events happen:
+ *
+ *	1) request hits its final timeout
+ *	2) request timer hits, and it needs to be retransmitted
+ *	3) a DUP packet comes in, and the request needs to be retransmitted
+ *	4) we're sending a packet.
+ *
+ *  There MIGHT not be retries configured, so we MUST check for zombie
+ *  when any new packet comes in.  Similarly, there MIGHT not be new
+ *  packets, but retries are configured, so we have to check there,
+ *  too.
+ *
+ *  Also, the socket might not be writable for a while.  There MIGHT
+ *  be a long time between getting the timer / DUP signal, and the
+ *  request finally being written to the socket.  So we need to check
+ *  for zombie at BOTH the timeout and the mux / write function.
  */
-static void status_check_start(fr_event_list_t *el, udp_handle_t *h, fr_time_t now)
+static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now)
 {
 	udp_request_t *u = h->status_u;
 	ssize_t rcode;
+
+	/*
+	 *	We're replicating, and don't care about the health of
+	 *	the home server, don't do zombie checks.
+	 *
+	 *	Or there's already a zombie check started, don't do
+	 *	another one.
+	 */
+	if (h->inst->replicate || h->zombie_ev) {
+		return;
+	}
+
+	if (!now) now = fr_time();
+
+	/*
+	 *	We have replies, don't do anything.
+	 */
+	if ((h->last_reply && ((h->last_reply + h->inst->parent->zombie_period) <= now)) ||
+	    ((h->last_sent + h->inst->parent->zombie_period) <= now)) {
+		return;
+	}
 
 	/*
 	 *	No status checks: this connection is dead.
@@ -993,23 +1030,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	REQUEST			*request = treq->request;
 	fr_retry_state_t	state;
 
-	/*
-	 *	If we're sending packets, and there's no zombie timer,
-	 *	and we've reached (passed) the zombie timeout, then
-	 *	start sending status check packets
-	 *
-	 *	"last_reply" can be zero if we haven't sent a packet
-	 *	before, or there's been a lomng delay since we last
-	 *	sent a packet.
-	 *
-	 *	We therefore start zombie_period at "last_sent" if we
-	 *	haven't seen a reply.
-	 */
-	if (!h->inst->replicate && !h->zombie_ev &&
-	    ((h->last_reply && ((h->last_reply + h->inst->parent->zombie_period) <= now)) ||
-	     (h->last_sent + h->inst->parent->zombie_period) <= now)) {
-		status_check_start(el, h, now);
-	}
+	check_for_zombie(el, h, now);
 
 	state = fr_retry_next(&u->retry, now);
 	if (state == FR_RETRY_MRD) {
@@ -1113,6 +1134,8 @@ static void request_mux(fr_event_list_t *el,
 	fr_trunk_request_t	*treq;
 	REQUEST			*request;
 	udp_request_t		*u;
+
+	check_for_zombie(h->thread->el, h, 0);
 
 	while ((treq = fr_trunk_connection_pop_request(tconn)) != NULL) {
 		u = treq->preq;
@@ -1606,14 +1629,19 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	case FR_TRUNK_CANCEL_REASON_SIGNAL:
 		break;
 
-	/*
-	 *	Request is moving to a different connection,
-	 *	or was previously sent on this connection
-	 *	but needs to be sent again.
-	 *	Free up the resources associated with this
-	 *	request packet, and stop any timers.
-	 */
+		/*
+		 *	Request has been requeued due to timeout or
+		 *	DUP signal.
+		 */
 	case FR_TRUNK_CANCEL_REASON_REQUEUE:
+		check_for_zombie(h->thread->el, h, 0);
+		/* FALL-THROUGH */
+
+		/*
+		 *	Request is moving to a different connection,
+		 *	for internal trunk reasons.  i.e. the old
+		 *	connection is closing.
+		 */
 	case FR_TRUNK_CANCEL_REASON_MOVE:
 		if (u->rr) {
 			(void) rr_track_delete(h->id, u->rr);
@@ -1798,6 +1826,7 @@ static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thr
 		 *	we don't rely on the retransmission from the NAS.
 		 */
 		if (!inst->parent->synchronous) return;
+
 		fr_trunk_request_requeue(our_rctx->treq);
 		return;
 
