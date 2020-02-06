@@ -3213,15 +3213,15 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			return;
 		}
 
-		if (!req_count) {
-			DEBUG4("Closing connection - No outstanding requests");
-			goto close;
-		}
-
 		if ((trunk->conf.min > 0) && ((conn_count - 1) < trunk->conf.min)) {
 			DEBUG4("Not closing connection - Have %u connections, need %u or above",
 			       conn_count, trunk->conf.min);
 			return;
+		}
+
+		if (!req_count) {
+			DEBUG4("Closing connection - No outstanding requests");
+			goto close;
 		}
 
 		/*
