@@ -770,7 +770,7 @@ post-auth {
 	#  you will need to define the WiMAX NAI, usually via
 	#
 	#	update request {
-	#	       WiMAX-MN-NAI = "%{User-Name}"
+	#	       &WiMAX-MN-NAI = "%{User-Name}"
 	#	}
 	#
 	#  If you want various keys to be calculated, you will need to
@@ -779,8 +779,8 @@ post-auth {
 	#  taken from the cryptographic calculations.  e.g.
 	#
 	# 	update reply {
-	#		WiMAX-FA-RK-Key = 0x00
-	#		WiMAX-MSK = "%{EAP-MSK}"
+	#		&WiMAX-FA-RK-Key = 0x00
+	#		&WiMAX-MSK = "%{reply:EAP-MSK}"
 	#	}
 	#
 	#  You may want to delete the MS-MPPE-*-Keys from the reply,
