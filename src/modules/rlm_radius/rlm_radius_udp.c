@@ -956,6 +956,8 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 
 	if (!now) now = fr_time();
 
+	if (!h->last_reply && !h->last_sent) return;
+
 	/*
 	 *	We have recent replies, do nothing.
 	 */
@@ -1419,6 +1421,7 @@ drain:
 	if (data_len < 0) {
 		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return NULL;
 
+		DEBUG("Failed reading from socket: %s", fr_syserror(errno));
 		fr_trunk_connection_signal_reconnect(c->tconn, FR_CONNECTION_FAILED);
 		return NULL;
 	}
@@ -1694,23 +1697,26 @@ static int udp_request_free(udp_request_t *u)
 {
 	udp_handle_t *h;
 
+	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+
 	/*
 	 *	We don't have a connection, so we can't update any of
 	 *	the connection timers or states.
 	 */
 	if (!u->c) return 0;
 
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
-
-	h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
+	/*
+	 *	No resources allocated to the packet.
+	 */
+	if (!u->rr) return 0;
 
 	/*
-	 *	The module is doing async proxying, we don't need to
-	 *	do more.
+	 *	@todo - this crashes on exit if there are pending
+	 *	requests, because "conn" is freed before this function
+	 *	is called.
 	 */
-	if (!u->synchronous) return 0;
-
-	if (u->rr) (void) rr_track_delete(h->id, u->rr);
+	h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
+	(void) rr_track_delete(h->id, u->rr);
 
 	return 0;
 }
