@@ -107,6 +107,7 @@ typedef struct {
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
 	fr_time_t		last_sent;		//!< last time we sent a packet.
+	fr_time_t		last_idle;		//!< last time we had nothing to do
 
 	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
 	udp_request_t		*status_u;		//!< for sending Status-Server packets
@@ -955,20 +956,35 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 
 	if (!now) now = fr_time();
 
-	if (!h->last_reply && !h->last_sent) return;
+	if (h->last_reply) {
+		/*
+		 *	We have recent replies, do nothing.
+		 */
+		if ((h->last_reply + h->inst->parent->zombie_period) >= now) {
+			return;
+		}
 
-	/*
-	 *	We have recent replies, do nothing.
-	 */
-	if (h->last_reply && ((h->last_reply + h->inst->parent->zombie_period) >= now)) {
+		/*
+		 *	We don't have recent replies.  Maybe it's
+		 *	because we received *all* replies, and haven't
+		 *	sent new packets?
+		 */
+		if (h->last_reply <= h->last_idle) {
+			return;
+		}
+
+	} else if (!h->last_sent) {
+		/*
+		 *	We haven't sent any packets, hope that the
+		 *	home server is up.
+		 */
 		return;
-	}
 
-	/*
-	 *	We've sent packets, but not so far in the past as to
-	 *	hit the zombie timer.
-	 */
-	if (h->last_sent && ((h->last_sent + h->inst->parent->zombie_period) >= now)) {
+	} else if ((h->last_sent + h->inst->parent->zombie_period) >= now) {
+		/*
+		 *	We haven't seen a reply, start the timer from
+		 *	when we last sent a packet.
+		 */
 		return;
 	}
 
@@ -1051,6 +1067,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	fail:
 		(void) rr_track_delete(h->id, u->rr);
+		if (h->id->num_free == (h->status_u != NULL)) h->last_idle = now;
 		u->rr = NULL;
 		rcode->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
@@ -1182,6 +1199,7 @@ static void request_mux(fr_event_list_t *el,
 		if (encode(request, u, h) < 0) {
 		fail2:
 			(void) rr_track_delete(h->id, u->rr);
+			if (h->id->num_free == (h->status_u != NULL)) h->last_idle = fr_time();
 			u->rr = NULL;
 			goto fail;
 		}
@@ -1203,6 +1221,7 @@ static void request_mux(fr_event_list_t *el,
 		 */
 		if (inst->replicate) {
 			(void) rr_track_delete(h->id, u->rr);
+			if (h->id->num_free == (h->status_u != NULL)) h->last_idle = fr_time();
 			u->rr = NULL;
 			rcode->rcode = RLM_MODULE_OK;
 			fr_trunk_request_signal_complete(treq);
@@ -1494,12 +1513,14 @@ drain:
 		return NULL;
 	}
 
+	h->last_reply = fr_time();
+
 	(void) rr_track_delete(h->id, rr);
+	if (h->id->num_free == (h->status_u != NULL)) h->last_idle = h->last_reply;
 	u->rr = NULL;
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
-	h->last_reply = fr_time();
 	if (u->retry.start > h->mrs_time) h->mrs_time = u->retry.start;
 
 	code = h->buffer[0];
@@ -1662,6 +1683,7 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	case FR_TRUNK_CANCEL_REASON_MOVE:
 		if (u->rr) {
 			(void) rr_track_delete(h->id, u->rr);
+			if (h->id->num_free == (h->status_u != NULL)) h->last_idle = fr_time();
 			u->rr = NULL;
 		}
 
@@ -1721,6 +1743,7 @@ static int udp_request_free(udp_request_t *u)
 	 */
 	h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
 	(void) rr_track_delete(h->id, u->rr);
+	if (h->id->num_free == (h->status_u != NULL)) h->last_idle = fr_time();
 
 	return 0;
 }
