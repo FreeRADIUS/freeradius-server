@@ -227,6 +227,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	h->src_ipaddr = inst->src_ipaddr;
 	h->src_port = 0;
 	h->max_packet_size = inst->max_packet_size;
+	h->last_idle = fr_time();
 
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
 	h->buflen = h->max_packet_size;
@@ -319,11 +320,6 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	request->packet = fr_radius_alloc(request, false);
 	request->reply = fr_radius_alloc(request, false);
 
-	// @todo - set up different logging?
-
-	/*
-	 *	Create the packet contents.
-	 */
 	/*
 	 *	Create the VPs, and ignore any errors
 	 *	creating them.
@@ -461,9 +457,9 @@ static void conn_close(fr_event_list_t *el, void *handle, UNUSED void *uctx)
  * @param[in] state	the connection was in when it failed.
  * @param[in] uctx	a #udp_connection_t
  */
-static fr_connection_state_t conn_failed(UNUSED void *handle, fr_connection_state_t state, UNUSED void *uctx)
+static fr_connection_state_t conn_failed(void *handle, fr_connection_state_t state, UNUSED void *uctx)
 {
-//	udp_handle_t	*h = talloc_get_type_abort(handle, udp_handle_t);
+	udp_handle_t	*h = talloc_get_type_abort(handle, udp_handle_t);
 
 	/*
 	 *	If the connection was connected when it failed,
@@ -474,10 +470,9 @@ static fr_connection_state_t conn_failed(UNUSED void *handle, fr_connection_stat
 		/*
 		 *	Reset the Status-Server checks.
 		 */
-
-		/*
-		 *	Delete idle and zombie timers associated with the connection.
-		 */
+		if (h->status_u && h->status_u->ev) {
+			(void) fr_event_timer_delete(&h->status_u->ev);
+		}
 	}
 
 	return FR_CONNECTION_STATE_INIT;
@@ -1042,6 +1037,16 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	}
 }
 
+static void clear_id(udp_request_t *u, udp_handle_t *h, fr_time_t now)
+{
+	if (!now) now = fr_time();
+
+	(void) rr_track_delete(h->id, u->rr);
+	if (h->id->num_free == (h->status_u != NULL)) h->last_idle = now;
+	u->rr = NULL;
+}
+
+
 /** Handle retries for a REQUEST
  *
  */
@@ -1066,9 +1071,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		RDEBUG("Reached maximum_retransmit_count, failing request");
 
 	fail:
-		(void) rr_track_delete(h->id, u->rr);
-		if (h->id->num_free == (h->status_u != NULL)) h->last_idle = now;
-		u->rr = NULL;
+		clear_id(u, h, now);
 		rcode->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
 		fr_trunk_request_signal_complete(treq);
@@ -1198,9 +1201,7 @@ static void request_mux(fr_event_list_t *el,
 		 */
 		if (encode(request, u, h) < 0) {
 		fail2:
-			(void) rr_track_delete(h->id, u->rr);
-			if (h->id->num_free == (h->status_u != NULL)) h->last_idle = fr_time();
-			u->rr = NULL;
+			clear_id(u, h, 0);
 			goto fail;
 		}
 
@@ -1220,9 +1221,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	calling a complex API.
 		 */
 		if (inst->replicate) {
-			(void) rr_track_delete(h->id, u->rr);
-			if (h->id->num_free == (h->status_u != NULL)) h->last_idle = fr_time();
-			u->rr = NULL;
+			clear_id(u, h, 0);
 			rcode->rcode = RLM_MODULE_OK;
 			fr_trunk_request_signal_complete(treq);
 			continue;
@@ -1515,9 +1514,7 @@ drain:
 
 	h->last_reply = fr_time();
 
-	(void) rr_track_delete(h->id, rr);
-	if (h->id->num_free == (h->status_u != NULL)) h->last_idle = h->last_reply;
-	u->rr = NULL;
+	clear_id(u, h, h->last_reply);
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
@@ -1681,11 +1678,7 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 		 *	connection is closing.
 		 */
 	case FR_TRUNK_CANCEL_REASON_MOVE:
-		if (u->rr) {
-			(void) rr_track_delete(h->id, u->rr);
-			if (h->id->num_free == (h->status_u != NULL)) h->last_idle = fr_time();
-			u->rr = NULL;
-		}
+		if (u->rr) clear_id(u, h, 0);
 
 		if (u->packet) TALLOC_FREE(u->packet);
 
@@ -1742,8 +1735,7 @@ static int udp_request_free(udp_request_t *u)
 	 *	is called.
 	 */
 	h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
-	(void) rr_track_delete(h->id, u->rr);
-	if (h->id->num_free == (h->status_u != NULL)) h->last_idle = fr_time();
+	clear_id(u, h, 0);
 
 	return 0;
 }
