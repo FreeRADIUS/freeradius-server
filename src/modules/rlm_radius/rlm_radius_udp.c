@@ -113,6 +113,12 @@ typedef struct {
 	REQUEST			*status_request;
 } udp_handle_t;
 
+typedef struct {
+	fr_trunk_request_t	*treq;
+	rlm_rcode_t		rcode;			//!< from the transport
+} udp_rcode_t;
+
+
 /** Connect REQUEST to local tracking structure
  *
  */
@@ -121,8 +127,6 @@ struct udp_request_s {
 	fr_time_t		recv_time;		//!< copied from request->async->recv_time
 
 	int			num_replies;		//!< number of reply packets, sent is in retry.count
-
-	rlm_rcode_t		rcode;			//!< from the transport
 
 	bool			synchronous;		//!< cached from inst->parent->synchronous
 	bool			require_ma;		//!< saved from the original packet.
@@ -134,15 +138,12 @@ struct udp_request_s {
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 
+	udp_rcode_t		*rcode;			//!< more shitty magic
 	udp_connection_t       	*c;			//!< The outbound connection
 	rlm_radius_request_t	*rr;			//!< ID tracking, resend count, etc.
 	fr_event_timer_t const	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
-
-typedef struct {
-	fr_trunk_request_t	*treq;
-} udp_rctx_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, dst_ipaddr), },
@@ -425,8 +426,6 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, void *handle, UNUSED
 	 *
 	 *	@todo - connection negotiation via Status-Server
 	 */
-	h->last_reply = h->mrs_time = fr_time();
-
 	if (h->inst->parent->status_check) status_check_alloc(el, h);
 
 	return FR_CONNECTION_STATE_CONNECTED;
@@ -649,7 +648,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	char const		*module_name;
 	bool			can_retransmit = true;
 
-	rad_assert(inst->parent->allowed[u->code]);
+	rad_assert(inst->parent->allowed[u->code] || (u == h->status_u));
 
 	/*
 	 *	All proxied Access-Request packets MUST have a
@@ -941,8 +940,8 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
  */
 static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now)
 {
-	udp_request_t *u = h->status_u;
-	ssize_t rcode;
+	udp_request_t	*u = h->status_u;
+	ssize_t		rcode;
 
 	/*
 	 *	We're replicating, and don't care about the health of
@@ -958,10 +957,17 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	if (!now) now = fr_time();
 
 	/*
-	 *	We have replies, don't do anything.
+	 *	We have recent replies, do nothing.
 	 */
-	if ((h->last_reply && ((h->last_reply + h->inst->parent->zombie_period) <= now)) ||
-	    ((h->last_sent + h->inst->parent->zombie_period) <= now)) {
+	if (h->last_reply && ((h->last_reply + h->inst->parent->zombie_period) >= now)) {
+		return;
+	}
+
+	/*
+	 *	We've sent packets, but not so far in the past as to
+	 *	hit the zombie timer.
+	 */
+	if (h->last_sent && ((h->last_sent + h->inst->parent->zombie_period) >= now)) {
 		return;
 	}
 
@@ -1044,7 +1050,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fail:
 		(void) rr_track_delete(h->id, u->rr);
 		u->rr = NULL;
-		u->rcode = RLM_MODULE_FAIL;
+		u->rcode->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
 		fr_trunk_request_signal_complete(treq);
 		return;
@@ -1193,7 +1199,7 @@ static void request_mux(fr_event_list_t *el,
 		if (inst->replicate) {
 			(void) rr_track_delete(h->id, u->rr);
 			u->rr = NULL;
-			u->rcode = RLM_MODULE_OK;
+			u->rcode->rcode = RLM_MODULE_OK;
 			fr_trunk_request_signal_complete(treq);
 			continue;
 		}
@@ -1306,7 +1312,7 @@ static void protocol_error_reply(udp_request_t *u, udp_handle_t *h)
 			if ((attr[3] != 0) ||
 			    (attr[4] != 0) ||
 			    (attr[5] != 0)) {
-				u->rcode = RLM_MODULE_FAIL;
+				u->rcode->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 
@@ -1318,7 +1324,7 @@ static void protocol_error_reply(udp_request_t *u, udp_handle_t *h)
 			 *	and for sanity.
 			 */
 			if (attr[6] != u->code) {
-				u->rcode = RLM_MODULE_FAIL;
+				u->rcode->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 	}
@@ -1357,7 +1363,7 @@ static void protocol_error_reply(udp_request_t *u, udp_handle_t *h)
 	 *	error, and the response is valid, but not useful for
 	 *	anything.
 	 */
-	u->rcode = RLM_MODULE_HANDLED;
+	u->rcode->rcode = RLM_MODULE_HANDLED;
 }
 
 
@@ -1484,12 +1490,14 @@ drain:
 	u->rr = NULL;
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+
 	h->last_reply = fr_time();
+	if (u->retry.start > h->mrs_time) h->mrs_time = u->retry.start;
 
 	code = h->buffer[0];
 	if (!code || (code >= FR_RADIUS_MAX_PACKET_CODE)) {
 		REDEBUG("Unknown reply code %d", code);
-		u->rcode = RLM_MODULE_INVALID;
+		u->rcode->rcode= RLM_MODULE_INVALID;
 		return treq;
 	}
 
@@ -1507,13 +1515,13 @@ drain:
 
 	if (!allowed_replies[code]) {
 		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		u->rcode = RLM_MODULE_INVALID;
+		u->rcode->rcode = RLM_MODULE_INVALID;
 		return treq;
 	}
 
 	if (allowed_replies[code] != (FR_CODE) u->code) {
 		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		u->rcode = RLM_MODULE_INVALID;
+		u->rcode->rcode = RLM_MODULE_INVALID;
 		return treq;
 	}
 
@@ -1538,7 +1546,7 @@ drain:
 	/*
 	 *	Set the module return code based on the reply packet.
 	 */
-	u->rcode = code2rcode[h->buffer[0]];
+	u->rcode->rcode = code2rcode[h->buffer[0]];
 
 decode:
 	reply = NULL;
@@ -1552,7 +1560,7 @@ decode:
 			     inst->secret, talloc_array_length(inst->secret) - 1, &reply) < 0) {
 		REDEBUG("Failed decoding attributes for packet");
 		fr_pair_list_free(&reply);
-		u->rcode = RLM_MODULE_INVALID;
+		u->rcode->rcode = RLM_MODULE_INVALID;
 		return treq;
 	}
 
@@ -1630,12 +1638,13 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 		break;
 
 		/*
-		 *	Request has been requeued due to timeout or
-		 *	DUP signal.
+		 *	Request has been requeued on the same
+		 *	connection due to timeout or DUP signal.  We
+		 *	keep the same timers, packets etc.
 		 */
 	case FR_TRUNK_CANCEL_REASON_REQUEUE:
 		check_for_zombie(h->thread->el, h, 0);
-		/* FALL-THROUGH */
+		break;
 
 		/*
 		 *	Request is moving to a different connection,
@@ -1652,7 +1661,7 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 
 		if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
-		u->rcode = RLM_MODULE_FAIL;
+		u->rcode->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
 		u->num_replies = 0;
 		break;
@@ -1673,14 +1682,9 @@ static fr_trunk_io_funcs_t trunk_funcs = {
 
 static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *ctx)
 {
-	udp_request_t *u = talloc_get_type_abort(ctx, udp_request_t);
-	rlm_rcode_t rcode;
+	udp_rcode_t	*rcode = talloc_get_type_abort(ctx, udp_rcode_t);
 
-	rcode = u->rcode;
-	rad_assert(rcode != RLM_MODULE_YIELD);
-	talloc_free(u);
-
-	return rcode;
+	return rcode->rcode;
 }
 
 
@@ -1708,27 +1712,13 @@ static int udp_request_free(udp_request_t *u)
 
 	if (u->rr) (void) rr_track_delete(h->id, u->rr);
 
-	/*
-	 *	There are no outstanding replies, (other than
-	 *	status-server), so we set the "last_reply" time to
-	 *	zero.
-	 *
-	 *	This setting ensures that if we get a new outgoing
-	 *	packet ~40s after the last reply, then it doesn't
-	 *	immediately go into zombie_period on the timeout of
-	 *	the first request.
-	 */
-	if (h->id->num_requests == (h->status_u != 0)) {
-		h->last_reply = 0;
-	}
-
 	return 0;
 }
 
 static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *tctx)
 {
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_rctx_t			*our_rctx = talloc_get_type_abort(rctx, udp_rctx_t);
+	udp_rcode_t			*rcode = talloc_get_type_abort(rctx, udp_rcode_t);
 	udp_request_t			*u;
 	udp_thread_t			*thread = talloc_get_type_abort(tctx, udp_thread_t);
 	fr_trunk_request_t		*treq;
@@ -1759,7 +1749,8 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 
 	u->rr = NULL;
 	u->c = NULL;
-	u->rcode = RLM_MODULE_FAIL;
+	u->rcode = rcode;
+	u->rcode->rcode = RLM_MODULE_FAIL;
 	u->code = request->packet->code;
 	u->synchronous = inst->parent->synchronous;
 	u->priority = request->async->priority;	  /* cached for speed */
@@ -1794,7 +1785,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 		return RLM_MODULE_FAIL;
 	}
 
-	our_rctx->treq = treq;	/* Remember for signalling purposes */
+	rcode->treq = treq;	/* Remember for signalling purposes */
 	talloc_set_destructor(u, udp_request_free);
 
 	return RLM_MODULE_YIELD;
@@ -1804,7 +1795,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thread, void *rctx, fr_state_signal_t action)
 {
 	rlm_radius_udp_t	*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_rctx_t		*our_rctx = talloc_get_type_abort(rctx, udp_rctx_t);
+	udp_rcode_t		*rcode = talloc_get_type_abort(rctx, udp_rcode_t);
 
 	switch (action) {
 	/*
@@ -1812,7 +1803,7 @@ static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thr
 	 *	trunk so it can clean up the treq.
 	 */
 	case FR_SIGNAL_CANCEL:
-		fr_trunk_request_signal_cancel(our_rctx->treq);
+		fr_trunk_request_signal_cancel(rcode->treq);
 		return;
 
 	/*
@@ -1827,7 +1818,7 @@ static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thr
 		 */
 		if (!inst->parent->synchronous) return;
 
-		fr_trunk_request_requeue(our_rctx->treq);
+		fr_trunk_request_requeue(rcode->treq);
 		return;
 
 	default:
@@ -1953,8 +1944,8 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.name			= "radius_udp",
 	.inst_size		= sizeof(rlm_radius_udp_t),
 
-	.request_inst_size 	= sizeof(udp_rctx_t),
-	.request_inst_type	= "udp_rctx_t",
+	.request_inst_size 	= sizeof(udp_rcode_t),
+	.request_inst_type	= "udp_rcode_t",
 
 	.thread_inst_size	= sizeof(udp_thread_t),
 	.thread_inst_type	= "udp_thread_t",
