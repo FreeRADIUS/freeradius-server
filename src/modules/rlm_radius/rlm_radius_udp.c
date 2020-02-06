@@ -138,7 +138,6 @@ struct udp_request_s {
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 
-	udp_rcode_t		*rcode;			//!< more shitty magic
 	udp_connection_t       	*c;			//!< The outbound connection
 	rlm_radius_request_t	*rr;			//!< ID tracking, resend count, etc.
 	fr_event_timer_t const	*ev;			//!< timer for retransmissions
@@ -1035,6 +1034,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
+	udp_rcode_t		*rcode = talloc_get_type_abort(treq->rctx, udp_rcode_t);
 	REQUEST			*request = treq->request;
 	fr_retry_state_t	state;
 
@@ -1052,7 +1052,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fail:
 		(void) rr_track_delete(h->id, u->rr);
 		u->rr = NULL;
-		u->rcode->rcode = RLM_MODULE_FAIL;
+		rcode->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
 		fr_trunk_request_signal_complete(treq);
 		return;
@@ -1146,7 +1146,10 @@ static void request_mux(fr_event_list_t *el,
 	check_for_zombie(h->thread->el, h, 0);
 
 	while ((treq = fr_trunk_connection_pop_request(tconn)) != NULL) {
+		udp_rcode_t *rcode = talloc_get_type_abort(treq->rctx, udp_rcode_t);
+
 		u = treq->preq;
+
 		request = treq->request;
 
 		/*
@@ -1201,7 +1204,7 @@ static void request_mux(fr_event_list_t *el,
 		if (inst->replicate) {
 			(void) rr_track_delete(h->id, u->rr);
 			u->rr = NULL;
-			u->rcode->rcode = RLM_MODULE_OK;
+			rcode->rcode = RLM_MODULE_OK;
 			fr_trunk_request_signal_complete(treq);
 			continue;
 		}
@@ -1256,7 +1259,7 @@ static rlm_rcode_t code2rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 /** Deal with Protocol-Error replies, and possible negotiation
  *
  */
-static void protocol_error_reply(udp_request_t *u, udp_handle_t *h)
+static void protocol_error_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handle_t *h)
 {
 	bool	  	error_601 = false;
 	uint32_t  	response_length = 0;
@@ -1314,7 +1317,7 @@ static void protocol_error_reply(udp_request_t *u, udp_handle_t *h)
 			if ((attr[3] != 0) ||
 			    (attr[4] != 0) ||
 			    (attr[5] != 0)) {
-				u->rcode->rcode = RLM_MODULE_FAIL;
+				rcode->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 
@@ -1326,7 +1329,7 @@ static void protocol_error_reply(udp_request_t *u, udp_handle_t *h)
 			 *	and for sanity.
 			 */
 			if (attr[6] != u->code) {
-				u->rcode->rcode = RLM_MODULE_FAIL;
+				rcode->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 	}
@@ -1365,14 +1368,14 @@ static void protocol_error_reply(udp_request_t *u, udp_handle_t *h)
 	 *	error, and the response is valid, but not useful for
 	 *	anything.
 	 */
-	u->rcode->rcode = RLM_MODULE_HANDLED;
+	rcode->rcode = RLM_MODULE_HANDLED;
 }
 
 
 /** Deal with replies replies to status checks and possible negotiation
  *
  */
-static void status_check_reply(udp_request_t *u, udp_handle_t *h)
+static void status_check_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handle_t *h)
 {
 	/*
 	 *	@todo - make this configurable
@@ -1388,7 +1391,7 @@ static void status_check_reply(udp_request_t *u, udp_handle_t *h)
 	 *	@todo - do other negotiation and signaling.
 	 */
 	if (h->buffer[0] == FR_CODE_PROTOCOL_ERROR) {
-		protocol_error_reply(u, h);
+		protocol_error_reply(u, rcode, h);
 	}
 }
 
@@ -1398,6 +1401,7 @@ static fr_trunk_request_t *read_packet(udp_handle_t *h, udp_connection_t *c)
 	rlm_radius_udp_t const	*inst = c->thread->inst;
 	fr_trunk_request_t	*treq;
 	udp_request_t		*u;
+	udp_rcode_t		*rcode;
 	REQUEST			*request;
 	ssize_t			data_len;
 	size_t			packet_len;
@@ -1461,6 +1465,7 @@ drain:
 	request = treq->request;
 	rad_assert(request != NULL);
 	u = talloc_get_type_abort(treq->preq, udp_request_t);
+	rcode = talloc_get_type_abort(treq->rctx, udp_rcode_t);
 
 	original[0] = rr->code;
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
@@ -1485,7 +1490,7 @@ drain:
 	 *	this module for internal signalling.
 	 */
 	if (u == h->status_u) {
-		status_check_reply(u, h);
+		status_check_reply(u, rcode, h);
 		return NULL;
 	}
 
@@ -1500,7 +1505,7 @@ drain:
 	code = h->buffer[0];
 	if (!code || (code >= FR_RADIUS_MAX_PACKET_CODE)) {
 		REDEBUG("Unknown reply code %d", code);
-		u->rcode->rcode= RLM_MODULE_INVALID;
+		rcode->rcode= RLM_MODULE_INVALID;
 		return treq;
 	}
 
@@ -1512,19 +1517,19 @@ drain:
 	 *	packet.
 	 */
 	if (code == FR_CODE_PROTOCOL_ERROR) {
-		protocol_error_reply(u, h);
+		protocol_error_reply(u, rcode, h);
 		goto decode;
 	}
 
 	if (!allowed_replies[code]) {
 		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		u->rcode->rcode = RLM_MODULE_INVALID;
+		rcode->rcode = RLM_MODULE_INVALID;
 		return treq;
 	}
 
 	if (allowed_replies[code] != (FR_CODE) u->code) {
 		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		u->rcode->rcode = RLM_MODULE_INVALID;
+		rcode->rcode = RLM_MODULE_INVALID;
 		return treq;
 	}
 
@@ -1549,7 +1554,7 @@ drain:
 	/*
 	 *	Set the module return code based on the reply packet.
 	 */
-	u->rcode->rcode = code2rcode[h->buffer[0]];
+	rcode->rcode = code2rcode[h->buffer[0]];
 
 decode:
 	reply = NULL;
@@ -1563,7 +1568,7 @@ decode:
 			     inst->secret, talloc_array_length(inst->secret) - 1, &reply) < 0) {
 		REDEBUG("Failed decoding attributes for packet");
 		fr_pair_list_free(&reply);
-		u->rcode->rcode = RLM_MODULE_INVALID;
+		rcode->rcode = RLM_MODULE_INVALID;
 		return treq;
 	}
 
@@ -1664,7 +1669,6 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 
 		if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
-		u->rcode->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
 		u->num_replies = 0;
 		break;
@@ -1755,8 +1759,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 
 	u->rr = NULL;
 	u->c = NULL;
-	u->rcode = rcode;
-	u->rcode->rcode = RLM_MODULE_FAIL;
+	rcode->rcode = RLM_MODULE_FAIL;
 	u->code = request->packet->code;
 	u->synchronous = inst->parent->synchronous;
 	u->priority = request->async->priority;	  /* cached for speed */
@@ -1786,7 +1789,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 		rad_assert(u->retry.next > 0);
 	}
 
-	if (fr_trunk_request_enqueue(&treq, thread->trunk, request, u, u) < 0) {
+	if (fr_trunk_request_enqueue(&treq, thread->trunk, request, u, rcode) < 0) {
 		talloc_free(treq);
 		return RLM_MODULE_FAIL;
 	}
