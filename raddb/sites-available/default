@@ -1232,7 +1232,7 @@ send Access-Accept {
 	#  via:
 	#
 #	update request {
-#		WiMAX-MN-NAI = "%{User-Name}"
+#		&WiMAX-MN-NAI = "%{User-Name}"
 #	}
 
 	#  If you want various keys to be calculated, you will
@@ -1242,8 +1242,8 @@ send Access-Accept {
 	#  calculations, e.g.
 	#
 #	update reply {
-#		WiMAX-FA-RK-Key = 0x00
-#		WiMAX-MSK = "%{EAP-MSK}"
+#		&WiMAX-FA-RK-Key = 0x00
+#		&WiMAX-MSK = "%{reply:EAP-MSK}"
 #	}
 
 	#  You may want to delete the `MS-MPPE-*-Keys` from the
