@@ -397,6 +397,7 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 
 	DEBUG2("%s - Allocated %s ID %u for status checks on connection %s",
 	       h->module_name, fr_packet_codes[u->code], u->rr->id, h->name);
+
 	h->status_u = u;
 	h->status_request = request;
 }
@@ -678,7 +679,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		proxy_state = 0;
 		vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY);
 		if (vp) {
-			vp->vp_uint32 = time(NULL);
+			vp->vp_date = fr_time_to_unix_time(fr_time());
 			can_retransmit = false;
 		}
 	}
@@ -880,27 +881,45 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	udp_handle_t	 	*h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
 	fr_retry_state_t	state;
 	ssize_t			rcode;
+	size_t			packet_len;
+	uint8_t			*packet;
 
-	state = fr_retry_next(&u->retry, now);
-	if (state == FR_RETRY_MRD) {
-		DEBUG("Reached maximum_retransmit_duration for status check, marking connection as dead - %s", h->name);
-		goto fail;
+	if (now) {
+		state = fr_retry_next(&u->retry, now);
+		if (state == FR_RETRY_MRD) {
+			DEBUG("Reached maximum_retransmit_duration for status check, marking connection as dead - %s", h->name);
+			goto fail;
+		}
+
+		if (state == FR_RETRY_MRC) {
+			DEBUG("Reached maximum_retransmit_count for status check, marking connection as dead - %s", h->name);
+		fail:
+			fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+			return;
+		}
 	}
 
-	if (state == FR_RETRY_MRC) {
-		DEBUG("Reached maximum_retransmit_count for status check, marking connection as dead - %s", h->name);
-	fail:
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
+	if (!u->packet) {
+		/*
+		 *	Encode the packet.
+		 */
+		if (encode(h->status_request, u, h) < 0) {
+			DEBUG("Failed encoding status check packet for connection %s", h->name);
+			fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+			return;
+		}
+		packet_len = (h->buffer[2] << 8) | h->buffer[3];
+		packet = h->buffer;
+	} else {
+		packet = u->packet;
+		packet_len = u->packet_len;
+
+		DEBUG("Retransmitting %s ID %d length %lu for status check over connection %s",
+		      fr_packet_codes[u->code], u->rr->id, packet_len, h->name);
 	}
 
-	DEBUG("Retransmitting %s ID %d length %ld for status check over connection %s",
-	      fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
-
-	// @todo - update Event-Timestamp, and re-sign the packet?
-
-	rcode = write(h->fd, u->packet, u->packet_len);
-	if ((rcode < 0) || ((size_t) rcode < u->packet_len)) {
+	rcode = write(h->fd, packet, packet_len);
+	if ((rcode < 0) || ((size_t) rcode < packet_len)) {
 		DEBUG("Failed writing status check packet for connection %s", h->name);
 		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 		return;
@@ -936,7 +955,6 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now)
 {
 	udp_request_t	*u = h->status_u;
-	ssize_t		rcode;
 
 	/*
 	 *	We're replicating, and don't care about the health of
@@ -990,7 +1008,7 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	 *	connection.
 	 */
 	if (!h->inst->parent->status_check) {
-		DEBUG2("No status_check response, closing connection %s", h->name);
+		DEBUG2("No status_check configured, closing connection %s", h->name);
 		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 		return;
 	}
@@ -1009,32 +1027,7 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	u->num_replies = 0;
 	u->recv_time = u->retry.start;
 
-	/*
-	 *	Encode the packet.
-	 */
-	if (encode(h->status_request, u, h) < 0) {
-		DEBUG("Failed encoding status check packet for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-
-	/*
-	 *	Write it immediately.
-	 *
-	 *	@todo - check if the socket is writable.
-	 */
-	rcode = write(h->fd, u->packet, u->packet_len);
-	if ((rcode < 0) || ((size_t) rcode < u->packet_len)) {
-		DEBUG("Failed writing status check packet for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
-
-	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
-		ERROR("Failed inserting retransmit timeout for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
-	}
+	status_check_timer(el, 0, u);
 }
 
 static void clear_id(udp_request_t *u, udp_handle_t *h, fr_time_t now)
@@ -1221,7 +1214,8 @@ static void request_mux(fr_event_list_t *el,
 		 *	calling a complex API.
 		 */
 		if (inst->replicate) {
-			clear_id(u, h, 0);
+			(void) rr_track_delete(h->id, u->rr); /* don't set last_idle, we're not checking for zombie */
+			u->rr = NULL;
 			rcode->rcode = RLM_MODULE_OK;
 			fr_trunk_request_signal_complete(treq);
 			continue;
@@ -1475,15 +1469,18 @@ drain:
 		return NULL;
 	}
 
-	/*
-	 *	FIXME - Will abort on status server packets.
-	 *	These probably need to be dealt with differently.
-	 */
-	treq = talloc_get_type_abort(rr->request_io_ctx, fr_trunk_request_t);
-	request = treq->request;
-	rad_assert(request != NULL);
-	u = talloc_get_type_abort(treq->preq, udp_request_t);
-	rcode = talloc_get_type_abort(treq->rctx, udp_rcode_t);
+	if (rr->request_io_ctx != h->status_u) {
+		treq = talloc_get_type_abort(rr->request_io_ctx, fr_trunk_request_t);
+		request = treq->request;
+		rad_assert(request != NULL);
+		u = talloc_get_type_abort(treq->preq, udp_request_t);
+		rcode = talloc_get_type_abort(treq->rctx, udp_rcode_t);
+	} else {
+		treq = NULL;
+		request = NULL;
+		u = talloc_get_type_abort(rr->request_io_ctx, udp_request_t);
+		rcode = NULL;
+	}
 
 	original[0] = rr->code;
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
