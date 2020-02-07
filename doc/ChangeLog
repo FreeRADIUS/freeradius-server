@@ -13,6 +13,7 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  Patch from Boris Lytochkin.  Fixes #3157.
 	* Generate attributes containing unknown OIDs.
 	  See raddb/sites-available/tls.  Patch from Boris Lytochkin.
+	* Update the WiMAX dictionary.
 
 	Bug fixes
 	* Set permissions of certificates in bootstrap shell script.
