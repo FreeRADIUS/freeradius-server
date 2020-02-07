@@ -1492,7 +1492,7 @@ drain:
 
 	if (fr_radius_verify(h->buffer, original,
 			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1) < 0) {
-		RPWDEBUG("Ignoring response with invalid signature");
+		if (request) RPWDEBUG("Ignoring response with invalid signature");
 		return NULL;
 	}
 
