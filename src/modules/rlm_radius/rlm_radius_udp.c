@@ -872,6 +872,18 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 }
 
 
+/** Revive a connection after "revive_interval"
+ *
+ */
+static void revive_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	udp_handle_t	 	*h = talloc_get_type_abort(uctx, udp_handle_t);
+
+	DEBUG("Shutting down and reviving connection %s", h->name);
+	fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+}
+
+
 /** Run the status check timers.
  *
  */
@@ -1016,8 +1028,19 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	 *	connection.
 	 */
 	if (!h->inst->parent->status_check) {
-		DEBUG2("No status_check configured, closing connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+		uint32_t msec = fr_time_delta_to_msec(h->inst->parent->revive_interval);
+		fr_time_t when;
+
+		DEBUG("Connection failed.  Reviving it in %u.%03us",
+		      msec / 1000, msec % 1000);
+		fr_trunk_connection_signal_inactive(h->c->tconn);
+
+		when = now + h->inst->parent->revive_interval;
+		if (fr_event_timer_at(h, el, &h->zombie_ev, when, revive_timer, h) < 0) {
+			fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+			return;
+		}
+		
 		return;
 	}
 

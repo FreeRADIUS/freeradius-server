@@ -74,6 +74,7 @@ struct rlm_radius_s {
 	char const		*name;		//!< Module instance name.
 
 	fr_time_delta_t		zombie_period;
+	fr_time_delta_t		revive_interval;
 
 	bool			replicate;	//!< are we ignoring responses?
 	bool			synchronous;	//!< are we doing synchronous proxying?
