@@ -884,7 +884,15 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	size_t			packet_len;
 	uint8_t			*packet;
 
-	if (now) {
+	if (!now) {
+		/*
+		 *	Initialize timers for Status-Server.
+		 */
+		(void) fr_retry_init(&u->retry, now, &h->inst->parent->retry[u->code]);
+		u->num_replies = 0;
+		u->recv_time = u->retry.start;
+
+	} else {
 		state = fr_retry_next(&u->retry, now);
 		if (state == FR_RETRY_MRD) {
 			DEBUG("Reached maximum_retransmit_duration for status check, marking connection as dead - %s", h->name);
@@ -1019,13 +1027,6 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	 */
 	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->name);
 	fr_trunk_connection_signal_inactive(h->c->tconn);
-
-	/*
-	 *	Initialize timers for Status-Server.
-	 */
-	(void) fr_retry_init(&u->retry, now, &h->inst->parent->retry[u->code]);
-	u->num_replies = 0;
-	u->recv_time = u->retry.start;
 
 	status_check_timer(el, 0, u);
 }
@@ -1475,11 +1476,13 @@ drain:
 		rad_assert(request != NULL);
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
 		rcode = talloc_get_type_abort(treq->rctx, udp_rcode_t);
+
 	} else {
 		treq = NULL;
 		request = NULL;
 		u = talloc_get_type_abort(rr->request_io_ctx, udp_request_t);
 		rcode = NULL;
+		rad_assert(u == h->status_u);
 	}
 
 	original[0] = rr->code;
