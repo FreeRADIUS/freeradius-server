@@ -1292,7 +1292,6 @@ static void protocol_error_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handl
 			memcpy(&error, attr + 2, 4);
 			error = ntohl(error);
 			if (error == 601) error_601 = true;
-
 			continue;
 		}
 
@@ -1330,7 +1329,7 @@ static void protocol_error_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handl
 			if ((attr[3] != 0) ||
 			    (attr[4] != 0) ||
 			    (attr[5] != 0)) {
-				rcode->rcode = RLM_MODULE_FAIL;
+				if (rcode) rcode->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 
@@ -1342,7 +1341,7 @@ static void protocol_error_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handl
 			 *	and for sanity.
 			 */
 			if (attr[6] != u->code) {
-				rcode->rcode = RLM_MODULE_FAIL;
+				if (rcode) rcode->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 	}
@@ -1381,14 +1380,14 @@ static void protocol_error_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handl
 	 *	error, and the response is valid, but not useful for
 	 *	anything.
 	 */
-	rcode->rcode = RLM_MODULE_HANDLED;
+	if (rcode) rcode->rcode = RLM_MODULE_HANDLED;
 }
 
 
 /** Deal with replies replies to status checks and possible negotiation
  *
  */
-static void status_check_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handle_t *h)
+static void status_check_reply(udp_request_t *u, udp_handle_t *h)
 {
 	/*
 	 *	@todo - make this configurable
@@ -1404,7 +1403,7 @@ static void status_check_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handle_
 	 *	@todo - do other negotiation and signaling.
 	 */
 	if (h->buffer[0] == FR_CODE_PROTOCOL_ERROR) {
-		protocol_error_reply(u, rcode, h);
+		protocol_error_reply(u, NULL, h);
 	}
 }
 
@@ -1508,7 +1507,7 @@ drain:
 	 *	this module for internal signalling.
 	 */
 	if (u == h->status_u) {
-		status_check_reply(u, rcode, h);
+		status_check_reply(u, h);
 		return NULL;
 	}
 
