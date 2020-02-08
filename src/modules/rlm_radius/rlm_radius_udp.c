@@ -679,7 +679,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		proxy_state = 0;
 		vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY);
 		if (vp) {
-			vp->vp_date = fr_time_to_unix_time(fr_time());
+			vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 			can_retransmit = false;
 		}
 	}
@@ -817,7 +817,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 			if (attr[0] != attr_acct_delay_time->attr) continue;
 			if (attr[1] != 6) continue;
 
-			now = fr_time();
+			now = u->retry.updated;
 
 			/*
 			 *	Add in the time between when
@@ -1040,6 +1040,8 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 			fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 			return;
 		}
+
+		(void) fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_ALL, 0);
 		
 		return;
 	}
