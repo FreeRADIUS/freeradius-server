@@ -43,6 +43,7 @@ int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 	r->config = config;
 	r->count = 1;
 	r->start = now;
+	r->updated = now;
 
 	/*
 	 *	Initial:
@@ -81,6 +82,7 @@ fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 	 *	Increment retransmission counter
 	 */
 	r->count++;
+	r->updated = now;
 
 	/*
 	 *	We retried too many times.  Fail.
