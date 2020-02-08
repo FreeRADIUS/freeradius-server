@@ -754,6 +754,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
 	ret = do_python_single(request, pFunc, funcname, inst->pass_all_vps, inst->pass_all_vps_dict);
+	if (ret == RLM_MODULE_FAIL) python_error_log();
 	PyEval_SaveThread();
 
 	return ret;
@@ -1154,7 +1155,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Call the instantiate function.
 	 */
 	code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
-	if (code < 0) {
+	if (code == RLM_MODULE_FAIL) {
 	error:
 		python_error_log();	/* Needs valid thread with GIL */
 		PyEval_SaveThread();
@@ -1176,6 +1177,7 @@ static int mod_detach(void *instance)
 	PyEval_RestoreThread(inst->sub_interpreter);
 
 	ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
+	if (ret == RLM_MODULE_FAIL) python_error_log();
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);

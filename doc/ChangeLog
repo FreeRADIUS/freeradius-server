@@ -29,6 +29,7 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	* The rlm_python should append the 'python_path' paths in 'sys.path',
 	  It fixes the expected behavior to use the existing Python modules.
 	  Fixes #3180
+	* Fix rlm_python to print the script errors properly.
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements
