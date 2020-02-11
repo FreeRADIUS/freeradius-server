@@ -42,6 +42,13 @@
 #  include <sys/prctl.h>
 #endif
 
+/*
+ *	Needed to handle coredumps on FreeBSD
+ */
+#ifdef __FreeBSD__
+#  include <sys/procctl.h>
+#endif
+
 #ifdef HAVE_SYS_PTRACE_H
 #  include <sys/ptrace.h>
 #  if !defined(PT_ATTACH) && defined(PTRACE_ATTACH)
@@ -474,6 +481,20 @@ static int fr_set_dumpable_flag(bool dumpable)
 
 	return 0;
 }
+#elif defined(__FreeBSD__) && \
+      defined(PROC_TRACE_CTL) && defined(PROC_TRACE_CTL_ENABLE) && defined(PROC_TRACE_CTL_DISABLE)
+static int fr_set_dumpable_flag(bool dumpable)
+{
+	int mode = dumpable ? PROC_TRACE_CTL_ENABLE : PROC_TRACE_CTL_DISABLE;
+
+	if (procctl(P_PID, getpid(), PROC_TRACE_CTL, &mode) == -1) {
+		fr_strerror_printf("Cannot re-enable core dumps: procctl(PROC_TRACE_CTL) failed: %s",
+				   fr_syserror(errno));
+		return -1;
+	}
+
+	return 0;
+}
 #else
 static int fr_set_dumpable_flag(UNUSED bool dumpable)
 {
@@ -500,6 +521,29 @@ static int fr_get_dumpable_flag(void)
 	 *  Linux is crazy and prctl sometimes returns 2 for disabled
 	 */
 	if (ret != 1) return 0;
+	return 1;
+}
+#elif defined(__FreeBSD__) && defined(PROC_TRACE_STATUS)
+static int fr_get_dumpable_flag(void)
+{
+	int status;
+
+	if (procctl(P_PID, getpid(), PROC_TRACE_STATUS, &status) == -1) {
+		fr_strerror_printf("Cannot get dumpable flag: procctl(PROC_TRACE_STATUS) failed: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	As FreeBSD docs say about "PROC_TRACE_STATUS":
+	 *
+	 *	Returns the current tracing status for the specified process in the
+	 *	integer variable pointed to by data.  If tracing is disabled, data
+	 *	is set to -1.  If tracing is enabled, but no debugger is attached by
+	 *	the ptrace(2) syscall, data is set to 0.  If a debugger is attached,
+	 *	data is set to the pid of the debugger process.
+	 */
+	if (status == -1) return 0;
+
 	return 1;
 }
 #else
