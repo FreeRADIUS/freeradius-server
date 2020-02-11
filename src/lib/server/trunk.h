@@ -203,6 +203,55 @@ typedef enum {
 	FR_TRUNK_ENQUEUE_FAIL = -3			//!< General failure.
 } fr_trunk_enqueue_t;
 
+/** Used for sanity checks and to simplify freeing
+ *
+ * Allows us to track which
+ */
+typedef enum {
+	FR_TRUNK_REQUEST_UNASSIGNED	= 0x0000,	//!< Initial state.
+	FR_TRUNK_REQUEST_BACKLOG	= 0x0001,	//!< In the backlog.
+	FR_TRUNK_REQUEST_PENDING	= 0x0002,	//!< In the queue of a connection
+							///< and is pending writing.
+	FR_TRUNK_REQUEST_PARTIAL	= 0x0004,	//!< Some of the request was written to the socket,
+							///< more of it should be written later.
+	FR_TRUNK_REQUEST_SENT		= 0x0008,	//!< Was written to a socket.  Waiting for a response.
+	FR_TRUNK_REQUEST_COMPLETE	= 0x0080,	//!< The request is complete.
+	FR_TRUNK_REQUEST_FAILED		= 0x0100,	//!< The request failed.
+	FR_TRUNK_REQUEST_CANCEL		= 0x0200,	//!< A request on a particular socket was cancel.
+	FR_TRUNK_REQUEST_CANCEL_SENT	= 0x0400,	//!< We've informed the remote server that
+							///< the request has been cancelled.
+	FR_TRUNK_REQUEST_CANCEL_PARTIAL	= 0x0800,	//!< We partially wrote a cancellation request.
+	FR_TRUNK_REQUEST_CANCEL_COMPLETE= 0x1000,	//!< Remote server has acknowledged our cancellation.
+} fr_trunk_request_state_t;
+
+/** All request states
+ *
+ */
+#define FR_TRUNK_REQUEST_ALL \
+(\
+	FR_TRUNK_REQUEST_BACKLOG | \
+	FR_TRUNK_REQUEST_PENDING | \
+	FR_TRUNK_REQUEST_PARTIAL | \
+	FR_TRUNK_REQUEST_SENT | \
+	FR_TRUNK_REQUEST_COMPLETE | \
+	FR_TRUNK_REQUEST_FAILED | \
+	FR_TRUNK_REQUEST_CANCEL | \
+	FR_TRUNK_REQUEST_CANCEL_PARTIAL | \
+	FR_TRUNK_REQUEST_CANCEL_SENT | \
+	FR_TRUNK_REQUEST_CANCEL_COMPLETE \
+)
+
+/** All requests in various cancellation states
+ *
+ */
+#define FR_TRUNK_REQUEST_CANCEL_ALL \
+(\
+	FR_TRUNK_REQUEST_CANCEL | \
+	FR_TRUNK_REQUEST_CANCEL_PARTIAL | \
+	FR_TRUNK_REQUEST_CANCEL_SENT | \
+	FR_TRUNK_REQUEST_CANCEL_COMPLETE \
+)
+
 /** Config parser definitions to populate a fr_trunk_conf_t
  *
  */
