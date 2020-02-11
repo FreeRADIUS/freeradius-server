@@ -320,6 +320,21 @@ libraries can be loaded by specificing multiple individual
 
 
 
+.Templates
+
+Template files hold common definitions that can be used in other
+server sections.  When a template is referenced, the configuration
+items within the referenced template are copied to the referencing
+section.
+
+Using templates reduces repetition of common configuration items,
+which in turn makes the server configuration easier to maintain.
+
+See template.d/default for examples of using templates, and the
+referencing syntax.
+
+
+
 .Security Configuration
 
 There may be multiple methods of attacking on the server.  This
@@ -645,7 +660,7 @@ For more documentation on virtual servers, see:
 == Default Configuration
 
 ```
-prefix = /Users/arr2036/Documents/Repositories/projects/freeradius-server/install
+prefix = /usr/local
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
@@ -680,6 +695,9 @@ ENV {
 #	BAR
 #	LD_PRELOAD = /path/to/library1.so
 #	LD_PRELOAD = /path/to/library2.so
+}
+templates {
+	$INCLUDE template.d/
 }
 security {
 #	chroot = /path/to/chroot/directory

@@ -36,7 +36,7 @@ attribute_name:: Attribute to use for querying / updating IP addresses.
 
 [NOTE]
 ====
-It MUST be a type which contains IP addresses.
+It MUST be a qualified name of an attribute of a type which contains IP addresses.
 
 e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
 ====
@@ -80,7 +80,7 @@ sqlippool {
 	dialect = "mysql"
 	ippool_table = "radippool"
 	lease_duration = 3600
-	attribute_name = Framed-IP-Address
+	attribute_name = radius.Framed-IP-Address
 	pool_key = "%{NAS-Port}"
 	messages {
 		exists = "Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
