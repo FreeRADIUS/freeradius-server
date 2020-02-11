@@ -30,6 +30,7 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  It fixes the expected behavior to use the existing Python modules.
 	  Fixes #3180
 	* Fix rlm_python to print the script errors properly.
+	* Update dictionary.arista with new attributes.  #3278
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements
