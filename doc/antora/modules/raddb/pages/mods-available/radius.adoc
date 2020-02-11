@@ -92,11 +92,12 @@ NOTE: The behavior in v3 is the same as `synchronous = yes`
 
 
 
-no_connection_fail:: It enables fails immediately on failed connections.
+no_connection_fail:: If no connections are available, then
+the module will immediately return "fail".
 
 
 
-originate::
+originate:: Whether or not we are creating the packet.
 
 Sometimes we are creating a request that is not for the purpose of
 proxying another request, in which case we do not want to add a
@@ -149,6 +150,186 @@ changeable after that.
 
 
 
+zombie_period:: If the home server does not reply to a packet, the
+`zombie_period` starts.
+
+The connection is marked `zombie`, and isn't used to send new packets.
+If there are no responses within `zombie_period`, the server either
+closes the connection (no `status_checks` subsection), or starts pinging the
+home server (`status_checks.type = Status-Server`).
+
+
+
+revive_interval:: If there are no status checks, mark the
+home server alive after `revive_interval` timeout.
+
+Some home servers do not support status checks via the
+`Status-Server` packet.  Others may not have a "test" user
+configured that can be used to query the server, to see if
+it is alive.  For those servers, we have NO WAY of knowing
+when it becomes alive again.  Therefore, after the server
+has been marked dead, we wait a period of time, and mark
+it alive again, in the hope that it has come back to
+life.
+
+If it has NOT come back to life, then the module will wait
+for `zombie_period` before marking it dead again.  During
+the `zombie_period`, ALL AUTHENTICATIONS WILL FAIL, because
+the home server is still dead.  There is NOTHING that can
+be done about this, other than to enable the status checks,
+as documented above.
+
+e.g. if `zombie_period` is 40 seconds, and `revive_interval`
+is 300 seconds, the for 40 seconds out of every 340, or about
+10% of the time, all authentications will fail.
+
+If the `zombie_period` and `revive_interval` configurations
+are set smaller, than it is possible for up to 50% of
+authentications to fail.
+
+As a result, we recommend enabling status checks, and
+we do NOT recommend using `revive_interval`.
+
+The `revive_interval` configuration is used ONLY if the
+`status_checks` subsection is not used.  Otherwise,
+`revive_interval` is not necessary, and should be deleted.
+
+Useful range of values: 10 to 3600
+
+
+
+## Connection trunking
+
+Each worker thread (see radiusd.conf, num_workers), has
+it's own set of connections.  These connections are grouped
+together into a "trunk".
+
+Much of the configuration here is similar to the old
+connection "pool" configuration in v3.  However, there are
+more configuration parameters, and therefore more control
+over the behavior.
+
+
+start:: Connections to create during module instantiation.
+
+If the server cannot create specified number of connections during instantiation
+it will exit.
+
+Set to `0` to allow the server to start without the database being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one is requested, the request
+will NOT get a connection.
+
+
+
+connecting:: Maximum number of sockets to have in the "connecting" state.
+
+If a home server goes down, the module will close
+old / broken connections, and try to open new ones.
+In order to avoid flooding the home server with
+connection attempts, set the `connecting` value to
+a small number.
+
+
+
+uses:: number of packets which will use the connection.
+
+After `uses` packets have been sent the connection
+will be closed, and a new one opened.  For no
+limits, set `uses = 0`.
+
+
+
+lifetime:: lifetime of a connection, in seconds.
+
+After `lifetime` seconds have passed, no new
+packets will be sent on the connection.  When all
+replies have been received, the connection will be
+closed.
+
+For no limits, set `lifetime = 0`.
+
+It is possible to use precise times, such as
+`lifetime = 1.023`, or even qualifiers such as
+`lifetime = 400ms`.
+
+
+
+open_delay:: How long (in seconds) a connection
+must be above `per_connection_target` before a new
+connection is opened.
+
+Parsing of this field is the same as for
+`lifetime`.
+
+
+
+close_delay:: How long (in seconds) a connection
+must be below `per_connection_target` before a
+connection is closed.
+
+
+
+manage_interval:: How often (in seconds) the
+connections are checked for limits, in order to
+open / close connections.
+
+
+
+connection { ... }:: Per-connection configuration.
+
+
+connection_timeout:: How long to wait
+before giving up on a connection which is
+being opened.
+
+
+
+reconnect_delay:: If opening a connection
+fails, we wait `reconnect_delay` seconds
+before attempting to open another
+connection.
+
+
+
+requests { ... }:: Per-request configuration.
+
+
+per_connection_max:: The maximum number of requests
+which are "live" on a particular connection.
+
+
+
+per_connection_target:: The target number
+of requests which are "live" on a
+particular connection.
+
+There can be a balance between overloading
+a connection, and under-utilizing it.  The
+default is to fill each connection before
+opening a new one.
+
+
+
+free_delay:: How long to wait before
+freeing internal resources associated with
+the connection.
+
+
+
+
+## Protocols
+
+For now, only UDP is supported.
+
 udp { ... }:: UDP is configured here.
 
 
@@ -174,47 +355,6 @@ send_buff:: How big the kernel's send buffer should be.
 
 
 src_ipaddr:: IP we open our socket on.
-
-
-
-max_connections:: Limit the number of connections to the home server.
-
-Recommended values are `4..1024`.
-
-Default is `32`.
-
-
-
-connection { ... }:: Per-connection configurations.
-
-
-connect_timeout:: Timeout on the initial connection attempt.
-
-If the connection isn't open after this time, it is marked dead.
-
-
-
-reconnect_delay:: Timeout on subsequent reconnection attempts.
-
-i.e. if there is an error writing packets to the socket,
-it is closed, and the module tries to connect the socket.
-
-
-
-idle_timeout:: If the socket is idle for this length of time,
-it is closed.
-
-Use `0` for `no timeout`.
-
-
-
-zombie_period:: If the home server does not reply to a packet, the
-`zombie_period` starts.
-
-The connection is marked `zombie`, and isn't used to send new packets.
-If there are no responses within `zombie_period`, the server either
-closes the connection (no `status_check`), or starts pinging the
-home server (`status_check = Status-Server`).
 
 
 
@@ -313,22 +453,37 @@ radius {
 #			&Event-Timestamp = 0
 #		}
 	}
+	zombie_period = 10
+	revive_interval = 3600
+	trunk {
+		start = 1
+		min = 1
+		max = 8
+		connecting = 1
+		uses = 0
+		lifetime = 0
+		open_delay = 0.2
+		close_delay = 1.0
+		manage_interval = 0.2
+		connection {
+			connection_timeout = 3.0
+			reconnect_delay = 30
+		}
+		requests {
+			per_connection_max = 255
+			per_connection_target = 255
+			free_delay = 10
+		}
+	}
 	udp {
 		ipaddr = 127.0.0.1
 		port = 1812
 		secret = testing123
-#		interface = "eth0"
+#		interface = eth0
 #		max_packet_size = 4096
-#		recv_buff = 4096
-#		send_buff = 4096
+#		recv_buff = 1048576
+#		send_buff = 1048576
 #		src_ipaddr = ""
-	}
-#	max_connections = 32
-	connection {
-		connect_timeout = 5
-		reconnect_delay = 5
-		idle_timeout = 5
-		zombie_period = 10
 	}
 	Access-Request {
 		initial_retransmission_time = 2

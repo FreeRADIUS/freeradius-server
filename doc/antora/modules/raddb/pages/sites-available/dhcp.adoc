@@ -40,6 +40,7 @@ The port should be 67 for a production network. Don't set
 it to 67 on a production network unless you really know
 what you're doing. Even if nothing is configured below, the
 server may still NAK legitimate responses from clients.
+This is also the destination port when sending to a giaddr.
 
 Interface name we are listening on. See comments above.
 

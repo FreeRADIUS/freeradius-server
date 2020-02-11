@@ -247,7 +247,7 @@ as prefix/suffix stripping, or comparisons.
 == Default Configuration
 
 ```
-prefix = /Users/arr2036/Documents/Repositories/projects/freeradius-server/install
+prefix = /usr/local
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var

@@ -1269,8 +1269,8 @@ be incorrect. There is little we can do about it.
 
 
 
-Return an address to the IP Pool when we see a stop
-record.
+Refresh leases when we see a start or alive. Return an address to
+the IP Pool when we see a stop record.
 
 
 
@@ -1485,18 +1485,18 @@ send Access-Accept {
 		&reply: += &session-state:
 	}
 	eap
-#	main_pool
+#	sqlippool
 #	cui
 #	reply_log
 	-sql
 #	sql_log
 #	ldap
 #	update request {
-#		WiMAX-MN-NAI = "%{User-Name}"
+#		&WiMAX-MN-NAI = "%{User-Name}"
 #	}
 #	update reply {
-#		WiMAX-FA-RK-Key = 0x00
-#		WiMAX-MSK = "%{EAP-MSK}"
+#		&WiMAX-FA-RK-Key = 0x00
+#		&WiMAX-MSK = "%{reply:EAP-MSK}"
 #	}
 #	wimax
 #	update reply {
@@ -1560,7 +1560,7 @@ send Accounting-Response {
 	unix
 #	radutmp
 #	sradutmp
-#	main_pool
+#	sqlippool
 	-sql
 #	if (noop) {
 #		ok

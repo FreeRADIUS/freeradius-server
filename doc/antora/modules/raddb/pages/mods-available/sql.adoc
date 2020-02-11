@@ -178,7 +178,7 @@ e.g:
 
 [source,sql]
 ----
-sql1 {
+sql sql1 {
  ...
  pool {
    ...
@@ -186,7 +186,7 @@ sql1 {
 }
 
 # sql2 will use the connection pool from sql1
-sql2 {
+sql sql2 {
  ...
  pool = sql1
 }
