@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <Python.h>
+#include <frameobject.h> /* Python header not pulled in by default. */
 #include <dlfcn.h>
 #ifdef HAVE_DL_ITERATE_PHDR
 #include <link.h>
@@ -217,23 +218,38 @@ static PyMethodDef module_methods[] = {
  */
 static void python_error_log(void)
 {
-	PyObject *pType = NULL, *pValue = NULL, *pTraceback = NULL, *pStr1 = NULL, *pStr2 = NULL;
+	PyObject *p_type = NULL, *p_value = NULL, *p_traceback = NULL, *p_str_1 = NULL, *p_str_2 = NULL;
 
-	PyErr_Fetch(&pType, &pValue, &pTraceback);
-	if (!pType || !pValue)
-		goto failed;
-	if (((pStr1 = PyObject_Str(pType)) == NULL) ||
-	    ((pStr2 = PyObject_Str(pValue)) == NULL))
-		goto failed;
+	PyErr_Fetch(&p_type, &p_value, &p_traceback);
+	PyErr_NormalizeException(&p_type, &p_value, &p_traceback);
+	if (!p_type || !p_value) goto failed;
 
-	ERROR("%s (%s)", PyString_AsString(pStr1), PyString_AsString(pStr2));
+	if (((p_str_1 = PyObject_Str(p_type)) == NULL) || ((p_str_2 = PyObject_Str(p_value)) == NULL)) goto failed;
+
+	ERROR("%s (%s)", PyString_AsString(p_str_1), PyString_AsString(p_str_2));
+
+	if (p_traceback != Py_None) {
+		PyTracebackObject *ptb = (PyTracebackObject*)p_traceback;
+		size_t fnum = 0;
+
+		for (; ptb != NULL; ptb = ptb->tb_next, fnum++) {
+			PyFrameObject *cur_frame = ptb->tb_frame;
+
+			ERROR("[%ld] %s:%d at %s()",
+				fnum,
+				PyString_AsString(cur_frame->f_code->co_filename),
+				PyFrame_GetLineNumber(cur_frame),
+				PyString_AsString(cur_frame->f_code->co_name)
+			);
+		}
+	}
 
 failed:
-	Py_XDECREF(pStr1);
-	Py_XDECREF(pStr2);
-	Py_XDECREF(pType);
-	Py_XDECREF(pValue);
-	Py_XDECREF(pTraceback);
+	Py_XDECREF(p_str_1);
+	Py_XDECREF(p_str_2);
+	Py_XDECREF(p_type);
+	Py_XDECREF(p_value);
+	Py_XDECREF(p_traceback);
 }
 
 static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,

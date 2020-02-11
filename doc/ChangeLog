@@ -14,6 +14,7 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	* Generate attributes containing unknown OIDs.
 	  See raddb/sites-available/tls.  Patch from Boris Lytochkin.
 	* Update the WiMAX dictionary.
+	* Added ability to rlm_python(Python2) show a stacktrace from errors. #2979
 
 	Bug fixes
 	* Set permissions of certificates in bootstrap shell script.
