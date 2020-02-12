@@ -379,7 +379,6 @@ static void mod_radius_signal(void *instance, void *thread, REQUEST *request, vo
 	 *	necessary.
 	 */
 	if (action == FR_SIGNAL_CANCEL) {
-		talloc_free(rctx);
 		return;
 	}
 
