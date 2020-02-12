@@ -106,6 +106,7 @@ typedef struct {
 
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
+	fr_time_t		first_sent;		//!< first time we sent a packet since going idle
 	fr_time_t		last_sent;		//!< last time we sent a packet.
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
@@ -277,7 +278,11 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 
 	/*
 	 *	@todo - if all connections are down, then only allow
-	 *	one to be open.  And, start Status-Server messages on that connection.
+	 *	one to be open.  And, start Status-Server messages on
+	 *	that connection.
+	 *
+	 *	@todo - connection negotiation via Status-Server.
+	 *	This requires different "signal on fd" functions.
 	 */
 	fr_connection_signal_on_fd(conn, fd);
 
@@ -420,8 +425,6 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, void *handle, UNUSED
 	/*
 	 *	Connection is "active" now.  i.e. we prefer the newly
 	 *	opened connection for sending packets.
-	 *
-	 *	@todo - connection negotiation via Status-Server
 	 */
 	if (h->inst->parent->status_check) status_check_alloc(el, h);
 
@@ -760,11 +763,11 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		attr[1] = 7;
 		memcpy(attr + 2, &inst->parent->proxy_state, 4);
 		attr[6] = count & 0xff;
+		packet_len += 7;
 
 		MEM(vp = fr_pair_afrom_da(u, attr_proxy_state));
 		fr_pair_value_memcpy(vp, attr + 2, 5, true);
 		fr_pair_add(&u->extra, vp);
-		packet_len += 7;
 	}
 
 	/*
@@ -982,43 +985,45 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	 *
 	 *	Or there's already a zombie check started, don't do
 	 *	another one.
+	 *
+	 *	Or if we never sent a packet, we don't know (or care)
+	 *	if the home server is up.
+	 *
+	 *	Or if we had sent packets, and then went idle.
+	 *
+	 *	Or we had replies, and then went idle.
+	 *
+	 *	We do checks for both sent && replied, because we
+	 *	could have sent packets without getting replies (and
+	 *	then mark it zombie), or we could have gotten some
+	 *	replies which then stopped coming back (and then mark
+	 *	it zombie).
 	 */
-	if (h->inst->replicate || h->zombie_ev) {
+	if (h->inst->replicate || h->zombie_ev || !h->last_sent || (h->last_sent <= h->last_idle) ||
+	    (h->last_reply && (h->last_reply <= h->last_idle))) {
 		return;
 	}
 
 	if (!now) now = fr_time();
 
+	/*
+	 *	We've sent a packet since we last went idle, and/or
+	 *	we've received replies since we last went idle.
+	 *
+	 *	If we have a reply, then set the zombie timeout from
+	 *	when we received the last reply.
+	 *
+	 *	If we haven't seen a reply, then set the zombie
+	 *	timeout from when we first started sending packets.
+	 */
 	if (h->last_reply) {
-		/*
-		 *	We have recent replies, do nothing.
-		 */
 		if ((h->last_reply + h->inst->parent->zombie_period) >= now) {
 			return;
 		}
-
-		/*
-		 *	We don't have recent replies.  Maybe it's
-		 *	because we received *all* replies, and haven't
-		 *	sent new packets?
-		 */
-		if (h->last_reply <= h->last_idle) {
+	} else {
+		if ((h->first_sent + h->inst->parent->zombie_period) >= now) {
 			return;
 		}
-
-	} else if (!h->last_sent) {
-		/*
-		 *	We haven't sent any packets, hope that the
-		 *	home server is up.
-		 */
-		return;
-
-	} else if ((h->last_sent + h->inst->parent->zombie_period) >= now) {
-		/*
-		 *	We haven't seen a reply, start the timer from
-		 *	when we last sent a packet.
-		 */
-		return;
 	}
 
 	/*
@@ -1042,7 +1047,6 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 		}
 
 		(void) fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_ALL, 0);
-
 		return;
 	}
 
@@ -1127,6 +1131,7 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 	if (u->retry.count == 1) {
 		action = inst->parent->originate ? "Originating" : "Proxying";
 		h->last_sent = u->retry.start;
+		if (h->first_sent <= h->last_idle) h->first_sent = h->last_sent;
 
 	} else {
 		action = "Retransmitting";
