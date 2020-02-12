@@ -1063,6 +1063,7 @@ static void clear_id(udp_request_t *u, udp_handle_t *h, fr_time_t now)
 	(void) rr_track_delete(h->id, u->rr);
 	if (h->id->num_free == (h->status_u != NULL)) h->last_idle = now;
 	u->rr = NULL;
+	fr_pair_list_free(&u->extra);
 }
 
 
