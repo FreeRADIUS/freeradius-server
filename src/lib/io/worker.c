@@ -588,8 +588,7 @@ static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		REDEBUG("Request has reached max_request_time (%pVs) - signalling it to stop",
-			fr_box_time_delta(cleanup - now));
+		REDEBUG("Request has reached max_request_time - signalling it to stop");
 		worker_stop_request(worker, request, now);
 
 		/*
