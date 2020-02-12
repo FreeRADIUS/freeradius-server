@@ -1055,12 +1055,17 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	 *	packets on it.
 	 */
 	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->name);
+
+	/*
+	 *	Move ALL requests to other connections!
+	 */
 	fr_trunk_connection_signal_inactive(h->c->tconn);
+	fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_ALL, 0);
 
 	status_check_timer(el, 0, u);
 }
 
-static void clear_id(udp_request_t *u, udp_handle_t *h, fr_time_t now)
+static void udp_request_clear(udp_request_t *u, udp_handle_t *h, fr_time_t now)
 {
 	if (!now) now = fr_time();
 
@@ -1083,7 +1088,15 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	REQUEST			*request = treq->request;
 	fr_retry_state_t	state;
 
+	/*
+	 *	This call may nuke u->rr
+	 */
 	check_for_zombie(el, h, now);
+
+	/*
+	 *	Rely on someone else to do the retransmissions.
+	 */
+	if (!u->rr) return;
 
 	state = fr_retry_next(&u->retry, now);
 	if (state == FR_RETRY_MRD) {
@@ -1095,7 +1108,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		RDEBUG("Reached maximum_retransmit_count, failing request");
 
 	fail:
-		clear_id(u, h, now);
+		udp_request_clear(u, h, now);
 		rcode->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
 		fr_trunk_request_signal_complete(treq);
@@ -1226,7 +1239,8 @@ static void request_mux(fr_event_list_t *el,
 		 */
 		if (encode(request, u, h) < 0) {
 		fail2:
-			clear_id(u, h, 0);
+			udp_request_clear(u, h, 0);
+			if (u->ev) (void) fr_event_timer_delete(&u->ev);
 			goto fail;
 		}
 
@@ -1423,7 +1437,10 @@ static void status_check_reply(udp_request_t *u, udp_handle_t *h)
 	/*
 	 *	@todo - make this configurable
 	 */
-	if (u->num_replies < 3) return;
+	if (u->num_replies < 3) {
+		DEBUG("Received %d / 3 replies for status check, on connection - %s", u->num_replies, h->name);
+		return;
+	}
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
@@ -1544,7 +1561,7 @@ drain:
 
 	h->last_reply = fr_time();
 
-	clear_id(u, h, h->last_reply);
+	udp_request_clear(u, h, h->last_reply);
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
@@ -1683,6 +1700,7 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	udp_request_t	*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
 	udp_handle_t	*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
+
 	switch (reason) {
 	/*
 	 *	The request is being terminated, and will
@@ -1708,11 +1726,11 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 		 *	connection is closing.
 		 */
 	case FR_TRUNK_CANCEL_REASON_MOVE:
-		if (u->rr) clear_id(u, h, 0);
-
-		if (u->packet) TALLOC_FREE(u->packet);
+		udp_request_clear(u, h, 0);
 
 		if (u->ev) (void) fr_event_timer_delete(&u->ev);
+
+		if (u->packet) TALLOC_FREE(u->packet);
 
 		u->c = NULL;
 		u->num_replies = 0;
@@ -1765,7 +1783,9 @@ static int udp_request_free(udp_request_t *u)
 	 *	is called.
 	 */
 	h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
-	clear_id(u, h, 0);
+	udp_request_clear(u, h, 0);
+
+	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
 	return 0;
 }
