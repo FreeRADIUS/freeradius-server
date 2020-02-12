@@ -686,12 +686,6 @@ void		fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn) CC_HINT(no
 void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason) CC_HINT(nonnull);
 /** @} */
 
-/** @name Trunk connection accessors
- * @{
- */
-fr_connection_t	*fr_trunk_connection_get_connection(fr_trunk_connection_t *tconn) CC_HINT(nonnull);
-/** @} */
-
 /** @name Connection management
  * @{
  */

@@ -557,7 +557,7 @@ static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int 
 static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_connection_t		*conn = fr_trunk_connection_get_connection(tconn);
+	fr_connection_t		*conn = tconn->conn;
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
 	ERROR("%s - Connection %s failed - %s", h->inst->parent->name, h->name, fr_syserror(fd_errno));
@@ -1042,7 +1042,7 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 		}
 
 		(void) fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_ALL, 0);
-		
+
 		return;
 	}
 
