@@ -155,7 +155,7 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 {
 	return
 #if defined(__APPLE__)
-		"leak:_gai_nat64_synthesis\n"		/* Observed in calls to getaddrinfo */
+		"leak:getaddrinfo\n"
 		"leak:*gmtsub*\n"
 		"leak:tzsetwall_basic\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
