@@ -15,8 +15,18 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  See raddb/sites-available/tls.  Patch from Boris Lytochkin.
 	* Update the WiMAX dictionary.
 	* Added ability to rlm_python(Python2) show a stacktrace from errors. #2979
+	* Add WiFi Alliance Policy OIDs.  See certs/xpextensions
+	  Patch from Stefan Winter.
+	* radmin now shows coa stats, too.
+	* Sample schema extensions for summarizing data in SQL.
+	  See mods-config/sql/main/*/process-radacct.sql
+	  Many patches from Terry Burton.
+	* Update ditionary.aerohive, dictionary.fortinet and
+	  dictionary.arista.
+	* Many updates to RPM and jenkins builds from Matthew Newton
 
 	Bug fixes
+	* Various fixes found by PVS-Studio.
 	* Set permissions of certificates in bootstrap shell script.
 	  Fixes #3132.
 	* Increase the 'nasportid' SQL field for 'varchar(32)'. #3141
@@ -31,7 +41,12 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  It fixes the expected behavior to use the existing Python modules.
 	  Fixes #3180
 	* Fix rlm_python to print the script errors properly.
-	* Update dictionary.arista with new attributes.  #3278
+	* Bound total query time for PostgreSQL.  Fixes #3253
+	* Many fixes to Oracle sqlippool.  It now does 500 IPs per second
+	  without any tuning.  Fixes #3270.
+	* Reference sqlippool by it's correct name.  Fixes #3272
+	* Revert 3.0.20 patch which caused crashes on duplicate clients.
+	* Update WiMAX-MSK attribute.  Fixes #3280.
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements
