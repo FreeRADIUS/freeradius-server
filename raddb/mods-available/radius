@@ -510,7 +510,7 @@ radius {
 	#
 	Status-Server {
 		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
+		maximum_retransmission_time = 5
 		maximum_retransmission_count = 5
 		maximum_retransmission_duration = 30
 	}
