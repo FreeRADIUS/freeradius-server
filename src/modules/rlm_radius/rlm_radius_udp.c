@@ -905,10 +905,6 @@ static void revive_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void 
 }
 
 
-static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
-			       fr_event_list_t *el,
-			       fr_trunk_connection_event_t notify_on, void *uctx);
-
 /** Run the status check timers.
  *
  */
