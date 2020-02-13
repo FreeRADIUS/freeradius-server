@@ -423,12 +423,14 @@ do { \
  */
 #define DO_REQUEST_MUX(_tconn) \
 do { \
-	void *prev = (_tconn)->pub.trunk->in_handler; \
-	DEBUG4("[%" PRIu64 "] Calling request_mux(el=%p, tconn=%p, conn=%p, uctx=%p)", \
-	       (_tconn)->pub.conn->id, (_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
-	(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_mux; \
-	(_tconn)->pub.trunk->funcs.request_mux((_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
-	(_tconn)->pub.trunk->in_handler = prev; \
+	if ((_tconn)->pub.trunk->funcs.request_mux) { \
+		void *prev = (_tconn)->pub.trunk->in_handler; \
+		DEBUG4("[%" PRIu64 "] Calling request_mux(el=%p, tconn=%p, conn=%p, uctx=%p)", \
+		       (_tconn)->pub.conn->id, (_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+		(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_mux; \
+		(_tconn)->pub.trunk->funcs.request_mux((_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+		(_tconn)->pub.trunk->in_handler = prev; \
+	} \
 } while(0)
 
 /** Read one or more requests from a connection
@@ -436,12 +438,14 @@ do { \
  */
 #define DO_REQUEST_DEMUX(_tconn) \
 do { \
-	void *prev = (_tconn)->pub.trunk->in_handler; \
-	DEBUG4("[%" PRIu64 "] Calling request_demux(tconn=%p, conn=%p, uctx=%p)", \
-	       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
-	(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_demux; \
-	(_tconn)->pub.trunk->funcs.request_demux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
-	(_tconn)->pub.trunk->in_handler = prev; \
+	if ((_tconn)->pub.trunk->funcs.request_demux) { \
+		void *prev = (_tconn)->pub.trunk->in_handler; \
+		DEBUG4("[%" PRIu64 "] Calling request_demux(tconn=%p, conn=%p, uctx=%p)", \
+		       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+		(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_demux; \
+		(_tconn)->pub.trunk->funcs.request_demux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+		(_tconn)->pub.trunk->in_handler = prev; \
+	} \
 } while(0)
 
 /** Write one or more cancellation requests to a connection
