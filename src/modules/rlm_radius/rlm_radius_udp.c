@@ -111,8 +111,14 @@ typedef struct {
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
 	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
+
+	bool			status_checking;       	//!< whether we're doing status checks
 	udp_request_t		*status_u;		//!< for sending Status-Server packets
 	REQUEST			*status_request;
+
+	fr_trunk_connection_event_t trunk_notify;	//!< trunks idea of FD readability
+	fr_trunk_connection_event_t status_notify;	//!< our idea of FD readability
+
 } udp_handle_t;
 
 typedef struct {
@@ -576,6 +582,18 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 	fr_event_fd_cb_t	read_fn = NULL;
 	fr_event_fd_cb_t	write_fn = NULL;
 
+	/*
+	 *	Ensure that the FD is still readable if the only event is status-checks.
+	 */
+	if (h->status_checking && ((notify_on & FR_TRUNK_CONN_EVENT_READ) == 0)) {
+		h->trunk_notify = notify_on;
+		notify_on |= FR_TRUNK_CONN_EVENT_READ;
+		h->status_notify = notify_on;
+
+	} else {
+		h->trunk_notify = h->status_notify = notify_on;
+	}
+
 	switch (notify_on) {
 	case FR_TRUNK_CONN_EVENT_NONE:
 		fr_event_fd_delete(el, h->fd, FR_EVENT_FILTER_IO);
@@ -887,6 +905,10 @@ static void revive_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void 
 }
 
 
+static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
+			       fr_event_list_t *el,
+			       fr_trunk_connection_event_t notify_on, void *uctx);
+
 /** Run the status check timers.
  *
  */
@@ -898,6 +920,7 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	ssize_t			rcode;
 	size_t			packet_len;
 	uint8_t			*packet;
+	uint32_t		msec;
 
 	if (!now) {
 		/*
@@ -917,6 +940,15 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		if (state == FR_RETRY_MRC) {
 			DEBUG("Reached maximum_retransmit_count for status check, marking connection as dead - %s", h->name);
 		fail:
+
+			/*
+			 *	Reset the FD handlers before changing
+			 *	the connection state.
+			 */
+			if (h->trunk_notify != h->status_notify) {
+				thread_conn_notify(h->c->tconn, h->c->tconn->conn, h->thread->el, h->trunk_notify, h->thread);
+			}
+			h->status_checking = false;
 			fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 			return;
 		}
@@ -928,12 +960,12 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 */
 		if (encode(h->status_request, u, h) < 0) {
 			DEBUG("Failed encoding status check packet for connection %s", h->name);
-			fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-			return;
+			goto fail;
 		}
 		packet_len = (h->buffer[2] << 8) | h->buffer[3];
 		packet = h->buffer;
 	} else {
+
 		packet = u->packet;
 		packet_len = u->packet_len;
 
@@ -941,17 +973,22 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		      fr_packet_codes[u->code], u->rr->id, packet_len, h->name);
 	}
 
+	/*
+	 *	Tell the admin when we expect the response.
+	 */
+	msec = fr_time_delta_to_msec(u->retry.rt);
+	DEBUG("Next status check will be sent in %u.%03us",
+	      msec / 1000, msec % 1000);
+
 	rcode = write(h->fd, packet, packet_len);
 	if ((rcode < 0) || ((size_t) rcode < packet_len)) {
 		DEBUG("Failed writing status check packet for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
+		goto fail;
 	}
 
 	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_timer, u) < 0) {
 		ERROR("Failed inserting retransmit timeout for connection %s", h->name);
-		fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
-		return;
+		goto fail;
 	}
 }
 
@@ -1055,6 +1092,7 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	 *	packets on it.
 	 */
 	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->name);
+	h->status_checking = true;
 
 	/*
 	 *	Move ALL requests to other connections!
@@ -1444,7 +1482,17 @@ static void status_check_reply(udp_request_t *u, udp_handle_t *h)
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
-	DEBUG("Received expected replies to status check, marking connection as active - %s", h->name);
+	DEBUG("Received enough replies to status check, marking connection as active - %s", h->name);
+
+	/*
+	 *	Reset the FD handlers before changing
+	 *	the connection state.
+	 */
+	if (h->trunk_notify != h->status_notify) {
+		thread_conn_notify(h->c->tconn, h->c->tconn->conn, h->thread->el, h->trunk_notify, h->thread);
+		h->status_checking = false;
+	}
+
 	fr_trunk_connection_signal_active(h->c->tconn);
 
 	/*
