@@ -86,16 +86,14 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 	start = fmt;
 	prefix = suffix = 0;
 
-#ifndef NDEBUG
 	/*
-	 *	Shut up the compiler
+	 *	Catch bad callers.
 	 */
-	if (offset >= inlen) {
+	if (offset > inlen) {
 		*sp = NULL;
 		*text = NULL;
 		return;
 	}
-#endif
 
 	/*
 	 *	Too many characters before the inflection point.  Skip
