@@ -631,10 +631,10 @@ void		fr_trunk_request_free(fr_trunk_request_t *treq);
 
 fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request) CC_HINT(nonnull(1));
 
-fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq) CC_HINT(nonnull);
-
 fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQUEST *request,
 					    void *preq, void *rctx) CC_HINT(nonnull(2));
+
+fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
 fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn,
 						    REQUEST *request, void *preq, void *rctx,

@@ -1801,30 +1801,6 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 	return treq;
 }
 
-/** Re-enqueue a request on the same connection
- *
- * If the treq has been sent, we assume that we're being signalled to requeue
- * because something outside of the trunk API has determined that a retransmission
- * is required.  The easiest way to perform that retransmission is to clean up
- * any tracking information for the request, and the requeue it for transmission.
- *
- * @param[in] treq	to requeue (retransmit).
- * @return
- *	- FR_TRUNK_ENQUEUE_OK.
- *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE - Connection cannot service requests.
- */
-fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
-{
-	fr_trunk_connection_t	*tconn = treq->pub.tconn;	/* Existing conn */
-
-	if (!IS_SERVICEABLE(tconn)) return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
-
-	trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
-	trunk_request_enter_pending(treq, tconn);
-
-	return FR_TRUNK_ENQUEUE_OK;
-}
-
 /** Enqueue a request that needs data written to the trunk
  *
  * When a REQUEST * needs to make an asynchronous request to an external datastore
@@ -1928,6 +1904,30 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
 
 	return rcode;
+}
+
+/** Re-enqueue a request on the same connection
+ *
+ * If the treq has been sent, we assume that we're being signalled to requeue
+ * because something outside of the trunk API has determined that a retransmission
+ * is required.  The easiest way to perform that retransmission is to clean up
+ * any tracking information for the request, and the requeue it for transmission.
+ *
+ * @param[in] treq	to requeue (retransmit).
+ * @return
+ *	- FR_TRUNK_ENQUEUE_OK.
+ *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE - Connection cannot service requests.
+ */
+fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
+{
+	fr_trunk_connection_t	*tconn = treq->pub.tconn;	/* Existing conn */
+
+	if (!IS_SERVICEABLE(tconn)) return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
+
+	trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
+	trunk_request_enter_pending(treq, tconn);
+
+	return FR_TRUNK_ENQUEUE_OK;
 }
 
 /** Enqueue additional requests on a specific connection
