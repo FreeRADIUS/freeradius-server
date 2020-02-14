@@ -90,6 +90,9 @@ struct fr_trunk_request_s {
 	fr_trunk_cancel_reason_t cancel_reason;		//!< Why this request was cancelled.
 
 	fr_time_t		last_freed;		//!< Last time this request was freed.
+
+	bool			bound_to_conn;		//!< Fail the request if there's an attempt to
+							///< re-enqueue it.
 };
 
 
@@ -498,6 +501,8 @@ do { \
 #define IN_REQUEST_DEMUX(_trunk)	(((_trunk)->funcs.request_demux) && ((_trunk)->in_handler == (void *)(_trunk)->funcs.request_demux))
 #define IN_REQUEST_CANCEL_MUX(_trunk)	(((_trunk)->funcs.request_cancel_mux) && ((_trunk)->in_handler == (void *)(_trunk)->funcs.request_cancel_mux))
 
+#define IS_SERVICEABLE(_tconn)		((_tconn)->state & FR_TRUNK_CONN_SERVICEABLE)
+
 /** Remove the current request from the backlog
  *
  */
@@ -791,7 +796,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
 	rad_assert(tconn->pub.trunk == trunk);
-	rad_assert(tconn->state == FR_TRUNK_CONN_ACTIVE);
+	rad_assert(IS_SERVICEABLE(tconn));
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
@@ -1374,6 +1379,14 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		fr_trunk_request_t *prev;
 
 		prev = fr_dlist_remove(&to_process, treq);
+
+		/*
+		 *	Attempts to re-queue a request
+		 *	that's bound to a connection
+		 *	results in a failure.
+		 */
+		if (treq->bound_to_conn) goto failed;
+
 		switch (trunk_request_enqueue_existing(treq)) {
 		case FR_TRUNK_ENQUEUE_OK:
 			break;
@@ -1396,6 +1409,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		case FR_TRUNK_ENQUEUE_DST_UNAVAILABLE:
 		case FR_TRUNK_ENQUEUE_NO_CAPACITY:
 		case FR_TRUNK_ENQUEUE_FAIL:
+		failed:
 			trunk_request_enter_failed(treq);
 			break;
 		}
@@ -1795,13 +1809,20 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
  * any tracking information for the request, and the requeue it for transmission.
  *
  * @param[in] treq	to requeue (retransmit).
+ * @return
+ *	- FR_TRUNK_ENQUEUE_OK.
+ *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE - Connection cannot service requests.
  */
-void fr_trunk_request_requeue(fr_trunk_request_t *treq)
+fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 {
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;	/* Existing conn */
 
+	if (!IS_SERVICEABLE(tconn)) return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
+
 	trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
 	trunk_request_enter_pending(treq, tconn);
+
+	return FR_TRUNK_ENQUEUE_OK;
 }
 
 /** Enqueue a request that needs data written to the trunk
@@ -1907,6 +1928,74 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
 
 	return rcode;
+}
+
+/** Enqueue additional requests on a specific connection
+ *
+ * This may be used to create a series of requests on a single connection, or to generate
+ * in-band status checks.
+ *
+ * @note If conf->always_writable, then the muxer will be called immediately.  The caller
+ *	 must be able to handle multiple calls to its muxer gracefully.
+ *
+ * @param[in,out] treq_out	A trunk request handle.  If the memory pointed to
+ *				is NULL, a new treq will be allocated.
+ *				Otherwise treq should point to memory allocated
+ *				with fr_trunk_request_alloc.
+ * @param[in] tconn		to enqueue request on.
+ * @param[in] request		to enqueue.
+ * @param[in] preq		Protocol request to write out.  Will be freed when
+ *				treq is freed. Should ideally be parented by the
+ *				treq if possible.
+ *				Use #fr_trunk_request_alloc for pre-allocation of
+ *				the treq.
+ * @param[in] rctx		The resume context to write any result to.
+ * @param[in] ignore_limits	Ignore max_req_per_conn.  Useful to force status
+ *				checks through even if the connection is at capacity.
+ *				Will also allow enqueuing on "inactive", "draining",
+ *				"draining-to-free" connections.
+ * @return
+ *	- FR_TRUNK_ENQUEUE_OK.
+ *	- FR_TRUNK_ENQUEUE_NO_CAPACITY - At max_req_per_conn_limit
+ *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE - Connection cannot service requests.
+ */
+fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn,
+						    REQUEST *request, void *preq, void *rctx,
+						    bool ignore_limits)
+{
+	fr_trunk_request_t	*treq;
+	fr_trunk_t		*trunk = tconn->pub.trunk;
+
+	if (!fr_cond_assert_msg(!*treq_out || ((*treq_out)->state == FR_TRUNK_REQUEST_STATE_UNASSIGNED),
+				"%s requests must be in \"unassigned\" state", __FUNCTION__)) return FR_TRUNK_ENQUEUE_FAIL;
+
+	if (!IS_SERVICEABLE(tconn)) return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
+
+	/*
+	 *	Limits check
+	 */
+	if (!ignore_limits) {
+		if (trunk->conf.max_req_per_conn &&
+		    (fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) >=
+		     trunk->conf.max_req_per_conn)) return FR_TRUNK_ENQUEUE_NO_CAPACITY;
+
+		if (tconn->state != FR_TRUNK_CONN_ACTIVE) return FR_TRUNK_ENQUEUE_NO_CAPACITY;
+	}
+
+	if (*treq_out) {
+		treq = *treq_out;
+	} else {
+		MEM(treq = fr_trunk_request_alloc(trunk, request));
+	}
+
+	treq->pub.preq = preq;
+	treq->pub.rctx = rctx;
+	treq->bound_to_conn = true;	/* Don't let the request be transferred */
+
+	trunk_request_enter_pending(treq, tconn);
+	if (trunk->conf.always_writable) trunk_connection_writable(tconn);
+
+	return FR_TRUNK_ENQUEUE_OK;
 }
 
 /** Return the count number of connections in the specified states
