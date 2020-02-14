@@ -89,7 +89,7 @@ struct fr_event_timer {
 
 	fr_event_timer_t const	**parent;		//!< Previous timer.
 	int32_t			heap_id;	       	//!< Where to store opaque heap data.
-	fr_event_timer_t	*next;			//!< in linked list of event timers
+	fr_dlist_t		entry;			//!< in linked list of event timers
 };
 
 typedef enum {
@@ -322,7 +322,7 @@ struct fr_event_list {
 							///< handlers complete.
 
 	fr_event_fd_t		*fd_to_free;		//!< File descriptor events pending deletion.
-	fr_event_timer_t	*ev_to_add;		//!< event to add
+	fr_dlist_head_t		ev_to_add;		//!< dlist of events to add
 };
 
 /** Compare two timer events to see which one should occur first
@@ -993,21 +993,12 @@ static int _event_timer_free(fr_event_timer_t *ev)
 	fr_event_timer_t const **ev_p;
 	int		ret = -1;
 
-	if (el->in_handler) {
-		fr_event_timer_t **tmp_p;
-
-		for (tmp_p = &el->ev_to_add;
-		     *tmp_p != NULL;
-		     tmp_p = &((*tmp_p)->next)) {
-			if (*tmp_p == ev) {
-				*tmp_p = ev->next;
-				ret = 0;
-				break;
-			}
-		}
+	if (ev->heap_id < 0) {
+		(void) fr_dlist_remove(&el->ev_to_add, ev);
+		ret = 0;
+	} else {
+		ret = fr_heap_extract(el->times, ev);
 	}
-
-	if (ret < 0) ret = fr_heap_extract(el->times, ev);
 
 	ev_p = ev->parent;
 	rad_assert(*(ev->parent) == ev);
@@ -1118,8 +1109,7 @@ int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
 	ev->parent = ev_p;
 
 	if (el->in_handler) {
-		ev->next = el->ev_to_add;
-		el->ev_to_add = ev;
+		fr_dlist_insert_head(&el->ev_to_add, ev);
 
 	} else if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
 		talloc_free(ev);
@@ -1790,17 +1780,14 @@ service:
 	 *	then immediately run the new callback, which could
 	 *	also add an event in the past...
 	 */
-	if (el->ev_to_add) {
-		fr_event_timer_t *ev, *next;
+	if (fr_dlist_head(&el->ev_to_add) != NULL) {
+		fr_event_timer_t *ev;
 
-		while ((ev = el->ev_to_add) != NULL) {
-			next = ev->next;
-			ev->next = NULL;
-
+		while ((ev = fr_dlist_head(&el->ev_to_add)) != NULL) {
 			if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
 				talloc_free(ev);
 			}
-			el->ev_to_add = next;
+			(void) fr_dlist_remove(&el->ev_to_add, ev);
 		}
 	}
 
@@ -1934,6 +1921,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	fr_dlist_init(&el->pre_callbacks, fr_event_pre_t, entry);
 	fr_dlist_init(&el->post_callbacks, fr_event_post_t, entry);
 	fr_dlist_init(&el->user_callbacks, fr_event_user_t, entry);
+	fr_dlist_init(&el->ev_to_add, fr_event_timer_t, entry);
 
 	if (status) (void) fr_event_pre_insert(el, status, status_uctx);
 
