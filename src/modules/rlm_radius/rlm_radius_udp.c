@@ -1103,7 +1103,8 @@ static void udp_request_clear(udp_request_t *u, udp_handle_t *h, fr_time_t now)
 {
 	if (!now) now = fr_time();
 
-	(void) rr_track_delete(h->id, u->rr);
+	if (h->id && u->rr) rr_track_delete(h->id, u->rr);
+
 	if (h->id->num_free == (h->status_u != NULL)) h->last_idle = now;
 	u->rr = NULL;
 	fr_pair_list_free(&u->extra);
