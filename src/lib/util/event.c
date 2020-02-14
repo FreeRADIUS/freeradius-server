@@ -991,12 +991,10 @@ static int _event_timer_free(fr_event_timer_t *ev)
 {
 	fr_event_list_t	*el = ev->el;
 	fr_event_timer_t const **ev_p;
-	int		ret;
+	int		ret = -1;
 
 	if (el->in_handler) {
 		fr_event_timer_t **tmp_p;
-
-		ret = -1;
 
 		for (tmp_p = &el->ev_to_add;
 		     *tmp_p != NULL;
@@ -1007,9 +1005,9 @@ static int _event_timer_free(fr_event_timer_t *ev)
 				break;
 			}
 		}
-	} else {
-		ret = fr_heap_extract(el->times, ev);
 	}
+
+	if (ret < 0) ret = fr_heap_extract(el->times, ev);
 
 	ev_p = ev->parent;
 	rad_assert(*(ev->parent) == ev);
