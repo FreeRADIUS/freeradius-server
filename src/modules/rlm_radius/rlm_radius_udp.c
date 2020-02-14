@@ -1079,7 +1079,7 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 			return;
 		}
 
-		(void) fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_ALL, 0);
+		(void) fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_STATE_ALL, 0);
 		return;
 	}
 
@@ -1094,7 +1094,7 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 	 *	Move ALL requests to other connections!
 	 */
 	fr_trunk_connection_signal_inactive(h->c->tconn);
-	fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_ALL, 0);
+	fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_STATE_ALL, 0);
 
 	status_check_timer(el, 0, u);
 }

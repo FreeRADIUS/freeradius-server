@@ -117,48 +117,48 @@ typedef enum {
  * Allows us to track which
  */
 typedef enum {
-	FR_TRUNK_REQUEST_UNASSIGNED	= 0x0000,	//!< Initial state.
-	FR_TRUNK_REQUEST_BACKLOG	= 0x0001,	//!< In the backlog.
-	FR_TRUNK_REQUEST_PENDING	= 0x0002,	//!< In the queue of a connection
-							///< and is pending writing.
-	FR_TRUNK_REQUEST_PARTIAL	= 0x0004,	//!< Some of the request was written to the socket,
-							///< more of it should be written later.
-	FR_TRUNK_REQUEST_SENT		= 0x0008,	//!< Was written to a socket.  Waiting for a response.
-	FR_TRUNK_REQUEST_COMPLETE	= 0x0080,	//!< The request is complete.
-	FR_TRUNK_REQUEST_FAILED		= 0x0100,	//!< The request failed.
-	FR_TRUNK_REQUEST_CANCEL		= 0x0200,	//!< A request on a particular socket was cancel.
-	FR_TRUNK_REQUEST_CANCEL_SENT	= 0x0400,	//!< We've informed the remote server that
-							///< the request has been cancelled.
-	FR_TRUNK_REQUEST_CANCEL_PARTIAL	= 0x0800,	//!< We partially wrote a cancellation request.
-	FR_TRUNK_REQUEST_CANCEL_COMPLETE= 0x1000,	//!< Remote server has acknowledged our cancellation.
+	FR_TRUNK_REQUEST_STATE_UNASSIGNED	= 0x0000,	//!< Initial state.
+	FR_TRUNK_REQUEST_STATE_BACKLOG		= 0x0001,	//!< In the backlog.
+	FR_TRUNK_REQUEST_STATE_PENDING		= 0x0002,	//!< In the queue of a connection
+								///< and is pending writing.
+	FR_TRUNK_REQUEST_STATE_PARTIAL		= 0x0004,	//!< Some of the request was written to the socket,
+								///< more of it should be written later.
+	FR_TRUNK_REQUEST_STATE_SENT		= 0x0008,	//!< Was written to a socket.  Waiting for a response.
+	FR_TRUNK_REQUEST_STATE_COMPLETE		= 0x0080,	//!< The request is complete.
+	FR_TRUNK_REQUEST_STATE_FAILED		= 0x0100,	//!< The request failed.
+	FR_TRUNK_REQUEST_STATE_CANCEL		= 0x0200,	//!< A request on a particular socket was cancel.
+	FR_TRUNK_REQUEST_STATE_CANCEL_SENT	= 0x0400,	//!< We've informed the remote server that
+								///< the request has been cancelled.
+	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	= 0x0800,	//!< We partially wrote a cancellation request.
+	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	= 0x1000,	//!< Remote server has acknowledged our cancellation.
 } fr_trunk_request_state_t;
 
 /** All request states
  *
  */
-#define FR_TRUNK_REQUEST_ALL \
+#define FR_TRUNK_REQUEST_STATE_ALL \
 (\
-	FR_TRUNK_REQUEST_BACKLOG | \
-	FR_TRUNK_REQUEST_PENDING | \
-	FR_TRUNK_REQUEST_PARTIAL | \
-	FR_TRUNK_REQUEST_SENT | \
-	FR_TRUNK_REQUEST_COMPLETE | \
-	FR_TRUNK_REQUEST_FAILED | \
-	FR_TRUNK_REQUEST_CANCEL | \
-	FR_TRUNK_REQUEST_CANCEL_PARTIAL | \
-	FR_TRUNK_REQUEST_CANCEL_SENT | \
-	FR_TRUNK_REQUEST_CANCEL_COMPLETE \
+	FR_TRUNK_REQUEST_STATE_BACKLOG | \
+	FR_TRUNK_REQUEST_STATE_PENDING | \
+	FR_TRUNK_REQUEST_STATE_PARTIAL | \
+	FR_TRUNK_REQUEST_STATE_SENT | \
+	FR_TRUNK_REQUEST_STATE_COMPLETE | \
+	FR_TRUNK_REQUEST_STATE_FAILED | \
+	FR_TRUNK_REQUEST_STATE_CANCEL | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_SENT | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE \
 )
 
 /** All requests in various cancellation states
  *
  */
-#define FR_TRUNK_REQUEST_CANCEL_ALL \
+#define FR_TRUNK_REQUEST_STATE_CANCEL_ALL \
 (\
-	FR_TRUNK_REQUEST_CANCEL | \
-	FR_TRUNK_REQUEST_CANCEL_PARTIAL | \
-	FR_TRUNK_REQUEST_CANCEL_SENT | \
-	FR_TRUNK_REQUEST_CANCEL_COMPLETE \
+	FR_TRUNK_REQUEST_STATE_CANCEL | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_SENT | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE \
 )
 
 /** Common configuration parameters for a trunk
@@ -448,8 +448,8 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
 
 /** Remove an outstanding request from a tracking/matching structure
  *
- * If the treq (trunk request) is in the FR_TRUNK_REQUEST_PARTIAL or
- * FR_TRUNK_REQUEST_SENT states, this callback will be called prior
+ * If the treq (trunk request) is in the FR_TRUNK_REQUEST_STATE_PARTIAL or
+ * FR_TRUNK_REQUEST_STATE_SENT states, this callback will be called prior
  * to moving the treq to a new connection or freeing it.
  *
  * The treq, and any associated resources, should be
@@ -670,7 +670,7 @@ fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn
  * If #fr_trunk_connection_signal_inactive is being used to remove a congested
  * connection from the active list (i.e. on receipt of an explicit protocol level
  * congestion notification), consider calling #fr_trunk_connection_requests_requeue
- * with the FR_TRUNK_REQUEST_PENDING state to redistribute that connection's
+ * with the FR_TRUNK_REQUEST_STATE_PENDING state to redistribute that connection's
  * backlog to other connections in the trunk.
  *
  * @{
