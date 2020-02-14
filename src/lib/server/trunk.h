@@ -45,97 +45,6 @@ typedef struct fr_trunk_connection_pub_s fr_trunk_connection_t;
 #endif
 typedef struct fr_trunk_s fr_trunk_t;
 
-/** Common configuration parameters for a trunk
- *
- */
-typedef struct {
-	fr_connection_conf_t const *conn_conf;		//!< Connection configuration.
-
-	uint16_t		start;			//!< How many connections to start.
-
-	uint16_t		min;			//!< Shouldn't let connections drop below this number.
-
-	uint16_t		max;			//!< Maximum number of connections in the trunk.
-
-	uint16_t		connecting;		//!< Maximum number of connections that can be in the
-							///< connecting state.  Used to throttle connection spawning.
-
-	uint32_t		target_req_per_conn;	//!< How many pending requests should ideally be
-							///< running on each connection.  Averaged across
-							///< the 'active' set of connections.
-
-	uint32_t		max_req_per_conn;	//!< Maximum connections per request.
-							///< Used to determine if we need to create new connections
-							///< and whether we can enqueue new requests.
-
-	uint64_t		max_uses;		//!< The maximum time a connection can be used.
-
-	fr_time_delta_t		lifetime;		//!< Time between reconnects.
-
-	fr_time_delta_t		open_delay;		//!< How long we must be above target utilisation
-							///< to spawn a new connection.
-
-	fr_time_delta_t		close_delay;		//!< How long we must be below target utilisation
-							///< to close an existing connection.
-
-
-	fr_time_delta_t		req_cleanup_delay;	//!< How long must a request in the unassigned (free)
-							///< list not have been used for before it's cleaned up
-							///< and actually freed.
-
-	fr_time_delta_t		manage_interval;	//!< How often we run the management algorithm to
-							///< open/close connections.
-
-	unsigned		req_pool_headers;	//!< How many chunk headers the talloc pool allocated
-							///< with the treq should contain.
-
-	size_t			req_pool_size;		//!< The size of the talloc pool allocated with the treq.
-
-	bool			always_writable;	//!< Set to true if our ability to write requests to
-							///< a connection handle is not dependant on the state
-							///< of the underlying connection, i.e. if the library
-							///< used to implement the connection can always receive
-							///< and buffer new requests irrespective of the state
-							///< of the underlying socket.
-							///< If this is true, #fr_trunk_connection_signal_writable
-							///< does not need to be called, and requests will be
-							///< enqueued as soon as they're received.
-} fr_trunk_conf_t;
-
-/** Public fields for the trunk request
- *
- * This saves the overhead of using accessors for commonly used fields in trunk
- * requests.
- *
- * Though these fields are public, they should _NOT_ be modified by clients of
- * the trunk API.
- */
-struct fr_trunk_request_pub_s {
-	fr_trunk_t		*trunk;			//!< Trunk this request belongs to.
-
-	fr_trunk_connection_t	*tconn;			//!< Connection this request belongs to.
-
-	void			*preq;			//!< Data for the muxer to write to the connection.
-
-	void			*rctx;			//!< Resume ctx of the module.
-
-	REQUEST			*request;		//!< The request that we're writing the data on behalf of.
-};
-
-/** Public fields for the trunk connection
- *
- * This saves the overhead of using accessors for commonly used fields in trunk
- * connections.
- *
- * Though these fields are public, they should _NOT_ be modified by clients of
- * the trunk API.
- */
-struct fr_trunk_connection_pub_s {
-	fr_connection_t		*conn;			//!< The underlying connection.
-
-	fr_trunk_t		*trunk;			//!< Trunk this connection belongs to.
-};
-
 /** Reasons for a request being cancelled
  *
  */
@@ -251,6 +160,97 @@ typedef enum {
 	FR_TRUNK_REQUEST_CANCEL_SENT | \
 	FR_TRUNK_REQUEST_CANCEL_COMPLETE \
 )
+
+/** Common configuration parameters for a trunk
+ *
+ */
+typedef struct {
+	fr_connection_conf_t const *conn_conf;		//!< Connection configuration.
+
+	uint16_t		start;			//!< How many connections to start.
+
+	uint16_t		min;			//!< Shouldn't let connections drop below this number.
+
+	uint16_t		max;			//!< Maximum number of connections in the trunk.
+
+	uint16_t		connecting;		//!< Maximum number of connections that can be in the
+							///< connecting state.  Used to throttle connection spawning.
+
+	uint32_t		target_req_per_conn;	//!< How many pending requests should ideally be
+							///< running on each connection.  Averaged across
+							///< the 'active' set of connections.
+
+	uint32_t		max_req_per_conn;	//!< Maximum connections per request.
+							///< Used to determine if we need to create new connections
+							///< and whether we can enqueue new requests.
+
+	uint64_t		max_uses;		//!< The maximum time a connection can be used.
+
+	fr_time_delta_t		lifetime;		//!< Time between reconnects.
+
+	fr_time_delta_t		open_delay;		//!< How long we must be above target utilisation
+							///< to spawn a new connection.
+
+	fr_time_delta_t		close_delay;		//!< How long we must be below target utilisation
+							///< to close an existing connection.
+
+
+	fr_time_delta_t		req_cleanup_delay;	//!< How long must a request in the unassigned (free)
+							///< list not have been used for before it's cleaned up
+							///< and actually freed.
+
+	fr_time_delta_t		manage_interval;	//!< How often we run the management algorithm to
+							///< open/close connections.
+
+	unsigned		req_pool_headers;	//!< How many chunk headers the talloc pool allocated
+							///< with the treq should contain.
+
+	size_t			req_pool_size;		//!< The size of the talloc pool allocated with the treq.
+
+	bool			always_writable;	//!< Set to true if our ability to write requests to
+							///< a connection handle is not dependant on the state
+							///< of the underlying connection, i.e. if the library
+							///< used to implement the connection can always receive
+							///< and buffer new requests irrespective of the state
+							///< of the underlying socket.
+							///< If this is true, #fr_trunk_connection_signal_writable
+							///< does not need to be called, and requests will be
+							///< enqueued as soon as they're received.
+} fr_trunk_conf_t;
+
+/** Public fields for the trunk request
+ *
+ * This saves the overhead of using accessors for commonly used fields in trunk
+ * requests.
+ *
+ * Though these fields are public, they should _NOT_ be modified by clients of
+ * the trunk API.
+ */
+struct fr_trunk_request_pub_s {
+	fr_trunk_t		*trunk;			//!< Trunk this request belongs to.
+
+	fr_trunk_connection_t	*tconn;			//!< Connection this request belongs to.
+
+	void			*preq;			//!< Data for the muxer to write to the connection.
+
+	void			*rctx;			//!< Resume ctx of the module.
+
+	REQUEST			*request;		//!< The request that we're writing the data on behalf of.
+};
+
+/** Public fields for the trunk connection
+ *
+ * This saves the overhead of using accessors for commonly used fields in trunk
+ * connections.
+ *
+ * Though these fields are public, they should _NOT_ be modified by clients of
+ * the trunk API.
+ */
+struct fr_trunk_connection_pub_s {
+	fr_connection_t		*conn;			//!< The underlying connection.
+
+	fr_trunk_t		*trunk;			//!< Trunk this connection belongs to.
+};
 
 /** Config parser definitions to populate a fr_trunk_conf_t
  *

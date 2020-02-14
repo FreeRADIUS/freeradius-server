@@ -1134,7 +1134,7 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
  *	- FR_TRUNK_ENQUEUE_IN_BACKLOG		Request should be queued in the backlog.
  *	- FR_TRUNK_ENQUEUE_NO_CAPACITY		Unable to enqueue request as we have no spare
  *						connections or backlog space.
- *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE		Can't enqueue because the destination is
+ *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE	Can't enqueue because the destination is
  *						unreachable.
  */
 static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tconn_out, fr_trunk_t *trunk,
