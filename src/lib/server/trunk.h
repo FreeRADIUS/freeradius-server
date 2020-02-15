@@ -625,7 +625,8 @@ void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq) CC_HINT(
 /** @name (R)enqueue and alloc requests
  * @{
  */
-uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max) CC_HINT(nonnull);
+uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max,
+						     bool fail_bound) CC_HINT(nonnull);
 
 void		fr_trunk_request_free(fr_trunk_request_t *treq);
 

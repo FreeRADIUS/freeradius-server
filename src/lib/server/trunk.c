@@ -1338,13 +1338,17 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 
 /** Remove requests in specified states from a connection, attempting to distribute them to new connections
  *
- * @param[in] tconn	To remove requests from.
- * @param[in] states	One or more states or'd together.
- * @param[in] max	The maximum number of requests to dequeue. 0 for unlimited.
+ * @param[in] tconn		To remove requests from.
+ * @param[in] states		One or more states or'd together.
+ * @param[in] max		The maximum number of requests to dequeue.
+ *				0 for unlimited.
+ * @param[in] fail_bound	If true causes any requests bound to the connection to fail.
+ *      			If false bound requests will not be moved.
  *
  * @return the number of requests re-queued.
  */
-static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max)
+static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max,
+						  bool fail_bound)
 {
 	fr_trunk_t			*trunk = tconn->pub.trunk;
 	fr_dlist_head_t			to_process;
@@ -1385,7 +1389,14 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		 *	that's bound to a connection
 		 *	results in a failure.
 		 */
-		if (treq->bound_to_conn) goto failed;
+		if (treq->bound_to_conn) {
+			if (fail_bound || !IS_SERVICEABLE(tconn)) {
+				trunk_request_enter_failed(treq);
+			} else {
+				trunk_request_enter_pending(treq, tconn);
+			}
+			goto next;
+		}
 
 		switch (trunk_request_enqueue_existing(treq)) {
 		case FR_TRUNK_ENQUEUE_OK:
@@ -1409,10 +1420,10 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		case FR_TRUNK_ENQUEUE_DST_UNAVAILABLE:
 		case FR_TRUNK_ENQUEUE_NO_CAPACITY:
 		case FR_TRUNK_ENQUEUE_FAIL:
-		failed:
 			trunk_request_enter_failed(treq);
 			break;
 		}
+	next:
 		treq = prev;
 	}
 
@@ -1459,17 +1470,16 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
  * @param[in] tconn	to move requests off of.
  * @param[in] states	Only move requests in this state.
  * @param[in] max	The maximum number of requests to dequeue. 0 for unlimited.
- *
  * @return The number of requests requeued.
  */
-uint64_t fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max)
+uint64_t fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max, bool fail_bound)
 {
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_INACTIVE:
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_DRAINING_TO_FREE:
-		return trunk_connection_requests_requeue(tconn, states, max);
+		return trunk_connection_requests_requeue(tconn, states, max, fail_bound);
 
 	default:
 		return 0;
@@ -2228,7 +2238,7 @@ static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 	 *	requests, so the connection is drained
 	 *	quicker.
 	 */
-	trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_PENDING, 0);
+	trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_PENDING, 0, false);
 }
 
 /** Transition a connection to the draining-to-reconnect state
@@ -2267,7 +2277,7 @@ static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn
 	 *	requests, so the connection is drained
 	 *	quicker.
 	 */
-	trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_PENDING, 0);
+	trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_PENDING, 0, false);
 }
 
 
@@ -2536,7 +2546,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	removed from the active, pool
 	 *	re-enqueue the requests.
 	 */
-	if (need_requeue) trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0);
+	if (need_requeue) trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, true);
 
 	/*
 	 *	There should be no requests left on this
@@ -2658,7 +2668,7 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 	 */
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_HALTED);
 
-	if (need_requeue) trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0);
+	if (need_requeue) trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, true);
 
 	/*
 	 *	There should be no requests left on this
@@ -2990,7 +3000,8 @@ static void trunk_rebalance(fr_trunk_t *trunk)
 	 *	position.
 	 */
 	while ((fr_heap_peek(trunk->active) == head) &&
-	       trunk_connection_requests_requeue(fr_heap_peek_tail(trunk->active), FR_TRUNK_REQUEST_STATE_PENDING, 1));
+	       trunk_connection_requests_requeue(fr_heap_peek_tail(trunk->active),
+	       					 FR_TRUNK_REQUEST_STATE_PENDING, 1, false));
 }
 
 /** Implements the algorithm we use to manage requests per connection levels
