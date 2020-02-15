@@ -1211,15 +1211,13 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 		RDEBUG("%s request.  Relying on NAS to perform more retransmissions", action);
 	}
 
-	fr_trunk_request_signal_sent(treq);
-
 	rcode = write(h->fd, packet, packet_len);
 	if (rcode < 0) {
 		// @todo - handle EWOULDBLOCK
-		REDEBUG("Failed writing packet to %s - %s",
-			h->name, fr_syserror(errno));
+		REDEBUG("Failed writing packet to %s - %s", h->name, fr_syserror(errno));
 		return -1;
 	}
+	rad_assert((size_t) rcode == packet_len);	/* Should never get partial writes with UDP */
 
 	return 0;
 }
@@ -1262,9 +1260,8 @@ static void request_mux(fr_event_list_t *el,
 		 *	If it's a retransmission, then just call write().
 		 */
 		if (u->packet) {
-			if (write_packet(el, treq, u->packet, u->packet_len) < 0) {
-				goto fail2;
-			}
+			if (write_packet(el, treq, u->packet, u->packet_len) < 0) goto fail_after_alloc;
+			fr_trunk_request_signal_sent(treq);
 			continue;
 		}
 
@@ -1272,15 +1269,15 @@ static void request_mux(fr_event_list_t *el,
 		 *	Encode the request.
 		 */
 		if (encode(request, u, h) < 0) {
-		fail2:
+		fail_after_alloc:
 			udp_request_clear(u, h, 0);
 			if (u->ev) (void) fr_event_timer_delete(&u->ev);
 			goto fail;
 		}
 
-		if (write_packet(el, treq, h->buffer, (h->buffer[2] << 8) | h->buffer[3]) < 0) {
-			goto fail2;
-		}
+		if (write_packet(el, treq, h->buffer, (h->buffer[2] << 8) | h->buffer[3]) < 0) goto fail_after_alloc;
+		fr_trunk_request_signal_sent(treq);
+
 
 		/*
 		 *	We're replicating, so we don't care about the
