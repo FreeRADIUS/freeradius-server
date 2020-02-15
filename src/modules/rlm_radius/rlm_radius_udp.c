@@ -1103,7 +1103,7 @@ static void udp_request_clear(udp_request_t *u, udp_handle_t *h, fr_time_t now)
 {
 	if (!now) now = fr_time();
 
-	(void) rr_track_delete(h->id, u->rr);
+	if (u->rr) (void) rr_track_delete(h->id, u->rr);
 	if (h->id->num_free == (h->status_u != NULL)) h->last_idle = now;
 	u->rr = NULL;
 	fr_pair_list_free(&u->extra);
@@ -1806,30 +1806,9 @@ static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UN
  */
 static int udp_request_free(udp_request_t *u)
 {
-	udp_handle_t *h;
-
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
-	/*
-	 *	We don't have a connection, so we can't update any of
-	 *	the connection timers or states.
-	 */
-	if (!u->c) return 0;
-
-	/*
-	 *	No resources allocated to the packet.
-	 */
-	if (!u->rr) return 0;
-
-	/*
-	 *	@todo - this crashes on exit if there are pending
-	 *	requests, because "conn" is freed before this function
-	 *	is called.
-	 */
-	h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
-	udp_request_clear(u, h, 0);
-
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+	rad_assert(u->rr == NULL);
 
 	return 0;
 }
