@@ -157,7 +157,7 @@ static inline void dict_attr_init(fr_dict_attr_t *da,
 	if (parent) {
 		if (parent->type == FR_TYPE_VENDOR) {
 			da->vendor = parent;
-		} else if (parent->vendor) {
+		} else if (parent->vendor && !parent->flags.is_root) {
 			da->vendor = parent->vendor;
 		}
 	}
