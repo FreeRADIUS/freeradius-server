@@ -660,7 +660,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	rlm_radius_udp_t const	*inst = h->inst;
 	ssize_t			packet_len;
 	uint8_t			*msg = NULL;
-	int			message_authenticator = u->require_ma * 18;
+	int			message_authenticator = u->require_ma * (RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2);
 	int			proxy_state = 6;
 	char const		*module_name;
 	bool			can_retransmit = true;
@@ -680,7 +680,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		size_t i;
 		uint32_t hash, base;
 
-		message_authenticator = 18;
+		message_authenticator = RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2;
 
 		base = fr_rand();
 		for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i += sizeof(uint32_t)) {
@@ -760,7 +760,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		 *	counter to each Proxy-State, so we're double
 		 *	sure that it's a loop.
 		 */
-		if (fr_debug_lvl) {
+		if (DEBUG_ENABLED) {
 			(void) fr_pair_cursor_init(&cursor, &request->packet->vps);
 			while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_proxy_state, TAG_ANY)) != NULL) {
 				if ((vp->vp_length == 5) && (memcmp(vp->vp_octets, &inst->parent->proxy_state, 4) == 0)) {
@@ -800,10 +800,10 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		msg = h->buffer + packet_len;
 
 		msg[0] = (uint8_t) attr_message_authenticator->attr;
-		msg[1] = 18;
-		memset(msg + 2, 0, 16);
+		msg[1] = RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2;
+		memset(msg + 2, 0,  RADIUS_MESSAGE_AUTHENTICATOR_LENGTH);
 
-		packet_len += 18;
+		packet_len += msg[1];
 	}
 
 	/*
