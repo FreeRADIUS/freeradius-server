@@ -124,7 +124,7 @@ typedef struct {
 typedef struct {
 	fr_trunk_request_t	*treq;
 	rlm_rcode_t		rcode;			//!< from the transport
-} udp_rcode_t;
+} udp_result_t;
 
 
 /** Connect REQUEST to local tracking structure
@@ -1118,7 +1118,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
-	udp_rcode_t		*rcode = talloc_get_type_abort(treq->rctx, udp_rcode_t);
+	udp_result_t		*res = talloc_get_type_abort(treq->rctx, udp_result_t);
 	REQUEST			*request = treq->request;
 	fr_retry_state_t	state;
 
@@ -1143,7 +1143,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	fail:
 		udp_request_clear(u, h, now);
-		rcode->rcode = RLM_MODULE_FAIL;
+		res->rcode = RLM_MODULE_FAIL;
 		u->c = NULL;
 		fr_trunk_request_signal_complete(treq);
 		return;
@@ -1166,7 +1166,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t const *packet, size_t packet_len)
 {
 	char const		*action;
-	ssize_t			rcode;
+	ssize_t			slen;
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 	REQUEST			*request = treq->request;
@@ -1211,13 +1211,13 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 		RDEBUG("%s request.  Relying on NAS to perform more retransmissions", action);
 	}
 
-	rcode = write(h->fd, packet, packet_len);
-	if (rcode < 0) {
+	slen = write(h->fd, packet, packet_len);
+	if (slen < 0) {
 		// @todo - handle EWOULDBLOCK
 		REDEBUG("Failed writing packet to %s - %s", h->name, fr_syserror(errno));
 		return -1;
 	}
-	rad_assert((size_t) rcode == packet_len);	/* Should never get partial writes with UDP */
+	rad_assert((size_t) slen == packet_len);	/* Should never get partial writes with UDP */
 
 	return 0;
 }
@@ -1236,7 +1236,7 @@ static void request_mux(fr_event_list_t *el,
 	check_for_zombie(h->thread->el, h, 0);
 
 	while ((treq = fr_trunk_connection_pop_request(tconn)) != NULL) {
-		udp_rcode_t *rcode = talloc_get_type_abort(treq->rctx, udp_rcode_t);
+		udp_result_t *res = talloc_get_type_abort(treq->rctx, udp_result_t);
 
 		u = treq->preq;
 
@@ -1293,7 +1293,7 @@ static void request_mux(fr_event_list_t *el,
 		if (inst->replicate) {
 			(void) rr_track_delete(h->id, u->rr); /* don't set last_idle, we're not checking for zombie */
 			u->rr = NULL;
-			rcode->rcode = RLM_MODULE_OK;
+			res->rcode = RLM_MODULE_OK;
 			fr_trunk_request_signal_complete(treq);
 			continue;
 		}
@@ -1348,7 +1348,7 @@ static rlm_rcode_t code2rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 /** Deal with Protocol-Error replies, and possible negotiation
  *
  */
-static void protocol_error_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handle_t *h)
+static void protocol_error_reply(udp_request_t *u, udp_result_t *res, udp_handle_t *h)
 {
 	bool	  	error_601 = false;
 	uint32_t  	response_length = 0;
@@ -1405,7 +1405,7 @@ static void protocol_error_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handl
 			if ((attr[3] != 0) ||
 			    (attr[4] != 0) ||
 			    (attr[5] != 0)) {
-				if (rcode) rcode->rcode = RLM_MODULE_FAIL;
+				if (res) res->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 
@@ -1417,7 +1417,7 @@ static void protocol_error_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handl
 			 *	and for sanity.
 			 */
 			if (attr[6] != u->code) {
-				if (rcode) rcode->rcode = RLM_MODULE_FAIL;
+				if (res) res->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 	}
@@ -1456,7 +1456,7 @@ static void protocol_error_reply(udp_request_t *u, udp_rcode_t *rcode, udp_handl
 	 *	error, and the response is valid, but not useful for
 	 *	anything.
 	 */
-	if (rcode) rcode->rcode = RLM_MODULE_HANDLED;
+	if (res) res->rcode = RLM_MODULE_HANDLED;
 }
 
 
@@ -1502,7 +1502,7 @@ static fr_trunk_request_t *read_packet(udp_handle_t *h, udp_connection_t *c)
 	rlm_radius_udp_t const	*inst = c->thread->inst;
 	fr_trunk_request_t	*treq;
 	udp_request_t		*u;
-	udp_rcode_t		*rcode;
+	udp_result_t		*res;
 	REQUEST			*request;
 	ssize_t			data_len;
 	size_t			packet_len;
@@ -1563,13 +1563,13 @@ drain:
 		request = treq->request;
 		rad_assert(request != NULL);
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
-		rcode = talloc_get_type_abort(treq->rctx, udp_rcode_t);
+		res = talloc_get_type_abort(treq->rctx, udp_result_t);
 
 	} else {
 		treq = NULL;
 		request = NULL;
 		u = talloc_get_type_abort(rr->request_io_ctx, udp_request_t);
-		rcode = NULL;
+		res = NULL;
 		rad_assert(u == h->status_u);
 	}
 
@@ -1611,7 +1611,7 @@ drain:
 	code = h->buffer[0];
 	if (!code || (code >= FR_RADIUS_MAX_PACKET_CODE)) {
 		REDEBUG("Unknown reply code %d", code);
-		rcode->rcode= RLM_MODULE_INVALID;
+		res->rcode= RLM_MODULE_INVALID;
 		return treq;
 	}
 
@@ -1623,19 +1623,19 @@ drain:
 	 *	packet.
 	 */
 	if (code == FR_CODE_PROTOCOL_ERROR) {
-		protocol_error_reply(u, rcode, h);
+		protocol_error_reply(u, res, h);
 		goto decode;
 	}
 
 	if (!allowed_replies[code]) {
 		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		rcode->rcode = RLM_MODULE_INVALID;
+		res->rcode = RLM_MODULE_INVALID;
 		return treq;
 	}
 
 	if (allowed_replies[code] != (FR_CODE) u->code) {
 		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		rcode->rcode = RLM_MODULE_INVALID;
+		res->rcode = RLM_MODULE_INVALID;
 		return treq;
 	}
 
@@ -1660,7 +1660,7 @@ drain:
 	/*
 	 *	Set the module return code based on the reply packet.
 	 */
-	rcode->rcode = code2rcode[h->buffer[0]];
+	res->rcode = code2rcode[h->buffer[0]];
 
 decode:
 	reply = NULL;
@@ -1674,7 +1674,7 @@ decode:
 			     inst->secret, talloc_array_length(inst->secret) - 1, &reply) < 0) {
 		REDEBUG("Failed decoding attributes for packet");
 		fr_pair_list_free(&reply);
-		rcode->rcode = RLM_MODULE_INVALID;
+		res->rcode = RLM_MODULE_INVALID;
 		return treq;
 	}
 
@@ -1793,9 +1793,9 @@ static fr_trunk_io_funcs_t trunk_funcs = {
 
 static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *ctx)
 {
-	udp_rcode_t	*rcode = talloc_get_type_abort(ctx, udp_rcode_t);
+	udp_result_t	*res = talloc_get_type_abort(ctx, udp_result_t);
 
-	return rcode->rcode;
+	return res->rcode;
 }
 
 
@@ -1813,7 +1813,7 @@ static int udp_request_free(udp_request_t *u)
 static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *tctx)
 {
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_rcode_t			*rcode = talloc_get_type_abort(rctx, udp_rcode_t);
+	udp_result_t			*res = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t			*u;
 	udp_thread_t			*thread = talloc_get_type_abort(tctx, udp_thread_t);
 	fr_trunk_request_t		*treq;
@@ -1844,7 +1844,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 
 	u->rr = NULL;
 	u->c = NULL;
-	rcode->rcode = RLM_MODULE_FAIL;
+	res->rcode = RLM_MODULE_FAIL;
 	u->code = request->packet->code;
 	u->synchronous = inst->parent->synchronous;
 	u->priority = request->async->priority;	  /* cached for speed */
@@ -1874,12 +1874,12 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 		rad_assert(u->retry.next > 0);
 	}
 
-	if (fr_trunk_request_enqueue(&treq, thread->trunk, request, u, rcode) < 0) {
+	if (fr_trunk_request_enqueue(&treq, thread->trunk, request, u, res) < 0) {
 		talloc_free(treq);
 		return RLM_MODULE_FAIL;
 	}
 
-	rcode->treq = treq;	/* Remember for signalling purposes */
+	res->treq = treq;	/* Remember for signalling purposes */
 	talloc_set_destructor(u, udp_request_free);
 
 	return RLM_MODULE_YIELD;
@@ -1889,7 +1889,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thread, void *rctx, fr_state_signal_t action)
 {
 	rlm_radius_udp_t	*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_rcode_t		*rcode = talloc_get_type_abort(rctx, udp_rcode_t);
+	udp_result_t		*res = talloc_get_type_abort(rctx, udp_result_t);
 
 	switch (action) {
 	/*
@@ -1897,7 +1897,7 @@ static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thr
 	 *	trunk so it can clean up the treq.
 	 */
 	case FR_SIGNAL_CANCEL:
-		fr_trunk_request_signal_cancel(rcode->treq);
+		fr_trunk_request_signal_cancel(res->treq);
 		return;
 
 	/*
@@ -1912,7 +1912,7 @@ static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thr
 		 */
 		if (!inst->parent->synchronous) return;
 
-		fr_trunk_request_requeue(rcode->treq);
+		fr_trunk_request_requeue(res->treq);
 		return;
 
 	default:
@@ -2038,8 +2038,8 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.name			= "radius_udp",
 	.inst_size		= sizeof(rlm_radius_udp_t),
 
-	.request_inst_size 	= sizeof(udp_rcode_t),
-	.request_inst_type	= "udp_rcode_t",
+	.request_inst_size 	= sizeof(udp_result_t),
+	.request_inst_type	= "udp_result_t",
 
 	.thread_inst_size	= sizeof(udp_thread_t),
 	.thread_inst_type	= "udp_thread_t",
