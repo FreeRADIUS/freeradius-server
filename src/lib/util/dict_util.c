@@ -1629,7 +1629,7 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
 
 	if (da->type == FR_TYPE_VENDOR) return da;
 
-	if (!da->vendor) return NULL;
+	if (!da->vendor || da->flags.is_root) return NULL;
 
 	return da->vendor;
 }
