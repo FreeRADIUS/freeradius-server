@@ -196,6 +196,14 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 	dict_attr_init(dict->root, NULL, proto_number, FR_TYPE_TLV, &flags);
 	DA_VERIFY(dict->root);
 
+	/*
+	 *	This is also the root->vendor field, which MUST be
+	 *	unset for root attributes.  And since the call to
+	 *	dict_attr_init() above doesn't have a parent, it is
+	 *	actually unset.
+	 */
+	dict->root->dict = dict;
+
 	return 0;
 }
 

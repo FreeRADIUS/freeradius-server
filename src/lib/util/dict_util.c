@@ -1431,7 +1431,8 @@ fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 	 *	Parent of the root attribute must
 	 *	be the dictionary.
 	 */
-	return talloc_get_type_abort(talloc_parent(da_p), fr_dict_t);
+	(void) talloc_get_type_abort_const(da_p->dict, fr_dict_t);
+	return fr_dict_unconst(da_p->dict);
 }
 
 /** Dictionary/attribute ctx struct
