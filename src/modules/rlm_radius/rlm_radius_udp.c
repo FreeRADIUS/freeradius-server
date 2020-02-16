@@ -898,10 +898,11 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
  */
 static void revive_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	udp_handle_t	 	*h = talloc_get_type_abort(uctx, udp_handle_t);
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 
 	DEBUG("Shutting down and reviving connection %s", h->name);
-	fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 }
 
 
@@ -1008,8 +1009,9 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
  *  request finally being written to the socket.  So we need to check
  *  for zombie at BOTH the timeout and the mux / write function.
  */
-static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now)
+static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_time_t now)
 {
+	udp_handle_t	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 	udp_request_t	*u = h->status_u;
 
 	/*
@@ -1037,7 +1039,7 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 		return;
 	}
 
-	if (!now) now = fr_time();
+	if (now == 0) now = fr_time();
 
 	/*
 	 *	We've sent a packet since we last went idle, and/or
@@ -1074,7 +1076,7 @@ static void check_for_zombie(fr_event_list_t *el, udp_handle_t *h, fr_time_t now
 		fr_trunk_connection_signal_inactive(h->c->tconn);
 
 		when = now + h->inst->parent->revive_interval;
-		if (fr_event_timer_at(h, el, &h->zombie_ev, when, revive_timer, h) < 0) {
+		if (fr_event_timer_at(h, el, &h->zombie_ev, when, revive_timer, tconn) < 0) {
 			fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 			return;
 		}
@@ -1113,7 +1115,7 @@ static void udp_request_clear(udp_request_t *u, udp_handle_t *h, fr_time_t now)
 /** Handle retries for a REQUEST
  *
  */
-static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
@@ -1125,7 +1127,7 @@ static void request_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	This call may nuke u->rr
 	 */
-	check_for_zombie(el, h, now);
+	check_for_zombie(el, treq->tconn, now);
 
 	/*
 	 *	Rely on someone else to do the retransmissions.
@@ -1193,7 +1195,7 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 		/*
 		 *	Set up a timer for retransmits.
 		 */
-		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timer, treq) < 0) {
+		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timeout, treq) < 0) {
 			RERROR("Failed inserting retransmit timeout for connection");
 			return -1;
 		}
@@ -1233,7 +1235,7 @@ static void request_mux(fr_event_list_t *el,
 	REQUEST			*request;
 	udp_request_t		*u;
 
-	check_for_zombie(h->thread->el, h, 0);
+	check_for_zombie(el, tconn, 0);
 
 	while ((treq = fr_trunk_connection_pop_request(tconn)) != NULL) {
 		udp_result_t *res = talloc_get_type_abort(treq->rctx, udp_result_t);
@@ -1758,7 +1760,6 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 		 *	keep the same timers, packets etc.
 		 */
 	case FR_TRUNK_CANCEL_REASON_REQUEUE:
-		check_for_zombie(h->thread->el, h, 0);
 		break;
 
 		/*
@@ -1886,9 +1887,10 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 }
 
 
-static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thread, void *rctx, fr_state_signal_t action)
+static void mod_signal(UNUSED REQUEST *request, void *instance, void *thread, void *rctx, fr_state_signal_t action)
 {
 	rlm_radius_udp_t	*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+	udp_thread_t		*t = talloc_get_type_abort(thread, udp_thread_t);
 	udp_result_t		*res = talloc_get_type_abort(rctx, udp_result_t);
 
 	switch (action) {
@@ -1913,6 +1915,7 @@ static void mod_signal(UNUSED REQUEST *request, void *instance, UNUSED void *thr
 		if (!inst->parent->synchronous) return;
 
 		fr_trunk_request_requeue(res->treq);
+		check_for_zombie(t->el, res->treq->tconn, 0);
 		return;
 
 	default:
