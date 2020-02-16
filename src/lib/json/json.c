@@ -430,6 +430,59 @@ static inline char const *attr_name_with_prefix(char *buf, size_t buf_len, const
 }
 
 
+/** Verify that the options in fr_json_format_t are valid
+ *
+ * Warnings are optional, will fatal error if the format is corrupt.
+ *
+ * @param[in] format	the format structure to check
+ * @param[in] verbose	print out warnings if set
+ * @return		true if format is good, otherwise false
+ */
+bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
+{
+	bool ret = true;
+
+	rad_assert(format);
+
+	switch (format->output_mode) {
+	case JSON_MODE_OBJECT:
+	case JSON_MODE_OBJECT_SIMPLE:
+	case JSON_MODE_ARRAY:
+		/* all options are valid */
+		return true;
+	case JSON_MODE_ARRAY_OF_VALUES:
+		if (format->attr.prefix) {
+			if (verbose) WARN("attribute name prefix not valid in output_mode 'array_of_values' and will be ignored");
+			ret = false;
+		}
+		if (format->value.value_as_array) {
+			if (verbose) WARN("'value_as_array' not valid in output_mode 'array_of_values' and will be ignored");
+			ret = false;
+		}
+		return ret;
+	case JSON_MODE_ARRAY_OF_NAMES:
+		if (format->value.value_as_array) {
+			if (verbose) WARN("'value_as_array' not valid in output_mode 'array_of_names' and will be ignored");
+			ret = false;
+		}
+		if (format->value.enum_as_int) {
+			if (verbose) WARN("'enum_as_int' not valid in output_mode 'array_of_names' and will be ignored");
+			ret = false;
+		}
+		if (format->value.always_string) {
+			if (verbose) WARN("'always_string' not valid in output_mode 'array_of_names' and will be ignored");
+			ret = false;
+		}
+		return ret;
+	default:
+		ERROR("JSON format output mode is invalid");
+	}
+
+	/* If we get here, something has gone wrong */
+	rad_assert(0);
+}
+
+
 /** Returns a JSON object representation of a list of value pairs
  *
  * The result is a struct json_object, which should be free'd with

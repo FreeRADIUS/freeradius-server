@@ -255,4 +255,6 @@ void		fr_json_version_print(void);
 
 char		*fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
 					 fr_json_format_t const *format);
+
+bool		fr_json_format_verify(fr_json_format_t const *format, bool verbose);
 #endif
