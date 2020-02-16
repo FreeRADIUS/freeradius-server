@@ -1431,8 +1431,7 @@ fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 	 *	Parent of the root attribute must
 	 *	be the dictionary.
 	 */
-	(void) talloc_get_type_abort_const(da_p->dict, fr_dict_t);
-	return fr_dict_unconst(da_p->dict);
+	return talloc_get_type_abort(talloc_parent(da_p), fr_dict_t);
 }
 
 /** Dictionary/attribute ctx struct
@@ -1629,7 +1628,7 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
 
 	if (da->type == FR_TYPE_VENDOR) return da;
 
-	if (!da->vendor || da->flags.is_root) return NULL;
+	if (!da->vendor) return NULL;
 
 	return da->vendor;
 }
