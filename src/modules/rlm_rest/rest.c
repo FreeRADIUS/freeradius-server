@@ -562,7 +562,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	rad_assert(freespace > 0);
 
 	if (ctx->state == READ_STATE_INIT) {
-		encoded = fr_json_afrom_pair_list(data, &request->packet->vps, NULL);
+		encoded = fr_json_afrom_pair_list(data, request->packet->vps, NULL);
 		if (!encoded) return -1;
 
 		data->start = data->p = encoded;

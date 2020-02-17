@@ -2656,6 +2656,32 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 	return str;
 }
 
+/** Get value box of a VP, optionally prefer enum value.
+ *
+ * Get the data value box of the given VP. If 'e' is set to 1 and the VP has an
+ * enum value, this will be returned instead. Otherwise it will be set to the
+ * value box of the VP itself.
+ *
+ * @param[out] out	pointer to a value box.
+ * @param[in] vp	to print.
+ * @return 1 if the enum value has been used, 0 otherwise, -1 on error.
+ */
+int fr_pair_value_enum_box(fr_value_box_t const **out, VALUE_PAIR *vp)
+{
+	fr_dict_enum_t const	*dv;
+
+	if (!out || !vp ) return -1;
+
+	if (vp->da && vp->da->flags.has_value &&
+	    (dv = fr_dict_enum_by_value(vp->da, &vp->data))) {
+		*out = dv->value;
+		return 1;
+	}
+
+	*out = &vp->data;
+	return 0;
+}
+
 char *fr_pair_type_asprint(TALLOC_CTX *ctx, fr_type_t type)
 {
 	switch (type) {

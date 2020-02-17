@@ -316,6 +316,7 @@ void		fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(forma
 size_t   	fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
 char     	*fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 char const	*fr_pair_value_enum(VALUE_PAIR const *vp, char buff[static 20]);
+int		fr_pair_value_enum_box(fr_value_box_t const **out, VALUE_PAIR *vp);
 
 size_t		fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		fr_pair_fprint(FILE *, VALUE_PAIR const *vp);
