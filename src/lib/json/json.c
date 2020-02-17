@@ -43,6 +43,28 @@ static fr_json_format_t const default_json_format = {
 	.value = { .value_as_array = true },
 };
 
+CONF_PARSER const json_format_attr_config[] = {
+	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, fr_json_format_attr_t, prefix) },
+	CONF_PARSER_TERMINATOR
+};
+
+CONF_PARSER const json_format_value_config[] = {
+	{ FR_CONF_OFFSET("single_value_as_array", FR_TYPE_BOOL, fr_json_format_value_t, value_as_array), .dflt = "no" },
+	{ FR_CONF_OFFSET("enum_as_integer", FR_TYPE_BOOL, fr_json_format_value_t, enum_as_int), .dflt = "no" },
+	{ FR_CONF_OFFSET("always_string", FR_TYPE_BOOL, fr_json_format_value_t, always_string), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
+};
+
+CONF_PARSER const fr_json_format_config[] = {
+	{ FR_CONF_OFFSET("output_mode", FR_TYPE_STRING, fr_json_format_t, output_mode_str), .dflt = "object" },
+	{ FR_CONF_OFFSET("attribute", FR_TYPE_SUBSECTION, fr_json_format_t, attr),
+		.subcs = (void const *) json_format_attr_config },
+	{ FR_CONF_OFFSET("value", FR_TYPE_SUBSECTION, fr_json_format_t, value),
+		.subcs = (void const *) json_format_value_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
 
 /** Convert json object to fr_value_box_t
  *

@@ -226,6 +226,8 @@ struct fr_json_format_s {
 
 typedef struct fr_json_format_s fr_json_format_t;
 
+extern CONF_PARSER const fr_json_format_config[];
+
 
 /* jpath .c */
 typedef struct fr_jpath_node fr_jpath_node_t;
