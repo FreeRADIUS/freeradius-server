@@ -404,17 +404,19 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 
 /** Remove the current item
  *
- * The current item will be set to the one before the item being removed,
- * this is so the commonly used check and remove loop (below) works as expected.
+ * The current item will be set to the one after the item
+ * being removed. An example check and remove loop:
  *
  @code {.c}
    for (v = fr_cursor_init(&cursor, head);
         v;
-        v = fr_cursor_next(&cursor) {
+        v = fr_cursor_current(&cursor) {
         if (<condition>) {
             v = fr_cursor_remove(&cursor);
             talloc_free(v);
+            continue;
         }
+        v = fr_cursor_next(&cursor);
    }
  @endcode
  *
@@ -458,10 +460,7 @@ void * CC_HINT(hot) fr_cursor_remove(fr_cursor_t *cursor)
 	}
 
 	/*
-	 *	re-advance the cursor.
-	 *
-	 *	This ensures if the iterator skips the item
-	 *	we just replaced, it doesn't become current.
+	 *	Advance the cursor to the next item after the one which we just removed.
 	 */
 	cursor->current = cursor_next(&cursor->prev, cursor, cursor->current);
 
