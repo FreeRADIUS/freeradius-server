@@ -253,7 +253,7 @@ struct fr_trunk_s {
 	/** @} */
 };
 
-static CONF_PARSER const fr_trunk_config_requests[] = {
+static CONF_PARSER const fr_trunk_config_request[] = {
 	{ FR_CONF_OFFSET("per_connection_max", FR_TYPE_UINT32, fr_trunk_conf_t, max_req_per_conn), .dflt = "2000" },
 	{ FR_CONF_OFFSET("per_connection_target", FR_TYPE_UINT32, fr_trunk_conf_t, target_req_per_conn), .dflt = "1000" },
 	{ FR_CONF_OFFSET("free_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, req_cleanup_delay), .dflt = "10.0" },
@@ -282,7 +282,7 @@ CONF_PARSER const fr_trunk_config[] = {
 	{ FR_CONF_OFFSET("manage_interval", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, manage_interval), .dflt = "0.2" },
 
 	{ FR_CONF_OFFSET("connection", FR_TYPE_SUBSECTION, fr_trunk_conf_t, conn_conf), .subcs = (void const *) fr_trunk_config_connection, .subcs_size = sizeof(fr_trunk_config_connection) },
-	{ FR_CONF_POINTER("requests", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) fr_trunk_config_requests },
+	{ FR_CONF_POINTER("request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) fr_trunk_config_request },
 
 	CONF_PARSER_TERMINATOR
 };
