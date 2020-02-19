@@ -1918,11 +1918,10 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		goto error;
 	}
 
-	fr_dlist_init(&el->pre_callbacks, fr_event_pre_t, entry);
-	fr_dlist_init(&el->post_callbacks, fr_event_post_t, entry);
-	fr_dlist_init(&el->user_callbacks, fr_event_user_t, entry);
-	fr_dlist_init(&el->ev_to_add, fr_event_timer_t, entry);
-
+	fr_dlist_talloc_init(&el->pre_callbacks, fr_event_pre_t, entry);
+	fr_dlist_talloc_init(&el->post_callbacks, fr_event_post_t, entry);
+	fr_dlist_talloc_init(&el->user_callbacks, fr_event_user_t, entry);
+	fr_dlist_talloc_init(&el->ev_to_add, fr_event_timer_t, entry);
 	if (status) (void) fr_event_pre_insert(el, status, status_uctx);
 
 	/*
