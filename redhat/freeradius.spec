@@ -379,7 +379,6 @@ export LDFLAGS="-Wl,--build-id"
         %{?_with_rlm_ruby} \
         %{?_without_rlm_ruby} \
         %{?_with_rlm_cache_memcached} \
-        %{?_without_rlm_cache_memcached} \
         %{?_without_libwbclient} \
 #        --with-modules="rlm_wimax" \
 
