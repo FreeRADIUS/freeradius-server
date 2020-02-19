@@ -2,6 +2,7 @@ FROM centos:7
 RUN yum groupinstall -y "Development Tools"
 RUN yum install -y rpmdevtools
 RUN yum install -y openssl
+RUN yum install -y libmemcached-devel
 
 #
 #  Create build directory
