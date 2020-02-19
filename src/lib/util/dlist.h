@@ -78,7 +78,7 @@ static inline CC_HINT(nonnull) void fr_dlist_entry_unlink(fr_dlist_t *entry)
  *
  * This works because the fr_dlist_head_t has an entry in the list.
  * So if next and prev both point to the entry for the object being
- * passed in, then it can't be part of a list with a fr_flist_head_t.
+ * passed in, then it can't be part of a list with a fr_dlist_head_t.
  *
  * @return
  *	- True if in a list.
@@ -86,7 +86,7 @@ static inline CC_HINT(nonnull) void fr_dlist_entry_unlink(fr_dlist_t *entry)
  */
 static inline CC_HINT(nonnull) bool fr_dlist_entry_in_list(fr_dlist_t const *entry)
 {
-	if ((entry->prev == entry) && (entry->next == entry)) return false;
+	if (((entry->prev == entry) && (entry->next == entry)) || ((entry->prev == NULL) && (entry->next == NULL))) return false;
 
 	return true;
 }
