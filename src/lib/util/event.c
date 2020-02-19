@@ -279,7 +279,7 @@ typedef struct {
  */
 typedef struct {
 	fr_dlist_t		entry;			//!< Linked list of callback.
-	fr_event_timer_cb_t		callback;		//!< The callback to call.
+	fr_event_timer_cb_t	callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
 } fr_event_post_t;
 
@@ -1551,9 +1551,10 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
  */
 void fr_event_service(fr_event_list_t *el)
 {
-	int		i;
-	fr_event_post_t	*post;
-	fr_time_t	when;
+	int			i;
+	fr_event_post_t		*post;
+	fr_time_t		when;
+	fr_event_timer_t	*ev;
 
 	if (unlikely(el->exit)) return;
 
@@ -1578,9 +1579,7 @@ void fr_event_service(fr_event_list_t *el)
 			 */
 			if (el->events[i].ident == 0) continue;
 
-			user = (fr_event_user_t *)el->events[i].ident;
-
-			(void) talloc_get_type_abort(user, fr_event_user_t);
+			user = talloc_get_type_abort((void *)el->events[i].ident, fr_event_user_t);
 			rad_assert(user->ident == el->events[i].ident);
 
 			user->callback(el->kq, &el->events[i], user->uctx);
@@ -1589,17 +1588,16 @@ void fr_event_service(fr_event_list_t *el)
 
 		if (el->events[i].filter == EVFILT_PROC) {
 			pid_t pid;
-			fr_event_pid_t *ev;
+			fr_event_pid_t *pev;
 
-			ev = (fr_event_pid_t *) el->events[i].udata;
-			(void) talloc_get_type_abort(ev, fr_event_pid_t);
+			pev = talloc_get_type_abort((void *)el->events[i].udata, fr_event_pid_t);
 
-			rad_assert(ev->pid == (pid_t) el->events[i].ident);
+			rad_assert(pev->pid == (pid_t) el->events[i].ident);
 			rad_assert((el->events[i].fflags & NOTE_EXIT) != 0);
 
-			pid = ev->pid;
-			ev->pid = 0; /* so we won't hit kevent again when it's freed */
-			ev->callback(el, pid, (int) el->events[i].data, ev->uctx);
+			pid = pev->pid;
+			pev->pid = 0; /* so we won't hit kevent again when it's freed */
+			pev->callback(el, pid, (int) el->events[i].data, pev->uctx);
 			continue;
 		}
 
@@ -1780,14 +1778,11 @@ service:
 	 *	then immediately run the new callback, which could
 	 *	also add an event in the past...
 	 */
-	if (fr_dlist_head(&el->ev_to_add) != NULL) {
-		fr_event_timer_t *ev;
-
-		while ((ev = fr_dlist_head(&el->ev_to_add)) != NULL) {
-			if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
-				talloc_free(ev);
-			}
-			(void) fr_dlist_remove(&el->ev_to_add, ev);
+	while ((ev = fr_dlist_head(&el->ev_to_add)) != NULL) {
+		(void)fr_dlist_remove(&el->ev_to_add, ev);
+		if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
+			talloc_free(ev);
+			rad_assert(0);	/* Die in debug builds */
 		}
 	}
 
