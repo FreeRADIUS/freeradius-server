@@ -225,14 +225,14 @@ radius {
 	#
 	#  Each worker thread (see radiusd.conf, num_workers), has
 	#  it's own set of connections.  These connections are grouped
-	#  together into a "trunk".
+	#  together into a "pool".
 	#
 	#  Much of the configuration here is similar to the old
 	#  connection "pool" configuration in v3.  However, there are
 	#  more configuration parameters, and therefore more control
 	#  over the behavior.
 	#
-	trunk {
+	pool {
 		#
 		#  start:: Connections to create during module instantiation.
 		#
