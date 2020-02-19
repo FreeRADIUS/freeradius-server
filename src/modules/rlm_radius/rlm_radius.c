@@ -122,7 +122,7 @@ static CONF_PARSER const module_config[] = {
 
 	{ FR_CONF_OFFSET("revive_interval", FR_TYPE_TIME_DELTA, rlm_radius_t, revive_interval) },
 
-	{ FR_CONF_OFFSET("trunk", FR_TYPE_SUBSECTION, rlm_radius_t, trunk_conf), .subcs = (void const *) fr_trunk_config, },
+	{ FR_CONF_OFFSET("pool", FR_TYPE_SUBSECTION, rlm_radius_t, trunk_conf), .subcs = (void const *) fr_trunk_config, },
 
 	CONF_PARSER_TERMINATOR
 };
