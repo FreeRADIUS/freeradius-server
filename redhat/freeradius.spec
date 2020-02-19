@@ -5,7 +5,7 @@
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
-%{?_with_rlm_cache_memcached: %global _with_rlm_cache_memcached --with-rlm_cache_memcached}
+%{!?_with_rlm_cache_memcached: %global _with_rlm_cache_memcached --with-rlm_cache_memcached}
 
 # experimental modules
 %bcond_with rlm_idn
