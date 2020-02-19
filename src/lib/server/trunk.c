@@ -1729,6 +1729,14 @@ void fr_trunk_request_free(fr_trunk_request_t *treq)
 	trunk_requests_per_connnection(NULL, NULL, treq->pub.trunk, fr_time());
 
 	/*
+	 *	No cleanup delay, means cleanup immediately
+	 */
+	if (trunk->conf.req_cleanup_delay == 0) {
+		talloc_free(treq);
+		return;
+	}
+
+	/*
 	 *
 	 *      Otherwise return the trunk request back
 	 *	to the unassigned list.
