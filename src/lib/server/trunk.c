@@ -2697,7 +2697,7 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
  */
 static int _trunk_connection_free(fr_trunk_connection_t *tconn)
 {
-	rad_assert(tconn->state == FR_CONNECTION_STATE_HALTED);
+	rad_assert(tconn->state == FR_TRUNK_CONN_HALTED);
 	rad_assert(!fr_dlist_entry_in_list(&tconn->entry));	/* Should not be in a list */
 
 	/*
