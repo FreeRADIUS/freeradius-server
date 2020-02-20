@@ -8,7 +8,12 @@ CREATE TABLE cui (
 	PRIMARY KEY (username, clientipaddress, callingstationid)
 );
 
+/* This is an old workaround for upsert which was needed prior PostgreSQL 9.5.
+ * It's incompatible with the currently used method (ON CONFLICT clause), so if
+ * you're updating an old database, you have to remove it:
+ * DROP RULE postauth_query ON cui;
+
 CREATE RULE postauth_query AS ON INSERT TO cui
 	WHERE EXISTS(SELECT 1 FROM cui WHERE (username, clientipaddress, callingstationid)=(NEW.username, NEW.clientipaddress, NEW.callingstationid))
 	DO INSTEAD UPDATE cui SET lastaccounting ='-infinity'::timestamp with time zone, cui=NEW.cui WHERE (username, clientipaddress, callingstationid)=(NEW.username, NEW.clientipaddress, NEW.callingstationid);
-
+*/
