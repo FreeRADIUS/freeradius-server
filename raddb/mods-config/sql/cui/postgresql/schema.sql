@@ -1,3 +1,5 @@
+-- Table for Chargeable-User-Identity.
+-- Note: If you change name of the table, change name of cui_pkey as well.
 CREATE TABLE cui (
 	clientipaddress inet NOT NULL DEFAULT '0.0.0.0',
 	callingstationid text NOT NULL DEFAULT '',
@@ -5,7 +7,7 @@ CREATE TABLE cui (
 	cui text NOT NULL DEFAULT '',
 	creationdate timestamp with time zone NOT NULL DEFAULT now(),
 	lastaccounting timestamp with time zone NOT NULL DEFAULT '-infinity'::timestamp,
-	PRIMARY KEY (username, clientipaddress, callingstationid)
+	CONSTRAINT cui_pkey PRIMARY KEY (username, clientipaddress, callingstationid)
 );
 
 /* This is an old workaround for upsert which was needed prior PostgreSQL 9.5.
