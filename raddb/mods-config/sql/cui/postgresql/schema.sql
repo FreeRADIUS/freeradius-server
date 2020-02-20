@@ -1,9 +1,9 @@
 CREATE TABLE cui (
 	clientipaddress inet NOT NULL DEFAULT '0.0.0.0',
-	callingstationid varchar(50) NOT NULL DEFAULT '',
-	username varchar(64) NOT NULL DEFAULT '',
-	cui varchar(128) NOT NULL DEFAULT '',
-	creationdate timestamp with time zone NOT NULL DEFAULT 'now()',
+	callingstationid text NOT NULL DEFAULT '',
+	username text NOT NULL DEFAULT '',
+	cui text NOT NULL DEFAULT '',
+	creationdate timestamp with time zone NOT NULL DEFAULT now(),
 	lastaccounting timestamp with time zone NOT NULL DEFAULT '-infinity'::timestamp,
 	PRIMARY KEY (username, clientipaddress, callingstationid)
 );
