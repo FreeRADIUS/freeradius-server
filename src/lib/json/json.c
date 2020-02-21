@@ -43,12 +43,12 @@ static fr_json_format_t const default_json_format = {
 	.value = { .value_as_array = true },
 };
 
-CONF_PARSER const json_format_attr_config[] = {
+static CONF_PARSER const json_format_attr_config[] = {
 	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, fr_json_format_attr_t, prefix) },
 	CONF_PARSER_TERMINATOR
 };
 
-CONF_PARSER const json_format_value_config[] = {
+static CONF_PARSER const json_format_value_config[] = {
 	{ FR_CONF_OFFSET("single_value_as_array", FR_TYPE_BOOL, fr_json_format_value_t, value_as_array), .dflt = "no" },
 	{ FR_CONF_OFFSET("enum_as_integer", FR_TYPE_BOOL, fr_json_format_value_t, enum_as_int), .dflt = "no" },
 	{ FR_CONF_OFFSET("always_string", FR_TYPE_BOOL, fr_json_format_value_t, always_string), .dflt = "no" },
@@ -657,7 +657,8 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vp
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		char const		*attr_name;
-		struct json_object	*vp_object, *values, *value;
+		struct json_object	*vp_object, *value;
+		struct json_object	*values = NULL;
 		bool			add_single = false;
 
 		/*
@@ -747,7 +748,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAI
 	fr_cursor_t		cursor;
 	VALUE_PAIR		*vp;
 	struct json_object	*obj;
-	struct json_object	*seen_attributes;
+	struct json_object	*seen_attributes = NULL;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 
 	/* Check format and type */
@@ -768,7 +769,8 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAI
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		char const		*attr_name;
-		struct json_object	*values, *name, *value, *type_name;
+		struct json_object	*name, *value, *type_name;
+		struct json_object	*values = NULL;
 		struct json_object	*attrobj = NULL;
 		bool			already_seen = false;
 
