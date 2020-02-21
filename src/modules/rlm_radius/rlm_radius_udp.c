@@ -1073,15 +1073,15 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 
 		DEBUG("Connection failed.  Reviving it in %u.%03us",
 		      msec / 1000, msec % 1000);
-		fr_trunk_connection_signal_inactive(h->c->tconn);
+		fr_trunk_connection_signal_inactive(tconn);
 
 		when = now + h->inst->parent->revive_interval;
 		if (fr_event_timer_at(h, el, &h->zombie_ev, when, revive_timer, tconn) < 0) {
-			fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			return;
 		}
 
-		(void) fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
+		(void) fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
 		return;
 	}
 
@@ -1095,8 +1095,8 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	/*
 	 *	Move ALL requests to other connections!
 	 */
-	fr_trunk_connection_signal_inactive(h->c->tconn);
-	fr_trunk_connection_requests_requeue(h->c->tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
+	fr_trunk_connection_signal_inactive(tconn);
+	fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
 
 	status_check_timer(el, 0, u);
 }
