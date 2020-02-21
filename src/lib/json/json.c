@@ -502,6 +502,8 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
 
 	/* If we get here, something has gone wrong */
 	rad_assert(0);
+
+	return false;
 }
 
 
@@ -991,7 +993,7 @@ static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ct
 char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
 			      fr_json_format_t const *format)
 {
-	struct json_object	*obj;
+	struct json_object	*obj = NULL;
 	const char		*p;
 	char			*out;
 
