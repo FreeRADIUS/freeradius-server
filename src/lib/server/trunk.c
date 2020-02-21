@@ -1351,6 +1351,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 						  bool fail_bound)
 {
 	fr_trunk_t			*trunk = tconn->pub.trunk;
+	fr_trunk_connection_state_t	state;
 	fr_dlist_head_t			to_process;
 	fr_trunk_request_t		*treq = NULL;
 	uint64_t			moved = 0;
@@ -1365,6 +1366,14 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 	moved += trunk_connection_requests_dequeue(&to_process, tconn, states & ~FR_TRUNK_REQUEST_STATE_CANCEL_ALL, max);
 
 	/*
+	 *	The trunk connection can be freed if it's in the
+	 *	draining or draining-to-free state, so we need
+	 *	to record its state now, before removing all the
+	 *	requests from it.
+	 */
+	state = tconn->state;
+
+	/*
 	 *	Prevent requests being requeued on the same trunk
 	 *	connection, which would break rebalancing.
 	 *
@@ -1373,7 +1382,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 	 *      and if something is added later, it'll be flagged
 	 *	by the tests.
 	 */
-	if (tconn->state == FR_TRUNK_CONN_ACTIVE) fr_heap_extract(trunk->active, tconn);
+	if (state == FR_TRUNK_CONN_ACTIVE) fr_heap_extract(trunk->active, tconn);
 
 	/*
 	 *	Loop over all the requests we gathered and
@@ -1430,7 +1439,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 	/*
 	 *	Add the connection back into the active list
 	 */
-	if (tconn->state == FR_TRUNK_CONN_ACTIVE) fr_heap_insert(trunk->active, tconn);
+	if (state == FR_TRUNK_CONN_ACTIVE) fr_heap_insert(trunk->active, tconn);
 
 	if (moved >= max) return moved;
 
@@ -1458,9 +1467,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 	 *	in the requests per connection stats, so
 	 *	we need to update those values now.
 	 */
-	if (tconn->state == FR_TRUNK_CONN_DRAINING) {
-		trunk_requests_per_connnection(NULL, NULL, tconn->pub.trunk, fr_time());
-	}
+	if (state == FR_TRUNK_CONN_DRAINING) trunk_requests_per_connnection(NULL, NULL, tconn->pub.trunk, fr_time());
 
 	return moved;
 }
