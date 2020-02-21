@@ -700,6 +700,8 @@ void		fr_trunk_connection_signal_inactive(fr_trunk_connection_t *tconn) CC_HINT(
 void		fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn) CC_HINT(nonnull);
 
 void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason) CC_HINT(nonnull);
+
+bool		fr_trunk_connection_in_state(fr_trunk_connection_t *tconn, int state);
 /** @} */
 
 /** @name Connection management

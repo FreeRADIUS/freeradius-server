@@ -2988,6 +2988,19 @@ void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_conne
 	fr_connection_signal_reconnect(tconn->pub.conn, reason);
 }
 
+/** Returns true if the trunk connection is in one of the specified states
+ *
+ * @param[in] tconn	To check state for.
+ * @param[in] state	to check
+ * @return
+ *	- True if trunk connection is in a particular state.
+ *	- False if trunk connection is not in a particular state.
+ */
+bool fr_trunk_connection_in_state(fr_trunk_connection_t *tconn, int state)
+{
+	return (bool)(tconn->state & state);
+}
+
 /** Rebalance connections across active trunk members when a new connection becomes active
  *
  * We don't have any visibility into the connection prioritisation algorithm
