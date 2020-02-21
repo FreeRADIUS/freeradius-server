@@ -74,7 +74,6 @@ typedef struct {
 typedef struct {
 	fr_trunk_connection_t	*tconn;
 	fr_connection_t		*conn;
-	udp_thread_t		*thread;
 } udp_connection_t;
 
 typedef struct udp_request_s udp_request_t;
@@ -211,6 +210,11 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ NULL }
 };
 
+typedef struct {
+	rlm_radius_udp_t const	*inst;
+	udp_thread_t		*thread;
+} udp_conn_uctx_t;
+
 /** Initialise a new outbound connection
  *
  * @param[out] h_out	Where to write the new file descriptor.
@@ -220,20 +224,18 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void *uctx)
 {
 	int			fd;
-	udp_connection_t	*c = talloc_get_type_abort(uctx, udp_connection_t);
 	udp_handle_t		*h;
-	rlm_radius_udp_t const	*inst = c->thread->inst;
+	udp_conn_uctx_t		*our_ctx = uctx;
 
 	h = talloc_zero(conn, udp_handle_t);
 	if (!h) return FR_CONNECTION_STATE_FAILED;
 
-	h->c = c;
-	h->module_name = inst->parent->name;
-	h->inst = inst;
-	h->thread = c->thread;
-	h->src_ipaddr = inst->src_ipaddr;
+	h->inst = our_ctx->inst;
+	h->thread = our_ctx->thread;
+	h->module_name = h->inst->parent->name;
+	h->src_ipaddr = h->inst->src_ipaddr;
 	h->src_port = 0;
-	h->max_packet_size = inst->max_packet_size;
+	h->max_packet_size = h->inst->max_packet_size;
 	h->last_idle = fr_time();
 
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
@@ -244,7 +246,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	/*
 	 *	Open the outgoing socket.
 	 */
-	fd = fr_socket_client_udp(&h->src_ipaddr, &h->src_port, &inst->dst_ipaddr, inst->dst_port, true);
+	fd = fr_socket_client_udp(&h->src_ipaddr, &h->src_port, &h->inst->dst_ipaddr, h->inst->dst_port, true);
 	if (fd < 0) {
 		ERROR("%s - Failed opening socket", h->module_name);
 		talloc_free(h);
@@ -256,7 +258,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	 */
 	h->name = fr_asprintf(h, "connecting proto udp local %pV port %u remote %pV port %u",
 			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
-			      fr_box_ipaddr(inst->dst_ipaddr), inst->dst_port);
+			      fr_box_ipaddr(h->inst->dst_ipaddr), h->inst->dst_port);
 
 #ifdef SO_RCVBUF
 	if (h->inst->recv_buff_is_set) {
@@ -493,12 +495,12 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 					  char const *log_prefix, void *uctx)
 {
 	udp_connection_t	*c;
-	udp_thread_t	*thread = talloc_get_type_abort(uctx, udp_thread_t);
+	udp_thread_t		*thread = talloc_get_type_abort(uctx, udp_thread_t);
+	udp_handle_t		*h;
 
 	c = talloc_zero(tconn, udp_connection_t);
 	if (!c) return NULL;
 
-	c->thread = thread;
 	c->tconn = tconn;
 
 	c->conn = fr_connection_alloc(c, el,
@@ -509,12 +511,16 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 					.failed = conn_failed
 				      },
 				      conf,
-				      log_prefix, c);
+				      log_prefix,
+				      &(udp_conn_uctx_t){ .inst = thread->inst, .thread = thread });
 	if (!c->conn) {
 		talloc_free(c);
 		PERROR("Failed allocating state handler for new connection");
 		return NULL;
 	}
+
+	h = c->conn->h;
+	h->c = c;		//!< REMOVE
 
 	return c->conn;
 }
@@ -1230,7 +1236,7 @@ static void request_mux(fr_event_list_t *el,
 {
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 	udp_connection_t	*c = h->c;
-	rlm_radius_udp_t const	*inst = c->thread->inst;
+	rlm_radius_udp_t const	*inst = h->thread->inst;
 	fr_trunk_request_t	*treq;
 	REQUEST			*request;
 	udp_request_t		*u;
@@ -1501,7 +1507,7 @@ static void status_check_reply(udp_request_t *u, udp_handle_t *h)
 
 static fr_trunk_request_t *read_packet(udp_handle_t *h, udp_connection_t *c)
 {
-	rlm_radius_udp_t const	*inst = c->thread->inst;
+	rlm_radius_udp_t const	*inst = h->thread->inst;
 	fr_trunk_request_t	*treq;
 	udp_request_t		*u;
 	udp_result_t		*res;
