@@ -1474,6 +1474,11 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 
 /** Move requests off of a connection and requeue elsewhere
  *
+ * @note We don't re-queue on draining or draining to free, as requests should have already been
+ *	 moved off of te connection.  It's also dangerous as the trunk management code main
+ *	 clean up a connection in this state when it's run on re-queue, and then the caller
+ *	 may try and access a now freed connection.
+ *
  * @param[in] tconn	to move requests off of.
  * @param[in] states	Only move requests in this state.
  * @param[in] max	The maximum number of requests to dequeue. 0 for unlimited.
@@ -1484,8 +1489,6 @@ uint64_t fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_INACTIVE:
-	case FR_TRUNK_CONN_DRAINING:
-	case FR_TRUNK_CONN_DRAINING_TO_FREE:
 		return trunk_connection_requests_requeue(tconn, states, max, fail_bound);
 
 	default:
