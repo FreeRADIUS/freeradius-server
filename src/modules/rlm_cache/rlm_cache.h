@@ -29,7 +29,7 @@ RCSIDH(cache_h, "$Id$")
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/map.h>
 
-typedef struct cache_driver cache_driver_t;
+typedef struct rlm_cache_driver_s rlm_cache_driver_t;
 
 typedef void rlm_cache_handle_t;
 
@@ -68,7 +68,7 @@ typedef struct {
 	rlm_cache_config_t	config;			//!< Must come first because of icky hacks.
 
 	module_instance_t	*driver_inst;		//!< Driver's instance data.
-	cache_driver_t const	*driver;		//!< Driver's exported interface.
+	rlm_cache_driver_t const	*driver;		//!< Driver's exported interface.
 
 	vp_map_t		*maps;			//!< Attribute map applied to users.
 							//!< and profiles.
@@ -263,7 +263,7 @@ typedef void		(*cache_release_t)(rlm_cache_config_t const *config, void *instanc
 typedef int		(*cache_reconnect_t)(rlm_cache_handle_t **handle, rlm_cache_config_t const *config,
 					     void *instance, REQUEST *request);
 
-struct cache_driver {
+struct rlm_cache_driver_s {
 	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
 	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
 	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.

@@ -347,8 +347,8 @@ static void cache_release(UNUSED rlm_cache_config_t const *config, void *instanc
 	RDEBUG3("Mutex released");
 }
 
-extern cache_driver_t rlm_cache_rbtree;
-cache_driver_t rlm_cache_rbtree = {
+extern rlm_cache_driver_t rlm_cache_rbtree;
+rlm_cache_driver_t rlm_cache_rbtree = {
 	.name		= "rlm_cache_rbtree",
 	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,

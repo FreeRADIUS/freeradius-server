@@ -316,8 +316,8 @@ static int mod_conn_reconnect(void **handle, UNUSED rlm_cache_config_t const *co
 	return 0;
 }
 
-extern cache_driver_t rlm_cache_memcached;
-cache_driver_t rlm_cache_memcached = {
+extern rlm_cache_driver_t rlm_cache_memcached;
+rlm_cache_driver_t rlm_cache_memcached = {
 	.name		= "rlm_cache_memcached",
 	.magic		= RLM_MODULE_INIT,
 	.inst_size	= sizeof(rlm_cache_memcached_t),

@@ -464,8 +464,8 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	return CACHE_ERROR;
 }
 
-extern cache_driver_t rlm_cache_redis;
-cache_driver_t rlm_cache_redis = {
+extern rlm_cache_driver_t rlm_cache_redis;
+rlm_cache_driver_t rlm_cache_redis = {
 	.name		= "rlm_cache_redis",
 	.magic		= RLM_MODULE_INIT,
 	.onload		= mod_load,

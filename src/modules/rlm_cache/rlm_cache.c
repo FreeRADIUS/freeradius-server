@@ -936,7 +936,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		cf_log_err(driver_cs, "Failed loading driver");
 		return -1;
 	}
-	inst->driver = (cache_driver_t const *)inst->driver_inst->dl_inst->module->common;
+	inst->driver = (rlm_cache_driver_t const *)inst->driver_inst->dl_inst->module->common;
 
 	/*
 	 *	Sanity check for crazy people.
