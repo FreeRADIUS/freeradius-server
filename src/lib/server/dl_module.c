@@ -480,7 +480,6 @@ void *dl_module_instance_symbol(dl_module_inst_t const *dl_inst, char const *sym
 
 /** Load a module and parse its #CONF_SECTION in one operation
  *
- *
  * When this instance is no longer needed, it should be freed with talloc_free().
  * When all instances of a particular module are unloaded, the dl handle will be closed,
  * unloading the module.

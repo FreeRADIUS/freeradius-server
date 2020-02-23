@@ -391,7 +391,7 @@ static void mod_radius_signal(void *instance, void *thread, REQUEST *request, vo
 
 	if (!inst->io->signal) return;
 
-	inst->io->signal(request, inst->io_instance, t->thread_io_ctx, rctx, action);
+	inst->io->signal(request, inst->io_instance, t->io_thread, rctx, action);
 }
 
 
@@ -403,7 +403,7 @@ static rlm_rcode_t mod_radius_resume(void *instance, void *thread, REQUEST *requ
 	rlm_radius_t const *inst = talloc_get_type_abort_const(instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 
-	return inst->io->resume(request, inst->io_instance, t->thread_io_ctx, ctx);
+	return inst->io->resume(request, inst->io_instance, t->io_thread, ctx);
 }
 
 /** Do any RADIUS-layer fixups for proxying.
@@ -507,7 +507,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 *	return another code which indicates what happened to
 	 *	the request...b
 	 */
-	rcode = inst->io->push(inst->io_instance, request, request_io_ctx, t->thread_io_ctx);
+	rcode = inst->io->push(inst->io_instance, request, request_io_ctx, t->io_thread);
 	if (rcode != RLM_MODULE_YIELD) {
 		talloc_free(request_io_ctx);
 		return rcode;
@@ -529,7 +529,7 @@ static int mod_thread_detach(fr_event_list_t *el, void *thread)
 	 *	connections.
 	 */
 	if (inst->io->thread_detach &&
-	    (inst->io->thread_detach(el, t->thread_io_ctx) < 0)) {
+	    (inst->io->thread_detach(el, t->io_thread) < 0)) {
 		return -1;
 	}
 
@@ -553,20 +553,20 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	 *	Allocate thread-specific data.  The connections should
 	 *	live here.
 	 */
-	t->thread_io_ctx = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size);
-	if (!t->thread_io_ctx) return -1;
+	t->io_thread = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size);
+	if (!t->io_thread) return -1;
 
 	/*
 	 *	Set the name of the IO modules thread instance.
 	 */
-	if (inst->io->thread_inst_type) (void) talloc_set_name_const(t->thread_io_ctx, inst->io->thread_inst_type);
+	if (inst->io->thread_inst_type) (void) talloc_set_name_const(t->io_thread, inst->io->thread_inst_type);
 
 	/*
 	 *	Instantiate the per-thread data.  This should open up
 	 *	sockets, set timers, etc.
 	 */
 	if (inst->io->thread_instantiate &&
-	    inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->thread_io_ctx) < 0) return -1;
+	    inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->io_thread) < 0) return -1;
 
 	return 0;
 }
@@ -585,7 +585,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 
-	if (inst->io->instantiate(inst->io_instance, inst->io_conf) < 0) return -1;
+	if (inst->io->instantiate && inst->io->instantiate(inst->io_instance, inst->io_conf) < 0) return -1;
 
 	return 0;
 }

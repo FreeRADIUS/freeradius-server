@@ -33,32 +33,18 @@
  */
 
 typedef struct rlm_radius_s rlm_radius_t;
+typedef struct rlm_radius_io_s rlm_radius_io_t;
 
-
-/** Push a REQUEST to an IO submodule
+/** Per-thread instance data
  *
- */
-typedef rlm_rcode_t (*rlm_radius_io_push_t)(void *instance, REQUEST *request, void *request_io_ctx, void *thread);
-typedef void (*rlm_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, void *request_io_ctx, fr_state_signal_t action);
-typedef int (*rlm_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
-
-
-/** Public structure describing an I/O path for an outgoing socket.
- *
- * This structure is exported by client I/O modules e.g. rlm_radius_udp.
+ * Contains buffers and connection handles specific to the thread.
  */
 typedef struct {
-	DL_MODULE_COMMON;					//!< Common fields to all loadable modules.
-	FR_MODULE_COMMON;
-	FR_MODULE_THREADED_COMMON;
+	rlm_radius_t const	*inst;			//!< Instance of the module.
+	fr_event_list_t		*el;			//!< This thread's event list.
 
-	size_t				request_inst_size;	//!< size of the data per request
-	char const			*request_inst_type;	//!< Talloc type of the request_inst.
-
-	rlm_radius_io_push_t		push;			//!< push a REQUEST to an IO submodule
-	rlm_radius_io_signal_t		signal;			//!< send a signal to an IO module
-	fr_unlang_module_resume_t	resume;			//!< resume a request, and get rcode
-} rlm_radius_io_t;
+	void			*io_thread;		//!< thread context for the IO submodule
+} rlm_radius_thread_t;
 
 /*
  *	Define a structure for our module configuration.
@@ -94,14 +80,26 @@ struct rlm_radius_s {
 	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration
 };
 
-
-/** Per-thread instance data
+/** Push a REQUEST to an IO submodule
  *
- * Contains buffers and connection handles specific to the thread.
  */
-typedef struct {
-	rlm_radius_t const	*inst;			//!< Instance of the module.
-	fr_event_list_t		*el;			//!< This thread's event list.
+typedef rlm_rcode_t (*rlm_radius_io_push_t)(void *instance, REQUEST *request, void *request_io_ctx, void *thread);
+typedef void (*rlm_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, void *request_io_ctx, fr_state_signal_t action);
+typedef int (*rlm_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
 
-	void			*thread_io_ctx;		//!< thread context for the IO submodule
-} rlm_radius_thread_t;
+/** Public structure describing an I/O path for an outgoing socket.
+ *
+ * This structure is exported by client I/O modules e.g. rlm_radius_udp.
+ */
+struct rlm_radius_io_s {
+	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
+	FR_MODULE_COMMON;
+	FR_MODULE_THREADED_COMMON;
+
+	size_t			request_inst_size;	//!< size of the data per request
+	char const		*request_inst_type;	//!< Talloc type of the request_inst.
+
+	rlm_radius_io_push_t	push;			//!< push a REQUEST to an IO submodule
+	rlm_radius_io_signal_t	signal;			//!< send a signal to an IO module
+	fr_unlang_module_resume_t resume;		//!< resume a request, and get rcode
+};
