@@ -85,7 +85,6 @@ struct rlm_radius_s {
  */
 typedef rlm_rcode_t (*rlm_radius_io_push_t)(void *instance, REQUEST *request, void *request_io_ctx, void *thread);
 typedef void (*rlm_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, void *request_io_ctx, fr_state_signal_t action);
-typedef int (*rlm_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
 
 /** Public structure describing an I/O path for an outgoing socket.
  *
