@@ -544,8 +544,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 
-	(void) talloc_set_type(t, rlm_radius_thread_t);
-
 	t->inst = instance;
 
 	/*
@@ -815,6 +813,7 @@ module_t rlm_radius = {
 	.instantiate	= mod_instantiate,
 
 	.thread_inst_size = sizeof(rlm_radius_thread_t),
+	.thread_inst_type = "rlm_radius_thread_t",
 	.thread_instantiate = mod_thread_instantiate,
 	.thread_detach	= mod_thread_detach,
 	.methods = {
