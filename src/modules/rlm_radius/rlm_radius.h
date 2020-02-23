@@ -78,7 +78,7 @@ struct rlm_radius_s {
 	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration
 };
 
-/** Push a REQUEST to an IO submodule
+/** Enqueue a REQUEST to an IO submodule
  *
  */
 typedef rlm_rcode_t (*rlm_radius_io_enqueue_t)(void **rctx, void *instance, void *thread, REQUEST *request);
