@@ -1967,7 +1967,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_radius_udp_t	*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 
 	if (!parent) {
-		ERROR("Transport cannot be instantiated directly");
+		ERROR("IO module cannot be instantiated directly");
 		return -1;
 	}
 
@@ -2039,9 +2039,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	thread->inst = inst;
 	thread->trunk = fr_trunk_alloc(thread, el, &trunk_funcs, inst->trunk_conf,
 				       inst->parent->name, thread, false);
-	if (!thread->trunk) {
-		ERROR("%s - Failed opening trunk API: %s", inst->parent->name, fr_strerror());
-	}
+	if (!thread->trunk) return -1;
 
 	return 0;
 }
