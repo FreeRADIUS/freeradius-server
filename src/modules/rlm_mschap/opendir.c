@@ -305,7 +305,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	RINDENT();
 	RDEBUG2("Stepbuf server challenge : ");
 	for (t = 0; t < challenge->vp_length; t++) {
-		fprintf(stderr, "%02x", challenge->vp_strvalue[t]);
+		fprintf(stderr, "%02x", (unsigned int) challenge->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 #endif
@@ -321,7 +321,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 #ifndef NDEBUG
 	RDEBUG2("Stepbuf peer challenge   : ");
 	for (t = 2; t < 18; t++) {
-		fprintf(stderr, "%02x", response->vp_strvalue[t]);
+		fprintf(stderr, "%02x", (unsigned int) response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 #endif
@@ -338,7 +338,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	RDEBUG2("Stepbuf p24              : ");
 	REXDENT();
 	for (t = 26; t < 50; t++) {
-		fprintf(stderr, "%02x", response->vp_strvalue[t]);
+		fprintf(stderr, "%02x", (unsigned int) response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 #endif
