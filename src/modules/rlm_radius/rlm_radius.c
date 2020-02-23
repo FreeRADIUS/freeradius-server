@@ -370,19 +370,6 @@ static void mod_radius_signal(void *instance, void *thread, REQUEST *request, vo
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 
 	/*
-	 *	We've been told we're done.  Clean up.
-	 *
-	 *	Note that the caller doesn't necessarily need to send
-	 *	us the signal, as he can just talloc_free(request).
-	 *	But it is more polite to send a signal, and it allows
-	 *	the IO modules to do additional debugging if
-	 *	necessary.
-	 */
-	if (action == FR_SIGNAL_CANCEL) {
-		return;
-	}
-
-	/*
 	 *	We received a duplicate packet, but we're not doing
 	 *	synchronous proxying.  Ignore the dup, and rely on the
 	 *	IO submodule to time it's own retransmissions.

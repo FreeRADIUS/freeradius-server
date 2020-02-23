@@ -1914,12 +1914,6 @@ static void mod_signal(void *instance, void *thread, UNUSED REQUEST *request, vo
 	 *	has already been sent out.
 	 */
 	case FR_SIGNAL_DUP:
-		/*
-		 *	Asychronous mode means that we do retransmission, and
-		 *	we don't rely on the retransmission from the NAS.
-		 */
-		if (!inst->parent->synchronous) return;
-
 		fr_trunk_request_requeue(res->treq);
 		check_for_zombie(t->el, res->treq->tconn, 0);
 		return;
