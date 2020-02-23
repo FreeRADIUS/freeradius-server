@@ -1817,19 +1817,16 @@ static int udp_request_free(udp_request_t *u)
 	return 0;
 }
 
-static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *tctx)
+static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, REQUEST *request)
 {
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_result_t			*res = talloc_get_type_abort(rctx, udp_result_t);
+	udp_thread_t			*t = talloc_get_type_abort(thread, udp_thread_t);
+	udp_result_t			*rctx;
 	udp_request_t			*u;
-	udp_thread_t			*thread = talloc_get_type_abort(tctx, udp_thread_t);
 	fr_trunk_request_t		*treq;
 
 	rad_assert(request->packet->code > 0);
 	rad_assert(request->packet->code < FR_RADIUS_MAX_PACKET_CODE);
-
-	MEM(treq = fr_trunk_request_alloc(thread->trunk, request));
-	MEM(u = talloc_zero(treq, udp_request_t));
 
 	/*
 	 *	If configured, and we don't have any active
@@ -1837,25 +1834,28 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 	 *	sections finish much more quickly than otherwise.
 	 */
 	if (inst->parent->no_connection_fail &&
-	    (fr_trunk_connection_count_by_state(thread->trunk, FR_TRUNK_CONN_ACTIVE) == 0)) {
+	    (fr_trunk_connection_count_by_state(t->trunk, FR_TRUNK_CONN_ACTIVE) == 0)) {
 		REDEBUG("Failing request due to 'no_connection_fail = true', and there are no active connections");
-		talloc_free(treq);
 		return RLM_MODULE_FAIL;
 	}
 
 	if (request->packet->code == FR_CODE_STATUS_SERVER) {
 		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
-		talloc_free(treq);
 		return RLM_MODULE_NOOP;
 	}
 
+	MEM(treq = fr_trunk_request_alloc(t->trunk, request));
+	MEM(rctx = talloc_zero(request, udp_result_t));
+	MEM(u = talloc_zero(treq, udp_request_t));
+
 	u->rr = NULL;
 	u->c = NULL;
-	res->rcode = RLM_MODULE_FAIL;
 	u->code = request->packet->code;
 	u->synchronous = inst->parent->synchronous;
 	u->priority = request->async->priority;	  /* cached for speed */
 	u->recv_time = request->async->recv_time; /* cached for speed */
+
+	rctx->rcode = RLM_MODULE_FAIL;
 
 	/*
 	 *	Make sure that we print out the actual encoded value
@@ -1881,13 +1881,16 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 		rad_assert(u->retry.next > 0);
 	}
 
-	if (fr_trunk_request_enqueue(&treq, thread->trunk, request, u, res) < 0) {
+	if (fr_trunk_request_enqueue(&treq, t->trunk, request, u, rctx) < 0) {
 		talloc_free(treq);
+		talloc_free(rctx);
 		return RLM_MODULE_FAIL;
 	}
 
-	res->treq = treq;	/* Remember for signalling purposes */
+	rctx->treq = treq;	/* Remember for signalling purposes */
 	talloc_set_destructor(u, udp_request_free);
+
+	*rctx_out = rctx;
 
 	return RLM_MODULE_YIELD;
 }
@@ -2045,9 +2048,6 @@ rlm_radius_io_t rlm_radius_udp = {
 	.name			= "radius_udp",
 	.inst_size		= sizeof(rlm_radius_udp_t),
 
-	.request_inst_size 	= sizeof(udp_result_t),
-	.request_inst_type	= "udp_result_t",
-
 	.thread_inst_size	= sizeof(udp_thread_t),
 	.thread_inst_type	= "udp_thread_t",
 
@@ -2056,7 +2056,7 @@ rlm_radius_io_t rlm_radius_udp = {
 	.instantiate		= mod_instantiate,
 	.thread_instantiate 	= mod_thread_instantiate,
 
-	.push			= mod_push,
+	.enqueue		= mod_enqueue,
 	.signal			= mod_signal,
 	.resume			= request_resume,
 };

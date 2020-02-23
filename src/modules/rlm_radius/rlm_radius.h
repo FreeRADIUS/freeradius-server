@@ -81,7 +81,7 @@ struct rlm_radius_s {
 /** Push a REQUEST to an IO submodule
  *
  */
-typedef rlm_rcode_t (*rlm_radius_io_push_t)(void *instance, REQUEST *request, void *request_io_ctx, void *thread);
+typedef rlm_rcode_t (*rlm_radius_io_enqueue_t)(void **rctx, void *instance, void *thread, REQUEST *request);
 
 /** Public structure describing an I/O path for an outgoing socket.
  *
@@ -92,10 +92,7 @@ struct rlm_radius_io_s {
 	FR_MODULE_COMMON;
 	FR_MODULE_THREADED_COMMON;
 
-	size_t			request_inst_size;	//!< size of the data per request
-	char const		*request_inst_type;	//!< Talloc type of the request_inst.
-
-	rlm_radius_io_push_t	push;			//!< push a REQUEST to an IO submodule
+	rlm_radius_io_enqueue_t		enqueue;	//!< Enqueue a REQUEST with an IO submodule.
 	fr_unlang_module_signal_t	signal;		//!< Send a signal to an IO module.
 	fr_unlang_module_resume_t	resume;		//!< Resume a request, and get rcode.
 };

@@ -433,10 +433,10 @@ static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request)
 {
-	rlm_rcode_t rcode;
-	rlm_radius_t *inst = instance;
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	void *request_io_ctx;
+	rlm_rcode_t		rcode;
+	rlm_radius_t		*inst = instance;
+	rlm_radius_thread_t	*t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+	void			*rctx = NULL;
 
 	if (!request->packet->code) {
 		REDEBUG("You MUST specify a packet code");
@@ -470,17 +470,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	}
 
 	/*
-	 *	The submodule needs to track it's own data associated
-	 *	with the request.  Allocate that here.  Note that the
-	 *	IO submodule has to set the destructor if it so wishes.
-	 */
-	request_io_ctx = talloc_zero_array(request, uint8_t, inst->io->request_inst_size);
-	if (!request_io_ctx) {
-		return RLM_MODULE_FAIL;
-	}
-	if (inst->io->request_inst_type) talloc_set_name_const(request_io_ctx, inst->io->request_inst_type);
-
-	/*
 	 *	Do any necessary RADIUS level fixups
 	 *	- check Proxy-State
 	 *	- do CHAP-Challenge fixups
@@ -494,13 +483,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 *	return another code which indicates what happened to
 	 *	the request...b
 	 */
-	rcode = inst->io->push(inst->io_instance, request, request_io_ctx, t->io_thread);
+	rcode = inst->io->enqueue(&rctx, inst->io_instance, t->io_thread, request);
 	if (rcode != RLM_MODULE_YIELD) {
-		talloc_free(request_io_ctx);
+		rad_assert(rctx = NULL);
 		return rcode;
 	}
 
-	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, request_io_ctx);
+	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, rctx);
 }
 
 /** Destroy thread data for the submodule.
