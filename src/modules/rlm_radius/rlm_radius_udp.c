@@ -1954,16 +1954,22 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *
  * Instantiate I/O and type submodules.
  *
- * @param[in] parent    rlm_radius_t
  * @param[in] instance	Ctx data for this module
  * @param[in] conf	our configuration section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(rlm_radius_t *parent, void *instance, CONF_SECTION *conf)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+	rlm_radius_t		*parent = talloc_get_type_abort(dl_module_parent_data_by_child_data(instance),
+								rlm_radius_t);
+	rlm_radius_udp_t	*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+
+	if (!parent) {
+		ERROR("Transport cannot be instantiated directly");
+		return -1;
+	}
 
 	inst->parent = parent;
 	inst->replicate = parent->replicate;

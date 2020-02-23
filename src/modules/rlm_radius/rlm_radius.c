@@ -585,7 +585,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 
-	if (inst->io->instantiate(inst, inst->io_instance, inst->io_conf) < 0) {
+	if (inst->io->instantiate(inst->io_instance, inst->io_conf) < 0) {
 		cf_log_err(inst->io_conf, "Instantiate failed for \"%s\"",
 			   inst->io->name);
 		return -1;

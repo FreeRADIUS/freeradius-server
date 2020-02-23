@@ -48,16 +48,9 @@ typedef int (*rlm_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance
  * This structure is exported by client I/O modules e.g. rlm_radius_udp.
  */
 typedef struct {
-	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
-
-	fr_app_bootstrap_t		bootstrap;
-	rlm_radius_io_instantiate_t	instantiate;
-
-	module_thread_instantiate_t			thread_instantiate;	//!< Callback to configure a module's instance for
-								//!< a new worker thread.
-	module_thread_detach_t		thread_detach;		//!< Destroy thread specific data.
-	size_t				thread_inst_size;	//!< Size of data to allocate to the thread instance.
-	char const			*thread_inst_type;	//!< Talloc type of the thread instance
+	DL_MODULE_COMMON;					//!< Common fields to all loadable modules.
+	FR_MODULE_COMMON;
+	FR_MODULE_THREADED_COMMON;
 
 	size_t				request_inst_size;	//!< size of the data per request
 	char const			*request_inst_type;	//!< Talloc type of the request_inst.
