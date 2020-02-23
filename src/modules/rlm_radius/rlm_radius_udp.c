@@ -1337,7 +1337,7 @@ static FR_CODE allowed_replies[FR_RADIUS_MAX_PACKET_CODE] = {
 /** Turn a reply code into a module rcode;
  *
  */
-static rlm_rcode_t code2rcode[FR_RADIUS_MAX_PACKET_CODE] = {
+static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 	[FR_CODE_ACCESS_ACCEPT]		= RLM_MODULE_OK,
 	[FR_CODE_ACCESS_CHALLENGE]	= RLM_MODULE_UPDATED,
 	[FR_CODE_ACCESS_REJECT]		= RLM_MODULE_REJECT,
@@ -1668,7 +1668,7 @@ drain:
 	/*
 	 *	Set the module return code based on the reply packet.
 	 */
-	r->rcode = code2rcode[h->buffer[0]];
+	r->rcode = radius_code_to_rcode[h->buffer[0]];
 
 decode:
 	reply = NULL;
