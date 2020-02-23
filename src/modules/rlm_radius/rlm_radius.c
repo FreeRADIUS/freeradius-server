@@ -808,10 +808,12 @@ module_t rlm_radius = {
 	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
 	.inst_size	= sizeof(rlm_radius_t),
 	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
+
 	.onload		= mod_load,
 	.unload		= mod_unload,
+
+	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 
 	.thread_inst_size = sizeof(rlm_radius_thread_t),
 	.thread_instantiate = mod_thread_instantiate,
