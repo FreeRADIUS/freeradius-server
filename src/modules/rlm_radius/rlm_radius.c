@@ -585,11 +585,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 
-	if (inst->io->instantiate(inst->io_instance, inst->io_conf) < 0) {
-		cf_log_err(inst->io_conf, "Instantiate failed for \"%s\"",
-			   inst->io->name);
-		return -1;
-	}
+	if (inst->io->instantiate(inst->io_instance, inst->io_conf) < 0) return -1;
 
 	return 0;
 }
@@ -777,11 +773,7 @@ setup_io_submodule:
 	/*
 	 *	Bootstrap the submodule.
 	 */
-	if (inst->io->bootstrap(inst->io_instance, inst->io_conf) < 0) {
-		cf_log_err(inst->io_conf, "Bootstrap failed for \"%s\"",
-			   inst->io->name);
-		return -1;
-	}
+	if (inst->io->bootstrap(inst->io_instance, inst->io_conf) < 0) return -1;
 
 	return 0;
 }
