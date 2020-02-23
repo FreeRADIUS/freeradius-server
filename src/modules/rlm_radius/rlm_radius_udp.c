@@ -1893,7 +1893,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *rctx, void *
 }
 
 
-static void mod_signal(UNUSED REQUEST *request, void *instance, void *thread, void *rctx, fr_state_signal_t action)
+static void mod_signal(void *instance, void *thread, UNUSED REQUEST *request, void *rctx, fr_state_signal_t action)
 {
 	rlm_radius_udp_t	*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	udp_thread_t		*t = talloc_get_type_abort(thread, udp_thread_t);

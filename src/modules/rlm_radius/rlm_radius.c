@@ -391,7 +391,7 @@ static void mod_radius_signal(void *instance, void *thread, REQUEST *request, vo
 
 	if (!inst->io->signal) return;
 
-	inst->io->signal(request, inst->io_instance, t->io_thread, rctx, action);
+	inst->io->signal(inst->io_instance, t->io_thread, request, rctx, action);
 }
 
 
