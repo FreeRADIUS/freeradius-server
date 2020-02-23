@@ -101,7 +101,7 @@ typedef struct {
 	uint8_t			*buffer;		//!< Receive buffer.
 	size_t			buflen;			//!< Receive buffer length.
 
-	rlm_radius_id_t		*id;			//!< RADIUS ID tracking structure.
+	radius_track_t		*tt;			//!< RADIUS ID tracking structure.
 
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
@@ -146,7 +146,7 @@ struct udp_request_s {
 	size_t			packet_len;		//!< Length of the packet.
 
 	udp_connection_t       	*c;			//!< The outbound connection
-	rlm_radius_request_t	*rr;			//!< ID tracking, resend count, etc.
+	radius_track_entry_t	*rr;			//!< ID tracking, resend count, etc.
 	fr_event_timer_t const	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
@@ -241,7 +241,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
 	h->buflen = h->max_packet_size;
 
-	MEM(h->id = rr_track_create(h));
+	MEM(h->tt = radius_track_alloc(h));
 
 	/*
 	 *	Open the outgoing socket.
@@ -400,7 +400,7 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	 *	demand.  If the proxied packets use all of the
 	 *	IDs, then we can't send a Status-Server check.
 	 */
-	u->rr = rr_track_alloc(h->id, request, u->code, u);
+	u->rr = radius_track_entry_alloc(h->tt, request, u->code, u);
 	if (!u->rr) {
 		ERROR("%s - Failed allocating status_check ID for connection %s",
 		      h->module_name, h->name);
@@ -876,7 +876,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	 *	Remember the authentication vector, which now has the
 	 *	packet signature.
 	 */
-	(void) rr_track_update(h->id, u->rr, h->buffer + 4);
+	(void) radius_track_update(h->tt, u->rr, h->buffer + 4);
 
 	RDEBUG("Sending %s ID %d length %ld over connection %s",
 	       fr_packet_codes[u->code], u->rr->id, packet_len, h->name);
@@ -1111,8 +1111,8 @@ static void udp_request_clear(udp_request_t *u, udp_handle_t *h, fr_time_t now)
 {
 	if (!now) now = fr_time();
 
-	if (u->rr) (void) rr_track_delete(h->id, u->rr);
-	if (h->id->num_free == (h->status_u != NULL)) h->last_idle = now;
+	if (u->rr) (void) radius_track_delete(h->tt, u->rr);
+	if (h->tt->num_free == (h->status_u != NULL)) h->last_idle = now;
 	u->rr = NULL;
 	fr_pair_list_free(&u->extra);
 }
@@ -1254,7 +1254,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	If it's an initial packet, allocate the ID.
 		 */
 		if (!u->rr) {
-			u->rr = rr_track_alloc(h->id, request, u->code, treq);
+			u->rr = radius_track_entry_alloc(h->tt, request, u->code, treq);
 			if (!u->rr) {
 			fail:
 				u->c = NULL;
@@ -1299,7 +1299,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	calling a complex API.
 		 */
 		if (inst->replicate) {
-			(void) rr_track_delete(h->id, u->rr); /* don't set last_idle, we're not checking for zombie */
+			(void) radius_track_delete(h->tt, u->rr); /* don't set last_idle, we're not checking for zombie */
 			u->rr = NULL;
 			r->rcode = RLM_MODULE_OK;
 			fr_trunk_request_signal_complete(treq);
@@ -1514,7 +1514,7 @@ static fr_trunk_request_t *read_packet(udp_handle_t *h, udp_connection_t *c)
 	REQUEST			*request;
 	ssize_t			data_len;
 	size_t			packet_len;
-	rlm_radius_request_t	*rr;
+	radius_track_entry_t	*rr;
 	decode_fail_t		reason;
 	int			code;
 	VALUE_PAIR		*reply, *vp;
@@ -1560,7 +1560,7 @@ drain:
 	 *	Note that we don't care about packet codes.  All
 	 *	packet codes share the same ID space.
 	 */
-	rr = rr_track_find(h->id, h->buffer[1], NULL);
+	rr = radius_track_find(h->tt, h->buffer[1], NULL);
 	if (!rr) {
 		WARN("%s - Ignoring reply which arrived too late", h->module_name);
 		return NULL;

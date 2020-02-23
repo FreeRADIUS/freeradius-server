@@ -31,36 +31,40 @@
  *
  */
 typedef struct {
-	REQUEST			*request;	//!< as always...
-	void			*rctx;
+	REQUEST			*request;		//!< as always...
+	void			*rctx;			//!< Result/resumption context.
 
-	int			code;		//!< packet code (sigh)
-	int			id;		//!< our ID
+	uint8_t			code;			//!< packet code (sigh)
+	uint8_t			id;			//!< our ID
 
 	union {
 		fr_dlist_t		entry;		//!< for free chain
 		uint8_t			vector[16];	//!< copy of the authentication vector
 	};
-} rlm_radius_request_t;
+} radius_track_entry_t;
 
 typedef struct {
-	int			num_requests;  	//!< number of requests in the allocation
-	int			num_free;	//!< number of entries in the free list
+	int			num_requests;  		//!< number of requests in the allocation
+	int			num_free;		//!< number of entries in the free list
 
-	fr_dlist_head_t		free_list;     	//!< so we allocate by least recently used
+	fr_dlist_head_t		free_list;     		//!< so we allocate by least recently used
 
-	bool			use_authenticator; //!< whether to use the request authenticator as an ID
-	int			next_id;	//!< next ID to allocate
+	bool			use_authenticator;	//!< whether to use the request authenticator as an ID
+	int			next_id;		//!< next ID to allocate
 
-	rlm_radius_request_t	id[256];	//!< which ID was used
+	radius_track_entry_t	id[256];		//!< which ID was used
 
-	rbtree_t		*subtree[256];	//!< for Original-Request-Authenticator
-} rlm_radius_id_t;
+	rbtree_t		*subtree[256];		//!< for Original-Request-Authenticator
+} radius_track_t;
 
-rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx);
-rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code,
-				     void *rctx) CC_HINT(nonnull);
-int rr_track_update(rlm_radius_id_t *id, rlm_radius_request_t *rr, uint8_t *vector) CC_HINT(nonnull);
-rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t *vector) CC_HINT(nonnull(1));
-int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr) CC_HINT(nonnull);
-void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag) CC_HINT(nonnull);
+radius_track_t		*radius_track_alloc(TALLOC_CTX *ctx);
+
+radius_track_entry_t	*radius_track_entry_alloc(radius_track_t *id, REQUEST *request, uint8_t code, void *rctx) CC_HINT(nonnull);
+
+int			radius_track_update(radius_track_t *id, radius_track_entry_t *rr, uint8_t *vector) CC_HINT(nonnull);
+
+radius_track_entry_t	*radius_track_find(radius_track_t *id, uint8_t packet_id, uint8_t *vector) CC_HINT(nonnull(1));
+
+int			radius_track_delete(radius_track_t *id, radius_track_entry_t *rr) CC_HINT(nonnull);
+
+void			radius_track_use_authenticator(radius_track_t *id, bool flag) CC_HINT(nonnull);
