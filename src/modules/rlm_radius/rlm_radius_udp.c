@@ -1566,8 +1566,8 @@ drain:
 		return NULL;
 	}
 
-	if (rr->request_io_ctx != h->status_u) {
-		treq = talloc_get_type_abort(rr->request_io_ctx, fr_trunk_request_t);
+	if (rr->rctx != h->status_u) {
+		treq = talloc_get_type_abort(rr->rctx, fr_trunk_request_t);
 		request = treq->request;
 		rad_assert(request != NULL);
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
@@ -1576,7 +1576,7 @@ drain:
 	} else {
 		treq = NULL;
 		request = NULL;
-		u = talloc_get_type_abort(rr->request_io_ctx, udp_request_t);
+		u = talloc_get_type_abort(rr->rctx, udp_request_t);
 		r = NULL;
 		rad_assert(u == h->status_u);
 	}

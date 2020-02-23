@@ -32,7 +32,7 @@
  */
 typedef struct {
 	REQUEST			*request;	//!< as always...
-	void			*request_io_ctx;
+	void			*rctx;
 
 	int			code;		//!< packet code (sigh)
 	int			id;		//!< our ID
@@ -59,7 +59,7 @@ typedef struct {
 
 rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx);
 rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code,
-				     void *request_io_ctx) CC_HINT(nonnull);
+				     void *rctx) CC_HINT(nonnull);
 int rr_track_update(rlm_radius_id_t *id, rlm_radius_request_t *rr, uint8_t *vector) CC_HINT(nonnull);
 rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t *vector) CC_HINT(nonnull(1));
 int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr) CC_HINT(nonnull);

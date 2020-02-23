@@ -77,13 +77,13 @@ static int rr_cmp(void const *one, void const *two)
  * @param[in] id		The rlm_radius_id_t tracking table.
  * @param[in] request		The request which will send the proxied packet.
  * @param[in] code		Of the outbound request.
- * @param request_io_ctx The context to associate with the request
+ * @param rctx The context to associate with the request
  * @return
  *	- NULL on error
  *	- rlm_radius_request_t on success
  */
 rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code,
-				     void *request_io_ctx)
+				     void *rctx)
 {
 	rlm_radius_request_t *rr;
 
@@ -144,7 +144,7 @@ retry:
 
 done:
 	rr->request = request;
-	rr->request_io_ctx = request_io_ctx;
+	rr->rctx = rctx;
 
 	rr->code = code;
 
