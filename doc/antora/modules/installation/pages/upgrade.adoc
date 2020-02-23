@@ -584,6 +584,22 @@ data, instead of as hex strings.
 
 All data received from the network is marked `tainted` by default.
 
+=== rlm_radutmp
+
+The `case_sensitive` option has been removed.  Administrators should
+not be permitting users to log in with multiple different user names.
+If your system needs to be case insensitive, we suggest changing all
+names to lowercase:
+
+```
+recv Access-Request {
+	update request {
+		&Stripped-User-Name := "%{tolower:%{User-Name}}"
+	}
+	...
+}
+```
+
 === rlm_rest
 
 `REST-HTTP-Code` is now inserted into the `&request:` list instead

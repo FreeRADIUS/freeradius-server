@@ -51,7 +51,6 @@ typedef struct {
 	NAS_PORT	*nas_port_list;
 	char const	*filename;
 	char const	*username;
-	bool		case_sensitive;
 	bool		check_nas;
 	uint32_t	permission;
 	bool		caller_id_ok;
@@ -60,7 +59,6 @@ typedef struct {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED, rlm_radutmp_t, filename), .dflt = RADUTMP },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_radutmp_t, username), .dflt = "%{User-Name}" },
-	{ FR_CONF_OFFSET("case_sensitive", FR_TYPE_BOOL, rlm_radutmp_t, case_sensitive), .dflt = "yes" },
 	{ FR_CONF_OFFSET("check_with_nas", FR_TYPE_BOOL, rlm_radutmp_t, check_nas), .dflt = "yes" },
 	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_radutmp_t, permission), .dflt = "0644" },
 	{ FR_CONF_OFFSET("caller_id", FR_TYPE_BOOL, rlm_radutmp_t, caller_id_ok), .dflt = "no" },
