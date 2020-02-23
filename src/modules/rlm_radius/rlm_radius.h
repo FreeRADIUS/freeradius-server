@@ -38,9 +38,9 @@ typedef struct rlm_radius_s rlm_radius_t;
 /** Push a REQUEST to an IO submodule
  *
  */
-typedef rlm_rcode_t (*fr_radius_io_push_t)(void *instance, REQUEST *request, void *request_io_ctx, void *thread);
-typedef void (*fr_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, void *request_io_ctx, fr_state_signal_t action);
-typedef int (*fr_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
+typedef rlm_rcode_t (*rlm_radius_io_push_t)(void *instance, REQUEST *request, void *request_io_ctx, void *thread);
+typedef void (*rlm_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, void *request_io_ctx, fr_state_signal_t action);
+typedef int (*rlm_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
 
 
 /** Public structure describing an I/O path for an outgoing socket.
@@ -51,7 +51,7 @@ typedef struct {
 	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	fr_app_bootstrap_t		bootstrap;
-	fr_radius_io_instantiate_t	instantiate;
+	rlm_radius_io_instantiate_t	instantiate;
 
 	module_thread_instantiate_t			thread_instantiate;	//!< Callback to configure a module's instance for
 								//!< a new worker thread.
@@ -62,38 +62,40 @@ typedef struct {
 	size_t				request_inst_size;	//!< size of the data per request
 	char const			*request_inst_type;	//!< Talloc type of the request_inst.
 
-	fr_radius_io_push_t		push;			//!< push a REQUEST to an IO submodule
-	fr_radius_io_signal_t		signal;			//!< send a signal to an IO module
+	rlm_radius_io_push_t		push;			//!< push a REQUEST to an IO submodule
+	rlm_radius_io_signal_t		signal;			//!< send a signal to an IO module
 	fr_unlang_module_resume_t	resume;			//!< resume a request, and get rcode
-} fr_radius_client_io_t;
+} rlm_radius_io_t;
 
 /*
  *	Define a structure for our module configuration.
  */
 struct rlm_radius_s {
-	char const		*name;		//!< Module instance name.
+	char const		*name;			//!< Module instance name.
+
+	dl_module_inst_t	*io_submodule;		//!< As provided by the transport_parse
+	rlm_radius_io_t const	*io;			//!< Easy access to the IO handle
+	void			*io_instance;		//!< Easy access to the IO instance
+	CONF_SECTION		*io_conf;		//!< Easy access to the IO config section
 
 	fr_time_delta_t		zombie_period;
 	fr_time_delta_t		revive_interval;
 
-	bool			replicate;	//!< are we ignoring responses?
-	bool			synchronous;	//!< are we doing synchronous proxying?
-	bool			no_connection_fail; //!< are we failing immediately on no connection?
-	bool			originate;  //!< are we originating packets rather than proxying?
+	bool			replicate;		//!< Ignore responses.
+	bool			synchronous;		//!< Retransmit when receiving a duplicate request.
+	bool			no_connection_fail;	//!< Fail immediately if there are no active connections.
+	bool			originate;  		//!< Originating packets, instead of proxying existing ones.
+							///< Controls whether Proxy-State is added to the outbound
+							///< request.
 
-	dl_module_inst_t		*io_submodule;	//!< As provided by the transport_parse
-	fr_radius_client_io_t const *io;	//!< Easy access to the IO handle
-	void			*io_instance;	//!< Easy access to the IO instance
-	CONF_SECTION		*io_conf;	//!< Easy access to the IO config section
+	uint32_t		max_attributes;   	//!< Maximum number of attributes to decode in response.
 
-	uint32_t		max_attributes;   //!< Maximum number of attributes to decode in response.
-
-	uint32_t		proxy_state;  	//!< Unique ID (mostly) of this module.
-	uint32_t		*types;		//!< array of allowed packet types
-	uint32_t		status_check;  	//!< code of status-check type
+	uint32_t		proxy_state;  		//!< Unique ID (mostly) of this module.
+	uint32_t		*types;			//!< array of allowed packet types
+	uint32_t		status_check;  		//!< code of status-check type
 	vp_map_t		*status_check_map;	//!< attributes for the status-server checks
 
-	int			allowed[FR_RADIUS_MAX_PACKET_CODE];
+	bool			allowed[FR_RADIUS_MAX_PACKET_CODE];
 	fr_retry_config_t      	retry[FR_RADIUS_MAX_PACKET_CODE];
 
 	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration

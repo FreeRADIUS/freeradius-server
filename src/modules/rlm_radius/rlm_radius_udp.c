@@ -2041,8 +2041,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 }
 
 
-extern fr_radius_client_io_t rlm_radius_udp;
-fr_radius_client_io_t rlm_radius_udp = {
+extern rlm_radius_io_t rlm_radius_udp;
+rlm_radius_io_t rlm_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_udp",
 	.inst_size		= sizeof(rlm_radius_udp_t),

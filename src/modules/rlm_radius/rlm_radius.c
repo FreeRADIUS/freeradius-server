@@ -516,6 +516,83 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, request_io_ctx);
 }
 
+/** Destroy thread data for the submodule.
+ *
+ */
+static int mod_thread_detach(fr_event_list_t *el, void *thread)
+{
+	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+	rlm_radius_t const *inst = t->inst;
+
+	/*
+	 *	Tell the submodule to shut down all of its
+	 *	connections.
+	 */
+	if (inst->io->thread_detach &&
+	    (inst->io->thread_detach(el, t->thread_io_ctx) < 0)) {
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Instantiate thread data for the submodule.
+ *
+ */
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+{
+	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
+	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+
+	(void) talloc_set_type(t, rlm_radius_thread_t);
+
+	t->inst = instance;
+	t->el = el;
+
+	/*
+	 *	Allocate thread-specific data.  The connections should
+	 *	live here.
+	 */
+	t->thread_io_ctx = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size);
+	if (!t->thread_io_ctx) return -1;
+
+	/*
+	 *	Set the name of the IO modules thread instance.
+	 */
+	if (inst->io->thread_inst_type) (void) talloc_set_name_const(t->thread_io_ctx, inst->io->thread_inst_type);
+
+	/*
+	 *	Instantiate the per-thread data.  This should open up
+	 *	sockets, set timers, etc.
+	 */
+	if (inst->io->thread_instantiate &&
+	    inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->thread_io_ctx) < 0) return -1;
+
+	return 0;
+}
+
+/** Instantiate the module
+ *
+ * Instantiate I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this module
+ * @param[in] conf	our configuration section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+{
+	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
+
+	if (inst->io->instantiate(inst, inst->io_instance, inst->io_conf) < 0) {
+		cf_log_err(inst->io_conf, "Instantiate failed for \"%s\"",
+			   inst->io->name);
+		return -1;
+	}
+
+	return 0;
+}
 
 /** Bootstrap the module
  *
@@ -563,7 +640,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		rad_assert(code > 0);
 		rad_assert(code < FR_RADIUS_MAX_PACKET_CODE);
 
-		inst->allowed[code] = 1;
+		inst->allowed[code] = true;
 	}
 
 	rad_assert(inst->status_check < FR_RADIUS_MAX_PACKET_CODE);
@@ -684,7 +761,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 setup_io_submodule:
-	inst->io = (fr_radius_client_io_t const *) inst->io_submodule->module->common;
+	inst->io = (rlm_radius_io_t const *) inst->io_submodule->module->common;
 	inst->io_instance = inst->io_submodule->data;
 	inst->io_conf = inst->io_submodule->conf;
 
@@ -703,89 +780,6 @@ setup_io_submodule:
 	if (inst->io->bootstrap(inst->io_instance, inst->io_conf) < 0) {
 		cf_log_err(inst->io_conf, "Bootstrap failed for \"%s\"",
 			   inst->io->name);
-		return -1;
-	}
-
-	return 0;
-}
-
-
-/** Instantiate the module
- *
- * Instantiate I/O and type submodules.
- *
- * @param[in] instance	Ctx data for this module
- * @param[in] conf	our configuration section parsed to give us instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
-{
-	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
-
-	if (inst->io->instantiate(inst, inst->io_instance, inst->io_conf) < 0) {
-		cf_log_err(inst->io_conf, "Instantiate failed for \"%s\"",
-			   inst->io->name);
-		return -1;
-	}
-
-	return 0;
-}
-
-/** Instantiate thread data for the submodule.
- *
- */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
-{
-	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-
-	(void) talloc_set_type(t, rlm_radius_thread_t);
-
-	t->inst = instance;
-	t->el = el;
-
-	/*
-	 *	Allocate thread-specific data.  The connections should
-	 *	live here.
-	 */
-	t->thread_io_ctx = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size);
-	if (!t->thread_io_ctx) {
-		return -1;
-	}
-
-	/*
-	 *	Set the name of the IO modules thread instance.
-	 */
-	(void) talloc_set_name_const(t->thread_io_ctx, inst->io->thread_inst_type);
-
-	/*
-	 *	Instantiate the per-thread data.  This should open up
-	 *	sockets, set timers, etc.
-	 */
-	if (inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->thread_io_ctx) < 0) {
-		return -1;
-	}
-
-	return 0;
-}
-
-
-/** Destroy thread data for the submodule.
- *
- */
-static int mod_thread_detach(fr_event_list_t *el, void *thread)
-{
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	rlm_radius_t const *inst = t->inst;
-
-	/*
-	 *	Tell the submodule to shut down all of its
-	 *	connections.
-	 */
-	if (inst->io->thread_detach &&
-	    (inst->io->thread_detach(el, t->thread_io_ctx) < 0)) {
 		return -1;
 	}
 
