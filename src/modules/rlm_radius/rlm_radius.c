@@ -550,13 +550,15 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	 *	Allocate thread-specific data.  The connections should
 	 *	live here.
 	 */
-	t->io_thread = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size);
-	if (!t->io_thread) return -1;
+	if (inst->io->thread_inst_size) {
+		MEM(t->io_thread = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size));
 
-	/*
-	 *	Set the name of the IO modules thread instance.
-	 */
-	if (inst->io->thread_inst_type) (void) talloc_set_name_const(t->io_thread, inst->io->thread_inst_type);
+		/*
+		 *	Set the name of the IO modules thread instance.
+		 */
+		if (inst->io->thread_inst_type) (void) talloc_set_name_const(t->io_thread,
+									     inst->io->thread_inst_type);
+	}
 
 	/*
 	 *	Instantiate the per-thread data.  This should open up
