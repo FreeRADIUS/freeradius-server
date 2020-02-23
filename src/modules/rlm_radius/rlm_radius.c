@@ -547,7 +547,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	(void) talloc_set_type(t, rlm_radius_thread_t);
 
 	t->inst = instance;
-	t->el = el;
 
 	/*
 	 *	Allocate thread-specific data.  The connections should

@@ -41,8 +41,6 @@ typedef struct rlm_radius_io_s rlm_radius_io_t;
  */
 typedef struct {
 	rlm_radius_t const	*inst;			//!< Instance of the module.
-	fr_event_list_t		*el;			//!< This thread's event list.
-
 	void			*io_thread;		//!< thread context for the IO submodule
 } rlm_radius_thread_t;
 
