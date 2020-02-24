@@ -1041,7 +1041,7 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 *	Remember the authentication vector, which now has the
 		 *	packet signature.
 		 */
-		(void) radius_track_update(h->tt, u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
+		(void) radius_track_update(u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 
 		DEBUG("Sending %s ID %d length %ld over connection %s",
 		      fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
@@ -1185,12 +1185,11 @@ static void udp_request_clear(udp_request_t *u, udp_handle_t *h, fr_time_t now)
 {
 	if (!now) now = fr_time();
 
-	if (u->rr) (void) radius_track_delete(h->tt, u->rr);
+	if (u->rr) (void) radius_track_delete(&u->rr);
 	if (h->tt->num_free == (h->status_u != NULL)) h->last_idle = now;
-	u->rr = NULL;
+
 	fr_pair_list_free(&u->extra);
 }
-
 
 /** Handle retries for a REQUEST
  *
@@ -1352,7 +1351,7 @@ static void request_mux(fr_event_list_t *el,
 			 *	Remember the authentication vector, which now has the
 			 *	packet signature.
 			 */
-			(void) radius_track_update(h->tt, u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
+			(void) radius_track_update(u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 		} else {
 			RDEBUG("Retransmitting %s ID %d length %ld over connection %s",
 			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
@@ -1849,7 +1848,6 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	udp_request_t	*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
 	udp_handle_t	*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
-
 	switch (reason) {
 	/*
 	 *	The request is being terminated, and will
@@ -1866,10 +1864,7 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 		 *	keep the same timers, packets etc.
 		 */
 	case FR_TRUNK_CANCEL_REASON_REQUEUE:
-		if (!u->can_retransmit) {
-			(void) radius_track_delete(h->tt, u->rr);
-			u->rr = NULL;
-		}
+		if (!u->can_retransmit) (void) radius_track_delete(&u->rr);
 		break;
 
 		/*

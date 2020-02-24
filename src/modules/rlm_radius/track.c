@@ -138,33 +138,33 @@ retry:
 	 *	Allocate a new one, and insert it into the appropriate subtree.
 	 */
 	te = talloc_zero(tt, radius_track_entry_t);
+	te->tt = tt;
 	te->id = tt->next_id;
 
 done:
 	te->request = request;
 	te->rctx = rctx;
-
 	te->code = code;
 
 	/*
 	 *	te->id is already allocated
 	 */
-
 	tt->num_requests++;
 	return te;
 }
 
 /** Update a tracking entry with the authentication vector
  *
- * @param tt		The radius_track_t tracking table
  * @param te		The radius_track_entry_t, via radius_track_entry_alloc()
  * @param vector	The authentication vector for the packet we're sending
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int radius_track_update(radius_track_t *tt, radius_track_entry_t *te, uint8_t *vector)
+int radius_track_update(radius_track_entry_t *te, uint8_t const *vector)
 {
+	radius_track_t *tt = te->tt;
+
 	/*
 	 *	The authentication vector may have changed.
 	 */
@@ -198,15 +198,15 @@ int radius_track_update(radius_track_t *tt, radius_track_entry_t *te, uint8_t *v
 
 /** Delete a tracking entry
  *
- * @param tt		The radius_track_t tracking table
- * @param te		The radius_track_entry_t, via radius_track_entry_alloc()
+ * @param te_to_free		The #radius_track_entry_t allocated via #radius_track_entry_alloc.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int radius_track_delete(radius_track_t *tt, radius_track_entry_t *te)
+int radius_track_delete(radius_track_entry_t **te_to_free)
 {
-	(void) talloc_get_type_abort(tt, radius_track_t);
+	radius_track_entry_t	*te = *te_to_free;
+	radius_track_t		*tt = talloc_get_type_abort(te->tt, radius_track_t);	/* Make sure table is still valid */
 
 	te->request = NULL;
 
@@ -245,6 +245,7 @@ int radius_track_delete(radius_track_t *tt, radius_track_entry_t *te)
 	 */
 	if (tt->num_free > tt->num_requests) {
 		talloc_free(te);
+		*te_to_free = NULL;
 		return 0;
 	}
 
@@ -254,6 +255,8 @@ int radius_track_delete(radius_track_t *tt, radius_track_entry_t *te)
 done:
 	fr_dlist_insert_tail(&tt->free_list, te);
 	tt->num_free++;
+
+	*te_to_free = NULL;
 
 	return 0;
 }
@@ -268,7 +271,7 @@ done:
  *	- NULL on "not found"
  *	- radius_track_entry_t on success
  */
-radius_track_entry_t *radius_track_find(radius_track_t *tt, uint8_t packet_id, uint8_t *vector)
+radius_track_entry_t *radius_track_find(radius_track_t *tt, uint8_t packet_id, uint8_t const *vector)
 {
 	radius_track_entry_t my_te, *te;
 
