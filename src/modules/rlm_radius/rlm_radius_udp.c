@@ -670,7 +670,7 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
  *
  */
 static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connection_t *conn,
-			       		 fr_event_list_t *el,
+					 fr_event_list_t *el,
 					 fr_trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
@@ -680,8 +680,8 @@ static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connec
 	switch (notify_on) {
 	case FR_TRUNK_CONN_EVENT_NONE:
 		read_fn = conn_discard;
-		write_fn = conn_writable;
-		return;
+		write_fn = NULL;
+		break;
 
 	case FR_TRUNK_CONN_EVENT_READ:
 	case FR_TRUNK_CONN_EVENT_BOTH:
@@ -692,7 +692,6 @@ static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connec
 		read_fn = conn_discard;
 		write_fn = conn_writable;
 		break;
-
 	}
 
 	if (fr_event_fd_insert(h, el, h->fd,
