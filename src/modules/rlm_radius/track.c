@@ -138,10 +138,10 @@ retry:
 	 *	Allocate a new one, and insert it into the appropriate subtree.
 	 */
 	te = talloc_zero(tt, radius_track_entry_t);
-	te->tt = tt;
 	te->id = tt->next_id;
 
 done:
+	te->tt = tt;
 	te->request = request;
 	te->rctx = rctx;
 	te->code = code;
@@ -164,6 +164,8 @@ done:
 int radius_track_update(radius_track_entry_t *te, uint8_t const *vector)
 {
 	radius_track_t *tt = te->tt;
+
+	rad_assert(tt);
 
 	/*
 	 *	The authentication vector may have changed.
