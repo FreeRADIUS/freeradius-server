@@ -736,7 +736,7 @@ static int8_t request_prioritise(void const *one, void const *two)
 	return (a->recv_time > b->recv_time) - (a->recv_time < b->recv_time);
 }
 
-static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, uint8_t id)
+static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, uint8_t id, bool status_check)
 {
 	ssize_t			packet_len;
 	uint8_t			*msg = NULL;
@@ -798,7 +798,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	necessary timestamps.  Also, don't add Proxy-State, as
 	 *	we're originating the packet.
 	 */
-	if (u->code == FR_CODE_STATUS_SERVER) {
+	if (status_check) {
 		VALUE_PAIR *vp;
 
 		proxy_state = 0;
@@ -1019,7 +1019,7 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		/*
 		 *	Encode the packet.
 		 */
-		if (encode(h->inst, h->status_request, u, u->rr->id) < 0) {
+		if (encode(h->inst, h->status_request, u, u->rr->id, true) < 0) {
 			DEBUG("Failed encoding status check packet for connection %s", h->name);
 			goto fail;
 		}
@@ -1327,7 +1327,7 @@ static void request_mux(fr_event_list_t *el,
 			RDEBUG("Sending %s ID %d length %ld over connection %s",
 			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
 
-			if (encode(h->inst, request, u, u->rr->id) < 0) {
+			if (encode(h->inst, request, u, u->rr->id, false) < 0) {
 			fail_after_alloc:
 				udp_request_clear(u, h, 0);
 				if (u->ev) (void) fr_event_timer_delete(&u->ev);
@@ -1378,7 +1378,7 @@ static void request_mux_replicate(fr_event_list_t *el,
 		       fr_packet_codes[u->code], id, u->packet_len, h->name);
 
 		if (!u->packet) {
-			if (encode(h->inst, request, u, id) < 0) {
+			if (encode(h->inst, request, u, id, false) < 0) {
 				udp_request_clear(u, h, 0);
 				fr_trunk_request_signal_fail(treq);
 				return;
