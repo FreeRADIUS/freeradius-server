@@ -1626,8 +1626,8 @@ void fr_event_service(fr_event_list_t *el)
 		}
 
 		ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
+		if (!ef->is_registered) continue;	/* Was deleted between corral and service */
 
-		if (!fr_cond_assert(ef->is_registered)) continue;
 
                 if (unlikely(flags & EV_ERROR)) {
                 	fd_errno = el->events[i].data;
