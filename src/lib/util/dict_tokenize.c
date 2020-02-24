@@ -1331,15 +1331,10 @@ post_option:
 	 *	Some protocols don't need them, so it's OK if the
 	 *	validation routines don't exist.
 	 */
-	if (dict_dlopen(dict, argv[0]) < 0) {
+	if (require_dl && (dict_dlopen(dict, argv[0]) < 0)) {
 	error:
 		talloc_free(dict);
 		return -1;
-	}
-
-	if (require_dl && !dict->dl) {
-		fr_strerror_printf("Failed to find libfreeradius-%s", argv[0]);
-		goto error;
 	}
 
 	/*
