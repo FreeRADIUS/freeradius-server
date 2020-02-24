@@ -1211,11 +1211,11 @@ int fr_worker_pre_event(void *uctx, UNUSED fr_time_t wake)
  *
  *	This should be run ONLY in single-threaded mode!
  */
-void fr_worker_post_event(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 
-	worker_run_request(worker, now);
+	worker_run_request(worker, fr_time());	/* Event loop time can be too old, and trigger asserts */
 }
 
 
