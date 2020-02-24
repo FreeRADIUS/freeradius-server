@@ -217,10 +217,6 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ NULL }
 };
 
-typedef struct {
-	rlm_radius_udp_t const	*inst;
-	udp_thread_t		*thread;
-} udp_conn_uctx_t;
 
 /** Initialise a new outbound connection
  *
@@ -232,13 +228,13 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 {
 	int			fd;
 	udp_handle_t		*h;
-	udp_conn_uctx_t		*our_ctx = uctx;
+	udp_thread_t		*thread = talloc_get_type_abort(uctx, udp_thread_t);
 
 	h = talloc_zero(conn, udp_handle_t);
 	if (!h) return FR_CONNECTION_STATE_FAILED;
 
-	h->inst = our_ctx->inst;
-	h->thread = our_ctx->thread;
+	h->thread = thread;
+	h->inst = thread->inst;
 	h->module_name = h->inst->parent->name;
 	h->src_ipaddr = h->inst->src_ipaddr;
 	h->src_port = 0;
@@ -503,7 +499,6 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 {
 	udp_connection_t	*c;
 	udp_thread_t		*thread = talloc_get_type_abort(uctx, udp_thread_t);
-	udp_handle_t		*h;
 
 	c = talloc_zero(tconn, udp_connection_t);
 	if (!c) return NULL;
@@ -519,15 +514,12 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 				      },
 				      conf,
 				      log_prefix,
-				      &(udp_conn_uctx_t){ .inst = thread->inst, .thread = thread });
+				      thread);
 	if (!c->conn) {
 		talloc_free(c);
 		PERROR("Failed allocating state handler for new connection");
 		return NULL;
 	}
-
-	h = c->conn->h;
-	h->c = c;		//!< REMOVE
 
 	return c->conn;
 }
