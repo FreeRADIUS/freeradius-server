@@ -74,6 +74,7 @@ typedef struct {
 typedef struct {
 	fr_trunk_connection_t	*tconn;
 	fr_connection_t		*conn;
+	udp_thread_t		*thread;
 } udp_connection_t;
 
 typedef struct udp_request_s udp_request_t;
@@ -228,13 +229,14 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 {
 	int			fd;
 	udp_handle_t		*h;
-	udp_thread_t		*thread = talloc_get_type_abort(uctx, udp_thread_t);
+	udp_connection_t	*c = talloc_get_type_abort(uctx, udp_connection_t);
 
 	h = talloc_zero(conn, udp_handle_t);
 	if (!h) return FR_CONNECTION_STATE_FAILED;
 
-	h->thread = thread;
-	h->inst = thread->inst;
+	h->c = c;
+	h->thread = c->thread;
+	h->inst = c->thread->inst;
 	h->module_name = h->inst->parent->name;
 	h->src_ipaddr = h->inst->src_ipaddr;
 	h->src_port = 0;
@@ -504,6 +506,7 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 	if (!c) return NULL;
 
 	c->tconn = tconn;
+	c->thread = thread;
 
 	c->conn = fr_connection_alloc(c, el,
 				      &(fr_connection_funcs_t){
@@ -514,7 +517,7 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 				      },
 				      conf,
 				      log_prefix,
-				      thread);
+				      c);
 	if (!c->conn) {
 		talloc_free(c);
 		PERROR("Failed allocating state handler for new connection");
