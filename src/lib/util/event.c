@@ -627,7 +627,6 @@ static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
  */
 static int _event_fd_delete(fr_event_fd_t *ef)
 {
-	int i;
 	struct kevent		evset[10];
 	int			count = 0;
 	fr_event_list_t		*el = ef->el;
@@ -660,13 +659,6 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 
 		rbtree_deletebydata(el->fds, ef);
 		ef->is_registered = false;
-
-		/*
-		 *	If there are pending events for this FD set
-		 *	udata to NULL to mark them as deleted.
-		 */
-		for (i = 0; i < el->num_fd_events; i++) if (el->events[i].udata == ef) el->events[i].udata = NULL;
-
 		el->num_fds--;
 	}
 
@@ -1632,11 +1624,6 @@ void fr_event_service(fr_event_list_t *el)
 		default:
 			break;
 		}
-
-		/*
-		 *	Skip events for deleted FDs.
-		 */
-		if (!el->events[i].udata) continue;
 
 		ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
 
