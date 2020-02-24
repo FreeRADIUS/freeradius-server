@@ -726,7 +726,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	We should have at mininum 64-byte packets, so don't
 	 *	bother doing run-time checks here.
 	 */
-	rad_assert(u->packet_len >= (size_t) (20 + proxy_state + message_authenticator));
+	rad_assert(u->packet_len >= (size_t) (RADIUS_HEADER_LENGTH + proxy_state + message_authenticator));
 
 	/*
 	 *	Encode it, leaving room for Proxy-State and
@@ -849,7 +849,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		 */
 		end = u->packet + packet_len;
 
-		for (attr = u->packet + 20;
+		for (attr = u->packet + RADIUS_HEADER_LENGTH;
 		     attr < end;
 		     attr += attr[1]) {
 			if (attr[0] != attr_acct_delay_time->attr) continue;
@@ -1365,7 +1365,7 @@ static void protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t
 
 	end = h->buffer + ((h->buffer[2] << 8) | h->buffer[3]);
 
-	for (attr = h->buffer + 20;
+	for (attr = h->buffer + RADIUS_HEADER_LENGTH;
 	     attr < end;
 	     attr += attr[1]) {
 		/*
@@ -1519,7 +1519,7 @@ static fr_trunk_request_t *read_packet(udp_handle_t *h, udp_connection_t *c)
 	decode_fail_t		reason;
 	int			code;
 	VALUE_PAIR		*reply, *vp;
-	uint8_t			original[20];
+	uint8_t			original[RADIUS_HEADER_LENGTH];
 
 	/*
 	 *	Drain the socket of all packets.  If we're busy, this
@@ -1585,7 +1585,7 @@ drain:
 	original[0] = rr->code;
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
 	original[2] = 0;
-	original[3] = 20;	/* for debugging */
+	original[3] = RADIUS_HEADER_LENGTH;	/* for debugging */
 	memcpy(original + 4, rr->vector, sizeof(rr->vector));
 
 	if (fr_radius_verify(h->buffer, original,
