@@ -485,7 +485,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	rcode = inst->io->enqueue(&rctx, inst->io_instance, t->io_thread, request);
 	if (rcode != RLM_MODULE_YIELD) {
-		rad_assert(rctx = NULL);
+		rad_assert(rctx == NULL);
 		return rcode;
 	}
 
@@ -643,7 +643,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 				   fr_packet_codes[inst->status_check], fr_packet_codes[inst->status_check]);
 			return -1;
 		}
-	
+
 		/*
 		 *	@todo - check the contents of the "update"
 		 *	section, to be sure that (e.g.) Access-Request
