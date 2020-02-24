@@ -1405,8 +1405,9 @@ static void request_mux_replicate(fr_event_list_t *el,
 		r->rcode = RLM_MODULE_OK;
 
 		/*
-		 *	Signal the request as immediately complete
+		 *	Signal the request as sent then immediately complete
 		 */
+		fr_trunk_request_signal_sent(treq);
 		fr_trunk_request_signal_complete(treq);
 
 		h->last_id++;	/* Wraps to zero - Defined behaviour*/
