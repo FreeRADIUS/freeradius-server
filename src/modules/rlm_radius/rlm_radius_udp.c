@@ -2102,9 +2102,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (inst->recv_buff_is_set) {
-		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, inst->max_packet_size);
-		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, (1 << 30));
+	if (!inst->replicate) {
+		if (inst->recv_buff_is_set) {
+			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, inst->max_packet_size);
+			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, (1 << 30));
+		}
+	} else {
+		/*
+		 *	Replicating: Set the receive buffer to zero.
+		 */
+		inst->recv_buff_is_set = true;
+		inst->recv_buff = 0;
 	}
 
 	if (inst->send_buff_is_set) {
