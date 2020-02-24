@@ -758,9 +758,8 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	raw data so we can re-encode it.
 	 */
 	if (u->packet) {
-		talloc_free(u->packet);
+		TALLOC_FREE(u->packet);
 		fr_pair_list_free(&u->extra);
-		u->authenticator = NULL;
 	}
 
 	/*
@@ -790,10 +789,8 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		base = fr_rand();
 		for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i += sizeof(uint32_t)) {
 			hash = fr_rand() ^ base;
-			memcpy(u->packet + 4 + i, &hash, sizeof(hash));
+			memcpy(u->packet + RADIUS_AUTH_VECTOR_OFFSET + i, &hash, sizeof(hash));
 		}
-
-		u->authenticator = u->packet + 4;
 	}
 	default:
 		break;
@@ -906,6 +903,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 */
 	u->packet[2] = (packet_len >> 8) & 0xff;
 	u->packet[3] = packet_len & 0xff;
+	u->packet_len = packet_len;
 
 	/*
 	 *	Ensure that we update the Acct-Delay-Time based on the
@@ -958,8 +956,6 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		return -1;
 	}
 
-	u->packet_len = packet_len;
-
 	return 0;
 }
 
@@ -986,8 +982,6 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	udp_handle_t	 	*h = talloc_get_type_abort(u->c->conn->h, udp_handle_t);
 	fr_retry_state_t	state;
 	ssize_t			rcode;
-	size_t			packet_len;
-	uint8_t			*packet;
 	uint32_t		msec;
 
 	if (!now) {
@@ -1030,24 +1024,18 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 			DEBUG("Failed encoding status check packet for connection %s", h->name);
 			goto fail;
 		}
-		packet_len = (u->packet[2] << 8) | u->packet[3];
-		packet = u->packet;
 
 		/*
 		 *	Remember the authentication vector, which now has the
 		 *	packet signature.
 		 */
-		(void) radius_track_update(h->tt, u->rr, u->authenticator);
+		(void) radius_track_update(h->tt, u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 
 		DEBUG("Sending %s ID %d length %ld over connection %s",
-		      fr_packet_codes[u->code], u->rr->id, packet_len, h->name);
+		      fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
 	} else {
-
-		packet = u->packet;
-		packet_len = u->packet_len;
-
 		DEBUG("Retransmitting %s ID %d length %lu for status check over connection %s",
-		      fr_packet_codes[u->code], u->rr->id, packet_len, h->name);
+		      fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
 	}
 
 	/*
@@ -1057,8 +1045,8 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	DEBUG("Next status check will be sent in %u.%03us",
 	      msec / 1000, msec % 1000);
 
-	rcode = write(h->fd, packet, packet_len);
-	if ((rcode < 0) || ((size_t) rcode < packet_len)) {
+	rcode = write(h->fd, u->packet, u->packet_len);
+	if ((rcode < 0) || ((size_t) rcode < u->packet_len)) {
 		DEBUG("Failed writing status check packet for connection %s", h->name);
 		goto fail;
 	}
@@ -1346,7 +1334,7 @@ static void request_mux(fr_event_list_t *el,
 			 *	Remember the authentication vector, which now has the
 			 *	packet signature.
 			 */
-			(void) radius_track_update(h->tt, u->rr, u->authenticator);
+			(void) radius_track_update(h->tt, u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 		} else {
 			RDEBUG("Retransmitting %s ID %d length %ld over connection %s",
 			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
@@ -1678,7 +1666,7 @@ drain:
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
 	original[2] = 0;
 	original[3] = RADIUS_HEADER_LENGTH;	/* for debugging */
-	memcpy(original + 4, rr->vector, sizeof(rr->vector));
+	memcpy(original + RADIUS_AUTH_VECTOR_OFFSET, rr->vector, sizeof(rr->vector));
 
 	if (fr_radius_verify(h->buffer, original,
 			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1) < 0) {
