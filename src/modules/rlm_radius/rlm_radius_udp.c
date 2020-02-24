@@ -1876,6 +1876,11 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	udp_request_t	*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
 	udp_handle_t	*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
+	/*
+	 *	Delete the request_timeout
+	 */
+	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+
 	switch (reason) {
 	/*
 	 *	The request is being terminated, and will
@@ -1886,25 +1891,22 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	case FR_TRUNK_CANCEL_REASON_SIGNAL:
 		break;
 
-		/*
-		 *	Request has been requeued on the same
-		 *	connection due to timeout or DUP signal.  We
-		 *	keep the same timers, packets etc.
-		 */
+	/*
+	 *	Request has been requeued on the same
+	 *	connection due to timeout or DUP signal.  We
+	 *	keep the same packet to avoid re-encoding it.
+	 */
 	case FR_TRUNK_CANCEL_REASON_REQUEUE:
 		if (!u->can_retransmit) (void) radius_track_delete(&u->rr);
 		break;
 
-		/*
-		 *	Request is moving to a different connection,
-		 *	for internal trunk reasons.  i.e. the old
-		 *	connection is closing.
-		 */
+	/*
+	 *	Request is moving to a different connection,
+	 *	for internal trunk reasons.  i.e. the old
+	 *	connection is closing.
+	 */
 	case FR_TRUNK_CANCEL_REASON_MOVE:
 		udp_request_clear(u, h, 0);
-
-		if (u->ev) (void) fr_event_timer_delete(&u->ev);
-
 		if (u->packet) TALLOC_FREE(u->packet);
 
 		u->c = NULL;
