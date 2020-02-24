@@ -90,6 +90,9 @@ typedef struct {
 	udp_connection_t	*c;			//!< long-term connection
 	udp_thread_t		*thread;
 
+	uint8_t			last_id;		//!< Used when replicating to ensure IDs are distributed
+							///< evenly.
+
 	uint32_t		max_packet_size;	//!< Our max packet size. may be different from the parent.
 
 	fr_ipaddr_t		src_ipaddr;		//!< Source IP address.  May be altered on bind
@@ -244,7 +247,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
 	h->buflen = h->max_packet_size;
 
-	MEM(h->tt = radius_track_alloc(h));
+	if (!h->inst->replicate) MEM(h->tt = radius_track_alloc(h));
 
 	/*
 	 *	Open the outgoing socket.
@@ -528,6 +531,32 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 	return c->conn;
 }
 
+/** Read and discard data
+ *
+ */
+static void conn_discard(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	uint8_t			buffer[4096];
+	ssize_t			slen;
+
+	while ((slen = read(fd, buffer, sizeof(buffer))) > 0);
+
+	if (slen < 0) {
+		switch (errno) {
+		case EBADF:
+		case ECONNRESET:
+		case ENOTCONN:
+		case ETIMEDOUT:
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+			break;
+
+		default:
+			break;
+		}
+	}
+}
+
 /** Standard I/O read function
  *
  * Underlying FD in now readable, so call the trunk to read any pending requests
@@ -618,6 +647,49 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 
 	case FR_TRUNK_CONN_EVENT_BOTH:
 		read_fn = conn_readable;
+		write_fn = conn_writable;
+		break;
+
+	}
+
+	if (fr_event_fd_insert(h, el, h->fd,
+			       read_fn,
+			       write_fn,
+			       conn_error,
+			       tconn) < 0) {
+		ERROR("%s - Failed inserting FD event", h->module_name);
+
+		/*
+		 *	May free the connection!
+		 */
+		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+	}
+}
+
+/** A special version of the trunk/event loop glue function which always discards incoming data
+ *
+ */
+static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connection_t *conn,
+			       		 fr_event_list_t *el,
+					 fr_trunk_connection_event_t notify_on, UNUSED void *uctx)
+{
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	fr_event_fd_cb_t	read_fn = NULL;
+	fr_event_fd_cb_t	write_fn = NULL;
+
+	switch (notify_on) {
+	case FR_TRUNK_CONN_EVENT_NONE:
+		read_fn = conn_discard;
+		write_fn = conn_writable;
+		return;
+
+	case FR_TRUNK_CONN_EVENT_READ:
+	case FR_TRUNK_CONN_EVENT_BOTH:
+		rad_assert(0);	/* Should never happen */
+		break;
+
+	case FR_TRUNK_CONN_EVENT_WRITE:
+		read_fn = conn_discard;
 		write_fn = conn_writable;
 		break;
 
@@ -1035,7 +1107,7 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	 *	replies which then stopped coming back (and then mark
 	 *	it zombie).
 	 */
-	if (h->inst->replicate || h->zombie_ev || !h->last_sent || (h->last_sent <= h->last_idle) ||
+	if (h->zombie_ev || !h->last_sent || (h->last_sent <= h->last_idle) ||
 	    (h->last_reply && (h->last_reply <= h->last_idle))) {
 		return;
 	}
@@ -1225,34 +1297,24 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 	return 0;
 }
 
-
 static void request_mux(fr_event_list_t *el,
 			fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 	udp_connection_t	*c = h->c;
-	rlm_radius_udp_t const	*inst = h->thread->inst;
 	fr_trunk_request_t	*treq;
-	REQUEST			*request;
-	udp_request_t		*u;
 
 	check_for_zombie(el, tconn, 0);
 
 	while ((treq = fr_trunk_connection_pop_request(tconn)) != NULL) {
-		udp_result_t *r = talloc_get_type_abort(treq->rctx, udp_result_t);
-
-		u = treq->preq;
-
-		request = treq->request;
+		udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
+		REQUEST			*request = treq->request;
 
 		/*
 		 *	No existing packet, create it...
 		 */
 		if (!u->packet) {
 			rad_assert(!u->rr);
-
-			RDEBUG("Sending %s ID %d length %ld over connection %s",
-			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
 
 			u->rr = radius_track_entry_alloc(h->tt, request, u->code, treq);
 			if (!u->rr) {
@@ -1261,6 +1323,9 @@ static void request_mux(fr_event_list_t *el,
 				fr_trunk_request_signal_fail(treq);
 				continue;
 			}
+
+			RDEBUG("Sending %s ID %d length %ld over connection %s",
+			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
 
 			if (encode(h->inst, request, u, u->rr->id) < 0) {
 			fail_after_alloc:
@@ -1287,25 +1352,6 @@ static void request_mux(fr_event_list_t *el,
 		fr_trunk_request_signal_sent(treq);
 
 		/*
-		 *	We're replicating, so we don't care about the
-		 *	responses.  Don't do any retransmission timers, don't
-		 *	look for replies to status checks, etc.
-		 *
-		 *	Instead, just set the return code to OK, and return.
-		 *
-		 *	@todo - if replicating, change the mux()
-		 *	routine to allocate a random ID, instead of
-		 *	calling a complex API.
-		 */
-		if (inst->replicate) {
-			(void) radius_track_delete(h->tt, u->rr); /* don't set last_idle, we're not checking for zombie */
-			u->rr = NULL;
-			r->rcode = RLM_MODULE_OK;
-			fr_trunk_request_signal_complete(treq);
-			continue;
-		}
-
-		/*
 		 *	Tell the trunk API that this request is now in
 		 *	the "sent" state.  And we don't want to see
 		 *	this request again.
@@ -1313,6 +1359,47 @@ static void request_mux(fr_event_list_t *el,
 		u->c = c;
 
 		// @todo - if there are no free IDs, call fr_trunk_connection_requests_requeue()
+	}
+}
+
+static void request_mux_replicate(fr_event_list_t *el,
+				  fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
+{
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	fr_trunk_request_t	*treq;
+
+	while ((treq = fr_trunk_connection_pop_request(tconn)) != NULL) {
+		udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
+		udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
+		REQUEST			*request = treq->request;
+		uint8_t			id = h->last_id;
+
+		RDEBUG("Sending %s ID %d length %ld over connection %s",
+		       fr_packet_codes[u->code], id, u->packet_len, h->name);
+
+		if (!u->packet) {
+			if (encode(h->inst, request, u, id) < 0) {
+				udp_request_clear(u, h, 0);
+				fr_trunk_request_signal_fail(treq);
+				return;
+			}
+			RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
+		}
+
+		/*
+		 *	Assume we'll be able to write later, and just break
+		 *	out of the loop.
+		 */
+		if (write_packet(el, treq, u->packet, u->packet_len) < 0) return;
+
+		r->rcode = RLM_MODULE_OK;
+
+		/*
+		 *	Signal the request as immediately complete
+		 */
+		fr_trunk_request_signal_complete(treq);
+
+		h->last_id++;	/* Wraps to zero - Defined behaviour*/
 	}
 }
 
@@ -1785,18 +1872,6 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	}
 }
 
-
-static fr_trunk_io_funcs_t trunk_funcs = {
-	.connection_alloc = thread_conn_alloc,
-	.connection_notify = thread_conn_notify,
-	.request_prioritise = request_prioritise,
-	.request_mux = request_mux,
-	.request_demux = request_demux,
-	.request_complete = request_complete,
-	.request_cancel = request_cancel,
-};
-
-
 static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *ctx)
 {
 	udp_result_t	*r = talloc_get_type_abort(ctx, udp_result_t);
@@ -2026,8 +2101,28 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  */
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *tctx)
 {
-	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_thread_t *thread = talloc_get_type_abort(tctx, udp_thread_t);
+	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+	udp_thread_t			*thread = talloc_get_type_abort(tctx, udp_thread_t);
+
+	static fr_trunk_io_funcs_t	io_funcs = {
+						.connection_alloc = thread_conn_alloc,
+						.connection_notify = thread_conn_notify,
+						.request_prioritise = request_prioritise,
+						.request_mux = request_mux,
+						.request_demux = request_demux,
+						.request_complete = request_complete,
+						.request_cancel = request_cancel,
+					};
+
+	static fr_trunk_io_funcs_t	io_funcs_replicate = {
+						.connection_alloc = thread_conn_alloc,
+						.connection_notify = thread_conn_notify_replicate,
+						.request_prioritise = request_prioritise,
+						.request_mux = request_mux_replicate,
+						.request_demux = NULL,
+						.request_complete = request_complete,
+						.request_cancel = NULL,
+					};
 
 	inst->trunk_conf = &inst->parent->trunk_conf;
 
@@ -2036,8 +2131,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	thread->el = el;
 	thread->inst = inst;
-	thread->trunk = fr_trunk_alloc(thread, el, &trunk_funcs, inst->trunk_conf,
-				       inst->parent->name, thread, false);
+	thread->trunk = fr_trunk_alloc(thread, el, inst->replicate ? &io_funcs_replicate : &io_funcs,
+				       inst->trunk_conf, inst->parent->name, thread, false);
 	if (!thread->trunk) return -1;
 
 	return 0;
