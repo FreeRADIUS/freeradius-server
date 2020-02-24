@@ -28,6 +28,7 @@
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/log.h>
 
+#define RADIUS_AUTH_VECTOR_OFFSET      		4
 #define RADIUS_HEADER_LENGTH			20
 #define RADIUS_MAX_STRING_LENGTH		253
 #define RADIUS_AUTH_VECTOR_LENGTH		16
