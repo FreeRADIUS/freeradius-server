@@ -415,6 +415,16 @@ fr_time_t fr_event_list_time(fr_event_list_t *el)
 	}
 }
 
+/** Placeholder callback to avoid branches in service loop
+ *
+ * This is set in place of any NULL function pointers, so that the event loop doesn't
+ * SEGV if a filter callback function is unset between corral and service.
+ */
+static void fr_event_fd_noop(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, UNUSED void *uctx)
+{
+	return;
+}
+
 /** Build a new evset based on function pointers present
  *
  * @note The contents of active functions may be inconsistent if this function errors.  But the
@@ -452,16 +462,25 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		uint32_t	prev_fflags = 0;
 
 		do {
-			if (*(uintptr_t const *)((uint8_t const *)prev + map->offset)) {
-				EVENT_DEBUG("\t%s prev set", map->name);
+			fr_event_fd_cb_t prev_func;
+			fr_event_fd_cb_t new_func;
+
+			/*
+			 *	If the previous value was the 'noop'
+			 *	callback, it's identical to being unset.
+			 */
+			prev_func = *(fr_event_fd_cb_t const *)((uint8_t const *)prev + map->offset);
+			if (prev_func && (prev_func != fr_event_fd_noop)) {
+				EVENT_DEBUG("\t%s prev set (%p)", map->name, prev_func);
 				prev_fflags |= map->fflags;
 				has_prev_func = true;
 			} else {
 				EVENT_DEBUG("\t%s prev unset", map->name);
 			}
 
-			if (*(uintptr_t const *)((uint8_t const *)new + map->offset)) {
-				EVENT_DEBUG("\t%s curr set", map->name);
+			new_func = *(fr_event_fd_cb_t const *)((uint8_t const *)new + map->offset);
+			if (new_func) {
+				EVENT_DEBUG("\t%s curr set (%p)", map->name, new_func);
 				current_fflags |= map->fflags;
 				has_current_func = true;
 
@@ -485,10 +504,12 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 				       sizeof(fr_event_fd_cb_t));
 			} else {
 				EVENT_DEBUG("\t%s curr unset", map->name);
+
 				/*
 				 *	Mark this filter function as inactive
+				 *	by setting it to the 'noop' callback.
 				 */
-				memset((uint8_t *)active + map->offset, 0, sizeof(fr_event_fd_cb_t));
+				*((fr_event_fd_cb_t *)((uint8_t *)active + map->offset)) = fr_event_fd_noop;
 			}
 
 			if (!(map + 1)->coalesce) break;
@@ -1527,6 +1548,8 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 
 	el->num_fd_events = num_fd_events;
 
+	EVENT_DEBUG("%s - kevent returned %u FD events", __FUNCTION__, el->num_fd_events);
+
 	/*
 	 *	If there are no FD events, we must have woken up from a timer
 	 */
@@ -1557,6 +1580,8 @@ void fr_event_service(fr_event_list_t *el)
 	fr_event_timer_t	*ev;
 
 	if (unlikely(el->exit)) return;
+
+	EVENT_DEBUG("%s - Servicing %u FD events", __FUNCTION__, el->num_fd_events);
 
 	/*
 	 *	Run all of the file descriptor events.
