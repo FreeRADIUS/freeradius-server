@@ -213,7 +213,7 @@ struct fr_trunk_s {
 
 	fr_time_t		last_connected;		//!< Last time a connection connected.
 
-	fr_time_t		last_open_failed;	//!< Last time a connection failed.
+	fr_time_t		last_failed;		//!< Last time a connection failed.
 	/** @} */
 
 	/** @name Statistics
@@ -1167,7 +1167,7 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 *	we refuse to enqueue new requests until
 	 *	one or more connections comes online.
 	 */
-	if (trunk->last_open_failed && (trunk->last_open_failed >= trunk->last_connected)) {
+	if (trunk->last_failed && (trunk->last_failed >= trunk->last_connected)) {
 		ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
 			  "No active connections and last event was a connection failure");
 
@@ -2600,6 +2600,8 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
 
+	trunk->last_failed = fr_time();
+
 	/*
 	 *	Other conditions will be handled by on_closed
 	 */
@@ -2614,8 +2616,6 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_
 
 	fr_dlist_insert_head(&trunk->failed, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
-
-	trunk->last_open_failed = fr_time();
 }
 
 /** Connection transitioned to the halted state
