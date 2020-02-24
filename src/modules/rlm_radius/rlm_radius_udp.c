@@ -140,6 +140,7 @@ struct udp_request_s {
 
 	bool			synchronous;		//!< cached from inst->parent->synchronous
 	bool			require_ma;		//!< saved from the original packet.
+	bool			can_retransmit;		//!< can we retransmit this packet?
 
 	VALUE_PAIR		*extra;			//!< VPs for debugging, like Proxy-State.
 
@@ -763,6 +764,12 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	}
 
 	/*
+	 *	Try to retransmit, unless there are special
+	 *	circumstances.
+	 */
+	u->can_retransmit = true;
+
+	/*
 	 *	This is essentially free, as this memory was
 	 *	pre-allocated as part of the treq.
 	 */
@@ -810,6 +817,8 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		if (vp) {
 			vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 		}
+
+		u->can_retransmit = false;
 	}
 
 	/*
@@ -945,6 +954,8 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 			memcpy(attr + 2, &delay, 4);
 			break;
 		}
+
+		u->can_retransmit = false;
 	}
 
 	/*
@@ -1016,7 +1027,13 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		}
 	}
 
-	if (!u->packet) {
+	/*
+	 *	No previous packet, OR can't retransmit the existing
+	 *	one.  Oh well.
+	 */
+	if (!u->packet || !u->can_retransmit) {
+		rad_assert(u->rr != NULL);
+
 		/*
 		 *	Encode the packet.
 		 */
@@ -1306,9 +1323,15 @@ static void request_mux(fr_event_list_t *el,
 		REQUEST			*request = treq->request;
 
 		/*
-		 *	No existing packet, create it...
+		 *	No previous packet, OR can't retransmit the
+		 *	existing one.  Oh well.
+		 *
+		 *	Note that if we can't retransmit the previous
+		 *	packet, then u->rr MUST already have been
+		 *	deleted in the request_cancel() function, when
+		 *	the REQUEUE signal was recevied.
 		 */
-		if (!u->packet) {
+		if (!u->packet || !u->can_retransmit) {
 			rad_assert(!u->rr);
 
 			u->rr = radius_track_entry_alloc(h->tt, request, u->code, treq);
@@ -1847,6 +1870,10 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 		 *	keep the same timers, packets etc.
 		 */
 	case FR_TRUNK_CANCEL_REASON_REQUEUE:
+		if (!u->can_retransmit) {
+			(void) radius_track_delete(h->tt, u->rr);
+			u->rr = NULL;
+		}
 		break;
 
 		/*
