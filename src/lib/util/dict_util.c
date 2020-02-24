@@ -2188,7 +2188,8 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	 */
 	dict->dl = dl_by_name(dict_gctx->dict_loader, module_name, dict, false);
 	if (!dict->dl) {
-		fr_strerror_printf_push("Failed loading dictionary validation library");
+		fr_strerror_printf_push("Failed loading dictionary validation library %s", module_name);
+		talloc_free(module_name);
 		return -1;
 	}
 
