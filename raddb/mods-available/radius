@@ -329,11 +329,12 @@ radius {
 
 			#
 			#  reconnect_delay:: If opening a connection
-			#  fails, we wait `reconnect_delay` seconds
-			#  before attempting to open another
+			#  fails, or an open connection fails,
+			#  we wait `reconnect_delay` seconds before
+			#  attempting to open another
 			#  connection.
 			#
-			reconnect_delay = 30
+			reconnect_delay = 5
 		}
 
 		#
