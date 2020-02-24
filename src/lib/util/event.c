@@ -1570,7 +1570,9 @@ void fr_event_service(fr_event_list_t *el)
 		/*
 		 *	Process any user events
 		 */
-		if (el->events[i].filter == EVFILT_USER) {
+		switch (el->events[i].filter) {
+		case EVFILT_USER:
+		{
 			fr_event_user_t *user;
 
 			/*
@@ -1583,10 +1585,11 @@ void fr_event_service(fr_event_list_t *el)
 			rad_assert(user->ident == el->events[i].ident);
 
 			user->callback(el->kq, &el->events[i], user->uctx);
-			continue;
 		}
+			continue;
 
-		if (el->events[i].filter == EVFILT_PROC) {
+		case EVFILT_PROC:
+		{
 			pid_t pid;
 			fr_event_pid_t *pev;
 
@@ -1598,7 +1601,11 @@ void fr_event_service(fr_event_list_t *el)
 			pid = pev->pid;
 			pev->pid = 0; /* so we won't hit kevent again when it's freed */
 			pev->callback(el, pid, (int) el->events[i].data, pev->uctx);
+		}
 			continue;
+
+		default:
+			break;
 		}
 
 		/*
