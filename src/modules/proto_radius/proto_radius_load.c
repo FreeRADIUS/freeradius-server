@@ -223,7 +223,7 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	thread->name = talloc_typed_asprintf(thread, "load generation from file %s", inst->filename);
+	thread->name = talloc_typed_asprintf(thread, "load generation from file %s", inst->filename ? inst->filename : "none");
 	thread->parent = talloc_parent(li);
 
 	DEBUG("Listening on radius address %s bound to virtual server %s",
@@ -371,7 +371,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	proto_radius_load_t	*inst = talloc_get_type_abort(instance, proto_radius_load_t);
 	RADCLIENT		*client;
-	FILE			*fp;
+
 	bool			done;
 	VALUE_PAIR		*vp, *vps = NULL;
 	ssize_t			packet_len;
@@ -388,21 +388,25 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	client->nas_type = talloc_strdup(client, "load");
 	client->use_connected = false;
 
-	fp = fopen(inst->filename, "r");
-	if (!fp) {
-		cf_log_err(cs, "Failed reading %s - %s",
-			   inst->filename, fr_syserror(errno));
-		return -1;
-	}
+	if (inst->filename) {
+		FILE *fp;
 
-	if (fr_pair_list_afrom_file(inst, dict_radius, &vps, fp, &done) < 0) {
-		cf_log_err(cs, "Failed reading %s - %s",
-			   inst->filename, fr_strerror());
+		fp = fopen(inst->filename, "r");
+		if (!fp) {
+			cf_log_err(cs, "Failed reading %s - %s",
+				   inst->filename, fr_syserror(errno));
+			return -1;
+		}
+
+		if (fr_pair_list_afrom_file(inst, dict_radius, &vps, fp, &done) < 0) {
+			cf_log_err(cs, "Failed reading %s - %s",
+				   inst->filename, fr_strerror());
+			fclose(fp);
+			return -1;
+		}
+
 		fclose(fp);
-		return -1;
 	}
-
-	fclose(fp);
 
 	MEM(inst->packet = talloc_zero_array(inst, uint8_t, inst->max_packet_size));
 
