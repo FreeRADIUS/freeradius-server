@@ -1258,6 +1258,7 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 	REQUEST			*request = treq->request;
 	rlm_radius_udp_t const	*inst = h->inst;
+	uint32_t		msec = 0;
 
 	/*
 	 *	Tell the admin what's going on
@@ -1272,18 +1273,10 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 	}
 
 	if (!inst->parent->synchronous) {
-		uint32_t msec = fr_time_delta_to_msec(u->retry.rt);
+		msec = fr_time_delta_to_msec(u->retry.rt);
 
 		RDEBUG("%s request.  Expecting response within %u.%03us",
 		       action, msec / 1000, msec % 1000);
-
-		/*
-		 *	Set up a timer for retransmits.
-		 */
-		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timeout, treq) < 0) {
-			RERROR("Failed inserting retransmit timeout for connection");
-			return -1;
-		}
 	} else {
 		/*
 		 *	If the packet doesn't get a response,
@@ -1310,6 +1303,17 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 		}
 	}
 	rad_assert((size_t) slen == packet_len);	/* Should never get partial writes with UDP */
+
+	/*
+	 *	Set up a timer for retransmits
+	 *	Only do this *AFTER* we've successfully written the packet.
+	 */
+	if (msec > 0) {
+		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timeout, treq) < 0) {
+			RERROR("Failed inserting retransmit timeout for connection");
+			return -1;
+		}
+	}
 
 	return 0;
 }
