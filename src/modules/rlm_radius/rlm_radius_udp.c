@@ -1633,7 +1633,7 @@ drain:
 	if (data_len < 0) {
 		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return NULL;
 
-		DEBUG("Failed reading from socket: %s", fr_syserror(errno));
+		ERROR("%s - Failed reading from socket: %s", h->module_name, fr_syserror(errno));
 		fr_trunk_connection_signal_reconnect(c->tconn, FR_CONNECTION_FAILED);
 		return NULL;
 	}
