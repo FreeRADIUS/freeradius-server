@@ -1624,7 +1624,6 @@ static fr_trunk_request_t *read_packet(udp_handle_t *h, udp_connection_t *c)
 	 *	saves a round through the event loop.  If we're not
 	 *	busy, a few extra system calls don't matter.
 	 */
-drain:
 	data_len = read(h->fd, h->buffer, h->buflen);
 	if (data_len == 0) {
 		return NULL;
@@ -1637,12 +1636,6 @@ drain:
 		fr_trunk_connection_signal_reconnect(c->tconn, FR_CONNECTION_FAILED);
 		return NULL;
 	}
-
-	/*
-	 *	We don't care about replies, so just read them and
-	 *	ignore them.
-	 */
-	if (inst->replicate) goto drain;
 
 	packet_len = data_len;
 	if (!fr_radius_ok(h->buffer, &packet_len, inst->parent->max_attributes, false, &reason)) {
