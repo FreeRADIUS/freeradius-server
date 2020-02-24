@@ -1858,6 +1858,18 @@ static void request_complete(REQUEST *request, UNUSED void *preq, UNUSED void *r
 	unlang_interpret_resumable(request);
 }
 
+/** Write out a canned failure and resume the request
+ *
+ */
+static void request_fail(REQUEST *request, UNUSED void *preq, void *rctx, UNUSED void *uctx)
+{
+	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+
+	r->rcode = RLM_MODULE_FAIL;
+
+	unlang_interpret_resumable(request);
+}
+
 static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 			   fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
@@ -2148,6 +2160,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 						.request_mux = request_mux,
 						.request_demux = request_demux,
 						.request_complete = request_complete,
+						.request_fail = request_fail,
 						.request_cancel = request_cancel,
 					};
 
@@ -2158,6 +2171,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 						.request_mux = request_mux_replicate,
 						.request_demux = NULL,
 						.request_complete = request_complete,
+						.request_fail = request_fail,
 						.request_cancel = NULL,
 					};
 
