@@ -3177,14 +3177,18 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			return;
 		}
 
-		if ((trunk->last_above_target + trunk->conf.open_delay) > now) {
+		trunk_requests_per_connnection(&conn_count, &req_count, trunk, now);
+
+		/*
+		 *	Only apply hysteresis if we have at least
+		 *	one available connection.
+		 */
+		if (conn_count && ((trunk->last_above_target + trunk->conf.open_delay) > now)) {
 			DEBUG4("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
 			       fr_box_time_delta(now - trunk->last_above_target));
 			return;	/* too soon */
 		}
-
-		trunk_requests_per_connnection(&conn_count, &req_count, trunk, now);
 
 		/*
 		 *	If this assert is triggered it means
