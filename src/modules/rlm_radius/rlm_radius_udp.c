@@ -661,17 +661,23 @@ static int8_t request_prioritise(void const *one, void const *two)
 	return (a->recv_time > b->recv_time) - (a->recv_time < b->recv_time);
 }
 
-static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
+static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, udp_handle_t *h)
 {
-	rlm_radius_udp_t const	*inst = h->inst;
 	ssize_t			packet_len;
 	uint8_t			*msg = NULL;
 	int			message_authenticator = u->require_ma * (RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2);
 	int			proxy_state = 6;
 	char const		*module_name;
-	bool			can_retransmit = true;
 
 	rad_assert(inst->parent->allowed[u->code] || (u == h->status_u));
+	rad_assert(u->packet == NULL);
+
+	/*
+	 *	This is essentially free, as this memory was
+	 *	pre-allocated as part of the treq.
+	 */
+	u->packet_len = inst->max_packet_size;
+	MEM(u->packet = talloc_array(u, uint8_t, u->packet_len));
 
 	/*
 	 *	All proxied Access-Request packets MUST have a
@@ -681,8 +687,10 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	 *	And we set the authentication vector to a random
 	 *	number...
 	 */
-	if ((u->code == FR_CODE_ACCESS_REQUEST) ||
-	    (u->code == FR_CODE_STATUS_SERVER)) {
+	switch (u->code) {
+	case FR_CODE_ACCESS_REQUEST:
+	case FR_CODE_STATUS_SERVER:
+	{
 		size_t i;
 		uint32_t hash, base;
 
@@ -691,9 +699,13 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		base = fr_rand();
 		for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i += sizeof(uint32_t)) {
 			hash = fr_rand() ^ base;
-			memcpy(h->buffer + 4 + i, &hash, sizeof(hash));
+			memcpy(u->packet + 4 + i, &hash, sizeof(hash));
 		}
 	}
+	default:
+		break;
+	}
+
 
 	/*
 	 *	If we're sending a status check packet, update any
@@ -707,7 +719,6 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY);
 		if (vp) {
 			vp->vp_date = fr_time_to_unix_time(u->retry.updated);
-			can_retransmit = false;
 		}
 	}
 
@@ -715,13 +726,13 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	 *	We should have at mininum 64-byte packets, so don't
 	 *	bother doing run-time checks here.
 	 */
-	rad_assert(h->buflen >= (size_t) (20 + proxy_state + message_authenticator));
+	rad_assert(u->packet_len >= (size_t) (20 + proxy_state + message_authenticator));
 
 	/*
 	 *	Encode it, leaving room for Proxy-State and
 	 *	Message-Authenticator if necessary.
 	 */
-	packet_len = fr_radius_encode(h->buffer, h->buflen - proxy_state - message_authenticator, NULL,
+	packet_len = fr_radius_encode(u->packet, u->packet_len - proxy_state - message_authenticator, NULL,
 				      inst->secret, talloc_array_length(inst->secret) - 1, u->code, u->rr->id,
 				      request->packet->vps);
 	if (packet_len <= 0) return -1;
@@ -753,12 +764,12 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	 *	the buflen manipulation done above.
 	 */
 	if (proxy_state && !inst->parent->originate) {
-		uint8_t		*attr = h->buffer + packet_len;
+		uint8_t		*attr = u->packet + packet_len;
 		VALUE_PAIR	*vp;
 		vp_cursor_t	cursor;
 		int		count = 0;
 
-		rad_assert((size_t) (packet_len + proxy_state) <= h->buflen);
+		rad_assert((size_t) (packet_len + proxy_state) <= u->packet_len);
 
 		/*
 		 *	Count how many Proxy-State attributes have
@@ -801,9 +812,9 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	 *	the buflen manipulation done above.
 	 */
 	if (message_authenticator) {
-		rad_assert((size_t) (packet_len + message_authenticator) <= h->buflen);
+		rad_assert((size_t) (packet_len + message_authenticator) <= u->packet_len);
 
-		msg = h->buffer + packet_len;
+		msg = u->packet + packet_len;
 
 		msg[0] = (uint8_t) attr_message_authenticator->attr;
 		msg[1] = RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2;
@@ -815,8 +826,8 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	/*
 	 *	Update the packet header based on the new attributes.
 	 */
-	h->buffer[2] = (packet_len >> 8) & 0xff;
-	h->buffer[3] = packet_len & 0xff;
+	u->packet[2] = (packet_len >> 8) & 0xff;
+	u->packet[3] = packet_len & 0xff;
 
 	/*
 	 *	Ensure that we update the Acct-Delay-Time based on the
@@ -836,9 +847,9 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 		 *	update the encoded version of Acct-Delay-Time.
 		 *	So we just walk through the packet to find it.
 		 */
-		end = h->buffer + packet_len;
+		end = u->packet + packet_len;
 
-		for (attr = h->buffer + 20;
+		for (attr = u->packet + 20;
 		     attr < end;
 		     attr += attr[1]) {
 			if (attr[0] != attr_acct_delay_time->attr) continue;
@@ -856,8 +867,6 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 			delay += fr_time_delta_to_sec(now - u->recv_time);
 			delay = htonl(delay);
 			memcpy(attr + 2, &delay, 4);
-
-			can_retransmit = false;
 			break;
 		}
 	}
@@ -865,7 +874,7 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	/*
 	 *	Now that we're done mangling the packet, sign it.
 	 */
-	if (fr_radius_sign(h->buffer, NULL, (uint8_t const *) inst->secret,
+	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->secret,
 			   talloc_array_length(inst->secret) - 1) < 0) {
 		request->module = module_name;
 		RERROR("Failed signing packet");
@@ -876,24 +885,16 @@ static int encode(REQUEST *request, udp_request_t *u, udp_handle_t *h)
 	 *	Remember the authentication vector, which now has the
 	 *	packet signature.
 	 */
-	(void) radius_track_update(h->tt, u->rr, h->buffer + 4);
+	(void) radius_track_update(h->tt, u->rr, u->packet + 4);
 
 	RDEBUG("Sending %s ID %d length %ld over connection %s",
 	       fr_packet_codes[u->code], u->rr->id, packet_len, h->name);
 	log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 	if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
 
-	RHEXDUMP3(h->buffer, packet_len, "Encoded packet");
+	RHEXDUMP3(u->packet, packet_len, "Encoded packet");
 
 	request->module = module_name;
-
-	/*
-	 *	Save the packet if we can retransmit it.
-	 */
-	if (can_retransmit) {
-		MEM(u->packet = talloc_memdup(u, h->buffer, packet_len));
-		u->packet_len = packet_len;
-	}
 
 	return 0;
 }
@@ -961,12 +962,12 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		/*
 		 *	Encode the packet.
 		 */
-		if (encode(h->status_request, u, h) < 0) {
+		if (encode(h->inst, h->status_request, u, h) < 0) {
 			DEBUG("Failed encoding status check packet for connection %s", h->name);
 			goto fail;
 		}
-		packet_len = (h->buffer[2] << 8) | h->buffer[3];
-		packet = h->buffer;
+		packet_len = (u->packet[2] << 8) | u->packet[3];
+		packet = u->packet;
 	} else {
 
 		packet = u->packet;
@@ -1276,14 +1277,14 @@ static void request_mux(fr_event_list_t *el,
 		/*
 		 *	Encode the request.
 		 */
-		if (encode(request, u, h) < 0) {
+		if (encode(h->inst, request, u, h) < 0) {
 		fail_after_alloc:
 			udp_request_clear(u, h, 0);
 			if (u->ev) (void) fr_event_timer_delete(&u->ev);
 			goto fail;
 		}
 
-		if (write_packet(el, treq, h->buffer, (h->buffer[2] << 8) | h->buffer[3]) < 0) goto fail_after_alloc;
+		if (write_packet(el, treq, u->packet, (u->packet[2] << 8) | u->packet[3]) < 0) goto fail_after_alloc;
 		fr_trunk_request_signal_sent(treq);
 
 
@@ -2031,6 +2032,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	udp_thread_t *thread = talloc_get_type_abort(tctx, udp_thread_t);
 
 	inst->trunk_conf = &inst->parent->trunk_conf;
+
+	inst->trunk_conf->req_pool_headers = 2;	/* One for the request, one for the buffer */
+	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size;
 
 	thread->el = el;
 	thread->inst = inst;
