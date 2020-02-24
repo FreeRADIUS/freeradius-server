@@ -145,6 +145,9 @@ struct udp_request_s {
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 
+	uint8_t			*authenticator;		//!< Pointer into packet at the location of the
+							///< authenticator.
+
 	udp_connection_t       	*c;			//!< The outbound connection
 	radius_track_entry_t	*rr;			//!< ID tracking, resend count, etc.
 	fr_event_timer_t const	*ev;			//!< timer for retransmissions
@@ -661,16 +664,25 @@ static int8_t request_prioritise(void const *one, void const *two)
 	return (a->recv_time > b->recv_time) - (a->recv_time < b->recv_time);
 }
 
-static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, udp_handle_t *h)
+static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, uint8_t id)
 {
 	ssize_t			packet_len;
 	uint8_t			*msg = NULL;
 	int			message_authenticator = u->require_ma * (RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2);
 	int			proxy_state = 6;
-	char const		*module_name;
 
-	rad_assert(inst->parent->allowed[u->code] || (u == h->status_u));
+	rad_assert(inst->parent->allowed[u->code]);
 	rad_assert(u->packet == NULL);
+
+	/*
+	 *	Might have been sent and then given up on... free the
+	 *	raw data so we can re-encode it.
+	 */
+	if (u->packet) {
+		talloc_free(u->packet);
+		fr_pair_list_free(&u->extra);
+		u->authenticator = NULL;
+	}
 
 	/*
 	 *	This is essentially free, as this memory was
@@ -701,6 +713,8 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 			hash = fr_rand() ^ base;
 			memcpy(u->packet + 4 + i, &hash, sizeof(hash));
 		}
+
+		u->authenticator = u->packet + 4;
 	}
 	default:
 		break;
@@ -712,7 +726,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	necessary timestamps.  Also, don't add Proxy-State, as
 	 *	we're originating the packet.
 	 */
-	if (u == h->status_u) {
+	if (u->code == FR_CODE_STATUS_SERVER) {
 		VALUE_PAIR *vp;
 
 		proxy_state = 0;
@@ -732,25 +746,10 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	Encode it, leaving room for Proxy-State and
 	 *	Message-Authenticator if necessary.
 	 */
-	packet_len = fr_radius_encode(u->packet, u->packet_len - proxy_state - message_authenticator, NULL,
-				      inst->secret, talloc_array_length(inst->secret) - 1, u->code, u->rr->id,
-				      request->packet->vps);
+	packet_len = fr_radius_encode(u->packet, u->packet_len - (proxy_state + message_authenticator), NULL,
+				      inst->secret, talloc_array_length(inst->secret) - 1,
+				      u->code, id, request->packet->vps);
 	if (packet_len <= 0) return -1;
-
-	/*
-	 *	This hack cleans up the debug output a bit.
-	 */
-	module_name = request->module;
-	request->module = NULL;
-
-	/*
-	 *	Might have been sent and then given up on... free the
-	 *	raw data so we can re-encode it.
-	 */
-	if (u->packet) {
-		TALLOC_FREE(u->packet);
-		fr_pair_list_free(&u->extra);
-	}
 
 	/*
 	 *	Add Proxy-State to the tail end of the packet unless we are
@@ -876,25 +875,11 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 */
 	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->secret,
 			   talloc_array_length(inst->secret) - 1) < 0) {
-		request->module = module_name;
 		RERROR("Failed signing packet");
 		return -1;
 	}
 
-	/*
-	 *	Remember the authentication vector, which now has the
-	 *	packet signature.
-	 */
-	(void) radius_track_update(h->tt, u->rr, u->packet + 4);
-
-	RDEBUG("Sending %s ID %d length %ld over connection %s",
-	       fr_packet_codes[u->code], u->rr->id, packet_len, h->name);
-	log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
-	if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
-
-	RHEXDUMP3(u->packet, packet_len, "Encoded packet");
-
-	request->module = module_name;
+	u->packet_len = packet_len;
 
 	return 0;
 }
@@ -962,12 +947,21 @@ static void status_check_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		/*
 		 *	Encode the packet.
 		 */
-		if (encode(h->inst, h->status_request, u, h) < 0) {
+		if (encode(h->inst, h->status_request, u, u->rr->id) < 0) {
 			DEBUG("Failed encoding status check packet for connection %s", h->name);
 			goto fail;
 		}
 		packet_len = (u->packet[2] << 8) | u->packet[3];
 		packet = u->packet;
+
+		/*
+		 *	Remember the authentication vector, which now has the
+		 *	packet signature.
+		 */
+		(void) radius_track_update(h->tt, u->rr, u->authenticator);
+
+		DEBUG("Sending %s ID %d length %ld over connection %s",
+		      fr_packet_codes[u->code], u->rr->id, packet_len, h->name);
 	} else {
 
 		packet = u->packet;
@@ -1252,9 +1246,14 @@ static void request_mux(fr_event_list_t *el,
 		request = treq->request;
 
 		/*
-		 *	If it's an initial packet, allocate the ID.
+		 *	No existing packet, create it...
 		 */
-		if (!u->rr) {
+		if (!u->packet) {
+			rad_assert(!u->rr);
+
+			RDEBUG("Sending %s ID %d length %ld over connection %s",
+			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
+
 			u->rr = radius_track_entry_alloc(h->tt, request, u->code, treq);
 			if (!u->rr) {
 			fail:
@@ -1262,31 +1261,30 @@ static void request_mux(fr_event_list_t *el,
 				fr_trunk_request_signal_fail(treq);
 				continue;
 			}
+
+			if (encode(h->inst, request, u, u->rr->id) < 0) {
+			fail_after_alloc:
+				udp_request_clear(u, h, 0);
+				if (u->ev) (void) fr_event_timer_delete(&u->ev);
+				goto fail;
+			}
+			RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
+
+			/*
+			 *	Remember the authentication vector, which now has the
+			 *	packet signature.
+			 */
+			(void) radius_track_update(h->tt, u->rr, u->authenticator);
+		} else {
+			RDEBUG("Retransmitting %s ID %d length %ld over connection %s",
+			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
 		}
 
+		log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+		if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
 
-		/*
-		 *	If it's a retransmission, then just call write().
-		 */
-		if (u->packet) {
-			if (write_packet(el, treq, u->packet, u->packet_len) < 0) goto fail_after_alloc;
-			fr_trunk_request_signal_sent(treq);
-			continue;
-		}
-
-		/*
-		 *	Encode the request.
-		 */
-		if (encode(h->inst, request, u, h) < 0) {
-		fail_after_alloc:
-			udp_request_clear(u, h, 0);
-			if (u->ev) (void) fr_event_timer_delete(&u->ev);
-			goto fail;
-		}
-
-		if (write_packet(el, treq, u->packet, (u->packet[2] << 8) | u->packet[3]) < 0) goto fail_after_alloc;
+		if (write_packet(el, treq, u->packet, u->packet_len) < 0) goto fail_after_alloc;
 		fr_trunk_request_signal_sent(treq);
-
 
 		/*
 		 *	We're replicating, so we don't care about the
