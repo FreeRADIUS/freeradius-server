@@ -1243,7 +1243,13 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_trunk_request_requeue(treq);
 }
 
-
+/** Attempt to write a packet to a connection
+ *
+ * @return
+ *	- 0 on success.
+ *	- 1 if no outbound buffer space available.
+ *	- -1 on connection error.
+ */
 static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t const *packet, size_t packet_len)
 {
 	char const		*action;
@@ -1294,9 +1300,14 @@ static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t c
 
 	slen = write(h->fd, packet, packet_len);
 	if (slen < 0) {
-		// @todo - handle EWOULDBLOCK
-		REDEBUG("Failed writing packet to %s - %s", h->name, fr_syserror(errno));
-		return -1;
+		switch (errno) {
+		case EWOULDBLOCK:
+			return 1;
+
+		default:
+			REDEBUG("Failed writing packet to %s - %s", h->name, fr_syserror(errno));
+			return -1;
+		}
 	}
 	rad_assert((size_t) slen == packet_len);	/* Should never get partial writes with UDP */
 
@@ -1340,7 +1351,6 @@ static void request_mux(fr_event_list_t *el,
 			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
 
 			if (encode(h->inst, request, u, u->rr->id, false) < 0) {
-			fail_after_alloc:
 				udp_request_clear(u, h, 0);
 				if (u->ev) (void) fr_event_timer_delete(&u->ev);
 				goto fail;
@@ -1360,14 +1370,24 @@ static void request_mux(fr_event_list_t *el,
 		log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 		if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
 
-		if (write_packet(el, treq, u->packet, u->packet_len) < 0) goto fail_after_alloc;
-		fr_trunk_request_signal_sent(treq);
+		switch (write_packet(el, treq, u->packet, u->packet_len)) {
+		case 0:
+			break;
+
+		case 1:	/* no space - save encoded packet for later */
+			return;
+
+		case -1:
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+			return;
+		}
 
 		/*
 		 *	Tell the trunk API that this request is now in
 		 *	the "sent" state.  And we don't want to see
 		 *	this request again.
 		 */
+		fr_trunk_request_signal_sent(treq);
 		u->c = c;
 
 		// @todo - if there are no free IDs, call fr_trunk_connection_requests_requeue()
