@@ -238,7 +238,7 @@ struct fr_event_fd {
 
 	fr_event_fd_type_t	type;			//!< Type of events we're interested in.
 
-	int                     sock_type;              //!< The type of socket SOCK_STREAM, SOCK_RAW etc...
+	int			sock_type;		//!< The type of socket SOCK_STREAM, SOCK_RAW etc...
 
 	fr_event_funcs_t	active;			//!< Active filter functions.
 	fr_event_funcs_t	stored;			//!< Stored (set, but inactive) filter functions.
@@ -1628,25 +1628,24 @@ void fr_event_service(fr_event_list_t *el)
 		ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
 		if (!ef->is_registered) continue;	/* Was deleted between corral and service */
 
+		if (unlikely(flags & EV_ERROR)) {
+			fd_errno = el->events[i].data;
+		ev_error:
+			/*
+			 *      Call the error handler
+			 */
+			if (ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
+			TALLOC_FREE(ef);
+			continue;
+		}
 
-                if (unlikely(flags & EV_ERROR)) {
-                	fd_errno = el->events[i].data;
-                ev_error:
-                        /*
-                         *      Call the error handler
-                         */
-                        if (ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
-                        TALLOC_FREE(ef);
-                        continue;
-                }
-
-                /*
-                 *      EOF can indicate we've actually reached
-                 *      the end of a file, but for sockets it usually
-                 *      indicates the other end of the connection
-                 *      has gone away.
-                 */
-                if (flags & EV_EOF) {
+		/*
+		 *      EOF can indicate we've actually reached
+		 *      the end of a file, but for sockets it usually
+		 *      indicates the other end of the connection
+		 *      has gone away.
+		 */
+		if (flags & EV_EOF) {
 			/*
 			 *	This is fine, the callback will get notified
 			 *	via the flags field.
@@ -1671,7 +1670,7 @@ void fr_event_service(fr_event_list_t *el)
 			fd_errno = el->events[i].fflags;
 
 			goto ev_error;
-                }
+		}
 
 service:
 		/*
