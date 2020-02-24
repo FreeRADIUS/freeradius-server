@@ -1823,7 +1823,6 @@ redo:
 	treq = read_packet(h, c);
 	if (!treq) return;
 
-	// decode the packet, and do funky stuff with it.
 	treq->request->reply->code = h->buffer[0];
 	fr_trunk_request_signal_complete(treq);
 

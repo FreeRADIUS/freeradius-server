@@ -614,25 +614,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->allowed[code] = true;
 	}
 
+	rad_assert(inst->status_check > 0);
 	rad_assert(inst->status_check < FR_RADIUS_MAX_PACKET_CODE);
-
-	/*
-	 *	If we have status_check = packet, then 'packet' MUST either be
-	 *	Status-Server, or it MUST be one of the allowed packet types for this connection.
-	 */
-	if (inst->status_check && inst->status_check != FR_CODE_STATUS_SERVER) {
-		if (!inst->allowed[inst->status_check]) {
-			cf_log_err(conf, "Using 'status_check = %s' requires also 'type = %s'",
-				   fr_packet_codes[inst->status_check], fr_packet_codes[inst->status_check]);
-			return -1;
-		}
-
-		/*
-		 *	@todo - check the contents of the "update"
-		 *	section, to be sure that (e.g.) Access-Request
-		 *	contains User-Name, etc.
-		 */
-	}
 
 	/*
 	 *	If we're replicating, we don't care if the other end
@@ -642,6 +625,30 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'replicate = true'",
 			    fr_packet_codes[inst->status_check]);
 		inst->status_check = 0;
+	}
+
+
+	/*
+	 *	If we have status checks, then do some sanity checks.
+	 *	Status-Server is always allowed.  Otherwise, the
+	 *	status checks have to match one of the allowed
+	 *	packets.
+	 */
+	if (inst->status_check) {
+		if (inst->status_check == FR_CODE_STATUS_SERVER) {
+			inst->allowed[inst->status_check] = true;
+
+		} else if (!inst->allowed[inst->status_check]) {
+			cf_log_err(conf, "Using 'status_check = %s' requires also 'type = %s'",
+				   fr_packet_codes[inst->status_check], fr_packet_codes[inst->status_check]);
+			return -1;
+		}
+	
+		/*
+		 *	@todo - check the contents of the "update"
+		 *	section, to be sure that (e.g.) Access-Request
+		 *	contains User-Name, etc.
+		 */
 	}
 
 	/*
