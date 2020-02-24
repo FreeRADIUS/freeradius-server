@@ -1331,7 +1331,7 @@ post_option:
 	 *	Some protocols don't need them, so it's OK if the
 	 *	validation routines don't exist.
 	 */
-	if (require_dl && (dict_dlopen(dict, argv[0]) < 0)) {
+	if ((dict_dlopen(dict, argv[0]) < 0) && require_dl) {
 	error:
 		talloc_free(dict);
 		return -1;
