@@ -633,9 +633,17 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 	}
 
 	switch (notify_on) {
+		/*
+		 *	We may have sent multiple requests to the
+		 *	other end, so it might be sending us multiple
+		 *	replies.  We want to drain the socket, instead
+		 *	of letting the packets sit in the UDP receive
+		 *	queue.
+		 */
 	case FR_TRUNK_CONN_EVENT_NONE:
-		fr_event_fd_delete(el, h->fd, FR_EVENT_FILTER_IO);
-		return;
+		read_fn = conn_discard;
+		write_fn = NULL;
+		break;
 
 	case FR_TRUNK_CONN_EVENT_READ:
 		read_fn = conn_readable;
