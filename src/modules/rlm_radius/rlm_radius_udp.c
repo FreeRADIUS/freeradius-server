@@ -1966,6 +1966,7 @@ static void mod_signal(UNUSED void *instance, void *thread, UNUSED REQUEST *requ
 	 */
 	case FR_SIGNAL_CANCEL:
 		fr_trunk_request_signal_cancel(r->treq);
+		talloc_free(rctx);	/* Should be freed soon anyway, but better to be explicit */
 		return;
 
 	/*
