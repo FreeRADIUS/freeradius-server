@@ -1858,7 +1858,10 @@ redo:
 	goto redo;
 }
 
-
+/** Remove the request from any tracking structures
+ *
+ * Frees encoded packets if the request is being moved to a new connection
+ */
 static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 			   fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
@@ -1916,22 +1919,73 @@ static void request_fail(REQUEST *request, UNUSED void *preq, void *rctx, UNUSED
 	unlang_interpret_resumable(request);
 }
 
+/** Mark the request as resumable
+ *
+ */
 static void request_complete(REQUEST *request, UNUSED void *preq, UNUSED void *rctx, UNUSED void *uctx)
 {
 	unlang_interpret_resumable(request);
 }
 
-static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *ctx)
+/** Explicitly free resources associated with the protocol request
+ *
+ */
+static void request_free(UNUSED REQUEST *request, void *preq_to_free, UNUSED void *uctx)
 {
-	udp_result_t	*r = talloc_get_type_abort(ctx, udp_result_t);
+	udp_request_t		*u = talloc_get_type_abort(preq_to_free, udp_request_t);
 
-	return r->rcode;
+	rad_assert(u->rr == NULL);
+
+	talloc_free(u->packet);
+	talloc_free(u);
 }
 
+/** Resume execution of the request, returning the rcode set during trunk execution
+ *
+ */
+static rlm_rcode_t mod_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *rctx)
+{
+	udp_result_t	*r = talloc_get_type_abort(rctx, udp_result_t);
+	rlm_rcode_t	rcode = r->rcode;
+
+	talloc_free(rctx);
+
+	return rcode;
+}
+
+static void mod_signal(UNUSED void *instance, void *thread, UNUSED REQUEST *request,
+		       void *rctx, fr_state_signal_t action)
+{
+	udp_thread_t		*t = talloc_get_type_abort(thread, udp_thread_t);
+	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+
+	switch (action) {
+	/*
+	 *	The request is being cancelled, tell the
+	 *	trunk so it can clean up the treq.
+	 */
+	case FR_SIGNAL_CANCEL:
+		fr_trunk_request_signal_cancel(r->treq);
+		return;
+
+	/*
+	 *	Requeue the request on the same connection
+	 *      causing a "retransmission" if the request
+	 *	has already been sent out.
+	 */
+	case FR_SIGNAL_DUP:
+		fr_trunk_request_requeue(r->treq);
+		check_for_zombie(t->el, r->treq->tconn, 0);
+		return;
+
+	default:
+		return;
+	}
+}
 
 /** Free a udp_request_t
  */
-static int udp_request_free(udp_request_t *u)
+static int _udp_request_free(udp_request_t *u)
 {
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
@@ -2012,70 +2066,62 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 	}
 
 	r->treq = treq;	/* Remember for signalling purposes */
-	talloc_set_destructor(u, udp_request_free);
+	talloc_set_destructor(u, _udp_request_free);
 
 	*rctx_out = r;
 
 	return RLM_MODULE_YIELD;
 }
 
-
-static void mod_signal(UNUSED void *instance, void *thread, UNUSED REQUEST *request,
-		       void *rctx, fr_state_signal_t action)
-{
-	udp_thread_t		*t = talloc_get_type_abort(thread, udp_thread_t);
-	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
-
-	switch (action) {
-	/*
-	 *	The request is being cancelled, tell the
-	 *	trunk so it can clean up the treq.
-	 */
-	case FR_SIGNAL_CANCEL:
-		fr_trunk_request_signal_cancel(r->treq);
-		return;
-
-	/*
-	 *	Requeue the request on the same connection
-	 *      causing a "retransmission" if the request
-	 *	has already been sent out.
-	 */
-	case FR_SIGNAL_DUP:
-		fr_trunk_request_requeue(r->treq);
-		check_for_zombie(t->el, r->treq->tconn, 0);
-		return;
-
-	default:
-		return;
-	}
-}
-
-/** Bootstrap the module
+/** Instantiate thread data for the submodule.
  *
- * Bootstrap I/O and type submodules.
- *
- * @param[in] instance	Ctx data for this module
- * @param[in] conf    our configuration section parsed to give us instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *tctx)
 {
-	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+	udp_thread_t			*thread = talloc_get_type_abort(tctx, udp_thread_t);
 
-	(void) talloc_set_type(inst, rlm_radius_udp_t);
-	inst->config = conf;
+	static fr_trunk_io_funcs_t	io_funcs = {
+						.connection_alloc = thread_conn_alloc,
+						.connection_notify = thread_conn_notify,
+						.request_prioritise = request_prioritise,
+						.request_mux = request_mux,
+						.request_demux = request_demux,
+						.request_complete = request_complete,
+						.request_fail = request_fail,
+						.request_cancel = request_cancel,
+						.request_free = request_free
+					};
+
+	static fr_trunk_io_funcs_t	io_funcs_replicate = {
+						.connection_alloc = thread_conn_alloc,
+						.connection_notify = thread_conn_notify_replicate,
+						.request_prioritise = request_prioritise,
+						.request_mux = request_mux_replicate,
+						.request_complete = request_complete,
+						.request_fail = request_fail,
+						.request_free = request_free
+					};
+
+	inst->trunk_conf = &inst->parent->trunk_conf;
+
+	inst->trunk_conf->req_pool_headers = 2;	/* One for the request, one for the buffer */
+	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size;
+
+	thread->el = el;
+	thread->inst = inst;
+	thread->trunk = fr_trunk_alloc(thread, el, inst->replicate ? &io_funcs_replicate : &io_funcs,
+				       inst->trunk_conf, inst->parent->name, thread, false);
+	if (!thread->trunk) return -1;
 
 	return 0;
 }
-
 
 /** Instantiate the module
  *
  * Instantiate I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this module
+ * @param[in] instance	data for this module
  * @param[in] conf	our configuration section parsed to give us instance.
  * @return
  *	- 0 on success.
@@ -2154,50 +2200,25 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-/** Instantiate thread data for the submodule.
+/** Bootstrap the module
  *
+ * Bootstrap I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this module
+ * @param[in] conf    our configuration section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *tctx)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_thread_t			*thread = talloc_get_type_abort(tctx, udp_thread_t);
+	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 
-	static fr_trunk_io_funcs_t	io_funcs = {
-						.connection_alloc = thread_conn_alloc,
-						.connection_notify = thread_conn_notify,
-						.request_prioritise = request_prioritise,
-						.request_mux = request_mux,
-						.request_demux = request_demux,
-						.request_complete = request_complete,
-						.request_fail = request_fail,
-						.request_cancel = request_cancel,
-					};
-
-	static fr_trunk_io_funcs_t	io_funcs_replicate = {
-						.connection_alloc = thread_conn_alloc,
-						.connection_notify = thread_conn_notify_replicate,
-						.request_prioritise = request_prioritise,
-						.request_mux = request_mux_replicate,
-						.request_demux = NULL,
-						.request_complete = request_complete,
-						.request_fail = request_fail,
-						.request_cancel = NULL,
-					};
-
-	inst->trunk_conf = &inst->parent->trunk_conf;
-
-	inst->trunk_conf->req_pool_headers = 2;	/* One for the request, one for the buffer */
-	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size;
-
-	thread->el = el;
-	thread->inst = inst;
-	thread->trunk = fr_trunk_alloc(thread, el, inst->replicate ? &io_funcs_replicate : &io_funcs,
-				       inst->trunk_conf, inst->parent->name, thread, false);
-	if (!thread->trunk) return -1;
+	(void) talloc_set_type(inst, rlm_radius_udp_t);
+	inst->config = conf;
 
 	return 0;
 }
-
 
 extern rlm_radius_io_t rlm_radius_udp;
 rlm_radius_io_t rlm_radius_udp = {
@@ -2215,5 +2236,5 @@ rlm_radius_io_t rlm_radius_udp = {
 
 	.enqueue		= mod_enqueue,
 	.signal			= mod_signal,
-	.resume			= request_resume,
+	.resume			= mod_resume,
 };
