@@ -41,27 +41,6 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #include <unistd.h>
 
-#ifdef HAVE_DIRENT_H
-#  include <dirent.h>
-/*
- *	Some versions of Linux don't have closefrom(), but they will
- *	have /proc.
- *
- *	BSD systems will generally have closefrom(), but not proc.
- *
- *	OSX doesn't have closefrom() or /proc/self/fd, but it does
- *	have /dev/fd
- */
-#  ifdef __linux__
-#    define CLOSEFROM_DIR "/proc/self/fd"
-#  elif defined(__APPLE__)
-#    define CLOSEFROM_DIR "/dev/fd"
-#  else
-#    undef HAVE_DIRENT_H
-#  endif
-#endif
-
-
 #define FR_PUT_LE16(a, val)\
 	do {\
 		a[1] = ((uint16_t) (val)) >> 8;\
@@ -334,80 +313,6 @@ char *fr_trim(char const *str, size_t size)
 
 	return q;
 }
-
-/*
- *	So we don't have ifdef's in the rest of the code
- */
-#ifndef HAVE_CLOSEFROM
-int closefrom(int fd)
-{
-	int i;
-	int maxfd = 256;
-#ifdef HAVE_DIRENT_H
-	DIR *dir;
-#endif
-
-#ifdef F_CLOSEM
-	if (fcntl(fd, F_CLOSEM) == 0) {
-		return 0;
-	}
-#endif
-
-#ifdef F_MAXFD
-	maxfd = fcntl(fd, F_F_MAXFD);
-	if (maxfd >= 0) goto do_close;
-#endif
-
-#ifdef _SC_OPEN_MAX
-	maxfd = sysconf(_SC_OPEN_MAX);
-	if (maxfd < 0) {
-		maxfd = 256;
-	}
-#endif
-
-#ifdef HAVE_DIRENT_H
-	/*
-	 *	Use /proc/self/fd directory if it exists.
-	 */
-	dir = opendir(CLOSEFROM_DIR);
-	if (dir != NULL) {
-		long my_fd;
-		char *endp;
-		struct dirent *dp;
-
-		while ((dp = readdir(dir)) != NULL) {
-			my_fd = strtol(dp->d_name, &endp, 10);
-			if (my_fd <= 0) continue;
-
-			if (*endp) continue;
-
-			if (my_fd == dirfd(dir)) continue;
-
-			if ((my_fd >= fd) && (my_fd <= maxfd)) {
-				(void) close((int) my_fd);
-			}
-		}
-		(void) closedir(dir);
-		return 0;
-	}
-#endif
-
-#ifdef F_MAXFD
-do_close:
-#endif
-
-	if (fd > maxfd) return 0;
-
-	/*
-	 *	FIXME: return EINTR?
-	 */
-	for (i = fd; i < maxfd; i++) {
-		close(i);
-	}
-
-	return 0;
-}
-#endif
 
 #ifdef O_NONBLOCK
 /** Set O_NONBLOCK on a socket
