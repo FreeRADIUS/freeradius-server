@@ -1735,8 +1735,6 @@ void fr_trunk_request_free(fr_trunk_request_t *treq)
 	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
 	case FR_TRUNK_REQUEST_STATE_COMPLETE:
 	case FR_TRUNK_REQUEST_STATE_FAILED:
-		break;
-
 	case FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE:
 		break;
 
@@ -1745,7 +1743,8 @@ void fr_trunk_request_free(fr_trunk_request_t *treq)
 	}
 
 	/*
-	 *	Finally, free the protocol request.
+	 *	Call the API client callback to free
+	 *	any associated memory.
 	 */
 	DO_REQUEST_FREE(treq);
 
@@ -1775,6 +1774,12 @@ void fr_trunk_request_free(fr_trunk_request_t *treq)
 	treq->pub.rctx = NULL;
 	treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
 	treq->last_freed = fr_time();
+
+	/*
+	 *	Ensure anything parented off the treq
+	 *	is freed.
+	 */
+	talloc_free_children(treq);
 
 	/*
 	 *	Insert at the head, so that we can free
