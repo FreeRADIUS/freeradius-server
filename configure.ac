@@ -1529,6 +1529,8 @@ AC_CHECK_FUNCS( \
   mkdirat \
   openat \
   pthread_sigmask \
+  recvmmsg \
+  sendmmsg \
   setlinebuf \
   setresuid \
   setsid \

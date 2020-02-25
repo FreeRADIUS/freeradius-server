@@ -496,3 +496,48 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 	return NULL;		/* don't support IPv6 */
 }
 #endif
+
+#ifndef HAVE_SENDMMSG
+/** Emulates the real sendmmsg in userland
+ *
+ * The idea behind the proper sendmmsg in FreeBSD and Linux is that multiple
+ * datagram messages can be sent using a single system call.
+ *
+ * This function doesn't achieve that, but it does reduce ifdefs elsewhere
+ * and means we can batch encoding/sending operations.
+ *
+ * @param[in] sockfd	to write packets to.
+ * @param[in] msgvec	a pointer to an array of mmsghdr structures.
+ *			The size of this array is specified in vlen.
+ * @param[in] vlen	Length of msgvec.
+ * @param[in] flags	same as for sendmsg(2).
+ * @return
+ *	- >= 0 The number of messages sent.  Check against vlen to determine
+ *	  if overall operation was successful.
+ *	- < 0 on error.  Only returned if first operation errors.
+ */
+int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags)
+{
+	unsigned int i;
+
+	for (i = 0; i < vlen; i++) {
+     		ssize_t slen;
+
+		slen = sendmsg(sockfd, &msgvec[i].msg_hdr, flags);
+		if (slen < 0) {
+			msgvec[i].msg_len = 0;
+
+			/*
+			 * man sendmmsg - Errors are as for sendmsg(2).
+			 * An error is returned only if no datagrams could
+			 * be sent.  See also BUGS.
+			 */
+			if (i == 0) return -1;
+			return i;
+		}
+		msgvec[i].msg_len = (unsigned int)slen;	/* Number of bytes sent */
+	}
+
+	return i;
+}
+#endif

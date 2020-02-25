@@ -332,6 +332,9 @@
 /* Define to 1 if you have the <readline/readline.h> header file. */
 #undef HAVE_READLINE_READLINE_H
 
+/* Define to 1 if you have the `recvmmsg' function. */
+#undef HAVE_RECVMMSG
+
 /* Define if we have any regular expression library */
 #undef HAVE_REGEX
 
@@ -361,6 +364,9 @@
 
 /* Define to 1 if you have the <semaphore.h> header file. */
 #undef HAVE_SEMAPHORE_H
+
+/* Define to 1 if you have the `sendmmsg' function. */
+#undef HAVE_SENDMMSG
 
 /* Define to 1 if you have the `setlinebuf' function. */
 #undef HAVE_SETLINEBUF
