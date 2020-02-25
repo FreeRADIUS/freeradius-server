@@ -1091,6 +1091,7 @@ static void trunk_request_enter_complete(fr_trunk_request_t *treq)
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_STATE_SENT:
+	case FR_TRUNK_REQUEST_STATE_PENDING:
 		trunk_request_remove_from_conn(treq);
 		break;
 
@@ -1504,6 +1505,8 @@ uint64_t fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int 
  */
 void fr_trunk_request_signal_partial(fr_trunk_request_t *treq)
 {
+	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
+
 	if (!fr_cond_assert_msg(IN_REQUEST_MUX(treq->pub.trunk),
 				"%s can only be called from within request_mux handler", __FUNCTION__)) return;
 
@@ -1523,6 +1526,8 @@ void fr_trunk_request_signal_partial(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_sent(fr_trunk_request_t *treq)
 {
+	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
+
 	if (!fr_cond_assert_msg(IN_REQUEST_MUX(treq->pub.trunk),
 				"%s can only be called from within request_mux handler", __FUNCTION__)) return;
 
@@ -1543,6 +1548,8 @@ void fr_trunk_request_signal_sent(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_complete(fr_trunk_request_t *treq)
 {
+	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
+
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_STATE_SENT:
 	case FR_TRUNK_REQUEST_STATE_PENDING:	/* Got immediate response, i.e. cached */
@@ -1560,6 +1567,8 @@ void fr_trunk_request_signal_complete(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_fail(fr_trunk_request_t *treq)
 {
+	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
+
 	trunk_request_enter_failed(treq);
 }
 
@@ -1572,10 +1581,14 @@ void fr_trunk_request_signal_fail(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 {
-	fr_trunk_t	*trunk = treq->pub.trunk;
+	fr_trunk_t	*trunk;
+
+	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
 
 	if (!fr_cond_assert_msg(!IN_HANDLER(treq->pub.trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return;
+
+ 	trunk = treq->pub.trunk;
 
 	switch (treq->state) {
 	/*
@@ -1639,6 +1652,8 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_cancel_partial(fr_trunk_request_t *treq)
 {
+	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
+
 	if (!fr_cond_assert_msg(IN_REQUEST_CANCEL_MUX(treq->pub.trunk),
 				"%s can only be called from within request_cancel_mux handler", __FUNCTION__)) return;
 
@@ -1661,6 +1676,8 @@ void fr_trunk_request_signal_cancel_partial(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq)
 {
+	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
+
 	if (!fr_cond_assert_msg(IN_REQUEST_CANCEL_MUX(treq->pub.trunk),
 				"%s can only be called from within request_cancel_mux handler", __FUNCTION__)) return;
 
@@ -1683,6 +1700,8 @@ void fr_trunk_request_signal_cancel_sent(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq)
 {
+	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
+
 	if (!fr_cond_assert_msg(IN_REQUEST_DEMUX(treq->pub.trunk) || IN_REQUEST_CANCEL_MUX(treq->pub.trunk),
 				"%s can only be called from within request_demux or request_cancel_mux handlers",
 				__FUNCTION__)) return;
