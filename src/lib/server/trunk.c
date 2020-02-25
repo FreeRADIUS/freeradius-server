@@ -1944,6 +1944,17 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		break;
 
 	default:
+		/*
+		 *	If a trunk request was provided
+		 *	populate the preq and rctx fields
+		 *	so that if it's freed with
+		 *	fr_trunk_request_free, the free
+		 *	function works as intended.
+		 */
+		if (*treq_out) {
+			treq->pub.preq = preq;
+			treq->pub.rctx = rctx;
+		}
 		return rcode;
 	}
 
