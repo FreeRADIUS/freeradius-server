@@ -1924,7 +1924,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		if (*treq_out) {
 			treq = *treq_out;
 		} else {
-			MEM(treq = fr_trunk_request_alloc(trunk, request));
+			MEM(*treq_out = treq = fr_trunk_request_alloc(trunk, request));
 		}
 		treq->pub.preq = preq;
 		treq->pub.rctx = rctx;
@@ -1936,7 +1936,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		if (*treq_out) {
 			treq = *treq_out;
 		} else {
-			MEM(treq = fr_trunk_request_alloc(trunk, request));
+			MEM(*treq_out = treq = fr_trunk_request_alloc(trunk, request));
 		}
 		treq->pub.preq = preq;
 		treq->pub.rctx = rctx;
@@ -1946,7 +1946,6 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 	default:
 		return rcode;
 	}
-	if (treq_out) *treq_out = treq;
 
 	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
 
@@ -2032,7 +2031,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_ou
 	if (*treq_out) {
 		treq = *treq_out;
 	} else {
-		MEM(treq = fr_trunk_request_alloc(trunk, request));
+		MEM(*treq_out = treq = fr_trunk_request_alloc(trunk, request));
 	}
 
 	treq->pub.preq = preq;
