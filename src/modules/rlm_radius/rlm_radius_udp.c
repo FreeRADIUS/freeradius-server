@@ -752,7 +752,6 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	int			proxy_state = 6;
 
 	rad_assert(inst->parent->allowed[u->code]);
-	rad_assert(u->packet == NULL);
 
 	/*
 	 *	Might have been sent and then given up on... free the
