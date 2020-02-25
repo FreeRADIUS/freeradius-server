@@ -322,6 +322,11 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	u = talloc_zero(h, udp_request_t);
 
 	/*
+	 *	Status checks are prioritized over any other packet
+	 */
+	u->priority = ~(uint32_t) 0;
+
+	/*
 	 *	Allocate outside of the free list.
 	 *	There appears to be an issue where
 	 *	the thread destructor runs too
