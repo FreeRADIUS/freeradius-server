@@ -253,7 +253,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	 */
 	fd = fr_socket_client_udp(&h->src_ipaddr, &h->src_port, &h->inst->dst_ipaddr, h->inst->dst_port, true);
 	if (fd < 0) {
-		ERROR("%s - Failed opening socket", h->module_name);
+		PERROR("%s - Failed opening socket", h->module_name);
 		talloc_free(h);
 		return FR_CONNECTION_STATE_FAILED;
 	}
@@ -476,20 +476,25 @@ static void conn_close(fr_event_list_t *el, void *handle, UNUSED void *uctx)
  */
 static fr_connection_state_t conn_failed(void *handle, fr_connection_state_t state, UNUSED void *uctx)
 {
-	udp_handle_t	*h = talloc_get_type_abort(handle, udp_handle_t);
-
+	switch (state) {
 	/*
 	 *	If the connection was connected when it failed,
 	 *	we need to handle any outstanding packets and
 	 *	timer events before reconnecting.
 	 */
-	if (state == FR_CONNECTION_STATE_CONNECTED) {
+	case FR_CONNECTION_STATE_CONNECTED:
+	{
+		udp_handle_t	*h = talloc_get_type_abort(handle, udp_handle_t); /* h only available if connected */
+
 		/*
 		 *	Reset the Status-Server checks.
 		 */
-		if (h->status_u && h->status_u->ev) {
-			(void) fr_event_timer_delete(&h->status_u->ev);
-		}
+		if (h->status_u && h->status_u->ev) (void) fr_event_timer_delete(&h->status_u->ev);
+	}
+		break;
+
+	default:
+		break;
 	}
 
 	return FR_CONNECTION_STATE_INIT;
