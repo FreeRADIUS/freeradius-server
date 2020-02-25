@@ -2004,7 +2004,7 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 	}
 
 	if (fr_trunk_request_enqueue(&treq, t->trunk, request, u, r) < 0) {
-		talloc_free(treq);
+		fr_trunk_request_free(treq);	/* Return to the free list */
 		talloc_free(r);
 		return RLM_MODULE_FAIL;
 	}
