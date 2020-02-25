@@ -2004,7 +2004,8 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 	}
 
 	if (fr_trunk_request_enqueue(&treq, t->trunk, request, u, r) < 0) {
-		fr_trunk_request_free(treq);	/* Return to the free list */
+		rad_assert(!u->rr && !u->packet);	/* Should not have been fed to the muxer */
+		fr_trunk_request_free(treq);		/* Return to the free list */
 		talloc_free(r);
 		return RLM_MODULE_FAIL;
 	}
