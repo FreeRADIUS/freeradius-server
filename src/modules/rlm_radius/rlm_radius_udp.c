@@ -1858,22 +1858,6 @@ redo:
 	goto redo;
 }
 
-static void request_complete(REQUEST *request, UNUSED void *preq, UNUSED void *rctx, UNUSED void *uctx)
-{
-	unlang_interpret_resumable(request);
-}
-
-/** Write out a canned failure and resume the request
- *
- */
-static void request_fail(REQUEST *request, UNUSED void *preq, void *rctx, UNUSED void *uctx)
-{
-	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
-
-	r->rcode = RLM_MODULE_FAIL;
-
-	unlang_interpret_resumable(request);
-}
 
 static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 			   fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
@@ -1918,6 +1902,23 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 		u->num_replies = 0;
 		break;
 	}
+}
+
+/** Write out a canned failure and resume the request
+ *
+ */
+static void request_fail(REQUEST *request, UNUSED void *preq, void *rctx, UNUSED void *uctx)
+{
+	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+
+	r->rcode = RLM_MODULE_FAIL;
+
+	unlang_interpret_resumable(request);
+}
+
+static void request_complete(REQUEST *request, UNUSED void *preq, UNUSED void *rctx, UNUSED void *uctx)
+{
+	unlang_interpret_resumable(request);
 }
 
 static rlm_rcode_t request_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *ctx)
