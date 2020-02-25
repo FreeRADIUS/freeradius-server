@@ -1952,6 +1952,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		 *	function works as intended.
 		 */
 		if (*treq_out) {
+			treq = *treq_out;
 			treq->pub.preq = preq;
 			treq->pub.rctx = rctx;
 		}
