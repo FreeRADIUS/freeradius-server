@@ -1867,7 +1867,7 @@ typedef enum {
 	HMAC_SHA1
 } hmac_type;
 
-static xlat_action_t _xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
 				REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_t **in, uint8_t *digest, int digest_len, hmac_type type)
 {
@@ -1923,7 +1923,7 @@ static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
 					fr_value_box_t **in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
-	return _xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, MD5_DIGEST_LENGTH, HMAC_MD5);
+	return xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, MD5_DIGEST_LENGTH, HMAC_MD5);
 }
 
 
@@ -1941,7 +1941,7 @@ static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
 					 fr_value_box_t **in)
 {
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
-	return _xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, SHA1_DIGEST_LENGTH, HMAC_SHA1);
+	return xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, SHA1_DIGEST_LENGTH, HMAC_SHA1);
 }
 
 
@@ -2686,7 +2686,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 
 #ifdef HAVE_REGEX_PCRE2
-/** Perform regex substitution
+/** Perform regex substitution TODO CHECK
  *
  * Called when %{sub:} pattern begins with "/"
  *
@@ -2997,8 +2997,8 @@ static xlat_action_t xlat_func_tag(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * If upper is true, change to uppercase, otherwise, change to lowercase
  */
-static xlat_action_t _xlat_change_case(bool upper, TALLOC_CTX *ctx, fr_cursor_t *out,
-				       REQUEST *request, fr_value_box_t **in)
+static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_cursor_t *out,
+				       REQUEST *request, fr_value_box_t **in, bool upper)
 {
 	char		*buff, *buff_p;
 	char const	*p, *end;
@@ -3052,7 +3052,7 @@ static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       fr_value_box_t **in)
 {
-	return _xlat_change_case(false, ctx, out, request, in);
+	return xlat_change_case(ctx, out, request, in, false);
 }
 
 
@@ -3071,7 +3071,7 @@ static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       fr_value_box_t **in)
 {
-	return _xlat_change_case(true, ctx, out, request, in);
+	return xlat_change_case(ctx, out, request, in, true);
 }
 
 
