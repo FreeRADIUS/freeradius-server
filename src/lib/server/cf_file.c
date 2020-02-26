@@ -107,7 +107,7 @@ typedef struct {
 
 #ifdef HAVE_GLOB_H
 		struct {
-			int		gl_current;
+			size_t		gl_current;
 			glob_t		glob;		//! reading glob()
 			bool		required;
 		};
@@ -954,7 +954,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		/*
 		 *	If nothing matches, that may be an error.
 		 */
-		if (frame->glob.gl_matchc == 0) {
+		if (frame->glob.gl_pathc == 0) {
 			if (!required) {
 				stack->depth--;
 				return 0;
@@ -1947,7 +1947,7 @@ do_frame:
 	switch (frame->type) {
 #ifdef HAVE_GLOB_H
 	case CF_STACK_GLOB:
-		if (frame->gl_current == frame->glob.gl_matchc) {
+		if (frame->gl_current == frame->glob.gl_pathc) {
 			globfree(&frame->glob);
 			goto pop_stack;
 		}
