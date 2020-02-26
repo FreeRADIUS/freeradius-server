@@ -1976,6 +1976,9 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
  * is required.  The easiest way to perform that retransmission is to clean up
  * any tracking information for the request, and the requeue it for transmission.
  *
+ * IF re-queueing fails, the request will enter the fail state.  It should not be
+ * accessed if this occurs.
+ *
  * @param[in] treq	to requeue (retransmit).
  * @return
  *	- FR_TRUNK_ENQUEUE_OK.
@@ -1985,7 +1988,10 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 {
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;	/* Existing conn */
 
-	if (!IS_SERVICEABLE(tconn)) return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
+	if (!IS_SERVICEABLE(tconn)) {
+		trunk_request_enter_failed(treq);
+		return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
+	}
 
 	trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
 	trunk_request_enter_pending(treq, tconn);
