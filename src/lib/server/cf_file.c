@@ -49,6 +49,10 @@ RCSID("$Id$")
 #  include <dirent.h>
 #endif
 
+#ifdef HAVE_GLOB_H
+#  include <glob.h>
+#endif
+
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
 #endif
@@ -72,14 +76,43 @@ static fr_table_num_sorted_t const conf_property_name[] = {
 };
 static size_t conf_property_name_len = NUM_ELEMENTS(conf_property_name);
 
+typedef enum {
+	CF_STACK_FILE = 0,
+#ifdef HAVE_DIRENT_H
+	CF_STACK_DIR,
+#endif
+#ifdef HAVE_GLOB_H
+	CF_STACK_GLOB
+#endif
+} cf_stack_file_t;
+
 #define MAX_STACK (32)
 typedef struct {
-	FILE		*fp;			//!< FP we're reading
+	cf_stack_file_t type;
+
 	char const     	*filename;		//!< filename we're reading
 	int		lineno;			//!< line in that filename
 
-	DIR		*dir;			//!< Or we're reading a directory
-	char		*directory;		//!< directory name we're reading
+	union {
+		struct {
+			FILE		*fp;		//!< FP we're reading
+		};
+
+#ifdef HAVE_DIRENT_H
+		struct {
+			DIR		*dir;		//!< Or we're reading a directory
+			char		*directory;	//!< directory name we're reading
+		};
+#endif
+
+#ifdef HAVE_GLOB_H
+		struct {
+			int		gl_current;
+			glob_t		glob;		//! reading glob()
+			bool		required;
+		};
+#endif
+	};
 
 	CONF_SECTION	*parent;		//!< which started this file
 	CONF_SECTION	*current;		//!< sub-section we're reading
@@ -836,9 +869,8 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *toke
 }
 
 
-static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *ptr, bool required)
+static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *ptr, bool required, bool relative)
 {
-	bool relative = true;
 	char const *value;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 
@@ -891,6 +923,52 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		}
 	}
 
+	if (strchr(value, '*') != 0) {
+#ifndef HAVE_GLOB_H
+		ERROR("%s[%d]: Filename globbing is not supported.", frame->filename, frame->lineno);
+		return -1;
+#else
+		stack->depth++;
+		frame = &stack->frame[stack->depth];
+		memset(frame, 0, sizeof(*frame));
+
+		frame->type = CF_STACK_GLOB;
+		frame->required = required;
+		frame->parent = parent;
+		frame->current = parent;
+		frame->special = NULL;
+
+		/*
+		 *	For better debugging.
+		 */
+		frame->filename = frame[-1].filename;
+		frame->lineno = frame[-1].lineno;
+
+		if (glob(value, GLOB_ERR | GLOB_NOESCAPE, NULL, &frame->glob) < 0) {
+			stack->depth--;
+			ERROR("%s[%d]: Failed expanding '%s' - %s", frame->filename, frame->lineno,
+				value, fr_syserror(errno));
+			return -1;
+		}
+
+		/*
+		 *	If nothing matches, that may be an error.
+		 */
+		if (frame->glob.gl_matchc == 0) {
+			if (!required) {
+				stack->depth--;
+				return 0;
+			}
+
+			ERROR("%s[%d]: Failed expanding '%s' - No matchin files", frame->filename, frame->lineno,
+			      value);
+			return -1;
+		}
+
+		return 1;
+#endif
+	}
+
 	/*
 	 *	Allow $-INCLUDE for directories, too.
 	 */
@@ -915,6 +993,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		stack->depth++;
 		frame = &stack->frame[stack->depth];
 		memset(frame, 0, sizeof(*frame));
+
+		frame->type = CF_STACK_FILE;
 		frame->fp = NULL;
 		frame->parent = parent;
 		frame->current = parent;
@@ -981,6 +1061,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame = &stack->frame[stack->depth];
 
 		memset(frame, 0, sizeof(*frame));
+
+		frame->type = CF_STACK_DIR;
 		frame->dir = dir;
 		frame->directory = directory;
 		frame->parent = parent;
@@ -1722,6 +1804,8 @@ static int frame_readdir(cf_stack_t *stack)
 		stack->depth++;
 		frame = &stack->frame[stack->depth];
 		memset(frame, 0, sizeof(*frame));
+
+		frame->type = CF_STACK_FILE;
 		frame->fp = NULL;
 		frame->parent = parent;
 		frame->current = parent;
@@ -1860,12 +1944,32 @@ do_frame:
 	frame = &stack->frame[stack->depth];
 	parent = frame->current; /* add items here */
 
-	/*
-	 *	First try reading from the frame as a directory.  If
-	 *	so, we push a filename onto the stack and then load
-	 *	the filename.
-	 */
-	if (frame->dir) {
+	switch (frame->type) {
+#ifdef HAVE_GLOB_H
+	case CF_STACK_GLOB:
+		if (frame->gl_current == frame->glob.gl_matchc) {
+			globfree(&frame->glob);
+			goto pop_stack;
+		}
+
+		/*
+		 *	Process the filename as an include.
+		 */
+		if (process_include(stack, parent, frame->glob.gl_pathv[frame->gl_current++], frame->required, false) < 0) return -1;
+
+		/*
+		 *	Run the correct frame.  If the file is NOT
+		 *	required, then the call to process_include()
+		 *	may return 0, and we just process the next
+		 *	glob.  Otherwise, the call to
+		 *	process_include() may return a directory or a
+		 *	filename.  Go handle that.
+		 */
+		goto do_frame;
+#endif
+
+#ifdef HAVE_DIRENT_H
+	case CF_STACK_DIR:
 		rcode = frame_readdir(stack);
 		if (rcode == 0) goto do_frame;
 		if (rcode < 0) return -1;
@@ -1874,12 +1978,28 @@ do_frame:
 		 *	Reset which frame we're looking at.
 		 */
 		frame = &stack->frame[stack->depth];
+		rad_assert(frame->type == CF_STACK_FILE);
+		break;
+#endif
+
+	case CF_STACK_FILE:
+		break;
 	}
 
+#ifndef NDEBUG
 	/*
-	 *	Open the new file.  It either came from the first call
-	 *	to the function, or was pushed onto the stack by
-	 *	frame_readdir().
+	 *	One last sanity check.
+	 */
+	if (frame->type != CF_STACK_FILE) {
+		cf_log_err(frame->current, "Internal sanity check failed");
+		goto pop_stack;
+	}
+#endif
+
+	/*
+	 *	Open the new file if necessary.  It either came from
+	 *	the first call to the function, or was pushed onto the
+	 *	stack by another function.
 	 */
 	if (!frame->fp) {
 		rcode = cf_file_open(frame->parent, frame->filename, frame->from_dir, &frame->fp);
@@ -1893,7 +2013,7 @@ do_frame:
 				    frame->filename);
 			goto pop_stack;
 		}
-	}
+	};
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
@@ -1921,14 +2041,14 @@ do_frame:
 			if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
 				ptr += 8;
 
-				if (process_include(stack, parent, ptr, true) < 0) return -1;
+				if (process_include(stack, parent, ptr, true, true) < 0) return -1;
 				goto do_frame;
 			}
 
 			if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
 				ptr += 9;
 
-				rcode = process_include(stack, parent, ptr, false);
+				rcode = process_include(stack, parent, ptr, false, true);
 				if (rcode < 0) return -1;
 				if (rcode == 0) continue;
 				goto do_frame;
@@ -1997,14 +2117,25 @@ static void cf_stack_cleanup(cf_stack_t *stack)
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 
 	while (stack->depth >= 0) {
-		if (frame->fp) {
-			fclose(frame->fp);
+		switch (frame->type) {
+		case CF_STACK_FILE:
+			if (frame->fp) fclose(frame->fp);
 			frame->fp = NULL;
-		}
-		if (frame->dir) {
+			break;
+
+#ifdef HAVE_DIRENT_H
+		case CF_STACK_DIR:
 			closedir(frame->dir);
 			frame->dir = NULL;
 			talloc_free(frame->directory);
+			break;
+#endif
+
+#ifdef HAVE_GLOB_H
+		case CF_STACK_GLOB:
+			globfree(&frame->glob);
+			break;
+#endif
 		}
 
 		frame--;
@@ -2054,6 +2185,8 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	memset(frame, 0, sizeof(*frame));
 	frame->parent = frame->current = cs;
+
+	frame->type = CF_STACK_FILE;
 	frame->filename = talloc_strdup(frame->parent, filename);
 	cs->item.filename = frame->filename;
 
