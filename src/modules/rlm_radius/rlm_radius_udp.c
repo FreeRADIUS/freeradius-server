@@ -138,10 +138,6 @@ typedef struct {
 	udp_request_t		*status_u;		//!< for sending status check packets
 	udp_result_t		*status_r;		//!< for faking out status checks as real packets
 	REQUEST			*status_request;
-
-	fr_trunk_connection_event_t trunk_notify;	//!< trunks idea of FD readability
-	fr_trunk_connection_event_t status_notify;	//!< our idea of FD readability
-
 } udp_handle_t;
 
 
@@ -641,18 +637,6 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 	fr_event_fd_cb_t	read_fn = NULL;
 	fr_event_fd_cb_t	write_fn = NULL;
-
-	/*
-	 *	Ensure that the FD is still readable if the only event is status-checks.
-	 */
-	if (h->status_checking && ((notify_on & FR_TRUNK_CONN_EVENT_READ) == 0)) {
-		h->trunk_notify = notify_on;
-		notify_on |= FR_TRUNK_CONN_EVENT_READ;
-		h->status_notify = notify_on;
-
-	} else {
-		h->trunk_notify = h->status_notify = notify_on;
-	}
 
 	switch (notify_on) {
 		/*
@@ -1187,14 +1171,6 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	DEBUG("No response to status check, marking connection as dead - %s", h->name);
 
-	/*
-	 *	Reset the FD handlers before changing
-	 *	the connection state.
-	 */
-	if (h->trunk_notify != h->status_notify) {
-		thread_conn_notify(h->c->tconn, h->c->tconn->conn, h->thread->el, h->trunk_notify, h->thread);
-	}
-
 	h->status_checking = false;
 	fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 }
@@ -1435,7 +1411,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		h->coalesced[i].out.iov_len = u->packet_len;
 
 		fr_trunk_request_signal_sent(treq);
-		u->c = c;
+		u->c = h->c;
 	}
 	queued = i;
 	if (queued == 0) return;	/* No work */
@@ -1717,15 +1693,6 @@ static void status_check_reply(udp_request_t *u, udp_result_t *r, udp_handle_t *
 
 	if (u->rr) (void) radius_track_delete(&u->rr);
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
-
-	/*
-	 *	Reset the FD handlers before changing
-	 *	the connection state.
-	 */
-	if (h->trunk_notify != h->status_notify) {
-		thread_conn_notify(h->c->tconn, h->c->tconn->conn, h->thread->el, h->trunk_notify, h->thread);
-		h->status_checking = false;
-	}
 
 	/*
 	 *	Set the "last idle" time to now, so that we don't
