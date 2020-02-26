@@ -664,7 +664,6 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 		 */
 	case FR_TRUNK_CONN_EVENT_NONE:
 		read_fn = conn_discard;
-		write_fn = NULL;
 		break;
 
 	case FR_TRUNK_CONN_EVENT_READ:
