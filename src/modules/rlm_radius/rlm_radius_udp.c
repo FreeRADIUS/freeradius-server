@@ -20,16 +20,20 @@
  * @brief RADIUS UDP transport
  *
  * @copyright 2017 Network RADIUS SARL
+ * @copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/util/udp.h>
-#include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/udp.h>
+
+#include <sys/socket.h>
 
 #include "rlm_radius.h"
 #include "track.h"
@@ -52,6 +56,7 @@ typedef struct {
 	uint32_t		send_buff;		//!< How big the kernel's send buffer should be.
 
 	uint32_t		max_packet_size;	//!< Maximum packet size.
+	uint16_t		max_send_coalesce;	//!< Maximum number of packets to coalesce into one mmsg call.
 
 	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
@@ -84,13 +89,22 @@ typedef struct {
 
 typedef struct udp_request_s udp_request_t;
 
+typedef struct {
+	struct iovec		out;			//!< Describes buffer to send.
+	fr_trunk_request_t	*treq;			//!< Used for signalling.
+} udp_coalesced_t;
+
 /** Track the handle, which is tightly correlated with the FD
  *
  */
 typedef struct {
 	char const     		*name;			//!< From IP PORT to IP PORT.
 	char const		*module_name;		//!< the module that opened the connection
+
 	int			fd;			//!< File descriptor.
+
+	struct mmsghdr		*mmsgvec;		//!< Vector of inbound/outbound packets.
+	udp_coalesced_t		*coalesced;		//!< Outbound coalesced requests.
 
 	rlm_radius_udp_t const	*inst;			//!< Our module instance.
 	udp_connection_t	*c;			//!< long-term connection
@@ -147,8 +161,8 @@ struct udp_request_s {
 
 	VALUE_PAIR		*extra;			//!< VPs for debugging, like Proxy-State.
 
-	int			code;			//!< Packet code.
-
+	uint8_t			code;			//!< Packet code.
+	uint8_t			id;			//!< Last ID assigned to this packet.
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 
@@ -176,6 +190,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, rlm_radius_udp_t, send_buff) },
 
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, rlm_radius_udp_t, max_packet_size), .dflt = "4096" },
+	{ FR_CONF_OFFSET("max_send_coalesce", FR_TYPE_UINT16, rlm_radius_udp_t, max_send_coalesce), .dflt = "100" },
 
 	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, src_ipaddr) },
 	{ FR_CONF_OFFSET("src_ipv4addr", FR_TYPE_IPV4_ADDR, rlm_radius_udp_t, src_ipaddr) },
@@ -232,6 +247,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	int			fd;
 	udp_handle_t		*h;
 	udp_connection_t	*c = talloc_get_type_abort(uctx, udp_connection_t);
+	uint16_t		i;
 
 	h = talloc_zero(conn, udp_handle_t);
 	if (!h) return FR_CONNECTION_STATE_FAILED;
@@ -244,6 +260,19 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	h->src_port = 0;
 	h->max_packet_size = h->inst->max_packet_size;
 	h->last_idle = fr_time();
+
+	/*
+	 *	mmsgvec is pre-populated with pointers
+	 *	to the iovec structs in coalesced, so we
+	 *	just need to setup the iovec, and pass how
+	 *      many messages we want to send to sendmmsg.
+	 */
+	h->mmsgvec = talloc_zero_array(h, struct mmsghdr, h->inst->max_send_coalesce);
+	h->coalesced = talloc_zero_array(h, udp_coalesced_t, h->inst->max_send_coalesce);
+	for (i = 0; i < h->inst->max_send_coalesce; i++) {
+		h->mmsgvec[i].msg_hdr.msg_iov = &h->coalesced[i].out;
+		h->mmsgvec[i].msg_hdr.msg_iovlen = 1;
+	}
 
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
 	h->buflen = h->max_packet_size;
@@ -685,10 +714,10 @@ static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connec
 		break;
 
 	case FR_TRUNK_CONN_EVENT_READ:
-	case FR_TRUNK_CONN_EVENT_BOTH:
-		rad_assert(0);	/* Should never happen */
+		read_fn = conn_discard;
 		break;
 
+	case FR_TRUNK_CONN_EVENT_BOTH:
 	case FR_TRUNK_CONN_EVENT_WRITE:
 		read_fn = conn_discard;
 		write_fn = conn_writable;
@@ -1171,93 +1200,33 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 }
 
-/** Attempt to write a packet to a connection
- *
- * @return
- *	- 0 on success.
- *	- 1 if no outbound buffer space available.
- *	- -1 on connection error.
- */
-static int write_packet(fr_event_list_t *el, fr_trunk_request_t *treq, uint8_t const *packet, size_t packet_len)
-{
-	char const		*action;
-	ssize_t			slen;
-	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
-	REQUEST			*request = treq->request;
-	rlm_radius_udp_t const	*inst = h->inst;
-	uint32_t		msec = 0;
-
-	/*
-	 *	Tell the admin what's going on
-	 */
-	if (u->retry.count == 1) {
-		action = inst->parent->originate ? "Originating" : "Proxying";
-		h->last_sent = u->retry.start;
-		if (h->first_sent <= h->last_idle) h->first_sent = h->last_sent;
-
-	} else {
-		action = "Retransmitting";
-	}
-
-	if (!inst->parent->synchronous) {
-		msec = fr_time_delta_to_msec(u->retry.rt);
-
-		RDEBUG("%s request.  Expecting response within %u.%03us",
-		       action, msec / 1000, msec % 1000);
-	} else {
-		/*
-		 *	If the packet doesn't get a response,
-		 *	then udp_request_free() will notice, and run conn_zombie()
-		 *
-		 *	@todo - set up a response_window which is LESS
-		 *	than max_request_time.  That way we
-		 *	can return "fail", and process the
-		 *	request through a fail handler,
-		 *	instead of just freeing it.
-		 */
-		RDEBUG("%s request.  Relying on NAS to perform more retransmissions", action);
-	}
-
-	slen = write(h->fd, packet, packet_len);
-	if (slen < 0) {
-		switch (errno) {
-		case EWOULDBLOCK:
-			return 1;
-
-		default:
-			REDEBUG("Failed writing packet to %s - %s", h->name, fr_syserror(errno));
-			return -1;
-		}
-	}
-	rad_assert((size_t) slen == packet_len);	/* Should never get partial writes with UDP */
-
-	/*
-	 *	Set up a timer for retransmits
-	 *	Only do this *AFTER* we've successfully written the packet.
-	 */
-	if (msec > 0) {
-		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timeout, treq) < 0) {
-			RERROR("Failed inserting retransmit timeout for connection");
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
 static void request_mux(fr_event_list_t *el,
 			fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	rlm_radius_udp_t const	*inst = h->inst;
 	udp_connection_t	*c = h->c;
-	fr_trunk_request_t	*treq;
+	int			sent;
+	uint16_t		i = 0, queued;
 
 	check_for_zombie(el, tconn, 0);
 
-	while ((treq = fr_trunk_connection_pop_request(tconn)) != NULL) {
-		udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-		REQUEST			*request = treq->request;
+	/*
+	 *	Encode multiple packets in preparation
+	 *      for transmission with sendmmsg.
+	 */
+	for (i = 0; i < inst->max_send_coalesce; i++) {
+		fr_trunk_request_t	*treq = fr_trunk_connection_pop_request(tconn);
+		udp_request_t		*u;
+		REQUEST			*request;
+
+		/*
+		 *	No more requests to send
+		 */
+		if (!treq) break;
+
+		request = treq->request;
+		u = talloc_get_type_abort(treq->preq, udp_request_t);
 
 		/*
 		 *	Start retransmissions from when the socket is writable.
@@ -1287,11 +1256,12 @@ static void request_mux(fr_event_list_t *el,
 				fr_trunk_request_signal_fail(treq);
 				continue;
 			}
+			u->id = u->rr->id;
 
 			RDEBUG("Sending %s ID %d length %ld over connection %s",
-			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
+			       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
 
-			if (encode(h->inst, request, u, u->rr->id) < 0) {
+			if (encode(h->inst, request, u, u->id) < 0) {
 				udp_request_clear(u, h, 0);
 				if (u->ev) (void) fr_event_timer_delete(&u->ev);
 				goto fail;
@@ -1305,76 +1275,209 @@ static void request_mux(fr_event_list_t *el,
 			(void) radius_track_update(u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 		} else {
 			RDEBUG("Retransmitting %s ID %d length %ld over connection %s",
-			       fr_packet_codes[u->code], u->rr->id, u->packet_len, h->name);
+			       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
 		}
 
 		log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 		if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
 
-		switch (write_packet(el, treq, u->packet, u->packet_len)) {
-		case 0:
-			break;
-
-		case 1:	/* no space - save encoded packet for later */
-			return;
-
-		case -1:
-			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
-			return;
-		}
+		/*
+		 *	Record pointers to the buffer we'll be writing
+		 *	We store the treq so we can place it back in
+		 *      the pending state if the sendmmsg call fails.
+		 */
+		h->coalesced[i].treq = treq;
+		h->coalesced[i].out.iov_base = u->packet;
+		h->coalesced[i].out.iov_len = u->packet_len;
 
 		/*
 		 *	Tell the trunk API that this request is now in
 		 *	the "sent" state.  And we don't want to see
-		 *	this request again.
+		 *	this request again. The request hasn't actually
+		 *	been sent, but it's the only way to get at the
+		 *	next entry in the heap.
 		 */
 		fr_trunk_request_signal_sent(treq);
-		u->c = c;
-
-		// @todo - if there are no free IDs, call fr_trunk_connection_requests_requeue()
 	}
+	queued = i;
+	if (queued == 0) return;	/* No work */
+
+	/*
+	 *	Send the coalesced datagrams
+	 */
+	sent = sendmmsg(h->fd, h->mmsgvec, queued, 0);
+	if (sent < 0) {		/* Error means no messages were sent */
+		sent = 0;
+
+		/*
+		 *	Temporary conditions
+		 */
+		switch (errno) {
+		case EWOULDBLOCK:
+		case EINTR:
+		case ENOBUFS:
+			break;
+
+		/*
+		 *	Will re-queue any 'sent' requests, so we don't
+		 *	have to do any cleanup.
+		 */
+		default:
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+			return;
+		}
+	}
+
+	/*
+	 *	For all messages that were actually sent by sendmmsg
+	 *	start the request timer.
+	 */
+	for (i = 0; i < sent; i++) {
+		fr_trunk_request_t	*treq = h->coalesced[i].treq;
+		udp_request_t		*u;
+		REQUEST			*request;
+		char const		*action;
+
+		/*
+		 *	It's UDP so there should never be partial writes
+		 */
+		rad_assert(h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
+
+		request = treq->request;
+		u = talloc_get_type_abort(treq->preq, udp_request_t);
+
+		/*
+		 *	Tell the admin what's going on
+		 */
+		if (u->retry.count == 1) {
+			action = inst->parent->originate ? "Originating" : "Proxying";
+			h->last_sent = u->retry.start;
+			if (h->first_sent <= h->last_idle) h->first_sent = h->last_sent;
+
+		} else {
+			action = "Retransmitting";
+		}
+
+		if (!inst->parent->synchronous) {
+			uint32_t	msec = fr_time_delta_to_msec(u->retry.rt);
+
+			RDEBUG("%s request.  Expecting response within %u.%03us",
+			       action, msec / 1000, msec % 1000);
+
+			if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timeout, treq) < 0) {
+				RERROR("Failed inserting retransmit timeout for connection");
+				fr_trunk_request_signal_fail(treq);
+				continue;
+			}
+		} else {
+			/*
+			 *	If the packet doesn't get a response,
+			 *	then udp_request_free() will notice, and run conn_zombie()
+			 *
+			 *	@todo - set up a response_window which is LESS
+			 *	than max_request_time.  That way we
+			 *	can return "fail", and process the
+			 *	request through a fail handler,
+			 *	instead of just freeing it.
+			 */
+			RDEBUG("%s request.  Relying on NAS to perform more retransmissions", action);
+		}
+
+		u->c = c;
+	}
+
+	/*
+	 *	Requests that weren't sent get re-enqueued
+	 *
+	 *	The cancel logic runs as per-normal and cleans up
+	 *	the request ready for sending again...
+	 */
+	for (i = sent; i < queued; i++) fr_trunk_request_requeue(h->coalesced[i].treq);
 }
 
-static void request_mux_replicate(fr_event_list_t *el,
+static void request_mux_replicate(UNUSED fr_event_list_t *el,
 				  fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
-	fr_trunk_request_t	*treq;
+	rlm_radius_udp_t const	*inst = h->inst;
 
-	while ((treq = fr_trunk_connection_pop_request(tconn)) != NULL) {
-		udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
-		udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-		REQUEST			*request = treq->request;
-		uint8_t			id = h->last_id;
+	uint16_t		i = 0, queued;
+	int			sent;
 
-		RDEBUG("Sending %s ID %d length %ld over connection %s",
-		       fr_packet_codes[u->code], id, u->packet_len, h->name);
+	for (i = 0; i < inst->max_send_coalesce; i++) {
+		fr_trunk_request_t	*treq = fr_trunk_connection_pop_request(tconn);
+		udp_request_t		*u;
+		REQUEST			*request;
+
+		/*
+		 *	No more requests to send
+		 */
+		if (!treq) break;
+
+		request = treq->request;
+		u = talloc_get_type_abort(treq->preq, udp_request_t);
 
 		if (!u->packet) {
-			if (encode(h->inst, request, u, id) < 0) {
+			u->id = h->last_id++;
+
+			if (encode(h->inst, request, u, u->id) < 0) {
 				udp_request_clear(u, h, 0);
 				fr_trunk_request_signal_fail(treq);
 				return;
 			}
-			RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
 		}
 
+		RDEBUG("Sending %s ID %d length %ld over connection %s",
+		       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
+		RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
+
+		h->coalesced[i].treq = treq;
+		h->coalesced[i].out.iov_base = u->packet;
+		h->coalesced[i].out.iov_len = u->packet_len;
+
+		fr_trunk_request_signal_sent(treq);
+		u->c = c;
+	}
+	queued = i;
+	if (queued == 0) return;	/* No work */
+
+	sent = sendmmsg(h->fd, h->mmsgvec, queued, 0);
+	if (sent < 0) {		/* Error means no messages were sent */
+		sent = 0;
+
 		/*
-		 *	Assume we'll be able to write later, and just break
-		 *	out of the loop.
+		 *	Temporary conditions
 		 */
-		if (write_packet(el, treq, u->packet, u->packet_len) < 0) return;
+		switch (errno) {
+		case EWOULDBLOCK:
+		case EINTR:
+		case ENOBUFS:
+			break;
+
+		/*
+		 *	Will re-queue any 'sent' requests, so we don't
+		 *	have to do any cleanup.
+		 */
+		default:
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+			return;
+		}
+	}
+
+	for (i = 0; i < sent; i++) {
+		fr_trunk_request_t	*treq = h->coalesced[i].treq;
+		udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
+
+		/*
+		 *	It's UDP so there should never be partial writes
+		 */
+		rad_assert(h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
 
 		r->rcode = RLM_MODULE_OK;
-
-		/*
-		 *	Signal the request as sent then immediately complete
-		 */
-		fr_trunk_request_signal_sent(treq);
 		fr_trunk_request_signal_complete(treq);
-
-		h->last_id++;	/* Wraps to zero - Defined behaviour*/
 	}
+
+	for (i = sent; i < queued; i++) fr_trunk_request_requeue(h->coalesced[i].treq);
 }
 
 /** If we get a reply, the request must come from one of a small
@@ -1868,6 +1971,11 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 
 	/*
 	 *	Delete the request_timeout
+	 *
+	 *	Note: There might not be a request timeout
+	 *      set in the case where the request was
+	 *	queued for sendmmsg but never actually
+	 *	sent.
 	 */
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
@@ -1992,8 +2100,8 @@ static void mod_signal(UNUSED void *instance, void *thread, UNUSED REQUEST *requ
 	 *	has already been sent out.
 	 */
 	case FR_SIGNAL_DUP:
-		fr_trunk_request_requeue(r->treq);
 		check_for_zombie(t->el, r->treq->tconn, 0);
+		fr_trunk_request_requeue(r->treq);
 		return;
 
 	default:
@@ -2149,6 +2257,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	inst->parent = parent;
 	inst->replicate = parent->replicate;
+
+	/*
+	 *	Always need at least one mmsgvec
+	 */
+	if (inst->max_send_coalesce == 0) inst->max_send_coalesce = 1;
 
 	/*
 	 *	Ensure that we have a destination address.
