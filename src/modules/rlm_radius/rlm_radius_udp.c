@@ -1349,12 +1349,12 @@ static void request_mux(fr_event_list_t *el,
 		 *	Tell the admin what's going on
 		 */
 		if (u->retry.count == 1) {
-			action = inst->parent->originate ? "Originating" : "Proxying";
+			action = inst->parent->originate ? "Originated" : "Proxied";
 			h->last_sent = u->retry.start;
 			if (h->first_sent <= h->last_idle) h->first_sent = h->last_sent;
 
 		} else {
-			action = "Retransmitting";
+			action = "Retransmitted";
 		}
 
 		if (!inst->parent->synchronous) {
