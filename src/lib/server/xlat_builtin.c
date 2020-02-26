@@ -26,6 +26,10 @@
 
 RCSID("$Id$")
 
+/**
+ * @defgroup xlat_functions xlat expansion functions
+ */
+
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/rad_assert.h>
@@ -760,7 +764,12 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 /** Dynamically change the debugging level for the current request
  *
- * Example %{debug:3}
+ * Example:
+@verbatim
+"%{debug:3}"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_func_debug(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -801,6 +810,13 @@ done:
  * passed vendors, or just crazy/broken NAS.
  *
  * This expands to a zero length string.
+ *
+ * Example:
+@verbatim
+"%{debug_attr:&request:[*]}"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
 				    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -910,7 +926,27 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
  *
  * @todo should support multibyte delimiter for string types.
  *
- * Example: "%{explode:&ref <delim>}"
+@verbatim
+%{explode:&ref <delim>}
+@endverbatim
+ *
+ * Example:
+@verbatim
+update request {
+	&Tmp-String-1 := "a,b,c"
+}
+if ("%{explode:&Tmp-String-1 ,}" != 3) {
+	reject
+}
+@endverbatim
+ * Replaces Tmp-String-1 with three new attributes:
+@verbatim
+&Tmp-String-1 = "a"
+&Tmp-String-1 = "b"
+&Tmp-String-1 = "c"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -1048,6 +1084,14 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 /** Print data as integer, not as VALUE.
  *
+ * Example:
+@verbatim
+update request {
+	&Tmp-IP-Address-0 := "127.0.0.5"
+}
+"%{integer:&Tmp-IP-Address-0}" == 2130706437
+@endverbatim
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -1228,9 +1272,18 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 }
 
 
-/** left pad a string
+/** Left pad a string
  *
- *  %{lpad:&Attribute-Name length 'x'}
+@verbatim
+%{lpad:&Attribute-Name <length> <char>}
+@endverbatim
+ *
+ * Example: (User-Name = "foo")
+@verbatim
+"%{lpad:&User-Name 5 x}" == "xxfoo"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_func_lpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -1281,10 +1334,15 @@ static ssize_t xlat_func_lpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 /** Processes fmt as a map string and applies it to the current request
  *
- * e.g. "%{map:&User-Name := 'foo'}"
+ * e.g.
+@verbatim
+%{map:&User-Name := 'foo'}
+@endverbatim
  *
  * Allows sets of modifications to be cached and then applied.
  * Useful for processing generic attributes from LDAP.
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -1349,6 +1407,8 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  * cross billing periods. The output of the xlat should be combined with %{rand:} to create
  * some jitter, unless the desired effect is every subscriber on the network
  * re-authenticating at the same time.
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -1418,9 +1478,18 @@ static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 }
 
 
-/** right pad a string
+/** Right pad a string
  *
- *  %{rpad:&Attribute-Name length 'x'}
+@verbatim
+%{rpad:&Attribute-Name <length> <char>}
+@endverbatim
+ *
+ * Example: (User-Name = "foo")
+@verbatim
+"%{rpad:&User-Name 5 x}" == "fooxx"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_func_rpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -1466,13 +1535,14 @@ static ssize_t xlat_func_rpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 /** xlat expand string attribute value
  *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			      REQUEST *request, char const *fmt)
 {
-	ssize_t slen;
-	VALUE_PAIR *vp;
+	ssize_t		slen;
+	VALUE_PAIR	*vp;
 
 	fr_skip_whitespace(fmt);
 
@@ -1516,7 +1586,12 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 /** Encode string or attribute as base64
  *
- * Example: "%{base64:foo}" == "Zm9v"
+ * Example:
+@verbatim
+"%{base64:foo}" == "Zm9v"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
 					     REQUEST *request, UNUSED void const *xlat_inst,
@@ -1566,7 +1641,12 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Decode base64 string
  *
- * Example: "%{base64decode:Zm9v}" == "foo"
+ * Example:
+@verbatim
+"%{base64decode:Zm9v}" == "foo"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
 					     REQUEST *request, UNUSED void const *xlat_inst,
@@ -1614,6 +1694,17 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 
 
+/** Convert hex string to binary
+ *
+ * Example:
+@verbatim
+"%{bin:666f6f626172}" == "foobar"
+@endverbatim
+ *
+ * @see #xlat_func_hex
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
@@ -1662,14 +1753,26 @@ finish:
 }
 
 
+/** Concatenate values of given attributes using separator
+ *
+ * First char of xlat is the separator, followed by attributes
+ *
+ * Example:
+@verbatim
+"%{concat:, %{User-Name}%{Calling-Station-Id}" == "bob, aa:bb:cc:dd:ee:ff"
+"%{concat:, %{request:[*]}" == "<attr1value>, <attr2value>, <attr3value>, ..."
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
-	fr_value_box_t *result;
-	fr_value_box_t *separator;
-	char *buff;
-	char const *sep;
+	fr_value_box_t	*result;
+	fr_value_box_t	*separator;
+	char		*buff;
+	char const	*sep;
 
 	/*
 	 *	If there's no input, there's no output
@@ -1708,6 +1811,14 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Print data as hex, not as VALUE.
  *
+ * Example:
+@verbatim
+"%{hex:foobar}" == "666f6f626172"
+@endverbatim
+ *
+ * @see #xlat_func_bin
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -1800,7 +1911,12 @@ static xlat_action_t _xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Generate the HMAC-MD5 of a string or attribute
  *
- * Example: "%{hmacmd5:foo bar}" == "Zm9v"
+ * Example:
+@verbatim
+"%{hmacmd5:%{string:foo} %{string:bar}}" == "0x31b6db9e5eb4addb42f1a6ca07367adc"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
 					REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
@@ -1813,7 +1929,12 @@ static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Generate the HMAC-SHA1 of a string or attribute
  *
- * Example: "%{hmacsha1:foo bar}" == "Zm9v"
+ * Example:
+@verbatim
+"%{hmacsha1:%{string:foo} %{string:bar}}" == "0x85d155c55ed286a300bd1cf124de08d87e914f3a"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
 					 REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
@@ -1826,6 +1947,15 @@ static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Return the on-the-wire size of the boxes in bytes
  *
+ * Example:
+@verbatim
+"%{length:foobar}" == 6
+"%{length:%{bin:0102030005060708}}" == 8
+@endverbatim
+ *
+ * @see #xlat_func_strlen
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      UNUSED REQUEST *request, UNUSED void const *xlat_inst,
@@ -1851,7 +1981,12 @@ static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Calculate the MD4 hash of a string or attribute.
  *
- * Example: "%{md4:foo}" == "0ac6700c491d70fb8650940b1ca1e4b2"
+ * Example:
+@verbatim
+"%{md4:foo}" == "0ac6700c491d70fb8650940b1ca1e4b2"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -1886,7 +2021,12 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Calculate the MD5 hash of a string or attribute.
  *
- * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
+ * Example:
+@verbatim
+"%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -1919,8 +2059,24 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 
 
-/** Prints the current module processing the request
+/** Prints the name of the current module processing the request
  *
+ * For example will expand to "echo" (not "exec") in 
+@verbatim
+exec echo {
+  ...
+  program = "/bin/echo %{module:}"
+  ...
+}
+@endverbatim
+ *
+ * Example:
+@verbatim
+"%{module:}" == "" (outside a module)
+"%{module:}" == "ldap" (in the ldap module)
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -1950,7 +2106,15 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
  * This is intended to serialize one or more attributes as a comma
  * delimited string.
  *
- * Example: "%{pairs:request:}" == "User-Name = 'foo'User-Password = 'bar'"
+ * Example:
+@verbatim
+"%{pairs:request:[*]}" == "User-Name = 'foo'User-Password = 'bar'"
+"%{concat:, %{pairs:request:[*]}}" == "User-Name = 'foo', User-Password = 'bar'"
+@endverbatim
+ *
+ * @see #xlat_func_concat
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -2005,6 +2169,14 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Generate a random integer value
  *
+ * For "N = %{rand:MAX}", 0 <= N < MAX
+ *
+ * Example:
+@verbatim
+"%{rand:100}" == 42
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
 				    REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -2038,8 +2210,29 @@ static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Generate a string of random chars
  *
- *  Build strings of random chars, useful for generating tokens and passcodes
- *  Format similar to String::Random.
+ * Build strings of random chars, useful for generating tokens and passcodes
+ * Format similar to String::Random.
+ *
+ * Format characters may include the following, and may be
+ * preceeded by a repetition count:
+ * - "c"	lowercase letters
+ * - "C" 	uppercase letters
+ * - "n" 	numbers
+ * - "a" 	alphanumeric
+ * - "!" 	punctuation
+ * - "." 	alphanumeric + punctuation
+ * - "s" 	alphanumeric + "./"
+ * - "o" 	characters suitable for OTP (easily confused removed)
+ * - "b" 	binary data
+ *
+ * Example:
+@verbatim
+"%{randstr:CCCC!!cccnnn}" == "IPFL>{saf874"
+"%{randstr:42o}" == "yHdupUwVbdHprKCJRYfGbaWzVwJwUXG9zPabdGAhM9"
+"%{hex:%{randstr:bbbb}}" == "a9ce04f3"
+"%{hex:%{randstr:8b}}" == "fe165529f9f66839"
+@endverbatim
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -2222,6 +2415,18 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+/** Get named subcapture value from previous regex
+ *
+ * Example:
+@verbatim
+if ("foo" =~ /^(?<name>.*)/) {
+        noop
+}
+"%{regex:name}" == "foo"
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
@@ -2299,7 +2504,12 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Calculate the SHA1 hash of a string or attribute.
  *
- * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+ * Example:
+@verbatim
+"%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
 				    REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -2337,7 +2547,12 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Calculate any digest supported by OpenSSL EVP_MD
  *
- * Example: "%{sha2_256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+ * Example:
+@verbatim
+"%{sha2_256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 #ifdef HAVE_OPENSSL_EVP_H
 static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_cursor_t *out,
@@ -2405,6 +2620,8 @@ EVP_MD_XLAT(sha3_512, sha3_512)
 /** Print data as string, if possible.
  *
  * Concat and cast one or more input boxes to a single output box string.
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -2428,6 +2645,17 @@ static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 
 
+/** Print length of given string
+ *
+ * Example:
+@verbatim
+"%{strlen:foo}" == 3
+@endverbatim
+ *
+ * @see #xlat_func_length
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, UNUSED void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
@@ -2458,9 +2686,22 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 
 #ifdef HAVE_REGEX_PCRE2
-/**
- * @verbatim %{sub:/<regex>/[flags] <replace> <subject>} @endverbatim
+/** Perform regex substitution
  *
+ * Called when %{sub:} pattern begins with "/"
+ *
+@verbatim
+%{sub:/<regex>/[flags] <replace> <subject>}
+@endverbatim
+ *
+ * Example: (User-Name = "foo")
+@verbatim
+"%{sub:/oo.*$/ un %{User-Name}}" == "fun"
+@endverbatim
+ *
+ * @see #xlat_func_sub
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 					 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -2589,6 +2830,21 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 #endif
 
 
+/** Perform regex substitution
+ *
+@verbatim
+%{sub:<pattern> <replace> <subject>}
+@endverbatim
+ *
+ * Example: (User-Name = "foobar")
+@verbatim
+"%{sub:oo un %{User-Name}}" == "funbar"
+@endverbatim
+ *
+ * @see #xlat_func_sub_regex
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request,
 #ifdef HAVE_REGEX_PCRE2
@@ -2697,6 +2953,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Return the tag of an attribute reference
  *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_tag(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst,
@@ -2739,14 +2996,13 @@ static xlat_action_t xlat_func_tag(TALLOC_CTX *ctx, fr_cursor_t *out,
 /** Change case of a string
  *
  * If upper is true, change to uppercase, otherwise, change to lowercase
- *
  */
 static xlat_action_t _xlat_change_case(bool upper, TALLOC_CTX *ctx, fr_cursor_t *out,
 				       REQUEST *request, fr_value_box_t **in)
 {
-	char *buff, *buff_p;
-	char const *p, *end;
-	fr_value_box_t* vb;
+	char		*buff, *buff_p;
+	char const	*p, *end;
+	fr_value_box_t	*vb;
 
 	/*
 	 *	If there's no input, there's no output
@@ -2783,9 +3039,14 @@ static xlat_action_t _xlat_change_case(bool upper, TALLOC_CTX *ctx, fr_cursor_t 
 
 /** Convert a string to lowercase
  *
- * Example: "%{tolower:Bar}" == "bar"
+ * Example:
+@verbatim
+"%{tolower:Bar}" == "bar"
+@endverbatim
  *
  * Probably only works for ASCII
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -2797,9 +3058,14 @@ static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Convert a string to uppercase
  *
- * Example: "%{toupper:Foo}" == "FOO"
+ * Example:
+@verbatim
+"%{toupper:Foo}" == "FOO"
+@endverbatim
  *
  * Probably only works for ASCII
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -2811,7 +3077,12 @@ static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** URLencode special characters
  *
- * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
+ * Example:
+@verbatim
+"%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
@@ -2894,9 +3165,14 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** URLdecode special characters
  *
- * Example: "%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
+ * @note Remember to escape % with %% in strings, else xlat will try to parse it.
  *
- * Remember to escape % with %% in strings, else xlat will try to parse it.
+ * Example:
+@verbatim
+"%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 					  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
