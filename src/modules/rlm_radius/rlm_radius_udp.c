@@ -1121,7 +1121,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	This call may nuke u->rr
 	 */
-	check_for_zombie(el, treq->tconn, now);
+	if (!u->status_check) check_for_zombie(el, treq->tconn, now);
 
 	/*
 	 *	Rely on someone else to do the retransmissions.
@@ -1129,33 +1129,46 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	if (!u->rr) return;
 
 	state = fr_retry_next(&u->retry, now);
-	if (state == FR_RETRY_MRD) {
-		RDEBUG("Reached maximum_retransmit_duration, failing request");
-		goto fail;
-	}
-
-	if (state == FR_RETRY_MRC) {
-		RDEBUG("Reached maximum_retransmit_count, failing request");
-
-	fail:
-		udp_request_clear(u, h, now);
-		r->rcode = RLM_MODULE_FAIL;
-		u->c = NULL;
-		fr_trunk_request_signal_complete(treq);
-		return;
-	}
 
 	/*
+	 *	Queue the request for retransmission.
+	 *
 	 *	@todo - set up "next" timer here, instead of in
 	 *	request_mux() ?  That way we can catch the case of
 	 *	packets sitting in the queue for extended periods of
 	 *	time, and still run the timers.
 	 */
+	if (state == FR_RETRY_CONTINUE) {
+		fr_trunk_request_requeue(treq);
+		return;
+	}
+
+	if (state == FR_RETRY_MRD) {
+		RDEBUG("Reached maximum_retransmit_duration, failing request");
+
+	} else if (state == FR_RETRY_MRC) {
+		RDEBUG("Reached maximum_retransmit_count, failing request");
+	}
+
+	udp_request_clear(u, h, now);
+	r->rcode = RLM_MODULE_FAIL;
+	u->c = NULL;
+	fr_trunk_request_signal_complete(treq);
+
+	if (!u->status_check) return;
+
+	DEBUG("No response to status check, marking connection as dead - %s", h->name);
 
 	/*
-	 *	Queue the request for retransmission.
+	 *	Reset the FD handlers before changing
+	 *	the connection state.
 	 */
-	fr_trunk_request_requeue(treq);
+	if (h->trunk_notify != h->status_notify) {
+		thread_conn_notify(h->c->tconn, h->c->tconn->conn, h->thread->el, h->trunk_notify, h->thread);
+	}
+
+	h->status_checking = false;
+	fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
 }
 
 /** Attempt to write a packet to a connection
@@ -1902,28 +1915,12 @@ static void request_fail(REQUEST *request, void *preq, void *rctx, UNUSED void *
 {
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
-	udp_handle_t	 	*h;
 
-	if (!u->status_check) {
-		r->rcode = RLM_MODULE_FAIL;
+	if (u->status_check) return;
 
-		unlang_interpret_resumable(request);
-		return;
-	}
+	r->rcode = RLM_MODULE_FAIL;
 
-	h =  talloc_get_type_abort(r->treq->tconn->conn->h, udp_handle_t);
-	DEBUG("No response status check, marking connection as dead - %s", h->name);
-
-	/*
-	 *	Reset the FD handlers before changing
-	 *	the connection state.
-	 */
-	if (h->trunk_notify != h->status_notify) {
-		thread_conn_notify(h->c->tconn, h->c->tconn->conn, h->thread->el, h->trunk_notify, h->thread);
-	}
-
-	h->status_checking = false;
-	fr_trunk_connection_signal_reconnect(h->c->tconn, FR_CONNECTION_FAILED);
+	unlang_interpret_resumable(request);
 }
 
 /** Mark the request as resumable
