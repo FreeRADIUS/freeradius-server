@@ -364,8 +364,9 @@ static void xs_init(pTHX)
 	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
 }
 
-/*
- *	The xlat function
+/** Call perl code using an xlat
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t perl_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,

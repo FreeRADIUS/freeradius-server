@@ -208,6 +208,10 @@ static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *
 	return 0;
 }
 
+/** Perform a DNS lookup for an A record
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_a(TALLOC_CTX *ctx, char **out, size_t outlen,
 		      void const *mod_inst, UNUSED void const *xlat_inst,
 		      REQUEST *request, char const *fmt)
@@ -255,6 +259,10 @@ static ssize_t xlat_a(TALLOC_CTX *ctx, char **out, size_t outlen,
 	return -1;
 }
 
+/** Perform a DNS lookup for an AAAA record
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_aaaa(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
@@ -321,6 +329,10 @@ static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 */
 
+/** Perform a DNS lookup for a PTR record
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_ptr(TALLOC_CTX *ctx, char **out, size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
 			REQUEST *request, char const *fmt)

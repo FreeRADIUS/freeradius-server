@@ -805,6 +805,7 @@ finish:
 
 /** Allow single attribute values to be retrieved from the cache
  *
+ * @ingroup xlat_functions
  */
 static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 			  void const *mod_inst, UNUSED void const *xlat_inst,

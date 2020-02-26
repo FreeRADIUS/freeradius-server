@@ -83,6 +83,31 @@ static ssize_t date_encode_strftime(char **out, size_t outlen, rlm_date_t const 
 }
 DIAG_ON(format-nonliteral)
 
+/** Get or convert time and date
+ *
+ * Using the format in the module instance configuration, get
+ * various timestamps, or convert strings to date format.
+ *
+ * When the request arrived:
+@verbatim
+%{date:request}
+@endverbatim
+ *
+ * Now:
+@verbatim
+%{date:now}
+@endverbatim
+ *
+ * Examples (Tmp-Integer-0 = 1506101100):
+@verbatim
+update request {
+  &Tmp-String-0 := "%{date:&Tmp-Integer-0}" ("Fri 22 Sep 18:25:00 BST 2017")
+  &Tmp-Integer-1 := "%{date:&Tmp-String-0}" (1506101100)
+}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
 				 REQUEST *request, char const *fmt)

@@ -31,7 +31,11 @@ static int aka_sim_xlat_refs = 0;
 
 /** Returns the SIM method EAP-SIM or EAP-AKA hinted at by the user identifier
  *
- *	%{aka_sim_id_method:&id_attr}
+@verbatim
+%{aka_sim_id_method:&id_attr}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 					   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -102,7 +106,11 @@ static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED s
 
 /** Returns the type of identity used
  *
- *	%{aka_sim_id_type:&id_attr}
+@verbatim
+%{aka_sim_id_type:&id_attr}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -173,8 +181,11 @@ static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED siz
 
 /** Returns the key index from a 3gpp pseudonym
  *
- *	%{3gpp_pseudonym_key_index:&id_attr}
+@verbatim
+%{3gpp_pseudonym_key_index:&id_attr}
+@endverbatim
  *
+ * @ingroup xlat_functions
  */
 static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 						 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -220,6 +231,14 @@ static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out
 	return talloc_array_length(*out) - 1;
 }
 
+/** Decrypt a 3gpp pseudonym
+ *
+@verbatim
+%{3gpp_pseudonym_decrypt:&id_attr &key_attr}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 					       REQUEST *request, char const *fmt)
@@ -327,8 +346,11 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 
 /** Encrypts a 3gpp pseudonym
  *
- *	%{3gpp_pseudonym_encrypt:&id_attr &key_attr key_index}
+@verbatim
+%{3gpp_pseudonym_encrypt:&id_attr &key_attr key_index}
+@endverbatim
  *
+ * @ingroup xlat_functions
  */
 static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

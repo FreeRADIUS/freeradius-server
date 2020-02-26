@@ -148,6 +148,14 @@ static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp,
 	return 0;
 }
 
+/** Force a redis cluster remap
+ *
+@verbatim
+%{redis_remap:<redis server ip>:<redis server port>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst,
@@ -201,7 +209,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Return the node that is currently servicing a particular key
  *
- *
+ * @ingroup xlat_functions
  */
 static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     REQUEST *request, void const *xlat_inst,
@@ -271,6 +279,15 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+
+/** Xlat to make calls to redis
+ *
+@verbatim
+%{redis:<redis command>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt)

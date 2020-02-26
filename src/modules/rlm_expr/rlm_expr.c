@@ -502,8 +502,14 @@ redo:
 	goto redo;
 }
 
-/*
- *  Do xlat of strings!
+/** Xlat expressions
+ *
+ * Example (NAS-Port = 1):
+@verbatim
+"%{expr:2 + 3 + &NAS-Port}" == 6
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

@@ -220,6 +220,15 @@ static void xlat_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED vo
 	if (!fr_cond_assert(unlang_xlat_event_timeout_delete(request, rctx) == 0)) return;
 }
 
+/** Xlat to delay the request
+ *
+ * Example (delay 2 seconds):
+@verbatim
+"%{delay:2}"
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 				REQUEST *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_t **in)

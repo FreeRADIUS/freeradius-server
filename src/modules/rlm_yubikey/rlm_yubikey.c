@@ -125,10 +125,14 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 	return i;
 }
 
-/**
- * @brief Convert Yubikey modhex to standard hex
+/** Xlat to convert Yubikey modhex to standard hex
  *
- * Example: "%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
+ * Example:
+@verbatim
+"%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  	  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

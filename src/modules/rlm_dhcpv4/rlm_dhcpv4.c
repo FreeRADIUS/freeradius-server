@@ -50,6 +50,17 @@ typedef struct {
 	int nothing;
 } rlm_dhcpv4_t;
 
+/** Decode DHCP option data
+ *
+ * Creates DHCP attributes based on the given binary option data
+ *
+ * Example:
+@verbatim
+%{dhcpv4_decode:%{Tmp-Octets-0}}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				        REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				        fr_value_box_t **in)
@@ -119,6 +130,17 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+/** Encode DHCP option data
+ *
+ * Returns octet string created from the provided DHCP attributes
+ *
+ * Example:
+@verbatim
+%{dhcpv4_encode:&request:[*]}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					fr_value_box_t **in)

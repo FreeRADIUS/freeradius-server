@@ -69,8 +69,11 @@ fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
 	{ NULL }
 };
 
-/*
+/** SoH xlat
+ *
  * Not sure how to make this useful yet...
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

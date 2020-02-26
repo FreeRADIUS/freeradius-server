@@ -48,9 +48,13 @@ fr_dict_attr_autoload_t rlm_unpack_dict_attr[] = {
 
 /** Unpack data
  *
- *  Example: %{unpack:&Class 0 integer}
+ * Example:
+@verbatim
+%{unpack:&Class 0 integer}
+@endverbatim
+ * Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
  *
- *  Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
+ * @ingroup xlat_functions
  */
 static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

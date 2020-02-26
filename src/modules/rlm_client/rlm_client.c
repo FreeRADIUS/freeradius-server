@@ -208,8 +208,14 @@ finish:
 	return rcode;
 }
 
-/*
- *	Xlat for %{client:[<ipaddr>.]foo}
+/** xlat to get client config data
+ *
+ * Example:
+@verbatim
+%{client:[<ipaddr>.]foo}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_client(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

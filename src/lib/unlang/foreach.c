@@ -206,6 +206,7 @@ static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult)
 
 /** Implements the Foreach-Variable-X
  *
+ * @ingroup xlat_functions
  */
 static ssize_t unlang_foreach_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				   void const *mod_inst, UNUSED void const *xlat_inst,

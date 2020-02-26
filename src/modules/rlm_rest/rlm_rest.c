@@ -310,8 +310,14 @@ finish:
 	return xa;
 }
 
-/*
- *	Simple xlat to read text data from a URL
+/** Simple xlat to read text data from a URL
+ *
+ * Example:
+@verbatim
+%{rest:http://example.com/}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 			       REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,

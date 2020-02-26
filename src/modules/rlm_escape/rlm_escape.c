@@ -48,7 +48,12 @@ static char const hextab[] = "0123456789abcdef";
 
 /** Equivalent to the old safe_characters functionality in rlm_sql but with utf8 support
  *
- * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
+ * Example:
+@verbatim
+"%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   void const *mod_inst, UNUSED void const *xlat_inst,
@@ -115,7 +120,12 @@ static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 /** Equivalent to the old safe_characters functionality in rlm_sql
  *
- * @verbatim Example: "%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
+ * Example:
+@verbatim
+"%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

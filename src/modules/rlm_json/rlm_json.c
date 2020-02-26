@@ -84,6 +84,8 @@ typedef struct {
 
 /** Ensure contents are quoted correctly for a JSON document
  *
+ * @ingroup xlat_functions
+ *
  * @param ctx talloc context
  * @param out Where to write the output
  * @param request The current request.
@@ -130,6 +132,8 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST 
 
 /** Determine if a jpath expression is valid
  *
+ * @ingroup xlat_functions
+ *
  * @param ctx to allocate expansion buffer in.
  * @param mod_inst data.
  * @param xlat_inst data.
@@ -165,6 +169,8 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 /** Convert given attributes to a JSON document
  *
  * Usage is `%{json_encode:attr tmpl list}`
+ *
+ * @ingroup xlat_functions
  *
  * @param ctx talloc context
  * @param out where to write the output

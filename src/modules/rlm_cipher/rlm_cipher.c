@@ -457,7 +457,13 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
  *
  * Arguments are @verbatim(<plaintext>...)@endverbatim
  *
+@verbatim
+%{<inst>_encrypt:<plaintext>...}
+@endverbatim
+ *
  * If multiple arguments are provided they will be concatenated.
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					     REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
@@ -529,7 +535,13 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Arguments are @verbatim(<plaintext>...)@endverbatim
  *
+@verbatim
+%{<inst>_sign:<plaintext>...}
+@endverbatim
+ *
  * If multiple arguments are provided they will be concatenated.
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					  REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
@@ -623,7 +635,13 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Arguments are @verbatim(<ciphertext\>...)@endverbatim
  *
+@verbatim
+%{<inst>_decrypt:<ciphertext>...}
+@endverbatim
+ *
  * If multiple arguments are provided they will be concatenated.
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					     REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
@@ -696,8 +714,14 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Arguments are @verbatim(<signature>, <plaintext>...)@endverbatim
  *
+@verbatim
+%{<inst>_verify:<signature> <plaintext>...}
+@endverbatim
+ *
  * If multiple arguments are provided (after @verbatim<signature>@endverbatim)
  * they will be concatenated.
+ *
+ * @ingroup xlat_functions
  */
 static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,

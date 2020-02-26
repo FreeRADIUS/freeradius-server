@@ -514,8 +514,13 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 	return len;
 }
 
-/*
- *	Xlat for %{config:section.subsection.attribute}
+/** xlat to get config values
+ *
+@verbatim
+%{config:section.subsection.attribute}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

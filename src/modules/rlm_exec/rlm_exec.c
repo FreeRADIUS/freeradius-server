@@ -141,8 +141,14 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t 
 	return status;
 }
 
-/*
- *	Do xlat of strings.
+/** Exec programs from an xlat
+ *
+ * Example:
+@verbatim
+"%{exec:/bin/echo hello}" == "hello"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,

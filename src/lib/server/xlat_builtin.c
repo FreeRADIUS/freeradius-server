@@ -529,6 +529,13 @@ typedef struct {
 } xlat_redundant_t;
 
 
+/** xlat "redundant" processing
+ *
+ * Processes xlat calls for modules defined in "redundant"
+ * sub-sections of the instantiate configuration.
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
 			      void const *mod_inst, UNUSED void const *xlat_inst,
 			      REQUEST *request, char const *fmt)
@@ -580,6 +587,13 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 }
 
 
+/** xlat "load-balance" processing
+ *
+ * Processes xlat calls for modules defined in "load-balance"
+ * sub-sections of the instantiate configuration.
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
 				 REQUEST *request, char const *fmt)
@@ -2841,7 +2855,7 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 "%{sub:oo un %{User-Name}}" == "funbar"
 @endverbatim
  *
- * @see #xlat_func_sub_regex
+ * @see xlat_func_sub_regex
  *
  * @ingroup xlat_functions
  */

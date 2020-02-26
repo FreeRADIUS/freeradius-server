@@ -1181,6 +1181,7 @@ void unlang_interpret_resumable(REQUEST *request)
 
 /** Get information about the interpreter state
  *
+ * @ingroup xlat_functions
  */
 static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

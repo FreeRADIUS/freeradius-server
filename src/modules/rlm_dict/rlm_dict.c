@@ -27,8 +27,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/rad_assert.h>
 
-/*
- *	Xlat for %{attr_by_num:<number>}
+/** Xlat for %{attr_by_num:\<number\>}
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -57,8 +58,9 @@ static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t 
 	return talloc_array_length(*out) - 1;
 }
 
-/*
- *	Xlat for %{attr_by_oid:<oid>}
+/** Xlat for %{attr_by_oid:\<oid\>}
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -84,6 +86,7 @@ static ssize_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, char **out, UNUSED size_t 
 
 /** Return the vendor of an attribute reference
  *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_vendor(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -105,6 +108,7 @@ static ssize_t xlat_vendor(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 /** Return the vendor number of an attribute reference
  *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -122,6 +126,7 @@ static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 
 /** Return the attribute name of an attribute reference
  *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
@@ -140,6 +145,7 @@ static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 /** Return the attribute number of an attribute reference
  *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

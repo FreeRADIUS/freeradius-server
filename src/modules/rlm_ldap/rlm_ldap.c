@@ -259,6 +259,11 @@ fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
 	{ NULL }
 };
 
+
+/** Escape LDAP string
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t ldap_escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 	UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 	REQUEST *request, char const *fmt)
@@ -266,6 +271,10 @@ static ssize_t ldap_escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outle
 	return fr_ldap_escape_func(request, *out, outlen, fmt, NULL);
 }
 
+/** Unescape LDAP string
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t ldap_unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 	  REQUEST *request, char const *fmt)
@@ -275,6 +284,7 @@ static ssize_t ldap_unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t out
 
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
+ * @ingroup xlat_functions
  */
 static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
@@ -290,7 +300,7 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	struct berval		**values;
 
-	fr_ldap_connection_t		*conn;
+	fr_ldap_connection_t	*conn;
 	int			ldap_errno;
 
 	char const		*url;

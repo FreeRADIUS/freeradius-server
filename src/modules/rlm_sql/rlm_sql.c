@@ -160,9 +160,15 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *i
 
 /** Execute an arbitrary SQL query
  *
- *  For selects the first value of the first column will be returned,
- *  for inserts, updates and deletes the number of rows affected will be
- *  returned instead.
+ * For SELECTs, the first value of the first column will be returned.
+ * For INSERTS, UPDATEs and DELETEs, the number of rows affected will
+ * be returned instead.
+ *
+@verbatim
+%{sql:<sql statement>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
