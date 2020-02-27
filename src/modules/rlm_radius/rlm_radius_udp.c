@@ -1642,7 +1642,6 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	rad_assert(treq->preq == h->status_u);
 	rad_assert(treq->rctx == h->status_r);
 
-	if (u->rr) (void) radius_track_delete(&u->rr);
 	r->treq = NULL;
 
 	/*
