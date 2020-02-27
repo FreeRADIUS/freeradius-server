@@ -1637,7 +1637,7 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 {
 	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);;
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-	udp_result_t		*r = talloc_get_type_abort(treq->preq, udp_result_t);
+	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 
 	rad_assert(treq->preq == h->status_u);
 	rad_assert(treq->rctx == h->status_r);
