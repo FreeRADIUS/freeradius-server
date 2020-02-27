@@ -1104,11 +1104,15 @@ static void udp_request_clear(udp_handle_t *h, udp_request_t *u, fr_time_t now)
 static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
+	udp_handle_t		*h;
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 	REQUEST			*request = treq->request;
 	fr_retry_state_t	state;
+
+	rad_assert(treq->tconn);
+
+	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 
 	/*
 	 *	This call may nuke u->rr
