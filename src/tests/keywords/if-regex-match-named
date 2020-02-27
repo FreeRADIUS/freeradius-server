@@ -3,6 +3,46 @@
 if (('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) {
 update request {
 	&Tmp-Integer-0 := '123456789'
+	&Tmp-Integer-1 := 1
+}
+
+# Check failure when no previous capture - full capture
+if ("%{regex:}" != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message[*] != "No previous regex capture") {
+	test_fail
+}
+
+update request {
+	&Module-Failure-Message !* ANY
+}
+
+# Check failure when no previous capture - named group
+if ("%{regex:foo}" != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message[*] != "No previous named regex capture group") {
+	test_fail
+}
+
+update request {
+	&Module-Failure-Message !* ANY
+}
+
+# Check failure when no previous capture - numbered group
+if ("%{regex:%{Tmp-Integer-1}}" != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message[*] != "No previous numbered regex capture group") {
+	test_fail
+}
+
+update request {
+	&Module-Failure-Message !* ANY
 }
 
 # uncompiled - ref - named capture groups

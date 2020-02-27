@@ -2452,7 +2452,12 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 		fr_value_box_t	*vb;
 		char		*p;
 
-		if (regex_request_to_sub(ctx, &p, request, 0) < 0) return XLAT_ACTION_FAIL;
+		if (regex_request_to_sub(ctx, &p, request, 0) < 0) {
+			REDEBUG2("No previous regex capture");
+			return XLAT_ACTION_FAIL;
+		}
+
+		rad_assert(p);
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
@@ -2482,7 +2487,12 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		if (regex_request_to_sub(ctx, &p, request, idx.vb_uint32) < 0) return XLAT_ACTION_FAIL;
+		if (regex_request_to_sub(ctx, &p, request, idx.vb_uint32) < 0) {
+			REDEBUG2("No previous numbered regex capture group");
+			return XLAT_ACTION_FAIL;
+		}
+
+		rad_assert(p);
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
@@ -2504,7 +2514,12 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		if (regex_request_to_sub_named(request, &p, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
+		if (regex_request_to_sub_named(request, &p, request, (*in)->vb_strvalue) < 0) {
+			REDEBUG2("No previous named regex capture group");
+			return XLAT_ACTION_FAIL;
+		}
+
+		rad_assert(p);
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrsteal(vb, vb, NULL, p, false);

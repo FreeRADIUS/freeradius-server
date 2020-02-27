@@ -127,7 +127,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 	match_data = talloc_get_type_abort(rc->regmatch->match_data, pcre2_match_data);
 
@@ -198,7 +198,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 	match_data = rc->regmatch->match_data;
 
@@ -266,7 +266,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 
 	ret = pcre_get_substring(rc->regmatch->subject,
@@ -335,7 +335,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 
 	ret = pcre_get_named_substring(rc->preg->compiled, rc->regmatch->subject,
