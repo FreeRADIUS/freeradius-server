@@ -834,7 +834,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	if (proxy_state && !inst->parent->originate) {
 		uint8_t		*attr = u->packet + packet_len;
 		VALUE_PAIR	*vp;
-		vp_cursor_t	cursor;
+		fr_cursor_t	cursor;
 		int		count = 0;
 
 		rad_assert((size_t) (packet_len + proxy_state) <= u->packet_len);
@@ -846,8 +846,9 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		 *	sure that it's a loop.
 		 */
 		if (DEBUG_ENABLED) {
-			(void) fr_pair_cursor_init(&cursor, &request->packet->vps);
-			while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_proxy_state, TAG_ANY)) != NULL) {
+			for (vp = fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, attr_proxy_state);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
 				if ((vp->vp_length == 5) && (memcmp(vp->vp_octets, &inst->parent->proxy_state, 4) == 0)) {
 					count++;
 				}
