@@ -312,7 +312,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Common code called by everything below.
  */
 static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char const *filename, rbtree_t *tree,
-			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
+			       RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
 	char const	*name;
 	VALUE_PAIR	*check_tmp = NULL;
@@ -374,14 +374,14 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			}
 		}
 
-		if (paircmp(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
+		if (paircmp(request, packet->vps, check_tmp, &reply->vps) == 0) {
 			RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
 			found = true;
 
 			/* ctx may be reply or proxy */
-			MEM(fr_pair_list_copy(reply_packet, &reply_tmp, pl->reply) >= 0);
+			MEM(fr_pair_list_copy(reply, &reply_tmp, pl->reply) >= 0);
 
-			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
+			radius_pairmove(request, &reply->vps, reply_tmp, true);
 			fr_pair_list_move(&request->control, &check_tmp);
 
 			reply_tmp = NULL;	/* radius_pairmove() frees input attributes */
@@ -397,7 +397,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	/*
 	 *	Remove server internal parameters.
 	 */
-	fr_pair_delete_by_da(&reply_packet->vps, attr_fall_through);
+	fr_pair_delete_by_da(&reply->vps, attr_fall_through);
 
 	/*
 	 *	See if we succeeded.
