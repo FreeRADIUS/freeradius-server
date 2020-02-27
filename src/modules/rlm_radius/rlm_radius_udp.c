@@ -1594,18 +1594,11 @@ static void protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t
  */
 static void status_check_next(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
-	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
-	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-	udp_handle_t		*h;
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	udp_handle_t		*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+	udp_request_t		*u = h->status_u;
 	REQUEST			*request;
 	fr_retry_state_t	state;
-
-	/*
-	 *	Status check must still be associated with connection
-	 *	else timer should have been removed.
-	 */
-	rad_assert(treq->tconn);
-	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 
 	request = h->status_request;
 
@@ -1619,16 +1612,16 @@ static void status_check_next(UNUSED fr_event_list_t *el, fr_time_t now, void *u
 		RDEBUG("Reached maximum_retransmit_count, failing status checks");
 
 	fail:
-		fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 		return;
 	}
 
 	/*
 	 *	Requeue the status check for retransmission.
 	 */
-	if (fr_trunk_request_enqueue_on_conn(&h->status_r->treq, treq->tconn, h->status_request,
+	if (fr_trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
 					     h->status_u, h->status_r, true) != FR_TRUNK_ENQUEUE_OK) {
-		fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 	}
 }
 
@@ -1638,12 +1631,12 @@ static void status_check_next(UNUSED fr_event_list_t *el, fr_time_t now, void *u
  */
 static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 {
-	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);;
-	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
+	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
+	udp_result_t		*r = talloc_get_type_abort(treq->preq, udp_result_t);
 
-	rad_assert(u == h->status_u);
-	rad_assert(r == h->status_r);
+	rad_assert(treq->preq == h->status_u);
+	rad_assert(treq->rctx == h->status_r);
 
 	if (u->rr) (void) radius_track_delete(&u->rr);
 	r->treq = NULL;
@@ -1677,7 +1670,7 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 		/*
 		 *	Set the timer for the next retransmit.
 		 */
-		if (fr_event_timer_at(u, h->thread->el, &u->ev, u->retry.next, status_check_next, treq) < 0) {
+		if (fr_event_timer_at(h, h->thread->el, &u->ev, u->retry.next, status_check_next, treq->tconn) < 0) {
 			fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
 		}
 		return;
