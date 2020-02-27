@@ -99,19 +99,19 @@ RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 /** Free a RADIUS_PACKET
  *
  */
-void fr_radius_packet_free(RADIUS_PACKET **radius_packet_ptr)
+void fr_radius_packet_free(RADIUS_PACKET **packet_p)
 {
-	RADIUS_PACKET *radius_packet;
+	RADIUS_PACKET *packet;
 
-	if (!radius_packet_ptr || !*radius_packet_ptr) return;
-	radius_packet = *radius_packet_ptr;
+	if (!packet_p || !*packet_p) return;
+	packet = *packet_p;
 
-	PACKET_VERIFY(radius_packet);
+	PACKET_VERIFY(packet);
 
-	fr_pair_list_free(&radius_packet->vps);
+	fr_pair_list_free(&packet->vps);
 
-	talloc_free(radius_packet);
-	*radius_packet_ptr = NULL;
+	talloc_free(packet);
+	*packet_p = NULL;
 }
 
 /** Duplicate a RADIUS_PACKET
@@ -125,28 +125,28 @@ void fr_radius_packet_free(RADIUS_PACKET **radius_packet_ptr)
  */
 RADIUS_PACKET *fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 {
-	RADIUS_PACKET *out;
+	RADIUS_PACKET *packet;
 
-	out = fr_radius_alloc(ctx, false);
-	if (!out) return NULL;
+	packet = fr_radius_alloc(ctx, false);
+	if (!packet) return NULL;
 
 	/*
 	 *	Bootstrap by copying everything.
 	 */
-	memcpy(out, in, sizeof(*out));
+	memcpy(packet, in, sizeof(*packet));
 
 	/*
 	 *	Then reset necessary fields
 	 */
-	out->sockfd = -1;
+	packet->sockfd = -1;
 
-	out->data = NULL;
-	out->data_len = 0;
+	packet->data = NULL;
+	packet->data_len = 0;
 
-	if (fr_pair_list_copy(out, &out->vps, in->vps) < 0) {
-		talloc_free(out);
+	if (fr_pair_list_copy(packet, &packet->vps, in->vps) < 0) {
+		talloc_free(packet);
 		return NULL;
 	}
 
-	return out;
+	return packet;
 }
