@@ -1646,7 +1646,6 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	rad_assert(r == h->status_r);
 
 	if (u->rr) (void) radius_track_delete(&u->rr);
-	fr_trunk_request_signal_complete(treq);
 	r->treq = NULL;
 
 	/*
@@ -1787,6 +1786,7 @@ static fr_trunk_request_t *read_packet(fr_trunk_connection_t *tconn, fr_connecti
 	 */
 	if (u == h->status_u) {
 		status_check_reply(treq, now);
+		fr_trunk_request_signal_complete(treq);
 		return NULL;
 	}
 
