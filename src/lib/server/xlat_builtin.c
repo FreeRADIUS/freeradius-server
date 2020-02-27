@@ -2967,6 +2967,11 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Return the tag of an attribute reference
  *
+ * Example (Tunnel-Server-Endpoint:1 = "192.0.2.1"):
+@verbatim
+"%{tag:Tunnel-Server-Endpoint}" == "1"
+@endverbatim
+ *
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_tag(TALLOC_CTX *ctx, fr_cursor_t *out,
