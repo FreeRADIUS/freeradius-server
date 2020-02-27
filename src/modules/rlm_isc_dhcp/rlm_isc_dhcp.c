@@ -993,13 +993,12 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	return 2;
 }
 
-
 static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state,
 			fr_dict_attr_t const *da, char *value)
 {
 	int rcode;
 	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 
 	/*
 	 *	The attribute isn't an array, so it MUST have a
@@ -1011,7 +1010,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 	}
 
 	MEM(vp = fr_pair_afrom_da(parent, da));
-	(void) fr_pair_cursor_init(&cursor, &parent->options);
+	(void) fr_cursor_init(&cursor, &parent->options);
 
 	/*
 	 *	Add in the first value.
@@ -1024,8 +1023,8 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 
 	vp->op = T_OP_EQ;
 
-	fr_pair_cursor_append(&cursor, vp);
-	(void) fr_pair_cursor_tail(&cursor);
+	fr_cursor_append(&cursor, vp);
+	(void) fr_cursor_tail(&cursor);
 
 	// @todo - print out ISC names...
 	IDEBUG("%.*s option %s %s ", state->braces, spaces, da->name, value);
@@ -1051,8 +1050,8 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 
 		vp->op = T_OP_EQ;
 
-		fr_pair_cursor_append(&cursor, vp);
-		(void) fr_pair_cursor_tail(&cursor);
+		fr_cursor_append(&cursor, vp);
+		(void) fr_cursor_tail(&cursor);
 
 		// @todo - print out ISC names...
 		IDEBUG("%.*s option %s %.*ss ", state->braces, spaces, da->name, state->token_len, state->token);
@@ -1662,7 +1661,7 @@ static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 {
 	int rcode;
 	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 
 	if (!info->parent) return -1; /* internal error */
 
@@ -1671,9 +1670,9 @@ static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 	rcode = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
 	if (rcode < 0) return rcode;
 
-	(void) fr_pair_cursor_init(&cursor, &info->parent->options);
-	(void) fr_pair_cursor_tail(&cursor);
-	fr_pair_cursor_append(&cursor, vp);
+	(void) fr_cursor_init(&cursor, &info->parent->options);
+	(void) fr_cursor_tail(&cursor);
+	fr_cursor_append(&cursor, vp);
 
 	talloc_free(info);
 	return 2;
@@ -1769,7 +1768,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request)
 	 *	Find a "fixed-address" sub-statement.
 	 */
 	for (info = host->child; info != NULL; info = info->next) {
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 
 		if (!info->cmd) return -1; /* internal error */
 
@@ -1788,9 +1787,9 @@ static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request)
 		/*
 		 *	<sigh> I miss pair_add()
 		 */
-		(void) fr_pair_cursor_init(&cursor, &request->reply->vps);
-		(void) fr_pair_cursor_tail(&cursor);
-		fr_pair_cursor_append(&cursor, vp);
+		(void) fr_cursor_init(&cursor, &request->reply->vps);
+		(void) fr_cursor_tail(&cursor);
+		fr_cursor_append(&cursor, vp);
 
 		/*
 		 *	If we've found a fixed IP, then tell
@@ -1865,11 +1864,11 @@ recurse:
 	 */
 	if (head->options) {
 		VALUE_PAIR *vp = NULL;
-		vp_cursor_t option_cursor;
-		vp_cursor_t reply_cursor;
+		fr_cursor_t option_cursor;
+		fr_cursor_t reply_cursor;
 
-		(void) fr_pair_cursor_init(&reply_cursor, &request->reply->vps);
-		(void) fr_pair_cursor_tail(&reply_cursor);
+		(void) fr_cursor_init(&reply_cursor, &request->reply->vps);
+		(void) fr_cursor_tail(&reply_cursor);
 
 		/*
 		 *	Walk over the input list, adding the options
@@ -1890,9 +1889,9 @@ recurse:
 		 *	options that match.  This would likely be
 		 *	faster.
 		 */
-		for (vp = fr_pair_cursor_init(&option_cursor, &head->options);
+		for (vp = fr_cursor_init(&option_cursor, &head->options);
 		     vp != NULL;
-		     vp = fr_pair_cursor_next(&option_cursor)) {
+		     vp = fr_cursor_next(&option_cursor)) {
 			VALUE_PAIR *reply;
 
 			reply = fr_pair_find_by_da(request->reply->vps, vp->da, TAG_ANY);
@@ -1908,14 +1907,14 @@ recurse:
 				copy = fr_pair_copy(request->reply, vp);
 				if (!copy) return -1;
 
-				fr_pair_cursor_append(&reply_cursor, copy);
-				(void) fr_pair_cursor_tail(&reply_cursor);
+				fr_cursor_append(&reply_cursor, copy);
+				(void) fr_cursor_tail(&reply_cursor);
 
-				next = fr_pair_cursor_next_peek(&option_cursor);
+				next = fr_cursor_next_peek(&option_cursor);
 				if (!next) break;
 				if (next->da != vp->da) break;
 
-				vp = fr_pair_cursor_next(&option_cursor);
+				vp = fr_cursor_next(&option_cursor);
 			}
 		}
 
