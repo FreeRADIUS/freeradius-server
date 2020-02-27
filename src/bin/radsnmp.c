@@ -161,20 +161,20 @@ static void rs_signal_stop(UNUSED int sig)
  */
 static RADIUS_PACKET *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
 {
-	RADIUS_PACKET *request;
+	RADIUS_PACKET *packet;
 
-	request = fr_radius_alloc(conf, true);
+	packet = fr_radius_alloc(conf, true);
 
-	request->code = conf->code;
+	packet->code = conf->code;
 
-	request->id = conf->last_used_id;
+	packet->id = conf->last_used_id;
 	conf->last_used_id = (conf->last_used_id + 1) & UINT8_MAX;
 
-	memcpy(&request->dst_ipaddr, &conf->server_ipaddr, sizeof(request->dst_ipaddr));
-	request->dst_port = conf->server_port;
-	request->sockfd = fd;
+	memcpy(&packet->dst_ipaddr, &conf->server_ipaddr, sizeof(packet->dst_ipaddr));
+	packet->dst_port = conf->server_port;
+	packet->sockfd = fd;
 
-	return request;
+	return packet;
 }
 
 /** Builds attribute representing OID string and adds 'index' attributes where required
@@ -643,18 +643,18 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 		fr_cursor_t		cursor;
 		VALUE_PAIR		*vp;
-		RADIUS_PACKET		*request;
+		RADIUS_PACKET		*packet;
 
 		/*
-		 *	Alloc a new request so we can start adding
+		 *	Alloc a new packet so we can start adding
 		 *	new pairs to it.
 		 */
-		request = radsnmp_alloc(conf, fd);
-		if (!request) {
+		packet = radsnmp_alloc(conf, fd);
+		if (!packet) {
 			ERROR("Failed allocating request");
 			return EXIT_FAILURE;
 		}
-		fr_cursor_init(&cursor, &request->vps);
+		fr_cursor_init(&cursor, &packet->vps);
 
 		NEXT_LINE(line, buffer);
 
@@ -717,7 +717,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		default:
 			ERROR("Unknown command \"%s\"", line);
 			RESPOND_STATIC("NONE");
-			talloc_free(request);
+			talloc_free(packet);
 			continue;
 		}
 
@@ -735,7 +735,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 			talloc_free(spaces);
 			talloc_free(text);
-			talloc_free(request);
+			talloc_free(packet);
 			RESPOND_STATIC("NONE");
 			continue;
 		}
@@ -744,7 +744,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	Now add an attribute indicating what the
 		 *	SNMP operation was
 		 */
-		MEM(vp = fr_pair_afrom_da(request, attr_freeradius_snmp_operation));
+		MEM(vp = fr_pair_afrom_da(packet, attr_freeradius_snmp_operation));
 		vp->vp_uint32 = (unsigned int)command;	/* Commands must match dictionary */
 		fr_cursor_append(&cursor, vp);
 
@@ -752,7 +752,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	Add message authenticator or the stats
 		 *	request will be rejected.
 		 */
-		MEM(vp = fr_pair_afrom_da(request, attr_message_authenticator));
+		MEM(vp = fr_pair_afrom_da(packet, attr_message_authenticator));
 		fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1, true);
 		fr_cursor_append(&cursor, vp);
 
@@ -768,19 +768,19 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			unsigned int	ret;
 			unsigned int	i;
 
-			if (fr_radius_packet_encode(request, NULL, conf->secret) < 0) {
-				ERROR("Failed encoding request: %s", fr_strerror());
+			if (fr_radius_packet_encode(packet, NULL, conf->secret) < 0) {
+				ERROR("Failed encoding packet: %s", fr_strerror());
 				return EXIT_FAILURE;
 			}
-			if (fr_radius_packet_sign(request, NULL, conf->secret) < 0) {
-				ERROR("Failed signing request: %s", fr_strerror());
+			if (fr_radius_packet_sign(packet, NULL, conf->secret) < 0) {
+				ERROR("Failed signing packet: %s", fr_strerror());
 				return EXIT_FAILURE;
 			}
 
 			/*
 			 *	Print the attributes we're about to send
 			 */
-			fr_packet_log(&default_log, request, false);
+			fr_packet_log(&default_log, packet, false);
 
 			FD_ZERO(&set); /* clear the set */
 			FD_SET(fd, &set);
@@ -791,7 +791,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			 *	next call.
 			 */
 			for (i = 0; i < conf->retries; i++) {
-				rcode = write(request->sockfd, request->data, request->data_len);
+				rcode = write(packet->sockfd, packet->data, packet->data_len);
 				if (rcode < 0) {
 					ERROR("Failed sending: %s", fr_syserror(errno));
 					return EXIT_FAILURE;
@@ -808,16 +808,16 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					continue;	/* Timeout */
 
 				case 1:
-					reply = fr_radius_packet_recv(request, request->sockfd, UDP_FLAGS_NONE,
+					reply = fr_radius_packet_recv(packet, packet->sockfd, UDP_FLAGS_NONE,
 								      RADIUS_MAX_ATTRIBUTES, false);
 					if (!reply) {
 						ERROR("Failed receiving reply: %s", fr_strerror());
 					recv_error:
 						RESPOND_STATIC("NONE");
-						talloc_free(request);
+						talloc_free(packet);
 						continue;
 					}
-					if (fr_radius_packet_decode(reply, request,
+					if (fr_radius_packet_decode(reply, packet,
 								    RADIUS_MAX_ATTRIBUTES, false, conf->secret) < 0) {
 						ERROR("Failed decoding reply: %s", fr_strerror());
 						goto recv_error;
@@ -874,7 +874,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			}
 
 
-			talloc_free(request);
+			talloc_free(packet);
 		}
 	}
 
