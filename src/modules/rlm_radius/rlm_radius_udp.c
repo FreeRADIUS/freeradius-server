@@ -523,7 +523,7 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 				   thread);
 	if (!conn) {
 		talloc_free(conn);
-		PERROR("Failed allocating state handler for new connection");
+		PERROR("%s - Failed allocating state handler for new connection", thread->inst->parent->name);
 		return NULL;
 	}
 
@@ -606,7 +606,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	fr_connection_t		*conn = tconn->conn;
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
-	ERROR("%s - Connection %s failed - %s", h->inst->parent->name, h->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed - %s", h->module_name, h->name, fr_syserror(fd_errno));
 
 	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 }
@@ -963,7 +963,7 @@ static void revive_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void 
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 
-	DEBUG("Shutting down and reviving connection %s", h->name);
+	INFO("%s - Shutting down and reviving connection %s", h->module_name, h->name);
 	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 }
 
@@ -1048,8 +1048,7 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 		uint32_t msec = fr_time_delta_to_msec(h->inst->parent->revive_interval);
 		fr_time_t when;
 
-		DEBUG("Connection failed.  Reviving it in %u.%03us",
-		      msec / 1000, msec % 1000);
+		WARN("%s - Connection failed.  Reviving it in %u.%03us", h->module_name, msec / 1000, msec % 1000);
 		fr_trunk_connection_signal_inactive(tconn);
 
 		when = now + h->inst->parent->revive_interval;
@@ -1141,7 +1140,6 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	if (state == FR_RETRY_MRD) {
 		RDEBUG("Reached maximum_retransmit_duration, failing request");
-
 	} else if (state == FR_RETRY_MRC) {
 		RDEBUG("Reached maximum_retransmit_count, failing request");
 	}
@@ -1152,7 +1150,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	if (!u->status_check) return;
 
-	DEBUG("No response to status check, marking connection as dead - %s", h->name);
+	WARN("%s - No response to status check, marking connection as dead - %s", h->module_name, h->name);
 
 	h->status_checking = false;
 
