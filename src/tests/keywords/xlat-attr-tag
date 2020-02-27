@@ -46,6 +46,36 @@ if ("%{tag:control:Cleartext-Password[0]}" != '') {
 	test_fail
 }
 
+# There should be no failures so far
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+# Test invalid attributes
+if ("%{tag:foo}" != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "Unknown attribute 'foo'") {
+	test_fail
+}
+
+update request {
+	&Module-Failure-Message !* ANY
+}
+
+if ("%{tag:%{control:Cleartext-Password}}" != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "Unknown attribute 'hello'") {
+	test_fail
+}
+
+update request {
+	&Module-Failure-Message !* ANY
+}
+
 # Check that access attributes by tag works first
 if ("%{Tunnel-Server-Endpoint:2}" != '192.0.3.1') {
 	test_fail

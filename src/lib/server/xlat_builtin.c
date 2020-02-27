@@ -160,7 +160,7 @@ int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = VP_ATTR_REF_PREFIX_AUTO
-				}) < 0) {
+				}) <= 0) {
 		RPEDEBUG("Failed parsing attribute reference");
 		return -1;
 	}
