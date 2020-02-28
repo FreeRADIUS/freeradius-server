@@ -42,6 +42,10 @@
 #  include <sys/prctl.h>
 #endif
 
+#ifdef HAVE_SYS_PROCCTL_H
+#  include <sys/procctl.h>
+#endif
+
 #ifdef HAVE_SYS_PTRACE_H
 #  include <sys/ptrace.h>
 #  if !defined(PT_ATTACH) && defined(PTRACE_ATTACH)
@@ -246,6 +250,29 @@ static int fr_get_debug_state(void)
 
 		return ret;
 	}
+}
+#elif define (HAVE_SYS_PROCCTL_H)
+static int fr_get_debug_state(void)
+{
+	int status;
+
+	if (procctl(P_PID, getpid(), PROC_TRACE_STATUSL, &status) == -1) {
+		fr_strerror_printf("Cannot get dumpable flag: procctl(PROC_TRACE_STATUS) failed: %s", fr_syserror(errno));
+		return DEBUG_STATE_UNKNOWN;
+	}
+
+	/*
+	 *	As FreeBSD docs say about "PROC_TRACE_STATUS":
+	 *
+	 *	Returns the current tracing status for the specified process in the
+	 *	integer variable pointed to by data.  If tracing is disabled, data
+	 *	is set to -1.  If tracing is enabled, but no debugger is attached by
+	 *	the ptrace(2) syscall, data is set to 0.  If a debugger is attached,
+	 *	data is set to the pid of the debugger process.
+	 */
+	if (status <= 0) return DEBUG_STATE_NOT_ATTACHED;
+
+	return DEBUG_STATE_ATTACHED;
 }
 #else
 static int fr_get_debug_state(void)
@@ -474,6 +501,19 @@ static int fr_set_dumpable_flag(bool dumpable)
 
 	return 0;
 }
+#elif defined(HAVE_SYS_PROCCTL_H)
+static int fr_set_dumpable_flag(bool dumpable)
+{
+	int mode = dumpable ? PROC_TRACE_CTL_ENABLE : PROC_TRACE_CTL_DISABLE;
+
+	if (procctl(P_PID, getpid(), PROC_TRACE_CTL, &mode) == -1) {
+		fr_strerror_printf("Cannot re-enable core dumps: procctl(PROC_TRACE_CTL) failed: %s",
+				   fr_syserror(errno));
+		return -1;
+	}
+
+	return 0;
+}
 #else
 static int fr_set_dumpable_flag(UNUSED bool dumpable)
 {
@@ -500,6 +540,24 @@ static int fr_get_dumpable_flag(void)
 	 *  Linux is crazy and prctl sometimes returns 2 for disabled
 	 */
 	if (ret != 1) return 0;
+	return 1;
+}
+#elif defined(HAVE_SYS_PROCCTL_H)
+static int fr_get_dumpable_flag(void)
+{
+	int status;
+
+	if (procctl(P_PID, getpid(), PROC_TRACE_CTL, &status) == -1) {
+		fr_strerror_printf("Cannot get dumpable flag: procctl(PROC_TRACE_CTL) failed: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	There are a few different kinds of disabled, but only
+	 *	one ENABLE.
+	 */
+	if (status != PROC_TRACE_CTL_ENABLE) return 0;
+
 	return 1;
 }
 #else
