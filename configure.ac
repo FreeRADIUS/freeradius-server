@@ -1151,6 +1151,7 @@ AC_CHECK_HEADERS( \
   sys/event.h \
   sys/fcntl.h \
   sys/prctl.h \
+  sys/procctl.h \
   sys/ptrace.h \
   sys/resource.h \
   sys/security.h \
