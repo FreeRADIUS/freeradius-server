@@ -237,10 +237,10 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		if (!vp) return -1;
 
 		/*
-		 *	Child VPs go into vp->ptr, not in the main
-		 *	parent list.  We start decoding attributes
-		 *	from the dictionary root, not from this
-		 *	parent.  We also don't decode an option
+		 *	Child VPs go into the child group, not in the
+		 *	main parent list.  We start decoding
+		 *	attributes from the dictionary root, not from
+		 *	this parent.  We also don't decode an option
 		 *	header, as we're just decoding the values
 		 *	here.
 		 */
@@ -250,7 +250,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 			talloc_free(vp);
 			goto raw;
 		}
-		vp->vp_ptr = head;
+		vp->vp_group = head;
 		break;
 	}
 	}

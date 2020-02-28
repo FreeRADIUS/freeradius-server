@@ -432,7 +432,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		/*
 		 *	Encode the child options.
 		 */
-		child = vp->vp_ptr;
+		child = vp->vp_group;
 		if (child) {
 			(void) fr_cursor_init(&child_cursor, &child);
 
