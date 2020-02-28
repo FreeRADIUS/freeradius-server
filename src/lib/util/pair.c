@@ -1293,7 +1293,7 @@ int fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 		if (ret != 0) return ret;
 
 		if (a_p->da->type == FR_TYPE_GROUP) {
-			ret = fr_pair_list_cmp(a_p->vp_ptr, b_p->vp_ptr);
+			ret = fr_pair_list_cmp(a_p->vp_group, b_p->vp_group);
 			if (ret != 0) return ret;
 			continue;
 		}
@@ -1731,7 +1731,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			fr_skip_whitespace(p);
 			if (*p != '}') goto failed_group;
 			p++;
-			vp->vp_ptr = child;
+			vp->vp_group = child;
 
 		} else {
 			FR_TOKEN quote;
@@ -3007,13 +3007,13 @@ void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		break;
 
        case FR_TYPE_GROUP:
-	       if (!vp->vp_ptr) break;
+	       if (!vp->vp_group) break;
 
 	       {
 		       fr_cursor_t cursor;
 		       VALUE_PAIR *child, *head;
 
-		       head = vp->vp_ptr;
+		       head = vp->vp_group;
 
 		       for (child = fr_cursor_init(&cursor, &head);
 			    child != NULL;
@@ -3149,7 +3149,7 @@ void fr_pair_list_tainted(VALUE_PAIR *vps)
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 
-		if (vp->da->type == FR_TYPE_GROUP) fr_pair_list_tainted(vp->vp_ptr);
+		if (vp->da->type == FR_TYPE_GROUP) fr_pair_list_tainted(vp->vp_group);
 
 		vp->vp_tainted = true;
 	}
