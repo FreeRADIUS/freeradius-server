@@ -15,7 +15,7 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  See raddb/sites-available/tls.  Patch from Boris Lytochkin.
 	* Update the WiMAX dictionary.
 	* Added ability to rlm_python(Python2) show a stacktrace from errors. #2979
-	* Add WiFi Alliance Policy OIDs.  See certs/xpextensions
+	* Add WiFi Alliance Policy OIDs.  See raddb/certs/xpextensions
 	  Patch from Stefan Winter.
 	* radmin now shows coa stats, too.
 	* Sample schema extensions for summarizing data in SQL.
