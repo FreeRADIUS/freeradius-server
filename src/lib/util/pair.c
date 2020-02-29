@@ -867,6 +867,117 @@ VALUE_PAIR *fr_pair_find_by_child_num(VALUE_PAIR *head, fr_dict_attr_t const *pa
 }
 
 
+#ifdef PAIR_GROUP
+/** Get the child list of a group
+ *
+ * @param head VP which MUST be of FR_TYPE_GROUP
+ * @return
+ *	- NULL on error
+ *	- pointer to head of the child list.
+ */
+VALUE_PAIR **fr_pair_group_get_sublist(VALUE_PAIR *head)
+{
+	if (!head || (head->vp_type != FR_TYPE_GROUP)) return NULL;
+
+	return (VALUE_PAIR **) &head->vp_group;
+}
+
+/** Find the pair with the matching DAs in a group
+ *
+ * @param head VP which MUST be of FR_TYPE_GROUP
+ * @param da to search for
+ * @param tag to search for
+ */
+VALUE_PAIR *fr_pair_group_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag)
+{
+	if (head->vp_type != FR_TYPE_GROUP) return NULL;
+
+	return fr_pair_find_by_da((VALUE_PAIR *) head->vp_group, da, tag);
+}
+
+
+/** Find the pair with the matching numbers in a group
+ *
+ * @param head VP which MUST be of FR_TYPE_GROUP
+ * @param vendor to search for
+ * @param attr to search for
+ * @param tag to search for
+ */
+VALUE_PAIR *fr_pair_group_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned int attr, int8_t tag)
+{
+	if (head->vp_type != FR_TYPE_GROUP) return NULL;
+
+	return fr_pair_find_by_num((VALUE_PAIR *) head->vp_group, vendor, attr, tag);
+}
+
+/** Add a VP to the end of the FR_TYPE_GROUP.
+ *
+ * Locates the end of 'head', and links an additional VP 'add' at the end.
+ *
+ * @param[in] head VP which MUST be of type FR_TYPE_GROUP in linked list. Will add new VP to the end of this list.
+ * @param[in] add VP to add to list.
+ */
+void fr_pair_group_add(VALUE_PAIR *head, VALUE_PAIR *add)
+{
+	if (head->vp_type != FR_TYPE_GROUP) return;
+
+	fr_pair_add((VALUE_PAIR **) &head->vp_group, add);
+}
+
+
+/** Alloc a new VALUE_PAIR (and prepend)
+ *
+ * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
+ *			care about manipulating the VALUE_PAIR.
+ * @param[in,out] head	VP which MUST be of FR_TYPE_GROUP
+ * @param[in] da	of attribute to update.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_group_add_by_da(VALUE_PAIR **out, VALUE_PAIR *head, fr_dict_attr_t const *da)
+{
+	if (head->vp_type != FR_TYPE_GROUP) return -1;
+
+	return fr_pair_add_by_da(head, out, (VALUE_PAIR **) &head->vp_group, da);
+}
+
+
+/** Return the first VALUE_PAIR matching the #fr_dict_attr_t or alloc a new VALUE_PAIR (and prepend)
+ *
+ * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
+ *			care about manipulating the VALUE_PAIR.
+ * @param[in,out] head	VP which MUST be of FR_TYPE_GROUP
+ * @param[in] da	of attribute to update.
+ * @return
+ *	- 1 if attribute already existed.
+ *	- 0 if we allocated a new attribute.
+ *	- -1 on failure.
+ */
+int fr_pair_group_update_by_da(VALUE_PAIR **out, VALUE_PAIR *head, fr_dict_attr_t const *da)
+{
+	if (head->vp_type != FR_TYPE_GROUP) return -1;
+
+	return fr_pair_update_by_da(head, out, (VALUE_PAIR **) &head->vp_group, da);
+}
+
+/** Delete matching pairs from the specified list
+ *
+ * @param head VP which MUST be of FR_TYPE_GROUP
+ * @param[in] da	to match.
+ * @return
+ *	- >0 the number of pairs deleted.
+ *	- 0 if no pairs were deleted.
+ */
+int fr_pair_group_delete_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da)
+{
+	if (head->vp_type != FR_TYPE_GROUP) return -1;
+
+	return fr_pair_delete_by_da((VALUE_PAIR **) &head->vp_group, da);
+}
+#endif
+
+
 /** Add a VP to the end of the list.
  *
  * Locates the end of 'head', and links an additional VP 'add' at the end.

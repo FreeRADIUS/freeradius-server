@@ -265,6 +265,31 @@ int		fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR **list, 
 
 int		fr_pair_delete_by_da(VALUE_PAIR **head, fr_dict_attr_t const *da);
 
+/* functions for FR_TYPE_GROUP */
+#ifdef PAIR_GROUP
+VALUE_PAIR	**fr_pair_group_get_sublist(VALUE_PAIR *head);
+
+VALUE_PAIR	*fr_pair_group_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag);
+
+VALUE_PAIR	*fr_pair_group_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned int attr, int8_t tag);
+
+void		fr_pair_group_add(VALUE_PAIR *head, VALUE_PAIR *vp);
+
+int		fr_pair_group_add_by_da(VALUE_PAIR **out, VALUE_PAIR *head, fr_dict_attr_t const *da);
+
+int		fr_pair_group_update_by_da(VALUE_PAIR **out, VALUE_PAIR *head, fr_dict_attr_t const *da);
+
+int		fr_pair_group_delete_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da);
+#else
+#define	fr_pair_group_find_by_da fr_pair_find_by_da
+#define	fr_pair_group_find_by_num fr_pair_find_by_num
+#define fr_pair_group_add(_head, _vp) fr_pair_add(&(_head), _vp)
+#define fr_pair_group_add_by_da(__out, _head, _vp, _da) fr_pair_add_by_da(_out, &(_head), _vp, _da)
+#define fr_pair_group_update_by_da(_out, _head, _vp, _da) fr_pair_update_by_da(_out, &(_head), _vp, _da)
+#define fr_pair_group_delete_by_da(_head, _da) fr_pair_delete_by_da(&(_head), _da)
+#endif
+
+
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 
