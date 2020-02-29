@@ -32,7 +32,7 @@ extern "C" {
 #ifdef NO_ASSERT
 # define MEM(x) error "Use of MEM() not allowed in this source file.  Deal with memory allocation failure gracefully"
 #else
-# define MEM(x) do { if (!(x)) { ERROR("%s[%u] OUT OF MEMORY", __FILE__, __LINE__); _fr_exit_now(__FILE__, __LINE__, EXIT_FAILURE); } } while (0)
+# define MEM(x) do { if (!(x)) { fr_cond_assert_msg((x), "OUT OF MEMORY"); _fr_exit_now(__FILE__, __LINE__, EXIT_FAILURE); } } while (0)
 #endif
 
 typedef enum {

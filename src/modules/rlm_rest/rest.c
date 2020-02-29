@@ -611,7 +611,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
  *	- Length of the data written to the buffer (excluding NULL).
  *	- -1 if alloc >= limit.
  */
-static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
+static ssize_t rest_request_encode_wrapper(char **out, UNUSED rlm_rest_t const *inst,
 					   rest_read_t func, size_t limit, void *userdata)
 {
 	char	*buff = NULL;
@@ -670,7 +670,7 @@ static void rest_request_init(rlm_rest_section_t const *section,
  *	- Number of VALUE_PAIR processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_plain(rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
+static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
 			     REQUEST *request, UNUSED void *handle, char *raw, size_t rawlen)
 {
 	VALUE_PAIR		*vp;
@@ -714,10 +714,9 @@ static int rest_decode_plain(rlm_rest_t const *inst, UNUSED rlm_rest_section_t c
  *	- Number of VALUE_PAIRs processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_post(rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 			    REQUEST *request, void *handle, char *raw, size_t rawlen)
 {
-	rlm_rest_t const	*inst = instance;
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->candle;
 
@@ -867,11 +866,10 @@ static int rest_decode_post(rlm_rest_t const *instance, UNUSED rlm_rest_section_
  *	- #VALUE_PAIR just created.
  *	- NULL on error.
  */
-static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 				        TALLOC_CTX *ctx, REQUEST *request,
 				        fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
 {
-	rlm_rest_t const	*inst = instance;
 	char const		*value;
 	char			*expanded = NULL;
 	int 			ret;
@@ -1477,7 +1475,6 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_response_t	*ctx = userdata;
-	rlm_rest_t const	*inst = ctx->instance;
 	REQUEST			*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = in, *p = start, *end = p + (size * nmemb);
@@ -2177,7 +2174,7 @@ error:
 	return -1;
 }
 
-int rest_response_certinfo(rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
+int rest_response_certinfo(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
 			   REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
@@ -2403,7 +2400,7 @@ size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char c
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, char const *uri)
+ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t const *inst, REQUEST *request, char const *uri)
 {
 	char const	*p;
 	char		*path_exp = NULL;
@@ -2475,7 +2472,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, cha
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_host_unescape(char **out, rlm_rest_t const *inst, REQUEST *request,
+ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, REQUEST *request,
 			       void *handle, char const *uri)
 {
 	rlm_rest_handle_t	*randle = handle;

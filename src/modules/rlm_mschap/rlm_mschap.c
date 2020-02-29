@@ -673,7 +673,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_del
 /*
  *	Add MPPE attributes to the reply.
  */
-static void mppe_add_reply(rlm_mschap_t const *inst,
+static void mppe_add_reply(UNUSED rlm_mschap_t const *inst,
 			   REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, size_t len)
 {
 	VALUE_PAIR *vp;

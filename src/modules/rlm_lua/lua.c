@@ -196,7 +196,7 @@ DIAG_ON(type-limits)
  *	- -1 on failure.
  */
 static int fr_lua_unmarshall(VALUE_PAIR **out,
-			     rlm_lua_t const *inst, REQUEST *request, lua_State *L, fr_dict_attr_t const *da)
+			     UNUSED rlm_lua_t const *inst, REQUEST *request, lua_State *L, fr_dict_attr_t const *da)
 {
 	VALUE_PAIR *vp;
 

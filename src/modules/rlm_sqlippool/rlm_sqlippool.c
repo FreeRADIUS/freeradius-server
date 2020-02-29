@@ -460,7 +460,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	If we have something to log, then we log it.
  *	Otherwise we return the retcode as soon as possible
  */
-static int do_logging(rlm_sqlippool_t *inst, REQUEST *request, char const *str, int rcode)
+static int do_logging(UNUSED rlm_sqlippool_t *inst, REQUEST *request, char const *str, int rcode)
 {
 	char		*expanded = NULL;
 	VALUE_PAIR	*vp;
