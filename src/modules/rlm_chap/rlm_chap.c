@@ -196,12 +196,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0],
 				       known_good->vp_strvalue, known_good->vp_length);
 
+	/*
+	 *	The password_find function already emits
+	 *	a log message about the password attribute contents
+	 *	so we don't need to duplicate it here.
+	 */
 	if (RDEBUG_ENABLED3) {
 		uint8_t	const	*p;
 		size_t		length;
 		VALUE_PAIR	*vp;
-
-		RDEBUG3("Comparing with \"known good\" &control:%pP", known_good);
 
 		vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY);
 		if (vp) {
@@ -219,8 +222,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		RDEBUG3("Client sent    : %pH", fr_box_octets(chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH));
 		RDEBUG3("We calculated  : %pH", fr_box_octets(pass_str + 1, RADIUS_CHAP_CHALLENGE_LENGTH));
 		REXDENT();
-	} else {
-		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
 
 	/*
