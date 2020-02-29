@@ -570,14 +570,14 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 {
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
-	VALUE_PAIR		*vp, *username;
+	VALUE_PAIR		*vp;
 	eap_fast_tunnel_t	*t;
 	REQUEST			*fake;
 
 	RDEBUG2("Processing received EAP Payload");
 
 	/*
-	 * Allocate a fake REQUEST structure.
+	 *	Allocate a fake REQUEST structure.
 	 */
 	fake = request_alloc_fake(request, NULL);
 	rad_assert(!fake->packet->vps);
@@ -585,64 +585,54 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	/*
-	 * Add the tunneled attributes to the fake request.
+	 *	Add the tunneled attributes to the fake request.
 	 */
 
-	MEM(fake->packet->vps = fr_pair_afrom_da(fake->packet, attr_eap_message));
+	MEM(fake->packet->vps = vp = fr_pair_afrom_da(fake->packet, attr_eap_message));
 	fr_pair_value_memcpy(fake->packet->vps, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
 
 	RDEBUG2("Got tunneled request");
 	log_request_pair_list(L_DBG_LVL_1, fake, fake->packet->vps, NULL);
 
 	/*
-	 * Tell the request that it's a fake one.
+	 *	Tell the request that it's a fake one.
 	 */
 	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	/*
-	 * Update other items in the REQUEST data structure.
+	 *	If there's no User-Name in the stored data, look for
+	 *	an EAP-Identity, and pull it out of there.
 	 */
+	if (!t->username) {
+		rad_assert(vp->da == attr_eap_message); /* cached from above */
 
-	/*
-	 * No User-Name, try to create one from stored data.
-	 */
-	username = fr_pair_find_by_da(fake->packet->vps, attr_user_name, TAG_ANY);
-	if (!username) {
-		/*
-		 * No User-Name in the stored data, look for
-		 * an EAP-Identity, and pull it out of there.
-		 */
-		if (!t->username) {
-			vp = fr_pair_find_by_da(fake->packet->vps, attr_eap_message, TAG_ANY);
-			if (vp &&
-			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
-			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
-			    (vp->vp_strvalue[EAP_HEADER_LEN] == FR_EAP_METHOD_IDENTITY) &&
-			    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
-				/*
-				 * Create & remember a User-Name
-				 */
-				MEM(t->username = fr_pair_afrom_da(t, attr_user_name));
-				t->username->vp_tainted = true;
-				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
+		if ((vp->vp_length >= EAP_HEADER_LEN + 2) &&
+		    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
+		    (vp->vp_strvalue[EAP_HEADER_LEN] == FR_EAP_METHOD_IDENTITY) &&
+		    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
+			/*
+			 *	Create and remember a User-Name
+			 */
+			MEM(t->username = fr_pair_afrom_da(t, attr_user_name));
+			t->username->vp_tainted = true;
+			fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
-				RDEBUG2("Got tunneled identity of %pV", &t->username->data);
-			} else {
-				/*
-				 * Don't reject the request outright,
-				 * as it's permitted to do EAP without
-				 * user-name.
-				 */
-				RWDEBUG2("No EAP-Identity found to start EAP conversation");
-			}
-		} /* else there WAS a t->username */
-
-		if (t->username) {
-			vp = fr_pair_copy(fake->packet, t->username);
-			fr_pair_add(&fake->packet->vps, vp);
+			RDEBUG2("Got tunneled identity of %pV", &t->username->data);
+		} else {
+			/*
+			 * Don't reject the request outright,
+			 * as it's permitted to do EAP without
+			 * user-name.
+			 */
+			RWDEBUG2("No EAP-Identity found to start EAP conversation");
 		}
-	} /* else the request ALREADY had a User-Name */
+	} /* else there WAS a t->username */
+
+	if (t->username) {
+		vp = fr_pair_copy(fake->packet, t->username);
+		fr_pair_add(&fake->packet->vps, vp);
+	}
 
 	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		VALUE_PAIR *tvp;
