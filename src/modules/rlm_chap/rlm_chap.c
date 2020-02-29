@@ -63,6 +63,43 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ NULL }
 };
 
+/** Produce a CHAP-Password hash value
+ *
+ * Example:
+@verbatim
+"%{chap_password:<password>}" == 0x<id><md5_hash>
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
+					     REQUEST *request, UNUSED void const *xlat_inst,
+					     UNUSED void *xlat_thread_inst,
+					     fr_value_box_t **in)
+{
+	uint8_t		chap_password[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
+	fr_value_box_t	*vb;
+
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!in) return XLAT_ACTION_DONE;
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_radius_encode_chap_password(chap_password, request->packet, (uint8_t)(fr_rand() & 0xff),
+				       (*in)->vb_strvalue, (*in)->vb_length);
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memcpy(vb, vb, NULL, chap_password, sizeof(chap_password), false);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
@@ -220,6 +257,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
+static int mod_load(void)
+{
+	if (!xlat_async_register(NULL, "chap_password", xlat_func_chap_password)) return -1;
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_unregister("chap_password");
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -234,6 +283,8 @@ module_t rlm_chap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "chap",
 	.inst_size	= sizeof(rlm_chap_t),
+	.onload		= mod_load,
+	.unload		= mod_unload,
 	.bootstrap	= mod_bootstrap,
 	.dict		= &dict_radius,
 	.methods = {
