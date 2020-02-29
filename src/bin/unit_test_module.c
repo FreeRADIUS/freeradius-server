@@ -304,7 +304,8 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 
 				memcpy(p, vp->vp_strvalue, len);
 
-				fr_radius_encode_chap_password(p, request->packet, fr_rand() & 0xff, vp);
+				fr_radius_encode_chap_password(p, request->packet, fr_rand() & 0xff,
+							       vp->vp_strvalue, vp->vp_length);
 				vp->vp_octets = p;
 				vp->vp_length = 17;
 			}

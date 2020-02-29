@@ -109,7 +109,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 {
 	VALUE_PAIR		*known_good;
 	VALUE_PAIR		*chap, *username;
-	uint8_t			pass_str[FR_MAX_STRING_LEN];
+	uint8_t			pass_str[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
 
 	int			ret;
 
@@ -152,7 +152,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		REDEBUG("No \"known good\" password found for user");
 		return RLM_MODULE_FAIL;
 	}
-	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0], known_good);
+
+	/*
+	 *	Output is id + password hash
+	 */
+	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0],
+				       known_good->vp_strvalue, known_good->vp_length);
 
 	if (RDEBUG_ENABLED3) {
 		uint8_t	const	*p;
@@ -181,6 +186,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
 
+	/*
+	 *	Skip the id field at the beginning of the
+	 *	password and chap response.
+	 */
 	ret = fr_digest_cmp(pass_str + 1, chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH);
 	if (ephemeral) talloc_list_free(&known_good);
 	if (ret != 0) {

@@ -149,7 +149,9 @@ int		fr_radius_encode_password(char *encpw, size_t *len, char const *secret, uin
 
 int		fr_radius_encode_tunnel_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
 
-int		fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int id, VALUE_PAIR const *password);
+void		fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
+					       RADIUS_PACKET *packet, uint8_t id,
+					       char const *password, size_t password_len) CC_HINT(nonnull(1,2,4));
 
 ssize_t		fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
 

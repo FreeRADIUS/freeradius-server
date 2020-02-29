@@ -77,37 +77,24 @@ static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor)
 
 /** Encode a CHAP password
  *
- * @bug FIXME: might not work with Ascend because
- * we use vp->vp_length, and Ascend gear likes
- * to send an extra '\0' in the string!
+ * @param[out] out		An output buffer of 17 bytes (id + digest).
+ * @param[in] packet		containing the authentication vector/chap-challenge password.
+ * @param[in] id		CHAP ID, a random ID for request/response matching.
+ * @param[in] password		Input password to hash.
+ * @param[in] password_len	Length of input password.
  */
-int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int id, VALUE_PAIR const *password)
+void fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
+				    RADIUS_PACKET *packet, uint8_t id, char const *password, size_t password_len)
 {
-	int		i;
-	uint8_t		*ptr;
-	uint8_t		string[FR_MAX_STRING_LEN * 2 + 1];
 	VALUE_PAIR	*challenge;
+	fr_md5_ctx_t	*md5_ctx;
+
+	md5_ctx = fr_md5_ctx_alloc(true);
 
 	/*
-	 *	Sanity check the input parameters
+	 *	First ingest the password
 	 */
-	if ((packet == NULL) || (password == NULL)) return -1;
-
-	/*
-	 *	Note that the password VP can be EITHER
-	 *	a User-Password attribute (from a check-item list),
-	 *	or a CHAP-Password attribute (the client asking
-	 *	the library to encode it).
-	 */
-
-	i = 0;
-	ptr = string;
-	*ptr++ = id;
-
-	i++;
-	memcpy(ptr, password->vp_strvalue, password->vp_length);
-	ptr += password->vp_length;
-	i += password->vp_length;
+	fr_md5_update(md5_ctx, (uint8_t const *)password, password_len);
 
 	/*
 	 *	Use Chap-Challenge pair if present,
@@ -115,17 +102,14 @@ int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int i
 	 */
 	challenge = fr_pair_find_by_da(packet->vps, attr_chap_challenge, TAG_ANY);
 	if (challenge) {
-		memcpy(ptr, challenge->vp_strvalue, challenge->vp_length);
-		i += challenge->vp_length;
+		fr_md5_update(md5_ctx, challenge->vp_octets, challenge->vp_length);
 	} else {
-		memcpy(ptr, packet->vector, RADIUS_AUTH_VECTOR_LENGTH);
-		i += RADIUS_AUTH_VECTOR_LENGTH;
+		fr_md5_update(md5_ctx, packet->vector, RADIUS_AUTH_VECTOR_LENGTH);
 	}
 
-	*output = id;
-	fr_md5_calc((uint8_t *)output + 1, (uint8_t *)string, i);
-
-	return 0;
+	out[0] = id;
+	fr_md5_final(out + 1, md5_ctx);
+	fr_md5_ctx_free(&md5_ctx);
 }
 
 /** Encode Tunnel-Password attributes when sending them out on the wire
