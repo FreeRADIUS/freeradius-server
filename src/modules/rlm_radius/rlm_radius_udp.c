@@ -994,9 +994,12 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 
 	/*
 	 *	We're replicating, and don't care about the health of
-	 *	the home server, don't do zombie checks.
-	 *
-	 *	Or there's already a zombie check started, don't do
+	 *	the home server, and this function should not be called.
+	 */
+	rad_assert(!h->inst->replicate);
+
+	/*
+	 *	If there's already a zombie check started, don't do
 	 *	another one.
 	 *
 	 *	Or if we never sent a packet, we don't know (or care)
@@ -1030,13 +1033,9 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	 *	timeout from when we first started sending packets.
 	 */
 	if (h->last_reply) {
-		if ((h->last_reply + h->inst->parent->zombie_period) >= now) {
-			return;
-		}
+		if ((h->last_reply + h->inst->parent->zombie_period) >= now) return;
 	} else {
-		if ((h->first_sent + h->inst->parent->zombie_period) >= now) {
-			return;
-		}
+		if ((h->first_sent + h->inst->parent->zombie_period) >= now) return;
 	}
 
 	/*
