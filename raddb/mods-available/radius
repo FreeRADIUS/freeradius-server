@@ -119,12 +119,12 @@ radius {
 #	originate = no
 
 	#
-	#  status_checks { ... }:: For "are you alive?" queries.
+	#  status_check { ... }:: For "are you alive?" queries.
 	#
 	#  If the home server does not respond to proxied packets, the
 	#  module starts pinging the home server with these packets.
 	#
-	status_checks {
+	status_check {
 		#
 		#  type:: You can specify any type of packet here, though
 		#  Status-Server is recommended.
@@ -176,8 +176,8 @@ radius {
 	#
 	#  The connection is marked `zombie`, and isn't used to send new packets.
 	#  If there are no responses within `zombie_period`, the server either
-	#  closes the connection (no `status_checks` subsection), or starts pinging the
-	#  home server (`status_checks.type = Status-Server`).
+	#  closes the connection (no `status_check` subsection), or starts pinging the
+	#  home server (`status_check.type = Status-Server`).
 	#
 	zombie_period = 10
 
@@ -213,7 +213,7 @@ radius {
 	#  we do NOT recommend using `revive_interval`.
 	#
 	#  The `revive_interval` configuration is used ONLY if the
-	#  `status_checks` subsection is not used.  Otherwise,
+	#  `status_check` subsection is not used.  Otherwise,
 	#  `revive_interval` is not necessary, and should be deleted.
 	#
 	#  Useful range of values: 10 to 3600

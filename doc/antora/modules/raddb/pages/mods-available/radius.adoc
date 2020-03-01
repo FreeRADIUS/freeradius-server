@@ -107,7 +107,7 @@ In some cases, such as originating a CoA or Disconnect request,
 including Proxy-State may confuse the receiving NAS.
 
 
-status_checks { ... }:: For "are you alive?" queries.
+status_check { ... }:: For "are you alive?" queries.
 
 If the home server does not respond to proxied packets, the
 module starts pinging the home server with these packets.
@@ -155,8 +155,8 @@ zombie_period:: If the home server does not reply to a packet, the
 
 The connection is marked `zombie`, and isn't used to send new packets.
 If there are no responses within `zombie_period`, the server either
-closes the connection (no `status_checks` subsection), or starts pinging the
-home server (`status_checks.type = Status-Server`).
+closes the connection (no `status_check` subsection), or starts pinging the
+home server (`status_check.type = Status-Server`).
 
 
 
@@ -191,7 +191,7 @@ As a result, we recommend enabling status checks, and
 we do NOT recommend using `revive_interval`.
 
 The `revive_interval` configuration is used ONLY if the
-`status_checks` subsection is not used.  Otherwise,
+`status_check` subsection is not used.  Otherwise,
 `revive_interval` is not necessary, and should be deleted.
 
 Useful range of values: 10 to 3600
@@ -444,7 +444,7 @@ radius {
 #	synchronous = no
 #	no_connection_fail = no
 #	originate = no
-	status_checks {
+	status_check {
 		type = Status-Server
 #		update request {
 #			&User-Name := "test-user"

@@ -37,7 +37,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 static int status_check_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static CONF_PARSER const status_checks_config[] = {
+static CONF_PARSER const status_check_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, rlm_radius_t, status_check),
 	  .func = status_check_type_parse },
 
@@ -114,7 +114,7 @@ static CONF_PARSER const module_config[] = {
 
 	{ FR_CONF_OFFSET("originate", FR_TYPE_BOOL, rlm_radius_t, originate) },
 
-	{ FR_CONF_POINTER("status_checks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_checks_config },
+	{ FR_CONF_POINTER("status_check", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
 
 	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
