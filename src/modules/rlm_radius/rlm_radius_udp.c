@@ -1277,9 +1277,28 @@ static void request_mux(fr_event_list_t *el,
 		 *	Temporary conditions
 		 */
 		switch (errno) {
-		case EWOULDBLOCK:
-		case EINTR:
-		case ENOBUFS:
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+		case EWOULDBLOCK:	/* No outbound packet buffers, maybe? */
+#endif
+		case EAGAIN:		/* No outbound packet buffers, maybe? */
+		case EINTR:		/* Interrupted by signal */
+		case ENOBUFS:		/* No outbound packet buffers, maybe? */
+		case ENOMEM:		/* malloc failure in kernel? */
+			break;
+
+		/*
+		 *	Fatal, request specific conditions
+		 *
+		 *	sendmmsg will only return an error condition if the
+		 *	first packet being sent errors.
+		 *
+		 *	When we get request specific errors, we need to fail
+		 *	the first request in the set, and move the rest of
+		 *	the packets back to the pending state.
+		 */
+		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
+			fr_trunk_request_signal_fail(h->coalesced[i].treq);
+			sent = 1;
 			break;
 
 		/*
@@ -1410,9 +1429,28 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		 *	Temporary conditions
 		 */
 		switch (errno) {
-		case EWOULDBLOCK:
-		case EINTR:
-		case ENOBUFS:
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+		case EWOULDBLOCK:	/* No outbound packet buffers, maybe? */
+#endif
+		case EAGAIN:		/* No outbound packet buffers, maybe? */
+		case EINTR:		/* Interrupted by signal */
+		case ENOBUFS:		/* No outbound packet buffers, maybe? */
+		case ENOMEM:		/* malloc failure in kernel? */
+			break;
+
+		/*
+		 *	Fatal, request specific conditions
+		 *
+		 *	sendmmsg will only return an error condition if the
+		 *	first packet being sent errors.
+		 *
+		 *	When we get request specific errors, we need to fail
+		 *	the first request in the set, and move the rest of
+		 *	the packets back to the pending state.
+		 */
+		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
+			fr_trunk_request_signal_fail(h->coalesced[i].treq);
+			sent = 1;
 			break;
 
 		/*
