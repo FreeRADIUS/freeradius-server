@@ -1,5 +1,5 @@
 ARG from=debian:jessie
-FROM ${from} as build
+FROM ${from}
 
 ARG gccver=4.9
 
@@ -7,7 +7,7 @@ ARG gccver=4.9
 #  Install build tools
 #
 RUN apt-get update
-RUN apt-get install -y devscripts equivs git quilt g++-${gccver}
+RUN apt-get install -y devscripts equivs git quilt g++-${gccver} rsync
 
 #
 #  Create build directory
@@ -37,23 +37,3 @@ RUN git checkout ${release}; \
 #  Build the server
 #
 RUN make -j2 deb
-
-#
-#  Clean environment and run the server
-#
-FROM ${from}
-COPY --from=build /usr/local/src/repositories/*.deb /tmp/
-
-RUN apt-get update \
-    && dpkg -i /tmp/*.deb || true \
-    && apt-get -y -f install \
-    && apt-get clean \
-    && rm -r /var/lib/apt/lists/* /tmp/*.deb \
-    \
-    && ln -s /etc/freeradius /etc/raddb
-
-COPY docker-entrypoint.sh /
-
-EXPOSE 1812/udp 1813/udp
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["freeradius"]
