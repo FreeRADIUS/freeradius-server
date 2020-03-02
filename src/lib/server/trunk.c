@@ -2923,8 +2923,8 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_CLOSED,
 				    _trunk_connection_on_closed, false, tconn);		/* Before close() has been called */
 
-	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_SHUTDOWN,		/* After shutdown() has been called */
-				     _trunk_connection_on_shutdown, false, tconn);
+	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_SHUTDOWN,
+				     _trunk_connection_on_shutdown, false, tconn);	/* After shutdown() has been called */
 
 	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_FAILED,
 				    _trunk_connection_on_failed, false, tconn);		/* Before failed() has been called */
