@@ -82,8 +82,9 @@ typedef enum {
 	FR_TRUNK_CONN_FAILED		= 0x04,		//!< Connection failed.  We now wait for it to enter the
 							///< closed state.
 	FR_TRUNK_CONN_CLOSED		= 0x08,		//!< Connection was closed, either explicitly or due to failure.
-	FR_TRUNK_CONN_INACTIVE		= 0x10,		//!< Connection is inactive and can't accept any more requests.
-	FR_TRUNK_CONN_DRAINING		= 0x20,		//!< Connection will be closed once it has no more outstanding
+	FR_TRUNK_CONN_FULL		= 0x10,		//!< Connection is full and can't accept any more requests.
+	FR_TRUNK_CONN_INACTIVE		= 0x20,		//!< Connection is inactive and can't accept any more requests.
+	FR_TRUNK_CONN_DRAINING		= 0x30,		//!< Connection will be closed once it has no more outstanding
 							///< requests, if it's not reactivated.
 	FR_TRUNK_CONN_DRAINING_TO_FREE	= 0x40		//!< Connection will be closed once it has no more outstanding
 							///< requests.
@@ -98,6 +99,7 @@ typedef enum {
 	FR_TRUNK_CONN_ACTIVE | \
 	FR_TRUNK_CONN_FAILED | \
 	FR_TRUNK_CONN_CLOSED | \
+	FR_TRUNK_CONN_FULL | \
 	FR_TRUNK_CONN_INACTIVE | \
 	FR_TRUNK_CONN_DRAINING | \
 	FR_TRUNK_CONN_DRAINING_TO_FREE \
