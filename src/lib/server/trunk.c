@@ -117,11 +117,6 @@ struct fr_trunk_connection_s {
 
 
 	fr_trunk_connection_event_t events;		//!< The current events we expect to be notified on.
-
-	bool			signalled_inactive;	//!< Connection marked full because of signal.
-							///< Will not automatically be marked active if
-							///< the number of requests associated with it
-							///< falls below max_req_per_conn.
 	/** @} */
 
 	/** @name Request lists
