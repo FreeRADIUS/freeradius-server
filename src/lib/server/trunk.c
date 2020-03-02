@@ -1168,7 +1168,8 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 *	we refuse to enqueue new requests until
 	 *	one or more connections comes online.
 	 */
-	if (trunk->last_failed && (trunk->last_failed >= trunk->last_connected)) {
+	if (!trunk->conf.backlog_on_failed_conn &&
+	    trunk->last_failed && (trunk->last_failed >= trunk->last_connected)) {
 		ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
 			  "No active connections and last event was a connection failure");
 

@@ -227,6 +227,10 @@ typedef struct {
 							///< If this is true, #fr_trunk_connection_signal_writable
 							///< does not need to be called, and requests will be
 							///< enqueued as soon as they're received.
+
+	bool			backlog_on_failed_conn;	//!< Assign requests to the backlog when there are no
+							//!< available connections and the last connection event
+							//!< was a failure, instead of failing them immediately.
 } fr_trunk_conf_t;
 
 /** Public fields for the trunk request

@@ -624,7 +624,7 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	TEST_CHECK(fr_connection_get_num_reconnected(tconn->pub.conn) == 1);
 
 	events = fr_event_corral(el, test_time_base, true);
-	TEST_CHECK(events == 2);	/* Should have a pending I/O event and a timer */
+	TEST_CHECK(events == 1);	/* Should have a pending I/O event and a timer */
 
 	talloc_free(trunk);
 	talloc_free(ctx);
@@ -1067,7 +1067,8 @@ static void test_requeue_on_reconnect(void)
 					.manage_interval = NSEC * 0.5,
 					.conn_conf = &(fr_connection_conf_t){
 						.reconnection_delay = NSEC * 0.1
-					}
+					},
+					.backlog_on_failed_conn = true
 				};
 	test_proto_request_t	*preq;
 	fr_trunk_request_t	*treq = NULL;
