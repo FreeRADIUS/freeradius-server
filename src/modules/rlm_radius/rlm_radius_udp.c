@@ -220,6 +220,106 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ NULL }
 };
 
+/*
+ *	Status-Server checks.  Manually build the packet, and
+ *	all of its associated glue.
+ */
+static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
+{
+	udp_request_t *u;
+	REQUEST *request;
+	rlm_radius_udp_t const *inst = h->inst;
+	vp_map_t *map;
+
+	u = talloc_zero(h, udp_request_t);
+
+	/*
+	 *	Status checks are prioritized over any other packet
+	 */
+	u->priority = ~(uint32_t) 0;
+	u->status_check = true;
+
+	/*
+	 *	Allocate outside of the free list.
+	 *	There appears to be an issue where
+	 *	the thread destructor runs too
+	 *	early, and frees the freelist's
+	 *	head before the module destructor
+	 *      runs.
+	 */
+	request = request_local_alloc(h);
+	request->async = talloc_zero(request, fr_async_t);
+	talloc_const_free(request->name);
+	request->name = talloc_strdup(request, h->module_name);
+
+	request->el = el;
+	request->packet = fr_radius_alloc(request, false);
+	request->reply = fr_radius_alloc(request, false);
+
+	/*
+	 *	Create the VPs, and ignore any errors
+	 *	creating them.
+	 */
+	for (map = inst->parent->status_check_map; map != NULL; map = map->next) {
+		/*
+		 *	Skip things which aren't attributes.
+		 */
+		if (!tmpl_is_attr(map->lhs)) continue;
+
+		/*
+		 *	Ignore internal attributes.
+		 */
+		if (map->lhs->tmpl_da->flags.internal) continue;
+
+		/*
+		 *	Ignore signalling attributes.  They shouldn't exist.
+		 */
+		if ((map->lhs->tmpl_da == attr_proxy_state) ||
+		    (map->lhs->tmpl_da == attr_message_authenticator)) continue;
+
+		/*
+		 *	Allow passwords only in Access-Request packets.
+		 */
+		if ((inst->parent->status_check != FR_CODE_ACCESS_REQUEST) &&
+		    (map->lhs->tmpl_da == attr_user_password)) continue;
+
+		(void) map_to_request(request, map, map_to_vp, NULL);
+	}
+
+	/*
+	 *	Ensure that there's a NAS-Identifier, if one wasn't
+	 *	already added.
+	 */
+	if (!fr_pair_find_by_da(request->packet->vps, attr_nas_identifier, TAG_ANY)) {
+		VALUE_PAIR *vp;
+
+		MEM(pair_add_request(&vp, attr_nas_identifier) >= 0);
+		fr_pair_value_strcpy(vp, "status check - are you alive?");
+	}
+
+	/*
+	 *	Always add an Event-Timestamp, which will be the time
+	 *	at which the first packet is sent.  Or for
+	 *	Status-Server, the time of the current packet.
+	 */
+	if (!fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY)) {
+		MEM(pair_add_request(NULL, attr_event_timestamp) >= 0);
+	}
+
+	DEBUG3("Status check packet will be %s", fr_packet_codes[u->code]);
+	log_request_pair_list(L_DBG_LVL_3, request, request->packet->vps, NULL);
+
+	/*
+	 *	Initialize the request IO ctx.  Note that we don't set
+	 *	destructors.
+	 */
+	u->code = inst->parent->status_check;
+	request->packet->code = u->code;
+
+	MEM(h->status_r = talloc_zero(h, udp_result_t));
+	h->status_u = u;
+	h->status_request = request;
+}
 
 /** Initialise a new outbound connection
  *
@@ -321,107 +421,6 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	// which connections / home servers are fast / slow.
 
 	return FR_CONNECTION_STATE_CONNECTING;
-}
-
-/*
- *	Status-Server checks.  Manually build the packet, and
- *	all of its associated glue.
- */
-static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
-{
-	udp_request_t *u;
-	REQUEST *request;
-	rlm_radius_udp_t const *inst = h->inst;
-	vp_map_t *map;
-
-	u = talloc_zero(h, udp_request_t);
-
-	/*
-	 *	Status checks are prioritized over any other packet
-	 */
-	u->priority = ~(uint32_t) 0;
-	u->status_check = true;
-
-	/*
-	 *	Allocate outside of the free list.
-	 *	There appears to be an issue where
-	 *	the thread destructor runs too
-	 *	early, and frees the freelist's
-	 *	head before the module destructor
-	 *      runs.
-	 */
-	request = request_local_alloc(h);
-	request->async = talloc_zero(request, fr_async_t);
-	talloc_const_free(request->name);
-	request->name = talloc_strdup(request, h->module_name);
-
-	request->el = el;
-	request->packet = fr_radius_alloc(request, false);
-	request->reply = fr_radius_alloc(request, false);
-
-	/*
-	 *	Create the VPs, and ignore any errors
-	 *	creating them.
-	 */
-	for (map = inst->parent->status_check_map; map != NULL; map = map->next) {
-		/*
-		 *	Skip things which aren't attributes.
-		 */
-		if (!tmpl_is_attr(map->lhs)) continue;
-
-		/*
-		 *	Ignore internal attributes.
-		 */
-		if (map->lhs->tmpl_da->flags.internal) continue;
-
-		/*
-		 *	Ignore signalling attributes.  They shouldn't exist.
-		 */
-		if ((map->lhs->tmpl_da == attr_proxy_state) ||
-		    (map->lhs->tmpl_da == attr_message_authenticator)) continue;
-
-		/*
-		 *	Allow passwords only in Access-Request packets.
-		 */
-		if ((inst->parent->status_check != FR_CODE_ACCESS_REQUEST) &&
-		    (map->lhs->tmpl_da == attr_user_password)) continue;
-
-		(void) map_to_request(request, map, map_to_vp, NULL);
-	}
-
-	/*
-	 *	Ensure that there's a NAS-Identifier, if one wasn't
-	 *	already added.
-	 */
-	if (!fr_pair_find_by_da(request->packet->vps, attr_nas_identifier, TAG_ANY)) {
-		VALUE_PAIR *vp;
-
-		MEM(pair_add_request(&vp, attr_nas_identifier) >= 0);
-		fr_pair_value_strcpy(vp, "status check - are you alive?");
-	}
-
-	/*
-	 *	Always add an Event-Timestamp, which will be the time
-	 *	at which the first packet is sent.  Or for
-	 *	Status-Server, the time of the current packet.
-	 */
-	if (!fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY)) {
-		MEM(pair_add_request(NULL, attr_event_timestamp) >= 0);
-	}
-
-	DEBUG3("Status check packet will be %s", fr_packet_codes[u->code]);
-	log_request_pair_list(L_DBG_LVL_3, request, request->packet->vps, NULL);
-
-	/*
-	 *	Initialize the request IO ctx.  Note that we don't set
-	 *	destructors.
-	 */
-	u->code = inst->parent->status_check;
-	request->packet->code = u->code;
-
-	MEM(h->status_r = talloc_zero(h, udp_result_t));
-	h->status_u = u;
-	h->status_request = request;
 }
 
 /** Process notification that fd is open
@@ -1050,6 +1049,7 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 
 		WARN("%s - Connection failed.  Reviving it in %u.%03us", h->module_name, msec / 1000, msec % 1000);
 		fr_trunk_connection_signal_inactive(tconn);
+		(void) fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
 
 		when = now + h->inst->parent->revive_interval;
 		if (fr_event_timer_at(h, el, &h->zombie_ev, when, revive_timer, tconn) < 0) {
@@ -1057,7 +1057,6 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 			return;
 		}
 
-		(void) fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
 		return;
 	}
 
@@ -1072,7 +1071,7 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	 *	Move ALL requests to other connections!
 	 */
 	fr_trunk_connection_signal_inactive(tconn);
-	fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
+	(void) fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
 
 	/*
 	 *	Queue up the status check packet.  It will be sent
