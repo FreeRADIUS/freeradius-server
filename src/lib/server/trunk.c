@@ -1760,6 +1760,7 @@ void fr_trunk_request_free(fr_trunk_request_t *treq)
 	 *	No cleanup delay, means cleanup immediately
 	 */
 	if (trunk->conf.req_cleanup_delay == 0) {
+		treq->state = FR_TRUNK_REQUEST_STATE_UNASSIGNED;
 		talloc_free(treq);
 		return;
 	}
