@@ -212,6 +212,8 @@ struct fr_trunk_s {
 	fr_time_t		last_connected;		//!< Last time a connection connected.
 
 	fr_time_t		last_failed;		//!< Last time a connection failed.
+
+	fr_time_t		last_read_success;	//!< Last time we read a response.
 	/** @} */
 
 	/** @name Statistics
@@ -1550,7 +1552,20 @@ void fr_trunk_request_signal_sent(fr_trunk_request_t *treq)
  */
 void fr_trunk_request_signal_complete(fr_trunk_request_t *treq)
 {
-	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
+	fr_trunk_t *trunk = treq->pub.trunk;
+
+	if (!fr_cond_assert_msg(trunk, "treq not associated with trunk")) return;
+
+	/*
+	 *	We assume that if the request is being signalled
+	 *	as complete from the demux function, that it was
+	 *	a successful read.
+	 *
+	 *	If this assumption turns out to be incorrect
+	 *	then we need to add an argument to signal_complete
+	 *	to indicate if this is a successful read.
+	 */
+	if (IN_REQUEST_DEMUX(trunk)) trunk->last_read_success = fr_time();
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_STATE_SENT:
