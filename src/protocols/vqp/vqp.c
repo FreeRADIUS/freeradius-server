@@ -32,8 +32,6 @@ RCSID("$Id$")
 #include "vqp.h"
 #include "attrs.h"
 
-#define MAX_VMPS_LEN (FR_MAX_STRING_LEN - 1)
-
 /*
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/usr.sbin/tcpdump/print-vqp.c
  *
@@ -66,11 +64,7 @@ RCSID("$Id$")
  * VQP is layered over UDP.  The default destination port is 1589.
  *
  */
-#define VQP_HDR_LEN (8)
-#define VQP_VERSION (1)
-#define VQP_MAX_ATTRIBUTES (12)
-
-char const *fr_vmps_codes[FR_VMPS_MAX_CODE] = {
+char const *fr_vqp_codes[FR_VQP_MAX_CODE] = {
 	[FR_PACKET_TYPE_VALUE_JOIN_REQUEST] = "Join-Request",
 	[FR_PACKET_TYPE_VALUE_JOIN_RESPONSE] = "Join-Response",
 	[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST] = "Reconfirm-Request",
@@ -90,45 +84,6 @@ static size_t const fr_vqp_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
 };
 
-static ssize_t vqp_recv_header(int sockfd)
-{
-	ssize_t			data_len;
-	uint8_t			header[VQP_HDR_LEN];
-
-	/*
-	 *	Read the length of the packet, from the packet.
-	 *	This lets us allocate the buffer to use for
-	 *	reading the rest of the packet.
-	 */
-	data_len = udp_recv_peek(sockfd, header, sizeof(header), UDP_FLAGS_PEEK, NULL, NULL);
-	if (data_len < 0) return -1;
-
-	/*
-	 *	Too little data is available, discard the packet.
-	 */
-	if (data_len < VQP_HDR_LEN) {
-		(void) udp_recv_discard(sockfd);
-		return 0;
-	}
-
-	/*
-	 *	Invalid version, packet type, or too many
-	 *	attributes.  Die.
-	 */
-	if ((header[0] != VQP_VERSION) ||
-	    (header[1] < 1) ||
-	    (header[1] > 4) ||
-	    (header[3] > VQP_MAX_ATTRIBUTES)) {
-		(void) udp_recv_discard(sockfd);
-		return 0;
-	}
-
-	/*
-	 *	Hard-coded maximum size.  Because the header doesn't
-	 *	have a packet length.
-	 */
-	return (12 * (4 + 4 + MAX_VMPS_LEN));
-}
 
 bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len)
 {
@@ -136,13 +91,13 @@ bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len)
 	ssize_t		data_len;
 	int		attrlen;
 
-	if (*packet_len == VQP_HDR_LEN) return true;
+	if (*packet_len == FR_VQP_HDR_LEN) return true;
 
 	/*
 	 *	Skip the header.
 	 */
-	ptr = packet + VQP_HDR_LEN;
-	data_len = *packet_len - VQP_HDR_LEN;
+	ptr = packet + FR_VQP_HDR_LEN;
+	data_len = *packet_len - FR_VQP_HDR_LEN;
 
 	while (data_len > 0) {
 		if (data_len < 7) {
@@ -170,7 +125,7 @@ bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len)
 		 *	It's OK for ethernet frames to be longer.
 		 */
 		if ((ptr[3] != 5) &&
-		    ((ptr[4] != 0) || (ptr[5] > MAX_VMPS_LEN))) {
+		    ((ptr[4] != 0) || (ptr[5] > 250))) {
 			fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
 			return false;
 		}
@@ -188,88 +143,6 @@ bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len)
 	return true;
 }
 
-RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd)
-{
-	ssize_t		data_len;
-	uint32_t	id;
-	RADIUS_PACKET	*packet;
-
-	data_len = vqp_recv_header(sockfd);
-	if (data_len < 0) {
-		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
-		return NULL;
-	}
-
-	/*
-	 *	Allocate the new request data structure
-	 */
-	packet = fr_radius_alloc(ctx, false);
-	if (!packet) {
-		fr_strerror_printf("out of memory");
-		return NULL;
-	}
-
-	packet->data_len = data_len;
-	packet->data = talloc_array(packet, uint8_t, data_len);
-	if (!packet->data_len) {
-		fr_radius_packet_free(&packet);
-		return NULL;
-	}
-
-	data_len = udp_recv(sockfd, packet->data, packet->data_len, 0,
-			    &packet->src_ipaddr, &packet->src_port,
-			    &packet->dst_ipaddr, &packet->dst_port,
-			    &packet->if_index, &packet->timestamp);
-	if (data_len <= 0) {
-		fr_radius_packet_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 *	Save the real length of the packet.
-	 */
-	packet->data_len = data_len;
-
-	/*
-	 *	Set up the fields in the packet.
-	 */
-	packet->sockfd = sockfd;
-	packet->vps = NULL;
-
-	packet->code = packet->data[1];
-	memcpy(&id, packet->data + 4, 4);
-	packet->id = ntohl(id);
-
-	if (!fr_vqp_ok(packet->data, &packet->data_len)) {
-		fr_radius_packet_free(&packet);
-		return NULL;
-	}
-
-	return packet;
-}
-
-/*
- *	We do NOT  mirror the old-style RADIUS code  that does encode,
- *	sign && send in one function.  For VQP, the caller MUST perform
- *	each task manually, and separately.
- */
-int vqp_send(RADIUS_PACKET *packet)
-{
-	if (!packet || !packet->data || (packet->data_len < VQP_HDR_LEN)) return -1;
-
-	/*
-	 *	Don't print out the attributes, they were printed out
-	 *	when it was encoded.
-	 */
-
-	/*
-	 *	And send it on it's way.
-	 */
-	return udp_send(packet->sockfd, packet->data, packet->data_len, 0,
-			&packet->src_ipaddr, packet->src_port, packet->if_index,
-			&packet->dst_ipaddr, packet->dst_port);
-}
-
 
 int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code)
 {
@@ -279,7 +152,7 @@ int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_P
 	fr_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 
-	if (data_len < VQP_HDR_LEN) return -1;
+	if (data_len < FR_VQP_HDR_LEN) return -1;
 
 	fr_cursor_init(&cursor, vps);
 
@@ -311,7 +184,7 @@ int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_P
 	DEBUG2("&%pP", vp);
 	fr_cursor_append(&cursor, vp);
 
-	ptr = data + VQP_HDR_LEN;
+	ptr = data + FR_VQP_HDR_LEN;
 	end = data + data_len;
 
 	/*
@@ -325,7 +198,7 @@ int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_P
 		ptr += 6;
 
 		/*
-		 *	fr_vmps_ok() should have checked this already,
+		 *	fr_vqp_ok() should have checked this already,
 		 *	but it doesn't hurt to do it again.
 		 */
 		if (attr_len > (size_t) (end - ptr)) {
@@ -368,6 +241,7 @@ int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_P
 	return 0;
 }
 
+#if 0
 /*
  *	These are the MUST HAVE contents for a VQP packet.
  *
@@ -376,6 +250,8 @@ int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_P
  *	clients will ignore it.
  *
  *	FIXME: Be more generous?  Look for CISCO + VQP attributes?
+ *
+ *	@todo - actually use these again...
  */
 static int contents[5][VQP_MAX_ATTRIBUTES] = {
 	{ 0,      0,      0,      0,      0,      0 },
@@ -384,9 +260,9 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 	{ 0x0c01, 0x0c02, 0x0c03, 0x0c04, 0x0c07, 0x0c08 }, /* Reconfirm */
 	{ 0x0c03, 0x0c08, 0,      0,      0,      0 }
 };
+#endif
 
-
-ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
+ssize_t fr_vqp_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		       int code, uint32_t id, VALUE_PAIR *vps)
 {
 	uint8_t *attr;
@@ -398,9 +274,10 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		return -1;
 	}
 
-	buffer[0] = VQP_VERSION;
+	buffer[0] = FR_VQP_VERSION;
 	buffer[1] = code;
 	buffer[2] = 0;
+	buffer[3] = 0;
 
 	/*
 	 *	The number of attributes is hard-coded.
@@ -408,7 +285,6 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 	if ((code == 1) || (code == 3)) {
 		uint32_t sequence;
 
-		buffer[3] = VQP_MAX_ATTRIBUTES;
 
 		sequence = htonl(id);
 		memcpy(buffer + 4, &sequence, 4);
@@ -422,8 +298,6 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		 *	Packet Sequence Number
 		 */
 		memcpy(buffer + 4, original + 4, 4);
-
-		buffer[3] = 2;
 	}
 
 	attr = buffer + 8;
@@ -506,6 +380,7 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		default:
 			return -1;
 		}
+		buffer[3]++;
 
 next:
 		fr_cursor_next(&cursor);
@@ -514,198 +389,6 @@ next:
 	return attr - buffer;
 }
 
-
-int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
-{
-	int		i, code, length;
-	VALUE_PAIR	*vp;
-	uint8_t		*out;
-	VALUE_PAIR	*vps[VQP_MAX_ATTRIBUTES];
-
-	if (!packet) {
-		fr_strerror_printf("Failed encoding VQP");
-		return -1;
-	}
-
-	if (packet->data) return 0;
-
-	code = packet->code;
-	if (!code) {
-		vp = fr_pair_find_by_da(packet->vps, attr_packet_type, TAG_ANY);
-		if (!vp) {
-			fr_strerror_printf("Failed to find %s in response packet", attr_packet_type->name);
-			return -1;
-		}
-
-		code = vp->vp_uint32;
-		if ((code < 1) || (code > 4)) {
-			fr_strerror_printf("Invalid value %d for %s", code, attr_packet_type->name);
-			return -1;
-		}
-	}
-
-	length = VQP_HDR_LEN;
-
-	vp = fr_pair_find_by_da(packet->vps, attr_error_code, TAG_ANY);
-	if (vp) {
-		packet->data = talloc_array(packet, uint8_t, length);
-		if (!packet->data) {
-			fr_strerror_printf("No memory");
-			return -1;
-		}
-		packet->data_len = length;
-
-		out = packet->data;
-
-		out[0] = VQP_VERSION;
-		out[1] = code;
-
-		out[2] = vp->vp_uint32 & 0xff;
-		return 0;
-	}
-
-	/*
-	 *	FIXME: Map attributes from calling-station-Id, etc.
-	 *
-	 *	Maybe do this via rlm_vqp?  That's probably the
-	 *	best place to add the code...
-	 */
-
-	memset(vps, 0, sizeof(vps));
-
-	/*
-	 *	Determine how long the packet is.
-	 */
-	for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
-		if (!contents[code][i]) break;
-
-		vps[i] = fr_pair_find_by_child_num(packet->vps, fr_dict_root(dict_vmps),
-						   contents[code][i], TAG_ANY);
-
-		/*
-		 *	FIXME: Print the name...
-		 */
-		if (!vps[i]) {
-			fr_strerror_printf("Failed to find VQP attribute %02x", contents[code][i]);
-			return -1;
-		}
-
-		length += 6;	/* header */
-		length += fr_vqp_attr_sizes[vps[i]->vp_type][0];
-	}
-
-	packet->data = talloc_array(packet, uint8_t, length);
-	if (!packet->data) {
-		fr_strerror_printf("No memory");
-		return -1;
-	}
-	packet->data_len = length;
-
-	out = packet->data;
-
-	out[0] = VQP_VERSION;
-	out[1] = code;
-	out[2] = 0;
-
-	/*
-	 *	The number of attributes is hard-coded.
-	 */
-	if ((code == 1) || (code == 3)) {
-		uint32_t sequence;
-
-		out[3] = VQP_MAX_ATTRIBUTES;
-
-		sequence = htonl(packet->id);
-		memcpy(out + 4, &sequence, 4);
-	} else {
-		if (!original) {
-			fr_strerror_printf("Cannot send VQP response without request");
-			return -1;
-		}
-
-		/*
-		 *	Packet Sequence Number
-		 */
-		memcpy(out + 4, original->data + 4, 4);
-
-		out[3] = 2;
-	}
-
-	out += 8;
-
-	/*
-	 *	Encode the VP's.
-	 */
-	for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
-		size_t len;
-
-		if (!vps[i]) break;
-		if (out >= (packet->data + packet->data_len)) break;
-
-		vp = vps[i];
-
-		DEBUG2("&%pP", vp);
-
-		switch (vp->vp_type) {
-		case FR_TYPE_IPV4_ADDR:
-			len = fr_vqp_attr_sizes[vp->vp_type][0];
-			break;
-
-		case FR_TYPE_ETHERNET:
-			len = fr_vqp_attr_sizes[vp->vp_type][0];
-			break;
-
-		case FR_TYPE_OCTETS:
-		case FR_TYPE_STRING:
-			len = vp->vp_length;
-			break;
-
-		default:
-			return -1;
-		}
-
-		/*
-		 *	Type.  Note that we look at only the lower 8
-		 *	bits, as the upper 8 bits have been hacked.
-		 *	See also dictionary.vqp
-		 */
-		out[0] = 0;
-		out[1] = 0;
-		out[2] = 0x0c;
-		out[3] = vp->da->attr & 0xff;
-
-		/* Length */
-		out[4] = 0;
-		out[5] = len & 0xff;
-
-		out += 6;
-
-		/* Data */
-		switch (vp->vp_type) {
-		case FR_TYPE_IPV4_ADDR:
-			memcpy(out, &vp->vp_ipv4addr, len);
-			out += len;
-			break;
-
-		case FR_TYPE_ETHERNET:
-			memcpy(out, vp->vp_ether, len);
-			out += len;
-			break;
-
-		case FR_TYPE_OCTETS:
-		case FR_TYPE_STRING:
-			memcpy(out, vp->vp_octets, len);
-			out += len;
-			break;
-
-		default:
-			return -1;
-		}
-
-	}
-
-	return 0;
-}
 
 /** See how big of a packet is in the buffer.
  *
@@ -718,28 +401,28 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
  *	<= 0 packet is bad.
  *      >0 how much of the data is a packet (can be larger than data_len)
  */
-ssize_t vqp_packet_size(uint8_t const *data, size_t data_len)
+ssize_t fr_vqp_packet_size(uint8_t const *data, size_t data_len)
 {
 	int attributes;
 	uint8_t const *ptr, *end;
 
-	if (data_len < VQP_HDR_LEN) return VQP_HDR_LEN;
+	if (data_len < FR_VQP_HDR_LEN) return FR_VQP_HDR_LEN;
 
 	/*
 	 *	No attributes.
 	 */
-	if (data[3] == 0) return VQP_HDR_LEN;
+	if (data[3] == 0) return FR_VQP_HDR_LEN;
 
 	/*
 	 *	Too many attributes.  Return an error indicating that
 	 *	there's a problem with octet 3.
 	 */
-	if (data[3] > VQP_MAX_ATTRIBUTES) return -3;
+	if (data[3] > 30) return -3;
 
 	/*
 	 *	Look for attributes.
 	 */
-	ptr = data + VQP_HDR_LEN;
+	ptr = data + FR_VQP_HDR_LEN;
 	attributes = data[3];
 
 	end = data + data_len;
@@ -810,7 +493,7 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 /** Print a raw VMPS packet as hex.
  *
  */
-void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
+void fr_vqp_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 {
 	int length;
 	uint8_t const *attr, *end;
@@ -820,14 +503,14 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 	fprintf(fp, "  Version:\t\t%u\n", packet[0]);
 
-	if ((packet[1] > 0) && (packet[1] < FR_VMPS_MAX_CODE) && fr_vmps_codes[packet[1]]) {
-		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[1]]);
+	if ((packet[1] > 0) && (packet[1] < FR_VQP_MAX_CODE) && fr_vqp_codes[packet[1]]) {
+		fprintf(fp, "  OpCode:\t\t%s\n", fr_vqp_codes[packet[1]]);
 	} else {
 		fprintf(fp, "  OpCode:\t\t%u\n", packet[1]);
 	}
 
-	if ((packet[2] > 0) && (packet[2] < FR_VMPS_MAX_CODE) && fr_vmps_codes[packet[2]]) {
-		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[2]]);
+	if ((packet[2] > 0) && (packet[2] < FR_VQP_MAX_CODE) && fr_vqp_codes[packet[2]]) {
+		fprintf(fp, "  OpCode:\t\t%s\n", fr_vqp_codes[packet[2]]);
 	} else {
 		fprintf(fp, "  OpCode:\t\t%u\n", packet[2]);
 	}

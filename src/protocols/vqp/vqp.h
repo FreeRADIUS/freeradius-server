@@ -31,26 +31,22 @@ RCSIDH(vqp_h, "$Id$")
 extern "C" {
 #endif
 
-#define FR_VMPS_MAX_CODE (5)
-
-RADIUS_PACKET		*vqp_recv(TALLOC_CTX *ctx, int sockfd);
+#define FR_VQP_MAX_CODE (5)
+#define FR_VQP_HDR_LEN (8)
+#define FR_VQP_VERSION (1)
 
 bool			fr_vqp_ok(uint8_t const *packet, size_t *packet_len);
 
-int			vqp_send(RADIUS_PACKET *packet);
-
 int			fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code);
 
-int			vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
+ssize_t			fr_vqp_packet_size(uint8_t const *data, size_t data_len);
 
-ssize_t			vqp_packet_size(uint8_t const *data, size_t data_len);
+void			fr_vqp_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 
-void			fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
-
-ssize_t			fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
+ssize_t			fr_vqp_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 				       int code, uint32_t id, VALUE_PAIR *vps) CC_HINT(nonnull(1));
 
-extern char const	*fr_vmps_codes[FR_VMPS_MAX_CODE];
+extern char const	*fr_vqp_codes[FR_VQP_MAX_CODE];
 
 int			fr_vqp_init(void);
 

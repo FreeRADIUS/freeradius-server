@@ -32,13 +32,13 @@
 typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
-	dl_module_inst_t			**type_submodule;		//!< Instance of the various types
-	dl_module_inst_t			*type_submodule_by_code[FR_VMPS_MAX_CODE];	//!< Lookup process entry point by code.
+	dl_module_inst_t		**type_submodule;		//!< Instance of the various types
+	dl_module_inst_t		*type_submodule_by_code[FR_VQP_MAX_CODE];	//!< Lookup process entry point by code.
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
 
-	bool				code_allowed[FR_VMPS_MAX_CODE];	//!< Allowed packet codes.
+	bool				code_allowed[FR_VQP_MAX_CODE];	//!< Allowed packet codes.
 
-	uint32_t			priorities[FR_VMPS_MAX_CODE];	//!< priorities for individual packets
+	uint32_t			priorities[FR_VQP_MAX_CODE];	//!< priorities for individual packets
 } proto_vmps_t;

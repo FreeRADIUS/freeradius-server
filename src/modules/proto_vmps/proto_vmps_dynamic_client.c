@@ -66,7 +66,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		RDEBUG("Received %s ID %i", fr_vmps_codes[request->packet->code], request->packet->id);
+		RDEBUG("Received %s ID %i", fr_vqp_codes[request->packet->code], request->packet->id);
 		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "vmps";

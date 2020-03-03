@@ -258,7 +258,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	/*
 	 *	Note that we don't set a limit on max_attributes here.
 	 *	That MUST be set and checked in the underlying
-	 *	transport, via a call to fr_vmps_ok().
+	 *	transport, via a call to fr_vqp_ok().
 	 */
 	if (fr_vqp_decode(packet, packet->data, packet->data_len, &packet->vps, &packet->code) < 0) {
 		RPEDEBUG("Failed decoding packet");
@@ -371,7 +371,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 #endif
 
-	data_len = fr_vmps_encode(buffer, buffer_len, request->packet->data,
+	data_len = fr_vqp_encode(buffer, buffer_len, request->packet->data,
 				  request->reply->code, request->reply->id, request->reply->vps);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding VMPS reply");
@@ -390,7 +390,7 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 	fr_io_track_t		*track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
-	rad_assert(request->packet->code <= FR_VMPS_MAX_CODE);
+	rad_assert(request->packet->code <= FR_VQP_MAX_CODE);
 
 	request->server_cs = inst->io.server_cs;
 

@@ -146,7 +146,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	packet_len = data_size;
 
-	if (data_size < 8) {
+	if (data_size < FR_VQP_HDR_LEN) {
 		DEBUG2("proto_vmps_udp got 'too short' packet size %zd", data_size);
 		thread->stats.total_malformed_requests++;
 		return 0;
@@ -158,9 +158,15 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		return 0;
 	}
 
+	if (buffer[0] != FR_VQP_VERSION) {
+		DEBUG("proto_vmps_udp got invalid packet version %d", buffer[0]);
+		thread->stats.total_unknown_types++;
+		return 0;
+	}
+
 	if ((buffer[1] != FR_PACKET_TYPE_VALUE_JOIN_REQUEST) &&
 	    (buffer[1] != FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST)) {
-		DEBUG("proto_vmps_udp got invalid packet code %d", buffer[0]);
+		DEBUG("proto_vmps_udp got invalid packet code %d", buffer[1]);
 		thread->stats.total_unknown_types++;
 		return 0;
 	}
