@@ -1067,7 +1067,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 	packet_ctx.tmp_ctx = talloc_init("tmp");
 	packet_ctx.secret = secret;
-	packet_ctx.vector = original + 4;
+	packet_ctx.vector = original ? original + 4 : packet + 4;
 
 	fr_cursor_init(&cursor, vps);
 
