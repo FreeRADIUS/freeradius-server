@@ -43,7 +43,7 @@ struct radius_track_entry_s {
 
 	union {
 		fr_dlist_t	entry;					//!< For free list.
-		uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];	//!< copy of the authentication vector
+		uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];	//!< copy of the request authenticator.
 	};
 };
 
