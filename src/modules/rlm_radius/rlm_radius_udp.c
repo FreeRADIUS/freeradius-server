@@ -152,9 +152,6 @@ struct udp_request_s {
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 
-	uint8_t			*authenticator;		//!< Pointer into packet at the location of the
-							///< authenticator.
-
 	radius_track_entry_t	*rr;			//!< ID tracking, resend count, etc.
 	fr_event_timer_t const	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
