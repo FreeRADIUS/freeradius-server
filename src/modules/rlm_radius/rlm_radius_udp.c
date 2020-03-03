@@ -1282,6 +1282,8 @@ static void request_mux(fr_event_list_t *el,
 		case EINTR:		/* Interrupted by signal */
 		case ENOBUFS:		/* No outbound packet buffers, maybe? */
 		case ENOMEM:		/* malloc failure in kernel? */
+			WARN("%s - Failed sending data over connection %s - %s",
+			     h->module_name, h->name, fr_syserror(errno));
 			break;
 
 		/*
@@ -1295,6 +1297,8 @@ static void request_mux(fr_event_list_t *el,
 		 *	the packets back to the pending state.
 		 */
 		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
+			ERROR("%s - Failed sending data over connection %s - %s",
+			      h->module_name, h->name, fr_syserror(errno));
 			fr_trunk_request_signal_fail(h->coalesced[i].treq);
 			sent = 1;
 			break;
@@ -1304,6 +1308,8 @@ static void request_mux(fr_event_list_t *el,
 		 *	have to do any cleanup.
 		 */
 		default:
+			ERROR("%s - Failed sending data over connection %s - %s",
+			      h->module_name, h->name, fr_syserror(errno));
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			return;
 		}
@@ -1434,6 +1440,8 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		case EINTR:		/* Interrupted by signal */
 		case ENOBUFS:		/* No outbound packet buffers, maybe? */
 		case ENOMEM:		/* malloc failure in kernel? */
+			WARN("%s - Failed sending data over connection %s - %s",
+			     h->module_name, h->name, fr_syserror(errno));
 			break;
 
 		/*
@@ -1447,6 +1455,8 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		 *	the packets back to the pending state.
 		 */
 		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
+			ERROR("%s - Failed sending data over connection %s - %s",
+			      h->module_name, h->name, fr_syserror(errno));
 			fr_trunk_request_signal_fail(h->coalesced[i].treq);
 			sent = 1;
 			break;
@@ -1456,6 +1466,8 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		 *	have to do any cleanup.
 		 */
 		default:
+			ERROR("%s - Failed sending data over connection %s - %s",
+			      h->module_name, h->name, fr_syserror(errno));
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			return;
 		}
