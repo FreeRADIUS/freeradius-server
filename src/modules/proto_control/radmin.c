@@ -157,6 +157,7 @@ static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
 static int stack_depth;
 static char cmd_buffer[65536];
 static char *stack[MAX_STACK];
+
 static fr_cmd_t *local_cmds = NULL;
 
 static void NEVER_RETURNS usage(int status)
@@ -253,7 +254,9 @@ static ssize_t do_challenge(int fd)
 static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 {
 	ssize_t r;
+#ifdef USE_READLINE
 	char *p, *str;
+#endif
 	uint32_t status;
 	fr_conduit_type_t conduit;
 
@@ -292,6 +295,7 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 
 			break;
 
+#ifdef USE_READLINE
 		case FR_CONDUIT_COMPLETE:
 			str = buffer;
 
@@ -312,6 +316,7 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 				if (radmin_num_expansions >= CMD_MAX_EXPANSIONS) break;
 			}
 			break;
+#endif
 
 		default:
 			fprintf(stderr, "Unexpected response %02x\n", conduit);
@@ -500,7 +505,10 @@ static void radmin_free(char *line)
 	free(line);
 }
 
-#ifdef USE_READLINE
+/*
+ *	Copies the (possible partial) command to the command buffer,
+ *	so that we can send the full command over to the server.
+ */
 static ssize_t cmd_copy(char const *cmd)
 {
 	size_t len;
@@ -535,6 +543,7 @@ static ssize_t cmd_copy(char const *cmd)
 	return p - cmd_buffer;
 }
 
+#ifdef USE_READLINE
 static int radmin_help(UNUSED int count, UNUSED int key)
 {
 	ssize_t len;
