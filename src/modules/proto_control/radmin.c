@@ -253,7 +253,9 @@ static ssize_t do_challenge(int fd)
 static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 {
 	ssize_t r;
+#ifdef USE_READLINE
 	char *p, *str;
+#endif
 	uint32_t status;
 	fr_conduit_type_t conduit;
 
@@ -293,6 +295,7 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 			break;
 
 		case FR_CONDUIT_COMPLETE:
+#ifdef USE_READLINE
 			str = buffer;
 
 			for (p = buffer; p < (buffer + r); p++) {
@@ -311,6 +314,7 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 
 				if (radmin_num_expansions >= CMD_MAX_EXPANSIONS) break;
 			}
+#endif
 			break;
 
 		default:
@@ -500,7 +504,11 @@ static void radmin_free(char *line)
 	free(line);
 }
 
-#ifdef USE_READLINE
+#ifndef USE_READLINE
+static ssize_t cmd_copy(UNUSED char const *cmd) {
+	return 0;
+}
+#else
 static ssize_t cmd_copy(char const *cmd)
 {
 	size_t len;
