@@ -1833,7 +1833,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		udp_result_t		*r;
 		radius_track_entry_t	*rr;
 		decode_fail_t		reason;
-		uint8_t			code;
+		uint8_t			code = 0;
 		VALUE_PAIR		*reply = NULL;
 
 		fr_time_t		now;
