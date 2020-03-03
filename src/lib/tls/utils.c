@@ -192,9 +192,9 @@ int tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 	t.tm_sec = (*(p++) - '0') * 10;
 	t.tm_sec += (*(p++) - '0');
 
-	/* ASN1_TIME is UTC, but mktime will treat it as being in the local timezone */
+	/* ASN1_TIME is UTC, so get the UTC time */
 done:
-	*out = mktime(&t) + timezone;
+	*out = timegm(&t);
 
 	return 0;
 }
