@@ -1438,7 +1438,7 @@ static void request_mux(fr_event_list_t *el,
 		/*
 		 *	It's UDP so there should never be partial writes
 		 */
-		rad_assert(h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
+		rad_assert((size_t)h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
 
 		request = treq->request;
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
@@ -1590,7 +1590,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		/*
 		 *	It's UDP so there should never be partial writes
 		 */
-		rad_assert(h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
+		rad_assert((size_t)h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
 
 		r->rcode = RLM_MODULE_OK;
 		fr_trunk_request_signal_complete(treq);
