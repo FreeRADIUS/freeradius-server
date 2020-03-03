@@ -828,8 +828,9 @@ int main(int argc, char **argv)
 
 	char const	*raddb_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
+#ifdef USE_READLINE_HISTORY
 	char 		history_file[PATH_MAX];
-
+#endif
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	char *commands[MAX_COMMANDS];
