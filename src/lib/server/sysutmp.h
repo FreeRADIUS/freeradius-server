@@ -50,6 +50,9 @@ RCSIDH(sysutmp_h, "$Id$")
 #if defined(hpux) || defined(__FreeBSD__)
 #  define ut_name ut_user
 #endif
+#if defined(__FreeBSD__)
+#  define utmp utmpx
+#endif
 #else
 #  include <utmp.h>
 #endif
