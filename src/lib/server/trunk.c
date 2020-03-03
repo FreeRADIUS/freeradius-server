@@ -33,8 +33,8 @@
 
 typedef struct fr_trunk_request_s fr_trunk_request_t;
 typedef struct fr_trunk_connection_s fr_trunk_connection_t;
-#define TRUNK_REQUEST_NO_TYPEDEF 1	/* We use the private version of fr_trunk_request_t */
-#define TRUNK_CONNECTION_NO_TYPEDEF 1	/* We use the private version of fr_trunk_connection_t */
+typedef struct fr_trunk_s fr_trunk_t;
+#define _TRUNK_PRIVATE 1
 #include <freeradius-devel/server/trunk.h>
 
 #include <freeradius-devel/server/connection.h>
@@ -42,8 +42,6 @@ typedef struct fr_trunk_connection_s fr_trunk_connection_t;
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/table.h>
-
-
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
@@ -153,6 +151,10 @@ struct fr_trunk_connection_s {
  *
  */
 struct fr_trunk_s {
+	struct fr_trunk_pub_s	pub;			//!< Public fields in the trunk connection.
+							///< This *MUST* be the first field in this
+							///< structure.
+
 	char const		*log_prefix;		//!< What to prepend to messages.
 
 	fr_event_list_t		*el;			//!< Event list used by this trunk and the connection.
@@ -192,36 +194,6 @@ struct fr_trunk_s {
 
 	fr_dlist_head_t		draining_to_free;	//!< Connections that will be freed once all their
 							///< requests are complete.
-	/** @} */
-
-	/** @name Last time an event occurred
-	 * @{
- 	 */
-	fr_time_t		last_above_target;	//!< Last time average utilisation went above
-							///< the target value.
-
-	fr_time_t		last_below_target;	//!< Last time average utilisation went below
-							///< the target value.
-
-	fr_time_t		last_open;		//!< Last time the connection management
-							///< function opened a connection.
-
-	fr_time_t		last_closed;		//!< Last time the connection management
-							///< function closed a connection.
-
-	fr_time_t		last_connected;		//!< Last time a connection connected.
-
-	fr_time_t		last_failed;		//!< Last time a connection failed.
-
-	fr_time_t		last_read_success;	//!< Last time we read a response.
-	/** @} */
-
-	/** @name Statistics
-	 * @{
- 	 */
-	uint64_t		req_alloc_new;		//!< How many requests we've allocated.
-
-	uint64_t		req_alloc_reused;	//!< How many requests were reused.
 	/** @} */
 
 	/** @name Callbacks
@@ -1171,7 +1143,7 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 *	one or more connections comes online.
 	 */
 	if (!trunk->conf.backlog_on_failed_conn &&
-	    trunk->last_failed && (trunk->last_failed >= trunk->last_connected)) {
+	    trunk->pub.last_connected && (trunk->pub.last_connected >= trunk->pub.last_connected)) {
 		ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
 			  "No active connections and last event was a connection failure");
 
@@ -1565,7 +1537,7 @@ void fr_trunk_request_signal_complete(fr_trunk_request_t *treq)
 	 *	then we need to add an argument to signal_complete
 	 *	to indicate if this is a successful read.
 	 */
-	if (IN_REQUEST_DEMUX(trunk)) trunk->last_read_success = fr_time();
+	if (IN_REQUEST_DEMUX(trunk)) trunk->pub.last_read_success = fr_time();
 
 	switch (treq->state) {
 	case FR_TRUNK_REQUEST_STATE_SENT:
@@ -1846,7 +1818,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 		rad_assert(treq->pub.tconn == NULL);
 		rad_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_NONE);
 		rad_assert(treq->last_freed > 0);
-		trunk->req_alloc_reused++;
+		trunk->pub.req_alloc_reused++;
 	} else {
 		MEM(treq = talloc_pooled_object(trunk, fr_trunk_request_t,
 						trunk->conf.req_pool_headers, trunk->conf.req_pool_size));
@@ -1858,7 +1830,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 		treq->pub.preq = NULL;
 		treq->pub.rctx = NULL;
 		treq->last_freed = 0;
-		trunk->req_alloc_new++;
+		trunk->pub.req_alloc_new++;
 	}
 
 	treq->id = atomic_fetch_add_explicit(&request_counter, 1, memory_order_relaxed);
@@ -2595,7 +2567,7 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 	 *	be transitioned to from full and
 	 *	draining too.
 	 */
-	trunk->last_connected = fr_time();
+	trunk->pub.last_connected = fr_time();
 
 	/*
 	 *	Insert a timer to reconnect the
@@ -2716,7 +2688,7 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
 
-	trunk->last_failed = fr_time();
+	trunk->pub.last_connected = fr_time();
 
 	/*
 	 *	Other conditions will be handled by on_closed
@@ -2946,7 +2918,7 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 
 	talloc_set_destructor(tconn, _trunk_connection_free);
 
-	trunk->last_open = now;
+	trunk->pub.last_open = now;
 
 	return 0;
 }
@@ -3289,7 +3261,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	 *	We're above the target requests per connection
 	 *	spawn more connections!
 	 */
-	if ((trunk->last_above_target >= trunk->last_below_target)) {
+	if ((trunk->pub.last_above_target >= trunk->pub.last_below_target)) {
 		/*
 		 *	If connecting is provided, check we
 		 *	wouldn't have too many connections in
@@ -3313,10 +3285,10 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	Only apply hysteresis if we have at least
 		 *	one available connection.
 		 */
-		if (conn_count && ((trunk->last_above_target + trunk->conf.open_delay) > now)) {
+		if (conn_count && ((trunk->pub.last_above_target + trunk->conf.open_delay) > now)) {
 			DEBUG4("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
-			       fr_box_time_delta(now - trunk->last_above_target));
+			       fr_box_time_delta(now - trunk->pub.last_above_target));
 			return;	/* too soon */
 		}
 
@@ -3325,7 +3297,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	that a call to trunk_requests_per_connnection
 		 *	was missed.
 		 */
-		rad_assert(trunk->last_above_target >= trunk->last_below_target);
+		rad_assert(trunk->pub.last_above_target >= trunk->pub.last_below_target);
 
 		/*
 		 *	We don't consider 'draining' connections
@@ -3383,11 +3355,11 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	Implement delay if there's no connections that
 		 *	could be immediately re-activated.
 		 */
-		if ((trunk->last_open + trunk->conf.open_delay) > now) {
+		if ((trunk->pub.last_open + trunk->conf.open_delay) > now) {
 			DEBUG4("Not opening connection - Need to wait %pVs before opening another connection.  "
 			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
-			       fr_box_time_delta(now - trunk->last_open));
+			       fr_box_time_delta(now - trunk->pub.last_open));
 			return;
 		}
 
@@ -3401,11 +3373,11 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	 *	We're below the target requests per connection.
 	 *	Free some connections...
 	 */
-	else if (trunk->last_below_target > trunk->last_above_target) {
-		if ((trunk->last_below_target + trunk->conf.close_delay) > now) {
+	else if (trunk->pub.last_below_target > trunk->pub.last_above_target) {
+		if ((trunk->pub.last_below_target + trunk->conf.close_delay) > now) {
 			DEBUG4("Not closing connection - Need to be below target for %pVs. It's been %pVs",
 			       fr_box_time_delta(trunk->conf.close_delay),
-			       fr_box_time_delta(now - trunk->last_below_target));
+			       fr_box_time_delta(now - trunk->pub.last_below_target));
 			return;	/* too soon */
 		}
 
@@ -3416,7 +3388,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	that a call to trunk_requests_per_connnection
 		 *	was missed.
 		 */
-		rad_assert(trunk->last_below_target > trunk->last_above_target);
+		rad_assert(trunk->pub.last_below_target > trunk->pub.last_above_target);
 
 		if (!conn_count) {
 			DEBUG4("Not closing connection - No connections to close!");
@@ -3463,18 +3435,18 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		       DIVIDE_CEIL(req_count, conn_count), trunk->conf.target_req_per_conn);
 
 	close:
-		if ((trunk->last_closed + trunk->conf.close_delay) > now) {
+		if ((trunk->pub.last_closed + trunk->conf.close_delay) > now) {
 			DEBUG4("Not closing connection - Need to wait %pVs before closing another connection.  "
 			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf.close_delay),
-			       fr_box_time_delta(now - trunk->last_closed));
+			       fr_box_time_delta(now - trunk->pub.last_closed));
 			return;
 		}
 
 
 		tconn = fr_heap_peek_tail(trunk->active);
 		rad_assert(tconn);
-		trunk->last_closed = now;
+		trunk->pub.last_closed = now;
 		trunk_connection_enter_draining(tconn);
 
 		return;
@@ -3625,13 +3597,13 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 		/*
 		 *	Edge - Below target to above target (too many requests per conn - spawn more)
 		 */
-		if (trunk->last_above_target <= trunk->last_below_target) trunk->last_above_target = now;
+		if (trunk->pub.last_above_target <= trunk->pub.last_below_target) trunk->pub.last_above_target = now;
 	} else if (average < trunk->conf.target_req_per_conn) {
 	below_target:
 		/*
 		 *	Edge - Above target to below target (too few requests per conn - close some)
 		 */
-		if (trunk->last_below_target <= trunk->last_above_target) trunk->last_below_target = now;
+		if (trunk->pub.last_below_target <= trunk->pub.last_above_target) trunk->pub.last_below_target = now;
 	}
 
 done:

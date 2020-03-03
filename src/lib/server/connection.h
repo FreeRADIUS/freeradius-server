@@ -20,7 +20,7 @@
  * @file lib/server/connection.h
  * @brief Simple state machine for managing connection states.
  *
- * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2017-2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(connection_h, "$Id$")
 
@@ -33,8 +33,11 @@ extern "C" {
 
 #include <talloc.h>
 
-#ifndef FR_CONNECTION_NO_TYPEDEF
+#ifndef _CONNECTION_PRIVATE
 typedef struct fr_connection_pub_s fr_connection_t; /* We use the private version of the fr_connection_t */
+#  define _CONST const
+#else
+#  define _CONST
 #endif
 
 /** Public fields for the connection
@@ -46,10 +49,15 @@ typedef struct fr_connection_pub_s fr_connection_t; /* We use the private versio
  * the connection API.
  */
 struct fr_connection_pub_s {
-	uint64_t		id;		//!< Unique identifier for the connection.
-	void			*h;		//!< Connection handle
-	fr_event_list_t		*el;		//!< Event list for timers and I/O events.
-	char const		*log_prefix;	//!< Prefix to add to log messages.
+	uint64_t _CONST		id;		//!< Unique identifier for the connection.
+	void		* _CONST h;		//!< Connection handle
+	fr_event_list_t	* _CONST el;		//!< Event list for timers and I/O events.
+	char const	* _CONST log_prefix;	//!< Prefix to add to log messages.
+
+	uint64_t _CONST		reconnected;	//!< How many times we've attempted to establish or
+						///< re-establish this connection.
+	uint64_t _CONST		timed_out;	//!< How many times has this connection timed out when
+						///< connecting.
 };
 
 typedef enum {
@@ -237,6 +245,8 @@ fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					     fr_connection_funcs_t const *funcs, fr_connection_conf_t const *conf,
 					     char const *log_prefix, void const *uctx);
 /** @} */
+
+#undef _CONST
 
 #ifdef __cplusplus
 }

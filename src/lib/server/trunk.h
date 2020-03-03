@@ -37,13 +37,14 @@ extern "C" {
 /*
  *	Allow public and private versions of the same structures
  */
-#ifndef TRUNK_REQUEST_NO_TYPEDEF
+#ifndef _TRUNK_PRIVATE
 typedef struct fr_trunk_request_pub_s fr_trunk_request_t;
-#endif
-#ifndef TRUNK_CONNECTION_NO_TYPEDEF
 typedef struct fr_trunk_connection_pub_s fr_trunk_connection_t;
+typedef struct fr_trunk_pub_s fr_trunk_t;
+#  define _CONST const
+#else
+#  define _CONST
 #endif
-typedef struct fr_trunk_s fr_trunk_t;
 
 /** Reasons for a request being cancelled
  *
@@ -235,6 +236,46 @@ typedef struct {
 							//!< was a failure, instead of failing them immediately.
 } fr_trunk_conf_t;
 
+/** Public fields for the trunk
+ *
+ * This saves the overhead of using accessors for commonly used fields in
+ * the trunk.
+ *
+ * Though these fields are public, they should _NOT_ be modified by clients of
+ * the trunk API.
+ */
+struct fr_trunk_pub_s {
+	/** @name Last time an event occurred
+	 * @{
+ 	 */
+	fr_time_t _CONST	last_above_target;	//!< Last time average utilisation went above
+							///< the target value.
+
+	fr_time_t _CONST	last_below_target;	//!< Last time average utilisation went below
+							///< the target value.
+
+	fr_time_t _CONST	last_open;		//!< Last time the connection management
+							///< function opened a connection.
+
+	fr_time_t _CONST	last_closed;		//!< Last time the connection management
+							///< function closed a connection.
+
+	fr_time_t _CONST	last_connected;		//!< Last time a connection connected.
+
+	fr_time_t _CONST	last_failed;		//!< Last time a connection failed.
+
+	fr_time_t _CONST	last_read_success;	//!< Last time we read a response.
+	/** @} */
+
+	/** @name Statistics
+	 * @{
+ 	 */
+	uint64_t _CONST		req_alloc_new;		//!< How many requests we've allocated.
+
+	uint64_t _CONST		req_alloc_reused;	//!< How many requests were reused.
+	/** @} */
+};
+
 /** Public fields for the trunk request
  *
  * This saves the overhead of using accessors for commonly used fields in trunk
@@ -244,15 +285,15 @@ typedef struct {
  * the trunk API.
  */
 struct fr_trunk_request_pub_s {
-	fr_trunk_t		*trunk;			//!< Trunk this request belongs to.
+	fr_trunk_t		* _CONST trunk;		//!< Trunk this request belongs to.
 
-	fr_trunk_connection_t	*tconn;			//!< Connection this request belongs to.
+	fr_trunk_connection_t	* _CONST tconn;		//!< Connection this request belongs to.
 
-	void			*preq;			//!< Data for the muxer to write to the connection.
+	void			* _CONST preq;		//!< Data for the muxer to write to the connection.
 
-	void			*rctx;			//!< Resume ctx of the module.
+	void			* _CONST rctx;		//!< Resume ctx of the module.
 
-	REQUEST			*request;		//!< The request that we're writing the data on behalf of.
+	REQUEST			* _CONST request;	//!< The request that we're writing the data on behalf of.
 };
 
 /** Public fields for the trunk connection
@@ -264,9 +305,9 @@ struct fr_trunk_request_pub_s {
  * the trunk API.
  */
 struct fr_trunk_connection_pub_s {
-	fr_connection_t		*conn;			//!< The underlying connection.
+	fr_connection_t		* _CONST conn;		//!< The underlying connection.
 
-	fr_trunk_t		*trunk;			//!< Trunk this connection belongs to.
+	fr_trunk_t		* _CONST trunk;		//!< Trunk this connection belongs to.
 };
 
 /** Config parser definitions to populate a fr_trunk_conf_t
@@ -729,6 +770,8 @@ fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				fr_trunk_io_funcs_t const *funcs, fr_trunk_conf_t const *conf,
 				char const *log_prefix, void const *uctx, bool delay_start) CC_HINT(nonnull(2, 3, 4));
 /** @} */
+
+#undef _CONST
 
 #ifdef __cplusplus
 }

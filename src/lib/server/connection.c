@@ -26,7 +26,7 @@
 #define LOG_PREFIX_ARGS conn->pub.log_prefix, conn->pub.id
 
 typedef struct fr_connection_s fr_connection_t;
-#define FR_CONNECTION_NO_TYPEDEF 1
+#define _CONNECTION_PRIVATE 1
 #include <freeradius-devel/server/connection.h>
 
 #include <freeradius-devel/server/log.h>
@@ -72,11 +72,6 @@ struct fr_connection_s {
 	struct fr_connection_pub_s pub;			//!< Public fields
 
 	fr_connection_state_t	state;			//!< Current connection state.
-
-	uint64_t		reconnected;		//!< How many times we've attempted to establish or
-							///< re-establish this connection.
-	uint64_t		timed_out;		//!< How many times has this connection timed out when
-							///< connecting.
 
 	void			*uctx;			//!< User data.
 
@@ -432,9 +427,9 @@ void fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t s
  */
 uint64_t fr_connection_get_num_reconnected(fr_connection_t const *conn)
 {
-	if (conn->reconnected == 0) return 0;	/* Has never been initialised */
+	if (conn->pub.reconnected == 0) return 0;	/* Has never been initialised */
 
-	return conn->reconnected - 1;		/* We don't count the first connection attempt */
+	return conn->pub.reconnected - 1;		/* We don't count the first connection attempt */
 }
 
 /** Return the number of times this connection has timed out whilst connecting
@@ -444,7 +439,7 @@ uint64_t fr_connection_get_num_reconnected(fr_connection_t const *conn)
  */
 uint64_t fr_connection_get_num_timed_out(fr_connection_t const *conn)
 {
-	return conn->timed_out;
+	return conn->pub.timed_out;
 }
 
 /** The requisite period of time has passed, try and re-open the connection
@@ -724,7 +719,7 @@ static void connection_state_timeout_enter(fr_connection_t *conn)
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_TIMEOUT);
 
-	conn->timed_out++;
+	conn->pub.timed_out++;
 
 	connection_state_failed_enter(conn);
 }
@@ -875,7 +870,7 @@ static void connection_state_init_enter(fr_connection_t *conn)
 	 *	reconnected, or was automatically
 	 *	reconnected.
 	 */
-	conn->reconnected++;
+	conn->pub.reconnected++;
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
 

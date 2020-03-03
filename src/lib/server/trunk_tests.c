@@ -1792,7 +1792,7 @@ static void test_enqueue_and_io_speed(void)
 		INFO("Enqueue time %pV (%u rps) (%"PRIu64"/%"PRIu64")",
 		     fr_box_time_delta(enqueue_time),
 		     (uint32_t)(requests / ((float)enqueue_time / NSEC)),
-		     trunk->req_alloc_new, trunk->req_alloc_reused);
+		     trunk->pub.req_alloc_new, trunk->pub.req_alloc_reused);
 	}
 
 	TEST_CASE("Perform I/O operations");
