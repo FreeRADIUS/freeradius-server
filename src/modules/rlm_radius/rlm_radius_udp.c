@@ -220,6 +220,42 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ NULL }
 };
 
+/** If we get a reply, the request must come from one of a small
+ * number of packet types.
+ */
+static FR_CODE allowed_replies[FR_RADIUS_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_ACCEPT]		= FR_CODE_ACCESS_REQUEST,
+	[FR_CODE_ACCESS_CHALLENGE]	= FR_CODE_ACCESS_REQUEST,
+	[FR_CODE_ACCESS_REJECT]		= FR_CODE_ACCESS_REQUEST,
+
+	[FR_CODE_ACCOUNTING_RESPONSE]	= FR_CODE_ACCOUNTING_REQUEST,
+
+	[FR_CODE_COA_ACK]		= FR_CODE_COA_REQUEST,
+	[FR_CODE_COA_NAK]		= FR_CODE_COA_REQUEST,
+
+	[FR_CODE_DISCONNECT_ACK]	= FR_CODE_DISCONNECT_REQUEST,
+	[FR_CODE_DISCONNECT_NAK]	= FR_CODE_DISCONNECT_REQUEST,
+};
+
+/** Turn a reply code into a module rcode;
+ *
+ */
+static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_ACCEPT]		= RLM_MODULE_OK,
+	[FR_CODE_ACCESS_CHALLENGE]	= RLM_MODULE_UPDATED,
+	[FR_CODE_ACCESS_REJECT]		= RLM_MODULE_REJECT,
+
+	[FR_CODE_ACCOUNTING_RESPONSE]	= RLM_MODULE_OK,
+
+	[FR_CODE_COA_ACK]		= RLM_MODULE_OK,
+	[FR_CODE_COA_NAK]		= RLM_MODULE_REJECT,
+
+	[FR_CODE_DISCONNECT_ACK]	= RLM_MODULE_OK,
+	[FR_CODE_DISCONNECT_NAK]	= RLM_MODULE_REJECT,
+
+	[FR_CODE_PROTOCOL_ERROR]	= RLM_MODULE_HANDLED,
+};
+
 /*
  *	Status-Server checks.  Manually build the packet, and
  *	all of its associated glue.
@@ -1488,42 +1524,6 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 
 	for (i = sent; i < queued; i++) fr_trunk_request_requeue(h->coalesced[i].treq);
 }
-
-/** If we get a reply, the request must come from one of a small
- * number of packet types.
- */
-static FR_CODE allowed_replies[FR_RADIUS_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_ACCEPT]		= FR_CODE_ACCESS_REQUEST,
-	[FR_CODE_ACCESS_CHALLENGE]	= FR_CODE_ACCESS_REQUEST,
-	[FR_CODE_ACCESS_REJECT]		= FR_CODE_ACCESS_REQUEST,
-
-	[FR_CODE_ACCOUNTING_RESPONSE]	= FR_CODE_ACCOUNTING_REQUEST,
-
-	[FR_CODE_COA_ACK]		= FR_CODE_COA_REQUEST,
-	[FR_CODE_COA_NAK]		= FR_CODE_COA_REQUEST,
-
-	[FR_CODE_DISCONNECT_ACK]	= FR_CODE_DISCONNECT_REQUEST,
-	[FR_CODE_DISCONNECT_NAK]	= FR_CODE_DISCONNECT_REQUEST,
-};
-
-/** Turn a reply code into a module rcode;
- *
- */
-static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_ACCEPT]		= RLM_MODULE_OK,
-	[FR_CODE_ACCESS_CHALLENGE]	= RLM_MODULE_UPDATED,
-	[FR_CODE_ACCESS_REJECT]		= RLM_MODULE_REJECT,
-
-	[FR_CODE_ACCOUNTING_RESPONSE]	= RLM_MODULE_OK,
-
-	[FR_CODE_COA_ACK]		= RLM_MODULE_OK,
-	[FR_CODE_COA_NAK]		= RLM_MODULE_REJECT,
-
-	[FR_CODE_DISCONNECT_ACK]	= RLM_MODULE_OK,
-	[FR_CODE_DISCONNECT_NAK]	= RLM_MODULE_REJECT,
-
-	[FR_CODE_PROTOCOL_ERROR]	= RLM_MODULE_HANDLED,
-};
 
 /** Deal with Protocol-Error replies, and possible negotiation
  *
