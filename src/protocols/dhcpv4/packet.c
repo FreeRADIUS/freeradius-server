@@ -103,10 +103,10 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 	return NULL;
 }
 
-int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
+int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code)
 {
 	size_t		i;
-	uint8_t		*p = packet->data;
+	uint8_t const  	*p = data;
 	uint32_t	giaddr;
 	fr_cursor_t	cursor;
 	VALUE_PAIR	*head = NULL, *vp;
@@ -114,9 +114,9 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 
 	fr_cursor_init(&cursor, &head);
 
-	if (packet->data[1] > 1) {
+	if (data[1] > 1) {
 		fr_strerror_printf("Packet is not Ethernet: %u",
-		      packet->data[1]);
+		      data[1]);
 		return -1;
 	}
 
@@ -124,7 +124,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Decode the header.
 	 */
 	for (i = 0; i < 14; i++) {
-		vp = fr_pair_afrom_da(packet, *dhcp_header_attrs[i]);
+		vp = fr_pair_afrom_da(ctx, *dhcp_header_attrs[i]);
 		if (!vp) {
 			fr_strerror_printf_push("Cannot decode packet due to internal error");
 		error:
@@ -141,9 +141,9 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 			/*
 			 *	Skip chaddr if it doesn't exist.
 			 */
-			if ((packet->data[1] == 0) || (packet->data[2] == 0)) continue;
+			if ((data[1] == 0) || (data[2] == 0)) continue;
 
-			if ((packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
+			if ((data[1] == 1) && (data[2] != sizeof(vp->vp_ether))) {
 				fr_pair_to_unknown(vp);
 			}
 		}
@@ -164,9 +164,9 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (packet->data[2] == 0) break;
+			if (data[2] == 0) break;
 
-			fr_pair_value_memcpy(vp, p, packet->data[2], true);
+			fr_pair_value_memcpy(vp, p, data[2], true);
 			break;
 
 			/*
@@ -202,14 +202,14 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		uint8_t const		*end;
 		ssize_t			len;
 
-		p = packet->data + 240;
-		end = p + (packet->data_len - 240);
+		p = data + 240;
+		end = p + (data_len - 240);
 
 		/*
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcpv4_decode_option(packet, &cursor, dict_dhcpv4, p, (end - p), NULL);
+			len = fr_dhcpv4_decode_option(ctx, &cursor, dict_dhcpv4, p, (end - p), NULL);
 			if (len <= 0) {
 				fr_pair_list_free(&head);
 				return len;
@@ -217,9 +217,11 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 			p += len;
 		}
 
-		vp = fr_pair_find_by_da(head, attr_dhcp_message_type, TAG_ANY);
-		if (vp) {
-			packet->code = vp->vp_uint8;
+		if (code) {
+			vp = fr_pair_find_by_da(head, attr_dhcp_message_type, TAG_ANY);
+			if (vp) {
+				*code = vp->vp_uint8;
+			}
 		}
 
 		/*
@@ -233,10 +235,10 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 				 *	The 'file' field is used to hold options.
 				 *	It must be interpreted before 'sname'.
 				 */
-				p = packet->data + 44;
+				p = data + 44;
 				end = p + 64;
 				while (p < end) {
-					len = fr_dhcpv4_decode_option(packet, &cursor, dict_dhcpv4,
+					len = fr_dhcpv4_decode_option(ctx, &cursor, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
 						fr_pair_list_free(&head);
@@ -250,10 +252,10 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 				/*
 				 *	The 'sname' field is used to hold options.
 				 */
-				p = packet->data + 108;
+				p = data + 108;
 				end = p + 128;
 				while (p < end) {
-					len = fr_dhcpv4_decode_option(packet, &cursor, dict_dhcpv4,
+					len = fr_dhcpv4_decode_option(ctx, &cursor, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
 						fr_pair_list_free(&head);
@@ -274,7 +276,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Set broadcast flag for broken vendors, but only if
 	 *	giaddr isn't set.
 	 */
-	memcpy(&giaddr, packet->data + 24, sizeof(giaddr));
+	memcpy(&giaddr, data + 24, sizeof(giaddr));
 	if (giaddr == htonl(INADDR_ANY)) {
 		/*
 		 *	DHCP Opcode is request
@@ -292,23 +294,16 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 				 *	Reply should be broadcast.
 				 */
 				if (vp) vp->vp_uint16 |= 0x8000;
-				packet->data[10] |= 0x80;
 			}
 		}
 	}
 
 	/*
-	 *	FIXME: Nuke attributes that aren't used in the normal
-	 *	header for discover/requests.
-	 */
-	packet->vps = head;
-
-	/*
 	 *	Client can request a LARGER size, but not a smaller
 	 *	one.  They also cannot request a size larger than MTU.
 	 */
-	maxms = fr_pair_find_by_da(packet->vps, attr_dhcp_dhcp_maximum_msg_size, TAG_ANY);
-	mtu = fr_pair_find_by_da(packet->vps, attr_dhcp_interface_mtu_size, TAG_ANY);
+	maxms = fr_pair_find_by_da(head, attr_dhcp_dhcp_maximum_msg_size, TAG_ANY);
+	mtu = fr_pair_find_by_da(head, attr_dhcp_interface_mtu_size, TAG_ANY);
 
 	if (mtu && (mtu->vp_uint16 < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_printf("Client says MTU is smaller than minimum permitted by the specification");
@@ -325,6 +320,12 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Client says MTU is smaller than maximum message size: fixing it
 	 */
 	if (maxms && mtu && (maxms->vp_uint16 > mtu->vp_uint16)) maxms->vp_uint16 = mtu->vp_uint16;
+
+	/*
+	 *	FIXME: Nuke attributes that aren't used in the normal
+	 *	header for discover/requests.
+	 */
+	*vps = head;
 
 	return 0;
 }

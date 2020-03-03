@@ -356,7 +356,7 @@ static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 
 			if (fr_debug_lvl) print_hex(reply);
 
-			if (fr_dhcpv4_packet_decode(reply) < 0) {
+			if (fr_dhcpv4_decode(reply, reply->data, reply->data_len, &reply->vps, &reply->code) < 0) {
 				ERROR("Failed decoding reply");
 				return NULL;
 			}
@@ -780,7 +780,7 @@ int main(int argc, char **argv)
 	 *	Decode to produce VALUE_PAIRs from the default field
 	 */
 	if (fr_debug_lvl) {
-		fr_dhcpv4_packet_decode(packet);
+		fr_dhcpv4_decode(packet, packet->data, packet->data_len, &packet->vps, &packet->code);
 		dhcp_packet_debug(packet, false);
 	}
 
@@ -794,7 +794,7 @@ int main(int argc, char **argv)
 	}
 
 	if (reply) {
-		if (fr_dhcpv4_packet_decode(reply) < 0) {
+		if (fr_dhcpv4_decode(reply, reply->data, reply->data_len, &reply->vps, &reply->code) < 0) {
 			ERROR("Failed decoding packet");
 			ret = -1;
 		}

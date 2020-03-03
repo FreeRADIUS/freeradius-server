@@ -467,7 +467,7 @@ static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 
 	memcpy(&packet->data, &data, sizeof(packet->data)); /* const issues */
 	packet->data_len = data_len;
-	rcode = fr_dhcpv4_packet_decode(packet);
+	rcode = fr_dhcpv4_decode(packet, packet->data, packet->data_len, &packet->vps, &packet->code);
 
 	(void) fr_pair_list_copy(ctx, vps, packet->vps);
 	talloc_free(packet);

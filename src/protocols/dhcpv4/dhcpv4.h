@@ -171,7 +171,7 @@ ssize_t		fr_dhcpv4_encode_option(uint8_t *out, size_t outlen,
  */
 uint8_t const	*fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t packet_size, fr_dict_attr_t const *da);
 
-int		fr_dhcpv4_packet_decode(RADIUS_PACKET *packet);
+int		fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code);
 
 int		fr_dhcpv4_packet_encode(RADIUS_PACKET *packet);
 
