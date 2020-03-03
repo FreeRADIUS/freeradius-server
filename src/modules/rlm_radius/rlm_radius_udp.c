@@ -761,9 +761,22 @@ static int8_t request_prioritise(void const *one, void const *two)
 	return (a->recv_time > b->recv_time) - (a->recv_time < b->recv_time);
 }
 
-static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *code_out,
-			    udp_handle_t *h,
-			    REQUEST *request, radius_track_entry_t *rr,  uint8_t *data, size_t data_len)
+/** Decode response packet data, extracting relevant information and validating the packet
+ *
+ * @param[in] ctx			to allocate pairs in.
+ * @param[out] reply			Pointer to head of pair list to add reply attributes to.
+ * @param[out] response_code		The type of response packet.
+ * @param[in] request_authenticator	from the original request.
+ * @param[in] data			to decode.
+ * @param[in] data_len			Length of input data.
+ * @return
+ *	- DECODE_FAIL_NONE on success.
+ *	- DECODE_FAIL_* on failure.
+ */
+static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *response_code,
+			    udp_handle_t *h, REQUEST *request, udp_request_t *u,
+			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
+			    uint8_t *data, size_t data_len)
 {
 	rlm_radius_udp_t const *inst = h->thread->inst;
 	size_t			packet_len;
@@ -771,24 +784,24 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *code_o
 	uint8_t			code;
 	uint8_t			original[RADIUS_HEADER_LENGTH];
 
-	*code_out = 0;	/* Initialise to keep the rest of the code happy */
+	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
 	packet_len = data_len;
 	if (!fr_radius_ok(data, &packet_len, inst->parent->max_attributes, false, &reason)) {
-		RWARN("%s - Ignoring malformed packet", h->module_name);
+		RWARN("Ignoring malformed packet");
 		return reason;
 	}
 
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("%s - Read packet", h->module_name);
+		RDEBUG3("Read packet");
 		fr_log_hex(&default_log, L_DBG, __FILE__, __LINE__, data, packet_len, NULL);
 	}
 
-	original[0] = rr->code;
+	original[0] = u->code;
 	original[1] = 0;			/* not looked at by fr_radius_verify() */
 	original[2] = 0;
 	original[3] = RADIUS_HEADER_LENGTH;	/* for debugging */
-	memcpy(original + RADIUS_AUTH_VECTOR_OFFSET, rr->vector, sizeof(rr->vector));
+	memcpy(original + RADIUS_AUTH_VECTOR_OFFSET, request_authenticator, RADIUS_AUTH_VECTOR_LENGTH);
 
 	if (fr_radius_verify(data, original,
 			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1) < 0) {
@@ -805,13 +818,13 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *code_o
 	if (code != FR_CODE_PROTOCOL_ERROR) {
 		if (!allowed_replies[code]) {
 			REDEBUG("%s packet received invalid reply code %s",
-				fr_packet_codes[rr->code], fr_packet_codes[code]);
+				fr_packet_codes[u->code], fr_packet_codes[code]);
 			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
 
-		if (allowed_replies[code] != (FR_CODE) rr->code) {
+		if (allowed_replies[code] != (FR_CODE) u->code) {
 			REDEBUG("%s packet received invalid reply code %s",
-				fr_packet_codes[rr->code], fr_packet_codes[code]);
+				fr_packet_codes[u->code], fr_packet_codes[code]);
 			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
 	}
@@ -832,7 +845,17 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *code_o
 	       fr_packet_codes[code], code, packet_len, h->name);
 	log_request_pair_list(L_DBG_LVL_2, request, *reply, NULL);
 
-	*code_out = code;
+	*response_code = code;
+
+	/*
+	 *	Record the fact we've seen a response
+	 */
+	u->num_replies++;
+
+	/*
+	 *	Fixup retry times
+	 */
+	if (u->retry.start > h->mrs_time) h->mrs_time = u->retry.start;
 
 	return DECODE_FAIL_NONE;
 }
@@ -1052,14 +1075,29 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	}
 
 	/*
-	 *	Now that we're done mangling the packet, sign it.
+	 *	Only certain types of packet, and those with a
+	 *	message_authenticator need signing.
 	 */
-	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->secret,
-			   talloc_array_length(inst->secret) - 1) < 0) {
-		RERROR("Failed signing packet");
-		return -1;
-	}
+	if (message_authenticator) goto sign;
+	switch (u->code) {
+	case FR_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_COA_REQUEST:
+	sign:
+		/*
+		 *	Now that we're done mangling the packet, sign it.
+		 */
+		if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->secret,
+				   talloc_array_length(inst->secret) - 1) < 0) {
+			RERROR("Failed signing packet");
+			return -1;
+		}
+		break;
 
+	default:
+		break;
+
+	}
 	return 0;
 }
 
@@ -1876,7 +1914,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		/*
 		 *	Validate and decode the incoming packet
 		 */
-		reason = decode(request->reply, &reply, &code, h, request, rr, h->buffer, (size_t)slen);
+		reason = decode(request->reply, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
 		if (reason != DECODE_FAIL_NONE) {
 			RWDEBUG("Ignoring invalid response");
 			continue;
@@ -1890,16 +1928,6 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	servers.
 		 */
 		h->last_reply = now = fr_time();
-
-		/*
-		 *	Record the fact we've seen a response
-		 */
-		u->num_replies++;
-
-		/*
-		 *	Fixup retry times
-		 */
-		if (u->retry.start > h->mrs_time) h->mrs_time = u->retry.start;
 
 		/*
 		 *	Status-Server can have any reply code, we don't care
