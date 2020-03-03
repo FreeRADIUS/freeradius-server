@@ -683,7 +683,7 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 			       write_fn,
 			       conn_error,
 			       tconn) < 0) {
-		ERROR("%s - Failed inserting FD event", h->module_name);
+		PERROR("%s - Failed inserting FD event", h->module_name);
 
 		/*
 		 *	May free the connection!
@@ -725,7 +725,7 @@ static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connec
 			       write_fn,
 			       conn_error,
 			       tconn) < 0) {
-		ERROR("%s - Failed inserting FD event", h->module_name);
+		PERROR("%s - Failed inserting FD event", h->module_name);
 
 		/*
 		 *	May free the connection!
@@ -815,6 +815,10 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *respon
 		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 	}
 
+	/*
+	 *	Protocol error is allowed as a response to any
+	 *	packet code.
+	 */
 	if (code != FR_CODE_PROTOCOL_ERROR) {
 		if (!allowed_replies[code]) {
 			REDEBUG("%s packet received invalid reply code %s",
