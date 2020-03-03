@@ -162,6 +162,8 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:libSystem_atfork_child"
 #elif defined(__linux__)
 		"leak:kqueue"
+#elif defined(__FreeBSD__)
+		NULL
 #endif
 		;
 }
