@@ -307,8 +307,9 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_radius_ok().
 	 */
-	if (fr_radius_packet_decode(request->packet, NULL, 0,
-				    inst->tunnel_password_zeros, client->secret) < 0) {
+	if (fr_radius_decode(request->packet, request->packet->data, request->packet->data_len,
+			     NULL, client->secret, talloc_array_length(client->secret) - 1,
+			     &request->packet->vps) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
