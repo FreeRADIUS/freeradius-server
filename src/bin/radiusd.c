@@ -138,6 +138,15 @@ static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, UNUSED void 
 	return 0;
 }
 
+/** Explicitly cleanup module/xlat resources
+ *
+ */
+static void thread_detach(UNUSED void *uctx)
+{
+	modules_thread_detach();
+	xlat_thread_detach();
+}
+
 #define EXIT_WITH_FAILURE \
 do { \
 	ret = EXIT_FAILURE; \
@@ -775,7 +784,7 @@ int main(int argc, char *argv[])
 		}
 
 		sc = fr_schedule_create(NULL, el, &default_log, fr_debug_lvl,
-					thread_instantiate, schedule);
+					thread_instantiate, thread_detach, schedule);
 		if (!sc) {
 			PERROR("Failed starting the scheduler: %s", fr_strerror());
 			EXIT_WITH_FAILURE;

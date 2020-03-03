@@ -330,6 +330,8 @@ int		xlat_thread_instantiate(TALLOC_CTX *ctx);
 
 int		xlat_instantiate(void);
 
+void		xlat_thread_detach(void);
+
 int		xlat_bootstrap(xlat_exp_t *root);
 
 void		xlat_instances_free(void);

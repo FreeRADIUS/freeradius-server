@@ -150,8 +150,11 @@ static void worker_exit(fr_worker_t *worker)
 	 *	Don't allow the post event to run
 	 *	any more requests.  They'll be
 	 *	signalled to stop before we exit.
+	 *
+	 *	This only has an effect in single
+	 *	threaded mode.
 	 */
-	fr_event_loop_exit(worker->el, 1);
+	(void)fr_event_post_delete(worker->el, fr_worker_post_event, worker);
 }
 
 /** Handle a control plane message sent to the worker via a channel
@@ -1035,7 +1038,6 @@ void fr_worker_destroy(fr_worker_t *worker)
 
 		fr_channel_responder_ack_close(worker->channel[i]);
 	}
-
 	talloc_free(worker);
 }
 
@@ -1142,7 +1144,7 @@ void fr_worker(fr_worker_t *worker)
 {
 	WORKER_VERIFY;
 
-	while (true) {
+	while (!worker->exiting) {
 		bool wait_for_event;
 		int num_events;
 
@@ -1163,8 +1165,6 @@ void fr_worker(fr_worker_t *worker)
 		 */
 		num_events = fr_event_corral(worker->el, fr_time(), wait_for_event);
 		if (num_events < 0) {
-			if (worker->exiting) return; /* don't complain if we're exiting */
-
 			PERROR("Failed corralling events");
 			break;
 		}

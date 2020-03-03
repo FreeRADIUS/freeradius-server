@@ -131,6 +131,7 @@ struct fr_schedule_s {
 	sem_t		network_sem;		//!< for inter-thread signaling
 
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
+	fr_schedule_thread_detach_t		worker_thread_detach;
 
 	fr_dlist_head_t	workers;		//!< list of workers
 
@@ -235,6 +236,15 @@ fail:
 	}
 
 	INFO("Worker %d exiting", sw->id);
+
+	if (sc->worker_thread_detach) sc->worker_thread_detach(NULL);	/* Fixme once we figure out what uctx should be */
+
+	/*
+	 *	Not looping at this point, but may catch timer/fd
+	 *	insertions being done after the thread should have
+	 *	exited.
+	 */
+	if (sw->el) fr_event_loop_exit(sw->el, 1);
 
 	/*
 	 *	Tell the scheduler we're done.
@@ -361,12 +371,14 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
 
 /** Create a scheduler and spawn the child threads.
  *
- * @param[in] ctx		talloc context.
- * @param[in] el		event list, only for single-threaded mode.
- * @param[in] logger		destination for all logging messages.
- * @param[in] lvl		log level.
+ * @param[in] ctx				talloc context.
+ * @param[in] el				event list, only for single-threaded mode.
+ * @param[in] logger				destination for all logging messages.
+ * @param[in] lvl				log level.
  * @param[in] worker_thread_instantiate		callback for new worker threads.
- * @param[in] config		configuration for the scheduler
+ * @param[in] worker_thread_detach		callback to destroy resources
+ *						allocated by worker_thread_instantiate.
+ * @param[in] config				configuration for the scheduler
  * @return
  *	- NULL on error
  *	- fr_schedule_t new scheduler
@@ -374,6 +386,7 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
 fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 				  fr_log_t *logger, fr_log_lvl_t lvl,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
+				  fr_schedule_thread_detach_t worker_thread_detach,
 				  fr_schedule_config_t *config)
 {
 	unsigned int i;
@@ -392,6 +405,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sc->lvl = lvl;
 
 	sc->worker_thread_instantiate = worker_thread_instantiate;
+	sc->worker_thread_detach = worker_thread_detach;
 	sc->running = true;
 
 	/*
@@ -401,7 +415,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sc->single_network = fr_network_create(sc, el, sc->log, sc->lvl);
 		if (!sc->single_network) {
 			ERROR("Failed creating network: %s", fr_strerror());
-		st_fail:
+		pre_instantiate_st_fail:
 			talloc_free(sc);
 			return NULL;
 		}
@@ -409,7 +423,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sc->single_worker = fr_worker_create(sc, "0", el, sc->log, sc->lvl);
 		if (!sc->single_worker) {
 			ERROR("Failed creating worker: %s", fr_strerror());
-			goto st_fail;
+			goto pre_instantiate_st_fail;
 		}
 
 		/*
@@ -423,13 +437,15 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 			if (sc->worker_thread_instantiate(sc->single_worker, el, subcs) < 0) {
 				ERROR("Failed calling thread instantiate: %s", fr_strerror());
-				goto st_fail;
+				goto pre_instantiate_st_fail;
 			}
 		}
 
 		if (fr_command_register_hook(NULL, "0", sc->single_worker, cmd_worker_table) < 0) {
 			ERROR("Failed adding worker commands: %s", fr_strerror());
-			goto st_fail;
+		st_fail:
+			if (sc->worker_thread_detach) sc->worker_thread_detach(NULL);
+			goto pre_instantiate_st_fail;
 		}
 
 		if (fr_command_register_hook(NULL, "0", sc->single_network, cmd_network_table) < 0) {

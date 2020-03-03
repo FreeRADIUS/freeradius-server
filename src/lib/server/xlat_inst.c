@@ -370,6 +370,16 @@ int xlat_thread_instantiate(TALLOC_CTX *ctx)
 	return 0;
 }
 
+/** Destroy any thread specific xlat instances
+ *
+ */
+void xlat_thread_detach(void)
+{
+	if (!xlat_thread_inst_tree) return;
+
+	TALLOC_FREE(xlat_thread_inst_tree);
+}
+
 /** Walk over #xlat_exp_t that require instantiation
  *
  * @param[in] uctx	UNUSED.

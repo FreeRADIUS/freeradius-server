@@ -54,6 +54,12 @@ extern "C" {
  */
 typedef int (*fr_schedule_thread_instantiate_t)(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx);
 
+/** Explicitly free resources allocated by #fr_schedule_thread_instantiate_t
+ *
+ * @param[in] uctx	User data passed to callback.
+ */
+typedef void (*fr_schedule_thread_detach_t)(void *uctx);
+
 typedef struct {
 	uint32_t	max_networks;		//!< number of network threads
 	uint32_t	max_workers;		//!< number of network threads
@@ -66,6 +72,7 @@ int			fr_schedule_worker_id(void);
 int			fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *arg);
 fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *log, fr_log_lvl_t lvl,
 					    fr_schedule_thread_instantiate_t worker_thread_instantiate,
+					    fr_schedule_thread_detach_t worked_thread_detach,
 					    fr_schedule_config_t *config) CC_HINT(nonnull(3));
 /* schedulers are async, so there's no fr_schedule_run() */
 int			fr_schedule_destroy(fr_schedule_t *sc);

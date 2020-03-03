@@ -1287,6 +1287,17 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 	return 0;
 }
 
+/** Explicitly call thread_detach and free any module thread instances
+ *
+ * Call this function if the module thread instances need to be free explicitly before
+ * another resource like the even loop is freed.
+ */
+void modules_thread_detach(void)
+{
+	if (!module_thread_inst_array) return;
+	TALLOC_FREE(module_thread_inst_array);
+}
+
 /** Complete module setup by calling its instantiate function
  *
  * @param[in] instance	of module to complete instantiation for.
