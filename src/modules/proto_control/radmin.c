@@ -78,8 +78,10 @@ DIAG_ON(strict-prototypes)
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/socket.h>
 
+#ifdef USE_READLINE_HISTORY
 #ifndef READLINE_MAX_HISTORY_LINES
 #	define READLINE_MAX_HISTORY_LINES 1000
+#endif
 #endif
 
 #include "conduit.h"
@@ -643,8 +645,6 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 #ifndef USE_READLINE_HISTORY
 #	define add_history(line)
-#	define stifle_history(line)
-#	define read_history()
 #	define write_history(history_file)
 #endif
 
@@ -828,7 +828,9 @@ int main(int argc, char **argv)
 
 	char const	*raddb_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
+#ifdef USE_READLINE_HISTORY
 	char 		history_file[PATH_MAX];
+#endif
 
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
