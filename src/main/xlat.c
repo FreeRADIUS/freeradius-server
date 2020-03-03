@@ -1469,7 +1469,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			ssize_t slen;
 			xlat_exp_t *next;
 
-			if (!p[1] || !strchr("%}delmntDGHIMSTYv", p[1])) {
+			if (!p[1] || !strchr("%}delmntDGHIMSTYcCv", p[1])) {
 				talloc_free(node);
 				*error = "Invalid variable expansion";
 				p++;
@@ -2114,6 +2114,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		struct tm ts;
 		time_t when;
 		int usec;
+		struct timeval now;
 
 		XLAT_DEBUG("%.*sxlat_aprint PERCENT", lvl, xlat_spaces);
 
@@ -2209,6 +2210,20 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 				return NULL;
 			}
 			strftime(str, freespace, "%Y", &ts);
+			break;
+
+		/*	Note that the %c and %C xlats return the current time,
+		 *	not the time of the request. They may be useful for
+		 *	profiling.
+		 */
+		case 'c': /* current epoch time seconds */
+			gettimeofday(&now, NULL);
+			snprintf(str, freespace, "%ld", now.tv_sec);
+			break;
+
+		case 'C': /* current epoch time microsecond component */
+			gettimeofday(&now, NULL);
+			snprintf(str, freespace, "%06u", (unsigned int) now.tv_usec);
 			break;
 
 		case 'v': /* Version of code */
