@@ -1143,7 +1143,7 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 *	one or more connections comes online.
 	 */
 	if (!trunk->conf.backlog_on_failed_conn &&
-	    trunk->pub.last_connected && (trunk->pub.last_connected >= trunk->pub.last_connected)) {
+	    trunk->pub.last_failed && (trunk->pub.last_connected >= trunk->pub.last_failed)) {
 		ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
 			  "No active connections and last event was a connection failure");
 
@@ -2688,7 +2688,7 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
 
-	trunk->pub.last_connected = fr_time();
+	trunk->pub.last_failed = fr_time();
 
 	/*
 	 *	Other conditions will be handled by on_closed
