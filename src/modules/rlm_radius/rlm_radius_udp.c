@@ -1901,7 +1901,8 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 */
 		rr = radius_track_find(h->tt, h->buffer[1], NULL);
 		if (!rr) {
-			WARN("%s - Ignoring reply which arrived too late", h->module_name);
+			WARN("%s - Ignoring reply with ID %i that arrived too late",
+			     h->module_name, h->buffer[1]);
 			continue;
 		}
 
