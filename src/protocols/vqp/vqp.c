@@ -271,47 +271,48 @@ int vqp_send(RADIUS_PACKET *packet)
 }
 
 
-int vqp_decode(RADIUS_PACKET *packet)
+int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code)
 {
-	uint8_t		*ptr, *end;
+	uint8_t const  	*ptr, *end;
 	int		attr;
 	size_t		attr_len;
 	fr_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 
-	if (!packet || !packet->data) return -1;
+	if (data_len < VQP_HDR_LEN) return -1;
 
-	if (packet->data_len < VQP_HDR_LEN) return -1;
+	fr_cursor_init(&cursor, vps);
 
-	fr_cursor_init(&cursor, &packet->vps);
-
-	vp = fr_pair_afrom_da(packet, attr_packet_type);
+	vp = fr_pair_afrom_da(ctx, attr_packet_type);
 	if (!vp) {
 	oom:
 		fr_strerror_printf("Out of Memory");
 		return -1;
 	}
-	vp->vp_uint32 = packet->data[1];
+	vp->vp_uint32 = data[1];
+	if (code) *code = data[1];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
 	fr_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_da(packet, attr_error_code);
+	vp = fr_pair_afrom_da(ctx, attr_error_code);
 	if (!vp) goto oom;
-	vp->vp_uint32 = packet->data[2];
+	vp->vp_uint32 = data[2];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
 	fr_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_da(packet, attr_sequence_number);
+	vp = fr_pair_afrom_da(ctx, attr_sequence_number);
 	if (!vp) goto oom;
-	vp->vp_uint32 = packet->id; /* already set by vqp_recv */
+
+	memcpy(&vp->vp_uint32, data + 4, 4);
+	vp->vp_uint32 = ntohl(vp->vp_uint32);
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
 	fr_cursor_append(&cursor, vp);
 
-	ptr = packet->data + VQP_HDR_LEN;
-	end = packet->data + packet->data_len;
+	ptr = data + VQP_HDR_LEN;
+	end = data + data_len;
 
 	/*
 	 *	Note that vqp_recv() MUST ensure that the packet is
@@ -335,12 +336,12 @@ int vqp_decode(RADIUS_PACKET *packet)
 		/*
 		 *	Create the VP.
 		 */
-		vp = fr_pair_afrom_child_num(packet, fr_dict_root(dict_vmps), attr);
+		vp = fr_pair_afrom_child_num(ctx, fr_dict_root(dict_vmps), attr);
 		if (!vp) {
 			fr_strerror_printf("No memory");
 
 		error:
-			fr_pair_list_free(&packet->vps);
+			fr_pair_list_free(vps);
 			return -1;
 		}
 

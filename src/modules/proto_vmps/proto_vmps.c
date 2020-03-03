@@ -229,6 +229,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t *address = track->address;
 	RADCLIENT const *client;
+	RADIUS_PACKET *packet = request->packet;
 
 	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
 
@@ -259,7 +260,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_vmps_ok().
 	 */
-	if (vqp_decode(request->packet) < 0) {
+	if (fr_vqp_decode(packet, packet->data, packet->data_len, &packet->vps, &packet->code) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}

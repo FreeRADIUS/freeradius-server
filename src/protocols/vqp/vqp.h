@@ -39,7 +39,7 @@ bool			fr_vqp_ok(uint8_t const *packet, size_t *packet_len);
 
 int			vqp_send(RADIUS_PACKET *packet);
 
-int			vqp_decode(RADIUS_PACKET *packet);
+int			fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code);
 
 int			vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
 
