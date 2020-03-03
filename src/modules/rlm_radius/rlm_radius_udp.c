@@ -764,6 +764,80 @@ static int8_t request_prioritise(void const *one, void const *two)
 	return (a->recv_time > b->recv_time) - (a->recv_time < b->recv_time);
 }
 
+static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *code_out,
+			    udp_handle_t *h,
+			    REQUEST *request, radius_track_entry_t *rr,  uint8_t *data, size_t data_len)
+{
+	rlm_radius_udp_t const *inst = h->thread->inst;
+	size_t			packet_len;
+	decode_fail_t		reason;
+	uint8_t			code;
+	uint8_t			original[RADIUS_HEADER_LENGTH];
+
+	packet_len = data_len;
+	if (!fr_radius_ok(data, &packet_len, inst->parent->max_attributes, false, &reason)) {
+		RWARN("%s - Ignoring malformed packet", h->module_name);
+		return reason;
+	}
+
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("%s - Read packet", h->module_name);
+		fr_log_hex(&default_log, L_DBG, __FILE__, __LINE__, data, packet_len, NULL);
+	}
+
+	original[0] = rr->code;
+	original[1] = 0;			/* not looked at by fr_radius_verify() */
+	original[2] = 0;
+	original[3] = RADIUS_HEADER_LENGTH;	/* for debugging */
+	memcpy(original + RADIUS_AUTH_VECTOR_OFFSET, rr->vector, sizeof(rr->vector));
+
+	if (fr_radius_verify(data, original,
+			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1) < 0) {
+		if (request) RPWDEBUG("Ignoring response with invalid signature");
+		return DECODE_FAIL_MA_INVALID;
+	}
+
+	code = data[0];
+	if (!code || (code >= FR_RADIUS_MAX_PACKET_CODE)) {
+		REDEBUG("Unknown reply code %d", code);
+		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
+	}
+
+	if (code != FR_CODE_PROTOCOL_ERROR) {
+		if (!allowed_replies[code]) {
+			REDEBUG("%s packet received invalid reply code %s",
+				fr_packet_codes[rr->code], fr_packet_codes[code]);
+			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
+		}
+
+		if (allowed_replies[code] != (FR_CODE) rr->code) {
+			REDEBUG("%s packet received invalid reply code %s",
+				fr_packet_codes[rr->code], fr_packet_codes[code]);
+			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
+		}
+	}
+
+	/*
+	 *	Decode the attributes, in the context of the reply.
+	 *	This only fails if the packet is strangely malformed,
+	 *	or if we run out of memory.
+	 */
+	if (fr_radius_decode(ctx, data, packet_len, original,
+			     inst->secret, talloc_array_length(inst->secret) - 1, reply) < 0) {
+		REDEBUG("Failed decoding attributes for packet");
+		fr_pair_list_free(reply);
+		return DECODE_FAIL_UNKNOWN;
+	}
+
+	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
+	       fr_packet_codes[code], code, packet_len, h->name);
+	log_request_pair_list(L_DBG_LVL_2, request, *reply, NULL);
+
+	*code_out = code;
+
+	return DECODE_FAIL_NONE;
+}
+
 static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, uint8_t id)
 {
 	ssize_t			packet_len;
@@ -1742,223 +1816,188 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	fr_trunk_connection_signal_active(treq->tconn);
 }
 
-
-static fr_trunk_request_t *read_packet(fr_trunk_connection_t *tconn, fr_connection_t *conn)
-{
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);;
-	rlm_radius_udp_t const	*inst = h->thread->inst;
-	fr_trunk_request_t	*treq;
-	udp_request_t		*u;
-	udp_result_t		*r;
-	REQUEST			*request;
-	ssize_t			data_len;
-	size_t			packet_len;
-	radius_track_entry_t	*rr;
-	decode_fail_t		reason;
-	int			code;
-	VALUE_PAIR		*reply, *vp;
-	fr_time_t		now;
-	uint8_t			original[RADIUS_HEADER_LENGTH];
-
-	/*
-	 *	Drain the socket of all packets.  If we're busy, this
-	 *	saves a round through the event loop.  If we're not
-	 *	busy, a few extra system calls don't matter.
-	 */
-	data_len = read(h->fd, h->buffer, h->buflen);
-	if (data_len == 0) return NULL;
-
-	if (data_len < 0) {
-		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return NULL;
-
-		ERROR("%s - Failed reading from socket: %s", h->module_name, fr_syserror(errno));
-		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
-		return NULL;
-	}
-
-	packet_len = data_len;
-	if (!fr_radius_ok(h->buffer, &packet_len, inst->parent->max_attributes, false, &reason)) {
-		WARN("%s - Ignoring malformed packet", h->module_name);
-		return NULL;
-	}
-
-	if (DEBUG_ENABLED3) {
-		DEBUG3("%s - Read packet", h->module_name);
-		fr_log_hex(&default_log, L_DBG, __FILE__, __LINE__, h->buffer, packet_len, NULL);
-	}
-
-	/*
-	 *	Note that we don't care about packet codes.  All
-	 *	packet codes share the same ID space.
-	 */
-	rr = radius_track_find(h->tt, h->buffer[1], NULL);
-	if (!rr) {
-		WARN("%s - Ignoring reply which arrived too late", h->module_name);
-		return NULL;
-	}
-
-	treq = talloc_get_type_abort(rr->rctx, fr_trunk_request_t);
-	request = treq->request;
-	rad_assert(request != NULL);
-	u = talloc_get_type_abort(treq->preq, udp_request_t);
-	r = talloc_get_type_abort(treq->rctx, udp_result_t);
-
-	original[0] = rr->code;
-	original[1] = 0;	/* not looked at by fr_radius_verify() */
-	original[2] = 0;
-	original[3] = RADIUS_HEADER_LENGTH;	/* for debugging */
-	memcpy(original + RADIUS_AUTH_VECTOR_OFFSET, rr->vector, sizeof(rr->vector));
-
-	if (fr_radius_verify(h->buffer, original,
-			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1) < 0) {
-		if (request) RPWDEBUG("Ignoring response with invalid signature");
-		return NULL;
-	}
-
-	// @todo - if we sent multiple requests, wait for multiple replies?
-	u->num_replies++;
-
-	now = fr_time();
-
-	/*
-	 *	Status-Server can have any reply code, we don't care
-	 *	what it is.  So long as it's signed properly, we
-	 *	accept it.  This flexibility is because we don't
-	 *	expose Status-Server to the admins.  It's only used by
-	 *	this module for internal signalling.
-	 */
-	if (u == h->status_u) {
-		status_check_reply(treq, now);
-		fr_trunk_request_signal_complete(treq);
-		return NULL;
-	}
-
-	h->last_reply = now;
-
-	udp_request_clear(h, u, h->last_reply);
-
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
-
-	if (u->retry.start > h->mrs_time) h->mrs_time = u->retry.start;
-
-	code = h->buffer[0];
-	if (!code || (code >= FR_RADIUS_MAX_PACKET_CODE)) {
-		REDEBUG("Unknown reply code %d", code);
-		r->rcode= RLM_MODULE_INVALID;
-		return treq;
-	}
-
-	/*
-	 *	Handle any state changes, etc. needed by receiving a
-	 *	Protocol-Error reply packet.
-	 *
-	 *	Protocol-Error is permitted as a reply to any
-	 *	packet.
-	 */
-	if (code == FR_CODE_PROTOCOL_ERROR) {
-		protocol_error_reply(u, r, h);
-		goto decode;
-	}
-
-	if (!allowed_replies[code]) {
-		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		r->rcode = RLM_MODULE_INVALID;
-		return treq;
-	}
-
-	if (allowed_replies[code] != (FR_CODE) u->code) {
-		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		r->rcode = RLM_MODULE_INVALID;
-		return treq;
-	}
-
-	/*
-	 *	Mark up the request as being an Access-Challenge, if
-	 *	required.
-	 *
-	 *	We don't do this for other packet types, because the
-	 *	ok/fail nature of the module return code will
-	 *	automatically result in it the parent request
-	 *	returning an ok/fail packet code.
-	 */
-	if ((u->code == FR_CODE_ACCESS_REQUEST) && (code == FR_CODE_ACCESS_CHALLENGE)) {
-		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
-		if (!vp) {
-			MEM(vp = fr_pair_afrom_da(request->reply, attr_packet_type));
-			vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
-			fr_pair_add(&request->reply->vps, vp);
-		}
-	}
-
-	/*
-	 *	Set the module return code based on the reply packet.
-	 */
-	r->rcode = radius_code_to_rcode[h->buffer[0]];
-
-decode:
-	reply = NULL;
-
-	/*
-	 *	Decode the attributes, in the context of the reply.
-	 *	This only fails if the packet is strangely malformed,
-	 *	or if we run out of memory.
-	 */
-	if (fr_radius_decode(request->reply, h->buffer, packet_len, original,
-			     inst->secret, talloc_array_length(inst->secret) - 1, &reply) < 0) {
-		REDEBUG("Failed decoding attributes for packet");
-		fr_pair_list_free(&reply);
-		r->rcode = RLM_MODULE_INVALID;
-		return treq;
-	}
-
-	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
-	       fr_packet_codes[code], code, packet_len, h->name);
-	log_request_pair_list(L_DBG_LVL_2, request, reply, NULL);
-
-	/*
-	 *	Delete Proxy-State attributes from the reply.
-	 */
-	fr_pair_delete_by_da(&reply, attr_proxy_state);
-
-	/*
-	 *	If the reply has Message-Authenticator, delete
-	 *	it from the proxy reply so that it isn't
-	 *	copied over to our reply.  But also create a
-	 *	reply:Message-Authenticator attribute, so that
-	 *	it ends up in our reply.
-	 */
-	if (fr_pair_find_by_da(reply, attr_message_authenticator, TAG_ANY)) {
-		fr_pair_delete_by_da(&reply, attr_message_authenticator);
-
-		MEM(vp = fr_pair_afrom_da(request->reply, attr_message_authenticator));
-		(void) fr_pair_value_memcpy(vp, (uint8_t const *) "", 1, false);
-		fr_pair_add(&request->reply->vps, vp);
-	}
-
-	/*
-	 *	Do NOT set request->reply->code.  The caller
-	 *	proto_radius_foo will do that for us.
-	 */
-	fr_pair_add(&request->reply->vps, reply);
-
-	return treq;
-}
-
 static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
-	fr_trunk_request_t	*treq;
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);;
 
 	DEBUG3("%s - Reading data for connection %s", h->module_name, h->name);
 
-redo:
-	treq = read_packet(tconn, conn);
-	if (!treq) return;
+	while (true) {
+		ssize_t			slen;
 
-	treq->request->reply->code = h->buffer[0];
-	fr_trunk_request_signal_complete(treq);
+		fr_trunk_request_t	*treq;
+		REQUEST			*request;
+		udp_request_t		*u;
+		udp_result_t		*r;
+		radius_track_entry_t	*rr;
+		decode_fail_t		reason;
+		uint8_t			code;
+		VALUE_PAIR		*reply = NULL;
 
-	goto redo;
+		fr_time_t		now;
+
+		/*
+		 *	Drain the socket of all packets.  If we're busy, this
+		 *	saves a round through the event loop.  If we're not
+		 *	busy, a few extra system calls don't matter.
+		 */
+		slen = read(h->fd, h->buffer, h->buflen);
+		if (slen == 0) return;
+
+		if (slen < 0) {
+			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
+
+			ERROR("%s - Failed reading from socket: %s", h->module_name, fr_syserror(errno));
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+			return;
+		}
+
+		if (slen < RADIUS_HEADER_LENGTH) {
+			ERROR("%s - Packet too short, expected at least %zu bytes got %zd bytes",
+			      h->module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
+			continue;
+		}
+
+		/*
+		 *	Note that we don't care about packet codes.  All
+		 *	packet codes share the same ID space.
+		 */
+		rr = radius_track_find(h->tt, h->buffer[1], NULL);
+		if (!rr) {
+			WARN("%s - Ignoring reply which arrived too late", h->module_name);
+			continue;
+		}
+
+		treq = talloc_get_type_abort(rr->rctx, fr_trunk_request_t);
+		request = treq->request;
+		rad_assert(request != NULL);
+		u = talloc_get_type_abort(treq->preq, udp_request_t);
+		r = talloc_get_type_abort(treq->rctx, udp_result_t);
+
+		/*
+		 *	Validate and decode the incoming packet
+		 */
+		reason = decode(request->reply, &reply, &code, h, request, rr, h->buffer, (size_t)slen);
+		if (reason != DECODE_FAIL_NONE) {
+			RWDEBUG("Ignoring invalid response");
+			continue;
+		}
+
+		/*
+		 *	Only valid packets are processed
+		 *	Otherwise an attacker could perform
+		 *	a DoS attack against the proxying servers
+		 *	by sending fake responses for upstream
+		 *	servers.
+		 */
+		h->last_reply = now = fr_time();
+
+		/*
+		 *	Record the fact we've seen a response
+		 */
+		u->num_replies++;
+
+		/*
+		 *	Fixup retry times
+		 */
+		if (u->retry.start > h->mrs_time) h->mrs_time = u->retry.start;
+
+		/*
+		 *	Status-Server can have any reply code, we don't care
+		 *	what it is.  So long as it's signed properly, we
+		 *	accept it.  This flexibility is because we don't
+		 *	expose Status-Server to the admins.  It's only used by
+		 *	this module for internal signalling.
+		 */
+		if (u == h->status_u) {
+			fr_pair_list_free(&reply);	/* Probably want to pass this to status_check_reply? */
+			status_check_reply(treq, now);
+			fr_trunk_request_signal_complete(treq);
+			continue;
+		}
+
+		/*
+		 *	Disable the response timer, status_check_reply
+		 *	does this selectively for status-check packets.
+		 */
+		(void)fr_event_timer_delete(&u->ev);
+
+		/*
+		 *	Clear the original request buffer
+		 */
+		udp_request_clear(h, u, now);
+
+		/*
+		 *	Handle any state changes, etc. needed by receiving a
+		 *	Protocol-Error reply packet.
+		 *
+		 *	Protocol-Error is permitted as a reply to any
+		 *	packet.
+		 */
+		switch (code) {
+		case FR_CODE_PROTOCOL_ERROR:
+			protocol_error_reply(u, r, h);
+			break;
+
+		default:
+			break;
+		}
+
+		/*
+		 *	Mark up the request as being an Access-Challenge, if
+		 *	required.
+		 *
+		 *	We don't do this for other packet types, because the
+		 *	ok/fail nature of the module return code will
+		 *	automatically result in it the parent request
+		 *	returning an ok/fail packet code.
+		 */
+		switch (u->code) {
+		case FR_CODE_ACCESS_REQUEST:
+		case FR_CODE_ACCESS_CHALLENGE:
+		{
+			VALUE_PAIR	*vp;
+
+			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
+			if (!vp) {
+				MEM(vp = fr_pair_afrom_da(request->reply, attr_packet_type));
+				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
+				fr_pair_add(&request->reply->vps, vp);
+			}
+		}
+			break;
+
+		default:
+			break;
+		}
+
+		/*
+		 *	Delete Proxy-State attributes from the reply.
+		 */
+		fr_pair_delete_by_da(&reply, attr_proxy_state);
+
+		/*
+		 *	If the reply has Message-Authenticator, delete
+		 *	it from the proxy reply so that it isn't
+		 *	copied over to our reply.  But also create a
+		 *	reply:Message-Authenticator attribute, so that
+		 *	it ends up in our reply.
+		 */
+		if (fr_pair_find_by_da(reply, attr_message_authenticator, TAG_ANY)) {
+			VALUE_PAIR *vp;
+
+			fr_pair_delete_by_da(&reply, attr_message_authenticator);
+
+			MEM(vp = fr_pair_afrom_da(request->reply, attr_message_authenticator));
+			(void) fr_pair_value_memcpy(vp, (uint8_t const *) "", 1, false);
+			fr_pair_add(&request->reply->vps, vp);
+		}
+
+		treq->request->reply->code = code;
+		r->rcode = radius_code_to_rcode[code];
+		fr_pair_add(&request->reply->vps, reply);
+		fr_trunk_request_signal_complete(treq);
+	}
 }
 
 /** Remove the request from any tracking structures
