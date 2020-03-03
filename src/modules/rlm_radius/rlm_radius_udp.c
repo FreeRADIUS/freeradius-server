@@ -774,6 +774,8 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *code_o
 	uint8_t			code;
 	uint8_t			original[RADIUS_HEADER_LENGTH];
 
+	*code_out = 0;	/* Initialise to keep the rest of the code happy */
+
 	packet_len = data_len;
 	if (!fr_radius_ok(data, &packet_len, inst->parent->max_attributes, false, &reason)) {
 		RWARN("%s - Ignoring malformed packet", h->module_name);
@@ -793,7 +795,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *code_o
 
 	if (fr_radius_verify(data, original,
 			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1) < 0) {
-		if (request) RPWDEBUG("Ignoring response with invalid signature");
+		RPWDEBUG("Ignoring response with invalid signature");
 		return DECODE_FAIL_MA_INVALID;
 	}
 
