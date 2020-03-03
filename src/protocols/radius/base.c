@@ -326,10 +326,13 @@ invalid:
 
 /** Sign a previously encoded packet
  *
- * @param packet the raw RADIUS packet (request or response)
- * @param original the raw original request (if this is a response)
- * @param secret the shared secret
- * @param secret_len the length of the secret
+ * Calculates the request/response authenticator for packets which need it, and fills
+ * in the message-authenticator value if the attribute is present in the encoded packet.
+ *
+ * @param[in,out] packet	(request or response).
+ * @param[in] original		request (only if this is a response).
+ * @param[in] secret		to sign the packet with.
+ * @param[in] secret_len	The length of the secret.
  * @return
  *	- <0 on error
  *	- 0 on success
