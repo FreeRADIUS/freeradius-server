@@ -256,7 +256,7 @@ static int fr_get_debug_state(void)
 {
 	int status;
 
-	if (procctl(P_PID, getpid(), PROC_TRACE_STATUSL, &status) == -1) {
+	if (procctl(P_PID, getpid(), PROC_TRACE_STATUS, &status) == -1) {
 		fr_strerror_printf("Cannot get dumpable flag: procctl(PROC_TRACE_STATUS) failed: %s", fr_syserror(errno));
 		return DEBUG_STATE_UNKNOWN;
 	}
