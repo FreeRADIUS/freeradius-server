@@ -521,6 +521,7 @@ static void conn_close(fr_event_list_t *el, void *handle, UNUSED void *uctx)
 {
 	udp_handle_t *h = talloc_get_type_abort(handle, udp_handle_t);
 
+	if (h->status_u) fr_event_timer_delete(&h->status_u->ev);
 	fr_event_fd_delete(el, h->fd, FR_EVENT_FILTER_IO);
 
 	if (shutdown(h->fd, SHUT_RDWR) < 0) {
