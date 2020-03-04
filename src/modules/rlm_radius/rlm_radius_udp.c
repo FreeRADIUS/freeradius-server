@@ -1293,7 +1293,15 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	This call may nuke u->rr
 	 */
-	if (!u->status_check) check_for_zombie(el, treq->tconn, now);
+	if (!u->status_check) {
+		check_for_zombie(el, treq->tconn, now);
+	/*
+	 *	Reset replies to 0 as we only count
+	 *	contiguous, good, replies.
+	 */
+	} else {
+		u->num_replies = 0;
+	}
 
 	/*
 	 *	Rely on someone else to do the retransmissions.
