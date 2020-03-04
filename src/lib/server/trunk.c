@@ -3446,9 +3446,22 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 
 
 		tconn = fr_heap_peek_tail(trunk->active);
-		rad_assert(tconn);
+		if (tconn) {
+			trunk_connection_enter_draining(tconn);
+		/*
+		 *	It is possible to have too may connecting
+		 *	connections when the connections are
+		 *	taking a while to open and the number
+		 *	of requests decreases.
+		 */
+		} else {
+			tconn = fr_dlist_tail(&trunk->connecting);
+			rad_assert(tconn);
+			fr_connection_signal_halt(tconn->pub.conn);	/* Also frees the tconn */
+		}
+
 		trunk->pub.last_closed = now;
-		trunk_connection_enter_draining(tconn);
+
 
 		return;
 	}
