@@ -1792,31 +1792,32 @@ static void status_check_next(UNUSED fr_event_list_t *el, fr_time_t now, void *u
 	udp_handle_t		*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 	udp_request_t		*u = h->status_u;
 	REQUEST			*request;
-	fr_retry_state_t	state;
 
 	request = h->status_request;
 
-	state = fr_retry_next(&u->retry, now);
-	if (state == FR_RETRY_MRD) {
+	switch (fr_retry_next(&u->retry, now)) {
+	case FR_RETRY_MRD:
 		RDEBUG("Reached maximum_retransmit_duration, failing status checks");
 		goto fail;
-	}
 
-	if (state == FR_RETRY_MRC) {
+	case FR_RETRY_MRC:
 		RDEBUG("Reached maximum_retransmit_count, failing status checks");
-
 	fail:
 		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 		return;
-	}
 
 	/*
 	 *	Requeue the status check for retransmission.
 	 */
-	if (fr_trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
-					     h->status_u, h->status_r, true) != FR_TRUNK_ENQUEUE_OK) {
-		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+	case FR_RETRY_CONTINUE:
+		if (fr_trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
+						     h->status_u, h->status_r, true) != FR_TRUNK_ENQUEUE_OK) {
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+		}
+		return;
 	}
+
+	rad_assert(0);
 }
 
 
