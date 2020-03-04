@@ -677,7 +677,7 @@ void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq) CC_HINT(
 uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max,
 						     bool fail_bound) CC_HINT(nonnull);
 
-void		fr_trunk_request_free(fr_trunk_request_t *treq);
+void		fr_trunk_request_free(fr_trunk_request_t **treq);
 
 fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request) CC_HINT(nonnull(1));
 

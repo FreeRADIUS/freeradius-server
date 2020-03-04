@@ -1053,7 +1053,7 @@ static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq)
 	trunk_request_remove_from_conn(treq);
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE);
-	fr_trunk_request_free(treq);	/* Free the request */
+	fr_trunk_request_free(&treq);	/* Free the request */
 }
 
 /** Request completed successfully, inform the API client and free the request
@@ -1079,7 +1079,7 @@ static void trunk_request_enter_complete(fr_trunk_request_t *treq)
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_COMPLETE);
 	DO_REQUEST_COMPLETE(treq);
-	fr_trunk_request_free(treq);	/* Free the request */
+	fr_trunk_request_free(&treq);	/* Free the request */
 }
 
 /** Request failed, inform the API client and free the request
@@ -1105,7 +1105,7 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_FAILED);
 	DO_REQUEST_FAIL(treq);
-	fr_trunk_request_free(treq);	/* Free the request */
+	fr_trunk_request_free(&treq);	/* Free the request */
 }
 
 /** Check to see if a trunk request can be enqueued
@@ -1439,7 +1439,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		fr_trunk_request_t *prev;
 
 		prev = fr_dlist_remove(&to_process, treq);
-		fr_trunk_request_free(treq);
+		fr_trunk_request_free(&treq);
 		treq = prev;
 	}
 
@@ -1605,7 +1605,7 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 			 */
 			if (!trunk->funcs.request_cancel_mux) {
 				trunk_request_enter_unassigned(treq);
-				fr_trunk_request_free(treq);
+				fr_trunk_request_free(&treq);
 			}
 			break;
 
@@ -1633,7 +1633,7 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 	 */
 	default:
 		trunk_request_enter_unassigned(treq);
-		fr_trunk_request_free(treq);
+		fr_trunk_request_free(&treq);
 		break;
 	}
 }
@@ -1715,11 +1715,14 @@ void fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq)
  * gperftools showed calling the request free function directly was slightly faster
  * than using talloc_free.
  *
- * @param[in] treq	request.
+ * @param[in] treq_to_free	request.
  */
-void fr_trunk_request_free(fr_trunk_request_t *treq)
+void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 {
-	fr_trunk_t	*trunk = treq->pub.trunk;
+	fr_trunk_request_t	*treq = *treq_to_free;
+	fr_trunk_t		*trunk = treq->pub.trunk;
+
+	if (unlikely(!treq)) return;
 
 	/*
 	 *	The only valid states a trunk request can be
@@ -1735,6 +1738,11 @@ void fr_trunk_request_free(fr_trunk_request_t *treq)
 	default:
 		if (!fr_cond_assert(0)) return;
 	}
+
+	/*
+	 *	Zero out the pointer to prevent double frees
+	 */
+	*treq_to_free = NULL;
 
 	/*
 	 *	Call the API client callback to free

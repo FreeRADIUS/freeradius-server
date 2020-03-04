@@ -1770,7 +1770,7 @@ static void test_enqueue_and_io_speed(void)
 	 */
 	MEM(treq_array = talloc_array(ctx, fr_trunk_request_t *, requests));
 	for (i = 0; i < requests; i++) treq_array[i] = fr_trunk_request_alloc(trunk, NULL);
-	for (i = 0; i < requests; i++) fr_trunk_request_free(treq_array[i]);
+	for (i = 0; i < requests; i++) fr_trunk_request_free(&treq_array[i]);
 
 	MEM(preq_array = talloc_array(ctx, test_proto_request_t *, requests));
 
