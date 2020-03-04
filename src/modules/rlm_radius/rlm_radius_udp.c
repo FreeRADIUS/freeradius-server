@@ -232,6 +232,8 @@ static FR_CODE allowed_replies[FR_RADIUS_MAX_PACKET_CODE] = {
 
 	[FR_CODE_DISCONNECT_ACK]	= FR_CODE_DISCONNECT_REQUEST,
 	[FR_CODE_DISCONNECT_NAK]	= FR_CODE_DISCONNECT_REQUEST,
+
+	[FR_CODE_PROTOCOL_ERROR]	= FR_CODE_PROTOCOL_ERROR,	/* Any */
 };
 
 /** Turn a reply code into a module rcode;
@@ -872,17 +874,19 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *respon
 		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 	}
 
+	if (!allowed_replies[code]) {
+		REDEBUG("%s packet received invalid reply code %s",
+			fr_packet_codes[u->code], fr_packet_codes[code]);
+		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
+	}
+
 	/*
 	 *	Protocol error is allowed as a response to any
 	 *	packet code.
+	 *
+	 *	Status checks accept any response code.
 	 */
-	if (code != FR_CODE_PROTOCOL_ERROR) {
-		if (!allowed_replies[code]) {
-			REDEBUG("%s packet received invalid reply code %s",
-				fr_packet_codes[u->code], fr_packet_codes[code]);
-			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
-		}
-
+	if (!u->status_check && (code != FR_CODE_PROTOCOL_ERROR)) {
 		if (allowed_replies[code] != (FR_CODE) u->code) {
 			REDEBUG("%s packet received invalid reply code %s",
 				fr_packet_codes[u->code], fr_packet_codes[code]);
