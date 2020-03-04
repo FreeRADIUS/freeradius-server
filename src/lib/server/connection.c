@@ -1043,7 +1043,6 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_SHUTDOWN:
 		break;
 
-	case FR_CONNECTION_STATE_FAILED:
 	case FR_CONNECTION_STATE_INIT:
 		connection_state_halted_enter(conn);
 		break;
@@ -1054,6 +1053,9 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 			connection_state_shutdown_enter(conn);
 			break;
 		}
+
+	/* FALL-THROUGH */
+	case FR_CONNECTION_STATE_FAILED:
 		connection_state_closed_enter(conn);
 		connection_state_halted_enter(conn);
 		break;
@@ -1092,7 +1094,6 @@ void fr_connection_signal_halt(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_HALTED:
 		break;
 
-	case FR_CONNECTION_STATE_FAILED:
 	case FR_CONNECTION_STATE_INIT:
 	case FR_CONNECTION_STATE_SHUTDOWN:
 	case FR_CONNECTION_STATE_TIMEOUT:
@@ -1102,6 +1103,11 @@ void fr_connection_signal_halt(fr_connection_t *conn)
 
 	case FR_CONNECTION_STATE_CONNECTED:
 	case FR_CONNECTION_STATE_CONNECTING:
+	/*
+	 *	Failed connections need closing too
+	 *	else we assert on conn->is_closed
+	 */
+	case FR_CONNECTION_STATE_FAILED:
 		connection_state_closed_enter(conn);
 		connection_state_halted_enter(conn);
 		break;
