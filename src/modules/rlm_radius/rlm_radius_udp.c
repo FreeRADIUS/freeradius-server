@@ -750,6 +750,12 @@ static int8_t request_prioritise(void const *one, void const *two)
 	// @todo - prioritize packets if there's a state?
 
 	/*
+	 *	Prioritise status check packets
+	 */
+	rcode = (b->status_check - a->status_check);;
+	if (rcode != 0) return rcode;
+
+	/*
 	 *	Larger priority is more important.
 	 */
 	rcode = (a->priority < b->priority) - (a->priority > b->priority);
