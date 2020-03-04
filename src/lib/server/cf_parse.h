@@ -197,7 +197,7 @@ _Generic((_ct), \
 	.type = _t, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p)
 
-#  define FR_CONF_POINTER_ISSET(_n, _t, _p) \
+#  define FR_CONF_POINTER_IS_SET(_n, _t, _p) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_IS_SET, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p), \
@@ -234,7 +234,7 @@ _Generic((_ct), \
 	.name = _n, \
 	.type = _t, \
 	.data = _p
-#  define FR_CONF_POINTER_ISSET(_n, _t, _p) \
+#  define FR_CONF_POINTER_IS_SET(_n, _t, _p) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_IS_SET, \
 	.data = _p, \
