@@ -1162,7 +1162,8 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 		limit = trunk->conf.max * (uint64_t)trunk->conf.max_req_per_conn;
 		if ((limit > 0) && (total_reqs > limit)) {
 			ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
-				  "Limit of %"PRIu64" requests reached", limit);
+				  "Limit of %"PRIu64" (max = %u * per_connection_max = %u) requests reached",
+				  limit, trunk->conf.max, trunk->conf.max_req_per_conn);
 
 			return FR_TRUNK_ENQUEUE_NO_CAPACITY;
 		}
