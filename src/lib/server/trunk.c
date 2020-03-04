@@ -3606,18 +3606,14 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	 */
 	conn_count = fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ALL ^
 							(FR_TRUNK_CONN_DRAINING |
-							 FR_TRUNK_CONN_DRAINING_TO_FREE |
-							 FR_TRUNK_CONN_FAILED |
-							 FR_TRUNK_CONN_CLOSED));
+							 FR_TRUNK_CONN_DRAINING_TO_FREE));
 
 	/*
 	 *	Requests on all connections
 	 */
 	req_count = fr_trunk_request_count_by_state(trunk,
 						    FR_TRUNK_CONN_ALL ^
-						    (FR_TRUNK_CONN_DRAINING_TO_FREE |
-						     FR_TRUNK_CONN_FAILED |
-						     FR_TRUNK_CONN_CLOSED), FR_TRUNK_REQUEST_STATE_ALL);
+						    FR_TRUNK_CONN_DRAINING_TO_FREE, FR_TRUNK_REQUEST_STATE_ALL);
 
 	/*
 	 *	No connections, but we do have requests
