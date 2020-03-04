@@ -1285,7 +1285,6 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 	REQUEST			*request = treq->request;
-	fr_retry_state_t	state;
 
 	rad_assert(treq->tconn);
 
@@ -1301,8 +1300,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 */
 	if (!u->rr) return;
 
-	state = fr_retry_next(&u->retry, now);
-
+	switch (fr_retry_next(&u->retry, now)) {
 	/*
 	 *	Queue the request for retransmission.
 	 *
@@ -1311,15 +1309,17 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	packets sitting in the queue for extended periods of
 	 *	time, and still run the timers.
 	 */
-	if (state == FR_RETRY_CONTINUE) {
+	case FR_RETRY_CONTINUE:
 		fr_trunk_request_requeue(treq);
 		return;
-	}
 
-	if (state == FR_RETRY_MRD) {
+	case FR_RETRY_MRD:
 		RDEBUG("Reached maximum_retransmit_duration, failing request");
-	} else if (state == FR_RETRY_MRC) {
+		break;
+
+	case FR_RETRY_MRC:
 		RDEBUG("Reached maximum_retransmit_count, failing request");
+		break;
 	}
 
 	udp_request_clear(h, u, now);
