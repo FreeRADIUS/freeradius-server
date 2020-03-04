@@ -2068,38 +2068,15 @@ static void protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t
 /** Handle retries for a status check
  *
  */
-static void status_check_next(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void status_check_next(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	udp_handle_t		*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
-	udp_request_t		*u = h->status_u;
-	REQUEST			*request;
 
-	request = h->status_request;
-
-	switch (fr_retry_next(&u->retry, now)) {
-	case FR_RETRY_MRD:
-		RDEBUG("Reached maximum_retransmit_duration, failing status checks");
-		goto fail;
-
-	case FR_RETRY_MRC:
-		RDEBUG("Reached maximum_retransmit_count, failing status checks");
-	fail:
+	if (fr_trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
+					     h->status_u, h->status_r, true) != FR_TRUNK_ENQUEUE_OK) {
 		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
-		return;
-
-	/*
-	 *	Requeue the status check for retransmission.
-	 */
-	case FR_RETRY_CONTINUE:
-		if (fr_trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
-						     h->status_u, h->status_r, true) != FR_TRUNK_ENQUEUE_OK) {
-			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
-		}
-		return;
 	}
-
-	rad_assert(0);
 }
 
 
