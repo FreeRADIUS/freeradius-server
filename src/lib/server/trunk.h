@@ -60,13 +60,13 @@ typedef enum {
  *
  */
 typedef enum {
-	FR_TRUNK_CONN_EVENT_NONE = 0x00,		//!< Don't notify the trunk on connection state
+	FR_TRUNK_CONN_EVENT_NONE	= 0x00,		//!< Don't notify the trunk on connection state
 							///< changes.
-	FR_TRUNK_CONN_EVENT_READ = 0x01,		//!< Trunk should be notified if a connection is
+	FR_TRUNK_CONN_EVENT_READ 	= 0x01,		//!< Trunk should be notified if a connection is
 							///< readable.
-	FR_TRUNK_CONN_EVENT_WRITE = 0x02,		//!< Trunk should be notified if a connection is
+	FR_TRUNK_CONN_EVENT_WRITE	= 0x02,		//!< Trunk should be notified if a connection is
 							///< writable.
-	FR_TRUNK_CONN_EVENT_BOTH = 0x03,		//!< Trunk should be notified if a connection is
+	FR_TRUNK_CONN_EVENT_BOTH	= 0x03,		//!< Trunk should be notified if a connection is
 							///< readable or writable.
 
 } fr_trunk_connection_event_t;
@@ -75,21 +75,22 @@ typedef enum {
  *
  */
 typedef enum {
-	FR_TRUNK_CONN_INIT		= 0x0000,	//!< In the initial state.
-	FR_TRUNK_CONN_CONNECTING	= 0x0001,	//!< Connection is connecting.
-	FR_TRUNK_CONN_ACTIVE		= 0x0002,	//!< Connection is connected and ready to service requests.
+	FR_TRUNK_CONN_HALTED		= 0x0000,	//!< Halted, ready to be freed.
+	FR_TRUNK_CONN_INIT		= 0x0001,	//!< In the initial state.
+	FR_TRUNK_CONN_CONNECTING	= 0x0002,	//!< Connection is connecting.
+	FR_TRUNK_CONN_ACTIVE		= 0x0003,	//!< Connection is connected and ready to service requests.
 							///< This is active and not 'connected', because a connection
 							///< can be 'connected' and 'full' or 'connected' and 'active'.
-	FR_TRUNK_CONN_FAILED		= 0x0004,	//!< Connection failed.  We now wait for it to enter the
+	FR_TRUNK_CONN_FAILED		= 0x0008,	//!< Connection failed.  We now wait for it to enter the
 							///< closed state.
-	FR_TRUNK_CONN_CLOSED		= 0x0008,	//!< Connection was closed, either explicitly or due to failure.
-	FR_TRUNK_CONN_FULL		= 0x0010,	//!< Connection is full and can't accept any more requests.
-	FR_TRUNK_CONN_INACTIVE		= 0x0020,	//!< Connection is inactive and can't accept any more requests.
-	FR_TRUNK_CONN_DRAINING		= 0x0040,	//!< Connection will be closed once it has no more outstanding
+	FR_TRUNK_CONN_CLOSED		= 0x0010,	//!< Connection was closed, either explicitly or due to failure.
+	FR_TRUNK_CONN_FULL		= 0x0020,	//!< Connection is full and can't accept any more requests.
+	FR_TRUNK_CONN_INACTIVE		= 0x0040,	//!< Connection is inactive and can't accept any more requests.
+	FR_TRUNK_CONN_DRAINING		= 0x0080,	//!< Connection will be closed once it has no more outstanding
 							///< requests, if it's not reactivated.
-	FR_TRUNK_CONN_DRAINING_TO_FREE	= 0x0080,	//!< Connection will be closed once it has no more outstanding
+	FR_TRUNK_CONN_DRAINING_TO_FREE	= 0x0100,	//!< Connection will be closed once it has no more outstanding
 							///< requests.
-	FR_TRUNK_CONN_HALTED		= 0x0100	//!< Halted, ready to be freed.
+
 } fr_trunk_connection_state_t;
 
 /** All connection states
