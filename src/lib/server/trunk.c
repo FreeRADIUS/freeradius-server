@@ -2245,6 +2245,54 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 	}
 }
 
+/** Remove a trunk connection from whichever list it's currently in
+ *
+ * @param[in] tconn to remove.
+ */
+static void trunk_connection_remove(fr_trunk_connection_t *tconn)
+{
+	fr_trunk_t *trunk = tconn->pub.trunk;
+	int ret;
+
+	switch (tconn->state) {
+	case FR_TRUNK_CONN_ACTIVE:
+		ret = fr_heap_extract(trunk->active, tconn);
+		if (!fr_cond_assert(ret == 0)) return;
+		return;
+
+	case FR_TRUNK_CONN_CONNECTING:
+		fr_dlist_remove(&trunk->connecting, tconn);
+		return;
+
+	case FR_TRUNK_CONN_FAILED:
+		fr_dlist_remove(&trunk->failed, tconn);
+		return;
+
+	case FR_TRUNK_CONN_CLOSED:
+		fr_dlist_remove(&trunk->closed, tconn);
+		return;
+
+	case FR_TRUNK_CONN_FULL:
+		fr_dlist_remove(&trunk->full, tconn);
+		return;
+
+	case FR_TRUNK_CONN_INACTIVE:
+		fr_dlist_remove(&trunk->inactive, tconn);
+		return;
+
+	case FR_TRUNK_CONN_DRAINING:
+		fr_dlist_remove(&trunk->draining, tconn);
+		return;
+
+	case FR_TRUNK_CONN_DRAINING_TO_FREE:
+		fr_dlist_remove(&trunk->draining_to_free, tconn);
+		return;
+
+	case FR_TRUNK_CONN_HALTED:
+		return;
+	}
+}
+
 /** Transition a connection to the full state
  *
  * Called whenever a trunk connection is at the maximum number of requests.
@@ -2253,16 +2301,14 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 static void trunk_connection_enter_full(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t		*trunk = tconn->pub.trunk;
-	int			ret;
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
-		ret = fr_heap_extract(trunk->active, tconn);
-		if (!fr_cond_assert(ret == 0)) return;
+		trunk_connection_remove(tconn);
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return;
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_FULL);
 	}
 
 	fr_dlist_insert_head(&trunk->full, tconn);
@@ -2277,20 +2323,15 @@ static void trunk_connection_enter_full(fr_trunk_connection_t *tconn)
 static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t		*trunk = tconn->pub.trunk;
-	int			ret;
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
-		ret = fr_heap_extract(trunk->active, tconn);
-		if (!fr_cond_assert(ret == 0)) return;
-		break;
-
 	case FR_TRUNK_CONN_FULL:
-		fr_dlist_remove(&trunk->full, tconn);
+		trunk_connection_remove(tconn);
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return;
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE);
 	}
 
 	fr_dlist_insert_head(&trunk->inactive, tconn);
@@ -2305,24 +2346,16 @@ static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t		*trunk = tconn->pub.trunk;
-	int			ret;
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
-		ret = fr_heap_extract(trunk->active, tconn);
-		if (!fr_cond_assert(ret == 0)) return;
-		break;
-
 	case FR_TRUNK_CONN_FULL:
-		fr_dlist_remove(&trunk->full, tconn);
-		break;
-
 	case FR_TRUNK_CONN_INACTIVE:
-		fr_dlist_remove(&trunk->inactive, tconn);
+		trunk_connection_remove(tconn);
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return;
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING);
 	}
 
 	fr_dlist_insert_head(&trunk->draining, tconn);
@@ -2344,28 +2377,17 @@ static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn)
 {
 	fr_trunk_t		*trunk = tconn->pub.trunk;
-	int			ret;
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
-		ret = fr_heap_extract(trunk->active, tconn);
-		if (!fr_cond_assert(ret == 0)) return;
-		break;
-
 	case FR_TRUNK_CONN_FULL:
-		fr_dlist_remove(&trunk->full, tconn);
-		break;
-
 	case FR_TRUNK_CONN_INACTIVE:
-		fr_dlist_remove(&trunk->inactive, tconn);
-		break;
-
 	case FR_TRUNK_CONN_DRAINING:
-		fr_dlist_remove(&trunk->draining, tconn);
+		trunk_connection_remove(tconn);
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return;
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING_TO_FREE);
 	}
 
 	fr_dlist_insert_head(&trunk->draining_to_free, tconn);
@@ -2391,24 +2413,18 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_FULL:
-		fr_dlist_remove(&trunk->full, tconn);
-		break;
-
 	case FR_TRUNK_CONN_INACTIVE:
-		fr_dlist_remove(&trunk->inactive, tconn);
-		break;
-
 	case FR_TRUNK_CONN_DRAINING:
-		fr_dlist_remove(&trunk->draining, tconn);
+		trunk_connection_remove(tconn);
 		break;
 
 	case FR_TRUNK_CONN_CONNECTING:
-		fr_dlist_remove(&trunk->connecting, tconn);
+		trunk_connection_remove(tconn);
 		rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return;
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_ACTIVE);
 	}
 
 	MEM(fr_heap_insert(trunk->active, tconn) == 0);	/* re-insert into the active heap*/
@@ -2463,9 +2479,6 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
 		break;
 
 	case FR_TRUNK_CONN_CLOSED:
-		fr_dlist_remove(&trunk->closed, tconn);
-		break;
-
 	/*
 	 *	Can happen if connection failed
 	 *	on initialisation, and transitioned
@@ -2475,11 +2488,11 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
 	 *	via CLOSED.
 	 */
 	case FR_TRUNK_CONN_FAILED:
-		fr_dlist_remove(&trunk->failed, tconn);
+		trunk_connection_remove(tconn);
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return;
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_CONNECTING);
 	}
 
 	/*
@@ -2586,6 +2599,53 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
  	trunk_connection_enter_active(tconn);
 }
 
+/** Connection failed
+ *
+ * This only deals with connections which failed during connecting
+ * for everything else we just use the "on_closed" handler above.
+ */
+static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	fr_trunk_t		*trunk = tconn->pub.trunk;
+
+	trunk->pub.last_failed = fr_time();
+
+	bool			need_requeue = false;
+
+	switch (tconn->state) {
+	case FR_TRUNK_CONN_HALTED:			/* Failed during handle initialisation */
+		break;
+
+	case FR_TRUNK_CONN_CONNECTING:
+		trunk_connection_remove(tconn);
+		rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
+		break;
+
+	case FR_TRUNK_CONN_ACTIVE:
+	case FR_TRUNK_CONN_FULL:
+	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_DRAINING:
+	case FR_TRUNK_CONN_DRAINING_TO_FREE:
+		trunk_connection_remove(tconn);
+		need_requeue = true;
+		break;
+
+	default:
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
+	}
+
+	/*
+	 *	Now *AFTER* the connection has been
+	 *	removed from the active, pool
+	 *	re-enqueue the requests.
+	 */
+	if (need_requeue) trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, true);
+
+	fr_dlist_insert_head(&trunk->failed, tconn);
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
+}
+
 /** Connection failed after it was connected
  *
  * Reflect the connection state change in the lists we use to track connections.
@@ -2600,7 +2660,6 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
-	int			ret;
 	bool			need_requeue = false;
 
 	switch (tconn->state) {
@@ -2608,38 +2667,16 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 		break;
 
 	case FR_TRUNK_CONN_ACTIVE:
-		ret = fr_heap_extract(trunk->active, tconn);
-		if (!fr_cond_assert(ret == 0)) return;
-		need_requeue = true;
-		break;
-
-	case FR_TRUNK_CONN_CONNECTING:
-		fr_dlist_remove(&trunk->connecting, tconn);
-		rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
-		break;
-
 	case FR_TRUNK_CONN_FULL:
-		fr_dlist_remove(&trunk->full, tconn);
-		need_requeue = true;
-		break;
-
 	case FR_TRUNK_CONN_INACTIVE:
-		fr_dlist_remove(&trunk->inactive, tconn);
-		need_requeue = true;
-		break;
-
 	case FR_TRUNK_CONN_DRAINING:
-		fr_dlist_remove(&trunk->draining, tconn);
-		need_requeue = true;
-		break;
-
 	case FR_TRUNK_CONN_DRAINING_TO_FREE:
-		fr_dlist_remove(&trunk->draining_to_free, tconn);
 		need_requeue = true;
-		break;
 
+	/* FALL-THROUGH */
+	case FR_TRUNK_CONN_CONNECTING:
 	case FR_TRUNK_CONN_FAILED:
-		fr_dlist_remove(&trunk->failed, tconn);
+		trunk_connection_remove(tconn);
 		break;
 
 	default:
@@ -2679,34 +2716,6 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	if (trunk->conf.lifetime > 0) fr_event_timer_delete(&tconn->lifetime_ev);
 }
 
-/** Connection failed
- *
- * This only deals with connections which failed during connecting
- * for everything else we just use the "on_closed" handler above.
- */
-static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
-{
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_t		*trunk = tconn->pub.trunk;
-
-	trunk->pub.last_failed = fr_time();
-
-	/*
-	 *	Other conditions will be handled by on_closed
-	 */
-	if (tconn->state != FR_TRUNK_CONN_CONNECTING) return;
-	fr_dlist_remove(&trunk->connecting, tconn);
-
-	/*
-	 *	As the connection never actually connected
-	 *	it shouldn't have any requests.
-	 */
-	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
-
-	fr_dlist_insert_head(&trunk->failed, tconn);
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
-}
-
 /** Connection transitioned to the halted state
  *
  * Remove the connection remove all lists, as it's likely about to be freed.
@@ -2725,45 +2734,21 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
-	int			ret;
 	bool			need_requeue = false;
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
-		ret = fr_heap_extract(trunk->active, tconn);
-		if (!fr_cond_assert(ret == 0)) return;
-		need_requeue = true;
-		break;
-
 	case FR_TRUNK_CONN_FULL:
-		fr_dlist_remove(&trunk->full, tconn);
-		break;
-
 	case FR_TRUNK_CONN_INACTIVE:
-		fr_dlist_remove(&trunk->inactive, tconn);
-		need_requeue = true;
-		break;
-
-	case FR_TRUNK_CONN_CONNECTING:
-		fr_dlist_remove(&trunk->connecting, tconn);
-		break;
-
-	case FR_TRUNK_CONN_FAILED:
-		fr_dlist_remove(&trunk->failed, tconn);
-		break;
-
-	case FR_TRUNK_CONN_CLOSED:
-		fr_dlist_remove(&trunk->closed, tconn);
-		break;
-
 	case FR_TRUNK_CONN_DRAINING:
-		fr_dlist_remove(&trunk->draining, tconn);
-		need_requeue = true;
-		break;
-
 	case FR_TRUNK_CONN_DRAINING_TO_FREE:
-		fr_dlist_remove(&trunk->draining_to_free, tconn);
 		need_requeue = true;
+
+	/* FALL-THROUGH */
+	case FR_TRUNK_CONN_CONNECTING:
+	case FR_TRUNK_CONN_FAILED:
+	case FR_TRUNK_CONN_CLOSED:
+		trunk_connection_remove(tconn);
 		break;
 
 	case FR_TRUNK_CONN_HALTED:	/* Nothing to do */
@@ -2903,14 +2888,14 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_CONNECTED,
 				     _trunk_connection_on_connected, false, tconn);	/* After open() has been called */
 
+	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_FAILED,
+				    _trunk_connection_on_failed, false, tconn);		/* Before failed() has been called */
+
 	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_CLOSED,
 				    _trunk_connection_on_closed, false, tconn);		/* Before close() has been called */
 
 	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_SHUTDOWN,
 				     _trunk_connection_on_shutdown, false, tconn);	/* After shutdown() has been called */
-
-	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_FAILED,
-				    _trunk_connection_on_failed, false, tconn);		/* Before failed() has been called */
 
 	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_HALTED,
 				     _trunk_connection_on_halted, false, tconn);	/* About to be freed */
