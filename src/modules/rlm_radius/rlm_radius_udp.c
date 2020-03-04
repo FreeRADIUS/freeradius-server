@@ -253,6 +253,22 @@ static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 	[FR_CODE_PROTOCOL_ERROR]	= RLM_MODULE_HANDLED,
 };
 
+
+/** Clear a UDP request, ready for moving or retransmission
+ *
+ * @note We don't necessarily have to clear the packet here.
+ */
+static void udp_request_clear(udp_handle_t *h, udp_request_t *u, fr_time_t now)
+{
+	if (!now) now = fr_time();
+	if (u->rr) (void) radius_track_delete(&u->rr);
+
+	/* Now wrong - We don't keep an entry reserved for the status check */
+	if (h && (h->tt->num_free == (h->status_u != NULL))) h->last_idle = now;
+
+	fr_pair_list_free(&u->extra);
+}
+
 /** Reset a status_check packet, ready to re-use
  *
  */
@@ -1260,16 +1276,6 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 	}
 }
-
-static void udp_request_clear(udp_handle_t *h, udp_request_t *u, fr_time_t now)
-{
-	if (!now) now = fr_time();
-	if (u->rr) (void) radius_track_delete(&u->rr);
-	if (h && (h->tt->num_free == (h->status_u != NULL))) h->last_idle = now;
-
-	fr_pair_list_free(&u->extra);
-}
-
 
 /** Handle retries for a REQUEST
  *
