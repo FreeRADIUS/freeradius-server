@@ -602,6 +602,7 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 static void conn_discard(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	udp_handle_t		*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 	uint8_t			buffer[4096];
 	ssize_t			slen;
 
@@ -613,6 +614,8 @@ static void conn_discard(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, v
 		case ECONNRESET:
 		case ENOTCONN:
 		case ETIMEDOUT:
+			ERROR("%s - %s failed draining socket: %s",
+			      __FUNCTION__, h->module_name, fr_syserror(errno));
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			break;
 
@@ -717,7 +720,7 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 			       write_fn,
 			       conn_error,
 			       tconn) < 0) {
-		PERROR("%s - Failed inserting FD event", h->module_name);
+		PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
 
 		/*
 		 *	May free the connection!
@@ -759,7 +762,7 @@ static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connec
 			       write_fn,
 			       conn_error,
 			       tconn) < 0) {
-		PERROR("%s - Failed inserting FD event", h->module_name);
+		PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
 
 		/*
 		 *	May free the connection!
@@ -1917,7 +1920,8 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		if (slen < 0) {
 			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
 
-			ERROR("%s - Failed reading from socket: %s", h->module_name, fr_syserror(errno));
+			ERROR("%s - %s failed reading response from socket: %s",
+			      __FUNCTION__, h->module_name, fr_syserror(errno));
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			return;
 		}
