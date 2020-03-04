@@ -388,6 +388,34 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	h->status_request = request;
 }
 
+/** Free a connection handle, closing associated resources
+ *
+ */
+static int _udp_handle_free(udp_handle_t *h)
+{
+	rad_assert(h->fd >= 0);
+
+	if (h->status_u) fr_event_timer_delete(&h->status_u->ev);
+
+	fr_event_fd_delete(h->thread->el, h->fd, FR_EVENT_FILTER_IO);
+
+	if (shutdown(h->fd, SHUT_RDWR) < 0) {
+		DEBUG3("%s - Failed shutting down connection %s: %s",
+		       h->module_name, h->name, fr_syserror(errno));
+	}
+
+	if (close(h->fd) < 0) {
+		DEBUG3("%s - Failed closing connection %s: %s",
+		       h->module_name, h->name, fr_syserror(errno));
+	}
+
+	h->fd = -1;
+
+	DEBUG("%s - Connection closed - %s", h->module_name, h->name);
+
+	return 0;
+}
+
 /** Initialise a new outbound connection
  *
  * @param[out] h_out	Where to write the new file descriptor.
@@ -401,9 +429,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	udp_thread_t		*thread = talloc_get_type_abort(uctx, udp_thread_t);
 	uint16_t		i;
 
-	h = talloc_zero(conn, udp_handle_t);
-	if (!h) return FR_CONNECTION_STATE_FAILED;
-
+	MEM(h = talloc_zero(conn, udp_handle_t));
 	h->thread = thread;
 	h->inst = thread->inst;
 	h->module_name = h->inst->parent->name;
@@ -446,6 +472,8 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	h->name = fr_asprintf(h, "connecting proto udp local %pV port %u remote %pV port %u",
 			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
 			      fr_box_ipaddr(h->inst->dst_ipaddr), h->inst->dst_port);
+
+	talloc_set_destructor(h, _udp_handle_free);
 
 #ifdef SO_RCVBUF
 	if (h->inst->recv_buff_is_set) {
@@ -517,26 +545,9 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, void *handle, UNUSED
 /** Shutdown/close a file descriptor
  *
  */
-static void conn_close(fr_event_list_t *el, void *handle, UNUSED void *uctx)
+static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uctx)
 {
 	udp_handle_t *h = talloc_get_type_abort(handle, udp_handle_t);
-
-	if (h->status_u) fr_event_timer_delete(&h->status_u->ev);
-	fr_event_fd_delete(el, h->fd, FR_EVENT_FILTER_IO);
-
-	if (shutdown(h->fd, SHUT_RDWR) < 0) {
-		DEBUG3("%s - Failed shutting down connection %s: %s",
-		       h->module_name, h->name, fr_syserror(errno));
-	}
-
-	if (close(h->fd) < 0) {
-		DEBUG3("%s - Failed closing connection %s: %s",
-		       h->module_name, h->name, fr_syserror(errno));
-	}
-
-	h->fd = -1;
-
-	DEBUG("%s - Connection closed - %s", h->module_name, h->name);
 
 	talloc_free(h);
 }
