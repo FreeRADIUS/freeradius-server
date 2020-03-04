@@ -2134,6 +2134,7 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 
 	/*
 	 *	Reset retry interval and retransmission counters
+	 *	also frees u->ev.
 	 */
 	status_check_reset(h, u);
 	fr_trunk_connection_signal_active(treq->tconn);
