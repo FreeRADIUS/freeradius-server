@@ -316,7 +316,7 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	 *	head before the module destructor
 	 *      runs.
 	 */
-	request = request_local_alloc(h);
+	request = request_local_alloc(u);
 	request->async = talloc_zero(request, fr_async_t);
 	talloc_const_free(request->name);
 	request->name = talloc_strdup(request, h->module_name);
@@ -375,9 +375,6 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 		MEM(pair_add_request(NULL, attr_event_timestamp) >= 0);
 	}
 
-	DEBUG3("Status check packet will be %s", fr_packet_codes[u->code]);
-	log_request_pair_list(L_DBG_LVL_3, request, request->packet->vps, NULL);
-
 	/*
 	 *	Initialize the request IO ctx.  Note that we don't set
 	 *	destructors.
@@ -385,7 +382,10 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	u->code = inst->parent->status_check;
 	request->packet->code = u->code;
 
-	MEM(h->status_r = talloc_zero(h, udp_result_t));
+	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_packet_codes[u->code]);
+	log_request_pair_list(L_DBG_LVL_3, request, request->packet->vps, NULL);
+
+	MEM(h->status_r = talloc_zero(request, udp_result_t));
 	h->status_u = u;
 	h->status_request = request;
 }
