@@ -265,10 +265,10 @@ server detail {
 			retransmit = yes
 			limit {
 				maximum_outstanding = 1
-				initial_retransmission_time = 1
-				max_retransmission_time = 30
-				max_retransmission_count = 6
-				max_retransmission_duration = 40
+				initial_rtx_time = 1
+				max_rtx_time = 30
+				max_rtx_count = 6
+				max_rtx_duration = 40
 			}
 		}
 	}

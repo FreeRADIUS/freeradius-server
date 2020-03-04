@@ -192,14 +192,14 @@ server detail {
 				#  If there is no response within this time,
 				#  the module will retransmit the packet.
 				#
-				initial_retransmission_time = 1
+				initial_rtx_time = 1
 
 				#
 				#  Maximum Retransmit Time: 5..30
 				#
 				#  The maximum time between retransmissions.
 				#
-				max_retransmission_time = 30
+				max_rtx_time = 30
 
 				#
 				#  The following are maximums that *all* apply.
@@ -215,7 +215,7 @@ server detail {
 				#
 				#  A special value of "0" means "retransmit forever".
 				#
-				max_retransmission_count = 6
+				max_rtx_count = 6
 
 				#
 				#  Maximum Retransmit Duration: 0..600
@@ -225,7 +225,7 @@ server detail {
 				#
 				#  A special value of "0" means "retransmit forever".
 				#
-				max_retransmission_duration = 40
+				max_rtx_duration = 40
 			}
 		}
 	}

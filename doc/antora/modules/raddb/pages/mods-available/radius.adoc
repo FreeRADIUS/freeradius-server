@@ -72,7 +72,7 @@ synchronous::
 
 In many cases, the module should do retransmissions of
 proxied request on its own.  See the various
-configurations for `initial_retransmission_time`,
+configurations for `initial_rtx_time`,
 etc. below.  This means setting `synchronous = no`.
 
 However, in some cases, it is useful to retransmit only
@@ -371,14 +371,14 @@ are parsed (see `type` above).
 ### Access requests packets
 
 
-initial_retransmission_time::  If there is no response within this time,
+initial_rtx_time::  If there is no response within this time,
 the module will retransmit the packet.
 
 Value should be `1..5`.
 
 
 
-max_retransmission_time:: The maximum time between retransmissions.
+max_rtx_time:: The maximum time between retransmissions.
 
 Value should be `5..30`
 
@@ -393,14 +393,14 @@ i.e. if any one of the limits is hit, the retransmission stops.
 
 
 
-max_retransmission_count:: How many times the module will send the packet
+max_rtx_count:: How many times the module will send the packet
 before giving up.
 
 Value should be `1..20` _(0 == retransmit forever)_
 
 
 
-max_retransmission_duration:: The total length of time the module will
+max_rtx_duration:: The total length of time the module will
 try to retransmit the packet.
 
 Value should be `5..60`
@@ -411,8 +411,8 @@ Value should be `5..60`
 
 i.e. If you want `retransmit forever`, you should set:
 
-  max_retransmission_time = 0
-  max_retransmission_count = 0
+  max_rtx_time = 0
+  max_rtx_count = 0
 
 
 
@@ -486,34 +486,34 @@ radius {
 #		src_ipaddr = ""
 	}
 	Access-Request {
-		initial_retransmission_time = 2
-		max_retransmission_time = 16
-		max_retransmission_count = 2
-		max_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 2
+		max_rtx_duration = 30
 	}
 	Accounting-Request {
-		initial_retransmission_time = 2
-		max_retransmission_time = 16
-		max_retransmission_count = 5
-		max_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 	Coa-Request {
-		initial_retransmission_time = 2
-		max_retransmission_time = 16
-		max_retransmission_count = 5
-		max_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 	Disconnect-Request {
-		initial_retransmission_time = 2
-		max_retransmission_time = 16
-		max_retransmission_count = 5
-		max_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 	Status-Server {
-		initial_retransmission_time = 2
-		max_retransmission_time = 16
-		max_retransmission_count = 5
-		max_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 }
 ```
