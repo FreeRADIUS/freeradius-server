@@ -293,10 +293,10 @@ static void status_check_reset(udp_handle_t *h, udp_request_t *u)
  */
 static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 {
-	udp_request_t *u;
-	REQUEST *request;
-	rlm_radius_udp_t const *inst = h->inst;
-	vp_map_t *map;
+	udp_request_t		*u;
+	REQUEST			*request;
+	rlm_radius_udp_t const	*inst = h->inst;
+	vp_map_t		*map;
 
 	u = talloc_zero(h, udp_request_t);
 
@@ -973,9 +973,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 
 		proxy_state = 0;
 		vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY);
-		if (vp) {
-			vp->vp_date = fr_time_to_unix_time(u->retry.updated);
-		}
+		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 
 		u->can_retransmit = false;
 	}
