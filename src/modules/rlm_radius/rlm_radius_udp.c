@@ -253,6 +253,24 @@ static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 	[FR_CODE_PROTOCOL_ERROR]	= RLM_MODULE_HANDLED,
 };
 
+/** Reset a status_check packet, ready to re-use
+ *
+ */
+static void status_check_reset(udp_handle_t *h, udp_request_t *u)
+{
+	rad_assert(u->status_check == true);
+
+	h->status_checking = false;
+	u->num_replies = 0;	/* Reset */
+	u->retry.start = 0;
+
+	if (u->rr) (void) radius_track_delete(&u->rr);	/* Not used for conn status check */
+	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+
+	TALLOC_FREE(u->packet);
+	fr_pair_list_free(&u->extra);
+}
+
 /*
  *	Status-Server checks.  Manually build the packet, and
  *	all of its associated glue.
@@ -1849,17 +1867,17 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 
 	DEBUG("Received enough replies to status check, marking connection as active - %s", h->name);
 
-	if (u->rr) (void) radius_track_delete(&u->rr);
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
-
 	/*
 	 *	Set the "last idle" time to now, so that we don't
 	 *	restart zombie_period until sufficient time has
 	 *	passed.
 	 */
 	h->last_idle = fr_time();
-	h->status_checking = false;
 
+	/*
+	 *	Reset retry interval and retransmission counters
+	 */
+	status_check_reset(h, u);
 	fr_trunk_connection_signal_active(treq->tconn);
 }
 
