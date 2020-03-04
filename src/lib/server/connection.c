@@ -71,8 +71,6 @@ typedef struct {
 struct fr_connection_s {
 	struct fr_connection_pub_s pub;			//!< Public fields
 
-	fr_connection_state_t	state;			//!< Current connection state.
-
 	void			*uctx;			//!< User data.
 
 	void			*in_handler;		//!< Connection is currently in a callback.
@@ -102,16 +100,16 @@ struct fr_connection_s {
 #define STATE_TRANSITION(_new) \
 do { \
 	DEBUG2("Connection changed state %s -> %s", \
-	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"), \
+	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"), \
 	       fr_table_str_by_value(fr_connection_states, _new, "<INVALID>")); \
-	conn->state = _new; \
+	conn->pub.state = _new; \
 } while (0)
 
 #define BAD_STATE_TRANSITION(_new) \
 do { \
 	if (!fr_cond_assert_msg(0, "Connection %" PRIu64 " invalid transition %s -> %s", \
 				conn->pub.id, \
-				fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"), \
+				fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"), \
 				fr_table_str_by_value(fr_connection_states, _new, "<INVALID>"))) return; \
 } while (0)
 
@@ -271,11 +269,11 @@ static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t 
 		       entry->oneshot ? "oneshot " : "",
 		       entry->func,
 		       conn,
-		       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"),
+		       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"),
 		       entry->uctx);
 */
 
-		entry->func(conn, conn->state, entry->uctx);
+		entry->func(conn, conn->pub.state, entry->uctx);
 
 		if (oneshot) talloc_free(entry);
 	}
@@ -287,9 +285,9 @@ static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t 
  */
 #define WATCH_PRE(_conn) \
 do { \
-	if (fr_dlist_empty(&(_conn)->watch_pre[(_conn)->state])) break; \
-	HANDLER_BEGIN(conn, &(_conn)->watch_pre[(_conn)->state]); \
-	connection_watch_call((_conn), &(_conn)->watch_pre[(_conn)->state]); \
+	if (fr_dlist_empty(&(_conn)->watch_pre[(_conn)->pub.state])) break; \
+	HANDLER_BEGIN(conn, &(_conn)->watch_pre[(_conn)->pub.state]); \
+	connection_watch_call((_conn), &(_conn)->watch_pre[(_conn)->pub.state]); \
 	HANDLER_END(conn); \
 } while(0)
 
@@ -298,9 +296,9 @@ do { \
  */
 #define WATCH_POST(_conn) \
 do { \
-	if (fr_dlist_empty(&(_conn)->watch_post[(_conn)->state])) break; \
-	HANDLER_BEGIN(conn, &(_conn)->watch_post[(_conn)->state]); \
-	connection_watch_call((_conn), &(_conn)->watch_post[(_conn)->state]); \
+	if (fr_dlist_empty(&(_conn)->watch_post[(_conn)->pub.state])) break; \
+	HANDLER_BEGIN(conn, &(_conn)->watch_post[(_conn)->pub.state]); \
+	connection_watch_call((_conn), &(_conn)->watch_post[(_conn)->pub.state]); \
 	HANDLER_END(conn); \
 } while(0)
 
@@ -451,7 +449,7 @@ static void _reconnect_delay_done(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_FAILED:
 	case FR_CONNECTION_STATE_CLOSED:
 		connection_state_init_enter(conn);
@@ -468,7 +466,7 @@ static void _reconnect_delay_done(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
  */
 static void connection_state_closed_enter(fr_connection_t *conn)
 {
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_CONNECTED:
 	case FR_CONNECTION_STATE_FAILED:
@@ -523,7 +521,7 @@ static void connection_state_shutdown_enter(fr_connection_t *conn)
 {
 	fr_connection_state_t ret;
 
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_CONNECTED:
 		break;
 
@@ -588,7 +586,7 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	fr_connection_state_t prev;
 	fr_connection_state_t ret = FR_CONNECTION_STATE_INIT;
 
-	rad_assert(conn->state != FR_CONNECTION_STATE_FAILED);
+	rad_assert(conn->pub.state != FR_CONNECTION_STATE_FAILED);
 
 	/*
 	 *	Explicit error occurred, delete the connection timer
@@ -599,7 +597,7 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	 *	Record what state the connection is currently in
 	 *	so we can figure out what to do next.
 	 */
-	prev = conn->state;
+	prev = conn->pub.state;
 
 	/*
 	 *	Now transition to failed
@@ -705,7 +703,7 @@ static void connection_state_failed_enter(fr_connection_t *conn)
  */
 static void connection_state_timeout_enter(fr_connection_t *conn)
 {
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_SHUTDOWN:
 		break;
@@ -755,7 +753,7 @@ static void connection_state_connected_enter(fr_connection_t *conn)
 {
 	int	ret;
 
-	rad_assert(conn->state == FR_CONNECTION_STATE_CONNECTING);
+	rad_assert(conn->pub.state == FR_CONNECTION_STATE_CONNECTING);
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
 
@@ -799,7 +797,7 @@ static void connection_state_connected_enter(fr_connection_t *conn)
  */
 static void connection_state_connecting_enter(fr_connection_t *conn)
 {
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_INIT:
 	case FR_CONNECTION_STATE_CLOSED:
 	case FR_CONNECTION_STATE_FAILED:
@@ -850,7 +848,7 @@ static void connection_state_init_enter(fr_connection_t *conn)
 {
 	fr_connection_state_t	ret;
 
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_HALTED:
 	case FR_CONNECTION_STATE_CLOSED:
 	case FR_CONNECTION_STATE_FAILED:
@@ -910,14 +908,14 @@ static void connection_state_init_enter(fr_connection_t *conn)
 void fr_connection_signal_init(fr_connection_t *conn)
 {
 	DEBUG2("Signalled to start from %s state",
-	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
+	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
 	if (conn->in_handler) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_INIT);
 		return;
 	}
 
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_HALTED:
 		connection_state_init_enter(conn);
 		break;
@@ -944,14 +942,14 @@ void fr_connection_signal_connected(fr_connection_t *conn)
 	rad_assert(!conn->open);	/* Use one or the other not both! */
 
 	DEBUG2("Signalled connected from %s state",
-	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
+	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
 	if (conn->in_handler) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_CONNECTED);
 		return;
 	}
 
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_CONNECTING:
 		connection_state_connected_enter(conn);
 		break;
@@ -974,7 +972,7 @@ void fr_connection_signal_connected(fr_connection_t *conn)
 void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_t reason)
 {
 	DEBUG2("Signalled to reconnect from %s state",
-	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
+	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
 	if (conn->in_handler) {
 		if ((reason == FR_CONNECTION_EXPIRED) && conn->shutdown) {
@@ -986,7 +984,7 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 		return;
 	}
 
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_FAILED:	/* Don't circumvent reconnection_delay */
 	case FR_CONNECTION_STATE_CLOSED:	/* Don't circumvent reconnection_delay */
 	case FR_CONNECTION_STATE_INIT:		/* Already initialising */
@@ -1030,14 +1028,14 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 void fr_connection_signal_shutdown(fr_connection_t *conn)
 {
 	DEBUG2("Signalled to shutdown from %s state",
-	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
+	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
 	if (conn->in_handler) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_SHUTDOWN);
 		return;
 	}
 
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_HALTED:
 	case FR_CONNECTION_STATE_SHUTDOWN:
 		break;
@@ -1052,10 +1050,11 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 			connection_state_shutdown_enter(conn);
 			break;
 		}
+		connection_state_closed_enter(conn);
 
 	/* FALL-THROUGH */
 	case FR_CONNECTION_STATE_FAILED:
-		connection_state_closed_enter(conn);
+		rad_assert(conn->is_closed);
 		connection_state_halted_enter(conn);
 		break;
 
@@ -1082,14 +1081,14 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 void fr_connection_signal_halt(fr_connection_t *conn)
 {
 	DEBUG2("Signalled to halt from %s state",
-	       fr_table_str_by_value(fr_connection_states, conn->state, "<INVALID>"));
+	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
 	if (conn->in_handler) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_HALT);
 		return;
 	}
 
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_HALTED:
 		break;
 
@@ -1102,12 +1101,12 @@ void fr_connection_signal_halt(fr_connection_t *conn)
 
 	case FR_CONNECTION_STATE_CONNECTED:
 	case FR_CONNECTION_STATE_CONNECTING:
+		connection_state_closed_enter(conn);
 	/*
 	 *	Failed connections need closing too
 	 *	else we assert on conn->is_closed
 	 */
 	case FR_CONNECTION_STATE_FAILED:
-		connection_state_closed_enter(conn);
 		connection_state_halted_enter(conn);
 		break;
 
@@ -1256,7 +1255,7 @@ static int _connection_free(fr_connection_t *conn)
 		return -1;
 	}
 
-	switch (conn->state) {
+	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_HALTED:
 		break;
 
@@ -1314,7 +1313,7 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	talloc_set_destructor(conn, _connection_free);
 
 	conn->pub.id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed);
-	conn->state = FR_CONNECTION_STATE_HALTED;
+	conn->pub.state = FR_CONNECTION_STATE_HALTED;
 	conn->pub.el = el;
 	conn->pub.h = NULL;
 	conn->reconnection_delay = conf->reconnection_delay;

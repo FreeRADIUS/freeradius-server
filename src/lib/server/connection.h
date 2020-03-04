@@ -40,26 +40,6 @@ typedef struct fr_connection_pub_s fr_connection_t; /* We use the private versio
 #  define _CONST
 #endif
 
-/** Public fields for the connection
- *
- * This saves the overhead of using accessors for commonly used fields in
- * connections.
- *
- * Though these fields are public, they should _NOT_ be modified by clients of
- * the connection API.
- */
-struct fr_connection_pub_s {
-	uint64_t _CONST		id;		//!< Unique identifier for the connection.
-	void		* _CONST h;		//!< Connection handle
-	fr_event_list_t	* _CONST el;		//!< Event list for timers and I/O events.
-	char const	* _CONST log_prefix;	//!< Prefix to add to log messages.
-
-	uint64_t _CONST		reconnected;	//!< How many times we've attempted to establish or
-						///< re-establish this connection.
-	uint64_t _CONST		timed_out;	//!< How many times has this connection timed out when
-						///< connecting.
-};
-
 typedef enum {
 	FR_CONNECTION_STATE_HALTED = 0,		//!< The connection is in a halted stat.  It does not have
 						///< a valid file descriptor, and it will not try and
@@ -69,10 +49,31 @@ typedef enum {
 	FR_CONNECTION_STATE_TIMEOUT,		//!< Timeout during #FR_CONNECTION_STATE_CONNECTING.
 	FR_CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
 	FR_CONNECTION_STATE_SHUTDOWN,		//!< Connection is shutting down.
+	FR_CONNECTION_STATE_FAILED,		//!< Connection has failed.
 	FR_CONNECTION_STATE_CLOSED,		//!< Connection has been closed.
-	FR_CONNECTION_STATE_FAILED,		//!< Connection failed and is waiting to reconnect.
 	FR_CONNECTION_STATE_MAX
 } fr_connection_state_t;
+
+/** Public fields for the connection
+ *
+ * This saves the overhead of using accessors for commonly used fields in
+ * connections.
+ *
+ * Though these fields are public, they should _NOT_ be modified by clients of
+ * the connection API.
+ */
+struct fr_connection_pub_s {
+	fr_connection_state_t _CONST	state;		//!< Current connection state.
+	uint64_t _CONST			id;		//!< Unique identifier for the connection.
+	void			* _CONST h;		//!< Connection handle
+	fr_event_list_t		* _CONST el;		//!< Event list for timers and I/O events.
+	char const		* _CONST log_prefix;	//!< Prefix to add to log messages.
+
+	uint64_t _CONST			reconnected;	//!< How many times we've attempted to establish or
+							///< re-establish this connection.
+	uint64_t _CONST			timed_out;	//!< How many times has this connection timed out when
+							///< connecting.
+};
 
 typedef enum {
 	FR_CONNECTION_FAILED = 0,		//!< Connection is being reconnected because it failed.
