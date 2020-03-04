@@ -3760,7 +3760,10 @@ int fr_trunk_start(fr_trunk_t *trunk)
 	/*
 	 *	Spawn the initial set of connections
 	 */
-	for (i = 0; i < trunk->conf.start; i++) if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
+	for (i = 0; i < trunk->conf.start; i++) {
+		DEBUG("[%i] Starting initial connection", i);
+		if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
+	}
 
 	/*
 	 *	Insert the event timer to manage
@@ -3773,7 +3776,6 @@ int fr_trunk_start(fr_trunk_t *trunk)
 			return -1;
 		}
 	}
-
 	trunk->started = true;
 	trunk->managing_connections = true;
 
