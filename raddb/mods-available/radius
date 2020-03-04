@@ -434,11 +434,11 @@ radius {
 		initial_retransmission_time = 2
 
 		#
-		#  maximum_retransmission_time:: The maximum time between retransmissions.
+		#  max_retransmission_time:: The maximum time between retransmissions.
 		#
 		#  Value should be `5..30`
 		#
-		maximum_retransmission_time = 16
+		max_retransmission_time = 16
 
 		#
 		#  [NOTE]
@@ -450,20 +450,20 @@ radius {
 		#
 
 		#
-		#  maximum_retransmission_count:: How many times the module will send the packet
+		#  max_retransmission_count:: How many times the module will send the packet
 		#  before giving up.
 		#
 		#  Value should be `1..20` _(0 == retransmit forever)_
 		#
-		maximum_retransmission_count = 2
+		max_retransmission_count = 2
 
 		#
-		#  maximum_retransmission_duration:: The total length of time the module will
+		#  max_retransmission_duration:: The total length of time the module will
 		#  try to retransmit the packet.
 		#
 		#  Value should be `5..60`
 		#
-		maximum_retransmission_duration = 30
+		max_retransmission_duration = 30
 	}
 
 	#
@@ -471,14 +471,14 @@ radius {
 	#
 	#  i.e. If you want `retransmit forever`, you should set:
 	#
-	#    maximum_retransmission_time = 0
-	#    maximum_retransmission_count = 0
+	#    max_retransmission_time = 0
+	#    max_retransmission_count = 0
 	#
 	Accounting-Request {
 		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		max_retransmission_time = 16
+		max_retransmission_count = 5
+		max_retransmission_duration = 30
 	}
 
 	#
@@ -486,9 +486,9 @@ radius {
 	#
 	Coa-Request {
 		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		max_retransmission_time = 16
+		max_retransmission_count = 5
+		max_retransmission_duration = 30
 	}
 
 	#
@@ -496,9 +496,9 @@ radius {
 	#
 	Disconnect-Request {
 		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		max_retransmission_time = 16
+		max_retransmission_count = 5
+		max_retransmission_duration = 30
 	}
 
 	#
@@ -511,8 +511,8 @@ radius {
 	#
 	Status-Server {
 		initial_retransmission_time = 2
-		maximum_retransmission_time = 5
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		max_retransmission_time = 5
+		max_retransmission_count = 5
+		max_retransmission_duration = 30
 	}
 }

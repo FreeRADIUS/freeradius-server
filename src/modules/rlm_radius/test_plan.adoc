@@ -131,7 +131,7 @@ Note:: You may need to increase `max_request_time` in radius.conf to 60 seconds 
 * Set packet loss rate on network link to be 100%
 * Send a <<PAP Access-Request>>
 ** Verify that after `<transport>.initial_retransmission_time` (default 2 seconds) the packet is resent.
-** Verify that packets are resent at increasing intervals until `<transport>.maximum_retransmission_count`
+** Verify that packets are resent at increasing intervals until `<transport>.max_retransmission_count`
    is reached.
 ** After 10 seconds, verify that the connection is marked as "inactive", and a message is emitted indicating
    that the connection has entered zombie state.

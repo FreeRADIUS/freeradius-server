@@ -266,9 +266,9 @@ server detail {
 			limit {
 				maximum_outstanding = 1
 				initial_retransmission_time = 1
-				maximum_retransmission_time = 30
-				maximum_retransmission_count = 6
-				maximum_retransmission_duration = 40
+				max_retransmission_time = 30
+				max_retransmission_count = 6
+				max_retransmission_duration = 40
 			}
 		}
 	}

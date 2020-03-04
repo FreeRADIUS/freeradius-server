@@ -73,16 +73,16 @@ typedef struct {
 
 static CONF_PARSER limit_config[] = {
 	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("max_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, mrt), .dflt = STRINGIFY(16) },
 
 	/*
 	 *	Retransmit indefinitely, as v2 and v3 did.
 	 */
-	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, proto_detail_work_t, mrc), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("max_retransmission_count", FR_TYPE_UINT32, proto_detail_work_t, mrc), .dflt = STRINGIFY(0) },
 	/*
 	 *	...again same as v2 and v3.
 	 */
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, proto_detail_work_t, mrd), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("max_retransmission_duration", FR_TYPE_UINT32, proto_detail_work_t, mrd), .dflt = STRINGIFY(0) },
 	{ FR_CONF_OFFSET("maximum_outstanding", FR_TYPE_UINT32, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
 	CONF_PARSER_TERMINATOR
 };
@@ -893,13 +893,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 *	If you need more than this, just set it to
 		 *	"0", and check Packet-Transmit-Count manually.
 		 */
-		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_count", inst->mrc, <=, 20);
-		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_duration", inst->mrd, <=, 600);
+		FR_INTEGER_BOUND_CHECK("limit.max_retransmission_count", inst->mrc, <=, 20);
+		FR_INTEGER_BOUND_CHECK("limit.max_retransmission_duration", inst->mrd, <=, 600);
 
 		/*
 		 *	This is a reasonable value.
 		 */
-		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_timer", inst->mrt, <=, 30);
+		FR_INTEGER_BOUND_CHECK("limit.max_retransmission_timer", inst->mrt, <=, 30);
 	}
 
 	FR_INTEGER_BOUND_CHECK("limit.maximum_outstanding", inst->max_outstanding, >=, 1);

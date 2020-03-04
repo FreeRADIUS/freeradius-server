@@ -199,7 +199,7 @@ server detail {
 				#
 				#  The maximum time between retransmissions.
 				#
-				maximum_retransmission_time = 30
+				max_retransmission_time = 30
 
 				#
 				#  The following are maximums that *all* apply.
@@ -215,7 +215,7 @@ server detail {
 				#
 				#  A special value of "0" means "retransmit forever".
 				#
-				maximum_retransmission_count = 6
+				max_retransmission_count = 6
 
 				#
 				#  Maximum Retransmit Duration: 0..600
@@ -225,7 +225,7 @@ server detail {
 				#
 				#  A special value of "0" means "retransmit forever".
 				#
-				maximum_retransmission_duration = 40
+				max_retransmission_duration = 40
 			}
 		}
 	}
