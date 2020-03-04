@@ -3494,8 +3494,6 @@ do { \
 	} \
 } while (0);
 
-	COUNT_BY_STATE(FR_TRUNK_CONN_CONNECTING, connecting);
-
 	if (conn_state & FR_TRUNK_CONN_ACTIVE) {
 		for (tconn = fr_heap_iter_init(trunk->active, &iter);
 		     tconn;
@@ -3506,8 +3504,6 @@ do { \
 
 	COUNT_BY_STATE(FR_TRUNK_CONN_FULL, full);
 	COUNT_BY_STATE(FR_TRUNK_CONN_INACTIVE, inactive);
-	COUNT_BY_STATE(FR_TRUNK_CONN_FAILED, failed);
-	COUNT_BY_STATE(FR_TRUNK_CONN_CLOSED, closed);
 	COUNT_BY_STATE(FR_TRUNK_CONN_DRAINING, draining);
 	COUNT_BY_STATE(FR_TRUNK_CONN_DRAINING_TO_FREE, draining_to_free);
 
