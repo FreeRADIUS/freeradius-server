@@ -49,8 +49,8 @@ fr_table_num_ordered_t const fr_connection_states[] = {
 	{ "TIMEOUT",		FR_CONNECTION_STATE_TIMEOUT	},
 	{ "CONNECTED",		FR_CONNECTION_STATE_CONNECTED	},
 	{ "SHUTDOWN",		FR_CONNECTION_STATE_SHUTDOWN	},
-	{ "CLOSED",		FR_CONNECTION_STATE_CLOSED	},
 	{ "FAILED",		FR_CONNECTION_STATE_FAILED	},
+	{ "CLOSED",		FR_CONNECTION_STATE_CLOSED	},
 	{ "HALTED",		FR_CONNECTION_STATE_HALTED	},
 };
 size_t fr_connection_states_len = NUM_ELEMENTS(fr_connection_states);
@@ -487,6 +487,13 @@ static void connection_state_closed_enter(fr_connection_t *conn)
 	 *	with the connection handle.
 	 */
 	WATCH_PRE(conn);
+
+	/*
+	 *	is_closed is for pure paranoia.  If everything
+	 *	is working correctly this state should never
+	 *	be entered if the connection is closed.
+	 */
+	rad_assert(!conn->is_closed);
 	if (conn->close && !conn->is_closed) {
 		HANDLER_BEGIN(conn, conn->close);
 		DEBUG4("Calling close(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
@@ -574,10 +581,10 @@ static void connection_state_shutdown_enter(fr_connection_t *conn)
  *
  * Transition to the FR_CONNECTION_STATE_FAILED state.
  *
- * If the connection we being opened, close, then immediately transition back to init.
- *
  * If the connection was open, or couldn't be opened wait for reconnection_delay before transitioning
  * back to init.
+ *
+ * If no reconnection_delay was set, transition to halted.
  *
  * @param[in] conn	that failed.
  */
@@ -626,6 +633,8 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	switch (prev) {
 	case FR_CONNECTION_STATE_CONNECTED:
 	case FR_CONNECTION_STATE_CONNECTING:
+	case FR_CONNECTION_STATE_TIMEOUT:		/* Timeout means the connection progress past init */
+	case FR_CONNECTION_STATE_SHUTDOWN:		/* Shutdown means the connection failed whilst shutting down */
 		connection_state_closed_enter(conn);
 		break;
 
@@ -665,6 +674,7 @@ static void connection_state_failed_enter(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_INIT:				/* Failed during initialisation */
 	case FR_CONNECTION_STATE_CONNECTED:			/* Failed after connecting */
 	case FR_CONNECTION_STATE_CONNECTING:			/* Failed during connecting */
+	case FR_CONNECTION_STATE_SHUTDOWN:			/* Failed during shutdown */
 		if (conn->reconnection_delay) {
 			DEBUG2("Delaying reconnection by %pVs", fr_box_time_delta(conn->reconnection_delay));
 			if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
@@ -1102,11 +1112,10 @@ void fr_connection_signal_halt(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_CONNECTED:
 	case FR_CONNECTION_STATE_CONNECTING:
 		connection_state_closed_enter(conn);
-	/*
-	 *	Failed connections need closing too
-	 *	else we assert on conn->is_closed
-	 */
+
+	/* FALL-THROUGH */
 	case FR_CONNECTION_STATE_FAILED:
+		rad_assert(conn->is_closed);
 		connection_state_halted_enter(conn);
 		break;
 
