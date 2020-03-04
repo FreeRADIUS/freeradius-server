@@ -536,6 +536,8 @@ static void conn_close(fr_event_list_t *el, void *handle, UNUSED void *uctx)
 	h->fd = -1;
 
 	DEBUG("%s - Connection closed - %s", h->module_name, h->name);
+
+	talloc_free(h);
 }
 
 /** Connection failed
