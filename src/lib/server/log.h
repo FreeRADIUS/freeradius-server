@@ -518,7 +518,12 @@ do {\
  * @param[in] _fmt	Message to prefix hex output with.
  * @param[in] ...	Additional arguments to print.
  */
-#define HEXDUMP(_lvl, _data, _len, _fmt, ...) \
+#define _HEXDUMP(_lvl, _data, _len, _fmt, ...) \
 	if (debug_enabled(L_DBG, _lvl)) do { \
 		fr_log_hex(LOG_DST, L_DBG, __FILE__, __LINE__, _data, _len, _fmt, ## __VA_ARGS__); \
 	} while (0)
+
+#define HEXDUMP1(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_1, _data, _len, _fmt, ## __VA_ARGS__)
+#define HEXDUMP2(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_2, _data, _len, _fmt, ## __VA_ARGS__)
+#define HEXDUMP3(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_3, _data, _len, _fmt, ## __VA_ARGS__)
+#define HEXDUMP4(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_4, _data, _len, _fmt, ## __VA_ARGS__)
