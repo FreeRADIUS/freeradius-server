@@ -255,6 +255,17 @@ static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 	[FR_CODE_PROTOCOL_ERROR]	= RLM_MODULE_HANDLED,
 };
 
+static void		conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int fd,
+						   UNUSED int flags, void *uctx);
+
+static int 		encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, uint8_t id);
+
+static decode_fail_t	decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *response_code,
+			       udp_handle_t *h, REQUEST *request, udp_request_t *u,
+			       uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
+			       uint8_t *data, size_t data_len);
+
+static void		protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t *h);
 
 /** Clear a UDP request, ready for moving or retransmission
  *
@@ -390,6 +401,260 @@ static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 	h->status_request = request;
 }
 
+/** Connection errored
+ *
+ * We were signalled by the event loop that a fatal error occurred on this connection.
+ *
+ * @param[in] el	The event list signalling.
+ * @param[in] fd	that errored.
+ * @param[in] flags	El flags.
+ * @param[in] fd_errno	The nature of the error.
+ * @param[in] uctx	The trunk connection handle (tconn).
+ */
+static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
+{
+	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	udp_handle_t		*h;
+
+	/*
+	 *	Connection must be in the connecting state when this fires
+	 */
+	rad_assert(conn->state == FR_CONNECTION_STATE_CONNECTING);
+
+	h = talloc_get_type_abort(conn->h, udp_handle_t);
+
+	ERROR("%s - Connection %s failed - %s", h->module_name, h->name, fr_syserror(fd_errno));
+
+	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+}
+
+/** Status check timedout
+ *
+ * Setup retries, or fail the connection.
+ */
+static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	udp_handle_t		*h;
+	udp_request_t		*u;
+
+	/*
+	 *	Connection must be in the connecting state when this fires
+	 */
+	rad_assert(conn->state == FR_CONNECTION_STATE_CONNECTING);
+
+	h = talloc_get_type_abort(conn->h, udp_handle_t);
+	u = h->status_u;
+
+	/*
+	 *	We're only interested in contiguous, good, replies.
+	 */
+	u->num_replies = 0;
+
+	switch (fr_retry_next(&u->retry, now)) {
+	case FR_RETRY_MRD:
+		DEBUG("%s - Reached maximum_retransmit_duration, failing status checks",
+		      h->module_name);
+		goto fail;
+
+	case FR_RETRY_MRC:
+		DEBUG("%s - Reached maximum_retransmit_count, failing status checks",
+		      h->module_name);
+	fail:
+		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+		return;
+
+	case FR_RETRY_CONTINUE:
+		if (fr_event_fd_insert(h, el, h->fd, conn_writable_status_check, NULL,
+				       conn_error_status_check, conn) < 0) {
+			PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
+			fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+		}
+		return;
+	}
+
+	rad_assert(0);
+}
+
+/** Send the next status check packet
+ *
+ */
+static void conn_status_check_again(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+
+	if (fr_event_fd_insert(h, el, h->fd, conn_writable_status_check, NULL, conn_error_status_check, conn) < 0) {
+		PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
+		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+	}
+}
+
+/** Read the incoming status-check response.  If it's correct mark the connection as connected
+ *
+ */
+static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	fr_trunk_t		*trunk = h->thread->trunk;
+	rlm_radius_t const 	*inst = h->inst->parent;
+	udp_request_t		*u = h->status_u;
+	ssize_t			slen;
+	VALUE_PAIR		*reply = NULL;
+	uint8_t			code = 0;
+
+	slen = read(h->fd, h->buffer, h->buflen);
+	if (slen == 0) return;
+
+	if (slen < 0) {
+		switch (errno) {
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+		case EWOULDBLOCK:
+#endif
+		case EAGAIN:
+		case EINTR:
+			return;		/* Wait to be signalled again */
+
+		default:
+			break;
+		}
+
+		ERROR("%s - %s failed reading response from socket - %s",
+		      h->module_name, __FUNCTION__, fr_syserror(errno));
+		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+		return;
+	}
+
+	/*
+	 *	Where we just return in this function, we're letting
+	 *	the response timer take care of progressing the
+	 *	connection attempt.
+	 */
+	if (slen < RADIUS_HEADER_LENGTH) {
+		ERROR("%s - Packet too short, expected at least %zu bytes got %zd bytes",
+		      h->module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
+		return;
+	}
+
+	if (u->id != h->buffer[1]) {
+		ERROR("%s - Received response with incorrect or expired ID.  Expected %u, got %u",
+		      h->module_name, u->id, h->buffer[1]);
+		return;
+	}
+
+	if (decode(h, &reply, &code,
+		   h, h->status_request, h->status_u, u->packet + RADIUS_AUTH_VECTOR_OFFSET,
+		   h->buffer, h->buflen) != DECODE_FAIL_NONE) return;
+
+	fr_pair_list_free(&reply);	/* FIXME - Do something with these... */
+
+	/*
+	 *	Process the error, and count this as a success.
+	 *	This is usually used for dynamic configuration
+	 *	on startup.
+	 */
+	if (code == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
+
+	/*
+	 *	Last trunk event was a failure, be more careful about
+	 *	bringing up the connection (require multiple responses).
+	 */
+	if ((trunk->last_failed && (trunk->last_failed > trunk->last_connected)) &&
+	    (u->num_replies < inst->num_to_alive)) {
+		uint32_t msec = fr_time_delta_to_msec(u->retry.next - fr_time());
+
+		/*
+		 *	Leave the timer in place.  This timer is BOTH when we
+		 *	give up on the current status check, AND when we send
+		 *	the next status check.
+		 */
+		DEBUG("%s - Received %u / %u replies for status check, on connection - %s",
+		      h->module_name, u->num_replies, inst->num_to_alive, h->name);
+		DEBUG("%s - Next status check packet will be in %u.%03us",
+		      h->module_name, msec / 1000, msec % 1000);
+
+		/*
+		 *	Set the timer for the next retransmit.
+		 */
+		if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_status_check_again, conn) < 0) {
+			fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+		}
+		return;
+	}
+
+	/*
+	 *	It's alive!
+	 */
+	status_check_reset(h, u);
+
+	DEBUG("%s - Connection open - %s", h->module_name, h->name);
+
+	fr_connection_signal_connected(conn);
+}
+
+/** Send our status-check packet as soon as the connection becomes writable
+ *
+ */
+static void conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	udp_request_t		*u = h->status_u;
+	ssize_t			slen;
+	uint32_t		msec;
+
+	if (!u->retry.start) {
+		u->id = fr_rand() & 0xff;	/* We don't care what the value is here */
+		h->status_checking = true;	/* Ensure this is valid */
+		(void) fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
+
+	/*
+	 *	Status checks can never be retransmitted
+	 *	So increment the ID here.
+	 */
+	} else {
+		u->id++;
+	}
+
+	DEBUG("%s - Sending %s ID %d length %ld over connection %s",
+	      h->module_name, fr_packet_codes[u->code], u->id, u->packet_len, h->name);
+
+	if (encode(h->inst, h->status_request, u, u->id) < 0) {
+	fail:
+		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+		return;
+	}
+	HEXDUMP3(u->packet, u->packet_len, "Encoded packet");
+
+	slen = write(h->fd, u->packet, u->packet_len);
+	if (slen < 0) {
+		ERROR("%s - Failed sending %s ID %d length %ld over connection %s - %s",
+		      h->module_name, fr_packet_codes[u->code], u->id, u->packet_len, h->name, fr_syserror(errno));
+		goto fail;
+	}
+	rad_assert((size_t)slen == u->packet_len);
+
+	/*
+	 *	Switch to waiting on read and insert the event
+	 *	for the response timeout.
+	 */
+	if (fr_event_fd_insert(h, conn->el, h->fd, conn_readable_status_check, NULL, conn_error_status_check, conn) < 0) {
+		PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
+		goto fail;
+	}
+
+ 	msec = fr_time_delta_to_msec(u->retry.rt);
+
+	DEBUG("%s - %s request.  Expecting response within %u.%03us",
+	      h->module_name, (u->retry.count == 1) ? "Originated" : "Retransmitted", msec / 1000, msec % 1000);
+
+	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, conn_status_check_timeout, conn) < 0) {
+		PERROR("%s - Failed inserting timer event", h->module_name);
+		goto fail;
+	}
+}
+
 /** Free a connection handle, closing associated resources
  *
  */
@@ -464,6 +729,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	fd = fr_socket_client_udp(&h->src_ipaddr, &h->src_port, &h->inst->dst_ipaddr, h->inst->dst_port, true);
 	if (fd < 0) {
 		PERROR("%s - Failed opening socket", h->module_name);
+	fail:
 		talloc_free(h);
 		return FR_CONNECTION_STATE_FAILED;
 	}
@@ -471,7 +737,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	/*
 	 *	Set the connection name.
 	 */
-	h->name = fr_asprintf(h, "connecting proto udp local %pV port %u remote %pV port %u",
+	h->name = fr_asprintf(h, "proto udp local %pV port %u remote %pV port %u",
 			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
 			      fr_box_ipaddr(h->inst->dst_ipaddr), h->inst->dst_port);
 
@@ -502,14 +768,33 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	h->fd = fd;
 
 	/*
-	 *	@todo - if all connections are down, then only allow
-	 *	one to be open.  And, start Status-Server messages on
-	 *	that connection.
+	 *	If we're doing status checks, then we want at least
+	 *	one positive response before signalling that the
+	 *	connection is open.
 	 *
-	 *	@todo - connection negotiation via Status-Server.
-	 *	This requires different "signal on fd" functions.
+	 *	To do this we install special I/O handlers that
+	 *	only signal the connection as open once we get a
+	 *	status-check response.
 	 */
-	fr_connection_signal_on_fd(conn, fd);
+	if (h->inst->parent->status_check) {
+		status_check_alloc(conn->el, h);
+
+		/*
+		 *	Start status checking.
+		 *
+		 *	If we've had no recent failures we need exactly
+		 *	one response to bring the connection online,
+		 *	otherwise we need inst->num_to_alive
+		 */
+		if (fr_event_fd_insert(h, conn->el, h->fd, NULL,
+				       conn_writable_status_check, conn_error_status_check, conn) < 0) goto fail;
+	/*
+	 *	If we're not doing status-checks, signal the connection
+	 *	as open as soon as it becomes writable.
+	 */
+	} else {
+		fr_connection_signal_on_fd(conn, fd);
+	}
 
 	*h_out = h;
 
@@ -518,30 +803,6 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	// which connections / home servers are fast / slow.
 
 	return FR_CONNECTION_STATE_CONNECTING;
-}
-
-/** Process notification that fd is open
- *
- */
-static fr_connection_state_t conn_open(fr_event_list_t *el, void *handle, UNUSED void *uctx)
-{
-	udp_handle_t		*h = talloc_get_type_abort(handle, udp_handle_t);
-	rlm_radius_udp_t const *inst = h->inst;
-
-	talloc_const_free(h->name);
-	h->name = fr_asprintf(h, "proto udp local %pV port %u remote %pV port %u",
-			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
-			      fr_box_ipaddr(inst->dst_ipaddr), inst->dst_port);
-
-	DEBUG("%s - Connection open - %s", h->module_name, h->name);
-
-	/*
-	 *	Connection is "active" now.  i.e. we prefer the newly
-	 *	opened connection for sending packets.
-	 */
-	if (h->inst->parent->status_check) status_check_alloc(el, h);
-
-	return FR_CONNECTION_STATE_CONNECTED;
 }
 
 /** Shutdown/close a file descriptor
@@ -596,7 +857,6 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 	conn = fr_connection_alloc(tconn, el,
 				   &(fr_connection_funcs_t){
 					.init = conn_init,
-					.open = conn_open,
 					.close = conn_close,
 					.failed = conn_failed
 				   },
