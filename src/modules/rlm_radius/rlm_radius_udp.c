@@ -138,7 +138,7 @@ struct udp_request_s {
 	uint32_t		priority;		//!< copied from request->async->priority
 	fr_time_t		recv_time;		//!< copied from request->async->recv_time
 
-	int			num_replies;		//!< number of reply packets, sent is in retry.count
+	uint32_t		num_replies;		//!< number of reply packets, sent is in retry.count
 
 	bool			synchronous;		//!< cached from inst->parent->synchronous
 	bool			require_ma;		//!< saved from the original packet.
@@ -1821,7 +1821,8 @@ static void status_check_next(UNUSED fr_event_list_t *el, fr_time_t now, void *u
  */
 static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 {
-	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);;
+	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
+	rlm_radius_t const 	*inst = h->inst->parent;
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 
@@ -1835,10 +1836,7 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	 */
 	if (h->buffer[0] == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
 
-	/*
-	 *	@todo - make this configurable
-	 */
-	if (u->num_replies < 3) {
+	if (u->num_replies < inst->num_to_alive) {
 		uint32_t msec = fr_time_delta_to_msec(u->retry.next - now);
 
 		/*
@@ -1846,7 +1844,8 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 		 *	give up on the current status check, AND when we send
 		 *	the next status check.
 		 */
-		DEBUG("Received %d / 3 replies for status check, on connection - %s", u->num_replies, h->name);
+		DEBUG("Received %d / %u replies for status check, on connection - %s",
+		      u->num_replies, inst->num_to_alive, h->name);
 		DEBUG("Next status check packet will be in %u.%03us", msec / 1000, msec % 1000);
 
 		/*
