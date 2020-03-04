@@ -1286,13 +1286,11 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 	REQUEST			*request = treq->request;
 
+	rad_assert(u->rr);
 	rad_assert(treq->tconn);
 
 	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 
-	/*
-	 *	This call may nuke u->rr
-	 */
 	if (!u->status_check) {
 		check_for_zombie(el, treq->tconn, now);
 	/*
@@ -1302,11 +1300,6 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	} else {
 		u->num_replies = 0;
 	}
-
-	/*
-	 *	Rely on someone else to do the retransmissions.
-	 */
-	if (!u->rr) return;
 
 	switch (fr_retry_next(&u->retry, now)) {
 	/*
