@@ -489,6 +489,8 @@ Platforms:: MacOS, Linux, FreeBSD
 
 Platforms:: Any
 
+---
+
 * Send <<PAP Access-Request>>s at a high rate for 30 minutes.
 ** Record memory usage every 5 minutes.
 ** Ensure memory usage stabilises within 15 minutes and does not continue to increase.
