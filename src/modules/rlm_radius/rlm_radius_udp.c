@@ -1256,7 +1256,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY);
 		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 
-		u->can_retransmit = false;
+		if (u->code == FR_CODE_STATUS_SERVER) u->can_retransmit = false;
 	}
 
 	/*
@@ -1574,11 +1574,12 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	if (!u->status_check) {
 		check_for_zombie(el, treq->tconn, now);
-	/*
-	 *	Reset replies to 0 as we only count
-	 *	contiguous, good, replies.
-	 */
+
 	} else {
+		/*
+		 *	Reset replies to 0 as we only count
+		 *	contiguous, good, replies.
+		 */
 		u->num_replies = 0;
 	}
 
