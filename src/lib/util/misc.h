@@ -62,6 +62,11 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  */
 #define ROUND_UP(_num, _mul)		(((((_num) + ((_mul) - 1))) / (_mul)) * (_mul))
 
+/** Get the ceiling value of integer division
+ *
+ */
+#define ROUND_UP_DIV(_x, _y)	(1 + (((_x) - 1) / (_y)))
+
 /** Skip whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
  *
  * @param[in,out] _p	string to skip over.

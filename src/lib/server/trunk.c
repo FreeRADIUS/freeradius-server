@@ -62,12 +62,6 @@ static fr_time_t test_time(void)
 #define fr_time test_time
 #endif
 
-
-/** Get the ceiling value of integer division
- *
- */
-#define DIVIDE_CEIL(_x, _y)	(1 + (((_x) - 1) / (_y)))
-
 /** Wraps a normal request
  *
  */
@@ -3329,11 +3323,11 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	will that take us below our target threshold.
 		 */
 		if (conn_count > 0) {
-			average = DIVIDE_CEIL(req_count, (conn_count + 1));
+			average = ROUND_UP_DIV(req_count, (conn_count + 1));
 			if (average < trunk->conf.target_req_per_conn) {
 				DEBUG4("Not opening connection - Would leave us below our target requests "
 				       "per connection (now %u, after open %u)",
-				       DIVIDE_CEIL(req_count, conn_count), average);
+				       ROUND_UP_DIV(req_count, conn_count), average);
 				return;
 			}
 		} else {
@@ -3365,7 +3359,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		}
 
 		DEBUG4("Opening connection - Above target requests per connection (now %u, target %u)",
-		       DIVIDE_CEIL(req_count, conn_count), trunk->conf.target_req_per_conn);
+		       ROUND_UP_DIV(req_count, conn_count), trunk->conf.target_req_per_conn);
 		/* last_open set by trunk_connection_spawn */
 		(void)trunk_connection_spawn(trunk, now);
 	}
@@ -3425,15 +3419,15 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	Do the n-1 check, i.e. if we close one connection
 		 *	will that take us above our target threshold.
 		 */
-		average = DIVIDE_CEIL(req_count, (conn_count - 1));
+		average = ROUND_UP_DIV(req_count, (conn_count - 1));
 		if (average > trunk->conf.target_req_per_conn) {
 			DEBUG4("Not closing connection - Would leave us above our target requests per connection "
-			       "(now %u, after close %u)", DIVIDE_CEIL(req_count, conn_count), average);
+			       "(now %u, after close %u)", ROUND_UP_DIV(req_count, conn_count), average);
 			return;
 		}
 
 		DEBUG4("Closing connection - Below target requests per connection (now %u, target %u)",
-		       DIVIDE_CEIL(req_count, conn_count), trunk->conf.target_req_per_conn);
+		       ROUND_UP_DIV(req_count, conn_count), trunk->conf.target_req_per_conn);
 
 	close:
 		if ((trunk->pub.last_closed + trunk->conf.close_delay) > now) {
@@ -3597,7 +3591,7 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	/*
 	 *	Calculate the average
 	 */
-	average = DIVIDE_CEIL(req_count, conn_count);
+	average = ROUND_UP_DIV(req_count, conn_count);
 	if (average > trunk->conf.target_req_per_conn) {
 	above_target:
 		/*
