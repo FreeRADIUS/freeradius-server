@@ -596,7 +596,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 /** Send our status-check packet as soon as the connection becomes writable
  *
  */
-static void conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
