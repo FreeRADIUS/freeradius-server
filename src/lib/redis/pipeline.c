@@ -113,12 +113,12 @@ struct fr_redis_command_set_s {
 	/** @name Callback functions
 	 * @{
  	 */
-	fr_redis_command_set_complete_t complete;//!< Notify the creator of the command set
+	fr_redis_command_set_complete_t complete;	//!< Notify the creator of the command set
 							///< that the command set has executed to
 							///< to completion.  We have results for
 							///< all commands.
 
-	fr_redis_command_set_fail_t	fail;	//!< Notify the creator of the command set
+	fr_redis_command_set_fail_t	fail;		//!< Notify the creator of the command set
 							///< that the command set failed to execute
 							///< to completion.  Partial results will
 							///< be available.
@@ -607,7 +607,7 @@ static void _redis_pipeline_command_set_free(UNUSED REQUEST *request, void *preq
 /** Allocate a new trunk
  *
  * @param[in] cluster_thread	to allocate the trunk for.
- * @param[in] io_conf	Describing the connection to a single REDIS host.
+ * @param[in] io_conf		Describing the connection to a single REDIS host.
  * @return
  *	- On success, a new fr_redis_trunk_t which can be used for pipelining commands.
  *	- NULL on failure.
@@ -638,6 +638,12 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread
 	return rtrunk;
 }
 
+/** Allocate per-thread, per-cluster instance
+ *
+ * This structure represents all the connections for a given thread for a given cluster.
+ * The structures holds the trunk connections to talk to each cluster member.
+ *
+ */
 fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_trunk_conf_t const *tconf)
 {
 	fr_redis_cluster_thread_t *cluster_thread;
