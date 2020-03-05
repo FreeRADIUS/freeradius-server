@@ -2648,23 +2648,26 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 
 /** Connection failed
  *
- * This only deals with connections which failed during connecting
- * for everything else we just use the "on_closed" handler above.
+ * When a connection fails we:
+ * - Re-queue all requests in its backlog
+ * - If there are no active, full, or draining connections, fail all requests in the trunk's backlog.
  */
-static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
+static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, fr_connection_state_t state, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
 
+	/*
+	 *	Need to set this first as it
+	 *	determines whether requests are
+	 *	re-queued or fail outright.
+	 */
 	trunk->pub.last_failed = fr_time();
-
-	bool			need_requeue = false;
 
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_INIT:			/* Failed during handle initialisation */
 	case FR_TRUNK_CONN_CONNECTING:
 		trunk_connection_remove(tconn);
-		rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 		break;
 
 	case FR_TRUNK_CONN_ACTIVE:
@@ -2673,19 +2676,11 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_DRAINING_TO_FREE:
 		trunk_connection_remove(tconn);
-		need_requeue = true;
 		break;
 
 	default:
 		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
 	}
-
-	/*
-	 *	Now *AFTER* the connection has been
-	 *	removed from the active, pool
-	 *	re-enqueue the requests.
-	 */
-	if (need_requeue) trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, true);
 
 	fr_dlist_insert_head(&trunk->failed, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
@@ -2723,6 +2718,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_FULL:
+	case FR_TRUNK_CONN_FAILED:
 	case FR_TRUNK_CONN_INACTIVE:
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_DRAINING_TO_FREE:
@@ -2731,7 +2727,6 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 		break;
 
 	case FR_TRUNK_CONN_CONNECTING:
-	case FR_TRUNK_CONN_FAILED:
 		trunk_connection_remove(tconn);
 		rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 		break;
@@ -3320,7 +3315,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	unavailable.
 		 */
 		if ((trunk->conf.connecting > 0) &&
-		    (fr_trunk_connection_count_by_state(trunk, FR_CONNECTION_STATE_CONNECTING) >=
+		    (fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) >=
 		     trunk->conf.connecting)) {
 			DEBUG4("Not opening connection - Too many (%u) connections in the connecting state",
 			       trunk->conf.connecting);
