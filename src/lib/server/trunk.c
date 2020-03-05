@@ -284,7 +284,6 @@ static fr_table_num_ordered_t const fr_trunk_connection_states[] = {
 	{ "ACTIVE",		FR_TRUNK_CONN_ACTIVE		},
 	{ "FULL",		FR_TRUNK_CONN_FULL		},
 	{ "INACTIVE",		FR_TRUNK_CONN_INACTIVE		},
-	{ "FAILED",		FR_TRUNK_CONN_FAILED		},
 	{ "CLOSED",		FR_TRUNK_CONN_CLOSED		},
 	{ "DRAINING",		FR_TRUNK_CONN_DRAINING		},
 	{ "DRAINING-TO-FREE",	FR_TRUNK_CONN_DRAINING_TO_FREE	}
@@ -2085,7 +2084,6 @@ uint16_t fr_trunk_connection_count_by_state(fr_trunk_t *trunk, int conn_state)
 	if (conn_state & FR_TRUNK_CONN_ACTIVE) count += fr_heap_num_elements(trunk->active);
 	if (conn_state & FR_TRUNK_CONN_FULL) count += fr_dlist_num_elements(&trunk->full);
 	if (conn_state & FR_TRUNK_CONN_INACTIVE) count += fr_dlist_num_elements(&trunk->inactive);
-	if (conn_state & FR_TRUNK_CONN_FAILED) count += fr_dlist_num_elements(&trunk->failed);
 	if (conn_state & FR_TRUNK_CONN_CLOSED) count += fr_dlist_num_elements(&trunk->closed);
 	if (conn_state & FR_TRUNK_CONN_DRAINING) count += fr_dlist_num_elements(&trunk->draining);
 	if (conn_state & FR_TRUNK_CONN_DRAINING_TO_FREE) count += fr_dlist_num_elements(&trunk->draining_to_free);
@@ -2279,10 +2277,6 @@ static void trunk_connection_remove(fr_trunk_connection_t *tconn)
 
 	case FR_TRUNK_CONN_CONNECTING:
 		fr_dlist_remove(&trunk->connecting, tconn);
-		return;
-
-	case FR_TRUNK_CONN_FAILED:
-		fr_dlist_remove(&trunk->failed, tconn);
 		return;
 
 	case FR_TRUNK_CONN_CLOSED:
@@ -2495,7 +2489,6 @@ static void _trunk_connection_on_init(UNUSED fr_connection_t *conn, UNUSED fr_co
 	case FR_TRUNK_CONN_HALTED:
 		break;
 
-	case FR_TRUNK_CONN_FAILED:
 	case FR_TRUNK_CONN_CLOSED:
 		trunk_connection_remove(tconn);
 		break;
@@ -2526,15 +2519,6 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_INIT:
 	case FR_TRUNK_CONN_CLOSED:
-	/*
-	 *	Can happen if connection failed
-	 *	on initialisation, and transitioned
-	 *	from CONNECTING->FAILED, in which
-	 *	case it'll transition from
-	 *	FAILED->CONNECTING without going
-	 *	via CLOSED.
-	 */
-	case FR_TRUNK_CONN_FAILED:
 		trunk_connection_remove(tconn);
 		break;
 
@@ -2648,9 +2632,6 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 
 /** Connection failed
  *
- * When a connection fails we:
- * - Re-queue all requests in its backlog
- * - If there are no active, full, or draining connections, fail all requests in the trunk's backlog.
  */
 static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, fr_connection_state_t state, void *uctx)
 {
@@ -2663,27 +2644,6 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, fr_connect
 	 *	re-queued or fail outright.
 	 */
 	trunk->pub.last_failed = fr_time();
-
-	switch (tconn->state) {
-	case FR_TRUNK_CONN_INIT:			/* Failed during handle initialisation */
-	case FR_TRUNK_CONN_CONNECTING:
-		trunk_connection_remove(tconn);
-		break;
-
-	case FR_TRUNK_CONN_ACTIVE:
-	case FR_TRUNK_CONN_FULL:
-	case FR_TRUNK_CONN_INACTIVE:
-	case FR_TRUNK_CONN_DRAINING:
-	case FR_TRUNK_CONN_DRAINING_TO_FREE:
-		trunk_connection_remove(tconn);
-		break;
-
-	default:
-		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
-	}
-
-	fr_dlist_insert_head(&trunk->failed, tconn);
-	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
 
 	/*
 	 *	See what the state of the trunk is
@@ -2718,7 +2678,6 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	switch (tconn->state) {
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_FULL:
-	case FR_TRUNK_CONN_FAILED:
 	case FR_TRUNK_CONN_INACTIVE:
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_DRAINING_TO_FREE:
@@ -2799,7 +2758,6 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 	/* FALL-THROUGH */
 	case FR_TRUNK_CONN_INIT:
 	case FR_TRUNK_CONN_CONNECTING:
-	case FR_TRUNK_CONN_FAILED:
 	case FR_TRUNK_CONN_CLOSED:
 		trunk_connection_remove(tconn);
 		break;
@@ -3750,7 +3708,6 @@ do { \
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_INIT, init);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_FULL, full);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_INACTIVE, inactive);
-	RECONNECT_BY_STATE(FR_TRUNK_CONN_FAILED, failed);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_CLOSED, closed);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_DRAINING, draining);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_DRAINING_TO_FREE, draining_to_free);
@@ -3857,7 +3814,6 @@ static int _trunk_free(fr_trunk_t *trunk)
 	while ((tconn = fr_dlist_head(&trunk->connecting))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->full))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->inactive))) fr_connection_signal_halt(tconn->pub.conn);
-	while ((tconn = fr_dlist_head(&trunk->failed))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->closed))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->draining))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->draining_to_free))) fr_connection_signal_halt(tconn->pub.conn);
@@ -3947,7 +3903,6 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	fr_dlist_talloc_init(&trunk->connecting, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->full, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->inactive, fr_trunk_connection_t, entry);
-	fr_dlist_talloc_init(&trunk->failed, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->closed, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->draining, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->draining_to_free, fr_trunk_connection_t, entry);
