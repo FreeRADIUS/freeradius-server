@@ -48,7 +48,7 @@ static CONF_PARSER const status_check_update_config[] = {
 	{ FR_CONF_OFFSET("update", FR_TYPE_SUBSECTION | FR_TYPE_REQUIRED, rlm_radius_t, status_check_map),
 	  .ident2 = CF_IDENT_ANY,
 	  .func = status_check_update_parse },
-	{ FR_CONF_OFFSET("num_to_alive", FR_TYPE_UINT32, rlm_radius_t, num_to_alive), .dflt = STRINGIFY(3) },
+	{ FR_CONF_OFFSET("num_answers_to_alive", FR_TYPE_UINT32, rlm_radius_t, num_answers_to_alive), .dflt = STRINGIFY(3) },
 
 	CONF_PARSER_TERMINATOR
 };

@@ -561,7 +561,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 *	bringing up the connection (require multiple responses).
 	 */
 	if ((trunk->last_failed && (trunk->last_failed > trunk->last_connected)) &&
-	    (u->num_replies < inst->num_to_alive)) {
+	    (u->num_replies < inst->num_answers_to_alive)) {
 		uint32_t msec = fr_time_delta_to_msec(u->retry.next - fr_time());
 
 		/*
@@ -570,7 +570,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		 *	the next status check.
 		 */
 		DEBUG("%s - Received %u / %u replies for status check, on connection - %s",
-		      h->module_name, u->num_replies, inst->num_to_alive, h->name);
+		      h->module_name, u->num_replies, inst->num_answers_to_alive, h->name);
 		DEBUG("%s - Next status check packet will be in %u.%03us",
 		      h->module_name, msec / 1000, msec % 1000);
 
@@ -784,7 +784,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 		 *
 		 *	If we've had no recent failures we need exactly
 		 *	one response to bring the connection online,
-		 *	otherwise we need inst->num_to_alive
+		 *	otherwise we need inst->num_answers_to_alive
 		 */
 		if (fr_event_fd_insert(h, conn->el, h->fd, NULL,
 				       conn_writable_status_check, conn_error_status_check, conn) < 0) goto fail;
@@ -2101,11 +2101,11 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	 */
 	if (h->buffer[0] == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
 
-	if (u->num_replies < inst->num_to_alive) {
+	if (u->num_replies < inst->num_answers_to_alive) {
 		uint32_t msec = fr_time_delta_to_msec(u->retry.next - now);
 
 		DEBUG("Received %d / %u replies for status check, on connection - %s",
-		      u->num_replies, inst->num_to_alive, h->name);
+		      u->num_replies, inst->num_answers_to_alive, h->name);
 		DEBUG("Next status check packet will be in %u.%03us", msec / 1000, msec % 1000);
 
 		/*
