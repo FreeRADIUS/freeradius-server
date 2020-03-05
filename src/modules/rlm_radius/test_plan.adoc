@@ -30,7 +30,7 @@ Start with a default rlm_radius configuration for each test.  Don't apply config
 
 ====
 
-== Test packets - Sent outbound to destination
+== Test packets - Sent to Home Server
 === Access-Request
 ==== PAP Access-Request
 
