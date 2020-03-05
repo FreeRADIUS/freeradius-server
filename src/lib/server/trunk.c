@@ -2689,6 +2689,19 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, UNUSED fr_
 
 	fr_dlist_insert_head(&trunk->failed, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FAILED);
+
+	/*
+	 *	See what the state of the trunk is
+	 *	if there are no connections that could
+	 *	potentially accept requests in the near
+	 *	future, then fail all the requests in the
+	 *	trunk backlog.
+	 */
+	if ((state == FR_CONNECTION_STATE_CONNECTED) &&
+	    (fr_trunk_connection_count_by_state(trunk,
+						(FR_TRUNK_CONN_ACTIVE |
+						 FR_TRUNK_CONN_FULL |
+						 FR_TRUNK_CONN_DRAINING)) == 0)) trunk_backlog_drain(trunk);
 }
 
 /** Connection failed after it was connected
