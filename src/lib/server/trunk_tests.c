@@ -113,7 +113,7 @@ static void test_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *con
 		/*
 		 *	Demuxer can handle both normal requests and cancelled ones
 		 */
-		switch (preq->treq->state) {
+		switch (preq->treq->pub.state) {
 		case FR_TRUNK_REQUEST_STATE_CANCEL:
 			break;		/* Hack - just ignore it */
 

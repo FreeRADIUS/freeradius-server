@@ -285,6 +285,8 @@ struct fr_trunk_pub_s {
  * the trunk API.
  */
 struct fr_trunk_request_pub_s {
+	fr_trunk_request_state_t _CONST state;		//!< Which list the request is now located in.
+
 	fr_trunk_t		* _CONST trunk;		//!< Trunk this request belongs to.
 
 	fr_trunk_connection_t	* _CONST tconn;		//!< Connection this request belongs to.
