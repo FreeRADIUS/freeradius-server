@@ -1453,9 +1453,11 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
  *	 clean up a connection in this state when it's run on re-queue, and then the caller
  *	 may try and access a now freed connection.
  *
- * @param[in] tconn	to move requests off of.
- * @param[in] states	Only move requests in this state.
- * @param[in] max	The maximum number of requests to dequeue. 0 for unlimited.
+ * @param[in] tconn		to move requests off of.
+ * @param[in] states		Only move requests in this state.
+ * @param[in] max		The maximum number of requests to dequeue. 0 for unlimited.
+ * @param[in] fail_bound	If true causes any requests bound to the connection to fail.
+ *      			If false bound requests will not be moved.
  * @return The number of requests requeued.
  */
 uint64_t fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max, bool fail_bound)
