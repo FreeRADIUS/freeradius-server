@@ -2381,6 +2381,15 @@ static void request_fail(REQUEST *request, void *preq, void *rctx, UNUSED void *
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 
+	/*
+	 *	Requests should normally have their ID freed.  But
+	 *	sometimes we can try to requeue the request using the
+	 *	same ID, BUT the trunk code decides that the
+	 *	connection is down.  In that case, the ID will remain,
+	 *	and the trunk will call this function.  So we need to clean it up.
+	 */
+	if (u->rr) (void) radius_track_delete(&u->rr);
+
 	if (u->status_check) return;
 
 	r->rcode = RLM_MODULE_FAIL;
