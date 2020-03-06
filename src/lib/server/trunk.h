@@ -307,6 +307,8 @@ struct fr_trunk_request_pub_s {
  * the trunk API.
  */
 struct fr_trunk_connection_pub_s {
+	fr_trunk_connection_state_t _CONST state;	//!< What state the connection is in.
+
 	fr_connection_t		* _CONST conn;		//!< The underlying connection.
 
 	fr_trunk_t		* _CONST trunk;		//!< Trunk this connection belongs to.
