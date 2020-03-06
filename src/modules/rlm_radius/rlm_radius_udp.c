@@ -1567,6 +1567,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 	REQUEST			*request = treq->request;
 
+	rad_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
 	rad_assert(u->rr);
 	rad_assert(treq->tconn);
 
