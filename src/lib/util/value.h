@@ -501,6 +501,17 @@ size_t		fr_value_box_network_length(fr_value_box_t *value);
 
 ssize_t		fr_value_box_to_network(size_t *need, uint8_t *out, size_t outlen, fr_value_box_t const *value);
 
+/** Special value to indicate fr_value_box_from_network experienced a general error
+ */
+#define FR_VALUE_BOX_NET_ERROR	SSIZE_MIN
+
+/** Special value to indicate fr_value_box_from_network hit an out of memory error
+ */
+#define FR_VALUE_BOX_NET_OOM	(FR_VALUE_BOX_NET_ERROR + 1)
+
+/** Special value to ensure other encoding/decoding errors don't overlap
+ */
+#define FR_VALUE_BOX_NET_MAX	(FR_VALUE_BOX_NET_OOM + 1)
 ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
 					  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
 				  	  uint8_t const *src, size_t len, bool tainted);

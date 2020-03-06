@@ -31,7 +31,7 @@
 
 /** Encoder skipped encoding an attribute
  */
-#define PAIR_ENCODE_SKIPPED		SSIZE_MIN + 1
+#define PAIR_ENCODE_SKIPPED	SSIZE_MIN + 1
 
 /** Skipped encoding attribute
  */
@@ -45,11 +45,11 @@
 
 /** Fatal error - Out of memory
  */
-#define PAIR_DECODE_OOM		SSIZE_MIN + 1
+#define PAIR_DECODE_OOM		FR_VALUE_BOX_NET_OOM
 
 /** Fatal error - Failed decoding the packet
  */
-#define PAIR_DECODE_FATAL_ERROR	SSIZE_MIN
+#define PAIR_DECODE_FATAL_ERROR	FR_VALUE_BOX_NET_ERROR
 
 /** @} */
 

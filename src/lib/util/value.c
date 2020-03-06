@@ -1089,11 +1089,11 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	unsupported:
 		fr_strerror_printf("Cannot encode type \"%s\"",
 				   fr_table_str_by_value(fr_value_box_type_table, value->type, "<INVALID>"));
-		return -1;
+		return FR_VALUE_BOX_NET_ERROR;
 	}
 
 	/*
-	 *	Fixed type would overflow dstput buffer
+	 *	Fixed type would overflow output buffer
 	 */
 	if (max > dst_len) {
 		if (need) *need = max;
@@ -1331,7 +1331,8 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- >= 0 The number of bytes consumed.
- *	- <0 on error.
+ *	- <0 - The negative offset where the error occurred.
+ *	- FR_VALUE_BOX_NET_OOM (negative value) - Out of memory.
  */
 ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
@@ -1349,23 +1350,23 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				   "Expected length >= %zu bytes, got %zu bytes",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"),
 				   min, len);
-		return -1;
+		return -(len);
 	}
 	if (len > max) {
 		fr_strerror_printf("Found trailing garbage parsing type \"%s\". "
 				   "Expected length <= %zu bytes, got %zu bytes",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"),
 				   max, len);
-		return -1;
+		return -(max);
 	}
 
 	switch (type) {
 	case FR_TYPE_STRING:
-		if (fr_value_box_bstrndup(ctx, dst, enumv, (char const *)src, len, tainted) < 0) return -1;
+		if (fr_value_box_bstrndup(ctx, dst, enumv, (char const *)src, len, tainted) < 0) return FR_VALUE_BOX_NET_OOM;
 		return len;
 
 	case FR_TYPE_OCTETS:
-		if (fr_value_box_memcpy(ctx, dst, enumv, src, len, tainted) < 0) return -1;
+		if (fr_value_box_memcpy(ctx, dst, enumv, src, len, tainted) < 0) return FR_VALUE_BOX_NET_OOM;
 		return len;
 
 	/*
@@ -1383,7 +1384,6 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		dst->vb_ip.prefix = *p++;
 		memcpy(&dst->vb_ip.addr.v4, p, sizeof(dst->vb_ip.addr.v4));
 		dst->vb_ip.scope_id = 0;	/* init even if it's unused */
-
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
@@ -1448,7 +1448,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		 *	Input data doesn't match what we were told we
 		 *	need.
 		 */
-		if (len != length) return -1;
+		if (len != length) return (len > length) ? -(length) : -(len);
 
 		/*
 		 *	Just loop over the input data until we reach
@@ -1501,7 +1501,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		 *	Input data doesn't match what we were told we
 		 *	need.
 		 */
-		if (len != length) return -1;
+		if (len != length) return (len > length) ? -(length) : -(len);
 
 		/*
 		 *	Just loop over the input data until we reach
