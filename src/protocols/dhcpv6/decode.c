@@ -75,7 +75,7 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t
 	if (!vp) return -1;
 
 	if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
-		fr_pair_list_free(&vp);
+		talloc_free(vp);
 		fr_dict_unknown_free(&da);
 		return -1;
 	}
@@ -193,7 +193,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		if (!vp) return -1;
 
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
-			fr_pair_list_free(&vp);
+			talloc_free(vp);
 			goto raw;
 		}
 		break;
@@ -210,7 +210,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		if (!vp) return -1;
 
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
-			fr_pair_list_free(&vp);
+			talloc_free(vp);
 			goto raw;
 		}
 		vp->vp_date += ((fr_time_t) DHCPV6_DATE_OFFSET) * NSEC;
@@ -389,7 +389,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 		 */
 		rcode = fr_dns_label_to_value_box(vp, &vp->data, data, data_len, data + total, true);
 		if (rcode <= 0) {
-			fr_pair_list_free(&vp);
+			talloc_free(vp);
 			goto raw;
 		}
 
