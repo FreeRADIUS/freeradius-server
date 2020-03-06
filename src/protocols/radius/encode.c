@@ -169,12 +169,13 @@ static void encode_password(uint8_t *out, ssize_t *outlen, uint8_t const *input,
 
 static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 				   uint8_t const *input, size_t inlen, size_t freespace,
-				   char const *secret, uint8_t const *vector)
+				   void *encoder_ctx)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
 	size_t		i, n;
 	size_t		encrypted_len;
+	fr_radius_ctx_t	*packet_ctx = encoder_ctx;
 
 	/*
 	 *	The password gets encoded with a 1-byte "length"
@@ -233,10 +234,10 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	md5_ctx = fr_md5_ctx_alloc(false);
 	md5_ctx_old = fr_md5_ctx_alloc(true);
 
-	fr_md5_update(md5_ctx, (uint8_t const *) secret, talloc_array_length(secret) - 1);
+	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->secret, talloc_array_length(packet_ctx->secret) - 1);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);
 
-	fr_md5_update(md5_ctx, vector, RADIUS_AUTH_VECTOR_LENGTH);
+	fr_md5_update(md5_ctx, packet_ctx->vector, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, &out[0], 2);
 
 	for (n = 0; n < encrypted_len; n += AUTH_PASS_LEN) {
@@ -584,7 +585,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		if (offset) ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
 
 		encode_tunnel_password(ptr + offset, &len, data, len,
-				       outlen - offset, packet_ctx->secret, packet_ctx->vector);
+				       outlen - offset, packet_ctx);
 		len += offset;
 		break;
 
