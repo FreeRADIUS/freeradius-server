@@ -147,10 +147,6 @@ typedef struct {
 /*
  *	protocols/radius/encode.c
  */
-int		fr_radius_encode_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
-
-int		fr_radius_encode_tunnel_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
-
 void		fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
 					       RADIUS_PACKET *packet, uint8_t id,
 					       char const *password, size_t password_len) CC_HINT(nonnull(1,2,4));
