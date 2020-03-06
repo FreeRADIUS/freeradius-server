@@ -44,12 +44,24 @@ typedef struct {
 	uint32_t randc;
 } fr_randctx;
 
+/** Smaller fast random number generator.
+ *
+ *  From George Marsaglia's Multiply with Carry (MWC) algorithm.
+ *
+ *  The two seeds here should be initialized by calling fr_rand(),
+ *  or for tests, via some static values.
+ */
+typedef struct {
+	uint32_t a, b;
+} fr_fast_rand_t;
+
 void		fr_isaac(fr_randctx *ctx);
 void		fr_rand_init(fr_randctx *ctx, int flag);
 uint32_t	fr_rand(void);	/* like rand(), but better. */
 void		fr_rand_buffer(void *start, size_t length) CC_HINT(nonnull);
 void		fr_rand_str(uint8_t *out, size_t len, char class);
 void		fr_rand_seed(void const *, size_t ); /* seed the random pool */
+uint32_t	fr_fast_rand(fr_fast_rand_t *ctx);
 
 #ifdef __cplusplus
 }
