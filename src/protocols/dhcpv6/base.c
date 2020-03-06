@@ -566,7 +566,7 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	while ((p < end) && (fr_cursor_current(&cursor) != NULL)) {
 		slen = fr_dhcpv6_encode_option(p, end - p, &cursor, &packet_ctx);
-		if (slen == PAIR_ENCODE_SKIP) continue;
+		if (slen == PAIR_ENCODE_SKIPPED) continue;
 
 		if (slen < 0) return slen - (p - packet);
 

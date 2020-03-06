@@ -192,7 +192,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	 */
 	if (unlikely(inlen % 4)) {
 		fr_strerror_printf("%s: Input data length is not a multiple of 4", __FUNCTION__);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	total_len = (inlen + (block_size - 1)) & ~(block_size - 1);	/* Round input length to block size (16) */
@@ -219,7 +219,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	evp_ctx = EVP_CIPHER_CTX_new();
 	if (!evp_ctx) {
 		tls_strerror_printf("Failed allocating EVP context");
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, evp_cipher, NULL,
@@ -228,7 +228,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	error:
 		talloc_free(encr);
 		EVP_CIPHER_CTX_free(evp_ctx);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	encr = talloc_array(NULL, uint8_t, total_len);
@@ -308,19 +308,19 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	if (unlikely(tlv_stack[depth + 1] != NULL)) {
 		fr_strerror_printf("%s: Encoding value but not at top of stack", __FUNCTION__);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (unlikely(vp->da != da)) {
 		fr_strerror_printf("%s: Top of stack does not match vp->da", __FUNCTION__);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 
 	default:
 		break;
@@ -347,7 +347,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
 					   "but value was %zu bytes", __FUNCTION__,
 					   da->name, (size_t)da->flags.length, vp->vp_length);
-			return PAIR_ENCODE_ERROR;
+			return PAIR_ENCODE_FATAL_ERROR;
 		}
 		memcpy(packet_ctx->iv, vp->vp_octets, sizeof(packet_ctx->iv));
 		packet_ctx->iv_included = true;
@@ -376,7 +376,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		if ((vp->vp_length < 4) || (vp->vp_length > 16)) {
 			fr_strerror_printf("%s: AKA-RES Length must be between 4-16 bytes, got %zu bytes",
 					   __FUNCTION__, vp->vp_length);
-			return PAIR_ENCODE_ERROR;
+			return PAIR_ENCODE_FATAL_ERROR;
 		}
 
 		CHECK_FREESPACE(outlen, vp->vp_length + 2);
@@ -455,7 +455,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
 					   "but value was %zu bytes", __FUNCTION__,
 					   vp->da->name, (size_t)vp->da->flags.length, vp->vp_length);
-			return PAIR_ENCODE_ERROR;
+			return PAIR_ENCODE_FATAL_ERROR;
 		}
 
 		memcpy(p, &actual_len, sizeof(actual_len));		/* Big endian real string length */
@@ -484,7 +484,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 				fr_strerror_printf("%s: Attribute \"%s\" needs a value of <= %zu bytes, "
 						   "but value was %zu bytes", __FUNCTION__,
 						   vp->da->name, (size_t)vp->da->flags.length, vp->vp_length);
-				return PAIR_ENCODE_ERROR;
+				return PAIR_ENCODE_FATAL_ERROR;
 			}
 
 			/*
@@ -575,7 +575,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	default:
 		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 done:
@@ -625,7 +625,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 		if (!da->flags.length) {
 			fr_strerror_printf("Can't encode array type attribute \"%s\" as it does not "
 					   "have a fixed length", da->name);
-			return PAIR_ENCODE_ERROR;
+			return PAIR_ENCODE_FATAL_ERROR;
 		}
 		element_len = da->flags.length;
 	} else {
@@ -698,14 +698,14 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 
 	default:
 		if (((fr_dict_vendor_num_by_da(tlv_stack[depth]) == 0) && (tlv_stack[depth]->attr == 0)) ||
 		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
 					   tlv_stack[depth]->attr);
-			return PAIR_ENCODE_ERROR;
+			return PAIR_ENCODE_FATAL_ERROR;
 		}
 		break;
 	}
@@ -808,7 +808,7 @@ static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
 	 */
 	if (!da->flags.extra && da->flags.subtype) {
 		slen = encode_encrypted_value(value, end - value, value, p - value, encoder_ctx);
-		if (slen < 0) return PAIR_ENCODE_ERROR;
+		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 
 		p = value + slen;
 	}
@@ -833,12 +833,12 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	if (tlv_stack[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (!tlv_stack[depth + 1]) {
 		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*
@@ -886,7 +886,7 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 	fr_dict_attr_t const	*da = NULL;
 	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
-	if (!cursor || !out) return PAIR_ENCODE_ERROR;
+	if (!cursor || !out) return PAIR_ENCODE_FATAL_ERROR;
 
 	CHECK_FREESPACE(outlen, 4);		/* Attributes lengths are always multiples of 4 */
 
@@ -898,7 +898,7 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",
 				   __FUNCTION__, vp->da->depth, FR_DICT_MAX_TLV_STACK);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (vp->da->attr == FR_MAC) {
@@ -950,7 +950,7 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 	 */
 	if (fr_cursor_current(cursor) == vp) {
 		fr_strerror_printf("%s: Nested attribute structure too large to encode", __FUNCTION__);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	return slen;
@@ -979,7 +979,7 @@ ssize_t fr_aka_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_
 	vp = fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_SUBTYPE, TAG_ANY);
 	if (!vp) {
 		REDEBUG("Missing subtype attribute");
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 	subtype = vp->vp_uint16;
 
@@ -1044,7 +1044,7 @@ ssize_t fr_aka_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_
 		if (slen < 0) {
 		error:
 			talloc_free(buff);
-			return PAIR_ENCODE_ERROR;
+			return PAIR_ENCODE_FATAL_ERROR;
 		}
 		p += slen;
 		rad_assert(p < end);	/* We messed up a check somewhere in the encoder */

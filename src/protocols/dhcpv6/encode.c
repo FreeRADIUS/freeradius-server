@@ -142,12 +142,12 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 	if (tlv_stack[depth]->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (!tlv_stack[depth + 1]) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	return fr_struct_to_network(out, outlen, tlv_stack, depth, cursor, encoder_ctx, encode_value);
@@ -195,19 +195,19 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (tlv_stack[depth + 1] != NULL) {
 		fr_strerror_printf("%s: Encoding value but not at top of stack", __FUNCTION__);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (vp->da != da) {
 		fr_strerror_printf("%s: Top of stack does not match vp->da", __FUNCTION__);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 
 	default:
 		break;
@@ -240,7 +240,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			/*
 			 *	@todo - check for free space, etc.
 			 */
-			if (slen <= 0) return PAIR_ENCODE_ERROR;
+			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
 
 			/*
 			 *	RFC 4704 says "FQDN", unless it's a
@@ -393,7 +393,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_TIME_DELTA:
 		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
 		slen = fr_value_box_to_network(NULL, p, end - p, &vp->data);
-		if (slen < 0) return PAIR_ENCODE_ERROR;
+		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 		p += slen;
 		break;
 
@@ -439,9 +439,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			while (fr_cursor_current(&child_cursor) != NULL) {
 				child = fr_cursor_current(&child_cursor);
 				slen = fr_dhcpv6_encode_option(p, end - p, &child_cursor, encoder_ctx);
-				if (slen == PAIR_ENCODE_SKIP) continue;
+				if (slen == PAIR_ENCODE_SKIPPED) continue;
 
-				if (slen < 0) return PAIR_ENCODE_ERROR;
+				if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 				if (slen == 0) break;
 
 				p += slen;
@@ -466,7 +466,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_MAX:
 		fr_strerror_printf("Unsupported attribute type %s",
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*
@@ -490,7 +490,7 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 
 	if (!fr_cond_assert_msg(da->flags.array,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
-				__FUNCTION__, da->name)) return PAIR_ENCODE_ERROR;
+				__FUNCTION__, da->name)) return PAIR_ENCODE_FATAL_ERROR;
 
 	/*
 	 *	DNS labels have internalized length, so we don't need
@@ -507,7 +507,7 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 			 *	https://tools.ietf.org/html/rfc8415#section-10
 			 */
 			slen = fr_dns_label_from_value_box(NULL, out, outlen, p, false, &vp->data);
-			if (slen <= 0) return PAIR_ENCODE_ERROR;
+			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
 
 			p += slen;
 			vp = next_encodable(cursor, encoder_ctx);
@@ -537,7 +537,7 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 
 		slen = encode_value(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
 		if (slen < 0) return slen;
-		if (!fr_cond_assert(slen < UINT16_MAX)) return PAIR_ENCODE_ERROR;
+		if (!fr_cond_assert(slen < UINT16_MAX)) return PAIR_ENCODE_FATAL_ERROR;
 
 		/*
 		 *	Ensure we always create elements of the correct length.
@@ -675,12 +675,12 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	if (tlv_stack[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, tlv_stack[depth]->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (!tlv_stack[depth + 1]) {
 		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	CHECK_FREESPACE(outlen, OPT_HDR_LEN);
@@ -739,7 +739,7 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 	if (da->type != FR_TYPE_VSA) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*
@@ -757,7 +757,7 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 	if (dv->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, dv->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*
@@ -837,7 +837,7 @@ ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	if (vp->da->flags.internal) {
 		fr_strerror_printf("Attribute \"%s\" is not a DHCPv6 option", vp->da->name);
 		fr_cursor_next(cursor);
-		return PAIR_ENCODE_SKIP;
+		return PAIR_ENCODE_SKIPPED;
 	}
 
 	fr_proto_tlv_stack_build(tlv_stack, vp->da);

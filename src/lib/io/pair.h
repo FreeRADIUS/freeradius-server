@@ -21,12 +21,37 @@
  * @file io/pair.h
  * @brief Encoder/decoder library interface
  *
- * @copyright 2017 The FreeRADIUS project
+ * @copyright 2017-2020 The FreeRADIUS project
  */
 #include <freeradius-devel/util/value.h>
 
-#define PAIR_ENCODE_SKIP	SSIZE_MIN + 1
-#define PAIR_ENCODE_ERROR	SSIZE_MIN
+/** @name Encoder errors
+ * @{
+ */
+
+/** Encoder skipped encoding an attribute
+ */
+#define PAIR_ENCODE_SKIPPED		SSIZE_MIN + 1
+
+/** Skipped encoding attribute
+ */
+#define PAIR_ENCODE_FATAL_ERROR	SSIZE_MIN
+
+/** @} */
+
+/** @name Decode errors
+ * @{
+ */
+
+/** Fatal error - Out of memory
+ */
+#define PAIR_DECODE_OOM		SSIZE_MIN + 1
+
+/** Fatal error - Failed decoding the packet
+ */
+#define PAIR_DECODE_FATAL_ERROR	SSIZE_MIN
+
+/** @} */
 
 /** Generic interface for encoding one or more VALUE_PAIRs
  *
@@ -50,8 +75,8 @@
  * @param[in] cursor		Cursor containing the list of attributes to process.
  * @param[in] encoder_ctx	Any encoder specific data such as secrets or configurables.
  * @return
- *	- PAIR_ENCODE_SKIP - The current pair is not valid for encoding and should be skipped.
- *	- PAIR_ENCODE_ERROR - Encoding failed in a fatal way. Encoding the packet should be
+ *	- PAIR_ENCODE_SKIPPED - The current pair is not valid for encoding and should be skipped.
+ *	- PAIR_ENCODE_FATAL_ERROR - Encoding failed in a fatal way. Encoding the packet should be
  *	  aborted in its entirety.
  *	- <0 - The encoder ran out of space and returned the number of bytes as a negative
  *	  integer that would be required to encode the attribute.

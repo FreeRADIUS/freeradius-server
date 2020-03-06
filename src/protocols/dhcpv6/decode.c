@@ -274,7 +274,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 
 	if (!fr_cond_assert_msg(parent->flags.array,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
-				__FUNCTION__, parent->name)) return PAIR_ENCODE_ERROR;
+				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
 	/*
 	 *	Fixed-size fields get decoded with a simple decoder.
@@ -414,7 +414,7 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const
 
 	if (!fr_cond_assert_msg((parent->type == FR_TYPE_TLV || (parent->type == FR_TYPE_VENDOR)),
 				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'tlv'",
-				__FUNCTION__, parent->name)) return PAIR_ENCODE_ERROR;
+				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 	p = data;
 	end = data + data_len;
 
@@ -449,7 +449,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const 
 
 	if (!fr_cond_assert_msg(parent->type == FR_TYPE_VSA,
 				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'vsa'",
-				__FUNCTION__, parent->name)) return PAIR_ENCODE_ERROR;
+				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
 	/*
 	 *	Enterprise code plus at least one option header
