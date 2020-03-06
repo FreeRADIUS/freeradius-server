@@ -261,7 +261,7 @@ static inline uint16_t fr_ntohs(uint8_t const data[static sizeof(uint16_t)])
  * @param[in] data	To convert to a 32bit unsigned integer of native endianness.
  * @return a 32 bit unsigned integer of native endianness.
  */
-static inline uint32_tfr_ntohl(uint8_t const data[static sizeof(uint32_t)])
+static inline uint32_t fr_ntohl(uint8_t const data[static sizeof(uint32_t)])
 {
 	return ((uint32_t)fr_ntohs(data) << 16) | fr_ntohs(data + sizeof(uint16_t));
 }
