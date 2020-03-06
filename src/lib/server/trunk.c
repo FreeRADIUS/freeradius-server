@@ -1979,6 +1979,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
  * @return
  *	- FR_TRUNK_ENQUEUE_OK.
  *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE - Connection cannot service requests.
+ *	- FR_TRUNK_ENQUEUE_FAIL - Request isn't in a valid state to be reassigned.
  */
 fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 {
@@ -1989,8 +1990,20 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 		return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
 	}
 
-	trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
-	trunk_request_enter_pending(treq, tconn);
+	switch (treq->state) {
+	case FR_TRUNK_REQUEST_STATE_PARTIAL:
+	case FR_TRUNK_REQUEST_STATE_SENT:
+		trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
+		trunk_request_enter_pending(treq, tconn);
+		break;
+
+	case FR_TRUNK_REQUEST_STATE_BACKLOG:	/* Do nothing.... */
+	case FR_TRUNK_REQUEST_STATE_PENDING:	/* Do nothing.... */
+		break;
+
+	default:
+		return FR_TRUNK_ENQUEUE_FAIL;
+	}
 
 	return FR_TRUNK_ENQUEUE_OK;
 }
