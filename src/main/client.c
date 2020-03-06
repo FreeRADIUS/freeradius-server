@@ -210,7 +210,11 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 *	to the global client list.
 			 */
 			subcs = cf_section_sub_find(cs, "listen");
-			if (!subcs) goto global_clients;
+			if (!subcs) {
+				DEBUG("No 'listen' section in virtual server %s.  Adding client to global client list",
+				      client->server);
+				goto global_clients;
+			}
 
 			/*
 			 *	If the client list already exists, use that.
