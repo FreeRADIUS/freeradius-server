@@ -35,6 +35,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/table.h>
 
@@ -143,14 +144,6 @@ typedef struct CC_HINT(__packed__) {
 	uint16_t	checksum;	//!< UDP checksum.
 } udp_header_t;
 
-typedef struct CC_HINT(__packed__) {
-	uint8_t		code;
-	uint8_t		id;
-	uint8_t		length[2];
-	uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];
-	uint8_t		data[];
-} radius_packet_t;
-
 extern fr_table_num_sorted_t const fr_net_ip_proto_table[];
 extern size_t fr_net_ip_proto_table_len;
 extern fr_table_num_sorted_t const fr_net_sock_type_table[];
@@ -194,6 +187,105 @@ static inline uint32_t fr_get_be32(uint8_t const a[static sizeof(uint32_t)])
 static inline uint64_t fr_get_be64(uint8_t const a[static sizeof(uint64_t)])
 {
 	return ((uint64_t) fr_get_be32(a) << 32) | fr_get_be32(a + sizeof(uint32_t));
+}
+
+
+/** Encode a 64bit unsigned integer as a big endian number in the fewest bytes possible
+ *
+ * @param[out] out	Where to write big endian encoding of num.
+ *			Should be at least 8 bytes.
+ * @param[in] num	Number to encode.
+ * @return
+ *	- The number of bytes written to out.
+ */
+static inline size_t htonx(uint8_t *out, uint64_t num)
+{
+	size_t ret;
+
+	/*
+	 *	ffsll isn't POSIX, but it's in at least
+	 *	Linux, FreeBSD, OpenBSD and Solaris.
+	 *
+	 *	If we really care, implementing it
+	 *	in missing.c is trivial.
+	 *
+	 *	This version however should compile down
+	 *	to a single CPU instruction on supported
+	 *	platforms.
+	 */
+	ret = ROUND_UP_DIV((size_t)ffsll((long long)num), 8);
+	switch (ret) {
+	case 8:
+		out[7] = (num & 0xFF00000000000000) >> 56;
+	/* FALL-THROUGH */
+	case 7:
+		out[6] = (num & 0xFF000000000000) >> 48;
+	/* FALL-THROUGH */
+	case 6:
+		out[5] = (num & 0xFF0000000000) >> 40;
+	/* FALL-THROUGH */
+	case 5:
+		out[4] = (num & 0xFF00000000) >> 32;
+	/* FALL-THROUGH */
+	case 4:
+		out[3] = (num & 0xFF000000) >> 24;
+	/* FALL-THROUGH */
+	case 3:
+		out[2] = (num & 0xFF0000) >> 16;
+	/* FALL-THROUGH */
+	case 2:
+		out[1] = (num & 0xFF00) >> 8;
+	/* FALL-THROUGH */
+	case 1:
+		out[0] = (num & 0xFF);
+		return ret;
+
+	case 0:
+		out[0] = 0;
+		return 1;
+	}
+
+	return 0;
+}
+
+/** Convert a big endian number of variable size to a unsigned 64bit integer of native endianness
+ *
+ * @param[in] data	Buffer containing the number.
+ * @param[in] data_len	Length of number.
+ * @return unsigned 64bit integer.
+ */
+static inline uint64_t ntohx(uint8_t const *data, size_t data_len)
+{
+	uint64_t ret = 0;
+
+	switch (data_len) {
+	case 8:
+		ret += ((uint64_t)data[7]) << 56;
+	/* FALL-THROUGH */
+	case 7:
+		ret += ((uint64_t)data[6]) << 48;
+	/* FALL-THROUGH */
+	case 6:
+		ret += ((uint64_t)data[5]) << 40;
+	/* FALL-THROUGH */
+	case 5:
+		ret += ((uint64_t)data[4]) << 32;
+	/* FALL-THROUGH */
+	case 4:
+		ret += ((uint64_t)data[3]) << 24;
+	/* FALL-THROUGH */
+	case 3:
+		ret += ((uint64_t)data[2]) << 16;
+	/* FALL-THROUGH */
+	case 2:
+		ret += ((uint64_t)data[1]) << 8;
+	/* FALL-THROUGH */
+	case 1:
+		ret += data[8];
+		return ret;
+	}
+
+	return 0;
 }
 #ifdef __cplusplus
 }

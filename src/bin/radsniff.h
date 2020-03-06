@@ -96,6 +96,14 @@ typedef struct {
 	uint64_t type[FR_CODE_RADIUS_MAX + 1];
 } rs_counters_t;
 
+typedef struct CC_HINT(__packed__) {
+	uint8_t		code;
+	uint8_t		id;
+	uint8_t		length[2];
+	uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];
+	uint8_t		data[];
+} radius_packet_t;
+
 /** Stats for a single interval
  *
  * And interval is defined as the time between a call to the stats output function.
