@@ -30,8 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/test_point.h>
 #include "attrs.h"
 
-static unsigned int salt_offset = 0;
-
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx);
@@ -176,6 +174,7 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	size_t		i, n;
 	size_t		encrypted_len;
 	fr_radius_ctx_t	*packet_ctx = encoder_ctx;
+	uint32_t	r;
 
 	/*
 	 *	The password gets encoded with a 1-byte "length"
@@ -225,10 +224,11 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	 *	packet should be unique, and they should be random
 	 *
 	 *	So, we set the high bit, add in a counter, and then
-	 *	add in some CSPRNG data.  should be OK..
+	 *	add in some PRNG data.  should be OK..
 	 */
-	out[0] = (0x80 | (((salt_offset++) & 0x0f) << 3) | (fr_rand() & 0x07));
-	out[1] = fr_rand();
+	r = fr_fast_rand(&packet_ctx->rand_ctx);
+	out[0] = (0x80 | (((packet_ctx->salt_offset++) & 0x07) << 4) | ((r >> 8) & 0x0f));
+	out[1] = r & 0xff;
 	out[2] = inlen;	/* length of the password string */
 
 	md5_ctx = fr_md5_ctx_alloc(false);
@@ -1380,6 +1380,8 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
 	test_ctx->vector = vector;
+	test_ctx->rand_ctx.a = 6809;
+	test_ctx->rand_ctx.b = 2112;
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;

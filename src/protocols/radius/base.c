@@ -884,6 +884,8 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	packet_ctx.secret = secret;
 	packet_ctx.vector = packet + 4;
+	packet_ctx.rand_ctx.a = fr_rand();
+	packet_ctx.rand_ctx.b = fr_rand();
 
 	/*
 	 *	The RADIUS header can't do more than 64K of data.

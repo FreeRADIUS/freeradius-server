@@ -26,6 +26,7 @@
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/packet.h>
+#include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/log.h>
 
 #define RADIUS_AUTH_VECTOR_OFFSET      		4
@@ -141,6 +142,8 @@ typedef struct {
 	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
 	uint8_t const		*vector;		//!< vector for encryption / decryption of data
 	char const		*secret;		//!< shared secret.  MUST be talloc'd
+	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
+	int			salt_offset;		//!< for tunnel passwords
 	bool 			tunnel_password_zeros;
 } fr_radius_ctx_t;
 
