@@ -52,9 +52,10 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t
 	VALUE_PAIR		*vp;
 	fr_dict_attr_t const	*da;
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
+	ssize_t			slen;
 
 #ifdef __clang_analyzer__
-	if (!packet_ctx || !packet_ctx->tmp_ctx || !parent->parent) return -1;
+	if (!packet_ctx || !packet_ctx->tmp_ctx || !parent->parent) return PAIR_DECODE_FATAL_ERROR;
 #endif
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_raw");
@@ -68,16 +69,17 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t
 					  fr_dict_vendor_num_by_da(parent), parent->attr);
 	if (!da) {
 		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-		return -1;
+		return PAIR_DECODE_OOM;
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) return -1;
+	if (!vp) return PAIR_DECODE_OOM;
 
-	if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
+	slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true);
+	if (slen < 0) {
 		talloc_free(vp);
 		fr_dict_unknown_free(&da);
-		return -1;
+		return slen;
 	}
 
 	vp->type = VT_DATA;
@@ -145,7 +147,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 			if (data[0] != 0) goto raw;
 
 			vp = fr_pair_afrom_da(ctx, parent);
-			if (!vp) return -1;
+			if (!vp) return PAIR_DECODE_OOM;
 
 			vp->vp_ip.af = AF_INET6;
 			vp->vp_ip.scope_id = 0;
@@ -163,7 +165,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		if ((prefix_len >> 3) > (data_len - 1)) goto raw;
 
 		vp = fr_pair_afrom_da(ctx, parent);
-		if (!vp) return -1;
+		if (!vp) return PAIR_DECODE_OOM;
 
 		vp->vp_ip.af = AF_INET6;
 		vp->vp_ip.scope_id = 0;
@@ -190,7 +192,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 		vp = fr_pair_afrom_da(ctx, parent);
-		if (!vp) return -1;
+		if (!vp) return PAIR_DECODE_OOM;
 
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
 			talloc_free(vp);
@@ -207,7 +209,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	 */
 	case FR_TYPE_DATE:
 		vp = fr_pair_afrom_da(ctx, parent);
-		if (!vp) return -1;
+		if (!vp) return PAIR_DECODE_OOM;
 
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
 			talloc_free(vp);
@@ -223,7 +225,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 
 		if (tlv) {
 			fr_strerror_printf("decode children not implemented");
-			return -1;
+			return PAIR_DECODE_FATAL_ERROR;
 		}
 
 		return data_len;
@@ -234,7 +236,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		VALUE_PAIR *head = NULL;
 
 		vp = fr_pair_afrom_da(ctx, parent);
-		if (!vp) return -1;
+		if (!vp) return PAIR_DECODE_OOM;
 
 		/*
 		 *	Child VPs go into the child group, not in the
@@ -380,7 +382,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 	 */
 	for (total = 0; total < data_len; total += rcode) {
 		vp = fr_pair_afrom_da(ctx, parent);
-		if (!vp) return -1;
+		if (!vp) return PAIR_DECODE_OOM;
 
 		/*
 		 *	Having verified the input above, this next
@@ -423,7 +425,7 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const
 
 		slen = decode_option(ctx, cursor, dict, parent, p, (end - p), decoder_ctx);
 		if (slen <= 0) {
-			if (!do_raw) return -1;
+			if (!do_raw) return slen;
 
 			slen = decode_raw(ctx, cursor, dict, parent, p, (end - p), decoder_ctx);
 			if (slen <= 0) return slen;
@@ -471,7 +473,9 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const 
 	if (!da) {
 		fr_dict_attr_t *n;
 
-		if (fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, &n, parent, pen) < 0) return -1;
+		if (fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, &n, parent, pen) < 0) {
+			return PAIR_DECODE_OOM;
+		}
 		da = n;
 	}
 
@@ -491,7 +495,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
 
 #ifdef __clang_analyzer__
-	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return PAIR_DECODE_FATAL_ERROR;
 #endif
 
 	/*
@@ -499,20 +503,20 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 	 */
 	if (data_len < 4) {
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
-		return -1;
+		return -(data_len);
 	}
 
 	option = (data[0] << 8) | data[1];
 	len = (data[2] << 8) | data[3];
 	if ((len + 4) > data_len) {
 		fr_strerror_printf("%s: Option overflows input", __FUNCTION__);
-		return -1;
+		return 0;
 	}
 
 	da = fr_dict_attr_child_by_num(parent, option);
 	if (!da) {
 		da = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, fr_dict_root(dict), 0, option);
-		if (!da) return -1;
+		if (!da) return PAIR_DECODE_FATAL_ERROR;
 	}
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
