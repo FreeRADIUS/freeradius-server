@@ -191,7 +191,7 @@ static inline size_t htonx(uint8_t *out, uint64_t num)
 	 *	to a single CPU instruction on supported
 	 *	platforms.
 	 */
-	ret = ROUND_UP_DIV((size_t)fflsll((long long)num), 8);
+	ret = ROUND_UP_DIV((size_t)ffsll((long long)num), 8);
 	switch (ret) {
 	case 8:
 		out[7] = (num & 0xFF00000000000000) >> 56;
