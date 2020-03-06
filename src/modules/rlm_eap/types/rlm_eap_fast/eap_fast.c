@@ -439,9 +439,9 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_
 		uint16_t	len;
 		VALUE_PAIR	*vp;
 
-		attr = fr_ntoh16_bin(p) & EAP_FAST_TLV_TYPE;
+		attr = fr_ntohs(p) & EAP_FAST_TLV_TYPE;
 		p += 2;
-		len = fr_ntoh16_bin(p);
+		len = fr_ntohs(p);
 		p += 2;
 
 		da = fr_dict_attr_child_by_num(parent, attr);

@@ -123,13 +123,6 @@ struct value_box {
 	fr_value_box_t			*next;			//!< Next in a series of value_box.
 };
 
-/*
- *	Versions of ntho* which expect a binary buffer
- */
-#define fr_ntoh16_bin(_p) (uint16_t)((p[0] << 8) | p[1])
-#define fr_ntoh24_bin(_p) (uint32_t)((p[0] << 16) | (p[1] << 8) | p[2])
-#define fr_ntoh32_bin(_p) (uint32_t)((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3])
-
 /** @name Field accessors for #fr_value_box_t
  *
  * Use these instead of accessing fields directly to make refactoring
