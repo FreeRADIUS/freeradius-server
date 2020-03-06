@@ -156,49 +156,77 @@ uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
 uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
 
-static inline void fr_put_be16(uint8_t a[static sizeof(uint16_t)], uint16_t val)
+/** Write out an unsigned 16bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_htons(uint8_t out[static sizeof(uint16_t)], uint16_t num)
 {
-	a[0] = (val >> 8) & 0xff;
-	a[1] = val & 0xff;
+	out[0] = (num >> 8) & 0xff;
+	out[1] = num & 0xff;
 }
 
-static inline void fr_put_be32(uint8_t a[static sizeof(uint32_t)], uint32_t val)
+/** Write out an unsigned 32bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_htonl(uint8_t out[static sizeof(uint32_t)], uint32_t num)
 {
-	fr_put_be16(a, (uint16_t) (val >> 16));
-	fr_put_be16(a + sizeof(uint16_t), (uint16_t) val);
+	fr_htons(out, (uint16_t) (num >> 16));
+	fr_htons(out + sizeof(uint16_t), (uint16_t) num);
 }
 
-static inline void fr_put_be64(uint8_t a[static sizeof(uint64_t)], uint64_t val)
+/** Write out an unsigned 64bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_htonll(uint8_t out[static sizeof(uint64_t)], uint64_t num)
 {
-	fr_put_be32(a, (uint32_t) (val >> 32));
-	fr_put_be32(a + sizeof(uint32_t), (uint32_t) val);
+	fr_htonl(out, (uint32_t)(num >> 32));
+	fr_htonl(out + sizeof(uint32_t), (uint32_t)num);
 }
 
-static inline uint16_t fr_get_be16(uint8_t const a[static sizeof(uint16_t)])
+/** Read an unsigned 16bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 16bit unsigned integer of native endianness.
+ * @return a 16 bit unsigned integer of native endianness.
+ */
+static inline uint16_t fr_ntohs(uint8_t const data[static sizeof(uint16_t)])
 {
-	return (((uint16_t) a[0]) << 8) | a[1];
+	return (((uint16_t)data[0]) << 8) | data[1];
 }
 
-static inline uint32_t fr_get_be32(uint8_t const a[static sizeof(uint32_t)])
+/** Read an unsigned 32bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 32bit unsigned integer of native endianness.
+ * @return a 32 bit unsigned integer of native endianness.
+ */
+static inline uint32_t fr_ntohl(uint8_t const data[static sizeof(uint32_t)])
 {
-	return ((uint32_t) fr_get_be16(a) << 16) | fr_get_be16(a + sizeof(uint16_t));
+	return ((uint32_t)fr_ntohs(data) << 16) | fr_ntohs(data + sizeof(uint16_t));
 }
 
-static inline uint64_t fr_get_be64(uint8_t const a[static sizeof(uint64_t)])
+/** Read an unsigned 64bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 64bit unsigned integer of native endianness.
+ * @return a 64 bit unsigned integer of native endianness.
+ */
+static inline uint64_t fr_ntohll(uint8_t const data[static sizeof(uint64_t)])
 {
-	return ((uint64_t) fr_get_be32(a) << 32) | fr_get_be32(a + sizeof(uint32_t));
+	return ((uint64_t)fr_ntohl(data) << 32) | fr_ntohl(data + sizeof(uint32_t));
 }
 
-
-/** Encode a 64bit unsigned integer as a big endian number in the fewest bytes possible
+/** Write out an unsigned 64bit integer in wire format using the fewest bytes possible
  *
  * @param[out] out	Where to write big endian encoding of num.
  *			Should be at least 8 bytes.
  * @param[in] num	Number to encode.
- * @return
- *	- The number of bytes written to out.
+ * @return the number of bytes written to out.
  */
-static inline size_t htonx(uint8_t *out, uint64_t num)
+static inline size_t fr_htonx(uint8_t out[static sizeof(uint64_t)], uint64_t num)
 {
 	size_t ret;
 
@@ -248,13 +276,13 @@ static inline size_t htonx(uint8_t *out, uint64_t num)
 	return 0;
 }
 
-/** Convert a big endian number of variable size to a unsigned 64bit integer of native endianness
+/** Read an unsigned 64bit integer from wire format (big endian) with a variable length encoding
  *
  * @param[in] data	Buffer containing the number.
  * @param[in] data_len	Length of number.
- * @return unsigned 64bit integer.
+ * @return a 64 bit unsigned integer of native endianness.
  */
-static inline uint64_t ntohx(uint8_t const *data, size_t data_len)
+static inline uint64_t fr_ntohx(uint8_t const data[static sizeof(uint64_t)], size_t data_len)
 {
 	uint64_t ret = 0;
 

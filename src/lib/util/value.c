@@ -1204,7 +1204,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 			if (date >= ((int64_t) 1) << 16) {
 				memset(dst, 0xff, 2);
 			} else {
-				fr_put_be16(dst, date);
+				fr_htons(dst, date);
 			}
 			break;
 
@@ -1213,12 +1213,12 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 			if (date >= ((int64_t) 1) << 32) {
 				memset(dst, 0xff, 4);
 			} else {
-				fr_put_be32(dst, date);
+				fr_htonl(dst, date);
 			}
 			break;
 
 		case 8:
-			fr_put_be32(dst, date);
+			fr_htonl(dst, date);
 			break;
 
 		default:
@@ -1265,7 +1265,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 			if (date >= ((int64_t) 1) << 16) {
 				memset(dst, 0xff, 2);
 			} else {
-				fr_put_be16(dst, date);
+				fr_htons(dst, date);
 			}
 			break;
 
@@ -1274,12 +1274,12 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 			if (date >= ((int64_t) 1) << 32) {
 				memset(dst, 0xff, 4);
 			} else {
-				fr_put_be32(dst, date);
+				fr_htonl(dst, date);
 			}
 			break;
 
 		case 8:
-			fr_put_be64(dst, date);
+			fr_htonll(dst, date);
 			break;
 
 		default:
@@ -2171,7 +2171,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 	case FR_TYPE_UINT64: {
 		uint8_t array[8];
 
-		fr_put_be64(array, src->vb_uint64);
+		fr_htonll(array, src->vb_uint64);
 
 		/*
 		 *	For OUIs in the DB.
@@ -2789,7 +2789,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	if ((src->type == FR_TYPE_IFID) &&
 	    (dst_type == FR_TYPE_UINT64)) {
-		dst->vb_uint64 = fr_get_be64(&src->vb_ifid[0]);
+		dst->vb_uint64 = fr_ntohll(&src->vb_ifid[0]);
 
 	fixed_length:
 		dst->type = dst_type;
