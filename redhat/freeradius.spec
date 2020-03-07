@@ -665,7 +665,8 @@ fi
 %config(noreplace) %{_sysconfdir}/raddb/sites-enabled/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/policy.d
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/policy.d/*
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/templates.conf
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/template.d
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/template.d/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-available
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-available/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config
