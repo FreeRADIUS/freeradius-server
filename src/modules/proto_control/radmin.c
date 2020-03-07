@@ -493,17 +493,19 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 	return line;
 }
 
+#ifdef USE_READLINE
 static void radmin_free(char *line)
 {
-#ifdef USE_READLINE
 	/*
 	 *	Was read from stdin, so "line" == "readline_buffer"
 	 */
 	if (!use_readline) return;
-#endif
 
 	free(line);
 }
+#else
+#define radmin_free(_x)
+#endif
 
 /*
  *	Copies the (possible partial) command to the command buffer,
