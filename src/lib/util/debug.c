@@ -400,7 +400,7 @@ DIAG_ON(deprecated-declarations)
 		return ret;
 	}
 }
-#elif define (HAVE_SYS_PROCCTL_H)
+#elif defined(HAVE_SYS_PROCCTL_H)
 static int fr_get_debug_state(void)
 {
 	int status;
