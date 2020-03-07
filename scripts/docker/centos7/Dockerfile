@@ -1,5 +1,5 @@
 ARG from=centos:centos7
-FROM ${from}
+FROM ${from} as build
 
 #
 #  Install build tools
@@ -7,7 +7,6 @@ FROM ${from}
 RUN yum groupinstall -y "Development Tools"
 RUN yum install -y rpmdevtools
 RUN yum install -y openssl
-RUN yum install -y rsync
 
 #
 #  Create build directory
@@ -67,3 +66,30 @@ RUN rpmbuild -bb --define '_release $release' "$BUILDDIR/SPECS/freeradius.spec"
 
 RUN mkdir /root/rpms
 RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
+
+#
+#  Clean environment and run the server
+#
+FROM ${from}
+COPY --from=build /root/rpms /tmp/
+
+# Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
+RUN echo $'[ltb-project]\n\
+name=LTB project packages\n\
+baseurl=https://ltb-project.org/rpm/$releasever/$basearch\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
+> /etc/yum.repos.d/ltb-project.repo \
+    && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project \
+    \
+# EPEL repository for freetds and hiredis
+    && yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
+    \
+    && yum install -y /tmp/*.rpm
+
+COPY docker-entrypoint.sh /
+
+EXPOSE 1812/udp 1813/udp
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["radiusd"]

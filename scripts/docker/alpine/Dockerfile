@@ -1,10 +1,47 @@
-ARG from=freeradius/alpine-deps
-FROM ${from}
+ARG from=alpine:latest
+FROM ${from} as build
+
+#
+#  Install build tools
+#
+RUN apk update
+RUN apk add git gcc make
+
+#
+#  Create build directory
+#
+RUN mkdir -p /usr/local/src/repositories
+WORKDIR /usr/local/src/repositories
+
+#
+#  Shallow clone the FreeRADIUS source
+#
+ARG source=https://github.com/FreeRADIUS/freeradius-server.git
+ARG release=v3.0.x
+
+RUN git clone --depth 1 --single-branch --branch ${release} ${source}
+WORKDIR freeradius-server
+
+#
+#  Install build dependencies
+#
+# essential
+RUN apk add libc-dev talloc-dev
+RUN apk add openssl openssl-dev
+RUN apk add linux-headers
+# general
+RUN apk add pcre-dev libidn-dev krb5-dev samba-dev curl-dev json-c-dev
+RUN apk add openldap-dev unbound-dev
+# languages
+RUN apk add ruby-dev perl-dev python2-dev
+# databases
+RUN apk add hiredis-dev libmemcached-dev gdbm-dev libcouchbase-dev
+# sql
+RUN apk add postgresql-dev mariadb-dev unixodbc-dev sqlite-dev
 
 #
 #  Build the server
 #
-WORKDIR /usr/local/src/repositories
 RUN ./configure --prefix=/opt
 RUN make -j2
 RUN make install
@@ -13,7 +50,8 @@ RUN rm /opt/lib/*.a
 #
 #  Clean environment and run the server
 #
-COPY --from=0 /opt /opt
+FROM ${from}
+COPY --from=build /opt /opt
 
 #
 # These are needed for the server to start

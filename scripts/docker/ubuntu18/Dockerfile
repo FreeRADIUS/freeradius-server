@@ -1,11 +1,11 @@
-ARG from=ubuntu:16.04
-FROM ${from}
+ARG from=ubuntu:18.04
+FROM ${from} as build
 
 #
 #  Install build tools
 #
 RUN apt-get update
-RUN apt-get install -y devscripts equivs git quilt gcc rsync
+RUN apt-get install -y devscripts equivs git quilt gcc
 
 #
 #  Create build directory
@@ -35,3 +35,22 @@ RUN git checkout ${release}; \
 #  Build the server
 #
 RUN make -j2 deb
+
+#
+#  Clean environment and run the server
+#
+FROM ${from}
+COPY --from=build /usr/local/src/repositories/*.deb /tmp/
+
+RUN apt-get update \
+    && apt-get install -y /tmp/*.deb \
+    && apt-get clean \
+    && rm -r /var/lib/apt/lists/* /tmp/*.deb \
+    \
+    && ln -s /etc/freeradius /etc/raddb
+
+COPY docker-entrypoint.sh /
+
+EXPOSE 1812/udp 1813/udp
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["freeradius"]
