@@ -34,9 +34,11 @@ endif
 ifneq "$(MAKECMDGOALS)" "deb"
 ifneq "$(MAKECMDGOALS)" "rpm"
 ifeq "$(findstring docker,$(MAKECMDGOALS))" ""
+ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
+endif
 endif
 endif
 endif
@@ -55,7 +57,9 @@ export DESTDIR := $(R)
 ifneq "$(MAKECMDGOALS)" "deb"
 ifneq "$(MAKECMDGOALS)" "rpm"
 ifeq "$(findstring docker,$(MAKECMDGOALS))" ""
+ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 include scripts/boiler.mk
+endif
 endif
 endif
 endif
@@ -323,10 +327,14 @@ dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$
 	@echo "git tag release_`echo $(RADIUSD_VERSION_STRING) | tr .- __`"
 
 #
-#	Docker-related targets
+#	Docker-related targets (main docker images and crossbuild)
 #
 ifneq "$(findstring docker,$(MAKECMDGOALS))" ""
 include scripts/docker/docker.mk
+endif
+
+ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+include scripts/crossbuild/crossbuild.mk
 endif
 
 #
