@@ -500,9 +500,9 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
-	int	num;
+	CS_INT	num;
 
-	if (ct_res_info(conn->command, CS_ROW_COUNT, (CS_INT *)&num, CS_UNUSED, NULL) != CS_SUCCEED) {
+	if (ct_res_info(conn->command, CS_ROW_COUNT, &num, CS_UNUSED, NULL) != CS_SUCCEED) {
 		ERROR("rlm_sql_freetds: error retrieving row count");
 
 		return RLM_SQL_ERROR;
