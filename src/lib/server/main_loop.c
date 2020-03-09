@@ -95,7 +95,7 @@ static void handle_signal_self(int flag)
 		static time_t last_hup = 0;
 
 		when = time(NULL);
-		if ((int) (when - last_hup) < 5) {
+		if (when - last_hup < (time_t) 5) {
 			INFO("Ignoring HUP (less than 5s since last one)");
 			return;
 		}
