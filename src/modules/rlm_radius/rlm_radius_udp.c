@@ -687,7 +687,7 @@ static int _udp_handle_free(udp_handle_t *h)
  *
  * @param[out] h_out	Where to write the new file descriptor.
  * @param[in] conn	to initialise.
- * @param[in] uctx	A #udp_connection_t
+ * @param[in] uctx	A #udp_thread_t
  */
 static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void *uctx)
 {
@@ -1085,6 +1085,9 @@ static int8_t request_prioritise(void const *one, void const *two)
  * @param[in] ctx			to allocate pairs in.
  * @param[out] reply			Pointer to head of pair list to add reply attributes to.
  * @param[out] response_code		The type of response packet.
+ * @param[in] h				connection handle.
+ * @param[in] request			the request.
+ * @param[in] u				UDP request.
  * @param[in] request_authenticator	from the original request.
  * @param[in] data			to decode.
  * @param[in] data_len			Length of input data.
