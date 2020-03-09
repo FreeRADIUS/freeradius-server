@@ -7,6 +7,14 @@
 #
 TEST := test.radmin
 FILES  := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
+
+#
+#  @todo - have a way to do this a bit more programmatically.
+#
+ifeq "$(AC_HAVE_GPERFTOOLS_PROFILER_H)" ""
+FILES := $(filter-out set-profile-status-yes.txt show-profile-status.txt,$(FILES))
+endif
+
 $(eval $(call TEST_BOOTSTRAP))
 
 #
