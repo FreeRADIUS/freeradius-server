@@ -19,8 +19,8 @@ DT:=scripts/docker
 # Location of this makefile, and where to put stamp files
 DD:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 
-# List of all the docker images
-CB_IMAGES:=$(patsubst $(DT)/build-%,%,$(wildcard $(DT)/build-*))
+# List of all the docker images (sorted for "crossbuild.info")
+CB_IMAGES:=$(sort $(patsubst $(DT)/build-%,%,$(wildcard $(DT)/build-*)))
 
 # Location of the .git dir (may be different for e.g. submodules)
 GITDIR:=$(shell perl -MCwd -e 'print Cwd::abs_path shift' $$(git rev-parse --git-dir))
@@ -49,10 +49,12 @@ crossbuild.common: crossbuild.info $(foreach IMG,${CB_COMMON},crossbuild.${IMG})
 #
 #  Dump out some useful information on what images we're going to test
 #
-crossbuild.info:
-	@echo Images:
-	@for IMG in $(sort $(CB_IMAGES)); do echo "    $$IMG"; done
+.PHONY: crossbuild.info crossbuild.info_header crossbuild.help
+crossbuild.info: crossbuild.info_header $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.status)
 	@echo Common images: $(CB_COMMON)
+
+crossbuild.info_header:
+	@echo Images:
 
 crossbuild.help: crossbuild.info
 	@echo ""
@@ -72,6 +74,7 @@ crossbuild.help: crossbuild.info
 	@echo "    crossbuild.IMAGE.down    - stop container"
 	@echo "    crossbuild.IMAGE.sh      - shell in container"
 	@echo "    crossbuild.IMAGE.refresh - push latest commits into container"
+	@echo "    crossbuild.IMAGE.reset   - remove cache of docker state"
 	@echo "    crossbuild.IMAGE.clean   - stop container and tidy up"
 	@echo "    crossbuild.IMAGE.wipe    - remove Docker image"
 
@@ -99,6 +102,16 @@ crossbuild.wipe: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.wipe)
 #  Define rules for building a particular image
 #
 define CROSSBUILD_IMAGE_RULE
+
+#
+#  Show status (based on stamp files)
+#
+.PHONY: crossbuild.${1}.status
+crossbuild.${1}.status:
+	${Q}echo -n "`echo \"  ${1}                    \" | cut -c 1-20`"
+	${Q}if [ -e "$(DD)/stamp-up.${1}" ]; then echo "running"; \
+		elif [ -e "$(DD)/stamp-image.${1}" ]; then echo "built"; \
+		else echo "-"; fi
 #
 #  Build the docker image
 #
@@ -210,6 +223,7 @@ crossbuild.${1}.refresh: $(DD)/docker.refresh.${1}
 #
 .PHONY: crossbuild.${1}
 crossbuild.${1}: $(DD)/docker.run.${1}
+
 endef
 
 #
