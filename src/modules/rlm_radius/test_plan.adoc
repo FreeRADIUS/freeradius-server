@@ -244,7 +244,7 @@ Once `pool.reconnect_delay` seconds have passed, the connection enters the `INIT
 Once in the `CONNECTING` state, the connection will begin sending `Status-Server` requests.
 `status_check.num_answers_to_alive` contiguous responses are required for the connection to be considered `CONNECTED`
 and to receive new requests.
-If `max_rtx_duration` or `max_rtc_count` are hit before `status_check.num_answers_to_alive` contiguous responses are
+If `max_rtx_duration` or `max_rtx_count` are hit before `status_check.num_answers_to_alive` contiguous responses are
 received, the connection will be reconnected (again) after `pool.reconnect_delay`.
 
 [NOTE]
