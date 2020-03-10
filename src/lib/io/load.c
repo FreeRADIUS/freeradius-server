@@ -126,6 +126,28 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	if (l->stats.backlog > l->stats.max_backlog) l->stats.max_backlog = l->stats.backlog;
 
 	/*
+	 *	If we're done this step, go to the next one.
+	 */
+	if (l->next >= l->step_end) {
+		l->step_start = l->next;
+		l->step_end = l->next + ((uint64_t) l->config->duration) * NSEC;
+		l->step_received = l->stats.received;
+		l->pps += l->config->step;
+		l->stats.pps = l->pps;
+		l->stats.skipped = 0;
+		l->delta = (NSEC * ((uint64_t) l->config->parallel)) / l->pps;
+
+		/*
+		 *	Stop at max PPS, if it's set.  Otherwise
+		 *	continue without limit.
+		 */
+		if (l->config->max_pps && (l->pps > l->config->max_pps)) {
+			l->state = FR_LOAD_STATE_DRAINING;
+			return;
+		}
+	}
+
+	/*
 	 *	We don't have "pps" packets in the backlog, go send
 	 *	some more.  We scale the backlog by 1000 milliseconds
 	 *	per second.  Then, multiple the PPS by the number of
@@ -175,27 +197,6 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		}
 	}
 	delta = l->next - now;
-
-	/*
-	 *	If we're done this step, go to the next one.
-	 */
-	if (l->next >= l->step_end) {
-		l->step_start = l->next;
-		l->step_end = l->next + ((uint64_t) l->config->duration) * NSEC;
-		l->step_received = l->stats.received;
-		l->pps += l->config->step;
-		l->stats.pps = l->pps;
-		l->stats.skipped = 0;
-		l->delta = (NSEC * ((uint64_t) l->config->parallel)) / l->pps;
-
-		/*
-		 *	Stop at max PPS, if it's set.  Otherwise
-		 *	continue without limit.
-		 */
-		if (l->config->max_pps && (l->pps > l->config->max_pps)) {
-			l->state = FR_LOAD_STATE_DRAINING;
-		}
-	}
 
 	/*
 	 *	Set the timer for the next packet.
