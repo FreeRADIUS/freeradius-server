@@ -216,7 +216,7 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	 */
 	memcpy(out + 3, input, inlen);
 
-	for (i = 3 + inlen; i < *outlen; i++) {
+	for (i = 3 + inlen; i < (size_t) *outlen; i++) {
 		out[i] = fr_fast_rand(&packet_ctx->rand_ctx);
 	}
 
