@@ -2874,7 +2874,7 @@ size_t fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp)
 		token = "<INVALID-TOKEN>";
 	}
 
-	if (vp->da->flags.has_tag && (vp->tag != TAG_ANY)) {
+	if (vp->da->flags.has_tag && (vp->tag != 0) && (vp->tag != TAG_ANY)) {
 		len = snprintf(out, freespace, "%s:%d %s ", vp->da->name, vp->tag, token);
 	} else {
 		len = snprintf(out, freespace, "%s %s ", vp->da->name, token);
