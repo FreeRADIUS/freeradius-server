@@ -212,10 +212,13 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	*outlen = encrypted_len + 2;	/* account for the salt */
 
 	/*
-	 *	Copy the password over, and zero-fill the remainder.
+	 *	Copy the password over, and fill the remainder with random data.
 	 */
 	memcpy(out + 3, input, inlen);
-	memset(out + 3 + inlen, 0, *outlen - 3 - inlen);
+
+	for (i = 3 + inlen; i < *outlen; i++) {
+		out[i] = fr_fast_rand(&packet_ctx->rand_ctx);
+	}
 
 	/*
 	 *	Generate salt.  The RFCs say:
