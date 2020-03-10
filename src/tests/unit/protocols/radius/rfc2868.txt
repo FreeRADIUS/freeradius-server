@@ -1,0 +1,37 @@
+# Load libfreeradius-radius
+proto radius
+proto-dictionary radius
+
+#
+#  The salt is taken from fr_fast_rand(), with a seed set
+#  in src/protocols/radius/encode.c, of { 6809, 2112 }
+#
+#  In normal operation, the seed is taken from fr_rand()
+#
+encode-pair Tunnel-Password := "foo"
+match 45 15 00 8e 93 e4 f7 68 1f 3d b7 b9 25 10 83 2a 9b 19 90 33 0a
+
+decode-pair -
+match Tunnel-Password:0 = "foo"
+
+#
+#  Note that the first tunnel password is encoded exactly the same as above.
+#
+#  The second one has it's own salt, which includes a counter to guarantee uniqueness.
+#
+encode-pair Tunnel-Password := "foo", Tunnel-Password := "bar"
+match 45 15 00 8e 93 e4 f7 68 1f 3d b7 b9 25 10 83 2a 9b 19 90 33 0a 45 15 00 94 b0 ca bf ee 00 05 c7 b8 95 4c ef 14 d5 8a d2 d1 db
+
+decode-pair -
+match Tunnel-Password:0 = "foo", Tunnel-Password:0 = "bar"
+
+#
+#  A different password results in the salt staying the same, but a
+#  different encoded password.  Note that the entire encoded string
+#  is different.
+#
+encode-pair Tunnel-Password := "barbar"
+match 45 15 00 86 04 91 2d e8 4f 18 62 f8 2e a8 d3 09 99 e8 35 cc 7c
+
+decode-pair -
+match Tunnel-Password:0 = "barbar"
