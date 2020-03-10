@@ -484,7 +484,7 @@ radius {
 	#
 	#  ### CoA Packets
 	#
-	Coa-Request {
+	CoA-Request {
 		initial_rtx_time = 2
 		max_rtx_time = 16
 		max_rtx_count = 5
