@@ -996,12 +996,6 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 			       write_fn,
 			       conn_error,
 			       tconn) < 0) {
-
-		/*
-		 *	Stop doing work if the event loop is exiting.
-		 */
-		if (fr_event_loop_exiting(el)) return;
-
 		PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
 
 		/*
