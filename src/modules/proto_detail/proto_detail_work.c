@@ -72,17 +72,17 @@ typedef struct {
 } fr_detail_entry_t;
 
 static CONF_PARSER limit_config[] = {
-	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_UINT32, proto_detail_work_t, irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_UINT32, proto_detail_work_t, mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_UINT32, proto_detail_work_t, retry_config.irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_UINT32, proto_detail_work_t, retry_config.mrt), .dflt = STRINGIFY(16) },
 
 	/*
 	 *	Retransmit indefinitely, as v2 and v3 did.
 	 */
-	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, proto_detail_work_t, mrc), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, proto_detail_work_t, retry_config.mrc), .dflt = STRINGIFY(0) },
 	/*
 	 *	...again same as v2 and v3.
 	 */
-	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_UINT32, proto_detail_work_t, mrd), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_UINT32, proto_detail_work_t, retry_config.mrd), .dflt = STRINGIFY(0) },
 	{ FR_CONF_OFFSET("maximum_outstanding", FR_TYPE_UINT32, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
 	CONF_PARSER_TERMINATOR
 };
@@ -494,7 +494,7 @@ redo:
 	track->parent = thread;
 	track->timestamp = fr_time();
 	track->id = thread->count++;
-	track->rt = inst->irt;
+	track->rt = inst->retry_config.irt;
 	track->rt *= NSEC;
 
 	track->done_offset = done_offset;
@@ -597,7 +597,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		/*
 		 *	Cap at MRC, if required.
 		 */
-		if (inst->mrc && (track->count >= inst->mrc)) {
+		if (inst->retry_config.mrc && (track->count >= inst->retry_config.mrc)) {
 			DEBUG("%s - packet %d failed after %u retransmissions",
 			      thread->name, track->id, track->count);
 			goto fail;
@@ -606,7 +606,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		now = fr_time();
 
 		if (track->count == 0) {
-			track->rt = inst->irt;
+			track->rt = inst->retry_config.irt;
 			track->rt *= NSEC;
 			track->start = request_time;
 
@@ -614,14 +614,15 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			/*
 			 *	Cap at MRD, if required.
 			 */
-			if (inst->mrd) {
+			if (inst->retry_config.mrd) {
 				fr_time_t end;
 
 				end = track->start;
-				end += ((fr_time_t) inst->mrd) * NSEC;
+				end += ((fr_time_t) inst->retry_config.mrd) * NSEC;
 				if (now >= end) {
 					DEBUG("%s - packet %d failed after %u seconds",
-					      thread->name, track->id, inst->mrd);
+					      thread->name, track->id,
+					      (unsigned int) fr_time_delta_to_sec(inst->retry_config.mrd));
 					goto fail;
 				}
 			}
@@ -886,20 +887,20 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	if (inst->retransmit) {
-		FR_INTEGER_BOUND_CHECK("limit.initial_rtx_time", inst->irt, >=, 1);
-		FR_INTEGER_BOUND_CHECK("limit.initial_rtx_time", inst->irt, <=, 60);
+		FR_TIME_DELTA_BOUND_CHECK("limit.initial_rtx_time", inst->retry_config.irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("limit.initial_rtx_time", inst->retry_config.irt, <=, fr_time_delta_from_sec(60));
 
 		/*
 		 *	If you need more than this, just set it to
 		 *	"0", and check Packet-Transmit-Count manually.
 		 */
-		FR_INTEGER_BOUND_CHECK("limit.max_rtx_count", inst->mrc, <=, 20);
-		FR_INTEGER_BOUND_CHECK("limit.max_rtx_duration", inst->mrd, <=, 600);
+		FR_INTEGER_BOUND_CHECK("limit.max_rtx_count", inst->retry_config.mrc, <=, 20);
+		FR_TIME_DELTA_BOUND_CHECK("limit.max_rtx_duration", inst->retry_config.mrd, <=, fr_time_delta_from_sec(600));
 
 		/*
 		 *	This is a reasonable value.
 		 */
-		FR_INTEGER_BOUND_CHECK("limit.max_rtx_timer", inst->mrt, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("limit.max_rtx_timer", inst->retry_config.mrt, <=, fr_time_delta_from_sec(30));
 	}
 
 	FR_INTEGER_BOUND_CHECK("limit.maximum_outstanding", inst->max_outstanding, >=, 1);

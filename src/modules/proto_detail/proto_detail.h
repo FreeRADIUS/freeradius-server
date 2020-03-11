@@ -26,6 +26,7 @@
 RCSIDH(detail_h, "$Id$")
 
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/util/retry.h>
 #include <freeradius-devel/util/dlist.h>
 
 #ifdef __cplusplus
@@ -88,10 +89,7 @@ struct proto_detail_work_s {
 
 	uint32_t			poll_interval;		//!< interval between polling
 
-	uint32_t			irt;
-	uint32_t			mrt;
-	uint32_t			mrc;
-	uint32_t			mrd;
+	fr_retry_config_t		retry_config;		//!< retry config with irt, mrt, etc.
 	uint32_t			max_outstanding;	//!< number of packets to run in parallel
 
 	bool				track_progress;		//!< do we track progress by writing?
