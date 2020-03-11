@@ -1040,13 +1040,6 @@ cleanup:
 	trigger_exec_free();
 
 	/*
-	 *  Clean out the main thread's log buffers these would
-	 *  be free on exit anyway but this stops them showing
-	 *  up in the memory report.
-	 */
-	fr_strerror_free();
-
-	/*
 	 *  Anything not cleaned up by the above is allocated in
 	 *  the NULL top level context, and is likely leaked memory.
 	 */
@@ -1058,6 +1051,14 @@ cleanup:
 	 */
 	if (!rad_suid_is_down_permanent() && (fr_get_lsan_state() == 1)) rad_suid_up();
 	fr_strerror();	/* clear error buffer */
+
+	/*
+	 *	Call all thread destructors, even the ones for this thread.
+	 *
+	 *	Note that pthread_exit() also exits this process, as
+	 *	we're the last thread running.
+	 */
+	if (ret == 0) pthread_exit(NULL);
 
 	return ret;
 }

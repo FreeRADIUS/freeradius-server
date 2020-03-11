@@ -324,6 +324,8 @@ void fr_perror(char const *fmt, ...)
 
 /** Explicitly free the memory used by fr_strerror
  *
+ *  Note that this function is ONLY called in single-threaded mode,
+ *  and then ONLY when the main thread does not call pthread_exit(NULL)
  */
 void fr_strerror_free(void)
 {
