@@ -199,6 +199,7 @@ static inline void fr_htonll(uint8_t out[static sizeof(uint64_t)], uint64_t num)
 static inline size_t fr_htonllx(uint8_t out[static sizeof(uint64_t)], uint64_t num)
 {
 	size_t ret;
+	uint8_t *p = out;
 
 	/*
 	 *	ffsll isn't POSIX, but it's in at least
@@ -211,35 +212,35 @@ static inline size_t fr_htonllx(uint8_t out[static sizeof(uint64_t)], uint64_t n
 	 *	to a single CPU instruction on supported
 	 *	platforms.
 	 */
-	ret = ROUND_UP_DIV((size_t)ffsll((long long)num), 8);
+	ret = ROUND_UP_DIV((size_t)flsll((long long)num), 8);
 	switch (ret) {
 	case 8:
-		out[7] = (num & 0xFF00000000000000) >> 56;
+		*p++ = (num & 0xFF00000000000000) >> 56;
 	/* FALL-THROUGH */
 	case 7:
-		out[6] = (num & 0xFF000000000000) >> 48;
+		*p++ = (num & 0xFF000000000000) >> 48;
 	/* FALL-THROUGH */
 	case 6:
-		out[5] = (num & 0xFF0000000000) >> 40;
+		*p++ = (num & 0xFF0000000000) >> 40;
 	/* FALL-THROUGH */
 	case 5:
-		out[4] = (num & 0xFF00000000) >> 32;
+		*p++ = (num & 0xFF00000000) >> 32;
 	/* FALL-THROUGH */
 	case 4:
-		out[3] = (num & 0xFF000000) >> 24;
+		*p++ = (num & 0xFF000000) >> 24;
 	/* FALL-THROUGH */
 	case 3:
-		out[2] = (num & 0xFF0000) >> 16;
+		*p++ = (num & 0xFF0000) >> 16;
 	/* FALL-THROUGH */
 	case 2:
-		out[1] = (num & 0xFF00) >> 8;
+		*p++ = (num & 0xFF00) >> 8;
 	/* FALL-THROUGH */
 	case 1:
-		out[0] = (num & 0xFF);
+		*p = (num & 0xFF);
 		return ret;
 
 	case 0:
-		out[0] = 0;
+		*p = 0;
 		return 1;
 	}
 
@@ -285,31 +286,32 @@ static inline uint64_t fr_ntohll(uint8_t const data[static sizeof(uint64_t)])
 static inline uint64_t fr_ntohllx(uint8_t const data[static sizeof(uint64_t)], size_t data_len)
 {
 	uint64_t ret = 0;
+	uint8_t const *p = data;
 
 	switch (data_len) {
 	case 8:
-		ret += ((uint64_t)data[7]) << 56;
+		ret += ((uint64_t)*p++) << 56;
 	/* FALL-THROUGH */
 	case 7:
-		ret += ((uint64_t)data[6]) << 48;
+		ret += ((uint64_t)*p++) << 48;
 	/* FALL-THROUGH */
 	case 6:
-		ret += ((uint64_t)data[5]) << 40;
+		ret += ((uint64_t)*p++) << 40;
 	/* FALL-THROUGH */
 	case 5:
-		ret += ((uint64_t)data[4]) << 32;
+		ret += ((uint64_t)*p++) << 32;
 	/* FALL-THROUGH */
 	case 4:
-		ret += ((uint64_t)data[3]) << 24;
+		ret += ((uint64_t)*p++) << 24;
 	/* FALL-THROUGH */
 	case 3:
-		ret += ((uint64_t)data[2]) << 16;
+		ret += ((uint64_t)*p++) << 16;
 	/* FALL-THROUGH */
 	case 2:
-		ret += ((uint64_t)data[1]) << 8;
+		ret += ((uint64_t)*p++) << 8;
 	/* FALL-THROUGH */
 	case 1:
-		ret += data[8];
+		ret += *p;
 		return ret;
 	}
 
