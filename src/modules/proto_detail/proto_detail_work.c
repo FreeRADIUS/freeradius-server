@@ -62,11 +62,7 @@ typedef struct {
 	uint8_t				*packet;		//!< for retransmissions
 	size_t				packet_len;		//!< for retransmissions
 
-	fr_time_delta_t			rt;
-	uint32_t       			count;			//!< number of retransmission tries
-
-	fr_time_t			start;			//!< when we started trying to send
-
+	fr_retry_t			retry;			//!< our retry timers
 	fr_event_timer_t const		*ev;			//!< retransmission timer
 	fr_dlist_t			entry;			//!< for the retransmission list
 } fr_detail_entry_t;
@@ -134,7 +130,7 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 	REQUEST_VERIFY(request);
 
 	MEM(pair_update_request(&vp, attr_packet_transmit_counter) >= 0);
-	vp->vp_uint32 = track->count;
+	vp->vp_uint32 = track->retry.count;
 
 	return 0;
 }
@@ -189,7 +185,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		rad_assert(buffer_len >= track->packet_len);
 		memcpy(buffer, track->packet, track->packet_len);
 
-		DEBUG("Retrying packet %d (retransmission %u)", track->id, track->count);
+		DEBUG("Retrying packet %d (retransmission %u)", track->id, track->retry.count);
 		*packet_ctx = track;
 		*recv_time_p = track->timestamp;
 		*priority = inst->parent->priority;
@@ -494,8 +490,6 @@ redo:
 	track->parent = thread;
 	track->timestamp = fr_time();
 	track->id = thread->count++;
-	track->rt = inst->retry_config.irt;
-	track->rt *= NSEC;
 
 	track->done_offset = done_offset;
 	if (inst->retransmit) {
@@ -554,7 +548,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 	proto_detail_work_thread_t     	*thread = track->parent;
 
 	DEBUG("%s - retransmitting packet %d", thread->name, track->id);
-	track->count++;
+	track->retry.count++;
 
 	fr_dlist_insert_tail(&thread->list, track);
 
@@ -579,7 +573,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 #endif
 }
 
-static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
+static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	proto_detail_work_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_work_t);
@@ -592,50 +586,32 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	rad_assert(thread->fd >= 0);
 
 	if (!buffer[0]) {
-		fr_time_t now;
-
-		/*
-		 *	Cap at MRC, if required.
-		 */
-		if (inst->retry_config.mrc && (track->count >= inst->retry_config.mrc)) {
-			DEBUG("%s - packet %d failed after %u retransmissions",
-			      thread->name, track->id, track->count);
-			goto fail;
-		}
-
-		now = fr_time();
-
-		if (track->count == 0) {
-			track->rt = inst->retry_config.irt;
-			track->rt *= NSEC;
-			track->start = request_time;
-
+		if (track->retry.start == 0) {
+			fr_retry_init(&track->retry, fr_time(), &inst->retry_config);
 		} else {
-			/*
-			 *	Cap at MRD, if required.
-			 */
-			if (inst->retry_config.mrd) {
-				fr_time_t end;
+			fr_retry_state_t state;
 
-				end = track->start;
-				end += ((fr_time_t) inst->retry_config.mrd) * NSEC;
-				if (now >= end) {
-					DEBUG("%s - packet %d failed after %u seconds",
-					      thread->name, track->id,
-					      (unsigned int) fr_time_delta_to_sec(inst->retry_config.mrd));
-					goto fail;
-				}
+			state = fr_retry_next(&track->retry, fr_time());
+			if (state == FR_RETRY_MRC) {
+				DEBUG("%s - packet %d failed after %u retransmissions",
+				      thread->name, track->id, track->retry.count);
+				goto fail;
+
 			}
 
-			// @todo - add random delays...
-
-		} /* we're on retransmission N */
+			if (state == FR_RETRY_MRD) {
+				DEBUG("%s - packet %d failed after %u seconds",
+				      thread->name, track->id,
+				      (unsigned int) fr_time_delta_to_sec(inst->retry_config.mrd));
+				goto fail;
+			}
+		}
 
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
-		      thread->name, track->id, (int) (track->rt / NSEC), (int) ((track->rt % NSEC) / 1000));
+			      thread->name, track->id, (int) (track->retry.rt / NSEC), (int) ((track->retry.rt % NSEC) / 1000));
 
 		if (fr_event_timer_at(thread, thread->el, &track->ev,
-				      now + track->rt, work_retransmit, track) < 0) {
+				      track->retry.next, work_retransmit, track) < 0) {
 			ERROR("%s - Failed inserting retransmission timeout", thread->name);
 		fail:
 			if (inst->track_progress && (track->done_offset > 0)) goto mark_done;
