@@ -103,7 +103,6 @@ static int _request_free(REQUEST *request)
 	 */
 	if (unlikely(fr_dlist_entry_in_list(&request->free_entry))) {
 		fr_dlist_entry_unlink(&request->free_entry);	/* Don't trust the list head to be available */
-		talloc_free(request->state_ctx);
 		goto really_free;
 	}
 
@@ -119,12 +118,10 @@ static int _request_free(REQUEST *request)
 		 *	Ensure any data associated
 		 *	with the state ctx is freed.
 		 */
+		state_ctx = request->state_ctx;
 		if (request->state_ctx) {
 			rad_assert(!request->parent || (request->state_ctx != request->parent->state_ctx));
 			talloc_free_children(request->state_ctx);
- 			state_ctx = request->state_ctx;
-		} else {
-			state_ctx = NULL;
 		}
 		free_list = request_free_list;
 
@@ -145,6 +142,13 @@ static int _request_free(REQUEST *request)
 		return -1;	/* Prevent free */
  	}
 
+	/*
+	 *	Ensure anything that might reference the request is
+	 *	freed before it is.
+	 */
+	talloc_free_children(request);
+
+really_free:
 	/*
 	 *	state_ctx is parented separately.
 	 *
@@ -174,13 +178,6 @@ static int _request_free(REQUEST *request)
 		talloc_free(request->state_ctx);
 	}
 
-	/*
-	 *	Ensure anything that might reference the request is
-	 *	freed before it is.
-	 */
-	talloc_free_children(request);
-
-really_free:
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
 #endif
