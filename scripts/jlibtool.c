@@ -177,7 +177,7 @@
 #endif
 
 #ifndef CC
-#define CC				"gcc"
+#define CC				"clang"
 #endif
 
 #ifndef CXX
@@ -185,7 +185,7 @@
 #endif
 
 #ifndef LINK_C
-#define LINK_C				"gcc"
+#define LINK_C				"clang"
 #endif
 
 #ifndef LINK_CXX
@@ -2222,6 +2222,13 @@ static int run_mode(command_t *cmd)
 	case MODE_EXECUTE:
 	{
 		char *l, libpath[PATH_MAX];
+
+		if (!cmd->arglist->num) {
+			ERROR("No command to execute.");
+			rv = 1;
+
+			goto finish;
+		}
 
 		if (strlen(cmd->arglist->vals[0]) >= PATH_MAX) {
 			ERROR("Libpath too long no buffer space");
