@@ -95,6 +95,8 @@ struct fr_connection_s {
 
 	fr_dlist_head_t		deferred_signals;	//!< A list of signals we received whilst we were in
 							///< a handler.
+
+	bool			deferred_signals_pause; //!< Temporarily stop processing of signals.
 };
 
 #define STATE_TRANSITION(_new) \
@@ -228,6 +230,35 @@ static void connection_deferred_signal_process(fr_connection_t *conn)
 	}
 }
 
+/** Pause processing of deferred signals
+ *
+ * @param[in] conn to pause signal processing for.
+ */
+void fr_connection_deferred_signals_pause(fr_connection_t *conn)
+{
+	conn->deferred_signals_pause = true;
+}
+
+/** Resume processing of deferred signals
+ *
+ * @param[in] conn to resume signal processing for.
+ */
+void fr_connection_deferred_signals_resume(fr_connection_t *conn)
+{
+	/*
+	 *	If we were paused, and we're not in a handler
+	 *	then process the signals now.
+	 */
+	if (!conn->in_handler) {
+		if (conn->deferred_signals_pause) {
+			conn->deferred_signals_pause = false;
+			connection_deferred_signal_process(conn);
+			return;
+		}
+	}
+	conn->deferred_signals_pause = false;
+}
+
 /** Called when we enter a handler
  *
  */
@@ -243,6 +274,7 @@ do { \
 #define HANDLER_END(_conn) \
 do { \
 	(_conn)->in_handler = _prev_handler; \
+	if (!(_conn)->deferred_signals_pause && (!(_conn)->in_handler)) connection_deferred_signal_process(_conn); \
 } while(0)
 
 
@@ -933,8 +965,6 @@ void fr_connection_signal_init(fr_connection_t *conn)
 	default:
 		break;
 	}
-
-	connection_deferred_signal_process(conn);
 }
 
 /** Asynchronously signal that the connection is open
@@ -967,8 +997,6 @@ void fr_connection_signal_connected(fr_connection_t *conn)
 	default:
 		break;
 	}
-
-	connection_deferred_signal_process(conn);
 }
 
 /** Asynchronously signal the connection should be reconnected
@@ -1022,8 +1050,6 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 		rad_assert(0);
 		return;
 	}
-
-	connection_deferred_signal_process(conn);
 }
 
 /** Shuts down a connection gracefully
@@ -1077,8 +1103,6 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 		rad_assert(0);
 		return;
 	}
-
-	connection_deferred_signal_process(conn);
 }
 
 /** Shuts down a connection ungracefully
@@ -1123,8 +1147,6 @@ void fr_connection_signal_halt(fr_connection_t *conn)
 		rad_assert(0);
 		return;
 	}
-
-	connection_deferred_signal_process(conn);
 }
 /** Receive an error notification when we're connecting a socket
  *
@@ -1140,8 +1162,6 @@ static void _connection_error(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 
 	ERROR("Connection failed for fd (%u): %s", fd, fr_syserror(fd_errno));
 	connection_state_failed_enter(conn);
-
-	connection_deferred_signal_process(conn);
 }
 
 /** Receive a write notification after a socket is connected
@@ -1157,8 +1177,6 @@ static void _connection_writable(fr_event_list_t *el, int fd, UNUSED int flags, 
 
 	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
 	connection_state_connected_enter(conn);
-
-	connection_deferred_signal_process(conn);
 }
 
 /** Remove the FD we were watching for connection open/fail from the event loop
