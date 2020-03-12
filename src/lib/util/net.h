@@ -161,7 +161,7 @@ uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
  * @param[out] out	Where to write the integer.
  * @param[in] num	to encode.
  */
-static inline void fr_htons(uint8_t out[static sizeof(uint16_t)], uint16_t num)
+static inline void fr_net_from_uint16(uint8_t out[static sizeof(uint16_t)], uint16_t num)
 {
 	out[0] = (num >> 8) & 0xff;
 	out[1] = num & 0xff;
@@ -172,10 +172,10 @@ static inline void fr_htons(uint8_t out[static sizeof(uint16_t)], uint16_t num)
  * @param[out] out	Where to write the integer.
  * @param[in] num	to encode.
  */
-static inline void fr_htonl(uint8_t out[static sizeof(uint32_t)], uint32_t num)
+static inline void fr_net_from_uint32(uint8_t out[static sizeof(uint32_t)], uint32_t num)
 {
-	fr_htons(out, (uint16_t) (num >> 16));
-	fr_htons(out + sizeof(uint16_t), (uint16_t) num);
+	fr_net_from_uint16(out, (uint16_t) (num >> 16));
+	fr_net_from_uint16(out + sizeof(uint16_t), (uint16_t) num);
 }
 
 /** Write out an unsigned 64bit integer in wire format (big endian)
@@ -183,10 +183,10 @@ static inline void fr_htonl(uint8_t out[static sizeof(uint32_t)], uint32_t num)
  * @param[out] out	Where to write the integer.
  * @param[in] num	to encode.
  */
-static inline void fr_htonll(uint8_t out[static sizeof(uint64_t)], uint64_t num)
+static inline void fr_net_from_uint64(uint8_t out[static sizeof(uint64_t)], uint64_t num)
 {
-	fr_htonl(out, (uint32_t)(num >> 32));
-	fr_htonl(out + sizeof(uint32_t), (uint32_t)num);
+	fr_net_from_uint32(out, (uint32_t)(num >> 32));
+	fr_net_from_uint32(out + sizeof(uint32_t), (uint32_t)num);
 }
 
 /** Write out an unsigned 64bit integer in wire format using the fewest bytes possible
@@ -196,7 +196,7 @@ static inline void fr_htonll(uint8_t out[static sizeof(uint64_t)], uint64_t num)
  * @param[in] num	Number to encode.
  * @return the number of bytes written to out.
  */
-static inline size_t fr_htonllx(uint8_t out[static sizeof(uint64_t)], uint64_t num)
+static inline size_t fr_net_from_uint64v(uint8_t out[static sizeof(uint64_t)], uint64_t num)
 {
 	size_t ret;
 	uint8_t *p = out;
@@ -252,7 +252,7 @@ static inline size_t fr_htonllx(uint8_t out[static sizeof(uint64_t)], uint64_t n
  * @param[in] data	To convert to a 16bit unsigned integer of native endianness.
  * @return a 16 bit unsigned integer of native endianness.
  */
-static inline uint16_t fr_ntohs(uint8_t const data[static sizeof(uint16_t)])
+static inline uint16_t fr_net_to_uint16(uint8_t const data[static sizeof(uint16_t)])
 {
 	return (((uint16_t)data[0]) << 8) | data[1];
 }
@@ -262,9 +262,9 @@ static inline uint16_t fr_ntohs(uint8_t const data[static sizeof(uint16_t)])
  * @param[in] data	To convert to a 32bit unsigned integer of native endianness.
  * @return a 32 bit unsigned integer of native endianness.
  */
-static inline uint32_t fr_ntohl(uint8_t const data[static sizeof(uint32_t)])
+static inline uint32_t fr_net_to_uint32(uint8_t const data[static sizeof(uint32_t)])
 {
-	return ((uint32_t)fr_ntohs(data) << 16) | fr_ntohs(data + sizeof(uint16_t));
+	return ((uint32_t)fr_net_to_uint16(data) << 16) | fr_net_to_uint16(data + sizeof(uint16_t));
 }
 
 /** Read an unsigned 64bit integer from wire format (big endian)
@@ -272,9 +272,9 @@ static inline uint32_t fr_ntohl(uint8_t const data[static sizeof(uint32_t)])
  * @param[in] data	To convert to a 64bit unsigned integer of native endianness.
  * @return a 64 bit unsigned integer of native endianness.
  */
-static inline uint64_t fr_ntohll(uint8_t const data[static sizeof(uint64_t)])
+static inline uint64_t fr_net_to_uint64(uint8_t const data[static sizeof(uint64_t)])
 {
-	return ((uint64_t)fr_ntohl(data) << 32) | fr_ntohl(data + sizeof(uint32_t));
+	return ((uint64_t)fr_net_to_uint32(data) << 32) | fr_net_to_uint32(data + sizeof(uint32_t));
 }
 
 /** Read an unsigned 64bit integer from wire format (big endian) with a variable length encoding
@@ -283,7 +283,7 @@ static inline uint64_t fr_ntohll(uint8_t const data[static sizeof(uint64_t)])
  * @param[in] data_len	Length of number.
  * @return a 64 bit unsigned integer of native endianness.
  */
-static inline uint64_t fr_ntohllx(uint8_t const data[static sizeof(uint64_t)], size_t data_len)
+static inline uint64_t fr_net_to_uint64v(uint8_t const data[static sizeof(uint64_t)], size_t data_len)
 {
 	uint64_t ret = 0;
 	uint8_t const *p = data;

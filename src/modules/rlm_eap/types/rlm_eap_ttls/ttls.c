@@ -168,13 +168,13 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			return -1;
 		}
 
-		attr = fr_ntohl(p);
+		attr = fr_net_to_uint32(p);
 		p += 4;
 
 		flags = p[0];
 		p++;
 
-		value_len = length = fr_ntohllx(p, 3);	/* Yes, that is a 24 bit length field */
+		value_len = length = fr_net_to_uint64v(p, 3);	/* Yes, that is a 24 bit length field */
 		p += 3;
 
 		value_len -= 8;	/* -= 8 for AVP code (4), flags (1), AVP length (3) */
@@ -185,7 +185,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	Do we have a vendor field?
 		 */
 		if (flags & FR_DIAMETER_AVP_FLAG_VENDOR) {
-			vendor = fr_ntohl(p);
+			vendor = fr_net_to_uint32(p);
 			p += 4;
 			value_len -= 4;	/* -= 4 for the vendor ID field */
 
