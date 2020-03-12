@@ -122,7 +122,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 		if (!vp) goto setup_send;
 
-		dv = fr_dict_enum_by_value(vp->da, &vp->data);
+		dv = fr_dict_dict_enum_by_value(dict_radius, vp->da, &vp->data);
 		if (!dv) goto setup_send;
 
 		unlang = cf_section_find(request->server_cs, "accounting", dv->name);
@@ -179,7 +179,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 		if (vp) request->reply->code = vp->vp_uint32;
 
-		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+		dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
 

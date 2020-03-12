@@ -154,7 +154,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 		for (i = 0; i < (NUM_ELEMENTS(type_lib_table)); i++) {
 			name = type_lib_table[i];
 			if (name && (strcmp(name, type_str) == 0)) {
-				type_enum = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(i));
+				type_enum = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(i));
 				break;
 			}
 		}

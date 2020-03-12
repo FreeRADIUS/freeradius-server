@@ -109,7 +109,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 		if (vp) request->reply->code = vp->vp_uint32;
 
-		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+		dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
 
@@ -145,12 +145,12 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
-				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+				dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
 				if (dv) RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv->name);
 
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
-				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+				dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
