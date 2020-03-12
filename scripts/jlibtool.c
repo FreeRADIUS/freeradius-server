@@ -413,7 +413,7 @@ static void *lt_malloc(size_t size)
 
 	out = malloc(size);
 	if (!out) {
-		ERROR("Failed allocating %zu bytes, OOM", size);
+		ERROR("Failed allocating %zu bytes, OOM\n", size);
 		exit(1);
 	}
 
@@ -1053,7 +1053,7 @@ static char *gen_library_name(char const *name, enum lib_type genlib)
 
 	newext = strrchr(newarg, '.');
 	if (!newext) {
-		ERROR("Library path does not have an extension");
+		ERROR("Library path does not have an extension\n");
 	free(newarg);
 
 	return NULL;
@@ -1145,7 +1145,7 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 	strcpy(newarg + newpathlen, arg + pathlen);
 	ext = strrchr(newarg, '.');
 	if (!ext) {
-		ERROR("Error: Library path does not have an extension");
+		ERROR("Error: Library path does not have an extension\n");
 		free(newarg);
 
 		return NULL;
@@ -2224,14 +2224,14 @@ static int run_mode(command_t *cmd)
 		char *l, libpath[PATH_MAX];
 
 		if (!cmd->arglist->num) {
-			ERROR("No command to execute.");
+			ERROR("No command to execute.\n");
 			rv = 1;
 
 			goto finish;
 		}
 
 		if (strlen(cmd->arglist->vals[0]) >= PATH_MAX) {
-			ERROR("Libpath too long no buffer space");
+			ERROR("Libpath too long no buffer space\n");
 			rv = 1;
 
 			goto finish;
@@ -2281,7 +2281,7 @@ static void cleanup_tmp_dir(char const *dirname)
 	}
 
 	if ((strlen(dirname) + 1 + sizeof(entry->d_name)) >= sizeof(fullname)) {
-		ERROR("Dirname too long, out of buffer space");
+		ERROR("Dirname too long, out of buffer space\n");
 
 		(void) closedir(dir);
 		return;
