@@ -2255,8 +2255,17 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 	}
 
 	if (tconn->events != events) {
+		/*
+		 *	There may be a fatal error which results
+		 *	in the connection being freed.
+		 *
+		 *	Stop that from happening until after
+		 *	we're done using it.
+		 */
+		fr_connection_deferred_signals_pause(tconn->pub.conn);
 		DO_CONNECTION_NOTIFY(tconn, events);
 		tconn->events = events;
+		fr_connection_deferred_signals_resume(tconn->pub.conn);
 	}
 }
 
