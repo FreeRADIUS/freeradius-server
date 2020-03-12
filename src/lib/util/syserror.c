@@ -36,7 +36,7 @@ RCSID("$Id$")
 
 #define FR_SYSERROR_BUFSIZE (2048)
 
-fr_thread_local_setup(char *, fr_syserror_buffer); /* macro */
+static _Thread_local char *fr_syserror_buffer;
 static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get errors being
 					///< logged from within other thread local destructors
 					///< which cause a crash on exit if the logging buffer

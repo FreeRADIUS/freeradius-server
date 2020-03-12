@@ -1177,19 +1177,7 @@ cleanup:
 	 */
 	fr_syserror_free();
 
-	/*
-	 *	Call pthread destructors.  Which aren't normally
-	 *	called for the main thread.
-	 *
-	 *	Note that pthread_exit() never returns, and always
-	 *	causes the process to exit with status '0'.  So we
-	 *	check for test failure here, and if so, don't call the
-	 *	destructors.  If the tests fail, who cares about
-	 *	memory leaks...
-	 */
-	if (ret != 0) return ret;
-
-	pthread_exit(NULL);
+	return ret;
 }
 
 

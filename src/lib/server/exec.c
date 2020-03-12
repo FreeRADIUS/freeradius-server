@@ -66,7 +66,7 @@ typedef struct {
 	pid_t		pid;
 } fr_child_t;
 
-fr_thread_local_setup(fr_dlist_head_t *, fr_children); /* macro */
+static _Thread_local fr_dlist_head_t *fr_children;
 
 static void _fr_children_free(void *arg)
 {

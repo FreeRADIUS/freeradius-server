@@ -52,7 +52,7 @@ typedef struct {
 	fr_log_entry_t	*head;		//!< Head of the current thread local stack of messages.
 } fr_log_buffer_t;
 
-fr_thread_local_setup(fr_log_buffer_t *, fr_strerror_buffer); /* macro */
+static _Thread_local fr_log_buffer_t *fr_strerror_buffer;
 static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get errors being
 					///< logged from within other thread local destructors
 					///< which cause a crash on exit if the logging buffer

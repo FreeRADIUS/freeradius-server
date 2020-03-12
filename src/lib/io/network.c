@@ -44,7 +44,7 @@ RCSID("$Id$")
 
 #define MAX_WORKERS 64
 
-fr_thread_local_setup(fr_ring_buffer_t *, fr_network_rb); /* macro */
+static _Thread_local fr_ring_buffer_t *fr_network_rb;
 
 typedef struct {
 	fr_listen_t	*listen;

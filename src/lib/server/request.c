@@ -32,7 +32,7 @@ RCSID("$Id$")
  *
  * Any entries remaining in the list will be freed when the thread is joined
  */
-fr_thread_local_setup(fr_dlist_head_t *, request_free_list); /* macro */
+static _Thread_local fr_dlist_head_t *request_free_list; /* macro */
 
 /** Setup logging and other fields for a request
  *
