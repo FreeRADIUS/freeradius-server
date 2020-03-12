@@ -2172,6 +2172,8 @@ static int run_mode(command_t *cmd)
 	int rv = 0;
 	count_chars *cctemp;
 
+	if (cmd->mode == MODE_EXECUTE && cmd->arglist->num < 1) return 1;
+
 	cctemp = (count_chars*)lt_malloc(sizeof(count_chars));
 	init_count_chars(cctemp);
 
