@@ -637,7 +637,7 @@ static void process(REQUEST *request)
 	}
 
 send_reply:
-	dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
+	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 	if (!dv) return;
 
 	unlang = cf_section_find(request->server_cs, "send", dv->name);

@@ -899,7 +899,7 @@ fr_dict_t const *virtual_server_namespace(char const *virtual_server)
 	if (!cd) return NULL;
 
 	dict = (virtual_server_dict_t *) cf_data_value(cd);
-	
+
 	return dict->dict;
 }
 
@@ -1028,7 +1028,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	da = fr_dict_attr_child_by_num(fr_dict_root(dict_internal), FR_AUTH_TYPE);
 	if (!da) return RLM_MODULE_FAIL;
 
-	dv = fr_dict_dict_enum_by_value(dict_internal, da, fr_box_uint32((uint32_t) auth_type));
+	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));
 	if (!dv) return RLM_MODULE_FAIL;
 
 	subcs = cf_section_find(cs, da->name, dv->name);
