@@ -892,6 +892,12 @@ int main(int argc, char **argv)
 	int		sockfd;
 	TALLOC_CTX	*autofree;
 
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
 	conf = talloc_zero(autofree, radsnmp_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
@@ -899,13 +905,6 @@ int main(int argc, char **argv)
 	conf->secret = talloc_strdup(conf, "testing123");
 	conf->timeout = fr_time_delta_from_sec(3);
 	conf->retries = 5;
-
-	/*
-	 *	Must be called first, so the handler is called last
-	 */
-	fr_thread_local_atexit_setup();
-
-	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
