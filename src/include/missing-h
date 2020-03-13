@@ -486,7 +486,7 @@ typedef struct {
 #ifndef HAVE_HTONLL
 #  ifndef WORDS_BIGENDIAN
 #    ifdef HAVE_BUILTIN_BSWAP64
-#      define ntohll(x) __builtin_bswap64(x)
+#      define ntohll(x) ((uint64_t)__builtin_bswap64(x))
 #    else
 #      define ntohll(x) (((uint64_t)ntohl((uint32_t)(x >> 32))) | (((uint64_t)ntohl(((uint32_t) x)) << 32)))
 #    endif
