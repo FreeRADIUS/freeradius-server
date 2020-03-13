@@ -148,7 +148,13 @@ static inline void dict_attr_init(fr_dict_attr_t *da,
 	da->type = type;
 	da->flags = *flags;
 	da->parent = parent;
-	da->depth = parent ? parent->depth + 1 : 0;
+
+	if (parent) {
+		da->dict = parent->dict;
+		da->depth = parent->depth + 1;
+	} else {
+		da->depth = 0;
+	}
 
 	/*
 	 *	Point to the vendor definition.  Since ~90% of

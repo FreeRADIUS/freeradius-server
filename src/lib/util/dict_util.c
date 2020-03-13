@@ -403,13 +403,13 @@ fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
  *	- NULL on failure.
  */
 fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
-				   fr_dict_attr_t const *parent,
-				   char const *name, int attr,
-				   fr_type_t type, fr_dict_attr_flags_t const *flags)
+				fr_dict_attr_t const *parent,
+				char const *name, int attr,
+				fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t	*n;
 
-	if (!fr_cond_assert(parent)) return NULL;
+	if (!fr_cond_assert(parent) || !fr_cond_assert(parent->dict)) return NULL;
 
 	/*
 	 *	Allocate a new attribute
@@ -1415,23 +1415,31 @@ fr_dict_t *dict_by_protocol_num(unsigned int num)
  */
 fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t const *da_p = da;
+#ifndef NDEBUG
+	{
+		fr_dict_attr_t const	*da_p = da;
+		fr_dict_t		*dict;
 
-	while (da_p->parent) {
-		da_p = da_p->parent;
-		DA_VERIFY(da_p);
-	}
+		dict = da->dict;
+		while (da_p->parent) {
+			da_p = da_p->parent;
+			fr_cond_assert_msg("Inconsistent dict membership");
+			DA_VERIFY(da_p);
+		}
 
-	if (!da_p->flags.is_root) {
-		fr_strerror_printf("%s: Attribute %s has not been inserted into a dictionary", __FUNCTION__, da->name);
-		return NULL;
+		if (!da_p->flags.is_root) {
+			fr_strerror_printf("%s: Attribute %s has not been inserted into a dictionary",
+					   __FUNCTION__, da->name);
+			return NULL;
+		}
 	}
+#endif
 
 	/*
 	 *	Parent of the root attribute must
 	 *	be the dictionary.
 	 */
-	return talloc_get_type_abort(talloc_parent(da_p), fr_dict_t);
+	return talloc_get_type_abort(da->dict, fr_dict_t);
 }
 
 /** Dictionary/attribute ctx struct

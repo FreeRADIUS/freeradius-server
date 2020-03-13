@@ -98,6 +98,7 @@ struct dict_attr {
 	fr_type_t		type;				//!< Value type.
 	char const		*name;				//!< Attribute name.
 
+	fr_dict_t const		*dict;				//!< Dict attribute belongs to.
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
 
@@ -114,10 +115,7 @@ struct dict_attr {
 			fr_dict_attr_t const	*vendor;	//!< ancestor which has type FR_TYPE_VENDOR
 			fr_dict_attr_t const	**children;	//!< Children of this attribute.
 		};
-		struct {
-			fr_dict_t const		*dict;		//!< child dictionary
-			fr_dict_attr_t const	*ref;		//!< reference
-		};
+		fr_dict_attr_t const	*ref;			//!< reference
 	};
 };
 

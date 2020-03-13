@@ -194,6 +194,7 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 	if (!dict->root) return -1;
 
 	dict_attr_init(dict->root, NULL, proto_number, FR_TYPE_TLV, &flags);
+	dict->root->dict = dict;
 	DA_VERIFY(dict->root);
 
 	return 0;
