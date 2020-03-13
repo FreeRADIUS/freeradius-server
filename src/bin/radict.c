@@ -213,6 +213,8 @@ int main(int argc, char *argv[])
 	}
 #endif
 
+	talloc_set_log_stderr();
+
 	fr_debug_lvl = 1;
 
 	while ((c = getopt(argc, argv, "ED:xh")) != -1) switch (c) {
