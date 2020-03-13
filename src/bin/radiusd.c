@@ -223,6 +223,10 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	fr_time_delta_t	exit_after = 0;
 #endif
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
 
 	/*
 	 *	Setup talloc callbacks so we get useful errors

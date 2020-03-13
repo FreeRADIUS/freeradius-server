@@ -1178,7 +1178,7 @@ int main(int argc, char **argv)
 	int		parallel = 1;
 	rc_request_t	*this;
 	int		force_af = AF_UNSPEC;
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	TALLOC_CTX	*autofree;
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1187,6 +1187,13 @@ int main(int argc, char **argv)
 	 */
 	fr_debug_lvl = 0;
 	fr_log_fp = stdout;
+
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {

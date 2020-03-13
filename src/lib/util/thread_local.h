@@ -38,6 +38,8 @@ extern "C" {
 
 typedef void(*fr_thread_local_atexit_t)(void *uctx);
 
+int fr_thread_local_atexit_setup(void);
+
 int fr_thread_local_atexit(fr_thread_local_atexit_t func, void const *uctx);
 
 /** Set a destructor for thread local storage to free the memory on thread exit

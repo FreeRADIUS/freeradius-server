@@ -843,7 +843,7 @@ int main(int argc, char **argv)
 	char 		history_file[PATH_MAX];
 #endif
 
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	TALLOC_CTX	*autofree;
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
@@ -852,6 +852,13 @@ int main(int argc, char **argv)
 
 	char const *prompt = "radmin> ";
 	char prompt_buffer[1024];
+
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {

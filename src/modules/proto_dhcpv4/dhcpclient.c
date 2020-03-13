@@ -612,9 +612,16 @@ int main(int argc, char **argv)
 	RADIUS_PACKET		*packet = NULL;
 	RADIUS_PACKET		*reply = NULL;
 
-	TALLOC_CTX		*autofree = talloc_autofree_context();
+	TALLOC_CTX		*autofree;
 
 	int			ret;
+
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
 
 	fr_debug_lvl = 1;
 

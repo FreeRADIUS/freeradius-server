@@ -59,6 +59,7 @@ typedef struct {
 _Thread_local fr_exit_handler_list_t	*thread_local_atexit = NULL;
 static fr_exit_handler_list_t		*global_atexit = NULL;
 static pthread_mutex_t			global_atexit_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool				is_exiting;
 
 
 /** Call the exit handler
@@ -128,7 +129,29 @@ static int _global_list_free(fr_exit_handler_list_t *ehl)
  */
 static void _global_free(void)
 {
+	pthread_mutex_lock(&global_atexit_mutex);
+	fr_cond_assert_msg(!is_exiting, "Global free function called multiple times");
+	is_exiting = true;
+	pthread_mutex_unlock(&global_atexit_mutex);
+
 	TALLOC_FREE(global_atexit);
+}
+
+/** Setup the atexit handler, should be called at the start of a program's execution
+ *
+ */
+int fr_thread_local_atexit_setup(void)
+{
+	if (global_atexit) return 0;
+
+	global_atexit = talloc_zero(NULL, fr_exit_handler_list_t);
+	if (unlikely(!global_atexit)) return -1;
+
+	fr_dlist_talloc_init(&global_atexit->head, fr_exit_handler_entry_t, entry);
+	talloc_set_destructor(global_atexit, _global_list_free);
+	atexit(_global_free);	/* Call all remaining destructors at process exit */
+
+	return 0;
 }
 
 /** Add a new destructor
@@ -139,20 +162,17 @@ static void _global_free(void)
  */
 int fr_thread_local_atexit(fr_thread_local_atexit_t func, void const *uctx)
 {
+	int ret = 0;
+
 	/*
 	 *	Initialise the global list containing all the thread-local
 	 *	dlist destructors.
 	 */
 	pthread_mutex_lock(&global_atexit_mutex);
-	if (!global_atexit) {
-		global_atexit = talloc_zero(NULL, fr_exit_handler_list_t);
-		if (unlikely(!global_atexit)) return -1;
-
-		fr_dlist_talloc_init(&global_atexit->head, fr_exit_handler_entry_t, entry);
-		talloc_set_destructor(global_atexit, _global_list_free);
-		atexit(_global_free);	/* Call all remaining destructors at process exit */
-	}
+	fr_cond_assert_msg(!is_exiting, "New atexit handlers should not be allocated whilst exiting");
+	if (!global_atexit) ret = fr_thread_local_atexit_setup();
 	pthread_mutex_unlock(&global_atexit_mutex);
+	if (ret < 0) return ret;
 
 	/*
 	 *	Initialise the thread local list, just for pthread_exit().

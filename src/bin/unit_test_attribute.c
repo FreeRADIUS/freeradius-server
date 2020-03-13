@@ -2348,7 +2348,7 @@ int main(int argc, char *argv[])
 	int			*inst = &c;
 	CONF_SECTION		*cs;
 	int			ret = EXIT_SUCCESS;
-	TALLOC_CTX		*autofree = talloc_autofree_context();
+	TALLOC_CTX		*autofree;
 	dl_module_loader_t	*dl_modules = NULL;
 	bool			exit_now = false;
 
@@ -2361,6 +2361,13 @@ int main(int argc, char *argv[])
 	bool			do_features = false;
 	bool			do_commands = false;
 	bool			do_usage = false;
+
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {

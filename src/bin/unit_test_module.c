@@ -693,12 +693,20 @@ int main(int argc, char *argv[])
 	fr_dict_t		*dict = NULL;
 	char const 		*receipt_file = NULL;
 
-	TALLOC_CTX		*autofree = talloc_autofree_context();
-	TALLOC_CTX		*thread_ctx = talloc_new(autofree);
+	TALLOC_CTX		*autofree;
+	TALLOC_CTX		*thread_ctx;
 
 	char			*p;
 	main_config_t		*config;
 	dl_module_loader_t	*dl_modules = NULL;
+
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
+	thread_ctx = talloc_new(autofree);
 
 	config = main_config_alloc(autofree);
 	if (!config) {

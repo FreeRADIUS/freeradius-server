@@ -2210,12 +2210,19 @@ int main(int argc, char *argv[])
 	int		c;
 	char const	*raddb_dir = RADDBDIR;
 	char const	*dict_dir = DICTDIR;
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	TALLOC_CTX	*autofree;
 
 	rs_stats_t	*stats;
 
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
+
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
 
 	/*
 	 *	Useful if using radsniff as a long running stats daemon
