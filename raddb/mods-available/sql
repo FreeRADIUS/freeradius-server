@@ -56,7 +56,6 @@ sql {
 	#	rlm_sql_freetds
 	#	rlm_sql_iodbc
 	#	rlm_sql_unixodbc
-	#	rlm_sql_mongo
 	#
 	driver = "rlm_sql_null"
 #	driver = "rlm_sql_${dialect}"
