@@ -1316,18 +1316,7 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 	return dict->root;
 }
 
-/** Look up a protocol name embedded in another string
- *
- * @param[out] out		the resolve dictionary or NULL if the dictionary
- *				couldn't be resolved.
- * @param[in] name		string start.
- * @param[in] dict_def		The dictionary to return if no dictionary qualifier was found.
- * @return
- *	- 0 and *out != NULL.  Couldn't find a dictionary qualifier, so returned dict_def.
- *	- <= 0 on error and (*out == NULL) (offset as negative integer)
- *	- > 0 on success (number of bytes parsed).
- */
-ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def)
+ssize_t dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t const *dict_def)
 {
 	fr_dict_attr_t		root;
 
@@ -1377,6 +1366,28 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_d
 	*out = dict;
 
 	return p - name;
+}
+
+/** Look up a protocol name embedded in another string
+ *
+ * @param[out] out		the resolve dictionary or NULL if the dictionary
+ *				couldn't be resolved.
+ * @param[in] name		string start.
+ * @param[in] dict_def		The dictionary to return if no dictionary qualifier was found.
+ * @return
+ *	- 0 and *out != NULL.  Couldn't find a dictionary qualifier, so returned dict_def.
+ *	- <= 0 on error and (*out == NULL) (offset as negative integer)
+ *	- > 0 on success (number of bytes parsed).
+ */
+ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def)
+{
+	ssize_t		slen;
+	fr_dict_t	*dict = NULL;
+
+	slen = dict_by_protocol_substr(&dict, name, dict_def);
+	*out = dict;
+
+	return slen;
 }
 
 /** Internal version of #fr_dict_by_protocol_name
@@ -1439,7 +1450,7 @@ fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 	 *	Parent of the root attribute must
 	 *	be the dictionary.
 	 */
-	return talloc_get_type_abort_const(da->dict, fr_dict_t);
+	return talloc_get_type_abort(da->dict, fr_dict_t);
 }
 
 /** Dictionary/attribute ctx struct
@@ -1799,8 +1810,8 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
 ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 					      fr_dict_t const *dict_def, char const *name, bool fallback)
 {
-	fr_dict_t const		*dict = NULL;
-	fr_dict_t const		*dict_iter = NULL;
+	fr_dict_t		*dict = NULL;
+	fr_dict_t		*dict_iter = NULL;
 	char const		*p = name;
 	ssize_t			slen;
 	fr_dict_attr_err_t	aerr = FR_DICT_ATTR_OK;
@@ -1815,7 +1826,7 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 	 *	Figure out if we should use the default dictionary
 	 *	or if the string was qualified.
 	 */
-	slen = fr_dict_by_protocol_substr(&dict, p, dict_def);
+	slen = dict_by_protocol_substr(&dict, p, dict_def);
 	if (slen < 0) {
 		if (err) *err = FR_DICT_ATTR_PROTOCOL_NOTFOUND;
 		return 0;
@@ -1824,7 +1835,7 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 	 *	Nothing was parsed, use the default dictionary
 	 */
 	} else if (slen == 0) {
-		dict = dict_def;
+		memcpy(&dict, &dict_def, sizeof(dict));
 
 	/*
 	 *	Has dictionary qualifier, can't fallback

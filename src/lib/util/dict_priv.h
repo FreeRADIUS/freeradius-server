@@ -25,6 +25,8 @@
 extern "C" {
 #endif
 
+#define _DICT_PRIVATE 1
+
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/dl.h>
@@ -195,6 +197,8 @@ bool			dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 fr_dict_attr_t		*dict_attr_by_name(fr_dict_t const *dict, char const *name);
 
 fr_dict_attr_t		*dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
+
+ssize_t			dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t const *dict_def);
 
 fr_dict_t		*dict_by_protocol_name(char const *name);
 

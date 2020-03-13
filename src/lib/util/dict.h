@@ -37,6 +37,15 @@ extern "C" {
 #include <talloc.h>
 
 /*
+ *	Allow public and private versions of the same structures
+ */
+#ifndef _DICT_PRIVATE
+#  define _CONST const
+#else
+#  define _CONST
+#endif
+
+/*
  *	Avoid circular type references.
  */
 typedef struct dict_attr fr_dict_attr_t;
@@ -98,7 +107,7 @@ struct dict_attr {
 	fr_type_t		type;				//!< Value type.
 	char const		*name;				//!< Attribute name.
 
-	fr_dict_t const		*dict;				//!< Dict attribute belongs to.
+	fr_dict_t _CONST* _CONST dict;				//!< Dict attribute belongs to.
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
 
@@ -451,6 +460,8 @@ void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
 fr_dict_attr_t const	*fr_dict_attr_iterate_children(fr_dict_attr_t const *parent, fr_dict_attr_t const **prev);
 
 /** @} */
+
+#undef _CONST
 
 #ifdef __cplusplus
 }

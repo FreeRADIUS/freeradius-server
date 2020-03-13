@@ -655,8 +655,8 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	 *	Hack up groups according to "ref"
 	 */
 	if (type == FR_TYPE_GROUP) {
-		fr_dict_attr_t *self;
-		fr_dict_t const *dict;
+		fr_dict_attr_t		*self;
+		fr_dict_t		*dict;
 		char *p;
 
 		memcpy(&self, &da, sizeof(self)); /* const issues */
@@ -687,7 +687,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		/*
 		 *	Get / skip protocol name.
 		 */
-		slen = fr_dict_by_protocol_substr(&dict, ref, ctx->dict);
+		slen = dict_by_protocol_substr(&dict, ref, ctx->dict);
 		if (slen < 0) {
 			talloc_free(ref);
 			return -1;
@@ -1488,10 +1488,10 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 		 *	table.
 		 */
 		for (this = mine; this != NULL; this = next) {
-			fr_dict_t const *dict;
-			fr_dict_attr_t const *da;
-			char *p;
-			ssize_t slen;
+			fr_dict_t		*dict;
+			fr_dict_attr_t const	*da;
+			char			*p;
+			ssize_t			slen;
 
 			da = dict_attr_by_name(ctx->dict, this->ref);
 			if (da) {
@@ -1508,7 +1508,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			/*
 			 *	Get / skip protocol name.
 			 */
-			slen = fr_dict_by_protocol_substr(&dict, this->ref, ctx->dict);
+			slen = dict_by_protocol_substr(&dict, this->ref, ctx->dict);
 			if (slen <= 0) {
 				fr_dict_t *other;
 
