@@ -322,17 +322,6 @@ void fr_perror(char const *fmt, ...)
 	talloc_free(prefix);
 }
 
-/** Explicitly free the memory used by fr_strerror
- *
- *  Note that this function is ONLY called in single-threaded mode,
- *  and then ONLY when the main thread does not call pthread_exit(NULL)
- */
-void fr_strerror_free(void)
-{
-	TALLOC_FREE(fr_strerror_buffer);
-	logging_stop = true;
-}
-
 #ifdef TESTING_STRERROR
 /*
  *  cc strerror.c -g3 -Wall -DTESTING_STRERROR -L/usr/local/lib -L ../../../build/lib/local/.libs/ -lfreeradius-util -I/usr/local/include -I../../ -I../ -include ../include/build.h -l talloc -o test_strerror && ./test_strerror

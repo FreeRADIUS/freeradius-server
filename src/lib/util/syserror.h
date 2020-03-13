@@ -36,7 +36,6 @@ extern "C" {
 #include <string.h>
 
 char const	*fr_syserror(int num);
-void		fr_syserror_free(void);
 
 #ifdef __cplusplus
 }

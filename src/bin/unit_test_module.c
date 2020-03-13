@@ -1171,12 +1171,6 @@ cleanup:
 		ret = EXIT_FAILURE;
 	}
 
-	/*
-	 *	Explicitly cleanup the buffer used for storing syserror messages
-	 *	This cuts down on address sanitiser output on error.
-	 */
-	fr_syserror_free();
-
 	return ret;
 }
 

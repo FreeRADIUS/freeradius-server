@@ -259,12 +259,3 @@ char const *fr_syserror(int num)
 	}
 #endif
 }
-
-/** Explicitly cleanup the thread specific buffer used
- *
- */
-void fr_syserror_free(void)
-{
-	_fr_logging_free(NULL);
-}
-

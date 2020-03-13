@@ -2542,12 +2542,6 @@ cleanup:
 	}
 
 	/*
-	 *	Must be last, we still need the errors
-	 *      from fr_touch.
-	 */
-	fr_strerror_free();
-
-	/*
 	 *	Explicitly free the autofree context
 	 *	to make errors less confusing.
 	 */
