@@ -56,10 +56,10 @@ typedef struct {
 							///< to ensure this memory is cleaned up.
 } fr_exit_handler_list_t;
 
-_Thread_local fr_exit_handler_list_t	*thread_local_atexit = NULL;
-static fr_exit_handler_list_t		*global_atexit = NULL;
-static pthread_mutex_t			global_atexit_mutex = PTHREAD_MUTEX_INITIALIZER;
-static bool				is_exiting;
+static _Thread_local fr_exit_handler_list_t	*thread_local_atexit = NULL;
+static fr_exit_handler_list_t			*global_atexit = NULL;
+static pthread_mutex_t				global_atexit_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool					is_exiting;
 
 
 /** Call the exit handler
