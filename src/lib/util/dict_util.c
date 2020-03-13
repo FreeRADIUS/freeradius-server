@@ -1418,12 +1418,12 @@ fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 #ifndef NDEBUG
 	{
 		fr_dict_attr_t const	*da_p = da;
-		fr_dict_t		*dict;
+		fr_dict_t const		*dict;
 
 		dict = da->dict;
 		while (da_p->parent) {
 			da_p = da_p->parent;
-			fr_cond_assert_msg("Inconsistent dict membership");
+			fr_cond_assert_msg(da_p->dict == dict, "Inconsistent dict membership");
 			DA_VERIFY(da_p);
 		}
 
