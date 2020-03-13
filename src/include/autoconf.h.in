@@ -42,10 +42,13 @@
 #undef HAVE_BINSAFE_REGEX
 
 /* Define if the compiler supports __builtin_bswap64 */
-#undef HAVE_BUILTIN_BSWAP_64
+#undef HAVE_BUILTIN_BSWAP64
 
 /* Define if the compiler supports __builtin_choose_expr */
 #undef HAVE_BUILTIN_CHOOSE_EXPR
+
+/* Define if the compiler supports __builtin_clzll */
+#undef HAVE_BUILTIN_CLZLL
 
 /* Define if the compiler supports __builtin_types_compatible_p */
 #undef HAVE_BUILTIN_TYPES_COMPATIBLE_P

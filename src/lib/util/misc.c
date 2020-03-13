@@ -996,7 +996,7 @@ int fr_size_from_str(size_t *out, char const *str)
 	return 0;
 }
 
-/** Multiple checking for overflow
+/** Multiply, checking for overflow
  *
  * @param[out] result	of multiplication.
  * @param[in] lhs	First operand.

@@ -168,6 +168,24 @@ static inline bool is_zero(char const *value)
 	return true;
 }
 
+/** Find the highest order bit in an unsigned 64 bit integer
+ *
+ */
+static inline uint8_t fr_high_bit_uint64(uint64_t num)
+{
+#ifndef HAVE_BUILTIN_CLZLL
+	return (64 - __builtin_clzll(num));
+#else
+	num |= (num >>  1);
+	num |= (num >>  2);
+	num |= (num >>  4);
+	num |= (num >>  8);
+	num |= (num >> 16);
+	num |= (num >> 32);
+	return num - (num >> 1);
+#endif
+}
+
 int		fr_set_signal(int sig, sig_t func);
 int		fr_unset_signal(int sig);
 int		rad_lockfd(int fd, int lock_len);

@@ -2485,6 +2485,8 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
 #
 # SYNOPSIS
 #
@@ -13448,7 +13450,51 @@ fi
 $as_echo "$ax_cv_cc_builtin_bswap64" >&6; }
 if test "x$ax_cv_cc_builtin_bswap64" = "xyes"; then
 
-$as_echo "#define HAVE_BUILTIN_BSWAP_64 1" >>confdefs.h
+$as_echo "#define HAVE_BUILTIN_BSWAP64 1" >>confdefs.h
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for __builtin_clzll support in compiler" >&5
+$as_echo_n "checking for __builtin_clzll support in compiler... " >&6; }
+if ${ax_cv_cc_builtin_clzll+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+        int main(int argc, char **argv) {
+          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+          return (__builtin_clzll(0) - (sizeof(unsigned long long) * 8));
+        }
+
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  ax_cv_cc_builtin_clzll=yes
+else
+  ax_cv_cc_builtin_clzll=no
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_builtin_clzll" >&5
+$as_echo "$ax_cv_cc_builtin_clzll" >&6; }
+if test "x$ax_cv_cc_builtin_clzll" = "xyes"; then
+
+$as_echo "#define HAVE_BUILTIN_CLZLL 1" >>confdefs.h
 
 fi
 

@@ -212,7 +212,7 @@ static inline size_t fr_net_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
 	 *	to a single CPU instruction on supported
 	 *	platforms.
 	 */
-	ret = ROUND_UP_DIV((size_t)flsll((long long)num), 8);
+	ret = ROUND_UP_DIV((size_t)fr_high_bit_uint64(num), 8);
 	switch (ret) {
 	case 8:
 		*p++ = (num & 0xFF00000000000000) >> 56;
