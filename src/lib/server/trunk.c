@@ -2928,9 +2928,9 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_HALTED,
 				     _trunk_connection_on_halted, false, tconn);	/* About to be freed */
 
-	fr_connection_signal_init(tconn->pub.conn);	/* annnnd GO! */
-
 	talloc_set_destructor(tconn, _trunk_connection_free);
+
+	fr_connection_signal_init(tconn->pub.conn);	/* annnnd GO! */
 
 	trunk->pub.last_open = now;
 
