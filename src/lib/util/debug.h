@@ -78,6 +78,7 @@ int		fr_reset_dumpable(void);
 int		fr_log_talloc_report(TALLOC_CTX const *ctx);
 void		fr_fault(int sig);
 void		fr_talloc_fault_setup(void);
+void		fr_disable_null_tracking_on_free(TALLOC_CTX *ctx);
 int		fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program);
 void		fr_fault_set_cb(fr_fault_cb_t func);
 void		fr_fault_set_log_fd(int fd);

@@ -2374,6 +2374,8 @@ int main(int argc, char *argv[])
 		fr_perror("unit_test_attribute");
 		goto cleanup;
 	}
+#else
+	fr_disable_null_tracking_on_free(autofree);
 #endif
 	/*
 	 *	Allocate a root config section so we can write

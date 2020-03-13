@@ -1100,10 +1100,24 @@ int fr_log_talloc_report(TALLOC_CTX const *ctx)
 }
 
 
-static int _fr_disable_null_tracking(UNUSED bool *p)
+static int _disable_null_tracking(UNUSED bool *p)
 {
 	talloc_disable_null_tracking();
 	return 0;
+}
+
+/** Disable the null tracking context when a talloc chunk is freed
+ *
+ */
+void fr_disable_null_tracking_on_free(TALLOC_CTX *ctx)
+{
+	bool *marker;
+
+	/*
+	 *  Disable null tracking on exit, else valgrind complains
+	 */
+	marker = talloc(ctx, bool);
+	talloc_set_destructor(marker, _disable_null_tracking);
 }
 
 /** Register talloc fault handlers
@@ -1226,15 +1240,7 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 		/*
 		 *  Needed for memory reports
 		 */
-		{
-			bool *marker;
-
-			/*
-			 *  Disable null tracking on exit, else valgrind complains
-			 */
-			marker = talloc(ctx, bool);
-			talloc_set_destructor(marker, _fr_disable_null_tracking);
-		}
+		fr_disable_null_tracking_on_free(ctx);
 
 #if defined(HAVE_MALLOPT) && !defined(NDEBUG)
 		/*

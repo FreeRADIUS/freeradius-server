@@ -173,6 +173,8 @@ int main(int argc, char *argv[])
 		fr_perror("unit_test_map");
 		exit(EXIT_FAILURE);
 	}
+#else
+	fr_disable_null_tracking_on_free(autofree);
 #endif
 
 	while ((c = getopt(argc, argv, "d:D:xMhr:")) != -1) switch (c) {
