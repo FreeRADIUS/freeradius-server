@@ -23,7 +23,7 @@
  * @copyright 2020 The FreeRADIUS server project
  */
 
- RCSID("$Id$")
+RCSID("$Id$")
 
 #include <freeradius-devel/util/thread_local.h>
 #include <freeradius-devel/util/dlist.h>
