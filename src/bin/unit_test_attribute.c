@@ -1188,7 +1188,7 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	while (to_dec < to_dec_end) {
 		slen = tp->func(cc->tmp_ctx, &cursor, cc->active_dict ? cc->active_dict : cc->config->dict,
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
-		if (slen < 0) {
+		if (slen <= 0) {
 			fr_pair_list_free(&head);
 			CLEAR_TEST_POINT(cc);
 			RETURN_OK_WITH_ERROR();
