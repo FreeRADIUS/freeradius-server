@@ -199,52 +199,12 @@ static inline void fr_net_from_uint64(uint8_t out[static sizeof(uint64_t)], uint
 static inline size_t fr_net_from_uint64v(uint8_t out[static sizeof(uint64_t)], uint64_t num)
 {
 	size_t ret;
-	uint8_t *p = out;
 
-	/*
-	 *	ffsll isn't POSIX, but it's in at least
-	 *	Linux, FreeBSD, OpenBSD and Solaris.
-	 *
-	 *	If we really care, implementing it
-	 *	in missing.c is trivial.
-	 *
-	 *	This version however should compile down
-	 *	to a single CPU instruction on supported
-	 *	platforms.
-	 */
 	ret = ROUND_UP_DIV((size_t)fr_high_bit_uint64(num), 8);
-	switch (ret) {
-	case 8:
-		*p++ = (num & 0xFF00000000000000) >> 56;
-	/* FALL-THROUGH */
-	case 7:
-		*p++ = (num & 0xFF000000000000) >> 48;
-	/* FALL-THROUGH */
-	case 6:
-		*p++ = (num & 0xFF0000000000) >> 40;
-	/* FALL-THROUGH */
-	case 5:
-		*p++ = (num & 0xFF00000000) >> 32;
-	/* FALL-THROUGH */
-	case 4:
-		*p++ = (num & 0xFF000000) >> 24;
-	/* FALL-THROUGH */
-	case 3:
-		*p++ = (num & 0xFF0000) >> 16;
-	/* FALL-THROUGH */
-	case 2:
-		*p++ = (num & 0xFF00) >> 8;
-	/* FALL-THROUGH */
-	case 1:
-		*p = (num & 0xFF);
-		return ret;
+	num = ntohll(num);
+	memcpy(out, &num, ret);	/* aligned */
 
-	case 0:
-		*p = 0;
-		return 1;
-	}
-
-	return 0;
+	return ret;
 }
 
 /** Read an unsigned 16bit integer from wire format (big endian)
@@ -283,39 +243,18 @@ static inline uint64_t fr_net_to_uint64(uint8_t const data[static sizeof(uint64_
  * @param[in] data_len	Length of number.
  * @return a 64 bit unsigned integer of native endianness.
  */
-static inline uint64_t fr_net_to_uint64v(uint8_t const data[static sizeof(uint64_t)], size_t data_len)
+static inline uint64_t fr_net_to_uint64v(uint8_t const *data, size_t data_len)
 {
-	uint64_t ret = 0;
-	uint8_t const *p = data;
+	uint64_t num = 0;
 
-	switch (data_len) {
-	case 8:
-		ret += ((uint64_t)*p++) << 56;
-	/* FALL-THROUGH */
-	case 7:
-		ret += ((uint64_t)*p++) << 48;
-	/* FALL-THROUGH */
-	case 6:
-		ret += ((uint64_t)*p++) << 40;
-	/* FALL-THROUGH */
-	case 5:
-		ret += ((uint64_t)*p++) << 32;
-	/* FALL-THROUGH */
-	case 4:
-		ret += ((uint64_t)*p++) << 24;
-	/* FALL-THROUGH */
-	case 3:
-		ret += ((uint64_t)*p++) << 16;
-	/* FALL-THROUGH */
-	case 2:
-		ret += ((uint64_t)*p++) << 8;
-	/* FALL-THROUGH */
-	case 1:
-		ret += *p;
-		return ret;
-	}
+	if (unlikely(data_len > sizeof(uint64_t))) return 0;
 
-	return 0;
+	/*
+	 *	Copy at an offset into memory
+	 *	allocated for the uin64_t
+	 */
+	memcpy(((uint8_t *)&num) + (sizeof(uint64_t) - data_len), data, data_len);	/* aligned */
+	return ntohll(num);
 }
 #ifdef __cplusplus
 }
