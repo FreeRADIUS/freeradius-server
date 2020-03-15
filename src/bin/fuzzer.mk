@@ -7,7 +7,7 @@
 #
 #  Once the fuzzer is build, run it via:
 #
-#  FR_LIBRARY_PATH=./build/lib/ FR_LIBRARY_FUZZ_PROTOCOL=radius FR_DICTIONARY_DIR=./share/dictionary/ ./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer /path/to/corpus/directory/
+#  ./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_radius -max_len=256 /path/to/corpus/directory/ -D ./share/dictionary/
 #
 
 #

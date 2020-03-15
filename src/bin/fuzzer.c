@@ -29,9 +29,9 @@ RCSID("$Id$")
 #include <freeradius-devel/io/test_point.h>
 
 /*
- *	Run from the source via:
+ *	Run from the source directory via:
  *
- *	FR_LIBRARY_PATH=./build/lib/ FR_LIBRARY_FUZZ_PROTOCOL=radius FR_DICTIONARY_DIR=./share/dictionary/ ./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer /path/to/corpus/directory/
+ *	./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_radius -D share/dictionary /path/to/corpus/directory/
  */
 
 static bool init = false;
@@ -42,7 +42,7 @@ static fr_dict_t *dict = NULL;
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
-int LLVMFuzzerInitialize(UNUSED int *argc, UNUSED char ***argv)
+int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
 	dl_t *dl;
 	dl_loader_t *dl_loader;
@@ -50,6 +50,39 @@ int LLVMFuzzerInitialize(UNUSED int *argc, UNUSED char ***argv)
 	char const *proto = getenv("FR_LIBRARY_FUZZ_PROTOCOL");
 	char const *dict_dir = getenv("FR_DICTIONARY_DIR");
 	char buffer[1024];
+
+	/*
+	 *	Get the name from the binary name of fuzzer_foo
+	 */
+	if (!proto) {
+		proto = strrchr((*argv)[0], '_');
+		if (proto) proto++;
+	}
+
+	/*
+	 *	Look for -D dir
+	 *
+	 *	If found, nuke it from the argument list.
+	 */
+	if (!dict_dir) {
+		int i, j;
+
+		for (i = 0; i < *argc - 1; i++) {
+			char *p = (*argv)[i];
+
+			if ((p[0] == '-') && (p[1] == 'D')) {
+				dict_dir = (*argv)[i + 1];
+
+				for (j = *argc + 2; j < *argc; j++) {
+					(*argv)[i] = (*argv)[j];
+				}
+
+				*argc -= 2;
+				break;
+			}
+		}
+
+	}
 
 	if (!dict_dir) dict_dir = DICTDIR;
 
@@ -109,7 +142,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	TALLOC_CTX *ctx = talloc_init("fuzzer");
 	VALUE_PAIR *vp = NULL;
 
-	if (!init) LLVMFuzzerInitialize(0, NULL);
+	if (!init) LLVMFuzzerInitialize(NULL, NULL);
 
 	tp->func(ctx, &vp, buf, len, decode_ctx);
 	talloc_free(ctx);
