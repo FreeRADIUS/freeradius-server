@@ -1571,7 +1571,6 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			}
 
 			talloc_free(this->ref);
-			this->da->dict = dict;
 			this->da->ref = da;
 
 			next = this->next;
