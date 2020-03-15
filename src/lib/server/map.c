@@ -33,8 +33,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/rad_assert.h>
 
-#include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair_cursor.h>
+#include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>

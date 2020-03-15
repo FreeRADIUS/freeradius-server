@@ -57,6 +57,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/pair_cursor.h>
+#include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>

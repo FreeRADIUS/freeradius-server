@@ -28,8 +28,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/users_file.h>
 
-#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <sys/stat.h>
 

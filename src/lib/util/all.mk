@@ -38,6 +38,7 @@ SOURCES		:= \
 		   packet.c \
 		   pair_cursor.c \
 		   pair.c \
+		   pair_legacy.c \
 		   pcap.c \
 		   print.c \
 		   proto.c \

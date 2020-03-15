@@ -31,6 +31,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/thread_local.h>
 
