@@ -23,6 +23,7 @@
  *
  * @copyright 2017-2020 The FreeRADIUS project
  */
+#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/value.h>
 
 /** @name Encoder errors
@@ -42,7 +43,6 @@
 /** @name Decode errors
  * @{
  */
-
 /** Fatal error - Out of memory
  */
 #define PAIR_DECODE_OOM		FR_VALUE_BOX_NET_OOM

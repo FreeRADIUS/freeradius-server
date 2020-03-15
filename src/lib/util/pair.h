@@ -67,6 +67,23 @@ typedef enum value_type {
 
 typedef struct value_pair_s VALUE_PAIR;
 
+typedef enum {
+	FR_PAIR_LIST_SINGLE = 0,				//!< Singly linked list.
+	FR_PAIR_LIST_DOUBLE,					//!< Doubly linked list.
+} fr_pair_list_type_t;
+
+/** Placeholder structure to represent lists of pairs
+ *
+ * Should have additional fields added later.
+ */
+typedef struct {
+	union {
+		VALUE_PAIR	        *slist;			//!< The head of the list.
+		fr_dlist_head_t		*dlist;			//!< Doubly linked list head.
+	};
+	fr_pair_list_type_t type;				//!< What type of list this is.
+} fr_pair_list_t;
+
 /** Stores an attribute, a value and various bits of other data
  *
  * VALUE_PAIRs are the main data structure used in the server
@@ -79,22 +96,34 @@ struct value_pair_s {
 
 	VALUE_PAIR		*next;
 
-	FR_TOKEN		op;				//!< Operator to use when moving or inserting
+	/*
+	 *	Legacy stuff that needs to die.
+	 */
+	struct {
+		FR_TOKEN		op;			//!< Operator to use when moving or inserting
 								//!< valuepair into a list.
 
-	int8_t			tag;				//!< Tag value used to group valuepairs.
+		int8_t			tag;			//!< Tag value used to group valuepairs.
 
-	union {
-	//	VALUE_SET	*set;				//!< Set of child attributes.
-	//	VALUE_LIST	*list;				//!< List of values for
+		union {
+		//	VALUE_SET	*set;			//!< Set of child attributes.
+		//	VALUE_LIST	*list;			//!< List of values for
 								//!< multivalued attribute.
-	//	fr_value_box_t	*data;				//!< Value data for this attribute.
+		//	fr_value_box_t	*data;			//!< Value data for this attribute.
 
-		char const 	*xlat;				//!< Source string for xlat expansion.
+			char const 	*xlat;			//!< Source string for xlat expansion.
+		};
 	};
 
 	value_type_t		type;				//!< Type of pointer in value union.
-	fr_value_box_t		data;
+
+	/*
+	 *	Pairs can have children or data bute not both.
+	 */
+	union {
+		fr_value_box_t		data;			//!< The value of this pair.
+		fr_pair_list_t		children;		//!< Nested attributes of this pair.
+	};
 };
 
 /** Abstraction to allow iterating over different configurations of VALUE_PAIRs
@@ -153,7 +182,7 @@ typedef struct {
 
 #define vp_date			data.vb_date
 
-#define vp_group		data.datum.ptr
+#define vp_group		children.slist
 
 #define vp_size			data.datum.size
 #define vp_filter		data.datum.filter
@@ -261,29 +290,26 @@ int		fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR **list, 
 int		fr_pair_delete_by_da(VALUE_PAIR **head, fr_dict_attr_t const *da);
 
 /* functions for FR_TYPE_GROUP */
-#ifdef PAIR_GROUP
-VALUE_PAIR	**fr_pair_group_get_sublist(VALUE_PAIR *head);
+fr_pair_list_t	*fr_pair_group_get_sublist(VALUE_PAIR *head);
 
-VALUE_PAIR	*fr_pair_group_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag);
+VALUE_PAIR	*fr_pair_group_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da, int8_t tag);
 
-VALUE_PAIR	*fr_pair_group_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned int attr, int8_t tag);
+VALUE_PAIR	*fr_pair_group_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr, int8_t tag);
 
-void		fr_pair_group_add(VALUE_PAIR *head, VALUE_PAIR *vp);
+void		fr_pair_group_add(fr_pair_list_t *head, VALUE_PAIR *vp);
 
-int		fr_pair_group_add_by_da(VALUE_PAIR **out, VALUE_PAIR *head, fr_dict_attr_t const *da);
+int		fr_pair_group_add_by_da(VALUE_PAIR **out, fr_pair_list_t *head, fr_dict_attr_t const *da);
 
-int		fr_pair_group_update_by_da(VALUE_PAIR **out, VALUE_PAIR *head, fr_dict_attr_t const *da);
+int		fr_pair_group_update_by_da(VALUE_PAIR **out, fr_pair_list_t *head, fr_dict_attr_t const *da);
 
-int		fr_pair_group_delete_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da);
-#else
-#define	fr_pair_group_find_by_da fr_pair_find_by_da
-#define	fr_pair_group_find_by_num fr_pair_find_by_num
-#define fr_pair_group_add(_head, _vp) fr_pair_add(&(_head), _vp)
-#define fr_pair_group_add_by_da(__out, _head, _vp, _da) fr_pair_add_by_da(_out, &(_head), _vp, _da)
-#define fr_pair_group_update_by_da(_out, _head, _vp, _da) fr_pair_update_by_da(_out, &(_head), _vp, _da)
-#define fr_pair_group_delete_by_da(_head, _da) fr_pair_delete_by_da(&(_head), _da)
-#endif
+int		fr_pair_group_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
+#define	fr_pair_group2_find_by_da fr_pair_find_by_da
+#define	fr_pair_group2_find_by_num fr_pair_find_by_num
+#define fr_pair_group2_add(_head, _vp) fr_pair_add(&(_head), _vp)
+#define fr_pair_group2_add_by_da(__out, _head, _vp, _da) fr_pair_add_by_da(_out, &(_head), _vp, _da)
+#define fr_pair_group2_update_by_da(_out, _head, _vp, _da) fr_pair_update_by_da(_out, &(_head), _vp, _da)
+#define fr_pair_group2_delete_by_da(_head, _da) fr_pair_delete_by_da(&(_head), _da)
 
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
