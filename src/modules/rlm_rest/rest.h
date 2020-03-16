@@ -25,6 +25,7 @@
  */
 RCSIDH(rest_h, "$Id$")
 
+#include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/pool.h>
 #include "config.h"
@@ -192,10 +193,8 @@ typedef struct {
 typedef struct {
 	rlm_rest_t const	*inst;		//!< Instance of rlm_rest.
 	fr_pool_t		*pool;		//!< Thread specific connection pool.
-	CURLM			*mandle;	//!< Thread specific multi handle.  Serves as the dispatch
+	fr_curl_handle_t	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch
 						//!< and coralling structure for REST requests.
-	fr_event_list_t		*el;		//!< This thread's event list.
-	fr_event_timer_t const	*ev;		//!< Used to manage IO timers for libcurl.
 	unsigned int		transfers;	//!< Keep track of how many outstanding transfers
 						//!< we think there are.
 } rlm_rest_thread_t;
@@ -353,6 +352,3 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, RE
  */
 void rest_io_module_action(void *instance, void *thread, REQUEST *request, void *rctx, fr_state_signal_t action);
 void rest_io_xlat_signal(REQUEST *request, void *xlat_inst, void *xlat_thread_inst, void *rctx, fr_state_signal_t action);
-int rest_io_request_enqueue(rlm_rest_thread_t *thread, REQUEST *request, void *handle);
-int rest_io_init(rlm_rest_thread_t *thread, bool multiplex);
-

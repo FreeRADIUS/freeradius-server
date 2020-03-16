@@ -582,7 +582,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="rlm_rest.c"
+ac_unique_file="base.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
@@ -1933,7 +1933,7 @@ ac_config_headers="$ac_config_headers config.h"
 
 
 
-if test x$with_rlm_rest != xno; then
+if test x$with_libfreeradius-curl != xno; then
 
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -3263,28 +3263,28 @@ _ACEOF
 			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without HTTPS support. requires: libcurl_protocol_https." >&5
 $as_echo "$as_me: WARNING: silently building without HTTPS support. requires: libcurl_protocol_https." >&2;}
 		else
-            { $as_echo "$as_me:${as_lineno-$LINENO}: curl-config's cflags were \"${LIBCURL_CPPFLAGS}\"" >&5
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: curl-config's cflags were \"${LIBCURL_CPPFLAGS}\"" >&5
 $as_echo "$as_me: curl-config's cflags were \"${LIBCURL_CPPFLAGS}\"" >&6;}
-		    LIBCURL_CPPFLAGS=$(echo "$LIBCURL_CPPFLAGS" | sed 's/-I */-isystem /g')
-		    { $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags are \"$(echo "${LIBCURL_CPPFLAGS}" | sed 's/-I */-isystem /g')\"" >&5
+			LIBCURL_CPPFLAGS=$(echo "$LIBCURL_CPPFLAGS" | sed 's/-I */-isystem /g')
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags are \"$(echo "${LIBCURL_CPPFLAGS}" | sed 's/-I */-isystem /g')\"" >&5
 $as_echo "$as_me: Sanitized cflags are \"$(echo "${LIBCURL_CPPFLAGS}" | sed 's/-I */-isystem /g')\"" >&6;}
 		fi
 	fi
 
-	targetname=rlm_rest
+	targetname=libfreeradius-curl
 else
 	targetname=
-	echo \*\*\* module rlm_rest is disabled.
+	echo \*\*\* module libfreeradius-curl is disabled.
 fi
 
 if test x"$fail" != x""; then
 	if test x"${enable_strict_dependencies}" = x"yes"; then
-		as_fn_error $? "set --without-rlm_rest to disable it explicitly." "$LINENO" 5
+		as_fn_error $? "set --without-libfreeradius-curl to disable it explicitly." "$LINENO" 5
 	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_rest." >&5
-$as_echo "$as_me: WARNING: silently not building rlm_rest." >&2;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_rest requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_rest requires: $fail." >&2;};
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building libfreeradius-curl." >&5
+$as_echo "$as_me: WARNING: silently not building libfreeradius-curl." >&2;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: libfreeradius-curl requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: libfreeradius-curl requires: $fail." >&2;};
 		targetname=""
 	fi
 fi

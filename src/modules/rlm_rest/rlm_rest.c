@@ -23,6 +23,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
@@ -33,8 +34,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 #include "rest.h"
-
-static int instance_count;
 
 static fr_table_num_sorted_t const http_negotiation_table[] = {
 
@@ -199,8 +198,8 @@ static int rlm_rest_status_update(REQUEST *request, void *handle)
 	return 0;
 }
 
-static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *thread,
-			    rlm_rest_section_t const *section, void *handle,
+static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
+			    rlm_rest_section_t const *section, rlm_rest_handle_t *handle,
 			    REQUEST *request, char const *username, char const *password)
 {
 	ssize_t		uri_len;
@@ -222,7 +221,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *threa
 	 *  Configure various CURL options, and initialise the read/write
 	 *  context data.
 	 */
-	ret = rest_request_config(instance, thread, section, request, handle, section->method, section->body,
+	ret = rest_request_config(instance, t, section, request, handle, section->method, section->body,
 				  uri, username, password);
 	talloc_free(uri);
 	if (ret < 0) return -1;
@@ -231,7 +230,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *threa
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
 	 *  HTTP body data into a single contiguous buffer.
 	 */
-	ret = rest_io_request_enqueue(thread, request, handle);
+	ret = fr_curl_io_request_enqueue(t->mhandle, request, handle->candle);
 	if (ret < 0) return -1;
 
 	return 0;
@@ -438,7 +437,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 *
 	 * @fixme need to pass in thread to all xlat functions
 	 */
-	ret = rest_io_request_enqueue(t, request, handle);
+	ret = fr_curl_io_request_enqueue(t->mhandle, request, handle->candle);
 	if (ret < 0) goto error;
 
 	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, rctx);
@@ -1039,9 +1038,9 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 {
 	rlm_rest_t		*inst = instance;
 	rlm_rest_thread_t	*t = thread;
+	fr_curl_handle_t	*mhandle;
 	CONF_SECTION		*my_conf;
 
-	t->el = el;
 	t->inst = instance;
 
 	/*
@@ -1062,7 +1061,12 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 		return -1;
 	}
 
-	return rest_io_init(t, inst->multiplex);
+	mhandle = fr_curl_io_init(t, el, inst->multiplex);
+	if (!mhandle) return -1;
+
+	t->mhandle = mhandle;
+
+	return 0;
 }
 
 /** Cleanup all outstanding requests associated with this thread
@@ -1078,7 +1082,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_rest_thread_t	*t = thread;
 
-	curl_multi_cleanup(t->mandle);
+	talloc_free(t->mhandle);	/* Ensure this is shutdown before the pool */
 	fr_pool_free(t->pool);
 
 	return 0;
@@ -1135,63 +1139,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL, inst);
 
 	return 0;
-}
-
-/** Initialise global curl options
- *
- * libcurl is meant to performa reference counting, but still seems to
- * leak lots of memory if we call curl_global_init many times.
- */
-static int fr_curl_init(void)
-{
-	CURLcode ret;
-	curl_version_info_data *curlversion;
-
-	if (instance_count > 0) {
-		instance_count++;
-		return 0;
-	}
-
-#ifdef WITH_TLS
-	/*
-	 *	Use our OpenSSL init with the hope that
-	 *	the free function will also free the
-	 *	memory allocated during SSL init.
-	 */
-	if (tls_init() < 0) return -1;
-#endif
-
-	/* developer sanity */
-	rad_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
-
-	ret = curl_global_init(CURL_GLOBAL_ALL);
-	if (ret != CURLE_OK) {
-		ERROR("rlm_curl - CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
-		return -1;
-	}
-
-	curlversion = curl_version_info(CURLVERSION_NOW);
-	if (strcmp(LIBCURL_VERSION, curlversion->version) != 0) {
-		WARN("rlm_curl - libcurl version changed since the server was built");
-		WARN("rlm_curl - linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
-	}
-
-	INFO("rlm_curl - libcurl version: %s", curl_version());
-
-	instance_count++;
-
-	return 0;
-}
-
-static void fr_curl_free(void)
-{
-	if (--instance_count > 0) return;
-
-#ifdef WITH_TLS
-	tls_free();
-#endif
-
-	curl_global_cleanup();
 }
 
 /** Initialises libcurl.

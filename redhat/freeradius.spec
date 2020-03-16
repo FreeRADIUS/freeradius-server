@@ -201,6 +201,14 @@ BuildRequires: openldap-ltb
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
 
+%package libfreeradius-curl
+Summary: curl wrapper library for FreeRADIUS
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-util = %{version}-%{release}
+
+%description libfreeradius-curl
+Integrates libcurl with FreeRADIUS' internal event loop.
+
 %package libfreeradius-util
 Summary: Utility library used by all other FreeRADIUS libraries
 
@@ -347,6 +355,7 @@ Summary: REST support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: freeradius-libfreeradius-json = %{version}
+Requires: freeradius-libfreeradius-curl = %{version}
 
 %description rest
 This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
@@ -772,6 +781,10 @@ fi
 %files json
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_json.so
+
+%files libfreeradius-curl
+%defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-curl.so
 
 %files libfreeradius-util
 %defattr(-,root,root)
