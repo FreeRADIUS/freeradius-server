@@ -52,7 +52,7 @@ void rest_io_module_action(void *instance, void *thread, REQUEST *request, void 
 		RERROR("Failed removing curl handle from multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
 		/* Not much we can do */
 	}
-	t->transfers--;
+	t->mhandle->transfers--;
 
 	rest_request_cleanup(instance, randle);
 	fr_pool_connection_release(t->pool, request, randle);

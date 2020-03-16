@@ -195,8 +195,6 @@ typedef struct {
 	fr_pool_t		*pool;		//!< Thread specific connection pool.
 	fr_curl_handle_t	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch
 						//!< and coralling structure for REST requests.
-	unsigned int		transfers;	//!< Keep track of how many outstanding transfers
-						//!< we think there are.
 } rlm_rest_thread_t;
 
 /** Wrapper around the module thread stuct for individual xlats
