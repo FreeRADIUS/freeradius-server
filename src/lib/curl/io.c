@@ -80,7 +80,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 			 *	If the request failed, say why...
 			 */
 			if (m->data.result != CURLE_OK) {
-				REDEBUG("fr_curl request failed: %s (%i)",
+				REDEBUG("curl request failed: %s (%i)",
 					curl_easy_strerror(m->data.result), m->data.result);
 			}
 
