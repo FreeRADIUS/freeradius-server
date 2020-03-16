@@ -55,9 +55,6 @@ int fr_curl_init(void)
 	if (tls_init() < 0) return -1;
 #endif
 
-	/* developer sanity */
-	rad_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
-
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
 		ERROR("rlm_curl - CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));

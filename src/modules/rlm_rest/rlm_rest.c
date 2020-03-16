@@ -1156,6 +1156,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  */
 static int mod_load(void)
 {
+	/* developer sanity */
+	rad_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
+
 	if (fr_curl_init() < 0) return -1;
 
 #ifdef HAVE_JSON
