@@ -242,10 +242,10 @@ typedef struct {
 
 /** Frees a libcurl handle, and any additional memory used by context data.
  *
- * @param[in] randle rlm_rest_handle_t to close and free.
+ * @param[in] randle fr_curl_io_request_t to close and free.
  * @return returns true.
  */
-static int _mod_conn_free(rlm_rest_handle_t *randle)
+static int _mod_conn_free(fr_curl_io_request_t *randle)
 {
 	curl_easy_cleanup(randle->candle);
 
@@ -258,7 +258,7 @@ static int _mod_conn_free(rlm_rest_handle_t *randle)
  * fr_pool_init, and called when a new connection is required by the
  * connection pool API.
  *
- * Creates an instances of rlm_rest_handle_t, and rlm_rest_curl_context_t
+ * Creates an instances of fr_curl_io_request_t, and rlm_rest_curl_context_t
  * which hold the context data required for generating requests and parsing
  * responses.
  *
@@ -275,29 +275,22 @@ void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta
 {
 	rlm_rest_t const	*inst = instance;
 
-	rlm_rest_handle_t	*randle = NULL;
+	fr_curl_io_request_t	*randle = NULL;
 	rlm_rest_curl_context_t	*curl_ctx = NULL;
-
-	CURL			*candle;
-
-	candle = curl_easy_init();
-	if (!candle) {
-		ERROR("Failed to create CURL handle");
-		return NULL;
-	}
 
 	/*
 	 *  Allocate memory for the connection handle abstraction.
 	 */
-	randle = talloc_zero(ctx, rlm_rest_handle_t);
+	randle = fr_curl_io_request_alloc(ctx);
+	if (!randle) return NULL;
+
 	curl_ctx = talloc_zero(randle, rlm_rest_curl_context_t);
 
 	curl_ctx->headers = NULL; /* CURL needs this to be NULL */
 	curl_ctx->request.instance = inst;
 	curl_ctx->response.instance = inst;
 
-	randle->ctx = curl_ctx;
-	randle->candle = candle;
+	randle->uctx = curl_ctx;
 	talloc_set_destructor(randle, _mod_conn_free);
 
 	return randle;
@@ -662,7 +655,7 @@ static void rest_request_init(rlm_rest_section_t const *section,
  *
  * @param[in] inst	configuration data.
  * @param[in] section	configuration data.
- * @param[in] handle	rlm_rest_handle_t to use.
+ * @param[in] handle	fr_curl_io_request_t to use.
  * @param[in] request	Current request.
  * @param[in] raw	buffer containing POST data.
  * @param[in] rawlen	Length of data in raw buffer.
@@ -706,7 +699,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
  *
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
- * @param[in] handle	rlm_rest_handle_t to use.
+ * @param[in] handle	fr_curl_io_request_t to use.
  * @param[in] request	Current request.
  * @param[in] raw	buffer containing POST data.
  * @param[in] rawlen	Length of data in raw buffer.
@@ -717,7 +710,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
 static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 			    REQUEST *request, void *handle, char *raw, size_t rawlen)
 {
-	rlm_rest_handle_t	*randle = handle;
+	fr_curl_io_request_t	*randle = handle;
 	CURL			*candle = randle->candle;
 
 	char const		*p = raw, *q;
@@ -1006,7 +999,7 @@ static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSE
  *	- < 0 on error.
  */
 static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			 REQUEST *request, json_object *object, UNUSED int level, int max)
+			   REQUEST *request, json_object *object, UNUSED int level, int max)
 {
 	int max_attrs = max;
 	vp_tmpl_t *dst = NULL;
@@ -1027,9 +1020,9 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 	 *	Process VP container
 	 */
 	json_object_object_foreach(object, name, value) {
-		int i = 0, elements;
-		struct json_object *element, *tmp;
-		TALLOC_CTX *ctx;
+		int		i = 0, elements;
+		struct		json_object *element, *tmp;
+		TALLOC_CTX	*ctx;
 
 		json_flags_t flags = {
 			.op = T_OP_SET,
@@ -1037,8 +1030,8 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			.is_json = 0
 		};
 
-		REQUEST *current = request;
-		VALUE_PAIR **vps, *vp = NULL;
+		REQUEST		*current = request;
+		VALUE_PAIR	**vps, *vp = NULL;
 
 		TALLOC_FREE(dst);
 
@@ -1550,9 +1543,9 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 /** Print out the response text as error lines
  *
  * @param request	The Current request.
- * @param handle	rlm_rest_handle_t used to execute the previous request.
+ * @param handle	fr_curl_io_request_t used to execute the previous request.
  */
-void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
+void rest_response_error(REQUEST *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
 	char		*q;
@@ -1575,9 +1568,9 @@ void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
 /** Print out the response text
  *
  * @param request	The Current request.
- * @param handle	rlm_rest_handle_t used to execute the previous request.
+ * @param handle	fr_curl_io_request_t used to execute the previous request.
  */
-void rest_response_debug(REQUEST *request, rlm_rest_handle_t *handle)
+void rest_response_debug(REQUEST *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
 	char		*q;
@@ -1631,9 +1624,9 @@ static void rest_response_init(rlm_rest_section_t const *section,
  *	- 0 if no data i available.
  *	- > 0 if data is available.
  */
-size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
+size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle)
 {
-	rlm_rest_curl_context_t *ctx = handle->ctx;
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(handle->uctx, rlm_rest_curl_context_t);
 
 	rad_assert(ctx->response.buffer || !ctx->response.used);
 
@@ -1650,7 +1643,7 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
  * @param[in] request	Current request.
- * @param[in] handle	rlm_rest_handle_t to configure.
+ * @param[in] handle	fr_curl_io_request_t to configure.
  * @param[in] func	to pass to libcurl for chunked.
  *	      		transfers (NULL if not using chunked mode).
  * @return
@@ -1658,9 +1651,9 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
  *	- -1 on failure.
  */
 static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-				    REQUEST *request, rlm_rest_handle_t *handle, rest_read_t func)
+				    REQUEST *request, fr_curl_io_request_t *handle, rest_read_t func)
 {
-	rlm_rest_curl_context_t *ctx = handle->ctx;
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(handle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = handle->candle;
 
 	CURLcode ret = CURLE_OK;
@@ -1826,8 +1819,8 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 			http_body_type_t type,
 			char const *uri, char const *username, char const *password)
 {
-	rlm_rest_handle_t	*randle	= handle;
-	rlm_rest_curl_context_t	*ctx = randle->ctx;
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
 	fr_time_delta_t		timeout;
 
@@ -2177,7 +2170,7 @@ error:
 int rest_response_certinfo(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
 			   REQUEST *request, void *handle)
 {
-	rlm_rest_handle_t	*randle = handle;
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
 	CURL			*candle = randle->candle;
 	CURLcode		ret;
 	int			i;
@@ -2285,8 +2278,8 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sectio
 int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			 REQUEST *request, void *handle)
 {
-	rlm_rest_handle_t	*randle = handle;
-	rlm_rest_curl_context_t	*ctx = randle->ctx;
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
 	int ret = -1;	/* -Wsometimes-uninitialized */
 
@@ -2338,8 +2331,8 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
  */
 void rest_request_cleanup(UNUSED rlm_rest_t const *instance, void *handle)
 {
-	rlm_rest_handle_t	*randle = handle;
-	rlm_rest_curl_context_t	*ctx = randle->ctx;
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
 
 	/*
@@ -2475,7 +2468,7 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t const *inst, REQUEST *reque
 ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, REQUEST *request,
 			       void *handle, char const *uri)
 {
-	rlm_rest_handle_t	*randle = handle;
+	fr_curl_io_request_t	*randle = handle;
 	CURL			*candle = randle->candle;
 
 	char const		*p, *q;

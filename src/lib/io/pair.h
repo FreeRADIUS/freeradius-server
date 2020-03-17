@@ -51,6 +51,26 @@
  */
 #define PAIR_DECODE_FATAL_ERROR	FR_VALUE_BOX_NET_ERROR
 
+/** Return the correct adjusted slen for errors
+ *
+ * @param[in] slen	returned from the function we called.
+ * @param[in] start	of the buffer.
+ * @param[in] p		offset passed to function which returned the slen.
+ */
+static inline ssize_t fr_pair_decode_slen(ssize_t slen, uint8_t const *start, uint8_t const *p)
+{
+	if (slen > 0) return slen;
+
+	switch (slen) {
+	case PAIR_DECODE_OOM:
+	case PAIR_DECODE_FATAL_ERROR:
+		return slen;
+
+	default:
+		return slen - (p - start);
+	}
+}
+
 /** @} */
 
 /** Generic interface for encoding one or more VALUE_PAIRs

@@ -278,20 +278,12 @@ typedef struct {
 	rlm_rest_response_t	response;	//!< Response context data.
 } rlm_rest_curl_context_t;
 
-/*
- *	Connection API handle
- */
-typedef struct {
-	CURL			*candle;	//!< Libcurl easy handle
-	rlm_rest_curl_context_t	*ctx;		//!< Context, re-initialised after each request.
-} rlm_rest_handle_t;
-
 /** Stores the state of a yielded xlat
  *
  */
 typedef struct {
 	rlm_rest_section_t	section;	//!< Our mutated section config.
-	rlm_rest_handle_t	*handle;	//!< curl easy handle servicing our request.
+	fr_curl_io_request_t	*handle;	//!< curl easy handle servicing our request.
 } rlm_rest_xlat_rctx_t;
 
 extern fr_dict_t const *dict_freeradius;
@@ -326,16 +318,16 @@ int rest_response_decode(rlm_rest_t const *instance,
 			UNUSED rlm_rest_section_t const *section, REQUEST *request,
 			void *handle);
 
-void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle);
-void rest_response_debug(REQUEST *request, rlm_rest_handle_t *handle);
+void rest_response_error(REQUEST *request, fr_curl_io_request_t *handle);
+void rest_response_debug(REQUEST *request, fr_curl_io_request_t *handle);
 
 void rest_request_cleanup(rlm_rest_t const *instance, void *handle);
 
-#define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.code)
+#define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((fr_curl_io_request_t*)(_handle))->uctx)->response.code)
 
-#define rest_get_handle_type(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.type)
+#define rest_get_handle_type(_handle)(((rlm_rest_curl_context_t*)((fr_curl_io_request_t*)(_handle))->uctx)->response.type)
 
-size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle);
+size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle);
 
 /*
  *	Helper functions
