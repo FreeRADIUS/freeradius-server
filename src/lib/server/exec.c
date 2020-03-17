@@ -403,29 +403,8 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 	int done = 0;
 	int status;
 	fr_time_t start;
-#ifdef O_NONBLOCK
-	bool nonblock = true;
-#endif
 
-#ifdef O_NONBLOCK
-	/*
-	 *	Try to set it non-blocking.
-	 */
-	do {
-		int flags;
-
-		if ((flags = fcntl(fd, F_GETFL, NULL)) < 0)  {
-			nonblock = false;
-			break;
-		}
-
-		flags |= O_NONBLOCK;
-		if (fcntl(fd, F_SETFL, flags) < 0) {
-			nonblock = false;
-			break;
-		}
-	} while (0);
-#endif
+	fr_nonblock(fd);
 
 	/*
 	 *	Minimum timeout period is one section
@@ -471,14 +450,14 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 		 *	Read as many bytes as possible.  The kernel
 		 *	will return the number of bytes available.
 		 */
-		if (nonblock) {
-			status = read(fd, answer + done, left);
-		} else
+		status = read(fd, answer + done, left);
+#else
+		/*
+		 *	There's at least 1 byte ready: read it.
+		 *	This is a terrible hack for non-blocking IO.
+		 */
+		status = read(fd, answer + done, 1);
 #endif
-			/*
-			 *	There's at least 1 byte ready: read it.
-			 */
-			status = read(fd, answer + done, 1);
 
 		/*
 		 *	Nothing more to read: stop.
