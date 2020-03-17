@@ -615,7 +615,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->allowed[code] = true;
 	}
 
-	rad_assert(inst->status_check > 0);
 	rad_assert(inst->status_check < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
