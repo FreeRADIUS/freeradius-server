@@ -96,13 +96,11 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   int *input_fd, int *output_fd,
 			   VALUE_PAIR *input_pairs, bool shell_escape)
 {
-#ifndef __MINGW32__
 	VALUE_PAIR	*vp;
 	int		n;
 	int		to_child[2] = {-1, -1};
 	int		from_child[2] = {-1, -1};
 	pid_t		pid;
-#endif
 	int		argc;
 	int		i;
 	char const	**argv_p;
@@ -163,7 +161,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		}
 	}
 
-#ifndef __MINGW32__
 	/*
 	 *	Open a pipe for child/parent communication, if necessary.
 	 */
@@ -386,43 +383,8 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	}
 
 	return pid;
-#else
-	if (exec_wait) {
-		ERROR("Wait is not supported");
-		return -1;
-	}
-
-	{
-		/*
-		 *	The _spawn and _exec families of functions are
-		 *	found in Windows compiler libraries for
-		 *	portability from UNIX. There is a variety of
-		 *	functions, including the ability to pass
-		 *	either a list or array of parameters, to
-		 *	search in the PATH or otherwise, and whether
-		 *	or not to pass an environment (a set of
-		 *	environment variables). Using _spawn, you can
-		 *	also specify whether you want the new process
-		 *	to close your program (_P_OVERLAY), to wait
-		 *	until the new process is finished (_P_WAIT) or
-		 *	for the two to run concurrently (_P_NOWAIT).
-
-		 *	_spawn and _exec are useful for instances in
-		 *	which you have simple requirements for running
-		 *	the program, don't want the overhead of the
-		 *	Windows header file, or are interested
-		 *	primarily in portability.
-		 */
-
-		/*
-		 *	FIXME: check return code... what is it?
-		 */
-		_spawnve(_P_NOWAIT, argv[0], argv, envp);
-	}
-
-	return 0;
-#endif
 }
+
 
 /** Read from the child process.
  *
@@ -439,7 +401,6 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 			    char *answer, int left)
 {
 	int done = 0;
-#ifndef __MINGW32__
 	int status;
 	fr_time_t start;
 #ifdef O_NONBLOCK
@@ -549,7 +510,6 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 		left -= status;
 		if (left <= 0) break;
 	}
-#endif	/* __MINGW32__ */
 
 	/* Strip trailing new lines */
 	while ((done > 0) && (answer[done - 1] == '\n')) {
