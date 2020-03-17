@@ -629,6 +629,53 @@ void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int l
 
 	if (fmt) talloc_free(prefix);
 }
+
+void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		       uint8_t const *data, size_t data_len, ssize_t slen,
+		       char const *error, char const *fmt, ...)
+{
+	size_t		i, j, len;
+	char		*p;
+	char		buffer[(0x10 * 3) + 1];
+
+	char		*prefix = NULL;
+	static char	spaces[3 * 0x10];	/* Bytes per line */
+
+	if (!*spaces) memset(spaces, ' ', sizeof(spaces) - 1);	/* Leave a \0 */
+
+	if (slen < 0) slen = +(slen);
+
+	if (fmt) {
+		va_list ap;
+
+		va_start(ap, fmt);
+		prefix = talloc_asprintf(NULL, fmt, ap);
+		va_end(ap);
+	}
+
+	for (i = 0; i < data_len; i += 0x10) {
+		len = 0x10;
+		if ((i + len) > data_len) len = data_len - i;
+
+		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
+
+		if (fmt) {
+			fr_log(log, type, file, line, "%pV%04x: %s",
+			       fr_box_strvalue_buffer(prefix), (int)i, buffer);
+		} else {
+			fr_log(log, type, file, line, "%04x: %s", (int)i, buffer);
+		}
+
+		/*
+		 *	Marker is on this line
+		 */
+		if (((size_t)slen >= i) && ((size_t)slen < (i + 0x10))) {
+			fr_log(log, type, file, line, "%.*s^ %s", (int)((slen - i) * 3), spaces, error);
+		}
+	}
+
+	if (fmt) talloc_free(prefix);
+}
 DIAG_ON(format-nonliteral)
 
 static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor
