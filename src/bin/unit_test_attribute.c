@@ -2092,7 +2092,7 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 	/*
 	 *	Feed the data buffer in as the command
 	 */
-	if (*p == '-') {
+	if ((p[0] == '-') && ((p[1] == ' ') || (p[1] == '\0'))) {
 		data_used = command->func(result, cc, data, data_used, data, data_used);
 	}
 	else {
