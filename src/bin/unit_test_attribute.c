@@ -183,6 +183,7 @@ typedef struct {
 	int			lineno;			//!< Current line number.
 
 	uint32_t		test_count;		//!< How many tests we've executed in this file.
+	ssize_t			last_ret;		//!< Last return value.
 
 	fr_dict_t		*active_dict;		//!< Active dictionary passed to encoders
 							///< and decoders.
@@ -1188,6 +1189,7 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 	while (to_dec < to_dec_end) {
 		slen = tp->func(cc->tmp_ctx, &cursor, cc->active_dict ? cc->active_dict : cc->config->dict,
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
+		cc->last_ret = slen;
 		if (slen <= 0) {
 			fr_pair_list_free(&head);
 			CLEAR_TEST_POINT(cc);
@@ -1292,7 +1294,8 @@ static size_t command_decode_proto(command_result_t *result, command_ctx_t *cc,
 
 	slen = tp->func(cc->tmp_ctx, &head,
 			(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
-	if (slen < 0) {
+	cc->last_ret = slen;
+	if (slen <= 0) {
 		fr_pair_list_free(&head);
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
@@ -1493,7 +1496,8 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 	fr_cursor_init(&cursor, &head);
 	while ((vp = fr_cursor_current(&cursor))) {
 		slen = tp->func(enc_p, enc_end - enc_p, &cursor, encoder_ctx);
-		if (slen < 0) {
+		cc->last_ret = slen;
+		if (slen <= 0) {
 			fr_pair_list_free(&head);
 			CLEAR_TEST_POINT(cc);
 			RETURN_OK_WITH_ERROR();
@@ -1527,6 +1531,12 @@ static size_t command_encode_raw(command_result_t *result, UNUSED command_ctx_t 
 	}
 
 	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, encoded, len));
+}
+
+static size_t command_returned(command_result_t *result, command_ctx_t *cc,
+			       char *data, UNUSED size_t data_used, UNUSED char *in, UNUSED size_t inlen)
+{
+	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%zd", cc->last_ret));
 }
 
 static size_t command_encode_proto(command_result_t *result, command_ctx_t *cc,
@@ -1563,11 +1573,11 @@ static size_t command_encode_proto(command_result_t *result, command_ctx_t *cc,
 
 	slen = tp->func(cc->tmp_ctx, head, encoded, sizeof(encoded), encoder_ctx);
 	fr_pair_list_free(&head);
-	if (slen < 0) {
+	cc->last_ret = slen;
+	if (slen <= 0) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
-	fr_pair_list_free(&head);
 
 	CLEAR_TEST_POINT(cc);
 
@@ -2014,6 +2024,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_encode_raw,
 					.usage = "raw <string>",
 					.description = "Create nested attributes from OID strings and values"
+				}},
+	{ "returned",		&(command_entry_t){
+					.func = command_returned,
+					.usage = "returned",
+					.description = "Print the returned value to the data buffer"
 				}},
 	{ "test-dictionary ",	&(command_entry_t){
 					.func = command_test_dictionary,
