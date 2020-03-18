@@ -36,9 +36,7 @@
 #include <stddef.h>
 #include <talloc.h>
 
-#ifndef __MINGW32__
-#  include <sys/ioctl.h>
-#endif
+#include <sys/ioctl.h>
 
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
@@ -52,9 +50,7 @@
 #  include <linux/if_ether.h>
 #endif
 
-#ifndef __MINGW32__
-#  include <net/if_arp.h>
-#endif
+#include <net/if_arp.h>
 
 #ifdef SIOCSARP
 /** Forcibly add an ARP entry so we can send unicast packets to hosts that don't have IP addresses yet
