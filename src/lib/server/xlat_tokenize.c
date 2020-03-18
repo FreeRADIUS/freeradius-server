@@ -893,20 +893,11 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *req
 			        char const *fmt, vp_tmpl_rules_t const *rules)
 {
 	ssize_t		slen;
-	char		*tokens;
 
 	*head = NULL;
 
-	/*
-	 *	Copy the original format string to a buffer so that
-	 *	the later functions can mangle it in-place, which is
-	 *	much faster.
-	 */
-	tokens = talloc_typed_strdup(ctx, fmt);
-	if (!tokens) return -1;
-
 	fr_strerror();	/* Clear error buffer */
-	slen = xlat_tokenize_literal(request, head, tokens, false, rules);
+	slen = xlat_tokenize_literal(request, head, fmt, false, rules);
 
 	/*
 	 *	Zero length expansion, return a zero length node.
@@ -923,7 +914,6 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *req
 	 *	"       ^ error was here"
 	 */
 	if (slen < 0) {
-		talloc_free(tokens);
 		return slen;
 	}
 
@@ -932,13 +922,6 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *req
 		RDEBUG3("Parsed xlat tree:");
 		xlat_tokenize_debug(request, *head);
 	}
-
-	/*
-	 *	All of the nodes point to offsets in the "tokens"
-	 *	string.  Let's ensure that free'ing head will free
-	 *	"tokens", too.
-	 */
-	(void) talloc_steal(*head, tokens);
 
 	/*
 	 *	Create ephemeral instance data for the xlat
