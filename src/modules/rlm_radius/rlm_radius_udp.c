@@ -1576,10 +1576,11 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 	REQUEST			*request = treq->request;
+	fr_trunk_connection_t	*tconn = treq->tconn;
 
 	rad_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
 	rad_assert(u->rr);
-	rad_assert(treq->tconn);
+	rad_assert(tconn);
 
 	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 
@@ -1595,7 +1596,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 *	work with it, because we have no idea
 		 *	what state its in.
 		 */
-		if (check_for_zombie(el, treq->tconn, now)) return;
+		if (check_for_zombie(el, tconn, now)) return;
 
 	} else {
 		/*
@@ -1636,16 +1637,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	WARN("%s - No response to status check, marking connection as dead - %s", h->module_name, h->name);
 
 	h->status_checking = false;
-
-	/*
-	 *	If the request timeout fires, then the treq must
-	 *	still be associated with a connection.
-	 *
-	 *	If the treq is moved off a connection, the timer
-	 *	*MUST* be disabled.
-	 */
-	rad_assert(treq->tconn);
-	fr_trunk_connection_signal_reconnect(treq->tconn, FR_CONNECTION_FAILED);
+	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 }
 
 static void request_mux(fr_event_list_t *el,
@@ -2475,6 +2467,11 @@ static void mod_signal(UNUSED void *instance, void *thread, UNUSED REQUEST *requ
 {
 	udp_thread_t		*t = talloc_get_type_abort(thread, udp_thread_t);
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+
+	/*
+	 *	Should always have a treq at this point.
+	 */
+	rad_assert(r->treq);
 
 	switch (action) {
 	/*
