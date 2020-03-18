@@ -1982,6 +1982,8 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 {
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;	/* Existing conn */
 
+	if (!tconn) return FR_TRUNK_ENQUEUE_FAIL;
+
 	if (!IS_SERVICEABLE(tconn)) {
 		trunk_request_enter_failed(treq);
 		return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
