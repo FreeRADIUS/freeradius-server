@@ -403,7 +403,7 @@ static int put_bits(uint8_t *p, uint8_t const *end, int start_bit, int num_bits,
 
 	data <<= (64 - (start_bit + num_bits));
 	data = htonll(data);
-	memcpy(p, &data, (num_bits + 7) >> 3); /* only copy as much as necessary */
+	memcpy(p, &data, (start_bit + num_bits + 7) >> 3); /* only copy as much as necessary */
 	p[0] |= old;
 
 	return 0;
