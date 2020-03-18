@@ -963,7 +963,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *req
  *	- <0 on error.
  *	- 0 on success.
  */
-ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char *fmt, vp_tmpl_rules_t const *rules)
+ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char const *fmt, vp_tmpl_rules_t const *rules)
 {
 	int ret;
 
