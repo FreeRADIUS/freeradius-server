@@ -26,9 +26,9 @@
 RCSIDH(rest_h, "$Id$")
 
 #include <freeradius-devel/curl/base.h>
+#include <freeradius-devel/curl/config.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/pool.h>
-#include "config.h"
 
 #define CURL_NO_OLDIES 1
 
