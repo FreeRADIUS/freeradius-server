@@ -108,7 +108,7 @@ define CROSSBUILD_IMAGE_RULE
 #
 .PHONY: crossbuild.${1}.status
 crossbuild.${1}.status:
-	${Q}echo -n "`echo \"  ${1}                    \" | cut -c 1-20`"
+	${Q}printf "%s" "`echo \"  ${1}                    \" | cut -c 1-20`"
 	${Q}if [ -e "$(DD)/stamp-up.${1}" ]; then echo "running"; \
 		elif [ -e "$(DD)/stamp-image.${1}" ]; then echo "built"; \
 		else echo "-"; fi
