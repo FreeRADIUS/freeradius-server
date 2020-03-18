@@ -1202,6 +1202,10 @@ static size_t command_decode_pair(command_result_t *result, command_ctx_t *cc,
 		}
 		to_dec += slen;
 	}
+	/*
+	 *	Clear any spurious errors
+	 */
+	fr_strerror();
 
 	/*
 	 *	Set p to be the output buffer
@@ -1300,6 +1304,10 @@ static size_t command_decode_proto(command_result_t *result, command_ctx_t *cc,
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
+	/*
+	 *	Clear any spurious errors
+	 */
+	fr_strerror();
 
 	/*
 	 *	Set p to be the output buffer
@@ -1497,7 +1505,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 	while ((vp = fr_cursor_current(&cursor))) {
 		slen = tp->func(enc_p, enc_end - enc_p, &cursor, encoder_ctx);
 		cc->last_ret = slen;
-		if (slen <= 0) {
+		if (slen < 0) {
 			fr_pair_list_free(&head);
 			CLEAR_TEST_POINT(cc);
 			RETURN_OK_WITH_ERROR();
@@ -1506,6 +1514,11 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 
 		if (slen == 0) break;
 	}
+	/*
+	 *	Clear any spurious errors
+	 */
+	fr_strerror();
+
 	fr_pair_list_free(&head);
 
 	CLEAR_TEST_POINT(cc);
@@ -1574,10 +1587,14 @@ static size_t command_encode_proto(command_result_t *result, command_ctx_t *cc,
 	slen = tp->func(cc->tmp_ctx, head, encoded, sizeof(encoded), encoder_ctx);
 	fr_pair_list_free(&head);
 	cc->last_ret = slen;
-	if (slen <= 0) {
+	if (slen < 0) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
+	/*
+	 *	Clear any spurious errors
+	 */
+	fr_strerror();
 
 	CLEAR_TEST_POINT(cc);
 
