@@ -356,6 +356,10 @@ done:
 	return data_len;
 }
 
+static const uint8_t start_bit_mask[8] = {
+	0x00, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe
+};
+
 /** Put bits into an output buffer
  *
  * @param p	where the bits go
@@ -395,7 +399,8 @@ static int put_bits(uint8_t *p, uint8_t const *end, int start_bit, int num_bits,
 	 *	Copy over old as many bytes as we need, and then "or"
 	 *	in the original data.
 	 */
-	old = p[0];
+	old = p[0] & start_bit_mask[start_bit];
+
 	data <<= (64 - (start_bit + num_bits));
 	data = htonll(data);
 	memcpy(p, &data, (num_bits + 7) >> 3); /* only copy as much as necessary */
