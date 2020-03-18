@@ -1440,7 +1440,6 @@ static void revive_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void 
 	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 }
 
-
 /** See if the connection is zombied.
  *
  *	We check for zombie when major events happen:
@@ -1459,8 +1458,14 @@ static void revive_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void 
  *  be a long time between getting the timer / DUP signal, and the
  *  request finally being written to the socket.  So we need to check
  *  for zombie at BOTH the timeout and the mux / write function.
+ *
+ * @return
+ *	- true if a connection state change was triggered.
+ *	  The connection is likely now a zombie or was reconnected.
+ *	- false if the connection did not change state.  It may
+ *	  still be a zombie, but it was a zombie when this
  */
-static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_time_t now)
+static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_time_t now)
 {
 	udp_handle_t	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 
@@ -1489,7 +1494,7 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	 */
 	if (h->status_checking || h->zombie_ev || !h->last_sent || (h->last_sent <= h->last_idle) ||
 	    (h->last_reply && (h->last_reply <= h->last_idle))) {
-		return;
+		return false;
 	}
 
 	if (now == 0) now = fr_time();
@@ -1505,9 +1510,9 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	 *	timeout from when we first started sending packets.
 	 */
 	if (h->last_reply) {
-		if ((h->last_reply + h->inst->parent->zombie_period) >= now) return;
+		if ((h->last_reply + h->inst->parent->zombie_period) >= now) return false;
 	} else {
-		if ((h->first_sent + h->inst->parent->zombie_period) >= now) return;
+		if ((h->first_sent + h->inst->parent->zombie_period) >= now) return false;
 	}
 
 	/*
@@ -1527,10 +1532,10 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 		when = now + h->inst->parent->revive_interval;
 		if (fr_event_timer_at(h, el, &h->zombie_ev, when, revive_timer, tconn) < 0) {
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
-			return;
+			return true;
 		}
 
-		return;
+		return true;
 	}
 
 	/*
@@ -1557,6 +1562,8 @@ static void check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 					     h->status_u, h->status_r, true) != FR_TRUNK_ENQUEUE_OK) {
 		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 	}
+
+	return true;
 }
 
 /** Handle retries for a REQUEST
@@ -1577,7 +1584,18 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 
 	if (!u->status_check) {
-		check_for_zombie(el, treq->tconn, now);
+		/*
+		 *	If the connection just became a zombie
+		 *	the request that just timedout will
+		 *	have moved back into the trunk backlog,
+		 *	been assigned to another connection
+		 *	or freed.
+		 *
+		 *	In any case we must not continue to
+		 *	work with it, because we have no idea
+		 *	what state its in.
+		 */
+		if (check_for_zombie(el, treq->tconn, now)) return;
 
 	} else {
 		/*
@@ -1638,7 +1656,11 @@ static void request_mux(fr_event_list_t *el,
 	int			sent;
 	uint16_t		i = 0, queued;
 
-	check_for_zombie(el, tconn, 0);
+	/*
+	 *	If the connection just became a zombie
+	 *	don't try and enqueue things on it!
+	 */
+	if (check_for_zombie(el, tconn, 0)) return;
 
 	/*
 	 *	Encode multiple packets in preparation
@@ -2470,7 +2492,14 @@ static void mod_signal(UNUSED void *instance, void *thread, UNUSED REQUEST *requ
 	 *	has already been sent out.
 	 */
 	case FR_SIGNAL_DUP:
-		check_for_zombie(t->el, r->treq->tconn, 0);
+		/*
+		 *	Connection just became a zombie
+		 *	we don't want to retransmit
+		 *	as the connection is now dead
+		 *	and we have no idea what state
+		 *	the request is in.
+		 */
+		if (check_for_zombie(t->el, r->treq->tconn, 0)) return;
 		fr_trunk_request_requeue(r->treq);
 		return;
 
