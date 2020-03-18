@@ -36,10 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <talloc.h>
-
-#ifndef __MINGW32__
-#  include <sys/ioctl.h>
-#endif
+#include <sys/ioctl.h>
 
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
@@ -53,9 +50,7 @@
 #  include <linux/if_ether.h>
 #endif
 
-#ifndef __MINGW32__
-#  include <net/if_arp.h>
-#endif
+#include <net/if_arp.h>
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 /** Open a raw socket to read/write packets from/to
