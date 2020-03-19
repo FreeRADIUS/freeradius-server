@@ -160,7 +160,7 @@ if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
 
   if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
     AC_MSG_CHECKING([build commit])
-    RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+    RADIUSD_VERSION_COMMIT=`git rev-parse --short=8 HEAD`
     AC_MSG_RESULT($RADIUSD_VERSION_COMMIT)
   fi
 

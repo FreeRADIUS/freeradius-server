@@ -2984,7 +2984,7 @@ $as_echo "$RADIUSD_VERSION_RELEASE" >&6; }
   if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
 $as_echo_n "checking build commit... " >&6; }
-    RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+    RADIUSD_VERSION_COMMIT=`git rev-parse --short=8 HEAD`
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_COMMIT" >&5
 $as_echo "$RADIUSD_VERSION_COMMIT" >&6; }
   fi
