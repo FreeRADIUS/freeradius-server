@@ -2,7 +2,6 @@ TEST	:= test.bin
 
 FILES	:= \
 	atomic_queue_test 	\
-	control_test 		\
 	dhcpclient		\
 	message_set_test	\
 	radclient		\
@@ -26,7 +25,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #  Files in the output dir depend on the bin tests, and on the binary
 #  that we're running
 #
-$(BUILD_DIR)/tests/bin/%: $(DIR)/% %
+$(BUILD_DIR)/tests/bin/%: $(DIR)/% src/tests/bin/%
 	@echo "BIN-TEST $(notdir $@)"
 	${Q}if ! TESTBIN="$(TESTBIN)" DICT_DIR="$(top_srcdir)/share/dictionary" $<; then \
 		echo TESTBIN=\"$(TESTBIN)\" DICT_DIR="$(top_srcdir)/share/dictionary" $<; \
