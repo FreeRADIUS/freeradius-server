@@ -30,6 +30,8 @@ ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cx -lstdout
 ExecStart=/usr/sbin/radiusd -f $FREERADIUS_OPTIONS
 Restart=on-failure
 RestartSec=5
+ExecReload=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cxm -lstdout
+ExecReload=/bin/kill -HUP $MAINPID
 
 #  Don't elevate privileges after starting
 NoNewPrivileges=true
