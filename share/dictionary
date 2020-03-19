@@ -305,6 +305,7 @@ $INCLUDE dictionary.unix
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
+$INCLUDE dictionary.vasexperts
 $INCLUDE dictionary.verizon
 $INCLUDE dictionary.versanet
 $INCLUDE dictionary.walabi

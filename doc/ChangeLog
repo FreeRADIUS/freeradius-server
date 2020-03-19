@@ -21,13 +21,12 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	* Sample schema extensions for summarizing data in SQL.
 	  See mods-config/sql/main/*/process-radacct.sql
 	  Many patches from Terry Burton.
-	* Update dictionary.aerohive, dictionary.fortinet and
-	  dictionary.arista.
+	* Update dictionary.aerohive, dictionary.fortinet,
+	  dictionary.arista and dictionary.erx
+	* Added VAS Experts dictionary.
 	* Many updates to RPM and jenkins builds from Matthew Newton
 	* Added %C (time now in seconds) and %c (microsecond component of now)
 	  back-ported from the "master" branch.
-	* Update the ERX dictionary.
-	* Backport "crossbuild" from master, for development testing.
 	* Add capability to reload the service over systemd in Debian and Redhat.
 
 	Bug fixes
