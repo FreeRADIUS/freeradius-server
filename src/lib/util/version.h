@@ -76,14 +76,24 @@ extern "C" {
 #  define MAGIC_VERSION(_x)	((uint32_t) 0x00000000)
 #  define MAGIC_COMMIT(_x)	((uint32_t) 0x00000000)
 #else
-#  ifdef RADIUSD_VERSION_COMMIT
-#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY2(RADIUSD_VERSION, RADIUSD_VERSION_COMMIT))
+/*
+ *	Mismatch between debug builds between
+ *	the modules and the server causes all
+ *	kinds of strange issues.
+ */
+#  ifndef NDEBUG
+#    define MAGIC_PREFIX_DEBUG	01
 #  else
-#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY2(RADIUSD_VERSION, 00000000))
+#    define MAGIC_PREFIX_DEBUG  00
 #  endif
-#  define MAGIC_PREFIX(_x)	((uint8_t) (_x >> 56))
-#  define MAGIC_VERSION(_x)	((uint32_t) ((_x >> 32) & 0x00ffffff))
-#  define MAGIC_COMMIT(_x)	((uint32_t) (_x & 0xffffffff))
+#  ifdef RADIUSD_VERSION_COMMIT
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(MAGIC_PREFIX_DEBUG, RADIUSD_VERSION, RADIUSD_VERSION_COMMIT))
+#  else
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(MAGIC_PREFIX_DEBUG, RADIUSD_VERSION, 00000000))
+#  endif
+#  define MAGIC_PREFIX(_x)	((uint8_t) ((_x) >> 56))
+#  define MAGIC_VERSION(_x)	((uint32_t) (((_x) >> 32) & 0x00ffffff))
+#  define MAGIC_COMMIT(_x)	((uint32_t) ((_x) & 0xffffffff))
 #endif
 
 /*
