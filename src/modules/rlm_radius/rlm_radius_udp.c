@@ -1579,6 +1579,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_trunk_connection_t	*tconn = treq->tconn;
 
 	rad_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
+	rad_assert(treq->preq);						/* Must still have a protocol request */
 	rad_assert(u->rr);
 	rad_assert(tconn);
 
