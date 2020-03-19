@@ -91,9 +91,9 @@ extern "C" {
 #  else
 #    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(MAGIC_PREFIX_DEBUG, RADIUSD_VERSION, 00000000))
 #  endif
-#  define MAGIC_PREFIX(_x)	((uint8_t) ((_x) >> 56))
-#  define MAGIC_VERSION(_x)	((uint32_t) (((_x) >> 32) & 0x00ffffff))
-#  define MAGIC_COMMIT(_x)	((uint32_t) ((_x) & 0xffffffff))
+#  define MAGIC_PREFIX(_x)	((uint8_t) ((0xff00000000000000 & (_x)) >> 56))
+#  define MAGIC_VERSION(_x)	((uint32_t)((0x00ffffff00000000 & (_x)) >> 32))
+#  define MAGIC_COMMIT(_x)	((uint32_t)((0x00000000ffffffff & (_x))))
 #endif
 
 /*
