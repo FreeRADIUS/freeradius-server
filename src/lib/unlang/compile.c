@@ -251,7 +251,6 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 			       fr_dict_attr_t const *da, vp_tmpl_rules_t const *rules)
 {
 	ssize_t slen;
-	char *fmt;
 	xlat_exp_t *head;
 	vp_tmpl_t *vpt;
 
@@ -259,8 +258,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 	rad_assert(tmpl_is_xlat(vpt));
 
-	fmt = talloc_typed_strdup(vpt, vpt->name);
-	slen = xlat_tokenize(vpt, &head, fmt, rules);
+	slen = xlat_tokenize(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, rules);
 
 	if (slen < 0) {
 		char *spaces, *text;
@@ -2507,7 +2505,7 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 	if (mx->xlat_name[0] == '%') {
 		ssize_t		slen;
 
-		slen = xlat_tokenize(mx, &mx->exp, mx->xlat_name, unlang_ctx->rules);
+		slen = xlat_tokenize(mx, &mx->exp, mx->xlat_name, talloc_array_length(mx->xlat_name) - 1, unlang_ctx->rules);
 		if (slen < 0) {
 			cf_log_err(cp, "%s", fr_strerror());
 			talloc_free(mx);

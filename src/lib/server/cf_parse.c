@@ -1340,7 +1340,6 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 */
 		if (is_xlat) {
 			ssize_t		slen;
-			char		*value;
 			xlat_exp_t	*xlat;
 
 		redo:
@@ -1349,8 +1348,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			/*
 			 *	xlat expansions should be parseable.
 			 */
-			value = talloc_typed_strdup(cs, cp->value); /* modified by xlat_tokenize */
-			slen = xlat_tokenize(cs, &xlat, value, NULL);
+			slen = xlat_tokenize(cs, &xlat, cp->value, talloc_array_length(cp->value) - 1, NULL);
 			if (slen < 0) {
 				char *spaces, *text;
 
@@ -1362,12 +1360,10 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 				talloc_free(spaces);
 				talloc_free(text);
-				talloc_free(value);
 				talloc_free(xlat);
 				return -1;
 			}
 
-			talloc_free(value);
 			talloc_free(xlat);
 
 			/*
