@@ -119,6 +119,14 @@ FILES.$(TEST) := $(addprefix $$(OUTPUT.$(TEST))/,$(FILES))
 $$(FILES.$(TEST)): | $$(OUTPUT.$(TEST))
 
 #
+#  Make sure that the output files depend on the input.
+#  This way if the input file doesn't exist, we get a
+#  build error.  Without this rule, the test target
+#  would just get re-built every time, no matter what.
+#
+$(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(DIR)/$x))
+
+#
 #  We have a real file that's created if all of the tests pass.
 #
 $(BUILD_DIR)/tests/$(TEST): $$(FILES.$(TEST))
