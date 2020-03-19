@@ -318,12 +318,13 @@ if [ ! -z "$file_args" ]; then
 	args+=" -t \"$timeout\""
 	args+=" -r \"$retries\""
 	args+=" -p \"$parallel\""
+	args+=" -D \"$DICTPATH\""
 	args+=" \"$target\""
 	args+=" auto"
 	args+=" \"$secret\""
 
-	DEBUG "Executing: radclient $args"
-	eval radclient $args; ret=$?
+	DEBUG "Executing: $RADCLIENT $args"
+	eval $RADCLIENT $args; ret=$?
 	INFO "(Parallelised tests)"
 	INFO ""
 
@@ -347,12 +348,13 @@ if [ ! -z "$serial_file_args" ]; then
 	args+=" -t \"$timeout\""
 	args+=" -r \"$retries\""
 	args+=" -p 1"
+	args+=" -D \"$DICTPATH\""
 	args+=" \"$target\""
 	args+=" auto"
 	args+=" \"$secret\""
 
-	DEBUG "Executing: radclient $args"
-	eval radclient $args; ret=$?
+	DEBUG "Executing: $RADCLIENT $args"
+	eval $RADCLIENT $args; ret=$?
 	INFO "(Serialised tests)"
 
 	if [ $ret -ne 0 ]; then
