@@ -2778,6 +2778,11 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 		break;
 
 	case FR_TRUNK_CONN_HALTED:	/* Nothing to do */
+		/*
+		 *	Ensure the connection isn't in either list
+		 */
+		rad_assert(!fr_dlist_entry_in_list(&tconn->entry));
+		rad_assert(tconn->heap_id == -1);
 		break;
 
 	default:
@@ -2889,6 +2894,7 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	MEM(tconn = talloc_zero(trunk, fr_trunk_connection_t));
 	tconn->pub.trunk = trunk;
 	tconn->pub.state = FR_TRUNK_CONN_HALTED;	/* All connections start in the halted state */
+	tconn->heap_id = -1;	/* Helps with asserts */
 
 	/*
 	 *	Allocate a new fr_connection_t or fail.
