@@ -132,7 +132,7 @@ typedef struct {
 								//!< dc hosts are available and the consistency level
 								//!< is LOCAL_ONE or LOCAL_QUORUM.
 
-	fr_time_delta_t		lar_exclusion_threshold;	//!< How much worse the latency me be, compared to
+	double			lar_exclusion_threshold;	//!< How much worse the latency me be, compared to
 								//!< the average latency of the best performing node
 								//!< before it's penalized.
 								//!< This gets mangled to a double.
