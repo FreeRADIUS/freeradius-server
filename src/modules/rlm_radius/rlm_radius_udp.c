@@ -2395,7 +2395,7 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 /** Write out a canned failure and resume the request
  *
  */
-static void request_fail(REQUEST *request, void *preq, void *rctx, fr_trunk_request_state_t state, UNUSED void *uctx)
+static void request_fail(REQUEST *request, void *preq, void *rctx, NDEBUG_UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
 {
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
