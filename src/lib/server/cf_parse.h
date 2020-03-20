@@ -106,7 +106,8 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYP
  * @param _p Pointer or offset.
  */
 #  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
-__builtin_choose_expr((_t) & FR_TYPE_SUBSECTION, _p, \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SUBSECTION), _p, \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID), _p, \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && !((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), size_t *), _p, (_mismatch_size) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && ((_t) & FR_TYPE_MULTI), \
@@ -182,11 +183,15 @@ _Generic((_ct), \
 			_p, (_mismatch_uint64) 0), \
 	uint64_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT64) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
-	void *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && !((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_void) 0), \
-	void **		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && ((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_void_m) 0), \
-	default: (conf_type_mismatch)0))))))))
+	float *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT32) && !((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_float) 0), \
+	float **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT32) && ((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_float_m) 0), \
+	double *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT64) && !((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_double) 0), \
+	double **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT64) && ((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_double_m) 0), \
+	default: (conf_type_mismatch)0)))))))))
 
 #  define FR_CONF_OFFSET(_n, _t, _s, _f) \
 	.name = _n, \
