@@ -155,9 +155,9 @@ _Generic((_ct), \
 			(_mismatch_abinary) 0, (_mismatch_abinary) 0), \
 	size_t*[32/sizeof(size_t)] : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ABINARY) && ((_t) & FR_TYPE_MULTI), \
 		       (_mismatch_abinary) 0, (_mismatch_abinary_m) 0), \
-	uint8_t const *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && !((_t) & FR_TYPE_MULTI), \
+	uint8_t const **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8) 0), \
-	uint8_t const **: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && ((_t) & FR_TYPE_MULTI), \
+	uint8_t const ***: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
 	uint8_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT8) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8) 0), \
