@@ -115,7 +115,7 @@ static const CONF_PARSER xlat_config[] = {
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_rest_section_t, timeout), .dflt = "4.0" },
-	{ FR_CONF_OFFSET("chunk", FR_TYPE_SIZE, rlm_rest_section_t, chunk), .dflt = "0" },
+	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
 	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },

@@ -50,7 +50,7 @@ typedef struct {
 
 	int			stage;					//!< Processing stage.
 
-	uint32_t const		pac_lifetime;				//!< seconds to add to current time to describe PAC lifetime
+	uint32_t		pac_lifetime;				//!< seconds to add to current time to describe PAC lifetime
 	char const		*authority_identity;			//!< The identity we present in the EAP-TLS
 	uint8_t			a_id[PAC_A_ID_LENGTH];			//!< The identity we present in the EAP-TLS
 	char const		*pac_opaque_key;			//!< The key used to encrypt PAC-Opaque

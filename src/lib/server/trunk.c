@@ -233,7 +233,7 @@ static CONF_PARSER const fr_trunk_config_connection[] = {
 };
 
 CONF_PARSER const fr_trunk_config[] = {
-	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_trunk_conf_t, start), .dflt = "5" },
+	{ FR_CONF_OFFSET("start", FR_TYPE_UINT16, fr_trunk_conf_t, start), .dflt = "5" },
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT16, fr_trunk_conf_t, min), .dflt = "1" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT16, fr_trunk_conf_t, max), .dflt = "5" },
 	{ FR_CONF_OFFSET("connecting", FR_TYPE_UINT16, fr_trunk_conf_t, connecting), .dflt = "2" },

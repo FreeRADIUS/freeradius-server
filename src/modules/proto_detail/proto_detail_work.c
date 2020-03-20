@@ -68,8 +68,8 @@ typedef struct {
 } fr_detail_entry_t;
 
 static CONF_PARSER limit_config[] = {
-	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_UINT32, proto_detail_work_t, retry_config.irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_UINT32, proto_detail_work_t, retry_config.mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, proto_detail_work_t, retry_config.irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, proto_detail_work_t, retry_config.mrt), .dflt = STRINGIFY(16) },
 
 	/*
 	 *	Retransmit indefinitely, as v2 and v3 did.
@@ -78,7 +78,7 @@ static CONF_PARSER limit_config[] = {
 	/*
 	 *	...again same as v2 and v3.
 	 */
-	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_UINT32, proto_detail_work_t, retry_config.mrd), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, proto_detail_work_t, retry_config.mrd), .dflt = STRINGIFY(0) },
 	{ FR_CONF_OFFSET("maximum_outstanding", FR_TYPE_UINT32, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
 	CONF_PARSER_TERMINATOR
 };
