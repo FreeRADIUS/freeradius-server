@@ -70,20 +70,26 @@ typedef struct {
 	time_t		date;
 	time_t		*date_m;
 
+#if 0
 	uint8_t const	*octets;
 	uint8_t const	**octets_m;
+#endif
 
 	uint8_t		byte;
 	uint8_t		*byte_m;
 
+#if 0
 	uint8_t		ifid[8];
 	uint8_t		*ifid_m[8];
+#endif
 
 	uint16_t	shortint;
-	uint16_t	shortint_m;
+	uint16_t	*shortint_m;
 
+#if 0
 	uint8_t		ethernet[6];
 	uint8_t		ethernet_m[6];
+#endif
 
 	int32_t		int32;
 	int32_t		*int32_m;
@@ -133,20 +139,26 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("date", FR_TYPE_DATE, rlm_test_t, date) },
 	{ FR_CONF_OFFSET("date_m", FR_TYPE_DATE | FR_TYPE_MULTI, rlm_test_t, date_m) },
 
+#if 0
 	{ FR_CONF_OFFSET("octets", FR_TYPE_OCTETS, rlm_test_t, octets) },
 	{ FR_CONF_OFFSET("octets_m", FR_TYPE_OCTETS | FR_TYPE_MULTI, rlm_test_t, octets_m) },
+#endif
 
 	{ FR_CONF_OFFSET("bytes", FR_TYPE_UINT8, rlm_test_t, byte) },
 	{ FR_CONF_OFFSET("bytes_m", FR_TYPE_UINT8 | FR_TYPE_MULTI, rlm_test_t, byte_m) },
 
+#if 0
 	{ FR_CONF_OFFSET("ifid", FR_TYPE_IFID, rlm_test_t, ifid) },
 	{ FR_CONF_OFFSET("ifid_m", FR_TYPE_IFID | FR_TYPE_MULTI, rlm_test_t, ifid_m) },
+#endif
 
 	{ FR_CONF_OFFSET("short", FR_TYPE_UINT16, rlm_test_t, shortint) },
 	{ FR_CONF_OFFSET("short_m", FR_TYPE_UINT16 | FR_TYPE_MULTI, rlm_test_t, shortint_m) },
 
+#if 0
 	{ FR_CONF_OFFSET("ethernet", FR_TYPE_ETHERNET, rlm_test_t, ethernet) },
 	{ FR_CONF_OFFSET("ethernet_m", FR_TYPE_ETHERNET | FR_TYPE_MULTI, rlm_test_t, ethernet_m) },
+#endif
 
 	{ FR_CONF_OFFSET("signed", FR_TYPE_INT32, rlm_test_t, int32) },
 	{ FR_CONF_OFFSET("signed_m", FR_TYPE_INT32 | FR_TYPE_MULTI, rlm_test_t, int32_m) },
