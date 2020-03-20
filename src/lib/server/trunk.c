@@ -336,11 +336,11 @@ do { \
 #define DO_REQUEST_CANCEL(_treq, _reason) \
 do { \
 	if ((_treq)->pub.trunk->funcs.request_cancel) { \
-		void *prev = (_treq)->pub.trunk->in_handler; \
+		void *_prev = (_treq)->pub.trunk->in_handler; \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_cancel; \
 		DEBUG4("Calling request_cancel(conn=%p, preq=%p, reason=%s, uctx=%p)", (_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, fr_table_str_by_value(fr_trunk_cancellation_reasons, (_reason), "<INVALID>"), (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->funcs.request_cancel((_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, (_reason), (_treq)->pub.trunk->uctx); \
-		(_treq)->pub.trunk->in_handler = prev; \
+		(_treq)->pub.trunk->in_handler = _prev; \
 	} \
 } while(0)
 
@@ -350,11 +350,11 @@ do { \
 #define DO_REQUEST_COMPLETE(_treq) \
 do { \
 	if ((_treq)->pub.trunk->funcs.request_complete) { \
-		void *prev = (_treq)->pub.trunk->in_handler; \
+		void *_prev = (_treq)->pub.trunk->in_handler; \
 		DEBUG4("Calling request_complete(request=%p, preq=%p, rctx=%p, uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_complete; \
 		(_treq)->pub.trunk->funcs.request_complete((_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, (_treq)->pub.trunk->uctx); \
-		(_treq)->pub.trunk->in_handler = prev; \
+		(_treq)->pub.trunk->in_handler = _prev; \
 	} \
 } while(0)
 
@@ -378,11 +378,11 @@ do { \
 #define DO_REQUEST_FREE(_treq) \
 do { \
 	if ((_treq)->pub.trunk->funcs.request_free) { \
-		void *prev = (_treq)->pub.trunk->in_handler; \
+		void *_prev = (_treq)->pub.trunk->in_handler; \
 		DEBUG4("Calling request_free(request=%p, preq=%p, uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_free; \
 		(_treq)->pub.trunk->funcs.request_free((_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
-		(_treq)->pub.trunk->in_handler = prev; \
+		(_treq)->pub.trunk->in_handler = _prev; \
 	} \
 } while(0)
 
@@ -391,12 +391,12 @@ do { \
  */
 #define DO_REQUEST_MUX(_tconn) \
 do { \
-	void *prev = (_tconn)->pub.trunk->in_handler; \
+	void *_prev = (_tconn)->pub.trunk->in_handler; \
 	DEBUG4("[%" PRIu64 "] Calling request_mux(el=%p, tconn=%p, conn=%p, uctx=%p)", \
 	       (_tconn)->pub.conn->id, (_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
 	(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_mux; \
 	(_tconn)->pub.trunk->funcs.request_mux((_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
-	(_tconn)->pub.trunk->in_handler = prev; \
+	(_tconn)->pub.trunk->in_handler = _prev; \
 } while(0)
 
 /** Read one or more requests from a connection
@@ -404,12 +404,12 @@ do { \
  */
 #define DO_REQUEST_DEMUX(_tconn) \
 do { \
-	void *prev = (_tconn)->pub.trunk->in_handler; \
+	void *_prev = (_tconn)->pub.trunk->in_handler; \
 	DEBUG4("[%" PRIu64 "] Calling request_demux(tconn=%p, conn=%p, uctx=%p)", \
 	       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
 	(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_demux; \
 	(_tconn)->pub.trunk->funcs.request_demux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
-	(_tconn)->pub.trunk->in_handler = prev; \
+	(_tconn)->pub.trunk->in_handler = _prev; \
 } while(0)
 
 /** Write one or more cancellation requests to a connection
@@ -418,12 +418,12 @@ do { \
 #define DO_REQUEST_CANCEL_MUX(_tconn) \
 do { \
 	if ((_tconn)->pub.trunk->funcs.request_cancel_mux) { \
-		void *prev = (_tconn)->pub.trunk->in_handler; \
+		void *_prev = (_tconn)->pub.trunk->in_handler; \
 		DEBUG4("[%" PRIu64 "] Calling request_cancel_mux(tconn=%p, conn=%p, uctx=%p)", \
 		       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
 		(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_cancel_mux; \
 		(_tconn)->pub.trunk->funcs.request_cancel_mux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
-		(_tconn)->pub.trunk->in_handler = prev; \
+		(_tconn)->pub.trunk->in_handler = _prev; \
 	} \
 } while(0)
 
@@ -432,12 +432,12 @@ do { \
  */
 #define DO_CONNECTION_ALLOC(_tconn) \
 do { \
-	void *prev = trunk->in_handler; \
+	void *_prev = trunk->in_handler; \
 	DEBUG4("Calling connection_alloc(tconn=%p, el=%p, conf=%p, log_prefix=\"%s\", uctx=%p)", \
 	       (_tconn), (_tconn)->pub.trunk->el, (_tconn)->pub.trunk->conf.conn_conf, trunk->log_prefix, (_tconn)->pub.trunk->uctx); \
 	(_tconn)->pub.trunk->in_handler = (void *) (_tconn)->pub.trunk->funcs.connection_alloc; \
 	(_tconn)->pub.conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->pub.trunk->el, (_tconn)->pub.trunk->conf.conn_conf, (_tconn)->pub.trunk->log_prefix, trunk->uctx); \
-	(_tconn)->pub.trunk->in_handler = prev; \
+	(_tconn)->pub.trunk->in_handler = _prev; \
 	if (!(_tconn)->pub.conn) { \
 		ERROR("Failed creating new connection"); \
 		talloc_free(tconn); \
@@ -451,13 +451,13 @@ do { \
 #define DO_CONNECTION_NOTIFY(_tconn, _events) \
 do { \
 	if ((_tconn)->pub.trunk->funcs.connection_notify) { \
-		void *prev = (_tconn)->pub.trunk->in_handler; \
+		void *_prev = (_tconn)->pub.trunk->in_handler; \
 		DEBUG4("[%" PRIu64 "] Calling connection_notify(tconn=%p, conn=%p, el=%p, events=%s, uctx=%p)", \
 		       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->el, \
 		       fr_table_str_by_value(fr_trunk_connection_events, (_events), "<INVALID>"), (_tconn)->pub.trunk->uctx); \
 		(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.connection_notify; \
 		(_tconn)->pub.trunk->funcs.connection_notify((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->el, (_events), (_tconn)->pub.trunk->uctx); \
-		(_tconn)->pub.trunk->in_handler = prev; \
+		(_tconn)->pub.trunk->in_handler = _prev; \
 	} \
 } while(0)
 
