@@ -206,7 +206,7 @@ static void test_request_complete(UNUSED REQUEST *request, void *preq, UNUSED vo
 	if (stats) stats->completed++;
 }
 
-static void test_request_fail(UNUSED REQUEST *request, void *preq, UNUSED void *rctx, void *uctx)
+static void test_request_fail(UNUSED REQUEST *request, void *preq, UNUSED void *rctx, UNUSED fr_trunk_request_state_t state, void *uctx)
 {
 	test_proto_stats_t	*stats = uctx;
 	test_proto_request_t	*our_preq;

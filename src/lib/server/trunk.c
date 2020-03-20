@@ -252,12 +252,13 @@ CONF_PARSER const fr_trunk_config[] = {
 };
 
 static fr_table_num_ordered_t const fr_trunk_request_states[] = {
+	{ "INIT",		FR_TRUNK_REQUEST_STATE_INIT		},
 	{ "UNASSIGNED",		FR_TRUNK_REQUEST_STATE_UNASSIGNED	},
-	{ "BACKLOG",		FR_TRUNK_REQUEST_STATE_BACKLOG	},
-	{ "PENDING",		FR_TRUNK_REQUEST_STATE_PENDING	},
-	{ "PARTIAL",		FR_TRUNK_REQUEST_STATE_PARTIAL	},
+	{ "BACKLOG",		FR_TRUNK_REQUEST_STATE_BACKLOG		},
+	{ "PENDING",		FR_TRUNK_REQUEST_STATE_PENDING		},
+	{ "PARTIAL",		FR_TRUNK_REQUEST_STATE_PARTIAL		},
 	{ "SENT",		FR_TRUNK_REQUEST_STATE_SENT		},
-	{ "COMPLETE",		FR_TRUNK_REQUEST_STATE_COMPLETE	},
+	{ "COMPLETE",		FR_TRUNK_REQUEST_STATE_COMPLETE		},
 	{ "FAILED",		FR_TRUNK_REQUEST_STATE_FAILED		},
 	{ "CANCEL",		FR_TRUNK_REQUEST_STATE_CANCEL		},
 	{ "CANCEL-SENT",	FR_TRUNK_REQUEST_STATE_CANCEL_SENT	},
@@ -361,14 +362,14 @@ do { \
 /** Call the fail callback (if set)
  *
  */
-#define DO_REQUEST_FAIL(_treq) \
+#define DO_REQUEST_FAIL(_treq, _prev_state) \
 do { \
 	if ((_treq)->pub.trunk->funcs.request_fail) { \
-		void *prev = (_treq)->pub.trunk->in_handler; \
-		DEBUG4("Calling request_fail(request=%p, preq=%p, rctx=%p, uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, (_treq)->pub.trunk->uctx); \
+		void *_prev = (_treq)->pub.trunk->in_handler; \
+		DEBUG4("Calling request_fail(request=%p, preq=%p, rctx=%p, state=$s uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, fr_table_str_by_value(fr_trunk_request_states, (_prev_state), "<INVALID>"), (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_fail; \
-		(_treq)->pub.trunk->funcs.request_fail((_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, (_treq)->pub.trunk->uctx); \
-		(_treq)->pub.trunk->in_handler = prev; \
+		(_treq)->pub.trunk->funcs.request_fail((_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, _prev_state, (_treq)->pub.trunk->uctx); \
+		(_treq)->pub.trunk->in_handler = _prev; \
 	} \
 } while(0)
 
@@ -666,7 +667,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 	trunk_connection_event_update(tconn);
 }
 
-/** Transition a request back to the init state, in preparation for re-assignment
+/** Transition a request to the unassigned state, in preparation for re-assignment
  *
  * @param[in] treq	to trigger a state change for.
  */
@@ -706,6 +707,7 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq)
 	fr_trunk_t		*trunk = treq->pub.trunk;;
 
 	switch (treq->pub.state) {
+	case FR_TRUNK_REQUEST_STATE_INIT:
 	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
 		break;
 
@@ -765,6 +767,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	rad_assert(IS_SERVICEABLE(tconn));
 
 	switch (treq->pub.state) {
+	case FR_TRUNK_REQUEST_STATE_INIT:
 	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
 		break;
 
@@ -1073,8 +1076,9 @@ static void trunk_request_enter_complete(fr_trunk_request_t *treq)
  */
 static void trunk_request_enter_failed(fr_trunk_request_t *treq)
 {
-	fr_trunk_connection_t	*tconn = treq->pub.tconn;
-	fr_trunk_t		*trunk = treq->pub.trunk;
+	fr_trunk_connection_t		*tconn = treq->pub.tconn;
+	fr_trunk_t			*trunk = treq->pub.trunk;
+	fr_trunk_request_state_t	prev = treq->pub.state;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
@@ -1089,7 +1093,7 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
 	}
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_FAILED);
-	DO_REQUEST_FAIL(treq);
+	DO_REQUEST_FAIL(treq, prev);
 	fr_trunk_request_free(&treq);	/* Free the request */
 }
 
@@ -1716,6 +1720,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	 *	freed from.
 	 */
 	switch (treq->pub.state) {
+	case FR_TRUNK_REQUEST_STATE_INIT:
 	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
 	case FR_TRUNK_REQUEST_STATE_COMPLETE:
 	case FR_TRUNK_REQUEST_STATE_FAILED:
@@ -1786,7 +1791,15 @@ static int _trunk_request_free(fr_trunk_request_t *treq)
 {
 	fr_trunk_t	*trunk = treq->pub.trunk;
 
-	rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_UNASSIGNED);
+	switch (treq->pub.state) {
+	case FR_TRUNK_REQUEST_STATE_INIT:
+	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
+		break;
+
+	default:
+		rad_assert(0);
+		break;
+	}
 
 	fr_dlist_remove(&trunk->unassigned, treq);
 
@@ -1813,7 +1826,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 	treq = fr_dlist_head(&trunk->unassigned);
 	if (treq) {
 		fr_dlist_remove(&trunk->unassigned, treq);
-		rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_UNASSIGNED);
+		rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_INIT);
 		rad_assert(treq->pub.trunk == trunk);
 		rad_assert(treq->pub.tconn == NULL);
 		rad_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_NONE);
@@ -1823,7 +1836,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 		MEM(treq = talloc_pooled_object(trunk, fr_trunk_request_t,
 						trunk->conf.req_pool_headers, trunk->conf.req_pool_size));
 		talloc_set_destructor(treq, _trunk_request_free);
-		treq->pub.state = FR_TRUNK_REQUEST_STATE_UNASSIGNED;
+		treq->pub.state = FR_TRUNK_REQUEST_STATE_INIT;
 		treq->pub.trunk = trunk;
 		treq->pub.tconn = NULL;
 		treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
@@ -1902,8 +1915,8 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 	if (!fr_cond_assert_msg(!IN_HANDLER(trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return FR_TRUNK_ENQUEUE_FAIL;
 
-	if (!fr_cond_assert_msg(!*treq_out || ((*treq_out)->pub.state == FR_TRUNK_REQUEST_STATE_UNASSIGNED),
-				"%s requests must be in \"unassigned\" state", __FUNCTION__)) return FR_TRUNK_ENQUEUE_FAIL;
+	if (!fr_cond_assert_msg(!*treq_out || ((*treq_out)->pub.state == FR_TRUNK_REQUEST_STATE_INIT),
+				"%s requests must be in \"init\" state", __FUNCTION__)) return FR_TRUNK_ENQUEUE_FAIL;
 
 	/*
 	 *	If delay_start was set, we may need
@@ -2040,8 +2053,8 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_ou
 	fr_trunk_request_t	*treq;
 	fr_trunk_t		*trunk = tconn->pub.trunk;
 
-	if (!fr_cond_assert_msg(!*treq_out || ((*treq_out)->pub.state == FR_TRUNK_REQUEST_STATE_UNASSIGNED),
-				"%s requests must be in \"unassigned\" state", __FUNCTION__)) return FR_TRUNK_ENQUEUE_FAIL;
+	if (!fr_cond_assert_msg(!*treq_out || ((*treq_out)->pub.state == FR_TRUNK_REQUEST_STATE_INIT),
+				"%s requests must be in \"init\" state", __FUNCTION__)) return FR_TRUNK_ENQUEUE_FAIL;
 
 	if (!IS_SERVICEABLE(tconn)) return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
 

@@ -131,20 +131,24 @@ typedef enum {
  * Allows us to track which
  */
 typedef enum {
-	FR_TRUNK_REQUEST_STATE_UNASSIGNED	= 0x0000,	//!< Initial state.
-	FR_TRUNK_REQUEST_STATE_BACKLOG		= 0x0001,	//!< In the backlog.
-	FR_TRUNK_REQUEST_STATE_PENDING		= 0x0002,	//!< In the queue of a connection
+	FR_TRUNK_REQUEST_STATE_INIT		= 0x0000,	//!< Initial state.  Requests in this state
+								///< were never assigned, and the REQUEST should
+								///< not have been yielded.
+	FR_TRUNK_REQUEST_STATE_UNASSIGNED	= 0x0001,	//!< Transition state - Request currently
+								///< not assigned to any connection.
+	FR_TRUNK_REQUEST_STATE_BACKLOG		= 0x0002,	//!< In the backlog.
+	FR_TRUNK_REQUEST_STATE_PENDING		= 0x0004,	//!< In the queue of a connection
 								///< and is pending writing.
-	FR_TRUNK_REQUEST_STATE_PARTIAL		= 0x0004,	//!< Some of the request was written to the socket,
+	FR_TRUNK_REQUEST_STATE_PARTIAL		= 0x0008,	//!< Some of the request was written to the socket,
 								///< more of it should be written later.
-	FR_TRUNK_REQUEST_STATE_SENT		= 0x0008,	//!< Was written to a socket.  Waiting for a response.
-	FR_TRUNK_REQUEST_STATE_COMPLETE		= 0x0080,	//!< The request is complete.
-	FR_TRUNK_REQUEST_STATE_FAILED		= 0x0100,	//!< The request failed.
-	FR_TRUNK_REQUEST_STATE_CANCEL		= 0x0200,	//!< A request on a particular socket was cancel.
-	FR_TRUNK_REQUEST_STATE_CANCEL_SENT	= 0x0400,	//!< We've informed the remote server that
+	FR_TRUNK_REQUEST_STATE_SENT		= 0x0010,	//!< Was written to a socket.  Waiting for a response.
+	FR_TRUNK_REQUEST_STATE_COMPLETE		= 0x0020,	//!< The request is complete.
+	FR_TRUNK_REQUEST_STATE_FAILED		= 0x0040,	//!< The request failed.
+	FR_TRUNK_REQUEST_STATE_CANCEL		= 0x0080,	//!< A request on a particular socket was cancel.
+	FR_TRUNK_REQUEST_STATE_CANCEL_SENT	= 0x0100,	//!< We've informed the remote server that
 								///< the request has been cancelled.
-	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	= 0x0800,	//!< We partially wrote a cancellation request.
-	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	= 0x1000,	//!< Remote server has acknowledged our cancellation.
+	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	= 0x0200,	//!< We partially wrote a cancellation request.
+	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	= 0x0400,	//!< Remote server has acknowledged our cancellation.
 } fr_trunk_request_state_t;
 
 /** All request states
@@ -591,7 +595,8 @@ typedef void (*fr_trunk_request_complete_t)(REQUEST *request, void *preq, void *
  *
  * After this callback is complete, the request_free callback will be called if provided.
  */
-typedef void (*fr_trunk_request_fail_t)(REQUEST *request, void *preq, void *rctx, void *uctx);
+typedef void (*fr_trunk_request_fail_t)(REQUEST *request, void *preq, void *rctx,
+					fr_trunk_request_state_t state, void *uctx);
 
 /** Free resources associated with a trunk request
  *
