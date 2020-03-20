@@ -366,7 +366,7 @@ do { \
 do { \
 	if ((_treq)->pub.trunk->funcs.request_fail) { \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
-		DEBUG4("Calling request_fail(request=%p, preq=%p, rctx=%p, state=$s uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, fr_table_str_by_value(fr_trunk_request_states, (_prev_state), "<INVALID>"), (_treq)->pub.trunk->uctx); \
+		DEBUG4("Calling request_fail(request=%p, preq=%p, rctx=%p, state=%s uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, fr_table_str_by_value(fr_trunk_request_states, (_prev_state), "<INVALID>"), (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_fail; \
 		(_treq)->pub.trunk->funcs.request_fail((_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, _prev_state, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = _prev; \
