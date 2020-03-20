@@ -183,7 +183,7 @@ _Generic((_ct), \
 			_p, (_mismatch_uint64) 0), \
 	uint64_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT64) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
-	float *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT32) && !((_t) & FR_TYPE_MULTI), \
+	float *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT32) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_float) 0), \
 	float **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT32) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_float_m) 0), \
