@@ -816,10 +816,7 @@ static void trunk_request_enter_partial(fr_trunk_request_t *treq)
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
 	switch (treq->pub.state) {
-	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
-		break;
-
-	case FR_TRUNK_REQUEST_STATE_PENDING:
+	case FR_TRUNK_REQUEST_STATE_PENDING:	/* All requests go through pending, even requeued ones */
 		REQUEST_EXTRACT_PENDING(treq);
 		break;
 
