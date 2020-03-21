@@ -574,7 +574,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 	XLAT_DEBUG("LITERAL <-- %s", in);
 
 	node = talloc_zero(ctx, xlat_exp_t);
-	node->fmt = start = talloc_typed_strdup(node, in);
+	node->fmt = start = talloc_bstrndup(node, in, inlen);
 	node->len = 0;
 	node->type = XLAT_LITERAL;
 
