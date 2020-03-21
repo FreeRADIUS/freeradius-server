@@ -265,8 +265,7 @@ static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head,
 					     vp_tmpl_rules_t const *rules)
 {
 	ssize_t		slen;
-	char const	*p, *end;
-	char		*q;
+	char const	*p, *q, *end;
 	xlat_exp_t	*node;
 	xlat_t		*func;
 
@@ -279,10 +278,19 @@ static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head,
 	end = in + inlen;
 
 	/*
-	 *	@todo - respect "inlen", and don't use strchr.
+	 *	%{module:args}
 	 */
-	q = strchr(p, ':');
-	if (!q || (q >= end)) return 0;
+	for (q = p; q < end; q++) {
+		if (*q == ':') break;
+
+		/*
+		 *	Special characters, spaces, etc. cannot be
+		 *	module names.
+		 */
+		if (*q < '0') return 0;
+	}
+
+	if (q >= end) return 0;
 
 	func = xlat_func_find(p, q - p);
 	if (!func) return 0;
@@ -305,11 +313,12 @@ static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head,
 		talloc_free(node);
 		return slen - (p - in);	/* error */
 	}
+
 	p += slen;
-	if (*(p - 1) != '}') {	/* @fixme: xlat_tokenize_literal should not consume the closing brace */
+	if (*(p - 1) != '}') {	/* @todo: xlat_tokenize_literal should not consume the closing brace */
 		fr_strerror_printf("No matching closing brace");
 		talloc_free(node);
-		return -1;						/* error @ second character of format string */
+		return -1;						/* error at the second character of format string */
 	}
 
 	node->async_safe = (func->async_safe && (!node->child || node->child->async_safe));
