@@ -284,14 +284,7 @@ static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head,
 	q = strchr(p, ':');
 	if (!q || (q >= end)) return 0;
 
-	/*
-	 *	Avoid using a temporary buffer to search
-	 *	for the function.
-	 */
-	*q = '\0';
-	func = xlat_func_find(p);
-	*q = ':';
-
+	func = xlat_func_find(p, q - p);
 	if (!func) return 0;
 
 	/*
@@ -391,7 +384,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 	 *	list.
 	 */
 	if (tmpl_is_attr_undefined(vpt)) {
-		func = xlat_func_find(vpt->tmpl_unknown_name);
+		func = xlat_func_find(vpt->tmpl_unknown_name, -1);
 		if (func && (func->type == XLAT_FUNC_SYNC)) {
 			node = xlat_exp_alloc(ctx, XLAT_VIRTUAL,
 					      vpt->tmpl_unknown_name, talloc_array_length(vpt->tmpl_unknown_name) - 1);

@@ -144,7 +144,7 @@ typedef int (*xlat_walker_t)(xlat_exp_t *exp, void *uctx);
 /*
  *	xlat_func.c
  */
-xlat_t	*xlat_func_find(char const *name);
+xlat_t	*xlat_func_find(char const *name, ssize_t namelen);
 
 /*
  *	xlat_eval.c

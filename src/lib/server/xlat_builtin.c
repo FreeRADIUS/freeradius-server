@@ -211,15 +211,22 @@ static int xlat_cmp(void const *one, void const *two)
 /*
  *	find the appropriate registered xlat function.
  */
-xlat_t *xlat_func_find(char const *name)
+xlat_t *xlat_func_find(char const *in, ssize_t inlen)
 {
-	xlat_t *found;
+	char buffer[256];
 
 	if (!xlat_root) return NULL;
 
-	found = rbtree_finddata(xlat_root, &(xlat_t){ .name = name });
+	if (inlen < 0) {
+		return rbtree_finddata(xlat_root, &(xlat_t){ .name = in });
+	}
 
-	return found;
+	if ((size_t) inlen >= sizeof(buffer)) return NULL;
+
+	memcpy(buffer, in, inlen);
+	buffer[inlen] = '\0';
+
+	return rbtree_finddata(xlat_root, &(xlat_t){ .name = buffer });
 }
 
 
@@ -400,7 +407,7 @@ int xlat_internal(char const *name)
 {
 	xlat_t *c;
 
-	c = xlat_func_find(name);
+	c = xlat_func_find(name, -1);
 	if (!c) return -1;
 
 	c->internal = true;
@@ -561,7 +568,7 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 		name = cf_pair_attr(cf_item_to_pair(ci));
 		rad_assert(name != NULL);
 
-		xlat = xlat_func_find(name);
+		xlat = xlat_func_find(name, -1);
 		if (!xlat) continue;
 
 		if (xlat->buf_len > 0) {
@@ -633,7 +640,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 		name = cf_pair_attr(cf_item_to_pair(found));
 		rad_assert(name != NULL);
 
-		xlat = xlat_func_find(name);
+		xlat = xlat_func_find(name, -1);
 		if (!xlat) return -1;
 
 		if (xlat->buf_len > 0) {
@@ -659,7 +666,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 		name = cf_pair_attr(cf_item_to_pair(ci));
 		rad_assert(name != NULL);
 
-		xlat = xlat_func_find(name);
+		xlat = xlat_func_find(name, -1);
 		if (xlat) {
 			ssize_t rcode;
 
@@ -708,7 +715,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	name1 = cf_section_name1(cs);
 	name2 = cf_section_name2(cs);
 
-	if (xlat_func_find(name2)) {
+	if (xlat_func_find(name2, -1)) {
 		cf_log_err(cs, "An expansion is already registered for this name");
 		return -1;
 	}
@@ -751,7 +758,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 			 *	This is ok, it just means the module
 			 *	doesn't have an xlat method.
 			 */
-			if (!xlat_func_find(attr)) {
+			if (!xlat_func_find(attr, -1)) {
 				talloc_free(xr);
 				return 1;
 			}
