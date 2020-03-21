@@ -85,9 +85,9 @@ static uint128_t uint128_gen_mask(uint8_t bits)
  *
  * @author Jacob F. W
  */
-static uint128_t uint128_increment(uint128_t *n)
+static uint128_t uint128_increment(uint128_t n)
 {
-	uint64 t = (n.l + 1);
+	uint64_t t = (n.l + 1);
 
 	n.h += ((n.l ^ t) & n.l) >> 63;
 	n.l = t;
@@ -99,9 +99,9 @@ static uint128_t uint128_increment(uint128_t *n)
  *
  * @author Jacob F. W
  */
-static uint128_t uint128_decrement(uint128_t *n)
+static uint128_t uint128_decrement(uint128_t n)
 {
-	uint64 t = (n.l - 1);
+	uint64_t t = (n.l - 1);
 	n.h -= ((t ^ n.l) & t) >> 63;
 	n.l = t;
 
@@ -141,7 +141,7 @@ static uint128_t uint128_sub(uint128_t a, uint128_t b)
  *
  * @author Jacob F. W
  */
-static uint128_t uint128_mul64(uint64 u, uint64 v)
+static uint128_t uint128_mul64(uint64_t u, uint64_t v)
 {
 	uint128_t ret;
 	uint64_t u1 = (u & 0xffffffff);
@@ -166,6 +166,8 @@ static uint128_t uint128_mul64(uint64 u, uint64 v)
 
 	ret.h = (u * v) + w1 + k;
 	ret.l = (t << 32) + w3;
+
+	return ret;
 }
 
 /** Multiply two unsigned 128bit integers
