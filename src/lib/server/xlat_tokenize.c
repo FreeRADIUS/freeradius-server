@@ -200,41 +200,58 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, cha
 static inline ssize_t xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen)
 {
 	unsigned long	num;
-	char const	*p;
-	char		*q;
+	char const	*p, *end;
 	xlat_exp_t	*node;
 
-	if (inlen < 2) return 0;
+	/*
+	 *	Must be at least %{0} in length
+	 */
+	if (inlen < 4) return 0;
 
 	rad_assert(in[0] == '%');
 	rad_assert(in[1] == '{');
 
 	p = in + 2;
+	end = in + inlen;
 
-	/*
-	 *	@todo - respect inlen
-	 */
-	num = strtoul(p, &q, 10);
-	if (num > REQUEST_MAX_REGEX) {
+	if (*p == '}') {
+	fail:
 		fr_strerror_printf("Invalid regex reference.  Must be in range 0-%u", REQUEST_MAX_REGEX);
 		return -(p - in);		/* error */
 	}
 
-	/*
-	 *	Maybe the module name begins with a number? "%{0sql ... "
-	 *	We should probably disallow that...
-	 */
-	if (*q != '}') return 0;
+	num = 0;
+	while (p < end) {
+		if (*p == '}') break;
 
-	XLAT_DEBUG("REGEX <-- %pV", fr_box_strvalue_len(in, (q - p) + 1));
+		/*
+		 *	We allow numbers followed by letters for attributes such as 3GPP-...
+		 */
+		if (!((p[0] >= '0') && (p[0] <= '9'))) return 0;
+		num *= 10;
+		num += p[0] - '0';
+		p++;
 
-	node = xlat_exp_alloc(ctx, XLAT_REGEX, p, (q - p));	/* in is the integer value */
+		if (num > REQUEST_MAX_REGEX) {
+			p = in + 2;
+			goto fail;
+		};
+	}
+
+	if (*p != '}') {
+		fr_strerror_printf("No matching closing brace");
+		return -1;
+	}
+
+	XLAT_DEBUG("REGEX <-- %pV", fr_box_strvalue_len(in, (p - in) + 1));
+
+	node = xlat_exp_alloc(ctx, XLAT_REGEX, p, p - (in + 2));
 	node->regex_index = num;
 	*head = node;
 
-	q++;	/* Skip over '}' */
+	p++;	/* Skip over '}' */
 
-	return q - in;
+	return p - in;
 }
 #endif
 
