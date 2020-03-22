@@ -749,6 +749,15 @@ static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 			RDEBUG3("literal --> %s", node->fmt);
 			break;
 
+		case XLAT_CHILD:
+			RDEBUG3("child --> %s", node->fmt);
+			RDEBUG3("{");
+			RINDENT();
+			xlat_tokenize_debug(request, node->child);
+			REXDENT();
+			RDEBUG3("}");
+			break;
+
 		case XLAT_ONE_LETTER:
 			RDEBUG3("percent --> %c", node->fmt[0]);
 			break;
@@ -831,7 +840,7 @@ size_t xlat_snprint(char *out, size_t outlen, xlat_exp_t const *node)
 #define CHECK_SPACE(_p, _end) if (_p >= _end) goto oob
 
 	while (node) {
-		if (node->type == XLAT_LITERAL) {
+		if ((node->type == XLAT_LITERAL) || (node->type == XLAT_CHILD)) {
 			p += strlcpy(p, node->fmt, end - p);
 			CHECK_SPACE(p, end);
 			goto next;

@@ -88,6 +88,7 @@ typedef enum {
 	XLAT_REGEX		= 0x20,		//!< regex reference
 #endif
 	XLAT_ALTERNATE		= 0x40,		//!< xlat conditional syntax :-
+	XLAT_CHILD		= 0x80		//!< encapsulated string of xlats
 } xlat_type_t;
 
 /** An xlat expansion node

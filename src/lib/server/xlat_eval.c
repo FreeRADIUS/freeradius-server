@@ -126,6 +126,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 {
 	switch (node->type) {
 	case XLAT_LITERAL:
+	case XLAT_CHILD:
 		return talloc_asprintf(ctx, "%s", node->fmt);
 
 	case XLAT_ONE_LETTER:
@@ -184,6 +185,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 
 		return result;
 	}
+
 	default:
 		return NULL;
 	}
@@ -1068,6 +1070,18 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			*child = node->child;
 			xa = XLAT_ACTION_PUSH_CHILD;
 			goto finish;
+
+		case XLAT_CHILD:
+			XLAT_DEBUG("** [%i] %s(child) - %%{%s:...}", unlang_interpret_stack_depth(request), __FUNCTION__,
+				   node->fmt);
+
+			/*
+			 *	Hand back the child node to the caller
+			 *	for evaluation.
+			 */
+			*child = node->child;
+			xa = XLAT_ACTION_PUSH_CHILD;
+			goto finish;
 		}
 	}
 
@@ -1101,6 +1115,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 */
 	case XLAT_LITERAL:
 		XLAT_DEBUG("%.*sxlat_aprint LITERAL", lvl, xlat_spaces);
+		return talloc_typed_strdup(ctx, node->fmt);
+
+	case XLAT_CHILD:
+		XLAT_DEBUG("%.*sxlat_aprint CHILD", lvl, xlat_spaces);
 		return talloc_typed_strdup(ctx, node->fmt);
 
 		/*
@@ -1683,6 +1701,19 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void
 			 *	Evaluate the alternate expansion path
 			 */
 			ret = xlat_eval_walk(node->alternate, walker, type, uctx);
+			if (ret < 0) return ret;
+			break;
+
+		case XLAT_CHILD:
+			if (!type || (type & XLAT_CHILD)) {
+				ret = walker(node, uctx);
+				if (ret < 0) return ret;
+			}
+
+			/*
+			 *	Evaluate the child.
+			 */
+			ret = xlat_eval_walk(node->child, walker, type, uctx);
 			if (ret < 0) return ret;
 			break;
 
