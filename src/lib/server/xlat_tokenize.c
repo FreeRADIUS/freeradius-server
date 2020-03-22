@@ -565,7 +565,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
 				     bool brace, vp_tmpl_rules_t const *rules)
 {
-	char const	*p;
+	char const	*p, *end;
 	xlat_exp_t	*node;
 	char		*start;
 
@@ -579,10 +579,11 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 	node->type = XLAT_LITERAL;
 
 	p = in;
+	end = in + inlen;
 
-	while (*p) {
+	while (p < end) {
 		if (*p == '\\') {
-			if (!p[1]) {
+			if (((p + 1) >= end) || !p[1]) {
 				talloc_free(node);
 				fr_strerror_printf("Invalid escape at end of string");
 				return -(p - in);
@@ -593,15 +594,17 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			continue;
 		}
 
+		if ((p[0] == '%') && (p + 1) >= end) goto invalid_variable;
+
 		/*
-		 *	Process the expansion.
+		 *	Process the expansion.  Which should be at least %{0} in length
 		 */
 		if ((p[0] == '%') && (p[1] == '{')) {
 			ssize_t slen;
 
 			XLAT_DEBUG("EXPANSION-2 <-- %s", node->fmt);
 
-			slen = xlat_tokenize_expansion(node, &node->next, p, in + inlen - p, rules);
+			slen = xlat_tokenize_expansion(node, &node->next, p, end - p, rules);
 			if (slen <= 0) {
 				talloc_free(node);
 				return slen - (p - in);
@@ -623,7 +626,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			 *	EXPANSION	User-Name
 			 *	LITERAL		" bar"
 			 */
-			slen = xlat_tokenize_literal(node->next, &(node->next->next), p, in + inlen - p, brace, rules);
+			slen = xlat_tokenize_literal(node->next, &(node->next->next), p, end - p, brace, rules);
 			rad_assert(slen != 0);
 			if (slen < 0) {
 				talloc_free(node);
@@ -643,6 +646,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			xlat_exp_t	*next;
 
 			if (!p[1] || !strchr("%}cdlmnsetCDGHIMSTYv", p[1])) {
+			invalid_variable:
 				talloc_free(node);
 				fr_strerror_printf("Invalid variable expansion");
 				p++;
@@ -677,7 +681,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			/*
 			 *	And recurse.
 			 */
-			slen = xlat_tokenize_literal(node->next, &(node->next->next), p, in + inlen - p, brace, rules);
+			slen = xlat_tokenize_literal(node->next, &(node->next->next), p, end - p, brace, rules);
 			rad_assert(slen != 0);
 			if (slen < 0) {
 				talloc_free(node);
