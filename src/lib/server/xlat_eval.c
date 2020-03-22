@@ -1674,6 +1674,12 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void
 			}
 
 			/*
+			 *	Evaluate the first child
+			 */
+			ret = xlat_eval_walk(node->child, walker, type, uctx);
+			if (ret < 0) return ret;
+
+			/*
 			 *	Evaluate the alternate expansion path
 			 */
 			ret = xlat_eval_walk(node->alternate, walker, type, uctx);
