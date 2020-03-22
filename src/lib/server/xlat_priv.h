@@ -85,9 +85,10 @@ typedef enum {
 	XLAT_VIRTUAL		= 0x08,		//!< virtual attribute
 	XLAT_ATTRIBUTE		= 0x10,		//!< xlat attribute
 #ifdef HAVE_REGEX
-	XLAT_REGEX		= 0x11,		//!< regex reference
+	XLAT_REGEX		= 0x20,		//!< regex reference
 #endif
-	XLAT_ALTERNATE		= 0x12		//!< xlat conditional syntax :-
+	XLAT_ALTERNATE		= 0x40,		//!< xlat conditional syntax :-
+	XLAT_CHILD		= 0x80		//!< encapsulated string of xlats
 } xlat_type_t;
 
 /** An xlat expansion node
