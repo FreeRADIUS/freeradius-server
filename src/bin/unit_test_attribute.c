@@ -1889,7 +1889,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_ctx_t *cc
 	len = fr_value_str_unescape((uint8_t *)fmt, in, input_len, '\"');
 	fmt[len] = '\0';
 
-	dec_len = xlat_tokenize(fmt, &head, fmt, input_len,
+	dec_len = xlat_tokenize(fmt, &head, fmt, len,
 				&(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
 	if (dec_len <= 0) {
 		fr_strerror_printf("ERROR offset %d '%s'", (int) -dec_len, fr_strerror());
@@ -1899,7 +1899,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_ctx_t *cc
 		RETURN_OK_WITH_ERROR();
 	}
 
-	if (fmt[dec_len] != '\0') {
+	if (((size_t) dec_len != len) || (fmt[dec_len] != '\0')) {
 		fr_strerror_printf("ERROR offset %d 'Too much text'", (int) dec_len);
 		goto return_error;
 	}
