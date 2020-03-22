@@ -738,6 +738,212 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 	return p - in;
 }
 
+static ssize_t skip_string(char const *start, char const *end)
+{
+	char const *p = start;
+	char quote;
+
+	quote = *(p++);
+
+	while (p < end) {
+		if (*p == quote) {
+			p++;
+			return p - start;
+		}
+
+		if (*p == '\\') {
+			if (((p + 1) >= end) || !p[1]) {
+				break;
+			}
+
+			p += 2;
+			continue;
+		}
+
+		p++;
+	}
+
+	/*
+	 *	Unexpected end of string.
+	 */
+	fr_strerror_printf("Unexpected end of string");
+	return -(p - start);
+}
+
+/** skip xlat expansions, included embedded strings and nested xlats.
+ *
+ */
+static ssize_t skip_xlat(char const *start, char const *end)
+{
+	char const *p = start + 2;
+	ssize_t slen;
+
+	while (p < end) {
+		if (*p == '}') {
+			p++;
+			return p - start;
+		}
+
+		if ((*p == '"') || (*p == '\'')) {
+			slen = skip_string(p, end);
+			if (slen < 0) return slen - (p - start);
+
+			p += slen;
+			continue;
+		}
+
+		if ((*p == '%') && ((p + 1) < end) && (p[1] == '{')) {
+			slen = skip_xlat(p, end);
+			if (slen < 0) return slen - (p - start);
+			p += slen;
+			continue;
+		}
+
+		p++;
+	}
+
+	return -(p - start);
+}
+
+/** Tokenize an xlat expansion into a series of XLAT_TYPE_CHILD arguments
+ *
+ * @param[in] ctx	to allocate dynamic buffers in.
+ * @param[out] head	the head of the xlat list / tree structure.
+ * @param[in] in	the format string to expand.
+ * @param[in] inlen	the length of the input string.  If the string is \0 terminated, inlen may be -1.
+ * @param[in] rules	controlling how attribute references are parsed.
+ * @return
+ *	- <=0 on error.
+ *	- >0  on success which is the number of characters parsed.
+ */
+ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
+			   vp_tmpl_rules_t const *rules)
+{
+	char const *p, *end;
+	ssize_t slen;
+	xlat_exp_t *node, *my_head, **last;
+	TALLOC_CTX *my_ctx;
+
+	p = in;
+	end = in + inlen;
+
+	my_head = NULL;
+	last = &my_head;
+	my_ctx = ctx;
+
+	while (p < end) {
+		/*
+		 *	Skip spaces between command-line arguments.
+		 */
+		if (isspace((int) *p)) {
+			while ((p < end) && isspace((int) *p)) p++;
+
+			continue;
+		}
+
+		*last = node = talloc_zero(my_ctx, xlat_exp_t);
+		node->fmt = NULL;
+		node->len = 0;
+		node->type = XLAT_CHILD;
+
+		if (*p == '%') {
+			if ((p + 1) >= end) {
+				talloc_free(my_head);
+				fr_strerror_printf("Invalid variable expansion");
+				return -(p - in);
+			}
+
+			if (p[1] != '{') {
+				slen = 1;
+			} else {
+				slen = skip_xlat(p, end);
+				if (slen < 0) return slen - (p - in);
+			}
+
+			slen = xlat_tokenize_expansion(node, &node->child, p, slen, rules);
+			goto next;
+		}
+
+		/*
+		 *	Back-tick qutoed strings are forbidden.
+		 */
+		if (*p == '`') {
+			fr_strerror_printf("Unexpected `...` string");
+			talloc_free(my_head);
+			return -(p - in);
+		}
+
+		/*
+		 *	Look for quoted strings.
+		 */
+		if ((*p == '"') || (*p == '\'')) {
+			slen = skip_string(p, end);
+			if (slen < 0) return slen - (p - in);
+
+		} else {
+			char const *q = p;
+
+			/*
+			 *	Bare words are OK, so long as they
+			 *	don't contain variable expansions.
+			 */
+			while ((q < end) && !isspace((int) *q)) {
+				if (*q == '%') {
+					talloc_free(my_head);
+					fr_strerror_printf("Invalid location for variable expansion");
+					return -(q - in);
+				}
+				q++;
+			}
+			slen = q - p;
+		}
+
+		/*
+		 *	Tokenize this literal as a child.
+		 *
+		 *	@todo - unescape the quoted string? or is it unescpa
+		 */
+		slen = xlat_tokenize_literal(node, &node->child, p, slen, false, rules);
+	next:
+		if (slen < 0) {
+			talloc_free(my_head);
+			return slen - (p - in);
+		}
+
+		/*
+		 *	Arguments MUST be separated by spaces.
+		 */
+		if (((p + slen) < end) && !isspace((int) p[slen])) {
+			talloc_free(my_head);
+			fr_strerror_printf("Unexpected text after argument");
+			p += slen;
+			return -(p - in);
+		}
+
+		/*
+		 *	Remember how much of the current string we allocated.
+		 */
+		node->fmt = talloc_bstrndup(node, p, slen);
+		node->len = slen;
+		p += slen;
+
+		/*
+		 *	Parent the next node from the previous one.
+		 *	This lets us free everything in one swell foop
+		 *	on error.
+		 */
+		my_ctx = node;
+	}
+
+	/*
+	 *	The last node MUST have a format string.
+	 */
+	rad_assert(node->fmt != NULL);
+
+	*head = my_head;
+	return p - in;
+}
+
 static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 {
 	rad_assert(node != NULL);

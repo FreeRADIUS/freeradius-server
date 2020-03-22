@@ -278,6 +278,9 @@ ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *re
 
 ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, ssize_t inlen, vp_tmpl_rules_t const *rules);
 
+ssize_t		xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
+				   vp_tmpl_rules_t const *rules);
+
 size_t		xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 
 #define XLAT_DEFAULT_BUF_LEN	2048
