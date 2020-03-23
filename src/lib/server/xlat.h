@@ -271,6 +271,11 @@ ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 				    xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 				    CC_HINT(nonnull (2, 3, 4));
 
+int		xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
+					 xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx);
+
+int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *xlat);
+
 int		xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp);
 
 ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *request,

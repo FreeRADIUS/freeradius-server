@@ -823,6 +823,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 	ssize_t slen;
 	xlat_exp_t *node, *my_head, **last;
 	TALLOC_CTX *my_ctx;
+	int count = 0;
 
 	p = in;
 	end = in + inlen;
@@ -845,6 +846,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 		node->fmt = NULL;
 		node->len = 0;
 		node->type = XLAT_CHILD;
+		count++;
 
 		if (*p == '%') {
 			if ((p + 1) >= end) {
@@ -933,6 +935,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 		 *	on error.
 		 */
 		my_ctx = node;
+		last = &(node->next);
 	}
 
 	/*
@@ -941,6 +944,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 	rad_assert(node->fmt != NULL);
 
 	*head = my_head;
+	my_head->count = count;
 	return p - in;
 }
 

@@ -257,5 +257,34 @@ match ERROR offset 19 'Missing closing brace at end of string'
 xlat %{myfirstxlat
 match ERROR offset 1 'No matching closing brace'
 
+#
+#  API to split xlat strings into argv-style arguments.
+#
+xlat_argv /bin/sh %{User-Name}
+match [0]{ /bin/sh }, [1]{ %{User-Name} }
+
+xlat_argv /bin/sh "%{User-Name}"
+match [0]{ /bin/sh }, [1]{ "%{User-Name}" }
+
+# with quotes
+xlat_argv /bin/sh "foo" "%{User-Name}"
+match [0]{ /bin/sh }, [1]{ "foo" }, [2]{ "%{User-Name}" }
+
+# many spaces between arguments
+xlat_argv /bin/sh         "foo"       "%{User-Name}"
+match [0]{ /bin/sh }, [1]{ "foo" }, [2]{ "%{User-Name}" }
+
+# and spaces in quotes
+xlat_argv /bin/sh "foo bar" "%{User-Name}"
+match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ "%{User-Name}" }
+
+# and multiple xlats inside of quotes
+xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id}"
+match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ "%{User-Name} %{Filter-Id}" }
+
+# and errors
+xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
+match ERROR offset 33 'No matching closing brace'
+
 count
-match 157
+match 171

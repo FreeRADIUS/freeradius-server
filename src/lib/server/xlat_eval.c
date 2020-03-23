@@ -1602,6 +1602,71 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 	return _xlat_eval_compiled(ctx, out, 0, request, xlat, escape, escape_ctx);
 }
 
+
+/** Synchronous compile xlat_tokenize_argv() into argv[] array.
+ *
+ *  This is mostly for synchronous evaluation.
+ *
+ * @param ctx		The talloc_ctx
+ * @param[out] argv	the argv array of resulting strings, size is argc + 1
+ * @param request	the request
+ * @param xlat		from xlat_tokenize_argv()
+ * @param escape	escape function
+ * @param escape_ctx	context for escape function
+ * @return
+ *	- <=0 on error	number indicates which argument caused the problem
+ *	- >0 on success	which is argc to the corresponding argv
+ */
+int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
+				 xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
+{
+	int i;
+	ssize_t slen;
+	char **my_argv;
+	xlat_exp_t const *node;
+
+	if (xlat->type != XLAT_CHILD) return -1;
+
+	MEM(my_argv = talloc_zero_array(ctx, char *, xlat->count + 1));
+	*argv = my_argv;
+
+	rad_assert(done_init);
+
+	for (i = 0, node = xlat; node != NULL; i++, node = node->next) {
+		my_argv[i] = NULL;
+
+		slen = _xlat_eval_compiled(my_argv, &my_argv[i], 0, request, node, escape, escape_ctx);
+		if (slen < 0) return -i;
+	}
+
+	return xlat->count;
+}
+
+/** Turn xlat_tokenize_argv() into an argv[] array
+ *
+ *  This is mostly for async use.
+ */
+int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *xlat)
+{
+	int i;
+	xlat_exp_t const **my_argv;
+	xlat_exp_t const *node;
+
+	if (xlat->type != XLAT_CHILD) return -1;
+
+	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_t const *, xlat->count + 1));
+	*argv = my_argv;
+
+	rad_assert(done_init);
+
+	for (i = 0, node = xlat; node != NULL; i++, node = node->next) {
+		my_argv[i] = node->child;
+	}
+
+	return xlat->count;
+}
+
+
 /** Expands an attribute marked with fr_pair_mark_xlat
  *
  * Writes the new value to the vp.

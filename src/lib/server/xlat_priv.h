@@ -112,6 +112,8 @@ struct xlat_exp {
 		vp_tmpl_t	*attr;		//!< An attribute template.
 
 		int		regex_index;	//!< for %{1} and friends.
+
+		int		count;		//!< for XLAT_CHILD
 	};
 
 	/*

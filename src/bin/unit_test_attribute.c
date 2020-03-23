@@ -1911,6 +1911,47 @@ static size_t command_xlat_normalise(command_result_t *result, command_ctx_t *cc
 	RETURN_OK(escaped_len);
 }
 
+/** Parse an reprint and xlat argv expansion
+ *
+ */
+static size_t command_xlat_argv(command_result_t *result, command_ctx_t *cc,
+				char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	int		i, argc;
+	char		*p;
+	ssize_t		slen;
+	xlat_exp_t	*head = NULL;
+	xlat_exp_t const **argv;
+	size_t		len;
+	size_t		input_len = strlen(in);
+	char		buff[1024];
+
+	slen = xlat_tokenize_argv(cc->tmp_ctx, &head, in, input_len,
+				  &(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
+	if (slen <= 0) {
+		fr_strerror_printf("ERROR offset %d '%s'", (int) -slen, fr_strerror());
+		RETURN_OK_WITH_ERROR();
+	}
+
+	argc = xlat_flatten_compiled_argv(cc->tmp_ctx, &argv, head);
+	if (argc <= 0) {
+		fr_strerror_printf("ERROR in argument %d '%s'", (int) -argc, fr_strerror());
+		RETURN_OK_WITH_ERROR();
+	}
+
+	for (i = 0, p = data; i < argc; i++) {
+		len = xlat_snprint(buff, sizeof(buff), argv[i]);
+
+		len = snprintf(p, data + COMMAND_OUTPUT_MAX - p, "[%d]{ %s }, ", i, buff);
+		p += len;
+	}
+
+	p -= 2;
+	*p = '\0';
+
+	RETURN_OK(p - data);
+}
+
 static fr_table_ptr_sorted_t	commands[] = {
 	{ "#",			&(command_entry_t){
 					.func = command_comment,
@@ -2071,7 +2112,13 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_xlat_normalise,
 					.usage = "xlat <string>",
 					.description = "Parse then print an xlat expansion, writing the normalised xlat expansion to the data buffer"
-				}}
+				}},
+
+	{ "xlat_argv ",		&(command_entry_t){
+					.func = command_xlat_argv,
+					.usage = "xlat_argv <string>",
+					.description = "Parse then print an xlat expansion argv, writing the normalised xlat expansion arguments to the data buffer"
+				}},
 };
 static size_t commands_len = NUM_ELEMENTS(commands);
 
