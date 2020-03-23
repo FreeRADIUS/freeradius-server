@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file libfreeradius-curl/base.c
+ * @file libfreeradius-curl/base.c 
  * @brief Curl global initialisation
  *
  * @copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
@@ -28,6 +28,8 @@
 
 #include <curl/curl.h>
 #include <talloc.h>
+
+
 
 static int instance_count;
 
@@ -84,3 +86,30 @@ void fr_curl_free(void)
 
 	curl_global_cleanup();
 }
+
+int  fr_curl_easy_tls_init (UNUSED fr_curl_io_request_t *creq, fr_curl_tls_t *conf);
+
+int fr_curl_easy_tls_init (fr_curl_io_request_t *randle, fr_curl_tls_t *conf)
+{
+	int 	ret;
+
+	if (false){
+
+	}
+
+	if (conf->tls_certificate_file) SET_OPTION(CURLOPT_SSLCERT, conf->tls_certificate_file);
+	if (conf->tls_private_key_file) SET_OPTION(CURLOPT_SSLKEY, conf->tls_private_key_file);
+	if (conf->tls_private_key_password) SET_OPTION(CURLOPT_KEYPASSWD, conf->tls_private_key_password);
+	if (conf->tls_ca_file) SET_OPTION(CURLOPT_CAINFO, conf->tls_ca_file);
+	if (conf->tls_ca_issuer_file) SET_OPTION(CURLOPT_ISSUERCERT, conf->tls_ca_issuer_file);
+	if (conf->tls_ca_path) SET_OPTION(CURLOPT_CAPATH, conf->tls_ca_path);
+	if (conf->tls_random_file) SET_OPTION(CURLOPT_RANDOM_FILE, conf->tls_random_file);
+
+	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (conf->tls_check_cert == true) ? 1L : 0L);
+	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (conf->tls_check_cert_cn == true) ? 2L : 0L);
+
+	return 0;
+	error:
+	return -1;
+}
+

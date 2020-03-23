@@ -154,6 +154,8 @@ typedef struct {
 	bool			tls_check_cert_cn;
 	bool			tls_extract_cert_attrs;
 
+	fr_curl_tls_t		*tls;
+
 	fr_time_delta_t		timeout;	//!< Timeout timeval.
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
 	size_t			max_body_in;	//!< Maximum size of incoming data.

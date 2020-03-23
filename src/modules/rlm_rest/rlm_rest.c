@@ -64,6 +64,7 @@ static size_t http_negotiation_table_len = NUM_ELEMENTS(http_negotiation_table);
 /*
  *	TLS Configuration
  */
+/*
 static CONF_PARSER tls_config[] = {
 	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_file) },
 	{ FR_CONF_OFFSET("ca_issuer_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_issuer_file) },
@@ -77,7 +78,7 @@ static CONF_PARSER tls_config[] = {
 	{ FR_CONF_OFFSET("extract_cert_attrs", FR_TYPE_BOOL, rlm_rest_section_t, tls_extract_cert_attrs), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
-
+*/
 static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, uri), .dflt = "" },
 	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy) },

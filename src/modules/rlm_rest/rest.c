@@ -98,7 +98,7 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
  */
 DIAG_OPTIONAL
 DIAG_OFF(disabled-macro-expansion)
-#define SET_OPTION(_x, _y)\
+#define SET_OPTION2(_x, _y)\
 do {\
 	if ((ret = curl_easy_setopt(candle, _x, _y)) != CURLE_OK) {\
 		option = STRINGIFY(_x);\
@@ -1666,7 +1666,7 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  no body should be sent.
 	 */
 	if (!func) {
-		SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
+		SET_OPTION2(CURLOPT_POSTFIELDSIZE, 0);
 		return 0;
 	}
 
@@ -1675,8 +1675,8 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  multiple parts.
 	 */
 	if (section->chunk > 0) {
-		SET_OPTION(CURLOPT_READDATA, &ctx->request);
-		SET_OPTION(CURLOPT_READFUNCTION, func);
+		SET_OPTION2(CURLOPT_READDATA, &ctx->request);
+		SET_OPTION2(CURLOPT_READFUNCTION, func);
 
 		return 0;
 	}
@@ -1693,8 +1693,8 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	RDEBUG2("Content-Length will be %zu bytes", len);
 
 	rad_assert((len == 0) || (talloc_array_length(ctx->body) >= (size_t)len));
-	SET_OPTION(CURLOPT_POSTFIELDS, ctx->body);
-	SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
+	SET_OPTION2(CURLOPT_POSTFIELDS, ctx->body);
+	SET_OPTION2(CURLOPT_POSTFIELDSIZE, len);
 
 	return 0;
 
@@ -1844,23 +1844,23 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *	Set the debugging function if needed
 	 */
 	if (RDEBUG_ENABLED3) {
-		SET_OPTION(CURLOPT_DEBUGFUNCTION, rest_debug_log);
-		SET_OPTION(CURLOPT_DEBUGDATA, request);
-		SET_OPTION(CURLOPT_VERBOSE, 1L);
+		SET_OPTION2(CURLOPT_DEBUGFUNCTION, rest_debug_log);
+		SET_OPTION2(CURLOPT_DEBUGDATA, request);
+		SET_OPTION2(CURLOPT_VERBOSE, 1L);
 	}
 
 	/*
 	 *	Control which HTTP version we're going to use
 	 */
-	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
+	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) SET_OPTION2(CURLOPT_HTTP_VERSION, inst->http_negotiation);
 
 	/*
 	 *	Setup any header options and generic headers.
 	 */
-	SET_OPTION(CURLOPT_URL, uri);
-	if (section->proxy) SET_OPTION(CURLOPT_PROXY, section->proxy);
-	SET_OPTION(CURLOPT_NOSIGNAL, 1L);
-	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
+	SET_OPTION2(CURLOPT_URL, uri);
+	if (section->proxy) SET_OPTION2(CURLOPT_PROXY, section->proxy);
+	SET_OPTION2(CURLOPT_NOSIGNAL, 1L);
+	SET_OPTION2(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 
 	/*
 	 *	HTTP/1.1 doesn't require a content type, so only set it
@@ -1880,11 +1880,11 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	timeout = fr_pool_timeout(t->pool);
 	RDEBUG3("Connect timeout is %pVs, request timeout is %pVs",
 	        fr_box_time_delta(timeout), fr_box_time_delta(section->timeout));
-	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
-	SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
+	SET_OPTION2(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
+	SET_OPTION2(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
 
 #ifdef CURLOPT_PROTOCOLS
-	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
+	SET_OPTION2(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
 #endif
 
 	/*
@@ -1929,11 +1929,11 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 */
 	switch (method) {
 	case REST_HTTP_METHOD_GET:
-		SET_OPTION(CURLOPT_HTTPGET, 1L);
+		SET_OPTION2(CURLOPT_HTTPGET, 1L);
 		break;
 
 	case REST_HTTP_METHOD_POST:
-		SET_OPTION(CURLOPT_POST, 1L);
+		SET_OPTION2(CURLOPT_POST, 1L);
 		break;
 
 	case REST_HTTP_METHOD_PUT:
@@ -1946,19 +1946,19 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		 *	This is many cases will cause the server to block,
 		 *	indefinitely.
 		 */
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PUT");
+		SET_OPTION2(CURLOPT_CUSTOMREQUEST, "PUT");
 		break;
 
 	case REST_HTTP_METHOD_PATCH:
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PATCH");
+		SET_OPTION2(CURLOPT_CUSTOMREQUEST, "PATCH");
 		break;
 
 	case REST_HTTP_METHOD_DELETE:
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, "DELETE");
+		SET_OPTION2(CURLOPT_CUSTOMREQUEST, "DELETE");
 		break;
 
 	case REST_HTTP_METHOD_CUSTOM:
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
+		SET_OPTION2(CURLOPT_CUSTOMREQUEST, section->method_str);
 		break;
 
 	default:
@@ -2025,27 +2025,27 @@ do {\
 	/*
 	 *	Set SSL/TLS authentication parameters
 	 */
-	if (section->tls_certificate_file) SET_OPTION(CURLOPT_SSLCERT, section->tls_certificate_file);
-	if (section->tls_private_key_file) SET_OPTION(CURLOPT_SSLKEY, section->tls_private_key_file);
-	if (section->tls_private_key_password) SET_OPTION(CURLOPT_KEYPASSWD, section->tls_private_key_password);
-	if (section->tls_ca_file) SET_OPTION(CURLOPT_CAINFO, section->tls_ca_file);
-	if (section->tls_ca_issuer_file) SET_OPTION(CURLOPT_ISSUERCERT, section->tls_ca_issuer_file);
-	if (section->tls_ca_path) SET_OPTION(CURLOPT_CAPATH, section->tls_ca_path);
-	if (section->tls_random_file) SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
+	if (section->tls_certificate_file) SET_OPTION2(CURLOPT_SSLCERT, section->tls_certificate_file);
+	if (section->tls_private_key_file) SET_OPTION2(CURLOPT_SSLKEY, section->tls_private_key_file);
+	if (section->tls_private_key_password) SET_OPTION2(CURLOPT_KEYPASSWD, section->tls_private_key_password);
+	if (section->tls_ca_file) SET_OPTION2(CURLOPT_CAINFO, section->tls_ca_file);
+	if (section->tls_ca_issuer_file) SET_OPTION2(CURLOPT_ISSUERCERT, section->tls_ca_issuer_file);
+	if (section->tls_ca_path) SET_OPTION2(CURLOPT_CAPATH, section->tls_ca_path);
+	if (section->tls_random_file) SET_OPTION2(CURLOPT_RANDOM_FILE, section->tls_random_file);
 
-	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1L : 0L);
-	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2L : 0L);
-	if (section->tls_extract_cert_attrs) SET_OPTION(CURLOPT_CERTINFO, 1L);
+	SET_OPTION2(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1L : 0L);
+	SET_OPTION2(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2L : 0L);
+	if (section->tls_extract_cert_attrs) SET_OPTION2(CURLOPT_CERTINFO, 1L);
 
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.
 	 */
 	rest_response_init(section, request, &ctx->response, type);
 
-	SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
-	SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
-	SET_OPTION(CURLOPT_WRITEFUNCTION, rest_response_body);
-	SET_OPTION(CURLOPT_WRITEDATA, &ctx->response);
+	SET_OPTION2(CURLOPT_HEADERFUNCTION, rest_response_header);
+	SET_OPTION2(CURLOPT_HEADERDATA, &ctx->response);
+	SET_OPTION2(CURLOPT_WRITEFUNCTION, rest_response_body);
+	SET_OPTION2(CURLOPT_WRITEDATA, &ctx->response);
 
 	/*
 	 *  Force parsing the body text as a particular encoding.
@@ -2159,7 +2159,7 @@ do {\
 
 
 finish:
-	SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
+	SET_OPTION2(CURLOPT_HTTPHEADER, ctx->headers);
 
 	return 0;
 

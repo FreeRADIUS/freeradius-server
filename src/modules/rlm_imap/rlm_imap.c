@@ -29,16 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/curl/base.h>
 
-#define SET_OPTION(_x, _y)\
-do {\
-	if ((ret = curl_easy_setopt(randle->candle, _x, _y)) != CURLE_OK) {\
-		char const *_option;\
-		_option = STRINGIFY(_x);\
-		REDEBUG("Failed setting curl option %s: %s (%i)", _option, curl_easy_strerror(ret), ret); \
-		goto error;\
-	}\
-} while (0)
-
 /*
  *	A mapping of configuration file names to internal variables.
  */
@@ -70,6 +60,7 @@ typedef struct {
 	char const        		*name;
 	char const			*imap_URI;	//!<URL of imap server
 	fr_time_delta_t 		timeout;	//!<Timeout for connection and server response
+	fr_curl_tls_t			tls;
 } rlm_imap_t;
 
 typedef struct {
@@ -85,8 +76,103 @@ typedef struct {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("imap_URI", FR_TYPE_STRING, rlm_imap_t, imap_URI) },
 	{ FR_CONF_OFFSET("timeout",FR_TYPE_UINT32, rlm_imap_t, timeout) },
+	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_imap_t, tls), .subcs = (void const *) tls_config },//!<loading the tls values
 	CONF_PARSER_TERMINATOR
 };
+
+/*Can I remove the unused componeds of this? UNUSED rlm_imap_t const *inst, UNUSED rlm_imap_section_t const *section,*/
+int imap_response_certinfo(REQUEST *request, void *handle)
+{
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
+	CURL			*candle = randle->candle;
+	CURLcode		ret;
+	int			i;
+	char		 	buffer[265];
+	char			*p , *q, *attr = buffer;
+	fr_cursor_t		cursor, list;
+	VALUE_PAIR		*cert_vps = NULL;
+
+	/*
+	 *	Examples and documentation show cert_info being
+	 *	a struct curl_certinfo *, but CPP checks require
+	 *	it to be a struct curl_slist *.
+	 *
+	 *	https://curl.haxx.se/libcurl/c/certinfo.html
+	 */
+	union {
+		struct curl_slist    *to_info;
+		struct curl_certinfo *to_certinfo;
+	} ptr;
+	ptr.to_info = NULL;
+
+	fr_cursor_init(&list, &request->packet->vps);
+
+	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
+	if (ret != CURLE_OK) {
+		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
+
+		return -1;
+	}
+
+	attr += strlcpy(attr, "TLS-Cert-", sizeof(buffer));
+
+	RDEBUG2("Chain has %i certificate(s)", ptr.to_certinfo->num_of_certs);
+	for (i = 0; i < ptr.to_certinfo->num_of_certs; i++) {
+		struct curl_slist *cert_attrs;
+
+		RDEBUG2("Processing certificate %i",i);
+		fr_cursor_init(&cursor, &cert_vps);
+
+		for (cert_attrs = ptr.to_certinfo->certinfo[i];
+		     cert_attrs;
+		     cert_attrs = cert_attrs->next) {
+		     	VALUE_PAIR		*vp;
+		     	fr_dict_attr_t const	*da;
+
+		     	q = strchr(cert_attrs->data, ':');
+			if (!q) {
+				RWDEBUG("Malformed certinfo from libcurl: %s", cert_attrs->data);
+				continue;
+			}
+
+			strlcpy(attr, cert_attrs->data, (q - cert_attrs->data) + 1);
+			for (p = attr; *p != '\0'; p++) if (*p == ' ') *p = '-';
+
+			da = fr_dict_attr_by_name(dict_freeradius, buffer);
+			if (!da) {
+				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
+				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
+				continue;
+			}
+			MEM(vp = fr_pair_afrom_da(request->packet, da));
+			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
+
+			fr_cursor_append(&cursor, vp);
+		}
+
+		/*
+		 *	Add a copy of the cert_vps to session state.
+		 *
+		 *	Both PVS studio and Coverity detect the condition
+		 *	below as logically dead code unless we explicitly
+		 *	set cert_vps.  This is because they're too dumb
+		 *	to realise that the cursor argument passed to
+		 *	tls_session_pairs_from_x509_cert contains a
+		 *	reference to cert_vps.
+		 */
+		cert_vps = fr_cursor_current(&cursor);
+		if (cert_vps) {
+			/*
+			 *	Print out all the pairs we have so far
+			 */
+			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
+			fr_cursor_merge(&list, &cursor);
+			cert_vps = NULL;
+		}
+	}
+
+	return 0;
+}
 
 static int rlm_imap_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing,VALUE_PAIR *check,
 			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
@@ -142,21 +228,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  *It checks if the response was CURLE_OK
  *If it wasn't we returns REJECT, if it was we returns OK
 */
-static rlm_rcode_t mod_authenticate_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *rctx)
+static rlm_rcode_t mod_authenticate_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
 {
 	fr_curl_io_request_t     	*randle    = rctx;
+	rlm_imap_t			*inst = instance;
+	fr_curl_tls_t			*tls;
+
+	tls = &inst->tls;
 	
 	if (randle->result != CURLE_OK) {
 		talloc_free(randle);
 		return RLM_MODULE_REJECT;
 	}
+
+	if (tls->tls_extract_cert_attrs) imap_response_certinfo(request, randle);
 	
 	talloc_free(randle);
 	return RLM_MODULE_OK;
 }
 /*
  * Checks that there is a User-Name and User-Password field in the request
- * Checks that User-Password is not Blank
+ * Checks that User-Password is not Blank 
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *thread, REQUEST *request)
 {
@@ -199,6 +291,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
     
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, timeout);
 	SET_OPTION(CURLOPT_TIMEOUT_MS, timeout);
+
+	if(fr_curl_easy_tls_init(randle, &inst->tls) != 0) return RLM_MODULE_INVALID;
     
 	ret = fr_curl_io_request_enqueue(t->mhandle, request, randle);
     

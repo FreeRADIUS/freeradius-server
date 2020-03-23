@@ -749,7 +749,7 @@ recv Access-Request {
 	#  filter_username policy.
 	#
 	filter_username
-
+	imap
 	#
 	#  Some broken equipment sends passwords with embedded
 	#  zeros, i.e. the debug output will show:
@@ -1002,6 +1002,10 @@ recv Status-Server {
 #
 authenticate pap {
 	pap
+}
+
+authenticate imap {
+	imap
 }
 
 #
