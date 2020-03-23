@@ -938,6 +938,11 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 		last = &(node->next);
 	}
 
+	if (!my_head) {
+		fr_strerror_printf("Empty string is invalid");
+		return -1;
+	}
+
 	*head = my_head;
 	my_head->count = count;
 	return p - in;
