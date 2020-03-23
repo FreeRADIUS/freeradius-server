@@ -159,7 +159,7 @@ CREATE TABLE radpostauth (
 	  UserName      VARCHAR(64) NOT NULL,
 	  Pass          VARCHAR(64),
 	  Reply         VARCHAR(64),
-	  AuthDate 	DATE
+	  AuthDate 	TIMESTAMP(6) WITH TIME ZONE
 );
 
 CREATE SEQUENCE radpostauth_seq START WITH 1 INCREMENT BY 1;
@@ -172,7 +172,7 @@ CREATE OR REPLACE TRIGGER radpostauth_TRIG
 			SELECT radpostauth_seq.nextval into :new.id from dual;
 		end if;
 		if (:new.AuthDate is null) then
-		  select sysdate into :new.AuthDate from dual;
+		  select systimestamp into :new.AuthDate from dual;
 		end if;
 	END;
 
