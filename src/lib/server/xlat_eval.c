@@ -1635,7 +1635,7 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
 	for (i = 0, node = xlat; node != NULL; i++, node = node->next) {
 		my_argv[i] = NULL;
 
-		slen = _xlat_eval_compiled(my_argv, &my_argv[i], 0, request, node, escape, escape_ctx);
+		slen = _xlat_eval_compiled(my_argv, &my_argv[i], 0, request, node->child, escape, escape_ctx);
 		if (slen < 0) return -i;
 	}
 
