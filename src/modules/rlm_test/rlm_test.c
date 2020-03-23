@@ -77,13 +77,25 @@ typedef struct {
 	uint8_t		*byte_m;
 
 	uint8_t		ifid[8];
-	uint8_t		*ifid_m[8];
-
+	/*
+	 *	clang correctly performs type compatibility checks between
+	 *	arrays with a specific length, but for pointers to pointers
+	 *	to arrays of specific length
+	 *	(which is what FR_TYPE_CONF_CHECK receives) the check doesn't
+	 *	seem to work.
+	 *
+	 *	So the "multi" variants of ethernet and ifid buffers, must
+	 *	be a **.
+	 */
+	uint8_t		**ifid_m;
 	uint16_t	shortint;
-	uint16_t	shortint_m;
+	uint16_t	*shortint_m;
 
 	uint8_t		ethernet[6];
-	uint8_t		ethernet_m[6];
+	/*
+	 *	See above...
+	 */
+	uint8_t		**ethernet_m;
 
 	int32_t		int32;
 	int32_t		*int32_m;
