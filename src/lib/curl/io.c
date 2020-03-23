@@ -248,21 +248,6 @@ static void _fr_curl_io_service_readable(UNUSED fr_event_list_t *el, int fd, UNU
 static int _fr_curl_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 {
 	fr_curl_handle_t	*mhandle = talloc_get_type_abort(ctx, fr_curl_handle_t);
-	CURLMcode		ret;
-	int			running = 0;
-
-	if (timeout_ms == 0) {
-		ret = curl_multi_socket_action(mandle, CURL_SOCKET_TIMEOUT, 0, &running);
-		if (ret != CURLM_OK) {
-			ERROR("Failed servicing curl multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
-			return -1;
-		}
-
-		DEBUG3("multi-handle %p serviced from CURLMOPT_TIMERFUNCTION callback (%s).  "
-		       "%i request(s) in progress, %" PRIu64 " requests(s) to dequeue",
-		        mandle, __FUNCTION__, running, mhandle->transfers - (uint64_t)running);
-		return 0;
-	}
 
 	if (timeout_ms < 0) {
 		if (fr_event_timer_delete(&mhandle->ev) < 0) {
@@ -275,9 +260,23 @@ static int _fr_curl_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 
 	DEBUG3("multi-handle %p will need servicing in %li ms", mandle, timeout_ms);
 
-	(void) fr_event_timer_in(NULL, mhandle->el, &mhandle->ev,
-				 fr_time_delta_from_msec(timeout_ms), _fr_curl_io_timer_expired, mhandle);
-
+	/*
+	 *  https://curl.haxx.se/libcurl/c/CURLMOPT_TIMERFUNCTION.html
+	 *
+	 *  WARNING: even if it feels tempting, avoid calling libcurl directly from within the
+	 *  callback itself when the timeout_ms value is zero, since it risks triggering an
+	 *  unpleasant recursive behavior that immediately calls another call to the callback
+	 *  with a zero timeout...
+	 *
+	 *  Setting a timeout of zero when calling fr_event_timer_in should result in the event
+	 *  repeating at most twice during one iteration of the event loop.
+	 *
+	 *  In a previous version of this code we called curl_multi_socket_action immediately
+	 *  if timeout_ms was 0. It was observed that this lead to this callback being called
+	 *  ~665 times per request which is why we no longer do that.
+	 */
+	if (fr_event_timer_in(mhandle, mhandle->el, &mhandle->ev,
+			      fr_time_delta_from_msec(timeout_ms), _fr_curl_io_timer_expired, mhandle) < 0) return -1;
 	return 0;
 }
 
