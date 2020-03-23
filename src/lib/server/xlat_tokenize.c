@@ -938,11 +938,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 		last = &(node->next);
 	}
 
-	/*
-	 *	The last node MUST have a format string.
-	 */
-	rad_assert(node->fmt != NULL);
-
 	*head = my_head;
 	my_head->count = count;
 	return p - in;
