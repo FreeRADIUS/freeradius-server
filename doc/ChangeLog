@@ -28,6 +28,10 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	* Added %C (time now in seconds) and %c (microsecond component of now)
 	  back-ported from the "master" branch.
 	* Add capability to reload the service over systemd in Debian and Redhat.
+	* Increase timestamp precision in postauth to maximum supported by each
+	  database and simplify (and make more consistent between drivers) the
+	  timestamps in SQL queries by using expansions.
+	  Patches from Terry Burton.
 
 	Bug fixes
 	* Various fixes found by PVS-Studio.
@@ -52,6 +56,10 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	* Revert 3.0.20 patch which caused crashes on duplicate clients.
 	* Update WiMAX-MSK attribute.  Fixes #3280.
 	* Fix crash when trying to access non-existant regex capture group.
+	* Use timestamps (request or server) rather than SQL NOW() in
+	  accounting queries so that these are stable when replayed from a
+	  file buffer.
+	  Patches from Terry Burton.
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements
