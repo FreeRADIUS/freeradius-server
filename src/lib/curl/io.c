@@ -119,7 +119,7 @@ static void _fr_curl_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time
 	CURLMcode		ret;
 	int			running = 0;
 
-	DEBUG4("libcurl timer expired");
+	DEBUG4("multi-handle %p - Timer fired", mandle);
 
 	ret = curl_multi_socket_action(mandle, CURL_SOCKET_TIMEOUT, 0, &running);
 	if (ret != CURLM_OK) {
@@ -127,7 +127,7 @@ static void _fr_curl_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time
 		return;
 	}
 
-	DEBUG3("multi-handle %p serviced by timer.  %i request(s) in progress, %" PRIu64 " requests(s) to dequeue",
+	DEBUG3("multi-handle %p - Serviced by timer.  %i request(s) in progress, %" PRIu64 " requests(s) to dequeue",
 	       mandle, running, mhandle->transfers - (uint64_t)running);
 
 	_fr_curl_io_demux(mhandle, mandle);
@@ -172,7 +172,7 @@ static inline void _fr_curl_io_service(fr_curl_handle_t *mhandle, int fd, int ev
 			break;
 		}
 
-		DEBUG3("multi-handle %p serviced on fd %i event (%s).  "
+		DEBUG3("multi-handle %p - Serviced on fd %i event (%s).  "
 		       "%i request(s) in progress, %" PRIu64 " requests(s) to dequeue",
 		       mandle, fd, event_str, running, mhandle->transfers - (uint64_t)running);
 	}
@@ -193,7 +193,7 @@ static void _fr_curl_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUS
 {
 	fr_curl_handle_t	*mhandle = talloc_get_type_abort(uctx, fr_curl_handle_t);
 
-	DEBUG4("libcurl fd %i errored: %s", fd, fr_syserror(fd_errno));
+	DEBUG4("multi-handle %p - fd %i errored: %s", mhandle->mandle, fd, fr_syserror(fd_errno));
 
 	_fr_curl_io_service(mhandle, fd, CURL_CSELECT_ERR);
 }
@@ -209,7 +209,7 @@ static void _fr_curl_io_service_writable(UNUSED fr_event_list_t *el, int fd, UNU
 {
 	fr_curl_handle_t	*mhandle = talloc_get_type_abort(uctx, fr_curl_handle_t);
 
-	DEBUG4("libcurl fd %i now writable", fd);
+	DEBUG4("multi-handle %p - fd %i now writable", mhandle->mandle, fd);
 
 	_fr_curl_io_service(mhandle, fd, CURL_CSELECT_OUT);
 }
@@ -225,7 +225,7 @@ static void _fr_curl_io_service_readable(UNUSED fr_event_list_t *el, int fd, UNU
 {
 	fr_curl_handle_t	*mhandle = talloc_get_type_abort(uctx, fr_curl_handle_t);
 
-	DEBUG4("libcurl fd %i now readable", fd);
+	DEBUG4("multi-handle %p - fd %i now readable", mhandle->mandle, fd);
 
 	_fr_curl_io_service(mhandle, fd, CURL_CSELECT_IN);
 }
@@ -254,7 +254,7 @@ static int _fr_curl_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 			PERROR("Failed deleting multi-handle timer");
 			return -1;
 		}
-		DEBUG3("multi-handle %p timer removed", mandle);
+		DEBUG3("multi-handle %p - Timer removed", mandle);
 		return 0;
 	}
 
