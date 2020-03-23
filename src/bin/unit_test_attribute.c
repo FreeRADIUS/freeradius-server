@@ -1940,7 +1940,7 @@ static size_t command_xlat_argv(command_result_t *result, command_ctx_t *cc,
 	}
 
 	for (i = 0, p = data; i < argc; i++) {
-		len = xlat_snprint(buff, sizeof(buff), argv[i]);
+		(void)  xlat_snprint(buff, sizeof(buff), argv[i]);
 
 		len = snprintf(p, data + COMMAND_OUTPUT_MAX - p, "[%d]{ %s }, ", i, buff);
 		p += len;
