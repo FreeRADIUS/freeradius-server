@@ -37,10 +37,10 @@
  */
 DIAG_OPTIONAL
 DIAG_OFF(disabled-macro-expansion)
-#define SET_OPTION(_x, _y)\
+#define SET_MOPTION(_mandle, _opt, _val)\
 do {\
-	if ((ret = curl_multi_setopt(mandle, _x, _y)) != CURLM_OK) {\
-		option = STRINGIFY(_x);\
+	if ((ret = curl_multi_setopt(mandle, _opt, _val)) != CURLM_OK) {\
+		option = STRINGIFY(_opt);\
 		goto error;\
 	}\
 } while (0)
@@ -482,14 +482,14 @@ fr_curl_handle_t *fr_curl_io_init(TALLOC_CTX *ctx,
 	mhandle->mandle = mandle;
 	talloc_set_destructor(mhandle, _mhandle_free);
 
-	SET_OPTION(CURLMOPT_TIMERFUNCTION, _fr_curl_io_timer_modify);
-	SET_OPTION(CURLMOPT_TIMERDATA, mhandle);
+	SET_MOPTION(mandle, CURLMOPT_TIMERFUNCTION, _fr_curl_io_timer_modify);
+	SET_MOPTION(mandle, CURLMOPT_TIMERDATA, mhandle);
 
-	SET_OPTION(CURLMOPT_SOCKETFUNCTION, _fr_curl_io_event_modify);
-	SET_OPTION(CURLMOPT_SOCKETDATA, mhandle);
+	SET_MOPTION(mandle, CURLMOPT_SOCKETFUNCTION, _fr_curl_io_event_modify);
+	SET_MOPTION(mandle, CURLMOPT_SOCKETDATA, mhandle);
 
 #ifdef CURLPIPE_MULTIPLEX
-	SET_OPTION(CURLMOPT_PIPELINING, multiplex ? CURLPIPE_MULTIPLEX : CURLPIPE_NOTHING);
+	SET_MOPTION(mandle, CURLMOPT_PIPELINING, multiplex ? CURLPIPE_MULTIPLEX : CURLPIPE_NOTHING);
 #endif
 
 	return mhandle;
