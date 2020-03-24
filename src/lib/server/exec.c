@@ -74,6 +74,191 @@ static void _fr_children_free(void *arg)
 }
 
 
+static void fr_reap_children(void)
+{
+	fr_dlist_head_t *list;
+	fr_child_t *child, *next;
+
+	list = fr_children;
+	if (!list) {
+		MEM(list = talloc_zero(NULL, fr_dlist_head_t));
+
+		fr_dlist_init(list, fr_child_t, entry);
+
+		fr_thread_local_set_destructor(fr_children, _fr_children_free, list);
+		return;		/* no children, so no reaping */
+	}
+
+	/*
+	 *	Clean up the children.  ALL of them.  This is
+	 *	slow as heck, but correct. :(
+	 */
+	for (child = fr_dlist_head(fr_children);
+	     child != NULL;
+	     child = next) {
+		int status;
+		pid_t pid;
+
+		next = fr_dlist_next(fr_children, child);
+		pid = waitpid(child->pid, &status, WNOHANG);
+		if (pid != 0) {
+			fr_dlist_remove(fr_children, child);
+			talloc_free(child);
+		}
+	}
+}
+
+static void fr_exec_pair_to_env(REQUEST *request, VALUE_PAIR *input_pairs, char **envp, size_t envlen, bool shell_escape)
+{
+	char			*p;
+	size_t			i;
+	fr_cursor_t		cursor;
+	fr_dict_attr_t const	*da;
+	VALUE_PAIR		*vp;
+	char			buffer[1024];
+
+	/*
+	 *	Set up the environment variables in the
+	 *	parent, so we don't call libc functions that
+	 *	hold mutexes.  They might be locked when we fork,
+	 *	and will remain locked in the child.
+	 */
+	for (vp = fr_cursor_init(&cursor, &input_pairs), i = 0;
+	     vp && (i < envlen - 1);
+	     vp = fr_cursor_next(&cursor)) {
+		size_t n;
+
+		/*
+		 *	Hmm... maybe we shouldn't pass the
+		 *	user's password in an environment
+		 *	variable...
+		 */
+		snprintf(buffer, sizeof(buffer), "%s=", vp->da->name);
+		if (shell_escape) {
+			for (p = buffer; *p != '='; p++) {
+				if (*p == '-') {
+					*p = '_';
+				} else if (isalpha((int) *p)) {
+					*p = toupper(*p);
+				}
+			}
+		}
+
+		n = strlen(buffer);
+		fr_pair_value_snprint(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
+
+		DEBUG3("export %s", buffer);
+		envp[i++] = talloc_typed_strdup(envp, buffer);
+	}
+
+	if (request) {
+		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
+		if (da) {
+			for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, da);
+			     vp && (i < (envlen - 1));
+			     vp = fr_cursor_next(&cursor)) {
+				DEBUG3("export %pV", &vp->data);
+				memcpy(&envp[i++], &vp->vp_strvalue, sizeof(*envp));
+			}
+
+			/*
+			 *	NULL terminate for execve
+			 */
+			envp[i] = NULL;
+		}
+	}
+}
+
+/*
+ *	Child process.
+ *
+ *	We try to be fail-safe here. So if ANYTHING
+ *	goes wrong, we exit with status 1.
+ */
+static NEVER_RETURNS void fr_exec_child(REQUEST *request, char **argv, char **envp,
+					bool exec_wait, int *input_fd, int *output_fd,
+					int to_child[static 2], int from_child[static 2])
+{
+	int devnull;
+
+	/*
+	 *	Open STDIN to /dev/null
+	 */
+	devnull = open("/dev/null", O_RDWR);
+	if (devnull < 0) {
+		ERROR("Failed opening /dev/null: %s\n", fr_syserror(errno));
+
+		/*
+		 *	Where the status code is interpreted as a module rcode
+		 * 	one is subtracted from it, to allow 0 to equal success
+		 *
+		 *	2 is RLM_MODULE_FAIL + 1
+		 */
+		exit(2);
+	}
+
+	/*
+	 *	Only massage the pipe handles if the parent
+	 *	has created them.
+	 */
+	if (exec_wait) {
+		if (input_fd) {
+			close(to_child[1]);
+			dup2(to_child[0], STDIN_FILENO);
+		} else {
+			dup2(devnull, STDIN_FILENO);
+		}
+
+		if (output_fd) {
+			close(from_child[0]);
+			dup2(from_child[1], STDOUT_FILENO);
+		} else {
+			dup2(devnull, STDOUT_FILENO);
+		}
+
+	} else {	/* no pipe, STDOUT should be /dev/null */
+		dup2(devnull, STDIN_FILENO);
+		dup2(devnull, STDOUT_FILENO);
+	}
+
+	/*
+	 *	If we're not debugging, then we can't do
+	 *	anything with the error messages, so we throw
+	 *	them away.
+	 *
+	 *	If we are debugging, then we want the error
+	 *	messages to go to the STDERR of the server.
+	 */
+	if (!request || !RDEBUG_ENABLED) dup2(devnull, STDERR_FILENO);
+	close(devnull);
+
+	/*
+	 *	The server may have MANY FD's open.  We don't
+	 *	want to leave dangling FD's for the child process
+	 *	to play funky games with, so we close them.
+	 */
+	closefrom(3);
+
+	/*
+	 *	I swear the signature for execve is wrong and should
+	 *	take 'char const * const argv[]'.
+	 *
+	 *	Note: execve(), unlike system(), treats all the space
+	 *	delimited arguments as literals, so there's no need
+	 *	to perform additional escaping.
+	 */
+	execve(argv[0], argv, envp);
+	printf("Failed to execute \"%s\": %s", argv[0], fr_syserror(errno)); /* fork output will be captured */
+
+	/*
+	 *	Where the status code is interpreted as a module rcode
+	 * 	one is subtracted from it, to allow 0 to equal success
+	 *
+	 *	2 is RLM_MODULE_FAIL + 1
+	 */
+	exit(2);
+}
+
 /** Start a process
  *
  * @param cmd Command to execute. This is parsed into argv[] parts, then each individual argv
@@ -95,8 +280,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   int *input_fd, int *output_fd,
 			   VALUE_PAIR *input_pairs, bool shell_escape)
 {
-	VALUE_PAIR	*vp;
-	int		n;
 	int		to_child[2] = {-1, -1};
 	int		from_child[2] = {-1, -1};
 	pid_t		pid;
@@ -106,10 +289,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	char		*argv[MAX_ARGV], **argv_start = argv;
 	char		argv_buf[4096];
 #define MAX_ENVP 1024
-	char		*envp[MAX_ENVP];
-	size_t		envlen = 0;
-	TALLOC_CTX	*input_ctx = NULL;
-	fr_dlist_head_t *list;
+	char		**envp;
 
 	/*
 	 *	Stupid array decomposition...
@@ -128,37 +308,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		for (i = 0; i < argc; i++) DEBUG3("arg[%d] %s", i, argv[i]);
 	}
 
-	list = fr_children;
-	if (!list) {
-		list = talloc_zero(NULL, fr_dlist_head_t);
-		if (!list) {
-			ERROR("Out of memory");
-			return -1;
-		}
-
-		fr_dlist_init(list, fr_child_t, entry);
-
-		fr_thread_local_set_destructor(fr_children, _fr_children_free, list);
-	} else {
-		fr_child_t *child, *next;
-
-		/*
-		 *	Clean up the children.  ALL of them.  This is
-		 *	slow as heck, but correct. :(
-		 */
-		for (child = fr_dlist_head(fr_children);
-		     child != NULL;
-		     child = next) {
-			int status;
-
-			next = fr_dlist_next(fr_children, child);
-			pid = waitpid(child->pid, &status, WNOHANG);
-			if (pid != 0) {
-				fr_dlist_remove(fr_children, child);
-				talloc_free(child);
-			}
-		}
-	}
+	fr_reap_children();
 
 	/*
 	 *	Open a pipe for child/parent communication, if necessary.
@@ -181,159 +331,19 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		}
 	}
 
+	MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
 	envp[0] = NULL;
-
-	if (input_pairs) {
-		char			*p;
-		fr_cursor_t		cursor;
-		char			buffer[1024];
-		fr_dict_attr_t const	*da;
-
-		input_ctx = talloc_new(request);
-
-		/*
-		 *	Set up the environment variables in the
-		 *	parent, so we don't call libc functions that
-		 *	hold mutexes.  They might be locked when we fork,
-		 *	and will remain locked in the child.
-		 */
-		for (vp = fr_cursor_init(&cursor, &input_pairs);
-		     vp && (envlen < ((NUM_ELEMENTS(envp)) - 1));
-		     vp = fr_cursor_next(&cursor)) {
-			/*
-			 *	Hmm... maybe we shouldn't pass the
-			 *	user's password in an environment
-			 *	variable...
-			 */
-			snprintf(buffer, sizeof(buffer), "%s=", vp->da->name);
-			if (shell_escape) {
-				for (p = buffer; *p != '='; p++) {
-					if (*p == '-') {
-						*p = '_';
-					} else if (isalpha((int) *p)) {
-						*p = toupper(*p);
-					}
-				}
-			}
-
-			n = strlen(buffer);
-			fr_pair_value_snprint(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
-
-			DEBUG3("export %s", buffer);
-			envp[envlen++] = talloc_typed_strdup(input_ctx, buffer);
-		}
-
-		if (request) {
-			da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
-			if (da) {
-				for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, da);
-				     vp && (envlen < ((NUM_ELEMENTS(envp)) - 1));
-				     vp = fr_cursor_next(&cursor)) {
-					DEBUG3("export %pV", &vp->data);
-					memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));
-				}
-
-				/*
-				 *	NULL terminate for execve
-				 */
-				envp[envlen] = NULL;
-			}
-		}
-	}
+	if (input_pairs) fr_exec_pair_to_env(request, input_pairs, envp, MAX_ENVP, shell_escape);
 
 	pid = fork();
 	if (pid == 0) {
-		int devnull;
-
-		/*
-		 *	Child process.
-		 *
-		 *	We try to be fail-safe here. So if ANYTHING
-		 *	goes wrong, we exit with status 1.
-		 */
-
-		/*
-		 *	Open STDIN to /dev/null
-		 */
-		devnull = open("/dev/null", O_RDWR);
-		if (devnull < 0) {
-			ERROR("Failed opening /dev/null: %s\n", fr_syserror(errno));
-
-			/*
-			 *	Where the status code is interpreted as a module rcode
-			 * 	one is subtracted from it, to allow 0 to equal success
-			 *
-			 *	2 is RLM_MODULE_FAIL + 1
-			 */
-			exit(2);
-		}
-
-		/*
-		 *	Only massage the pipe handles if the parent
-		 *	has created them.
-		 */
-		if (exec_wait) {
-			if (input_fd) {
-				close(to_child[1]);
-				dup2(to_child[0], STDIN_FILENO);
-			} else {
-				dup2(devnull, STDIN_FILENO);
-			}
-
-			if (output_fd) {
-				close(from_child[0]);
-				dup2(from_child[1], STDOUT_FILENO);
-			} else {
-				dup2(devnull, STDOUT_FILENO);
-			}
-
-		} else {	/* no pipe, STDOUT should be /dev/null */
-			dup2(devnull, STDIN_FILENO);
-			dup2(devnull, STDOUT_FILENO);
-		}
-
-		/*
-		 *	If we're not debugging, then we can't do
-		 *	anything with the error messages, so we throw
-		 *	them away.
-		 *
-		 *	If we are debugging, then we want the error
-		 *	messages to go to the STDERR of the server.
-		 */
-		if (!request || !RDEBUG_ENABLED) dup2(devnull, STDERR_FILENO);
-		close(devnull);
-
-		/*
-		 *	The server may have MANY FD's open.  We don't
-		 *	want to leave dangling FD's for the child process
-		 *	to play funky games with, so we close them.
-		 */
-		closefrom(3);
-
-		/*
-		 *	I swear the signature for execve is wrong and should
-		 *	take 'char const * const argv[]'.
-		 *
-		 *	Note: execve(), unlike system(), treats all the space
-		 *	delimited arguments as literals, so there's no need
-		 *	to perform additional escaping.
-		 */
-		execve(argv[0], argv, envp);
-		printf("Failed to execute \"%s\": %s", argv[0], fr_syserror(errno)); /* fork output will be captured */
-
-		/*
-		 *	Where the status code is interpreted as a module rcode
-		 * 	one is subtracted from it, to allow 0 to equal success
-		 *
-		 *	2 is RLM_MODULE_FAIL + 1
-		 */
-		exit(2);
+		fr_exec_child(request, argv, envp, exec_wait, input_fd, output_fd, to_child, from_child);
 	}
 
 	/*
 	 *	Free child environment variables
 	 */
-	talloc_free(input_ctx);
+	talloc_free(envp);
 
 	/*
 	 *	Parent process.
