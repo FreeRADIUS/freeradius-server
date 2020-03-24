@@ -59,7 +59,6 @@ static pid_t waitpid_wrapper(pid_t pid, int *status)
 	return waitpid(pid, status, 0);
 }
 
-pid_t (*rad_fork)(void) = fork;
 pid_t (*rad_waitpid)(pid_t pid, int *status) = waitpid_wrapper;
 
 typedef struct {
@@ -242,12 +241,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		}
 	}
 
-	if (exec_wait) {
-		pid = rad_fork();	/* remember PID */
-	} else {
-		pid = fork();		/* don't wait */
-	}
-
+	pid = fork();
 	if (pid == 0) {
 		int devnull;
 
