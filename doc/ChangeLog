@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
+FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
 	* New stored procedure for allocating IPs with PostgreSQL.
 	  Rates of 1500 IPs per second are now possible.
@@ -27,11 +27,12 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	* Many updates to RPM and jenkins builds from Matthew Newton
 	* Added %C (time now in seconds) and %c (microsecond component of now)
 	  back-ported from the "master" branch.
-	* Add capability to reload the service over systemd in Debian and Redhat.
+	* Add reload capability to systemd unit file in Debian and RedHat.
 	* Increase timestamp precision in postauth to maximum supported by each
 	  database and simplify (and make more consistent between drivers) the
 	  timestamps in SQL queries by using expansions.
 	  Patches from Terry Burton.
+	* Option to set dictionary path in raduat script. Patch from Terry Burton.
 
 	Bug fixes
 	* Various fixes found by PVS-Studio.
