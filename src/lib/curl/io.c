@@ -59,7 +59,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 		switch (m->msg) {
 		case CURLMSG_DONE:
 		{
-			fr_curl_io_request_t	*creq;
+			fr_curl_io_request_t	*randle;
 			REQUEST			*request = NULL;
 			CURL			*candle = m->easy_handle;
 			CURLcode		ret;
@@ -68,13 +68,13 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 
 			mhandle->transfers--;
 
-			ret = curl_easy_getinfo(candle, CURLINFO_PRIVATE, &creq);
+			ret = curl_easy_getinfo(candle, CURLINFO_PRIVATE, &randle);
 			if (!fr_cond_assert_msg(ret == CURLE_OK,
 						"Failed retrieving request data from CURL easy handle (candle)")) {
 				curl_multi_remove_handle(mandle, candle);
 				return;
 			}
-			request = creq->request;
+			request = randle->request;
 
 			REQUEST_VERIFY(request);
 
@@ -85,7 +85,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 				REDEBUG("curl request failed: %s (%i)",
 					curl_easy_strerror(m->data.result), m->data.result);
 			}
-			creq->result = m->data.result;
+			randle->result = m->data.result;
 
 			/*
 			 *	Looks like this needs to be done last,
@@ -364,25 +364,25 @@ static int _fr_curl_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int wha
  *
  * @param[in] mhandle			Thread-specific mhandle wrapper.
  * @param[in] request			Current request.
- * @param[in] creq			representing the request.
+ * @param[in] randle			representing the request.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, REQUEST *request, fr_curl_io_request_t *creq)
+int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, REQUEST *request, fr_curl_io_request_t *randle)
 {
 	CURLcode		ret;
 
 	REQUEST_VERIFY(request);
 
-	creq->request = request;
+	randle->request = request;
 
 	/*
 	 *	Stick the current request in the curl handle's
 	 *	private data.  This makes it simple to resume
 	 *	the request in the demux function later...
 	 */
-	ret = curl_easy_setopt(creq->candle, CURLOPT_PRIVATE, creq);
+	ret = curl_easy_setopt(randle->candle, CURLOPT_PRIVATE, randle);
 	if (ret != CURLE_OK) {
 		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
 		return -1;
@@ -394,7 +394,7 @@ int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, REQUEST *request, fr_c
 	 *      event loop modifications calls immediately.
 	 */
 	mhandle->transfers++;
-	ret = curl_multi_add_handle(mhandle->mandle, creq->candle);
+	ret = curl_multi_add_handle(mhandle->mandle, randle->candle);
 	if (ret != CURLE_OK) {
 		mhandle->transfers--;
 		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
@@ -404,9 +404,9 @@ int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, REQUEST *request, fr_c
 	return 0;
 }
 
-static int _fr_curl_io_request_free(fr_curl_io_request_t *creq)
+static int _fr_curl_io_request_free(fr_curl_io_request_t *randle)
 {
-	curl_easy_cleanup(creq->candle);
+	curl_easy_cleanup(randle->candle);
 
 	return 0;
 }
@@ -416,20 +416,20 @@ static int _fr_curl_io_request_free(fr_curl_io_request_t *creq)
  */
 fr_curl_io_request_t *fr_curl_io_request_alloc(TALLOC_CTX *ctx)
 {
-	fr_curl_io_request_t *creq;
+	fr_curl_io_request_t *randle;
 
-	creq = talloc_zero(ctx, fr_curl_io_request_t);
-	if (unlikely(!creq)) return NULL;
+	randle = talloc_zero(ctx, fr_curl_io_request_t);
+	if (unlikely(!randle)) return NULL;
 
-	creq->candle = curl_easy_init();
-	if (!creq->candle) {
-		talloc_free(creq);
+	randle->candle = curl_easy_init();
+	if (!randle->candle) {
+		talloc_free(randle);
 		return NULL;
 	}
 
-	talloc_set_destructor(creq, _fr_curl_io_request_free);
+	talloc_set_destructor(randle, _fr_curl_io_request_free);
 
-	return creq;
+	return randle;
 }
 
 /** Free the multi-handle
