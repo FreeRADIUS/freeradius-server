@@ -176,6 +176,10 @@ struct fr_trunk_s {
 	fr_dlist_head_t		inactive;		//!< Connections which have been signalled to be
 							///< inactive by the API client.
 
+	fr_dlist_head_t		inactive_draining;	//!< Connections which have been signalled to be
+							///< inactive by the API client, which the trunk
+							///< manager is draining to close.
+
 	fr_dlist_head_t		failed;			//!< Connections that'll be reconnected shortly.
 
 	fr_dlist_head_t		closed;			//!< Connections that have closed. Either due to
@@ -274,6 +278,7 @@ static fr_table_num_ordered_t const fr_trunk_connection_states[] = {
 	{ "ACTIVE",		FR_TRUNK_CONN_ACTIVE		},
 	{ "FULL",		FR_TRUNK_CONN_FULL		},
 	{ "INACTIVE",		FR_TRUNK_CONN_INACTIVE		},
+	{ "INACTIVE-DRAINING",	FR_TRUNK_CONN_INACTIVE_DRAINING	},
 	{ "CLOSED",		FR_TRUNK_CONN_CLOSED		},
 	{ "DRAINING",		FR_TRUNK_CONN_DRAINING		},
 	{ "DRAINING-TO-FREE",	FR_TRUNK_CONN_DRAINING_TO_FREE	}
@@ -556,6 +561,7 @@ static inline void trunk_connection_writable(fr_trunk_connection_t *tconn);
 static void trunk_connection_event_update(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_full(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn);
+static void trunk_connection_enter_inactive_draining(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn);
 static void trunk_connection_enter_active(fr_trunk_connection_t *tconn);
@@ -2100,6 +2106,7 @@ uint16_t fr_trunk_connection_count_by_state(fr_trunk_t *trunk, int conn_state)
 	if (conn_state & FR_TRUNK_CONN_ACTIVE) count += fr_heap_num_elements(trunk->active);
 	if (conn_state & FR_TRUNK_CONN_FULL) count += fr_dlist_num_elements(&trunk->full);
 	if (conn_state & FR_TRUNK_CONN_INACTIVE) count += fr_dlist_num_elements(&trunk->inactive);
+	if (conn_state & FR_TRUNK_CONN_INACTIVE_DRAINING) count += fr_dlist_num_elements(&trunk->inactive_draining);
 	if (conn_state & FR_TRUNK_CONN_CLOSED) count += fr_dlist_num_elements(&trunk->closed);
 	if (conn_state & FR_TRUNK_CONN_DRAINING) count += fr_dlist_num_elements(&trunk->draining);
 	if (conn_state & FR_TRUNK_CONN_DRAINING_TO_FREE) count += fr_dlist_num_elements(&trunk->draining_to_free);
@@ -2235,6 +2242,7 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_FULL:
 	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_DRAINING_TO_FREE:
 		/*
@@ -2316,6 +2324,10 @@ static void trunk_connection_remove(fr_trunk_connection_t *tconn)
 		fr_dlist_remove(&trunk->inactive, tconn);
 		return;
 
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:
+		fr_dlist_remove(&trunk->inactive_draining, tconn);
+		return;
+
 	case FR_TRUNK_CONN_DRAINING:
 		fr_dlist_remove(&trunk->draining, tconn);
 		return;
@@ -2374,6 +2386,35 @@ static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE);
 }
 
+/** Transition a connection to the inactive-draining state
+ *
+ * Called whenever the trunk manager wants to drain an inactive connection
+ * of its requests.
+ */
+static void trunk_connection_enter_inactive_draining(fr_trunk_connection_t *tconn)
+{
+	fr_trunk_t		*trunk = tconn->pub.trunk;
+
+	switch (tconn->pub.state) {
+	case FR_TRUNK_CONN_INACTIVE:
+		trunk_connection_remove(tconn);
+		break;
+
+	default:
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE_DRAINING);
+	}
+
+	fr_dlist_insert_head(&trunk->inactive_draining, tconn);
+	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE_DRAINING);
+
+	/*
+	 *	Immediately re-enqueue all pending
+	 *	requests, so the connection is drained
+	 *	quicker.
+	 */
+	trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_PENDING, 0, false);
+}
+
 /** Transition a connection to the draining state
  *
  * Removes the connection from the active heap so it won't be assigned any new
@@ -2418,6 +2459,7 @@ static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_FULL:
 	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:
 	case FR_TRUNK_CONN_DRAINING:
 		trunk_connection_remove(tconn);
 		break;
@@ -2450,6 +2492,7 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 	switch (tconn->pub.state) {
 	case FR_TRUNK_CONN_FULL:
 	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:
 	case FR_TRUNK_CONN_DRAINING:
 		trunk_connection_remove(tconn);
 		break;
@@ -2587,10 +2630,14 @@ static void _trunk_connection_on_shutdown(UNUSED fr_connection_t *conn, UNUSED f
 	case FR_TRUNK_CONN_ACTIVE:		/* Transition to draining-to-free */
 	case FR_TRUNK_CONN_FULL:
 	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:
 	case FR_TRUNK_CONN_DRAINING:
 		break;
 
-	default:
+	case FR_TRUNK_CONN_INIT:
+	case FR_TRUNK_CONN_CONNECTING:
+	case FR_TRUNK_CONN_CLOSED:
+	case FR_TRUNK_CONN_HALTED:
 		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING_TO_FREE);
 	}
 
@@ -2704,6 +2751,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_FULL:
 	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_DRAINING_TO_FREE:
 		need_requeue = true;
@@ -2715,7 +2763,9 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 		rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 		break;
 
-	default:
+	case FR_TRUNK_CONN_INIT:
+	case FR_TRUNK_CONN_CLOSED:
+	case FR_TRUNK_CONN_HALTED:	/* Can't move backwards? */
 		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_CLOSED);
 	}
 
@@ -2776,6 +2826,7 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_FULL:
 	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_DRAINING_TO_FREE:
 		need_requeue = true;
@@ -2794,9 +2845,6 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 		rad_assert(!fr_dlist_entry_in_list(&tconn->entry));
 		rad_assert(tconn->heap_id == -1);
 		break;
-
-	default:
-		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_HALTED);
 	}
 
 	/*
@@ -3095,6 +3143,7 @@ void fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn)
 		break;
 
 	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:		/* Only an external signal can trigger this transition */
 		/*
 		 *	Do the appropriate state transition based on
 		 *	how many requests the trunk connection is
@@ -3133,6 +3182,40 @@ void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_conne
 bool fr_trunk_connection_in_state(fr_trunk_connection_t *tconn, int state)
 {
 	return (bool)(tconn->pub.state & state);
+}
+
+/** Close connections in a particular connection list if they have no requests associated with them
+ *
+ * @param[in] head	of list of connections to examine.
+ */
+static void trunk_connection_close_if_empty(fr_trunk_t *trunk, fr_dlist_head_t *head)
+{
+	fr_trunk_connection_t *tconn = NULL;
+
+	while ((tconn = fr_dlist_next(head, tconn))) {
+		fr_trunk_connection_t *prev;
+
+		if (fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) != 0) continue;
+
+		prev = fr_dlist_prev(head, tconn);
+
+		DEBUG4("Closing %s connection with no requests",
+		       fr_table_str_by_value(fr_trunk_connection_states, tconn->pub.state, "<INVALID>"));
+		/*
+		 *	Close the connection as gracefully
+		 *	as possible by signalling it should
+		 *	shutdown.
+		 *
+		 *	The connection, should, if serviced
+		 *	correctly by the underlying library,
+		 *	automatically transition to halted after
+		 *	all pending reads/writes are
+		 *	complete at which point we'll be informed
+		 *	and free our tconn wrapper.
+		 */
+		fr_connection_signal_shutdown(tconn->pub.conn);
+		tconn = prev;
+	}
 }
 
 /** Rebalance connections across active trunk members when a new connection becomes active
@@ -3233,49 +3316,9 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	 *	and we didn't reactivate during the last
 	 *	round of management.
 	 */
-	tconn = NULL;
-	while ((tconn = fr_dlist_next(&trunk->draining, tconn))) {
-		if (fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0) {
-			fr_trunk_connection_t *prev;
-
-			prev = fr_dlist_prev(&trunk->draining, tconn);
-
-			DEBUG4("Closing DRAINING connection with no requests");
-			/*
-			 *	Close the connection as gracefully
-			 *	as possible by signalling it should
-			 *	shutdown.
-			 *
-			 *	The connection, should, if serviced
-			 *	correctly by the underlying library,
-			 *	automatically transition to halted after
-			 *	all pending reads/writes are
-			 *	complete at which point we'll be informed
-			 *	and free our tconn wrapper.
-			 */
-			fr_connection_signal_shutdown(tconn->pub.conn);
-			tconn = prev;
-		}
-	}
-
-	/*
-	 *	Same with these, except they can't be
-	 *	reactivated.
-	 */
-	while ((tconn = fr_dlist_next(&trunk->draining_to_free, tconn))) {
-		if (fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0) {
-			fr_trunk_connection_t *prev;
-
-			DEBUG4("Closing DRAINING-TO-FREE connection with no requests");
-			/*
-			 *	See above for DRAINING connections
-			 *	on how this works.
-			 */
-			prev = fr_dlist_prev(&trunk->draining_to_free, tconn);
-			fr_connection_signal_shutdown(tconn->pub.conn);
-			tconn = prev;
-		}
-	}
+	trunk_connection_close_if_empty(trunk, &trunk->inactive_draining);
+	trunk_connection_close_if_empty(trunk, &trunk->draining);
+	trunk_connection_close_if_empty(trunk, &trunk->draining_to_free);
 
 	/*
 	 *	A trunk can be signalled to not proactively
@@ -3475,20 +3518,32 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			return;
 		}
 
+		/*
+		 *	Inactive connections get counted in the
+		 *	set of viable connections, but are likely
+		 *	to be congested or dead, so we free those
+		 *	first.
+		 */
+		if ((tconn = fr_dlist_tail(&trunk->inactive))) {
+			trunk_connection_enter_inactive_draining(tconn);
 
-		tconn = fr_heap_peek_tail(trunk->active);
-		if (tconn) {
-			trunk_connection_enter_draining(tconn);
 		/*
 		 *	It is possible to have too may connecting
 		 *	connections when the connections are
 		 *	taking a while to open and the number
 		 *	of requests decreases.
 		 */
-		} else {
-			tconn = fr_dlist_tail(&trunk->connecting);
-			rad_assert(tconn);
+		} else if ((tconn = fr_dlist_tail(&trunk->connecting))) {
 			fr_connection_signal_halt(tconn->pub.conn);	/* Also frees the tconn */
+
+		/*
+		 *	Finally if there are no "connecting"
+		 *	connections to close, and no "inactive"
+		 *	connections, start freeing "active"
+		 *	connections.
+		 */
+		} else if ((tconn = fr_heap_peek_tail(trunk->active))) {
+			trunk_connection_enter_draining(tconn);
 		}
 
 		trunk->pub.last_closed = now;
@@ -3550,6 +3605,7 @@ do { \
 
 	COUNT_BY_STATE(FR_TRUNK_CONN_FULL, full);
 	COUNT_BY_STATE(FR_TRUNK_CONN_INACTIVE, inactive);
+	COUNT_BY_STATE(FR_TRUNK_CONN_INACTIVE_DRAINING, inactive_draining);
 	COUNT_BY_STATE(FR_TRUNK_CONN_DRAINING, draining);
 	COUNT_BY_STATE(FR_TRUNK_CONN_DRAINING_TO_FREE, draining_to_free);
 
@@ -3589,9 +3645,9 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	 *	request to connection ratio, so that we can preemptively spawn
 	 *	new connections.
 	 *
-	 *	In the case of FR_TRUNK_CONN_DRAINING the trunk management
-	 *	code has enough hysteresis to not immediately reactivate the
-	 *	connection.
+	 *	In the case of FR_TRUNK_CONN_DRAINING | FR_TRUNK_CONN_INACTIVE_DRAINING
+	 *	the trunk management code has enough hysteresis to not
+	 *	immediately reactivate the connection.
 	 *
 	 *	In the case of TRUNK_CONN_DRAINING_TO_FREE the trunk
 	 *	management code should spawn a new connection to takes its place.
@@ -3603,6 +3659,7 @@ static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_
 	 */
 	conn_count = fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ALL ^
 							(FR_TRUNK_CONN_DRAINING |
+							 FR_TRUNK_CONN_INACTIVE_DRAINING |
 							 FR_TRUNK_CONN_DRAINING_TO_FREE));
 
 	/*
@@ -3739,6 +3796,7 @@ do { \
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_INIT, init);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_FULL, full);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_INACTIVE, inactive);
+	RECONNECT_BY_STATE(FR_TRUNK_CONN_INACTIVE_DRAINING, inactive_draining);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_CLOSED, closed);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_DRAINING, draining);
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_DRAINING_TO_FREE, draining_to_free);
@@ -3845,6 +3903,7 @@ static int _trunk_free(fr_trunk_t *trunk)
 	while ((tconn = fr_dlist_head(&trunk->connecting))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->full))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->inactive))) fr_connection_signal_halt(tconn->pub.conn);
+	while ((tconn = fr_dlist_head(&trunk->inactive_draining))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->closed))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->draining))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->draining_to_free))) fr_connection_signal_halt(tconn->pub.conn);
@@ -3934,6 +3993,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	fr_dlist_talloc_init(&trunk->connecting, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->full, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->inactive, fr_trunk_connection_t, entry);
+	fr_dlist_talloc_init(&trunk->inactive_draining, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->closed, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->draining, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->draining_to_free, fr_trunk_connection_t, entry);
