@@ -3521,8 +3521,8 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		/*
 		 *	Inactive connections get counted in the
 		 *	set of viable connections, but are likely
-		 *	to be congested or dead, so we free those
-		 *	first.
+		 *	to be congested or dead, so we drain
+		 *	(and possibly eventually free) those first.
 		 */
 		if ((tconn = fr_dlist_tail(&trunk->inactive))) {
 			trunk_connection_enter_inactive_draining(tconn);
@@ -3539,7 +3539,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		/*
 		 *	Finally if there are no "connecting"
 		 *	connections to close, and no "inactive"
-		 *	connections, start freeing "active"
+		 *	connections, start draining "active"
 		 *	connections.
 		 */
 		} else if ((tconn = fr_heap_peek_tail(trunk->active))) {
