@@ -2400,6 +2400,7 @@ static void trunk_connection_enter_inactive_draining(fr_trunk_connection_t *tcon
 
 	switch (tconn->pub.state) {
 	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_DRAINING:
 		trunk_connection_remove(tconn);
 		break;
 
@@ -3146,7 +3147,6 @@ void fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn)
 		break;
 
 	case FR_TRUNK_CONN_INACTIVE:
-	case FR_TRUNK_CONN_INACTIVE_DRAINING:		/* Only an external signal can trigger this transition */
 		/*
 		 *	Do the appropriate state transition based on
 		 *	how many requests the trunk connection is
@@ -3157,6 +3157,15 @@ void fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn)
 			break;
 		}
 		trunk_connection_enter_active(tconn);
+		break;
+
+	/*
+	 *	Unsetting the active flag just moves
+	 *	the connection back to the normal
+	 *	draining state.
+	 */
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:		/* Only an external signal can trigger this transition */
+		trunk_connection_enter_draining(tconn);
 		break;
 
 	default:
