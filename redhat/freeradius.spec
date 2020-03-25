@@ -184,6 +184,7 @@ BuildRequires: perl(ExtUtils::Embed)
 %description perl
 This plugin provides Perl support for the FreeRADIUS server project.
 
+%if %{?el6:0}%{!?el6:1}
 %package python
 Summary: Python support for FreeRADIUS
 Group: System Environment/Daemons
@@ -195,6 +196,7 @@ Requires: %{name} = %{version}-%{release}
 
 %description python
 This plugin provides Python support for the FreeRADIUS server project.
+%endif
 
 %package mysql
 Summary: MySQL support for FreeRADIUS
@@ -354,6 +356,9 @@ export LDFLAGS="-Wl,--build-id"
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
         --without-rlm_sql_mongo \
+%if %{?el6:0}%{!?el6:1}
+        --without-rlm_python \
+%endif
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
         --with-winbind-include-dir=/usr/include/samba-4.0 \
@@ -675,8 +680,10 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/perl/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/preprocess
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/preprocess/*
+%if %{?el6:0}%{!?el6:1}
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/python
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/python/*
+%endif
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-enabled
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-enabled/*
 # mysql
@@ -778,9 +785,11 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_perl.so
 
+%if %{?el6:0}%{!?el6:1}
 %files python
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_python.so
+%endif
 
 %files mysql
 %defattr(-,root,root)
