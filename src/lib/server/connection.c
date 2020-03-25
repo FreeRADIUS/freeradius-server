@@ -850,8 +850,6 @@ static void connection_state_enter_connecting(fr_connection_t *conn)
 {
 	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_INIT:
-	case FR_CONNECTION_STATE_CLOSED:
-	case FR_CONNECTION_STATE_FAILED:
 		break;
 
 	default:
