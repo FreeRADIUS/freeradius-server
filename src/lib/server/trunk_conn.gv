@@ -1,0 +1,101 @@
+/*
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ *
+ * Copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ */
+digraph fr_trunk_connection_t_states {
+	label = "fr_trunk_connection_t states"
+	condition_key [
+		shape=plaintext
+		label=<
+
+		<table border='0'>
+			<tr><td align='left'>[ too_many ]</td><td align='left'>trunk_manage(); [ trunk.request_count() / trunk.connection_count() &lt; conf.target_req_per_conn ]</td></tr>
+			<tr><td align='left'>[ too_few ]</td><td align='left'>trunk_manage(); [ trunk.request_count() / trunk.connection_count() &gt;= conf.target_req_per_conn ]</td></tr>
+			<tr><td align='left'>[ old ]</td><td align='left'>[ conn.lifetime &gt;= conf.lifetime ]</td></tr>
+			<tr><td align='left'>[ !full ]</td><td align='left'>[ conn.request_count(all) &lt; conf.max_req_per_conn ]</td></tr>
+			<tr><td align='left'>[ full ]</td><td align='left'>[ conn.request_count(all) &gt;= conf.max_req_per_conn ]</td></tr>
+			<tr><td align='left'>[ empty ]</td><td align='left'>trunk_manage(); [ conn.request_count(all) == 0 ]</td></tr>
+			<tr><td align='left'>sig_re()</td><td align='left'>signal_reconnect()</td></tr>
+		</table>
+
+	>];
+
+	node [shape = point, width=.1 ]; alloc
+	node [shape = circle, label = "INIT", width=2.0 ]; init;
+	node [shape = doublecircle, label = "HALTED", width=2.0 ]; halt;
+	node [shape = circle, label = "CONNECTING" ]; conn;
+	node [shape = circle, label = "ACTIVE" ]; active;
+	node [shape = circle, label = "FULL" ]; full;
+	node [shape = circle, label = "INACTIVE" ]; inactive;
+	node [shape = circle, label = "INACTIVE-DRAINING"]; indg;
+	node [shape = circle, label = "CLOSED" ]; closed;
+	node [shape = circle, label = "DRAINING" ]; drain;
+	node [shape = circle, label = "DRAINING-TO-FREE" ]; drain2free;
+
+	{ rank=source; alloc; }
+	{ rank=same;conn; }
+	{ rank=same;active; }
+	{ rank=same;inactive, full; }
+	{ rank=same;indg,drain }
+	{ rank=same;drain2free; }
+	{ rank=same;closed; }
+	{ rank=sink;halt; }
+
+	alloc  -> init;
+	init   -> conn [ label = "_on_connecting()" ];
+	init   -> halt [ label = "_on_halted()" ];
+
+	conn   -> active [ label = "_on_connected()" ];
+	conn   -> closed [ label = "_on_closed()" ];
+
+	closed -> halt [ label = "_on_halted()" ];
+	closed -> init [ label = "_on_init()" ];
+
+	active -> inactive [ label = "signal_inactive()"]
+	active -> full [ label = "[ full ]"]
+	active -> drain [ label = "[ too_many ]"]
+	active -> drain2free [ label = "[ old ]"]
+	active -> closed [ label = "sig_re()" ]
+
+	inactive -> active [ label = "signal_active(); [ !full ]" ]
+	inactive -> full [ label = "signal_active(); [ full ]" ]
+	inactive -> indg [ label = "[ too_many ]" ]
+	inactive -> drain2free [ label = "[ old ]"]
+	inactive -> closed [ label = "sig_re()" ]
+
+	full -> active [ label = "[ !full ]"]
+	full -> drain2free [ label = "[ old ]"]
+	full -> closed [ label = "sig_re()" ]
+
+	drain -> active [ label = "[ too_few ]"]
+	drain -> closed [ label = "[ empty ]"]
+	drain -> drain2free [ label = "[ old ]"]
+	drain -> closed [ label = "sig_re()" ]
+	drain -> indg [ xlabel = "signal_inactive()" ]
+
+	drain2free -> closed [ label = "[ empty ]"]
+	drain2free -> closed [ label = "sig_re()" ]
+
+	indg -> drain [ xlabel = "signal_active()" ]
+	indg -> drain2free [ label = "[ old ]"]
+
+	// This only happens when there's no reconnect timer set.
+	halt -> init [ label = "_on_init()"]
+}
