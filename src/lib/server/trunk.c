@@ -3130,6 +3130,10 @@ void fr_trunk_connection_signal_inactive(fr_trunk_connection_t *tconn)
 		trunk_connection_enter_inactive(tconn);
 		break;
 
+	case FR_TRUNK_CONN_DRAINING:
+		trunk_connection_enter_inactive_draining(tconn);
+		break;
+
 	default:
 		return;
 	}
