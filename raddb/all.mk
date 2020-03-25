@@ -142,10 +142,19 @@ ifeq ("$(PACKAGE)","")
 #
 build.raddb: $(GENERATED_CERT_FILES)
 
+
+.PHONY: ${top_srcdir}/raddb/certs/rsa
+${top_srcdir}/raddb/certs/rsa:
+	@mkdir -p $@
+
+.PHONY: ${top_srcdir}/raddb/certs/ecc
+${top_srcdir}/raddb/certs/ecc:
+	@mkdir -p $@
+
 define BUILD_CERT
-$(addprefix ${top_srcdir}/raddb/certs/,${1}): $(wildcard raddb/certs/*cnf)
-	${Q}echo BOOTSTRAP ${1}
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ ${1}
+$$(addprefix $${top_srcdir}/raddb/certs/,${1}): $(wildcard raddb/certs/*cnf) | $$(dir $$@)
+	$${Q}echo CERT ${1}
+	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${1}
 endef
 
 #
