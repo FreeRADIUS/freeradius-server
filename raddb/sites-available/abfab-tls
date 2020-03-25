@@ -10,6 +10,7 @@ listen {
 	proto = tcp
 
 	tls {
+		tls_min_version = "1.2"
 		private_key_password = whatever
 
 		# Moonshot tends to distribute certs separate from keys
@@ -20,14 +21,12 @@ listen {
 		fragment_size = 8192
 		ca_path = ${cadir}
 		cipher_list = "DEFAULT"
-
 		cache {
 			enable = no
 			lifetime = 24 # hours
 			name = "abfab-tls"
-#			persist_dir = ${logdir}/abfab-tls
+			# persist_dir = ${logdir}/abfab-tls
 		}
-
 		require_client_cert = yes
 		verify {
 		}
@@ -36,7 +35,6 @@ listen {
 	}
 
 	virtual_server = abfab-idp
-
 	clients = radsec-abfab
 }
 
@@ -50,6 +48,7 @@ listen {
 	proto = tcp
 
 	tls {
+		tls_min_version = "1.2"
 		private_key_password = whatever
 
 		# Moonshot tends to distribute certs separate from keys
@@ -85,7 +84,7 @@ clients radsec-abfab {
 	#  additional client stanzas are also required for local services.
 	#
         client default {
-	        ipaddr = 0.0.0.0/0
+		ipaddr = 0.0.0.0/0
 		proto = tls
 	}
 
@@ -104,17 +103,16 @@ clients radsec-abfab {
 	#  	#  requests have this value for the acceptor host name
 	#  	gss_acceptor_host_name = "server.example.com"
 	#  	#  If set, this acceptor realm name will be included.
-	#  Foreign realms will typically reject a request if this is not
+	#  	#  Foreign realms will typically reject a request if this is not
 	#  	#  properly set.
 	#  	gss_acceptor_realm_name = "example.com"
 	#  	#  Additionally, trust_router_coi can be set; if set
 	#  	#  it will override the default_community in the realm
  	#  	#  module
-	#  	# trust_router_coi =  "community1.example.net"
+	#  	trust_router_coi =  "community1.example.net"
 	#  	#  In production depployments it is important to set
-	#  	#  	up certificate verification  so that even if
+	#  	#  up certificate verification  so that even if
 	#  	#  clients spoof IP addresses, one client cannot
 	#  	#  impersonate another.
 	#  }
-
 }
