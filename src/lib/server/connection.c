@@ -1153,17 +1153,20 @@ void fr_connection_signal_halt(fr_connection_t *conn)
 		break;
 
 	case FR_CONNECTION_STATE_INIT:
-	case FR_CONNECTION_STATE_SHUTDOWN:
-	case FR_CONNECTION_STATE_TIMEOUT:
 	case FR_CONNECTION_STATE_CLOSED:
 		connection_state_enter_halted(conn);
 		break;
 
+	/*
+	 *	If the connection is any of these states it
+	 *	must have completed INIT which means it has
+	 *	an active handle which needs to be closed before
+	 *	the connection is halted.
+	 */
 	case FR_CONNECTION_STATE_CONNECTED:
 	case FR_CONNECTION_STATE_CONNECTING:
-		connection_state_closed_enter(conn);
-
-	/* FALL-THROUGH */
+	case FR_CONNECTION_STATE_SHUTDOWN:
+	case FR_CONNECTION_STATE_TIMEOUT:
 	case FR_CONNECTION_STATE_FAILED:
 		rad_assert(conn->is_closed);
 		connection_state_enter_halted(conn);
