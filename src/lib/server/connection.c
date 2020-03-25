@@ -1094,21 +1094,33 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 		connection_state_enter_halted(conn);
 		break;
 
+	/*
+	 *	If the connection is connected it needs to be
+	 *	shutdown first.
+	 *
+	 *	The shutdown callback or an FD event it inserts then
+	 *	to signal that the connection should be closed.
+	 */
 	case FR_CONNECTION_STATE_CONNECTED:
-	case FR_CONNECTION_STATE_CONNECTING:
 		if (conn->shutdown) {
 			connection_state_enter_shutdown(conn);
 			break;
 		}
-		connection_state_closed_enter(conn);
-
 	/* FALL-THROUGH */
+
+	/*
+	 *	If the connection is any of these states it
+	 *	must have completed INIT which means it has
+	 *	an active handle which needs to be closed before
+	 *	the connection is halted.
+	 */
+	case FR_CONNECTION_STATE_CONNECTING:
+	case FR_CONNECTION_STATE_TIMEOUT:
 	case FR_CONNECTION_STATE_FAILED:
 		connection_state_enter_closed(conn);
 		rad_assert(conn->is_closed);
-		break;
 
-	case FR_CONNECTION_STATE_TIMEOUT:
+	/* FALL-THROUGH */
 	case FR_CONNECTION_STATE_CLOSED:
 		connection_state_enter_halted(conn);
 		break;
