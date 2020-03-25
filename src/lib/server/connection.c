@@ -1030,9 +1030,8 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 	}
 
 	switch (conn->pub.state) {
-	case FR_CONNECTION_STATE_FAILED:	/* Don't circumvent reconnection_delay */
-	case FR_CONNECTION_STATE_CLOSED:	/* Don't circumvent reconnection_delay */
-	case FR_CONNECTION_STATE_INIT:		/* Already initialising */
+	case FR_CONNECTION_STATE_CLOSED:			/* Don't circumvent reconnection_delay */
+	case FR_CONNECTION_STATE_INIT:				/* Already initialising */
 		break;
 
 	case FR_CONNECTION_STATE_HALTED:
@@ -1040,17 +1039,25 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 		break;
 
 	case FR_CONNECTION_STATE_SHUTDOWN:
-		if (reason == FR_CONNECTION_EXPIRED) break;
-		connection_state_failed_enter(conn);
+		if (reason == FR_CONNECTION_EXPIRED) break;	/* Already shutting down */
+		connection_state_enter_failed(conn);
 		break;
 
 	case FR_CONNECTION_STATE_CONNECTED:
-		if ((reason == FR_CONNECTION_EXPIRED) && conn->shutdown) connection_state_shutdown_enter(conn);
+		if (reason == FR_CONNECTION_EXPIRED) {
+		 	if (conn->shutdown) {
+		 		connection_state_enter_shutdown(conn);
+		 		break;
+		 	}
+		 	connection_state_enter_closed(conn);
+		 	break;
+		}
 		/* FALL-THROUGH */
 
 	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_TIMEOUT:
-		connection_state_failed_enter(conn);
+	case FR_CONNECTION_STATE_FAILED:
+		connection_state_enter_failed(conn);
 		break;
 
 	case FR_CONNECTION_STATE_MAX:
