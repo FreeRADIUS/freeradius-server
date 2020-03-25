@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file libfreeradius-curl/base.c
+ * @file curl/base.c
  * @brief Curl global initialisation
  *
  * @copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)

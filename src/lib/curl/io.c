@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file libfreeradius-curl/io.c
+ * @file curl/io.c
  * @brief Implement asynchronous callbacks for curl
  *
  * @copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
