@@ -2824,31 +2824,15 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
-	bool			need_requeue = false;
 
 	switch (tconn->pub.state) {
-	case FR_TRUNK_CONN_ACTIVE:
-	case FR_TRUNK_CONN_FULL:
-	case FR_TRUNK_CONN_INACTIVE:
-	case FR_TRUNK_CONN_INACTIVE_DRAINING:
-	case FR_TRUNK_CONN_DRAINING:
-	case FR_TRUNK_CONN_DRAINING_TO_FREE:
-		need_requeue = true;
-
-	/* FALL-THROUGH */
 	case FR_TRUNK_CONN_INIT:
-	case FR_TRUNK_CONN_CONNECTING:
 	case FR_TRUNK_CONN_CLOSED:
 		trunk_connection_remove(tconn);
 		break;
 
-	case FR_TRUNK_CONN_HALTED:	/* Nothing to do */
-		/*
-		 *	Ensure the connection isn't in either list
-		 */
-		rad_assert(!fr_dlist_entry_in_list(&tconn->entry));
-		rad_assert(tconn->heap_id == -1);
-		break;
+	default:
+		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_HALTED);
 	}
 
 	/*
@@ -2856,8 +2840,6 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	and will end life in the halted state.
 	 */
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_HALTED);
-
-	if (need_requeue) trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, true);
 
 	/*
 	 *	There should be no requests left on this
