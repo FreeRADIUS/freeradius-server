@@ -137,53 +137,18 @@ $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 endif
 
 ifeq ("$(PACKAGE)","")
-ifeq ("$(TEST_CERTS)","yes")
 #
-#  Using test certs: just copy them over.
-#  See src/tests/certs/README.md for further information.
+#  Always create the test certs for normal development.
 #
 build.raddb: $(GENERATED_CERT_FILES)
 
 #
-#  Make certs/{rsa,ecc}/ directories
-#
-.PHONY: ${top_srcdir}/src/tests/certs/rsa/
-${top_srcdir}/src/tests/certs/rsa/:
-	${Q}mkdir -p $@
-
-.PHONY: ${top_srcdir}/src/tests/certs/ecc/
-${top_srcdir}/src/tests/certs/ecc/:
-	${Q}mkdir -p $@
-
-.PHONY: ${top_srcdir}/raddb/certs/rsa/
-${top_srcdir}/raddb/certs/rsa/:
-	${Q}mkdir -p $@
-
-.PHONY: ${top_srcdir}/raddb/certs/ecc/
-${top_srcdir}/raddb/certs/ecc/:
-	${Q}mkdir -p $@
-
-#
-#  Copy the generated certs to the test directory.
-#
-define CP_FILE
-${top_srcdir}/raddb/certs/${1}: | $(dir ${top_srcdir}/raddb/certs/${1})
-
-${top_srcdir}/raddb/certs/${1}: ${top_srcdir}/src/tests/certs/${1} | $(dir ${top_srcdir}/src/tests/certs/${1})
-	${Q}echo TEST_CERTS cp src/tests/certs/${1} raddb/certs/${1}
-	${Q}cp src/tests/certs/${1} raddb/certs/${1}
-endef
-
-$(foreach x,$(LOCAL_CERT_FILES),$(eval $(call CP_FILE,${x})))
-else
-#
 #  Generate local certificate products when doing a non-package
-#  (i.e. developer) build.  This takes a LONG time!
+#  (i.e. developer) build.
 #
 $(GENERATED_CERT_FILES): $(wildcard raddb/certs/*cnf)
 	${Q}echo BOOTSTRAP raddb/certs/
 	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
-endif
 
 #
 #  If we're not packaging the server, install the various
@@ -193,8 +158,7 @@ INSTALL_RADDB += $(INSTALL_CERT_PRODUCTS)
 
 else
 #
-#  If we are packaging, don't generate any certs,
-#  and don't copy the testing certs over.
+#  If we are creating packages, then don't generate any local testing certs.
 #
 endif
 
