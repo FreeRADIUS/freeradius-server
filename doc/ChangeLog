@@ -1,3 +1,8 @@
+FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
 	* New stored procedure for allocating IPs with PostgreSQL.
