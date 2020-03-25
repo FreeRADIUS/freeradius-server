@@ -142,13 +142,17 @@ ifeq ("$(PACKAGE)","")
 #
 build.raddb: $(GENERATED_CERT_FILES)
 
+define BUILD_CERT
+$(addprefix ${top_srcdir}/raddb/certs/,${1}): $(wildcard raddb/certs/*cnf)
+	${Q}echo BOOTSTRAP ${1}
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ ${1}
+endef
+
 #
 #  Generate local certificate products when doing a non-package
 #  (i.e. developer) build.
 #
-$(GENERATED_CERT_FILES): $(wildcard raddb/certs/*cnf)
-	${Q}echo BOOTSTRAP raddb/certs/
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
+$(foreach x,$(LOCAL_CERT_FILES),$(eval $(call BUILD_CERT,$x)))
 
 #
 #  If we're not packaging the server, install the various
