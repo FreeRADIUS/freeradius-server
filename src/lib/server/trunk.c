@@ -319,6 +319,9 @@ do { \
 				fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>"))) return;	\
 } while (0)
 
+/** Record a request state transition and log appropriate output
+ *
+ */
 #define REQUEST_STATE_TRANSITION(_new) \
 do { \
 	DEBUG4("Trunk request %" PRIu64 " changed state %s -> %s", \
@@ -3186,6 +3189,7 @@ bool fr_trunk_connection_in_state(fr_trunk_connection_t *tconn, int state)
 
 /** Close connections in a particular connection list if they have no requests associated with them
  *
+ * @param[in] trunk	containing connections we want to close.
  * @param[in] head	of list of connections to examine.
  */
 static void trunk_connection_close_if_empty(fr_trunk_t *trunk, fr_dlist_head_t *head)
