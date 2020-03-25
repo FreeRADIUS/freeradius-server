@@ -3422,7 +3422,11 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 */
 		tconn = fr_dlist_head(&trunk->draining);
 		if (tconn) {
-			trunk_connection_enter_active(tconn);
+			if (trunk_connection_is_full(tconn)) {
+				trunk_connection_enter_full(tconn);
+			} else {
+				trunk_connection_enter_active(tconn);
+			}
 			return;
 		}
 
