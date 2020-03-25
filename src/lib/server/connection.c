@@ -771,6 +771,15 @@ static void connection_state_enter_halted(fr_connection_t *conn)
 {
 	rad_assert(conn->is_closed);
 
+	switch (conn->pub.state) {
+	case FR_CONNECTION_STATE_FAILED:	/* Init failure */
+	case FR_CONNECTION_STATE_CLOSED:
+		break;
+
+	default:
+		BAD_STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
+	}
+
 	fr_event_timer_delete(&conn->ev);
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
