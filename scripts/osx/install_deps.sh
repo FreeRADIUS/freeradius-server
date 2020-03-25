@@ -79,12 +79,12 @@ fi
 #
 #  These are stored on GitHub in git-lfs.
 #
-if ! git lfs fetch > /dev/null; then
+if ! git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=scripts/osx/deps/*' lfs fetch; then
     echo "Failed retrieving proprietary dependencies from git-lfs" 1>&2
     exit 1
 fi
 
-if ! git lfs pull; then
+if ! git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=scripts/osx/deps/*' lfs pull; then
     echo "Failed updating dependencies from git-lfs" 1>&2
     exit 1
 fi
