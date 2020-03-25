@@ -152,16 +152,33 @@ ${top_srcdir}/raddb/certs/ecc:
 	@mkdir -p $@
 
 define BUILD_CERT
-$$(addprefix $${top_srcdir}/raddb/certs/,${1}): $(wildcard raddb/certs/*cnf) | $$(dir $$@)
-	$${Q}echo CERT ${1}
-	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${1}
+${1}/${2}/${3}.key: ${1}/${3}.cnf $$(dir $$@)
+	$${Q}echo CERT-KEY ${1}
+	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${2}/${3}.key
+
+${1}/${2}/${3}.csr: ${1}/${2}/${3}.key
+	$${Q}echo CERT-CSR ${1}
+	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${2}/${3}.csr
+
+${1}/${2}/${3}.pem: ${1}/${2}/${3}.key
+	$${Q}echo CERT-PEM ${1}
+	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${2}/${3}.pem
+
+${1}/${2}/${3}.crt: ${1}/${2}/${3}.csr ${1}/${2}/${3}.pem
+	$${Q}echo CERT-CRT ${1}
+	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${2}/${3}.crt
 endef
 
 #
 #  Generate local certificate products when doing a non-package
 #  (i.e. developer) build.
 #
-$(foreach x,$(LOCAL_CERT_FILES),$(eval $(call BUILD_CERT,$x)))
+$(foreach dir,rsa ecc,$(foreach file,ca server client ocsp,$(eval $(call BUILD_CERT,${top_srcdir}/raddb/certs,${dir},${file}))))
+
+.PHONY: ${top_srcdir}/raddb/certs/dh
+${top_srcdir}/raddb/certs/dh:
+	${Q}echo CERT-DH $@
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ $(notdir $@)
 
 #
 #  If we're not packaging the server, install the various
