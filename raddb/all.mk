@@ -167,6 +167,12 @@ ${1}/${2}/${3}.pem: ${1}/${2}/${3}.key
 ${1}/${2}/${3}.crt: ${1}/${2}/${3}.csr ${1}/${2}/${3}.pem
 	$${Q}echo CERT-CRT ${1}
 	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${2}/${3}.crt
+
+ifneq "${3}" "ca"
+#  client, server, and OCSP certs need the CA key.
+${1}/${2}/${3}.crt: ${1}/${2}/ca.crt
+endif
+
 endef
 
 #
