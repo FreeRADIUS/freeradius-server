@@ -3,3 +3,5 @@
 *.h	linguist-language=c
 *.c	linguist-language=c
 doc/*	linguist-documentation
+*.gz filter=lfs diff=lfs merge=lfs -text
+*.bz2 filter=lfs diff=lfs merge=lfs -text

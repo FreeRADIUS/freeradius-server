@@ -6,8 +6,6 @@
 *.la
 *.so
 *.lai
-*.bz2
-*.gz
 *.sig
 *.orig
 *.rej
