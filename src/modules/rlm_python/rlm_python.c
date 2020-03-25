@@ -238,7 +238,11 @@ static void python_error_log(void)
 			ERROR("[%ld] %s:%d at %s()",
 				fnum,
 				PyString_AsString(cur_frame->f_code->co_filename),
+#if PY_VERSION_HEX >= 0x02070000
 				PyFrame_GetLineNumber(cur_frame),
+#else
+				cur_frame->f_lineno,
+#endif
 				PyString_AsString(cur_frame->f_code->co_name)
 			);
 		}
