@@ -62,7 +62,7 @@
 /** Create a 128 bit integer value with n bits high
  *
  */
-static uint128_t uint128_gen_mask(uint8_t bits)
+static inline uint128_t uint128_gen_mask(uint8_t bits)
 {
 	uint128_t ret;
 
@@ -85,7 +85,7 @@ static uint128_t uint128_gen_mask(uint8_t bits)
  *
  * @author Jacob F. W
  */
-static uint128_t uint128_increment(uint128_t n)
+static inline uint128_t uint128_increment(uint128_t n)
 {
 	uint64_t t = (n.l + 1);
 
@@ -99,7 +99,7 @@ static uint128_t uint128_increment(uint128_t n)
  *
  * @author Jacob F. W
  */
-static uint128_t uint128_decrement(uint128_t n)
+static inline uint128_t uint128_decrement(uint128_t n)
 {
 	uint64_t t = (n.l - 1);
 	n.h -= ((t ^ n.l) & t) >> 63;
@@ -112,7 +112,7 @@ static uint128_t uint128_decrement(uint128_t n)
  *
  * @author Jacob F. W
  */
-static uint128_t uint128_add(uint128_t a, uint128_t b)
+static inline uint128_t uint128_add(uint128_t a, uint128_t b)
 {
 	uint128_t ret;
 	uint64_t tmp = (((a.l & b.l) & 1) + (a.l >> 1) + (b.l >> 1)) >> 63;
@@ -125,7 +125,7 @@ static uint128_t uint128_add(uint128_t a, uint128_t b)
  *
  * @author Jacob F. W
  */
-static uint128_t uint128_sub(uint128_t a, uint128_t b)
+static inline uint128_t uint128_sub(uint128_t a, uint128_t b)
 {
 	uint128_t ret;
 	uint64_t c;
@@ -141,7 +141,7 @@ static uint128_t uint128_sub(uint128_t a, uint128_t b)
  *
  * @author Jacob F. W
  */
-static uint128_t uint128_mul64(uint64_t u, uint64_t v)
+static inline uint128_t uint128_mul64(uint64_t u, uint64_t v)
 {
 	uint128_t ret;
 	uint64_t u1 = (u & 0xffffffff);
@@ -174,7 +174,7 @@ static uint128_t uint128_mul64(uint64_t u, uint64_t v)
  *
  * @author Jacob F. W
  */
-static uint128_t uint128_mul(uint128_t n, uint128_t m)
+static inline uint128_t uint128_mul(uint128_t n, uint128_t m)
 {
 	uint128_t ret;
 
@@ -188,7 +188,7 @@ static uint128_t uint128_mul(uint128_t n, uint128_t m)
  *
  * @note shift must be 127 bits or less.
  */
-static uint128_t uint128_lshift(uint128_t num, uint8_t bits)
+static inline uint128_t uint128_lshift(uint128_t num, uint8_t bits)
 {
 	rad_assert(bits < 128);
 
@@ -207,7 +207,7 @@ static uint128_t uint128_lshift(uint128_t num, uint8_t bits)
  *
  * @note shift must be 127 bits or less.
  */
-static uint128_t uint128_rshift(uint128_t num, uint8_t bits)
+static inline uint128_t uint128_rshift(uint128_t num, uint8_t bits)
 {
 	rad_assert(bits < 128);
 
@@ -225,7 +225,7 @@ static uint128_t uint128_rshift(uint128_t num, uint8_t bits)
 /** Perform bitwise & of two 128bit unsigned integers
  *
  */
-static uint128_t uint128_band(uint128_t a, uint128_t b)
+static inline uint128_t uint128_band(uint128_t a, uint128_t b)
 {
 	uint128_t ret;
 	ret.l = a.l & b.l;
@@ -236,7 +236,7 @@ static uint128_t uint128_band(uint128_t a, uint128_t b)
 /** Perform bitwise | of two 128bit unsigned integers
  *
  */
-static uint128_t uint128_bor(uint128_t a, uint128_t b)
+static inline uint128_t uint128_bor(uint128_t a, uint128_t b)
 {
 	uint128_t ret;
 	ret.l = a.l | b.l;
@@ -247,7 +247,7 @@ static uint128_t uint128_bor(uint128_t a, uint128_t b)
 /** Return whether the integers are equal
  *
  */
-static bool uint128_eq(uint128_t a, uint128_t b)
+static inline bool uint128_eq(uint128_t a, uint128_t b)
 {
 	return (a.h == b.h) && (a.l == b.l);
 }
@@ -255,7 +255,7 @@ static bool uint128_eq(uint128_t a, uint128_t b)
 /** Return whether one integer is greater than the other
  *
  */
-static bool uint128_gt(uint128_t a, uint128_t b)
+static inline bool uint128_gt(uint128_t a, uint128_t b)
 {
 	if (a.h < b.h) return false;
 	if (a.h > b.h) return true;
@@ -265,7 +265,7 @@ static bool uint128_gt(uint128_t a, uint128_t b)
 /** Creates a new uint128_t from a uint64_t
  *
  */
-static uint128_t uint128_new(uint64_t h, uint64_t l) {
+static inline uint128_t uint128_new(uint64_t h, uint64_t l) {
 	uint128_t ret;
 	ret.l = l;
 	ret.h = h;
