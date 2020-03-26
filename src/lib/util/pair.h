@@ -105,20 +105,13 @@ struct value_pair_s {
 
 		int8_t			tag;			//!< Tag value used to group valuepairs.
 
-		union {
-		//	VALUE_SET	*set;			//!< Set of child attributes.
-		//	VALUE_LIST	*list;			//!< List of values for
-								//!< multivalued attribute.
-		//	fr_value_box_t	*data;			//!< Value data for this attribute.
-
-			char const 	*xlat;			//!< Source string for xlat expansion.
-		};
+		char const 		*xlat;			//!< Source string for xlat expansion.
 	};
 
 	value_type_t		type;				//!< Type of pointer in value union.
 
 	/*
-	 *	Pairs can have children or data bute not both.
+	 *	Pairs can have children or data but not both.
 	 */
 	union {
 		fr_value_box_t		data;			//!< The value of this pair.
