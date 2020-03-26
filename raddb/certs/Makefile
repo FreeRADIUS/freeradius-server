@@ -111,6 +111,10 @@ rsa/ca.crl: rsa/ca.pem
 rsa/ca.csr: ca.cnf
 	openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.csr -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
 
+rsa/ca.crt: rsa/ca.pem
+	openssl x509 -outform der -in rsa/ca.pem -out rsa/ca.crt
+
+
 ######################################################################
 #
 #  Create a new self-signed ECC CA certificate
@@ -126,6 +130,10 @@ ecc/ca.pem: ecc/ca.key ca.cnf
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
 	openssl req -new -x509 -key ecc/ca.key -out ecc/ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
+
+ecc/ca.crt: ecc/ca.pem
+	openssl x509 -outform der -in ecc/ca.pem -out ecc/ca.crt
+
 
 ######################################################################
 #
@@ -337,7 +345,7 @@ printca:
 	openssl x509 -text -in ecc/ca.pem
 
 clean:
-	@rm -f *~ *old rsa/client.csr rsa/client.key rsa/client.crt rsa/client.p12 rsa/client.pem ecc/client.csr ecc/client.key ecc/client.crt ecc/client.p12 ecc/client.pem
+	@rm -f *~ *old rsa eccrsa/client.csr rsa/client.key rsa/client.crt rsa/client.p12 rsa/client.pem ecc/client.csr ecc/client.key ecc/client.crt ecc/client.p12 ecc/client.pem
 
 #
 #	Make a target that people won't run too often.
