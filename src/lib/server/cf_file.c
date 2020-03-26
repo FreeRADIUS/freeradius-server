@@ -1130,7 +1130,7 @@ static int process_template(cf_stack_t *stack)
 
 static int cf_file_fill(cf_stack_t *stack);
 
-static CONF_SECTION *process_if(cf_stack_t *stack)
+static CONF_ITEM *process_if(cf_stack_t *stack)
 {
 	ssize_t slen = 0;
 	char const *error = NULL;
@@ -1273,10 +1273,10 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 	 */
 	cf_data_add(cs, cond, NULL, false);
 	stack->ptr = ptr;
-	return cs;
+	return cf_section_to_item(cs);
 }
 
-static CONF_SECTION *process_map(cf_stack_t *stack)
+static CONF_ITEM *process_map(cf_stack_t *stack)
 {
 	char const *mod;
 	char const *value = NULL;
@@ -1365,7 +1365,7 @@ alloc_section:
 	stack->ptr = ptr;
 	frame->special = css;
 
-	return css;
+	return cf_section_to_item(css);
 }
 
 
@@ -1431,7 +1431,7 @@ static fr_table_ptr_sorted_t unlang_keywords[] = {
 };
 static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
 
-typedef CONF_SECTION *(*cf_process_func_t)(cf_stack_t *);
+typedef CONF_ITEM *(*cf_process_func_t)(cf_stack_t *);
 
 static int parse_input(cf_stack_t *stack)
 {
@@ -1504,11 +1504,21 @@ static int parse_input(cf_stack_t *stack)
 	 */
 	process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
 	if (process) {
+		CONF_ITEM *ci;
+
 		stack->ptr = ptr;
-		css = process(stack);
+		ci = process(stack);
 		ptr = stack->ptr;
-		if (!css) return -1;
-		goto add_section;
+		if (!ci) return -1;
+		if (cf_item_is_section(ci)) {
+			css = cf_item_to_section(ci);
+			goto add_section;
+		}
+
+		/*
+		 *	Else the item is a pair, and it's already added to the section.
+		 */
+		goto added_pair;
 	}
 
 	/*
@@ -1715,6 +1725,7 @@ static int parse_input(cf_stack_t *stack)
 do_set:
 	if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], frame->filename, frame->lineno) < 0) return -1;
 
+added_pair:
 	fr_skip_whitespace(ptr);
 
 	/*
