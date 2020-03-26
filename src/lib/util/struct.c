@@ -411,7 +411,7 @@ static int put_bits(uint8_t *p, uint8_t const *end, int start_bit, int num_bits,
 
 
 ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
-			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			     fr_dict_attr_t const **da_stack, unsigned int depth,
 			     fr_cursor_t *cursor, void *encoder_ctx,
 			     fr_encode_value_t encode_value)
 {
@@ -429,7 +429,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	}
 
 	VP_VERIFY(vp);
-	parent = tlv_stack[depth];
+	parent = da_stack[depth];
 
 	if (parent->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
@@ -591,8 +591,8 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			/*
 			 *	Call the protocol encoder for non-bit fields.
 			 */
-			fr_proto_tlv_stack_build(tlv_stack, child);
-			slen = encode_value(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+			fr_proto_da_stack_build(da_stack, child);
+			slen = encode_value(p, outlen, da_stack, depth + 1, cursor, encoder_ctx);
 			if (slen < 0) return slen;
 			len = slen;
 			vp = fr_cursor_current(cursor);
@@ -653,8 +653,8 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 */
 		if ((vp->da->parent->parent == key_da) &&
 		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
-			fr_proto_tlv_stack_build(tlv_stack, vp->da->parent);
-			len = fr_struct_to_network(p, outlen, tlv_stack, depth + 2, /* note + 2 !!! */
+			fr_proto_da_stack_build(da_stack, vp->da->parent);
+			len = fr_struct_to_network(p, outlen, da_stack, depth + 2, /* note + 2 !!! */
 						   cursor, encoder_ctx, encode_value);
 			if (len < 0) return len;
 			p += len;

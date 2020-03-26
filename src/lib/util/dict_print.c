@@ -100,7 +100,7 @@ do { \
 	return len;
 }
 
-/** Build the tlv_stack for the specified DA and encode the path in OID form
+/** Build the da_stack for the specified DA and encode the path in OID form
  *
  * @param[out] need		How many bytes we would need to print the
  *				next part of the string.
@@ -120,7 +120,7 @@ size_t fr_dict_print_attr_oid(size_t *need, char *out, size_t outlen,
 	char			*p = out, *end = p + outlen;
 	int			i;
 	int			depth = 0;
-	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
+	fr_dict_attr_t const	*da_stack[FR_DICT_MAX_TLV_STACK + 1];
 
 	RETURN_IF_NO_SPACE_INIT(need, 1, p, out, end);
 
@@ -133,10 +133,10 @@ size_t fr_dict_print_attr_oid(size_t *need, char *out, size_t outlen,
 		return 0;
 	}
 
-	fr_proto_tlv_stack_build(tlv_stack, da);
+	fr_proto_da_stack_build(da_stack, da);
 
 	if (ancestor) {
-		if (tlv_stack[ancestor->depth - 1] != ancestor) {
+		if (da_stack[ancestor->depth - 1] != ancestor) {
 			fr_strerror_printf("Attribute \"%s\" is not a descendent of \"%s\"", da->name, ancestor->name);
 			return -1;
 		}
@@ -147,11 +147,11 @@ size_t fr_dict_print_attr_oid(size_t *need, char *out, size_t outlen,
 	 *	We don't print the ancestor, we print the OID
 	 *	between it and the da.
 	 */
-	len = snprintf(p, end - p, "%u", tlv_stack[depth]->attr);
+	len = snprintf(p, end - p, "%u", da_stack[depth]->attr);
 	RETURN_IF_TRUNCATED(need, len, p, out, end);
 
 	for (i = depth + 1; i < (int)da->depth; i++) {
-		len = snprintf(p, end - p, ".%u", tlv_stack[i]->attr);
+		len = snprintf(p, end - p, ".%u", da_stack[i]->attr);
 		RETURN_IF_TRUNCATED(need, len, p, out, end);
 	}
 

@@ -54,11 +54,11 @@ void fr_proto_print_hex_data(char const *file, int line, uint8_t const *data, si
 }
 DIAG_ON(format-nonliteral)
 
-void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_dict_attr_t const **tlv_stack, unsigned int depth)
+void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_dict_attr_t const **da_stack, unsigned int depth)
 {
 	int		i;
 
-	for (i = 0; (i < FR_DICT_MAX_TLV_STACK) && tlv_stack[i]; i++);
+	for (i = 0; (i < FR_DICT_MAX_TLV_STACK) && da_stack[i]; i++);
 	if (!i) return;
 
 	fr_log(&default_log, L_DBG, file, line, "stk: Currently in %s", func);
@@ -66,29 +66,29 @@ void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_d
 		fr_log(&default_log, L_DBG, file, line,
 		       "stk: %s [%i] %s: %s, vendor: 0x%x (%u), attr: 0x%x (%u)",
 		       (i == (int)depth) ? ">" : " ", i,
-		       fr_table_str_by_value(fr_value_box_type_table, tlv_stack[i]->type, "?Unknown?"),
-		       tlv_stack[i]->name,
-		       fr_dict_vendor_num_by_da(tlv_stack[i]), fr_dict_vendor_num_by_da(tlv_stack[i]),
-		       tlv_stack[i]->attr, tlv_stack[i]->attr);
+		       fr_table_str_by_value(fr_value_box_type_table, da_stack[i]->type, "?Unknown?"),
+		       da_stack[i]->name,
+		       fr_dict_vendor_num_by_da(da_stack[i]), fr_dict_vendor_num_by_da(da_stack[i]),
+		       da_stack[i]->attr, da_stack[i]->attr);
 	}
 	fr_log(&default_log, L_DBG, file, line, "stk:");
 }
 
-void fr_proto_tlv_stack_build(fr_dict_attr_t const **tlv_stack, fr_dict_attr_t const *da)
+void fr_proto_da_stack_build(fr_dict_attr_t const **da_stack, fr_dict_attr_t const *da)
 {
 	int i;
 	fr_dict_attr_t const *da_p;
 
-	memset(tlv_stack, 0, sizeof(*tlv_stack) * (FR_DICT_MAX_TLV_STACK + 1));
+	memset(da_stack, 0, sizeof(*da_stack) * (FR_DICT_MAX_TLV_STACK + 1));
 
 	if (!da) return;
 
 	/*
 	 *	We've finished encoding one nested structure
-	 *	now we need to rebuild the tlv_stack and determine
+	 *	now we need to rebuild the da_stack and determine
 	 *	where the common point is.
 	 */
 	for (i = da->depth, da_p = da;
 	     da_p->parent && (i >= 0);
-	     i--, da_p = da_p->parent) tlv_stack[i - 1] = da_p;
+	     i--, da_p = da_p->parent) da_stack[i - 1] = da_p;
 }

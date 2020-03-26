@@ -831,8 +831,8 @@ int8_t fr_pair_cmp_by_parent_num_tag(void const *a, void const *b)
 	VALUE_PAIR const	*vp_b = b;
 	fr_dict_attr_t const	*da_a = vp_a->da;
 	fr_dict_attr_t const	*da_b = vp_b->da;
-	fr_dict_attr_t const	*tlv_stack_a[FR_DICT_MAX_TLV_STACK + 1];
-	fr_dict_attr_t const	*tlv_stack_b[FR_DICT_MAX_TLV_STACK + 1];
+	fr_dict_attr_t const	*da_stack_a[FR_DICT_MAX_TLV_STACK + 1];
+	fr_dict_attr_t const	*da_stack_b[FR_DICT_MAX_TLV_STACK + 1];
 	int i;
 
 	/*
@@ -841,10 +841,10 @@ int8_t fr_pair_cmp_by_parent_num_tag(void const *a, void const *b)
 	 */
 	if ((da_a->parent->flags.is_root) && (da_b->parent->flags.is_root)) return pair_cmp_by_num_tag(vp_a, vp_b);
 
-	fr_proto_tlv_stack_build(tlv_stack_a, da_a);
-	fr_proto_tlv_stack_build(tlv_stack_b, da_b);
+	fr_proto_da_stack_build(da_stack_a, da_a);
+	fr_proto_da_stack_build(da_stack_b, da_b);
 
-	for (i = 0; (da_a = tlv_stack_a[i]) && (da_b = tlv_stack_b[i]); i++) {
+	for (i = 0; (da_a = da_stack_a[i]) && (da_b = da_stack_b[i]); i++) {
 		if (da_a->attr > da_b->attr) return +1;
 		if (da_a->attr < da_b->attr) return -1;
 	}

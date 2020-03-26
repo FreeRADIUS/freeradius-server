@@ -40,10 +40,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			       fr_dict_attr_t const **child,
 			       fr_decode_value_t decode_value, void *decoder_ctx) CC_HINT(nonnull(2,3,4));
 
-typedef ssize_t (*fr_encode_value_t)(uint8_t *out, size_t outlen, fr_dict_attr_t const **tlv_stack, unsigned int depth,
+typedef ssize_t (*fr_encode_value_t)(uint8_t *out, size_t outlen, fr_dict_attr_t const **da_stack, unsigned int depth,
 				     fr_cursor_t *cursor, void *encoder_ctx);
 
-ssize_t fr_struct_to_network(uint8_t *out, size_t outlen, fr_dict_attr_t const **tlv_stack, unsigned int depth,
+ssize_t fr_struct_to_network(uint8_t *out, size_t outlen, fr_dict_attr_t const **da_stack, unsigned int depth,
 			     fr_cursor_t *cursor, void *encoder_ctx,
 			     fr_encode_value_t encode_value) CC_HINT(nonnull(1,3,5));
 
