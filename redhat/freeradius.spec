@@ -1,5 +1,5 @@
 %bcond_with rlm_yubikey
-#%bcond_with experimental_modules
+# %%bcond_with experimental_modules
 
 %{!?_with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
@@ -356,9 +356,6 @@ export LDFLAGS="-Wl,--build-id"
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
         --without-rlm_sql_mongo \
-%if %{?el6:0}%{!?el6:1}
-        --without-rlm_python \
-%endif
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
         --with-winbind-include-dir=/usr/include/samba-4.0 \
@@ -553,7 +550,7 @@ fi
 %doc %{_mandir}/man5/rlm_expr.5.gz
 %doc %{_mandir}/man5/rlm_files.5.gz
 %doc %{_mandir}/man5/rlm_idn.5.gz
-#%{?_with_rlm_idn: %doc %{_mandir}/man5/rlm_idn.5.gz}
+# %%{?_with_rlm_idn: %doc %{_mandir}/man5/rlm_idn.5.gz}
 %doc %{_mandir}/man5/rlm_mschap.5.gz
 %doc %{_mandir}/man5/rlm_pap.5.gz
 %doc %{_mandir}/man5/rlm_passwd.5.gz
@@ -645,7 +642,7 @@ fi
 %files config
 %dir %attr(755,root,radiusd) %{_sysconfdir}/raddb
 %defattr(-,root,radiusd)
-#%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/filter/*
+# %%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/filter/*
 %attr(644,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/dictionary
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/clients.conf
 %config(noreplace) %{_sysconfdir}/raddb/hints
@@ -655,8 +652,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/proxy.conf
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/radiusd.conf
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/trigger.conf
-#%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sql
-#%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/oracle/*
+# %%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sql
+# %%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/oracle/*
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/users
 %dir %attr(770,root,radiusd) %{_sysconfdir}/raddb/certs
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/*
