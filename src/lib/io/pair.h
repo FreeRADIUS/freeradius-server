@@ -71,6 +71,11 @@ static inline ssize_t fr_pair_decode_slen(ssize_t slen, uint8_t const *start, ui
 	}
 }
 
+/** Checks if we have sufficient buffer space, and returns how much space we'd need as a negative integer
+ *
+ */
+#define FR_PAIR_ENCODE_HAVE_SPACE(_p, _end, _num) if (((_p) + (_num)) > (_end)) return (_end) - ((_p) + (_num));
+
 /** @} */
 
 /** Generic interface for encoding one or more VALUE_PAIRs
