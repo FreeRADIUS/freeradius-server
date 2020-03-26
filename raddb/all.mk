@@ -153,24 +153,30 @@ ${top_srcdir}/raddb/certs/ecc:
 
 define BUILD_CERT
 ${1}/${2}/${3}.key: ${1}/${3}.cnf $$(dir $$@)
-	$${Q}echo CERT-KEY ${1}
+	$${Q}echo CERT-KEY ${3}
 	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${2}/${3}.key
+	@touch $$@
 
 ${1}/${2}/${3}.csr: ${1}/${2}/${3}.key
-	$${Q}echo CERT-CSR ${1}
+	$${Q}echo CERT-CSR ${3}
 	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${2}/${3}.csr
+	@touch $$@
 
 ${1}/${2}/${3}.pem: ${1}/${2}/${3}.key
-	$${Q}echo CERT-PEM ${1}
+	$${Q}echo CERT-PEM ${3}
 	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${2}/${3}.pem
+	@touch $$@
 
-${1}/${2}/${3}.crt: ${1}/${2}/${3}.csr ${1}/${2}/${3}.pem
-	$${Q}echo CERT-CRT ${1}
+${1}/${2}/${3}.crt: ${1}/${2}/${3}.pem
+	$${Q}echo CERT-CRT ${3}
 	$${Q}$$(MAKE) -C $${top_srcdir}/raddb/certs/ ${2}/${3}.crt
+	@touch $$@
 
 ifneq "${3}" "ca"
 #  client, server, and OCSP certs need the CA key.
 ${1}/${2}/${3}.crt: ${1}/${2}/ca.crt
+
+${1}/${2}/${3}.crt: ${1}/${2}/${3}.csr
 endif
 
 endef
@@ -181,7 +187,6 @@ endef
 #
 $(foreach dir,rsa ecc,$(foreach file,ca server client ocsp,$(eval $(call BUILD_CERT,${top_srcdir}/raddb/certs,${dir},${file}))))
 
-.PHONY: ${top_srcdir}/raddb/certs/dh
 ${top_srcdir}/raddb/certs/dh:
 	${Q}echo CERT-DH $@
 	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ $(notdir $@)
