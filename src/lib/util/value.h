@@ -58,6 +58,23 @@ extern size_t const fr_value_box_field_sizes[];
 
 extern size_t const fr_value_box_offsets[];
 
+typedef enum {
+	FR_VALUE_BOX_LIST_SINGLE = 0,				//!< Singly linked list.
+	FR_VALUE_BOX_LIST_DOUBLE,      				//!< Doubly linked list.
+} fr_value_box_list_type_t;
+
+/** Placeholder structure to represent lists of value boxes
+ *
+ * Should have additional fields added later.
+ */
+typedef struct {
+	union {
+		fr_value_box_t	        *slist;			//!< The head of the list.
+		fr_dlist_head_t		*dlist;			//!< Doubly linked list head.
+	};
+	fr_value_box_list_type_t type;				//!< What type of list this is.
+} fr_value_box_list_t;
+
 /** Union containing all data types supported by the server
  *
  * This union contains all data types that can be represented by VALUE_PAIRs. It may also be used in other parts
@@ -112,6 +129,8 @@ struct value_box {
 		 */
 		size_t			size;			//!< System specific file/memory size.
 		fr_time_delta_t		time_delta;		//!< a delta time in nanoseconds
+
+		fr_value_box_list_t	children;		//!< for groups
 	} datum;
 
 	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
@@ -132,6 +151,7 @@ struct value_box {
  */
 #define vb_strvalue				datum.strvalue
 #define vb_octets				datum.octets
+#define vb_group				datum.children.slist
 
 #define vb_ip					datum.ip
 

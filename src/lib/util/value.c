@@ -1615,6 +1615,7 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 static uint8_t const v4_v6_map[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				     0x00, 0x00, 0x00, 0x00, 0xff, 0xff };
 
+
 /** Convert any supported type to a string
  *
  * All non-structural types are allowed.
@@ -1639,6 +1640,36 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 	case FR_TYPE_OCTETS:
 		dst->vb_strvalue = talloc_bstrndup(ctx, (char const *)src->vb_octets, src->datum.length);
 		dst->datum.length = src->datum.length;	/* It's the same, even though the buffer is slightly bigger */
+		break;
+
+	case FR_TYPE_GROUP:
+	{
+		fr_cursor_t cursor;
+		fr_value_box_t *vb;
+
+		dst->type = FR_TYPE_STRING;
+		dst->vb_strvalue = talloc_typed_strdup(ctx, "");
+		dst->datum.length = 0;
+
+		fr_cursor_init(&cursor, &src->vb_group);
+		while ((vb = fr_cursor_current(&cursor)) != NULL) {
+			fr_value_box_t *n = vb;
+
+			if (vb->type != FR_TYPE_STRING) {
+				n = talloc_zero(ctx, fr_value_box_t);
+				if (!n) return -1;
+
+				if (fr_value_box_cast(n, n, FR_TYPE_STRING, NULL, vb) < 0) {
+					return -1;
+				}
+			}
+
+			if (fr_value_box_append_bstr(dst, n->vb_strvalue, n->vb_length, n->tainted) < 0) return -1;
+
+			if (n != vb) talloc_free(n);
+			fr_cursor_next(&cursor);
+		}
+	}
 		break;
 
 	/*
@@ -1682,6 +1713,38 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	case FR_TYPE_STRING:
 		bin = talloc_memdup(ctx, (uint8_t const *)src->vb_strvalue, src->datum.length);
 		break;
+
+	case FR_TYPE_GROUP:
+	{
+		fr_cursor_t cursor;
+		fr_value_box_t *vb;
+
+		dst->type = FR_TYPE_OCTETS;
+		dst->vb_octets = talloc_memdup(ctx, "", 0);
+		talloc_set_type(dst->vb_octets, uint8_t);
+		dst->datum.length = 0;
+
+		fr_cursor_init(&cursor, &src->vb_group);
+		while ((vb = fr_cursor_current(&cursor)) != NULL) {
+			fr_value_box_t *n = vb;
+
+			if (vb->type != FR_TYPE_OCTETS) {
+				n = talloc_zero(ctx, fr_value_box_t);
+				if (!n) return -1;
+
+				if (fr_value_box_cast(n, n, FR_TYPE_OCTETS, NULL, vb) < 0) {
+					return -1;
+				}
+			}
+
+			if (fr_value_box_append_mem(dst, n->vb_octets, n->vb_length, n->tainted) < 0) return -1;
+
+			if (n != vb) talloc_free(n);
+			fr_cursor_next(&cursor);
+		}
+
+		return 0;
+	}
 
 	/*
 	 *	<4 uint8s address>
@@ -4605,13 +4668,32 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		  /* FALL THROUGH */
 #endif
 
+	case FR_TYPE_GROUP:
+	{
+		fr_value_box_t *vb;
+
+		vb = talloc_zero(ctx, fr_value_box_t);
+		if (!vb) return NULL;
+
+		/*
+		 *	Be lazy by just converting it to a string, and then printing the string.
+		 */
+		if (fr_value_box_cast_to_strvalue(ctx, vb, FR_TYPE_STRING, NULL, data->vb_group) < 0) {
+			talloc_free(vb);
+			return NULL;
+		}
+
+		p = fr_value_box_asprint(ctx, vb, quote);
+		talloc_free(vb);
+	}
+		break;
+
 	/*
 	 *	Don't add default here
 	 */
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_BAD:
 		(void)fr_cond_assert(0);
@@ -5164,6 +5246,21 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	}
 		break;
 
+	case FR_TYPE_GROUP:
+	{
+		fr_cursor_t cursor;
+		fr_value_box_t *vb;
+
+		fr_cursor_init(&cursor, &data->vb_group);
+		while ((vb = fr_cursor_current(&cursor)) != NULL) {
+			len = fr_value_box_snprint(p, end - p, vb, quote);
+			p += len;
+			if (p >= end) break;
+			fr_cursor_next(&cursor);
+		}
+	}
+		break;
+
 	/*
 	 *	Don't add default here
 	 */
@@ -5174,7 +5271,6 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_STRUCT:
-	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
 		(void)fr_cond_assert(0);
