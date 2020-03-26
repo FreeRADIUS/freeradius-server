@@ -176,7 +176,7 @@ ${1}/${2}/${3}.crt: ${1}/${2}/${3}.pem
 	@touch $$@
 
 ifneq "${3}" "ca"
-#  client, server, and OCSP certs need the CA key.
+#  client, server, and OCSP certs need the CA cert.
 ${1}/${2}/${3}.crt: ${1}/${2}/ca.crt
 
 ${1}/${2}/${3}.crt: ${1}/${2}/${3}.csr
@@ -190,7 +190,7 @@ endef
 #
 $(foreach dir,rsa ecc,$(foreach file,ca server client ocsp,$(eval $(call BUILD_CERT,${top_srcdir}/raddb/certs,${dir},${file}))))
 
-${top_srcdir}/raddb/certs/dh:
+${top_srcdir}/raddb/certs/dh: ${top_srcdir}/raddb/certs/passwords.mk
 	${Q}echo CERT-DH $@
 	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ $(notdir $@)
 
