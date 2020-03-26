@@ -96,7 +96,7 @@ for i in $(dirname $0)/deps/*.tar.gz; do
 	if [ ! -e "$d" ]; then
 		echo "Extracting $b to $d"
 		sudo -Es mkdir "$d" || exit 1
-		sudo -Es tar -xzf $i -C "$d" || exit 1
+		sudo -Es tar -xzf $i -C "/usr/local" || exit 1
 	else
 	    echo "Skipping $b, already installed"
 	fi
