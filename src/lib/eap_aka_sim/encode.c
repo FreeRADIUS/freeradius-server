@@ -55,7 +55,7 @@ RCSID("$Id$")
  */
 
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
-			      fr_dict_attr_t const **da_stack, unsigned int depth,
+			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
 static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
@@ -295,18 +295,18 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
  *	< 0, failure.
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
-			    fr_dict_attr_t const **da_stack, int depth,
+			    fr_da_stack_t *da_stack, int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
-	fr_dict_attr_t const	*da = da_stack[depth];
+	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	if (unlikely(da_stack[depth + 1] != NULL)) {
+	if (unlikely(da_stack->da[depth + 1] != NULL)) {
 		fr_strerror_printf("%s: Encoding value but not at top of stack", __FUNCTION__);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
@@ -319,7 +319,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack[depth]->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	default:
@@ -607,7 +607,7 @@ done:
  *
  */
 static ssize_t encode_array(uint8_t *out, size_t outlen,
-			    fr_dict_attr_t const **da_stack, int depth,
+			    fr_da_stack_t *da_stack, int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx)
 {
 	uint8_t			*p = out, *end = p + outlen;
@@ -615,7 +615,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 	size_t			pad_len;
 	size_t			element_len;
 	uint16_t		actual_len;
-	fr_dict_attr_t const	*da = da_stack[depth];
+	fr_dict_attr_t const	*da = da_stack->da[depth];
 	rad_assert(da->flags.array);
 
 	p += 2;
@@ -684,7 +684,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
  * If it's a standard attribute, then vp->da->attr == attribute.
  * Otherwise, attribute may be something else.
  */
-static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **da_stack, unsigned int depth,
+static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx)
 {
 	size_t			pad_len;
@@ -694,17 +694,17 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	switch (da_stack[depth]->type) {
+	switch (da_stack->da[depth]->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack[depth]->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	default:
-		if (((fr_dict_vendor_num_by_da(da_stack[depth]) == 0) && (da_stack[depth]->attr == 0)) ||
-		    (da_stack[depth]->attr > 255)) {
+		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
+		    (da_stack->da[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
-					   da_stack[depth]->attr);
+					   da_stack->da[depth]->attr);
 			return PAIR_ENCODE_FATAL_ERROR;
 		}
 		break;
@@ -721,7 +721,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 	 *	zero and fill any subfields like actual
 	 *	length.
 	 */
-	da = da_stack[depth];
+	da = da_stack->da[depth];
 
 	p += 2;	/* Leave space for attr + len */
 	if (da->flags.array) {
@@ -752,13 +752,13 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 }
 
 static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
-					  fr_dict_attr_t const **da_stack, unsigned int depth,
+					  fr_da_stack_t *da_stack, unsigned int depth,
 					  fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
 	uint8_t			*p = out, *end = p + outlen, *value;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
-	fr_dict_attr_t const	*da = da_stack[depth];
+	fr_dict_attr_t const	*da = da_stack->da[depth];
 
 	CHECK_FREESPACE(outlen, 2);
 	*p++ = 0;	/* Reserved (0) */
@@ -779,7 +779,7 @@ static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
-		if (da_stack[depth + 1]->type == FR_TYPE_TLV) {
+		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
 			slen = encode_tlv_hdr(p, sublen, da_stack, depth + 1, cursor, encoder_ctx);
 		} else {
 			slen = encode_rfc_hdr(p, sublen, da_stack, depth + 1, cursor, encoder_ctx);
@@ -798,7 +798,7 @@ static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
 		 *	rebuilding the TLV Stack, the attribute
 		 *	at this depth is the same.
 		 */
-		if (da != da_stack[depth]) break;
+		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) break;
 		vp = fr_cursor_current(cursor);
 	}
 
@@ -819,7 +819,7 @@ static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
 }
 
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
-			      fr_dict_attr_t const **da_stack, unsigned int depth,
+			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx)
 {
 	unsigned int		total_len;
@@ -830,13 +830,13 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	if (da_stack[depth]->type != FR_TYPE_TLV) {
+	if (da_stack->da[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack[depth]->type, "?Unknown?"));
+				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	if (!da_stack[depth + 1]) {
+	if (!da_stack->da[depth + 1]) {
 		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
@@ -846,7 +846,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	 *	The ASCII art in the RFCs the attributes in
 	 *	this order.
 	 */
-	if (!da_stack[depth]->flags.extra && da_stack[depth]->flags.subtype) {
+	if (!da_stack->da[depth]->flags.extra && da_stack->da[depth]->flags.subtype) {
 		len = encode_iv(out, outlen, encoder_ctx);
 		if (len < 0) return len;
 
@@ -857,7 +857,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	if (outlen < 4) return 0;
 	if (outlen > SIM_MAX_ATTRIBUTE_VALUE_LEN) outlen = SIM_MAX_ATTRIBUTE_VALUE_LEN;
 
-	da = da_stack[depth];
+	da = da_stack->da[depth];
 	len = encode_tlv_internal(p + 2, outlen - 2, da_stack, depth, cursor, encoder_ctx);
 	if (len <= 0) return len;
 
@@ -882,7 +882,7 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 	ssize_t			slen;
 	size_t			attr_len;
 
-	fr_dict_attr_t const	*da_stack[FR_DICT_MAX_TLV_STACK + 1];
+	fr_da_stack_t		da_stack;
 	fr_dict_attr_t const	*da = NULL;
 	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
@@ -916,30 +916,31 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 	 *	Fast path for the common case.
 	 */
 	if ((vp->da->parent == packet_ctx->root) && !vp->da->flags.concat && (vp->vp_type != FR_TYPE_TLV)) {
-		da_stack[0] = vp->da;
-		da_stack[1] = NULL;
-		FR_PROTO_STACK_PRINT(da_stack, 0);
-		return encode_rfc_hdr(out, attr_len, da_stack, 0, cursor, encoder_ctx);
+		da_stack.da[0] = vp->da;
+		da_stack.da[1] = NULL;
+		da_stack.depth = 1;
+		FR_PROTO_STACK_PRINT(&da_stack, 0);
+		return encode_rfc_hdr(out, attr_len, &da_stack, 0, cursor, encoder_ctx);
 	}
 
 	/*
 	 *	Do more work to set up the stack for the complex case.
 	 */
-	fr_proto_da_stack_build(da_stack, vp->da);
-	FR_PROTO_STACK_PRINT(da_stack, 0);
+	fr_proto_da_stack_build(&da_stack, vp->da);
+	FR_PROTO_STACK_PRINT(&da_stack, 0);
 
-	da = da_stack[0];
+	da = da_stack.da[0];
 
 	switch (da->type) {
 	/*
 	 *	Supported types
 	 */
 	default:
-		slen = encode_rfc_hdr(out, attr_len, da_stack, 0, cursor, encoder_ctx);
+		slen = encode_rfc_hdr(out, attr_len, &da_stack, 0, cursor, encoder_ctx);
 		break;
 
 	case FR_TYPE_TLV:
-		slen = encode_tlv_hdr(out, attr_len, da_stack, 0, cursor, encoder_ctx);
+		slen = encode_tlv_hdr(out, attr_len, &da_stack, 0, cursor, encoder_ctx);
 		break;
 	}
 

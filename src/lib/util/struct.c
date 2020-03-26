@@ -411,7 +411,7 @@ static int put_bits(uint8_t *p, uint8_t const *end, int start_bit, int num_bits,
 
 
 ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
-			     fr_dict_attr_t const **da_stack, unsigned int depth,
+			     fr_da_stack_t *da_stack, unsigned int depth,
 			     fr_cursor_t *cursor, void *encoder_ctx,
 			     fr_encode_value_t encode_value)
 {
@@ -429,7 +429,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	}
 
 	VP_VERIFY(vp);
-	parent = da_stack[depth];
+	parent = da_stack->da[depth];
 
 	if (parent->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,

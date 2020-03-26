@@ -458,7 +458,7 @@ static fr_snmp_map_t snmp_iso[] = {
 };
 
 static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
-			    fr_dict_attr_t const *da_stack[], unsigned int depth,
+			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor,
 			    fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op);
 
@@ -509,20 +509,20 @@ static fr_snmp_map_t const *snmp_map_search(fr_snmp_map_t const map[], fr_dict_a
  * @param[in] depth at which to start rewriting.
  * @param[in] map at this level.
  */
-static void snmp_next_leaf(fr_dict_attr_t const *da_stack[], unsigned int depth, fr_snmp_map_t const *map)
+static void snmp_next_leaf(fr_da_stack_t *da_stack, unsigned int depth, fr_snmp_map_t const *map)
 {
 	uint32_t i;
 	fr_snmp_map_t const *map_p = map;
 
 	for (i = depth; (i < FR_DICT_MAX_TLV_STACK) && map_p; i++) {
-		da_stack[i] = map_p->da;
+		da_stack->da[i] = map_p->da;
 		map_p = map_p->child;
 	}
-	da_stack[i] = NULL;
+	da_stack->depth = i;
 }
 
 static ssize_t snmp_process_index(fr_cursor_t *out, REQUEST *request,
-				  fr_dict_attr_t const *da_stack[], unsigned int depth,
+				  fr_da_stack_t *da_stack, unsigned int depth,
 				  fr_cursor_t cursor,
 				  fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op,
 				  uint32_t index_num)
@@ -613,7 +613,7 @@ static ssize_t snmp_process_index(fr_cursor_t *out, REQUEST *request,
 }
 
 static ssize_t snmp_process_index_attr(fr_cursor_t *out, REQUEST *request,
-				       fr_dict_attr_t const *da_stack[], unsigned int depth,
+				       fr_da_stack_t *da_stack, unsigned int depth,
 				       fr_cursor_t *cursor,
 				       fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
@@ -640,10 +640,10 @@ static ssize_t snmp_process_index_attr(fr_cursor_t *out, REQUEST *request,
 		goto error;
 	}
 
-	if (da_stack[depth]->type != FR_TYPE_UINT32) {
+	if (da_stack->da[depth]->type != FR_TYPE_UINT32) {
 		fr_strerror_printf("Bad index attribute: Index attribute \"%s\" should be a integer, "
-				   "but is a %s", da_stack[depth]->name,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack[depth]->type, "?Unknown?"));
+				   "but is a %s", da_stack->da[depth]->name,
+				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
 		goto error;
 	}
 
@@ -672,7 +672,7 @@ static ssize_t snmp_process_index_attr(fr_cursor_t *out, REQUEST *request,
 }
 
 static ssize_t snmp_process_tlv(fr_cursor_t *out, REQUEST *request,
-				fr_dict_attr_t const *da_stack[], unsigned int depth,
+				fr_da_stack_t *da_stack, unsigned int depth,
 				fr_cursor_t *cursor,
 				fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
@@ -685,7 +685,7 @@ static ssize_t snmp_process_tlv(fr_cursor_t *out, REQUEST *request,
 	 *	Return element in map that matches the da at this
 	 *	level in the da_stack.
 	 */
-	map_p = snmp_map_search(map, da_stack[depth]);
+	map_p = snmp_map_search(map, da_stack->da[depth]);
 	if (!map_p) {
 	invalid:
 		fr_strerror_printf("Invalid OID: Match stopped here");
@@ -715,7 +715,7 @@ static ssize_t snmp_process_tlv(fr_cursor_t *out, REQUEST *request,
 					  da_stack, depth,
 					  *cursor,
 					  map_p, snmp_ctx, snmp_op,
-					  da_stack[depth]->attr);
+					  da_stack->da[depth]->attr);
 	}
 
 	for (;;) {
@@ -734,7 +734,7 @@ static ssize_t snmp_process_tlv(fr_cursor_t *out, REQUEST *request,
 }
 
 static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
-				 fr_dict_attr_t const *da_stack[], unsigned int depth,
+				 fr_da_stack_t *da_stack, unsigned int depth,
 				 fr_cursor_t *cursor,
 				 fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
@@ -749,7 +749,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 	 *	Return element in map that matches the da at this
 	 *	level in the da_stack.
 	 */
-	map_p = snmp_map_search(map, da_stack[depth]);
+	map_p = snmp_map_search(map, da_stack->da[depth]);
 	if (!map_p) {
 		fr_strerror_printf("Invalid OID: Match stopped here");
 	error:
@@ -872,7 +872,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
  *	- <0 the depth at which an error occurred, as a negative integer.
  */
 static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
-			    fr_dict_attr_t const *da_stack[], unsigned int depth,
+			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor,
 			    fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
@@ -885,7 +885,7 @@ static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
 	 *	we're performing a getNext operation, in which
 	 *	case we fake the rest of the stack.
 	 */
-	if (!da_stack[depth]) {
+	if (!da_stack->da[depth]) {
 		if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) {
 			fr_strerror_printf("Invalid OID: Not a leaf");
 			return -(ssize_t)(depth - 1);
@@ -897,20 +897,20 @@ static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
 	 *	It's an index attribute, use the value of
 	 *	the index attribute to traverse the index.
 	 */
-	if (da_stack[depth]->attr == 0) return snmp_process_index_attr(out, request,
-									da_stack, depth,
-									cursor,
-									map, snmp_ctx, snmp_op);
+	if (da_stack->da[depth]->attr == 0) return snmp_process_index_attr(out, request,
+									   da_stack, depth,
+									   cursor,
+									   map, snmp_ctx, snmp_op);
 
 	/*
 	 *	It's a TLV, recurse, and locate the map
 	 *	matching the next deepest DA in the
 	 *	da_stack.
 	 */
-	if (da_stack[depth]->type == FR_TYPE_TLV) return snmp_process_tlv(out, request,
-									   da_stack, depth,
-									   cursor,
-									   map, snmp_ctx, snmp_op);
+	if (da_stack->da[depth]->type == FR_TYPE_TLV) return snmp_process_tlv(out, request,
+									      da_stack, depth,
+									      cursor,
+									      map, snmp_ctx, snmp_op);
 
 	/*
 	 *	Must be a leaf, call the appropriate get/set function
@@ -930,7 +930,7 @@ int fr_snmp_process(REQUEST *request)
 	char			oid_str[FR_DICT_MAX_TLV_STACK * 4];	/* .<num>{1,3} */
 	size_t			oid_len, len;
 
-	fr_dict_attr_t const	*da_stack[FR_DICT_MAX_TLV_STACK + 1];
+	fr_da_stack_t		da_stack;
 	unsigned int		depth;
 	ssize_t			ret;
 
@@ -986,20 +986,20 @@ int fr_snmp_process(REQUEST *request)
 	for (vp = fr_cursor_iter_by_ancestor_init(&request_cursor, &request->packet->vps, attr_snmp_root);
 	     vp;
 	     vp = fr_cursor_next(&request_cursor)) {
-		fr_proto_da_stack_build(da_stack, vp->da);
+		fr_proto_da_stack_build(&da_stack, vp->da);
 
 		/*
 		 *	Wind to the frame in the TLV stack that matches our
 		 *	SNMP root.
 		 */
-		for (depth = 0; da_stack[depth]; depth++) if (attr_snmp_root == da_stack[depth]) break;
+		for (depth = 0; da_stack.da[depth]; depth++) if (attr_snmp_root == da_stack.da[depth]) break;
 
 		/*
 		 *	Any attribute returned by fr_cursor_next_by_ancestor
 		 *	should have the SNMP root attribute as an ancestor.
 		 */
-		rad_assert(da_stack[depth]);
-		rad_assert(da_stack[depth] == attr_snmp_root);
+		rad_assert(da_stack.da[depth]);
+		rad_assert(da_stack.da[depth] == attr_snmp_root);
 
 		/*
 		 *	Operator attribute acts as a request delimiter
@@ -1027,7 +1027,7 @@ int fr_snmp_process(REQUEST *request)
 		 *	Returns depth (as negative integer) at which the error occurred
 		 */
 		ret = snmp_process(&out_cursor, request,
-				   da_stack, depth,
+				   &da_stack, depth,
 				   &request_cursor,
 				   snmp_iso, NULL, op->vp_uint32);
 		if (ret < 0) {
@@ -1036,11 +1036,10 @@ int fr_snmp_process(REQUEST *request)
 			oid_str[0] = '.';
 
 			/* Get the length of the matching part */
-			oid_len = fr_dict_print_attr_oid(NULL, oid_str + 1, sizeof(oid_str) - 1, attr_snmp_root, da_stack[-(ret)]);
+			oid_len = fr_dict_print_attr_oid(NULL, oid_str + 1, sizeof(oid_str) - 1, attr_snmp_root, da_stack.da[-(ret)]);
 
 			/* Get the last frame in the current stack */
-			for (depth = 0; da_stack[depth + 1]; depth++);
-			len = fr_dict_print_attr_oid(NULL, oid_str + 1, sizeof(oid_str) - 1, attr_snmp_root, da_stack[depth]);
+			len = fr_dict_print_attr_oid(NULL, oid_str + 1, sizeof(oid_str) - 1, attr_snmp_root, da_stack.da[da_stack.depth - 1]);
 
 			/* Use the difference in OID string length to place the marker */
 			REMARKER(oid_str, oid_len - (len - oid_len), "%s", fr_strerror());

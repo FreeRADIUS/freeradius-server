@@ -46,13 +46,22 @@ do { \
 #  define FR_PROTO_STACK_PRINT(_x, _y)
 #endif
 
+/** Structure for holding the stack of dictionary attributes being encoded
+ *
+ */
+typedef struct {
+	fr_dict_attr_t const	*da[FR_DICT_MAX_TLV_STACK + 1];		//!< The stack.
+	uint8_t			depth;					//!< Deepest attribute in the stack.
+} fr_da_stack_t;
 void fr_proto_print(char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
 
 void fr_proto_print_hex_data(char const *file, int line, uint8_t const *data, size_t data_len, char const *fmt, ...);
 
-void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_dict_attr_t const **da_stack, unsigned int depth);
+void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da_stack_t *da_stack, unsigned int depth);
 
-void fr_proto_da_stack_build(fr_dict_attr_t const **da_stack, fr_dict_attr_t const *da);
+void fr_proto_da_stack_build(fr_da_stack_t *stack, fr_dict_attr_t const *da);
+
+void fr_proto_da_stack_partial_build(fr_da_stack_t *stack, fr_dict_attr_t const *parent, fr_dict_attr_t const *da);
 
 #ifdef __cplusplus
 }

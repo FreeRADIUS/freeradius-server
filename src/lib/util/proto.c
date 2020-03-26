@@ -54,41 +54,73 @@ void fr_proto_print_hex_data(char const *file, int line, uint8_t const *data, si
 }
 DIAG_ON(format-nonliteral)
 
-void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_dict_attr_t const **da_stack, unsigned int depth)
+void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da_stack_t *da_stack, unsigned int depth)
 {
-	int		i;
-
-	for (i = 0; (i < FR_DICT_MAX_TLV_STACK) && da_stack[i]; i++);
-	if (!i) return;
+	int		i = da_stack->depth;
 
 	fr_log(&default_log, L_DBG, file, line, "stk: Currently in %s", func);
 	for (i--; i >= 0; i--) {
 		fr_log(&default_log, L_DBG, file, line,
 		       "stk: %s [%i] %s: %s, vendor: 0x%x (%u), attr: 0x%x (%u)",
 		       (i == (int)depth) ? ">" : " ", i,
-		       fr_table_str_by_value(fr_value_box_type_table, da_stack[i]->type, "?Unknown?"),
-		       da_stack[i]->name,
-		       fr_dict_vendor_num_by_da(da_stack[i]), fr_dict_vendor_num_by_da(da_stack[i]),
-		       da_stack[i]->attr, da_stack[i]->attr);
+		       fr_table_str_by_value(fr_value_box_type_table, da_stack->da[i]->type, "?Unknown?"),
+		       da_stack->da[i]->name,
+		       fr_dict_vendor_num_by_da(da_stack->da[i]), fr_dict_vendor_num_by_da(da_stack->da[i]),
+		       da_stack->da[i]->attr, da_stack->da[i]->attr);
 	}
 	fr_log(&default_log, L_DBG, file, line, "stk:");
 }
 
-void fr_proto_da_stack_build(fr_dict_attr_t const **da_stack, fr_dict_attr_t const *da)
+/** Build a complete TLV stack from the da back to the root
+ *
+ * @param[out] stack	to populate.
+ * @param[in] da	to build the stack for.
+ */
+void fr_proto_da_stack_build(fr_da_stack_t *stack, fr_dict_attr_t const *da)
 {
-	int i;
-	fr_dict_attr_t const *da_p;
-
-	memset(da_stack, 0, sizeof(*da_stack) * (FR_DICT_MAX_TLV_STACK + 1));
+	fr_dict_attr_t const	*da_p, **da_o;
 
 	if (!da) return;
 
-	/*
-	 *	We've finished encoding one nested structure
-	 *	now we need to rebuild the da_stack and determine
-	 *	where the common point is.
-	 */
-	for (i = da->depth, da_p = da;
-	     da_p->parent && (i >= 0);
-	     i--, da_p = da_p->parent) da_stack[i - 1] = da_p;
+	da_p = da;
+	da_o = stack->da + (da->depth - 1);
+
+	while (da_o >= stack->da) {
+		*da_o-- = da_p;
+		da_p = da_p->parent;
+	}
+
+	stack->depth = da->depth;
+	stack->da[stack->depth] = NULL;
+}
+
+/** Complete the tlv stack for a child attribute
+ *
+ * @param[out] stack		to populate.
+ * @param[in] parent		to populate from.
+ * @param[in] da		to populate to.
+ */
+void fr_proto_da_stack_partial_build(fr_da_stack_t *stack, fr_dict_attr_t const *parent, fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t const	*da_p, **da_q, **da_o;
+
+#ifndef NDEBUG
+	if (!fr_cond_assert(fr_dict_parent_common(parent, da, true) == parent)) {
+		fr_strerror_printf("Expected \"%s\" to be a descendent of \"%s\" but it isn't",
+				   da->name, parent->name);
+		return;
+	}
+#endif
+
+	da_p = da;
+	da_q = stack->da + (parent->depth - 1);
+	da_o = stack->da + (da->depth - 1);
+
+	while (da_o >= da_q) {
+		*da_o-- = da_p;
+		da_p = da_p->parent;
+	}
+
+	stack->depth = da->depth;
+	stack->da[stack->depth] = NULL;
 }
