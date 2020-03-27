@@ -1,23 +1,92 @@
 #
 #  Test if the "users" file works
 #
-bob	Cleartext-Password := "hello"
-	Reply-Message := "success"
 
-doug	Cleartext-Password := "goodbye"
-	Reply-Message := "success"
-	
-famous	Cleartext-Password := "bradpitt"
-	Fall-Through = yes
 
-unused	Cleartext-Password := "jabberwocky"
-	Filter-Id := "fail"
+#
+#  Basic syntax tests with comments. Parsing only.
+#
 
-famous	
-	Reply-Message := "success"
-
-user	Cleartext-Password := "hello" # comment!
+user    Cleartext-Password := "hello" # comment!
 
 
 user2   # comment!
-	Filter-Id := "24"
+        Reply-Message := "24"
+
+
+#
+#  Setting ":=" of reply and control items
+#
+
+bob  Cleartext-Password := "hello"
+     Reply-Message := "success"
+
+
+#
+#  Detect erroneous Fall-Through
+#
+
+doug  Cleartext-Password := "goodbye"
+      Reply-Message := "success"
+
+doug
+      Reply-Message := "unreachable"
+
+
+#
+#  Fall-Through across a non-matching entry
+#
+
+famous  Cleartext-Password := "bradpitt"
+        Fall-Through = yes
+
+unused  Cleartext-Password := "jabberwocky"
+        Reply-Message := "fail"
+
+famous
+        Reply-Message := "success"
+
+
+#
+#  Modification of the reply list
+#
+
+addreply  Cleartext-Password := "testing123"
+          Reply-Message := "success1",
+          Fall-Through = yes
+
+addreply
+          Reply-Message += "success2"
+
+
+subreply  Cleartext-Password := "testing123"
+          Reply-Message := "success1",
+          Reply-Message += "success2",
+          Reply-Message += "success3",
+          Fall-Through = yes
+
+subreply  Cleartext-Password := "testing123"
+          Reply-Message -= "success2"
+
+
+filterreply  Cleartext-Password := "testing123"
+             Reply-Message := "success1",
+             Reply-Message += "success2",
+             Fall-Through = yes
+
+filterreply  Cleartext-Password := "testing123"
+             Reply-Message !* ANY
+
+
+#
+#  Addition "+=" to the control list
+#
+#  Note: Set ":=" of control items is already tested with Cleartext-Password
+#  Note: Filtering "!*" does not apply to control items as this would overload
+#        the operator syntax since "!*" checks that no such attribute in the
+#        request.
+
+addcontrol  Cleartext-Password := "testing123", Reply-Message := "success1"
+            Fall-Through = yes
+
+addcontrol  Reply-Message += "success2"
