@@ -78,8 +78,8 @@ void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da
  *			pair before the one returned, or the last pair in the list
  *			if no matching pairs found.
  * @param[in] to_eval	The VALUE_PAIR after cursor->current.  Will be checked to
- *			see if it matches the specified fr_dict_attr_t.
- * @param[in] uctx	The fr_dict_attr_t to search for.
+ *			see if it matches the specified fr_dict_t.
+ * @param[in] uctx	The fr_dict_t to search for.
  * @return
  *	- Next matching VALUE_PAIR.
  *	- NULL if not more matching VALUE_PAIRs could be found.
