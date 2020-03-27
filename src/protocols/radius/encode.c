@@ -1224,7 +1224,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 
 	if (!cursor || !out || (outlen <= 2)) return -1;
 
-	vp = fr_cursor_head(cursor);
+	vp = fr_cursor_current(cursor);
 	if (!vp) return 0;
 
 	VP_VERIFY(vp);
