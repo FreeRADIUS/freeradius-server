@@ -1501,8 +1501,10 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 		RETURN_OK_WITH_ERROR();
 	}
 
-	fr_cursor_init(&cursor, &head);
-	while ((vp = fr_cursor_current(&cursor))) {
+	for (vp = fr_cursor_talloc_iter_init(&cursor, &head, fr_proto_next_encodable,
+					     cc->active_dict ? cc->active_dict : cc->config->dict, VALUE_PAIR);
+	     vp;
+	     vp = fr_cursor_current(&cursor)) {
 		slen = tp->func(enc_p, enc_end - enc_p, &cursor, encoder_ctx);
 		cc->last_ret = slen;
 		if (slen < 0) {
