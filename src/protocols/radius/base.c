@@ -969,7 +969,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	fr_cursor_init(&cursor, &vps);
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_radius, VALUE_PAIR);
 	while ((vp = fr_cursor_current(&cursor))) {
 		size_t		last_len, room;
 		char const	*last_name = NULL;

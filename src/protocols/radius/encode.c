@@ -42,42 +42,6 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
-static inline bool is_encodable(VALUE_PAIR const *vp)
-{
-	if (!vp) return false;
-	if (vp->da->flags.internal) return false;
-
-	return true;
-}
-
-/** Find the next attribute to encode
- *
- * @param cursor to iterate over.
- * @return encodable VALUE_PAIR, or NULL if none available.
- */
-static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor)
-{
-	VALUE_PAIR *vp;
-
-	do { vp = fr_cursor_next(cursor); } while (vp && !is_encodable(vp));
-	return fr_cursor_current(cursor);
-}
-
-/** Determine if the current attribute is encodable, or find the first one that is
- *
- * @param cursor to iterate over.
- * @return encodable VALUE_PAIR, or NULL if none available.
- */
-static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor)
-{
-	VALUE_PAIR *vp;
-
-	vp = fr_cursor_current(cursor);
-	if (is_encodable(vp)) return vp;
-
-	return next_encodable(cursor);
-}
-
 /** Encode a CHAP password
  *
  * @param[out] out		An output buffer of 17 bytes (id + digest).
@@ -556,7 +520,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	be written.
 	 */
 	if (!data || (len == 0)) {
-		vp = next_encodable(cursor);
+		vp = fr_cursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return 0;
 	}
@@ -633,7 +597,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
 	 */
-	vp = next_encodable(cursor);
+	vp = fr_cursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return len + (ptr - out);
@@ -861,7 +825,7 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 		len -= left;
 	}
 
-	vp = next_encodable(cursor);
+	vp = fr_cursor_next(cursor);
 
 	/*
 	 *	@fixme: attributes with 'concat' MUST of type
@@ -1208,7 +1172,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_da_stack_t *da_stack, 
 
 		FR_PROTO_HEX_DUMP(out, 2, "header rfc");
 
-		vp = next_encodable(cursor);
+		vp = fr_cursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return out[1];
 	}
@@ -1226,7 +1190,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_da_stack_t *da_stack, 
 		FR_PROTO_HEX_DUMP(out + 2, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH, "message-authenticator");
 		FR_PROTO_HEX_DUMP(out, 2, "header rfc");
 
-		vp = next_encodable(cursor);
+		vp = fr_cursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return out[1];
 	}
@@ -1260,7 +1224,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 
 	if (!cursor || !out || (outlen <= 2)) return -1;
 
-	vp = first_encodable(cursor);
+	vp = fr_cursor_head(cursor);
 	if (!vp) return 0;
 
 	VP_VERIFY(vp);
@@ -1280,7 +1244,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 		if (!fr_dict_attr_is_top_level(vp->da) ||
 		    ((vp->da->attr != FR_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != FR_MESSAGE_AUTHENTICATOR))) {
-			next_encodable(cursor);
+			fr_cursor_next(cursor);
 			return 0;
 		}
 	}

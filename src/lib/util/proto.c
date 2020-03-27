@@ -22,6 +22,7 @@
  */
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/pair.h>
 
 void fr_proto_print(char const *file, int line, char const *fmt, ...)
 {
@@ -71,7 +72,36 @@ void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da
 	fr_log(&default_log, L_DBG, file, line, "stk:");
 }
 
-/** Build a complete TLV stack from the da back to the root
+/** Implements the default iterator to encode pairs belonging to a specific dictionary that are not internal
+ *
+ * @param[in,out] prev	The VALUE_PAIR before curr. Will be updated to point to the
+ *			pair before the one returned, or the last pair in the list
+ *			if no matching pairs found.
+ * @param[in] to_eval	The VALUE_PAIR after cursor->current.  Will be checked to
+ *			see if it matches the specified fr_dict_attr_t.
+ * @param[in] uctx	The fr_dict_attr_t to search for.
+ * @return
+ *	- Next matching VALUE_PAIR.
+ *	- NULL if not more matching VALUE_PAIRs could be found.
+ */
+void *fr_proto_next_encodable(void **prev, void *to_eval, void *uctx)
+{
+	VALUE_PAIR	*c, *p;
+	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
+
+	if (!to_eval) return NULL;
+
+	for (p = *prev, c = to_eval; c; p = c, c = c->next) {
+		VP_VERIFY(c);
+		if ((c->da->dict == dict) && (!c->da->flags.internal)) break;
+	}
+
+	*prev = p;
+
+	return c;
+}
+
+/** Build a complete DA stack from the da back to the root
  *
  * @param[out] stack	to populate.
  * @param[in] da	to build the stack for.
@@ -94,7 +124,7 @@ void fr_proto_da_stack_build(fr_da_stack_t *stack, fr_dict_attr_t const *da)
 	stack->da[stack->depth] = NULL;
 }
 
-/** Complete the tlv stack for a child attribute
+/** Complete the DA stack for a child attribute
  *
  * @param[out] stack		to populate.
  * @param[in] parent		to populate from.

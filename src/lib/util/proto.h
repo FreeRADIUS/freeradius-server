@@ -57,6 +57,8 @@ void fr_proto_print(char const *file, int line, char const *fmt, ...) CC_HINT(fo
 
 void fr_proto_print_hex_data(char const *file, int line, uint8_t const *data, size_t data_len, char const *fmt, ...);
 
+void *fr_proto_next_encodable(void **prev, void *to_eval, void *uctx);
+
 void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da_stack_t *da_stack, unsigned int depth);
 
 void fr_proto_da_stack_build(fr_da_stack_t *stack, fr_dict_attr_t const *da);
