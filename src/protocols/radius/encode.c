@@ -42,18 +42,12 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
-
-/** Determine if the current attribute is encodable, or find the first one that is
- *
- * @param cursor to iterate over.
- * @return encodable VALUE_PAIR, or NULL if none available.
- */
-static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor)
+static inline bool is_encodable(VALUE_PAIR const *vp)
 {
-	VALUE_PAIR *vp;
+	if (!vp) return false;
+	if (vp->da->flags.internal) return false;
 
-	for (vp = fr_cursor_current(cursor); vp && vp->da->flags.internal; vp = fr_cursor_next(cursor));
-	return fr_cursor_current(cursor);
+	return true;
 }
 
 /** Find the next attribute to encode
@@ -65,12 +59,23 @@ static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor)
 {
 	VALUE_PAIR *vp;
 
-	for (;;) {
-		vp = fr_cursor_next(cursor);
-		if (!vp || !vp->da->flags.internal) break;
-	}
-
+	do { vp = fr_cursor_next(cursor); } while (vp && !is_encodable(vp));
 	return fr_cursor_current(cursor);
+}
+
+/** Determine if the current attribute is encodable, or find the first one that is
+ *
+ * @param cursor to iterate over.
+ * @return encodable VALUE_PAIR, or NULL if none available.
+ */
+static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor)
+{
+	VALUE_PAIR *vp;
+
+	vp = fr_cursor_current(cursor);
+	if (is_encodable(vp)) return vp;
+
+	return next_encodable(cursor);
 }
 
 /** Encode a CHAP password
