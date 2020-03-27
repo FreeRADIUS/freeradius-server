@@ -77,7 +77,7 @@ static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 	VALUE_PAIR		*vp;
 	fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
 
-	while ((vp = fr_cursor_next(cursor))) if (is_encodable(packet_ctx->root, vp)) break;
+	do { vp = fr_cursor_next(cursor); } while (vp && !is_encodable(packet_ctx->root, vp));
 	return fr_cursor_current(cursor);
 }
 
