@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+User-Name = "subreply"
+User-Password = "testing123"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+Reply-Message == 'success1'
+Reply-Message == 'success3'
