@@ -1,0 +1,80 @@
+#
+#  Tests for the internal decoder
+#
+proto internal
+
+# Use the RADIUS dictionary for now.  It doesn't really matter which one we use so long as it has
+# complex attributes.
+proto-dictionary radius
+
+# A very simple string attribute
+decode-pair 00 01 03 62 6f 62
+match User-Name = "bob"
+returned
+match 6
+
+# Same string attribute but now marked as "tainted" (no visible difference)
+decode-pair 02 01 03 62 6f 62
+match User-Name = "bob"
+returned
+match 6
+
+# Same string attribute but now marked as "unknown"
+decode-pair 01 80 01 03 62 6f 62
+match Attr-1 = 0x626f62
+returned
+match 7
+
+# Internal attribute (tests the variable length type encoding)
+decode-pair 20 03 E8 04 00 00 00 0D
+match Packet-Type = Status-Client
+returned
+match 8
+
+# Internal attribute (tests the variable length field encoding) - value should be 300 bytes
+decode-pair 04 01 01 2C 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39
+match User-Name = "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+returned
+match 304
+
+#
+#  Edge cases
+#
+
+# Zero length string
+decode-pair 00 01 00
+match User-Name = ""
+returned
+match 3
+
+#
+#  Errors reachable in internal_decode_pair
+#
+# Flags extensions field would overrun value
+decode-pair 01 01 00
+match internal_decode_pair: Encoding byte invalid, fields overrun input data. 2 byte(s) remaining, need 3 byte(s)
+
+# Too few bytes to represent a value
+decode-pair 00 01
+match internal_decode_pair: Insufficient data.  Need 1 additional byte(s)
+returned
+match -2
+
+decode-pair 00 01 01
+match internal_decode_pair: Length field value overruns input data. 0 byte(s) remaining, need 1 byte(s)
+returned
+match -2
+
+# Length overrun
+decode-pair 00 01 04 62 6f 62
+match internal_decode_pair: Length field value overruns input data. 3 byte(s) remaining, need 4 byte(s)
+
+returned
+match -2
+
+#
+#
+#
+
+count
+match 40
