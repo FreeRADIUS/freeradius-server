@@ -185,7 +185,7 @@ static ssize_t internal_encode(uint8_t *out, size_t outlen,
 				FR_PROTO_STACK_PRINT(da_stack, depth);
 
 				slen = internal_encode(p, LEAVE_ROOM_FOR_LEN(end, p),
-							      da_stack, depth + 1, cursor, encoder_ctx);
+						       da_stack, depth + 1, cursor, encoder_ctx);
 				if (slen < 0) return slen;
 				p += slen;
 			}
