@@ -1,4 +1,9 @@
-FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
+FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
+FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
 	* New stored procedure for allocating IPs with PostgreSQL.
 	  Rates of 1500 IPs per second are now possible.
@@ -15,15 +20,24 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	  See raddb/sites-available/tls.  Patch from Boris Lytochkin.
 	* Update the WiMAX dictionary.
 	* Added ability to rlm_python(Python2) show a stacktrace from errors. #2979
-	* Add WiFi Alliance Policy OIDs.  See certs/xpextensions
+	* Add WiFi Alliance Policy OIDs.  See raddb/certs/xpextensions
 	  Patch from Stefan Winter.
 	* radmin now shows coa stats, too.
 	* Sample schema extensions for summarizing data in SQL.
 	  See mods-config/sql/main/*/process-radacct.sql
 	  Many patches from Terry Burton.
-	* Update ditionary.aerohive, dictionary.fortinet and
-	  dictionary.arista.
+	* Update dictionary.aerohive, dictionary.fortinet,
+	  dictionary.arista and dictionary.erx
+	* Added VAS Experts dictionary.
 	* Many updates to RPM and jenkins builds from Matthew Newton
+	* Added %C (time now in seconds) and %c (microsecond component of now)
+	  back-ported from the "master" branch.
+	* Add reload capability to systemd unit file in Debian and RedHat.
+	* Increase timestamp precision in postauth to maximum supported by each
+	  database and simplify (and make more consistent between drivers) the
+	  timestamps in SQL queries by using expansions.
+	  Patches from Terry Burton.
+	* Option to set dictionary path in raduat script. Patch from Terry Burton.
 
 	Bug fixes
 	* Various fixes found by PVS-Studio.
@@ -47,6 +61,11 @@ FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
 	* Reference sqlippool by it's correct name.  Fixes #3272
 	* Revert 3.0.20 patch which caused crashes on duplicate clients.
 	* Update WiMAX-MSK attribute.  Fixes #3280.
+	* Fix crash when trying to access non-existant regex capture group.
+	* Use timestamps (request or server) rather than SQL NOW() in
+	  accounting queries so that these are stable when replayed from a
+	  file buffer.
+	  Patches from Terry Burton.
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements
