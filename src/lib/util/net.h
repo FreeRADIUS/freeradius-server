@@ -200,9 +200,9 @@ static inline size_t fr_net_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
 {
 	size_t ret;
 
-	ret = ROUND_UP_DIV((size_t)fr_high_bit_uint64(num), 8);
+	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos_uint64(num), 8);
 	num = ntohll(num);
-	memcpy(out, &num, ret);	/* aligned */
+	memcpy(out, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);	/* aligned */
 
 	return ret;
 }
