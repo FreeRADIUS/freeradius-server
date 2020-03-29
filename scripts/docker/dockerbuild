@@ -6,6 +6,8 @@
 #  Example usage: ./dockerbuild build-debian9
 #
 
+set -eu
+
 usage ()
 {
 	[ "0$1" -gt 0 ] && exec 1>&2
