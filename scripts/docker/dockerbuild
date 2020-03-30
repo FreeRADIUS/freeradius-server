@@ -15,20 +15,21 @@ usage ()
 	echo "  -c	disable docker cache"
 	echo "  -j	build jenkins image instead of main image"
 	echo "  -l	build with clang rather than gcc"
+	echo "  -s	build with alternative git source"
+	echo "  -b	build with alternative git branch"
 	echo "  -h	this help"
 	exit $1
 }
 
-OPT_CACHE=
-OPT_JENKINS=
-OPT_CC=gcc
-while getopts "chjl" OPT
+while getopts "chjls:b:" OPT
 do
 	case $OPT in
-	c)	OPT_CACHE="--no-cache";;
-	h)	usage 0;;
+	c)	OPT_NOCACHE=1;;
 	j)	OPT_JENKINS=1;;
 	l)	OPT_CC=clang;;
+	s)	OPT_SOURCE="$OPTARG";;
+	b)	OPT_BRANCH="$OPTARG";;
+	h)	usage 0;;
 	*)	usage 1;;
 	esac
 done
@@ -50,23 +51,24 @@ OSNAME=$(echo "$DIR" | sed -e 's/^build-//')
 #
 [ ! -r "$DIR/Dockerfile.deps" ] && echo "'$DIR/Dockerfile.deps' does not exist" && exit 1
 echo Building $OSNAME source and dependency image
-docker build $OPT_CACHE "$DIR" -f "$DIR/Dockerfile.deps" -t freeradius/$OSNAME-deps
+docker build \
+	${OPT_NOCACHE:+--no-cache} \
+	${OPT_SOURCE:+--build-arg=source=$OPT_SOURCE} \
+	${OPT_BRANCH:+--build-arg=branch=$OPT_BRANCH} \
+	-t freeradius/$OSNAME-deps \
+	-f "$DIR/Dockerfile.deps" \
+	"$DIR"
 
-if [ -n "$OPT_JENKINS" ]; then
-	#
-	#  Build jenkins image
-	#
-	if [ -r "$DIR/Dockerfile.jenkins" ]; then
-		echo Building $OSNAME jenkins image
-		docker build $OPT_CACHE "$DIR" -f "$DIR/Dockerfile.jenkins" -t freeradius/$OSNAME-jenkins
-	fi
-else
-	#
-	#  Build main image
-	#
-	if [ -r "$DIR/Dockerfile" ]; then
-		echo Building $OSNAME FreeRADIUS image
-		docker build --build-arg=cc=$OPT_CC $OPT_CACHE "$DIR" -t freeradius/$OSNAME
-	fi
+if [ -r "$DIR/Dockerfile${OPT_JENKINS:+.jenkins}" ]; then
+	[ "${OPT_JENKINS:-}" ] && BNAME=jenkins || BNAME=FreeRADIUS
+	echo Building $OSNAME $BNAME image
+	docker build \
+		${OPT_NOCACHE:+--no-cache} \
+		${OPT_CC:+--build-arg=cc=$OPT_CC} \
+		${OPT_BRANCH:+--build-arg=branch=$OPT_BRANCH} \
+		-t freeradius/$OSNAME${OPT_JENKINS:+-jenkins} \
+		-f "$DIR/Dockerfile${OPT_JENKINS:+.jenkins}" \
+		"$DIR"
 fi
 
+exit 0
