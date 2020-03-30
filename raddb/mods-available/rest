@@ -141,7 +141,7 @@ rest {
 	#
 	#  WARNING: The server will not start if the server specified is unreachable.
 	#
-	connect_uri = "http://127.0.0.1:9090/"
+	connect_uri = "https://networkradius.com"
 
 	#
 	#  connect_proxy:: Proxy server used for all outbound connections.

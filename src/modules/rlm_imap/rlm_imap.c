@@ -32,13 +32,13 @@ RCSID("$Id$")
 /*
  *	A mapping of configuration file names to internal variables.
  */
-static fr_dict_t const 		*dict_radius; /*dictionary for radius protocol*/
-static fr_dict_t const 		*dict_freeradius; /*internal dictionary for server*/
+static fr_dict_t 	const 		*dict_radius; /*dictionary for radius protocol*/
+static fr_dict_t 	const 		*dict_freeradius; /*internal dictionary for server*/
 
-static fr_dict_attr_t const 	*attr_auth_type;
+static fr_dict_attr_t 	const 		*attr_auth_type;
 
-static fr_dict_attr_t const 	*attr_user_password;
-static fr_dict_attr_t const 	*attr_user_name;
+static fr_dict_attr_t 	const 		*attr_user_password;
+static fr_dict_attr_t 	const 		*attr_user_name;
 
 extern fr_dict_autoload_t rlm_imap_dict[];
 fr_dict_autoload_t rlm_imap_dict[] = {
@@ -80,100 +80,6 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/*Can I remove the unused componeds of this? UNUSED rlm_imap_t const *inst, UNUSED rlm_imap_section_t const *section,*/
-int imap_response_certinfo(REQUEST *request, void *handle)
-{
-	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
-	CURL			*candle = randle->candle;
-	CURLcode		ret;
-	int			i;
-	char		 	buffer[265];
-	char			*p , *q, *attr = buffer;
-	fr_cursor_t		cursor, list;
-	VALUE_PAIR		*cert_vps = NULL;
-
-	/*
-	 *	Examples and documentation show cert_info being
-	 *	a struct curl_certinfo *, but CPP checks require
-	 *	it to be a struct curl_slist *.
-	 *
-	 *	https://curl.haxx.se/libcurl/c/certinfo.html
-	 */
-	union {
-		struct curl_slist    *to_info;
-		struct curl_certinfo *to_certinfo;
-	} ptr;
-	ptr.to_info = NULL;
-
-	fr_cursor_init(&list, &request->packet->vps);
-
-	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
-	if (ret != CURLE_OK) {
-		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
-
-		return -1;
-	}
-
-	attr += strlcpy(attr, "TLS-Cert-", sizeof(buffer));
-
-	RDEBUG2("Chain has %i certificate(s)", ptr.to_certinfo->num_of_certs);
-	for (i = 0; i < ptr.to_certinfo->num_of_certs; i++) {
-		struct curl_slist *cert_attrs;
-
-		RDEBUG2("Processing certificate %i",i);
-		fr_cursor_init(&cursor, &cert_vps);
-
-		for (cert_attrs = ptr.to_certinfo->certinfo[i];
-		     cert_attrs;
-		     cert_attrs = cert_attrs->next) {
-		     	VALUE_PAIR		*vp;
-		     	fr_dict_attr_t const	*da;
-
-		     	q = strchr(cert_attrs->data, ':');
-			if (!q) {
-				RWDEBUG("Malformed certinfo from libcurl: %s", cert_attrs->data);
-				continue;
-			}
-
-			strlcpy(attr, cert_attrs->data, (q - cert_attrs->data) + 1);
-			for (p = attr; *p != '\0'; p++) if (*p == ' ') *p = '-';
-
-			da = fr_dict_attr_by_name(dict_freeradius, buffer);
-			if (!da) {
-				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
-				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
-				continue;
-			}
-			MEM(vp = fr_pair_afrom_da(request->packet, da));
-			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
-
-			fr_cursor_append(&cursor, vp);
-		}
-
-		/*
-		 *	Add a copy of the cert_vps to session state.
-		 *
-		 *	Both PVS studio and Coverity detect the condition
-		 *	below as logically dead code unless we explicitly
-		 *	set cert_vps.  This is because they're too dumb
-		 *	to realise that the cursor argument passed to
-		 *	tls_session_pairs_from_x509_cert contains a
-		 *	reference to cert_vps.
-		 */
-		cert_vps = fr_cursor_current(&cursor);
-		if (cert_vps) {
-			/*
-			 *	Print out all the pairs we have so far
-			 */
-			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
-			fr_cursor_merge(&list, &cursor);
-			cert_vps = NULL;
-		}
-	}
-
-	return 0;
-}
-
 static int rlm_imap_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing,VALUE_PAIR *check,
 			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
@@ -197,10 +103,6 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	}
 	return 0;
 }
-
-//TODO: Add server url
-//TODO: Setup SSL verification options
-
 /*
 *Check to see that we have a username and password
 *print out the username
@@ -208,8 +110,8 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	VALUE_PAIR 	*vp;
-	rlm_imap_t	*inst		= instance;
+	VALUE_PAIR 			*vp;
+	rlm_imap_t			*inst	= instance;
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	if (vp == NULL) return RLM_MODULE_NOOP;
@@ -230,25 +132,35 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 */
 static rlm_rcode_t mod_authenticate_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
 {
-	fr_curl_io_request_t     	*randle    = rctx;
-	rlm_imap_t			*inst = instance;
+	fr_curl_io_request_t     	*randle   = rctx;
+	rlm_imap_t			*inst 	= instance;
 	fr_curl_tls_t			*tls;
+	long 				*curl_out;
 
 	tls = &inst->tls;
-	
+
 	if (randle->result != CURLE_OK) {
 		talloc_free(randle);
 		return RLM_MODULE_REJECT;
 	}
 
-	if (tls->tls_extract_cert_attrs) imap_response_certinfo(request, randle);
-	
+	if (tls->tls_extract_cert_attrs) fr_curl_response_certinfo(request, randle);
+
+	curl_easy_getinfo(randle->candle, CURLINFO_SSL_VERIFYRESULT, &curl_out);
+	RDEBUG2("CURL OUT: %ld", *curl_out);
+
 	talloc_free(randle);
 	return RLM_MODULE_OK;
 }
 /*
  * Checks that there is a User-Name and User-Password field in the request
- * Checks that User-Password is not Blank 
+ * Checks that User-Password is not Blank
+ * Sets the: username, password
+ * website URI
+ * timeout information
+ * and TLS information
+ * Then it queues the request and yeilds until a response is given
+ * When it responds, mod_authenticate_resume is called
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *thread, REQUEST *request)
 {
@@ -265,7 +177,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 
 	randle = fr_curl_io_request_alloc(request);
 	if (!randle){
-		error:
+	error:
 		return RLM_MODULE_FAIL;
 	}
 	
@@ -314,21 +226,27 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rad_assert(inst->auth_type);
 	return 0;
 }
-
+/*
+ * Initialize global curl instance
+ */
 static int mod_load(void)
 {
 	if (fr_curl_init() < 0) return -1;
 	return 0;
 }
-
+/*
+ * Close global curl instance
+ */
 static void mod_unload(void)
 {
 	fr_curl_free();
 }
-
+/*
+ * Initialie a new thread with a curl instance
+ */
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
 {
-	rlm_imap_thread_t    		*t 	= thread;
+	rlm_imap_thread_t    		*t = thread;
 	fr_curl_handle_t    		*mhandle;
 
 	t->inst = instance;
@@ -339,14 +257,18 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	    
 	return 0;
 }
-
+/*
+ * Close the thread and free the memory
+ */
 static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
     rlm_imap_thread_t    *t = thread;
     talloc_free(t->mhandle);    /* Ensure this is shutdown before the pool */
     return 0;
 }
-
+/*
+ * External module to call rlm_imap's functions
+ */
 extern module_t rlm_imap;
 module_t rlm_imap = {
 	.magic		        = RLM_MODULE_INIT,

@@ -96,18 +96,21 @@ static CONF_PARSER tls_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-int			fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle,
+int				fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle,
 						   REQUEST *request, fr_curl_io_request_t *creq);
 
-fr_curl_io_request_t	*fr_curl_io_request_alloc(TALLOC_CTX *ctx);
+fr_curl_io_request_t		*fr_curl_io_request_alloc(TALLOC_CTX *ctx);
 
-fr_curl_handle_t	*fr_curl_io_init(TALLOC_CTX *ctx, fr_event_list_t *el, bool multiplex);
+fr_curl_handle_t		*fr_curl_io_init(TALLOC_CTX *ctx, fr_event_list_t *el, bool multiplex);
 
-int fr_curl_easy_tls_init (fr_curl_io_request_t *randle, fr_curl_tls_t *conf);
+int				fr_curl_init(void);
 
-int			fr_curl_init(void);
+void				fr_curl_free(void);
 
-void			fr_curl_free(void);
+int 				fr_curl_response_certinfo(REQUEST *request, void *handle);
+
+int 				fr_curl_easy_tls_init (fr_curl_io_request_t *randle, fr_curl_tls_t *conf);
+
 
 #ifdef __cplusplus
 }
