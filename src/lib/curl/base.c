@@ -57,17 +57,17 @@ int fr_curl_init(void)
 
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
-		ERROR("rlm_curl - CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
+		ERROR("CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
 		return -1;
 	}
 
 	curlversion = curl_version_info(CURLVERSION_NOW);
 	if (strcmp(LIBCURL_VERSION, curlversion->version) != 0) {
-		WARN("rlm_curl - libcurl version changed since the server was built");
-		WARN("rlm_curl - linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
+		WARN("libcurl version changed since the server was built");
+		WARN("linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
 	}
 
-	INFO("rlm_curl - libcurl version: %s", curl_version());
+	INFO("libcurl version: %s", curl_version());
 
 	instance_count++;
 

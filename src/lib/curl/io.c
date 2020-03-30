@@ -123,7 +123,7 @@ static void _fr_curl_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time
 
 	ret = curl_multi_socket_action(mandle, CURL_SOCKET_TIMEOUT, 0, &running);
 	if (ret != CURLM_OK) {
-		ERROR("Failed servicing curl multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
+		ERROR("multi-handle %p - Servicing failed - %s (%i)", mandle, curl_multi_strerror(ret), ret);
 		return;
 	}
 
@@ -147,7 +147,7 @@ static inline void _fr_curl_io_service(fr_curl_handle_t *mhandle, int fd, int ev
 
 	ret = curl_multi_socket_action(mandle, fd, event, &running);
 	if (ret != CURLM_OK) {
-		ERROR("Failed servicing curl multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
+		ERROR("multi-handle %p - Servicing failed - %s (%i)", mandle, curl_multi_strerror(ret), ret);
 		return;
 	}
 
