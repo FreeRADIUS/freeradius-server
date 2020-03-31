@@ -71,6 +71,11 @@ void unlang_register(int type, unlang_op_t *op)
  */
 int unlang_init(void)
 {
+	/*
+	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
+	 */
+	if (xlat_init() < 0) return -1;
+
 	unlang_interpret_init();
 	/* Register operations for the default keywords */
 	unlang_condition_init();

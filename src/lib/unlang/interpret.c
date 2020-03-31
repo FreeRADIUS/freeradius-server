@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include "unlang_priv.h"
 #include "parallel_priv.h"

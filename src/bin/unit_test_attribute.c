@@ -40,7 +40,7 @@ typedef struct fr_request_s REQUEST;
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/conf.h>
 

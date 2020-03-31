@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/map.h>
-#include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/server/map_proc_priv.h>
 #include "unlang_priv.h"

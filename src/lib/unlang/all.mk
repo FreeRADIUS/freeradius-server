@@ -16,7 +16,11 @@ SOURCES	:=	base.c \
 		return.c \
 		subrequest.c \
 		switch.c \
-		xlat.c
+		xlat.c \
+		xlat_builtin.c \
+		xlat_eval.c \
+		xlat_inst.c \
+		xlat_tokenize.c
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/unlang/*.h))
 

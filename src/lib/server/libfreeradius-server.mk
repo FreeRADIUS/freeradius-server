@@ -38,11 +38,7 @@ SOURCES	:= \
 	trunk.c \
 	users_file.c \
 	util.c \
-	virtual_servers.c \
-	xlat_builtin.c \
-	xlat_eval.c \
-	xlat_inst.c \
-	xlat_tokenize.c
+	virtual_servers.c
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/server/*.h))
 

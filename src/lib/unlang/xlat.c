@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 
 #include <ctype.h>
-#include <freeradius-devel/server/xlat_priv.h>
+#include <freeradius-devel/unlang/xlat_priv.h>
 #include "unlang_priv.h"	/* Fixme - Should create a proper semi-public interface for the interpret */
 
 /** Hold the result of an inline xlat expansion

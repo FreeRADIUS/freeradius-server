@@ -151,7 +151,7 @@ extern size_t tmpl_type_table_len;
 typedef struct vp_tmpl_s vp_tmpl_t;
 typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
 
-#include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/regex.h>
 

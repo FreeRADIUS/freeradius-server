@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/regex.h>
-#include <freeradius-devel/server/xlat_priv.h>
+#include <freeradius-devel/unlang/xlat_priv.h>
 
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/md5.h>

@@ -44,11 +44,6 @@ int server_init(CONF_SECTION *cs)
 	if (trigger_exec_init(cs) < 0) return -1;
 
 	/*
-	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
-	 */
-	if (xlat_init() < 0) return -1;
-
-	/*
 	 *	Instantiate "permanent" paircmps
 	 */
 	if (paircmp_init() < 0) return -1;
