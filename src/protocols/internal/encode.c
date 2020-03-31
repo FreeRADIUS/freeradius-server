@@ -174,22 +174,23 @@ static ssize_t internal_encode(uint8_t *out, size_t outlen,
 		 */
 		if (da == vp->da) {
 			fr_cursor_t	children;
+			VALUE_PAIR	*child;
 
-			for (vp = fr_cursor_talloc_init(&children, &vp->children.slist, VALUE_PAIR);
-			     vp;
-			     vp = fr_cursor_current(&children)) {
+			for (child = fr_cursor_talloc_init(&children, &vp->children.slist, VALUE_PAIR);
+			     child;
+			     child = fr_cursor_current(&children)) {
 
-				FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, vp->da->name);
+				FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, child->da->name);
 
-				fr_proto_da_stack_partial_build(da_stack, da_stack->da[depth], vp->da);
+				fr_proto_da_stack_partial_build(da_stack, da_stack->da[depth], child->da);
 				FR_PROTO_STACK_PRINT(da_stack, depth);
 
 				slen = internal_encode(p, LEAVE_ROOM_FOR_LEN(end, p),
-						       da_stack, depth + 1, cursor, encoder_ctx);
+						       da_stack, depth + 1, &children, encoder_ctx);
 				if (slen < 0) return slen;
 				p += slen;
 			}
-
+			fr_cursor_next(cursor);
 			break;
 		}
 
@@ -222,6 +223,7 @@ static ssize_t internal_encode(uint8_t *out, size_t outlen,
 			if (slen < 0) return slen;
 			p += slen;
 		}
+		fr_cursor_next(cursor);
 	}
 		break;
 
