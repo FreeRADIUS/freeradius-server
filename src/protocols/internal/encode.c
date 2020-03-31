@@ -48,7 +48,7 @@ static ssize_t internal_encode(uint8_t *out, size_t outlen,
 	VALUE_PAIR			*vp = fr_cursor_current(cursor);
 
 	uint8_t				flen;
-	ssize_t				slen;
+	ssize_t				slen = 0;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
