@@ -55,7 +55,7 @@ static ssize_t internal_encode(uint8_t *out, size_t outlen,
 	/*
 	 *	Zero out 'enc_field'
 	 */
-	*++p = 0x00;
+	*(p++) = 0x00;
 
 	/*
 	 *	Ensure we have at least enough space
@@ -81,7 +81,7 @@ static ssize_t internal_encode(uint8_t *out, size_t outlen,
 	 *	Need to use the second encoding byte
 	 */
 	if (da->flags.is_unknown) {
-		*++p = 0x00;
+		*(p++) = 0x00;
 		FR_PAIR_ENCODE_HAVE_SPACE(p, end, (sizeof(uint64_t) * 2) + 2);	/* Check we still have room */
 
 		enc_field[0] |= FR_INTERNAL_FLAG_EXTENDED;
