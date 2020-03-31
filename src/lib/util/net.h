@@ -199,6 +199,13 @@ static inline void fr_net_from_uint64(uint8_t out[static sizeof(uint64_t)], uint
 static inline size_t fr_net_from_uint64v(uint8_t out[static sizeof(uint64_t)], uint64_t num)
 {
 	size_t ret;
+	/*
+	 *	Special case for zero.
+	 */
+	if (num == 0) {
+		out[0] = 0;
+		return 1;
+	}
 
 	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos_uint64(num), 8);
 	num = ntohll(num);
