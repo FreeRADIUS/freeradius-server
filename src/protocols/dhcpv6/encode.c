@@ -204,7 +204,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	}
 
 	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_TLV:
+	case FR_TYPE_EXTENDED:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_VSA:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;

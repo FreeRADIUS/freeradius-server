@@ -252,7 +252,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 			goto fail_cid;
 		}
 		goto check_duid;
-		
+
 	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
 		if (!option_find(options, end, FR_SERVER_ID)) goto fail_sid;
 
@@ -542,7 +542,7 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	 */
 	if (original) {
 		memcpy(packet + 1, original + 1, 3);
-	} else {		
+	} else {
 		/*
 		 *	We can set an XID, or we can pick a random one.
 		 */
@@ -566,7 +566,17 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	while ((p < end) && (fr_cursor_current(&cursor) != NULL)) {
 		slen = fr_dhcpv6_encode_option(p, end - p, &cursor, &packet_ctx);
-		if (slen == PAIR_ENCODE_SKIPPED) continue;
+		switch (slen) {
+		case PAIR_ENCODE_SKIPPED:
+			continue;
+
+		case PAIR_ENCODE_FATAL_ERROR:
+			return slen;
+
+		default:
+			break;
+
+		}
 
 		if (slen < 0) return slen - (p - packet);
 
