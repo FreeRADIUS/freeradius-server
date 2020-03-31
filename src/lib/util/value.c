@@ -1087,7 +1087,8 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	 */
 	if ((min == 0) && (max == 0)) {
 	unsupported:
-		fr_strerror_printf("Cannot encode type \"%s\"",
+		fr_strerror_printf("%s: Cannot encode type \"%s\"",
+				   __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, value->type, "<INVALID>"));
 		return FR_VALUE_BOX_NET_ERROR;
 	}
@@ -2836,7 +2837,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_GROUP:
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:
 		fr_assert_fail(NULL);
@@ -4420,7 +4420,6 @@ parse:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VARIABLE_SIZE:	/* Should have been dealt with above */
 	case FR_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
-	case FR_TYPE_GROUP:
 	case FR_TYPE_BAD:
 		fr_strerror_printf("Unknown attribute dst_type %d", *dst_type);
 		return -1;
@@ -4691,9 +4690,13 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	/*
 	 *	Don't add default here
 	 */
+	case FR_TYPE_TLV:		/* Not a box type */
+	case FR_TYPE_STRUCT:		/* Not a box type */
+	case FR_TYPE_VSA:		/* Not a box type */
+	case FR_TYPE_VENDOR:		/* Not a box type */
+	case FR_TYPE_EXTENDED:		/* Not a box type */
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_BAD:
 		(void)fr_cond_assert(0);
@@ -5273,7 +5276,8 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
-		(void)fr_cond_assert(0);
+		(void)fr_cond_assert_msg(0, "%s: Can't print box of type \"%s\"", __FUNCTION__,
+					 fr_table_str_by_value(fr_value_box_type_table, data->type, "?Unknown?"));
 		*out = '\0';
 		return 0;
 	}

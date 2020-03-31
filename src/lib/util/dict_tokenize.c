@@ -951,7 +951,6 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 */
 	switch (da->type) {
 	case FR_TYPE_ABINARY:
-	case FR_TYPE_GROUP:
 	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:

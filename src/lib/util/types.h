@@ -151,6 +151,7 @@ typedef enum {
  */
 #define FR_TYPE_STRUCTURAL_EXCEPT_VSA \
 	     FR_TYPE_EXTENDED: \
+	case FR_TYPE_GROUP: \
 	case FR_TYPE_TLV: \
 	case FR_TYPE_STRUCT
 
@@ -171,7 +172,6 @@ typedef enum {
 	FR_TYPE_COMBO_IP_ADDR: \
 	case FR_TYPE_COMBO_IP_PREFIX: \
 	case FR_TYPE_STRUCTURAL: \
-	case FR_TYPE_GROUP: \
 	case FR_TYPE_VALUE_BOX: \
 	case FR_TYPE_BAD
 

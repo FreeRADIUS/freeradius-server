@@ -471,7 +471,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Allow grouping attributes.
 		 */
-		if (da->type == FR_TYPE_GROUP) {
+		if ((da->type == FR_TYPE_GROUP) || (da->type == FR_TYPE_TLV)) {
 			VALUE_PAIR *child = NULL;
 
 			if (*p != '{') {
