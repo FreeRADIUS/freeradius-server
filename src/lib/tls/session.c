@@ -1420,7 +1420,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		while (*p != '\0') {
 			if (isspace(*p)) {
 				*q++ = *p;
-				while (isspace(*++p));
+				fr_skip_whitespace(p);
 				continue;
 			}
 			*q++ = *p++;
