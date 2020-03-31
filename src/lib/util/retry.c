@@ -56,7 +56,7 @@ int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 	scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
 
 	delay = uint128_mul64(scale, r->config->irt);
-	rt = (fr_time_delta_t) uint128_rshift(delay, 32);
+	rt = uint128_to_64(uint128_rshift(delay, 32));
 
 	r->rt = rt;
 	r->next = now + rt;
@@ -122,7 +122,7 @@ redo:
 	scale += ((fr_time_delta_t) 1) << 33; /* multiple it by 2 * 2^32 */
 
 	delay = uint128_mul64(scale, r->rt);
-	rt = (fr_time_delta_t) uint128_rshift(delay, 32);
+	rt = uint128_to_64(uint128_rshift(delay, 32));
 
 	/*
 	 *	Cap delay at MRT.
@@ -136,7 +136,7 @@ redo:
 		scale += ((fr_time_delta_t) 1) << 32; /* multiple it by 1 * 2^32 */
 
 		delay = uint128_mul64(scale, r->config->mrt);
-		rt = (fr_time_delta_t) uint128_rshift(delay, 32);
+		rt = uint128_to_64(uint128_rshift(delay, 32));
 	}
 
 	/*
