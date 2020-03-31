@@ -44,6 +44,8 @@ typedef struct _eap_pwd_t {
     uint32_t	fragment_size;
     char const	*server_id;
     char const	*virtual_server;
+    int32_t	prep;
+    int32_t	unhex;
 } eap_pwd_t;
 
 #endif  /* _RLM_EAP_PWD_H */

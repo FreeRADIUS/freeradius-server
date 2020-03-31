@@ -318,6 +318,10 @@ ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer
 ATTRIBUTE	Outer-Realm-Name			1218	string
 ATTRIBUTE	Inner-Realm-Name			1219	string
 
+ATTRIBUTE	EAP-Pwd-Password-Hash			1220	octets
+ATTRIBUTE	EAP-Pwd-Password-Salt			1221	octets
+ATTRIBUTE	EAP-Pwd-Password-Prep			1222	byte
+
 #
 #	Range:	1280 - 1535
 #		EAP-type specific attributes

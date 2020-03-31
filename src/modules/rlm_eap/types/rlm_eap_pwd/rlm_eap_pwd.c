@@ -41,11 +41,93 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define MPPE_KEY_LEN    32
 #define MSK_EMSK_LEN    (2*MPPE_KEY_LEN)
 
+/* EAP-PWD can use different preprocessing (prep) modes to mangle the password
+ * before proving to both parties that they both know the same (mangled) password.
+ *
+ * The server advertises a preprocessing mode to the client. Only "none" is
+ * mandatory to implement.
+ *
+ * What is a good selection on the preprocessing mode?
+ *
+ * a) the server uses a hashed password
+ * b) the client uses a hashed password
+ *
+ * a | b | result
+ * --+---+---------------------------------------
+ * n | n | none
+ * n | y | hint needed (cannot know automatically)
+ * y | n | select by hash given
+ * y | y | only works if both have the same hash; select by hash given
+ *
+ * Which hash functions does the server or client need to implement?
+ *
+ * a | b | server                 | client
+ * --+---+------------------------+----------------------
+ * n | n | none                   | none
+ * n | y | as configured          | none
+ * y | n | none                   | as selected by server
+ * y | y | none                   | none
+ *
+ * RFC 5931 defines 3 and RFC 8146 another 8 hash functions to implement.
+ * Can we avoid implementing them all? Only if they are provided as hash by some
+ * other module, e.g. in SQL or statically in password database.
+ *
+ * Therefore we select the preprocessing mode by the type of password given if
+ * in automatic mode:
+ * a) Cleartext-Password or User-Password: None.
+ *    If the client only supports a hash (e.g. on Windows it might only have an
+ *    NT-Password), do not provide a Cleartext-Password attribute but instead
+ *    preprocess the password externally (e.g. hash the Cleartext-Password
+ *    into an NT-Password and drop the Cleartext-Password).
+ * b) NT-Password: rfc2759 (prep=MS).
+ *    The NT-Password Hash is hashed into a HashNTPasswordHash hash.
+ * c) EAP-Pwd-Password-Hash - provides hash as binary
+ *    EAP-Pwd-Password-Salt - (optional) salt to be transmitted to client
+ *                            (RFC 8146)
+ *    EAP-Pwd-Password-Prep - constant to transmit to client in prep field
+ *
+ * Though, there is one issue left. The method needs to be selected in
+ * EAP-PWD-ID/Request, that is the first message from server and thus before
+ * the client sent its peer-id. This is feasable using the EAP-Identity frame
+ * (outer identity); EAP-PWD does transmit its peer-id in plaintext anyway.
+ * So we need a toggle for this, in case anybody needs rlm_eap_pwd to use
+ * only the peer_id (inner identity). This toogle is an integer to also support
+ * setting currently unknown nor not implemented preprocessing methods.
+ *
+ * The toogle is named "prep", is a module configuration item, and accepts the
+ * following values:
+ *   prep | meaning
+ * -------+--------------------------------------------------------------------
+ * -1     | [automatic] discover using method described above from EAP-Identity
+ *        |             as User-Name before EAP-PWD-Id/Request
+ * 0..255 | [static]    Fixed password preprocessing method. Expects virtual
+ *        |             server to provide matching password given EAP-PWD
+ *        |             peer-id as User-Name. The virtual server is provided
+ *        |             with EAP-Pwd-Password-Prep containing the configured
+ *        |             prep value.
+ * else   | reserved/invalid
+ *
+ * Attributes to provide Password/Password-Hash and possibly salt.
+ *   prep | accepted attributes
+ * -------+--------------------------------------------------------------------
+ * -1     | see above for automatic discovery
+ * 0      | Use Cleartext-Password or give cleartext in EAP-Pwd-Password-Hash
+ * 1      | Use NT-Password, Cleartext-Password, User-Password or
+ *        | give hashed NT-Password hash in EAP-Pwd-Password-Hash
+ * 2..255 | Use EAP-Pwd-Password-Hash and possibly EAP-Pwd-Pasword-Salt.
+ *
+ * To be able to pass EAP-Pwd-Password-Hash and EAP-Pwd-Password-Salt als hex
+ * string, they are decoded as hex if module config option unhex=1 (default).
+ * Set it to zero if you provide binary input.
+ */
+
 static CONF_PARSER pwd_module_config[] = {
 	{ "group", FR_CONF_OFFSET(PW_TYPE_INTEGER, eap_pwd_t, group), "19" },
 	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, eap_pwd_t, fragment_size), "1020" },
 	{ "server_id", FR_CONF_OFFSET(PW_TYPE_STRING, eap_pwd_t, server_id), NULL },
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, eap_pwd_t, virtual_server), NULL },
+	{ "prep", FR_CONF_OFFSET(PW_TYPE_SIGNED, eap_pwd_t, prep), "0" },
+	{ "unhex", FR_CONF_OFFSET(PW_TYPE_SIGNED, eap_pwd_t, unhex), "1" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -62,6 +144,11 @@ static int mod_instantiate (CONF_SECTION *cs, void **instance)
 
 	if (inst->fragment_size < 100) {
 		cf_log_err_cs(cs, "Fragment size is too small");
+		return -1;
+	}
+
+	if (inst->prep < -1 || inst->prep > 255) {
+		cf_log_err_cs(cs, "Invalid value for password preparation method: %d", inst->prep);
 		return -1;
 	}
 
@@ -153,15 +240,279 @@ static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 	return 1;
 }
 
+static void normify(REQUEST *request, VALUE_PAIR *vp)
+{
+	size_t decoded;
+	size_t expected_len;
+	uint8_t *buffer;
+
+	rad_assert((vp->da->type == PW_TYPE_OCTETS) || (vp->da->type == PW_TYPE_STRING));
+
+	if (vp->vp_length % 2 != 0 || vp->vp_length == 0) return;
+
+	expected_len = vp->vp_length / 2;
+	buffer = talloc_zero_array(request, uint8_t, expected_len);
+	rad_assert(buffer);
+
+	decoded = fr_hex2bin(buffer, expected_len, vp->vp_strvalue, vp->vp_length);
+	if (decoded == expected_len) {
+		RDEBUG2("Normalizing %s from hex encoding, %zu bytes -> %zu bytes",
+			vp->da->name, vp->vp_length, decoded);
+		fr_pair_value_memcpy(vp, buffer, decoded);
+	} else {
+		RDEBUG2("Normalizing %s from hex encoding, %zu bytes -> %zu bytes failed, got %zu bytes",
+			vp->da->name, vp->vp_length, expected_len, decoded);
+	}
+
+	talloc_free(buffer);
+}
+
+static int fetch_and_process_password(pwd_session_t *session, REQUEST *request, eap_pwd_t *inst) {
+	REQUEST *fake;
+	VALUE_PAIR *vp, *pw;
+	const char *pwbuf;
+	int pw_len;
+	uint8_t nthash[MD4_DIGEST_LENGTH];
+	uint8_t nthashash[MD4_DIGEST_LENGTH];
+	int ret = -1;
+	eap_type_t old_eap_type;
+
+	if ((fake = request_alloc_fake(request)) == NULL) {
+		RDEBUG("pwd unable to create fake request!");
+		return ret;
+	}
+	fake->username = fr_pair_afrom_num(fake->packet, PW_USER_NAME, 0);
+	if (!fake->username) {
+		RDEBUG("Failed creating pair for peer id");
+		goto out;
+	}
+	fr_pair_value_bstrncpy(fake->username, session->peer_id, session->peer_id_len);
+	fr_pair_add(&fake->packet->vps, fake->username);
+
+	if (inst->prep >= 0) {
+		vp = fr_pair_afrom_num(fake, PW_EAP_PWD_PASSWORD_PREP, 0);
+		rad_assert(vp != NULL);
+		vp->vp_byte = inst->prep;
+		fr_pair_add(&fake->packet->vps, vp);
+	}
+
+	if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
+		fake->server = vp->vp_strvalue;
+	} else if (inst->virtual_server) {
+		fake->server = inst->virtual_server;
+	} /* else fake->server == request->server */
+
+	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY)) != NULL) {
+		/* EAP-Type = NAK here if inst->prep == -1.
+		 * But this does not help the virtual server to differentiate
+		 * based on which EAP method was selected, that is to property
+		 * prepare session-state: for PWD.
+		 * So fake EAP-Type = PWD here for the time of the inner request.
+		 */
+		old_eap_type = vp->vp_integer;
+		vp->vp_integer = PW_EAP_PWD;
+	}
+	RDEBUG("Sending tunneled request");
+	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
+
+	if (fake->server) {
+		RDEBUG("server %s {", fake->server);
+	} else {
+		RDEBUG("server {");
+	}
+
+	/*
+	 *	Call authorization recursively, which will
+	 *	get the password.
+	 */
+	RINDENT();
+	process_authorize(0, fake);
+	REXDENT();
+
+	/*
+	 *	Note that we don't do *anything* with the reply
+	 *	attributes.
+	 */
+	if (fake->server) {
+		RDEBUG("} # server %s", fake->server);
+	} else {
+		RDEBUG("}");
+	}
+
+	RDEBUG("Got tunneled reply code %d", fake->reply->code);
+	rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
+
+	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY)) != NULL) {
+		vp->vp_integer = old_eap_type;
+	}
+
+	pw = fr_pair_find_by_num(fake->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	if (!pw) {
+		pw = fr_pair_find_by_num(fake->config, PW_USER_PASSWORD, 0, TAG_ANY);
+	}
+
+	if (pw && (inst->prep < 0 || inst->prep == EAP_PWD_PREP_NONE)) {
+		VERIFY_VP(pw);
+		session->prep = EAP_PWD_PREP_NONE;
+
+		RDEBUG("Use Cleartext-Password or User-Password for %s to do pwd authentication",
+			session->peer_id);
+
+		pwbuf = pw->vp_strvalue;
+		pw_len = pw->vp_length;
+
+		goto success;
+	}
+
+	pw = fr_pair_find_by_num(fake->config, PW_NT_PASSWORD, 0, TAG_ANY);
+
+	if (pw && (inst->prep < 0 || inst->prep == EAP_PWD_PREP_MS)) {
+		VERIFY_VP(pw);
+		session->prep = EAP_PWD_PREP_MS;
+
+		RDEBUG("Use NT-Password for %s to do pwd authentication",
+			session->peer_id);
+
+		if (pw->vp_length != MD4_DIGEST_LENGTH) {
+			RDEBUG("NT-Password invalid length");
+			goto out;
+		}
+
+		fr_md4_calc(nthashash, pw->vp_octets, pw->vp_length);
+		pwbuf = (const char*) nthashash;
+		pw_len = MD4_DIGEST_LENGTH;
+
+		goto success;
+	}
+
+	pw = fr_pair_find_by_num(fake->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	if (!pw) {
+		pw = fr_pair_find_by_num(fake->config, PW_USER_PASSWORD, 0, TAG_ANY);
+	}
+
+	if (pw && inst->prep == EAP_PWD_PREP_MS) {
+		VERIFY_VP(pw);
+		session->prep = EAP_PWD_PREP_NONE;
+
+		RDEBUG("Use Cleartext-Password or User-Password as NT-Password for %s to do pwd authentication",
+			session->peer_id);
+
+		// compute NT-Hash from Cleartext-Password
+		ssize_t len;
+		uint8_t ucs2_password[512];
+		len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), pw->vp_strvalue, pw->vp_length);
+		if (len < 0) {
+			ERROR("rlm_eap_pwd: Error converting password to UCS2");
+			goto out;
+		}
+		fr_md4_calc(nthash, ucs2_password, len);
+
+		fr_md4_calc(nthashash, nthash, MD4_DIGEST_LENGTH);
+		pwbuf = (const char*) nthashash;
+		pw_len = MD4_DIGEST_LENGTH;
+
+		goto success;
+	}
+
+	vp = fr_pair_find_by_num(fake->config, PW_EAP_PWD_PASSWORD_PREP, 0, TAG_ANY);
+	if (vp) {
+		VERIFY_VP(vp);
+	}
+	if (vp && inst->prep < 0) {
+		RDEBUG("Use EAP-Pwd-Password-Prep %u for %s to do pwd authentication",
+			vp->vp_byte, session->peer_id);
+		session->prep = vp->vp_byte;
+	} else if (vp && inst->prep != vp->vp_byte) {
+		RDEBUG2("Mismatch of configured password preparation method and provided EAP-Pwd-Password-Prep attribute type for %s",
+			session->peer_id);
+		goto out;
+	} else if (inst->prep < 0) {
+		RDEBUG2("Missing EAP-Pwd-Password-Prep for %s",
+			session->peer_id);
+		goto out;
+	}
+
+	pw = fr_pair_find_by_num(fake->config, PW_EAP_PWD_PASSWORD_SALT, 0, TAG_ANY);
+	if (pw) {
+		VERIFY_VP(pw);
+
+		RDEBUG("Use EAP-Pwd-Password-Salt for %s to do pwd authentication",
+			session->peer_id);
+
+		if (inst->unhex) normify(request, pw);
+
+		if (pw->vp_length > 255) {
+			/* salt len is 1 byte */
+			RDEBUG("EAP-Pwd-Password-Salt too long (more than 255 octets)");
+			goto out;
+		}
+		rad_assert(pw->vp_length <= sizeof(session->salt));
+
+		session->salt_present = 1;
+		session->salt_len = pw->vp_length;
+		memcpy(session->salt, pw->vp_octets, pw->vp_length);
+	}
+
+	pw = fr_pair_find_by_num(fake->config, PW_EAP_PWD_PASSWORD_HASH, 0, TAG_ANY);
+	if (pw) {
+		VERIFY_VP(pw);
+
+		RDEBUG("Use EAP-Pwd-Password-Hash for %s to do pwd authentication",
+			session->peer_id);
+
+		if (inst->unhex) normify(request, pw);
+
+		pwbuf = (const char*) pw->vp_octets;
+		pw_len = pw->vp_length;
+
+		goto success;
+	}
+
+	RDEBUG2("Mismatch of password preparation method and provided password attribute type for %s",
+		session->peer_id);
+	goto out;
+
+success:
+	if (RDEBUG_ENABLED4) {
+		char outbuf[1024];
+		char *p = outbuf;
+		for (int i = 0; i < pw_len && p < outbuf + sizeof(outbuf) - 3; i++) {
+			p += sprintf(p, "%02hhX", pwbuf[i]);
+		}
+		RDEBUG4("hex pw data: %s (%d)", outbuf, pw_len);
+	}
+
+	if (compute_password_element(session, session->group_num,
+				     pwbuf, pw_len,
+				     inst->server_id, strlen(inst->server_id),
+				     session->peer_id, strlen(session->peer_id),
+				     &session->token)) {
+		RDEBUG("failed to obtain password element");
+		goto out;
+	}
+
+	ret = 0;
+out:
+	talloc_free(fake);
+	return ret;
+}
+
 static int mod_session_init (void *instance, eap_handler_t *handler)
 {
 	pwd_session_t *session;
 	eap_pwd_t *inst = (eap_pwd_t *)instance;
 	VALUE_PAIR *vp;
 	pwd_id_packet_t *packet;
+	REQUEST *request;
 
 	if (!inst || !handler) {
 		ERROR("rlm_eap_pwd: Initiate, NULL data provided");
+		return 0;
+	}
+
+	request = handler->request;
+	if (!request) {
+		ERROR("rlm_eap_pwd: NULL request provided");
 		return 0;
 	}
 
@@ -232,6 +583,30 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	session->out_pos = 0;
 	handler->opaque = session;
 
+	session->token = fr_rand();
+	if (inst->prep < 0) {
+		RDEBUG2("using outer identity %s to configure EAP-PWD", handler->identity);
+		session->peer_id_len = strlen(handler->identity);
+		if (session->peer_id_len >= sizeof(session->peer_id)) {
+			RDEBUG("identity is malformed");
+			return 0;
+		}
+		memcpy(session->peer_id, handler->identity, session->peer_id_len);
+		session->peer_id[session->peer_id_len] = '\0';
+
+		/*
+		 * make fake request to get the password for the usable ID
+		 * in order to identity prep
+		 */
+		if (fetch_and_process_password(session, handler->request, inst) < 0) {
+			RDEBUG("failed to find password for %s to do pwd authentication (init)",
+				session->peer_id);
+			return 0;
+		}
+	} else {
+		session->prep = inst->prep;
+	}
+
 	/*
 	 * construct an EAP-pwd-ID/Request
 	 */
@@ -244,9 +619,8 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	packet->group_num = htons(session->group_num);
 	packet->random_function = EAP_PWD_DEF_RAND_FUN;
 	packet->prf = EAP_PWD_DEF_PRF;
-	session->token = fr_rand();
 	memcpy(packet->token, (char *)&session->token, 4);
-	packet->prep = EAP_PWD_PREP_NONE;
+	packet->prep = session->prep;
 	memcpy(packet->identity, inst->server_id, session->out_len - sizeof(pwd_id_packet_t) );
 
 	handler->stage = PROCESS;
@@ -259,16 +633,16 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	pwd_session_t *session;
 	pwd_hdr *hdr;
 	pwd_id_packet_t *packet;
+	REQUEST *request;
 	eap_packet_t *response;
-	REQUEST *request, *fake;
-	VALUE_PAIR *pw, *vp;
 	EAP_DS *eap_ds;
-	size_t in_len;
+	size_t in_len, peer_id_len;
 	int ret = 0;
 	eap_pwd_t *inst = (eap_pwd_t *)arg;
 	uint16_t offset;
 	uint8_t exch, *in, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
 	uint8_t peer_confirm[SHA256_DIGEST_LENGTH];
+	char *peer_id;
 
 	if (((eap_ds = handler->eap_ds) == NULL) || !inst) return 0;
 
@@ -389,7 +763,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 
 		if ((packet->prf != EAP_PWD_DEF_PRF) ||
 		    (packet->random_function != EAP_PWD_DEF_RAND_FUN) ||
-		    (packet->prep != EAP_PWD_PREP_NONE) ||
+		    (packet->prep != session->prep) ||
 		    (CRYPTO_memcmp(packet->token, &session->token, 4)) ||
 		    (packet->group_num != ntohs(session->group_num))) {
 			RDEBUG2("pwd id response is invalid");
@@ -405,84 +779,41 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		ptr += sizeof(uint8_t);
 		*ptr = EAP_PWD_DEF_PRF;
 
-		session->peer_id_len = in_len - sizeof(pwd_id_packet_t);
-		if (session->peer_id_len >= sizeof(session->peer_id)) {
+		peer_id_len = in_len - sizeof(pwd_id_packet_t);
+		if (peer_id_len >= sizeof(session->peer_id)) {
 			RDEBUG2("pwd id response is malformed");
 			return 0;
 		}
+		peer_id = packet->identity;
 
-		memcpy(session->peer_id, packet->identity, session->peer_id_len);
-		session->peer_id[session->peer_id_len] = '\0';
+		if (inst->prep >= 0) {
+			/*
+			 * make fake request to get the password for the usable ID
+			 */
 
-		/*
-		 * make fake request to get the password for the usable ID
-		 */
-		if ((fake = request_alloc_fake(handler->request)) == NULL) {
-			RDEBUG("pwd unable to create fake request!");
-			return 0;
-		}
-		fake->username = fr_pair_afrom_num(fake->packet, PW_USER_NAME, 0);
-		if (!fake->username) {
-			RDEBUG("Failed creating pair for peer id");
-			talloc_free(fake);
-			return 0;
-		}
-		fr_pair_value_bstrncpy(fake->username, session->peer_id, session->peer_id_len);
-		fr_pair_add(&fake->packet->vps, fake->username);
+			session->peer_id_len = peer_id_len;
+			memcpy(session->peer_id, peer_id, peer_id_len);
+			session->peer_id[peer_id_len] = '\0';
 
-		if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
-			fake->server = vp->vp_strvalue;
-		} else if (inst->virtual_server) {
-			fake->server = inst->virtual_server;
-		} /* else fake->server == request->server */
-
-		RDEBUG("Sending tunneled request");
-		rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
-
-		if (fake->server) {
-			RDEBUG("server %s {", fake->server);
+			if (fetch_and_process_password(session, request, inst) < 0) {
+				RDEBUG2("failed to find password for %s to do pwd authentication",
+				session->peer_id);
+				return 0;
+			}
 		} else {
-			RDEBUG("server {");
+			/* verify inner identity == outer identity */
+			if (session->peer_id_len != peer_id_len ||
+			    memcmp(session->peer_id, peer_id, peer_id_len) != 0) {
+				char buf[sizeof(session->peer_id)];
+				memcpy(buf, peer_id, peer_id_len);
+				buf[peer_id_len] = '\0';
+
+				RDEBUG2("inner identity(peer_id) %s does not match outer identity %s",
+				buf, session->peer_id);
+				return 0;
+			}
+			RDEBUG2("inner identity matched for %s", session->peer_id);
 		}
-
-		/*
-		 *	Call authorization recursively, which will
-		 *	get the password.
-		 */
-		RINDENT();
-		process_authorize(0, fake);
-		REXDENT();
-
-		/*
-		 *	Note that we don't do *anything* with the reply
-		 *	attributes.
-		 */
-		if (fake->server) {
-			RDEBUG("} # server %s", fake->server);
-		} else {
-			RDEBUG("}");
-		}
-
-		RDEBUG("Got tunneled reply code %d", fake->reply->code);
-		rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
-
-		if ((pw = fr_pair_find_by_num(fake->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
-			DEBUG2("failed to find password for %s to do pwd authentication",
-			session->peer_id);
-			talloc_free(fake);
-			return 0;
-		}
-
-		if (compute_password_element(session, session->group_num,
-			     		     pw->data.strvalue, strlen(pw->data.strvalue),
-					     inst->server_id, strlen(inst->server_id),
-					     session->peer_id, strlen(session->peer_id),
-					     &session->token)) {
-			DEBUG2("failed to obtain password element");
-			talloc_free(fake);
-			return 0;
-		}
-		TALLOC_FREE(fake);
 
 		/*
 		 * compute our scalar and element
@@ -510,12 +841,23 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 * construct request
 		 */
 		session->out_len = BN_num_bytes(session->order) + (2 * BN_num_bytes(session->prime));
+		if (session->salt_present)
+			session->out_len += 1 + session->salt_len;
+
 		if ((session->out = talloc_array(session, uint8_t, session->out_len)) == NULL) {
 			return 0;
 		}
 		memset(session->out, 0, session->out_len);
 
 		ptr = session->out;
+		if (session->salt_present) {
+			*ptr = session->salt_len;
+			ptr++;
+
+			memcpy(ptr, session->salt, session->salt_len);
+			ptr += session->salt_len;
+		}
+
 		offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 		BN_bn2bin(x, ptr + offset);
 		BN_clear_free(x);
@@ -534,7 +876,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	}
 		break;
 
-		case PWD_STATE_COMMIT:
+	case PWD_STATE_COMMIT:
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_COMMIT) {
 			RDEBUG2("pwd exchange is incorrect: not commit!");
 			return 0;

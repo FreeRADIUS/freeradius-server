@@ -102,6 +102,10 @@ typedef struct _pwd_session_t {
     EC_POINT *my_element;
     EC_POINT *peer_element;
     uint8_t my_confirm[SHA256_DIGEST_LENGTH];
+    uint8_t prep;
+    uint8_t salt_present;
+    uint8_t salt_len;
+    uint8_t salt[255];
 } pwd_session_t;
 
 int compute_password_element(pwd_session_t *sess, uint16_t grp_num,
