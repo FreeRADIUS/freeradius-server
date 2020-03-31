@@ -99,7 +99,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
  *
  */
 static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
-				     uint8_t const *start, uint8_t const *end, UNUSED void *decoder_ctx)
+				     uint8_t const *start, uint8_t const *end, void *decoder_ctx)
 {
 	VALUE_PAIR	*vp;
 	size_t		slen;
