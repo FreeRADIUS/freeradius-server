@@ -80,7 +80,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 
 	memset(&children, 0, sizeof(children));
 
-	FR_PROTO_TRACE("Decoding TLV - %s", parent_da->name);
+	FR_PROTO_TRACE("Decoding TLV - %s (%zu bytes)", parent_da->name, end - start);
 
 	/*
 	 *	Decode all the children of this TLV
@@ -90,6 +90,8 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 
 		slen = internal_decode_pair(ctx, &children, parent_da, p, end, decoder_ctx);
 		if (slen <= 0) return slen;
+
+		FR_PROTO_TRACE("Returned %zu", slen);
 
 		p += slen;
 	}
@@ -106,9 +108,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 		tlv = fr_pair_afrom_da(ctx, parent_da);
 		if (!tlv) return PAIR_DECODE_OOM;
 
-		for (vp = fr_cursor_head(&cursor);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		while ((vp = fr_cursor_head(&cursor))) {
 		     	FR_PROTO_TRACE("Moving %s into %s", vp->da->name, tlv->da->name);
 			fr_pair_add(&tlv->vp_group, talloc_reparent(ctx, tlv, fr_cursor_remove(&cursor)));
 		}
