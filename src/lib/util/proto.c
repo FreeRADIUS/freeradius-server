@@ -53,6 +53,21 @@ void fr_proto_print_hex_data(char const *file, int line, uint8_t const *data, si
 	}
 	fr_log_hex(&default_log, L_DBG, file, line, data, data_len, "hex: ");
 }
+
+void fr_proto_print_hex_marker(char const *file, int line, uint8_t const *data, size_t data_len, ssize_t slen, char const *fmt, ...)
+{
+	va_list		ap;
+	char		*msg;
+
+	if (fmt) {
+		va_start(ap, fmt);
+		msg = talloc_vasprintf(NULL, fmt, ap);
+		va_end(ap);
+		fr_log(&default_log, L_DBG, file, line, "hex: -- %s --", msg);
+		talloc_free(msg);
+	}
+	fr_log_hex_marker(&default_log, L_DBG, file, line, data, data_len, slen, "current position", "hex: ");
+}
 DIAG_ON(format-nonliteral)
 
 void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da_stack_t *da_stack, unsigned int depth)
