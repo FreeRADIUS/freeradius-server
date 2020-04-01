@@ -87,6 +87,7 @@ fr_table_num_sorted_t const xlat_action_table[] = {
 	{ "done",	XLAT_ACTION_DONE	},
 	{ "fail",	XLAT_ACTION_FAIL	},
 	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},
+	{ "push-child-group",	XLAT_ACTION_PUSH_CHILD_GROUP	},
 	{ "yield",	XLAT_ACTION_YIELD	}
 };
 size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
@@ -843,6 +844,11 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				RDEBUG2("   -- CHILD");
 				return xa;
 
+
+			case XLAT_ACTION_PUSH_CHILD_GROUP:
+				RDEBUG2("   -- CHILD-GROUP");
+				return xa;
+
 			case XLAT_ACTION_YIELD:
 				RDEBUG2("   -- YIELD");
 				return xa;
@@ -1080,7 +1086,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			 *	for evaluation.
 			 */
 			*child = node->child;
-			xa = XLAT_ACTION_PUSH_CHILD;
+			xa = XLAT_ACTION_PUSH_CHILD_GROUP;
 			goto finish;
 		}
 	}

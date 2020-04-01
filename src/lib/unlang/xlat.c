@@ -242,6 +242,7 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_exp_t const		*child = NULL;
 	xlat_action_t			xa;
+	fr_value_box_t			*box;
 
 	if (is_repeatable(frame)) {
 		xa = xlat_frame_eval_repeat(state->ctx, &state->values, &child,
@@ -263,6 +264,23 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 		 */
 		talloc_list_free(&state->rhead);
 		unlang_xlat_push(state->ctx, &state->rhead, request, child, false);
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	case XLAT_ACTION_PUSH_CHILD_GROUP:
+		rad_assert(child);
+
+		repeatable_set(frame);
+
+		talloc_list_free(&state->rhead);
+		box = fr_value_box_alloc(state->ctx, FR_TYPE_GROUP, NULL, false);
+		fr_cursor_append(&state->values, box);
+
+		/*
+		 *	Clear out the results of any previous expansions
+		 *	at this level.  A frame may be used to evaluate
+		 *	multiple sibling nodes.
+		 */
+		unlang_xlat_push(state->ctx, &box->vb_group, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_YIELD:
@@ -341,6 +359,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_PUSH_CHILD:
+	case XLAT_ACTION_PUSH_CHILD_GROUP:
 		rad_assert(0);
 		/* FALL-THROUGH */
 

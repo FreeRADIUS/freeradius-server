@@ -34,6 +34,7 @@ extern "C" {
  */
 typedef enum {
 	XLAT_ACTION_PUSH_CHILD = 1,		//!< A deeper level of nesting needs to be evaluated.
+	XLAT_ACTION_PUSH_CHILD_GROUP,		//!< same as above, and the child is a group
 	XLAT_ACTION_YIELD,			//!< An xlat function pushed a resume frame onto the stack.
 	XLAT_ACTION_DONE,			//!< We're done evaluating this level of nesting.
 	XLAT_ACTION_FAIL			//!< An xlat function failed.
