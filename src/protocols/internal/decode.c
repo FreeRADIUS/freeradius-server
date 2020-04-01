@@ -72,13 +72,12 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head,
 static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 				   uint8_t const *start, uint8_t const *end, void *decoder_ctx)
 {
-	VALUE_PAIR	*vp;
+
 	size_t		slen;
+	fr_pair_list_t	children = {};
+	fr_cursor_t	cursor;
 
 	FR_PROTO_TRACE("Decoding TLV - %s", parent_da->name);
-
-	vp = fr_pair_afrom_da(ctx, parent_da);
-	if (!vp) return PAIR_DECODE_OOM;
 
 	/*
 	 *	Allocate additional VPs in the context of
@@ -87,10 +86,31 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 	 *	start has already been advanced to the next
 	 *	attribute.
 	 */
-	slen = internal_decode_pair(vp, &vp->children, parent_da, start, end, decoder_ctx);
-	if (slen <= 0) talloc_free(vp);
+	slen = internal_decode_pair(ctx, &children, parent_da, start, end, decoder_ctx);
+	if (slen <= 0) return slen;
 
-	fr_pair_add(&head->slist, vp);
+	/*
+	 *	If decoding produced more than one TLV
+	 *	we need to do an intermediary grouping
+	 *	VP to retain the nesting structure.
+	 */
+	if (fr_cursor_init(&cursor, &children.slist) && fr_cursor_next(&cursor)) {
+		VALUE_PAIR	*tlv;
+		VALUE_PAIR	*vp;
+
+		tlv = fr_pair_afrom_da(ctx, parent_da);
+		if (!tlv) return PAIR_DECODE_OOM;
+
+		fr_pair_add(&head->slist, tlv);
+
+		for (vp = fr_cursor_head(&cursor);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			fr_pair_add(&tlv->vp_group, talloc_reparent(ctx, tlv, vp));
+		}
+	} else {
+		fr_pair_add(&head->slist, fr_cursor_head(&cursor));
+	}
 
 	return slen;
 }
