@@ -304,6 +304,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 		if (unlikely(tainted)) goto bad_tainted;
 		slen = internal_decode_pair(ctx, head, da, p, p + len, decoder_ctx);
 		if (slen <= 0) goto error;
+		break;
 
 	case FR_TYPE_TLV:
 		if (unlikely(tainted)) goto bad_tainted;
