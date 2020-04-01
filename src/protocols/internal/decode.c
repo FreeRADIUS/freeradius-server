@@ -61,7 +61,7 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head,
 		talloc_free(vp);
 		return slen;
 	}
-	fr_pair_add(&head->slist, vp);	/* Remove cast in future */
+	fr_pair_add(&head->slist, vp);
 
 	return slen;
 }
@@ -74,23 +74,28 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 {
 
 	size_t		slen;
-	fr_pair_list_t	children = {};
+	fr_pair_list_t	children;
 	fr_cursor_t	cursor;
+	uint8_t	const	*p = start;
+
+	memset(&children, 0, sizeof(children));
 
 	FR_PROTO_TRACE("Decoding TLV - %s", parent_da->name);
 
 	/*
-	 *	Allocate additional VPs in the context of
-	 *	the TLV VP.
-	 *
-	 *	start has already been advanced to the next
-	 *	attribute.
+	 *	Decode all the children of this TLV
 	 */
-	slen = internal_decode_pair(ctx, &children, parent_da, start, end, decoder_ctx);
-	if (slen <= 0) return slen;
+	while (p < end) {
+		FR_PROTO_HEX_MARKER(start, end - start, p - start, "Decoding child");
+
+		slen = internal_decode_pair(ctx, &children, parent_da, p, end, decoder_ctx);
+		if (slen <= 0) return slen;
+
+		p += slen;
+	}
 
 	/*
-	 *	If decoding produced more than one TLV
+	 *	If decoding produced more than one child
 	 *	we need to do an intermediary grouping
 	 *	VP to retain the nesting structure.
 	 */
@@ -101,18 +106,19 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 		tlv = fr_pair_afrom_da(ctx, parent_da);
 		if (!tlv) return PAIR_DECODE_OOM;
 
-		fr_pair_add(&head->slist, tlv);
-
 		for (vp = fr_cursor_head(&cursor);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			fr_pair_add(&tlv->vp_group, talloc_reparent(ctx, tlv, vp));
+		     	FR_PROTO_TRACE("Moving %s into %s", vp->da->name, tlv->da->name);
+			fr_pair_add(&tlv->vp_group, talloc_reparent(ctx, tlv, fr_cursor_remove(&cursor)));
 		}
+
+		fr_pair_add(&head->slist, tlv);
 	} else {
 		fr_pair_add(&head->slist, fr_cursor_head(&cursor));
 	}
 
-	return slen;
+	return p - start;
 }
 
 /** Decode a group
@@ -295,6 +301,10 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 	 *	Structural types
 	 */
 	case FR_TYPE_EXTENDED:
+		if (unlikely(tainted)) goto bad_tainted;
+		slen = internal_decode_pair(ctx, head, da, p, p + len, decoder_ctx);
+		if (slen <= 0) goto error;
+
 	case FR_TYPE_TLV:
 		if (unlikely(tainted)) goto bad_tainted;
 
