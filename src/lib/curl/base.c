@@ -29,7 +29,16 @@
 #include <curl/curl.h>
 #include <talloc.h>
 
-static int instance_count;
+
+
+static 			int 		instance_count;
+static fr_dict_t	const 		*dict_freeradius; /*internal dictionary for server*/
+
+extern fr_dict_autoload_t rlm_imap_dict[];
+fr_dict_autoload_t rlm_imap_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
 
 /** Initialise global curl options
  *
@@ -77,10 +86,120 @@ int fr_curl_init(void)
 void fr_curl_free(void)
 {
 	if (--instance_count > 0) return;
-
 #ifdef WITH_TLS
 	tls_free();
 #endif
-
 	curl_global_cleanup();
+}
+
+int fr_curl_easy_tls_init (fr_curl_io_request_t *randle, fr_curl_tls_t *conf)
+{
+	int	ret;
+
+	if (conf->tls_certificate_file) SET_OPTION(CURLOPT_SSLCERT, conf->tls_certificate_file);
+	if (conf->tls_private_key_file) SET_OPTION(CURLOPT_SSLKEY, conf->tls_private_key_file);
+	if (conf->tls_private_key_password) SET_OPTION(CURLOPT_KEYPASSWD, conf->tls_private_key_password);
+	if (conf->tls_ca_file) SET_OPTION(CURLOPT_CAINFO, conf->tls_ca_file);
+	if (conf->tls_ca_issuer_file) SET_OPTION(CURLOPT_ISSUERCERT, conf->tls_ca_issuer_file);
+	if (conf->tls_ca_path) SET_OPTION(CURLOPT_CAPATH, conf->tls_ca_path);
+	if (conf->tls_random_file) SET_OPTION(CURLOPT_RANDOM_FILE, conf->tls_random_file);
+
+	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (conf->tls_check_cert == true) ? 1L : 0L);
+	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (conf->tls_check_cert_cn == true) ? 2L : 0L);
+
+	return 0;
+error:
+	return -1;
+}
+
+
+int fr_curl_response_certinfo(REQUEST *request, void *handle)
+{
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
+	CURL			*candle = randle->candle;
+	CURLcode		ret;
+	int			i;
+	char		 	buffer[265];
+	char			*p , *q, *attr = buffer;
+	fr_cursor_t		cursor, list;
+	VALUE_PAIR		*cert_vps = NULL;
+	/*
+	 *	Examples and documentation show cert_info being
+	 *	a struct curl_certinfo *, but CPP checks require
+	 *	it to be a struct curl_slist *.
+	 *
+	 *	https://curl.haxx.se/libcurl/c/certinfo.html
+	 */
+	union {
+		struct curl_slist    *to_info;
+		struct curl_certinfo *to_certinfo;
+	} ptr;
+	ptr.to_info = NULL;
+
+	fr_cursor_init(&list, &request->packet->vps);
+
+	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
+	if (ret != CURLE_OK) {
+		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
+
+		return -1;
+	}
+
+	attr += strlcpy(attr, "TLS-Cert-", sizeof(buffer));
+
+	RDEBUG2("Chain has %i certificate(s)", ptr.to_certinfo->num_of_certs);
+	for (i = 0; i < ptr.to_certinfo->num_of_certs; i++) {
+		struct curl_slist *cert_attrs;
+
+		RDEBUG2("Processing certificate %i",i);
+		fr_cursor_init(&cursor, &cert_vps);
+
+		for (cert_attrs = ptr.to_certinfo->certinfo[i];
+		     cert_attrs;
+		     cert_attrs = cert_attrs->next) {
+		     	VALUE_PAIR		*vp;
+		     	fr_dict_attr_t const	*da;
+
+		     	q = strchr(cert_attrs->data, ':');
+			if (!q) {
+				RWDEBUG("Malformed certinfo from libcurl: %s", cert_attrs->data);
+				continue;
+			}
+
+			strlcpy(attr, cert_attrs->data, (q - cert_attrs->data) + 1);
+			for (p = attr; *p != '\0'; p++) if (*p == ' ') *p = '-';
+
+			da = fr_dict_attr_by_name(dict_freeradius, buffer);
+			if (!da) {
+				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
+				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
+				continue;
+			}
+			MEM(vp = fr_pair_afrom_da(request->packet, da));
+			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
+
+			fr_cursor_append(&cursor, vp);
+		}
+		/*
+		 *	Add a copy of the cert_vps to session state.
+		 *
+		 *	Both PVS studio and Coverity detect the condition
+		 *	below as logically dead code unless we explicitly
+		 *	set cert_vps.  This is because they're too dumb
+		 *	to realise that the cursor argument passed to
+		 *	tls_session_pairs_from_x509_cert contains a
+		 *	reference to cert_vps.
+		 */
+		cert_vps = fr_cursor_current(&cursor);
+		if (cert_vps) {
+			/*
+			 *	Print out all the pairs we have so far
+			 */
+			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
+			fr_cursor_merge(&list, &cursor);
+			cert_vps = NULL;
+		}
+	}
+
+	return 0;
 }
