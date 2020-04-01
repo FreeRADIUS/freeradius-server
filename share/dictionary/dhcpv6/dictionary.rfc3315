@@ -121,7 +121,7 @@ VALUE	Status-Code-Value		DNSUpdateNotSupported	21
 VALUE	Status-Code-Value		ExcessiveTimeSkew	22
 # Unassigned	23-65535
 
-ATTRIBUTE	Rapid-Commit				14	octets	# only used to signal. no values.
+ATTRIBUTE	Rapid-Commit				14	bool
 ATTRIBUTE	User-Class				15	octets array
 ATTRIBUTE	Vendor-Class				16	struct
 MEMBER		Vendor-Class-PEN			uint32

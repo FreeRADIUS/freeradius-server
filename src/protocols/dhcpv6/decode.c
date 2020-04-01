@@ -174,6 +174,18 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
 		break;
 
+		/*
+		 *	A bool is encoded as an empty option if it's
+		 *	true.  A bool is omitted entirely if it's
+		 *	false.
+		 */
+	case FR_TYPE_BOOL:
+		if (data_len != 0) goto raw;
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return PAIR_DECODE_OOM;
+		vp->vp_bool = true;
+		break;
+
 	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
@@ -188,7 +200,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_INT32:
 	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_BOOL:
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 		vp = fr_pair_afrom_da(ctx, parent);

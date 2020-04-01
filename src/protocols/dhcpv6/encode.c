@@ -300,6 +300,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
 	case FR_TYPE_BOOL:
+		/*
+		 *	Don't encode anything!  The mere existence of
+		 *	the attribute signifies a "true" value.
+		 */
 		break;
 
 	/*

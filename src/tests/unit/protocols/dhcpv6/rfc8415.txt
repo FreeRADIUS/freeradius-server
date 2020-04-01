@@ -550,11 +550,11 @@ match Status-Code-Value = NoPrefixAvail, Status-Code-Message = "Tapioca com quei
 #
 #  option-len           0.
 #
-encode-pair Rapid-Commit = 0x
+encode-pair Rapid-Commit = yes
 match 00 0e 00 00
 
 decode-pair -
-match Rapid-Commit = 0x
+match Rapid-Commit = yes
 
 #
 #  21.15.  User Class Option
