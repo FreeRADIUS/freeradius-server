@@ -862,7 +862,8 @@ static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, u
 extern fr_test_point_pair_encode_t dhcpv6_tp_encode_pair;
 fr_test_point_pair_encode_t dhcpv6_tp_encode_pair = {
 	.test_ctx	= encode_test_ctx,
-	.func		= fr_dhcpv6_encode_option
+	.func		= fr_dhcpv6_encode_option,
+	.next_encodable	= fr_dhcpv6_next_encodable,
 };
 
 extern fr_test_point_proto_encode_t dhcpv6_tp_encode_proto;

@@ -510,7 +510,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 /** DHCPV6-specific iterator
  *
  */
-static void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
+void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
 {
 	VALUE_PAIR	*c, *p;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);

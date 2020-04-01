@@ -28,3 +28,8 @@ RCSIDH(dhcpv6_attrs_h, "$Id$")
 #include <freeradius-devel/util/dict.h>
 
 extern fr_dict_t const *dict_dhcpv6;
+
+/*
+ *	A private function that is used only in base.c and encode.c
+ */
+void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx);

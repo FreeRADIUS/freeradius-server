@@ -1501,7 +1501,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 		RETURN_OK_WITH_ERROR();
 	}
 
-	for (vp = fr_cursor_talloc_iter_init(&cursor, &head, fr_proto_next_encodable,
+	for (vp = fr_cursor_talloc_iter_init(&cursor, &head, tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
 					     cc->active_dict ? cc->active_dict : cc->config->dict, VALUE_PAIR);
 	     vp;
 	     vp = fr_cursor_current(&cursor)) {
