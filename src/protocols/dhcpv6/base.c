@@ -507,6 +507,30 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	return packet_len;
 }
 
+/** DHCPV6-specific iterator
+ *
+ */
+static void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
+{
+	VALUE_PAIR	*c, *p;
+	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
+
+	if (!to_eval) return NULL;
+
+	for (p = *prev, c = to_eval; c; p = c, c = c->next) {
+		VP_VERIFY(c);
+		if (c->da->dict != dict || c->da->flags.internal) continue;
+		if (c->da->type == FR_TYPE_BOOL && !c->vp_bool) continue;
+
+		break;
+	}
+
+	*prev = p;
+
+	return c;
+}
+
+
 
 /** Encode a DHCPv6 packet
  *
@@ -560,7 +584,7 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	packet_ctx.root = root;
 
-	fr_cursor_init(&cursor, &vps);
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_dhcpv6_next_encodable, dict_dhcpv6, VALUE_PAIR);
 	p = packet + 4;
 	end = packet + packet_len;
 

@@ -50,54 +50,6 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
-static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR const *vp)
-{
-	if (!vp) return false;
-	if (vp->da->flags.internal) return false;
-	if (!fr_dict_parent_common(root, vp->da, true)) return false;
-
-	/*
-	 *	False bools are represented by the absence of
-	 *	an option, i.e. only bool attributes which are
-	 *	true get encoded.
-	 */
-	if ((vp->da->type == FR_TYPE_BOOL) && !vp->vp_bool) return false;
-
-	return true;
-}
-
-/** Find the next attribute to encode
- *
- * @param cursor to iterate over.
- * @param encoder_ctx the context for the encoder
- * @return encodable VALUE_PAIR, or NULL if none available.
- */
-static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
-{
-	VALUE_PAIR		*vp;
-	fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
-
-	do { vp = fr_cursor_next(cursor); } while (vp && !is_encodable(packet_ctx->root, vp));
-	return fr_cursor_current(cursor);
-}
-
-/** Determine if the current attribute is encodable, or find the first one that is
- *
- * @param cursor to iterate over.
- * @param encoder_ctx the context for the encoder
- * @return encodable VALUE_PAIR, or NULL if none available.
- */
-static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx)
-{
-	VALUE_PAIR		*vp;
-	fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
-
-	vp = fr_cursor_current(cursor);
-	if (is_encodable(packet_ctx->root, vp)) return vp;
-
-	return next_encodable(cursor, encoder_ctx);
-}
-
 /** Macro-like function for encoding an option header
  *
  *    0                   1                   2                   3
@@ -169,22 +121,18 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	Pack multiple attributes into into a single option
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
-
 		slen = encode_struct(out, outlen, da_stack, depth, cursor, encoder_ctx);
 		if (slen < 0) return slen;
 
 		/*
 		 *	The encode_struct() routine eats all relevant
 		 *	VPs.  It stops when the cursor is pointing to
-		 *	a VP which is *not* part of the struct.  As a
-		 *	result, we shouldn't call next_encodable()
-		 *	here unless the next VP isn't encodable.
+		 *	a VP which is *not* part of the struct... but
+		 * 	with the move to an iterator, whatever that is
+		 * 	will be encodable; the iterator filters out
+		 * 	anything that isn't.
 		 */
 		vp = fr_cursor_current(cursor);
-		if (!is_encodable(packet_ctx->root, vp)) {
-			vp = next_encodable(cursor, packet_ctx);
-		}
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return slen;
 	}
@@ -475,7 +423,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
 	 */
-	vp = next_encodable(cursor, encoder_ctx);
+	vp = fr_cursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return p - out;
@@ -513,7 +461,7 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
 
 			p += slen;
-			vp = next_encodable(cursor, encoder_ctx);
+			vp = fr_cursor_next(cursor);
 			if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
 		}
 
@@ -834,7 +782,7 @@ ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	fr_da_stack_t		da_stack;
 	ssize_t			slen;
 
-	vp = first_encodable(cursor, encoder_ctx);
+	vp = fr_cursor_current(cursor);
 	if (!vp) return 0;
 
 	if (vp->da->flags.internal) {
