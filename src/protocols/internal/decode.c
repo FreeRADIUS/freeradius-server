@@ -91,14 +91,12 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 		slen = internal_decode_pair(ctx, &children, parent_da, p, end, decoder_ctx);
 		if (slen <= 0) return slen;
 
-		FR_PROTO_TRACE("Returned %zu", slen);
-
 		p += slen;
 	}
 
 	/*
 	 *	If decoding produced more than one child
-	 *	we need to do an intermediary grouping
+	 *	we need to do an intermediary TLV
 	 *	VP to retain the nesting structure.
 	 */
 	if (fr_cursor_init(&cursor, &children.slist) && fr_cursor_next(&cursor)) {
@@ -129,6 +127,7 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_d
 {
 	VALUE_PAIR	*vp;
 	size_t		slen;
+	uint8_t	const	*p = start;
 
 	FR_PROTO_TRACE("Decoding group - %s", parent_da->name);
 
@@ -136,21 +135,22 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_d
 	if (!vp) return PAIR_DECODE_OOM;
 
 	/*
-	 *	Allocate additional VPs in the context of
-	 *	the group VP.
-	 *
-	 *	The da has a special reference which points
-	 *	to another point in the dictionary.
-	 *
-	 *	start has already been advanced to the next
-	 *	attribute.
+	 *	Decode all the children of this group
 	 */
-	slen = internal_decode_pair(vp, &vp->children, vp->da->ref, start, end, decoder_ctx);
-	if (slen <= 0) talloc_free(vp);
+	while (p < end) {
+		FR_PROTO_HEX_MARKER(start, end - start, p - start, "Decoding child");
 
+		slen = internal_decode_pair(vp, &vp->children, parent_da, p, end, decoder_ctx);
+		if (slen <= 0) {
+			talloc_free(vp);
+			return slen;
+		}
+
+		p += slen;
+	}
 	fr_pair_add(&head->slist, vp);
 
-	return slen;
+	return p - start;
 }
 
 static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
