@@ -271,15 +271,20 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 
 		repeatable_set(frame);
 
-		talloc_list_free(&state->rhead);
-		box = fr_value_box_alloc(state->ctx, FR_TYPE_GROUP, NULL, false);
-		fr_cursor_append(&state->values, box);
-
 		/*
 		 *	Clear out the results of any previous expansions
 		 *	at this level.  A frame may be used to evaluate
 		 *	multiple sibling nodes.
 		 */
+		talloc_list_free(&state->rhead);
+
+		/*
+		 *	The called function can't pass us a value box,
+		 *	so we have to create it ourselves.
+		 */
+		box = fr_value_box_alloc(state->ctx, FR_TYPE_GROUP, NULL, false);
+		fr_cursor_append(&state->values, box);
+
 		unlang_xlat_push(state->ctx, &box->vb_group, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
