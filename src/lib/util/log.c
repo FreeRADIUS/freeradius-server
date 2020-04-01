@@ -670,7 +670,12 @@ void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 		 *	Marker is on this line
 		 */
 		if (((size_t)slen >= i) && ((size_t)slen < (i + 0x10))) {
-			fr_log(log, type, file, line, "%.*s^ %s", (int)((slen - i) * 3), spaces, error);
+			if (fmt) {
+				fr_log(log, type, file, line, "%pV      %.*s^ %s", fr_box_strvalue_buffer(prefix),
+				       (int)((slen - i) * 3), spaces, error);
+			} else {
+				fr_log(log, type, file, line, "      %.*s^ %s", (int)((slen - i) * 3), spaces, error);
+			}
 		}
 	}
 
