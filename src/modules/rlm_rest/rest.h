@@ -307,21 +307,21 @@ void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t time
  */
 int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *thread,
 			rlm_rest_section_t const *section, REQUEST *request,
-			void *handle, http_method_t method,
+			fr_curl_io_request_t *randle, http_method_t method,
 			http_body_type_t type, char const *uri,
 			char const *username, char const *password) CC_HINT(nonnull (1,2,3,4,5,8));
 
 int rest_response_certinfo(UNUSED rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			   REQUEST *request, void *handle);
+			   REQUEST *request, fr_curl_io_request_t *randle);
 
 int rest_response_decode(rlm_rest_t const *instance,
 			UNUSED rlm_rest_section_t const *section, REQUEST *request,
-			void *handle);
+			fr_curl_io_request_t *randle);
 
 void rest_response_error(REQUEST *request, fr_curl_io_request_t *handle);
 void rest_response_debug(REQUEST *request, fr_curl_io_request_t *handle);
 
-void rest_request_cleanup(rlm_rest_t const *instance, void *handle);
+void rest_request_cleanup(rlm_rest_t const *instance, fr_curl_io_request_t *randle);
 
 #define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((fr_curl_io_request_t*)(_handle))->uctx)->response.code)
 
@@ -335,7 +335,7 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle);
 size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg);
 ssize_t rest_uri_build(char **out, rlm_rest_t const *instance, REQUEST *request, char const *uri);
 ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, REQUEST *request,
-			       void *handle, char const *uri);
+			       fr_curl_io_request_t *randle, char const *uri);
 
 /*
  *	Async IO helpers

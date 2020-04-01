@@ -199,7 +199,7 @@ static int rlm_rest_status_update(REQUEST *request, void *handle)
 }
 
 static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
-			    rlm_rest_section_t const *section, fr_curl_io_request_t *handle,
+			    rlm_rest_section_t const *section, fr_curl_io_request_t *randle,
 			    REQUEST *request, char const *username, char const *password)
 {
 	ssize_t		uri_len;
@@ -221,7 +221,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
 	 *  Configure various CURL options, and initialise the read/write
 	 *  context data.
 	 */
-	ret = rest_request_config(instance, t, section, request, handle, section->method, section->body,
+	ret = rest_request_config(instance, t, section, request, randle, section->method, section->body,
 				  uri, username, password);
 	talloc_free(uri);
 	if (ret < 0) return -1;
@@ -230,7 +230,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
 	 *  HTTP body data into a single contiguous buffer.
 	 */
-	ret = fr_curl_io_request_enqueue(t->mhandle, request, handle->candle);
+	ret = fr_curl_io_request_enqueue(t->mhandle, request, randle);
 	if (ret < 0) return -1;
 
 	return 0;
@@ -326,7 +326,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	rlm_rest_t const		*mod_inst = xti->inst;
 	rlm_rest_thread_t		*t = xti->t;
 
-	fr_curl_io_request_t		*handle = NULL;
+	fr_curl_io_request_t		*randle = NULL;
 	ssize_t				len;
 	int				ret;
 	char				*uri = NULL;
@@ -389,18 +389,18 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 */
 	fr_skip_whitespace(p);
 
-	handle = rctx->handle = fr_pool_connection_get(t->pool, request);
-	if (!handle) return XLAT_ACTION_FAIL;
+	randle = rctx->handle = fr_pool_connection_get(t->pool, request);
+	if (!randle) return XLAT_ACTION_FAIL;
 
 	/*
 	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
 	 *  request attributes.
 	 */
-	len = rest_uri_host_unescape(&uri, mod_inst, request, handle, p);
+	len = rest_uri_host_unescape(&uri, mod_inst, request, randle, p);
 	if (len <= 0) {
 	error:
-		rest_request_cleanup(mod_inst, handle);
-		fr_pool_connection_release(t->pool, request, handle);
+		rest_request_cleanup(mod_inst, randle);
+		fr_pool_connection_release(t->pool, request, randle);
 		talloc_free(section);
 
 		return XLAT_ACTION_FAIL;
@@ -427,7 +427,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
 	ret = rest_request_config(mod_inst, t, section, request,
-				  handle, section->method, section->body, uri, NULL, NULL);
+				  randle, section->method, section->body, uri, NULL, NULL);
 	talloc_free(uri);
 	if (ret < 0) goto error;
 
@@ -437,7 +437,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 *
 	 * @fixme need to pass in thread to all xlat functions
 	 */
-	ret = fr_curl_io_request_enqueue(t->mhandle, request, handle->candle);
+	ret = fr_curl_io_request_enqueue(t->mhandle, request, randle);
 	if (ret < 0) goto error;
 
 	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, rctx);

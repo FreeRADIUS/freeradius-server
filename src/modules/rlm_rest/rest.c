@@ -100,7 +100,7 @@ DIAG_OPTIONAL
 DIAG_OFF(disabled-macro-expansion)
 #define SET_OPTION(_x, _y)\
 do {\
-	if ((ret = curl_easy_setopt(candle, _x, _y)) != CURLE_OK) {\
+	if ((ret = curl_easy_setopt(randle->candle, _x, _y)) != CURLE_OK) {\
 		option = STRINGIFY(_x);\
 		REDEBUG("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret); \
 		goto error;\
@@ -655,7 +655,7 @@ static void rest_request_init(rlm_rest_section_t const *section,
  *
  * @param[in] inst	configuration data.
  * @param[in] section	configuration data.
- * @param[in] handle	fr_curl_io_request_t to use.
+ * @param[in] randle	fr_curl_io_request_t to use.
  * @param[in] request	Current request.
  * @param[in] raw	buffer containing POST data.
  * @param[in] rawlen	Length of data in raw buffer.
@@ -664,7 +664,7 @@ static void rest_request_init(rlm_rest_section_t const *section,
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
-			     REQUEST *request, UNUSED void *handle, char *raw, size_t rawlen)
+			     REQUEST *request, UNUSED fr_curl_io_request_t *randle, char *raw, size_t rawlen)
 {
 	VALUE_PAIR		*vp;
 
@@ -699,7 +699,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
  *
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
- * @param[in] handle	fr_curl_io_request_t to use.
+ * @param[in] randle	fr_curl_io_request_t to use.
  * @param[in] request	Current request.
  * @param[in] raw	buffer containing POST data.
  * @param[in] rawlen	Length of data in raw buffer.
@@ -708,9 +708,8 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
-			    REQUEST *request, void *handle, char *raw, size_t rawlen)
+			    REQUEST *request, fr_curl_io_request_t *randle, char *raw, size_t rawlen)
 {
-	fr_curl_io_request_t	*randle = handle;
 	CURL			*candle = randle->candle;
 
 	char const		*p = raw, *q;
@@ -1198,7 +1197,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
  * @param[in,out] request Current request.
- * @param[in] handle	REST handle.
+ * @param[in] randle	REST handle.
  * @param[in] raw	buffer containing JSON data.
  * @param[in] rawlen	Length of data in raw buffer.
  * @return
@@ -1206,7 +1205,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			    REQUEST *request, UNUSED void *handle, char *raw, UNUSED size_t rawlen)
+			    REQUEST *request, UNUSED fr_curl_io_request_t *randle, char *raw, UNUSED size_t rawlen)
 {
 	char const *p = raw;
 
@@ -1619,14 +1618,14 @@ static void rest_response_init(rlm_rest_section_t const *section,
 /** Extracts pointer to buffer containing response data
  *
  * @param[out] out	Where to write the pointer to the buffer.
- * @param[in] handle	used for the last request.
+ * @param[in] randle	used for the last request.
  * @return
  *	- 0 if no data i available.
  *	- > 0 if data is available.
  */
-size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle)
+size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
 {
-	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(handle->uctx, rlm_rest_curl_context_t);
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
 	rad_assert(ctx->response.buffer || !ctx->response.used);
 
@@ -1643,7 +1642,7 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle)
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
  * @param[in] request	Current request.
- * @param[in] handle	fr_curl_io_request_t to configure.
+ * @param[in] randle	fr_curl_io_request_t to configure.
  * @param[in] func	to pass to libcurl for chunked.
  *	      		transfers (NULL if not using chunked mode).
  * @return
@@ -1651,13 +1650,12 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle)
  *	- -1 on failure.
  */
 static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-				    REQUEST *request, fr_curl_io_request_t *handle, rest_read_t func)
+				    REQUEST *request, fr_curl_io_request_t *randle, rest_read_t func)
 {
-	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(handle->uctx, rlm_rest_curl_context_t);
-	CURL			*candle = handle->candle;
+	rlm_rest_curl_context_t	*uctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
-	CURLcode ret = CURLE_OK;
-	char const *option = "unknown";
+	CURLcode		ret = CURLE_OK;
+	char const		*option = "unknown";
 
 	ssize_t len;
 
@@ -1675,7 +1673,7 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  multiple parts.
 	 */
 	if (section->chunk > 0) {
-		SET_OPTION(CURLOPT_READDATA, &ctx->request);
+		SET_OPTION(CURLOPT_READDATA, &uctx->request);
 		SET_OPTION(CURLOPT_READFUNCTION, func);
 
 		return 0;
@@ -1685,15 +1683,15 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  If were not doing chunked encoding then we read the entire
 	 *  body into a buffer, and send it in one go.
 	 */
-	len = rest_request_encode_wrapper(&ctx->body, instance, func, REST_BODY_MAX_LEN, &ctx->request);
+	len = rest_request_encode_wrapper(&uctx->body, instance, func, REST_BODY_MAX_LEN, &uctx->request);
 	if (len <= 0) {
 		REDEBUG("Failed creating HTTP body content");
 		return -1;
 	}
 	RDEBUG2("Content-Length will be %zu bytes", len);
 
-	rad_assert((len == 0) || (talloc_array_length(ctx->body) >= (size_t)len));
-	SET_OPTION(CURLOPT_POSTFIELDS, ctx->body);
+	rad_assert((len == 0) || (talloc_array_length(uctx->body) >= (size_t)len));
+	SET_OPTION(CURLOPT_POSTFIELDS, uctx->body);
 	SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
 
 	return 0;
@@ -1800,7 +1798,7 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
  * @param[in] inst	configuration data.
  * @param[in] t		Thread specific instance data.
  * @param[in] section	configuration data.
- * @param[in] handle	to configure.
+ * @param[in] randle	to configure.
  * @param[in] request	Current request.
  * @param[in] method	to use (HTTP verbs PUT, POST, DELETE etc...).
  * @param[in] type	Content-Type for request encoding, also sets
@@ -1815,11 +1813,10 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
  *	- -1 on failure.
  */
 int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_section_t const *section,
-			REQUEST *request, void *handle, http_method_t method,
+			REQUEST *request, fr_curl_io_request_t *randle, http_method_t method,
 			http_body_type_t type,
 			char const *uri, char const *username, char const *password)
 {
-	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
 	fr_time_delta_t		timeout;
@@ -2085,7 +2082,7 @@ do {\
 	 */
 	switch (type) {
 	case REST_HTTP_BODY_NONE:
-		if (rest_request_config_body(inst, section, request, handle, NULL) < 0) return -1;
+		if (rest_request_config_body(inst, section, request, randle, NULL) < 0) return -1;
 
 		break;
 
@@ -2103,7 +2100,7 @@ do {\
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(inst, section, request, handle, rest_encode_custom) < 0) {
+		if (rest_request_config_body(inst, section, request, randle, rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
 		}
@@ -2122,7 +2119,7 @@ do {\
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(inst, section, request, handle, rest_encode_custom) < 0) {
+		if (rest_request_config_body(inst, section, request, randle, rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
 		}
@@ -2139,7 +2136,7 @@ do {\
 
 		rest_request_init(section, request, &ctx->request);
 
-		if (rest_request_config_body(inst, section, request, handle, rest_encode_json) < 0) return -1;
+		if (rest_request_config_body(inst, section, request, randle, rest_encode_json) < 0) return -1;
 	}
 
 		break;
@@ -2149,7 +2146,7 @@ do {\
 		rest_request_init(section, request, &ctx->request);
 		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
-		if (rest_request_config_body(inst, section, request, handle, rest_encode_post) < 0) return -1;
+		if (rest_request_config_body(inst, section, request, randle, rest_encode_post) < 0) return -1;
 
 		break;
 
@@ -2168,9 +2165,8 @@ error:
 }
 
 int rest_response_certinfo(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
-			   REQUEST *request, void *handle)
+			   REQUEST *request, fr_curl_io_request_t *randle)
 {
-	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
 	CURL			*candle = randle->candle;
 	CURLcode		ret;
 	int			i;
@@ -2270,15 +2266,14 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sectio
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
  * @param[in] request	Current request.
- * @param[in] handle	to use.
+ * @param[in] randle	to use.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			 REQUEST *request, void *handle)
+			 REQUEST *request, fr_curl_io_request_t *randle)
 {
-	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
 	int ret = -1;	/* -Wsometimes-uninitialized */
@@ -2293,16 +2288,16 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
 		return 0;
 
 	case REST_HTTP_BODY_PLAIN:
-		ret = rest_decode_plain(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
+		ret = rest_decode_plain(instance, section, request, randle, ctx->response.buffer, ctx->response.used);
 		break;
 
 	case REST_HTTP_BODY_POST:
-		ret = rest_decode_post(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
+		ret = rest_decode_post(instance, section, request, randle, ctx->response.buffer, ctx->response.used);
 		break;
 
 #ifdef HAVE_JSON
 	case REST_HTTP_BODY_JSON:
-		ret = rest_decode_json(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
+		ret = rest_decode_json(instance, section, request, randle, ctx->response.buffer, ctx->response.used);
 		break;
 #endif
 
@@ -2327,11 +2322,10 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
  * context data.
  *
  * @param[in] instance configuration data.
- * @param[in] handle to cleanup.
+ * @param[in] randle to cleanup.
  */
-void rest_request_cleanup(UNUSED rlm_rest_t const *instance, void *handle)
+void rest_request_cleanup(UNUSED rlm_rest_t const *instance, fr_curl_io_request_t *randle)
 {
-	fr_curl_io_request_t	*randle = talloc_get_type_abort(handle, fr_curl_io_request_t);
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
 
@@ -2459,16 +2453,15 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t const *inst, REQUEST *reque
  *			buffer containing the escaped URI.
  * @param[in] inst	of rlm_rest.
  * @param[in] request	Current request
- * @param[in] handle	to use.
+ * @param[in] randle	to use.
  * @param[in] uri	configuration data.
  * @return
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
 ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, REQUEST *request,
-			       void *handle, char const *uri)
+			       fr_curl_io_request_t *randle, char const *uri)
 {
-	fr_curl_io_request_t	*randle = handle;
 	CURL			*candle = randle->candle;
 
 	char const		*p, *q;
