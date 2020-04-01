@@ -243,7 +243,7 @@ static ssize_t internal_encode(uint8_t *out, size_t outlen,
 	{
 		uint8_t	buff[sizeof(uint64_t)];
 
-		flen = fr_net_from_uint64v(buff, (size_t)slen);
+		flen = fr_net_from_uint64v(buff, p - value_field);
 
 		/*
 		 *	Ugh, it's a long one, need to memmove the
