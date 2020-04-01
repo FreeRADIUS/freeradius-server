@@ -7,6 +7,7 @@ ARG from=freeradius/debian10-deps
 
 ARG cc=gcc
 ARG branch=master
+ARG dh_key_size=2048
 
 WORKDIR /usr/local/src/repositories/freeradius-server
 RUN git checkout ${branch}
@@ -15,8 +16,7 @@ RUN make -j$(($(getconf _NPROCESSORS_ONLN) + 1))
 RUN make install
 WORKDIR /opt/freeradius/etc/raddb
 RUN sed -i -e 's/allow_vulnerable_openssl.*/allow_vulnerable_openssl = yes/' radiusd.conf
-WORKDIR certs
-RUN make
+RUN make -C certs DH_KEY_SIZE=$dh_key_size
 WORKDIR /
 
 FROM ${from}

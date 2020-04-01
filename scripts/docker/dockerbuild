@@ -15,18 +15,20 @@ usage ()
 	echo "  -c	disable docker cache"
 	echo "  -j	build jenkins image instead of main image"
 	echo "  -l	build with clang rather than gcc"
+	echo "  -d	build with faster for dev only (smaller key sizes)"
 	echo "  -s	build with alternative git source"
 	echo "  -b	build with alternative git branch"
 	echo "  -h	this help"
 	exit $1
 }
 
-while getopts "chjls:b:" OPT
+while getopts "chjlds:b:" OPT
 do
 	case $OPT in
 	c)	OPT_NOCACHE=1;;
 	j)	OPT_JENKINS=1;;
 	l)	OPT_CC=clang;;
+	d)	OPT_DEV=1;;
 	s)	OPT_SOURCE="$OPTARG";;
 	b)	OPT_BRANCH="$OPTARG";;
 	h)	usage 0;;
@@ -65,6 +67,7 @@ if [ -r "$DIR/Dockerfile${OPT_JENKINS:+.jenkins}" ]; then
 	docker build \
 		${OPT_NOCACHE:+--no-cache} \
 		${OPT_CC:+--build-arg=cc=$OPT_CC} \
+		${OPT_DEV:+--build-arg=dh_key_size=128} \
 		${OPT_BRANCH:+--build-arg=branch=$OPT_BRANCH} \
 		-t freeradius/$OSNAME${OPT_JENKINS:+-jenkins} \
 		-f "$DIR/Dockerfile${OPT_JENKINS:+.jenkins}" \
