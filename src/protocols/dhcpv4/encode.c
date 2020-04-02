@@ -34,51 +34,6 @@
 #include "dhcpv4.h"
 #include "attrs.h"
 
-static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
-{
-	if (!vp) return false;
-	if (vp->da->flags.internal) return false;
-	if (!fr_dict_parent_common(root, vp->da, true)) return false;
-
-	return true;
-}
-
-/** Find the next attribute to encode
- *
- * @param[in] cursor		to iterate over.
- * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
- * @return
- *	- encodable VALUE_PAIR.
- *	- NULL if none available.
- */
-static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
-{
-	VALUE_PAIR	*vp;
-	fr_dhcpv4_ctx_t	*packet_ctx = encoder_ctx;
-
-	do { vp = fr_cursor_next(cursor); } while (vp && !is_encodable(packet_ctx->root, vp));
-	return fr_cursor_current(cursor);
-}
-
-/** Determine if the current attribute is encodable, or find the first one that is
- *
- * @param[in] cursor		to iterate over.
- * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
- * @return
- *	- encodable VALUE_PAIR.
- *	- NULL if none available.
- */
-static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx)
-{
-	VALUE_PAIR	*vp;
-	fr_dhcpv4_ctx_t	*packet_ctx = encoder_ctx;
-
-	vp = fr_cursor_current(cursor);
-	if (is_encodable(packet_ctx->root, vp)) return vp;
-
-	return next_encodable(cursor, encoder_ctx);
-}
-
 /** Write DHCP option value into buffer
  *
  * Does not include DHCP option length or number.
@@ -96,7 +51,7 @@ static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_cursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
+			    fr_cursor_t *cursor, UNUSED fr_dhcpv4_ctx_t *encoder_ctx)
 {
 	VALUE_PAIR	*vp = fr_cursor_current(cursor);
 	uint8_t		*p = out;
@@ -144,10 +99,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	default:
 		fr_strerror_printf("Unsupported option type %d", vp->vp_type);
-		(void)next_encodable(cursor, encoder_ctx);
+		(void)fr_cursor_next(cursor);
 		return -2;
 	}
-	vp = next_encodable(cursor, encoder_ctx);	/* We encoded a leaf, advance the cursor */
+	vp = fr_cursor_next(cursor);	/* We encoded a leaf, advance the cursor */
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -478,14 +433,14 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	fr_da_stack_t		da_stack;
 	ssize_t			len;
 
-	vp = first_encodable(cursor, encoder_ctx);
+	vp = fr_cursor_current(cursor);
 	if (!vp) return -1;
 
 	if (vp->da == attr_dhcp_message_type) goto next; /* already done */
 	if ((vp->da->attr > 255) && (vp->da->attr != FR_DHCP_OPTION_82)) {
 	next:
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
-		next_encodable(cursor, encoder_ctx);
+		(void)fr_cursor_next(cursor);
 		return 0;
 	}
 
