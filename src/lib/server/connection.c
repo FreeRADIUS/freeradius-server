@@ -1170,6 +1170,7 @@ void fr_connection_signal_halt(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_SHUTDOWN:
 	case FR_CONNECTION_STATE_TIMEOUT:
 	case FR_CONNECTION_STATE_FAILED:
+		connection_state_enter_closed(conn);
 		rad_assert(conn->is_closed);
 		connection_state_enter_halted(conn);
 		break;
