@@ -368,6 +368,7 @@ do { \
 		      fr_table_str_by_value(fr_trunk_request_states, _log->from, "<INVALID>"), \
 		      fr_table_str_by_value(fr_trunk_request_states, _log->to, "<INVALID>")); \
 	} \
+	if (_i == 0) ERROR("[%u] %s:%i - State log empty", _i, __FUNCTION__, __LINE__); \
 	if (!fr_cond_assert_msg(0, "Trunk request %" PRIu64 " invalid transition %s -> %s", \
 				treq->id, \
 				fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
