@@ -278,7 +278,7 @@ static inline uint128_t uint128_new(uint64_t h, uint64_t l)
  */
 static inline uint64_t uint128_to_64(uint128_t a)
 {
-	return ret.l;
+	return a.l;
 }
 #else
 #define uint128_gen_mask(_bits) (((_bits) >= 128) ? ~(uint128_t)0x00 : (((uint128_t)1) << (_bits)) - 1)
