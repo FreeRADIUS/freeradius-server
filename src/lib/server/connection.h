@@ -232,7 +232,7 @@ void			fr_connection_signal_shutdown(fr_connection_t *conn);
 
 void			fr_connection_signal_halt(fr_connection_t *conn);
 
-void			fr_connection_deferred_signals_pause(fr_connection_t *conn);
+void			fr_connection_signals_pause(fr_connection_t *conn);
 
 void			fr_connection_deferred_signals_resume(fr_connection_t *conn);
 /** @} */

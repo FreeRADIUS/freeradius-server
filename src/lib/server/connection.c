@@ -96,7 +96,7 @@ struct fr_connection_s {
 	fr_dlist_head_t		deferred_signals;	//!< A list of signals we received whilst we were in
 							///< a handler.
 
-	bool			deferred_signals_pause; //!< Temporarily stop processing of signals.
+	bool			signals_pause;		//!< Temporarily stop processing of signals.
 };
 
 #define STATE_TRANSITION(_new) \
@@ -114,6 +114,8 @@ do { \
 				fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"), \
 				fr_table_str_by_value(fr_connection_states, _new, "<INVALID>"))) return; \
 } while (0)
+
+#define DEFER_SIGNALS(_conn)	((_conn)->in_handler || (_conn)->signals_pause)
 
 /** Deferred signals
  *
@@ -234,9 +236,9 @@ static void connection_deferred_signal_process(fr_connection_t *conn)
  *
  * @param[in] conn to pause signal processing for.
  */
-void fr_connection_deferred_signals_pause(fr_connection_t *conn)
+void fr_connection_signals_pause(fr_connection_t *conn)
 {
-	conn->deferred_signals_pause = true;
+	conn->signals_pause = true;
 }
 
 /** Resume processing of deferred signals
@@ -250,13 +252,13 @@ void fr_connection_deferred_signals_resume(fr_connection_t *conn)
 	 *	then process the signals now.
 	 */
 	if (!conn->in_handler) {
-		if (conn->deferred_signals_pause) {
-			conn->deferred_signals_pause = false;
+		if (conn->signals_pause) {
+			conn->signals_pause = false;
 			connection_deferred_signal_process(conn);
 			return;
 		}
 	}
-	conn->deferred_signals_pause = false;
+	conn->signals_pause = false;
 }
 
 /** Called when we enter a handler
@@ -274,7 +276,7 @@ do { \
 #define HANDLER_END(_conn) \
 do { \
 	(_conn)->in_handler = _prev_handler; \
-	if (!(_conn)->deferred_signals_pause && (!(_conn)->in_handler)) connection_deferred_signal_process(_conn); \
+	if (!(_conn)->signals_pause && (!(_conn)->in_handler)) connection_deferred_signal_process(_conn); \
 } while(0)
 
 
@@ -959,7 +961,7 @@ void fr_connection_signal_init(fr_connection_t *conn)
 	DEBUG2("Signalled to start from %s state",
 	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
-	if (conn->in_handler) {
+	if (DEFER_SIGNALS(conn)) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_INIT);
 		return;
 	}
@@ -991,7 +993,7 @@ void fr_connection_signal_connected(fr_connection_t *conn)
 	DEBUG2("Signalled connected from %s state",
 	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
-	if (conn->in_handler) {
+	if (DEFER_SIGNALS(conn)) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_CONNECTED);
 		return;
 	}
@@ -1019,7 +1021,7 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 	DEBUG2("Signalled to reconnect from %s state",
 	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
-	if (conn->in_handler) {
+	if (DEFER_SIGNALS(conn)) {
 		if ((reason == FR_CONNECTION_EXPIRED) && conn->shutdown) {
 			connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_RECONNECT_EXPIRED);
 			return;
@@ -1080,7 +1082,7 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 	DEBUG2("Signalled to shutdown from %s state",
 	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
-	if (conn->in_handler) {
+	if (DEFER_SIGNALS(conn)) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_SHUTDOWN);
 		return;
 	}
@@ -1143,7 +1145,7 @@ void fr_connection_signal_halt(fr_connection_t *conn)
 	DEBUG2("Signalled to halt from %s state",
 	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
 
-	if (conn->in_handler) {
+	if (DEFER_SIGNALS(conn)) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_HALT);
 		return;
 	}
@@ -1306,7 +1308,7 @@ static int _connection_free(fr_connection_t *conn)
 	 *	Add a deferred signal to free the
 	 *	connection later.
 	 */
-	if (conn->in_handler) {
+	if (DEFER_SIGNALS(conn)) {
 		connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_FREE);
 		return -1;
 	}
