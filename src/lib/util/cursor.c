@@ -404,6 +404,9 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 
 /** Return the first item matching the iterator in cursor a and cursor b
  *
+ * If a and b are not currently set to the same item, b will be reset,
+ * and wound to the item before a's current item.
+ *
  * @note Both cursors must operate on the same list of items.
  *
  * @param[in] a		First cursor.
@@ -425,6 +428,9 @@ void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b)
 }
 
 /** Return the next item matching the iterator in cursor a and cursor b
+ *
+ * If a and b are not currently set to the same item, b will be reset,
+ * and wound to the item before a's current item.
  *
  * @note Both cursors must operate on the same list of items.
  *
@@ -451,11 +457,21 @@ void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
 	b_iter = b->iter;
 
 	/*
+	 *	Deal with the case where the two iterators
+	 *	are out of sync.
+	 */
+	if (a->current != b->current) {
+		fr_cursor_head(b);	/* reset */
+	} else {
+		a->current = cursor_next(&a->prev, a, a->current);
+	}
+
+	/*
 	 *	Use a's iterator to select the item to
 	 *	check.
 	 */
-	while ((a->current = cursor_next(&a->prev, a, a->current))) {
-		b->iter = NULL;		/* Disable B's iterator */
+	do {
+		b->iter = NULL;		/* Disable b's iterator */
 
 		/*
 		 *	Find a in b (the slow way *sigh*)
@@ -487,7 +503,7 @@ void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
 		 *	Reset b's position to a's and try again.
 		 */
 		fr_cursor_copy(b, a);
-	}
+	} while ((a->current = cursor_next(&a->prev, a, a->current)));
 
 	return NULL;
 }
