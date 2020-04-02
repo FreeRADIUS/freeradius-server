@@ -1631,7 +1631,7 @@ void test_cursor_remove_3i_end(void)
 	TEST_CHECK(!fr_cursor_next_peek(&cursor));
 }
 
-void test_cursor_merge_start(void)
+void test_cursor_merge_start_a_b(void)
 {
 	fr_cursor_t	cursor_a, cursor_b;
 
@@ -1650,13 +1650,38 @@ void test_cursor_merge_start(void)
 	fr_cursor_init(&cursor_b, &head_b);
 	fr_cursor_merge(&cursor_a, &cursor_b);
 
+	/*
+	 *	First item in cursor_a remains unchanged
+	 *
+	 *	The insertion point into cursor_a is
+	 *	directly after the current item.
+	 */
 	TEST_CHECK(fr_cursor_current(&cursor_a) == &item1a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
+	TEST_MSG("Expected %s", item1a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
 
+	/*
+	 *	Next three items should be from cursor_b
+	 */
 	TEST_CHECK(fr_cursor_next(&cursor_a) == &item1b);
+	TEST_MSG("Expected %s", item1b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
 	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2b);
+	TEST_MSG("Expected %s", item2b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
 	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3b);
+	TEST_MSG("Expected %s", item3b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+
+	/*
+	 *	With the final two from cursor_a
+	 */
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
+	TEST_MSG("Expected %s", item2a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
+	TEST_MSG("Expected %s", item3a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
 	TEST_CHECK(!fr_cursor_next(&cursor_a));
 
 	TEST_CHECK(!fr_cursor_current(&cursor_b));
@@ -1664,7 +1689,109 @@ void test_cursor_merge_start(void)
 	TEST_CHECK(!fr_cursor_list_next_peek(&cursor_b));
 }
 
-void test_cursor_merge_mid(void)
+void test_cursor_merge_mid_a(void)
+{
+	fr_cursor_t	cursor_a, cursor_b;
+
+	test_item_t	item3b = { "item3b", NULL };
+	test_item_t	item2b = { "item2b", &item3b };
+	test_item_t	item1b = { "item1b", &item2b };
+
+	test_item_t	item3a = { "item3a", NULL };
+	test_item_t	item2a = { "item2a", &item3a };
+	test_item_t	item1a = { "item1a", &item2a };
+
+	test_item_t	*head_a = &item1a;
+	test_item_t	*head_b = &item1b;
+
+	fr_cursor_init(&cursor_a, &head_a);
+	fr_cursor_init(&cursor_b, &head_b);
+	fr_cursor_next(&cursor_a);
+	fr_cursor_merge(&cursor_a, &cursor_b);
+
+	/*
+	 *	Should be second item in cursor a
+	 */
+	TEST_CHECK(fr_cursor_current(&cursor_a) == &item2a);
+	TEST_MSG("Expected %s", item2a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+
+	/*
+	 *	Next three items should be from cursor_b
+	 */
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item1b);
+	TEST_MSG("Expected %s", item1b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2b);
+	TEST_MSG("Expected %s", item2b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3b);
+	TEST_MSG("Expected %s", item3b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+
+	/*
+	 *	Final item should be from cursor a
+	 */
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
+	TEST_MSG("Expected %s", item3a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+	TEST_CHECK(!fr_cursor_next(&cursor_a));
+
+	TEST_CHECK(!fr_cursor_current(&cursor_b));
+	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor_b));
+	TEST_CHECK(!fr_cursor_list_next_peek(&cursor_b));
+}
+
+void test_cursor_merge_end_a(void)
+{
+	fr_cursor_t	cursor_a, cursor_b;
+
+	test_item_t	item3b = { "item3b", NULL };
+	test_item_t	item2b = { "item2b", &item3b };
+	test_item_t	item1b = { "item1b", &item2b };
+
+	test_item_t	item3a = { "item3a", NULL };
+	test_item_t	item2a = { "item2a", &item3a };
+	test_item_t	item1a = { "item1a", &item2a };
+
+	test_item_t	*head_a = &item1a;
+	test_item_t	*head_b = &item1b;
+
+	fr_cursor_init(&cursor_a, &head_a);
+	fr_cursor_init(&cursor_b, &head_b);
+	fr_cursor_tail(&cursor_a);
+	fr_cursor_merge(&cursor_a, &cursor_b);
+
+	/*
+	 *	Should be final item in cursor_a
+	 */
+	TEST_CHECK(fr_cursor_current(&cursor_a) == &item3a);
+	TEST_MSG("Expected %s", item3a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+
+	/*
+	 *	Next three items should be from cursor_b
+	 */
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item1b);
+	TEST_MSG("Expected %s", item1b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2b);
+	TEST_MSG("Expected %s", item2b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3b);
+	TEST_MSG("Expected %s", item3b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+
+	/*
+	 *	Should be no more items...
+	 */
+	TEST_CHECK(!fr_cursor_list_next_peek(&cursor_a));
+	TEST_CHECK(!fr_cursor_current(&cursor_b));
+	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor_b));
+	TEST_CHECK(!fr_cursor_list_next_peek(&cursor_b));
+}
+
+void test_cursor_merge_mid_b(void)
 {
 	fr_cursor_t	cursor_a, cursor_b;
 
@@ -1684,12 +1811,35 @@ void test_cursor_merge_mid(void)
 	fr_cursor_next(&cursor_b);
 	fr_cursor_merge(&cursor_a, &cursor_b);
 
+	/*
+	 *	First item in cursor_a remains unchanged
+	 *
+	 *	The insertion point into cursor_a is
+	 *	directly after the current item.
+	 */
 	TEST_CHECK(fr_cursor_current(&cursor_a) == &item1a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
+	TEST_MSG("Expected %s", item1a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
 
+	/*
+	 *	Next two items should be from cursor_b
+	 */
 	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2b);
+	TEST_MSG("Expected %s", item2b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
 	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3b);
+	TEST_MSG("Expected %s", item3b.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+
+	/*
+	 *	Next two items should be from cursor_a
+	 */
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
+	TEST_MSG("Expected %s", item2a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
+	TEST_MSG("Expected %s", item3a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
 	TEST_CHECK(!fr_cursor_next(&cursor_a));
 
 	TEST_CHECK(!fr_cursor_current(&cursor_b));
@@ -1697,7 +1847,7 @@ void test_cursor_merge_mid(void)
 	TEST_CHECK(!fr_cursor_list_next_peek(&cursor_b));
 }
 
-void test_cursor_merge_end(void)
+void test_cursor_merge_end_b(void)
 {
 	fr_cursor_t	cursor_a, cursor_b;
 
@@ -1718,10 +1868,32 @@ void test_cursor_merge_end(void)
 	fr_cursor_next(&cursor_b);
 	fr_cursor_merge(&cursor_a, &cursor_b);
 
+	/*
+	 *	First item in cursor_a remains unchanged
+	 *
+	 *	The insertion point into cursor_a is
+	 *	directly after the current item.
+	 */
 	TEST_CHECK(fr_cursor_current(&cursor_a) == &item1a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
+	TEST_MSG("Expected %s", item1a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+
+	/*
+	 *	Next item should be from cursor_b
+	 */
 	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3b);
+	TEST_MSG("Expected %s", item3b.name);
+
+	/*
+	 *	Next two items should be from cursor_a
+	 */
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
+	TEST_MSG("Expected %s", item2a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
+	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
+	TEST_MSG("Expected %s", item3a.name);
+	TEST_MSG("Got %s", ((test_item_t *)fr_cursor_current(&cursor_a))->name);
 	TEST_CHECK(!fr_cursor_next(&cursor_a));
 
 	TEST_CHECK(!fr_cursor_current(&cursor_b));
@@ -1898,9 +2070,11 @@ TEST_LIST = {
 	/*
 	 *	Merge
 	 */
-	{ "merge_start",		test_cursor_merge_start },
-	{ "merge_mid",			test_cursor_merge_mid },
-	{ "merge_end",			test_cursor_merge_end },
+	{ "merge_start_a_b",		test_cursor_merge_start_a_b },
+	{ "merge_mid_a",		test_cursor_merge_mid_a },
+	{ "merge_end_a",		test_cursor_merge_end_a },
+	{ "merge_mid_b",		test_cursor_merge_mid_b },
+	{ "merge_end_b",		test_cursor_merge_end_b },
 	{ "merge_with_empty",		test_cursor_merge_with_empty },
 	{ "merge_empty",		test_cursor_merge_empty },
 
