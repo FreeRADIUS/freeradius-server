@@ -62,6 +62,20 @@ static fr_time_t test_time(void)
 #define fr_time test_time
 #endif
 
+#ifndef NDEBUG
+/** Trace state machine changes for a particular request
+ *
+ */
+typedef struct {
+	fr_dlist_t			entry;		//!< Entry in the linked list.
+	fr_trunk_request_state_t	from;		//!< What state we transitioned from.
+	fr_trunk_request_state_t	to;		//!< What state we transitioned to.
+
+	int				line;		//!< Line change occurred on.
+	char const			*function;	//!< Function change occurred in.
+} fr_trunk_request_state_log_t;
+#endif
+
 /** Wraps a normal request
  *
  */
@@ -83,6 +97,10 @@ struct fr_trunk_request_s {
 
 	bool			bound_to_conn;		//!< Fail the request if there's an attempt to
 							///< re-enqueue it.
+
+#ifndef NDEBUG
+	fr_dlist_head_t		log;			//!< State change log.
+#endif
 };
 
 
@@ -320,7 +338,43 @@ do { \
 				fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>"))) return;	\
 } while (0)
 
+#ifndef NDEBUG
 /** Record a request state transition and log appropriate output
+ *
+ */
+#define REQUEST_STATE_TRANSITION(_new) \
+do { \
+	fr_trunk_request_state_log_t *_log; \
+	DEBUG4("Trunk request %" PRIu64 " changed state %s -> %s", \
+	       treq->id, \
+	       fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
+	       fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>")); \
+	MEM(_log = talloc(treq, fr_trunk_request_state_log_t)); \
+	_log->from = treq->pub.state; \
+	_log->to = _new; \
+	_log->function == __FUNCTION__; \
+	_log->line == __LINE__; \
+	fr_dlist_insert_tail(&treq->log, _log); \
+	treq->pub.state = _new; \
+} while (0)
+#define REQUEST_BAD_STATE_TRANSITION(_new) \
+do { \
+	fr_trunk_request_state_log_t *_log = NULL; \
+	int _i; \
+	for (_log = fr_dlist_head(&treq->log), _i = 0; \
+	     _log; \
+	     _log = fr_dlist_next(&treq->log, _log), _i++) { \
+		ERROR("[%u] %s:%i - %s -> %s", _i, _log->function, _log->line, \
+		      fr_table_str_by_value(fr_trunk_request_states, _log->from, "<INVALID>"), \
+		      fr_table_str_by_value(fr_trunk_request_states, _log->to, "<INVALID>")); \
+	} \
+	if (!fr_cond_assert_msg(0, "Trunk request %" PRIu64 " invalid transition %s -> %s", \
+				treq->id, \
+				fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
+				fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>"))) return; \
+} while (0)
+#else
+/** Record a request state transition
  *
  */
 #define REQUEST_STATE_TRANSITION(_new) \
@@ -329,9 +383,7 @@ do { \
 	       treq->id, \
 	       fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
 	       fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>")); \
-	treq->pub.state = _new; \
 } while (0)
-
 #define REQUEST_BAD_STATE_TRANSITION(_new) \
 do { \
 	if (!fr_cond_assert_msg(0, "Trunk request %" PRIu64 " invalid transition %s -> %s", \
@@ -339,6 +391,8 @@ do { \
 				fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
 				fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>"))) return; \
 } while (0)
+#endif
+
 
 /** Call the cancel callback if set
  *
@@ -1780,6 +1834,13 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
 	treq->last_freed = fr_time();
 
+#ifndef NDEBUG
+	/*
+	 *	Clear the state change log
+	 */
+	fr_dlist_talloc_free(&treq->log);
+#endif
+
 	/*
 	 *	Ensure anything parented off the treq
 	 *	is freed.
@@ -1854,6 +1915,9 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 		treq->pub.rctx = NULL;
 		treq->last_freed = 0;
 		trunk->pub.req_alloc_new++;
+#ifndef NDEBUG
+		fr_dlist_init(&treq->log, fr_trunk_request_state_log_t, entry);
+#endif
 	}
 
 	treq->id = atomic_fetch_add_explicit(&request_counter, 1, memory_order_relaxed);
