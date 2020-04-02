@@ -86,6 +86,14 @@ typedef struct {
 	size_t			frame_state_pool_size;		//!< The total size of the pool to alloc.
 } unlang_op_t;
 
+/** Return whether a request is currently scheduled
+ *
+ */
+static inline bool unlang_request_is_scheduled(REQUEST const *request)
+{
+	return (request->runnable_id >= 0);
+}
+
 void		unlang_interpret_push_function(REQUEST *request,
 					       unlang_function_t func, unlang_function_t repeat, void *uctx);
 

@@ -2414,6 +2414,7 @@ static void request_fail(REQUEST *request, void *preq, void *rctx, NDEBUG_UNUSED
 	if (u->status_check) return;
 
 	r->rcode = RLM_MODULE_FAIL;
+	r->treq = NULL;
 
 	unlang_interpret_resumable(request);
 }
@@ -2421,14 +2422,17 @@ static void request_fail(REQUEST *request, void *preq, void *rctx, NDEBUG_UNUSED
 /** Mark the request as resumable
  *
  */
-static void request_complete(REQUEST *request, void *preq, UNUSED void *rctx, UNUSED void *uctx)
+static void request_complete(REQUEST *request, void *preq, void *rctx, UNUSED void *uctx)
 {
-	udp_request_t *u = talloc_get_type_abort(preq, udp_request_t);
+	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
+	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 
 	/*
 	 *	Status checks don't run.
 	 */
 	if (u->status_check) return;
+
+	r->treq = NULL;
 
 	unlang_interpret_resumable(request);
 }
@@ -2465,16 +2469,23 @@ static rlm_rcode_t mod_resume(UNUSED void *instance, UNUSED void *thread, UNUSED
 	return rcode;
 }
 
-static void mod_signal(UNUSED void *instance, void *thread, UNUSED REQUEST *request,
+static void mod_signal(UNUSED void *instance, void *thread, REQUEST *request,
 		       void *rctx, fr_state_signal_t action)
 {
 	udp_thread_t		*t = talloc_get_type_abort(thread, udp_thread_t);
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 
 	/*
-	 *	Should always have a treq at this point.
+	 *	If we don't have a treq associated with the
+	 *	rctx it's likely because the request was
+	 *	scheduled, but hasn't yet been resumed, and
+	 *	has received a signal.
 	 */
-	rad_assert(r->treq);
+	if (!r->treq) {
+		if (!fr_cond_assert(unlang_request_is_scheduled(request))) return;
+		talloc_free(rctx);
+		return;
+	}
 
 	switch (action) {
 	/*

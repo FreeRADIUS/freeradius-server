@@ -71,7 +71,7 @@ static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 	 *	The request is scheduled and isn't running.  Remove it
 	 *	from the backlog.
 	 */
-	if (is_scheduled(request)) {
+	if (unlang_request_is_scheduled(request)) {
 		rad_assert(request->backlog != NULL);
 		(void) fr_heap_extract(request->backlog, request);
 	}

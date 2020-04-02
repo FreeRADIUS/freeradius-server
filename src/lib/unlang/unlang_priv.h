@@ -265,8 +265,6 @@ static inline bool is_break_point(unlang_stack_frame_t *frame)		{ return frame->
 static inline bool is_return_point(unlang_stack_frame_t *frame) 	{ return frame->uflags & UNWIND_FLAG_RETURN_POINT; }
 static inline bool is_yielded(unlang_stack_frame_t *frame) 		{ return frame->uflags & UNWIND_FLAG_YIELDED; }
 
-static inline bool is_scheduled(REQUEST const *request)			{ return (request->runnable_id >= 0); }
-
 static inline unlang_action_t unwind_to_break(unlang_stack_t *stack)
 {
 	stack->unwind = UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME;

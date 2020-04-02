@@ -615,7 +615,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request)
 	DUMP_STACK;
 #endif
 
-	rad_assert(!is_scheduled(request)); /* if we're running it, it can't be scheduled */
+	rad_assert(!unlang_request_is_scheduled(request)); /* if we're running it, it can't be scheduled */
 
 	RDEBUG4("** [%i] %s - interpreter entered", stack->depth, __FUNCTION__);
 
@@ -1140,7 +1140,7 @@ void unlang_interpret_resumable(REQUEST *request)
 	 *	are.
 	 */
 	while (request->parent) {
-		rad_assert(!is_scheduled(request));
+		rad_assert(!unlang_request_is_scheduled(request));
 		request->runnable_id = -2; /* hack for now, see unlang_parallel_process() */
 		request = request->parent;
 	}
@@ -1163,14 +1163,14 @@ void unlang_interpret_resumable(REQUEST *request)
 	 *	Multiple child request may also mark a parent request
 	 *	runnable, before the parent request starts running.
 	 */
-	if (!is_yielded(frame) || is_scheduled(request)) {
+	if (!is_yielded(frame) || unlang_request_is_scheduled(request)) {
 		RDEBUG3("Not marking resumable due to %s %s",
 			is_yielded(frame) ?
-			"it not being yielded " : "", is_scheduled(request) ? "it already being scheduled" : "");
+			"it not being yielded " : "", unlang_request_is_scheduled(request) ? "it already being scheduled" : "");
 		return;
 	}
 
-	if (!is_scheduled(request)) {
+	if (!unlang_request_is_scheduled(request)) {
 		RDEBUG3("marking as resumable");
 	}
 
