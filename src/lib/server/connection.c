@@ -184,12 +184,30 @@ static inline void connection_deferred_signal_add(fr_connection_t *conn, connect
 //	DEBUG4("Adding deferred signal - %s", fr_table_str_by_value(connection_dsignals, signal, "<INVALID>"));
 }
 
+/** Notification function to tell connection_deferred_signal_process that the connection has been freed
+ *
+ */
+static void _deferred_signal_connection_on_halted(UNUSED fr_connection_t *conn,
+						  UNUSED fr_connection_state_t state, void *uctx)
+{
+	bool *freed = uctx;
+	*freed = true;
+}
+
 /** Process any deferred signals
  *
  */
 static void connection_deferred_signal_process(fr_connection_t *conn)
 {
-	connection_dsignal_entry_t *dsignal;
+	connection_dsignal_entry_t	*dsignal;
+	bool				freed = false;
+
+	/*
+	 *	Get notified if the connection gets freed
+	 *	out from under us...
+	 */
+	fr_connection_add_watch_post(conn, FR_CONNECTION_STATE_HALTED,
+				     _deferred_signal_connection_on_halted, true, &freed);	/* About to be freed */
 
 	while ((dsignal = fr_dlist_head(&conn->deferred_signals))) {
 		connection_dsignal_t signal;
@@ -229,7 +247,15 @@ static void connection_deferred_signal_process(fr_connection_t *conn)
 			talloc_free(conn);
 			return;
 		}
+
+		/*
+		 *	One of the signal handlers freed the connection
+		 *	return immediately.
+		 */
+		if (freed) return;
 	}
+
+	fr_connection_del_watch_post(conn, FR_CONNECTION_STATE_HALTED, _deferred_signal_connection_on_halted);
 }
 
 /** Pause processing of deferred signals
