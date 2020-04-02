@@ -83,6 +83,10 @@ void fr_cursor_insert(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 
 void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append) CC_HINT(nonnull);
 
+void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b) CC_HINT(nonnull);
+
+void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b) CC_HINT(nonnull);
+
 void *fr_cursor_remove(fr_cursor_t *cursor) CC_HINT(nonnull);
 
 void *fr_cursor_replace(fr_cursor_t *cursor, void *r) CC_HINT(nonnull);

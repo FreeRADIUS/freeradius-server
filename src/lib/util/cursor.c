@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 #define NEXT_PTR(_v) ((void **)(((uint8_t *)(_v)) + cursor->offset))
 
-/** Internal function to get the next attribute
+/** Internal function to get the next item
  *
  * @param[in,out] prev	attribute to the one we returned.  May be NULL.
  * @param[in] cursor	to operate on.
@@ -400,6 +400,88 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 			fr_cursor_prepend(cursor, v);
 		} while ((v = next));
 	}
+}
+
+/** Return the first item matching the iterator in cursor a and cursor b
+ *
+ * @param[in] a		First cursor.
+ * @param[in] b		Second cursor.
+ * @return item at the start of the list.
+ */
+void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b)
+{
+	void *a_item, *b_item;
+
+	a_item = fr_cursor_head(a);
+	b_item = fr_cursor_head(b);
+
+	if (a_item == b_item) return a_item;
+
+	return fr_cursor_intersect_next(a, b);
+}
+
+/** Return the next item matching the iterator in cursor a and cursor b
+ *
+ * @param[in] a		First cursor.
+ * @param[in] b		Second cursor.
+ * @return next item in the list.
+ */
+void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
+{
+	fr_cursor_iter_t b_iter;
+
+	/*
+	 *	If either of the iterators lack an iterator
+	 *	just use cursor_next...
+	 */
+	if (!a->iter) return fr_cursor_next(b);
+	if (!b->iter) return fr_cursor_next(a);
+
+	/*
+	 *	Both have iterators...
+	 */
+	b_iter = b->iter;
+
+	/*
+	 *	Use a's iterator to select the item to
+	 *	check.
+	 */
+	while ((a->current = cursor_next(&a->prev, a, a->current))) {
+		b->iter = NULL;		/* Disable B's iterator */
+
+		/*
+		 *	Find a in b (the slow way *sigh*)
+		 */
+		while ((b->current = cursor_next(&b->prev, b, b->current)) && (b->current != a->prev));
+
+		/*
+		 *	No more items...
+		 */
+		if (!b->current) {
+			fr_cursor_copy(a, b);
+			return NULL;
+		}
+
+		/*
+		 *	We're now one item before the item
+		 *	returned by a, see if b's iterator
+		 *	returns the same item as a's.
+		 */
+		 b->iter = b_iter;
+		 b->current = cursor_next(&b->prev, b, b->current);
+
+		/*
+		 *	Matched, we're done...
+		 */
+		if (a->current == b->current) return a->current;
+
+		/*
+		 *	Reset b's position to a's and try again.
+		 */
+		fr_cursor_copy(b, a);
+	}
+
+	return NULL;
 }
 
 /** Remove the current item
