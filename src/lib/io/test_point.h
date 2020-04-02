@@ -14,6 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
+#include <freeradius-devel/util/cursor.h>
 #include "proto.h"
 #include "pair.h"
 
@@ -87,4 +88,6 @@ typedef struct {
 typedef struct {
 	fr_test_point_ctx_alloc_t	test_ctx;	//!< Allocate a test ctx for the encoder.
 	fr_pair_encode_t		func;		//!< Encoder for pairs.
+	fr_cursor_iter_t		next_encodable;	//!< Iterator to use to select attributes
+							///< to encode.
 } fr_test_point_pair_encode_t;
