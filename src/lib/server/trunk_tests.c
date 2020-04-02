@@ -1198,7 +1198,7 @@ static void test_requeue_on_reconnect(void)
 	 *	freed instead of being moved between
 	 *	connections.
 	 */
-	fr_trunk_connection_signal_reconnect(treq->pub.tconn, FR_CONNECTION_FAILED);
+	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);	/* treq->pub.tconn, now invalid due to cancel */
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);
