@@ -151,7 +151,7 @@ struct fr_trunk_s {
 
 	fr_trunk_conf_t		conf;			//!< Trunk common configuration.
 
-	fr_dlist_head_t		unassigned;		//!< Requests in the unassigned state.  Waiting to be
+	fr_dlist_head_t		free_requests;		//!< Requests in the unassigned state.  Waiting to be
 							///< enqueued.
 
 	fr_heap_t		*backlog;		//!< The request backlog.  Requests we couldn't
@@ -1764,7 +1764,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	 *	No cleanup delay, means cleanup immediately
 	 */
 	if (trunk->conf.req_cleanup_delay == 0) {
-		treq->pub.state = FR_TRUNK_REQUEST_STATE_UNASSIGNED;
+		treq->pub.state = FR_TRUNK_REQUEST_STATE_INIT;
 		talloc_free(treq);
 		return;
 	}
@@ -1772,9 +1772,9 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	/*
 	 *
 	 *      Otherwise return the trunk request back
-	 *	to the unassigned list.
+	 *	to the init state.
 	 */
-	treq->pub.state = FR_TRUNK_REQUEST_STATE_UNASSIGNED;
+	treq->pub.state = FR_TRUNK_REQUEST_STATE_INIT;
 	treq->pub.preq = NULL;
 	treq->pub.rctx = NULL;
 	treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
@@ -1791,7 +1791,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	 *	requests that have been unused for N
 	 *	seconds from the tail.
 	 */
-	fr_dlist_insert_tail(&trunk->unassigned, treq);
+	fr_dlist_insert_tail(&trunk->free_requests, treq);
 }
 
 /** Actually free the trunk request
@@ -1811,7 +1811,7 @@ static int _trunk_request_free(fr_trunk_request_t *treq)
 		break;
 	}
 
-	fr_dlist_remove(&trunk->unassigned, treq);
+	fr_dlist_remove(&trunk->free_requests, treq);
 
 	return 0;
 }
@@ -1833,9 +1833,9 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 	/*
 	 *	Allocate or reuse an existing request
 	 */
-	treq = fr_dlist_head(&trunk->unassigned);
+	treq = fr_dlist_head(&trunk->free_requests);
 	if (treq) {
-		fr_dlist_remove(&trunk->unassigned, treq);
+		fr_dlist_remove(&trunk->free_requests, treq);
 		rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_INIT);
 		rad_assert(treq->pub.trunk == trunk);
 		rad_assert(treq->pub.tconn == NULL);
@@ -3308,7 +3308,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	 *	Cleanup requests in our request cache which
 	 *	have been idle for too long.
 	 */
-	while ((treq = fr_dlist_tail(&trunk->unassigned)) &&
+	while ((treq = fr_dlist_tail(&trunk->free_requests)) &&
 	       ((treq->last_freed + trunk->conf.req_cleanup_delay) <= now)) talloc_free(treq);
 
 	/*
@@ -3920,7 +3920,7 @@ static int _trunk_free(fr_trunk_t *trunk)
 	/*
 	 *	Free any requests in our request cache
 	 */
-	while ((treq = fr_dlist_head(&trunk->unassigned))) talloc_free(treq);
+	while ((treq = fr_dlist_head(&trunk->free_requests))) talloc_free(treq);
 
 	return 0;
 }
@@ -3980,7 +3980,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Unused request list...
 	 */
-	fr_dlist_talloc_init(&trunk->unassigned, fr_trunk_request_t, entry);
+	fr_dlist_talloc_init(&trunk->free_requests, fr_trunk_request_t, entry);
 
 	/*
 	 *	Request backlog queue
