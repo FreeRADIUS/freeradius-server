@@ -352,8 +352,8 @@ do { \
 	MEM(_log = talloc(treq, fr_trunk_request_state_log_t)); \
 	_log->from = treq->pub.state; \
 	_log->to = _new; \
-	_log->function == __FUNCTION__; \
-	_log->line == __LINE__; \
+	_log->function = __FUNCTION__; \
+	_log->line = __LINE__; \
 	fr_dlist_insert_tail(&treq->log, _log); \
 	treq->pub.state = _new; \
 } while (0)
