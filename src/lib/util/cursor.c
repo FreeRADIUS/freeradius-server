@@ -404,6 +404,8 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 
 /** Return the first item matching the iterator in cursor a and cursor b
  *
+ * @note Both cursors must operate on the same list of items.
+ *
  * @param[in] a		First cursor.
  * @param[in] b		Second cursor.
  * @return item at the start of the list.
@@ -411,6 +413,8 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b)
 {
 	void *a_item, *b_item;
+
+	if (unlikely(a->head != b->head)) return NULL;
 
 	a_item = fr_cursor_head(a);
 	b_item = fr_cursor_head(b);
@@ -422,6 +426,8 @@ void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b)
 
 /** Return the next item matching the iterator in cursor a and cursor b
  *
+ * @note Both cursors must operate on the same list of items.
+ *
  * @param[in] a		First cursor.
  * @param[in] b		Second cursor.
  * @return next item in the list.
@@ -429,6 +435,8 @@ void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b)
 void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
 {
 	fr_cursor_iter_t b_iter;
+
+	if (unlikely(a->head != b->head)) return NULL;
 
 	/*
 	 *	If either of the iterators lack an iterator
