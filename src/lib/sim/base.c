@@ -38,7 +38,7 @@ RCSID("$Id$")
 #include "base.h"
 #include "attrs.h"
 
-static int instance_count = 0;
+static uint32_t instance_count = 0;
 
 fr_dict_t *dict_freeradius;
 fr_dict_t *dict_radius;

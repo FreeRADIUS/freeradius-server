@@ -38,7 +38,7 @@ USES_APPLE_DEPRECATED_API
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
 
-static int instance_count = 0;
+static uint32_t instance_count = 0;
 
 /** Used to set the global log prefix for functions which don't operate on connections
  *

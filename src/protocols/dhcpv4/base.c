@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/pcap.h>
 #include "attrs.h"
 
-static int instance_count = 0;
+static uint32_t instance_count = 0;
 
 typedef struct {
 	uint8_t		code;

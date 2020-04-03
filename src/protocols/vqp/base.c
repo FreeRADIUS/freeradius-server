@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include "vqp.h"
 #include "attrs.h"
 
-static int instance_count = 0;
+static uint32_t instance_count = 0;
 
 fr_dict_t const *dict_vmps;
 

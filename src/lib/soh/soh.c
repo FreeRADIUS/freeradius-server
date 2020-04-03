@@ -122,7 +122,7 @@ fr_dict_attr_autoload_t soh_dict_attr[] = {
 	{ NULL }
 };
 
-static int instance_count = 0;
+static uint32_t instance_count = 0;
 
 /** Read big-endian 2-byte unsigned from p
  *

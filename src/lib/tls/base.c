@@ -37,7 +37,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "base.h"
 #include "attrs.h"
 
-static int instance_count = 0;
+static uint32_t instance_count = 0;
 
 /** The context which holds any memory OpenSSL allocates
  *

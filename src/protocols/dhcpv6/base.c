@@ -39,7 +39,7 @@
 #include "dhcpv6.h"
 #include "attrs.h"
 
-static int instance_count;
+static uint32_t instance_count;
 
 fr_dict_t const *dict_dhcpv6;
 
