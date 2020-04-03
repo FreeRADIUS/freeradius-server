@@ -84,6 +84,7 @@ if test x$with_[]modname != xno; then
 
 		targetname="rlm_python3"
 	fi
+	AC_CHECK_FUNCS([dl_iterate_phdr])
 else
 	targetname=
 	echo \*\*\* module modname is disabled.
