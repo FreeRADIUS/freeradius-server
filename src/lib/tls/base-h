@@ -81,17 +81,6 @@ extern "C" {
 #define FR_TLS_EX_INDEX_TALLOC		(16)
 
 /*
- *	If we linked with OpenSSL, the application
- *	must remove the thread's error queue before
- *	exiting to prevent memory leaks.
- */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-#  define FR_TLS_REMOVE_THREAD_STATE()
-#else
-#  define FR_TLS_REMOVE_THREAD_STATE() ERR_remove_thread_state(NULL);
-#endif
-
-/*
  * FIXME: Dynamic allocation of buffer to overcome FR_TLS_MAX_RECORD_SIZE overflows.
  * 	or configure TLS not to exceed FR_TLS_MAX_RECORD_SIZE.
  */

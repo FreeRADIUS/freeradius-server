@@ -454,7 +454,12 @@ void fr_openssl_free(void)
 {
 	if (--instance_count > 0) return;
 
-	FR_TLS_REMOVE_THREAD_STATE();
+	/*
+	 *	If we linked with OpenSSL, the application
+	 *	must remove the thread's error queue before
+	 *	exiting to prevent memory leaks.
+	 */
+	ERR_remove_thread_state(NULL);
 	ENGINE_cleanup();
 	CONF_modules_unload(1);
 	ERR_free_strings();
