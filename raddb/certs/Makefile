@@ -345,7 +345,7 @@ printca:
 	openssl x509 -text -in ecc/ca.pem
 
 clean:
-	@rm -f *~ *old rsa eccrsa/client.csr rsa/client.key rsa/client.crt rsa/client.p12 rsa/client.pem ecc/client.csr ecc/client.key ecc/client.crt ecc/client.p12 ecc/client.pem
+	@rm -f *~ *old rsa/client.* ecc/client.*
 
 #
 #	Make a target that people won't run too often.
