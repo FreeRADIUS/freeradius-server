@@ -41,6 +41,7 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
 		test.bin	\
 		test.trie	\
 		test.dict	\
+		test.misc	\
 		test.unit	\
 		test.keywords	\
 		test.xlat	\
