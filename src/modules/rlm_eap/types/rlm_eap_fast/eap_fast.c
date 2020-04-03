@@ -37,7 +37,7 @@ RCSID("$Id$")
 /**
  * RFC 4851 section 5.1 - EAP-FAST Authentication Phase 1: Key Derivations
  */
-static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
+static void eap_fast_init_keys(REQUEST *request, fr_tls_session_t *tls_session)
 {
 	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t *buf;
@@ -48,7 +48,7 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 
 	rad_assert(t->s_imck == NULL);
 
-	ksize = tls_utils_keyblock_size_get(request, tls_session->ssl);
+	ksize = fr_tls_utils_keyblock_size_get(request, tls_session->ssl);
 	rad_assert(ksize > 0);
 	buf = talloc_array(request, uint8_t, ksize + sizeof(*t->keyblock));
 	scratch = talloc_array(request, uint8_t, ksize + sizeof(*t->keyblock));
@@ -72,7 +72,7 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 /**
  * RFC 4851 section 5.2 - Intermediate Compound Key Derivations
  */
-static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, uint8_t *msk)
+static void eap_fast_update_icmk(REQUEST *request, fr_tls_session_t *tls_session, uint8_t *msk)
 {
 	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t imck[EAP_FAST_SIMCK_LEN + EAP_FAST_CMK_LEN];
@@ -103,7 +103,7 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
 	RHEXDUMP3(t->emsk, EAP_EMSK_LEN, "EMSK");
 }
 
-void eap_fast_tlv_append(tls_session_t *tls_session, fr_dict_attr_t const *tlv, bool mandatory, int length, void const *data)
+void eap_fast_tlv_append(fr_tls_session_t *tls_session, fr_dict_attr_t const *tlv, bool mandatory, int length, void const *data)
 {
 	uint16_t hdr[2];
 
@@ -114,7 +114,7 @@ void eap_fast_tlv_append(tls_session_t *tls_session, fr_dict_attr_t const *tlv, 
 	tls_session->record_from_buff(&tls_session->clean_in, data, length);
 }
 
-static void eap_fast_send_error(tls_session_t *tls_session, int error)
+static void eap_fast_send_error(fr_tls_session_t *tls_session, int error)
 {
 	uint32_t value;
 	value = htonl(error);
@@ -122,7 +122,7 @@ static void eap_fast_send_error(tls_session_t *tls_session, int error)
 	eap_fast_tlv_append(tls_session, attr_eap_fast_error, true, sizeof(value), &value);
 }
 
-static void eap_fast_append_result(tls_session_t *tls_session, FR_CODE code)
+static void eap_fast_append_result(fr_tls_session_t *tls_session, FR_CODE code)
 {
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint16_t		state;
@@ -135,7 +135,7 @@ static void eap_fast_append_result(tls_session_t *tls_session, FR_CODE code)
 	eap_fast_tlv_append(tls_session, da, true, sizeof(state), &state);
 }
 
-static void eap_fast_send_identity_request(REQUEST *request, tls_session_t *tls_session, eap_session_t *eap_session)
+static void eap_fast_send_identity_request(REQUEST *request, fr_tls_session_t *tls_session, eap_session_t *eap_session)
 {
 	eap_packet_raw_t eap_packet;
 
@@ -150,7 +150,7 @@ static void eap_fast_send_identity_request(REQUEST *request, tls_session_t *tls_
 	eap_fast_tlv_append(tls_session, attr_eap_fast_eap_payload, true, sizeof(eap_packet), &eap_packet);
 }
 
-static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_session)
+static void eap_fast_send_pac_tunnel(REQUEST *request, fr_tls_session_t *tls_session)
 {
 	eap_fast_tunnel_t			*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_fast_pac_t				pac;
@@ -212,7 +212,7 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_sessio
 	eap_fast_tlv_append(tls_session, attr_eap_fast_pac_tlv, true, sizeof(pac) - sizeof(pac.opaque.data) + dlen, &pac);
 }
 
-static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_session)
+static void eap_fast_append_crypto_binding(REQUEST *request, fr_tls_session_t *tls_session)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_tlv_crypto_binding_tlv_t	binding = {0};
@@ -241,7 +241,7 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 
 #define EAP_FAST_TLV_MAX 11
 
-static int eap_fast_verify(REQUEST *request, tls_session_t *tls_session, uint8_t const *data, unsigned int data_len)
+static int eap_fast_verify(REQUEST *request, fr_tls_session_t *tls_session, uint8_t const *data, unsigned int data_len)
 {
 	uint16_t attr;
 	uint16_t length;
@@ -473,7 +473,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_
  * Use a reply packet to determine what to do.
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_session,
-						  tls_session_t *tls_session,
+						  fr_tls_session_t *tls_session,
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
@@ -566,7 +566,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 }
 
 static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session,
-				    tls_session_t *tls_session, VALUE_PAIR *tlv_eap_payload)
+				    fr_tls_session_t *tls_session, VALUE_PAIR *tlv_eap_payload)
 {
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
@@ -771,7 +771,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 }
 
 static FR_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *eap_session,
-				       tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
+				       fr_tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
 {
 	uint8_t			cmac[sizeof(binding->compound_mac)];
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -794,7 +794,7 @@ static FR_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *e
 }
 
 static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_session,
-				     tls_session_t *tls_session, VALUE_PAIR *fast_vps)
+				     fr_tls_session_t *tls_session, VALUE_PAIR *fast_vps)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	VALUE_PAIR			*vp;
@@ -900,7 +900,7 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 /*
  * Process the inner tunnel data
  */
-FR_CODE eap_fast_process(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
+FR_CODE eap_fast_process(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	FR_CODE			code;
 	VALUE_PAIR		*fast_vps = NULL;

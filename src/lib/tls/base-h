@@ -98,12 +98,12 @@ extern "C" {
 typedef struct {
 	uint8_t		data[FR_TLS_MAX_RECORD_SIZE];
 	size_t 		used;
-} tls_record_t;
+} fr_tls_record_t;
 
 typedef enum {
 	TLS_INFO_ORIGIN_RECORD_RECEIVED,
 	TLS_INFO_ORIGIN_RECORD_SENT
-} tls_info_origin_t;
+} fr_tls_info_origin_t;
 
 typedef struct {
 	int		origin;
@@ -116,7 +116,7 @@ typedef struct {
 	char 		info_description[256];
 	size_t		record_len;
 	int		version;
-} tls_info_t;
+} fr_tls_info_t;
 
 typedef struct {
 	CONF_SECTION	*load;				//!< Load something from the cache (or NULL if disabled).
@@ -135,19 +135,19 @@ typedef struct {
 	SSL_CTX		*ctx;				//!< TLS configuration context.
 	SSL 		*ssl;				//!< This SSL session.
 	SSL_SESSION	*session;			//!< Session resumption data.
-	tls_info_t	info;				//!< Information about the state of the TLS session.
+	fr_tls_info_t	info;				//!< Information about the state of the TLS session.
 
 	BIO 		*into_ssl;			//!< Basic I/O input to OpenSSL.
 	BIO 		*from_ssl;			//!< Basic I/O output from OpenSSL.
-	tls_record_t 	clean_in;			//!< Cleartext data that needs to be encrypted.
-	tls_record_t 	clean_out;			//!< Cleartext data that's been encrypted.
-	tls_record_t 	dirty_in;			//!< Encrypted data to decrypt.
-	tls_record_t 	dirty_out;			//!< Encrypted data that's been decrypted.
+	fr_tls_record_t 	clean_in;			//!< Cleartext data that needs to be encrypted.
+	fr_tls_record_t 	clean_out;			//!< Cleartext data that's been encrypted.
+	fr_tls_record_t 	dirty_in;			//!< Encrypted data to decrypt.
+	fr_tls_record_t 	dirty_out;			//!< Encrypted data that's been decrypted.
 
-	void 		(*record_init)(tls_record_t *buf);
-	void 		(*record_close)(tls_record_t *buf);
-	unsigned int 	(*record_from_buff)(tls_record_t *buf, void const *ptr, unsigned int size);
-	unsigned int 	(*record_to_buff)(tls_record_t *buf, void *ptr, unsigned int size);
+	void 		(*record_init)(fr_tls_record_t *buf);
+	void 		(*record_close)(fr_tls_record_t *buf);
+	unsigned int 	(*record_from_buff)(fr_tls_record_t *buf, void const *ptr, unsigned int size);
+	unsigned int 	(*record_to_buff)(fr_tls_record_t *buf, void *ptr, unsigned int size);
 
 	bool		invalid;			//!< Whether heartbleed attack was detected.
 	size_t 		mtu;				//!< Maximum record fragment size.
@@ -167,7 +167,7 @@ typedef struct {
 	bool		pending_alert;
 	uint8_t		pending_alert_level;
 	uint8_t		pending_alert_description;
-} tls_session_t;
+} fr_tls_session_t;
 
 #ifdef HAVE_OPENSSL_OCSP_H
 /** OCSP Configuration
@@ -317,7 +317,7 @@ extern int fr_tls_max_threads;
  * @param _prefix Prefix, should be "" if not used.
  * @param _queue OpenSSL BIO.
  */
-#define SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue) \
+#define FR_OPENSSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue) \
 do {\
 	char const *_p = NULL, *_q, *_end; \
 	size_t _len; \
@@ -338,14 +338,14 @@ do {\
  * @param _prefix Prefix, should be "" if not used.
  * @param _queue OpenSSL BIO.
  */
-#define SSL_DRAIN_ERROR_QUEUE(_macro, _prefix, _queue) \
+#define FR_OPENSSL_DRAIN_ERROR_QUEUE(_macro, _prefix, _queue) \
 do {\
 	ERR_print_errors(_queue); \
-	SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue); \
+	FR_OPENSSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue); \
 } while (0)
 
-extern CONF_PARSER tls_server_config[];
-extern CONF_PARSER tls_client_config[];
+extern CONF_PARSER fr_tls_server_config[];
+extern CONF_PARSER fr_tls_client_config[];
 
 /** Holds the temporary context
  *
@@ -364,13 +364,13 @@ extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
  * so will free the allocated object last, after doing manual cleanups.
  *
  @code{.c}
-   SSL_BIND_MEMORY(ctx = SSL_CTX_new(SSLv23_method()));
+   FR_OPENSSL_BIND_MEMORY(ctx = SSL_CTX_new(SSLv23_method()));
    if (!ctx) ..error
  @endcode
  * @param _expr		The call to the OpenSSL function and storage of the
  *			result.
  */
-#define SSL_BIND_OBJ_MEMORY(_expr) \
+#define FR_OPENSSL_BIND_OBJ_MEMORY(_expr) \
 do { \
 	void *_nmem; \
 	MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_expr))); \
@@ -383,11 +383,11 @@ do { \
 	ssl_talloc_ctx = NULL; \
 } while (0)
 
-/** Bind all memory allocated from this point until the next instance of SSL_BIND_MEMORY_END to _obj
+/** Bind all memory allocated from this point until the next instance of FR_OPENSSL_BIND_MEMORY_END to _obj
  *
  * @param[in] _obj	to bind memory to.
  */
-#define SSL_BIND_MEMORY_BEGIN(_obj) \
+#define FR_OPENSSL_BIND_MEMORY_BEGIN(_obj) \
 do { \
 	if (fr_cond_assert(!ssl_talloc_ctx && (_obj))) { \
 		MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_obj))); \
@@ -395,123 +395,123 @@ do { \
 	} \
 } while(0)
 
-#define SSL_BIND_MEMORY_END ssl_talloc_ctx = NULL
+#define FR_OPENSSL_BIND_MEMORY_END ssl_talloc_ctx = NULL
 
 /*
  *	tls/cache.c
  */
-int		tls_cache_process(REQUEST *request, CONF_SECTION *action);
+int		fr_tls_cache_process(REQUEST *request, CONF_SECTION *action);
 
-int		tls_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
+int		fr_tls_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
 
-void		tls_cache_deny(tls_session_t *tls_session);
+void		fr_tls_cache_deny(fr_tls_session_t *tls_session);
 
-int		tls_cache_write(REQUEST *request, tls_session_t *tls_session);
+int		fr_tls_cache_write(REQUEST *request, fr_tls_session_t *tls_session);
 
-int		tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
+int		fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
 
-void		tls_cache_init(SSL_CTX *ctx, bool enabled, uint32_t lifetime);
+void		fr_tls_cache_init(SSL_CTX *ctx, bool enabled, uint32_t lifetime);
 
 /*
  *	tls/conf.c
  */
-fr_tls_conf_t	*tls_conf_alloc(TALLOC_CTX *ctx);
+fr_tls_conf_t	*fr_tls_conf_alloc(TALLOC_CTX *ctx);
 
-fr_tls_conf_t	*tls_conf_parse_server(CONF_SECTION *cs);
+fr_tls_conf_t	*fr_tls_conf_parse_server(CONF_SECTION *cs);
 
-fr_tls_conf_t	*tls_conf_parse_client(CONF_SECTION *cs);
+fr_tls_conf_t	*fr_tls_conf_parse_client(CONF_SECTION *cs);
 
 /*
  *	tls/ctx.c
  */
-SSL_CTX		*tls_ctx_alloc(fr_tls_conf_t const *conf, bool client);
+SSL_CTX		*fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client);
 
 /*
  *	tls/base.c
  */
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
-int		tls_version_check(char const *acknowledged);
+int		fr_openssl_version_check(char const *acknowledged);
 #endif
 
-int		tls_init(void);
+int		fr_openssl_init(void);
 
-int		tls_dict_init(void);
+void		fr_openssl_free(void);
 
-void		tls_free(void);
+int		fr_tls_dict_init(void);
 
 /*
  *	tls/log.c
  */
-int		tls_log_error(REQUEST *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
+int		fr_tls_log_error(REQUEST *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
 
-int		tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
-				 CC_HINT(format (printf, 4, 5));
+int		fr_tls_log_io_error(REQUEST *request, fr_tls_session_t *session, int ret, char const *msg, ...)
+				    CC_HINT(format (printf, 4, 5));
 
-#define		tls_log_certificate_chain(_request, _chain, _cert) \
-		_tls_log_certificate_chain( __FILE__, __LINE__, _request, _chain, _cert)
-void		_tls_log_certificate_chain(char const *file, int line,
-					   REQUEST *request, STACK_OF(X509) *chain, X509 *cert);
+#define		fr_tls_log_certificate_chain(_request, _chain, _cert) \
+		_fr_tls_log_certificate_chain( __FILE__, __LINE__, _request, _chain, _cert)
+void		_fr_tls_log_certificate_chain(char const *file, int line,
+					      REQUEST *request, STACK_OF(X509) *chain, X509 *cert);
 /*
  *	tls/ocsp.c
  */
-int		tls_ocsp_staple_cb(SSL *ssl, void *data);
+int		fr_tls_ocsp_staple_cb(SSL *ssl, void *data);
 
-int		tls_ocsp_check(REQUEST *request, SSL *ssl,
+int		fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
 			       X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 			       fr_tls_ocsp_conf_t *conf, bool staple_response);
 
-int		tls_ocsp_state_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
+int		fr_tls_ocsp_state_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
 
-int		tls_ocsp_staple_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
+int		fr_tls_ocsp_staple_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
 
 /*
  *	tls/session.c
  */
-int 		tls_session_password_cb(char *buf, int num, int rwflag, void *userdata);
+int 		fr_tls_session_password_cb(char *buf, int num, int rwflag, void *userdata);
 
-unsigned int	tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
-					  char *identity, unsigned int max_identity_len,
-					  unsigned char *psk, unsigned int max_psk_len);
+unsigned int	fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
+					     char *identity, unsigned int max_identity_len,
+					     unsigned char *psk, unsigned int max_psk_len);
 
-unsigned int	tls_session_psk_server_cb(SSL *ssl, const char *identity,
-					  unsigned char *psk, unsigned int max_psk_len);
+unsigned int	fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
+					     unsigned char *psk, unsigned int max_psk_len);
 
-void 		tls_session_info_cb(SSL const *s, int where, int ret);
+void 		fr_tls_session_info_cb(SSL const *s, int where, int ret);
 
-void 		tls_session_msg_cb(int write_p, int msg_version, int content_type,
-				   void const *buf, size_t len, SSL *ssl, void *arg);
+void 		fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
+				      void const *buf, size_t len, SSL *ssl, void *arg);
 
-int		tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
-				     	         tls_session_t *session, X509 *cert, int depth);
+int		fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
+				     		    fr_tls_session_t *session, X509 *cert, int depth);
 
-int		tls_session_recv(REQUEST *request, tls_session_t *tls_session);
+int		fr_tls_session_recv(REQUEST *request, fr_tls_session_t *tls_session);
 
-int 		tls_session_send(REQUEST *request, tls_session_t *tls_session);
+int 		fr_tls_session_send(REQUEST *request, fr_tls_session_t *tls_session);
 
-int 		tls_session_handshake(REQUEST *request, tls_session_t *tls_session);
+int 		fr_tls_session_handshake(REQUEST *request, fr_tls_session_t *tls_session);
 
-int 		tls_session_alert(REQUEST *request, tls_session_t *tls_session, uint8_t level, uint8_t description);
+int 		fr_tls_session_alert(REQUEST *request, fr_tls_session_t *tls_session, uint8_t level, uint8_t description);
 
-tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf);
+fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf);
 
-tls_session_t	*tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQUEST *request, bool client_cert);
+fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQUEST *request, bool client_cert);
 
 /*
  *	tls/validate.c
  */
-int		tls_validate_cert_cb(int ok, X509_STORE_CTX *ctx);
+int		fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *ctx);
 
-int		tls_validate_client_cert_chain(SSL *ssl);
+int		fr_tls_validate_client_cert_chain(SSL *ssl);
 
 /*
  *	tls/utils.c
  */
-char const	*tls_utils_x509_pkey_type(X509 *cert);
+char const	*fr_tls_utils_x509_pkey_type(X509 *cert);
 
-int		tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl);
+int		fr_tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl);
 
-int		tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
+int		fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
 #ifdef __cplusplus
 }
 #endif

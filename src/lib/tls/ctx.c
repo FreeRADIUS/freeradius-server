@@ -124,12 +124,12 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 	 *	Always set the callback as it provides useful debug
 	 *	output if the certificate isn't set.
 	 */
-	SSL_CTX_set_default_passwd_cb(ctx, tls_session_password_cb);
+	SSL_CTX_set_default_passwd_cb(ctx, fr_tls_session_password_cb);
 
 	switch (chain->file_format) {
 	case SSL_FILETYPE_PEM:
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, chain->certificate_file))) {
-			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
+			fr_tls_log_error(NULL, "Failed reading certificate file \"%s\"",
 				      chain->certificate_file);
 			return -1;
 		}
@@ -137,7 +137,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 
 	case SSL_FILETYPE_ASN1:
 		if (!(SSL_CTX_use_certificate_file(ctx, chain->certificate_file, chain->file_format))) {
-			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
+			fr_tls_log_error(NULL, "Failed reading certificate file \"%s\"",
 				      chain->certificate_file);
 			return -1;
 		}
@@ -149,7 +149,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 	}
 
 	if (!(SSL_CTX_use_PrivateKey_file(ctx, chain->private_key_file, chain->file_format))) {
-		tls_log_error(NULL, "Failed reading private key file \"%s\"",
+		fr_tls_log_error(NULL, "Failed reading private key file \"%s\"",
 			      chain->private_key_file);
 		return -1;
 	}
@@ -194,7 +194,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 			fclose(fp);
 
 			if (!cert) {
-				tls_log_error(NULL, "Failed reading certificate file \"%s\"", filename);
+				fr_tls_log_error(NULL, "Failed reading certificate file \"%s\"", filename);
 				return -1;
 			}
 			SSL_CTX_add0_chain_cert(ctx, cert);
@@ -269,7 +269,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
  *	- A new SSL_CTX on success.
  *	- NULL on failure.
  */
-SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
+SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
 	X509_STORE	*cert_vpstore;
@@ -285,12 +285,12 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	crashing on exit.
 	 */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-	SSL_BIND_OBJ_MEMORY(ctx = SSL_CTX_new(SSLv23_method())); /* which is really "all known SSL / TLS methods".  Idiots. */
+	FR_OPENSSL_BIND_OBJ_MEMORY(ctx = SSL_CTX_new(SSLv23_method())); /* which is really "all known SSL / TLS methods".  Idiots. */
 #else
 	ctx = SSL_CTX_new(SSLv23_method());
 #endif
 	if (!ctx) {
-		tls_log_error(NULL, "Failed creating TLS context");
+		fr_tls_log_error(NULL, "Failed creating TLS context");
 		return NULL;
 	}
 
@@ -299,7 +299,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	Bind any other memory to the ctx to fix
 	 *	leaks on exit.
 	 */
-	SSL_BIND_MEMORY_BEGIN(ctx);
+	FR_OPENSSL_BIND_MEMORY_BEGIN(ctx);
 #endif
 
 	/*
@@ -322,7 +322,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			ERROR("Invalid PSK Configuration: psk_query cannot be empty");
 		error:
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-			SSL_BIND_MEMORY_END;
+			FR_OPENSSL_BIND_MEMORY_END;
 #endif
 			SSL_CTX_free(ctx);
 			return NULL;
@@ -367,7 +367,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	Set the server PSK callback if necessary.
 	 */
 	if (!client && (conf->psk_identity || conf->psk_query)) {
-		SSL_CTX_set_psk_server_callback(ctx, tls_session_psk_server_cb);
+		SSL_CTX_set_psk_server_callback(ctx, fr_tls_session_psk_server_cb);
 	}
 
 	/*
@@ -379,7 +379,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		uint8_t buffer[PSK_MAX_PSK_LEN];
 
 		if (client) {
-			SSL_CTX_set_psk_client_callback(ctx, tls_session_psk_client_cb);
+			SSL_CTX_set_psk_client_callback(ctx, fr_tls_session_psk_client_cb);
 		}
 
 		if (!conf->psk_password) goto error; /* clang is too dumb to catch the above checks */
@@ -454,7 +454,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 */
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
-			tls_log_error(NULL, "Failed reading Trusted root CA list \"%s\"",
+			fr_tls_log_error(NULL, "Failed reading Trusted root CA list \"%s\"",
 				      conf->ca_file);
 			goto error;
 		}
@@ -528,13 +528,13 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 				 *	determines which pkey slot OpenSSL
 				 *	uses to store the chain.
 				 */
-				DEBUG3("%s chain", tls_utils_x509_pkey_type(our_cert));
+				DEBUG3("%s chain", fr_tls_utils_x509_pkey_type(our_cert));
 				if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
-					tls_log_error(NULL, "Failed retrieving chain certificates");
+					fr_tls_log_error(NULL, "Failed retrieving chain certificates");
 					goto error;
 				}
 
-				if (DEBUG_ENABLED3) tls_log_certificate_chain(NULL, our_chain, our_cert);
+				if (DEBUG_ENABLED3) fr_tls_log_certificate_chain(NULL, our_chain, our_cert);
 			}
 			(void)SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);	/* Reset */
 		}
@@ -593,7 +593,7 @@ post_ca:
 		else max_version = TLS1_VERSION;
 
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
-			tls_log_error(NULL, "Failed setting TLS maximum version");
+			fr_tls_log_error(NULL, "Failed setting TLS maximum version");
 			goto error;
 		}
 	}
@@ -615,7 +615,7 @@ post_ca:
 		else if (conf->tls_min_version >= (float) 1.1) min_version = TLS1_1_VERSION;
 
 		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
-			tls_log_error(NULL, "Failed setting TLS minimum version");
+			fr_tls_log_error(NULL, "Failed setting TLS minimum version");
 			goto error;
 		}
 	}
@@ -722,7 +722,7 @@ post_ca:
 	 *	message.  For every new session, there can be a
 	 *	different callback argument.
 	 *
-	 *	SSL_CTX_set_msg_callback(ctx, tls_session_msg_cb);
+	 *	SSL_CTX_set_msg_callback(ctx, fr_tls_session_msg_cb);
 	 */
 
 	/*
@@ -735,7 +735,7 @@ post_ca:
 #endif
 
 	/* Set Info callback */
-	SSL_CTX_set_info_callback(ctx, tls_session_info_cb);
+	SSL_CTX_set_info_callback(ctx, fr_tls_session_info_cb);
 
 	/*
 	 *	Check the certificates for revocation.
@@ -744,7 +744,7 @@ post_ca:
 	if (conf->check_crl) {
 		cert_vpstore = SSL_CTX_get_cert_store(ctx);
 		if (cert_vpstore == NULL) {
-			tls_log_error(NULL, "Error reading Certificate Store");
+			fr_tls_log_error(NULL, "Error reading Certificate Store");
 	    		goto error;
 		}
 		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
@@ -758,7 +758,7 @@ post_ca:
 	verify_mode |= SSL_VERIFY_PEER;
 	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 	verify_mode |= SSL_VERIFY_CLIENT_ONCE;
-	SSL_CTX_set_verify(ctx, verify_mode, tls_validate_cert_cb);
+	SSL_CTX_set_verify(ctx, verify_mode, fr_tls_validate_cert_cb);
 
 	if (conf->verify_depth) {
 		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
@@ -768,7 +768,7 @@ post_ca:
 	 *	Configure OCSP stapling for the server cert
 	 */
 	if (conf->staple.enable) {
-		SSL_CTX_set_tlsext_status_cb(ctx, tls_ocsp_staple_cb);
+		SSL_CTX_set_tlsext_status_cb(ctx, fr_tls_ocsp_staple_cb);
 
 		{
 			fr_tls_ocsp_conf_t const *staple_conf = &(conf->staple);	/* Need to assign offset first */
@@ -785,7 +785,7 @@ post_ca:
 	 */
 	if (conf->cipher_list) {
 		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			tls_log_error(NULL, "Failed setting cipher list");
+			fr_tls_log_error(NULL, "Failed setting cipher list");
 			goto error;
 		}
 	}
@@ -800,7 +800,7 @@ post_ca:
 
 		ssl = SSL_new(ctx);
 		if (!ssl) {
-			tls_log_error(NULL, "Failed creating temporary SSL session");
+			fr_tls_log_error(NULL, "Failed creating temporary SSL session");
 			goto error;
 		}
 
@@ -828,13 +828,13 @@ post_ca:
 	 *	We're done configuring the ctx.
 	 */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-	SSL_BIND_MEMORY_END;
+	FR_OPENSSL_BIND_MEMORY_END;
 #endif
 
 	/*
 	 *	Setup session caching
 	 */
-	tls_cache_init(ctx, conf->session_cache_server ? true : false, conf->session_cache_lifetime);
+	fr_tls_cache_init(ctx, conf->session_cache_server ? true : false, conf->session_cache_lifetime);
 
 	return ctx;
 }

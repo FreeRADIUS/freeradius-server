@@ -136,7 +136,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	rlm_eap_ttls_t		*inst = talloc_get_type_abort(instance, rlm_eap_ttls_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	ttls_tunnel_t		*tunnel = NULL;
 	static char 		keying_prf_label[] = "ttls keying material";

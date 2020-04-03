@@ -75,4 +75,4 @@ extern fr_dict_attr_t const *attr_user_name;
 /*
  *	Process the PEAP portion of an EAP-PEAP request.
  */
-rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session) CC_HINT(nonnull);
+rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);

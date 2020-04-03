@@ -2240,7 +2240,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sectio
 		 *	below as logically dead code unless we explicitly
 		 *	set cert_vps.  This is because they're too dumb
 		 *	to realise that the cursor argument passed to
-		 *	tls_session_pairs_from_x509_cert contains a
+		 *	fr_tls_session_pairs_from_x509_cert contains a
 		 *	reference to cert_vps.
 		 */
 		cert_vps = fr_cursor_current(&cursor);

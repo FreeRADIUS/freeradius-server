@@ -486,7 +486,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
-		tls_log_error(request, "Failed concatenating arguments to form plaintext");
+		fr_tls_log_error(request, "Failed concatenating arguments to form plaintext");
 		return XLAT_ACTION_FAIL;
 	}
 	plaintext = (*in)->vb_strvalue;
@@ -498,14 +498,14 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	RHEXDUMP3((uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
 	if (EVP_PKEY_encrypt(xt->evp_encrypt_ctx, NULL, &ciphertext_len,
 			     (unsigned char const *)plaintext, plaintext_len) <= 0) {
-		tls_log_error(request, "Failed getting length of encrypted plaintext");
+		fr_tls_log_error(request, "Failed getting length of encrypted plaintext");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(ciphertext = talloc_array(ctx, uint8_t, ciphertext_len));
 	if (EVP_PKEY_encrypt(xt->evp_encrypt_ctx, ciphertext, &ciphertext_len,
 			     (unsigned char const *)plaintext, plaintext_len) <= 0) {
-		tls_log_error(request, "Failed encrypting plaintext");
+		fr_tls_log_error(request, "Failed encrypting plaintext");
 		return XLAT_ACTION_FAIL;
 	}
 	RHEXDUMP3(ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
@@ -578,17 +578,17 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	First produce a digest of the message
 	 */
 	if (unlikely(EVP_DigestInit_ex(xt->evp_md_ctx, inst->rsa->sig_digest, NULL) <= 0)) {
-		tls_log_error(request, "Failed initialising message digest");
+		fr_tls_log_error(request, "Failed initialising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestUpdate(xt->evp_md_ctx, msg, msg_len) <= 0) {
-		tls_log_error(request, "Failed ingesting message");
+		fr_tls_log_error(request, "Failed ingesting message");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestFinal_ex(xt->evp_md_ctx, xt->digest_buff, &digest_len) <= 0) {
-		tls_log_error(request, "Failed finalising message digest");
+		fr_tls_log_error(request, "Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 	rad_assert((size_t)digest_len == talloc_array_length(xt->digest_buff));
@@ -597,13 +597,13 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	Then sign the digest
 	 */
 	if (EVP_PKEY_sign(xt->evp_sign_ctx, NULL, &sig_len, xt->digest_buff, (size_t)digest_len) <= 0) {
-		tls_log_error(request, "Failed getting length of digest");
+		fr_tls_log_error(request, "Failed getting length of digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(sig = talloc_array(ctx, uint8_t, sig_len));
 	if (EVP_PKEY_sign(xt->evp_sign_ctx, sig, &sig_len, xt->digest_buff, (size_t)digest_len) <= 0) {
-		tls_log_error(request, "Failed signing message digest");
+		fr_tls_log_error(request, "Failed signing message digest");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -675,14 +675,14 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 */
 	RHEXDUMP3(ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
 	if (EVP_PKEY_decrypt(xt->evp_decrypt_ctx, NULL, &plaintext_len, ciphertext, ciphertext_len) <= 0) {
-		tls_log_error(request, "Failed getting length of cleartext");
+		fr_tls_log_error(request, "Failed getting length of cleartext");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(plaintext = talloc_array(ctx, char, plaintext_len + 1));
 	if (EVP_PKEY_decrypt(xt->evp_decrypt_ctx, (unsigned char *)plaintext, &plaintext_len,
 			     ciphertext, ciphertext_len) <= 0) {
-		tls_log_error(request, "Failed decrypting ciphertext");
+		fr_tls_log_error(request, "Failed decrypting ciphertext");
 		return XLAT_ACTION_FAIL;
 	}
 	RHEXDUMP3((uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
@@ -801,17 +801,17 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	First produce a digest of the message
 	 */
 	if (unlikely(EVP_DigestInit_ex(xt->evp_md_ctx, inst->rsa->sig_digest, NULL) <= 0)) {
-		tls_log_error(request, "Failed initialising message digest");
+		fr_tls_log_error(request, "Failed initialising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestUpdate(xt->evp_md_ctx, msg, msg_len) <= 0) {
-		tls_log_error(request, "Failed ingesting message");
+		fr_tls_log_error(request, "Failed ingesting message");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestFinal_ex(xt->evp_md_ctx, xt->digest_buff, &digest_len) <= 0) {
-		tls_log_error(request, "Failed finalising message digest");
+		fr_tls_log_error(request, "Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 	rad_assert((size_t)digest_len == talloc_array_length(xt->digest_buff));
@@ -833,7 +833,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		break;
 
 	default:
-		tls_log_error(request, "Failed validating signature");
+		fr_tls_log_error(request, "Failed validating signature");
 		return XLAT_ACTION_FAIL;
 	}
 

@@ -69,11 +69,11 @@
  *	- 0 if not valid.
  *	- 1 if valid.
  */
-int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
+int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 {
 	X509		*cert;
 	SSL		*ssl;
-	tls_session_t	*tls_session;
+	fr_tls_session_t	*tls_session;
 	int		err, depth;
 	fr_tls_conf_t	*conf;
 	int		my_ok = ok;
@@ -100,7 +100,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(x509_ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
 	conf = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
-	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
+	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
 	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 
 	identity_p = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
@@ -140,7 +140,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 */
 	if (identity && (depth <= 1) && !SSL_session_reused(ssl)) {
 		fr_cursor_init(&cursor, &cert_vps);
-		tls_session_pairs_from_x509_cert(&cursor, request, tls_session, cert, depth);
+		fr_tls_session_pairs_from_x509_cert(&cursor, request, tls_session, cert, depth);
 
 		/*
 		 *	Add a copy of the cert_vps to session state.
@@ -149,7 +149,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		 *	below as logically dead code unless we explicitly
 		 *	set cert_vps.  This is because they're too dumb
 		 *	to realise that the cursor argument passed to
-		 *	tls_session_pairs_from_x509_cert contains a
+		 *	fr_tls_session_pairs_from_x509_cert contains a
 		 *	reference to cert_vps.
 		 */
 		cert_vps = fr_cursor_head(&cursor);
@@ -335,11 +335,11 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		/*
 		 *	If we don't have an issuer, then we can't send
 		 *	and OCSP request, but pass the NULL issuer in
-		 *	so tls_ocsp_check can decide on the correct
+		 *	so fr_tls_ocsp_check can decide on the correct
 		 *	return code.
 		 */
 		issuer_cert = X509_STORE_CTX_get0_current_issuer(x509_ctx);
-		my_ok = tls_ocsp_check(request, ssl, conf->ocsp.store, issuer_cert, cert, &(conf->ocsp), false);
+		my_ok = fr_tls_ocsp_check(request, ssl, conf->ocsp.store, issuer_cert, cert, &(conf->ocsp), false);
 	}
 #endif
 
@@ -349,7 +349,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 
 /** Revalidates the client's certificate chain
  *
- * Wraps the tls_validate_cert_cb callback, allowing us to use the same
+ * Wraps the fr_tls_validate_cert_cb callback, allowing us to use the same
  * validation logic whenever we need to.
  *
  * @note Only use so far is forcing the chain to be re-validated on session
@@ -359,7 +359,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
  *	- 1 if the chain could be validated.
  *	- 0 if the chain failed validation.
  */
-int tls_validate_client_cert_chain(SSL *ssl)
+int fr_tls_validate_client_cert_chain(SSL *ssl)
 {
 	int		err;
 	int		verify;
@@ -386,7 +386,7 @@ int tls_validate_client_cert_chain(SSL *ssl)
 
 	X509_STORE_CTX_init(store_ctx, store, cert, chain);
 	X509_STORE_CTX_set_ex_data(store_ctx, SSL_get_ex_data_X509_STORE_CTX_idx(), ssl);
-	X509_STORE_CTX_set_verify_cb(store_ctx, tls_validate_cert_cb);
+	X509_STORE_CTX_set_verify_cb(store_ctx, fr_tls_validate_cert_cb);
 
 	verify = X509_verify_cert(store_ctx);
 	if (verify != 1) {

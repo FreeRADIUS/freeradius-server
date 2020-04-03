@@ -200,7 +200,7 @@ static char const *tls_handshake_type_str[] = {
  *
  * @param record buffer to clear.
  */
-inline static void record_init(tls_record_t *record)
+inline static void record_init(fr_tls_record_t *record)
 {
 	record->used = 0;
 }
@@ -209,7 +209,7 @@ inline static void record_init(tls_record_t *record)
  *
  * @param record buffer to destroy clear.
  */
-inline static void record_close(tls_record_t *record)
+inline static void record_close(fr_tls_record_t *record)
 {
 	record->used = 0;
 }
@@ -221,7 +221,7 @@ inline static void record_close(tls_record_t *record)
  * @param[in] inlen	Length of data to write.
  * @return the amount of data written to the record buffer.
  */
-inline static unsigned int record_from_buff(tls_record_t *record, void const *in, unsigned int inlen)
+inline static unsigned int record_from_buff(fr_tls_record_t *record, void const *in, unsigned int inlen)
 {
 	unsigned int added = FR_TLS_MAX_RECORD_SIZE - record->used;
 
@@ -241,7 +241,7 @@ inline static unsigned int record_from_buff(tls_record_t *record, void const *in
  * @param[in] outlen	The length of the output buffer.
  * @return the amount of data written to the output buffer.
  */
-inline static unsigned int record_to_buff(tls_record_t *record, void *out, unsigned int outlen)
+inline static unsigned int record_to_buff(fr_tls_record_t *record, void *out, unsigned int outlen)
 {
 	unsigned int taken = record->used;
 
@@ -266,7 +266,7 @@ inline static unsigned int record_to_buff(tls_record_t *record, void *out, unsig
  * @param[in] request	to bind to the SSL *.
  * @param[in] ssl	session to be bound.
  */
-inline static CC_HINT(nonnull) void tls_session_request_bind(REQUEST *request, SSL *ssl)
+inline static CC_HINT(nonnull) void fr_tls_session_request_bind(REQUEST *request, SSL *ssl)
 {
 	int ret;
 
@@ -291,7 +291,7 @@ inline static CC_HINT(nonnull) void tls_session_request_bind(REQUEST *request, S
  *
  * @param[in] ssl	containing the request pointer.
  */
-inline static CC_HINT(nonnull) void tls_session_request_unbind(SSL *ssl)
+inline static CC_HINT(nonnull) void fr_tls_session_request_unbind(SSL *ssl)
 {
 	int ret;
 
@@ -317,7 +317,7 @@ inline static CC_HINT(nonnull) void tls_session_request_unbind(SSL *ssl)
  *	- 0 on error.
  *	- >0 on success (the length of the password).
  */
-int tls_session_password_cb(char *buf, int size, int rwflag UNUSED, void *u)
+int fr_tls_session_password_cb(char *buf, int size, int rwflag UNUSED, void *u)
 {
 	size_t len;
 
@@ -376,7 +376,7 @@ static bool session_psk_identity_is_safe(const char *identity)
  *	- 0 if no PSK matching identity was found.
  *	- >0 if a PSK matching identity was found (the length of bytes written to psk).
  */
-unsigned int tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
+unsigned int fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 				       char *identity, unsigned int max_identity_len,
 				       unsigned char *psk, unsigned int max_psk_len)
 {
@@ -404,7 +404,7 @@ unsigned int tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
  *	- 0 if no PSK matching identity was found.
  *	- >0 if a PSK matching identity was found (the length of bytes written to psk).
  */
-unsigned int tls_session_psk_server_cb(SSL *ssl, const char *identity,
+unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 				       unsigned char *psk, unsigned int max_psk_len)
 {
 	unsigned int	psk_len = 0;
@@ -491,7 +491,7 @@ unsigned int tls_session_psk_server_cb(SSL *ssl, const char *identity,
  *			for additional info.
  * @param[in] ret	0 if an error occurred, or the alert type if an alert was received.
  */
-void tls_session_info_cb(SSL const *ssl, int where, int ret)
+void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 {
 	char const	*role, *state;
 	REQUEST		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
@@ -600,7 +600,7 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
  * @param[in] request	The current #REQUEST.
  * @param[in] tls_session	The current TLS session.
  */
-static void session_msg_log(REQUEST *request, tls_session_t *tls_session, uint8_t const *data, size_t data_len)
+static void session_msg_log(REQUEST *request, fr_tls_session_t *tls_session, uint8_t const *data, size_t data_len)
 {
 	char const	*version, *content_type;
 	char const	*str_details1 = NULL;
@@ -708,7 +708,7 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session, uint8_
  * or received.
  *
  * This function copies state information from the various arguments into the state->info
- * structure of the #tls_session_t, to allow us to track the progression of the handshake.
+ * structure of the #fr_tls_session_t, to allow us to track the progression of the handshake.
  *
  * @param[in] write_p
  *				- 0 when a message has been received.
@@ -729,21 +729,21 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session, uint8_
  * @param[in] inbuf		The raw protocol message.
  * @param[in] len		Length of the raw protocol message.
  * @param[in] ssl		The SSL session.
- * @param[in] arg		The #tls_session_t holding the SSL session.
+ * @param[in] arg		The #fr_tls_session_t holding the SSL session.
  */
-void tls_session_msg_cb(int write_p, int msg_version, int content_type,
+void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 			void const *inbuf, size_t len,
 			SSL *ssl, void *arg)
 {
 	uint8_t const	*buf = inbuf;
-	tls_session_t	*session = talloc_get_type_abort(arg, tls_session_t);
+	fr_tls_session_t	*session = talloc_get_type_abort(arg, fr_tls_session_t);
 	REQUEST		*request = SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	/*
 	 *	Mostly to check for memory corruption...
 	 */
 	if (!fr_cond_assert(session->ssl = ssl)) {
-		ERROR("tls_session_t and ssl arg do not match in tls_session_msg_cb");
+		ERROR("fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
 		session->invalid = true;
 		return;
 	}
@@ -775,13 +775,13 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 *	the SSL Session state.
 	 */
 	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
-		DEBUG4("Ignoring tls_session_msg_cb call with pseudo content type %i, version %i",
+		DEBUG4("Ignoring fr_tls_session_msg_cb call with pseudo content type %i, version %i",
 		       content_type, msg_version);
 		return;
 	}
 
 	if ((write_p != 0) && (write_p != 1)) {
-		DEBUG4("Ignoring tls_session_msg_cb call with invalid write_p %d", write_p);
+		DEBUG4("Ignoring fr_tls_session_msg_cb call with invalid write_p %d", write_p);
 		return;
 	}
 
@@ -831,7 +831,7 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	session_msg_log(request, session, (uint8_t const *)inbuf, len);
 }
 
-static inline VALUE_PAIR *tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *request, fr_cursor_t *cursor,
+static inline VALUE_PAIR *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *request, fr_cursor_t *cursor,
 					    	    int attr, int attr_index, char const *value)
 {
 	VALUE_PAIR *vp;
@@ -864,8 +864,8 @@ static inline VALUE_PAIR *tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *re
  *	- 0 on success.
  *	- < 0 on failure.
  */
-int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
-				     tls_session_t *session, X509 *cert, int depth)
+int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
+				     fr_tls_session_t *session, X509 *cert, int depth)
 {
 	char		buffer[1024];
 	char		attribute[256];
@@ -885,7 +885,7 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 
 	REQUEST		*request;
 
-#define CERT_ATTR_ADD(_attr, _attr_index, _value) tls_session_cert_attr_add(ctx, request, cursor, _attr, _attr_index, _value)
+#define CERT_ATTR_ADD(_attr, _attr_index, _value) fr_tls_session_cert_attr_add(ctx, request, cursor, _attr, _attr_index, _value)
 
 	fr_cursor_tail(cursor);
 
@@ -931,7 +931,7 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 		/*
 		 *	Add expiration as a time since the epoch
 		 */
-		if (tls_utils_asn1time_to_epoch(&expires, asn_time) < 0) {
+		if (fr_tls_utils_asn1time_to_epoch(&expires, asn_time) < 0) {
 			RPWDEBUG("Failed parsing certificate expiry time");
 		} else {
 			vp = CERT_ATTR_ADD(IDX_EXPIRATION, attr_index, NULL);
@@ -1114,11 +1114,11 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
  *	- 1 if more fragments are required to fully reassemble the record for decryption.
  *	- 0 if we decrypted a complete record.
  */
-int tls_session_recv(REQUEST *request, tls_session_t *session)
+int fr_tls_session_recv(REQUEST *request, fr_tls_session_t *session)
 {
 	int ret;
 
-	tls_session_request_bind(request, session->ssl);
+	fr_tls_session_request_bind(request, session->ssl);
 
 	if (!SSL_is_init_finished(session->ssl)) {
 		REDEBUG("Attempted to read application data before handshake completed");
@@ -1175,7 +1175,7 @@ int tls_session_recv(REQUEST *request, tls_session_t *session)
 
 		default:
 			REDEBUG("Error in fragmentation logic");
-			tls_log_io_error(request, session, ret, "Failed in SSL_read");
+			fr_tls_log_io_error(request, session, ret, "Failed in SSL_read");
 			goto error;
 		}
 
@@ -1194,7 +1194,7 @@ int tls_session_recv(REQUEST *request, tls_session_t *session)
 		RDEBUG2("Decrypted TLS application data (%zu bytes)", session->clean_out.used);
 	}
 finish:
-	tls_session_request_unbind(session->ssl);
+	fr_tls_session_request_unbind(session->ssl);
 
 	return ret;
 }
@@ -1212,11 +1212,11 @@ finish:
  *	- -1 on failure.
  *	- 0 on success.
  */
-int tls_session_send(REQUEST *request, tls_session_t *session)
+int fr_tls_session_send(REQUEST *request, fr_tls_session_t *session)
 {
 	int ret = 0;
 
-	tls_session_request_bind(request, session->ssl);
+	fr_tls_session_request_bind(request, session->ssl);
 
 	if (!SSL_is_init_finished(session->ssl)) {
 		REDEBUG("Attempted to write application data before handshake completed");
@@ -1251,20 +1251,20 @@ int tls_session_send(REQUEST *request, tls_session_t *session)
 			session->dirty_out.used = ret;
 			ret = 0;
 		} else {
-			if (tls_log_io_error(request, session, ret, "Failed in SSL_write") < 0) ret = -1;
+			if (fr_tls_log_io_error(request, session, ret, "Failed in SSL_write") < 0) ret = -1;
 		}
 	}
 
 finish:
-	tls_session_request_unbind(session->ssl);
+	fr_tls_session_request_unbind(session->ssl);
 
 	return ret;
 }
 
-/** Instruct tls_session_handshake to create a synthesised TLS alert record and send it to the peer
+/** Instruct fr_tls_session_handshake to create a synthesised TLS alert record and send it to the peer
  *
  */
-int tls_session_alert(UNUSED REQUEST *request, tls_session_t *session, uint8_t level, uint8_t description)
+int fr_tls_session_alert(UNUSED REQUEST *request, fr_tls_session_t *session, uint8_t level, uint8_t description)
 {
 	if (session->alerts_sent > 3) return -1;		/* Some kind of sate machine brokenness */
 
@@ -1280,7 +1280,7 @@ int tls_session_alert(UNUSED REQUEST *request, tls_session_t *session, uint8_t l
 	return 0;
 }
 
-static void tls_session_alert_send(REQUEST *request, tls_session_t *session)
+static void fr_tls_session_alert_send(REQUEST *request, fr_tls_session_t *session)
 {
 	/*
 	 *	Update our internal view of the session
@@ -1319,16 +1319,16 @@ static void tls_session_alert_send(REQUEST *request, tls_session_t *session)
  *	- -1 on error.
  *	- 0 on success.
  */
-int tls_session_handshake(REQUEST *request, tls_session_t *session)
+int fr_tls_session_handshake(REQUEST *request, fr_tls_session_t *session)
 {
 	int ret;
 
-	tls_session_request_bind(request, session->ssl);
+	fr_tls_session_request_bind(request, session->ssl);
 
 	/*
-	 *	This is a logic error.  tls_session_handshake
+	 *	This is a logic error.  fr_tls_session_handshake
 	 *	must not be called if the handshake is
-	 *	complete tls_session_recv must be
+	 *	complete fr_tls_session_recv must be
 	 *	called instead.
 	 */
 	if (SSL_is_init_finished(session->ssl)) {
@@ -1391,7 +1391,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	 *	Returns 0 if we can continue processing the handshake
 	 *	Returns -1 if we encountered a fatal error.
 	 */
-	if (tls_log_io_error(request, session, ret, "Failed in SSL_read") < 0) goto error;
+	if (fr_tls_log_io_error(request, session, ret, "Failed in SSL_read") < 0) goto error;
 
 	/*
 	 *	This only occurs once per session, where calling
@@ -1474,7 +1474,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 			MEM(ssl_log = BIO_new(BIO_s_mem()));
 
 			if (SSL_SESSION_print(ssl_log, session->session) == 1) {
-				SSL_DRAIN_ERROR_QUEUE(RDEBUG3, "", ssl_log);
+				FR_OPENSSL_DRAIN_ERROR_QUEUE(RDEBUG3, "", ssl_log);
 			} else {
 				RDEBUG3("Failed retrieving session data");
 			}
@@ -1508,7 +1508,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 			goto success;
 
 		} else {
-			tls_log_error(NULL, NULL);
+			fr_tls_log_error(NULL, NULL);
 			record_init(&session->dirty_in);
 			goto error;
 		}
@@ -1525,13 +1525,13 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	 *	send alerts, and we need to send alerts as part of
 	 *	RFC 5216, so this is our only option.
 	 */
-	if (session->pending_alert) tls_session_alert_send(request, session);
+	if (session->pending_alert) fr_tls_session_alert_send(request, session);
 
 	/* We are done with dirty_in, reinitialize it */
 	record_init(&session->dirty_in);
 
 finish:
-	tls_session_request_unbind(session->ssl);
+	fr_tls_session_request_unbind(session->ssl);
 
 	return ret;
 }
@@ -1541,7 +1541,7 @@ finish:
  * @param session to free.
  * @return 0.
  */
-static int _tls_session_free(tls_session_t *session)
+static int _fr_tls_session_free(fr_tls_session_t *session)
 {
 	if (session->ssl) {
 		SSL_set_quiet_shutdown(session->ssl, 1);
@@ -1553,7 +1553,7 @@ static int _tls_session_free(tls_session_t *session)
 	return 0;
 }
 
-static void session_init(tls_session_t *session)
+static void session_init(fr_tls_session_t *session)
 {
 	session->ssl = NULL;
 	session->into_ssl = session->from_ssl = NULL;
@@ -1579,17 +1579,17 @@ static void session_init(tls_session_t *session)
  *	- A new session on success.
  *	- NULL on error.
  */
-tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
+fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 {
 	int		ret;
 	int		verify_mode;
-	tls_session_t	*session = NULL;
+	fr_tls_session_t	*session = NULL;
 	REQUEST		*request;
 
-	session = talloc_zero(ctx, tls_session_t);
+	session = talloc_zero(ctx, fr_tls_session_t);
 	if (!session) return NULL;
 
-	talloc_set_destructor(session, _tls_session_free);
+	talloc_set_destructor(session, _fr_tls_session_free);
 
 	session->ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
 	rad_assert(session->ctx);
@@ -1602,15 +1602,15 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 
 	request = request_alloc(session);
 
-	tls_session_request_bind(request, session->ssl);
+	fr_tls_session_request_bind(request, session->ssl);
 
 	/*
 	 *	Add the message callback to identify what type of
 	 *	message/handshake is passed
 	 */
-	SSL_set_msg_callback(session->ssl, tls_session_msg_cb);
+	SSL_set_msg_callback(session->ssl, fr_tls_session_msg_cb);
 	SSL_set_msg_callback_arg(session->ssl, session);
-	SSL_set_info_callback(session->ssl, tls_session_info_cb);
+	SSL_set_info_callback(session->ssl, fr_tls_session_info_cb);
 
 	/*
 	 *	Always verify the peer certificate.
@@ -1618,15 +1618,15 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 	DEBUG2("Requiring Server certificate");
 	verify_mode = SSL_VERIFY_PEER;
 	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	SSL_set_verify(session->ssl, verify_mode, tls_validate_cert_cb);
+	SSL_set_verify(session->ssl, verify_mode, fr_tls_validate_cert_cb);
 
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)session);
 
 	ret = SSL_connect(session->ssl);
 	if (ret <= 0) {
-		tls_log_io_error(NULL, session, ret, "Failed in SSL_connect");
-		tls_session_request_unbind(session->ssl);
+		fr_tls_log_io_error(NULL, session, ret, "Failed in SSL_connect");
+		fr_tls_session_request_unbind(session->ssl);
 		talloc_free(session);
 
 		return NULL;
@@ -1634,7 +1634,7 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 
 	session->mtu = conf->fragment_size;
 
-	tls_session_request_unbind(session->ssl);
+	fr_tls_session_request_unbind(session->ssl);
 
 	return session;
 }
@@ -1652,9 +1652,9 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
  *	- A new session on success.
  *	- NULL on error.
  */
-tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQUEST *request, bool client_cert)
+fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQUEST *request, bool client_cert)
 {
-	tls_session_t	*session = NULL;
+	fr_tls_session_t	*session = NULL;
 	SSL		*new_tls = NULL;
 	int		verify_mode = 0;
 	VALUE_PAIR	*vp;
@@ -1670,11 +1670,11 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 
 	new_tls = SSL_new(ssl_ctx);
 	if (new_tls == NULL) {
-		tls_log_error(request, "Error creating new TLS session");
+		fr_tls_log_error(request, "Error creating new TLS session");
 		return NULL;
 	}
 
-	session = talloc_zero(ctx, tls_session_t);
+	session = talloc_zero(ctx, fr_tls_session_t);
 	if (session == NULL) {
 		RERROR("Error allocating memory for TLS session");
 		SSL_free(new_tls);
@@ -1683,9 +1683,9 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	session_init(session);
 	session->ctx = ssl_ctx;
 	session->ssl = new_tls;
-	talloc_set_destructor(session, _tls_session_free);
+	talloc_set_destructor(session, _fr_tls_session_free);
 
-	tls_session_request_bind(request, session->ssl);
+	fr_tls_session_request_bind(request, session->ssl);
 
 	/*
 	 *	Initialize callbacks
@@ -1713,9 +1713,9 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	 *	Add the message callback to identify what type of
 	 *	message/handshake is passed
 	 */
-	SSL_set_msg_callback(new_tls, tls_session_msg_cb);
+	SSL_set_msg_callback(new_tls, fr_tls_session_msg_cb);
 	SSL_set_msg_callback_arg(new_tls, session);
-	SSL_set_info_callback(new_tls, tls_session_info_cb);
+	SSL_set_info_callback(new_tls, fr_tls_session_info_cb);
 
 	/*
 	 *	This sets the context sessions can be resumed in.
@@ -1742,7 +1742,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 		if (tmpl_aexpand(session, &context_id, request, conf->session_id_name, NULL, NULL) < 0) {
 			RPEDEBUG("Failed expanding session ID");
 		error:
-			tls_session_request_unbind(session->ssl);
+			fr_tls_session_request_unbind(session->ssl);
 			talloc_free(session);
 			return NULL;
 		}
@@ -1766,19 +1766,19 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 		RDEBUG2("Loading TLS session certificate \"%pV\"", &vp->data);
 
 		if (SSL_use_certificate_file(session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			tls_log_error(request, "Failed loading TLS session certificate \"%s\"",
+			fr_tls_log_error(request, "Failed loading TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}
 
 		if (SSL_use_PrivateKey_file(session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			tls_log_error(request, "Failed loading TLS session certificate \"%s\"",
+			fr_tls_log_error(request, "Failed loading TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}
 
 		if (SSL_check_private_key(session->ssl) != 1) {
-			tls_log_error(request, "Failed validating TLS session certificate \"%s\"",
+			fr_tls_log_error(request, "Failed validating TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}
@@ -1802,7 +1802,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	 *	In Server mode we only accept.
 	 *
 	 *	This sets up the SSL session to work correctly with
-	 *	tls_session_handhsake.
+	 *	fr_tls_session_handhsake.
 	 */
 	SSL_set_accept_state(session->ssl);
 
@@ -1815,7 +1815,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
 	}
-	SSL_set_verify(session->ssl, verify_mode, tls_validate_cert_cb);
+	SSL_set_verify(session->ssl, verify_mode, fr_tls_validate_cert_cb);
 
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)session);
@@ -1841,7 +1841,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 
 	if (conf->session_cache_server) session->allow_session_resumption = true; /* otherwise it's false */
 
-	tls_session_request_unbind(session->ssl);
+	fr_tls_session_request_unbind(session->ssl);
 
 	return session;
 }

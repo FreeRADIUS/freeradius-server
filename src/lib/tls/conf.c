@@ -119,7 +119,7 @@ static CONF_PARSER tls_chain_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-CONF_PARSER tls_server_config[] = {
+CONF_PARSER fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("auto_chain", FR_TYPE_BOOL, fr_tls_conf_t, auto_chain), .dflt = "yes" },
 
 	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
@@ -176,7 +176,7 @@ CONF_PARSER tls_server_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-CONF_PARSER tls_client_config[] = {
+CONF_PARSER fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
 	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t",
 	  .subcs = tls_chain_config },
@@ -345,7 +345,7 @@ static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
 	/* Load the CAs we trust */
 	if (conf->ca_file || conf->ca_path)
 		if (!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
-			tls_log_error(NULL, "Error reading Trusted root CA list \"%s\"", conf->ca_file);
+			fr_tls_log_error(NULL, "Error reading Trusted root CA list \"%s\"", conf->ca_file);
 			return NULL;
 		}
 
@@ -382,7 +382,7 @@ static int _conf_server_free(fr_tls_conf_t *conf)
 	return 0;
 }
 
-fr_tls_conf_t *tls_conf_alloc(TALLOC_CTX *ctx)
+fr_tls_conf_t *fr_tls_conf_alloc(TALLOC_CTX *ctx)
 {
 	fr_tls_conf_t *conf;
 
@@ -397,7 +397,7 @@ fr_tls_conf_t *tls_conf_alloc(TALLOC_CTX *ctx)
 	return conf;
 }
 
-fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
+fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 {
 	fr_tls_conf_t *conf;
 	uint32_t i;
@@ -412,9 +412,9 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 		return conf;
 	}
 
-	if (cf_section_rules_push(cs, tls_server_config) < 0) return NULL;
+	if (cf_section_rules_push(cs, fr_tls_server_config) < 0) return NULL;
 
-	conf = tls_conf_alloc(cs);
+	conf = fr_tls_conf_alloc(cs);
 
 	if ((cf_section_parse(conf, conf, cs) < 0) ||
 	    (cf_section_parse_pass2(conf, cs) < 0)) {
@@ -440,7 +440,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	 */
 	conf->ctx = talloc_zero_array(conf, SSL_CTX *, conf->ctx_count);
 	for (i = 0; i < conf->ctx_count; i++) {
-		conf->ctx[i] = tls_ctx_alloc(conf, false);
+		conf->ctx[i] = fr_tls_ctx_alloc(conf, false);
 		if (conf->ctx[i] == NULL) goto error;
 	}
 
@@ -488,7 +488,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 			goto error;
 		}
 
-		if (tls_cache_compile(&conf->session_cache, server_cs) < 0) goto error;
+		if (fr_tls_cache_compile(&conf->session_cache, server_cs) < 0) goto error;
 	}
 
 	if (conf->ocsp.cache_server) {
@@ -500,7 +500,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 			goto error;
 		}
 
-		if (tls_ocsp_state_cache_compile(&conf->ocsp.cache, server_cs) < 0) goto error;
+		if (fr_tls_ocsp_state_cache_compile(&conf->ocsp.cache, server_cs) < 0) goto error;
 	}
 
 	if (conf->staple.cache_server) {
@@ -512,7 +512,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 			goto error;
 		}
 
-		if (tls_ocsp_staple_cache_compile(&conf->staple.cache, server_cs) < 0) goto error;
+		if (fr_tls_ocsp_staple_cache_compile(&conf->staple.cache, server_cs) < 0) goto error;
 	}
 
 	/*
@@ -523,7 +523,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	return conf;
 }
 
-fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
+fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
 {
 	fr_tls_conf_t *conf;
 	uint32_t i;
@@ -534,9 +534,9 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 		return conf;
 	}
 
-	if (cf_section_rules_push(cs, tls_client_config) < 0) return NULL;
+	if (cf_section_rules_push(cs, fr_tls_client_config) < 0) return NULL;
 
-	conf = tls_conf_alloc(cs);
+	conf = fr_tls_conf_alloc(cs);
 
 	if ((cf_section_parse(conf, conf, cs) < 0) ||
 	    (cf_section_parse_pass2(conf, cs) < 0)) {
@@ -562,7 +562,7 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 
 	conf->ctx = talloc_array(conf, SSL_CTX *, conf->ctx_count);
 	for (i = 0; i < conf->ctx_count; i++) {
-		conf->ctx[i] = tls_ctx_alloc(conf, true);
+		conf->ctx[i] = fr_tls_ctx_alloc(conf, true);
 		if (conf->ctx[i] == NULL) goto error;
 	}
 

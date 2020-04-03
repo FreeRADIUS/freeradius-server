@@ -484,10 +484,10 @@ int main(int argc, char *argv[])
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 *
-	 *  tls_init() must be called before *ANY* OpenSSL functions are used, which is why
+	 *  fr_openssl_init() must be called before *ANY* OpenSSL functions are used, which is why
 	 *  it's called so early.
 	 */
-	if (tls_init() < 0) EXIT_WITH_FAILURE;
+	if (fr_openssl_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
 	/*
@@ -549,7 +549,7 @@ int main(int argc, char *argv[])
 	}
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_dict_init() < 0) {
+	if (fr_tls_dict_init() < 0) {
 		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
@@ -597,7 +597,7 @@ int main(int argc, char *argv[])
 	 *  Check for vulnerabilities in the version of libssl were linked against.
 	 */
 #if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
-	if (tls_version_check(config->allow_vulnerable_openssl) < 0) EXIT_WITH_FAILURE;
+	if (fr_openssl_version_check(config->allow_vulnerable_openssl) < 0) EXIT_WITH_FAILURE;
 #endif
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
@@ -606,7 +606,7 @@ int main(int argc, char *argv[])
 	 */
 	if (config->openssl_fips_mode_is_set) {
 		if (FIPS_mode_set(config->openssl_fips_mode ? 1 : 0) == 0) {
-			tls_log_error(NULL, "Failed %s OpenSSL FIPS mode",
+			fr_tls_log_error(NULL, "Failed %s OpenSSL FIPS mode",
 				      config->openssl_fips_mode ? "enabling" : "disabling");
 			EXIT_WITH_FAILURE;
 		}
@@ -1016,7 +1016,7 @@ cleanup:
 	unlang_free();
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
+	fr_openssl_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 
 	if (config) talloc_memory_report = config->talloc_memory_report;	/* Grab this before we free the config */

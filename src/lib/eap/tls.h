@@ -121,12 +121,12 @@ typedef struct {
  * Contains any EAP-TLS specific state information, such as whether we're
  * sending/receiving fragments, and the progress of those operations.
  *
- * TLS session state is stored in a tls_session_t accessed via the tls_session field.
+ * TLS session state is stored in a fr_tls_session_t accessed via the tls_session field.
  */
 typedef struct {
 	eap_tls_status_t	state;			//!< The state of the EAP-TLS session.
 
-	tls_session_t		*tls_session;		//!< TLS session used to authenticate peer
+	fr_tls_session_t		*tls_session;		//!< TLS session used to authenticate peer
 							//!< or tunnel sensitive data.
 
 	bool			phase2;			//!< Whether we're in phase 2
@@ -168,7 +168,7 @@ int			eap_tls_request(REQUEST *request, eap_session_t *eap_session) CC_HINT(nonn
 
 int			eap_tls_compose(REQUEST *request, eap_session_t *eap_session,
 					eap_tls_status_t status, uint8_t flags,
-		    			tls_record_t *record, size_t record_len, size_t frag_len);
+		    			fr_tls_record_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
 int			eap_crypto_mppe_keys(REQUEST *request, SSL *ssl,

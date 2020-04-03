@@ -45,7 +45,7 @@ DIAG_OFF(format-nonliteral)
  * @param[in] ap	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-static int tls_log_error_va(REQUEST *request, char const *msg, va_list ap)
+static int fr_tls_log_error_va(REQUEST *request, char const *msg, va_list ap)
 {
 	unsigned long	error;
 	char		*p;
@@ -128,13 +128,13 @@ DIAG_ON(format-nonliteral)
  * @param[in] ...	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-int tls_log_error(REQUEST *request, char const *msg, ...)
+int fr_tls_log_error(REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 	int ret;
 
 	va_start(ap, msg);
-	ret = tls_log_error_va(request, msg, ap);
+	ret = fr_tls_log_error_va(request, msg, ap);
 	va_end(ap);
 
 	return ret;
@@ -247,10 +247,10 @@ static void _tls_ctx_print_cert_line(char const *file, int line,
 
 	if (request) {
 		log_request(L_DBG, fr_debug_lvl, request, file, line,
-			    "[%i] %s %s", index, tls_utils_x509_pkey_type(cert), subject);
+			    "[%i] %s %s", index, fr_tls_utils_x509_pkey_type(cert), subject);
 	} else {
 		fr_log(LOG_DST, fr_debug_lvl, file, line,
-		       "[%i] %s %s", index, tls_utils_x509_pkey_type(cert), subject);
+		       "[%i] %s %s", index, fr_tls_utils_x509_pkey_type(cert), subject);
 	}
 }
 
@@ -262,7 +262,7 @@ static void _tls_ctx_print_cert_line(char const *file, int line,
  * @param[in] chain	The certificate chain.
  * @param[in] cert	The leaf certificate.
  */
-void _tls_log_certificate_chain(char const *file, int line,
+void _fr_tls_log_certificate_chain(char const *file, int line,
 				REQUEST *request, STACK_OF(X509) *chain, X509 *cert)
 {
 	int i;
@@ -296,14 +296,14 @@ void _tls_log_certificate_chain(char const *file, int line,
  *	- 0 TLS session may still be viable.
  *	- -1 TLS session cannot continue.
  */
-int tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
+int fr_tls_log_io_error(REQUEST *request, fr_tls_session_t *session, int ret, char const *msg, ...)
 {
 	int	error;
 	va_list	ap;
 
 	if (ERR_peek_error()) {
 		va_start(ap, msg);
-		tls_log_error_va(request, msg, ap);
+		fr_tls_log_error_va(request, msg, ap);
 		va_end(ap);
 	}
 

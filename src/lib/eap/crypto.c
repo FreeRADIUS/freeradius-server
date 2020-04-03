@@ -53,7 +53,7 @@ int eap_crypto_mppe_keys(REQUEST *request, SSL *ssl, char const *prf_label, size
 	uint8_t		*p;
 
 	if (SSL_export_keying_material(ssl, out, sizeof(out), prf_label, prf_label_len, NULL, 0, 0) != 1) {
-		tls_log_error(request, "Failed generating MPPE keys");
+		fr_tls_log_error(request, "Failed generating MPPE keys");
 		return -1;
 	}
 
@@ -138,7 +138,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 		MEM(buff = p = talloc_array(ctx, uint8_t, sizeof(eap_type) + 64));
 		*p++ = eap_type;
 		if (SSL_export_keying_material(ssl, p, 64, prf_label, prf_label_len, NULL, 0, 0) != 1) {
-			tls_log_error(request, "Failed generating TLS session ID");
+			fr_tls_log_error(request, "Failed generating TLS session ID");
 			return -1;
 		}
 	}

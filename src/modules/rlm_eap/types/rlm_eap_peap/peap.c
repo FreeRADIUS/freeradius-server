@@ -34,7 +34,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
  *
  *       Result-TLV = Failure
  */
-static int eap_peap_failure(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
+static int eap_peap_failure(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
 
@@ -57,7 +57,7 @@ static int eap_peap_failure(REQUEST *request, eap_session_t *eap_session, tls_se
 	/*
 	 *	FIXME: Check the return code.
 	 */
-	tls_session_send(request, tls_session);
+	fr_tls_session_send(request, tls_session);
 
 	return 1;
 }
@@ -68,7 +68,7 @@ static int eap_peap_failure(REQUEST *request, eap_session_t *eap_session, tls_se
  *
  *       Result-TLV = Success
  */
-static int eap_peap_success(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
+static int eap_peap_success(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
 
@@ -91,13 +91,13 @@ static int eap_peap_success(REQUEST *request, eap_session_t *eap_session, tls_se
 	/*
 	 *	FIXME: Check the return code.
 	 */
-	tls_session_send(request, tls_session);
+	fr_tls_session_send(request, tls_session);
 
 	return 1;
 }
 
 
-static int eap_peap_identity(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
+static int eap_peap_identity(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	eap_packet_raw_t eap_packet;
 
@@ -108,7 +108,7 @@ static int eap_peap_identity(REQUEST *request, eap_session_t *eap_session, tls_s
 	eap_packet.data[0] = FR_EAP_METHOD_IDENTITY;
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, &eap_packet, sizeof(eap_packet));
-	tls_session_send(request, tls_session);
+	fr_tls_session_send(request, tls_session);
 	(tls_session->record_init)(&tls_session->clean_in);
 
 	return 1;
@@ -117,7 +117,7 @@ static int eap_peap_identity(REQUEST *request, eap_session_t *eap_session, tls_s
 /*
  * Send an MS SoH request
  */
-static int eap_peap_soh(REQUEST *request,tls_session_t *tls_session)
+static int eap_peap_soh(REQUEST *request,fr_tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[20];
 
@@ -149,7 +149,7 @@ static int eap_peap_soh(REQUEST *request,tls_session_t *tls_session)
 	tlv_packet[19] = 0;
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 20);
-	tls_session_send(request, tls_session);
+	fr_tls_session_send(request, tls_session);
 	return 1;
 }
 
@@ -305,7 +305,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
  *	Convert a list of VALUE_PAIR's to an EAP packet, through the
  *	simple expedient of dumping the EAP message
  */
-static int eap_peap_inner_from_pairs(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
+static int eap_peap_inner_from_pairs(REQUEST *request, fr_tls_session_t *tls_session, VALUE_PAIR *vp)
 {
 	rad_assert(vp != NULL);
 	VALUE_PAIR *this;
@@ -328,7 +328,7 @@ static int eap_peap_inner_from_pairs(REQUEST *request, tls_session_t *tls_sessio
 		(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets, this->vp_length);
 	}
 
-	tls_session_send(request, tls_session);
+	fr_tls_session_send(request, tls_session);
 
 	return 1;
 }
@@ -367,7 +367,7 @@ static int eap_peap_check_tlv(REQUEST *request, uint8_t const *data, size_t data
 /*
  *	Use a reply packet to determine what to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tls_session_t *tls_session,
+static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr_tls_session_t *tls_session,
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;
@@ -469,7 +469,7 @@ static char const *peap_state(peap_tunnel_t *t)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
+rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	peap_tunnel_t	*t = tls_session->opaque;
 	REQUEST		*fake = NULL;

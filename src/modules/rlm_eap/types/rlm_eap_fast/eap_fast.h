@@ -250,9 +250,9 @@ extern fr_dict_attr_t const *attr_eap_fast_vendor_specific;
 /*
  *	Process the FAST portion of an EAP-FAST request.
  */
-void eap_fast_tlv_append(tls_session_t *tls_session, fr_dict_attr_t const *da, bool mandatory,
+void eap_fast_tlv_append(fr_tls_session_t *tls_session, fr_dict_attr_t const *da, bool mandatory,
 			 int length, const void *data) CC_HINT(nonnull);
-FR_CODE eap_fast_process(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session) CC_HINT(nonnull);
+FR_CODE eap_fast_process(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);
 
 /*
  *	A bunch of EAP-FAST helper functions.

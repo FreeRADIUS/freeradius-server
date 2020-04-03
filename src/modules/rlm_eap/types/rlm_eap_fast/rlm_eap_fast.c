@@ -256,7 +256,7 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 	return t;
 }
 
-static void eap_fast_session_ticket(tls_session_t *tls_session, const SSL *s,
+static void eap_fast_session_ticket(fr_tls_session_t *tls_session, const SSL *s,
 				    uint8_t *secret, int *secret_len)
 {
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -286,7 +286,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 	// FIXME enforce non-anon cipher
 
 	REQUEST		*request = (REQUEST *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
-	tls_session_t	*tls_session = arg;
+	fr_tls_session_t	*tls_session = arg;
 	eap_fast_tunnel_t	*t;
 
 	if (!tls_session) return 0;
@@ -307,7 +307,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 }
 
 /*
- * hints from hostap:src/crypto/tls_openssl.c:tls_session_ticket_ext_cb()
+ * hints from hostap:src/crypto/tls_openssl.c:fr_tls_session_ticket_ext_cb()
  *
  * N.B. we actually always tell OpenSSL we have digested the ticket so that
  *      it does not cause a fail loop and enables us to update the PAC easily
@@ -315,7 +315,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
  */
 static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 {
-	tls_session_t		*tls_session = talloc_get_type_abort(arg, tls_session_t);
+	fr_tls_session_t		*tls_session = talloc_get_type_abort(arg, fr_tls_session_t);
 	REQUEST			*request = talloc_get_type_abort(SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 	eap_fast_tunnel_t	*t;
 	VALUE_PAIR		*fast_vps = NULL, *vp;
@@ -337,7 +337,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 		errmsg = "PAC is not of type Opaque";
 error:
 		RERROR("%s, sending alert to client", errmsg);
-		if (tls_session_alert(request, tls_session, SSL3_AL_FATAL, SSL_AD_BAD_CERTIFICATE)) {
+		if (fr_tls_session_alert(request, tls_session, SSL3_AL_FATAL, SSL_AD_BAD_CERTIFICATE)) {
 			RERROR("too many alerts");
 			return 0;
 		}
@@ -458,7 +458,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	/*
 	 *	We need FAST data associated with the session, so
@@ -485,7 +485,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 *	an EAP-TLS-Success packet here.
 	 */
 	case EAP_TLS_ESTABLISHED:
-		tls_session_send(request, tls_session);
+		fr_tls_session_send(request, tls_session);
 		rad_assert(tls_session->opaque != NULL);
 		break;
 
@@ -529,7 +529,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
 	case FR_CODE_ACCESS_CHALLENGE:
-		tls_session_send(request, tls_session);
+		fr_tls_session_send(request, tls_session);
 		eap_tls_request(request, eap_session);
 		return RLM_MODULE_HANDLED;
 
@@ -568,7 +568,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t 	*eap_tls_session;
-	tls_session_t		*tls_session;
+	fr_tls_session_t		*tls_session;
 
 	VALUE_PAIR		*vp;
 	bool			client_cert;

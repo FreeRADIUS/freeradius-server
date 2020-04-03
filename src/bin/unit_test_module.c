@@ -835,10 +835,10 @@ int main(int argc, char *argv[])
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 *
-	 *  tls_init() must be called before *ANY* OpenSSL functions are used, which is why
+	 *  fr_openssl_init() must be called before *ANY* OpenSSL functions are used, which is why
 	 *  it's called so early.
 	 */
-	if (tls_init() < 0) EXIT_WITH_FAILURE;
+	if (fr_openssl_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
 	if (fr_debug_lvl) dependency_version_print();
@@ -873,7 +873,7 @@ int main(int argc, char *argv[])
 	}
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_dict_init() < 0) EXIT_WITH_FAILURE;
+	if (fr_tls_dict_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
 	/*

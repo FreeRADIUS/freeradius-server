@@ -138,7 +138,7 @@ typedef struct {
 	char const	*id;		//!< CVE (or other ID)
 	char const	*name;		//!< As known in the media...
 	char const	*comment;	//!< Where to get more information.
-} libssl_defect_t;
+} fr_openssl_defect_t;
 
 #undef VM
 #undef Vm
@@ -146,7 +146,7 @@ typedef struct {
 #define Vm(_a,_b,_c,_d) (((((_a) << 24) | ((_b) << 16) | ((_c) << 8) | ((_d) - 'a' + 1)) << 4) | 0x0f)
 
 /* Record critical defects in libssl here, new versions of OpenSSL to older versions of OpenSSL.  */
-static libssl_defect_t libssl_defects[] =
+static fr_openssl_defect_t fr_openssl_defects[] =
 {
 	{
 		.low		= Vm(1,1,0,'a'),		/* 1.1.0a */
@@ -340,7 +340,7 @@ static pthread_mutex_t *global_mutexes_init(TALLOC_CTX *ctx)
  *	libssl.
  * @return 0 if the CVE specified by the user matches the most recent CVE we have, else -1.
  */
-int tls_version_check(char const *acknowledged)
+int fr_openssl_version_check(char const *acknowledged)
 {
 	uint64_t v;
 	bool bad = false;
@@ -359,8 +359,8 @@ int tls_version_check(char const *acknowledged)
 	/* Check for bad versions */
 	v = (uint64_t) SSLeay();
 
-	for (i = 0; i < (NUM_ELEMENTS(libssl_defects)); i++) {
-		libssl_defect_t *defect = &libssl_defects[i];
+	for (i = 0; i < (NUM_ELEMENTS(fr_openssl_defects)); i++) {
+		fr_openssl_defect_t *defect = &fr_openssl_defects[i];
 
 		if ((v >= defect->low) && (v <= defect->high)) {
 			/*
@@ -396,9 +396,9 @@ int tls_version_check(char const *acknowledged)
  * @return realloc.
  */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-static void *openssl_talloc(size_t len, UNUSED char const *file, UNUSED int line)
+static void *fr_openssl_talloc(size_t len, UNUSED char const *file, UNUSED int line)
 #else
-static void *openssl_talloc(size_t len)
+static void *fr_openssl_talloc(size_t len)
 #endif
 {
 	return talloc_array(ssl_talloc_ctx, uint8_t, len);
@@ -411,9 +411,9 @@ static void *openssl_talloc(size_t len)
  * @return realloced memory.
  */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-static void *openssl_realloc(void *old, size_t len, UNUSED char const *file, UNUSED int line)
+static void *fr_openssl_talloc_realloc(void *old, size_t len, UNUSED char const *file, UNUSED int line)
 #else
-static void *openssl_realloc(void *old, size_t len)
+static void *fr_openssl_talloc_realloc(void *old, size_t len)
 #endif
 {
 	return talloc_realloc_size(ssl_talloc_ctx, old, len);
@@ -429,12 +429,12 @@ static void *openssl_realloc(void *old, size_t len)
  *	If we're not debugging, use only the filename.  Otherwise the
  *	cost of snprintf() is too large.
  */
-static void openssl_free(void *to_free, char const *file, UNUSED int line)
+static void fr_openssl_talloc_free(void *to_free, char const *file, UNUSED int line)
 {
 	(void)_talloc_free(to_free, file);
 }
 #else
-static void openssl_free(void *to_free, char const *file, int line)
+static void fr_openssl_talloc_free(void *to_free, char const *file, int line)
 {
 	char buffer[256];
 
@@ -443,21 +443,14 @@ static void openssl_free(void *to_free, char const *file, int line)
 }
 #endif
 #else
-static void openssl_free(void *to_free)
+static void fr_openssl_talloc_free(void *to_free)
 {
 	(void)talloc_free(to_free);
 }
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-/** Free any memory alloced by libssl
- *
- * OpenSSL >= 1.1.0 uses an atexit handler to automatically free
- * memory. However, we need to call it manually because some of
- * the SSL ctx is parented to the main config which will get freed
- * before the atexit handler, causing a segfault on exit.
- */
-void tls_free(void)
+void fr_openssl_free(void)
 {
 	if (--instance_count > 0) return;
 
@@ -473,7 +466,14 @@ void tls_free(void)
 	fr_dict_autofree(tls_dict);
 }
 #else
-void tls_free(void)
+/** Free any memory alloced by libssl
+ *
+ * OpenSSL >= 1.1.0 uses an atexit handler to automatically free
+ * memory. However, we need to call OPENSSL_cleanup manually because
+ * some of the SSL ctx is parented to the main config which will get
+ * freed before the atexit handler, causing a segfault on exit.
+ */
+void fr_openssl_free(void)
 {
 	OPENSSL_cleanup();
 	fr_dict_autofree(tls_dict);
@@ -487,7 +487,7 @@ void tls_free(void)
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-int tls_init(void)
+int fr_openssl_init(void)
 {
 	ENGINE *rand_engine;
 
@@ -500,8 +500,8 @@ int tls_init(void)
 	 *	This will only fail if memory has already been allocated
 	 *	by OpenSSL.
 	 */
-	if (CRYPTO_set_mem_functions(openssl_talloc, openssl_realloc, openssl_free) != 1) {
-		tls_log_error(NULL, "Failed to set OpenSSL memory allocation functions.  tls_init() called too late");
+	if (CRYPTO_set_mem_functions(fr_openssl_talloc, fr_openssl_talloc_realloc, fr_openssl_talloc_free) != 1) {
+		fr_tls_log_error(NULL, "Failed to set OpenSSL memory allocation functions.  fr_openssl_init() called too late");
 		return -1;
 	}
 
@@ -526,7 +526,7 @@ int tls_init(void)
 	global_mutexes = global_mutexes_init(NULL);
 	if (!global_mutexes) {
 		ERROR("Failed to set up SSL mutexes");
-		tls_free();
+		fr_openssl_free();
 		return -1;
 	}
 
@@ -552,17 +552,17 @@ int tls_init(void)
 /** Load dictionary attributes
  *
  */
-int tls_dict_init(void)
+int fr_tls_dict_init(void)
 {
 	if (fr_dict_autoload(tls_dict) < 0) {
 		PERROR("Failed initialising protocol library");
-		tls_free();
+		fr_openssl_free();
 		return -1;
 	}
 
 	if (fr_dict_attr_autoload(tls_dict_attr) < 0) {
 		PERROR("Failed resolving attributes");
-		tls_free();
+		fr_openssl_free();
 		return -1;
 	}
 

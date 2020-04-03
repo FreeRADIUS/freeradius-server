@@ -52,7 +52,7 @@ int fr_curl_init(void)
 	 *	the free function will also free the
 	 *	memory allocated during SSL init.
 	 */
-	if (tls_init() < 0) return -1;
+	if (fr_openssl_init() < 0) return -1;
 #endif
 
 	ret = curl_global_init(CURL_GLOBAL_ALL);
@@ -79,7 +79,7 @@ void fr_curl_free(void)
 	if (--instance_count > 0) return;
 
 #ifdef WITH_TLS
-	tls_free();
+	fr_openssl_free();
 #endif
 
 	curl_global_cleanup();

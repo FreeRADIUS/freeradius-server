@@ -300,7 +300,7 @@ do_value:
  *	are ones which can go inside of a RADIUS (i.e. diameter)
  *	packet.  So no server-configuration attributes, or the like.
  */
-static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *first)
+static int vp2diameter(REQUEST *request, fr_tls_session_t *tls_session, VALUE_PAIR *first)
 {
 	/*
 	 *	RADIUS packets are no more than 4k in size, so if
@@ -439,7 +439,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		/*
 		 *	FIXME: Check the return code.
 		 */
-		tls_session_send(request, tls_session);
+		fr_tls_session_send(request, tls_session);
 	}
 
 	/*
@@ -451,7 +451,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 /*
  *	Use a reply packet to determine what to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *eap_session, tls_session_t *tls_session,
+static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *eap_session, fr_tls_session_t *tls_session,
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
@@ -572,7 +572,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session)
+FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;

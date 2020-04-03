@@ -161,7 +161,7 @@ typedef struct {
 	RADIUS_PACKET  	 	*packet; /* for reading partial packets */
 
 #if 0
-	tls_session_t		*tls_session;
+	fr_tls_session_t		*tls_session;
 	REQUEST			*request; /* horrible hacks */
 	VALUE_PAIR		*cert_vps;
 	pthread_mutex_t		mutex;

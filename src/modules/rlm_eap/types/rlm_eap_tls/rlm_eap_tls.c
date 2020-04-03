@@ -77,7 +77,7 @@ static rlm_rcode_t eap_tls_success_with_prf(REQUEST *request, eap_session_t *eap
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	/*
 	 *	Set the PRF label based on the TLS version negotiated
@@ -196,7 +196,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	status = eap_tls_process(request, eap_session);
 	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
@@ -243,7 +243,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 *	the client can't re-use it.
 	 */
 	default:
-		tls_cache_deny(tls_session);
+		fr_tls_cache_deny(tls_session);
 
 		return RLM_MODULE_REJECT;
 	}

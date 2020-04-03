@@ -41,9 +41,9 @@
  */
 static int mod_instantiate(UNUSED void *instance, CONF_SECTION *conf)
 {
-	if (tls_cache_compile(NULL, cf_item_to_section(cf_parent(conf))) < 0) return -1;
-	if (tls_ocsp_state_cache_compile(NULL, cf_item_to_section(cf_parent(conf))) < 0) return -1;
-	if (tls_ocsp_staple_cache_compile(NULL, cf_item_to_section(cf_parent(conf))) < 0) return -1;
+	if (fr_tls_cache_compile(NULL, cf_item_to_section(cf_parent(conf))) < 0) return -1;
+	if (fr_tls_ocsp_state_cache_compile(NULL, cf_item_to_section(cf_parent(conf))) < 0) return -1;
+	if (fr_tls_ocsp_staple_cache_compile(NULL, cf_item_to_section(cf_parent(conf))) < 0) return -1;
 
 	return 0;
 }

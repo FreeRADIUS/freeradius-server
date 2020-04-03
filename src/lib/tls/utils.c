@@ -45,7 +45,7 @@ static size_t pkey_types_len = NUM_ELEMENTS(pkey_types);
  * @param[in] cert	The X509 cert to return the type of.
  * @return the type string.
  */
-char const *tls_utils_x509_pkey_type(X509 *cert)
+char const *fr_tls_utils_x509_pkey_type(X509 *cert)
 {
 	EVP_PKEY	*pkey;
 	int		pkey_type;
@@ -80,7 +80,7 @@ char const *tls_utils_x509_pkey_type(X509 *cert)
  *	- -1 problem with the session.
  *	- >=0 length of the block.
  */
-int tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl)
+int fr_tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl)
 {
 	const EVP_CIPHER *c;
 	const EVP_MD *h;
@@ -138,7 +138,7 @@ int tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl)
  *	- 0 success.
  *	- -1 on failure.
  */
-int tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
+int fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 {
 	struct		tm t;
 	char const	*p = (char const *)asn1->data, *end = p + strlen(p);
