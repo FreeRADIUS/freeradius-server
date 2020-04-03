@@ -29,7 +29,7 @@
 #include <curl/curl.h>
 #include <talloc.h>
 
-static uint32_t instance_count;
+static uint32_t instance_count = 0;
 
 /** Initialise global curl options
  *
