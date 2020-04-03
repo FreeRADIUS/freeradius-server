@@ -1991,6 +1991,139 @@ void test_cursor_free(void)
 	talloc_free(item_p);
 }
 
+typedef struct {
+	int	pos;
+	char	val;
+} item_filter;
+
+void *iter_name_check(void **prev, void *to_eval, void *uctx)
+{
+	test_item_t	*c, *p;
+	item_filter	*f = uctx;
+
+	if (!to_eval) return NULL;
+
+	for (p = *prev, c = to_eval; c; p = c, c = c->next) {
+		if (c->name[f->pos] == f->val) break;
+	}
+
+	*prev = p;
+
+	return c;
+}
+
+void test_intersect_differing_lists(void)
+{
+	fr_cursor_t	cursor_a, cursor_b;
+
+	test_item_t	item2 = {"item2", NULL};
+	test_item_t	item1 = {"item1", NULL};
+	test_item_t	*head_a = &item1;
+	test_item_t	*head_b = &item2;
+
+	fr_cursor_init(&cursor_a, &head_a);
+	fr_cursor_init(&cursor_b, &head_b);
+
+	TEST_CHECK(fr_cursor_intersect_head(&cursor_a, &cursor_b) == NULL);
+}
+
+void test_intersect_no_iterators(void)
+{
+	fr_cursor_t	cursor_a, cursor_b;
+
+	test_item_t	item3 = { "item3", NULL };
+	test_item_t	item2 = { "item2", &item3 };
+	test_item_t	item1 = { "item1", &item2 };
+	test_item_t	*head = &item1;
+
+	fr_cursor_init(&cursor_a, &head);
+	fr_cursor_init(&cursor_b, &head);
+
+	TEST_CHECK(fr_cursor_intersect_head(&cursor_a, &cursor_b) == &item1);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == &item2);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == &item3);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == NULL);
+}
+
+void test_intersect_iterator_a(void)
+{
+	fr_cursor_t	cursor_a, cursor_b;
+
+	test_item_t	item4 = { "after", NULL };
+	test_item_t	item3 = { "extra", &item4 };
+	test_item_t	item2 = { "alter", &item3 };
+	test_item_t	item1 = { "actor", &item2 };
+	test_item_t	*head = &item1;
+	item_filter	filter_a = { 0, 'a' };
+
+	fr_cursor_iter_init(&cursor_a, &head, iter_name_check, &filter_a);
+	fr_cursor_init(&cursor_b, &head);
+
+	TEST_CHECK(fr_cursor_intersect_head(&cursor_a, &cursor_b) == &item1);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == &item2);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == &item4);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == NULL);
+}
+
+void test_intersect_iterator_b(void)
+{
+	fr_cursor_t	cursor_a, cursor_b;
+
+	test_item_t	item4 = { "bland", NULL };
+	test_item_t	item3 = { "basic", &item4 };
+	test_item_t	item2 = { "alter", &item3 };
+	test_item_t	item1 = { "blink", &item2 };
+	test_item_t	*head = &item1;
+	item_filter	filter_b = { 0, 'b'};
+
+	fr_cursor_init(&cursor_a, &head);
+	fr_cursor_iter_init(&cursor_b, &head, iter_name_check, &filter_b);
+
+	TEST_CHECK(fr_cursor_intersect_head(&cursor_a, &cursor_b) == &item1);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == &item3);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == &item4);
+}
+
+void test_intersect_iterator_ab(void)
+{
+	fr_cursor_t	cursor_a, cursor_b;
+
+	test_item_t	item5 = { "bland", NULL };
+	test_item_t	item4 = { "cavil", &item5 };
+	test_item_t	item3 = { "basic", &item4 };
+	test_item_t	item2 = { "alter", &item3 };
+	test_item_t	item1 = { "baits", &item2 };
+	test_item_t	*head = &item1;
+	item_filter	filter_a = { 1, 'a' };
+	item_filter	filter_b = { 0, 'b' };
+
+	fr_cursor_iter_init(&cursor_a, &head, iter_name_check, &filter_a);
+	fr_cursor_iter_init(&cursor_b, &head, iter_name_check, &filter_b);
+
+	TEST_CHECK(fr_cursor_intersect_head(&cursor_a, &cursor_b) == &item1);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == &item3);
+	TEST_CHECK(fr_cursor_intersect_next(&cursor_a, &cursor_b) == NULL);
+}
+
+void test_intersect_iterator_disjoint(void)
+{
+	fr_cursor_t	cursor_a, cursor_b;
+
+	test_item_t	item5 = { "bland", NULL };
+	test_item_t	item4 = { "cavil", &item5 };
+	test_item_t	item3 = { "basic", &item4 };
+	test_item_t	item2 = { "alter", &item3 };
+	test_item_t	item1 = { "baits", &item2 };
+	test_item_t	*head = &item1;
+	item_filter	filter_a = { 0, 'a' };
+	item_filter	filter_b = { 0, 'b' };
+
+	fr_cursor_iter_init(&cursor_a, &head, iter_name_check, &filter_a);
+	fr_cursor_iter_init(&cursor_b, &head, iter_name_check, &filter_b);
+
+	TEST_CHECK(fr_cursor_intersect_head(&cursor_a, &cursor_b) == NULL);
+}
+
 TEST_LIST = {
 	/*
 	 *	Initialisation
@@ -2087,6 +2220,15 @@ TEST_LIST = {
 	 *	Free
 	 */
 	{ "free", 			test_cursor_free },
+	/*
+	 * 	Intersect
+	 */
+	{ "differing_lists",		test_intersect_differing_lists },
+	{ "no_iterators",		test_intersect_no_iterators },
+	{ "iterator_a",			test_intersect_iterator_a },
+	{ "iterator_b",			test_intersect_iterator_b },
+	{ "iterator_ab",		test_intersect_iterator_ab },
+	{ "iterator_disjoint",		test_intersect_iterator_disjoint },
 	{ 0 }
 };
 #endif
