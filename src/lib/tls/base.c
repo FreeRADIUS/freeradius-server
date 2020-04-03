@@ -459,7 +459,7 @@ static void openssl_free(void *to_free)
  */
 void tls_free(void)
 {
-	if (--instance_count > 0) return;
+	if (instance_count-- > 0) return;
 
 	FR_TLS_REMOVE_THREAD_STATE();
 	ENGINE_cleanup();
