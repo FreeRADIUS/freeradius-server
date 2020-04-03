@@ -7,6 +7,7 @@ if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
 	AC_PROG_CPP
+	AM_PATH_PYTHON([3.0],, [:])
 
 	dnl extra argument: --with-rlm-python3-config-bin
 	PYTHON3_CONFIG_BIN=
@@ -58,7 +59,13 @@ if test x$with_[]modname != xno; then
 			'`
 		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
-		python3_ldflags=`${PYTHON3_CONFIG_BIN} --ldflags`
+		dnl # From python 3.8, --embed is required
+		dnl # https://bugs.python.org/issue36721
+		if test x"$PYTHON_VERSION" = x"3.8"; then
+			EMBED="--embed"
+		fi
+
+		python3_ldflags=`${PYTHON3_CONFIG_BIN} --ldflags $EMBED`
 		AC_MSG_NOTICE([${PYTHON3_CONFIG_BIN}'s ldflags were \"$python3_ldflags}\"])
 
 		dnl # Strip -Wl,-O1... Is -O even a valid linker flag??
