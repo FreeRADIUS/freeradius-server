@@ -391,10 +391,10 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	rad_assert(request->runnable_id < 0);
 
 	/*
-	 *	If it's a fake request, don't send a real reply.
-	 *	Just toss the request.
+	 *	If it's a fake request, or we're exiting, don't send a
+	 *	real reply.  Just toss the request.
 	 */
-	if (request->async->fake) {
+	if (request->async->fake || worker->exiting) {
 		fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
 		goto finished;
 	}
