@@ -3402,12 +3402,6 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	uint32_t		req_count;
 	uint16_t		conn_count;
 
-	/*
-	 *	This should never be called if we're inside
-	 *	a callback...
-	 */
-	rad_assert(!trunk->in_handler);
-
 	DEBUG4("%s - Managing trunk", caller);
 
 	/*
@@ -3429,7 +3423,9 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	/*
 	 *	Process deferred connection freeing
 	 */
-	while ((tconn = fr_dlist_head(&trunk->to_free))) talloc_free(fr_dlist_remove(&trunk->to_free, tconn));
+	if (!trunk->in_handler) {
+		while ((tconn = fr_dlist_head(&trunk->to_free))) talloc_free(fr_dlist_remove(&trunk->to_free, tconn));
+	}
 
 	/*
 	 *	A trunk can be signalled to not proactively
