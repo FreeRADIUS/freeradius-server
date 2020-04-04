@@ -359,16 +359,7 @@ do { \
 } while (0)
 #define REQUEST_BAD_STATE_TRANSITION(_new) \
 do { \
-	fr_trunk_request_state_log_t *_log = NULL; \
-	int _i; \
-	for (_log = fr_dlist_head(&treq->log), _i = 0; \
-	     _log; \
-	     _log = fr_dlist_next(&treq->log, _log), _i++) { \
-		ERROR("[%u] %s:%i - %s -> %s", _i, _log->function, _log->line, \
-		      fr_table_str_by_value(fr_trunk_request_states, _log->from, "<INVALID>"), \
-		      fr_table_str_by_value(fr_trunk_request_states, _log->to, "<INVALID>")); \
-	} \
-	if (_i == 0) ERROR("[%u] %s:%i - State log empty", _i, __FUNCTION__, __LINE__); \
+	fr_trunk_request_state_log_print(treq); \
 	if (!fr_cond_assert_msg(0, "Trunk request %" PRIu64 " invalid transition %s -> %s", \
 				treq->id, \
 				fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
@@ -2159,6 +2150,24 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_ou
 
 	return FR_TRUNK_ENQUEUE_OK;
 }
+
+#ifndef NDEBUG
+void fr_trunk_request_state_log_print(fr_trunk_request_t const *treq)
+{
+	fr_trunk_t			*trunk = treq->pub.trunk;
+	fr_trunk_request_state_log_t	*log = NULL;
+
+	int i;
+
+	for (log = fr_dlist_head(&treq->log), i = 0;
+	     log;
+	     log = fr_dlist_next(&treq->log, log), i++) {
+		ERROR("[%u] %s:%i - %s -> %s", i, log->function, log->line,
+		      fr_table_str_by_value(fr_trunk_request_states, log->from, "<INVALID>"),
+		      fr_table_str_by_value(fr_trunk_request_states, log->to, "<INVALID>"));
+	}
+}
+#endif
 
 /** Return the count number of connections in the specified states
  *

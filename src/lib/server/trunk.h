@@ -701,6 +701,10 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq) CC_HINT(no
 fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn,
 						    REQUEST *request, void *preq, void *rctx,
 						    bool ignore_limits) CC_HINT(nonnull(2));
+
+#ifndef NDEBUG
+void		fr_trunk_request_state_log_print(fr_trunk_request_t const *treq);
+#endif
 /** @} */
 
 /** @name Dequeue protocol requests and cancellations
