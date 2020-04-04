@@ -60,11 +60,12 @@ static atomic_uint_fast64_t connection_counter = ATOMIC_VAR_INIT(1);
 /** An entry in a watch function list
  *
  */
-typedef struct {
+typedef struct fr_connection_watch_entry_s {
 	fr_dlist_t		entry;			//!< List entry.
 	fr_connection_watch_t	func;			//!< Function to call when a connection enters
 							///< the state this list belongs to
 	bool			oneshot;		//!< Remove the function after it's called once.
+	bool			enabled;		//!< Whether the watch entry is enabled.
 	void			*uctx;			//!< User data to pass to the function.
 } fr_connection_watch_entry_t;
 
@@ -75,6 +76,8 @@ struct fr_connection_s {
 
 	void			*in_handler;		//!< Connection is currently in a callback.
 	bool			is_closed;		//!< The close callback has previously been called.
+	bool			processing_signals;	//!< Processing deferred signals, don't let the deferred
+							///< signal processor be called multiple times.
 
 	fr_dlist_head_t		watch_pre[FR_CONNECTION_STATE_MAX];	//!< Function called before state callback.
 	fr_dlist_head_t		watch_post[FR_CONNECTION_STATE_MAX];	//!< Function called after state callback.
@@ -95,6 +98,12 @@ struct fr_connection_s {
 
 	fr_dlist_head_t		deferred_signals;	//!< A list of signals we received whilst we were in
 							///< a handler.
+
+
+
+	fr_connection_watch_entry_t *on_halted;		//!< Used by the deferred signal processor to learn
+							///< if a function deeper in the call stack freed
+							///< the connection.
 
 	bool			signals_pause;		//!< Temporarily stop processing of signals.
 };
@@ -203,11 +212,17 @@ static void connection_deferred_signal_process(fr_connection_t *conn)
 	bool				freed = false;
 
 	/*
+	 *	We're inside and an instance of this function
+	 *	higher in the call stack.  Don't do anything.
+	 */
+	if (conn->processing_signals) return;
+
+	/*
 	 *	Get notified if the connection gets freed
 	 *	out from under us...
 	 */
-	fr_connection_add_watch_post(conn, FR_CONNECTION_STATE_HALTED,
-				     _deferred_signal_connection_on_halted, true, &freed);	/* About to be freed */
+	fr_connection_watch_enable_set_uctx(conn->on_halted, &freed);
+	conn->processing_signals = true;
 
 	while ((dsignal = fr_dlist_head(&conn->deferred_signals))) {
 		connection_dsignal_t signal;
@@ -255,7 +270,8 @@ static void connection_deferred_signal_process(fr_connection_t *conn)
 		if (freed) return;
 	}
 
-	fr_connection_del_watch_post(conn, FR_CONNECTION_STATE_HALTED, _deferred_signal_connection_on_halted);
+	conn->processing_signals = false;
+	fr_connection_watch_disable(conn->on_halted);
 }
 
 /** Pause processing of deferred signals
@@ -277,12 +293,10 @@ void fr_connection_deferred_signals_resume(fr_connection_t *conn)
 	 *	If we were paused, and we're not in a handler
 	 *	then process the signals now.
 	 */
-	if (!conn->in_handler) {
-		if (conn->signals_pause) {
-			conn->signals_pause = false;
-			connection_deferred_signal_process(conn);
-			return;
-		}
+	if (!conn->in_handler && conn->signals_pause) {
+		conn->signals_pause = false;
+		connection_deferred_signal_process(conn);
+		return;
 	}
 	conn->signals_pause = false;
 }
@@ -322,6 +336,7 @@ static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t 
 		fr_connection_watch_entry_t	*entry = conn->next_watcher;
 		bool				oneshot = entry->oneshot;	/* Watcher could be freed, so store now */
 
+		if (!entry->enabled) continue;
 		if (oneshot) conn->next_watcher = fr_dlist_remove(list, entry);
 
 /*
@@ -428,8 +443,8 @@ int fr_connection_del_watch_post(fr_connection_t *conn, fr_connection_state_t st
 /** Add a watch entry to the pre/post[state] list
  *
  */
-static void connection_add_watch(fr_connection_t *conn, fr_dlist_head_t *list,
-				 fr_connection_watch_t watch, bool oneshot, void const *uctx)
+static fr_connection_watch_entry_t *connection_add_watch(fr_connection_t *conn, fr_dlist_head_t *list,
+							 fr_connection_watch_t watch, bool oneshot, void const *uctx)
 {
 	fr_connection_watch_entry_t *entry;
 
@@ -437,9 +452,12 @@ static void connection_add_watch(fr_connection_t *conn, fr_dlist_head_t *list,
 
 	entry->func = watch;
 	entry->oneshot = oneshot;
+	entry->enabled = true;
 	memcpy(&entry->uctx, &uctx, sizeof(entry->uctx));
 
 	fr_dlist_insert_tail(list, entry);
+
+	return entry;
 }
 
 /** Add a callback to be executed before a state function has been called
@@ -449,13 +467,16 @@ static void connection_add_watch(fr_connection_t *conn, fr_dlist_head_t *list,
  * @param[in] watch	function to call.
  * @param[in] oneshot	If true, remove the function after calling.
  * @param[in] uctx	to pass to callbacks.
+ * @return
+ *	- NULL if state value is invalid.
+ *	- A new watch entry handle.
  */
-void fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
-				 fr_connection_watch_t watch, bool oneshot, void const *uctx)
+fr_connection_watch_entry_t *fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
+				 			 fr_connection_watch_t watch, bool oneshot, void const *uctx)
 {
-	if (state >= FR_CONNECTION_STATE_MAX) return;
+	if (state >= FR_CONNECTION_STATE_MAX) return NULL;
 
-	connection_add_watch(conn, &conn->watch_pre[state], watch, oneshot, uctx);
+	return connection_add_watch(conn, &conn->watch_pre[state], watch, oneshot, uctx);
 }
 
 /** Add a callback to be executed after a state function has been called
@@ -468,13 +489,70 @@ void fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t st
  * @param[in] watch	function to call.
  * @param[in] oneshot	If true, remove the function after calling.
  * @param[in] uctx	to pass to callbacks.
+ * @return
+ *	- NULL if state value is invalid.
+ *	- A new watch entry handle.
  */
-void fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
-				  fr_connection_watch_t watch, bool oneshot, void const *uctx)
+fr_connection_watch_entry_t *fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
+							  fr_connection_watch_t watch, bool oneshot, void const *uctx)
 {
-	if (state >= FR_CONNECTION_STATE_MAX) return;
+	if (state >= FR_CONNECTION_STATE_MAX) return NULL;
 
-	connection_add_watch(conn, &conn->watch_post[state], watch, oneshot, uctx);
+	return connection_add_watch(conn, &conn->watch_post[state], watch, oneshot, uctx);
+}
+
+/** Enable a watcher
+ *
+ * @param[in] entry	to enabled.
+ */
+void fr_connection_watch_enable(fr_connection_watch_entry_t *entry)
+{
+	(void)talloc_get_type_abort(entry, fr_connection_watch_entry_t);
+	entry->enabled = true;
+}
+
+/** Disable a watcher
+ *
+ * @param[in] entry	to disable.
+ */
+void fr_connection_watch_disable(fr_connection_watch_entry_t *entry)
+{
+	(void)talloc_get_type_abort(entry, fr_connection_watch_entry_t);
+	entry->enabled = false;
+}
+
+/** Enable a watcher and replace the uctx
+ *
+ * @param[in] entry	to enabled.
+ */
+void fr_connection_watch_enable_set_uctx(fr_connection_watch_entry_t *entry, void const *uctx)
+{
+	(void)talloc_get_type_abort(entry, fr_connection_watch_entry_t);
+	entry->enabled = true;
+	memcpy(&entry->uctx, &uctx, sizeof(entry->uctx));
+}
+
+/** Change the uctx of an entry
+ *
+ * @param[in] entry	to enabled.
+ */
+void fr_connection_watch_set_uctx(fr_connection_watch_entry_t *entry, void const *uctx)
+{
+	(void)talloc_get_type_abort(entry, fr_connection_watch_entry_t);
+	memcpy(&entry->uctx, &uctx, sizeof(entry->uctx));
+}
+
+/** Return the state of a watch entry
+ *
+ * @param[in] entry	to return state of.
+ * @return
+ *	- true if enabled.
+ *      - false if disabled.
+ */
+bool fr_connection_watch_is_enabled(fr_connection_watch_entry_t *entry)
+{
+	(void)talloc_get_type_abort(entry, fr_connection_watch_entry_t);
+	return entry->enabled;
 }
 
 /** Return the number of times we've attempted to establish or re-establish this connection
@@ -1419,6 +1497,13 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		fr_dlist_talloc_init(&conn->watch_post[i], fr_connection_watch_entry_t, entry);
 	}
 	fr_dlist_talloc_init(&conn->deferred_signals, connection_dsignal_entry_t, entry);
+
+	/*
+	 *	Pre-allocate a on_halt watcher for deferred signal processing
+	 */
+	conn->on_halted = fr_connection_add_watch_post(conn, FR_CONNECTION_STATE_HALTED,
+						       _deferred_signal_connection_on_halted, true, NULL);
+	fr_connection_watch_disable(conn->on_halted);	/* Start disabled */
 
 	return conn;
 }

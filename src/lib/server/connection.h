@@ -89,6 +89,8 @@ typedef struct {
 	fr_time_delta_t reconnection_delay;	//!< How long to wait after failures.
 } fr_connection_conf_t;
 
+typedef struct fr_connection_watch_entry_s fr_connection_watch_entry_t;
+
 extern fr_table_num_ordered_t const fr_connection_states[];
 extern size_t fr_connection_states_len;
 
@@ -198,17 +200,27 @@ typedef void(*fr_connection_watch_t)(fr_connection_t *conn, fr_connection_state_
 /** @name Add watcher functions that get called before (pre) the state callback and after (post)
  * @{
  */
-void			fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
-						    fr_connection_watch_t watch, bool oneshot, void const *uctx);
+fr_connection_watch_entry_t *fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
+							 fr_connection_watch_t watch, bool oneshot, void const *uctx);
 
-void			fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
-						     fr_connection_watch_t watch, bool oneshot, void const *uctx);
+fr_connection_watch_entry_t *fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
+							  fr_connection_watch_t watch, bool oneshot, void const *uctx);
 
 int			fr_connection_del_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
 						    fr_connection_watch_t watch);
 
 int			fr_connection_del_watch_post(fr_connection_t *conn, fr_connection_state_t state,
 						     fr_connection_watch_t watch);
+
+void			fr_connection_watch_enable(fr_connection_watch_entry_t *entry);
+
+void			fr_connection_watch_disable(fr_connection_watch_entry_t *entry);
+
+void			fr_connection_watch_enable_set_uctx(fr_connection_watch_entry_t *entry, void const *uctx);
+
+void			fr_connection_watch_set_uctx(fr_connection_watch_entry_t *entry, void const *uctx);
+
+bool			fr_connection_watch_is_enabled(fr_connection_watch_entry_t *entry);
 /** @} */
 
 /** @name Statistics
