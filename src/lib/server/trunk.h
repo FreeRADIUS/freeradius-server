@@ -710,9 +710,9 @@ void		fr_trunk_request_state_log_print(fr_trunk_request_t const *treq);
 /** @name Dequeue protocol requests and cancellations
  * @{
  */
-fr_trunk_request_t *fr_trunk_connection_pop_cancellation(fr_trunk_connection_t *tconn);
+int fr_trunk_connection_pop_cancellation(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn);
 
-fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn);
+int fr_trunk_connection_pop_request(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn);
 /** @} */
 
 /** @name Connection state signalling

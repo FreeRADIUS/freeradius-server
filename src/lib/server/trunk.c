@@ -209,6 +209,11 @@ struct fr_trunk_s {
 
 	fr_dlist_head_t		draining_to_free;	//!< Connections that will be freed once all their
 							///< requests are complete.
+
+	fr_dlist_head_t		to_free;		//!< Connections we're done with and will free on
+							//!< the next call to trunk_manage.
+							//!< This prevents connections from being freed
+							//!< whilst we're inside callbacks.
 	/** @} */
 
 	/** @name Callbacks
@@ -2926,6 +2931,13 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 	/*
 	 *	And free the connection...
 	 */
+	if (trunk->in_handler) {
+		/*
+		 *	...later.
+		 */
+		fr_dlist_insert_tail(&trunk->to_free, tconn);
+		return;
+	}
 	talloc_free(tconn);
 }
 
@@ -3080,20 +3092,27 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
  * - #fr_trunk_request_signal_cancel_complete
  *   The request was cancelled and we don't need to wait, clean it up immediately.
  *
+ * @param[out] treq_out	to process
  * @param[in] tconn	Connection to drain cancellation request from.
+ * @return
+ *	- 1 if no more requests.
+ *	- 0 if a new request was written to treq_out.
+ *	- -1 if the connection was previously freed.  Caller *MUST NOT* touch any
+ *	  memory or requests associated with the connection.
+ *	- -2 if called outside of the cancel muxer.
  */
-fr_trunk_request_t *fr_trunk_connection_pop_cancellation(fr_trunk_connection_t *tconn)
+int fr_trunk_connection_pop_cancellation(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn)
 {
-	fr_trunk_request_t *treq;
+	if (unlikely(tconn->pub.state == FR_TRUNK_CONN_HALTED)) return -1;
 
 	if (!fr_cond_assert_msg(IN_REQUEST_CANCEL_MUX(tconn->pub.trunk),
 				"%s can only be called from within request_cancel_mux handler",
-				__FUNCTION__)) return NULL;
+				__FUNCTION__)) return -2;
 
-	treq = tconn->cancel_partial ? tconn->cancel_partial : fr_dlist_head(&tconn->cancel);
-	if (!treq) return NULL;
+	*treq_out = tconn->cancel_partial ? tconn->cancel_partial : fr_dlist_head(&tconn->cancel);
+	if (!*treq_out) return 1;
 
-	return treq;
+	return 0;
 }
 
 /** Pop a request off a connection's pending queue
@@ -3121,20 +3140,27 @@ fr_trunk_request_t *fr_trunk_connection_pop_cancellation(fr_trunk_connection_t *
  *
  * - #fr_trunk_request_signal_sent Successfully sent a request.
  *
+ * @param[out] treq_out	to process
  * @param[in] tconn	to pop a request from.
+ * @return
+ *	- 1 if no more requests.
+ *	- 0 if a new request was written to treq_out.
+ *	- -1 if the connection was previously freed.  Caller *MUST NOT* touch any
+ *	  memory or requests associated with the connection.
+ *	- -2 if called outside of the muxer.
  */
-fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn)
+int fr_trunk_connection_pop_request(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn)
 {
-	fr_trunk_request_t *treq;
+	if (unlikely(tconn->pub.state == FR_TRUNK_CONN_HALTED)) return -1;
 
 	if (!fr_cond_assert_msg(IN_REQUEST_MUX(tconn->pub.trunk),
 				"%s can only be called from within request_mux handler",
-				__FUNCTION__)) return NULL;
+				__FUNCTION__)) return -2;
 
-	treq = tconn->partial ? tconn->partial : fr_heap_peek(tconn->pending);
-	if (!treq) return NULL;
+	*treq_out = tconn->partial ? tconn->partial : fr_heap_peek(tconn->pending);
+	if (!*treq_out) return 1;
 
-	return treq;
+	return 0;
 }
 
 /** Signal that a trunk connection is writable
@@ -3376,6 +3402,12 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	uint32_t		req_count;
 	uint16_t		conn_count;
 
+	/*
+	 *	This should never be called if we're inside
+	 *	a callback...
+	 */
+	rad_assert(!trunk->in_handler);
+
 	DEBUG4("%s - Managing trunk", caller);
 
 	/*
@@ -3393,6 +3425,11 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	trunk_connection_close_if_empty(trunk, &trunk->inactive_draining);
 	trunk_connection_close_if_empty(trunk, &trunk->draining);
 	trunk_connection_close_if_empty(trunk, &trunk->draining_to_free);
+
+	/*
+	 *	Process deferred connection freeing
+	 */
+	while ((tconn = fr_dlist_head(&trunk->to_free))) talloc_free(fr_dlist_remove(&trunk->to_free, tconn));
 
 	/*
 	 *	A trunk can be signalled to not proactively
@@ -3987,6 +4024,11 @@ static int _trunk_free(fr_trunk_t *trunk)
 	while ((tconn = fr_dlist_head(&trunk->draining_to_free))) fr_connection_signal_halt(tconn->pub.conn);
 
 	/*
+	 *	Process any deferred connection frees
+	 */
+	while ((tconn = fr_dlist_head(&trunk->to_free))) talloc_free(fr_dlist_remove(&trunk->to_free, tconn));
+
+	/*
 	 *	Free any requests left in the backlog
 	 */
 	while ((treq = fr_heap_peek(trunk->backlog))) trunk_request_enter_failed(treq);
@@ -4075,6 +4117,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	fr_dlist_talloc_init(&trunk->closed, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->draining, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->draining_to_free, fr_trunk_connection_t, entry);
+	fr_dlist_talloc_init(&trunk->to_free, fr_trunk_connection_t, entry);
 
 	DEBUG4("Trunk allocated %p", trunk);
 

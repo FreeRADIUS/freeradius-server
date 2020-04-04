@@ -1660,9 +1660,11 @@ static void request_mux(fr_event_list_t *el,
 	 *      for transmission with sendmmsg.
 	 */
 	for (i = 0; i < inst->max_send_coalesce; i++) {
-		fr_trunk_request_t	*treq = fr_trunk_connection_pop_request(tconn);
+		fr_trunk_request_t	*treq;
 		udp_request_t		*u;
 		REQUEST			*request;
+
+ 		if (unlikely(fr_trunk_connection_pop_request(&treq, tconn) < 0)) return;
 
 		/*
 		 *	No more requests to send
@@ -1871,9 +1873,11 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 	int			sent;
 
 	for (i = 0; i < inst->max_send_coalesce; i++) {
-		fr_trunk_request_t	*treq = fr_trunk_connection_pop_request(tconn);
+		fr_trunk_request_t	*treq;
 		udp_request_t		*u;
 		REQUEST			*request;
+
+ 		if (unlikely(fr_trunk_connection_pop_request(&treq, tconn) < 0)) return;
 
 		/*
 		 *	No more requests to send

@@ -31,7 +31,7 @@ static void test_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, f
 	int			fd = *(talloc_get_type_abort(conn->h, int));
 	ssize_t			slen;
 
-	while ((treq = fr_trunk_connection_pop_request(tconn))) {
+	while (fr_trunk_connection_pop_request(&treq, tconn) == 0) {
 		test_proto_request_t	*preq = treq->pub.preq;
 		count++;
 
@@ -66,7 +66,7 @@ static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 	/*
 	 *	For cancellation we just do
 	 */
-	while ((treq = fr_trunk_connection_pop_cancellation(tconn))) {
+	while ((fr_trunk_connection_pop_cancellation(&treq, tconn) == 0)) {
 		test_proto_request_t	*preq = treq->pub.preq;
 		count++;
 
