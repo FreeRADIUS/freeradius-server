@@ -1,7 +1,13 @@
 FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
+	* Update dictionary.bskyb.  Fixes #3339.
+	* Abfab-tls updates from Alejandro Perez.
 
 	Bug fixes
+	* Respect the "log_reject" configuration item in more places.
+	  Fixes #3352.  This lowers the number of "Login incorrect"
+	  messages when "log_reject = no".
+	* Fix rpmbuild for Centos > 6.  Patch from Matthew Newton.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
