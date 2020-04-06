@@ -76,7 +76,7 @@ static void worker_verify(fr_worker_t *worker);
 struct fr_worker_s {
 	char const		*name;		//!< name of this worker
 
-	pthread_t		id;		//!< my thread ID
+	pthread_t		thread_id;	//!< my thread ID
 
 	fr_log_t const		*log;		//!< log destination
 	fr_log_lvl_t		lvl;		//!< log level
@@ -87,7 +87,7 @@ struct fr_worker_s {
 
 	fr_event_list_t		*el;		//!< our event list
 
-	uint64_t		number;		//!< for requests
+	uint64_t		number;		//!< Per worker request id.
 
 	int			num_channels;	//!< actual number of channels
 	int			max_channels;	//!< maximum number of channels
@@ -181,27 +181,24 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 	 *	not sleeping.
 	 */
 	ce = fr_channel_service_message(now, &ch, data, data_size);
+	DEBUG3("Channel %s",
+	       fr_table_str_by_value(channel_signals, ce, "<INVALID>"));
 	switch (ce) {
 	case FR_CHANNEL_ERROR:
-		DEBUG3("\t--> error");
 		return;
 
 	case FR_CHANNEL_EMPTY:
-		DEBUG3("\t--> ...");
 		return;
 
 	case FR_CHANNEL_NOOP:
-		DEBUG3("\t--> noop");
 		return;
 
 	case FR_CHANNEL_DATA_READY_REQUESTOR:
 		rad_assert(0 == 1);
-		DEBUG3("\t--> ??? network");
 		break;
 
 	case FR_CHANNEL_DATA_READY_RESPONDER:
 		rad_assert(ch != NULL);
-		DEBUG3("\t--> data");
 
 		if (!fr_channel_recv_request(ch)) {
 			worker->was_sleeping = was_sleeping;
@@ -210,8 +207,6 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 		break;
 
 	case FR_CHANNEL_OPEN:
-		DEBUG3("\t--> channel open");
-
 		rad_assert(ch != NULL);
 
 		ok = false;
@@ -238,8 +233,6 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 		break;
 
 	case FR_CHANNEL_CLOSE:
-		DEBUG3("\t--> channel close");
-
 		rad_assert(ch != NULL);
 
 		ok = false;
@@ -514,7 +507,7 @@ finished:
 	request->async->listen = NULL;
 #endif
 
-	DEBUG3("Freeing request");
+	DEBUG3("Freeing request %s", request->name);
 	talloc_free(request);
 }
 
@@ -1016,7 +1009,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 	count = 0;
 	while ((request = fr_heap_peek(worker->time_order)) != NULL) {
 		if (count < 10) {
-			RDEBUG("Worker is exiting - telling request to stop");
+			DEBUG("Worker is exiting - telling request %s to stop", request->name);
 			count++;
 		}
 		worker_stop_request(worker, request, now);
@@ -1073,7 +1066,7 @@ nomem:
 		goto nomem;
 	}
 
-	worker->id = pthread_self();
+	worker->thread_id = pthread_self();
 	worker->el = el;
 	worker->log = logger;
 	worker->lvl = lvl;
@@ -1163,19 +1156,21 @@ void fr_worker(fr_worker_t *worker)
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
+		DEBUG3("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
 		num_events = fr_event_corral(worker->el, fr_time(), wait_for_event);
 		if (num_events < 0) {
-			PERROR("Failed corralling events");
+			PERROR("Failed retrieving events");
 			break;
 		}
 
-		DEBUG3("Got num_events %u", num_events);
+		DEBUG3("%u event(s) pending%s",
+		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
 
 		/*
 		 *	Service outstanding events.
 		 */
 		if (num_events > 0) {
-			DEBUG3("Servicing events");
+			DEBUG4("Servicing event(s)");
 			fr_event_service(worker->el);
 		}
 
@@ -1259,7 +1254,7 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	WORKER_VERIFY;
 
 	id = pthread_self();
-	same = (pthread_equal(id, worker->id) != 0);
+	same = (pthread_equal(id, worker->thread_id) != 0);
 
 	ch = fr_channel_create(ctx, master, worker->control, same);
 	if (!ch) return NULL;
