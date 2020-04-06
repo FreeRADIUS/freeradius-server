@@ -254,7 +254,7 @@ struct fr_event_fd {
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
-	fr_event_fd_t		*next;			//!< item in a list of fr_event_fd.
+	fr_event_fd_t		*next;			//!< item in a list of fr_event_fd (to free).
 };
 
 struct fr_event_pid {
@@ -692,6 +692,47 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 	}
 
 	return 0;
+}
+
+/** Move a file descriptor event from one event list to another
+ *
+ * FIXME - Move suspended events too.
+ *
+ * @note Any pending events will not be transferred.
+ *
+ * @param[in] dst	Event list to move file descriptor event to.
+ * @param[in] src	Event list to move file descriptor from.
+ * @param[in] fd	of the event to move.
+ * @param[in] filter	of the event to move.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.  The event will remain active in the src list.
+ */
+int fr_event_fd_move(fr_event_list_t *dst, fr_event_list_t *src, int fd, fr_event_filter_t filter)
+{
+	fr_event_fd_t	*ef;
+	int		ret;
+
+	if (fr_event_loop_exiting(dst)) {
+		fr_strerror_printf("Destination event loop exiting");
+		return -1;
+	}
+
+	/*
+	 *	Ensure this exists
+	 */
+	ef = rbtree_finddata(src->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	if (unlikely(!ef)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
+		return -1;
+	}
+
+	ret = fr_event_filter_insert(ef->linked_ctx, dst, ef->fd, ef->filter, &ef->active, ef->error, ef->uctx);
+	if (ret < 0) return -1;
+
+	(void)fr_event_fd_delete(src, ef->fd, ef->filter);
+
+	return ret;
 }
 
 /** Remove a file descriptor from the event loop
