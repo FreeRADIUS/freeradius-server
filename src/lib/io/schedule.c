@@ -676,8 +676,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		       (unsigned int)fr_dlist_num_elements(&sc->workers));
 		SEM_WAIT_INTR(&sc->worker_sem);
 	}
-	DEBUG2("Scheduler - All workers indicated exit complete",
-	       fr_dlist_num_elements(&sc->workers), fr_dlist_num_elements(&sc->workers));
+	DEBUG2("Scheduler - All workers indicated exit complete");
 
 	/*
 	 *	Clean up the exited workers.
