@@ -423,12 +423,12 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *packet)
 	{
 		sockfd = fr_socket_server_udp(&packet->src_ipaddr, &packet->src_port, NULL, false);
 		if (sockfd < 0) {
-			ERROR("Error opening socket: %s", fr_strerror());
+			PERROR("Error opening socket");
 			return -1;
 		}
 
 		if (fr_socket_bind(sockfd, &packet->src_ipaddr, &packet->src_port, NULL) < 0) {
-			ERROR("Error binding socket: %s", fr_strerror());
+			PERROR("Error binding socket");
 			return -1;
 		}
 	}

@@ -372,7 +372,7 @@ static int bfd_pthread_create(bfd_state_t *session)
 	if (fr_schedule_pthread_create(&session->pthread_id, bfd_child_thread, session) < 0) {
 		talloc_free(session->el);
 		session->el = NULL;
-		ERROR("Thread create failed: %s", fr_strerror());
+		PERROR("Thread create failed");
 		goto close_pipes;
 	}
 	pthread_attr_destroy(&attr);

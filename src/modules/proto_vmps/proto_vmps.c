@@ -572,7 +572,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 static int mod_load(void)
 {
 	if (fr_vqp_init() < 0) {
-		ERROR("Failed initializing the VMPS dictionaries: %s", fr_strerror());
+		PERROR("Failed initializing the VMPS dictionaries");
 		return -1;
 	}
 

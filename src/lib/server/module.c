@@ -1814,8 +1814,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	cf_log_debug(modules, " } # modules");
 
 	if (fr_command_register_hook(NULL, NULL, modules, cmd_table) < 0) {
-		ERROR("Failed registering radmin commands for modules - %s",
-		      fr_strerror());
+		PERROR("Failed registering radmin commands for modules");
 		return -1;
 	}
 

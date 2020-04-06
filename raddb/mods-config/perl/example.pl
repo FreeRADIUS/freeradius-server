@@ -186,8 +186,8 @@ sub xlat {
 
 	# Loads some external perl and evaluate it
 	my ($filename,$a,$b,$c,$d) = @_;
-	radiusd::radlog(L_DBG, "From xlat $filename ");
-	radiusd::radlog(L_DBG,"From xlat $a $b $c $d ");
+	radiusd::radlog(L_DBG, "From xlat $filename");
+	radiusd::radlog(L_DBG,"From xlat $a $b $c $d");
 	local *FH;
 	open FH, $filename or die "open '$filename' $!";
 	local($/) = undef;

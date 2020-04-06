@@ -790,7 +790,7 @@ int main(int argc, char *argv[])
 		sc = fr_schedule_create(NULL, el, &default_log, fr_debug_lvl,
 					thread_instantiate, thread_detach, schedule);
 		if (!sc) {
-			PERROR("Failed starting the scheduler: %s", fr_strerror());
+			PERROR("Failed starting the scheduler");
 			EXIT_WITH_FAILURE;
 		}
 

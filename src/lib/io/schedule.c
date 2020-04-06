@@ -423,7 +423,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	if (el) {
 		sc->single_network = fr_network_create(sc, el, 0, sc->log, sc->lvl);
 		if (!sc->single_network) {
-			ERROR("Failed creating network: %s", fr_strerror());
+			PERROR("Failed creating network");
 		pre_instantiate_st_fail:
 			talloc_free(sc);
 			return NULL;
@@ -431,7 +431,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 		sc->single_worker = fr_worker_create(sc, "0", el, sc->log, sc->lvl);
 		if (!sc->single_worker) {
-			ERROR("Failed creating worker: %s", fr_strerror());
+			PERROR("Failed creating worker");
 			goto pre_instantiate_st_fail;
 		}
 
@@ -445,20 +445,20 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			if (!subcs) subcs = cf_section_find(sc->cs, "worker", NULL);
 
 			if (sc->worker_thread_instantiate(sc->single_worker, el, subcs) < 0) {
-				ERROR("Failed calling thread instantiate: %s", fr_strerror());
+				PERROR("Failed calling thread instantiate");
 				goto pre_instantiate_st_fail;
 			}
 		}
 
 		if (fr_command_register_hook(NULL, "0", sc->single_worker, cmd_worker_table) < 0) {
-			ERROR("Failed adding worker commands: %s", fr_strerror());
+			PERROR("Failed adding worker commands");
 		st_fail:
 			if (sc->worker_thread_detach) sc->worker_thread_detach(NULL);
 			goto pre_instantiate_st_fail;
 		}
 
 		if (fr_command_register_hook(NULL, "0", sc->single_network, cmd_network_table) < 0) {
-			ERROR("Failed adding network commands: %s", fr_strerror());
+			PERROR("Failed adding network commands");
 			goto st_fail;
 		}
 
@@ -525,7 +525,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sc->sn->id = 0;
 
 	if (fr_schedule_pthread_create(&sc->sn->pthread_id, fr_schedule_network_thread, sc->sn) < 0) {
-		ERROR("Failed creating network thread %s", fr_strerror());
+		PERROR("Failed creating network thread");
 		goto fail;
 	}
 
@@ -608,13 +608,13 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 		snprintf(buffer, sizeof(buffer), "%d", i);
 		if (fr_command_register_hook(NULL, buffer, sw->worker, cmd_worker_table) < 0) {
-			ERROR("Failed adding worker commands: %s", fr_strerror());
+			PERROR("Failed adding worker commands");
 			goto st_fail;
 		}
 	}
 
 	if (fr_command_register_hook(NULL, "0", sc->sn->nr, cmd_network_table) < 0) {
-		ERROR("Failed adding network commands: %s", fr_strerror());
+		PERROR("Failed adding network commands");
 		goto st_fail;
 	}
 

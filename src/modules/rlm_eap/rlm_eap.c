@@ -265,7 +265,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		 *	common choices.
 		 */
 		if (nak->data[i] == 0) {
-			REDEBUG("Peer NAK'd indicating it is not willing to continue ");
+			REDEBUG("Peer NAK'd indicating it is not willing to continue");
 
 			return FR_EAP_METHOD_INVALID;
 		}

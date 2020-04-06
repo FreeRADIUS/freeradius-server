@@ -602,7 +602,7 @@ void dependency_version_print(void)
 		MEM(versions = cf_section_alloc(NULL, NULL, "version", NULL));
 		dependency_version_numbers_init(versions);
 
-		DEBUG2("Server was built with: ");
+		DEBUG2("Server was built with:");
 
 		for (ci = cf_item_next(features, NULL);
 		     ci;

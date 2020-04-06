@@ -292,7 +292,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 			RWDEBUG2("!!! eDirectory does not allow passwords to be retrieved via LDAP search");
 			RWDEBUG2("!!! Remove the password map and either:");
-			RWDEBUG2("!!!  - Set 'edir = yes' and enable the universal password feature on your ");
+			RWDEBUG2("!!!  - Set 'edir = yes' and enable the universal password feature on your");
 			RWDEBUG2("!!!    eDir server (recommended)");
 			RWDEBUG2("!!!    that password attribute");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
@@ -307,7 +307,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 				RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 				RWDEBUG2("!!! but no password attribute found in search result");
 				RWDEBUG2("!!! Either:");
-				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that ");
+				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that");
 				RWDEBUG2("!!!    \"%s\" has permission to read that password attribute (recommended)",
 					 conn->config->admin_identity);
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
@@ -319,7 +319,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 				RWDEBUG2("!!! No \"known good\" password added");
 				RWDEBUG2("!!! but no password attribute found in search result");
 				RWDEBUG2("!!! Either:");
-				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that ");
+				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that");
 				RWDEBUG2("!!!    'identity' is set to the DN of an account that has permission to read");
 				RWDEBUG2("!!!    that password attribute");
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",

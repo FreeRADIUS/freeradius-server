@@ -53,7 +53,7 @@ DIAG_ON(unused-macros)
 #endif
 
 #ifdef WITH_EVENT_DEBUG
-#  define EVENT_DEBUG(fmt, ...) printf("EVENT: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
+#  define EVENT_DEBUG(fmt, ...) printf("EVENT:");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
 #else
 #  define EVENT_DEBUG(...)
 #endif

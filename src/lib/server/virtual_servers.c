@@ -509,8 +509,7 @@ int virtual_servers_instantiate(void)
 	DEBUG2("#### Instantiating listeners ####");
 
 	if (fr_command_register_hook(NULL, NULL, virtual_server_root, cmd_table) < 0) {
-		ERROR("Failed registering radmin commands for virtual servers - %s",
-		      fr_strerror());
+		PERROR("Failed registering radmin commands for virtual servers");
 		return -1;
 	}
 
