@@ -74,15 +74,17 @@ typedef enum fr_schedule_child_status_t {
 	FR_CHILD_FAIL				//!< failed, and in the exited queue
 } fr_schedule_child_status_t;
 
-/**
- *	A data structure to track workers.
+/** Scheduler specific information for worker threads
+ *
+ * Wraps a fr_worker_t, tracking additional information that
+ * the scheduler uses.
  */
 typedef struct {
 	TALLOC_CTX	*ctx;			//!< our allocation ctx
 	fr_event_list_t	*el;			//!< our event list
 	pthread_t	pthread_id;		//!< the thread of this worker
 
-	int		id;			//!< a unique ID
+	unsigned int	id;			//!< a unique ID
 	int		uses;			//!< how many network threads are using it
 	fr_time_t	cpu_time;		//!< how much CPU time this worker has used
 
@@ -94,14 +96,16 @@ typedef struct {
 	fr_worker_t	*worker;		//!< the worker data structure
 } fr_schedule_worker_t;
 
-/**
- *	A data structure to track network threads / networks.
+/** Scheduler specific information for network threads
+ *
+ * Wraps a fr_network_t, tracking additional information that
+ * the scheduler uses.
  */
 typedef struct {
 	TALLOC_CTX	*ctx;			//!< our allocation ctx
 	pthread_t	pthread_id;		//!< the thread of this network
 
-	int		id;			//!< a unique ID
+	unsigned int	id;			//!< a unique ID
 	fr_schedule_t	*sc;			//!< the scheduler we are running under
 
 	fr_schedule_child_status_t status;	//!< status of the worker
@@ -163,9 +167,11 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_worker_t		*sw = talloc_get_type_abort(arg, fr_schedule_worker_t);
 	fr_schedule_t			*sc = sw->sc;
 	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
-	char buffer[32];
+	char worker_name[32];
 
 	worker_id = sw->id;		/* Store the current worker ID */
+
+	snprintf(worker_name, sizeof(worker_name), "Worker %d", sw->id);
 
 	sw->ctx = ctx = talloc_init("worker %d", sw->id);
 	if (!ctx) {
@@ -173,18 +179,18 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	INFO("Worker %d starting", sw->id);
+	INFO("%s starting", worker_name);
 
 	sw->el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!sw->el) {
-		ERROR("Worker %d - Failed creating event list: %s", sw->id, fr_strerror());
+		PERROR("%s - Failed creating event list", worker_name);
 		goto fail;
 	}
 
-	snprintf(buffer, sizeof(buffer), "Worker %d", sw->id);
-	sw->worker = fr_worker_create(ctx, buffer, sw->el, sc->log, sc->lvl);
+
+	sw->worker = fr_worker_create(ctx, worker_name, sw->el, sc->log, sc->lvl);
 	if (!sw->worker) {
-		ERROR("Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
+		PERROR("%s - Failed creating worker", worker_name);
 		goto fail;
 	}
 
@@ -192,11 +198,12 @@ static void *fr_schedule_worker_thread(void *arg)
 	 *	@todo make this a registry
 	 */
 	if (sc->worker_thread_instantiate) {
-		CONF_SECTION *cs;
+		CONF_SECTION	*cs;
+		char		section_name[32];
 
-		snprintf(buffer, sizeof(buffer), "%d", sw->id);
+		snprintf(section_name, sizeof(section_name), "%u", sw->id);
 
-		cs = cf_section_find(sc->cs, "worker", buffer);
+		cs = cf_section_find(sc->cs, "worker", section_name);
 		if (!cs) cs = cf_section_find(sc->cs, "worker", NULL);
 
 		if (sc->worker_thread_instantiate(sw->ctx, sw->el, cs) < 0) {
@@ -209,7 +216,7 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	(void) fr_network_worker_add(sc->sn->nr, sw->worker);
 
-	DEBUG3("Spawned async worker %d", sw->id);
+	DEBUG3("%s - Started", worker_name);
 
 	/*
 	 *	Tell the originator that the thread has started.
@@ -223,8 +230,6 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	fr_worker(sw->worker);
 
-	INFO("Worker %d finished", sw->id);
-
 	status = FR_CHILD_EXITED;
 
 fail:
@@ -235,7 +240,7 @@ fail:
 		sw->worker = NULL;
 	}
 
-	INFO("Worker %d exiting", sw->id);
+	INFO("%s - Exiting", worker_name);
 
 	if (sc->worker_thread_detach) sc->worker_thread_detach(NULL);	/* Fixme once we figure out what uctx should be */
 
@@ -276,25 +281,27 @@ static void *fr_schedule_network_thread(void *arg)
 	fr_schedule_t			*sc = sn->sc;
 	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
 	fr_event_list_t			*el;
+	char				network_name[32];
 
-	INFO("Network %d starting", sn->id);
+	snprintf(network_name, sizeof(network_name), "Network %d", sn->id);
 
-	sn->ctx = ctx = talloc_init("network %d", sn->id);
+	INFO("%s - Starting", network_name);
+
+	sn->ctx = ctx = talloc_init("%s", network_name);
 	if (!ctx) {
-		ERROR("Network %d - Failed allocating memory", sn->id);
+		ERROR("%s - Failed allocating memory", network_name);
 		goto fail;
 	}
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!el) {
-		ERROR("Network %d - Failed creating event list: %s",
-		       sn->id, fr_strerror());
+		PERROR("%s - Failed creating event list", network_name);
 		goto fail;
 	}
 
-	sn->nr = fr_network_create(ctx, el, sc->log, sc->lvl);
+	sn->nr = fr_network_create(ctx, el, network_name, sc->log, sc->lvl);
 	if (!sn->nr) {
-		ERROR("Network %d - Failed creating network: %s", sn->id, fr_strerror());
+		PERROR("%s - Failed creating network", network_name);
 		goto fail;
 	}
 
@@ -305,7 +312,7 @@ static void *fr_schedule_network_thread(void *arg)
 	 */
 	sem_post(&sc->network_sem);
 
-	DEBUG3("Spawned asycn network 0");
+	DEBUG3("%s - Started", network_name);
 
 	/*
 	 *	Print out statistics for this network IO handler.
@@ -313,7 +320,9 @@ static void *fr_schedule_network_thread(void *arg)
 	if (sc->config->stats_interval) (void) fr_event_timer_in(sn, el, &sn->ev, sn->sc->config->stats_interval, stats_timer, sn);
 
 	/*
-	 *	Do all of the work.
+	 *	Call the main event processing loop of the network
+	 *	thread Will not return until the worker is about
+	 *      to exit.
 	 */
 	fr_network(sn->nr);
 
@@ -322,7 +331,7 @@ static void *fr_schedule_network_thread(void *arg)
 fail:
 	sn->status = status;
 
-	INFO("Network exiting");
+	INFO("%s - Exiting", network_name);
 
 	/*
 	 *	Tell the scheduler we're done.
@@ -412,7 +421,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	If we're single-threaded, create network / worker, and insert them into the event loop.
 	 */
 	if (el) {
-		sc->single_network = fr_network_create(sc, el, sc->log, sc->lvl);
+		sc->single_network = fr_network_create(sc, el, 0, sc->log, sc->lvl);
 		if (!sc->single_network) {
 			ERROR("Failed creating network: %s", fr_strerror());
 		pre_instantiate_st_fail:
@@ -663,10 +672,12 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	underneath the workers!
 	 */
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
-		DEBUG2("Waiting for semaphore indicating exit %u/%u", i,
+		DEBUG2("Scheduler - Waiting for semaphore indicating worker exit %u/%u", i,
 		       (unsigned int)fr_dlist_num_elements(&sc->workers));
 		SEM_WAIT_INTR(&sc->worker_sem);
 	}
+	DEBUG2("Scheduler - All workers indicated exit complete",
+	       fr_dlist_num_elements(&sc->workers), fr_dlist_num_elements(&sc->workers));
 
 	/*
 	 *	Clean up the exited workers.
@@ -685,7 +696,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		if (pthread_join(sw->pthread_id, NULL) != 0) {
 			ERROR("Failed joining worker %i: %s", sw->id, fr_syserror(errno));
 		} else {
-			DEBUG2("Worker %i exited", sw->id);
+			DEBUG2("Worker %i joined (cleaned up)", sw->id);
 		}
 		talloc_free(sw->ctx);
 	}
