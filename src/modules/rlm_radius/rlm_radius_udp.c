@@ -1114,10 +1114,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *respon
 		return reason;
 	}
 
-	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Read packet");
-		fr_log_hex(&default_log, L_DBG, __FILE__, __LINE__, data, packet_len, NULL);
-	}
+	RHEXDUMP3(data, packet_len, "Read packet");
 
 	original[0] = u->code;
 	original[1] = 0;			/* not looked at by fr_radius_verify() */
