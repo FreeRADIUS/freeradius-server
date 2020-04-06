@@ -1729,6 +1729,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	INTERNAL_IF_NULL(dict, 0);
 
 	if (!*name) {
+	zero_length_name:
 		fr_strerror_printf("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return 0;
@@ -1741,6 +1742,8 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	for (p = name; fr_dict_attr_allowed_chars[(uint8_t)*p]; p++);
 
 	len = p - name;
+	if (len == 0) goto zero_length_name;
+
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
