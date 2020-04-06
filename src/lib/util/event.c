@@ -300,8 +300,10 @@ struct fr_event_list {
 	fr_heap_t		*times;			//!< of timer events to be executed.
 	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 
-	int			exit;			//!< If non-zero, the event loop will exit after its current
-							///< iteration, returning this value.
+	int			will_exit;		//!< Will exit on next call to fr_event_corral.
+	int			exit;			//!< If non-zero event loop will prevent the addition
+							///< of new events, and will return immediately
+							///< from the corral/service function.
 
 	fr_event_time_source_t	time;			//!< Where our time comes from.
 	fr_time_t 		now;			//!< The last time the event list was serviced.
@@ -1452,7 +1454,9 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 
 	el->num_fd_events = 0;
 
-	if (el->exit) {
+	if (el->will_exit || el->exit) {
+		el->exit = el->will_exit;
+
 		fr_strerror_printf("Event loop exiting");
 		return -1;
 	}
@@ -1831,7 +1835,7 @@ void fr_event_loop_exit(fr_event_list_t *el, int code)
 
 	if (unlikely(!el)) return;
 
-	el->exit = code;
+	el->will_exit = code;
 
 	/*
 	 *	Signal the control plane to exit.
@@ -1846,7 +1850,7 @@ void fr_event_loop_exit(fr_event_list_t *el, int code)
  */
 bool fr_event_loop_exiting(fr_event_list_t *el)
 {
-	return (el->exit != 0);
+	return ((el->will_exit != 0) || (el->exit != 0));
 }
 
 /** Run an event loop
@@ -1857,7 +1861,7 @@ bool fr_event_loop_exiting(fr_event_list_t *el)
  */
 int fr_event_loop(fr_event_list_t *el)
 {
-	el->exit = 0;
+	el->will_exit = el->exit = 0;
 
 	el->dispatch = true;
 	while (!el->exit) {
