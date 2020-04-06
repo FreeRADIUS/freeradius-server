@@ -158,6 +158,7 @@ DIAG_OFF(missing-prototypes)
 char const CC_HINT(used) *__lsan_default_suppressions(void)
 {
 	return
+		"leak:talloc_set_memlimit\n"
 #if defined(__APPLE__)
 		"leak:getaddrinfo\n"
 		"leak:*gmtsub*\n"
