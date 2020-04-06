@@ -811,7 +811,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		 *	Copy the name to a field for later resolution
 		 */
 		vpt->type = TMPL_TYPE_ATTR_UNDEFINED;
-		for (q = p; (q < (name + name_len)) && fr_dict_attr_allowed_chars[(uint8_t) *q]; q++);
+		for (q = p; (q < (name + name_len)) && ((*q == '.') || fr_dict_attr_allowed_chars[(uint8_t) *q]); q++);
 		if (q == p) {
 			fr_strerror_printf("Invalid attribute name");
 			if (err) *err = ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME;

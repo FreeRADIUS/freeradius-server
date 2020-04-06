@@ -98,7 +98,7 @@ size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
  *
  */
 bool const fr_dict_attr_allowed_chars[UINT8_MAX] = {
-	['-'] = true, ['.'] = true, ['/'] = true, ['_'] = true,
+	['-'] = true, ['/'] = true, ['_'] = true,
 	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
 	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
 	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true, ['E'] = true,
@@ -2766,11 +2766,12 @@ fr_dict_t const *fr_dict_internal(void)
 }
 
 /*
- *	[a-zA-Z0-9_-:.]+
+ *	Check for the allowed characters.
  */
 ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 {
 	char const *p = name, *end;
+	bool unknown = false;
 
 	if (len < 0) len = strlen(name);
 
@@ -2781,7 +2782,14 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 
 	end = p + len;
 
+	/*
+	 *	Unknown attributes can have '.' in their name.
+	 */
+	if ((len > 5) && (memcmp(name, "Attr-", 5) == 0)) unknown = true;
+
 	do {
+		if ((*p == '.') && unknown) p++;
+
 		if (!fr_dict_attr_allowed_chars[(uint8_t)*p]) {
 			fr_strerror_printf("Invalid character '%pV' in attribute name \"%pV\"",
 					   fr_box_strvalue_len(p, 1), fr_box_strvalue_len(name, len));
