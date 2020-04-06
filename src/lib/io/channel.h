@@ -150,6 +150,8 @@ typedef struct {
 #define PRIORITY_NORMAL (1 << 14)
 #define PRIORITY_LOW    (1 << 13)
 
+extern fr_table_num_sorted_t const channel_signals[];
+extern size_t channel_signals_len;
 extern fr_table_num_sorted_t const channel_packet_priority[];
 extern size_t channel_packet_priority_len;
 

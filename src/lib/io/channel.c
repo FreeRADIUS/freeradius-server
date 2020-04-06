@@ -150,8 +150,7 @@ struct fr_channel_s {
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 };
 
-#ifdef DEBUG_CHANNEL
-static fr_table_num_sorted_t const channel_signals[] = {
+fr_table_num_sorted_t const channel_signals[] = {
 	{ "error",			FR_CHANNEL_ERROR			},
 	{ "data-to-responder",		FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	},
 	{ "data-to-requestor",		FR_CHANNEL_DATA_READY_REQUESTOR		},
@@ -160,8 +159,7 @@ static fr_table_num_sorted_t const channel_signals[] = {
 	{ "data-done-responder",	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER	},
 	{ "responder-sleeping",		FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING	},
 };
-size_t const channel_signals_len = NUM_ELEMENTS(channel_signals);
-#endif
+size_t channel_signals_len = NUM_ELEMENTS(channel_signals);
 
 fr_table_num_sorted_t const channel_packet_priority[] = {
 	{ "high",	PRIORITY_HIGH		},
