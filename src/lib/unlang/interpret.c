@@ -899,13 +899,16 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	failure, all kinds of bad things happen.  Oh
 		 *	well.
 		 */
-		DEBUG4("Corralling events (%s wait)", wait_for_events ? "will" : "will not");
+		DEBUG3("Gathering events - %s", wait_for_events ? "will wait" : "Will not wait");
 		num_events = fr_event_corral(el, fr_time(), wait_for_events);
 		if (num_events < 0) {
 			RPERROR("Failed retrieving events");
 			rcode = RLM_MODULE_FAIL;
 			break;
 		}
+
+		DEBUG3("%u event(s) pending%s",
+		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
 
 		/*
 		 *	We were NOT waiting, AND there are no more
@@ -923,7 +926,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	setting new timers.
 		 */
 		if (num_events > 0) {
-			DEBUG4("Servicing events");
+			DEBUG4("Servicing event(s)");
 			fr_event_service(el);
 		}
 
