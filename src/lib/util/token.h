@@ -91,6 +91,7 @@ FR_TOKEN	gettoken(char const **ptr, char *buf, int buflen, bool unescape);
 FR_TOKEN	getop(char const **ptr);
 FR_TOKEN	getstring(char const **ptr, char *buf, int buflen, bool unescape);
 char const	*fr_token_name(int);
+ssize_t		fr_skip_string(char const *start, char const *end);
 
 #ifdef __cplusplus
 }

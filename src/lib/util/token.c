@@ -487,3 +487,36 @@ char const *fr_token_name(int token)
 {
 	return fr_table_str_by_value(fr_tokens_table, token, "???");
 }
+
+
+ssize_t fr_skip_string(char const *start, char const *end)
+{
+	char const *p = start;
+	char quote;
+
+	quote = *(p++);
+
+	while (p < end) {
+		if (*p == quote) {
+			p++;
+			return p - start;
+		}
+
+		if (*p == '\\') {
+			if (((p + 1) >= end) || !p[1]) {
+				break;
+			}
+
+			p += 2;
+			continue;
+		}
+
+		p++;
+	}
+
+	/*
+	 *	Unexpected end of string.
+	 */
+	fr_strerror_printf("Unexpected end of string");
+	return -(p - start);
+}

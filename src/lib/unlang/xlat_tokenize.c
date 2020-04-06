@@ -738,37 +738,6 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 	return p - in;
 }
 
-static ssize_t skip_string(char const *start, char const *end)
-{
-	char const *p = start;
-	char quote;
-
-	quote = *(p++);
-
-	while (p < end) {
-		if (*p == quote) {
-			p++;
-			return p - start;
-		}
-
-		if (*p == '\\') {
-			if (((p + 1) >= end) || !p[1]) {
-				break;
-			}
-
-			p += 2;
-			continue;
-		}
-
-		p++;
-	}
-
-	/*
-	 *	Unexpected end of string.
-	 */
-	fr_strerror_printf("Unexpected end of string");
-	return -(p - start);
-}
 
 /** skip xlat expansions, included embedded strings and nested xlats.
  *
@@ -785,7 +754,7 @@ static ssize_t skip_xlat(char const *start, char const *end)
 		}
 
 		if ((*p == '"') || (*p == '\'')) {
-			slen = skip_string(p, end);
+			slen = fr_skip_string(p, end);
 			if (slen < 0) return slen - (p - start);
 
 			p += slen;
@@ -879,7 +848,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 		 *	Look for quoted strings.
 		 */
 		if ((*p == '"') || (*p == '\'')) {
-			slen = skip_string(p, end);
+			slen = fr_skip_string(p, end);
 			if (slen < 0) return slen - (p - in);
 
 		} else {
