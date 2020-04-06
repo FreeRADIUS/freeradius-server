@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
 
 	/*
 	 *	Allocate the main config structure.
-	 *	It's allocating so we can hang talloced buffers off it.
+	 *	It's allocated so we can hang talloced buffers off it.
 	 */
 	config = main_config_alloc(global_ctx);
 	if (!config) {
