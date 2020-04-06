@@ -625,7 +625,8 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 		return;
 	}
-	HEXDUMP3(u->packet, u->packet_len, "Encoded packet");
+	DEBUG3("Encoded packet");
+	HEXDUMP3(u->packet, u->packet_len, NULL);
 
 	slen = write(h->fd, u->packet, u->packet_len);
 	if (slen < 0) {
