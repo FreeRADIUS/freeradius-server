@@ -1,0 +1,39 @@
+	if (fr_dict_valid_name(name, -1) <= 0) return -1;
+
+
+	/******************** sanity check attribute number ********************/
+
+	if (parent->flags.is_root) {
+		static unsigned int max_attr = UINT8_MAX + 1;
+
+		if (*attr == -1) {
+			if (fr_dict_attr_by_name(dict, name)) return 0; /* exists, don't add it again */
+			*attr = ++max_attr;
+			flags->internal = 1;
+
+		} else if (*attr <= 0) {
+			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
+			return false;
+
+		} else if ((unsigned int) *attr > max_attr) {
+			max_attr = *attr;
+		}
+
+		/*
+		 *	Auto-set internal flags for raddb/dictionary.
+		 *	So that the end user doesn't have to know
+		 *	about internal implementation of the server.
+		 */
+		if ((parent->flags.type_size == 1) &&
+		    (*attr >= 3000) && (*attr < 4000)) {
+			flags->internal = true;
+		}
+	}
+
+	/*
+	 *	Any other negative attribute number is wrong.
+	 */
+	if (*attr < 0) {
+		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
+		return false;
+	}

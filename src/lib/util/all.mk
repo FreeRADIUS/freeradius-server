@@ -39,6 +39,7 @@ SOURCES		:= \
 		   pair_cursor.c \
 		   pair.c \
 		   pair_legacy.c \
+		   pair_tokenize.c \
 		   pcap.c \
 		   print.c \
 		   proto.c \

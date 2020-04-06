@@ -360,6 +360,15 @@ char		*fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
 void		fr_pair_list_tainted(VALUE_PAIR *vp);
 
+/* Tokenization */
+typedef struct {
+	TALLOC_CTX		*ctx;
+	fr_dict_attr_t	const	*parent;
+	fr_cursor_t		*cursor;
+} fr_pair_ctx_t;
+
+ssize_t		fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1730,6 +1730,71 @@ static size_t command_no(command_result_t *result, command_ctx_t *cc,
 	return data_used;
 }
 
+/** Parse a list of pairs
+ *
+ */
+static size_t command_pair(command_result_t *result, command_ctx_t *cc,
+			    char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	ssize_t slen;
+	fr_pair_ctx_t ctx;
+	VALUE_PAIR *vp, *head = NULL;
+	char *p, *end;
+	fr_cursor_t cursor;
+
+	ctx.ctx = cc->tmp_ctx;
+	ctx.parent = fr_dict_root(cc->active_dict);
+	ctx.cursor = &cursor;
+	fr_cursor_init(&cursor, &head);
+
+	p = in;
+	end = in + inlen;
+
+	while (p < end) {
+		slen = fr_pair_ctx_afrom_str(&ctx, p, end - p);
+		if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
+
+		p += slen;
+		if (p >= end) break;
+
+		if (*p == ',') {
+			p++;
+			continue;
+		}
+	}
+
+	p = data;
+	end = data + COMMAND_OUTPUT_MAX;
+	for (vp = fr_cursor_init(&cursor, &head);
+	     vp != NULL;
+	     vp = fr_cursor_next(&cursor)) {
+		size_t len;
+
+		len = fr_pair_snprint(p, end - p, vp);
+		p += len;
+
+		fprintf(stderr, "PRINTING %s --> %zu\n", vp->da->name, len);
+
+		if (p >= end) break;
+
+		*(p++) = ',';
+		*(p++) = ' ';
+	}
+
+	/*
+	 *	Delete the trailing ", ".
+	 */
+	if (p > data) {
+		p -= 2;
+	}
+	*p = 0;
+
+	fprintf(stderr, "GOT %s\n", data);
+
+	RETURN_OK(p - data);
+}
+
+
 /** Dynamically load a protocol library
  *
  */
@@ -2069,6 +2134,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_no,
 					.usage = "no ...",
 					.description = "Negate the result of a command returning 'ok'"
+				}},
+	{ "pair ",		&(command_entry_t){
+					.func = command_pair,
+					.usage = "pair ... data ...",
+					.description = "Parse a list of pairs",
 				}},
 	{ "proto ",		&(command_entry_t){
 					.func = command_proto,
