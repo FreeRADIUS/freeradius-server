@@ -30,9 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/regex.h>
 #include <freeradius-devel/util/talloc.h>
 
-#include <freeradius-devel/protocol/radius/rfc2865.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-
 #include <ctype.h>
 
 #ifndef NDEBUG
