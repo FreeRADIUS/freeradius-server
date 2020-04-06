@@ -2470,7 +2470,7 @@ static rlm_rcode_t mod_resume(UNUSED void *instance, UNUSED void *thread, UNUSED
 	return rcode;
 }
 
-static void mod_signal(UNUSED void *instance, void *thread, REQUEST *request,
+static void mod_signal(UNUSED void *instance, void *thread, UNUSED REQUEST *request,
 		       void *rctx, fr_state_signal_t action)
 {
 	udp_thread_t		*t = talloc_get_type_abort(thread, udp_thread_t);
@@ -2480,10 +2480,13 @@ static void mod_signal(UNUSED void *instance, void *thread, REQUEST *request,
 	 *	If we don't have a treq associated with the
 	 *	rctx it's likely because the request was
 	 *	scheduled, but hasn't yet been resumed, and
-	 *	has received a signal.
+	 *	has received a signal, OR has been resumed
+	 *	and immediately cancelled as the event loop
+	 *	is exiting, in which case
+	 *	unlang_request_is_scheduled will return false
+	 *	(don't use it).
 	 */
 	if (!r->treq) {
-		if (!fr_cond_assert(unlang_request_is_scheduled(request))) return;
 		talloc_free(rctx);
 		return;
 	}
