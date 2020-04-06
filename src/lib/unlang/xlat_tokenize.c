@@ -287,7 +287,7 @@ static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head,
 		 *	Special characters, spaces, etc. cannot be
 		 *	module names.
 		 */
-		if (*q < '0') return 0;
+		if ((*q < '0') && (*q != '.') && (*q != '-')) return 0;
 	}
 
 	if (q >= end) return 0;
