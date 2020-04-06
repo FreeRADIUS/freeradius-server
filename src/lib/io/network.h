@@ -42,19 +42,30 @@ typedef struct fr_network_s fr_network_t;
 extern "C" {
 #endif
 
-fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl) CC_HINT(nonnull(2,3));
-void fr_network_exit(fr_network_t *nr) CC_HINT(nonnull);
-int fr_network_destroy(fr_network_t *nr) CC_HINT(nonnull);
-void fr_network(fr_network_t *nr) CC_HINT(nonnull);
+int		fr_network_listen_add(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
 
-int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
-int fr_network_socket_delete(fr_network_t *nr, fr_listen_t *li);
-int fr_network_directory_add(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
-int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker) CC_HINT(nonnull);
-void fr_network_listen_read(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
-int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len, fr_time_t recv_time);
-int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats) CC_HINT(nonnull);
-void fr_network_stats_log(fr_network_t const *nr, fr_log_t const *log) CC_HINT(nonnull);
+int		fr_network_socket_delete(fr_network_t *nr, fr_listen_t *li);
+
+int		fr_network_directory_add(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
+
+int		fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker) CC_HINT(nonnull);
+
+void		fr_network_listen_read(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
+
+int		fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len, fr_time_t recv_time);
+
+fr_network_t	*fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el,
+				   char const *nr, fr_log_t const *logger, fr_log_lvl_t lvl) CC_HINT(nonnull(2,4));
+
+void		fr_network_exit(fr_network_t *nr) CC_HINT(nonnull);
+
+int		fr_network_destroy(fr_network_t *nr) CC_HINT(nonnull);
+
+void		fr_network(fr_network_t *nr) CC_HINT(nonnull);
+
+int		fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats) CC_HINT(nonnull);
+
+void		fr_network_stats_log(fr_network_t const *nr, fr_log_t const *log) CC_HINT(nonnull);
 
 extern fr_cmd_table_t cmd_network_table[];
 
