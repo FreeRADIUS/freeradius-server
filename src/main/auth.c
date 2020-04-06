@@ -526,6 +526,7 @@ autz_redo:
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_USERLOCK:
 	default:
+		request->reply->code = PW_CODE_ACCESS_REJECT;
 		if ((module_msg = fr_pair_find_by_num(request->packet->vps, PW_MODULE_FAILURE_MESSAGE, 0, TAG_ANY)) != NULL) {
 			char msg[MAX_STRING_LEN + 16];
 			snprintf(msg, sizeof(msg), "Invalid user (%s)",
@@ -534,7 +535,6 @@ autz_redo:
 		} else {
 			rad_authlog("Invalid user", request, 0);
 		}
-		request->reply->code = PW_CODE_ACCESS_REJECT;
 		return result;
 	}
 	if (!autz_retry) {
