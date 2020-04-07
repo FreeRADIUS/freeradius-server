@@ -369,7 +369,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 
 		pthread_mutex_unlock(&pool->mutex);
 
-		if (!RATE_LIMIT_ENABLED || complain) {
+		if (!fr_rate_limit_enabled() || complain) {
 			ROPTIONAL(RERROR, ERROR, "Last connection attempt failed, waiting %pV seconds before retrying",
 				  fr_box_time_delta(pool->state.last_failed + pool->retry_delay - now));
 		}
@@ -382,7 +382,9 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 	 */
 	if (pool->state.pending > pool->pending_window) {
 		pthread_mutex_unlock(&pool->mutex);
-		RATE_LIMIT(ROPTIONAL(RWARN, WARN, "Cannot open a new connection due to rate limit after failure"));
+
+		RATE_LIMIT_GLOBAL_ROPTIONAL(RWARN, WARN,
+					    "Cannot open a new connection due to rate limit after failure");
 
 		return NULL;
 	}
@@ -842,7 +844,7 @@ static void *connection_get_internal(fr_pool_t *pool, REQUEST *request, bool spa
 		}
 
 		pthread_mutex_unlock(&pool->mutex);
-		if (!RATE_LIMIT_ENABLED || complain) {
+		if (!fr_rate_limit_enabled() || complain) {
 			ROPTIONAL(RERROR, ERROR, "No connections available and at max connection limit");
 			/*
 			 *	Must be done inside the mutex, reconnect callback

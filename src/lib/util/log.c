@@ -685,7 +685,7 @@ DIAG_ON(format-nonliteral)
 
 static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor
 static int stdout_fd = -1;		//!< The original unmolested stdout file descriptor
-static bool rate_limit = true;		//!< Whether repeated log entries should be rate limited
+bool fr_log_rate_limit = true;		//!< Whether repeated log entries should be rate limited
 
 /** On fault, reset STDOUT and STDERR to something useful
  *
@@ -720,7 +720,7 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 {
 	int devnull;
 
-	rate_limit = daemonize;
+	fr_log_rate_limit = daemonize;
 
 	/*
 	 *	If we're running in foreground mode, save STDIN /
@@ -825,13 +825,4 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 	fr_fault_set_log_fd(log->fd);
 
 	return 0;
-}
-
-/** Whether rate limiting is enabled
- */
-bool fr_rate_limit_enabled(void)
-{
-	if (rate_limit || (fr_debug_lvl < 1)) return true;
-
-	return false;
 }

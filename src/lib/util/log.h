@@ -113,6 +113,18 @@ typedef struct {
 } fr_log_t;
 
 extern fr_log_t default_log;
+extern bool fr_log_rate_limit;
+
+
+/** Whether rate limiting is enabled
+ *
+ */
+static inline bool fr_rate_limit_enabled(void)
+{
+	if (fr_log_rate_limit || (fr_debug_lvl < 1)) return true;
+
+	return false;
+}
 
 int	fr_log_init(fr_log_t *log, bool daemonize);
 
@@ -137,9 +149,6 @@ void	fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type,
 			  char const *file, int line,
 			  uint8_t const *data, size_t data_len, ssize_t slen, char const *error, char const *fmt, ...)
 			  CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull (1, 3, 5, 8));
-
-bool	fr_rate_limit_enabled(void);
-
 #ifdef __cplusplus
 }
 #endif

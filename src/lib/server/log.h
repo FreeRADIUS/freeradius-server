@@ -444,31 +444,125 @@ do {\
  	}\
 } while (0)
 
-#define RATE_LIMIT_ENABLED fr_rate_limit_enabled()		//!< True if rate limiting is enabled.
+/** Track when a log message was last repeated
+ *
+ */
+typedef struct {
+	time_t		now;			//!< Current time - Here because it avoids repeated stack allocation.
+	time_t		last_complained;	//!< Last time we emitted a log message.
+	unsigned int	repeated;		//!< Number of "skipped" messages.
+} fr_rate_limit_t;
 
-/** Rate limit messages
+/** Rate limit messages using a local limiting entry
  *
  * Rate limit log messages so they're written a maximum of once per second.
  *
  @code{.c}
-   RATE_LIMIT(RERROR("Home servers alive in pool %s", pool->name));
+   RATE_LIMIT(&inst->home_server_alive_rate_limit, RERROR, "Home servers alive in pool %s", pool->name));
  @endcode
  * @note Rate limits the macro, not the message. If five different messages are
  *	 produced using the same macro in the same second, only the first will
  *	 be written to the log.
  *
- * @param _x Logging macro to limit.
+ * @param[in] _entry		Used to track rate limiting.
+ * @param[in] _log		Logging macro.
+ * @param[in] _fmt		printf style format string.
+ * @param[in] ...		printf arguments.
  */
-#define RATE_LIMIT(_x) \
+#define RATE_LIMIT_LOCAL(_entry, _log, _fmt, ...) \
 do {\
-	if (RATE_LIMIT_ENABLED) {\
-		static time_t _last_complained = 0;\
-		time_t _now = time(NULL);\
-		if (_now != _last_complained) {\
-			_last_complained = _now;\
-			_x;\
+	if (fr_rate_limit_enabled()) {\
+		(_entry)->now = time(NULL);\
+		if ((_entry)->now != (_entry)->last_complained) {\
+			(_entry)->last_complained = (_entry)->now;\
+			if ((_entry)->repeated > 0) { \
+				_log(_fmt " - repeated %u time(s)", ##__VA_ARGS__, (_entry)->repeated); \
+				(_entry)->repeated = 0; \
+			} else { \
+				_log(_fmt, ##__VA_ARGS__); \
+			}\
 		}\
-	} else _x;\
+	} else (_log(_fmt, ##__VA_ARGS__));\
+} while (0)
+
+/** Rate limit messages using a local limiting entry
+ *
+ * Rate limit log messages so they're written a maximum of once per second.
+ * The ROPTIOANL variant allows different logging macros to be used based on whether a request is
+ * available.
+ *
+ @code{.c}
+   RATE_LIMIT(&inst->home_server_alive_rate_limit, RERROR, "Home servers alive in pool %s", pool->name));
+ @endcode
+ * @note Rate limits the macro, not the message. If five different messages are
+ *	 produced using the same macro in the same second, only the first will
+ *	 be written to the log.
+ *
+ * @param[in] _entry		Used to track rate limiting.
+ * @param[in] _l_request	The name of a R* logging macro e.g. RDEBUG3.
+ * @param[in] _l_global		The name of a global logging macro e.g. DEBUG3.
+ * @param[in] _fmt		printf style format string.
+ * @param[in] ...		printf arguments.
+ */
+#define RATE_LIMIT_LOCAL_ROPTIONAL(_entry, _l_request, _l_global, _fmt, ...) \
+do {\
+	if (fr_rate_limit_enabled()) {\
+		(_entry)->now = time(NULL);\
+		if ((_entry)->now != (_entry)->last_complained) {\
+			(_entry)->last_complained = (_entry)->now;\
+			if ((_entry)->repeated > 0) { \
+				ROPTIONAL(_l_request, _l_global, _fmt " - repeated %u time(s)", ##__VA_ARGS__, (_entry)->repeated); \
+				(_entry)->repeated = 0; \
+			} else { \
+				ROPTIONAL(_l_request, _l_global, _fmt, ##__VA_ARGS__); \
+			}\
+		}\
+	} else { \
+		ROPTIONAL(_l_request, _l_global, _fmt, ##__VA_ARGS__);\
+	} \
+} while (0)
+
+/** Rate limit messages using a global limiting entry
+ *
+ * Rate limit log messages so they're written a maximum of once per second.
+ *
+ @code{.c}
+   RATE_LIMIT(RERROR, "Home servers alive in pool %s", pool->name));
+ @endcode
+ * @note Rate limits the macro, not the message. If five different messages are
+ *	 produced using the same macro in the same second, only the first will
+ *	 be written to the log.
+ *
+ * @param[in] _log		Logging macro.
+ * @param[in] _fmt		printf style format string.
+ * @param[in] ...		printf arguments.
+ */
+#define RATE_LIMIT_GLOBAL(_log, _fmt, ...) \
+do {\
+	static fr_rate_limit_t	_rate_limit; \
+	RATE_LIMIT_LOCAL(&_rate_limit, _log, _fmt, ##__VA_ARGS__); \
+} while (0)
+
+/** Rate limit messages using a global limiting entry
+ *
+ * Rate limit log messages so they're written a maximum of once per second.
+ *
+ @code{.c}
+   RATE_LIMIT(RERROR, "Home servers alive in pool %s", pool->name));
+ @endcode
+ * @note Rate limits the macro, not the message. If five different messages are
+ *	 produced using the same macro in the same second, only the first will
+ *	 be written to the log.
+ *
+ * @param[in] _l_request	The name of a R* logging macro e.g. RDEBUG3.
+ * @param[in] _l_global		The name of a global logging macro e.g. DEBUG3.
+ * @param[in] _fmt		printf style format string.
+ * @param[in] ...		printf arguments.
+ */
+#define RATE_LIMIT_GLOBAL_ROPTIONAL(_l_request, _l_global, _fmt, ...) \
+do {\
+	static fr_rate_limit_t _rate_limit; \
+	RATE_LIMIT_LOCAL_ROPTIONAL(&_rate_limit, _l_request, _l_global, _fmt, ##__VA_ARGS__); \
 } while (0)
 
 /** Pretty print binary data, with hex output inline with message

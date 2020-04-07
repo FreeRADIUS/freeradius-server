@@ -575,9 +575,9 @@ int fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
 		 *	We want this to show up in the global log
 		 *	so someone will fix it...
 		 */
-		RATE_LIMIT(RERROR("Delta +/- between OCSP response time and our time is greater than %li "
+		RATE_LIMIT_GLOBAL(RERROR, "Delta +/- between OCSP response time and our time is greater than %li "
 				  "seconds.  Check servers are synchronised to a common time source",
-				  this_fudge));
+				  this_fudge);
 		FR_OPENSSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
 		goto finish;
 	}
