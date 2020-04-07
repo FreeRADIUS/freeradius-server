@@ -1669,6 +1669,9 @@ static void request_mux(fr_event_list_t *el,
 		 */
 		if (!treq) break;
 
+ 		rad_assert((treq->state == FR_TRUNK_REQUEST_STATE_PENDING) ||
+			   (treq->state == FR_TRUNK_REQUEST_STATE_PARTIAL));
+
 		request = treq->request;
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
 
@@ -1746,6 +1749,11 @@ static void request_mux(fr_event_list_t *el,
 	if (queued == 0) return;	/* No work */
 
 	/*
+	 *	Verify nothing accidentally freed the connection handle
+	 */
+	(void)talloc_get_type_abort(h, udp_handle_t);
+
+	/*
 	 *	Send the coalesced datagrams
 	 */
 	sent = sendmmsg(h->fd, h->mmsgvec, queued, 0);
@@ -1810,6 +1818,8 @@ static void request_mux(fr_event_list_t *el,
 		 *	It's UDP so there should never be partial writes
 		 */
 		rad_assert((size_t)h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
+
+		rad_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);
 
 		request = treq->request;
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
@@ -1882,6 +1892,9 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		 */
 		if (!treq) break;
 
+ 		rad_assert((treq->state == FR_TRUNK_REQUEST_STATE_PENDING) ||
+			   (treq->state == FR_TRUNK_REQUEST_STATE_PARTIAL));
+
 		request = treq->request;
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
 
@@ -1907,6 +1920,11 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 	}
 	queued = i;
 	if (queued == 0) return;	/* No work */
+
+	/*
+	 *	Verify nothing accidentally freed the connection handle
+	 */
+	(void)talloc_get_type_abort(h, udp_handle_t);
 
 	sent = sendmmsg(h->fd, h->mmsgvec, queued, 0);
 	if (sent < 0) {		/* Error means no messages were sent */
