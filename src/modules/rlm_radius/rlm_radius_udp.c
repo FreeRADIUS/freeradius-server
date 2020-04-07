@@ -277,7 +277,7 @@ static void udp_request_clear(udp_handle_t *h, udp_request_t *u, fr_time_t now)
 	if (u->rr) (void) radius_track_delete(&u->rr);
 
 	/* Now wrong - We don't keep an entry reserved for the status check */
-	if (h && (h->tt->num_free == (h->status_u != NULL))) h->last_idle = now;
+	if (h && (fr_dlist_num_elements(&h->tt->free_list) == (h->status_u != NULL))) h->last_idle = now;
 
 	fr_pair_list_free(&u->extra);
 }

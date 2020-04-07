@@ -51,7 +51,6 @@ radius_track_t *radius_track_alloc(TALLOC_CTX *ctx)
 	for (i = 0; i < 256; i++) {
 		tt->id[i].id = i;
 		fr_dlist_insert_tail(&tt->free_list, &tt->id[i]);
-		tt->num_free++;
 	}
 
 	tt->next_id = fr_rand() & 0xff;
@@ -76,7 +75,7 @@ static int te_cmp(void const *one, void const *two)
  * @param[in] tt		The radius_track_t tracking table.
  * @param[in] request		The request which will send the proxied packet.
  * @param[in] code		Of the outbound request.
- * @param rctx The context to associate with the request
+ * @param[in] rctx		The context to associate with the request
  * @return
  *	- NULL on error
  *	- radius_track_entry_t on success
@@ -88,15 +87,12 @@ radius_track_entry_t *radius_track_entry_alloc(radius_track_t *tt, REQUEST *requ
 retry:
 	te = fr_dlist_head(&tt->free_list);
 	if (te) {
-		rad_assert(tt->num_free > 0);
-
 		rad_assert(te->request == NULL);
 
 		/*
 		 *	Mark it as used, and remove it from the free list.
 		 */
 		fr_dlist_remove(&tt->free_list, te);
-		tt->num_free--;
 
 		/*
 		 *	We've transitioned from "use it", to "oops,
@@ -116,7 +112,10 @@ retry:
 	 *	There are no free entries, and we can't use the
 	 *	Request Authenticator.  Oh well...
 	 */
-	if (!tt->use_authenticator) return NULL;
+	if (!tt->use_authenticator) {
+		fr_strerror_printf("No free entries");
+		return NULL;
+	}
 
 	/*
 	 *	Get a new ID.  It's value doesn't matter at this
@@ -129,9 +128,8 @@ retry:
 	 *	If needed, allocate a subtree.
 	 */
 	if (!tt->subtree[tt->next_id]) {
-		tt->subtree[tt->next_id] = rbtree_talloc_create(tt, te_cmp, radius_track_entry_t,
-								NULL, RBTREE_FLAG_NONE);
-		if (!tt->subtree[tt->next_id]) return NULL;
+		MEM(tt->subtree[tt->next_id] = rbtree_talloc_create(tt, te_cmp, radius_track_entry_t,
+								    NULL, RBTREE_FLAG_NONE));
 	}
 
 	/*
@@ -245,7 +243,7 @@ int radius_track_delete(radius_track_entry_t **te_to_free)
 	 *	free list.  If the system becomes completely idle, we
 	 *	will clear the free list.
 	 */
-	if (tt->num_free > tt->num_requests) {
+	if (fr_dlist_num_elements(&tt->free_list) > tt->num_requests) {
 		talloc_free(te);
 		*te_to_free = NULL;
 		return 0;
@@ -256,7 +254,6 @@ int radius_track_delete(radius_track_entry_t **te_to_free)
 	 */
 done:
 	fr_dlist_insert_tail(&tt->free_list, te);
-	tt->num_free++;
 
 	*te_to_free = NULL;
 

@@ -48,8 +48,7 @@ struct radius_track_entry_s {
 };
 
 struct radius_track_s {
-	int		num_requests;  		//!< number of requests in the allocation
-	int		num_free;		//!< number of entries in the free list
+	unsigned int	num_requests;  		//!< number of requests in the allocation
 
 	fr_dlist_head_t	free_list;     		//!< so we allocate by least recently used
 
