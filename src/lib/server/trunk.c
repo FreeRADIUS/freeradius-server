@@ -1647,7 +1647,7 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 
 		if (!fr_cond_assert_msg(treq->pub.state == FR_TRUNK_REQUEST_STATE_CANCEL,
 					"Bad state %s after cancellation",
-					fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>")));
+					fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"))) return;
 
 		/*
 		 *	No cancel muxer.  We're done.
