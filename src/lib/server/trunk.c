@@ -2506,6 +2506,7 @@ static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_FULL:
 	case FR_TRUNK_CONN_INACTIVE:
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:
 		trunk_connection_remove(tconn);
 		break;
 
