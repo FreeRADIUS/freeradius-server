@@ -1657,6 +1657,7 @@ static void request_mux(fr_event_list_t *el,
 	 *	Encode multiple packets in preparation
 	 *      for transmission with sendmmsg.
 	 */
+	queued = 0;
 	for (i = 0; i < inst->max_send_coalesce; i++) {
 		fr_trunk_request_t	*treq;
 		udp_request_t		*u;
@@ -1732,9 +1733,9 @@ static void request_mux(fr_event_list_t *el,
 		 *	We store the treq so we can place it back in
 		 *      the pending state if the sendmmsg call fails.
 		 */
-		h->coalesced[i].treq = treq;
-		h->coalesced[i].out.iov_base = u->packet;
-		h->coalesced[i].out.iov_len = u->packet_len;
+		h->coalesced[queued].treq = treq;
+		h->coalesced[queued].out.iov_base = u->packet;
+		h->coalesced[queued].out.iov_len = u->packet_len;
 
 		/*
 		 *	Tell the trunk API that this request is now in
@@ -1744,8 +1745,8 @@ static void request_mux(fr_event_list_t *el,
 		 *	next entry in the heap.
 		 */
 		fr_trunk_request_signal_sent(treq);
+		queued++;
 	}
-	queued = i;
 	if (queued == 0) return;	/* No work */
 
 	/*
