@@ -171,7 +171,7 @@ static void *worker_thread(void *arg)
 		exit(EXIT_FAILURE);
 	}
 
-	worker = sw->worker = fr_worker_create(ctx, "test", el, &default_log, L_DBG_LVL_MAX);
+	worker = sw->worker = fr_worker_create(ctx, el, "test", &default_log, L_DBG_LVL_MAX);
 	if (!worker) {
 		fprintf(stderr, "radius_test: Failed to create the worker\n");
 		exit(EXIT_FAILURE);

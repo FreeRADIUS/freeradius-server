@@ -55,7 +55,7 @@ extern "C" {
 #endif
 extern fr_cmd_table_t cmd_worker_table[];
 
-fr_worker_t	*fr_worker_create(TALLOC_CTX *ctx, char const *name, fr_event_list_t *el,
+fr_worker_t	*fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const *name,
 				  fr_log_t const *logger, fr_log_lvl_t lvl) CC_HINT(nonnull(2,3,4));
 
 void		fr_worker_destroy(fr_worker_t *worker) CC_HINT(nonnull);

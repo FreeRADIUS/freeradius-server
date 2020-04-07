@@ -175,7 +175,7 @@ static void *worker_thread(void *arg)
 	}
 
 	snprintf(buffer, sizeof(buffer), "%d", sw->id);
-	worker = sw->worker = fr_worker_create(ctx, buffer, el, &default_log, L_DBG_LVL_MAX);
+	worker = sw->worker = fr_worker_create(ctx, el, buffer, &default_log, L_DBG_LVL_MAX);
 	if (!worker) {
 		fprintf(stderr, "worker_test: Failed to create the worker\n");
 		exit(EXIT_FAILURE);
