@@ -2737,14 +2737,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
-	if (!inst->replicate) {
-		if (inst->recv_buff_is_set) {
-			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, inst->max_packet_size);
-			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, (1 << 30));
-		}
-	}
+
 #ifdef __linux__
-	else {
+	if (inst->replicate) {
 		/*
 		 *	Replicating: Set the receive buffer to zero.
 		 */
@@ -2757,6 +2752,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 */
 
 		inst->recv_buff = 0;
+	} else {
+#endif
+		if (inst->recv_buff_is_set) {
+			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, inst->max_packet_size);
+			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, (1 << 30));
+		}
+#ifdef __linux__
 	}
 #endif
 
