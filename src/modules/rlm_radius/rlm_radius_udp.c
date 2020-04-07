@@ -1645,7 +1645,7 @@ static void request_mux(fr_event_list_t *el,
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 	rlm_radius_udp_t const	*inst = h->inst;
 	int			sent;
-	uint16_t		i = 0, queued;
+	uint16_t		i, queued;
 
 	/*
 	 *	If the connection just became a zombie
@@ -1657,8 +1657,7 @@ static void request_mux(fr_event_list_t *el,
 	 *	Encode multiple packets in preparation
 	 *      for transmission with sendmmsg.
 	 */
-	queued = 0;
-	for (i = 0; i < inst->max_send_coalesce; i++) {
+	for (i = 0, queued = 0; i < inst->max_send_coalesce; i++) {
 		fr_trunk_request_t	*treq;
 		udp_request_t		*u;
 		REQUEST			*request;
@@ -1697,8 +1696,9 @@ static void request_mux(fr_event_list_t *el,
 		if (!u->packet || !u->can_retransmit) {
 			rad_assert(!u->rr);
 
-			u->rr = radius_track_entry_alloc(h->tt, request, u->code, treq);
-			if (!u->rr) {
+			if (!fr_cond_assert_msg((u->rr = radius_track_entry_alloc(h->tt, request, u->code, treq)),
+						"Tracking entry allocation failed")) {
+
 			fail:
 				fr_trunk_request_signal_fail(treq);
 				continue;
