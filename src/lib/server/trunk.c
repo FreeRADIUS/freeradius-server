@@ -1298,9 +1298,10 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 
 #define OVER_MAX_CHECK if (++count > max) return (count - 1)
 
-#define DEQUEUE_ALL(_src_list) \
+#define DEQUEUE_ALL(_src_list, _state) \
 	while ((treq = fr_dlist_head(_src_list))) { \
 		OVER_MAX_CHECK; \
+		rad_assert(treq->pub.state == (_state)); \
 		trunk_request_enter_unassigned(treq); \
 		fr_dlist_insert_tail(out, treq); \
 	}
@@ -1309,12 +1310,14 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 	 *	Don't need to do anything with
 	 *	cancellation requests.
 	 */
-	if (states & FR_TRUNK_REQUEST_STATE_CANCEL) DEQUEUE_ALL(&tconn->cancel);
+	if (states & FR_TRUNK_REQUEST_STATE_CANCEL) DEQUEUE_ALL(&tconn->cancel,
+								FR_TRUNK_REQUEST_STATE_CANCEL);
 
 	/*
 	 *	...same with cancel inform
 	 */
-	if (states & FR_TRUNK_REQUEST_STATE_CANCEL_SENT) DEQUEUE_ALL(&tconn->cancel_sent);
+	if (states & FR_TRUNK_REQUEST_STATE_CANCEL_SENT) DEQUEUE_ALL(&tconn->cancel_sent,
+								     FR_TRUNK_REQUEST_STATE_CANCEL_SENT);
 
 	/*
 	 *	....same with cancel partial
@@ -1323,6 +1326,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 		OVER_MAX_CHECK;
 		treq = tconn->cancel_partial;
 		if (treq) {
+			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
 		}
@@ -1334,6 +1338,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 	if (states & FR_TRUNK_REQUEST_STATE_PENDING) {
 		while ((treq = fr_heap_peek(tconn->pending))) {
 			OVER_MAX_CHECK;
+			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_PENDING);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
 		}
@@ -1346,6 +1351,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 		OVER_MAX_CHECK;
 		treq = tconn->partial;
 		if (treq) {
+			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_PARTIAL);
 			trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_MOVE);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
@@ -1358,6 +1364,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 	if (states & FR_TRUNK_REQUEST_STATE_SENT) {
 		while ((treq = fr_dlist_head(&tconn->sent))) {
 			OVER_MAX_CHECK;
+			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_SENT);
 			trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_MOVE);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
