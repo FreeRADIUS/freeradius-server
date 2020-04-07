@@ -2741,7 +2741,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, inst->max_packet_size);
 			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, (1 << 30));
 		}
-	} else {
+	}
+#ifdef __linux__
+	else {
 		/*
 		 *	Replicating: Set the receive buffer to zero.
 		 */
@@ -2752,10 +2754,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	all incoming data in the kernel.
 		 *	With macOS and others it's an invalid value.
 		 */
-#ifdef __linux__
+
 		inst->recv_buff = 0;
-#endif
 	}
+#endif
 
 	if (inst->send_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, >=, inst->max_packet_size);
