@@ -1991,7 +1991,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_trunk_t *trunk,
 					    REQUEST *request, void *preq, void *rctx)
 {
-	fr_trunk_connection_t	*tconn;
+	fr_trunk_connection_t	*tconn = NULL;
 	fr_trunk_request_t	*treq;
 	fr_trunk_enqueue_t	rcode;
 
