@@ -232,6 +232,14 @@ struct fr_trunk_s {
  	fr_event_timer_t const	*manage_ev;		//!< Periodic connection management event.
 	/** @} */
 
+	/** @name Log rate limiting entries
+	 * @{
+ 	 */
+	fr_rate_limit_t		limit_max_requests_log;	//!< Rate limit on "Refusing to enqueue requests - Limit of * requests reached"
+
+	fr_rate_limit_t		limit_last_failure_log;	//!< Rate limit on "Refusing to enqueue requests - No active conns"
+ 	/** @} */
+
 	/** @name State
 	 * @{
  	 */
@@ -1198,8 +1206,9 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 */
 	if (!trunk->conf.backlog_on_failed_conn &&
 	    trunk->pub.last_failed && (trunk->pub.last_connected < trunk->pub.last_failed)) {
-		ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
-			  "No active connections and last event was a connection failure");
+	    	RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_last_failure_log,
+					   RWARN, WARN, "Refusing to enqueue requests - "
+					   "No active connections and last event was a connection failure");
 
 		return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
 	}
@@ -1215,9 +1224,11 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 		total_reqs = fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_ALL) + 1;
 		limit = trunk->conf.max * (uint64_t)trunk->conf.max_req_per_conn;
 		if ((limit > 0) && (total_reqs > limit)) {
-			ROPTIONAL(RWARN, WARN, "Refusing to enqueue requests - "
-				  "Limit of %"PRIu64" (max = %u * per_connection_max = %u) requests reached",
-				  limit, trunk->conf.max, trunk->conf.max_req_per_conn);
+			RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_max_requests_log,
+						   RWARN, WARN, "Refusing to enqueue requests - "
+						   "Limit of %"PRIu64" (max = %u * per_connection_max = %u) "
+						   "requests reached",
+				 		   limit, trunk->conf.max, trunk->conf.max_req_per_conn);
 
 			return FR_TRUNK_ENQUEUE_NO_CAPACITY;
 		}
