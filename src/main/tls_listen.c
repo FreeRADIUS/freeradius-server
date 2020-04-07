@@ -391,6 +391,20 @@ redo:
 		break;
 #endif
 
+#ifdef WITH_COA
+	case PW_CODE_COA_REQUEST:
+		if (listener->type != RAD_LISTEN_COA) goto bad_packet;
+		FR_STATS_INC(coa, total_requests);
+		fun = rad_coa_recv;
+		break;
+
+	case PW_CODE_DISCONNECT_REQUEST:
+		if (listener->type != RAD_LISTEN_COA) goto bad_packet;
+		FR_STATS_INC(dsc, total_requests);
+		fun = rad_coa_recv;
+		break;
+#endif
+
 	case PW_CODE_STATUS_SERVER:
 		if (!main_config.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
