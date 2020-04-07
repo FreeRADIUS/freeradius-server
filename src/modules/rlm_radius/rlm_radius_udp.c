@@ -745,7 +745,11 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	talloc_set_destructor(h, _udp_handle_free);
 
 #ifdef SO_RCVBUF
+#  ifdef __APPLE__
+	if (h->inst->recv_buff_is_set && h->inst->recv_buff > 0) {
+#  else
 	if (h->inst->recv_buff_is_set) {
+#  endif
 		int opt;
 
 		opt = h->inst->recv_buff;
