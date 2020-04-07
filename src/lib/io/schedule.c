@@ -661,7 +661,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	workers that the network side is going away.
 	 */
 	if (sc->sn->status == FR_CHILD_RUNNING) {
-		fr_network_exit(sc->sn->nr);
+		if (!fr_cond_assert_msg(fr_network_exit(sc->sn->nr) == 0, "%s", fr_strerror())) fr_exit(1);
 		SEM_WAIT_INTR(&sc->network_sem);
 		fr_network_destroy(sc->sn->nr);
 	}

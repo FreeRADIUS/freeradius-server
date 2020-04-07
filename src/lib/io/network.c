@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/thread_local.h>
 
 #include <freeradius-devel/io/channel.h>
@@ -107,6 +108,8 @@ typedef struct {
 struct fr_network_s {
 	char const		*name;			//!< Network ID for logging.
 
+	bool			started;		//!< Set to true when the first worker is added.
+
 	fr_log_t const		*log;			//!< log destination
 	fr_log_lvl_t		lvl;			//!< debug log level
 
@@ -126,8 +129,12 @@ struct fr_network_s {
 	rbtree_t		*sockets_by_num;       	//!< ordered by number;
 
 	int			num_workers;		//!< number of active workers
+	int			num_pending_workers;	//!< number of workers we're waiting to start.
 	int			max_workers;		//!< maximum number of allowed workers
 	int			num_sockets;		//!< actually a counter...
+
+	int			signal_pipe[2];		//!< Pipe for signalling the worker in an orderly way.
+							///< This is more deterministic than using async signals.
 
 	fr_network_worker_t	*workers[MAX_WORKERS]; 	//!< each worker
 };
@@ -358,16 +365,19 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 
 /** Handle a network control message callback for a channel
  *
- * @param[in] ctx the network
- * @param[in] data the message
- * @param[in] data_size size of the data
- * @param[in] now the current time
+ * This is called from the event loop when we get a notification
+ * from the event signalling pipe.
+ *
+ * @param[in] ctx	the network
+ * @param[in] data	the message
+ * @param[in] data_size	size of the data
+ * @param[in] now	the current time
  */
 static void fr_network_channel_callback(void *ctx, void const *data, size_t data_size, fr_time_t now)
 {
-	fr_channel_event_t ce;
-	fr_channel_t *ch;
-	fr_network_t *nr = ctx;
+	fr_channel_event_t	ce;
+	fr_channel_t		*ch;
+	fr_network_t		*nr = ctx;
 
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	DEBUG3("Channel %s",
@@ -396,7 +406,30 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 		break;
 
 	case FR_CHANNEL_CLOSE:
-		///
+	{
+		fr_network_worker_t	*w = talloc_get_type_abort(fr_channel_requestor_uctx_get(ch),
+								   fr_network_worker_t);
+		int			i;
+
+		/*
+		 *	Remove this worker from the array
+		 */
+		for (i = 0; i < nr->num_workers; i++) {
+			DEBUG3("Worker acked our close request");
+			if (nr->workers[i] == w) {
+				nr->workers[i] = NULL;
+
+				if (i == (nr->num_workers - 1)) break;
+
+				/*
+				 *	Close the hole...
+				 */
+				memcpy(&nr->workers[i], &nr->workers[i + 1], ((nr->num_workers - i) - 1));
+				break;
+			}
+		}
+		nr->num_workers--;
+	}
 		break;
 	}
 }
@@ -500,11 +533,11 @@ static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
  */
 static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx)
 {
-	int num_messages = 0;
-	fr_network_socket_t *s = ctx;
-	fr_network_t *nr = s->nr;
-	ssize_t data_size;
-	fr_channel_data_t *cd, *next;
+	int			num_messages = 0;
+	fr_network_socket_t	*s = ctx;
+	fr_network_t		*nr = s->nr;
+	ssize_t			data_size;
+	fr_channel_data_t	*cd, *next;
 
 	if (!fr_cond_assert_msg(s->listen->fd == sockfd, "Expected listen->fd (%u) to be equal event fd (%u)",
 				s->listen->fd, sockfd)) return;
@@ -810,10 +843,11 @@ static int _network_socket_free(fr_network_socket_t *s)
 	rbtree_deletebydata(nr->sockets, s);
 	rbtree_deletebydata(nr->sockets_by_num, s);
 
+	fr_event_fd_delete(nr->el, s->listen->fd, s->filter);
+
 	if (s->listen->app_io->close) {
 		s->listen->app_io->close(s->listen);
 	} else {
-		fr_event_fd_delete(nr->el, s->listen->fd, FR_EVENT_FILTER_IO);
 		close(s->listen->fd);
 	}
 
@@ -982,7 +1016,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
  * @param[in] data_size size of the data
  * @param[in] now the current time
  */
-static void fr_network_worker_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+static void fr_network_worker_started_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
 	int i;
 	fr_network_t *nr = ctx;
@@ -1003,6 +1037,9 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 	fr_channel_requestor_uctx_add(w->channel, w);
 	fr_channel_set_recv_reply(w->channel, nr, fr_network_recv_reply);
 
+	nr->num_workers++;
+	nr->started = true;
+
 	/*
 	 *	Insert the worker into the array of workers.
 	 */
@@ -1010,7 +1047,6 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 		if (nr->workers[i]) continue;
 
 		nr->workers[i] = w;
-		nr->num_workers++;
 		return;
 	}
 
@@ -1236,13 +1272,103 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 	}
 }
 
+/** Stop a network thread in an orderly way
+ *
+ * @param[in] nr the network to stop
+ */
+int fr_network_destroy(fr_network_t *nr)
+{
+	fr_channel_data_t	*cd;
+
+	(void) talloc_get_type_abort(nr, fr_network_t);
+
+	/*
+	 *	Close the network sockets
+	 */
+	{
+		fr_network_socket_t	**sockets;
+		size_t			len;
+		size_t			i;
+
+		len = rbtree_flatten(nr, (void ***)&sockets, nr->sockets, RBTREE_IN_ORDER);
+
+		for (i = 0; i < len; i++) talloc_free(sockets[i]);
+
+		talloc_free(sockets);
+	}
+
+	/*
+	 *	Signal the workers that we're closing
+	 *
+	 *	nr->num_workers is decremented every
+	 *	time a worker closes a socket.
+	 *
+	 *	When nr->num_workers == 0, the event
+	 *	loop (fr_network()) will exit.
+	 */
+	{
+		int i;
+
+		for (i = 0; i < nr->num_workers; i++) {
+			fr_network_worker_t *worker = nr->workers[i];
+
+			fr_channel_signal_responder_close(worker->channel);
+		}
+	}
+
+	/*
+	 *	Clean up all of the replies.
+	 *
+	 *	@todo - call transport "done" for the reply, so that
+	 *	it knows the replies are done, too.
+	 */
+	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
+		fr_message_done(&cd->m);
+	}
+
+	(void) fr_event_pre_delete(nr->el, fr_network_pre_event, nr);
+	(void) fr_event_post_delete(nr->el, fr_network_post_event, nr);
+	fr_event_fd_delete(nr->el, nr->signal_pipe[0], FR_EVENT_FILTER_IO);
+
+	return 0;
+}
+
+/** Read handler for signal pipe
+ *
+ */
+static void _signal_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	fr_network_t	*nr = talloc_get_type_abort(uctx, fr_network_t);
+	uint8_t		buff;
+
+	if (read(fd, &buff, sizeof(buff)) < 0) {
+		ERROR("Failed reading signal - %s", fr_syserror(errno));
+		return;
+	}
+
+	rad_assert(buff = 1);
+
+	/*
+	 *	fr_network_stop() will signal the workers
+	 *	to exit (by closing their channels).
+	 *
+	 *	When we get the ack, we decrement our
+	 *	nr->num_workers counter.
+	 *
+	 *	When the counter reaches 0, the event loop
+	 *	exits.
+	 */
+	DEBUG2("Signalled to exit");
+	fr_network_destroy(nr);
+}
+
 /** The main network worker function.
  *
  * @param[in] nr the network data structure to run.
  */
 void fr_network(fr_network_t *nr)
 {
-	while (true) {
+	while (likely(((nr->num_workers > 0) || !nr->started))) {
 		bool wait_for_event;
 		int num_events;
 
@@ -1272,15 +1398,34 @@ void fr_network(fr_network_t *nr)
 	}
 }
 
-/** Signal a reciever to exit
+/** Signal a network thread to exit
  *
- *  WARNING: This may be called from another thread!  Care is required.
+ * @note Request to exit will be processed asynchronously.
  *
  * @param[in] nr the network data structure to manage
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void fr_network_exit(fr_network_t *nr)
+int fr_network_exit(fr_network_t *nr)
 {
-	fr_event_loop_exit(nr->el, 1);
+	if (write(nr->signal_pipe[1], &(uint8_t){ 0x01 }, 1) < 0) {
+		fr_strerror_printf("Failed signalling network thread to exit - %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Free any resources associated with a network thread
+ *
+ */
+static int _fr_network_free(fr_network_t *nr)
+{
+	if (nr->signal_pipe[0] >= 0) close(nr->signal_pipe[0]);
+	if (nr->signal_pipe[1] >= 0) close(nr->signal_pipe[1]);
+
+	return 0;
 }
 
 /** Create a network
@@ -1304,6 +1449,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 		fr_strerror_printf("Failed allocating memory");
 		return NULL;
 	}
+	talloc_set_destructor(nr, _fr_network_free);
 
 	nr->name = talloc_strdup(nr, name);
 	nr->el = el;
@@ -1311,6 +1457,8 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	nr->lvl = lvl;
 	nr->max_workers = MAX_WORKERS;
 	nr->num_workers = 0;
+	nr->signal_pipe[0] = -1;
+	nr->signal_pipe[1] = -1;
 
 	nr->aq_control = fr_atomic_queue_create(nr, 1024);
 	if (!nr->aq_control) {
@@ -1355,7 +1503,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_WORKER, nr, fr_network_worker_callback) < 0) {
+	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_WORKER, nr, fr_network_worker_started_callback) < 0) {
 		fr_strerror_printf_push("Failed adding worker callback");
 		goto fail2;
 	}
@@ -1396,56 +1544,19 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 		goto fail2;
 	}
 
+	if (pipe(nr->signal_pipe) < 0) {
+		fr_strerror_printf("Failed initialising signal pipe - %s", fr_syserror(errno));
+		goto fail2;
+	}
+	if (fr_nonblock(nr->signal_pipe[0]) < 0) goto fail2;
+	if (fr_nonblock(nr->signal_pipe[1]) < 0) goto fail2;
+
+	if (fr_event_fd_insert(nr, nr->el, nr->signal_pipe[0], _signal_pipe_read, NULL, NULL, nr) < 0) {
+		fr_strerror_printf("Failed inserting event for signal pipe");
+		goto fail2;
+	}
+
 	return nr;
-}
-
-/** Destroy a network
- *
- * @param[in] nr the network
- * @return
- *	- <0 on error
- *	- 0 on success
- */
-int fr_network_destroy(fr_network_t *nr)
-{
-	int i;
-	fr_channel_data_t *cd;
-
-	(void) talloc_get_type_abort(nr, fr_network_t);
-
-	/*
-	 *	Pop all of the workers, and signal them that we're
-	 *	closing/
-	 */
-	for (i = 0; i < nr->num_workers; i++) {
-		fr_network_worker_t *worker = nr->workers[i];
-
-		fr_channel_signal_responder_close(worker->channel);
-	}
-
-	/*
-	 *	@todo wait for all workers to acknowledge the channel
-	 *	close.
-	 */
-
-	/*
-	 *	Clean up all of the replies.
-	 *
-	 *	@todo - call transport "done" for the reply, so that
-	 *	it knows the replies are done, too.
-	 */
-	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
-		fr_message_done(&cd->m);
-	}
-
-	(void) fr_event_pre_delete(nr->el, fr_network_pre_event, nr);
-	(void) fr_event_post_delete(nr->el, fr_network_post_event, nr);
-
-	/*
-	 *	The caller has to free 'nr'.
-	 */
-
-	return 0;
 }
 
 int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats)

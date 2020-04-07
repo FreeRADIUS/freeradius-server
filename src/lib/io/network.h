@@ -57,7 +57,7 @@ int		fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *
 fr_network_t	*fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 				   char const *nr, fr_log_t const *logger, fr_log_lvl_t lvl) CC_HINT(nonnull(2,4));
 
-void		fr_network_exit(fr_network_t *nr) CC_HINT(nonnull);
+int		fr_network_exit(fr_network_t *nr) CC_HINT(nonnull);
 
 int		fr_network_destroy(fr_network_t *nr) CC_HINT(nonnull);
 
