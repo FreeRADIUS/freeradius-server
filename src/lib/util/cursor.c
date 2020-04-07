@@ -440,7 +440,8 @@ void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b)
  */
 void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
 {
-	fr_cursor_iter_t b_iter;
+	fr_cursor_iter_t	b_iter;
+	void			*b_uctx;
 
 	if (unlikely(a->head != b->head)) return NULL;
 
@@ -455,6 +456,7 @@ void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
 	 *	Both have iterators...
 	 */
 	b_iter = b->iter;
+	b_uctx = b->uctx;
 
 	/*
 	 *	Deal with the case where the two iterators
@@ -503,6 +505,8 @@ void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
 		 *	Reset b's position to a's and try again.
 		 */
 		fr_cursor_copy(b, a);
+		b->iter = b_iter;
+		b->uctx = b_uctx;
 	} while ((a->current = cursor_next(&a->prev, a, a->current)));
 
 	return NULL;
