@@ -727,6 +727,14 @@ int proxy_tls_recv(rad_listen_t *listener)
 		break;
 #endif
 
+#ifdef WITH_COA
+	case PW_CODE_COA_ACK:
+	case PW_CODE_COA_NAK:
+	case PW_CODE_DISCONNECT_ACK:
+	case PW_CODE_DISCONNECT_NAK:
+		break;
+#endif
+
 	default:
 		/*
 		 *	FIXME: Update MIB for packet types?
