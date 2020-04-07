@@ -1645,27 +1645,21 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 	case FR_TRUNK_REQUEST_STATE_SENT:
 		trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_SIGNAL);
 
-		switch (treq->pub.state) {
-		case FR_TRUNK_REQUEST_STATE_CANCEL:
-			/*
-			 *	No cancel muxer.  We're done.
-			 *
-			 *      If we do have a cancel mux function,
-			 *	the next time this connection becomes
-			 *	writable, we'll call the cancel mux
-			 *      function.
-			 */
-			if (!trunk->funcs.request_cancel_mux) {
-				trunk_request_enter_unassigned(treq);
-				fr_trunk_request_free(&treq);
-			}
-			break;
+		if (!fr_cond_assert_msg(treq->pub.state == FR_TRUNK_REQUEST_STATE_CANCEL,
+					"Bad state %s after cancellation",
+					fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>")));
 
 		/*
-		 *	Shouldn't be in any other state after this
+		 *	No cancel muxer.  We're done.
+		 *
+		 *      If we do have a cancel mux function,
+		 *	the next time this connection becomes
+		 *	writable, we'll call the cancel mux
+		 *      function.
 		 */
-		default:
-			rad_assert(0);
+		if (!trunk->funcs.request_cancel_mux) {
+			trunk_request_enter_unassigned(treq);
+			fr_trunk_request_free(&treq);
 		}
 		break;
 
