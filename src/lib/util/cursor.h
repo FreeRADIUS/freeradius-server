@@ -55,7 +55,7 @@ typedef struct {
 
 	size_t			offset;		//!< Where the next ptr is in the item struct.
 	fr_cursor_iter_t	iter;		//!< Iterator function.
-	void			*ctx;		//!< to pass to iterator function.
+	void			*uctx;		//!< to pass to iterator function.
 	char const		*type;		//!< If set, used for explicit runtime type safety checks.
 } fr_cursor_t;
 
@@ -98,29 +98,29 @@ void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
  * @param[in] _cursor	to initialise.
  * @param[in] _head	of item list.
  * @param[in] _iter	function.
- * @param[in] _ctx	_iter function _ctx.
+ * @param[in] _uctx	_iter function _uctx.
  * @param[in] _type	Talloc type i.e. VALUE_PAIR or fr_value_box_t.
  * @return
  *	- NULL if _head does not point to any items, or the iterator matches no items
  *	  in the current list.
  *	- The first item returned by the iterator.
  */
-#define fr_cursor_talloc_iter_init(_cursor, _head, _iter, _ctx, _type) \
-	_fr_cursor_init(_cursor, (void **)_head, offsetof(__typeof__(**(_head)), next), _iter, _ctx, #_type)
+#define fr_cursor_talloc_iter_init(_cursor, _head, _iter, _uctx, _type) \
+	_fr_cursor_init(_cursor, (void **)_head, offsetof(__typeof__(**(_head)), next), _iter, _uctx, #_type)
 
 /** Initialise a cursor with a custom iterator
  *
  * @param[in] _cursor	to initialise.
  * @param[in] _head	of item list.
  * @param[in] _iter	function.
- * @param[in] _ctx	_iter function _ctx.
+ * @param[in] _uctx	_iter function _uctx.
  * @return
  *	- NULL if _head does not point to any items, or the iterator matches no items
  *	  in the current list.
  *	- The first item returned by the iterator.
  */
-#define fr_cursor_iter_init(_cursor, _head, _iter, _ctx) \
-	_fr_cursor_init(_cursor, (void **)_head, offsetof(__typeof__(**(_head)), next), _iter, _ctx, NULL)
+#define fr_cursor_iter_init(_cursor, _head, _iter, _uctx) \
+	_fr_cursor_init(_cursor, (void **)_head, offsetof(__typeof__(**(_head)), next), _iter, _uctx, NULL)
 
 /** Initialise a cursor with runtime talloc type safety checks
  *

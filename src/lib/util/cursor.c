@@ -58,7 +58,7 @@ static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 		if (!cursor->iter) return (*cursor->head);		/* Fast path without custom iter */
 
 		current = *cursor->head;
-		return cursor->iter(prev, current, cursor->ctx);
+		return cursor->iter(prev, current, cursor->uctx);
 	}
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
@@ -82,7 +82,7 @@ static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 	 *	The iterator can just return what it was passed for curr
 	 *	and leave prev untouched if it just wants to advance by one.
 	 */
-	next = cursor->iter(prev, next, cursor->ctx);
+	next = cursor->iter(prev, next, cursor->uctx);
 	return next;
 }
 
@@ -677,12 +677,12 @@ void fr_cursor_free_list(fr_cursor_t *cursor)
  * @param[in] head	to start from.
  * @param[in] offset	offsetof next ptr in the structure we're iterating over.
  * @param[in] iter	Iterator callback.
- * @param[in] ctx	to pass to iterator function.
+ * @param[in] uctx	to pass to iterator function.
  * @param[in] type	if iterating over talloced memory.
  * @return the attribute pointed to by v.
  */
 void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
-				    fr_cursor_iter_t iter, void const *ctx, char const *type)
+				    fr_cursor_iter_t iter, void const *uctx, char const *type)
 {
 	void **v;
 
@@ -694,7 +694,7 @@ void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, siz
 	cursor->iter = iter;
 	cursor->offset = offset;
 	cursor->type = type;
-	memcpy(&cursor->ctx, &ctx, sizeof(cursor->ctx));
+	memcpy(&cursor->uctx, &uctx, sizeof(cursor->uctx));
 
 	if (*head) return fr_cursor_next(cursor);	/* Initialise current */
 
@@ -713,7 +713,7 @@ typedef struct {
 	void *next;
 } test_item_t;
 
-static void *test_iter(void **prev, void *current, void *ctx)
+static void *test_iter(void **prev, void *current, void *uctx)
 {
 	return current;
 }
@@ -734,7 +734,7 @@ void test_init_null_item(void)
 	TEST_CHECK(!fr_cursor_current(&cursor));
 	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
 	TEST_CHECK(!fr_cursor_list_next_peek(&cursor));
-	TEST_CHECK(cursor.ctx == &cursor);
+	TEST_CHECK(cursor.uctx == &cursor);
 }
 
 void test_init_1i_start(void)
