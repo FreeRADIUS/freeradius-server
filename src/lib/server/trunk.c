@@ -1652,10 +1652,10 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 		/*
 		 *	No cancel muxer.  We're done.
 		 *
-		 *      If we do have a cancel mux function,
+		 *	If we do have a cancel mux function,
 		 *	the next time this connection becomes
 		 *	writable, we'll call the cancel mux
-		 *      function.
+		 *	function.
 		 */
 		if (!trunk->funcs.request_cancel_mux) {
 			trunk_request_enter_unassigned(treq);
