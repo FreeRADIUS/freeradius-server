@@ -2746,7 +2746,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	Replicating: Set the receive buffer to zero.
 		 */
 		inst->recv_buff_is_set = true;
+
+		/*
+		 *	On Linux this has the effect of discarding
+		 *	all incoming data in the kernel.
+		 *	With macOS and others it's an invalid value.
+		 */
+#ifdef __linux__
 		inst->recv_buff = 0;
+#endif
 	}
 
 	if (inst->send_buff_is_set) {
