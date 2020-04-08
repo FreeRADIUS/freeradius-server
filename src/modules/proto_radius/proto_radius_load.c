@@ -61,6 +61,7 @@ typedef struct {
 	fr_network_t			*nr;			//!< network handler
 
 	char const			*name;			//!< socket name
+	bool				done;
 
 	fr_time_t			recv_time;		//!< recv time of the last packet
 
@@ -119,6 +120,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	fr_io_address_t			*address, **address_p;
 
 	size_t				packet_len;
+
+	if (thread->done) return -1;
 
 	*leftover = 0;		/* always for load generation */
 
@@ -185,8 +188,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t req
 	 */
 	state = fr_load_generator_have_reply(thread->l, request_time);
 	if (state == FR_LOAD_DONE) {
-		fr_event_timer_delete(&thread->ev);
-		fr_exit_now(1);
+		thread->done = true;
 	}
 
 	return buffer_len;
@@ -241,8 +243,9 @@ static int mod_close(fr_listen_t *li)
 	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
 
 	/*
-	 *	Close the second socket.
+	 *	Close the socket pair.
 	 */
+	close(thread->sockets[0]);
 	close(thread->sockets[1]);
 	return 0;
 }
