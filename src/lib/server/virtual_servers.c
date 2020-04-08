@@ -1266,6 +1266,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 	 */
 	for (i = 0; list[i].name != NULL; i++) {
 		int rcode;
+		CONF_SECTION *bad;
 
 		/*
 		 *	We are looking for a specific subsection.
@@ -1280,6 +1281,17 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 				DEBUG3("Warning: Skipping %s %s { ... } as it was not found.",
 				       list[i].name, list[i].name2);
 				continue;
+			}
+
+			/*
+			 *	Duplicate sections are forbidden.
+			 */
+			bad = cf_section_find_next(server, subcs, list[i].name, list[i].name2);
+			if (bad) {
+			forbidden:
+				cf_log_err(bad, "Duplicate sections are forbidden.");
+				cf_log_err(subcs, "Previous definition occurs here.");
+				return -1;
 			}
 
 			rcode = unlang_compile(subcs, list[i].component, rules, &instruction);
@@ -1313,6 +1325,12 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 				cf_log_err(subcs, "Invalid '%s { ... }' section, it must have a name", list[i].name);
 				return -1;
 			}
+
+			/*
+			 *	Duplicate sections are forbidden.
+			 */
+			bad = cf_section_find_next(server, subcs, list[i].name, name2);
+			if (bad) goto forbidden;
 
 			rcode = unlang_compile(subcs, list[i].component, rules, NULL);
 			if (rcode < 0) return -1;
