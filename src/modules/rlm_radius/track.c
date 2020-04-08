@@ -50,6 +50,10 @@ radius_track_t *radius_track_alloc(TALLOC_CTX *ctx)
 
 	for (i = 0; i < 256; i++) {
 		tt->id[i].id = i;
+#ifndef NDEBUG
+		tt->id[i].file = __FILE__;
+		tt->id[i].line = __LINE__;
+#endif
 		fr_dlist_insert_tail(&tt->free_list, &tt->id[i]);
 	}
 
