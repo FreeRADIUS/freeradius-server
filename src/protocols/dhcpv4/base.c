@@ -268,6 +268,21 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	return true;
 }
 
+/** Evaluation function for DCHPV4-encodability
+ *
+ * @param item	pointer to a VALUE_PAIR
+ * @param uctx	context
+ *
+ * @return true if the underlying VALUE_PAIR is DHCPv4 encodable, false otherwise
+ */
+bool is_dhcpv4_encodable(void *item, UNUSED void * uctx)
+{
+	VALUE_PAIR *vp = item;
+
+	VP_VERIFY(vp);
+	return (vp->da->dict == dict_dhcpv4) && (!vp->da->flags.internal);
+}
+
 ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, VALUE_PAIR *vps)
 {
 	uint8_t		*p;

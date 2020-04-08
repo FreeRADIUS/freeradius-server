@@ -30,6 +30,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <talloc.h>
 
 /** Callback for implementing custom iterators
@@ -46,6 +47,16 @@ extern "C" {
  *	- NULL if no more matching attributes were found.
  */
 typedef void *(*fr_cursor_iter_t)(void **prev, void *to_eval, void *uctx);
+
+/** Type of evaluation functions to pass to the fr_cursor_filter_*() functions.
+ *
+ * @param[in] item	the item to be evaluated
+ * @param[in] uctx	context that may assist with evaluation
+ * @return
+ * 	- true if the evaluation function is satisfied.
+ * 	- false if the evaluation function is not satisfied.
+ */
+typedef bool (*fr_cursor_eval_t)(void *item, void *uctx);
 
 typedef struct {
 	void			**head;		//!< First item in the list.
@@ -82,6 +93,12 @@ void fr_cursor_append(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 void fr_cursor_insert(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 
 void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append) CC_HINT(nonnull);
+
+void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx);
+
+void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx);
+
+void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx);
 
 void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b) CC_HINT(nonnull);
 

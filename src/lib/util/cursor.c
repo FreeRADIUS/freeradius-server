@@ -402,6 +402,60 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 	}
 }
 
+/** Return the first item that satisfies an evaluation function.
+ *
+ * @param[in] cursor	to operate on
+ * @param[in] eval	evaluation function
+ * @param[in] uctx	context for the evaluation function
+ * @return the first item satisfying eval, or NULL if no such item exists
+ */
+void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx)
+{
+	void *item;
+
+	item = fr_cursor_head(cursor);
+	if (eval(item, uctx)) return item;
+
+	return fr_cursor_filter_next(cursor, eval, uctx);
+}
+
+/** Return the next item, skipping the current item, that satisfies an evaluation function.
+ *
+ * @param[in] cursor	to operate on
+ * @param[in] eval	evaluation function
+ * @param[in] uctx	context for the evaluation function
+ * @return the next item satisfying eval, or NULL if no such item exists
+ */
+void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx)
+{
+	void *item;
+
+	do {
+		item = fr_cursor_next(cursor);
+	} while (item && !eval(item, uctx));
+
+	return item;
+}
+
+/** Return the next item, starting with the current item, that satisfies an evaluation function.
+ *
+ * @param[in] cursor    to operate on
+ * @param[in] eval      evaluation function
+ * @param[in] uctx	context for the evaluation function
+ * @return the next item satisfying eval, or NULL if no such item exists
+ */
+void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx)
+{
+        void *item;
+
+        while ((item = fr_cursor_current(cursor)) && !eval(item, uctx)) {
+		fr_cursor_next(cursor);
+	}
+
+        return item;
+}
+
+
 /** Return the first item matching the iterator in cursor a and cursor b
  *
  * If a and b are not currently set to the same item, b will be reset,
@@ -2128,6 +2182,74 @@ void test_intersect_iterator_disjoint(void)
 	TEST_CHECK(fr_cursor_intersect_head(&cursor_a, &cursor_b) == NULL);
 }
 
+bool eval_eq(void *item, void * uctx)
+{
+	test_item_t	*t = item;
+	char		*s = uctx;
+
+	return strcmp(t->name, s) == 0;
+}
+
+void test_filter_head_next(void)
+{
+	fr_cursor_t	cursor;
+
+	test_item_t	item6 = { "no", NULL };
+	test_item_t	item5 = { "yes", &item6 };
+	test_item_t	item4 = { "no", &item5};
+	test_item_t	item3 = { "yes", &item4};
+	test_item_t	item2 = { "no", &item3};
+	test_item_t	item1 = { "yes", &item2};
+	test_item_t	*head = &item1;
+
+	fr_cursor_init(&cursor, &head);
+
+	TEST_CHECK(fr_cursor_filter_head(&cursor, eval_eq, "yes") == &item1);
+	TEST_CHECK(fr_cursor_filter_next(&cursor, eval_eq, "yes") == &item3);
+	TEST_CHECK(fr_cursor_filter_next(&cursor, eval_eq, "yes") == &item5);
+	TEST_CHECK(fr_cursor_filter_next(&cursor, eval_eq, "yes") == NULL);
+}
+
+void test_filter_current(void)
+{
+	fr_cursor_t	cursor;
+
+	test_item_t	item6 = { "no", NULL };
+	test_item_t	item5 = { "yes", &item6 };
+	test_item_t	item4 = { "no", &item5};
+	test_item_t	item3 = { "yes", &item4};
+	test_item_t	item2 = { "no", &item3};
+	test_item_t	item1 = { "yes", &item2};
+	test_item_t	*head = &item1;
+
+	fr_cursor_init(&cursor, &head);
+
+	TEST_CHECK(fr_cursor_filter_current(&cursor, eval_eq, "yes") == &item1);
+	fr_cursor_next(&cursor);
+	TEST_CHECK(fr_cursor_filter_current(&cursor, eval_eq, "yes") == &item3);
+	fr_cursor_next(&cursor);
+	TEST_CHECK(fr_cursor_filter_current(&cursor, eval_eq, "yes") == &item5);
+	fr_cursor_next(&cursor);
+	TEST_CHECK(fr_cursor_filter_current(&cursor, eval_eq, "yes") == NULL);
+}
+
+void test_filter_no_match(void)
+{
+	fr_cursor_t	cursor;
+
+	test_item_t	item6 = { "no", NULL };
+	test_item_t	item5 = { "yes", &item6 };
+	test_item_t	item4 = { "no", &item5};
+	test_item_t	item3 = { "yes", &item4};
+	test_item_t	item2 = { "no", &item3};
+	test_item_t	item1 = { "yes", &item2};
+	test_item_t	*head = &item1;
+
+	fr_cursor_init(&cursor, &head);
+
+	TEST_CHECK(fr_cursor_filter_current(&cursor, eval_eq, "maybe") == NULL);
+}
+
 TEST_LIST = {
 	/*
 	 *	Initialisation
@@ -2233,6 +2355,13 @@ TEST_LIST = {
 	{ "iterator_b",			test_intersect_iterator_b },
 	{ "iterator_ab",		test_intersect_iterator_ab },
 	{ "iterator_disjoint",		test_intersect_iterator_disjoint },
+	/*
+	 * 	Filter
+	 */
+	{ "head_next",			test_filter_head_next },
+	{ "current",			test_filter_current },
+	{ "no_match",			test_filter_no_match },
+
 	{ 0 }
 };
 #endif
