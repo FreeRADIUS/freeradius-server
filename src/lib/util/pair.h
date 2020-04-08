@@ -362,12 +362,13 @@ void		fr_pair_list_tainted(VALUE_PAIR *vp);
 
 /* Tokenization */
 typedef struct {
-	TALLOC_CTX		*ctx;
-	fr_dict_attr_t	const	*parent;
-	fr_cursor_t		*cursor;
+	TALLOC_CTX		*ctx;			//!< to allocate VPs in
+	fr_dict_attr_t	const	*parent;	       	//!< current attribute to allocate VPs in
+	fr_cursor_t		*cursor;		//!< of VPs to add
 } fr_pair_ctx_t;
 
 ssize_t		fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen);
+void		fr_pair_ctx_reset(fr_pair_ctx_t *pair_ctx, fr_dict_t const *dict);
 
 #ifdef __cplusplus
 }

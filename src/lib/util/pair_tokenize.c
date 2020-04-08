@@ -35,6 +35,150 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+static ssize_t op_to_token(FR_TOKEN *token, char const *op, size_t oplen)
+{
+	char const *p = op;
+
+	if (!token || !op || !oplen) return 0;
+
+	switch (*p) {
+	default:
+		fr_strerror_printf("Invalid text. Expected comparison operator");
+		return -(p - op);
+
+	case '!':
+		if (oplen < 2) goto invalid_operator;
+
+		if (p[1] == '=') {
+			*token = T_OP_NE;
+			p += 2;
+
+#ifdef HAVE_REGEX
+		} else if (p[1] == '~') {
+			*token = T_OP_REG_NE;
+			p += 2;
+#endif
+
+		} else if (p[1] == '*') {
+			*token = T_OP_CMP_FALSE;
+			p += 2;
+
+		} else {
+		invalid_operator:
+			fr_strerror_printf("Invalid operator");
+			return -(p - op);
+		}
+		break;
+
+	case '=':
+		/*
+		 *	Bare '=' is allowed.
+		 */
+		if (oplen == 1) {
+			*token = T_OP_EQ;
+			p++;
+			break;
+		}
+
+		if (oplen < 2) goto invalid_operator;
+
+		if (p[1] == '=') {
+			*token = T_OP_CMP_EQ;
+			p += 2;
+
+#ifdef HAVE_REGEX
+		} else if (p[1] == '~') {
+			*token = T_OP_REG_EQ;
+			p += 2;
+#endif
+
+		} else if (p[1] == '*') {
+			*token = T_OP_CMP_TRUE;
+			p += 2;
+
+		} else {
+			/*
+			 *	Ignore whatever is after the '=' sign.
+			 */
+			*token = T_OP_EQ;
+			p++;
+		}
+		break;
+
+	case '<':
+		if ((oplen > 1) && (p[1] == '=')) {
+			*token = T_OP_LE;
+			p += 2;
+
+		} else {
+			*token = T_OP_LT;
+			p++;
+		}
+		break;
+
+	case '>':
+		if ((oplen > 1) && (p[1] == '=')) {
+			*token = T_OP_GE;
+			p += 2;
+
+		} else {
+			*token = T_OP_GT;
+			p++;
+		}
+		break;
+	}
+
+	return p - op;
+}
+
+/** Allocate a VALUE_PAIR based on pre-parsed fields.
+ *
+ * @param ctx	the talloc ctx
+ * @param da	the da for the vp
+ * @param op	the operator
+ * @param value the value to parse
+ * @param value_len length of the value string
+ * @param quote	the quotation character for the value string.
+ * @return
+ *	- VALUE_PAIR* on success
+ *	- NULL on error
+ *
+ *  It's just better for this function to take the broken-out /
+ *  pre-parsed fields.  That way the caller can do any necessary
+ *  parsing.
+ */
+static VALUE_PAIR *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
+					FR_TOKEN op,
+					char const *value, size_t value_len,
+					char quote)
+{
+	VALUE_PAIR *vp;
+
+	if (!da || !value || (value_len == 0)) return NULL;
+
+	vp = fr_pair_afrom_da(ctx, da);
+	if (!vp) return NULL;
+
+	vp->op = op;
+
+	if (fr_pair_value_from_str(vp, value, value_len, quote, false) < 0) {
+		talloc_free(vp);
+		return NULL;
+	}
+
+	return vp;
+}
+
+
+/** Allocate one VALUE_PAIR from a string, and add it to the pair_ctx cursor.
+ *
+ * @param[in,out] pair_ctx	the parsing context
+ * @param in	String to parse
+ * @param inlen	length of string to parse
+ * @return
+ *	- <= 0 on error (offset as negative integer)
+ *	- > 0 on success (number of bytes parsed).
+ */
 static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, char const *in, size_t inlen)
 {
 	char const *end = in + inlen;
@@ -45,6 +189,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	char const *value;
 	size_t value_len;
 	VALUE_PAIR *vp;
+	FR_TOKEN op;
 
 	slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent->dict, in);
 	if (slen <= 0) return slen - (in - start);
@@ -71,12 +216,13 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	/*
 	 *	For now, the only allowed operator is equals.
 	 */
-	if (*p != '=') {
+	slen = op_to_token(&op, p, (end - p));
+	if (slen <= 0) {
 		fr_strerror_printf("Syntax error: expected '='");
-		return -(p - start);
+		return slen - -(p - start);
 	}
+	p += slen;
 
-	p++;
 	while ((isspace((int) *p)) && (p < end)) p++;
 
 	if (p >= end) {
@@ -115,23 +261,39 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 		return -(p - start);
 	}
 
-	vp = fr_pair_afrom_da(pair_ctx->ctx, da);
-
+	vp = fr_pair_afrom_fields(pair_ctx->ctx, da, op, value, value_len, quote);
 	if (!vp) return -(in - start);
-
-	vp->op = T_OP_EQ;
-	if (fr_pair_value_from_str(vp, value, value_len, quote, false) < 0) {
-		talloc_free(vp);
-		return -(in - start);
-	}
 
 	fr_cursor_append(pair_ctx->cursor, vp);
 
 	return p - start;
 }
 
-
-static ssize_t fr_pair_ctx_walk(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen)
+/** Set a new DA context based on the input string
+ *
+ * @param[in,out] pair_ctx	the parsing context
+ * @param[in] in	String to parse
+ * @param[in] inlen	length of string to parse
+ * @return
+ *	- <= 0 on error (offset as negative integer)
+ *	- > 0 on success (number of bytes parsed).
+ *
+ *  pair_ctx->da is set to the new parsing context.
+ *
+ *  @todo - allow for child contexts, so that we can parse TLVs into vp->vp_children.
+ *	    This change requires nested cursors, but not necessarily nested contexts.
+ *	    We probably want to have a `fr_dlist_t` of pair_ctx, and we always
+ *	    operate on the last one.  When we change contexts to an attributes parent,
+ *	    we also change pair_ctx to a parent context.  This is like the da stack,
+ *	    but with child cursors, too.
+ *
+ *	    We also want to emulate the previous behavior of group attributes based
+ *	    on parent, and increasing child_num.  i.e. if we're parsing a series of
+ *	    "attr-foo = bar", then we watch the parent context, and create a new
+ *	    parent VP if this child has a SMALLER attribute number than the previous
+ *	    child.  This allows the previous configurations to "just work".
+ */
+static ssize_t fr_pair_ctx_set(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen)
 {
 	char const *end = in + inlen;
 	char const *p = in;
@@ -182,7 +344,37 @@ static ssize_t fr_pair_ctx_walk(fr_pair_ctx_t *pair_ctx, char const *in, size_t 
 }
 
 
-/** Allocate a VALUE_PAIR from fields
+/** Parse a pair context from a string.
+ *
+ * @param pair_ctx	the parsing context
+ * @param in	String to parse
+ * @param inlen	length of string to parse
+ * @return
+ *	- <= 0 on error (offset as negative integer)
+ *	- > 0 on success (number of bytes parsed).
+ *
+ *  This function will parse VALUE_PAIRs, or context changes, up to
+ *  end of string, or a trailing ','.  The caller is responsible for
+ *  parsing the comma.
+ *
+ *  It accepts the following syntax:
+ *
+ *  - Attribute = value
+ *	* reset to a new top-level context according to the parent of Attribute
+ *	* parse the attribute and the value
+ *
+ *  - .Attribute = value
+ *	* parse the attribute and the value in the CURRENT top-level context
+ *
+ *  - .Attribute
+ *	* reset to a new context according to Attribute, relative to the current context
+ *
+ *  - ..Attribute
+ *	* reset to a new context according to Attribute, relative to the current context
+ *	* more '.' will walk back up the context tree.
+ *
+ *  - Attribute
+ *	* reset to a new top-level context according to Attribute
  *
  */
 ssize_t fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen)
@@ -285,11 +477,27 @@ ssize_t fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t in
 	}
 
 	/*
-	 *	Walk down the list of attribute references.
+	 *	Set the new context based on the attribute
 	 */
-	slen = fr_pair_ctx_walk(pair_ctx, p, end - p);
+	slen = fr_pair_ctx_set(pair_ctx, p, end - p);
 	if (slen <= 0) return slen - (p - in);
 
 	p += slen;
 	return p - in;
+}
+
+/** Reset a pair_ctx to the dictionary root.
+ *
+ * @param pair_ctx	the parsing context
+ * @param dict		the dictionary to reset to the root
+ *
+ *  This function is used in order to reset contexts when parsing
+ *  strings that change attribute lists. i.e. &request.foo, &reply.bar
+ *
+ *  This function is simple for now, but will get complex once we
+ *  start using vp->vp_children
+ */
+void fr_pair_ctx_reset(fr_pair_ctx_t *pair_ctx, fr_dict_t const *dict)
+{
+	pair_ctx->parent = fr_dict_root(dict);
 }
