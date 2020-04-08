@@ -906,6 +906,25 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 		break;
 
+	case XLAT_CHILD:
+	{
+		fr_cursor_t from;
+
+		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
+			   node->fmt);
+
+		rad_assert(*result != NULL);
+
+		xlat_debug_log_expansion(request, *in, NULL);
+		xlat_debug_log_result(request, *result);
+
+		(void) talloc_list_get_type_abort(*result, fr_value_box_t);
+		fr_cursor_init(&from, result);
+		fr_cursor_merge(out, &from);
+		rad_assert(!*result);
+	}
+		break;
+
 	default:
 		rad_assert(0);
 		return XLAT_ACTION_FAIL;
@@ -1078,7 +1097,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			goto finish;
 
 		case XLAT_CHILD:
-			XLAT_DEBUG("** [%i] %s(child) - %%{%s:...}", unlang_interpret_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(child) - %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
 			/*
