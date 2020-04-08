@@ -165,12 +165,7 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	if (!fr_cursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
 
-	while ((vp = fr_cursor_current(cursor))) {
-		if ((vp->da->flags.internal) || (vp->da->dict != dict_dhcpv4)) {
-			fr_cursor_next(cursor);
-			continue;
-		}
-
+	while ((vp = fr_cursor_filter_current(cursor, is_dhcpv4_encodable, NULL))) {
 		len = fr_dhcpv4_encode_option(p, end - p, cursor,
 					      &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
 		if (len < 0) {
