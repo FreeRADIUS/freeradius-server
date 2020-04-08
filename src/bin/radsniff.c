@@ -2289,6 +2289,7 @@ int main(int argc, char *argv[])
 				INFO("%i.%s", i++, dev_p->name);
 			}
 			ret = 0;
+			pcap_freealldevs(all_devices);
 			goto finish;
 		}
 
