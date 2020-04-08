@@ -825,7 +825,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 			}
 
 			if (p[1] != '{') {
-				slen = 1;
+				slen = 2;
 			} else {
 				slen = skip_xlat(p, end);
 				if (slen < 0) return slen - (p - in);
@@ -855,15 +855,23 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 			char const *q = p;
 
 			/*
-			 *	Bare words are OK, so long as they
-			 *	don't contain variable expansions.
+			 *	Bare words can contain xlat expansions.
+			 *
+			 *	--foo=%{Bar}
 			 */
 			while ((q < end) && !isspace((int) *q)) {
 				if (*q == '%') {
-					talloc_free(my_head);
-					fr_strerror_printf("Invalid location for variable expansion");
-					return -(q - in);
+					if (q[1] != '{') {
+						slen = 2;
+					} else {
+						slen = skip_xlat(q, end);
+						if (slen < 0) return slen - (q - in);
+					}
+
+					q += slen;
+					continue;
 				}
+
 				q++;
 			}
 			slen = q - p;
@@ -871,12 +879,10 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 
 		/*
 		 *	Tokenize this literal as a child.
-		 *
-		 *	@todo - unescape the quoted string? or is it unescpa
 		 */
 		slen = xlat_tokenize_literal(node, &node->child, p, slen, false, rules);
 	next:
-		if (slen < 0) {
+		if (slen <= 0) {
 			talloc_free(my_head);
 			return slen - (p - in);
 		}
