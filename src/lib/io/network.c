@@ -1297,6 +1297,29 @@ int fr_network_destroy(fr_network_t *nr)
 		talloc_free(sockets);
 	}
 
+
+	/*
+	 *	Clean up all outstanding replies.
+	 *
+	 *	We can't do this after signalling the
+	 *	workers to close, because they free
+	 *	their message sets, and we end up
+	 *	getting random use-after-free errors
+	 *	as there's a race between the network
+	 *	popping replies, and the workers
+	 *	freeing their message sets.
+	 *
+	 *	This isn't perfect, and we might still
+	 *	lose some replies, but it's good enough
+	 *	for now.
+	 *
+	 *	@todo - call transport "done" for the reply, so that
+	 *	it knows the replies are done, too.
+	 */
+	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
+		fr_message_done(&cd->m);
+	}
+
 	/*
 	 *	Signal the workers that we're closing
 	 *
@@ -1314,16 +1337,6 @@ int fr_network_destroy(fr_network_t *nr)
 
 			fr_channel_signal_responder_close(worker->channel);
 		}
-	}
-
-	/*
-	 *	Clean up all of the replies.
-	 *
-	 *	@todo - call transport "done" for the reply, so that
-	 *	it knows the replies are done, too.
-	 */
-	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
-		fr_message_done(&cd->m);
 	}
 
 	(void) fr_event_pre_delete(nr->el, fr_network_pre_event, nr);
