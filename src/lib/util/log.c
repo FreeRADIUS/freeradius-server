@@ -128,6 +128,7 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 	memcpy(value + prefix, start, inlen);
 	if (suffix) {
 		memcpy(value + prefix + inlen, "...", 3);
+		value[prefix + inlen + 3] = '\0';
 	}
 	value[prefix + inlen + suffix] = '\0';
 
