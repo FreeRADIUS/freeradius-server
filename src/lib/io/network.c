@@ -65,6 +65,8 @@ typedef struct {
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
 	fr_time_t		predicted;		//!< predicted processing time for one packet
 
+	bool			blocked;		//!< is this worker blocked?
+
 	fr_channel_t		*channel;		//!< channel to the worker
 	fr_worker_t		*worker;		//!< worker pointer
 	fr_io_stats_t		stats;
@@ -109,6 +111,7 @@ struct fr_network_s {
 	char const		*name;			//!< Network ID for logging.
 
 	bool			started;		//!< Set to true when the first worker is added.
+	bool			suspended;		//!< whether or not we're suspended.
 
 	fr_log_t const		*log;			//!< log destination
 	fr_log_lvl_t		lvl;			//!< debug log level
@@ -129,6 +132,7 @@ struct fr_network_s {
 	rbtree_t		*sockets_by_num;       	//!< ordered by number;
 
 	int			num_workers;		//!< number of active workers
+	int			num_blocked;		//!< number of blocked workers
 	int			num_pending_workers;	//!< number of workers we're waiting to start.
 	int			max_workers;		//!< maximum number of allowed workers
 	int			num_sockets;		//!< actually a counter...
@@ -332,6 +336,43 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
 }
 
+static int apply(void *data, void *uctx)
+{
+	fr_network_socket_t *socket = data;
+
+	fr_event_update_t *update = uctx;
+
+	fr_event_filter_update(socket->nr->el, socket->listen->fd, FR_EVENT_FILTER_IO, update);
+
+	return 0;
+}
+
+static void fr_network_suspend(fr_network_t *nr)
+{
+	static fr_event_update_t pause_read[] = {
+		FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+		{ 0 }
+	};
+
+	if (nr->suspended) return;
+
+	(void) rbtree_walk(nr->sockets, RBTREE_IN_ORDER, apply, pause_read);
+	nr->suspended = true;
+}
+
+static void fr_network_unsuspend(fr_network_t *nr)
+{
+	static fr_event_update_t resume_read[] = {
+		FR_EVENT_RESUME(fr_event_io_func_t, read),
+		{ 0 }
+	};
+
+	if (!nr->suspended) return;
+
+	(void) rbtree_walk(nr->sockets, RBTREE_IN_ORDER, apply, resume_read);
+	nr->suspended = false;
+}
+
 #define IALPHA (8)
 #define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
 
@@ -358,6 +399,15 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 		worker->predicted = cd->reply.processing_time;
 	} else {
 		worker->predicted = RTT(worker->predicted, cd->reply.processing_time);
+	}
+
+	/*
+	 *	Unblock the worker.
+	 */
+	if (worker->blocked) {
+		worker->blocked = false;
+		nr->num_blocked--;
+		fr_network_unsuspend(nr);
 	}
 
 	(void) fr_heap_insert(nr->replies, cd);
@@ -445,27 +495,44 @@ static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
+retry:
 	if (nr->num_workers == 1) {
 		worker = nr->workers[0];
+		if (worker->blocked) return -1;
 
-	} else {
+	} else if (nr->num_blocked == 0) {
 		uint32_t one, two;
 
-		if (nr->num_workers == 2) {
-			one = 0;
-			two = 1;
-		} else {
-			one = fr_rand() % nr->num_workers;
-			do {
-				two = fr_rand() % nr->num_workers;
-			} while (two == one);
-		}
+		one = fr_rand() % nr->num_workers;
+		do {
+			two = fr_rand() % nr->num_workers;
+		} while (two == one);
 
 		if (nr->workers[one]->cpu_time < nr->workers[two]->cpu_time) {
 			worker = nr->workers[one];
 		} else {
 			worker = nr->workers[two];
 		}
+	} else {
+		int i;
+		fr_time_t cpu_time = ~((fr_time_t) 0);
+		fr_network_worker_t *found = NULL;
+
+		/*
+		 *	Some workers are blocked.  Pick an active
+		 *	worker with low CPU time.
+		 */
+		for (i = 0; i < nr->num_workers; i++) {
+			worker = nr->workers[i];
+			if (worker->blocked) continue;
+
+			if (worker->cpu_time < cpu_time) {
+				found = worker;
+			}
+		}
+
+		if (!found) return -1;
+		worker = found;
 	}
 
 	(void) talloc_get_type_abort(worker, fr_network_worker_t);
@@ -479,7 +546,14 @@ static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	 */
 	if (fr_channel_send_request(worker->channel, cd) < 0) {
 		worker->stats.dropped++;
-		return -1;
+		worker->blocked = true;
+		nr->num_blocked++;
+
+		if (nr->num_blocked == nr->num_workers) {
+			fr_network_suspend(nr);
+			return -1;
+		}
+		goto retry;
 	}
 
 	worker->stats.in++;
@@ -657,6 +731,7 @@ next_message:
 		fr_message_done(&cd->m);
 		nr->stats.dropped++;
 		s->stats.dropped++;
+
 	} else {
 		/*
 		 *	One more packet sent to a worker.
