@@ -4677,7 +4677,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		/*
 		 *	Be lazy by just converting it to a string, and then printing the string.
 		 */
-		if (fr_value_box_cast_to_strvalue(ctx, vb, FR_TYPE_STRING, NULL, data->vb_group) < 0) {
+		if (fr_value_box_cast_to_strvalue(vb, vb, FR_TYPE_STRING, NULL, data->vb_group) < 0) {
 			talloc_free(vb);
 			return NULL;
 		}
