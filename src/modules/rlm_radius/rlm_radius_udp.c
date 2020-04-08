@@ -813,6 +813,19 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 {
 	udp_handle_t *h = talloc_get_type_abort(handle, udp_handle_t);
 
+	/*
+	 *	There's tracking entries still allocated
+	 *	this is bad, they should have all been
+	 *	released.
+	 */
+	if (h->tt && (fr_dlist_num_elements(&h->tt->free_list) < NUM_ELEMENTS(h->tt->id))) {
+#ifndef NDEBUG
+		radius_track_state_log(h->tt);
+#endif
+		fr_cond_assert_fail(__FILE__, __LINE__, "0", "Tracking entries still allocated at conn close");
+	}
+
+
 	talloc_free(h);
 }
 
@@ -2313,7 +2326,10 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	automatically result in it the parent request
 		 *	returning an ok/fail packet code.
 		 */
-		if ((u->code == FR_CODE_ACCESS_REQUEST) && (code == FR_CODE_ACCESS_CHALLENGE)) {
+		switch (u->code) {
+		case FR_CODE_ACCESS_REQUEST:
+		case FR_CODE_ACCESS_CHALLENGE:
+		{
 			VALUE_PAIR	*vp;
 
 			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
@@ -2322,6 +2338,11 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
 				fr_pair_add(&request->reply->vps, vp);
 			}
+		}
+			break;
+
+		default:
+			break;
 		}
 
 		/*
