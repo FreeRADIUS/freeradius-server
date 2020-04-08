@@ -818,11 +818,12 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 	 *	this is bad, they should have all been
 	 *	released.
 	 */
-	if (h->tt && (fr_dlist_num_elements(&h->tt->free_list) < NUM_ELEMENTS(h->tt->id))) {
+	if (h->tt && (h->tt->num_requests != 0)) {
 #ifndef NDEBUG
 		radius_track_state_log(h->tt);
 #endif
-		fr_cond_assert_fail(__FILE__, __LINE__, "0", "Tracking entries still allocated at conn close");
+		fr_cond_assert_fail(__FILE__, __LINE__, "0", "%u tracking entries still allocated at conn close",
+				    h->tt->num_requests);
 	}
 
 
