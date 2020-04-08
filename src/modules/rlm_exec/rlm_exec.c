@@ -45,6 +45,8 @@ typedef struct {
 	bool		shell_escape;
 	fr_time_delta_t	timeout;
 	bool		timeout_is_set;
+
+	xlat_exp_t	*head;
 } rlm_exec_t;
 
 static const CONF_PARSER module_config[] = {
@@ -264,6 +266,42 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 }
 
 
+/** Instantiate the module
+ *
+ * Creates a new instance of the module reading parameters from a configuration section.
+ *
+ * @param conf to parse.
+ * @param instance configuration data.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
+{
+	rlm_exec_t		*inst = instance;
+	ssize_t			slen;
+
+	if (!inst->program) return 0;
+
+	slen = xlat_tokenize_argv(inst, &inst->head, inst->program, strlen(inst->program),
+				  &(vp_tmpl_rules_t) { .dict_def = fr_dict_internal() });
+	if (slen <= 0) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(inst, &spaces, &text, slen, inst->program);
+
+		cf_log_err(conf, "%s", text);
+		cf_log_err(conf, "%s^ - %s", spaces, fr_strerror());
+
+		talloc_free(spaces);
+		talloc_free(text);
+		return -1;
+	}
+
+	return 0;
+}
+
+
 /*
  *  Dispatch an exec method
  */
@@ -341,6 +379,39 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	return rcode;
 }
 
+static rlm_rcode_t exec_resume(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+{
+	fr_value_box_t		**box = rctx;
+	char *p;
+
+	p = fr_value_box_list_asprint(box, *box, ",", '"');
+	RDEBUG("EXEC GOT -- %s", p);
+
+	talloc_free(box);
+
+	return RLM_MODULE_OK;
+}
+
+
+/*
+ *  Dispatch an async exec method
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_exec_async(void *instance, UNUSED void *thread, REQUEST *request)
+{
+	rlm_exec_t const       	*inst = instance;
+	fr_value_box_t		**box;
+
+	if (!inst->head) {
+		RDEBUG("This module requires 'program' to be set.");
+		return RLM_MODULE_FAIL;
+	}
+
+	box = talloc_zero(request, fr_value_box_t *);
+
+	return unlang_module_yield_to_xlat(box, box, request, inst->head, exec_resume, NULL, box);
+}
+
+
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -359,17 +430,18 @@ module_t rlm_exec = {
 	.inst_size	= sizeof(rlm_exec_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_exec_dispatch,
 		[MOD_AUTHORIZE]		= mod_exec_dispatch,
 		[MOD_PREACCT]		= mod_exec_dispatch,
 		[MOD_ACCOUNTING]	= mod_exec_dispatch,
-		[MOD_PRE_PROXY]		= mod_exec_dispatch,
-		[MOD_POST_PROXY]	= mod_exec_dispatch,
 		[MOD_POST_AUTH]		= mod_exec_dispatch,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_exec_dispatch,
-		[MOD_SEND_COA]		= mod_exec_dispatch
-#endif
 	},
+
+	.method_names = (module_method_names_t[]){
+		{ "async_exec",	CF_IDENT_ANY,	mod_exec_async },
+
+		MODULE_NAME_TERMINATOR
+	}
 };
