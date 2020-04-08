@@ -302,7 +302,7 @@ static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head,
 	node->xlat = func;
 
 	p = q + 1;
-	XLAT_DEBUG("FUNC <-- %s ... %s", node->in, p);
+	XLAT_DEBUG("FUNC <-- %s ... %s", node->fmt, p);
 
 	/*
 	 *	Now parse the child nodes that form the
