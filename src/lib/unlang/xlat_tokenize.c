@@ -618,7 +618,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			 *	This saves another function call and
 			 *	memory allocation.
 			 */
-			if (!*p) break;
+			if (!*p || (p >= end)) break;
 
 			/*
 			 *	"foo %{User-Name} bar"
@@ -676,7 +676,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			node->next = next;
 			p += 2;
 
-			if (!*p) break;
+			if (!*p || (p >= end)) break;
 
 			/*
 			 *	And recurse.
