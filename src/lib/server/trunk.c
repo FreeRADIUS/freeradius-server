@@ -2094,6 +2094,9 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 		break;
 
 	default:
+		fr_cond_assert_fail(__FILE__, __LINE__, "0", "Requests in state %s cannot be requeued",
+				    fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"));
+		trunk_request_enter_failed(treq);
 		return FR_TRUNK_ENQUEUE_FAIL;
 	}
 
