@@ -274,7 +274,7 @@ static void		protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_
 static void udp_request_clear(udp_handle_t *h, udp_request_t *u, fr_time_t now)
 {
 	if (!now) now = fr_time();
-	if (u->rr) (void) radius_track_delete(&u->rr);
+	if (u->rr) (void) radius_track_entry_release(&u->rr);
 
 	/* Now wrong - We don't keep an entry reserved for the status check */
 	if (h && (fr_dlist_num_elements(&h->tt->free_list) == (h->status_u != NULL))) h->last_idle = now;
@@ -293,7 +293,7 @@ static void status_check_reset(udp_handle_t *h, udp_request_t *u)
 	u->num_replies = 0;	/* Reset */
 	u->retry.start = 0;
 
-	if (u->rr) (void) radius_track_delete(&u->rr);	/* Not used for conn status check */
+	if (u->rr) (void) radius_track_entry_release(&u->rr);	/* Not used for conn status check */
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
 	TALLOC_FREE(u->packet);
@@ -1696,7 +1696,7 @@ static void request_mux(fr_event_list_t *el,
 		if (!u->packet || !u->can_retransmit) {
 			rad_assert(!u->rr);
 
-			if (!fr_cond_assert_msg((u->rr = radius_track_entry_alloc(h->tt, request, u->code, treq)),
+			if (!fr_cond_assert_msg((u->rr = radius_track_entry_reserve(h->tt, request, u->code, treq)),
 						"Tracking entry allocation failed")) {
 
 			fail:
@@ -1719,7 +1719,7 @@ static void request_mux(fr_event_list_t *el,
 			 *	Remember the authentication vector, which now has the
 			 *	packet signature.
 			 */
-			(void) radius_track_update(u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
+			(void) radius_track_entry_update(u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 		} else {
 			RDEBUG("Retransmitting %s ID %d length %ld over connection %s",
 			       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
@@ -2153,7 +2153,7 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 		 *	Otherwise delete it, so that the packet can be
 		 *	re-encoded.
 		 */
-		if (!u->can_retransmit && u->rr) (void) radius_track_delete(&u->rr);
+		if (!u->can_retransmit && u->rr) (void) radius_track_entry_release(&u->rr);
 
 		/*
 		 *	Set the timer for the next retransmit.
@@ -2228,7 +2228,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	Note that we don't care about packet codes.  All
 		 *	packet codes share the same ID space.
 		 */
-		rr = radius_track_find(h->tt, h->buffer[1], NULL);
+		rr = radius_track_entry_find(h->tt, h->buffer[1], NULL);
 		if (!rr) {
 			WARN("%s - Ignoring reply with ID %i that arrived too late",
 			     h->module_name, h->buffer[1]);
@@ -2384,7 +2384,7 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	 *	handle any cleanup required.
 	 */
 	case FR_TRUNK_CANCEL_REASON_SIGNAL:
-		if (u->rr) (void) radius_track_delete(&u->rr);
+		if (u->rr) (void) radius_track_entry_release(&u->rr);
 		break;
 
 	case FR_TRUNK_CANCEL_REASON_NONE:
@@ -2396,7 +2396,7 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	 *	keep the same packet to avoid re-encoding it.
 	 */
 	case FR_TRUNK_CANCEL_REASON_REQUEUE:
-		if (!u->can_retransmit) (void) radius_track_delete(&u->rr);
+		if (!u->can_retransmit) (void) radius_track_entry_release(&u->rr);
 		break;
 
 	/*
@@ -2430,7 +2430,7 @@ static void request_fail(REQUEST *request, void *preq, void *rctx, NDEBUG_UNUSED
 	 *	connection is down.  In that case, the ID will remain,
 	 *	and the trunk will call this function.  So we need to clean it up.
 	 */
-	if (u->rr) (void) radius_track_delete(&u->rr);
+	if (u->rr) (void) radius_track_entry_release(&u->rr);
 
 	if (u->status_check) return;
 

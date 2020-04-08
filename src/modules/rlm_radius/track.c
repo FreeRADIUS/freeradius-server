@@ -70,17 +70,24 @@ static int te_cmp(void const *one, void const *two)
 	return memcmp(a->vector, b->vector, sizeof(a->vector));
 }
 
+#ifndef NDEBUG
 /** Allocate a tracking entry.
  *
  * @param[in] tt		The radius_track_t tracking table.
  * @param[in] request		The request which will send the proxied packet.
  * @param[in] code		Of the outbound request.
  * @param[in] rctx		The context to associate with the request
+ * @param[in] file		The allocation was made in.
+ * @param[in] line		The allocation was made on.
  * @return
  *	- NULL on error
  *	- radius_track_entry_t on success
  */
-radius_track_entry_t *radius_track_entry_alloc(radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx)
+radius_track_entry_t *_radius_track_entry_reserve(radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx,
+						  char const *file, int line)
+#else
+radius_track_entry_t *radius_track_entry_reserve(radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx)
+#endif
 {
 	radius_track_entry_t *te;
 
@@ -139,11 +146,17 @@ retry:
 	te->id = tt->next_id;
 
 done:
+
+
 	te->tt = tt;
 	te->request = request;
 	te->rctx = rctx;
 	te->code = code;
-
+#ifndef NDEBUG
+	te->operation = te->tt->operation++;
+	te->file = file;
+	te->line = line;
+#endif
 	/*
 	 *	te->id is already allocated
 	 */
@@ -151,62 +164,29 @@ done:
 	return te;
 }
 
-/** Update a tracking entry with the authentication vector
+#ifndef NDEBUG
+/** Release a tracking entry
  *
- * @param te		The radius_track_entry_t, via radius_track_entry_alloc()
- * @param vector	The authentication vector for the packet we're sending
+ * @param[in,out] te_to_free		The #radius_track_entry_t allocated via #radius_track_entry_reserve.
+ * @param[in] file			Allocation was released in.
+ * @param[in] line			Allocation was released on.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int radius_track_update(radius_track_entry_t *te, uint8_t const *vector)
-{
-	radius_track_t *tt = te->tt;
-
-	rad_assert(tt);
-
-	/*
-	 *	The authentication vector may have changed.
-	 */
-	if (tt->subtree[te->id]) (void) rbtree_deletebydata(tt->subtree[te->id], te);
-
-	memcpy(te->vector, vector, sizeof(te->vector));
-
-	/*
-	 *	If we're not using the Request Authenticator, the
-	 *	tracking entry must be in the static array.
-	 *
-	 *	@todo - gracefully handle fallback if the server screws up.
-	 */
-	if (!tt->use_authenticator) {
-		rad_assert(te == &tt->id[te->id]);
-		return 0;
-	}
-
-	/*
-	 *	Insert it into the tree of authenticators
-	 *
-	 *	We do this even if it was allocated from the static
-	 *	array.  That way if the server responds with
-	 *	Original-Request-Authenticator, we can easily find it.
-	 */
-	if (!rbtree_insert(tt->subtree[te->id], te)) return -1;
-
-	return 0;
-}
-
-
-/** Delete a tracking entry
- *
- * @param te_to_free		The #radius_track_entry_t allocated via #radius_track_entry_alloc.
- * @return
- *	- <0 on error
- *	- 0 on success
- */
-int radius_track_delete(radius_track_entry_t **te_to_free)
+int _radius_track_entry_release(radius_track_entry_t **te_to_free, char const *file, int line)
+#else
+int radius_track_entry_release(radius_track_entry_t **te_to_free)
+#endif
 {
 	radius_track_entry_t	*te = *te_to_free;
 	radius_track_t		*tt = talloc_get_type_abort(te->tt, radius_track_t);	/* Make sure table is still valid */
+
+#ifndef NDEBUG
+	te->operation = te->tt->operation++;
+	te->file = file;
+	te->line = line;
+#endif
 
 	te->request = NULL;
 
@@ -260,6 +240,49 @@ done:
 	return 0;
 }
 
+/** Update a tracking entry with the authentication vector
+ *
+ * @param te		The radius_track_entry_t, via radius_track_entry_reserve()
+ * @param vector	The authentication vector for the packet we're sending
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
+{
+	radius_track_t *tt = te->tt;
+
+	rad_assert(tt);
+
+	/*
+	 *	The authentication vector may have changed.
+	 */
+	if (tt->subtree[te->id]) (void) rbtree_deletebydata(tt->subtree[te->id], te);
+
+	memcpy(te->vector, vector, sizeof(te->vector));
+
+	/*
+	 *	If we're not using the Request Authenticator, the
+	 *	tracking entry must be in the static array.
+	 *
+	 *	@todo - gracefully handle fallback if the server screws up.
+	 */
+	if (!tt->use_authenticator) {
+		rad_assert(te == &tt->id[te->id]);
+		return 0;
+	}
+
+	/*
+	 *	Insert it into the tree of authenticators
+	 *
+	 *	We do this even if it was allocated from the static
+	 *	array.  That way if the server responds with
+	 *	Original-Request-Authenticator, we can easily find it.
+	 */
+	if (!rbtree_insert(tt->subtree[te->id], te)) return -1;
+
+	return 0;
+}
 
 /** Find a tracking entry from a request authenticator
  *
@@ -270,7 +293,7 @@ done:
  *	- NULL on "not found"
  *	- radius_track_entry_t on success
  */
-radius_track_entry_t *radius_track_find(radius_track_t *tt, uint8_t packet_id, uint8_t const *vector)
+radius_track_entry_t *radius_track_entry_find(radius_track_t *tt, uint8_t packet_id, uint8_t const *vector)
 {
 	radius_track_entry_t my_te, *te;
 
@@ -346,3 +369,28 @@ void radius_track_use_authenticator(radius_track_t *tt, bool flag)
 
 	tt->use_authenticator = flag;
 }
+
+#ifndef NDEBUG
+/** Print out the state of every tracking entry
+ *
+ */
+void radius_track_state_log(radius_track_t *tt)
+{
+	size_t i;
+
+	for (i = 0; i < NUM_ELEMENTS(tt->id); i++) {
+		radius_track_entry_t	*entry;
+
+		entry = &tt->id[i];
+
+		if (entry->request) {
+			INFO("[%zu] %"PRIu64 " - Allocated at %s:%u to request %p (%s), rctx %p",
+			     i, entry->operation,
+			     entry->file, entry->line, entry->request, entry->request->name, entry->rctx);
+		} else {
+			INFO("[%zu] %"PRIu64 " - Freed at %s:%u",
+			     i, entry->operation, entry->file, entry->line);
+		}
+	}
+}
+#endif

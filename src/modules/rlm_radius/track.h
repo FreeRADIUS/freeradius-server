@@ -45,6 +45,12 @@ struct radius_track_entry_s {
 		fr_dlist_t	entry;					//!< For free list.
 		uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];	//!< copy of the request authenticator.
 	};
+
+#ifndef NDEBUG
+	uint64_t	operation;		//!< Used to give an idea of the alloc/free timeline.
+	char const	*file;			//!< Where the entry was allocated.
+	int		line;			//!< Where the entry was freed.
+#endif
 };
 
 struct radius_track_s {
@@ -58,18 +64,44 @@ struct radius_track_s {
 	radius_track_entry_t	id[UINT8_MAX + 1];	//!< which ID was used
 
 	rbtree_t	*subtree[UINT8_MAX + 1];	//!< for Original-Request-Authenticator
+
+#ifndef NDEBUG
+	uint64_t	operation;		//!< Incremented each alloc and de-alloc
+#endif
 };
 
 radius_track_t		*radius_track_alloc(TALLOC_CTX *ctx);
 
-radius_track_entry_t	*radius_track_entry_alloc(radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx) CC_HINT(nonnull);
+/*
+ *	Debug functions which track allocations and frees
+ */
+#ifndef NDEBUG
+#  define		radius_track_entry_reserve(_tt, _request, _code, _rctx) \
+				_radius_track_entry_reserve(_tt, _request, _code, _rctx, __FILE__, __LINE__)
+radius_track_entry_t	*_radius_track_entry_reserve(radius_track_t *tt, REQUEST *request,
+						     uint8_t code, void *rctx, char const *file, int line)
+						     CC_HINT(nonnull);
 
-int			radius_track_update(radius_track_entry_t *te,
-					    uint8_t const *vector) CC_HINT(nonnull);
+#  define		radius_track_entry_release(_te) \
+				_radius_track_entry_release(_te, __FILE__, __LINE__)
+int			_radius_track_entry_release(radius_track_entry_t **te, char const *file, int line)
+						    CC_HINT(nonnull);
 
-radius_track_entry_t	*radius_track_find(radius_track_t *tt, uint8_t packet_id,
-					   uint8_t const *vector) CC_HINT(nonnull(1));
+void			radius_track_state_log(radius_track_t *tt);
+/*
+ *	Non-debug functions
+ */
+#else
+radius_track_entry_t	*radius_track_entry_reserve(radius_track_t *tt, REQUEST *request,
+						    uint8_t code, void *rctx) CC_HINT(nonnull);
 
-int			radius_track_delete(radius_track_entry_t **te) CC_HINT(nonnull);
+int			radius_track_entry_release(radius_track_entry_t **te) CC_HINT(nonnull);
+#endif
+
+int			radius_track_entry_update(radius_track_entry_t *te,
+						  uint8_t const *vector) CC_HINT(nonnull);
+
+radius_track_entry_t	*radius_track_entry_find(radius_track_t *tt, uint8_t packet_id,
+						 uint8_t const *vector) CC_HINT(nonnull(1));
 
 void			radius_track_use_authenticator(radius_track_t *te, bool flag) CC_HINT(nonnull);
