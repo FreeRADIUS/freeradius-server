@@ -579,7 +579,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 /*
  *	Like tmpl_preparse(), but expands variables.
  */
-static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, char const *start,
+static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, char const *in, size_t inlen,
 			     FR_TOKEN *type, char const **error,
 			     fr_dict_attr_t const **castda, bool require_regex,
 			     CONF_SECTION *cs)
@@ -595,7 +595,7 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 	 *      '/'.  We therefore check for leading '/' here, as
 	 *      conditions don't use filenames.
 	 */
-	if (!require_regex && (*start == '/')) {
+	if (!require_regex && (*in == '/')) {
 		*error = "Unexpected regular expression";
 		return 0;
 	}
@@ -603,10 +603,10 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 	/*
 	 *	Allow dynamic xlat expansion everywhere.
 	 */
-	slen = tmpl_preparse(out, outlen, start, type, error, castda, require_regex, true);
+	slen = tmpl_preparse(out, outlen, in, inlen, type, error, castda, require_regex, true);
 	if (slen <= 0) return slen;
 
-	p = strchr(start, '$');
+	p = strchr(in, '$');
 	if (!p) return slen;
 
 	if (!((p[1] == '{') ||
@@ -616,7 +616,7 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 	}
 
 	if (!cf_expand_variables(cf_filename(cs), cf_lineno(cs), cf_item_to_section(cf_parent(cs)),
-				 buffer, sizeof(buffer), start, slen, NULL)) {
+				 buffer, sizeof(buffer), in, slen, NULL)) {
 		*error = "Failed expanding configuration variable";
 		return -1;
 	}
@@ -626,7 +626,7 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 	 *	skip.  Which means that we need to keep treat this
 	 *	length as different.
 	 */
-	my_slen = tmpl_preparse(out, outlen, buffer, type, error, castda, require_regex, true);
+	my_slen = tmpl_preparse(out, outlen, buffer, strlen(buffer), type, error, castda, require_regex, true);
 	if (my_slen <= 0) return my_slen;
 
 	if (!*out) return 0; /* for sanity checks, *outlen can be 0 for empty strings */
@@ -652,7 +652,8 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
  *  @param[in] cs	our configuration section
  *  @param[out] pcond	pointer to the returned condition structure
  *  @param[out] error	the parse error (if any)
- *  @param[in] start	the start of the string to process.  Should be "(..."
+ *  @param[in] in	the start of the string to process.  Should be "(..."
+ *  @param[in] inlen	the length of the string to process
  *  @param[in] brace	look for a closing brace (how many deep we are)
  *  @param[in] rules	for attribute parsing
  *  @return
@@ -661,11 +662,11 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
  */
 static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			     fr_cond_t **pcond, char const **error,
-			     char const *start, int brace,
+			     char const *in, size_t inlen, int brace,
 			     vp_tmpl_rules_t const *rules)
 {
 	ssize_t			slen, tlen;
-	char const		*p = start;
+	char const		*p = in, *end = in + inlen;
 	char const		*lhs, *rhs;
 	fr_cond_t		*c;
 	size_t			lhs_len, rhs_len;
@@ -719,7 +720,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		 */
 		c->type = COND_TYPE_CHILD;
 		c->ci = cf_section_to_item(cs);
-		slen = cond_tokenize(c, cs, &c->data.child, error, p, brace + 1, rules);
+		slen = cond_tokenize(c, cs, &c->data.child, error, p, end - p, brace + 1, rules);
 		if (slen <= 0) return_SLEN;
 
 		if (!c->data.child) {
@@ -741,7 +742,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 	/*
 	 *	Grab the LHS
 	 */
-	slen = cond_preparse(c, &lhs, &lhs_len, p, &lhs_type, error, &c->cast, false, cs);
+	slen = cond_preparse(c, &lhs, &lhs_len, p, end - p, &lhs_type, error, &c->cast, false, cs);
 	if (slen <= 0) {
 		return_SLEN;
 	}
@@ -921,7 +922,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			return_P("Expected text after operator");
 		}
 
-		slen = cond_preparse(c, &rhs, &rhs_len, p, &rhs_type, error, NULL, regex, cs);
+		slen = cond_preparse(c, &rhs, &rhs_len, p, end - p, &rhs_type, error, NULL, regex, cs);
 		if (slen <= 0) {
 			return_SLEN;
 		}
@@ -944,7 +945,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			*error = "Failed defining attribute";
 		return_lhs:
 			talloc_free(c);
-			return -(lhs - start);
+			return -(lhs - in);
 		}
 
 		map->op = op;
@@ -997,7 +998,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			*error = "Failed defining attribute";
 		return_rhs:
 			talloc_free(c);
-			return -(rhs - start);
+			return -(rhs - in);
 		}
 
 		/*
@@ -1080,9 +1081,9 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		 *	same type as the LHS.
 		 */
 		if (c->cast) {
-			tlen = cond_check_cast(c, start, lhs, rhs, error);
+			tlen = cond_check_cast(c, in, lhs, rhs, error);
 		} else {
-			tlen = cond_check_attrs(c, start, lhs, lhs_type, rhs, rhs_type, error);
+			tlen = cond_check_attrs(c, in, lhs, lhs_type, rhs, rhs_type, error);
 		}
 		if (tlen <= 0) {
 			talloc_free(c);
@@ -1139,7 +1140,7 @@ closing_brace:
 		*error = "Unexpected text after condition";
 	return_p:
 		talloc_free(c);
-		return -(p - start);
+		return -(p - in);
 	}
 
 	/*
@@ -1151,11 +1152,11 @@ closing_brace:
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = cond_tokenize(c, cs, &c->next, error, p, brace, rules);
+	slen = cond_tokenize(c, cs, &c->next, error, p, end - p, brace, rules);
 	if (slen <= 0) {
 	return_slen:
 		talloc_free(c);
-		return slen - (p - start);
+		return slen - (p - in);
 	}
 	p += slen;
 
@@ -1589,7 +1590,7 @@ done:
 	}
 
 	*pcond = c;
-	return p - start;
+	return p - in;
 }
 
 /** Tokenize a conditional check
@@ -1598,16 +1599,17 @@ done:
  * @param[out] head	the parsed condition structure
  * @param[out] error	the parse error (if any)
  * @param[in] dict	dictionary to resolve attributes in.
- * @param[in] start	the start of the string to process.  Should be "(..."
+ * @param[in] in	the start of the string to process.  Should be "(..."
+ * @param[in] inlen	the length of the string to process.
  * @return
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
 ssize_t fr_cond_tokenize(CONF_SECTION *cs,
 			 fr_cond_t **head, char const **error,
-			 fr_dict_t const *dict, char const *start)
+			 fr_dict_t const *dict, char const *in, size_t inlen)
 {
-	return cond_tokenize(cs, cs, head, error, start, 0, &(vp_tmpl_rules_t){ .dict_def = dict });
+	return cond_tokenize(cs, cs, head, error, in, inlen, 0, &(vp_tmpl_rules_t){ .dict_def = dict });
 }
 
 /*

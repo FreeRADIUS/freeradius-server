@@ -1081,7 +1081,7 @@ static size_t command_radmin_tab(command_result_t *result, command_ctx_t *cc,
  *
  */
 static size_t command_condition_normalise(command_result_t *result, command_ctx_t *cc,
-					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+					  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	ssize_t			dec_len;
 	char const		*error = NULL;
@@ -1097,7 +1097,7 @@ static size_t command_condition_normalise(command_result_t *result, command_ctx_
 	cf_filename_set(cs, cc->filename);
 	cf_lineno_set(cs, cc->lineno);
 
-	dec_len = fr_cond_tokenize(cs, &cond, &error, cc->active_dict ? cc->active_dict : cc->config->dict, in);
+	dec_len = fr_cond_tokenize(cs, &cond, &error, cc->active_dict ? cc->active_dict : cc->config->dict, in, inlen);
 	if (dec_len <= 0) {
 		fr_strerror_printf("ERROR offset %d %s", (int) -dec_len, error);
 

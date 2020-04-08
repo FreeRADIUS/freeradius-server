@@ -2911,7 +2911,8 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
  *
  * @param[out] out	start of the string to parse
  * @param[out] outlen	length of the string to parse
- * @param      start	where we start looking for the string
+ * @param      in	where we start looking for the string
+ * @param      inlen	length of the input string
  * @param[out] type	token type of the string.
  * @param[out] error	string describing the error
  * @param[out] castda	NULL if casting is not allowed, otherwise the cast
@@ -2921,18 +2922,19 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
  *	- > 0, amount of parsed string to skip, to get to the next token
  *	- <=0, -offset in 'start' where the parse error was located
  */
-ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
+ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
 		      FR_TOKEN *type, char const **error,
 		      fr_dict_attr_t const **castda, bool require_regex, bool allow_xlat)
 {
-	char const *p = start;
+	char const *p = in, *end = in + inlen;
 	char quote;
 	int depth;
 
 	*type = T_INVALID;
 	if (castda) *castda = NULL;
 
-	fr_skip_whitespace(p);
+	while (isspace((int) *p) && (p < end)) p++;
+	if (p >= end) return p - in;
 
 	if (*p == '<') {
 		fr_type_t cast;
@@ -2941,7 +2943,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		if (!castda) {
 			*error = "Unexpected cast";
 		return_p:
-			return -(p - start);
+			return -(p - in);
 		}
 
 		p++;
@@ -3040,7 +3042,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 
 				if (depth == 0) {
 					*outlen = p - (*out);
-					return p - start;
+					return p - in;
 				}
 				continue;
 			}
@@ -3116,7 +3118,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 			if (*p == quote) {
 				*outlen = p - (*out);
 				p++;
-				return p - start;
+				return p - in;
 			}
 
 			if (*p == '\\') {
@@ -3237,7 +3239,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 			/*
 			 *	[...] is an IPv6 address.
 			 */
-			if ((p == start) && (*p == '[')) {
+			if ((p == in) && (*p == '[')) {
 				p++;
 				continue;
 			}
@@ -3316,5 +3318,5 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *start,
 		break;
 	}
 
-	return p - start;
+	return p - in;
 }

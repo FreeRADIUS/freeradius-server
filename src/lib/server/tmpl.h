@@ -515,10 +515,10 @@ int			tmpl_define_unknown_attr(vp_tmpl_t *vpt);
 int			tmpl_define_undefined_attr(fr_dict_t *dict, vp_tmpl_t *vpt,
 						   fr_type_t type, fr_dict_attr_flags_t const *flags);
 
-ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *start,
+ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
 				      FR_TOKEN *type, char const **error,
 				      fr_dict_attr_t const **castda, bool require_regex,
-				      bool allow_xlat) CC_HINT(nonnull(1,2,3,4,5));
+				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5,6));
 
 #ifdef __cplusplus
 }

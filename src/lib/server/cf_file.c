@@ -834,7 +834,7 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *toke
 	 *	Don't allow casts or regexes.  But do allow bare
 	 *	%{...} expansions.
 	 */
-	slen = tmpl_preparse(&out, &outlen, ptr, token, &error, NULL, false, true);
+	slen = tmpl_preparse(&out, &outlen, ptr, strlen(ptr), token, &error, NULL, false, true);
 	if (slen <= 0) {
 		char *spaces, *text;
 
@@ -1179,7 +1179,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	Skip (...) to find the {
 	 */
 	while (true) {
-		slen = fr_cond_tokenize(cs, &cond, &error, dict, ptr);
+		slen = fr_cond_tokenize(cs, &cond, &error, dict, ptr, strlen(ptr));
 		if (slen < 0) {
 			ssize_t end = -slen;
 
