@@ -281,9 +281,11 @@ static void udp_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, 
 {
 	REQUEST			*request;
 
+	if (!te->request) return;	/* Free entry */
+
 	request = talloc_get_type_abort(te->request, REQUEST);
 
-	fr_log(log, log_type, file, line, "\trequest %s, allocated %s:%u", request->name,
+	fr_log(log, log_type, file, line, "request %s, allocated %s:%u", request->name,
 	       request->alloc_file, request->alloc_line);
 
 	fr_trunk_request_state_log(log, log_type, file, line, talloc_get_type_abort(te->uctx, fr_trunk_request_t));
