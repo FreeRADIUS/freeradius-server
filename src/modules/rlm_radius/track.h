@@ -101,7 +101,7 @@ void			radius_track_state_log(radius_track_t *tt);
 #else
 int			radius_track_entry_reserve(radius_track_entry_t **te_out,
 						   TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request,
-						   uint8_t code, void *rctx, char const *file, int line)
+						   uint8_t code, void *rctx)
 						   CC_HINT(nonnull(1,3,4));
 
 int			radius_track_entry_release(radius_track_entry_t **te) CC_HINT(nonnull);
