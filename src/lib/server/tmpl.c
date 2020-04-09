@@ -3320,3 +3320,25 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 
 	return p - in;
 }
+
+/** Return whether or not async is required for this tmpl.
+ *
+ *	If the tmpl is async_safe, then it will never yield.
+ *	If the tmpl is not async_safe, then it may yield.
+ *
+ *	If the tmpl yields, then async is required.
+ */
+bool tmpl_async_required(vp_tmpl_t const *vpt)
+{
+	switch (vpt->type) {
+	case TMPL_TYPE_EXEC:	/* we don't have "exec no-wait" here */
+	case TMPL_TYPE_XLAT:	/* we have no idea, so be safe */
+		return true;
+
+	case TMPL_TYPE_XLAT_STRUCT:
+		return xlat_async_required(vpt->tmpl_xlat);
+
+	default:
+		return false;
+	}
+}

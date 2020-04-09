@@ -520,6 +520,8 @@ ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t
 				      fr_dict_attr_t const **castda, bool require_regex,
 				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5,6));
 
+bool			tmpl_async_required(vp_tmpl_t const *vpt);
+
 #ifdef __cplusplus
 }
 #endif
