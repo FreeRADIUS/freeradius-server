@@ -36,9 +36,11 @@ static _Thread_local fr_dlist_head_t *request_free_list; /* macro */
 
 /** Setup logging and other fields for a request
  *
+ * @param[in] file		the request was allocated in.
+ * @param[in] line		the request was allocated on.
  * @param[in] request		to (re)-initialise.
  */
-static void request_init(REQUEST *request)
+static void request_init(char const *file, int line, REQUEST *request)
 {
 #ifndef NDEBUG
 	request->magic = REQUEST_MAGIC;
@@ -80,6 +82,12 @@ static void request_init(REQUEST *request)
 	request->seq_start = 0;
 	request->runnable_id = -1;
 	request->time_order_id = -1;
+
+	/*
+	 *	Where the request was allocated
+	 */
+	request->alloc_file = file;
+	request->alloc_line = line;
 
 	fr_dlist_entry_init(&request->free_entry);	/* Needs to be initialised properly, else bad things happen */
 }
@@ -203,7 +211,7 @@ static void _request_free_list_free_on_exit(void *arg)
 /** Create a new REQUEST data structure
  *
  */
-REQUEST *request_alloc(TALLOC_CTX *ctx)
+REQUEST *_request_alloc(char const *file, int line, TALLOC_CTX *ctx)
 {
 	REQUEST			*request;
 	fr_dlist_head_t		*free_list;
@@ -249,7 +257,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 		fr_dlist_remove(free_list, request);
 	}
 
-	request_init(request);
+	request_init(file, line, request);
 
 	/*
 	 *	Bind lifetime to a parent.
@@ -276,20 +284,20 @@ static int _request_local_free(REQUEST *request)
  * which needs to be outside of the normal free list, so that it can be freed
  * when the module requires, not when the thread destructor runs.
  */
-REQUEST *request_local_alloc(TALLOC_CTX *ctx)
+REQUEST *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx)
 {
 	REQUEST *request;
 
 	MEM(request = talloc_zero(ctx, REQUEST));
 
-	request_init(request);
+	request_init(file, line, request);
 
 	talloc_set_destructor(request, _request_local_free);
 
 	return request;
 }
 
-static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
+static REQUEST *request_init_fake(char const *file, int line, REQUEST *request, REQUEST *fake)
 {
 	fake->number = request->child_number++;
 	fake->name = talloc_typed_asprintf(fake, "%s.%" PRIu64 , request->name, fake->number);
@@ -365,6 +373,12 @@ static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
 	fake->log.unlang_indent = 0;	/* Apart from the indent which we reset */
 	fake->log.module_indent = 0;	/* Apart from the indent which we reset */
 
+	/*
+	 *	Allocation information
+	 */
+	fake->alloc_file = file;
+	fake->alloc_line = line;
+
 	return fake;
 }
 
@@ -374,14 +388,14 @@ static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
  *	This function allows modules to inject fake requests
  *	into the server, for tunneled protocols like TTLS & PEAP.
  */
-REQUEST *request_alloc_fake(REQUEST *request, fr_dict_t const *namespace)
+REQUEST *_request_alloc_fake(char const *file, int line, REQUEST *request, fr_dict_t const *namespace)
 {
 	REQUEST *fake;
 
 	fake = request_alloc(request);
 	if (!fake) return NULL;
 
-	if (!request_init_fake(request, fake)) return NULL;
+	if (!request_init_fake(file, line, request, fake)) return NULL;
 
 	if (namespace) fake->dict = namespace;
 
@@ -394,14 +408,14 @@ REQUEST *request_alloc_fake(REQUEST *request, fr_dict_t const *namespace)
  * run.
  *
  */
-REQUEST *request_alloc_detachable(REQUEST *request, fr_dict_t const *namespace)
+REQUEST *_request_alloc_detachable(char const *file, int line, REQUEST *request, fr_dict_t const *namespace)
 {
 	REQUEST *fake;
 
-	fake = request_alloc(NULL);
+	fake = _request_alloc(file, line, NULL);
 	if (!fake) return NULL;
 
-	if (!request_init_fake(request, fake)) return NULL;
+	if (!request_init_fake(file, line, request, fake)) return NULL;
 
 	if (namespace) fake->dict = namespace;
 

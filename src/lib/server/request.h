@@ -151,6 +151,10 @@ struct fr_request_s {
 
 	fr_async_t		*async;		//!< for new async listeners
 
+	char const		*alloc_file;	//!< File the request was allocated in.
+
+	int			alloc_line;	//!< Line the request was allocated on.
+
 	fr_dlist_t		free_entry;	//!< Request's entry in the free list.
 };				/* REQUEST typedef */
 
@@ -175,13 +179,17 @@ struct fr_request_s {
 #define RAD_REQUEST_OPTION_CTX	(1 << 1)
 #define RAD_REQUEST_OPTION_DETAIL (1 << 2)
 
-REQUEST		*request_alloc(TALLOC_CTX *ctx);
+#define		request_alloc(_ctx) _request_alloc( __FILE__, __LINE__, _ctx)
+REQUEST		*_request_alloc(char const *file, int line, TALLOC_CTX *ctx);
 
-REQUEST		*request_local_alloc(TALLOC_CTX *ctx);
+#define		request_local_alloc(_ctx) _request_local_alloc(__FILE__, __LINE__, _ctx)
+REQUEST		*_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx);
 
-REQUEST		*request_alloc_fake(REQUEST *parent, fr_dict_t const *namespace);
+#define		request_alloc_fake(_request, _namespace) _request_alloc_fake(__FILE__, __LINE__, _request, _namespace)
+REQUEST		*_request_alloc_fake(char const *file, int line, REQUEST *parent, fr_dict_t const *namespace);
 
-REQUEST		*request_alloc_detachable(REQUEST *request, fr_dict_t const *namespace);
+#define		request_alloc_detachable(_request, _namespace) _request_alloc_detachable(__FILE__, __LINE__, _request, _namespace)
+REQUEST		*_request_alloc_detachable(char const *file, int line, REQUEST *request, fr_dict_t const *namespace);
 
 int		request_detach(REQUEST *fake, bool will_free);
 
