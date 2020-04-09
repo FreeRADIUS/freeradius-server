@@ -250,7 +250,7 @@ struct value_box {
  * @param[in] head	of the value box list.
  * @return Number of boxes in the list.
  */
-static inline size_t fr_value_box_list_len(fr_value_box_t *head)
+static inline size_t fr_value_box_list_len(fr_value_box_t const *head)
 {
 	size_t i;
 
