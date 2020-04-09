@@ -115,7 +115,7 @@ int radius_track_entry_reserve(radius_track_entry_t **te_out,
 {
 	radius_track_entry_t *te;
 
-	rad_assert(!*te_out);	/* Must be NULL */
+	if (!fr_cond_assert_msg(!*te_out, "Expected tracking entry to be NULL")) return;
 
 retry:
 	te = fr_dlist_head(&tt->free_list);
