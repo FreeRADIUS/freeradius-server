@@ -173,13 +173,13 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	snprintf(worker_name, sizeof(worker_name), "Worker %d", sw->id);
 
-	sw->ctx = ctx = talloc_init("worker %d", sw->id);
+	sw->ctx = ctx = talloc_init("%s", worker_name);
 	if (!ctx) {
-		ERROR("Worker %d - Failed allocating memory", sw->id);
+		ERROR("%s - Failed allocating memory", worker_name);
 		goto fail;
 	}
 
-	INFO("%s starting", worker_name);
+	INFO("%s - Starting", worker_name);
 
 	sw->el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!sw->el) {
@@ -207,7 +207,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		if (!cs) cs = cf_section_find(sc->cs, "worker", NULL);
 
 		if (sc->worker_thread_instantiate(sw->ctx, sw->el, cs) < 0) {
-			ERROR("Worker %d - Failed calling thread instantiate: %s", sw->id, fr_strerror());
+			ERROR("%s - Failed calling thread instantiate: %s", worker_name, fr_strerror());
 			goto fail;
 		}
 	}
