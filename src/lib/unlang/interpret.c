@@ -51,7 +51,7 @@ static fr_table_num_ordered_t const unlang_frame_action_table[] = {
 static size_t unlang_frame_action_table_len = NUM_ELEMENTS(unlang_frame_action_table);
 
 #ifndef NDEBUG
-static void instruction_dump(REQUEST *request, unlang_t *instruction)
+static void instruction_dump(REQUEST *request, unlang_t const *instruction)
 {
 	RINDENT();
 	if (!instruction) {
@@ -117,7 +117,7 @@ unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
 
 static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t *frame)
 {
-	unlang_t	*instruction = frame->instruction;
+	unlang_t const	*instruction = frame->instruction;
 	unlang_op_t	*op;
 
 	op = &unlang_ops[instruction->type];
@@ -215,7 +215,7 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_stack_frame_t *frame,
 						     rlm_rcode_t *result, int *priority)
 {
-	unlang_t	*instruction = frame->instruction;
+	unlang_t const	*instruction = frame->instruction;
 	unlang_stack_t	*stack = request->stack;
 
 	RDEBUG4("** [%i] %s - have (%s %d) module returned (%s %d)",
@@ -411,7 +411,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 	 *	Loop over all the instructions in this list.
 	 */
 	while (frame->instruction) {
-		unlang_t		*instruction = frame->instruction;
+		unlang_t const		*instruction = frame->instruction;
 		unlang_action_t		action = UNLANG_ACTION_UNWIND;
 
 		DUMP_STACK;
@@ -1194,7 +1194,7 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 	unlang_stack_t		*stack = request->stack;
 	int			depth = stack->depth;
 	unlang_stack_frame_t	*frame;
-	unlang_t		*instruction;
+	unlang_t const		*instruction;
 
 	fr_skip_whitespace(fmt);
 
@@ -1249,13 +1249,13 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 	 *	Line number of the current section.
 	 */
 	if (strcmp(fmt, "line") == 0) {
-		unlang_group_t *g;
+		unlang_group_t const *g;
 
 		if (!unlang_ops[instruction->type].debug_braces) {
 			return snprintf(*out, outlen, "???");
 		}
 
-		g = unlang_generic_to_group(instruction);
+		g = (unlang_group_t const *) instruction;
 		rad_assert(g->cs != NULL);
 
 		return snprintf(*out, outlen, "%d", cf_lineno(g->cs));
@@ -1265,13 +1265,13 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 	 *	Filename of the current section.
 	 */
 	if (strcmp(fmt, "filename") == 0) {
-		unlang_group_t *g;
+		unlang_group_t const *g;
 
 		if (!unlang_ops[instruction->type].debug_braces) {
 			return snprintf(*out, outlen, "???");
 		}
 
-		g = unlang_generic_to_group(instruction);
+		g = (unlang_group_t const *) instruction;
 		rad_assert(g->cs != NULL);
 
 		return snprintf(*out, outlen, "%s", cf_filename(g->cs));
