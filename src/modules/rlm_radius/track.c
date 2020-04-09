@@ -115,6 +115,8 @@ int radius_track_entry_reserve(radius_track_entry_t **te_out,
 {
 	radius_track_entry_t *te;
 
+	rad_assert(!*te_out);	/* Must be NULL */
+
 retry:
 	te = fr_dlist_head(&tt->free_list);
 	if (te) {
