@@ -34,8 +34,14 @@ typedef struct radius_track_s radius_track_t;
  *
  */
 struct radius_track_entry_s {
-	radius_track_t	*tt;			//!< Tracking table this entry belongs to.
+	radius_track_t	*tt;
+
+	radius_track_entry_t ***binding;	//!< Binding chunk we use to release the entry
+						///< when its parent is freed.  We also zero
+						///< out the tracking entry field in the parent.
+
 	REQUEST		*request;		//!< as always...
+
 	void		*rctx;			//!< Result/resumption context.
 
 	uint8_t		code;			//!< packet code (sigh)
@@ -76,11 +82,12 @@ radius_track_t		*radius_track_alloc(TALLOC_CTX *ctx);
  *	Debug functions which track allocations and frees
  */
 #ifndef NDEBUG
-#  define		radius_track_entry_reserve(_tt, _request, _code, _rctx) \
-				_radius_track_entry_reserve(_tt, _request, _code, _rctx, __FILE__, __LINE__)
-radius_track_entry_t	*_radius_track_entry_reserve(radius_track_t *tt, REQUEST *request,
-						     uint8_t code, void *rctx, char const *file, int line)
-						     CC_HINT(nonnull);
+#  define		radius_track_entry_reserve(_te_out, _ctx, _tt, _request, _code, _rctx) \
+				_radius_track_entry_reserve(_te_out, _ctx, _tt, _request, _code, _rctx, __FILE__, __LINE__)
+int			_radius_track_entry_reserve(radius_track_entry_t **te_out,
+						    TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request,
+						    uint8_t code, void *rctx, char const *file, int line)
+						    CC_HINT(nonnull(1,3,4));
 
 #  define		radius_track_entry_release(_te) \
 				_radius_track_entry_release(_te, __FILE__, __LINE__)
@@ -92,8 +99,10 @@ void			radius_track_state_log(radius_track_t *tt);
  *	Non-debug functions
  */
 #else
-radius_track_entry_t	*radius_track_entry_reserve(radius_track_t *tt, REQUEST *request,
-						    uint8_t code, void *rctx) CC_HINT(nonnull);
+int			radius_track_entry_reserve(radius_track_entry_t **te_out,
+						   TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request,
+						   uint8_t code, void *rctx, char const *file, int line)
+						   CC_HINT(nonnull(1,3,4));
 
 int			radius_track_entry_release(radius_track_entry_t **te) CC_HINT(nonnull);
 #endif

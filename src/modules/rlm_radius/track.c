@@ -74,9 +74,27 @@ static int te_cmp(void const *one, void const *two)
 	return memcmp(a->vector, b->vector, sizeof(a->vector));
 }
 
+/** Ensures the entry is released when the ctx passed to radius_track_entry_reserve is freed
+ *
+ * @param[in] te_p		Entry to release.
+ * @return 0
+ */
+static int _radius_track_entry_release_on_free(radius_track_entry_t ***te_p)
+{
+	fr_cond_assert_fail(__FILE__, __LINE__, 0, "Freeing by destructor not currently allowed");
+	radius_track_entry_release(*te_p);
+
+	return 0;
+}
+
 #ifndef NDEBUG
 /** Allocate a tracking entry.
  *
+ * @param[out] te_out		Where the tracking entry should be written.
+ *				If ctx is not-null, then this pointer must
+ *				remain valid for the lifetime of the ctx.
+ * @param[in] ctx		If not-null, the tracking entry release will
+ *				be bound to the lifetime of the talloc chunk.
  * @param[in] tt		The radius_track_t tracking table.
  * @param[in] request		The request which will send the proxied packet.
  * @param[in] code		Of the outbound request.
@@ -84,13 +102,15 @@ static int te_cmp(void const *one, void const *two)
  * @param[in] file		The allocation was made in.
  * @param[in] line		The allocation was made on.
  * @return
- *	- NULL on error
- *	- radius_track_entry_t on success
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-radius_track_entry_t *_radius_track_entry_reserve(radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx,
-						  char const *file, int line)
+int _radius_track_entry_reserve(radius_track_entry_t **te_out,
+				TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx,
+				char const *file, int line)
 #else
-radius_track_entry_t *radius_track_entry_reserve(radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx)
+int radius_track_entry_reserve(radius_track_entry_t **te_out,
+			       TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx)
 #endif
 {
 	radius_track_entry_t *te;
@@ -110,8 +130,7 @@ retry:
 		 *	don't use it".  Ensure that we only return IDs
 		 *	which are in the static array.
 		 */
-		if (!tt->use_authenticator &&
-		    (te != &tt->id[te->id])) {
+		if (!tt->use_authenticator && (te != &tt->id[te->id])) {
 			talloc_free(te);
 			goto retry;
 		}
@@ -125,7 +144,7 @@ retry:
 	 */
 	if (!tt->use_authenticator) {
 		fr_strerror_printf("No free entries");
-		return NULL;
+		return -1;
 	}
 
 	/*
@@ -150,8 +169,6 @@ retry:
 	te->id = tt->next_id;
 
 done:
-
-
 	te->tt = tt;
 	te->request = request;
 	te->rctx = rctx;
@@ -161,11 +178,20 @@ done:
 	te->file = file;
 	te->line = line;
 #endif
+	if (ctx) {
+		te->binding = talloc_zero(ctx, radius_track_entry_t **);
+		talloc_set_destructor(te->binding, _radius_track_entry_release_on_free);
+		*(te->binding) = te_out;
+	}
+
 	/*
 	 *	te->id is already allocated
 	 */
 	tt->num_requests++;
-	return te;
+
+	*te_out = te;
+
+	return 0;
 }
 
 #ifndef NDEBUG
@@ -185,6 +211,11 @@ int radius_track_entry_release(radius_track_entry_t **te_to_free)
 {
 	radius_track_entry_t	*te = *te_to_free;
 	radius_track_t		*tt = talloc_get_type_abort(te->tt, radius_track_t);	/* Make sure table is still valid */
+
+	if (te->binding) {
+		talloc_set_destructor(te->binding, NULL);	/* Disarm the destructor */
+		talloc_free(te->binding);
+	}
 
 #ifndef NDEBUG
 	te->operation = te->tt->operation++;

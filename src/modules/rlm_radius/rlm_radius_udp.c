@@ -1714,7 +1714,8 @@ static void request_mux(fr_event_list_t *el,
 		if (!u->packet || !u->can_retransmit) {
 			rad_assert(!u->rr);
 
-			if (!fr_cond_assert_msg((u->rr = radius_track_entry_reserve(h->tt, request, u->code, treq)),
+			if (!fr_cond_assert_msg((radius_track_entry_reserve(&u->rr, treq, h->tt,
+									    request, u->code, treq)) == 0,
 						"Tracking entry allocation failed")) {
 
 			fail:
