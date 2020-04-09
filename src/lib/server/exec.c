@@ -654,3 +654,81 @@ wait:
 
 	return -1;
 }
+
+
+/** Execute a program without waiting for the program to finish.
+ *
+ * @param request	the request
+ * @param vb		as returned by xlat_frame_eval()
+ * @param env_pairs	VPs to put into into the environment.  May be NULL.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ *
+ *  @todo - maybe take an fr_cursor_t instead of env_pairs?  That
+ *  would allow finer-grained control over the attributes to put into
+ *  the environment.
+ *
+ *  @todo - make xlat_aeval_compiled_argv() return one value_box of type
+ *  FR_TYPE_GROUP instead of argv.  So that function can take synchronous
+ *  xlats, too.
+ */
+int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
+{
+	int		argc;
+	char		**envp;
+	char		**argv;
+	pid_t		pid;
+	fr_child_t	*child;
+
+	/*
+	 *	Clean up any previous child processes.
+	 */
+	fr_reap_children();
+
+	/*
+	 *	Get the environment variables.
+	 */
+	if (env_pairs) {
+		MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
+		fr_exec_pair_to_env(request, env_pairs, envp, MAX_ENVP, true);
+	} else {
+		MEM(envp = talloc_zero_array(request, char *, 1));
+		envp[0] = NULL;
+	}
+
+	argc = fr_value_box_list_flatten_argv(request, &argv, vb);
+	if (argc < 0) return -1;
+
+	pid = fork();
+
+	/*
+	 *	The child never returns from calling fr_exec_child();
+	 */
+	if (pid == 0) {
+		int unused[2];
+
+		fr_exec_child(request, argv, envp, false, NULL, NULL, unused, unused);
+	}
+
+	/*
+	 *	Parent process.  Do all necessary cleanups.
+	 */
+	talloc_free(envp);
+
+	if (pid < 0) {
+		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
+		talloc_free(argv);
+		return -1;
+	}
+
+	/*
+	 *	Ensure that we can clean up any child processes.  We
+	 *	don't want them left over as zombies.
+	 */
+	MEM(child = talloc_zero(fr_children, fr_child_t));
+	fr_dlist_insert_tail(fr_children, child);
+	child->pid = pid;
+
+	return 0;
+}
