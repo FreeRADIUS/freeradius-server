@@ -1527,8 +1527,8 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 		       h->module_name, h->name);
 	} else {
 		if ((h->first_sent + h->inst->parent->zombie_period) >= now) return false;
-		DEBUG2("%s - We have passed 'zombie_period' time since we first sent a packet, and there have been no replies on connection %s",
-		       h->module_name, h->name);
+		DEBUG2("%s - We have passed 'zombie_period' time since we first sent a packet, and "
+		       "there have been no replies on connection %s", h->module_name, h->name);
 	}
 
 	/*
