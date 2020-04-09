@@ -2591,7 +2591,12 @@ int main(int argc, char *argv[])
 		ret = 64;
 		goto finish;
 	}
-	fr_radius_init();	/* Initialise the protocol library */
+
+	/* Initialise the protocol library */
+	if (fr_radius_init() < 0) {
+		fr_perror("radclient");
+		return 1;
+	}
 
 	fr_strerror();	/* Clear out any non-fatal errors */
 
