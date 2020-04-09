@@ -42,7 +42,7 @@ struct radius_track_entry_s {
 
 	REQUEST		*request;		//!< as always...
 
-	void		*rctx;			//!< Result/resumption context.
+	void		*uctx;			//!< Result/resumption context.
 
 	uint8_t		code;			//!< packet code (sigh)
 	uint8_t		id;			//!< our ID
@@ -82,26 +82,31 @@ radius_track_t		*radius_track_alloc(TALLOC_CTX *ctx);
  *	Debug functions which track allocations and frees
  */
 #ifndef NDEBUG
-#  define		radius_track_entry_reserve(_te_out, _ctx, _tt, _request, _code, _rctx) \
-				_radius_track_entry_reserve(_te_out, _ctx, _tt, _request, _code, _rctx, __FILE__, __LINE__)
-int			_radius_track_entry_reserve(radius_track_entry_t **te_out,
+#  define		radius_track_entry_reserve(_te_out, _ctx, _tt, _request, _code, _uctx) \
+				_radius_track_entry_reserve( __FILE__, __LINE__, _te_out, _ctx, _tt, _request, _code, _uctx)
+int			_radius_track_entry_reserve(char const *file, int line,
+						    radius_track_entry_t **te_out,
 						    TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request,
-						    uint8_t code, void *rctx, char const *file, int line)
-						    CC_HINT(nonnull(1,3,4));
+						    uint8_t code, void *uctx)
+						    CC_HINT(nonnull(3,5,6));
 
 #  define		radius_track_entry_release(_te) \
-				_radius_track_entry_release(_te, __FILE__, __LINE__)
-int			_radius_track_entry_release(radius_track_entry_t **te, char const *file, int line)
+				_radius_track_entry_release( __FILE__, __LINE__, _te)
+int			_radius_track_entry_release(char const *file, int line, radius_track_entry_t **te)
 						    CC_HINT(nonnull);
 
-void			radius_track_state_log(radius_track_t *tt);
+typedef void (*radius_track_log_extra_t)(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
+					 radius_track_entry_t *te);
+
+void			radius_track_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
+					       radius_track_t *tt, radius_track_log_extra_t extra);
 /*
  *	Non-debug functions
  */
 #else
 int			radius_track_entry_reserve(radius_track_entry_t **te_out,
 						   TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request,
-						   uint8_t code, void *rctx)
+						   uint8_t code, void *uctx)
 						   CC_HINT(nonnull(1,3,4));
 
 int			radius_track_entry_release(radius_track_entry_t **te) CC_HINT(nonnull);

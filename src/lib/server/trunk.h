@@ -703,7 +703,8 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_ou
 						    bool ignore_limits) CC_HINT(nonnull(2));
 
 #ifndef NDEBUG
-void		fr_trunk_request_state_log_print(fr_trunk_request_t const *treq);
+void		fr_trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
+					   fr_trunk_request_t const *treq);
 #endif
 /** @} */
 

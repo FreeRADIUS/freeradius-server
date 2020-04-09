@@ -372,7 +372,7 @@ do { \
 } while (0)
 #define REQUEST_BAD_STATE_TRANSITION(_new) \
 do { \
-	fr_trunk_request_state_log_print(treq); \
+	fr_trunk_request_state_log(&default_log, L_ERR, __FILE__, __LINE__, treq); \
 	if (!fr_cond_assert_msg(0, "Trunk request %" PRIu64 " invalid transition %s -> %s", \
 				treq->id, \
 				fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
@@ -2256,19 +2256,19 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_ou
 }
 
 #ifndef NDEBUG
-void fr_trunk_request_state_log_print(fr_trunk_request_t const *treq)
+void fr_trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
+				fr_trunk_request_t const *treq)
 {
-	fr_trunk_t			*trunk = treq->pub.trunk;
-	fr_trunk_request_state_log_t	*log = NULL;
+	fr_trunk_request_state_log_t	*slog = NULL;
 
 	int i;
 
-	for (log = fr_dlist_head(&treq->log), i = 0;
-	     log;
-	     log = fr_dlist_next(&treq->log, log), i++) {
-		ERROR("[%u] %s:%i - %s -> %s", i, log->function, log->line,
-		      fr_table_str_by_value(fr_trunk_request_states, log->from, "<INVALID>"),
-		      fr_table_str_by_value(fr_trunk_request_states, log->to, "<INVALID>"));
+	for (slog = fr_dlist_head(&treq->log), i = 0;
+	     slog;
+	     slog = fr_dlist_next(&treq->log, slog), i++) {
+		fr_log(log, log_type, file, line, "[%u] %s:%i - %s -> %s", i, slog->function, slog->line,
+		       fr_table_str_by_value(fr_trunk_request_states, slog->from, "<INVALID>"),
+		       fr_table_str_by_value(fr_trunk_request_states, slog->to, "<INVALID>"));
 	}
 }
 #endif

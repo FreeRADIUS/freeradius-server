@@ -87,9 +87,10 @@ static int _radius_track_entry_release_on_free(radius_track_entry_t ***te_p)
 	return 0;
 }
 
-#ifndef NDEBUG
 /** Allocate a tracking entry.
  *
+ * @param[in] file		The allocation was made in.
+ * @param[in] line		The allocation was made on.
  * @param[out] te_out		Where the tracking entry should be written.
  *				If ctx is not-null, then this pointer must
  *				remain valid for the lifetime of the ctx.
@@ -98,20 +99,18 @@ static int _radius_track_entry_release_on_free(radius_track_entry_t ***te_p)
  * @param[in] tt		The radius_track_t tracking table.
  * @param[in] request		The request which will send the proxied packet.
  * @param[in] code		Of the outbound request.
- * @param[in] rctx		The context to associate with the request
- * @param[in] file		The allocation was made in.
- * @param[in] line		The allocation was made on.
+ * @param[in] uctx		The context to associate with the request
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int _radius_track_entry_reserve(radius_track_entry_t **te_out,
-				TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx,
-				char const *file, int line)
+#ifndef NDEBUG
+int _radius_track_entry_reserve(char const *file, int line,
 #else
-int radius_track_entry_reserve(radius_track_entry_t **te_out,
-			       TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request, uint8_t code, void *rctx)
+int radius_track_entry_reserve(
 #endif
+				radius_track_entry_t **te_out,
+				TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request, uint8_t code, void *uctx)
 {
 	radius_track_entry_t *te;
 
@@ -173,7 +172,7 @@ retry:
 done:
 	te->tt = tt;
 	te->request = request;
-	te->rctx = rctx;
+	te->uctx = uctx;
 	te->code = code;
 #ifndef NDEBUG
 	te->operation = te->tt->operation++;
@@ -196,20 +195,21 @@ done:
 	return 0;
 }
 
-#ifndef NDEBUG
 /** Release a tracking entry
  *
- * @param[in,out] te_to_free		The #radius_track_entry_t allocated via #radius_track_entry_reserve.
  * @param[in] file			Allocation was released in.
  * @param[in] line			Allocation was released on.
+ * @param[in,out] te_to_free		The #radius_track_entry_t allocated via #radius_track_entry_reserve.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int _radius_track_entry_release(radius_track_entry_t **te_to_free, char const *file, int line)
+#ifndef NDEBUG
+int _radius_track_entry_release(char const *file, int line,
 #else
-int radius_track_entry_release(radius_track_entry_t **te_to_free)
+int radius_track_entry_release(
 #endif
+				radius_track_entry_t **te_to_free)
 {
 	radius_track_entry_t	*te = *te_to_free;
 	radius_track_t		*tt = talloc_get_type_abort(te->tt, radius_track_t);	/* Make sure table is still valid */
@@ -410,8 +410,15 @@ void radius_track_use_authenticator(radius_track_t *tt, bool flag)
 #ifndef NDEBUG
 /** Print out the state of every tracking entry
  *
+ * @param[in] log	destination.
+ * @param[in] log_type	Type of log message.
+ * @param[in] file	this function was called in.
+ * @param[in] line	this function was called on.
+ * @param[in] tt	Table to print.
+ * @param[in] extra	Callback function for printing extra detail.
  */
-void radius_track_state_log(radius_track_t *tt)
+void radius_track_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
+			    radius_track_t *tt, radius_track_log_extra_t extra)
 {
 	size_t i;
 
@@ -421,13 +428,17 @@ void radius_track_state_log(radius_track_t *tt)
 		entry = &tt->id[i];
 
 		if (entry->request) {
-			INFO("[%zu] %"PRIu64 " - Allocated at %s:%u to request %p (%s), rctx %p",
-			     i, entry->operation,
-			     entry->file, entry->line, entry->request, entry->request->name, entry->rctx);
+			fr_log(log, log_type, file, line,
+			       "[%zu] %"PRIu64 " - Allocated at %s:%u to request %p (%s), uctx %p",
+			       i, entry->operation,
+			       entry->file, entry->line, entry->request, entry->request->name, entry->uctx);
 		} else {
-			INFO("[%zu] %"PRIu64 " - Freed at %s:%u",
-			     i, entry->operation, entry->file, entry->line);
+			fr_log(log, log_type, file, line,
+			       "[%zu] %"PRIu64 " - Freed at %s:%u",
+			       i, entry->operation, entry->file, entry->line);
 		}
+
+		if (extra) extra(log, log_type, file, line, entry);
 	}
 }
 #endif

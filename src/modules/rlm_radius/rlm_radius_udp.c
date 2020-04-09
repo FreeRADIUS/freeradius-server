@@ -267,6 +267,29 @@ static decode_fail_t	decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *respon
 
 static void		protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t *h);
 
+#ifndef NDEBUG
+/** Log additional information about a tracking entry
+ *
+ * @param[in] te	Tracking entry we're logging information for.
+ * @param[in] log	destination.
+ * @param[in] log_type	Type of log message.
+ * @param[in] file	the logging request was made in.
+ * @param[in] line 	logging request was made on.
+ */
+static void udp_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
+				   radius_track_entry_t *te)
+{
+	REQUEST			*request;
+
+	request = talloc_get_type_abort(te->request, REQUEST);
+
+	fr_log(log, log_type, file, line, "\trequest %s, allocated %s:%u", request->name,
+	       request->alloc_file, request->alloc_line);
+
+	fr_trunk_request_state_log(log, log_type, file, line, talloc_get_type_abort(te->uctx, fr_trunk_request_t));
+}
+#endif
+
 /** Clear a UDP request, ready for moving or retransmission
  *
  * @note We don't necessarily have to clear the packet here.
@@ -820,7 +843,7 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 	 */
 	if (h->tt && (h->tt->num_requests != 0)) {
 #ifndef NDEBUG
-		radius_track_state_log(h->tt);
+		radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__, h->tt, udp_tracking_entry_log);
 #endif
 		fr_cond_assert_fail(__FILE__, __LINE__, "0", "%u tracking entries still allocated at conn close",
 				    h->tt->num_requests);
@@ -1714,10 +1737,12 @@ static void request_mux(fr_event_list_t *el,
 		if (!u->packet || !u->can_retransmit) {
 			rad_assert(!u->rr);
 
-			if (!fr_cond_assert_msg((radius_track_entry_reserve(&u->rr, treq, h->tt,
-									    request, u->code, treq)) == 0,
-						"Tracking entry allocation failed")) {
-
+			if (unlikely(radius_track_entry_reserve(&u->rr, treq, h->tt, request, u->code, treq) < 0)) {
+#ifndef NDEBUG
+				radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__,
+						       h->tt, udp_tracking_entry_log);
+#endif
+				fr_cond_assert_fail(__FILE__, __LINE__, "0", "Tracking entry allocation failed");
 			fail:
 				fr_trunk_request_signal_fail(treq);
 				continue;
@@ -2254,7 +2279,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 			continue;
 		}
 
-		treq = talloc_get_type_abort(rr->rctx, fr_trunk_request_t);
+		treq = talloc_get_type_abort(rr->uctx, fr_trunk_request_t);
 		request = treq->request;
 		rad_assert(request != NULL);
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
