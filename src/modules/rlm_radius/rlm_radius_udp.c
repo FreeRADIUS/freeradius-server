@@ -2328,10 +2328,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	automatically result in it the parent request
 		 *	returning an ok/fail packet code.
 		 */
-		switch (u->code) {
-		case FR_CODE_ACCESS_REQUEST:
-		case FR_CODE_ACCESS_CHALLENGE:
-		{
+		if ((u->code == FR_CODE_ACCESS_REQUEST) && (code == FR_CODE_ACCESS_CHALLENGE)) {
 			VALUE_PAIR	*vp;
 
 			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
@@ -2340,11 +2337,6 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
 				fr_pair_add(&request->reply->vps, vp);
 			}
-		}
-			break;
-
-		default:
-			break;
 		}
 
 		/*
