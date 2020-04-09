@@ -1193,15 +1193,6 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
 		REQUEST_EXTRACT_BACKLOG(treq);
 		break;
 
-	/*
-	 *	These two states should be dealt with
-	 *	separately.
-	 */
-	case FR_TRUNK_REQUEST_STATE_CANCEL_SENT:
-	case FR_TRUNK_REQUEST_STATE_SENT:
-		REQUEST_BAD_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_FAILED);
-		break;
-
 	default:
 		trunk_request_remove_from_conn(treq);
 		break;
