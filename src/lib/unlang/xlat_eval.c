@@ -87,7 +87,6 @@ fr_table_num_sorted_t const xlat_action_table[] = {
 	{ "done",	XLAT_ACTION_DONE	},
 	{ "fail",	XLAT_ACTION_FAIL	},
 	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},
-	{ "push-child-group",	XLAT_ACTION_PUSH_CHILD_GROUP	},
 	{ "yield",	XLAT_ACTION_YIELD	}
 };
 size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
@@ -844,11 +843,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				RDEBUG2("   -- CHILD");
 				return xa;
 
-
-			case XLAT_ACTION_PUSH_CHILD_GROUP:
-				RDEBUG2("   -- CHILD-GROUP");
-				return xa;
-
 			case XLAT_ACTION_YIELD:
 				RDEBUG2("   -- YIELD");
 				return xa;
@@ -909,19 +903,24 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	case XLAT_CHILD:
 	{
 		fr_cursor_t from;
+		fr_value_box_t *box;
 
 		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 			   node->fmt);
 
 		rad_assert(*result != NULL);
+		(void) talloc_list_get_type_abort(*result, fr_value_box_t);
+
+		box = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false);
+		box->vb_group = *result;
+		*result = NULL;
 
 		xlat_debug_log_expansion(request, *in, NULL);
-		xlat_debug_log_result(request, *result);
+		xlat_debug_log_result(request, box);
 
-		(void) talloc_list_get_type_abort(*result, fr_value_box_t);
-		fr_cursor_init(&from, result);
+		fr_cursor_init(&from, &box);
 		fr_cursor_merge(out, &from);
-		rad_assert(!*result);
+		rad_assert(!box);
 	}
 		break;
 
@@ -1105,7 +1104,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			 *	for evaluation.
 			 */
 			*child = node->child;
-			xa = XLAT_ACTION_PUSH_CHILD_GROUP;
+			xa = XLAT_ACTION_PUSH_CHILD;
 			goto finish;
 		}
 	}

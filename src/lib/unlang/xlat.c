@@ -265,27 +265,6 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 		unlang_xlat_push(state->ctx, &state->rhead, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
-	case XLAT_ACTION_PUSH_CHILD_GROUP:
-		rad_assert(child);
-
-		repeatable_set(frame);
-
-		/*
-		 *	Clear out the results of any previous expansions
-		 *	at this level.  A frame may be used to evaluate
-		 *	multiple sibling nodes.
-		 */
-		talloc_list_free(&state->rhead);
-
-		/*
-		 *	The called function can't pass us a value box,
-		 *	so we have to create it ourselves.
-		 */
-		state->rhead = fr_value_box_alloc(state->ctx, FR_TYPE_GROUP, NULL, false);
-
-		unlang_xlat_push(state->ctx, &state->rhead->vb_group, request, child, false);
-		return UNLANG_ACTION_PUSHED_CHILD;
-
 	case XLAT_ACTION_YIELD:
 		if (!state->resume) {
 			RWDEBUG("Missing call to unlang_xlat_yield()");
@@ -362,7 +341,6 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_PUSH_CHILD:
-	case XLAT_ACTION_PUSH_CHILD_GROUP:
 		rad_assert(0);
 		/* FALL-THROUGH */
 
