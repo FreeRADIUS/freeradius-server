@@ -430,8 +430,8 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 {
 	fr_pcap_t *pcap_p;
-	char *buff, *p, *end;
-	size_t len = 0;
+	char *buff, *p;
+	size_t len = 0, left = 0, wrote = 0;
 
 	if (!pcap) {
 	null:
@@ -449,17 +449,16 @@ char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 
 	if (!len) goto null;
 
-	buff = p = talloc_zero_array(ctx, char, len + 1);
-	end = p + len;
-
+	left = len + 1;
+	buff = p = talloc_zero_array(ctx, char, left);
 	for (pcap_p = pcap;
 	     pcap_p;
 	     pcap_p = pcap_p->next) {
-	     	size_t ret;
+		wrote = snprintf(p, left, "%s%c", pcap_p->name, c);
 
-		ret = snprintf(p, end - p, "%s%c", pcap_p->name, c);
-		rad_assert(!is_truncated(ret, end - p));		/* Static analysis */
-		p += ret;
+		left -= wrote;
+		rad_assert(!is_truncated(wrote, left - len));		/* Static analysis */
+		p += wrote;
 	}
 	buff[len - 1] = '\0';
 
