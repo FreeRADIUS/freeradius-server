@@ -738,6 +738,10 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 
 /** Transition a request to the unassigned state, in preparation for re-assignment
  *
+ * @note treq->tconn may be inviable after calling
+ *	if treq->conn and fr_connection_signals_pause are not used.
+ *	This is due to call to trunk_request_remove_from_conn.
+ *
  * @param[in] treq	to trigger a state change for.
  */
 static void trunk_request_enter_unassigned(fr_trunk_request_t *treq)
@@ -767,6 +771,10 @@ static void trunk_request_enter_unassigned(fr_trunk_request_t *treq)
 }
 
 /** Transition a request to the backlog state, adding it to the backlog of the trunk
+ *
+ * @note treq->tconn and treq may be inviable after calling
+ *	if treq->conn and fr_connection_signals_pause are not used.
+ *	This is due to call to trunk_manage.
  *
  * @param[in] treq	to trigger a state change for.
  */
@@ -824,6 +832,10 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq)
  *
  * All trunk requests being added to a connection get passed to this function.
  * All trunk requests being removed from a connection get passed to #trunk_request_remove_from_conn.
+ *
+ * @note treq->tconn and treq may be inviable after calling
+ *	if treq->conn and fr_connection_signals_pause is not used.
+ *	This is due to call to trunk_connection_event_update.
  *
  * @param[in] treq	to trigger a state change for.
  * @param[in] tconn	to enqueue the request on.
@@ -904,6 +916,10 @@ static void trunk_request_enter_partial(fr_trunk_request_t *treq)
 
 /** Transition a request to the sent state, indicating that it's been sent in its entirety
  *
+ * @note treq->tconn and treq may be inviable after calling
+ *	if treq->conn and fr_connection_signals_pause is not used.
+ *	This is due to call to trunk_connection_event_update.
+ *
  * @param[in] treq	to trigger a state change for.
  */
 static void trunk_request_enter_sent(fr_trunk_request_t *treq)
@@ -960,6 +976,10 @@ static void trunk_request_enter_sent(fr_trunk_request_t *treq)
  *
  * A request must enter this state before being added to the backlog
  * of another connection if it's been sent or partially sent.
+ *
+ * @note treq->tconn and treq may be inviable after calling
+ *	if treq->conn and fr_connection_signals_pause is not used.
+ *	This is due to call to trunk_connection_event_update.
  *
  * @param[in] treq	to trigger a state change for.
  * @param[in] reason	Why the request was cancelled.
@@ -1048,6 +1068,10 @@ static void trunk_request_enter_cancel_partial(fr_trunk_request_t *treq)
  * that the cancel request is complete when the remote server
  * acknowledges the cancellation request.
  *
+ * @note treq->tconn and treq may be inviable after calling
+ *	if treq->conn and fr_connection_signals_pause is not used.
+ *	This is due to call to trunk_connection_event_update.
+ *
  * @param[in] treq	to trigger a state change for.
  */
 static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq)
@@ -1088,6 +1112,11 @@ static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq)
  * The API client will not be informed, as the original REQUEST *
  * will likely have been freed by this point.
  *
+ * @note treq will be inviable after a call to this function.
+ *      treq->tconn may be inviable after calling
+ *	if treq->conn and fr_connection_signals_pause is not used.
+ *	This is due to call to trunk_request_remove_from_conn.
+ *
  * @param[in] treq	to mark as complete.
  */
 static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq)
@@ -1115,6 +1144,10 @@ static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq)
 
 /** Request completed successfully, inform the API client and free the request
  *
+ * @note treq will be inviable after a call to this function.
+ *	treq->tconn may also be inviable due to call to
+ *	trunk_request_remove_from_conn.
+ *
  * @param[in] treq	to mark as complete.
  */
 static void trunk_request_enter_complete(fr_trunk_request_t *treq)
@@ -1141,6 +1174,10 @@ static void trunk_request_enter_complete(fr_trunk_request_t *treq)
 
 /** Request failed, inform the API client and free the request
  *
+ * @note treq will be inviable after a call to this function.
+ *	treq->tconn may also be inviable due to call to
+ *	trunk_request_remove_from_conn.
+ *
  * @param[in] treq	to mark as failed.
  */
 static void trunk_request_enter_failed(fr_trunk_request_t *treq)
@@ -1154,6 +1191,15 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_BACKLOG:
 		REQUEST_EXTRACT_BACKLOG(treq);
+		break;
+
+	/*
+	 *	These two states should be dealt with
+	 *	separately.
+	 */
+	case FR_TRUNK_REQUEST_STATE_CANCEL_SENT:
+	case FR_TRUNK_REQUEST_STATE_SENT:
+		REQUEST_BAD_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_FAILED);
 		break;
 
 	default:
@@ -1262,8 +1308,14 @@ static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *tre
 	rcode = trunk_request_check_enqueue(&tconn, trunk, treq->pub.request);
 	switch (rcode) {
 	case FR_TRUNK_ENQUEUE_OK:
-		trunk_request_enter_pending(treq, tconn);
-		if (trunk->conf.always_writable) trunk_connection_writable(tconn);
+		if (trunk->conf.always_writable) {
+			fr_connection_signals_pause(tconn->pub.conn);
+			trunk_request_enter_pending(treq, tconn);
+			trunk_connection_writable(tconn);
+			fr_connection_signals_resume(tconn->pub.conn);
+		} else {
+			trunk_request_enter_pending(treq, tconn);
+		}
 		break;
 
 	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
@@ -1363,9 +1415,16 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 		treq = tconn->partial;
 		if (treq) {
 			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_PARTIAL);
+
+			/*
+			 *	Don't allow the connection to change state whilst
+			 *	we're draining requests from it.
+			 */
+			fr_connection_signals_pause(tconn->pub.conn);
 			trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_MOVE);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
+			fr_connection_signals_resume(tconn->pub.conn);
 		}
 	}
 
@@ -1373,13 +1432,20 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 	 *	Cancel sent requests
 	 */
 	if (states & FR_TRUNK_REQUEST_STATE_SENT) {
+		/*
+		 *	Don't allow the connection to change state whilst
+		 *	we're draining requests from it.
+		 */
+		fr_connection_signals_pause(tconn->pub.conn);
 		while ((treq = fr_dlist_head(&tconn->sent))) {
 			OVER_MAX_CHECK;
 			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_SENT);
+
 			trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_MOVE);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
 		}
+		fr_connection_signals_resume(tconn->pub.conn);
 	}
 
 	return count;
@@ -1647,6 +1713,11 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 {
 	fr_trunk_t	*trunk;
 
+	/*
+	 *	Ensure treq hasn't been freed
+	 */
+	(void)talloc_get_type_abort(treq, fr_trunk_request_t);
+
 	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
 
 	if (!fr_cond_assert_msg(!IN_HANDLER(treq->pub.trunk),
@@ -1661,12 +1732,20 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 	 */
 	case FR_TRUNK_REQUEST_STATE_PARTIAL:
 	case FR_TRUNK_REQUEST_STATE_SENT:
-		trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_SIGNAL);
+	{
+		fr_trunk_connection_t *tconn = treq->pub.tconn;
 
+		/*
+		 *	Don't allow connection state changes
+		 */
+		fr_connection_signals_pause(tconn->pub.conn);
+		trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_SIGNAL);
 		if (!fr_cond_assert_msg(treq->pub.state == FR_TRUNK_REQUEST_STATE_CANCEL,
 					"Bad state %s after cancellation",
-					fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"))) return;
-
+					fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"))) {
+			fr_connection_signals_resume(tconn->pub.conn);
+			return;
+		}
 		/*
 		 *	No cancel muxer.  We're done.
 		 *
@@ -1679,6 +1758,8 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 			trunk_request_enter_unassigned(treq);
 			fr_trunk_request_free(&treq);
 		}
+		fr_connection_signals_resume(tconn->pub.conn);
+	}
 		break;
 
 	/*
@@ -2019,8 +2100,14 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		}
 		treq->pub.preq = preq;
 		treq->pub.rctx = rctx;
-		trunk_request_enter_pending(treq, tconn);
-		if (trunk->conf.always_writable) trunk_connection_writable(tconn);
+		if (trunk->conf.always_writable) {
+			fr_connection_signals_pause(tconn->pub.conn);
+			trunk_request_enter_pending(treq, tconn);
+			trunk_connection_writable(tconn);
+			fr_connection_signals_resume(tconn->pub.conn);
+		} else {
+			trunk_request_enter_pending(treq, tconn);
+		}
 		break;
 
 	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
@@ -2085,8 +2172,10 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_PARTIAL:
 	case FR_TRUNK_REQUEST_STATE_SENT:
+		fr_connection_signals_pause(tconn->pub.conn);
 		trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
 		trunk_request_enter_pending(treq, tconn);
+		fr_connection_signals_resume(tconn->pub.conn);
 		break;
 
 	case FR_TRUNK_REQUEST_STATE_BACKLOG:	/* Do nothing.... */
@@ -2163,8 +2252,14 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_ou
 	treq->pub.rctx = rctx;
 	treq->bound_to_conn = true;	/* Don't let the request be transferred */
 
-	trunk_request_enter_pending(treq, tconn);
-	if (trunk->conf.always_writable) trunk_connection_writable(tconn);
+	if (trunk->conf.always_writable) {
+		fr_connection_signals_pause(tconn->pub.conn);
+		trunk_request_enter_pending(treq, tconn);
+		trunk_connection_writable(tconn);
+		fr_connection_signals_resume(tconn->pub.conn);
+	} else {
+		trunk_request_enter_pending(treq, tconn);
+	}
 
 	return FR_TRUNK_ENQUEUE_OK;
 }
@@ -2381,7 +2476,7 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 		fr_connection_signals_pause(tconn->pub.conn);
 		DO_CONNECTION_NOTIFY(tconn, events);
 		tconn->events = events;
-		fr_connection_deferred_signals_resume(tconn->pub.conn);
+		fr_connection_signals_resume(tconn->pub.conn);
 	}
 }
 
@@ -2890,14 +2985,14 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	tconn->sent_count = 0;
 
 	/*
-	 *	Remove the I/O events
-	 */
-	trunk_connection_event_update(tconn);
-
-	/*
 	 *	Remove the reconnect event
 	 */
 	if (trunk->conf.lifetime > 0) fr_event_timer_delete(&tconn->lifetime_ev);
+
+	/*
+	 *	Remove the I/O events
+	 */
+	trunk_connection_event_update(tconn);
 }
 
 /** Connection transitioned to the halted state

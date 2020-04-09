@@ -105,7 +105,7 @@ struct fr_connection_s {
 							///< if a function deeper in the call stack freed
 							///< the connection.
 
-	bool			signals_pause;		//!< Temporarily stop processing of signals.
+	unsigned int		signals_pause;		//!< Temporarily stop processing of signals.
 };
 
 #define STATE_TRANSITION(_new) \
@@ -184,7 +184,10 @@ static void connection_state_enter_init(fr_connection_t *conn);
  */
 static inline void connection_deferred_signal_add(fr_connection_t *conn, connection_dsignal_t signal)
 {
-	connection_dsignal_entry_t *dsignal;
+	connection_dsignal_entry_t *dsignal, *prev;
+
+	prev = fr_dlist_tail(&conn->deferred_signals);
+	if (prev && (prev->signal == signal)) return;		/* Don't insert duplicates */
 
 	dsignal = talloc_zero(conn, connection_dsignal_entry_t);
 	dsignal->signal = signal;
@@ -280,25 +283,26 @@ static void connection_deferred_signal_process(fr_connection_t *conn)
  */
 void fr_connection_signals_pause(fr_connection_t *conn)
 {
-	conn->signals_pause = true;
+	conn->signals_pause++;
 }
 
 /** Resume processing of deferred signals
  *
  * @param[in] conn to resume signal processing for.
  */
-void fr_connection_deferred_signals_resume(fr_connection_t *conn)
+void fr_connection_signals_resume(fr_connection_t *conn)
 {
+	if (conn->signals_pause > 0) conn->signals_pause--;
+	if (conn->signals_pause > 0) return;
+
 	/*
-	 *	If we were paused, and we're not in a handler
-	 *	then process the signals now.
+	 *	If we're not in a handler process the
+	 *	deferred signals now.
 	 */
-	if (!conn->in_handler && conn->signals_pause) {
-		conn->signals_pause = false;
+	if (!conn->in_handler) {
 		connection_deferred_signal_process(conn);
 		return;
 	}
-	conn->signals_pause = false;
 }
 
 /** Called when we enter a handler
