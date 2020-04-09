@@ -16,6 +16,7 @@ SOURCES	:=	base.c \
 		return.c \
 		subrequest.c \
 		switch.c \
+		tmpl.c \
 		xlat.c \
 		xlat_builtin.c \
 		xlat_eval.c \

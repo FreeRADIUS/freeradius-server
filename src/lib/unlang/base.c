@@ -90,6 +90,7 @@ int unlang_init(void)
 	if (unlang_subrequest_op_init() < 0) return -1;
 	unlang_switch_init();
 	unlang_call_init();
+	unlang_tmpl_init();
 
 	return 0;
 }

@@ -80,6 +80,7 @@ typedef enum {
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
+	UNLANG_TYPE_TMPL,			//!< asynchronously expand a vp_tmpl_t
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
@@ -381,6 +382,8 @@ int		unlang_subrequest_op_init(void);
 void		unlang_subrequest_op_free(void);
 
 void		unlang_switch_init(void);
+
+void		unlang_tmpl_init(void);
  /** @} */
 
 #ifdef __cplusplus
