@@ -99,8 +99,13 @@ int fr_pcap_if_link_layer(pcap_if_t *dev)
 	char	errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t	*pcap;
 	int	data_link;
+	int 	promiscuous = 0;
 
-	pcap = pcap_open_live(dev->name, 0, 0, 0, errbuf);
+#ifdef __APPLE__
+	if (!strncmp(dev->name, "pktap", 5)) promiscuous = true; /* we need it to probe the pktap interface */
+#endif
+
+	pcap = pcap_open_live(dev->name, 0, promiscuous, 0, errbuf);
 	if (!pcap) {
 		fr_strerror_printf("%s", errbuf);
 		return -1;
@@ -200,6 +205,12 @@ int fr_pcap_mac_addr(uint8_t *macaddr, char *ifname)
  */
 int fr_pcap_open(fr_pcap_t *pcap)
 {
+	int promiscuous = pcap->promiscuous;
+
+#ifdef __APPLE__
+	if (!strncmp(pcap->name, "pktap", 5)) promiscuous = false; /* It should always be disabled */
+#endif
+
 	switch (pcap->type) {
 	case PCAP_INTERFACE_OUT:
 	case PCAP_INTERFACE_IN:
@@ -233,10 +244,9 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		if (pcap_set_timeout(pcap->handle, PCAP_NONBLOCK_TIMEOUT) != 0) {
 			goto create_error;
 		}
-		if (pcap_set_promisc(pcap->handle, pcap->promiscuous) != 0) {
+		if (pcap_set_promisc(pcap->handle, promiscuous) != 0) {
 			goto create_error;
 		}
-
 		if (pcap_set_buffer_size(pcap->handle, SNAPLEN *
 					 (pcap->buffer_pkts ? pcap->buffer_pkts : PCAP_BUFFER_DEFAULT)) != 0) {
 			goto create_error;
@@ -248,7 +258,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		/*
 		 *	Alternative functions for libpcap < 1.0
 		 */
-		pcap->handle = pcap_open_live(pcap->name, SNAPLEN, pcap->promiscuous, PCAP_NONBLOCK_TIMEOUT,
+		pcap->handle = pcap_open_live(pcap->name, SNAPLEN, promiscuous, PCAP_NONBLOCK_TIMEOUT,
 					      pcap->errbuf);
 		if (!pcap->handle) {
 			fr_strerror_printf("%s", pcap->errbuf);
@@ -488,6 +498,9 @@ bool fr_pcap_link_layer_supported(int link_layer)
 	case DLT_LOOP:
 #ifdef DLT_LINUX_SLL
 	case DLT_LINUX_SLL:
+#endif
+#ifdef DLT_PKTAP
+	case DLT_PKTAP:
 #endif
 	case DLT_PFLOG:
 		return true;
