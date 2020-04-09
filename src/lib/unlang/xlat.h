@@ -278,6 +278,8 @@ int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_
 
 int		xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp);
 
+bool		xlat_async_required(xlat_exp_t const *xlat);
+
 ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *request,
 					char const *fmt, vp_tmpl_rules_t const *rules);
 
@@ -345,7 +347,7 @@ int		xlat_bootstrap(xlat_exp_t *root);
 void		xlat_instances_free(void);
 
 /*
- *	unlang/xlat.c
+ *	xlat.c
  */
 int		unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
 					      void const *ctx, fr_time_t when);

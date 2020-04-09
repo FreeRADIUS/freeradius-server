@@ -382,7 +382,7 @@ xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_a
 
 	c->func.async = func;
 	c->type = XLAT_FUNC_ASYNC;
-	c->async_safe = false;	/* async safe in this case means it might yield */
+	c->async_safe = false;	/* this function may yield */
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 

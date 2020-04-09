@@ -1842,3 +1842,16 @@ void xlat_eval_free(void)
 
 	done_init = false;
 }
+
+
+/** Return whether or not async is required for this xlat.
+ *
+ *	If the xlat is async_safe, then it will never yield.
+ *	If the xlat is not async_safe, then it may yield.
+ *
+ *	If the xlat yields, then async is required.
+ */
+bool xlat_async_required(xlat_exp_t const *xlat)
+{
+	return !xlat->async_safe;
+}
