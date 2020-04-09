@@ -4871,6 +4871,52 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	return aggr;
 }
 
+/** Flatten a list into individual "char *" argv-style array
+ *
+ * @param[in] ctx	to allocate boxes in.
+ * @param[out] argv_p	where output strings go
+ * @param[in] in	boxes to flatten
+ * @return
+ *	- >= 0 number of array elements in argv
+ *	- <0 on error
+ */
+int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_t const *in)
+{
+	int i, argc;
+	char **argv;
+
+	if (in->type != FR_TYPE_GROUP) {
+		argc = 1;
+
+	} else {
+		argc = fr_value_box_list_len(in);
+	}
+
+	argv = talloc_zero_array(ctx, char *, argc + 1);
+	if (!argv) return -1;
+
+	if (in->type != FR_TYPE_GROUP) {
+		argv[0] = fr_value_box_asprint(ctx, in, 0);
+
+	} else {
+		fr_value_box_t const *in_p;
+
+		/*
+		 *	Print the children of each group into the argv array.
+		 */
+		for (in_p = in, i = 0;
+		     in_p;
+		     in_p = in_p->next) {
+			argv[i] = fr_value_box_asprint(ctx, in_p->vb_group, 0);
+
+			i++;
+		}
+	}
+
+	*argv_p = argv;
+	return argc;
+}
+
 /** Do a full copy of a list of value boxes
  *
  * @param[in] ctx	to allocate boxes in.
