@@ -449,19 +449,24 @@ char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 
 	if (!len) goto null;
 
-	buff = p = talloc_zero_array(ctx, char, len + 1);
+	buff = p = talloc_zero_array(ctx, char, len);
 	end = p + len;
 
 	for (pcap_p = pcap;
 	     pcap_p;
 	     pcap_p = pcap_p->next) {
-	     	size_t ret;
+	     	size_t name_len = talloc_array_length(pcap_p->name) - 1;
 
-		ret = snprintf(p, end - p, "%s%c", pcap_p->name, c);
-		rad_assert(!is_truncated(ret, end - p));		/* Static analysis */
-		p += ret;
+		if (!fr_cond_assert(p < end)) {
+			talloc_free(buff);
+			return NULL;
+		}
+
+		memcpy(p, pcap_p->name, name_len);
+		p += name_len;
+		*p++ = c;
 	}
-	buff[len - 1] = '\0';
+	*(end - 1) = '\0';	/* Strip trailing separation char */
 
 	return buff;
 }
