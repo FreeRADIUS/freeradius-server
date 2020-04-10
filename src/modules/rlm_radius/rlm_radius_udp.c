@@ -851,7 +851,6 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 				    h->tt->num_requests);
 	}
 
-
 	talloc_free(h);
 }
 
@@ -904,7 +903,6 @@ static fr_connection_t *thread_conn_alloc(fr_trunk_connection_t *tconn, fr_event
 				   log_prefix,
 				   thread);
 	if (!conn) {
-		talloc_free(conn);
 		PERROR("%s - Failed allocating state handler for new connection", thread->inst->parent->name);
 		return NULL;
 	}
