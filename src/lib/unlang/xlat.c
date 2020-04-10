@@ -32,14 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include "unlang_priv.h"	/* Fixme - Should create a proper semi-public interface for the interpret */
 
-/** Hold the result of an inline xlat expansion
- *
- */
-typedef struct {
-	fr_value_box_t		*result;			//!< Where to store the result of the
-								///< xlat expansion. This is usually discarded.
-} unlang_frame_state_xlat_inline_t;
-
 /** State of an xlat expansion
  *
  * State of one level of nesting within an xlat expansion.
@@ -392,32 +384,6 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 	return XLAT_ACTION_YIELD;
 }
 
-/** Evaluates "naked" xlats in the config
- *
- */
-static unlang_action_t unlang_xlat_inline(REQUEST *request, UNUSED rlm_rcode_t *presult)
-{
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_xlat_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
-
-	if (!mx->exec) {
-		TALLOC_CTX *pool;
-		unlang_frame_state_xlat_inline_t *state;
-
-		MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_inline_t));
-		MEM(pool = talloc_pool(frame->state, 1024));	/* Pool to absorb some allocs */
-
-		unlang_xlat_push(pool, &state->result, request, mx->exp, false);
-		return UNLANG_ACTION_PUSHED_CHILD;
-	} else {
-		RDEBUG2("`%s`", mx->xlat_name);
-		radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
-				    false, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
-		return UNLANG_ACTION_EXECUTE_NEXT;
-	}
-}
 
 /** Register xlat operation with the interpreter
  *
@@ -432,13 +398,5 @@ void unlang_xlat_init(void)
 				.debug_braces = false,
 				.frame_state_size = sizeof(unlang_frame_state_xlat_t),
 				.frame_state_name = "unlang_frame_state_xlat_t",
-			   });
-
-
-	unlang_register(UNLANG_TYPE_XLAT_INLINE,
-			   &(unlang_op_t){
-				.name = "xlat_inline",
-				.interpret = unlang_xlat_inline,
-				.debug_braces = false
 			   });
 }

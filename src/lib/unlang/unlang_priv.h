@@ -78,7 +78,6 @@ typedef enum {
 	UNLANG_TYPE_CALL,			//!< call another virtual server
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
-	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_TMPL,			//!< asynchronously expand a vp_tmpl_t
 	UNLANG_TYPE_MAX
@@ -174,10 +173,8 @@ typedef struct {
  */
 typedef struct {
 	unlang_t		self;
-	int			exec;
-	char			*xlat_name;
-	xlat_exp_t		*exp;				//!< First xlat node to execute.
-} unlang_xlat_inline_t;
+	vp_tmpl_t const		*tmpl;
+} unlang_tmpl_t;
 
 /** State of a redundant operation
  *
@@ -312,13 +309,13 @@ static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)
 	return (unlang_t *)p;
 }
 
-static inline unlang_xlat_inline_t *unlang_generic_to_xlat_inline(unlang_t *p)
+static inline unlang_tmpl_t *unlang_generic_to_tmpl(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_TYPE_XLAT_INLINE);
-	return talloc_get_type_abort(p, unlang_xlat_inline_t);
+	rad_assert(p->type == UNLANG_TYPE_TMPL);
+	return talloc_get_type_abort(p, unlang_tmpl_t);
 }
 
-static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
+static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t *p)
 {
 	return (unlang_t *)p;
 }

@@ -34,7 +34,6 @@ extern "C" {
  * Represents a single tmpl
  */
 typedef struct {
-	vp_tmpl_t const			*tmpl;		//!< the tmpl to expand
 	fr_value_box_t			**out;		//!< where the expansion is stored
 	void				*rctx;		//!< for resume / signal
 	fr_unlang_tmpl_resume_t		resume;	       	//!< resumption handler

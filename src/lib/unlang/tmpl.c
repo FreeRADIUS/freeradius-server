@@ -41,9 +41,9 @@ void unlang_tmpl_push(fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *t
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 									       unlang_frame_state_tmpl_t);
-	unlang_t			*instruction;
+	unlang_tmpl_t			*ut;
 
-	static unlang_t const tmpl_instruction = {
+	static unlang_t tmpl_instruction = {
 		.type = UNLANG_TYPE_TMPL,
 		.name = "tmpl",
 		.debug_name = "tmpl",
@@ -61,14 +61,15 @@ void unlang_tmpl_push(fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *t
 	};
 
 	state->out = out;
-	state->tmpl = tmpl;
 
-	memcpy(&instruction, &tmpl_instruction, sizeof(instruction)); /* const issues */
+	MEM(ut = talloc(state, unlang_tmpl_t));
+	ut->self = tmpl_instruction;
+	ut->tmpl = tmpl;
 
 	/*
 	 *	Push a new tmpl frame onto the stack
 	 */
-	unlang_interpret_push(request, instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false);
+	unlang_interpret_push(request, unlang_tmpl_to_generic(ut), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false);
 }
 
 /** Wrapper to call a resumption function after a tmpl has been expanded
@@ -98,16 +99,11 @@ rlm_rcode_t unlang_tmpl_yield(REQUEST *request, fr_unlang_tmpl_resume_t resume, 
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
-	if (!tmpl_async_required(state->tmpl)) {
-		if (tmpl_aexpand_type(request, state->out, FR_TYPE_VALUE_BOX, request, state->tmpl, NULL, NULL) < 0) {
-			return RLM_MODULE_FAIL;
-		}
-
-		return RLM_MODULE_OK;
-	}
 
 	state->rctx = rctx;
 	state->resume = resume;
+
+	frame->interpret = unlang_tmpl_resume;
 
 	/*
 	 *	We set the repeatable flag here, so that the resume
@@ -120,22 +116,36 @@ rlm_rcode_t unlang_tmpl_yield(REQUEST *request, fr_unlang_tmpl_resume_t resume, 
 	 */
 	frame->interpret = unlang_tmpl_resume;
 	repeatable_set(frame);
-
-	/*
-	 *	Not implemented.
-	 */
-	return RLM_MODULE_FAIL;
+	return RLM_MODULE_YIELD;
 }
 
 static unlang_action_t unlang_tmpl(UNUSED REQUEST *request, rlm_rcode_t *presult)
 {
-#if 0
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
-#endif
+	unlang_tmpl_t			*ut = unlang_generic_to_tmpl(frame->instruction);
 
+	if (!state->out) {
+		state->out = fr_value_box_alloc(state, FR_TYPE_STRING, NULL, false);
+	}
+
+	if (!tmpl_async_required(ut->tmpl)) {
+		if (tmpl_aexpand_type(request, state->out, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
+			REDEBUG("Failed expanding %s - %s", ut->tmpl->name, fr_strerror());
+			*presult = RLM_MODULE_FAIL;
+		}
+
+		*presult = RLM_MODULE_OK;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	REDEBUG("Async xlats are not implemented!");
+
+	/*
+	 *	Not implemented.
+	 */
 	*presult = RLM_MODULE_FAIL;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;

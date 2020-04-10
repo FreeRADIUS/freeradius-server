@@ -2484,42 +2484,81 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 }
 #endif
 
-static unlang_t *compile_xlat_inline(unlang_t *parent,
-				     unlang_compile_t *unlang_ctx, CONF_PAIR const *cp)
+static unlang_t *compile_tmpl(unlang_t *parent,
+			      unlang_compile_t *unlang_ctx, CONF_PAIR *cp)
 {
 	unlang_t *c;
-	unlang_xlat_inline_t *mx;
+	unlang_tmpl_t *ut;
+	ssize_t slen;
+	FR_TOKEN type;
+	char const *p = cf_pair_attr(cp);
+	size_t len;
+	vp_tmpl_t *vpt;
 
-	mx = talloc_zero(parent, unlang_xlat_inline_t);
+	ut = talloc_zero(parent, unlang_tmpl_t);
 
-	c = unlang_xlat_inline_to_generic(mx);
+	c = unlang_tmpl_to_generic(ut);
 	c->parent = parent;
 	c->next = NULL;
-	c->name = "expand";
+	c->name = p;
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_XLAT_INLINE;
+	c->type = UNLANG_TYPE_TMPL;
+
+	if (*p == '`') {
+		type = T_BACK_QUOTED_STRING;
+		p++;
+		len = strlen(p);
+		if (!len || (p[len - 1] != '`')) {
+			talloc_free(ut);
+			cf_log_err(cp, "String is missing trailing quotation character");
+			return NULL;
+		}
+
+		p = talloc_bstrndup(ut, p, len - 1);
+		len--;
+
+	} else {
+		type = T_DOUBLE_QUOTED_STRING;
+		len = strlen(p);
+	}
 
 	(void) compile_action_defaults(c, unlang_ctx);
 
-	mx->xlat_name = talloc_typed_strdup(mx, cf_pair_attr(cp));
-	if (mx->xlat_name[0] == '%') {
-		ssize_t		slen;
+	slen = tmpl_afrom_str(ut, &vpt, p, len, type, unlang_ctx->rules, true);
+	if (slen <= 0) {
+		char *spaces, *text;
 
-		slen = xlat_tokenize(mx, &mx->exp, mx->xlat_name, talloc_array_length(mx->xlat_name) - 1, unlang_ctx->rules);
-		if (slen < 0) {
-			cf_log_err(cp, "%s", fr_strerror());
-			talloc_free(mx);
-			return NULL;
-		}
-	} else {
-		char *p;
-		mx->exec = true;
+	error:
+		fr_canonicalize_error(cp, &spaces, &text, slen, fr_strerror());
 
-		memmove(mx->xlat_name, mx->xlat_name + 1, strlen(mx->xlat_name)); /* including trailing NUL */
-		p = strrchr(mx->xlat_name, '`');
-		if (p) *p = '\0';
+		cf_log_err(cp, "Syntax error");
+		cf_log_err(cp, "%s", p);
+		cf_log_err(cp, "%s^ %s", spaces, text);
+
+		talloc_free(ut);
+		talloc_free(spaces);
+		talloc_free(text);
+
+		return NULL;
 	}
 
+	if (vpt->type == TMPL_TYPE_XLAT) {
+		xlat_exp_t *head;
+
+		/*
+		 *	Re-write it to be a pre-parsed XLAT structure.
+		 */
+		slen = xlat_tokenize(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, unlang_ctx->rules);
+		if (slen <= 0) {
+			p = vpt->name;
+			goto error;
+		}
+
+		vpt->type = TMPL_TYPE_XLAT_STRUCT;
+		vpt->tmpl_xlat = head;
+	}
+
+	ut->tmpl = vpt;	/* const issues */
 	return c;
 }
 
@@ -3366,7 +3405,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 */
 		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
 		    (modrefname[0] == '`')) {
-			return compile_xlat_inline(parent, unlang_ctx, cp);
+			return compile_tmpl(parent, unlang_ctx, cp);
 		}
 	}
 
