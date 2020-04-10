@@ -71,8 +71,18 @@ typedef struct {
 	fr_trunk_request_state_t	from;		//!< What state we transitioned from.
 	fr_trunk_request_state_t	to;		//!< What state we transitioned to.
 
+	fr_trunk_connection_t		*tconn;		//!< The request was associated with.
+							///< Pointer may now be invalid, do no de-reference.
+
+	uint64_t			tconn_id;	//!< If the treq was associated with a connection
+							///< the connection ID.
+	fr_trunk_connection_state_t	tconn_state;	//!< If the treq was associated with a connection
+							///< the connection state at the time of the
+							///< state transition.
+
+	char const		        *function;	//!< State change occurred in.
 	int				line;		//!< Line change occurred on.
-	char const			*function;	//!< Function change occurred in.
+
 } fr_trunk_request_state_log_t;
 #endif
 
@@ -352,22 +362,19 @@ do { \
 } while (0)
 
 #ifndef NDEBUG
+void trunk_request_state_log_entry_add(char const *function, int line,
+				       fr_trunk_request_t *treq, fr_trunk_request_state_t new);
+
 /** Record a request state transition and log appropriate output
  *
  */
 #define REQUEST_STATE_TRANSITION(_new) \
 do { \
-	fr_trunk_request_state_log_t *_log; \
 	DEBUG4("Trunk request %" PRIu64 " changed state %s -> %s", \
 	       treq->id, \
 	       fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
 	       fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>")); \
-	MEM(_log = talloc(treq, fr_trunk_request_state_log_t)); \
-	_log->from = treq->pub.state; \
-	_log->to = _new; \
-	_log->function = __FUNCTION__; \
-	_log->line = __LINE__; \
-	fr_dlist_insert_tail(&treq->log, _log); \
+	trunk_request_state_log_entry_add(__FUNCTION__, __LINE__, treq, _new); \
 	treq->pub.state = _new; \
 } while (0)
 #define REQUEST_BAD_STATE_TRANSITION(_new) \
@@ -2256,6 +2263,24 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_ou
 }
 
 #ifndef NDEBUG
+void trunk_request_state_log_entry_add(char const *function, int line,
+				       fr_trunk_request_t *treq, fr_trunk_request_state_t new)
+{
+	fr_trunk_request_state_log_t	*slog = NULL;
+
+	MEM(slog = talloc(treq, fr_trunk_request_state_log_t));
+	slog->from = treq->pub.state;
+	slog->to = new;
+	slog->function = function;
+	slog->line = line;
+	if (treq->pub.tconn) {
+		slog->tconn = treq->pub.tconn;
+		slog->tconn_id = treq->pub.tconn->pub.conn->id;
+		slog->tconn_state = treq->pub.tconn->pub.state;
+	}
+	fr_dlist_insert_tail(&treq->log, slog);
+}
+
 void fr_trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
 				fr_trunk_request_t const *treq)
 {
@@ -2266,7 +2291,11 @@ void fr_trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, cha
 	for (slog = fr_dlist_head(&treq->log), i = 0;
 	     slog;
 	     slog = fr_dlist_next(&treq->log, slog), i++) {
-		fr_log(log, log_type, file, line, "[%u] %s:%i - %s -> %s", i, slog->function, slog->line,
+		fr_log(log, log_type, file, line, "[%u] %s:%i - in conn %"PRIu64" in state %s - %s -> %s",
+		       i, slog->function, slog->line,
+		       slog->tconn_id,
+		       slog->tconn ? "none" : fr_table_str_by_value(fr_trunk_connection_states,
+		       						    slog->tconn_state, "<INVALID>"),
 		       fr_table_str_by_value(fr_trunk_request_states, slog->from, "<INVALID>"),
 		       fr_table_str_by_value(fr_trunk_request_states, slog->to, "<INVALID>"));
 	}
