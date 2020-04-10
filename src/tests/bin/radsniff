@@ -3,4 +3,7 @@
 . src/tests/bin/lib.sh
 
 do_test $TESTBIN/radsniff -h
-#do_test $TESTBIN/radsniff -a
+
+# list all interfaces
+do_test $TESTBIN/radsniff -a
+
