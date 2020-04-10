@@ -902,6 +902,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 		 */
 		node->fmt = talloc_bstrndup(node, p, slen);
 		node->len = slen;
+		node->async_safe = node->child->async_safe;
 		p += slen;
 
 		/*
