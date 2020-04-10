@@ -176,7 +176,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	REDEBUG("Async xlats are not implemented!");
+	REDEBUG("Async xlats are not implemented! for %s", ut->tmpl->name);
 
 	/*
 	 *	Not implemented.

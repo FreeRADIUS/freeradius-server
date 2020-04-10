@@ -247,6 +247,7 @@ static inline ssize_t xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, ch
 
 	node = xlat_exp_alloc(ctx, XLAT_REGEX, p, p - (in + 2));
 	node->regex_index = num;
+	node->async_safe = true;
 	*head = node;
 
 	p++;	/* Skip over '}' */
