@@ -857,9 +857,11 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_INIT:
 	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
+		rad_assert(!treq->tconn);
 		break;
 
 	case FR_TRUNK_REQUEST_STATE_BACKLOG:
+		rad_assert(!treq->tconn);
 		REQUEST_EXTRACT_BACKLOG(treq);
 		break;
 
@@ -871,10 +873,15 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 		REQUEST_BAD_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_PENDING);
 	}
 
+	/*
+	 *	Assign the new connection first this first so
+	 *      it appears in the state log.
+	 */
+	treq->pub.tconn = tconn;
+
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_PENDING);
 	DEBUG4("[%" PRIu64 "] Trunk connection assigned request %"PRIu64, tconn->pub.conn->id, treq->id);
 	fr_heap_insert(tconn->pending, treq);
-	treq->pub.tconn = tconn;
 
 	/*
 	 *	Check if we need to automatically transition the
