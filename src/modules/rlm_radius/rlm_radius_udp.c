@@ -292,19 +292,16 @@ static void udp_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, 
 }
 #endif
 
-/** Clear a UDP request, ready for moving or retransmission
+/** Clear out any connection specific resources from a udp request
  *
- * @note We don't necessarily have to clear the packet here.
  */
-static void udp_request_clear(udp_handle_t *h, udp_request_t *u, fr_time_t now)
+static void udp_request_reset(udp_request_t *u)
 {
-	if (!now) now = fr_time();
-	if (u->rr) (void) radius_track_entry_release(&u->rr);
+	TALLOC_FREE(u->packet);
+	u->extra = NULL;	/* Freed with packet */
 
-	/* Now wrong - We don't keep an entry reserved for the status check */
-	if (h && (fr_dlist_num_elements(&h->tt->free_list) == (h->status_u != NULL))) h->last_idle = now;
-
-	fr_pair_list_free(&u->extra);
+	radius_track_entry_release(&u->rr);
+	u->can_retransmit = false;
 }
 
 /** Reset a status_check packet, ready to re-use
@@ -318,11 +315,9 @@ static void status_check_reset(udp_handle_t *h, udp_request_t *u)
 	u->num_replies = 0;	/* Reset */
 	u->retry.start = 0;
 
-	if (u->rr) (void) radius_track_entry_release(&u->rr);	/* Not used for conn status check */
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
-	TALLOC_FREE(u->packet);
-	fr_pair_list_free(&u->extra);
+	udp_request_reset(u);
 }
 
 /*
@@ -1231,15 +1226,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	int			proxy_state = 6;
 
 	rad_assert(inst->parent->allowed[u->code]);
-
-	/*
-	 *	Might have been sent and then given up on... free the
-	 *	raw data so we can re-encode it.
-	 */
-	if (u->packet) {
-		TALLOC_FREE(u->packet);
-		fr_pair_list_free(&u->extra);
-	}
+	rad_assert(!u->packet);
 
 	/*
 	 *	Try to retransmit, unless there are special
@@ -1361,7 +1348,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		attr[6] = count & 0xff;
 		packet_len += 7;
 
-		MEM(vp = fr_pair_afrom_da(u, attr_proxy_state));
+		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
 		fr_pair_value_memcpy(vp, attr + 2, 5, true);
 		fr_pair_add(&u->extra, vp);
 	}
@@ -1668,7 +1655,6 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 		break;
 	}
 
-	udp_request_clear(h, u, now);
 	r->rcode = RLM_MODULE_FAIL;
 	fr_trunk_request_signal_complete(treq);
 
@@ -1753,7 +1739,11 @@ static void request_mux(fr_event_list_t *el,
 			       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
 
 			if (encode(h->inst, request, u, u->id) < 0) {
-				udp_request_clear(h, u, 0);
+				/*
+				 *	Need to do this because request_conn_release
+				 *	may not be called.
+				 */
+				udp_request_reset(u);
 				if (u->ev) (void) fr_event_timer_delete(&u->ev);
 				goto fail;
 			}
@@ -1947,7 +1937,6 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 			u->id = h->last_id++;
 
 			if (encode(h->inst, request, u, u->id) < 0) {
-				udp_request_clear(h, u, 0);
 				fr_trunk_request_signal_fail(treq);
 				return;
 			}
@@ -2193,11 +2182,12 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 		DEBUG("Next status check packet will be in %u.%03us", msec / 1000, msec % 1000);
 
 		/*
-		 *	If we're retransmitting, leave the ID alone.
-		 *	Otherwise delete it, so that the packet can be
-		 *	re-encoded.
+		 *	If we're retransmitting, leave the ID,
+		 *	packet and associated resources alone.
+		 *
+		 *	Otherwise free resources.
 		 */
-		if (!u->can_retransmit && u->rr) (void) radius_track_entry_release(&u->rr);
+		if (!u->can_retransmit) udp_request_reset(u);
 
 		/*
 		 *	Set the timer for the next retransmit.
@@ -2318,17 +2308,6 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		}
 
 		/*
-		 *	Disable the response timer, status_check_reply
-		 *	does this selectively for status-check packets.
-		 */
-		(void)fr_event_timer_delete(&u->ev);
-
-		/*
-		 *	Clear the original request buffer
-		 */
-		udp_request_clear(h, u, now);
-
-		/*
 		 *	Handle any state changes, etc. needed by receiving a
 		 *	Protocol-Error reply packet.
 		 *
@@ -2397,59 +2376,54 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
  *
  * Frees encoded packets if the request is being moved to a new connection
  */
-static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
+static void request_cancel(UNUSED fr_connection_t *conn, void *preq_to_reset,
 			   fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
 	udp_request_t	*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
-	udp_handle_t	*h = talloc_get_type_abort(conn->h, udp_handle_t);
-
-	/*
-	 *	Delete the request_timeout
-	 *
-	 *	Note: There might not be a request timeout
-	 *      set in the case where the request was
-	 *	queued for sendmmsg but never actually
-	 *	sent.
-	 */
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
 	switch (reason) {
-	/*
-	 *	The request is being terminated, and will
-	 *	soon be freed.  Let the request_fail function
-	 *	handle any cleanup required.
-	 */
-	case FR_TRUNK_CANCEL_REASON_SIGNAL:
-		if (u->rr) (void) radius_track_entry_release(&u->rr);
-		break;
-
-	case FR_TRUNK_CANCEL_REASON_NONE:
-		break;
-
 	/*
 	 *	Request has been requeued on the same
 	 *	connection due to timeout or DUP signal.  We
 	 *	keep the same packet to avoid re-encoding it.
 	 */
 	case FR_TRUNK_CANCEL_REASON_REQUEUE:
-		if (!u->can_retransmit) (void) radius_track_entry_release(&u->rr);
+		/*
+		 *	Delete the request_timeout
+		 *
+		 *	Note: There might not be a request timeout
+		 *	set in the case where the request was
+		 *	queued for sendmmsg but never actually
+		 *	sent.
+		 */
+		if (u->ev) (void) fr_event_timer_delete(&u->ev);
+		if (!u->can_retransmit) udp_request_reset(u);
 		break;
 
-	/*
-	 *	Request is moving to a different connection,
-	 *	for internal trunk reasons.  i.e. the old
-	 *	connection is closing.
-	 */
-	case FR_TRUNK_CANCEL_REASON_MOVE:
-		udp_request_clear(h, u, 0);
-		if (u->packet) TALLOC_FREE(u->packet);
-
-		u->num_replies = 0;
+	case FR_TRUNK_CANCEL_REASON_SIGNAL:	/* Dealt with by request_conn_release */
+	case FR_TRUNK_CANCEL_REASON_MOVE:	/* Dealt with by request_conn_release */
+	case FR_TRUNK_CANCEL_REASON_NONE:
 		break;
 	}
 }
 
-/** Write out a canned failure and resume the request
+/** Clear out anything associated with the handle from the request
+ *
+ */
+static void request_conn_release(fr_connection_t *conn, void *preq_to_reset, UNUSED void *uctx)
+{
+	udp_request_t		*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+
+	if (u->ev) (void)fr_event_timer_delete(&u->ev);
+	if (u->packet) udp_request_reset(u);
+
+	u->num_replies = 0;
+
+	if (h->tt->num_requests == 0) h->last_idle = fr_time();
+}
+
+/** Write out a canned failure
  *
  */
 static void request_fail(REQUEST *request, void *preq, void *rctx, NDEBUG_UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
@@ -2457,16 +2431,9 @@ static void request_fail(REQUEST *request, void *preq, void *rctx, NDEBUG_UNUSED
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 
-	rad_assert(state != FR_TRUNK_REQUEST_STATE_INIT);
+	rad_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
 
-	/*
-	 *	Requests should normally have their ID freed.  But
-	 *	sometimes we can try to requeue the request using the
-	 *	same ID, BUT the trunk code decides that the
-	 *	connection is down.  In that case, the ID will remain,
-	 *	and the trunk will call this function.  So we need to clean it up.
-	 */
-	if (u->rr) (void) radius_track_entry_release(&u->rr);
+	rad_assert(state != FR_TRUNK_REQUEST_STATE_INIT);
 
 	if (u->status_check) return;
 
@@ -2476,17 +2443,16 @@ static void request_fail(REQUEST *request, void *preq, void *rctx, NDEBUG_UNUSED
 	unlang_interpret_resumable(request);
 }
 
-/** Mark the request as resumable
+/** Response has already been written to the rctx at this point
  *
  */
 static void request_complete(REQUEST *request, void *preq, void *rctx, UNUSED void *uctx)
 {
-	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 
-	/*
-	 *	Status checks don't run.
-	 */
+	rad_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
+
 	if (u->status_check) return;
 
 	r->treq = NULL;
@@ -2501,12 +2467,10 @@ static void request_free(UNUSED REQUEST *request, void *preq_to_free, UNUSED voi
 {
 	udp_request_t		*u = talloc_get_type_abort(preq_to_free, udp_request_t);
 
-	rad_assert(u->rr == NULL);
-
-	if (u->packet) TALLOC_FREE(u->packet);
+	rad_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
 
 	/*
-	 *	Don't free status check packets.
+	 *	Don't free status check requests.
 	 */
 	if (u->status_check) return;
 
@@ -2673,6 +2637,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 						.request_prioritise = request_prioritise,
 						.request_mux = request_mux,
 						.request_demux = request_demux,
+						.request_conn_release = request_conn_release,
 						.request_complete = request_complete,
 						.request_fail = request_fail,
 						.request_cancel = request_cancel,
@@ -2684,6 +2649,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 						.connection_notify = thread_conn_notify_replicate,
 						.request_prioritise = request_prioritise,
 						.request_mux = request_mux_replicate,
+						.request_conn_release = request_conn_release,
 						.request_complete = request_complete,
 						.request_fail = request_fail,
 						.request_free = request_free
@@ -2691,8 +2657,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	inst->trunk_conf = &inst->parent->trunk_conf;
 
-	inst->trunk_conf->req_pool_headers = 2;	/* One for the request, one for the buffer */
-	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size;
+	inst->trunk_conf->req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
+	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size + sizeof(radius_track_entry_t ***) + sizeof(VALUE_PAIR) + 20;
 
 	thread->el = el;
 	thread->inst = inst;
