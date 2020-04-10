@@ -2490,10 +2490,9 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	unlang_t *c;
 	unlang_tmpl_t *ut;
 	ssize_t slen;
-	FR_TOKEN type;
 	char const *p = cf_pair_attr(cp);
-	size_t len;
 	vp_tmpl_t *vpt;
+	xlat_exp_t *head;
 
 	ut = talloc_zero(parent, unlang_tmpl_t);
 
@@ -2504,27 +2503,13 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	c->debug_name = c->name;
 	c->type = UNLANG_TYPE_TMPL;
 
-	if (*p == '`') {
-		type = T_BACK_QUOTED_STRING;
-		p++;
-		len = strlen(p);
-		if (!len || (p[len - 1] != '`')) {
-			talloc_free(ut);
-			cf_log_err(cp, "String is missing trailing quotation character");
-			return NULL;
-		}
-
-		p = talloc_bstrndup(ut, p, len - 1);
-		len--;
-
-	} else {
-		type = T_DOUBLE_QUOTED_STRING;
-		len = strlen(p);
+	if (cf_pair_attr_quote(cp) == T_BACK_QUOTED_STRING) {
+		ut->exec_wait = true;
 	}
 
 	(void) compile_action_defaults(c, unlang_ctx);
 
-	slen = tmpl_afrom_str(ut, &vpt, p, len, type, unlang_ctx->rules, true);
+	slen = tmpl_afrom_str(ut, &vpt, p, talloc_array_length(p) - 1, T_DOUBLE_QUOTED_STRING, unlang_ctx->rules, true);
 	if (slen <= 0) {
 		char *spaces, *text;
 
@@ -2545,21 +2530,21 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	/*
 	 *	Ensure that the expansions are precompiled.
 	 */
-	if (vpt->type == TMPL_TYPE_XLAT) {
-		xlat_exp_t *head;
-
-		/*
-		 *	Re-write it to be a pre-parsed XLAT structure.
-		 */
+	if (ut->exec_wait) {
+		slen = xlat_tokenize_argv(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, unlang_ctx->rules);
+	} else {
 		slen = xlat_tokenize(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, unlang_ctx->rules);
-		if (slen <= 0) {
-			p = vpt->name;
-			goto error;
-		}
-
-		vpt->type = TMPL_TYPE_XLAT_STRUCT;
-		vpt->tmpl_xlat = head;
 	}
+	if (slen <= 0) {
+		p = vpt->name;
+		goto error;
+	}
+
+	/*
+	 *	Re-write it to be a pre-parsed XLAT structure.
+	 */
+	vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	vpt->tmpl_xlat = head;
 
 	ut->tmpl = vpt;	/* const issues */
 	return c;
@@ -3407,7 +3392,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *	This should really be removed from the server.
 		 */
 		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
-		    (modrefname[0] == '`')) {
+		    (cf_pair_attr_quote(cp) == T_BACK_QUOTED_STRING)) {
 			return compile_tmpl(parent, unlang_ctx, cp);
 		}
 	}

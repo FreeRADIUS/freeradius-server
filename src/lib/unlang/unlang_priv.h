@@ -174,6 +174,7 @@ typedef struct {
 typedef struct {
 	unlang_t		self;
 	vp_tmpl_t const		*tmpl;
+	bool			exec_wait;
 } unlang_tmpl_t;
 
 /** State of a redundant operation

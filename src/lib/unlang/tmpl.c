@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/tmpl.h>
+#include <freeradius-devel/server/exec.h>
 #include "tmpl_priv.h"
 
 /** Push a tmpl onto the stack for evaluation
@@ -93,6 +94,32 @@ static unlang_action_t unlang_tmpl_resume(REQUEST *request, rlm_rcode_t *presult
 }
 
 
+/** Wrapper to call exec after a tmpl has been expanded
+ *
+ */
+static unlang_action_t unlang_tmpl_exec_resume(REQUEST *request, rlm_rcode_t *presult)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
+								       unlang_frame_state_tmpl_t);
+
+	if (fr_exec_nowait(request, *state->out, NULL) < 0) {
+		REDEBUG("Failed executing program - %s", fr_strerror());
+		*presult = RLM_MODULE_FAIL;
+	} else {
+		*presult = RLM_MODULE_OK;
+	}
+
+	/*
+	 *	state->resume MUST be NULL, as we don't yet support
+	 *	exec from unlang_tmpl_push().
+	 */
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+
 rlm_rcode_t unlang_tmpl_yield(REQUEST *request, fr_unlang_tmpl_resume_t resume, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -129,23 +156,32 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 
 	if (!state->out) {
 		state->out = talloc(state, fr_value_box_t *);
-		*(state->out) = fr_value_box_alloc(state, FR_TYPE_STRING, NULL, false);
 	}
 
 	if (!tmpl_async_required(ut->tmpl)) {
-		if (tmpl_aexpand_type(request, state->out, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
-			REDEBUG("Failed expanding %s - %s", ut->tmpl->name, fr_strerror());
-			*presult = RLM_MODULE_FAIL;
+		if (!ut->exec_wait) {
+			*(state->out) = fr_value_box_alloc_null(state);
+			if (tmpl_aexpand_type(request, state->out, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
+				REDEBUG("Failed expanding %s - %s", ut->tmpl->name, fr_strerror());
+				*presult = RLM_MODULE_FAIL;
+			}
+
+			*presult = RLM_MODULE_OK;
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
-		*presult = RLM_MODULE_OK;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		frame->interpret = unlang_tmpl_exec_resume;
+		repeatable_set(frame);
+		unlang_xlat_push(state, state->out, request, ut->tmpl->tmpl_xlat, false);
+		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
 	REDEBUG("Async xlats are not implemented!");
 
 	/*
 	 *	Not implemented.
+	 *
+	 *	Set state->resume to unlang_tmpl_xlat_resume()
 	 */
 	*presult = RLM_MODULE_FAIL;
 
