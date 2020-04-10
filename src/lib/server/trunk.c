@@ -2294,8 +2294,8 @@ void fr_trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, cha
 		fr_log(log, log_type, file, line, "[%u] %s:%i - in conn %"PRIu64" in state %s - %s -> %s",
 		       i, slog->function, slog->line,
 		       slog->tconn_id,
-		       slog->tconn ? "none" : fr_table_str_by_value(fr_trunk_connection_states,
-		       						    slog->tconn_state, "<INVALID>"),
+		       slog->tconn ? fr_table_str_by_value(fr_trunk_connection_states,
+		       					    slog->tconn_state, "<INVALID>") : "none",
 		       fr_table_str_by_value(fr_trunk_request_states, slog->from, "<INVALID>"),
 		       fr_table_str_by_value(fr_trunk_request_states, slog->to, "<INVALID>"));
 	}
