@@ -1853,5 +1853,18 @@ void xlat_eval_free(void)
  */
 bool xlat_async_required(xlat_exp_t const *xlat)
 {
-	return !xlat->async_safe;
+	xlat_exp_t const *node;
+
+	if (xlat->type != XLAT_CHILD) {
+		return !xlat->async_safe;
+	}
+
+	/*
+	 *	Set async_safe on the entire list.
+	 */
+	for (node = xlat; node != NULL; node = node->next) {
+		if (!node->async_safe) return true;
+	}
+
+	return false;
 }
