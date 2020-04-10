@@ -81,7 +81,6 @@ static int te_cmp(void const *one, void const *two)
  */
 static int _radius_track_entry_release_on_free(radius_track_entry_t ***te_p)
 {
-	fr_cond_assert_fail(__FILE__, __LINE__, 0, "Freeing by destructor not currently allowed");
 	radius_track_entry_release(*te_p);
 
 	return 0;
@@ -212,7 +211,11 @@ int radius_track_entry_release(
 				radius_track_entry_t **te_to_free)
 {
 	radius_track_entry_t	*te = *te_to_free;
-	radius_track_t		*tt = talloc_get_type_abort(te->tt, radius_track_t);	/* Make sure table is still valid */
+	radius_track_t		*tt;
+
+	if (!te) return 0;
+
+	tt = talloc_get_type_abort(te->tt, radius_track_t);	/* Make sure table is still valid */
 
 	if (te->binding) {
 		talloc_set_destructor(te->binding, NULL);	/* Disarm the destructor */
