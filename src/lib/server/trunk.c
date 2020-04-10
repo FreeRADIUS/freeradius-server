@@ -2268,7 +2268,7 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 {
 	fr_trunk_request_state_log_t	*slog = NULL;
 
-	MEM(slog = talloc(treq, fr_trunk_request_state_log_t));
+	MEM(slog = talloc_zero(treq, fr_trunk_request_state_log_t));
 	slog->from = treq->pub.state;
 	slog->to = new;
 	slog->function = function;
