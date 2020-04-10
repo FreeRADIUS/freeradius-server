@@ -857,11 +857,11 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_INIT:
 	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
-		rad_assert(!treq->tconn);
+		rad_assert(!treq->pub.tconn);
 		break;
 
 	case FR_TRUNK_REQUEST_STATE_BACKLOG:
-		rad_assert(!treq->tconn);
+		rad_assert(!treq->pub.tconn);
 		REQUEST_EXTRACT_BACKLOG(treq);
 		break;
 
