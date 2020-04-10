@@ -420,6 +420,20 @@ do { \
 	} \
 } while(0)
 
+/** Call the "conn_release" callback (if set)
+ *
+ */
+#define DO_REQUEST_CONN_RELEASE(_treq) \
+do { \
+	if ((_treq)->pub.trunk->funcs.request_conn_release) { \
+		void *_prev = (_treq)->pub.trunk->in_handler; \
+		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_conn_release; \
+		DEBUG4("Calling request_conn_release(conn=%p, preq=%p, uctx=%p)", (_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
+		(_treq)->pub.trunk->funcs.request_conn_release((_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
+		(_treq)->pub.trunk->in_handler = _prev; \
+	} \
+} while(0)
+
 /** Call the complete callback (if set)
  *
  */
@@ -719,6 +733,12 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 	}
 
 	DEBUG4("[%" PRIu64 "] Trunk connection released request %" PRIu64, tconn->pub.conn->id, treq->id);
+
+	/*
+	 *	Release any connection specific resources the
+	 *	treq holds.
+	 */
+	DO_REQUEST_CONN_RELEASE(treq);
 
 	switch (tconn->pub.state){
 	case FR_TRUNK_CONN_FULL:
@@ -1709,8 +1729,14 @@ void fr_trunk_request_signal_fail(fr_trunk_request_t *treq)
 
 /** Cancel a trunk request
  *
- * Request can be in any state, but requests to cancel if the request is not in
+ * treq can be in any state, but requests to cancel if the treq is not in
  * the FR_TRUNK_REQUEST_STATE_PARTIAL or FR_TRUNK_REQUEST_STATE_SENT state will be ignored.
+ *
+ * The complete or failed callbacks will not be called here, as it's assumed the REQUEST *
+ * is now inviable as it's being cancelled.
+ *
+ * The free function however, is called, and that should be used to perform necessary
+ * cleanup.
  *
  * @param[in] treq	to signal state change for.
  */
@@ -1758,6 +1784,10 @@ void fr_trunk_request_signal_cancel(fr_trunk_request_t *treq)
 		 *	the next time this connection becomes
 		 *	writable, we'll call the cancel mux
 		 *	function.
+		 *
+		 *	We don't run the complete or failed
+		 *	callbacks here as the request is
+		 *	being cancelled.
 		 */
 		if (!trunk->funcs.request_cancel_mux) {
 			trunk_request_enter_unassigned(treq);

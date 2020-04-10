@@ -517,7 +517,7 @@ typedef void (*fr_trunk_request_demux_t)(fr_trunk_connection_t *tconn, fr_connec
  */
 typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
 
-/** Remove an outstanding request from a tracking/matching structure
+/** Remove an outstanding "sent" request from a tracking/matching structure
  *
  * If the treq (trunk request) is in the FR_TRUNK_REQUEST_STATE_PARTIAL or
  * FR_TRUNK_REQUEST_STATE_SENT states, this callback will be called prior
@@ -554,13 +554,17 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *   - ...and no request_cancel_mux callback was provided, the
  *     treq will enter the unassigned state and then be freed.
  *
- * @note FR_TRUNK_CANCEL_REASON_MOVE will only be set if the underlying connection
- * is bad.  No cancellation requests will be sent for requests being moved.
+ * @note FR_TRUNK_CANCEL_REASON_MOVE will only be set if the underlying
+ * connection is bad. A 'sent' treq will never be moved due to load
+ * balancing.
  *
  * @note There is no need to signal request state changes in the cancellation
  * function.  The trunk will move the request into the correct state.
  * This callback is only to allow the API client to cleanup the preq in
  * preparation for the cancellation event.
+ *
+ * @note Cancellation requests to a remote datastore should not be made
+ * here.  If that is required, a cancel_mux function should be provided.
  *
  * @param[in] conn		to remove request from.
  * @param[in] preq_to_reset	Preq to reset.
@@ -570,15 +574,30 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
 typedef void (*fr_trunk_request_cancel_t)(fr_connection_t *conn, void *preq_to_reset,
 					  fr_trunk_cancel_reason_t reason, void *uctx);
 
+/** Free connection specific resources from a treq, as the treq is being removed from a connection
+ *
+ * Any connection specific resources that the treq currently holds must be
+ * released.  Examples are connection-specific handles, ID allocations,
+ * and connection specific packets.
+ *
+ * The treq may be about to be freed or it may be being re-assigned to a new connection.
+ *
+ * @param[in] conn		request will be removed from.
+ * @param[in] preq_to_reset	Preq to remove connection specified resources
+ *      			from.
+ * @param[in] uctx		User context data passed to #fr_trunk_alloc.
+ */
+typedef void (*fr_trunk_request_conn_release_t)(fr_connection_t *conn, void *preq_to_reset,
+						 void *uctx);
+
 /** Write a successful result to the rctx so that the trunk API client is aware of the result
  *
  * The rctx should be modified in such a way that indicates to the trunk API client
  * that the request was sent using the trunk and a response was received.
  *
- * This callback should free any memory not bound to the lifetime of the rctx
- * or request, or that was allocated explicitly to prepare for the REQUEST *
- * being used by a trunk.  This may include I/O library request handles, raw
- * responses, and decoded responses.
+ * This function should not free any resources associated with the preq.  That should
+ * be done in the request_free callback.  This function should only be used to translate
+ * the contents of the preq into a result, and write it to the rctx.
  *
  * After this callback is complete, the request_free callback will be called if provided.
  */
@@ -589,9 +608,9 @@ typedef void (*fr_trunk_request_complete_t)(REQUEST *request, void *preq, void *
  * The rctx should be modified in such a way that indicates to the trunk API client
  * that the request could not be sent using the trunk.
  *
- * This callback should free any memory not bound to the lifetime of the rctx
- * or request, or that was allocated explicitly to prepare for the REQUEST *
- * being used by a trunk.
+ * This function should not free any resources associated with the preq.  That should
+ * be done in the request_free callback.  This function should only be used to write
+ * a "canned" failure to the rctx.
  *
  * @note If a cancel function is provided, the cancel function should be used to remove
  *       active requests from any request/response matching, not the fail function.
@@ -645,12 +664,17 @@ typedef struct {
 	fr_trunk_request_cancel_t	request_cancel;		//!< Request should be removed from tracking
 								///< and should be reset to its initial state.
 
-	fr_trunk_request_complete_t	request_complete;	//!< Request is complete.
+	fr_trunk_request_conn_release_t	request_conn_release;	//!< Any connection specific resources should be
+								///< removed from the treq as it's about to be
+								///< moved or freed.
 
-	fr_trunk_request_fail_t		request_fail;		//!< Cleanup all resources, and inform the caller.
+	fr_trunk_request_complete_t	request_complete;	//!< Request is complete, interpret the response
+								///< contained in preq.
 
-	fr_trunk_request_free_t		request_free;		//!< Free the preq and provide a chance
-								///< to mark the request as runnable.
+	fr_trunk_request_fail_t		request_fail;		//!< Request failed, write out a canned response.
+
+	fr_trunk_request_free_t		request_free;		//!< Free the preq and any resources it holds and
+								///< provide a chance to mark the request as runnable.
 } fr_trunk_io_funcs_t;
 
 /** @name Statistics
