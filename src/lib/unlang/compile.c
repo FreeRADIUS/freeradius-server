@@ -2504,7 +2504,7 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	c->type = UNLANG_TYPE_TMPL;
 
 	if (cf_pair_attr_quote(cp) == T_BACK_QUOTED_STRING) {
-		ut->exec_wait = true;
+		ut->inline_exec = true;
 	}
 
 	(void) compile_action_defaults(c, unlang_ctx);
@@ -2530,7 +2530,7 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	/*
 	 *	Ensure that the expansions are precompiled.
 	 */
-	if (ut->exec_wait) {
+	if (ut->inline_exec) {
 		slen = xlat_tokenize_argv(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, unlang_ctx->rules);
 	} else {
 		slen = xlat_tokenize(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, unlang_ctx->rules);

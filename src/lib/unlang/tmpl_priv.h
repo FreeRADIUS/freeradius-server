@@ -35,7 +35,11 @@ extern "C" {
  */
 typedef struct {
 	fr_value_box_t			**out;		//!< where the expansion is stored
-	void				*rctx;		//!< for resume / signal
+
+	TALLOC_CTX			*ctx;		//!< for allocating value boxes
+	fr_value_box_t			*box;		//!< where the expansion is stored
+
+	void				*rctx;		//!< for resume
 	fr_unlang_tmpl_resume_t		resume;	       	//!< resumption handler
 } unlang_frame_state_tmpl_t;
 

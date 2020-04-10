@@ -32,11 +32,12 @@ RCSID("$Id$")
 
 /** Push a tmpl onto the stack for evaluation
  *
+ * @param[in] ctx		To allocate value boxes and values in.
  * @param[out] out		The value_box created from the tmpl
  * @param[in] request		The current request.
  * @param[in] tmpl		the tmpl to expand
  */
-void unlang_tmpl_push(fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl)
+void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -62,6 +63,7 @@ void unlang_tmpl_push(fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *t
 	};
 
 	state->out = out;
+	state->ctx = ctx;
 
 	MEM(ut = talloc(state, unlang_tmpl_t));
 	ut->self = tmpl_instruction;
@@ -82,13 +84,18 @@ static unlang_action_t unlang_tmpl_resume(REQUEST *request, rlm_rcode_t *presult
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
-	rlm_rcode_t			rcode;
 
-	rad_assert(state->resume != NULL);
+	if (state->resume) {
+		rlm_rcode_t			rcode;
 
-	rcode = state->resume(request, state->rctx);
-	*presult = rcode;
-	if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
+		if (state->out) *state->out = state->box;
+
+		rcode = state->resume(request, state->rctx);
+		*presult = rcode;
+		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
+	} else {
+		*presult = RLM_MODULE_OK;
+	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -104,7 +111,7 @@ static unlang_action_t unlang_tmpl_exec_resume(REQUEST *request, rlm_rcode_t *pr
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	if (fr_exec_nowait(request, *state->out, NULL) < 0) {
+	if (fr_exec_nowait(request, state->box, NULL) < 0) {
 		REDEBUG("Failed executing program - %s", fr_strerror());
 		*presult = RLM_MODULE_FAIL;
 	} else {
@@ -154,14 +161,15 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 								       unlang_frame_state_tmpl_t);
 	unlang_tmpl_t			*ut = unlang_generic_to_tmpl(frame->instruction);
 
-	if (!state->out) {
-		state->out = talloc(state, fr_value_box_t *);
-	}
+	/*
+	 *	If we're not called from unlang_tmpl_push(), then
+	 *	ensure that we clean up the resulting value boxes.
+	 */
+	if (!state->ctx) state->ctx = state;
 
 	if (!tmpl_async_required(ut->tmpl)) {
-		if (!ut->exec_wait) {
-			*(state->out) = fr_value_box_alloc_null(state);
-			if (tmpl_aexpand_type(request, state->out, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
+		if (!ut->inline_exec) {
+			if (tmpl_aexpand_type(state->ctx, &state->box, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
 				REDEBUG("Failed expanding %s - %s", ut->tmpl->name, fr_strerror());
 				*presult = RLM_MODULE_FAIL;
 			}
@@ -170,21 +178,47 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
+		/*
+		 *	Inline exec's are only called from in-line
+		 *	text in the configuration files.
+		 */
 		frame->interpret = unlang_tmpl_exec_resume;
+
 		repeatable_set(frame);
-		unlang_xlat_push(state, state->out, request, ut->tmpl->tmpl_xlat, false);
+		unlang_xlat_push(state->ctx, &state->box, request, ut->tmpl->tmpl_xlat, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	REDEBUG("Async xlats are not implemented! for %s", ut->tmpl->name);
+	/*
+	 *	XLAT structs are allowed.
+	 */
+	if (ut->tmpl->type == TMPL_TYPE_XLAT_STRUCT) {
+		frame->interpret = unlang_tmpl_resume;
+		repeatable_set(frame);
+		unlang_xlat_push(state->ctx, &state->box, request, ut->tmpl->tmpl_xlat, false);
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
 
 	/*
-	 *	Not implemented.
-	 *
-	 *	Set state->resume to unlang_tmpl_xlat_resume()
+	 *	Exec isn't done yet.
 	 */
-	*presult = RLM_MODULE_FAIL;
+	if (ut->tmpl->type == TMPL_TYPE_EXEC) {
+		REDEBUG("Asynchronous exec is not supported");
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
+	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
+		REDEBUG("Xlat expansions MUST be compiled before being run asynchronously");
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Attribute expansions, etc. don't require YIELD.
+	 */
+	REDEBUG("Internal error - template '%s' should not require async", ut->tmpl->name);
+	*presult = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
