@@ -2542,6 +2542,9 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 		return NULL;
 	}
 
+	/*
+	 *	Ensure that the expansions are precompiled.
+	 */
 	if (vpt->type == TMPL_TYPE_XLAT) {
 		xlat_exp_t *head;
 

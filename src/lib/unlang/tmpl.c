@@ -119,7 +119,7 @@ rlm_rcode_t unlang_tmpl_yield(REQUEST *request, fr_unlang_tmpl_resume_t resume, 
 	return RLM_MODULE_YIELD;
 }
 
-static unlang_action_t unlang_tmpl(UNUSED REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -128,7 +128,8 @@ static unlang_action_t unlang_tmpl(UNUSED REQUEST *request, rlm_rcode_t *presult
 	unlang_tmpl_t			*ut = unlang_generic_to_tmpl(frame->instruction);
 
 	if (!state->out) {
-		state->out = fr_value_box_alloc(state, FR_TYPE_STRING, NULL, false);
+		state->out = talloc(state, fr_value_box_t *);
+		*(state->out) = fr_value_box_alloc(state, FR_TYPE_STRING, NULL, false);
 	}
 
 	if (!tmpl_async_required(ut->tmpl)) {
