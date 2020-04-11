@@ -447,7 +447,7 @@ static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, U
 
 	h = talloc_get_type_abort(conn->h, udp_handle_t);
 
-	ERROR("%s - Connection %s failed - %s", h->module_name, h->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
 	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 }
@@ -491,7 +491,7 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 	case FR_RETRY_CONTINUE:
 		if (fr_event_fd_insert(h, el, h->fd, conn_writable_status_check, NULL,
 				       conn_error_status_check, conn) < 0) {
-			PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
+			PERROR("%s - Failed inserting FD event", h->module_name);
 			fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 		}
 		return;
@@ -509,7 +509,7 @@ static void conn_status_check_again(fr_event_list_t *el, UNUSED fr_time_t now, v
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
 	if (fr_event_fd_insert(h, el, h->fd, conn_writable_status_check, NULL, conn_error_status_check, conn) < 0) {
-		PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
+		PERROR("%s - Failed inserting FD event", h->module_name);
 		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 	}
 }
@@ -544,8 +544,8 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 			break;
 		}
 
-		ERROR("%s - %s failed reading response from socket - %s",
-		      h->module_name, __FUNCTION__, fr_syserror(errno));
+		ERROR("%s - Failed reading response from socket: %s",
+		      h->module_name, fr_syserror(errno));
 		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 		return;
 	}
@@ -655,7 +655,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 
 	slen = write(h->fd, u->packet, u->packet_len);
 	if (slen < 0) {
-		ERROR("%s - Failed sending %s ID %d length %ld over connection %s - %s",
+		ERROR("%s - Failed sending %s ID %d length %ld over connection %s: %s",
 		      h->module_name, fr_packet_codes[u->code], u->id, u->packet_len, h->name, fr_syserror(errno));
 		goto fail;
 	}
@@ -666,7 +666,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 *	for the response timeout.
 	 */
 	if (fr_event_fd_insert(h, conn->el, h->fd, conn_readable_status_check, NULL, conn_error_status_check, conn) < 0) {
-		PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
+		PERROR("%s - Failed inserting FD event", h->module_name);
 		goto fail;
 	}
 
@@ -928,8 +928,7 @@ static void conn_discard(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, v
 		case ECONNRESET:
 		case ENOTCONN:
 		case ETIMEDOUT:
-			ERROR("%s - %s failed draining socket: %s",
-			      __FUNCTION__, h->module_name, fr_syserror(errno));
+			ERROR("%s - Failed draining socket: %s", h->module_name, fr_syserror(errno));
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			break;
 
@@ -989,7 +988,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	fr_connection_t		*conn = tconn->conn;
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
-	ERROR("%s - Connection %s failed - %s", h->module_name, h->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
 	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 }
@@ -1034,7 +1033,7 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 			       write_fn,
 			       conn_error,
 			       tconn) < 0) {
-		PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
+		PERROR("%s - Failed inserting FD event", h->module_name);
 
 		/*
 		 *	May free the connection!
@@ -1076,7 +1075,7 @@ static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connec
 			       write_fn,
 			       conn_error,
 			       tconn) < 0) {
-		PERROR("%s - %s failed inserting FD event", h->module_name, __FUNCTION__);
+		PERROR("%s - Failed inserting FD event", h->module_name);
 
 		/*
 		 *	May free the connection!
@@ -1812,7 +1811,7 @@ static void request_mux(fr_event_list_t *el,
 		case EINTR:		/* Interrupted by signal */
 		case ENOBUFS:		/* No outbound packet buffers, maybe? */
 		case ENOMEM:		/* malloc failure in kernel? */
-			WARN("%s - Failed sending data over connection %s - %s",
+			WARN("%s - Failed sending data over connection %s: %s",
 			     h->module_name, h->name, fr_syserror(errno));
 			break;
 
@@ -1827,7 +1826,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	the packets back to the pending state.
 		 */
 		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
-			ERROR("%s - Failed sending data over connection %s - %s",
+			ERROR("%s - Failed sending data over connection %s: %s",
 			      h->module_name, h->name, fr_syserror(errno));
 			fr_trunk_request_signal_fail(h->coalesced[i].treq);
 			sent = 1;
@@ -1838,7 +1837,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	have to do any cleanup.
 		 */
 		default:
-			ERROR("%s - Failed sending data over connection %s - %s",
+			ERROR("%s - Failed sending data over connection %s: %s",
 			      h->module_name, h->name, fr_syserror(errno));
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			return;
@@ -1981,7 +1980,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		case EINTR:		/* Interrupted by signal */
 		case ENOBUFS:		/* No outbound packet buffers, maybe? */
 		case ENOMEM:		/* malloc failure in kernel? */
-			WARN("%s - Failed sending data over connection %s - %s",
+			WARN("%s - Failed sending data over connection %s: %s",
 			     h->module_name, h->name, fr_syserror(errno));
 			break;
 
@@ -1996,7 +1995,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		 *	the packets back to the pending state.
 		 */
 		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
-			ERROR("%s - Failed sending data over connection %s - %s",
+			ERROR("%s - Failed sending data over connection %s: %s",
 			      h->module_name, h->name, fr_syserror(errno));
 			fr_trunk_request_signal_fail(h->coalesced[i].treq);
 			sent = 1;
@@ -2007,7 +2006,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		 *	have to do any cleanup.
 		 */
 		default:
-			ERROR("%s - Failed sending data over connection %s - %s",
+			ERROR("%s - Failed sending data over connection %s: %s",
 			      h->module_name, h->name, fr_syserror(errno));
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			return;
@@ -2252,8 +2251,8 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		if (slen < 0) {
 			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
 
-			ERROR("%s - %s failed reading response from socket: %s",
-			      __FUNCTION__, h->module_name, fr_syserror(errno));
+			ERROR("%s - Failed reading response from socket: %s",
+			      h->module_name, fr_syserror(errno));
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			return;
 		}
