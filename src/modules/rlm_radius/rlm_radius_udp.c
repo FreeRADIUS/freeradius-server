@@ -2381,13 +2381,12 @@ static void request_cancel(UNUSED fr_connection_t *conn, void *preq_to_reset,
 {
 	udp_request_t	*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
 
-	switch (reason) {
 	/*
 	 *	Request has been requeued on the same
 	 *	connection due to timeout or DUP signal.  We
 	 *	keep the same packet to avoid re-encoding it.
 	 */
-	case FR_TRUNK_CANCEL_REASON_REQUEUE:
+	if (reason == FR_TRUNK_CANCEL_REASON_REQUEUE) {
 		/*
 		 *	Delete the request_timeout
 		 *
@@ -2398,13 +2397,13 @@ static void request_cancel(UNUSED fr_connection_t *conn, void *preq_to_reset,
 		 */
 		if (u->ev) (void) fr_event_timer_delete(&u->ev);
 		if (!u->can_retransmit) udp_request_reset(u);
-		break;
-
-	case FR_TRUNK_CANCEL_REASON_SIGNAL:	/* Dealt with by request_conn_release */
-	case FR_TRUNK_CANCEL_REASON_MOVE:	/* Dealt with by request_conn_release */
-	case FR_TRUNK_CANCEL_REASON_NONE:
-		break;
 	}
+
+	/*
+	 *      Other cancellations are dealt with by
+	 *      request_conn_release as the request is removed
+	 *	from the trunk.
+	 */
 }
 
 /** Clear out anything associated with the handle from the request
@@ -2420,13 +2419,18 @@ static void request_conn_release(fr_connection_t *conn, void *preq_to_reset, UNU
 
 	u->num_replies = 0;
 
+	/*
+	 *	If there are no outstanding tracking entries
+	 *	allocated then the connection is "idle".
+	 */
 	if (h->tt->num_requests == 0) h->last_idle = fr_time();
 }
 
 /** Write out a canned failure
  *
  */
-static void request_fail(REQUEST *request, void *preq, void *rctx, NDEBUG_UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
+static void request_fail(REQUEST *request, void *preq, void *rctx,
+			 NDEBUG_UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
 {
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
