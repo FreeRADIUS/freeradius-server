@@ -521,7 +521,8 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *
  * If the treq (trunk request) is in the FR_TRUNK_REQUEST_STATE_PARTIAL or
  * FR_TRUNK_REQUEST_STATE_SENT states, this callback will be called prior
- * to moving the treq to a new connection or freeing it.
+ * to moving the treq to a new connection, requeueing the tre or freeing
+ * the treq.
  *
  * The treq, and any associated resources, should be
  * removed from the the matching structure associated with the
@@ -529,6 +530,12 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *
  * Which resources should be freed depends on the cancellation reason:
  *
+ * - FR_TRUNK_CANCEL_REASON_REQUEUE - If an encoded request can be
+ *   reused, then it should be kept, otherwise it should be freed.
+ *   Any resources like ID allocations bound to that request should
+ *   also be freed.
+ *   #request_conn_release_t callback will not be called in this
+ *   instance and cannot be used as an alternative.
  * - FR_TRUNK_CANCEL_REASON_MOVE - If an encoded request can be reused
  *   it should be kept.  The trunk mux callback should be aware that
  *   an encoded request may already be associated with a preq and use
@@ -536,12 +543,21 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *   If the encoded request cannot be reused it should be freed, and
  *   any fields in the preq that were modified during the last mux call
  *   (other than perhaps counters) should be reset to their initial values.
+ *   Alternatively the #request_conn_release_t callback can be used for
+ *   the same purpose, as that will be called before the request is moved.
  * - FR_TRUNK_CANCEL_REASON_SIGNAL - The encoded request and any I/O library
  *   request handled may be freed though that may (optionally) be left to
- *   another callback like #fr_trunk_request_fail_t.
+ *   another callback like #request_conn_release_t, as that will be
+ *   called as the treq is removed from the conn.
+ *   Note that the #fr_trunk_request_complete_t and
+ *   #fr_trunk_request_fail_t callbacks will not be called in this
+ *   instance.
  *
  * After this callback is complete one of several actions will be taken:
  *
+ * - If the cancellation reason was FR_TRUNK_CANCEL_REASON_REQUEUE the
+ *   treq will be placed back into the pending list of the connection it
+ *   was previously associated with.
  * - If the cancellation reason was FR_TRUNK_CANCEL_REASON_MOVE, the treq
  *   will move to the unassigned state, and then either be placed in the
  *   trunk backlog, or immediately enqueued on another trunk connection.
