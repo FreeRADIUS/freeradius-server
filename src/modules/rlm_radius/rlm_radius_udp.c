@@ -300,7 +300,11 @@ static void udp_request_reset(udp_request_t *u)
 	TALLOC_FREE(u->packet);
 	u->extra = NULL;	/* Freed with packet */
 
-	radius_track_entry_release(&u->rr);
+	/*
+	 *	Can have packet put no u->rr
+	 *	if this is part of a pre-trunk status check.
+	 */
+	if (u->rr) radius_track_entry_release(&u->rr);
 	u->can_retransmit = false;
 }
 
@@ -634,6 +638,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 *	So increment the ID here.
 	 */
 	} else {
+		udp_request_reset(u);
 		u->id++;
 	}
 
@@ -1717,7 +1722,8 @@ static void request_mux(fr_event_list_t *el,
 		 *
 		 *	Note that if we can't retransmit the previous
 		 *	packet, then u->rr MUST already have been
-		 *	deleted in the request_cancel() function, when
+		 *	deleted in the request_cancel() function
+		 *	or request_release_conn() function when
 		 *	the REQUEUE signal was recevied.
 		 */
 		if (!u->packet || !u->can_retransmit) {
