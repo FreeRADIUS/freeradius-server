@@ -1828,7 +1828,7 @@ static void request_mux(fr_event_list_t *el,
 		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
 			ERROR("%s - Failed sending data over connection %s: %s",
 			      h->module_name, h->name, fr_syserror(errno));
-			fr_trunk_request_signal_fail(h->coalesced[i].treq);
+			fr_trunk_request_signal_fail(h->coalesced[0].treq);
 			sent = 1;
 			break;
 
@@ -1997,7 +1997,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
 			ERROR("%s - Failed sending data over connection %s: %s",
 			      h->module_name, h->name, fr_syserror(errno));
-			fr_trunk_request_signal_fail(h->coalesced[i].treq);
+			fr_trunk_request_signal_fail(h->coalesced[0].treq);
 			sent = 1;
 			break;
 
