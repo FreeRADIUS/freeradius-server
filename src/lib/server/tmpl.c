@@ -2698,11 +2698,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 */
 
 	case TMPL_TYPE_EXEC:
-		if (not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data))) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_EXEC "
-				     "has non-zero bytes in its data union", file, line);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
-		}
+		/* vpt->tmpl_xlat can be initialized */
 		break;
 
 	case TMPL_TYPE_ATTR_UNDEFINED:

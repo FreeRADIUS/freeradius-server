@@ -256,7 +256,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 	vpt = *pvpt;
 
-	rad_assert(tmpl_is_xlat(vpt));
+	rad_assert(tmpl_is_xlat(vpt) || tmpl_is_exec(vpt));
 
 	slen = xlat_tokenize(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, rules);
 
@@ -322,7 +322,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	/*
 	 *	Re-write it to be a pre-parsed XLAT structure.
 	 */
-	vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	if (vpt->type == TMPL_TYPE_XLAT) vpt->type = TMPL_TYPE_XLAT_STRUCT;
 	vpt->tmpl_xlat = head;
 
 	return true;
@@ -432,6 +432,13 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 	}
 
 	/*
+	 *	Pre-parse any "exec" templates
+	 */
+	if (tmpl_is_exec(vpt)) {
+		return pass2_fixup_xlat(ci, pvpt, false, NULL, rules);
+	}
+
+	/*
 	 *	The existence check might have been &Foo-Bar,
 	 *	where Foo-Bar is defined by a module.
 	 */
@@ -445,6 +452,10 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 	if (tmpl_is_attr(vpt) && vpt->tmpl_da->flags.virtual) {
 		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
 		vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	}
+
+	if (vpt->type == TMPL_TYPE_EXEC) {
+		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
 	}
 
 	return true;
@@ -659,6 +670,18 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 		}
 	}
 
+	if (tmpl_is_exec(map->lhs)) {
+		if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL, rules)) {
+			return false;
+		}
+	}
+
+	if (tmpl_is_exec(map->rhs)) {
+		if (!pass2_fixup_xlat(map->ci, &map->rhs, false, NULL, rules)) {
+			return false;
+		}
+	}
+
 	/*
 	 *	Convert bare refs to %{Foreach-Variable-N}
 	 */
@@ -794,7 +817,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 
 static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 {
-	if (tmpl_is_xlat(map->lhs)) {
+	if (tmpl_is_xlat(map->lhs) || tmpl_is_exec(map->lhs)) {
 		rad_assert(map->lhs->tmpl_xlat == NULL);
 
 		/*
@@ -814,7 +837,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 	}
 
 	if (map->rhs) {
-		if (tmpl_is_xlat(map->rhs)) {
+		if (tmpl_is_xlat(map->rhs) || tmpl_is_exec(map->rhs)) {
 			rad_assert(map->rhs->tmpl_xlat == NULL);
 
 			/*
@@ -2306,6 +2329,13 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			 *	attribute of a different type.
 			 */
 			if (!pass2_fixup_xlat(cf_section_to_item(cs), &vpt, true, da, unlang_ctx->rules)) {
+				talloc_free(vpt);
+				return NULL;
+			}
+		}
+
+		if (tmpl_is_exec(vpt)) {
+			if (!pass2_fixup_xlat(cf_section_to_item(cs), &vpt, false, NULL, unlang_ctx->rules)) {
 				talloc_free(vpt);
 				return NULL;
 			}
