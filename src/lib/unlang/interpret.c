@@ -172,7 +172,8 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 
 	if (stack->depth >= (UNLANG_STACK_MAX - 1)) {
 		RERROR("Internal sanity check failed: module stack is too deep");
-		fr_exit(EXIT_FAILURE);
+		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+		return;
 	}
 
 	stack->depth++;
