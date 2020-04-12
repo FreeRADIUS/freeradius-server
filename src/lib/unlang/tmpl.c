@@ -30,6 +30,34 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec.h>
 #include "tmpl_priv.h"
 
+
+/** Send a signal (usually stop) to a request
+ *
+ * This is typically called via an "async" action, i.e. an action
+ * outside of the normal processing of the request.
+ *
+ * If there is no #fr_unlang_tmpl_signal_t callback defined, the action is ignored.
+ *
+ * @param[in] request		The current request.
+ * @param[in] action		to signal.
+ */
+static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
+								       unlang_frame_state_tmpl_t);
+
+	if (state->signal) return;
+
+	state->signal(request, state->rctx, action);
+
+	/*
+	 *	If we're cancelled, then ignore future signals.
+	 */
+	if (action == FR_SIGNAL_CANCEL) state->signal = NULL;
+}
+
 /** Push a tmpl onto the stack for evaluation
  *
  * @param[in] ctx		To allocate value boxes and values in.
@@ -43,7 +71,7 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
-									       unlang_frame_state_tmpl_t);
+								       unlang_frame_state_tmpl_t);
 	unlang_tmpl_t			*ut;
 
 	static unlang_t tmpl_instruction = {
@@ -220,6 +248,7 @@ void unlang_tmpl_init(void)
 			   &(unlang_op_t){
 				.name = "tmpl",
 				.interpret = unlang_tmpl,
+				.signal = unlang_tmpl_signal,
 				.frame_state_size = sizeof(unlang_frame_state_tmpl_t),
 				.frame_state_name = "unlang_frame_state_tmpl_t",
 			   });

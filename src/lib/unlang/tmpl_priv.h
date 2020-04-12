@@ -41,6 +41,7 @@ typedef struct {
 
 	void				*rctx;		//!< for resume
 	fr_unlang_tmpl_resume_t		resume;	       	//!< resumption handler
+	fr_unlang_tmpl_signal_t		signal;		//!< signal handler
 } unlang_frame_state_tmpl_t;
 
 #ifdef __cplusplus

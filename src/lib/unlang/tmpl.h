@@ -34,6 +34,19 @@ extern "C" {
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/tmpl.h>
 
+/** A callback when the request gets a fr_state_signal_t.
+ *
+ * A module may call unlang_yeild(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
+ * set here.
+ *
+ * @note The callback is automatically removed on unlang_interpret_resumable().
+ *
+ * @param[in] rctx		Resume ctx for the callback.
+ * @param[in] request		The current request.
+ * @param[in] action		which is signalling the request.
+ */
+typedef void (*fr_unlang_tmpl_signal_t)(REQUEST *request, void *rctx, fr_state_signal_t action);
+
 /** A callback for when the request is resumed.
  *
  * The resumed request cannot call the normal "authorize", etc. method.  It needs a separate callback.
