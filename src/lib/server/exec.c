@@ -680,11 +680,22 @@ int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
 	char		**argv;
 	pid_t		pid;
 	fr_child_t	*child;
+	fr_value_box_t	*first;
 
 	/*
 	 *	Clean up any previous child processes.
 	 */
 	fr_reap_children();
+
+	/*
+	 *	Ensure that we don't do anything stupid.
+	 */
+	first =  fr_value_box_list_get(vb, 0);
+	if (first->type == FR_TYPE_GROUP) first = first->vb_group;
+	if (first->tainted) {
+		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
+		return -1;
+	}
 
 	/*
 	 *	Get the environment variables.
