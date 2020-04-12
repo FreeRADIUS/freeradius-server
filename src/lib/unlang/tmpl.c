@@ -48,7 +48,7 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	if (state->signal) return;
+	if (!state->signal) return;
 
 	state->signal(request, state->rctx, action);
 
