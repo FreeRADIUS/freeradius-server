@@ -164,7 +164,8 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:*gmtsub*\n"
 		"leak:tzsetwall_basic\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
-		"leak:libSystem_atfork_child"
+		"leak:libSystem_atfork_child\n"
+		"leak:fork"
 #elif defined(__linux__)
 		"leak:kqueue"
 #elif defined(__FreeBSD__)
