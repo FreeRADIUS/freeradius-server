@@ -33,7 +33,8 @@ RCSID("$Id$")
 /** Push a tmpl onto the stack for evaluation
  *
  * @param[in] ctx		To allocate value boxes and values in.
- * @param[out] out		The value_box created from the tmpl
+ * @param[out] out		The value_box created from the tmpl.  May be NULL,
+ *				in which case the result is discarded.
  * @param[in] request		The current request.
  * @param[in] tmpl		the tmpl to expand
  */
@@ -77,6 +78,9 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 
 /** Wrapper to call a resumption function after a tmpl has been expanded
  *
+ *  If the resumption function returns YIELD, then this function is
+ *  called repeatedly until the resumption function returns a final
+ *  value.
  */
 static unlang_action_t unlang_tmpl_resume(REQUEST *request, rlm_rcode_t *presult)
 {
@@ -85,10 +89,10 @@ static unlang_action_t unlang_tmpl_resume(REQUEST *request, rlm_rcode_t *presult
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	if (state->resume) {
-		rlm_rcode_t			rcode;
+	if (state->out) *state->out = state->box;
 
-		if (state->out) *state->out = state->box;
+	if (state->resume) {
+		rlm_rcode_t rcode;
 
 		rcode = state->resume(request, state->rctx);
 		*presult = rcode;
@@ -114,6 +118,7 @@ static unlang_action_t unlang_tmpl_exec_resume(REQUEST *request, rlm_rcode_t *pr
 	if (fr_exec_nowait(request, state->box, NULL) < 0) {
 		REDEBUG("Failed executing program - %s", fr_strerror());
 		*presult = RLM_MODULE_FAIL;
+
 	} else {
 		*presult = RLM_MODULE_OK;
 	}
@@ -126,32 +131,6 @@ static unlang_action_t unlang_tmpl_exec_resume(REQUEST *request, rlm_rcode_t *pr
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-
-rlm_rcode_t unlang_tmpl_yield(REQUEST *request, fr_unlang_tmpl_resume_t resume, void *rctx)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
-								       unlang_frame_state_tmpl_t);
-
-	state->rctx = rctx;
-	state->resume = resume;
-
-	frame->interpret = unlang_tmpl_resume;
-
-	/*
-	 *	We set the repeatable flag here, so that the resume
-	 *	function is always called going back up the stack.
-	 *	This setting is normally done in the intepreter.
-	 *	However, the caller of this function may call us, and
-	 *	then push *other* things onto the stack.  Which means
-	 *	that the interpreter never gets a chance to set this
-	 *	flag.
-	 */
-	frame->interpret = unlang_tmpl_resume;
-	repeatable_set(frame);
-	return RLM_MODULE_YIELD;
-}
 
 static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 {
@@ -199,15 +178,6 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	/*
-	 *	Exec isn't done yet.
-	 */
-	if (ut->tmpl->type == TMPL_TYPE_EXEC) {
-		REDEBUG("Asynchronous exec is not supported");
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
 	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
 		REDEBUG("Xlat expansions MUST be compiled before being run asynchronously");
 		*presult = RLM_MODULE_FAIL;
@@ -217,7 +187,28 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 	/*
 	 *	Attribute expansions, etc. don't require YIELD.
 	 */
-	REDEBUG("Internal error - template '%s' should not require async", ut->tmpl->name);
+	if (ut->tmpl->type != TMPL_TYPE_EXEC) {
+		REDEBUG("Internal error - template '%s' should not require async", ut->tmpl->name);
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Exec isn't done yet.
+	 *
+	 *	@todo - fork the program, etc. by calling functions in
+	 *	src/lib/server/exec.c Note that we also need an IO
+	 *	function passed to unlang_tmpl_push().  We may want a
+	 *	different API, unlang_tmpl_yeild_to_exec(), which takes
+	 *	the extra argument.  It can then set up the tmpl and
+	 *	set a flag which causes a different exec function to
+	 *	be called.
+	 *
+	 *	We then also need a signal function, so that the
+	 *	caller can cancel the IO handler if necessary.  And, a
+	 *	timeout, so that the exec doesn't take too long.
+	 */
+	REDEBUG("Asynchronous exec is not supported");
 	*presult = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }

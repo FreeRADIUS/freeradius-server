@@ -46,10 +46,6 @@ typedef rlm_rcode_t (*fr_unlang_tmpl_resume_t)(REQUEST *request, void *rctx);
 
 void		unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl);
 
-rlm_rcode_t	unlang_tmpl_yield(REQUEST *request, fr_unlang_tmpl_resume_t resume, void *rctx);
-
-
-
 #ifdef __cplusplus
 }
 #endif
