@@ -561,6 +561,23 @@ static void unlang_module_signal(REQUEST *request, fr_state_signal_t action)
 	}
 }
 
+
+/** Return UNLANG_CALCULATE_RESULT only for async async calls
+ *
+ */
+static unlang_action_t unlang_module_resume_final(REQUEST *request, rlm_rcode_t *presult)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	request->rcode = state->rcode;
+	if (state->presult) *state->presult = state->rcode;
+
+	*presult = state->rcode;
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
 /** Wrapper to call a module's resumption function
  *
  */
@@ -615,6 +632,19 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	}
 
 	state->thread->active_callers--;
+
+	/*
+	 *	The module is done.  But, running it pushed one or
+	 *	more asynchronous calls onto the stack.  These need to
+	 *	be run before the next module runs.
+	 */
+	if (stack_depth < stack->depth) {
+		state->rcode = rcode;
+		repeatable_set(frame);
+		frame->interpret = unlang_module_resume_final;
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
+
 	request->rcode = rcode;
 	if (state->presult) *state->presult = rcode;
 
@@ -753,6 +783,18 @@ done:
 	rad_assert(unlang_indent == request->log.unlang_indent);
 	rad_assert(rcode >= RLM_MODULE_REJECT);
 	rad_assert(rcode < RLM_MODULE_NUMCODES);
+
+	/*
+	 *	The module is done.  But, running it pushed one or
+	 *	more asynchronous calls onto the stack.  These need to
+	 *	be run before the next module runs.
+	 */
+	if (stack_depth < stack->depth) {
+		state->rcode = rcode;
+		repeatable_set(frame);
+		frame->interpret = unlang_module_resume_final;
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
 
 	request->rcode = rcode;
 	if (state->presult) *state->presult = rcode;
