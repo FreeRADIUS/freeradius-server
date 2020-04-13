@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/server/exec.h>
+#include <freeradius-devel/util/syserror.h>
 #include "tmpl_priv.h"
 #include <signal.h>
 
@@ -97,9 +98,9 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
 void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl)
 {
 	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
-								       unlang_frame_state_tmpl_t);
+	unlang_stack_frame_t		*frame;
+	unlang_frame_state_tmpl_t	*state;
+
 	unlang_tmpl_t			*ut;
 
 	static unlang_t tmpl_instruction = {
@@ -119,10 +120,7 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 		},
 	};
 
-	state->out = out;
-	state->ctx = ctx;
-
-	MEM(ut = talloc(state, unlang_tmpl_t));
+	MEM(ut = talloc(stack, unlang_tmpl_t));
 	ut->self = tmpl_instruction;
 	ut->tmpl = tmpl;
 
@@ -130,6 +128,12 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 	 *	Push a new tmpl frame onto the stack
 	 */
 	unlang_interpret_push(request, unlang_tmpl_to_generic(ut), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false);
+
+	frame = &stack->frame[stack->depth];
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
+
+	state->out = out;
+	state->ctx = ctx;
 }
 
 
@@ -146,11 +150,12 @@ static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pi
 	rad_assert(state->pid == 0);
 	rad_assert(state->fd < 0);
 	rad_assert(state->ev == NULL);
+
 	unlang_interpret_resumable(request);
 }
 
 
-static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	REQUEST				*request = uctx;
 	unlang_stack_t			*stack = request->stack;
@@ -163,10 +168,11 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, int fd, UNUSED int
 	p = state->ptr;
 	end = state->buffer + talloc_array_length(state->buffer);
 
-	data_len = read(fd, p, end - p);
+	data_len = read(state->fd, p, end - p);
 	if (data_len < 0) {
 		if (errno == EINTR) return;
 
+		REDEBUG("Error reading from child program - %s", fr_syserror(errno));
 		unlang_tmpl_exec_cleanup(request);
 		unlang_interpret_resumable(request);
 		return;
@@ -178,6 +184,8 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, int fd, UNUSED int
 	 *	Done reading, close the pipe.
 	 */
 	if ((data_len == 0) || (p >= end)) {
+		pid_t pid = state->pid;
+
 		/*
 		 *	Ran out of buffer space.  Kill the process.
 		 */
@@ -185,23 +193,25 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, int fd, UNUSED int
 
 		/*
 		 *	This event will stick around until the process exits.
+		 *
+		 *	On the other hand, if the process has ALREADY
+		 *	exited, then the callback function will be
+		 *	called immediately.
 		 */
-		if (fr_event_pid_wait(state, request->el, &state->ev_pid, state->pid,
-				      unlang_tmpl_exec_waitpid, request) < 0) {
-			unlang_tmpl_exec_cleanup(request);
-			unlang_interpret_resumable(request);
-			return;
-		}
-		state->pid = 0;	/* don't kill the process */
+		state->pid = 0;
 
 		/*
 		 *	Clean up the FD, reader, and timeouts.
 		 */
 		unlang_tmpl_exec_cleanup(request);
 
-		/*
-		 *	Once the process exits, we will be notified, and
-		 */
+		if (fr_event_pid_wait(state, request->el, &state->ev_pid, pid,
+				      unlang_tmpl_exec_waitpid, request) < 0) {
+			RDEBUG("Failed adding watcher for child process - %s", fr_strerror());
+			unlang_interpret_resumable(request);
+			return;
+		}
+
 		return;
 	}
 
@@ -217,7 +227,6 @@ static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_
 	unlang_tmpl_exec_cleanup(request);
 	unlang_interpret_resumable(request);
 }
-
 
 
 /** Wrapper to call a resumption function after a tmpl has been expanded
@@ -261,6 +270,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 								       unlang_frame_state_tmpl_t);
 
 	if (state->status != 0) {
+		RDEBUG("Program failed with status code %d", state->status);
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -277,7 +287,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 		MEM(state->box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
 		if (fr_value_box_from_str(state->box, state->box, &type, NULL,
 					  state->buffer, state->ptr - state->buffer, 0, true) < 0) {
-			TALLOC_FREE(state->box);
+			talloc_free(state->box);
 			*presult = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
@@ -327,7 +337,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	 *
 	 *	@todo - make the timeout configurable
 	 */
-	if (fr_event_timer_in(request, request->el, &state->ev, 10 * NSEC, unlang_tmpl_exec_timeout, request) < 0) {
+	if (fr_event_timer_in(request, request->el, &state->ev, fr_time_delta_from_sec(10), unlang_tmpl_exec_timeout, request) < 0) {
 		unlang_tmpl_exec_cleanup(request);
 		goto fail;
 	}
@@ -343,6 +353,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 		}
 
 		MEM(state->buffer = talloc_array(state, char, 1024));
+		state->ptr = state->buffer;
 	}
 
 	frame->interpret = unlang_tmpl_exec_wait_final;
