@@ -942,7 +942,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Sanity check for crazy people.
 	 */
-	if (strncmp(inst->config.driver_name, "rlm_cache_", 8) != 0) {
+	if (strncmp(inst->config.driver_name, "rlm_cache_", 10) != 0) {
 		cf_log_err(conf, "\"%s\" is NOT an Cache driver!", inst->config.driver_name);
 		return -1;
 	}
