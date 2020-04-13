@@ -81,7 +81,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -t                     Touch memory for fake packets.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(EXIT_FAILURE);
+	fr_exit_now(EXIT_FAILURE);
 }
 
 static void *channel_master(void *arg)
@@ -102,7 +102,7 @@ static void *channel_master(void *arg)
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	MPRINT1("Master started.\n");
@@ -113,7 +113,7 @@ static void *channel_master(void *arg)
 	rcode = fr_channel_signal_open(channel);
 	if (rcode < 0) {
 		fprintf(stderr, "Failed signaling open: %s\n", fr_syserror(errno));
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -202,7 +202,7 @@ check_close:
 			rcode = fr_channel_signal_responder_close(channel);
 			if (rcode < 0) {
 				fprintf(stderr, "Failed signaling close: %s\n", fr_syserror(errno));
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 
 			signaled_close = true;
@@ -218,7 +218,7 @@ check_close:
 			if (num_events == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -328,7 +328,7 @@ static void *channel_worker(void *arg)
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	MPRINT1("\tWorker started.\n");
@@ -347,7 +347,7 @@ static void *channel_worker(void *arg)
 			if (errno == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -557,7 +557,7 @@ int main(int argc, char *argv[])
 	channel = fr_channel_create(autofree, control_master, control_worker, false);
 	if (!channel) {
 		fprintf(stderr, "channel_test: Failed to create channel\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -577,5 +577,5 @@ int main(int argc, char *argv[])
 
 	fr_channel_debug(channel, stdout);
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }

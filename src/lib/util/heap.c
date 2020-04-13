@@ -374,22 +374,14 @@ int main(int argc, char **argv)
 	}
 
 	hp = fr_heap_create(NULL, heap_cmp, offsetof(heap_thing, heap_id));
-	if (!hp) {
-		fprintf(stderr, "Failed creating heap!\n");
-		fr_exit(1);
-	}
+	fr_fatal_assert_msg(hp, "Failed creating heap!");
 
 	for (i = 0; i < ARRAY_SIZE; i++) {
 		array[i].data = rand() % 65537;
-		if (fr_heap_insert(hp, &array[i]) < 0) {
-			fprintf(stderr, "Failed inserting %d\n", i);
-			fr_exit(1);
-		}
 
-		if (!fr_heap_check(hp, &array[i])) {
-			fprintf(stderr, "Inserted but not in heap %d\n", i);
-			fr_exit(1);
-		}
+		fr_fatal_assert_msg(fr_heap_insert(hp, &array[i]) >= 0, "Failed inserting %d");
+
+		fr_fatal_assert_msg(fr_heap_check(hp, &array[i]), "Inserted but not in heap %d", i);
 	}
 
 #if 0
@@ -407,19 +399,12 @@ int main(int argc, char **argv)
 		for (i = 0; i < ARRAY_SIZE / skip; i++) {
 			entry = i * skip;
 
-			if (fr_heap_extract(hp, &array[entry]) < 0) {
-				fprintf(stderr, "Failed removing %d\n", entry);
-			}
 
-			if (fr_heap_check(hp, &array[entry])) {
-				fprintf(stderr, "Deleted but still in heap %d\n", entry);
-				fr_exit(1);
-			}
+			fr_fatal_assert_msg(fr_heap_extract(hp, &array[entry]) >= 0, "Failed removing %d", entry);
 
-			if (array[entry].heap != -1) {
-				fprintf(stderr, "heap offset is wrong %d\n", entry);
-				fr_exit(1);
-			}
+			fr_fatal_assert_msg(!fr_heap_check(hp, &array[entry]), "Deleted but still in heap %d", entry);
+
+			fr_fatal_assert_msg(array[entry].heap == -1, "heap offset is wrong %d", entry);
 		}
 	}
 
@@ -429,23 +414,14 @@ int main(int argc, char **argv)
 	for (i = 0; i < left; i++) {
 		heap_thing *t = fr_heap_peek(hp);
 
-		if (!t) {
-			fprintf(stderr, "Failed peeking %d\n", i);
-			fr_exit(1);
-		}
+		fr_fatal_assert_msg(t, "Failed peeking %d", i);
 
 		printf("%d\t%d\n", i, t->data);
 
-		if (fr_heap_extract(hp, NULL) < 0) {
-			fprintf(stderr, "Failed extracting %d\n", i);
-			fr_exit(1);
-		}
+		fr_fatal_assert_msg(fr_heap_extract(hp, NULL) >= 0, "Failed extracting %d", i);
 	}
 
-	if (fr_heap_num_elements(hp) > 0) {
-		fprintf(stderr, "%d elements left at the end", fr_heap_num_elements(hp));
-		fr_exit(1);
-	}
+	fr_fatal_assert_msg(fr_heap_num_elements(hp) <= 0, "%d elements left at the end", fr_heap_num_elements(hp));
 
 	talloc_free(hp);
 

@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radict");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 #endif
 

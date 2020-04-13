@@ -711,7 +711,7 @@ int main(int argc, char *argv[])
 	config = main_config_alloc(autofree);
 	if (!config) {
 		fr_perror("unit_test_module");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	p = strrchr(argv[0], FR_DIR_SEP);
@@ -730,7 +730,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("%s", config->name);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 #else
 	fr_disable_null_tracking_on_free(autofree);
@@ -797,7 +797,7 @@ int main(int argc, char *argv[])
 				}
 
 				fprintf(stderr, "Unknown option '%s'\n", optarg);
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 
 			case 'r':
 				receipt_file = optarg;
@@ -1206,5 +1206,5 @@ static void NEVER_RETURNS usage(main_config_t const *config, int status)
 	fprintf(output, "  -x                 Turn on additional debugging. (-xx gives more debugging).\n");
 	fprintf(output, "  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.\n");
 
-	exit(status);
+	fr_exit_now(status);
 }

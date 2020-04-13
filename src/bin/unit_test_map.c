@@ -67,7 +67,7 @@ static void NEVER_RETURNS usage(char *argv[])
 	fprintf(stderr, "  -M                 Show program version information.\n");
 	fprintf(stderr, "  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.\n");
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
 
 static int process_file(char const *filename)
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("unit_test_map");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 #else
 	fr_disable_null_tracking_on_free(autofree);

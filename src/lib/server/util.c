@@ -1122,17 +1122,17 @@ void rad_suid_up(void)
 
 	if (getresuid(&ruid, &euid, &suid) < 0) {
 		ERROR("Failed getting saved UID's");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (setresuid(-1, suid, -1) < 0) {
 		ERROR("Failed switching to privileged user");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (geteuid() != suid) {
 		ERROR("Switched to unknown UID");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 }
 
@@ -1147,12 +1147,12 @@ void rad_suid_down(void)
 		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
 		ERROR("Failed switching to uid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (geteuid() != suid_down_uid) {
 		ERROR("Failed switching uid: UID is incorrect");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_reset_dumpable();
@@ -1169,12 +1169,12 @@ void rad_suid_down_permanent(void)
 		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
 		ERROR("Failed in permanent switch to uid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (geteuid() != suid_down_uid) {
 		ERROR("Switched to unknown uid");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_reset_dumpable();
@@ -1191,7 +1191,7 @@ void rad_suid_up(void)
 
 	if (seteuid(0) < 0) {
 		ERROR("Failed switching up to euid 0: %s", fr_syserror(errno));
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 }
@@ -1209,7 +1209,7 @@ void rad_suid_down(void)
 		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
 		ERROR("Failed switching to euid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_reset_dumpable();
@@ -1239,7 +1239,7 @@ void rad_suid_down_permanent(void)
 		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
 		ERROR("Failed switching permanently to uid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_reset_dumpable();

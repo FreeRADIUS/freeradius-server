@@ -167,7 +167,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -u <user>            Show entries matching the given user.\n");
 	fprintf(output, "  -U <user>            Like -u, but case-sensitive.\n");
 	fprintf(output, "  -Z                   Include accounting stop information in radius output.  Requires -R.\n");
-	exit(status);
+	fr_exit_now(status);
 }
 
 
@@ -212,7 +212,7 @@ int main(int argc, char **argv)
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("%s", main_config->name);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
 
@@ -225,7 +225,7 @@ int main(int argc, char **argv)
 	config = main_config_alloc(autofree);
 	if (!config) {
 		fr_perror("Failed allocating main config");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	p = strrchr(argv[0], FR_DIR_SEP);
@@ -307,13 +307,13 @@ int main(int argc, char **argv)
 
 	if (!fr_dict_global_ctx_init(autofree, config->dict_dir)) {
 		fr_perror("%s", main_config->name);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 
 	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("%s", config->name);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_read(dict, config->raddb_dir, FR_DICTIONARY_FILE) == -1) {
@@ -340,35 +340,35 @@ int main(int argc, char **argv)
 		printf("NAS-IP-Address = %s\n",
 		       hostname(buffer, sizeof(buffer), nas_ip_address));
 		printf("Acct-Delay-Time = 0\n");
-		exit(0);	/* don't bother printing anything else */
+		fr_exit_now(0);	/* don't bother printing anything else */
 	}
 
 	if (radutmp_file) goto have_radutmp;
 
 	/* Read radiusd.conf */
 	maincs = cf_section_alloc(NULL, NULL, "main", NULL);
-	if (!maincs) exit(EXIT_FAILURE);
+	if (!maincs) fr_exit_now(EXIT_FAILURE);
 
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", config->raddb_dir);
 	if ((cf_file_read(maincs, buffer) < 0) || (cf_section_pass2(maincs) < 0)) {
 		fr_perror("%s: Error reading or parsing radiusd.conf\n", argv[0]);
 		talloc_free(maincs);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	cs = cf_section_find(maincs, "modules", NULL);
 	if (!cs) {
 		fr_perror("%s: No modules section found in radiusd.conf\n", argv[0]);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 	/* Read the radutmp section of radiusd.conf */
 	cs = cf_section_find(cs, "radutmp", NULL);
 	if (!cs) {
 		fr_perror("%s: No configuration information in radutmp section of radiusd.conf\n", argv[0]);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (cf_section_rules_push(cs, module_config) < 0) exit(EXIT_FAILURE);
+	if (cf_section_rules_push(cs, module_config) < 0) fr_exit_now(EXIT_FAILURE);
 	cf_section_parse(maincs, NULL, cs);
 
 	/* Assign the correct path for the radutmp file */

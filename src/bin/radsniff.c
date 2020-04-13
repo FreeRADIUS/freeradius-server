@@ -118,7 +118,7 @@ static void rs_daemonize(char const *pidfile)
 
 	pid = fork();
 	if (pid < 0) {
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -127,7 +127,7 @@ static void rs_daemonize(char const *pidfile)
 	if (pid > 0) {
 		close(self_pipe[0]);
 		close(self_pipe[1]);
-		exit(EXIT_SUCCESS);
+		fr_exit_now(EXIT_SUCCESS);
 	}
 
 	/*
@@ -137,7 +137,7 @@ static void rs_daemonize(char const *pidfile)
 	/* Create a new SID for the child process */
 	sid = setsid();
 	if (sid < 0) {
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -145,7 +145,7 @@ static void rs_daemonize(char const *pidfile)
 	 *	directory from being locked; hence not being able to remove it.
 	 */
 	if ((chdir("/")) < 0) {
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -158,7 +158,7 @@ static void rs_daemonize(char const *pidfile)
 		fclose(fp);
 	} else {
 		ERROR("Failed creating PID file %s: %s", pidfile, fr_syserror(errno));
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -166,13 +166,13 @@ static void rs_daemonize(char const *pidfile)
 	 */
 	if (isatty(fileno(stdout))) {
 		if (!freopen("/dev/null", "w", stdout)) {
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 	}
 
 	if (isatty(fileno(stderr))) {
 		if (!freopen("/dev/null", "w", stderr)) {
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 	}
 }
@@ -2097,7 +2097,7 @@ static void rs_signal_self(int sig)
 {
 	if (write(self_pipe[1], &sig, sizeof(sig)) < 0) {
 		ERROR("Failed writing signal %s to pipe: %s", strsignal(sig), fr_syserror(errno));
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 }
 
@@ -2116,13 +2116,13 @@ fr_event_list_t *list, int fd, int UNUSED flags, UNUSED void *ctx)
 	ret = read(fd, &sig, sizeof(sig));
 	if (ret < 0) {
 		ERROR("Failed reading signal from pipe: %s", fr_syserror(errno));
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (ret != sizeof(sig)) {
 		ERROR("Failed reading signal from pipe: "
 		      "Expected signal to be %zu bytes but only read %zu byes", sizeof(sig), ret);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	switch (sig) {
@@ -2143,7 +2143,7 @@ fr_event_list_t *list, int fd, int UNUSED flags, UNUSED void *ctx)
 
 	default:
 		ERROR("Unhandled signal %s", strsignal(sig));
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 }
 
@@ -2193,7 +2193,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -N <prefix>           The instance name passed to the collectd plugin.\n");
 	fprintf(output, "  -O <server>           Write statistics to this collectd server.\n");
 #endif
-	exit(status);
+	fr_exit_now(status);
 }
 
 int main(int argc, char *argv[])
@@ -2230,7 +2230,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radsniff");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
 
@@ -2415,13 +2415,13 @@ int main(int argc, char *argv[])
 #else
 			INFO("%s %s", radsniff_version, pcap_lib_version());
 #endif
-			exit(EXIT_SUCCESS);
+			fr_exit_now(EXIT_SUCCESS);
 
 		case 'w':
 			out = fr_pcap_init(conf, optarg, PCAP_FILE_OUT);
 			if (!out) {
 				ERROR("Failed creating pcap file \"%s\"", optarg);
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 			conf->to_file = true;
 			break;
@@ -2468,7 +2468,7 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("radsniff");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/* Useful for file globbing */
@@ -2571,7 +2571,7 @@ int main(int argc, char *argv[])
 
 	if (!fr_dict_global_ctx_init(conf, dict_dir)) {
 		fr_perror("radsniff");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_autoload(radsniff_dict) < 0) {
@@ -2776,7 +2776,7 @@ int main(int argc, char *argv[])
 		rs_stats_tmpl_t *tmpl, **next;
 
 		if (rs_stats_collectd_open(conf) < 0) {
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		next = &conf->stats.tmpl;
@@ -2843,7 +2843,7 @@ int main(int argc, char *argv[])
 
 		if (!in) {
 			ERROR("No PCAP sources available");
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		/* Clear any irrelevant errors */
@@ -2898,7 +2898,7 @@ int main(int argc, char *argv[])
 		 */
 		if (pipe(self_pipe) < 0) {
 			ERROR("Couldn't open signal pipe: %s", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		if (fr_event_fd_insert(NULL, events, self_pipe[0],

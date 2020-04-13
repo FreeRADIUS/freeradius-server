@@ -182,7 +182,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -v                     Show program version information.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
 
 /*
@@ -888,7 +888,7 @@ static int send_one_packet(rc_request_t *request)
 						       &request->packet->dst_ipaddr,
 						       request->packet->dst_port, NULL)) {
 				ERROR("Can't add new socket");
-				exit(1);
+				fr_exit_now(1);
 			}
 			goto retry;
 		}
@@ -1018,7 +1018,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	FD_ZERO(&set);
 
 	max_fd = fr_packet_list_fd_set(packet_list, &set);
-	if (max_fd < 0) exit(1); /* no sockets to listen on! */
+	if (max_fd < 0) fr_exit_now(1); /* no sockets to listen on! */
 
 	our_wait_time = (wait_time <= 0) ? 0 : wait_time;
 
@@ -1038,7 +1038,7 @@ static int recv_one_packet(fr_time_t wait_time)
 		 *	I'm not sure how to do that now, so we just
 		 *	die...
 		 */
-		if (proto) exit(1);
+		if (proto) fr_exit_now(1);
 		return -1;	/* bad packet */
 	}
 
@@ -1198,7 +1198,7 @@ int main(int argc, char **argv)
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radclient");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
 
@@ -1208,7 +1208,7 @@ int main(int argc, char **argv)
 	if (!filename_tree) {
 	oom:
 		ERROR("Out of memory");
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	/*
@@ -1326,11 +1326,11 @@ int main(int argc, char **argv)
 			fp = fopen(optarg, "r");
 			if (!fp) {
 			       ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
-			       exit(1);
+			       fr_exit_now(1);
 			}
 			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
 			       ERROR("Error reading %s: %s", optarg, fr_syserror(errno));
-			       exit(1);
+			       fr_exit_now(1);
 			}
 			fclose(fp);
 
@@ -1344,7 +1344,7 @@ int main(int argc, char **argv)
 
 			if (strlen(filesecret) < 2) {
 			       ERROR("Secret in %s is too short", optarg);
-			       exit(1);
+			       fr_exit_now(1);
 			}
 			secret = talloc_strdup(NULL, filesecret);
 		}
@@ -1353,14 +1353,14 @@ int main(int argc, char **argv)
 		case 't':
 			if (fr_time_delta_from_str(&timeout, optarg, FR_TIME_RES_SEC) < 0) {
 				ERROR("Failed parsing timeout value %s", fr_strerror());
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 			break;
 
 		case 'v':
 			fr_debug_lvl = 1;
 			DEBUG("%s", radclient_version);
-			exit(0);
+			fr_exit_now(0);
 
 		case 'x':
 			fr_debug_lvl++;
@@ -1431,7 +1431,7 @@ int main(int argc, char **argv)
 	if (strcmp(argv[1], "-") != 0) {
 		if (fr_inet_pton_port(&server_ipaddr, &server_port, argv[1], -1, force_af, true, true) < 0) {
 			ERROR("%s", fr_strerror());
-			exit(1);
+			fr_exit_now(1);
 		}
 
 		/*
@@ -1455,7 +1455,7 @@ int main(int argc, char **argv)
 		files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
 		files->packets = "-";
 		if (!radclient_init(files, files)) {
-			exit(1);
+			fr_exit_now(1);
 		}
 	}
 
@@ -1464,7 +1464,7 @@ int main(int argc, char **argv)
 	 */
 	if (rbtree_walk(filename_tree, RBTREE_IN_ORDER, filename_walk, NULL) != 0) {
 		ERROR("Failed parsing input files");
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	/*
@@ -1472,7 +1472,7 @@ int main(int argc, char **argv)
 	 */
 	if (!request_head) {
 		ERROR("Nothing to send");
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	/*
@@ -1511,13 +1511,13 @@ int main(int argc, char **argv)
 	packet_list = fr_packet_list_create(1);
 	if (!packet_list) {
 		ERROR("Out of memory");
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &server_ipaddr,
 				       server_port, NULL)) {
 		ERROR("Failed adding socket");
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	/*
@@ -1528,7 +1528,7 @@ int main(int argc, char **argv)
 		this->packet->src_ipaddr = client_ipaddr;
 		this->packet->src_port = client_port;
 		if (radclient_sane(this) != 0) {
-			exit(1);
+			fr_exit_now(1);
 		}
 	}
 
@@ -1693,8 +1693,8 @@ int main(int argc, char **argv)
 	}
 
 	if ((stats.lost > 0) || (stats.failed > 0)) {
-		exit(1);
+		fr_exit_now(1);
 	}
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }

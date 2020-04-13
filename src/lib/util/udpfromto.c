@@ -609,35 +609,26 @@ int main(int argc, char **argv)
 client:
 	close(server_socket);
 	client_socket = socket(PF_INET, SOCK_DGRAM, 0);
-	if (udpfromto_init(client_socket) != 0) {
-		perror("udpfromto_init");
-		fr_exit_now(1);
-	}
+	fr_assert_fatal_msg(udpfromto_init(client_socket) != 0, "udpfromto_init - %s", fr_syserror(errno));
+
 	/* bind client on different port */
 	in.sin_port = htons(port+1);
-	if (bind(client_socket, (struct sockaddr *)&in, sizeof(in)) < 0) {
-		perror("client: bind");
-		fr_exit_now(1);
-	}
+	fr_assert_fatal_msg(bind(client_socket, (struct sockaddr *)&in, sizeof(in)) < 0,
+			    "client: bind - %s", fr_syserror(errno));
 
 	in.sin_port = htons(port);
 	in.sin_addr.s_addr = inet_addr(destip);
 
 	printf("client: sending packet to %s:%d\n", destip, port);
-	if (sendto(client_socket, TESTSTRING, TESTLEN, 0,
-			(struct sockaddr *)&in, sizeof(in)) < 0) {
-		perror("client: sendto");
-		fr_exit_now(1);
-	}
+	fr_assert_fatal_msg(sendto(client_socket, TESTSTRING, TESTLEN, 0, (struct sockaddr *)&in, sizeof(in)) < 0,
+			    "client: sendto");
 
 	printf("client: waiting for reply from server on INADDR_ANY:%d\n", port+1);
 
-	if ((n = recvfromto(client_socket, buf, sizeof(buf), 0,
+	fr_assert_fatal_msg((n = recvfromto(client_socket, buf, sizeof(buf), 0,
 	    		    (struct sockaddr *)&from, &fl,
-	    		    (struct sockaddr *)&to, &tl, &if_index, NULL)) < 0) {
-		perror("client: recvfromto");
-		fr_exit_now(1);
-	}
+	    		    (struct sockaddr *)&to, &tl, &if_index, NULL)) < 0,
+	    		    "client: recvfromto - %s", fr_syserror(errno));
 
 	printf("client: received a packet of %d bytes [%s] ", n, buf);
 	printf("(src ip:port %s:%d",
@@ -645,7 +636,7 @@ client:
 	printf(" dst ip:port %s:%d) via if %i\n",
 		inet_ntoa(to.sin_addr), ntohs(to.sin_port), if_index);
 
-	fr_exit_now(1);
+	return EXIT_SUCCESS;
 }
 
 #endif /* TESTING */

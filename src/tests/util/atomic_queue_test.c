@@ -69,7 +69,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -s size                set queue size.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
 		if (!fr_atomic_queue_push(aq, data)) {
 			fprintf(stderr, "Failed pushing at %d\n", i);
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 #ifndef NDEBUG
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_atomic_queue_push(aq, data)) {
 		fprintf(stderr, "Pushed an entry past the end of the queue.");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 #ifndef NDEBUG
@@ -157,14 +157,14 @@ int main(int argc, char *argv[])
 	for (i = 0; i < size; i++) {
 		if (!fr_atomic_queue_pop(aq, &data)) {
 			fprintf(stderr, "Failed popping at %d\n", i);
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		val = (intptr_t) data;
 		if (val != (i + OFFSET)) {
 			fprintf(stderr, "Pop expected %d, got %d\n",
 				i + OFFSET, (int) val);
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 #ifndef NDEBUG
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_atomic_queue_pop(aq, &data)) {
 		fprintf(stderr, "Popped an entry past the end of the queue.");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 #ifndef NDEBUG

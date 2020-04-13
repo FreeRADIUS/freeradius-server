@@ -2079,7 +2079,7 @@ int main(int argc, char **argv)
 	fr_event_list_t *el;
 
 	el = fr_event_list_alloc(NULL, NULL);
-	if (!el) exit(1);
+	if (!el) fr_exit_now(1);
 
 	memset(&rand_pool, 0, sizeof(rand_pool));
 	rand_pool.randrsl[1] = time(NULL);

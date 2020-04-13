@@ -136,7 +136,7 @@ static void NEVER_RETURNS usage(void)
 	DEBUG("  -v                     Show program version information.");
 	DEBUG("  -x                     Debugging mode.");
 
-	exit(EXIT_SUCCESS);
+	fr_exit(EXIT_SUCCESS);
 }
 
 
@@ -654,7 +654,7 @@ int main(int argc, char **argv)
 
 		case 'v':
 			DEBUG("%s", dhcpclient_version);
-			exit(0);
+			fr_exit(EXIT_SUCCESS);
 
 		case 'x':
 			fr_debug_lvl++;
@@ -671,22 +671,22 @@ int main(int argc, char **argv)
 
 	if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
 		fr_perror("dhcpclient");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 
 	if (fr_dict_autoload(dhcpclient_dict) < 0) {
 		fr_perror("dhcpclient");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 
 	if (fr_dict_attr_autoload(dhcpclient_dict_attr) < 0) {
 		fr_perror("dhcpclient");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 
 	if (fr_dict_read(fr_dict_unconst(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("dhcpclient");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 	fr_strerror();	/* Clear the error buffer */
 
@@ -695,7 +695,7 @@ int main(int argc, char **argv)
 	 */
 	if (fr_dhcpv4_global_init() < 0) {
 		fr_perror("dhcpclient");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -706,7 +706,7 @@ int main(int argc, char **argv)
 		if (fr_inet_pton_port(&server_ipaddr, &server_port, argv[1],
 				      strlen(argv[1]), AF_UNSPEC, true, true) < 0) {
 			fr_perror("dhcpclient");
-			fr_exit_now(1);
+			fr_exit(EXIT_FAILURE);
 		}
 		client_ipaddr.af = server_ipaddr.af;
 	}
@@ -735,7 +735,7 @@ int main(int argc, char **argv)
 		iface_ind = if_nametoindex(iface);
 		if (iface_ind <= 0) {
 			ERROR("Unknown interface: %s", iface);
-			exit(EXIT_FAILURE);
+			fr_exit(EXIT_FAILURE);
 		}
 
 		if (server_ipaddr.addr.v4.s_addr == 0xFFFFFFFF) {
@@ -747,7 +747,7 @@ int main(int argc, char **argv)
 	packet = request_init(filename);
 	if (!packet || !packet->vps) {
 		ERROR("Nothing to send");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -765,7 +765,7 @@ int main(int argc, char **argv)
 	if (!packet->code) {
 		ERROR("Command was %s, and request did not contain DHCP-Message-Type nor Packet-Type",
 		      (argc >= 3) ? "'auto'" : "unspecified");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -780,7 +780,7 @@ int main(int argc, char **argv)
 	 */
 	if (fr_dhcpv4_packet_encode(packet) < 0) {
 		ERROR("Failed encoding packet");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 
 	/*

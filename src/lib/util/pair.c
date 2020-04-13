@@ -22,6 +22,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/pair.h>
@@ -2068,15 +2069,13 @@ char *fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 {
 	if (!vp) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR pointer was NULL", file, line);
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR pointer was NULL", file, line);
 	}
 
 	(void) talloc_get_type_abort_const(vp, VALUE_PAIR);
 
 	if (!vp->da) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR da pointer was NULL", file, line);
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR da pointer was NULL", file, line);
 	}
 
 	fr_dict_verify(file, line, vp->da);
@@ -2089,25 +2088,22 @@ void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		TALLOC_CTX *parent;
 
 		if (!talloc_get_type(vp->vp_ptr, uint8_t)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
-				     "uint8_t but is %s\n", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
-			(void) talloc_get_type_abort(vp->vp_ptr, uint8_t);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
+					     "uint8_t but is %s\n", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
 		}
 
 		len = talloc_array_length(vp->vp_octets);
 		if (vp->vp_length > len) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
-				     "uint8_t data buffer length %zu\n", file, line, vp->da->name, vp->vp_length, len);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
+					     "uint8_t data buffer length %zu\n", file, line, vp->da->name, vp->vp_length, len);
 		}
 
 		parent = talloc_parent(vp->vp_ptr);
 		if (parent != vp) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
-				     "parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
-				     file, line, vp->da->name,
-				     vp, parent, parent ? talloc_get_name(parent) : "NULL");
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
+					     "parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
+					     file, line, vp->da->name,
+					     vp, parent, parent ? talloc_get_name(parent) : "NULL");
 		}
 	}
 		break;
@@ -2118,66 +2114,59 @@ void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		TALLOC_CTX *parent;
 
 		if (!talloc_get_type(vp->vp_ptr, char)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
-				     "char but is %s\n", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
-			(void) talloc_get_type_abort(vp->vp_ptr, char);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
+					     "char but is %s", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
 		if (vp->vp_length > len) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
-				     "char buffer length %zu\n", file, line, vp->da->name, vp->vp_length, len);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
+					     "char buffer length %zu", file, line, vp->da->name, vp->vp_length, len);
 		}
 
 		if (vp->vp_strvalue[vp->vp_length] != '\0') {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer not \\0 "
-				     "terminated\n", file, line, vp->da->name);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer not \\0 "
+					     "terminated", file, line, vp->da->name);
 		}
 
 		parent = talloc_parent(vp->vp_ptr);
 		if (parent != vp) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
-				     "parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
-				     file, line, vp->da->name,
-				     vp, parent, parent ? talloc_get_name(parent) : "NULL");
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
+					     "parented by VALUE_PAIR %p, instead parented by %p (%s)",
+					     file, line, vp->da->name,
+					     vp, parent, parent ? talloc_get_name(parent) : "NULL");
+					     fr_fatal_assert_fail("0");
 		}
 	}
 		break;
 
 	case FR_TYPE_IPV4_ADDR:
 		if (vp->vp_ip.af != AF_INET) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address family is not "
-				     "set correctly for IPv4 address.  Expected %i got %i\n",
-				     file, line, vp->da->name,
-				     AF_INET, vp->vp_ip.af);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address family is not "
+					     "set correctly for IPv4 address.  Expected %i got %i",
+					     file, line, vp->da->name,
+					     AF_INET, vp->vp_ip.af);
 		}
 		if (vp->vp_ip.prefix != 32) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address prefix "
-				     "set correctly for IPv4 address.  Expected %i got %i\n",
-				     file, line, vp->da->name,
-				     32, vp->vp_ip.prefix);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address prefix "
+					     "set correctly for IPv4 address.  Expected %i got %i",
+					     file, line, vp->da->name,
+					     32, vp->vp_ip.prefix);
 		}
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
 		if (vp->vp_ip.af != AF_INET6) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address family is not "
-				     "set correctly for IPv6 address.  Expected %i got %i\n",
-				     file, line, vp->da->name,
-				     AF_INET6, vp->vp_ip.af);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address family is not "
+					     "set correctly for IPv6 address.  Expected %i got %i",
+					     file, line, vp->da->name,
+					     AF_INET6, vp->vp_ip.af);
 		}
 		if (vp->vp_ip.prefix != 128) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address prefix "
-				     "set correctly for IPv6 address.  Expected %i got %i\n",
-				     file, line, vp->da->name,
-				     128, vp->vp_ip.prefix);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address prefix "
+					     "set correctly for IPv6 address.  Expected %i got %i",
+					     file, line, vp->da->name,
+					     128, vp->vp_ip.prefix);
 		}
 		break;
 
@@ -2212,43 +2201,41 @@ void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		 */
 		da = fr_dict_attr_by_name(fr_dict_by_da(vp->da), vp->da->name);
 		if (!da) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" (%s) "
-				     "not found in global dictionary",
-				     file, line, vp->da, vp->da->name,
-				     fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" (%s) "
+					     "not found in global dictionary",
+					     file, line, vp->da, vp->da->name,
+					     fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
 		}
 
 		if (da->type == FR_TYPE_COMBO_IP_ADDR) {
 			da = fr_dict_attr_by_type(vp->da, vp->da->type);
 			if (!da) {
-				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
-					     "variant (%s) not found in global dictionary",
-					     file, line, vp->da, vp->da->name,
-					     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"));
-				if (!fr_cond_assert(0)) fr_exit_now(1);
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
+						     "variant (%s) not found in global dictionary",
+						     file, line, vp->da, vp->da->name,
+						     fr_table_str_by_value(fr_value_box_type_table,
+						     			   vp->da->type, "<INVALID>"));
 			}
 		}
 
 		if (da != vp->da) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR "
-				     "dictionary pointer %p \"%s\" (%s) "
-				     "and global dictionary pointer %p \"%s\" (%s) differ",
-				     file, line, vp->da, vp->da->name,
-				     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"),
-				     da, da->name, fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR "
+					     "dictionary pointer %p \"%s\" (%s) "
+					     "and global dictionary pointer %p \"%s\" (%s) differ",
+					     file, line, vp->da, vp->da->name,
+					     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"),
+					     da, da->name,
+					     fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		}
 	}
 
 	if (vp->da->flags.is_raw || vp->da->flags.is_unknown) {
 		if (vp->data.type != FR_TYPE_OCTETS) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR (raw/unknown) attribute %p \"%s\" "
-				     "data type incorrect.  Expected %s, got %s",
-				     file, line, vp->da, vp->da->name,
-				     fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
-				     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, "<INVALID>"));
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR (raw/unknown) attribute %p \"%s\" "
+					     "data type incorrect.  Expected %s, got %s",
+					     file, line, vp->da, vp->da->name,
+					     fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
+					     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, "<INVALID>"));
 		}
 	} else if (vp->da->type != vp->data.type) {
 		char data_type_int[10], da_type_int[10];
@@ -2256,12 +2243,11 @@ void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		snprintf(data_type_int, sizeof(data_type_int), "%i", vp->data.type);
 		snprintf(da_type_int, sizeof(da_type_int), "%i", vp->da->type);
 
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
-			     "data type (%s) does not match da type (%s)",
-			     file, line, vp->da, vp->da->name,
-			     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, data_type_int),
-			     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, da_type_int));
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
+				     "data type (%s) does not match da type (%s)",
+				     file, line, vp->da, vp->da->name,
+				     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, data_type_int),
+				     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, da_type_int));
 	}
 }
 
@@ -2287,23 +2273,21 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 		 *	Advances twice as fast as slow...
 		 */
 		fast = fr_cursor_next(&fast_cursor);
-		if (fast == slow) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Looping list found.  Fast pointer hit "
-				     "slow pointer at \"%s\"", file, line, slow->da->name);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
-		}
+		fr_fatal_assert_msg(fast != slow,
+				    "CONSISTENCY CHECK FAILED %s[%u]:  Looping list found.  Fast pointer hit "
+				    "slow pointer at \"%s\"",
+				    file, line, slow->da->name);
 
 		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Expected VALUE_PAIR \"%s\" to be parented "
-				     "by %p (%s), instead parented by %p (%s)\n",
-				     file, line, slow->da->name,
-				     expected, talloc_get_name(expected),
-				     parent, parent ? talloc_get_name(parent) : "NULL");
-
 			fr_log_talloc_report(expected);
 			if (parent) fr_log_talloc_report(parent);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: Expected VALUE_PAIR \"%s\" to be parented "
+					     "by %p (%s), instead parented by %p (%s)\n",
+					     file, line, slow->da->name,
+					     expected, talloc_get_name(expected),
+					     parent, parent ? talloc_get_name(parent) : "NULL");
 		}
 	}
 }

@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: test timestring\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 	l = timestr_match(argv[1], time(NULL));
 	printf ("%s: %d seconds left\n", argv[1], l);

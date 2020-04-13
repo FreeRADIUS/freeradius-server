@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("sync_touch");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
 
@@ -74,11 +74,11 @@ int main(int argc, char **argv)
 			fp = fopen(optarg, "r");
 			if (!fp) {
 			       ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
-			       exit(EXIT_FAILURE);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
 			       ERROR("Error reading %s: %s", optarg, fr_syserror(errno));
-			       exit(EXIT_FAILURE);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			fclose(fp);
 
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 
 			if (strlen(filesecret) < 2) {
 			       ERROR("Secret in %s is too short", optarg);
-			       exit(EXIT_FAILURE);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			talloc_free(conf->secret);
 			conf->secret = talloc_strdup(conf, filesecret);
@@ -102,13 +102,13 @@ int main(int argc, char **argv)
 		case 't':
 			if (fr_time_delta_from_str(&conf->timeout, optarg, FR_TIME_RES_SEC) < 0) {
 				PERROR("Failed parsing timeout value");
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 			break;
 
 		case 'v':
 			DEBUG("%s", sync_touch_version);
-			exit(0);
+			fr_exit_now(0);
 
 		case 'x':
 			fr_debug_lvl++;
@@ -130,22 +130,22 @@ int main(int argc, char **argv)
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("sync_touch");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
 		fr_perror("sync_touch");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_internal_afrom_file(&conf->dict, FR_DICTIONARY_FILE) < 0) {
 		fr_perror("sync_touch");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_read(dict_freeradius, conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("sync_touch");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 	fr_strerror();	/* Clear the error buffer */
 

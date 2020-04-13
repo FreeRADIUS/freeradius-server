@@ -118,15 +118,6 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
  * @{
  */
 
-/** For systems with an old version libc, define static_assert.
- *
- */
-#ifndef static_assert
-#  define static_assert _Static_assert
-# else
-#  include <assert.h>
-#endif
-
 /** Calls panic_action ifndef NDEBUG, else logs error and evaluates to value of _x
  *
  * Should be wrapped in a condition, and if false, should cause function to return
@@ -168,7 +159,7 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
  *
  * @param _x expression to test (should evaluate to true)
  */
-#define		fr_fatal_assert(_x) (likely((bool)((_x)) || _fr_assert_exit(__FILE__, __LINE__, #_x, NULL))
+#define		fr_fatal_assert(_x) if (unlikely(!((bool)(_x)))) _fr_assert_exit(__FILE__, __LINE__, #_x, NULL))
 
 /** Calls panic_action ifndef NDEBUG, else logs error and causes the server to exit immediately with code 134
  *
@@ -185,14 +176,14 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
  * @param _fmt	of message to log.
  * @param ...	fmt arguments.
  */
-#define		fr_fatal_assert_msg(_x) (likely((bool)((_x) || _fr_assert_fatal(__FILE__, __LINE__, #_x, _fmt, ## __VA_ARGS__))
+#define		fr_fatal_assert_msg(_x, _fmt, ...) if (unlikely(!((bool)(_x)))) _fr_assert_fatal(__FILE__, __LINE__, #_x, _fmt, ## __VA_ARGS__)
 
 /** Calls panic_action ifndef NDEBUG, else logs error and causes the server to exit immediately with code 134
  *
  * @param[in] _msg	to log.
  * @param[in] ...	args.
  */
-#define		fr_assert_fatal_fail(_msg, ...) _fr_assert_fatal(__FILE__, __LINE__, "false", _msg,  ## __VA_ARGS__)
+#define		fr_fatal_assert_fail(_msg, ...) _fr_assert_fatal(__FILE__, __LINE__, "false", _msg,  ## __VA_ARGS__)
 
 #ifdef NDEBUG
 #  define fr_assert(_x)

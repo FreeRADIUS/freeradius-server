@@ -139,7 +139,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -v                     Show program version information.\n");
 	fprintf(stderr, "  -x                     Increase debug level.\n");
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
 
 #define RESPOND_STATIC(_cmd) \
@@ -909,7 +909,7 @@ int main(int argc, char **argv)
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radsnmp");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
 
@@ -947,7 +947,7 @@ int main(int argc, char **argv)
 			if (default_log.fd < 0) {
 				fprintf(stderr, "radsnmp: Failed to open log file %s: %s\n",
 					optarg, fr_syserror(errno));
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 			break;
 
@@ -972,11 +972,11 @@ int main(int argc, char **argv)
 			fp = fopen(optarg, "r");
 			if (!fp) {
 			       ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
-			       exit(EXIT_FAILURE);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
 			       ERROR("Error reading %s: %s", optarg, fr_syserror(errno));
-			       exit(EXIT_FAILURE);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			fclose(fp);
 
@@ -990,7 +990,7 @@ int main(int argc, char **argv)
 
 			if (strlen(filesecret) < 2) {
 			       ERROR("Secret in %s is too short", optarg);
-			       exit(EXIT_FAILURE);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			talloc_free(conf->secret);
 			conf->secret = talloc_strdup(conf, filesecret);
@@ -1000,13 +1000,13 @@ int main(int argc, char **argv)
 		case 't':
 			if (fr_time_delta_from_str(&conf->timeout, optarg, FR_TIME_RES_SEC) < 0) {
 				ERROR("Failed parsing timeout value %s", fr_strerror());
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 			break;
 
 		case 'v':
 			DEBUG("%s", radsnmp_version);
-			exit(0);
+			fr_exit_now(0);
 
 		case 'x':
 			fr_debug_lvl++;
@@ -1033,17 +1033,17 @@ int main(int argc, char **argv)
 
 	if (fr_dict_autoload(radsnmp_dict) < 0) {
 		fr_perror("radsnmp");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_attr_autoload(radsnmp_dict_attr) < 0) {
 		fr_perror("radsnmp");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_read(fr_dict_unconst(dict_freeradius), conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("radsnmp");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 	fr_strerror();	/* Clear the error buffer */
 
@@ -1068,7 +1068,7 @@ int main(int argc, char **argv)
 	 */
 	if (fr_inet_pton_port(&conf->server_ipaddr, &conf->server_port, argv[1], -1, force_af, true, true) < 0) {
 		ERROR("%s", fr_strerror());
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -1088,7 +1088,7 @@ int main(int argc, char **argv)
 		      VENDORPEC_FREERADIUS);
 	dict_error:
 		talloc_free(conf);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	conf->snmp_oid_root = fr_dict_attr_child_by_num(conf->snmp_root, 1);

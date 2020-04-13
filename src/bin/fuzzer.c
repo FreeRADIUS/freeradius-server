@@ -94,19 +94,19 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fprintf(stderr, "fuzzer: Failed initializing internal dictionary: %s\n",
 			fr_strerror());
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	if (!proto) {
 		fprintf(stderr, "Failed to find FR_LIBRARY_FUZZ_PROTOCOL\n");
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	dl_loader = dl_loader_init(NULL, lib_dir, NULL, 0, false);
 	if (!dl_loader) {
 		fprintf(stderr, "fuzzer: Failed initializing library loader: %s\n",
 			fr_strerror());
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	snprintf(buffer, sizeof(buffer), "libfreeradius-%s", proto);
@@ -114,7 +114,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	if (!dl) {
 		fprintf(stderr, "fuzzer: Failed loading library %s: %s\n",
 			buffer, fr_strerror());
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	snprintf(buffer, sizeof(buffer), "%s_tp_decode_proto", proto);
@@ -123,13 +123,13 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	if (!tp) {
 		fprintf(stderr, "fuzzer: Failed finding test point %s: %s\n",
 			buffer, fr_strerror());
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	if (tp->test_ctx(&decode_ctx, NULL) < 0) {
 		fprintf(stderr, "fuzzer: Failed finding test point %s: %s\n",
 			buffer, fr_strerror());
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	init = true;

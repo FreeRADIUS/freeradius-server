@@ -89,10 +89,10 @@ static void  alloc_blocks(fr_ring_buffer_t *rb, uint32_t *seed, UNUSED int *star
 		array[index] = hash;
 		p = fr_ring_buffer_reserve(rb, 2048);
 
-		if (!fr_cond_assert(p != NULL)) exit(EXIT_FAILURE);
+		if (!fr_cond_assert(p != NULL)) fr_exit_now(EXIT_FAILURE);
 
 		data[index] = fr_ring_buffer_alloc(rb, hash);
-		if (!fr_cond_assert(data[index] == p)) exit(EXIT_FAILURE);
+		if (!fr_cond_assert(data[index] == p)) fr_exit_now(EXIT_FAILURE);
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
@@ -114,7 +114,7 @@ static void  free_blocks(fr_ring_buffer_t *rb, UNUSED uint32_t *seed, int *start
 		index = (*start + i) & (ARRAY_SIZE - 1);
 
 		rcode = fr_ring_buffer_free(rb, array[index]);
-		if (!fr_cond_assert(rcode == 0)) exit(EXIT_FAILURE);
+		if (!fr_cond_assert(rcode == 0)) fr_exit_now(EXIT_FAILURE);
 
 		used -= array[index];
 		fr_assert(fr_ring_buffer_used(rb) == used);
@@ -137,7 +137,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -s <string>            Set random seed to <string>.\n");
 	fprintf(stderr, "  -l <lenght>            Set the interation number to <length>.\n");
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 	rb = fr_ring_buffer_create(autofree, ARRAY_SIZE * 1024);
 	if (!rb) {
 		fprintf(stderr, "Failed creating ring buffer\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	seed = 0xabcdef;
@@ -202,5 +202,5 @@ int main(int argc, char *argv[])
 	fr_assert(used == 0);
 	fr_assert(fr_ring_buffer_used(rb) == used);
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }

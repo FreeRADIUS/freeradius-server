@@ -947,6 +947,6 @@ int main(int argc, char **argv)
 	fr_hash_table_free(ht);
 	talloc_free(array);
 
-	fr_exit(0);
+	return EXIT_SUCCESS;
 }
 #endif

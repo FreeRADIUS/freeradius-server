@@ -200,11 +200,10 @@ int main(int argc, char **argv)
 	fr_hmac_md5(digest, text, text_len, key, key_len);
 
 	for (i = 0; i < 16; i++) {
-	printf("%02x", digest[i]);
+		printf("%02x", digest[i]);
 	}
 	printf("\n");
 
-	exit(0);
 	return 0;
 }
 

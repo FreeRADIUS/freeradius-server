@@ -2830,29 +2830,21 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 	int i;
 	fr_dict_attr_t const *da_p;
 
-	if (!da) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
-
-		if (!fr_cond_assert(0)) fr_exit_now(1);
-	}
+	if (!da) fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
 
 	(void) talloc_get_type_abort_const(da, fr_dict_attr_t);
 
 	if ((!da->flags.is_root) && (da->depth == 0)) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-			     "Is not root, but depth is 0",
-			     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
-
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+				     "Is not root, but depth is 0",
+				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
 	}
 
 	if (da->depth > FR_DICT_MAX_TLV_STACK) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-			     "Indicated depth (%u) greater than TLV stack depth (%u)",
-			     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr,
-			     da->depth, FR_DICT_MAX_TLV_STACK);
-
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+				     "Indicated depth (%u) greater than TLV stack depth (%u)",
+				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr,
+				     da->depth, FR_DICT_MAX_TLV_STACK);
 	}
 
 	for (da_p = da; da_p; da_p = da_p->next) {
@@ -2861,20 +2853,16 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 
 	for (i = da->depth, da_p = da; (i >= 0) && da; i--, da_p = da_p->parent) {
 		if (i != (int)da_p->depth) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-				     "Depth out of sequence, expected %i, got %u",
-				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr, i, da_p->depth);
-
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+					     "Depth out of sequence, expected %i, got %u",
+					     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr, i, da_p->depth);
 		}
 
 	}
 
 	if ((i + 1) < 0) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
-			     file, line);
-
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
+				     file, line);
 	}
 }
 

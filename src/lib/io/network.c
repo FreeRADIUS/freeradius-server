@@ -1107,7 +1107,7 @@ static void fr_network_worker_started_callback(void *ctx, void const *data, size
 
 	w->worker = worker;
 	w->channel = fr_worker_channel_create(worker, w, nr->control);
-	if (!w->channel) fr_exit_now(1);
+	fr_fatal_assert_msg(w->channel, "Failed creating new channel");
 
 	fr_channel_requestor_uctx_add(w->channel, w);
 	fr_channel_set_recv_reply(w->channel, nr, fr_network_recv_reply);

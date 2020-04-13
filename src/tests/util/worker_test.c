@@ -97,7 +97,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -w N                   Create N workers.  Default is 1.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(EXIT_FAILURE);
+	fr_exit_now(EXIT_FAILURE);
 }
 
 static rlm_rcode_t test_process(UNUSED void const *inst, REQUEST *request, fr_io_action_t action)
@@ -171,14 +171,14 @@ static void *worker_thread(void *arg)
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!el) {
 		fprintf(stderr, "worker_test: Failed to create the event list\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	snprintf(buffer, sizeof(buffer), "%d", sw->id);
 	worker = sw->worker = fr_worker_create(ctx, el, buffer, &default_log, L_DBG_LVL_MAX);
 	if (!worker) {
 		fprintf(stderr, "worker_test: Failed to create the worker\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	MPRINT1("\tWorker %d looping.\n", sw->id);
@@ -212,7 +212,7 @@ static void master_process(void)
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	MPRINT1("Master started.\n");
@@ -342,7 +342,7 @@ check_close:
 				MPRINT1("Master asked exit for worker %d.\n", workers[i].id);
 				if (rcode < 0) {
 					fprintf(stderr, "Failed signaling close %d: %s\n", i, fr_syserror(errno));
-					exit(EXIT_FAILURE);
+					fr_exit_now(EXIT_FAILURE);
 				}
 			}
 			signaled_close = true;
@@ -358,7 +358,7 @@ check_close:
 			if (errno == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -487,7 +487,7 @@ int main(int argc, char *argv[])
 
 	if (fr_time_start() < 0) {
 		fprintf(stderr, "Failed to start time: %s\n", fr_syserror(errno));
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_log_init(&default_log, false);
@@ -559,5 +559,5 @@ int main(int argc, char *argv[])
 
 	close(kq_master);
 
-	exit(EXIT_SUCCESS);
+	return EXIT_SUCCESS;
 }

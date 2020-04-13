@@ -3248,13 +3248,13 @@ int main(int argc, char **argv)
 
 	if (argc < 2) {
 		fprintf(stderr, "Please specify filename\n");
-		exit(EXIT_SUCCESS);
+		fr_exit_now(EXIT_SUCCESS);
 	}
 
 	fp = fopen(argv[1], "r");
 	if (!fp) {
 		fprintf(stderr, "Failed opening %s: %s\n", argv[1], fr_syserror(errno));
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	/*
@@ -3267,7 +3267,7 @@ int main(int argc, char **argv)
 	ft = fr_trie_alloc(NULL);
 	if (!ft) {
 		fprintf(stderr, "Failed creating trie\n");
-		exit(1);
+		fr_exit_now(1);
 	}
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
@@ -3322,7 +3322,7 @@ int main(int argc, char **argv)
 		    ((commands[cmd].max_argc + 1 + commands[cmd].output) < my_argc)) {
 			fprintf(stderr, "Invalid number of arguments to %s at line %d.  Expected %d, got %d\n",
 				my_argv[0], lineno, commands[cmd].min_argc + 1, my_argc - 1);
-			exit(1);
+			fr_exit_now(1);
 		}
 
 		if (print_lineno) {
@@ -3334,7 +3334,7 @@ int main(int argc, char **argv)
 		if (commands[cmd].function(ft, my_argc - 1 - commands[cmd].output, &my_argv[1], output, sizeof(output)) < 0) {
 			fprintf(stderr, "Failed running %s at line %d\n",
 				my_argv[0], lineno);
-			exit(1);
+			fr_exit_now(1);
 		}
 
 		if (!commands[cmd].output) continue;
@@ -3342,7 +3342,7 @@ int main(int argc, char **argv)
 		if (strcmp(output, my_argv[my_argc - 1]) != 0) {
 			fprintf(stderr, "Failed running %s at line %d: Expected '%s' got '%s'\n",
 				my_argv[0], lineno, my_argv[my_argc - 1], output);
-			exit(1);
+			fr_exit_now(1);
 		}
 	}
 

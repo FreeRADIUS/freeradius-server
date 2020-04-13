@@ -856,7 +856,7 @@ void log_fatal(fr_log_t const *log, char const *file, int line, char const *fmt,
 	fr_vlog(log, L_ERR, file, line, fmt, ap);
 	va_end(ap);
 
-	fr_exit_now(1);
+	fr_exit_now(EXIT_FAILURE);
 }
 
 /** Initialises the server logging functionality, and the underlying libfreeradius log

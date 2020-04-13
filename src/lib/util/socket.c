@@ -258,7 +258,7 @@ bool fr_socket_is_valid_proto(int proto)
    sockfd = fr_socket_client_unix(path, true);
    if (sockfd < 0) {
    	fr_perror();
-   	exit(1);
+   	fr_exit_now(1);
    }
    if ((errno == EINPROGRESS) && (fr_socket_wait_for_connect(sockfd, timeout) < 0)) {
    error:
@@ -358,7 +358,7 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
    sockfd = fr_socket_client_udp(NULL, NULL, ipaddr, port, true);
    if (sockfd < 0) {
    	fr_perror();
-   	exit(1);
+   	fr_exit_now(1);
    }
    if ((errno == EINPROGRESS) && (fr_socket_wait_for_connect(sockfd, timeout) < 0)) {
    error:
@@ -500,7 +500,7 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
    sockfd = fr_socket_client_tcp(NULL, ipaddr, port, true);
    if (sockfd < 0) {
    	fr_perror();
-   	exit(1);
+   	fr_exit_now(1);
    }
    if ((errno == EINPROGRESS) && (fr_socket_wait_for_connect(sockfd, timeout) < 0)) {
    error:

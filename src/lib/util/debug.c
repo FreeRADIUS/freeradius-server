@@ -935,7 +935,7 @@ NEVER_RETURNS void fr_fault(int sig)
 		if (left <= ret) {
 		oob:
 			FR_FAULT_LOG("Panic action too long");
-			fr_exit_now(1);
+			fr_exit_now(128 + sig);
 		}
 		left -= ret;
 		p = q + 2;
@@ -974,7 +974,7 @@ NEVER_RETURNS void fr_fault(int sig)
 			if (fr_set_pr_dumpable_flag(false) < 0) {
 				FR_FAULT_LOG("Failed resetting dumpable flag to off: %s", fr_strerror());
 				FR_FAULT_LOG("Exiting due to insecure process state");
-				fr_exit_now(1);
+				fr_exit_now(EXIT_FAILURE);
 			}
 		}
 
@@ -1036,7 +1036,7 @@ static void _fr_talloc_fault(char const *reason)
 #ifdef SIGABRT
 	fr_fault(SIGABRT);
 #endif
-	fr_exit_now(1);
+	fr_exit_now(128 + SIGABRT);
 }
 
 /** Wrapper to pass talloc log output to our fr_fault_log function
@@ -1395,15 +1395,18 @@ void _fr_assert_fatal(char const *file, int line, char const *expr, char const *
 #ifndef NDEBUG
 void NEVER_RETURNS _fr_exit(char const *file, int line, int status, bool now)
 {
-	char const *error = fr_strerror();
+	if (status != EXIT_SUCCESS) {
+		char const *error = fr_strerror();
 
-	if (error && *error && (status != 0)) {
-		FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%u].  Last error was: %s", now ? "_" : "", status, file, line, error);
-	} else {
-		FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%u]", now ? "_" : "", status, file, line);
+		if (error && *error && (status != 0)) {
+			FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%u].  Last error was: %s", now ? "_" : "",
+				     status, file, line, error);
+		} else {
+			FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%u]", now ? "_" : "", status, file, line);
+		}
+
+		fr_debug_break(false);	/* If running under GDB we'll break here */
 	}
-
-	if (status != EXIT_SUCCESS) fr_debug_break(false);	/* If running under GDB we'll break here */
 
 	now ? _Exit(status) : exit(status);
 }

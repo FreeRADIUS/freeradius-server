@@ -490,21 +490,19 @@ static void packet_verify(char const *file, int line, REQUEST const *request, RA
 {
 	TALLOC_CTX *parent;
 
-	if (!packet) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: RADIUS_PACKET %s pointer was NULL", file, line, type);
-		if (!fr_cond_assert(0)) fr_exit_now(1);
-	}
+	fr_fatal_assert_msg(packet, "CONSISTENCY CHECK FAILED %s[%i]: RADIUS_PACKET %s pointer was NULL",
+			    file, line, type);
 
 	parent = talloc_parent(packet);
 	if (parent != request) {
-		ERROR("CONSISTENCY CHECK FAILED %s[%i]: Expected RADIUS_PACKET %s to be parented by %p (%s), "
-		      "but parented by %p (%s)", file, line, type, request, talloc_get_name(request),
-		      parent, parent ? talloc_get_name(parent) : "NULL");
-
 		fr_log_talloc_report(packet);
 		if (parent) fr_log_talloc_report(parent);
 
-		fr_assert(0);
+
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%i]: Expected RADIUS_PACKET %s to be parented "
+				     "by %p (%s), but parented by %p (%s)",
+				     file, line, type, request, talloc_get_name(request),
+				     parent, parent ? talloc_get_name(parent) : "NULL");
 	}
 
 	PACKET_VERIFY(packet);
@@ -521,20 +519,15 @@ void request_verify(char const *file, int line, REQUEST const *request)
 {
 	request_data_t *rd = NULL;
 
-	if (!request) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
-		if (!fr_cond_assert(0)) fr_exit_now(1);
-	}
+	fr_fatal_assert_msg(request, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
 
 	(void) talloc_get_type_abort_const(request, REQUEST);
 
 	fr_assert(request->magic == REQUEST_MAGIC);
 
-	if (talloc_get_size(request) != sizeof(REQUEST)) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
-			file, line, sizeof(REQUEST), talloc_get_size(request));
-		if (!fr_cond_assert(0)) fr_exit_now(1);
-	}
+	fr_fatal_assert_msg(talloc_get_size(request) == sizeof(REQUEST),
+			    "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
+			    file, line, sizeof(REQUEST), talloc_get_size(request));
 
 	fr_pair_list_verify(file, line, request, request->control);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);

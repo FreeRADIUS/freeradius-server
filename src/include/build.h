@@ -28,6 +28,15 @@
 extern "C" {
 #endif
 
+/** For systems with an old version libc, define static_assert.
+ *
+ */
+#ifndef static_assert
+#  define static_assert _Static_assert
+# else
+#  include <assert.h>
+#endif
+
 /*
  *	Reduce spurious errors from clang scan by having
  *	all paths that find the da to be NULL, result

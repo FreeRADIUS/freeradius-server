@@ -688,12 +688,6 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 	ps = fr_socket_find(pl, request->sockfd);
 	if (!ps) return false;
 
-#if 0
-	if (!ps->id[(request->id >> 3) & 0x1f] & (1 << (request->id & 0x07))) {
-		fr_exit(1);
-	}
-#endif
-
 	ps->id[(request->id >> 3) & 0x1f] &= ~(1 << (request->id & 0x07));
 
 	ps->num_outgoing--;

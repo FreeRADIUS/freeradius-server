@@ -91,7 +91,7 @@ static char *readline(char const *prompt)
 	p = strchr(line, '\n');
 	if (!p) {
 		fprintf(stderr, "Input line too long\n");
-		fr_exit_now(EXIT_FAILURE);
+		return NULL;
 	}
 
 	*p = '\0';

@@ -113,7 +113,7 @@ static void sigint()
 			link_shutdown_all(set);
 	}
 
-	exit(0);
+	fr_exit_now(0);
 
 out:
 	pthread_mutex_unlock(&exit_mutex);
@@ -172,14 +172,14 @@ void handle_options(int argc, char **argv)
 		case 'h':
 			print_usage(argv[0]);
 			print_help();
-			exit(0);
+			fr_exit_now(0);
 		case 'p':
 			if (bsc->pcap_fd >= 0)
 				close(bsc->pcap_fd);
 			bsc->pcap_fd = open(optarg, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP| S_IROTH);
 			if (bsc->pcap_fd < 0) {
 				fprintf(stderr, "Failed to open PCAP file.\n");
-				exit(0);
+				fr_exit_now(0);
 			}
 			mtp_pcap_write_header(bsc->pcap_fd);
 			break;
@@ -188,7 +188,7 @@ void handle_options(int argc, char **argv)
 			break;
 		case 'v':
 			printf("This is %s version %s.\n", PACKAGE, VERSION);
-			exit(0);
+			fr_exit_now(0);
 			break;
 		default:
 			fprintf(stderr, "Unknown option.\n");

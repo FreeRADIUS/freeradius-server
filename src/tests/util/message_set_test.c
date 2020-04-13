@@ -165,7 +165,7 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 #ifndef NDEBUG
 		fr_assert(rcode == 0);
 #else
-		if (rcode != 0) exit(EXIT_FAILURE);
+		if (rcode != 0) fr_exit_now(EXIT_FAILURE);
 #endif
 
 		used -= array[index];
@@ -190,7 +190,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -t                     Touch 'packet' memory.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
 	ms = fr_message_set_create(autofree, ARRAY_SIZE, sizeof(fr_message_t), ARRAY_SIZE * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	seed = 0xabcdef;

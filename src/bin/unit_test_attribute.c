@@ -1773,8 +1773,6 @@ static size_t command_pair(command_result_t *result, command_ctx_t *cc,
 		len = fr_pair_snprint(p, end - p, vp);
 		p += len;
 
-		fprintf(stderr, "PRINTING %s --> %zu\n", vp->da->name, len);
-
 		if (p >= end) break;
 
 		*(p++) = ',';
@@ -1788,8 +1786,6 @@ static size_t command_pair(command_result_t *result, command_ctx_t *cc,
 		p -= 2;
 	}
 	*p = 0;
-
-	fprintf(stderr, "GOT %s\n", data);
 
 	RETURN_OK(p - data);
 }

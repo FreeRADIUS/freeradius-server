@@ -232,28 +232,27 @@ Test Vectors (Trailing '\0' of a character string not included in test):
  */
 int main(int argc, char **argv)
 {
-  uint8_t digest[20];
-  char *key;
-  int key_len;
-  char *text;
-  int text_len;
-  int i;
+	uint8_t digest[20];
+	char *key;
+	int key_len;
+	char *text;
+	int text_len;
+	int i;
 
-  key = argv[1];
-  key_len = strlen(key);
+	key = argv[1];
+	key_len = strlen(key);
 
-  text = argv[2];
-  text_len = strlen(text);
+	text = argv[2];
+	text_len = strlen(text);
 
-  fr_hmac_sha1(digest, text, text_len, key, key_len);
+	fr_hmac_sha1(digest, text, text_len, key, key_len);
 
-  for (i = 0; i < 20; i++) {
-    printf("%02x", digest[i]);
-  }
-  printf("\n");
+	for (i = 0; i < 20; i++) {
+		printf("%02x", digest[i]);
+	}
+	printf("\n");
 
-  exit(0);
-  return 0;
+	return 0;
 }
 
 #endif

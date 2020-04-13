@@ -1091,7 +1091,7 @@ static void NEVER_RETURNS usage(main_config_t const *config, int status)
 	fprintf(output, "  -v            Print server version information.\n");
 	fprintf(output, "  -X            Turn on full debugging (similar to -tfxxl stdout).\n");
 	fprintf(output, "  -x            Turn on additional debugging (-xx gives more debugging).\n");
-	exit(status);
+	fr_exit(status);
 }
 
 

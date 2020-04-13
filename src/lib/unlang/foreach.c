@@ -130,11 +130,6 @@ static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 	int				i, foreach_depth = 0;
 	VALUE_PAIR			*vps;
 
-	if (stack->depth >= UNLANG_STACK_MAX) {
-		ERROR("Internal sanity check failed: module stack is too deep");
-		fr_exit(EXIT_FAILURE);
-	}
-
 	frame = &stack->frame[stack->depth];
 	instruction = frame->instruction;
 	g = unlang_generic_to_group(instruction);

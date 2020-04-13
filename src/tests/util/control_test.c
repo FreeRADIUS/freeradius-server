@@ -80,7 +80,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -m <messages>	  Send number of messages.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
 
 typedef struct {
@@ -111,7 +111,7 @@ static void *control_master(UNUSED void *arg)
 		num_events = kevent(kq, NULL, 0, &kev, 1, NULL);
 		if (num_events < 0) {
 			fprintf(stderr, "Failed reading kevent: %s\n", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		MPRINT1("Master draining the control plane.\n");
@@ -124,7 +124,7 @@ static void *control_master(UNUSED void *arg)
 
 			if (data_size < 0) {
 				fprintf(stderr, "Failed reading control message\n");
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 
 			fr_assert(data_size == sizeof(m));
@@ -217,11 +217,11 @@ int main(int argc, char *argv[])
 	control = fr_control_create(autofree, kq, aq, 1024);
 	if (!control) {
 		fprintf(stderr, "control_test: Failed to create control plane\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	rb = fr_ring_buffer_create(autofree, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
-	if (!rb) exit(EXIT_FAILURE);
+	if (!rb) fr_exit_now(EXIT_FAILURE);
 
 	/*
 	 *	Start the two threads, with the channel.
@@ -237,5 +237,5 @@ int main(int argc, char *argv[])
 
 	close(kq);
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
