@@ -668,10 +668,6 @@ wait:
  *  @todo - maybe take an fr_cursor_t instead of env_pairs?  That
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
- *
- *  @todo - make xlat_aeval_compiled_argv() return one value_box of type
- *  FR_TYPE_GROUP instead of argv.  So that function can take synchronous
- *  xlats, too.
  */
 int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
 {
@@ -742,4 +738,98 @@ int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
 	child->pid = pid;
 
 	return 0;
+}
+
+/** Execute a program assuming that the caller waits for it to finish.
+ *
+ *  The caller takes responsibility for calling waitpid() on the returned PID.
+ *
+ *  The caller takes responsibility for reading from the returned FD,
+ *  and closing it.
+ *
+ * @param request	the request
+ * @param vb		as returned by xlat_frame_eval()
+ * @param env_pairs	VPs to put into into the environment.  May be NULL.
+ * @param[out] pid_p	The PID of the child
+ * @return
+ *	- <0 on error
+ *	- >= 0 on success, with FD to read program output
+ *
+ *  @todo - maybe take an fr_cursor_t instead of env_pairs?  That
+ *  would allow finer-grained control over the attributes to put into
+ *  the environment.
+ */
+int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs, pid_t *pid_p)
+{
+	int		argc;
+	char		**envp;
+	char		**argv;
+	pid_t		pid;
+	fr_value_box_t	*first;
+	int		from_child[2];
+
+	/*
+	 *	Clean up any previous child processes.
+	 */
+	fr_reap_children();
+
+	/*
+	 *	Ensure that we don't do anything stupid.
+	 */
+	first =  fr_value_box_list_get(vb, 0);
+	if (first->type == FR_TYPE_GROUP) first = first->vb_group;
+	if (first->tainted) {
+		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
+		return -1;
+	}
+
+	/*
+	 *	Get the environment variables.
+	 */
+	if (env_pairs) {
+		MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
+		fr_exec_pair_to_env(request, env_pairs, envp, MAX_ENVP, true);
+	} else {
+		MEM(envp = talloc_zero_array(request, char *, 1));
+		envp[0] = NULL;
+	}
+
+	argc = fr_value_box_list_flatten_argv(request, &argv, vb);
+	if (argc < 0) return -1;
+
+	if (pipe(from_child) < 0) {
+		fr_strerror_printf("Failed opening pipe to read from child - %s", fr_strerror());
+		return -1;
+	}
+
+	pid = fork();
+
+	/*
+	 *	The child never returns from calling fr_exec_child();
+	 */
+	if (pid == 0) {
+		int unused[2];
+
+		fr_exec_child(request, argv, envp, false, NULL, NULL, unused, from_child);
+	}
+
+	/*
+	 *	Parent process.  Do all necessary cleanups.
+	 */
+	talloc_free(envp);
+	close(from_child[1]);
+
+	if (pid < 0) {
+		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
+		close(from_child[0]);
+		talloc_free(argv);
+		return -1;
+	}
+
+	/*
+	 *	Tell the caller the childs PID, and the FD to read
+	 *	from.
+	 */
+	*pid_p = pid;
+	return from_child[0];
 }
