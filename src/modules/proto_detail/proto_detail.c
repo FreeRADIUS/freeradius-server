@@ -27,7 +27,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "proto_detail.h"
 
 extern fr_app_t proto_detail;
@@ -153,7 +153,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 	fr_dict_attr_t const	*attr_packet_type;
 	proto_detail_t		*inst = parent;
 
-	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
 	if (!inst->dict) {
 		cf_log_err(ci, "Please define 'dictionary' BEFORE 'type'");
@@ -179,7 +179,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 	inst->code = type_enum->value->vb_uint32;
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_detail"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	/*
 	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
@@ -225,7 +225,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_detail"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
 }
@@ -451,7 +451,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		return -1;
 	}
 
-	rad_assert(li->app_io->get_name);
+	fr_assert(li->app_io->get_name);
 	li->name = li->app_io->get_name(li);
 
 	/*
@@ -625,7 +625,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 		transport_cs = cf_section_find(inst->cs, "work", NULL);
 		parent_inst = cf_data_value(cf_data_find(inst->cs, dl_module_inst_t, "proto_detail"));
-		rad_assert(parent_inst);
+		fr_assert(parent_inst);
 
 		if (!transport_cs) {
 			transport_cs = cf_section_dup(inst->cs, inst->cs, inst->app_io_conf,

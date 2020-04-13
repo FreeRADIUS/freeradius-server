@@ -30,7 +30,7 @@ typedef struct fr_connection_s fr_connection_t;
 #include <freeradius-devel/server/connection.h>
 
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/cond_eval.h>
 
 #include <freeradius-devel/util/base.h>
@@ -334,7 +334,7 @@ static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t 
 	 *	and shouldn't be possible because of
 	 *	deferred signal processing.
 	 */
-	rad_assert(conn->next_watcher == NULL);
+	fr_assert(conn->next_watcher == NULL);
 
 	while ((conn->next_watcher = fr_dlist_next(list, conn->next_watcher))) {
 		fr_connection_watch_entry_t	*entry = conn->next_watcher;
@@ -635,7 +635,7 @@ static void connection_state_enter_closed(fr_connection_t *conn)
 	 *	is working correctly this state should never
 	 *	be entered if the connection is closed.
 	 */
-	rad_assert(!conn->is_closed);
+	fr_assert(!conn->is_closed);
 	if (conn->close && !conn->is_closed) {
 		HANDLER_BEGIN(conn, conn->close);
 		DEBUG4("Calling close(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
@@ -735,7 +735,7 @@ static void connection_state_enter_failed(fr_connection_t *conn)
 	fr_connection_state_t prev;
 	fr_connection_state_t ret = FR_CONNECTION_STATE_INIT;
 
-	rad_assert(conn->pub.state != FR_CONNECTION_STATE_FAILED);
+	fr_assert(conn->pub.state != FR_CONNECTION_STATE_FAILED);
 
 	/*
 	 *	Explicit error occurred, delete the connection timer
@@ -844,7 +844,7 @@ static void connection_state_enter_failed(fr_connection_t *conn)
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 }
 
@@ -879,7 +879,7 @@ static void connection_state_enter_timeout(fr_connection_t *conn)
  */
 static void connection_state_enter_halted(fr_connection_t *conn)
 {
-	rad_assert(conn->is_closed);
+	fr_assert(conn->is_closed);
 
 	switch (conn->pub.state) {
 	case FR_CONNECTION_STATE_FAILED:	/* Init failure */
@@ -914,7 +914,7 @@ static void connection_state_enter_connected(fr_connection_t *conn)
 {
 	int	ret;
 
-	rad_assert(conn->pub.state == FR_CONNECTION_STATE_CONNECTING);
+	fr_assert(conn->pub.state == FR_CONNECTION_STATE_CONNECTING);
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
 
@@ -1096,7 +1096,7 @@ void fr_connection_signal_init(fr_connection_t *conn)
  */
 void fr_connection_signal_connected(fr_connection_t *conn)
 {
-	rad_assert(!conn->open);	/* Use one or the other not both! */
+	fr_assert(!conn->open);	/* Use one or the other not both! */
 
 	DEBUG2("Signalled connected from %s state",
 	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"));
@@ -1171,7 +1171,7 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 		break;
 
 	case FR_CONNECTION_STATE_MAX:
-		rad_assert(0);
+		fr_assert(0);
 		return;
 	}
 }
@@ -1228,7 +1228,7 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_TIMEOUT:
 	case FR_CONNECTION_STATE_FAILED:
 		connection_state_enter_closed(conn);
-		rad_assert(conn->is_closed);
+		fr_assert(conn->is_closed);
 
 	/* FALL-THROUGH */
 	case FR_CONNECTION_STATE_CLOSED:
@@ -1236,7 +1236,7 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 		break;
 
 	case FR_CONNECTION_STATE_MAX:
-		rad_assert(0);
+		fr_assert(0);
 		return;
 	}
 }
@@ -1279,12 +1279,12 @@ void fr_connection_signal_halt(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_TIMEOUT:
 	case FR_CONNECTION_STATE_FAILED:
 		connection_state_enter_closed(conn);
-		rad_assert(conn->is_closed);
+		fr_assert(conn->is_closed);
 		connection_state_enter_halted(conn);
 		break;
 
 	case FR_CONNECTION_STATE_MAX:
-		rad_assert(0);
+		fr_assert(0);
 		return;
 	}
 }
@@ -1340,7 +1340,7 @@ static void _connection_signal_on_fd_cleanup(fr_connection_t *conn, fr_connectio
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 
@@ -1473,7 +1473,7 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	size_t i;
 	fr_connection_t *conn;
 
-	rad_assert(el);
+	fr_assert(el);
 
 	conn = talloc_zero(ctx, fr_connection_t);
 	if (!conn) return NULL;

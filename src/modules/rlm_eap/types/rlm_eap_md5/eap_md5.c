@@ -190,7 +190,7 @@ int eap_md5_compose(eap_round_t *eap_round, MD5_PACKET *reply)
 	if (reply->code < 3) {
 		eap_round->request->type.num = FR_EAP_METHOD_MD5;
 
-		rad_assert(reply->length > 0);
+		fr_assert(reply->length > 0);
 
 		eap_round->request->type.data = talloc_array(eap_round->request,
 							  uint8_t,

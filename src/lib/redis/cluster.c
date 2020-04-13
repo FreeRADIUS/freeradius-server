@@ -146,7 +146,7 @@
  *
  */
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/cf_parse.h>
 
 #include <freeradius-devel/util/fifo.h>
@@ -358,7 +358,7 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 {
 	char const *p;
 
-	rad_assert(node->pending_addr.ipaddr.af);
+	fr_assert(node->pending_addr.ipaddr.af);
 
 	/*
 	 *	Write out the IP address and Port in string form
@@ -470,7 +470,7 @@ static fr_redis_cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_sl
 	if (fr_inet_pton_port(&ipaddr, &port, p, redirect->len - (p - redirect->str), AF_UNSPEC, false, true) < 0) {
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
-	rad_assert(ipaddr.af);
+	fr_assert(ipaddr.af);
 
 	if (key_slot) *key_slot = key;
 	if (node_addr) {
@@ -534,7 +534,7 @@ static fr_redis_cluster_rcode_t cluster_map_apply(fr_redis_cluster_t *cluster, r
 do { \
 	int _ret; \
 	_ret = fr_inet_pton(&_addr.ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, false, true);\
-	rad_assert(_ret == 0);\
+	fr_assert(_ret == 0);\
 	_addr.port = _map->element[1]->integer; \
 } while (0)
 #else
@@ -562,7 +562,7 @@ do { \
 	rollback[r++] = (_node)->id; \
 } while (0)
 
-	rad_assert(reply->type == REDIS_REPLY_ARRAY);
+	fr_assert(reply->type == REDIS_REPLY_ARRAY);
 
 	memset(&rollback, 0, sizeof(rollback));
 	memset(active, 0, sizeof(active));
@@ -725,9 +725,9 @@ do { \
 		if (cluster->node[i].is_active) {
 			/* Sanity check for duplicates that are active */
 			found = rbtree_finddata(cluster->used_nodes, &cluster->node[i]);
-			rad_assert(found);
-			rad_assert(found->is_active);
-			rad_assert(found->id == i);
+			fr_assert(found);
+			fr_assert(found->is_active);
+			fr_assert(found->id == i);
 		}
 #endif
 
@@ -749,7 +749,7 @@ do { \
 	/*
 	 *	Sanity checks
 	 */
-	rad_assert(((talloc_array_length(cluster->node) - 1) - rbtree_num_elements(cluster->used_nodes)) ==
+	fr_assert(((talloc_array_length(cluster->node) - 1) - rbtree_num_elements(cluster->used_nodes)) ==
 		   fr_fifo_num_elements(cluster->free_nodes));
 
 	return FR_REDIS_CLUSTER_RCODE_SUCCESS;
@@ -1184,7 +1184,7 @@ static int _cluster_pool_walk(void *data, void *uctx)
 	cluster_nodes_live_t	*live = uctx;
 	fr_redis_cluster_node_t	*node = data;
 
-	rad_assert(node->pool);
+	fr_assert(node->pool);
 
 	if (live->skip == node->id) return 0;	/* Skip the dead node */
 
@@ -1334,7 +1334,7 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 	rbtree_walk(cluster->used_nodes, RBTREE_IN_ORDER, _cluster_pool_walk, live);
 	pthread_mutex_unlock(&cluster->mutex);
 
-	rad_assert(live->next);			/* There should be at least one */
+	fr_assert(live->next);			/* There should be at least one */
 	if (live->next == 1) goto no_alts;	/* Weird, but conceivable */
 
 	now = fr_time();
@@ -1388,7 +1388,7 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 		 *	to save memory...
 		 */
 		node = &cluster->node[live->node[pivot].id];
-		rad_assert(live->node[pivot].id == node->id);
+		fr_assert(live->node[pivot].id == node->id);
 
 		RDEBUG2("Selected node %i (using random value %i)", node->id, find);
 		conn = fr_pool_connection_get(node->pool, request);
@@ -1710,9 +1710,9 @@ fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr
 	uint8_t					first, i;
 	int					used_nodes;
 
-	rad_assert(cluster);
-	rad_assert(state);
-	rad_assert(conn);
+	fr_assert(cluster);
+	fr_assert(state);
+	fr_assert(conn);
 
 	memset(state, 0, sizeof(*state));
 
@@ -1825,8 +1825,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 					     fr_redis_cluster_t *cluster, REQUEST *request,
 					     fr_redis_rcode_t status, redisReply **reply)
 {
-	rad_assert(state && state->node && state->node->pool);
-	rad_assert(conn && *conn);
+	fr_assert(state && state->node && state->node->pool);
+	fr_assert(conn && *conn);
 
 	if (*reply) fr_redis_reply_print(L_DBG_LVL_3, *reply, request, 0);
 
@@ -1942,7 +1942,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 *	trigger a cluster remap.
 	 */
 	case REDIS_RCODE_MOVE:
-		rad_assert(*reply);
+		fr_assert(*reply);
 
 		if (*conn && (fr_redis_cluster_remap(request, cluster, *conn) != FR_REDIS_CLUSTER_RCODE_SUCCESS)) {
 			RDEBUG2("%s", fr_strerror());
@@ -2042,7 +2042,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 			pthread_mutex_unlock(&cluster->mutex);
 
 			hostname = inet_ntop(node_addr->ipaddr.af, &node_addr->ipaddr.addr, buffer, sizeof(buffer));
-			rad_assert(hostname);	/* addr.ipaddr is probably corrupt */;
+			fr_assert(hostname);	/* addr.ipaddr is probably corrupt */;
 			fr_strerror_printf("No existing node found with address %s, port %i",
 					   hostname, node_addr->port);
 			return -1;
@@ -2066,7 +2066,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 	/*
 	 *	Sanity checks
 	 */
-	rad_assert(((talloc_array_length(cluster->node) - 1) - rbtree_num_elements(cluster->used_nodes)) ==
+	fr_assert(((talloc_array_length(cluster->node) - 1) - rbtree_num_elements(cluster->used_nodes)) ==
 		   fr_fifo_num_elements(cluster->free_nodes));
 	pthread_mutex_unlock(&cluster->mutex);
 
@@ -2264,8 +2264,8 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	int			num_nodes;
 	fr_redis_cluster_t	*cluster;
 
-	rad_assert(triggers_enabled || !trigger_prefix);
-	rad_assert(triggers_enabled || !trigger_args);
+	fr_assert(triggers_enabled || !trigger_prefix);
+	fr_assert(triggers_enabled || !trigger_args);
 
 	cluster = talloc_zero(NULL, fr_redis_cluster_t);
 	if (!cluster) {

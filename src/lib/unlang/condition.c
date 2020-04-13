@@ -36,7 +36,7 @@ static unlang_action_t unlang_if(REQUEST *request, rlm_rcode_t *presult)
 	unlang_group_t		*g;
 
 	g = unlang_generic_to_group(instruction);
-	rad_assert(g->cond != NULL);
+	fr_assert(g->cond != NULL);
 
 	condition = cond_eval(request, *presult, 0, g->cond);
 	if (condition < 0) {

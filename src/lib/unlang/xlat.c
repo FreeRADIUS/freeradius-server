@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
@@ -142,8 +142,8 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 	unlang_xlat_event_t		*ev;
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
-	rad_assert(stack->depth > 0);
-	rad_assert(frame->instruction->type == UNLANG_TYPE_XLAT);
+	fr_assert(stack->depth > 0);
+	fr_assert(frame->instruction->type == UNLANG_TYPE_XLAT);
 
 	ev = talloc_zero(request, unlang_xlat_event_t);
 	if (!ev) return -1;
@@ -244,7 +244,7 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 
 	switch (xa) {
 	case XLAT_ACTION_PUSH_CHILD:
-		rad_assert(child);
+		fr_assert(child);
 
 		repeatable_set(frame);
 
@@ -274,7 +274,7 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	rad_assert(0);
+	fr_assert(0);
 	*presult = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -319,7 +319,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
 
-	rad_assert(state->resume != NULL);
+	fr_assert(state->resume != NULL);
 
 	xa = xlat_frame_eval_resume(state->ctx, &state->values,
 				    state->resume, state->exp,
@@ -333,7 +333,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_PUSH_CHILD:
-		rad_assert(0);
+		fr_assert(0);
 		/* FALL-THROUGH */
 
 	case XLAT_ACTION_FAIL:
@@ -342,7 +342,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 	/* DON'T SET DEFAULT */
 	}
 
-	rad_assert(0);		/* Garbage xlat action */
+	fr_assert(0);		/* Garbage xlat action */
 
 	*presult = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;

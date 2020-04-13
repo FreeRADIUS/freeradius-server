@@ -147,10 +147,9 @@ static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pi
 
 	state->status = status;
 
-	rad_assert(state->pid == 0);
-	rad_assert(state->fd < 0);
-	rad_assert(state->ev == NULL);
-
+	fr_assert(state->pid == 0);
+	fr_assert(state->fd < 0);
+	fr_assert(state->ev == NULL);
 	unlang_interpret_resumable(request);
 }
 
@@ -215,7 +214,7 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 		return;
 	}
 
-	rad_assert(p < end);
+	fr_assert(p < end);
 	state->ptr = p;
 }
 

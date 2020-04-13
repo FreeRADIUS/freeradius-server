@@ -28,7 +28,7 @@
 #ifdef HAVE_OPENSSL_OCSP_H
 #define LOG_PREFIX "tls - "
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/pair.h>
 
 #include <freeradius-devel/util/misc.h>
@@ -275,12 +275,12 @@ inline static CC_HINT(nonnull) void fr_tls_session_request_bind(REQUEST *request
 	old = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	if (old) {
 		(void)talloc_get_type_abort(ssl, REQUEST);
-		rad_assert(0);
+		fr_assert(0);
 	}
 #endif
 	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, request);
 	if (unlikely(ret == 0)) {
-		rad_assert(0);
+		fr_assert(0);
 		return;
 	}
 }
@@ -300,7 +300,7 @@ inline static CC_HINT(nonnull) void fr_tls_session_request_unbind(SSL *ssl)
 #endif
 	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
 	if (unlikely(ret == 0)) {
-		rad_assert(0);
+		fr_assert(0);
 		return;
 	}
 }
@@ -893,7 +893,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 	if (attr_index > 1) attr_index = 1;
 
 	request = (REQUEST *)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST);
-	rad_assert(request != NULL);
+	fr_assert(request != NULL);
 
 	identity = (char **)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_IDENTITY);
 
@@ -1592,7 +1592,7 @@ fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *con
 	talloc_set_destructor(session, _fr_tls_session_free);
 
 	session->ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
-	rad_assert(session->ctx);
+	fr_assert(session->ctx);
 
 	session->ssl = SSL_new(session->ctx);
 	if (!session->ssl) {
@@ -1660,13 +1660,13 @@ fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *con
 	VALUE_PAIR	*vp;
 	SSL_CTX		*ssl_ctx;
 
-	rad_assert(request != NULL);
-	rad_assert(conf->ctx_count > 0);
+	fr_assert(request != NULL);
+	fr_assert(conf->ctx_count > 0);
 
 	RDEBUG2("Initiating new TLS session");
 
 	ssl_ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
-	rad_assert(ssl_ctx);
+	fr_assert(ssl_ctx);
 
 	new_tls = SSL_new(ssl_ctx);
 	if (new_tls == NULL) {
@@ -1730,7 +1730,7 @@ fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *con
 	 *	As the context ID must be <= 32, we digest the context
 	 *	data with sha256.
 	 */
-	rad_assert(conf->session_id_name);
+	fr_assert(conf->session_id_name);
 	{
 		char		*context_id;
 		EVP_MD_CTX	*md_ctx;

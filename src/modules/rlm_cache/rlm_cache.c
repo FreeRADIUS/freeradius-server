@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/dl_module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "rlm_cache.h"
 
@@ -104,7 +104,7 @@ static void cache_release(rlm_cache_t const *inst, REQUEST *request, rlm_cache_h
  */
 static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t const *inst, REQUEST *request)
 {
-	rad_assert(inst->driver->reconnect);
+	fr_assert(inst->driver->reconnect);
 
 	return inst->driver->reconnect(handle, &inst->config, inst->driver_inst->dl_inst->data, request);
 }
@@ -182,7 +182,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_ca
 	REXDENT();
 
 	if (inst->config.stats) {
-		rad_assert(request->packet != NULL);
+		fr_assert(request->packet != NULL);
 		MEM(pair_update_request(&vp, attr_cache_entry_hits) >= 0);
 		vp->vp_uint32 = c->hits;
 	}
@@ -335,7 +335,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 		VALUE_PAIR	*to_cache = NULL;
 		fr_cursor_t	cursor;
 
-		rad_assert(map->lhs && map->rhs);
+		fr_assert(map->lhs && map->rhs);
 
 		/*
 		 *	Calling map_to_vp gives us exactly the same result,
@@ -438,7 +438,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 				goto do_rhs;
 
 			default:
-				rad_assert(0);
+				fr_assert(0);
 			}
 			*last = c_map;
 			last = &(*last)->next;
@@ -598,7 +598,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 
 		rcode = cache_find(&c, inst, request, &handle, key, key_len);
 		if (rcode == RLM_MODULE_FAIL) goto finish;
-		rad_assert(!inst->driver->acquire || handle);
+		fr_assert(!inst->driver->acquire || handle);
 
 		rcode = c ? RLM_MODULE_OK:
 			    RLM_MODULE_NOTFOUND;
@@ -657,9 +657,9 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
-		rad_assert(!inst->driver->acquire || handle);
+		fr_assert(!inst->driver->acquire || handle);
 	}
 
 	/*
@@ -671,7 +671,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 	 */
 	if (expire && ((exists == -1) || (exists == 1))) {
 		if (!insert) {
-			rad_assert(!set_ttl);
+			fr_assert(!set_ttl);
 			switch (cache_expire(inst, request, &handle, key, key_len)) {
 			case RLM_MODULE_FAIL:
 				rcode = RLM_MODULE_FAIL;
@@ -686,7 +686,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 				break;
 
 			default:
-				rad_assert(0);
+				fr_assert(0);
 				break;
 			}
 			/* If it previously existed, it doesn't now */
@@ -716,16 +716,16 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
-		rad_assert(!inst->driver->acquire || handle);
+		fr_assert(!inst->driver->acquire || handle);
 	}
 
 	/*
 	 *	We can only alter the TTL on an entry if it exists.
 	 */
 	if (set_ttl && (exists == 1)) {
-		rad_assert(c);
+		fr_assert(c);
 
 		c->expires = fr_time_to_unix_time(request->packet->timestamp) + fr_unix_time_from_sec(ttl);
 
@@ -740,7 +740,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 			goto finish;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 
@@ -765,9 +765,9 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
-		rad_assert(!inst->driver->acquire || handle);
+		fr_assert(!inst->driver->acquire || handle);
 		goto finish;
 	}
 
@@ -950,10 +950,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Non optional fields and callbacks
 	 */
-	rad_assert(inst->driver->name);
-	rad_assert(inst->driver->find);
-	rad_assert(inst->driver->insert);
-	rad_assert(inst->driver->expire);
+	fr_assert(inst->driver->name);
+	fr_assert(inst->driver->find);
+	fr_assert(inst->driver->insert);
+	fr_assert(inst->driver->expire);
 
 	/*
 	 *	Register the cache xlat function
@@ -973,7 +973,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	inst->cs = conf;
 
-	rad_assert(inst->config.key);
+	fr_assert(inst->config.key);
 
 	if (inst->config.ttl == 0) {
 		cf_log_err(conf, "Must set 'ttl' to non-zero");

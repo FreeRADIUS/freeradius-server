@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/server/map_proc.h>
 
@@ -639,7 +639,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	fr_cursor_t		cursor;
 	fr_dict_attr_t		const *da;
 
-	rad_assert(ctx != NULL);
+	fr_assert(ctx != NULL);
 	fr_cursor_init(&cursor, &head);
 
 	/*
@@ -667,7 +667,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
-	rad_assert(vp);
+	fr_assert(vp);
 
 	if (fr_pair_value_from_str(vp, str, talloc_array_length(str) - 1, '\0', true) < 0) {
 		RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue_buffer(str),

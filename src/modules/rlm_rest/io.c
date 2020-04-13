@@ -22,7 +22,7 @@
  * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include "rest.h"
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 

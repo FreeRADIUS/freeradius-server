@@ -217,8 +217,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	if (((eap_round->request->code == FR_EAP_CODE_REQUEST) ||
 	     (eap_round->request->code == FR_EAP_CODE_RESPONSE)) &&
 	    (eap_round->request->type.num == 0)) {
-		rad_assert(eap_session->type >= FR_EAP_METHOD_MD5);
-		rad_assert(eap_session->type < FR_EAP_METHOD_MAX);
+		fr_assert(eap_session->type >= FR_EAP_METHOD_MD5);
+		fr_assert(eap_session->type < FR_EAP_METHOD_MAX);
 
 		eap_round->request->type.num = eap_session->type;
 	}

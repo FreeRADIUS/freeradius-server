@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_priv.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/cursor.h>
 
@@ -95,7 +95,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 		break;
 
 	case CONF_ITEM_PAIR:
-		rad_assert((ident2 == NULL) || IS_WILDCARD(ident2));
+		fr_assert((ident2 == NULL) || IS_WILDCARD(ident2));
 
 		memset(&cp_find, 0, sizeof(cp_find));
 		cp_find.item.type = CONF_ITEM_PAIR;
@@ -186,7 +186,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		break;
 
 	case CONF_ITEM_PAIR:
-		rad_assert((ident2 == NULL) || IS_WILDCARD(ident2));
+		fr_assert((ident2 == NULL) || IS_WILDCARD(ident2));
 
 		memset(&cp_find, 0, sizeof(cp_find));
 		cp_find.item.type = CONF_ITEM_PAIR;
@@ -221,7 +221,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		for (ci = prev->next;
 		     ci && (_cf_ident1_cmp(ci, find) != 0);
 		     ci = ci->next) {
-			rad_assert(ci->next != ci);
+			fr_assert(ci->next != ci);
 		}
 
 		return ci;
@@ -374,7 +374,7 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	fr_cursor_t	to_merge;
 	CONF_ITEM	*ci;
 
-	rad_assert(parent != child);
+	fr_assert(parent != child);
 
 	if (!parent || !child) return;
 
@@ -425,13 +425,13 @@ CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
 
 	in_ident1 = (rbtree_finddata(parent->ident1, child) == child);
 	if (in_ident1 && (!rbtree_deletebydata(parent->ident1, child))) {
-		rad_assert(0);
+		fr_assert(0);
 		return NULL;
 	}
 
 	in_ident2 = (rbtree_finddata(parent->ident2, child) == child);
 	if (in_ident2 && (!rbtree_deletebydata(parent->ident2, child))) {
-		rad_assert(0);
+		fr_assert(0);
 		return NULL;
 	}
 
@@ -587,7 +587,7 @@ CONF_PAIR *cf_item_to_pair(CONF_ITEM const *ci)
 
 	if (ci == NULL) return NULL;
 
-	rad_assert(ci->type == CONF_ITEM_PAIR);
+	fr_assert(ci->type == CONF_ITEM_PAIR);
 
 	memcpy(&out, &ci, sizeof(out));
 	return out;
@@ -608,7 +608,7 @@ CONF_SECTION *cf_item_to_section(CONF_ITEM const *ci)
 
 	if (ci == NULL) return NULL;
 
-	rad_assert(ci->type == CONF_ITEM_SECTION);
+	fr_assert(ci->type == CONF_ITEM_SECTION);
 
 	memcpy(&out, &ci, sizeof(out));
 	return out;
@@ -629,7 +629,7 @@ CONF_DATA *cf_item_to_data(CONF_ITEM const *ci)
 
 	if (ci == NULL) return NULL;
 
-	rad_assert(ci->type == CONF_ITEM_DATA);
+	fr_assert(ci->type == CONF_ITEM_DATA);
 
 	memcpy(&out, &ci, sizeof(out));
 	return out;
@@ -903,7 +903,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 			break;
 
 		case CONF_ITEM_INVALID:
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 
@@ -1117,7 +1117,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 {
 	CONF_PAIR *cp;
 
-	rad_assert(fr_equality_op[op] || fr_assignment_op[op]);
+	fr_assert(fr_equality_op[op] || fr_assignment_op[op]);
 	if (!attr) return NULL;
 
 	cp = talloc_zero(parent, CONF_PAIR);
@@ -1158,8 +1158,8 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 {
 	CONF_PAIR *new;
 
-	rad_assert(parent);
-	rad_assert(cp);
+	fr_assert(parent);
+	fr_assert(cp);
 
 	new = cf_pair_alloc(parent, cp->attr, cf_pair_value(cp), cp->op, cp->lhs_quote, cp->rhs_quote);
 	if (!new) return NULL;

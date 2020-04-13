@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/request_data.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_REGEX
 
@@ -71,8 +71,8 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regm
 
 	if (!regmatch || ((*regmatch)->used == 0)) return;
 
-	rad_assert(preg && *preg);
-	rad_assert(regmatch);
+	fr_assert(preg && *preg);
+	fr_assert(regmatch);
 
 	DEBUG4("Adding %zu matches", (*regmatch)->used);
 
@@ -428,8 +428,8 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	/*
 	 *	Sanity checks on the offsets
 	 */
-	rad_assert(match_data[num].rm_eo <= (regoff_t)talloc_array_length(rc->regmatch->subject));
-	rad_assert(match_data[num].rm_so <= (regoff_t)talloc_array_length(rc->regmatch->subject));
+	fr_assert(match_data[num].rm_eo <= (regoff_t)talloc_array_length(rc->regmatch->subject));
+	fr_assert(match_data[num].rm_so <= (regoff_t)talloc_array_length(rc->regmatch->subject));
 
 	start = rc->regmatch->subject + match_data[num].rm_so;
 	len = match_data[num].rm_eo - match_data[num].rm_so;

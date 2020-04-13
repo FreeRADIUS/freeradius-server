@@ -24,7 +24,7 @@
  * @copyright 2014 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/exfile.h>
 
 #include <freeradius-devel/util/misc.h>
@@ -71,8 +71,8 @@ static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_en
 	fr_dict_attr_t const	*da;
 	fr_cursor_t		cursor;
 
-	rad_assert(ef != NULL);
-	rad_assert(name_suffix != NULL);
+	fr_assert(ef != NULL);
+	fr_assert(name_suffix != NULL);
 
 	if (!ef->trigger_prefix) return;
 

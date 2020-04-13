@@ -61,7 +61,7 @@
 #include <osmocom/core/talloc.h>
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/io/schedule.h>
 #include <unistd.h>
 #include <semaphore.h>
@@ -453,7 +453,7 @@ static int event_process_request(struct osmo_fd *ofd, unsigned int what)
 #endif
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		goto fatal_error;
 	}
 
@@ -470,7 +470,7 @@ static void *sigtran_event_loop(UNUSED void *instance)
 {
 	TALLOC_CTX	*ctx = talloc_init("sigtran_event_ctx");
 
-	rad_assert((ctrl_pipe[0] < 0) && (ctrl_pipe[1] < 0));	/* Ensure only one instance exists */
+	fr_assert((ctrl_pipe[0] < 0) && (ctrl_pipe[1] < 0));	/* Ensure only one instance exists */
 
 	/*
 	 *	Patch in libosmo's logging system to ours

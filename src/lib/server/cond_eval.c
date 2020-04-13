@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/regex.h>
 
 #include <ctype.h>
@@ -45,7 +45,7 @@ static bool all_digits(char const *string)
 {
 	char const *p = string;
 
-	rad_assert(p != NULL);
+	fr_assert(p != NULL);
 
 	if (*p == '\0') return false;
 
@@ -127,7 +127,7 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
 	 */
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_STRUCT:
-		rad_assert(0 == 1);
+		fr_assert(0 == 1);
 		/* FALL-THROUGH */
 
 	default:
@@ -281,7 +281,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, fr_value_box_t 
 		VALUE_PAIR *vp;
 
 		EVAL_DEBUG("CMP WITH PAIRCOMPARE");
-		rad_assert(tmpl_is_attr(map->lhs));
+		fr_assert(tmpl_is_attr(map->lhs));
 
 		MEM(vp = fr_pair_afrom_da(request, map->lhs->tmpl_da));
 		vp->op = c->data.map->op;
@@ -427,9 +427,9 @@ do {\
 	 *	Magic attribute is always the LHS.
 	 */
 	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
-		rad_assert(!c->cast);
-		rad_assert(tmpl_is_attr(map->lhs));
-		rad_assert(!tmpl_is_attr(map->rhs) || !paircmp_find(map->rhs->tmpl_da)); /* expensive assert */
+		fr_assert(!c->cast);
+		fr_assert(tmpl_is_attr(map->lhs));
+		fr_assert(!tmpl_is_attr(map->rhs) || !paircmp_find(map->rhs->tmpl_da)); /* expensive assert */
 
 		cast = map->lhs->tmpl_da;
 
@@ -530,7 +530,7 @@ do {\
 		}
 		data.type = FR_TYPE_STRING;
 
-		rad_assert(data.vb_strvalue);
+		fr_assert(data.vb_strvalue);
 
 		rhs = &data;
 
@@ -559,7 +559,7 @@ do {\
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX:	/* Should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
-		rad_assert(0);
+		fr_assert(0);
 		rcode = -1;
 		break;
 	}
@@ -610,7 +610,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		 */
 		if ((c->pass2_fixup == PASS2_PAIRCOMPARE) && (map->op != T_OP_REG_EQ)) {
 #ifndef NDEBUG
-			rad_assert(paircmp_find(map->lhs->tmpl_da)); /* expensive assert */
+			fr_assert(paircmp_find(map->lhs->tmpl_da)); /* expensive assert */
 #endif
 			rcode = cond_normalise_and_cmp(request, c, NULL);
 			break;
@@ -654,7 +654,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 			data.vb_strvalue = map->lhs->name;
 			data.datum.length = map->lhs->len;
 		}
-		rad_assert(data.vb_strvalue);
+		fr_assert(data.vb_strvalue);
 		data.type = FR_TYPE_STRING;
 
 		rcode = cond_normalise_and_cmp(request, c, &data);
@@ -670,7 +670,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_REGEX:		/* should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
 	case TMPL_TYPE_REGEX_STRUCT:	/* not allowed as LHS */
-		rad_assert(0);
+		fr_assert(0);
 		rcode = -1;
 		break;
 	}

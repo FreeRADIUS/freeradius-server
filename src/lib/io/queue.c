@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <stdint.h>
 #include <string.h>
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/io/queue.h>
 
 struct fr_queue_s {
@@ -185,7 +185,7 @@ fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size)
 	 *	Simple block of used elements, copy it.
 	 */
 	if (fq->head > fq->tail) {
-		rad_assert(fq->num == (fq->head - fq->tail));
+		fr_assert(fq->num == (fq->head - fq->tail));
 		memcpy(&nq->entry[0], &fq->entry[fq->tail], &fq->entry[fq->head] - &fq->entry[fq->tail]);
 		nq->head = fq->num;
 		nq->num = fq->num;
@@ -199,7 +199,7 @@ fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size)
 	memcpy(&nq->entry[0], &fq->entry[fq->tail], &fq->entry[fq->size] - &fq->entry[fq->tail]);
 	nq->head = fq->size - fq->tail;
 
-	rad_assert((nq->head + fq->head) == fq->num);
+	fr_assert((nq->head + fq->head) == fq->num);
 
 	memcpy(&nq->entry[nq->head], &fq->entry[0], &fq->entry[fq->head] - &fq->entry[0]);
 	nq->head = fq->num;
@@ -243,7 +243,7 @@ int fr_queue_localize_atomic(fr_queue_t *fq, fr_atomic_queue_t *aq)
 		fq->entry[fq->head++] = data;
 		if (fq->head >= fq->size) fq->head = 0;
 		fq->num++;
-		rad_assert(fq->num <= fq->size);
+		fr_assert(fq->num <= fq->size);
 	}
 
 	return room;

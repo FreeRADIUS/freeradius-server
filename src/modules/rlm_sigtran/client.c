@@ -27,7 +27,7 @@
 #define LOG_PREFIX "rlm_sigtran - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
 #include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
 #include <freeradius-devel/unlang/base.h>
@@ -85,7 +85,7 @@ static int sigtran_client_do_ctrl_transaction(sigtran_transaction_t *txn)
 {
 	int ret;
 
-	rad_assert(ctrl_pipe[0] >= 0);
+	fr_assert(ctrl_pipe[0] >= 0);
 
 	pthread_mutex_lock(&ctrl_pipe_mutex);
 	ret = sigtran_client_do_transaction(ctrl_pipe[0], txn);
@@ -100,7 +100,7 @@ static int sigtran_client_do_ctrl_transaction(sigtran_transaction_t *txn)
 static void _sigtran_pipe_error(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, int fd_errno, UNUSED void *uctx)
 {
 	ERROR("worker - ctrl_pipe (%i) read failed : %s", fd, fr_syserror(fd_errno));
-	rad_assert(0);
+	fr_assert(0);
 }
 
 /** Drain any data we received
@@ -132,7 +132,7 @@ static void _sigtran_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fl
 	txn = talloc_get_type_abort(ptr, sigtran_transaction_t);
 	if (txn->ctx.defunct) return;		/* Request was stopped */
 
-	rad_assert(txn->ctx.request);
+	fr_assert(txn->ctx.request);
 	unlang_interpret_resumable(txn->ctx.request);	/* Continue processing */
 }
 
@@ -156,7 +156,7 @@ int sigtran_client_thread_register(fr_event_list_t *el)
 		return -1;
 	}
 
-	rad_assert((req_pipe[0] >= 0) && (req_pipe[1] >= 0));
+	fr_assert((req_pipe[0] >= 0) && (req_pipe[1] >= 0));
 
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_THREAD_REGISTER;
@@ -288,7 +288,7 @@ static rlm_rcode_t sigtran_client_map_resume(UNUSED void *instance, UNUSED void 
 {
 	sigtran_transaction_t			*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
 	rlm_rcode_t				rcode;
-	rad_assert(request == txn->ctx.request);
+	fr_assert(request == txn->ctx.request);
 
 	/*
 	 *	Process response
@@ -307,9 +307,9 @@ static rlm_rcode_t sigtran_client_map_resume(UNUSED void *instance, UNUSED void 
 		for (vec = res->vector; vec; vec = vec->next) {
 			switch (vec->type) {
 			case SIGTRAN_VECTOR_TYPE_SIM_TRIPLETS:
-				rad_assert(vec->sim.rand);
-				rad_assert(vec->sim.sres);
-				rad_assert(vec->sim.kc);
+				fr_assert(vec->sim.rand);
+				fr_assert(vec->sim.sres);
+				fr_assert(vec->sim.kc);
 
 				RDEBUG2("SIM auth vector %i", i);
 				RINDENT();
@@ -333,11 +333,11 @@ static rlm_rcode_t sigtran_client_map_resume(UNUSED void *instance, UNUSED void 
 				break;
 
 			case SIGTRAN_VECTOR_TYPE_UMTS_QUINTUPLETS:
-				rad_assert(vec->umts.rand);
-				rad_assert(vec->umts.xres);
-				rad_assert(vec->umts.ck);
-				rad_assert(vec->umts.ik);
-				rad_assert(vec->umts.authn);
+				fr_assert(vec->umts.rand);
+				fr_assert(vec->umts.xres);
+				fr_assert(vec->umts.ck);
+				fr_assert(vec->umts.ik);
+				fr_assert(vec->umts.authn);
 
 				RDEBUG2("UMTS auth vector %i", i);
 				RINDENT();
@@ -384,7 +384,7 @@ static rlm_rcode_t sigtran_client_map_resume(UNUSED void *instance, UNUSED void 
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		/* FALL-THROUGH */
 
 	case SIGTRAN_RESPONSE_FAIL:
@@ -414,7 +414,7 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST
 	char					*imsi;
 	size_t					len;
 
-	rad_assert((fd != ctrl_pipe[0]) && (fd != ctrl_pipe[1]));
+	fr_assert((fd != ctrl_pipe[0]) && (fd != ctrl_pipe[1]));
 
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_MAP_SEND_AUTH_INFO;

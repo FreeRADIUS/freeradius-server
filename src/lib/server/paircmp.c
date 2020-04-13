@@ -30,7 +30,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/request.h>
 
@@ -799,7 +799,7 @@ int paircmp_register(fr_dict_attr_t const *da, fr_dict_attr_t const *from,
 {
 	paircmp_t *c;
 
-	rad_assert(da != NULL);
+	fr_assert(da != NULL);
 
 	paircmp_unregister(da, func);
 

@@ -22,7 +22,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 
 #include "eap_mschapv2.h"
@@ -276,7 +276,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	REQUEST			*request = eap_session->request;
 
 	data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
-	rad_assert(request != NULL);
+	fr_assert(request != NULL);
 
 	RDEBUG2("Passing reply from proxy back into the tunnel %d", request->reply->code);
 
@@ -831,7 +831,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	Keep track of the challenge.
 	 */
 	data = talloc_zero(eap_session, mschapv2_opaque_t);
-	rad_assert(data != NULL);
+	fr_assert(data != NULL);
 
 	/*
 	 *	We're at the stage where we're challenging the user.

@@ -194,11 +194,11 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 		return;
 
 	case FR_CHANNEL_DATA_READY_REQUESTOR:
-		rad_assert(0 == 1);
+		fr_assert(0 == 1);
 		break;
 
 	case FR_CHANNEL_DATA_READY_RESPONDER:
-		rad_assert(ch != NULL);
+		fr_assert(ch != NULL);
 
 		if (!fr_channel_recv_request(ch)) {
 			worker->was_sleeping = was_sleeping;
@@ -207,11 +207,11 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 		break;
 
 	case FR_CHANNEL_OPEN:
-		rad_assert(ch != NULL);
+		fr_assert(ch != NULL);
 
 		ok = false;
 		for (i = 0; i < worker->max_channels; i++) {
-			rad_assert(worker->channel[i] != ch);
+			fr_assert(worker->channel[i] != ch);
 
 			if (worker->channel[i] != NULL) continue;
 
@@ -221,7 +221,7 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 			ms = fr_message_set_create(worker, worker->message_set_size,
 						   sizeof(fr_channel_data_t),
 						   worker->ring_buffer_size);
-			rad_assert(ms != NULL);
+			fr_assert(ms != NULL);
 			fr_channel_responder_uctx_add(ch, ms);
 
 			worker->num_channels++;
@@ -233,7 +233,7 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 		break;
 
 	case FR_CHANNEL_CLOSE:
-		rad_assert(ch != NULL);
+		fr_assert(ch != NULL);
 
 		ok = false;
 
@@ -249,12 +249,12 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 			ms = fr_channel_responder_uctx_get(ch);
 
 			fr_channel_responder_ack_close(ch);
-			rad_assert(ms != NULL);
+			fr_assert(ms != NULL);
 			fr_message_set_gc(ms);
 			talloc_free(ms);
 
 			worker->channel[i] = NULL;
-			rad_assert(worker->num_channels > 0);
+			fr_assert(worker->num_channels > 0);
 			worker->num_channels--;
 			ok = true;
 			break;
@@ -311,7 +311,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	}
 
 	ms = fr_channel_responder_uctx_get(ch);
-	rad_assert(ms != NULL);
+	fr_assert(ms != NULL);
 
 	size = listen->app_io->default_reply_size;
 	if (!size) size = listen->app_io->default_message_size;
@@ -320,7 +320,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	 *	Allocate a default message size.
 	 */
 	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
-	rad_assert(reply != NULL);
+	fr_assert(reply != NULL);
 
 	/*
 	 *	Encode a NAK
@@ -381,7 +381,7 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	/*
 	 *	If we're sending a reply, then it's no longer runnable.
 	 */
-	rad_assert(request->runnable_id < 0);
+	fr_assert(request->runnable_id < 0);
 
 	/*
 	 *	If it's a fake request, or we're exiting, don't send a
@@ -396,7 +396,7 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	 *	Allocate and send the reply.
 	 */
 	ch = request->async->channel;
-	rad_assert(ch != NULL);
+	fr_assert(ch != NULL);
 
 	/*
 	 *	If the channel has been closed, but we haven't
@@ -410,10 +410,10 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	}
 
 	ms = fr_channel_responder_uctx_get(ch);
-	rad_assert(ms != NULL);
+	fr_assert(ms != NULL);
 
 	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
-	rad_assert(reply != NULL);
+	fr_assert(reply != NULL);
 
 	/*
 	 *	Encode it, if required.
@@ -440,7 +440,7 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 		 *
 		 *	This will ALWAYS return the same message as we put in.
 		 */
-		rad_assert((size_t) slen <= reply->m.rb_size);
+		fr_assert((size_t) slen <= reply->m.rb_size);
 		(void) fr_message_alloc(ms, &reply->m, slen);
 	}
 
@@ -448,7 +448,7 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	 *	The request is done.  Track that.
 	 */
 	fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
-	rad_assert(worker->num_active > 0);
+	fr_assert(worker->num_active > 0);
 	worker->num_active--;
 
 	/*
@@ -496,8 +496,8 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
 
 finished:
-	rad_assert(request->time_order_id < 0);
-	rad_assert(request->runnable_id < 0);
+	fr_assert(request->time_order_id < 0);
+	fr_assert(request->runnable_id < 0);
 
 #ifndef NDEBUG
 	request->async->el = NULL;
@@ -667,7 +667,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	MEM(request->packet = fr_radius_alloc(request, false));
 	request->packet->timestamp = cd->request.recv_time; /* Legacy - Remove once everything looks at request->async */
 	request->reply = fr_radius_alloc(request, false);
-	rad_assert(request->reply != NULL);
+	fr_assert(request->reply != NULL);
 
 	request->async = talloc_zero(request, fr_async_t);
 
@@ -675,7 +675,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	 *	Receive a message to the worker queue, and decode it
 	 *	to a request.
 	 */
-	rad_assert(cd->listen != NULL);
+	fr_assert(cd->listen != NULL);
 	request->server_cs = cd->listen->server_cs;
 
 	/*
@@ -750,8 +750,8 @@ nak:
 			goto insert_new;
 		}
 
-		rad_assert(old->async->listen == request->async->listen);
-		rad_assert(old->async->channel == request->async->channel);
+		fr_assert(old->async->listen == request->async->listen);
+		fr_assert(old->async->channel == request->async->channel);
 
 		/*
 		 *	There's a new packet.  Do we keep the old one,
@@ -799,7 +799,7 @@ nak:
 		RWARN("Got conflicting packet for request (%" PRIu64 "), telling old request to stop", old->number);
 
 		worker_stop_request(worker, old, now);
-		rad_assert(worker->num_active > 0);
+		fr_assert(worker->num_active > 0);
 		worker->num_active--;
 		worker->stats.dropped++;
 		talloc_free(old);
@@ -813,7 +813,7 @@ nak:
 	 *	strict time priority.  Once they are in the list, they
 	 *	are only removed when the request is done / free'd.
 	 */
-	rad_assert(request->time_order_id < 0);
+	fr_assert(request->time_order_id < 0);
 	(void) fr_heap_insert(worker->time_order, request);
 
 	/*
@@ -823,7 +823,7 @@ nak:
 	fr_time_tracking_start(&worker->tracking, &request->async->tracking, now);
 	fr_time_tracking_yield(&request->async->tracking, now);
 	worker->num_active++;
-	rad_assert(request->runnable_id < 0);
+	fr_assert(request->runnable_id < 0);
 
 	(void) fr_heap_insert(worker->runnable, request);
 	if (!worker->ev_cleanup) worker_max_request_timer(worker);
@@ -856,13 +856,13 @@ redo:
 	if (!request) return;
 
 	REQUEST_VERIFY(request);
-	rad_assert(request->runnable_id < 0);
+	fr_assert(request->runnable_id < 0);
 	fr_time_tracking_resume(&request->async->tracking, now);
 
-	rad_assert(request->parent == NULL);
-	rad_assert(request->async->process != NULL);
-	rad_assert(request->async->listen != NULL);
-	rad_assert(request->runnable_id < 0); /* removed from the runnable heap */
+	fr_assert(request->parent == NULL);
+	fr_assert(request->async->process != NULL);
+	fr_assert(request->async->listen != NULL);
+	fr_assert(request->runnable_id < 0); /* removed from the runnable heap */
 
 	RDEBUG("Running request");
 
@@ -1015,7 +1015,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 		worker_stop_request(worker, request, now);
 		talloc_free(request);
 	}
-	rad_assert(fr_heap_num_elements(worker->runnable) == 0);
+	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
 
 	/*
 	 *	Signal the channels that we're closing.
@@ -1284,16 +1284,16 @@ static void worker_verify(fr_worker_t *worker)
 	(void) talloc_get_type_abort(worker, fr_worker_t);
 	(void) talloc_get_type_abort(worker->aq_control, fr_atomic_queue_t);
 
-	rad_assert(worker->control != NULL);
+	fr_assert(worker->control != NULL);
 	(void) talloc_get_type_abort(worker->control, fr_control_t);
 
-	rad_assert(worker->el != NULL);
+	fr_assert(worker->el != NULL);
 	(void) talloc_get_type_abort(worker->el, fr_event_list_t);
 
-	rad_assert(worker->runnable != NULL);
+	fr_assert(worker->runnable != NULL);
 	(void) talloc_get_type_abort(worker->runnable, fr_heap_t);
 
-	rad_assert(worker->dedup != NULL);
+	fr_assert(worker->dedup != NULL);
 	(void) talloc_get_type_abort(worker->dedup, rbtree_t);
 
 	for (i = 0; i < worker->max_channels; i++) {

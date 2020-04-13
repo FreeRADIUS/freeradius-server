@@ -117,7 +117,7 @@ int eap_tls_compose(REQUEST *request, eap_session_t *eap_session, eap_tls_status
 	uint8_t			*p;
 	size_t			len = 1;	/* Flags */
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	/*
 	 *	First output the flags (for debugging)
@@ -204,7 +204,7 @@ int eap_tls_compose(REQUEST *request, eap_session_t *eap_session, eap_tls_status
 
 	default:
 		/* Should never enter here */
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 
@@ -237,7 +237,7 @@ int eap_tls_start(REQUEST *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	return eap_tls_compose(request, eap_session, EAP_TLS_START_SEND,
 			       SET_START(eap_tls_session->base_flags), NULL, 0, 0);
@@ -270,7 +270,7 @@ int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	eap_session->finished = true;
 
@@ -350,7 +350,7 @@ int eap_tls_fail(REQUEST *request, eap_session_t *eap_session)
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	eap_session->finished = true;
 
@@ -491,7 +491,7 @@ static int eap_tls_ack(REQUEST *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	RDEBUG2("ACKing Peer's TLS record fragment");
 	return eap_tls_compose(request, eap_session, EAP_TLS_ACK_SEND,
@@ -587,7 +587,7 @@ static eap_tls_status_t eap_tls_verify(REQUEST *request, eap_session_t *eap_sess
 	eap_tls_data_t		*eap_tls_data;
 	size_t			frag_len, header_len;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	/*
 	 *	All EAP-TLS packets must contain type and flags fields.
@@ -911,7 +911,7 @@ eap_tls_status_t eap_tls_process(REQUEST *request, eap_session_t *eap_session)
 	uint8_t			*data;
 	size_t			data_len;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	RDEBUG2("Continuing EAP-TLS");
 
@@ -1069,7 +1069,7 @@ eap_tls_session_t *eap_tls_session_init(REQUEST *request, eap_session_t *eap_ses
 	eap_tls_session_t	*eap_tls_session;
 	fr_tls_session_t		*tls_session;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	/*
 	 *	This EAP session is associated with a TLS session

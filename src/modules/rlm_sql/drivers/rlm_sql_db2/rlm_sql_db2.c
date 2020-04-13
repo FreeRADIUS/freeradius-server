@@ -32,7 +32,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_db2 - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sys/stat.h>
 
@@ -261,8 +261,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	SQLSMALLINT		rl;
 	rlm_sql_db2_conn_t	*conn = handle->conn;
 
-	rad_assert(conn);
-	rad_assert(outlen > 0);
+	fr_assert(conn);
+	fr_assert(outlen > 0);
 
 	errbuff[0] = '\0';
 	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt, 1, (SQLCHAR *) state, &err,

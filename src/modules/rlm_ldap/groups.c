@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <ctype.h>
 
 #define LOG_PREFIX "rlm_ldap (%s) - "
@@ -288,8 +288,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 
 	int is_dn, i, count;
 
-	rad_assert(entry);
-	rad_assert(attr);
+	fr_assert(entry);
+	fr_assert(attr);
 
 	/*
 	 *	Parse the membership information we got in the initial user query.
@@ -304,8 +304,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 
 	list = radius_list(request, PAIR_LIST_CONTROL);
 	list_ctx = radius_list_ctx(request, PAIR_LIST_CONTROL);
-	rad_assert(list != NULL);
-	rad_assert(list_ctx != NULL);
+	fr_assert(list != NULL);
+	fr_assert(list_ctx != NULL);
 
 	/*
 	 *	Simplifies freeing temporary values
@@ -441,7 +441,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 	VALUE_PAIR *vp;
 	char *dn;
 
-	rad_assert(inst->groupobj_base_dn);
+	fr_assert(inst->groupobj_base_dn);
 
 	if (!inst->groupobj_membership_filter) {
 		RDEBUG2("Skipping caching group objects as directive 'group.membership_filter' is not set");
@@ -548,7 +548,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 	char 		filter[LDAP_MAX_FILTER_STR_LEN + 1];
 	int		ret;
 
-	rad_assert(inst->groupobj_base_dn);
+	fr_assert(inst->groupobj_base_dn);
 
 	switch (check->op) {
 	case T_OP_CMP_EQ:
@@ -808,7 +808,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 
 			continue;
 		}
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 finish:

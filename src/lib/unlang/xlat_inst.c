@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/io/schedule.h>
 
@@ -82,7 +82,7 @@ static int _xlat_thread_inst_cmp(void const *a, void const *b)
  */
 static int _xlat_thread_inst_detach(xlat_thread_inst_t *thread_inst)
 {
-	rad_assert(thread_inst->node->type == XLAT_FUNC);
+	fr_assert(thread_inst->node->type == XLAT_FUNC);
 
 	if (thread_inst->node->xlat->thread_detach) {
 		(void) thread_inst->node->xlat->thread_detach(thread_inst->data, thread_inst->node->xlat->thread_uctx);
@@ -127,8 +127,8 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, xlat_inst_t *
 
 	thread_inst->node = inst->node;
 
-	rad_assert(inst->node->type == XLAT_FUNC);
-	rad_assert(!inst->node->thread_inst);		/* May be missing inst, but this is OK */
+	fr_assert(inst->node->type == XLAT_FUNC);
+	fr_assert(!inst->node->thread_inst);		/* May be missing inst, but this is OK */
 
 	talloc_set_destructor(thread_inst, _xlat_thread_inst_detach);
 	if (inst->node->xlat->thread_inst_size) {
@@ -159,7 +159,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, xlat_inst_t *
 static int _xlat_inst_detach(xlat_inst_t *inst)
 {
 	(void)talloc_get_type_abort_const(inst->node, xlat_exp_t);
-	rad_assert(inst->node->type == XLAT_FUNC);
+	fr_assert(inst->node->type == XLAT_FUNC);
 
 	/*
 	 *	Remove permanent data from the instance tree.
@@ -193,9 +193,9 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 
 	(void)talloc_get_type_abort(node, xlat_exp_t);
 
-	rad_assert(xlat_inst_tree);		/* xlat_inst_init must have been called */
-	rad_assert(node->type == XLAT_FUNC);
-	rad_assert(!node->inst);
+	fr_assert(xlat_inst_tree);		/* xlat_inst_init must have been called */
+	fr_assert(node->type == XLAT_FUNC);
+	fr_assert(!node->inst);
 
 	if (node->xlat->inst_size) {
 		MEM(inst = talloc_zero_pooled_object(node, xlat_inst_t, 1, node->xlat->inst_size));
@@ -237,7 +237,7 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
  */
 static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, UNUSED void *uctx)
 {
-	rad_assert(!node->inst && !node->thread_inst);
+	fr_assert(!node->inst && !node->thread_inst);
 
 	node->inst = xlat_inst_alloc(node);
 	if (!node->inst) return -1;
@@ -324,13 +324,13 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
 {
 	xlat_thread_inst_t	*found;
 
-	rad_assert(xlat_thread_inst_tree);
-	rad_assert(node->type == XLAT_FUNC);
+	fr_assert(xlat_thread_inst_tree);
+	fr_assert(node->type == XLAT_FUNC);
 
 	if (node->ephemeral) return node->thread_inst;
 
 	found = rbtree_finddata(xlat_thread_inst_tree, &(xlat_thread_inst_t){ .node = node });
-	rad_assert(found);
+	fr_assert(found);
 
 	return found;
 }
@@ -436,8 +436,8 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
 {
 	bool ret;
 
-	rad_assert(node->type == XLAT_FUNC);
-	rad_assert(!node->inst && !node->thread_inst);
+	fr_assert(node->type == XLAT_FUNC);
+	fr_assert(!node->inst && !node->thread_inst);
 
 	node->inst = xlat_inst_alloc(node);
 	if (!node->inst) return -1;
@@ -467,7 +467,7 @@ int xlat_bootstrap(xlat_exp_t *root)
 	 *	If thread instantiate has been called, it's too late to
 	 *	bootstrap new xlats.
 	 */
-	rad_assert(!xlat_thread_inst_tree);
+	fr_assert(!xlat_thread_inst_tree);
 
 	if (!xlat_inst_tree) xlat_instantiate_init();
 

@@ -28,7 +28,7 @@
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/radius.h>
 
 #include "proto_detail.h"
@@ -84,7 +84,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		/*
@@ -156,7 +156,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -218,10 +218,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 	memset(&parse_rules, 0, sizeof(parse_rules));
 	parse_rules.dict_def = inst->dict;
 
-	rad_assert(listen_cs);
+	fr_assert(listen_cs);
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules, inst);
 }

@@ -24,7 +24,7 @@
  * @copyright 2011 TekSavvy Solutions (gabe@teksavvy.com)
  */
 #include <freeradius-devel/redis/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 fr_table_num_sorted_t const redis_reply_types[] = {
 	{ "array",	REDIS_REPLY_ARRAY	},
@@ -240,7 +240,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		break;
 
 	case REDIS_REPLY_ARRAY:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	if (fr_value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0) return -1;
@@ -360,8 +360,8 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	size_t		key_len;
 	size_t		need;
 
-	rad_assert(tmpl_is_attr(map->lhs));
-	rad_assert(tmpl_is_data(map->rhs));
+	fr_assert(tmpl_is_attr(map->lhs));
+	fr_assert(tmpl_is_data(map->rhs));
 
 	key_len = tmpl_snprint(&need, key_buf, sizeof(key_buf), map->lhs);
 	if (need) {
@@ -434,7 +434,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
 	redisReply		*reply = NULL;
 
-	rad_assert(out_len >= (size_t)*pipelined);
+	fr_assert(out_len >= (size_t)*pipelined);
 
 	fr_strerror();	/* Clear any outstanding errors */
 
@@ -534,7 +534,7 @@ fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t
 	fr_redis_rcode_t	status;
 	char			*p, *q;
 
-	rad_assert(out_len > 0);
+	fr_assert(out_len > 0);
 	out[0] = '\0';
 
 	reply = redisCommand(conn->handle, "INFO SERVER");
@@ -556,7 +556,7 @@ fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t
 	}
 
 	p = strchr(p, ':');
-	rad_assert(p);
+	fr_assert(p);
 	p++;
 
 	q = strstr(p, "\r\n");

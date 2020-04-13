@@ -27,7 +27,7 @@
 RCSID("$Id$")
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "base.h"
 #include "cluster.h"
@@ -255,7 +255,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 	switch (ipaddr->af) {
 	default:
 	case AF_UNSPEC:
-		rad_assert(0);
+		fr_assert(0);
 		return false;
 
 	case AF_INET6:
@@ -1355,7 +1355,7 @@ do { \
 		len = strlen(argv[1]);
 		MEM(arg = talloc_array(conf, uint8_t, len));
 		len = fr_value_str_unescape(arg, argv[1], len, '"');
-		rad_assert(len);
+		fr_assert(len);
 
 		MEM(pool_arg = talloc_realloc(conf, arg, uint8_t, len));
 	}
@@ -1367,7 +1367,7 @@ do { \
 		len = strlen(argv[2]);
 		MEM(arg = talloc_array(conf, uint8_t, len));
 		len = fr_value_str_unescape(arg, argv[2], len, '"');
-		rad_assert(len);
+		fr_assert(len);
 
 		MEM(range_arg = talloc_realloc(conf, arg, uint8_t, len));
 	}
@@ -1541,7 +1541,7 @@ do { \
 		if (driver_show_lease(&leases, conf->driver, p) < 0) {
 			exit(EXIT_FAILURE);
 		}
-		rad_assert(leases);
+		fr_assert(leases);
 
 		len = talloc_array_length(leases);
 		INFO("Retrieved information for %zu address(es)/prefix(es)", len - 1);

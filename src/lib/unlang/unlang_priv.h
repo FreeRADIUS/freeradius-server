@@ -29,7 +29,7 @@
 #include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/io/listen.h>
 
@@ -300,7 +300,7 @@ extern size_t mod_rcode_table_len;
  */
 static inline unlang_group_t *unlang_generic_to_group(unlang_t *p)
 {
-	rad_assert((p->type > UNLANG_TYPE_MODULE) && (p->type <= UNLANG_TYPE_POLICY));
+	fr_assert((p->type > UNLANG_TYPE_MODULE) && (p->type <= UNLANG_TYPE_POLICY));
 
 	return (unlang_group_t *)p;
 }
@@ -312,7 +312,7 @@ static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)
 
 static inline unlang_tmpl_t *unlang_generic_to_tmpl(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_TYPE_TMPL);
+	fr_assert(p->type == UNLANG_TYPE_TMPL);
 	return talloc_get_type_abort(p, unlang_tmpl_t);
 }
 

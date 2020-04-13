@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <wbclient.h>
 #include <core/ntstatus.h>
@@ -100,7 +100,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 	/*
 	 *	wb_username must be set for this function to be called
 	 */
-	rad_assert(inst->wb_username);
+	fr_assert(inst->wb_username);
 
 	MEM(authparams = talloc_zero_pooled_object(NULL, struct wbcAuthUserParams, 2, 1024));
 	/*

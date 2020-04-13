@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/radmin.h>
 
 #include <freeradius-devel/util/dict.h>
@@ -192,10 +192,10 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 	rl_attempted_completion_over = 1;
 
-	rad_assert(radmin_buffer != NULL);
-	rad_assert(radmin_partial_line != NULL);
-	rad_assert(radmin_partial_line >= radmin_buffer);
-	rad_assert(radmin_partial_line < (radmin_buffer + 8192));
+	fr_assert(radmin_buffer != NULL);
+	fr_assert(radmin_partial_line != NULL);
+	fr_assert(radmin_partial_line >= radmin_buffer);
+	fr_assert(radmin_partial_line < (radmin_buffer + 8192));
 
 	offset = (radmin_partial_line - radmin_buffer);
 
@@ -261,8 +261,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	while (true) {
 		char *line;
 
-		rad_assert(context >= 0);
-		rad_assert(context_offset[context] >= 0);
+		fr_assert(context >= 0);
+		fr_assert(context_offset[context] >= 0);
 		radmin_partial_line = radmin_buffer + context_offset[context];
 		line = readline(prompt);
 		if (stop) break;
@@ -344,7 +344,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		if (!info->runnable) {
 			size_t len;
 
-			rad_assert(argc > 0);
+			fr_assert(argc > 0);
 			len = strlen(line);
 
 			/*
@@ -703,7 +703,7 @@ static int cmd_show_config_section(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_
 {
 	CONF_ITEM *item;
 
-	rad_assert(info->argc > 0);
+	fr_assert(info->argc > 0);
 
 	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
 				 info->box[0]->vb_strvalue);
@@ -734,7 +734,7 @@ static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd
 	CONF_ITEM *item;
 	CONF_PAIR *cp;
 
-	rad_assert(info->argc > 0);
+	fr_assert(info->argc > 0);
 
 	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
 				 info->box[0]->vb_strvalue);

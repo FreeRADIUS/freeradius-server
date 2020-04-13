@@ -27,7 +27,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "proto_radius.h"
 
 extern fr_app_t proto_radius;
@@ -141,7 +141,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
 
-	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
 	/*
 	 *	Allow the process module to be specified by
@@ -193,7 +193,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	if (!name) goto invalid_type;
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_radius"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	/*
 	 *	Set the allowed codes so that we can compile them as
@@ -248,7 +248,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 	transport_cs = cf_section_find(listen_cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_radius"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	/*
 	 *	Set the allowed codes so that we can compile them as
@@ -280,7 +280,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_io_address_t		*address = track->address;
 	RADCLIENT const		*client;
 
-	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -344,7 +344,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		fr_cursor_t cursor;
 		VALUE_PAIR *vp;
 
-		rad_assert(client->dynamic);
+		fr_assert(client->dynamic);
 
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp != NULL;
@@ -422,7 +422,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 
 	client = address->radclient;
-	rad_assert(client);
+	fr_assert(client);
 
 	/*
 	 *	Dynamic client stuff
@@ -430,7 +430,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	if (client->dynamic && !client->active) {
 		RADCLIENT *new_client;
 
-		rad_assert(buffer_len >= sizeof(client));
+		fr_assert(buffer_len >= sizeof(client));
 
 		/*
 		 *	We don't accept the new client, so don't do
@@ -520,8 +520,8 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 	dl_module_inst_t	*type_submodule;
 	fr_io_track_t		*track = request->async->packet_ctx;
 
-	rad_assert(request->packet->code != 0);
-	rad_assert(request->packet->code <= FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(request->packet->code != 0);
+	fr_assert(request->packet->code <= FR_RADIUS_MAX_PACKET_CODE);
 
 	request->server_cs = inst->io.server_cs;
 
@@ -554,8 +554,8 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 {
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 
-	rad_assert(buffer[0] > 0);
-	rad_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(buffer[0] > 0);
+	fr_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Disallowed packet
@@ -706,7 +706,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
 	inst->io.dl_inst = dl_module_instance_by_data(inst);
-	rad_assert(inst != NULL);
+	fr_assert(inst != NULL);
 
 	/*
 	 *	Bootstrap the master IO handler.

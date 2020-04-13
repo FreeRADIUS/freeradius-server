@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/sha1.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/io/test_point.h>
@@ -309,8 +309,8 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 	FR_PROTO_TRACE("Array attribute");
 
-	rad_assert(parent->flags.array);
-	rad_assert(attr_len >= 2);		/* Should have been caught earlier */
+	fr_assert(parent->flags.array);
+	fr_assert(attr_len >= 2);		/* Should have been caught earlier */
 
 	/*
 	 *	Arrays with fixed length members that
@@ -700,7 +700,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 #ifdef __clang_analyzer__
 		if (!parent->parent) return -1; /* stupid static analyzers */
 #endif
-		rad_assert(parent->parent);
+		fr_assert(parent->parent);
 
 		/*
 		 *	Re-write the attribute to be "raw".  It is
@@ -1004,7 +1004,7 @@ int fr_aka_sim_decode(REQUEST *request, fr_cursor_t *decoded, fr_dict_t const *d
 		}
 
 		p += rcode;
-		rad_assert(p <= end);
+		fr_assert(p <= end);
 	}
 
 	/*

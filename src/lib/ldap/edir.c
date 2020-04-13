@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/ldap/base.h>
 
 /* NMAS error codes */
@@ -130,8 +130,8 @@ static int ber_decode_login_data(struct berval *reply_bv, int *server_version, v
 	int err = 0;
 	BerElement *reply_ber = NULL;
 
-	rad_assert(out != NULL);
-	rad_assert(outlen != NULL);
+	fr_assert(out != NULL);
+	fr_assert(outlen != NULL);
 
 	if ((reply_ber = ber_init(reply_bv)) == NULL) {
 		err = NMAS_E_SYSTEM_RESOURCES;

@@ -82,8 +82,8 @@ static int securid_session_cmp(void const *a, void const *b)
 	SECURID_SESSION const *one = a;
 	SECURID_SESSION const *two = b;
 
-	rad_assert(one != NULL);
-	rad_assert(two != NULL);
+	fr_assert(one != NULL);
+	fr_assert(two != NULL);
 
 	rcode = fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
 	if (rcode != 0) return rcode;

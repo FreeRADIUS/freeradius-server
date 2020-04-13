@@ -31,7 +31,7 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/state.h>
 
 #include <freeradius-devel/unlang/base.h>
@@ -316,7 +316,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -437,7 +437,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 			/*
@@ -571,7 +571,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
@@ -742,11 +742,11 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
 	CONF_SECTION		*server_cs;
 
-	rad_assert(process_app_cs);
-	rad_assert(listen_cs);
+	fr_assert(process_app_cs);
+	fr_assert(listen_cs);
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 

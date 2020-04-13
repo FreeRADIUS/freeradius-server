@@ -23,7 +23,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/ring_buffer.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/syserror.h>
@@ -98,7 +97,7 @@ static void  alloc_blocks(fr_ring_buffer_t *rb, uint32_t *seed, UNUSED int *star
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
 		used += hash;
-		rad_assert(fr_ring_buffer_used(rb) == used);
+		fr_assert(fr_ring_buffer_used(rb) == used);
 	}
 
 	*end += ALLOC_SIZE;
@@ -118,7 +117,7 @@ static void  free_blocks(fr_ring_buffer_t *rb, UNUSED uint32_t *seed, int *start
 		if (!fr_cond_assert(rcode == 0)) exit(EXIT_FAILURE);
 
 		used -= array[index];
-		rad_assert(fr_ring_buffer_used(rb) == used);
+		fr_assert(fr_ring_buffer_used(rb) == used);
 
 		array[index] = 0;
 		data[index] = NULL;
@@ -200,8 +199,8 @@ int main(int argc, char *argv[])
 
 	free_blocks(rb, &seed, &start, &end);
 
-	rad_assert(used == 0);
-	rad_assert(fr_ring_buffer_used(rb) == used);
+	fr_assert(used == 0);
+	fr_assert(fr_ring_buffer_used(rb) == used);
 
 	exit(EXIT_SUCCESS);
 }

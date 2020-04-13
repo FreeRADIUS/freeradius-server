@@ -256,7 +256,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 	vpt = *pvpt;
 
-	rad_assert(tmpl_is_xlat(vpt) || tmpl_is_exec(vpt));
+	fr_assert(tmpl_is_xlat(vpt) || tmpl_is_exec(vpt));
 
 	slen = xlat_tokenize(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, rules);
 
@@ -335,7 +335,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 	ssize_t slen;
 	regex_t *preg;
 
-	rad_assert(tmpl_is_regex(vpt));
+	fr_assert(tmpl_is_regex(vpt));
 
 	/*
 	 *	It's a dynamic expansion.  We can't expand the string,
@@ -380,7 +380,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 {
 	fr_dict_attr_t const *da;
 
-	rad_assert(tmpl_is_attr_undefined(vpt));
+	fr_assert(tmpl_is_attr_undefined(vpt));
 
 	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, vpt->tmpl_unknown_name, true) != FR_DICT_ATTR_OK) {
 		ssize_t slen;
@@ -568,7 +568,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	/*
 	 *	Just in case someone adds a new fixup later.
 	 */
-	rad_assert((c->pass2_fixup == PASS2_FIXUP_NONE) ||
+	fr_assert((c->pass2_fixup == PASS2_FIXUP_NONE) ||
 		   (c->pass2_fixup == PASS2_PAIRCOMPARE));
 
 	/*
@@ -718,7 +718,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 			return false;
 		}
 	}
-	rad_assert(!tmpl_is_regex(map->lhs));
+	fr_assert(!tmpl_is_regex(map->lhs));
 #endif
 
 	/*
@@ -797,7 +797,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 	 *	Fix up the template.
 	 */
 	case COND_TYPE_EXISTS:
-		rad_assert(!tmpl_is_regex(c->data.vpt));
+		fr_assert(!tmpl_is_regex(c->data.vpt));
 		return pass2_fixup_tmpl(c->ci, &c->data.vpt, unlang_ctx->rules, true);
 
 	/*
@@ -810,7 +810,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 	 *	Nothing else has pass2 fixups
 	 */
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return false;
 	}
 }
@@ -818,7 +818,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 {
 	if (tmpl_is_xlat(map->lhs) || tmpl_is_exec(map->lhs)) {
-		rad_assert(map->lhs->tmpl_xlat == NULL);
+		fr_assert(map->lhs->tmpl_xlat == NULL);
 
 		/*
 		 *	FIXME: compile to attribute && handle
@@ -838,7 +838,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 
 	if (map->rhs) {
 		if (tmpl_is_xlat(map->rhs) || tmpl_is_exec(map->rhs)) {
-			rad_assert(map->rhs->tmpl_xlat == NULL);
+			fr_assert(map->rhs->tmpl_xlat == NULL);
 
 			/*
 			 *	FIXME: compile to attribute && handle
@@ -849,7 +849,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 			}
 		}
 
-		rad_assert(!tmpl_is_regex(map->rhs));
+		fr_assert(!tmpl_is_regex(map->rhs));
 
 		if (tmpl_is_attr_undefined(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
@@ -1906,7 +1906,7 @@ static bool add_child(unlang_group_t *g, unlang_t *c, CONF_ITEM *ci)
 	if (!g->children) {
 		g->children = g->tail = c;
 	} else {
-		rad_assert(g->tail->next == NULL);
+		fr_assert(g->tail->next == NULL);
 		g->tail->next = c;
 		g->tail = c;
 	}
@@ -2072,7 +2072,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 				}
 			}
 		} else {
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 
@@ -2292,7 +2292,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		f = unlang_generic_to_group(parent);
-		rad_assert(f->vpt != NULL);
+		fr_assert(f->vpt != NULL);
 
 		/*
 		 *	Do type-specific checks on the case statement
@@ -2305,7 +2305,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 */
 		if (tmpl_is_unparsed(vpt) &&
 		    tmpl_is_attr(f->vpt)) {
-			rad_assert(f->vpt->tmpl_da != NULL);
+			fr_assert(f->vpt->tmpl_da != NULL);
 
 			if (tmpl_cast_in_place(vpt, f->vpt->tmpl_da->type, f->vpt->tmpl_da) < 0) {
 				cf_log_err(cs, "Invalid argument for case statement: %s",
@@ -2419,7 +2419,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	If we don't have a negative return code, we must have a vpt
 	 *	(mostly to quiet coverity).
 	 */
-	rad_assert(vpt);
+	fr_assert(vpt);
 
 	if (!tmpl_is_attr(vpt) && !tmpl_is_list(vpt)) {
 		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
@@ -2593,7 +2593,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	}
 
 	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
-	rad_assert(cond != NULL);
+	fr_assert(cond != NULL);
 
 	if (cond->type == COND_TYPE_FALSE) {
 		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
@@ -2843,7 +2843,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 			return NULL;
 		}
 
-		rad_assert(g->vpt != NULL);
+		fr_assert(g->vpt != NULL);
 
 		/*
 		 *	Fixup the templates

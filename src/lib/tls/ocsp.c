@@ -31,7 +31,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 
@@ -301,7 +301,7 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 		goto error;
 	}
 
-	rad_assert(issuer_cert);
+	fr_assert(issuer_cert);
 
 	ret = fr_tls_ocsp_check(request, ssl, server_store, issuer_cert, cert, conf, true);
 	switch (ret) {
@@ -470,7 +470,7 @@ int fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
 			goto skipped;
 
 		case 1:
-			rad_assert(host && port && path);
+			fr_assert(host && port && path);
 			break;
 		}
 	}

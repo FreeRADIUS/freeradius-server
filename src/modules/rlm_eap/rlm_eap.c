@@ -403,7 +403,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instan
 	 */
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_DISALLOW:
-		rad_assert(eap_session->this_round->request->code == FR_EAP_CODE_FAILURE);
+		fr_assert(eap_session->this_round->request->code == FR_EAP_CODE_FAILURE);
 		eap_session->this_round->request->code = FR_EAP_CODE_FAILURE;
 		break;
 
@@ -411,7 +411,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instan
 	 *	Definitely shouldn't get this.
 	 */
 	case RLM_MODULE_YIELD:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 
 	default:
@@ -505,7 +505,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 	/*
 	 *	Session must have been thawed...
 	 */
-	rad_assert(eap_session->request);
+	fr_assert(eap_session->request);
 
 	/*
 	 *	Don't trust anyone.
@@ -562,9 +562,9 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 		/*
 		 *	If any of these fail, we messed badly somewhere
 		 */
-		rad_assert(next >= FR_EAP_METHOD_MD5);
-		rad_assert(next < FR_EAP_METHOD_MAX);
-		rad_assert(inst->methods[next].submodule);
+		fr_assert(next >= FR_EAP_METHOD_MD5);
+		fr_assert(next < FR_EAP_METHOD_MAX);
+		fr_assert(inst->methods[next].submodule);
 
 		eap_session->process = inst->methods[next].submodule->session_init;
 		eap_session->type = next;
@@ -806,7 +806,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		VALUE_PAIR		*username;
 
 		eap_session = eap_session_thaw(request);
-		rad_assert(eap_session);
+		fr_assert(eap_session);
 
 		/*
 		 *	Grab the tunnel callbacks from the request.
@@ -1001,7 +1001,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-	rad_assert(inst->name);
+	fr_assert(inst->name);
 
 	/*
 	 *	Load and bootstrap the submodules now

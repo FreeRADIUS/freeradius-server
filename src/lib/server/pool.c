@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/misc.h>
@@ -194,17 +194,17 @@ static int8_t last_released_cmp(void const *one, void const *two)
 static void connection_unlink(fr_pool_t *pool, fr_pool_connection_t *this)
 {
 	if (this->prev) {
-		rad_assert(pool->head != this);
+		fr_assert(pool->head != this);
 		this->prev->next = this->next;
 	} else {
-		rad_assert(pool->head == this);
+		fr_assert(pool->head == this);
 		pool->head = this->next;
 	}
 	if (this->next) {
-		rad_assert(pool->tail != this);
+		fr_assert(pool->tail != this);
 		this->next->prev = this->prev;
 	} else {
-		rad_assert(pool->tail == this);
+		fr_assert(pool->tail == this);
 		pool->tail = this->prev;
 	}
 
@@ -220,10 +220,10 @@ static void connection_unlink(fr_pool_t *pool, fr_pool_connection_t *this)
  */
 static void connection_link_head(fr_pool_t *pool, fr_pool_connection_t *this)
 {
-	rad_assert(pool != NULL);
-	rad_assert(this != NULL);
-	rad_assert(pool->head != this);
-	rad_assert(pool->tail != this);
+	fr_assert(pool != NULL);
+	fr_assert(this != NULL);
+	fr_assert(pool->head != this);
+	fr_assert(pool->tail != this);
 
 	if (pool->head) {
 		pool->head->prev = this;
@@ -233,10 +233,10 @@ static void connection_link_head(fr_pool_t *pool, fr_pool_connection_t *this)
 	this->prev = NULL;
 	pool->head = this;
 	if (!pool->tail) {
-		rad_assert(this->next == NULL);
+		fr_assert(this->next == NULL);
 		pool->tail = this;
 	} else {
-		rad_assert(this->next != NULL);
+		fr_assert(this->next != NULL);
 	}
 }
 
@@ -250,8 +250,8 @@ static inline void fr_pool_trigger_exec(fr_pool_t *pool, REQUEST *request, char 
 {
 	char	name[128];
 
-	rad_assert(pool != NULL);
-	rad_assert(event != NULL);
+	fr_assert(pool != NULL);
+	fr_assert(event != NULL);
 
 	if (!pool->triggers_enabled) return;
 
@@ -293,10 +293,10 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 			pthread_t pthread_id;
 
 			pthread_id = pthread_self();
-			rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
+			fr_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
 #endif
 
-			rad_assert(this->in_use == true);
+			fr_assert(this->in_use == true);
 			/* coverity[missing_unlock] */
 			return this;
 		}
@@ -332,7 +332,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 	fr_pool_connection_t	*this;
 	void			*conn;
 
-	rad_assert(pool != NULL);
+	fr_assert(pool != NULL);
 
 	/*
 	 *	If we have NO connections, and we've previously failed
@@ -342,7 +342,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 	if ((pool->state.num == 0) && pool->state.pending && pool->state.last_failed) return NULL;
 
 	pthread_mutex_lock(&pool->mutex);
-	rad_assert(pool->state.num <= pool->max);
+	fr_assert(pool->state.num <= pool->max);
 
 	/*
 	 *	Don't spawn too many connections at the same time.
@@ -491,7 +491,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 
 	pool->state.num++;
 
-	rad_assert(pool->state.pending > 0);
+	fr_assert(pool->state.pending > 0);
 	pool->state.pending--;
 
 	/*
@@ -541,12 +541,12 @@ static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool
 	if (this->in_use) {
 #ifdef PTHREAD_DEBUG
 		pthread_t pthread_id = pthread_self();
-		rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
+		fr_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
 #endif
 
 		this->in_use = false;
 
-		rad_assert(pool->state.active != 0);
+		fr_assert(pool->state.active != 0);
 		pool->state.active--;
 
 	} else {
@@ -560,7 +560,7 @@ static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool
 
 	connection_unlink(pool, this);
 
-	rad_assert(pool->state.num > 0);
+	fr_assert(pool->state.num > 0);
 	pool->state.num--;
 	talloc_free(this);
 }
@@ -583,8 +583,8 @@ static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool
  */
 static int connection_manage(fr_pool_t *pool, REQUEST *request, fr_pool_connection_t *this, time_t now)
 {
-	rad_assert(pool != NULL);
-	rad_assert(this != NULL);
+	fr_assert(pool != NULL);
+	fr_assert(this != NULL);
 
 	/*
 	 *	Don't terminated in-use connections
@@ -1328,9 +1328,9 @@ void fr_pool_free(fr_pool_t *pool)
 
 	fr_pool_trigger_exec(pool, NULL, "stop");
 
-	rad_assert(pool->head == NULL);
-	rad_assert(pool->tail == NULL);
-	rad_assert(pool->state.num == 0);
+	fr_assert(pool->head == NULL);
+	fr_assert(pool->tail == NULL);
+	fr_assert(pool->state.num == 0);
 
 	pthread_mutex_destroy(&pool->mutex);
 	pthread_cond_destroy(&pool->done_spawn);
@@ -1428,7 +1428,7 @@ void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
 	 */
 	fr_heap_insert(pool->heap, this);
 
-	rad_assert(pool->state.active != 0);
+	fr_assert(pool->state.active != 0);
 	pool->state.active--;
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Released connection (%" PRIu64 ")", this->number);

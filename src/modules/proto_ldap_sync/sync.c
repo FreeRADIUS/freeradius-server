@@ -32,7 +32,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <lber.h>
 #include "sync.h"
 
@@ -183,9 +183,9 @@ static int sync_search_entry_or_reference(sync_state_t *sync, LDAPMessage *msg, 
 	sync_states_t		state = SYNC_STATE_INVALID;
 	bool			new_cookie;
 
-	rad_assert(sync->conn);
-	rad_assert(sync);
-	rad_assert(msg);
+	fr_assert(sync->conn);
+	fr_assert(sync);
+	fr_assert(msg);
 
 	if (!ctrls) {
 	missing_control:
@@ -607,9 +607,9 @@ static int sync_search_result(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 	ber_len_t	len;
 	bool		new_cookie;
 
-	rad_assert(sync->conn);
-	rad_assert(sync);
-	rad_assert(msg);
+	fr_assert(sync->conn);
+	fr_assert(sync);
+	fr_assert(msg);
 
 	/*
 	 *	Should not happen with refreshAndPersist
@@ -726,7 +726,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 
 	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
 
-	rad_assert(conn);
+	fr_assert(conn);
 
 	/*
 	 *	Drain any messages outstanding on this connection
@@ -734,7 +734,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 	ret = ldap_result(conn->handle, LDAP_RES_ANY, LDAP_MSG_RECEIVED, &poll, &head);
 	switch (ret) {
 	case 0:	/* timeout - shouldn't happen */
-		rad_assert(0);
+		fr_assert(0);
 
 	case -1:
 		rcode = fr_ldap_error_check(NULL, conn, NULL, NULL);
@@ -863,7 +863,7 @@ static int _sync_state_free(sync_state_t *sync)
 	rbtree_t	*tree = talloc_get_type_abort(conn->uctx, rbtree_t);
 	sync_state_t	find = { .msgid = sync->msgid };
 
-	rad_assert(sync->conn->handle);
+	fr_assert(sync->conn->handle);
 
 	DEBUG3("Abandoning sync");
 
@@ -981,8 +981,8 @@ int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 	sync_state_t		*sync;
 	rbtree_t		*tree;
 
-	rad_assert(conn);
-	rad_assert(config);
+	fr_assert(conn);
+	fr_assert(config);
 
 	mode = config->persist ? LDAP_SYNC_REFRESH_AND_PERSIST : LDAP_SYNC_REFRESH_ONLY;
 

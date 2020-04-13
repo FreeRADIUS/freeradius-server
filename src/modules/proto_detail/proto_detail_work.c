@@ -31,7 +31,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/time.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "proto_detail.h"
 
 #include <fcntl.h>
@@ -157,8 +157,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	uint8_t				*stopped_search;
 	off_t				done_offset;
 
-	rad_assert(*leftover < buffer_len);
-	rad_assert(thread->fd >= 0);
+	fr_assert(*leftover < buffer_len);
+	fr_assert(thread->fd >= 0);
 
 	MPRINT("AT COUNT %d offset %ld", thread->count, (long) thread->read_offset);
 
@@ -174,7 +174,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		 *	Don't over-write "leftover" bytes!
 		 */
 		if (*leftover) {
-			rad_assert(thread->leftover == 0);
+			fr_assert(thread->leftover == 0);
 			if (!thread->leftover_buffer) MEM(thread->leftover_buffer = talloc_array(thread, uint8_t, buffer_len));
 
 			memcpy(thread->leftover_buffer, buffer, *leftover);
@@ -182,7 +182,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 			*leftover = 0;
 		}
 
-		rad_assert(buffer_len >= track->packet_len);
+		fr_assert(buffer_len >= track->packet_len);
 		memcpy(buffer, track->packet, track->packet_len);
 
 		DEBUG("Retrying packet %d (retransmission %u)", track->id, track->retry.count);
@@ -208,7 +208,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	we have to check this ourselves.
 	 */
 	if (thread->outstanding >= inst->max_outstanding) {
-		rad_assert(thread->paused);
+		fr_assert(thread->paused);
 		return 0;
 	}
 
@@ -217,8 +217,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	copy it back.
 	 */
 	if (thread->leftover) {
-		rad_assert(*leftover == 0);
-		rad_assert(thread->leftover < buffer_len);
+		fr_assert(*leftover == 0);
+		fr_assert(thread->leftover < buffer_len);
 
 		memcpy(buffer, thread->leftover_buffer, thread->leftover);
 		*leftover = thread->leftover;
@@ -277,7 +277,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		 *	We didn't read any more data from the file,
 		 *	but there should be data left in the buffer.
 		 */
-		rad_assert(*leftover > 0);
+		fr_assert(*leftover > 0);
 		end = buffer + *leftover;
 	}
 
@@ -292,7 +292,7 @@ redo:
 	 *	Note that all of the data MUST be printable, and raw
 	 *	LFs are forbidden in attribute contents.
 	 */
-	rad_assert((buffer + thread->last_search) <= end);
+	fr_assert((buffer + thread->last_search) <= end);
 
 	MPRINT("Starting search from offset %ld", thread->last_search);
 
@@ -450,7 +450,7 @@ redo:
 			goto redo;
 		}
 
-		rad_assert(*leftover == 0);
+		fr_assert(*leftover == 0);
 		goto done;
 	}
 
@@ -511,7 +511,7 @@ done:
 	 *	If we're at EOF, mark us as "closing".
 	 */
 	if (thread->eof) {
-		rad_assert(!thread->closing);
+		fr_assert(!thread->closing);
 		thread->closing = (*leftover == 0);
 		MPRINT("AT EOF, BUT CLOSING %d", thread->closing);
 	}
@@ -557,7 +557,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 		thread->paused = false;
 	}
 
-	rad_assert(thread->fd >= 0);
+	fr_assert(thread->fd >= 0);
 
 	/*
 	 *	Seek to the START of the file, so that the FD will
@@ -582,8 +582,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 	if (buffer_len < 1) return -1;
 
-	rad_assert(thread->outstanding > 0);
-	rad_assert(thread->fd >= 0);
+	fr_assert(thread->outstanding > 0);
+	fr_assert(thread->fd >= 0);
 
 	if (!buffer[0]) {
 		if (track->retry.start == 0) {
@@ -716,8 +716,8 @@ static int mod_open(fr_listen_t *li)
 		thread->file_size = 1;
 	}
 
-	rad_assert(thread->name == NULL);
-	rad_assert(thread->filename_work != NULL);
+	fr_assert(thread->name == NULL);
+	fr_assert(thread->filename_work != NULL);
 	thread->name = talloc_typed_asprintf(thread, "proto_detail working file %s", thread->filename_work);
 
 	DEBUG("Listening on %s bound to virtual server %s",
@@ -851,7 +851,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	was.
 	 */
 	dl_inst = dl_module_instance_by_data(instance);
-	rad_assert(dl_inst);
+	fr_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
 	inst->cs = cs;

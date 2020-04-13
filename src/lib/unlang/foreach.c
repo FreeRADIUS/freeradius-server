@@ -90,7 +90,7 @@ static unlang_action_t unlang_foreach_next(REQUEST *request, rlm_rcode_t *presul
 	if (!vp) {
 		*presult = frame->result;
 #ifndef NDEBUG
-		rad_assert(foreach->indent == request->log.unlang_indent);
+		fr_assert(foreach->indent == request->log.unlang_indent);
 #endif
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -100,7 +100,7 @@ static unlang_action_t unlang_foreach_next(REQUEST *request, rlm_rcode_t *presul
 	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", foreach->depth, &vp->data);
 #endif
 
-	rad_assert(vp);
+	fr_assert(vp);
 
 	/*
 	 *	Add the vp to the request, so that
@@ -172,7 +172,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	rad_assert(vps != NULL);
+	fr_assert(vps != NULL);
 
 	foreach->request = request;
 	foreach->depth = foreach_depth;

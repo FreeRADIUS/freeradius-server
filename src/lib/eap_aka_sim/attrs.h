@@ -20,7 +20,7 @@
  *
  * @copyright 2003-2016 The FreeRADIUS server project
  */
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
 #include <freeradius-devel/protocol/eap/aka-sim/rfc4187.h>

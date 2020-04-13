@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
@@ -162,7 +162,7 @@ static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const 
 		return clients->v4_udp;
 	}
 
-	rad_assert(ipaddr->af == AF_INET6);
+	fr_assert(ipaddr->af == AF_INET6);
 
 	if (proto == IPPROTO_TCP) return clients->v6_tcp;
 
@@ -207,7 +207,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	fr_inet_ntop_prefix(buffer, sizeof(buffer), &client->ipaddr);
@@ -349,7 +349,7 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!clients) clients = root_clients;
 
-	rad_assert(client->ipaddr.prefix <= 128);
+	fr_assert(client->ipaddr.prefix <= 128);
 
 #ifdef WITH_TRIE
 	trie = clients_trie(clients, &client->ipaddr, client->proto);

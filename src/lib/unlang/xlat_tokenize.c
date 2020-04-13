@@ -26,7 +26,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
@@ -121,10 +121,10 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, cha
 	char const	*p = in;
 	xlat_exp_t	*node;
 
-	rad_assert(in[0] == '%');
-	rad_assert(in[1] == '{');
-	rad_assert(in[2] == '%');
-	rad_assert(in[3] == '{');
+	fr_assert(in[0] == '%');
+	fr_assert(in[1] == '{');
+	fr_assert(in[2] == '%');
+	fr_assert(in[3] == '{');
 
 	XLAT_DEBUG("ALTERNATE <-- %s", in);
 
@@ -208,8 +208,8 @@ static inline ssize_t xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, ch
 	 */
 	if (inlen < 4) return 0;
 
-	rad_assert(in[0] == '%');
-	rad_assert(in[1] == '{');
+	fr_assert(in[0] == '%');
+	fr_assert(in[1] == '{');
 
 	p = in + 2;
 	end = in + inlen;
@@ -272,8 +272,8 @@ static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head,
 
 	if (inlen < 2) return 0;
 
-	rad_assert(in[0] == '%');
-	rad_assert(in[1] == '{');
+	fr_assert(in[0] == '%');
+	fr_assert(in[1] == '{');
 
 	p = in + 2;
 	end = in + inlen;
@@ -352,8 +352,8 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 
 	if (inlen < 2) return 0;
 
-	rad_assert(in[0] == '%');
-	rad_assert(in[1] == '{');
+	fr_assert(in[0] == '%');
+	fr_assert(in[1] == '{');
 
 	if (rules) {
 		memcpy(&our_rules, rules, sizeof(our_rules));
@@ -431,8 +431,8 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 
 	if (inlen < 2) return 0;
 
-	rad_assert(in[0] == '%');
-	rad_assert(in[1] == '{');
+	fr_assert(in[0] == '%');
+	fr_assert(in[1] == '{');
 
 	/*
 	 *	%{%{...}:-bar}
@@ -529,7 +529,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 	case '[':
 		slen = xlat_tokenize_attribute(ctx, head, in, inlen, rules);
 		if (slen < 0) return slen;
-		rad_assert(slen != 0);
+		fr_assert(slen != 0);
 
 		p += slen;
 		break;
@@ -612,7 +612,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			}
 			p += slen;
 
-			rad_assert(node->next != NULL);
+			fr_assert(node->next != NULL);
 
 			/*
 			 *	Short-circuit the recursive call.
@@ -628,7 +628,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			 *	LITERAL		" bar"
 			 */
 			slen = xlat_tokenize_literal(node->next, &(node->next->next), p, end - p, brace, rules);
-			rad_assert(slen != 0);
+			fr_assert(slen != 0);
 			if (slen < 0) {
 				talloc_free(node);
 				return slen - (p - in);
@@ -683,7 +683,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			 *	And recurse.
 			 */
 			slen = xlat_tokenize_literal(node->next, &(node->next->next), p, end - p, brace, rules);
-			rad_assert(slen != 0);
+			fr_assert(slen != 0);
 			if (slen < 0) {
 				talloc_free(node);
 				return slen - (p - in);
@@ -927,7 +927,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 
 static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 {
-	rad_assert(node != NULL);
+	fr_assert(node != NULL);
 
 	RINDENT();
 	while (node) {
@@ -950,9 +950,9 @@ static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 			break;
 
 		case XLAT_ATTRIBUTE:
-			rad_assert(node->attr->tmpl_da != NULL);
+			fr_assert(node->attr->tmpl_da != NULL);
 			RDEBUG3("attribute --> %s", node->attr->tmpl_da->name);
-			rad_assert(node->child == NULL);
+			fr_assert(node->child == NULL);
 			if ((node->attr->tmpl_tag != TAG_ANY) || (node->attr->tmpl_num != NUM_ANY)) {
 				RDEBUG3("{");
 
@@ -978,12 +978,12 @@ static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 			break;
 
 		case XLAT_VIRTUAL:
-			rad_assert(node->fmt != NULL);
+			fr_assert(node->fmt != NULL);
 			RDEBUG3("virtual --> %s", node->fmt);
 			break;
 
 		case XLAT_FUNC:
-			rad_assert(node->xlat != NULL);
+			fr_assert(node->xlat != NULL);
 			RDEBUG3("xlat --> %s", node->xlat->name);
 			if (node->child) {
 				RDEBUG3("{");

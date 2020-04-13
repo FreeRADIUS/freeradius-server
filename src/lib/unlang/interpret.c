@@ -161,7 +161,7 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame;
 
-	rad_assert(instruction || top_frame);
+	fr_assert(instruction || top_frame);
 
 #ifndef NDEBUG
 	if (DEBUG_ENABLED5) RDEBUG3("unlang_interpret_push called with instruction %s - args %s %s",
@@ -187,7 +187,7 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
 	frame->instruction = instruction;
 
 	if (do_next_sibling) {
-		rad_assert(instruction != NULL);
+		fr_assert(instruction != NULL);
 		frame->next = instruction->next;
 	}
 	/* else frame->next MUST be NULL */
@@ -292,7 +292,7 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 	/*
 	 *	Not allowed in frame uflags...
 	 */
-	rad_assert(!(frame->uflags & UNWIND_FLAG_NO_CLEAR));
+	fr_assert(!(frame->uflags & UNWIND_FLAG_NO_CLEAR));
 
 	/*
 	 *	If we are unwinding the stack due to a break / return,
@@ -366,7 +366,7 @@ static inline void frame_pop(unlang_stack_t *stack)
 {
 	unlang_stack_frame_t *frame;
 
-	rad_assert(stack->depth > 1);
+	fr_assert(stack->depth > 1);
 
 	frame = &stack->frame[stack->depth];
 
@@ -417,7 +417,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 
 		DUMP_STACK;
 
-		rad_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
+		fr_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
 
 		REQUEST_VERIFY(request);
 
@@ -459,14 +459,14 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
 			unlang_ops[instruction->type].name);
 
-		rad_assert(frame->interpret != NULL);
+		fr_assert(frame->interpret != NULL);
 		action = frame->interpret(request, result);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_action_table, action, "<INVALID>"), *priority);
 
-		rad_assert(*priority >= -1);
-		rad_assert(*priority <= MOD_PRIORITY_MAX);
+		fr_assert(*priority >= -1);
+		fr_assert(*priority <= MOD_PRIORITY_MAX);
 
 		switch (action) {
 		/*
@@ -482,7 +482,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		 *	now continue at the deepest frame.
 		 */
 		case UNLANG_ACTION_PUSHED_CHILD:
-			rad_assert(&stack->frame[stack->depth] > frame);
+			fr_assert(&stack->frame[stack->depth] > frame);
 			*result = frame->result;
 			return UNLANG_FRAME_ACTION_NEXT;
 
@@ -495,7 +495,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			frame->result = *result;
 			frame->priority = *priority;
 			frame->next = NULL;
-			rad_assert(stack->unwind != UNWIND_FLAG_NONE);
+			fr_assert(stack->unwind != UNWIND_FLAG_NONE);
 			return UNLANG_FRAME_ACTION_POP;
 
 		/*
@@ -532,7 +532,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 				return UNLANG_FRAME_ACTION_YIELD;
 
 			default:
-				rad_assert(0);
+				fr_assert(0);
 				return UNLANG_FRAME_ACTION_YIELD;
 			}
 
@@ -549,7 +549,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			 */
 			if (*result == RLM_MODULE_YIELD) goto yield;
 
-			rad_assert(*result != RLM_MODULE_UNKNOWN);
+			fr_assert(*result != RLM_MODULE_UNKNOWN);
 
 			repeatable_clear(frame);
 
@@ -617,7 +617,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request)
 	DUMP_STACK;
 #endif
 
-	rad_assert(!unlang_request_is_scheduled(request)); /* if we're running it, it can't be scheduled */
+	fr_assert(!unlang_request_is_scheduled(request)); /* if we're running it, it can't be scheduled */
 
 	RDEBUG4("** [%i] %s - interpreter entered", stack->depth, __FUNCTION__);
 
@@ -626,8 +626,8 @@ rlm_rcode_t unlang_interpret(REQUEST *request)
 			fr_table_str_by_value(unlang_frame_action_table, fa, "<INVALID>"));
 		switch (fa) {
 		case UNLANG_FRAME_ACTION_NEXT:	/* Evaluate the current frame */
-			rad_assert(stack->depth > 0);
-			rad_assert(stack->depth < UNLANG_STACK_MAX);
+			fr_assert(stack->depth > 0);
+			fr_assert(stack->depth < UNLANG_STACK_MAX);
 
 			frame = &stack->frame[stack->depth];
 			fa = frame_eval(request, frame, &stack->result, &priority);
@@ -725,7 +725,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request)
 			continue;
 
 		case UNLANG_FRAME_ACTION_YIELD:
-			rad_assert(stack->result == RLM_MODULE_YIELD);
+			fr_assert(stack->result == RLM_MODULE_YIELD);
 			RDEBUG4("** [%i] %s - interpreter yielding", stack->depth, __FUNCTION__);
 			return stack->result;
 		}
@@ -877,7 +877,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	el = fr_event_list_alloc(NULL, NULL, NULL);
 	if (!el) {
 		RPERROR("Failed creating temporary event loop");
-		rad_assert(0);		/* Cause debug builds to die */
+		fr_assert(0);		/* Cause debug builds to die */
 		return RLM_MODULE_FAIL;
 	}
 
@@ -1038,7 +1038,7 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 
 	(void)talloc_get_type_abort(request, REQUEST);	/* Check the request hasn't already been freed */
 
-	rad_assert(stack->depth > 0);
+	fr_assert(stack->depth > 0);
 
 	/*
 	 *	Walk back up the stack, calling signal handlers
@@ -1145,7 +1145,7 @@ void unlang_interpret_resumable(REQUEST *request)
 	 *	are.
 	 */
 	while (request->parent) {
-		rad_assert(!unlang_request_is_scheduled(request));
+		fr_assert(!unlang_request_is_scheduled(request));
 		request->runnable_id = -2; /* hack for now, see unlang_parallel_process() */
 		request = request->parent;
 	}
@@ -1179,7 +1179,7 @@ void unlang_interpret_resumable(REQUEST *request)
 		RDEBUG3("marking as resumable");
 	}
 
-	rad_assert(request->backlog != NULL);
+	fr_assert(request->backlog != NULL);
 
 	fr_heap_insert(request->backlog, request);
 }
@@ -1258,7 +1258,7 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 		}
 
 		g = (unlang_group_t const *) instruction;
-		rad_assert(g->cs != NULL);
+		fr_assert(g->cs != NULL);
 
 		return snprintf(*out, outlen, "%d", cf_lineno(g->cs));
 	}
@@ -1274,7 +1274,7 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 		}
 
 		g = (unlang_group_t const *) instruction;
-		rad_assert(g->cs != NULL);
+		fr_assert(g->cs != NULL);
 
 		return snprintf(*out, outlen, "%s", cf_filename(g->cs));
 	}

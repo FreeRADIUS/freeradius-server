@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "rlm_mruby.h"
 
@@ -295,7 +295,7 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 			break;
 
 		case FR_TYPE_NON_VALUES:
-			rad_assert(0);
+			fr_assert(0);
 			return -1;
 		}
 

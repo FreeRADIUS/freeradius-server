@@ -32,7 +32,7 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/dhcpv4/freeradius.internal.h>
 #include "proto_dhcpv4.h"
 
@@ -229,7 +229,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	rad_assert(track->reply_len == 0);
+	fr_assert(track->reply_len == 0);
 
 	/*
 	 *	Swap src/dst IP/port
@@ -513,9 +513,9 @@ static int mod_open(fr_listen_t *li)
 	thread->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 
@@ -652,9 +652,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 

@@ -28,7 +28,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
@@ -103,7 +103,7 @@ static int reset_state = FR_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RUNNING;
 static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				     UNUSED void *snmp_ctx)
 {
-	rad_assert(map->da->type == FR_TYPE_STRING);
+	fr_assert(map->da->type == FR_TYPE_STRING);
 
 	out->vb_strvalue = talloc_typed_asprintf(ctx, "FreeRADIUS %s", radiusd_version_short);
 	out->datum.length = talloc_array_length(out->vb_strvalue) - 1;
@@ -116,7 +116,7 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 	fr_time_t now;
 	fr_time_delta_t delta;
 
-	rad_assert(map->da->type == FR_TYPE_UINT32);
+	fr_assert(map->da->type == FR_TYPE_UINT32);
 
 	now = fr_time();
 	delta = now - start_time;
@@ -135,7 +135,7 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 	fr_time_t now;
 	fr_time_delta_t delta;
 
-	rad_assert(map->da->type == FR_TYPE_UINT32);
+	fr_assert(map->da->type == FR_TYPE_UINT32);
 
 	now = fr_time();
 	delta = now - reset_time;
@@ -151,7 +151,7 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				 UNUSED void *snmp_ctx)
 {
-	rad_assert(map->da->type == FR_TYPE_UINT32);
+	fr_assert(map->da->type == FR_TYPE_UINT32);
 
 	out->vb_uint32 = reset_state;
 
@@ -160,7 +160,7 @@ static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 
 static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED void *snmp_ctx, fr_value_box_t *in)
 {
-	rad_assert(map->da->type == FR_TYPE_UINT32);
+	fr_assert(map->da->type == FR_TYPE_UINT32);
 
 	switch (in->vb_uint32) {
 	case FR_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
@@ -177,7 +177,7 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 static int snmp_auth_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 				      fr_snmp_map_t const *map, UNUSED void *snmp_ctx)
 {
-	rad_assert(map->da->type == FR_TYPE_UINT32);
+	fr_assert(map->da->type == FR_TYPE_UINT32);
 
 	out->vb_uint32 = *(uint32_t *)((uint8_t *)(&radius_auth_stats) + map->offset);
 
@@ -190,7 +190,7 @@ static int snmp_client_index(UNUSED TALLOC_CTX *ctx, void **snmp_ctx_out,
 {
 	RADCLIENT *client;
 
-	rad_assert(!snmp_ctx_in);
+	fr_assert(!snmp_ctx_in);
 
 	client = client_findbynumber(NULL, index_num - 1);	/* Clients indexed from 0 */
 	if (!client) return 1;		/* No more clients */
@@ -205,7 +205,7 @@ static int snmp_client_index_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 {
 	RADCLIENT *client = snmp_ctx;
 
-	rad_assert(client);
+	fr_assert(client);
 
 	out->vb_uint32 = client->number + 1;		/* Clients indexed from 0 */
 
@@ -217,8 +217,8 @@ static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 {
 	RADCLIENT *client = snmp_ctx;
 
-	rad_assert(client);
-	rad_assert(map->da->type == FR_TYPE_IPV4_ADDR);
+	fr_assert(client);
+	fr_assert(map->da->type == FR_TYPE_IPV4_ADDR);
 
 	/*
 	 *	The old SNMP MIB only allowed access
@@ -239,8 +239,8 @@ static int snmp_client_id_get(TALLOC_CTX *ctx, fr_value_box_t *out,
 	RADCLIENT *client = snmp_ctx;
 	size_t len;
 
-	rad_assert(client);
-	rad_assert(map->da->type == FR_TYPE_STRING);
+	fr_assert(client);
+	fr_assert(map->da->type == FR_TYPE_STRING);
 
 	len = talloc_array_length(client->longname) - 1;
 
@@ -255,8 +255,8 @@ static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_bo
 {
 	RADCLIENT *client = snmp_ctx;
 
-	rad_assert(client);
-	rad_assert(map->da->type == FR_TYPE_UINT32);
+	fr_assert(client);
+	fr_assert(map->da->type == FR_TYPE_UINT32);
 
 	out->vb_uint32 = *(uint32_t *)((uint8_t *)(&client->auth) + map->offset);
 
@@ -474,13 +474,13 @@ static fr_snmp_map_t const *snmp_map_search(fr_snmp_map_t const map[], fr_dict_a
 {
 	fr_snmp_map_t const *p = &map[1], *q = map[0].last, *m;
 
-	rad_assert(p <= q);
+	fr_assert(p <= q);
 
 	/*
 	 *	Fast path...
 	 */
 	if (p == q) {
-		rad_assert(p->da);
+		fr_assert(p->da);
 
 		if (p->da->attr == da->attr) return p;
 		return NULL;
@@ -850,7 +850,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 		return 0;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		goto error;
 	}
 }
@@ -876,7 +876,7 @@ static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
 			    fr_cursor_t *cursor,
 			    fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
-	rad_assert(map);
+	fr_assert(map);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -998,8 +998,8 @@ int fr_snmp_process(REQUEST *request)
 		 *	Any attribute returned by fr_cursor_next_by_ancestor
 		 *	should have the SNMP root attribute as an ancestor.
 		 */
-		rad_assert(da_stack.da[depth]);
-		rad_assert(da_stack.da[depth] == attr_snmp_root);
+		fr_assert(da_stack.da[depth]);
+		fr_assert(da_stack.da[depth] == attr_snmp_root);
 
 		/*
 		 *	Operator attribute acts as a request delimiter
@@ -1065,7 +1065,7 @@ static int _fr_snmp_init(fr_snmp_map_t map[])
 		if (map[i].type == FR_FREERADIUS_SNMP_TYPE_OBJECT) {
 			int ret;
 
-			rad_assert(map[i].child);
+			fr_assert(map[i].child);
 
 			map[i].da = fr_dict_attr_by_name(dict_snmp, map[i].name);
 			if (!map[i].da) {

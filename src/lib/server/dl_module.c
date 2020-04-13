@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/dl.h>
@@ -36,7 +36,7 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <unistd.h>
 
-#define DL_INIT_CHECK rad_assert(dl_module_loader)
+#define DL_INIT_CHECK fr_assert(dl_module_loader)
 
 /** Wrapper struct around dl_loader_t
  *
@@ -73,8 +73,8 @@ static int dl_module_inst_data_cmp(void const *one, void const *two)
 {
 	dl_module_inst_t const *a = one, *b = two;
 
-	rad_assert(a->data);
-	rad_assert(b->data);
+	fr_assert(a->data);
+	fr_assert(b->data);
 
 	return (a->data > b->data) - (a->data < b->data);
 }
@@ -83,8 +83,8 @@ static int dl_module_cmp(void const *one, void const *two)
 {
 	dl_module_t const *a = one, *b = two;
 
-	rad_assert(a->dl);
-	rad_assert(b->dl);
+	fr_assert(a->dl);
+	fr_assert(b->dl);
 
 	return strcmp(a->dl->name, b->dl->name);
 }
@@ -275,7 +275,7 @@ static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t
          *      destructor can find the dl_module_inst_t associated
          *      with the data.
          */
-	rad_assert(dl_module_loader != NULL);
+	fr_assert(dl_module_loader != NULL);
 	rbtree_insert(dl_module_loader->inst_data_tree, dl_inst);	/* Duplicates not possible */
 
 	talloc_set_destructor(data, _dl_module_instance_data_free);
@@ -447,7 +447,7 @@ static int _dl_module_instance_free(dl_module_inst_t *dl_inst)
         /*
          *	Remove this instance from the tracking tree.
          */
-        rad_assert(dl_module_loader != NULL);
+        fr_assert(dl_module_loader != NULL);
         rbtree_deletebydata(dl_module_loader->inst_data_tree, dl_inst);
 
         /*

@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 
@@ -126,7 +126,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
-	rad_assert(inst->reset != NULL);
+	fr_assert(inst->reset != NULL);
 
 	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
@@ -197,7 +197,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
-	rad_assert(inst->reset != NULL);
+	fr_assert(inst->reset != NULL);
 
 	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
@@ -537,7 +537,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_sqlcounter_t	*inst = instance;
 	time_t			now;
 
-	rad_assert(inst->query && *inst->query);
+	fr_assert(inst->query && *inst->query);
 
 	now = time(NULL);
 	inst->reset_time = 0;
@@ -568,8 +568,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Create a new attribute for the counter.
 	 */
-	rad_assert(inst->paircmp_attr);
-	rad_assert(inst->limit_attr);
+	fr_assert(inst->paircmp_attr);
+	fr_assert(inst->limit_attr);
 
 	memset(&flags, 0, sizeof(flags));
 	if (tmpl_define_undefined_attr(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {

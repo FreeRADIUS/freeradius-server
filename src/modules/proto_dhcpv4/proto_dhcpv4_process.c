@@ -27,7 +27,7 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/protocol/dhcpv4/rfc2131.h>
 
@@ -129,8 +129,8 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	VALUE_PAIR *vp;
 
 	REQUEST_VERIFY(request);
-	rad_assert(request->packet->code > 0);
-	rad_assert(request->packet->code <= FR_DHCP_LEASE_QUERY);
+	fr_assert(request->packet->code > 0);
+	fr_assert(request->packet->code <= FR_DHCP_LEASE_QUERY);
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
@@ -164,7 +164,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 		/*
 		 *	Allow the admin to explicitly set the reply
@@ -229,7 +229,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:

@@ -30,7 +30,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->name
 
 #include	<freeradius-devel/server/base.h>
-#include	<freeradius-devel/server/rad_assert.h>
+#include	<freeradius-devel/util/debug.h>
 
 #include	<sys/file.h>
 #include	<sys/stat.h>
@@ -252,11 +252,11 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST
 	ret = (inst->driver->sql_fetch_row)(out, *handle, inst->config);
 	switch (ret) {
 	case RLM_SQL_OK:
-		rad_assert(*out != NULL);
+		fr_assert(*out != NULL);
 		return ret;
 
 	case RLM_SQL_NO_MORE_ROWS:
-		rad_assert(*out == NULL);
+		fr_assert(*out == NULL);
 		return ret;
 
 	default:
@@ -339,7 +339,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 	int i, count;
 
 	/* Caller should check they have a valid handle */
-	rad_assert(*handle);
+	fr_assert(*handle);
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') {
@@ -440,7 +440,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
 	int i, count;
 
 	/* Caller should check they have a valid handle */
-	rad_assert(*handle);
+	fr_assert(*handle);
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') {
@@ -507,7 +507,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_
 	int		rows = 0;
 	sql_rcode_t	rcode;
 
-	rad_assert(request);
+	fr_assert(request);
 
 	rcode = rlm_sql_select_query(inst, request, handle, query);
 	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */

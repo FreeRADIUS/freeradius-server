@@ -24,7 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/time.h>
@@ -503,8 +503,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Statistics are available ONLY on a "status" port.
 	 */
-	rad_assert(request->packet->code == FR_CODE_STATUS_SERVER);
-	rad_assert(request->listener->type == RAD_LISTEN_NONE);
+	fr_assert(request->packet->code == FR_CODE_STATUS_SERVER);
+	fr_assert(request->listener->type == RAD_LISTEN_NONE);
 
 	flag = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS, FR_FREERADIUS_STATISTICS_TYPE, TAG_ANY);
 	if (!flag || (flag->vp_uint32 == 0)) return;
@@ -815,7 +815,7 @@ void radius_stats_ema(fr_stats_ema_t *ema, fr_time_t start, fr_time_t end)
 #endif
 	if (ema->window == 0) return;
 
-	rad_assert(start <= end);
+	fr_assert(start <= end);
 
 	/*
 	 *	Initialize it.

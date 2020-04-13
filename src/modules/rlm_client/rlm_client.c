@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 /** Client field
  *
@@ -48,7 +48,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 	fr_dict_attr_t const	*da;
 	CONF_PAIR const		*cp;
 
-	rad_assert(ctx != NULL);
+	fr_assert(ctx != NULL);
 
 	fr_cursor_init(&cursor, &head);
 

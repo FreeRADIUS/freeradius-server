@@ -27,7 +27,7 @@
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/tacacs/dictionary.h>
 
 #include "tacacs.h"
@@ -140,7 +140,7 @@ fail:
 		goto fail;
 
 cook:
-	rad_assert(length_hdr + length_body < TACACS_MAX_PACKET_SIZE);
+	fr_assert(length_hdr + length_body < TACACS_MAX_PACKET_SIZE);
 
 	pkt->hdr.length = htonl(length_hdr - sizeof(fr_tacacs_packet_hdr_t) + length_body);
 
@@ -192,7 +192,7 @@ cook:
 	if (field.data) {
 		switch (pkt->hdr.type) {
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			break;
 
 		case TAC_PLUS_AUTHEN:

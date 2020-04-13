@@ -26,7 +26,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "proto_control.h"
 
 extern fr_app_t proto_control;
@@ -101,10 +101,10 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	dl_module_inst_t		*parent_inst;
 //	fr_dict_enum_t const	*type_enum;
 
-	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_control"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 //	inst = talloc_get_type_abort(parent_inst->data, proto_control_t);
 
@@ -146,7 +146,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_control"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	/*
 	 *	Set the allowed codes so that we can compile them as
@@ -168,7 +168,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_io_address_t *address = track->address;
 	RADCLIENT const *client;
 
-	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -256,7 +256,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 
 	client = address->radclient;
-	rad_assert(client);
+	fr_assert(client);
 
 	/*
 	 *	Dynamic client stuff
@@ -264,7 +264,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	if (client->dynamic && !client->active) {
 		RADCLIENT *new_client;
 
-		rad_assert(buffer_len >= sizeof(client));
+		fr_assert(buffer_len >= sizeof(client));
 
 		/*
 		 *	Allocate the client.  If that fails, send back a NAK.
@@ -318,7 +318,7 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 		return;
 	}
 
-	rad_assert(inst->process != NULL);
+	fr_assert(inst->process != NULL);
 	request->async->process = inst->process;
 }
 
@@ -517,7 +517,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
 	inst->io.dl_inst = dl_module_instance_by_data(inst);
-	rad_assert(inst != NULL);
+	fr_assert(inst != NULL);
 
 	/*
 	 *	Bootstrap the master IO handler.

@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "rlm_ldap.h"
 
@@ -354,8 +354,8 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto free_socket;
 	}
 
-	rad_assert(conn);
-	rad_assert(result);
+	fr_assert(conn);
+	fr_assert(result);
 
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
@@ -497,8 +497,8 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		goto free_socket;
 	}
 
-	rad_assert(conn);
-	rad_assert(result);
+	fr_assert(conn);
+	fr_assert(result);
 
 	for (entry = ldap_first_entry(conn->handle, result);
 	     entry;
@@ -602,7 +602,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	fr_ldap_connection_t		*conn = NULL;
 	char const		*user_dn;
 
-	rad_assert(inst->groupobj_base_dn);
+	fr_assert(inst->groupobj_base_dn);
 
 	RDEBUG2("Searching for user in group \"%pV\"", &check->data);
 
@@ -653,7 +653,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		return 1;
 	}
 
-	rad_assert(conn);
+	fr_assert(conn);
 
 	/*
 	 *	Check groupobj user membership
@@ -671,7 +671,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		}
 	}
 
-	rad_assert(conn);
+	fr_assert(conn);
 
 	/*
 	 *	Check userobj group membership
@@ -689,7 +689,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		}
 	}
 
-	rad_assert(conn);
+	fr_assert(conn);
 
 finish:
 	if (conn) ldap_mod_conn_release(inst, request, conn);
@@ -869,7 +869,7 @@ static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request
 	char const	*filter;
 	char		filter_buff[LDAP_MAX_FILTER_STR_LEN];
 
-	rad_assert(inst->profile_filter); 	/* We always have a default filter set */
+	fr_assert(inst->profile_filter); 	/* We always have a default filter set */
 
 	if (!dn || !*dn) return RLM_MODULE_OK;
 
@@ -895,8 +895,8 @@ static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request
 		return RLM_MODULE_FAIL;
 	}
 
-	rad_assert(*pconn);
-	rad_assert(result);
+	fr_assert(*pconn);
+	fr_assert(result);
 
 	entry = ldap_first_entry(handle, result);
 	if (!entry) {
@@ -1198,7 +1198,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 
 	char		*p = path;
 
-	rad_assert(section);
+	fr_assert(section);
 
 	/*
 	 *	Locate the update section were going to be using
@@ -1272,7 +1272,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			goto error;
 		}
 

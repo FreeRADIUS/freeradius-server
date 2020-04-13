@@ -26,7 +26,7 @@
  * @copyright 2015,2020 Network RADIUS SARL (legal@networkradius.com)
  * @copyright 2015 The FreeRADIUS Server Project
  */
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "base.h"
 
 fr_table_num_sorted_t const fr_json_format_table[] = {
@@ -397,13 +397,13 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 	fr_value_box_t		vb_str;
 	int			is_enum = 0;
 
-	rad_assert(vp);
+	fr_assert(vp);
 
 	vb = &vp->data;
 
 	if (format && format->value.enum_as_int) {
 		is_enum = fr_pair_value_enum_box(&vb, vp);
-		rad_assert(is_enum >= 0);
+		fr_assert(is_enum >= 0);
 	}
 
 	if (format && format->value.always_string) {
@@ -464,7 +464,7 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
 {
 	bool ret = true;
 
-	rad_assert(format);
+	fr_assert(format);
 
 	switch (format->output_mode) {
 	case JSON_MODE_OBJECT:
@@ -501,7 +501,7 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
 	}
 
 	/* If we get here, something has gone wrong */
-	rad_assert(0);
+	fr_assert(0);
 
 	return false;
 }
@@ -530,8 +530,8 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 
 	/* Check format and type */
-	rad_assert(format);
-	rad_assert(format->output_mode == JSON_MODE_OBJECT);
+	fr_assert(format);
+	fr_assert(format->output_mode == JSON_MODE_OBJECT);
 
 	MEM(obj = json_object_new_object());
 
@@ -650,8 +650,8 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vp
 	json_type		type;
 
 	/* Check format and type */
-	rad_assert(format);
-	rad_assert(format->output_mode == JSON_MODE_OBJECT_SIMPLE);
+	fr_assert(format);
+	fr_assert(format->output_mode == JSON_MODE_OBJECT_SIMPLE);
 
 	MEM(obj = json_object_new_object());
 
@@ -754,8 +754,8 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAI
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 
 	/* Check format and type */
-	rad_assert(format);
-	rad_assert(format->output_mode == JSON_MODE_ARRAY);
+	fr_assert(format);
+	fr_assert(format->output_mode == JSON_MODE_ARRAY);
 
 	MEM(obj = json_object_new_array());
 
@@ -883,8 +883,8 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, VAL
 	struct json_object	*obj;
 
 	/* Check format and type */
-	rad_assert(format);
-	rad_assert(format->output_mode == JSON_MODE_ARRAY_OF_VALUES);
+	fr_assert(format);
+	fr_assert(format->output_mode == JSON_MODE_ARRAY_OF_VALUES);
 
 	MEM(obj = json_object_new_array());
 
@@ -934,8 +934,8 @@ static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ct
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 
 	/* Check format and type */
-	rad_assert(format);
-	rad_assert(format->output_mode == JSON_MODE_ARRAY_OF_NAMES);
+	fr_assert(format);
+	fr_assert(format->output_mode == JSON_MODE_ARRAY_OF_NAMES);
 
 	MEM(obj = json_object_new_array());
 
@@ -1017,7 +1017,7 @@ char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
 		break;
 	default:
 		/* This should never happen */
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	MEM(p = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));

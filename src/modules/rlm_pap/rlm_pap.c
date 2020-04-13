@@ -30,7 +30,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/crypt.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/password.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/md5.h>
@@ -295,7 +295,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_evp_md(UNUSED rlm_pap_t const *inst
 	EVP_DigestFinal_ex(ctx, digest, &digest_len);
 	EVP_MD_CTX_destroy(ctx);
 
-	rad_assert((size_t) digest_len == known_good->vp_length);	/* This would be an OpenSSL bug... */
+	fr_assert((size_t) digest_len == known_good->vp_length);	/* This would be an OpenSSL bug... */
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
@@ -324,7 +324,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_evp_md_salted(UNUSED rlm_pap_t cons
 	EVP_DigestFinal_ex(ctx, digest, &digest_len);
 	EVP_MD_CTX_destroy(ctx);
 
-	rad_assert((size_t) digest_len == min_len);	/* This would be an OpenSSL bug... */
+	fr_assert((size_t) digest_len == min_len);	/* This would be an OpenSSL bug... */
 
 	/*
 	 *	Only compare digest_len bytes, the rest is salt.
@@ -666,7 +666,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(UNUSED rlm_pap_t const *inst, RE
 
 	RDEBUG2("Comparing with \"known-good\" NT-Password");
 
-	rad_assert(password->da == attr_user_password);
+	fr_assert(password->da == attr_user_password);
 
 	if (known_good->vp_length != MD4_DIGEST_LENGTH) {
 		REDEBUG("\"known good\" NT-Password has incorrect length, expected 16 got %zu", known_good->vp_length);
@@ -878,10 +878,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		return RLM_MODULE_FAIL;
 	}
 
-	rad_assert(known_good->da->attr < NUM_ELEMENTS(auth_func_table));
+	fr_assert(known_good->da->attr < NUM_ELEMENTS(auth_func_table));
 
 	auth_func = auth_func_table[known_good->da->attr];
-	rad_assert(auth_func);
+	fr_assert(auth_func);
 
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Comparing with \"known good\" %pP (%zu)", known_good, known_good->vp_length);
@@ -927,7 +927,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-	rad_assert(inst->auth_type);
+	fr_assert(inst->auth_type);
 
 	return 0;
 }

@@ -324,7 +324,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 	int			rcode = 0;
 	CONF_SECTION		*subcs = NULL;
 
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, subcs_name, CF_IDENT_ANY))) {
 		char const	*name2;
@@ -504,7 +504,7 @@ int virtual_servers_instantiate(void)
 	size_t		i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
 	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 
-	rad_assert(virtual_servers);
+	fr_assert(virtual_servers);
 
 	DEBUG2("#### Instantiating listeners ####");
 
@@ -573,9 +573,9 @@ int virtual_servers_instantiate(void)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			rad_assert(listen != NULL);
-			rad_assert(listen->proto_module != NULL);
-			rad_assert(listen->app != NULL);
+			fr_assert(listen != NULL);
+			fr_assert(listen->proto_module != NULL);
+			fr_assert(listen->app != NULL);
 
 			if (listen->app->instantiate &&
 			    listen->app->instantiate(listen->proto_module->data, listen->proto_module->conf) < 0) {
@@ -684,8 +684,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			rad_assert(listen != NULL);
-			rad_assert(listen->proto_module != NULL);
+			fr_assert(listen != NULL);
+			fr_assert(listen->proto_module != NULL);
 
 			(void) talloc_get_type_abort(listen, fr_virtual_listen_t);
 
@@ -714,7 +714,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 {
 	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
 
-	rad_assert(virtual_servers);
+	fr_assert(virtual_servers);
 
 	DEBUG2("#### Opening listener interfaces ####");
 
@@ -728,9 +728,9 @@ int virtual_servers_open(fr_schedule_t *sc)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			rad_assert(listen != NULL);
-			rad_assert(listen->proto_module != NULL);
-			rad_assert(listen->app != NULL);
+			fr_assert(listen != NULL);
+			fr_assert(listen->proto_module != NULL);
+			fr_assert(listen->app != NULL);
 
 			/*
 			 *	The socket is opened with app_instance,
@@ -844,7 +844,7 @@ int virtual_namespace_register(char const *namespace,
 	rbtree_t		*vns_tree;
 	fr_virtual_namespace_t	*vns;
 
-	rad_assert(virtual_server_root);	/* Virtual server bootstrap must be called first */
+	fr_assert(virtual_server_root);	/* Virtual server bootstrap must be called first */
 
 	MEM(vns = talloc_zero(NULL, fr_virtual_namespace_t));
 	vns->namespace = talloc_strdup(vns, namespace);
@@ -995,7 +995,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	CONF_SECTION	*subcs;
 	fr_dict_t const	*dict_internal;
 
-	rad_assert(request->server_cs != NULL);
+	fr_assert(request->server_cs != NULL);
 
 	/*
 	 *	Cache the old server_cs in case it was changed.
@@ -1197,7 +1197,7 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 
 	memset(&parse_rules, 0, sizeof(parse_rules));
 	parse_rules.dict_def = virtual_server_namespace(cf_section_name2(server));
-	rad_assert(parse_rules.dict_def != NULL);
+	fr_assert(parse_rules.dict_def != NULL);
 
 	/*
 	 *	Instantiate the process modules
@@ -1374,7 +1374,7 @@ static int virtual_server_section_register(virtual_server_compile_t const *entry
 {
 	virtual_server_compile_t *old;
 
-	rad_assert(server_section_name_tree != NULL);
+	fr_assert(server_section_name_tree != NULL);
 
 	old = rbtree_finddata(server_section_name_tree, entry);
 	if (old) return 0;
@@ -1422,7 +1422,7 @@ int virtual_server_section_component(rlm_components_t *component, char const *na
 {
 	virtual_server_compile_t *entry;
 
-	rad_assert(server_section_name_tree != NULL);
+	fr_assert(server_section_name_tree != NULL);
 
 	/*
 	 *	Look up the specific name first.  That way we can
@@ -1460,7 +1460,7 @@ virtual_server_method_t *virtual_server_section_methods(char const *name1, char 
 {
 	virtual_server_compile_t *entry;
 
-	rad_assert(server_section_name_tree != NULL);
+	fr_assert(server_section_name_tree != NULL);
 
 	/*
 	 *	Look up the specific name first.  That way we can

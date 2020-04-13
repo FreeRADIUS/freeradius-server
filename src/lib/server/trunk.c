@@ -583,7 +583,7 @@ do { \
  */
 #define REQUEST_EXTRACT_PARTIAL(_treq) \
 do { \
-	rad_assert((_treq)->pub.tconn->partial == treq); \
+	fr_assert((_treq)->pub.tconn->partial == treq); \
 	tconn->partial = NULL; \
 } while (0)
 
@@ -602,7 +602,7 @@ do { \
  */
 #define REQUEST_EXTRACT_CANCEL_PARTIAL(_treq) \
 do { \
-	rad_assert((_treq)->pub.tconn->cancel_partial == treq); \
+	fr_assert((_treq)->pub.tconn->cancel_partial == treq); \
 	tconn->cancel_partial = NULL; \
 } while (0)
 
@@ -673,7 +673,7 @@ static int8_t _trunk_request_prioritise(void const *a, void const *b)
 	fr_trunk_request_t const *treq_a = talloc_get_type_abort_const(a, fr_trunk_request_t);
 	fr_trunk_request_t const *treq_b = talloc_get_type_abort_const(b, fr_trunk_request_t);
 
-	rad_assert(treq_a->pub.trunk == treq_b->pub.trunk);
+	fr_assert(treq_a->pub.trunk == treq_b->pub.trunk);
 
 	return treq_a->pub.trunk->funcs.request_prioritise(treq_a->pub.preq, treq_b->pub.preq);
 }
@@ -728,7 +728,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 
@@ -871,17 +871,17 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 {
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
-	rad_assert(tconn->pub.trunk == trunk);
-	rad_assert(IS_SERVICEABLE(tconn));
+	fr_assert(tconn->pub.trunk == trunk);
+	fr_assert(IS_SERVICEABLE(tconn));
 
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_INIT:
 	case FR_TRUNK_REQUEST_STATE_UNASSIGNED:
-		rad_assert(!treq->pub.tconn);
+		fr_assert(!treq->pub.tconn);
 		break;
 
 	case FR_TRUNK_REQUEST_STATE_BACKLOG:
-		rad_assert(!treq->pub.tconn);
+		fr_assert(!treq->pub.tconn);
 		REQUEST_EXTRACT_BACKLOG(treq);
 		break;
 
@@ -942,7 +942,7 @@ static void trunk_request_enter_partial(fr_trunk_request_t *treq)
 		REQUEST_BAD_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_PARTIAL);
 	}
 
-	rad_assert(!tconn->partial);
+	fr_assert(!tconn->partial);
 	tconn->partial = treq;
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_PARTIAL);
@@ -1079,8 +1079,8 @@ static void trunk_request_enter_cancel_partial(fr_trunk_request_t *treq)
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
-	rad_assert(trunk->funcs.request_cancel_mux);
-	rad_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_SIGNAL);
+	fr_assert(trunk->funcs.request_cancel_mux);
+	fr_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_SIGNAL);
 
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_CANCEL:	/* The only valid state cancel_sent can be reached from */
@@ -1092,7 +1092,7 @@ static void trunk_request_enter_cancel_partial(fr_trunk_request_t *treq)
 	}
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL);
-	rad_assert(!tconn->partial);
+	fr_assert(!tconn->partial);
 	tconn->cancel_partial = treq;
 }
 
@@ -1114,8 +1114,8 @@ static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq)
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
-	rad_assert(trunk->funcs.request_cancel_mux);
-	rad_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_SIGNAL);
+	fr_assert(trunk->funcs.request_cancel_mux);
+	fr_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_SIGNAL);
 
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL:
@@ -1328,7 +1328,7 @@ static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *tre
 	/*
 	 *	Must *NOT* still be assigned to another connection
 	 */
-	rad_assert(!treq->pub.tconn);
+	fr_assert(!treq->pub.tconn);
 
 	rcode = trunk_request_check_enqueue(&tconn, trunk, treq->pub.request);
 	switch (rcode) {
@@ -1389,7 +1389,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 #define DEQUEUE_ALL(_src_list, _state) \
 	while ((treq = fr_dlist_head(_src_list))) { \
 		OVER_MAX_CHECK; \
-		rad_assert(treq->pub.state == (_state)); \
+		fr_assert(treq->pub.state == (_state)); \
 		trunk_request_enter_unassigned(treq); \
 		fr_dlist_insert_tail(out, treq); \
 	}
@@ -1414,7 +1414,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 		OVER_MAX_CHECK;
 		treq = tconn->cancel_partial;
 		if (treq) {
-			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL);
+			fr_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
 		}
@@ -1426,7 +1426,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 	if (states & FR_TRUNK_REQUEST_STATE_PENDING) {
 		while ((treq = fr_heap_peek(tconn->pending))) {
 			OVER_MAX_CHECK;
-			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_PENDING);
+			fr_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_PENDING);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
 		}
@@ -1439,7 +1439,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 		OVER_MAX_CHECK;
 		treq = tconn->partial;
 		if (treq) {
-			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_PARTIAL);
+			fr_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_PARTIAL);
 
 			/*
 			 *	Don't allow the connection to change state whilst
@@ -1464,7 +1464,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 		fr_connection_signals_pause(tconn->pub.conn);
 		while ((treq = fr_dlist_head(&tconn->sent))) {
 			OVER_MAX_CHECK;
-			rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_SENT);
+			fr_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_SENT);
 
 			trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_MOVE);
 			trunk_request_enter_unassigned(treq);
@@ -1993,7 +1993,7 @@ static int _trunk_request_free(fr_trunk_request_t *treq)
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 
@@ -2022,11 +2022,11 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 	treq = fr_dlist_head(&trunk->free_requests);
 	if (treq) {
 		fr_dlist_remove(&trunk->free_requests, treq);
-		rad_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_INIT);
-		rad_assert(treq->pub.trunk == trunk);
-		rad_assert(treq->pub.tconn == NULL);
-		rad_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_NONE);
-		rad_assert(treq->last_freed > 0);
+		fr_assert(treq->pub.state == FR_TRUNK_REQUEST_STATE_INIT);
+		fr_assert(treq->pub.trunk == trunk);
+		fr_assert(treq->pub.tconn == NULL);
+		fr_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_NONE);
+		fr_assert(treq->last_freed > 0);
 		trunk->pub.req_alloc_reused++;
 	} else {
 		MEM(treq = talloc_pooled_object(trunk, fr_trunk_request_t,
@@ -2749,7 +2749,7 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 
 	case FR_TRUNK_CONN_CONNECTING:
 		trunk_connection_remove(tconn);
-		rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
+		fr_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 		break;
 
 	default:
@@ -2849,7 +2849,7 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
 	 *	connecting state, it should have
 	 *	no requests associated with it.
 	 */
-	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
+	fr_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 
 	fr_dlist_insert_head(&trunk->connecting, tconn);	/* MUST remain a head insertion for reconnect logic */
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_CONNECTING, INFO);
@@ -2927,7 +2927,7 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
 	 *	it should have no requests associated
 	 *	with it.
 	 */
-	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
+	fr_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 
  	/*
 	 *	Set here, as the active state can
@@ -3010,7 +3010,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 
 	case FR_TRUNK_CONN_CONNECTING:
 		trunk_connection_remove(tconn);
-		rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
+		fr_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 		break;
 
 	case FR_TRUNK_CONN_INIT:
@@ -3034,7 +3034,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	connection.  They should have all been
 	 *	moved off or failed.
 	 */
-	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
+	fr_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 
 	/*
 	 *	Clear statistics and flags
@@ -3092,7 +3092,7 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	connection.  They should have all been
 	 *	moved off or failed.
 	 */
-	rad_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
+	fr_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 
 	/*
 	 *	And free the connection...
@@ -3113,8 +3113,8 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
  */
 static int _trunk_connection_free(fr_trunk_connection_t *tconn)
 {
-	rad_assert(tconn->pub.state == FR_TRUNK_CONN_HALTED);
-	rad_assert(!fr_dlist_entry_in_list(&tconn->entry));	/* Should not be in a list */
+	fr_assert(tconn->pub.state == FR_TRUNK_CONN_HALTED);
+	fr_assert(!fr_dlist_entry_in_list(&tconn->entry));	/* Should not be in a list */
 
 	/*
 	 *	Loop over all the requests we gathered
@@ -3645,7 +3645,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	that a call to trunk_requests_per_connnection
 		 *	was missed.
 		 */
-		rad_assert(trunk->pub.last_above_target >= trunk->pub.last_below_target);
+		fr_assert(trunk->pub.last_above_target >= trunk->pub.last_below_target);
 
 		/*
 		 *	We don't consider 'draining' connections
@@ -3740,7 +3740,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	that a call to trunk_requests_per_connnection
 		 *	was missed.
 		 */
-		rad_assert(trunk->pub.last_below_target > trunk->pub.last_above_target);
+		fr_assert(trunk->pub.last_below_target > trunk->pub.last_above_target);
 
 		if (!conn_count) {
 			DEBUG4("Not closing connection - No connections to close!");
@@ -4031,7 +4031,7 @@ static void trunk_backlog_drain(fr_trunk_t *trunk)
 			continue;
 
 		case FR_TRUNK_ENQUEUE_NO_CAPACITY:
-			rad_assert(fr_heap_num_elements(trunk->active) == 0);
+			fr_assert(fr_heap_num_elements(trunk->active) == 0);
 			return;
 		}
 	}

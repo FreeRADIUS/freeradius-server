@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/tls/base.h>
 
 #include <openssl/crypto.h>
@@ -591,7 +591,7 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		fr_tls_log_error(request, "Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
-	rad_assert((size_t)digest_len == talloc_array_length(xt->digest_buff));
+	fr_assert((size_t)digest_len == talloc_array_length(xt->digest_buff));
 
 	/*
 	 *	Then sign the digest
@@ -814,7 +814,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		fr_tls_log_error(request, "Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
-	rad_assert((size_t)digest_len == talloc_array_length(xt->digest_buff));
+	fr_assert((size_t)digest_len == talloc_array_length(xt->digest_buff));
 
 	/*
 	 *	Now check the signature matches what we expected
@@ -941,7 +941,7 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 		return 0;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 }
@@ -1127,7 +1127,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance,
 		return cipher_rsa_thread_instantiate(conf, instance, el, thread);
 
 	case RLM_CIPHER_TYPE_INVALID:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	return 0;
@@ -1239,7 +1239,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	the value is unrecognised we've got an issue.
 	 */
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	};
 

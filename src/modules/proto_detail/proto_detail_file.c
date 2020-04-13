@@ -32,7 +32,7 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 
@@ -387,7 +387,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	}
 	opened = true;
 
-	rad_assert(li->app_io->get_name);
+	fr_assert(li->app_io->get_name);
 	li->name = li->app_io->get_name(li);
 
 	if (!fr_schedule_listen_add(inst->parent->sc, li)) {
@@ -474,7 +474,7 @@ static void work_init(proto_detail_file_thread_t *thread)
 		goto delay;
 	}
 
-	rad_assert(thread->vnode_fd < 0);
+	fr_assert(thread->vnode_fd < 0);
 
 	/*
 	 *	See if there is a "detail.work" file.  If not, try to
@@ -621,7 +621,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	was.
 	 */
 	dl_inst = dl_module_instance_by_data(instance);
-	rad_assert(dl_inst);
+	fr_assert(dl_inst);
 
 #ifndef __linux__
 	/*

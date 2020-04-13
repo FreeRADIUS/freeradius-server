@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/connection.h>
 
 #ifdef HAVE_FCNTL_H
@@ -252,7 +252,7 @@ static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, UNUSED int f
 		 *	If there are, investigate why we get them...
 		 */
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 }
@@ -297,7 +297,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 			 *	If there are, investigate why we get them...
 			 */
 			default:
-				rad_assert(0);
+				fr_assert(0);
 			}
 		}
 
@@ -420,7 +420,7 @@ static fr_connection_state_t _logtee_conn_init(void **h_out, fr_connection_t *co
 	 */
 	case LOGTEE_DST_INVALID:
 	case LOGTEE_DST_FILE:
-		rad_assert(0);
+		fr_assert(0);
 		return FR_CONNECTION_STATE_FAILED;
 	}
 
@@ -462,7 +462,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	VALUE_PAIR		*vp;
 	log_dst_t		*dst;
 
-	rad_assert(t->msg->vp_length == 0);	/* Should have been cleared before returning */
+	fr_assert(t->msg->vp_length == 0);	/* Should have been cleared before returning */
 
 	/*
 	 *	None of this should involve mallocs unless msg > 1k
@@ -645,7 +645,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		break;
 
 	case LOGTEE_DST_INVALID:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 

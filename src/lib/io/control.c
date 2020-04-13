@@ -197,10 +197,10 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
 		(void) fr_ring_buffer_start(rb, (uint8_t **) &m, &room);
 		if (room == 0) break;
 
-		rad_assert(m != NULL);
-		rad_assert(room >= sizeof(*m));
+		fr_assert(m != NULL);
+		fr_assert(room >= sizeof(*m));
 
-		rad_assert(m->status != FR_CONTROL_MESSAGE_FREE);
+		fr_assert(m->status != FR_CONTROL_MESSAGE_FREE);
 
 		if (m->status != FR_CONTROL_MESSAGE_DONE) break;
 
@@ -375,7 +375,7 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 
 	if (!fr_atomic_queue_pop(aq, (void **) &m)) return 0;
 
-	rad_assert(m->status == FR_CONTROL_MESSAGE_USED);
+	fr_assert(m->status == FR_CONTROL_MESSAGE_USED);
 
 	/*
 	 *	There isn't enough room to store the data, die.

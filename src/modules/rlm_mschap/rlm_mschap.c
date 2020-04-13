@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/password.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/md4.h>
 #include <freeradius-devel/util/md5.h>
@@ -1561,7 +1561,7 @@ found_password:
 		return 0;
 	}
 
-	rad_assert(password->da == attr_nt_password);
+	fr_assert(password->da == attr_nt_password);
 
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Found &control:%pP", password);
@@ -2093,7 +2093,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			break;
 		}
 
@@ -2194,7 +2194,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-	rad_assert(inst->auth_type);
+	fr_assert(inst->auth_type);
 
 	xlat_register(inst, inst->name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 

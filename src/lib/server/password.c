@@ -634,7 +634,7 @@ static VALUE_PAIR *password_process_header(TALLOC_CTX *ctx, REQUEST *request, VA
 	 *	Ensure this is only ever called with a
 	 *	string type attribute.
 	 */
-	rad_assert(known_good->da->type == FR_TYPE_STRING);
+	fr_assert(known_good->da->type == FR_TYPE_STRING);
 
 	p = known_good->vp_strvalue;
 	end = p + known_good->vp_length;

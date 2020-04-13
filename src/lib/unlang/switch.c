@@ -51,7 +51,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	map.op = T_OP_CMP_EQ;
 	map.ci = cf_section_to_item(g->cs);
 
-	rad_assert(g->vpt != NULL);
+	fr_assert(g->vpt != NULL);
 
 	null_case = found = NULL;
 	data.datum.ptr = NULL;
@@ -63,7 +63,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	if (tmpl_is_attr(g->vpt) && (tmpl_find_vp(NULL, request, g->vpt) < 0)) {
 	find_null_case:
 		for (this = g->children; this; this = this->next) {
-			rad_assert(this->type == UNLANG_TYPE_CASE);
+			fr_assert(this->type == UNLANG_TYPE_CASE);
 
 			h = unlang_generic_to_group(this);
 			if (h->vpt) continue;
@@ -97,7 +97,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	 *	"case {...}" statement.
 	 */
 	for (this = g->children; this; this = this->next) {
-		rad_assert(this->type == UNLANG_TYPE_CASE);
+		fr_assert(this->type == UNLANG_TYPE_CASE);
 
 		h = unlang_generic_to_group(this);
 

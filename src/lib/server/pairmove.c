@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/pairmove.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
@@ -252,7 +252,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 				continue;
 			}
 
-			rad_assert(0 == 1); /* panic! */
+			fr_assert(0 == 1); /* panic! */
 		}
 
 		/*
@@ -320,7 +320,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 */
 	*last = append;
 
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
 
 	talloc_free(to_list);
 	talloc_free(edited);

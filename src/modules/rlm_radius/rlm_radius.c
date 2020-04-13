@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dlist.h>
 
@@ -181,7 +181,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	/*
 	 *	Must be the RADIUS module
 	 */
-	rad_assert(cs && (strcmp(cf_section_name1(cs), "radius") == 0));
+	fr_assert(cs && (strcmp(cf_section_name1(cs), "radius") == 0));
 
 	/*
 	 *	Allow the process module to be specified by
@@ -247,7 +247,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	if (!transport_cs) transport_cs = cf_section_alloc(cs, cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(cs, dl_module_inst_t, "rlm_radius"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
 }
@@ -330,7 +330,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	char const		*name2;
 	vp_map_t		*head = NULL;
 
-	rad_assert(cf_item_is_section(ci));
+	fr_assert(cf_item_is_section(ci));
 
 	cs = cf_item_to_section(ci);
 	name2 = cf_section_name2(cs);
@@ -486,7 +486,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	rcode = inst->io->enqueue(&rctx, inst->io_instance, t->io_thread, request);
 	if (rcode != RLM_MODULE_YIELD) {
-		rad_assert(rctx == NULL);
+		fr_assert(rctx == NULL);
 		return rcode;
 	}
 
@@ -600,7 +600,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	num_types = talloc_array_length(inst->types);
-	rad_assert(num_types > 0);
+	fr_assert(num_types > 0);
 
 	/*
 	 *	Allow for O(1) lookup later...
@@ -609,13 +609,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		uint32_t code;
 
 		code = inst->types[i];
-		rad_assert(code > 0);
-		rad_assert(code < FR_RADIUS_MAX_PACKET_CODE);
+		fr_assert(code > 0);
+		fr_assert(code < FR_RADIUS_MAX_PACKET_CODE);
 
 		inst->allowed[code] = true;
 	}
 
-	rad_assert(inst->status_check < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(inst->status_check < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	If we're replicating, we don't care if the other end
@@ -743,9 +743,9 @@ setup_io_submodule:
 	inst->io_instance = inst->io_submodule->data;
 	inst->io_conf = inst->io_submodule->conf;
 
-	rad_assert(inst->io->thread_inst_size > 0);
-	rad_assert(inst->io->bootstrap != NULL);
-	rad_assert(inst->io->instantiate != NULL);
+	fr_assert(inst->io->thread_inst_size > 0);
+	fr_assert(inst->io->bootstrap != NULL);
+	fr_assert(inst->io->instantiate != NULL);
 
 	/*
 	 *	Get random Proxy-State identifier for this module.

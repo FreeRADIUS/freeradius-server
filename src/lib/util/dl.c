@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/dl.h>
@@ -113,7 +113,7 @@ static int dl_symbol_init_cmp(void const *one, void const *two)
 	dl_symbol_init_t const *a = one, *b = two;
 	int ret;
 
-	rad_assert(a && b);
+	fr_assert(a && b);
 
 	ret = ((void *)a->func > (void *)b->func) - ((void *)a->func < (void *)b->func);
 	if (ret != 0) return ret;
@@ -135,7 +135,7 @@ static int dl_symbol_free_cmp(void const *one, void const *two)
 	dl_symbol_free_t const *a = one, *b = two;
 	int ret;
 
-	rad_assert(a && b);
+	fr_assert(a && b);
 
 	ret = ((void *)a->func > (void *)b->func) - ((void *)a->func < (void *)b->func);
 	if (ret != 0) return ret;

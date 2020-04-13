@@ -72,7 +72,7 @@ static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 	 *	from the backlog.
 	 */
 	if (unlang_request_is_scheduled(request)) {
-		rad_assert(request->backlog != NULL);
+		fr_assert(request->backlog != NULL);
 		(void) fr_heap_extract(request->backlog, request);
 	}
 
@@ -104,7 +104,7 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 	REQUEST				*child = talloc_get_type_abort(state->child, REQUEST);
 	rlm_rcode_t			rcode;
 
-	rad_assert(child != NULL);
+	fr_assert(child != NULL);
 
 	rcode = unlang_interpret(child);
 	if (rcode != RLM_MODULE_YIELD) {
@@ -306,7 +306,7 @@ int unlang_detached_child_init(REQUEST *request)
 	/*
 	 *	Mark the child as runnable.
 	 */
-	rad_assert(request->parent == NULL);
+	fr_assert(request->parent == NULL);
 	if (fr_heap_insert(request->backlog, request) < 0) {
 		RPERROR("Failed inserting ourself into the backlog.");
 		return -1;
@@ -338,7 +338,7 @@ static unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult)
 	 */
 	RDEBUG2("detach");
 
-	rad_assert(request->parent != NULL);
+	fr_assert(request->parent != NULL);
 
 	/*
 	 *	Get the PARENT's stack.
@@ -364,7 +364,7 @@ static unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult)
 	 *	The parent frame no longer has a child, and therefore
 	 *	can't be signaled.
 	 */
-	rad_assert(parent_state->child == request);
+	fr_assert(parent_state->child == request);
 	parent_state->child = NULL;
 	frame->signal = NULL;
 

@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_sql_sqlite - "
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -652,7 +652,7 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	char const *error;
 
-	rad_assert(outlen > 0);
+	fr_assert(outlen > 0);
 
 	error = sqlite3_errmsg(conn->db);
 	if (!error) return 0;

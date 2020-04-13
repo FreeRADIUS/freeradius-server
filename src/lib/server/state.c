@@ -48,7 +48,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/md5.h>
@@ -263,7 +263,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
 		for (vp = fr_cursor_init(&cursor, &entry->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			rad_assert(entry->ctx == talloc_parent(vp));
+			fr_assert(entry->ctx == talloc_parent(vp));
 		}
 	}
 
@@ -609,7 +609,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 	TALLOC_CTX		*old_ctx = NULL;
 	VALUE_PAIR		*vp;
 
-	rad_assert(request->state == NULL);
+	fr_assert(request->state == NULL);
 
 	/*
 	 *	No State, don't do anything.
@@ -632,7 +632,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 		}
 		if (request->state_ctx) old_ctx = request->state_ctx;	/* Store for later freeing */
 
-		rad_assert(entry->ctx);
+		fr_assert(entry->ctx);
 
 		request->seq_start = entry->seq_start;
 		request->state_ctx = entry->ctx;
@@ -698,8 +698,8 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 		return -1;
 	}
 
-	rad_assert(entry->ctx == NULL);
-	rad_assert(request->state_ctx);
+	fr_assert(entry->ctx == NULL);
+	fr_assert(request->state_ctx);
 
 	entry->seq_start = request->seq_start;
 	entry->ctx = request->state_ctx;

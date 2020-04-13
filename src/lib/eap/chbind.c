@@ -165,7 +165,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	VALUE_PAIR	*vp;
 
 	/* check input parameters */
-	rad_assert((request != NULL) &&
+	fr_assert((request != NULL) &&
 		   (chbind != NULL) &&
 		   (chbind->request != NULL) &&
 		   (chbind->response == NULL));
@@ -190,7 +190,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	if (data_len) {
 		fr_cursor_t cursor;
 
-		rad_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
+		fr_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
 		fr_cursor_init(&cursor, &fake->packet->vps);
 		while (data_len > 0) {

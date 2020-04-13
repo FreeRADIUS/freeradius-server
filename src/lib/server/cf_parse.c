@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_priv.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/tmpl.h>
 
 #include <freeradius-devel/util/inet.h>
@@ -97,7 +97,7 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
 		return 0;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 }
@@ -137,9 +137,9 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	cant_be_empty = (type & FR_TYPE_NOT_EMPTY);
 	tmpl = (type & FR_TYPE_TMPL);
 
-	rad_assert(cp);
-	rad_assert(!(type & FR_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
-	rad_assert((type & FR_TYPE_ON_READ) == 0);
+	fr_assert(cp);
+	fr_assert(!(type & FR_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
+	fr_assert((type & FR_TYPE_ON_READ) == 0);
 
 	if (required) cant_be_empty = true;		/* May want to review this in the future... */
 
@@ -448,8 +448,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 *	It's not an error parsing the configuration
 		 *	file.
 		 */
-		rad_assert(type > FR_TYPE_INVALID);
-		rad_assert(type < FR_TYPE_MAX);
+		fr_assert(type > FR_TYPE_INVALID);
+		fr_assert(type < FR_TYPE_MAX);
 
 		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",
 			   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"), type);
@@ -486,7 +486,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 	CONF_PAIR	*cp;
 	char		buffer[8192];
 
-	rad_assert(dflt);
+	fr_assert(dflt);
 
 	type = FR_BASE_TYPE(type);
 
@@ -557,7 +557,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 	char const	*dflt = rule->dflt;
 	FR_TOKEN	dflt_quote = rule->quote;
 
-	rad_assert(!(type & FR_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
+	fr_assert(!(type & FR_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
 
 	multi = (type & FR_TYPE_MULTI);
 	required = (type & FR_TYPE_REQUIRED);
@@ -676,7 +676,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			break;
 
 		case FR_TYPE_VOID:
-			rad_assert(rule->func);
+			fr_assert(rule->func);
 			array = (void **)talloc_zero_array(ctx, void *, count);
 			break;
 
@@ -1018,7 +1018,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 
 	uint8_t			**array = NULL;
 
-	rad_assert(type & FR_TYPE_SUBSECTION);
+	fr_assert(type & FR_TYPE_SUBSECTION);
 
 	subcs = cf_section_find(cs, rule->name, rule->ident2);
 	if (!subcs) return 0;
@@ -1062,7 +1062,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 		return 0;
 	}
 
-	rad_assert(subcs_size);
+	fr_assert(subcs_size);
 
 	/*
 	 *	Handle the multi subsection case (which is harder)
@@ -1429,7 +1429,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			case TMPL_TYPE_REGEX:
 			case TMPL_TYPE_REGEX_STRUCT:
 			case TMPL_TYPE_NULL:
-				rad_assert(0);
+				fr_assert(0);
 			/* Don't add default */
 			}
 
@@ -1476,7 +1476,7 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 
 		cd = cf_data_find(CF_TO_ITEM(cs), CONF_PARSER, rule->name);
 		old = cf_data_value(cd);
-		rad_assert(old != NULL);
+		fr_assert(old != NULL);
 
 		/*
 		 *	Shut up about duplicates.

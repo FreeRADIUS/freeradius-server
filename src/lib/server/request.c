@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 
 /** The thread local free list
@@ -101,7 +101,7 @@ static void request_init(char const *file, int line, REQUEST *request)
  */
 static int _request_free(REQUEST *request)
 {
-	rad_assert(!request->ev);
+	fr_assert(!request->ev);
 
 	/*
 	 *	Reinsert into the free list if it's not already
@@ -128,7 +128,7 @@ static int _request_free(REQUEST *request)
 		 */
 		state_ctx = request->state_ctx;
 		if (request->state_ctx) {
-			rad_assert(!request->parent || (request->state_ctx != request->parent->state_ctx));
+			fr_assert(!request->parent || (request->state_ctx != request->parent->state_ctx));
 			talloc_free_children(request->state_ctx);
 		}
 		free_list = request_free_list;
@@ -182,7 +182,7 @@ really_free:
 	 *	call fr_state_store_in_parent()
 	 */
 	if (request->state_ctx) {
-		rad_assert(!request->parent || (request->state_ctx != request->parent->state_ctx));
+		fr_assert(!request->parent || (request->state_ctx != request->parent->state_ctx));
 		talloc_free(request->state_ctx);
 	}
 
@@ -457,7 +457,7 @@ int request_detach(REQUEST *fake, bool will_free)
 {
 	REQUEST		*request = fake->parent;
 
-	rad_assert(request != NULL);
+	fr_assert(request != NULL);
 
 	/*
 	 *	Unlink the child from the parent.
@@ -473,7 +473,7 @@ int request_detach(REQUEST *fake, bool will_free)
 	fake->parent = NULL;
 
 	while (!request->backlog) {
-		rad_assert(request->parent != NULL);
+		fr_assert(request->parent != NULL);
 		request = request->parent;
 	}
 
@@ -504,7 +504,7 @@ static void packet_verify(char const *file, int line, REQUEST const *request, RA
 		fr_log_talloc_report(packet);
 		if (parent) fr_log_talloc_report(parent);
 
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	PACKET_VERIFY(packet);
@@ -528,7 +528,7 @@ void request_verify(char const *file, int line, REQUEST const *request)
 
 	(void) talloc_get_type_abort_const(request, REQUEST);
 
-	rad_assert(request->magic == REQUEST_MAGIC);
+	fr_assert(request->magic == REQUEST_MAGIC);
 
 	if (talloc_get_size(request) != sizeof(REQUEST)) {
 		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
@@ -539,30 +539,30 @@ void request_verify(char const *file, int line, REQUEST const *request)
 	fr_pair_list_verify(file, line, request, request->control);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);
 
-	rad_assert(request->server_cs != NULL);
+	fr_assert(request->server_cs != NULL);
 
 	if (request->packet) {
 		packet_verify(file, line, request, request->packet, "request");
 		if ((request->packet->code == FR_CODE_ACCESS_REQUEST) &&
 		    (request->reply && !request->reply->code)) {
-			rad_assert(request->state_ctx != NULL);
+			fr_assert(request->state_ctx != NULL);
 		}
 	}
 	if (request->reply) packet_verify(file, line, request, request->reply, "reply");
 
 	if (request->async) {
 		(void) talloc_get_type_abort(request->async, fr_async_t);
-		rad_assert(talloc_parent(request->async) == request);
+		fr_assert(talloc_parent(request->async) == request);
 	}
 
 	while ((rd = fr_dlist_next(&request->data, rd))) {
 		(void) talloc_get_type_abort(rd, request_data_t);
 
 		if (request_data_persistable(rd)) {
-			rad_assert(request->state_ctx);
-			rad_assert(talloc_parent(rd) == request->state_ctx);
+			fr_assert(request->state_ctx);
+			fr_assert(talloc_parent(rd) == request->state_ctx);
 		} else {
-			rad_assert(talloc_parent(rd) == request);
+			fr_assert(talloc_parent(rd) == request);
 		}
 	}
 }

@@ -226,7 +226,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	rad_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
+	fr_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
 
 	fr_md5_calc(inst->a_id, (uint8_t const *)inst->authority_identity,
 		    talloc_array_length(inst->authority_identity) - 1);
@@ -262,7 +262,7 @@ static void eap_fast_session_ticket(fr_tls_session_t *tls_session, const SSL *s,
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t			seed[2 * SSL3_RANDOM_SIZE];
 
-	rad_assert(t->pac.key);
+	fr_assert(t->pac.key);
 
 	SSL_get_server_random(s, seed, SSL3_RANDOM_SIZE);
 	SSL_get_client_random(s, &seed[SSL3_RANDOM_SIZE], SSL3_RANDOM_SIZE);
@@ -392,10 +392,10 @@ error:
 		char *value;
 
 		if (vp->da == attr_eap_fast_pac_info_pac_type) {
-			rad_assert(t->pac.type == 0);
+			fr_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_uint32;
 		} else if (vp->da == attr_eap_fast_pac_info_pac_lifetime) {
-			rad_assert(t->pac.expires == 0);
+			fr_assert(t->pac.expires == 0);
 			t->pac.expires = vp->vp_uint32;
 			t->pac.expired = (vp->vp_uint32 <= time(NULL));
 		/*
@@ -403,10 +403,10 @@ error:
 		 *	The original enum didn't match a specific TLV nesting level
 		 */
 		} else if (vp->da == attr_eap_fast_pac_key) {
-			rad_assert(t->pac.key == NULL);
-			rad_assert(vp->vp_length == PAC_KEY_LENGTH);
+			fr_assert(t->pac.key == NULL);
+			fr_assert(vp->vp_length == PAC_KEY_LENGTH);
 			t->pac.key = talloc_array(t, uint8_t, PAC_KEY_LENGTH);
-			rad_assert(t->pac.key != NULL);
+			fr_assert(t->pac.key != NULL);
 			memcpy(t->pac.key, vp->vp_octets, PAC_KEY_LENGTH);
 		} else {
 			value = fr_pair_asprint(tls_session, vp, '"');
@@ -486,7 +486,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 */
 	case EAP_TLS_ESTABLISHED:
 		fr_tls_session_send(request, tls_session);
-		rad_assert(tls_session->opaque != NULL);
+		fr_assert(tls_session->opaque != NULL);
 		break;
 
 	/*

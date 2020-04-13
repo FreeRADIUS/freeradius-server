@@ -30,7 +30,7 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "rlm_ldap.h"
 
@@ -47,7 +47,7 @@ fr_ldap_connection_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
 
 	conn = fr_pool_connection_get(inst->pool, request);
 
-	rad_assert(!conn || conn->config);
+	fr_assert(!conn || conn->config);
 
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
 	/*

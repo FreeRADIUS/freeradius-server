@@ -23,7 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/message.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -96,7 +96,7 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 	 *	We can't allocated the entire array, and we can't
 	 *	over-fill the array.
 	 */
-	rad_assert((size_t) my_alloc_size < MY_ARRAY_SIZE);
+	fr_assert((size_t) my_alloc_size < MY_ARRAY_SIZE);
 
 	MPRINT2("BLOCK ALLOC %d\n", my_alloc_size);
 
@@ -115,10 +115,10 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 		array[index] = hash;
 
 		m = fr_message_reserve(ms, reserve_size);
-		rad_assert(m != NULL);
+		fr_assert(m != NULL);
 
 		messages[index] = (fr_test_t *) fr_message_alloc(ms, m, hash);
-		rad_assert(messages[index] == (void *) m);
+		fr_assert(messages[index] == (void *) m);
 
 		if (touch_memory) {
 			size_t j;
@@ -133,10 +133,10 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
-		rad_assert(m->status == FR_MESSAGE_USED);
+		fr_assert(m->status == FR_MESSAGE_USED);
 
 		used += hash;
-//		rad_assert(fr_ring_buffer_used(rb) == used);
+//		fr_assert(fr_ring_buffer_used(rb) == used);
 	}
 
 	*end += my_alloc_size;
@@ -146,7 +146,7 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 {
 	int i;
 
-	rad_assert(my_alloc_size < MY_ARRAY_SIZE);
+	fr_assert(my_alloc_size < MY_ARRAY_SIZE);
 
 	MPRINT2("BLOCK FREE %d\n", my_alloc_size);
 
@@ -159,11 +159,11 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 
 		m = &messages[index]->m;
 
-		rad_assert(m->status == FR_MESSAGE_USED);
+		fr_assert(m->status == FR_MESSAGE_USED);
 
 		rcode = fr_message_done(m);
 #ifndef NDEBUG
-		rad_assert(rcode == 0);
+		fr_assert(rcode == 0);
 #else
 		if (rcode != 0) exit(EXIT_FAILURE);
 #endif
@@ -178,8 +178,8 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 	if (*start > MY_ARRAY_SIZE) {
 		*start -= MY_ARRAY_SIZE;
 		*end -= MY_ARRAY_SIZE;
-		rad_assert(*start <= *end);
-		rad_assert(*start < MY_ARRAY_SIZE);
+		fr_assert(*start <= *end);
+		fr_assert(*start < MY_ARRAY_SIZE);
 	}
 }
 
@@ -369,10 +369,10 @@ int main(int argc, char *argv[])
 	my_alloc_size = end - start;
 	free_blocks(ms, &seed, &start, &end);
 
-	rad_assert(used == 0);
+	fr_assert(used == 0);
 
 	for (i = 0; i < MY_ARRAY_SIZE; i++) {
-		rad_assert(messages[i] == NULL);
+		fr_assert(messages[i] == NULL);
 	}
 
 	if (debug_lvl) {
@@ -410,7 +410,7 @@ int main(int argc, char *argv[])
 	 *	After the garbage collection, all messages marked "done" MUST also be marked "free".
 	 */
 	rcode = fr_message_set_messages_used(ms);
-	rad_assert(rcode == 0);
+	fr_assert(rcode == 0);
 
 	return rcode;
 }

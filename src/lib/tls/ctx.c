@@ -32,7 +32,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <openssl/rand.h>
 #include <openssl/dh.h>
@@ -112,7 +112,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 	/*
 	 *	Conf parser should ensure they're both populated
 	 */
-	rad_assert(chain->certificate_file && chain->private_key_file);
+	fr_assert(chain->certificate_file && chain->private_key_file);
 
 	/*
 	 *	Set the password (this should have been retrieved earlier)
@@ -144,7 +144,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 
@@ -187,7 +187,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 				break;
 
 			default:
-				rad_assert(0);
+				fr_assert(0);
 				fclose(fp);
 				return -1;
 			}

@@ -25,7 +25,7 @@
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/tacacs/tacacs.h>
 
@@ -85,7 +85,7 @@ fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
 static REQUEST *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
 		       UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
 {
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 	return NULL;
 }
 
@@ -207,7 +207,7 @@ static void state_add(REQUEST *request, RADIUS_PACKET *packet)
 	uint32_t session_id;
 	uint8_t buf[16] = { 0 };	/* FIXME state.c:sizeof(struct state_comp) */
 
-	rad_assert(sizeof(request->listener) + sizeof(vp->vp_uint32) <= sizeof(buf));		//-V568
+	fr_assert(sizeof(request->listener) + sizeof(vp->vp_uint32) <= sizeof(buf));		//-V568
 
 	/* session_id is per TCP connection */
 	memcpy(&buf[0], &request->listener, sizeof(request->listener));				//-V568
@@ -289,7 +289,7 @@ stop_processing:
 
 		if (rcode == RLM_MODULE_YIELD) return;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -381,7 +381,7 @@ stop_processing:
 
 		if (rcode == RLM_MODULE_YIELD) return;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 			/*
@@ -431,7 +431,7 @@ setup_send:
 
 		if (rcode == RLM_MODULE_YIELD) return;
 
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 
 send_reply:
 		request->reply->timestamp = fr_time();

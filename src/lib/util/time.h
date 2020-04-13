@@ -30,7 +30,6 @@ RCSIDH(time_h, "$Id$")
  *	For sys/time.h and time.h
  */
 #include <freeradius-devel/missing.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
 #include <sys/time.h>

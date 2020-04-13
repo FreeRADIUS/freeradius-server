@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/ring_buffer.h>
 #include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <string.h>
 
 /*
@@ -140,7 +140,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 		return NULL;
 	}
 
-	rad_assert(rb->write_offset == rb->data_end);
+	fr_assert(rb->write_offset == rb->data_end);
 
 	/*
 	 *	Data fits at the end of the ring buffer.
@@ -234,7 +234,7 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 		return NULL;
 	}
 
-	rad_assert(rb->write_offset == rb->data_end);
+	fr_assert(rb->write_offset == rb->data_end);
 
 	/*
 	 *	Data fits at the end of the ring buffer.
@@ -441,7 +441,7 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size_to_free)
 		if (!size_to_free) return 0;
 	}
 
-	rad_assert(rb->write_offset == rb->data_end);
+	fr_assert(rb->write_offset == rb->data_end);
 
 	block_size = rb->data_end - rb->data_start;
 
@@ -531,7 +531,7 @@ size_t fr_ring_buffer_used(fr_ring_buffer_t *rb)
 	if (rb->write_offset < rb->data_start) {
 		size = rb->write_offset;
 	} else {
-		rad_assert(rb->write_offset == rb->data_end);
+		fr_assert(rb->write_offset == rb->data_end);
 		size = 0;
 	}
 

@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/state.h>
 
 #include <freeradius-devel/radius/defs.h>
@@ -161,10 +161,10 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	client = client_afrom_cs(ctx, cs, NULL);
 	if (!client) {
 		PERROR("Failed creating test client");
-		rad_assert(0);
+		fr_assert(0);
 	}
 	talloc_steal(client, cs);
-	rad_assert(client);
+	fr_assert(client);
 
 	return client;
 }
@@ -215,7 +215,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 
 	request->master_state = REQUEST_ACTIVE;
 	request->server_cs = virtual_server_find("default");
-	rad_assert(request->server_cs != NULL);
+	fr_assert(request->server_cs != NULL);
 
 	request->config = main_config;
 
@@ -361,7 +361,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 				ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
 
 				fr_log_talloc_report(vp);
-				rad_assert(0);
+				fr_assert(0);
 			}
 
 			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
@@ -434,7 +434,7 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 			ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
 
 			fr_log_talloc_report(vp);
-			rad_assert(0);
+			fr_assert(0);
 		}
 
 		fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
@@ -576,7 +576,7 @@ static void process(REQUEST *request)
 	/*
 	 *	Simulate an authorize section
 	 */
-	rad_assert(request->server_cs != NULL);
+	fr_assert(request->server_cs != NULL);
 	unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
 	if (!unlang) {
 		REDEBUG("Failed to find 'recv Access-Request' section");
@@ -973,7 +973,7 @@ int main(int argc, char *argv[])
 	 *	Create a dummy event list
 	 */
 	el = fr_event_list_alloc(NULL, NULL, NULL);
-	rad_assert(el != NULL);
+	fr_assert(el != NULL);
 
 	/*
 	 *	Simulate thread specific instantiation

@@ -166,7 +166,7 @@ struct fr_request_s {
  *  the pointer must not be NULL when these various macros are used
  *  so we can add some sneaky asserts.
  */
-#  define REQUEST_VERIFY(_x) rad_assert(_x)
+#  define REQUEST_VERIFY(_x) fr_assert(_x)
 #endif
 
 

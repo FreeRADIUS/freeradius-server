@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "base.h"
 
 /*
@@ -430,7 +430,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 	soh_tlv			tlv;
 	int			curr_shid =- 1, curr_shid_c =- 1, curr_hc =- 1;
 
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
 
 	hdr.tlv_type = soh_pull_be_16(data); data += 2;
 	hdr.tlv_len = soh_pull_be_16(data); data += 2;

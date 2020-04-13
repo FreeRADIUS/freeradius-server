@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_priv.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/util.h>
 
 #include <freeradius-devel/util/cursor.h>
@@ -445,7 +445,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			CONF_SECTION *subcs1, *subcs2;
 
 			subcs1 = cf_item_to_section(ci);
-			rad_assert(subcs1 != NULL);
+			fr_assert(subcs1 != NULL);
 
 			subcs2 = cf_section_find(cs, subcs1->name1, subcs1->name2);
 			if (subcs2) {
@@ -504,7 +504,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 
 	top = cf_root(cs);
 	tree = cf_data_value(cf_data_find(top, rbtree_t, "filename"));
-	rad_assert(tree);
+	fr_assert(tree);
 
 	/*
 	 *	If we're including a wildcard directory, then ignore
@@ -739,7 +739,7 @@ int cf_section_pass2(CONF_SECTION *cs)
 		cp = cf_item_to_pair(ci);
 		if (!cp->value || !cp->pass2) continue;
 
-		rad_assert((cp->rhs_quote == T_BARE_WORD) ||
+		fr_assert((cp->rhs_quote == T_BARE_WORD) ||
 			   (cp->rhs_quote == T_DOUBLE_QUOTED_STRING) ||
 			   (cp->rhs_quote == T_BACK_QUOTED_STRING));
 
@@ -1471,7 +1471,7 @@ static int parse_input(cf_stack_t *stack)
 			return -1;
 		}
 
-		rad_assert(frame->braces > 0);
+		fr_assert(frame->braces > 0);
 		frame->braces--;
 
 		/*
@@ -1989,7 +1989,7 @@ do_frame:
 		 *	Reset which frame we're looking at.
 		 */
 		frame = &stack->frame[stack->depth];
-		rad_assert(frame->type == CF_STACK_FILE);
+		fr_assert(frame->type == CF_STACK_FILE);
 		break;
 #endif
 
@@ -2097,7 +2097,7 @@ do_frame:
 		} while (rcode == 1);
 	}
 
-	rad_assert(frame->fp != NULL);
+	fr_assert(frame->fp != NULL);
 
 	/*
 	 *	See if EOF was unexpected.

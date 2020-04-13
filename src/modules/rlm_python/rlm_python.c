@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/lsan.h>
 
 #include <Python.h>
@@ -487,7 +487,7 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 		break;
 
 	case FR_TYPE_NON_VALUES:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 
@@ -909,7 +909,7 @@ static PyObject *python_module_init(void)
 		NULL,				/* m_free */
 	};
 
-	rad_assert(inst && conf);
+	fr_assert(inst && conf);
 
 	module = PyModule_Create(&py_module_def);
 	if (!module) {
@@ -1242,7 +1242,7 @@ static int mod_load(void)
 #define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
 #define LOAD_WARN(_fmt, ...) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
 
-	rad_assert(!Py_IsInitialized());
+	fr_assert(!Py_IsInitialized());
 
 	LOAD_INFO("Python version: %s", Py_GetVersion());
 	dependency_version_number_add(NULL, "python", Py_GetVersion());
@@ -1282,7 +1282,7 @@ static int mod_load(void)
 #if PY_VERSION_HEX < 0x03070000
 	PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
 #endif
-	rad_assert(PyEval_ThreadsInitialized());
+	fr_assert(PyEval_ThreadsInitialized());
 
 	/*
 	 *	Set program name (i.e. the software calling the interpreter)

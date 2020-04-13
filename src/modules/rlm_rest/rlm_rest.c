@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/table.h>
@@ -1157,7 +1157,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 static int mod_load(void)
 {
 	/* developer sanity */
-	rad_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
+	fr_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
 
 	if (fr_curl_init() < 0) return -1;
 

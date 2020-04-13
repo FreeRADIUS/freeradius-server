@@ -44,7 +44,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
@@ -614,8 +614,8 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	fr_redis_rcode_t	status;
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	rad_assert(key_prefix);
-	rad_assert(device_id);
+	fr_assert(key_prefix);
+	fr_assert(device_id);
 
 	now = fr_time_to_timeval(fr_time());
 
@@ -639,7 +639,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		goto finish;
 	}
 
-	rad_assert(reply);
+	fr_assert(reply);
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
@@ -1270,7 +1270,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		return RLM_MODULE_NOOP;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return RLM_MODULE_FAIL;
 	}
 }
@@ -1367,8 +1367,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	rlm_redis_ippool_t		*inst = instance;
 
-	rad_assert(tmpl_is_attr(inst->allocated_address_attr));
-	rad_assert(subcs);
+	fr_assert(tmpl_is_attr(inst->allocated_address_attr));
+	fr_assert(subcs);
 
 	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, true, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;

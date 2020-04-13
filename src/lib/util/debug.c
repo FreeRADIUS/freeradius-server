@@ -1324,7 +1324,7 @@ void fr_fault_set_log_fd(int fd)
  * @param[in] ...	Arguments for msg string.
  * @return the value of cond.
  */
-bool fr_cond_assert_fail(char const *file, int line, char const *expr, char const *msg, ...)
+bool _fr_assert_fail(char const *file, int line, char const *expr, char const *msg, ...)
 {
 	if (msg) {
 		char str[256];		/* Decent compilers won't allocate this unless fmt is !NULL... */
@@ -1351,87 +1351,68 @@ bool fr_cond_assert_fail(char const *file, int line, char const *expr, char cons
 	return false;
 }
 
-/*
- *	Logs an error message and aborts the program
+/** A fatal assertion which triggers the fault handler in debug builds or exits
  *
+ * @param[in] file	the assertion failed in.
+ * @param[in] line	of the assertion in the file.
+ * @param[in] expr	that was evaluated.
+ * @param[in] msg	Message to print (may be NULL).
+ * @param[in] ...	Arguments for msg string.
  */
-#ifndef NDEBUG
-bool fr_assert_exit(char const *file, unsigned int line, char const *expr)
+void _fr_assert_fatal(char const *file, int line, char const *expr, char const *msg, ...)
 {
-	FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s", file, line, expr);
-	fr_fault(SIGABRT);
-	fr_exit_now(1);
-}
-#else
-bool fr_assert_exit(char const *file, unsigned int line, char const *expr)
-{
-	FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s", file, line, expr);
-	return false;
-}
-#endif
+	if (msg) {
+		char str[256];		/* Decent compilers won't allocate this unless fmt is !NULL... */
+		va_list ap;
 
+		va_start(ap, msg);
+		(void)vsnprintf(str, sizeof(str), msg, ap);
+		va_end(ap);
+
+		FR_FAULT_LOG("FATAL ASSERT %s[%u]: %s: %s", file, line, expr, str);
+	} else {
+		FR_FAULT_LOG("FATAL ASSERT %s[%u]: %s", file, line, expr);
+	}
+
+#ifdef NDEBUG
+	_fr_exit_now(file, line, 128 + SIGABRT);
+
+#else
+	fr_fault(SIGABRT);
+	_Exit(128 + SIGABRT);		/* Don't hit the debugger twice */
+#endif
+}
 
 /** Exit possibly printing a message about why we're exiting.
  *
  * @note Use the fr_exit(status) macro instead of calling this function directly.
  *
- * @param file where fr_exit() was called.
- * @param line where fr_exit() was called.
- * @param status we're exiting with.
+ * @param[in] file	where fr_exit() was called.
+ * @param[in] line	where fr_exit() was called.
+ * @param[in] status	we're exiting with.
+ * @param[in] now	Exit immediately.
  */
 #ifndef NDEBUG
-void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
+void NEVER_RETURNS _fr_exit(char const *file, int line, int status, bool now)
 {
 	char const *error = fr_strerror();
 
 	if (error && *error && (status != 0)) {
-		FR_FAULT_LOG("EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
+		FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%u].  Last error was: %s", now ? "_" : "", status, file, line, error);
 	} else {
-		FR_FAULT_LOG("EXIT(%i) CALLED %s[%u]", status, file, line);
+		FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%u]", now ? "_" : "", status, file, line);
 	}
 
-	fr_debug_break(false);	/* If running under GDB we'll break here */
+	if (status != EXIT_SUCCESS) fr_debug_break(false);	/* If running under GDB we'll break here */
 
-	exit(status);
+	now ? _Exit(status) : exit(status);
 }
 #else
-void NEVER_RETURNS _fr_exit(UNUSED char const *file, UNUSED int line, int status)
+void NEVER_RETURNS _fr_exit(UNUSED char const *file, UNUSED int line, int status, bool now)
 {
-	fr_debug_break(false);	/* If running under GDB we'll break here */
+	if (status != EXIT_SUCCESS) fr_debug_break(false);	/* If running under GDB we'll break here */
 
-	exit(status);
-}
-#endif
-
-/** Exit possibly printing a message about why we're exiting.
- *
- * @note Use the fr_exit_now(status) macro instead of calling this function directly.
- *
- * @param file where fr_exit_now() was called.
- * @param line where fr_exit_now() was called.
- * @param status we're exiting with.
- */
-#ifndef NDEBUG
-void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
-{
-	char const *error = fr_strerror();
-
-	if (error && *error && (status != 0)) {
-		FR_FAULT_LOG("_EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
-	} else {
-		FR_FAULT_LOG("_EXIT(%i) CALLED %s[%u]", status, file, line);
-	}
-
-	fr_debug_break(false);	/* If running under GDB we'll break here */
-
-	_exit(status);
-}
-#else
-void NEVER_RETURNS _fr_exit_now(UNUSED char const *file, UNUSED int line, int status)
-{
-	fr_debug_break(false);	/* If running under GDB we'll break here */
-
-	_exit(status);
+	now ? _Exit(status) : exit(status);
 }
 #endif
 

@@ -30,7 +30,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 
 #include "base.h"
@@ -195,8 +195,8 @@ static int fr_tls_cache_serialize(SSL *ssl, SSL_SESSION *sess)
 	 *	of the tls_session, as the fields aren't re-populated on
 	 *	resumption.
 	 */
-	rad_assert(!tls_session->session_id);
-	rad_assert(!tls_session->session_blob);
+	fr_assert(!tls_session->session_id);
+	fr_assert(!tls_session->session_blob);
 
 	key_len = fr_tls_cache_id(&key, sess);
 	if (key_len == 0) {

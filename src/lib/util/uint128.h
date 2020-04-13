@@ -66,7 +66,7 @@ static inline uint128_t uint128_gen_mask(uint8_t bits)
 {
 	uint128_t ret;
 
-	rad_assert(bits < 128);
+	fr_assert(bits < 128);
 
 	if (bits > 64) {
 		ret.l = 0xffffffffffffffff;
@@ -190,7 +190,7 @@ static inline uint128_t uint128_mul(uint128_t n, uint128_t m)
  */
 static inline uint128_t uint128_lshift(uint128_t num, uint8_t bits)
 {
-	rad_assert(bits < 128);
+	fr_assert(bits < 128);
 
 	if (bits >= 64) {
 		num.l = 0;
@@ -209,7 +209,7 @@ static inline uint128_t uint128_lshift(uint128_t num, uint8_t bits)
  */
 static inline uint128_t uint128_rshift(uint128_t num, uint8_t bits)
 {
-	rad_assert(bits < 128);
+	fr_assert(bits < 128);
 
 	if (bits >= 64) {
 		num.h = 0;

@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 
@@ -72,7 +72,7 @@ next:
 
 	switch (c->type) {
 	case COND_TYPE_EXISTS:
-		rad_assert(c->data.vpt != NULL);
+		fr_assert(c->data.vpt != NULL);
 		if (c->cast) {
 			len = snprintf(p, end - p, "<%s>", fr_table_str_by_value(fr_value_box_type_table,
 				       c->cast->type, "??"));
@@ -85,7 +85,7 @@ next:
 		break;
 
 	case COND_TYPE_MAP:
-		rad_assert(c->data.map != NULL);
+		fr_assert(c->data.map != NULL);
 #if 0
 		*(p++) = '[';	/* for extra-clear debugging */
 #endif
@@ -103,7 +103,7 @@ next:
 		break;
 
 	case COND_TYPE_CHILD:
-		rad_assert(c->data.child != NULL);
+		fr_assert(c->data.child != NULL);
 		*(p++) = '(';
 		len = cond_snprint(need, p, (end - p) - 1, c->data.child);	/* -1 for proceeding ')' */
 		if (*need) return len;
@@ -128,7 +128,7 @@ next:
 	}
 
 	if (c->next_op == COND_NONE) {
-		rad_assert(c->next == NULL);
+		fr_assert(c->next == NULL);
 		*p = '\0';
 		return p - out;
 	}
@@ -142,7 +142,7 @@ next:
 		RETURN_IF_TRUNCATED(need, len, p, out, end);
 
 	} else {
-		rad_assert(0 == 1);
+		fr_assert(0 == 1);
 	}
 
 	c = c->next;
@@ -683,7 +683,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 
 	c = talloc_zero(ctx, fr_cond_t);
 
-	rad_assert(c != NULL);
+	fr_assert(c != NULL);
 	lhs_type = rhs_type = T_INVALID;
 
 	fr_skip_whitespace(p);
@@ -815,7 +815,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			return_P(fr_strerror());
 		}
 
-		rad_assert(!tmpl_is_regex(c->data.vpt));
+		fr_assert(!tmpl_is_regex(c->data.vpt));
 
 		if (tmpl_define_unknown_attr(c->data.vpt) < 0) {
 			p = lhs - tlen;
@@ -1034,7 +1034,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 				 *	Got flags all the way to the end of the string
 				 */
 			case 0:
-				rad_assert(flen >= 0);
+				fr_assert(flen >= 0);
 				slen += (size_t)flen;
 				break;
 
@@ -1042,13 +1042,13 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 				 *	Found non-flag, this is OK.
 				 */
 			case -1:
-				rad_assert(flen <= 0);
+				fr_assert(flen <= 0);
 				fr_strerror(); /* Clear out the error buffer */
 				slen += (size_t)(-flen);
 				break;
 
 			case -2:
-				rad_assert(flen <= 0);
+				fr_assert(flen <= 0);
 				p = rhs + rhs_len + 1;
 				p += (size_t)(-flen);
 				return_P("Duplicate flag");
@@ -1308,7 +1308,7 @@ done:
 		    tmpl_is_data(c->data.map->rhs)) {
 			int rcode;
 
-			rad_assert(c->cast != NULL);
+			fr_assert(c->cast != NULL);
 
 			rcode = cond_eval_map(NULL, 0, 0, c);
 			TALLOC_FREE(c->data.map);
@@ -1335,7 +1335,7 @@ done:
 		    !c->pass2_fixup) {
 			int rcode;
 
-			rad_assert(c->cast == NULL);
+			fr_assert(c->cast == NULL);
 
 			rcode = cond_eval_map(NULL, 0, 0, c);
 			if (rcode) {
@@ -1400,7 +1400,7 @@ done:
 			/*
 			 *	This must have been parsed into TMPL_TYPE_DATA.
 			 */
-			rad_assert(!tmpl_is_unparsed(c->data.map->rhs));
+			fr_assert(!tmpl_is_unparsed(c->data.map->rhs));
 		}
 
 	} while (0);

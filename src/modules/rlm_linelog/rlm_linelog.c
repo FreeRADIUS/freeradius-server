@@ -25,7 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/exfile.h>
 
 #ifdef HAVE_FCNTL_H
@@ -235,7 +235,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 	case LINELOG_DST_INVALID:
 	case LINELOG_DST_FILE:
 	case LINELOG_DST_SYSLOG:
-		rad_assert(0);
+		fr_assert(0);
 		return NULL;
 	}
 
@@ -395,7 +395,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		break;
 
 	case LINELOG_DST_INVALID:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 
@@ -670,7 +670,7 @@ build_vector:
 			exfile_close(inst->file.ef, request, fd);
 
 			/* Assert on the extra fatal errors */
-			rad_assert((errno != EINVAL) && (errno != EFAULT));
+			fr_assert((errno != EINVAL) && (errno != EFAULT));
 
 			return RLM_MODULE_FAIL;
 		}
@@ -732,7 +732,7 @@ build_vector:
 			/* Assert on the extra fatal errors */
 			case EINVAL:
 			case EFAULT:
-				rad_assert(0);
+				fr_assert(0);
 				/* FALL-THROUGH */
 
 			/* Normal errors that just cause the module to fail */
@@ -764,7 +764,7 @@ build_vector:
 		break;
 #endif
 	case LINELOG_DST_INVALID:
-		rad_assert(0);
+		fr_assert(0);
 		rcode = RLM_MODULE_FAIL;
 		break;
 	}

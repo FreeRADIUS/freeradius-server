@@ -32,7 +32,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
@@ -552,8 +552,8 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 	char const *name;
 	xlat_t *xlat;
 
-	rad_assert((*out == NULL) && (outlen == 0));	/* Caller must not have allocated buf */
-	rad_assert(xr->type == XLAT_REDUNDANT);
+	fr_assert((*out == NULL) && (outlen == 0));	/* Caller must not have allocated buf */
+	fr_assert(xr->type == XLAT_REDUNDANT);
 
 	/*
 	 *	Pick the first xlat which succeeds
@@ -566,7 +566,7 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 		if (!cf_item_is_pair(ci)) continue;
 
 		name = cf_pair_attr(cf_item_to_pair(ci));
-		rad_assert(name != NULL);
+		fr_assert(name != NULL);
 
 		xlat = xlat_func_find(name, -1);
 		if (!xlat) continue;
@@ -612,7 +612,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 	char const *name;
 	xlat_t *xlat;
 
-	rad_assert((*out == NULL) && (outlen == 0));	/* Caller must not have allocated buf */
+	fr_assert((*out == NULL) && (outlen == 0));	/* Caller must not have allocated buf */
 
 	/*
 	 *	Choose a child at random.
@@ -638,7 +638,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 	if (xr->type == XLAT_LOAD_BALANCE) {
 		ssize_t slen;
 		name = cf_pair_attr(cf_item_to_pair(found));
-		rad_assert(name != NULL);
+		fr_assert(name != NULL);
 
 		xlat = xlat_func_find(name, -1);
 		if (!xlat) return -1;
@@ -655,7 +655,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 		return slen;
 	}
 
-	rad_assert(xr->type == XLAT_REDUNDANT_LOAD_BALANCE);
+	fr_assert(xr->type == XLAT_REDUNDANT_LOAD_BALANCE);
 
 	/*
 	 *	Try the random one we found.  If it fails, keep going
@@ -664,7 +664,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 	ci = found;
 	do {
 		name = cf_pair_attr(cf_item_to_pair(ci));
-		rad_assert(name != NULL);
+		fr_assert(name != NULL);
 
 		xlat = xlat_func_find(name, -1);
 		if (xlat) {
@@ -729,7 +729,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	} else if (strcmp(name1, "load-balance") == 0) {
 		xr->type = XLAT_LOAD_BALANCE;
 	} else {
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	xr->cs = cs;
@@ -1069,7 +1069,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				break;
 
 			default:
-				rad_assert(0);
+				fr_assert(0);
 			}
 
 			fr_cursor_append(&to_merge, nvp);
@@ -1522,7 +1522,7 @@ static ssize_t xlat_func_rpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	vp_tmpl_t	*vpt;
 	char		*to_pad = NULL;
 
-	rad_assert(!*out);
+	fr_assert(!*out);
 
 	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
 
@@ -1644,7 +1644,7 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	rad_assert((size_t)elen <= alen);
+	fr_assert((size_t)elen <= alen);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
@@ -2464,7 +2464,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		rad_assert(p);
+		fr_assert(p);
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
@@ -2499,7 +2499,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		rad_assert(p);
+		fr_assert(p);
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
@@ -2526,7 +2526,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		rad_assert(p);
+		fr_assert(p);
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
@@ -2819,7 +2819,7 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 */
 	p += slen;
 
-	rad_assert(*p == ' ');
+	fr_assert(*p == ' ');
 
 	p++;	/* Skip space */
 	rep = p;
@@ -2980,7 +2980,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
-	rad_assert(vb->type != FR_TYPE_INVALID);
+	fr_assert(vb->type != FR_TYPE_INVALID);
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;

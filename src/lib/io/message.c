@@ -188,8 +188,8 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
  */
 int fr_message_done(fr_message_t *m)
 {
-	rad_assert(m->status != FR_MESSAGE_FREE);
-	rad_assert(m->status != FR_MESSAGE_DONE);
+	fr_assert(m->status != FR_MESSAGE_FREE);
+	fr_assert(m->status != FR_MESSAGE_DONE);
 
 	/*
 	 *	Mark a message as freed.  The originator will take
@@ -212,7 +212,7 @@ int fr_message_done(fr_message_t *m)
 	/*
 	 *	A catastrophic error.
 	 */
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 
 	fr_strerror_printf("Failed marking message as done");
 	return -1;
@@ -312,11 +312,11 @@ static int fr_message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int ma
 		(void) fr_ring_buffer_start(mr, (uint8_t **) &m, &size);
 		if (size == 0) break;
 
-		rad_assert(m != NULL);
-		rad_assert(size >= ms->message_size);
+		fr_assert(m != NULL);
+		fr_assert(size >= ms->message_size);
 
 
-		rad_assert(m->status != FR_MESSAGE_FREE);
+		fr_assert(m->status != FR_MESSAGE_FREE);
 		if (m->status != FR_MESSAGE_DONE) break;
 
 		messages_cleaned++;
@@ -370,7 +370,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 
 		cleaned = fr_message_ring_gc(ms, ms->mr_array[i], max_to_clean - total_cleaned);
 		total_cleaned += cleaned;
-		rad_assert(total_cleaned <= max_to_clean);
+		fr_assert(total_cleaned <= max_to_clean);
 
 		/*
 		 *	Stop when we've reached our GC limit.
@@ -391,7 +391,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	 *	and free all smaller ones which are empty.
 	 */
 	for (i = ms->mr_max; i >= 0; i--) {
-		rad_assert(ms->mr_array[i] != NULL);
+		fr_assert(ms->mr_array[i] != NULL);
 
 		if (arrays_used < 2) {
 			MPRINT("\tleaving entry %d alone\n", i);
@@ -447,7 +447,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 			 */
 			if (empty_slot < 0) continue;
 
-			rad_assert(ms->mr_array[empty_slot] == NULL);
+			fr_assert(ms->mr_array[empty_slot] == NULL);
 
 			ms->mr_array[empty_slot] = ms->mr_array[i];
 			ms->mr_array[i] = NULL;
@@ -475,7 +475,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 		MPRINT("NUM RB ARRAYS NOW %d\n", ms->mr_max + 1);
 		for (i = 0; i <= ms->mr_max; i++) {
 			MPRINT("\t%d %p\n", i, ms->mr_array[i]);
-			rad_assert(ms->mr_array[i] != NULL);
+			fr_assert(ms->mr_array[i] != NULL);
 		}
 #endif
 	}
@@ -494,7 +494,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	arrays_freed = 0;
 	MPRINT("TRYING TO FREE ARRAYS %d\n", ms->rb_max);
 	for (i = ms->rb_max; i >= 0; i--) {
-		rad_assert(ms->rb_array[i] != NULL);
+		fr_assert(ms->rb_array[i] != NULL);
 
 		if (arrays_used < 2) {
 			MPRINT("\tleaving entry %d alone\n", i);
@@ -545,7 +545,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 			 */
 			if (empty_slot < 0) continue;
 
-			rad_assert(ms->rb_array[empty_slot] == NULL);
+			fr_assert(ms->rb_array[empty_slot] == NULL);
 
 			ms->rb_array[empty_slot] = ms->rb_array[i];
 			ms->rb_array[i] = NULL;
@@ -573,7 +573,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 		MPRINT("NUM RB ARRAYS NOW %d\n", ms->rb_max + 1);
 		for (i = 0; i <= ms->rb_max; i++) {
 			MPRINT("\t%d %p\n", i, ms->rb_array[i]);
-			rad_assert(ms->rb_array[i] != NULL);
+			fr_assert(ms->rb_array[i] != NULL);
 		}
 #endif
 	}
@@ -594,7 +594,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	for (i = 0; i < ms->rb_max; i++) {
 		size_t free_size;
 
-		rad_assert(ms->rb_array[i] != NULL);
+		fr_assert(ms->rb_array[i] != NULL);
 
 		free_size = (fr_ring_buffer_size(ms->rb_array[i]) -
 			     fr_ring_buffer_used(ms->rb_array[i]));
@@ -605,8 +605,8 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	}
 
 	ms->rb_current = largest_free_slot;
-	rad_assert(ms->rb_current >= 0);
-	rad_assert(ms->rb_current <= ms->rb_max);
+	fr_assert(ms->rb_current >= 0);
+	fr_assert(ms->rb_current <= ms->rb_max);
 }
 
 /** Allocate a message from a message ring.
@@ -800,7 +800,7 @@ static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message
 	 *	And... we go through a bunch of hoops, all over again.
 	 */
 	m->rb = ms->rb_array[ms->rb_current];
-	rad_assert(m->rb != NULL);
+	fr_assert(m->rb != NULL);
 	m->data = fr_ring_buffer_reserve(m->rb, m->rb_size);
 	if (m->data) return m;
 
@@ -830,7 +830,7 @@ static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message
 		 *	Try to allocate the packet from the newly current ring buffer.
 		 */
 		m->rb = ms->rb_array[ms->rb_current];
-		rad_assert(m->rb != NULL);
+		fr_assert(m->rb != NULL);
 		m->data = fr_ring_buffer_reserve(m->rb, m->rb_size);
 		if (m->data) return m;
 
@@ -852,7 +852,7 @@ static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message
 	 */
 	for (i = ms->rb_max; i >= 0; i--) {
 		m->rb = ms->rb_array[i];
-		rad_assert(m->rb != NULL);
+		fr_assert(m->rb != NULL);
 		m->data = fr_ring_buffer_reserve(m->rb, m->rb_size);
 		if (m->data) {
 			MPRINT("MOVED TO RING BUFFER %d\n", i);
@@ -997,20 +997,20 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 		if (!m) return NULL;
 	}
 
-	rad_assert(m->status == FR_MESSAGE_USED);
-	rad_assert(m->rb != NULL);
-	rad_assert(m->data != NULL);
-	rad_assert(m->data_size == 0);
-	rad_assert(m->rb_size >= actual_packet_size);
+	fr_assert(m->status == FR_MESSAGE_USED);
+	fr_assert(m->rb != NULL);
+	fr_assert(m->data != NULL);
+	fr_assert(m->data_size == 0);
+	fr_assert(m->rb_size >= actual_packet_size);
 
 	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
-	rad_assert(p != NULL);
+	fr_assert(p != NULL);
 	if (!p) {
 		fr_strerror_printf_push("Failed allocating from ring buffer");
 		return NULL;
 	}
 
-	rad_assert(p == m->data);
+	fr_assert(p == m->data);
 
 	/*
 	 *	The caller can change m->data size to something a bit
@@ -1075,19 +1075,19 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 
 	/* m is NOT talloc'd */
 
-	rad_assert(m->status == FR_MESSAGE_USED);
-	rad_assert(m->rb != NULL);
-	rad_assert(m->data != NULL);
-	rad_assert(m->rb_size >= actual_packet_size);
+	fr_assert(m->status == FR_MESSAGE_USED);
+	fr_assert(m->rb != NULL);
+	fr_assert(m->data != NULL);
+	fr_assert(m->rb_size >= actual_packet_size);
 
 	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
-	rad_assert(p != NULL);
+	fr_assert(p != NULL);
 	if (!p) {
 		fr_strerror_printf_push("Failed allocating from ring buffer");
 		return NULL;
 	}
 
-	rad_assert(p == m->data);
+	fr_assert(p == m->data);
 
 	m_rb_size = m->rb_size;	/* for ring buffer cleanups */
 
@@ -1203,11 +1203,11 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 		if (!m) return NULL;
 	}
 
-	rad_assert(m->status == FR_MESSAGE_USED);
-	rad_assert(m->rb != NULL);
-	rad_assert(m->data != NULL);
-	rad_assert(m->data_size == 0);
-	rad_assert(m->rb_size >= actual_packet_size);
+	fr_assert(m->status == FR_MESSAGE_USED);
+	fr_assert(m->rb != NULL);
+	fr_assert(m->data != NULL);
+	fr_assert(m->data_size == 0);
+	fr_assert(m->rb_size >= actual_packet_size);
 
 	/*
 	 *	Align the address and the actual packet size.
@@ -1232,14 +1232,14 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 	aligned_size = MS_ALIGN(aligned_size);
 
 	p = fr_ring_buffer_alloc(m->rb, aligned_size);
-	rad_assert(p != NULL);
+	fr_assert(p != NULL);
 	if (!p) {
 		fr_strerror_printf_push("Failed allocating from ring buffer");
 		return NULL;
 	}
 
-	rad_assert(p == m->data);
-	rad_assert((aligned_p + aligned_size) <= (m->data + m->rb_size));
+	fr_assert(p == m->data);
+	fr_assert((aligned_p + aligned_size) <= (m->data + m->rb_size));
 
 	/*
 	 *	Set the aligned pointer, the total aligned size, and

@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <ctype.h>
 
 #define LOG_PREFIX "rlm_ldap (%s) - "
@@ -110,7 +110,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 			return NULL;
 		}
 
-		rad_assert(*pconn);
+		fr_assert(*pconn);
 
 		(*pconn)->rebound = false;
 	}
@@ -149,7 +149,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 		return NULL;
 	}
 
-	rad_assert(*pconn);
+	fr_assert(*pconn);
 
 	/*
 	 *	Forbid the use of unsorted search results that

@@ -60,7 +60,7 @@ bool unlang_section(CONF_SECTION *cs)
  */
 void unlang_register(int type, unlang_op_t *op)
 {
-	rad_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
+	fr_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
 
 	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
 }

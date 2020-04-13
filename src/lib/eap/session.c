@@ -124,7 +124,7 @@ void eap_session_destroy(eap_session_t **eap_session)
 		 *	associated with the request, or it matches the one we're
 		 *	about to free.
 		 */
-		rad_assert(!in_request || (*eap_session == in_request));
+		fr_assert(!in_request || (*eap_session == in_request));
 	}
 #else
 	(void) request_data_get((*eap_session)->request, NULL, REQUEST_DATA_EAP_SESSION);
@@ -154,7 +154,7 @@ void eap_session_freeze(eap_session_t **eap_session)
 {
 	if (!*eap_session) return;
 
-	rad_assert((*eap_session)->request);
+	fr_assert((*eap_session)->request);
 	(*eap_session)->request = NULL;
 	*eap_session = NULL;
 }
@@ -191,7 +191,7 @@ eap_session_t *eap_session_thaw(REQUEST *request)
 
 	if (!fr_cond_assert(eap_session->inst)) return NULL;
 
-	rad_assert(!eap_session->request);	/* If triggered, something didn't freeze the session */
+	fr_assert(!eap_session->request);	/* If triggered, something didn't freeze the session */
 	eap_session->request = request;
 	eap_session->updated = request->packet->timestamp;
 

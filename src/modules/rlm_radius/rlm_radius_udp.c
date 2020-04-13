@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/udp.h>
@@ -313,7 +313,7 @@ static void udp_request_reset(udp_request_t *u)
  */
 static void status_check_reset(udp_handle_t *h, udp_request_t *u)
 {
-	rad_assert(u->status_check == true);
+	fr_assert(u->status_check == true);
 
 	h->status_checking = false;
 	u->num_replies = 0;	/* Reset */
@@ -443,7 +443,7 @@ static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, U
 	/*
 	 *	Connection must be in the connecting state when this fires
 	 */
-	rad_assert(conn->state == FR_CONNECTION_STATE_CONNECTING);
+	fr_assert(conn->state == FR_CONNECTION_STATE_CONNECTING);
 
 	h = talloc_get_type_abort(conn->h, udp_handle_t);
 
@@ -465,7 +465,7 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 	/*
 	 *	Connection must be in the connecting state when this fires
 	 */
-	rad_assert(conn->state == FR_CONNECTION_STATE_CONNECTING);
+	fr_assert(conn->state == FR_CONNECTION_STATE_CONNECTING);
 
 	h = talloc_get_type_abort(conn->h, udp_handle_t);
 	u = h->status_u;
@@ -497,7 +497,7 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 		return;
 	}
 
-	rad_assert(0);
+	fr_assert(0);
 }
 
 /** Send the next status check packet
@@ -659,7 +659,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		      h->module_name, fr_packet_codes[u->code], u->id, u->packet_len, h->name, fr_syserror(errno));
 		goto fail;
 	}
-	rad_assert((size_t)slen == u->packet_len);
+	fr_assert((size_t)slen == u->packet_len);
 
 	/*
 	 *	Switch to waiting on read and insert the event
@@ -686,7 +686,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
  */
 static int _udp_handle_free(udp_handle_t *h)
 {
-	rad_assert(h->fd >= 0);
+	fr_assert(h->fd >= 0);
 
 	if (h->status_u) fr_event_timer_delete(&h->status_u->ev);
 
@@ -847,8 +847,8 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 #ifndef NDEBUG
 		radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__, h->tt, udp_tracking_entry_log);
 #endif
-		fr_cond_assert_fail(__FILE__, __LINE__, "0", "%u tracking entries still allocated at conn close",
-				    h->tt->num_requests);
+		fr_assert_fail(__FILE__, __LINE__, "0", "%u tracking entries still allocated at conn close",
+			       h->tt->num_requests);
 	}
 
 	talloc_free(h);
@@ -1229,8 +1229,8 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	int			message_authenticator = u->require_ma * (RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2);
 	int			proxy_state = 6;
 
-	rad_assert(inst->parent->allowed[u->code]);
-	rad_assert(!u->packet);
+	fr_assert(inst->parent->allowed[u->code]);
+	fr_assert(!u->packet);
 
 	/*
 	 *	Try to retransmit, unless there are special
@@ -1292,7 +1292,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	We should have at mininum 64-byte packets, so don't
 	 *	bother doing run-time checks here.
 	 */
-	rad_assert(u->packet_len >= (size_t) (RADIUS_HEADER_LENGTH + proxy_state + message_authenticator));
+	fr_assert(u->packet_len >= (size_t) (RADIUS_HEADER_LENGTH + proxy_state + message_authenticator));
 
 	/*
 	 *	Encode it, leaving room for Proxy-State and
@@ -1320,7 +1320,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		fr_cursor_t	cursor;
 		int		count = 0;
 
-		rad_assert((size_t) (packet_len + proxy_state) <= u->packet_len);
+		fr_assert((size_t) (packet_len + proxy_state) <= u->packet_len);
 
 		/*
 		 *	Count how many Proxy-State attributes have
@@ -1364,7 +1364,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	the buflen manipulation done above.
 	 */
 	if (message_authenticator) {
-		rad_assert((size_t) (packet_len + message_authenticator) <= u->packet_len);
+		fr_assert((size_t) (packet_len + message_authenticator) <= u->packet_len);
 
 		msg = u->packet + packet_len;
 
@@ -1499,7 +1499,7 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	 *	We're replicating, and don't care about the health of
 	 *	the home server, and this function should not be called.
 	 */
-	rad_assert(!h->inst->replicate);
+	fr_assert(!h->inst->replicate);
 
 	/*
 	 *	If there's already a zombie check started, don't do
@@ -1608,10 +1608,10 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	REQUEST			*request = treq->request;
 	fr_trunk_connection_t	*tconn = treq->tconn;
 
-	rad_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
-	rad_assert(treq->preq);						/* Must still have a protocol request */
-	rad_assert(u->rr);
-	rad_assert(tconn);
+	fr_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
+	fr_assert(treq->preq);						/* Must still have a protocol request */
+	fr_assert(u->rr);
+	fr_assert(tconn);
 
 	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 
@@ -1700,7 +1700,7 @@ static void request_mux(fr_event_list_t *el,
 		 */
 		if (!treq) break;
 
- 		rad_assert((treq->state == FR_TRUNK_REQUEST_STATE_PENDING) ||
+ 		fr_assert((treq->state == FR_TRUNK_REQUEST_STATE_PENDING) ||
 			   (treq->state == FR_TRUNK_REQUEST_STATE_PARTIAL));
 
 		request = treq->request;
@@ -1711,8 +1711,8 @@ static void request_mux(fr_event_list_t *el,
 		 */
 		if (!u->retry.start) {
 			(void) fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
-			rad_assert(u->retry.rt > 0);
-			rad_assert(u->retry.next > 0);
+			fr_assert(u->retry.rt > 0);
+			fr_assert(u->retry.next > 0);
 		}
 
 		/*
@@ -1726,14 +1726,14 @@ static void request_mux(fr_event_list_t *el,
 		 *	the REQUEUE signal was recevied.
 		 */
 		if (!u->packet || !u->can_retransmit) {
-			rad_assert(!u->rr);
+			fr_assert(!u->rr);
 
 			if (unlikely(radius_track_entry_reserve(&u->rr, treq, h->tt, request, u->code, treq) < 0)) {
 #ifndef NDEBUG
 				radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__,
 						       h->tt, udp_tracking_entry_log);
 #endif
-				fr_cond_assert_fail(__FILE__, __LINE__, "0", "Tracking entry allocation failed");
+				fr_assert_fail(__FILE__, __LINE__, "0", "Tracking entry allocation failed");
 			fail:
 				fr_trunk_request_signal_fail(treq);
 				continue;
@@ -1857,9 +1857,9 @@ static void request_mux(fr_event_list_t *el,
 		/*
 		 *	It's UDP so there should never be partial writes
 		 */
-		rad_assert((size_t)h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
+		fr_assert((size_t)h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
 
-		rad_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);
+		fr_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);
 
 		request = treq->request;
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
@@ -1932,7 +1932,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		 */
 		if (!treq) break;
 
- 		rad_assert((treq->state == FR_TRUNK_REQUEST_STATE_PENDING) ||
+ 		fr_assert((treq->state == FR_TRUNK_REQUEST_STATE_PENDING) ||
 			   (treq->state == FR_TRUNK_REQUEST_STATE_PARTIAL));
 
 		request = treq->request;
@@ -2020,7 +2020,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		/*
 		 *	It's UDP so there should never be partial writes
 		 */
-		rad_assert((size_t)h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
+		fr_assert((size_t)h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
 
 		r->rcode = RLM_MODULE_OK;
 		fr_trunk_request_signal_complete(treq);
@@ -2169,8 +2169,8 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 
-	rad_assert(treq->preq == h->status_u);
-	rad_assert(treq->rctx == h->status_r);
+	fr_assert(treq->preq == h->status_u);
+	fr_assert(treq->rctx == h->status_r);
 
 	r->treq = NULL;
 
@@ -2276,7 +2276,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 
 		treq = talloc_get_type_abort(rr->uctx, fr_trunk_request_t);
 		request = treq->request;
-		rad_assert(request != NULL);
+		fr_assert(request != NULL);
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
 		r = talloc_get_type_abort(treq->rctx, udp_result_t);
 
@@ -2440,9 +2440,9 @@ static void request_fail(REQUEST *request, void *preq, void *rctx,
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 
-	rad_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
 
-	rad_assert(state != FR_TRUNK_REQUEST_STATE_INIT);
+	fr_assert(state != FR_TRUNK_REQUEST_STATE_INIT);
 
 	if (u->status_check) return;
 
@@ -2460,7 +2460,7 @@ static void request_complete(REQUEST *request, void *preq, void *rctx, UNUSED vo
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 
-	rad_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
 
 	if (u->status_check) return;
 
@@ -2476,7 +2476,7 @@ static void request_free(UNUSED REQUEST *request, void *preq_to_free, UNUSED voi
 {
 	udp_request_t		*u = talloc_get_type_abort(preq_to_free, udp_request_t);
 
-	rad_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
 
 	/*
 	 *	Don't free status check requests.
@@ -2558,7 +2558,7 @@ static int _udp_request_free(udp_request_t *u)
 {
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
-	rad_assert(u->rr == NULL);
+	fr_assert(u->rr == NULL);
 
 	return 0;
 }
@@ -2571,8 +2571,8 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 	udp_request_t			*u;
 	fr_trunk_request_t		*treq;
 
-	rad_assert(request->packet->code > 0);
-	rad_assert(request->packet->code < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(request->packet->code > 0);
+	fr_assert(request->packet->code < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	If configured, and we don't have any active
@@ -2618,7 +2618,7 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 	}
 
 	if (fr_trunk_request_enqueue(&treq, t->trunk, request, u, r) < 0) {
-		rad_assert(!u->rr && !u->packet);	/* Should not have been fed to the muxer */
+		fr_assert(!u->rr && !u->packet);	/* Should not have been fed to the muxer */
 		fr_trunk_request_free(&treq);		/* Return to the free list */
 		talloc_free(r);
 		return RLM_MODULE_FAIL;

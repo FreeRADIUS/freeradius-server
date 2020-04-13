@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
@@ -248,7 +248,7 @@ fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t c
 	 *	Stupid messy API
 	 */
 	if (lib_errno != LDAP_SUCCESS) {
-		rad_assert(!ctrls || !*ctrls);
+		fr_assert(!ctrls || !*ctrls);
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
 	}
 
@@ -480,10 +480,10 @@ fr_ldap_rcode_t fr_ldap_bind(REQUEST *request,
 
 	int				msgid = -1;
 
-	rad_assert(*pconn && (*pconn)->handle);
+	fr_assert(*pconn && (*pconn)->handle);
 
 #ifndef WITH_SASL
-	rad_assert(!sasl || !sasl->mech);
+	fr_assert(!sasl || !sasl->mech);
 #endif
 
 	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
@@ -588,7 +588,7 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 			      NUM_ELEMENTS(our_clientctrls),
 			      *pconn, serverctrls, clientctrls);
 
-	rad_assert(*pconn && (*pconn)->handle);
+	fr_assert(*pconn && (*pconn)->handle);
 
 	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
 		fr_ldap_timeout_debug(request, *pconn, 0, __FUNCTION__);
@@ -611,7 +611,7 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 				      NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) return LDAP_PROC_ERROR;
 
-		rad_assert(*pconn);
+		fr_assert(*pconn);
 
 		(*pconn)->rebound = false;
 	}
@@ -714,7 +714,7 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
 			      NUM_ELEMENTS(our_clientctrls),
 			      *pconn, serverctrls, clientctrls);
 
-	rad_assert(*pconn && (*pconn)->handle);
+	fr_assert(*pconn && (*pconn)->handle);
 
 	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) fr_ldap_timeout_debug(request, *pconn, 0, __FUNCTION__);
 
@@ -735,7 +735,7 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
 				      NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) return LDAP_PROC_ERROR;
 
-		rad_assert(*pconn);
+		fr_assert(*pconn);
 
 		(*pconn)->rebound = false;
 	}
@@ -795,7 +795,7 @@ fr_ldap_rcode_t fr_ldap_modify(REQUEST *request, fr_ldap_connection_t **pconn,
 			      NUM_ELEMENTS(our_clientctrls),
 			      *pconn, serverctrls, clientctrls);
 
-	rad_assert(*pconn && (*pconn)->handle);
+	fr_assert(*pconn && (*pconn)->handle);
 
 	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, *pconn, 0, __FUNCTION__);
 
@@ -811,7 +811,7 @@ fr_ldap_rcode_t fr_ldap_modify(REQUEST *request, fr_ldap_connection_t **pconn,
 			return LDAP_PROC_ERROR;
 		}
 
-		rad_assert(*pconn);
+		fr_assert(*pconn);
 
 		(*pconn)->rebound = false;
 	}

@@ -28,7 +28,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/unlang/xlat.h>
 
@@ -136,8 +136,8 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 		case UNLANG_UPDATE_MAP_INIT:
 			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_LHS;
 
-			rad_assert(!update_state->lhs_result);	/* Should have been consumed */
-			rad_assert(!update_state->rhs_result);	/* Should have been consumed */
+			fr_assert(!update_state->lhs_result);	/* Should have been consumed */
+			fr_assert(!update_state->rhs_result);	/* Should have been consumed */
 
 			switch (map->lhs->type) {
 			default:
@@ -151,7 +151,7 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 			case TMPL_TYPE_REGEX:
 			case TMPL_TYPE_REGEX_STRUCT:
 			case TMPL_TYPE_XLAT:
-				rad_assert(0);
+				fr_assert(0);
 			error:
 				TALLOC_FREE(frame->state);
 
@@ -188,7 +188,7 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 			case TMPL_TYPE_REGEX:
 			case TMPL_TYPE_REGEX_STRUCT:
 			case TMPL_TYPE_XLAT:
-				rad_assert(0);
+				fr_assert(0);
 				goto error;
 			}
 			/* FALL-THROUGH */
@@ -333,7 +333,7 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_STRUCT:
 	case TMPL_TYPE_XLAT:
-		rad_assert(0);
+		fr_assert(0);
 		goto error;
 	}
 

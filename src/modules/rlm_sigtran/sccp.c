@@ -39,7 +39,7 @@
 #include <osmocom/core/talloc.h>
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/utils.h>
 
@@ -132,7 +132,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 	struct mtp_m3ua_client_link 	*m3ua_client = talloc_get_type_abort(conn->mtp3_link->data,
 									     struct mtp_m3ua_client_link);
 
-	rad_assert(req->imsi);
+	fr_assert(req->imsi);
 
 	if (!mtp_m3ua_link_is_up(m3ua_client)) {
 		ERROR("Link not yet active, dropping the request");
@@ -257,7 +257,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 	}
 	if (!rbtree_deletebydata(txn_tree, found)) {		/* Remove the outstanding transaction */
 		ERROR("Failed removing transaction");
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	txn = talloc_get_type_abort(found, sigtran_transaction_t);

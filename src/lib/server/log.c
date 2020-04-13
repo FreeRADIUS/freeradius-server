@@ -28,7 +28,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
@@ -538,7 +538,7 @@ void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 
 	if (!fmt || !request || !request->packet) return;
 
-	rad_assert(attr_module_failure_message);
+	fr_assert(attr_module_failure_message);
 
 	/*
 	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently

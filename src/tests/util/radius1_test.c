@@ -26,7 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/log.h>
@@ -234,13 +234,13 @@ static void master_process(TALLOC_CTX *ctx)
 	 *	Create the KQ and associated sockets.
 	 */
 	kq_master = kqueue();
-	rad_assert(kq_master >= 0);
+	fr_assert(kq_master >= 0);
 
 	aq_master = fr_atomic_queue_create(ctx, max_control_plane);
-	rad_assert(aq_master != NULL);
+	fr_assert(aq_master != NULL);
 
 	control_master = fr_control_create(ctx, kq_master, aq_master, 1024);
-	rad_assert(control_master != NULL);
+	fr_assert(control_master != NULL);
 
 	sockfd = fr_socket_server_udp(&my_ipaddr, &my_port, NULL, true);
 	if (sockfd < 0) {
@@ -290,7 +290,7 @@ static void master_process(TALLOC_CTX *ctx)
 			 */
 			MPRINT1("Master creating channel to worker %d.\n", num_workers);
 			workers[i].ch = fr_worker_channel_create(workers[i].worker, ctx, control_master);
-			rad_assert(workers[i].ch != NULL);
+			fr_assert(workers[i].ch != NULL);
 
 			(void) fr_channel_master_ctx_add(workers[i].ch, &workers[i]);
 
@@ -341,13 +341,13 @@ static void master_process(TALLOC_CTX *ctx)
 				break;
 			}
 
-			rad_assert(events[i].filter == EVFILT_READ);
+			fr_assert(events[i].filter == EVFILT_READ);
 
 			cd = (fr_channel_data_t *) fr_message_reserve(ms, 4096);
-			rad_assert(cd != NULL);
+			fr_assert(cd != NULL);
 
 			packet_ctx = talloc(ctx, fr_radius_packet_ctx_t);
-			rad_assert(packet_ctx != NULL);
+			fr_assert(packet_ctx != NULL);
 			packet_ctx->salen = sizeof(packet_ctx->src);
 
 			cd->priority = 0;
@@ -412,7 +412,7 @@ static void master_process(TALLOC_CTX *ctx)
 			which_worker++;
 			if (which_worker >= num_workers) which_worker = 0;
 
-			rad_assert(rcode == 0);
+			fr_assert(rcode == 0);
 			if (reply) send_reply(sockfd, reply);
 		}
 
@@ -430,7 +430,7 @@ static void master_process(TALLOC_CTX *ctx)
 			data_size = fr_control_message_pop(aq_master, &id, data, sizeof(data));
 			if (!data_size) break;
 
-			rad_assert(id == FR_CONTROL_ID_CHANNEL);
+			fr_assert(id == FR_CONTROL_ID_CHANNEL);
 
 			ce = fr_channel_service_message(now, &ch, data, data_size);
 			MPRINT1("Master got channel event %d\n", ce);
@@ -452,7 +452,7 @@ static void master_process(TALLOC_CTX *ctx)
 
 			case FR_CHANNEL_CLOSE:
 				sw = fr_channel_master_ctx_get(ch);
-				rad_assert(sw != NULL);
+				fr_assert(sw != NULL);
 
 				MPRINT1("Master received close ack signal for worker %d\n", sw->id);
 
@@ -469,7 +469,7 @@ static void master_process(TALLOC_CTX *ctx)
 				/*
 				 *	Not written yet!
 				 */
-				rad_assert(0 == 1);
+				fr_assert(0 == 1);
 				break;
 			} /* switch over signal returned */
 		} /* drain the control plane */
@@ -510,7 +510,7 @@ static void master_process(TALLOC_CTX *ctx)
 	 */
 	rcode = fr_message_set_messages_used(ms);
 	MPRINT2("Master messages used = %d\n", rcode);
-	rad_assert(rcode == 0);
+	fr_assert(rcode == 0);
 	close(sockfd);
 }
 

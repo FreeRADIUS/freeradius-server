@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base.h>
 
 #include <freeradius-devel/json/base.h>
@@ -109,7 +109,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	ssize_t			slen;
 
 	/* assert packet as not null */
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
 
 	/* attempt to build document key */
 	slen = tmpl_expand(&dockey, buffer, sizeof(buffer), request, inst->user_key, NULL, NULL);
@@ -252,7 +252,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	ssize_t slen;
 
 	/* assert packet as not null */
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
 
 	/* sanity check */
 	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY)) == NULL) {

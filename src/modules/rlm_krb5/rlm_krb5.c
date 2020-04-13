@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "krb5.h"
 
 static const CONF_PARSER module_config[] = {
@@ -287,7 +287,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_
  */
 static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, REQUEST *request, rlm_krb5_handle_t *conn, int ret)
 {
-	rad_assert(ret != 0);
+	fr_assert(ret != 0);
 
 	if (!fr_cond_assert(inst)) return RLM_MODULE_FAIL;
 	if (!fr_cond_assert(conn)) return RLM_MODULE_FAIL;	/* Silences warnings */

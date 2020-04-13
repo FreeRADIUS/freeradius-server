@@ -957,7 +957,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	 *	functions associated with the file descriptor.
 	 */
 	} else {
-		rad_assert(ef->is_registered == true);
+		fr_assert(ef->is_registered == true);
 
 		/*
 		 *	Take a copy of the current set of active
@@ -1057,7 +1057,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
 	}
 
 	ev_p = ev->parent;
-	rad_assert(*(ev->parent) == ev);
+	fr_assert(*(ev->parent) == ev);
 	*ev_p = NULL;
 
 	/*
@@ -1135,7 +1135,7 @@ int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
 	} else {
 		memcpy(&ev, ev_p, sizeof(ev));	/* Not const to us */
 
-		rad_assert(*ev_p == ev);
+		fr_assert(*ev_p == ev);
 
 		/*
 		 *	We can't disarm the linking context due to
@@ -1484,7 +1484,7 @@ int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
 	callback = ev->callback;
 	memcpy(&uctx, &ev->uctx, sizeof(uctx));
 
-	rad_assert(*ev->parent == ev);
+	fr_assert(*ev->parent == ev);
 
 	/*
 	 *	Delete the event before calling it.
@@ -1665,7 +1665,7 @@ void fr_event_service(fr_event_list_t *el)
 			if (el->events[i].ident == 0) continue;
 
 			user = talloc_get_type_abort((void *)el->events[i].ident, fr_event_user_t);
-			rad_assert(user->ident == el->events[i].ident);
+			fr_assert(user->ident == el->events[i].ident);
 
 			user->callback(el->kq, &el->events[i], user->uctx);
 		}
@@ -1678,8 +1678,8 @@ void fr_event_service(fr_event_list_t *el)
 
 			pev = talloc_get_type_abort((void *)el->events[i].udata, fr_event_pid_t);
 
-			rad_assert(pev->pid == (pid_t) el->events[i].ident);
-			rad_assert((el->events[i].fflags & NOTE_EXIT) != 0);
+			fr_assert(pev->pid == (pid_t) el->events[i].ident);
+			fr_assert((el->events[i].fflags & NOTE_EXIT) != 0);
 
 			pid = pev->pid;
 			pev->pid = 0; /* so we won't hit kevent again when it's freed */
@@ -1866,7 +1866,7 @@ service:
 		(void)fr_dlist_remove(&el->ev_to_add, ev);
 		if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
 			talloc_free(ev);
-			rad_assert(0);	/* Die in debug builds */
+			fr_assert(0);	/* Die in debug builds */
 		}
 	}
 

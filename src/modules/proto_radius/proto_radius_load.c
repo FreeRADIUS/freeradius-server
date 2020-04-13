@@ -32,7 +32,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/load.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "proto_radius.h"
 
@@ -219,9 +219,9 @@ static int mod_open(fr_listen_t *li)
 	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &ipaddr, 0);
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 

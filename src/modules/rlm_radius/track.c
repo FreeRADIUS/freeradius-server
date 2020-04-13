@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "track.h"
 #include "rlm_radius.h"
@@ -118,7 +118,7 @@ int radius_track_entry_reserve(
 retry:
 	te = fr_dlist_head(&tt->free_list);
 	if (te) {
-		rad_assert(te->request == NULL);
+		fr_assert(te->request == NULL);
 
 		/*
 		 *	Mark it as used, and remove it from the free list.
@@ -230,7 +230,7 @@ int radius_track_entry_release(
 
 	te->request = NULL;
 
-	rad_assert(tt->num_requests > 0);
+	fr_assert(tt->num_requests > 0);
 	tt->num_requests--;
 
 	/*
@@ -254,7 +254,7 @@ int radius_track_entry_release(
 	/*
 	 *	Delete it from the tracking subtree.
 	 */
-	rad_assert(tt->subtree[te->id] != NULL);
+	fr_assert(tt->subtree[te->id] != NULL);
 	(void) rbtree_deletebydata(tt->subtree[te->id], te);
 
 	/*
@@ -292,7 +292,7 @@ int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
 {
 	radius_track_t *tt = te->tt;
 
-	rad_assert(tt);
+	fr_assert(tt);
 
 	/*
 	 *	The authentication vector may have changed.
@@ -308,7 +308,7 @@ int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
 	 *	@todo - gracefully handle fallback if the server screws up.
 	 */
 	if (!tt->use_authenticator) {
-		rad_assert(te == &tt->id[te->id]);
+		fr_assert(te == &tt->id[te->id]);
 		return 0;
 	}
 
@@ -392,7 +392,7 @@ radius_track_entry_t *radius_track_entry_find(radius_track_t *tt, uint8_t packet
 	}
 
 	(void) talloc_get_type_abort(te, radius_track_entry_t);
-	rad_assert(te->request != NULL);
+	fr_assert(te->request != NULL);
 
 	return te;
 }

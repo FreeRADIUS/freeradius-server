@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 /*
  *	Define a structure for our module configuration.
@@ -191,7 +191,7 @@ fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
 static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	rad_assert(check->vp_type == FR_TYPE_STRING);
+	fr_assert(check->vp_type == FR_TYPE_STRING);
 
 	RINFO("Test-Paircmp called with \"%pV\"", &check->data);
 

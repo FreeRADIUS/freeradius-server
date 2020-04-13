@@ -126,7 +126,7 @@ static void test_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *con
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			break;
 		}
 	} while (slen >= 0);
@@ -177,7 +177,7 @@ static void _conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 }
 
@@ -240,7 +240,7 @@ static void _conn_io_loopback(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 	static size_t	to_write;
 	ssize_t		slen;
 
-	rad_assert(fd == our_h[1]);
+	fr_assert(fd == our_h[1]);
 
 	while (true) {
 		slen = read(fd, buff, sizeof(buff));

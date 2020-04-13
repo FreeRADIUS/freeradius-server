@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <string.h>
 #include <time.h>
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/server/pool.h>
@@ -323,8 +323,8 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
 	/*
 	 *	If len > 0 then we must have these set.
 	 */
-	rad_assert(data->start);
-	rad_assert(data->p);
+	fr_assert(data->start);
+	fr_assert(data->p);
 
 	to_copy = data->len - (data->p - data->start);
 	len = to_copy > freespace ? freespace : to_copy;
@@ -552,7 +552,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	size_t			to_copy;
 	const char		*encoded;
 
-	rad_assert(freespace > 0);
+	fr_assert(freespace > 0);
 
 	if (ctx->state == READ_STATE_INIT) {
 		encoded = fr_json_afrom_pair_list(data, request->packet->vps, NULL);
@@ -775,7 +775,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		ctx = radius_list_ctx(current, dst->tmpl_list);
 		da = dst->tmpl_da;
 
-		rad_assert(vps);
+		fr_assert(vps);
 
 		RINDENT();
 		RDEBUG3("Type  : %s", fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
@@ -802,7 +802,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 
 		if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) goto skip;
 
-		rad_assert(expanded);
+		fr_assert(expanded);
 
 		MEM(vp = fr_pair_afrom_da(ctx, da));
 		if (!vp) {
@@ -1358,7 +1358,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		 */
 		q = NULL;
 		ctx->code = (int)strtoul(p, &q, 10);
-		rad_assert(q == (p + 3));	/* We check this above */
+		fr_assert(q == (p + 3));	/* We check this above */
 		p = q;
 
 		/*
@@ -1627,7 +1627,7 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
 {
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
-	rad_assert(ctx->response.buffer || !ctx->response.used);
+	fr_assert(ctx->response.buffer || !ctx->response.used);
 
 	*out = ctx->response.buffer;
 	return ctx->response.used;
@@ -1690,7 +1690,7 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	}
 	RDEBUG2("Content-Length will be %zu bytes", len);
 
-	rad_assert((len == 0) || (talloc_array_length(uctx->body) >= (size_t)len));
+	fr_assert((len == 0) || (talloc_array_length(uctx->body) >= (size_t)len));
 	SET_OPTION(CURLOPT_POSTFIELDS, uctx->body);
 	SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
 
@@ -1832,8 +1832,8 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 
 	char			buffer[512];
 
-	rad_assert(candle);
-	rad_assert((!username && !password) || (username && password));
+	fr_assert(candle);
+	fr_assert((!username && !password) || (username && password));
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
 
@@ -1959,7 +1959,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	};
 
@@ -2074,7 +2074,7 @@ do {\
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	};
 
 	/*
@@ -2151,7 +2151,7 @@ do {\
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 
@@ -2307,7 +2307,7 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
 		return -1;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	return ret;

@@ -53,7 +53,7 @@ typedef struct {
 
 static inline unlang_module_t *unlang_generic_to_module(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_TYPE_MODULE);
+	fr_assert(p->type == UNLANG_TYPE_MODULE);
 	return talloc_get_type_abort(p, unlang_module_t);
 }
 

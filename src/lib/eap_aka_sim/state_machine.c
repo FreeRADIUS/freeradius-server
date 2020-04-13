@@ -233,7 +233,7 @@ static void identity_hint_pairs_add(fr_aka_sim_id_type_t *type_p, fr_aka_sim_met
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 
@@ -260,7 +260,7 @@ static void identity_hint_pairs_add(fr_aka_sim_id_type_t *type_p, fr_aka_sim_met
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 
@@ -338,7 +338,7 @@ static int identity_req_pairs_add(REQUEST *request, eap_aka_sim_session_t *eap_a
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	return 0;
@@ -582,7 +582,7 @@ static rlm_rcode_t pseudonym_store_resume(void *instance, UNUSED void *thread, R
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			break;
 		}
 
@@ -1192,13 +1192,13 @@ static rlm_rcode_t common_reauthentication_request_compose(eap_aka_sim_common_co
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			break;
 		}
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 
@@ -1378,7 +1378,7 @@ static rlm_rcode_t aka_challenge_request_compose(eap_aka_sim_common_conf_t *inst
 	switch (eap_aka_sim_session->type) {
 	default:
 	case FR_EAP_METHOD_SIM:
-		rad_assert(0);	/* EAP-SIM has its own Challenge state */
+		fr_assert(0);	/* EAP-SIM has its own Challenge state */
 		break;
 
 	case FR_EAP_METHOD_AKA:
@@ -1392,7 +1392,7 @@ static rlm_rcode_t aka_challenge_request_compose(eap_aka_sim_common_conf_t *inst
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			break;
 		}
 	}
@@ -2376,7 +2376,7 @@ static rlm_rcode_t common_challenge_enter(eap_aka_sim_common_conf_t *inst,
 		break;
 	}
 
-	rad_assert(0);
+	fr_assert(0);
 	return RLM_MODULE_FAIL;
 }
 
@@ -2471,7 +2471,7 @@ static rlm_rcode_t common_identity_enter(eap_aka_sim_common_conf_t *inst,
 		break;
 	}
 
-	rad_assert(0);
+	fr_assert(0);
 	return RLM_MODULE_FAIL;
 }
 
@@ -2846,7 +2846,7 @@ static rlm_rcode_t aka_identity_response_process(eap_aka_sim_common_conf_t *inst
 				break;
 
 			case AKA_SIM_NO_ID_REQ:	/* Should not happen */
-				rad_assert(0);
+				fr_assert(0);
 				/* FALL-THROUGH */
 
 			case AKA_SIM_PERMANENT_ID_REQ:
@@ -3015,7 +3015,7 @@ static rlm_rcode_t sim_start_response_process(eap_aka_sim_common_conf_t *inst,
 				break;
 
 			case AKA_SIM_NO_ID_REQ:	/* Should not happen */
-				rad_assert(0);
+				fr_assert(0);
 				/* FALL-THROUGH */
 
 			case AKA_SIM_PERMANENT_ID_REQ:
@@ -3379,7 +3379,7 @@ static rlm_rcode_t common_decode(VALUE_PAIR **subtype_vp, VALUE_PAIR **vps,
  */
 static rlm_rcode_t common_eap_failure(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
-	rad_assert(0);	/* Should never actually be called */
+	fr_assert(0);	/* Should never actually be called */
 	return RLM_MODULE_FAIL;
 }
 
@@ -3428,7 +3428,7 @@ static rlm_rcode_t common_failure_notification(void *instance, UNUSED void *thre
  */
 static rlm_rcode_t common_eap_success(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
-	rad_assert(0);
+	fr_assert(0);
 	return RLM_MODULE_FAIL;
 }
 
@@ -3999,7 +3999,7 @@ static rlm_rcode_t common_eap_identity_resume(void *instance, UNUSED void *threa
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return RLM_MODULE_FAIL;
 	}
 

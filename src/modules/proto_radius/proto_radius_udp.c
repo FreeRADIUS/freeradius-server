@@ -32,7 +32,7 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "proto_radius.h"
 
@@ -242,7 +242,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	We only write RADIUS packets.
 	 */
-	rad_assert(buffer_len >= 20);
+	fr_assert(buffer_len >= 20);
 
 	/*
 	 *	Only write replies if they're RADIUS packets.
@@ -355,9 +355,9 @@ static int mod_open(fr_listen_t *li)
 	thread->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 
@@ -496,9 +496,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 

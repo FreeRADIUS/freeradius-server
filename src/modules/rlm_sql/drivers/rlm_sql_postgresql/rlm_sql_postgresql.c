@@ -42,7 +42,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_postgresql - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sys/stat.h>
 
@@ -485,7 +485,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	char const		*p, *q;
 	size_t			i = 0;
 
-	rad_assert(outlen > 0);
+	fr_assert(outlen > 0);
 
 	p = PQerrorMessage(conn->db);
 	while ((q = strchr(p, '\n'))) {

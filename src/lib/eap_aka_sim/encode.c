@@ -25,7 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/sha1.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/io/test_point.h>
@@ -616,7 +616,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 	size_t			element_len;
 	uint16_t		actual_len;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	rad_assert(da->flags.array);
+	fr_assert(da->flags.array);
 
 	p += 2;
 	value = p;	/* Space for actual length */
@@ -1048,7 +1048,7 @@ ssize_t fr_aka_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_
 			return PAIR_ENCODE_FATAL_ERROR;
 		}
 		p += slen;
-		rad_assert(p < end);	/* We messed up a check somewhere in the encoder */
+		fr_assert(p < end);	/* We messed up a check somewhere in the encoder */
 	}
 
 	eap_packet->type.length = p - buff;

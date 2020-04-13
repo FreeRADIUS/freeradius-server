@@ -23,7 +23,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/md5.h>
 
 #include "eap_md5.h"
@@ -59,7 +59,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	/*
 	 *	Get the Cleartext-Password for this user.
 	 */
-	rad_assert(eap_session->request != NULL);
+	fr_assert(eap_session->request != NULL);
 
 	known_good = password_find(&ephemeral, request, request->parent,
 				   allowed_passwords, NUM_ELEMENTS(allowed_passwords),
@@ -116,7 +116,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, UNUSED void *thread, 
 	MD5_PACKET	*reply;
 	int		i;
 
-	rad_assert(eap_session != NULL);
+	fr_assert(eap_session != NULL);
 
 	/*
 	 *	Allocate an EAP-MD5 packet.

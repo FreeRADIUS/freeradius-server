@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include "base.h"
 #include "attrs.h"
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 static int vector_opc_from_op(REQUEST *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
 			      VALUE_PAIR *list, uint8_t const ki[MILENAGE_KI_SIZE])
@@ -331,8 +331,8 @@ int fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 {
 	int		ret;
 
-	rad_assert(idx >= 0 && idx < 3);
-	rad_assert((keys->vector_type == AKA_SIM_VECTOR_NONE) || (keys->vector_type == AKA_SIM_VECTOR_GSM));
+	fr_assert(idx >= 0 && idx < 3);
+	fr_assert((keys->vector_type == AKA_SIM_VECTOR_NONE) || (keys->vector_type == AKA_SIM_VECTOR_GSM));
 
 	switch (*src) {
 	default:
@@ -581,7 +581,7 @@ static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_key
 		return 0;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 }
@@ -756,7 +756,7 @@ int fr_aka_sim_vector_umts_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 {
 	int		ret;
 
-	rad_assert((keys->vector_type == AKA_SIM_VECTOR_NONE) || (keys->vector_type == AKA_SIM_VECTOR_UMTS));
+	fr_assert((keys->vector_type == AKA_SIM_VECTOR_NONE) || (keys->vector_type == AKA_SIM_VECTOR_UMTS));
 
 	switch (*src) {
 	default:

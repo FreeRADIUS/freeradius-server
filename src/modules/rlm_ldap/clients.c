@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <ctype.h>
 
 #define LOG_PREFIX "rlm_ldap (%s) - "
@@ -125,7 +125,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 
 	DEBUG("Loading dynamic clients");
 
-	rad_assert(inst->clientobj_base_dn);
+	fr_assert(inst->clientobj_base_dn);
 
 	count = cf_pair_count(map);
 	count++;
@@ -159,7 +159,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 			goto finish;
 		}
 
-		rad_assert(conn);
+		fr_assert(conn);
 
 		conn->rebound = false;
 	}
@@ -180,7 +180,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 		goto finish;
 	}
 
-	rad_assert(conn);
+	fr_assert(conn);
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
 		int ldap_errno;

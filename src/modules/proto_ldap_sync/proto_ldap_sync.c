@@ -32,7 +32,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/main_loop.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <sys/socket.h>
 
 #include "sync.h"
@@ -231,7 +231,7 @@ fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
 static REQUEST *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
 		       UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
 {
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 	return NULL;
 }
 
@@ -399,7 +399,7 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			return;
 		}
 		unlang = cf_section_find(request->server_cs, verb, state);
@@ -439,7 +439,7 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 		default:
 			break;
 		}
-		rad_assert(request->log.unlang_indent == 0);
+		fr_assert(request->log.unlang_indent == 0);
 		//request_delete(request);
 		break;
 	}
@@ -1105,7 +1105,7 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 
 	talloc_set_type(inst, proto_ldap_inst_t);
 
-	rad_assert(inst->handle_config.server_str[0]);
+	fr_assert(inst->handle_config.server_str[0]);
 	inst->handle_config.name = talloc_typed_asprintf(inst, "proto_ldap_conn (%s)", listen->server);
 
 	memcpy(&inst->handle_config.server, &inst->handle_config.server_str[0], sizeof(inst->handle_config.server));

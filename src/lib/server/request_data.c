@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/request_data.h>
 
 /** Per-request opaque data, added by modules
@@ -194,12 +194,12 @@ int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, 
 	/*
 	 *	Request must have a state ctx
 	 */
-	rad_assert(request);
-	rad_assert(!persist || request->state_ctx);
-	rad_assert(!persist ||
+	fr_assert(request);
+	fr_assert(!persist || request->state_ctx);
+	fr_assert(!persist ||
 		   (talloc_parent(opaque) == request->state_ctx) ||
 		   (talloc_parent(opaque) == talloc_null_ctx()));
-	rad_assert(!free_on_parent || (talloc_parent(opaque) != request));
+	fr_assert(!free_on_parent || (talloc_parent(opaque) != request));
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (type) opaque = _talloc_get_type_abort(opaque, type, __location__);
@@ -243,7 +243,7 @@ int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, 
 	 */
 	if (!rd) {
 		if (persist) {
-			rad_assert(request->state_ctx);
+			fr_assert(request->state_ctx);
 			rd = request_data_alloc(request->state_ctx);
 		} else {
 			rd = request_data_alloc(request);

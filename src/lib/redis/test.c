@@ -28,7 +28,7 @@ static void _command_complete(REQUEST *request, fr_dlist_head_t *completed, void
 	     fr_box_time_delta(io_time),
 	     (uint32_t)(stats->enqueued / ((float)io_time / NSEC)));
 
-	rad_assert(fr_dlist_num_elements(completed) == stats->enqueued);
+	fr_assert(fr_dlist_num_elements(completed) == stats->enqueued);
 }
 
 static void _command_failed(REQUEST *request, fr_dlist_head_t *completed, void *rctx)

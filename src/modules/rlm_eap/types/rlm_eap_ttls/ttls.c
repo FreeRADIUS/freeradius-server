@@ -151,7 +151,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	fr_dict_attr_t const   	*attr_radius;
 
 	dict_radius = fr_dict_by_protocol_name("radius");
-	rad_assert(dict_radius != NULL);
+	fr_assert(dict_radius != NULL);
 	attr_radius = fr_dict_root(dict_radius);
 
 	while (p < end) {
@@ -461,7 +461,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 
 	ttls_tunnel_t	*t = tls_session->opaque;
 
-	rad_assert(eap_session->request == request);
+	fr_assert(eap_session->request == request);
 
 	/*
 	 *	If the response packet was Access-Accept, then

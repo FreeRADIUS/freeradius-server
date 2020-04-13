@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/io/listen.h>
@@ -156,7 +156,7 @@ runit:
 #ifdef __clang_analyzer__
 		if (!request->parent) return RLM_MODULE_FAIL;
 #endif
-		rad_assert(request->parent != NULL);
+		fr_assert(request->parent != NULL);
 
 		request->async = talloc_memdup(request, request->parent->async, sizeof(fr_async_t));
 		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));

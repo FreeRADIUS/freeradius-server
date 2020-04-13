@@ -32,7 +32,7 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "proto_control.h"
 
 extern fr_app_io_t proto_control_tcp;
@@ -210,7 +210,7 @@ static int mod_open(fr_listen_t *li)
 	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
 
-	rad_assert(!inst->connection);
+	fr_assert(!inst->connection);
 
 	li->fd = sockfd = fr_socket_server_tcp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -234,9 +234,9 @@ static int mod_open(fr_listen_t *li)
 	inst->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 

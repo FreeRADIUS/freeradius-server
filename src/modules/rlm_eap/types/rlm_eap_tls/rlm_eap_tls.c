@@ -86,7 +86,7 @@ static rlm_rcode_t eap_tls_success_with_prf(REQUEST *request, eap_session_t *eap
 	switch (SSL_SESSION_get_protocol_version(SSL_get_session(tls_session->ssl))) {
 	case SSL2_VERSION:			/* Should never happen */
 	case SSL3_VERSION:			/* Should never happen */
-		rad_assert(0);
+		fr_assert(0);
 		return RLM_MODULE_INVALID;
 
 	case TLS1_VERSION:
@@ -158,7 +158,7 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, REQUEST *request,
 		}
 	} else {
 		server_cs = virtual_server_find(inst->virtual_server);
-		rad_assert(server_cs);
+		fr_assert(server_cs);
 	}
 
 	section = cf_section_find(server_cs, "recv", "Access-Request");

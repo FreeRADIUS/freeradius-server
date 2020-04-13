@@ -25,7 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/worker.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_GETOPT_H
@@ -245,7 +245,7 @@ static void master_process(void)
 			 */
 			MPRINT1("Master creating channel to worker %d.\n", num_workers);
 			workers[i].ch = fr_worker_channel_create(workers[i].worker, ctx, control_master);
-			rad_assert(workers[i].ch != NULL);
+			fr_assert(workers[i].ch != NULL);
 
 			(void) fr_channel_master_ctx_add(workers[i].ch, &workers[i]);
 
@@ -285,7 +285,7 @@ static void master_process(void)
 
 		for (i = 0; i < num_to_send; i++) {
 			cd = (fr_channel_data_t *) fr_message_alloc(ms, NULL, 100);
-			rad_assert(cd != NULL);
+			fr_assert(cd != NULL);
 
 			num_outstanding++;
 			num_messages++;
@@ -315,7 +315,7 @@ static void master_process(void)
 			which_worker++;
 			if (which_worker >= num_workers) which_worker = 0;
 
-			rad_assert(rcode == 0);
+			fr_assert(rcode == 0);
 			if (reply) {
 				num_replies++;
 				num_outstanding--;
@@ -349,7 +349,7 @@ check_close:
 		}
 
 		MPRINT1("Master waiting on events.\n");
-		rad_assert(num_messages <= max_messages);
+		fr_assert(num_messages <= max_messages);
 
 		num_events = kevent(kq_master, NULL, 0, events, MAX_KEVENTS, NULL);
 		MPRINT1("Master kevent returned %d\n", num_events);
@@ -384,7 +384,7 @@ check_close:
 			data_size = fr_control_message_pop(aq_master, &id, data, sizeof(data));
 			if (!data_size) break;
 
-			rad_assert(id == FR_CONTROL_ID_CHANNEL);
+			fr_assert(id == FR_CONTROL_ID_CHANNEL);
 
 			ce = fr_channel_service_message(now, &ch, data, data_size);
 			MPRINT1("Master got channel event %d\n", ce);
@@ -410,10 +410,10 @@ check_close:
 
 			case FR_CHANNEL_CLOSE:
 				sw = fr_channel_master_ctx_get(ch);
-				rad_assert(sw != NULL);
+				fr_assert(sw != NULL);
 
 				MPRINT1("Master received close signal for worker %d\n", sw->id);
-				rad_assert(signaled_close == true);
+				fr_assert(signaled_close == true);
 
 				(void) pthread_kill(sw->pthread_id, SIGTERM);
 				running = false;
@@ -428,7 +428,7 @@ check_close:
 				/*
 				 *	Not written yet!
 				 */
-				rad_assert(0 == 1);
+				fr_assert(0 == 1);
 				break;
 			} /* switch over signal returned */
 		} /* drain the control plane */
@@ -469,7 +469,7 @@ check_close:
 	 */
 	rcode = fr_message_set_messages_used(ms);
 	MPRINT2("Master messages used = %d\n", rcode);
-	rad_assert(rcode == 0);
+	fr_assert(rcode == 0);
 
 	talloc_free(ctx);
 
@@ -541,13 +541,13 @@ int main(int argc, char *argv[])
 #endif
 
 	kq_master = kqueue();
-	rad_assert(kq_master >= 0);
+	fr_assert(kq_master >= 0);
 
 	aq_master = fr_atomic_queue_create(autofree, max_control_plane);
-	rad_assert(aq_master != NULL);
+	fr_assert(aq_master != NULL);
 
 	control_master = fr_control_create(autofree, kq_master, aq_master, 1024);
-	rad_assert(control_master != NULL);
+	fr_assert(control_master != NULL);
 
 	signal(SIGTERM, sig_ignore);
 

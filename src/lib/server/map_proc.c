@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map_proc_priv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 static rbtree_t *map_proc_root = NULL;
 
@@ -112,7 +112,7 @@ int map_proc_register(void *mod_inst, char const *name,
 {
 	map_proc_t *proc;
 
-	rad_assert(name && name[0]);
+	fr_assert(name && name[0]);
 
 	if (!map_proc_root) {
 		map_proc_root = rbtree_talloc_create(NULL, map_proc_cmp, map_proc_t,

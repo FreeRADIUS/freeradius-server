@@ -28,7 +28,7 @@ RCSIDH(lib_eap_base_h, "$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/eap/compose.h>

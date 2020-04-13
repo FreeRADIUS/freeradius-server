@@ -65,7 +65,7 @@ static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNU
 	void *mutable_ctx;
 	void *mutable_inst;
 
-	rad_assert(ev->fd == fd);
+	fr_assert(ev->fd == fd);
 
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
@@ -138,8 +138,8 @@ int unlang_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callb
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state,
 								    unlang_frame_state_module_t);
 
-	rad_assert(stack->depth > 0);
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
+	fr_assert(stack->depth > 0);
+	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
 	sp = unlang_generic_to_module(frame->instruction);
 
 	ev = talloc_zero(request, unlang_module_event_t);
@@ -198,7 +198,7 @@ static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UN
 	void *mutable_ctx;
 	void *mutable_inst;
 
-	rad_assert(ev->fd == fd);
+	fr_assert(ev->fd == fd);
 
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
@@ -221,7 +221,7 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
 	void *mutable_ctx;
 	void *mutable_inst;
 
-	rad_assert(ev->fd == fd);
+	fr_assert(ev->fd == fd);
 
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
@@ -267,9 +267,9 @@ int unlang_module_fd_add(REQUEST *request,
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state,
 								    unlang_frame_state_module_t);
 
-	rad_assert(stack->depth > 0);
+	fr_assert(stack->depth > 0);
 
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
+	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
 	sp = unlang_generic_to_module(frame->instruction);
 
 	ev = talloc_zero(request, unlang_module_event_t);
@@ -361,7 +361,7 @@ void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
 	MEM(state = talloc_zero(stack, unlang_frame_state_module_t));
 	state->presult = out;
 	state->thread = module_thread(module_instance);
-	rad_assert(state->thread != NULL);
+	fr_assert(state->thread != NULL);
 
 	/*
 	 *	We need to have a unlang_module_t to push on the
@@ -528,7 +528,7 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 		unlang_t		*instruction = frame->instruction;
 		unlang_module_t	*sp;
 
-		rad_assert(instruction->type == UNLANG_TYPE_MODULE);
+		fr_assert(instruction->type == UNLANG_TYPE_MODULE);
 		sp = unlang_generic_to_module(instruction);
 
 		/*
@@ -636,7 +636,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	rlm_rcode_t			rcode;
 	int				stack_depth = stack->depth;
 
-	rad_assert(state->resume != NULL);
+	fr_assert(state->resume != NULL);
 
 	/*
 	 *	Lock is noop unless instance->mutex is set.
@@ -671,7 +671,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 
 	if (rcode == RLM_MODULE_YIELD) {
 		if (stack_depth < stack->depth) return UNLANG_ACTION_PUSHED_CHILD;
-		rad_assert(stack_depth == stack->depth);
+		fr_assert(stack_depth == stack->depth);
 		*presult = rcode;
 		return UNLANG_ACTION_YIELD;
 	}
@@ -764,7 +764,7 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult)
 	 *	to dealing with it's parent.
 	 */
 	sp = unlang_generic_to_module(instruction);
-	rad_assert(sp);
+	fr_assert(sp);
 
 	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__,
 		sp->module_instance->name, sp->module_instance->module->name);
@@ -774,7 +774,7 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult)
 	 */
 	state->thread = module_thread(sp->module_instance);
 	state->presult = NULL;
-	rad_assert(state->thread != NULL);
+	fr_assert(state->thread != NULL);
 
 	/*
 	 *	Return administratively configured return code
@@ -818,16 +818,16 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult)
 	if (rcode == RLM_MODULE_YIELD) {
 		state->thread->active_callers++;
 		if (stack_depth < stack->depth) return UNLANG_ACTION_PUSHED_CHILD;
-		rad_assert(stack_depth == stack->depth);
+		fr_assert(stack_depth == stack->depth);
 		*presult = rcode;
 		frame->interpret = unlang_module_resume;
 		return UNLANG_ACTION_YIELD;
 	}
 
 done:
-	rad_assert(unlang_indent == request->log.unlang_indent);
-	rad_assert(rcode >= RLM_MODULE_REJECT);
-	rad_assert(rcode < RLM_MODULE_NUMCODES);
+	fr_assert(unlang_indent == request->log.unlang_indent);
+	fr_assert(rcode >= RLM_MODULE_REJECT);
+	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
 	/*
 	 *	The module is done.  But, running it pushed one or

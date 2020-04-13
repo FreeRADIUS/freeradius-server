@@ -24,7 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/util/time.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <sys/event.h>
@@ -127,12 +127,12 @@ static void *control_master(UNUSED void *arg)
 				exit(EXIT_FAILURE);
 			}
 
-			rad_assert(data_size == sizeof(m));
-			rad_assert(id == FR_CONTROL_ID_CHANNEL);
+			fr_assert(data_size == sizeof(m));
+			fr_assert(id == FR_CONTROL_ID_CHANNEL);
 
 			MPRINT1("Master got message %zu.\n", m.counter);
 
-			rad_assert(m.header == CONTROL_MAGIC);
+			fr_assert(m.header == CONTROL_MAGIC);
 
 			if (m.counter == (max_messages - 1)) goto do_exit;
 		}
@@ -209,10 +209,10 @@ int main(int argc, char *argv[])
 #endif
 
 	kq = kqueue();
-	rad_assert(kq >= 0);
+	fr_assert(kq >= 0);
 
 	aq = fr_atomic_queue_create(autofree, aq_size);
-	rad_assert(aq != NULL);
+	fr_assert(aq != NULL);
 
 	control = fr_control_create(autofree, kq, aq, 1024);
 	if (!control) {

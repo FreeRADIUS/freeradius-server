@@ -23,7 +23,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/unlang/base.h>
 
@@ -655,8 +655,8 @@ static void bfd_calc_md5(bfd_state_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_md5_t *md5 = &bfd->auth.md5;
 
-	rad_assert(session->secret_len <= sizeof(md5->digest));
-	rad_assert(md5->auth_len == sizeof(*md5));
+	fr_assert(session->secret_len <= sizeof(md5->digest));
+	fr_assert(md5->auth_len == sizeof(*md5));
 
 	memset(md5->digest, 0, sizeof(md5->digest));
 	memcpy(md5->digest, session->secret, session->secret_len);
@@ -722,8 +722,8 @@ static void bfd_calc_sha1(bfd_state_t *session, bfd_packet_t *bfd)
 	fr_sha1_ctx ctx;
 	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
 
-	rad_assert(session->secret_len <= sizeof(sha1->digest));
-	rad_assert(sha1->auth_len == sizeof(*sha1));
+	fr_assert(session->secret_len <= sizeof(sha1->digest));
+	fr_assert(sha1->auth_len == sizeof(*sha1));
 
 	memset(sha1->digest, 0, sizeof(sha1->digest));
 	memcpy(sha1->digest, session->secret, session->secret_len);
@@ -945,7 +945,7 @@ static int bfd_start_packets(bfd_state_t *session)
 	if (fr_event_timer_in(session, session->el, &session->ev_packet,
 			      fr_time_delta_from_usec(interval),
 			      bfd_send_packet, session) < 0) {
-		rad_assert("Failed to insert event" == NULL);
+		fr_assert("Failed to insert event" == NULL);
 	}
 
 	return 0;
@@ -972,7 +972,7 @@ static void bfd_set_timeout(bfd_state_t *session, fr_time_t when)
 
 	if (fr_event_timer_at(session, session->el, &session->ev_timeout,
 			      now, bfd_detection_timeout, session) < 0) {
-		rad_assert("Failed to insert event" == NULL);
+		fr_assert("Failed to insert event" == NULL);
 	}
 }
 
@@ -989,7 +989,7 @@ static int bfd_start_control(bfd_state_t *session)
 	    !session->doing_poll) {
 		DEBUG("BFD %d warning: asked to start UP / UP ?",
 		      session->number);
-		rad_assert(0 == 1);
+		fr_assert(0 == 1);
 		bfd_stop_control(session);
 		return 0;
 	}
@@ -1049,8 +1049,8 @@ static int bfd_stop_poll(bfd_state_t *session)
 	 *	re-set the timers.
 	 */
 	if (!session->remote_demand_mode) {
-		rad_assert(session->ev_timeout != NULL);
-		rad_assert(session->ev_packet != NULL);
+		fr_assert(session->ev_timeout != NULL);
+		fr_assert(session->ev_packet != NULL);
 		session->doing_poll = 0;
 
 		bfd_stop_control(session);
@@ -1616,21 +1616,21 @@ static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
  */
 static int bfd_socket_send(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
 {
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 	return 0;
 }
 
 
 static int bfd_socket_encode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
 {
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 	return 0;
 }
 
 
 static int bfd_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
 {
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 	return 0;
 }
 
@@ -1658,7 +1658,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	uint16_t listen_port;
 	fr_ipaddr_t ipaddr;
 
-	rad_assert(sock != NULL);
+	fr_assert(sock != NULL);
 
 	if (bfd_parse_ip_port(cs, &ipaddr, &listen_port) < 0) {
 		return -1;

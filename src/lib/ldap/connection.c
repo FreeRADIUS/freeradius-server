@@ -26,7 +26,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #if LDAP_SET_REBIND_PROC_ARGS == 3
 /** Callback for OpenLDAP to rebind and chase referrals
@@ -53,7 +53,7 @@ static int fr_ldap_rebind(LDAP *handle, LDAP_CONST char *url,
 
 	conn->referred = true;
 	conn->rebound = true;	/* not really, but oh well... */
-	rad_assert(handle == conn->handle);
+	fr_assert(handle == conn->handle);
 
 	DEBUG("Rebinding to URL %s", url);
 
@@ -165,7 +165,7 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 	LDAP				*handle = NULL;
 	int				ldap_errno, ldap_version;
 
-	rad_assert(config->server);
+	fr_assert(config->server);
 
 #ifdef HAVE_LDAP_INITIALIZE
 	ldap_errno = ldap_initialize(&handle, config->server);

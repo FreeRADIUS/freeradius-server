@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
@@ -403,7 +403,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -561,7 +561,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 
 	fr_cursor_t	cursor;
 
-	rad_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
 	/*
 	 *	See if we're dealing with an attribute in the request
@@ -861,7 +861,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	{
 		fr_cursor_t from;
 
-		rad_assert(alternate);
+		fr_assert(alternate);
 
 		/*
 		 *	No result from the first child, try the alternate
@@ -896,7 +896,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		(void) talloc_list_get_type_abort(*result, fr_value_box_t);
 		fr_cursor_init(&from, result);
 		fr_cursor_merge(out, &from);
-		rad_assert(!*result);
+		fr_assert(!*result);
 	}
 		break;
 
@@ -908,7 +908,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 			   node->fmt);
 
-		rad_assert(*result != NULL);
+		fr_assert(*result != NULL);
 		(void) talloc_list_get_type_abort(*result, fr_value_box_t);
 
 		box = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false);
@@ -920,12 +920,12 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 		fr_cursor_init(&from, &box);
 		fr_cursor_merge(out, &from);
-		rad_assert(!box);
+		fr_assert(!box);
 	}
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -1088,8 +1088,8 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 		case XLAT_ALTERNATE:
 			XLAT_DEBUG("** [%i] %s(alternate) - %%{%%{%s}:-%%{%s}}", unlang_interpret_stack_depth(request),
 				   __FUNCTION__, node->child->fmt, node->alternate->fmt);
-			rad_assert(node->child != NULL);
-			rad_assert(node->alternate != NULL);
+			fr_assert(node->child != NULL);
+			fr_assert(node->alternate != NULL);
 
 			*child = node->child;
 			xa = XLAT_ACTION_PUSH_CHILD;
@@ -1349,8 +1349,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_ALTERNATE:
 		XLAT_DEBUG("%.*sxlat_aprint ALTERNATE", lvl, xlat_spaces);
-		rad_assert(node->child != NULL);
-		rad_assert(node->alternate != NULL);
+		fr_assert(node->child != NULL);
+		fr_assert(node->alternate != NULL);
 
 		/*
 		 *	Call xlat_process recursively.  The child /
@@ -1509,11 +1509,11 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, R
 	char *buff;
 	ssize_t len;
 
-	rad_assert(node != NULL);
+	fr_assert(node != NULL);
 
 	len = xlat_process(ctx, &buff, request, node, escape, escape_ctx);
 	if ((len < 0) || !buff) {
-		rad_assert(buff == NULL);
+		fr_assert(buff == NULL);
 		if (*out) **out = '\0';
 		return len;
 	}
@@ -1595,7 +1595,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request,
 		  char const *fmt, xlat_escape_t escape, void const *escape_ctx)
 {
-	rad_assert(done_init);
+	fr_assert(done_init);
 
 	return _xlat_eval(request, &out, outlen, request, fmt, escape, escape_ctx);
 }
@@ -1603,7 +1603,7 @@ ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request,
 ssize_t xlat_eval_compiled(char *out, size_t outlen, REQUEST *request,
 			   xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 {
-	rad_assert(done_init);
+	fr_assert(done_init);
 
 	return _xlat_eval_compiled(request, &out, outlen, request, xlat, escape, escape_ctx);
 }
@@ -1611,7 +1611,7 @@ ssize_t xlat_eval_compiled(char *out, size_t outlen, REQUEST *request,
 ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fmt,
 		   xlat_escape_t escape, void const *escape_ctx)
 {
-	rad_assert(done_init);
+	fr_assert(done_init);
 
 	*out = NULL;
 	return _xlat_eval(ctx, out, 0, request, fmt, escape, escape_ctx);
@@ -1620,7 +1620,7 @@ ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fm
 ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 			    xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 {
-	rad_assert(done_init);
+	fr_assert(done_init);
 
 	*out = NULL;
 	return _xlat_eval_compiled(ctx, out, 0, request, xlat, escape, escape_ctx);
@@ -1654,7 +1654,7 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
 	MEM(my_argv = talloc_zero_array(ctx, char *, xlat->count + 1));
 	*argv = my_argv;
 
-	rad_assert(done_init);
+	fr_assert(done_init);
 
 	for (i = 0, node = xlat; node != NULL; i++, node = node->next) {
 		my_argv[i] = NULL;
@@ -1681,7 +1681,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_e
 	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_t const *, xlat->count + 1));
 	*argv = my_argv;
 
-	rad_assert(done_init);
+	fr_assert(done_init);
 
 	for (i = 0, node = xlat; node != NULL; i++, node = node->next) {
 		my_argv[i] = node->child;
@@ -1819,7 +1819,7 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void
 
 int xlat_eval_init(void)
 {
-	rad_assert(!done_init);
+	fr_assert(!done_init);
 
 	if (fr_dict_autoload(xlat_eval_dict) < 0) {
 		PERROR("%s", __FUNCTION__);

@@ -27,7 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 
@@ -120,7 +120,7 @@ size_t radius_list_name(pair_list_t *out, char const *name, pair_list_t def)
 	char const *q;
 
 	/* This should never be a NULL pointer */
-	rad_assert(name);
+	fr_assert(name);
 
 	/*
 	 *	Try and determine the end of the token
@@ -407,7 +407,7 @@ int radius_request(REQUEST **context, request_ref_t name)
 
 	case REQUEST_UNKNOWN:
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 
@@ -437,9 +437,9 @@ int radius_request(REQUEST **context, request_ref_t name)
  */
 vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len, FR_TOKEN quote)
 {
-	rad_assert(vpt);
-	rad_assert(type != TMPL_TYPE_UNKNOWN);
-	rad_assert(type <= TMPL_TYPE_NULL);
+	fr_assert(vpt);
+	fr_assert(type != TMPL_TYPE_UNKNOWN);
+	fr_assert(type <= TMPL_TYPE_NULL);
 
 	memset(vpt, 0, sizeof(vp_tmpl_t));
 	vpt->type = type;
@@ -468,8 +468,8 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 {
 	vp_tmpl_t *vpt;
 
-	rad_assert(type != TMPL_TYPE_UNKNOWN);
-	rad_assert(type <= TMPL_TYPE_NULL);
+	fr_assert(type != TMPL_TYPE_UNKNOWN);
+	fr_assert(type <= TMPL_TYPE_NULL);
 
 #ifndef HAVE_REGEX
 	if ((type == TMPL_TYPE_REGEX) || (type == TMPL_TYPE_REGEX_STRUCT)) {
@@ -516,7 +516,7 @@ void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 {
 	static char const name[] = "internal";
 
-	rad_assert(da);
+	fr_assert(da);
 
 	tmpl_init(vpt, TMPL_TYPE_ATTR, name, sizeof(name), T_BARE_WORD);
 	vpt->tmpl_da = da;
@@ -1248,7 +1248,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return 0;	/* 0 is an error here too */
 	}
 
@@ -1256,7 +1256,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 
 	vpt->quote = type;
 
-	rad_assert(slen >= 0);
+	fr_assert(slen >= 0);
 
 	TMPL_VERIFY(vpt);
 	*out = vpt;
@@ -1299,8 +1299,8 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 {
 	TMPL_VERIFY(vpt);
 
-	rad_assert(vpt != NULL);
-	rad_assert(tmpl_is_unparsed(vpt) || tmpl_is_data(vpt));
+	fr_assert(vpt != NULL);
+	fr_assert(tmpl_is_unparsed(vpt) || tmpl_is_data(vpt));
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
@@ -1340,7 +1340,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	TMPL_VERIFY(vpt);
@@ -1356,11 +1356,11 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
  */
 void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 {
-	rad_assert(vpt != NULL);
-	rad_assert(tmpl_is_unparsed(vpt));
+	fr_assert(vpt != NULL);
+	fr_assert(tmpl_is_unparsed(vpt));
 
 	vpt->tmpl_value.vb_strvalue = talloc_typed_strdup(vpt, vpt->name);
-	rad_assert(vpt->tmpl_value.vb_strvalue != NULL);
+	fr_assert(vpt->tmpl_value.vb_strvalue != NULL);
 
 	vpt->type = TMPL_TYPE_DATA;
 	vpt->tmpl_value_type = FR_TYPE_STRING;
@@ -1399,7 +1399,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	MEM(vp = fr_pair_afrom_da(request, cast));
 	if (tmpl_is_data(vpt)) {
 		VP_VERIFY(vp);
-		rad_assert(vp->vp_type == vpt->tmpl_value_type);
+		fr_assert(vp->vp_type == vpt->tmpl_value_type);
 
 		fr_value_box_copy(vp, &vp->data, &vpt->tmpl_value);
 		*out = vp;
@@ -1584,8 +1584,8 @@ ssize_t _tmpl_to_type(void *out,
 
 	TMPL_VERIFY(vpt);
 
-	rad_assert(!tmpl_is_list(vpt));
-	rad_assert(!buff || (bufflen >= 2));
+	fr_assert(!tmpl_is_list(vpt));
+	fr_assert(!buff || (bufflen >= 2));
 
 	memset(&value_to_cast, 0, sizeof(value_to_cast));
 	memset(&value_from_cast, 0, sizeof(value_from_cast));
@@ -1691,7 +1691,7 @@ ssize_t _tmpl_to_type(void *out,
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX_STRUCT:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 
@@ -1905,7 +1905,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		value.datum.length = strlen(value.vb_strvalue);
 		value.type = FR_TYPE_STRING;
 		MEM(value.vb_strvalue = talloc_realloc(tmp_ctx, value.datum.ptr, char, value.datum.length + 1));	/* Trim */
-		rad_assert(value.vb_strvalue[value.datum.length] == '\0');
+		fr_assert(value.vb_strvalue[value.datum.length] == '\0');
 		to_cast = &value;
 		break;
 
@@ -1980,13 +1980,13 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			return -2;
 		}
 
-		rad_assert(vp);
+		fr_assert(vp);
 
 		to_cast = &vp->data;
 		switch (to_cast->type) {
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
-			rad_assert(to_cast->datum.ptr);
+			fr_assert(to_cast->datum.ptr);
 			needs_dup = true;
 			break;
 
@@ -2003,7 +2003,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		switch (to_cast->type) {
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
-			rad_assert(to_cast->datum.ptr);
+			fr_assert(to_cast->datum.ptr);
 			needs_dup = true;
 			break;
 
@@ -2022,7 +2022,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX_STRUCT:
-		rad_assert(0);
+		fr_assert(0);
 		goto error;
 	}
 
@@ -2400,7 +2400,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 		}
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	return NULL;
@@ -2431,7 +2431,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp
 
 	TMPL_VERIFY(vpt);
 
-	rad_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
 	if (err) *err = 0;
 
@@ -2493,7 +2493,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
 
 	int err;
 
-	rad_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
 	*out = NULL;
 
@@ -2562,7 +2562,7 @@ int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt
 	int		err;
 
 	TMPL_VERIFY(vpt);
-	rad_assert(tmpl_is_attr(vpt));
+	fr_assert(tmpl_is_attr(vpt));
 
 	*out = NULL;
 
@@ -2622,7 +2622,7 @@ static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
  */
 void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 {
-	rad_assert(vpt);
+	fr_assert(vpt);
 
 	if (tmpl_is_unknown(vpt)) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: vp_tmpl_t type was "
@@ -2702,7 +2702,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_ATTR_UNDEFINED:
-		rad_assert(vpt->tmpl_da == NULL);
+		fr_assert(vpt->tmpl_da == NULL);
 		break;
 
 	case TMPL_TYPE_ATTR:

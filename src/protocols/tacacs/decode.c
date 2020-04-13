@@ -27,7 +27,7 @@
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/tacacs/dictionary.h>
 
 #include "tacacs.h"

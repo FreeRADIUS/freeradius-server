@@ -91,7 +91,7 @@ static int send_pwd_request(REQUEST *request, pwd_session_t *session, eap_round_
 	pwd_hdr		*hdr;
 
 	len = (session->out_len - session->out_pos) + sizeof(pwd_hdr);
-	rad_assert(len > 0);
+	fr_assert(len > 0);
 	eap_round->request->code = FR_EAP_CODE_REQUEST;
 	eap_round->request->type.num = FR_EAP_METHOD_PWD;
 	eap_round->request->type.length = (len > session->mtu) ? session->mtu : len;

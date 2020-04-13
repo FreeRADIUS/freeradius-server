@@ -26,7 +26,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "proto_dhcpv4.h"
 
 extern fr_app_t proto_dhcpv4;
@@ -136,7 +136,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
 
-	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
 	/*
 	 *	Allow the process module to be specified by
@@ -173,7 +173,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	}
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_dhcpv4"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	/*
 	 *	Set the allowed codes so that we can compile them as
@@ -227,7 +227,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_dhcpv4"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	/*
 	 *	Set the allowed codes so that we can compile them as
@@ -250,7 +250,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	RADCLIENT const *client;
 	RADIUS_PACKET *packet = request->packet;
 
-	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -340,7 +340,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 
 	client = address->radclient;
-	rad_assert(client);
+	fr_assert(client);
 
 	/*
 	 *	Dynamic client stuff
@@ -348,7 +348,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	if (client->dynamic && !client->active) {
 		RADCLIENT *new_client;
 
-		rad_assert(buffer_len >= sizeof(client));
+		fr_assert(buffer_len >= sizeof(client));
 
 		/*
 		 *	Allocate the client.  If that fails, send back a NAK.
@@ -417,8 +417,8 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 	dl_module_inst_t	*type_submodule;
 	fr_io_track_t		*track = request->async->packet_ctx;
 
-	rad_assert(request->packet->code != 0);
-	rad_assert(request->packet->code < FR_DHCP_MAX);
+	fr_assert(request->packet->code != 0);
+	fr_assert(request->packet->code < FR_DHCP_MAX);
 
 	request->server_cs = inst->io.server_cs;
 
@@ -450,8 +450,8 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 {
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 
-	rad_assert(buffer[0] > 0);
-	rad_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(buffer[0] > 0);
+	fr_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Disallowed packet
@@ -561,8 +561,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
-	rad_assert(dict_dhcpv4 != NULL);
-	rad_assert(attr_message_type != NULL);
+	fr_assert(dict_dhcpv4 != NULL);
+	fr_assert(attr_message_type != NULL);
 
 	/*
 	 *	Bootstrap the app_process modules.
@@ -593,7 +593,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
 	inst->io.dl_inst = dl_module_instance_by_data(inst);
-	rad_assert(inst != NULL);
+	fr_assert(inst != NULL);
 
 	/*
 	 *	Bootstrap the master IO handler.

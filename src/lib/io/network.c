@@ -443,16 +443,16 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 		break;
 
 	case FR_CHANNEL_DATA_READY_REQUESTOR:
-		rad_assert(ch != NULL);
+		fr_assert(ch != NULL);
 		while (fr_channel_recv_reply(ch));
 		break;
 
 	case FR_CHANNEL_DATA_READY_RESPONDER:
-		rad_assert(0 == 1);
+		fr_assert(0 == 1);
 		break;
 
 	case FR_CHANNEL_OPEN:
-		rad_assert(0 == 1);
+		fr_assert(0 == 1);
 		break;
 
 	case FR_CHANNEL_CLOSE:
@@ -630,8 +630,8 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 		cd = s->cd;
 	}
 
-	rad_assert(cd->m.data != NULL);
-	rad_assert(cd->m.rb_size >= 256);
+	fr_assert(cd->m.data != NULL);
+	fr_assert(cd->m.rb_size >= 256);
 
 next_message:
 	/*
@@ -722,7 +722,7 @@ next_message:
 		if (!next) {
 			PERROR("Failed reserving partial packet.");
 			// @todo - probably close the socket...
-			rad_assert(0 == 1);
+			fr_assert(0 == 1);
 		}
 	}
 
@@ -816,7 +816,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
-	rad_assert(s->pending != NULL);
+	fr_assert(s->pending != NULL);
 
 	/*
 	 *	@todo - this code is much the same as in
@@ -833,8 +833,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	     cd = fr_heap_pop(s->waiting)) {
 		int rcode;
 
-		rad_assert(li == cd->listen);
-		rad_assert(cd->m.status == FR_MESSAGE_LOCALIZED);
+		fr_assert(li == cd->listen);
+		fr_assert(cd->m.status == FR_MESSAGE_LOCALIZED);
 
 		rcode = li->app_io->write(li, cd->packet_ctx,
 					  cd->reply.request_time,
@@ -958,12 +958,12 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 	size_t			size;
 	int			num_messages;
 
-	rad_assert(data_size == sizeof(s->listen));
+	fr_assert(data_size == sizeof(s->listen));
 
 	if (data_size != sizeof(s->listen)) return;
 
 	s = talloc_zero(nr, fr_network_socket_t);
-	rad_assert(s != NULL);
+	fr_assert(s != NULL);
 
 	s->nr = nr;
 	memcpy(&s->listen, data, sizeof(s->listen));
@@ -1033,12 +1033,12 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	fr_app_io_t const	*app_io;
 	fr_event_vnode_func_t	funcs = { .extend = fr_network_vnode_extend };
 
-	rad_assert(data_size == sizeof(s->listen));
+	fr_assert(data_size == sizeof(s->listen));
 
 	if (data_size != sizeof(s->listen)) return;
 
 	s = talloc_zero(nr, fr_network_socket_t);
-	rad_assert(s != NULL);
+	fr_assert(s != NULL);
 
 	s->nr = nr;
 	memcpy(&s->listen, data, sizeof(s->listen));
@@ -1098,7 +1098,7 @@ static void fr_network_worker_started_callback(void *ctx, void const *data, size
 	fr_worker_t *worker;
 	fr_network_worker_t *w;
 
-	rad_assert(data_size == sizeof(worker));
+	fr_assert(data_size == sizeof(worker));
 
 	memcpy(&worker, data, data_size);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
@@ -1128,7 +1128,7 @@ static void fr_network_worker_started_callback(void *ctx, void const *data, size
 	/*
 	 *	Run out of room to put workers!
 	 */
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 }
 
 /** Handle a network control message callback for a packet sent to a socket
@@ -1144,7 +1144,7 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
 	fr_network_inject_t my_inject;
 	fr_network_socket_t *s;
 
-	rad_assert(data_size == sizeof(my_inject));
+	fr_assert(data_size == sizeof(my_inject));
 
 	memcpy(&my_inject, data, data_size);
 	s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = my_inject.listen });
@@ -1217,7 +1217,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 			continue;
 		}
 
-		rad_assert(s->outstanding > 0);
+		fr_assert(s->outstanding > 0);
 		s->outstanding--;
 
 		/*
@@ -1434,7 +1434,7 @@ static void _signal_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 		return;
 	}
 
-	rad_assert(buff = 1);
+	fr_assert(buff = 1);
 
 	/*
 	 *	fr_network_stop() will signal the workers

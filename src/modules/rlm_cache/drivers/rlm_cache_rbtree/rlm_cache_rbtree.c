@@ -23,7 +23,7 @@
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "../../rlm_cache.h"
 
 typedef struct {
@@ -171,7 +171,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 	rlm_cache_entry_t *c;
 
-	rad_assert(driver->cache);
+	fr_assert(driver->cache);
 
 	/*
 	 *	Clear out old entries
@@ -236,7 +236,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 	rlm_cache_entry_t *my_c;
 
-	rad_assert(handle == request);
+	fr_assert(handle == request);
 
 	if (!request) return CACHE_ERROR;
 

@@ -343,7 +343,7 @@ ssize_t fr_aka_sim_crypto_sign_packet(uint8_t out[static AKA_SIM_MAC_DIGEST_SIZE
 			return 0;
 
 		case -1:
-			rad_assert(0);	/* Should have been checked by encoder or decoder */
+			fr_assert(0);	/* Should have been checked by encoder or decoder */
 			goto error;
 		}
 	}

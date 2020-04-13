@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/server/map_proc.h>
 
@@ -1241,7 +1241,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		return -1;
 	}
 
-	rad_assert(half >= 0);
+	fr_assert(half >= 0);
 
 	/*
 	 *	"option" has multiple parse possibilities, so we treat

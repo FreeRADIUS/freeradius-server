@@ -106,7 +106,7 @@ static int digest_fix(REQUEST *request)
 	 *	Check for proper format of the Digest-Attributes
 	 */
 	RDEBUG2("Checking for correctly formatted Digest-Attributes");
-	rad_assert(attr_digest_attributes);
+	fr_assert(attr_digest_attributes);
 
 	first = fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, attr_digest_attributes);
 	if (!first) return RLM_MODULE_NOOP;
@@ -590,7 +590,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-	rad_assert(inst->auth_type);
+	fr_assert(inst->auth_type);
 
 	return 0;
 }

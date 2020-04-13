@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include	<freeradius-devel/server/base.h>
 #include	<freeradius-devel/server/module.h>
-#include	<freeradius-devel/server/rad_assert.h>
+#include	<freeradius-devel/util/debug.h>
 #include	<freeradius-devel/server/users_file.h>
 
 #include	<sys/stat.h>
@@ -305,7 +305,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	 *	No entry matched.  We didn't do anything.
 	 */
 	if (!found) {
-		rad_assert(!output);
+		fr_assert(!output);
 		return RLM_MODULE_NOOP;
 	}
 

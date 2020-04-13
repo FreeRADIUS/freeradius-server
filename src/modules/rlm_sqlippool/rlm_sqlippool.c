@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->sql_instance_name
 
 #include <rlm_sql.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 

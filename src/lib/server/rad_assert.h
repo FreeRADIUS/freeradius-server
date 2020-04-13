@@ -18,12 +18,12 @@
 /**
  * $Id$
  *
- * @file lib/server/rad_assert.h
+ * @file lib/server/fr_assert.h
  * @brief Debug assertions, with logging.
  *
  * @copyright 2000,2001,2006 The FreeRADIUS server project
  */
-RCSIDH(rad_assert_h, "$Id$")
+RCSIDH(fr_assert_h, "$Id$")
 
 #include <stdbool.h>
 #include <freeradius-devel/util/debug.h>
@@ -33,22 +33,15 @@ extern "C" {
 #endif
 
 #ifdef NDEBUG
-#  define rad_assert(_expr)
+#  define fr_assert(_expr)
 #elif !defined(__clang_analyzer__)
-#  define rad_assert(_expr) ((void) ((_expr) ? (void) 0 : (void) fr_assert_exit(__FILE__, __LINE__, #_expr)))
+#  define fr_assert(_expr) ((void) ((_expr) ? (void) 0 : (void) fr_assert_exit(__FILE__, __LINE__, #_expr)))
 #else
 #  include <assert.h>
-#  define rad_assert assert
+#  define fr_assert assert
 #endif
 
-/** For systems with an old version libc, define static_assert.
- *
- */
-#ifndef static_assert
-#  define static_assert _Static_assert
-# else
-#  include <assert.h>
-#endif
+
 
 #ifdef __cplusplus
 }

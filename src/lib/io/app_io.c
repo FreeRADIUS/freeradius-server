@@ -24,7 +24,7 @@
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 
 char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
@@ -41,7 +41,7 @@ char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 		if (dst_ipaddr->af == AF_INET) {
 			strlcpy(dst_buf, "*", sizeof(dst_buf));
 		} else {
-			rad_assert(dst_ipaddr->af == AF_INET6);
+			fr_assert(dst_ipaddr->af == AF_INET6);
 			strlcpy(dst_buf, "::", sizeof(dst_buf));
 		}
 	} else {

@@ -26,7 +26,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_eap_gtc - "
 
 #include <freeradius-devel/eap/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 
 static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,

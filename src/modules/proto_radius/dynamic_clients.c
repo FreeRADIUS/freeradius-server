@@ -32,7 +32,7 @@
 #include <freeradius-devel/io/track.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/fr_assert.h>
 #include "proto_radius.h"
 
 typedef struct {

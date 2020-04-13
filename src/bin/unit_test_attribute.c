@@ -2244,7 +2244,7 @@ size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, siz
 	 */
 	if (result->error_to_data) data_used = strerror_concat(data, COMMAND_OUTPUT_MAX);
 
-	rad_assert((size_t)data_used < COMMAND_OUTPUT_MAX);
+	fr_assert((size_t)data_used < COMMAND_OUTPUT_MAX);
 	data[data_used] = '\0';			/* Ensure the data buffer is \0 terminated */
 
 	if (data_used) {

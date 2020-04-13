@@ -81,7 +81,7 @@ struct vp_list_mod_s {
 };
 
 #ifndef WITH_VERIFY_PTR
-#  define MAP_VERIFY(_x) rad_assert((_x)->lhs)
+#  define MAP_VERIFY(_x) fr_assert((_x)->lhs)
 #else
 #  define MAP_VERIFY(_x) do { \
 	TMPL_VERIFY((_x)->lhs); \

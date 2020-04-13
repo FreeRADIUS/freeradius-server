@@ -83,7 +83,7 @@ static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUS
 {
 	module_instance_t *mi = ctx;
 
-	rad_assert(mi->dl_inst->conf != NULL);
+	fr_assert(mi->dl_inst->conf != NULL);
 
 	(void) cf_section_write(fp, mi->dl_inst->conf, 0);
 
@@ -838,7 +838,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 			for (k = 0; mi->module->method_names[k].name1 != NULL; k++) {
 				methods = &mi->module->method_names[k];
 
-				rad_assert(methods->name1 != CF_IDENT_ANY); /* should have been caught above */
+				fr_assert(methods->name1 != CF_IDENT_ANY); /* should have been caught above */
 
 				if (strcmp(methods->name1, allowed->name) != 0) continue;
 
@@ -1111,7 +1111,7 @@ module_thread_instance_t *module_thread(module_instance_t *mi)
 
 	if (!mi) return NULL;
 
-	rad_assert(mi->number < talloc_array_length(array));
+	fr_assert(mi->number < talloc_array_length(array));
 
 	return array[mi->number];
 }
@@ -1132,7 +1132,7 @@ module_thread_instance_t *module_thread_by_data(void const *data)
 
 	if (!mi) return NULL;
 
-	rad_assert(mi->number < talloc_array_length(array));
+	fr_assert(mi->number < talloc_array_length(array));
 
 	return array[mi->number];
 }
@@ -1251,7 +1251,7 @@ static int _module_thread_instantiate(void *instance, void *uctx)
 		}
 	}
 
-	rad_assert(mi->number < talloc_array_length(thread_inst_ctx->array));
+	fr_assert(mi->number < talloc_array_length(thread_inst_ctx->array));
 	thread_inst_ctx->array[mi->number] = ti;
 
 	return 0;
@@ -1462,7 +1462,7 @@ static size_t module_instance_name(TALLOC_CTX *ctx, char **out, module_instance_
 	 *	...because recursive code still makes
 	 *	my head hurt.
 	 */
-	rad_assert((size_t)(p - (*out)) == (talloc_array_length(*out) - 1));
+	fr_assert((size_t)(p - (*out)) == (talloc_array_length(*out) - 1));
 
 	return (p - (*out));
 
@@ -1562,7 +1562,7 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 		talloc_free(inst_name);
 		return NULL;
 	}
-	rad_assert(mi->dl_inst);
+	fr_assert(mi->dl_inst);
 
 	mi->name = talloc_typed_strdup(mi, inst_name);
 	talloc_free(inst_name);	/* Avoid stealing */

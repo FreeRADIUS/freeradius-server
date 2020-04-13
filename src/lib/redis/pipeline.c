@@ -566,7 +566,7 @@ static void _redis_pipeline_command_set_cancel(fr_connection_t *conn, UNUSED fr_
 	}
 
 	case FR_TRUNK_CANCEL_REASON_NONE:
-		rad_assert(0);
+		fr_assert(0);
 		return;
 	}
 }

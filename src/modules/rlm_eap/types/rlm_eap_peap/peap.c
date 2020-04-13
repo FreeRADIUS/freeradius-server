@@ -307,7 +307,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
  */
 static int eap_peap_inner_from_pairs(REQUEST *request, fr_tls_session_t *tls_session, VALUE_PAIR *vp)
 {
-	rad_assert(vp != NULL);
+	fr_assert(vp != NULL);
 	VALUE_PAIR *this;
 	fr_cursor_t cursor;
 
@@ -552,7 +552,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 
 	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
 		fake = request_alloc_fake(request, NULL);
-		rad_assert(!fake->packet->vps);
+		fr_assert(!fake->packet->vps);
 		eap_peap_soh_verify(fake, fake->packet, data, data_len);
 		setup_fake_request(request, fake, t);
 
@@ -572,9 +572,9 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 		}
 
 		/* save the SoH VPs */
-		rad_assert(!t->soh_reply_vps);
+		fr_assert(!t->soh_reply_vps);
 		MEM(fr_pair_list_copy(t, &t->soh_reply_vps, fake->reply->vps) >= 0);
-		rad_assert(!fake->reply->vps);
+		fr_assert(!fake->reply->vps);
 		TALLOC_FREE(fake);
 
 		if (t->session_resumption_state == PEAP_RESUMPTION_YES) {
@@ -652,7 +652,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 	}
 
 	fake = request_alloc_fake(request, NULL);
-	rad_assert(!fake->packet->vps);
+	fr_assert(!fake->packet->vps);
 
 	switch (t->status) {
 	/*
@@ -665,7 +665,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 		size_t len;
 		uint8_t *q;
 
-		rad_assert(t->username);
+		fr_assert(t->username);
 
 		len = t->username->vp_length + EAP_HEADER_LEN + 1;
 		t->status = PEAP_STATUS_PHASE2;
@@ -717,7 +717,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 		 */
 		if ((data[0] == FR_EAP_METHOD_IDENTITY) && (data_len > 1)) {
 			MEM(t->username = fr_pair_afrom_da(t, attr_user_name));
-			rad_assert(t->username != NULL);
+			fr_assert(t->username != NULL);
 			t->username->vp_tainted = true;
 
 			fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);

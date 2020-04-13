@@ -29,7 +29,7 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/fopencookie.h>
 #include <freeradius-devel/util/trie.h>
 #include <netdb.h>
@@ -604,7 +604,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	socklen_t		socklen;
 	struct sockaddr_un	salocal;
 
-	rad_assert(path);
+	fr_assert(path);
 
 	euid = geteuid();
 	egid = getegid();
@@ -939,7 +939,7 @@ static int mod_open(fr_listen_t *li)
 	CONF_ITEM			*ci;
 	CONF_SECTION			*server_cs;
 
-	rad_assert(!thread->connection);
+	fr_assert(!thread->connection);
 
 	if (inst->peercred) {
 		sockfd = fr_server_domain_socket_peercred(inst->filename, inst->uid, inst->gid);
@@ -960,9 +960,9 @@ static int mod_open(fr_listen_t *li)
 	li->fd = thread->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 
@@ -980,7 +980,7 @@ static int mod_open(fr_listen_t *li)
 	thread->radclient.src_ipaddr.af = AF_INET;
 
 	thread->radclient.server_cs = cf_item_to_section(cf_parent(cf_parent(inst->cs)));
-	rad_assert(thread->radclient.server_cs != NULL);
+	fr_assert(thread->radclient.server_cs != NULL);
 	thread->radclient.server = cf_section_name2(thread->radclient.server_cs);
 
 	return 0;

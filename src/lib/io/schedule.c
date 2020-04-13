@@ -651,8 +651,8 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		goto done;
 	}
 
-	rad_assert(sc->sn);
-	rad_assert(fr_dlist_num_elements(&sc->workers) > 0);
+	fr_assert(sc->sn);
+	fr_assert(fr_dlist_num_elements(&sc->workers) > 0);
 
 	/*
 	 *	If the network thread is running, tell it to exit, and

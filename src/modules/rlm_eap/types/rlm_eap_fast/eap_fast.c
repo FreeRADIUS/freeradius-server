@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 
-#define RANDFILL(x) do { rad_assert(sizeof(x) % sizeof(uint32_t) == 0); for (size_t i = 0; i < sizeof(x); i += sizeof(uint32_t)) *((uint32_t *)&x[i]) = fr_rand(); } while(0)
+#define RANDFILL(x) do { fr_assert(sizeof(x) % sizeof(uint32_t) == 0); for (size_t i = 0; i < sizeof(x); i += sizeof(uint32_t)) *((uint32_t *)&x[i]) = fr_rand(); } while(0)
 
 /**
  * RFC 4851 section 5.1 - EAP-FAST Authentication Phase 1: Key Derivations
@@ -46,10 +46,10 @@ static void eap_fast_init_keys(REQUEST *request, fr_tls_session_t *tls_session)
 
 	RDEBUG2("Deriving EAP-FAST keys");
 
-	rad_assert(t->s_imck == NULL);
+	fr_assert(t->s_imck == NULL);
 
 	ksize = fr_tls_utils_keyblock_size_get(request, tls_session->ssl);
-	rad_assert(ksize > 0);
+	fr_assert(ksize > 0);
 	buf = talloc_array(request, uint8_t, ksize + sizeof(*t->keyblock));
 	scratch = talloc_array(request, uint8_t, ksize + sizeof(*t->keyblock));
 
@@ -164,7 +164,7 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, fr_tls_session_t *tls_ses
 
 	pac.key.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_key->attr);
 	pac.key.hdr.length = htons(sizeof(pac.key.data));
-	rad_assert(sizeof(pac.key.data) % sizeof(uint32_t) == 0);
+	fr_assert(sizeof(pac.key.data) % sizeof(uint32_t) == 0);
 	RANDFILL(pac.key.data);
 
 	pac.info.lifetime.hdr.type = htons(attr_eap_fast_pac_info_pac_lifetime->attr);
@@ -198,9 +198,9 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, fr_tls_session_t *tls_ses
 
 	RHEXDUMP3((uint8_t const *)&opaque_plaintext, sizeof(opaque_plaintext), "PAC-Opaque plaintext data section");
 
-	rad_assert(PAC_A_ID_LENGTH <= EVP_GCM_TLS_TAG_LEN);
+	fr_assert(PAC_A_ID_LENGTH <= EVP_GCM_TLS_TAG_LEN);
 	memcpy(pac.opaque.aad, t->a_id, PAC_A_ID_LENGTH);
-	rad_assert(RAND_bytes(pac.opaque.iv, sizeof(pac.opaque.iv)) != 0);
+	fr_assert(RAND_bytes(pac.opaque.iv, sizeof(pac.opaque.iv)) != 0);
 	dlen = eap_fast_encrypt((unsigned const char *)&opaque_plaintext, sizeof(opaque_plaintext),
 				    t->a_id, PAC_A_ID_LENGTH, t->pac_opaque_key, pac.opaque.iv,
 				    pac.opaque.data, pac.opaque.tag);
@@ -226,7 +226,7 @@ static void eap_fast_append_crypto_binding(REQUEST *request, fr_tls_session_t *t
 	binding.received_version = EAP_FAST_VERSION;	/* FIXME use the clients value */
 	binding.subtype = EAP_FAST_TLV_CRYPTO_BINDING_SUBTYPE_REQUEST;
 
-	rad_assert(sizeof(binding.nonce) % sizeof(uint32_t) == 0);
+	fr_assert(sizeof(binding.nonce) % sizeof(uint32_t) == 0);
 	RANDFILL(binding.nonce);
 	binding.nonce[sizeof(binding.nonce) - 1] &= ~0x01; /* RFC 4851 section 4.2.8 */
 	RHEXDUMP3(binding.nonce, sizeof(binding.nonce), "NONCE");
@@ -251,7 +251,7 @@ static int eap_fast_verify(REQUEST *request, fr_tls_session_t *tls_session, uint
 	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint32_t present = 0;
 
-	rad_assert(sizeof(present) * 8 > EAP_FAST_TLV_MAX);
+	fr_assert(sizeof(present) * 8 > EAP_FAST_TLV_MAX);
 
 	while (remaining > 0) {
 		if (remaining < 4) {
@@ -580,7 +580,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	 *	Allocate a fake REQUEST structure.
 	 */
 	fake = request_alloc_fake(request, NULL);
-	rad_assert(!fake->packet->vps);
+	fr_assert(!fake->packet->vps);
 
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
@@ -605,7 +605,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	 *	an EAP-Identity, and pull it out of there.
 	 */
 	if (!t->username) {
-		rad_assert(vp->da == attr_eap_message); /* cached from above */
+		fr_assert(vp->da == attr_eap_message); /* cached from above */
 
 		if ((vp->vp_length >= EAP_HEADER_LEN + 2) &&
 		    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
@@ -684,7 +684,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			/*
 			 *	Seed the proxy packet with the tunneled request.
 			 */
-			rad_assert(!request->proxy);
+			fr_assert(!request->proxy);
 
 			/*
 			 *	FIXME: Actually proxy stuff
@@ -925,7 +925,7 @@ FR_CODE eap_fast_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 	if (!eap_fast_verify(request, tls_session, data, data_len)) return FR_CODE_ACCESS_REJECT;
 
 	if (t->stage == EAP_FAST_TLS_SESSION_HANDSHAKE) {
-		rad_assert(t->mode == EAP_FAST_UNKNOWN);
+		fr_assert(t->mode == EAP_FAST_UNKNOWN);
 
 		char buf[256];
 		if (strstr(SSL_CIPHER_description(SSL_get_current_cipher(tls_session->ssl),

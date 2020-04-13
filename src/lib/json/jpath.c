@@ -25,7 +25,7 @@
  * @copyright 2015 Network RADIUS SARL (legal@networkradius.com)
  * @copyright 2015 The FreeRADIUS Server Project
  */
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "base.h"
 
 #define	SELECTOR_INDEX_UNSET			INT32_MAX
@@ -168,7 +168,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 		{
 			struct array_list *array_obj;	/* Because array_list is a global... */
 
-			rad_assert(selector->slice[0] != SELECTOR_INDEX_UNSET);
+			fr_assert(selector->slice[0] != SELECTOR_INDEX_UNSET);
 
 			if (!fr_json_object_is_type(object, json_type_array)) return 0;
 			array_obj = json_object_get_array(object);
@@ -211,7 +211,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			 *	Descending
 			 */
 			if (step < 0) for (i = start; (i > end) && (i >= 0); i += step) {
-				rad_assert((i >= 0) && (i < (int32_t)(array_obj->length & INT32_MAX)));
+				fr_assert((i >= 0) && (i < (int32_t)(array_obj->length & INT32_MAX)));
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -220,7 +220,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			 *	Ascending
 			 */
 			} else for (i = start; (i < end) && (i < (int32_t)(array_obj->length & INT32_MAX)); i += step) {
-				rad_assert((i >= 0) && (i < (int32_t)(array_obj->length & INT32_MAX)));
+				fr_assert((i >= 0) && (i < (int32_t)(array_obj->length & INT32_MAX)));
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -230,7 +230,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			return -1;
 	}
 		return child_matched ? 1 : 0;
@@ -256,7 +256,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 		} else if (fr_json_object_is_type(object, json_type_object)) {
 			json_object_object_foreach(object, field_name, field_value) {
 #ifndef NDEBUG
-				rad_assert(field_name);
+				fr_assert(field_name);
 #else
 				UNUSED_VAR(field_name);
 #endif
@@ -305,7 +305,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			 */
 			json_object_object_foreach(object, field_name, field_value) {
 #ifndef NDEBUG
-				rad_assert(field_name);
+				fr_assert(field_name);
 #else
 				UNUSED_VAR(field_name);
 #endif
@@ -340,7 +340,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 	case JPATH_SELECTOR_INVALID:
 	case JPATH_SELECTOR_ROOT:
 	case JPATH_SELECTOR_CURRENT:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;		/* Not yet implemented */
 	}
 
@@ -397,7 +397,7 @@ int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_t **out,
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 
@@ -476,7 +476,7 @@ char *fr_jpath_asprint(TALLOC_CTX *ctx, fr_jpath_node_t const *head)
 			break;
 
 		default:
-			rad_assert(0);	/* Not yet implemented */
+			fr_assert(0);	/* Not yet implemented */
 			break;
 		}
 		p = talloc_strdup_append_buffer(p, "]");
@@ -496,7 +496,7 @@ char *fr_jpath_asprint(TALLOC_CTX *ctx, fr_jpath_node_t const *head)
 		break;
 
 	case JPATH_SELECTOR_INVALID:
-		rad_assert(0);
+		fr_assert(0);
 		return NULL;
 	}
 
@@ -772,7 +772,7 @@ static size_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t
 		}
 		p += slen;
 		if (p == end) goto missing_terminator;
-		rad_assert(p < end);
+		fr_assert(p < end);
 
 		/*
 		 *	Things that terminate a selector
@@ -931,7 +931,7 @@ do { \
 				}
 				p += slen;
 				if (p == end) return p - in;	/* The end of string! */
-				rad_assert(p < end);
+				fr_assert(p < end);
 			}
 			break;
 
@@ -943,7 +943,7 @@ do { \
 			}
 			p += slen;
 			if (p == end) return p - in;	/* The end of string! */
-			rad_assert(p < end);
+			fr_assert(p < end);
 			break;
 
 		default:

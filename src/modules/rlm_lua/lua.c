@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->xlat_name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "config.h"
 #include "lua.h"
@@ -318,10 +318,10 @@ static int _lua_pair_get(lua_State *L)
 	VALUE_PAIR		*vp = NULL;
 	int			index;
 
-	rad_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
+	fr_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
 
 	da = lua_touserdata(L, lua_upvalueindex(1));
-	rad_assert(da);
+	fr_assert(da);
 
 	/*
 	 *	@fixme Packet list should be light user data too at some point
@@ -365,10 +365,10 @@ static int _lua_pair_set(lua_State *L)
 	 *	This function should only be called as a closure.
 	 *	As we control the upvalues, we should assert on errors.
 	 */
-	rad_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
+	fr_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
 
 	da = lua_touserdata(L, lua_upvalueindex(1));
-	rad_assert(da);
+	fr_assert(da);
 
 	delete = lua_isnil(L, -1);
 
@@ -418,10 +418,10 @@ static int _lua_pair_iterator(lua_State *L)
 	 *	As we control the upvalues, we should assert on errors.
 	 */
 
-	rad_assert(lua_isuserdata(L, lua_upvalueindex(1)));
+	fr_assert(lua_isuserdata(L, lua_upvalueindex(1)));
 
 	cursor = lua_touserdata(L, lua_upvalueindex(1));
-	rad_assert(cursor);
+	fr_assert(cursor);
 
 	/* Packet list should be light user data too at some point... */
 	vp = fr_cursor_next(cursor);
@@ -447,10 +447,10 @@ static int _lua_pair_iterator_init(lua_State *L)
 	 *	This function should only be called as a closure.
 	 *	As we control the upvalues, we should assert on errors.
 	 */
-	rad_assert(lua_isuserdata(L, lua_upvalueindex(2)));
+	fr_assert(lua_isuserdata(L, lua_upvalueindex(2)));
 
 	da = lua_touserdata(L, lua_upvalueindex(2));
-	rad_assert(da);
+	fr_assert(da);
 
 	cursor = (fr_cursor_t*) lua_newuserdata(L, sizeof(fr_cursor_t));
 	if (!cursor) {
@@ -471,10 +471,10 @@ static int _lua_list_iterator(lua_State *L)
 	fr_cursor_t		*cursor;
 	VALUE_PAIR		*vp;
 
-	rad_assert(lua_isuserdata(L, lua_upvalueindex(1)));
+	fr_assert(lua_isuserdata(L, lua_upvalueindex(1)));
 
 	cursor = lua_touserdata(L, lua_upvalueindex(1));
-	rad_assert(cursor);
+	fr_assert(cursor);
 
 	/* Packet list should be light user data too at some point... */
 	vp = fr_cursor_current(cursor);

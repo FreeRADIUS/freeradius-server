@@ -27,7 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <wbclient.h>
 #include <core/ntstatus.h>
@@ -69,7 +69,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request, VALUE_PAIR
 	/*
 	 * wb_username must be set for this function to be called
 	 */
-	rad_assert(inst->wb_username);
+	fr_assert(inst->wb_username);
 
 	/*
 	 * Get the username and domain from the configuration

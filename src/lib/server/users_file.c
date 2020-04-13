@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/users_file.h>
 
 #include <freeradius-devel/util/misc.h>
@@ -215,8 +215,8 @@ parse_again:
 			/*
 			 *	Parse the check values
 			 */
-			rad_assert(check_tmp == NULL);
-			rad_assert(reply_tmp == NULL);
+			fr_assert(check_tmp == NULL);
+			fr_assert(reply_tmp == NULL);
 
 			parsecode = fr_pair_list_afrom_str(t, dict, ptr, &check_tmp);
 			if (parsecode == T_INVALID) {

@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/json/base.h>
 
 #include <ctype.h>
@@ -153,10 +153,10 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 
 	slen = fr_jpath_parse(request, &head, fmt, strlen(fmt));
 	if (slen <= 0) {
-		rad_assert(head == NULL);
+		fr_assert(head == NULL);
 		return snprintf(*out, outlen, "%zd:%s", -(slen), fr_strerror());
 	}
-	rad_assert(talloc_get_type_abort(head, fr_jpath_node_t));
+	fr_assert(talloc_get_type_abort(head, fr_jpath_node_t));
 
 	jpath_str = fr_jpath_asprint(request, head);
 	ret = snprintf(*out, outlen, "%zu:%s", (size_t) slen, jpath_str);
@@ -420,7 +420,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 		return -1;
 	}
 	if (ret == 0) return 0;
-	rad_assert(head);
+	fr_assert(head);
 
 	for (fr_cursor_init(&cursor, out), value = head;
 	     value;

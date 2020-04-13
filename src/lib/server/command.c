@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/command.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 
@@ -788,7 +788,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 				return -1;
 			}
 
-			rad_assert(cmd->func == NULL);
+			fr_assert(cmd->func == NULL);
 			start = &(cmd->child);
 		}
 
@@ -902,7 +902,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		 *	can probably allow it.
 		 */
 		if (!table->func) {
-			rad_assert(table->help != NULL);
+			fr_assert(table->help != NULL);
 
 			/*
 			 *	Suppress duplicates.
@@ -914,7 +914,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 						   cmd->name);
 				return -1;
 			}
-			rad_assert(cmd->intermediate);
+			fr_assert(cmd->intermediate);
 			cmd->help = table->help;
 			cmd->read_only = table->read_only;
 			return 0;
@@ -933,7 +933,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		/*
 		 *	Allocate cmd and insert it into the current point.
 		 */
-		rad_assert(insert != NULL);
+		fr_assert(insert != NULL);
 		cmd = fr_command_alloc(talloc_ctx, insert, table->name);
 	}
 
@@ -1089,7 +1089,7 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 	 *	the next command at the current level.
 	 */
 	if (cmd->child) {
-		rad_assert(stack->depth < CMD_MAX_ARGV);
+		fr_assert(stack->depth < CMD_MAX_ARGV);
 		info.parents[stack->depth] = cmd->name;
 		stack->depth++;
 		stack->entry[stack->depth] = cmd->child;
@@ -1113,7 +1113,7 @@ check_next:
 	if (stack->depth == 0) {
 		if (!cmd) goto done;
 
-		rad_assert(0 == 1);
+		fr_assert(0 == 1);
 	}
 
 	/*
@@ -1199,7 +1199,7 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
 		return count;
 	}
 
-	rad_assert(argv->type == FR_TYPE_FIXED);
+	fr_assert(argv->type == FR_TYPE_FIXED);
 
 	/*
 	 *	Not a full match, but we're at the last
@@ -1310,7 +1310,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 		}
 
 		if (cmd->intermediate) {
-			rad_assert(cmd->child != NULL);
+			fr_assert(cmd->child != NULL);
 			start = cmd->child;
 			continue;
 		}
@@ -1329,7 +1329,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 		 *
 		 *	Skip the name
 		 */
-		rad_assert(cmd->func != NULL);
+		fr_assert(cmd->func != NULL);
 		return fr_command_tab_expand_syntax(ctx, cmd, i + 1, info, max_expansions, expansions);
 	}
 
@@ -1340,8 +1340,8 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 	 *	be child commands under that hierarchy.  In which
 	 *	case, show them as expansions.
 	 */
-	rad_assert(i == info->argc);
-	rad_assert(cmd->child != NULL);
+	fr_assert(i == info->argc);
+	fr_assert(cmd->child != NULL);
 
 	for (i = 0, cmd = cmd->child; (i < max_expansions) && (cmd != NULL); i++, cmd = cmd->next) {
 		expansions[i] = cmd->name;
@@ -1368,15 +1368,15 @@ static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, b
 	fr_cmd_t *start, *cmd = NULL;
 	fr_cmd_info_t my_info;
 
-	rad_assert(head->intermediate);
-	rad_assert(head->child != NULL);
+	fr_assert(head->intermediate);
+	fr_assert(head->child != NULL);
 
 	start = head->child;
 
 	/*
 	 *	Wildcard '*' is at 'offset + 1'.  Then the command to run is at 'offset + 2'.
 	 */
-	rad_assert(info->argc >= (offset + 2));
+	fr_assert(info->argc >= (offset + 2));
 
 	/*
 	 *	Loop from "start", trying to find a matching command.
@@ -1434,7 +1434,7 @@ static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, b
 	/*
 	 *	Leaf nodes must have a callback.
 	 */
-	rad_assert(cmd->func != NULL);
+	fr_assert(cmd->func != NULL);
 
 	// @todo - add cmd->min_argc && cmd->max_argc, to track optional things, varargs, etc.
 
@@ -1482,10 +1482,10 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 
 	for (i = 0; i < info->argc; i++) {
 		cmd = info->cmd[i];
-		rad_assert(cmd != NULL);
+		fr_assert(cmd != NULL);
 
 		if (cmd->added_name && (info->argv[i][0] == '*')) {
-			rad_assert(i > 0);
+			fr_assert(i > 0);
 
 			for (; cmd != NULL; cmd = cmd->next) {
 				if (!cmd->live) continue;
@@ -1519,7 +1519,7 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 	/*
 	 *	Leaf nodes must have a callback.
 	 */
-	rad_assert(cmd->func != NULL);
+	fr_assert(cmd->func != NULL);
 
 	// @todo - add cmd->min_argc && cmd->max_argc, to track optional things, varargs, etc.
 
@@ -1559,7 +1559,7 @@ char const *fr_command_help(fr_cmd_t *head, int argc, char *argv[])
 		if (!cmd) return NULL;
 
 		if (cmd->intermediate) {
-			rad_assert(cmd->child != NULL);
+			fr_assert(cmd->child != NULL);
 			start = cmd->child;
 			continue;
 		}
@@ -1654,7 +1654,7 @@ void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, int options)
 
 	if ((options & FR_COMMAND_OPTION_LIST_CHILD) != 0) {
 		if (!head->child) {
-			rad_assert(head->func != NULL);
+			fr_assert(head->func != NULL);
 			// @todo - skip syntax_argv as necessary
 			fr_command_list_node(fp, head, 0, argv, options);
 			return;
@@ -1678,13 +1678,13 @@ static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, in
 	TALLOC_CTX *ctx = NULL;
 
 redo:
-	rad_assert(argv->type != FR_TYPE_ALTERNATE_CHOICE);
+	fr_assert(argv->type != FR_TYPE_ALTERNATE_CHOICE);
 
 	/*
 	 *	Don't eat too many arguments.
 	 */
 	if ((start + used) >= argc) {
-		rad_assert(argv != NULL);
+		fr_assert(argv != NULL);
 
 		/*
 		 *	Skip trailing optional pieces.
@@ -1772,8 +1772,8 @@ redo:
 		for (child = argv->child; child != NULL; child = child->next) {
 			fr_cmd_argv_t *sub;
 
-			rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
-			rad_assert(child->child != NULL);
+			fr_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+			fr_assert(child->child != NULL);
 			sub = child->child;
 
 			rcode = fr_command_verify_argv(info, start + used, verify, argc, &sub, true);
@@ -1798,7 +1798,7 @@ redo:
 		goto no_match;
 	}
 
-	rad_assert(type < FR_TYPE_FIXED);
+	fr_assert(type < FR_TYPE_FIXED);
 
 	/*
 	 *	Don't re-verify things we've already verified.
@@ -1933,7 +1933,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 			 *	An already-parsed data type.  Skip it.
 			 */
 			if (argc < info->argc) {
-				rad_assert(info->box[argc] != NULL);
+				fr_assert(info->box[argc] != NULL);
 				word = p;
 				argc++;
 				goto next;
@@ -2033,8 +2033,8 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 			for (child = argv->child; child != NULL; child = child->next) {
 				fr_cmd_argv_t *sub;
 
-				rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
-				rad_assert(child->child != NULL);
+				fr_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+				fr_assert(child->child != NULL);
 				sub = child->child;
 
 				/*
@@ -2166,7 +2166,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 	 */
 	for (argc = 0; argc < info->argc; argc++) {
 		cmd = info->cmd[argc];
-		rad_assert(cmd != NULL);
+		fr_assert(cmd != NULL);
 
 		fr_skip_whitespace(word);
 
@@ -2240,8 +2240,8 @@ skip_matched:
 		 *	some special circumstances.
 		 */
 		if ((word[0] == '*') && isspace(word[1]) && cmd->added_name) {
-			rad_assert(cmd->intermediate);
-			rad_assert(cmd->child != NULL);
+			fr_assert(cmd->intermediate);
+			fr_assert(cmd->child != NULL);
 
 			info->argv[argc] = "*";
 			info->cmd[argc] = cmd;
@@ -2282,7 +2282,7 @@ skip_matched:
 		}
 
 		if (cmd->intermediate) {
-			rad_assert(cmd->child != NULL);
+			fr_assert(cmd->child != NULL);
 			info->argv[argc] = cmd->name;
 			info->cmd[argc] = cmd;
 			word = p;
@@ -2316,8 +2316,8 @@ skip_matched:
 		return -1;
 	}
 
-	rad_assert(cmd->func != NULL);
-	rad_assert(cmd->child == NULL);
+	fr_assert(cmd->func != NULL);
+	fr_assert(cmd->child == NULL);
 
 check_syntax:
 	/*
@@ -2413,8 +2413,8 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, i
 		for (child = argv->child; child != NULL; child = child->next) {
 			fr_cmd_argv_t *sub;
 
-			rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
-			rad_assert(child->child != NULL);
+			fr_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+			fr_assert(child->child != NULL);
 			sub = child->child;
 
 			count = expand_all(cmd, info, sub, count, max_expansions, expansions);
@@ -2427,8 +2427,8 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, i
 		for (child = argv->child; child != NULL; child = child->next) {
 			fr_cmd_argv_t *sub;
 
-			rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
-			rad_assert(child->child != NULL);
+			fr_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+			fr_assert(child->child != NULL);
 			sub = child->child;
 
 			count = expand_all(cmd, info, sub, count, max_expansions, expansions);
@@ -2451,7 +2451,7 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, i
 		info->box[info->argc] = NULL;
 		info->argc++;
 
-		rad_assert(count == 0);
+		fr_assert(count == 0);
 		rcode = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
 		if (rcode < 0) return rcode;
 
@@ -2503,8 +2503,8 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				fr_cmd_argv_t *sub;
 				char const *my_word = word;
 
-				rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
-				rad_assert(child->child != NULL);
+				fr_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+				fr_assert(child->child != NULL);
 				sub = child->child;
 
 				/*
@@ -2561,7 +2561,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				/*
 				 *	Expand this thing.
 				 */
-				rad_assert(count == 0);
+				fr_assert(count == 0);
 				rcode = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
 				if (rcode < 0) return rcode;
 				return count + rcode;
@@ -2597,7 +2597,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 		/*
 		 *	This should be the only remaining data type.
 		 */
-		rad_assert(argv->type == FR_TYPE_FIXED);
+		fr_assert(argv->type == FR_TYPE_FIXED);
 
 		SKIP_NAME(argv->name);
 
@@ -2738,7 +2738,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		}
 
 		if (cmd->intermediate) {
-			rad_assert(cmd->child != NULL);
+			fr_assert(cmd->child != NULL);
 			word = p;
 			cmd = cmd->child;
 
@@ -2856,7 +2856,7 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 
 		if (cmd->intermediate) {
 		intermediate:
-			rad_assert(cmd->child != NULL);
+			fr_assert(cmd->child != NULL);
 			word = p;
 			cmd = cmd->child;
 			continue;

@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/ldap/base.h>
 
 /** Callback for map_to_request
@@ -173,7 +173,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	*out = head;

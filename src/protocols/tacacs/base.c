@@ -28,7 +28,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/tacacs/dictionary.h>
 
 #include "tacacs.h"
@@ -163,7 +163,7 @@ bad_seqno:
 
 	switch (pkt->hdr.type) {
 	default:
-		rad_assert(0);	/* Should have been caught above */
+		fr_assert(0);	/* Should have been caught above */
 		return false;
 
 	case TAC_PLUS_AUTHEN:
@@ -326,7 +326,7 @@ int fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secre
 		size_t packet_len;
 
 		/* borrow vector to bring in the header for later talloc */
-		rad_assert(sizeof(fr_tacacs_packet_hdr_t) <= RADIUS_AUTH_VECTOR_LENGTH);
+		fr_assert(sizeof(fr_tacacs_packet_hdr_t) <= RADIUS_AUTH_VECTOR_LENGTH);
 
 		/*
 		 *	Only read enough data to get the TACACS+ header.
@@ -351,7 +351,7 @@ int fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secre
 			return 0;
 		}
 
-		rad_assert(packet->data_len == sizeof(fr_tacacs_packet_hdr_t));
+		fr_assert(packet->data_len == sizeof(fr_tacacs_packet_hdr_t));
 
 		/*
 		 *	We now have the full packet header.  Let's go
@@ -504,7 +504,7 @@ int fr_tacacs_packet_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * co
 		return -1;
 	}
 
-	rad_assert(tacacs_packet_verify(packet, false) == true);
+	fr_assert(tacacs_packet_verify(packet, false) == true);
 
 	if (tacacs_xor(packet, secret, secret_len) < 0) {
 		fr_strerror_printf("Failed encryption of TACACS reply: %s", fr_syserror(errno));

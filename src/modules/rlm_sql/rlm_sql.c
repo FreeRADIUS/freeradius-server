@@ -36,7 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
 
 #include <sys/stat.h>
@@ -356,7 +356,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	int			field_index[MAX_SQL_FIELD_INDEX];
 	bool			found_field = false;	/* Did we find any matching fields in the result set ? */
 
-	rad_assert(inst->driver->sql_fields);		/* Should have been caught during validation... */
+	fr_assert(inst->driver->sql_fields);		/* Should have been caught during validation... */
 
 	if (!*query) {
 		REDEBUG("Query cannot be (null)");
@@ -422,7 +422,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		RERROR("Failed retrieving field names: %s", fr_table_str_by_value(sql_rcode_description_table, ret, "<INVALID>"));
 		goto error;
 	}
-	rad_assert(fields);
+	fr_assert(fields);
 	field_cnt = talloc_array_length(fields);
 
 	if (RDEBUG_ENABLED3) for (j = 0; j < field_cnt; j++) RDEBUG3("Got field: %s", fields[j]);
@@ -642,7 +642,7 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 	char const *sqluser;
 	ssize_t len;
 
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
 
 	if (username != NULL) {
 		sqluser = username;
@@ -805,7 +805,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 	char			*expanded = NULL;
 	int			rows;
 
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
 
 	if (!inst->config->groupmemb_query) {
 		RWARN("Cannot do check groups when group_membership_query is not set");
@@ -833,7 +833,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 		RDEBUG2("User not found in any groups");
 		goto do_nothing;
 	}
-	rad_assert(head);
+	fr_assert(head);
 
 	RDEBUG2("User found in the group table");
 
@@ -846,7 +846,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 	entry = head;
 	do {
 	next:
-		rad_assert(entry != NULL);
+		fr_assert(entry != NULL);
 		fr_pair_value_strcpy(sql_group, entry->name);
 
 		if (inst->config->authorize_group_check_query) {
@@ -928,7 +928,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 				continue;
 			}
 
-			rad_assert(reply_tmp != NULL); /* coverity, among others */
+			fr_assert(reply_tmp != NULL); /* coverity, among others */
 			*do_fall_through = fall_through(reply_tmp);
 
 			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
@@ -1019,7 +1019,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 	inst->driver = (rlm_sql_driver_t const *)inst->driver_inst->module->common;
 
-	rad_assert(!inst->driver->inst_size || inst->driver_inst->data);
+	fr_assert(!inst->driver->inst_size || inst->driver_inst->data);
 
 	/*
 	 *	Call the driver's instantiate function (if set)
@@ -1194,8 +1194,8 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 
 	char			*expanded = NULL;
 
-	rad_assert(request->packet != NULL);
-	rad_assert(request->reply != NULL);
+	fr_assert(request->packet != NULL);
+	fr_assert(request->reply != NULL);
 
 	if (!inst->config->authorize_check_query && !inst->config->authorize_reply_query &&
 	    !inst->config->read_groups && !inst->config->read_profiles) {
@@ -1443,7 +1443,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 	char			*p = path;
 	char			*expanded = NULL;
 
-	rad_assert(section);
+	fr_assert(section);
 
 	if (section->reference[0] != '.') *p++ = '.';
 
@@ -1548,7 +1548,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 		case RLM_SQL_ALT_QUERY:
 			goto next;
 		}
-		rad_assert(handle);
+		fr_assert(handle);
 
 		/*
 		 *  We need to have updated something for the query to have been

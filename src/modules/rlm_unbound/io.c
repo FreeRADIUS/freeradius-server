@@ -93,7 +93,7 @@ static void _unbound_io_event_flags_add(struct ub_event *ub_ev, short flags)
 
 	DEBUG4("unbound event %p - Adding flags %i (current %i, new %i)", ev, flags, ev->events, new);
 
-	rad_assert(!ev->active);	/* must not be active */
+	fr_assert(!ev->active);	/* must not be active */
 
 	ev->events = new;
 }
@@ -107,7 +107,7 @@ static void _unbound_io_event_flags_del(struct ub_event *ub_ev, short flags)
 	unbound_io_event_t	*ev = talloc_get_type_abort(ub_ev, unbound_io_event_t);
 	short			new = ev->events & ~flags;
 
-	rad_assert(!ev->active);			/* must not be active */
+	fr_assert(!ev->active);			/* must not be active */
 
 	DEBUG4("unbound event %p - Removing flags %i (current %i, new %i)", ev, flags, ev->events, new);
 
@@ -122,7 +122,7 @@ static void _unbound_io_event_fd_set(struct ub_event *ub_ev, int fd)
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(ub_ev, unbound_io_event_t);
 
-	rad_assert(!ev->active);			/* must not be active */
+	fr_assert(!ev->active);			/* must not be active */
 
 	if (fd == ev->fd) return;
 
@@ -150,7 +150,7 @@ static void _unbound_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(uctx, unbound_io_event_t);
 
-	rad_assert(ev->active);			/* must be active */
+	fr_assert(ev->active);			/* must be active */
 
 	DEBUG4("unbound event %p - Timeout", ev);
 
@@ -167,7 +167,7 @@ static void _unbound_io_service_readable(fr_event_list_t *el, int fd, UNUSED int
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(uctx, unbound_io_event_t);
 
-	rad_assert(ev->active);			/* must be active */
+	fr_assert(ev->active);			/* must be active */
 
 	DEBUG4("unbound event %p - FD %i now readable", ev, fd);
 
@@ -191,7 +191,7 @@ static void _unbound_io_service_writable(fr_event_list_t *el, int fd, UNUSED int
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(uctx, unbound_io_event_t);
 
-	rad_assert(ev->active);			/* must be active */
+	fr_assert(ev->active);			/* must be active */
 
 	DEBUG4("unbound event %p - FD %i now writable", ev, fd);
 
@@ -221,7 +221,7 @@ static void _unbound_io_service_errored(UNUSED fr_event_list_t *el,
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(uctx, unbound_io_event_t);
 
-	rad_assert(ev->active);			/* must be active */
+	fr_assert(ev->active);			/* must be active */
 
 	DEBUG4("unbound event %p - FD %i errored: %s", ev, fd, fr_syserror(fd_errno));
 
@@ -245,13 +245,13 @@ static int _unbound_io_event_activate(struct ub_event *ub_ev, struct timeval *tv
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(ub_ev, unbound_io_event_t);
 
-	rad_assert(!ev->active);	/* must not be active */
+	fr_assert(!ev->active);	/* must not be active */
 
 	/*
 	 *	File descriptor event
 	 */
 	if ((ev->events & UB_EV_READ) && (ev->events & UB_EV_WRITE)) {
-		rad_assert(ev->fd >= 0);	/* File descriptor must valid */
+		fr_assert(ev->fd >= 0);	/* File descriptor must valid */
 
 		DEBUG4("unbound event %p - Registered for read+write events on FD %i", ev, ev->fd);
 
@@ -266,7 +266,7 @@ static int _unbound_io_event_activate(struct ub_event *ub_ev, struct timeval *tv
 			return -1;
 		}
 	} else if (ev->events & UB_EV_READ) {
-		rad_assert(ev->fd >= 0);	/* File descriptor must valid */
+		fr_assert(ev->fd >= 0);	/* File descriptor must valid */
 
 		DEBUG4("unbound event %p - Registered for read+error events on FD %i", ev, ev->fd);
 
@@ -281,7 +281,7 @@ static int _unbound_io_event_activate(struct ub_event *ub_ev, struct timeval *tv
 			return -1;
 		}
 	} else if (ev->events & UB_EV_WRITE) {
-		rad_assert(ev->fd >= 0);	/* File descriptor must valid */
+		fr_assert(ev->fd >= 0);	/* File descriptor must valid */
 
 		DEBUG4("unbound event %p - Registered for write+error events on FD %i", ev, ev->fd);
 
@@ -368,7 +368,7 @@ static int _unbound_io_timer_modify(struct ub_event *ub_ev, UNUSED struct ub_eve
 	int			ret = 0;
 	fr_time_delta_t		timeout;
 
-	rad_assert(ev->events & UB_EV_TIMEOUT);
+	fr_assert(ev->events & UB_EV_TIMEOUT);
 
 	if (ev->cb != cb) {
 		DEBUG4("unbound event %p - New callback %p (old callback was %p)",
@@ -407,7 +407,7 @@ static int _unbound_io_timer_deactivate(struct ub_event *ub_ev)
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(ub_ev, unbound_io_event_t);
 
-	rad_assert(ev->events & UB_EV_TIMEOUT);
+	fr_assert(ev->events & UB_EV_TIMEOUT);
 
 	DEBUG4("unbound event %p - Disarming timeout", ev);
 

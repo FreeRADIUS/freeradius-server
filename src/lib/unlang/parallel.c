@@ -99,7 +99,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			 */
 		case CHILD_INIT:
 			RDEBUG3("parallel child %d is INIT", i);
-			rad_assert(state->children[i].instruction != NULL);
+			fr_assert(state->children[i].instruction != NULL);
 			child = unlang_io_subrequest_alloc(request,
 							   request->dict, state->detach);
 			child->packet->code = request->packet->code;
@@ -150,7 +150,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 				state->children[i].state = CHILD_DONE;
 				state->children[i].instruction = NULL;
 
-				rad_assert(request->backlog != NULL);
+				fr_assert(request->backlog != NULL);
 
 				/*
 				 *	Detach the child, and insert
@@ -195,7 +195,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			RDEBUG3("parallel child %s returns %s", state->children[i].child->name,
 				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"));
 
-			rad_assert(result < NUM_ELEMENTS(state->children[i].instruction->actions));
+			fr_assert(result < NUM_ELEMENTS(state->children[i].instruction->actions));
 
 			/*
 			 *	Re-run all of the logic from interpret.c
@@ -261,14 +261,14 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			 */
 			if (child_state == CHILD_YIELDED) continue;
 
-			rad_assert(child_state == CHILD_DONE);
+			fr_assert(child_state == CHILD_DONE);
 			break;
 
 			/*
 			 *	Not ready to run.
 			 */
 		case CHILD_YIELDED:
-			rad_assert(state->children[i].child != NULL);
+			fr_assert(state->children[i].child != NULL);
 
 			if (state->children[i].child->runnable_id == -2) { /* see unlang_interpret_resumable() */
 				(void) fr_heap_extract(state->children[i].child->backlog,
@@ -276,7 +276,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 				goto runnable;
 			}
 
-			rad_assert(state->children[i].instruction != NULL);
+			fr_assert(state->children[i].instruction != NULL);
 			RDEBUG3("parallel child %s is already YIELDED", state->children[i].child->name);
 			child_state = CHILD_YIELDED;
 			continue;
@@ -293,8 +293,8 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			 */
 		case CHILD_DONE:
 			RDEBUG3("parallel child %d is already DONE", i);
-			rad_assert(state->children[i].child == NULL);
-			rad_assert(state->children[i].instruction == NULL);
+			fr_assert(state->children[i].child == NULL);
+			fr_assert(state->children[i].instruction == NULL);
 			continue;
 
 		}
@@ -307,7 +307,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 		return UNLANG_ACTION_YIELD;
 	}
 
-	rad_assert(child_state == CHILD_DONE);
+	fr_assert(child_state == CHILD_DONE);
 
 	/*
 	 *	Clean up all of the child requests, because once we
@@ -316,8 +316,8 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 	for (i = 0; i < state->num_children; i++) {
 		switch (state->children[i].state) {
 		case CHILD_RUNNABLE:
-			rad_assert(state->children[i].child->backlog == NULL);
-			rad_assert(state->children[i].child->runnable_id < 0);
+			fr_assert(state->children[i].child->backlog == NULL);
+			fr_assert(state->children[i].child->runnable_id < 0);
 
 			/*
 			 *	Un-detached children are never in the
@@ -327,7 +327,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 
 		case CHILD_YIELDED:
 			REQUEST_VERIFY(state->children[i].child);
-			rad_assert(state->children[i].child->runnable_id < 0);
+			fr_assert(state->children[i].child->runnable_id < 0);
 
 			/*
 			 *	Signal the child that it's going to be
@@ -373,7 +373,7 @@ static void unlang_parallel_signal(REQUEST *request, fr_state_signal_t action)
 
 		case CHILD_RUNNABLE:
 		case CHILD_YIELDED:
-			rad_assert(state->children[i].child != NULL);
+			fr_assert(state->children[i].child != NULL);
 			unlang_interpret_signal(state->children[i].child, action);
 			break;
 		}

@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/util.h>
 #include <freeradius-devel/server/virtual_servers.h>
 
@@ -344,7 +344,7 @@ static int lib_dir_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *
 	CONF_PAIR	*cp = cf_item_to_pair(ci);
 	char const	*value;
 
-	rad_assert(main_config != NULL);
+	fr_assert(main_config != NULL);
 	value = cf_pair_value(cp);
 	if (value) {
 		main_config_t *config;
@@ -1210,7 +1210,7 @@ do {\
 	 *	Note that where possible, we do atomic switch-overs,
 	 *	to ensure that the pointers are always valid.
 	 */
-	rad_assert(config->root_cs == NULL);
+	fr_assert(config->root_cs == NULL);
 
 	DEBUG2("%s: #### Loading Clients ####", config->name);
 	if (!client_list_parse_section(cs, 0, false)) goto failure;

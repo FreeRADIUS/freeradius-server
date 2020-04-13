@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/util/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
@@ -350,7 +350,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 		requestor->stats.message_interval = RTT(requestor->stats.message_interval, message_interval);
 	}
 
-	rad_assert(requestor->stats.last_write <= when);
+	fr_assert(requestor->stats.last_write <= when);
 	requestor->stats.last_write = when;
 
 	requestor->stats.outstanding++;
@@ -412,7 +412,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	fr_channel_end_t *requestor;
 	fr_atomic_queue_t *aq;
 
-	rad_assert(ch->end[TO_RESPONDER].recv != NULL);
+	fr_assert(ch->end[TO_RESPONDER].recv != NULL);
 
 	aq = ch->end[TO_REQUESTOR].aq;
 	requestor = &(ch->end[TO_RESPONDER]);
@@ -446,15 +446,15 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	 *	we've received one more reply, and with the responders
 	 *	ACK.
 	 */
-	rad_assert(requestor->stats.outstanding > 0);
-	rad_assert(cd->live.sequence > requestor->ack);
-	rad_assert(cd->live.sequence <= requestor->sequence); /* must have fewer replies than requests */
+	fr_assert(requestor->stats.outstanding > 0);
+	fr_assert(cd->live.sequence > requestor->ack);
+	fr_assert(cd->live.sequence <= requestor->sequence); /* must have fewer replies than requests */
 
 	requestor->stats.outstanding--;
 	requestor->ack = cd->live.sequence;
 	requestor->their_view_of_my_sequence = cd->live.ack;
 
-	rad_assert(requestor->stats.last_read_other <= cd->m.when);
+	fr_assert(requestor->stats.last_read_other <= cd->m.when);
 	requestor->stats.last_read_other = cd->m.when;
 
 	ch->end[TO_RESPONDER].recv(ch->end[TO_RESPONDER].recv_uctx, ch, cd);
@@ -484,14 +484,14 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 	 */
 	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return false;
 
-	rad_assert(cd->live.sequence > responder->ack);
-	rad_assert(cd->live.sequence >= responder->sequence); /* must have more requests than replies */
+	fr_assert(cd->live.sequence > responder->ack);
+	fr_assert(cd->live.sequence >= responder->sequence); /* must have more requests than replies */
 
 	responder->stats.outstanding++;
 	responder->ack = cd->live.sequence;
 	responder->their_view_of_my_sequence = cd->live.ack;
 
-	rad_assert(responder->stats.last_read_other <= cd->m.when);
+	fr_assert(responder->stats.last_read_other <= cd->m.when);
 	responder->stats.last_read_other = cd->m.when;
 
 	ch->end[TO_REQUESTOR].recv(ch->end[TO_REQUESTOR].recv_uctx, ch, cd);
@@ -544,7 +544,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 		return -1;
 	}
 
-	rad_assert(responder->stats.outstanding > 0);
+	fr_assert(responder->stats.outstanding > 0);
 	responder->stats.outstanding--;
 	responder->stats.packets++;
 
@@ -554,7 +554,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	message_interval = when - responder->stats.last_write;
 	responder->stats.message_interval = RTT(responder->stats.message_interval, message_interval);
 
-	rad_assert(responder->stats.last_write <= when);
+	fr_assert(responder->stats.last_write <= when);
 	responder->stats.last_write = when;
 
 	/*
@@ -598,7 +598,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	FIXME: make these limits configurable, or include
 	 *	predictions about packet processing time?
 	 */
-	rad_assert(responder->their_view_of_my_sequence <= responder->sequence);
+	fr_assert(responder->their_view_of_my_sequence <= responder->sequence);
 #if 0
 	if (((responder->sequence - their_view_of_my_sequence) <= 1000) &&
 	    ((when - responder->stats.last_read_other < SIGNAL_INTERVAL) ||
@@ -696,7 +696,7 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	fr_channel_end_t *requestor;
 	fr_channel_t *ch;
 
-	rad_assert(data_size == sizeof(cc));
+	fr_assert(data_size == sizeof(cc));
 	memcpy(&cc, data, data_size);
 
 	cs = cc.signal;
@@ -754,7 +754,7 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 *	The responder is sleeping or done.  There are more
 	 *	packets available, so we signal it to wake up again.
 	 */
-	rad_assert(ack <= requestor->sequence);
+	fr_assert(ack <= requestor->sequence);
 #endif
 
 	/*

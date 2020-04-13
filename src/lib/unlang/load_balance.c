@@ -71,7 +71,7 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 		 *	process again.
 		 */
 
-		rad_assert(instruction->type != UNLANG_TYPE_LOAD_BALANCE); /* this is never called again */
+		fr_assert(instruction->type != UNLANG_TYPE_LOAD_BALANCE); /* this is never called again */
 
 		/*
 		 *	If the current child says "return", then do

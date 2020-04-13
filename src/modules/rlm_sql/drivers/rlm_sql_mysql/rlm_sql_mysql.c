@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_mysql - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sys/stat.h>
 
@@ -709,8 +709,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	char const		*error;
 	size_t			i = 0;
 
-	rad_assert(conn && conn->sock);
-	rad_assert(outlen > 0);
+	fr_assert(conn && conn->sock);
+	fr_assert(outlen > 0);
 
 	error = mysql_error(conn->sock);
 
@@ -751,7 +751,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 

@@ -23,7 +23,7 @@
  */
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -64,7 +64,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 			CURL			*candle = m->easy_handle;
 			CURLcode		ret;
 
-			rad_assert(candle);
+			fr_assert(candle);
 
 			mhandle->transfers--;
 
@@ -350,7 +350,7 @@ static int _fr_curl_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int wha
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 

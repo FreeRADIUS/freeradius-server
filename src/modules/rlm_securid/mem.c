@@ -276,7 +276,7 @@ static void securid_sessionlist_clean_expired(rlm_securid_t *inst, REQUEST *requ
 		if ((timestamp - session->timestamp) > inst->timer_limit) {
 			rbnode_t *node;
 			node = rbtree_find(inst->session_tree, session);
-			rad_assert(node != NULL);
+			fr_assert(node != NULL);
 			rbtree_delete(inst->session_tree, node);
 
 			/*

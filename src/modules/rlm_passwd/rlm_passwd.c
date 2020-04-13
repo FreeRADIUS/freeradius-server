@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 struct mypasswd {
 	struct mypasswd *next;
@@ -397,8 +397,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	fr_dict_attr_t const	*da;
 	rlm_passwd_t		*inst = instance;
 
-	rad_assert(inst->filename && *inst->filename);
-	rad_assert(inst->format && *inst->format);
+	fr_assert(inst->filename && *inst->filename);
+	fr_assert(inst->format && *inst->format);
 
 	if (inst->hash_size == 0) {
 		cf_log_err(conf, "Invalid value '0' for hash_size");
