@@ -813,7 +813,7 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	if (pid == 0) {
 		int unused[2] = {-1, -1};
 
-		fr_exec_child(request, argv, envp, false, NULL, fd_p, unused, from_child);
+		fr_exec_child(request, argv, envp, true, NULL, fd_p, unused, from_child);
 	}
 
 	/*
