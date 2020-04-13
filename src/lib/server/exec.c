@@ -831,5 +831,22 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	 *	from.
 	 */
 	*pid_p = pid;
+	fr_nonblock(from_child[0]);
 	return from_child[0];
+}
+
+/** Remember child processes.
+ *
+ *  This function exists mainly so that other portions of the server
+ *  don't need to clean up child PIDs when something goes wrong.
+ */
+void fr_exec_waitpid(pid_t pid)
+{
+	fr_child_t	*child;
+
+	fr_reap_children();
+
+	MEM(child = talloc_zero(fr_children, fr_child_t));
+	fr_dlist_insert_tail(fr_children, child);
+	child->pid = pid;
 }

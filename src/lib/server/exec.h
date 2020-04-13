@@ -63,6 +63,8 @@ int	fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs);
 
 int	fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs, pid_t *pid_p);
 
+void	fr_exec_waitpid(pid_t pid);
+
 #ifdef __cplusplus
 }
 #endif
