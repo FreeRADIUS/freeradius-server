@@ -136,7 +136,41 @@ static unlang_action_t unlang_tmpl_resume(REQUEST *request, rlm_rcode_t *presult
 /** Wrapper to call exec after a tmpl has been expanded
  *
  */
-static unlang_action_t unlang_tmpl_exec_resume(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_t *presult)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
+								       unlang_frame_state_tmpl_t);
+	int				fd;
+	pid_t				pid;
+
+	fd = fr_exec_wait_start(request, state->box, NULL, &pid);
+	if (fd < 0) {
+		REDEBUG("Failed executing program - %s", fr_strerror());
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	// set up the IO handler.
+	// ignore kqueue, or do EV_SET(&kev, pid, EVFILT_PROC, EV_ADD, NOTE_EXIT)
+	// and we'll get notified when the process exits.
+	// the IO handler reads until EOF, or ~1K (configurable?)
+	// and kills the process if it's writing too much data
+	//
+	// the signal handler also closes the pipes and kills the process on FR_SIGNAL_CANCEL
+	// and then closes the FD, and calls waitpid()
+
+	REDEBUG("Async exec is not supported.");
+	*presult = RLM_MODULE_FAIL;
+	return UNLANG_ACTION_CALCULATE_RESULT;
+
+}
+
+/** Wrapper to call exec after a tmpl has been expanded
+ *
+ */
+static unlang_action_t unlang_tmpl_exec_nowait_resume(REQUEST *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -167,6 +201,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 	unlang_tmpl_t			*ut = unlang_generic_to_tmpl(frame->instruction);
+	xlat_exp_t const		*xlat;
 
 	/*
 	 *	If we're not called from unlang_tmpl_push(), then
@@ -189,7 +224,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 		 *	Inline exec's are only called from in-line
 		 *	text in the configuration files.
 		 */
-		frame->interpret = unlang_tmpl_exec_resume;
+		frame->interpret = unlang_tmpl_exec_nowait_resume;
 
 		repeatable_set(frame);
 		unlang_xlat_push(state->ctx, &state->box, request, ut->tmpl->tmpl_xlat, false);
@@ -217,28 +252,44 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 	 */
 	if (ut->tmpl->type != TMPL_TYPE_EXEC) {
 		REDEBUG("Internal error - template '%s' should not require async", ut->tmpl->name);
+	fail:
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	/*
-	 *	Exec isn't done yet.
-	 *
-	 *	@todo - fork the program, etc. by calling functions in
-	 *	src/lib/server/exec.c Note that we also need an IO
-	 *	function passed to unlang_tmpl_push().  We may want a
-	 *	different API, unlang_tmpl_yeild_to_exec(), which takes
-	 *	the extra argument.  It can then set up the tmpl and
-	 *	set a flag which causes a different exec function to
-	 *	be called.
-	 *
-	 *	We then also need a signal function, so that the
-	 *	caller can cancel the IO handler if necessary.  And, a
-	 *	timeout, so that the exec doesn't take too long.
+	 *	No pre-parsed xlat, die.
 	 */
-	REDEBUG("Asynchronous exec is not supported");
-	*presult = RLM_MODULE_FAIL;
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	if (!ut->tmpl->tmpl_xlat) {
+		ssize_t slen;
+		xlat_exp_t *head = NULL;
+
+		slen = xlat_tokenize(state->ctx, &head, ut->tmpl->name, talloc_array_length(ut->tmpl->name) - 1, NULL);
+		if (slen <= 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(state->ctx, &spaces, &text, slen, ut->tmpl->name);
+			REDEBUG("Failed parsing expansion string:");
+			REDEBUG("%s", text);
+			REDEBUG("%s^ %s", spaces, fr_strerror());
+
+			talloc_free(spaces);
+			talloc_free(text);
+			goto fail;
+		}
+
+		xlat = head;
+	} else {
+		xlat = ut->tmpl->tmpl_xlat;
+	}
+
+	/*
+	 *	Expand the arguments to the program we're executing.
+	 */
+	frame->interpret = unlang_tmpl_exec_wait_resume;
+	repeatable_set(frame);
+	unlang_xlat_push(state->ctx, &state->box, request, xlat, false);
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 
