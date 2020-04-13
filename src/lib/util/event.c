@@ -1256,7 +1256,28 @@ int fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const
 	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, ev);
 
 	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
-		fr_strerror_printf("Failed adding waiter for PID %ld", (long) pid);
+		pid_t child;
+		int status;
+
+		talloc_free(ev);
+
+		/*
+		 *	Print this error here, so that the caller gets
+		 *	the error from kevent(), and not waitpid().
+		 */
+		fr_strerror_printf("Failed adding waiter for PID %ld - %s", (long) pid, fr_syserror(errno));
+
+		/*
+		 *	If the child exited before kevent() was
+		 *	called, we need to get its status via
+		 *	waitpid().
+		 */
+		child = waitpid(pid, &status, WNOHANG);
+		if (child == pid) {
+			wait_fn(el, pid, status, uctx);
+			return 0;
+		}
+
 		return -1;
 	}
 	talloc_set_destructor(ev, _event_pid_free);
