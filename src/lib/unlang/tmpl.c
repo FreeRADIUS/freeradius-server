@@ -29,9 +29,15 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/server/exec.h>
 #include "tmpl_priv.h"
+#include <signal.h>
 
-
-static void unlang_tmpl_exec_kill(REQUEST *request)
+/*
+ *	Clean up everything except the waitpid handler.
+ *
+ *	If there is a waitpid handler, then this cleanup function MUST
+ *	be called after setting the handler.
+ */
+static void unlang_tmpl_exec_cleanup(REQUEST *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -75,7 +81,7 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
 	 *	ignore future signals.
 	 */
 	if (action == FR_SIGNAL_CANCEL) {
-		if (state->buffer) unlang_tmpl_exec_kill(request);
+		if (state->buffer) unlang_tmpl_exec_cleanup(request);
 		state->signal = NULL;
 	}
 }
@@ -127,6 +133,23 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 }
 
 
+static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int status, void *uctx)
+{
+	REQUEST				*request = uctx;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
+								       unlang_frame_state_tmpl_t);
+
+	state->status = status;
+
+	rad_assert(state->pid == 0);
+	rad_assert(state->fd < 0);
+	rad_assert(state->ev == NULL);
+	unlang_interpret_resumable(request);
+}
+
+
 static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	REQUEST				*request = uctx;
@@ -144,30 +167,43 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, int fd, UNUSED int
 	if (data_len < 0) {
 		if (errno == EINTR) return;
 
-		unlang_tmpl_exec_kill(request);
-		unlang_interpret_resumable(request);
-		return;
-	}
-
-	/*
-	 *	Done reading, close the pipe.
-	 */
-	if (data_len == 0) {
-		state->status = 0;
-
-		// @todo - convert buffer to value_box
-
-	resume:
-		unlang_tmpl_exec_kill(request);
-
-		// @todo - only mark the request resumable when the process exits
-		// which is the definition of "wait"...
+		unlang_tmpl_exec_cleanup(request);
 		unlang_interpret_resumable(request);
 		return;
 	}
 
 	p += data_len;
-	if (p == end) goto resume; /* overflowed output buffer */
+
+	/*
+	 *	Done reading, close the pipe.
+	 */
+	if ((data_len == 0) || (p >= end)) {
+		/*
+		 *	Ran out of buffer space.  Kill the process.
+		 */
+		if (p >= end) kill(state->pid, SIGKILL);
+
+		/*
+		 *	This event will stick around until the process exits.
+		 */
+		if (fr_event_pid_wait(state, request->el, &state->ev_pid, state->pid,
+				      unlang_tmpl_exec_waitpid, request) < 0) {
+			unlang_tmpl_exec_cleanup(request);
+			unlang_interpret_resumable(request);
+			return;
+		}
+		state->pid = 0;	/* don't kill the process */
+
+		/*
+		 *	Clean up the FD, reader, and timeouts.
+		 */
+		unlang_tmpl_exec_cleanup(request);
+
+		/*
+		 *	Once the process exits, we will be notified, and
+		 */
+		return;
+	}
 
 	rad_assert(p < end);
 	state->ptr = p;
@@ -178,7 +214,7 @@ static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_
 	REQUEST				*request = uctx;
 
 	REDEBUG("Timeout running program - kill it and failing the request");
-	unlang_tmpl_exec_kill(request);
+	unlang_tmpl_exec_cleanup(request);
 	unlang_interpret_resumable(request);
 }
 
@@ -268,13 +304,13 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	 *	@todo - make the timeout configurable
 	 */
 	if (fr_event_timer_in(request, request->el, &state->ev, 10 * NSEC, unlang_tmpl_exec_timeout, request) < 0) {
-		unlang_tmpl_exec_kill(request);
+		unlang_tmpl_exec_cleanup(request);
 		goto fail;
 	}
 
 	if (fr_event_fd_insert(state->ctx, request->el, state->fd, unlang_tmpl_exec_read, NULL, NULL, request) < 0) {
 		REDEBUG("Failed adding event - %s", fr_strerror());
-		unlang_tmpl_exec_kill(request);
+		unlang_tmpl_exec_cleanup(request);
 		goto fail;
 	}
 

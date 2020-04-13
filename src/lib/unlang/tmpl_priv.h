@@ -45,7 +45,9 @@ typedef struct {
 
 	pid_t				pid;		//!< child PID
 	int				fd;		//!< for reading from the child
-	fr_event_timer_t const		*ev;		//!< for cleaning up the child
+	fr_event_timer_t const		*ev;		//!< for timing out the child
+	fr_event_pid_t const   		*ev_pid;	//!< for cleaning up the process
+
 	char				*buffer;	//!< for reading the answer
 	char				*ptr;		//!< where in the buffer we are writing to
 	int				status;		//!< return status from the program
