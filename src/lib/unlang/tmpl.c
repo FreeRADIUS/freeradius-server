@@ -31,6 +31,24 @@ RCSID("$Id$")
 #include "tmpl_priv.h"
 
 
+static void unlang_tmpl_exec_kill(REQUEST *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
+								       unlang_frame_state_tmpl_t);
+
+	if (state->fd >= 0) {
+		(void) fr_event_fd_delete(request->el, state->fd, FR_EVENT_FILTER_IO);
+		close(state->fd);
+		state->fd = -1;
+	}
+
+	if (state->pid) fr_exec_waitpid(state->pid);
+
+	if (state->ev) fr_event_timer_delete(&state->ev);
+}
+
 /** Send a signal (usually stop) to a request
  *
  * This is typically called via an "async" action, i.e. an action
@@ -53,9 +71,13 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
 	state->signal(request, state->rctx, action);
 
 	/*
-	 *	If we're cancelled, then ignore future signals.
+	 *	If we're cancelled, then kill any child processes, and
+	 *	ignore future signals.
 	 */
-	if (action == FR_SIGNAL_CANCEL) state->signal = NULL;
+	if (action == FR_SIGNAL_CANCEL) {
+		if (state->buffer) unlang_tmpl_exec_kill(request);
+		state->signal = NULL;
+	}
 }
 
 /** Push a tmpl onto the stack for evaluation
@@ -104,6 +126,64 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 	unlang_interpret_push(request, unlang_tmpl_to_generic(ut), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false);
 }
 
+
+static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	REQUEST				*request = uctx;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
+								       unlang_frame_state_tmpl_t);
+	ssize_t data_len;
+	char *p, *end;
+
+	p = state->ptr;
+	end = state->buffer + talloc_array_length(state->buffer);
+
+	data_len = read(fd, p, end - p);
+	if (data_len < 0) {
+		if (errno == EINTR) return;
+
+		unlang_tmpl_exec_kill(request);
+		unlang_interpret_resumable(request);
+		return;
+	}
+
+	/*
+	 *	Done reading, close the pipe.
+	 */
+	if (data_len == 0) {
+		state->status = 0;
+
+		// @todo - convert buffer to value_box
+
+	resume:
+		unlang_tmpl_exec_kill(request);
+
+		// @todo - only mark the request resumable when the process exits
+		// which is the definition of "wait"...
+		unlang_interpret_resumable(request);
+		return;
+	}
+
+	p += data_len;
+	if (p == end) goto resume; /* overflowed output buffer */
+
+	rad_assert(p < end);
+	state->ptr = p;
+}
+
+static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	REQUEST				*request = uctx;
+
+	REDEBUG("Timeout running program - kill it and failing the request");
+	unlang_tmpl_exec_kill(request);
+	unlang_interpret_resumable(request);
+}
+
+
+
 /** Wrapper to call a resumption function after a tmpl has been expanded
  *
  *  If the resumption function returns YIELD, then this function is
@@ -133,6 +213,30 @@ static unlang_action_t unlang_tmpl_resume(REQUEST *request, rlm_rcode_t *presult
 }
 
 
+
+/** Wrapper to call exec after the program has finished executing
+ *
+ */
+static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t *presult)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
+								       unlang_frame_state_tmpl_t);
+
+	if (state->status != 0) {
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Ensure that the callers resume function is called.
+	 */
+	frame->interpret = unlang_tmpl_resume;
+	return unlang_tmpl_resume(request, presult);
+}
+
+
 /** Wrapper to call exec after a tmpl has been expanded
  *
  */
@@ -148,22 +252,36 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	fd = fr_exec_wait_start(request, state->box, NULL, &pid);
 	if (fd < 0) {
 		REDEBUG("Failed executing program - %s", fr_strerror());
+	fail:
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	// set up the IO handler.
-	// ignore kqueue, or do EV_SET(&kev, pid, EVFILT_PROC, EV_ADD, NOTE_EXIT)
-	// and we'll get notified when the process exits.
-	// the IO handler reads until EOF, or ~1K (configurable?)
-	// and kills the process if it's writing too much data
-	//
-	// the signal handler also closes the pipes and kills the process on FR_SIGNAL_CANCEL
-	// and then closes the FD, and calls waitpid()
+	state->fd = fd;
+	state->pid = pid;
+	state->status = 1;	/* default to program didn't work */
+	MEM(state->buffer = talloc_array(state, char, 024));
 
-	REDEBUG("Async exec is not supported.");
-	*presult = RLM_MODULE_FAIL;
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	/*
+	 *	Kill the child process after a period of time.
+	 *
+	 *	@todo - make the timeout configurable
+	 */
+	if (fr_event_timer_in(request, request->el, &state->ev, 10 * NSEC, unlang_tmpl_exec_timeout, request) < 0) {
+		unlang_tmpl_exec_kill(request);
+		goto fail;
+	}
+
+	if (fr_event_fd_insert(state->ctx, request->el, state->fd, unlang_tmpl_exec_read, NULL, NULL, request) < 0) {
+		REDEBUG("Failed adding event - %s", fr_strerror());
+		unlang_tmpl_exec_kill(request);
+		goto fail;
+	}
+
+	frame->interpret = unlang_tmpl_exec_wait_final;
+
+	*presult = RLM_MODULE_YIELD;
+	return UNLANG_ACTION_YIELD;
 
 }
 
