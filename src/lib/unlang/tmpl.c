@@ -300,7 +300,6 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
-	int				fd = -1;
 	pid_t				pid;
 	int				*fd_p = NULL;
 
@@ -308,7 +307,8 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	 *	@todo - if there's no state->out, then we don't need
 	 *	to have an FD, and we don't need to have a buffer.
 	 */
-	if (state->out) fd_p = &fd;
+	state->fd = -1;
+	if (state->out) fd_p = &state->fd;
 
 	if (fr_exec_wait_start(request, state->box, NULL, &pid, fd_p) < 0) {
 		REDEBUG("Failed executing program - %s", fr_strerror());
@@ -319,7 +319,6 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 
 	TALLOC_FREE(state->box); /* this is the xlat expansion, and not the output string we want */
 
-	state->fd = fd;
 	state->pid = pid;
 	state->status = 1;	/* default to program didn't work */
 
@@ -350,7 +349,6 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 
 	*presult = RLM_MODULE_YIELD;
 	return UNLANG_ACTION_YIELD;
-
 }
 
 /** Wrapper to call exec after a tmpl has been expanded
