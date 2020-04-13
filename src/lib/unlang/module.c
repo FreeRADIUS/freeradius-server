@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "module_priv.h"
 #include "subrequest_priv.h"
+#include "tmpl.h"
 
 /** Wrap an #fr_event_timer_t providing data needed for unlang events
  *
@@ -468,6 +469,50 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	 *	Push the xlat function
 	 */
 	unlang_xlat_push(ctx, out, request, exp, false);
+
+	return RLM_MODULE_YIELD;
+}
+
+/** Push a pre-compiled tmpl and resumption state onto the stack for evaluation
+ *
+ * In order to use the async unlang processor the calling module needs to establish
+ * a resumption point, as the call to an xlat function may require yielding control
+ * back to the interpreter.
+ *
+ * To simplify the calling conventions, this function is provided to first push a
+ * resumption stack frame for the module, and then push a tmpl stack frame.
+ *
+ * After pushing those frames the function updates the stack pointer to jump over
+ * the resumption frame and execute the tmpl expansion.
+ *
+ * When the tmpl interpreter finishes, and pops the tmpl frame, the unlang interpreter
+ * will then call the module resumption frame, allowing the module to continue exectuion.
+ *
+ * @param[in] ctx		To allocate talloc value boxes and values in.
+ * @param[out] out		Where to write the result of the expansion.
+ * @param[in] request		The current request.
+ * @param[in] vpt		the tmpl to expand
+ * @param[in] resume		function to call when the XLAT expansion is complete.
+ * @param[in] signal		function to call if a signal is received.
+ * @param[in] rctx		to pass to the resume() and signal() callbacks.
+ * @return
+ *	- RLM_MODULE_YIELD.
+ */
+rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out,
+					REQUEST *request, vp_tmpl_t const *vpt,
+					fr_unlang_module_resume_t resume,
+					fr_unlang_module_signal_t signal, void *rctx)
+{
+	/*
+	 *	Push the resumption point BEFORE pushing the xlat onto
+	 *	the parents stack.
+	 */
+	(void) unlang_module_yield(request, resume, signal, rctx);
+
+	/*
+	 *	Push the xlat function
+	 */
+	unlang_tmpl_push(ctx, out, request, vpt);
 
 	return RLM_MODULE_YIELD;
 }

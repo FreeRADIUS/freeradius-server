@@ -129,6 +129,11 @@ rlm_rcode_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					    fr_unlang_module_resume_t resume,
 					    fr_unlang_module_signal_t signal, void *rctx);
 
+rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out,
+					REQUEST *request, vp_tmpl_t const *exp,
+					fr_unlang_module_resume_t resume,
+					fr_unlang_module_signal_t signal, void *rctx);
+
 rlm_rcode_t	unlang_module_yield(REQUEST *request,
 				    fr_unlang_module_resume_t resume,
 				    fr_unlang_module_signal_t signal, void *rctx);
