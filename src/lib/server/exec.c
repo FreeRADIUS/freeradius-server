@@ -823,7 +823,10 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 
 	if (pid < 0) {
 		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
-		if (fd_p) close(*fd_p);
+		if (fd_p) {
+			close(from_child[0]);
+			close(from_child[1]);
+		}
 		talloc_free(argv);
 		return -1;
 	}
@@ -834,7 +837,11 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	 */
 	*pid_p = pid;
 
-	if (fd_p) fr_nonblock(*fd_p);
+	if (fd_p) {
+		*fd_p = from_child[0];
+		fr_nonblock(*fd_p);
+		close(from_child[1]);
+	}
 
 	return 0;
 }
