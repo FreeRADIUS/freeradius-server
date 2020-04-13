@@ -751,22 +751,23 @@ int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
  * @param vb		as returned by xlat_frame_eval()
  * @param env_pairs	VPs to put into into the environment.  May be NULL.
  * @param[out] pid_p	The PID of the child
+ * @param[out] fd_p	The stdout FD of the child
  * @return
  *	- <0 on error
- *	- >= 0 on success, with FD to read program output
+ *	- 0 on success
  *
  *  @todo - maybe take an fr_cursor_t instead of env_pairs?  That
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs, pid_t *pid_p)
+int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs, pid_t *pid_p, int *fd_p)
 {
 	int		argc;
 	char		**envp;
 	char		**argv;
 	pid_t		pid;
 	fr_value_box_t	*first;
-	int		from_child[2];
+	int		from_child[2] = {-1, -1};
 
 	/*
 	 *	Clean up any previous child processes.
@@ -797,9 +798,11 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	argc = fr_value_box_list_flatten_argv(request, &argv, vb);
 	if (argc < 0) return -1;
 
-	if (pipe(from_child) < 0) {
-		fr_strerror_printf("Failed opening pipe to read from child - %s", fr_strerror());
-		return -1;
+	if (fd_p) {
+		if (pipe(from_child) < 0) {
+			fr_strerror_printf("Failed opening pipe to read from child - %s", fr_strerror());
+			return -1;
+		}
 	}
 
 	pid = fork();
@@ -808,20 +811,19 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	 *	The child never returns from calling fr_exec_child();
 	 */
 	if (pid == 0) {
-		int unused[2];
+		int unused[2] = {-1, -1};
 
-		fr_exec_child(request, argv, envp, false, NULL, NULL, unused, from_child);
+		fr_exec_child(request, argv, envp, false, NULL, fd_p, unused, from_child);
 	}
 
 	/*
 	 *	Parent process.  Do all necessary cleanups.
 	 */
 	talloc_free(envp);
-	close(from_child[1]);
 
 	if (pid < 0) {
 		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
-		close(from_child[0]);
+		if (fd_p) close(*fd_p);
 		talloc_free(argv);
 		return -1;
 	}
@@ -831,8 +833,10 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	 *	from.
 	 */
 	*pid_p = pid;
-	fr_nonblock(from_child[0]);
-	return from_child[0];
+
+	if (fd_p) fr_nonblock(*fd_p);
+
+	return 0;
 }
 
 /** Remember child processes.

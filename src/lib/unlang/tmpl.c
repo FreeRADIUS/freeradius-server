@@ -266,6 +266,24 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 	}
 
 	/*
+	 *	We might want to just get the status of the program,
+	 *	and not care about the output.
+	 *
+	 *	If we do care about the output, it's unquoted, and tainted.
+	 */
+	if (state->out) {
+		fr_type_t type = FR_TYPE_STRING;
+
+		MEM(state->box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
+		if (fr_value_box_from_str(state->box, state->box, &type, NULL,
+					  state->buffer, state->ptr - state->buffer, 0, true) < 0) {
+			TALLOC_FREE(state->box);
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+	}
+
+	/*
 	 *	Ensure that the callers resume function is called.
 	 */
 	frame->interpret = unlang_tmpl_resume;
@@ -282,21 +300,28 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
-	int				fd;
+	int				fd = -1;
 	pid_t				pid;
+	int				*fd_p = NULL;
 
-	fd = fr_exec_wait_start(request, state->box, NULL, &pid);
-	if (fd < 0) {
+	/*
+	 *	@todo - if there's no state->out, then we don't need
+	 *	to have an FD, and we don't need to have a buffer.
+	 */
+	if (state->out) fd_p = &fd;
+
+	if (fr_exec_wait_start(request, state->box, NULL, &pid, fd_p) < 0) {
 		REDEBUG("Failed executing program - %s", fr_strerror());
 	fail:
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
+	TALLOC_FREE(state->box); /* this is the xlat expansion, and not the output string we want */
+
 	state->fd = fd;
 	state->pid = pid;
 	state->status = 1;	/* default to program didn't work */
-	MEM(state->buffer = talloc_array(state, char, 024));
 
 	/*
 	 *	Kill the child process after a period of time.
@@ -308,10 +333,17 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 		goto fail;
 	}
 
-	if (fr_event_fd_insert(state->ctx, request->el, state->fd, unlang_tmpl_exec_read, NULL, NULL, request) < 0) {
-		REDEBUG("Failed adding event - %s", fr_strerror());
-		unlang_tmpl_exec_cleanup(request);
-		goto fail;
+	/*
+	 *	If the caller doesn't want the output box, we can just skip reading from the FD.
+	 */
+	if (state->fd >= 0) {
+		if (fr_event_fd_insert(state->ctx, request->el, state->fd, unlang_tmpl_exec_read, NULL, NULL, request) < 0) {
+			REDEBUG("Failed adding event - %s", fr_strerror());
+			unlang_tmpl_exec_cleanup(request);
+			goto fail;
+		}
+
+		MEM(state->buffer = talloc_array(state, char, 1024));
 	}
 
 	frame->interpret = unlang_tmpl_exec_wait_final;
