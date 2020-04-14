@@ -707,6 +707,12 @@ int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
 	argc = fr_value_box_list_flatten_argv(request, &argv, vb);
 	if (argc < 0) return -1;
 
+	if (DEBUG_ENABLED3) {
+		int i;
+
+		for (i = 0; i < argc; i++) RDEBUG3("arg[%d] %s", i, argv[i]);
+	}
+
 	pid = fork();
 
 	/*
@@ -801,7 +807,7 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	if (DEBUG_ENABLED3) {
 		int i;
 
-		for (i = 0; i < argc; i++) DEBUG3("arg[%d] %s", i, argv[i]);
+		for (i = 0; i < argc; i++) RDEBUG3("arg[%d] %s", i, argv[i]);
 	}
 
 	if (fd_p) {
