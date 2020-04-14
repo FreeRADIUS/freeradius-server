@@ -798,6 +798,12 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	argc = fr_value_box_list_flatten_argv(request, &argv, vb);
 	if (argc < 0) return -1;
 
+	if (DEBUG_ENABLED3) {
+		int i;
+
+		for (i = 0; i < argc; i++) DEBUG3("arg[%d] %s", i, argv[i]);
+	}
+
 	if (fd_p) {
 		if (pipe(from_child) < 0) {
 			fr_strerror_printf("Failed opening pipe to read from child - %s", fr_strerror());
