@@ -1376,10 +1376,8 @@ void _fr_assert_fatal(char const *file, int line, char const *expr, char const *
 
 #ifdef NDEBUG
 	_fr_exit_now(file, line, 128 + SIGABRT);
-
 #else
 	fr_fault(SIGABRT);
-	_Exit(128 + SIGABRT);		/* Don't hit the debugger twice */
 #endif
 }
 
@@ -1408,14 +1406,16 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status, bool now)
 		fr_debug_break(false);	/* If running under GDB we'll break here */
 	}
 
-	now ? _Exit(status) : exit(status);
+	if (now) _Exit(status);
+	exit(status);
 }
 #else
 void NEVER_RETURNS _fr_exit(UNUSED char const *file, UNUSED int line, int status, bool now)
 {
 	if (status != EXIT_SUCCESS) fr_debug_break(false);	/* If running under GDB we'll break here */
 
-	now ? _Exit(status) : exit(status);
+	if (now) _Exit(status);
+	exit(status);
 }
 #endif
 
