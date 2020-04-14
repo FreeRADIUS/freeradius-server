@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/io/worker.h>
 
 /** Whether triggers are enabled globally
  *
@@ -178,6 +179,44 @@ bool trigger_enabled(void)
 	return triggers_init;
 }
 
+typedef struct {
+	char		*name;
+	xlat_exp_t	*xlat;
+	VALUE_PAIR	*vps;
+	fr_value_box_t	*box;
+	bool		expanded;
+} fr_trigger_t;
+
+static rlm_rcode_t trigger_process(void *instance, UNUSED void *thread, REQUEST *request)
+{
+	fr_trigger_t *ctx = instance;
+
+	if (!ctx->expanded) {
+		RDEBUG("Running trigger %s", ctx->name);
+
+		/*
+		 *	Bootstrap these for simpliciy.
+		 */
+		(void) fr_pair_list_copy(request->packet, &request->packet->vps, ctx->vps);
+		unlang_xlat_push(request, &ctx->box, request, ctx->xlat, false);
+		ctx->expanded = true;
+		return RLM_MODULE_YIELD;
+	}
+
+	if (!ctx->box) {
+		RERROR("Failed trigger %s - did not expand to anything", ctx->name);
+		return RLM_MODULE_FAIL;
+	}
+
+	if (fr_exec_nowait(request, ctx->box, NULL) < 0) {
+		RERROR("Failed trigger %s - %s", ctx->name, fr_strerror());
+		return RLM_MODULE_FAIL;
+	}
+
+	return RLM_MODULE_OK;
+}
+
+
 /** Execute a trigger - call an executable to process an event
  *
  * @note Calls to this function will be ignored if #trigger_exec_init has not been called.
@@ -204,10 +243,9 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	char const		*attr;
 	char const		*value;
 
-	VALUE_PAIR		*vp;
-
-	REQUEST			*fake = NULL;
-	int			ret = 0;
+	REQUEST			*fake;
+	fr_trigger_t		*ctx;
+	ssize_t			slen;
 
 	/*
 	 *	noop if trigger_exec_init was never called
@@ -265,10 +303,11 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	}
 
 	/*
-	 *	May be called for Status-Server packets.
+	 *	Don't do any real work if we're checking the
+	 *	configuration.  i.e. don't run "start" or "stop"
+	 *	triggers on "radiusd -XC".
 	 */
-	vp = NULL;
-	if (request && request->packet) vp = request->packet->vps;
+	if (check_config) return 0;
 
 	/*
 	 *	Perform periodic rate_limiting.
@@ -302,17 +341,15 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	/*
 	 *	radius_exec_program always needs a request.
 	 */
-	if (!request) request = fake = request_alloc(NULL);
-
-	RDEBUG2("Trigger \"%s\": %s", name, value);
+	fake = request_alloc(NULL);
+	memcpy(&fake->server_cs, &subcs, sizeof(subcs)); /* completely wrong, but we need to use _something_ */
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the
-	 *	xlat_trigger function.
+	 *	trigger_xlat function.
 	 */
-	if (args && (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
+	if (args && (request_data_add(fake, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
 				      false, false, false) < 0)) {
-		RERROR("Failed adding trigger request data");
 		return -1;
 	}
 
@@ -321,25 +358,56 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 
 		memcpy(&name_tmp, &name, sizeof(name_tmp));
 
-		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
+		if (request_data_add(fake, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
 				     name_tmp, false, false, false) < 0) {
-			RERROR("Failed marking request as inside trigger");
 			return -1;
 		}
 	}
 
+	MEM(ctx = talloc_zero(fake, fr_trigger_t));
+	ctx->name = talloc_strdup(ctx, value);
+
+	if (request) {
+		if (request->packet->vps) {
+			(void) fr_pair_list_copy(ctx, &ctx->vps, request->packet->vps);
+		}
+
+		fake->log = request->log;
+	} else {
+		fake->log.dst = talloc_zero(fake, log_dst_t);
+		fake->log.dst->func = vlog_request;
+		fake->log.dst->uctx = &default_log;
+		fake->log.lvl = fr_debug_lvl;
+	}
+
+	slen = xlat_tokenize_argv(ctx, &ctx->xlat, ctx->name, talloc_array_length(ctx->name) - 1, NULL);
+	if (slen <= 0) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(ctx, &spaces, &text, slen, fr_strerror());
+
+		cf_log_err(cp, "Syntax error");
+		cf_log_err(cp, "%s", ctx->name);
+		cf_log_err(cp, "%s^ %s", spaces, text);
+
+		talloc_free(fake);
+		talloc_free(spaces);
+		talloc_free(text);
+		return false;
+	}
+
 	/*
-	 *	Don't fire triggers if we're just testing
+	 *	Run the trigger asynchronously.
 	 */
-	if (!check_config) ret = radius_exec_program(request, NULL, 0, NULL,
-						     request, value, vp, false, true,
-						     fr_time_delta_from_sec(EXEC_TIMEOUT));
-	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME);
-	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
+	if (fr_worker_request_add(fake, trigger_process, ctx) < 0) {
+		talloc_free(fake);
+		return -1;
+	}
 
-	if (fake) talloc_free(fake);
-
-	return ret;
+	/*
+	 *	Otherwise the worker cleans up the fake request.
+	 */
+	return 0;
 }
 
 /** Create trigger arguments to describe the server the pool connects to
