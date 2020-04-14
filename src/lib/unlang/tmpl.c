@@ -269,7 +269,12 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 								       unlang_frame_state_tmpl_t);
 
 	if (state->status != 0) {
-		RDEBUG("Program failed with status code %d", state->status);
+		if (WIFEXITED(state->status)) {
+			RDEBUG("Program failed with status code %d", WEXITSTATUS(state->status));
+		} else {
+			RDEBUG("Program exited due to signal with status code %d", state->status);
+		}
+
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
