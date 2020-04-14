@@ -1375,7 +1375,7 @@ void _fr_assert_fatal(char const *file, int line, char const *expr, char const *
 	}
 
 #ifdef NDEBUG
-	_fr_exit_now(file, line, 128 + SIGABRT);
+	_fr_exit(file, line, 128 + SIGABRT, true);
 #else
 	fr_fault(SIGABRT);
 #endif
