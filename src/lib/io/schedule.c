@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/server/trigger.h>
 
 #include <pthread.h>
 
@@ -407,6 +408,11 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		fr_strerror_printf("Failed allocating memory");
 		return NULL;
 	}
+
+	/*
+	 *	Glue workers into the trigger code.
+	 */
+	trigger_worker_request_add = fr_worker_request_add;
 
 	sc->config = config;
 	sc->el = el;

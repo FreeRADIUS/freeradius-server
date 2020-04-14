@@ -29,7 +29,12 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/io/worker.h>
+
+/*
+ *	Public "thunk" API so that the various binaries can link to
+ *	libfreeradius-server.a, and don't need to be linked to libfreeradius-io.a
+ */
+fr_trigger_worker_t trigger_worker_request_add = NULL;
 
 /** Whether triggers are enabled globally
  *
@@ -270,7 +275,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	/*
 	 *	noop if trigger_exec_init was never called
 	 */
-	if (!triggers_init) return 0;
+	if (!triggers_init || !trigger_worker_request_add) return 0;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
@@ -421,7 +426,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	/*
 	 *	Run the trigger asynchronously.
 	 */
-	if (fr_worker_request_add(fake, trigger_process, ctx) < 0) {
+	if (trigger_worker_request_add(fake, trigger_process, ctx) < 0) {
 		talloc_free(fake);
 		return -1;
 	}
