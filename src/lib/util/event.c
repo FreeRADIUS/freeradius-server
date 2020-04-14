@@ -47,7 +47,7 @@ RCSID("$Id$")
 #define FR_EV_BATCH_FDS (256)
 
 DIAG_OFF(unused-macros)
-#define fr_time() "Use el->time for event loop timing"
+#define fr_time() static_assert(0, "Use el->time for event loop timing")
 DIAG_ON(unused-macros)
 
 #if !defined(SO_GET_FILTER) && defined(SO_ATTACH_FILTER)
