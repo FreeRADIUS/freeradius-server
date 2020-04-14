@@ -1122,13 +1122,12 @@ nomem:
 	worker->control = fr_control_create(worker, el, worker->aq_control);
 	if (!worker->control) {
 		fr_strerror_printf_push("Failed creating control plane");
-	fail2:
 		goto fail;
 	}
 
 	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_CHANNEL, worker, worker_channel_callback) < 0) {
 		fr_strerror_printf_push("Failed adding control channel");
-		goto fail2;
+		goto fail;
 	}
 
 	worker->runnable = fr_heap_talloc_create(worker, worker_runnable_cmp, REQUEST, runnable_id);
