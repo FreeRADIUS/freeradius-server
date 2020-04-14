@@ -493,10 +493,10 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	 *	@todo Use a talloc pool for the request.  Clean it up,
 	 *	and insert it back into a slab allocator.
 	 */
+finished:
 	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
 	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
 
-finished:
 	fr_assert(request->time_order_id < 0);
 	fr_assert(request->runnable_id < 0);
 
@@ -531,6 +531,7 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
 	if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
 		fr_time_tracking_resume(&request->async->tracking, now);
 	}
+
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 
 	/*
@@ -546,7 +547,7 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
 	 */
 	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
 	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
-	if (request->async->listen->track_duplicates) rbtree_deletebydata(worker->dedup, request);
+	if (request->async->listen && request->async->listen->track_duplicates) rbtree_deletebydata(worker->dedup, request);
 
 #ifndef NDEBUG
 	request->async->process = NULL;
@@ -882,7 +883,7 @@ redo:
 
 	fr_assert(request->parent == NULL);
 	fr_assert(request->async->process != NULL);
-	fr_assert(request->async->listen != NULL);
+	fr_assert(request->async->fake || (request->async->listen != NULL));
 	fr_assert(request->runnable_id < 0); /* removed from the runnable heap */
 
 	RDEBUG("Running request");
