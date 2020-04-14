@@ -288,6 +288,23 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 	if (state->out) {
 		fr_type_t type = FR_TYPE_STRING;
 
+		/*
+		 *	Remove any trailing LF / CR
+		 */
+		if (state->ptr > state->buffer) {
+			char *p = state->ptr;
+
+			while (p > state->buffer) {
+				if (p[-1] < ' ') {
+					p--;
+					continue;
+				}
+
+				break;
+			}
+			state->ptr = p;
+		}
+
 		MEM(state->box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
 		if (fr_value_box_from_str(state->box, state->box, &type, NULL,
 					  state->buffer, state->ptr - state->buffer, 0, true) < 0) {
