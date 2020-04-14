@@ -432,13 +432,6 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 	}
 
 	/*
-	 *	Pre-parse any "exec" templates
-	 */
-	if (tmpl_is_exec(vpt)) {
-		return pass2_fixup_xlat(ci, pvpt, false, NULL, rules);
-	}
-
-	/*
 	 *	The existence check might have been &Foo-Bar,
 	 *	where Foo-Bar is defined by a module.
 	 */
@@ -454,8 +447,23 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 		vpt->type = TMPL_TYPE_XLAT_STRUCT;
 	}
 
-	if (vpt->type == TMPL_TYPE_EXEC) {
-		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
+	if (tmpl_is_exec(vpt)) {
+		ssize_t slen;
+
+		slen = xlat_tokenize_argv(vpt, &vpt->tmpl_xlat, vpt->name, talloc_array_length(vpt->name) - 1, rules);
+		if (slen <= 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(vpt, &spaces, &text, slen, fr_strerror());
+
+			cf_log_err(ci, "Syntax error");
+			cf_log_err(ci, "%s", vpt->name);
+			cf_log_err(ci, "%s^ %s", spaces, text);
+
+			talloc_free(spaces);
+			talloc_free(text);
+			return false;
+		}
 	}
 
 	return true;
