@@ -69,6 +69,7 @@ static void worker_verify(fr_worker_t *worker);
 #define WORKER_VERIFY
 #endif
 
+static _Thread_local fr_worker_t *thread_local_worker;
 
 /**
  *  A worker which takes packets from a master, and processes them.
@@ -1051,6 +1052,8 @@ void fr_worker_destroy(fr_worker_t *worker)
 
 		fr_channel_responder_ack_close(worker->channel[i]);
 	}
+
+	thread_local_worker = NULL;
 	talloc_free(worker);
 }
 
@@ -1145,6 +1148,8 @@ nomem:
 		goto fail;
 	}
 
+	thread_local_worker = worker;
+
 	return worker;
 }
 
@@ -1233,7 +1238,38 @@ void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 	worker_run_request(worker, fr_time());	/* Event loop time can be too old, and trigger asserts */
 }
 
+/** Asynchronously add a REQUEST to a worker thread
+ *
+ *  When we don't know what the worker is...
+ */
+int fr_worker_request_add(REQUEST *request, module_method_t process, void *ctx)
+{
+	fr_worker_t *worker;
+	fr_time_t now;
 
+	if (!request || !process) {
+		fr_strerror_printf("Invalid arguments");
+		return -1;
+	}
+
+	worker = thread_local_worker;
+	if (!worker) {
+		fr_strerror_printf("No worker has been defined");
+		return -1;
+	}
+
+	now = fr_time();
+
+	worker_request_init(worker, request, now);
+
+	request->async->fake = true;
+	request->async->process = process;
+	request->async->process_inst = ctx;
+
+	worker_request_time_tracking_start(worker, request, now);
+
+	return 0;
+}
 
 /** Print debug information about the worker structure
  *
