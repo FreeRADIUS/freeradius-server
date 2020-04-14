@@ -36,11 +36,13 @@ RCSID("$Id$")
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/token.h>
+
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #define FR_EV_BATCH_FDS (256)
 
