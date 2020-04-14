@@ -1,5 +1,5 @@
 $(BUILD_DIR)/bin/test_cursor: src/lib/util/cursor.c
-	${Q}$(CC) $^ -g3 -Wall -DTESTING_CURSOR -Isrc/ -Isrc/lib/ -include src/include/build.h -l talloc -o $@
+	${Q}$(CC) $^ -g3 -Wall -DTESTING_CURSOR $(CPPFLAGS) -I${top_srcdir}/src/lib -I${top_srcdir}/src -include src/include/build.h $(TALLOC_LDFLAGS) $(TALLOC_LIBS) -o $@
 
 OUTPUT := $(BUILD_DIR)/tests/misc
 
