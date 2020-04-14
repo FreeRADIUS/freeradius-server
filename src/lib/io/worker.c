@@ -650,6 +650,52 @@ static char *itoa_internal(TALLOC_CTX *ctx, uint64_t number)
 	return talloc_strdup(ctx, "0");
 }
 
+/** Initialize various request fields needed by the worker.
+ *
+ */
+static void worker_request_init(fr_worker_t *worker, REQUEST *request, fr_time_t now)
+{
+	request->el = worker->el;
+	request->backlog = worker->runnable;
+	MEM(request->packet = fr_radius_alloc(request, false));
+	request->packet->timestamp = now;
+
+	request->reply = fr_radius_alloc(request, false);
+	fr_assert(request->reply != NULL);
+
+	request->number = worker->number++;
+	request->name = itoa_internal(request, request->number);
+
+	request->async = talloc_zero(request, fr_async_t);
+	request->async->recv_time = now;
+	request->async->el = worker->el;
+}
+
+/** Start time tracking for a request, and mark it as runnable.
+ *
+ */
+static void worker_request_time_tracking_start(fr_worker_t *worker, REQUEST *request, fr_time_t now)
+{
+	/*
+	 *	New requests are inserted into the time order heap in
+	 *	strict time priority.  Once they are in the list, they
+	 *	are only removed when the request is done / free'd.
+	 */
+	fr_assert(request->time_order_id < 0);
+	(void) fr_heap_insert(worker->time_order, request);
+
+	/*
+	 *	Bootstrap the async state machine with the initial
+	 *	state of the request.
+	 */
+	fr_time_tracking_start(&worker->tracking, &request->async->tracking, now);
+	fr_time_tracking_yield(&request->async->tracking, now);
+	worker->num_active++;
+	fr_assert(request->runnable_id < 0);
+
+	(void) fr_heap_insert(worker->runnable, request);
+	if (!worker->ev_cleanup) worker_max_request_timer(worker);
+}
 
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
 {
@@ -662,14 +708,9 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	ctx = request = request_alloc(NULL);
 	if (!request) goto nak;
 
-	request->el = worker->el;
-	request->backlog = worker->runnable;
-	MEM(request->packet = fr_radius_alloc(request, false));
-	request->packet->timestamp = cd->request.recv_time; /* Legacy - Remove once everything looks at request->async */
-	request->reply = fr_radius_alloc(request, false);
-	fr_assert(request->reply != NULL);
+	worker_request_init(worker, request, now);
 
-	request->async = talloc_zero(request, fr_async_t);
+	request->packet->timestamp = cd->request.recv_time; /* Legacy - Remove once everything looks at request->async */
 
 	/*
 	 *	Receive a message to the worker queue, and decode it
@@ -684,10 +725,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	request->async->channel = cd->channel.ch;
 
 	request->async->recv_time = cd->request.recv_time;
-	request->async->el = worker->el;
-	request->number = worker->number++;
 
-	request->name = itoa_internal(request, request->number);
 
 	request->async->listen = cd->listen;
 	request->async->packet_ctx = cd->packet_ctx;
@@ -808,25 +846,7 @@ nak:
 		(void) rbtree_insert(worker->dedup, request);
 	}
 
-	/*
-	 *	New requests are inserted into the time order heap in
-	 *	strict time priority.  Once they are in the list, they
-	 *	are only removed when the request is done / free'd.
-	 */
-	fr_assert(request->time_order_id < 0);
-	(void) fr_heap_insert(worker->time_order, request);
-
-	/*
-	 *	Bootstrap the async state machine with the initial
-	 *	state of the request.
-	 */
-	fr_time_tracking_start(&worker->tracking, &request->async->tracking, now);
-	fr_time_tracking_yield(&request->async->tracking, now);
-	worker->num_active++;
-	fr_assert(request->runnable_id < 0);
-
-	(void) fr_heap_insert(worker->runnable, request);
-	if (!worker->ev_cleanup) worker_max_request_timer(worker);
+	worker_request_time_tracking_start(worker, request, now);
 }
 
 
