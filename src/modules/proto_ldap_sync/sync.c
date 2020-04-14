@@ -735,6 +735,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 	switch (ret) {
 	case 0:	/* timeout - shouldn't happen */
 		fr_assert(0);
+		return -2;
 
 	case -1:
 		rcode = fr_ldap_error_check(NULL, conn, NULL, NULL);
