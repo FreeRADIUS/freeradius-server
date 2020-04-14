@@ -187,6 +187,7 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
 
 #ifdef NDEBUG
 #  define fr_assert(_x)
+#  define fr_assert_fail(_msg, ...)
 #elif !defined(__clang_analyzer__)
 /** Calls panic_action ifndef NDEBUG, else logs error
  *
@@ -201,7 +202,8 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
 #define		fr_assert_fail(_msg, ...) _fr_assert_fail(__FILE__, __LINE__, "false", _msg,  ## __VA_ARGS__)
 #else
 #  include <assert.h>
-#  define fr_assert assert
+#  define fr_assert(_x) assert(_x)
+#  define fr_assert_fail(_msg ...)
 #endif
 
 /** Exit, producing a log message in debug builds
