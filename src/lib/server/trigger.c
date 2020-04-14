@@ -370,6 +370,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	 */
 	if (args && (request_data_add(fake, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
 				      false, false, false) < 0)) {
+		talloc_free(fake);
 		return -1;
 	}
 
@@ -380,6 +381,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 
 		if (request_data_add(fake, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
 				     name_tmp, false, false, false) < 0) {
+			talloc_free(fake);
 			return -1;
 		}
 	}
