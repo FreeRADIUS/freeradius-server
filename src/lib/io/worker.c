@@ -928,7 +928,7 @@ redo:
 		/*
 		 *	Don't reply to internally generated request.
 		 */
-		if (request->parent) break;
+		if (request->parent || request->async->fake) break;
 
 		size = request->async->listen->app_io->default_reply_size;
 		if (!size) size = request->async->listen->app_io->default_message_size;
