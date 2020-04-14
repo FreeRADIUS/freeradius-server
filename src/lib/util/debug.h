@@ -192,7 +192,7 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
  *
  * @param _x	expression to test (should evaluate to true)
  */
-#  define	fr_assert(_x) (likely((bool)(_x)) || _fr_assert_fail(__FILE__, __LINE__, #_x, NULL))
+#  define	fr_assert(_x) if (unlikely(!((bool)(_x)))) _fr_assert_fail(__FILE__, __LINE__, #_x, NULL)
 /** Calls panic_action ifndef NDEBUG, else logs error
  *
  * @param[in] _msg	to log.
