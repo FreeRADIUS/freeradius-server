@@ -256,7 +256,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 	vpt = *pvpt;
 
-	fr_assert(tmpl_is_xlat(vpt) || tmpl_is_exec(vpt));
+	fr_assert(tmpl_is_xlat(vpt));
 
 	slen = xlat_tokenize(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, rules);
 
@@ -322,7 +322,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	/*
 	 *	Re-write it to be a pre-parsed XLAT structure.
 	 */
-	if (vpt->type == TMPL_TYPE_XLAT) vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	vpt->type = TMPL_TYPE_XLAT_STRUCT;
 	vpt->tmpl_xlat = head;
 
 	return true;
@@ -679,13 +679,13 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	}
 
 	if (tmpl_is_exec(map->lhs)) {
-		if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL, rules)) {
+		if (!pass2_fixup_tmpl(map->ci, &map->lhs, rules, false)) {
 			return false;
 		}
 	}
 
 	if (tmpl_is_exec(map->rhs)) {
-		if (!pass2_fixup_xlat(map->ci, &map->rhs, false, NULL, rules)) {
+		if (!pass2_fixup_tmpl(map->ci, &map->rhs, rules, false)) {
 			return false;
 		}
 	}
@@ -825,7 +825,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 
 static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 {
-	if (tmpl_is_xlat(map->lhs) || tmpl_is_exec(map->lhs)) {
+	if (tmpl_is_xlat(map->lhs)) {
 		fr_assert(map->lhs->tmpl_xlat == NULL);
 
 		/*
@@ -833,6 +833,12 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 		 *	the conversion in map_to_vp().
 		 */
 		if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL, rules)) {
+			return false;
+		}
+	}
+
+	if (tmpl_is_exec(map->lhs)) {
+		if (!pass2_fixup_tmpl(map->ci, &map->lhs, rules, false)) {
 			return false;
 		}
 	}
@@ -845,7 +851,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 	}
 
 	if (map->rhs) {
-		if (tmpl_is_xlat(map->rhs) || tmpl_is_exec(map->rhs)) {
+		if (tmpl_is_xlat(map->rhs)) {
 			fr_assert(map->rhs->tmpl_xlat == NULL);
 
 			/*
@@ -861,6 +867,12 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 
 		if (tmpl_is_attr_undefined(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
+		}
+
+		if (tmpl_is_exec(map->rhs)) {
+			if (!pass2_fixup_tmpl(map->ci, &map->rhs, rules, false)) {
+				return false;
+			}
 		}
 	}
 
@@ -2343,7 +2355,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		if (tmpl_is_exec(vpt)) {
-			if (!pass2_fixup_xlat(cf_section_to_item(cs), &vpt, false, NULL, unlang_ctx->rules)) {
+			if (!pass2_fixup_tmpl(cf_section_to_item(cs), &vpt, unlang_ctx->rules, false)) {
 				talloc_free(vpt);
 				return NULL;
 			}
