@@ -847,8 +847,7 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 #ifndef NDEBUG
 		radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__, h->tt, udp_tracking_entry_log);
 #endif
-		fr_assert_fail(__FILE__, __LINE__, "%u tracking entries still allocated at conn close",
-			       h->tt->num_requests);
+		fr_assert_fail("%u tracking entries still allocated at conn close", h->tt->num_requests);
 	}
 
 	talloc_free(h);
@@ -1733,7 +1732,7 @@ static void request_mux(fr_event_list_t *el,
 				radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__,
 						       h->tt, udp_tracking_entry_log);
 #endif
-				fr_assert_fail(__FILE__, __LINE__, "Tracking entry allocation failed");
+				fr_assert_fail("Tracking entry allocation failed: %s", fr_strerror());
 			fail:
 				fr_trunk_request_signal_fail(treq);
 				continue;
