@@ -473,14 +473,16 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
+	xlat = ut->tmpl->tmpl_xlat;
+
 	/*
-	 *	No pre-parsed xlat, die.
+	 *	No pre-parsed xlat, do that now.
 	 */
-	if (!ut->tmpl->tmpl_xlat) {
+	if (!xlat) {
 		ssize_t slen;
 		xlat_exp_t *head = NULL;
 
-		slen = xlat_tokenize(state->ctx, &head, ut->tmpl->name, talloc_array_length(ut->tmpl->name) - 1, NULL);
+		slen = xlat_tokenize_argv(state->ctx, &head, ut->tmpl->name, talloc_array_length(ut->tmpl->name) - 1, NULL);
 		if (slen <= 0) {
 			char *spaces, *text;
 
@@ -494,9 +496,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 			goto fail;
 		}
 
-		xlat = head;
-	} else {
-		xlat = ut->tmpl->tmpl_xlat;
+		xlat = head;	/* const issues */
 	}
 
 	/*
