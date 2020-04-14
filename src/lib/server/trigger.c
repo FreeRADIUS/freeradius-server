@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/io/worker.h>
 
 /** Whether triggers are enabled globally
@@ -190,6 +191,7 @@ typedef struct {
 static rlm_rcode_t trigger_process(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	fr_trigger_t *ctx = instance;
+	rlm_rcode_t rcode;
 
 	if (!ctx->expanded) {
 		RDEBUG("Running trigger %s", ctx->name);
@@ -198,9 +200,24 @@ static rlm_rcode_t trigger_process(void *instance, UNUSED void *thread, REQUEST 
 		 *	Bootstrap these for simpliciy.
 		 */
 		(void) fr_pair_list_copy(request->packet, &request->packet->vps, ctx->vps);
-		unlang_xlat_push(request, &ctx->box, request, ctx->xlat, false);
+
+		unlang_interpret_push_instruction(request, NULL, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
+
+		unlang_xlat_push(request, &ctx->box, request, ctx->xlat, true);
 		ctx->expanded = true;
-		return RLM_MODULE_YIELD;
+
+		/*
+		 *	Run the interpreter.
+		 */
+		rcode = unlang_interpret(request);
+
+		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+
+		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+
+		/*
+		 *	Always fall through, no matter what the return code is.
+		 */
 	}
 
 	if (!ctx->box) {
@@ -208,6 +225,9 @@ static rlm_rcode_t trigger_process(void *instance, UNUSED void *thread, REQUEST 
 		return RLM_MODULE_FAIL;
 	}
 
+	/*
+	 *	Execute the program without waiting for results.
+	 */
 	if (fr_exec_nowait(request, ctx->box, NULL) < 0) {
 		RERROR("Failed trigger %s - %s", ctx->name, fr_strerror());
 		return RLM_MODULE_FAIL;
