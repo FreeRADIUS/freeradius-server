@@ -516,6 +516,10 @@ size_t SSL_SESSION_get_master_key(const SSL_SESSION *s,
 #define O_DIRECTORY 0
 #endif
 
+#ifndef O_NOFOLLOW
+#define O_NOFOLLOW 0
+#endif
+
 /*
  *	Not really missing, but may be submitted as patches
  *	to the talloc project at some point in the future.

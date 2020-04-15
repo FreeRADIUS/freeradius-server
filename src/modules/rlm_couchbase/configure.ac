@@ -200,6 +200,18 @@ if test x$with_[]modname != xno; then
 	fi
 
 	dnl ############################################################
+	dnl # Check for OpenSSL
+	dnl ############################################################
+
+	AC_MSG_CHECKING(for OpenSSL support)
+	if test "x$OPENSSL_LIBS" != "x"; then
+		AC_MSG_RESULT(yes)
+	else
+		AC_MSG_RESULT(no)
+		fail="OpenSSL"
+	fi
+
+	dnl ############################################################
 	dnl # Checks done - set targetname
 	dnl ############################################################
 
