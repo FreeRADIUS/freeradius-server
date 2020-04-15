@@ -73,6 +73,7 @@ struct fr_connection_pub_s {
 							///< re-establish this connection.
 	uint64_t _CONST			timed_out;	//!< How many times has this connection timed out when
 							///< connecting.
+	bool _CONST			triggers;	//!< do we run the triggers?
 };
 
 typedef enum {

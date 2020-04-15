@@ -32,6 +32,7 @@ typedef struct fr_connection_s fr_connection_t;
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/cond_eval.h>
+#include <freeradius-devel/server/trigger.h>
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/event.h>
@@ -107,6 +108,12 @@ struct fr_connection_s {
 
 	unsigned int		signals_pause;		//!< Temporarily stop processing of signals.
 };
+
+#define TRIGGER(name) do { \
+	if (conn->pub.triggers) { \
+		trigger_exec(NULL, NULL, "connection." STRINGIFY(name), true, NULL); \
+	} \
+} while (0)
 
 #define STATE_TRANSITION(_new) \
 do { \
@@ -620,6 +627,7 @@ static void connection_state_enter_closed(fr_connection_t *conn)
 	}
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CLOSED);
+	TRIGGER(closed);
 
 	fr_event_timer_delete(&conn->ev);
 
@@ -680,6 +688,7 @@ static void connection_state_enter_shutdown(fr_connection_t *conn)
 	}
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_SHUTDOWN);
+	TRIGGER(shutdown);
 
 	WATCH_PRE(conn);
 	{
@@ -752,6 +761,7 @@ static void connection_state_enter_failed(fr_connection_t *conn)
 	 *	Now transition to failed
 	 */
 	STATE_TRANSITION(FR_CONNECTION_STATE_FAILED);
+	TRIGGER(failed);
 
 	/*
 	 *	If there's a failed callback, give it the
@@ -867,6 +877,7 @@ static void connection_state_enter_timeout(fr_connection_t *conn)
 	ERROR("Connection failed - timed out after %pVs", fr_box_time_delta(conn->connection_timeout));
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_TIMEOUT);
+	TRIGGER(timeout);
 
 	conn->pub.timed_out++;
 
@@ -893,6 +904,7 @@ static void connection_state_enter_halted(fr_connection_t *conn)
 	fr_event_timer_delete(&conn->ev);
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
+	TRIGGER(halted);
 	WATCH_PRE(conn);
 	WATCH_POST(conn);
 }
@@ -917,6 +929,7 @@ static void connection_state_enter_connected(fr_connection_t *conn)
 	fr_assert(conn->pub.state == FR_CONNECTION_STATE_CONNECTING);
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
+	TRIGGER(connected);
 
 	fr_event_timer_delete(&conn->ev);
 	WATCH_PRE(conn);
@@ -968,6 +981,7 @@ static void connection_state_enter_connecting(fr_connection_t *conn)
 	}
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTING);
+	TRIGGER(connecting);
 
 	WATCH_PRE(conn);
 	WATCH_POST(conn);
@@ -1029,6 +1043,7 @@ static void connection_state_enter_init(fr_connection_t *conn)
 	conn->pub.reconnected++;
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
+	TRIGGER(init);
 
 	/*
 	 *	If we have an init callback, call it.
