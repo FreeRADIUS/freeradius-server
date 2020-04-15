@@ -1339,8 +1339,8 @@ bool _fr_assert_fail(char const *file, int line, char const *expr, char const *m
 		fr_fault(SIGABRT);
 #else
 		FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s: %s", file, line, expr, str);
-#endif
 		return false;
+#endif
 	}
 
 #ifndef NDEBUG
@@ -1348,8 +1348,8 @@ bool _fr_assert_fail(char const *file, int line, char const *expr, char const *m
 	fr_fault(SIGABRT);
 #else
 	FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s", file, line, expr);
-#endif
 	return false;
+#endif
 }
 
 /** A fatal assertion which triggers the fault handler in debug builds or exits
