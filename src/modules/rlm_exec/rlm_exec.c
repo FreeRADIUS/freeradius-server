@@ -323,6 +323,7 @@ static rlm_rcode_t mod_resume(void *instance, UNUSED void *thread, REQUEST *requ
 
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) {
+			talloc_free(box);
 			return RLM_MODULE_INVALID;
 		}
 
@@ -435,7 +436,6 @@ static rlm_rcode_t exec_resume(UNUSED void *instance, UNUSED void *thread, REQUE
 	return RLM_MODULE_OK;
 }
 
-
 /*
  *  Dispatch an async exec method
  */
@@ -453,8 +453,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_async(void *instance, UNUSED void *
 
 	return unlang_module_yield_to_tmpl(box, box, request, inst->tmpl, exec_resume, NULL, box);
 }
-
-
 
 /*
  *	The module name should be the only globally exported symbol.
