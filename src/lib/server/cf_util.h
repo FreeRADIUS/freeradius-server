@@ -64,15 +64,15 @@ typedef struct cf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary da
  */
 #define CF_TO_ITEM(_cf) \
 _Generic((_cf), \
-	CONF_SECTION *: cf_section_to_item((CONF_SECTION const *)_cf), \
-	CONF_SECTION const *: cf_section_to_item((CONF_SECTION const *)_cf), \
-	CONF_SECTION const * const: cf_section_to_item((CONF_SECTION const * const)_cf), \
-	CONF_PAIR *: cf_pair_to_item((CONF_PAIR const *)_cf), \
-	CONF_PAIR const *: cf_pair_to_item((CONF_PAIR const *)_cf), \
-	CONF_PAIR const * const: cf_pair_to_item((CONF_PAIR const * const)_cf), \
-	CONF_DATA *: cf_data_to_item((CONF_DATA const *)_cf), \
-	CONF_DATA const *: cf_data_to_item((CONF_DATA const *)_cf), \
-	CONF_DATA const * const: cf_data_to_item((CONF_DATA const * const)_cf), \
+	CONF_SECTION *			: cf_section_to_item((CONF_SECTION const *)_cf), \
+	CONF_SECTION const *		: cf_section_to_item((CONF_SECTION const *)_cf), \
+	CONF_SECTION const * const	: cf_section_to_item((CONF_SECTION const * const)_cf), \
+	CONF_PAIR *			: cf_pair_to_item((CONF_PAIR const *)_cf), \
+	CONF_PAIR const *		: cf_pair_to_item((CONF_PAIR const *)_cf), \
+	CONF_PAIR const * const		: cf_pair_to_item((CONF_PAIR const * const)_cf), \
+	CONF_DATA *			: cf_data_to_item((CONF_DATA const *)_cf), \
+	CONF_DATA const *		: cf_data_to_item((CONF_DATA const *)_cf), \
+	CONF_DATA const * const		: cf_data_to_item((CONF_DATA const * const)_cf), \
 	default: _cf \
 )
 
