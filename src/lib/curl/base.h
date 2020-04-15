@@ -32,6 +32,20 @@ extern "C" {
 #include <curl/curl.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/server/module.h>
+
+DIAG_OPTIONAL
+DIAG_OFF(disabled-macro-expansion)
+#define FR_CURL_SET_OPTION(_x, _y)\
+do {\
+	int _ret;\
+	if ((_ret = curl_easy_setopt(randle->candle, _x, _y)) != CURLE_OK) {\
+		char const *_option;\
+		_option = STRINGIFY(_x);\
+		ROPTIONAL(RERROR, ERROR, "Failed setting curl option %s: %s (%i)", _option, curl_easy_strerror(_ret), _ret);\
+		goto error;\
+	}\
+} while (0)
 
 /** Uctx data for timer and I/O functions
  *
@@ -55,6 +69,21 @@ typedef struct {
 	void			*uctx;			//!< Private data for the module using the API.
 } fr_curl_io_request_t;
 
+typedef struct {
+	char const		*tls_certificate_file;
+	char const		*tls_private_key_file;
+	char const		*tls_private_key_password;
+	char const		*tls_ca_file;
+	char const		*tls_ca_issuer_file;
+	char const		*tls_ca_path;
+	char const		*tls_random_file;
+	bool			tls_check_cert;
+	bool			tls_check_cert_cn;
+	bool			tls_extract_cert_attrs;
+} fr_curl_tls_t;
+
+extern CONF_PARSER	 fr_curl_tls_config[];
+
 int			fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle,
 						   REQUEST *request, fr_curl_io_request_t *creq);
 
@@ -65,6 +94,10 @@ fr_curl_handle_t	*fr_curl_io_init(TALLOC_CTX *ctx, fr_event_list_t *el, bool mul
 int			fr_curl_init(void);
 
 void			fr_curl_free(void);
+
+int			fr_curl_response_certinfo(REQUEST *request, fr_curl_io_request_t *randle);
+
+int			fr_curl_easy_tls_init (fr_curl_io_request_t *randle, fr_curl_tls_t *conf);
 
 #ifdef __cplusplus
 }
