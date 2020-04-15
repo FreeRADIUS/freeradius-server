@@ -70,16 +70,16 @@ typedef struct {
 } fr_curl_io_request_t;
 
 typedef struct {
-	char const		*tls_certificate_file;
-	char const		*tls_private_key_file;
-	char const		*tls_private_key_password;
-	char const		*tls_ca_file;
-	char const		*tls_ca_issuer_file;
-	char const		*tls_ca_path;
-	char const		*tls_random_file;
-	bool			tls_check_cert;
-	bool			tls_check_cert_cn;
-	bool			tls_extract_cert_attrs;
+	char const		*certificate_file;
+	char const		*private_key_file;
+	char const		*private_key_password;
+	char const		*ca_file;
+	char const		*ca_issuer_file;
+	char const		*ca_path;
+	char const		*random_file;
+	bool			check_cert;
+	bool			check_cert_cn;
+	bool			extract_cert_attrs;
 } fr_curl_tls_t;
 
 extern CONF_PARSER	 fr_curl_tls_config[];
@@ -97,7 +97,7 @@ void			fr_curl_free(void);
 
 int			fr_curl_response_certinfo(REQUEST *request, fr_curl_io_request_t *randle);
 
-int			fr_curl_easy_tls_init (fr_curl_io_request_t *randle, fr_curl_tls_t *conf);
+int			fr_curl_easy_tls_init (fr_curl_io_request_t *randle, fr_curl_tls_t const *conf);
 
 #ifdef __cplusplus
 }
