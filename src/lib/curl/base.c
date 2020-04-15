@@ -30,7 +30,7 @@
 #include <talloc.h>
 
 static uint32_t instance_count = 0;
-static fr_dict_t	const 		*dict_freeradius; /*internal dictionary for server*/
+static fr_dict_t const *dict_freeradius; /*internal dictionary for server*/
 
 extern fr_dict_autoload_t rlm_imap_dict[];
 fr_dict_autoload_t rlm_imap_dict[] = {
