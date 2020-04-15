@@ -171,33 +171,48 @@ ssize_t fr_utf8_str(uint8_t const *str, ssize_t inlen)
 
 /** Return a pointer to the first UTF8 char in a string.
  *
- * @param[out] chr_len Where to write the length of the multibyte char passed in chr (may be NULL).
- * @param[in] str Haystack.
- * @param[in] chr Multibyte needle.
+ * @param[out] out_chr_len	Where to write the length of the multibyte char passed in chr (may be NULL).
+ * @param[in] str		Haystack.
+ * @param[in] inlen		Length of string (in bytes).  Pass -1 to determine the length of the string.
+ * @param[in] chr		Multibyte needle.
  * @return
  *	- Position of chr in str.
  *	- NULL if not found.
  */
-char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
+char const *fr_utf8_strchr(int *out_chr_len, char const *str, ssize_t inlen, char const *chr)
 {
-	int cchr;
+	char const	*p = str, *end;
+	int		needle_len;
 
-	cchr = fr_utf8_char((uint8_t const *)chr, -1);
-	if (cchr == 0) cchr = 1;
-	if (chr_len) *chr_len = cchr;
+	if (inlen < 0) inlen = strlen(str);
 
-	while (*str) {
-		int schr;
+	end = str + inlen;
 
-		schr = fr_utf8_char((uint8_t const *) str, -1);
-		if (schr == 0) schr = 1;
-		if (schr != cchr) goto next;
+	/*
+	 *	Figure out how big the multibyte sequence
+	 *	we're looking for is.
+	 */
+	needle_len = fr_utf8_char((uint8_t const *)chr, end - p);
+	if (needle_len == 0) needle_len = 1;	/* Invalid UTF8 sequence - ignore - needle is one byte */
+	if (needle_len) *out_chr_len = needle_len;
 
-		if (memcmp(str, chr, schr) == 0) {
-			return (char const *) str;
-		}
+	/*
+	 *	Loop over the input sequence, advancing
+	 *      UTF8 sequence by utf8 seqnce.
+	 */
+	while (p < end) {
+		int schr_len;
+
+		schr_len = fr_utf8_char((uint8_t const *) str, end - p);
+		if (schr_len == 0) schr_len = 1;	/* Invalid UTF8 sequence - ignore - advance by 1 */
+		if (schr_len != needle_len) goto next;
+
+		/*
+		 *	See if this matches out multibyte needle
+		 */
+		if (memcmp(p, chr, schr_len) == 0) return p;
 	next:
-		str += schr;
+		p += schr_len;
 	}
 
 	return NULL;

@@ -63,12 +63,13 @@ static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	char const		*p = fmt;
 	char			*out_p = *out;
 	size_t			freespace = outlen;
+	size_t			len = talloc_array_length(inst->allowed_chars) - 1;
 
 	while (p[0]) {
 		int chr_len = 1;
 		int ret = 1;	/* -Werror=uninitialized */
 
-		if (fr_utf8_strchr(&chr_len, inst->allowed_chars, p) == NULL) {
+		if (fr_utf8_strchr(&chr_len, inst->allowed_chars, len, p) == NULL) {
 			/*
 			 *	'=' 1 + ([hex]{2}) * chr_len)
 			 */
