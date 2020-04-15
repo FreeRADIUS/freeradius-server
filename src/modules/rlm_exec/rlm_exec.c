@@ -283,9 +283,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	if (!inst->program) return 0;
 
+	/*
+	 *	Parse the program to execute into a template.
+	 */
 	MEM(inst->tmpl = tmpl_alloc(inst, TMPL_TYPE_EXEC, inst->program, strlen(inst->program), '`'));
 
-	slen = xlat_tokenize_argv(inst, &inst->tmpl->tmpl_xlat, inst->program, strlen(inst->program),
+	slen = xlat_tokenize_argv(inst->tmpl, &inst->tmpl->tmpl_xlat, inst->program, strlen(inst->program),
 				  &(vp_tmpl_rules_t) { .dict_def = fr_dict_internal() });
 	if (slen <= 0) {
 		char *spaces, *text;
@@ -303,6 +306,38 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
+/** Resume a request after xlat expansion.
+ *
+ */
+static rlm_rcode_t mod_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+{
+	rlm_exec_t const	*inst = instance;
+	fr_value_box_t		*box = talloc_get_type_abort(rctx, fr_value_box_t);
+	VALUE_PAIR		*env_pairs = NULL;
+
+	/*
+	 *	Decide what input/output the program takes.
+	 */
+	if (inst->input) {
+		VALUE_PAIR **input_pairs;
+
+		input_pairs = radius_list(request, inst->input_list);
+		if (!input_pairs) {
+			return RLM_MODULE_INVALID;
+		}
+
+		env_pairs = *input_pairs;
+	}
+
+	if (fr_exec_nowait(request, box, env_pairs) < 0) {
+		REDEBUG("Failed executing program - %s", fr_strerror());
+		talloc_free(box);
+		return RLM_MODULE_FAIL;
+	}
+
+	talloc_free(box);
+	return RLM_MODULE_OK;
+}
 
 /*
  *  Dispatch an exec method
@@ -319,13 +354,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	char			out[1024];
 
 	/*
-	 *	This needs to be a runtime check for now as
-	 *	rlm_exec is often called via xlat instead
-	 *	of with a static program.
+	 *	This needs to be a runtime check for now as rlm_exec
+	 *	may be defined with the intent of calling it via xlat
+	 *	instead of with a preconfigured "program".
 	 */
 	if (!inst->program) {
 		REDEBUG("You must specify 'program' to execute");
 		return RLM_MODULE_FAIL;
+	}
+
+	if (!inst->wait) {
+		fr_value_box_t *box;
+
+		MEM(box = talloc_zero(request, fr_value_box_t));
+
+		return unlang_module_yield_to_xlat(request, &box, request, inst->tmpl->tmpl_xlat, mod_resume, NULL, box);
 	}
 
 	/*
