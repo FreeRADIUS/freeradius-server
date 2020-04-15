@@ -2707,6 +2707,9 @@ int main(int argc, char *argv[])
 			/* Don't use the any device, it's horribly broken */
 			if (!strcmp(dev_p->name, "any")) continue;
 
+			/* ...same here.  See https://github.com/FreeRADIUS/freeradius-server/pull/3364 for details */
+			if (!strncmp(dev_p->name, "pktap", 5)) continue;
+
 			link_layer = fr_pcap_if_link_layer(dev_p);
 			if (link_layer < 0) {
 				DEBUG2("Skipping %s: %s", dev_p->name, fr_strerror());
