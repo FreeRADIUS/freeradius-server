@@ -253,7 +253,7 @@ static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(our_rctx->handle, fr_curl_io_request_t);
 	rlm_rest_section_t		*section = &our_rctx->section;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(mod_inst, section, request, handle);
+	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		xa = XLAT_ACTION_FAIL;
@@ -454,7 +454,7 @@ static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *r
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
@@ -568,7 +568,7 @@ static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
@@ -717,7 +717,7 @@ static rlm_rcode_t mod_accounting_result(void *instance, void *thread, REQUEST *
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
@@ -796,7 +796,7 @@ static rlm_rcode_t mod_post_auth_result(void *instance, void *thread, REQUEST *r
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;

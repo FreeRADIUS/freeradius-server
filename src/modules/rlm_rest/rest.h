@@ -311,9 +311,6 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *thread,
 			http_body_type_t type, char const *uri,
 			char const *username, char const *password) CC_HINT(nonnull (1,2,3,4,5,8));
 
-int rest_response_certinfo(UNUSED rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			   REQUEST *request, fr_curl_io_request_t *randle);
-
 int rest_response_decode(rlm_rest_t const *instance,
 			UNUSED rlm_rest_section_t const *section, REQUEST *request,
 			fr_curl_io_request_t *randle);

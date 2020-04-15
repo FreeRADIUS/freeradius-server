@@ -98,14 +98,6 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
  */
 DIAG_OPTIONAL
 DIAG_OFF(disabled-macro-expansion)
-#define SET_OPTION(_x, _y)\
-do {\
-	if ((ret = curl_easy_setopt(randle->candle, _x, _y)) != CURLE_OK) {\
-		option = STRINGIFY(_x);\
-		REDEBUG("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret); \
-		goto error;\
-	}\
-} while (0)
 
 const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
 	[REST_HTTP_AUTH_UNKNOWN]		= 0,
@@ -1639,7 +1631,7 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
  * data will be sent using multiple HTTP requests, or contiguous mode where
  * the request data will be sent in a single HTTP request.
  *
- * @param[in] instance	configuration data.
+ * @param[in] inst	configuration data.
  * @param[in] section	configuration data.
  * @param[in] request	Current request.
  * @param[in] randle	fr_curl_io_request_t to configure.
@@ -1649,13 +1641,10 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section_t const *section,
+static int rest_request_config_body(rlm_rest_t const *inst, rlm_rest_section_t const *section,
 				    REQUEST *request, fr_curl_io_request_t *randle, rest_read_t func)
 {
 	rlm_rest_curl_context_t	*uctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
-
-	CURLcode		ret = CURLE_OK;
-	char const		*option = "unknown";
 
 	ssize_t len;
 
@@ -1664,7 +1653,7 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  no body should be sent.
 	 */
 	if (!func) {
-		SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
+		FR_CURL_SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
 		return 0;
 	}
 
@@ -1673,8 +1662,8 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  multiple parts.
 	 */
 	if (section->chunk > 0) {
-		SET_OPTION(CURLOPT_READDATA, &uctx->request);
-		SET_OPTION(CURLOPT_READFUNCTION, func);
+		FR_CURL_SET_OPTION(CURLOPT_READDATA, &uctx->request);
+		FR_CURL_SET_OPTION(CURLOPT_READFUNCTION, func);
 
 		return 0;
 	}
@@ -1683,7 +1672,7 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  If were not doing chunked encoding then we read the entire
 	 *  body into a buffer, and send it in one go.
 	 */
-	len = rest_request_encode_wrapper(&uctx->body, instance, func, REST_BODY_MAX_LEN, &uctx->request);
+	len = rest_request_encode_wrapper(&uctx->body, inst, func, REST_BODY_MAX_LEN, &uctx->request);
 	if (len <= 0) {
 		REDEBUG("Failed creating HTTP body content");
 		return -1;
@@ -1691,8 +1680,8 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	RDEBUG2("Content-Length will be %zu bytes", len);
 
 	fr_assert((len == 0) || (talloc_array_length(uctx->body) >= (size_t)len));
-	SET_OPTION(CURLOPT_POSTFIELDS, uctx->body);
-	SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
+	FR_CURL_SET_OPTION(CURLOPT_POSTFIELDS, uctx->body);
+	FR_CURL_SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
 
 	return 0;
 
@@ -1841,23 +1830,23 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *	Set the debugging function if needed
 	 */
 	if (RDEBUG_ENABLED3) {
-		SET_OPTION(CURLOPT_DEBUGFUNCTION, rest_debug_log);
-		SET_OPTION(CURLOPT_DEBUGDATA, request);
-		SET_OPTION(CURLOPT_VERBOSE, 1L);
+		FR_CURL_SET_OPTION(CURLOPT_DEBUGFUNCTION, rest_debug_log);
+		FR_CURL_SET_OPTION(CURLOPT_DEBUGDATA, request);
+		FR_CURL_SET_OPTION(CURLOPT_VERBOSE, 1L);
 	}
 
 	/*
 	 *	Control which HTTP version we're going to use
 	 */
-	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
+	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) FR_CURL_SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
 
 	/*
 	 *	Setup any header options and generic headers.
 	 */
-	SET_OPTION(CURLOPT_URL, uri);
-	if (section->proxy) SET_OPTION(CURLOPT_PROXY, section->proxy);
-	SET_OPTION(CURLOPT_NOSIGNAL, 1L);
-	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
+	FR_CURL_SET_OPTION(CURLOPT_URL, uri);
+	if (section->proxy) FR_CURL_SET_OPTION(CURLOPT_PROXY, section->proxy);
+	FR_CURL_SET_OPTION(CURLOPT_NOSIGNAL, 1L);
+	FR_CURL_SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 
 	/*
 	 *	HTTP/1.1 doesn't require a content type, so only set it
@@ -1877,11 +1866,11 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	timeout = fr_pool_timeout(t->pool);
 	RDEBUG3("Connect timeout is %pVs, request timeout is %pVs",
 	        fr_box_time_delta(timeout), fr_box_time_delta(section->timeout));
-	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
-	SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
+	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
+	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
 
 #ifdef CURLOPT_PROTOCOLS
-	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
+	FR_CURL_SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
 #endif
 
 	/*
@@ -1926,11 +1915,11 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 */
 	switch (method) {
 	case REST_HTTP_METHOD_GET:
-		SET_OPTION(CURLOPT_HTTPGET, 1L);
+		FR_CURL_SET_OPTION(CURLOPT_HTTPGET, 1L);
 		break;
 
 	case REST_HTTP_METHOD_POST:
-		SET_OPTION(CURLOPT_POST, 1L);
+		FR_CURL_SET_OPTION(CURLOPT_POST, 1L);
 		break;
 
 	case REST_HTTP_METHOD_PUT:
@@ -1943,19 +1932,19 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		 *	This is many cases will cause the server to block,
 		 *	indefinitely.
 		 */
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PUT");
+		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, "PUT");
 		break;
 
 	case REST_HTTP_METHOD_PATCH:
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PATCH");
+		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, "PATCH");
 		break;
 
 	case REST_HTTP_METHOD_DELETE:
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, "DELETE");
+		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, "DELETE");
 		break;
 
 	case REST_HTTP_METHOD_CUSTOM:
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
+		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
 		break;
 
 	default:
@@ -2022,27 +2011,27 @@ do {\
 	/*
 	 *	Set SSL/TLS authentication parameters
 	 */
-	if (section->tls_certificate_file) SET_OPTION(CURLOPT_SSLCERT, section->tls_certificate_file);
-	if (section->tls_private_key_file) SET_OPTION(CURLOPT_SSLKEY, section->tls_private_key_file);
-	if (section->tls_private_key_password) SET_OPTION(CURLOPT_KEYPASSWD, section->tls_private_key_password);
-	if (section->tls_ca_file) SET_OPTION(CURLOPT_CAINFO, section->tls_ca_file);
-	if (section->tls_ca_issuer_file) SET_OPTION(CURLOPT_ISSUERCERT, section->tls_ca_issuer_file);
-	if (section->tls_ca_path) SET_OPTION(CURLOPT_CAPATH, section->tls_ca_path);
-	if (section->tls_random_file) SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
+	if (section->tls_certificate_file) FR_CURL_SET_OPTION(CURLOPT_SSLCERT, section->tls_certificate_file);
+	if (section->tls_private_key_file) FR_CURL_SET_OPTION(CURLOPT_SSLKEY, section->tls_private_key_file);
+	if (section->tls_private_key_password) FR_CURL_SET_OPTION(CURLOPT_KEYPASSWD, section->tls_private_key_password);
+	if (section->tls_ca_file) FR_CURL_SET_OPTION(CURLOPT_CAINFO, section->tls_ca_file);
+	if (section->tls_ca_issuer_file) FR_CURL_SET_OPTION(CURLOPT_ISSUERCERT, section->tls_ca_issuer_file);
+	if (section->tls_ca_path) FR_CURL_SET_OPTION(CURLOPT_CAPATH, section->tls_ca_path);
+	if (section->tls_random_file) FR_CURL_SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
 
-	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1L : 0L);
-	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2L : 0L);
-	if (section->tls_extract_cert_attrs) SET_OPTION(CURLOPT_CERTINFO, 1L);
+	FR_CURL_SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1L : 0L);
+	FR_CURL_SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2L : 0L);
+	if (section->tls_extract_cert_attrs) FR_CURL_SET_OPTION(CURLOPT_CERTINFO, 1L);
 
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.
 	 */
 	rest_response_init(section, request, &ctx->response, type);
 
-	SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
-	SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
-	SET_OPTION(CURLOPT_WRITEFUNCTION, rest_response_body);
-	SET_OPTION(CURLOPT_WRITEDATA, &ctx->response);
+	FR_CURL_SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
+	FR_CURL_SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
+	FR_CURL_SET_OPTION(CURLOPT_WRITEFUNCTION, rest_response_body);
+	FR_CURL_SET_OPTION(CURLOPT_WRITEDATA, &ctx->response);
 
 	/*
 	 *  Force parsing the body text as a particular encoding.
@@ -2156,105 +2145,12 @@ do {\
 
 
 finish:
-	SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
+	FR_CURL_SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
 
 	return 0;
 
 error:
 	return -1;
-}
-
-int rest_response_certinfo(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
-			   REQUEST *request, fr_curl_io_request_t *randle)
-{
-	CURL			*candle = randle->candle;
-	CURLcode		ret;
-	int			i;
-	char		 	buffer[265];
-	char			*p , *q, *attr = buffer;
-	fr_cursor_t		cursor, list;
-	VALUE_PAIR		*cert_vps = NULL;
-
-	/*
-	 *	Examples and documentation show cert_info being
-	 *	a struct curl_certinfo *, but CPP checks require
-	 *	it to be a struct curl_slist *.
-	 *
-	 *	https://curl.haxx.se/libcurl/c/certinfo.html
-	 */
-	union {
-		struct curl_slist    *to_info;
-		struct curl_certinfo *to_certinfo;
-	} ptr;
-	ptr.to_info = NULL;
-
-	fr_cursor_init(&list, &request->packet->vps);
-
-	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
-	if (ret != CURLE_OK) {
-		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
-
-		return -1;
-	}
-
-	attr += strlcpy(attr, "TLS-Cert-", sizeof(buffer));
-
-	RDEBUG2("Chain has %i certificate(s)", ptr.to_certinfo->num_of_certs);
-	for (i = 0; i < ptr.to_certinfo->num_of_certs; i++) {
-		struct curl_slist *cert_attrs;
-
-		RDEBUG2("Processing certificate %i",i);
-		fr_cursor_init(&cursor, &cert_vps);
-
-		for (cert_attrs = ptr.to_certinfo->certinfo[i];
-		     cert_attrs;
-		     cert_attrs = cert_attrs->next) {
-		     	VALUE_PAIR		*vp;
-		     	fr_dict_attr_t const	*da;
-
-		     	q = strchr(cert_attrs->data, ':');
-			if (!q) {
-				RWDEBUG("Malformed certinfo from libcurl: %s", cert_attrs->data);
-				continue;
-			}
-
-			strlcpy(attr, cert_attrs->data, (q - cert_attrs->data) + 1);
-			for (p = attr; *p != '\0'; p++) if (*p == ' ') *p = '-';
-
-			da = fr_dict_attr_by_name(dict_freeradius, buffer);
-			if (!da) {
-				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
-				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
-				continue;
-			}
-			MEM(vp = fr_pair_afrom_da(request->packet, da));
-			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
-
-			fr_cursor_append(&cursor, vp);
-		}
-
-		/*
-		 *	Add a copy of the cert_vps to session state.
-		 *
-		 *	Both PVS studio and Coverity detect the condition
-		 *	below as logically dead code unless we explicitly
-		 *	set cert_vps.  This is because they're too dumb
-		 *	to realise that the cursor argument passed to
-		 *	fr_tls_session_pairs_from_x509_cert contains a
-		 *	reference to cert_vps.
-		 */
-		cert_vps = fr_cursor_current(&cursor);
-		if (cert_vps) {
-			/*
-			 *	Print out all the pairs we have so far
-			 */
-			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
-			fr_cursor_merge(&list, &cursor);
-			cert_vps = NULL;
-		}
-	}
-
-	return 0;
 }
 
 /** Sends the response to the correct decode function.
