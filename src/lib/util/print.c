@@ -194,7 +194,7 @@ char const *fr_utf8_strchr(int *out_chr_len, char const *str, ssize_t inlen, cha
 	 */
 	needle_len = fr_utf8_char((uint8_t const *)chr, end - p);
 	if (needle_len == 0) needle_len = 1;	/* Invalid UTF8 sequence - ignore - needle is one byte */
-	if (needle_len) *out_chr_len = needle_len;
+	if (out_chr_len) *out_chr_len = needle_len;
 
 	/*
 	 *	Loop over the input sequence, advancing
