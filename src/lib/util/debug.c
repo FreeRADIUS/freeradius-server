@@ -1340,6 +1340,7 @@ bool _fr_assert_fail(char const *file, int line, char const *expr, char const *m
 #else
 		FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s: %s", file, line, expr, str);
 #endif
+		return false;
 	}
 
 #ifndef NDEBUG
