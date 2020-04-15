@@ -192,7 +192,7 @@ char const *fr_utf8_strchr(int *out_chr_len, char const *str, ssize_t inlen, cha
 	 *	Figure out how big the multibyte sequence
 	 *	we're looking for is.
 	 */
-	needle_len = fr_utf8_char((uint8_t const *)chr, end - p);
+	needle_len = fr_utf8_char((uint8_t const *)chr, -1);
 	if (needle_len == 0) needle_len = 1;	/* Invalid UTF8 sequence - ignore - needle is one byte */
 	if (out_chr_len) *out_chr_len = needle_len;
 
@@ -203,7 +203,7 @@ char const *fr_utf8_strchr(int *out_chr_len, char const *str, ssize_t inlen, cha
 	while (p < end) {
 		int schr_len;
 
-		schr_len = fr_utf8_char((uint8_t const *) str, end - p);
+		schr_len = fr_utf8_char((uint8_t const *)p, end - p);
 		if (schr_len == 0) schr_len = 1;	/* Invalid UTF8 sequence - ignore - advance by 1 */
 		if (schr_len != needle_len) goto next;
 
