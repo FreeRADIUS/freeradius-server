@@ -46,7 +46,7 @@ typedef struct {
 	fr_time_delta_t	timeout;
 	bool		timeout_is_set;
 
-	xlat_exp_t	*head;
+	vp_tmpl_t	*tmpl;
 } rlm_exec_t;
 
 static const CONF_PARSER module_config[] = {
@@ -283,7 +283,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	if (!inst->program) return 0;
 
-	slen = xlat_tokenize_argv(inst, &inst->head, inst->program, strlen(inst->program),
+	MEM(inst->tmpl = tmpl_alloc(inst, TMPL_TYPE_EXEC, inst->program, strlen(inst->program), '`'));
+
+	slen = xlat_tokenize_argv(inst, &inst->tmpl->tmpl_xlat, inst->program, strlen(inst->program),
 				  &(vp_tmpl_rules_t) { .dict_def = fr_dict_internal() });
 	if (slen <= 0) {
 		char *spaces, *text;
@@ -382,10 +384,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 static rlm_rcode_t exec_resume(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
 {
 	fr_value_box_t		**box = rctx;
-	char *p;
 
-	p = fr_value_box_list_asprint(box, *box, ",", '"');
-	RDEBUG("EXEC GOT -- %s", p);
+	RDEBUG("EXEC GOT -- %pV", *box);
 
 	talloc_free(box);
 
@@ -401,14 +401,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_async(void *instance, UNUSED void *
 	rlm_exec_t const       	*inst = instance;
 	fr_value_box_t		**box;
 
-	if (!inst->head) {
+	if (!inst->tmpl) {
 		RDEBUG("This module requires 'program' to be set.");
 		return RLM_MODULE_FAIL;
 	}
 
 	box = talloc_zero(request, fr_value_box_t *);
 
-	return unlang_module_yield_to_xlat(box, box, request, inst->head, exec_resume, NULL, box);
+	return unlang_module_yield_to_tmpl(box, box, request, inst->tmpl, exec_resume, NULL, box);
 }
 
 
