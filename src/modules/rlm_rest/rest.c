@@ -2011,17 +2011,7 @@ do {\
 	/*
 	 *	Set SSL/TLS authentication parameters
 	 */
-	if (section->tls_certificate_file) FR_CURL_SET_OPTION(CURLOPT_SSLCERT, section->tls_certificate_file);
-	if (section->tls_private_key_file) FR_CURL_SET_OPTION(CURLOPT_SSLKEY, section->tls_private_key_file);
-	if (section->tls_private_key_password) FR_CURL_SET_OPTION(CURLOPT_KEYPASSWD, section->tls_private_key_password);
-	if (section->tls_ca_file) FR_CURL_SET_OPTION(CURLOPT_CAINFO, section->tls_ca_file);
-	if (section->tls_ca_issuer_file) FR_CURL_SET_OPTION(CURLOPT_ISSUERCERT, section->tls_ca_issuer_file);
-	if (section->tls_ca_path) FR_CURL_SET_OPTION(CURLOPT_CAPATH, section->tls_ca_path);
-	if (section->tls_random_file) FR_CURL_SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
-
-	FR_CURL_SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1L : 0L);
-	FR_CURL_SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2L : 0L);
-	if (section->tls_extract_cert_attrs) FR_CURL_SET_OPTION(CURLOPT_CERTINFO, 1L);
+	fr_curl_easy_tls_init(randle, &section->tls);
 
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.

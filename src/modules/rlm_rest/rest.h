@@ -143,20 +143,11 @@ typedef struct {
 	char const		*username;	//!< Username used for HTTP-Auth
 	char const		*password;	//!< Password used for HTTP-Auth
 
-	char const		*tls_certificate_file;
-	char const		*tls_private_key_file;
-	char const		*tls_private_key_password;
-	char const		*tls_ca_file;
-	char const		*tls_ca_issuer_file;
-	char const		*tls_ca_path;
-	char const		*tls_random_file;
-	bool			tls_check_cert;
-	bool			tls_check_cert_cn;
-	bool			tls_extract_cert_attrs;
-
 	fr_time_delta_t		timeout;	//!< Timeout timeval.
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
 	size_t			max_body_in;	//!< Maximum size of incoming data.
+
+	fr_curl_tls_t		tls;
 } rlm_rest_section_t;
 
 /*

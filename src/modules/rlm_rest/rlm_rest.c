@@ -61,23 +61,6 @@ static fr_table_num_sorted_t const http_negotiation_table[] = {
 };
 static size_t http_negotiation_table_len = NUM_ELEMENTS(http_negotiation_table);
 
-/*
- *	TLS Configuration
- */
-static CONF_PARSER tls_config[] = {
-	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_file) },
-	{ FR_CONF_OFFSET("ca_issuer_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_issuer_file) },
-	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_path) },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_private_key_file) },
-	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, rlm_rest_section_t, tls_private_key_password) },
-	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, rlm_rest_section_t, tls_random_file) },
-	{ FR_CONF_OFFSET("check_cert", FR_TYPE_BOOL, rlm_rest_section_t, tls_check_cert), .dflt = "yes" },
-	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_BOOL, rlm_rest_section_t, tls_check_cert_cn), .dflt = "yes" },
-	{ FR_CONF_OFFSET("extract_cert_attrs", FR_TYPE_BOOL, rlm_rest_section_t, tls_extract_cert_attrs), .dflt = "no" },
-	CONF_PARSER_TERMINATOR
-};
-
 static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, uri), .dflt = "" },
 	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy) },
@@ -99,7 +82,7 @@ static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("max_body_in", FR_TYPE_SIZE, rlm_rest_section_t, max_body_in), .dflt = "16k" },
 
 	/* TLS Parameters */
-	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
+	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_rest_section_t, tls), .subcs = (void const *) fr_curl_tls_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -118,7 +101,7 @@ static const CONF_PARSER xlat_config[] = {
 	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
-	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
+	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_rest_section_t, tls), .subcs = (void const *) fr_curl_tls_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -253,7 +236,7 @@ static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(our_rctx->handle, fr_curl_io_request_t);
 	rlm_rest_section_t		*section = &our_rctx->section;
 
-	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		xa = XLAT_ACTION_FAIL;
@@ -454,7 +437,7 @@ static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *r
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
@@ -568,7 +551,7 @@ static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
@@ -717,7 +700,7 @@ static rlm_rcode_t mod_accounting_result(void *instance, void *thread, REQUEST *
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
@@ -796,7 +779,7 @@ static rlm_rcode_t mod_post_auth_result(void *instance, void *thread, REQUEST *r
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) fr_curl_response_certinfo(request, handle);
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
