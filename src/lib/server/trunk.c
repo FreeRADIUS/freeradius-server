@@ -38,6 +38,7 @@ typedef struct fr_trunk_s fr_trunk_t;
 #include <freeradius-devel/server/trunk.h>
 
 #include <freeradius-devel/server/connection.h>
+#include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
