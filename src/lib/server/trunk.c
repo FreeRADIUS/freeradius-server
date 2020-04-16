@@ -1939,6 +1939,13 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	 */
 	trunk_requests_per_connnection(NULL, NULL, treq->pub.trunk, fr_time());
 
+#ifndef NDEBUG
+	/*
+	 *	Clear the state change log
+	 */
+	fr_dlist_talloc_free(&treq->log);
+#endif
+
 	/*
 	 *	No cleanup delay, means cleanup immediately
 	 */
@@ -1958,13 +1965,6 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	treq->pub.rctx = NULL;
 	treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
 	treq->last_freed = fr_time();
-
-#ifndef NDEBUG
-	/*
-	 *	Clear the state change log
-	 */
-	fr_dlist_talloc_free(&treq->log);
-#endif
 
 	/*
 	 *	Ensure anything parented off the treq
