@@ -60,7 +60,6 @@ struct rlm_radius_s {
 
 	bool			replicate;		//!< Ignore responses.
 	bool			synchronous;		//!< Retransmit when receiving a duplicate request.
-	bool			no_connection_fail;	//!< Fail immediately if there are no active connections.
 	bool			originate;  		//!< Originating packets, instead of proxying existing ones.
 							///< Controls whether Proxy-State is added to the outbound
 							///< request.

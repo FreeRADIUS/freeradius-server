@@ -102,12 +102,6 @@ radius {
 #	synchronous = no
 
 	#
-	#  no_connection_fail:: If no connections are available, then
-	#  the module will immediately return "fail".
-	#
-#	no_connection_fail = no
-
-	#
 	#  originate:: Whether or not we are creating the packet.
 	#
 	#  Sometimes we are creating a request that is not for the purpose of

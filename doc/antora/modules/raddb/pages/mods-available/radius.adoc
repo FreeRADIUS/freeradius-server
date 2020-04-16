@@ -92,10 +92,6 @@ NOTE: The behavior in v3 is the same as `synchronous = yes`
 
 
 
-no_connection_fail:: If no connections are available, then
-the module will immediately return "fail".
-
-
 
 originate:: Whether or not we are creating the packet.
 
@@ -442,7 +438,6 @@ radius {
 	type = Accounting-Request
 #	replicate = no
 #	synchronous = no
-#	no_connection_fail = no
 #	originate = no
 	status_check {
 		type = Status-Server

@@ -2573,17 +2573,6 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 	fr_assert(request->packet->code > 0);
 	fr_assert(request->packet->code < FR_RADIUS_MAX_PACKET_CODE);
 
-	/*
-	 *	If configured, and we don't have any active
-	 *	connections, fail the request.  This lets "parallel"
-	 *	sections finish much more quickly than otherwise.
-	 */
-	if (inst->parent->no_connection_fail &&
-	    (fr_trunk_connection_count_by_state(t->trunk, FR_TRUNK_CONN_ACTIVE) == 0)) {
-		REDEBUG("Failing request due to 'no_connection_fail = true', and there are no active connections");
-		return RLM_MODULE_FAIL;
-	}
-
 	if (request->packet->code == FR_CODE_STATUS_SERVER) {
 		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
 		return RLM_MODULE_NOOP;

@@ -111,8 +111,6 @@ static CONF_PARSER const module_config[] = {
 
 	{ FR_CONF_OFFSET("synchronous", FR_TYPE_BOOL, rlm_radius_t, synchronous) },
 
-	{ FR_CONF_OFFSET("no_connection_fail", FR_TYPE_BOOL, rlm_radius_t, no_connection_fail) },
-
 	{ FR_CONF_OFFSET("originate", FR_TYPE_BOOL, rlm_radius_t, originate) },
 
 	{ FR_CONF_POINTER("status_check", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
