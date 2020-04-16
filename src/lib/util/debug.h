@@ -129,7 +129,7 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
    if (!fr_cond_assert(request)) return -1
  @endverbatim
  *
- * @param _x expression to test (should evaluate to true)
+ * @param[in] _x expression to test (should evaluate to true)
  */
 #define		fr_cond_assert(_x) likely((bool)((_x) ? true : (_fr_assert_fail(__FILE__, __LINE__, #_x, NULL) && false)))
 
@@ -144,9 +144,9 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
    if (!fr_cond_assert_msg(request, "Bad stuff happened: %s", fr_syserror(errno)))) return -1
  @endverbatim
  *
- * @param _x	expression to test (should evaluate to true)
- * @param _fmt	of message to log.
- * @param ...	fmt arguments.
+ * @param[in] _x	expression to test (should evaluate to true)
+ * @param[in] _fmt	of message to log.
+ * @param[in] ...	fmt arguments.
  */
 #define		fr_cond_assert_msg(_x, _fmt, ...) likely((bool)((_x) ? true : (_fr_assert_fail(__FILE__, __LINE__, #_x, _fmt, ## __VA_ARGS__) && false)))
 
@@ -172,9 +172,9 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
    fr_fatal_assert(<extremely_unlikely_and_fatal_condition>);
  @endverbatim
  *
- * @param _x	expression to test (should evaluate to true)
- * @param _fmt	of message to log.
- * @param ...	fmt arguments.
+ * @param[in] _x	expression to test (should evaluate to true)
+ * @param[in] _fmt	of message to log.
+ * @param[in] ...	fmt arguments.
  */
 #define		fr_fatal_assert_msg(_x, _fmt, ...) if (unlikely(!((bool)(_x)))) _fr_assert_fatal(__FILE__, __LINE__, #_x, _fmt, ## __VA_ARGS__)
 
@@ -187,13 +187,22 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
 
 #ifdef NDEBUG
 #  define fr_assert(_x)
+#  define fr_assert_msg(_x, _msg, ...)
 #  define fr_assert_fail(_msg, ...)
 #elif !defined(__clang_analyzer__)
 /** Calls panic_action ifndef NDEBUG, else logs error
  *
- * @param _x	expression to test (should evaluate to true)
+ * @param[in] _x	expression to test (should evaluate to true)
  */
 #  define	fr_assert(_x) if (unlikely(!((bool)(_x)))) _fr_assert_fail(__FILE__, __LINE__, #_x, NULL)
+
+/** Calls panic_action ifndef NDEBUG, else logs error and causes the server to exit immediately with code 134
+ *
+ * @param[in] _x	expression to test (should evaluate to true)
+ * @param[in] _msg	to log.
+ * @param[in] ...	args.
+ */
+#  define	fr_assert_msg(_x, _msg, ...) if (unlikely(!((bool)(_x)))) _fr_assert_fail(__FILE__, __LINE__, #_x, _msg, ## __VA_ARGS__)
 /** Calls panic_action ifndef NDEBUG, else logs error
  *
  * @param[in] _msg	to log.
@@ -203,7 +212,8 @@ void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
 #else
 #  include <assert.h>
 #  define fr_assert(_x) assert(_x)
-#  define fr_assert_fail(_msg ...)
+#  define fr_assert_msg(_x, _msg, ...) assert(_x)
+#  define fr_assert_fail(_msg ...) assert(0)
 #endif
 
 /** Exit, producing a log message in debug builds
