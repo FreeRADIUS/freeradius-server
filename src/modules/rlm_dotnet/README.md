@@ -9,3 +9,6 @@ With Homebrew on OS X:
 <https://github.com/dotnet/samples/tree/master/core/hosting/HostWithCoreClrHost>
 
 `sudo make install` put everything in /usr/local as expected
+
+`sudo ln -s ../mods-available/dotnet dotnet` from `/usr/local/etc/raddb/mods-enabled`
+`sudo /usr/local/sbin/radiusd -X` to run
