@@ -21,8 +21,8 @@
  * @file src/lib/server/trunk.c
  * @brief A management API for bonding multiple connections together.
  *
- * @copyright 2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
- * @copyright 2019 The FreeRADIUS server project
+ * @copyright 2019-2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2019-2020 The FreeRADIUS server project
  */
 RCSIDH(server_trunk_h, "$Id$")
 
