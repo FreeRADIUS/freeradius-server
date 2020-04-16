@@ -2578,7 +2578,9 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 		return RLM_MODULE_NOOP;
 	}
 
-	MEM(treq = fr_trunk_request_alloc(t->trunk, request));
+	treq = fr_trunk_request_alloc(t->trunk, request);
+	if (!treq) return RLM_MODULE_FAIL;
+
 	MEM(r = talloc_zero(request, udp_result_t));
 	MEM(u = talloc_zero(treq, udp_request_t));
 

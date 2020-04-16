@@ -279,6 +279,10 @@ struct fr_trunk_pub_s {
 	/** @name Statistics
 	 * @{
  	 */
+ 	uint64_t _CONST		req_alloc;		//!< The number of requests currently
+ 							///< allocated that have not been freed
+ 							///< or returned to the free list.
+
 	uint64_t _CONST		req_alloc_new;		//!< How many requests we've allocated.
 
 	uint64_t _CONST		req_alloc_reused;	//!< How many requests were reused.

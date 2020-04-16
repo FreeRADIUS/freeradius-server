@@ -251,7 +251,7 @@ struct fr_trunk_s {
 	/** @name Log rate limiting entries
 	 * @{
  	 */
-	fr_rate_limit_t		limit_max_requests_log;	//!< Rate limit on "Refusing to enqueue requests - Limit of * requests reached"
+	fr_rate_limit_t		limit_max_requests_alloc_log;	//!< Rate limit on "Refusing to alloc requests - Limit of * requests reached"
 
 	fr_rate_limit_t		limit_last_failure_log;	//!< Rate limit on "Refusing to enqueue requests - No active conns"
  	/** @} */
@@ -1266,8 +1266,6 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 						      REQUEST *request)
 {
 	fr_trunk_connection_t	*tconn;
-	uint64_t		limit;
-
 	/*
 	 *	If we have an active connection then
 	 *	return that.
@@ -1296,24 +1294,36 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 		return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
 	}
 
+
 	/*
 	 *	Only enforce if we're limiting maximum
 	 *	number of connections, and maximum
 	 *	number of requests per connection.
+	 *
+	 *	The alloc function also checks this
+	 *	which is why this is only done for
+	 *	debug builds.
 	 */
 	if (trunk->conf.max_req_per_conn > 0) {
-		uint64_t	total_reqs;
+		uint64_t	limit;
 
-		total_reqs = fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_ALL) + 1;
 		limit = trunk->conf.max * (uint64_t)trunk->conf.max_req_per_conn;
-		if ((limit > 0) && (total_reqs > limit)) {
-			RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_max_requests_log,
-						   RWARN, WARN, "Refusing to enqueue requests - "
-						   "Limit of %"PRIu64" (max = %u * per_connection_max = %u) "
-						   "requests reached",
-				 		   limit, trunk->conf.max, trunk->conf.max_req_per_conn);
+		if (limit > 0) {
+			uint64_t	total_reqs;
 
-			return FR_TRUNK_ENQUEUE_NO_CAPACITY;
+			total_reqs = fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL,
+								     FR_TRUNK_REQUEST_STATE_ALL) + 1;
+			if (!fr_cond_assert_msg(total_reqs <= limit,
+						"Requested enqueued exceeds limit.  "
+						"Expected <= %" PRIu64", got %" PRIu64, limit, total_reqs)) {
+				return FR_TRUNK_ENQUEUE_NO_CAPACITY;
+			}
+			if (!fr_cond_assert_msg(trunk->pub.req_alloc <= limit,
+						"Requests alloced exceeds limit.  "
+						"Expected <= %" PRIu64", got %" PRIu64, limit,
+						trunk->pub.req_alloc)) {
+				return FR_TRUNK_ENQUEUE_NO_CAPACITY;
+			}
 		}
 	}
 
@@ -1952,6 +1962,13 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	trunk_requests_per_connnection(NULL, NULL, treq->pub.trunk, fr_time());
 
 	/*
+	 *	This tracks the total number of requests
+	 *	allocated and not freed or returned to
+	 *	the free list.
+	 */
+	if (fr_cond_assert(trunk->pub.req_alloc > 0)) trunk->pub.req_alloc--;
+
+	/*
 	 *	No cleanup delay, means cleanup immediately
 	 */
 	if (trunk->conf.req_cleanup_delay == 0) {
@@ -2037,17 +2054,38 @@ static int _trunk_request_free(fr_trunk_request_t *treq)
 
 /** (Pre-)Allocate a new trunk request
  *
+ * If trunk->conf.req_pool_headers or trunk->conf.req_pool_size are not zero then the
+ * request will be a talloc pool, which can be used to hold the preq.
+ *
+ * @note Do not use MEM to check the result of this allocated as it may fail for
+ * non-fatal reasons.
+ *
  * @param[in] trunk	to add request to.
  * @param[in] request	to wrap in a trunk request (treq).
  * @return
- *	- A newly allocated (or reused) treq. If trunk->conf.req_pool_headers or
- *        trunk->conf.req_pool_size are not zero then the request will be a talloc pool,
- *	  which can be used to hold the preq.
- *	- NULL on memory allocation error.
+ *	- A newly allocated request.
+ *	- NULL if too many requests are allocated.
  */
 fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 {
 	fr_trunk_request_t *treq;
+
+	/*
+	 *	The number of treqs currently allocated
+	 *	exceeds the maximum number allowed.
+	 */
+	if (trunk->conf.max_req_per_conn && trunk->conf.max) {
+		uint64_t limit = trunk->conf.max_req_per_conn * trunk->conf.max;
+
+		if (trunk->pub.req_alloc >= limit) {
+			RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_max_requests_alloc_log,
+						   RWARN, WARN, "Refusing to alloc requests - "
+						   "Limit of %"PRIu64" (max = %u * per_connection_max = %u) "
+						   "requests reached",
+						   limit, trunk->conf.max, trunk->conf.max_req_per_conn);
+			return NULL;
+		}
+	}
 
 	/*
 	 *	Allocate or reuse an existing request
@@ -2078,6 +2116,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 #endif
 	}
 
+	trunk->pub.req_alloc++;
 	treq->id = atomic_fetch_add_explicit(&request_counter, 1, memory_order_relaxed);
 	/* heap_id	- initialised when treq inserted into pending */
 	/* list		- empty */
