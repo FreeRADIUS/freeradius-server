@@ -26,6 +26,7 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <dlfcn.h>
 #include "coreclrhost.h"
 
 /** Specifies the module.function to load for processing a section
@@ -86,6 +87,20 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static int bind_dotnet(rlm_dotnet_t *inst)
+{
+	// Do dlopen
+	inst->dylib = dlopen("/usr/local/share/dotnet/shared/Microsoft.NETCore.App/3.0.0/libcoreclr.dylib", RTLD_NOW | RTLD_GLOBAL);
+	if (!inst->dylib)
+	{
+		ERROR("%s", dlerror());
+		return 1;
+	}
+	// And dlsym for everyone
+
+	return 0;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -101,7 +116,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_dotnet_t	*inst = instance;
 
-	radlog(L_INFO, __FILE__ " xyzzy!");
+	INFO("%s xyzzy!", __FILE__);
+	if (bind_dotnet(inst))
+	{
+		ERROR("Failed to load .NET core");
+		return RLM_MODULE_FAIL;
+	}
+	INFO("Module loaded");
 	// int hr = coreclr_initialize(NULL, NULL, 0, NULL, NULL, &inst->hostHandle, &inst->domainId);
 	// !!! Check hr for failure
 
