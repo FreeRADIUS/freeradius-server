@@ -76,6 +76,7 @@ fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 
 	if (size > (1 << 30)) {
 		fr_strerror_printf("Ring buffer size must be no more than (1 << 30)");
+		talloc_free(rb);
 		return NULL;
 	}
 
