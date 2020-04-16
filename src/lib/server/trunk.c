@@ -64,6 +64,11 @@ static fr_time_t test_time(void)
 #endif
 
 #ifndef NDEBUG
+/** The maximum number of state logs to record per request
+ *
+ */
+#define FR_TRUNK_REQUEST_STATE_LOG_MAX	20
+
 /** Trace state machine changes for a particular request
  *
  */
@@ -2354,6 +2359,11 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 		slog->tconn_id = treq->pub.tconn->pub.conn->id;
 		slog->tconn_state = treq->pub.tconn->pub.state;
 	}
+
+	if (fr_dlist_num_elements(&treq->log) > FR_TRUNK_REQUEST_STATE_LOG_MAX) {
+		talloc_free(fr_dlist_remove(&treq->log, fr_dlist_tail(&treq->log)));
+	}
+
 	fr_dlist_insert_tail(&treq->log, slog);
 	talloc_set_destructor(slog, _state_log_entry_free);
 }
