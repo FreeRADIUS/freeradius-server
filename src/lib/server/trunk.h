@@ -283,6 +283,8 @@ struct fr_trunk_pub_s {
 
 	uint64_t _CONST		req_alloc_reused;	//!< How many requests were reused.
 	/** @} */
+
+	bool _CONST		triggers;		//!< do we run the triggers?
 };
 
 /** Public fields for the trunk request

@@ -343,6 +343,12 @@ static fr_table_num_ordered_t const fr_trunk_connection_events[] = {
 };
 static size_t fr_trunk_connection_events_len = NUM_ELEMENTS(fr_trunk_connection_events);
 
+#define TRIGGER(name) do { \
+	if (trunk->pub.triggers) { \
+		trigger_exec(NULL, NULL, "trunk." STRINGIFY(name), true, NULL); \
+	} \
+} while (0)
+
 #define CONN_STATE_TRANSITION(_new, _log) \
 do { \
 	_log("[%" PRIu64 "] Trunk connection changed state %s -> %s", \
@@ -2609,6 +2615,7 @@ static void trunk_connection_enter_full(fr_trunk_connection_t *tconn)
 
 	fr_dlist_insert_head(&trunk->full, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FULL, DEBUG2);
+	TRIGGER(full);
 }
 
 /** Transition a connection to the inactive state
@@ -2632,6 +2639,7 @@ static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 
 	fr_dlist_insert_head(&trunk->inactive, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE, DEBUG2);
+	TRIGGER(inactive);
 }
 
 /** Transition a connection to the inactive-draining state
@@ -2655,6 +2663,7 @@ static void trunk_connection_enter_inactive_draining(fr_trunk_connection_t *tcon
 
 	fr_dlist_insert_head(&trunk->inactive_draining, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE_DRAINING, INFO);
+	TRIGGER(inactive_draining);
 
 	/*
 	 *	Immediately re-enqueue all pending
@@ -2687,6 +2696,7 @@ static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 
 	fr_dlist_insert_head(&trunk->draining, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING, INFO);
+	TRIGGER(draining);
 
 	/*
 	 *	Immediately re-enqueue all pending
@@ -2720,6 +2730,7 @@ static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn
 
 	fr_dlist_insert_head(&trunk->draining_to_free, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING_TO_FREE, INFO);
+	TRIGGER(draining_to_free);
 
 	/*
 	 *	Immediately re-enqueue all pending
@@ -2758,6 +2769,7 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 
 	MEM(fr_heap_insert(trunk->active, tconn) == 0);	/* re-insert into the active heap*/
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_ACTIVE, DEBUG2);
+	TRIGGER(active);
 
 	/*
 	 *	Reorder the connections
@@ -2817,6 +2829,7 @@ static void _trunk_connection_on_init(UNUSED fr_connection_t *conn, UNUSED fr_co
 
 	fr_dlist_insert_head(&trunk->init, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INIT, DEBUG2);
+	TRIGGER(init);
 }
 
 /** Connection transitioned to the connecting state
@@ -2853,6 +2866,7 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
 
 	fr_dlist_insert_head(&trunk->connecting, tconn);	/* MUST remain a head insertion for reconnect logic */
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_CONNECTING, INFO);
+	TRIGGER(connecting);
 }
 
 /** Connection transitioned to the shutdown state
@@ -3021,6 +3035,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 
 	fr_dlist_insert_head(&trunk->closed, tconn);	/* MUST remain a head insertion for reconnect logic */
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_CLOSED, INFO);
+	TRIGGER(closed);
 
 	/*
 	 *	Now *AFTER* the connection has been
@@ -3086,6 +3101,7 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_
 	 *	and will end life in the halted state.
 	 */
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_HALTED, DEBUG2);
+	TRIGGER(halted);
 
 	/*
 	 *	There should be no requests left on this
