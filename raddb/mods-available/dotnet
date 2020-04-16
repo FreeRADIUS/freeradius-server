@@ -1,0 +1,40 @@
+#
+# Uncomment any func_* which are included in your module. If
+# rlm_dotnet is called for a section which does not have
+# a function defined, it will return NOOP.
+#
+dotnet {
+	assembly = FreeRadius.Example
+	class = MainClass
+
+	# For every entry point, there is an asm_ class_ and func_ to indicate the
+	# assembly, class and function. The default value for asm_ and class_ are
+	# {.assembly} and {.class} so you don't have to set them for every function
+	# and you can just set them above and just set the func.
+
+#	asm_instantiate = ${.assembly}
+#	class_instantiate = ${.class}
+#	func_instantiate = Instantiate
+
+#	func_detach = Detach
+
+#	func_authorize = Authorize
+
+#	func_authenticate = Authenticate
+
+#	func_preacct = Preacct
+
+#	func_accounting = Accounting
+
+#	func_checksimul = Checksimul
+
+#	func_pre_proxy = PreProxy
+
+#	func_post_proxy = PostProxy
+
+#	func_post_auth = PostAuth
+
+#	func_recv_coa = RecvCoa
+
+#	func_send_coa = SendCoa
+}
