@@ -1304,7 +1304,7 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 *	which is why this is only done for
 	 *	debug builds.
 	 */
-	if (trunk->conf.max_req_per_conn > 0) {
+	if (trunk->conf.max_req_per_conn && trunk->conf.max) {
 		uint64_t	limit;
 
 		limit = trunk->conf.max * (uint64_t)trunk->conf.max_req_per_conn;
@@ -1312,16 +1312,13 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 			uint64_t	total_reqs;
 
 			total_reqs = fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL,
-								     FR_TRUNK_REQUEST_STATE_ALL) + 1;
-			if (!fr_cond_assert_msg(total_reqs <= limit,
-						"Requested enqueued exceeds limit.  "
-						"Expected <= %" PRIu64", got %" PRIu64, limit, total_reqs)) {
-				return FR_TRUNK_ENQUEUE_NO_CAPACITY;
-			}
-			if (!fr_cond_assert_msg(trunk->pub.req_alloc <= limit,
-						"Requests alloced exceeds limit.  "
-						"Expected <= %" PRIu64", got %" PRIu64, limit,
-						trunk->pub.req_alloc)) {
+								     FR_TRUNK_REQUEST_STATE_ALL);
+			if (total_reqs >= limit) {
+				RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_max_requests_alloc_log,
+							   RWARN, WARN, "Refusing to alloc requests - "
+							   "Limit of %"PRIu64" (max = %u * per_connection_max = %u) "
+							   "requests reached",
+							   limit, trunk->conf.max, trunk->conf.max_req_per_conn);
 				return FR_TRUNK_ENQUEUE_NO_CAPACITY;
 			}
 		}
@@ -2075,8 +2072,9 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 	 *	exceeds the maximum number allowed.
 	 */
 	if (trunk->conf.max_req_per_conn && trunk->conf.max) {
-		uint64_t limit = trunk->conf.max_req_per_conn * trunk->conf.max;
+		uint64_t limit;
 
+		limit = trunk->conf.max_req_per_conn * trunk->conf.max;
 		if (trunk->pub.req_alloc >= limit) {
 			RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_max_requests_alloc_log,
 						   RWARN, WARN, "Refusing to alloc requests - "
