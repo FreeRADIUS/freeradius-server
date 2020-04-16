@@ -1,0 +1,354 @@
+= ODBC Driver (rlm_unixodbc)
+
+FreeRADIUS supports connections to ODBC data sources by interfacing with the
+unixODBC framework together with a backend driver.
+
+TIP: Where FreeRADIUS provides a specific SQL driver for a particular database
+server, using the specific driver is usually preferable since less indirection
+often leads to better performance and stability. Nevertheless, you may have a
+reason to use ODBC.
+
+ODBC is a library specification for accessing multiple data sources using a
+common API. FreeRADIUS uses the unixODBC implementation of ODBC and the data
+source is normally hosted by a database server. The ODBC implementation is
+seperate from FreeRADIUS with a discrete configuration that must be configured
+and tested first.
+
+Since FreeRADIUS is not interfacing directly with the backend database the
+configuration is necessarily more involved than for a module for a native
+driver. The database connection details are not only present in the usual
+`mods-available/sql` file but are included in configuration files required by
+the ODBC library:
+
+`/etc/odbc.ini`:: Data sources are typically defined here. Each entry has a
+name ("DSN") that is provided in the `server` parameter of the `rlm_sql`
+instance.
+
+`/etc/odbcinst.ini`:: Backend drivers must be installed and then registered
+here. Each entry in `odbc.ini` will normally have a reference in its `Driver`
+property to one of the entries in `odbcinst.ini`, unless the driver's library
+is specified directly in `odbc.ini`.
+
+TIP: The locations of the various ODBC configuration files can be determined
+from the output of running `odbcinst -j`.
+
+Configuring FreeRADIUS to connect to a data source using ODBC requires the
+following steps:
+
+. Test connectivity directly using a native database client, if possible
+. Install a backend database driver for ODBC
+. Register the backend driver
+. Configure a DSN for the data source
+. Test the ODBC connection using the DSN
+. Configure an instance of the `rlm_sql` module to use the `rlm_sql_unixodbc`
+  driver to connect to the DSN
+. Test FreeRADIUS connectivity in debug mode (`-X`)
+
+NOTE: Not all errors arising from ODBC issues are reported to FreeRADIUS in a
+meaningful way. In the event that you have ODBC-related problems connecting the
+a data source you should first consult the documentation for unixODBC (or ODBC
+generally) and/or backend driver. For some issues you should consider
+enabling ODBC tracing as described later in this document.
+
+
+== Worked example: FreeRADIUS with MS SQL Server over ODBC
+
+The following procedure has been demonstrated to work in this environment:
+
+* CentOS 7
+* FreeRADIUS from the Network RADIUS package repository
+* unixODBC 2.3 (from the Linux distribution)
+* Microsoft ODBC driver for SQL Server 17 from Microsoft MSSQL-Release repository
+
+It will likely also work with other operating systems and package versions but
+the details will need to be modified accordingly.
+
+TIP: For connecting to Microsoft SQL Server it may be better to use a native
+driver such as `rlm_freetds`, where possible.
+
+
+=== Prepare: Configure the required package repositories
+
+It is recommended that you use Network RADIUS supplied packages for FreeRADIUS
+which include the `rlm_unixodbc` module. If your operating system provides
+FreeRADIUS packages that include the `rlm_unixodbc` module then these may also
+work, however they are likely to be out of date.
+
+Follow the instructions for installing the Network RADIUS repository:
+https://networkradius.com/freeradius-packages/
+
+Follow the instructions for installing the Microsoft MSSQL-Release repository
+for RHEL/CentOS 7 from here:
+https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver15#redhat17
+
+The specific step that is required is as follows, but the remainder of the
+instructions are worth reviewing:
+
+[source,shell]
+----
+curl https://packages.microsoft.com/config/rhel/7/prod.repo \
+    > /etc/yum.repos.d/mssql-release.repo
+----
+
+
+=== Test native database connectivity
+
+Install the MS SQL Tools package:
+
+[source,shell]
+----
+yum install mssql-tools
+----
+
+Verify that non-ODBC connectivity to the database server functions correctly
+using `sqlcmd`:
+
+[source,shell]
+----
+/opt/mssql-tools/bin/sqlcmd -S tcp:192.0.2.1,1433 \
+    -U radius -P radPass_123 -d radius -Q 'SELECT * FROM sys.schemas'
+----
+
+The above command assumes a pre-existing database `radius` on the server
+`192.0.2.1` that can be accessed via `TCP/1433` using the username `radius` and
+password `radPass_123`.
+
+In the event of difficulties connecting using the native tools check server
+reachability, firewalling, credentials, database permissions, etc.
+
+
+.Example of deploying a schema and application-specific user via CLI
+================================================================================================
+
+Configuring a production MS SQL Server to permit the required access and
+deploying a database is beyond the scope of this document, however if the
+FreeRADIUS schema and user do not already exist and the server is accessible
+with a database administrator account (e.g. `sa`) then the schema and user can
+be deployed as follows:
+
+[source,shell]
+----
+sqlcmd -S tcp:192.0.2.1,1433 -U sa -P 'Admin123!'                     \
+    -Q "CREATE DATABASE radius"
+sqlcmd -S tcp:192.0.2.1,1433 -U sa -P 'Admin123!' -d radius           \
+    -Q 'CREATE LOGIN radius WITH password='"'"'radPass_123'"'"''
+sqlcmd -S tcp:192.0.2.1,1433 -U sa -P 'Admin123!' -d radius           \
+    -Q "CREATE USER radius"
+sqlcmd -S tcp:192.0.2.1,1433 -U sa -P 'Admin123!' -d radius           \
+    -Q "GRANT CONTROL TO radius"
+sqlcmd -S tcp:192.0.2.1,1433 -U radius -P radPass_123 -d radius -e    \
+    -i /etc/raddb/mods-config/sql/main/mssql/schema.sql
+----
+
+================================================================================================
+
+
+WARNING: Do not proceed until the above non-ODBC test is known to work using
+the database and credentials that will be used by FreeRADIUS.
+
+
+=== Install the ODBC backend driver
+
+Install the package for Microsoft ODBC Driver for SQL Server:
+
+[source,shell]
+----
+yum install msodbcsql17 unixodbc
+----
+
+
+=== Register the driver
+
+The Microsoft ODBC Driver for SQL Server package will normally register itself
+as a ODBC driver. This means that the /etc/odbcinst.ini should include a config
+section such as the following:
+
+.Example driver definition in `/etc/odbcinit.ini`
+================================================================================================
+
+ [ODBC Driver 17 for SQL Server]
+ Description=Microsoft ODBC Driver 17 for SQL Server
+ Driver=/opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.5.so.2.1
+ UsageCount=1
+
+================================================================================================
+
+An entry such as the above should be created manually if it does not already
+exist. In this case it is important to ensure that the backend driver
+referenced by `Driver` has been installed correctly:
+
+[source,shell]
+----
+$ ldd /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.5.so.2.1
+       linux-vdso.so.1 =>  (0x00007fff2bb12000)
+       libdl.so.2 => /lib64/libdl.so.2 (0x00007f25f0459000)
+       librt.so.1 => /lib64/librt.so.1 (0x00007f25f0251000)
+       libodbcinst.so.2 => /lib64/libodbcinst.so.2 (0x00007f25f003f000)
+...
+----
+
+NOTE: The config section name in `[square brackets]` is the ODBC name of the
+database driver. It is an arbitrary name but must be referenced exactly in the
+DSN definitions within `/etc/odbc.ini`.
+
+You can verify that the ODBC driver definition can be successfully found by
+name with:
+
+[source,shell]
+----
+odbcinst -q -d -n "ODBC Driver 17 for SQL Server"
+----
+
+
+=== Configure a DSN for the data source
+
+Create a DSN for the database server, referencing the ODBC driver by its exact
+config section name.
+
+.Example data source definition in `/etc/odbc.ini`
+================================================================================================
+
+ [MSSQLdb]
+ Driver = ODBC Driver 17 for SQL Server
+ Description = My DSN for the FreeRADIUS database
+ Server = tcp:192.0.2.1,1443
+ Database = radius
+
+================================================================================================
+
+Replace the values for `Server` and `Database` with your own. The config must
+include a `Database` parameter since this is not indicated by the rlm_sql
+configuration.
+
+NOTE: The config section name in `[square brackets]` is the name of the DSN
+which is the lookup key for the connection.  It is an arbitrary name but it
+must be referenced identically in connection strings such as in the FreeRADIUS
+`rlm_sql` module configuration.
+
+
+=== Test the ODBC connection
+
+unixODBC includes a basic tool called `isql` that can be used to make ODBC
+connections a data source using its DSN.
+
+Run the following which is the ODBC equivalent of the native test performed
+earlier:
+
+[source,shell]
+----
+echo 'SELECT * FROM sys.schemas' | isql -b -v MSSQLdb radius radPass_123
+----
+
+If `isql` fails then double check the `odbc.ini` and `odbcinst.ini` entries. If
+the failure isn't obvious then ODBC tracing can be enabled by adding an
+additional entry to odbcinst.ini, as follows:
+
+.Example `/etc/odbcinst.ini` entry to enable tracing
+================================================================================================
+
+ [ODBC]
+ Trace = yes
+ TraceFile = /tmp/odbc_trace.log
+
+================================================================================================
+
+WARNING: Do not proceed with testing FreeRADIUS until the above ODBC test is
+known to work.
+
+
+=== Configure an instance of rlm_sql to use rlm_sql_unixodbc
+
+The `rlm_sql` module can be configured as follows:
+
+.Example configuration for an ODBC connection in /etc/raddb/mods-available/sql
+============================================================
+
+ sql {
+     dialect = "mssql"
+     driver = "rlm_sql_unixodbc"
+     server = "MSSQLdb"           # The exact "[DSN]" from odbc.ini
+     login = "radius"
+     password = "radPass_123"
+ #   radius_db = "radius"         # Ignored! Database is set in odbc.ini
+ ...
+ }
+
+============================================================
+
+The `rlm_sql` module should be enabled as follows:
+
+[source,shell]
+----
+cd /etc/raddb/mods-enabled
+ln -s ../mods-available/sql
+----
+
+
+=== Test FreeRADIUS in debug mode
+
+Start FreeRADIUS in debug mode:
+
+[source,shell]
+----
+radiusd -X
+----
+
+Look for the following lines which indicate that FreeRADIUS has successfully
+made a connection to the database.
+
+.Example FreeRADIUS debug output for successful ODBC connections
+================================================================================================
+
+ rlm_sql (sql): Opening additional connection (0), 1 of 8 pending slots used
+ rlm_sql (sql): Opening additional connection (1), 1 of 8 pending slots used
+ rlm_sql (sql): Opening additional connection (2), 1 of 8 pending slots used
+
+================================================================================================
+
+If there is a problem then FreeRADIUS will usually terminate with a descriptive
+error message identifying the issue, such as the following:
+
+.Example FreeRADIUS debug output showing errors from rlm_sql_unixodbc
+================================================================================================
+
+ rlm_sql (sql): Opening additional connection (0), 1 of 8 pending slots used
+ rlm_sql_unixodbc: 28000 [unixODBC][Microsoft][ODBC Driver for SQL Server]
+                         [SQL Server]Login failed for user 'radius'.
+ rlm_sql_unixodbc: Connection failed
+ rlm_sql_unixodbc: Socket destructor called, closing socket
+ rlm_sql (sql): Opening connection failed (0)
+ rlm_sql (sql): Removing connection pool
+ /etc/raddb/mods-enabled/sql[1]: Instantiation failed for module "sql"
+
+================================================================================================
+
+If you need a test user then you may be able to add one as follows if you
+permissions permit this:
+
+[source,shell]
+----
+sqlcmd -S tcp:192.0.2.1,1433 -U radius -P radPass_123 -d radius   \
+    -Q "INSERT INTO radcheck (username, attribute, op, value)     \
+        VALUES ('bob', 'Cleartext-Password', ':=', 'radpass')"
+----
+
+Finally, attempt an authentication:
+
+.Example successful authentication
+================================================================================================
+
+ $ radtest bob test 127.0.0.1 0 testing123
+ Sent Access-Request Id 53 from 0.0.0.0:12345 to 127.0.0.1:1812
+        Cleartext-Password = "test"
+        User-Name = "bob"
+        User-Password = "test"
+        NAS-IP-Address = 192.0.2.10
+        NAS-Port = 0
+        Message-Authenticator = 0x00
+ Received Access-Accept Id 53 from 127.0.0.1:1812 to 0.0.0.0:12345
+        User-Name = "bob"
+
+================================================================================================
+
+CAUTION: If ODBC tracing has been enabled during testing then you should
+remember to disable this before moving into production.

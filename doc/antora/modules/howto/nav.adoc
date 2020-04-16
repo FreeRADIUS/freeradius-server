@@ -41,6 +41,7 @@
 *** xref:modules/soh/index.adoc[SoH]
 *** xref:modules/sql/index.adoc[SQL]
 **** xref:modules/sql/data-usage-reporting.adoc[Data Usage Reporting]
+**** xref:modules/sql/rlm_odbc.adoc[ODBC]
 
 *** xref:modules/sqlcounter/index.adoc[SQL-Counter]
 *** xref:modules/sqlippool/index.adoc[SQL-IP-Pool]
