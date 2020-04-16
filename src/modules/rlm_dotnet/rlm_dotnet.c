@@ -46,6 +46,8 @@ typedef struct rlm_dotnet_t {
 	void *dylib;
 	void *hostHandle;
 	unsigned int domainId;
+	coreclr_initialize_ptr coreclr_initialize;
+	coreclr_shutdown_2_ptr coreclr_shutdown_2;
 
 	char const	*clr_library;		//!< Path to CLR library.
 
@@ -102,7 +104,14 @@ static int bind_dotnet(rlm_dotnet_t *inst)
 		ERROR("%s", dlerror());
 		return 1;
 	}
-	// And dlsym for everyone
+
+	// Find the relevant methods we want
+#define A(x)	inst->x = dlsym(inst->dylib, #x); \
+				if (!inst->x) ERROR("%s", dlerror());
+
+	A(coreclr_initialize)
+	A(coreclr_shutdown_2)
+#undef A
 
 	return 0;
 }
@@ -129,7 +138,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return RLM_MODULE_FAIL;
 	}
 	INFO("Module loaded");
-	// int hr = coreclr_initialize(NULL, NULL, 0, NULL, NULL, &inst->hostHandle, &inst->domainId);
+	int hr = inst->coreclr_initialize("/Users/blakeramsdell/Source/OpenSource/freeradius-server", "FreeRadius", 0, NULL, NULL, &inst->hostHandle, &inst->domainId);
+	INFO("coreclr_initialize hr = 0x%08X", hr);
 	// !!! Check hr for failure
 
 	return 0;
@@ -139,6 +149,9 @@ static int mod_detach(void *instance)
 {
 	rlm_dotnet_t *inst = instance;
 
+	int latchedExitCode = 0;
+	int hr = inst->coreclr_shutdown_2(inst->hostHandle, inst->domainId, &latchedExitCode);
+	INFO("coreclr_shutdown_2 hr = 0x%08X latchedExitCode = 0x%08X", hr, latchedExitCode);
 	return 0;
 }
 
