@@ -191,10 +191,10 @@ size_t fr_sbuff_parse_##_type(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_
 	return end - buff; \
 }
 
-PARSE_INT_DEF(int8_t, INT8_MIN, INT8_MAX);
-PARSE_INT_DEF(int16_t, INT16_MIN, INT16_MAX);
-PARSE_INT_DEF(int32_t, INT32_MIN, INT32_MAX);
-PARSE_INT_DEF(int64_t, INT64_MIN, INT64_MAX);
+PARSE_INT_DEF(int8_t, INT8_MIN, INT8_MAX)
+PARSE_INT_DEF(int16_t, INT16_MIN, INT16_MAX)
+PARSE_INT_DEF(int32_t, INT32_MIN, INT32_MAX)
+PARSE_INT_DEF(int64_t, INT64_MIN, INT64_MAX)
 
 /** Used to define a number parsing functions for singed integers
  *
@@ -225,7 +225,7 @@ size_t fr_sbuff_parse_##_type(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_
 	return end - buff; \
 }
 
-PARSE_UINT_DEF(uint8_t, UINT8_MAX);
-PARSE_UINT_DEF(uint16_t, UINT16_MAX);
-PARSE_UINT_DEF(uint32_t, UINT32_MAX);
-PARSE_UINT_DEF(uint64_t, UINT64_MAX);
+PARSE_UINT_DEF(uint8_t, UINT8_MAX)
+PARSE_UINT_DEF(uint16_t, UINT16_MAX)
+PARSE_UINT_DEF(uint32_t, UINT32_MAX)
+PARSE_UINT_DEF(uint64_t, UINT64_MAX)
