@@ -68,6 +68,7 @@ static fr_time_t test_time(void)
  *
  */
 typedef struct {
+	fr_dlist_head_t			*log_head;	//!< To allow the log entry to remove itself on free.
 	fr_dlist_t			entry;		//!< Entry in the linked list.
 	fr_trunk_request_state_t	from;		//!< What state we transitioned from.
 	fr_trunk_request_state_t	to;		//!< What state we transitioned to.
@@ -83,7 +84,6 @@ typedef struct {
 
 	char const		        *function;	//!< State change occurred in.
 	int				line;		//!< Line change occurred on.
-
 } fr_trunk_request_state_log_t;
 #endif
 
@@ -370,7 +370,7 @@ do { \
 
 #ifndef NDEBUG
 void trunk_request_state_log_entry_add(char const *function, int line,
-				       fr_trunk_request_t *treq, fr_trunk_request_state_t new);
+				       fr_trunk_request_t *treq, fr_trunk_request_state_t new) CC_HINT(nonnull);
 
 /** Record a request state transition and log appropriate output
  *
@@ -1951,6 +1951,24 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	 */
 	if (trunk->conf.req_cleanup_delay == 0) {
 		treq->pub.state = FR_TRUNK_REQUEST_STATE_INIT;
+
+#ifndef NDEBUG
+		/*
+		 *	Ensure anything parented off the treq
+		 *	is freed.  We do this to trigger
+		 *	the destructors for the log entries.
+		 */
+		talloc_free_children(treq);
+
+		/*
+		 *	State log should now be empty as entries
+		 *	remove themselves from the dlist
+		 *	on free.
+		 */
+		fr_assert_msg(fr_dlist_num_elements(&treq->log) == 0,
+			      "Should have 0 remaining log entries, have %zu", fr_dlist_num_elements(&treq->log));
+#endif
+
 		talloc_free(treq);
 		return;
 	}
@@ -1966,18 +1984,21 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
 	treq->last_freed = fr_time();
 
-#ifndef NDEBUG
-	/*
-	 *	Clear the state change log
-	 */
-	fr_dlist_talloc_free(&treq->log);
-#endif
-
 	/*
 	 *	Ensure anything parented off the treq
 	 *	is freed.
 	 */
 	talloc_free_children(treq);
+
+#ifndef NDEBUG
+	/*
+	 *	State log should now be empty as entries
+	 *	remove themselves from the dlist
+	 *	on free.
+	 */
+	fr_assert_msg(fr_dlist_num_elements(&treq->log) == 0,
+		      "Should have 0 remaining log entries, have %zu", fr_dlist_num_elements(&treq->log));
+#endif
 
 	/*
 	 *	Insert at the head, so that we can free
@@ -2307,12 +2328,23 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_ou
 }
 
 #ifndef NDEBUG
+/** Used for sanity checks to ensure all log entries have been freed
+ *
+ */
+static int _state_log_entry_free(fr_trunk_request_state_log_t *slog)
+{
+	fr_dlist_remove(slog->log_head, slog);
+
+	return 0;
+}
+
 void trunk_request_state_log_entry_add(char const *function, int line,
 				       fr_trunk_request_t *treq, fr_trunk_request_state_t new)
 {
 	fr_trunk_request_state_log_t	*slog = NULL;
 
 	MEM(slog = talloc_zero(treq, fr_trunk_request_state_log_t));
+	slog->log_head = &treq->log;
 	slog->from = treq->pub.state;
 	slog->to = new;
 	slog->function = function;
@@ -2323,6 +2355,7 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 		slog->tconn_state = treq->pub.tconn->pub.state;
 	}
 	fr_dlist_insert_tail(&treq->log, slog);
+	talloc_set_destructor(slog, _state_log_entry_free);
 }
 
 void fr_trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
