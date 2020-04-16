@@ -29,6 +29,8 @@
 #include <dlfcn.h>
 #include "coreclrhost.h"
 
+#define DEFAULT_CLR_LIBRARY	"libcoreclr.dylib"
+
 /** Specifies the module.function to load for processing a section
  *
  */
@@ -86,7 +88,7 @@ static const CONF_PARSER module_config[] = {
 
 #undef A
 
-	{ "clr_library", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dotnet_t, clr_library), "libcoreclr.dylib" },
+	{ "clr_library", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dotnet_t, clr_library), DEFAULT_CLR_LIBRARY },
 
 	CONF_PARSER_TERMINATOR
 };
