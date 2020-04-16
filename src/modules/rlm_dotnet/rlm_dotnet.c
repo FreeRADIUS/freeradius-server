@@ -45,6 +45,8 @@ typedef struct rlm_dotnet_t {
 	void *hostHandle;
 	unsigned int domainId;
 
+	char const	*clr_library;		//!< Path to CLR library.
+
 	dotnet_func_def_t
 	instantiate,
 	authorize,
@@ -84,13 +86,15 @@ static const CONF_PARSER module_config[] = {
 
 #undef A
 
+	{ "clr_library", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dotnet_t, clr_library), "libcoreclr.dylib" },
+
 	CONF_PARSER_TERMINATOR
 };
 
 static int bind_dotnet(rlm_dotnet_t *inst)
 {
 	// Do dlopen
-	inst->dylib = dlopen("/usr/local/share/dotnet/shared/Microsoft.NETCore.App/3.0.0/libcoreclr.dylib", RTLD_NOW | RTLD_GLOBAL);
+	inst->dylib = dlopen(inst->clr_library, RTLD_NOW | RTLD_GLOBAL);
 	if (!inst->dylib)
 	{
 		ERROR("%s", dlerror());

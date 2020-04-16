@@ -3,7 +3,12 @@
 # rlm_dotnet is called for a section which does not have
 # a function defined, it will return NOOP.
 #
+# It is likely that you will need to set clr_library to something appropriate
+# for your environment.
+#
 dotnet {
+	clr_library = /usr/local/share/dotnet/shared/Microsoft.NETCore.App/3.0.0/libcoreclr.dylib
+
 	assembly = FreeRadius.Example
 	class = MainClass
 
