@@ -64,7 +64,7 @@ It will likely also work with other operating systems and package versions but
 the details will need to be modified accordingly.
 
 TIP: For connecting to Microsoft SQL Server it may be better to use a native
-driver such as `rlm_freetds`, where possible.
+driver such as `rlm_sql_freetds`, where possible.
 
 
 === Prepare: Configure the required package repositories
