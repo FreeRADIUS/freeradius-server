@@ -335,7 +335,7 @@ static fr_table_num_indexed_bit_pos_t const fr_trunk_conn_trigger_names[] = {
 	{ "pool.conn_draining",			FR_TRUNK_CONN_DRAINING		},
 	{ "pool.conn_draining_to_free",		FR_TRUNK_CONN_DRAINING_TO_FREE	}
 };
-static size_t fr_trunk_conn_trigger_names_len = NUM_ELEMENTS(fr_trunk_request_states);
+static size_t fr_trunk_conn_trigger_names_len = NUM_ELEMENTS(fr_trunk_conn_trigger_names);
 
 static fr_table_num_ordered_t const fr_trunk_connection_states[] = {
 	{ "INIT",				FR_TRUNK_CONN_INIT		},
