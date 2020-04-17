@@ -17,10 +17,11 @@
 #  define DL_EXTENSION ".so"
 #endif
 
-static char		*mk_dlpath(char const *nm, unsigned int argc, char **argv);
-static char		*mk_dlerror(char const *nm, unsigned int argc, char **argv);
+static char	*mk_dlpath(char const *nm, unsigned int argc, char **argv);
+static char	*mk_dlerror(char const *nm, unsigned int argc, char **argv);
 int		dlopen_gmk_setup(void);
 static char	*getpath(char *dl_pathname, void *handle);
+extern int	plugin_is_GPL_compatible;
 
 int plugin_is_GPL_compatible;
 
