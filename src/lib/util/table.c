@@ -102,7 +102,7 @@ char const *_our_name(_our_table_type table, size_t table_len, _our_value_type v
 #define TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(_our_table_type, _our_name, _our_value_type) \
 char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
 { \
-	uint8_t	idx = fr_high_bit_pos_uint64(value); \
+	uint8_t	idx = fr_high_bit_pos(value); \
 	if (idx >= table_len) return def; \
 	return table[idx].name; \
 }

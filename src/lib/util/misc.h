@@ -170,9 +170,11 @@ static inline bool is_zero(char const *value)
 
 /** Find the highest order bit in an unsigned 64 bit integer
  *
- * @return 0-64 indicating the position of the highest bit.
+ * @return 0-64 indicating the position of the highest bit,
+ *	with 0 indicating no high bits, 1 indicating the 1st
+ *	bit and 64 indicating the last bit.
  */
-static inline uint8_t fr_high_bit_pos_uint64(uint64_t num)
+static inline uint8_t fr_high_bit_pos(uint64_t num)
 {
 #ifndef HAVE_BUILTIN_CLZLL
 	return (64 - __builtin_clzll(num));
