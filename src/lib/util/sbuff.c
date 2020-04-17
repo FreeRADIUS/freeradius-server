@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 static_assert(sizeof(long long) >= sizeof(int64_t), "long long must be as wide or wider than an int64_t");
 static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be as wide or wider than an uint64_t");
@@ -100,6 +101,22 @@ size_t fr_sbuff_strstr(fr_sbuff_t *in, char const *needle, ssize_t len)
 	return found - p;
 }
 
+/** Wind position to the first non-whitespace character
+ *
+ * @param[in] in		sbuff to search in.
+ * @return
+ *	- 0, first character is not a whitespace character.
+ *	- >0 how many whitespace characters we skipped.
+ */
+size_t fr_sbuff_skip_whitespace(fr_sbuff_t *in)
+{
+	char const *p = in->p;
+
+	while ((in->p < in->end) && isspace(*(in->p))) in->p++;
+
+	return in->p - p;
+}
+
 /** Copy n bytes from the sbuff to another buffer
  *
  * Will fail if output buffer is too small, or insufficient data is available in sbuff.
@@ -107,7 +124,7 @@ size_t fr_sbuff_strstr(fr_sbuff_t *in, char const *needle, ssize_t len)
  * @param[out] out	Where to copy to.
  * @param[in] outlen	Size of output buffer.
  * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len	How many bytes to copy.  If 0 the entire buffer will be copied.
+ * @param[in] len	How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @return
  *      - 0 if insufficient bytes are available in the sbuff.
  *	- <0 the number of additional bytes we'd need in the output buffer as a negative value.
@@ -138,7 +155,7 @@ ssize_t fr_sbuff_strncpy_exact(char *out, size_t outlen, fr_sbuff_t *in, size_t 
  * @param[out] out	Where to copy to.
  * @param[in] outlen	Size of output buffer.
  * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len	How many bytes to copy.  If 0 the entire buffer will be copied.
+ * @param[in] len	How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  */
 size_t fr_sbuff_strncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
 {
@@ -156,6 +173,49 @@ size_t fr_sbuff_strncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
 	in->p += len;
 
 	return len;
+}
+
+/** Copy as many allowed characters as possible from the sbuff to another buffer
+ *
+ * Copy size is limited by available data in sbuff and output buffer length.
+ *
+ * As soon as a disallowed character is found the copy is stopped.
+ *
+ * @param[out] out	Where to copy to.
+ * @param[in] outlen	Size of output buffer.
+ * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
+ * @param[in] len	How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
+ */
+size_t fr_sbuff_strncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
+				char allowed_chars[static UINT8_MAX])
+{
+	char const	*p = in->p;
+	char const	*end;
+	char		*out_p = out;
+	size_t		copied;
+
+	if (unlikely(outlen == 0)) return 0;
+
+	outlen--;	/* Account the \0 byte */
+
+	if (len == SIZE_MAX) len = in->end - in->p;
+	if (len > outlen) len = outlen;
+	if ((in->p + len) > in->end) len = (in->end - in->p);
+
+	end = p + len;
+
+	while (p < end) {
+		if (!allowed_chars[(uint8_t)*p]) break;
+
+		*out_p++ = *p++;
+	}
+
+	*out_p = '\0';
+
+	copied = (p - in->p);
+	in->p += copied;
+
+	return copied;
 }
 
 /** Used to define a number parsing functions for singed integers

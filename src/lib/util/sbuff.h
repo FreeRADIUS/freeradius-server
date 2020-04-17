@@ -87,6 +87,8 @@ size_t fr_sbuff_strchr_utf8(fr_sbuff_t *in, char *chr);
 size_t fr_sbuff_strchr(fr_sbuff_t *in, char c);
 
 size_t fr_sbuff_strstr(fr_sbuff_t *in, char const *needle, ssize_t len);
+
+size_t fr_sbuff_skip_whitespace(fr_sbuff_t *in);
 /** @} */
 
 /** @name Copy data out of an sbuff
@@ -95,6 +97,9 @@ size_t fr_sbuff_strstr(fr_sbuff_t *in, char const *needle, ssize_t len);
 ssize_t fr_sbuff_strncpy_exact(char *out, size_t outlen, fr_sbuff_t *in, size_t len);
 
 size_t fr_sbuff_strncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t len);
+
+size_t fr_sbuff_strncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t max_len,
+				char allowed_chars[static UINT8_MAX]);
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer
