@@ -3109,12 +3109,12 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn,
 		trunk_connection_remove(tconn);
 		break;
 
+	case FR_TRUNK_CONN_INIT:			/* Initialisation failed */
 	case FR_TRUNK_CONN_CONNECTING:
 		trunk_connection_remove(tconn);
 		fr_assert(fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 		break;
 
-	case FR_TRUNK_CONN_INIT:
 	case FR_TRUNK_CONN_CLOSED:
 	case FR_TRUNK_CONN_HALTED:	/* Can't move backwards? */
 		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_CLOSED);
