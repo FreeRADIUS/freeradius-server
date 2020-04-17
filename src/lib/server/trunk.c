@@ -304,32 +304,50 @@ CONF_PARSER const fr_trunk_config[] = {
 };
 
 static fr_table_num_ordered_t const fr_trunk_request_states[] = {
-	{ "INIT",		FR_TRUNK_REQUEST_STATE_INIT		},
-	{ "UNASSIGNED",		FR_TRUNK_REQUEST_STATE_UNASSIGNED	},
-	{ "BACKLOG",		FR_TRUNK_REQUEST_STATE_BACKLOG		},
-	{ "PENDING",		FR_TRUNK_REQUEST_STATE_PENDING		},
-	{ "PARTIAL",		FR_TRUNK_REQUEST_STATE_PARTIAL		},
-	{ "SENT",		FR_TRUNK_REQUEST_STATE_SENT		},
-	{ "COMPLETE",		FR_TRUNK_REQUEST_STATE_COMPLETE		},
-	{ "FAILED",		FR_TRUNK_REQUEST_STATE_FAILED		},
-	{ "CANCEL",		FR_TRUNK_REQUEST_STATE_CANCEL		},
-	{ "CANCEL-SENT",	FR_TRUNK_REQUEST_STATE_CANCEL_SENT	},
-	{ "CANCEL-PARTIAL",	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},
-	{ "CANCEL-COMPLETE",	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE}
+	{ "INIT",				FR_TRUNK_REQUEST_STATE_INIT		},
+	{ "UNASSIGNED",				FR_TRUNK_REQUEST_STATE_UNASSIGNED	},
+	{ "BACKLOG",				FR_TRUNK_REQUEST_STATE_BACKLOG		},
+	{ "PENDING",				FR_TRUNK_REQUEST_STATE_PENDING		},
+	{ "PARTIAL",				FR_TRUNK_REQUEST_STATE_PARTIAL		},
+	{ "SENT",				FR_TRUNK_REQUEST_STATE_SENT		},
+	{ "COMPLETE",				FR_TRUNK_REQUEST_STATE_COMPLETE		},
+	{ "FAILED",				FR_TRUNK_REQUEST_STATE_FAILED		},
+	{ "CANCEL",				FR_TRUNK_REQUEST_STATE_CANCEL		},
+	{ "CANCEL-SENT",			FR_TRUNK_REQUEST_STATE_CANCEL_SENT	},
+	{ "CANCEL-PARTIAL",			FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},
+	{ "CANCEL-COMPLETE",			FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE}
 };
 static size_t fr_trunk_request_states_len = NUM_ELEMENTS(fr_trunk_request_states);
 
+/** Map connection states to trigger names
+ *
+ * Must stay in the same order as #fr_trunk_connection_state_t
+ */
+static fr_table_num_indexed_bit_pos_t const fr_trunk_conn_trigger_names[] = {
+	{ "pool.conn_init",			FR_TRUNK_CONN_INIT		},
+	{ "pool.conn_halted",			FR_TRUNK_CONN_HALTED		},
+	{ "pool.conn_connecting",		FR_TRUNK_CONN_CONNECTING	},
+	{ "pool.conn_active",			FR_TRUNK_CONN_ACTIVE		},
+	{ "pool.conn_closed",			FR_TRUNK_CONN_CLOSED		},
+	{ "pool.conn_full",			FR_TRUNK_CONN_FULL		},
+	{ "pool.conn_inactive",			FR_TRUNK_CONN_INACTIVE		},
+	{ "pool.conn_inactive_draining",	FR_TRUNK_CONN_INACTIVE_DRAINING	},
+	{ "pool.conn_draining",			FR_TRUNK_CONN_DRAINING		},
+	{ "pool.conn_draining_to_free",		FR_TRUNK_CONN_DRAINING_TO_FREE	}
+};
+static size_t fr_trunk_conn_trigger_names_len = NUM_ELEMENTS(fr_trunk_request_states);
+
 static fr_table_num_ordered_t const fr_trunk_connection_states[] = {
-	{ "INIT",		FR_TRUNK_CONN_INIT		},
-	{ "HALTED",		FR_TRUNK_CONN_HALTED		},
-	{ "CONNECTING",		FR_TRUNK_CONN_CONNECTING	},
-	{ "ACTIVE",		FR_TRUNK_CONN_ACTIVE		},
-	{ "FULL",		FR_TRUNK_CONN_FULL		},
-	{ "INACTIVE",		FR_TRUNK_CONN_INACTIVE		},
-	{ "INACTIVE-DRAINING",	FR_TRUNK_CONN_INACTIVE_DRAINING	},
-	{ "CLOSED",		FR_TRUNK_CONN_CLOSED		},
-	{ "DRAINING",		FR_TRUNK_CONN_DRAINING		},
-	{ "DRAINING-TO-FREE",	FR_TRUNK_CONN_DRAINING_TO_FREE	}
+	{ "INIT",				FR_TRUNK_CONN_INIT		},
+	{ "HALTED",				FR_TRUNK_CONN_HALTED		},
+	{ "CONNECTING",				FR_TRUNK_CONN_CONNECTING	},
+	{ "ACTIVE",				FR_TRUNK_CONN_ACTIVE		},
+	{ "CLOSED",				FR_TRUNK_CONN_CLOSED		},
+	{ "FULL",				FR_TRUNK_CONN_FULL		},
+	{ "INACTIVE",				FR_TRUNK_CONN_INACTIVE		},
+	{ "INACTIVE-DRAINING",			FR_TRUNK_CONN_INACTIVE_DRAINING	},
+	{ "DRAINING",				FR_TRUNK_CONN_DRAINING		},
+	{ "DRAINING-TO-FREE",			FR_TRUNK_CONN_DRAINING_TO_FREE	}
 };
 static size_t fr_trunk_connection_states_len = NUM_ELEMENTS(fr_trunk_connection_states);
 
@@ -349,9 +367,10 @@ static fr_table_num_ordered_t const fr_trunk_connection_events[] = {
 };
 static size_t fr_trunk_connection_events_len = NUM_ELEMENTS(fr_trunk_connection_events);
 
-#define TRIGGER(name) do { \
+#define CONN_TRIGGER(_state) do { \
 	if (trunk->pub.triggers) { \
-		trigger_exec(NULL, NULL, "trunk." STRINGIFY(name), true, NULL); \
+		trigger_exec(NULL, NULL, fr_table_str_by_value(fr_trunk_conn_trigger_names, _state, \
+							       "<INVALID>"), true, NULL); \
 	} \
 } while (0)
 
@@ -362,6 +381,7 @@ do { \
 	     fr_table_str_by_value(fr_trunk_connection_states, tconn->pub.state, "<INVALID>"), \
 	     fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>")); \
 	tconn->pub.state = _new; \
+	CONN_TRIGGER(_new); \
 	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time()); \
 } while (0)
 
@@ -2696,7 +2716,6 @@ static void trunk_connection_enter_full(fr_trunk_connection_t *tconn)
 
 	fr_dlist_insert_head(&trunk->full, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_FULL, DEBUG2);
-	TRIGGER(full);
 }
 
 /** Transition a connection to the inactive state
@@ -2720,7 +2739,6 @@ static void trunk_connection_enter_inactive(fr_trunk_connection_t *tconn)
 
 	fr_dlist_insert_head(&trunk->inactive, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE, DEBUG2);
-	TRIGGER(inactive);
 }
 
 /** Transition a connection to the inactive-draining state
@@ -2744,7 +2762,6 @@ static void trunk_connection_enter_inactive_draining(fr_trunk_connection_t *tcon
 
 	fr_dlist_insert_head(&trunk->inactive_draining, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INACTIVE_DRAINING, INFO);
-	TRIGGER(inactive_draining);
 
 	/*
 	 *	Immediately re-enqueue all pending
@@ -2777,7 +2794,6 @@ static void trunk_connection_enter_draining(fr_trunk_connection_t *tconn)
 
 	fr_dlist_insert_head(&trunk->draining, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING, INFO);
-	TRIGGER(draining);
 
 	/*
 	 *	Immediately re-enqueue all pending
@@ -2811,7 +2827,6 @@ static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn
 
 	fr_dlist_insert_head(&trunk->draining_to_free, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_DRAINING_TO_FREE, INFO);
-	TRIGGER(draining_to_free);
 
 	/*
 	 *	Immediately re-enqueue all pending
@@ -2850,7 +2865,6 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 
 	MEM(fr_heap_insert(trunk->active, tconn) == 0);	/* re-insert into the active heap*/
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_ACTIVE, DEBUG2);
-	TRIGGER(active);
 
 	/*
 	 *	Reorder the connections
@@ -2914,7 +2928,6 @@ static void _trunk_connection_on_init(UNUSED fr_connection_t *conn,
 
 	fr_dlist_insert_head(&trunk->init, tconn);
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_INIT, DEBUG2);
-	TRIGGER(init);
 }
 
 /** Connection transitioned to the connecting state
@@ -2955,7 +2968,6 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn,
 
 	fr_dlist_insert_head(&trunk->connecting, tconn);	/* MUST remain a head insertion for reconnect logic */
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_CONNECTING, INFO);
-	TRIGGER(connecting);
 }
 
 /** Connection transitioned to the shutdown state
@@ -3107,7 +3119,6 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn,
 
 	fr_dlist_insert_head(&trunk->closed, tconn);	/* MUST remain a head insertion for reconnect logic */
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_CLOSED, INFO);
-	TRIGGER(closed);
 
 	/*
 	 *	Now *AFTER* the connection has been
@@ -3221,7 +3232,6 @@ static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn,
 	 *	and will end life in the halted state.
 	 */
 	CONN_STATE_TRANSITION(FR_TRUNK_CONN_HALTED, DEBUG2);
-	TRIGGER(halted);
 
 	/*
 	 *	There should be no requests left on this
