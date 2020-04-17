@@ -34,13 +34,6 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
-/** An element in a table
- *
- */
-typedef struct {
-	char const		*name;
-} fr_table_t;
-
 /** An element in a lexicographically sorted array of name to num mappings
  *
  */
@@ -73,6 +66,16 @@ typedef struct {
 	void const		*value;
 } fr_table_ptr_ordered_t;
 
+/** An element in a table indexed by bit position
+ *
+ * i.e. if only the first bit is set in a bitfield, the entry at index 0
+ * will be returned.
+ */
+typedef struct {
+	char const		*name;
+	uint64_t		value;
+} fr_table_num_indexed_bit_pos_t;
+
 /** Macro to use as dflt
  *
  */
@@ -102,14 +105,16 @@ void		*fr_table_ordered_ptr_by_str(fr_table_ptr_ordered_t const *table, size_t t
  */
 #define fr_table_value_by_str(_table, _name, _def) \
 _Generic((_table), \
-	 fr_table_num_sorted_t const *		:	fr_table_sorted_num_by_str,	\
-	 fr_table_num_ordered_t const *		:	fr_table_ordered_num_by_str,	\
-	 fr_table_num_sorted_t *		:	fr_table_sorted_num_by_str,	\
-	 fr_table_num_ordered_t *		:	fr_table_ordered_num_by_str,	\
-	 fr_table_ptr_sorted_t const *		:	fr_table_sorted_ptr_by_str,	\
-	 fr_table_ptr_ordered_t const *		:	fr_table_ordered_ptr_by_str,	\
-	 fr_table_ptr_sorted_t *		:	fr_table_sorted_ptr_by_str,	\
-	 fr_table_ptr_ordered_t *		:	fr_table_ordered_ptr_by_str	\
+	 fr_table_num_sorted_t const *		: fr_table_sorted_num_by_str,			\
+	 fr_table_num_ordered_t const *		: fr_table_ordered_num_by_str,			\
+	 fr_table_num_sorted_t *		: fr_table_sorted_num_by_str,			\
+	 fr_table_num_ordered_t *		: fr_table_ordered_num_by_str,			\
+	 fr_table_ptr_sorted_t const *		: fr_table_sorted_ptr_by_str,			\
+	 fr_table_ptr_ordered_t const *		: fr_table_ordered_ptr_by_str,			\
+	 fr_table_ptr_sorted_t *		: fr_table_sorted_ptr_by_str,			\
+	 fr_table_ptr_ordered_t *		: fr_table_ordered_ptr_by_str,			\
+	 fr_table_num_indexed_bit_pos_t *	: fr_table_ordered_num_by_str,			\
+	 fr_table_num_indexed_bit_pos_t const *	: fr_table_ordered_num_by_str			\
 )(_table, _table ## _len, _name, _def)
 
 int		fr_table_sorted_num_by_substr(fr_table_num_sorted_t const *table, size_t table_len,
@@ -138,14 +143,16 @@ void		*fr_table_ordered_ptr_by_substr(fr_table_ptr_ordered_t const *table, size_
  */
 #define fr_table_value_by_substr(_table, _name, _name_len, _def) \
 _Generic((_table), \
-	 fr_table_num_sorted_t const *		:	fr_table_sorted_num_by_substr,	\
-	 fr_table_num_ordered_t const *		:	fr_table_ordered_num_by_substr,	\
-	 fr_table_num_sorted_t *		:	fr_table_sorted_num_by_substr,	\
-	 fr_table_num_ordered_t *		:	fr_table_ordered_num_by_substr,	\
-	 fr_table_ptr_sorted_t const *		:	fr_table_sorted_ptr_by_substr,	\
-	 fr_table_ptr_ordered_t const *		:	fr_table_ordered_ptr_by_substr,	\
-	 fr_table_ptr_sorted_t *		:	fr_table_sorted_ptr_by_substr,	\
-	 fr_table_ptr_ordered_t *		:	fr_table_ordered_ptr_by_substr	\
+	 fr_table_num_sorted_t const *		: fr_table_sorted_num_by_substr,		\
+	 fr_table_num_ordered_t const *		: fr_table_ordered_num_by_substr,		\
+	 fr_table_num_sorted_t *		: fr_table_sorted_num_by_substr,		\
+	 fr_table_num_ordered_t *		: fr_table_ordered_num_by_substr,		\
+	 fr_table_ptr_sorted_t const *		: fr_table_sorted_ptr_by_substr,		\
+	 fr_table_ptr_ordered_t const *		: fr_table_ordered_ptr_by_substr,		\
+	 fr_table_ptr_sorted_t *		: fr_table_sorted_ptr_by_substr,		\
+	 fr_table_ptr_ordered_t *		: fr_table_ordered_ptr_by_substr,		\
+	 fr_table_num_indexed_bit_pos_t *	: fr_table_ordered_num_by_substr,		\
+	 fr_table_num_indexed_bit_pos_t const *	: fr_table_ordered_num_by_substr		\
 )(_table, _table ## _len, _name, _name_len, _def)
 
 int	fr_table_sorted_num_by_longest_prefix(size_t *match_len, fr_table_num_sorted_t const *table, size_t table_len,
@@ -173,14 +180,16 @@ void	*fr_table_ordered_ptr_by_longest_prefix(size_t *match_len, fr_table_ptr_ord
  */
 #define fr_table_value_by_longest_prefix(_match_len, _table, _name, _name_len, _def) \
 _Generic((_table), \
-	 fr_table_num_sorted_t const *		:	fr_table_sorted_num_by_longest_prefix,	\
-	 fr_table_num_ordered_t const *		:	fr_table_ordered_num_by_longest_prefix,	\
-	 fr_table_num_sorted_t *		:	fr_table_sorted_num_by_longest_prefix,	\
-	 fr_table_num_ordered_t *		:	fr_table_ordered_num_by_longest_prefix,	\
-	 fr_table_ptr_sorted_t const *		:	fr_table_sorted_ptr_by_longest_prefix,	\
-	 fr_table_ptr_ordered_t const *		:	fr_table_ordered_ptr_by_longest_prefix,	\
-	 fr_table_ptr_sorted_t *		:	fr_table_sorted_ptr_by_longest_prefix,	\
-	 fr_table_ptr_ordered_t *		:	fr_table_ordered_ptr_by_longest_prefix	\
+	 fr_table_num_sorted_t const *		: fr_table_sorted_num_by_longest_prefix,	\
+	 fr_table_num_ordered_t const *		: fr_table_ordered_num_by_longest_prefix,	\
+	 fr_table_num_sorted_t *		: fr_table_sorted_num_by_longest_prefix,	\
+	 fr_table_num_ordered_t *		: fr_table_ordered_num_by_longest_prefix,	\
+	 fr_table_ptr_sorted_t const *		: fr_table_sorted_ptr_by_longest_prefix,	\
+	 fr_table_ptr_ordered_t const *		: fr_table_ordered_ptr_by_longest_prefix,	\
+	 fr_table_ptr_sorted_t *		: fr_table_sorted_ptr_by_longest_prefix,	\
+	 fr_table_ptr_ordered_t *		: fr_table_ordered_ptr_by_longest_prefix,	\
+	 fr_table_num_indexed_bit_pos_t *	: fr_table_ordered_num_by_longest_prefix,	\
+	 fr_table_num_indexed_bit_pos_t const *	: fr_table_ordered_num_by_longest_prefix	\
 )(_match_len, _table, _table ## _len, _name, _name_len, _def)
 
 char const	*fr_table_ordered_str_by_num(fr_table_num_ordered_t const *table, size_t table_len,
@@ -191,6 +200,9 @@ char const	*fr_table_ordered_str_by_ptr(fr_table_ptr_ordered_t const *table, siz
 					     void const *ptr, char const *def);
 char const	*fr_table_sorted_str_by_ptr(fr_table_ptr_sorted_t const *table, size_t table_len,
 					    void const *ptr, char const *def);
+
+char const	*fr_table_indexed_str_by_bit_field(fr_table_num_indexed_bit_pos_t const *table, size_t table_len,
+						   uint64_t number, char const *def);
 
 /** Convert an integer to a string
  *
@@ -203,14 +215,16 @@ char const	*fr_table_sorted_str_by_ptr(fr_table_ptr_sorted_t const *table, size_
  */
 #define fr_table_str_by_value(_table, _number, _def) \
 _Generic((_table), \
-	 fr_table_num_sorted_t const *		:	fr_table_sorted_str_by_num,	\
-	 fr_table_num_ordered_t const *		:	fr_table_ordered_str_by_num,	\
-	 fr_table_num_sorted_t *		:	fr_table_sorted_str_by_num,	\
-	 fr_table_num_ordered_t *		:	fr_table_ordered_str_by_num,	\
-	 fr_table_ptr_sorted_t const *		:	fr_table_sorted_str_by_ptr,	\
-	 fr_table_ptr_ordered_t const *		:	fr_table_ordered_str_by_ptr,	\
-	 fr_table_ptr_sorted_t *		:	fr_table_sorted_str_by_ptr,	\
-	 fr_table_ptr_ordered_t *		:	fr_table_ordered_str_by_ptr	\
+	 fr_table_num_sorted_t const *		: fr_table_sorted_str_by_num,			\
+	 fr_table_num_ordered_t const *		: fr_table_ordered_str_by_num,			\
+	 fr_table_num_sorted_t *		: fr_table_sorted_str_by_num,			\
+	 fr_table_num_ordered_t *		: fr_table_ordered_str_by_num,			\
+	 fr_table_ptr_sorted_t const *		: fr_table_sorted_str_by_ptr,			\
+	 fr_table_ptr_ordered_t const *		: fr_table_ordered_str_by_ptr,			\
+	 fr_table_ptr_sorted_t *		: fr_table_sorted_str_by_ptr,			\
+	 fr_table_ptr_ordered_t *		: fr_table_ordered_str_by_ptr,			\
+	 fr_table_num_indexed_bit_pos_t *	: fr_table_indexed_str_by_bit_field, 		\
+	 fr_table_num_indexed_bit_pos_t const *	: fr_table_indexed_str_by_bit_field 		\
 )(_table, _table ## _len, _number, _def)
 
 #ifdef __cplusplus

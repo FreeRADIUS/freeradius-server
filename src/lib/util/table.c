@@ -24,6 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/misc.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -94,12 +95,17 @@ _our_return_type _our_name(size_t *match_len, _our_table_type table, size_t tabl
 char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
 { \
 	size_t		i; \
-	for (i = 0; i < table_len; i++) { \
-		if (table[i].value == value) return table[i].name; \
-	} \
+	for (i = 0; i < table_len; i++) if (table[i].value == value) return table[i].name; \
 	return def; \
 }
 
+#define TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(_our_table_type, _our_name, _our_value_type) \
+char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
+{ \
+	uint8_t	idx = fr_high_bit_pos_uint64(value); \
+	if (idx >= table_len) return def; \
+	return table[idx].name; \
+}
 
 /** Convert a string to a value using a lexicographically sorted table
  *
@@ -430,3 +436,11 @@ TABLE_TYPE_VALUE_FUNC(fr_table_num_sorted_t const *, fr_table_sorted_str_by_num,
 TABLE_TYPE_VALUE_FUNC(fr_table_num_ordered_t const *, fr_table_ordered_str_by_num, int)
 TABLE_TYPE_VALUE_FUNC(fr_table_ptr_sorted_t const *, fr_table_sorted_str_by_ptr, void const *)
 TABLE_TYPE_VALUE_FUNC(fr_table_ptr_ordered_t const *, fr_table_ordered_str_by_ptr, void const *)
+
+/*
+ *	Indexed value to string conversion functions
+ *	These are O(1) for bitfields, and are
+ *	particularly useful for looking up string
+ *	definitions for flag values.
+ */
+TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(fr_table_num_indexed_bit_pos_t const *, fr_table_indexed_str_by_bit_field, uint64_t);
