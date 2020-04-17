@@ -9,7 +9,7 @@
 dotnet {
 	clr_library = /usr/local/share/dotnet/shared/Microsoft.NETCore.App/3.0.0/libcoreclr.dylib
 
-	assembly = "FreeRadius.Example, Version=1.0.0.0"
+	assembly = FreeRadius.Example
 	class = FreeRadius.Example.MainClass
 
 	# For every entry point, there is an asm_ class_ and func_ to indicate the
