@@ -28,6 +28,7 @@
 #include <freeradius-devel/modules.h>
 #include <dlfcn.h>
 #include "coreclrhost.h"
+#include "clrpath.h"
 
 #define DEFAULT_CLR_LIBRARY	"libcoreclr.dylib"
 
@@ -47,6 +48,7 @@ typedef struct rlm_dotnet_t {
 	void *hostHandle;
 	unsigned int domainId;
 	coreclr_initialize_ptr coreclr_initialize;
+	coreclr_create_delegate_ptr coreclr_create_delegate;
 	coreclr_shutdown_2_ptr coreclr_shutdown_2;
 
 	char const	*clr_library;		//!< Path to CLR library.
@@ -110,10 +112,39 @@ static int bind_dotnet(rlm_dotnet_t *inst)
 				if (!inst->x) ERROR("%s", dlerror());
 
 	A(coreclr_initialize)
+	A(coreclr_create_delegate)
 	A(coreclr_shutdown_2)
 #undef A
 
 	return 0;
+}
+
+static int bind_one_method(rlm_dotnet_t *inst, dotnet_func_def_t *function_definition, char const *function_name)
+{
+	int rc = 0;
+	if (function_definition->function_name)
+	{
+		DEBUG("binding %s to %s %s %s", function_name, function_definition->assembly_name, function_definition->class_name, function_definition->function_name);
+		rc = inst->coreclr_create_delegate(
+			inst->hostHandle,
+			inst->domainId,
+			function_definition->assembly_name,
+			function_definition->class_name,
+			function_definition->function_name,
+			&function_definition->function
+			);
+		if (rc)
+		{
+			ERROR("Failure binding %s to %s %s %s, coreclr_create_delegate returned 0x%08X", function_name, function_definition->assembly_name, function_definition->class_name, function_definition->function_name, rc);
+		}
+		else
+		{
+			DEBUG("Bound it! Function is %p", function_definition->function);
+		}
+		
+	}
+
+	return rc;
 }
 
 /*
@@ -131,17 +162,56 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_dotnet_t	*inst = instance;
 
-	INFO("%s xyzzy!", __FILE__);
+	DEBUG("mod_instantiate");
 	if (bind_dotnet(inst))
 	{
 		ERROR("Failed to load .NET core");
 		return RLM_MODULE_FAIL;
 	}
-	INFO("Module loaded");
-	int hr = inst->coreclr_initialize("/Users/blakeramsdell/Source/OpenSource/freeradius-server", "FreeRadius", 0, NULL, NULL, &inst->hostHandle, &inst->domainId);
-	INFO("coreclr_initialize hr = 0x%08X", hr);
-	// !!! Check hr for failure
 
+	const char* propertyKeys[] = {
+		"TRUSTED_PLATFORM_ASSEMBLIES"
+	};
+    const char* propertyValues[] = {
+        CLR_PATH
+    };
+
+	int hr = inst->coreclr_initialize(
+		"/Users/blakeramsdell/Source/OpenSource/freeradius-server",
+		"FreeRadius",
+		sizeof(propertyKeys) / sizeof(char*),
+		propertyKeys,
+		propertyValues,
+		&inst->hostHandle,
+		&inst->domainId
+		);
+
+	// Check hr for failure
+	if (hr == 0)
+	{
+		// Bind up all of our C# methods
+#define A(x) bind_one_method(inst, &inst->x, #x);
+		A(instantiate)
+		A(authorize)
+		A(authenticate)
+		A(preacct)
+		A(accounting)
+		A(checksimul)
+		A(pre_proxy)
+		A(post_proxy)
+		A(post_auth)
+#ifdef WITH_COA
+		A(recv_coa)
+		A(send_coa)
+#endif
+		A(detach)
+
+#undef A
+	}
+	else
+	{
+		ERROR("Failed coreclr_initialize hr = 0x%08X", hr);
+	}
 	return 0;
 }
 
