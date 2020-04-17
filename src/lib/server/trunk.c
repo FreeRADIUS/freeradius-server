@@ -2405,7 +2405,14 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 {
 	fr_trunk_request_state_log_t	*slog = NULL;
 
-	MEM(slog = talloc_zero(treq, fr_trunk_request_state_log_t));
+	if (fr_dlist_num_elements(&treq->log) > FR_TRUNK_REQUEST_STATE_LOG_MAX) {
+		slog = fr_dlist_remove(&treq->log, fr_dlist_head(&treq->log));
+		memset(slog, 0, sizeof(*slog));
+	} else {
+		MEM(slog = talloc_zero(treq, fr_trunk_request_state_log_t));
+		talloc_set_destructor(slog, _state_log_entry_free);
+	}
+
 	slog->log_head = &treq->log;
 	slog->from = treq->pub.state;
 	slog->to = new;
@@ -2417,12 +2424,8 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 		slog->tconn_state = treq->pub.tconn->pub.state;
 	}
 
-	if (fr_dlist_num_elements(&treq->log) > FR_TRUNK_REQUEST_STATE_LOG_MAX) {
-		talloc_free(fr_dlist_remove(&treq->log, fr_dlist_tail(&treq->log)));
-	}
-
 	fr_dlist_insert_tail(&treq->log, slog);
-	talloc_set_destructor(slog, _state_log_entry_free);
+
 }
 
 void fr_trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
