@@ -64,6 +64,7 @@ typedef enum {
  */
 struct fr_connection_pub_s {
 	fr_connection_state_t _CONST	state;		//!< Current connection state.
+	fr_connection_state_t _CONST	prev;		//!< The previous state the connection was in.
 	uint64_t _CONST			id;		//!< Unique identifier for the connection.
 	void			* _CONST h;		//!< Connection handle
 	fr_event_list_t		* _CONST el;		//!< Event list for timers and I/O events.
@@ -193,10 +194,12 @@ typedef struct {
  * connection.  The actual free will be deferred until the watcher returns.
  *
  * @param[in] conn	Being watched.
- * @param[in] state	That was entered.
+ * @param[in] prev	State we came from.
+ * @param[in] state	State that was entered (the current state)
  * @param[in] uctx	that was passed to fr_connection_add_watch_*.
  */
-typedef void(*fr_connection_watch_t)(fr_connection_t *conn, fr_connection_state_t state, void *uctx);
+typedef void(*fr_connection_watch_t)(fr_connection_t *conn,
+				     fr_connection_state_t prev, fr_connection_state_t state, void *uctx);
 
 /** @name Add watcher functions that get called before (pre) the state callback and after (post)
  * @{

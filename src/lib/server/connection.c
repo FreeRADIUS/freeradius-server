@@ -120,6 +120,7 @@ do { \
 	DEBUG2("Connection changed state %s -> %s", \
 	       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"), \
 	       fr_table_str_by_value(fr_connection_states, _new, "<INVALID>")); \
+	conn->pub.prev = conn->pub.state; \
 	conn->pub.state = _new; \
 } while (0)
 
@@ -207,6 +208,7 @@ static inline void connection_deferred_signal_add(fr_connection_t *conn, connect
  *
  */
 static void _deferred_signal_connection_on_halted(UNUSED fr_connection_t *conn,
+						  UNUSED fr_connection_state_t prev,
 						  UNUSED fr_connection_state_t state, void *uctx)
 {
 	bool *freed = uctx;
@@ -351,15 +353,16 @@ static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t 
 		if (oneshot) conn->next_watcher = fr_dlist_remove(list, entry);
 
 /*
-		DEBUG4("Notifying %swatcher - (%p)(conn=%p, state=%s, uctx=%p)",
+		DEBUG4("Notifying %swatcher - (%p)(conn=%p, prev=%s, state=%s, uctx=%p)",
 		       entry->oneshot ? "oneshot " : "",
 		       entry->func,
 		       conn,
+		       fr_table_str_by_value(fr_connection_states, conn->pub.prev, "<INVALID>"),
 		       fr_table_str_by_value(fr_connection_states, conn->pub.state, "<INVALID>"),
 		       entry->uctx);
 */
 
-		entry->func(conn, conn->pub.state, entry->uctx);
+		entry->func(conn, conn->pub.prev, conn->pub.state, entry->uctx);
 
 		if (oneshot) talloc_free(entry);
 	}
@@ -1337,7 +1340,8 @@ static void _connection_writable(fr_event_list_t *el, int fd, UNUSED int flags, 
 /** Remove the FD we were watching for connection open/fail from the event loop
  *
  */
-static void _connection_signal_on_fd_cleanup(fr_connection_t *conn, fr_connection_state_t state, void *uctx)
+static void _connection_signal_on_fd_cleanup(fr_connection_t *conn,
+					     UNUSED fr_connection_state_t prev, fr_connection_state_t state, void *uctx)
 {
 	int fd = *(talloc_get_type_abort(uctx, int));
 

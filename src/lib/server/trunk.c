@@ -2888,10 +2888,14 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
  * @note This function is only called from the connection API as a watcher.
  *
  * @param[in] conn	The connection which changes state.
+ * @param[in] prev	The connection is was in.
  * @param[in] state	The connection is now in.
  * @param[in] uctx	The fr_trunk_connection_t wrapping the connection.
  */
-static void _trunk_connection_on_init(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
+static void _trunk_connection_on_init(UNUSED fr_connection_t *conn,
+				      UNUSED fr_connection_state_t prev,
+				      UNUSED fr_connection_state_t state,
+				      void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
@@ -2920,10 +2924,14 @@ static void _trunk_connection_on_init(UNUSED fr_connection_t *conn, UNUSED fr_co
  * @note This function is only called from the connection API as a watcher.
  *
  * @param[in] conn	The connection which changes state.
+ * @param[in] prev	The connection is was in.
  * @param[in] state	The connection is now in.
  * @param[in] uctx	The fr_trunk_connection_t wrapping the connection.
  */
-static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
+static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn,
+					    UNUSED fr_connection_state_t prev,
+					    UNUSED fr_connection_state_t state,
+					    void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
@@ -2961,10 +2969,14 @@ static void _trunk_connection_on_connecting(UNUSED fr_connection_t *conn, UNUSED
  * @note This function is only called from the connection API as a watcher.
  *
  * @param[in] conn	The connection which changes state.
+ * @param[in] prev	The connection is was in.
  * @param[in] state	The connection is now in.
  * @param[in] uctx	The fr_trunk_connection_t wrapping the connection.
  */
-static void _trunk_connection_on_shutdown(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
+static void _trunk_connection_on_shutdown(UNUSED fr_connection_t *conn,
+					  UNUSED fr_connection_state_t prev,
+					  UNUSED fr_connection_state_t state,
+					  void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 
@@ -3009,10 +3021,14 @@ static void  _trunk_connection_lifetime_expire(UNUSED fr_event_list_t *el, UNUSE
  * @note This function is only called from the connection API as a watcher.
  *
  * @param[in] conn	The connection which changes state.
+ * @param[in] prev	The connection is was in.
  * @param[in] state	The connection is now in.
  * @param[in] uctx	The fr_trunk_connection_t wrapping the connection.
  */
-static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
+static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn,
+					   UNUSED fr_connection_state_t prev,
+					   UNUSED fr_connection_state_t state,
+					   void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
@@ -3047,35 +3063,6 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn, UNUSED 
  	trunk_connection_enter_active(tconn);
 }
 
-/** Connection failed
- *
- */
-static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, fr_connection_state_t state, void *uctx)
-{
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_t		*trunk = tconn->pub.trunk;
-
-	/*
-	 *	Need to set this first as it
-	 *	determines whether requests are
-	 *	re-queued or fail outright.
-	 */
-	trunk->pub.last_failed = fr_time();
-
-	/*
-	 *	See what the state of the trunk is
-	 *	if there are no connections that could
-	 *	potentially accept requests in the near
-	 *	future, then fail all the requests in the
-	 *	trunk backlog.
-	 */
-	if ((state == FR_CONNECTION_STATE_CONNECTED) &&
-	    (fr_trunk_connection_count_by_state(trunk,
-						(FR_TRUNK_CONN_ACTIVE |
-						 FR_TRUNK_CONN_FULL |
-						 FR_TRUNK_CONN_DRAINING)) == 0)) trunk_backlog_drain(trunk);
-}
-
 /** Connection failed after it was connected
  *
  * Reflect the connection state change in the lists we use to track connections.
@@ -3083,10 +3070,14 @@ static void _trunk_connection_on_failed(UNUSED fr_connection_t *conn, fr_connect
  * @note This function is only called from the connection API as a watcher.
  *
  * @param[in] conn	The connection which changes state.
+ * @param[in] prev	The connection is was in.
  * @param[in] state	The connection is now in.
  * @param[in] uctx	The fr_trunk_connection_t wrapping the connection.
  */
-static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
+static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn,
+			  		UNUSED fr_connection_state_t prev,
+					UNUSED fr_connection_state_t state,
+					void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
@@ -3148,6 +3139,50 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
 	trunk_connection_event_update(tconn);
 }
 
+/** Connection failed
+ *
+ * @param[in] conn	The connection which changes state.
+ * @param[in] prev	The connection is was in.
+ * @param[in] state	The connection is now in.
+ * @param[in] uctx	The fr_trunk_connection_t wrapping the connection.
+ */
+static void _trunk_connection_on_failed(fr_connection_t *conn,
+					fr_connection_state_t prev,
+					fr_connection_state_t state,
+					void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	fr_trunk_t		*trunk = tconn->pub.trunk;
+
+	/*
+	 *	Need to set this first as it
+	 *	determines whether requests are
+	 *	re-queued or fail outright.
+	 */
+	trunk->pub.last_failed = fr_time();
+
+	/*
+	 *	Failed in the init state, transition the
+	 *	connection to closed, else we get an
+	 *	INIT -> INIT transition which triggers
+	 *	an assert.
+	 */
+	if (prev == FR_CONNECTION_STATE_INIT) _trunk_connection_on_closed(conn, prev, state, uctx);
+
+	/*
+	 *	See what the state of the trunk is
+	 *	if there are no connections that could
+	 *	potentially accept requests in the near
+	 *	future, then fail all the requests in the
+	 *	trunk backlog.
+	 */
+	if ((state == FR_CONNECTION_STATE_CONNECTED) &&
+	    (fr_trunk_connection_count_by_state(trunk,
+						(FR_TRUNK_CONN_ACTIVE |
+						 FR_TRUNK_CONN_FULL |
+						 FR_TRUNK_CONN_DRAINING)) == 0)) trunk_backlog_drain(trunk);
+}
+
 /** Connection transitioned to the halted state
  *
  * Remove the connection remove all lists, as it's likely about to be freed.
@@ -3159,10 +3194,14 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn, UNUSED fr_
  * @note This function is only called from the connection API as a watcher.
  *
  * @param[in] conn	The connection which changes state.
+ * @param[in] prev	The connection is was in.
  * @param[in] state	The connection is now in.
  * @param[in] uctx	The fr_trunk_connection_t wrapping the connection.
  */
-static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn, UNUSED fr_connection_state_t state, void *uctx)
+static void _trunk_connection_on_halted(UNUSED fr_connection_t *conn,
+					UNUSED fr_connection_state_t prev,
+					UNUSED fr_connection_state_t state,
+					void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	fr_trunk_t		*trunk = tconn->pub.trunk;
@@ -3318,11 +3357,11 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_CONNECTED,
 				     _trunk_connection_on_connected, false, tconn);	/* After open() has been called */
 
-	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_FAILED,
-				    _trunk_connection_on_failed, false, tconn);		/* Before failed() has been called */
-
 	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_CLOSED,
 				    _trunk_connection_on_closed, false, tconn);		/* Before close() has been called */
+
+	fr_connection_add_watch_pre(tconn->pub.conn, FR_CONNECTION_STATE_FAILED,
+				    _trunk_connection_on_failed, false, tconn);		/* Before failed() has been called */
 
 	fr_connection_add_watch_post(tconn->pub.conn, FR_CONNECTION_STATE_SHUTDOWN,
 				     _trunk_connection_on_shutdown, false, tconn);	/* After shutdown() has been called */
