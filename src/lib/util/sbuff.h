@@ -99,7 +99,10 @@ ssize_t fr_sbuff_strncpy_exact(char *out, size_t outlen, fr_sbuff_t *in, size_t 
 size_t fr_sbuff_strncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t len);
 
 size_t fr_sbuff_strncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t max_len,
-				char allowed_chars[static UINT8_MAX]);
+				char allowed_chars[static UINT8_MAX + 1]);
+
+size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
+			      char until[static UINT8_MAX + 1]);
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer
