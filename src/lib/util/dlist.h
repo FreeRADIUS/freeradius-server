@@ -371,16 +371,16 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
 	fr_dlist_t *head;
 	fr_dlist_t *prev;
 
-	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
-
-	if (!ptr || fr_dlist_empty(list_head) || !fr_dlist_entry_in_list(entry)) return NULL;
+	if (!ptr || fr_dlist_empty(list_head)) return NULL;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
+	if (list_head->type) (void)_talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
 
-	head = &(list_head->entry);
+	entry = (fr_dlist_t *)(((uint8_t *)ptr) + list_head->offset);
+	if (!fr_dlist_entry_in_list(entry)) return NULL;
 
+	head = &(list_head->entry);
 	entry->prev->next = entry->next;
 	entry->next->prev = prev = entry->prev;
 	entry->prev = entry->next = entry;
