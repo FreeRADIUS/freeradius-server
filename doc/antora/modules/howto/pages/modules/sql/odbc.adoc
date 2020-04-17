@@ -1,4 +1,4 @@
-= ODBC Driver (rlm_unixodbc)
+= ODBC Driver (rlm_sql_unixodbc)
 
 FreeRADIUS supports connections to ODBC data sources by interfacing with the
 unixODBC framework together with a backend driver.
