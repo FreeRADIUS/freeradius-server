@@ -46,7 +46,7 @@ endif
 MFLAGS += --no-print-directory
 
 # The version of GNU Make is too old, don't use it (.FEATURES variable was
-# wad added in 3.81)
+# was added in 3.81)
 ifndef .FEATURES
 $(error The build system requires GNU Make 3.81 or later.)
 endif
