@@ -298,4 +298,6 @@ docsite: build/docsite/sitemap.xml
 html: $(HTML_FILES)
 pdf: $(PDF_FILES)
 
+doc: build/docsite/sitemap.xml $(HTML_FILES)
+
 endif
