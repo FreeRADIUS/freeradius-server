@@ -420,7 +420,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 		talloc_free(fake);
 		talloc_free(spaces);
 		talloc_free(text);
-		return false;
+		return -1;
 	}
 
 	/*
