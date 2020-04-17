@@ -443,4 +443,4 @@ TABLE_TYPE_VALUE_FUNC(fr_table_ptr_ordered_t const *, fr_table_ordered_str_by_pt
  *	particularly useful for looking up string
  *	definitions for flag values.
  */
-TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(fr_table_num_indexed_bit_pos_t const *, fr_table_indexed_str_by_bit_field, uint64_t);
+TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(fr_table_num_indexed_bit_pos_t const *, fr_table_indexed_str_by_bit_field, uint64_t)
