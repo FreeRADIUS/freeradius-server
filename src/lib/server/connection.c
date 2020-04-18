@@ -45,6 +45,7 @@ typedef struct fr_connection_s fr_connection_t;
 #include <talloc.h>
 
 fr_table_num_ordered_t const fr_connection_states[] = {
+	{ "HALTED",		FR_CONNECTION_STATE_HALTED	},
 	{ "INIT",		FR_CONNECTION_STATE_INIT	},
 	{ "CONNECTING",		FR_CONNECTION_STATE_CONNECTING	},
 	{ "TIMEOUT",		FR_CONNECTION_STATE_TIMEOUT	},
@@ -52,9 +53,23 @@ fr_table_num_ordered_t const fr_connection_states[] = {
 	{ "SHUTDOWN",		FR_CONNECTION_STATE_SHUTDOWN	},
 	{ "FAILED",		FR_CONNECTION_STATE_FAILED	},
 	{ "CLOSED",		FR_CONNECTION_STATE_CLOSED	},
-	{ "HALTED",		FR_CONNECTION_STATE_HALTED	},
 };
 size_t fr_connection_states_len = NUM_ELEMENTS(fr_connection_states);
+
+/** Map connection states to trigger names
+ *
+ */
+static fr_table_num_indexed_t const fr_connection_trigger_names[] = {
+	[FR_CONNECTION_STATE_HALTED]	=	{ "connection.halted",		FR_CONNECTION_STATE_HALTED	},
+	[FR_CONNECTION_STATE_INIT]	=	{ "connection.init",		FR_CONNECTION_STATE_INIT	},
+	[FR_CONNECTION_STATE_CONNECTING]=	{ "connection.connecting",	FR_CONNECTION_STATE_CONNECTING	},
+	[FR_CONNECTION_STATE_TIMEOUT]	=	{ "connection.timeout",		FR_CONNECTION_STATE_TIMEOUT	},
+	[FR_CONNECTION_STATE_CONNECTED]	=	{ "connection.connected",	FR_CONNECTION_STATE_CONNECTED	},
+	[FR_CONNECTION_STATE_SHUTDOWN]	=	{ "connection.shutdown",	FR_CONNECTION_STATE_SHUTDOWN	},
+	[FR_CONNECTION_STATE_FAILED]	=	{ "connection.failed",		FR_CONNECTION_STATE_FAILED	},
+	[FR_CONNECTION_STATE_CLOSED]	=	{ "connection.closed",		FR_CONNECTION_STATE_CLOSED	}
+};
+static size_t fr_connection_trigger_names_len = NUM_ELEMENTS(fr_connection_trigger_names);
 
 static atomic_uint_fast64_t connection_counter = ATOMIC_VAR_INIT(1);
 
@@ -109,9 +124,9 @@ struct fr_connection_s {
 	unsigned int		signals_pause;		//!< Temporarily stop processing of signals.
 };
 
-#define TRIGGER(name) do { \
+#define CONN_TRIGGER(_state) do { \
 	if (conn->pub.triggers) { \
-		trigger_exec(NULL, NULL, "connection." STRINGIFY(name), true, NULL); \
+		trigger_exec(NULL, NULL, fr_table_str_by_value(fr_connection_trigger_names, _state, "<INVALID>"), true, NULL); \
 	} \
 } while (0)
 
@@ -122,6 +137,7 @@ do { \
 	       fr_table_str_by_value(fr_connection_states, _new, "<INVALID>")); \
 	conn->pub.prev = conn->pub.state; \
 	conn->pub.state = _new; \
+	CONN_TRIGGER(_new); \
 } while (0)
 
 #define BAD_STATE_TRANSITION(_new) \
@@ -630,7 +646,6 @@ static void connection_state_enter_closed(fr_connection_t *conn)
 	}
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CLOSED);
-	TRIGGER(closed);
 
 	fr_event_timer_delete(&conn->ev);
 
@@ -691,7 +706,6 @@ static void connection_state_enter_shutdown(fr_connection_t *conn)
 	}
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_SHUTDOWN);
-	TRIGGER(shutdown);
 
 	WATCH_PRE(conn);
 	{
@@ -764,7 +778,6 @@ static void connection_state_enter_failed(fr_connection_t *conn)
 	 *	Now transition to failed
 	 */
 	STATE_TRANSITION(FR_CONNECTION_STATE_FAILED);
-	TRIGGER(failed);
 
 	/*
 	 *	If there's a failed callback, give it the
@@ -880,7 +893,6 @@ static void connection_state_enter_timeout(fr_connection_t *conn)
 	ERROR("Connection failed - timed out after %pVs", fr_box_time_delta(conn->connection_timeout));
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_TIMEOUT);
-	TRIGGER(timeout);
 
 	conn->pub.timed_out++;
 
@@ -907,7 +919,6 @@ static void connection_state_enter_halted(fr_connection_t *conn)
 	fr_event_timer_delete(&conn->ev);
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
-	TRIGGER(halted);
 	WATCH_PRE(conn);
 	WATCH_POST(conn);
 }
@@ -932,7 +943,6 @@ static void connection_state_enter_connected(fr_connection_t *conn)
 	fr_assert(conn->pub.state == FR_CONNECTION_STATE_CONNECTING);
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
-	TRIGGER(connected);
 
 	fr_event_timer_delete(&conn->ev);
 	WATCH_PRE(conn);
@@ -984,7 +994,6 @@ static void connection_state_enter_connecting(fr_connection_t *conn)
 	}
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTING);
-	TRIGGER(connecting);
 
 	WATCH_PRE(conn);
 	WATCH_POST(conn);
@@ -1046,7 +1055,6 @@ static void connection_state_enter_init(fr_connection_t *conn)
 	conn->pub.reconnected++;
 
 	STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
-	TRIGGER(init);
 
 	/*
 	 *	If we have an init callback, call it.
