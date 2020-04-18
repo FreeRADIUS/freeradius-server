@@ -107,6 +107,13 @@ char const *_our_name(_our_table_type table, size_t table_len, _our_value_type v
 	return table[idx].name; \
 }
 
+#define TABLE_TYPE_VALUE_INDEX_FUNC(_our_table_type, _our_name, _our_value_type) \
+char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
+{ \
+	if (value >= table_len) return def; \
+	return table[value].name; \
+}
+
 /** Convert a string to a value using a lexicographically sorted table
  *
  * @param[in] table		to search in.
@@ -444,3 +451,8 @@ TABLE_TYPE_VALUE_FUNC(fr_table_ptr_ordered_t const *, fr_table_ordered_str_by_pt
  *	definitions for flag values.
  */
 TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(fr_table_num_indexed_bit_pos_t const *, fr_table_indexed_str_by_bit_field, uint64_t)
+
+/*
+ *	Array lookup based on numeric value
+ */
+TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(fr_table_num_indexed_t const *, fr_table_indexed_str_by_num, unsigned int)
