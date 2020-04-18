@@ -2805,4 +2805,102 @@ home_pool_t *home_pool_byname(char const *name, int type)
 	return rbtree_finddata(home_pools_byname, &mypool);
 }
 
+
+int home_server_afrom_file(char const *filename)
+{
+	CONF_SECTION *cs, *subcs;
+	char const *p;
+
+	if (!realm_config->dynamic) {
+		fr_strerror_printf("Must set 'dynamic' in proxy.conf for dynamic home servers to work");
+		return -1;
+	}
+
+	cs = cf_section_alloc(NULL, "home", filename);
+	if (!cs) {
+		fr_strerror_printf("Failed allocating memory");
+		return -1;
+	}
+
+	if (cf_file_read(cs, filename) < 0) {
+		fr_strerror_printf("Failed reading file %s", filename);
+		talloc_free(cs);
+		return -1;
+	}
+
+	p = strrchr(filename, '/');
+	if (p) {
+		p++;
+	} else {
+		p = filename;
+	}
+
+	subcs = cf_section_sub_find_name2(cs, "home", p);
+	if (!subcs) {
+		fr_strerror_printf("No 'home_server %p' definition in the file.");
+		talloc_free(cs);
+		return -1;
+	}
+
+	home = home_server_afrom_cs(realm_config, realm_config, cs);
+	if (!home) {
+		fr_strerror_printf("Failed parsing configuration to a home_server structure");
+		talloc_free(cs);
+		return -1;
+	}
+
+	home->dynamic = true;
+
+	if (home->server || home->dual) {
+		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server' or 'auth+acct'", p);
+		talloc_free(cs);
+		talloc_free(home);
+		return -1;
+	}
+
+	if (!realm_home_server_add(home)) {
+		fr_strerror_printf("Failed adding home_server to the internal data structures");
+		talloc_free(cs);
+		talloc_free(home);
+		return -1;
+	}
+
+	return 0;
+}
+
+int home_server_delete(char const *name, char const *type_name)
+{
+	home_server_t *home;
+	int type;
+
+	if (!realm_config->dynamic) {
+		fr_strerror_printf("Must set 'dynamic' in proxy.conf for dynamic home servers to work");
+		return -1;
+	}
+
+	type = fr_str2int(home_server_types, home->type_str, HOME_TYPE_INVALID);
+	if (type == HOME_TYPE_INVALID) {
+		fr_strerror_printf("Unknown home_server type '%s'", type_name);
+		return -1;
+	}
+
+	home = home_server_byname(name, type);
+	if (!home) {
+		fr_strerror_printf("Failed to find home_server %s", name);
+		return -1;
+	}
+
+	if (!home->dynamic) {
+		fr_strerror_printf("Cannot delete static home_server %s", name);
+		return -1;
+	}
+
+	(void) rbtree_deletebydata(home_servers_byname, home);
+	(void) rbtree_deletebydata(home_servers_byaddr, home);
+
+	/*
+	 *	Leak home, and home->cs.  Oh well.
+	 */
+	return 0;
+}
 #endif
