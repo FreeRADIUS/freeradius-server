@@ -1598,6 +1598,8 @@ static void request_finish(REQUEST *request, int action)
  */
 static void request_running(REQUEST *request, int action)
 {
+	int rcode;
+
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
@@ -1631,7 +1633,8 @@ static void request_running(REQUEST *request, int action)
 		/*
 		 *	We may need to send a proxied request.
 		 */
-		if (request_will_proxy(request)) {
+		rcode = request_will_proxy(request);
+		if (rcode == 1) {
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tWill Proxy\t********\n", request->number);
 #endif
@@ -1648,6 +1651,14 @@ static void request_running(REQUEST *request, int action)
 				process_proxy_reply(request, NULL);
 				goto req_finished;
 			}
+
+		} else if (rcode < 0) {
+			/*
+			 *	No live home servers, run Post-Proxy-Type Fail.
+			 */
+			(void) setup_post_proxy_fail(request);
+			process_proxy_reply(request, NULL);
+			goto req_finished;
 		} else
 #endif
 		{
@@ -3082,7 +3093,7 @@ static int request_will_proxy(REQUEST *request)
 
 	if (!home) {
 		REDEBUG2("Failed to find live home server: Cancelling proxy");
-		return 1;
+		return -1;
 	}
 
 do_home:
