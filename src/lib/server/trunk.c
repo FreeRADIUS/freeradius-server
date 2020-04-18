@@ -2409,8 +2409,7 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 		slog = fr_dlist_head(&treq->log);
 		fr_assert_msg(slog, "slog list head NULL but element counter was %zu",
 			      fr_dlist_num_elements(&treq->log));
-		slog = fr_dlist_remove(&treq->log, slog);
-		fr_assert_msg(slog, "failed remove item %p from slog", slog);
+		(void)fr_dlist_remove(&treq->log, slog);	/* Returns NULL when removing the list head */
 		memset(slog, 0, sizeof(*slog));
 	} else {
 		MEM(slog = talloc_zero(treq, fr_trunk_request_state_log_t));
