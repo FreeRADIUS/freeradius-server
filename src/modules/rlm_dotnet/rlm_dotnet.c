@@ -36,7 +36,7 @@
  *
  */
 typedef struct dotnet_func_def {
-	void* function;
+	void (*function)(void);
 
 	char const	*assembly_name;		//!< String name of assembly.
 	char const	*class_name;		//!< String name of class in assembly.
@@ -131,7 +131,7 @@ static int bind_one_method(rlm_dotnet_t *inst, dotnet_func_def_t *function_defin
 			function_definition->assembly_name,
 			function_definition->class_name,
 			function_definition->function_name,
-			&function_definition->function
+			(void**) &function_definition->function
 			);
 		if (rc)
 		{
@@ -212,6 +212,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	{
 		ERROR("Failed coreclr_initialize hr = 0x%08X", hr);
 	}
+
+	if (inst->instantiate.function)
+	{
+		inst->instantiate.function();
+	}
+
 	return 0;
 }
 
