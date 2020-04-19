@@ -176,7 +176,7 @@ static inline bool is_zero(char const *value)
  */
 static inline uint8_t fr_high_bit_pos(uint64_t num)
 {
-#ifndef HAVE_BUILTIN_CLZLL
+#ifdef HAVE_BUILTIN_CLZLL
 	return (64 - __builtin_clzll(num));
 #else
 	uint8_t ret = 1;
