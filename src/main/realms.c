@@ -37,6 +37,10 @@ static rbtree_t *realms_byname = NULL;
 bool home_servers_udp = false;
 #endif
 
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+
 #ifdef HAVE_REGEX
 typedef struct realm_regex realm_regex_t;
 
@@ -53,6 +57,9 @@ static realm_regex_t *realms_regex = NULL;
 
 struct realm_config {
 	CONF_SECTION		*cs;
+#ifdef HAVE_DIRENT_H
+	char const		*directory;
+#endif
 	uint32_t		dead_time;
 	uint32_t		retry_count;
 	uint32_t		retry_delay;
@@ -106,6 +113,10 @@ static const CONF_PARSER proxy_config[] = {
 	{ "default_fallback", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, fallback), "no" },
 
 	{ "dynamic", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, dynamic), NULL },
+
+#ifdef HAVE_DIRENT_H
+	{ "directory", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t, directory), NULL },
+#endif
 
 	{ "dead_time", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, dead_time), STRINGIFY(DEAD_TIME)  },
 
@@ -2258,6 +2269,56 @@ int realms_init(CONF_SECTION *config)
 #endif
 
 	realm_config = rc;
+
+#ifdef HAVE_DIRENT_H
+	if (!rc->dynamic) {
+		if (rc->directory) {
+			WARN("Ignoring 'directory' as dynamic home servers were not configured.");
+		}
+	} else {
+		DIR		*dir;
+		struct dirent	*dp;
+
+		DEBUG2("including files in directory %s", rc->directory);
+
+		dir = opendir(rc->directory);
+		if (!dir) {
+			cf_log_err_cs(config, "Error reading directory %s: %s",
+				      rc->directory, fr_syserror(errno));				      
+			goto error;
+		}
+
+		/*
+		 *	Read the directory, ignoring "." files.
+		 */
+		while ((dp = readdir(dir)) != NULL) {
+			char const *p;
+			
+			if (dp->d_name[0] == '.') continue;
+
+			/*
+			 *	Check for valid characters
+			 */
+			for (p = dp->d_name; *p != '\0'; p++) {
+				if (isalpha((int)*p) ||
+				    isdigit((int)*p) ||
+				    (*p == '-') ||
+				    (*p == '_') ||
+				    (*p == '.')) continue;
+				break;
+			}
+			if (*p != '\0') continue;
+		
+			if (home_server_afrom_file(dp->d_name) < 0) {
+				ERROR("Failed reading home_server from %s - %s",
+				      dp->d_name, fr_strerror());
+				goto error;
+			}
+		}
+		closedir(dir);
+	}
+#endif
+
 	return 1;
 }
 
@@ -2810,6 +2871,7 @@ int home_server_afrom_file(char const *filename)
 {
 	CONF_SECTION *cs, *subcs;
 	char const *p;
+	home_server_t *home;
 
 	if (!realm_config->dynamic) {
 		fr_strerror_printf("Must set 'dynamic' in proxy.conf for dynamic home servers to work");
@@ -2837,7 +2899,7 @@ int home_server_afrom_file(char const *filename)
 
 	subcs = cf_section_sub_find_name2(cs, "home", p);
 	if (!subcs) {
-		fr_strerror_printf("No 'home_server %p' definition in the file.");
+		fr_strerror_printf("No 'home_server %s' definition in the file.", p);
 		talloc_free(cs);
 		return -1;
 	}
@@ -2878,7 +2940,7 @@ int home_server_delete(char const *name, char const *type_name)
 		return -1;
 	}
 
-	type = fr_str2int(home_server_types, home->type_str, HOME_TYPE_INVALID);
+	type = fr_str2int(home_server_types, type_name, HOME_TYPE_INVALID);
 	if (type == HOME_TYPE_INVALID) {
 		fr_strerror_printf("Unknown home_server type '%s'", type_name);
 		return -1;

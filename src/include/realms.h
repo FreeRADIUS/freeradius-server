@@ -59,6 +59,7 @@ typedef struct home_server {
 							//!< stats or when specifying home servers for a pool.
 
 	bool			dual;			//!< One of a pair of homeservers on consecutive ports.
+	bool			dynamic;		//!< is this a dynamically added home server?
 	char const		*server;		//!< For internal proxying
 	char const		*parent_server;
 
