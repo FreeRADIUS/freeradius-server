@@ -691,6 +691,8 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	the config with a name that matches the
 		 *	virtual_server.
 		 */
+		if (!rc) goto error;
+
 		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
 			cf_log_err_cs(cs, "No such server %s", home->server);
 			goto error;
