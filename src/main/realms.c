@@ -2877,7 +2877,7 @@ int home_server_afrom_file(char const *filename)
 	home_server_t *home;
 
 	if (!realm_config->dynamic) {
-		fr_strerror_printf("Must set 'dynamic' in proxy.conf for dynamic home servers to work");
+		fr_strerror_printf("Must set \"dynamic = true\" in proxy.conf for dynamic home servers to work");
 		return -1;
 	}
 
