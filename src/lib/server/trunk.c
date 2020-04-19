@@ -324,8 +324,8 @@ static size_t fr_trunk_request_states_len = NUM_ELEMENTS(fr_trunk_request_states
  * Must stay in the same order as #fr_trunk_connection_state_t
  */
 static fr_table_num_indexed_bit_pos_t const fr_trunk_conn_trigger_names[] = {
-	{ "pool.conn_init",			FR_TRUNK_CONN_INIT		},
 	{ "pool.conn_halted",			FR_TRUNK_CONN_HALTED		},
+	{ "pool.conn_init",			FR_TRUNK_CONN_INIT		},
 	{ "pool.conn_connecting",		FR_TRUNK_CONN_CONNECTING	},
 	{ "pool.conn_active",			FR_TRUNK_CONN_ACTIVE		},
 	{ "pool.conn_closed",			FR_TRUNK_CONN_CLOSED		},
