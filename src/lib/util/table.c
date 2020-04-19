@@ -455,4 +455,4 @@ TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(fr_table_num_indexed_bit_pos_t const *, fr
 /*
  *	Array lookup based on numeric value
  */
-TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(fr_table_num_indexed_t const *, fr_table_indexed_str_by_num, unsigned int)
+TABLE_TYPE_VALUE_INDEX_FUNC(fr_table_num_indexed_t const *, fr_table_indexed_str_by_num, unsigned int)
