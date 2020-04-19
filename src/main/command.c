@@ -2636,8 +2636,8 @@ static fr_command_table_t command_table_del_client[] = {
 };
 
 static fr_command_table_t command_table_del_home_server[] = {
-	{ "dynamic", FR_WRITE,
-	  "del home_server dynamic <name> [auth|acct|coa] - Delete a dynamically created home_server",
+	{ "file", FR_WRITE,
+	  "del home_server file <name> [auth|acct|coa] - Delete a dynamically created home_server",
 	  command_del_home_server, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
