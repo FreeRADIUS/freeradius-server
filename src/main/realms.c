@@ -328,6 +328,60 @@ static ssize_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
 
 	return xlat_cs(request->home_pool->cs, fmt, out, outlen);
 }
+
+
+/*
+ *	Xlat for %{home_server_dynamic:foo}
+ */
+static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
+					char const *fmt, char *out, size_t outlen)
+{
+	int type;
+	char const *p;
+	home_server_t *home;
+
+	if (outlen < 2) return 0;
+
+	switch (request->packet->code) {
+	case PW_CODE_ACCESS_REQUEST:
+		type = HOME_TYPE_AUTH;
+		break;
+
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_REQUEST:
+		type = HOME_TYPE_ACCT;
+		break;
+#endif
+
+#ifdef WITH_COA
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+		type = HOME_TYPE_COA;
+		break;
+#endif
+
+	default:
+		*out = '\0';
+		return 0;
+	}
+
+	p = fmt;
+	while (isspace((int) *p)) p++;
+
+	home = home_server_byname(p, type);
+	if (!home) {
+		*out = '\0';
+		return 0;
+	}
+
+	/*
+	 *	1 for dynamic, 0 for static
+	 */
+	out[0] = '0' + home->dynamic;
+	out[1] = '\0';
+
+	return 1;
+}
 #endif
 
 void realms_free(void)
@@ -2268,6 +2322,7 @@ int realms_init(CONF_SECTION *config)
 #ifdef WITH_PROXY
 	xlat_register("home_server", xlat_home_server, NULL, NULL);
 	xlat_register("home_server_pool", xlat_server_pool, NULL, NULL);
+	xlat_register("home_server_dynamic", xlat_home_server_dynamic, NULL, NULL);
 #endif
 
 	realm_config = rc;
