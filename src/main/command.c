@@ -2635,7 +2635,6 @@ static fr_command_table_t command_table_del_client[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
-
 static fr_command_table_t command_table_del_home_server[] = {
 	{ "dynamic", FR_WRITE,
 	  "del home_server dynamic <name> [auth|acct|coa] - Delete a dynamically created home_server",
@@ -2651,11 +2650,10 @@ static fr_command_table_t command_table_del[] = {
 
 	{ "home_server", FR_WRITE,
 	  "del home_server <command> - Delete home_server configuration commands",
-	  NULL, command_table_del_client },
+	  NULL, command_table_del_home_server },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
-
 
 static fr_command_table_t command_table_add_client[] = {
 	{ "file", FR_WRITE,
@@ -2665,7 +2663,6 @@ static fr_command_table_t command_table_add_client[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
-
 static fr_command_table_t command_table_add_home_server[] = {
 	{ "file", FR_WRITE,
 	  "add home_server file <filename> - Add new home serverdefinition from <filename>",
@@ -2673,7 +2670,6 @@ static fr_command_table_t command_table_add_home_server[] = {
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
-
 
 static fr_command_table_t command_table_add[] = {
 	{ "client", FR_WRITE,
