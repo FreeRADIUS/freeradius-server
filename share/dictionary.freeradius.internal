@@ -278,6 +278,7 @@ ATTRIBUTE	SSHA2-384-Password			1179	octets
 ATTRIBUTE	SSHA2-512-Password			1180	octets
 
 ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets
+ATTRIBUTE	Home-Server-Name			1193	string
 
 #
 #	Range:	1200-1279
