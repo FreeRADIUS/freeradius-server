@@ -2605,7 +2605,7 @@ static int command_del_home_server(rad_listen_t *listener, int argc, char *argv[
 	}
 
 	if (home_server_delete(argv[0], argv[1]) < 0) {
-		cprintf_error(listener, "Failed deleted home_server %s - %s", fr_strerror());
+		cprintf_error(listener, "Failed deleted home_server %s - %s", argv[1], fr_strerror());
 		return 0;
 	}
 
@@ -2639,7 +2639,7 @@ static fr_command_table_t command_table_del_client[] = {
 static fr_command_table_t command_table_del_home_server[] = {
 	{ "dynamic", FR_WRITE,
 	  "del home_server dynamic <name> [auth|acct|coa] - Delete a dynamically created home_server",
-	  command_del_client, NULL },
+	  command_del_home_server, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
