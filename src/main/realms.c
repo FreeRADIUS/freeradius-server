@@ -2312,6 +2312,7 @@ int realms_init(CONF_SECTION *config)
 			if (home_server_afrom_file(dp->d_name) < 0) {
 				ERROR("Failed reading home_server from %s - %s",
 				      dp->d_name, fr_strerror());
+				closedir(dir);
 				goto error;
 			}
 		}
