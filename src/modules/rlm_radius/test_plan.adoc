@@ -82,7 +82,7 @@ NAS-Port-ID = 0
 Message-Authenticator = 0x
 ```
 
-=== Disconnect-Message
+=== Disconnect-Request
 ```
 User-Name = "testuser"
 Acct-Session-ID = "0123456789"
@@ -382,7 +382,7 @@ You will need to use different subrequest types to produce the different packet 
 * Send a <<CoA-Request>>
 ** Verify packet is well formed.
 ** Verify Message-Authenticator attribue is present.
-* Send a <<Disconnect-Message>>
+* Send a <<Disconnect-Request>>
 ** Verify packet is well formed.
 ** Verify Message-Authenticator attribue is present.
 
