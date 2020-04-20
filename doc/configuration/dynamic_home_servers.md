@@ -159,7 +159,7 @@ authorize {
 			case "1" {
 				# Proxy to this one particular home server
 				update control {
-					Home-Server->Name := "%{1}
+					Home-Server-Name := "%{1}
 				}
 			}
 
