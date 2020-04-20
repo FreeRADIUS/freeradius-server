@@ -371,6 +371,7 @@ struct fr_tls_server_conf_t {
 	bool		check_crl;
 	bool		check_all_crl;
 	bool		allow_expired_crl;
+	bool		use_deltas;
 	char const	*check_cert_cn;
 	char const	*cipher_list;
 	bool		cipher_server_preference;

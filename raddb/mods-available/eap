@@ -313,7 +313,6 @@ eap {
 		#
 	#	include_length = yes
 
-
 		#  Check the Certificate Revocation List
 		#
 		#  1) Copy CA certificates and CRLs to same directory.
@@ -322,6 +321,12 @@ eap {
 		#  3) uncomment the lines below.
 		#  5) Restart radiusd
 	#	check_crl = yes
+
+		#
+		#  If `use_deltas` is set, the delta CRLs are used to determine
+		#  certificate status. If not set deltas are ignored.
+		#
+#		use_deltas = yes
 
 		# Check if intermediate CAs have been revoked.
 	#	check_all_crl = yes

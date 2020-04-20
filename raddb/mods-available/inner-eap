@@ -84,7 +84,7 @@ eap inner-eap {
 		#  outer EAP-TLS protocol.
 		#
 		#  Try values and see if they work...
-	#	fragment_size = 1024
+#		fragment_size = 1024
 
 		#  Other needful things
 		dh_file = ${certdir}/dh
@@ -92,8 +92,15 @@ eap inner-eap {
 
 		#  CRL and OCSP things go here.  See the main "eap"
 		#  file for details.
-	#	check_crl = yes
-	#	ca_path = /path/to/directory/with/ca_certs/and/crls/
+#		check_crl = yes
+
+		#
+		#  If `use_deltas` is set, the delta CRLs are used to determine
+		#  certificate status. If not set deltas are ignored.
+		#
+#		use_deltas = yes
+
+#		ca_path = /path/to/directory/with/ca_certs/and/crls/
 
 		# Accept an expired Certificate Revocation List
 		#

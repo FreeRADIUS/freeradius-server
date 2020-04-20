@@ -201,6 +201,13 @@ listen {
 		#  3) uncomment the line below.
 		#  5) Restart radiusd
 	#	check_crl = yes
+
+		#
+		#  If `use_deltas` is set, the delta CRLs are used to determine
+		#  certificate status. If not set deltas are ignored.
+		#
+#		use_deltas = yes
+
 		ca_path = ${cadir}
 
 	       #
@@ -516,6 +523,13 @@ home_server tls {
 		#  3) uncomment the line below.
 		#  5) Restart radiusd
 	#	check_crl = yes
+
+		#
+		#  If `use_deltas` is set, the delta CRLs are used to determine
+		#  certificate status. If not set deltas are ignored.
+		#
+#		use_deltas = yes
+
 		ca_path = ${cadir}
 
 	       #

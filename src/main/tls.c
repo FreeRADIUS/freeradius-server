@@ -1256,6 +1256,9 @@ static CONF_PARSER tls_server_config[] = {
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
 	{ "check_all_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_all_crl), "no" },
 #endif
+#ifdef X509_V_FLAG_USE_DELTAS
+	{ "use_deltas", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, use_deltas), "no" },
+#endif
 	{ "allow_expired_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, allow_expired_crl), NULL },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
@@ -3360,8 +3363,10 @@ post_ca:
 		X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
 
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
-		if (conf->check_all_crl)
-			X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK_ALL);
+		if (conf->check_all_crl) X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK_ALL);
+#endif
+#ifdef X509_V_FLAG_USE_DELTAS
+		if (conf->use_deltas) X509_STORE_set_flags(certstore, X509_V_FLAG_USE_DELTAS);
 #endif
 	}
 #endif

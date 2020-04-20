@@ -4,6 +4,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Abfab-tls updates from Alejandro Perez.
 	* Allow CoA and Disconnect messages over TLS sockets.
 	  Fixes #3356.
+	* Add SSL support for delta CRLs #3390.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
