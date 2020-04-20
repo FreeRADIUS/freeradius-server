@@ -126,6 +126,14 @@ eap inner-eap {
 #		check_crl = yes
 
 		#
+		#  use_deltas::
+		#
+		#  If `use_deltas` is set, the delta CRLs are used to determine
+		#  certificate status. If not set deltas are ignored.
+		#
+#		use_deltas = yes
+
+		#
 		#  ca_path:: See the `eap` module for common configuration explanation.
 		#
 		ca_path = ${cadir}
