@@ -121,7 +121,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 		}
 #endif
 
-#ifdef WITH_TCP
+#ifdef WITH_TLS
 		if (home->tls) {
 			REDEBUG("The replicate module only does UDP - Cannot send to TLS home_server %s", home->name);
 			continue;
