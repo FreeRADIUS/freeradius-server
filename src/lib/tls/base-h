@@ -244,7 +244,6 @@ struct fr_tls_conf_s {
 
 	uint32_t	fragment_size;			//!< Maximum record fragment, or record size.
 	bool		check_crl;			//!< Check certificate revocation lists.
-	bool		use_deltas;			//!< Enable support for delta CRLs.
 	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
 	char const	*check_cert_cn;			//!< Verify cert CN matches the expansion of this string.
 
