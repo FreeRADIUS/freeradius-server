@@ -1,13 +1,17 @@
+TARGET = libfreeradius-make-dlopen.a
+SOURCES = dlopen.c
+
 #
-# Makefile
+#  If we're building this target, then don't try to use it until we know
+#  that building the target succeeds.
 #
-# load $(BUILD_DIR)/lib/.libs/libfreeradius-make-dlopen.so(dlopen_gmk_setup)
+ifneq "$(MAKECMDGOALS)" "$(TARGET)"
+load ${BUILD_DIR}/lib/.libs/libfreeradius-make-dlopen.dylib(dlopen_gmk_setup)
 
-TARGET := libfreeradius-make-dlopen.a
+$(info $(dlopen /home/foo/libcrypto,ASN1_verify,/home/user,/foo,/usr/local/Cellar/openssl@1.1/1.1.1d/lib))
+$(info $(dlsym libcrypto,ASN1_verify))
+$(info $(dlclose libcrypto))
 
-SOURCES := \
-	   dlopen.c
-
-# The called function adds the OS-appropriate extension, so we omit it here.
-# $(info $(dlpath $(BUILD_DIR)/lib/.libs/libfreeradius-make-dlopen))
-# $(info $(dlerror ))
+$(info $(dlopen libfoobar))
+$(info $(dlerror ))
+endif
