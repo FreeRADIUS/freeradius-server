@@ -7,7 +7,9 @@
 # for your environment.
 #
 dotnet {
-	clr_library = /usr/local/share/dotnet/shared/Microsoft.NETCore.App/3.0.0/libcoreclr.dylib
+	clr_root = /usr/local/share/dotnet/shared/Microsoft.NETCore.App/3.0.0
+	clr_library = ${.clr_root}/libcoreclr.dylib
+	assembly_path = /Users/blakeramsdell/Source/OpenSource/freeradius-server/FreeRadius.Example.dll
 
 	assembly = FreeRadius.Example
 	class = FreeRadius.Example.MainClass

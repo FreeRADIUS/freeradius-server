@@ -24,11 +24,13 @@
  * @copyright 1999-2013 The FreeRADIUS Server Project.
  */
 
+#include <dirent.h>
+#include <string.h>
+#include <talloc.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <dlfcn.h>
 #include "coreclrhost.h"
-#include "clrpath.h"
 
 #define DEFAULT_CLR_LIBRARY	"libcoreclr.dylib"
 
@@ -85,7 +87,9 @@ typedef struct rlm_dotnet_t {
 	coreclr_create_delegate_ptr coreclr_create_delegate;
 	coreclr_shutdown_2_ptr coreclr_shutdown_2;
 
+	char const	*clr_root;			//!< Root directory for CLR.
 	char const	*clr_library;		//!< Path to CLR library.
+	char const	*assembly_path;		//!< Path to your assembly.
 
 	dotnet_func_def_t
 	instantiate,
@@ -126,7 +130,9 @@ static const CONF_PARSER module_config[] = {
 
 #undef A
 
+	{ "clr_root", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dotnet_t, clr_root), NULL },
 	{ "clr_library", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dotnet_t, clr_library), DEFAULT_CLR_LIBRARY },
+	{ "assembly_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dotnet_t, assembly_path), NULL },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -181,6 +187,75 @@ static int bind_one_method(rlm_dotnet_t *inst, dotnet_func_def_t *function_defin
 	return rc;
 }
 
+// https://stackoverflow.com/questions/744766/how-to-compare-ends-of-strings-in-c
+static int string_ends_with(char const *str, char const *suffix)
+{
+	if (!str || !suffix)
+		return 0;
+	size_t lenstr = strlen(str);
+	size_t lensuffix = strlen(suffix);
+	if (lensuffix >  lenstr)
+		return 0;
+	return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
+}
+
+#ifdef __APPLE__
+#  define FS_SEPARATOR    "/"
+#  define PATH_DELIMITER  ":"
+#elif defined (WIN32)
+#  define FS_SEPARATOR    "\\"
+#  define PATH_DELIMITER  ";"
+#else
+#  define FS_SEPARATOR    "/"
+#  define PATH_DELIMITER  ":"
+#endif
+
+static char* build_tpa_list(const char* directory)
+{
+	DIR* dir = opendir(directory);
+	struct dirent* entry;
+	char* tpa_list = NULL;
+
+	if (dir == NULL)
+	{
+		// errno is set, perror might be useful
+		return NULL;
+	}
+
+	while ((entry = readdir(dir)) != NULL)
+	{
+		// Check if the file has the right extension
+		if (!string_ends_with(entry->d_name, ".dll"))
+		{
+			continue;
+		}
+
+		// Append the assembly to the list
+		if (tpa_list != NULL)
+		{
+			tpa_list = talloc_strdup_append(tpa_list, PATH_DELIMITER);
+		}
+		tpa_list = talloc_strdup_append(tpa_list, directory);
+		tpa_list = talloc_strdup_append(tpa_list, FS_SEPARATOR);
+		tpa_list = talloc_strdup_append(tpa_list, entry->d_name);
+	}
+
+	(void) closedir(dir);
+
+	return tpa_list;
+}
+
+static char* append_one_tpa(char* tpa, const char* new_tpa)
+{
+	if (new_tpa != NULL)
+	{
+		tpa = talloc_strdup_append(tpa, PATH_DELIMITER);
+		tpa = talloc_strdup_append(tpa, new_tpa);
+	}
+
+	return tpa;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -195,6 +270,7 @@ static int bind_one_method(rlm_dotnet_t *inst, dotnet_func_def_t *function_defin
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_dotnet_t	*inst = instance;
+	char* tpa;
 
 	DEBUG("mod_instantiate");
 	if (bind_dotnet(inst))
@@ -203,11 +279,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return RLM_MODULE_FAIL;
 	}
 
+	tpa = build_tpa_list(inst->clr_root);
+	tpa = append_one_tpa(tpa, inst->assembly_path);
 	const char* propertyKeys[] = {
 		"TRUSTED_PLATFORM_ASSEMBLIES"
 	};
     const char* propertyValues[] = {
-        CLR_PATH
+        tpa
     };
 
 	int hr = inst->coreclr_initialize(
