@@ -114,6 +114,20 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 			continue;
 		}
 
+#ifdef WITH_TCP
+		if (home->proto != IPPROTO_UDP) {
+			REDEBUG("The replicate module only does UDP - Cannot send to TCP home_server %s", home->name);
+			continue;
+		}
+#endif
+
+#ifdef WITH_TCP
+		if (home->tls) {
+			REDEBUG("The replicate module only does UDP - Cannot send to TLS home_server %s", home->name);
+			continue;
+		}
+#endif
+
 		/*
 		 *	For replication to multiple servers we re-use the packet
 		 *	we built here.
