@@ -43,6 +43,40 @@ typedef struct dotnet_func_def {
 	char const	*function_name;		//!< String name of function in class.
 } dotnet_func_def_t;
 
+static struct {
+	char const *name;
+	int  value;
+} radiusd_constants[] = {
+
+#define A(x) { #x, x },
+
+	A(L_DBG)
+	A(L_WARN)
+	A(L_AUTH)
+	A(L_INFO)
+	A(L_ERR)
+	A(L_PROXY)
+	A(L_ACCT)
+	A(L_DBG_WARN)
+	A(L_DBG_ERR)
+	A(L_DBG_WARN_REQ)
+	A(L_DBG_ERR_REQ)
+	A(RLM_MODULE_REJECT)
+	A(RLM_MODULE_FAIL)
+	A(RLM_MODULE_OK)
+	A(RLM_MODULE_HANDLED)
+	A(RLM_MODULE_INVALID)
+	A(RLM_MODULE_USERLOCK)
+	A(RLM_MODULE_NOTFOUND)
+	A(RLM_MODULE_NOOP)
+	A(RLM_MODULE_UPDATED)
+	A(RLM_MODULE_NUMCODES)
+
+#undef A
+
+	{ NULL, 0 },
+};
+
 typedef struct rlm_dotnet_t {
 	void *dylib;
 	void *hostHandle;
