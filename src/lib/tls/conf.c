@@ -144,6 +144,9 @@ CONF_PARSER fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("disable_single_dh_use", FR_TYPE_BOOL, fr_tls_conf_t, disable_single_dh_use) },
 	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_conf_t, check_crl), .dflt = "no" },
+#ifdef X509_V_FLAG_USE_DELTAS
+	{ FR_CONF_OFFSET("use_deltas", FR_TYPE_BOOL, fr_tls_conf_t, use_deltas), .dflt = "no" },
+#endif
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
 	{ FR_CONF_DEPRECATED("check_all_crl", FR_TYPE_BOOL, fr_tls_conf_t, NULL) },
 #endif

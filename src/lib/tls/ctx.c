@@ -748,6 +748,11 @@ post_ca:
 	    		goto error;
 		}
 		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+#ifdef X509_V_FLAG_USE_DELTAS 
+		if (conf->use_deltas) {
+			X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_USE_DELTAS);
+		}
+#endif
 	}
 #endif
 
