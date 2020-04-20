@@ -1,41 +1,40 @@
-#!/bin/bash -e
+#!/bin/sh
 
-TMP_REDIS_DIR='/tmp/redis'
-export PATH="${TMP_REDIS_DIR}:${PATH}"
+set -eu
 
-if [ ! -e "${TMP_REDIS_DIR}" ]; then
-    mkdir -p "${TMP_REDIS_DIR}"
-fi
+TMP_REDIS_DIR="${TMP_REDIS_DIR:-/tmp/redis/cluster}"
 
-if [ ! -e "${TMP_REDIS_DIR}/cluster" ]; then
-    mkdir -p "${TMP_REDIS_DIR}/cluster"
-fi
+mkdir -p "${TMP_REDIS_DIR}"
 
-if [ "$(which redis-server)" = '' ]; then
+redis-server -v >/dev/null 2>/dev/null || {
     echo "Can't find redis-server (sudo apt-get install redis, brew install redis etc...)"
     exit 1
-fi
+}
 
 # The various Redis setup scripts and instances put their data here
-cd "${TMP_REDIS_DIR}/cluster"
+cd "${TMP_REDIS_DIR}"
 
 # Download the latest versions of the cluster test utilities
 # these are only available via the Redis repo, and it seems more sensible to download
 # two short scripts, than to maintain a local copy, or clone the whole repo.
-if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
-    curl https://raw.githubusercontent.com/antirez/redis/unstable/utils/create-cluster/create-cluster > "${TMP_REDIS_DIR}/create-cluster"
-    chmod +x "${TMP_REDIS_DIR}/create-cluster"
-fi
+if [ ! -x create-cluster ]; then
+    curl -f -o create-cluster https://raw.githubusercontent.com/antirez/redis/f95a88d988ffae6901fc186e780c64b747ab5a74/utils/create-cluster/create-cluster
 
-# Fix hardcoded paths in the test script
-sed -ie "s#\$BIN_PATH/redis-cli#echo 'yes' | redis-cli#" "${TMP_REDIS_DIR}/create-cluster"
-sed -ie "s#\$BIN_PATH/redis-server#redis-server#" "${TMP_REDIS_DIR}/create-cluster"
+    # Fix hardcoded paths in the test script
+    sed -i -e '/BIN_PATH=/ d; s#$BIN_PATH/##' create-cluster
+
+    chmod +x create-cluster
+fi
 
 # Again, not needed by travis, but useful for local testing
-if [ -z "$1" ]; then
-    create-cluster start
-    create-cluster create
-    echo "Run \"$0 stop && $0 clean\" to cleanup"
+if [ $# -eq 0 ]; then
+    ./create-cluster stop >/dev/null || true
+    ./create-cluster clean >/dev/null || true
+    ./create-cluster start >/dev/null </dev/null
+    echo yes | ./create-cluster create >/dev/null
+    echo "Run (inside '${TMP_REDIS_DIR}') \"$0 stop && $0 clean\" to cleanup"
 else
-    create-cluster $1
+    ./create-cluster "$@"
 fi
+
+exit 0
