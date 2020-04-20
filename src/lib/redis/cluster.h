@@ -76,6 +76,12 @@ typedef enum {
 extern fr_table_num_sorted_t const fr_redis_cluster_rcodes_table[];
 extern size_t fr_redis_cluster_rcodes_table_len;
 
+typedef struct {
+	const char		*file;
+	char			*script;
+	char			*digest;
+} redis_ippool_lua_script_t;
+
 fr_redis_cluster_rcode_t fr_redis_cluster_remap(REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn);
 
 /*
@@ -135,6 +141,18 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   char const *log_prefix,
 					   char const *trigger_prefix,
 					   VALUE_PAIR *trigger_args);
+
+
+/*
+ *      Function helpers to handle Lua script loading into Redis
+ */
+int fr_redis_ippool_loadscript_buf(TALLOC_CTX *ctx, redis_ippool_lua_script_t const *preamble, redis_ippool_lua_script_t *script);
+int fr_redis_ippool_loadscript(TALLOC_CTX *ctx, redis_ippool_lua_script_t const *preamble, redis_ippool_lua_script_t *script);
+
+fr_redis_rcode_t fr_redis_script(redisReply **out, REQUEST *request, fr_redis_cluster_t *cluster,
+				 uint8_t const *key, size_t key_len,
+				 uint32_t wait_num, fr_time_delta_t wait_timeout,
+				 char const *script, char const *cmd, ...);
 
 #ifdef __cplusplus
 }

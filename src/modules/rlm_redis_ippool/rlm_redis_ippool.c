@@ -58,46 +58,51 @@ RCSID("$Id$")
  *
  */
 typedef struct {
-	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
-						//!< Must be first field in this struct.
+	fr_redis_conf_t			conf;		//!< Connection parameters for the Redis server.
+							//!< Must be first field in this struct.
 
-	char const		*name;		//!< Instance name.
+	char const			*name;		//!< Instance name.
 
-	vp_tmpl_t		*pool_name;	//!< Name of the pool we're allocating IP addresses from.
+	vp_tmpl_t			*pool_name;	//!< Name of the pool we're allocating IP addresses from.
 
-	vp_tmpl_t		*offer_time;	//!< How long we should reserve a lease for during
-						//!< the pre-allocation stage (typically responding
-						//!< to DHCP discover).
-	vp_tmpl_t		*lease_time;	//!< How long an IP address should be allocated for.
+	vp_tmpl_t			*offer_time;	//!< How long we should reserve a lease for during
+							//!< the pre-allocation stage (typically responding
+							//!< to DHCP discover).
+	vp_tmpl_t			*lease_time;	//!< How long an IP address should be allocated for.
 
-	uint32_t		wait_num;	//!< How many slaves we want to acknowledge allocations
-						//!< or updates.
+	uint32_t			wait_num;	//!< How many slaves we want to acknowledge allocations
+							//!< or updates.
 
-	fr_time_delta_t		wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
+	fr_time_delta_t			wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
 
-	vp_tmpl_t		*device_id;	//!< Unique device identifier.  Could be mac-address
-						//!< or a combination of User-Name and something
-						//!< unique to the device.
+	vp_tmpl_t			*device_id;	//!< Unique device identifier.  Could be mac-address
+							//!< or a combination of User-Name and something
+							//!< unique to the device.
 
-	vp_tmpl_t		*gateway_id;	//!< Gateway identifier, usually
-						//!< NAS-Identifier or the actual Option 82 gateway.
-						//!< Used for bulk lease cleanups.
+	vp_tmpl_t			*gateway_id;	//!< Gateway identifier, usually
+							//!< NAS-Identifier or the actual Option 82 gateway.
+							//!< Used for bulk lease cleanups.
 
-	vp_tmpl_t		*requested_address;		//!< Attribute to read the IP for renewal from.
+	vp_tmpl_t			*requested_address;		//!< Attribute to read the IP for renewal from.
 
-	vp_tmpl_t		*allocated_address_attr;	//!< IP attribute and destination.
+	vp_tmpl_t			*allocated_address_attr;	//!< IP attribute and destination.
 
-	vp_tmpl_t		*range_attr;	//!< Attribute to write the range ID to.
+	vp_tmpl_t			*range_attr;	//!< Attribute to write the range ID to.
 
-	vp_tmpl_t		*expiry_attr;	//!< Time at which the lease will expire.
+	vp_tmpl_t			*expiry_attr;	//!< Time at which the lease will expire.
 
-	bool			ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
-						//!< for renew operations.
+	bool				ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
+							//!< for renew operations.
 
-	bool			copy_on_update; //!< Copy the address provided by ip_address to the
-						//!< allocated_address_attr if updates are successful.
+	bool				copy_on_update; //!< Copy the address provided by ip_address to the
+							//!< allocated_address_attr if updates are successful.
 
-	fr_redis_cluster_t	*cluster;	//!< Redis cluster.
+	const char			*lua_preamble_file;
+	redis_ippool_lua_script_t	lua_alloc;
+	redis_ippool_lua_script_t	lua_release;
+	redis_ippool_lua_script_t	lua_update;
+
+	fr_redis_cluster_t		*cluster;	//!< Redis cluster.
 } rlm_redis_ippool_t;
 
 static CONF_PARSER redis_config[] = {
@@ -128,6 +133,11 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("ipv4_integer", FR_TYPE_BOOL, rlm_redis_ippool_t, ipv4_integer) },
 	{ FR_CONF_OFFSET("copy_on_update", FR_TYPE_BOOL, rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },
+
+	{ FR_CONF_OFFSET("lua_preamble", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_redis_ippool_t, lua_preamble_file), .dflt = "${modconfdir}/redis_ippool/preamble.lua" },
+	{ FR_CONF_OFFSET("lua_alloc", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_redis_ippool_t, lua_alloc.file), .dflt = "${modconfdir}/redis_ippool/alloc.lua" },
+	{ FR_CONF_OFFSET("lua_release", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_redis_ippool_t, lua_release.file), .dflt = "${modconfdir}/redis_ippool/release.lua" },
+	{ FR_CONF_OFFSET("lua_update", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_redis_ippool_t, lua_update.file), .dflt = "${modconfdir}/redis_ippool/update.lua" },
 
 	/*
 	 *	Split out to allow conversion to universal ippool module with
@@ -168,200 +178,6 @@ fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
 #endif
 	{ NULL }
 };
-
-#define EOL "\n"
-
-/** Lua script for allocating new leases
- *
- * - KEYS[1] The pool name.
- * - ARGV[1] Wall time (seconds since epoch).
- * - ARGV[2] Expires in (seconds).
- * - ARGV[3] Device identifier (administratively configured).
- * - ARGV[4] (optional) Gateway identifier.
- *
- * Returns @verbatim { <rcode>[, <ip>][, <range>][, <lease time>][, <counter>] } @endverbatim
- * - IPPOOL_RCODE_SUCCESS lease updated..
- * - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
- */
-static char lua_alloc_cmd[] =
-	"local ip" EOL											/* 1 */
-	"local exists" EOL										/* 2 */
-
-	"local pool_key" EOL										/* 3 */
-	"local address_key" EOL										/* 4 */
-	"local device_key" EOL										/* 5 */
-
-	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL					/* 6 */
-	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[3]" EOL			/* 7 */
-
-	/*
-	 *	Check to see if the client already has a lease,
-	 *	and if it does return that.
-	 *
-	 *	The additional sanity checks are to allow for the record
-	 *	of device/ip binding to persist for longer than the lease.
-	 */
-	"exists = redis.call('GET', device_key);" EOL							/* 8 */
-	"if exists then" EOL										/* 9 */
-	"  local expires_in = tonumber(redis.call('ZSCORE', pool_key, exists) - ARGV[1])" EOL		/* 10 */
-	"  if expires_in > 0 then" EOL									/* 11 */
-	"    ip = redis.call('HMGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists, 'device', 'range', 'counter')" EOL	/* 12 */
-	"    if ip and (ip[1] == ARGV[3]) then" EOL							/* 13 */
-//	"      if expires_in < ARGV[2] then" EOL							/* 14 */
-//	"        redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL			/* 15 */
-//	"        expires_in = ARGV[2]" EOL								/* 16 */
-//	"      end" EOL											/* 17 */
-	"      return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 18 */
-	"    end" EOL											/* 19 */
-	"  end" EOL											/* 20 */
-	"end" EOL											/* 21 */
-
-	/*
-	 *	Else, get the IP address which expired the longest time ago.
-	 */
-	"ip = redis.call('ZREVRANGE', pool_key, -1, -1, 'WITHSCORES')" EOL				/* 22 */
-	"if not ip or not ip[1] then" EOL								/* 23 */
-	"  return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 24 */
-	"end" EOL											/* 25 */
-	"if ip[2] >= ARGV[1] then" EOL									/* 26 */
-	"  return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 27 */
-	"end" EOL											/* 28 */
-	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL				/* 29 */
-
-	/*
-	 *	Set the device/gateway keys
-	 */
-	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ip[1]" EOL			/* 30 */
-	"redis.call('HMSET', address_key, 'device', ARGV[3], 'gateway', ARGV[4])" EOL			/* 31 */
-	"redis.call('SET', device_key, ip[1])" EOL							/* 32 */
-	"redis.call('EXPIRE', device_key, ARGV[2])" EOL							/* 33 */
-	"return { " EOL											/* 34 */
-	"  " STRINGIFY(_IPPOOL_RCODE_SUCCESS) "," EOL							/* 35 */
-	"  ip[1], " EOL											/* 36 */
-	"  redis.call('HGET', address_key, 'range'), " EOL						/* 37 */
-	"  tonumber(ARGV[2]), " EOL									/* 38 */
-	"  redis.call('HINCRBY', address_key, 'counter', 1)" EOL					/* 39 */
-	"}" EOL;											/* 40 */
-static char lua_alloc_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
-
-/** Lua script for updating leases
- *
- * - KEYS[1] The pool name.
- * - ARGV[1] Wall time (seconds since epoch).
- * - ARGV[2] Expires in (seconds).
- * - ARGV[3] IP address to update.
- * - ARGV[4] Device identifier.
- * - ARGV[5] (optional) Gateway identifier.
- *
- * Returns @verbatim array { <rcode>[, <range>] } @endverbatim
- * - IPPOOL_RCODE_SUCCESS lease updated..
- * - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
- * - IPPOOL_RCODE_EXPIRED lease has already expired.
- * - IPPOOL_RCODE_DEVICE_MISMATCH lease was allocated to a different client.
- */
-static char lua_update_cmd[] =
-	"local ret" EOL									/* 1 */
-	"local found" EOL								/* 2 */
-
-	"local pool_key" EOL								/* 3 */
-	"local address_key" EOL								/* 4 */
-	"local device_key" EOL								/* 5 */
-
-	/*
-	 *	We either need to know that the IP was last allocated to the
-	 *	same device, or that the lease on the IP has NOT expired.
-	 */
-	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ARGV[3]" EOL	/* 6 */
-	"found = redis.call('HMGET', address_key, 'range', 'device', 'gateway', 'counter' )" EOL	/* 7 */
-	/*
-	 *	Range may be nil (if not used), so we use the device key
-	 */
-	"if not found[2] then" EOL							/* 8 */
-	"  return {" STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL				/* 9 */
-	"end" EOL									/* 10 */
-	"if found[2] ~= ARGV[4] then" EOL						/* 11 */
-	"  return {" STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) ", found[2]}" EOL		/* 12 */
-	"end" EOL									/* 13 */
-
-	/*
-	 *	Update the expiry time
-	 */
-	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 14 */
-	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ARGV[3])" EOL		/* 15 */
-
-	/*
-	 *	The device key should usually exist, but
-	 *	theoretically, if we were right on the cusp
-	 *	of a lease being expired, it may have been
-	 *	removed.
-	 */
-	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[4]" EOL	/* 16 */
-	"if redis.call('EXPIRE', device_key, ARGV[2]) == 0 then" EOL			/* 17 */
-	"  redis.call('SET', device_key, ARGV[3])" EOL					/* 18 */
-	"  redis.call('EXPIRE', device_key, ARGV[2])" EOL				/* 19 */
-	"end" EOL									/* 20 */
-
-	/*
-	 *	Update the gateway address
-	 */
-	"if ARGV[5] ~= found[3] then" EOL						/* 21 */
-	"  redis.call('HSET', address_key, 'gateway', ARGV[5])" EOL			/* 22 */
-	"end" EOL									/* 23 */
-	"return { " STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", found[1], found[4] }"EOL;	/* 24 */
-static char lua_update_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
-
-/** Lua script for releasing leases
- *
- * - KEYS[1] The pool name.
- * - ARGV[1] Wall time (seconds since epoch).
- * - ARGV[2] IP address to release.
- * - ARGV[3] Client identifier.
- *
- * Sets the expiry time to be NOW() - 1 to maximise time between
- * IP address allocations.
- *
- * Returns @verbatim array { <rcode>[, <counter>] } @endverbatim
- * - IPPOOL_RCODE_SUCCESS lease updated..
- * - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
- * - IPPOOL_RCODE_DEVICE_MISMATCH lease was allocated to a different client..
- */
-static char lua_release_cmd[] =
-	"local ret" EOL									/* 1 */
-	"local found" EOL								/* 2 */
-
-	"local pool_key" EOL								/* 3 */
-	"local address_key" EOL								/* 4 */
-	"local device_key" EOL								/* 5 */
-
-	/*
-	 *	Check that the device releasing was the one
-	 *	the IP address is allocated to.
-	 */
-	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ARGV[2]" EOL	/* 6 */
-	"found = redis.call('HGET', address_key, 'device')" EOL				/* 7 */
-	"if not found then" EOL								/* 8 */
-	"  return { " STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL			/* 9 */
-	"end" EOL									/* 11 */
-	"if found and found ~= ARGV[3] then" EOL					/* 12 */
-	"  return { " STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) ", found[2] }" EOL	/* 13 */
-	"end" EOL									/* 14 */
-
-	/*
-	 *	Set expiry time to now() - 1
-	 */
-	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 15 */
-	"redis.call('ZADD', pool_key, 'XX', ARGV[1] - 1, ARGV[2])" EOL			/* 16 */
-
-	/*
-	 *	Remove the association between the device and a lease
-	 */
-	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[3]" EOL	/* 17 */
-	"redis.call('DEL', device_key)" EOL						/* 18 */
-	"return { " EOL
-	"  " STRINGIFY(_IPPOOL_RCODE_SUCCESS) "," EOL					/* 19 */
-	"  redis.call('HINCRBY', address_key, 'counter', 1) - 1" EOL			/* 20 */
-	"}";										/* 21 */
-static char lua_release_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
 
 /** Check the requisite number of slaves replicated the lease info
  *
@@ -445,160 +261,6 @@ static void ippool_action_print(REQUEST *request, ippool_action_t action,
 	talloc_free(gateway_str);
 }
 
-/** Execute a script against Redis cluster
- *
- * Handles uploading the script to the server if required.
- *
- * @note All replies will be freed on error.
- *
- * @param[out] out		Where to write Redis reply object resulting from the command.
- * @param[in] request		The current request.
- * @param[in] cluster		configuration.
- * @param[in] key		to use to determine the cluster node.
- * @param[in] key_len		length of the key.
- * @param[in] wait_num		If > 0 wait until this many slaves have replicated the data
- *				from the last command.
- * @param[in] wait_timeout	How long to wait for slaves.
- * @param[in] digest		of script.
- * @param[in] script		to upload.
- * @param[in] cmd		EVALSHA command to execute.
- * @param[in] ...		Arguments for the eval command.
- * @return status of the command.
- */
-static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_redis_cluster_t *cluster,
-				      uint8_t const *key, size_t key_len,
-				      uint32_t wait_num, fr_time_delta_t wait_timeout,
-				      char const digest[], char const *script,
-				      char const *cmd, ...)
-{
-	fr_redis_conn_t			*conn;
-	redisReply			*replies[5];	/* Must be equal to the maximum number of pipelined commands */
-	size_t				reply_cnt = 0, i;
-
-	fr_redis_cluster_state_t	state;
-	fr_redis_rcode_t		s_ret, status;
-	unsigned int			pipelined = 0;
-
-	va_list				ap;
-
-	*out = NULL;
-
-#ifndef NDEBUG
-	memset(replies, 0, sizeof(replies));
-#endif
-
-	va_start(ap, cmd);
-
-	for (s_ret = fr_redis_cluster_state_init(&state, &conn, cluster, request, key, key_len, false);
-	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
-	     s_ret = fr_redis_cluster_state_next(&state, &conn, cluster, request, status, &replies[0])) {
-	     	va_list	copy;
-
-	     	RDEBUG3("Calling script 0x%s", digest);
-	     	va_copy(copy, ap);	/* copy or segv */
-		redisvAppendCommand(conn->handle, cmd, copy);
-		va_end(copy);
-		pipelined = 1;
-		if (wait_num) {
-			redisAppendCommand(conn->handle, "WAIT %i %i", wait_num, fr_time_delta_to_msec(wait_timeout));
-			pipelined++;
-		}
-		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
-						     replies, NUM_ELEMENTS(replies),
-						     conn);
-		if (status != REDIS_RCODE_NO_SCRIPT) continue;
-
-		/*
-		 *	Clear out the existing reply
-		 */
-		fr_redis_pipeline_free(replies, reply_cnt);
-
-		/*
-		 *	Last command failed with NOSCRIPT, this means
-		 *	we have to send the Lua script up to the node
-		 *	so it can be cached.
-		 */
-	     	RDEBUG3("Loading script 0x%s", digest);
-		redisAppendCommand(conn->handle, "MULTI");
-		redisAppendCommand(conn->handle, "SCRIPT LOAD %s", script);
-	     	va_copy(copy, ap);	/* copy or segv */
-		redisvAppendCommand(conn->handle, cmd, copy);
-		va_end(copy);
-		redisAppendCommand(conn->handle, "EXEC");
-		pipelined = 4;
-		if (wait_num) {
-			redisAppendCommand(conn->handle, "WAIT %i %i", wait_num, wait_timeout);
-			pipelined++;
-		}
-
-		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
-						     replies, NUM_ELEMENTS(replies),
-						     conn);
-		if (status == REDIS_RCODE_SUCCESS) {
-			if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) {
-				fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
-			}
-
-			if (replies[3]->type != REDIS_REPLY_ARRAY) {
-				REDEBUG("Bad response to EXEC, expected array got %s",
-					fr_table_str_by_value(redis_reply_types, replies[3]->type, "<UNKNOWN>"));
-			error:
-				fr_redis_pipeline_free(replies, reply_cnt);
-				status = REDIS_RCODE_ERROR;
-				goto finish;
-			}
-			if (replies[3]->elements != 2) {
-				REDEBUG("Bad response to EXEC, expected 2 result elements, got %zu",
-					replies[3]->elements);
-				goto error;
-			}
-			if (replies[3]->element[0]->type != REDIS_REPLY_STRING) {
-				REDEBUG("Bad response to SCRIPT LOAD, expected string got %s",
-					fr_table_str_by_value(redis_reply_types, replies[3]->element[0]->type, "<UNKNOWN>"));
-				goto error;
-			}
-			if (strcmp(replies[3]->element[0]->str, digest) != 0) {
-				RWDEBUG("Incorrect SHA1 from SCRIPT LOAD, expected %s, got %s",
-					digest, replies[3]->element[0]->str);
-				goto error;
-			}
-		}
-	}
-	if (s_ret != REDIS_RCODE_SUCCESS) goto error;
-
-	switch (reply_cnt) {
-	case 2:	/* EVALSHA with wait */
-		if (ippool_wait_check(request, wait_num, replies[1]) < 0) goto error;
-		fr_redis_reply_free(&replies[1]);	/* Free the wait response */
-		break;
-
-	case 1:	/* EVALSHA */
-		*out = replies[0];
-		break;
-
-	case 5: /* LOADSCRIPT + EVALSHA + WAIT */
-		if (ippool_wait_check(request, wait_num, replies[4]) < 0) goto error;
-		fr_redis_reply_free(&replies[4]);	/* Free the wait response */
-		FALL_THROUGH;
-
-	case 4: /* LOADSCRIPT + EVALSHA */
-		fr_redis_reply_free(&replies[2]);	/* Free the queued cmd response*/
-		fr_redis_reply_free(&replies[1]);	/* Free the queued script load response */
-		fr_redis_reply_free(&replies[0]);	/* Free the queued multi response */
-		*out = replies[3]->element[1];
-		replies[3]->element[1] = NULL;		/* Prevent double free */
-		fr_redis_reply_free(&replies[3]);	/* This works because hiredis checks for NULL elements */
-		break;
-
-	case 0:
-		break;
-	}
-
-finish:
-	va_end(ap);
-	return s_ret;
-}
-
 /** Allocate a new IP address from a pool
  *
  */
@@ -624,12 +286,12 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	 */
 	if (!gateway_id) gateway_id = (uint8_t const *)"";
 
-	status = ippool_script(&reply, request, inst->cluster,
+	status = fr_redis_script(&reply, request, inst->cluster,
 			       key_prefix, key_prefix_len,
 			       inst->wait_num, inst->wait_timeout,
-			       lua_alloc_digest, lua_alloc_cmd,
-	 		       "EVALSHA %s 1 %b %u %u %b %b",
-	 		       lua_alloc_digest,
+			       inst->lua_alloc.script,
+			       "EVALSHA %s 1 %b %u %u %b %b",
+			       inst->lua_alloc.digest,
 			       key_prefix, key_prefix_len,
 			       (unsigned int)now.tv_sec, expires,
 			       device_id, device_id_len,
@@ -820,12 +482,12 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	if (!gateway_id) gateway_id = (uint8_t const *)"";
 
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
-		status = ippool_script(&reply, request, inst->cluster,
+		status = fr_redis_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
 				       inst->wait_num, inst->wait_timeout,
-				       lua_update_digest, lua_update_cmd,
+				       inst->lua_update.script,
 				       "EVALSHA %s 1 %b %u %u %u %b %b",
-				       lua_update_digest,
+				       inst->lua_update.digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec, expires,
 				       htonl(ip->addr.v4.s_addr),
@@ -835,12 +497,12 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
-		status = ippool_script(&reply, request, inst->cluster,
+		status = fr_redis_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
 				       inst->wait_num, inst->wait_timeout,
-				       lua_update_digest, lua_update_cmd,
+				       inst->lua_update.script,
 				       "EVALSHA %s 1 %b %u %u %s %b %b",
-				       lua_update_digest,
+				       inst->lua_update.digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec, expires,
 				       ip_buff,
@@ -954,12 +616,12 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 	if (!device_id) device_id = (uint8_t const *)"";
 
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
-		status = ippool_script(&reply, request, inst->cluster,
+		status = fr_redis_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
 				       inst->wait_num, inst->wait_timeout,
-				       lua_release_digest, lua_release_cmd,
+				       inst->lua_release.script,
 				       "EVALSHA %s 1 %b %u %u %b",
-				       lua_release_digest,
+				       inst->lua_release.digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec,
 				       htonl(ip->addr.v4.s_addr),
@@ -968,12 +630,12 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
-		status = ippool_script(&reply, request, inst->cluster,
+		status = fr_redis_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
 				       inst->wait_num, inst->wait_timeout,
-				       lua_release_digest, lua_release_cmd,
+				       inst->lua_release.script,
 				       "EVALSHA %s 1 %b %u %s %b",
-				       lua_release_digest,
+				       inst->lua_release.digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec,
 				       ip_buff,
@@ -1338,7 +1000,6 @@ run:
 
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	static bool			done_hash = false;
 	CONF_SECTION			*subcs = cf_section_find(conf, "redis", NULL);
 
 	rlm_redis_ippool_t		*inst = instance;
@@ -1347,35 +1008,27 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	fr_assert(subcs);
 
 	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, true, NULL, NULL, NULL);
-	if (!inst->cluster) return -1;
+	if (!inst->cluster) goto err;
 
 	if (!fr_redis_cluster_min_version(inst->cluster, "3.0.2")) {
 		PERROR("Cluster error");
-		return -1;
+		goto err;
 	}
 
-	/*
-	 *	Pre-Compute the SHA1 hashes of the Lua scripts
-	 */
-	if (!done_hash) {
-		fr_sha1_ctx	sha1_ctx;
-		uint8_t		digest[SHA1_DIGEST_LENGTH];
+	redis_ippool_lua_script_t lua_preamble = {
+		.file   = inst->lua_preamble_file,
+		.script = NULL
+	};
 
-		fr_sha1_init(&sha1_ctx);
-		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_alloc_cmd, sizeof(lua_alloc_cmd) - 1);
-		fr_sha1_final(digest, &sha1_ctx);
-		fr_bin2hex(lua_alloc_digest, digest, sizeof(digest));
+	if (fr_redis_ippool_loadscript_buf(conf, NULL, &lua_preamble) == -1)
+		goto err;
 
-		fr_sha1_init(&sha1_ctx);
-		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_update_cmd, sizeof(lua_update_cmd) - 1);
-		fr_sha1_final(digest, &sha1_ctx);
-		fr_bin2hex(lua_update_digest, digest, sizeof(digest));
-
-		fr_sha1_init(&sha1_ctx);
-		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_release_cmd, sizeof(lua_release_cmd) - 1);
-		fr_sha1_final(digest, &sha1_ctx);
-		fr_bin2hex(lua_release_digest, digest, sizeof(digest));
-	}
+	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &inst->lua_alloc))
+		goto err2;
+	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &inst->lua_update))
+		goto err3;
+	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &inst->lua_release))
+		goto err4;
 
 	/*
 	 *	If we don't have a separate time specifically for offers
@@ -1383,7 +1036,18 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	if (!inst->offer_time) inst->offer_time = inst->lease_time;
 
+	talloc_free(lua_preamble.script);
+
 	return 0;
+
+err4:
+	talloc_free(inst->lua_update.script);
+err3:
+	talloc_free(inst->lua_alloc.script);
+err2:
+	talloc_free(lua_preamble.script);
+err:
+	return -1;
 }
 
 static int mod_load(void)

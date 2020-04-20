@@ -153,9 +153,13 @@
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 
+#include <sys/stat.h>
+
 #include "base.h"
 #include "cluster.h"
 #include "crc16.h"
+
+#define SCRIPT_MAX		(1048576 * 10)
 
 #define KEY_SLOTS		16384			//!< Maximum number of keyslots (should not change).
 
@@ -2523,4 +2527,283 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	for (s = 0; s < KEY_SLOTS; s++) cluster->key_slot[s].master = (s % (uint16_t) num_nodes) + 1;
 
 	return cluster;
+}
+
+int fr_redis_ippool_loadscript_buf(TALLOC_CTX *ctx, redis_ippool_lua_script_t const *preamble, redis_ippool_lua_script_t *script)
+{
+	FILE		*f;
+	struct stat	finfo;
+	int		len;
+	int		preamble_len;
+	char		*pos;
+
+	DEBUG2("Reading file %s", script->file);
+
+	preamble_len = preamble ? talloc_array_length(preamble->script) : 0;
+
+	f = fopen(script->file, "r");
+	if (!f) {
+		ERROR("Failed opening Redis Lua file \"%s\": %s", script->file,
+		       fr_syserror(errno));
+		goto err;
+	}
+
+	if (fstat(fileno(f), &finfo) < 0) {
+		ERROR("Failed stating Redis Lua file \"%s\": %s", script->file,
+		       fr_syserror(errno));
+		goto err2;
+	}
+
+	if (finfo.st_size > SCRIPT_MAX) {
+		ERROR("Size of Redis Lua (%zu) file (%s) exceeds limit (%uk)",
+		       (size_t) finfo.st_size / 1024, script->file, SCRIPT_MAX / 1024);
+		goto err2;
+	}
+
+	MEM(script->script = talloc_realloc(ctx, script->script, char, preamble_len + finfo.st_size + 1));
+	talloc_set_name_const(script->script, script->file);
+
+	pos = script->script;
+	if (preamble) {
+		memcpy(pos, preamble->script, preamble_len - 1);
+		pos += preamble_len - 1;
+
+		*pos = '\n';
+		pos++;
+	}
+	len = fread(pos, sizeof(char), finfo.st_size, f);
+	if (len != finfo.st_size) {
+		ERROR("Error reading Redis Lua file (%s): %s", script->file, fr_syserror(errno));
+		goto err3;
+	} else if (!len) {
+		if (ferror(f)) {
+			ERROR("Error reading Redis Lua file (%s): %s", script->file, fr_syserror(errno));
+			goto err3;
+		}
+
+		ERROR("Empty Redis Lua file: %s", script->file);
+		goto err3;
+	}
+	pos += finfo.st_size;
+	*pos = '\0';
+
+	fclose(f);
+
+	return len;
+err3:
+	talloc_free(script->script);
+err2:
+	fclose(f);
+err:
+	return -1;
+}
+
+int fr_redis_ippool_loadscript(TALLOC_CTX *ctx, redis_ippool_lua_script_t const *preamble, redis_ippool_lua_script_t *script)
+{
+	int		len;
+	fr_sha1_ctx	sha1_ctx;
+	uint8_t		digest_bin[SHA1_DIGEST_LENGTH];
+
+	if ((len = fr_redis_ippool_loadscript_buf(ctx, preamble, script)) == -1)
+		return -1;
+
+	MEM(script->digest = talloc_realloc(ctx, script->digest, char, 2 * SHA1_DIGEST_LENGTH + 1));
+	talloc_set_name_const(script->digest, script->file);
+
+	fr_sha1_init(&sha1_ctx);
+	fr_sha1_update(&sha1_ctx, (uint8_t const *)script->script, talloc_array_length(script->script) - 1);
+	fr_sha1_final(digest_bin, &sha1_ctx);
+	fr_bin2hex(script->digest, digest_bin, sizeof(digest_bin));
+
+	return 0;
+}
+
+/** Check the requisite number of slaves replicated the lease info
+ *
+ * @param request The current request.
+ * @param wait_num Number of slaves required.
+ * @param reply we got from the server.
+ * @return
+ *     - 0 if enough slaves replicated the data.
+ *     - -1 if too few slaves replicated the data, or another error.
+ */
+static inline int redis_ippool_wait_check(REQUEST *request, uint32_t wait_num, redisReply *reply)
+{
+	if (!wait_num) return 0;
+
+	if (reply->type != REDIS_REPLY_INTEGER) {
+		REDEBUG("WAIT result is wrong type, expected integer got %s",
+			 fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
+		return -1;
+	}
+	if (reply->integer < wait_num) {
+		REDEBUG("Too few slaves acknowledged allocation, needed %i, got %lli",
+			 wait_num, reply->integer);
+		return -1;
+	}
+	return 0;
+}
+
+/** Execute a script against Redis cluster
+ *
+ * Handles uploading the script to the server if required.
+ *
+ * @note All replies will be freed on error.
+ *
+ * @param[out] out		Where to write Redis reply object resulting from the command.
+ * @param[in] request		The current request.
+ * @param[in] cluster		configuration.
+ * @param[in] key		to use to determine the cluster node.
+ * @param[in] key_len		length of the key.
+ * @param[in] wait_num		If > 0 wait until this many slaves have replicated the data
+ *				from the last command.
+ * @param[in] wait_timeout	How long to wait for slaves.
+ * @param[in] script		to upload.
+ * @param[in] cmd		EVALSHA command to execute.
+ * @param[in] ...		Arguments for the eval command (first argument must be digest).
+ * @return status of the command.
+ */
+fr_redis_rcode_t fr_redis_script(redisReply **out, REQUEST *request, fr_redis_cluster_t *cluster,
+				      uint8_t const *key, size_t key_len,
+				      uint32_t wait_num, fr_time_delta_t wait_timeout,
+				      char const *script, char const *cmd, ...)
+{
+	fr_redis_conn_t			*conn;
+	redisReply			*replies[5];	/* Must be equal to the maximum number of pipelined commands */
+	size_t				reply_cnt = 0, i;
+
+	char const			*name, *digest;
+	fr_redis_cluster_state_t	state;
+	fr_redis_rcode_t		s_ret, status;
+	unsigned int			pipelined = 0;
+
+	va_list				ap, copy;
+
+	fr_assert(talloc_array_length(script) > 0);
+
+	name = talloc_get_name(script);
+	fr_assert(name != NULL);
+
+	fr_assert(strlen(cmd) >= 10);
+	fr_assert(strncmp(cmd, "EVALSHA %s", 10) == 0);
+
+	va_start(ap, cmd);
+
+	va_copy(copy, ap);	/* copy or segv */
+	digest = va_arg(copy, char *);
+	fr_assert(talloc_array_length(digest) == 2 * SHA1_DIGEST_LENGTH + 1);
+	va_end(copy);
+
+	*out = NULL;
+
+#ifndef NDEBUG
+	memset(replies, 0, sizeof(replies));
+#endif
+
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, cluster, request, key, key_len, false);
+	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
+	     s_ret = fr_redis_cluster_state_next(&state, &conn, cluster, request, status, &replies[0])) {
+		RDEBUG3("Calling script %s (%s)", name, digest);
+		va_copy(copy, ap);	/* copy or segv */
+		redisvAppendCommand(conn->handle, cmd, copy);
+		va_end(copy);
+		pipelined = 1;
+		if (wait_num) {
+			redisAppendCommand(conn->handle, "WAIT %i %i", wait_num, fr_time_delta_to_msec(wait_timeout));
+			pipelined++;
+		}
+		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
+						     replies, NUM_ELEMENTS(replies),
+						     conn);
+		if (status != REDIS_RCODE_NO_SCRIPT) continue;
+
+		/*
+		 *	Clear out the existing reply
+		 */
+		fr_redis_pipeline_free(replies, reply_cnt);
+
+		/*
+		 *	Last command failed with NOSCRIPT, this means
+		 *	we have to send the Lua script up to the node
+		 *	so it can be cached.
+		 */
+		RDEBUG3("Loading script 0x%s", digest);
+		redisAppendCommand(conn->handle, "MULTI");
+		redisAppendCommand(conn->handle, "SCRIPT LOAD %s", script);
+		va_copy(copy, ap);	/* copy or segv */
+		redisvAppendCommand(conn->handle, cmd, copy);
+		va_end(copy);
+		redisAppendCommand(conn->handle, "EXEC");
+		pipelined = 4;
+		if (wait_num) {
+			redisAppendCommand(conn->handle, "WAIT %i %i", wait_num, wait_timeout);
+			pipelined++;
+		}
+
+		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
+						     replies, NUM_ELEMENTS(replies),
+						     conn);
+		if (status == REDIS_RCODE_SUCCESS) {
+			if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) {
+				fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
+			}
+
+			if (replies[3]->type != REDIS_REPLY_ARRAY) {
+				REDEBUG("Bad response to EXEC, expected array got %s",
+					fr_table_str_by_value(redis_reply_types, replies[3]->type, "<UNKNOWN>"));
+			error:
+				fr_redis_pipeline_free(replies, reply_cnt);
+				status = REDIS_RCODE_ERROR;
+				goto finish;
+			}
+			if (replies[3]->elements != 2) {
+				REDEBUG("Bad response to EXEC, expected 2 result elements, got %zu",
+					replies[3]->elements);
+				goto error;
+			}
+			if (replies[3]->element[0]->type != REDIS_REPLY_STRING) {
+				REDEBUG("Bad response to SCRIPT LOAD, expected string got %s",
+					fr_table_str_by_value(redis_reply_types, replies[3]->element[0]->type, "<UNKNOWN>"));
+				goto error;
+			}
+			if (strcmp(replies[3]->element[0]->str, digest) != 0) {
+				RWDEBUG("Incorrect SHA1 from SCRIPT LOAD, expected %s, got %s",
+					digest, replies[3]->element[0]->str);
+				goto error;
+			}
+		}
+	}
+	if (s_ret != REDIS_RCODE_SUCCESS) goto error;
+
+	switch (reply_cnt) {
+	case 2:	/* EVALSHA with wait */
+		if (redis_ippool_wait_check(request, wait_num, replies[1]) < 0) goto error;
+		fr_redis_reply_free(&replies[1]);	/* Free the wait response */
+		break;
+
+	case 1:	/* EVALSHA */
+		*out = replies[0];
+		break;
+
+	case 5: /* LOADSCRIPT + EVALSHA + WAIT */
+		if (redis_ippool_wait_check(request, wait_num, replies[4]) < 0) goto error;
+		fr_redis_reply_free(&replies[4]);	/* Free the wait response */
+		FALL_THROUGH;
+
+	case 4: /* LOADSCRIPT + EVALSHA */
+		fr_redis_reply_free(&replies[2]);	/* Free the queued cmd response*/
+		fr_redis_reply_free(&replies[1]);	/* Free the queued script load response */
+		fr_redis_reply_free(&replies[0]);	/* Free the queued multi response */
+		*out = replies[3]->element[1];
+		replies[3]->element[1] = NULL;		/* Prevent double free */
+		fr_redis_reply_free(&replies[3]);	/* This works because hiredis checks for NULL elements */
+		break;
+
+	case 0:
+		break;
+	}
+
+finish:
+	va_end(ap);
+	return s_ret;
 }
