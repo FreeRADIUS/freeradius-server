@@ -815,7 +815,6 @@ dnl #  Check if we need -lnsl. Usually if we want to
 dnl #  link against -lsocket we need to include -lnsl as well.
 dnl #
 AC_CHECK_LIB(nsl, inet_ntoa)
-AC_CHECK_LIB(ws2_32, htonl)
 
 dnl #
 dnl #  Check if we need -lrt, this is required on
@@ -881,8 +880,7 @@ AC_CHECK_HEADERS( \
   utime.h \
   utmp.h \
   utmpx.h \
-  valgrind.h \
-  winsock.h
+  valgrind.h
 )
 
 dnl #
