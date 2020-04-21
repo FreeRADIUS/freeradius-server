@@ -33,17 +33,17 @@ RCSID("$Id$")
 #include <freeradius-devel/io/atomic_queue.h>
 
 typedef struct {
-	alignas(128) void *data;
-	atomic_int64_t seq;
+	alignas(128) void		*data;
+	atomic_int64_t			seq;
 } fr_atomic_queue_entry_t;
 
 struct fr_atomic_queue_s {
-	alignas(128) atomic_int64_t head;
-	atomic_int64_t tail;
+	alignas(128) atomic_int64_t	head;
+	atomic_int64_t			tail;
 
-	int	size;
+	size_t				size;
 
-	fr_atomic_queue_entry_t entry[1];
+	fr_atomic_queue_entry_t		entry[1];
 };
 
 /** Create fixed-size atomic queue
@@ -54,14 +54,14 @@ struct fr_atomic_queue_s {
  *     - NULL on error.
  *     - fr_atomic_queue_t *, a pointer to the allocated and initialized queue.
  */
-fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
+fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, size_t size)
 {
-	int i;
-	int64_t seq;
-	fr_atomic_queue_t *aq;
+	size_t			i;
+	int64_t			seq;
+	fr_atomic_queue_t	*aq;
 	static char const	*queue_talloc_type = "fr_atomic_queue_t";
 
-	if (size <= 0) return NULL;
+	if (size == 0) return NULL;
 
 	/*
 	 *	Allocate a contiguous blob for the header and queue.
@@ -177,8 +177,8 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
  */
 bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 {
-	int64_t tail, seq;
-	fr_atomic_queue_entry_t *entry;
+	int64_t			tail, seq;
+	fr_atomic_queue_entry_t	*entry;
 
 	if (!p_data) return false;
 
@@ -225,12 +225,17 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 	return true;
 }
 
+size_t fr_atomic_queue_size(fr_atomic_queue_t *aq)
+{
+	return aq->size;
+}
+
 #ifndef NDEBUG
 
 #if 0
 typedef struct {
 	int			status;		//!< status of this message
-	size_t				data_size;     	//!< size of the data we're sending
+	size_t			data_size;     	//!< size of the data we're sending
 
 	int			signal;		//!< the signal to send
 	uint64_t		ack;		//!< or the endpoint..
@@ -248,13 +253,13 @@ typedef struct {
  */
 void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 {
-	int i;
+	size_t i;
 	int64_t head, tail;
 
 	head = load(aq->head);
 	tail = load(aq->head);
 
-	fprintf(fp, "AQ %p size %d, head %" PRId64 ", tail %" PRId64 "\n",
+	fprintf(fp, "AQ %p size %zu, head %" PRId64 ", tail %" PRId64 "\n",
 		aq, aq->size, head, tail);
 
 	for (i = 0; i < aq->size; i++) {
@@ -262,7 +267,7 @@ void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 
 		entry = &aq->entry[i];
 
-		fprintf(fp, "\t[%d] = { %p, %" PRId64 " }",
+		fprintf(fp, "\t[%zu] = { %p, %" PRId64 " }",
 			i, entry->data, load(entry->seq));
 #if 0
 		if (entry->data) {
