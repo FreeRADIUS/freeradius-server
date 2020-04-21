@@ -97,6 +97,10 @@ typedef struct {
 	struct mmsghdr		*mmsgvec;		//!< Vector of inbound/outbound packets.
 	udp_coalesced_t		*coalesced;		//!< Outbound coalesced requests.
 
+	size_t			send_buff_actual;	//!< What we believe the maximum SO_SNDBUF size to be.
+							///< We don't try and encode more packet data than this
+							///< in one go.
+
 	rlm_radius_udp_t const	*inst;			//!< Our module instance.
 	udp_thread_t		*thread;
 
@@ -775,20 +779,58 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 
 		opt = h->inst->recv_buff;
 		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
-			WARN("%s - Failed setting 'recv_buf': %s", h->module_name, fr_syserror(errno));
+			WARN("%s - Failed setting 'SO_RCVBUF': %s", h->module_name, fr_syserror(errno));
 		}
 	}
 #endif
 
 #ifdef SO_SNDBUF
-	if (h->inst->send_buff_is_set) {
+	{
 		int opt;
+		socklen_t socklen = sizeof(int);
 
-		opt = h->inst->send_buff;
-		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
-			WARN("%s - Failed setting 'send_buf': %s", h->module_name, fr_syserror(errno));
+		if (h->inst->send_buff_is_set) {
+			opt = h->inst->send_buff;
+			if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
+				WARN("%s - Failed setting 'SO_SNDBUF', write performance may be sub-optimal: %s",
+				     h->module_name, fr_syserror(errno));
+			}
+		}
+
+		if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, &socklen) < 0) {
+			WARN("%s - Failed getting 'SO_SNDBUF', write performance may be sub-optimal: %s",
+			     h->module_name, fr_syserror(errno));
+
+			/*
+			 *	This controls how many packets we attempt
+			 *	to send at once.  Nothing bad happens if
+			 *	we get it wrong, but the user may see
+			 *	ENOBUFS errors at high packet rates.
+			 */
+			h->send_buff_actual = h->inst->send_buff_is_set ?
+					      h->inst->send_buff : h->max_packet_size * h->inst->max_send_coalesce;
+
+			WARN("%s - Max coalesced outbound data will be %zu bytes", h->module_name,
+			     h->send_buff_actual);
+		} else {
+#ifdef __linux__
+			/*
+			 *	Linux doubles the buffer when you set it
+			 *	to account for "overhead".
+			 */
+			h->send_buff_actual = ((size_t)opt) / 2;
+#else
+			h->send_buff_actual = (size_t)opt;
+#endif
 		}
 	}
+#else
+	h->send_buff_actual = h->inst->send_buff_is_set ?
+			      h->inst_send_buff : h->max_packet_size * h->inst->max_send_coalesce;
+
+	WARN("%s - Modifying 'SO_SNDBUF' value is not supported on this system, "
+	     "write performance may be sub-optimal", h->module_name);
+	WARN("%s - Max coalesced outbound data will be %zu bytes", h->module_name, h->inst->send_buff_actual);
 #endif
 
 	h->fd = fd;
@@ -1676,6 +1718,7 @@ static void request_mux(fr_event_list_t *el,
 	rlm_radius_udp_t const	*inst = h->inst;
 	int			sent;
 	uint16_t		i, queued;
+	size_t			total_len = 0;
 
 	/*
 	 *	If the connection just became a zombie
@@ -1687,7 +1730,7 @@ static void request_mux(fr_event_list_t *el,
 	 *	Encode multiple packets in preparation
 	 *      for transmission with sendmmsg.
 	 */
-	for (i = 0, queued = 0; i < inst->max_send_coalesce; i++) {
+	for (i = 0, queued = 0; (i < inst->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
 		fr_trunk_request_t	*treq;
 		udp_request_t		*u;
 		REQUEST			*request;
@@ -1774,6 +1817,15 @@ static void request_mux(fr_event_list_t *el,
 		h->coalesced[queued].treq = treq;
 		h->coalesced[queued].out.iov_base = u->packet;
 		h->coalesced[queued].out.iov_len = u->packet_len;
+
+		/*
+		 *	Record how much data we have in total.
+		 *
+		 *	Try not to exceed the SO_SNDBUF value of the
+		 *	socket as we potentially just waste CPU
+		 *	time re-encoding the packets.
+		 */
+		total_len += u->packet_len;
 
 		/*
 		 *	Tell the trunk API that this request is now in
@@ -1918,8 +1970,9 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 
 	uint16_t		i = 0, queued;
 	int			sent;
+	size_t			total_len = 0;
 
-	for (i = 0; i < inst->max_send_coalesce; i++) {
+	for (i = 0, queued = 0; (i < inst->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
 		fr_trunk_request_t	*treq;
 		udp_request_t		*u;
 		REQUEST			*request;
@@ -1953,6 +2006,15 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		h->coalesced[i].treq = treq;
 		h->coalesced[i].out.iov_base = u->packet;
 		h->coalesced[i].out.iov_len = u->packet_len;
+
+		/*
+		 *	Record how much data we have in total.
+		 *
+		 *	Try not to exceed the SO_SNDBUF value of the
+		 *	socket as we potentially just waste CPU
+		 *	time re-encoding the packets.
+		 */
+		total_len += u->packet_len;
 
 		fr_trunk_request_signal_sent(treq);
 	}
