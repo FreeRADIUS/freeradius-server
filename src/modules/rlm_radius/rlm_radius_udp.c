@@ -2437,7 +2437,7 @@ static void request_conn_release_replicate(fr_connection_t *conn, void *preq_to_
 {
 	udp_request_t		*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
 
-	rad_assert(!u->ev);
+	fr_assert(!u->ev);
 
 	if (u->packet) udp_request_reset(u);
 }

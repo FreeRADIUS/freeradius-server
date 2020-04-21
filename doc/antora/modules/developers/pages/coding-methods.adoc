@@ -42,7 +42,7 @@ If your code reads as full English sentences, you’re doing it right.
 Your function _cannot_ do anything right if the user passed in garbage
 and you were too lazy to check for garbage input.
 
-`assert()` (`rad_assert()`) is ugly. Use it.
+`assert()` (`fr_assert()`) is ugly. Use it.
 
 [NOTE]
 ====
