@@ -2427,7 +2427,7 @@ static void request_conn_release(fr_connection_t *conn, void *preq_to_reset, UNU
 	 *	If there are no outstanding tracking entries
 	 *	allocated then the connection is "idle".
 	 */
-	if (h->tt->num_requests == 0) h->last_idle = fr_time();
+	if (!h->tt || (h->tt->num_requests == 0)) h->last_idle = fr_time();
 }
 
 /** Write out a canned failure
