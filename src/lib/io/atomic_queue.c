@@ -59,6 +59,7 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 	int i;
 	int64_t seq;
 	fr_atomic_queue_t *aq;
+	static char const	*queue_talloc_type = "fr_atomic_queue_t";
 
 	if (size <= 0) return NULL;
 
@@ -72,7 +73,7 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 	aq = talloc_size(ctx, sizeof(*aq) + (size - 1) * sizeof(aq->entry[0]));
 	if (!aq) return NULL;
 
-	talloc_set_name(aq, "fr_atomic_queue_t");
+	talloc_set_name_const(aq, queue_talloc_type);
 
 	/*
 	 *	Initialize the array.  Data is NULL, and indexes are
