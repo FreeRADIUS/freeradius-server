@@ -132,13 +132,18 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 		 *	happen.
 		 */
 		if (n_size > INT32_MAX) {
-			fr_strerror_printf("Heap is full");
-			return -1;
+			if (hp->size == INT32_MAX) {
+				fr_strerror_printf("Heap is full");
+				return -1;
+			} else {
+				n_size = INT32_MAX;
+			}
 		}
 
 		n = talloc_realloc(hp, hp->p, void *, n_size);
 		if (!n) {
-			fr_strerror_printf("Failed expanding heap");
+			fr_strerror_printf("Failed expanding heap to %zu elements (%zu bytes)",
+					   n_size, (n_size * sizeof(void *)));
 			return -1;
 		}
 		hp->size = n_size;

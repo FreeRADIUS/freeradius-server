@@ -1868,12 +1868,11 @@ service:
 		(void)fr_dlist_remove(&el->ev_to_add, ev);
 		if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
 			talloc_free(ev);
-			fr_assert(0);	/* Die in debug builds */
+			fr_assert_msg(0, "failed inserting heap event: %s", fr_strerror());	/* Die in debug builds */
 		}
 	}
 
 	el->in_handler = false;
-
 	el->now = el->time();
 
 	/*
