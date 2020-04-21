@@ -2430,6 +2430,18 @@ static void request_conn_release(fr_connection_t *conn, void *preq_to_reset, UNU
 	if (!h->tt || (h->tt->num_requests == 0)) h->last_idle = fr_time();
 }
 
+/** Clear out anything associated with the handle from the request
+ *
+ */
+static void request_conn_release_replicate(fr_connection_t *conn, void *preq_to_reset, UNUSED void *uctx)
+{
+	udp_request_t		*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
+
+	rad_assert(!u->ev);
+
+	if (u->packet) udp_request_reset(u);
+}
+
 /** Write out a canned failure
  *
  */
@@ -2648,7 +2660,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 						.connection_notify = thread_conn_notify_replicate,
 						.request_prioritise = request_prioritise,
 						.request_mux = request_mux_replicate,
-						.request_conn_release = request_conn_release,
+						.request_conn_release = request_conn_release_replicate,
 						.request_complete = request_complete,
 						.request_fail = request_fail,
 						.request_free = request_free
