@@ -1310,6 +1310,16 @@ else
   fi
 fi
 
+
+dnl #
+dnl #  Check for the gnumake headers
+dnl #  Why is GNU make not smart enough to export a variable saying where the heck this is?
+dnl #
+FR_SMART_CHECK_INCLUDE([gnumake.h])
+if test "x$ac_cv_header_gnumake_h" = "xyes"; then
+  AC_DEFINE(HAVE_GNUMAKE_H, 1, [Define to 1 if you have the <gnumake.h> header file.])
+fi
+
 dnl #############################################################
 dnl #
 dnl #  4. Checks for typedefs

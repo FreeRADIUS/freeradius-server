@@ -160,6 +160,9 @@
 /* Define to 1 if you have the `gmtime_r' function. */
 #undef HAVE_GMTIME_R
 
+/* Define to 1 if you have the <gnumake.h> header file. */
+#undef HAVE_GNUMAKE_H
+
 /* Define to 1 if you have the <gperftools/profiler.h> header file. */
 #undef HAVE_GPERFTOOLS_PROFILER_H
 
@@ -229,9 +232,6 @@
 
 /* Define to 1 if you have the `ssl' library (-lssl). */
 #undef HAVE_LIBSSL
-
-/* Define to 1 if you have the `ws2_32' library (-lws2_32). */
-#undef HAVE_LIBWS2_32
 
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
@@ -556,9 +556,6 @@
 
 /* Define if the compiler supports -Wdocumentation */
 #undef HAVE_WDOCUMENTATION
-
-/* Define to 1 if you have the <winsock.h> header file. */
-#undef HAVE_WINSOCK_H
 
 /* Define to 1 if you have the `_talloc_pooled_object' function. */
 #undef HAVE__TALLOC_POOLED_OBJECT

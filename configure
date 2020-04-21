@@ -7456,51 +7456,6 @@ _ACEOF
 
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for htonl in -lws2_32" >&5
-$as_echo_n "checking for htonl in -lws2_32... " >&6; }
-if ${ac_cv_lib_ws2_32_htonl+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lws2_32  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char htonl ();
-int
-main ()
-{
-return htonl ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_ws2_32_htonl=yes
-else
-  ac_cv_lib_ws2_32_htonl=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ws2_32_htonl" >&5
-$as_echo "$ac_cv_lib_ws2_32_htonl" >&6; }
-if test "x$ac_cv_lib_ws2_32_htonl" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBWS2_32 1
-_ACEOF
-
-  LIBS="-lws2_32 $LIBS"
-
-fi
-
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for clock_gettime in -lrt" >&5
 $as_echo_n "checking for clock_gettime in -lrt... " >&6; }
@@ -7943,8 +7898,7 @@ for ac_header in \
   utime.h \
   utmp.h \
   utmpx.h \
-  valgrind.h \
-  winsock.h
+  valgrind.h
 
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -12082,6 +12036,239 @@ $as_echo "#define HAVE_SYSTEMD_SD_DAEMON_H 1" >>confdefs.h
     { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: systemd headers not found.  Use --with-systemd-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: systemd headers not found.  Use --with-systemd-include-dir=<path>." >&2;}
   fi
+fi
+
+
+
+
+ac_safe=`echo "gnumake.h" | sed 'y%./+-%__pm%'`
+old_CPPFLAGS="$CPPFLAGS"
+smart_include=
+smart_include_dir="/usr/local/include /opt/include"
+
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+for _dir in $smart_try_dir; do
+  _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+done
+
+for _dir in $smart_include_dir; do
+  _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+for try in $_smart_try_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gnumake.h in $try" >&5
+$as_echo_n "checking for gnumake.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <gnumake.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
+for _prefix in $smart_prefix; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/gnumake.h" >&5
+$as_echo_n "checking for ${_prefix}/gnumake.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <gnumake.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem ${_prefix}/"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+fi
+
+if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gnumake.h" >&5
+$as_echo_n "checking for gnumake.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <gnumake.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include=" "
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+if test "x$smart_include" = "x"; then
+
+for prefix in $smart_prefix; do
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file="${_prefix}/${1}"
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+done
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file=gnumake.h
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+
+for try in $_smart_include_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gnumake.h in $try" >&5
+$as_echo_n "checking for gnumake.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <gnumake.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+eval "ac_cv_header_$ac_safe=yes"
+CPPFLAGS="$smart_include $old_CPPFLAGS"
+SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
+fi
+
+smart_prefix=
+
+if test "x$ac_cv_header_gnumake_h" = "xyes"; then
+
+$as_echo "#define HAVE_GNUMAKE_H 1" >>confdefs.h
+
 fi
 
 
