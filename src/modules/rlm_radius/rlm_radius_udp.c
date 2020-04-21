@@ -2433,7 +2433,7 @@ static void request_conn_release(fr_connection_t *conn, void *preq_to_reset, UNU
 /** Clear out anything associated with the handle from the request
  *
  */
-static void request_conn_release_replicate(fr_connection_t *conn, void *preq_to_reset, UNUSED void *uctx)
+static void request_conn_release_replicate(UNUSED fr_connection_t *conn, void *preq_to_reset, UNUSED void *uctx)
 {
 	udp_request_t		*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
 
