@@ -246,7 +246,7 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 
 	if (!handle) {
 		unsigned int i;
-		size_t len, namelen;
+		size_t len = 0, namelen = 0;
 
 		/*
 		 *	Only the library specified specified, OR the
