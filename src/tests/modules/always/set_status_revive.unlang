@@ -1,0 +1,28 @@
+#
+#  Fail a module...
+#
+%{db_status:dead}
+db_status {
+	fail = 1
+}
+if (!fail) {
+	update reply {
+		Filter-Id += "failed"
+	}
+}
+
+
+#
+#  ... Now revive it
+#
+%{db_status:alive}
+db_status
+if (ok) {
+	update reply {
+		Filter-Id += "success"
+	}
+}
+
+update control {
+	Cleartext-Password := "hello"
+}
