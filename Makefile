@@ -69,9 +69,24 @@ PROTOCOLS    := \
 	tacacs \
 	vmps
 
-# And over-ride all of the other magic.
+#
+#  If we're building packages or crossbuilding, just do that.
+#  Don't try to do a local build.
+#
 ifneq "$(MAKECMDGOALS)" "deb"
 ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+#
+#  Include all of the autoconf definitions into the Make variable space
+#
+#  We include this file BEFORE starting the full make process.  That
+#  way every "all.mk" file can take advantage of the definitions seen
+#  here.
+#
+build/autoconf.mk: src/include/autoconf.h
+	@mkdir -p build
+	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
+-include build/autoconf.mk
+
 include scripts/boiler.mk
 endif
 endif

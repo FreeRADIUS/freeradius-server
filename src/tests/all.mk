@@ -80,13 +80,6 @@ endif
 $(BUILD_DIR)/tests:
 	${Q}mkdir -p $@
 
-#
-#  Include all of the autoconf definitions into the Make variable space
-#
-$(BUILD_DIR)/tests/autoconf.h.mk: src/include/autoconf.h | $(BUILD_DIR)/tests
-	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
--include $(BUILD_DIR)/tests/autoconf.h.mk
-
 ######################################################################
 #
 #  Generic rules to set up the tests
