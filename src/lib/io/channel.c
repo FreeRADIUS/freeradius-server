@@ -336,7 +336,8 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	the push fails, the caller should try another queue.
 	 */
 	if (!fr_atomic_queue_push(requestor->aq, cd)) {
-		fr_strerror_printf("Failed pushing to atomic queue");
+		fr_strerror_printf("Failed pushing to atomic queue (full) - Queue contains %zu items",
+				   fr_atomic_queue_size(requestor->aq));
 		while (fr_channel_recv_reply(ch));
 		return -1;
 	}
@@ -539,7 +540,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	cd->live.ack = responder->ack;
 
 	if (!fr_atomic_queue_push(responder->aq, cd)) {
-		fr_strerror_printf("Failed pushing to atomic queue");
+		fr_strerror_printf("Failed pushing to atomic queue (full) - Queue contains %zu items",
+				   fr_atomic_queue_size(responder->aq));
 		while (fr_channel_recv_request(ch));
 		return -1;
 	}
