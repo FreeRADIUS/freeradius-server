@@ -1350,7 +1350,11 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	packet_len = fr_radius_encode(u->packet, u->packet_len - (proxy_state + message_authenticator), NULL,
 				      inst->secret, talloc_array_length(inst->secret) - 1,
 				      u->code, id, request->packet->vps);
-	if (packet_len <= 0) return -1;
+	if (packet_len <= 0) {
+		RPERROR("Failed encoding packet");
+		TALLOC_FREE(u->packet);
+		return -1;
+	}
 
 	/*
 	 *	The encoded packet should NOT over-run the input buffer.
@@ -1781,7 +1785,6 @@ static void request_mux(fr_event_list_t *el,
 						       h->tt, udp_tracking_entry_log);
 #endif
 				fr_assert_fail("Tracking entry allocation failed: %s", fr_strerror());
-			fail:
 				fr_trunk_request_signal_fail(treq);
 				continue;
 			}
@@ -1797,7 +1800,7 @@ static void request_mux(fr_event_list_t *el,
 				 */
 				udp_request_reset(u);
 				if (u->ev) (void) fr_event_timer_delete(&u->ev);
-				goto fail;
+				fr_trunk_request_signal_fail(treq);
 			}
 			RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
 
