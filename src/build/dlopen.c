@@ -56,6 +56,12 @@ struct link_map {
 #endif
 #include <limits.h>
 
+#define FREE(_p) \
+do { \
+	free(_p); \
+	(_p) = NULL; \
+} while(0)
+
 /*
  *	The only exported symbol
  */
@@ -222,7 +228,7 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 
 	lib = find_lib(libname, NULL);
 	if (lib) {
-		free(name);
+		FREE(name);
 		goto found;
 	}
 
@@ -259,15 +265,14 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 
 		fail:
 			if (my_dlerror) {
-				free(my_dlerror);
-				my_dlerror = NULL;
+				FREE(my_dlerror);
 			}
 
 			if (error) {
 				my_dlerror = strdup(error);
 			}
 
-			if (name) free(name);
+			if (name) FREE(name);
 			return NULL;
 		}
 
@@ -301,10 +306,9 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 		 *	"filename".  So we don't need the original
 		 *	"name" any more.
 		 */
-		free(name);
-		name = NULL;
+		FREE(name);
 		if (!handle) {
-			free(filename);
+			FREE(filename);
 			goto set_dlerror;
 		}
 
@@ -414,29 +418,26 @@ static char *make_dlclose(UNUSED char const *nm, UNUSED unsigned int argc, char 
 	if (!name) return NULL;
 
 	lib = find_lib(name, &last);
-	free(name);
+	FREE(name);
 
 	if (!lib) return NULL;
 
 	/*
 	 *	Free whatever is necessary to be freed.
 	 */
-	if (lib->filename) free(lib->filename);
-	free(lib->name);
+	if (lib->filename) FREE(lib->filename);
+	FREE(lib->name);
 
 	(void) dlclose(lib->handle);
 
 	*last = lib->next;
-	free(lib);
+	FREE(lib);
 
 	/*
 	 *	If we've closed all open libraries, then free the
 	 *	error string, too.
 	 */
-	if (!libs && my_dlerror) {
-		free(my_dlerror);
-		my_dlerror = NULL;
-	}
+	if (!libs && my_dlerror) FREE(my_dlerror);
 
 	p = gmk_alloc(2);
 	if (!p) return NULL;
@@ -469,7 +470,7 @@ static char *make_dlsym(UNUSED char const *nm, UNUSED unsigned int argc, char **
 	if (!name) return NULL;
 
 	lib = find_lib(libname, NULL);
-	free(name);
+	FREE(name);
 	if (!lib) return NULL;
 
 	p = argv[1];
@@ -516,7 +517,7 @@ static char *make_dlerror(UNUSED char const *nm, UNUSED unsigned int argc, UNUSE
 }
 
 /** Register function(s) with make.
- * 
+ *
  * @return non-zero value on success, or zero on failure.
  * @note gmk_add_function() "returns" void, so we can't really say whether it
  *       succeeded or failed. Thus the return of the constant 1.
