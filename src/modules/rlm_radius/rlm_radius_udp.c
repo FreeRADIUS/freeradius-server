@@ -1309,6 +1309,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 			memcpy(u->packet + RADIUS_AUTH_VECTOR_OFFSET + i, &hash, sizeof(hash));
 		}
 	}
+
 	default:
 		break;
 	}
@@ -1327,6 +1328,13 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 
 		if (u->code == FR_CODE_STATUS_SERVER) u->can_retransmit = false;
+
+	} else if (inst->parent->originate) {
+		/*
+		 *	We're originating packets instead of proxying
+		 *	them.  We don't add a Proxy-State attribute.
+		 */
+		proxy_state = 0;
 	}
 
 	/*
@@ -1345,23 +1353,22 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	if (packet_len <= 0) return -1;
 
 	/*
-	 *	Add Proxy-State to the tail end of the packet unless we are
-	 *	originating the request.
+	 *	The encoded packet should NOT over-run the input buffer.
+	 */
+	fr_assert((size_t) (packet_len + proxy_state + message_authenticator) <= u->packet_len);
+
+	/*
+	 *	Add Proxy-State to the tail end of the packet.
 	 *
 	 *	We need to add it here, and NOT in
 	 *	request->packet->vps, because multiple modules
 	 *	may be sending the packets at the same time.
-	 *
-	 *	Note that the length check will always pass, due to
-	 *	the buflen manipulation done above.
 	 */
-	if (proxy_state && !inst->parent->originate) {
+	if (proxy_state) {
 		uint8_t		*attr = u->packet + packet_len;
 		VALUE_PAIR	*vp;
 		fr_cursor_t	cursor;
 		int		count = 0;
-
-		fr_assert((size_t) (packet_len + proxy_state) <= u->packet_len);
 
 		/*
 		 *	Count how many Proxy-State attributes have
@@ -1405,8 +1412,6 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	the buflen manipulation done above.
 	 */
 	if (message_authenticator) {
-		fr_assert((size_t) (packet_len + message_authenticator) <= u->packet_len);
-
 		msg = u->packet + packet_len;
 
 		msg[0] = (uint8_t) attr_message_authenticator->attr;
