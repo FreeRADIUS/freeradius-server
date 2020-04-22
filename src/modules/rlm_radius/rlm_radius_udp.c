@@ -1801,6 +1801,7 @@ static void request_mux(fr_event_list_t *el,
 				udp_request_reset(u);
 				if (u->ev) (void) fr_event_timer_delete(&u->ev);
 				fr_trunk_request_signal_fail(treq);
+				continue;
 			}
 			RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
 
@@ -2003,7 +2004,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 
 			if (encode(h->inst, request, u, u->id) < 0) {
 				fr_trunk_request_signal_fail(treq);
-				return;
+				continue;
 			}
 		}
 
