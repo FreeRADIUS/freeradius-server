@@ -1352,6 +1352,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 				      u->code, id, request->packet->vps);
 	if (packet_len <= 0) {
 		RPERROR("Failed encoding packet");
+	error:
 		TALLOC_FREE(u->packet);
 		return -1;
 	}
@@ -1492,7 +1493,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->secret,
 				   talloc_array_length(inst->secret) - 1) < 0) {
 			RERROR("Failed signing packet");
-			return -1;
+			goto error;
 		}
 		break;
 
@@ -2693,6 +2694,7 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 		fr_assert(!u->rr && !u->packet);	/* Should not have been fed to the muxer */
 		fr_trunk_request_free(&treq);		/* Return to the free list */
 		talloc_free(r);
+		talloc_free(u);
 		return RLM_MODULE_FAIL;
 	}
 
