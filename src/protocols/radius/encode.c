@@ -79,9 +79,12 @@ void fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE
 	fr_md5_ctx_free(&md5_ctx);
 }
 
-
-static void encode_password(uint8_t *out, ssize_t *outlen, uint8_t const *input, size_t inlen,
-			    char const *secret, uint8_t const *vector)
+/** "encrypt" a password RADIUS style
+ *
+ * Input and output buffers can be identical if in-place encryption is needed.
+ */
+static ssize_t encode_password(uint8_t *out, ssize_t outlen, uint8_t const *input, size_t inlen,
+			       char const *secret, uint8_t const *vector)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
@@ -130,42 +133,47 @@ static void encode_password(uint8_t *out, ssize_t *outlen, uint8_t const *input,
 	fr_md5_ctx_free(&md5_ctx_old);
 
 	/*
-	 *	Truncate it as necessary.
+	 *	Return how many bytes we would have needed
 	 */
-	if (len > (size_t) *outlen) {
-		len = *outlen;
-	} else {
-		*outlen = len;
-	}
+	if (len > (size_t) outlen) return -(len - outlen);
 
 	memcpy(out, passwd, len);
+
+	return len;
 }
 
 
-static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
-				   uint8_t const *input, size_t inlen, size_t freespace,
-				   void *encoder_ctx)
+static ssize_t encode_tunnel_password(uint8_t *out, size_t outlen,
+				      uint8_t const *in, size_t inlen, void *encoder_ctx)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
+	uint8_t		tpasswd[RADIUS_MAX_STRING_LENGTH];
 	size_t		i, n;
 	size_t		encrypted_len;
 	fr_radius_ctx_t	*packet_ctx = encoder_ctx;
 	uint32_t	r;
+	size_t		len;
 
 	/*
 	 *	The password gets encoded with a 1-byte "length"
 	 *	field.  Ensure that it doesn't overflow.
 	 */
-	if (freespace > 253) freespace = 253;
+	if (outlen > RADIUS_MAX_STRING_LENGTH) outlen = RADIUS_MAX_STRING_LENGTH;
 
 	/*
-	 *	Limit the maximum size of the input password.  2 bytes
+	 *	Limit the maximum size of the in password.  2 bytes
 	 *	are taken up by the salt, and one by the encoded
 	 *	"length" field.  Note that if we have a tag, the
-	 *	"freespace" will be 252 octets, not 253 octets.
+	 *	"outlen" will be 252 octets, not 253 octets.
 	 */
-	if (inlen > (freespace - 3)) inlen = freespace - 3;
+	if (inlen > (RADIUS_MAX_STRING_LENGTH - 3)) inlen = (RADIUS_MAX_STRING_LENGTH - 3);
+
+	/*
+	 *	If we still overflow the output, let the caller know
+	 *	how many bytes would have been needed.
+	 */
+	if (inlen > (outlen - 3)) return -(inlen - (outlen - 3));
 
 	/*
 	 *	Length of the encrypted data is the clear-text
@@ -184,17 +192,17 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	 *	We need 2 octets for the salt, followed by the actual
 	 *	encrypted data.
 	 */
-	if (encrypted_len > (freespace - 2)) encrypted_len = freespace - 2;
+	if (encrypted_len > (outlen - 2)) encrypted_len = outlen - 2;
 
-	*outlen = encrypted_len + 2;	/* account for the salt */
+	len = encrypted_len + 2;	/* account for the salt */
 
 	/*
 	 *	Copy the password over, and fill the remainder with random data.
 	 */
-	memcpy(out + 3, input, inlen);
+	memcpy(tpasswd + 3, in, inlen);
 
-	for (i = 3 + inlen; i < (size_t) *outlen; i++) {
-		out[i] = fr_fast_rand(&packet_ctx->rand_ctx);
+	for (i = 3 + inlen; i < (size_t)len; i++) {
+		tpasswd[i] = fr_fast_rand(&packet_ctx->rand_ctx);
 	}
 
 	/*
@@ -207,9 +215,9 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	 *	add in some PRNG data.  should be OK..
 	 */
 	r = fr_fast_rand(&packet_ctx->rand_ctx);
-	out[0] = (0x80 | (((packet_ctx->salt_offset++) & 0x07) << 4) | ((r >> 8) & 0x0f));
-	out[1] = r & 0xff;
-	out[2] = inlen;	/* length of the password string */
+	tpasswd[0] = (0x80 | (((packet_ctx->salt_offset++) & 0x07) << 4) | ((r >> 8) & 0x0f));
+	tpasswd[1] = r & 0xff;
+	tpasswd[2] = inlen;	/* length of the password string */
 
 	md5_ctx = fr_md5_ctx_alloc(false);
 	md5_ctx_old = fr_md5_ctx_alloc(true);
@@ -218,28 +226,32 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);
 
 	fr_md5_update(md5_ctx, packet_ctx->vector, RADIUS_AUTH_VECTOR_LENGTH);
-	fr_md5_update(md5_ctx, &out[0], 2);
+	fr_md5_update(md5_ctx, &tpasswd[0], 2);
 
 	for (n = 0; n < encrypted_len; n += AUTH_PASS_LEN) {
 		size_t block_len;
 
 		if (n > 0) {
 			fr_md5_ctx_copy(md5_ctx, md5_ctx_old);
-			fr_md5_update(md5_ctx, out + 2 + n - AUTH_PASS_LEN, AUTH_PASS_LEN);
+			fr_md5_update(md5_ctx, tpasswd + 2 + n - AUTH_PASS_LEN, AUTH_PASS_LEN);
 		}
 		fr_md5_final(digest, md5_ctx);
 
-		if ((2 + n + AUTH_PASS_LEN) < freespace) {
+		if ((2 + n + AUTH_PASS_LEN) < outlen) {
 			block_len = AUTH_PASS_LEN;
 		} else {
-			block_len = freespace - 2 - n;
+			block_len = outlen - 2 - n;
 		}
 
-		for (i = 0; i < block_len; i++) out[i + 2 + n] ^= digest[i];
+		for (i = 0; i < block_len; i++) tpasswd[i + 2 + n] ^= digest[i];
 	}
 
 	fr_md5_ctx_free(&md5_ctx);
 	fr_md5_ctx_free(&md5_ctx_old);
+
+	memcpy(out, tpasswd, len);
+
+	return len;
 }
 
 static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
@@ -342,14 +354,15 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx)
 {
-	size_t			offset;
-	ssize_t			len;
-	uint8_t	const		*data = NULL;
-	uint8_t			*ptr = out;
-	uint8_t			buffer[64];
+	ssize_t			slen;
+	size_t			len;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_radius_ctx_t		*packet_ctx = encoder_ctx;
+
+	uint8_t			*out_p = out;
+	uint8_t			*out_end = out + outlen;
+	uint8_t			*value_start = out_p;
 
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -359,31 +372,27 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (!vp->da->flags.extra && (vp->da->flags.subtype != FLAG_EXTENDED_ATTR) && !packet_ctx) {
 		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*
 	 *	It's a little weird to consider a TLV as a value,
 	 *	but it seems to work OK.
 	 */
-	if (da->type == FR_TYPE_TLV) {
-		return encode_tlv_hdr(out, outlen, da_stack, depth, cursor, encoder_ctx);
-	}
+	if (da->type == FR_TYPE_TLV) return encode_tlv_hdr(out_p, out_end - out_p,
+							   da_stack, depth, cursor, encoder_ctx);
 
 	/*
 	 *	This has special requirements.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		ssize_t struct_len;
-
-		struct_len = fr_struct_to_network(out, outlen, da_stack, depth, cursor, encoder_ctx, encode_value);
-		if (struct_len <= 0) return struct_len;
+		slen = fr_struct_to_network(out_p, out_end - out_p, da_stack, depth, cursor, encoder_ctx, encode_value);
+		if (slen <= 0) return slen;
 
 		vp = fr_cursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
-		out += struct_len;
-		outlen -= struct_len;
+		out_p += slen;
 
 		/*
 		 *	Encode any TLV, attributes which are part of this structure.
@@ -397,17 +406,17 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 *	TLV to be encoded here.  It's number is just
 		 *	the field number in the struct.
 		 */
-		while (vp && (da_stack->da[depth] == da) && (da_stack->depth >= da->depth) && (outlen > 0)) {
-			len = encode_tlv_hdr_internal(out, outlen, da_stack, depth + 1, cursor, encoder_ctx);
-			if (len < 0) return len;
+		while (vp && (da_stack->da[depth] == da) && (da_stack->depth >= da->depth) && (out_p < out_end)) {
+			slen = encode_tlv_hdr_internal(out_p, out_end - out_p, da_stack, depth + 1, cursor, encoder_ctx);
+			if (slen < 0) return slen;
 
-			struct_len += len;
+			out_p += slen;
 
 			vp = fr_cursor_current(cursor);
 			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		}
 
-		return struct_len;
+		return out_p - out;
 	}
 
 	/*
@@ -416,28 +425,48 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (da_stack->da[depth + 1] != NULL) {
 		fr_strerror_printf("%s: Encoding value but not at top of stack", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (vp->da != da) {
 		fr_strerror_printf("%s: Top of stack does not match vp->da", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 
 	default:
 		break;
 	}
 
 	/*
+	 *	Write tag byte
+	 */
+	if (vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
+		CHECK_FREESPACE(out_end - out_p, 1);
+		*out_p++ = vp->tag;
+		value_start = out_p;
+	}
+
+	/*
 	 *	Set up the default sources for the data.
 	 */
 	len = fr_radius_attr_len(vp);
+
+	/*
+	 *	Invalid value, don't encode.
+	 */
+	if (len > RADIUS_MAX_STRING_LENGTH) return 0;
+
+	/*
+	 *	For everything else, return the number of
+	 *	additional bytes we need.
+	 */
+	CHECK_FREESPACE(out_end - out_p, len);
 
 	switch (da->type) {
 	/*
@@ -446,41 +475,45 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-		data = vp->vp_ptr;
+		memcpy(out_p, vp->vp_ptr, len);
+		out_p += len;
 		break;
 
 	case FR_TYPE_ABINARY:
-		data = vp->vp_filter;
+		memcpy(out_p, vp->vp_filter, len);
+		out_p += len;
 		break;
 
 	/*
 	 *	Common encoder might add scope byte
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		memcpy(buffer, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
-		data = buffer;
+		memcpy(out_p, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		out_p += len;
 		break;
 
 	/*
 	 *	Common encoder doesn't add reserved byte
 	 */
 	case FR_TYPE_IPV6_PREFIX:
-		buffer[0] = 0;
-		buffer[1] = vp->vp_ip.prefix;
-		len = vp->vp_ip.prefix >> 3;			/* Convert bits to whole bytes */
-		memcpy(buffer + 2, vp->vp_ipv6addr, len);	/* Only copy the minimum number of address bytes required */
-		len += 2;					/* Reserved and prefix bytes */
-		data = buffer;
+		len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
+
+		CHECK_FREESPACE(out_end - out_p, 2 + len);
+
+		*out_p++ = 0;
+		*out_p++ = vp->vp_ip.prefix;
+		memcpy(out_p, vp->vp_ipv6addr, len);	/* Only copy the minimum number of address bytes required */
+		out_p += len;
 		break;
 
 	/*
 	 *	Common encoder doesn't add reserved byte
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-		buffer[0] = 0;
-		buffer[1] = vp->vp_ip.prefix;
-		memcpy(buffer + 2, &vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
-		data = buffer;
+		*out_p++ = 0;
+		*out_p++ = vp->vp_ip.prefix;
+		memcpy(out_p, &vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+		out_p += sizeof(vp->vp_ipv4addr);
 		break;
 
 	/*
@@ -498,11 +531,18 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_INT16:
 	case FR_TYPE_INT32:
 	case FR_TYPE_INT64:
+	case FR_TYPE_FLOAT32:		/* Not officially defined in a RADIUS RFC */
+	case FR_TYPE_FLOAT64:		/* Not officially defined in a RADIUS RFC */
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
-		len = fr_value_box_to_network(NULL, buffer, sizeof(buffer), &vp->data);
-		if (len < 0) return -1;
-		data = buffer;
+	{
+		size_t need = 0;
+
+		slen = fr_value_box_to_network(&need, out_p, out_end - out_p, &vp->data);
+		if (slen < 0) return slen;
+		if (need > 0) return -(need);
+		out_p += slen;
+	}
 		break;
 
 	case FR_TYPE_INVALID:
@@ -514,29 +554,28 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_FLOAT32:
-	case FR_TYPE_FLOAT64:
 	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("Unsupported attribute type %d", da->type);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*
 	 *	No data: don't encode the value.  The type and length should still
 	 *	be written.
 	 */
-	if (!data || (len == 0)) {
+	if (out_p == out) {
 		vp = fr_cursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return 0;
 	}
 
 	/*
-	 *	Bind the data to the calling size
+	 *	Shouldn't happen, but if it does return how much
+	 *	the overrun was.
 	 */
-	if (len > (ssize_t)outlen) len = outlen;
+	if (!fr_cond_assert(out_p <= out_end)) return -((out_end - out_p) + 1);
 
 	/*
 	 *	Encrypt the various password styles
@@ -546,61 +585,78 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (!da->flags.extra) switch (vp->da->flags.subtype) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
-		encode_password(ptr, &len, data, len, packet_ctx->secret, packet_ctx->vector);
+	{
+		uint8_t *value_end = out_p;
+
+		out_p = value_start;	/* Reset */
+
+		/*
+		 *	Encode the password in place
+		 */
+		slen = encode_password(out_p, out_end - out_p,
+				       value_start, value_end - value_start,
+				       packet_ctx->secret, packet_ctx->vector);
+		if (slen < 0) return slen;
+
+		out_p += slen;
+	}
 		break;
 
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-		offset = 0;
-		if (da->flags.has_tag) offset = 1;
+	{
+		uint8_t *value_end = out_p;
+
+		out_p = value_start;	/* Reset */
 
 		/*
-		 *	Check if there's enough freespace.  If there isn't,
-		 *	we discard the attribute.
+		 *	Hack - Always encode the tag even if it's zero.
 		 *
-		 *	This is ONLY a problem if we have multiple VSA's
-		 *	in one Vendor-Specific, though.
+		 *	Not sure why we do this, but the old code did...
 		 */
-		if (outlen < (18 + offset)) return 0;
+		if (vp->da->flags.has_tag && !TAG_VALID(vp->tag)) out_p++;
 
-		if (offset) ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
-
-		encode_tunnel_password(ptr + offset, &len, data, len,
-				       outlen - offset, packet_ctx);
-		len += offset;
-		break;
-
-		/*
-		 *	The code above ensures that this attribute
-		 *	always fits.
-		 */
-	case FLAG_ENCRYPT_ASCEND_SECRET:
-		if (len != 16) return 0;
-
-		fr_radius_ascend_secret(ptr, packet_ctx->vector, packet_ctx->secret, data);
-		len = RADIUS_AUTH_VECTOR_LENGTH;
-		break;
-
-		/*
-		 *	Not encrypted, OR an extended attribute, which
-		 *	cannot be encrypted.
-		 */
-	default:
-		if (vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
-			if (vp->vp_type == FR_TYPE_STRING) {
-				if (len > ((ssize_t) (outlen - 1))) len = outlen - 1;
-				ptr[0] = vp->tag;
-				ptr++;
-			} else if (vp->vp_type == FR_TYPE_UINT32) {
-				buffer[0] = vp->tag;
-			} /* else it can't be any other type */
+		slen = encode_tunnel_password(out_p, out_end - out_p,
+					      value_start, value_end - value_start, packet_ctx);
+		if (slen < 0) {
+			/*
+			 *	This is an un-encodable tunnel_password_attribute
+			 */
+			if (outlen >= RADIUS_MAX_STRING_LENGTH) return 0;
+			return slen;
 		}
-		memcpy(ptr, data, len);
+
+		/*
+		 *	Do this after so we don't mess up the input
+		 *	value.
+		 */
+		if (vp->da->flags.has_tag && !TAG_VALID(vp->tag)) *value_start = 0x00;
+
+		out_p += slen;
+	}
 		break;
-	} else {
-		memcpy(ptr, data, len);
+
+	/*
+	 *	The code above ensures that this attribute
+	 *	always fits.
+	 */
+	case FLAG_ENCRYPT_ASCEND_SECRET:
+	{
+		uint8_t *value_end = out_p;
+
+		out_p = value_start;	/* Reset */
+
+		slen = fr_radius_ascend_secret(out_p, out_end - out_p,
+					       value_start, value_end - value_start,
+					       packet_ctx->secret, packet_ctx->vector);
+		if (slen < 0) return slen;
+		out_p += slen;
+
+	}
+		break;
 	}
 
-	FR_PROTO_HEX_DUMP(out, len, "value %s", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
+	FR_PROTO_HEX_DUMP(out, out_p - out, "value %s",
+			  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
 
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
@@ -608,7 +664,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	vp = fr_cursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
-	return len + (ptr - out);
+	return out_p - out;
 }
 
 static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,

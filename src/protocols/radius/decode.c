@@ -1135,7 +1135,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	Ascend-Receive-Secret
 		 */
 		case FLAG_ENCRYPT_ASCEND_SECRET:
-			fr_radius_ascend_secret(buffer, packet_ctx->vector, packet_ctx->secret, p);
+			fr_radius_ascend_secret(buffer, sizeof(buffer), p, data_len,
+						packet_ctx->secret, packet_ctx->vector);
 			buffer[RADIUS_AUTH_VECTOR_LENGTH] = '\0';
 			data_len = strlen((char *) buffer);
 			break;
