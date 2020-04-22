@@ -90,7 +90,7 @@ static char *my_dlerror = NULL;
  *  by absolute path.  Then later invocations of dlclose() or dlsym()
  *  can just use the relative path.
  */
-static char *argv2lib(char const *argv, char **filename, char **libname)
+static char *argv2lib(char const *argv, char **libname)
 {
 	size_t len;
 	char *p, *name;
@@ -114,10 +114,8 @@ static char *argv2lib(char const *argv, char **filename, char **libname)
 	p = strrchr(name, '/');
 	if (p) {
 		*libname = p + 1;
-		*filename = name;
 	} else {
 		*libname = name;
-		*filename = NULL;
 	}
 
 	return name;
@@ -219,11 +217,11 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 {
 	void *handle;
 	int mode = RTLD_NOW;
-	char *p, *name, *libname, *filename;
+	char *p, *name, *libname;
 	char const *error = NULL;
 	fr_lib_t *lib;
 
-	name = argv2lib(argv[0], &filename, &libname);
+	name = argv2lib(argv[0], &libname);
 	if (!name) return NULL;
 
 	lib = find_lib(libname, NULL);
@@ -241,9 +239,14 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 	 */
 
 	/*
-	 *	We didn't find it in the list of cached librarys.  Call dlopen().
+	 *	We didn't find it in the list of cached librarys.
+	 *	Call dlopen().
+	 *
+	 *	"name" here can either be the full filename, or just
+	 *	the libname.
 	 */
 	handle = dlopen(name, mode);
+
 	/*
 	 *	If we require a particular symbol, check the library
 	 *	for it.
@@ -252,7 +255,8 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 
 	if (!handle) {
 		unsigned int i;
-		size_t len = 0, namelen = 0;
+		size_t liblen;
+		char *filename;
 
 		/*
 		 *	Only the library specified specified, OR the
@@ -272,7 +276,9 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 				my_dlerror = strdup(error);
 			}
 
-			if (name) FREE(name);
+			if (name) {
+				FREE(name);
+			}
 			return NULL;
 		}
 
@@ -288,41 +294,41 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 			goto fail;
 		}
 
-		namelen = strlen(libname);
+		liblen = strlen(libname);
 
 		/*
 		 *	Loop through the supplied directories, trying
 		 *	to open the full path name.
 		 */
 		for (i = 2; i < argc; i++) {
-			handle = check_path(filename, libname, namelen, mode,
+			handle = check_path(filename, libname, liblen, mode,
 					    argv[1], argv[i]);
-			len = strlen(argv[i]);
 			if (handle) break;
 		}
 
-		/*
-		 *	We've found the library with full name in
-		 *	"filename".  So we don't need the original
-		 *	"name" any more.
-		 */
-		FREE(name);
-		if (!handle) {
-			FREE(filename);
-			goto set_dlerror;
-		}
+		FREE(filename);
+		if (!handle) goto set_dlerror;
+	}
 
+	/*
+	 *	Ensure that "libname" is always dynamically allocated.
+	 */
+	if (libname != name) {
+		libname = strdup(libname);
+		FREE(name);
+		if (!libname) goto oom;
+
+	} else {
 		/*
-		 *	Point to the library name we previously copied
-		 *	over.  This hack is so that the later code can
-		 *	assign filename / libname to the "lib"
-		 *	structure.
+		 *	We don't need this any more.  "libname" points
+		 *	to the memory.
 		 */
-		libname = filename + len + 1;
+		name = NULL;
 	}
 
 	lib = calloc(sizeof(*lib), 1);
 	if (!lib) {
+		FREE(libname);
 		dlclose(handle);
 		goto oom;
 	}
@@ -332,18 +338,17 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 	 */
 	lib->next = libs;
 	lib->handle = handle;
+	lib->name = libname;
 
 	/*
-	 *	Ensure that both fields will be dynamically allocated
-	 *	strings.
+	 *	Set lib->filename from the linker information.  We
+	 *	don't care about the filename we used to open the
+	 *	library.  If the linker information differs from the
+	 *	filename we used, well, there's little we can do about
+	 *	that.
 	 */
-	if (filename) {
-		lib->name = strdup(libname);
-		lib->filename = filename;
-	} else {
+	{
 		struct link_map *link_map = NULL;
-
-		lib->name = libname;
 
 #ifdef __linux__
 		/*
@@ -384,16 +389,16 @@ no_file:
 	if (!p) goto no_file;
 
 	/*
-	 *	Return the name of the enclosing directoryto the
+	 *	Return the name of the enclosing directory to the
 	 *	caller.
 	 */
-	filename = gmk_alloc((p - lib->filename) + 1);
-	if (!filename) goto no_file;
+	name = gmk_alloc((p - lib->filename) + 1);
+	if (!name) goto no_file;
 
-	memcpy(filename, lib->filename, p - lib->filename);
-	filename[p - lib->filename] = '\0';
+	memcpy(name, lib->filename, p - lib->filename);
+	name[p - lib->filename] = '\0';
 
-	return filename;
+	return name;
 }
 
 
@@ -411,10 +416,10 @@ no_file:
  */
 static char *make_dlclose(UNUSED char const *nm, UNUSED unsigned int argc, char **argv)
 {
-	char *p, *name, *libname, *filename;
+	char *p, *name, *libname;
 	fr_lib_t *lib, **last;
 
-	name = argv2lib(argv[0], &filename, &libname);
+	name = argv2lib(argv[0], &libname);
 	if (!name) return NULL;
 
 	lib = find_lib(name, &last);
@@ -425,7 +430,7 @@ static char *make_dlclose(UNUSED char const *nm, UNUSED unsigned int argc, char 
 	/*
 	 *	Free whatever is necessary to be freed.
 	 */
-	if (lib->filename) FREE(lib->filename);
+	FREE(lib->filename);
 	FREE(lib->name);
 
 	(void) dlclose(lib->handle);
@@ -462,11 +467,11 @@ static char *make_dlclose(UNUSED char const *nm, UNUSED unsigned int argc, char 
  */
 static char *make_dlsym(UNUSED char const *nm, UNUSED unsigned int argc, char **argv)
 {
-	char *p, *name, *libname, *filename;
+	char *p, *name, *libname;
 	fr_lib_t *lib;
 	void *symbol;
 
-	name = argv2lib(argv[0], &filename, &libname);
+	name = argv2lib(argv[0], &libname);
 	if (!name) return NULL;
 
 	lib = find_lib(libname, NULL);
