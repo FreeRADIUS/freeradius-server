@@ -627,7 +627,7 @@ do { \
 do { \
 	int _ret; \
 	_ret = fr_heap_extract((_treq)->pub.trunk->backlog, _treq); \
-	if (!fr_cond_assert(_ret == 0)) return; \
+	if (!fr_cond_assert_msg(_ret == 0, "Failed extracting conn from backlog heap: %s", fr_strerror())) break; \
 } while (0)
 
 /** Remove the current request from the pending list
@@ -637,7 +637,7 @@ do { \
 do { \
 	int _ret; \
 	_ret = fr_heap_extract((_treq)->pub.tconn->pending, _treq); \
-	if (!fr_cond_assert(_ret == 0)) return; \
+	if (!fr_cond_assert_msg(_ret == 0, "Failed extracting conn from pending heap: %s", fr_strerror())) break; \
 } while (0)
 
 /** Remove the current request from the partial slot
@@ -682,7 +682,7 @@ do { \
 	if ((fr_heap_num_elements((_tconn)->pub.trunk->active) == 1)) break; \
 	if (!fr_cond_assert((_tconn)->pub.state == FR_TRUNK_CONN_ACTIVE)) break; \
 	_ret = fr_heap_extract((_tconn)->pub.trunk->active, (_tconn)); \
-	if (!fr_cond_assert(_ret == 0)) break; \
+	if (!fr_cond_assert_msg(_ret == 0, "Failed extracting conn from active heap: %s", fr_strerror())) break; \
 	fr_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
@@ -2692,7 +2692,7 @@ static void trunk_connection_remove(fr_trunk_connection_t *tconn)
 	switch (tconn->pub.state) {
 	case FR_TRUNK_CONN_ACTIVE:
 		ret = fr_heap_extract(trunk->active, tconn);
-		if (!fr_cond_assert(ret == 0)) return;
+		fr_assert_msg(ret == 0, "Failed extracting conn from active heap: %s", fr_strerror());
 		return;
 
 	case FR_TRUNK_CONN_INIT:

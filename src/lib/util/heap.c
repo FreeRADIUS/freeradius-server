@@ -194,7 +194,11 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 {
 	int32_t parent, child, max;
 
-	if (!hp || (hp->num_elements == 0)) return -1;
+	if (unlikely(hp->num_elements == 0)) {
+		fr_strerror_printf("Tried to extract element from empty heap");
+		return -1;
+	}
+
 
 	max = hp->num_elements - 1;
 
@@ -210,7 +214,10 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		/*
 		 *	Out of bounds.
 		 */
-		if ((parent < 0) || (parent >= hp->num_elements)) return -1;
+		if (unlikely((parent < 0) || (parent >= hp->num_elements))) {
+			fr_strerror_printf("Heap parent (%i) out of bounds (0-%i)", parent, hp->num_elements);
+			return -1;
+		}
 	}
 
 	RESET_OFFSET(hp, parent);
