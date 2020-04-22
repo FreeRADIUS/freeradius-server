@@ -2710,7 +2710,7 @@ static void trunk_connection_remove(fr_trunk_connection_t *tconn)
 		int ret;
 
 		ret = fr_heap_extract(trunk->active, tconn);
-		fr_assert_msg(ret == 0, "Failed extracting conn from active heap: %s", fr_strerror());
+		if (!fr_cond_assert_msg(ret == 0, "Failed extracting conn from active heap: %s", fr_strerror())) return;
 	}
 		return;
 
