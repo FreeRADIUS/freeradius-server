@@ -104,7 +104,15 @@ static void encode_password(uint8_t *out, ssize_t *outlen, uint8_t const *input,
 		len += 0x0f;
 		len &= ~0x0f;
 	}
-	*outlen = len;
+
+	/*
+	 *	Truncate it as necessary.
+	 */
+	if (len > (size_t) *outlen) {
+		len = *outlen;
+	} else {
+		*outlen = len;
+	}
 
 	md5_ctx = fr_md5_ctx_alloc(false);
 	md5_ctx_old = fr_md5_ctx_alloc(true);
