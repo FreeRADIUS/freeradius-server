@@ -705,7 +705,10 @@ int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
 	}
 
 	argc = fr_value_box_list_flatten_argv(request, &argv, vb);
-	if (argc < 0) return -1;
+	if (argc < 0) {
+		talloc_free(envp);
+		return -1;
+	}
 
 	if (DEBUG_ENABLED3) {
 		int i;
@@ -804,7 +807,11 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	}
 
 	argc = fr_value_box_list_flatten_argv(request, &argv, vb);
-	if (argc < 0) return -1;
+	if (argc < 0) {
+	error:
+		talloc_free(envp);
+		return -1;
+	}
 
 	if (DEBUG_ENABLED3) {
 		int i;
@@ -814,8 +821,10 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 
 	if (input_fd) {
 		if (pipe(to_child) < 0) {
+		error2:
 			fr_strerror_printf("Failed opening pipe to read to child - %s", fr_strerror());
-			return -1;
+			talloc_free(argv);
+			goto error;
 		}
 	}
 
@@ -825,8 +834,7 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 				close(to_child[0]);
 				close(to_child[1]);
 			}
-			fr_strerror_printf("Failed opening pipe to read from child - %s", fr_strerror());
-			return -1;
+			goto error2;
 		}
 	}
 
