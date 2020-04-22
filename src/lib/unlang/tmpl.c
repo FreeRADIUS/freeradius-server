@@ -341,7 +341,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	state->fd = -1;
 	if (state->out) fd_p = &state->fd;
 
-	if (fr_exec_wait_start(request, state->box, NULL, &pid, fd_p) < 0) {
+	if (fr_exec_wait_start(request, state->box, NULL, &pid, NULL, fd_p) < 0) {
 		REDEBUG("Failed executing program - %s", fr_strerror());
 	fail:
 		*presult = RLM_MODULE_FAIL;
