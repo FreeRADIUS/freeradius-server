@@ -221,6 +221,7 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 static char		proto_name_prev[128];
 static dl_t		*dl;
 static dl_loader_t	*dl_loader;
+static size_t		max_packet_size = 0;
 
 size_t process_line(command_result_t *result, command_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx,
@@ -1478,7 +1479,7 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 	char		*p = in;
 
 	uint8_t		encoded[(COMMAND_OUTPUT_MAX / 2) - 1];
-	uint8_t		*enc_p = encoded, *enc_end = enc_p + sizeof(encoded);
+	uint8_t		*enc_p = encoded, *enc_end;
 	VALUE_PAIR	*head = NULL, *vp;
 
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_pair");
@@ -1499,6 +1500,11 @@ static size_t command_encode_pair(command_result_t *result, command_ctx_t *cc,
 	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->active_dict ? cc->active_dict : cc->config->dict, p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
+	}
+
+	enc_end = enc_p + sizeof(encoded);
+	if (max_packet_size && (max_packet_size < sizeof(encoded))) {
+		enc_end = enc_p + max_packet_size;
 	}
 
 	for (vp = fr_cursor_talloc_iter_init(&cursor, &head, tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
@@ -1563,8 +1569,9 @@ static size_t command_encode_proto(command_result_t *result, command_ctx_t *cc,
 	ssize_t		slen;
 	char		*p = in;
 
-	uint8_t		encoded[(COMMAND_OUTPUT_MAX / 2) - 1];
 	VALUE_PAIR	*head = NULL;
+	size_t		encoded_len;
+	uint8_t		encoded[(COMMAND_OUTPUT_MAX / 2) - 1];
 
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_proto");
 	if (!tp) {
@@ -1586,7 +1593,15 @@ static size_t command_encode_proto(command_result_t *result, command_ctx_t *cc,
 		RETURN_OK_WITH_ERROR();
 	}
 
-	slen = tp->func(cc->tmp_ctx, head, encoded, sizeof(encoded), encoder_ctx);
+	/*
+	 *	Artificially limit the maximum packet size.
+	 */
+	encoded_len = sizeof(encoded);
+	if (max_packet_size && (max_packet_size < encoded_len)) {
+		encoded_len = max_packet_size;
+	}
+
+	slen = tp->func(cc->tmp_ctx, head, encoded, encoded_len, encoder_ctx);
 	fr_pair_list_free(&head);
 	cc->last_ret = slen;
 	if (slen < 0) {
@@ -1673,6 +1688,25 @@ static size_t command_match_regex(command_result_t *result, command_ctx_t *cc,
 	case 1:
 		RETURN_OK(data_used);
 	}
+}
+
+/** Artificially limit the maximum packet size.
+ *
+ */
+static size_t command_max_packet_size(command_result_t *result, UNUSED command_ctx_t *cc,
+				      char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	unsigned long size;
+	char *end;
+
+	size = strtoul(in, &end, 10);
+	if ((size == ULONG_MAX) || *end || (size >= 65536)) {
+		fr_strerror_printf_push("Invalid integer");
+		RETURN_COMMAND_ERROR();
+	}
+
+	max_packet_size = size;
+	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%ld", max_packet_size));
 }
 
 /** Skip the test file if we're missing a particular feature
@@ -2120,6 +2154,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_match_regex,
 					.usage = "match-regex <regex>",
 					.description = "Compare the contents of the data buffer with a regular expression"
+				}},
+	{ "max_packet_size",   	&(command_entry_t){
+					.func = command_max_packet_size,
+					.usage = "max_packet_size <intger>",
+					.description = "Limit the maximum packet size for encode-proto"
 				}},
 	{ "need-feature ", 	&(command_entry_t){
 					.func = command_need_feature,

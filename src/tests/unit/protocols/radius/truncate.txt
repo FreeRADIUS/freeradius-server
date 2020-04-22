@@ -1,0 +1,23 @@
+#
+#  Correctly truncate encoded attributes / packets
+#
+proto radius
+proto-dictionary radius
+
+max_packet_size 32
+match 32
+
+encode-pair User-Name = "0123456789a123456789b123456789c123456789d123456789e123456789f"
+match 01 20 30 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 62 31 32 33 34 35 36 37 38 39
+
+decode-pair -
+match User-Name = "0123456789a123456789b123456789"
+
+encode-pair User-Password = "0123456789a123456789b123456789c123456789d123456789e123456789f"
+match 02 20 a6 df 3b f9 40 c8 4c 2d 28 7f 66 15 32 27 b6 be dc 8f f1 2a 7f cc b6 58 f9 d1 08 64 6b d2
+
+decode-pair - 
+match User-Password = "0123456789a123456789b123456789"
+
+count
+match 12
