@@ -16,7 +16,23 @@ all:
 #  Catch people who try to use BSD make
 #
 ifeq "0" "1"
-.error GNU Make is required to build FreeRADIUS
+$(error GNU Make is required to build FreeRADIUS)
+endif
+
+#
+#  The version of GNU Make is too old,
+#  don't use it (.FEATURES variable was added in 3.81)
+#
+ifndef .FEATURES
+$(error The build system requires GNU Make 3.81 or later.)
+endif
+
+#
+#  Check for our required list of features
+#
+is_feature = $(if $(filter $1,$(.FEATURES)),T)
+ifeq "$(call is_feature,load)" ""
+$(error GNU Make $(MAKE_VERSION) does not support the "load" keyword (dynamically loaded extensions), upgrade to GNU Make 4.0 or higher)
 endif
 
 #
@@ -44,12 +60,6 @@ RADIUSD_VERSION_STRING := $(shell cat VERSION)
 endif
 
 MFLAGS += --no-print-directory
-
-# The version of GNU Make is too old, don't use it (.FEATURES variable was
-# was added in 3.81)
-ifndef .FEATURES
-$(error The build system requires GNU Make 3.81 or later.)
-endif
 
 export DESTDIR := $(R)
 export PROJECT_NAME := freeradius

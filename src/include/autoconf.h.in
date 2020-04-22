@@ -160,9 +160,6 @@
 /* Define to 1 if you have the `gmtime_r' function. */
 #undef HAVE_GMTIME_R
 
-/* Define to 1 if you have the <gnumake.h> header file. */
-#undef HAVE_GNUMAKE_H
-
 /* Define to 1 if you have the <gperftools/profiler.h> header file. */
 #undef HAVE_GPERFTOOLS_PROFILER_H
 

@@ -1,4 +1,3 @@
-ifneq "$(AC_HAVE_GNUMAKE_H)" ""
 TARGET = libfreeradius-make-dlopen.a
 SOURCES = dlopen.c
 
@@ -16,4 +15,3 @@ SOURCES = dlopen.c
 #$(info $(dlopen libfoobar))
 #$(info $(dlerror ))
 #endif
-endif

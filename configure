@@ -777,6 +777,9 @@ with_execinfo_include_dir
 with_gperftools
 with_gperftools_lib_dir
 with_gperftools_include_dir
+with_gnumake
+with_gnumake_lib_dir
+with_gnumake_include_dir
 with_openssl
 with_openssl_lib_dir
 with_openssl_include_dir
@@ -1486,6 +1489,11 @@ Optional Packages:
   --with-gperftools-include-dir=DIR
                           directory in which to look for gperftools include
                           files
+  --with-gnumake          build with gnumake if available (default=yes)
+  --with-gnumake-lib-dir=DIR
+                          directory in which to look for gnumake library files
+  --with-gnumake-include-dir=DIR
+                          directory in which to look for gnumake include files
   --with-openssl          build with openssl if available (default=yes)
   --with-openssl-lib-dir=DIR
                           directory in which to look for openssl library files
@@ -6378,6 +6386,54 @@ if test "${with_gperftools_include_dir+set}" = set; then :
 
             *)
                 gperftools_include_dir="$withval"
+                ;;
+    esac
+fi
+
+
+
+
+    WITH_GNUMAKE=yes
+
+
+# Check whether --with-gnumake was given.
+if test "${with_gnumake+set}" = set; then :
+  withval=$with_gnumake; case "$withval" in
+            yes|no|'')
+                WITH_GNUMAKE="$withval"
+                ;;
+            *)
+                as_fn_error $? "--with[out]-gnumake expects yes|no|''" "$LINENO" 5
+                ;;
+        esac
+fi
+
+
+
+
+# Check whether --with-gnumake-lib-dir was given.
+if test "${with_gnumake_lib_dir+set}" = set; then :
+  withval=$with_gnumake_lib_dir; case "$withval" in
+            yes|no|'')
+                as_fn_error $? "--with[out]-gnumake-lib=PATH expects a valid PATH" "$LINENO" 5
+                ;;
+            *)
+                gnumake_lib_dir="$withval"
+                ;;
+        esac
+fi
+
+
+
+# Check whether --with-gnumake-include-dir was given.
+if test "${with_gnumake_include_dir+set}" = set; then :
+  withval=$with_gnumake_include_dir; case "$withval" in
+            yes|no|'')
+                as_fn_error $? "--with[out]-gnumake-include=PATH expects a valid PATH" "$LINENO" 5
+                ;;
+
+            *)
+                gnumake_include_dir="$withval"
                 ;;
     esac
 fi
@@ -12038,7 +12094,7 @@ $as_echo "$as_me: WARNING: systemd headers not found.  Use --with-systemd-includ
   fi
 fi
 
-
+smart_try_dir="$gnumake_include_dir"
 
 
 ac_safe=`echo "gnumake.h" | sed 'y%./+-%__pm%'`
@@ -12265,10 +12321,10 @@ fi
 
 smart_prefix=
 
-if test "x$ac_cv_header_gnumake_h" = "xyes"; then
-
-$as_echo "#define HAVE_GNUMAKE_H 1" >>confdefs.h
-
+if test "x$ac_cv_header_gnumake_h" != "xyes"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: gnumake.h not found. Use --with-gnumake-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: gnumake.h not found. Use --with-gnumake-include-dir=<path>." >&2;}
+  as_fn_error $? "FreeRADIUS build system requires gnumake.h (the public interface for GNU Make C extensions)" "$LINENO" 5
 fi
 
 

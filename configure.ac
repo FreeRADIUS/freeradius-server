@@ -643,6 +643,7 @@ AX_WITH_LIB_ARGS_OPT([cap],[yes])
 AX_WITH_LIB_ARGS_OPT([collectdclient],[yes])
 AX_WITH_LIB_ARGS_OPT([execinfo],[yes])
 AX_WITH_LIB_ARGS_OPT([gperftools],[yes])
+AX_WITH_LIB_ARGS_OPT([gnumake],[yes])
 AX_WITH_LIB_ARGS_OPT([openssl],[yes])
 AX_WITH_LIB_ARGS([kqueue])
 AX_WITH_LIB_ARGS_OPT([pcap],[yes])
@@ -1310,14 +1311,15 @@ else
   fi
 fi
 
-
 dnl #
 dnl #  Check for the gnumake headers
 dnl #  Why is GNU make not smart enough to export a variable saying where the heck this is?
 dnl #
+smart_try_dir="$gnumake_include_dir"
 FR_SMART_CHECK_INCLUDE([gnumake.h])
-if test "x$ac_cv_header_gnumake_h" = "xyes"; then
-  AC_DEFINE(HAVE_GNUMAKE_H, 1, [Define to 1 if you have the <gnumake.h> header file.])
+if test "x$ac_cv_header_gnumake_h" != "xyes"; then
+  AC_MSG_WARN([gnumake.h not found. Use --with-gnumake-include-dir=<path>.])
+  AC_MSG_ERROR([FreeRADIUS build system requires gnumake.h (the public interface for GNU Make C extensions)])
 fi
 
 dnl #############################################################
