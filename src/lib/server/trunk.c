@@ -1597,7 +1597,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		int ret;
 
 		ret = fr_heap_extract(trunk->active, tconn);
-		if (!fr_cond_assert_msg(ret != 0,
+		if (!fr_cond_assert_msg(ret == 0,
 					"Failed extracting conn from active heap: %s", fr_strerror())) goto done;
 
 	}
@@ -1661,7 +1661,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		int ret;
 
 		ret = fr_heap_insert(trunk->active, tconn);
-		if (!fr_cond_assert_msg(ret != 0,
+		if (!fr_cond_assert_msg(ret == 0,
 				        "Failed re-inserting conn into active heap: %s", fr_strerror())) goto done;
 	}
 	if (moved >= max) goto done;
