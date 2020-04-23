@@ -62,17 +62,6 @@ typedef struct {
  */
 #define FR_DBUFF_NO_ADVANCE(_dbuff) (fr_dbuff_t[]){ *(_dbuff) }
 
-/** Return a negative offset indicating how much additional space we would have required for fulfil #_need
- *
- * @param[in] _dbuff	to check.
- * @param[in] _need	how much buffer space we need.
- */
-#define FR_DBUFF_CHECK_FREESPACE(_dbuff, _need) \
-do { \
-	size_t _freespace = fr_dbuff_freespace(_dbuff); \
-	if (_need > _freespace) return -(_need - _freespace); \
-} while (0)
-
 /** Does the actual work of initialising a dbuff
  *
  */
@@ -124,13 +113,44 @@ static inline uint8_t *fr_dbuff_end(fr_dbuff_t *dbuff)
 {
 	return dbuff->p = dbuff->end;
 }
+/** @} */
 
+/** @name Length checks
+ * @{
+ */
 /** How many free bytes remain in the buffer
  *
  */
-static inline size_t fr_dbuff_freespace(fr_dbuff_t *dbuff)
+static inline size_t fr_dbuff_freespace(fr_dbuff_t const *dbuff)
 {
 	return dbuff->end - dbuff->p;
+}
+
+/** Return a negative offset indicating how much additional space we would have required for fulfil #_need
+ *
+ * @param[in] _dbuff	to check.
+ * @param[in] _need	how much buffer space we need.
+ */
+#define FR_DBUFF_CHECK_FREESPACE(_dbuff, _need) \
+do { \
+	size_t _freespace = fr_dbuff_freespace(_dbuff); \
+	if (_need > _freespace) return -(_need - _freespace); \
+} while (0)
+
+/** How many bytes we've used in the buffer
+ *
+ */
+static inline size_t fr_dbuff_used(fr_dbuff_t const *dbuff)
+{
+	return dbuff->p - dbuff->start;
+}
+
+/** How many bytes in the buffer total
+ *
+ */
+static inline size_t fr_dbuff_len(fr_dbuff_t const *dbuff)
+{
+	return dbuff->end - dbuff->start;
 }
 /** @} */
 
@@ -151,6 +171,8 @@ static inline size_t fr_dbuff_freespace(fr_dbuff_t *dbuff)
 static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen)
 {
 	size_t freespace = fr_dbuff_freespace(dbuff);
+
+	fr_assert(!dbuff->is_const);
 
 	if (inlen > freespace) return -(inlen - freespace);
 
