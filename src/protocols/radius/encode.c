@@ -1466,12 +1466,32 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, u
 	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
 	int packet_type = FR_CODE_ACCESS_REQUEST;
 	VALUE_PAIR *vp;
+	ssize_t slen;
 
 	vp = fr_pair_find_by_da(vps, attr_packet_type, TAG_ANY);
 	if (vp) packet_type = vp->vp_uint32;
 
-	return fr_radius_encode(data, data_len, NULL, test_ctx->secret, talloc_array_length(test_ctx->secret) - 1,
+	if ((packet_type == FR_CODE_ACCESS_REQUEST) || (packet_type == FR_CODE_STATUS_SERVER)) {
+		int i;
+
+		for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) {
+			data[4 + i] = fr_fast_rand(&test_ctx->rand_ctx);
+		}
+	}
+
+	/*
+	 *	@todo - pass in test_ctx to this function, so that we
+	 *	can leverage a consistent random number generator.
+	 */
+	slen = fr_radius_encode(data, data_len, NULL, test_ctx->secret, talloc_array_length(test_ctx->secret) - 1,
 				packet_type, 0, vps);
+	if (slen <= 0) return slen;
+
+	if (fr_radius_sign(data, NULL, (uint8_t const *) test_ctx->secret, talloc_array_length(test_ctx->secret) - 1) < 0) {
+		return -1;
+	}
+
+	return slen;
 }
 
 /*
