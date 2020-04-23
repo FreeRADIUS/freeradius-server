@@ -1426,6 +1426,19 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
+static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, uint8_t *data, size_t data_len, void *proto_ctx)
+{
+	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
+	int packet_type = FR_CODE_ACCESS_REQUEST;
+	VALUE_PAIR *vp;
+
+	vp = fr_pair_find_by_da(vps, attr_packet_type, TAG_ANY);
+	if (vp) packet_type = vp->vp_uint32;
+
+	return fr_radius_encode(data, data_len, NULL, test_ctx->secret, talloc_array_length(test_ctx->secret) - 1,
+				packet_type, 0, vps);
+}
+
 /*
  *	Test points
  */
@@ -1433,4 +1446,11 @@ extern fr_test_point_pair_encode_t radius_tp_encode_pair;
 fr_test_point_pair_encode_t radius_tp_encode_pair = {
 	.test_ctx	= encode_test_ctx,
 	.func		= fr_radius_encode_pair
+};
+
+
+extern fr_test_point_proto_encode_t radius_tp_encode_proto;
+fr_test_point_proto_encode_t radius_tp_encode_proto = {
+	.test_ctx	= encode_test_ctx,
+	.func		= fr_radius_encode_proto
 };
