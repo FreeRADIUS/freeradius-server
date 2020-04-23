@@ -58,8 +58,18 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
-static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
+/** Evaluation function for EAP-AKA-encodability
+ *
+ * @param item	pointer to a VALUE_PAIR
+ * @param uctx	context
+ *
+ * @return true if the underlying VALUE_PAIR is EAP_AKA encodable, false otherwise
+ */
+static bool is_eap_aka_encodable(void *item, void *uctx)
 {
+	VALUE_PAIR		*vp = item;
+	fr_aka_sim_encode_ctx_t	*packet_ctx = uctx;
+
 	if (!vp) return false;
 	if (vp->da->flags.internal) return false;
 	/*
@@ -67,41 +77,9 @@ static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
 	 *	and absence is 'false'
 	 */
 	if ((vp->da->type == FR_TYPE_BOOL) && (vp->vp_bool == false)) return false;
-	if (!fr_dict_parent_common(root, vp->da, true)) return false;
+	if (!fr_dict_parent_common(packet_ctx->root, vp->da, true)) return false;
 
 	return true;
-}
-
-/** Find the next attribute to encode
- *
- * @param cursor to iterate over.
- * @param encoder_ctx the context for the encoder
- * @return encodable VALUE_PAIR, or NULL if none available.
- */
-static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
-{
-	VALUE_PAIR		*vp;
-	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
-
-	while ((vp = fr_cursor_next(cursor))) if (is_encodable(packet_ctx->root, vp)) break;
-	return fr_cursor_current(cursor);
-}
-
-/** Determine if the current attribute is encodable, or find the first one that is
- *
- * @param cursor to iterate over.
- * @param encoder_ctx the context for the encoder
- * @return encodable VALUE_PAIR, or NULL if none available.
- */
-static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx)
-{
-	VALUE_PAIR		*vp;
-	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
-
-	vp = fr_cursor_current(cursor);
-	if (is_encodable(packet_ctx->root, vp)) return vp;
-
-	return next_encodable(cursor, encoder_ctx);
 }
 
 /** Add an IV to a packet
@@ -582,7 +560,7 @@ done:
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
 	 */
-	vp = next_encodable(cursor, encoder_ctx);
+	vp = fr_cursor_filter_next(cursor, is_eap_aka_encodable, encoder_ctx);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return len;
@@ -890,7 +868,7 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 
 	CHECK_FREESPACE(outlen, 4);		/* Attributes lengths are always multiples of 4 */
 
-	vp = first_encodable(cursor, encoder_ctx);
+	vp = fr_cursor_filter_current(cursor, is_eap_aka_encodable, encoder_ctx);
 	if (!vp) return 0;
 
 	VP_VERIFY(vp);
@@ -902,7 +880,7 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 	}
 
 	if (vp->da->attr == FR_MAC) {
-		next_encodable(cursor, encoder_ctx);
+		fr_cursor_filter_next(cursor, is_eap_aka_encodable, encoder_ctx);
 		return 0;
 	}
 	/*
@@ -998,7 +976,7 @@ ssize_t fr_aka_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_
 	/*
 	 *	Fast path, we just need to encode a subtype
 	 */
-	if (!do_hmac && !first_encodable(&cursor, packet_ctx)) {
+	if (!do_hmac && !fr_cursor_filter_current(&cursor, is_eap_aka_encodable, packet_ctx)) {
 		MEM(buff = talloc_array(eap_packet, uint8_t, 3));
 
 		buff[0] = subtype;	/* SIM or AKA subtype */
