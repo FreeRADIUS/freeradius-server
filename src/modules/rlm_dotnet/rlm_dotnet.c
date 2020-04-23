@@ -50,12 +50,14 @@
  *
  */
 typedef struct dotnet_func_def {
-	void (*function)(void);
+	void *function;
 
 	char const	*assembly_name;		//!< String name of assembly.
 	char const	*class_name;		//!< String name of class in assembly.
 	char const	*function_name;		//!< String name of function in class.
 } dotnet_func_def_t;
+
+typedef void (*instantiate_function_t)(int numberStrings, void* strings);
 
 static struct {
 	char const *name;
@@ -328,7 +330,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->instantiate.function)
 	{
-		inst->instantiate.function();
+		instantiate_function_t instantiate_function = inst->instantiate.function;
+		instantiate_function(sizeof(radiusd_constants) / sizeof(radiusd_constants[0]), radiusd_constants);
 	}
 
 	return 0;
