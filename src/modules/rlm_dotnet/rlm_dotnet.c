@@ -57,7 +57,7 @@ typedef struct dotnet_func_def {
 	char const	*function_name;		//!< String name of function in class.
 } dotnet_func_def_t;
 
-typedef void (*instantiate_function_t)(int numberStrings, void* strings);
+typedef void (*instantiate_function_t)(int numberStrings, void* strings, void (*log)(int, char const*));
 
 static struct {
 	char const *name;
@@ -150,6 +150,11 @@ static const CONF_PARSER module_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+
+static void mod_radlog(int status, char const* msg)
+{
+	radlog(status, "%s", msg);
+}
 
 static int bind_dotnet(rlm_dotnet_t *inst)
 {
@@ -331,7 +336,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->instantiate.function)
 	{
 		instantiate_function_t instantiate_function = inst->instantiate.function;
-		instantiate_function(sizeof(radiusd_constants) / sizeof(radiusd_constants[0]), radiusd_constants);
+		instantiate_function(sizeof(radiusd_constants) / sizeof(radiusd_constants[0]), radiusd_constants, mod_radlog);
 	}
 
 	return 0;
