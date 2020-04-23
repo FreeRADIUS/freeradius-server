@@ -27,5 +27,10 @@ match
 returned
 match -31
 
+encode-pair User-Name = "bob", Filter-Id = "0123456789a123456789b123456789c123456789d123456789e123456789f"
+match
+returned
+match -36
+
 count
-match 16
+match 20
