@@ -32,7 +32,19 @@
 #include <dlfcn.h>
 #include "coreclrhost.h"
 
+#ifdef __APPLE__
+#  define FS_SEPARATOR    "/"
+#  define PATH_DELIMITER  ":"
 #define DEFAULT_CLR_LIBRARY	"libcoreclr.dylib"
+#elif defined (WIN32)
+#  define FS_SEPARATOR    "\\"
+#  define PATH_DELIMITER  ";"
+#define DEFAULT_CLR_LIBRARY	"libcoreclr.dll"
+#else
+#  define FS_SEPARATOR    "/"
+#  define PATH_DELIMITER  ":"
+#define DEFAULT_CLR_LIBRARY	"libcoreclr.so"
+#endif
 
 /** Specifies the module.function to load for processing a section
  *
@@ -198,17 +210,6 @@ static int string_ends_with(char const *str, char const *suffix)
 		return 0;
 	return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
 }
-
-#ifdef __APPLE__
-#  define FS_SEPARATOR    "/"
-#  define PATH_DELIMITER  ":"
-#elif defined (WIN32)
-#  define FS_SEPARATOR    "\\"
-#  define PATH_DELIMITER  ";"
-#else
-#  define FS_SEPARATOR    "/"
-#  define PATH_DELIMITER  ":"
-#endif
 
 static char* build_tpa_list(const char* directory)
 {
