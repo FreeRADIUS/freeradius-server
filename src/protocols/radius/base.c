@@ -28,10 +28,12 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <ctype.h>
 
-#include <freeradius-devel/util/base.h>
 
+#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/io/pair.h>
 #include "attrs.h"
 
 static uint32_t instance_count = 0;
@@ -890,12 +892,11 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
 			 char const *secret, UNUSED size_t secret_len, int code, int id, VALUE_PAIR *vps)
 {
-	uint8_t			*ptr;
-	int			total_length;
-	int			len;
+	ssize_t			slen;
 	VALUE_PAIR const	*vp;
 	fr_cursor_t		cursor;
 	fr_radius_ctx_t		packet_ctx;
+	uint8_t			*out_p, *out_end;
 
 	packet_ctx.secret = secret;
 	packet_ctx.vector = packet + 4;
@@ -906,6 +907,9 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	 *	The RADIUS header can't do more than 64K of data.
 	 */
 	if (packet_len > 65535) packet_len = 65535;
+
+	out_p = packet;
+	out_end = packet + packet_len;
 
 	switch (code) {
 	case FR_CODE_ACCESS_REQUEST:
@@ -945,15 +949,17 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		return -1;
 	}
 
-	packet[0] = code;
-	packet[1] = id;
-	packet[2] = 0;
-	packet[3] = total_length = RADIUS_HEADER_LENGTH;
+	CHECK_FREESPACE(out_end - out_p, RADIUS_HEADER_LENGTH);
+
+	*out_p++ = code;
+	*out_p++ = id;
+	*out_p++ = 0;
+	*out_p++ = RADIUS_HEADER_LENGTH;
 
 	/*
-	 *	Load up the configuration values for the user
+	 *	Skip over the auth vector
 	 */
-	ptr = packet + RADIUS_HEADER_LENGTH;
+	out_p += RADIUS_AUTH_VECTOR_LENGTH;
 
 	/*
 	 *	If we're sending Protocol-Error, add in
@@ -961,24 +967,15 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	 *	later themselves, well, too bad.
 	 */
 	if (code == FR_CODE_PROTOCOL_ERROR) {
-		size_t room;
+		CHECK_FREESPACE(out_end - out_p, 7);
 
-		room = (packet + packet_len) - ptr;
-		if (room < 7) {
-			fr_strerror_printf("Insufficient room to encode attributes");
-			return -1;
-		}
-
-		ptr[0] = 241;
-		ptr[1] = 7;
-		ptr[2] = 4;	/* Original-Packet-Code */
-		ptr[3] = 0;
-		ptr[4] = 0;
-		ptr[5] = 0;
-		ptr[6] = original[0];
-
-		ptr += 7;
-		total_length += 7;
+		*out_p++ = 241;
+		*out_p++ = 7;
+		*out_p++ = 4;	/* Original-Packet-Code */
+		*out_p++ = 0;
+		*out_p++ = 0;
+		*out_p++ = 0;
+		*out_p++ = original[0];
 	}
 
 	/*
@@ -986,12 +983,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	 */
 	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_radius, VALUE_PAIR);
 	while ((vp = fr_cursor_current(&cursor))) {
-		size_t		last_len, room;
-		char const	*last_name = NULL;
-
 		VP_VERIFY(vp);
-
-		room = (packet + packet_len) - ptr;
 
 		/*
 		 *	Ignore non-wire attributes, but allow extended
@@ -1004,71 +996,53 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 			 *	attributes with a debug build.
 			 */
 			if (vp->da == attr_raw_attribute) {
-				if (vp->vp_length > room) {
-					len = room;
-				} else {
-					len = vp->vp_length;
+				CHECK_FREESPACE(vp->vp_length, vp->vp_length);
+
+				/*
+				 *	Skip really badly formatted attributes
+				 */
+				if (vp->vp_length > (RADIUS_MAX_STRING_LENGTH + 2)) {
+					fr_cursor_next(&cursor);
+					continue;
 				}
 
-				memcpy(ptr, vp->vp_octets, len);
+				memcpy(out_p, vp->vp_octets, vp->vp_length);
+				out_p += vp->vp_length;
 				fr_cursor_next(&cursor);
-				goto next;
+				continue;
 			}
 #endif
+			/*
+			 *	Skip internal attributes...
+			 */
 			fr_cursor_next(&cursor);
 			continue;
 		}
 
 		/*
-		 *	Set the Message-Authenticator to the correct
-		 *	length and initial value.
+		 *	Encode an individual VP
 		 */
-		if (vp->da == attr_message_authenticator) {
-			last_len = 16;
-		} else {
-			last_len = vp->vp_length;
+		slen = fr_radius_encode_pair(out_p, out_end - out_p, &cursor, &packet_ctx);
+		if (slen < 0) {
+			if (slen == PAIR_ENCODE_SKIPPED) continue;
+			return slen;
 		}
-		last_name = vp->da->name;
-
-		if (room <= 2) break;
-
-		len = fr_radius_encode_pair(ptr, room, &cursor, &packet_ctx);
-		if (len < 0) return -1;
 
 		/*
-		 *	Failed to encode the attribute, likely because
-		 *	the packet is full.
+		 *	Advance position in the output buffer
 		 */
-		if (len == 0) {
-			if (last_len != 0) {
-				fr_strerror_printf("WARNING: Failed encoding attribute %s\n", last_name);
-				break;
-			} else {
-				fr_strerror_printf("WARNING: Skipping zero-length attribute %s\n", last_name);
-			}
-		}
-
-#ifndef NDEBUG
-	next:			/* Used only for Raw-Attribute */
-#endif
-		ptr += len;
-		total_length += len;
+		out_p += slen;
 	} /* done looping over all attributes */
 
 	/*
-	 *	Fill in the rest of the fields, and copy the data over
-	 *	from the local stack to the newly allocated memory.
+	 *	Fill in the length field we zeroed out earlier.
 	 *
-	 *	Yes, all this 'memcpy' is slow, but it means
-	 *	that we only allocate the minimum amount of
-	 *	memory for a request.
 	 */
-	packet[2] = (total_length >> 8) & 0xff;
-	packet[3] = total_length & 0xff;
+	fr_net_from_uint16(packet + 2, out_p - packet);
 
-	FR_PROTO_HEX_DUMP(packet, total_length, "%s encoded packet", __FUNCTION__);
+	FR_PROTO_HEX_DUMP(packet, out_p - packet, "%s encoded packet", __FUNCTION__);
 
-	return total_length;
+	return out_p - packet;
 }
 
 /** Decode a raw RADIUS packet into VPs.

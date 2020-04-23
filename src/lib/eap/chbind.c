@@ -25,12 +25,13 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/io/pair.h>
 #include "chbind.h"
 #include "attrs.h"
 
 static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 {
-	int			length;
+	ssize_t			slen;
 	size_t			total;
 	uint8_t			*ptr, *end;
 	VALUE_PAIR		const *vp;
@@ -97,8 +98,13 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		}
 		if (vp->da == attr_message_authenticator) goto next;
 
-		length = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
-		ptr += length;
+		slen = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
+		if (slen < 0) {
+			if (slen == PAIR_ENCODE_SKIPPED) goto next;
+			RPERROR("Failed encoding chbind response");
+			return false;
+		}
+		ptr += slen;
 	}
 
 	return true;

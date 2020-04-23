@@ -259,7 +259,7 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 				       fr_da_stack_t *da_stack, unsigned int depth,
 				       fr_cursor_t *cursor, void *encoder_ctx)
 {
-	ssize_t			len;
+	ssize_t			slen;
 	uint8_t			*p = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
@@ -279,15 +279,15 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(p, sublen, da_stack, depth + 1, cursor, encoder_ctx);
+			slen = encode_tlv_hdr(p, sublen, da_stack, depth + 1, cursor, encoder_ctx);
 		} else {
-			len = encode_rfc_hdr_internal(p, sublen, da_stack, depth + 1, cursor, encoder_ctx);
+			slen = encode_rfc_hdr_internal(p, sublen, da_stack, depth + 1, cursor, encoder_ctx);
 		}
 
-		if (len <= 0) return len;
+		if (slen <= 0) return slen;
 
-		p += len;
-		outlen -= len;				/* Subtract from the buffer we have available */
+		p += slen;
+		outlen -= slen;				/* Subtract from the buffer we have available */
 
 		/*
 		 *	If nothing updated the attribute, stop
@@ -310,7 +310,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx)
 {
-	ssize_t			len;
+	ssize_t			slen;
 
 	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -318,15 +318,15 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	if (da_stack->da[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (!da_stack->da[depth + 1]) {
 		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_SKIPPED;
 	}
 
-	if (outlen < 5) return 0;
+	CHECK_FREESPACE(outlen, 5);
 
 	/*
 	 *	Encode the first level of TLVs
@@ -336,10 +336,10 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 
 	if (outlen > 255) outlen = 255;
 
-	len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
-	if (len <= 0) return len;
+	slen = encode_tlv_hdr_internal(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
+	if (slen <= 0) return slen;
 
-	out[1] += len;
+	out[1] += slen;
 
 	return out[1];
 }
@@ -349,7 +349,10 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
  * @return
  *	> 0, Length of the data portion.
  *      = 0, we could not encode anything, skip this attribute (and don't encode the header)
- *	< 0, failure.
+ *	  unless it's one of a list of exceptions.
+ *	< 0, How many additional bytes we'd need as a negative integer.
+ *	PAIR_ENCODE_FATAL_ERROR - Abort encoding the packet.
+ *	PAIR_ENCODE_SKIPPED - Unencodable value
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_da_stack_t *da_stack, unsigned int depth,
@@ -446,8 +449,16 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	/*
 	 *	Write tag byte
+	 *
+	 *	The Tag field is one octet in length and is intended to provide a
+	 *	means of grouping attributes in the same packet which refer to the
+	 *	same tunnel.  If the value of the Tag field is greater than 0x00
+	 *	and less than or equal to 0x1F, it SHOULD be interpreted as
+	 *	indicating which tunnel (of several alternatives) this attribute
+	 *	pertains.  If the Tag field is greater than 0x1F, it SHOULD be
+	 *	interpreted as the first byte of the following String field.
 	 */
-	if (vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
+	if ((vp->da->type == FR_TYPE_STRING) && vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
 		CHECK_FREESPACE(out_end - out_p, 1);
 		*out_p++ = vp->tag;
 		value_start = out_p;
@@ -461,7 +472,11 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	/*
 	 *	Invalid value, don't encode.
 	 */
-	if (len > RADIUS_MAX_STRING_LENGTH) return 0;
+	if (len > RADIUS_MAX_STRING_LENGTH) {
+		fr_strerror_printf("%s length of %zu bytes exceeds maximum value length",
+				   vp->da->name, len);
+		return PAIR_ENCODE_SKIPPED;
+	}
 
 	/*
 	 *	For everything else, return the number of
@@ -622,7 +637,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			/*
 			 *	This is an un-encodable tunnel_password_attribute
 			 */
-			if (outlen >= RADIUS_MAX_STRING_LENGTH) return 0;
+			if (outlen >= RADIUS_MAX_STRING_LENGTH) {
+				fr_strerror_printf("%s too long", vp->da->name);
+				return PAIR_ENCODE_SKIPPED;
+			}
 			return slen;
 		}
 
@@ -654,6 +672,26 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	}
 		break;
+	}
+
+	/*
+	 *	High byte of 32bit integers gets set to the tag
+	 *	value.
+	 *
+	 *	The Tag field is one octet in length and is intended to provide a
+	 *	means of grouping attributes in the same packet which refer to the
+	 *	same tunnel.  Valid values for this field are 0x01 through 0x1F,
+	 *	inclusive.  If the Tag field is unused, it MUST be zero (0x00).
+	 */
+	if ((vp->da->type == FR_TYPE_UINT32) && vp->da->flags.has_tag) {
+		/*
+		 *	Only 24bit integers are allowed here
+		 */
+		if (value_start[0] != 0) {
+			fr_strerror_printf("Integer overflow for tagged uint32 attribute");
+			return PAIR_ENCODE_SKIPPED;
+		}
+		value_start[0] = vp->tag;
 	}
 
 	FR_PROTO_HEX_DUMP(out, out_p - out, "value %s",
@@ -726,11 +764,11 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
 /** Encode an "extended" attribute
  *
  */
-static int encode_extended_hdr(uint8_t *out, size_t outlen,
-			       fr_da_stack_t *da_stack, unsigned int depth,
-			       fr_cursor_t *cursor, void *encoder_ctx)
+static ssize_t encode_extended_hdr(uint8_t *out, size_t outlen,
+				   fr_da_stack_t *da_stack, unsigned int depth,
+				   fr_cursor_t *cursor, void *encoder_ctx)
 {
-	int			len;
+	ssize_t			slen;
 	fr_type_t		attr_type;
 #ifndef NDEBUG
 	fr_type_t		vsa_type;
@@ -761,7 +799,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 */
 	switch (attr_type) {
 	case FR_TYPE_EXTENDED:
-		if (outlen < (size_t) (3 + extra)) return 0;
+		CHECK_FREESPACE(outlen, 3 + extra);
 
 		/*
 		 *	Encode which extended attribute it is.
@@ -777,7 +815,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		fr_strerror_printf("%s : Called for non-extended attribute type %s",
 				   __FUNCTION__, fr_table_str_by_value(fr_value_box_type_table,
 				   da_stack->da[depth]->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -789,7 +827,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		uint8_t *evs = out + out[1];
 		uint32_t lvalue;
 
-		if (outlen < (size_t) (out[1] + 5)) return 0;
+		CHECK_FREESPACE(outlen, (out[1] + 5));
 
 		depth++;
 
@@ -813,11 +851,11 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	if ((attr_type == FR_TYPE_EXTENDED) && !extra && (outlen > 255)) outlen = 255;
 
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
+		slen = encode_tlv_hdr_internal(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
 	} else {
-		len = encode_value(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
 	}
-	if (len <= 0) return len;
+	if (slen <= 0) return slen;
 
 	/*
 	 *	There may be more than 255 octets of data encoded in
@@ -825,11 +863,11 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 *	and copy the existing header over.  Set the "M" flag ONLY
 	 *	after copying the rest of the data.
 	 */
-	if (len > (255 - out[1])) {
-		return attr_shift(start, start + outlen, out, 4, len, 3, 0);
+	if (slen > (255 - out[1])) {
+		return attr_shift(start, start + outlen, out, 4, slen, 3, 0);
 	}
 
-	out[1] += len;
+	out[1] += slen;
 
 #ifndef NDEBUG
 	if (fr_debug_lvl > 3) {
@@ -856,21 +894,22 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 {
 	uint8_t			*ptr = out;
 	uint8_t			const *p;
-	size_t			len, left;
+	size_t			left;
+	ssize_t			slen;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	p = vp->vp_octets;
-	len = fr_radius_attr_len(vp);
+	slen = fr_radius_attr_len(vp);
 
-	while (len > 0) {
+	while (slen > 0) {
 		if (outlen <= 2) break;
 
 		ptr[0] = da_stack->da[depth]->attr & 0xff;
 		ptr[1] = 2;
 
-		left = len;
+		left = slen;
 
 		/* no more than 253 octets */
 		if (left > 253) left = 253;
@@ -887,7 +926,7 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 		ptr += ptr[1];
 		p += left;
 		outlen -= left;
-		len -= left;
+		slen -= left;
 	}
 
 	vp = fr_cursor_next(cursor);
@@ -911,7 +950,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 				       fr_da_stack_t *da_stack, unsigned int depth,
 				       fr_cursor_t *cursor, void *encoder_ctx)
 {
-	ssize_t len;
+	ssize_t slen;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -919,7 +958,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 	default:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VALUES:
@@ -927,22 +966,22 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 		    (da_stack->da[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
 					   da_stack->da[depth]->attr);
-			return -1;
+			return PAIR_ENCODE_SKIPPED;
 		}
 		break;
 	}
 
-	if (outlen <= 2) return 0;
+	CHECK_FREESPACE(outlen, 2);
 
 	out[0] = da_stack->da[depth]->attr & 0xff;
 	out[1] = 2;
 
 	if (outlen > 255) outlen = 255;
 
-	len = encode_value(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
-	if (len <= 0) return len;
+	slen = encode_value(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
+	if (slen <= 0) return slen;
 
-	out[1] += len;
+	out[1] += slen;
 
 	FR_PROTO_HEX_DUMP(out, 2, "header rfc");
 
@@ -958,7 +997,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 				      fr_da_stack_t *da_stack, unsigned int depth,
 				      fr_cursor_t *cursor, void *encoder_ctx)
 {
-	ssize_t			len;
+	ssize_t			slen;
 	size_t			hdr_len;
 	fr_dict_attr_t const	*da, *dv;
 
@@ -968,7 +1007,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 
 	if (dv->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("Expected Vendor");
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	da = da_stack->da[depth];
@@ -986,7 +1025,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	switch (dv->flags.type_size) {
 	default:
 		fr_strerror_printf("%s: Internal sanity check failed, type %u", __FUNCTION__, (unsigned) dv->flags.type_size);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 
 
 	case 4:
@@ -1005,7 +1044,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	switch (dv->flags.length) {
 	default:
 		fr_strerror_printf("%s: Internal sanity check failed, length %u", __FUNCTION__, (unsigned) dv->flags.length);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 
 	case 0:
 		break;
@@ -1029,27 +1068,27 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	 *	internal tlv function, else we get a double TLV header.
 	 */
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + hdr_len, outlen - hdr_len, da_stack, depth, cursor, encoder_ctx);
+		slen = encode_tlv_hdr_internal(out + hdr_len, outlen - hdr_len, da_stack, depth, cursor, encoder_ctx);
 	} else {
-		len = encode_value(out + hdr_len, outlen - hdr_len, da_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(out + hdr_len, outlen - hdr_len, da_stack, depth, cursor, encoder_ctx);
 	}
-	if (len <= 0) return len;
+	if (slen <= 0) return slen;
 
-	if (dv->flags.length) out[hdr_len - 1] += len;
+	if (dv->flags.length) out[hdr_len - 1] += slen;
 
 	FR_PROTO_HEX_DUMP(out, hdr_len, "header vsa");
 
-	return hdr_len + len;
+	return hdr_len + slen;
 }
 
 /** Encode a WiMAX attribute
  *
  */
-static int encode_wimax_hdr(uint8_t *out, size_t outlen,
-			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_cursor_t *cursor, void *encoder_ctx)
+static ssize_t encode_wimax_hdr(uint8_t *out, size_t outlen,
+				fr_da_stack_t *da_stack, unsigned int depth,
+				fr_cursor_t *cursor, void *encoder_ctx)
 {
-	int			len;
+	ssize_t			slen;
 	uint32_t		lvalue;
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
@@ -1061,19 +1100,19 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	 *	Not enough freespace for:
 	 *		attr, len, vendor-id, vsa, vsalen, continuation
 	 */
-	if (outlen < 9) return 0;
+	CHECK_FREESPACE(outlen, 9);
 
 	if (da_stack->da[depth++]->attr != FR_VENDOR_SPECIFIC) {
 		fr_strerror_printf("%s: level[1] of da_stack is incorrect, must be Vendor-Specific (26)",
 				   __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	if (da_stack->da[depth++]->attr != VENDORPEC_WIMAX) {
 		fr_strerror_printf("%s: level[2] of da_stack is incorrect, must be Wimax vendor %i", __FUNCTION__,
 				   VENDORPEC_WIMAX);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -1098,11 +1137,11 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	 */
 
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
-		if (len <= 0) return len;
+		slen = encode_tlv_hdr_internal(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
+		if (slen <= 0) return slen;
 	} else {
-		len = encode_value(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
-		if (len <= 0) return len;
+		slen = encode_value(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
+		if (slen <= 0) return slen;
 	}
 
 	/*
@@ -1111,12 +1150,10 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	 *	and copy the existing header over.  Set the "C" flag
 	 *	ONLY after copying the rest of the data.
 	 */
-	if (len > (255 - out[1])) {
-		return attr_shift(start, start + outlen, out, out[1], len, 8, 7);
-	}
+	if (slen > (255 - out[1])) return attr_shift(start, start + outlen, out, out[1], slen, 8, 7);
 
-	out[1] += len;
-	out[7] += len;
+	out[1] += slen;
+	out[7] += slen;
 
 	FR_PROTO_HEX_DUMP(out, 9, "header wimax");
 
@@ -1126,11 +1163,11 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 /** Encode a Vendor-Specific attribute
  *
  */
-static int encode_vsa_hdr(uint8_t *out, size_t outlen,
-			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_cursor_t *cursor, void *encoder_ctx)
+static ssize_t encode_vsa_hdr(uint8_t *out, size_t outlen,
+			      fr_da_stack_t *da_stack, unsigned int depth,
+			      fr_cursor_t *cursor, void *encoder_ctx)
 {
-	ssize_t			len;
+	ssize_t			slen;
 	uint32_t		lvalue;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
@@ -1139,7 +1176,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	if (da->type != FR_TYPE_VSA) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*
@@ -1152,7 +1189,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Not enough freespace for: attr, len, vendor-id
 	 */
-	if (outlen < 6) return 0;
+	CHECK_FREESPACE(outlen, 6);
 
 	/*
 	 *	Build the Vendor-Specific header
@@ -1169,7 +1206,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	if (da->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	lvalue = htonl(da->attr);
@@ -1177,10 +1214,10 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 
 	if (outlen > 255) outlen = 255;
 
-	len = encode_vendor_attr_hdr(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
-	if (len < 0) return len;
+	slen = encode_vendor_attr_hdr(out + out[1], outlen - out[1], da_stack, depth, cursor, encoder_ctx);
+	if (slen < 0) return slen;
 
-	out[1] += len;
+	out[1] += slen;
 
 	FR_PROTO_HEX_DUMP(out, 6, "header vsa");
 
@@ -1190,8 +1227,8 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 /** Encode an RFC standard attribute 1..255
  *
  */
-static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_cursor_t *cursor, void *encoder_ctx)
+static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_da_stack_t *da_stack, unsigned int depth,
+			      fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR const *vp = fr_cursor_current(cursor);
 
@@ -1209,7 +1246,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_da_stack_t *da_stack, 
 		/* FR_TYPE_STRUCT is actually allowed... */
 		fr_strerror_printf("%s: Expected leaf type got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 
 	default:
 		/*
@@ -1219,7 +1256,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_da_stack_t *da_stack, 
 		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
 		    (da_stack->da[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__, vp->da->attr);
-			return -1;
+			return PAIR_ENCODE_SKIPPED;
 		}
 		break;
 	}
@@ -1243,7 +1280,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_da_stack_t *da_stack, 
 	 *	Message-Authenticator is hard-coded.
 	 */
 	if (vp->da == attr_message_authenticator) {
-		if (outlen < 18) return -1;
+		CHECK_FREESPACE(outlen, 18);
 
 		out[0] = (uint8_t)vp->da->attr;
 		out[1] = 18;
@@ -1284,7 +1321,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 	fr_da_stack_t		da_stack;
 	fr_dict_attr_t const	*da = NULL;
 
-	if (!cursor || !out || (outlen <= 2)) return -1;
+	if (!cursor || !out || (outlen <= 2)) return PAIR_ENCODE_FATAL_ERROR;
 
 	vp = fr_cursor_current(cursor);
 	if (!vp) return 0;
@@ -1294,7 +1331,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",
 				   __FUNCTION__, vp->da->depth, FR_DICT_MAX_TLV_STACK);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*
@@ -1307,7 +1344,8 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 		    ((vp->da->attr != FR_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != FR_MESSAGE_AUTHENTICATOR))) {
 			fr_cursor_next(cursor);
-			return 0;
+			fr_strerror_printf("Zero length string attributes not allowed");
+			return PAIR_ENCODE_SKIPPED;
 		}
 	}
 
@@ -1375,10 +1413,9 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 
 	case FR_TYPE_INVALID:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_FLOAT64:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (ret < 0) return ret;
@@ -1388,7 +1425,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 	 */
 	if (fr_cursor_current(cursor) == vp) {
 		fr_strerror_printf("%s: Nested attribute structure too large to encode", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	return ret;

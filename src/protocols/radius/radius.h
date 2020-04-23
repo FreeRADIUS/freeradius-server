@@ -32,11 +32,13 @@
 #define RADIUS_AUTH_VECTOR_OFFSET      		4
 #define RADIUS_HEADER_LENGTH			20
 #define RADIUS_MAX_STRING_LENGTH		253
+#define RADIUS_MAX_TUNNEL_PASSWORD_LENGTH	249
 #define RADIUS_AUTH_VECTOR_LENGTH		16
 #define RADIUS_CHAP_CHALLENGE_LENGTH		16
 #define RADIUS_MESSAGE_AUTHENTICATOR_LENGTH	16
 #define RADIUS_MAX_PASS_LENGTH			128
 #define RADIUS_MAX_ATTRIBUTES			255
+#define RADIUS_MAX_PACKET_SIZE			4096
 
 #define RADIUS_VENDORPEC_USR			429
 #define RADIUS_VENDORPEC_LUCENT			4846
@@ -117,7 +119,7 @@ void		fr_radius_free(void);
 /*
  *	protocols/radius/packet.c
  */
-int		fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+ssize_t		fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 					char const *secret) CC_HINT(nonnull (1,3));
 int		fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					uint32_t max_attributes, bool tunnel_password_zeros,

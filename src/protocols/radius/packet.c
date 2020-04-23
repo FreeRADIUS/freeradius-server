@@ -54,10 +54,10 @@ typedef struct {
 /** Encode a packet
  *
  */
-int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret)
+ssize_t fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret)
 {
 	uint8_t const *original_data;
-	ssize_t total_length;
+	ssize_t slen;
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -79,11 +79,9 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 	 */
 	memcpy(data + 4, packet->vector, sizeof(packet->vector));
 
-	total_length = fr_radius_encode(data, sizeof(data), original_data, secret, talloc_array_length(secret) - 1,
-					packet->code, packet->id, packet->vps);
-	if (total_length < 0) {
-		return -1;
-	}
+	slen = fr_radius_encode(data, sizeof(data), original_data, secret, talloc_array_length(secret) - 1,
+				packet->code, packet->id, packet->vps);
+	if (slen < 0) return slen;
 
 	/*
 	 *	Fill in the rest of the fields, and copy the data over
@@ -93,7 +91,7 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 	 *	that we only allocate the minimum amount of
 	 *	memory for a request.
 	 */
-	packet->data_len = (size_t) total_length;
+	packet->data_len = (size_t) slen;
 	packet->data = talloc_array(packet, uint8_t, packet->data_len);
 	if (!packet->data) {
 		fr_strerror_printf("Out of memory");

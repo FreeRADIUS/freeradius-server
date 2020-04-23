@@ -71,6 +71,15 @@ static inline ssize_t fr_pair_decode_slen(ssize_t slen, uint8_t const *start, ui
 	}
 }
 
+/** Determine if the return code for an encoding function is a fatal error
+ *
+ */
+static inline bool fr_pair_encode_is_error(ssize_t slen)
+{
+	if (slen == PAIR_ENCODE_FATAL_ERROR) return true;
+	return false;
+}
+
 /** Checks if we have sufficient buffer space, and returns how much space we'd need as a negative integer
  *
  */

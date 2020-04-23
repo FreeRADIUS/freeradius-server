@@ -26,10 +26,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/udp.h>
 
@@ -1350,13 +1351,31 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	packet_len = fr_radius_encode(u->packet, u->packet_len - (proxy_state + message_authenticator), NULL,
 				      inst->secret, talloc_array_length(inst->secret) - 1,
 				      u->code, id, request->packet->vps);
-	if (packet_len <= 0) {
+	if (fr_pair_encode_is_error(packet_len)) {
 		RPERROR("Failed encoding packet");
+
 	error:
 		TALLOC_FREE(u->packet);
 		return -1;
 	}
 
+	if (packet_len < 0) {
+		size_t have;
+		size_t need;
+
+		have = u->packet_len - (proxy_state + message_authenticator);
+		need = have - packet_len;
+
+		if (need > RADIUS_MAX_PACKET_SIZE) {
+			RERROR("Failed encoding packet.  Have %zu bytes of buffer, need %zu bytes",
+			       have, need);
+		} else {
+			RERROR("Failed encoding packet.  Have %zu bytes of buffer, need %zu bytes.  "
+			       "Increase 'max_packet_size'", have, need);
+		}
+
+		goto error;
+	}
 	/*
 	 *	The encoded packet should NOT over-run the input buffer.
 	 */

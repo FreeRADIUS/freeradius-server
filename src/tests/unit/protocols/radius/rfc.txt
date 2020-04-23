@@ -98,7 +98,7 @@ match
 
 # don't encode-pair zero-length attributes
 encode-pair User-Name = ""
-match
+match Zero length string attributes not allowed
 
 # except for CUI.  Thank you, WiMAX!
 decode-pair 59 02
