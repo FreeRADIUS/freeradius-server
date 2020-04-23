@@ -101,7 +101,10 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		slen = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
 		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) goto next;
+
 			RPERROR("Failed encoding chbind response");
+
+			talloc_free(ptr);
 			return false;
 		}
 		ptr += slen;
