@@ -1080,7 +1080,10 @@ static fr_aka_sim_encode_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_
 	memcpy(keys->k_encr, k_encr, k_encr_len);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
-	if (fr_aka_sim_init() < 0) return NULL;
+	if (fr_aka_sim_init() < 0) {
+		talloc_free(test_ctx);
+		return NULL;
+	}
 
 	return test_ctx;
 }
