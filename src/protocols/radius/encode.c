@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/struct.h>
+#include <freeradius-devel/util/net.h>
 #include <freeradius-devel/io/test_point.h>
 #include "attrs.h"
 
@@ -987,16 +988,13 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 		fr_strerror_printf("%s: Internal sanity check failed, type %u", __FUNCTION__, (unsigned) dv->flags.type_size);
 		return -1;
 
+
 	case 4:
-		out[0] = 0;	/* attr must be 24-bit */
-		out[1] = (da->attr >> 16) & 0xff;
-		out[2] = (da->attr >> 8) & 0xff;
-		out[3] = da->attr & 0xff;
+		fr_net_from_uint32(out, da->attr);
 		break;
 
 	case 2:
-		out[0] = (da->attr >> 8) & 0xff;
-		out[1] = da->attr & 0xff;
+		fr_net_from_uint16(out, da->attr);
 		break;
 
 	case 1:
