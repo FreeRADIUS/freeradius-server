@@ -2013,9 +2013,9 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
 		RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
 
-		h->coalesced[i].treq = treq;
-		h->coalesced[i].out.iov_base = u->packet;
-		h->coalesced[i].out.iov_len = u->packet_len;
+		h->coalesced[queued].treq = treq;
+		h->coalesced[queued].out.iov_base = u->packet;
+		h->coalesced[queued].out.iov_len = u->packet_len;
 
 		/*
 		 *	Record how much data we have in total.
@@ -2027,8 +2027,8 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		total_len += u->packet_len;
 
 		fr_trunk_request_signal_sent(treq);
+		queued++;
 	}
-	queued = i;
 	if (queued == 0) return;	/* No work */
 
 	/*
