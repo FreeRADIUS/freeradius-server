@@ -275,7 +275,7 @@ static char* append_one_tpa(char* tpa, const char* new_tpa)
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_dotnet_t	*inst = instance;
 	char* tpa;
@@ -352,7 +352,7 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static rlm_rcode_t do_dotnet(rlm_dotnet_t *inst, REQUEST *request, void *pFunc, char const *funcname)
+static rlm_rcode_t do_dotnet(UNUSED rlm_dotnet_t *inst,UNUSED REQUEST *request,UNUSED void *pFunc,UNUSED char const *funcname)
 {
 	return RLM_MODULE_NOOP;
 }
