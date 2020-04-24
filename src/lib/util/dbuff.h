@@ -35,7 +35,8 @@ extern "C" {
 #include <limits.h>
 #include <errno.h>
 
-typedef struct {
+typedef struct fr_dbuff_s fr_dbuff_t;
+struct fr_dbuff_s {
 	union {
 		uint8_t const *start_i;		//!< Immutable start pointer.
 		uint8_t *start;			//!< Mutable start pointer.
@@ -51,7 +52,9 @@ typedef struct {
 		uint8_t *p;			//!< Mutable position pointer.
 	};
 	bool	is_const;			//!< The buffer this dbuff wraps is const.
-} fr_dbuff_t;
+
+	fr_dbuff_t	*parent;
+};
 
 /** @name utility macros
  * @{
@@ -61,6 +64,53 @@ typedef struct {
  * @param[in] _dbuff	to make an ephemeral copy of.
  */
 #define FR_DBUFF_NO_ADVANCE(_dbuff) (fr_dbuff_t[]){ *(_dbuff) }
+
+/** Reserve N bytes in the dbuff when passing it to another function
+ *
+ @code{.c}
+ my_child_encoder(FR_DBUFF_RESERVE(dbuff, 5), vp);
+ @endcode
+ *
+ * @note Do not use to re-initialise the contents of #_dbuff, i.e. to
+ *	permanently shrink the exiting dbuff. The parent pointer will loop.
+ *
+ * @note Do not modify the "child" dbuff directly.  Use the functions
+ *	 supplied as part of this API.
+ *
+ * @param[in] _dbuff	to reserve bytes in.
+ * @param[in] _reserve	The number of bytes to reserve.
+ */
+#define FR_DBUFF_RESERVE(_dbuff, _reserve) \
+&(fr_dbuff_t){ \
+	.start	= (_dbuff)->start, \
+	.end	= ((size_t)(_dbuff) > (_reserve)) && ((_dbuff)->end - (_reserve)) >= ((_dbuff)->start) ? \
+			(_dbuff)->end - (_reserve) : \
+			(_dbuff)->start, \
+	.p	= ((size_t)(_dbuff) > (_reserve)) && ((_dbuff)->end - (_reserve)) >= ((_dbuff)->p) ? \
+			(_dbuff)->p : \
+			(_dbuff)->end - (_reserve), \
+	.is_const = (_dbuff)->is_const, \
+	.parent = (_dbuff) \
+}
+
+/** Limit the maximum number of bytes available in the dbuff when passing it to another function
+ *
+ @code{.c}
+ my_child_encoder(FR_DBUFF_MAX(dbuff, 253), vp);
+ @endcode
+ *
+ * @note Do not use to re-initialise the contents of #_dbuff, i.e. to
+ *	permanently shrink the exiting dbuff. The parent pointer will loop.
+ *
+ * @note Do not modify the "child" dbuff directly.  Use the functions
+ *	 supplied as part of this API.
+ *
+ * @param[in] _dbuff	to reserve bytes in.
+ * @param[in] _max	The maximum number of bytes the caller is allowed to write to.
+ */
+#define FR_DBUFF_MAX(_dbuff,  _max) (fr_dbuff_freespace(_dbuff) > (_max)) ? \
+	FR_DBUFF_RESERVE(_dbuff, fr_dbuff_freespace(_dbuff) - (_max)) : \
+	_dbuff)
 
 /** Does the actual work of initialising a dbuff
  *
@@ -179,11 +229,19 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
 	memcpy(dbuff->p, in, inlen);
 	dbuff->p += inlen;
 
-	return inlen;
+	return dbuff->parent ? fr_dbuff_memcpy_in(dbuff->parent, in, inlen) : inlen;
 }
 
 /** Copy n bytes into dbuff and return if there's insufficient buffer space
  *
+ * If there's insufficient space in the dbuff, the number of bytes required to
+ * complete the copy operation will be returned as a negative integer.
+ *
+ * @note Functions which use this macro should return a ssize_t.
+ *
+ * @param[in] _dbuff	to copy memory into.
+ * @param[in] _in	memory to copy.
+ * @param[in] _inlen	How many bytes to copy.
  */
 #define FR_DBUFF_MEMCPY_IN(_dbuff, _in, _inlen) \
 do { \
@@ -191,6 +249,19 @@ do { \
 	_slen = fr_dbuff_memcpy_in(_dbuff, _in, _inlen); \
 	if (_slen < 0) return _slen; \
 } while (0)
+
+/** Copy a byte sequence into a dbuff and return if there's insufficient buffer space
+ *
+ * If there's insufficient space in the dbuff, the number of bytes required to
+ * complete the copy operation will be returned as a negative integer.
+ *
+ * @note Functions which use this macro should return a ssize_t.
+ *
+ * @param[in] _dbuff	to copy byte sequence into.
+ * @param[in] ...	bytes to copy.
+ */
+#define FR_DBUFF_BYTES_IN(_dbuff, ...) \
+	FR_DBUFF_MEMCPY_IN(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
 /** @} */
 
