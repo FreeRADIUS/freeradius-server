@@ -229,10 +229,12 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
 	memcpy(dbuff->p, in, inlen);
 	dbuff->p += inlen;
 
-	return dbuff->parent ? fr_dbuff_memcpy_in(dbuff->parent, in, inlen) : inlen;
+	return dbuff->parent ? __FUNCTION__(dbuff->parent, in, inlen) : inlen;
 }
 
 /** Copy n bytes into dbuff and return if there's insufficient buffer space
+ *
+ * @copybrief fr_dbuff_memcpy_in
  *
  * If there's insufficient space in the dbuff, the number of bytes required to
  * complete the copy operation will be returned as a negative integer.
@@ -252,6 +254,8 @@ do { \
 
 /** Copy a byte sequence into a dbuff and return if there's insufficient buffer space
  *
+ * @copybrief fr_dbuff_memcpy_in
+ *
  * If there's insufficient space in the dbuff, the number of bytes required to
  * complete the copy operation will be returned as a negative integer.
  *
@@ -262,6 +266,50 @@ do { \
  */
 #define FR_DBUFF_BYTES_IN(_dbuff, ...) \
 	FR_DBUFF_MEMCPY_IN(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
+
+/** Set n bytes of a buffer to the provided value
+ *
+ * @param[in] dbuff	to copy data to.
+ * @param[in] c		Value to set.
+ * @param[in] inlen	How much data we need to copy.
+ * @return
+ *	- 0	no data set.
+ *	- >0	the number of bytes set in the dbuff.
+ *	- <0	the number of bytes required.
+ */
+static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen)
+{
+	size_t freespace = fr_dbuff_freespace(dbuff);
+
+	fr_assert(!dbuff->is_const);
+
+	if (inlen > freespace) return -(inlen - freespace);
+
+	memset(dbuff->p, c, inlen);
+	dbuff->p += inlen;
+
+	return dbuff->parent ? __FUNCTION__(dbuff->parent, c, inlen) : inlen;
+}
+
+/** Set n bytes in to the specified value and return if there's insufficient buffer space
+ *
+ * @copybrief fr_dbuff_memset
+ *
+ * If there's insufficient space in the dbuff, the number of bytes required to
+ * complete the set operation will be returned as a negative integer.
+ *
+ * @note Functions which use this macro should return a ssize_t.
+ *
+ * @param[in] _dbuff	to copy memory into.
+ * @param[in] _c	Value to set.
+ * @param[in] _inlen	How many bytes to copy.
+ */
+#define FR_DBUFF_MEMSET(_dbuff, _c, _inlen) \
+do { \
+	size_t _slen; \
+	_slen = fr_dbuff_memset(_dbuff, _c, _inlen); \
+	if (_slen < 0) return _slen; \
+} while (0)
 
 /** @} */
 
