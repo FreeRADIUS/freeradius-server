@@ -257,6 +257,10 @@ struct fr_event_fd {
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
 	fr_event_fd_t		*next;			//!< item in a list of fr_event_fd (to free).
+
+#ifndef NDEBUG
+	uint32_t		armour;			//!< protection flag from being deleted.
+#endif
 };
 
 struct fr_event_pid {
@@ -643,6 +647,8 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 	if (ef->is_registered) {
 		memset(&funcs, 0, sizeof(funcs));
 
+		fr_assert(ef->armour == 0);
+
 		/*
 		 *	If this fails, it's a pretty catastrophic error.
 		 */
@@ -1020,6 +1026,62 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	return fr_event_filter_insert(ctx, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
 }
 
+#ifndef NDEBUG
+/** Armour an FD
+ *
+ * @param[in] el	to remove file descriptor from.
+ * @param[in] fd	to remove.
+ * @param[in] filter	The type of filter to remove.
+ * @param[in] armour	The armour to add.
+ * @return
+ *	- 0 if file descriptor was armoured
+ *	- <0 on error.
+ */
+int fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uint32_t armour)
+{
+	fr_event_fd_t	*ef;
+
+	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	if (unlikely(!ef)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
+		return -1;
+	}
+
+	if (ef->armour != 0) {
+		fr_strerror_printf("FD %i is already armoured", fd);
+		return -1;
+	}
+
+	ef->armour = armour;
+	return 0;
+}
+
+/** Unarmour an FD
+ *
+ * @param[in] el	to remove file descriptor from.
+ * @param[in] fd	to remove.
+ * @param[in] filter	The type of filter to remove.
+ * @param[in] armour	The armour to remove
+ * @return
+ *	- 0 if file descriptor was unarmoured
+ *	- <0 on error.
+ */
+int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uint32_t armour)
+{
+	fr_event_fd_t	*ef;
+
+	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	if (unlikely(!ef)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
+		return -1;
+	}
+
+	fr_assert(ef->armour == armour);
+
+	ef->armour = 0;
+	return 0;
+}
+#endif
 
 /** Delete a timer event from the event list
  *

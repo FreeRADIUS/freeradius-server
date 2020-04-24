@@ -218,6 +218,12 @@ int		fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 				   fr_event_error_cb_t error,
 				   void *uctx);
 
+#ifndef NDEBUG
+int		fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t, uint32_t armour);
+int		fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uint32_t armour);
+#endif
+
+
 int		fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
 				  pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx) CC_HINT(nonnull(2,5));
 
