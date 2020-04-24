@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace FreeRadius.Example
 {
@@ -13,14 +14,25 @@ namespace FreeRadius.Example
 
     public class MainClass
     {
+        private static Dictionary<string, int> radiusDictionary = new Dictionary<string, int>();
+
         // https://docs.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.marshalasattribute.sizeparamindex
         public static void Instantiate(int numberStrings, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=0)] RadiusString[] strings, Log logger)
         {
-            logger(4, "Hello from Instantiate");
-            logger(5, $"strings.Length = {strings.Length}");
+            // Build the dictionary from the strings sent down
+            foreach (var element in strings)
+            {
+                if (element.Name != null)
+                {
+                    radiusDictionary.Add(element.Name, element.Value);
+                }
+            }
+
+            logger(radiusDictionary["L_ERR"], "Hello from Instantiate");
+            logger(radiusDictionary["L_WARN"], $"strings.Length = {strings.Length}");
             foreach (var _string in strings)
             {
-                logger(3, $"{_string.Name} = {_string.Value}");
+                logger(radiusDictionary["L_INFO"], $"{_string.Name} = {_string.Value}");
             }
         }
     }
