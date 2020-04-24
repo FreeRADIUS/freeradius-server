@@ -143,6 +143,27 @@ _fr_dbuff_init(_out, \
 			uint8_t *	: false, \
 			uint8_t const *	: true \
 	       ))
+
+/** Creates a compound literal to pass into functions which accept a dbuff
+ *
+ * @note This should only be used as a temporary measure when refactoring code.
+ *
+ * @note The return value of the function should be used to determine how much
+ *	 data was written to the buffer.
+ *
+ * @param[in] _start		of the buffer.
+ * @param[in] _len_or_end	Length of the buffer or the end pointer.
+ */
+#define FR_DBUFF_TMP(_start, _len_or_end) \
+&(fr_dbuff_t){ \
+	.start	= _start, \
+	.end	= _Generic((_len_or_end), \
+			size_t		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
+			uint8_t *	: (uint8_t const *)(_len_or_end), \
+			uint8_t const *	: (uint8_t const *)(_len_or_end) \
+		), \
+	.p	= _p \
+}
 /** @} */
 
 /** @name dbuff position manipulation
@@ -181,7 +202,7 @@ static inline size_t fr_dbuff_freespace(fr_dbuff_t const *dbuff)
  * @param[in] _dbuff	to check.
  * @param[in] _need	how much buffer space we need.
  */
-#define FR_DBUFF_CHECK_FREESPACE(_dbuff, _need) \
+#define FR_DBUFF_CHECK_FREESPACE_RETURN(_dbuff, _need) \
 do { \
 	size_t _freespace = fr_dbuff_freespace(_dbuff); \
 	if (_need > _freespace) return -(_need - _freespace); \
@@ -232,6 +253,16 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
 	return dbuff->parent ? __FUNCTION__(dbuff->parent, in, inlen) : inlen;
 }
 
+/** Copy a byte sequence into a dbuff
+ *
+ * @copybrief fr_dbuff_memcpy_in
+ *
+ * @param[in] _dbuff	to copy byte sequence into.
+ * @param[in] ...	bytes to copy.
+ */
+#define fr_dbuff_bytes_in(_dbuff, ...) \
+	fr_dbuff_memcpy_in(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
+
 /** Copy n bytes into dbuff and return if there's insufficient buffer space
  *
  * @copybrief fr_dbuff_memcpy_in
@@ -245,7 +276,7 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
  * @param[in] _in	memory to copy.
  * @param[in] _inlen	How many bytes to copy.
  */
-#define FR_DBUFF_MEMCPY_IN(_dbuff, _in, _inlen) \
+#define FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, _in, _inlen) \
 do { \
 	size_t _slen; \
 	_slen = fr_dbuff_memcpy_in(_dbuff, _in, _inlen); \
@@ -264,8 +295,8 @@ do { \
  * @param[in] _dbuff	to copy byte sequence into.
  * @param[in] ...	bytes to copy.
  */
-#define FR_DBUFF_BYTES_IN(_dbuff, ...) \
-	FR_DBUFF_MEMCPY_IN(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
+#define FR_DBUFF_BYTES_IN_RETURN(_dbuff, ...) \
+	FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
 /** Set n bytes of a buffer to the provided value
  *
@@ -304,7 +335,7 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
  * @param[in] _c	Value to set.
  * @param[in] _inlen	How many bytes to copy.
  */
-#define FR_DBUFF_MEMSET(_dbuff, _c, _inlen) \
+#define FR_DBUFF_MEMSET_RETURN(_dbuff, _c, _inlen) \
 do { \
 	size_t _slen; \
 	_slen = fr_dbuff_memset(_dbuff, _c, _inlen); \
