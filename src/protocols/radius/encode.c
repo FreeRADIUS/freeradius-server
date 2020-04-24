@@ -457,8 +457,12 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	indicating which tunnel (of several alternatives) this attribute
 	 *	pertains.  If the Tag field is greater than 0x1F, it SHOULD be
 	 *	interpreted as the first byte of the following String field.
+	 *
+	 *	If the first byte of the string value looks like a
+	 *	tag, then we always encode a tag byte, even one that
+	 *	is zero.
 	 */
-	if ((vp->da->type == FR_TYPE_STRING) && vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
+	if ((vp->da->type == FR_TYPE_STRING) && vp->da->flags.has_tag && (TAG_VALID(vp->tag) || TAG_VALID_ZERO(vp->vp_strvalue[0]))) {
 		CHECK_FREESPACE(out_end - out_p, 1);
 		*out_p++ = vp->tag;
 		value_start = out_p;

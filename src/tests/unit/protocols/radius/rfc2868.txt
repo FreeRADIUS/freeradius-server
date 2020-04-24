@@ -35,3 +35,48 @@ match 45 15 00 86 04 91 2d e8 4f 18 62 f8 2e a8 d3 09 99 e8 35 cc 7c
 
 decode-pair -
 match Tunnel-Password = "barbar"
+
+#
+#  Integer attributes
+#
+encode-pair Tunnel-Type = PPTP
+match 40 06 00 00 00 01
+
+decode-pair -
+match Tunnel-Type = PPTP
+
+encode-pair Tunnel-Type:1 = PPTP
+match 40 06 01 00 00 01
+
+decode-pair -
+match Tunnel-Type:1 = PPTP
+
+# Invalid tag on encoding
+encode-pair Tunnel-Type:32 = PPTP
+match Invalid tag for attribute Tunnel-Type:32
+
+# Invalid tag on decoding
+decode-pair 40 06 20 00 00 01
+match Attr-64 = 0x20000001
+
+#
+#  String attributes
+#
+encode-pair Tunnel-Client-Endpoint = "foo"
+match 42 05 66 6f 6f
+
+decode-pair -
+match Tunnel-Client-Endpoint = "foo"
+
+#
+# The first byte of the string looks like a tag.  In order to avoid
+# confusion, we encode a zero tag.
+#
+encode-pair Tunnel-Client-Endpoint = "\001\002\003"
+match 42 06 00 01 02 03
+
+decode-pair -
+match Tunnel-Client-Endpoint = "\001\002\003"
+
+count
+match 34

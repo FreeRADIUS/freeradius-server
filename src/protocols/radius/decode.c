@@ -1039,34 +1039,47 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	if (attr_len == 0) return 0;
 
 	/*
-	 *	Hacks for tags.  If the attribute is capable of
-	 *	encoding a tag, and there's room for the tag, and
-	 *	there is a tag, or it's encrypted with Tunnel-Password,
-	 *	then decode the tag.
+	 *	Hacks for tags.
 	 */
-	if (parent->flags.has_tag && (data_len > 1) &&
-	    ((p[0] < 0x20) ||
-	     (!parent->flags.extra && (parent->flags.subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD)))) {
+	if (parent->flags.has_tag) {
 		/*
-		 *	Only "short" attributes can be encrypted.
+		 *	Check for valid tags and data types.
 		 */
-		if (data_len >= sizeof(buffer)) return -1;
+		if (parent->type == FR_TYPE_UINT32) {
+			if ((attr_len != 4) || (p[0] >= 0x20)) {
+				goto raw;
+			}
 
-		if (parent->type == FR_TYPE_STRING) {
-			memcpy(buffer, p + 1, data_len - 1);
-			tag = p[0];
-			data_len -= 1;
-
-		} else if (parent->type == FR_TYPE_UINT32) {
-			memcpy(buffer, p, attr_len);
-			tag = buffer[0];
-			buffer[0] = 0;
-
-		} else {
-			return -1; /* only string and integer can have tags */
+		} else if (parent->type != FR_TYPE_STRING) {
+			goto raw;
 		}
 
-		p = buffer;
+		/*
+		 *	If the attribute is capable of
+		 *	encoding a tag, and there's room for the tag, and
+		 *	there is a tag, or it's encrypted with Tunnel-Password,
+		 *	then decode the tag.
+		 */
+		if ((p[0] < 0x20) ||
+		    (!parent->flags.extra && (parent->flags.subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
+			/*
+			 *	Only "short" attributes can be encrypted.
+			 */
+			if (data_len >= sizeof(buffer)) return -1;
+
+			if (parent->type == FR_TYPE_STRING) {
+				memcpy(buffer, p + 1, data_len - 1);
+				tag = p[0];
+				data_len -= 1;
+
+			} else if (parent->type == FR_TYPE_UINT32) {
+				memcpy(buffer, p, attr_len);
+				tag = buffer[0];
+				buffer[0] = 0;
+			}
+
+			p = buffer;
+		}
 	}
 
 	/*
