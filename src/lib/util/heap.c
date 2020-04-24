@@ -24,6 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/debug.h>
 
 /*
  *	A heap entry is made of a pointer to the object, which
@@ -263,6 +264,8 @@ void *fr_heap_peek(fr_heap_t *hp)
 	/*
 	 *	If this is NULL, we have a problem.
 	 */
+	fr_assert(hp->p[0] != NULL);
+
 	return hp->p[0];
 }
 
