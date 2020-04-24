@@ -986,6 +986,13 @@ int main(int argc, char *argv[])
 	 *  with destructors that may cause double frees and
 	 *  SEGVs.
 	 */
+	if (!config->spawn_workers) {
+		fr_event_list_t *el;
+
+		el = main_loop_event_list();
+		fr_event_loop_exit(el, 1);
+	}
+
 	main_loop_free();		/* Free the requests */
 
 	/*
