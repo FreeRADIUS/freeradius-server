@@ -60,6 +60,31 @@
 #}
 
 #
+#  ## xlat for peeking and poking the status
+#
+#  An xlat based on the instance name can be called to change the status
+#  returned by the instance.
+#
+#  .Example
+#
+#  ```
+#  %{db_status:ok}
+#  %{db_status:fail}
+#  %{db_status:notfound}
+#  ...
+#  ```
+#
+#  The above xlats expand to the current status of the module. To fetch the
+#  current status without affecting it call the xlat with an empty argument:
+#
+#  .Example
+#
+#  ```
+#  %{db_status:}
+#  ```
+#
+
+#
 #  ## Configuration Settings
 #
 #  The following default instances allow the use of return codes like
