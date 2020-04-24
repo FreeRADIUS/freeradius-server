@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/rand.h>
 
 #include <fcntl.h>
 #include <string.h>
@@ -82,6 +83,10 @@ struct fr_control_s {
 
 	int			pipe[2];       		//!< our pipes
 
+#ifndef NDEBUG
+	uint32_t		armour;			//!< to protect ourself from deletion.
+#endif
+
 	bool			same_thread;		//!< are the two ends in the same thread
 
 	fr_control_ctx_t 	type[FR_CONTROL_MAX_TYPES];	//!< callbacks
@@ -125,6 +130,9 @@ static int _control_free(fr_control_t *c)
 {
 	(void) talloc_get_type_abort(c, fr_control_t);
 
+#ifndef NDEBUG
+	(void) fr_event_fd_unarmour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, c->armour);
+#endif
 	(void) fr_event_fd_delete(c->el, c->pipe[0], FR_EVENT_FILTER_IO);
 
 	close(c->pipe[0]);
@@ -172,6 +180,11 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 		fr_strerror_printf("Failed adding FD to event list control socket: %s", fr_strerror());
 		return NULL;
 	}
+
+#ifndef NDEBUG
+	c->armour = fr_rand();
+	(void) fr_event_fd_armour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, c->armour);
+#endif
 
 	return c;
 }
