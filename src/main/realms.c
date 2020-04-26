@@ -2336,6 +2336,11 @@ int realms_init(CONF_SECTION *config)
 		DIR		*dir;
 		struct dirent	*dp;
 
+		if (!rc->directory) {
+			WARN("Ignoring \"dynamic = true\" due to not set \"directory\" in proxy.conf");
+			return 1;
+		}
+
 		DEBUG2("including files in directory %s", rc->directory);
 
 		dir = opendir(rc->directory);
