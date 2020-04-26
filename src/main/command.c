@@ -2605,7 +2605,7 @@ static int command_del_home_server(rad_listen_t *listener, int argc, char *argv[
 	}
 
 	if (home_server_delete(argv[0], argv[1]) < 0) {
-		cprintf_error(listener, "Failed deleted home_server %s - %s", argv[1], fr_strerror());
+		cprintf_error(listener, "Failed deleted home_server %s - %s\n", argv[1], fr_strerror());
 		return 0;
 	}
 
