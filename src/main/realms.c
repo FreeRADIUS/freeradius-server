@@ -2931,7 +2931,6 @@ home_pool_t *home_pool_byname(char const *name, int type)
 	return rbtree_finddata(home_pools_byname, &mypool);
 }
 
-
 int home_server_afrom_file(char const *filename)
 {
 	CONF_SECTION *cs, *subcs;
@@ -2969,7 +2968,7 @@ int home_server_afrom_file(char const *filename)
 		return -1;
 	}
 
-	home = home_server_afrom_cs(realm_config, realm_config, cs);
+	home = home_server_afrom_cs(realm_config, realm_config, subcs);
 	if (!home) {
 		fr_strerror_printf("Failed parsing configuration to a home_server structure");
 		talloc_free(cs);
