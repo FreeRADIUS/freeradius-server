@@ -155,18 +155,18 @@ The return values are:
 authorize {
 	...
 	if (User-Name =~ /@(.*)$/) {
-		switch "%{home_server_dynamic:%{1}" {
+		switch "%{home_server_dynamic:%{1}}" {
 			case "1" {
 				# Proxy to this one particular home server
 				update control {
-					Home-Server-Name := "%{1}
+					&Home-Server-Name := "%{1}"
 				}
 			}
 
 			case "0" {
 				# Proxy with home server pool, failover, etc.
 				update control {
-					Proxy-To-Realm := "%{1}
+					&Proxy-To-Realm := "%{1}"
 				}
 			}
 
