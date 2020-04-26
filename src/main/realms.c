@@ -2950,6 +2950,7 @@ int home_server_afrom_file(char const *filename)
 
 	if (cf_file_read(cs, filename) < 0) {
 		fr_strerror_printf("Failed reading file %s", filename);
+	error:
 		talloc_free(cs);
 		return -1;
 	}
@@ -2964,31 +2965,27 @@ int home_server_afrom_file(char const *filename)
 	subcs = cf_section_sub_find_name2(cs, "home_server", p);
 	if (!subcs) {
 		fr_strerror_printf("No 'home_server %s' definition in the file.", p);
-		talloc_free(cs);
-		return -1;
+		goto error;
 	}
 
 	home = home_server_afrom_cs(realm_config, realm_config, subcs);
 	if (!home) {
 		fr_strerror_printf("Failed parsing configuration to a home_server structure");
-		talloc_free(cs);
-		return -1;
+		goto error;
 	}
 
 	home->dynamic = true;
 
 	if (home->server || home->dual) {
 		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server' or 'auth+acct'", p);
-		talloc_free(cs);
 		talloc_free(home);
-		return -1;
+		goto error;
 	}
 
 	if (!realm_home_server_add(home)) {
 		fr_strerror_printf("Failed adding home_server to the internal data structures");
-		talloc_free(cs);
 		talloc_free(home);
-		return -1;
+		goto error;
 	}
 
 	return 0;
