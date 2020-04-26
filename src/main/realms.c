@@ -2962,7 +2962,7 @@ int home_server_afrom_file(char const *filename)
 		p = filename;
 	}
 
-	subcs = cf_section_sub_find_name2(cs, "home", p);
+	subcs = cf_section_sub_find_name2(cs, "home_server", p);
 	if (!subcs) {
 		fr_strerror_printf("No 'home_server %s' definition in the file.", p);
 		talloc_free(cs);
