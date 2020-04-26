@@ -3028,6 +3028,9 @@ int home_server_delete(char const *name, char const *type_name)
 
 	(void) rbtree_deletebydata(home_servers_byname, home);
 	(void) rbtree_deletebydata(home_servers_byaddr, home);
+#ifdef WITH_STATS
+	(void) rbtree_deletebydata(home_servers_bynumber, home);
+#endif
 
 	/*
 	 *	Leak home, and home->cs.  Oh well.
