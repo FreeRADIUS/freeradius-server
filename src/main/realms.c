@@ -2355,7 +2355,8 @@ int realms_init(CONF_SECTION *config)
 		 */
 		while ((dp = readdir(dir)) != NULL) {
 			char const *p;
-			
+			char conf_file[PATH_MAX];
+
 			if (dp->d_name[0] == '.') continue;
 
 			/*
@@ -2371,9 +2372,10 @@ int realms_init(CONF_SECTION *config)
 			}
 			if (*p != '\0') continue;
 		
-			if (home_server_afrom_file(dp->d_name) < 0) {
+			snprintf(conf_file, sizeof(conf_file), "%s/%s", rc->directory, dp->d_name);
+			if (home_server_afrom_file(conf_file) < 0) {
 				ERROR("Failed reading home_server from %s - %s",
-				      dp->d_name, fr_strerror());
+				      conf_file, fr_strerror());
 				closedir(dir);
 				goto error;
 			}
