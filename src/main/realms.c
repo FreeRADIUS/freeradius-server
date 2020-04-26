@@ -2995,6 +2995,7 @@ int home_server_delete(char const *name, char const *type_name)
 {
 	home_server_t *home;
 	int type;
+	char const *p;
 
 	if (!realm_config->dynamic) {
 		fr_strerror_printf("Must set 'dynamic' in proxy.conf for dynamic home servers to work");
@@ -3007,14 +3008,21 @@ int home_server_delete(char const *name, char const *type_name)
 		return -1;
 	}
 
-	home = home_server_byname(name, type);
+	p = strrchr(name, '/');
+	if (p) {
+		p++;
+	} else {
+		p = name;
+	}
+
+	home = home_server_byname(p, type);
 	if (!home) {
-		fr_strerror_printf("Failed to find home_server %s", name);
+		fr_strerror_printf("Failed to find home_server %s", p);
 		return -1;
 	}
 
 	if (!home->dynamic) {
-		fr_strerror_printf("Cannot delete static home_server %s", name);
+		fr_strerror_printf("Cannot delete static home_server %s", p);
 		return -1;
 	}
 
