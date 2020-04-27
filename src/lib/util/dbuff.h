@@ -248,7 +248,7 @@ static inline ssize_t _fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
 {
 	dbuff->p += inlen;
 
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : inlen;
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
 }
 
 /** Advance position in dbuff by N bytes
@@ -291,7 +291,7 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
 	memcpy(dbuff->p, in, inlen);
 	dbuff->p += inlen;
 
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : inlen;
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
 }
 #define FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_memcpy_in, _dbuff, _in, _inlen)
 
@@ -328,7 +328,7 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
 	memset(dbuff->p, c, inlen);
 	dbuff->p += inlen;
 
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : inlen;
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
 }
 #define FR_DBUFF_MEMSET_RETURN(_dbuff, _c, _inlen) FR_DBUFF_RETURN(fr_dbuff_memset, _dbuff, _c, _inlen)
 
