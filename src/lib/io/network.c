@@ -612,6 +612,9 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_network_t		*nr = s->nr;
 	ssize_t			data_size;
 	fr_channel_data_t	*cd, *next;
+#ifndef NDEBUG
+	fr_time_t		now;
+#endif
 
 	if (!fr_cond_assert_msg(s->listen->fd == sockfd, "Expected listen->fd (%u) to be equal event fd (%u)",
 				s->listen->fd, sockfd)) return;
@@ -700,7 +703,7 @@ next_message:
 	 *	information tells the worker that the packet is a
 	 *	duplicate.
 	 */
-	cd->m.when = fr_time();
+	cd->m.when = now = fr_time();
 	cd->listen = s->listen;
 
 	/*
@@ -725,6 +728,12 @@ next_message:
 			fr_assert(0 == 1);
 		}
 	}
+
+	/*
+	 *	Ensure this hasn't been somehow corrupted during
+	 *	ring buffer allocation.
+	 */
+	fr_assert(cd->m.when == now);
 
 	if (fr_network_send_request(nr, cd) < 0) {
 		PERROR("Failed sending packet to worker");
