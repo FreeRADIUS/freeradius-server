@@ -333,7 +333,7 @@ static void status_check_reset(udp_handle_t *h, udp_request_t *u)
  *	Status-Server checks.  Manually build the packet, and
  *	all of its associated glue.
  */
-static void status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
+static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 {
 	udp_request_t		*u;
 	REQUEST			*request;
