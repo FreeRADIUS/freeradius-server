@@ -660,8 +660,8 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		goto done;
 	}
 
-	fr_assert(sc->sn);
-	fr_assert(fr_dlist_num_elements(&sc->workers) > 0);
+	if (!fr_cond_assert(sc->sn)) return -1;
+	if (!fr_cond_assert(fr_dlist_num_elements(&sc->workers) > 0)) return -1;
 
 	/*
 	 *	If the network thread is running, tell it to exit, and
