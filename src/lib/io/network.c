@@ -703,7 +703,10 @@ next_message:
 	 *	information tells the worker that the packet is a
 	 *	duplicate.
 	 */
-	cd->m.when = now = fr_time();
+	cd->m.when = fr_time();
+#ifndef NDEBUG
+	now = cd->m.when;
+#endif
 	cd->listen = s->listen;
 
 	/*
