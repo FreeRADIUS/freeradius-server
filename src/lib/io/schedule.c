@@ -630,7 +630,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	return sc;
 }
 
-/** Destroy a scheduler, and tell it's child threads to exit.
+/** Destroy a scheduler, and tell its child threads to exit.
  *
  * @param[in] sc the scheduler
  * @return
@@ -715,7 +715,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 done:
 	/*
 	 *	Now that all of the workers are done, we can return to
-	 *	the caller, and have him dlclose() the modules.
+	 *	the caller, and have it dlclose() the modules.
 	 */
 	talloc_free(sc);
 	*sc_to_free = NULL;

@@ -542,7 +542,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	in *instance otherwise put a null pointer there.
  *
  *	Setup a hashes wich we will use later
- *	parse a module and give him a chance to live
+ *	parse a module and give it a chance to live
  *
  */
 static int mod_instantiate(void *instance, CONF_SECTION *conf)

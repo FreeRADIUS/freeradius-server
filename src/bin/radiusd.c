@@ -781,7 +781,7 @@ int main(int argc, char *argv[])
 		/*
 		 *	Single server mode: use the global event list.
 		 *	Otherwise, each network thread will create
-		 *	it's own event list.
+		 *	its own event list.
 		 */
 		if (!config->spawn_workers) {
 			el = main_loop_event_list();

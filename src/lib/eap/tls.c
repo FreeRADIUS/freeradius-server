@@ -603,8 +603,8 @@ static eap_tls_status_t eap_tls_verify(REQUEST *request, eap_session_t *eap_sess
 	 *	code which works together, so if something is wrong,
 	 *	we SHOULD core dump.
 	 *
-	 *	e.g. if this_round is NULL, of if this_round->response is
-	 *	NULL, of if it's NOT an EAP-Response, or if the packet
+	 *	e.g. if this_round is NULL, or if this_round->response is
+	 *	NULL, or if it's NOT an EAP-Response, or if the packet
 	 *	is too short.  See eap_validate()., in ../../eap.c
 	 */
 	eap_tls_data = (eap_tls_data_t *)this_round->response->type.data;

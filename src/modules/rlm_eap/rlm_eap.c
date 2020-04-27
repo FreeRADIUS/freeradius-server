@@ -757,8 +757,8 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	request.  even when we have to proxy this request
 	 *
 	 *	RFC 2869, Section 2.3.1 notes that the "domain" of the
-	 *	user, (i.e. where to proxy him) comes from the EAP-Identity,
-	 *	so we CANNOT proxy the user, until we know his identity.
+	 *	user, (i.e. where to proxy it) comes from the EAP-Identity,
+	 *	so we CANNOT proxy the user, until we know its identity.
 	 *
 	 *	We therefore send an EAP Identity request.
 	 */
