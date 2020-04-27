@@ -538,9 +538,9 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	SEM_WAIT_INTR(&sc->network_sem);
 	if (sc->sn->status != FR_CHILD_RUNNING) {
 	fail:
-		fr_schedule_destroy(sc);
 		if (sc->sn->ctx) TALLOC_FREE(sc->sn->ctx);
 		TALLOC_FREE(sc->sn);
+		fr_schedule_destroy(&sc);
 		return NULL;
 	}
 
@@ -601,7 +601,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Failed to start some workers, refuse to do anything!
 	 */
 	if ((unsigned int)fr_dlist_num_elements(&sc->workers) < sc->config->max_workers) {
-		fr_schedule_destroy(sc);
+		fr_schedule_destroy(&sc);
 		return NULL;
 	}
 
@@ -637,10 +637,13 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
  *	- <0 on error
  *	- 0 on success
  */
-int fr_schedule_destroy(fr_schedule_t *sc)
+int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 {
-	unsigned int i;
-	fr_schedule_worker_t *sw;
+	fr_schedule_t		*sc = *sc_to_free;
+	unsigned int		i;
+	fr_schedule_worker_t	*sw;
+
+	if (!sc) return 0;
 
 	sc->running = false;
 
@@ -715,6 +718,7 @@ done:
 	 *	the caller, and have him dlclose() the modules.
 	 */
 	talloc_free(sc);
+	*sc_to_free = NULL;
 
 	return 0;
 }

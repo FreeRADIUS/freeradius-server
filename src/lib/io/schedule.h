@@ -75,7 +75,7 @@ fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_
 					    fr_schedule_thread_detach_t worked_thread_detach,
 					    fr_schedule_config_t *config) CC_HINT(nonnull(3));
 /* schedulers are async, so there's no fr_schedule_run() */
-int			fr_schedule_destroy(fr_schedule_t *sc);
+int			fr_schedule_destroy(fr_schedule_t **sc);
 
 fr_network_t		*fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t *li) CC_HINT(nonnull);
 fr_network_t		*fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t *li) CC_HINT(nonnull);

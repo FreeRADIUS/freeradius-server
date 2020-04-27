@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 
 	sleep(1);
 
-	(void) fr_schedule_destroy(sched);
+	(void) fr_schedule_destroy(&sched);
 
 	return 0;
 }

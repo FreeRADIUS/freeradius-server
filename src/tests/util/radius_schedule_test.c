@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
 
 	sleep(10);
 
-	(void) fr_schedule_destroy(sched);
+	(void) fr_schedule_destroy(&sched);
 
 	fr_exit_now(EXIT_SUCCESS);
 }

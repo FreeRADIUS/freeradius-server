@@ -970,7 +970,7 @@ int main(int argc, char *argv[])
 	 *  to exit gracefully.  fr_schedule_destroy only returns once all
 	 *  threads have been joined.
 	 */
-	(void) fr_schedule_destroy(sc);
+	(void) fr_schedule_destroy(&sc);
 
 	/*
 	 *  We're exiting, so we can delete the PID file.
@@ -1007,6 +1007,12 @@ int main(int argc, char *argv[])
 		kill(-radius_pid, SIGTERM);
 	}
 cleanup:
+	/*
+	 *	This may not have been done earlier if we're
+	 *	exiting due to a startup error.
+	 */
+	(void) fr_schedule_destroy(&sc);
+
 	/*
 	 *  Frees request specific logging resources which is OK
 	 *  because all the requests will have been stopped.
