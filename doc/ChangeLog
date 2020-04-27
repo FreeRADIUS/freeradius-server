@@ -11,6 +11,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Allow delta CRLs.  Fixes #3393.
 	* Limited support for dynamic home servers.  See proxy.conf
 	  and doc/configuration/dynamic_home_servers.md
+	* Update radmin to show more information about the home servers
+	  using "show home_server list all".
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
