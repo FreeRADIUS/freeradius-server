@@ -632,7 +632,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 /** Destroy a scheduler, and tell its child threads to exit.
  *
- * @param[in] sc the scheduler
+ * @param[in] sc_to_free the scheduler
  * @return
  *	- <0 on error
  *	- 0 on success
