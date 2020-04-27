@@ -1956,17 +1956,9 @@ service:
  */
 void fr_event_loop_exit(fr_event_list_t *el, int code)
 {
-	struct kevent kev;
-
 	if (unlikely(!el)) return;
 
 	el->will_exit = code;
-
-	/*
-	 *	Signal the control plane to exit.
-	 */
-	EV_SET(&kev, 0, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
-	(void) kevent(el->kq, &kev, 1, NULL, 0, NULL);
 }
 
 /** Check to see whether the event loop is in the process of exiting
