@@ -9,8 +9,6 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  in unlang policies based on status of some external resource.
 	  Patches from Terry Burton.
 	* Allow delta CRLs.  Fixes #3393.
-	* Allow CoA and Disconnect packets to be sent / received over
-	  TLS sockets.  Fixes #3356.
 	* Limited support for dynamic home servers.  See proxy.conf
 	  and doc/configuration/dynamic_home_servers.md
 
