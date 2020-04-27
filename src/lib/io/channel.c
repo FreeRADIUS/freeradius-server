@@ -308,13 +308,8 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	uint64_t sequence;
 	fr_time_t when, message_interval;
 	fr_channel_end_t *requestor;
-	bool active;
 
-	active = atomic_load(&ch->end[TO_RESPONDER].active);
-	if (!active) {
-		fr_strerror_printf("Channel not active");
-		return -1;
-	}
+	if (!fr_cond_assert_msg(atomic_load(&ch->end[TO_RESPONDER].active), "Channel not active")) return -1;
 
 	/*
 	 *	Same thread?  Just call the "recv" function directly.
@@ -336,7 +331,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	the push fails, the caller should try another queue.
 	 */
 	if (!fr_atomic_queue_push(requestor->aq, cd)) {
-		fr_strerror_printf("Failed pushing to atomic queue (full) - Queue contains %zu items",
+		fr_strerror_printf("Failed pushing to atomic queue - full.  Queue contains %zu items",
 				   fr_atomic_queue_size(requestor->aq));
 		while (fr_channel_recv_reply(ch));
 		return -1;
@@ -351,7 +346,9 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 		requestor->stats.message_interval = RTT(requestor->stats.message_interval, message_interval);
 	}
 
-	fr_assert(requestor->stats.last_write <= when);
+	fr_assert_msg(requestor->stats.last_write <= when,
+		      "Channel data timestamp (%" PRId64") older than last channel data sent (%" PRId64 ")",
+		      when, requestor->stats.last_write);
 	requestor->stats.last_write = when;
 
 	requestor->stats.outstanding++;
@@ -515,13 +512,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	uint64_t		sequence;
 	fr_time_t		when, message_interval;
 	fr_channel_end_t	*responder;
-	bool			active;
 
-	active = atomic_load(&ch->end[TO_REQUESTOR].active);
-	if (!active) {
-		fr_strerror_printf("Channel not active");
-		return -1;
-	}
+	if (!fr_cond_assert_msg(atomic_load(&ch->end[TO_REQUESTOR].active), "Channel not active")) return -1;
 
 	/*
 	 *	Same thread?  Just call the "recv" function directly.
@@ -540,7 +532,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	cd->live.ack = responder->ack;
 
 	if (!fr_atomic_queue_push(responder->aq, cd)) {
-		fr_strerror_printf("Failed pushing to atomic queue (full) - Queue contains %zu items",
+		fr_strerror_printf("Failed pushing to atomic queue - full.  Queue contains %zu items",
 				   fr_atomic_queue_size(responder->aq));
 		while (fr_channel_recv_request(ch));
 		return -1;
@@ -556,7 +548,9 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	message_interval = when - responder->stats.last_write;
 	responder->stats.message_interval = RTT(responder->stats.message_interval, message_interval);
 
-	fr_assert(responder->stats.last_write <= when);
+	fr_assert_msg(responder->stats.last_write <= when,
+		      "Channel data timestamp (%" PRId64") older than last channel data sent (%" PRId64 ")",
+		      when, responder->stats.last_write);
 	responder->stats.last_write = when;
 
 	/*
