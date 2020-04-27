@@ -29,6 +29,7 @@ RCSIDH(dbuff_h, "$Id$")
 extern "C" {
 #  endif
 
+#include <freeradius-devel/util/debug.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -229,6 +230,46 @@ static inline size_t fr_dbuff_len(fr_dbuff_t const *dbuff)
  * @{
  */
 
+/** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the dbuff
+ *
+ */
+#define FR_DBUFF_RETURN(_func, _dbuff, ...) \
+do { \
+	size_t _slen; \
+	_slen = _func(_dbuff, ## __VA_ARGS__ ); \
+	if (_slen < 0) return _slen; \
+} while (0)
+
+/** Advance position in dbuff by N bytes without sanity checks
+ *
+ * @note Do not call this function directly.
+ */
+static inline ssize_t _fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
+{
+	dbuff->p += inlen;
+
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : inlen;
+}
+
+/** Advance position in dbuff by N bytes
+ *
+ * @param[in] dbuff	to advance.
+ * @param[in] inlen	How much to advance dbuff by.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the dbuff was advanced by.
+ *	- <0	the number of bytes required to complete the copy.
+ */
+static inline ssize_t fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
+{
+	size_t freespace = fr_dbuff_freespace(dbuff);
+
+	if (inlen > freespace) return -(inlen - freespace);
+
+	return _fr_dbuff_advance(dbuff, inlen);
+}
+#define FR_DBUFF_ADVANCE_RETURN(_dbuff, _inlen) FR_DBUFF_RETURN(fr_dbuff_advance, _dbuff, _inlen)
+
 /** Copy n bytes into dbuff
  *
  * @param[in] dbuff	to copy data to.
@@ -250,8 +291,9 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
 	memcpy(dbuff->p, in, inlen);
 	dbuff->p += inlen;
 
-	return dbuff->parent ? __FUNCTION__(dbuff->parent, in, inlen) : inlen;
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : inlen;
 }
+#define FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_memcpy_in, _dbuff, _in, _inlen)
 
 /** Copy a byte sequence into a dbuff
  *
@@ -262,39 +304,6 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
  */
 #define fr_dbuff_bytes_in(_dbuff, ...) \
 	fr_dbuff_memcpy_in(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
-
-/** Copy n bytes into dbuff and return if there's insufficient buffer space
- *
- * @copybrief fr_dbuff_memcpy_in
- *
- * If there's insufficient space in the dbuff, the number of bytes required to
- * complete the copy operation will be returned as a negative integer.
- *
- * @note Functions which use this macro should return a ssize_t.
- *
- * @param[in] _dbuff	to copy memory into.
- * @param[in] _in	memory to copy.
- * @param[in] _inlen	How many bytes to copy.
- */
-#define FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, _in, _inlen) \
-do { \
-	size_t _slen; \
-	_slen = fr_dbuff_memcpy_in(_dbuff, _in, _inlen); \
-	if (_slen < 0) return _slen; \
-} while (0)
-
-/** Copy a byte sequence into a dbuff and return if there's insufficient buffer space
- *
- * @copybrief fr_dbuff_memcpy_in
- *
- * If there's insufficient space in the dbuff, the number of bytes required to
- * complete the copy operation will be returned as a negative integer.
- *
- * @note Functions which use this macro should return a ssize_t.
- *
- * @param[in] _dbuff	to copy byte sequence into.
- * @param[in] ...	bytes to copy.
- */
 #define FR_DBUFF_BYTES_IN_RETURN(_dbuff, ...) \
 	FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
@@ -319,28 +328,9 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
 	memset(dbuff->p, c, inlen);
 	dbuff->p += inlen;
 
-	return dbuff->parent ? __FUNCTION__(dbuff->parent, c, inlen) : inlen;
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : inlen;
 }
-
-/** Set n bytes in to the specified value and return if there's insufficient buffer space
- *
- * @copybrief fr_dbuff_memset
- *
- * If there's insufficient space in the dbuff, the number of bytes required to
- * complete the set operation will be returned as a negative integer.
- *
- * @note Functions which use this macro should return a ssize_t.
- *
- * @param[in] _dbuff	to copy memory into.
- * @param[in] _c	Value to set.
- * @param[in] _inlen	How many bytes to copy.
- */
-#define FR_DBUFF_MEMSET_RETURN(_dbuff, _c, _inlen) \
-do { \
-	size_t _slen; \
-	_slen = fr_dbuff_memset(_dbuff, _c, _inlen); \
-	if (_slen < 0) return _slen; \
-} while (0)
+#define FR_DBUFF_MEMSET_RETURN(_dbuff, _c, _inlen) FR_DBUFF_RETURN(fr_dbuff_memset, _dbuff, _c, _inlen)
 
 /** @} */
 
