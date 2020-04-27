@@ -42,7 +42,7 @@ static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED s
 					   REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t			*vpt;
-	TALLOC_CTX			*our_ctx = talloc_init("aka_sim_xlat");
+	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t				slen, id_len;
 	char const			*p = fmt, *id, *method;
 	fr_aka_sim_id_type_t		type_hint;
@@ -117,7 +117,7 @@ static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED siz
 				REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t			*vpt;
-	TALLOC_CTX			*our_ctx = talloc_init("aka_sim_xlat");
+	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t				slen, id_len;
 	char const			*p = fmt, *id, *type;
 	fr_aka_sim_id_type_t		type_hint;
@@ -192,7 +192,7 @@ static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out
 						 REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t	*vpt;
-	TALLOC_CTX	*our_ctx = talloc_init("aka_sim_xlat");
+	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t		slen, id_len;
 	char const	*p = fmt, *id;
 
@@ -244,7 +244,7 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 					       REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t	*id_vpt, *key_vpt;
-	TALLOC_CTX	*our_ctx = talloc_init("aka_sim_xlat");
+	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t		slen, id_len, key_len;
 	uint8_t		tag;
 	char		out_tag;
@@ -357,7 +357,7 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 					       REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t			*id_vpt, *key_vpt;
-	TALLOC_CTX			*our_ctx = talloc_init("aka_sim_xlat");
+	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t				slen, id_len, key_len;
 	uint8_t				*key, tag = 0;
 	unsigned long			key_index;

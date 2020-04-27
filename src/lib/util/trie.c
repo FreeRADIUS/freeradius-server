@@ -2882,7 +2882,7 @@ static int command_clear(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, UNU
 	 *	Clean up our internal data ctx, too.
 	 */
 	talloc_free(data_ctx);
-	data_ctx = talloc_init("data_ctx");
+	data_ctx = talloc_init_const("data_ctx");
 
 	return 0;
 }
@@ -3262,7 +3262,7 @@ int main(int argc, char **argv)
 	 */
 	talloc_enable_null_tracking();
 
-	data_ctx = talloc_init("data_ctx");
+	data_ctx = talloc_init_const("data_ctx");
 
 	ft = fr_trie_alloc(NULL);
 	if (!ft) {

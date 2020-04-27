@@ -468,7 +468,7 @@ static int event_process_request(struct osmo_fd *ofd, unsigned int what)
  */
 static void *sigtran_event_loop(UNUSED void *instance)
 {
-	TALLOC_CTX	*ctx = talloc_init("sigtran_event_ctx");
+	TALLOC_CTX	*ctx = talloc_init_const("sigtran_event_ctx");
 
 	fr_assert((ctrl_pipe[0] < 0) && (ctrl_pipe[1] < 0));	/* Ensure only one instance exists */
 

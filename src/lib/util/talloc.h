@@ -36,6 +36,25 @@ extern "C" {
 #include <stdint.h>
 #include <talloc.h>
 
+/** Allocate a top level chunk with a constant name
+ *
+ * @param[in] name	Must be a string literal.
+ * @return
+ *	- NULL on allocation error.
+ *	- A new talloc chunk on success.
+ */
+static inline TALLOC_CTX *talloc_init_const(char const *name)
+{
+	TALLOC_CTX *ctx;
+
+	ctx = talloc_new(NULL);
+	if (unlikely(!ctx)) return NULL;
+
+	talloc_set_name_const(ctx, name);
+
+	return ctx;
+}
+
 void		*talloc_null_ctx(void);
 
 int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);

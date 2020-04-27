@@ -354,7 +354,7 @@ static fr_trunk_t *test_setup_trunk(TALLOC_CTX *ctx, fr_event_list_t *el, fr_tru
 
 static void test_socket_pair_alloc_then_free(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	int			events;
@@ -393,7 +393,7 @@ static void test_socket_pair_alloc_then_free(void)
 
 static void test_socket_pair_alloc_then_reconnect_then_free(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	int			events;
@@ -483,7 +483,7 @@ static fr_connection_t *test_setup_socket_pair_1s_timeout_connection_alloc(fr_tr
 
 static void test_socket_pair_alloc_then_connect_timeout(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	int			events;
@@ -561,7 +561,7 @@ static fr_connection_t *test_setup_socket_pair_1s_reconnection_delay_alloc(fr_tr
 
 static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	int			events;
@@ -635,7 +635,7 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
  */
 static void test_enqueue_basic(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	fr_trunk_conf_t		conf = {
@@ -736,7 +736,7 @@ static void test_enqueue_basic(void)
  */
 static void test_enqueue_cancellation_points(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	fr_trunk_conf_t		conf = {
@@ -983,7 +983,7 @@ static void test_enqueue_cancellation_points(void)
  */
 static void test_partial_to_complete_states(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	fr_trunk_conf_t		conf = {
@@ -1058,7 +1058,7 @@ static void test_partial_to_complete_states(void)
  */
 static void test_requeue_on_reconnect(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	fr_trunk_conf_t		conf = {
@@ -1323,7 +1323,7 @@ static void test_requeue_on_reconnect(void)
 
 static void test_connection_start_on_enqueue(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	fr_trunk_conf_t		conf = {
@@ -1374,7 +1374,7 @@ static void test_connection_start_on_enqueue(void)
 
 static void test_connection_rebalance_requests(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	fr_trunk_conf_t		conf = {
@@ -1443,7 +1443,7 @@ do { \
 
 static void test_connection_levels_max(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	fr_trunk_conf_t		conf = {
@@ -1579,7 +1579,7 @@ static void test_connection_levels_max(void)
 
 static void test_connection_levels_alternating_edges(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	fr_trunk_conf_t		conf = {
@@ -1724,7 +1724,7 @@ static void test_connection_levels_alternating_edges(void)
 #undef fr_time	/* Need to the real time */
 static void test_enqueue_and_io_speed(void)
 {
-	TALLOC_CTX		*ctx = talloc_init("test");
+	TALLOC_CTX		*ctx = talloc_init_const("test");
 	fr_trunk_t		*trunk;
 	fr_event_list_t		*el;
 	int			events;

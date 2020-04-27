@@ -589,7 +589,7 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 	TALLOC_FREE(request->state_ctx);
 	request->state = NULL;
 
-	MEM(request->state_ctx = talloc_init("session-state"));
+	MEM(request->state_ctx = talloc_init_const("session-state"));
 
 	RDEBUG3("RADIUS State - discarded");
 
@@ -826,7 +826,7 @@ void fr_state_detach(REQUEST *request, bool will_free)
 		return;
 	}
 
-	MEM(new_state_ctx = talloc_init("session-state"));
+	MEM(new_state_ctx = talloc_init_const("session-state"));
 	request_data_by_persistance_reparent(new_state_ctx, NULL, request, true);
 	request_data_by_persistance_reparent(new_state_ctx, NULL, request, false);
 

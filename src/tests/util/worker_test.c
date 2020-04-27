@@ -166,7 +166,7 @@ static void *worker_thread(void *arg)
 
 	MPRINT1("\tWorker %d started.\n", sw->id);
 
-	MEM(ctx = talloc_init("worker"));
+	MEM(ctx = talloc_init_const("worker"));
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!el) {
@@ -207,7 +207,7 @@ static void master_process(void)
 	fr_listen_t		listen = { .app_io = &app_io };
 	struct kevent		events[MAX_KEVENTS];
 
-	MEM(ctx = talloc_init("master"));
+	MEM(ctx = talloc_init_const("master"));
 
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {

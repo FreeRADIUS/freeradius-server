@@ -1968,7 +1968,7 @@ do {\
 	}\
 } while (0)
 
-		if (!username || !password) cred_ctx = talloc_init("cred_ctx");
+		if (!username || !password) cred_ctx = talloc_init_const("cred_ctx");
 
 		if (!username) {
 			char *tmp = NULL;

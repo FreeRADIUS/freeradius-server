@@ -239,7 +239,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	context = 0;
 	prompt = "radmin> ";
 
-	ctx = talloc_init("radmin");
+	ctx = talloc_init_const("radmin");
 
 	size = 8192;
 	radmin_buffer = talloc_zero_array(ctx, char, size);
@@ -1062,7 +1062,7 @@ static fr_cmd_table_t cmd_table[] = {
 
 int fr_radmin_start(main_config_t *config, bool cli)
 {
-	radmin_ctx = talloc_init("radmin");
+	radmin_ctx = talloc_init_const("radmin");
 	if (!radmin_ctx) return -1;
 
 	start_time = fr_time();

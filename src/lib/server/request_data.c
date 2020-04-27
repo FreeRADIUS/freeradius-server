@@ -572,7 +572,7 @@ int request_data_store_in_parent(REQUEST *request, void const *unique_ptr, int u
 	 *	needed, by giving the child it's own
 	 *      unique state_ctx again.
 	 */
-	MEM(request->state_ctx = talloc_init("session-state"));
+	MEM(request->state_ctx = talloc_init_const("session-state"));
 
 	return 0;
 }

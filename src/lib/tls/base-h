@@ -362,7 +362,7 @@ extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
 #define FR_OPENSSL_BIND_OBJ_MEMORY(_expr) \
 do { \
 	void *_nmem; \
-	MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_expr))); \
+	MEM(ssl_talloc_ctx = talloc_init_const(STRINGIFY(_expr))); \
 	_nmem = (_expr);\
 	if (!_nmem) { \
 		TALLOC_FREE(ssl_talloc_ctx); \
@@ -379,7 +379,7 @@ do { \
 #define FR_OPENSSL_BIND_MEMORY_BEGIN(_obj) \
 do { \
 	if (fr_cond_assert(!ssl_talloc_ctx && (_obj))) { \
-		MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_obj))); \
+		MEM(ssl_talloc_ctx = talloc_init_const(STRINGIFY(_obj))); \
 		talloc_steal(_obj, ssl_talloc_ctx); \
 	} \
 } while(0)

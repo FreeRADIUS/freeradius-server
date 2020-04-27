@@ -92,7 +92,7 @@ static void *control_master(UNUSED void *arg)
 {
 	TALLOC_CTX *ctx;
 
-	MEM(ctx = talloc_init("control_master"));
+	MEM(ctx = talloc_init_const("control_master"));
 
 	MPRINT1("Master started.\n");
 
@@ -151,7 +151,7 @@ static void *control_worker(UNUSED void *arg)
 	size_t i;
 	TALLOC_CTX *ctx;
 
-	MEM(ctx = talloc_init("control_worker"));
+	MEM(ctx = talloc_init_const("control_worker"));
 
 	MPRINT1("\tWorker started.\n");
 

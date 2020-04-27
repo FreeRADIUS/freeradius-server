@@ -163,7 +163,7 @@ static void *worker_thread(void *arg)
 
 	MPRINT1("\tWorker %d started.\n", sw->id);
 
-	MEM(ctx = talloc_init("worker"));
+	MEM(ctx = talloc_init_const("worker"));
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!el) {

@@ -471,7 +471,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		}
 		fr_assert(dl_inst != NULL);
 	} else {
-		dl_inst = talloc_init("nak");
+		dl_inst = talloc_init_const("nak");
 	}
 
 	MEM(connection = talloc_zero(dl_inst, fr_io_connection_t));

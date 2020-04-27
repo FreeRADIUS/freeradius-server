@@ -25,16 +25,17 @@
  * @copyright 2018 The FreeRADIUS server project
  * @copyright 2018 NetworkRADIUS SARL (legal@networkradius.com)
  */
-#include <stdint.h>
-#include <stddef.h>
-#include <talloc.h>
+#include <freeradius-devel/io/pair.h>
+#include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
+#include <freeradius-devel/protocol/dhcpv6/rfc3315.h>
 #include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/io/pair.h>
-#include <freeradius-devel/protocol/dhcpv6/rfc3315.h>
-#include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/types.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <talloc.h>
 
 #include "dhcpv6.h"
 #include "attrs.h"
@@ -472,7 +473,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	p = packet + 4;
 	end = packet + packet_len;
 
-	packet_ctx.tmp_ctx = talloc_init("tmp");
+	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 
 	/*
 	 *	The caller MUST have called fr_dhcpv6_ok() first.  If

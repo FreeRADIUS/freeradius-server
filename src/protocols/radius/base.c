@@ -29,12 +29,14 @@ RCSID("$Id$")
 #include <ctype.h>
 
 
+#include "attrs.h"
+
+#include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/udp.h>
-#include <freeradius-devel/io/pair.h>
-#include "attrs.h"
 
 static uint32_t instance_count = 0;
 
@@ -1056,7 +1058,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	uint8_t const		*attr, *end;
 	fr_radius_ctx_t		packet_ctx;
 
-	packet_ctx.tmp_ctx = talloc_init("tmp");
+	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 	packet_ctx.secret = secret;
 	packet_ctx.vector = original ? original + 4 : packet + 4;
 
