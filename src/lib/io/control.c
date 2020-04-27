@@ -130,6 +130,8 @@ static int _control_free(fr_control_t *c)
 {
 	(void) talloc_get_type_abort(c, fr_control_t);
 
+	fr_assert(fr_event_loop_exiting(c->el));
+
 #ifndef NDEBUG
 	(void) fr_event_fd_unarmour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, c->armour);
 #endif
