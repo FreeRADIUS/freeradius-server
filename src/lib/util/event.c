@@ -1976,7 +1976,7 @@ bool fr_event_loop_exiting(fr_event_list_t *el)
  *
  * @param[in] el to start processing.
  */
-CC_HINT(flatten) CC_HINT(hot) int fr_event_loop(fr_event_list_t *el)
+CC_HINT(flatten) int fr_event_loop(fr_event_list_t *el)
 {
 	el->will_exit = el->exit = 0;
 
