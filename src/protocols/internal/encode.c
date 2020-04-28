@@ -258,6 +258,7 @@ static ssize_t internal_encode(uint8_t *out, size_t outlen,
 			memmove(to, value_field, value_len);
 
 			p = to + value_len;
+			value_field += flen - 1;
 		}
 		memcpy(len_field, buff, flen);
 		enc_field[0] |= ((flen - 1) << 2);
