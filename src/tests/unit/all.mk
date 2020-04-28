@@ -30,6 +30,23 @@ $(FILES.$(TEST)): export TZ = GMT
 #export LSAN_OPTIONS=print_suppressions=0 fast_unwind_on_malloc=0
 
 #
+#  Look in each file for `proto foo`, and then make that file depend in `libfreeradius-foo.a`
+#
+-include $(OUTPUT)/depends.mk
+
+$(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
+	${Q}rm -f $@
+	${Q}touch $@
+	${Q}for x in $^; do \
+		y=`grep '^proto ' $$x | sed 's/^proto //'`; \
+		if [ "$$y" != "" ]; then \
+			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
+			echo "$$z: $(BUILD_DIR)/lib/libfreeradius-$$y.la" >> $@; \
+			echo "" >> $@; \
+		fi \
+	done
+
+#
 #  And the actual script to run each test.
 #
 $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
