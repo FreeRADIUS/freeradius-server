@@ -4011,8 +4011,15 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	(and possibly eventually free) those first.
 		 */
 		if ((tconn = fr_dlist_tail(&trunk->inactive))) {
-			trunk_connection_enter_inactive_draining(tconn);
-
+			/*
+			 *	If the connection has no requests associated
+			 *	with it then immediately free.
+			 */
+			if (fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0) {
+				fr_connection_signal_halt(tconn->pub.conn);	/* Also frees the tconn */
+			} else {
+				trunk_connection_enter_inactive_draining(tconn);
+			}
 		/*
 		 *	It is possible to have too may connecting
 		 *	connections when the connections are
@@ -4029,7 +4036,15 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	connections.
 		 */
 		} else if ((tconn = fr_heap_peek_tail(trunk->active))) {
-			trunk_connection_enter_draining(tconn);
+			/*
+			 *	If the connection has no requests associated
+			 *	with it then immediately free.
+			 */
+			if (fr_trunk_request_count_by_connection(tconn, FR_TRUNK_REQUEST_STATE_ALL) == 0) {
+				fr_connection_signal_halt(tconn->pub.conn);	/* Also frees the tconn */
+			} else {
+				trunk_connection_enter_draining(tconn);
+			}
 		}
 
 		trunk->pub.last_closed = now;
