@@ -574,7 +574,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 
 	if (decode(h, &reply, &code,
 		   h, h->status_request, h->status_u, u->packet + RADIUS_AUTH_VECTOR_OFFSET,
-		   h->buffer, h->buflen) != DECODE_FAIL_NONE) return;
+		   h->buffer, slen) != DECODE_FAIL_NONE) return;
 
 	fr_pair_list_free(&reply);	/* FIXME - Do something with these... */
 
