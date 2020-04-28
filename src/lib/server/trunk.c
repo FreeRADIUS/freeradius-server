@@ -1690,7 +1690,9 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 	 *	in the requests per connection stats, so
 	 *	we need to update those values now.
 	 */
-	if (tconn->pub.state == FR_TRUNK_CONN_DRAINING) trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
+	if ((tconn->pub.state == FR_TRUNK_CONN_DRAINING) || (tconn->pub.state == FR_TRUNK_CONN_INACTIVE_DRAINING)) {
+		trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
+	}
 
 done:
 	fr_connection_signals_resume(tconn->pub.conn);
