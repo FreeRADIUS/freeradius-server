@@ -431,7 +431,7 @@ void trunk_request_state_log_entry_add(char const *function, int line,
  */
 #define REQUEST_STATE_TRANSITION(_new) \
 do { \
-	DEBUG4("Trunk request %" PRIu64 " changed state %s -> %s", \
+	DEBUG3("Trunk request %" PRIu64 " changed state %s -> %s", \
 	       treq->id, \
 	       fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
 	       fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>")); \
@@ -453,7 +453,7 @@ do { \
  */
 #define REQUEST_STATE_TRANSITION(_new) \
 do { \
-	DEBUG4("Trunk request %" PRIu64 " changed state %s -> %s", \
+	DEBUG3("Trunk request %" PRIu64 " changed state %s -> %s", \
 	       treq->id, \
 	       fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
 	       fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>")); \
@@ -476,7 +476,7 @@ do { \
 	if ((_treq)->pub.trunk->funcs.request_cancel) { \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_cancel; \
-		DEBUG4("Calling request_cancel(conn=%p, preq=%p, reason=%s, uctx=%p)", (_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, fr_table_str_by_value(fr_trunk_cancellation_reasons, (_reason), "<INVALID>"), (_treq)->pub.trunk->uctx); \
+		DEBUG3("Calling request_cancel(conn=%p, preq=%p, reason=%s, uctx=%p)", (_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, fr_table_str_by_value(fr_trunk_cancellation_reasons, (_reason), "<INVALID>"), (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->funcs.request_cancel((_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, (_reason), (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = _prev; \
 	} \
@@ -490,7 +490,7 @@ do { \
 	if ((_treq)->pub.trunk->funcs.request_conn_release) { \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_conn_release; \
-		DEBUG4("Calling request_conn_release(conn=%p, preq=%p, uctx=%p)", (_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
+		DEBUG3("Calling request_conn_release(conn=%p, preq=%p, uctx=%p)", (_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->funcs.request_conn_release((_treq)->pub.tconn->pub.conn, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = _prev; \
 	} \
@@ -503,7 +503,7 @@ do { \
 do { \
 	if ((_treq)->pub.trunk->funcs.request_complete) { \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
-		DEBUG4("Calling request_complete(request=%p, preq=%p, rctx=%p, uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, (_treq)->pub.trunk->uctx); \
+		DEBUG3("Calling request_complete(request=%p, preq=%p, rctx=%p, uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_complete; \
 		(_treq)->pub.trunk->funcs.request_complete((_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = _prev; \
@@ -517,7 +517,7 @@ do { \
 do { \
 	if ((_treq)->pub.trunk->funcs.request_fail) { \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
-		DEBUG4("Calling request_fail(request=%p, preq=%p, rctx=%p, state=%s uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, fr_table_str_by_value(fr_trunk_request_states, (_prev_state), "<INVALID>"), (_treq)->pub.trunk->uctx); \
+		DEBUG3("Calling request_fail(request=%p, preq=%p, rctx=%p, state=%s uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, fr_table_str_by_value(fr_trunk_request_states, (_prev_state), "<INVALID>"), (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_fail; \
 		(_treq)->pub.trunk->funcs.request_fail((_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.rctx, _prev_state, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = _prev; \
@@ -531,7 +531,7 @@ do { \
 do { \
 	if ((_treq)->pub.trunk->funcs.request_free) { \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
-		DEBUG4("Calling request_free(request=%p, preq=%p, uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
+		DEBUG3("Calling request_free(request=%p, preq=%p, uctx=%p)", (_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_free; \
 		(_treq)->pub.trunk->funcs.request_free((_treq)->pub.request, (_treq)->pub.preq, (_treq)->pub.trunk->uctx); \
 		(_treq)->pub.trunk->in_handler = _prev; \
@@ -544,7 +544,7 @@ do { \
 #define DO_REQUEST_MUX(_tconn) \
 do { \
 	void *_prev = (_tconn)->pub.trunk->in_handler; \
-	DEBUG4("[%" PRIu64 "] Calling request_mux(el=%p, tconn=%p, conn=%p, uctx=%p)", \
+	DEBUG3("[%" PRIu64 "] Calling request_mux(el=%p, tconn=%p, conn=%p, uctx=%p)", \
 	       (_tconn)->pub.conn->id, (_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
 	(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_mux; \
 	(_tconn)->pub.trunk->funcs.request_mux((_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
@@ -557,7 +557,7 @@ do { \
 #define DO_REQUEST_DEMUX(_tconn) \
 do { \
 	void *_prev = (_tconn)->pub.trunk->in_handler; \
-	DEBUG4("[%" PRIu64 "] Calling request_demux(tconn=%p, conn=%p, uctx=%p)", \
+	DEBUG3("[%" PRIu64 "] Calling request_demux(tconn=%p, conn=%p, uctx=%p)", \
 	       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
 	(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_demux; \
 	(_tconn)->pub.trunk->funcs.request_demux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
@@ -571,7 +571,7 @@ do { \
 do { \
 	if ((_tconn)->pub.trunk->funcs.request_cancel_mux) { \
 		void *_prev = (_tconn)->pub.trunk->in_handler; \
-		DEBUG4("[%" PRIu64 "] Calling request_cancel_mux(tconn=%p, conn=%p, uctx=%p)", \
+		DEBUG3("[%" PRIu64 "] Calling request_cancel_mux(tconn=%p, conn=%p, uctx=%p)", \
 		       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
 		(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_cancel_mux; \
 		(_tconn)->pub.trunk->funcs.request_cancel_mux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
@@ -585,7 +585,7 @@ do { \
 #define DO_CONNECTION_ALLOC(_tconn) \
 do { \
 	void *_prev = trunk->in_handler; \
-	DEBUG4("Calling connection_alloc(tconn=%p, el=%p, conf=%p, log_prefix=\"%s\", uctx=%p)", \
+	DEBUG3("Calling connection_alloc(tconn=%p, el=%p, conf=%p, log_prefix=\"%s\", uctx=%p)", \
 	       (_tconn), (_tconn)->pub.trunk->el, (_tconn)->pub.trunk->conf.conn_conf, trunk->log_prefix, (_tconn)->pub.trunk->uctx); \
 	(_tconn)->pub.trunk->in_handler = (void *) (_tconn)->pub.trunk->funcs.connection_alloc; \
 	(_tconn)->pub.conn = trunk->funcs.connection_alloc((_tconn), (_tconn)->pub.trunk->el, (_tconn)->pub.trunk->conf.conn_conf, (_tconn)->pub.trunk->log_prefix, trunk->uctx); \
@@ -604,7 +604,7 @@ do { \
 do { \
 	if ((_tconn)->pub.trunk->funcs.connection_notify) { \
 		void *_prev = (_tconn)->pub.trunk->in_handler; \
-		DEBUG4("[%" PRIu64 "] Calling connection_notify(tconn=%p, conn=%p, el=%p, events=%s, uctx=%p)", \
+		DEBUG3("[%" PRIu64 "] Calling connection_notify(tconn=%p, conn=%p, el=%p, events=%s, uctx=%p)", \
 		       (_tconn)->pub.conn->id, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->el, \
 		       fr_table_str_by_value(fr_trunk_connection_events, (_events), "<INVALID>"), (_tconn)->pub.trunk->uctx); \
 		(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.connection_notify; \
@@ -795,7 +795,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 		break;
 	}
 
-	DEBUG4("[%" PRIu64 "] Trunk connection released request %" PRIu64, tconn->pub.conn->id, treq->id);
+	DEBUG3("[%" PRIu64 "] Trunk connection released request %" PRIu64, tconn->pub.conn->id, treq->id);
 
 	/*
 	 *	Release any connection specific resources the
@@ -963,7 +963,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	treq->pub.tconn = tconn;
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_PENDING);
-	DEBUG4("[%" PRIu64 "] Trunk connection assigned request %"PRIu64, tconn->pub.conn->id, treq->id);
+	DEBUG3("[%" PRIu64 "] Trunk connection assigned request %"PRIu64, tconn->pub.conn->id, treq->id);
 	fr_heap_insert(tconn->pending, treq);
 
 	/*
@@ -1691,8 +1691,15 @@ done:
 	 *	in the requests per connection stats, so
 	 *	we need to update those values now.
 	 */
-	if ((tconn->pub.state == FR_TRUNK_CONN_DRAINING) || (tconn->pub.state == FR_TRUNK_CONN_INACTIVE_DRAINING)) {
+	switch (tconn->pub.state) {
+	case FR_TRUNK_CONN_DRAINING:
+	case FR_TRUNK_CONN_INACTIVE_DRAINING:
+	case FR_TRUNK_CONN_DRAINING_TO_FREE:	/* shouldn't really happen */
 		trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
+		break;
+
+	default:
+		break;
 	}
 
 	fr_connection_signals_resume(tconn->pub.conn);
@@ -3551,7 +3558,7 @@ void fr_trunk_connection_signal_writable(fr_trunk_connection_t *tconn)
 	if (!fr_cond_assert_msg(!IN_HANDLER(tconn->pub.trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return;
 
-	DEBUG4("[%" PRIu64 "] Signalled writable", tconn->pub.conn->id);
+	DEBUG3("[%" PRIu64 "] Signalled writable", tconn->pub.conn->id);
 
 	trunk_connection_writable(tconn);
 }
@@ -3569,7 +3576,7 @@ void fr_trunk_connection_signal_readable(fr_trunk_connection_t *tconn)
 	if (!fr_cond_assert_msg(!IN_HANDLER(tconn->pub.trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return;
 
-	DEBUG4("[%" PRIu64 "] Signalled readable", tconn->pub.conn->id);
+	DEBUG3("[%" PRIu64 "] Signalled readable", tconn->pub.conn->id);
 
 	trunk_connection_readable(tconn);
 }
@@ -3674,7 +3681,7 @@ static void trunk_connection_close_if_empty(fr_trunk_t *trunk, fr_dlist_head_t *
 
 		prev = fr_dlist_prev(head, tconn);
 
-		DEBUG4("Closing %s connection with no requests",
+		DEBUG3("Closing %s connection with no requests",
 		       fr_table_str_by_value(fr_trunk_connection_states, tconn->pub.state, "<INVALID>"));
 		/*
 		 *	Close the connection as gracefully
@@ -3717,7 +3724,7 @@ static void trunk_rebalance(fr_trunk_t *trunk)
 	 */
 	if (trunk->funcs.connection_prioritise(fr_heap_peek_tail(trunk->active), head) == 0) return;
 
-	DEBUG4("Rebalancing requests");
+	DEBUG3("Rebalancing requests");
 
 	/*
 	 *	Keep requeuing requests from the connection
@@ -3777,7 +3784,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	uint32_t		req_count;
 	uint16_t		conn_count;
 
-	DEBUG4("%s - Managing trunk", caller);
+	DEBUG3("%s - Managing trunk", caller);
 
 	/*
 	 *	Cleanup requests in our request cache which
@@ -3831,7 +3838,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		if ((trunk->conf.connecting > 0) &&
 		    (fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) >=
 		     trunk->conf.connecting)) {
-			DEBUG4("Not opening connection - Too many (%u) connections in the connecting state",
+			DEBUG3("Not opening connection - Too many (%u) connections in the connecting state",
 			       trunk->conf.connecting);
 			return;
 		}
@@ -3843,7 +3850,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	one available connection.
 		 */
 		if (conn_count && ((trunk->pub.last_above_target + trunk->conf.open_delay) > now)) {
-			DEBUG4("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
+			DEBUG3("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
 			       fr_box_time_delta(now - trunk->pub.last_above_target));
 			return;	/* too soon */
@@ -3865,7 +3872,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	any new connections.
 		 */
 		if ((trunk->conf.max > 0) && (conn_count >= trunk->conf.max)) {
-			DEBUG4("Not opening connection - Have %u connections, need %u or below",
+			DEBUG3("Not opening connection - Have %u connections, need %u or below",
 			       conn_count, trunk->conf.max);
 			return;
 		}
@@ -3876,7 +3883,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	load.
 		 */
 		if (!req_count) {
-			DEBUG4("Not opening connection - No outstanding requests");
+			DEBUG3("Not opening connection - No outstanding requests");
 			return;
 		}
 
@@ -3887,7 +3894,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		if (conn_count > 0) {
 			average = ROUND_UP_DIV(req_count, (conn_count + 1));
 			if (average < trunk->conf.target_req_per_conn) {
-				DEBUG4("Not opening connection - Would leave us below our target requests "
+				DEBUG3("Not opening connection - Would leave us below our target requests "
 				       "per connection (now %u, after open %u)",
 				       ROUND_UP_DIV(req_count, conn_count), average);
 				return;
@@ -3917,14 +3924,14 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	could be immediately re-activated.
 		 */
 		if ((trunk->pub.last_open + trunk->conf.open_delay) > now) {
-			DEBUG4("Not opening connection - Need to wait %pVs before opening another connection.  "
+			DEBUG3("Not opening connection - Need to wait %pVs before opening another connection.  "
 			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
 			       fr_box_time_delta(now - trunk->pub.last_open));
 			return;
 		}
 
-		DEBUG4("Opening connection - Above target requests per connection (now %u, target %u)",
+		DEBUG3("Opening connection - Above target requests per connection (now %u, target %u)",
 		       ROUND_UP_DIV(req_count, conn_count), trunk->conf.target_req_per_conn);
 		/* last_open set by trunk_connection_spawn */
 		(void)trunk_connection_spawn(trunk, now);
@@ -3936,7 +3943,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	 */
 	else if (trunk->pub.last_below_target > trunk->pub.last_above_target) {
 		if ((trunk->pub.last_below_target + trunk->conf.close_delay) > now) {
-			DEBUG4("Not closing connection - Need to be below target for %pVs. It's been %pVs",
+			DEBUG3("Not closing connection - Need to be below target for %pVs. It's been %pVs",
 			       fr_box_time_delta(trunk->conf.close_delay),
 			       fr_box_time_delta(now - trunk->pub.last_below_target));
 			return;	/* too soon */
@@ -3952,18 +3959,18 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		fr_assert(trunk->pub.last_below_target > trunk->pub.last_above_target);
 
 		if (!conn_count) {
-			DEBUG4("Not closing connection - No connections to close!");
+			DEBUG3("Not closing connection - No connections to close!");
 			return;
 		}
 
 		if ((trunk->conf.min > 0) && ((conn_count - 1) < trunk->conf.min)) {
-			DEBUG4("Not closing connection - Have %u connections, need %u or above",
+			DEBUG3("Not closing connection - Have %u connections, need %u or above",
 			       conn_count, trunk->conf.min);
 			return;
 		}
 
 		if (!req_count) {
-			DEBUG4("Closing connection - No outstanding requests");
+			DEBUG3("Closing connection - No outstanding requests");
 			goto close;
 		}
 
@@ -3976,7 +3983,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 *	log file churn.
 		 */
 		if (conn_count == 1) {
-			DEBUG4("Not closing connection - Would leave connections "
+			DEBUG3("Not closing connection - Would leave connections "
 			       "and there are still %u outstanding requests", req_count);
 			return;
 		}
@@ -3987,17 +3994,17 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 		 */
 		average = ROUND_UP_DIV(req_count, (conn_count - 1));
 		if (average > trunk->conf.target_req_per_conn) {
-			DEBUG4("Not closing connection - Would leave us above our target requests per connection "
+			DEBUG3("Not closing connection - Would leave us above our target requests per connection "
 			       "(now %u, after close %u)", ROUND_UP_DIV(req_count, conn_count), average);
 			return;
 		}
 
-		DEBUG4("Closing connection - Below target requests per connection (now %u, target %u)",
+		DEBUG3("Closing connection - Below target requests per connection (now %u, target %u)",
 		       ROUND_UP_DIV(req_count, conn_count), trunk->conf.target_req_per_conn);
 
 	close:
 		if ((trunk->pub.last_closed + trunk->conf.close_delay) > now) {
-			DEBUG4("Not closing connection - Need to wait %pVs before closing another connection.  "
+			DEBUG3("Not closing connection - Need to wait %pVs before closing another connection.  "
 			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf.close_delay),
 			       fr_box_time_delta(now - trunk->pub.last_closed));
@@ -4222,7 +4229,7 @@ static void trunk_backlog_drain(fr_trunk_t *trunk)
 	 *	If it's always writable, this isn't
 	 *	really a noteworthy event.
 	 */
-	if (!trunk->conf.always_writable) DEBUG4("Draining backlog of requests");
+	if (!trunk->conf.always_writable) DEBUG3("Draining backlog of requests");
 
 	/*
 	 *	Do *NOT* add an artificial limit
@@ -4344,7 +4351,7 @@ void fr_trunk_connection_manage_start(fr_trunk_t *trunk)
 {
 	if (!trunk->started || trunk->managing_connections) return;
 
-	DEBUG4("Connection management enabled");
+	DEBUG3("Connection management enabled");
 	trunk->managing_connections = true;
 }
 
@@ -4355,7 +4362,7 @@ void fr_trunk_connection_manage_stop(fr_trunk_t *trunk)
 {
 	if (!trunk->started || !trunk->managing_connections) return;
 
-	DEBUG4("Connection management disabled");
+	DEBUG3("Connection management disabled");
 	trunk->managing_connections = false;
 }
 
