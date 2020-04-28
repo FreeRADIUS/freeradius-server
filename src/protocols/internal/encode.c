@@ -258,13 +258,16 @@ static ssize_t internal_encode(uint8_t *out, size_t outlen,
 			memmove(to, value_field, value_len);
 
 			p = to + value_len;
-			value_field += flen - 1;
 		}
 		memcpy(len_field, buff, flen);
 		enc_field[0] |= ((flen - 1) << 2);
 	}
 
-	FR_PROTO_HEX_DUMP(out, value_field - out, "header");
+	/*
+	 *	value_field needs to be adjusted for
+	 *	actual length field size.
+	 */
+	FR_PROTO_HEX_DUMP(out, (value_field + (flen - 1)) - out, "header");
 
 	return p - out;
 }
