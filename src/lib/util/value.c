@@ -3989,8 +3989,6 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 
 /** Convert string value to a fr_value_box_t type
  *
- * @todo Should take taint param.
- *
  * @param[in] ctx		to alloc strings in.
  * @param[out] dst		where to write parsed value.
  * @param[in,out] dst_type	of value data to create/dst_type of value created.

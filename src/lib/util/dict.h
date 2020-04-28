@@ -48,7 +48,7 @@ extern "C" {
 /*
  *	Avoid circular type references.
  */
-typedef struct dict_attr fr_dict_attr_t;
+typedef struct dict_attr_s fr_dict_attr_t;
 typedef struct fr_dict fr_dict_t;
 
 #include <freeradius-devel/util/value.h>
@@ -102,7 +102,7 @@ extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 
 /** Dictionary attribute
  */
-struct dict_attr {
+struct dict_attr_s {
 	unsigned int		attr;				//!< Attribute number.
 	fr_type_t		type;				//!< Value type.
 	char const		*name;				//!< Attribute name.

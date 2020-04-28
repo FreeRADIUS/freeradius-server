@@ -591,8 +591,6 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 */
 	if ((trunk->last_failed && (trunk->last_failed > trunk->last_connected)) &&
 	    (u->num_replies < inst->num_answers_to_alive)) {
-		uint32_t msec = fr_time_delta_to_msec(u->retry.next - fr_time());
-
 		/*
 		 *	Leave the timer in place.  This timer is BOTH when we
 		 *	give up on the current status check, AND when we send
@@ -600,8 +598,8 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		 */
 		DEBUG("%s - Received %u / %u replies for status check, on connection - %s",
 		      h->module_name, u->num_replies, inst->num_answers_to_alive, h->name);
-		DEBUG("%s - Next status check packet will be in %u.%03us",
-		      h->module_name, msec / 1000, msec % 1000);
+		DEBUG("%s - Next status check packet will be in %pVs",
+		      h->module_name, fr_box_time_delta(u->retry.next - fr_time()));
 
 		/*
 		 *	Set the timer for the next retransmit.
@@ -631,7 +629,6 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 	udp_request_t		*u = h->status_u;
 	ssize_t			slen;
-	uint32_t		msec;
 
 	if (!u->retry.start) {
 		u->id = fr_rand() & 0xff;	/* We don't care what the value is here */
@@ -675,10 +672,9 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		goto fail;
 	}
 
- 	msec = fr_time_delta_to_msec(u->retry.rt);
-
-	DEBUG("%s - %s request.  Expecting response within %u.%03us",
-	      h->module_name, (u->retry.count == 1) ? "Originated" : "Retransmitted", msec / 1000, msec % 1000);
+	DEBUG("%s - %s request.  Expecting response within %pVs",
+	      h->module_name, (u->retry.count == 1) ? "Originated" : "Retransmitted",
+	      fr_box_time_delta(u->retry.rt));
 
 	if (fr_event_timer_at(u, el, &u->ev, u->retry.next, conn_status_check_timeout, conn) < 0) {
 		PERROR("%s - Failed inserting timer event", h->module_name);
@@ -1622,10 +1618,10 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	 *	connection.
 	 */
 	if (!h->inst->parent->status_check) {
-		uint32_t msec = fr_time_delta_to_msec(h->inst->parent->revive_interval);
 		fr_time_t when;
 
-		WARN("%s - Connection failed.  Reviving it in %u.%03us", h->module_name, msec / 1000, msec % 1000);
+		WARN("%s - Connection failed.  Reviving it in %pVs", h->module_name,
+		     fr_box_time_delta(h->inst->parent->revive_interval));
 		fr_trunk_connection_signal_inactive(tconn);
 		(void) fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
 
@@ -1957,10 +1953,8 @@ static void request_mux(fr_event_list_t *el,
 		}
 
 		if (!inst->parent->synchronous) {
-			uint32_t	msec = fr_time_delta_to_msec(u->retry.rt);
-
-			RDEBUG("%s request.  Expecting response within %u.%03us",
-			       action, msec / 1000, msec % 1000);
+			RDEBUG("%s request.  Expecting response within %pVs", action,
+			       fr_box_time_delta(u->retry.rt));
 
 			if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timeout, treq) < 0) {
 				RERROR("Failed inserting retransmit timeout for connection");
@@ -2270,11 +2264,9 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	if (h->buffer[0] == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
 
 	if (u->num_replies < inst->num_answers_to_alive) {
-		uint32_t msec = fr_time_delta_to_msec(u->retry.next - now);
-
 		DEBUG("Received %d / %u replies for status check, on connection - %s",
 		      u->num_replies, inst->num_answers_to_alive, h->name);
-		DEBUG("Next status check packet will be in %u.%03us", msec / 1000, msec % 1000);
+		DEBUG("Next status check packet will be in %pVs", fr_box_time_delta(u->retry.next - now));
 
 		/*
 		 *	If we're retransmitting, leave the ID,

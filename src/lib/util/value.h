@@ -233,7 +233,27 @@ struct value_box {
 
 #define fr_box_size(_val)			_fr_box(FR_TYPE_SIZE, .vb_size, _val)
 
-#define fr_box_time_delta(_val)			_fr_box(FR_TYPE_TIME_DELTA, .vb_time_delta, _val)
+#define _fr_box_with_da(_type, _field, _val, _da) (&(fr_value_box_t){ .type = _type, _field = (_val), .enumv = (_da) })
+
+#define fr_box_time_delta_with_res(_val, _res)	_fr_box_with_da(FR_TYPE_TIME_DELTA, \
+								.vb_time_delta, \
+								(_val), \
+								(&(fr_dict_attr_t){ \
+									.type = FR_TYPE_TIME_DELTA, \
+									.flags = { \
+										.type_size = _res \
+									} \
+								}))
+
+#define fr_box_time_delta(_val)			fr_box_time_delta_with_res((_val), FR_TIME_RES_SEC)
+
+#define fr_box_time_delta_sec(_val)		fr_box_time_delta_with_res((_val), FR_TIME_RES_SEC)
+
+#define fr_box_time_delta_msec(_val)		fr_box_time_delta_with_res((_val), FR_TIME_RES_MSEC)
+
+#define fr_box_time_delta_nsec(_val)		fr_box_time_delta_with_res((_val), FR_TIME_RES_NSEC)
+
+#define fr_box_time_delta_usec(_val)		fr_box_time_delta_with_res((_val), FR_TIME_RES_USEC)
 /** @} */
 
 /** @name Convenience functions
