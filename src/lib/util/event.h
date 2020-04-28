@@ -253,6 +253,8 @@ int		fr_event_loop(fr_event_list_t *el);
 fr_event_list_t	*fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_ctx);
 void		fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t func);
 
+bool		fr_event_list_empty(fr_event_list_t *el);
+
 #ifdef __cplusplus
 }
 #endif

@@ -2080,6 +2080,14 @@ void fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t fun
 	el->time = func;
 }
 
+/** Return whether the event loop has any active events
+ *
+ */
+bool fr_event_list_empty(fr_event_list_t *el)
+{
+	return !fr_heap_num_elements(el->times) && !rbtree_num_elements(el->fds);
+}
+
 #ifdef TESTING
 
 /*

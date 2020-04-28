@@ -190,7 +190,7 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 		return;
 	}
 
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 }
 #endif
 
@@ -1117,14 +1117,14 @@ static void sig_fatal(int sig)
 
 	switch (sig) {
 	case SIGTERM:
-		main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 		break;
 
 	case SIGINT:
 #ifdef SIGQUIT
 	case SIGQUIT:
 #endif
-		main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 		break;
 		/* FALL-THROUGH */
 
@@ -1142,6 +1142,6 @@ static void sig_hup(UNUSED int sig)
 {
 	reset_signal(SIGHUP, sig_hup);
 
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_HUP);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_HUP);
 }
 #endif

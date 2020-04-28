@@ -422,7 +422,7 @@ static fr_time_delta_t start_time;
 
 static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 	stop = true;
 
 	return 0;
@@ -450,7 +450,7 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 
 static int cmd_terminate(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 	return 0;
 }
 

@@ -52,7 +52,7 @@ static int			self_pipe[2] = { -1, -1 };
 #include <systemd/sd-daemon.h>
 
 static fr_time_delta_t		sd_watchdog_interval;
-static fr_event_timer_t		const *sd_watchdog_ev;
+static fr_event_timer_t	const	*sd_watchdog_ev;
 
 /** Reoccurring watchdog event to inform systemd we're still alive
  *
@@ -73,7 +73,34 @@ static void sd_watchdog_event(fr_event_list_t *our_el, UNUSED fr_time_t now, voi
 }
 #endif
 
-static void handle_signal_self(int flag)
+/*
+ *	Inform ourselves that we received a signal.
+ */
+void main_loop_signal_raise(int flag)
+{
+	ssize_t rcode;
+	uint8_t buffer[16];
+
+	/*
+	 *	The read MUST be non-blocking for this to work.
+	 */
+	rcode = read(self_pipe[0], buffer, sizeof(buffer));
+	if (rcode > 0) {
+		ssize_t i;
+
+		for (i = 0; i < rcode; i++) {
+			buffer[0] |= buffer[i];
+		}
+	} else {
+		buffer[0] = 0;
+	}
+
+	buffer[0] |= flag;
+
+	if (write(self_pipe[1], buffer, 1) < 0) fr_exit(0);
+}
+
+static void main_loop_signal_process(int flag)
 {
 	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
 		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
@@ -109,35 +136,11 @@ static void handle_signal_self(int flag)
 	}
 }
 
-/*
- *	Inform ourselves that we received a signal.
+/** I/O handler listening on the signal pipe
+ *
  */
-void main_loop_signal_self(int flag)
-{
-	ssize_t rcode;
-	uint8_t buffer[16];
-
-	/*
-	 *	The read MUST be non-blocking for this to work.
-	 */
-	rcode = read(self_pipe[0], buffer, sizeof(buffer));
-	if (rcode > 0) {
-		ssize_t i;
-
-		for (i = 0; i < rcode; i++) {
-			buffer[0] |= buffer[i];
-		}
-	} else {
-		buffer[0] = 0;
-	}
-
-	buffer[0] |= flag;
-
-	if (write(self_pipe[1], buffer, 1) < 0) fr_exit(0);
-}
-
-static void main_loop_signal_handler(UNUSED fr_event_list_t *xel,
-				     UNUSED int fd, UNUSED int flags, UNUSED void *ctx)
+static void main_loop_signal_recv(UNUSED fr_event_list_t *xel,
+				  UNUSED int fd, UNUSED int flags, UNUSED void *ctx)
 {
 	ssize_t i, rcode;
 	uint8_t buffer[32];
@@ -150,12 +153,14 @@ static void main_loop_signal_handler(UNUSED fr_event_list_t *xel,
 	 */
 	for (i = 0; i < rcode; i++) buffer[0] |= buffer[i];
 
-	handle_signal_self(buffer[0]);
+	main_loop_signal_process(buffer[0]);
 }
 
+/** Return the main loop event list
+ *
+ */
 fr_event_list_t *main_loop_event_list(void)
 {
-	/* Currently we do not run a second event loop for modules. */
 	return event_list;
 }
 
@@ -212,9 +217,18 @@ int main_loop_start(void)
 		if (under_systemd) {
 			INFO("Informing systemd we're stopping");
 			sd_notify(0, "STOPPING=1");
+			fr_event_timer_delete(event_list, &sd_watchdog_ev);
 		}
 	}
 #endif
+
+	/*
+	 *	Clear up the signal pipe we created in
+	 *	main loop init.
+	 */
+	fr_event_fd_delete(event_list, self_pipe[0], FR_EVENT_FILTER_IO);
+	close(self_pipe[0]);
+
 	return ret;
 }
 
@@ -265,7 +279,7 @@ int main_loop_init(void)
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
 	if (fr_event_fd_insert(NULL, event_list, self_pipe[0],
-			       main_loop_signal_handler,
+			       main_loop_signal_recv,
 			       NULL,
 			       NULL,
 			       event_list) < 0) {
