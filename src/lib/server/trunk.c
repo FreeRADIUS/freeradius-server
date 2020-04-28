@@ -1687,14 +1687,14 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 
 done:
 	/*
-	 *	If the trunk was draining, it wasn't counted
-	 *	in the requests per connection stats, so
-	 *	we need to update those values now.
+	 *	If the trunk connection was draining,
+	 *	it wasn't counted in the requests per
+	 *	connection stats, so we need to update
+	 *	those values now.
 	 */
 	switch (tconn->pub.state) {
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_INACTIVE_DRAINING:
-	case FR_TRUNK_CONN_DRAINING_TO_FREE:	/* shouldn't really happen */
 		trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
 		break;
 
