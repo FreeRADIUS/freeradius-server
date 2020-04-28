@@ -687,8 +687,8 @@ do { \
 	fr_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
-static void trunk_request_enter_backlog(fr_trunk_request_t *treq);
-static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_connection_t *tconn);
+static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new);
+static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_connection_t *tconn, bool new);
 static void trunk_request_enter_partial(fr_trunk_request_t *treq);
 static void trunk_request_enter_sent(fr_trunk_request_t *treq);
 static void trunk_request_enter_failed(fr_trunk_request_t *treq);
@@ -867,8 +867,9 @@ static void trunk_request_enter_unassigned(fr_trunk_request_t *treq)
  *	This is due to call to trunk_manage.
  *
  * @param[in] treq	to trigger a state change for.
+ * @param[in] new	Whether this is a new request.
  */
-static void trunk_request_enter_backlog(fr_trunk_request_t *treq)
+static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new)
 {
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
 	fr_trunk_t		*trunk = treq->pub.trunk;;
@@ -894,11 +895,10 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq)
 	fr_heap_insert(trunk->backlog, treq);	/* Insert into the backlog heap */
 
 	/*
-	 *	New requests in the backlog alters the
-	 *	ratio of requests to connections, so we
-	 *	need to recalculate.
+	 *	A new request has entered the trunk.
+	 *	Re-calculate request/connection ratios.
 	 */
-	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
+	if (new) trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
 
 	/*
 	 *	To reduce latency, if there's no connections
@@ -929,8 +929,9 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq)
  *
  * @param[in] treq	to trigger a state change for.
  * @param[in] tconn	to enqueue the request on.
+ * @param[in] new	Whether this is a new request.
  */
-static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_connection_t *tconn)
+static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_connection_t *tconn, bool new)
 {
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
@@ -965,6 +966,12 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_PENDING);
 	DEBUG3("[%" PRIu64 "] Trunk connection assigned request %"PRIu64, tconn->pub.conn->id, treq->id);
 	fr_heap_insert(tconn->pending, treq);
+
+	/*
+	 *	A new request has entered the trunk.
+	 *	Re-calculate request/connection ratios.
+	 */
+	if (new) trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
 
 	/*
 	 *	Check if we need to automatically transition the
@@ -1405,11 +1412,11 @@ static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *tre
 	case FR_TRUNK_ENQUEUE_OK:
 		if (trunk->conf.always_writable) {
 			fr_connection_signals_pause(tconn->pub.conn);
-			trunk_request_enter_pending(treq, tconn);
+			trunk_request_enter_pending(treq, tconn, false);
 			trunk_connection_writable(tconn);
 			fr_connection_signals_resume(tconn->pub.conn);
 		} else {
-			trunk_request_enter_pending(treq, tconn);
+			trunk_request_enter_pending(treq, tconn, false);
 		}
 		break;
 
@@ -1422,7 +1429,7 @@ static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *tre
 		 *	trying to drain the backlog.
 		 */
 		if (treq->pub.state == FR_TRUNK_REQUEST_STATE_BACKLOG) return FR_TRUNK_ENQUEUE_NO_CAPACITY;
-		trunk_request_enter_backlog(treq);
+		trunk_request_enter_backlog(treq, false);
 		break;
 
 	default:
@@ -1620,7 +1627,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 			if (fail_bound || !IS_SERVICEABLE(tconn)) {
 				trunk_request_enter_failed(treq);
 			} else {
-				trunk_request_enter_pending(treq, tconn);
+				trunk_request_enter_pending(treq, tconn, false);
 			}
 			goto next;
 		}
@@ -2282,11 +2289,11 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		treq->pub.rctx = rctx;
 		if (trunk->conf.always_writable) {
 			fr_connection_signals_pause(tconn->pub.conn);
-			trunk_request_enter_pending(treq, tconn);
+			trunk_request_enter_pending(treq, tconn, true);
 			trunk_connection_writable(tconn);
 			fr_connection_signals_resume(tconn->pub.conn);
 		} else {
-			trunk_request_enter_pending(treq, tconn);
+			trunk_request_enter_pending(treq, tconn, true);
 		}
 		break;
 
@@ -2298,7 +2305,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		}
 		treq->pub.preq = preq;
 		treq->pub.rctx = rctx;
-		trunk_request_enter_backlog(treq);
+		trunk_request_enter_backlog(treq, true);
 		break;
 
 	default:
@@ -2316,8 +2323,6 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		}
 		return rcode;
 	}
-
-	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
 
 	return rcode;
 }
@@ -2354,7 +2359,7 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 	case FR_TRUNK_REQUEST_STATE_SENT:
 		fr_connection_signals_pause(tconn->pub.conn);
 		trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
-		trunk_request_enter_pending(treq, tconn);
+		trunk_request_enter_pending(treq, tconn, false);
 		fr_connection_signals_resume(tconn->pub.conn);
 		break;
 
@@ -2434,11 +2439,11 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_ou
 
 	if (trunk->conf.always_writable) {
 		fr_connection_signals_pause(tconn->pub.conn);
-		trunk_request_enter_pending(treq, tconn);
+		trunk_request_enter_pending(treq, tconn, true);
 		trunk_connection_writable(tconn);
 		fr_connection_signals_resume(tconn->pub.conn);
 	} else {
-		trunk_request_enter_pending(treq, tconn);
+		trunk_request_enter_pending(treq, tconn, true);
 	}
 
 	return FR_TRUNK_ENQUEUE_OK;
