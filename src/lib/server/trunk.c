@@ -1685,6 +1685,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		treq = prev;
 	}
 
+done:
 	/*
 	 *	If the trunk was draining, it wasn't counted
 	 *	in the requests per connection stats, so
@@ -1694,7 +1695,6 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 		trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
 	}
 
-done:
 	fr_connection_signals_resume(tconn->pub.conn);
 	return moved;
 }
