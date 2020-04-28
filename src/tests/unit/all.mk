@@ -32,8 +32,7 @@ $(FILES.$(TEST)): export TZ = GMT
 #
 #  Look in each file for `proto foo`, and then make that file depend in `libfreeradius-foo.a`
 #
--include $(OUTPUT)/depends.mk
-
+DEPENDS_MK := $(OUTPUT)/depends.mk
 $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 	${Q}rm -f $@
 	${Q}touch $@

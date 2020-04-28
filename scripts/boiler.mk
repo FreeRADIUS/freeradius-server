@@ -205,6 +205,15 @@ define ADD_TARGET_TO_ALL
 
 endef
 
+# ADD_TARGET_TO_ALL - Parameterized "function" that adds the target,
+#   and makes "all" depend on it.
+#
+#   USE WITH EVAL
+#
+define ADD_DEPENDS_MK
+    ALL_DEPENDS_MK += ${1}
+endef
+
 # ADD_TARGET_RULE.* - Parameterized "functions" that adds a new target to the
 #   Makefile.  There should be one ADD_TARGET_RULE definition for each
 #   type of target that is used in the build.
@@ -375,6 +384,7 @@ define INCLUDE_SUBMAKEFILE
     MAN :=
     FILES :=
     OUTPUT :=
+    DEPENDS_MK :=
 
     SUBMAKEFILES :=
 
@@ -507,6 +517,10 @@ define INCLUDE_SUBMAKEFILE
            $$(eval $$(call INCLUDE_SUBMAKEFILE,\
                       $$(call CANONICAL_PATH,\
                          $$(call QUALIFY_PATH,$${DIR},$${MK})))))
+    endif
+
+    ifneq "$${DEPENDS_MK}" ""
+        $$(eval $$(call ADD_DEPENDS_MK,$${DEPENDS_MK}))
     endif
 
     # Reset the "current" target to it's previous value.
@@ -710,6 +724,14 @@ endif
 # Build rules for installation subdirectories
 $(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
   $(eval $(call ADD_INSTALL_RULE.dir,${D})))
+
+#
+#  Now that all of the targets have been defined, include auto-build
+#  dependency files.
+#
+ifneq "$(ALL_DEPENDS_MK)" ""
+-include $(ALL_DEPENDS_MK)
+endif
 
 scan: ${ALL_PLISTS}
 
