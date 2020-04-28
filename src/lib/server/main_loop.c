@@ -263,27 +263,27 @@ int main_loop_init(void)
 	 *	signal handlers.
 	 */
 	if (pipe(self_pipe) < 0) {
-		ERROR("Error opening internal pipe: %s", fr_syserror(errno));
+		ERROR("Error opening self-signal pipe: %s", fr_syserror(errno));
 		return -1;
 	}
 	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
-		ERROR("Error setting internal flags: %s", fr_syserror(errno));
+		ERROR("Error setting self-signal pipe flags: %s", fr_syserror(errno));
 		return -1;
 	}
 	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
-		ERROR("Error setting internal flags: %s", fr_syserror(errno));
+		ERROR("Error setting self-signal pipe flags: %s", fr_syserror(errno));
 		return -1;
 	}
-	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
+	DEBUG4("Created self-signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
 	if (fr_event_fd_insert(NULL, event_list, self_pipe[0],
 			       main_loop_signal_recv,
 			       NULL,
 			       NULL,
 			       event_list) < 0) {
-		PERROR("Failed creating signal pipe handler");
+		PERROR("Failed creating self-signal pipe handler");
 		return -1;
 	}
 
