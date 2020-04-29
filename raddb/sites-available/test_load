@@ -123,6 +123,13 @@ server load {
 			#  back to sending at the "pps" rate.
 			#
 			max_backlog	= 1000
+
+
+			#
+			#  repeat:: whether or not to start again after
+			#  we reach max_pps
+			#
+			repeat = no
 		}
 	}
 

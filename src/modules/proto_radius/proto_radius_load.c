@@ -90,7 +90,7 @@ struct proto_radius_load_s {
 	RADCLIENT			*client;		//!< static client
 
 	fr_load_config_t		load;			//!< load configuration
-
+	bool				repeat;			//!, do we repeat the load generation
 	char const     			*csv;			//!< where to write CSV stats
 };
 
@@ -108,6 +108,7 @@ static const CONF_PARSER load_listen_config[] = {
 	{ FR_CONF_OFFSET("step", FR_TYPE_UINT32, proto_radius_load_t, load.step) },
 	{ FR_CONF_OFFSET("max_backlog", FR_TYPE_UINT32, proto_radius_load_t, load.milliseconds) },
 	{ FR_CONF_OFFSET("parallel", FR_TYPE_UINT32, proto_radius_load_t, load.parallel) },
+	{ FR_CONF_OFFSET("repeat", FR_TYPE_BOOL, proto_radius_load_t, repeat) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -188,7 +189,12 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t req
 	 */
 	state = fr_load_generator_have_reply(thread->l, request_time);
 	if (state == FR_LOAD_DONE) {
-		thread->done = true;
+		if (!thread->inst->repeat) {
+			thread->done = true;
+		} else {
+			(void) fr_load_generator_stop(thread->l); /* ensure l->ev is gone */
+			(void) fr_load_generator_start(thread->l);
+		}
 	}
 
 	return buffer_len;
