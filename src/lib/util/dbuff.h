@@ -157,13 +157,13 @@ _fr_dbuff_init(_out, \
  */
 #define FR_DBUFF_TMP(_start, _len_or_end) \
 &(fr_dbuff_t){ \
-	.start	= _start, \
-	.end	= _Generic((_len_or_end), \
-			size_t		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
-			uint8_t *	: (uint8_t const *)(_len_or_end), \
-			uint8_t const *	: (uint8_t const *)(_len_or_end) \
-		), \
-	.p	= _p \
+	.start_i	= _start, \
+	.end_i		= _Generic((_len_or_end), \
+				size_t		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
+				uint8_t *	: (uint8_t const *)(_len_or_end), \
+				uint8_t const *	: (uint8_t const *)(_len_or_end) \
+			), \
+	.p_i		= _p \
 }
 /** @} */
 
