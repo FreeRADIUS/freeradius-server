@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/unlang/tmpl.h>
 
 #include <freeradius-devel/server/map_proc_priv.h>
 #include "unlang_priv.h"
@@ -142,6 +143,11 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 			switch (map->lhs->type) {
 			default:
 				break;
+
+			case TMPL_TYPE_EXEC:
+				unlang_tmpl_push(update_state, &update_state->lhs_result,
+						 request, map->lhs);
+				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_XLAT_STRUCT:
 				unlang_xlat_push(update_state, &update_state->lhs_result,

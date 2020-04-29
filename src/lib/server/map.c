@@ -1125,6 +1125,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	This allows the syntax like:
 	 *	- "Attr-%{number}" := "value"
 	 */
+	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_XLAT_STRUCT:
 	{
 		size_t slen;
@@ -1159,42 +1160,6 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference",
 				 (*lhs_result)->vb_strvalue);
 			TALLOC_FREE(*lhs_result);
-			goto error;
-		}
-		fr_assert(tmpl_is_attr(mutated->lhs) || tmpl_is_list(mutated->lhs));
-	}
-		break;
-
-	/*
-	 *	FIXME - Should use lhs_result too, but we don't have support for async
-	 *	exec... yet.
-	 */
-	case TMPL_TYPE_EXEC:
-	{
-		char *attr_str;
-		ssize_t slen;
-
-		/*
-		 *	Get our own mutable copy of the original so we can
-		 *	dynamically expand the LHS.
-		 */
-		memcpy(&map_tmp, original, sizeof(map_tmp));
-		mutated = &map_tmp;
-
-		tmp_ctx = talloc_new(NULL);
-
-		slen = tmpl_aexpand(request, &attr_str, request, mutated->lhs, NULL, NULL);
-		if (slen <= 0) {
-			RPEDEBUG("Left side expansion failed");
-			fr_assert(!attr_str);
-			goto error;
-		}
-
-		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, attr_str,
-					   &(vp_tmpl_rules_t){ .dict_def = request->dict });
-		if (slen <= 0) {
-			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", attr_str);
-			talloc_free(attr_str);
 			goto error;
 		}
 		fr_assert(tmpl_is_attr(mutated->lhs) || tmpl_is_list(mutated->lhs));
