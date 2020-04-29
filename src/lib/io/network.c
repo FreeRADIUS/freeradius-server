@@ -498,7 +498,11 @@ static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 retry:
 	if (nr->num_workers == 1) {
 		worker = nr->workers[0];
-		if (worker->blocked) return -1;
+		if (worker->blocked) {
+			 RATE_LIMIT_GLOBAL(ERROR, "Failed sending packet to worker - "
+			 		   "In single-threaded mode and worker is blocked");
+			return -1;
+		}
 
 	} else if (nr->num_blocked == 0) {
 		uint32_t one, two;
@@ -531,7 +535,12 @@ retry:
 			}
 		}
 
-		if (!found) return -1;
+		if (!found) {
+			 RATE_LIMIT_GLOBAL(ERROR, "Failed sending packet to worker - Couldn't find active worker, "
+			 		   "%u/%u workers are blocked", nr->num_blocked, nr->num_workers);
+			return -1;
+		}
+
 		worker = found;
 	}
 
@@ -548,6 +557,9 @@ retry:
 		worker->stats.dropped++;
 		worker->blocked = true;
 		nr->num_blocked++;
+
+		RATE_LIMIT_GLOBAL(PERROR, "Failed sending packet to worker - %u/%u workers are blocked",
+				  nr->num_blocked, nr->num_workers);
 
 		if (nr->num_blocked == nr->num_workers) {
 			fr_network_suspend(nr);
@@ -739,7 +751,6 @@ next_message:
 	fr_assert(cd->m.when == now);
 
 	if (fr_network_send_request(nr, cd) < 0) {
-		PERROR("Failed sending packet to worker");
 		fr_message_done(&cd->m);
 		nr->stats.dropped++;
 		s->stats.dropped++;
