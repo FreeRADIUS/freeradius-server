@@ -4446,7 +4446,11 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 
 	if (!fr_cond_assert(data->type != FR_TYPE_INVALID)) return NULL;
 
-	if (data->enumv) {
+	/*
+	 *	_fr_box_with_da() uses in-line enumv's, and we don't
+	 *	want to do dictionary lookups based on that.
+	 */
+	if (data->enumv && data->enumv->name) {
 		fr_dict_enum_t const	*dv;
 
 		dv = fr_dict_enum_by_value(data->enumv, data);

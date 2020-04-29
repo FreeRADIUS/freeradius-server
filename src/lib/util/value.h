@@ -239,6 +239,7 @@ struct value_box {
 								.vb_time_delta, \
 								(_val), \
 								(&(fr_dict_attr_t){ \
+									.name = NULL, \
 									.type = FR_TYPE_TIME_DELTA, \
 									.flags = { \
 										.type_size = _res \
