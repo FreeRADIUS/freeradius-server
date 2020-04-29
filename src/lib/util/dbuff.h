@@ -163,7 +163,7 @@ _fr_dbuff_init(_out, \
 				uint8_t *	: (uint8_t const *)(_len_or_end), \
 				uint8_t const *	: (uint8_t const *)(_len_or_end) \
 			), \
-	.p_i		= _p \
+	.p_i		= _start \
 }
 /** @} */
 
