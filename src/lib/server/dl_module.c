@@ -107,9 +107,18 @@ static int dl_module_onload_func(dl_t const *dl, UNUSED void *symbol, UNUSED voi
 	 */
 	fr_strerror();
 
-	if (dl_module->common->onload && (dl_module->common->onload() < 0)) {
-		PERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
-		return -1;
+	if (dl_module->common->onload) {
+		int ret;
+
+		ret = dl_module->common->onload();
+		if (ret < 0) {
+#ifndef NDEBUG
+			PERROR("Initialisation failed for module \"%s\" - onload() returned %i",
+			       dl_module->common->name, ret);
+#else
+			PERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
+#endif
+		}
 	}
 
 	return 0;
