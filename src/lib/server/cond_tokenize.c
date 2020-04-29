@@ -1341,7 +1341,7 @@ done:
 			if (rcode) {
 				c->type = COND_TYPE_TRUE;
 			} else {
-				DEBUG3("OPTIMIZING (%s %s %s) --> FALSE",
+				DEBUG4("OPTIMIZING (%s %s %s) --> FALSE",
 				       c->data.map->lhs->name,
 				       fr_table_str_by_value(fr_tokens_table, c->data.map->op, "??"),
 				       c->data.map->rhs->name);
