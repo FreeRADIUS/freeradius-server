@@ -102,8 +102,13 @@ static int dl_module_onload_func(dl_t const *dl, UNUSED void *symbol, UNUSED voi
 {
 	dl_module_t *dl_module = talloc_get_type_abort(dl->uctx, dl_module_t);
 
+	/*
+	 *	Clear pre-existing errors.
+	 */
+	fr_strerror();
+
 	if (dl_module->common->onload && (dl_module->common->onload() < 0)) {
-		ERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
+		PERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
 		return -1;
 	}
 
