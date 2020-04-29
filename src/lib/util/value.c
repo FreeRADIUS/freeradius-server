@@ -5028,7 +5028,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	p = out;
 
-	if (data->enumv) {
+	if (data->enumv && data->enumv->name) {
 		fr_dict_enum_t const	*dv;
 
 		dv = fr_dict_enum_by_value(data->enumv, data);
