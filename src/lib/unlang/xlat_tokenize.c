@@ -837,7 +837,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 		}
 
 		/*
-		 *	Back-tick qutoed strings are forbidden.
+		 *	Back-tick quoted strings are forbidden.
 		 */
 		if (*p == '`') {
 			fr_strerror_printf("Unexpected `...` string");
