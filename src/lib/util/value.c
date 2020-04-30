@@ -4676,7 +4676,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		memset(&vb, 0, sizeof(vb));
 
 		/*
-		 *	Be lazy by just converting it to a string, and then print the string.
+		 *	Be lazy by just converting it to a string, and then printing the string.
 		 */
 		if (fr_value_box_cast_to_strvalue(NULL, &vb, FR_TYPE_STRING, NULL, data->vb_group) < 0) return NULL;
 		p = fr_value_box_asprint(ctx, &vb, quote);
