@@ -186,6 +186,11 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 			default:
 				break;
 
+			case TMPL_TYPE_EXEC:
+				unlang_tmpl_push(update_state, &update_state->rhs_result,
+						 request, map->rhs);
+				return UNLANG_ACTION_PUSHED_CHILD;
+
 			case TMPL_TYPE_XLAT_STRUCT:
 				unlang_xlat_push(update_state, &update_state->rhs_result,
 						 request, map->rhs->tmpl_xlat, false);

@@ -897,6 +897,72 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 	}
 }
 
+static VALUE_PAIR *fr_pair_list_afrom_box(TALLOC_CTX *ctx, REQUEST *request, fr_value_box_t *box)
+{
+	int comma = 0;
+	char *p, *end, *last_comma;
+	VALUE_PAIR *vps;
+
+	fr_assert(box->type == FR_TYPE_STRING);
+
+	/*
+	 *	HACK: Replace '\n' with ',' so that
+	 *	fr_pair_list_afrom_str() can parse the buffer in
+	 *	one go (the proper way would be to
+	 *	fix fr_pair_list_afrom_str(), but oh well).
+	 *
+	 *	Note that we can mangle box->vb_strvalue, as it's
+	 *	getting discarded immediately after this modification.
+	 */
+	memcpy(&p, &box->vb_strvalue, sizeof(p)); /* const issues */
+	end = p + talloc_array_length(box->vb_strvalue) - 1;
+
+	while (p < end) {
+		/*
+		 *	Replace the first \n by a comma, and remaining
+		 *	ones by a space.
+		 */
+		if (*p == '\n') {
+			if (comma) {
+				*(p++) = ' ';
+			} else {
+				*p = ',';
+				last_comma = p;
+				p++;
+			}
+
+			comma = 0;
+			continue;
+		}
+
+		if (*p == ',') {
+			comma++;
+			last_comma = p;
+			p++;
+			continue;
+		}
+
+		last_comma = NULL;
+		p++;
+	}
+
+	/*
+	 *	Don't end with a trailing comma
+	 */
+	if (last_comma) *last_comma = '\0';
+
+	vps = NULL;
+	if (fr_pair_list_afrom_str(ctx, request->dict, box->vb_strvalue, &vps) == T_INVALID) {
+		return NULL;
+	}
+
+	/*
+	 *	Mark the attributes as tainted.
+	 */
+	fr_pair_list_tainted(vps);
+	return vps;
+}
+
 /** Allocate a 'generic' #vp_list_mod_t
  *
  * This covers most cases, where we need to allocate a #vp_list_mod_t with a single
@@ -1303,6 +1369,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		fr_cursor_t	from;
 		fr_value_box_t	*vb, *n_vb;
 
+	assign_values:
 		fr_assert(tmpl_is_attr(mutated->lhs));
 		fr_assert(mutated->lhs->tmpl_da);		/* We need to know which attribute to create */
 
@@ -1490,7 +1557,34 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		VALUE_PAIR	*vp_head = NULL;
 		VALUE_PAIR	*vp;
 
-		fr_assert(!rhs_result || !*rhs_result);
+		/*
+		 *	If the LHS is an attribute, we just do the
+		 *	same thing as an xlat expansion.
+		 */
+		if (tmpl_is_attr(mutated->lhs)) goto assign_values;
+
+		fr_assert(tmpl_is_list(mutated->lhs));
+
+		/*
+		 *	Empty value - Try and cast an empty string
+		 *	to the destination type, and see what
+		 *	happens.  This is only for XLATs and in future
+		 *	EXECs.
+		 */
+		if (!rhs_result || !*rhs_result) {
+			RPEDEBUG("Cannot assign empty value to \"%s\"", mutated->lhs->name);
+			goto error;
+		}
+
+		/*
+		 *	This should always be a noop, but included
+		 *	here for robustness.
+		 */
+		if (fr_value_box_list_concat(*rhs_result, *rhs_result, rhs_result, FR_TYPE_STRING, true) < 0) {
+			RPEDEBUG("Right side expansion failed");
+			TALLOC_FREE(*rhs_result);
+			goto error;
+		}
 
 		n = list_mod_alloc(ctx);
 		if (!n) goto error;
@@ -1498,8 +1592,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		n->map = original;
 		fr_cursor_init(&to, &n->mod);
 
-		if (map_exec_to_vp(n->map->rhs, &vp_head, request, mutated) < 0) goto error;
-
+		/*
+		 *	Parse the VPs from the RHS.
+		 */
+		vp_head = fr_pair_list_afrom_box(ctx, request, *rhs_result);
 		if (!vp_head) {
 			talloc_free(n);
 			RDEBUG2("No pairs returned by exec");
@@ -1521,6 +1617,22 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				fr_cursor_free_item(&from);
 				goto error;
 			}
+
+			if (tmpl_is_exec(mod->lhs) || tmpl_is_exec(mod->rhs)) {
+				RPEDEBUG("Program output cannot request execution of another program for attribute %s", vp->da->name);
+				fr_cursor_head(&from);
+				fr_cursor_free_item(&from);
+				goto error;
+			}
+
+
+			if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
+				RPEDEBUG("Program output cannot request regular expression matching for attribute %s", vp->da->name);
+				fr_cursor_head(&from);
+				fr_cursor_free_item(&from);
+				goto error;
+			}
+
 			mod->op = vp->op;
 			fr_cursor_append(&to, mod);
 		}

@@ -33,8 +33,12 @@ update request {
 update request {
 	&Tmp-String-1 := "%{hex:%{Tmp-String-0}}"
 }
-#  Fixme? Should probably be 666f6f5c6e626172
-if (&Tmp-String-1 == '666f6f0a626172') {
+
+#
+#  Note that there's a '5f6e' here, which is "\n"
+#  And we don't have a '0a', which is the unescaped "\n"
+#
+if (&Tmp-String-1 == '666f6f5c6e626172') {
 	test_pass
 }
 else {
@@ -44,8 +48,11 @@ else {
 update request {
 	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 }
-#  Fixme? Should probably be 'foo\nbar'
-if (&Tmp-String-0 == "foo\nbar") {
+
+#
+#  This is left alone, and not "\n" --> 0x0a, too.
+#
+if (&Tmp-String-0 == 'foo\nbar') {
 	test_pass
 }
 else {
