@@ -8,15 +8,29 @@
 TEST := test.unit
 
 #
-#  The files are put here in order.  Later tests need
-#  functionality from earlier test.
+#  Get all .txt files
 #
-FILES  := $(subst $(DIR)/,,$(call FIND_FILES_SUFFIX,$(DIR),*.txt))
+FILES  := $(call FIND_FILES_SUFFIX,$(DIR),*.txt)
+
+#
+#  If we don't have OpenSSL, filter out tests which need TLS.
+#
+ifeq "$(AC_HAVE_OPENSSL_SSL_H)" ""
+FILES := $(filter-out $(shell grep -l 'need-feature tls' $(FILES)),$(FILES))
+endif
+
+#
+#  Remove our directory prefix, which is needed by the bootstrap function.
+#
+FILES := $(subst $(DIR)/,,$(FILES))
 
 # dict.txt - removed because the unit tests don't allow for protocol namespaces
 
 # command.txt - removed because commands like ":sql" are not parsed properly any more
 
+#
+#  Bootstrap the test framework.
+#
 $(eval $(call TEST_BOOTSTRAP))
 
 #
