@@ -271,13 +271,6 @@ REQUEST *_request_alloc(char const *file, int line, TALLOC_CTX *ctx)
 	return request;
 }
 
-static int _request_local_free(REQUEST *request)
-{
-	talloc_free(request->state_ctx);
-
-	return 0;
-}
-
 /** Allocate a request that's not in the free list
  *
  * This can be useful if modules need a persistent request for their own purposes
@@ -291,8 +284,7 @@ REQUEST *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx)
 	MEM(request = talloc_zero(ctx, REQUEST));
 
 	request_init(file, line, request);
-
-	talloc_set_destructor(request, _request_local_free);
+	talloc_steal(request, request->state_ctx);
 
 	return request;
 }
