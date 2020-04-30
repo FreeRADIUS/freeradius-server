@@ -13,7 +13,7 @@ TEST := test.keywords
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+FILES := $(sort $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*))))
 
 #
 #  Don't run SSHA tests if there's no SSL
