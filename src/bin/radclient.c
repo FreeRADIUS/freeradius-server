@@ -70,7 +70,6 @@ static uint16_t client_port = 0;
 static int sockfd;
 static int last_used_id = -1;
 
-static char const *proto = NULL;
 static int ipproto = IPPROTO_UDP;
 
 static rbtree_t *filename_tree = NULL;
@@ -862,7 +861,7 @@ static int send_one_packet(rc_request_t *request)
 			int mysockfd;
 			uint16_t port = 0;
 
-			if (proto) {
+			if (ipproto == IPPROTO_TCP) {
 				mysockfd = fr_socket_client_tcp(NULL,
 								&request->packet->dst_ipaddr,
 								request->packet->dst_port, false);
@@ -870,8 +869,7 @@ static int send_one_packet(rc_request_t *request)
 					ERROR("Error opening socket: %s", fr_strerror());
 					return 0;
 				}
-			} else
-			{
+			} else {
 				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
 				if (mysockfd < 0) {
 					ERROR("Error opening socket: %s", fr_strerror());
@@ -1038,7 +1036,7 @@ static int recv_one_packet(fr_time_t wait_time)
 		 *	I'm not sure how to do that now, so we just
 		 *	die...
 		 */
-		if (proto) fr_exit_now(1);
+		if (ipproto == IPPROTO_TCP) fr_exit_now(1);
 		return -1;	/* bad packet */
 	}
 
@@ -1293,15 +1291,12 @@ int main(int argc, char **argv)
 			break;
 
 		case 'P':
-			proto = optarg;
-			if (strcmp(proto, "tcp") != 0) {
-				if (strcmp(proto, "udp") == 0) {
-					proto = NULL;
-				} else {
-					usage();
-				}
-			} else {
+			if (!strcmp(optarg, "tcp")) {
 				ipproto = IPPROTO_TCP;
+			} else if (!strcmp(optarg, "udp")) {
+				ipproto = IPPROTO_UDP;
+			} else {
+				usage();
 			}
 			break;
 
@@ -1374,7 +1369,7 @@ int main(int argc, char **argv)
 	argc -= (optind - 1);
 	argv += (optind - 1);
 
-	if ((argc < 3)  || ((secret == NULL) && (argc < 4))) {
+	if ((argc < 3) || ((secret == NULL) && (argc < 4))) {
 		ERROR("Insufficient arguments");
 		usage();
 	}
@@ -1488,7 +1483,7 @@ int main(int argc, char **argv)
 
 	client_port = request_head->packet->src_port;
 
-	if (proto) {
+	if (ipproto == IPPROTO_TCP) {
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
 		if (sockfd < 0) {
 			ERROR("Failed opening socket");
