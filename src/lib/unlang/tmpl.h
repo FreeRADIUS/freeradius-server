@@ -57,7 +57,7 @@ typedef void (*fr_unlang_tmpl_signal_t)(REQUEST *request, void *rctx, fr_state_s
  */
 typedef rlm_rcode_t (*fr_unlang_tmpl_resume_t)(REQUEST *request, void *rctx);
 
-void		unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl);
+void		unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl, VALUE_PAIR *vps);
 
 #ifdef __cplusplus
 }

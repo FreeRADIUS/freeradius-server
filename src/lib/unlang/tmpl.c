@@ -94,8 +94,9 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
  *				in which case the result is discarded.
  * @param[in] request		The current request.
  * @param[in] tmpl		the tmpl to expand
+ * @param[in] vps		the input VPs.  May be NULL.  Used only for #TMPL_TYPE_EXEC
  */
-void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl)
+void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl, VALUE_PAIR *vps)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -134,6 +135,7 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 
 	state->out = out;
 	state->ctx = ctx;
+	state->vps = vps;
 }
 
 
@@ -341,7 +343,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	state->fd = -1;
 	if (state->out) fd_p = &state->fd;
 
-	if (fr_exec_wait_start(request, state->box, NULL, &pid, NULL, fd_p) < 0) {
+	if (fr_exec_wait_start(request, state->box, state->vps, &pid, NULL, fd_p) < 0) {
 		REDEBUG("Failed executing program - %s", fr_strerror());
 	fail:
 		*presult = RLM_MODULE_FAIL;
@@ -393,7 +395,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(REQUEST *request, rlm_rcod
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	if (fr_exec_nowait(request, state->box, NULL) < 0) {
+	if (fr_exec_nowait(request, state->box, state->vps) < 0) {
 		REDEBUG("Failed executing program - %s", fr_strerror());
 		*presult = RLM_MODULE_FAIL;
 

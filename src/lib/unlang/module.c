@@ -496,6 +496,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		The current request.
  * @param[in] vpt		the tmpl to expand
+ * @param[in] vps		the input VPs.  May be NULL
  * @param[in] resume		function to call when the XLAT expansion is complete.
  * @param[in] signal		function to call if a signal is received.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
@@ -504,6 +505,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
  */
 rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out,
 					REQUEST *request, vp_tmpl_t const *vpt,
+					VALUE_PAIR *vps,
 					fr_unlang_module_resume_t resume,
 					fr_unlang_module_signal_t signal, void *rctx)
 {
@@ -516,7 +518,7 @@ rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out,
 	/*
 	 *	Push the xlat function
 	 */
-	unlang_tmpl_push(ctx, out, request, vpt);
+	unlang_tmpl_push(ctx, out, request, vpt, vps);
 
 	return RLM_MODULE_YIELD;
 }
