@@ -900,7 +900,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 static VALUE_PAIR *fr_pair_list_afrom_box(TALLOC_CTX *ctx, REQUEST *request, fr_value_box_t *box)
 {
 	int comma = 0;
-	char *p, *end, *last_comma;
+	char *p, *end, *last_comma = 0;
 	VALUE_PAIR *vps;
 
 	fr_assert(box->type == FR_TYPE_STRING);
