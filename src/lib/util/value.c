@@ -4911,6 +4911,20 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 		     in_p = in_p->next) {
 			argv[i] = fr_value_box_asprint(ctx, in_p->vb_group, 0);
 
+			/*
+			 *	Unescape quoted strings, so that the
+			 *	programs get passed the unquoted
+			 *	results.
+			 */
+			if ((*argv[i] == '"') || (*argv[i] == '\'')) {
+				size_t inlen, outlen;
+
+				inlen = talloc_array_length(argv[i]) - 3;
+				outlen = fr_value_str_unescape((uint8_t *) argv[i], argv[i] + 1, inlen, *argv[i]);
+				fr_assert(outlen <= inlen);
+				argv[i][outlen] = '\0';
+			}
+
 			i++;
 		}
 	}
