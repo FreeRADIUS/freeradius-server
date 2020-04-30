@@ -34,6 +34,15 @@ RCSID("$Id$")
  */
 static _Thread_local fr_dlist_head_t *request_free_list; /* macro */
 
+#ifndef NDEBUG
+static int _state_ctx_free(TALLOC_CTX *state)
+{
+	DEBUG4("state-ctx %p freed", state);
+
+	return 0;
+}
+#endif
+
 /** Setup logging and other fields for a request
  *
  * @param[in] file		the request was allocated in.
@@ -62,7 +71,12 @@ static void request_init(char const *file, int line, REQUEST *request)
 	/*
 	 *	Initialise the state_ctx
 	 */
-	if (!request->state_ctx) request->state_ctx = talloc_init_const("session-state");
+	if (!request->state_ctx) {
+		request->state_ctx = talloc_init_const("session-state");
+#ifndef NDEBUG
+		talloc_set_destructor(request->state_ctx, _state_ctx_free);
+#endif
+	}
 
 	/*
 	 *	These may be changed later by request_pre_handler
