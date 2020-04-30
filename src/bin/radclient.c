@@ -839,7 +839,7 @@ static int send_one_packet(rc_request_t *request)
 	/*
 	 *	Haven't sent the packet yet.  Initialize it.
 	 */
-	if (!request->tries) {
+	if (!request->tries || request->packet->id == -1) {
 		bool rcode;
 
 		assert(request->reply == NULL);
