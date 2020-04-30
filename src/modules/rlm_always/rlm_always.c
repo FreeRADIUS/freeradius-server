@@ -35,6 +35,7 @@ RCSID("$Id$")
  *	going to return.
  */
 typedef struct {
+	char const	*xlat_name;
 	char const	*rcode_str;	//!< The base value.
 
 	rlm_rcode_t	rcode;		//!< The integer constant representing rcode_str.
@@ -51,6 +52,92 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("mpp", FR_TYPE_BOOL, rlm_always_t, mpp), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
+
+static int always_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((rlm_always_t **)xlat_inst) = talloc_get_type_abort(uctx, rlm_always_t);
+
+	return 0;
+}
+
+/** Set module status or rcode
+ *
+ * Look ma, no locks...
+ *
+ * Example: "%{db_status:fail}"
+ */
+static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				 REQUEST *request, void const *xlat_inst,
+				 UNUSED void *xlat_thread_inst,
+				 fr_value_box_t **in)
+{
+	rlm_always_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),rlm_always_t);
+	module_instance_t	*mi;
+	char const		*status;
+	char const		*p;
+	fr_value_box_t		*vb;
+
+	mi = module_by_name(NULL, inst->xlat_name);
+	if (!mi) {
+		RERROR("Can't find the module that registered this xlat: %s", inst->xlat_name);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *      Expand to the existing status
+	 */
+	p = "alive";
+	if (mi->force) {
+		p = fr_table_str_by_value(rcode_table, mi->code, "<invalid>");
+	}
+
+	if (!(*in) || (*in)->vb_length == 0) goto done;
+	status = (*in)->vb_strvalue;
+
+	/*
+	 *      Set the module status
+	 */
+	if (strcmp(status, "alive") == 0) {
+		mi->force = false;
+	} else {
+		int rcode;
+
+		rcode = fr_table_value_by_str(rcode_table, status, RLM_MODULE_UNKNOWN);
+		if (rcode == RLM_MODULE_UNKNOWN) {
+			RWARN("Unknown status \"%s\"", status);
+			return XLAT_ACTION_FAIL;
+		}
+
+		mi->code = rcode;
+		mi->force = true;
+
+	}
+
+done:
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_strdup(vb, vb, NULL, p, false);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+
+}
+
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	rlm_always_t	*inst = instance;
+	xlat_t const	*xlat;
+
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) {
+		inst->xlat_name = cf_section_name1(conf);
+	}
+
+	xlat = xlat_async_register(inst, inst->xlat_name, always_xlat);
+	xlat_async_instantiate_set(xlat, always_xlat_instantiate, rlm_always_t *, NULL, inst);
+
+	return 0;
+}
 
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
@@ -85,6 +172,7 @@ module_t rlm_always = {
 	.name		= "always",
 	.inst_size	= sizeof(rlm_always_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_always_return,
