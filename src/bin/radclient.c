@@ -338,7 +338,6 @@ static bool already_hex(VALUE_PAIR *vp)
 	return false;
 }
 
-
 /*
  *	Initialize a radclient data structure and add it to
  *	the global linked list.
@@ -362,7 +361,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		packets = fopen(files->packets, "r");
 		if (!packets) {
 			ERROR("Error opening %s: %s", files->packets, fr_syserror(errno));
-			return 0;
+			return -1;
 		}
 
 		/*
@@ -373,13 +372,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			if (!filters) {
 				ERROR("Error opening %s: %s", files->filters, fr_syserror(errno));
 				fclose(packets);
-				return 0;
+				return -1;
 			}
 		}
 	} else {
 		packets = stdin;
 	}
-
 
 	/*
 	 *	Loop until the file is done.
@@ -735,7 +733,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	/*
 	 *	And we're done.
 	 */
-	return 1;
+	return 0;
 
 error:
 	talloc_free(request);
@@ -743,7 +741,7 @@ error:
 	if (packets != stdin) fclose(packets);
 	if (filters) fclose(filters);
 
-	return 0;
+	return -1;
 }
 
 
@@ -798,11 +796,8 @@ static int filename_walk(void *data, UNUSED void *uctx)
 	/*
 	 *	Read request(s) from the file.
 	 */
-	if (!radclient_init(files, files)) return -1;	/* stop walking */
-
-	return 0;
+	return radclient_init(files, files);
 }
-
 
 /*
  *	Deallocate packet ID, etc.
@@ -866,7 +861,7 @@ static int send_one_packet(rc_request_t *request)
 								request->packet->dst_port, false);
 				if (mysockfd < 0) {
 					ERROR("Error opening socket: %s", fr_strerror());
-					return 0;
+					return -1;
 				}
 			} else {
 				uint16_t port = 0;
@@ -874,12 +869,12 @@ static int send_one_packet(rc_request_t *request)
 				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
 				if (mysockfd < 0) {
 					ERROR("Error opening socket: %s", fr_strerror());
-					return 0;
+					return -1;
 				}
 
 				if (fr_socket_bind(mysockfd, &client_ipaddr, &port, NULL) < 0) {
 					ERROR("Error binding socket: %s", fr_strerror());
-					return 0;
+					return -1;
 				}
 			}
 
