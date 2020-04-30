@@ -269,7 +269,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		enc_field[0] |= ((flen - 1) << 2);
 	}
 
-	FR_PROTO_HEX_DUMP(enc_field, value_field + flen - 1 - enc_field, "header");
+	FR_PROTO_HEX_DUMP(enc_field, (value_field + (flen - 1)) - enc_field, "header");
 
 	return value_end - enc_field;
 }
