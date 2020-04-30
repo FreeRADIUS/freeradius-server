@@ -169,15 +169,8 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 
 		case UNLANG_UPDATE_MAP_EXPANDED_LHS:
 			/*
-			 *	Concat the top level results together
+			 *	map_to_list_mod() already concatentates the LHS, so we don't need to do it here.
 			 */
-			if (update_state->lhs_result &&
-			    (fr_value_box_list_concat(update_state, update_state->lhs_result, &update_state->lhs_result,
-						      FR_TYPE_STRING, true) < 0)) {
-				RPEDEBUG("Failed concatenating LHS expansion results");
-				goto error;
-			}
-
 			if (!map->rhs) goto next;
 
 			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_RHS;
