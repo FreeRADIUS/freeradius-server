@@ -859,7 +859,6 @@ static int send_one_packet(rc_request_t *request)
 		rcode = fr_packet_list_id_alloc(packet_list, ipproto, &request->packet, NULL);
 		if (!rcode) {
 			int mysockfd;
-			uint16_t port = 0;
 
 			if (ipproto == IPPROTO_TCP) {
 				mysockfd = fr_socket_client_tcp(NULL,
@@ -870,6 +869,8 @@ static int send_one_packet(rc_request_t *request)
 					return 0;
 				}
 			} else {
+				uint16_t port = 0;
+
 				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
 				if (mysockfd < 0) {
 					ERROR("Error opening socket: %s", fr_strerror());
@@ -1158,7 +1159,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	}
 
 packet_done:
-fr_radius_packet_free(&request->reply);
+	fr_radius_packet_free(&request->reply);
 	fr_radius_packet_free(&reply);	/* may be NULL */
 
 	return 0;
