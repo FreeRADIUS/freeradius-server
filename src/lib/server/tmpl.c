@@ -1239,6 +1239,18 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 		} else {
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, in, inlen, type);
 		}
+
+		/*
+		 *	Ensure that we pre-parse the exec string.
+		 *	This allows us to catch parse errors as early
+		 *	as possible.
+		 */
+		slen = xlat_tokenize_argv(vpt, &vpt->tmpl_xlat, vpt->name, talloc_array_length(vpt->name) - 1, rules);
+		if (slen <= 0) {
+			talloc_free(vpt);
+			return slen;
+		}
+
 		slen = vpt->len;
 		break;
 

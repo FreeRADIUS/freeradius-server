@@ -329,6 +329,11 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 		}
 		break;
 
+	case TMPL_TYPE_EXEC:
+		unlang_tmpl_push(map_proc_state, &map_proc_state->src_result,
+				 request, inst->src);
+		return UNLANG_ACTION_PUSHED_CHILD;
+
 	case TMPL_TYPE_XLAT_STRUCT:
 		unlang_xlat_push(map_proc_state, &map_proc_state->src_result,
 				 request, inst->src->tmpl_xlat, false);
