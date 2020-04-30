@@ -4671,21 +4671,16 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 
 	case FR_TYPE_GROUP:
 	{
-		fr_value_box_t *vb;
+		fr_value_box_t vb;
 
-		vb = talloc_zero(ctx, fr_value_box_t);
-		if (!vb) return NULL;
+		memset(&vb, 0, sizeof(vb));
 
 		/*
-		 *	Be lazy by just converting it to a string, and then printing the string.
+		 *	Be lazy by just converting it to a string, and then print the string.
 		 */
-		if (fr_value_box_cast_to_strvalue(vb, vb, FR_TYPE_STRING, NULL, data->vb_group) < 0) {
-			talloc_free(vb);
-			return NULL;
-		}
-
-		p = fr_value_box_asprint(ctx, vb, quote);
-		talloc_free(vb);
+		if (fr_value_box_cast_to_strvalue(NULL, &vb, FR_TYPE_STRING, NULL, data->vb_group) < 0) return NULL;
+		p = fr_value_box_asprint(ctx, &vb, quote);
+		fr_value_box_clear(&vb);
 	}
 		break;
 
