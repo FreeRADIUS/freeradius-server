@@ -4893,7 +4893,7 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 	if (!argv) return -1;
 
 	if (in->type != FR_TYPE_GROUP) {
-		argv[0] = fr_value_box_asprint(ctx, in, 0);
+		argv[0] = fr_value_box_asprint(argv, in, 0);
 
 	} else {
 		fr_value_box_t const *in_p;
@@ -4904,14 +4904,18 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 		for (in_p = in, i = 0;
 		     in_p;
 		     in_p = in_p->next) {
-			argv[i] = fr_value_box_asprint(ctx, in_p->vb_group, 0);
+			argv[i] = fr_value_box_asprint(argv, in_p->vb_group, '\0');
+			if (!argv[i]) {
+				talloc_free(argv);
+				return -1;
+			}
 
 			/*
 			 *	Unescape quoted strings, so that the
 			 *	programs get passed the unquoted
 			 *	results.
 			 */
-			if ((*argv[i] == '"') || (*argv[i] == '\'')) {
+			if ((argv[i][0] == '"') || (argv[i][0] == '\'')) {
 				size_t inlen, outlen;
 
 				inlen = talloc_array_length(argv[i]) - 3;
