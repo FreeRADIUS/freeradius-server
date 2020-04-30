@@ -1092,7 +1092,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 	s->filter = FR_EVENT_FILTER_VNODE;
 
-	if (fr_event_filter_insert(nr, nr->el, s->listen->fd, s->filter,
+	if (fr_event_filter_insert(nr, NULL, nr->el, s->listen->fd, s->filter,
 				   &funcs,
 				   app_io->error ? fr_network_error : NULL,
 				   s) < 0) {

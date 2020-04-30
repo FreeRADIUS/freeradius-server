@@ -735,7 +735,8 @@ int fr_event_fd_move(fr_event_list_t *dst, fr_event_list_t *src, int fd, fr_even
 		return -1;
 	}
 
-	ret = fr_event_filter_insert(ef->linked_ctx, dst, ef->fd, ef->filter, &ef->active, ef->error, ef->uctx);
+	ret = fr_event_filter_insert(ef->linked_ctx, NULL,
+				     dst, ef->fd, ef->filter, &ef->active, ef->error, ef->uctx);
 	if (ret < 0) return -1;
 
 	(void)fr_event_fd_delete(src, ef->fd, ef->filter);
@@ -860,6 +861,7 @@ int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter
 /** Insert a filter for the specified fd
  *
  * @param[in] ctx	to bind lifetime of the event to.
+ * @param[out] ef_out	Previously allocated ef, or NULL.
  * @param[in] el	to insert fd callback into.
  * @param[in] fd	to install filters for.
  * @param[in] filter	one of the #fr_event_filter_t values.
@@ -868,7 +870,8 @@ int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter
  * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] uctx	to pass to handler.
  */
-int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
+			   fr_event_list_t *el, int fd,
 			   fr_event_filter_t filter,
 			   void *funcs, fr_event_error_cb_t error,
 			   void *uctx)
@@ -893,7 +896,12 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		return -1;
 	}
 
-	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	if (!ef_out || !*ef_out) {
+		ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	} else {
+		ef = *ef_out;
+		fr_assert((fd < 0) || (ef->fd == fd));
+	}
 
 	/*
 	 *	Need to free the event to change the talloc link.
@@ -994,6 +1002,8 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	ef->error = error;
 	ef->uctx = uctx;
 
+	if (ef_out) *ef_out = ef;
+
 	return 0;
 }
 
@@ -1023,7 +1033,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		return -1;
 	}
 
-	return fr_event_filter_insert(ctx, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
+	return fr_event_filter_insert(ctx, NULL, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
 }
 
 #ifndef NDEBUG

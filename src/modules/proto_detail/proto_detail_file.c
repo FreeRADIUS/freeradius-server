@@ -347,7 +347,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	@todo - ensure that proto_detail_work is done the file...
 	 *	maybe by creating a new instance?
 	 */
-	if (fr_event_filter_insert(thread, thread->el, fd, FR_EVENT_FILTER_VNODE,
+	if (fr_event_filter_insert(thread, NULL, thread->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, thread) < 0) {
 		PERROR("Failed adding work socket to event loop");
 		close(fd);

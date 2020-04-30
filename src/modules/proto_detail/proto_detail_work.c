@@ -805,7 +805,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	memset(&funcs, 0, sizeof(funcs));
 	funcs.revoke = mod_revoke;
 
-	if (fr_event_filter_insert(thread, el, thread->fd, FR_EVENT_FILTER_VNODE, &funcs, NULL, thread) < 0) {
+	if (fr_event_filter_insert(thread, NULL, el, thread->fd, FR_EVENT_FILTER_VNODE, &funcs, NULL, thread) < 0) {
 		WARN("Failed to add event watching for unmounted file system");
 	}
 #endif
