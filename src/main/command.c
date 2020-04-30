@@ -1146,10 +1146,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 	char buffer[256];
 
-	for (i = 0; i < 256; i++) {
-		home = home_server_bynumber(i);
-		if (!home) break;
-
+	for (i = 0; (home = home_server_bynumber(i)) != NULL; i++) {
 		/*
 		 *	Internal "virtual" home server.
 		 */
@@ -1246,10 +1243,7 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	RADCLIENT *client;
 	char buffer[256];
 
-	for (i = 0; i < 256; i++) {
-		client = client_findbynumber(NULL, i);
-		if (!client) break;
-
+	for (i = 0; (client = client_findbynumber(NULL, i)) != NULL; i++) {
 		ip_ntoh(&client->ipaddr, buffer, sizeof(buffer));
 
 		if (((client->ipaddr.af == AF_INET) &&
