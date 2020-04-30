@@ -1222,9 +1222,11 @@ int main(int argc, char **argv)
 			break;
 
 		case 'c':
-			if (!isdigit((int) *optarg))
-				usage();
+			if (!isdigit((int) *optarg)) usage();
+
 			resend_count = atoi(optarg);
+
+			if (resend_count < 1) usage();
 			break;
 
 		case 'D':
