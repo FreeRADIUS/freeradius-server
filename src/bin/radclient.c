@@ -918,7 +918,7 @@ static int send_one_packet(rc_request_t *request)
 			}
 		}
 
-		request->timestamp = time(NULL);
+		request->timestamp = fr_time();
 		request->tries = 1;
 		request->resend++;
 
