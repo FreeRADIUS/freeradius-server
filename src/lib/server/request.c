@@ -62,7 +62,7 @@ static void request_init(char const *file, int line, REQUEST *request)
 	/*
 	 *	Initialise the state_ctx
 	 */
-	if (!request->state_ctx) request->state_ctx = talloc_init("session-state");
+	if (!request->state_ctx) request->state_ctx = talloc_init_const("session-state");
 
 	/*
 	 *	These may be changed later by request_pre_handler
@@ -284,6 +284,16 @@ REQUEST *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx)
 	MEM(request = talloc_zero(ctx, REQUEST));
 
 	request_init(file, line, request);
+
+	/*
+	 *	Bind state_ctx to the request Apple
+	 *	Instruments seems to require this to not
+	 *	count the state_ctx as leaked.
+	 *
+	 *	It's unclear if this is a genuine leak
+	 *	the previous code used a destructor
+	 *	to free the state_ctx.
+	 */
 	talloc_steal(request, request->state_ctx);
 
 	return request;
