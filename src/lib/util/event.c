@@ -65,12 +65,11 @@ DIAG_ON(unused-macros)
 
 #ifdef WITH_EVENT_DEBUG
 #  define EVENT_DEBUG(fmt, ...) printf("EVENT:");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
+#  ifndef EVENT_REPORT_FREQ
+#    define EVENT_REPORT_FREQ	5
+#  endif
 #else
 #  define EVENT_DEBUG(...)
-#endif
-
-#ifndef EVENT_REPORT_FREQ
-#  define EVENT_REPORT_FREQ	5
 #endif
 
 static fr_table_num_sorted_t const kevent_filter_table[] = {
