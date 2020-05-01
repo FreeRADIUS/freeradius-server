@@ -687,13 +687,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 					RPEDEBUG("Assigning value to \"%s\" failed", mutated->lhs->tmpl_da->name);
 					goto data_error;
 				}
-			/*
-			 *	We need to do a full copy, as shallow
-			 *	copy would increase the reference count
-			 *	on the static/global buffers and possibly
-			 *	lead to threading issues.
-			 */
 			} else {
+				/*
+				 *	We need to do a full copy, as shallow
+				 *	copy would increase the reference count
+				 *	on the static/global buffers and possibly
+				 *	lead to threading issues.
+				 */
 				if (fr_value_box_copy(n_vb, n_vb, vb) < 0) goto data_error;
 			}
 			fr_cursor_append(&values, n_vb);
@@ -702,9 +702,11 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		break;
 
 	/*
-	 *	FIXME: This should be done with stack based evaluation
-	 *	FIXME: We shouldn't have to re-parse the VPs, it should
-	 *	       just generate maps...
+	 *	The result of an exec is a value if the LHS is an
+	 *	attribute, or a set of VPs, if the LHS is a list.
+	 *
+	 *	@todo - we should just create maps from the RHS
+	 *	instead of VPs, and then converting them to maps.
 	 */
 	case TMPL_TYPE_EXEC:
 	{
