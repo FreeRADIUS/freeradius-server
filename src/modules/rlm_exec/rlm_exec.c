@@ -340,10 +340,54 @@ static rlm_rcode_t mod_resume(void *instance, UNUSED void *thread, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
+
+static rlm_rcode_t exec_resume(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+{
+	fr_value_box_t		**box = rctx;
+
+	RDEBUG("EXEC GOT -- %pV", *box);
+
+	talloc_free(box);
+
+	return RLM_MODULE_OK;
+}
+
+/*
+ *  Dispatch an async exec method
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_exec_async(void *instance, UNUSED void *thread, REQUEST *request)
+{
+	rlm_exec_t const       	*inst = instance;
+	fr_value_box_t		**box;
+	VALUE_PAIR		*env_pairs = NULL;
+
+	/*
+	 *	Decide what input/output the program takes.
+	 */
+	if (inst->input) {
+		VALUE_PAIR **input_pairs;
+
+		input_pairs = radius_list(request, inst->input_list);
+		if (!input_pairs) return RLM_MODULE_INVALID;
+
+		env_pairs = *input_pairs;
+	}
+
+	if (!inst->tmpl) {
+		RDEBUG("This module requires 'program' to be set.");
+		return RLM_MODULE_FAIL;
+	}
+
+	box = talloc_zero(request, fr_value_box_t *);
+
+	return unlang_module_yield_to_tmpl(box, box, request, inst->tmpl, env_pairs, exec_resume, NULL, box);
+}
+
+
 /*
  *  Dispatch an exec method
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, void *thread, REQUEST *request)
 {
 	rlm_exec_t const	*inst = instance;
 	rlm_rcode_t		rcode;
@@ -385,26 +429,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 		}
 	}
 
-	if (inst->output) {
-		output_pairs = radius_list(request, inst->output_list);
-		if (!output_pairs) {
-			return RLM_MODULE_INVALID;
-		}
-
-		ctx = radius_list_ctx(request, inst->output_list);
+	if (!inst->output) {
+		return mod_exec_async(instance, thread, request);
 	}
 
-	/*
-	 *	async changes:
-	 *
-	 *	- create rlm_exec_thread_t, with inst->el
-	 *	  - or for the short term, just use request->el
-	 *	- do our own xlat of inst->program
-	 *	- call radius_start_program()
-	 *	- call event loop to add callback for EVFILT_PROC, NOTE_EXIT | NOTE_EXITSTATUS, pid
-	 *	- call event loop to add callback for reading from the pipe
-	 *	- return YIELD
-	 */
+	output_pairs = radius_list(request, inst->output_list);
+	if (!output_pairs) {
+		return RLM_MODULE_INVALID;
+	}
+
+	ctx = radius_list_ctx(request, inst->output_list);
 
 	/*
 	 *	This function does it's own xlat of the input program
@@ -426,35 +460,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	fr_pair_list_free(&answer);
 
 	return rcode;
-}
-
-static rlm_rcode_t exec_resume(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
-{
-	fr_value_box_t		**box = rctx;
-
-	RDEBUG("EXEC GOT -- %pV", *box);
-
-	talloc_free(box);
-
-	return RLM_MODULE_OK;
-}
-
-/*
- *  Dispatch an async exec method
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_exec_async(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	rlm_exec_t const       	*inst = instance;
-	fr_value_box_t		**box;
-
-	if (!inst->tmpl) {
-		RDEBUG("This module requires 'program' to be set.");
-		return RLM_MODULE_FAIL;
-	}
-
-	box = talloc_zero(request, fr_value_box_t *);
-
-	return unlang_module_yield_to_tmpl(box, box, request, inst->tmpl, NULL, exec_resume, NULL, box);
 }
 
 /*
