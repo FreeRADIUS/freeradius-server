@@ -1202,7 +1202,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 
 		} else switch (value->enumv->flags.length) {
 		case 2:
-			if (date >= ((int64_t) 1) << 16) {
+			if (date > UINT16_MAX) {
 				memset(dst, 0xff, 2);
 			} else {
 				fr_net_from_uint16(dst, date);
@@ -1211,7 +1211,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 
 		date_size4:
 		case 4:
-			if (date >= ((int64_t) 1) << 32) {
+			if (date > UINT32_MAX) {
 				memset(dst, 0xff, 4);
 			} else {
 				fr_net_from_uint32(dst, date);
