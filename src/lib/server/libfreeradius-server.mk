@@ -19,6 +19,7 @@ SOURCES	:= \
 	log.c \
 	main_config.c \
 	main_loop.c \
+	map_async.c \
 	map_proc.c \
 	map.c \
 	module.c \
