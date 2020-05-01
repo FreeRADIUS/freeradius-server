@@ -49,6 +49,7 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
 		test.modules	\
 		$(BUILD_DIR)/tests/radiusd-c \
 		test.auth	\
+		test.radclient	\
 		test.digest	\
 		test.radmin	\
 		test.eap	\
