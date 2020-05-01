@@ -1,8 +1,8 @@
-FROM debian:jessie
+FROM ubuntu:20.04
 
 ARG gccver=4.9
 ARG clangver=5.0
-ARG osname=jessie
+ARG osname=bionic
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -10,22 +10,15 @@ ARG DEBIAN_FRONTEND=noninteractive
 #  Install add-apt-repository
 #
 RUN apt-get update && \
-    apt-get install -y software-properties-common python-software-properties apt-transport-https curl && \
+    apt-get install -y software-properties-common && \
     apt-get clean && \
     rm -r /var/lib/apt/lists/*
-
-#  Requires GCC-4.9 as it has support for C11 keywords and atomics
-
-#  For clang
-RUN add-apt-repository -y "deb http://apt.llvm.org/${osname}/ llvm-toolchain-${osname}-${clangver} main" && \
-    curl -o /tmp/llvm-snapshot.gpg.key https://apt.llvm.org/llvm-snapshot.gpg.key && \
-    apt-key add /tmp/llvm-snapshot.gpg.key
 
 RUN apt-get update && \
 #  Development utilities
     apt-get install -y devscripts equivs git quilt rsync && \
 #  Compilers
-    apt-get install -y g++-${gccver} llvm-${clangver} clang-${clangver} lldb-${clangver} && \
+    apt-get install -y g++ llvm clang lldb && \
 #  eapol_test dependencies
     apt-get install -y libnl-3-dev libnl-genl-3-dev
 
@@ -42,23 +35,10 @@ RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
 #  - pandoc
 WORKDIR /tmp
 RUN curl -OL $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*deb" | cut -d '"' -f 4)
-RUN dpkg -i ./pandoc-*.deb
-RUN apt-get install -fy
+RUN apt-get install -y ./pandoc-*.deb
 #  - asciidoctor
-RUN apt-get install -y ruby
+RUN apt-get install -y ruby-dev
 RUN gem install asciidoctor
-
-# set default things
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${gccver} 50 \
-                        --slave /usr/bin/g++ g++ /usr/bin/g++-${gccver} && \
-    update-alternatives --config gcc
-
-RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${clangver} 60 && \
-    update-alternatives --config clang
-
-RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-${clangver} 60 && \
-    update-alternatives --config lldb
-
 
 #
 #  Setup a src dir in /usr/local
@@ -70,6 +50,7 @@ WORKDIR /usr/local/src/repositories
 #
 #  Shallow clone the FreeRADIUS source
 #
+WORKDIR /usr/local/src/repositories
 ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 RUN git clone --depth 1 --no-single-branch ${source}
 
