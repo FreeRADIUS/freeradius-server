@@ -1202,20 +1202,14 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 
 		} else switch (value->enumv->flags.length) {
 		case 2:
-			if (date > UINT16_MAX) {
-				memset(dst, 0xff, sizeof(uint16_t));
-			} else {
-				fr_net_from_uint16(dst, date);
-			}
+			if (date > UINT16_MAX) date = UINT16_MAX;
+			fr_net_from_uint16(dst, date);
 			break;
 
 		date_size4:
 		case 4:
-			if (date > UINT32_MAX) {
-				memset(dst, 0xff, sizeof(uint32_t));
-			} else {
-				fr_net_from_uint32(dst, date);
-			}
+			if (date > UINT32_MAX) date = UINT32_MAX;
+			fr_net_from_uint32(dst, date);
 			break;
 
 		case 8:
@@ -1263,20 +1257,22 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 
 		} else switch (value->enumv->flags.length) {
 		case 2:
-			if ((date < INT16_MIN) || (date > INT16_MAX)) {
-				memset(dst, 0xff, sizeof(int16_t));
-			} else {
-				fr_net_from_uint16(dst, (uint16_t)date);
+			if (date < INT16_MIN) {
+				date = INT16_MIN;
+			} else if (date > INT16_MAX) {
+				date = INT16_MAX;
 			}
+			fr_net_from_uint16(dst, (uint16_t)date);
 			break;
 
 		delta_size4:
 		case 4:
-			if ((date < INT32_MIN) || (date > INT32_MAX)) {
-				memset(dst, 0xff, sizeof(int32_t));
-			} else {
-				fr_net_from_uint32(dst, (uint32_t)date);
+			if (date < INT32_MIN) {
+				date = INT32_MIN;
+			} else if (date > INT32_MAX) {
+				date = INT32_MAX;
 			}
+			fr_net_from_uint32(dst, (uint32_t)date);
 			break;
 
 		case 8:
