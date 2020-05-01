@@ -1219,7 +1219,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 			break;
 
 		case 8:
-			fr_net_from_uint32(dst, date);
+			fr_net_from_uint64(dst, date);
 			break;
 
 		default:
