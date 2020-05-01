@@ -364,6 +364,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 		return RLM_MODULE_FAIL;
 	}
 
+	/*
+	 *	Do the asynchronous xlat expansion.
+	 */
 	if (!inst->wait) {
 		fr_value_box_t *box;
 
@@ -451,7 +454,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_async(void *instance, UNUSED void *
 
 	box = talloc_zero(request, fr_value_box_t *);
 
-	return unlang_module_yield_to_tmpl(box, box, request, inst->tmpl, exec_resume, NULL, box);
+	return unlang_module_yield_to_tmpl(box, box, request, inst->tmpl, NULL, exec_resume, NULL, box);
 }
 
 /*
