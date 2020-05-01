@@ -9,16 +9,16 @@ update reply {
 	#  change the test results.
 	#
 	&WiMAX-Capability := {
-		&WiMAX-Release := "1.0"
+		&WiMAX-Release = "1.0"
 	}
 }
 
 update reply {
 	&WiMAX-Capability += {
 		#
-		#  Operators are allowed here.
+		#  Operators are not allowed here.
 		#
-		&WiMAX-Release += "1.0"
+		&WiMAX-Release = "1.0"
 	}
 }
 

@@ -811,7 +811,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 	}
 }
 
-static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
+static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
 {
 	if (tmpl_is_xlat(map->lhs)) {
 		fr_assert(map->lhs->tmpl_xlat == NULL);
@@ -836,6 +836,42 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 	 */
 	if (tmpl_is_attr_undefined(map->lhs)) {
 		if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
+	}
+
+	/*
+	 *	Enforce parent-child relationships in nested maps.
+	 */
+	if (parent) {
+		if (tmpl_is_attr(map->lhs)) {
+			if (map->lhs->tmpl_da->parent != parent) {
+				cf_log_err(map->ci, "Attribute %s is not a child of parent %s",
+					   map->lhs->tmpl_da->name, parent->name);
+				return false;
+			}
+
+			/*
+			 *	Ensure that the child map doesn't have
+			 *	a reference to a different request or pair
+			 *	list.  It MUST be unqualified.
+			 *
+			 *	This check isn't strictyly necessary for
+			 *	things parsed from the configuration files, as
+			 *	map_afrom_cs() already updates the rules with
+			 *	disallow_qualifiers.
+			 */
+			if (strcmp(map->lhs->name + 1, map->lhs->tmpl_da->name) != 0) {
+				cf_log_err(map->ci, "Attribute contains invalid reference to list / request",
+					   map->lhs->name);
+				return false;
+			}
+		}
+
+		if (map->op != T_OP_EQ) {
+			cf_log_err(map->ci, "Invalid operator \"%s\" in nested map section.  "
+				   "Only '=' is allowed",
+				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
+			return false;
+		}
 	}
 
 	if (map->rhs) {
@@ -864,7 +900,23 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules)
 		}
 	}
 
-	if (map->child) return pass2_fixup_update_map(map->child, rules);
+	/*
+	 *	Sanity check sublists.
+	 */
+	if (map->child) {
+		if (!tmpl_is_attr(map->lhs)) {
+			cf_log_err(map->ci, "Sublists can only be assigned to a known attribute");
+			return false;
+		}
+
+		if ((map->lhs->tmpl_da->type != FR_TYPE_GROUP) &&
+		    (map->lhs->tmpl_da->type != FR_TYPE_TLV)) {
+			cf_log_err(map->ci, "Sublists can only be assigned to attributes of type 'group' or 'tlv'");
+			return false;
+		}
+
+		return pass2_fixup_update_map(map->child, rules, map->lhs->tmpl_da);
+	}
 
 	return true;
 }
@@ -877,7 +929,7 @@ static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 	vp_map_t *map;
 
 	for (map = g->map; map != NULL; map = map->next) {
-		if (!pass2_fixup_update_map(map, rules)) return false;
+		if (!pass2_fixup_update_map(map, rules, NULL)) return false;
 	}
 
 	return true;
