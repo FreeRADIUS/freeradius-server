@@ -860,7 +860,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 			 *	disallow_qualifiers.
 			 */
 			if (strcmp(map->lhs->name + 1, map->lhs->tmpl_da->name) != 0) {
-				cf_log_err(map->ci, "Attribute contains invalid reference to list / request",
+				cf_log_err(map->ci, "Attribute %s contains invalid reference to list / request",
 					   map->lhs->name);
 				return false;
 			}
