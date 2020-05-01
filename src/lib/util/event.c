@@ -49,6 +49,7 @@ RCSID("$Id$")
  *	Turn off documentation warnings as file/line
  *	args aren't used for non-debug builds.
  */
+DIAG_OPTIONAL
 DIAG_OFF(documentation)
 #endif
 
