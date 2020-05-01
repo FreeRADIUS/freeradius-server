@@ -44,6 +44,14 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+#ifdef NDEBUG
+/*
+ *	Turn off documentation warnings as file/line
+ *	args aren't used for non-debug builds.
+ */
+DIAG_OFF(documentation)
+#endif
+
 #define FR_EV_BATCH_FDS (256)
 
 DIAG_OFF(unused-macros)
