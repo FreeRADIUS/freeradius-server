@@ -1154,6 +1154,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 		if (slen > 0) {
 			if ((size_t) slen < inlen) {
 				fr_strerror_printf("Unexpected text after attribute name");
+				talloc_free(vpt);
 				return -slen;
 			}
 			break;
@@ -2051,6 +2052,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		talloc_free(tmp_ctx);
 		if (ret < 0) {
 			RPEDEBUG("Failed copying data to output box");
+			TALLOC_FREE(*vb_out);
 			return -1;
 		}
 		return 0;
