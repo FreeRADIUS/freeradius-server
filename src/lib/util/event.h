@@ -200,39 +200,57 @@ int		fr_event_list_num_timers(fr_event_list_t *el);
 int		fr_event_list_kq(fr_event_list_t *el);
 fr_time_t	fr_event_list_time(fr_event_list_t *el) CC_HINT(nonnull);
 
-int		fr_event_fd_move(fr_event_list_t *dst, fr_event_list_t *src, int fd, fr_event_filter_t filter);
+int		_fr_event_fd_move(NDEBUG_LOCATION_ARGS
+				 fr_event_list_t *dst, fr_event_list_t *src, int fd, fr_event_filter_t filter);
+#define		fr_event_fd_mode(...) _fr_event_fd_move(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+int		_fr_event_filter_insert(NDEBUG_LOCATION_ARGS
+				        TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
+				        fr_event_list_t *el, int fd,
+				        fr_event_filter_t filter,
+				        void *funcs,
+				        fr_event_error_cb_t error,
+				        void *uctx);
+#define		fr_event_filter_insert(...) _fr_event_filter_insert(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+int		_fr_event_filter_update(NDEBUG_LOCATION_ARGS
+					fr_event_list_t *el, int fd, fr_event_filter_t filter,
+					fr_event_update_t updates[]);
+#define		fr_event_filter_update(...) _fr_event_filter_update(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+int		_fr_event_fd_insert(NDEBUG_LOCATION_ARGS
+				    TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+				    fr_event_fd_cb_t read_fn,
+				    fr_event_fd_cb_t write_fn,
+				    fr_event_error_cb_t error,
+				    void *uctx);
+#define		fr_event_fd_insert(...) _fr_event_fd_insert(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
 int		fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter);
 
-int		fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
-				       fr_event_list_t *el, int fd,
-				       fr_event_filter_t filter,
-				       void *funcs,
-				       fr_event_error_cb_t error,
-				       void *uctx);
-
-int		fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter,
-			   	       fr_event_update_t updates[]);
-
-int		fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
-				   fr_event_fd_cb_t read_fn,
-				   fr_event_fd_cb_t write_fn,
-				   fr_event_error_cb_t error,
-				   void *uctx);
-
 #ifndef NDEBUG
-int		fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t, uint32_t armour);
-int		fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uint32_t armour);
+int		fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t, uintptr_t armour);
+int		fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uintptr_t armour);
 #endif
 
+int		_fr_event_timer_at(NDEBUG_LOCATION_ARGS
+				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
+				   fr_time_t when, fr_event_timer_cb_t callback, void const *uctx);
+#define		fr_event_timer_at(...) _fr_event_timer_at(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
-int		fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
-				  pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx) CC_HINT(nonnull(2,5));
+int		_fr_event_timer_in(NDEBUG_LOCATION_ARGS
+				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
+				   fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx);
+#define		fr_event_timer_in(...) _fr_event_timer_in(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
-int		fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
-				  fr_time_t when, fr_event_timer_cb_t callback, void const *uctx);
-int		fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
-				  fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx);
 int		fr_event_timer_delete(fr_event_timer_t const **ev);
+
+int		_fr_event_pid_wait(NDEBUG_LOCATION_ARGS
+				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
+				   pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)
+				   CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(2),NDEBUG_LOCATION_NONNULL(5)));
+#define		fr_event_pid_wait(...) _fr_event_pid_wait(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
 int		fr_event_timer_run(fr_event_list_t *el, fr_time_t *when);
 
 uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));
@@ -255,6 +273,13 @@ fr_event_list_t	*fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 void		fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t func);
 
 bool		fr_event_list_empty(fr_event_list_t *el);
+
+#ifdef WITH_EVENT_DEBUG
+void		fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx);
+#  ifndef NDEBUG
+void		fr_event_timer_dump(fr_event_list_t *el);
+#  endif
+#endif
 
 #ifdef __cplusplus
 }

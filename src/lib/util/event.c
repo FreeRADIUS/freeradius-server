@@ -60,6 +60,10 @@ DIAG_ON(unused-macros)
 #  define EVENT_DEBUG(...)
 #endif
 
+#ifndef EVENT_REPORT_FREQ
+#  define EVENT_REPORT_FREQ	5
+#endif
+
 static fr_table_num_sorted_t const kevent_filter_table[] = {
 #ifdef EVFILT_AIO
 	{ "EVFILT_AIO",		EVFILT_AIO },
@@ -92,6 +96,11 @@ struct fr_event_timer {
 	fr_event_timer_t const	**parent;		//!< Previous timer.
 	int32_t			heap_id;	       	//!< Where to store opaque heap data.
 	fr_dlist_t		entry;			//!< in linked list of event timers
+
+#ifndef NDEBUG
+	char const		*file;			//!< Source file this event was last updated in.
+	int			line;			//!< Line this event was last updated on.
+#endif
 };
 
 typedef enum {
@@ -259,7 +268,12 @@ struct fr_event_fd {
 	fr_event_fd_t		*next;			//!< item in a list of fr_event_fd (to free).
 
 #ifndef NDEBUG
-	uint32_t		armour;			//!< protection flag from being deleted.
+	uintptr_t		armour;			//!< protection flag from being deleted.
+#endif
+
+#ifndef NDEBUG
+	char const		*file;			//!< Source file this event was last updated in.
+	int			line;			//!< Line this event was last updated on.
 #endif
 };
 
@@ -269,6 +283,11 @@ struct fr_event_pid {
 
 	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
+
+#ifndef NDEBUG
+	char const		*file;			//!< Source file this event was last updated in.
+	int			line;			//!< Line this event was last updated on.
+#endif
 };
 
 /** Callbacks to perform when the event handler is about to check the events
@@ -315,7 +334,6 @@ struct fr_event_list {
 	fr_time_t 		now;			//!< The last time the event list was serviced.
 	bool			dispatch;		//!< Whether the event list is currently dispatching events.
 
-	int			num_fds;		//!< Number of FDs listened to by this event list.
 	int			num_fd_events;		//!< Number of events in this event list.
 
 	int			kq;			//!< instance associated with this event list.
@@ -331,6 +349,10 @@ struct fr_event_list {
 
 	fr_event_fd_t		*fd_to_free;		//!< File descriptor events pending deletion.
 	fr_dlist_head_t		ev_to_add;		//!< dlist of events to add
+
+#ifdef WITH_EVENT_DEBUG
+	fr_event_timer_t const	*report;		//!< Report event.
+#endif
 };
 
 /** Compare two timer events to see which one should occur first
@@ -376,7 +398,7 @@ int fr_event_list_num_fds(fr_event_list_t *el)
 {
 	if (unlikely(!el)) return -1;
 
-	return el->num_fds;
+	return rbtree_num_elements(el->fds);
 }
 
 /** Return the number of timer events currently scheduled
@@ -669,7 +691,6 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 
 		rbtree_deletebydata(el->fds, ef);
 		ef->is_registered = false;
-		el->num_fds--;
 	}
 
 	/*
@@ -716,7 +737,8 @@ static int _event_fd_delete(fr_event_fd_t *ef)
  *	- 0 on success.
  *      - -1 on failure.  The event will remain active in the src list.
  */
-int fr_event_fd_move(fr_event_list_t *dst, fr_event_list_t *src, int fd, fr_event_filter_t filter)
+int _fr_event_fd_move(NDEBUG_LOCATION_ARGS
+		      fr_event_list_t *dst, fr_event_list_t *src, int fd, fr_event_filter_t filter)
 {
 	fr_event_fd_t	*ef;
 	int		ret;
@@ -735,8 +757,9 @@ int fr_event_fd_move(fr_event_list_t *dst, fr_event_list_t *src, int fd, fr_even
 		return -1;
 	}
 
-	ret = fr_event_filter_insert(ef->linked_ctx, NULL,
-				     dst, ef->fd, ef->filter, &ef->active, ef->error, ef->uctx);
+	ret = _fr_event_filter_insert(NDEBUG_LOCATION_VALS
+				      ef->linked_ctx, NULL,
+				      dst, ef->fd, ef->filter, &ef->active, ef->error, ef->uctx);
 	if (ret < 0) return -1;
 
 	(void)fr_event_fd_delete(src, ef->fd, ef->filter);
@@ -744,41 +767,6 @@ int fr_event_fd_move(fr_event_list_t *dst, fr_event_list_t *src, int fd, fr_even
 	return ret;
 }
 
-/** Remove a file descriptor from the event loop
- *
- * @param[in] el	to remove file descriptor from.
- * @param[in] fd	to remove.
- * @param[in] filter	The type of filter to remove.
- * @return
- *	- 0 if file descriptor was removed.
- *	- <0 on error.
- */
-int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
-{
-	fr_event_fd_t	*ef;
-
-	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
-	if (unlikely(!ef)) {
-		fr_strerror_printf("No events are registered for fd %i", fd);
-		return -1;
-	}
-
-	/*
-	 *	Free will normally fail if it's
-	 *	a deferred free. There is a special
-	 *	case for kevent failures though.
-	 *
-	 *	We distinguish between the two by
-	 *	looking to see if the ef is still
-	 *	in the even tree.
-	 *
-	 *	Talloc returning -1 guarantees the
-	 *	memory has not been freed.
-	 */
-	if ((talloc_free(ef) == -1) && ef->is_registered) return -1;
-
-	return 0;
-}
 
 /** Suspend/resume a subset of filters
  *
@@ -794,13 +782,16 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
    fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, pause_read);
  @endcode
  *
+ * @param[in] file	This function is being called from.
+ * @param[in] line	This function is being called on.
  * @param[in] el	to update descriptor in.
  * @param[in] fd	to update filters for.
  * @param[in] filter	The type of filter to update.
  * @param[in] updates	An array of updates to toggle filters on/off without removing
  *			the callback function.
  */
-int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter, fr_event_update_t updates[])
+int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
+			    fr_event_list_t *el, int fd, fr_event_filter_t filter, fr_event_update_t updates[])
 {
 	fr_event_fd_t		*ef;
 	size_t			i;
@@ -813,6 +804,11 @@ int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
 	}
+
+#ifndef NDEBUG
+	ef->file = file;
+	ef->line = line;
+#endif
 
 	/*
 	 *	Cheapest way of ensuring this function can error without
@@ -860,6 +856,8 @@ int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter
 
 /** Insert a filter for the specified fd
  *
+ * @param[in] file	This function is being called from.
+ * @param[in] line	This function is being called on.
  * @param[in] ctx	to bind lifetime of the event to.
  * @param[out] ef_out	Previously allocated ef, or NULL.
  * @param[in] el	to insert fd callback into.
@@ -870,11 +868,12 @@ int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter
  * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] uctx	to pass to handler.
  */
-int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
-			   fr_event_list_t *el, int fd,
-			   fr_event_filter_t filter,
-			   void *funcs, fr_event_error_cb_t error,
-			   void *uctx)
+int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
+			    TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
+			    fr_event_list_t *el, int fd,
+			    fr_event_filter_t filter,
+			    void *funcs, fr_event_error_cb_t error,
+			    void *uctx)
 {
 	ssize_t			count;
 	fr_event_fd_t		*ef;
@@ -964,7 +963,6 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
 		}
 
 		ef->filter = filter;
-		el->num_fds++;
 		rbtree_insert(el->fds, ef);
 		ef->is_registered = true;
 
@@ -999,6 +997,10 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
 		memset(&ef->stored, 0, sizeof(ef->stored));
 	}
 
+#ifndef NDEBUG
+	ef->file = file;
+	ef->line = line;
+#endif
 	ef->error = error;
 	ef->uctx = uctx;
 
@@ -1009,6 +1011,8 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
 
 /** Associate I/O callbacks with a file descriptor
  *
+ * @param[in] file	This function is being called from.
+ * @param[in] line	This function is being called on.
  * @param[in] ctx	to bind lifetime of the event to.
  * @param[in] el	to insert fd callback into.
  * @param[in] fd	to install filters for.
@@ -1020,11 +1024,12 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
  *	- 0 on succes.
  *	- -1 on failure.
  */
-int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
-		       fr_event_fd_cb_t read_fn,
-		       fr_event_fd_cb_t write_fn,
-		       fr_event_error_cb_t error,
-		       void *uctx)
+int _fr_event_fd_insert(NDEBUG_LOCATION_ARGS
+			TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+		        fr_event_fd_cb_t read_fn,
+		        fr_event_fd_cb_t write_fn,
+		        fr_event_error_cb_t error,
+		        void *uctx)
 {
 	fr_event_io_func_t funcs =  { .read = read_fn, .write = write_fn };
 
@@ -1033,7 +1038,44 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		return -1;
 	}
 
-	return fr_event_filter_insert(ctx, NULL, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
+	return _fr_event_filter_insert(NDEBUG_LOCATION_VALS
+				       ctx, NULL, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
+}
+
+/** Remove a file descriptor from the event loop
+ *
+ * @param[in] el	to remove file descriptor from.
+ * @param[in] fd	to remove.
+ * @param[in] filter	The type of filter to remove.
+ * @return
+ *	- 0 if file descriptor was removed.
+ *	- <0 on error.
+ */
+int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
+{
+	fr_event_fd_t	*ef;
+
+	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	if (unlikely(!ef)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
+		return -1;
+	}
+
+	/*
+	 *	Free will normally fail if it's
+	 *	a deferred free. There is a special
+	 *	case for kevent failures though.
+	 *
+	 *	We distinguish between the two by
+	 *	looking to see if the ef is still
+	 *	in the even tree.
+	 *
+	 *	Talloc returning -1 guarantees the
+	 *	memory has not been freed.
+	 */
+	if ((talloc_free(ef) == -1) && ef->is_registered) return -1;
+
+	return 0;
 }
 
 #ifndef NDEBUG
@@ -1047,7 +1089,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
  *	- 0 if file descriptor was armoured
  *	- <0 on error.
  */
-int fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uint32_t armour)
+int fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uintptr_t armour)
 {
 	fr_event_fd_t	*ef;
 
@@ -1063,6 +1105,7 @@ int fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t filter, ui
 	}
 
 	ef->armour = armour;
+
 	return 0;
 }
 
@@ -1076,7 +1119,7 @@ int fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t filter, ui
  *	- 0 if file descriptor was unarmoured
  *	- <0 on error.
  */
-int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uint32_t armour)
+int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uintptr_t armour)
 {
 	fr_event_fd_t	*ef;
 
@@ -1092,23 +1135,6 @@ int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, 
 	return 0;
 }
 #endif
-
-/** Delete a timer event from the event list
- *
- * @param[in] ev_p	of the event being deleted.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_event_timer_delete(fr_event_timer_t const **ev_p)
-{
-	fr_event_timer_t *ev;
-
-	if (unlikely(!*ev_p)) return 0;
-
-	memcpy(&ev, ev_p, sizeof(ev));
-	return talloc_free(ev);
-}
 
 /** Remove an event from the event loop
  *
@@ -1152,6 +1178,8 @@ static int _event_timer_free(fr_event_timer_t *ev)
  *	 this function should be called with the existing event pointed to by
  *	 ev_p.
  *
+ * @param[in] file		This function is being called from.
+ * @param[in] line		This function is being called on.
  * @param[in] ctx		to bind lifetime of the event to.
  * @param[in] el		to insert event into.
  * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
@@ -1163,8 +1191,9 @@ static int _event_timer_free(fr_event_timer_t *ev)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-		      fr_time_t when, fr_event_timer_cb_t callback, void const *uctx)
+int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
+		       TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
+		       fr_time_t when, fr_event_timer_cb_t callback, void const *uctx)
 {
 	fr_event_timer_t *ev;
 
@@ -1237,11 +1266,15 @@ int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
 	ev->uctx = uctx;
 	ev->linked_ctx = ctx;
 	ev->parent = ev_p;
+#ifndef NDEBUG
+	ev->file = file;
+	ev->line = line;
+#endif
 
 	if (el->in_handler) {
 		fr_dlist_insert_head(&el->ev_to_add, ev);
-
 	} else if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
+		fr_strerror_printf_push("Failed inserting event");
 		talloc_free(ev);
 		return -1;
 	}
@@ -1258,6 +1291,8 @@ int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
  *	 this function should be called with the existing event pointed to by
  *	 ev_p.
  *
+ * @param[in] file		This function is being called from.
+ * @param[in] line		This function is being called on.
  * @param[in] ctx		to bind lifetime of the event to.
  * @param[in] el		to insert event into.
  * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
@@ -1269,15 +1304,34 @@ int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-		      fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx)
+int _fr_event_timer_in(NDEBUG_LOCATION_ARGS
+		       TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
+		       fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx)
 {
 	fr_time_t now;
 
 	now = el->time();
 	now += delta;
 
-	return fr_event_timer_at(ctx, el, ev_p, now, callback, uctx);
+	return _fr_event_timer_at(NDEBUG_LOCATION_VALS
+				  ctx, el, ev_p, now, callback, uctx);
+}
+
+/** Delete a timer event from the event list
+ *
+ * @param[in] ev_p	of the event being deleted.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_event_timer_delete(fr_event_timer_t const **ev_p)
+{
+	fr_event_timer_t *ev;
+
+	if (unlikely(!*ev_p)) return 0;
+
+	memcpy(&ev, ev_p, sizeof(ev));
+	return talloc_free(ev);
 }
 
 /** Remove PID wait event from kevent if the fr_event_pid_t is freed
@@ -1316,8 +1370,9 @@ static int _event_pid_free(fr_event_pid_t *ev)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
-		      pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)
+int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
+		       TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
+		       pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)
 {
 	fr_event_pid_t *ev;
 	struct kevent evset;
@@ -1326,6 +1381,10 @@ int fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const
 	ev->pid = pid;
 	ev->callback = wait_fn;
 	ev->uctx = uctx;
+#ifndef NDEBUG
+	ev->file = file;
+	ev->line = line;
+#endif
 
 	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, ev);
 
@@ -2077,6 +2136,10 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		goto error;
 	}
 
+#ifdef WITH_EVENT_DEBUG
+	fr_event_timer_in(el, el, &el->report, fr_time_delta_from_sec(EVENT_REPORT_FREQ), fr_event_report, NULL);
+#endif
+
 	return el;
 }
 
@@ -2097,6 +2160,41 @@ bool fr_event_list_empty(fr_event_list_t *el)
 {
 	return !fr_heap_num_elements(el->times) && !rbtree_num_elements(el->fds);
 }
+
+#ifdef WITH_EVENT_DEBUG
+/** Print out information about the number of events in the event loop
+ *
+ */
+void fr_event_report(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	EVENT_DEBUG("Event list %p", el);
+	EVENT_DEBUG("   fd events        : %u", fr_event_list_num_fds(el));
+	EVENT_DEBUG("   events last iter : %u", el->num_fd_events);
+	EVENT_DEBUG("   num timer events : %u", fr_event_list_num_timers(el));
+
+	fr_event_timer_in(el, el, &el->report, fr_time_delta_from_sec(EVENT_REPORT_FREQ), fr_event_report, uctx);
+}
+
+#ifndef NDEBUG
+void fr_event_timer_dump(fr_event_list_t *el)
+{
+	fr_heap_iter_t		iter;
+	fr_event_timer_t 	*ev;
+	fr_time_t		now;
+
+	now = el->time();
+
+	EVENT_DEBUG("Time is now %"PRId64"", now);
+
+	for (ev = talloc_get_type_abort(fr_heap_iter_init(el->times, &iter), fr_event_timer_t);
+	     ev;
+	     ev = talloc_get_type_abort(fr_heap_iter_next(el->times, &iter), fr_event_timer_t)) {
+		EVENT_DEBUG("%s[%u]: %p time=%" PRId64 " (%c), callback=%p",
+			    ev->file, ev->line, ev, ev->when, now > ev->when ? '<' : '>', ev->callback);
+	}
+}
+#endif
+#endif
 
 #ifdef TESTING
 

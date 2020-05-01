@@ -83,10 +83,6 @@ struct fr_control_s {
 
 	int			pipe[2];       		//!< our pipes
 
-#ifndef NDEBUG
-	uint32_t		armour;			//!< to protect ourself from deletion.
-#endif
-
 	bool			same_thread;		//!< are the two ends in the same thread
 
 	fr_control_ctx_t 	type[FR_CONTROL_MAX_TYPES];	//!< callbacks
@@ -131,7 +127,7 @@ static int _control_free(fr_control_t *c)
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 #ifndef NDEBUG
-	(void) fr_event_fd_unarmour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, c->armour);
+	(void) fr_event_fd_unarmour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
 #endif
 	(void) fr_event_fd_delete(c->el, c->pipe[0], FR_EVENT_FILTER_IO);
 
@@ -182,8 +178,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 	}
 
 #ifndef NDEBUG
-	c->armour = fr_rand();
-	(void) fr_event_fd_armour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, c->armour);
+	(void) fr_event_fd_armour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
 #endif
 
 	return c;
