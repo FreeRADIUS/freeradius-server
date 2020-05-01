@@ -1678,7 +1678,7 @@ int main(int argc, char **argv)
 	fr_dict_autofree(radclient_dict);
 
 	if (do_summary) {
-		DEBUG("Packet summary:\n"
+		printf("Packet summary:\n"
 		      "\tAccepted      : %" PRIu64 "\n"
 		      "\tRejected      : %" PRIu64 "\n"
 		      "\tLost          : %" PRIu64 "\n"
