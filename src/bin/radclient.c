@@ -70,7 +70,6 @@ static uint16_t client_port = 0;
 static int sockfd;
 static int last_used_id = -1;
 
-static char const *proto = NULL;
 static int ipproto = IPPROTO_UDP;
 
 static rbtree_t *filename_tree = NULL;
@@ -339,7 +338,6 @@ static bool already_hex(VALUE_PAIR *vp)
 	return false;
 }
 
-
 /*
  *	Initialize a radclient data structure and add it to
  *	the global linked list.
@@ -363,7 +361,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		packets = fopen(files->packets, "r");
 		if (!packets) {
 			ERROR("Error opening %s: %s", files->packets, fr_syserror(errno));
-			return 0;
+			return -1;
 		}
 
 		/*
@@ -374,13 +372,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			if (!filters) {
 				ERROR("Error opening %s: %s", files->filters, fr_syserror(errno));
 				fclose(packets);
-				return 0;
+				return -1;
 			}
 		}
 	} else {
 		packets = stdin;
 	}
-
 
 	/*
 	 *	Loop until the file is done.
@@ -736,7 +733,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	/*
 	 *	And we're done.
 	 */
-	return 1;
+	return 0;
 
 error:
 	talloc_free(request);
@@ -744,7 +741,7 @@ error:
 	if (packets != stdin) fclose(packets);
 	if (filters) fclose(filters);
 
-	return 0;
+	return -1;
 }
 
 
@@ -799,11 +796,8 @@ static int filename_walk(void *data, UNUSED void *uctx)
 	/*
 	 *	Read request(s) from the file.
 	 */
-	if (!radclient_init(files, files)) return -1;	/* stop walking */
-
-	return 0;
+	return radclient_init(files, files);
 }
-
 
 /*
  *	Deallocate packet ID, etc.
@@ -845,7 +839,7 @@ static int send_one_packet(rc_request_t *request)
 	/*
 	 *	Haven't sent the packet yet.  Initialize it.
 	 */
-	if (!request->tries) {
+	if (!request->tries || request->packet->id == -1) {
 		bool rcode;
 
 		assert(request->reply == NULL);
@@ -860,27 +854,27 @@ static int send_one_packet(rc_request_t *request)
 		rcode = fr_packet_list_id_alloc(packet_list, ipproto, &request->packet, NULL);
 		if (!rcode) {
 			int mysockfd;
-			uint16_t port = 0;
 
-			if (proto) {
+			if (ipproto == IPPROTO_TCP) {
 				mysockfd = fr_socket_client_tcp(NULL,
 								&request->packet->dst_ipaddr,
 								request->packet->dst_port, false);
 				if (mysockfd < 0) {
 					ERROR("Error opening socket: %s", fr_strerror());
-					return 0;
+					return -1;
 				}
-			} else
-			{
+			} else {
+				uint16_t port = 0;
+
 				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
 				if (mysockfd < 0) {
 					ERROR("Error opening socket: %s", fr_strerror());
-					return 0;
+					return -1;
 				}
 
 				if (fr_socket_bind(mysockfd, &client_ipaddr, &port, NULL) < 0) {
 					ERROR("Error binding socket: %s", fr_strerror());
-					return 0;
+					return -1;
 				}
 			}
 
@@ -924,7 +918,7 @@ static int send_one_packet(rc_request_t *request)
 			}
 		}
 
-		request->timestamp = time(NULL);
+		request->timestamp = fr_time();
 		request->tries = 1;
 		request->resend++;
 
@@ -1038,7 +1032,7 @@ static int recv_one_packet(fr_time_t wait_time)
 		 *	I'm not sure how to do that now, so we just
 		 *	die...
 		 */
-		if (proto) fr_exit_now(1);
+		if (ipproto == IPPROTO_TCP) fr_exit_now(1);
 		return -1;	/* bad packet */
 	}
 
@@ -1160,7 +1154,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	}
 
 packet_done:
-fr_radius_packet_free(&request->reply);
+	fr_radius_packet_free(&request->reply);
 	fr_radius_packet_free(&reply);	/* may be NULL */
 
 	return 0;
@@ -1228,9 +1222,11 @@ int main(int argc, char **argv)
 			break;
 
 		case 'c':
-			if (!isdigit((int) *optarg))
-				usage();
+			if (!isdigit((int) *optarg)) usage();
+
 			resend_count = atoi(optarg);
+
+			if (resend_count < 1) usage();
 			break;
 
 		case 'D':
@@ -1293,15 +1289,12 @@ int main(int argc, char **argv)
 			break;
 
 		case 'P':
-			proto = optarg;
-			if (strcmp(proto, "tcp") != 0) {
-				if (strcmp(proto, "udp") == 0) {
-					proto = NULL;
-				} else {
-					usage();
-				}
-			} else {
+			if (!strcmp(optarg, "tcp")) {
 				ipproto = IPPROTO_TCP;
+			} else if (!strcmp(optarg, "udp")) {
+				ipproto = IPPROTO_UDP;
+			} else {
+				usage();
 			}
 			break;
 
@@ -1374,7 +1367,7 @@ int main(int argc, char **argv)
 	argc -= (optind - 1);
 	argv += (optind - 1);
 
-	if ((argc < 3)  || ((secret == NULL) && (argc < 4))) {
+	if ((argc < 3) || ((secret == NULL) && (argc < 4))) {
 		ERROR("Insufficient arguments");
 		usage();
 	}
@@ -1488,7 +1481,7 @@ int main(int argc, char **argv)
 
 	client_port = request_head->packet->src_port;
 
-	if (proto) {
+	if (ipproto == IPPROTO_TCP) {
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
 		if (sockfd < 0) {
 			ERROR("Failed opening socket");
