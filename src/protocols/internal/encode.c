@@ -82,7 +82,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	type and length fields, and one byte
 	 *	of data.
 	 */
-	FR_DBUFF_CHECK_FREESPACE_RETURN(dbuff, (sizeof(uint64_t) * 2) + 2);
+	FR_DBUFF_CHECK_REMAINING_RETURN(dbuff, (sizeof(uint64_t) * 2) + 2);
 
 	switch (da->type) {
 	/*
@@ -101,7 +101,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	if (da->flags.is_unknown) {
 		fr_dbuff_memset(dbuff, 0, 1);
-		FR_DBUFF_CHECK_FREESPACE_RETURN(dbuff, (sizeof(uint64_t) * 2) + 2);	/* Check we still have room */
+		FR_DBUFF_CHECK_REMAINING_RETURN(dbuff, (sizeof(uint64_t) * 2) + 2);	/* Check we still have room */
 
 		enc_field[0] |= FR_INTERNAL_FLAG_EXTENDED;
 		enc_field[1] |= FR_INTERNAL_FLAG_INTERNAL;
@@ -283,7 +283,7 @@ static ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr
 {
 	ssize_t	result;
 
-	result = fr_value_box_to_network(need, dbuff->p, fr_dbuff_freespace(dbuff), value);
+	result = fr_value_box_to_network(need, dbuff->p, fr_dbuff_remaining(dbuff), value);
 	if (result < 0) return result;
 	fr_dbuff_advance(dbuff, result);
 	return result;

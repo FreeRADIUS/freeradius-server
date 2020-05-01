@@ -109,8 +109,8 @@ struct fr_dbuff_s {
  * @param[in] _dbuff	to reserve bytes in.
  * @param[in] _max	The maximum number of bytes the caller is allowed to write to.
  */
-#define FR_DBUFF_MAX(_dbuff,  _max) (fr_dbuff_freespace(_dbuff) > (_max)) ? \
-	FR_DBUFF_RESERVE(_dbuff, fr_dbuff_freespace(_dbuff) - (_max)) : \
+#define FR_DBUFF_MAX(_dbuff,  _max) (fr_dbuff_remaining(_dbuff) > (_max)) ? \
+	FR_DBUFF_RESERVE(_dbuff, fr_dbuff_remaining(_dbuff) - (_max)) : \
 	_dbuff)
 
 /** Does the actual work of initialising a dbuff
@@ -193,7 +193,7 @@ static inline uint8_t *fr_dbuff_end(fr_dbuff_t *dbuff)
 /** How many free bytes remain in the buffer
  *
  */
-static inline size_t fr_dbuff_freespace(fr_dbuff_t const *dbuff)
+static inline size_t fr_dbuff_remaining(fr_dbuff_t const *dbuff)
 {
 	return dbuff->end - dbuff->p;
 }
@@ -203,9 +203,9 @@ static inline size_t fr_dbuff_freespace(fr_dbuff_t const *dbuff)
  * @param[in] _dbuff	to check.
  * @param[in] _need	how much buffer space we need.
  */
-#define FR_DBUFF_CHECK_FREESPACE_RETURN(_dbuff, _need) \
+#define FR_DBUFF_CHECK_REMAINING_RETURN(_dbuff, _need) \
 do { \
-	size_t _freespace = fr_dbuff_freespace(_dbuff); \
+	size_t _freespace = fr_dbuff_remaining(_dbuff); \
 	if (_need > _freespace) return -(_need - _freespace); \
 } while (0)
 
@@ -262,7 +262,7 @@ static inline ssize_t _fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
  */
 static inline ssize_t fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
 {
-	size_t freespace = fr_dbuff_freespace(dbuff);
+	size_t freespace = fr_dbuff_remaining(dbuff);
 
 	if (inlen > freespace) return -(inlen - freespace);
 
@@ -282,7 +282,7 @@ static inline ssize_t fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
  */
 static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen)
 {
-	size_t freespace = fr_dbuff_freespace(dbuff);
+	size_t freespace = fr_dbuff_remaining(dbuff);
 
 	fr_assert(!dbuff->is_const);
 
@@ -319,7 +319,7 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
  */
 static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen)
 {
-	size_t freespace = fr_dbuff_freespace(dbuff);
+	size_t freespace = fr_dbuff_remaining(dbuff);
 
 	fr_assert(!dbuff->is_const);
 
