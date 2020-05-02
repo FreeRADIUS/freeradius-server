@@ -10,7 +10,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 #  Install add-apt-repository
 #
 RUN apt-get update && \
-    apt-get install -y software-properties-common python-software-properties && \
+    apt-get install -y software-properties-common python-software-properties apt-transport-https curl && \
     apt-get clean && \
     rm -r /var/lib/apt/lists/*
 
@@ -18,7 +18,8 @@ RUN apt-get update && \
 
 #  For clang
 RUN add-apt-repository -y "deb http://apt.llvm.org/${osname}/ llvm-toolchain-${osname}-${clangver} main" && \
-    apt-key adv --fetch-keys http://apt.llvm.org/llvm-snapshot.gpg.key && \
+    curl -o /tmp/llvm-snapshot.gpg.key https://apt.llvm.org/llvm-snapshot.gpg.key && \
+    apt-key add /tmp/llvm-snapshot.gpg.key && \
 #  For GCC
     add-apt-repository -y ppa:ubuntu-toolchain-r/test
 
@@ -37,7 +38,7 @@ RUN apt-get update && \
 #  - doxygen & JSON.pm
 RUN apt-get install -y doxygen graphviz libjson-perl
 #  - antora (npm needed)
-RUN curl -sL https://deb.nodesource.com/setup_8.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
 RUN apt-get install -y nodejs
 RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
 #  - pandoc

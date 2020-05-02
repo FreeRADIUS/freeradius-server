@@ -1598,6 +1598,8 @@ static void request_finish(REQUEST *request, int action)
  */
 static void request_running(REQUEST *request, int action)
 {
+	int rcode;
+
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
@@ -1631,7 +1633,8 @@ static void request_running(REQUEST *request, int action)
 		/*
 		 *	We may need to send a proxied request.
 		 */
-		if (request_will_proxy(request)) {
+		rcode = request_will_proxy(request);
+		if (rcode == 1) {
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tWill Proxy\t********\n", request->number);
 #endif
@@ -1648,6 +1651,14 @@ static void request_running(REQUEST *request, int action)
 				process_proxy_reply(request, NULL);
 				goto req_finished;
 			}
+
+		} else if (rcode < 0) {
+			/*
+			 *	No live home servers, run Post-Proxy-Type Fail.
+			 */
+			(void) setup_post_proxy_fail(request);
+			process_proxy_reply(request, NULL);
+			goto req_finished;
 		} else
 #endif
 		{
@@ -2887,8 +2898,9 @@ static void proxy_running(REQUEST *request, int action)
  * The key attributes are:
  *   - PW_PROXY_TO_REALM          - Specifies a realm the request should be proxied to.
  *   - PW_HOME_SERVER_POOL        - Specifies a specific home server pool to proxy to.
- *   - PW_PACKET_DST_IP_ADDRESS   - Specifies a specific IPv4 home server to proxy to.
- *   - PW_PACKET_DST_IPV6_ADDRESS - Specifies a specific IPv6 home server to proxy to.
+ *   - PW_HOME_SERVER_NAME        - Specifies a home server by name
+ *   - PW_PACKET_DST_IP_ADDRESS   - Specifies a home server by IPv4 address
+ *   - PW_PACKET_DST_IPV6_ADDRESS - Specifies a home server by IPv5 address
  *
  * Certain packet types such as #PW_CODE_STATUS_SERVER will never be proxied.
  *
@@ -3062,6 +3074,54 @@ static int request_will_proxy(REQUEST *request)
 
 		return 0;
 
+	} else if ((vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_NAME, 0, TAG_ANY)) != NULL) {
+		int type;
+
+		switch (request->packet->code) {
+		case PW_CODE_ACCESS_REQUEST:
+			type = HOME_TYPE_AUTH;
+			break;
+
+#ifdef WITH_ACCOUNTING
+		case PW_CODE_ACCOUNTING_REQUEST:
+			type = HOME_TYPE_ACCT;
+			break;
+#endif
+
+#ifdef WITH_COA
+		case PW_CODE_COA_REQUEST:
+		case PW_CODE_DISCONNECT_REQUEST:
+			type = HOME_TYPE_COA;
+			break;
+#endif
+
+		default:
+			return 0;
+		}
+
+		/*
+		 *	Find the home server by name.
+		 */
+		home = home_server_byname(vp->vp_strvalue, type);
+		if (!home) {
+			RWDEBUG("No such home server %s", vp->vp_strvalue);
+			return 0;
+		}
+
+		/*
+		 *	The home server is alive (or may be alive).
+		 *	Send the packet to the IP.
+		 */
+		if (home->state < HOME_STATE_IS_DEAD) goto do_home;
+
+		/*
+		 *	The home server is dead.  If you wanted
+		 *	fail-over, you should have proxied to a pool.
+		 *	Sucks to be you.
+		 */
+
+		return 0;
+
 	} else {
 		return 0;
 	}
@@ -3082,7 +3142,7 @@ static int request_will_proxy(REQUEST *request)
 
 	if (!home) {
 		REDEBUG2("Failed to find live home server: Cancelling proxy");
-		return 1;
+		return -1;
 	}
 
 do_home:

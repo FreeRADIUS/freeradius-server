@@ -1146,10 +1146,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 	char buffer[256];
 
-	for (i = 0; i < 256; i++) {
-		home = home_server_bynumber(i);
-		if (!home) break;
-
+	for (i = 0; (home = home_server_bynumber(i)) != NULL; i++) {
 		/*
 		 *	Internal "virtual" home server.
 		 */
@@ -1246,10 +1243,7 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	RADCLIENT *client;
 	char buffer[256];
 
-	for (i = 0; i < 256; i++) {
-		client = client_findbynumber(NULL, i);
-		if (!client) break;
-
+	for (i = 0; (client = client_findbynumber(NULL, i)) != NULL; i++) {
 		ip_ntoh(&client->ipaddr, buffer, sizeof(buffer));
 
 		if (((client->ipaddr.af == AF_INET) &&
@@ -2597,6 +2591,36 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 }
 
 
+static int command_del_home_server(rad_listen_t *listener, int argc, char *argv[])
+{
+	if (argc < 2) {
+		cprintf_error(listener, "<name> and <type> are required\n");
+		return 0;
+	}
+
+	if (home_server_delete(argv[0], argv[1]) < 0) {
+		cprintf_error(listener, "Failed deleted home_server %s - %s\n", argv[1], fr_strerror());
+		return 0;
+	}
+
+	return CMD_OK;
+}
+
+static int command_add_home_server_file(rad_listen_t *listener, int argc, char *argv[])
+{
+	if (argc < 1) {
+		cprintf_error(listener, "<file> is required\n");
+		return 0;
+	}
+
+	if (home_server_afrom_file(argv[0]) < 0) {
+		cprintf_error(listener, "Unable to add home server - %s\n", fr_strerror());
+		return 0;
+	}
+
+	return CMD_OK;
+}
+
 static fr_command_table_t command_table_del_client[] = {
 	{ "ipaddr", FR_WRITE,
 	  "del client ipaddr <ipaddr> [udp|tcp] [listen <ipaddr> <port>] - Delete a dynamically created client",
@@ -2605,15 +2629,25 @@ static fr_command_table_t command_table_del_client[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+static fr_command_table_t command_table_del_home_server[] = {
+	{ "file", FR_WRITE,
+	  "del home_server file <name> [auth|acct|coa] - Delete a dynamically created home_server",
+	  command_del_home_server, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
 
 static fr_command_table_t command_table_del[] = {
 	{ "client", FR_WRITE,
 	  "del client <command> - Delete client configuration commands",
 	  NULL, command_table_del_client },
 
+	{ "home_server", FR_WRITE,
+	  "del home_server <command> - Delete home_server configuration commands",
+	  NULL, command_table_del_home_server },
+
 	{ NULL, 0, NULL, NULL, NULL }
 };
-
 
 static fr_command_table_t command_table_add_client[] = {
 	{ "file", FR_WRITE,
@@ -2623,11 +2657,22 @@ static fr_command_table_t command_table_add_client[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+static fr_command_table_t command_table_add_home_server[] = {
+	{ "file", FR_WRITE,
+	  "add home_server file <filename> - Add new home serverdefinition from <filename>",
+	  command_add_home_server_file, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
 
 static fr_command_table_t command_table_add[] = {
 	{ "client", FR_WRITE,
 	  "add client <command> - Add client configuration commands",
 	  NULL, command_table_add_client },
+
+	{ "home_server", FR_WRITE,
+	  "add home_server <command> - Add home server configuration commands",
+	  NULL, command_table_add_home_server },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };

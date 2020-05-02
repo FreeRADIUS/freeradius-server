@@ -37,6 +37,10 @@ static rbtree_t *realms_byname = NULL;
 bool home_servers_udp = false;
 #endif
 
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+
 #ifdef HAVE_REGEX
 typedef struct realm_regex realm_regex_t;
 
@@ -53,6 +57,9 @@ static realm_regex_t *realms_regex = NULL;
 
 struct realm_config {
 	CONF_SECTION		*cs;
+#ifdef HAVE_DIRENT_H
+	char const		*directory;
+#endif
 	uint32_t		dead_time;
 	uint32_t		retry_count;
 	uint32_t		retry_delay;
@@ -106,6 +113,10 @@ static const CONF_PARSER proxy_config[] = {
 	{ "default_fallback", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, fallback), "no" },
 
 	{ "dynamic", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, dynamic), NULL },
+
+#ifdef HAVE_DIRENT_H
+	{ "directory", FR_CONF_OFFSET(PW_TYPE_STRING, realm_config_t, directory), NULL },
+#endif
 
 	{ "dead_time", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, dead_time), STRINGIFY(DEAD_TIME)  },
 
@@ -316,6 +327,60 @@ static ssize_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
 	}
 
 	return xlat_cs(request->home_pool->cs, fmt, out, outlen);
+}
+
+
+/*
+ *	Xlat for %{home_server_dynamic:foo}
+ */
+static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
+					char const *fmt, char *out, size_t outlen)
+{
+	int type;
+	char const *p;
+	home_server_t *home;
+
+	if (outlen < 2) return 0;
+
+	switch (request->packet->code) {
+	case PW_CODE_ACCESS_REQUEST:
+		type = HOME_TYPE_AUTH;
+		break;
+
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_REQUEST:
+		type = HOME_TYPE_ACCT;
+		break;
+#endif
+
+#ifdef WITH_COA
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+		type = HOME_TYPE_COA;
+		break;
+#endif
+
+	default:
+		*out = '\0';
+		return 0;
+	}
+
+	p = fmt;
+	while (isspace((int) *p)) p++;
+
+	home = home_server_byname(p, type);
+	if (!home) {
+		*out = '\0';
+		return 0;
+	}
+
+	/*
+	 *	1 for dynamic, 0 for static
+	 */
+	out[0] = '0' + home->dynamic;
+	out[1] = '\0';
+
+	return 1;
 }
 #endif
 
@@ -680,6 +745,8 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	the config with a name that matches the
 		 *	virtual_server.
 		 */
+		if (!rc) goto error;
+
 		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
 			cf_log_err_cs(cs, "No such server %s", home->server);
 			goto error;
@@ -2255,9 +2322,68 @@ int realms_init(CONF_SECTION *config)
 #ifdef WITH_PROXY
 	xlat_register("home_server", xlat_home_server, NULL, NULL);
 	xlat_register("home_server_pool", xlat_server_pool, NULL, NULL);
+	xlat_register("home_server_dynamic", xlat_home_server_dynamic, NULL, NULL);
 #endif
 
 	realm_config = rc;
+
+#ifdef HAVE_DIRENT_H
+	if (!rc->dynamic) {
+		if (rc->directory) {
+			WARN("Ignoring 'directory' as dynamic home servers were not configured.");
+		}
+	} else {
+		DIR		*dir;
+		struct dirent	*dp;
+
+		if (!rc->directory) {
+			WARN("Ignoring \"dynamic = true\" due to not set \"directory\" in proxy.conf");
+			return 1;
+		}
+
+		DEBUG2("including files in directory %s", rc->directory);
+
+		dir = opendir(rc->directory);
+		if (!dir) {
+			cf_log_err_cs(config, "Error reading directory %s: %s",
+				      rc->directory, fr_syserror(errno));				      
+			goto error;
+		}
+
+		/*
+		 *	Read the directory, ignoring "." files.
+		 */
+		while ((dp = readdir(dir)) != NULL) {
+			char const *p;
+			char conf_file[PATH_MAX];
+
+			if (dp->d_name[0] == '.') continue;
+
+			/*
+			 *	Check for valid characters
+			 */
+			for (p = dp->d_name; *p != '\0'; p++) {
+				if (isalpha((int)*p) ||
+				    isdigit((int)*p) ||
+				    (*p == '-') ||
+				    (*p == '_') ||
+				    (*p == '.')) continue;
+				break;
+			}
+			if (*p != '\0') continue;
+		
+			snprintf(conf_file, sizeof(conf_file), "%s/%s", rc->directory, dp->d_name);
+			if (home_server_afrom_file(conf_file) < 0) {
+				ERROR("Failed reading home_server from %s - %s",
+				      conf_file, fr_strerror());
+				closedir(dir);
+				goto error;
+			}
+		}
+		closedir(dir);
+	}
+#endif
+
 	return 1;
 }
 
@@ -2805,4 +2931,110 @@ home_pool_t *home_pool_byname(char const *name, int type)
 	return rbtree_finddata(home_pools_byname, &mypool);
 }
 
+int home_server_afrom_file(char const *filename)
+{
+	CONF_SECTION *cs, *subcs;
+	char const *p;
+	home_server_t *home;
+
+	if (!realm_config->dynamic) {
+		fr_strerror_printf("Must set \"dynamic = true\" in proxy.conf for dynamic home servers to work");
+		return -1;
+	}
+
+	cs = cf_section_alloc(NULL, "home", filename);
+	if (!cs) {
+		fr_strerror_printf("Failed allocating memory");
+		return -1;
+	}
+
+	if (cf_file_read(cs, filename) < 0) {
+		fr_strerror_printf("Failed reading file %s", filename);
+	error:
+		talloc_free(cs);
+		return -1;
+	}
+
+	p = strrchr(filename, '/');
+	if (p) {
+		p++;
+	} else {
+		p = filename;
+	}
+
+	subcs = cf_section_sub_find_name2(cs, "home_server", p);
+	if (!subcs) {
+		fr_strerror_printf("No 'home_server %s' definition in the file.", p);
+		goto error;
+	}
+
+	home = home_server_afrom_cs(realm_config, realm_config, subcs);
+	if (!home) {
+		fr_strerror_printf("Failed parsing configuration to a home_server structure");
+		goto error;
+	}
+
+	home->dynamic = true;
+
+	if (home->server || home->dual) {
+		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server' or 'auth+acct'", p);
+		talloc_free(home);
+		goto error;
+	}
+
+	if (!realm_home_server_add(home)) {
+		fr_strerror_printf("Failed adding home_server to the internal data structures");
+		talloc_free(home);
+		goto error;
+	}
+
+	return 0;
+}
+
+int home_server_delete(char const *name, char const *type_name)
+{
+	home_server_t *home;
+	int type;
+	char const *p;
+
+	if (!realm_config->dynamic) {
+		fr_strerror_printf("Must set 'dynamic' in proxy.conf for dynamic home servers to work");
+		return -1;
+	}
+
+	type = fr_str2int(home_server_types, type_name, HOME_TYPE_INVALID);
+	if (type == HOME_TYPE_INVALID) {
+		fr_strerror_printf("Unknown home_server type '%s'", type_name);
+		return -1;
+	}
+
+	p = strrchr(name, '/');
+	if (p) {
+		p++;
+	} else {
+		p = name;
+	}
+
+	home = home_server_byname(p, type);
+	if (!home) {
+		fr_strerror_printf("Failed to find home_server %s", p);
+		return -1;
+	}
+
+	if (!home->dynamic) {
+		fr_strerror_printf("Cannot delete static home_server %s", p);
+		return -1;
+	}
+
+	(void) rbtree_deletebydata(home_servers_byname, home);
+	(void) rbtree_deletebydata(home_servers_byaddr, home);
+#ifdef WITH_STATS
+	(void) rbtree_deletebydata(home_servers_bynumber, home);
+#endif
+
+	/*
+	 *	Leak home, and home->cs.  Oh well.
+	 */
+	return 0;
+}
 #endif

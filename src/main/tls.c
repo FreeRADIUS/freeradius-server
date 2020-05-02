@@ -3359,6 +3359,17 @@ post_ca:
 		}
 		X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
 
+#ifdef X509_V_FLAG_USE_DELTAS
+		/*
+		 *	If set, delta CRLs (if present) are used to
+		 *	determine certificate status. If not set
+		 *	deltas are ignored.
+		 *
+		 *	So it's safe to always set this flag.
+		 */
+		X509_STORE_set_flags(certstore, X509_V_FLAG_USE_DELTAS);
+#endif
+
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
 		if (conf->check_all_crl)
 			X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK_ALL);

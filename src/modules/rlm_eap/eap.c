@@ -720,6 +720,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		p[3] = 5; /* length */
 		p[4] = PW_EAP_IDENTITY;
 
+		request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 		return EAP_FOUND;
 	} /* end of handling EAP-Start */
 
