@@ -139,6 +139,8 @@ rlm_rcode_t	unlang_module_yield(REQUEST *request,
 				    fr_unlang_module_resume_t resume,
 				    fr_unlang_module_signal_t signal, void *rctx);
 
+TALLOC_CTX	*unlang_module_frame_talloc_ctx(REQUEST *request);
+
 #ifdef __cplusplus
 }
 #endif
