@@ -173,7 +173,6 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -n <num>               Send N requests/s\n");
 	fprintf(stderr, "  -p <num>               Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
-	fprintf(stderr, "  -q                     Do not print anything out.\n");
 	fprintf(stderr, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -s                     Print out summary information of auth results.\n");
 	fprintf(stderr, "  -S <file>              read secret from file, not command line.\n");
@@ -1212,7 +1211,7 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:P:qr:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -1296,11 +1295,6 @@ int main(int argc, char **argv)
 			} else {
 				usage();
 			}
-			break;
-
-		case 'q':
-			do_output = false;
-			fr_log_fp = NULL; /* no output from you, either! */
 			break;
 
 		case 'r':
@@ -1686,7 +1680,7 @@ int main(int argc, char **argv)
 	}
 
 	if ((stats.lost > 0) || (stats.failed > 0)) {
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_exit_now(EXIT_SUCCESS);
