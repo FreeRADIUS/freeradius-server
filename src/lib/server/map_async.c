@@ -217,72 +217,6 @@ static inline VALUE_PAIR **map_check_src_or_dst(REQUEST *request, vp_map_t const
 	return list;
 }
 
-static VALUE_PAIR *fr_pair_list_afrom_box(TALLOC_CTX *ctx, REQUEST *request, fr_value_box_t *box)
-{
-	int comma = 0;
-	char *p, *end, *last_comma = NULL;
-	VALUE_PAIR *vps;
-
-	fr_assert(box->type == FR_TYPE_STRING);
-
-	/*
-	 *	HACK: Replace '\n' with ',' so that
-	 *	fr_pair_list_afrom_str() can parse the buffer in
-	 *	one go (the proper way would be to
-	 *	fix fr_pair_list_afrom_str(), but oh well).
-	 *
-	 *	Note that we can mangle box->vb_strvalue, as it's
-	 *	getting discarded immediately after this modification.
-	 */
-	memcpy(&p, &box->vb_strvalue, sizeof(p)); /* const issues */
-	end = p + talloc_array_length(box->vb_strvalue) - 1;
-
-	while (p < end) {
-		/*
-		 *	Replace the first \n by a comma, and remaining
-		 *	ones by a space.
-		 */
-		if (*p == '\n') {
-			if (comma) {
-				*(p++) = ' ';
-			} else {
-				*p = ',';
-				last_comma = p;
-				p++;
-			}
-
-			comma = 0;
-			continue;
-		}
-
-		if (*p == ',') {
-			comma++;
-			last_comma = p;
-			p++;
-			continue;
-		}
-
-		last_comma = NULL;
-		p++;
-	}
-
-	/*
-	 *	Don't end with a trailing comma
-	 */
-	if (last_comma) *last_comma = '\0';
-
-	vps = NULL;
-	if (fr_pair_list_afrom_str(ctx, request->dict, box->vb_strvalue, &vps) == T_INVALID) {
-		return NULL;
-	}
-
-	/*
-	 *	Mark the attributes as tainted.
-	 */
-	fr_pair_list_tainted(vps);
-	return vps;
-}
-
 /** Evaluate a map creating a new map with #TMPL_TYPE_ATTR LHS and #TMPL_TYPE_DATA RHS
  *
  * This function creates maps for consumption by map_to_request.
@@ -752,7 +686,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		/*
 		 *	Parse the VPs from the RHS.
 		 */
-		vp_head = fr_pair_list_afrom_box(ctx, request, *rhs_result);
+		vp_head = fr_pair_list_afrom_box(ctx, request->dict, *rhs_result);
 		if (!vp_head) {
 			talloc_free(n);
 			RDEBUG2("No pairs returned by exec");

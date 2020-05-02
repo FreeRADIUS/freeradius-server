@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
@@ -2312,4 +2313,74 @@ void fr_pair_list_tainted(VALUE_PAIR *vps)
 
 		vp->vp_tainted = true;
 	}
+}
+
+
+/*
+ *	Parse a set of VPs from a value box.
+ */
+VALUE_PAIR *fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_value_box_t *box)
+{
+	int comma = 0;
+	char *p, *end, *last_comma = NULL;
+	VALUE_PAIR *vps;
+
+	fr_assert(box->type == FR_TYPE_STRING);
+
+	/*
+	 *	HACK: Replace '\n' with ',' so that
+	 *	fr_pair_list_afrom_str() can parse the buffer in
+	 *	one go (the proper way would be to
+	 *	fix fr_pair_list_afrom_str(), but oh well).
+	 *
+	 *	Note that we can mangle box->vb_strvalue, as it's
+	 *	getting discarded immediately after this modification.
+	 */
+	memcpy(&p, &box->vb_strvalue, sizeof(p)); /* const issues */
+	end = p + talloc_array_length(box->vb_strvalue) - 1;
+
+	while (p < end) {
+		/*
+		 *	Replace the first \n by a comma, and remaining
+		 *	ones by a space.
+		 */
+		if (*p == '\n') {
+			if (comma) {
+				*(p++) = ' ';
+			} else {
+				*p = ',';
+				last_comma = p;
+				p++;
+			}
+
+			comma = 0;
+			continue;
+		}
+
+		if (*p == ',') {
+			comma++;
+			last_comma = p;
+			p++;
+			continue;
+		}
+
+		last_comma = NULL;
+		p++;
+	}
+
+	/*
+	 *	Don't end with a trailing comma
+	 */
+	if (last_comma) *last_comma = '\0';
+
+	vps = NULL;
+	if (fr_pair_list_afrom_str(ctx, dict, box->vb_strvalue, &vps) == T_INVALID) {
+		return NULL;
+	}
+
+	/*
+	 *	Mark the attributes as tainted.
+	 */
+	fr_pair_list_tainted(vps);
+	return vps;
 }

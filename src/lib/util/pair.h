@@ -359,6 +359,7 @@ char		*fr_pair_type_asprint(TALLOC_CTX *ctx, fr_type_t type);
 char		*fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
 void		fr_pair_list_tainted(VALUE_PAIR *vp);
+VALUE_PAIR	*fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_value_box_t *box);
 
 /* Tokenization */
 typedef struct {
