@@ -136,7 +136,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	{
 		size_t need = 0;
 
-		slen = fr_value_box_to_network_dbuff(&need, FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), &vp->data);
+		slen = fr_value_box_to_network_dbuff(&need, &FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), &vp->data);
 		if (slen < 0) switch (slen) {
 		case FR_VALUE_BOX_NET_ERROR:
 		default:
@@ -167,7 +167,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-		slen = internal_encode(FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
+		slen = internal_encode(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
 				       cursor, encoder_ctx);
 		if (slen < 0) return slen;
 		break;
@@ -196,7 +196,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 				fr_proto_da_stack_partial_build(da_stack, da_stack->da[depth], child->da);
 				FR_PROTO_STACK_PRINT(da_stack, depth);
 
-				slen = internal_encode(FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1),
+				slen = internal_encode(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1),
 						       da_stack, depth + 1, &children, encoder_ctx);
 				if (slen < 0) return slen;
 			}
@@ -207,7 +207,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		/*
 		 *	Still encoding intermediary TLVs...
 		 */
-		slen = internal_encode(FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
+		slen = internal_encode(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
 				       cursor, encoder_ctx);
 		if (slen < 0) return slen;
 		break;
@@ -229,7 +229,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		     vp = fr_cursor_current(&children)) {
 		     	FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, vp->da->name);
 
-			slen = fr_internal_encode_pair_dbuff(FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1),
+			slen = fr_internal_encode_pair_dbuff(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1),
 							     &children, encoder_ctx);
 			if (slen < 0) return slen;
 		}
@@ -329,7 +329,7 @@ static ssize_t fr_internal_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cur
  */
 ssize_t fr_internal_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
 {
-	return fr_internal_encode_pair_dbuff(FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
+	return fr_internal_encode_pair_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
 }
 
 /*

@@ -69,7 +69,7 @@ struct fr_dbuff_s {
 /** Reserve N bytes in the dbuff when passing it to another function
  *
  @code{.c}
- my_child_encoder(FR_DBUFF_RESERVE(dbuff, 5), vp);
+ my_child_encoder(&FR_DBUFF_RESERVE(dbuff, 5), vp);
  @endcode
  *
  * @note Do not use to re-initialise the contents of #_dbuff, i.e. to
@@ -82,7 +82,7 @@ struct fr_dbuff_s {
  * @param[in] _reserve	The number of bytes to reserve.
  */
 #define FR_DBUFF_RESERVE(_dbuff, _reserve) \
-&(fr_dbuff_t){ \
+(fr_dbuff_t){ \
 	.start	= (_dbuff)->start, \
 	.end	= ((size_t)(_dbuff) > (_reserve)) && ((_dbuff)->end - (_reserve)) >= ((_dbuff)->start) ? \
 			(_dbuff)->end - (_reserve) : \
@@ -156,14 +156,18 @@ _fr_dbuff_init(_out, \
  * @param[in] _len_or_end	Length of the buffer or the end pointer.
  */
 #define FR_DBUFF_TMP(_start, _len_or_end) \
-&(fr_dbuff_t){ \
+(fr_dbuff_t){ \
 	.start_i	= _start, \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
 				uint8_t *	: (uint8_t const *)(_len_or_end), \
 				uint8_t const *	: (uint8_t const *)(_len_or_end) \
 			), \
-	.p_i		= _start \
+	.p_i		= _start, \
+	.is_const	= _Generic((_start), \
+				uint8_t *	: false, \
+				uint8_t const *	: true \
+	       		) \
 }
 /** @} */
 
