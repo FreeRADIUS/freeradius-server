@@ -268,7 +268,6 @@ static rlm_rcode_t mod_exec_nowait_resume(void *instance, UNUSED void *thread, R
 
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) {
-			talloc_free(box);
 			return RLM_MODULE_INVALID;
 		}
 
@@ -277,11 +276,9 @@ static rlm_rcode_t mod_exec_nowait_resume(void *instance, UNUSED void *thread, R
 
 	if (fr_exec_nowait(request, box, env_pairs) < 0) {
 		REDEBUG("Failed executing program - %s", fr_strerror());
-		talloc_free(box);
 		return RLM_MODULE_FAIL;
 	}
 
-	talloc_free(box);
 	return RLM_MODULE_OK;
 }
 
@@ -313,7 +310,6 @@ static rlm_rcode_t mod_exec_wait_resume(void *instance, UNUSED void *thread, REQ
 	}
 
 	status = m->status;
-	talloc_free(m);
 
 	/*
 	 *	Don't print anything on success.
@@ -341,6 +337,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	rlm_exec_t const       	*inst = instance;
 	rlm_exec_ctx_t		*m;
 	VALUE_PAIR		*env_pairs = NULL;
+	TALLOC_CTX		*ctx;
 
 	if (!inst->tmpl) {
 		RDEBUG("This module requires 'program' to be set.");
@@ -348,12 +345,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	}
 
 	/*
+	 *	Get frame-local talloc ctx
+	 */
+	ctx = unlang_module_frame_talloc_ctx(request);
+
+	/*
 	 *	Do the asynchronous xlat expansion.
 	 */
 	if (!inst->wait) {
 		fr_value_box_t *box;
 
-		MEM(box = talloc_zero(request, fr_value_box_t));
+		MEM(box = talloc_zero(ctx, fr_value_box_t));
 
 		return unlang_module_yield_to_xlat(request, &box, request, inst->tmpl->tmpl_xlat, mod_exec_nowait_resume, NULL, box);
 	}
@@ -376,7 +378,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 		}
 	}
 
-	m = talloc_zero(request, rlm_exec_ctx_t);
+	m = talloc_zero(ctx, rlm_exec_ctx_t);
 
 	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, env_pairs, mod_exec_wait_resume, NULL, m);
 }
