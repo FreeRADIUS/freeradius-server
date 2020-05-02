@@ -51,9 +51,7 @@ size_t fr_sbuff_strchr_utf8(fr_sbuff_t *in, char *chr)
 	found = fr_utf8_strchr(NULL, p, in->end - in->p, chr);
 	if (!found) return 0;
 
-	in->p_i = found;
-
-	return found - p;
+	return (size_t)fr_sbuff_advance(in, found - p);
 }
 
 /** Wind position to first instance of specified char
@@ -72,9 +70,7 @@ size_t fr_sbuff_strchr(fr_sbuff_t *in, char c)
 	found = memchr(in->p, c, in->end - in->p);
 	if (!found) return 0;
 
-	in->p_i = found;
-
-	return found - p;
+	return (size_t)fr_sbuff_advance(in, found - p);
 }
 
 /** Wind position to the first instance of the specified needle
@@ -96,9 +92,7 @@ size_t fr_sbuff_strstr(fr_sbuff_t *in, char const *needle, ssize_t len)
 	found = memmem(in->p, in->end - in->p, needle, len );
 	if (!found) return 0;
 
-	in->p_i = found;
-
-	return found - p;
+	return (size_t)fr_sbuff_advance(in, found - p);
 }
 
 /** Wind position to the first non-whitespace character
@@ -114,7 +108,7 @@ size_t fr_sbuff_skip_whitespace(fr_sbuff_t *in)
 
 	while ((in->p < in->end) && isspace(*(in->p))) in->p++;
 
-	return in->p - p;
+	return (size_t)fr_sbuff_advance(in, in->p - p);
 }
 
 /** Copy n bytes from the sbuff to another buffer
@@ -143,7 +137,7 @@ ssize_t fr_sbuff_strncpy_exact(char *out, size_t outlen, fr_sbuff_t *in, size_t 
 	memcpy(out, in->p, len);
 	out[len] = '\0';
 
-	in->p += len;
+	fr_sbuff_advance(in, len);
 
 	return len;
 }
@@ -178,7 +172,7 @@ size_t fr_sbuff_strncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
 	memcpy(out, in->p, len);
 	out[len] = '\0';
 
-	in->p += len;
+	fr_sbuff_advance(in, len);
 
 	return len;
 }
@@ -218,7 +212,8 @@ size_t fr_sbuff_strncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t
 	*out_p = '\0';
 
 	copied = (p - in->p);
-	in->p += copied;
+
+	fr_sbuff_advance(in, copied);
 
 	return copied;
 }
@@ -258,7 +253,8 @@ size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t l
 	*out_p = '\0';
 
 	copied = (p - in->p);
-	in->p += copied;
+
+	fr_sbuff_advance(in, copied);
 
 	return copied;
 }
