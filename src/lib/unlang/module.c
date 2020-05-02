@@ -494,6 +494,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
  *
  * @param[in] ctx		To allocate talloc value boxes and values in.
  * @param[out] out		Where to write the result of the expansion.
+ * @param[out] status		exit status of the program
  * @param[in] request		The current request.
  * @param[in] vpt		the tmpl to expand
  * @param[in] vps		the input VPs.  May be NULL
@@ -503,7 +504,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
  * @return
  *	- RLM_MODULE_YIELD.
  */
-rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out,
+rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, int *status,
 					REQUEST *request, vp_tmpl_t const *vpt,
 					VALUE_PAIR *vps,
 					fr_unlang_module_resume_t resume,
@@ -518,7 +519,7 @@ rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out,
 	/*
 	 *	Push the xlat function
 	 */
-	unlang_tmpl_push(ctx, out, request, vpt, vps);
+	unlang_tmpl_push(ctx, out, request, vpt, vps, status);
 
 	return RLM_MODULE_YIELD;
 }

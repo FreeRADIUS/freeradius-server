@@ -95,8 +95,9 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
  * @param[in] request		The current request.
  * @param[in] tmpl		the tmpl to expand
  * @param[in] vps		the input VPs.  May be NULL.  Used only for #TMPL_TYPE_EXEC
+ * @param[out] status		where the status of exited programs will be stored.
  */
-void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl, VALUE_PAIR *vps)
+void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, vp_tmpl_t const *tmpl, VALUE_PAIR *vps, int *status)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -136,6 +137,7 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 	state->out = out;
 	state->ctx = ctx;
 	state->vps = vps;
+	state->status_p = status;
 }
 
 
@@ -270,15 +272,22 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
+	if (state->status_p) *state->status_p = state->status;
+
 	if (state->status != 0) {
 		if (WIFEXITED(state->status)) {
 			RDEBUG("Program failed with status code %d", WEXITSTATUS(state->status));
+			state->status = WEXITSTATUS(state->status);
+		} else if (WIFSIGNALED(state->status)) {
+			RDEBUG("Program exited due to signal with status code %d", WTERMSIG(state->status));
+			state->status = -WTERMSIG(state->status);
 		} else {
-			RDEBUG("Program exited due to signal with status code %d", state->status);
+			RDEBUG("Program exited due to unknown status %d", state->status);
+			state->status = -state->status;
 		}
 
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		fr_assert(state->box == NULL);
+		goto resume;
 	}
 
 	/*
@@ -319,6 +328,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 	/*
 	 *	Ensure that the callers resume function is called.
 	 */
+resume:
 	frame->interpret = unlang_tmpl_resume;
 	return unlang_tmpl_resume(request, presult);
 }
@@ -353,7 +363,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	TALLOC_FREE(state->box); /* this is the xlat expansion, and not the output string we want */
 
 	state->pid = pid;
-	state->status = 1;	/* default to program didn't work */
+	state->status = -1;	/* default to program didn't work */
 
 	/*
 	 *	Kill the child process after a period of time.

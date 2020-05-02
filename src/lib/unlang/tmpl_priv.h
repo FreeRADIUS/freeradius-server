@@ -51,7 +51,8 @@ typedef struct {
 	VALUE_PAIR			*vps;		//!< input VPs
 	char				*buffer;	//!< for reading the answer
 	char				*ptr;		//!< where in the buffer we are writing to
-	int				status;		//!< return status from the program
+	int				status;		//!< return code of the program
+	int				*status_p;	//!< where we write the return status of the program
 } unlang_frame_state_tmpl_t;
 
 #ifdef __cplusplus

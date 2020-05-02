@@ -285,13 +285,19 @@ static rlm_rcode_t mod_exec_nowait_resume(void *instance, UNUSED void *thread, R
 	return RLM_MODULE_OK;
 }
 
+typedef struct {
+	fr_value_box_t	*box;
+	int		status;
+} rlm_exec_ctx_t;
+
 
 static rlm_rcode_t mod_exec_wait_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
 {
-	fr_value_box_t		**box = rctx;
+	int			status;
+	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
 	rlm_exec_t const       	*inst = instance;
 
-	RDEBUG("EXEC GOT -- %pV", *box);
+	RDEBUG("EXEC GOT -- %pV", m->box);
 
 	if (inst->output) {
 		TALLOC_CTX *ctx;
@@ -302,16 +308,29 @@ static rlm_rcode_t mod_exec_wait_resume(void *instance, UNUSED void *thread, REQ
 
 		ctx = radius_list_ctx(request, inst->output_list);
 
-		vps = fr_pair_list_afrom_box(ctx, request->dict, *box);
+		vps = fr_pair_list_afrom_box(ctx, request->dict, m->box);
 		if (vps) fr_pair_list_move(output_pairs, &vps);
 	}
 
-	talloc_free(box);
+	status = m->status;
+	talloc_free(m);
 
 	/*
-	 *	@todo - convert exit status to rcode.
+	 *	Don't print anything on success.
 	 */
-	return RLM_MODULE_OK;
+	if (status == 0) return RLM_MODULE_OK;
+
+	if (status < 0) {
+		REDEBUG("Program exited with signal %d", -status);
+		return RLM_MODULE_FAIL;
+	}
+
+	if (status > RLM_MODULE_NUMCODES) return RLM_MODULE_OK;
+
+	/*
+	 *	Return the exit status as an rcode.
+	 */
+	return status - 1;
 }
 
 /*
@@ -320,7 +339,7 @@ static rlm_rcode_t mod_exec_wait_resume(void *instance, UNUSED void *thread, REQ
 static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_exec_t const       	*inst = instance;
-	fr_value_box_t		**box_p;
+	rlm_exec_ctx_t		*m;
 	VALUE_PAIR		*env_pairs = NULL;
 
 	if (!inst->tmpl) {
@@ -357,9 +376,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 		}
 	}
 
-	box_p = talloc_zero(request, fr_value_box_t *);
+	m = talloc_zero(request, rlm_exec_ctx_t);
 
-	return unlang_module_yield_to_tmpl(box_p, box_p, request, inst->tmpl, env_pairs, mod_exec_wait_resume, NULL, box_p);
+	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, env_pairs, mod_exec_wait_resume, NULL, m);
 }
 
 
